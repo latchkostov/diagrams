@@ -258,7 +258,12 @@ export function createSimulationRun(
     (simulation.expectations ?? []).forEach((expectation, index) => {
       const state = expectations[index],
         measured = engine.measure(expectation.metric);
-      const value = measured === undefined ? undefined : toRealUnits(measured, scale);
+      const value =
+        measured === undefined
+          ? undefined
+          : "field" in expectation.metric && expectation.metric.field === "amplification"
+            ? measured
+            : toRealUnits(measured, scale);
       if (value === undefined) return; // Unknown ids are ignored, like actions and injections.
       state.value = value;
       const pass = matches(expectation, value),

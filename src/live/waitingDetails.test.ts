@@ -51,3 +51,48 @@ it("keeps one effective waiting plan across remounted hovers with simulation ove
   expect(waitingDetails(simulationEdges(diagram, edited), configuration)).not.toBe(first);
   expect(compute).toHaveBeenCalledTimes(2);
 });
+
+it("skips retry-budget capacity analysis above the planning work ceiling, keeping the waiting plan", async () => {
+  const capacity = await import("../sim/capacity");
+  const { planningSignature } = await import("../planning/budget");
+  const d = waitingFixture();
+  d.planning!.revision = "p3-w2";
+  d.nodes[2].stencil = "generic.service";
+  d.nodes[2].props = { concurrency: 100, latencyMs: 30, jitter: 0, failureRate: 1 };
+  d.edges[1].props = {
+    travelMs: 10,
+    caller: {
+      wait: "blocking",
+      deadlineMs: 200,
+      retry: {
+        maxAttempts: 3,
+        backoffMs: 100,
+        strategy: "fixed",
+        retryOn: ["transient"],
+        budget: { percent: 20, minPerSec: 10 },
+      },
+    },
+  };
+  // Within the node and edge caps, but many message types and a broker fan-out make the solver's work too large.
+  d.nodes.push({ id: "bus", stencil: "generic.queue", label: "Bus", x: 0, y: 600 });
+  for (let i = 0; i < 120; i++) {
+    d.nodes.push({
+      id: `s${i}`,
+      stencil: "client.user",
+      label: `Type ${i}`,
+      x: 0,
+      y: 0,
+      props: { messageType: `T${i}` },
+    });
+    d.edges.push({ id: `s${i}-bus`, from: `s${i}`, to: "bus" });
+  }
+  d.edges.push({ id: "bus-caller", from: "bus", to: "caller" }, { id: "caller-bus", from: "caller", to: "bus" });
+  expect(d.nodes.length).toBeLessThanOrEqual(256);
+  expect(d.edges.length).toBeLessThanOrEqual(512);
+  expect(planningSignature(d)).toBeUndefined();
+  const analyze = vi.spyOn(capacity, "analyzeCapacity");
+  const plan = waitingDetails(d, {})!;
+  expect(analyze).not.toHaveBeenCalled();
+  expect(plan.amplification.get("call")?.policy.budget).toEqual({ percent: 20, minPerSec: 10 });
+  expect(plan.nodes.get("caller")?.callMs).toBeGreaterThan(0);
+});

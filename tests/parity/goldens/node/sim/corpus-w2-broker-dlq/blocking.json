@@ -1,0 +1,73 @@
+{
+  "run": {
+    "time": 5000,
+    "totalMs": 5000,
+    "done": true,
+    "scale": 1,
+    "multipliers": { "traffic": 1, "capacity": 1 },
+    "expectations": [],
+    "markers": [
+      { "atMs": 0, "kind": "traffic", "label": "Applications" },
+      { "atMs": 100, "kind": "traffic", "label": "Applications ends" }
+    ]
+  },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 1,
+      "nodes": {
+        "source": { "processed": 1, "backlog": 1, "lag": { "queue": 1 }, "replicas": [1, 1, 0] },
+        "caller": { "replicas": [1, 1, 0] },
+        "partner": { "replicas": [1, 1, 0] },
+        "result": { "replicas": [1, 1, 0] },
+        "dlq": { "lag": { "queue": 0 }, "noConsumer": true, "replicas": [1, 1, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 5000,
+    "inSystem": 12,
+    "real": {
+      "source": {
+        "processed": 12,
+        "deadLettered": 12,
+        "throughput": 0.08504483045402972,
+        "lag": { "queue": 0 },
+        "replicas": [1, 1, 0]
+      },
+      "caller": { "failed": 24, "replicas": [1, 1, 0] },
+      "partner": { "failed": 72, "dropped": 72, "replicas": [1, 1, 0] },
+      "result": { "replicas": [1, 1, 0] },
+      "dlq": {
+        "processed": 12,
+        "backlog": 12,
+        "throughput": 0.18367695487347227,
+        "lag": { "queue": 12 },
+        "noConsumer": true,
+        "replicas": [1, 1, 0]
+      }
+    },
+    "edges": { "input": 24, "call": 72, "output": 0, "dlq-flow": 12 }
+  },
+  "events": {
+    "total": 396,
+    "byKind": { "inject": 12, "process": 24, "deliver": 108, "fail": 96, "drop": 72, "retry": 72, "deadletter": 12 },
+    "byNode": {
+      "source": { "inject": 12, "process": 12, "retry": 24, "deadletter": 12 },
+      "caller": { "deliver": 24, "retry": 48, "fail": 24 },
+      "partner": { "deliver": 72, "fail": 72, "drop": 72 },
+      "dlq": { "deliver": 12, "process": 12 }
+    },
+    "perSecond": ["bd222325ac6c", "-", "-", "-", "-", "-"]
+  },
+  "notes": [],
+  "latency": {
+    "journeys": { "done": 12, "retried": 12, "deadLettered": 12, "dropped": 12, "blocked": 0, "partial": 0, "truncated": 0 },
+    "endToEndMs": { "count": 12, "min": 770, "mean": 770.8333333333334, "p50": 770, "p90": 770, "max": 780 },
+    "waitMs": {
+      "caller": { "count": 24, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "partner": { "count": 72, "min": 0, "mean": 3.3333333333333335, "p50": 0, "p90": 10, "max": 10 }
+    },
+    "processMs": {}
+  }
+}

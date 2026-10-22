@@ -1,0 +1,30 @@
+{
+  "ran": [
+    "dead-letter",
+    "no-reader",
+    "sync-cycle",
+    "sync-chain",
+    "shared-database",
+    "entry-gateway",
+    "capacity",
+    "blocked-threads",
+    "scaling-blind",
+    "call-timeout",
+    "single-point",
+    "secret-identity",
+    "schema-registry"
+  ],
+  "off": [],
+  "findings": [
+    {
+      "id": "no-reader:dlq",
+      "rule": "no-reader",
+      "severity": "suggestion",
+      "target": "dlq",
+      "elements": ["dlq", "source"],
+      "fix": { "ops": null, "needsChoice": true }
+    }
+  ],
+  "ignored": [],
+  "fixes": {}
+}

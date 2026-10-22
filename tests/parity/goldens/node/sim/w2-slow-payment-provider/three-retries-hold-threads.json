@@ -1,0 +1,122 @@
+{
+  "run": {
+    "time": 20000,
+    "totalMs": 20000,
+    "done": true,
+    "scale": 1,
+    "multipliers": { "traffic": 1, "capacity": 1 },
+    "expectations": [
+      { "id": "retries", "label": "Checkout retries timed-out payments", "status": "pass", "value": 1627 },
+      { "id": "waiting", "label": "Checkout fills at least 90 threads", "status": "pass", "value": 98 },
+      { "id": "expected-failure-shop", "label": "Shop reports failed checkouts", "status": "pass", "value": 1359 },
+      { "id": "expected-failure-gateway", "label": "API gateway reports failed checkouts", "status": "pass", "value": 1359 },
+      { "id": "expected-failure-checkout", "label": "Checkout reports failed payments", "status": "pass", "value": 791 }
+    ],
+    "markers": [
+      { "atMs": 0, "kind": "traffic", "label": "orders" },
+      { "atMs": 3000, "kind": "fault", "label": "Slow down: Payment provider" },
+      { "atMs": 4500, "kind": "note", "label": "A blocking retry holds its thread through every attempt and 100 ms backoff. Three 600 ms attempts can hold it for two seconds." },
+      { "atMs": 20000, "kind": "traffic", "label": "orders ends" }
+    ]
+  },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 0,
+      "nodes": {
+        "shop": { "replicas": [1, 1, 0] },
+        "gateway": { "replicas": [1, 1, 0] },
+        "checkout": { "replicas": [4, 4, 0] },
+        "payment": { "replicas": [1, 1, 0] },
+        "orders": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 10000,
+      "inSystem": 1735,
+      "nodes": {
+        "shop": { "processed": 421, "failed": 299, "dropped": 299, "throughput": 12.46449060966442, "replicas": [1, 1, 0] },
+        "gateway": { "processed": 421, "failed": 299, "dropped": 299, "inFlight": 1, "throughput": 12.46449060966442, "replicas": [1, 1, 0] },
+        "checkout": { "processed": 421, "failed": 299, "dropped": 299, "backlog": 377, "inFlight": 100, "throughput": 12.46449060966442, "replicas": [4, 4, 0] },
+        "payment": { "processed": 1030, "inFlight": 298, "throughput": 155.43669959601866, "replicas": [1, 1, 0] },
+        "orders": { "processed": 117, "throughput": 12.356017024991655, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 20000,
+      "inSystem": 2605,
+      "nodes": {
+        "shop": { "processed": 438, "failed": 1359, "dropped": 1359, "throughput": 0.004378981062267505, "replicas": [1, 1, 0] },
+        "gateway": { "processed": 438, "failed": 1359, "dropped": 1359, "inFlight": 1, "throughput": 0.004378981062267505, "replicas": [1, 1, 0] },
+        "checkout": { "processed": 503, "failed": 791, "dropped": 791, "backlog": 1004, "inFlight": 99, "throughput": 12.104123885732887, "replicas": [4, 4, 0] },
+        "payment": { "processed": 2514, "inFlight": 296, "throughput": 153.50984785811355, "replicas": [1, 1, 0] },
+        "orders": { "processed": 199, "throughput": 12.104118961039765, "replicas": [1, 1, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 20000,
+    "inSystem": 2605,
+    "real": {
+      "shop": { "processed": 438, "failed": 1359, "dropped": 1359, "throughput": 0.004378981062267505, "replicas": [1, 1, 0] },
+      "gateway": { "processed": 438, "failed": 1359, "dropped": 1359, "inFlight": 1, "throughput": 0.004378981062267505, "replicas": [1, 1, 0] },
+      "checkout": { "processed": 503, "failed": 791, "dropped": 791, "backlog": 1004, "inFlight": 99, "throughput": 12.104123885732887, "replicas": [4, 4, 0] },
+      "payment": { "processed": 2514, "inFlight": 296, "throughput": 153.50984785811355, "replicas": [1, 1, 0] },
+      "orders": { "processed": 199, "throughput": 12.104118961039765, "replicas": [1, 1, 0] }
+    },
+    "edges": { "browse": 2398, "route": 2397, "pay": 2810, "save": 199 }
+  },
+  "events": {
+    "total": 22941,
+    "byKind": { "inject": 2400, "deliver": 7804, "process": 4092, "retry": 1627, "fail": 3509, "drop": 3509 },
+    "byNode": {
+      "shop": { "inject": 2400, "process": 438, "fail": 1359, "drop": 1359 },
+      "gateway": { "deliver": 2398, "process": 438, "fail": 1359, "drop": 1359 },
+      "checkout": { "deliver": 2397, "process": 503, "retry": 1627, "fail": 791, "drop": 791 },
+      "payment": { "deliver": 2810, "process": 2514 },
+      "orders": { "deliver": 199, "process": 199 }
+    },
+    "perSecond": [
+      "5717596c42a4",
+      "9d95772be5bd",
+      "aaf981d4b914",
+      "eab111823a67",
+      "2060271d32d6",
+      "2beab2bcf672",
+      "ec5cc6dc85b5",
+      "bfbba14cfd36",
+      "9289ee0d77ea",
+      "a44091374244",
+      "cc3c8c218e04",
+      "02957b8af11d",
+      "c89f4d4f19db",
+      "a7a1741a83bb",
+      "7332bdffbdd5",
+      "bc054fa13895",
+      "4e8b9280b376",
+      "8785891cc21a",
+      "5766e24fd104",
+      "e465fdd960fc",
+      "418e6bc29172"
+    ]
+  },
+  "notes": [
+    { "atMs": 4500, "text": "A blocking retry holds its thread through every attempt and 100 ms backoff. Three 600 ms attempts can hold it for two seconds.", "focus": ["checkout", "payment"] }
+  ],
+  "latency": {
+    "journeys": { "done": 371, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0 },
+    "endToEndMs": { "count": 371, "min": 60, "mean": 207.4932614555256, "p50": 240, "p90": 240, "max": 240 },
+    "waitMs": {
+      "gateway": { "count": 371, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "checkout": { "count": 371, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 },
+      "payment": { "count": 304, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "orders": { "count": 67, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 }
+    },
+    "processMs": {
+      "gateway": { "count": 371, "min": 50, "mean": 197.4932614555256, "p50": 230, "p90": 230, "max": 230 },
+      "checkout": { "count": 371, "min": 30, "mean": 177.4932614555256, "p50": 210, "p90": 210, "max": 210 },
+      "payment": { "count": 304, "min": 200, "mean": 200, "p50": 200, "p90": 200, "max": 200 },
+      "orders": { "count": 67, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 }
+    }
+  }
+}

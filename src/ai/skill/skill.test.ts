@@ -9,7 +9,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { inflateRawSync } from "node:zlib";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { generateSkillFiles, publicExamples, SKILL_DIR } from "../../../scripts/skill-gen";
+import { generateSkillFiles, publicExamples, SKILL_DIR, specJson } from "../../../scripts/skill-gen";
 import { readSkill, withFresh, zipSkill } from "../../../scripts/skill-assets";
 import generated from "../../../scripts/generated-files.json";
 import { selfHostSamples } from "../../../scripts/self-host-headers";
@@ -84,6 +84,20 @@ function unplaced(d: object): Record<string, unknown> {
 }
 
 describe("generated skill files", () => {
+  it("spec.json keeps lists of plain values on one line and parses back to the same data", () => {
+    const value = {
+      plain: ["a", 1, true, null, "comma, and ]bracket"],
+      nested: [["x"], { k: ["y", "z"] }],
+      empty: [],
+      quoted: ['"[\n"', "{", "a,\n b"],
+    };
+    const text = specJson(value);
+    expect(JSON.parse(text)).toEqual(value);
+    expect(text).toContain('"k": ["y","z"]');
+    const spec = readFileSync(path.join(root, SKILL_DIR, "scripts/lib/spec.json"), "utf8");
+    expect(specJson(JSON.parse(spec))).toBe(spec);
+  });
+
   it("are current (run `pnpm regen` after changing the catalog, the format or the layout)", async () => {
     const files = await generateSkillFiles(root);
     const all = [

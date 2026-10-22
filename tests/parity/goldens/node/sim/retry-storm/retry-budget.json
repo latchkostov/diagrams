@@ -1,0 +1,200 @@
+{
+  "run": {
+    "time": 60000,
+    "totalMs": 60000,
+    "done": true,
+    "scale": 1,
+    "multipliers": { "traffic": 1, "capacity": 1 },
+    "expectations": [
+      { "id": "goodput", "label": "Shop goodput â‰¥ 270/s at the end", "status": "pass", "value": 299.9999999934122 },
+      { "id": "backlog", "label": "Payments backlog < 100 at the end", "status": "pass", "value": 3 },
+      { "id": "amplification", "label": "Checkout attempts per request < 1.5 at the end", "status": "pass", "value": 1 }
+    ],
+    "markers": [
+      { "atMs": 0, "kind": "traffic", "label": "checkouts" },
+      { "atMs": 1000, "kind": "fault", "label": "Fail: Payments" },
+      { "atMs": 1200, "kind": "note", "label": "Retries absorb most of a brief blip. Repeating a POST can still run it twice." },
+      { "atMs": 2000, "kind": "fault", "label": "Fail: Payments" },
+      { "atMs": 3000, "kind": "fault", "label": "Slow down: Payments" },
+      { "atMs": 3500, "kind": "note", "label": "The budget limits extra attempts over ten seconds, instead of retrying every timeout twice." },
+      { "atMs": 8000, "kind": "fault", "label": "Slow down: Payments" },
+      { "atMs": 9000, "kind": "note", "label": "At 8 s, Payments is fast again with about 1,300 queued requests still to finish." },
+      { "atMs": 15000, "kind": "note", "label": "About 3,000 requests remain queued. The budget lets abandoned work drain; Shop recovers around 38 s." },
+      { "atMs": 60000, "kind": "traffic", "label": "checkouts ends" }
+    ]
+  },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 0,
+      "nodes": {
+        "shop": { "replicas": [1, 1, 0] },
+        "checkout": { "replicas": [4, 4, 0] },
+        "payments": { "replicas": [4, 4, 0] },
+        "orders": { "noConsumer": true, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 10000,
+      "inSystem": 2985,
+      "nodes": {
+        "shop": { "processed": 894, "failed": 1984, "dropped": 1984, "throughput": 0.29075404899838714, "replicas": [1, 1, 0] },
+        "checkout": { "processed": 894, "failed": 1984, "dropped": 1984, "inFlight": 6, "throughput": 0.29075404899838714, "replicas": [4, 4, 0] },
+        "payments": { "processed": 1710, "failed": 30, "dropped": 30, "backlog": 1799, "inFlight": 48, "throughput": 130.70838429037747, "replicas": [4, 4, 0] },
+        "orders": { "processed": 894, "backlog": 894, "throughput": 0.32133291926575913, "noConsumer": true, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 20000,
+      "inSystem": 5043,
+      "nodes": {
+        "shop": { "processed": 894, "failed": 4985, "dropped": 4985, "throughput": 0.000013200213402685547, "replicas": [1, 1, 0] },
+        "checkout": { "processed": 894, "failed": 4985, "dropped": 4985, "inFlight": 6, "throughput": 0.000013200213402685547, "replicas": [4, 4, 0] },
+        "payments": { "processed": 3248, "failed": 30, "dropped": 30, "backlog": 3859, "inFlight": 48, "throughput": 365.48460853359586, "replicas": [4, 4, 0] },
+        "orders": { "processed": 894, "backlog": 894, "throughput": 0.000014588491965040449, "noConsumer": true, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 30000,
+      "inSystem": 2644,
+      "nodes": {
+        "shop": { "processed": 894, "failed": 7985, "dropped": 7985, "throughput": 5.992887613317667e-10, "replicas": [1, 1, 0] },
+        "checkout": { "processed": 894, "failed": 7985, "dropped": 7985, "inFlight": 6, "throughput": 5.992887613317667e-10, "replicas": [4, 4, 0] },
+        "payments": { "processed": 9248, "failed": 30, "dropped": 30, "backlog": 1460, "inFlight": 48, "throughput": 599.9893530176993, "replicas": [4, 4, 0] },
+        "orders": { "processed": 894, "backlog": 894, "throughput": 6.623165105534458e-10, "noConsumer": true, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 40000,
+      "inSystem": 2328,
+      "nodes": {
+        "shop": { "processed": 2223, "failed": 9738, "dropped": 9738, "throughput": 296.80382279898987, "replicas": [1, 1, 0] },
+        "checkout": { "processed": 2223, "failed": 9738, "dropped": 9738, "backlog": 3, "inFlight": 6, "throughput": 296.80382279898987, "replicas": [4, 4, 0] },
+        "payments": { "processed": 14082, "failed": 30, "dropped": 30, "backlog": 3, "inFlight": 24, "throughput": 306.15415124238666, "replicas": [4, 4, 0] },
+        "orders": { "processed": 2193, "backlog": 2193, "throughput": 296.4676779084273, "noConsumer": true, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 50000,
+      "inSystem": 5328,
+      "nodes": {
+        "shop": { "processed": 5223, "failed": 9738, "dropped": 9738, "throughput": 299.99985489377946, "replicas": [1, 1, 0] },
+        "checkout": { "processed": 5223, "failed": 9738, "dropped": 9738, "backlog": 3, "inFlight": 6, "throughput": 299.99985489377946, "replicas": [4, 4, 0] },
+        "payments": { "processed": 17082, "failed": 30, "dropped": 30, "backlog": 3, "inFlight": 24, "throughput": 300.000279398034, "replicas": [4, 4, 0] },
+        "orders": { "processed": 5193, "backlog": 5193, "throughput": 299.9998396328251, "noConsumer": true, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 60000,
+      "inSystem": 8328,
+      "nodes": {
+        "shop": { "processed": 8223, "failed": 9738, "dropped": 9738, "throughput": 299.9999999934122, "replicas": [1, 1, 0] },
+        "checkout": { "processed": 8223, "failed": 9738, "dropped": 9738, "backlog": 3, "inFlight": 6, "throughput": 299.9999999934122, "replicas": [4, 4, 0] },
+        "payments": { "processed": 20082, "failed": 30, "dropped": 30, "backlog": 3, "inFlight": 24, "throughput": 300.00000001268455, "replicas": [4, 4, 0] },
+        "orders": { "processed": 8193, "backlog": 8193, "throughput": 299.99999999271944, "noConsumer": true, "replicas": [1, 1, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 60000,
+    "inSystem": 8328,
+    "real": {
+      "shop": { "processed": 8223, "failed": 9738, "dropped": 9738, "throughput": 299.9999999934122, "replicas": [1, 1, 0] },
+      "checkout": { "processed": 8223, "failed": 9738, "dropped": 9738, "backlog": 3, "inFlight": 6, "throughput": 299.9999999934122, "replicas": [4, 4, 0] },
+      "payments": { "processed": 20082, "failed": 30, "dropped": 30, "backlog": 3, "inFlight": 24, "throughput": 300.00000001268455, "replicas": [4, 4, 0] },
+      "orders": { "processed": 8193, "backlog": 8193, "throughput": 299.99999999271944, "noConsumer": true, "replicas": [1, 1, 0] }
+    },
+    "edges": { "checkouts": 17997, "pay": 20139, "orders-flow": 8193 }
+  },
+  "events": {
+    "total": 150207,
+    "byKind": { "inject": 18000, "deliver": 46329, "process": 44721, "fail": 19506, "drop": 19506, "retry": 2145 },
+    "byNode": {
+      "shop": { "inject": 18000, "process": 8223, "fail": 9738, "drop": 9738 },
+      "checkout": { "deliver": 17997, "process": 8223, "retry": 2145, "fail": 9738, "drop": 9738 },
+      "payments": { "deliver": 20139, "process": 20082, "fail": 30, "drop": 30 },
+      "orders": { "deliver": 8193, "process": 8193 }
+    },
+    "perSecond": [
+      "dc0f1daaad4f",
+      "5d666e57e522",
+      "188246f9c75e",
+      "61482926c82c",
+      "b013b8571ccf",
+      "5bc3209551ba",
+      "e04d88cda5e1",
+      "bb497dbf145e",
+      "e8aed683994a",
+      "c344c07549dc",
+      "90fcb5246c0c",
+      "5927f72ac76b",
+      "e2ca96f74af9",
+      "f4e73e3051e3",
+      "f87a3d14aecd",
+      "4f7058198c01",
+      "1c8986bfd9d3",
+      "8cbaf3fefe89",
+      "e865d2e772eb",
+      "5472c26823e3",
+      "31636e7281fb",
+      "a66f72b447e9",
+      "3b09a6082e76",
+      "7782fffc1d06",
+      "f7d3ed77305d",
+      "6685a87b5823",
+      "9dfc16628531",
+      "527ace4d0ae4",
+      "ae8504ecc704",
+      "3d2ffe8dd6e7",
+      "e5926352e823",
+      "78e0fef4f373",
+      "3b2b919ccd3a",
+      "37164f3add7e",
+      "86221a70efb1",
+      "d0c34076227c",
+      "217b2e116586",
+      "bad08a2a6d87",
+      "9c9d06c4c383",
+      "93b9558f4322",
+      "c24bd82b68fb",
+      "b5178850cf96",
+      "3c74a023c150",
+      "2ac74528949a",
+      "14874f126978",
+      "40daa644964f",
+      "eca43d07afd3",
+      "d66e82de497c",
+      "82543262853e",
+      "e4f5188642ec",
+      "4ead0ec58a05",
+      "b14d8e1f6783",
+      "7944dfb82b75",
+      "036f3e04bdd7",
+      "5e2275cd3a94",
+      "8a9fd9222e53",
+      "917f1c84fe77",
+      "7be84267c10b",
+      "4aff4cdeef90",
+      "a676e4e11fc0",
+      "e54258edcb87"
+    ]
+  },
+  "notes": [
+    { "atMs": 1200, "text": "Retries absorb most of a brief blip. Repeating a POST can still run it twice.", "focus": ["payments", "checkout"] },
+    { "atMs": 3500, "text": "The budget limits extra attempts over ten seconds, instead of retrying every timeout twice.", "focus": ["payments", "checkout"] },
+    { "atMs": 9000, "text": "At 8 s, Payments is fast again with about 1,300 queued requests still to finish.", "focus": ["payments", "checkout"] },
+    { "atMs": 15000, "text": "About 3,000 requests remain queued. The budget lets abandoned work drain; Shop recovers around 38 s.", "focus": ["payments", "checkout"] }
+  ],
+  "latency": {
+    "journeys": { "done": 8321, "retried": 26, "deadLettered": 0, "dropped": 180, "blocked": 0, "partial": 0, "truncated": 0 },
+    "endToEndMs": { "count": 8321, "min": 230, "mean": 243.36618194928494, "p50": 230, "p90": 230, "max": 9630 },
+    "waitMs": {
+      "checkout": { "count": 16642, "min": 0, "mean": 57.98101189760846, "p50": 110, "p90": 110, "max": 310 },
+      "payments": { "count": 8347, "min": 0, "mean": 25.121600575056906, "p50": 10, "p90": 10, "max": 9530 }
+    },
+    "processMs": {
+      "checkout": { "count": 8167, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 },
+      "payments": { "count": 8321, "min": 80, "mean": 80, "p50": 80, "p90": 80, "max": 80 }
+    }
+  }
+}

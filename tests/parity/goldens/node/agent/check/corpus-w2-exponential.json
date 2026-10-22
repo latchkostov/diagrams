@@ -1,0 +1,16 @@
+{
+  "all": { "isError": false, "output": { "findings": [], "summary": "Nothing to check. 13 checks ran." } },
+  "warnings": { "isError": false, "output": { "findings": [], "summary": "Nothing to check. 13 checks ran." } },
+  "oneRule": { "isError": false, "output": { "findings": [], "summary": "Nothing to check. 2 checks ran." } },
+  "simulations": {
+    "isError": false,
+    "output": {
+      "findings": [
+        { "id": "dropped:caller", "rule": "dropped", "severity": "suggestion", "title": "Failed messages to Decision service are lost", "message": "Decision service fails some of what it's sent, and nothing delivers it again: there's no queue or topic in front of it to redeliver.", "targets": ["caller"], "evidence": ["12 dropped in “Blocking”"] },
+        { "id": "dropped:partner", "rule": "dropped", "severity": "suggestion", "title": "Failed requests to Partner scoring API are lost", "message": "Partner scoring API fails some of what it's sent, and nothing delivers it again: there's no queue or topic in front of it to redeliver.", "targets": ["partner"], "evidence": ["36 dropped in “Blocking”"] }
+      ],
+      "summary": "0 warnings, 2 suggestions.",
+      "simulations": "Played 1 saved simulation (at most 60 s each)."
+    }
+  }
+}

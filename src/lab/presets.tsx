@@ -1,4 +1,5 @@
 import { waitingFixture } from "./waitingFixture";
+import { resilienceFixture } from "./resilienceFixture";
 import { annotationShapesFixture } from "./annotationShapesFixture";
 import slowPayment from "../examples/slow-payment-provider.json";
 import { faultDrillFixture } from "./faultDrillFixture";
@@ -677,6 +678,21 @@ const livePresets: Preset[] = [
         diagram={particleStressDiagram(Number(v.particles))}
         presenting={!!v.livepresent}
         initial={{ traffic: true, speed: Number(v.livespeed) }}
+      />
+    ),
+  },
+  {
+    kind: "render",
+    id: "live-retries",
+    title: "Live: retries and budgets",
+    group: "Simulation",
+    description: "Retry amplification, the Calls hover and per-attempt failures, without a large queue.",
+    controls: [livePresent],
+    render: (v) => (
+      <LiveLabStage
+        diagram={resilienceFixture()}
+        presenting={!!v.livepresent}
+        initial={{ traffic: true, seekMs: 2000, paused: true }}
       />
     ),
   },

@@ -1,6 +1,6 @@
 # The diagrams/v1 file format
 
-Planning uses `diagrams/v2` and `planning.revision` (`p1`, `p2`, `p3`, `p3-a1`, `p3-w1`).
+Planning uses `diagrams/v2` and `planning.revision` (`p1`, `p2`, `p3`, `p3-a1`, `p3-w1`, `p3-w2`).
 Preserve existing revisions: the app's upgrade pins effective values and previews compatibility.
 Unknown revisions are refused. Files are `<name>.diagram.json`; schemas are at
 `https://www.livediagrams.dev/schema/diagram.v1.json`, `diagram.v2.json` and `stencils.json`.
@@ -152,7 +152,7 @@ Edge `props`:
 - `requestRouteId` (string): request routing R1: on a Request (sync) out of a source or service, the request route this call sends (planning.requestRoutes id); dormant on a router's connections
 - `requestFilter` (object): request routing R1: only addressed requests matching {methods?, path?, hosts?, headers?, query?} travel this connection (a broker binding's routing key or header match); unaddressed messages don't match
 - `endpointId` (string): Request target endpoint id inside the target API node; dangling references reject rather than fall back
-- `caller` (object): reserved deadlineMs, retry policy and poolConnections contract; no caller waits, retries, deadlines or cascades execute in P3
+- `caller` (object): p3-w1: wait, deadlineMs per attempt, replyMs and poolConnections; p3-w2 executes retry: maxAttempts (includes first, capped at 10), backoffMs, strategy, maxBackoffMs, jitter 0..1, retryOn, idempotent, budget {percent, minPerSec?}. A blocking caller holds its thread through backoff. Budget: ten-second whole-dot allowance max(minPerSec*10, percent/100*requests); absent minPerSec defaults to 10. Earlier revisions keep saved retries dormant.
 - `group` (string): consumer group (logs), subscription (pub/sub), or binding (exchange); each name gets a copy and readers sharing a name compete; queues always compete
 - `groupOrigin` ("inferred"): inferred: the default group follows the consumer node id when copied or reconnected; omit for authored group names
 - `share` (number 0..1): chance that this fan-out edge gets a copy

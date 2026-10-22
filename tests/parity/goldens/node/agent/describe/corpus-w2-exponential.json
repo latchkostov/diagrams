@@ -1,0 +1,147 @@
+{
+  "text": {
+    "isError": false,
+    "output": "Diagram \"Retry exponential\" · direction LR · 4 nodes, 3 connections, 0 boundaries, 1 simulations\nnodes:\n  \"source\" \"client.user\" (\"User\") \"Applications\" props={\"ratePerSec\":0} capabilities=[] explanation=undefined\n  \"caller\" \"generic.service\" (\"Service\") \"Decision service\" props={\"replicas\":1,\"concurrency\":100,\"latencyMs\":10,\"jitter\":0} capabilities=[{\"kind\":\"calls\",\"edge\":\"call\",\"peer\":\"partner\"}] explanation={\"waits\":{\"workMs\":10,\"callMs\":390,\"threadHoldMs\":400,\"memoryResidenceMs\":400,\"slots\":100,\"ceiling\":250},\"id\":\"caller\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":250,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":100,\"seconds\":0.4,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true} requestsWait={\"threads\":100,\"holdMs\":400,\"ceilingPerSec\":250}\n  \"partner\" \"generic.service\" (\"Service\") \"Partner scoring API\" props={\"concurrency\":100,\"latencyMs\":30,\"jitter\":0,\"failureRate\":1} capabilities=[] explanation={\"id\":\"partner\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":3333.3333333333335,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":100,\"seconds\":0.03,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"result\" \"generic.database\" (\"Database\") \"Case store\" props={\"latencyMs\":0} capabilities=[] explanation=undefined\nconnections:\n  \"input\" \"source\" -> \"caller\" async\n  \"call\" \"caller\" -> \"partner\" sync\n  \"output\" \"caller\" -> \"result\" async\nsimulation \"blocking\" \"Blocking\": {\"kind\":\"burst\",\"count\":12,\"spreadMs\":100} from \"source\"; timeline=[]; expectations=[]"
+  },
+  "json": {
+    "isError": false,
+    "output": {
+      "title": "Retry exponential",
+      "direction": "LR",
+      "planning": { "revision": "p3-w2" },
+      "nodes": [
+        {
+          "id": "source",
+          "stencil": "client.user",
+          "label": "Applications",
+          "x": 0,
+          "y": 0,
+          "props": { "ratePerSec": 0 },
+          "capabilities": []
+        },
+        {
+          "id": "caller",
+          "stencil": "generic.service",
+          "label": "Decision service",
+          "x": 330,
+          "y": 0,
+          "props": { "replicas": 1, "concurrency": 100, "latencyMs": 10, "jitter": 0 },
+          "capabilities": [{ "kind": "calls", "edge": "call", "peer": "partner" }],
+          "explanation": {
+            "waits": { "workMs": 10, "callMs": 390, "threadHoldMs": 400, "memoryResidenceMs": 400, "slots": 100, "ceiling": 250 },
+            "id": "caller",
+            "role": "processor",
+            "status": "up",
+            "reason": "throughput",
+            "evidence": "configured",
+            "unit": "msg/s",
+            "capacity": 250,
+            "offered": 0,
+            "replicas": 1,
+            "baseReplicas": 1,
+            "omittedContributors": 0,
+            "activeReplicas": 1,
+            "assignments": [],
+            "slots": 100,
+            "seconds": 0.4,
+            "utilization": 0,
+            "growth": 0,
+            "contributors": [],
+            "target": 0.5,
+            "minimumReplicas": 1,
+            "targetReplicas": 1,
+            "changes": null,
+            "converged": true
+          },
+          "requestsWait": { "threads": 100, "holdMs": 400, "ceilingPerSec": 250 }
+        },
+        {
+          "id": "partner",
+          "stencil": "generic.service",
+          "label": "Partner scoring API",
+          "x": 660,
+          "y": 0,
+          "props": { "concurrency": 100, "latencyMs": 30, "jitter": 0, "failureRate": 1 },
+          "capabilities": [],
+          "explanation": {
+            "id": "partner",
+            "role": "processor",
+            "status": "up",
+            "reason": "throughput",
+            "evidence": "configured",
+            "unit": "req/s",
+            "capacity": 3333.3333333333335,
+            "offered": 0,
+            "replicas": 1,
+            "baseReplicas": 1,
+            "omittedContributors": 0,
+            "activeReplicas": 1,
+            "assignments": [],
+            "slots": 100,
+            "seconds": 0.03,
+            "utilization": 0,
+            "growth": 0,
+            "contributors": [],
+            "target": 0.5,
+            "minimumReplicas": 1,
+            "targetReplicas": 1,
+            "changes": null,
+            "converged": true
+          }
+        },
+        {
+          "id": "result",
+          "stencil": "generic.database",
+          "label": "Case store",
+          "x": 660,
+          "y": 220,
+          "props": { "latencyMs": 0 },
+          "capabilities": []
+        }
+      ],
+      "edges": [
+        { "id": "input", "from": "source", "to": "caller", "props": { "travelMs": 10 } },
+        {
+          "id": "call",
+          "from": "caller",
+          "to": "partner",
+          "kind": "sync",
+          "props": {
+            "travelMs": 10,
+            "caller": {
+              "wait": "blocking",
+              "deadlineMs": 200,
+              "retry": { "maxAttempts": 3, "backoffMs": 100, "strategy": "exponential", "retryOn": ["timeout", "transient", "throttled"], "maxBackoffMs": 250 }
+            }
+          }
+        },
+        { "id": "output", "from": "caller", "to": "result", "props": { "travelMs": 10 } }
+      ],
+      "groups": [],
+      "annotations": [],
+      "simulations": [
+        {
+          "id": "blocking",
+          "title": "Blocking",
+          "durationMs": 5000,
+          "scale": 1,
+          "seed": 17,
+          "traffic": [
+            {
+              "node": "source",
+              "shape": { "kind": "burst", "count": 12, "spreadMs": 100 },
+              "id": "applications-0",
+              "label": "Applications",
+              "messageType": "ApplicationSubmitted"
+            }
+          ]
+        }
+      ],
+      "truncated": false
+    }
+  },
+  "focus": {
+    "isError": false,
+    "output": "Diagram \"Retry exponential\" · direction LR · 2 nodes, 1 connections, 0 boundaries, 1 simulations\nnodes:\n  \"source\" \"client.user\" (\"User\") \"Applications\" props={\"ratePerSec\":0} capabilities=[] explanation=undefined\n  \"caller\" \"generic.service\" (\"Service\") \"Decision service\" props={\"replicas\":1,\"concurrency\":100,\"latencyMs\":10,\"jitter\":0} capabilities=[{\"kind\":\"calls\",\"edge\":\"call\",\"peer\":\"partner\"}] explanation={\"waits\":{\"workMs\":10,\"callMs\":390,\"threadHoldMs\":400,\"memoryResidenceMs\":400,\"slots\":100,\"ceiling\":250},\"id\":\"caller\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":250,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":100,\"seconds\":0.4,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true} requestsWait={\"threads\":100,\"holdMs\":400,\"ceilingPerSec\":250}\nconnections:\n  \"input\" \"source\" -> \"caller\" async\nsimulation \"blocking\" \"Blocking\": {\"kind\":\"burst\",\"count\":12,\"spreadMs\":100} from \"source\"; timeline=[]; expectations=[]"
+  }
+}

@@ -1,0 +1,617 @@
+{
+  "format": "diagrams/v2",
+  "planning": {
+    "revision": "p3-w2",
+    "requestRoutes": [
+      {
+        "id": "checkout",
+        "label": "Checkout",
+        "address": {
+          "method": "POST",
+          "path": "/checkout"
+        }
+      },
+      {
+        "id": "status",
+        "label": "Order status",
+        "address": {
+          "method": "GET",
+          "path": "/status"
+        }
+      }
+    ]
+  },
+  "title": "A slow payment provider",
+  "description": "At three seconds the payment provider slows tenfold. Compare no timeout, a 600 ms timeout, forty connections with threads freed, and the same pool holding threads. Every run includes order-status requests; timeouts do not cancel provider work.",
+  "nodes": [
+    {
+      "id": "shop",
+      "stencil": "client.user",
+      "label": "Shop",
+      "x": 0,
+      "y": 180,
+      "props": {
+        "ratePerSec": 120,
+        "trafficMix": {
+          "mode": "rates",
+          "entries": [
+            {
+              "routeId": "checkout",
+              "ratePerSec": 120
+            },
+            {
+              "routeId": "status",
+              "ratePerSec": 20
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "gateway",
+      "stencil": "generic.adc",
+      "label": "API gateway",
+      "sublabel": "5 s timeout",
+      "x": 320,
+      "y": 180
+    },
+    {
+      "id": "checkout",
+      "stencil": "generic.service",
+      "label": "Checkout",
+      "sublabel": "4 replicas · 25 threads each",
+      "x": 660,
+      "y": 180,
+      "props": {
+        "replicas": 4,
+        "concurrency": 25,
+        "latencyMs": 10,
+        "jitter": 0
+      }
+    },
+    {
+      "id": "payment",
+      "stencil": "generic.external-api",
+      "label": "Payment provider",
+      "sublabel": "200 ms · slows ×10 at 3 s",
+      "x": 1020,
+      "y": 180,
+      "props": {
+        "latencyMs": 200,
+        "api": {
+          "latencyMs": 200
+        },
+        "jitter": 0
+      }
+    },
+    {
+      "id": "orders",
+      "stencil": "generic.database",
+      "label": "Orders DB",
+      "x": 1020,
+      "y": 420,
+      "props": {
+        "latencyMs": 5,
+        "jitter": 0
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "browse",
+      "from": "shop",
+      "to": "gateway",
+      "kind": "sync",
+      "props": {
+        "travelMs": 100
+      }
+    },
+    {
+      "id": "route",
+      "from": "gateway",
+      "to": "checkout",
+      "kind": "sync",
+      "props": {
+        "travelMs": 100,
+        "caller": {
+          "deadlineMs": 5000
+        }
+      }
+    },
+    {
+      "id": "pay",
+      "from": "checkout",
+      "to": "payment",
+      "kind": "sync",
+      "props": {
+        "travelMs": 200,
+        "requestFilter": {
+          "methods": [
+            "POST"
+          ]
+        }
+      }
+    },
+    {
+      "id": "save",
+      "from": "checkout",
+      "to": "orders",
+      "kind": "sync",
+      "props": {
+        "travelMs": 100,
+        "requestFilter": {
+          "methods": [
+            "GET"
+          ]
+        }
+      }
+    }
+  ],
+  "simulations": [
+    {
+      "id": "no-timeouts",
+      "title": "No timeouts",
+      "description": "Checkout fills all 100 threads after the slowdown. Its queue keeps growing; the gateway eventually returns 504s after waiting five seconds.",
+      "seed": 17,
+      "scale": 1,
+      "durationMs": 20000,
+      "traffic": [
+        {
+          "id": "orders",
+          "node": "shop",
+          "messageType": "Checkout",
+          "shape": {
+            "kind": "constant",
+            "ratePerSec": 120,
+            "durationMs": 20000
+          }
+        }
+      ],
+      "timeline": [
+        {
+          "atMs": 3000,
+          "action": {
+            "do": "fault",
+            "fault": {
+              "kind": "slow",
+              "node": "payment",
+              "factor": 10
+            }
+          }
+        }
+      ],
+      "expectations": [
+        {
+          "id": "gateway-timeouts",
+          "label": "No API gateway timeouts",
+          "metric": {
+            "node": "gateway",
+            "field": "timedOut"
+          },
+          "op": "==",
+          "value": 0,
+          "when": "always"
+        },
+        {
+          "value": 0,
+          "id": "expected-failure-gateway",
+          "metric": {
+            "field": "dropped",
+            "node": "gateway"
+          },
+          "when": "eventually",
+          "label": "API gateway reports failed checkouts",
+          "op": ">"
+        },
+        {
+          "value": 0,
+          "id": "expected-failure-shop",
+          "metric": {
+            "field": "dropped",
+            "node": "shop"
+          },
+          "when": "eventually",
+          "label": "Shop reports failed checkouts",
+          "op": ">"
+        },
+        {
+          "id": "status",
+          "label": "Orders DB order-status work falls behind",
+          "metric": {
+            "node": "orders",
+            "field": "processed"
+          },
+          "op": "<",
+          "value": 300,
+          "when": "end"
+        }
+      ]
+    },
+    {
+      "id": "timeout-600",
+      "title": "A 600 ms timeout",
+      "description": "Payments time out, then their late replies are discarded. Checkout releases each thread after 600 ms and the gateway never times out: degradation instead of a stall.",
+      "seed": 17,
+      "scale": 1,
+      "durationMs": 20000,
+      "setup": {
+        "edges": {
+          "pay": {
+            "caller": {
+              "deadlineMs": 600
+            }
+          }
+        }
+      },
+      "traffic": [
+        {
+          "id": "orders",
+          "node": "shop",
+          "messageType": "Checkout",
+          "shape": {
+            "kind": "constant",
+            "ratePerSec": 120,
+            "durationMs": 20000
+          }
+        }
+      ],
+      "timeline": [
+        {
+          "atMs": 3000,
+          "action": {
+            "do": "fault",
+            "fault": {
+              "kind": "slow",
+              "node": "payment",
+              "factor": 10
+            }
+          }
+        }
+      ],
+      "expectations": [
+        {
+          "id": "gateway-timeouts",
+          "label": "No API gateway timeouts",
+          "metric": {
+            "node": "gateway",
+            "field": "timedOut"
+          },
+          "op": "==",
+          "value": 0,
+          "when": "always"
+        },
+        {
+          "id": "payments-timeout",
+          "label": "Payments fail fast",
+          "metric": {
+            "node": "checkout",
+            "field": "timedOut"
+          },
+          "op": ">",
+          "value": 0,
+          "when": "eventually"
+        },
+        {
+          "value": 0,
+          "id": "expected-failure-checkout",
+          "metric": {
+            "field": "dropped",
+            "node": "checkout"
+          },
+          "when": "eventually",
+          "label": "Checkout reports failed checkouts",
+          "op": ">"
+        },
+        {
+          "value": 0,
+          "id": "expected-failure-gateway",
+          "metric": {
+            "field": "dropped",
+            "node": "gateway"
+          },
+          "when": "eventually",
+          "label": "API gateway reports failed checkouts",
+          "op": ">"
+        },
+        {
+          "value": 0,
+          "id": "expected-failure-shop",
+          "metric": {
+            "field": "dropped",
+            "node": "shop"
+          },
+          "when": "eventually",
+          "label": "Shop reports failed checkouts",
+          "op": ">"
+        },
+        {
+          "id": "status",
+          "label": "Orders DB keeps serving order status",
+          "metric": {
+            "node": "orders",
+            "field": "processed"
+          },
+          "op": ">",
+          "value": 300,
+          "when": "end"
+        }
+      ]
+    },
+    {
+      "id": "pool-40",
+      "title": "Threads freed while waiting for the pool",
+      "description": "Payment calls wait off-thread for one of forty connections. Order status only calls Orders DB and keeps completing during the slowdown. Payments queued longer than the gateway’s five-second timeout fail there; provider work continues.",
+      "seed": 17,
+      "scale": 1,
+      "durationMs": 20000,
+      "traffic": [
+        {
+          "id": "orders",
+          "node": "shop",
+          "messageType": "Checkout",
+          "shape": {
+            "kind": "constant",
+            "ratePerSec": 120,
+            "durationMs": 20000
+          }
+        }
+      ],
+      "timeline": [
+        {
+          "atMs": 3000,
+          "action": {
+            "do": "fault",
+            "fault": {
+              "kind": "slow",
+              "node": "payment",
+              "factor": 10
+            }
+          }
+        }
+      ],
+      "expectations": [
+        {
+          "id": "status",
+          "label": "Order status keeps completing",
+          "metric": {
+            "node": "orders",
+            "field": "processed"
+          },
+          "op": ">",
+          "value": 300,
+          "when": "end"
+        },
+        {
+          "id": "expected-shop",
+          "label": "Shop reports payment failures",
+          "metric": {
+            "node": "shop",
+            "field": "dropped"
+          },
+          "op": ">",
+          "value": 0,
+          "when": "eventually"
+        },
+        {
+          "id": "expected-gateway",
+          "label": "API gateway reports payment failures",
+          "metric": {
+            "node": "gateway",
+            "field": "dropped"
+          },
+          "op": ">",
+          "value": 0,
+          "when": "eventually"
+        }
+      ],
+      "setup": {
+        "edges": {
+          "pay": {
+            "caller": {
+              "wait": "non-blocking",
+              "poolConnections": 40
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "blocking-pool",
+      "title": "Threads held while waiting for the pool",
+      "description": "The same pool holds waiting threads as well as connections. Order-status work queues behind them. Payments queued longer than the gateway’s five-second timeout fail there; provider work continues.",
+      "seed": 17,
+      "scale": 1,
+      "durationMs": 20000,
+      "traffic": [
+        {
+          "id": "orders",
+          "node": "shop",
+          "messageType": "Checkout",
+          "shape": {
+            "kind": "constant",
+            "ratePerSec": 120,
+            "durationMs": 20000
+          }
+        }
+      ],
+      "timeline": [
+        {
+          "atMs": 3000,
+          "action": {
+            "do": "fault",
+            "fault": {
+              "kind": "slow",
+              "node": "payment",
+              "factor": 10
+            }
+          }
+        }
+      ],
+      "expectations": [
+        {
+          "id": "status",
+          "label": "Order status keeps completing",
+          "metric": {
+            "node": "orders",
+            "field": "processed"
+          },
+          "op": ">",
+          "value": 300,
+          "when": "end"
+        },
+        {
+          "id": "expected-shop",
+          "label": "Shop reports payment failures",
+          "metric": {
+            "node": "shop",
+            "field": "dropped"
+          },
+          "op": ">",
+          "value": 0,
+          "when": "eventually"
+        },
+        {
+          "id": "expected-gateway",
+          "label": "API gateway reports payment failures",
+          "metric": {
+            "node": "gateway",
+            "field": "dropped"
+          },
+          "op": ">",
+          "value": 0,
+          "when": "eventually"
+        }
+      ],
+      "setup": {
+        "edges": {
+          "pay": {
+            "caller": {
+              "wait": "blocking",
+              "poolConnections": 40
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "three-retries-hold-threads",
+      "title": "Three retries hold threads",
+      "description": "A blocking retry holds its thread through every attempt and backoff. Compare the 600 ms timeout: three attempts and 100 ms backoff keep Checkout threads occupied for up to two seconds.",
+      "seed": 17,
+      "scale": 1,
+      "durationMs": 20000,
+      "setup": {
+        "edges": {
+          "pay": {
+            "caller": {
+              "deadlineMs": 600,
+              "retry": {
+                "maxAttempts": 3,
+                "backoffMs": 100,
+                "strategy": "fixed",
+                "retryOn": [
+                  "throttled",
+                  "transient",
+                  "timeout"
+                ]
+              }
+            }
+          }
+        }
+      },
+      "traffic": [
+        {
+          "id": "orders",
+          "node": "shop",
+          "messageType": "Checkout",
+          "shape": {
+            "kind": "constant",
+            "ratePerSec": 120,
+            "durationMs": 20000
+          }
+        }
+      ],
+      "timeline": [
+        {
+          "atMs": 3000,
+          "action": {
+            "do": "fault",
+            "fault": {
+              "kind": "slow",
+              "node": "payment",
+              "factor": 10
+            }
+          }
+        },
+        {
+          "atMs": 4500,
+          "action": {
+            "do": "note",
+            "text": "A blocking retry holds its thread through every attempt and 100 ms backoff. Three 600 ms attempts can hold it for two seconds.",
+            "focus": [
+              "checkout",
+              "payment"
+            ]
+          }
+        }
+      ],
+      "expectations": [
+        {
+          "id": "retries",
+          "label": "Checkout retries timed-out payments",
+          "metric": {
+            "node": "checkout",
+            "field": "retried"
+          },
+          "op": ">",
+          "value": 0,
+          "when": "end"
+        },
+        {
+          "id": "waiting",
+          "label": "Checkout fills at least 90 threads",
+          "metric": {
+            "node": "checkout",
+            "field": "threadsWaiting"
+          },
+          "op": ">=",
+          "value": 90,
+          "when": "eventually"
+        },
+        {
+          "id": "expected-failure-shop",
+          "label": "Shop reports failed checkouts",
+          "metric": {
+            "node": "shop",
+            "field": "dropped"
+          },
+          "op": ">",
+          "value": 0,
+          "when": "eventually"
+        },
+        {
+          "id": "expected-failure-gateway",
+          "label": "API gateway reports failed checkouts",
+          "metric": {
+            "node": "gateway",
+            "field": "dropped"
+          },
+          "op": ">",
+          "value": 0,
+          "when": "eventually"
+        },
+        {
+          "id": "expected-failure-checkout",
+          "label": "Checkout reports failed payments",
+          "metric": {
+            "node": "checkout",
+            "field": "dropped"
+          },
+          "op": ">",
+          "value": 0,
+          "when": "eventually"
+        }
+      ]
+    }
+  ]
+}

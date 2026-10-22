@@ -1,4 +1,5 @@
 import { waitingFixture } from "../../../src/lab/waitingFixture";
+import { resilienceFixture } from "../../../src/lab/resilienceFixture";
 // The simulation, without the browser (docs/BENCHMARKS.md § Metrics): loading a diagram into the engine, the live
 // view's per-frame main-thread work (LiveController.advance and snapshot, as LiveSession's tick does them, with a
 // publish every UI_MS) at three message rates, the engine's own step, frame() and snapshot(), and playing a saved
@@ -244,4 +245,37 @@ s.gating("W1 ledger idle step with 10,000 open calls", () => {
     "8× open calls must stay below 24× idle-step work; same-process baseline, no millisecond budget",
   );
   s.count("ledgerOpenCallsAfter", e.snapshot().nodes.caller.threads?.waiting ?? -1, { limit: 10_000, op: "==" });
+});
+
+s.gating("w2 storm: 10,000 open calls, three attempts", () => {
+  const make = (count: number) => {
+    const d = resilienceFixture();
+    d.nodes[0].props = { ratePerSec: 0 };
+    d.nodes[1].props = { concurrency: count, replicas: 1, latencyMs: 0, jitter: 0 };
+    const caller = d.edges[1].props?.caller as import("../../../src/sim/types").EdgeSimProps["caller"];
+    if (!caller?.retry) throw new Error("The retry fixture needs its caller policy");
+    caller.deadlineMs = 100;
+    caller.retry = { ...caller.retry, backoffMs: 100, jitter: 0, strategy: "fixed" };
+    d.nodes[2].props = { concurrency: count, replicas: 1, latencyMs: 1000, jitter: 0 };
+    const e = createEngine({ seed: 7, maxParticles: 0 });
+    e.load(d);
+    e.inject("source", count);
+    e.step(50);
+    const checkpoint = e.checkpoint();
+    return {
+      e,
+      d,
+      run: () => {
+        e.restore(checkpoint);
+        e.step(3000);
+      },
+    };
+  };
+  const small = make(1250),
+    large = make(10000);
+  s.time("engineStep", measure(large.run, { samples: 3, warmup: 1 }), workloadInfo("pipeline", 4, large.d), "w2-storm");
+  s.growth("w2StormAttempts", small.run, large.run, LINEAR_LIMIT, "8× calls and bounded attempts stay below 24× work");
+  large.run();
+  s.count("w2StormAttempts", large.e.snapshot().edges.call.calls?.attempts ?? -1, { limit: 30000, op: "==" });
+  s.count("w2StormIdle", large.e.snapshot().inSystem, { limit: 0, op: "==" });
 });

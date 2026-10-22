@@ -24,7 +24,22 @@ function readDir(dir: string, suffix: string): Named[] {
 }
 
 /** The public examples, by slug, in file-name order. */
-export const examples: Named[] = readDir("src/examples", ".json");
+const currentExamples = readDir("src/examples", ".json");
+// Keep the released W1 lesson's records as a compatibility cohort. Its W2
+// extension is independently covered below; the old output is never re-recorded.
+export const examples: Named[] = currentExamples.map((e) =>
+  e.slug === "slow-payment-provider"
+    ? {
+        ...e,
+        diagram: JSON.parse(
+          readFileSync(join(ROOT, "tests/parity/fixtures/slow-payment-provider-w1.json"), "utf8"),
+        ) as DiagramFile,
+      }
+    : e,
+);
+export const resilienceShowcases = currentExamples
+  .filter((e) => e.slug === "slow-payment-provider")
+  .map((e) => ({ ...e, slug: "w2-slow-payment-provider" }));
 
 /** The harness's own diagrams (tests/parity/corpus/*.diagram.json). */
 export const corpus: Named[] = readDir("tests/parity/corpus", ".diagram.json");
@@ -38,10 +53,14 @@ const BUDGET_ONLY = new Set(["planning-analysis-limit"]);
 const prefixed = (c: Named): Named => ({ ...c, slug: `corpus-${c.slug}` });
 
 /** Every diagram the per-diagram goldens cover: examples first, then the corpus (prefixed "corpus-"). */
-export const allDiagrams: Named[] = [...examples, ...corpus.filter((c) => !BUDGET_ONLY.has(c.slug)).map(prefixed)];
+export const allDiagrams: Named[] = [
+  ...examples,
+  ...resilienceShowcases,
+  ...corpus.filter((c) => !BUDGET_ONLY.has(c.slug)).map(prefixed),
+];
 
 /** allDiagrams and the budget-only ones: for planning and checks. */
-export const planningDiagrams: Named[] = [...examples, ...corpus.map(prefixed)];
+export const planningDiagrams: Named[] = [...examples, ...resilienceShowcases, ...corpus.map(prefixed)];
 
 /** Reads a fixture file under the repository root. */
 export function fixture(path: string): string {

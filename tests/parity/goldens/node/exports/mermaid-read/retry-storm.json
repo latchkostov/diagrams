@@ -1,0 +1,19 @@
+{
+  "warnings": [],
+  "diagram": {
+    "format": "diagrams/v1",
+    "title": "A retry storm",
+    "direction": "LR",
+    "nodes": [
+      { "id": "shop", "stencil": "generic.service", "label": "Shop", "x": 40, "y": 100 },
+      { "id": "checkout", "stencil": "generic.service", "label": "Checkout", "x": 400, "y": 100 },
+      { "id": "payments", "stencil": "generic.service", "label": "Payments", "sublabel": "48 threads · 80 ms · 600 attempts/s", "x": 760, "y": 40 },
+      { "id": "orders", "stencil": "generic.service", "label": "Orders", "x": 760, "y": 160 }
+    ],
+    "edges": [
+      { "id": "e1-shop-checkout", "from": "shop", "to": "checkout", "kind": "sync" },
+      { "id": "e2-checkout-payments", "from": "checkout", "to": "payments", "kind": "sync" },
+      { "id": "e3-checkout-orders", "from": "checkout", "to": "orders", "kind": "async" }
+    ]
+  }
+}

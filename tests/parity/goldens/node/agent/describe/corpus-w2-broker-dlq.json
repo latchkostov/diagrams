@@ -1,0 +1,184 @@
+{
+  "text": {
+    "isError": false,
+    "output": "Diagram \"Retry broker-dlq\" · direction LR · 5 nodes, 4 connections, 0 boundaries, 1 simulations\nnodes:\n  \"source\" \"generic.queue\" (\"Queue\") \"Applications\" props={\"maxDeliveryCount\":2} capabilities=[] explanation=undefined\n  \"caller\" \"generic.service\" (\"Service\") \"Decision service\" props={\"replicas\":1,\"concurrency\":100,\"latencyMs\":10,\"jitter\":0,\"retry\":\"requeue\",\"retryBackoffMs\":100} capabilities=[{\"kind\":\"consumes\",\"edge\":\"input\",\"peer\":\"source\",\"retry\":\"requeue\",\"retryBackoffMs\":100},{\"kind\":\"calls\",\"edge\":\"call\",\"peer\":\"partner\"}] explanation={\"waits\":{\"workMs\":10,\"callMs\":290,\"threadHoldMs\":300,\"memoryResidenceMs\":300,\"slots\":100,\"ceiling\":333.3333333333333},\"id\":\"caller\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":333.3333333333333,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":100,\"seconds\":0.3,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true} requestsWait={\"threads\":100,\"holdMs\":300,\"ceilingPerSec\":333.3333333333333}\n  \"partner\" \"generic.service\" (\"Service\") \"Partner scoring API\" props={\"concurrency\":100,\"latencyMs\":30,\"jitter\":0,\"failureRate\":1} capabilities=[] explanation={\"id\":\"partner\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":3333.3333333333335,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":100,\"seconds\":0.03,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"result\" \"generic.database\" (\"Database\") \"Case store\" props={\"latencyMs\":0} capabilities=[] explanation=undefined\n  \"dlq\" \"generic.queue\" (\"Queue\") \"Dead letters\" capabilities=[] explanation={\"id\":\"dlq\",\"role\":\"queue\",\"status\":\"up\",\"reason\":\"no-reader\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":0,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":null,\"seconds\":0,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"changes\":null,\"addConsumer\":\"dlq\",\"fixId\":\"no-reader:dlq\",\"converged\":true}\nconnections:\n  \"input\" \"source\" -> \"caller\" async\n  \"call\" \"caller\" -> \"partner\" sync\n  \"output\" \"caller\" -> \"result\" async\n  \"dlq-flow\" \"source\" -> \"dlq\" async\nsimulation \"blocking\" \"Blocking\": {\"kind\":\"burst\",\"count\":12,\"spreadMs\":100} from \"source\"; timeline=[]; expectations=[]"
+  },
+  "json": {
+    "isError": false,
+    "output": {
+      "title": "Retry broker-dlq",
+      "direction": "LR",
+      "planning": { "revision": "p3-w2" },
+      "nodes": [
+        {
+          "id": "source",
+          "stencil": "generic.queue",
+          "label": "Applications",
+          "x": 0,
+          "y": 0,
+          "props": { "maxDeliveryCount": 2 },
+          "capabilities": []
+        },
+        {
+          "id": "caller",
+          "stencil": "generic.service",
+          "label": "Decision service",
+          "x": 330,
+          "y": 0,
+          "props": { "replicas": 1, "concurrency": 100, "latencyMs": 10, "jitter": 0, "retry": "requeue", "retryBackoffMs": 100 },
+          "capabilities": [
+            { "kind": "consumes", "edge": "input", "peer": "source", "retry": "requeue", "retryBackoffMs": 100 },
+            { "kind": "calls", "edge": "call", "peer": "partner" }
+          ],
+          "explanation": {
+            "waits": { "workMs": 10, "callMs": 290, "threadHoldMs": 300, "memoryResidenceMs": 300, "slots": 100, "ceiling": 333.3333333333333 },
+            "id": "caller",
+            "role": "processor",
+            "status": "up",
+            "reason": "throughput",
+            "evidence": "configured",
+            "unit": "msg/s",
+            "capacity": 333.3333333333333,
+            "offered": 0,
+            "replicas": 1,
+            "baseReplicas": 1,
+            "omittedContributors": 0,
+            "activeReplicas": 1,
+            "assignments": [],
+            "slots": 100,
+            "seconds": 0.3,
+            "utilization": 0,
+            "growth": 0,
+            "contributors": [],
+            "target": 0.5,
+            "minimumReplicas": 1,
+            "targetReplicas": 1,
+            "changes": null,
+            "converged": true
+          },
+          "requestsWait": { "threads": 100, "holdMs": 300, "ceilingPerSec": 333.3333333333333 }
+        },
+        {
+          "id": "partner",
+          "stencil": "generic.service",
+          "label": "Partner scoring API",
+          "x": 660,
+          "y": 0,
+          "props": { "concurrency": 100, "latencyMs": 30, "jitter": 0, "failureRate": 1 },
+          "capabilities": [],
+          "explanation": {
+            "id": "partner",
+            "role": "processor",
+            "status": "up",
+            "reason": "throughput",
+            "evidence": "configured",
+            "unit": "req/s",
+            "capacity": 3333.3333333333335,
+            "offered": 0,
+            "replicas": 1,
+            "baseReplicas": 1,
+            "omittedContributors": 0,
+            "activeReplicas": 1,
+            "assignments": [],
+            "slots": 100,
+            "seconds": 0.03,
+            "utilization": 0,
+            "growth": 0,
+            "contributors": [],
+            "target": 0.5,
+            "minimumReplicas": 1,
+            "targetReplicas": 1,
+            "changes": null,
+            "converged": true
+          }
+        },
+        {
+          "id": "result",
+          "stencil": "generic.database",
+          "label": "Case store",
+          "x": 660,
+          "y": 220,
+          "props": { "latencyMs": 0 },
+          "capabilities": []
+        },
+        {
+          "id": "dlq",
+          "stencil": "generic.queue",
+          "label": "Dead letters",
+          "x": 0,
+          "y": 300,
+          "capabilities": [],
+          "explanation": {
+            "id": "dlq",
+            "role": "queue",
+            "status": "up",
+            "reason": "no-reader",
+            "evidence": "configured",
+            "unit": "msg/s",
+            "capacity": 0,
+            "offered": 0,
+            "replicas": 1,
+            "baseReplicas": 1,
+            "omittedContributors": 0,
+            "activeReplicas": 1,
+            "assignments": [],
+            "slots": null,
+            "seconds": 0,
+            "utilization": 0,
+            "growth": 0,
+            "contributors": [],
+            "target": 0.5,
+            "changes": null,
+            "addConsumer": "dlq",
+            "fixId": "no-reader:dlq",
+            "converged": true
+          }
+        }
+      ],
+      "edges": [
+        { "id": "input", "from": "source", "to": "caller", "props": { "travelMs": 10 } },
+        {
+          "id": "call",
+          "from": "caller",
+          "to": "partner",
+          "kind": "sync",
+          "props": {
+            "travelMs": 10,
+            "caller": {
+              "wait": "blocking",
+              "deadlineMs": 200,
+              "retry": { "maxAttempts": 3, "backoffMs": 100, "strategy": "fixed", "retryOn": ["timeout", "transient", "throttled"] }
+            }
+          }
+        },
+        { "id": "output", "from": "caller", "to": "result", "props": { "travelMs": 10 } },
+        { "id": "dlq-flow", "from": "source", "to": "dlq", "props": { "dlq": true, "travelMs": 10 } }
+      ],
+      "groups": [],
+      "annotations": [],
+      "simulations": [
+        {
+          "id": "blocking",
+          "title": "Blocking",
+          "durationMs": 5000,
+          "scale": 1,
+          "seed": 17,
+          "traffic": [
+            {
+              "node": "source",
+              "shape": { "kind": "burst", "count": 12, "spreadMs": 100 },
+              "id": "applications-0",
+              "label": "Applications",
+              "messageType": "ApplicationSubmitted"
+            }
+          ]
+        }
+      ],
+      "truncated": false
+    }
+  },
+  "focus": {
+    "isError": false,
+    "output": "Diagram \"Retry broker-dlq\" · direction LR · 3 nodes, 2 connections, 0 boundaries, 1 simulations\nnodes:\n  \"source\" \"generic.queue\" (\"Queue\") \"Applications\" props={\"maxDeliveryCount\":2} capabilities=[] explanation=undefined\n  \"caller\" \"generic.service\" (\"Service\") \"Decision service\" props={\"replicas\":1,\"concurrency\":100,\"latencyMs\":10,\"jitter\":0,\"retry\":\"requeue\",\"retryBackoffMs\":100} capabilities=[{\"kind\":\"consumes\",\"edge\":\"input\",\"peer\":\"source\",\"retry\":\"requeue\",\"retryBackoffMs\":100},{\"kind\":\"calls\",\"edge\":\"call\",\"peer\":\"partner\"}] explanation={\"waits\":{\"workMs\":10,\"callMs\":290,\"threadHoldMs\":300,\"memoryResidenceMs\":300,\"slots\":100,\"ceiling\":333.3333333333333},\"id\":\"caller\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":333.3333333333333,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":100,\"seconds\":0.3,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true} requestsWait={\"threads\":100,\"holdMs\":300,\"ceilingPerSec\":333.3333333333333}\n  \"dlq\" \"generic.queue\" (\"Queue\") \"Dead letters\" capabilities=[] explanation={\"id\":\"dlq\",\"role\":\"queue\",\"status\":\"up\",\"reason\":\"no-reader\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":0,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":null,\"seconds\":0,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"changes\":null,\"addConsumer\":\"dlq\",\"fixId\":\"no-reader:dlq\",\"converged\":true}\nconnections:\n  \"input\" \"source\" -> \"caller\" async\n  \"dlq-flow\" \"source\" -> \"dlq\" async\nsimulation \"blocking\" \"Blocking\": {\"kind\":\"burst\",\"count\":12,\"spreadMs\":100} from \"source\"; timeline=[]; expectations=[]"
+  }
+}

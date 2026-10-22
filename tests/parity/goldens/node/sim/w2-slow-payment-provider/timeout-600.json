@@ -1,0 +1,120 @@
+{
+  "run": {
+    "time": 20000,
+    "totalMs": 20000,
+    "done": true,
+    "scale": 1,
+    "multipliers": { "traffic": 1, "capacity": 1 },
+    "expectations": [
+      { "id": "gateway-timeouts", "label": "No API gateway timeouts", "status": "pass", "value": 0 },
+      { "id": "payments-timeout", "label": "Payments fail fast", "status": "pass", "value": 1687 },
+      { "id": "expected-failure-checkout", "label": "Checkout reports failed checkouts", "status": "pass", "value": 1687 },
+      { "id": "expected-failure-gateway", "label": "API gateway reports failed checkouts", "status": "pass", "value": 1687 },
+      { "id": "expected-failure-shop", "label": "Shop reports failed checkouts", "status": "pass", "value": 1687 },
+      { "id": "status", "label": "Orders DB keeps serving order status", "status": "pass", "value": 342 }
+    ],
+    "markers": [
+      { "atMs": 0, "kind": "traffic", "label": "orders" },
+      { "atMs": 3000, "kind": "fault", "label": "Slow down: Payment provider" },
+      { "atMs": 20000, "kind": "traffic", "label": "orders ends" }
+    ]
+  },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 0,
+      "nodes": {
+        "shop": { "replicas": [1, 1, 0] },
+        "gateway": { "replicas": [1, 1, 0] },
+        "checkout": { "replicas": [4, 4, 0] },
+        "payment": { "replicas": [1, 1, 0] },
+        "orders": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 10000,
+      "inSystem": 404,
+      "nodes": {
+        "shop": { "processed": 474, "failed": 659, "dropped": 659, "throughput": 16.91356079622984, "replicas": [1, 1, 0] },
+        "gateway": { "processed": 474, "failed": 659, "dropped": 659, "inFlight": 1, "throughput": 16.91356079622984, "replicas": [1, 1, 0] },
+        "checkout": { "processed": 474, "failed": 659, "dropped": 659, "backlog": 1, "inFlight": 63, "throughput": 16.91356079622984, "replicas": [4, 4, 0] },
+        "payment": { "processed": 819, "inFlight": 205, "throughput": 102.8718258971495, "replicas": [1, 1, 0] },
+        "orders": { "processed": 170, "inFlight": 1, "throughput": 16.805087211557076, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 20000,
+      "inSystem": 404,
+      "nodes": {
+        "shop": { "processed": 646, "failed": 1687, "dropped": 1687, "throughput": 17.368946340377818, "replicas": [1, 1, 0] },
+        "gateway": { "processed": 646, "failed": 1687, "dropped": 1687, "inFlight": 1, "throughput": 17.368946340377818, "replicas": [1, 1, 0] },
+        "checkout": { "processed": 646, "failed": 1687, "dropped": 1687, "backlog": 1, "inFlight": 63, "throughput": 17.368946340377818, "replicas": [4, 4, 0] },
+        "payment": { "processed": 1847, "inFlight": 206, "throughput": 102.88122434691273, "replicas": [1, 1, 0] },
+        "orders": { "processed": 342, "throughput": 17.36894141568469, "replicas": [1, 1, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 20000,
+    "inSystem": 404,
+    "real": {
+      "shop": { "processed": 646, "failed": 1687, "dropped": 1687, "throughput": 17.368946340377818, "replicas": [1, 1, 0] },
+      "gateway": { "processed": 646, "failed": 1687, "dropped": 1687, "inFlight": 1, "throughput": 17.368946340377818, "replicas": [1, 1, 0] },
+      "checkout": { "processed": 646, "failed": 1687, "dropped": 1687, "backlog": 1, "inFlight": 63, "throughput": 17.368946340377818, "replicas": [4, 4, 0] },
+      "payment": { "processed": 1847, "inFlight": 206, "throughput": 102.88122434691273, "replicas": [1, 1, 0] },
+      "orders": { "processed": 342, "throughput": 17.36894141568469, "replicas": [1, 1, 0] }
+    },
+    "edges": { "browse": 2398, "route": 2397, "pay": 2053, "save": 342 }
+  },
+  "events": {
+    "total": 23839,
+    "byKind": { "inject": 2400, "deliver": 7190, "process": 4127, "fail": 5061, "drop": 5061 },
+    "byNode": {
+      "shop": { "inject": 2400, "process": 646, "fail": 1687, "drop": 1687 },
+      "gateway": { "deliver": 2398, "process": 646, "fail": 1687, "drop": 1687 },
+      "checkout": { "deliver": 2397, "process": 646, "fail": 1687, "drop": 1687 },
+      "payment": { "deliver": 2053, "process": 1847 },
+      "orders": { "deliver": 342, "process": 342 }
+    },
+    "perSecond": [
+      "5717596c42a4",
+      "9d95772be5bd",
+      "aaf981d4b914",
+      "49cf988b5825",
+      "2a7ca52cb2d9",
+      "36b50fd313d3",
+      "2ecb704c5e67",
+      "f7732a87d7e7",
+      "9a2914d669d4",
+      "95030e0d9e11",
+      "2691a94bf217",
+      "1660d298b2f7",
+      "6012fe57fa42",
+      "45c1ef9d942d",
+      "a8f1c5695cc0",
+      "a5aec77a8525",
+      "e5a7bc09a34b",
+      "70e051a0c099",
+      "5a7aa7b1a346",
+      "023cf07129c3",
+      "e281b96ce464"
+    ]
+  },
+  "notes": [],
+  "latency": {
+    "journeys": { "done": 392, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0 },
+    "endToEndMs": { "count": 392, "min": 60, "mean": 199.59183673469389, "p50": 240, "p90": 240, "max": 240 },
+    "waitMs": {
+      "gateway": { "count": 392, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "checkout": { "count": 392, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 },
+      "payment": { "count": 304, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "orders": { "count": 88, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 }
+    },
+    "processMs": {
+      "gateway": { "count": 392, "min": 50, "mean": 189.59183673469389, "p50": 230, "p90": 230, "max": 230 },
+      "checkout": { "count": 392, "min": 30, "mean": 169.59183673469389, "p50": 210, "p90": 210, "max": 210 },
+      "payment": { "count": 304, "min": 200, "mean": 200, "p50": 200, "p90": 200, "max": 200 },
+      "orders": { "count": 88, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 }
+    }
+  }
+}

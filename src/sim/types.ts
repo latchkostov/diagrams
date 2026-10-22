@@ -25,6 +25,7 @@ export type ParticleKind =
   | "dlq"; // a message being dead-lettered
 
 export interface Particle {
+  callAttempt?: number;
   id: number;
   edgeId: string;
   messageId: number;
@@ -112,6 +113,7 @@ export interface LatencySummary {
   readonly travelMs: number;
   /** Logical time spent awaiting calls; absent on historical paths. */
   readonly callMs?: number;
+  readonly backoffMs?: number;
 }
 
 /** Immutable value view, shared between frames until the next successful sample. */
@@ -123,8 +125,23 @@ export interface LatencyMetrics extends LatencySummary {
   readonly typesLimited?: true;
 }
 
+export interface RetryCallCounts {
+  requests: number;
+  attempts: number;
+  retried: number;
+  succeeded: number;
+  budgetDenied: number;
+  shortCircuited: number;
+  ambiguous: number;
+  backingOff: number;
+  windowRequests: number;
+  windowAttempts: number;
+  windowRetried: number;
+  windowSucceeded: number;
+}
+
 export interface EdgeSimState {
-  calls?: { inFlight: number; held: number; timedOut: number; failed: number; late: number };
+  calls?: { inFlight: number; held: number; timedOut: number; failed: number; late: number } & Partial<RetryCallCounts>;
   id: string;
   /** Total messages that have finished travelling this edge. */
   delivered: number;
@@ -320,6 +337,9 @@ export type TraceStepKind =
   | "end"; // consumed at `node` (a sink, a store, a final worker)
 
 export interface TraceStep {
+  /** Call retry beat; broker delivery attempts keep their existing fields. */
+  backoffMs?: number;
+  maxAttempts?: number;
   /** Simulation time in ms. */
   t: number;
   kind: TraceStepKind;
@@ -480,6 +500,7 @@ export interface EngineOptions {
   verifyResources?: (state: import("./resourceInvariants").ResourceState) => void;
   verifyLedger?: (state: import("./resourceInvariants").LedgerInvariantState) => void;
   /** Per-step write-once attempt diagnostic; excluded from ordinary playback. */
+  verifyResilience?: (state: import("./resilienceInvariants").ResilienceState) => void;
   verifyOutcomes?: (state: import("./resourceInvariants").OutcomeInvariantState) => void;
   /** Test-only I7 probe: release sampled holds at logical completion. */
   ledgerHold?: "none";

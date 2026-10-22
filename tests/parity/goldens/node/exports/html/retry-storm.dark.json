@@ -1,0 +1,151 @@
+{
+  "file": { "sha256": "00750f7a6872b42e6cb10d799a31040f67883b06e15f8ef98d0512d8f52ca8ee", "bytes": 12585 },
+  "payload": {
+    "version": 1,
+    "diagram": {
+      "format": "diagrams/v2",
+      "planning": {
+        "revision": "p3-w2",
+        "requestRoutes": [
+          { "id": "checkout", "label": "Checkout", "address": { "method": "POST", "path": "/checkout" } }
+        ]
+      },
+      "title": "A retry storm",
+      "description": "Payments has 48 threads: 600 attempts/s at 80 ms, 50% busy with 300 checkouts/s. A five-second slowdown triggers a retry storm. Jitter stays stuck; a 20% retry budget recovers around 38 seconds in this 60-second run.",
+      "nodes": [
+        { "id": "shop", "stencil": "client.user", "label": "Shop", "x": 0, "y": 160, "props": { "ratePerSec": 300 } },
+        {
+          "id": "checkout",
+          "stencil": "generic.service",
+          "label": "Checkout",
+          "x": 340,
+          "y": 160,
+          "props": { "replicas": 4, "concurrency": 100, "latencyMs": 5, "jitter": 0 }
+        },
+        {
+          "id": "payments",
+          "stencil": "generic.service",
+          "label": "Payments",
+          "x": 710,
+          "y": 160,
+          "props": { "replicas": 4, "concurrency": 12, "latencyMs": 80, "jitter": 0 },
+          "sublabel": "48 threads · 80 ms · 600 attempts/s"
+        },
+        { "id": "orders", "stencil": "generic.topic", "label": "Orders", "x": 710, "y": 400, "props": {} }
+      ],
+      "edges": [
+        {
+          "id": "checkouts",
+          "from": "shop",
+          "to": "checkout",
+          "kind": "sync",
+          "props": { "travelMs": 100, "requestRouteId": "checkout" }
+        },
+        {
+          "id": "pay",
+          "from": "checkout",
+          "to": "payments",
+          "kind": "sync",
+          "props": {
+            "travelMs": 100,
+            "requestRouteId": "checkout",
+            "caller": {
+              "wait": "non-blocking",
+              "deadlineMs": 300,
+              "retry": { "maxAttempts": 3, "backoffMs": 0, "strategy": "fixed", "retryOn": ["throttled", "transient", "timeout"] }
+            }
+          }
+        },
+        { "id": "orders-flow", "from": "checkout", "to": "orders", "props": { "travelMs": 100 } }
+      ],
+      "simulations": [
+        {
+          "id": "retry-budget",
+          "title": "A retry budget",
+          "seed": 7,
+          "scale": 1,
+          "durationMs": 60000,
+          "setup": {
+            "edges": {
+              "pay": {
+                "caller": {
+                  "retry": {
+                    "maxAttempts": 3,
+                    "backoffMs": 100,
+                    "strategy": "exponential",
+                    "retryOn": ["throttled", "transient", "timeout"],
+                    "maxBackoffMs": 1000,
+                    "jitter": 1,
+                    "budget": { "percent": 20, "minPerSec": 10 }
+                  }
+                }
+              }
+            }
+          },
+          "traffic": [
+            {
+              "id": "checkouts",
+              "node": "shop",
+              "shape": { "kind": "constant", "ratePerSec": 300, "durationMs": 60000 }
+            }
+          ],
+          "timeline": [
+            { "atMs": 1000, "action": { "do": "fault", "fault": { "kind": "fail", "node": "payments", "rate": 0.1 } } },
+            { "atMs": 2000, "action": { "do": "fault", "fault": { "kind": "fail", "node": "payments", "rate": 0 } } },
+            { "atMs": 3000, "action": { "do": "fault", "fault": { "kind": "slow", "node": "payments", "factor": 5 } } },
+            { "atMs": 8000, "action": { "do": "fault", "fault": { "kind": "slow", "node": "payments", "factor": 1 } } },
+            {
+              "atMs": 1200,
+              "action": { "do": "note", "text": "Retries absorb most of a brief blip. Repeating a POST can still run it twice.", "focus": ["payments", "checkout"] }
+            },
+            {
+              "atMs": 3500,
+              "action": { "do": "note", "text": "The budget limits extra attempts over ten seconds, instead of retrying every timeout twice.", "focus": ["payments", "checkout"] }
+            },
+            {
+              "atMs": 9000,
+              "action": { "do": "note", "text": "At 8 s, Payments is fast again with about 1,300 queued requests still to finish.", "focus": ["payments", "checkout"] }
+            },
+            {
+              "atMs": 15000,
+              "action": { "do": "note", "text": "About 3,000 requests remain queued. The budget lets abandoned work drain; Shop recovers around 38 s.", "focus": ["payments", "checkout"] }
+            }
+          ],
+          "expectations": [
+            {
+              "id": "goodput",
+              "label": "Shop goodput â‰¥ 270/s at the end",
+              "metric": { "node": "shop", "field": "goodput" },
+              "op": ">=",
+              "value": 270,
+              "when": "end"
+            },
+            {
+              "id": "backlog",
+              "label": "Payments backlog < 100 at the end",
+              "metric": { "node": "payments", "field": "backlog" },
+              "op": "<",
+              "value": 100,
+              "when": "end"
+            },
+            {
+              "id": "amplification",
+              "label": "Checkout attempts per request < 1.5 at the end",
+              "metric": { "node": "checkout", "field": "amplification" },
+              "op": "<",
+              "value": 1.5,
+              "when": "end"
+            }
+          ],
+          "description": "A 20% budget limits extra attempts over ten seconds. Queued work peaks around 4,000; Shop recovers to at least 270/s with fewer than 100 queued around 38 s. All chips pass at 60 s."
+        }
+      ]
+    },
+    "icons": {
+      "client-user": { "sha256": "dffa37eace31e4c87ed5e2b0f49618146f847912a7b23f4d30271aeed9508da0", "bytes": 418 },
+      "generic-service": { "sha256": "3fe5e72fd8c35eb0ef93e590677e2e7ffb6b3d31449533176a4e82fe9b6d0add", "bytes": 579 },
+      "generic-topic": { "sha256": "377145cfe7f38bdd4d9c509e0e054e2b130bb8b30867cf051a505e0a3952cc6e", "bytes": 707 }
+    },
+    "options": { "theme": "dark", "banner": "Confidential: internal use only", "startSimulation": null, "exportedOn": "2026-01-01" }
+  }
+}

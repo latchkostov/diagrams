@@ -13702,6 +13702,66 @@ exports[`public examples route cleanly (estimated card sizes) > recommendations-
 ]
 `;
 
+exports[`public examples route cleanly (estimated card sizes) > retry-storm.json 1`] = `
+[
+  {
+    "id": "checkouts",
+    "points": [
+      {
+        "x": 220,
+        "y": 196,
+      },
+      {
+        "x": 340,
+        "y": 196,
+      },
+    ],
+  },
+  {
+    "id": "pay",
+    "points": [
+      {
+        "x": 560,
+        "y": 189,
+      },
+      {
+        "x": 635,
+        "y": 189,
+      },
+      {
+        "x": 635,
+        "y": 196,
+      },
+      {
+        "x": 710,
+        "y": 196,
+      },
+    ],
+  },
+  {
+    "id": "orders-flow",
+    "points": [
+      {
+        "x": 560,
+        "y": 203,
+      },
+      {
+        "x": 635,
+        "y": 203,
+      },
+      {
+        "x": 635,
+        "y": 436,
+      },
+      {
+        "x": 710,
+        "y": 436,
+      },
+    ],
+  },
+]
+`;
+
 exports[`public examples route cleanly (estimated card sizes) > scale-on-busy-threads.json 1`] = `
 [
   {

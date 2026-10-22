@@ -30,11 +30,13 @@ export interface ApiEndpoint {
   path: string;
   behaviour?: ApiBehaviour;
 }
-/** Reserved caller policy only: P3 never executes deadlines, retries or cascades. */
+/** Caller retries execute from p3-w2; older revisions preserve this policy dormant. */
 export interface RetryPolicy {
   maxAttempts: number;
   backoffMs: number;
   strategy: "fixed" | "exponential";
+  maxBackoffMs?: number;
+  budget?: { percent: number; minPerSec?: number };
   jitter?: number;
   retryOn: ("throttled" | "transient" | "timeout")[];
   idempotent?: boolean;

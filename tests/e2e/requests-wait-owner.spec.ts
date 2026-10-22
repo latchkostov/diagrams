@@ -48,7 +48,7 @@ test("retired pool links keep their exact story in the merged example", async ({
   await expect(page).toHaveURL(/sim=blocking-pool/);
   await expect
     .poll(async () => (await savedDiagram(page)).simulations?.map((s) => s.id))
-    .toEqual(["no-timeouts", "timeout-600", "pool-40", "blocking-pool"]);
+    .toEqual(["no-timeouts", "timeout-600", "pool-40", "blocking-pool", "three-retries-hold-threads"]);
 });
 
 for (const locale of ["en", "ar", "en-XA"]) {

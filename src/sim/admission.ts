@@ -1,4 +1,18 @@
 import type { ApiBehaviour, ApiEndpoint, Quota } from "../model/admission";
+import type { RetryPolicy } from "../model/admission";
+
+/** Token-like gate: a retry either spends its whole represented cohort or nothing. */
+export function retryBudgetPermits(
+  budget: RetryPolicy["budget"],
+  requests: number,
+  retried: number,
+  represented: number,
+): boolean {
+  return (
+    !budget ||
+    retried + represented <= Math.max((budget.minPerSec ?? 10) * 10, (budget.percent / 100) * requests) + 1e-9
+  );
+}
 import type { PlanningModel } from "../model/types";
 import { allocationWeight, reserveCallerOccupancy, type CallerOccupancy } from "./ledger";
 import {

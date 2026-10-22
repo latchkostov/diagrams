@@ -400,7 +400,12 @@ describe("P2 broker assignment", () => {
       .map((entry) => {
         const d = JSON.parse(readFileSync(`src/examples/${entry.name}`, "utf8")) as DiagramFile;
         // P2's migration gate covers older models. New P3 showcases pin their own findings.
-        if (d.planning?.revision === "p3" || d.planning?.revision === "p3-a1" || d.planning?.revision === "p3-w1")
+        if (
+          d.planning?.revision === "p3" ||
+          d.planning?.revision === "p3-a1" ||
+          d.planning?.revision === "p3-w1" ||
+          d.planning?.revision === "p3-w2"
+        )
           return undefined;
         const p1 = upgradePlanning(d);
         p1.planning = { revision: "p1" };

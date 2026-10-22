@@ -1,8 +1,8 @@
 {
-  "diagram.v1.json": { "sha256": "7844813022f9e093ea9e12909e8704269043ac9f024720a12a1675f823c29356", "bytes": 48267, "properties": ["format", "title", "description", "color", "direction", "nodes", "edges", "groups", "annotations", "simulations", "layerOrder", "private", "checks"], "defs": ["Checks", "Node", "NodeProps", "Edge", "EdgeProps", "Boundary", "Annotation", "Simulation"] },
+  "diagram.v1.json": { "sha256": "29fc6258216a8d65c867c8b4851c392d0b9a044db10680a7513bff84d9c954b3", "bytes": 50158, "properties": ["format", "title", "description", "color", "direction", "nodes", "edges", "groups", "annotations", "simulations", "layerOrder", "private", "checks"], "defs": ["Checks", "Node", "NodeProps", "Edge", "EdgeProps", "Boundary", "Annotation", "Simulation"] },
   "diagram.v2.json": {
-    "sha256": "41b9322c47dde7770f1d7235adc14121ed6a1a417bcaa22d447ca4f90c1799f2",
-    "bytes": 194303,
+    "sha256": "1eb9c1f2698eab9791943683b6dbf14551ed08006ce14be97bc5f59e64dd4f2a",
+    "bytes": 198135,
     "properties": [
       "format",
       "planning",
@@ -33,6 +33,6 @@
       "LegacySimulation"
     ]
   },
-  "ops.v1.json": { "sha256": "bbdedadbcd32e34483b294bca3e70ff47c501a743066b77cbe385a2e509d0f25", "bytes": 2156044, "properties": ["ops", "layout", "dryRun", "summary"], "defs": ["Ref", "NodeProps", "Tone", "PropsPatch"] },
+  "ops.v1.json": { "sha256": "64b0b71823a2ead042df18576a42dd927d828de63b8f63fd49a5e15e29d74ccb", "bytes": 2163287, "properties": ["ops", "layout", "dryRun", "summary"], "defs": ["Ref", "NodeProps", "Tone", "PropsPatch"] },
   "stencils.json": { "sha256": "1a8f75fb03a6cea7b02a6ef81f75773e892d17bb7813c4b1001f8f118ca28736", "bytes": 78451, "properties": [], "defs": [] }
 }

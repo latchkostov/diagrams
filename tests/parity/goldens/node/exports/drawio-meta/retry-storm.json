@@ -1,0 +1,322 @@
+{
+  "withIcons": {
+    "sha256": "09ce10602487bbb9978cb759dae99cd6138f6a2f0a841b3f14c617273b7d54ca",
+    "bytes": 17555,
+    "inlined": { "client.user": "client-user c8aa1007847a06e5", "generic.service": "generic-service 6ec0da29f56c9e80", "generic.topic": "generic-topic 7f5daeea368c1577" }
+  },
+  "readBack": [
+    {
+      "warnings": [],
+      "diagram": {
+        "format": "diagrams/v2",
+        "planning": {
+          "revision": "p3-w2",
+          "requestRoutes": [
+            { "id": "checkout", "label": "Checkout", "address": { "method": "POST", "path": "/checkout" } }
+          ]
+        },
+        "title": "A retry storm",
+        "description": "Payments has 48 threads: 600 attempts/s at 80 ms, 50% busy with 300 checkouts/s. A five-second slowdown triggers a retry storm. Jitter stays stuck; a 20% retry budget recovers around 38 seconds in this 60-second run.",
+        "nodes": [
+          { "id": "shop", "stencil": "client.user", "label": "Shop", "x": 0, "y": 160, "props": { "ratePerSec": 300 } },
+          {
+            "id": "checkout",
+            "stencil": "generic.service",
+            "label": "Checkout",
+            "x": 340,
+            "y": 160,
+            "props": { "replicas": 4, "concurrency": 100, "latencyMs": 5, "jitter": 0 }
+          },
+          {
+            "id": "payments",
+            "stencil": "generic.service",
+            "label": "Payments",
+            "sublabel": "48 threads · 80 ms · 600 attempts/s",
+            "x": 710,
+            "y": 160,
+            "props": { "replicas": 4, "concurrency": 12, "latencyMs": 80, "jitter": 0 }
+          },
+          { "id": "orders", "stencil": "generic.topic", "label": "Orders", "x": 710, "y": 400, "props": {} }
+        ],
+        "edges": [
+          {
+            "id": "checkouts",
+            "from": "shop",
+            "to": "checkout",
+            "kind": "sync",
+            "props": { "travelMs": 100, "requestRouteId": "checkout" }
+          },
+          {
+            "id": "pay",
+            "from": "checkout",
+            "to": "payments",
+            "kind": "sync",
+            "props": {
+              "travelMs": 100,
+              "requestRouteId": "checkout",
+              "caller": {
+                "wait": "non-blocking",
+                "deadlineMs": 300,
+                "retry": { "maxAttempts": 3, "backoffMs": 0, "strategy": "fixed", "retryOn": ["throttled", "transient", "timeout"] }
+              }
+            }
+          },
+          { "id": "orders-flow", "from": "checkout", "to": "orders", "kind": "async", "props": { "travelMs": 100 } }
+        ],
+        "simulations": [
+          {
+            "id": "three-quick-retries",
+            "title": "Three quick retries",
+            "seed": 7,
+            "scale": 1,
+            "durationMs": 60000,
+            "setup": {
+              "edges": {
+                "pay": {
+                  "caller": {
+                    "retry": { "maxAttempts": 3, "backoffMs": 0, "strategy": "fixed", "retryOn": ["throttled", "transient", "timeout"] }
+                  }
+                }
+              }
+            },
+            "traffic": [
+              {
+                "id": "checkouts",
+                "node": "shop",
+                "shape": { "kind": "constant", "ratePerSec": 300, "durationMs": 60000 }
+              }
+            ],
+            "timeline": [
+              {
+                "atMs": 1000,
+                "action": { "do": "fault", "fault": { "kind": "fail", "node": "payments", "rate": 0.1 } }
+              },
+              { "atMs": 2000, "action": { "do": "fault", "fault": { "kind": "fail", "node": "payments", "rate": 0 } } },
+              {
+                "atMs": 3000,
+                "action": { "do": "fault", "fault": { "kind": "slow", "node": "payments", "factor": 5 } }
+              },
+              {
+                "atMs": 8000,
+                "action": { "do": "fault", "fault": { "kind": "slow", "node": "payments", "factor": 1 } }
+              },
+              {
+                "atMs": 1200,
+                "action": { "do": "note", "text": "Retries absorb most of a brief blip. Repeating a POST can still run it twice.", "focus": ["payments", "checkout"] }
+              },
+              {
+                "atMs": 3500,
+                "action": { "do": "note", "text": "Three attempts amplify the load. The 48 Payments threads can handle 600/s when healthy, but retries approach 900/s.", "focus": ["payments", "checkout"] }
+              },
+              {
+                "atMs": 9000,
+                "action": { "do": "note", "text": "At 8 s, Payments is fast again with about 3,600 requests already queued. Timeouts do not cancel that work.", "focus": ["payments", "checkout"] }
+              },
+              {
+                "atMs": 15000,
+                "action": { "do": "note", "text": "Over 9,000 requests are queued. The slowdown has gone; the retry storm remains.", "focus": ["payments", "checkout"] }
+              }
+            ],
+            "expectations": [
+              {
+                "id": "goodput",
+                "label": "Shop goodput â‰¥ 270/s at the end",
+                "metric": { "node": "shop", "field": "goodput" },
+                "op": ">=",
+                "value": 270,
+                "when": "end"
+              },
+              {
+                "id": "backlog",
+                "label": "Payments backlog < 100 at the end",
+                "metric": { "node": "payments", "field": "backlog" },
+                "op": "<",
+                "value": 100,
+                "when": "end"
+              },
+              {
+                "id": "amplification",
+                "label": "Checkout attempts per request < 1.5 at the end",
+                "metric": { "node": "checkout", "field": "amplification" },
+                "op": "<",
+                "value": 1.5,
+                "when": "end"
+              }
+            ],
+            "description": "Three attempts amplify 300 checkouts/s to about 900 attempts/s. After the slowdown clears at 8 s, the queue keeps growing past 9,000 at 15 s. Goodput stays near zero through 60 s."
+          },
+          {
+            "id": "jittered-backoff",
+            "title": "Jittered backoff",
+            "seed": 7,
+            "scale": 1,
+            "durationMs": 60000,
+            "setup": {
+              "edges": {
+                "pay": {
+                  "caller": {
+                    "retry": { "maxAttempts": 3, "backoffMs": 100, "strategy": "exponential", "retryOn": ["throttled", "transient", "timeout"], "maxBackoffMs": 1000, "jitter": 1 }
+                  }
+                }
+              }
+            },
+            "traffic": [
+              {
+                "id": "checkouts",
+                "node": "shop",
+                "shape": { "kind": "constant", "ratePerSec": 300, "durationMs": 60000 }
+              }
+            ],
+            "timeline": [
+              {
+                "atMs": 1000,
+                "action": { "do": "fault", "fault": { "kind": "fail", "node": "payments", "rate": 0.1 } }
+              },
+              { "atMs": 2000, "action": { "do": "fault", "fault": { "kind": "fail", "node": "payments", "rate": 0 } } },
+              {
+                "atMs": 3000,
+                "action": { "do": "fault", "fault": { "kind": "slow", "node": "payments", "factor": 5 } }
+              },
+              {
+                "atMs": 8000,
+                "action": { "do": "fault", "fault": { "kind": "slow", "node": "payments", "factor": 1 } }
+              },
+              {
+                "atMs": 1200,
+                "action": { "do": "note", "text": "Retries absorb most of a brief blip. Repeating a POST can still run it twice.", "focus": ["payments", "checkout"] }
+              },
+              {
+                "atMs": 3500,
+                "action": { "do": "note", "text": "Jitter spreads the retries. It cannot remove the excess attempts.", "focus": ["payments", "checkout"] }
+              },
+              {
+                "atMs": 9000,
+                "action": { "do": "note", "text": "At 8 s, Payments is fast again with about 3,500 requests already queued.", "focus": ["payments", "checkout"] }
+              },
+              {
+                "atMs": 15000,
+                "action": { "do": "note", "text": "About 9,000 requests are queued. Jitter smooths the waves; it does not fix the retry storm.", "focus": ["payments", "checkout"] }
+              }
+            ],
+            "expectations": [
+              {
+                "id": "goodput",
+                "label": "Shop goodput â‰¥ 270/s at the end",
+                "metric": { "node": "shop", "field": "goodput" },
+                "op": ">=",
+                "value": 270,
+                "when": "end"
+              },
+              {
+                "id": "backlog",
+                "label": "Payments backlog < 100 at the end",
+                "metric": { "node": "payments", "field": "backlog" },
+                "op": "<",
+                "value": 100,
+                "when": "end"
+              },
+              {
+                "id": "amplification",
+                "label": "Checkout attempts per request < 1.5 at the end",
+                "metric": { "node": "checkout", "field": "amplification" },
+                "op": "<",
+                "value": 1.5,
+                "when": "end"
+              }
+            ],
+            "description": "Full jitter spreads retries but still approaches three attempts per checkout. Payments queues about 9,000 requests at 15 s and stays stuck through 60 s."
+          },
+          {
+            "id": "retry-budget",
+            "title": "A retry budget",
+            "seed": 7,
+            "scale": 1,
+            "durationMs": 60000,
+            "setup": {
+              "edges": {
+                "pay": {
+                  "caller": {
+                    "retry": {
+                      "maxAttempts": 3,
+                      "backoffMs": 100,
+                      "strategy": "exponential",
+                      "retryOn": ["throttled", "transient", "timeout"],
+                      "maxBackoffMs": 1000,
+                      "jitter": 1,
+                      "budget": { "percent": 20, "minPerSec": 10 }
+                    }
+                  }
+                }
+              }
+            },
+            "traffic": [
+              {
+                "id": "checkouts",
+                "node": "shop",
+                "shape": { "kind": "constant", "ratePerSec": 300, "durationMs": 60000 }
+              }
+            ],
+            "timeline": [
+              {
+                "atMs": 1000,
+                "action": { "do": "fault", "fault": { "kind": "fail", "node": "payments", "rate": 0.1 } }
+              },
+              { "atMs": 2000, "action": { "do": "fault", "fault": { "kind": "fail", "node": "payments", "rate": 0 } } },
+              {
+                "atMs": 3000,
+                "action": { "do": "fault", "fault": { "kind": "slow", "node": "payments", "factor": 5 } }
+              },
+              {
+                "atMs": 8000,
+                "action": { "do": "fault", "fault": { "kind": "slow", "node": "payments", "factor": 1 } }
+              },
+              {
+                "atMs": 1200,
+                "action": { "do": "note", "text": "Retries absorb most of a brief blip. Repeating a POST can still run it twice.", "focus": ["payments", "checkout"] }
+              },
+              {
+                "atMs": 3500,
+                "action": { "do": "note", "text": "The budget limits extra attempts over ten seconds, instead of retrying every timeout twice.", "focus": ["payments", "checkout"] }
+              },
+              {
+                "atMs": 9000,
+                "action": { "do": "note", "text": "At 8 s, Payments is fast again with about 1,300 queued requests still to finish.", "focus": ["payments", "checkout"] }
+              },
+              {
+                "atMs": 15000,
+                "action": { "do": "note", "text": "About 3,000 requests remain queued. The budget lets abandoned work drain; Shop recovers around 38 s.", "focus": ["payments", "checkout"] }
+              }
+            ],
+            "expectations": [
+              {
+                "id": "goodput",
+                "label": "Shop goodput â‰¥ 270/s at the end",
+                "metric": { "node": "shop", "field": "goodput" },
+                "op": ">=",
+                "value": 270,
+                "when": "end"
+              },
+              {
+                "id": "backlog",
+                "label": "Payments backlog < 100 at the end",
+                "metric": { "node": "payments", "field": "backlog" },
+                "op": "<",
+                "value": 100,
+                "when": "end"
+              },
+              {
+                "id": "amplification",
+                "label": "Checkout attempts per request < 1.5 at the end",
+                "metric": { "node": "checkout", "field": "amplification" },
+                "op": "<",
+                "value": 1.5,
+                "when": "end"
+              }
+            ],
+            "description": "A 20% budget limits extra attempts over ten seconds. Queued work peaks around 4,000; Shop recovers to at least 270/s with fewer than 100 queued around 38 s. All chips pass at 60 s."
+          }
+        ]
+      }
+    }
+  ]
+}

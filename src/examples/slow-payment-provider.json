@@ -1,7 +1,7 @@
 {
   "format": "diagrams/v2",
   "planning": {
-    "revision": "p3-w1",
+    "revision": "p3-w2",
     "requestRoutes": [
       {
         "id": "checkout",
@@ -488,6 +488,119 @@
           }
         }
       }
+    },
+    {
+      "id": "three-retries-hold-threads",
+      "title": "Three retries hold threads",
+      "description": "A blocking retry holds its thread through every attempt and backoff. Compare the 600 ms timeout: three attempts and 100 ms backoff keep Checkout threads occupied for up to two seconds.",
+      "seed": 17,
+      "scale": 1,
+      "durationMs": 20000,
+      "setup": {
+        "edges": {
+          "pay": {
+            "caller": {
+              "deadlineMs": 600,
+              "retry": {
+                "maxAttempts": 3,
+                "backoffMs": 100,
+                "strategy": "fixed",
+                "retryOn": ["throttled", "transient", "timeout"]
+              }
+            }
+          }
+        }
+      },
+      "traffic": [
+        {
+          "id": "orders",
+          "node": "shop",
+          "messageType": "Checkout",
+          "shape": {
+            "kind": "constant",
+            "ratePerSec": 120,
+            "durationMs": 20000
+          }
+        }
+      ],
+      "timeline": [
+        {
+          "atMs": 3000,
+          "action": {
+            "do": "fault",
+            "fault": {
+              "kind": "slow",
+              "node": "payment",
+              "factor": 10
+            }
+          }
+        },
+        {
+          "atMs": 4500,
+          "action": {
+            "do": "note",
+            "text": "A blocking retry holds its thread through every attempt and 100 ms backoff. Three 600 ms attempts can hold it for two seconds.",
+            "focus": ["checkout", "payment"]
+          }
+        }
+      ],
+      "expectations": [
+        {
+          "id": "retries",
+          "label": "Checkout retries timed-out payments",
+          "metric": {
+            "node": "checkout",
+            "field": "retried"
+          },
+          "op": ">",
+          "value": 0,
+          "when": "end"
+        },
+        {
+          "id": "waiting",
+          "label": "Checkout fills at least 90 threads",
+          "metric": {
+            "node": "checkout",
+            "field": "threadsWaiting"
+          },
+          "op": ">=",
+          "value": 90,
+          "when": "eventually"
+        },
+        {
+          "id": "expected-failure-shop",
+          "label": "Shop reports failed checkouts",
+          "metric": {
+            "node": "shop",
+            "field": "dropped"
+          },
+          "op": ">",
+          "value": 0,
+          "when": "eventually"
+        },
+        {
+          "id": "expected-failure-gateway",
+          "label": "API gateway reports failed checkouts",
+          "metric": {
+            "node": "gateway",
+            "field": "dropped"
+          },
+          "op": ">",
+          "value": 0,
+          "when": "eventually"
+        },
+        {
+          "id": "expected-failure-checkout",
+          "label": "Checkout reports failed payments",
+          "metric": {
+            "node": "checkout",
+            "field": "dropped"
+          },
+          "op": ">",
+          "value": 0,
+          "when": "eventually"
+        }
+      ]
     }
   ]
 }

@@ -1,0 +1,6 @@
+exit 0
+VALID <repo>/src/examples/retry-storm.json: 4 nodes, 3 edges, 3 simulations
+  warning: Node "orders" (topic) has no consumer, so messages pile up there in live view.
+  warning: simulations[0] "Three quick retries": at "scale": 1, live view would animate too many dots. Use "scale": 5 (one dot stands for 5 messages).
+  warning: simulations[1] "Jittered backoff": at "scale": 1, live view would animate too many dots. Use "scale": 5 (one dot stands for 5 messages).
+  warning: simulations[2] "A retry budget": at "scale": 1, live view would animate too many dots. Use "scale": 5 (one dot stands for 5 messages).

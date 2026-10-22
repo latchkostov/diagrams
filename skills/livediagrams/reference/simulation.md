@@ -97,7 +97,7 @@ Times are milliseconds from the start, and rates and counts are real messages.
 
 - Rates up to 10,000,000/s, bursts and injections up to 100,000 messages, times up to 600,000 ms.
 - All traffic in the file together: at most 200,000 messages as played (rate × duration, summed, ÷ each simulation's `scale`, the real messages per dot).
-- Expectation metrics: `processed`, `backlog`, `inFlight`, `failed`, `timedOut`, `threadsBusy`, `threadsWaiting`, `deadLettered`, `dropped`, `blocked`, `rejected`, `throughput`, `lag`, or `{ "system": "inSystem" }`; `op`: `<`, `<=`, `==`, `>=`, `>`; `when`: `always`, `eventually`, `end`, `at`.
+- Expectation metrics: `processed`, `backlog`, `inFlight`, `failed`, `timedOut`, `retried`, `amplification`, `goodput`, `threadsBusy`, `threadsWaiting`, `deadLettered`, `dropped`, `blocked`, `rejected`, `throughput`, `lag`, or `{ "system": "inSystem" }`; `op`: `<`, `<=`, `==`, `>=`, `>`; `when`: `always`, `eventually`, `end`, `at`.
 
 <!-- END GENERATED sim-limits -->
 
@@ -110,7 +110,7 @@ play it, open the link and press **Live** (or L).
 
 ## Requests that wait
 
-Use `planning.revision: "p3-w1"` when the lesson involves waiting calls; preserve older diagrams' revision.
+Use `planning.revision: "p3-w2"` for retries and `p3-w1` for waiting calls; preserve older revisions.
 Threads are replicas × concurrency. A Request's `props.caller` accepts `wait: "blocking" | "non-blocking"`,
 `replyMs` (10 ms by default), `deadlineMs` and `poolConnections`. Services/functions hold threads by default;
 gateways/proxies/workflows free them. Freeing threads retains in-flight memory and needs a reply continuation.

@@ -3,6 +3,10 @@ import type { DiagramFile } from "../model/types";
 import { resolveProps } from "../sim/defaults";
 import { stencilRole } from "../stencils/roles";
 import { profileOf, FAMILIES, PROCESSOR_LESSON } from "../stencils/profiles";
+import { revisionAtLeast } from "../model/revisions";
+import type { EdgeSimProps } from "../sim/types";
+import { simulationEdges } from "../sim/simulationEdges";
+import { activeCall, compileTopology } from "../sim/topology";
 
 /** Resolve behaviour before changing the resolver revision; retain unknown authored properties. */
 function materialized(d: DiagramFile, node: DiagramFile["nodes"][number], props: Record<string, unknown>) {
@@ -106,17 +110,65 @@ export function upgradeAutoscaling(d: DiagramFile): DiagramFile {
 
 /** W1 inherits pinned A1 behavior and opts every saved run into logical, blocking calls. */
 export function upgradeWaits(d: DiagramFile): DiagramFile {
-  if (d.planning?.revision === "p3-w1") return structuredClone(d);
+  if (revisionAtLeast(d.planning?.revision, "p3-w1")) return structuredClone(d);
   const next = upgradeAutoscaling(d);
   next.planning = { ...next.planning!, revision: "p3-w1" };
   return next;
+}
+
+/** W2 is an explicit, undoable opt-in. The alternative preserves every saved field. */
+export function upgradeResilience(d: DiagramFile, keepOff = false): DiagramFile {
+  const next = upgradeWaits(d);
+  next.planning = { ...next.planning!, revision: "p3-w2" };
+  if (keepOff) {
+    const disable = (caller?: EdgeSimProps["caller"]) => {
+      if (caller?.retry) caller.retry.maxAttempts = 1;
+    };
+    for (const e of next.edges) disable(e.props?.caller as EdgeSimProps["caller"]);
+    for (const simulation of next.simulations ?? [])
+      for (const edge of Object.values(simulation.setup?.edges ?? {})) disable(edge.caller);
+  }
+  return next;
+}
+
+/** Preview every context that will start executing a saved retry policy. */
+export function resilienceUpgradeCalls(d: DiagramFile) {
+  const enabled = { ...d, planning: { ...d.planning, revision: "p3-w2" as const } };
+  const names = new Map(d.nodes.map((n) => [n.id, n.label]));
+  const roles = new Map(d.nodes.map((n) => [n.id, stencilRole(n.stencil)]));
+  const eligible = new Set(
+    compileTopology(d)
+      .edges.filter((e) => activeCall(roles.get(e.from)!, e))
+      .map((e) => e.id),
+  );
+  return [
+    { diagram: d, simulation: undefined as string | undefined },
+    ...(d.simulations ?? []).map((s) => ({ diagram: simulationEdges(enabled, s), simulation: s.title })),
+  ].flatMap(({ diagram, simulation }) =>
+    diagram.edges.flatMap((e) => {
+      const retry = (e.props?.caller as EdgeSimProps["caller"])?.retry;
+      return eligible.has(e.id) && retry && retry.maxAttempts > 1
+        ? [
+            {
+              edge: e.id,
+              from: names.get(e.from) ?? e.from,
+              to: names.get(e.to) ?? e.to,
+              attempts: Math.min(retry.maxAttempts, 10),
+              simulation,
+            },
+          ]
+        : [];
+    }),
+  );
 }
 
 /** The same traversal strips metadata and records losses, including saved setup and timeline props. */
 export function legacyExport(d: DiagramFile): { diagram: DiagramFile; losses: string[] } {
   const diagram = normalizePersistence(d);
   const losses: string[] = [];
-  if (d.planning?.revision === "p3-w1") losses.push("requests hold caller threads");
+  if (revisionAtLeast(d.planning?.revision, "p3-w1")) losses.push("requests hold caller threads");
+  if (revisionAtLeast(d.planning?.revision, "p3-w2"))
+    losses.push("retries, circuit breakers and queue limits stop running");
   if (diagram.planning) losses.push("planning.revision");
   // Request routing has no older equivalent: its routes, mixes, tables and caller addresses are listed and dropped.
   if (diagram.planning?.requestRoutes) losses.push("planning.requestRoutes");

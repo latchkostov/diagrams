@@ -22,6 +22,8 @@ export interface Visit {
 export type HopKind = "origin" | "hop" | "redeliver" | "dlq" | "fail" | "deadletter" | "drop" | "blocked" | "rejected";
 
 export interface JourneyRow {
+  backoffMs?: number;
+  maxAttempts?: number;
   /** Unique within the journey. */
   key: string;
   kind: HopKind;
@@ -259,6 +261,21 @@ export function buildJourney(trace: MessageTrace, diagram: DiagramLike, now = tr
       }
       case "retry":
         retries++;
+        if (step.backoffMs !== undefined)
+          rows.push({
+            key,
+            kind: "redeliver",
+            t,
+            id: step.id,
+            type: step.type,
+            node: step.node!,
+            edge: step.edge,
+            attempt: step.attempt,
+            reason: step.reason,
+            backoffMs: step.backoffMs,
+            maxAttempts: step.maxAttempts,
+            copy,
+          });
         break;
       case "deadletter":
         deadLettered++;

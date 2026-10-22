@@ -179,6 +179,7 @@ const BY_THEME: Record<string, string[]> = {
   integration: ["webhook-ingestion", "api-route-table", "notification-fanout", "azure-service-bus-integration"],
   reliability: [
     "blocking-call",
+    "retry-storm",
     "slow-payment-provider",
     "scale-on-busy-threads",
     "outbox-saga-checkout",

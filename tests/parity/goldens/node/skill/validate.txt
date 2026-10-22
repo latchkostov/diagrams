@@ -141,3 +141,11 @@ VALID <repo>/tests/parity/corpus/w1-loop.diagram.json: 4 nodes, 3 edges, 1 simul
 VALID <repo>/tests/parity/corpus/w1-nonblocking.diagram.json: 4 nodes, 3 edges, 1 simulation
 VALID <repo>/tests/parity/corpus/w1-pool.diagram.json: 5 nodes, 4 edges, 2 simulations
 VALID <repo>/tests/parity/corpus/w1-sampling.diagram.json: 4 nodes, 3 edges, 2 simulations
+VALID <repo>/tests/parity/corpus/w2-blocking-backoff.diagram.json: 4 nodes, 3 edges, 1 simulation
+VALID <repo>/tests/parity/corpus/w2-broker-dlq.diagram.json: 5 nodes, 4 edges, 1 simulation
+VALID <repo>/tests/parity/corpus/w2-budget.diagram.json: 4 nodes, 3 edges, 1 simulation
+VALID <repo>/tests/parity/corpus/w2-exponential.diagram.json: 4 nodes, 3 edges, 1 simulation
+VALID <repo>/tests/parity/corpus/w2-fixed.diagram.json: 4 nodes, 3 edges, 1 simulation
+VALID <repo>/tests/parity/corpus/w2-jitter.diagram.json: 4 nodes, 3 edges, 1 simulation
+VALID <repo>/tests/parity/corpus/w2-pool-deadline.diagram.json: 4 nodes, 3 edges, 1 simulation
+VALID <repo>/tests/parity/corpus/w2-sampling.diagram.json: 4 nodes, 3 edges, 3 simulations

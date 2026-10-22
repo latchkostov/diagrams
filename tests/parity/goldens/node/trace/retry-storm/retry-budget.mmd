@@ -1,0 +1,13 @@
+---
+title: "Shop #1 · 230 ms end to end · 2 copies"
+---
+sequenceDiagram
+  participant shop as Shop
+  participant checkout as Checkout
+  participant payments as Payments
+  participant orders as Orders
+  shop->>checkout: Shop (+0.00 s)
+  checkout->>payments: Shop (+0.02 s)
+  payments-->>checkout: reply (+0.11 s)
+  checkout-->>shop: reply (+0.13 s)
+  checkout-)orders: Shop (+0.13 s)

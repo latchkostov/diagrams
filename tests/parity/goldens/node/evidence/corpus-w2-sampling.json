@@ -1,0 +1,89 @@
+{
+  "evidence": {
+    "played": [
+      { "id": "scale-1", "title": "Scale 1", "playedMs": 5000, "capped": false },
+      { "id": "scale-2", "title": "Scale 2", "playedMs": 5000, "capped": false },
+      { "id": "scale-10", "title": "Scale 10", "playedMs": 5000, "capped": false }
+    ],
+    "unplayed": [],
+    "tooBig": [],
+    "losses": [
+      { "simulation": "Scale 1", "node": "caller", "broker": false, "what": "dropped", "count": 100 },
+      { "simulation": "Scale 1", "node": "partner", "broker": false, "what": "dropped", "count": 300 },
+      { "simulation": "Scale 2", "node": "caller", "broker": false, "what": "dropped", "count": 100 },
+      { "simulation": "Scale 2", "node": "partner", "broker": false, "what": "dropped", "count": 300 },
+      { "simulation": "Scale 10", "node": "caller", "broker": false, "what": "dropped", "count": 100 },
+      { "simulation": "Scale 10", "node": "partner", "broker": false, "what": "dropped", "count": 300 }
+    ],
+    "dropped": [
+      {
+        "id": "dropped:caller",
+        "rule": "dropped",
+        "severity": "suggestion",
+        "target": "caller",
+        "elements": ["caller"],
+        "title": "Failed messages to Decision service are lost",
+        "message": "Decision service fails some of what it's sent, and nothing delivers it again: there's no queue or topic in front of it to redeliver.",
+        "rationale": "A message that fails where nothing can deliver it again, or that runs out of deliveries with no dead-letter route, is gone. Whether that happens depends on the traffic and the failures a simulation plays, so only playing it shows where, and how many.",
+        "evidence": []
+      },
+      {
+        "id": "dropped:partner",
+        "rule": "dropped",
+        "severity": "suggestion",
+        "target": "partner",
+        "elements": ["partner"],
+        "title": "Failed requests to Partner scoring API are lost",
+        "message": "Partner scoring API fails some of what it's sent, and nothing delivers it again: there's no queue or topic in front of it to redeliver.",
+        "rationale": "A message that fails where nothing can deliver it again, or that runs out of deliveries with no dead-letter route, is gone. Whether that happens depends on the traffic and the failures a simulation plays, so only playing it shows where, and how many.",
+        "evidence": []
+      }
+    ]
+  },
+  "planned": [],
+  "counted": 2,
+  "findings": [
+    {
+      "id": "dropped:caller",
+      "rule": "dropped",
+      "severity": "suggestion",
+      "target": "caller",
+      "elements": ["caller"],
+      "evidence": [
+        { "simulation": "Scale 1", "what": "dropped", "count": 100 },
+        { "simulation": "Scale 2", "what": "dropped", "count": 100 },
+        { "simulation": "Scale 10", "what": "dropped", "count": 100 }
+      ],
+      "evidenceText": ["100 dropped in “Scale 1”", "100 dropped in “Scale 2”", "100 dropped in “Scale 10”"]
+    },
+    {
+      "id": "dropped:partner",
+      "rule": "dropped",
+      "severity": "suggestion",
+      "target": "partner",
+      "elements": ["partner"],
+      "evidence": [
+        { "simulation": "Scale 1", "what": "dropped", "count": 300 },
+        { "simulation": "Scale 2", "what": "dropped", "count": 300 },
+        { "simulation": "Scale 10", "what": "dropped", "count": 300 }
+      ],
+      "evidenceText": ["300 dropped in “Scale 1”", "300 dropped in “Scale 2”", "300 dropped in “Scale 10”"]
+    }
+  ],
+  "agentReport": {
+    "findings": [
+      { "id": "dropped:caller", "rule": "dropped", "severity": "suggestion", "title": "Failed messages to Decision service are lost", "message": "Decision service fails some of what it's sent, and nothing delivers it again: there's no queue or topic in front of it to redeliver.", "targets": ["caller"], "evidence": ["100 dropped in “Scale 1”", "100 dropped in “Scale 2”", "100 dropped in “Scale 10”"] },
+      {
+        "id": "dropped:partner",
+        "rule": "dropped",
+        "severity": "suggestion",
+        "title": "Failed requests to Partner scoring API are lost",
+        "message": "Partner scoring API fails some of what it's sent, and nothing delivers it again: there's no queue or topic in front of it to redeliver.",
+        "targets": ["partner"],
+        "evidence": ["300 dropped in “Scale 1”", "300 dropped in “Scale 2”", "300 dropped in “Scale 10”"]
+      }
+    ],
+    "summary": "0 warnings, 2 suggestions.",
+    "simulations": "Played 3 saved simulations (at most 60 s each)."
+  }
+}

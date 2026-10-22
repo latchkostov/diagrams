@@ -3,7 +3,7 @@
 // the particle renderer as its overlay, with the frame's transform (see `OverlayView`).
 
 import { pointOnSamples, type PathSamples } from "../pathSampler";
-import type { OverlayView, Rect, RenderOverlay } from "../particleRenderer";
+import type { OverlayView, Rect } from "../particleRenderer";
 import {
   LabelObstacles,
   nearestOnBox,
@@ -15,9 +15,10 @@ import {
 import { formatOffset } from "../../trace/journey";
 import { LIVE_BAR_SPACE } from "../layout";
 import type { Anchor, SlowCaption, SlowFrame, Tone } from "./script";
+import { BACKGROUND_ALPHA, type PaintedLabel, type SlowOverlay } from "./overlay";
 
-/** Background traffic while slow motion plays: still and faint. */
-export const BACKGROUND_ALPHA = 0.12;
+export { BACKGROUND_ALPHA, type PaintedLabel };
+
 /** The moving dot's trail, in CSS px. */
 const TRAIL_PX = 40;
 
@@ -32,18 +33,7 @@ const INK: Record<"light" | "dark", Ink> = {
   light: { surface: "rgba(255,255,255,0.97)", text: "#131720", muted: "#566072", ring: "" },
 };
 
-export interface PaintedLabel {
-  text: string;
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-  kind: "caption" | "offset" | "retry";
-  opacity: number;
-  fontSize: number;
-}
-
-export class SlowPainter implements RenderOverlay {
+export class SlowPainter implements SlowOverlay {
   backgroundAlpha = BACKGROUND_ALPHA;
   frame: SlowFrame | null = null;
   /** Presentation draws the words larger. */

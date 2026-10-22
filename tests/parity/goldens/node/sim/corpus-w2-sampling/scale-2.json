@@ -1,0 +1,57 @@
+{
+  "run": {
+    "time": 5000,
+    "totalMs": 5000,
+    "done": true,
+    "scale": 2,
+    "multipliers": { "traffic": 1, "capacity": 1 },
+    "expectations": [],
+    "markers": [
+      { "atMs": 0, "kind": "traffic", "label": "Applications" },
+      { "atMs": 100, "kind": "traffic", "label": "Applications ends" }
+    ]
+  },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 1,
+      "nodes": {
+        "source": { "processed": 1, "replicas": [1, 1, 0] },
+        "caller": { "replicas": [1, 1, 0] },
+        "partner": { "replicas": [1, 1, 0] },
+        "result": { "replicas": [1, 1, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 5000,
+    "inSystem": 0,
+    "real": {
+      "source": { "processed": 100, "throughput": 0.708636071838888, "replicas": [1, 1, 0] },
+      "caller": { "failed": 100, "dropped": 100, "replicas": [1, 1, 0] },
+      "partner": { "failed": 300, "dropped": 300, "replicas": [1, 1, 0] },
+      "result": { "replicas": [1, 1, 0] }
+    },
+    "edges": { "input": 50, "call": 150, "output": 0 }
+  },
+  "events": {
+    "total": 800,
+    "byKind": { "inject": 50, "process": 50, "deliver": 200, "fail": 200, "drop": 200, "retry": 100 },
+    "byNode": {
+      "source": { "inject": 50, "process": 50 },
+      "caller": { "deliver": 50, "retry": 100, "fail": 50, "drop": 50 },
+      "partner": { "deliver": 150, "fail": 150, "drop": 150 }
+    },
+    "perSecond": ["9b72348bc2ce", "-", "-", "-", "-", "-"]
+  },
+  "notes": [],
+  "latency": {
+    "journeys": { "done": 50, "retried": 50, "deadLettered": 0, "dropped": 50, "blocked": 0, "partial": 0, "truncated": 0 },
+    "endToEndMs": { "count": 50, "min": 320, "mean": 320, "p50": 320, "p90": 320, "max": 320 },
+    "waitMs": {
+      "caller": { "count": 50, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "partner": { "count": 150, "min": 0, "mean": 3.3333333333333335, "p50": 0, "p90": 10, "max": 10 }
+    },
+    "processMs": {}
+  }
+}

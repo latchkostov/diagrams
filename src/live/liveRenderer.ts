@@ -16,7 +16,7 @@
 // transform), with the transform the frame was drawn with.
 
 import type { PlacedLabel } from "./traceLabels";
-import type { PaintedLabel, SlowPainter } from "./slowmo/painter";
+import type { PaintedLabel, SlowOverlay } from "./slowmo/overlay";
 import type { SlowFrame } from "./slowmo/script";
 import { LiveScene, type FlowStoreLike } from "./liveScene";
 import { MarchRenderer, type MarchEdge } from "./marchRenderer";
@@ -59,7 +59,7 @@ export interface FrameInput {
   /** The traced root message. */
   focus?: number;
   /** Slow motion's painter while it plays. */
-  slow?: SlowPainter;
+  slow?: SlowOverlay;
   /** How far into the marching ants (ms of moving simulation; 0 while slow motion plays). */
   march: number;
 }
@@ -263,7 +263,7 @@ class MainThreadRenderer implements LiveRenderer {
   private scene: LiveScene;
   private core: ParticleRenderer;
   private placement: CanvasPlacement;
-  private slow: SlowPainter | undefined;
+  private slow: SlowOverlay | undefined;
   private marchCanvas: HTMLCanvasElement | null;
   private march: MarchRenderer | null = null;
   private marchEdges: readonly MarchEdge[] | null = null;
@@ -473,7 +473,7 @@ class WorkerRenderer implements LiveRenderer {
   private sentSnap: RenderSnapshot | null = null;
   private sentLabels: readonly Rect[] | null = null;
   private sentObstacles: Obstacles | null = null;
-  private sentSlow: SlowPainter | undefined;
+  private sentSlow: SlowOverlay | undefined;
   private sentSlowRevision = -1;
   private sentViewKey = "";
   private sentFocus: number | undefined;

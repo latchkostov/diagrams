@@ -35,7 +35,7 @@ export interface OutcomeInvariantState {
   attempts: Iterable<{
     id: number;
     node: string;
-    outcome?: { ok: boolean; code?: number; at: number };
+    outcome?: { ok: boolean; code?: number; at: number; cause?: string };
     committed: boolean;
   }>;
 }
@@ -147,6 +147,9 @@ export function assertOutcomeInvariants(state: OutcomeInvariantState): void {
   for (const attempt of state.attempts) {
     if (seen.has(attempt.id) || (attempt.committed && !attempt.outcome) || (attempt.outcome?.at ?? 0) > state.time)
       throw new Error(`Outcome @${state.time}: invalid attempt ${attempt.id} at ${attempt.node}`);
+    // A classified attempt is one write: its cause and ok can never disagree (a stale success on a failure).
+    if (attempt.outcome?.cause !== undefined && attempt.outcome.ok !== (attempt.outcome.cause === "success"))
+      throw new Error(`Outcome @${state.time}: attempt ${attempt.id} at ${attempt.node} is ${attempt.outcome.cause}`);
     seen.add(attempt.id);
     const before = observedOutcomes.get(attempt);
     const outcome = attempt.outcome && JSON.stringify(attempt.outcome);

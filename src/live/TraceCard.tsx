@@ -447,6 +447,13 @@ function Hop({
         .join(" · ");
     }
   }
+  if (row.backoffMs !== undefined)
+    sub = t("resilience.retryBeat", {
+      attempt: row.attempt ?? 2,
+      max: row.maxAttempts ?? 3,
+      backoff: row.backoffMs,
+      reason: row.reason === "timed out" ? t("resilience.timeout") : (row.reason ?? ""),
+    });
   // An addressed request says its address, and on a router's hop the rule and split that chose it.
   const routed = words?.hop(row.route, row.from, row.rule, row.weight);
   if (routed) sub = `${routed} · ${sub}`;
