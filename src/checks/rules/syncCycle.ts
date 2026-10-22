@@ -1,7 +1,10 @@
-import type { CompiledEdge } from "../../sim/topology";
+import { activeCall, type CompiledEdge } from "../../sim/topology";
 import { edgeName } from "../context";
 import { stronglyConnected } from "../graph";
 import type { CheckRule, Finding } from "../types";
+import { revisionAtLeast } from "../../model/revisions";
+import { callPolicy } from "../../sim/callPolicy";
+import type { EdgeSimProps } from "../../sim/types";
 
 // 3. sync-cycle: requests that go round in a circle (A calls B, which calls A): a slow call holds every service
 // on the loop, and timeouts and retries multiply around it. Strongly connected components over request
@@ -48,6 +51,29 @@ export const syncCycle: CheckRule = {
     // Adjacency built once: every edge is mapped and walked once.
     const targets = new Map([...out].map(([id, edges]) => [id, edges.map((e) => e.to)]));
     const none: readonly string[] = [];
+    const blocking = new Map(
+      [...out].map(([id, edges]) => [
+        id,
+        edges
+          .filter((e) => {
+            // Only calls playback makes can hold a thread: not dead-letter routes, deny rules or zero shares.
+            if (!activeCall(ctx.role(id), e)) return false;
+            const policy = callPolicy(
+              ctx.nodes.get(id)!.stencil,
+              ctx.edges.get(e.id)?.props?.caller as EdgeSimProps["caller"],
+            );
+            return policy.blocking && policy.deadlineMs === undefined;
+          })
+          .map((e) => e.to),
+      ]),
+    );
+    const deadlocked = new Set(
+      revisionAtLeast(ctx.diagram.planning?.revision, "p3-w1")
+        ? stronglyConnected(ids, (id) => blocking.get(id) ?? none)
+            .filter((c) => c.length > 1 || blocking.get(c[0])?.includes(c[0]))
+            .flat()
+        : [],
+    );
     for (const found of stronglyConnected(ids, (id) => targets.get(id) ?? none)) {
       // Diagram order, so the finding reads the same however the search met them.
       const component = found.sort((a, b) => diagramOrder.get(a)! - diagramOrder.get(b)!);
@@ -67,14 +93,16 @@ export const syncCycle: CheckRule = {
       const names = [ctx.name(first), ...loop.map((e) => ctx.name(e.to))].join(" → ");
       const more = component.length > loop.length ? ` (${component.length} services are on loops like this one)` : "";
       const edge = edgeName(ctx, closing);
+      const deadlock = component.some((id) => deadlocked.has(id));
       findings.push({
+        ...(deadlock ? { threadDeadlock: true as const } : {}),
         id: `sync-cycle:${target}`,
         rule: "sync-cycle",
         severity: "warning",
         target,
         elements: [target, ...component.filter((id) => id !== target), ...inside.map((e) => e.id)],
         title: "Requests go round in a circle",
-        message: `${names}: each waits for the next${more}. A slow call holds all of them, and timeouts and retries multiply around the loop.`,
+        message: `${names}: each waits for the next${more}. A slow call holds all of them, and timeouts and retries multiply around the loop.${deadlock ? " Every thread can wait on the loop: deadlocked until a timeout breaks it." : ""}`,
         rationale:
           "A loop of synchronous requests is a distributed-monolith trait: none of the services can be deployed, scaled or fail on its own. Making one call a message breaks the loop.",
         fix: { label: `Make ${edge} a message`, ops: [{ op: "update", target: closing.id, kind: "async" }] },

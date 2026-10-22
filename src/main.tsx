@@ -17,6 +17,7 @@ import { startStorageLifecycle } from "./lib/storage";
 import { startI18n } from "./i18n/start";
 import { preloadCanvasView } from "./canvas/loadCanvasView";
 import { registerScenarioPlanner } from "./lib/scenarioPlanner";
+import { registerRequestChecks } from "./lib/requestCheckProvider";
 import { redirectRetiredExample } from "./examples/retired";
 import { adoptRetiredExampleEdits } from "./lib/diagramIO";
 
@@ -27,6 +28,7 @@ if (redirected) window.history.replaceState(window.history.state, "", redirected
 // Scenario sizing plays simulations, so in the editor it runs in the checks worker; agent tools, Copy prompt and a
 // fix’s re-check read the worker’s results (src/lib/scenarioPlanner.ts). Registered before anything can check.
 registerScenarioPlanner((d) => import("./canvas/checks/runner").then((m) => m.planOffThread(d)));
+registerRequestChecks((d) => import("./canvas/checks/runner").then((m) => m.requestChecksOffThread(d)));
 
 // This page takes part in Clear everything on this device (the exported HTML viewer, its own entry, doesn't).
 startStorageLifecycle();

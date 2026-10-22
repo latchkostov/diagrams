@@ -97,7 +97,7 @@ Times are milliseconds from the start, and rates and counts are real messages.
 
 - Rates up to 10,000,000/s, bursts and injections up to 100,000 messages, times up to 600,000 ms.
 - All traffic in the file together: at most 200,000 messages as played (rate × duration, summed, ÷ each simulation's `scale`, the real messages per dot).
-- Expectation metrics: `processed`, `backlog`, `inFlight`, `failed`, `deadLettered`, `dropped`, `throughput`, `lag`, or `{ "system": "inSystem" }`; `op`: `<`, `<=`, `==`, `>=`, `>`; `when`: `always`, `eventually`, `end`, `at`.
+- Expectation metrics: `processed`, `backlog`, `inFlight`, `failed`, `timedOut`, `threadsBusy`, `threadsWaiting`, `deadLettered`, `dropped`, `blocked`, `rejected`, `throughput`, `lag`, or `{ "system": "inSystem" }`; `op`: `<`, `<=`, `==`, `>=`, `>`; `when`: `always`, `eventually`, `end`, `at`.
 
 <!-- END GENERATED sim-limits -->
 
@@ -107,3 +107,17 @@ A good simulation runs 20 to 60 seconds: steady traffic, then an incident (a con
 spike arrives), then the recovery. Add a `note` with `pause: true` at each turn so a presenter can explain it,
 and one or two expectations that make the point, such as nothing dead-lettered or the backlog draining. To
 play it, open the link and press **Live** (or L).
+
+## Requests that wait
+
+Use `planning.revision: "p3-w1"` when the lesson involves waiting calls; preserve older diagrams' revision.
+Threads are replicas × concurrency. A Request's `props.caller` accepts `wait: "blocking" | "non-blocking"`,
+`replyMs` (10 ms by default), `deadlineMs` and `poolConnections`. Services/functions hold threads by default;
+gateways/proxies/workflows free them. Freeing threads retains in-flight memory and needs a reply continuation.
+Timeouts include pool wait. A timed-out queued call is never sent; dispatched work can return a late reply.
+
+Show the lesson with `threadsBusy`, `threadsWaiting` or `timedOut` expectation metrics in real counts.
+The thread ceiling is threads × 1,000 ÷ hold milliseconds. CPU can stay low while waiting fills every thread;
+HPA/KEDA's modelled `busyThreads` metric can scale on working plus waiting threads. It requires a custom
+metrics adapter in a real deployment. Checks and live callouts share the verified fix selector; timeout
+suggestions fit the caller's thread budget rather than using a universal one-second minimum.

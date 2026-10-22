@@ -1,5 +1,5 @@
 {
-  "all": { "isError": false, "output": { "findings": [], "summary": "Nothing to check. 10 checks ran." } },
-  "warnings": { "isError": false, "output": { "findings": [], "summary": "Nothing to check. 10 checks ran." } },
+  "all": { "isError": false, "output": { "findings": [], "summary": "Nothing to check. 13 checks ran." } },
+  "warnings": { "isError": false, "output": { "findings": [], "summary": "Nothing to check. 13 checks ran." } },
   "oneRule": { "isError": false, "output": { "findings": [], "summary": "Nothing to check. 2 checks ran." } }
 }

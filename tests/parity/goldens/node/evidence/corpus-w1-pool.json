@@ -21,6 +21,48 @@
     { "node": "gateway", "simulation": "Blocking waits still hold threads", "what": "dropped", "count": 1326, "why": "expected" }
   ],
   "counted": 0,
-  "findings": [],
-  "agentReport": { "findings": [], "summary": "Nothing to check. 10 checks ran.", "simulations": "Played 2 saved simulations (at most 60 s each). On purpose, not findings: 1156 dropped at shop in “A pool of 40”; 1156 dropped at gateway in “A pool of 40”; 1326 dropped at shop in “Blocking waits still hold threads”; 1326 dropped at gateway in “Blocking waits still hold threads”." }
+  "findings": [
+    {
+      "id": "call-timeout:pay",
+      "rule": "call-timeout",
+      "severity": "suggestion",
+      "target": "pay",
+      "elements": ["pay", "checkout", "payment"],
+      "fix": {
+        "ops": [
+          {
+            "op": "update",
+            "target": "pay",
+            "props": { "caller": { "wait": "non-blocking", "poolConnections": 40, "deadlineMs": 600 } }
+          }
+        ],
+        "needsChoice": false
+      }
+    }
+  ],
+  "agentReport": {
+    "findings": [
+      {
+        "id": "call-timeout:pay",
+        "rule": "call-timeout",
+        "severity": "suggestion",
+        "title": "No timeout on the call to Payment provider",
+        "message": "If it stalls, the call stays in flight indefinitely.",
+        "targets": ["pay", "checkout", "payment"],
+        "fix": {
+          "label": "Add a 600 ms timeout",
+          "ops": [
+            {
+              "op": "update",
+              "target": "pay",
+              "props": { "caller": { "wait": "non-blocking", "poolConnections": 40, "deadlineMs": 600 } }
+            }
+          ]
+        }
+      }
+    ],
+    "summary": "0 warnings, 1 suggestion.",
+    "simulations": "Played 2 saved simulations (at most 60 s each). On purpose, not findings: 1156 dropped at shop in “A pool of 40”; 1156 dropped at gateway in “A pool of 40”; 1326 dropped at shop in “Blocking waits still hold threads”; 1326 dropped at gateway in “Blocking waits still hold threads”.",
+    "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding."
+  }
 }

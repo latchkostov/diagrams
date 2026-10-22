@@ -12,6 +12,8 @@ export type { CheckRuleId } from "../model/checks";
 export type CheckSeverity = "warning" | "suggestion";
 
 export interface CheckFix {
+  planLabel?: NonNullable<Finding["scalingPlan"]>;
+  requestLabel?: { kind: "free" | "scale" | "timeout" | "replicas"; value?: number };
   /** Neutral broker vocabulary, translated only by the UI; label stays English for agents and workers. */
   brokerChanges?: { text: string; name: string; spec: BrokerSpec; count: number }[];
   /** The button's words, naming the change ("Add dead-letter queue"). */
@@ -28,6 +30,9 @@ export interface CheckFix {
 }
 
 export interface CheckFixOption {
+  requestLabel?: CheckFix["requestLabel"];
+  /** Partition changes this option makes too (a consumer's sizing), named in its translated words. */
+  brokerChanges?: CheckFix["brokerChanges"];
   /** The change in words ("Put API Management in front"). */
   label: string;
   /** The chip's words: what's different about this option ("API Management"). */
@@ -38,6 +43,29 @@ export interface CheckFixOption {
 }
 
 export interface Finding {
+  /**
+   * Request checks only, between the checks worker and runChecks: not a finding but how many of this rule's findings
+   * didn't fit the per-diagram budget. runChecks moves it to `CheckResult.omitted`.
+   */
+  omitted?: number;
+  threadDeadlock?: true;
+  /** Requests-that-wait descriptors: English in tools, translated at render time. */
+  requestFinding?: {
+    kind: "blocked" | "blind" | "timeout";
+    name: string;
+    callee: string;
+    hold: number;
+    waiting: number;
+    rate: number;
+    needed: number;
+    slots: number;
+    replicas: number;
+    concurrency: number;
+    deadline?: number;
+    blocking?: boolean;
+    cpu?: number;
+    target?: number;
+  };
   resourceFinding?: {
     name: string;
     kind: "memory" | "invalid" | "baseline" | "max" | "keda" | "binding";
@@ -126,4 +154,9 @@ export interface CheckResult {
   off: CheckRuleId[];
   /** Rules that ran. */
   ran: CheckRuleId[];
+  /**
+   * Findings worked out but too many to list (one diagram's request findings are bounded), by rule: the result is
+   * incomplete, never clean. Absent when everything is listed.
+   */
+  omitted?: { rule: CheckRuleId; count: number }[];
 }

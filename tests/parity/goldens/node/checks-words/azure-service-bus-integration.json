@@ -1,5 +1,5 @@
 {
-  "summary": "Nothing to check. 10 checks ran; 1 ignored.",
+  "summary": "Nothing to check. 13 checks ran; 1 ignored.",
   "findings": {
     "no-reader:dlq": {
       "title": "Dead letters pile up in invoice.commands DLQ",
@@ -8,6 +8,6 @@
       "fix": { "label": "Add a reader…", "choice": "Pick what reads invoice.commands DLQ, then add it and connect dlq to it." }
     }
   },
-  "agentReport": { "findings": [], "summary": "Nothing to check. 10 checks ran; 1 ignored." },
-  "agentReportWarnings": { "findings": [], "summary": "Nothing to check. 10 checks ran; 1 ignored." }
+  "agentReport": { "findings": [], "summary": "Nothing to check. 13 checks ran; 1 ignored." },
+  "agentReportWarnings": { "findings": [], "summary": "Nothing to check. 13 checks ran; 1 ignored." }
 }

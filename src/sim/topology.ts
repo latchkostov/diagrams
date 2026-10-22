@@ -67,6 +67,10 @@ export interface CompiledEdge {
 export function callEligible(role: SimRole, edge: Pick<CompiledEdge, "sync" | "dlq">): boolean {
   return (role === "processor" || role === "source" || role === "gateway" || role === "none") && edge.sync && !edge.dlq;
 }
+/** A call waiting plans and Checks count: eligible, not denied at its source, and forwarding some share. */
+export function activeCall(role: SimRole, edge: Pick<CompiledEdge, "sync" | "dlq" | "deny" | "share">): boolean {
+  return callEligible(role, edge) && !edge.deny && edge.share !== 0;
+}
 export interface CompiledGroup {
   broker: string;
   name: string;

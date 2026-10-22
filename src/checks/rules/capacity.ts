@@ -1,17 +1,14 @@
-import { revisionAtLeast } from "../../model/revisions";
+import { scaleFix } from "../scaleFix";
+import { requestFindings } from "../requestFindings";
 import { englishAssignmentLabel } from "../../model/brokers";
-import { resolveNodeProps } from "../../sim/defaults";
-import type { DiagramOp } from "../../ai";
-import { analyzeCapacity, type NodeCapacity } from "../../sim/capacity";
-import { MAX_COUNT, sizingFix } from "../../sim/capacityPlanning";
+import { threadCapacity } from "../threadCapacity";
 import { brokerFeeds } from "../../sim/topology";
-import { formatRate, isBroker, type CheckContext } from "../context";
-import { SIZE_LABEL } from "../../stencils/netDevices";
+import { formatRate, isBroker } from "../context";
 import { bindingValidator } from "../../model/kedaBindings";
 import { scalingFindings } from "../scalingFindings";
 import { PLATFORM } from "../../planning/scalingPlanText";
 
-import type { Finding, CheckFix, CheckRule } from "../types";
+import type { Finding, CheckRule } from "../types";
 
 // 7. capacity: the busiest processor or broker can't keep up at the diagram's own (free-play) rates: the
 // same analysis as live view's Show capacity, without going live. Saved simulations aren't checked: most
@@ -20,35 +17,8 @@ import type { Finding, CheckFix, CheckRule } from "../types";
 // are live view's own (src/sim/capacityPlanning.ts).
 
 const DEFAULT_RATE = 2;
-
-/** Live view's capacity fix (src/sim/capacityPlanning.ts) for this one node, as edit ops. */
-function scaleFix(ctx: CheckContext, n: NodeCapacity): CheckFix | undefined {
-  // Edit ops take replicas and partitions up to 10,000 (the op schema's bound).
-  const changes = sizingFix(ctx.diagram, ctx.planning(), [n], {
-    idle: n.idleReplicas > 0 ? n.id : undefined,
-    maxCount: MAX_COUNT,
-  });
-  if (!changes) return undefined;
-  const ops: DiagramOp[] = changes.map((c) => ({ op: "update", target: c.nodeId, props: { [c.key]: c.to } }));
-  // A device's next size (and the throughput typed over its old one) is one change: say it as the size.
-  const size = changes.find((c) => c.key === "size");
-  if (size) return { label: `Use the ${SIZE_LABEL[size.to].toLowerCase()} size (${size.model})`, ops };
-  const brokerChanges: NonNullable<CheckFix["brokerChanges"]> = [];
-  const words = changes.map((c) => {
-    const spec =
-      c.key === "partitions" && revisionAtLeast(ctx.diagram.planning?.revision, "p2")
-        ? resolveNodeProps(ctx.diagram, ctx.nodes.get(c.nodeId)!).broker
-        : undefined;
-    if (spec) {
-      const name = ctx.name(c.nodeId);
-      const text = `${name}: ${englishAssignmentLabel(spec)} → ${c.to}`;
-      brokerChanges.push({ text, name, spec, count: c.to as number });
-      return text;
-    }
-    return c.key === "replicas" ? `replicas to ${c.to}` : `${ctx.name(c.nodeId)} partitions to ${c.to}`;
-  });
-  return { label: `Set ${words.join(" and ")}`, ops, ...(brokerChanges.length ? { brokerChanges } : {}) };
-}
+/** The checks that replace this one's warning for a caller whose threads wait (src/checks/requestFindings.ts). */
+export const WAIT_RULES = ["blocked-threads", "scaling-blind"] as const;
 
 export const capacity: CheckRule = {
   id: "capacity",
@@ -57,35 +27,13 @@ export const capacity: CheckRule = {
     "A service or broker over 100% at the diagram's own rates has a backlog that only grows. " +
     "Uses Show capacity's analysis at free-play rates (each source's rate), and reports the busiest service or broker.",
   detect(ctx) {
-    const initial = ctx.capacity();
-    // A sustained-capacity check credits busy-thread scaling up to its configured
-    // maximum. Reuse the normal planner so partition assignments and upstream
-    // brokers receive the same credit, while fixed and CPU-only fleets stay unchanged.
-    const readyReplicas = Object.fromEntries(
-      Object.entries(initial.resolved).flatMap(([id, p]) => {
-        const a = p.autoscaling;
-        const settings = a?.mode === "on" && "settings" in a.controller ? a.controller.settings : undefined;
-        return p.resources &&
-          a?.mode === "on" &&
-          settings &&
-          settings.up.selectPolicy !== "Disabled" &&
-          (settings.up.selectPolicy === "Min"
-            ? settings.up.policies.length > 0 && settings.up.policies.every((policy) => policy.value > 0)
-            : settings.up.policies.some((policy) => policy.value > 0)) &&
-          settings.metrics.some(
-            (m) =>
-              m.source.kind === "pods" &&
-              (m.target.kind === "averageValue" ? p.concurrency : 100) >
-                (m.target.kind === "averageValue" ? m.target.value : m.target.percentOfRequest) *
-                  (1 + settings.tolerance),
-          )
-          ? [[id, a.controller.maxReplicas]]
-          : [];
-      }),
+    // A caller the waiting checks diagnose gets their finding instead of this one, but only when they run in this
+    // check (a capacity-only check, or one with them turned off, keeps the capacity warning).
+    const replacing: readonly string[] = WAIT_RULES.filter((id) => !ctx.ran || ctx.ran.has(id));
+    const waitTargets = new Set(
+      replacing.length ? requestFindings(ctx).flatMap((f) => (replacing.includes(f.rule) ? [f.target] : [])) : [],
     );
-    const analysis = Object.keys(readyReplicas).length
-      ? analyzeCapacity(ctx.diagram, ctx.planning(), { readyReplicas })
-      : initial;
+    const analysis = threadCapacity(ctx);
     const bindings = bindingValidator(ctx.diagram.nodes, ctx.diagram.edges);
     // Scenario sizing from saved simulations outranks configured steady-state arithmetic for the same node.
     const planned = scalingFindings(ctx);
@@ -159,12 +107,21 @@ export const capacity: CheckRule = {
     });
     for (const [id, finding] of planned)
       if (!resourceFindings.some((f) => f.target === id)) resourceFindings.push(finding);
+    for (let i = resourceFindings.length - 1; i >= 0; i--)
+      if (waitTargets.has(resourceFindings[i].target) && resourceFindings[i].scalingPlan?.kind === "busyThreads")
+        resourceFindings.splice(i, 1);
     const resourceTargets = new Set(resourceFindings.map((finding) => finding.target));
     const order = new Map(ctx.diagram.nodes.map((n, i) => [n.id, i]));
     const candidates = Object.values(analysis.nodes)
       .filter(
         (n) =>
           !resourceTargets.has(n.id) &&
+          // Before choosing the busiest: a diagnosed caller never hides another service's warning. Nor does a
+          // healthy broker it reads from stand in for it: that broker's capacity is what its consumers drain, so its
+          // backlog is the caller's, already reported with its fix. A broker saved down or paused is an outage of its
+          // own, which fixing the caller can't end: it keeps its warning.
+          !waitTargets.has(n.id) &&
+          !(!n.status && isBroker(ctx, n.id) && ctx.routes(n.id).some((e) => !e.deny && waitTargets.has(e.to))) &&
           n.offered > 0 &&
           n.utilization >= 1 &&
           (n.role === "processor" || !!n.device || !!n.managed || (isBroker(ctx, n.id) && ctx.routes(n.id).length > 0)),

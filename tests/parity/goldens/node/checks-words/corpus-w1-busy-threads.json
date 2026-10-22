@@ -1,46 +1,75 @@
 {
-  "summary": "2 warnings, 0 suggestions.",
+  "summary": "2 warnings, 1 suggestion.",
   "findings": {
-    "capacity:applications": { "title": "Applications can't keep up", "message": "At the diagram's own rates, it gets 400/s and handles 246/s (163%): its backlog only grows.", "rationale": "Demand above what a service can handle never drains: latency and backlog grow until something times out. Live view's Show capacity has the same numbers." },
-    "capacity:caller": {
-      "title": "Decision service: scenario sizing",
-      "message": "In “Blocking: CPU says all is well”, more than half the busy threads are waiting. Scale on busy threads (modelled custom metric). A rerun with this change confirmed it.",
-      "rationale": "Played headless with the same engine and seed as playback; a suggestion is offered as a fix only when a rerun with it bears it out.",
+    "blocked-threads:caller": {
+      "title": "Decision service runs out of threads",
+      "message": "It holds a thread for 260 ms per request (250 ms waiting on Partner scoring API). At 400 req/s it needs 104 threads; it has 64 (4 replicas × 16).",
+      "rationale": "Waiting calls occupy threads without using CPU. A fix is offered only after a same-seed rerun confirms it.",
+      "fix": {
+        "label": "Scale on busy threads",
+        "options": [
+          { "label": "Free the thread while waiting", "short": "Free the thread while waiting" },
+          { "label": "Set replicas to 12", "short": "Add replicas" }
+        ]
+      },
+      "shownRationale": "Waiting calls retain resources. A timeout bounds waiting; it does not cancel downstream work."
+    },
+    "scaling-blind:caller": {
+      "title": "Decision service scales on CPU, but its threads wait",
+      "message": "At full load it uses 31% CPU against a 70% target while the backlog grows. A same-seed rerun confirmed scaling on busy threads.",
+      "rationale": "Busy threads counts working threads and threads waiting on calls; CPU only sees work.",
       "fix": { "label": "Scale on busy threads" },
-      "shownMessage": "In “Blocking: CPU says all is well”, most of its threads are waiting on calls, rather than working, so CPU stays low. Scale on busy threads instead. A rerun had a smaller backlog.",
-      "shownRationale": "Played with the same engine and seed as playback. A suggestion is a fix only when a rerun with it bears it out."
-    }
+      "shownRationale": "Waiting calls retain resources. A timeout bounds waiting; it does not cancel downstream work."
+    },
+    "call-timeout:call": { "title": "No timeout on the call to Partner scoring API", "message": "If it stalls, every thread waits.", "rationale": "A timeout bounds waiting; downstream work can still finish and reply late.", "shownRationale": "Waiting calls retain resources. A timeout bounds waiting; it does not cancel downstream work." }
   },
   "agentReport": {
     "findings": [
-      { "id": "capacity:applications", "rule": "capacity", "severity": "warning", "title": "Applications can't keep up", "message": "At the diagram's own rates, it gets 400/s and handles 246/s (163%): its backlog only grows.", "targets": ["applications"] },
       {
-        "id": "capacity:caller",
-        "rule": "capacity",
+        "id": "blocked-threads:caller",
+        "rule": "blocked-threads",
         "severity": "warning",
-        "title": "Decision service: scenario sizing",
-        "message": "In “Blocking: CPU says all is well”, more than half the busy threads are waiting. Scale on busy threads (modelled custom metric). A rerun with this change confirmed it.",
-        "targets": ["caller"],
+        "title": "Decision service runs out of threads",
+        "message": "It holds a thread for 260 ms per request (250 ms waiting on Partner scoring API). At 400 req/s it needs 104 threads; it has 64 (4 replicas × 16).",
+        "targets": ["caller", "call", "partner"],
         "fix": { "label": "Scale on busy threads", "needsChoice": "Its edit ops are too long for this reply: make the change with edit_diagram." }
-      }
+      },
+      {
+        "id": "scaling-blind:caller",
+        "rule": "scaling-blind",
+        "severity": "warning",
+        "title": "Decision service scales on CPU, but its threads wait",
+        "message": "At full load it uses 31% CPU against a 70% target while the backlog grows. A same-seed rerun confirmed scaling on busy threads.",
+        "targets": ["caller", "call"],
+        "fix": { "label": "Scale on busy threads", "needsChoice": "Its edit ops are too long for this reply: make the change with edit_diagram." }
+      },
+      { "id": "call-timeout:call", "rule": "call-timeout", "severity": "suggestion", "title": "No timeout on the call to Partner scoring API", "message": "If it stalls, every thread waits.", "targets": ["call", "caller", "partner"] }
     ],
-    "summary": "2 warnings, 0 suggestions.",
+    "summary": "2 warnings, 1 suggestion.",
     "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding."
   },
   "agentReportWarnings": {
     "findings": [
-      { "id": "capacity:applications", "rule": "capacity", "severity": "warning", "title": "Applications can't keep up", "message": "At the diagram's own rates, it gets 400/s and handles 246/s (163%): its backlog only grows.", "targets": ["applications"] },
       {
-        "id": "capacity:caller",
-        "rule": "capacity",
+        "id": "blocked-threads:caller",
+        "rule": "blocked-threads",
         "severity": "warning",
-        "title": "Decision service: scenario sizing",
-        "message": "In “Blocking: CPU says all is well”, more than half the busy threads are waiting. Scale on busy threads (modelled custom metric). A rerun with this change confirmed it.",
-        "targets": ["caller"],
+        "title": "Decision service runs out of threads",
+        "message": "It holds a thread for 260 ms per request (250 ms waiting on Partner scoring API). At 400 req/s it needs 104 threads; it has 64 (4 replicas × 16).",
+        "targets": ["caller", "call", "partner"],
+        "fix": { "label": "Scale on busy threads", "needsChoice": "Its edit ops are too long for this reply: make the change with edit_diagram." }
+      },
+      {
+        "id": "scaling-blind:caller",
+        "rule": "scaling-blind",
+        "severity": "warning",
+        "title": "Decision service scales on CPU, but its threads wait",
+        "message": "At full load it uses 31% CPU against a 70% target while the backlog grows. A same-seed rerun confirmed scaling on busy threads.",
+        "targets": ["caller", "call"],
         "fix": { "label": "Scale on busy threads", "needsChoice": "Its edit ops are too long for this reply: make the change with edit_diagram." }
       }
     ],
-    "summary": "2 warnings, 0 suggestions.",
+    "summary": "2 warnings, 1 suggestion.",
     "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding."
   }
 }

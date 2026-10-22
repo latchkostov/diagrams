@@ -96,6 +96,13 @@ export class ChecksStore implements EvidenceSink {
   private merge: Merge | undefined;
   /** Run simulations: its runs report here. */
   readonly simulations: SimulationRuns = new SimulationRuns(this);
+  private retry: () => void = () => {};
+  /** Runs a check that failed again (the Checks card's Retry: its code arrived). */
+  readonly retryFailed = () => this.retry();
+  /** useChecks connects the runs behind the store. */
+  setRetry(retry: () => void): void {
+    this.retry = retry;
+  }
 
   readonly subscribe = (listener: () => void) => {
     this.listeners.add(listener);
@@ -197,6 +204,9 @@ export function useChecks(opts: {
   const [runs] = useState(() => new CheckRuns((r, d) => store.set(r, d)));
   const sims = store.simulations;
   useEffect(() => {
+    store.setRetry(() => runs.retryFailed());
+  }, [store, runs]);
+  useEffect(() => {
     if (!import.meta.env.DEV && import.meta.env.VITE_E2E !== "1") return;
     return installCheckRunControls(runs);
   }, [runs]);
@@ -270,6 +280,8 @@ export class CheckRuns {
   private read: () => DiagramFile = () => ({ format: "diagrams/v1", title: "", nodes: [], edges: [] });
   private generation = 0;
   private first = true;
+  /** The last run couldn't finish (its code didn't download): Retry runs it again. */
+  private failed = false;
   private readonly scheduler: CheckScheduler;
 
   constructor(
@@ -286,7 +298,14 @@ export class CheckRuns {
       const diagram = this.read();
       checkRunStats.started++;
       // An empty diagram has nothing to check: that's a finished check, not one still running.
-      const next = diagram.nodes.length ? await run(diagram) : NOTHING_TO_CHECK;
+      let next: CheckResult;
+      try {
+        next = diagram.nodes.length ? await run(diagram) : NOTHING_TO_CHECK;
+        this.failed = false;
+      } catch (error) {
+        this.failed = true;
+        throw error;
+      }
       checkRunStats.finished++;
       // A result for a diagram that has since been replaced (another one opened, checks off) is dropped; one
       // for an older edit of this diagram still shows (marked stale) until the newer run lands.
@@ -297,6 +316,13 @@ export class CheckRuns {
 
   setRead(read: () => DiagramFile) {
     this.read = read;
+  }
+
+  /** A run that failed runs again now; nothing happens when the last one finished. */
+  retryFailed() {
+    if (!this.failed) return;
+    this.failed = false;
+    this.scheduler.now();
   }
 
   /** The diagram changed: run once edits pause (the first run waits for the canvas to settle). */

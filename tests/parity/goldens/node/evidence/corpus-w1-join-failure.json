@@ -31,6 +31,8 @@
   "planned": [{ "node": "partner", "simulation": "Blocking", "what": "dropped", "count": 12, "why": "down" }],
   "counted": 1,
   "findings": [
+    { "id": "call-timeout:call", "rule": "call-timeout", "severity": "suggestion", "target": "call", "elements": ["call", "caller", "partner"] },
+    { "id": "call-timeout:sibling-call", "rule": "call-timeout", "severity": "suggestion", "target": "sibling-call", "elements": ["sibling-call", "caller", "sibling"] },
     {
       "id": "dropped:caller",
       "rule": "dropped",
@@ -43,9 +45,11 @@
   ],
   "agentReport": {
     "findings": [
+      { "id": "call-timeout:call", "rule": "call-timeout", "severity": "suggestion", "title": "No timeout on the call to Partner scoring API", "message": "If it stalls, every thread waits.", "targets": ["call", "caller", "partner"] },
+      { "id": "call-timeout:sibling-call", "rule": "call-timeout", "severity": "suggestion", "title": "No timeout on the call to Partner scoring API", "message": "If it stalls, every thread waits.", "targets": ["sibling-call", "caller", "sibling"] },
       { "id": "dropped:caller", "rule": "dropped", "severity": "suggestion", "title": "Failed messages to Decision service are lost", "message": "Decision service fails some of what it's sent, and nothing delivers it again: there's no queue or topic in front of it to redeliver.", "targets": ["caller"], "evidence": ["12 dropped in “Blocking”"] }
     ],
-    "summary": "0 warnings, 1 suggestion.",
+    "summary": "0 warnings, 3 suggestions.",
     "simulations": "Played 1 saved simulation (at most 60 s each). On purpose, not findings: 12 dropped at partner in “Blocking”."
   }
 }

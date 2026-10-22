@@ -79,10 +79,14 @@ test("Add a timeout names the saved simulation and edge, exposes the override, a
   await gotoLive(page, "./?view=canvas&example=slow-payment-provider&live=1&paused=1&sim=no-timeouts");
   await pauseClock(page);
   await page.getByTestId("live-play").click();
-  await page.clock.runFor(15000);
+  // The first complete diagnosis window is enough; assert the same fix earlier rather than replaying extra frames.
+  await page.clock.runFor(11000);
   await page.getByTestId("live-play").click();
   await expect(page.getByTestId("trouble-callout")).toHaveAttribute("data-kind", "threads-exhausted");
   await expect(page.getByTestId("trouble-detail")).toContainText("gave up after 5 s (504)");
+  // The callout offers Events until the checks worker's same-seed replay confirms the fix (real time, not the page's
+  // clock): press the confirmed Add a timeout, never the Events it replaces.
+  await expect(page.getByTestId("trouble-action")).toHaveAttribute("data-action", "add-timeout");
   await page.getByTestId("trouble-action").focus();
   await page.keyboard.press("Enter");
   await expect(page.getByTestId("toast")).toContainText(
@@ -112,7 +116,7 @@ test("Scale on busy threads keeps selection, focuses the changed target, and sup
   await page.getByTestId("planning-more-toggle").focus();
   await page.keyboard.press("Enter");
   await expect(page.getByTestId("planning-contributors")).toBeVisible();
-  const fix = page.getByTestId("inspector-check-fix-capacity:caller");
+  const fix = page.getByTestId("inspector-check-fix-blocked-threads:caller");
   await expect(fix).toHaveText("Scale on busy threads");
   await fix.focus();
   await fix.press("Enter");
@@ -120,7 +124,10 @@ test("Scale on busy threads keeps selection, focuses the changed target, and sup
   const target = page.getByTestId("autoscaling-target");
   await expect(target).toBeFocused();
   await expect(target).toHaveAccessibleName("Busy threads (% of threads per pod)");
-  await expect(page.getByTestId("inspector-findings")).toHaveCount(0);
+  await expect(page.getByTestId("inspector-check-row-blocked-threads:caller")).toHaveCount(0);
+  await expect(page.getByTestId("inspector-check-row-scaling-blind:caller")).toHaveCount(0);
+  await expect(page.getByTestId("inspector-findings").getByTestId(/^inspector-check-row-/)).toHaveCount(1);
+  await expect(page.getByTestId("inspector-check-row-call-timeout:call")).toBeVisible();
   await page.keyboard.press("Tab");
   await expect(page.getByTestId("autoscaling-busy-unit-utilization")).toBeFocused();
   await page.keyboard.press("ArrowRight");

@@ -74,7 +74,11 @@ export function ChecksCardView({
       result={state.result}
       state={state}
       top={top}
-      onMount={onMount}
+      onMount={() => {
+        onMount();
+        // The card's code arrived (on a Retry, too): a check that couldn't download its own code runs again.
+        store.retryFailed();
+      }}
       onClose={() => checksPanel.close()}
       simulations={{ view: state.evidence, run: store.runSimulations, stop: store.stopSimulations }}
     />

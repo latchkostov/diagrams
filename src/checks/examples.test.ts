@@ -22,9 +22,13 @@ const bySlug = Object.fromEntries(
 );
 
 const EXPECTED: Record<string, string[]> = {
-  "scale-on-busy-threads": ["warning capacity:applications", "warning capacity:caller"],
-  "slow-payment-provider": [],
-  "blocking-call": ["warning capacity:caller"],
+  "scale-on-busy-threads": [
+    "warning blocked-threads:caller",
+    "warning scaling-blind:caller",
+    "suggestion call-timeout:call",
+  ],
+  "slow-payment-provider": ["suggestion call-timeout:pay"],
+  "blocking-call": ["warning blocked-threads:caller", "warning scaling-blind:caller", "suggestion call-timeout:call"],
   "where-the-time-goes": [],
   "zone-outage-drill": [],
   "recommendations-feature-store": [],
@@ -95,10 +99,16 @@ describe("checks on the public examples", () => {
           f.id,
         ).toBe(false);
       }
-      if (f.scalingPlan?.kind === "busyThreads") {
+      if (f.scalingPlan?.kind === "busyThreads" || f.fix?.planLabel?.kind === "busyThreads") {
         // Sustained capacity credits the busy-thread fleet up to its maximum.
         const remaining = runChecks(applied.diagram).findings;
-        expect(remaining.map((g) => g.id)).toEqual([]);
+        expect(remaining.map((g) => g.id)).toEqual(
+          slug === "blocking-call" ? ["capacity:caller", "call-timeout:call"] : ["call-timeout:call"],
+        );
+        if (slug === "blocking-call") {
+          // Its slow 15 s controller still needs warm replicas for the saved run's startup backlog.
+          expect(remaining[0]).toMatchObject({ severity: "suggestion", scalingPlan: { kind: "min", to: 6 } });
+        }
       } else {
         expect(
           runChecks(applied.diagram).findings.map((g) => g.id),

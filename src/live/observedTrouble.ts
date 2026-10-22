@@ -12,7 +12,7 @@ import type { EdgeSimProps } from "../sim/types";
 import { waitingDetails } from "./waitingDetails";
 import type { Fault } from "../model/faults";
 import { resolveNodeProps } from "../sim/defaults";
-import { resolvedTiming } from "../sim/timing";
+import { requestResponseMs } from "../sim/timing";
 
 // What playback shows going wrong, whatever the plan says (docs/research/sim-flows-review.md, F-1, F-5, F-32): a node
 // that's down, a node losing messages, a broker whose lag keeps rising. The live callout reports it on its own, with
@@ -172,6 +172,10 @@ interface Shape {
   targets: Map<string, string>;
   deadlines: Map<string, number | undefined>;
   responses: Map<string, number>;
+  /** Each connection's network delay (one way), for playback's completion time (affordableTimeout). */
+  delays: Map<string, number>;
+  /** Each connection's callee latency jitter, for the same proposal Checks make. */
+  jitters: Map<string, number>;
   sources: Map<string, string>;
   incomingTimeouts: Map<string, string[]>;
   outgoingCalls: Map<string, string[]>;
@@ -186,15 +190,9 @@ function shapeOf(d: DiagramFile): Shape {
   const role = new Map(d.nodes.map((n) => [n.id, stencilRole(n.stencil)]));
   const nodes = new Map(d.nodes.map((n) => [n.id, n]));
   const plan = waitingDetails(d, Object.fromEntries(d.nodes.map((n) => [n.id, n.props ?? {}])));
-  const responses = new Map(
-    Array.from(new Set(d.edges.map((e) => e.to)), (id) => {
-      const target = nodes.get(id);
-      return [
-        id,
-        plan?.nodes.get(id)?.memoryResidenceMs ?? (target ? resolvedTiming(resolveNodeProps(d, target)).workMs : 0),
-      ] as const;
-    }),
-  );
+  const resolved = new Map(d.nodes.map((n) => [n.id, resolveNodeProps(d, n)]));
+  const compiled = compileTopology(d);
+  const endpoints = new Map(compiled.edges.map((e) => [e.id, e.endpointId]));
   const deadlines = new Map<string, number | undefined>();
   const callResponses = new Map(
     d.edges.map((e) => {
@@ -204,7 +202,14 @@ function shapeOf(d: DiagramFile): Shape {
       );
       return [
         e.id,
-        responses.get(e.to)! + 2 * (typeof e.props?.networkDelayMs === "number" ? e.props.networkDelayMs : 0),
+        resolved.has(e.to)
+          ? requestResponseMs(
+              resolved.get(e.to)!,
+              plan?.nodes.get(e.to),
+              endpoints.get(e.id),
+              typeof e.props?.networkDelayMs === "number" ? e.props.networkDelayMs : 0,
+            )
+          : 0,
       ];
     }),
   );
@@ -220,7 +225,6 @@ function shapeOf(d: DiagramFile): Shape {
     incoming.push(e.id);
     incomingTimeouts.set(e.to, incoming);
   }
-  const compiled = compileTopology(d);
   const deadLetterTargets = new Set<string>(),
     hasDeadLetterRoute = new Set<string>();
   for (const e of deadLetterRoutes(compiled).values())
@@ -250,6 +254,10 @@ function shapeOf(d: DiagramFile): Shape {
     incomingTimeouts,
     outgoingCalls,
     responses: callResponses,
+    jitters: new Map(d.edges.map((e) => [e.id, resolved.get(e.to)?.jitter ?? 0])),
+    delays: new Map(
+      d.edges.map((e) => [e.id, typeof e.props?.networkDelayMs === "number" ? e.props.networkDelayMs : 0]),
+    ),
     sources: new Map(d.edges.map((e) => [e.id, e.from])),
     cyclic: new Set([...(plan?.nodes ?? [])].filter(([, n]) => !Number.isFinite(n.threadHoldMs)).map(([id]) => id)),
   };
@@ -322,7 +330,13 @@ function troubles(frame: WatchedFrame, d: Shape, samples: readonly Sample[]): Tr
           before === undefined || total === undefined || elapsed <= 0
             ? 0
             : (Math.max(0, total - before) * 1000) / elapsed;
-        const deadlineMs = affordableTimeout(d.responses.get(edge) ?? 0, n.threads.slots, rate);
+        const deadlineMs = affordableTimeout(
+          d.responses.get(edge) ?? 0,
+          n.threads.slots,
+          rate,
+          d.delays.get(edge),
+          d.jitters.get(edge),
+        );
         const timeout = d.deadlines.get(edge) === undefined && stalled && deadlineMs !== undefined;
         const upstream = d.incomingTimeouts
           .get(id)

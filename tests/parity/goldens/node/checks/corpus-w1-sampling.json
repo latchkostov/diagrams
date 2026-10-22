@@ -7,12 +7,17 @@
     "shared-database",
     "entry-gateway",
     "capacity",
+    "blocked-threads",
+    "scaling-blind",
+    "call-timeout",
     "single-point",
     "secret-identity",
     "schema-registry"
   ],
   "off": [],
-  "findings": [],
+  "findings": [
+    { "id": "call-timeout:call", "rule": "call-timeout", "severity": "suggestion", "target": "call", "elements": ["call", "caller", "partner"] }
+  ],
   "ignored": [],
   "fixes": {}
 }
