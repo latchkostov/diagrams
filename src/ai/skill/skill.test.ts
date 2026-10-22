@@ -7,7 +7,7 @@ import { createHash } from "node:crypto";
 import { mkdtempSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync, existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { inflateRawSync } from "node:zlib";
+import { constants, deflateRawSync, inflateRawSync } from "node:zlib";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { generateSkillFiles, publicExamples, SKILL_DIR, specJson } from "../../../scripts/skill-gen";
 import { readSkill, withFresh, zipSkill } from "../../../scripts/skill-assets";
@@ -700,7 +700,7 @@ describe("share-link.mjs", () => {
 });
 
 describe("the downloadable skill", () => {
-  it("zips the skill folder deterministically, under livediagrams/", () => {
+  it("zips the skill folder deterministically, under livediagrams/", async () => {
     const files = readSkill();
     const names = files.map((f) => f.name);
     expect(names).toEqual(
@@ -712,14 +712,16 @@ describe("the downloadable skill", () => {
         "scripts/lib/viewer-template.html",
       ]),
     );
-    const zip = zipSkill(files);
+    const zip = await zipSkill(files);
     // Includes offline latency recorder/readout, markdown rendering and expanded shapes; retain download budget with headroom.
     expect(zip.length).toBeLessThan(835_000);
-    expect(zipSkill(readSkill()).equals(zip)).toBe(true);
+    expect((await zipSkill(readSkill())).equals(zip)).toBe(true);
     // Read the local file entries back.
     const out = new Map<string, string>();
+    let compressedSize = 0;
     for (let at = 0; zip.readUInt32LE(at) === 0x04034b50;) {
       const size = zip.readUInt32LE(at + 18);
+      compressedSize += size;
       const nameLength = zip.readUInt16LE(at + 26);
       const name = zip.subarray(at + 30, at + 30 + nameLength).toString("utf8");
       const start = at + 30 + nameLength + zip.readUInt16LE(at + 28);
@@ -729,7 +731,24 @@ describe("the downloadable skill", () => {
     expect([...out.keys()]).toEqual(names.map((name) => `livediagrams/${name}`));
     for (const file of files) expect(out.get(`livediagrams/${file.name}`)).toBe(file.data.toString("utf8"));
     expect(out.get("livediagrams/SKILL.md")).toBe(readFileSync(path.join(skill, "SKILL.md"), "utf8"));
-  });
+    // Compare against the old packager in the same run: preserve the 835 kB cap above while guarding real savings,
+    // rather than ratcheting the cap down and making every future engine feature scrape bytes again.
+    const zlibSize = files.reduce(
+      (total, file) =>
+        total +
+        Math.min(
+          ...[
+            {},
+            { memLevel: 6 },
+            { memLevel: 7 },
+            { memLevel: 9 },
+            { memLevel: 7, strategy: constants.Z_FILTERED },
+          ].map((options) => deflateRawSync(file.data, { level: 9, ...options }).length),
+        ),
+      0,
+    );
+    expect(zlibSize - compressedSize).toBeGreaterThanOrEqual(15_000);
+  }, 30_000);
 });
 
 /** The released viewer (`pnpm skill:release`, scripts/skill-viewer.ts), as committed. */
