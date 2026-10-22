@@ -2742,19 +2742,21 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
    * A deny rule delivers nothing and reserves no slot, so it's decided first: when it's the next ready route the dot
    * goes to it whole, whatever the consumers' or the group's room (as on master). Otherwise the next consumers with
    * room in turn (at most one per real request, up to the next deny rule, whose turn comes with the next dot) share
-   * the dot out (shareOut): equal parts capped by each consumer's prefetch room, what none has room for staying
-   * queued. Parallel routes to one consumer share its room, and the consumers share the group's. Each part, and a
-   * remainder left queued, keeps at least one real request (see deliverable); a dot of less than two goes whole to the
-   * next consumer with room, as every dot does at scale 1.
+   * the dot out (shareOut): equal parts capped by each route's room, what none has room for staying queued. A route's
+   * room is its consumer's prefetch window over that route (it depends on the route's travel time), as on master:
+   * parallel routes to one consumer each have their own (sharing one is a known gap, docs/backlog). The consumers
+   * share the group's room. Each part, and a remainder left queued, keeps at least one real request (see
+   * deliverable); a dot of less than two goes whole to the next consumer with room, as every dot does at scale 1.
    */
   function planDelivery(broker: Node, group: Group, message: Message): DeliveryPart[] {
     const size = sizeOf(message),
       count = group.edges.length;
     const groupRoom = group.limit - (group.active - group.offThread) * scale;
-    const rooms = new Map<Node, number>();
+    const rooms = new Map<Edge, number>();
     const roomOf = (edge: Edge) => {
-      let room = rooms.get(edge.to);
-      if (room === undefined) rooms.set(edge.to, (room = Math.min(groupRoom, consumerRoom(broker, group, edge))));
+      let room = rooms.get(edge);
+      if (room === undefined)
+        rooms.set(edge, (room = Math.max(0, Math.min(groupRoom, consumerRoom(broker, group, edge)))));
       return room;
     };
     const most = size < 2 ? 1 : Math.floor(size + 1e-9);
@@ -2777,11 +2779,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       picked[0].part = deliverable(size, roomOf(picked[0].edge));
       return picked;
     }
-    // Each consumer's room counts once, however many of its routes were picked; its routes share it.
-    const routes = new Map<Node, number>();
-    for (const p of picked) routes.set(p.edge.to, (routes.get(p.edge.to) ?? 0) + 1);
     let capacity = 0;
-    for (const node of routes.keys()) capacity += Math.max(0, rooms.get(node)!);
+    for (const p of picked) capacity += roomOf(p.edge);
     const total = deliverable(size, Math.min(capacity, groupRoom));
     if (!total) return [];
     // One recipient takes it all: deliverable already allows its overshoot of less than one real request.
@@ -2791,7 +2790,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     }
     const { parts, left } = shareOut(
       total,
-      picked.map((p) => Math.max(0, rooms.get(p.edge.to)!) / routes.get(p.edge.to)!),
+      picked.map((p) => roomOf(p.edge)),
     );
     picked.forEach((p, i) => (p.part = parts[i]));
     // No room took a whole request: the roomiest consumer takes it, overshooting by less than one, as one would.

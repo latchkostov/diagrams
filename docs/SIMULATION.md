@@ -249,7 +249,7 @@ accept parallel work; no ineffective new controls are shown.
   real request) and the backlog stays at the broker, as at scale 1. Competing consumers share a dot: the next ones in
   round-robin order (at most one per real request) take max-min fair parts capped by their windows (`shareOut` in
   `src/sim/brokerDelivery.ts`: equal, what a capped one can't take going to the others equally, so route order
-  doesn't matter), as scale 1 alternates a burst's members, and parallel routes to one consumer share its window. A
+  doesn't matter), as scale 1 alternates a burst's members, and the consumers share a group's room. Each route's room is its consumer's window over that route, as on master (it depends on the route's travel time), so parallel routes to one consumer each have their own: a known gap at sampling scales ([backlog](backlog/2026-10-22-sampling-shared-prefetch-across-routes.md)). A
   deny route is decided before any capacity: when it's the next ready route it takes the dot whole, whatever the
   consumers' or the group's room. Stores and gateways serve a dot as one message,
   so their window counts dots. A non-processor target with
