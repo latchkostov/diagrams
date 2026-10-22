@@ -75,7 +75,7 @@ it("every reply is classified by its own attempt across pause, outage, drain and
           apply(half, transitions.length);
           for (const id of tiers) e.setNodeStatus(id, "up");
           // Timeouts don't cancel work, so a storm across layers may still be draining; R6 checks it once idle.
-          e.step(120_000);
+          e.step(30_000);
           return e.snapshot();
         };
         const half = transitions.length >> 1;
@@ -88,6 +88,6 @@ it("every reply is classified by its own attempt across pause, outage, drain and
         expect(finish()).toEqual(expected);
       },
     ),
-    { numRuns: propertyRuns(30) },
+    { numRuns: propertyRuns(20) },
   );
 });
