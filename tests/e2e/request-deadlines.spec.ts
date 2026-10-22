@@ -110,6 +110,9 @@ for (const disabled of [false, true]) {
   test(`the callout adds a timeout as one undo step (saved no-timeout override: ${disabled})`, async ({ page }) => {
     const d = waitingFixture();
     d.nodes[1].props = { ...d.nodes[1].props, concurrency: 100 };
+    // A timeout is offered only once a replay of the diagram's own (free-play) traffic shows it keeps every normal
+    // reply: give the source the simulation's rate, so there are calls to judge it by.
+    d.nodes[0].props = { ...d.nodes[0].props, ratePerSec: 120 };
     if (disabled) d.edges[1].props = { ...d.edges[1].props, caller: { deadlineMs: 600 } };
     d.simulations = [
       {

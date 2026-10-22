@@ -42,7 +42,19 @@ export const TIMEOUT_REPLAY_MS = 10_000;
  * proposes the deadline; playback's own timing (ticks, jitter, every downstream stage) decides. Checks and the live
  * callout's Add a timeout both ask this, with the same inputs, so they agree.
  */
-export function timeoutKeepsReplies(
+export function timeoutKeepsReplies(...args: Parameters<typeof timeoutReplay>): boolean {
+  const replay = timeoutReplay(...args);
+  return !!replay && replay.settled && replay.delivered > 0 && replay.timedOut === 0 && replay.failed === 0;
+}
+
+/** Below this, a drained counter is zero: sampled occupancy leaves floating-point residue when it settles. */
+const RESIDUE = 1e-6;
+
+/**
+ * What timeoutKeepsReplies judges by: the replay's outcome for that call when it ends, or undefined when it couldn't
+ * run (over budget, refused). `settled`: the caller has nothing left to do and no call is pending.
+ */
+export function timeoutReplay(
   d: DiagramFile,
   /** The connection, or its id (then looked up: callers with many connections pass the connection). */
   call: string | { id: string; from: string },
@@ -52,14 +64,14 @@ export function timeoutKeepsReplies(
   freePlay?: () => Simulation,
   /** A message budget to share (the callout's verification shares one across all its replays). */
   messages: { remaining: number } = { remaining: THREAD_FIX_LIMITS.messages },
-): boolean {
+): { settled: boolean; delivered: number; timedOut: number; failed: number } | undefined {
   const edge = typeof call === "string" ? call : call.id;
   const caller = typeof call === "string" ? d.edges.find((e) => e.id === call)?.from : call.from;
-  if (!caller) return false;
+  if (!caller) return;
   // Calls issued until traffic stops reply or reach their deadline by then (two ticks for the last to land).
   const horizon = TIMEOUT_REPLAY_MS + deadlineMs + 2 * STEP;
   const work = threadFixWork(d.nodes.length, d.edges.length, horizon);
-  if (work > budget.work) return false;
+  if (work > budget.work) return;
   budget.work -= work;
   const base = freePlay ? freePlay() : freePlaySimulation(d);
   const sim: Simulation = {
@@ -67,7 +79,7 @@ export function timeoutKeepsReplies(
     durationMs: horizon,
     setup: { ...base.setup, edges: { [edge]: { caller: { deadlineMs } } } },
   };
-  if (startWork(d, sim) > THREAD_FIX_LIMITS.startWork) return false;
+  if (startWork(d, sim) > THREAD_FIX_LIMITS.startWork) return;
   try {
     const run = createHeadlessRun(d, sim, messages, {
       revision: 0,
@@ -77,17 +89,22 @@ export function timeoutKeepsReplies(
     advanceHeadless(run, TIMEOUT_REPLAY_MS);
     run.engine.setTraffic(false);
     advanceHeadless(run, horizon);
-    const calls = realSnapshot(run.engine.snapshot()).edges?.[edge];
-    const settled =
-      !!calls?.calls &&
-      calls.calls.inFlight === 0 &&
-      calls.calls.held === 0 &&
-      run.engine.measure({ node: caller, field: "backlog" }) === 0 &&
-      run.engine.measure({ node: caller, field: "inFlight" }) === 0;
-    return settled && calls.delivered > 0 && calls.calls!.timedOut === 0 && calls.calls!.failed === 0;
+    const state = realSnapshot(run.engine.snapshot()).edges?.[edge];
+    if (!state?.calls) return;
+    const drained = (n: number | undefined) => Math.abs(n ?? 0) < RESIDUE;
+    return {
+      settled:
+        drained(state.calls.inFlight) &&
+        drained(state.calls.held) &&
+        drained(run.engine.measure({ node: caller, field: "backlog" })) &&
+        drained(run.engine.measure({ node: caller, field: "inFlight" })),
+      delivered: state.delivered,
+      timedOut: state.calls.timedOut,
+      failed: state.calls.failed,
+    };
   } catch {
     // A refused or over-budget replay is no evidence for a timeout.
-    return false;
+    return;
   }
 }
 

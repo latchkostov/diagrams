@@ -168,3 +168,18 @@ fix or Show events. Checks and the callout share the rule. Regressions (each fai
 behind a one-connection pool, replies outliving the window (10 s and 9.5 s inner services), no completed reply (a 19 s
 inner service) and a caller still issuing calls when traffic stops. The payment example keeps its 600 ms. No golden
 changed.
+
+## Seventh round: the callout deadline e2e
+
+CI's `request-deadlines.spec.ts` "the callout adds a timeout as one undo step" got "Free the thread while waiting"
+instead of "Add a timeout" (it already did on 159c61f9). Its fixture is `waitingFixture`, whose source has no rate
+of its own (`ratePerSec: 0`); the traffic comes only from the saved simulation. Free play therefore makes no calls,
+so the replay that must show a timeout keeps every normal reply has nothing to judge by: inconclusive, by the rule,
+and the callout offers its next confirmed fix. The rule is right; the fixture now gives the source the simulation's
+rate (120/s), so free play exercises the call, and the test's assertions are unchanged (Add a timeout, 600 ms, one
+undo step).
+
+The replay now also treats a counter within 1e-6 of zero as drained (sampled pool occupancy keeps floating-point
+residue after the last call settles), and reports its outcome separately (`timeoutReplay`), so tests pin each
+condition: a drained sampled pool counts as settled, an unsettled replay with zero timeouts is rejected, and failed
+replies without timeouts are rejected (no fix, no deadline).

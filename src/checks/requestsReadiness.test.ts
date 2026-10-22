@@ -8,7 +8,7 @@ import busy from "../examples/scale-on-busy-threads.json";
 import { agentReport } from "./report";
 import * as timeout from "../live/affordableTimeout";
 import { affordableTimeout, playbackResponseMs } from "../live/affordableTimeout";
-import { freePlaySimulation, timeoutKeepsReplies } from "../live/threadFixPlan";
+import { freePlaySimulation, timeoutKeepsReplies, timeoutReplay } from "../live/threadFixPlan";
 import { advanceHeadless, createHeadlessRun } from "../sim/headless";
 import { realSnapshot } from "../sim/units";
 import payment from "../examples/slow-payment-provider.json";
@@ -799,5 +799,43 @@ describe("timeout verification is conservative", () => {
     const d = payment as DiagramFile;
     const finding = runChecks(d, { rules: ["call-timeout"] }).findings.find((f) => f.id === "call-timeout:pay");
     expect(finding?.fix?.ops).toEqual([{ op: "update", target: "pay", props: { caller: { deadlineMs: 600 } } }]);
+  });
+});
+
+describe("timeout replay outcomes", () => {
+  it("a fully drained sampled pool counts as settled", () => {
+    // 600 req/s, 40 caller threads, 13 pooled connections and a healthy 10 ms API: occupancy drains to residue.
+    const d = waitingFixture();
+    d.nodes[0].props!.ratePerSec = 600;
+    d.nodes[1].props = { replicas: 1, concurrency: 40, latencyMs: 0, jitter: 0 };
+    d.nodes[2].props = { latencyMs: 10, api: { latencyMs: 10 }, jitter: 0 };
+    d.edges[1].props = { caller: { poolConnections: 13 } };
+    const replay = timeoutReplay(d, "call", 60, { work: Infinity });
+    expect(replay).toMatchObject({ settled: true, timedOut: 0, failed: 0 });
+    expect(replay!.delivered).toBeGreaterThan(0);
+    expect(timeoutKeepsReplies(d, "call", 60, { work: Infinity })).toBe(true);
+  });
+
+  it("rejects an unsettled replay with zero timeouts", () => {
+    // 100 req/s into four threads held 260 ms: a 1,000 ms deadline ends with queued work and pending calls.
+    const d = exhausted();
+    const replay = timeoutReplay(d, "call", 1000, { work: Infinity });
+    expect(replay).toMatchObject({ settled: false, timedOut: 0, failed: 0 });
+    expect(replay!.delivered).toBeGreaterThan(0);
+    expect(timeoutKeepsReplies(d, "call", 1000, { work: Infinity })).toBe(false);
+  });
+
+  it("withholds a timeout when replies fail without timing out", () => {
+    const d = waitingFixture();
+    d.nodes[0].props!.ratePerSec = 1;
+    d.nodes[2].props = { ...d.nodes[2].props, failureRate: 1 };
+    const replay = timeoutReplay(d, "call", 3000, { work: Infinity });
+    expect(replay).toMatchObject({ settled: true, timedOut: 0 });
+    expect(replay!.failed).toBeGreaterThan(0);
+    expect(timeoutKeepsReplies(d, "call", 3000, { work: Infinity })).toBe(false);
+    const finding = runChecks(d, { rules: ["call-timeout"] }).findings[0];
+    expect(finding.id).toBe("call-timeout:call");
+    expect(finding.fix).toBeUndefined();
+    expect(finding.requestFinding?.deadline).toBeUndefined();
   });
 });
