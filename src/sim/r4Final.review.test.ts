@@ -36,7 +36,8 @@ it("R4 final: a reserved first wave cannot execute on the whole ten-replica coho
   function completion(scale: number) {
     const e = createEngine({ scale, maxParticles: 0, verifyResources: assertResourceInvariants });
     e.load(partialCallee());
-    e.inject("partner", 1);
+    // Through its caller: a dot a caller awaits is not split, so its partial reservation runs in waves.
+    e.inject("source", 1);
     for (let tick = 0; tick < 200 && !e.snapshot().nodes.partner.processed; tick++) e.step(STEP);
     expect(e.snapshot().nodes.partner.processed).toBe(1);
     return e.metrics().time;
@@ -78,14 +79,18 @@ it("R4 final: retry backlog cannot lend its fleet CPU rate to the new first wave
   });
   e.load(d);
   e.inject("source", 1);
+  // The worker's one admission slot splits the dot (sampling 8a): one request is admitted and nine refused, as at
+  // scale 1. A one-request part runs its first wave and its retry backlog on one replica, so the backlog never has a
+  // fleet's rate to lend: the narrow first wave over a ten-replica cohort this pinned no longer forms here.
+  // assertResourceInvariants still bounds every first wave's CPU by its reserved weight, here and wherever one forms.
   for (let tick = 0; tick < 200 && !e.snapshot().nodes.caller.failed; tick++) e.step(STEP);
-  expect(e.snapshot().nodes.caller.failed).toBe(1);
+  expect(e.snapshot().nodes.caller).toMatchObject({ failed: 0.1, rejected: 0.9 });
   e.step(STEP);
-  expect(competing).toBe(true);
+  expect(competing).toBe(false);
   e.setNodeProps("partner", { api: { latencyMs: 10, errorRate: 0 } });
   e.step(5000);
-  expect(cpu).toBeCloseTo(2000);
-  expect(e.snapshot().nodes.caller).toMatchObject({ processed: 1, failed: 1 });
+  expect(cpu).toBeCloseTo(200);
+  expect(e.snapshot().nodes.caller).toMatchObject({ processed: 0.1, failed: 0.1 });
   expect(e.metrics().inSystem).toBe(0);
 });
 
@@ -109,7 +114,10 @@ it("R4 final: a numbered replica CPU tail expires at grace after paused partial 
   e.setNodeProps("partner", { api: { maxInFlight: 2, latencyMs: 0 } });
   e.setScale(10);
   e.setNodeStatus("partner", "paused");
-  e.inject("partner", 1);
+  // Through its caller: a dot a caller awaits is not split by the throttle, so it is admitted in part while paused.
+  e.inject("caller", 1);
+  for (let tick = 0; tick < 100 && !e.snapshot().nodes.partner.backlog; tick++) e.step(STEP);
+  expect(e.snapshot().nodes.partner.backlog).toBeGreaterThan(0);
   e.setScale(1);
   e.setNodeStatus("partner", "up");
   for (let tick = 0; tick < 200 && !e.snapshot().nodes.partner.processed; tick++) e.step(STEP);

@@ -27,6 +27,11 @@ Generated parent: seed `20261018`, path `0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:2:2`.
 
 ## Managed request admission
 
+Resolved in sampling 8a at 1.01, 1.1 and 2 (the throttle split plus settlement before arrivals): 662 / 1,335.79
+against 662 / 1,335 at 1.01, 635 / 1,362.7 against 635 / 1,362 at 1.1, and 499 / 1,498 exactly at 2. Scale 2.5 is an
+accepted known gap (owner decision, 2026-10-22): 399 / 1,597.5 against 599 / 1,398
+([backlog](2026-10-22-sampling-managed-admission-bursts.md)). The text below is the original report.
+
 A fixed one-slot Lambda caller, 10 ms API work, one connection and a zero-work service callee,
 fed by a queue: same-arrivals scale 1 completes 662 (continuous: 666); scale 1.01 completes 399.96 after the PR 2 turnaround correction (previously 335.32).
 Allowed difference: 15.26. At scale 2.5 the same-arrivals reference is 599 versus 500 sampled (previously 400).

@@ -4,11 +4,12 @@ Found when #236 (retries) merged into 8a-pre. The fixture: a queue feeds a four-
 (`brokerUnits.test.ts`, "retries of a broker's parts"). The caller retries twice, then the queue redelivers. It uses
 `resilienceFixture`'s 200 ms deadline and exponential backoff, at 100 real requests/s for 15 s.
 
-| Backoff  | Scale | Scale 1 attempts | Sampled attempts | I1                                            |
-| -------- | ----: | ---------------: | ---------------: | --------------------------------------------- |
-| jittered |     2 |            8,870 |            8,824 | passes                                        |
-| fixed    |    10 |            8,804 |            8,756 | passes                                        |
-| jittered |    10 |            8,835 |            8,622 | fails (partner.failed 196 apart, bound 195.5) |
+| Backoff                            | Scale | Scale 1 attempts | Sampled attempts | I1                                            |
+| ---------------------------------- | ----: | ---------------: | ---------------: | --------------------------------------------- |
+| jittered                           |     2 |            8,870 |            8,824 | passes                                        |
+| fixed                              |    10 |            8,804 |            8,756 | passes                                        |
+| jittered                           |    10 |            8,835 |            8,622 | fails (partner.failed 196 apart, bound 195.5) |
+| jittered, with 8a's throttle split |    10 |            8,835 |            8,627 | passes, just inside the bound                 |
 
 At scale 10 the sampled run is about 2% low on every seed tried (1, 7, 17, 42, 99). Master's whole dots read 8,870
 (seed 7) and are unbiased. The bias appears only where the caller is saturated: a two-slot caller is 0.7% low, and an
@@ -19,4 +20,4 @@ part runs on a stretched grant and its calls back off together on one jitter dra
 grant's turnover under a jittered backoff and the draw per part rather than per request. Both need a closer look
 alongside the managed-admission and blocking-call gaps.
 
-Pinned: an `it.fails` with I1 and an exact pin (8,835 / 8,622).
+Pinned: on 8a-pre an `it.fails` with I1 and an exact pin (8,835 / 8,622). On 8a the I1 check passes and the pin reads 8,835 / 8,627, but the 2% bias stays.

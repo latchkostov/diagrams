@@ -469,13 +469,14 @@ it.each([
   expectScaleEquivalent(runs.baseline, runs.sampled, Math.min(...runs.pools));
 });
 // Named gap (docs/backlog/2026-10-22-sampling-retries-saturated-caller.md): with jittered backoff at scale 10, the
-// saturated four-slot caller finishes about 2% fewer attempts than scale 1 (8,622 against 8,835, seed 7; 2% low on
-// every seed tried), just outside I1. Master, which hands the caller whole dots on stretched grants, reads 8,870.
-it.fails("retries of a broker's parts keep scale 1's attempts with jittered backoff (scale 10, known gap)", () => {
+// saturated four-slot caller finishes about 2% fewer attempts than scale 1 (8,627 against 8,835, seed 7; 2% low on
+// every seed tried). 8a-pre read 8,622, just outside I1; with the throttle split it is just inside, and the bias stays.
+// Master, which hands the caller whole dots on stretched grants, reads 8,870.
+it("retries of a broker's parts stay within I1 with jittered backoff (scale 10)", () => {
   const runs = retriedParts(10, "jitter");
   expectScaleEquivalent(runs.baseline, runs.sampled, Math.min(...runs.pools));
 });
 it("retries of a broker's parts with jittered backoff at scale 10 (pin of the known gap)", () => {
   const runs = retriedParts(10, "jitter");
-  expect([attempts(runs.baseline), attempts(runs.sampled)]).toEqual([8835, 8622]);
+  expect([attempts(runs.baseline), attempts(runs.sampled)]).toEqual([8835, 8627]);
 });

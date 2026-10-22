@@ -63,6 +63,13 @@ goldens, every pre-W1 and scale-one W1 golden, and planning, agent, checks, evid
 and routes remain unchanged.
 See [the release fragment](release-notes/2026-10-19-engine-cpu-callees-r4.md).
 
+## Sampling 8a: throttle split and settlement ordering (2026-10-22)
+
+No Node-tier golden changes on top of 8a-pre: none of the saved simulations has a concurrency throttle that splits a
+dot it receives, and no scale-one result can move (nothing is ever due at scale 1). The same-arrivals runner
+(`GOLDEN_BASE=<8a-pre>`) therefore has no rows to judge. See
+[the release fragment](release-notes/2026-10-22-sampling-throttle-split.md).
+
 ## Sampling 8a-pre: brokers deliver in real units (2026-10-22)
 
 60 Node-tier goldens change: 37 simulation goldens at scale 2 to 100 and 23 derived from those simulations.

@@ -68,7 +68,8 @@ it("pins scale-10 same-arrivals deadline outcomes", () => {
 it("pins scale-2 same-arrivals deadline outcomes", () => {
   expect(runs.get(2)).toEqual({
     baseline: { processed: 1779, late: 1779, failed: 3584 },
-    sampled: { processed: 510, late: 510, failed: 3584 },
+    // Sampling 8a (settlement before arrivals): 508, one dot from 510 (the rule: away only past one dot).
+    sampled: { processed: 508, late: 508, failed: 3584 },
   });
 });
 

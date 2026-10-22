@@ -190,6 +190,28 @@ function separateAdmission(lease: AdmissionLease, slot?: string): AdmissionLease
   };
 }
 
+/** Real requests of room left under every limit (Infinity without one). */
+function roomOf(state: AdmissionState, limits: ReadonlyMap<string, number>): number {
+  let room = Infinity;
+  for (const [key, cap] of limits) room = Math.min(room, cap - (state.inFlight.get(key) ?? 0));
+  return room;
+}
+
+/**
+ * The throttle split, at one instant at scale > 1: a concurrency limit with room for w < N real
+ * requests admits a partial dot of w, held at full weight (no stretch), and refuses a sibling partial
+ * dot of N - w, as scale 1 admits w members of the burst and rejects the rest. A dot that fits is never
+ * split. Null: room for less than min(1, N) real requests, so the whole dot is refused. Shortfalls in
+ * execution slots queue instead (stretch), and token-bucket quotas stay whole-dot. Shared by admission,
+ * queue-limit shedding and half-open probes.
+ */
+export function throttleSplit(represented: number, room: number): { admitted: number; refused: number } | null {
+  // Packing a dot that fits (allocationWeight) would refuse requests an idle throttle admits at scale 1.
+  const admitted = room + 1e-9 >= represented ? represented : allocationWeight(represented, room);
+  if (!(admitted + 1e-9 >= Math.min(1, represented))) return null;
+  return { admitted, refused: represented - admitted > 1e-9 ? represented - admitted : 0 };
+}
+
 /** One capacity decision for fresh attempts, continuations and outage recovery. No side effects. */
 function allocate(
   state: AdmissionState,
@@ -200,8 +222,7 @@ function allocate(
     partial = true,
   }: { represented: number; maxWeight?: number; partial?: boolean },
 ): number | null {
-  let room = Infinity;
-  for (const [key, cap] of limits) room = Math.min(room, cap - (state.inFlight.get(key) ?? 0));
+  const room = roomOf(state, limits);
   let weight = partial ? allocationWeight(represented, room, maxWeight) : Math.min(represented, maxWeight, room);
   const minimum = Math.min(1, represented);
   if (weight + 1e-9 < minimum) return null;
@@ -495,8 +516,16 @@ export function attemptAdmission(
   partialOccupancy = false,
   retained?: AdmissionLeases,
   executionRoom = Infinity,
+  /** The caller can refuse a sibling partial dot (the throttle split) instead of stretching this one. */
+  split = false,
 ):
-  | { leases: AdmissionLeases & { thread: AdmissionLease }; latencyMs?: number; errorRate?: number }
+  | {
+      leases: AdmissionLeases & { thread: AdmissionLease };
+      latencyMs?: number;
+      errorRate?: number;
+      /** Real requests of a sibling partial dot this transaction refused (the throttle split). */
+      refused?: number;
+    }
   | { rejected: string; waiting?: boolean } {
   const compiled =
     state.compiled.get(policy.requirementsPolicy ?? policy)?.get(node) ?? compileNode(state, node, policy);
@@ -514,18 +543,27 @@ export function attemptAdmission(
   // A retry keeps existing occupancy even after a shrink. Newly added keys
   // still need capacity; keeping an old lease is not a new allocation.
   const held = new Set([...(retained?.request.keys ?? []), ...(retained?.thread?.keys ?? [])]);
-  const occupancy = allocate(state, new Map([...limits].filter(([key]) => !held.has(key))), {
-    represented: weight,
-    maxWeight: retained?.request.weight ?? weight,
-    partial: partialOccupancy && !retained,
-  });
+  const free = new Map([...limits].filter(([key]) => !held.has(key)));
+  // Every limit here refuses at scale 1 (node and endpoint maxInFlight, shared concurrency, and the
+  // slots key: a managed node's reserved concurrency), so a partial grant splits rather than stretches.
+  const part = split && partialOccupancy && !retained ? throttleSplit(weight, roomOf(state, free)) : undefined;
+  const occupancy =
+    part === undefined
+      ? allocate(state, free, {
+          represented: weight,
+          maxWeight: retained?.request.weight ?? weight,
+          partial: partialOccupancy && !retained,
+        })
+      : part && part.admitted;
   if (occupancy === null) return { rejected: "concurrency" };
-  if (!retained?.thread && executionRoom + 1e-9 < Math.min(1, weight))
+  const admitted = part ? part.admitted : weight;
+  if (!retained?.thread && executionRoom + 1e-9 < Math.min(1, admitted))
     return { rejected: "concurrency", waiting: true };
   const executionWeight = retained?.thread ? occupancy : Math.min(occupancy, executionRoom);
-  for (const { key, cost } of requirements) state.buckets.get(key)!.tokens -= weight * cost;
+  // A refused sibling never entered: like the members scale 1 rejects, it spends no quota.
+  for (const { key, cost } of requirements) state.buckets.get(key)!.tokens -= admitted * cost;
   const keys = [...call.limits.keys(), ...(slots === undefined ? [] : [compiled.slots])];
-  const reservation = reserveCallerOccupancy(weight, executionWeight);
+  const reservation = reserveCallerOccupancy(admitted, executionWeight);
   const leases = separateAdmission({ keys, ...reservation }, slots === undefined ? undefined : compiled.slots);
   if (retained) {
     // Quotas and policy validation succeeded before any existing occupancy changes.
@@ -543,6 +581,7 @@ export function attemptAdmission(
     leases,
     latencyMs: call.latencyMs,
     errorRate: call.errorRate,
+    refused: part?.refused,
   };
 }
 /** Release exactly the request and execution occupancy charged by the transaction. */

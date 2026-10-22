@@ -1,3 +1,4 @@
+import { roundDots } from "./units";
 import fc from "fast-check";
 import { resourceLesson } from "../model/autoscaling";
 import { expect, it } from "vitest";
@@ -332,7 +333,8 @@ class BackoffOutage implements fc.Command<Model, Real> {
       e.setNodeProps("sibling", { api: { latencyMs: 20, sharedConcurrency: "callers" } });
       e.setNodeStatus("sibling", "up");
       e.inject("sibling", 1);
-      expect(e.snapshot().nodes.sibling.rejected).toBe(0);
+      // The one shared slot admits one request of the dot; the throttle split refuses the rest, as at scale 1.
+      expect(e.snapshot().nodes.sibling.rejected).toBe(roundDots(Math.max(0, model.scale - 1) / model.scale));
       e.setNodeProps("tier0", { concurrency: this.cap, api: { ...api, maxInFlight: this.cap, errorRate: 0 } });
       expect(e.metrics().time).toBeLessThan(deadline!);
       e.setNodeStatus("tier0", "up");
@@ -365,7 +367,7 @@ it("generated shared callers recover from down/up during backoff", () => {
           const recovered = p.engine.snapshot().nodes.tier0;
           expect(recovered.processed).toBeGreaterThan(0);
           expect(recovered.failed).toBeGreaterThan(0);
-          expect(p.engine.snapshot().nodes.sibling.processed).toBe(1);
+          expect(p.engine.snapshot().nodes.sibling.processed).toBe(roundDots(Math.min(1, 1 / scale)));
         }
         hits++;
       },
