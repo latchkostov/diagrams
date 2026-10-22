@@ -17,6 +17,7 @@ import {
 } from "./resourceWork";
 import { resourceBudgetExceeded, MAX_LIFECYCLE_REPLICAS } from "../model/resourceBudget";
 import { validateAllocationActions } from "./allocation";
+import { shareOut } from "./brokerDelivery";
 import { t } from "../i18n/core";
 import { canDrainSampled, retainSampledDrains, releaseSampledDrains, sampledOwners } from "./sampledResources";
 import {
@@ -2735,87 +2736,71 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   }
 
   /**
-   * Where the dot at the front of `group` goes now: parts by connection, in real requests. Scale 1 hands a burst's
-   * members to the consumers with room one at a time, so the dot is shared out among the next consumers in
-   * round-robin order (at most one per real request; the cursor then moves past them, so every consumer takes its
-   * turn), in equal parts capped by each consumer's prefetch room, what one can't take going to the others and what
-   * none has room for staying queued. Parallel routes to one consumer share its room, and every consumer shares the
-   * group's. Each part, and a remainder left queued, keeps at least one real request (see deliverable); a dot of less
-   * than two goes whole to the next consumer with room, as every dot does at scale 1.
+   * Where the dot at the front of `group` goes now: parts by connection, in real requests. Routes take turns from the
+   * group's cursor, as at scale 1, and the cursor moves past the last that took a part.
+   *
+   * A deny rule delivers nothing and reserves no slot, so it's decided first: when it's the next ready route the dot
+   * goes to it whole, whatever the consumers' or the group's room (as on master). Otherwise the next consumers with
+   * room in turn (at most one per real request, up to the next deny rule, whose turn comes with the next dot) share
+   * the dot out (shareOut): equal parts capped by each consumer's prefetch room, what none has room for staying
+   * queued. Parallel routes to one consumer share its room, and the consumers share the group's. Each part, and a
+   * remainder left queued, keeps at least one real request (see deliverable); a dot of less than two goes whole to the
+   * next consumer with room, as every dot does at scale 1.
    */
   function planDelivery(broker: Node, group: Group, message: Message): DeliveryPart[] {
     const size = sizeOf(message),
       count = group.edges.length;
-    const used = new Map<Node, number>();
-    let usedByGroup = 0;
     const groupRoom = group.limit - (group.active - group.offThread) * scale;
-    const roomOf = (edge: Edge) =>
-      edge.deny
-        ? Infinity
-        : Math.min(groupRoom - usedByGroup, consumerRoom(broker, group, edge) - (used.get(edge.to) ?? 0));
-    const take = (p: DeliveryPart, part: number) => {
-      p.part += part;
-      if (p.edge.deny) return;
-      usedByGroup += part;
-      used.set(p.edge.to, (used.get(p.edge.to) ?? 0) + part);
+    const rooms = new Map<Node, number>();
+    const roomOf = (edge: Edge) => {
+      let room = rooms.get(edge.to);
+      if (room === undefined) rooms.set(edge.to, (room = Math.min(groupRoom, consumerRoom(broker, group, edge))));
+      return room;
     };
     const most = size < 2 ? 1 : Math.floor(size + 1e-9);
     const picked: DeliveryPart[] = [];
     for (let offset = 0; offset < count && picked.length < most; offset++) {
       const index = (group.cursor + offset) % count;
       const edge = group.edges[index];
-      if (cut(edge) || !accepts(edge, message) || (!edge.deny && edge.to.status !== "up")) continue;
+      if (cut(edge) || !accepts(edge, message)) continue;
+      if (edge.deny) {
+        if (picked.length) break;
+        return [{ index, edge, part: size }];
+      }
+      if (edge.to.status !== "up") continue;
       const room = roomOf(edge);
       if (size < 2 ? !deliverable(size, room) : room <= 1e-9) continue;
       picked.push({ index, edge, part: 0 });
     }
     if (!picked.length) return [];
     if (size < 2) {
-      take(picked[0], deliverable(size, roomOf(picked[0].edge)));
+      picked[0].part = deliverable(size, roomOf(picked[0].edge));
       return picked;
     }
-    // Each consumer's room counts once, however many of its routes were picked.
+    // Each consumer's room counts once, however many of its routes were picked; its routes share it.
+    const routes = new Map<Node, number>();
+    for (const p of picked) routes.set(p.edge.to, (routes.get(p.edge.to) ?? 0) + 1);
     let capacity = 0;
-    const counted = new Set<Node>();
-    for (const p of picked)
-      if (p.edge.deny) capacity = Infinity;
-      else if (!counted.has(p.edge.to)) {
-        counted.add(p.edge.to);
-        capacity += Math.max(0, consumerRoom(broker, group, p.edge));
-      }
+    for (const node of routes.keys()) capacity += Math.max(0, rooms.get(node)!);
     const total = deliverable(size, Math.min(capacity, groupRoom));
     if (!total) return [];
     // One recipient takes it all: deliverable already allows its overshoot of less than one real request.
     if (picked.length === 1) {
-      take(picked[0], total);
+      picked[0].part = total;
       return picked;
     }
-    let left = total,
-      shares = Math.min(picked.length, Math.floor(total + 1e-9));
-    for (const p of picked) {
-      if (!shares) break;
-      const part = Math.min(roomOf(p.edge), left / shares);
-      shares--;
-      if (part + 1e-9 < 1) continue;
-      take(p, part);
-      left -= part;
-    }
-    // What a capped consumer couldn't take goes to the others, in round-robin order.
-    for (const p of picked) {
-      if (left <= 1e-9) break;
-      const extra = Math.min(roomOf(p.edge), left);
-      if (extra <= 1e-9 || (!p.part && extra + 1e-9 < 1)) continue;
-      take(p, extra);
-      left -= extra;
-    }
+    const { parts, left } = shareOut(
+      total,
+      picked.map((p) => Math.max(0, rooms.get(p.edge.to)!) / routes.get(p.edge.to)!),
+    );
+    picked.forEach((p, i) => (p.part = parts[i]));
     // No room took a whole request: the roomiest consumer takes it, overshooting by less than one, as one would.
     if (left >= total - 1e-9) {
       const roomiest = picked.reduce((a, b) => (roomOf(b.edge) > roomOf(a.edge) ? b : a));
-      if (total - roomOf(roomiest.edge) < 1 - 1e-9) take(roomiest, total);
-      return picked.filter((p) => p.part > 0);
+      if (total - roomOf(roomiest.edge) < 1 - 1e-9) roomiest.part = total;
     }
     // A sliver no window has room for rides with the largest part rather than stay queued alone.
-    if (left > 1e-9 && (left < 1 - 1e-9 || size - (total - left) < 1 - 1e-9)) {
+    else if (left > 1e-9 && (left < 1 - 1e-9 || size - (total - left) < 1 - 1e-9)) {
       const largest = picked.reduce((a, b) => (b.part > a.part ? b : a));
       largest.part += left;
     }
@@ -2825,7 +2810,6 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   function pull(node: Node): void {
     if (node.status !== "up") return;
     for (const group of node.groups) {
-      // A deny rule delivers nothing and reserves no slot: it's ready even when the group's consumers are full.
       while (group.pending.length) {
         const message = group.pending.peek()!;
         const size = sizeOf(message);

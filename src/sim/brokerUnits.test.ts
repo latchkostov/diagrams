@@ -200,3 +200,29 @@ it("a scale change recounts the cached dot counters (a part's share is its real 
   // The first dot's ten real requests, then four whole dots of four.
   expect(realSnapshot(e.snapshot()).nodes.worker.processed).toBeCloseTo(26, 9);
 });
+
+// Review of #237 at 1e67b69f (P1): equal parts given in route order handed a narrow consumer's unused share to the
+// consumers after it only, so wide/narrow/wide at scale 100 finished 666.67 / 60 / 1,273.33 where scale 1 finishes
+// 970 / 60 / 970. Shares are max-min fair (shareOut), so they don't depend on route order.
+it.each([
+  ["wide/narrow/wide", ["a", "narrow", "b"]],
+  ["narrow/wide/wide", ["narrow", "a", "b"]],
+  ["wide/wide/narrow", ["a", "b", "narrow"]],
+])("competing consumers share a dot fairly whatever the route order (%s)", (_name, order) => {
+  const consumers = { a: worker("a", 150, 10), narrow: worker("narrow", 1, 100), b: worker("b", 150, 10) };
+  const processed = (scale: number) => {
+    const e = engine(scale);
+    e.load(queue(order.map((id) => consumers[id as keyof typeof consumers])));
+    for (let burst = 0; burst < 20; burst++) {
+      e.inject("source", 100 / scale);
+      e.step(100);
+    }
+    e.step(5000);
+    const nodes = realSnapshot(e.snapshot()).nodes;
+    return ["a", "narrow", "b"].map((id) => nodes[id].processed);
+  };
+  const [one, sampled] = [processed(1), processed(100)];
+  expect(one.reduce((x, y) => x + y)).toBe(2000);
+  expect(sampled[0]).toBeCloseTo(sampled[2], 6);
+  for (let i = 0; i < 3; i++) expect(Math.abs(sampled[i] - one[i]), `${sampled} against ${one}`).toBeLessThan(100);
+});
