@@ -1,5 +1,6 @@
 import payment from "../../src/examples/slow-payment-provider.json" with { type: "json" };
 import { waitingFixture } from "../../src/lab/waitingFixture";
+import { waitForBackgroundChecks } from "./checks-readiness";
 import {
   test,
   expect,
@@ -16,6 +17,9 @@ test("call fields take the first keyboard pass while planning downloads, with st
   page,
 }) => {
   const d = waitingFixture();
+  d.planning = { ...d.planning, requestRoutes: [] };
+  // Isolate planner arrival from the independent background Checks card's findings above the fields.
+  d.checks = { off: ["call-timeout"] };
   d.edges[1].props = { ...d.edges[1].props, caller: { poolConnections: 40 } };
   await page.addInitScript(({ key, d }) => localStorage.setItem(key, JSON.stringify(d)), {
     key: STORAGE_KEYS.autosavePrefix + "blocking-call",
@@ -48,6 +52,7 @@ test("call fields take the first keyboard pass while planning downloads, with st
     await expect(page.getByTestId("inspector-hint-poolConnections")).toBeVisible();
     await expect.poll(() => requested).toBe(true);
     const before = await pool.boundingBox();
+    expect(before).not.toBeNull();
     expect(await pool.evaluate((el) => getComputedStyle(el).borderStyle)).toBe("solid");
     await page.getByTestId("inspector-section-edge-advanced").click();
     await expect(page.getByTestId("inspector-prop-caller")).toHaveCount(0);
@@ -60,10 +65,15 @@ test("call fields take the first keyboard pass while planning downloads, with st
     const downloaded = page.waitForEvent("download");
     await page.getByTestId("image-export").click();
     expect((await downloaded).suggestedFilename()).toMatch(/\.svg$/);
+    await page.keyboard.press("Escape");
+    await pool.focus();
     release();
+    await expect(page.getByTestId("edge-request-route")).toBeVisible();
     await expect(pool).toHaveValue("40");
     // Loading the optional planner cannot shift the call controls after the user reaches them.
-    expect((await pool.boundingBox())?.height).toBe(before?.height);
+    const after = await pool.boundingBox();
+    expect(after).not.toBeNull();
+    expect(after).toEqual(before);
   } finally {
     release();
   }
@@ -117,6 +127,7 @@ test("Scale on busy threads keeps selection, focuses the changed target, and sup
   await page.keyboard.press("Enter");
   await expect(page.getByTestId("planning-contributors")).toBeVisible();
   const fix = page.getByTestId("inspector-check-fix-blocked-threads:caller");
+  await waitForBackgroundChecks(page);
   await expect(fix).toHaveText("Scale on busy threads");
   await fix.focus();
   await fix.press("Enter");
@@ -200,3 +211,31 @@ test("pool readouts scale in presentation across meeting sizes", async ({ page }
     await page.screenshot({ path: info.outputPath(`pool-presentation-${width}.png`) });
   }
 });
+
+for (const stencil of ["generic.service", "azure.logic-apps"]) {
+  test(`pool hover resolves omitted waiting policy for ${stencil}`, async ({ page }) => {
+    const d = waitingFixture();
+    d.nodes[0].props = { ...d.nodes[0].props, ratePerSec: 120 };
+    d.nodes[1].stencil = stencil;
+    d.nodes[1].props = { ...d.nodes[1].props, concurrency: 100 };
+    d.edges[1].props = { ...d.edges[1].props, caller: { poolConnections: 40 } };
+    await page.addInitScript(({ key, d }) => localStorage.setItem(key, JSON.stringify(d)), {
+      key: STORAGE_KEYS.autosavePrefix + "blocking-call",
+      d,
+    });
+    await page.clock.install();
+    await gotoLive(page, "./?view=canvas&example=blocking-call&live=1&paused=1");
+    await pauseClock(page);
+    await page.getByTestId("live-play").click();
+    await page.clock.runFor(1000);
+    await page.getByTestId("live-play").click();
+    await page.getByTestId("node-caller").hover();
+    const detail = page.getByTestId("pool-detail-call");
+    await expect(detail).toBeVisible();
+    if (stencil === "azure.logic-apps") await expect(detail).toContainText("no thread held");
+    else {
+      await expect(detail).toContainText("waiting on Partner scoring API");
+      await expect(detail).not.toContainText("no thread held");
+    }
+  });
+}

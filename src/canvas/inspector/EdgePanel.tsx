@@ -24,6 +24,7 @@ import { type EditorApi } from "../../editor/types";
 import { relationLabel } from "../../i18n/chrome";
 import { inferRelation } from "../../stencils/relations";
 import { revisionAtLeast } from "../../model/revisions";
+import { routingEnabled } from "../../model/requestRouting";
 
 const EdgeAdvanced = lazyComponent(() => import("./EdgeAdvanced").then((m) => m.EdgeAdvanced));
 
@@ -39,12 +40,15 @@ export function EdgePanel({ edge, editor, nodeLabel, meta }: InspectorProps & { 
   // A connection leaving a firewall is one of its rules: allow (the default) or deny.
   const rule = flow && isFirewallStencil(editor.getNode(edge.source)?.stencil);
   // Consumer groups exist only on edges out of a topic or stream; a dead-letter route only out of a broker.
-  const sourceStencil = editor.getNode(edge.source)?.stencil;
+  const source = editor.getNode(edge.source);
+  const sourceStencil = source?.stencil;
   const sourceRole = sourceStencil ? getStencil(sourceStencil).simRole : undefined;
   const fields = edgeSimFields(sourceRole);
   const grouped = flow && fields.group && props.dlq !== true;
   const deadLetters = flow && fields.dlq;
   const requestWait = flow && data.kind === "sync" && revisionAtLeast(meta.planning?.revision, "p3-w1");
+  const routeCaller =
+    data.kind === "sync" && (sourceRole === "source" || sourceRole === "processor" || sourceRole === "none");
   return (
     <>
       <Section>
@@ -90,16 +94,6 @@ export function EdgePanel({ edge, editor, nodeLabel, meta }: InspectorProps & { 
           />
         </Field>
         <RelationHint edge={edge} editor={editor} />
-        {flow && (
-          <EdgeRouteFields
-            editor={editor}
-            edgeId={edge.id}
-            planning={meta.planning}
-            caller={
-              data.kind === "sync" && (sourceRole === "source" || sourceRole === "processor" || sourceRole === "none")
-            }
-          />
-        )}
         {rule && (
           <Field
             label={t("inspector.firewallRule")}
@@ -198,6 +192,11 @@ export function EdgePanel({ edge, editor, nodeLabel, meta }: InspectorProps & { 
             />
           )}
         </Disclosure>
+      )}
+      {flow && routingEnabled(meta.planning) && (routeCaller || source?.props?.routeTable) && (
+        <Section>
+          <EdgeRouteFields editor={editor} edgeId={edge.id} planning={meta.planning} caller={routeCaller} />
+        </Section>
       )}
       <EdgeAdvanced edge={edge} editor={editor} data={data} props={props} flow={flow} rule={rule} merge={merge} />
     </>

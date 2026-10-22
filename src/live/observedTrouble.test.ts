@@ -43,6 +43,38 @@ function watch(d: DiagramFile, seconds: number, setup?: (e: ReturnType<typeof cr
 }
 
 describe("trouble seen in playback", () => {
+  it.each([0, 1])("the callout rejects tick-unsafe timeouts with %s ms network delay", (networkDelayMs) => {
+    const d = waitingFixture();
+    d.nodes[0].props!.ratePerSec = 150;
+    d.nodes[1].props = { replicas: 1, concurrency: 4, latencyMs: 0, jitter: 0 };
+    d.nodes[2].props = { latencyMs: 1, api: { latencyMs: 1 }, jitter: 0 };
+    d.edges[1].props = { networkDelayMs };
+    const watcher = new TroubleWatcher();
+    let seen: Trouble[] = [];
+    for (let second = 0; second <= 10; second++) {
+      seen = watcher.observe(
+        {
+          time: second * 1000,
+          nodes: {
+            caller: {
+              status: "up",
+              lag: {},
+              dropped: 0,
+              processed: 0,
+              inFlight: 4,
+              backlog: second * 150,
+              threads: { slots: 4, working: 0, waiting: 4, queued: 0, waitingOn: [["call", 4]] },
+            },
+          },
+        },
+        d,
+      );
+    }
+    expect(seen.find((t) => t.kind === "threads-exhausted")?.action).toEqual(
+      networkDelayMs ? { kind: "free-thread", edge: "call" } : { kind: "add-timeout", edge: "call", deadlineMs: 20 },
+    );
+  });
+
   it.each(["p3", "p3-w1"] as const)(
     "keeps per-edge timeout suggestions when sharing target timing at %s",
     (revision) => {
