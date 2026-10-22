@@ -146,7 +146,7 @@ const EVENT_CAP = 200;
 export class WorkBudgetError extends Error {}
 
 declare const __TEST_ORACLES__: boolean | undefined;
-/** Test-only engine options (EngineOptions.sameArrivals) fold out of shipped builds (vite.config.ts). */
+/** Test-only engine options (the verify hooks, sameArrivals) fold out of shipped builds (vite.config.ts). */
 const TEST_ORACLES = typeof __TEST_ORACLES__ === "boolean" && __TEST_ORACLES__;
 
 export const SOURCE_RATE_CAP = 10_000;
@@ -1663,7 +1663,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
 
   function decide(a: Attempt<Message>, ok: boolean, code?: number, at = time): void {
     settleOnce(a, ok, code, at);
-    if (opts.verifyOutcomes) outcomeChecks.set(a.id, a);
+    if (TEST_ORACLES && opts.verifyOutcomes) outcomeChecks.set(a.id, a);
   }
 
   /** All terminal paths use the same write-once commitment, preserving their own effects. */
@@ -3259,7 +3259,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     earlyPoolWakes = new Set();
     for (const node of nodes.values()) {
       node.cpuTick =
-        opts.verifyResources && node.fleet
+        TEST_ORACLES && opts.verifyResources && node.fleet
           ? {
               before: node.fleet.totalCpu,
               capacityMs:
@@ -3567,45 +3567,47 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       node.throughput += EWMA_ALPHA * ((node.completedThisStep * 1000) / STEP - node.throughput);
       node.completedThisStep = 0;
     }
-    opts.verifyResources?.({
-      nodes: [...nodes.values()].map((node) => ({
-        ...node,
-        executionLedger: execution.usesLedger(node),
-        working: resourceWork(node),
-        pending: queuedWork(node),
-        queue: node.pending,
-        workQueues: { working: node.working, pending: queuedWork(node), takeovers: node.takeovers },
-      })),
-      time,
-      scale,
-      capacityMultiplier,
-      partBudget,
-      ledger: ledger.state,
-      admission: {
-        inFlight: admission.inFlight,
-        limits: admissionLimits(admission),
-        retainedExcess: admission.retainedExcess,
-        leases: [
-          ...ledger.state.reservations.values(),
-          ...[...nodes.values()].flatMap((node) =>
-            [...liveWork(node)].flatMap((work) =>
-              [work.lease, work.threadLease].filter((lease): lease is AdmissionLease => !!lease),
+    if (TEST_ORACLES)
+      opts.verifyResources?.({
+        nodes: [...nodes.values()].map((node) => ({
+          ...node,
+          executionLedger: execution.usesLedger(node),
+          working: resourceWork(node),
+          pending: queuedWork(node),
+          queue: node.pending,
+          workQueues: { working: node.working, pending: queuedWork(node), takeovers: node.takeovers },
+        })),
+        time,
+        scale,
+        capacityMultiplier,
+        partBudget,
+        ledger: ledger.state,
+        admission: {
+          inFlight: admission.inFlight,
+          limits: admissionLimits(admission),
+          retainedExcess: admission.retainedExcess,
+          leases: [
+            ...ledger.state.reservations.values(),
+            ...[...nodes.values()].flatMap((node) =>
+              [...liveWork(node)].flatMap((work) =>
+                [work.lease, work.threadLease].filter((lease): lease is AdmissionLease => !!lease),
+              ),
             ),
-          ),
-        ],
-      },
-    });
-    opts.verifyLedger?.({
-      time,
-      ledger: ledger.state,
-      nodes: nodes.values(),
-      edges,
-      inSystem,
-      admissionInFlight: admission.inFlight,
-      partBudget,
-      logical,
-    });
-    if (opts.verifyOutcomes) {
+          ],
+        },
+      });
+    if (TEST_ORACLES)
+      opts.verifyLedger?.({
+        time,
+        ledger: ledger.state,
+        nodes: nodes.values(),
+        edges,
+        inSystem,
+        admissionInFlight: admission.inFlight,
+        partBudget,
+        logical,
+      });
+    if (TEST_ORACLES && opts.verifyOutcomes) {
       for (const call of calls.values()) outcomeChecks.set(call.attempt.id, call.attempt);
       opts.verifyOutcomes({ time, attempts: [...outcomeChecks.values()] });
       outcomeChecks.clear();

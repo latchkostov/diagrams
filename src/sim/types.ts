@@ -477,6 +477,7 @@ export interface SimEngine {
 export interface EngineOptions {
   onLoss?: (loss: LossProvenance) => void;
   /** Optional per-step diagnostic; excluded from ordinary playback. */
+  /** Test-only verify hooks (Vitest only; folded out of shipped builds with __TEST_ORACLES__). */
   verifyResources?: (state: import("./resourceInvariants").ResourceState) => void;
   verifyLedger?: (state: import("./resourceInvariants").LedgerInvariantState) => void;
   /** Per-step write-once attempt diagnostic; excluded from ordinary playback. */
