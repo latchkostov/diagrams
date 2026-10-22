@@ -123,3 +123,11 @@ and its key press; under load, the worker's start-up plus the replay used it up.
 - The test waits for the confirmed `add-timeout` action before pressing it; every assertion after it is unchanged.
   Under load (all `requests-wait*` specs, three times, production build) it passes 147/147; without the wait it
   failed twice in the same run, with Events pressed.
+
+## Skill download after merging #232
+
+Merging master's #232 (master alone: 834,880 B) took the skill ZIP to 835,588 B against the unchanged 835,000 B
+cap. Packaging now also tries filtered matching (memory level 7) for each entry and keeps the smallest lossless
+stream, as it already did for hash-table sizes: the icon catalog's many similar SVG paths compress about 1.5 kB
+smaller. The archive is 834,096 B with identical names, timestamps, CRCs and decompressed contents; no skill text
+was removed and no budget raised.

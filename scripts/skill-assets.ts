@@ -9,7 +9,9 @@
 
 import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
-import { crc32, deflateRawSync } from "node:zlib";
+import { constants, crc32, deflateRawSync } from "node:zlib";
+
+const { Z_FILTERED } = constants;
 import type { ServerResponse } from "node:http";
 import type { Plugin } from "vite";
 import { RELEASED, releasedFiles } from "./skill-viewer";
@@ -64,10 +66,10 @@ export function zipSkill(files: SkillFile[], folder = SKILL_NAME): Buffer {
   for (const f of files) {
     const name = Buffer.from(`${folder}/${f.name}`, "utf8");
     let body = deflateRawSync(f.data, { level: 9 });
-    // The viewer and icon catalog compress best with different hash-table sizes.
-    // Keep the smallest lossless stream per entry; ties retain the default bytes.
-    for (const memLevel of [6, 7, 9]) {
-      const candidate = deflateRawSync(f.data, { level: 9, memLevel });
+    // The viewer and icon catalog compress best with different hash-table sizes (and the icons' many similar SVG
+    // paths with filtered matching). Keep the smallest lossless stream per entry; ties retain the default bytes.
+    for (const options of [{ memLevel: 6 }, { memLevel: 7 }, { memLevel: 9 }, { memLevel: 7, strategy: Z_FILTERED }]) {
+      const candidate = deflateRawSync(f.data, { level: 9, ...options });
       if (candidate.length < body.length) body = candidate;
     }
     const crc = crc32(f.data);
