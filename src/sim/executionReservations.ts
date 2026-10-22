@@ -196,17 +196,14 @@ export function createExecutionReservations<
     return true;
   }
 
-  /** A continuation can exchange its own tail, but never invent an uncharged lease while waiting. */
+  /**
+   * A continuation can exchange its own tail's capacity, but never invent an uncharged lease while waiting.
+   * Capacity only: CPU the tail has not run stays a tail, as when its hold has expired, so whether a hold
+   * survived to the reply never decides how CPU is shared (I7). The continuation's CPU starts at admission.
+   */
   function takeoverThread(node: Node, work: Work, tail: Reservation<Group>): void {
-    node.cpuTail.delete(tail);
-    work.cpuParts = tail.cpuParts;
-    work.cpuRemaining = tail.cpuRemaining;
-    work.replica = tail.replica;
-    // This CPU becomes continuation backlog and participates in the first-wave loop.
-    work.cpuOwed = work.fractionalTail = undefined;
-    tail.cpuOwed = tail.fractionalTail = undefined;
-    tail.cpuParts = tail.cpuRemaining = tail.replica = undefined;
     node.threadTails.delete(tail.id);
+    endResources(node, tail);
     releaseThread(tail);
     const request = ledger.get<Group>(work.requestLease)!;
     const room = slots(node) - node.threadWeight.work - node.threadWeight.wait;

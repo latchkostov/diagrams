@@ -1881,33 +1881,22 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       work.remaining = call.replyMs ?? 0;
       const pendingCpu = work.cpuRemaining ?? 0;
       work.cpuOwed = work.fractionalTail = undefined;
-      work.cpuBacklog = pendingCpu;
-      work.cpuRemaining = undefined;
       work.continuation = { ok, cpuMs: replyCpuMs(node.props.resources?.cpuMsPerMessage ?? 0, call.replies!) };
       work.cpuPerRequest = work.continuation.cpuMs;
-      const continuationCpu = work.continuation.cpuMs * execution.cohort(work);
-      work.logicalCpuRemaining =
-        node.props.resources && ledger.get(work.thread)
-          ? work.continuation.cpuMs * ledger.get(work.thread)!.weight
-          : undefined;
-      if (ledger.get<Group>(work.thread)) {
-        if (work.cpuParts) {
-          const count = work.cpuParts.reduce((sum, p) => sum + p.last - p.first + 1, 0);
-          for (const p of work.cpuParts) p.cpu = ((pendingCpu + continuationCpu) * (p.last - p.first + 1)) / count;
-        }
-        // Already owns a thread/replica, even if a live shrink has removed all
+      const thread = ledger.get<Group>(work.thread);
+      work.logicalCpuRemaining = node.props.resources && thread ? work.continuation.cpuMs * thread.weight : undefined;
+      // Only the completed own-work cohort owns CPU until this continuation is admitted, on a
+      // taken-over thread or a new one alike; its new CPU is initialized at that admission (I7).
+      if (pendingCpu > 1e-8) node.cpuTail.add(work);
+      endResources(node, work);
+      work.cpuRemaining = work.cpuBacklog = undefined;
+      if (thread) {
+        // Already owns a thread, even if a live shrink has removed all
         // admission room. Do not strand that ownership in the pending queue.
-        work.cpuRemaining = node.props.resources ? pendingCpu + continuationCpu : undefined;
         work.slotted = true;
         work.workedAt = time;
         scheduleWork(node, work, "takeovers");
       } else {
-        // Only the completed own-work cohort owns CPU while this continuation queues.
-        // Its new CPU is initialized after the continuation actually gains a thread.
-        work.cpuRemaining = pendingCpu;
-        if (pendingCpu > 1e-8) node.cpuTail.add(work);
-        endResources(node, work);
-        work.cpuRemaining = work.cpuBacklog = undefined;
         work.admissibleActive = node.activeMs;
         node.resume.push(work);
       }
@@ -2727,6 +2716,11 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
             work.admissibleActive = node.activeMs;
             wakeDelivery(work);
             admit(node, work);
+            continue;
+          }
+          // Its CPU starts here, as a resumed continuation's does: on its own thread, or it waits.
+          if (!startResources(node, work)) {
+            node.takeovers.push(work);
             continue;
           }
           scheduleWork(node, work, "working");
