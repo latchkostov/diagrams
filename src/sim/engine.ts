@@ -3052,7 +3052,9 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
             policy,
             sizeOf(next.message),
             slots(node),
-            scale > 1,
+            // A broker's part keeps its real size across a scale change: at scale 1 it may still be larger than the
+            // node's slots, and it resumes on a partial grant as it would at a sampling scale (never stuck in resume).
+            scale > 1 || sizeOf(next.message) > 1 + 1e-9,
             ledger.get<Group>(next.requestLease) ?? next.lease,
           );
           if (!next.threadLease) break;

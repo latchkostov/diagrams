@@ -5,6 +5,7 @@ import { createEngine } from "./engine";
 import { assertLedgerInvariants, assertOutcomeInvariants, assertResourceInvariants } from "./resourceInvariants";
 import type { ResourceState } from "./resourceInvariants";
 import { realSnapshot } from "./units";
+import { resourceLesson } from "../model/autoscaling";
 
 const role = (id: string, stencil: string, props: Record<string, unknown> = {}) => ({
   id,
@@ -320,4 +321,126 @@ it.fails("a consumer reached through many parallel routes keeps its share within
   const [one, sampled] = [manyRoutesProcessed(1), manyRoutesProcessed(100)];
   for (let i = 0; i < 2; i++)
     expect(Math.abs(sampled[i] - one[i]), `${sampled} against ${one}`).toBeLessThanOrEqual(100);
+});
+
+// fc-sweep seed 2079731622 (ledger.commands): a broker's part keeps its real size across a scale change. At scale 10 a
+// dot of ten is shared out as five and five; after setScale(1), a recovered caller with four slots held the five-request
+// continuation in resume forever (a whole grant at scale 1). It resumes on a partial grant, as at a sampling scale.
+it("a part larger than a node's slots still resumes after a scale change to 1", () => {
+  const d = {
+    format: "diagrams/v2",
+    planning: { revision: "p3-w1" },
+    title: "Requests that wait",
+    nodes: [
+      { id: "source", stencil: "generic.queue", props: { maxDeliveryCount: 3 } },
+      {
+        id: "tier0",
+        stencil: "aws.lambda",
+        props: {
+          concurrency: 5,
+          replicas: 1,
+          latencyMs: 61,
+          jitter: 0,
+          scaling: "fixed",
+          maxConcurrency: 5,
+          retry: "inplace",
+          retryBackoffMs: 100,
+          api: { latencyMs: 61 },
+        },
+      },
+      { id: "tier1", stencil: "generic.service", props: { concurrency: 1, replicas: 1, latencyMs: 0, jitter: 0 } },
+      { id: "result", stencil: "generic.database", props: { latencyMs: 0 } },
+      {
+        id: "cpu-target",
+        stencil: "generic.service",
+        props: {
+          concurrency: 5,
+          replicas: 1,
+          latencyMs: 0,
+          jitter: 0,
+          resources: {
+            preset: "io-service",
+            presetRevision: "1",
+            cpuMsPerMessage: 0,
+            baselineMemoryMiB: 128,
+            memoryMiBPerMessage: 2,
+            cpuRequestMilli: 500,
+            cpuLimitMilli: 1000,
+            memoryRequestMiB: 256,
+            memoryLimitMiB: 512,
+            startup: { delayMs: 0, jitterFraction: 0 },
+            terminationGraceMs: 30000,
+          },
+        },
+      },
+      {
+        id: "standalone",
+        stencil: "generic.service",
+        props: {
+          replicas: 1,
+          concurrency: 5,
+          latencyMs: 61,
+          jitter: 0,
+          retry: "inplace",
+          retryBackoffMs: 100,
+          resources: {
+            preset: "io-service",
+            presetRevision: "1",
+            cpuMsPerMessage: 0,
+            baselineMemoryMiB: 128,
+            memoryMiBPerMessage: 2,
+            cpuRequestMilli: 500,
+            cpuLimitMilli: 1000,
+            memoryRequestMiB: 256,
+            memoryLimitMiB: 512,
+            startup: { delayMs: 0, jitterFraction: 0 },
+            terminationGraceMs: 30000,
+          },
+        },
+      },
+    ],
+    edges: [
+      { id: "input", from: "source", to: "tier0", props: { travelMs: 10 } },
+      {
+        id: "call0",
+        from: "tier0",
+        to: "tier1",
+        kind: "sync",
+        props: { travelMs: 10, networkDelayMs: 10, caller: { poolConnections: 1, wait: "non-blocking", replyMs: 0 } },
+      },
+      {
+        id: "cpu-call",
+        from: "tier0",
+        to: "cpu-target",
+        kind: "sync",
+        props: { travelMs: 10, networkDelayMs: 10, caller: { poolConnections: 1, wait: "non-blocking", replyMs: 0 } },
+      },
+      { id: "standalone-input", from: "source", to: "standalone", props: { travelMs: 10 } },
+      { id: "output", from: "tier0", to: "result", props: { travelMs: 10 } },
+    ],
+  } as unknown as DiagramFile;
+  const e = createEngine({
+    scale: 10,
+    seed: 0,
+    maxParticles: 0,
+    verifyLedger: assertLedgerInvariants,
+    verifyOutcomes: assertOutcomeInvariants,
+    verifyResources: assertResourceInvariants,
+  });
+  e.load(d);
+  e.step(10);
+  e.inject("source", 1);
+  e.step(10);
+  e.setScale(1);
+  e.step(10);
+  e.setNodeStatus("tier0", "down");
+  e.setNodeStatus("tier0", "up");
+  e.setNodeProps("tier0", {
+    concurrency: 4,
+    resources: { ...resourceLesson(), cpuMsPerMessage: 0, startup: { delayMs: 0, jitterFraction: 0 } },
+  });
+  e.step(10);
+  e.step(20_000);
+  expect(e.metrics().inSystem).toBe(0);
+  expect(e.snapshot().nodes.tier0.processed).toBe(5);
 });
