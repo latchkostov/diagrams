@@ -1,4 +1,4 @@
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
 import { chargeTails, tailEntitlements, yieldsToFirstWaves, type CpuBudgets, type ResourceWork } from "./resourceWork";
 
 const ignore = () => {};
@@ -53,4 +53,18 @@ it("a tail is fractional only when it forms with less than one request's CPU, de
   expect(yieldsToFirstWaves(exact, 24)).toBe(false);
   whole.cpuRemaining = 2;
   expect(yieldsToFirstWaves(whole, 0)).toBe(false);
+});
+
+it("tails on a key first waves exhausted are skipped before sorting, and still accrue their share", () => {
+  const tails: ResourceWork[] = Array.from({ length: 1000 }, () => ({ cpuRemaining: 2, replica: 0 }));
+  const budgets: CpuBudgets = new Map([[0, { remaining: 0, count: 1001 }]]);
+  const entitled = new Map(tails.map((tail) => [tail, 0.5]));
+  const sort = vi.spyOn(Array.prototype, "sort");
+  try {
+    chargeTails(tails, budgets, ignore, entitled, ignore);
+    expect(sort).not.toHaveBeenCalled();
+  } finally {
+    sort.mockRestore();
+  }
+  for (const tail of tails) expect(tail).toMatchObject({ cpuRemaining: 2, cpuOwed: 0.5 });
 });
