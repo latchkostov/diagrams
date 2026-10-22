@@ -17,8 +17,8 @@ import { LIVE_BAR_SPACE } from "../layout";
 import { TRACE_CARD_FOOTPRINT, TRACE_CARD_TOP } from "../traceCardLayout";
 import { isRecordingActive } from "../record/framing";
 import { followPan, planCamera, type CameraPlan, type FlowBox, type Insets, type View } from "./camera";
-import { SlowPainter, type PaintedLabel } from "./painter";
-import { loadSlowScript, slowScript } from "./scriptChunk";
+import { waitingOverlay, type PaintedLabel, type SlowOverlay } from "./overlay";
+import { loadSlowScript, slowPainter, slowScript } from "./scriptChunk";
 import { LOAD_FAILED, whenIdle } from "../../lib/lazyLoad";
 import { notify, toast } from "../../interop/ui/toast";
 import { SlowMotion, type SlowSource, type SlowState } from "./session";
@@ -37,7 +37,7 @@ export interface SlowMotionView {
   /** Back to live: the view and play state from before. */
   end(): void;
   /** Called every animation frame: advances the replay and returns the painter to draw over live. */
-  frame(wallMs: number, speed: number): SlowPainter | undefined;
+  frame(wallMs: number, speed: number): SlowOverlay | undefined;
   /**
    * Called at the UI clock (~8 Hz): state for React, test hooks on the canvas. `labels`: the captions
    * the renderer painted last (in the worker or here).
@@ -67,7 +67,13 @@ export function useSlowMotion(opts: {
   /** A paused replay whose pane changed holds its view at this time, until play, a seek or a step. */
   const pausedPaneAt = useRef<number | null>(null);
   const before = useRef<View | null>(null);
-  const [painter] = useState(() => new SlowPainter());
+  // The painter downloads with slow motion's script; until then a stand-in draws nothing (no frame exists yet).
+  const painterRef = useRef<SlowOverlay | null>(null);
+  const painterNow = useCallback((): SlowOverlay => {
+    const Painter = slowPainter();
+    if (Painter && !(painterRef.current instanceof Painter)) painterRef.current = new Painter();
+    return (painterRef.current ??= waitingOverlay());
+  }, []);
 
   /** The pane minus the title and the bar (and a side panel). */
   const insets = useCallback((): Insets => {
@@ -299,7 +305,8 @@ export function useSlowMotion(opts: {
   }, [session, end]);
 
   const frame = useCallback(
-    (wallMs: number, speed: number): SlowPainter | undefined => {
+    (wallMs: number, speed: number): SlowOverlay | undefined => {
+      const painter = painterNow();
       if (!session.on) {
         painter.show(null);
         return undefined;
@@ -342,7 +349,7 @@ export function useSlowMotion(opts: {
       }
       return painter;
     },
-    [session, painter, controller, store, boxes, pane, insets, overlays, camera],
+    [session, painterNow, controller, store, boxes, pane, insets, overlays, camera],
   );
 
   const ui = useCallback(
@@ -384,10 +391,10 @@ export function useSlowMotion(opts: {
           canvas.removeAttribute(a);
         root?.removeAttribute("data-live-slowmo");
         for (const el of root?.querySelectorAll("[data-slowmo-off]") ?? []) el.removeAttribute("data-slowmo-off");
-        painter.reset();
+        painterNow().reset();
       }
     },
-    [session, painter, store],
+    [session, painterNow, store],
   );
 
   const script = state.script;

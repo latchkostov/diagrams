@@ -13,6 +13,8 @@ import { routeWords } from "../../trace/routeWords";
 
 import { PACING } from "./pacing";
 export { PACING };
+// The painter rides in the script's chunk: nothing has a frame for it to draw before the script arrives.
+export { SlowPainter } from "./painter";
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 

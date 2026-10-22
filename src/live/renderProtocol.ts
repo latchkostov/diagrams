@@ -16,7 +16,7 @@ import type { MarchEdge } from "./marchRenderer";
 import type { PathSamples } from "./pathSampler";
 import type { Obstacles, Rect, RenderOptions, RenderSnapshot } from "./particleRenderer";
 import type { PlacedLabel } from "./traceLabels";
-import type { PaintedLabel } from "./slowmo/painter";
+import type { PaintedLabel } from "./slowmo/overlay";
 import type { SlowFrame } from "./slowmo/script";
 
 export const STRIDE = 6;

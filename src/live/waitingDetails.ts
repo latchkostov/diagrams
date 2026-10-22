@@ -3,7 +3,6 @@ import { revisionAtLeast } from "../model/revisions";
 import { resolveProps } from "../sim/defaults";
 import { waitingPlan } from "../sim/waitingPlan";
 import { analyzeCapacity } from "../sim/capacity";
-import { planningSignature } from "../planning/budget";
 import { stencilRole } from "../stencils/roles";
 import type { LiveState } from "./controller";
 
@@ -37,7 +36,8 @@ export function waitingDetails(diagram: DiagramFile, configuration: LiveState["c
         ...diagram,
         nodes: diagram.nodes.map((n) => ({ ...n, props: configuration[n.id] ?? n.props })),
       };
-      if (planningSignature(effective) !== undefined) {
+      // The heat map's own size bound (capacityView); the budget fixed point reruns the same analysis.
+      if (effective.nodes.length <= 256 && effective.edges.length <= 512) {
         const capacity = analyzeCapacity(effective);
         for (const [id, node] of Object.entries(capacity.nodes)) if (node.waits) plan.nodes.set(id, node.waits);
       }
