@@ -538,6 +538,39 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     for (const work of node.working) dots += dotsOf(work.message);
     node.workingUnits = dots;
   };
+  /**
+   * A partial dot's share is its represented size over the scale, so a scale change recounts every cached dot counter
+   * from what it holds (and what each queued work will take back out when it leaves).
+   */
+  function recountUnits(): void {
+    const requeue = (queue: Iterable<Work>) => {
+      let dots = 0;
+      for (const work of queue) dots += work.queuedUnits = dotsOf(work.message);
+      return dots;
+    };
+    for (const node of nodes.values()) {
+      recountWorking(node);
+      node.pendingUnits = requeue(node.pending);
+      node.resumeUnits = requeue(node.resume);
+      node.stagedUnits = node.incomingUnits = 0;
+    }
+    for (const node of nodes.values())
+      for (const group of node.groups) {
+        let dots = 0;
+        for (const message of group.pending) dots += dotsOf(message);
+        group.pendingUnits = dots;
+        for (const [id, queue] of group.staged) nodes.get(id)!.stagedUnits += requeue(queue);
+      }
+    for (const [node, message] of onTheWay()) node.incomingUnits += dotsOf(message);
+  }
+  /** Messages on the way to a node, as arrived will count them off: a trip's, or a logical arrival's (an echo). */
+  function* onTheWay(): IterableIterator<[Node, Message]> {
+    for (const trip of trips)
+      if (!trip.echo && (trip.kind === "message" || trip.kind === "dlq")) yield [trip.edge.to, trip.message];
+    for (const event of logical)
+      if (event.thread === undefined && event.call === undefined && event.edge && event.message)
+        yield [event.edge.to, event.message];
+  }
   const threadOccupancy = (node: Node) =>
     callerReservations(node) ? (node.threadWeight.work + node.threadWeight.wait) / scale : workingDots(node);
   function threadPhase(node: Node, reservation: Reservation | undefined, phase: "work" | "wait"): void {
@@ -3567,8 +3600,14 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       node.throughput += EWMA_ALPHA * ((node.completedThisStep * 1000) / STEP - node.throughput);
       node.completedThisStep = 0;
     }
-    if (TEST_ORACLES)
-      opts.verifyResources?.({
+    if (TEST_ORACLES && opts.verifyResources) {
+      const arriving = new Map<Node, Message[]>();
+      for (const [node, message] of onTheWay()) {
+        const list = arriving.get(node);
+        if (list) list.push(message);
+        else arriving.set(node, [message]);
+      }
+      opts.verifyResources({
         nodes: [...nodes.values()].map((node) => ({
           ...node,
           executionLedger: execution.usesLedger(node),
@@ -3576,6 +3615,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           pending: queuedWork(node),
           queue: node.pending,
           workQueues: { working: node.working, pending: queuedWork(node), takeovers: node.takeovers },
+          arriving: arriving.get(node) ?? [],
         })),
         time,
         scale,
@@ -3596,6 +3636,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           ],
         },
       });
+    }
     if (TEST_ORACLES)
       opts.verifyLedger?.({
         time,
@@ -4353,6 +4394,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       const next = resolveScale(value);
       if (next === scale) return;
       scale = next;
+      recountUnits();
       // A processor's time per sampled dot follows the scale, and so does what may be on the way to it.
       for (const node of nodes.values()) for (const group of node.groups) refreshGroupLimit(group);
     },

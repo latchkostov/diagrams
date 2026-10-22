@@ -216,12 +216,26 @@ export interface ResourceState {
     workQueues?: { working: Iterable<Work>; pending: Iterable<Work>; takeovers: Iterable<Work> };
     /** Dots of the working set, cached so occupancy reads are constant-time. */
     workingUnits?: number;
+    /** Dots of the node's queue, continuations and staged deliveries, cached for the prefetch window and backlog. */
+    pendingUnits?: number;
+    resumeUnits?: number;
+    stagedUnits?: number;
+    resume?: Iterable<Work>;
+    /** Dots on the way to the node, cached, and the messages on the way. */
+    incomingUnits?: number;
+    arriving?: Iterable<{ represented?: number }>;
     threadTails?: ReadonlyMap<number, Reservation<unknown>>;
     threadWeight?: Record<"work" | "wait", number>;
     pending: Iterable<Work>;
     /** The node's own queue, without staged deliveries. */
     queue?: Iterable<Work>;
-    groups?: readonly { active: number; pending: { length: number } }[];
+    groups?: readonly {
+      active: number;
+      pending: { length: number } & Partial<Iterable<{ represented?: number }>>;
+      /** Dots of the group's queue, cached; staged deliveries by consumer. */
+      pendingUnits?: number;
+      staged?: ReadonlyMap<string, Iterable<Work>>;
+    }[];
   }>;
 }
 const pausedClocks = new WeakMap<
@@ -271,6 +285,51 @@ export function assertResourceInvariants(state: ResourceState) {
     if (!ok) throw new Error(message);
   };
   assertAdmissionInvariants(state);
+  // Cached dot counters equal a recount at the current scale (a partial dot's share is represented / scale).
+  const dotsOf = (message?: { represented?: number }) =>
+    message?.represented === undefined ? 1 : message.represented / state.scale;
+  const sumDots = (items: Iterable<Work>) => {
+    let dots = 0;
+    for (const work of items) dots += dotsOf(work.message);
+    return dots;
+  };
+  const stagedDots = new Map<string, number>();
+  for (const node of state.nodes)
+    for (const group of node.groups ?? []) {
+      if (group.pendingUnits !== undefined && group.pending[Symbol.iterator]) {
+        let dots = 0;
+        for (const message of group.pending as Iterable<{ represented?: number }>) dots += dotsOf(message);
+        check(
+          Math.abs(group.pendingUnits - dots) <= 1e-9,
+          `${node.id} @${state.time}: cached group units ${group.pendingUnits} != ${dots}`,
+        );
+      }
+      for (const [id, queue] of group.staged ?? []) stagedDots.set(id, (stagedDots.get(id) ?? 0) + sumDots(queue));
+    }
+  for (const node of state.nodes) {
+    const cached = (value: number | undefined, items: Iterable<Work> | undefined, what: string) => {
+      if (value === undefined || !items) return;
+      const dots = sumDots(items);
+      check(Math.abs(value - dots) <= 1e-9, `${node.id} @${state.time}: cached ${what} units ${value} != ${dots}`);
+    };
+    cached(node.pendingUnits, node.queue, "pending");
+    cached(node.resumeUnits, node.resume, "resume");
+    if (node.incomingUnits !== undefined && node.arriving) {
+      let dots = 0;
+      for (const message of node.arriving) dots += dotsOf(message);
+      check(
+        Math.abs(node.incomingUnits - dots) <= 1e-9,
+        `${node.id} @${state.time}: cached incoming units ${node.incomingUnits} != ${dots}`,
+      );
+    }
+    if (node.stagedUnits !== undefined) {
+      const dots = stagedDots.get(node.id) ?? 0;
+      check(
+        Math.abs(node.stagedUnits - dots) <= 1e-9,
+        `${node.id} @${state.time}: cached staged units ${node.stagedUnits} != ${dots}`,
+      );
+    }
+  }
   let parts = 0;
   for (const node of state.nodes) {
     const f = node.fleet;

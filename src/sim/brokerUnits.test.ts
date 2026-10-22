@@ -183,3 +183,20 @@ it("a drained broker's counters return to exactly zero", () => {
     for (const units of Object.values(g.activeByNode)) expect(units).toBe(0);
   }
 });
+
+it("a scale change recounts the cached dot counters (a part's share is its real size over the scale)", () => {
+  // Parts are in work, on the way and queued at the broker when the scale goes from 10 to 4: a part of four real
+  // requests was 0.4 of a dot and is now one. The invariants compare every cache with a recount at each step.
+  const e = engine(10);
+  e.load(queue([worker("worker", 4, 100)]));
+  e.inject("source", 5);
+  e.step(10);
+  expect(e.measure({ node: "source", field: "backlog" })).toBeCloseTo(4.4, 9);
+  e.setScale(4);
+  // Left at the broker: four whole dots (a dot is the scale) and the first dot's last four real requests, 0.4 of a dot
+  // at 10 and a whole one at 4. The cache kept 4.4.
+  expect(e.measure({ node: "source", field: "backlog" })).toBeCloseTo(5, 9);
+  e.step(5000);
+  // The first dot's ten real requests, then four whole dots of four.
+  expect(realSnapshot(e.snapshot()).nodes.worker.processed).toBeCloseTo(26, 9);
+});
