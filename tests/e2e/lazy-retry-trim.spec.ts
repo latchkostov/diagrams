@@ -73,11 +73,25 @@ test("held Request fields keep the inspector usable; once they arrive the keyboa
     await openRequestInspector(page);
     // Asked for as the inspector opens, before the section is.
     await expect.poll(() => fields.requested()).toBe(true);
+    // By keyboard: Enter opens the section; a polite status says the fields are on their way.
     const section = page.getByTestId("inspector-section-edge-simulation");
-    await section.click();
+    await section.focus();
+    await page.keyboard.press("Enter");
     await expect(section).toBeFocused();
     await expect(section).toHaveAttribute("aria-expanded", "true");
+    const loading = page.getByTestId("call-fields-loading");
+    await expect(loading).toBeVisible();
+    await expect(loading).toHaveAttribute("role", "status");
+    await expect(loading).toHaveAttribute("aria-live", "polite");
     await expect(page.getByTestId("inspector-field-retries")).toHaveCount(0);
+    // Tab moves on past the empty section, never stuck on it or lost to the page.
+    await page.keyboard.press("Tab");
+    expect(
+      await page.evaluate(() => {
+        const el = document.activeElement;
+        return !!el && el !== document.body && el.getAttribute("data-testid") !== "inspector-section-edge-simulation";
+      }),
+    ).toBe(true);
     // Cursor and styles: nothing waits, and the inspector keeps its styles.
     expect(await cursor(page)).not.toMatch(/wait|progress/);
     const label = page.getByTestId("inspector-field-label");
@@ -87,18 +101,17 @@ test("held Request fields keep the inspector usable; once they arrive the keyboa
     await section.focus();
     fields.release();
     await expect(page.getByTestId("inspector-field-retries")).toBeVisible();
+    await expect(loading).toHaveCount(0);
     await expect(section).toBeFocused();
     expect(await cursor(page)).not.toMatch(/wait|progress/);
     expect(await label.evaluate((el) => getComputedStyle(el).borderStyle)).toBe("solid");
-    // The keyboard carries on into the fields that arrived.
+    // The keyboard carries on into the fields that arrived, in their order.
     await page.keyboard.press("Tab");
-    expect(
-      await page.evaluate(() =>
-        document.activeElement?.closest(".insp-disclosure")?.querySelector('[data-testid="inspector-field-retries"]')
-          ? "inside"
-          : document.activeElement?.getAttribute("data-testid"),
-      ),
-    ).toBe("inside");
+    await expect(page.getByTestId("inspector-field-wait")).toBeFocused();
+    await page.keyboard.press("Tab");
+    await expect(page.getByTestId("inspector-field-deadlineMs")).toBeFocused();
+    await page.keyboard.press("Tab");
+    await expect(page.getByTestId("inspector-field-retries")).toBeFocused();
     await exportDiagram(page);
     expectNoErrors(consoleErrors);
   } finally {

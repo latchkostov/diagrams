@@ -26,8 +26,20 @@ import { revisionAtLeast } from "../../model/revisions";
 import { routingEnabled } from "../../model/requestRouting";
 
 const EdgeAdvanced = lazyComponent(() => import("./EdgeAdvanced").then((m) => m.EdgeAdvanced));
-/** A Request's wait, timeout, pool and retry fields: their own chunk, asked for as its inspector opens. */
-const CallWaitFields = lazyComponent(() => import("./CallWaitFields").then((m) => m.CallWaitFields));
+/**
+ * A Request's wait, timeout, pool and retry fields: their own chunk, asked for as its inspector opens. While they
+ * download, a polite status says so (as slow motion's does); a failed download offers Retry in a toast.
+ */
+const CallWaitFields = lazyComponent(
+  () => import("./CallWaitFields").then((m) => m.CallWaitFields),
+  (_, { failed }) =>
+    failed ? null : (
+      <p className="insp-note" role="status" aria-live="polite" data-testid="call-fields-loading">
+        {t("common.loading")}
+      </p>
+    ),
+  true,
+);
 
 export function EdgePanel({ edge, editor, nodeLabel, meta }: InspectorProps & { edge: DiagramFlowEdge }) {
   const naming = useNameFields(editor, "edge", edge.id, edge.id);
