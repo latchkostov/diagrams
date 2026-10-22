@@ -19,7 +19,10 @@ export interface LedgerInvariantState {
     id: string;
     poolUsed: number;
     poolLeases: ReadonlyMap<number, number>;
-    poolPending: readonly unknown[];
+    poolPending: readonly {
+      message?: { width?: number };
+      call?: { held?: boolean; work: { thread?: number; message?: { width?: number } } };
+    }[];
   }>;
   inSystem: number;
   admissionInFlight: ReadonlyMap<string, number>;
@@ -112,6 +115,15 @@ export function assertLedgerInvariants({ ledger, nodes, edges, time }: LedgerInv
   }
   for (const edge of edges) {
     check(Math.abs(edge.poolUsed - (pools.get(edge.id) ?? 0)) < 1e-8, "pool occupancy disagrees");
+    // Width never increases along a path: a branch is no wider than its caller's
+    // incoming cohort, nor than the caller thread a blocking call still holds.
+    for (const { message, call } of edge.poolPending) {
+      const width = message?.width ?? Infinity;
+      check(width <= (call?.work.message?.width ?? Infinity) + 1e-9, "branch widens its cohort");
+      const thread =
+        call?.held && call.work.thread !== undefined ? ledger.reservations.get(call.work.thread) : undefined;
+      check(!thread || width <= thread.weight + 1e-9, "branch is wider than its caller thread");
+    }
     for (const id of edge.poolLeases.values())
       check(ledger.reservations.get(id)?.edge === edge.id, "pool points to missing reservation");
     pools.delete(edge.id);
@@ -136,6 +148,7 @@ export function assertOutcomeInvariants(state: OutcomeInvariantState): void {
 }
 
 interface Work extends ResourceWork {
+  message?: { width?: number };
   thread?: number;
   executionWeight?: number;
   workSegment?: boolean;
@@ -277,6 +290,8 @@ export function assertResourceInvariants(state: ResourceState) {
           "running work has no live thread reservation",
         );
         fail(!threads.has(work.thread!), "running work shares a thread reservation");
+        // A finite pool or held caller thread upstream narrowed this cohort's width.
+        fail(reservation!.weight <= (work.message?.width ?? Infinity) + 1e-9, "thread is wider than its cohort");
         // Thread acquisition opens the segment whose completion hands the cohort's CPU to its tail.
         fail(reservation!.phase !== "work" || !!work.workSegment, "running work has no open work segment");
         if (node.props.resources && ownsCpu(work)) {

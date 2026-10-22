@@ -1,36 +1,5 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`CPU contention with a pool at scale 2 > pins every node outcome and downstream timeout/late reply 1`] = `
-{
-  "baseline": {
-    "calls": {
-      "call": "timedOut=0, late=0",
-      "input": "timedOut=0, late=0",
-      "output": "timedOut=0, late=0",
-    },
-    "nodes": {
-      "caller": "processed=399, failed=0, rejected=0, dropped=0",
-      "partner": "processed=399, failed=0, rejected=0, dropped=0",
-      "result": "processed=399, failed=0, rejected=0, dropped=0",
-      "source": "processed=2000, failed=0, rejected=0, dropped=0",
-    },
-  },
-  "sampled": {
-    "calls": {
-      "call": "timedOut=0, late=0",
-      "input": "timedOut=0, late=0",
-      "output": "timedOut=0, late=0",
-    },
-    "nodes": {
-      "caller": "processed=286, failed=0, rejected=0, dropped=0",
-      "partner": "processed=286, failed=0, rejected=0, dropped=0",
-      "result": "processed=286, failed=0, rejected=0, dropped=0",
-      "source": "processed=2000, failed=0, rejected=0, dropped=0",
-    },
-  },
-}
-`;
-
 exports[`CPU contention without a pool at scale 1.1 > pins every node outcome and downstream timeout/late reply 1`] = `
 {
   "baseline": {

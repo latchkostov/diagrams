@@ -20,7 +20,8 @@ export function allocationWeight(represented: number, room: number, cap = Infini
   const remainder = room - Math.floor(room / maximum + 1e-9) * maximum;
   if (remainder <= 1e-9 || remainder + 1e-9 >= minimum) return maximum;
   const packed = room / Math.ceil(room / maximum);
-  return packed + 1e-9 >= minimum ? packed : maximum;
+  // A packed share a rounding error below one real request is that request, not a refusal.
+  return packed + 1e-9 >= minimum ? Math.min(maximum, Math.max(minimum, packed)) : maximum;
 }
 
 export function reserveCallerOccupancy(
@@ -52,6 +53,11 @@ export interface Reservation<Group = unknown> extends ResourceWork {
   /** Start of the current in-place attempt; heldMs accumulates earlier attempts. */
   segmentActive?: number;
   releaseAt?: number;
+  /** Exact admissible turnover (releaseAt + lag) before clamping to the owner's clock. */
+  turnoverAt?: number;
+  /** Earliest admissible turnover: the exact turnover of a narrower pool lease this
+   * blocking thread waited on. Only a partial-weight thread retains a release. */
+  notBefore?: number;
   /** Explicit delivery-group ownership survives logical acknowledgement. */
   group?: Group;
   retiredActive?: number;
@@ -150,7 +156,7 @@ export class SampledLedger {
     reservation.admissionLagMs = admissionLagMs;
     // Local work and pools can turn over in their own phase. A blocking reply
     // settles after admission, so its scale-1 turnaround includes the next tick.
-    const releaseAt =
+    let releaseAt =
       reservation.scope === "pool"
         ? ownerActiveMs +
           reservation.heldMs * (reservation.represented / reservation.weight - 1) -
@@ -158,6 +164,10 @@ export class SampledLedger {
         : reservation.startActive +
           ((reservation.heldMs + admissionLagMs) * reservation.represented) / reservation.weight -
           admissionLagMs;
+    // The floor bounds when this capacity becomes admissible (releaseAt + lag),
+    // so the owner's own admission lag is not added on top of it again.
+    if (reservation.notBefore !== undefined) releaseAt = Math.max(releaseAt, reservation.notBefore - admissionLagMs);
+    reservation.turnoverAt = releaseAt + admissionLagMs;
     reservation.releaseAt = Math.max(ownerActiveMs, releaseAt);
     if (reservation.weight === reservation.represented || reservation.releaseAt <= ownerActiveMs + 1e-9) {
       // Logical completion still bounds releaseAt (I4), but clamping must not
