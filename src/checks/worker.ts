@@ -3,10 +3,8 @@
 // so typing and dragging never wait on them. Same engine, same result as the main-thread fallback.
 
 import type { DiagramFile } from "../model/types";
-import { runChecks } from "./run";
 import type { CheckResult, Finding } from "./types";
-import { requestFindings } from "./requestFindings";
-import { buildContext } from "./context";
+import { executeChecks } from "./execute";
 import { planScaling, type ScalingPlan } from "../sim/scalingPlanner";
 import { confirmedThreadFix, type ThreadFixRequest } from "../live/threadFixPlan";
 import type { TroubleAction } from "../live/observedTrouble";
@@ -36,19 +34,10 @@ scope.onmessage = (e) => {
     if (e.data.threadFix) scope.postMessage({ id, threadFix: confirmedThreadFix(e.data.threadFix) });
     else if (plan) scope.postMessage({ id, plans: planScaling(diagram) });
     else {
-      // The capacity check's plans go back with its result (memoized: no second run), for main-thread readers.
-      // A diagram with capacity turned off plans nothing.
-      // Request findings (every one, for the shared cache) and the checks share one context: one capacity analysis.
-      const context = buildContext(diagram);
-      context.local = true;
-      const requests = requestFindings(context);
-      const result = runChecks(diagram, { context, requests });
-      scope.postMessage({
-        id,
-        result,
-        plans: result.ran.includes("capacity") ? planScaling(diagram) : undefined,
-        requests,
-      });
+      // Scenario sizing goes back with the result when a check read it, for main-thread readers. A diagram with
+      // capacity turned off (and no blocked caller's verified fix) plans nothing.
+      const { result, requests, plans } = executeChecks(diagram);
+      scope.postMessage({ id, result, plans, requests });
     }
   } catch (err) {
     scope.postMessage({ id, error: err instanceof Error ? err.message : String(err) });

@@ -65,7 +65,10 @@ export function runChecks(diagram: DiagramFile, opts: RunOptions = {}): CheckRes
   if (opts.local) ctx.local = true;
   if (opts.requests) provideRequestFindings(ctx, opts.requests);
   ctx.ran = new Set(ran);
-  const all = RULES.filter((r) => ran.includes(r.id)).flatMap((r) => r.detect(ctx));
+  const detected = RULES.filter((r) => ran.includes(r.id)).flatMap((r) => r.detect(ctx));
+  // A bounded rule's count of what it couldn't list: reported beside the findings, never as one.
+  const omitted = detected.flatMap((f) => (f.omitted ? [{ rule: f.rule, count: f.omitted }] : []));
+  const all = omitted.length ? detected.filter((f) => !f.omitted) : detected;
   const ignores = new Set((diagram.checks?.ignore ?? []).map((i) => `${i.rule}:${i.target}`));
   all.sort(findingOrder(ctx.rank));
   return {
@@ -73,6 +76,7 @@ export function runChecks(diagram: DiagramFile, opts: RunOptions = {}): CheckRes
     ignored: all.filter((f) => ignores.has(f.id)),
     off: CHECK_RULES.filter((id) => off.includes(id)),
     ran,
+    ...(omitted.length ? { omitted } : {}),
   };
 }
 
@@ -96,16 +100,21 @@ export function findingOrder(rank: (id: string) => number): (a: Finding, b: Find
 
 const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
 
-/** "2 warnings, 3 suggestions; 1 ignored; 1 check off." or "Nothing to check. 8 checks ran." */
+/**
+ * "2 warnings, 3 suggestions; 1 ignored; 1 check off." or "Nothing to check. 8 checks ran." A result with findings it
+ * couldn't list says so ("; 2191 more call-timeout findings not listed") and is never "Nothing to check".
+ */
 export function summarize(result: CheckResult): string {
   const warnings = result.findings.filter((f) => f.severity === "warning").length;
   const suggestions = result.findings.length - warnings;
   const extra = [
+    ...(result.omitted ?? []).map((o) => `${o.count} more ${o.rule} finding${o.count === 1 ? "" : "s"} not listed`),
     result.ignored.length ? `${result.ignored.length} ignored` : "",
     result.off.length ? `${plural(result.off.length, "check")} off` : "",
   ].filter(Boolean);
-  const head = result.findings.length
-    ? `${plural(warnings, "warning")}, ${plural(suggestions, "suggestion")}`
-    : `Nothing to check. ${plural(result.ran.length, "check")} ran`;
+  const head =
+    result.findings.length || result.omitted?.length
+      ? `${plural(warnings, "warning")}, ${plural(suggestions, "suggestion")}`
+      : `Nothing to check. ${plural(result.ran.length, "check")} ran`;
   return `${[head, ...extra].join("; ")}.`;
 }

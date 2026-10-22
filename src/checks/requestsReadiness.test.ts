@@ -2,7 +2,9 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { waitingFixture } from "../lab/waitingFixture";
 import type { DiagramFile } from "../model/types";
 import type { Finding } from "./types";
-import { runChecks } from "./run";
+import { runChecks, summarize } from "./run";
+import { agentReport } from "./report";
+import * as timeout from "../live/affordableTimeout";
 import { buildContext } from "./context";
 import { requestFindings } from "./requestFindings";
 import { registerRequestChecks, awaitRequestChecks, requestCheckResult } from "../lib/requestCheckCache";
@@ -13,6 +15,8 @@ import { buildTools } from "../ai/webmcp/tools";
 import { PRIVATE_MESSAGE } from "../ai/privacy";
 import type { EditorApi } from "../editor/types";
 import { validateDiagram } from "../interop/native";
+import { plannerFixture } from "../lab/plannerFixture";
+import * as simulation from "../sim/simulation";
 
 afterEach(() => {
   registerRequestChecks(undefined);
@@ -85,6 +89,24 @@ describe("capacity and request findings", () => {
     // Freeing the caller changes nothing about the worker's warning.
     d.edges.find((e) => e.id === "call")!.props = { caller: { wait: "non-blocking" } };
     expect(ids(runChecks(d).findings)).toContain("capacity:worker");
+  });
+
+  it("a broker that is down keeps its outage warning beside a diagnosed caller", () => {
+    const d = exhausted();
+    d.nodes.push({ id: "topic", stencil: "kafka.topic", label: "Topic", x: 160, y: 180, props: { partitions: 12 } });
+    d.edges = d.edges.filter((e) => e.id !== "input");
+    d.edges.push(
+      { id: "publish", from: "source", to: "topic" },
+      { id: "consume", from: "topic", to: "caller", props: { group: "decisions" } },
+    );
+    // Healthy, the topic's backlog is the caller's: only the caller's finding.
+    const healthy = ids(runChecks(d).findings);
+    expect(healthy).toContain("blocked-threads:caller");
+    expect(healthy).not.toContain("capacity:topic");
+    // Down, it's an outage of its own: fixing the caller can't bring it back.
+    d.nodes.find((n) => n.id === "topic")!.props!.status = "down";
+    const down = runChecks(d).findings.find((f) => f.id === "capacity:topic");
+    expect(down?.title).toBe("Topic is down");
   });
 
   it("capacity keeps its warning when the waiting checks don't run", () => {
@@ -311,23 +333,125 @@ describe("bounded request findings", () => {
   });
 
   it("the request findings fit a total budget however many calls there are", () => {
-    const d = waitingFixture();
-    d.nodes[0].props!.ratePerSec = 1;
-    d.nodes = d.nodes.filter((n) => n.id === "caller" || n.id === "partner");
-    d.nodes[0].label = "C".repeat(200);
-    d.nodes[1].label = "P".repeat(200);
-    d.edges = Array.from({ length: 3_000 }, (_, i) => ({
-      id: `call-${String(i).padStart(4, "0")}-${"x".repeat(150)}`,
-      from: "caller",
-      to: "partner",
-      kind: "sync" as const,
-    }));
+    const d = manyCalls(3_000);
     const findings = requestFindings(buildContext(d));
     expect(findings.length).toBeGreaterThan(100);
     expect(findings.length).toBeLessThan(3_000);
-    expect(JSON.stringify(findings).length).toBeLessThanOrEqual(1_000_000);
-    // Deterministic: the first calls in diagram order are the ones reported.
+    // The budget bounds the findings; the count of what didn't fit rides beside them.
+    expect(JSON.stringify(findings.filter((f) => !f.omitted)).length).toBeLessThanOrEqual(1_000_000);
+    // Deterministic: the first calls in diagram order are the ones reported, worked out again from cold.
     expect(findings[0].target).toBe(d.edges[0].id);
+    registerRequestChecks(undefined);
     expect(requestFindings(buildContext(structuredClone(d)))).toEqual(findings);
+  });
+
+  it("a bounded result says how many it left out, and is never clean", () => {
+    const d = manyCalls(3_000);
+    const result = runChecks(d, { rules: ["call-timeout"] });
+    const listed = result.findings.length;
+    expect(result.omitted).toEqual([{ rule: "call-timeout", count: 3_000 - listed }]);
+    expect(result.findings.every((f) => f.requestFinding)).toBe(true);
+    expect(summarize(result)).toContain(`${3_000 - listed} more call-timeout findings not listed`);
+    // Ignoring every listed one still doesn't read as all clear.
+    d.checks = { ignore: result.findings.map((f) => ({ rule: f.rule, target: f.target })) };
+    const ignored = runChecks(d, { rules: ["call-timeout"] });
+    expect(ignored.findings).toEqual([]);
+    expect(summarize(ignored)).not.toContain("Nothing to check");
+    expect(agentReport(ignored).summary).toContain("not listed");
+    // A diagram that fits says nothing of the kind.
+    expect(runChecks(manyCalls(10), { rules: ["call-timeout"] }).omitted).toBeUndefined();
+  });
+
+  it("timeout construction stops at the findings budget", () => {
+    const built = (count: number) => {
+      registerRequestChecks(undefined);
+      const timeouts = vi.spyOn(timeout, "affordableTimeout");
+      const findings = requestFindings(buildContext(manyCalls(count)));
+      const calls = timeouts.mock.calls.length;
+      timeouts.mockRestore();
+      return { calls, listed: findings.filter((f) => !f.omitted).length };
+    };
+    const some = built(3_000);
+    const more = built(6_000);
+    expect(more.listed).toBe(some.listed);
+    // Only the listed prefix (and the one that overflowed) is built, however many calls follow.
+    expect(some.calls).toBeLessThanOrEqual(some.listed + 2);
+    expect(more.calls).toBe(some.calls);
+  });
+});
+
+/** A caller with `count` deadline-free calls to one API, long ids and names: past the findings budget. */
+function manyCalls(count: number): DiagramFile {
+  const d = waitingFixture();
+  d.nodes[0].props!.ratePerSec = 1;
+  d.nodes = d.nodes.filter((n) => n.id === "caller" || n.id === "partner");
+  d.nodes[0].label = "C".repeat(200);
+  d.nodes[1].label = "P".repeat(200);
+  d.edges = Array.from({ length: count }, (_, i) => ({
+    id: `call-${String(i).padStart(5, "0")}-${"x".repeat(150)}`,
+    from: "caller",
+    to: "partner",
+    kind: "sync" as const,
+  }));
+  return d;
+}
+
+describe("scenario sizing without a worker", () => {
+  it.each([
+    ["capacity off", { off: ["capacity" as const] }, 0],
+    ["capacity on", undefined, 1],
+  ])("the fallback plans only when a check reads the plans (%s)", async (_, checks, expected) => {
+    vi.stubGlobal("Worker", undefined);
+    registerScenarioPlanner(async () => []);
+    registerRequestChecks(async () => []);
+    const d = plannerFixture();
+    d.planning = { ...d.planning, revision: "p3-w1" };
+    d.title = `Fallback ${expected}`;
+    d.nodes[1].label = `Worker ${expected}`;
+    d.checks = checks;
+    const planner = await import("../sim/scalingPlanner");
+    const plans = vi.spyOn(planner, "planScaling");
+    const played = vi.spyOn(simulation, "createSimulationRun");
+    const { runChecksOffThread } = await import("../canvas/checks/runner");
+    await runChecksOffThread(d);
+    expect(plans).toHaveBeenCalledTimes(expected);
+    if (!expected) expect(played).not.toHaveBeenCalled();
+    else expect(played).toHaveBeenCalled();
+  });
+});
+
+describe("overlapping request-check attempts", () => {
+  it("an older successful attempt cannot replace a newer result", async () => {
+    const d = exhausted();
+    const older = [{ ...requestFindings(buildContext(d))[0], title: "older" }];
+    registerRequestChecks(undefined);
+    const newer = [{ ...older[0], title: "newer" }];
+    const { trackRequestChecks } = await import("../lib/requestCheckCache");
+    let finishOlder!: () => void;
+    let finishNewer!: () => void;
+    const first = trackRequestChecks(d, () => new Promise((resolve) => (finishOlder = () => resolve(older))));
+    const second = trackRequestChecks(d, () => new Promise((resolve) => (finishNewer = () => resolve(newer))));
+    await Promise.resolve();
+    await Promise.resolve();
+    finishNewer();
+    expect(await second).toBe(newer);
+    finishOlder();
+    expect(await first).toBe(older);
+    expect(requestCheckResult(d)).toEqual({ status: "ready", findings: newer });
+  });
+
+  it("an older failure cannot replace a newer result, and its callers still hear it", async () => {
+    const d = exhausted();
+    const newer = requestFindings(buildContext(d));
+    registerRequestChecks(undefined);
+    const { trackRequestChecks } = await import("../lib/requestCheckCache");
+    let failOlder!: () => void;
+    const first = trackRequestChecks(d, () => new Promise((_, reject) => (failOlder = () => reject(new Error("old")))));
+    const second = trackRequestChecks(d, async () => newer);
+    expect(await second).toBe(newer);
+    await Promise.resolve();
+    failOlder();
+    await expect(first).rejects.toThrow("old");
+    expect(requestCheckResult(d)).toEqual({ status: "ready", findings: newer });
   });
 });

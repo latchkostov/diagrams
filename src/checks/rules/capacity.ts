@@ -116,11 +116,12 @@ export const capacity: CheckRule = {
       .filter(
         (n) =>
           !resourceTargets.has(n.id) &&
-          // Before choosing the busiest: a diagnosed caller never hides another service's warning. Nor does a broker
-          // it reads from stand in for it: a broker's capacity is what its consumers drain, so that backlog is the
-          // caller's, already reported with its fix.
+          // Before choosing the busiest: a diagnosed caller never hides another service's warning. Nor does a
+          // healthy broker it reads from stand in for it: that broker's capacity is what its consumers drain, so its
+          // backlog is the caller's, already reported with its fix. A broker saved down or paused is an outage of its
+          // own, which fixing the caller can't end: it keeps its warning.
           !waitTargets.has(n.id) &&
-          !(isBroker(ctx, n.id) && ctx.routes(n.id).some((e) => !e.deny && waitTargets.has(e.to))) &&
+          !(!n.status && isBroker(ctx, n.id) && ctx.routes(n.id).some((e) => !e.deny && waitTargets.has(e.to))) &&
           n.offered > 0 &&
           n.utilization >= 1 &&
           (n.role === "processor" || !!n.device || !!n.managed || (isBroker(ctx, n.id) && ctx.routes(n.id).length > 0)),

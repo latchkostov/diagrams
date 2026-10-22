@@ -1,5 +1,5 @@
 import type { DiagramOp } from "../ai";
-import { scenarioPlans, type PlanSuggestion, type ScalingPlan } from "../sim/scalingPlanner";
+import type { PlanSuggestion, ScalingPlan } from "../sim/scalingPlanner";
 import type { CheckContext } from "./context";
 import type { Finding } from "./types";
 import { PLATFORM, planDescriptor, round } from "../planning/scalingPlanText";
@@ -78,7 +78,7 @@ export function planMessage(plan: ScalingPlan, s: PlanSuggestion, names: (id: st
 export function scalingFindings(ctx: CheckContext): Map<string, Finding> {
   const out = new Map<string, Finding>();
   // In the editor, only what the checks worker already worked out: never a simulation on the UI thread.
-  const plans = scenarioPlans(ctx.diagram) ?? [];
+  const plans = ctx.plans() ?? [];
   for (const plan of plans) {
     if (plan.status === "unavailable") {
       if (plan.reason === "policy") continue;

@@ -29,9 +29,13 @@ export function requestChecksNeeded(d: DiagramFile, rules?: readonly string[]): 
 let provider: ((d: DiagramFile) => Promise<Finding[]>) | undefined;
 // One complete result store for workers, local fallback, synchronous rechecks and agents.
 const cache = new Map<string, RequestCheckResult>();
+/** The newest attempt started for each content still working: only it settles that content's entry. */
+const latest = new Map<string, number>();
+let attempts = 0;
 export function registerRequestChecks(fn: typeof provider): void {
   provider = fn;
   cache.clear();
+  latest.clear();
 }
 export const hasRequestCheckProvider = () => !!provider;
 export function requestCheckResult(d: DiagramFile): RequestCheckResult | undefined {
@@ -43,7 +47,7 @@ function store(key: string, result: RequestCheckResult) {
   cache.set(key, result);
 }
 export function rememberRequestChecks(d: DiagramFile, findings: Finding[]): void {
-  store(simulationContent(d), { status: "ready", findings: findings.filter((f) => !!f.requestFinding) });
+  store(simulationContent(d), { status: "ready", findings: findings.filter((f) => !!f.requestFinding || !!f.omitted) });
 }
 export function rememberedRequestChecks(d: DiagramFile): Finding[] | undefined {
   const result = requestCheckResult(d);
@@ -78,17 +82,26 @@ export function awaitRequestChecks(d: DiagramFile): Promise<Finding[]> {
 export function trackRequestChecks(d: DiagramFile, compute: () => Promise<Finding[]>): Promise<Finding[]> {
   const key = simulationContent(d);
   const known = cache.get(key);
+  const mine = ++attempts;
+  latest.set(key, mine);
   let pending: RequestCheckResult | undefined;
+  const settle = () => {
+    const newest = latest.get(key) === mine;
+    if (newest) latest.delete(key);
+    return newest;
+  };
   const done = Promise.resolve()
     .then(compute)
     .then(
       (findings) => {
-        rememberRequestChecks(d, findings);
+        const current = cache.get(key);
+        // The newest attempt publishes; an older one only fills a gap (nothing there, or a newer failure).
+        if (settle() || !current || current.status === "failed") rememberRequestChecks(d, findings);
         return findings;
       },
       (cause: unknown) => {
         const error = cause instanceof Error ? cause : new Error(String(cause));
-        if (pending && cache.get(key) === pending) store(key, { status: "failed", error });
+        if (settle() && pending && cache.get(key) === pending) store(key, { status: "failed", error });
         throw error;
       },
     );

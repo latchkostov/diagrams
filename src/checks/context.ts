@@ -10,6 +10,7 @@ import {
 } from "../sim/topology";
 import { analyzeCapacity, type CapacityAnalysis } from "../sim/capacity";
 import { planningSimulation, sourceTraffic } from "../sim/capacityPlanning";
+import { scenarioPlans, type ScalingPlan } from "../sim/scalingPlanner";
 import { readingOrder } from "../canvas/keyboardNav";
 import { estimateCardSize } from "../canvas/nodes/size";
 
@@ -56,6 +57,12 @@ export interface CheckContext {
   planning(): Simulation;
   /** analyzeCapacity of `planning()`: the diagram's own (free-play) rates. Computed on first use. */
   capacity(): CapacityAnalysis;
+  /**
+   * Scenario sizing for the saved simulations, on first use only (it plays them). In the editor's main thread, what
+   * the checks worker already worked out (src/lib/scenarioPlanner.ts); where checks run locally (the worker, the
+   * no-worker fallback: src/checks/execute.ts), worked out here when a check reads it.
+   */
+  plans(): ScalingPlan[] | undefined;
 }
 
 /** edit_diagram's limits (src/ai/schemas.ts): a batch's operations, and a reference's length. */
@@ -86,6 +93,7 @@ export function buildContext(diagram: DiagramFile): CheckContext {
   const role = (id: string) => roles.get(id) ?? "none";
   let planning: Simulation | undefined;
   let capacity: CapacityAnalysis | undefined;
+  let scenario: ScalingPlan[] | undefined | null = null;
   let types: Map<string, Set<string>> | undefined;
   let requests: Map<string, CompiledEdge[]> | undefined;
   /** Boundary and annotation ids, for freshKey. */
@@ -148,6 +156,7 @@ export function buildContext(diagram: DiagramFile): CheckContext {
     isBoundary: (id) => (boundaries ??= new Set((diagram.groups ?? []).map((g) => g.id))).has(id),
     planning: plan,
     capacity: () => (capacity ??= analyzeCapacity(diagram, plan())),
+    plans: () => (scenario === null ? (scenario = scenarioPlans(diagram)) : scenario),
   };
 }
 

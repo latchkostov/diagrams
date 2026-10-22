@@ -172,11 +172,13 @@ export function ChecksCard(p: ChecksCardProps) {
         <p className="checks-note" data-testid="checks-running">
           Checking…
         </p>
-      ) : r.findings.length ? (
+      ) : r.findings.length || r.omitted?.length ? (
+        // Findings too many to list are counted here: a bounded result never reads as all clear.
         <p className="checks-note" data-testid="checks-summary">
           {[
             warnings.length ? plural(warnings.length, "warning") : "",
             suggestions.length ? plural(suggestions.length, "suggestion") : "",
+            r.omitted?.length ? `${r.omitted.reduce((n, o) => n + o.count, 0)} more not listed` : "",
           ]
             .filter(Boolean)
             .join(" · ")}

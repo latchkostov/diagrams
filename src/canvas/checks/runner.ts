@@ -4,7 +4,6 @@ import type { CheckRequest, CheckResponse } from "../../checks/worker";
 import type { ScalingPlan } from "../../sim/scalingPlanner";
 import { rememberPlans } from "../../lib/scenarioPlanner";
 import { trackRequestChecks } from "../../lib/requestCheckCache";
-import { revisionAtLeast } from "../../model/revisions";
 import type { ThreadFixRequest } from "../../live/threadFixPlan";
 import type { TroubleAction } from "../../live/observedTrouble";
 
@@ -46,8 +45,6 @@ function getWorker(): Worker | null {
   }
   return worker;
 }
-
-const loadEngine = () => import("../../checks/run");
 
 /** Provider for awaitRequestChecks: the same transport and fallback as background checks. */
 export async function requestChecksOffThread(diagram: DiagramFile): Promise<Finding[]> {
@@ -104,20 +101,11 @@ async function computeChecksOffThread(diagram: DiagramFile): Promise<{ result: C
     }
   }
   // No worker (an old browser, a blocked script): this thread does all the checking, scenario sizing included.
-  const [{ runChecks }, { planScaling }, { requestFindings }, { buildContext }] = await Promise.all([
-    loadEngine(),
-    import("../../sim/scalingPlanner"),
-    import("../../checks/requestFindings"),
-    import("../../checks/context"),
-  ]);
-  // Request findings read scenario sizing whatever is turned off, as in the worker: the same findings either way.
-  if (!diagram.checks?.off?.includes("capacity") || revisionAtLeast(diagram.planning?.revision, "p3-w1"))
-    rememberPlans(diagram, planScaling(diagram));
-  // One context, as in the worker: one capacity analysis for the request findings and the checks.
-  const context = buildContext(diagram);
-  context.local = true;
-  const requests = requestFindings(context);
-  return { result: runChecks(diagram, { context, requests }), requests };
+  // The worker's own path (one context, scenario sizing only when a check reads it), then its plans remembered.
+  const { executeChecks } = await import("../../checks/execute");
+  const { result, requests, plans } = executeChecks(diagram);
+  if (plans) rememberPlans(diagram, plans);
+  return { result, requests };
 }
 
 /** Scenario sizing for live playback: the checks worker's planner (memoized with the capacity check's). */

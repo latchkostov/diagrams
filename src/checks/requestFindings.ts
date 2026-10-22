@@ -10,7 +10,6 @@ import { confirmedThreadFix, THREAD_FIX_WORK, threadFixWork } from "../live/thre
 import type { TroubleAction } from "../live/observedTrouble";
 import { threadCapacity } from "./threadCapacity";
 import { scaleFix } from "./scaleFix";
-import { scenarioPlans, type ScalingPlan } from "../sim/scalingPlanner";
 import {
   hasRequestCheckProvider,
   rememberedRequestChecks,
@@ -122,13 +121,11 @@ function computeRequestFindings(ctx: CheckContext): Finding[] {
   const name = (id: string) => findingName(ctx.name(id));
   const warnings: Finding[] = [];
   const suggestions: Finding[] = [];
-  // Timeout suggestions past the whole budget can't be reported (warnings go first): none is built.
+  // Timeout suggestions past the whole budget can't be reported (warnings go first): none is built, only counted.
   let suggested = 0;
+  let unbuilt = 0;
   let remainingWork = THREAD_FIX_WORK;
   let simulation: Simulation | undefined;
-  // Scenario sizing, read once per diagram (each read keys the whole diagram).
-  let plans: ScalingPlan[] | undefined | null = null;
-  const scenario = () => (plans === null ? (plans = scenarioPlans(d)) : plans);
   for (const node of d.nodes) {
     const n = analysis.nodes[node.id],
       p = analysis.resolved[node.id],
@@ -136,12 +133,15 @@ function computeRequestFindings(ctx: CheckContext): Finding[] {
     // The calls playback makes: not dead-letter routes, deny rules or connections that forward no share.
     const calls = ctx.requests(node.id).filter((e) => activeCall(ctx.role(node.id), e));
     for (const e of calls) {
-      if (suggested > REQUEST_FINDINGS_BUDGET) break;
       const target = ctx.nodes.get(e.to);
       if (!target || !["external-api", "model-api"].includes(profileOf(target.stencil)?.family ?? "")) continue;
       const edge = ctx.edges.get(e.id)!;
       const policy = callPolicy(node.stencil, edge.props?.caller as EdgeSimProps["caller"]);
       if (policy.deadlineMs !== undefined) continue;
+      if (suggested > REQUEST_FINDINGS_BUDGET) {
+        unbuilt++;
+        continue;
+      }
       const response = requestResponseMs(
         analysis.resolved[e.to],
         analysis.nodes[e.to].waits,
@@ -266,7 +266,8 @@ function computeRequestFindings(ctx: CheckContext): Finding[] {
         });
       }
       if (action?.kind !== "scale-threads") {
-        const suggestion = (scenario() ?? [])
+        // Scenario sizing only here, for a blocked caller with a verified fix (lazy: it plays the simulations).
+        const suggestion = (ctx.plans() ?? [])
           .flatMap((p) => p.suggestions)
           .find((s) => s.node === node.id && s.kind === "busyThreads" && s.fix && s.verified);
         if (suggestion?.fix)
@@ -339,19 +340,40 @@ function computeRequestFindings(ctx: CheckContext): Finding[] {
       });
     }
   }
-  // The budget, in a fixed order: every warning that fits, then timeout suggestions in diagram order.
+  // The budget, in a fixed order: every warning that fits, then timeout suggestions in diagram order. What doesn't
+  // fit is counted per rule, so a reader never takes a bounded result for a complete one.
   const findings: Finding[] = [];
+  const omitted = new Map<Finding["rule"], number>(unbuilt ? [["call-timeout", unbuilt]] : []);
   let room = REQUEST_FINDINGS_BUDGET;
+  // Suggestions are a prefix in diagram order: after the first that doesn't fit, none is listed.
+  let full = false;
   for (const f of [...warnings, ...suggestions]) {
     const size = JSON.stringify(f).length + 1;
-    if (size > room) {
-      if (f.severity === "warning") continue;
-      break;
+    if (size > room || (full && f.severity === "suggestion")) {
+      if (f.severity === "suggestion") full = true;
+      omitted.set(f.rule, (omitted.get(f.rule) ?? 0) + 1);
+      continue;
     }
     room -= size;
     findings.push(f);
   }
+  for (const [rule, count] of omitted) findings.push(omission(rule, count));
   return findings;
+}
+
+/** How many of a rule's findings didn't fit the budget: runChecks reports it as `omitted`, never as a finding. */
+function omission(rule: Finding["rule"], count: number): Finding {
+  return {
+    id: `${rule}:*omitted`,
+    rule,
+    severity: "suggestion",
+    target: "",
+    elements: [],
+    title: "",
+    message: "",
+    rationale: "",
+    omitted: count,
+  };
 }
 
 export const blockedThreads: CheckRule = {

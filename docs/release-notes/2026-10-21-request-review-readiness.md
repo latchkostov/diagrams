@@ -62,3 +62,20 @@ Three goldens differ from the previous head, all already in the 329-file invento
 `node/agent/check/{blocking-call,scale-on-busy-threads,corpus-w1-busy-threads}.json`. Their `oneRule` case
 (`rules: ["dead-letter", "capacity"]`) runs capacity without the waiting checks, so it reports capacity's
 own findings again; that section is now identical to master's. No other golden changed.
+
+## Third review round
+
+- **Scenario sizing stays lazy without a worker.** The worker and the no-worker fallback now run one function
+  (`src/checks/execute.ts`). Its context works out scenario sizing only when a check reads it: the capacity
+  check, or a blocked caller's verified fix. A diagram with capacity off and no such fix plays no simulation on
+  the main thread.
+- **Bounded results say they're bounded.** Request findings past the budget are counted by rule and reported as
+  `CheckResult.omitted`: the summary (Checks card and `check_diagram`) says how many more weren't listed, and a
+  bounded result never reads as "Nothing to check". Timeout suggestions past the budget are only counted, never
+  built.
+- **Outages stay visible.** A broker saved down or paused keeps its capacity warning beside a diagnosed caller;
+  only a healthy broker's backlog is left to the caller's finding.
+- **Overlapping attempts.** Only the newest attempt for a content publishes its result; an older one only fills a
+  gap. Every caller still gets its own attempt's result.
+
+No golden changed in this round.

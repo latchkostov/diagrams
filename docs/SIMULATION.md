@@ -1216,6 +1216,8 @@ caller's thread budget. This supersedes the design's 4× response / 1–2–5 / 
 normal reply fits that budget, it offers no speculative timeout. Fully blocking deadline-free request
 cycles also explain the risk of deadlock. Names in these findings are bounded at 200 characters, and one
 diagram's request findings at 1,000,000 characters (warnings first, then timeout suggestions in diagram order).
+What doesn't fit is counted, by rule: the Checks card and `check_diagram` say how many more weren't listed, and such
+a result never reads as clean.
 
 The request checks replay simulations, so in the editor they run in the checks worker. Agents and fixes wait
 for the result for the exact content (pending is never a clean result) and read what they awaited; a failure
