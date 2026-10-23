@@ -2026,9 +2026,9 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       if (TEST_ORACLES && opts.verifyResilience && edge.breaker)
         breakerDispatches.push({
           state: edge.breaker.state.state,
-          sent: edge.breaker.state.sent,
+          sent: branch.breakerPermit!.sent,
           probes: edge.breaker.policy.halfOpenCalls ?? 5,
-          units: sizeOf(message),
+          units: branch.breakerPermit!.units,
         });
       branch.pool = reservation.id;
       edge.calls.inFlight += occupancyFraction(reservation);

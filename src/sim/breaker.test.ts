@@ -5,6 +5,7 @@ import { checkJsonSchema } from "../model/jsonSchema";
 import { waitingFixture } from "../lab/waitingFixture";
 import { createEngine } from "./engine";
 import { assertResilienceInvariants } from "./resilienceInvariants";
+import type { EdgeSimProps } from "./types";
 
 it("validates an empty breaker and whole-second windows, refusing unknown or invalid settings", () => {
   expect(() => checkJsonSchema({ breaker: {} }, callerSchema)).not.toThrow();
@@ -86,6 +87,99 @@ it("an all-ignored batch is inconclusive and waits another interval before one b
   }
   breakerRecord(b, p, 40, "success", 0, breakerPermits(b, p, 40, 1)!);
   expect(b.state).toBe("closed");
+});
+
+it("R3 checks each probe's admission evidence and still rejects excess probes or open dispatch", () => {
+  const state = { time: 0, inSystem: 1, edges: [], calls: [], logical: [], budgetDecisions: [] };
+  const small = { state: "half-open", sent: 1, probes: 3, units: 1 };
+  const large = { state: "half-open", sent: 11, probes: 3, units: 10 };
+  expect(() => assertResilienceInvariants({ ...state, breakerDispatches: [large, small] })).not.toThrow();
+  expect(() => assertResilienceInvariants({ ...state, breakerDispatches: [{ ...large, sent: 14 }] })).toThrow(
+    "R3 probe gate",
+  );
+  expect(() => assertResilienceInvariants({ ...state, breakerDispatches: [{ ...small, state: "open" }] })).toThrow(
+    "R3 dispatch while open",
+  );
+});
+
+it("replays mixed-size probes that wait for pools without attributing a later permit to them", () => {
+  // Reduced sweep seed 36167129: a queued small probe dispatches after a larger permit.
+  const d = waitingFixture();
+  d.planning!.revision = "p3-w2";
+  const [source, caller, partner, result] = d.nodes;
+  source.stencil = "generic.queue";
+  source.props = { maxDeliveryCount: 3 };
+  d.nodes = [
+    source,
+    { ...caller, id: "tier0", props: { concurrency: 4, replicas: 2, latencyMs: 261, jitter: 0, failureRate: 0.5 } },
+    {
+      ...caller,
+      id: "tier1",
+      stencil: "aws.lambda",
+      props: {
+        concurrency: 1,
+        replicas: 1,
+        latencyMs: 151,
+        jitter: 0,
+        scaling: "fixed",
+        maxConcurrency: 1,
+        retry: "inplace",
+        retryBackoffMs: 100,
+        api: { latencyMs: 151 },
+        failureRate: 0.5,
+      },
+    },
+    { ...partner, id: "side", props: { api: { latencyMs: 20 }, jitter: 0 } },
+    result,
+  ];
+  const policy: NonNullable<EdgeSimProps["caller"]> = {
+    poolConnections: 1,
+    wait: "blocking",
+    replyMs: 71,
+    breaker: { minimumCalls: 2, openMs: 200, halfOpenCalls: 3 },
+    deadlineMs: 177,
+    retry: { maxAttempts: 1, backoffMs: 0, strategy: "fixed", jitter: 0, retryOn: ["timeout"] },
+  };
+  d.edges = [
+    { id: "input", from: "source", to: "tier0", props: { travelMs: 10 } },
+    {
+      id: "call0",
+      from: "tier0",
+      to: "tier1",
+      kind: "sync",
+      props: { travelMs: 10, networkDelayMs: 10, caller: policy },
+    },
+    {
+      id: "side0",
+      from: "tier0",
+      to: "side",
+      kind: "sync",
+      props: { travelMs: 10, caller: { ...policy, wait: "non-blocking" } },
+    },
+    { id: "output", from: "tier0", to: "result", props: { travelMs: 10 } },
+  ];
+  const e = createEngine({ seed: 7, scale: 10, maxParticles: 0, verifyResilience: assertResilienceInvariants });
+  e.load(d);
+  e.inject("source", 4);
+  e.setNodeStatus("tier1", "paused");
+  e.step(280);
+  const checkpoint = e.checkpoint();
+  const finish = () => {
+    e.setNodeStatus("tier1", "paused");
+    e.step(350);
+    e.setNodeStatus("tier0", "down");
+    e.step(10);
+    for (const id of ["tier0", "tier1"]) {
+      e.setNodeStatus(id, "up");
+      e.setNodeProps(id, { failureRate: 0 });
+    }
+    e.step(20000);
+    expect(e.metrics().inSystem).toBe(0);
+    return e.snapshot();
+  };
+  const expected = finish();
+  e.restore(checkpoint);
+  expect(finish()).toEqual(expected);
 });
 
 function fixture() {

@@ -34,7 +34,7 @@ export interface LogicalCall {
 }
 
 export interface LogicalBranch {
-  breakerPermit?: { generation: number; probe: boolean; units: number };
+  breakerPermit?: import("./breaker").BreakerPermit;
   attemptStartedAt?: number;
   countedAt?: number;
   state: "queued" | "sent" | "replied" | "failed" | "timedOut" | "backoff";

@@ -33,6 +33,13 @@ export interface BreakerView {
   failurePercent: number;
   calls: number;
 }
+export interface BreakerPermit {
+  generation: number;
+  probe: boolean;
+  units: number;
+  /** Immutable admission evidence: another queued probe may dispatch first. */
+  sent: number;
+}
 export const createBreaker = (): BreakerState => ({
   state: "closed",
   generation: 0,
@@ -78,7 +85,7 @@ export function breakerPermits(b: BreakerState, p: BreakerPolicy, now: number, u
     b.sent += units;
     b.inFlight += units;
   }
-  return { generation: b.generation, probe, units };
+  return { generation: b.generation, probe, units, sent: b.sent };
 }
 /** Only the current epoch's logical answers count. Late replies and short circuits never enter the window. */
 export function breakerRecord(
@@ -87,7 +94,7 @@ export function breakerRecord(
   now: number,
   cause: OutcomeKind,
   elapsed: number,
-  permit: { generation: number; probe: boolean; units: number },
+  permit: BreakerPermit,
 ): void {
   if (permit.generation !== b.generation) return;
   const counts = classifyOutcome(cause).breakerCounts;
