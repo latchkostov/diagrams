@@ -280,7 +280,7 @@ export function fitNodesViewport(s: State, only: ReadonlySet<string> | null, ins
  * A fit of every node that leaves the trace card's footprint (its first rows, top right) clear: beside it, below
  * it, or untouched when nothing sits there anyway (see geometry/fit.ts). Null when there's nothing to fit.
  */
-function fitBesideCard(s: State): Viewport | null {
+function fitBesideCard(s: State, routing: RouteOptions): Viewport | null {
   const items: Rect[] = [];
   for (const n of s.nodeLookup.values()) {
     const width = n.measured?.width ?? 0;
@@ -288,6 +288,7 @@ function fitBesideCard(s: State): Viewport | null {
     if (n.hidden || !width || !height) continue;
     items.push({ x: n.internals.positionAbsolute.x, y: n.internals.positionAbsolute.y, width, height });
   }
+  if (s.edges.some((e) => e.data?.waypoints?.length)) items.push(...contentRects(s, routing));
   const pane = s.domNode?.getBoundingClientRect();
   const el = s.domNode?.querySelector<HTMLElement>('[data-testid="trace-card"]')?.getBoundingClientRect();
   const width = el?.width || 352;
@@ -305,12 +306,23 @@ function fitBesideCard(s: State): Viewport | null {
  * only: a wide diagram moves down a little instead of shrinking to the left of a full-height column, so tracing
  * costs no zoom. With the side panel open, it fits into what the panel leaves.
  */
-export function liveFitViewport(s: State, room: { panel: boolean; card: boolean }): Viewport | null {
+export function liveFitViewport(
+  s: State,
+  room: { panel: boolean; card: boolean },
+  routing: RouteOptions = { style: "smoothstep", direction: "LR" },
+): Viewport | null {
   if (room.card && !room.panel) {
-    const beside = fitBesideCard(s);
+    const beside = fitBesideCard(s, routing);
     if (beside) return beside;
   }
   const right = room.panel ? PANEL_RIGHT : room.card ? CARD_RIGHT : LIVE_FIT.insets.right;
+  if (s.edges.some((e) => e.data?.waypoints?.length)) {
+    return fitAvoiding(contentRects(s, routing), { width: s.width, height: s.height }, [], {
+      margin: 0,
+      maxZoom: LIVE_FIT.maxZoom,
+      insets: { ...LIVE_FIT.insets, right },
+    });
+  }
   return fitNodesViewport(s, null, { ...LIVE_FIT.insets, right }, LIVE_FIT.maxZoom);
 }
 

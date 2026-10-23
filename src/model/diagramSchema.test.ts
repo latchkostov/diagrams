@@ -277,3 +277,24 @@ it("bounds saved waypoints and closes their point objects", () => {
   ])
     expect(() => check({ ...edge, waypoints }, "Edge")).toThrow();
 });
+
+it("uses the same waypoint coordinate boundaries as native loading", () => {
+  for (const value of [-1_000_000, 1_000_000]) {
+    const saved = { ...edge, waypoints: [{ x: value, y: -value }] };
+    expect(() => check(saved, "Edge")).not.toThrow();
+    const result = parseNative(
+      JSON.stringify({
+        format: "diagrams/v1",
+        title: "Bounds",
+        nodes: [
+          { id: saved.from, stencil: "service.go", label: "A", x: 0, y: 0 },
+          { id: saved.to, stencil: "service.go", label: "B", x: 400, y: 0 },
+        ],
+        edges: [saved],
+      }),
+    );
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.diagram.edges[0].waypoints).toEqual(saved.waypoints);
+    expect(() => check({ ...saved, waypoints: [{ x: value + Math.sign(value), y: 0 }] }, "Edge")).toThrow();
+  }
+});

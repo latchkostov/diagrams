@@ -352,3 +352,32 @@ it("offsets copied waypoints with both endpoints without modifying the source", 
     { x: 350, y: -100 },
   ]);
 });
+
+it("rejects hostile saved waypoints in both clipboard versions before remapping", () => {
+  for (const format of [CLIP_FORMAT, "diagrams/clip-v2"]) {
+    for (const waypoints of [
+      "bad",
+      {},
+      [null],
+      [{ x: "1", y: 2 }],
+      [{ x: 1_000_001, y: 0 }],
+      [{ x: 0, y: -1_000_001 }],
+      Array.from({ length: 150_000 }, () => ({ x: 0, y: 0 })),
+    ]) {
+      expect(
+        parsePayload(
+          JSON.stringify({
+            format,
+            planning: { revision: "p3-a1" },
+            groups: [],
+            nodes: [
+              { id: "a", stencil: "service.go", x: 0, y: 0 },
+              { id: "b", stencil: "service.go", x: 400, y: 0 },
+            ],
+            edges: [{ id: "e", from: "a", to: "b", waypoints }],
+          }),
+        ),
+      ).toBeNull();
+    }
+  }
+});

@@ -4,7 +4,6 @@
 // whose search area changed node or boundary geometry touched; the global passes (ports, nudging, labels) are cheap.
 
 import type { AnnotationShape, Side } from "../../model/types";
-import { routeGeometry } from "./shapedRuntime";
 import { pickSides } from "../edges/routing";
 import { placeLabels, type LabelPlacement } from "./labels";
 import { nudgeRoutes } from "./nudge";
@@ -14,6 +13,7 @@ import { spreadPorts, type PortEnd } from "./ports";
 import { RectIndex } from "./spatial";
 import { centerOf, inflate, intersects, sideNormal, type Point, type Rect } from "./rect";
 
+export type RouteGeometry = typeof import("./shaped");
 export type RouteStyle = "smoothstep" | "bezier" | "straight";
 
 export interface RouteNode {
@@ -43,6 +43,7 @@ export interface RouteEdge {
 }
 
 export interface RouteInput {
+  geometry?: RouteGeometry;
   nodes: readonly RouteNode[];
   groups?: readonly RouteGroup[];
   edges: readonly RouteEdge[];
@@ -115,6 +116,10 @@ interface RawEntry {
 const sameRect = (a: Rect & { shape?: AnnotationShape }, b: Rect & { shape?: AnnotationShape }) =>
   a.x === b.x && a.y === b.y && a.width === b.width && a.height === b.height && a.shape === b.shape;
 
+/** Pending IDs are explicit for synchronous/headless callers; inject geometry to complete them. */
+export class RouteResult extends Map<string, EdgeRoute> {
+  readonly pending = new Set<string>();
+}
 export class Router {
   private raw = new Map<string, RawEntry>();
   private prevRects = new Map<string, Rect>();
@@ -123,7 +128,8 @@ export class Router {
   /** How many edges ran A* in the last call (for tests and the Lab's readout). */
   lastRouted = 0;
 
-  route(input: RouteInput): Map<string, EdgeRoute> {
+  route(input: RouteInput): RouteResult {
+    const routeGeometry = input.geometry;
     const style = input.style ?? "smoothstep";
     const direction = input.direction ?? "LR";
     const rects = new Map(input.nodes.map((n) => [n.id, n.rect]));
@@ -303,10 +309,13 @@ export class Router {
     );
 
     // ---- assemble, reusing unchanged results so React skips re-rendering those edges
-    const out = new Map<string, EdgeRoute>();
+    const out = new RouteResult();
     for (const e of edges) {
       const pts = final.get(e.id);
-      if (!pts) continue;
+      if (!pts) {
+        out.pending.add(e.id);
+        continue;
+      }
       const sd = sides.get(e.id)!;
       const path =
         curves.get(e.id) ??
@@ -339,6 +348,6 @@ export class Router {
 }
 
 /** One-shot convenience for tests and tools. */
-export function routeDiagram(input: RouteInput): Map<string, EdgeRoute> {
+export function routeDiagram(input: RouteInput): RouteResult {
   return new Router().route(input);
 }

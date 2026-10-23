@@ -15,6 +15,7 @@ interface Seg {
   lo: number;
   hi: number;
   pinned: boolean;
+  fixed: boolean;
   /** Turn at the low / high end: -1 toward smaller perpendicular coordinate, +1 larger, 0 none. */
   loTurn: number;
   hiTurn: number;
@@ -56,6 +57,7 @@ function segmentsOf(edge: string, pts: Point[], vertical: boolean, fixed = false
       lo: Math.min(along(a), along(b)),
       hi: Math.max(along(a), along(b)),
       pinned: fixed || k === 0 || k === n - 1,
+      fixed,
       loTurn: loIsA ? turnA : turnB,
       hiTurn: loIsA ? turnB : turnA,
     });
@@ -92,13 +94,20 @@ function clusters(segs: Seg[], tol: number): Seg[][] {
   const sorted = [...segs].sort((a, b) => a.c - b.c);
   const parent = sorted.map((_, i) => i);
   const find = (i: number): number => (parent[i] === i ? i : (parent[i] = find(parent[i])));
-  for (let i = 0; i < sorted.length; i++)
-    for (let j = i + 1; j < sorted.length && sorted[j].c - sorted[i].c < tol; j++) {
-      const a = sorted[i],
-        b = sorted[j];
-      if (a.edge === b.edge) continue;
+  // Query only mutable routes. Fixed segments constrain their neighbours but never need
+  // comparisons against each other, including thousands of disjoint saved segments in one lane.
+  const index = new SpatialGrid<number>();
+  const box = (s: Seg): Rect => ({ x: s.c, y: s.lo, width: 0, height: s.hi - s.lo });
+  sorted.forEach((s, i) => index.insert(box(s), i));
+  for (let i = 0; i < sorted.length; i++) {
+    const a = sorted[i];
+    if (a.fixed) continue;
+    for (const { item: j } of index.query(inflate(box(a), tol))) {
+      const b = sorted[j];
+      if ((!b.fixed && j <= i) || a.edge === b.edge || Math.abs(a.c - b.c) >= tol) continue;
       if (Math.min(a.hi, b.hi) - Math.max(a.lo, b.lo) > 2) parent[find(i)] = find(j);
     }
+  }
   const groups = new Map<number, Seg[]>();
   sorted.forEach((s, i) => {
     const r = find(i);
@@ -192,6 +201,8 @@ export function nudgeRoutes(
       id,
       pts.map((p) => ({ ...p })),
     );
+
+  if ([...routes.keys()].every((id) => opts.fixed?.has(id))) return out;
 
   const spread = () => {
     for (const vertical of [true, false]) {

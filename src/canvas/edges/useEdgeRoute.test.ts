@@ -159,3 +159,34 @@ it("keeps concurrent visible and hidden route subscribers stable on an unchanged
 beforeAll(async () => {
   await Promise.all([loadShapeGeometry(), loadShapeAttachments()]);
 });
+
+it("keeps routing caches and route identities when visual dependency details load", async () => {
+  const { loadEdgeDetails } = await import("./edgeDetailsRuntime");
+  const node = (id: string, x: number): InternalNode<FlowNode> => {
+    const n = nodeToFlow({ id, stencil: "service.go", label: id, x, y: 0 });
+    return {
+      ...n,
+      measured: { width: 220, height: 72 },
+      internals: { positionAbsolute: n.position, z: 0, userNode: n },
+    };
+  };
+  const s = {
+    nodeLookup: new Map([
+      ["a", node("a", 0)],
+      ["b", node("b", 500)],
+    ]),
+    edges: [{ id: "e", source: "a", target: "b" }],
+  } as ReactFlowState<FlowNode, DiagramFlowEdge>;
+  const opts = { style: "smoothstep", direction: "LR" } as const;
+  const before = selectRoutes(s, opts);
+  const route = vi.spyOn(Router.prototype, "route");
+  try {
+    await loadEdgeDetails();
+    const after = selectRoutes({ ...s }, opts);
+    expect(after).toBe(before);
+    expect(after.get("e")).toBe(before.get("e"));
+    expect(route).not.toHaveBeenCalled();
+  } finally {
+    route.mockRestore();
+  }
+});

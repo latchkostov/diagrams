@@ -1,3 +1,4 @@
+import { edgeGeometryPending } from "./edges/readiness";
 import { useEffect, useLayoutEffect, useState, type RefObject } from "react";
 import { useStoreApi } from "@xyflow/react";
 import { flushSync } from "react-dom";
@@ -36,6 +37,7 @@ function measuredGate(store: ReturnType<typeof useStoreApi<FlowNode, DiagramFlow
     () => {
       const el = root;
       if (!el || !observer || !fontsReady || document.fonts.status !== "loaded") return null;
+      if (edgeGeometryPending(el)) return null;
       const s = store.getState();
       // A delayed entrance animation can hold the same geometry for several frames before
       // moving the hint. Its completion, rather than two samples during its delay, is final.

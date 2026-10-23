@@ -1,3 +1,4 @@
+import { validWaypoints } from "../model/edgeRoute";
 import { revisionAtLeast } from "../model/revisions";
 import { DRILL_PRESETS, faultProblem, faultTarget, type Fault } from "../model/faults";
 import { createResourceValidator } from "../model/resourceValidation";
@@ -382,15 +383,7 @@ export function validateDiagram(data: unknown): NativeResult {
     if (out.targetSide !== undefined && !SIDES.has(out.targetSide as string)) delete out.targetSide;
     if (out.waypoints !== undefined) {
       const w = out.waypoints;
-      if (
-        !Array.isArray(w) ||
-        w.length > 64 ||
-        w.findIndex(
-          (p: unknown) =>
-            !isObj(p) ||
-            [p.x, p.y].some((v) => !Number.isFinite(v) || Math.abs(v as number) > ANNOTATION_LIMITS.maxCoordinate),
-        ) >= 0
-      ) {
+      if (!validWaypoints(w)) {
         warnings.push(`Ignored waypoints: "${e.id}"`);
         delete out.waypoints;
       } else if (!w.length) delete out.waypoints;

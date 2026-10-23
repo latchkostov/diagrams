@@ -12,8 +12,7 @@ import { dataUrlToBlob } from "./files";
 import { holdInput } from "../lib/inputHold";
 import type { AnnotationShape } from "../model/types";
 import { whenShapeGeometryReady } from "../canvas/shapes/readiness";
-import { loadEdgeDetails } from "../canvas/edges/edgeDetailsRuntime";
-import { loadShapedRoutes } from "../canvas/geometry/shapedRuntime";
+import { whenEdgeGeometryReady } from "../canvas/edges/readiness";
 import { geometrySnapshot } from "../canvas/shapes/runtime";
 import { t } from "../i18n";
 
@@ -134,10 +133,8 @@ export async function renderDiagramImage(kind: "png" | "svg", opts: ImageOptions
   opts.check?.();
   const viewport = findViewport();
   // A pending route is still part of the saved drawing. Wait before measuring its farthest bend.
-  if (viewport.querySelector('[data-route-pending="true"]')) {
-    await unlessCancelled(Promise.all([loadShapedRoutes(), loadEdgeDetails()]), opts.signal);
-    flushSync(() => {});
-  }
+  await unlessCancelled(whenEdgeGeometryReady(viewport), opts.signal);
+  flushSync(() => {});
   const content = bounds(viewport);
   if (!content) throw new Error("This diagram is empty, so there's nothing to export.");
   const header = opts.header?.title.trim() ? addHeader(viewport, content, opts.header) : undefined;

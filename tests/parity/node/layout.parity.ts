@@ -1,3 +1,4 @@
+import * as geometry from "../../../src/canvas/geometry/shaped";
 // Layout and routing on estimated card sizes (the browser tier pins them on measured ones): auto-layout in both
 // directions, Tidy, the arrange commands, the agents' and skill's layout, and every edge's route in each style.
 import { describe, it } from "vitest";
@@ -38,7 +39,7 @@ function routeInput(d: DiagramFile, style: RouteStyle): RouteInput {
 
 function routes(d: DiagramFile, style: RouteStyle) {
   return Object.fromEntries(
-    [...new Router().route(routeInput(d, style))].map(([id, r]) => [
+    [...new Router().route({ ...routeInput(d, style), geometry })].map(([id, r]) => [
       id,
       // One line per route: points flattened to x1, y1, x2, y2, …, the label box as [x, y, width, height] beside its
       // mode and text. The SVG path is drawn from the points (rounded corners, curves): its hash keeps the file readable.

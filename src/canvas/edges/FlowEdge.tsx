@@ -1,7 +1,15 @@
-import { edgeDetails, loadEdgeDetails } from "./edgeDetailsRuntime";
+import { edgeDetailsSnapshot, subscribeEdgeDetails } from "./edgeDetailsRuntime";
 import { isDenyRule } from "../../stencils/netDevices";
 import { useKeyboardFocusOn, useTooltip } from "../../components/useTooltip";
-import { memo, useCallback, useEffect, type CSSProperties, type MouseEvent, type ReactNode } from "react";
+import {
+  memo,
+  useSyncExternalStore,
+  useCallback,
+  useEffect,
+  type CSSProperties,
+  type MouseEvent,
+  type ReactNode,
+} from "react";
 import { EdgeLabelRenderer, useStore, type EdgeProps, type ReactFlowState } from "@xyflow/react";
 import { useDiagram } from "../DiagramContext";
 import type { DiagramFlowEdge, DiagramNodeData } from "../types";
@@ -10,8 +18,9 @@ import type { LabelPlacement } from "../geometry/labels";
 import { useEdgeRoute, useRoutingOptions } from "./useEdgeRoute";
 import { relationInfo } from "./relationInfo";
 import { isDependency, relationOf, type DependencyRelation } from "../../model/relations";
-import { loadShapedRoutes } from "../geometry/shapedRuntime";
-import { lazyComponent, loadFailed } from "../../lib/lazyLoad";
+import { requireEdgeModules } from "./readiness";
+import { routeGeometry } from "../geometry/shapedRuntime";
+import { lazyComponent } from "../../lib/lazyLoad";
 const EdgeEnds = lazyComponent(() => import("./EdgeEnds").then((m) => m.EdgeEnds));
 
 /**
@@ -33,10 +42,9 @@ function FlowEdgeImpl(props: EdgeProps<DiagramFlowEdge>) {
   const custom = !!data?.waypoints?.length;
   useEffect(() => {
     if (!custom && !dependency) return;
-    const load = () =>
-      void Promise.all([custom && loadShapedRoutes(), dependency && loadEdgeDetails()]).catch(() => loadFailed(load));
-    load();
+    requireEdgeModules(custom, dependency);
   }, [custom, dependency]);
+  const Details = useSyncExternalStore(subscribeEdgeDetails, edgeDetailsSnapshot, edgeDetailsSnapshot);
   const route = useEdgeRoute(id, useRoutingOptions());
   const dep = useStore(useCallback((s: ReactFlowState) => relationInfo(s.edges as DiagramFlowEdge[]).get(id), [id]));
   const sourceStencil = useStore(
@@ -52,9 +60,8 @@ function FlowEdgeImpl(props: EdgeProps<DiagramFlowEdge>) {
   const tooltip = useTooltip(edgeFocused);
   const card = tooltip.open;
   const kind = data?.kind ?? "async";
-  if (!route) return custom ? <g data-route-pending="true" /> : null;
+  if (!route) return custom && !routeGeometry ? <g data-route-pending="true" data-route-module="shaped" /> : null;
   const { path, label } = route;
-  const Details = edgeDetails;
   const mid = label ?? pointAlong(route.points, 0.5).point;
   // A firewall rule that denies: a "no entry" glyph just after the source, so it's never colour alone.
   const deny = denied ? Details?.denyPoint(route.points) : undefined;
@@ -157,6 +164,7 @@ function FlowEdgeImpl(props: EdgeProps<DiagramFlowEdge>) {
       data-testid={`edge-${id}`}
       data-route={route.custom ? "custom" : undefined}
       data-route-pending={dependency && !Details ? "true" : undefined}
+      data-route-module={dependency && !Details ? "details" : undefined}
       data-source-side={data?.sourceSide}
       data-target-side={data?.targetSide}
       data-relation={relation ?? undefined}

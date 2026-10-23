@@ -1,6 +1,4 @@
-import { beforeAll } from "vitest";
-import { loadShapedRoutes } from "./shapedRuntime";
-beforeAll(loadShapedRoutes);
+import * as geometry from "./shaped";
 import { describe, expect, it, vi } from "vitest";
 import { auditLayout, countViolations } from "./audit";
 import { fitAvoiding } from "./fit";
@@ -702,6 +700,7 @@ describe("custom routes", () => {
   it("never searches for custom edges, faces bends, and invalidates custom identity on reset", () => {
     const router = new Router();
     const input: RouteInput = {
+      geometry,
       nodes: [
         { id: "a", rect: card(0, 0) },
         { id: "b", rect: card(600, 0) },
@@ -747,4 +746,42 @@ describe("custom routes", () => {
     expect(result.get("fixed")).toEqual(p);
     expect(result.get("auto")).not.toEqual(p);
   });
+});
+
+it("keeps fixed bends when opposing stubs overlap", () => {
+  const fixed = [
+    { x: 0, y: 0 },
+    { x: 100, y: 0 },
+    { x: 100, y: 100 },
+    { x: 200, y: 100 },
+  ];
+  const auto = [
+    { x: 200, y: 0 },
+    { x: 50, y: 0 },
+    { x: 50, y: -100 },
+    { x: 0, y: -100 },
+  ];
+  expect(
+    nudgeRoutes(
+      new Map([
+        ["fixed", fixed],
+        ["auto", auto],
+      ]),
+      [],
+      { fixed: new Set(["fixed"]) },
+    ).get("fixed"),
+  ).toEqual(fixed);
+});
+it("reports pending headless saved routes until their geometry is injected", () => {
+  const input: RouteInput = {
+    nodes: [
+      { id: "a", rect: card(0, 0) },
+      { id: "b", rect: card(600, 0) },
+    ],
+    edges: [{ id: "e", source: "a", target: "b", waypoints: [{ x: 300, y: 500 }] }],
+  };
+  expect(routeDiagram(input).pending).toEqual(new Set(["e"]));
+  const ready = routeDiagram({ ...input, geometry });
+  expect(ready.pending.size).toBe(0);
+  expect(ready.get("e")?.points).toContainEqual({ x: 110, y: 500 });
 });

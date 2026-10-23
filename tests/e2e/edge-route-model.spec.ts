@@ -1,4 +1,5 @@
 import { readFile } from "node:fs/promises";
+import { settledCanvas } from "../parity/browser/canvas";
 import type { Page } from "@playwright/test";
 import { chunk } from "./chunk";
 import fixture from "../parity/corpus/hand-shaped-lines.diagram.json" with { type: "json" };
@@ -168,4 +169,118 @@ test("reverse keeps the saved bends in reverse order and undoes once", async ({ 
     .toEqual(fixture.edges[0].waypoints);
   await expect(page.getByTestId("undo-button")).toBeDisabled();
   expectNoErrors(consoleErrors);
+});
+
+async function seed(page: Page, diagram = fixture) {
+  await page.addInitScript(([key, value]) => localStorage.setItem(key, value), [
+    STORAGE_KEYS.autosavePrefix + "kafka-order-pipeline",
+    JSON.stringify(diagram),
+  ] as const);
+}
+async function expectRoutesInPane(page: Page) {
+  const pane = await page.getByTestId("canvas-wrap").boundingBox();
+  if (!pane) throw new Error("Missing pane");
+  for (const id of ["api-db", "detour", "shape-end"]) {
+    const edge = page.getByTestId(`edge-${id}`);
+    const box = await edge.boundingBox();
+    if (!box) throw new Error("Missing route bounds");
+    expect(box.x).toBeGreaterThanOrEqual(pane.x);
+    expect(box.y).toBeGreaterThanOrEqual(pane.y);
+    expect(box.x + box.width).toBeLessThanOrEqual(pane.x + pane.width);
+    expect(box.y + box.height).toBeLessThanOrEqual(pane.y + pane.height);
+  }
+}
+test("opening fit and shared readiness wait for pending saved routes", async ({ page }) => {
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  let requested = false;
+  await page.route(chunk("shaped", "src/canvas/geometry/shaped.ts"), async (route) => {
+    requested = true;
+    await held;
+    await route.continue();
+  });
+  await seed(page);
+  await gotoCanvas(page, "kafka-order-pipeline");
+  await expect.poll(() => requested).toBe(true);
+  let settled = false;
+  const ready = settledCanvas(page).then(() => {
+    settled = true;
+  });
+  // Use the browser's actual font/layout readiness before checking the held route gate.
+  await page.getByTestId("canvas-wrap").evaluate(async () => {
+    await document.fonts.ready;
+    await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+  });
+  await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-fit-pending", "true");
+  expect(settled).toBe(false);
+  release();
+  await ready;
+  await expectRoutesInPane(page);
+});
+test("image export waits for pending saved routes", async ({ page }) => {
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  let requested = false;
+  await page.route(chunk("shaped", "src/canvas/geometry/shaped.ts"), async (route) => {
+    requested = true;
+    await held;
+    await route.continue();
+  });
+  await seed(page);
+  await gotoCanvas(page, "kafka-order-pipeline");
+  await expect.poll(() => requested).toBe(true);
+  await page.getByTestId("file-button").click();
+  await page.getByTestId("file-more-formats").click();
+  await page.getByTestId("export-image").click();
+  await page.getByTestId("image-options-toggle").click();
+  await page.getByTestId("image-format-svg").click();
+  let downloaded = false;
+  const download = page.waitForEvent("download").then((file) => {
+    downloaded = true;
+    return file;
+  });
+  await page.getByTestId("image-export").click();
+  await expect(page.getByTestId("image-export-cancel")).toBeVisible();
+  await expect(page.getByTestId("edge-api-db")).toHaveCount(0);
+  expect(downloaded).toBe(false);
+  release();
+  const file = await download;
+  expect(await file.failure()).toBeNull();
+  const svg = await readFile(await file.path(), "utf8");
+  const viewBox = /viewBox="([^"]+)"/.exec(svg)?.[1].split(/\s+/).map(Number);
+  expect(viewBox?.[3]).toBeGreaterThanOrEqual(780);
+  expect(svg).toContain('data-route="custom"');
+  expect(svg).toContain('data-testid="edge-detour"');
+});
+test("one surviving Retry recovers failed shaped routes and separate dependency details", async ({ page }) => {
+  const patterns = [
+    chunk("shaped", "src/canvas/geometry/shaped.ts"),
+    chunk("SettingsCard", "src/canvas/edges/SettingsCard.tsx"),
+  ];
+  const failed = new Set<number>();
+  for (const [i, pattern] of patterns.entries())
+    await page.route(pattern, async (route) => {
+      failed.add(i);
+      await route.abort();
+    });
+  const diagram = {
+    ...fixture,
+    edges: fixture.edges.map((e) =>
+      e.id === "jog"
+        ? { id: e.id, from: e.from, to: e.to, relation: "config", props: { settings: [{ key: "Orders:Timeout" }] } }
+        : e,
+    ),
+  };
+  await seed(page, diagram as typeof fixture);
+  await gotoCanvas(page, "kafka-order-pipeline");
+  await expect.poll(() => failed.size).toBe(2);
+  await expect(page.getByTestId("lazy-load-retry")).toBeVisible();
+  for (const pattern of patterns) await page.unroute(pattern);
+  await page.getByTestId("lazy-load-retry").click();
+  await expect(page.getByTestId("edge-api-db")).toHaveAttribute("data-route", "custom");
+  await expect(page.getByTestId("edge-glyph-jog")).toBeVisible();
 });
