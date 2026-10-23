@@ -1,4 +1,5 @@
 import { waitingFixture } from "./waitingFixture";
+import { inspectorLayoutFixture } from "./inspectorLayoutFixture";
 import { messageTypesFixture } from "./messageTypesFixture";
 import { resilienceFixture, breakerFixture } from "./resilienceFixture";
 import { annotationShapesFixture } from "./annotationShapesFixture";
@@ -317,6 +318,14 @@ const diagramPresets: Preset[] = [
     group: "Diagrams",
     description: "Blocking caller slots and logical reply timing.",
     diagram: () => waitingFixture(),
+  },
+  {
+    kind: "diagram",
+    id: "inspector-layout",
+    title: "Inspector layout",
+    group: "Diagrams",
+    description: "Field rhythm, short-field pairs and collapsed summaries in an invented system.",
+    diagram: inspectorLayoutFixture,
   },
   ...examples
     .filter((e) => !localOnly.has(e.slug))

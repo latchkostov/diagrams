@@ -1,21 +1,13 @@
+import { ReadoutDisclosure } from "../live/ReadoutDisclosure";
 import { useId, useState, type ReactNode } from "react";
 import type { NodeSimProps } from "../sim/types";
-import { admissionFieldBindings } from "./admissionFieldBindings";
+import { admissionFieldBindings, admissionFieldLabel } from "./admissionFieldBindings";
 import { ADMISSION_PRESETS, ADMISSION_REVISION, admissionPresetFor, managedKind } from "../model/admissionPresets";
 import { resolveProps } from "../sim/defaults";
 import { stencilRole } from "../stencils/roles";
 import { t, useLocale } from "../i18n";
 import { formatDuration, formatNumber } from "../i18n/format";
 import { explanationRate } from "./format";
-
-const admissionLabel = (name: ReturnType<typeof admissionFieldBindings>[number]["name"]) =>
-  ({
-    allocation: t("admission.allocation"),
-    rate: t("admission.rate"),
-    concurrency: t("admission.concurrency"),
-    latency: t("admission.latency"),
-    errors: t("admission.errors"),
-  })[name];
 
 /** One preset and four controls; scope/scaling details stay folded. Endpoint editing lands in P6. */
 export function AdmissionFields({
@@ -47,7 +39,7 @@ export function AdmissionFields({
   const accountRate = api.quotas?.find((q) => q.unit === "requests" && q.sharedGroup);
   const fields = admissionFieldBindings(stencil, { ...props, scaling }, resolved);
   return (
-    <div data-testid="admission-controls">
+    <div className="insp-section-body" data-testid="admission-controls">
       <label className="insp-field">
         <span className="insp-label">{t("admission.preset")}</span>
         <select
@@ -83,7 +75,7 @@ export function AdmissionFields({
         <AdmissionInput
           key={field.name}
           {...field}
-          label={admissionLabel(field.name)}
+          label={admissionFieldLabel(field.name)}
           change={(value) => set(field.patch(value), field.name)}
         />
       ))}
@@ -96,7 +88,7 @@ export function AdmissionFields({
         <AdmissionInput
           key={field.name}
           {...field}
-          label={admissionLabel(field.name)}
+          label={admissionFieldLabel(field.name)}
           change={(value) => set(field.patch(value), field.name)}
         />
       ))}
@@ -108,8 +100,12 @@ export function AdmissionFields({
       <p className="insp-note" data-testid="admission-assumptions">
         {t("admission.assumption")}
       </p>
-      <details data-testid="admission-advanced">
-        <summary data-testid="admission-advanced-toggle">{t("ai.advanced")}</summary>
+      <ReadoutDisclosure
+        testId="admission-advanced"
+        toggleId="admission-advanced-toggle"
+        title={t("ai.advanced")}
+        summary={scaling === "auto" ? t("admission.autoMode") : t("admission.fixed")}
+      >
         {serverless && (
           <label className="insp-field">
             <span className="insp-label">{t("admission.scaling")}</span>
@@ -154,7 +150,7 @@ export function AdmissionFields({
               </a>
             </p>
           ))}
-      </details>
+      </ReadoutDisclosure>
     </div>
   );
 }
@@ -241,7 +237,7 @@ export function BulkAdmissionFields({
     return admissionFieldBindings(node.stencil, { ...node.props, scaling }, resolved);
   });
   return (
-    <div data-testid="bulk-admission-controls">
+    <div className="insp-section-body" data-testid="bulk-admission-controls">
       {bindings[0]
         .filter((field) => bindings.every((list) => list.some((item) => item.name === field.name)))
         .map((field) => {
@@ -253,7 +249,7 @@ export function BulkAdmissionFields({
               {...field}
               value={mixed ? undefined : field.value}
               mixed={mixed}
-              label={admissionLabel(field.name)}
+              label={admissionFieldLabel(field.name)}
               change={(value) =>
                 set(Object.fromEntries(nodes.map((node, i) => [node.id, fields[i].patch(value)])), field.name)
               }

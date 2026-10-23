@@ -1,4 +1,5 @@
-import { useState, type ReactNode } from "react";
+import { useId, useState, type ReactNode } from "react";
+import { Icon } from "../components/Icon";
 import { t } from "../i18n";
 import type { HoverSummary } from "./hoverSummary";
 import { HoverStatus, HoverVerdict, HoverVitals, SectionRows } from "./HoverReadout";
@@ -24,6 +25,7 @@ export function DockedLive({
   children(section: string): ReactNode;
 }) {
   const [expanded, setExpanded] = useState(true);
+  const description = useId();
   const defaultSection = () =>
     verdictSection(
       summary.problems[0]?.key,
@@ -50,13 +52,21 @@ export function DockedLive({
         <button
           data-testid="planning-live-details-toggle"
           aria-expanded={expanded}
+          aria-describedby={!expanded ? description : undefined}
           onClick={() => setExpanded(!expanded)}
         >
-          <span aria-hidden>{expanded ? "⌄" : "›"}</span>
-          {t("hover.live")}
+          <span className="insp-disclosure-title" data-testid="inspector-live-title">
+            {t("hover.live")}
+          </span>
+          <HoverStatus summary={summary} />
+          <Icon name="chevron-right" size={12} />
         </button>
-        <HoverStatus summary={summary} />
       </h3>
+      {!expanded && (
+        <p className="insp-summary" id={description} data-testid="inspector-summary-live">
+          {problem?.text ?? healthy}
+        </p>
+      )}
       {expanded && (
         <>
           <HoverVerdict summary={summary} healthy={healthy} />

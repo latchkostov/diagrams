@@ -1,4 +1,5 @@
 import { useId, useState, type ReactNode } from "react";
+import { formatCount } from "../../live/format";
 import { Icon } from "../../components/Icon";
 import { safeStorage } from "../../lib/storage";
 
@@ -22,6 +23,7 @@ export function Disclosure({
   count,
   children,
   reveal,
+  summary,
 }: {
   id: string;
   title: string;
@@ -31,7 +33,9 @@ export function Disclosure({
   children: ReactNode;
   /** An explicit field-focus request opens its section before the first focus pass. */
   reveal?: number;
+  summary?: string;
 }) {
+  const summaryId = useId();
   const descriptionId = useId();
   const [open, setOpen] = useState(() => reveal !== undefined || readOpen()[id] === true);
   const [revealed, setRevealed] = useState(reveal);
@@ -50,32 +54,44 @@ export function Disclosure({
           type="button"
           className="insp-disclosure-head"
           aria-expanded={open}
-          aria-describedby={open && description ? descriptionId : undefined}
+          aria-describedby={open && description ? descriptionId : !open && summary ? summaryId : undefined}
           onClick={toggle}
           data-testid={`inspector-section-${id}`}
         >
+          <span className="insp-disclosure-title">{title}</span>
+          {!!count && (
+            <span className="insp-count" title={String(count)}>
+              {formatCount(count)}
+            </span>
+          )}
+          {aside}
           <Icon name="chevron-right" size={12} />
-          {title}
-          {!!count && <span className="insp-count">{count}</span>}
         </button>
-        {aside}
       </h3>
-      {open &&
-        (description ? (
-          <div
-            className="insp-request-content"
-            role="group"
-            data-testid={`inspector-content-${id}`}
-            aria-describedby={descriptionId}
-          >
-            <p id={descriptionId} className="insp-note">
-              {description}
-            </p>
-            {children}
-          </div>
-        ) : (
-          children
-        ))}
+      {!open && summary && (
+        <p id={summaryId} className="insp-summary" data-testid={`inspector-summary-${id}`}>
+          {summary}
+        </p>
+      )}
+      {open && (
+        <div className="insp-section-body" data-testid={`inspector-body-${id}`}>
+          {description ? (
+            <div
+              className="insp-section-body insp-request-content"
+              role="group"
+              data-testid={`inspector-content-${id}`}
+              aria-describedby={descriptionId}
+            >
+              <p id={descriptionId} className="insp-note">
+                {description}
+              </p>
+              {children}
+            </div>
+          ) : (
+            children
+          )}
+        </div>
+      )}
     </section>
   );
 }

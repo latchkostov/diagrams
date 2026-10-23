@@ -1,4 +1,5 @@
 import { groupLabel } from "../stencils/brokerVocabulary";
+import { tRich } from "../i18n/rich";
 import { memo } from "react";
 import { t, useLocale } from "../i18n";
 import { formatDuration, formatList, formatPercent, formatNumber } from "../i18n/format";
@@ -39,13 +40,22 @@ export const PlanningConnections = memo(function PlanningConnections({
           data-testid={`planning-connection-${row.edge}`}
           data-capability={row.kind}
         >
-          <strong>
+          <div className="planning-connection-heading">
             {row.kind === "consumes"
-              ? t("planning.consumes", { name: nodes.get(row.peer)!.label })
+              ? tRich("workspaceInspector.consumes", {
+                  name: nodes.get(row.peer)!.label,
+                  target: (text) => <strong>{text}</strong>,
+                })
               : row.kind === "publishes"
-                ? t("planning.publishes", { name: nodes.get(row.peer)!.label })
-                : t("planning.calls", { name: nodes.get(row.peer)!.label })}
-          </strong>
+                ? tRich("workspaceInspector.publishes", {
+                    name: nodes.get(row.peer)!.label,
+                    target: (text) => <strong>{text}</strong>,
+                  })
+                : tRich("workspaceInspector.calls", {
+                    name: nodes.get(row.peer)!.label,
+                    target: (text) => <strong>{text}</strong>,
+                  })}
+          </div>
           {row.group !== undefined && (
             <p data-testid="planning-group">
               {row.broker?.partitioned !== false

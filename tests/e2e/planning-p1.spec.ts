@@ -64,7 +64,8 @@ test("P1: Orders arithmetic and the 50% fix are keyboard accessible and undoable
   await seed(page);
   await page.getByTestId("node-orders").click();
   const x = page.getByTestId("planning-explanation-orders");
-  await expect(x.getByTestId("planning-arithmetic")).toContainText("~1 req/s (1 replica × 4 slots ÷ 4 s)");
+  await expect(x.getByTestId("planning-arithmetic")).toContainText("~1 req/s");
+  await expect(x.getByTestId("planning-capacity-formula")).toHaveText("(1 replica × 4 slots ÷ 4 s)");
   await expect(x.getByTestId("planning-contributors")).toContainText("Checkout: 3 req/s");
   await expect(x.getByTestId("planning-growth")).toContainText("2 req/s");
   await expect(x.getByTestId("planning-target")).toContainText("3 replicas at 100%; 6 replicas at the 50% target");

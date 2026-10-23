@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import "../styles/readout.css";
 
 /** Label/value facts shared by the docked readout sections. */
 export function ReadoutFacts({ rows }: { rows: readonly (readonly [string, ReactNode])[] }) {

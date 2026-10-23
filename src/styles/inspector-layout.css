@@ -1,0 +1,273 @@
+@import "./readout.css";
+
+/* Inspector layout only. Control borders, fills, heights and fonts live in canvas/inspector.css. */
+.inspector {
+  --insp-padding: 16px;
+  --insp-field-gap: 16px;
+  --insp-label-gap: 4px;
+  --insp-hint-gap: 6px;
+  --insp-section-height: 36px;
+  --insp-section-bottom: 20px;
+  --insp-label-size: 12px;
+  --insp-title-size: 13px;
+  container: inspector / inline-size;
+}
+.inspector .insp-section {
+  min-inline-size: 0;
+  gap: var(--insp-field-gap);
+  padding: 4px var(--insp-padding) var(--insp-section-bottom);
+}
+.inspector .insp-section > h3 {
+  min-block-size: var(--insp-section-height);
+  margin-block: -4px -12px;
+  gap: 8px;
+  font-size: var(--insp-title-size);
+  font-weight: 650;
+  color: var(--text);
+}
+.insp-section-body,
+.insp-subgroup,
+.inspector .autoscaling-controls,
+.inspector .message-fields,
+.inspector [data-testid="admission-controls"],
+.inspector [data-testid="bulk-admission-controls"] {
+  display: flex;
+  flex-direction: column;
+  min-inline-size: 0;
+  gap: var(--insp-field-gap);
+}
+.insp-section-body:empty {
+  display: none;
+}
+.inspector .insp-section:not(:has(> h3)) {
+  padding-block-start: var(--insp-padding);
+}
+.inspector .insp-field {
+  gap: var(--insp-label-gap);
+  max-inline-size: 100%;
+}
+.inspector .insp-label,
+.inspector .insp-fieldset > legend {
+  font-size: var(--insp-label-size);
+  font-weight: 550;
+  color: var(--text-2);
+}
+.inspector .insp-note {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.45;
+  max-inline-size: 100%;
+  overflow-wrap: anywhere;
+  color: var(--text-3);
+}
+.inspector .insp-field > .insp-note {
+  margin-block-start: calc(var(--insp-hint-gap) - var(--insp-label-gap));
+}
+.insp-paired,
+.inspector .insp-row2 {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--insp-field-gap);
+  min-inline-size: 0;
+}
+.insp-paired > * {
+  min-inline-size: 0;
+}
+@container inspector (min-width: 320px) {
+  .insp-paired,
+  .inspector .insp-row2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+.insp-fieldset {
+  min-inline-size: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.insp-fieldset > legend {
+  padding: 0;
+  margin-block-end: var(--insp-label-gap);
+}
+.insp-fieldset .insp-paired {
+  row-gap: 8px;
+}
+.inspector .insp-disclosure {
+  gap: 0;
+  padding: 0;
+}
+.inspector .insp-disclosure > h3 {
+  display: block;
+  min-inline-size: 0;
+  margin: 0;
+}
+.inspector .insp-disclosure-head {
+  display: flex;
+  inline-size: 100%;
+  min-block-size: var(--insp-section-height);
+  gap: 8px;
+  margin: 0;
+  padding: 4px var(--insp-padding);
+  text-align: start;
+}
+.insp-disclosure-title {
+  flex: 1;
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+}
+.inspector .insp-disclosure > h3 > .insp-disclosure-head > svg {
+  flex: none;
+  transition: none;
+  transform: rotate(0deg);
+}
+.inspector .insp-disclosure.is-open > h3 > .insp-disclosure-head > svg {
+  transform: rotate(90deg);
+}
+[dir="rtl"] .inspector .insp-disclosure > h3 > .insp-disclosure-head > svg {
+  transform: rotate(180deg);
+}
+.inspector .insp-disclosure > .insp-section-body {
+  padding: 4px var(--insp-padding) var(--insp-section-bottom);
+}
+.insp-summary {
+  margin: 0;
+  padding: 0 var(--insp-padding) 12px;
+  color: var(--text-3);
+  font-size: 12px;
+  line-height: 1.45;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.insp-subgroup,
+.inspector .insp-section .insp-disclosure,
+.inspector .insp-section .readout-disclosure {
+  border: 0;
+  border-inline-start: 2px solid var(--line);
+  padding-inline-start: 12px;
+}
+.inspector .insp-section .insp-disclosure > h3 > .insp-disclosure-head,
+.inspector .insp-section .insp-disclosure > .insp-section-body,
+.inspector .insp-section .insp-disclosure > .insp-summary {
+  padding-inline: 0;
+}
+.inspector .insp-section .insp-disclosure > h3,
+.insp-subgroup > h4 {
+  font-size: 12px;
+  font-weight: 650;
+  margin: 0;
+  color: var(--text);
+}
+/* Already nested: a second disclosure stays aligned, without another rule or indent. */
+.inspector
+  .insp-section
+  :is(.insp-subgroup, .insp-disclosure, .readout-disclosure)
+  :is(.insp-subgroup, .insp-disclosure, .readout-disclosure) {
+  border-inline-start: 0;
+  padding-inline-start: 0;
+}
+.insp-disclosure-head:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+.inspector .readout-disclosure > .insp-section-body {
+  padding-block: 4px 12px;
+}
+.inspector .planning-explanation {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.inspector .planning-explanation p {
+  margin-block: 0;
+}
+.inspector .inspector-live-outcomes {
+  font-variant-numeric: tabular-nums;
+}
+.inspector-live-outcomes dd > small {
+  display: block;
+  font-weight: 400;
+  font-size: 12px;
+  line-height: 1.45;
+}
+.inspector .planning-connection {
+  padding-block: 10px;
+}
+.planning-connection-heading {
+  color: var(--text-3);
+}
+.planning-connection-heading strong {
+  color: var(--text);
+  font-weight: 600;
+}
+.inspector details > summary {
+  overflow-wrap: anywhere;
+}
+.inspector .insp-role {
+  flex: none;
+  color: var(--text-2);
+}
+
+/* Routing forms use the same field rhythm; their table rows keep their existing density. */
+.inspector :is(.route-details, .route-definition, .route-new) {
+  gap: var(--insp-field-gap);
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+}
+.inspector :is(.route-address, .route-match) {
+  display: flex;
+  flex-direction: column;
+  gap: var(--insp-field-gap);
+  min-inline-size: 0;
+}
+
+.inspector .insp-paired > .insp-id {
+  align-self: end;
+}
+
+[dir="rtl"] .inspector .insp-disclosure.is-open > h3 > .insp-disclosure-head > svg {
+  transform: rotate(90deg);
+}
+.inspector .inspector-live-outcomes > div {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+}
+.inspector .inspector-live-outcomes dd {
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+}
+.inspector .insp-size {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--insp-field-gap);
+}
+.inspector .insp-size .insp-input {
+  width: 100%;
+}
+@container inspector (min-width: 320px) {
+  .inspector .insp-size {
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  }
+}
+@container inspector (max-width: 319px) {
+  .inspector .insp-size > span {
+    display: none;
+  }
+}
+.inspector .inspector-live-heading > button {
+  inline-size: 100%;
+  text-align: start;
+}
+.inspector .inspector-live-heading > button > svg {
+  flex: none;
+}
+[dir="rtl"] .inspector .inspector-live-heading > button > svg {
+  transform: rotate(180deg);
+}
+.inspector .inspector-live-heading > button[aria-expanded="true"] > svg {
+  transform: rotate(90deg);
+}
+.inspector .inspector-live > .insp-summary {
+  padding-inline: 0;
+}

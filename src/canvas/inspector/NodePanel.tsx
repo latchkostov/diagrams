@@ -10,6 +10,7 @@ import { routeTableCapable, trafficMixCapable } from "../../model/requestRouting
 import { NodePlanning, RouteTableFields, TrafficMixFields } from "../../planning/lazy";
 import { deviceSpec } from "../../stencils/netDevices";
 import { getStencil } from "../../stencils/registry";
+import { assignmentLabel } from "../../stencils/brokerVocabulary";
 import { nodeSimFields } from "../simFieldRules";
 import { type DiagramFlowNode } from "../types";
 import { Section } from "./fields";
@@ -124,6 +125,7 @@ export function NodePanel({
         props={props}
         role={role}
         broker={broker}
+        assignment={assignmentLabel(broker)}
         simFields={simFields}
         managed={managed}
         device={device}

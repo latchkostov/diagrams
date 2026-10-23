@@ -1,3 +1,7 @@
+import "../../styles/inspector-layout.css";
+import { resolveProps } from "../../sim/defaults";
+import { admissionFieldBindings, admissionFieldLabel } from "../../planning/admissionFieldBindings";
+import { ADMISSION_PRESETS } from "../../model/admissionPresets";
 import { revisionAtLeast } from "../../model/revisions";
 import { type ReactNode, type CSSProperties, useEffect, useId, useRef, useState } from "react";
 import { t } from "../../i18n";
@@ -32,12 +36,14 @@ import { formatCount } from "../../live/format";
 import { formatNumber } from "../../i18n/number";
 import { type DiagramFile } from "../../model/types";
 import { MessageFields } from "./lazyMessageFields";
+import { PairedFields } from "./Layout";
 
 type NodeSimulationProps = Pick<InspectorProps, "editor" | "meta" | "readDiagram"> & {
   node: DiagramFlowNode;
   props: Record<string, unknown>;
   role: ReturnType<typeof getStencil>["simRole"];
   broker: ReturnType<typeof brokerSpec>;
+  assignment?: string;
   simFields: ReturnType<typeof nodeSimFields>;
   managed: boolean;
   device: ReturnType<typeof deviceSpec>;
@@ -58,6 +64,7 @@ export function NodeSimulation({
   props,
   role,
   broker,
+  assignment,
   simFields,
   managed,
   device,
@@ -69,11 +76,62 @@ export function NodeSimulation({
   reveal,
   paused,
 }: NodeSimulationProps) {
+  const firstField = simFields.find((key) => SIM_FIELDS[key]);
+  const autoscaling = props.autoscaling as NodeSimProps["autoscaling"];
+  const admission = managed ? resolveProps(role, "", props, node.data.stencil, { revision: "p3" }) : undefined;
+  const admissionField = admission
+    ? admissionFieldBindings(
+        node.data.stencil,
+        { ...props, scaling: props.scaling ?? ADMISSION_PRESETS[admission.profile.preset ?? ""]?.scaling ?? "fixed" },
+        admission,
+      )[0]
+    : undefined;
   return (
     <Disclosure
       id="node-simulation"
       reveal={reveal}
       title={t("inspector.simulation")}
+      summary={
+        admissionField
+          ? t("workspaceInspector.valueSummary", {
+              label: admissionFieldLabel(admissionField.name),
+              value:
+                admissionField.value === undefined ? t("admission.unknownShort") : formatNumber(admissionField.value),
+            })
+          : autoscaling?.mode === "on"
+            ? t("workspaceInspector.rangeSummary", {
+                min: autoscaling.controller.minReplicas,
+                max: autoscaling.controller.maxReplicas,
+              })
+            : role === "source"
+              ? t("workspaceInspector.rateSummary", {
+                  rate: String(props.ratePerSec ?? SIM_FIELDS.ratePerSec!.placeholder),
+                })
+              : simFields.includes("replicas") && simFields.includes("concurrency")
+                ? t("workspaceInspector.replicaSummary", {
+                    replicas: Number(props.replicas ?? SIM_FIELDS.replicas!.placeholder),
+                    slots: String(props.concurrency ?? SIM_FIELDS.concurrency!.placeholder),
+                  })
+                : device
+                  ? t("workspaceInspector.valueSummary", {
+                      label: t("inspector.size"),
+                      value: {
+                        branch: t("inspector.branch"),
+                        campus: t("inspector.campus"),
+                        datacentre: t("inspector.dataCentre"),
+                      }[sizeOf(device, props.size)],
+                    })
+                  : firstField
+                    ? t("workspaceInspector.valueSummary", {
+                        label:
+                          firstField === "partitions"
+                            ? (assignment ?? assignmentLabel(broker))
+                            : SIM_FIELDS[firstField]!.label,
+                        value: String(props[firstField] ?? SIM_FIELDS[firstField]!.placeholder),
+                      })
+                    : simRoleMeta[role].hint
+      }
+
       aside={
         <span
           className="insp-role"
@@ -120,28 +178,30 @@ export function NodeSimulation({
           props={props}
           set={(patch, key) => editor.setNodeProps(node.id, patch, key ? merge(key) : undefined)}
         >
-          {simFields
-            .filter((key) => key !== "emits" && key !== "messageType")
-            .map((k) => (
-              <SimInput
-                key={k}
-                name={k}
-                field={
-                  k === "partitions"
-                    ? {
-                        ...SIM_FIELDS[k]!,
-                        label: assignmentLabel(broker),
-                        hint: t("broker.assignmentHint"),
-                        note: revisionAtLeast(meta.planning?.revision, "p2") ? undefined : SIM_FIELDS[k]!.note,
-                      }
-                    : k === "replicas"
-                      ? { ...SIM_FIELDS[k]!, hint: t("broker.replicaHint") }
-                      : SIM_FIELDS[k]!
-                }
-                value={props[k]}
-                onChange={(v) => editor.setNodeProps(node.id, { [k]: v }, merge(k))}
-              />
-            ))}
+          <PairedFields testId="inspector-simulation-pairs">
+            {simFields
+              .filter((key) => key !== "emits" && key !== "messageType")
+              .map((k) => (
+                <SimInput
+                  key={k}
+                  name={k}
+                  field={
+                    k === "partitions"
+                      ? {
+                          ...SIM_FIELDS[k]!,
+                          label: assignment ?? assignmentLabel(broker),
+                          hint: t("broker.assignmentHint"),
+                          note: revisionAtLeast(meta.planning?.revision, "p2") ? undefined : SIM_FIELDS[k]!.note,
+                        }
+                      : k === "replicas"
+                        ? { ...SIM_FIELDS[k]!, hint: t("broker.replicaHint") }
+                        : SIM_FIELDS[k]!
+                  }
+                  value={props[k]}
+                  onChange={(v) => editor.setNodeProps(node.id, { [k]: v }, merge(k))}
+                />
+              ))}
+          </PairedFields>
         </AutoscalingWorkload>
       ) : isClusterWrapper(node.data.stencil) ? (
         <p className="insp-note" data-testid="broker-wrapper">
@@ -252,10 +312,11 @@ export function DeviceFields({
         }}
         value={props.gbps}
         onChange={(v) => set({ gbps: v }, "gbps")}
-      />
-      <p className="insp-note" data-testid="inspector-device-rate">
-        {t("inspector.deviceRate", { rate: formatCount(messagesPerSec(gbps, kb)), size: kb, model: preset.model })}
-      </p>
+      >
+        <small className="insp-note" data-testid="inspector-device-rate">
+          {t("inspector.deviceRate", { rate: formatCount(messagesPerSec(gbps, kb)), size: kb, model: preset.model })}
+        </small>
+      </SimInput>
       <Field label={t("inspector.highAvailability")}>
         <select
           className="insp-input"
@@ -383,6 +444,7 @@ export function SimInput({
   onChange,
   integer = false,
   visibleHint = false,
+  children,
 }: {
   name: string;
   field: SimField;
@@ -390,6 +452,7 @@ export function SimInput({
   onChange: (v: SimValue) => void;
   integer?: boolean;
   visibleHint?: boolean;
+  children?: ReactNode;
 }) {
   const external = showSim(field.kind, value);
   const [draft, setDraft] = useState(external);
@@ -405,88 +468,86 @@ export function SimInput({
     }
   }, [external]);
   return (
-    <>
-      <Field label={field.label} hint={visibleHint ? undefined : field.hint}>
-        <span className="insp-unit-wrap">
-          <input
-            className={`insp-input${field.kind === "number" ? " mono" : ""}`}
-            type={field.kind === "number" ? "number" : "text"}
-            inputMode={field.kind === "number" ? "decimal" : undefined}
-            min={field.min}
-            max={field.max}
-            step={field.step}
-            value={draft}
-            placeholder={field.placeholder}
-            aria-invalid={invalid || undefined}
-            aria-describedby={
-              [invalid ? feedback : "", visibleHint && field.hint ? `${feedback}-hint` : ""]
-                .filter(Boolean)
-                .join(" ") || undefined
+    <Field label={field.label} hint={visibleHint ? undefined : field.hint} testId={`inspector-unit-${name}`}>
+      <span className="insp-unit-wrap">
+        <input
+          className={`insp-input${field.kind === "number" ? " mono" : ""}`}
+          type={field.kind === "number" ? "number" : "text"}
+          inputMode={field.kind === "number" ? "decimal" : undefined}
+          min={field.min}
+          max={field.max}
+          step={field.step}
+          value={draft}
+          placeholder={field.placeholder}
+          aria-invalid={invalid || undefined}
+          aria-describedby={
+            [invalid ? feedback : "", visibleHint && field.hint ? `${feedback}-hint` : ""].filter(Boolean).join(" ") ||
+            undefined
+          }
+          onFocus={() => (focused.current = true)}
+          onBlur={(e) => {
+            focused.current = false;
+            const bad = e.currentTarget.validity.badInput;
+            if (!bad) setDraft(external);
+            setInvalid(bad);
+            setOver(false);
+          }}
+          onChange={(e) => {
+            const raw = e.target.value;
+            setDraft(raw);
+            const bad = field.kind === "number" && e.currentTarget.validity.badInput;
+            const fractional = integer && raw !== "" && !Number.isInteger(Number(raw));
+            setInvalid(bad || fractional);
+            if (bad || fractional) return;
+            setOver(field.kind === "number" && field.max !== undefined && Number(raw) > field.max);
+            if (field.kind === "text") return onChange(raw || undefined);
+            if (field.kind === "list") {
+              const items = raw
+                .split(",")
+                .map((x) => x.trim())
+                .filter(Boolean);
+              return onChange(items.length ? items : undefined);
             }
-            onFocus={() => (focused.current = true)}
-            onBlur={(e) => {
-              focused.current = false;
-              const bad = e.currentTarget.validity.badInput;
-              if (!bad) setDraft(external);
-              setInvalid(bad);
-              setOver(false);
-            }}
-            onChange={(e) => {
-              const raw = e.target.value;
-              setDraft(raw);
-              const bad = field.kind === "number" && e.currentTarget.validity.badInput;
-              const fractional = integer && raw !== "" && !Number.isInteger(Number(raw));
-              setInvalid(bad || fractional);
-              if (bad || fractional) return;
-              setOver(field.kind === "number" && field.max !== undefined && Number(raw) > field.max);
-              if (field.kind === "text") return onChange(raw || undefined);
-              if (field.kind === "list") {
-                const items = raw
-                  .split(",")
-                  .map((x) => x.trim())
-                  .filter(Boolean);
-                return onChange(items.length ? items : undefined);
-              }
-              if (raw.trim() === "") return onChange(undefined);
-              const v = Number(raw);
-              // Each bound on its own: a value the file format would reject never reaches the diagram.
-              if (Number.isFinite(v)) onChange(Math.min(field.max ?? Infinity, Math.max(field.min ?? -Infinity, v)));
-            }}
-            name={name}
-            data-testid={`inspector-field-${name}`}
-          />
-          {field.unit && <span className="insp-unit">{field.unit}</span>}
-        </span>
-        {invalid && (
-          <small id={feedback} className="insp-note" role="status" data-testid={`inspector-invalid-${name}`}>
-            {t("admission.invalidNumber", {
-              min: formatNumber(field.min ?? 0),
-              max: formatNumber(field.max ?? 600_000),
-              step: "",
-              value: external || t("admission.unknownShort"),
-            })}
-          </small>
-        )}
-        {over && field.max !== undefined && (
-          <small className="insp-note" role="status" data-testid={`inspector-limit-${name}`}>
-            {t("inspector.limit", {
-              limit: formatNumber(field.max),
-              unit: field.unit && field.unit !== "0–1" ? ` ${field.unit}` : "",
-            })}
-          </small>
-        )}
-      </Field>
+            if (raw.trim() === "") return onChange(undefined);
+            const v = Number(raw);
+            // Each bound on its own: a value the file format would reject never reaches the diagram.
+            if (Number.isFinite(v)) onChange(Math.min(field.max ?? Infinity, Math.max(field.min ?? -Infinity, v)));
+          }}
+          name={name}
+          data-testid={`inspector-field-${name}`}
+        />
+        {field.unit && <span className="insp-unit">{field.unit}</span>}
+      </span>
+      {invalid && (
+        <small id={feedback} className="insp-note" role="status" data-testid={`inspector-invalid-${name}`}>
+          {t("admission.invalidNumber", {
+            min: formatNumber(field.min ?? 0),
+            max: formatNumber(field.max ?? 600_000),
+            step: "",
+            value: external || t("admission.unknownShort"),
+          })}
+        </small>
+      )}
+      {over && field.max !== undefined && (
+        <small className="insp-note" role="status" data-testid={`inspector-limit-${name}`}>
+          {t("inspector.limit", {
+            limit: formatNumber(field.max),
+            unit: field.unit && field.unit !== "0–1" ? ` ${field.unit}` : "",
+          })}
+        </small>
+      )}
       {visibleHint && field.hint && (
         <small id={`${feedback}-hint`} className="insp-note" data-testid={`inspector-hint-${name}`}>
           {field.hint}
         </small>
       )}
+      {children}
       {field.note && (
         <p className="insp-note insp-field-note" data-testid={`inspector-note-${name}`}>
           {field.note}
         </p>
       )}
-    </>
+    </Field>
   );
 }
 

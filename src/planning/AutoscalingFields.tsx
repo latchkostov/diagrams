@@ -1,3 +1,5 @@
+import { PairedFields } from "../canvas/inspector/Layout";
+import { ReadoutDisclosure } from "../live/ReadoutDisclosure";
 import { createResourceValidator } from "../model/resourceValidation";
 import { brokerChoices, loadBalancerChoices } from "../model/kedaBindings";
 import { CloudScalerFields } from "./CloudScalerFields";
@@ -451,15 +453,23 @@ export function AutoscalingFields({
         <p className="insp-note">{t("importDetail.scalingReason", { reason: scalingReasonCode(a.reason) })}</p>
       )}
       {pending && (
-        <details open data-testid="autoscaling-binding">
-          <summary data-testid="autoscaling-binding-toggle">{t("ai.advanced")}</summary>
+        <ReadoutDisclosure
+          testId="autoscaling-binding"
+          toggleId="autoscaling-binding-toggle"
+          title={t("ai.advanced")}
+          open
+        >
           <p role="status">{t("autoscaling.bindingRequired")}</p>
           {sourceField}
-        </details>
+        </ReadoutDisclosure>
       )}
       {cloudPending && (
-        <details open data-testid="autoscaling-binding">
-          <summary data-testid="autoscaling-binding-toggle">{t("ai.advanced")}</summary>
+        <ReadoutDisclosure
+          testId="autoscaling-binding"
+          toggleId="autoscaling-binding-toggle"
+          title={t("ai.advanced")}
+          open
+        >
           <p role="status">{cloudPending === "ecs-alb" ? t("autoscaling.lbRequired") : t("autoscaling.busRequired")}</p>
           {cloudPending === "ecs-alb" ? (
             <label className="insp-field">
@@ -491,7 +501,7 @@ export function AutoscalingFields({
           ) : (
             sourceField
           )}
-        </details>
+        </ReadoutDisclosure>
       )}
       {cloud && r && !cloudPending ? (
         <CloudScalerFields
@@ -547,34 +557,36 @@ export function AutoscalingFields({
               }, "target")
             }
           />
-          <NumberField
-            name="min"
-            label={t("autoscaling.min")}
-            value={c.minReplicas}
-            min={c.kind === "keda" ? 0 : 1}
-            max={c.maxReplicas}
-            integer
-            change={(v) =>
-              v !== undefined &&
-              patch((n) => {
-                n.minReplicas = v;
-              }, "min")
-            }
-          />
-          <NumberField
-            name="max"
-            label={t("autoscaling.max")}
-            value={c.maxReplicas}
-            min={c.minReplicas}
-            max={10_000}
-            integer
-            change={(v) =>
-              v !== undefined &&
-              patch((n) => {
-                n.maxReplicas = v;
-              }, "max")
-            }
-          />
+          <PairedFields>
+            <NumberField
+              name="min"
+              label={t("autoscaling.min")}
+              value={c.minReplicas}
+              min={c.kind === "keda" ? 0 : 1}
+              max={c.maxReplicas}
+              integer
+              change={(v) =>
+                v !== undefined &&
+                patch((n) => {
+                  n.minReplicas = v;
+                }, "min")
+              }
+            />
+            <NumberField
+              name="max"
+              label={t("autoscaling.max")}
+              value={c.maxReplicas}
+              min={c.minReplicas}
+              max={10_000}
+              integer
+              change={(v) =>
+                v !== undefined &&
+                patch((n) => {
+                  n.maxReplicas = v;
+                }, "max")
+              }
+            />
+          </PairedFields>
           <p className="insp-note" data-testid="autoscaling-assumption">
             {t("autoscaling.assumption")}
           </p>
@@ -587,8 +599,15 @@ export function AutoscalingFields({
               })}
             </p>
           )}
-          <details data-testid="autoscaling-advanced">
-            <summary data-testid="autoscaling-advanced-toggle">{t("ai.advanced")}</summary>
+          <ReadoutDisclosure
+            testId="autoscaling-advanced"
+            toggleId="autoscaling-advanced-toggle"
+            title={t("ai.advanced")}
+            summary={t("workspaceInspector.resourcesSummary", {
+              cpu: r?.cpuRequestMilli ?? t("admission.unknownShort"),
+              memory: r?.memoryRequestMiB ?? t("admission.unknownShort"),
+            })}
+          >
             {(metric || c.kind === "keda") && (
               <label className="insp-field">
                 <span className="insp-label">{t("autoscaling.metric")}</span>
@@ -779,19 +798,29 @@ export function AutoscalingFields({
             >
               {t("autoscaling.hpaName")}
             </a>
-          </details>
-          <details>
-            <summary data-testid="autoscaling-workload-toggle">{t("autoscaling.workload")}</summary>
+          </ReadoutDisclosure>
+          <ReadoutDisclosure
+            testId="autoscaling-workload"
+            toggleId="autoscaling-workload-toggle"
+            title={t("autoscaling.workload")}
+          >
             {children}
-          </details>
+          </ReadoutDisclosure>
         </>
       ) : (
         <>
           {resourceFields && (
-            <details data-testid="autoscaling-advanced">
-              <summary data-testid="autoscaling-advanced-toggle">{t("ai.advanced")}</summary>
+            <ReadoutDisclosure
+              testId="autoscaling-advanced"
+              toggleId="autoscaling-advanced-toggle"
+              title={t("ai.advanced")}
+              summary={t("workspaceInspector.resourcesSummary", {
+                cpu: r?.cpuRequestMilli ?? t("admission.unknownShort"),
+                memory: r?.memoryRequestMiB ?? t("admission.unknownShort"),
+              })}
+            >
               {resourceFields}
-            </details>
+            </ReadoutDisclosure>
           )}
           {children}
         </>

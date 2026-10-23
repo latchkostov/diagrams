@@ -1,3 +1,5 @@
+import { ReadoutDisclosure } from "../live/ReadoutDisclosure";
+import { ReadoutFacts } from "../live/ReadoutFacts";
 import { scalingMetricKind } from "../sim/scalingMetric";
 import { useState, type ReactNode } from "react";
 import type { RealNodeMetrics } from "../sim/types";
@@ -11,13 +13,20 @@ export function ResourceEstimate({ plan: p }: { plan: ResourcePlan }) {
   return (
     <div data-testid="autoscaling-estimate">
       {p.unmeasured && <p>{t("autoscaling.unmeasured")}</p>}
-      <p>
-        {t("autoscaling.configured", {
-          initial: formatNumber(p.initialCapacity, { maximumSignificantDigits: 3 }),
-          max: formatNumber(p.maxCapacity, { maximumSignificantDigits: 3 }),
-          startup: formatNumber(p.startupMs / 1000),
-        })}
-      </p>
+      <p>{t("workspaceInspector.capacityAssumption")}</p>
+      <ReadoutFacts
+        rows={[
+          [
+            t("workspaceInspector.initialCapacity"),
+            `${formatNumber(p.initialCapacity, { maximumSignificantDigits: 3 })}/s`,
+          ],
+          [
+            t("workspaceInspector.maximumCapacity"),
+            `${formatNumber(p.maxCapacity, { maximumSignificantDigits: 3 })}/s`,
+          ],
+          [t("autoscaling.startup"), `${formatNumber(p.startupMs / 1000)} s`],
+        ]}
+      />
       {p.targetReplicas !== undefined && p.max !== undefined && (
         <p>{t("autoscaling.needed", { count: p.targetReplicas, max: p.max })}</p>
       )}
@@ -98,8 +107,7 @@ export function ResourceDetails({
       </p>
       {r.unsafe && <p data-testid="autoscaling-unsafe">{t("autoscaling.unsafe")}</p>}
       {decision && (
-        <details>
-          <summary data-testid="autoscaling-why-toggle">{t("autoscaling.whyLabel")}</summary>
+        <ReadoutDisclosure testId="autoscaling-why" toggleId="autoscaling-why-toggle" title={t("autoscaling.whyLabel")}>
           <p data-testid="autoscaling-why">
             {t("autoscaling.why", {
               raw: decision.raw,
@@ -145,7 +153,7 @@ export function ResourceDetails({
               {t("autoscaling.window")}: {formatNumber(decision.windowMs)}
             </p>
           )}
-        </details>
+        </ReadoutDisclosure>
       )}
       <svg
         viewBox="0 0 260 70"

@@ -98,7 +98,7 @@ describe("round 3 planning regressions", () => {
     const html = renderToStaticMarkup(
       createElement(PlanningConnections, { id: "orders", configured: { ...configured, nodes, rows: () => rows } }),
     );
-    expect(html).toContain("Calls peer-999");
+    expect(html).toContain("Calls <strong>peer-999</strong>");
     expect(comparisons).toBeLessThanOrEqual(rows.length * 2);
   });
   it("rejects huge render analysis before reading props, serializing or calling the solver", () => {

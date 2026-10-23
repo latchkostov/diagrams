@@ -63,7 +63,7 @@ export function CallWaitFields({
   };
   return (
     <>
-      <Field label={t("threads.whileWaiting")}>
+      <Field label={t("threads.whileWaiting")} testId="inspector-unit-wait">
         <Dropdown
           value={policy.blocking ? "blocking" : "non-blocking"}
           items={[
@@ -74,10 +74,10 @@ export function CallWaitFields({
           testId="inspector-field-wait"
           aria-label={t("threads.whileWaiting")}
         />
+        <p className="insp-note" data-testid="inspector-hint-wait">
+          {t("threads.waitHint")}
+        </p>
       </Field>
-      <p className="insp-note" data-testid="inspector-hint-wait">
-        {t("threads.waitHint")}
-      </p>
       {origin("wait")}
       <RequestGroup
         name="waiting-limits"
@@ -105,7 +105,20 @@ export function CallWaitFields({
               set({ deadlineMs: v as number | undefined });
           }}
         />
-        <CallAdvanced enabled={revisionAtLeast(editor.getDiagram().planning?.revision, "p3-w2")}>
+        <CallAdvanced
+          enabled={revisionAtLeast(editor.getDiagram().planning?.revision, "p3-w2")}
+          summary={
+            !policy.blocking && stencilRole(stencil) === "processor"
+              ? t("workspaceInspector.poolSummary", {
+                  pool: policy.pool ?? t("threads.uncapped"),
+                  duration: policy.replyMs,
+                })
+              : t("workspaceInspector.valueSummary", {
+                  label: t("threads.pool"),
+                  value: String(policy.pool ?? t("threads.uncapped")),
+                })
+          }
+        >
           <SimInput
             visibleHint
             name="poolConnections"
@@ -161,9 +174,22 @@ export function CallWaitFields({
   );
 }
 
-function CallAdvanced({ enabled, children }: { enabled: boolean; children: import("react").ReactNode }) {
+function CallAdvanced({
+  enabled,
+  summary,
+  children,
+}: {
+  enabled: boolean;
+  summary: string;
+  children: import("react").ReactNode;
+}) {
   return enabled ? (
-    <Disclosure id="call-advanced" title={t("resilience.poolDetails")} description={t("threads.poolHint")}>
+    <Disclosure
+      id="call-advanced"
+      title={t("resilience.poolDetails")}
+      description={t("threads.poolHint")}
+      summary={summary}
+    >
       {children}
     </Disclosure>
   ) : (

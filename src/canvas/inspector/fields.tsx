@@ -2,6 +2,7 @@ import { useEffect, useState, type KeyboardEvent, type ReactNode } from "react";
 import { Icon } from "../../components/Icon";
 import { t } from "../../i18n";
 import { ANNOTATION_LIMITS } from "../../model/annotations";
+import { sideLabel } from "./sideLabel";
 import type { Side } from "../../model/types";
 
 const SIDES: Side[] = ["top", "right", "bottom", "left"];
@@ -112,7 +113,7 @@ export function Section({ title, aside, children }: { title?: string; aside?: Re
           {aside}
         </h3>
       )}
-      {children}
+      <div className="insp-section-body">{children}</div>
     </section>
   );
 }
@@ -123,15 +124,17 @@ export function Field({
   hint,
   group,
   children,
+  testId,
 }: {
   label: string;
   hint?: string;
   group?: boolean;
   children: ReactNode;
+  testId?: string;
 }) {
   const Tag = group ? "div" : "label";
   return (
-    <Tag className="insp-field" title={hint}>
+    <Tag className="insp-field" title={hint} data-testid={testId}>
       <span className="insp-label">{label}</span>
       {children}
     </Tag>
@@ -223,14 +226,7 @@ export function SideSelect({
       <option value="">{t("inspector.auto")}</option>
       {SIDES.map((s) => (
         <option key={s} value={s}>
-          {
-            {
-              top: t("inspector.sideTop"),
-              bottom: t("inspector.sideBottom"),
-              left: t("inspector.sideLeft"),
-              right: t("inspector.sideRight"),
-            }[s]
-          }
+          {sideLabel(s)}
         </option>
       ))}
     </select>

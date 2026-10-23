@@ -2,6 +2,7 @@ import { t } from "../../i18n";
 import { SIM_LIMITS } from "../../model/simLimits";
 import { DEFAULT_TRAVEL_MS } from "../../sim/topology";
 import type { DiagramFlowEdge } from "../types";
+import { sideLabel } from "./sideLabel";
 import { Field, SideSelect } from "./fields";
 import { Disclosure } from "./Disclosure";
 import { SimInput } from "./SimulationFields";
@@ -20,7 +21,22 @@ type EdgeAdvancedProps = Pick<InspectorProps, "editor"> & {
 
 export function EdgeAdvanced({ edge, editor, data, props, flow, rule, merge }: EdgeAdvancedProps) {
   return (
-    <Disclosure id="edge-advanced" title={t("resilience.appearanceRouting")}>
+    <Disclosure
+      id="edge-advanced"
+      title={t("resilience.appearanceRouting")}
+      summary={
+        flow
+          ? t("workspaceInspector.advancedSummary", {
+              from: sideLabel(data.sourceSide),
+              to: sideLabel(data.targetSide),
+              duration:
+                typeof props.travelMs === "number"
+                  ? props.travelMs
+                  : DEFAULT_TRAVEL_MS[data.kind === "sync" ? "sync" : "async"],
+            })
+          : t("workspaceInspector.sidesSummary", { from: sideLabel(data.sourceSide), to: sideLabel(data.targetSide) })
+      }
+    >
       <div className="insp-row2">
         <Field label={t("inspector.fromSide")}>
           <SideSelect
