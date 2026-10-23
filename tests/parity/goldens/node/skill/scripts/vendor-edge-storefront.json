@@ -8,7 +8,7 @@
   "shareLink": {
     "status": 0,
     "prefix": "https://www.livediagrams.dev/#d=",
-    "decoded": { "sha256": "aa17fef104ca3ff678657140be995e541afb68267f1b20afed502a3e2faab4a8", "bytes": 1554 },
+    "decoded": { "sha256": "f45e14c7a92a6af205470adb2d5ba9cfba63b0bd24fb08a0f81ee216275e585a", "bytes": 1537 },
     "sameAsFile": true,
     "warned": false
   },
@@ -47,7 +47,6 @@
           { "id": "flags", "stencil": "launchdarkly", "label": "Checkout flags", "x": 1020, "y": 420 },
           { "id": "identity", "stencil": "aws.cognito", "label": "Customer identity", "x": 680, "y": 420 }
         ],
-        "simulations": [],
         "edges": [
           { "id": "browse", "from": "shopper", "to": "cdn", "kind": "sync" },
           { "id": "protect", "from": "cdn", "to": "waf", "kind": "sync" },

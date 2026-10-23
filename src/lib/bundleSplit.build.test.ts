@@ -1,4 +1,5 @@
 import type { Rollup } from "vite";
+import { createHash } from "node:crypto";
 import { readdirSync, readFileSync } from "node:fs";
 import { beforeAll, describe, expect, it } from "vitest";
 import { APPROVED_STUN, APPROVED_TRACKERS } from "../../scripts/deployment-env";
@@ -237,12 +238,14 @@ describe("production bundle split", () => {
 
   it("serves every stencil glyph as a separate, byte-preserved cached asset", () => {
     const files = readdirSync("src/stencils/icons").filter((name) => name.endsWith(".svg"));
-    const emitted = assets.filter((a) => /^assets\/stencils-[\da-f]+\//.test(a.fileName));
+    const emitted = assets.filter((a) => /^assets\/[\w-]{8}\.svg$/.test(a.fileName));
     expect(emitted).toHaveLength(files.length);
     for (const name of files) {
-      const asset = emitted.find((a) => a.fileName.endsWith(`/${name}`));
+      const source = readFileSync(`src/stencils/icons/${name}`);
+      const hash = createHash("sha256").update(source).digest("base64url").slice(0, 8);
+      const asset = emitted.find((a) => a.fileName === `assets/${hash}.svg`);
       expect(asset, name).toBeDefined();
-      expect(Buffer.from(asset!.source)).toEqual(readFileSync(`src/stencils/icons/${name}`));
+      expect(Buffer.from(asset!.source)).toEqual(source);
     }
   });
 

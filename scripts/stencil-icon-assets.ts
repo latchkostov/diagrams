@@ -3,8 +3,8 @@ import { readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import type { Plugin } from "vite";
 
-/** One content-addressed directory keeps the icon URL manifest small as the catalogue grows.
- * SVGs still download individually on use; the exported viewer keeps its own subsetted URL module. */
+/** Per-icon content hashes preserve cached URLs when other glyphs change. The compact name/hash table
+ * keeps the manifest small; the exported viewer keeps its own subsetted URL module. */
 export function stencilIconAssets(): Plugin {
   return {
     name: "stencil-icon-assets",
@@ -19,17 +19,22 @@ export function stencilIconAssets(): Plugin {
         .map((name) => {
           const file = join(dir, name);
           this.addWatchFile(file);
-          return { name, source: readFileSync(file) };
+          const source = readFileSync(file);
+          const hash = createHash("sha256").update(source).digest("base64url").slice(0, 8);
+          return { name: name.slice(0, -4), source, hash };
         });
-      const hash = createHash("sha256");
-      for (const file of files) hash.update(file.name).update("\0").update(file.source).update("\0");
-      const directory = `assets/stencils-${hash.digest("hex").slice(0, 12)}`;
       for (const file of files)
-        this.emitFile({ type: "asset", fileName: `${directory}/${file.name}`, source: file.source });
+        this.emitFile({
+          type: "asset",
+          fileName: `assets/${file.hash}.svg`,
+          source: file.source,
+        });
       return `
-        const base = import.meta.env.BASE_URL + ${JSON.stringify(`${directory}/`)};
-        export const iconUrls = Object.fromEntries(${JSON.stringify(files.map((f) => f.name).join(" "))}
-          .split(" ").map(name => ["./icons/" + name, base + name]));
+        const hashes = ${JSON.stringify(files.map((f) => f.hash).join(""))}.match(/.{8}/g);
+        export const iconUrls = {};
+        ${JSON.stringify(files.map((f) => f.name).join(" "))}.split(" ").forEach((name, i) => {
+          iconUrls["./icons/" + name + ".svg"] = import.meta.env.BASE_URL + "assets/" + hashes[i] + ".svg";
+        });
         export function iconUrl(icon) { return iconUrls["./icons/" + icon + ".svg"]; }
       `;
     },

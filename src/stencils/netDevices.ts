@@ -158,7 +158,7 @@ export const DEVICE_SPECS: Readonly<Record<string, DeviceSpec>> = {
 };
 
 export function deviceSpec(stencil: string | undefined): DeviceSpec | undefined {
-  return stencil === undefined ? undefined : DEVICE_SPECS[stencil];
+  return stencil === undefined ? undefined : DEVICE_SPECS[baseStencilId(stencil)];
 }
 
 export const isDevice = (stencil: string | undefined) => deviceSpec(stencil) !== undefined;

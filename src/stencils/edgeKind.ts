@@ -24,9 +24,11 @@ const isClient = (stencil: string, role: SimRole) =>
  */
 export function inferKind(source: string | undefined, target: string | undefined): "sync" | "async" {
   if (source === undefined || target === undefined) return "async";
+  source = baseStencilId(source);
+  target = baseStencilId(target);
   const from = stencilRole(source),
     to = stencilRole(target);
   if (isBroker(source, from) || isBroker(target, to)) return "async";
-  if (to === "store" || to === "sink" || to === "gateway" || MODEL_APIS.has(baseStencilId(target))) return "sync";
+  if (to === "store" || to === "sink" || to === "gateway" || MODEL_APIS.has(target)) return "sync";
   return isClient(source, from) || from === "gateway" ? "sync" : "async";
 }

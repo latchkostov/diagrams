@@ -63,6 +63,7 @@ export const ADMISSION_PRESETS: Readonly<Record<string, Partial<NodeSimProps>>> 
   "managed-measured": { latencyMs: 250, failureRate: 0 },
 };
 export function admissionPresetFor(stencil?: string): string | undefined {
+  stencil = stencil && baseStencilId(stencil);
   if (stencil === "aws.lambda") return "lambda-account";
   if (stencil === "stripe") return "stripe-live";
   if (stencil === "aws.api-gateway") return "api-gateway-account";

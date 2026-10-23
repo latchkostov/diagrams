@@ -27,7 +27,6 @@
     { "id": "flags", "stencil": "launchdarkly", "label": "Checkout flags", "x": 1020, "y": 420 },
     { "id": "identity", "stencil": "aws.cognito", "label": "Customer identity", "x": 680, "y": 420 }
   ],
-  "simulations": [],
   "edges": [
     { "id": "browse", "from": "shopper", "to": "cdn", "kind": "sync" },
     { "id": "protect", "from": "cdn", "to": "waf", "kind": "sync" },

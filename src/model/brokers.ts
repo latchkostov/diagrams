@@ -81,4 +81,4 @@ export function brokerSpec(
     : log;
 }
 /** Infrastructure, never a topic or an extra delivery hop. */
-export const isClusterWrapper = (stencil: string) => stencil === "kafka.cluster";
+export const isClusterWrapper = (stencil: string) => baseStencilId(stencil) === "kafka.cluster";

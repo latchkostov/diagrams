@@ -1,4 +1,4 @@
-import { VENDOR_PARENTS } from "./vendorParents";
+import { VENDOR_PARENTS, baseStencilId } from "./vendorParents";
 import { FREE_CALLER_PROFILES } from "./freeCallerProfiles";
 import type { StencilProfile } from "./profiles";
 
@@ -232,5 +232,6 @@ export const PROFILES: Readonly<Record<string, StencilProfile>> = {
 
 /** Lightweight family lookup for canvas call settings; presets stay lazy. */
 export function familyOf(stencil: string) {
+  stencil = baseStencilId(stencil);
   return Object.hasOwn(PROFILES, stencil) ? PROFILES[stencil].family : undefined;
 }

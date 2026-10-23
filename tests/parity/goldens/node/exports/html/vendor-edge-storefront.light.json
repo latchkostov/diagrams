@@ -1,5 +1,5 @@
 {
-  "file": { "sha256": "4624d70978175d5dc69d52a2dda1f32ed8a7f90d0871660e4b27b61b432d278c", "bytes": 15880 },
+  "file": { "sha256": "59a1500ad1b3441fe482959933ef644d4f4839d53b9d2e442f31b3e991763b2f", "bytes": 15863 },
   "payload": {
     "version": 1,
     "diagram": {
@@ -31,7 +31,6 @@
         { "id": "flags", "stencil": "launchdarkly", "label": "Checkout flags", "x": 1020, "y": 420 },
         { "id": "identity", "stencil": "aws.cognito", "label": "Customer identity", "x": 680, "y": 420 }
       ],
-      "simulations": [],
       "edges": [
         { "id": "browse", "from": "shopper", "to": "cdn", "kind": "sync" },
         { "id": "protect", "from": "cdn", "to": "waf", "kind": "sync" },

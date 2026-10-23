@@ -1,7 +1,7 @@
 {
   "withIcons": {
-    "sha256": "ad86d1bc7a97c45bf5ebf761f22ee05970eb16ceeb19839b4dcbbe2750039502",
-    "bytes": 11430,
+    "sha256": "9f8be470fcda73b70ef2a7ca3bcd051fc273847b71a3ab1ebdb99433ee55dcf9",
+    "bytes": 11410,
     "inlined": {
       "aws.cognito": "generic-identity-provider c3c6cd6f3f68d51f",
       "client.browser": "client-browser 0022934839e05a07",
@@ -53,8 +53,7 @@
           { "id": "pay", "from": "checkout", "to": "payments", "kind": "sync" },
           { "id": "config", "from": "checkout", "to": "flags", "kind": "async", "relation": "config" },
           { "id": "authenticate", "from": "checkout", "to": "identity", "kind": "async", "relation": "identity" }
-        ],
-        "simulations": []
+        ]
       }
     }
   ]

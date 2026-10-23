@@ -19,8 +19,10 @@ const SELF_HOSTED_COMPUTE: ReadonlySet<string> = new Set([
   "aws.ecs",
 ]);
 
-export const isSelfHostedService = (stencil: string) =>
-  stencil.startsWith("service.") || SELF_HOSTED_COMPUTE.has(stencil);
+export const isSelfHostedService = (stencil: string) => {
+  stencil = baseStencilId(stencil);
+  return stencil.startsWith("service.") || SELF_HOSTED_COMPUTE.has(stencil);
+};
 
 /**
  * Gateways you run yourself, with replicas of their own. Managed ones (Front Door, API Gateway, CDNs) aren't here.
@@ -49,8 +51,12 @@ export const isFrontDoor = (stencil: string, role: SimRole) =>
   role === "gateway" && !NOT_A_FRONT_DOOR.has(baseStencilId(stencil));
 
 /** People, apps and partners calling in from outside. An on-call engineer (`client.team`) is inside. */
-export const isOutsideClient = (stencil: string, role: SimRole) =>
-  role === "source" && ((stencil.startsWith("client.") && stencil !== "client.team") || stencil === "generic.webhook");
+export const isOutsideClient = (stencil: string, role: SimRole) => {
+  stencil = baseStencilId(stencil);
+  return (
+    role === "source" && ((stencil.startsWith("client.") && stencil !== "client.team") || stencil === "generic.webhook")
+  );
+};
 
 /** Warehouses, lakes and object storage: shared by many readers and writers on purpose. */
 const SHARED_BY_DESIGN: ReadonlySet<string> = new Set([
@@ -107,14 +113,16 @@ export function cloudOf(stencil: string): "azure" | "aws" | "gcp" | undefined {
  * Secret stores a workload signs in to: Key Vault, Vault, Secrets Manager, Secret Manager, a generic one. Kubernetes
  * Secrets aren't here: the kubelet mounts them, so a pod never signs in to read one.
  */
-export const isSecretStore = (stencil: string) => stencilRelation(stencil).in === "secret" && stencil !== "k8s.secret";
+export const isSecretStore = (stencil: string) =>
+  stencilRelation(stencil).in === "secret" && baseStencilId(stencil) !== "k8s.secret";
 
 /**
  * A workload that signs in to things itself: not a store, an identity or anything else a dependency points at (a
  * config store's secret dependency is a reference its reader resolves; App Configuration never calls Key Vault),
  * and not a person or an outside app (`client.*`).
  */
-export const isWorkload = (stencil: string) => !stencilRelation(stencil).in && !stencil.startsWith("client.");
+export const isWorkload = (stencil: string) =>
+  !stencilRelation(stencil).in && !baseStencilId(stencil).startsWith("client.");
 
 /** Each cloud's workload identity: what a service runs as, with no stored credential. */
 export const WORKLOAD_IDENTITY = {
@@ -126,4 +134,4 @@ export const WORKLOAD_IDENTITY = {
 /** Kafka and the services that run it: their Avro and Protobuf serializers take schemas from a registry. */
 const KAFKA_FAMILY: ReadonlySet<string> = new Set(["kafka.topic", "aws.msk", "confluent.cloud"]);
 
-export const isKafkaFamily = (stencil: string) => KAFKA_FAMILY.has(stencil);
+export const isKafkaFamily = (stencil: string) => KAFKA_FAMILY.has(baseStencilId(stencil));
