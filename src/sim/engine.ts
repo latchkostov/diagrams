@@ -1974,6 +1974,10 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       represented: sizeOf(message) - admitted,
     };
     message.represented = branch.represented = admitted;
+    // A waiter for a pool connection that outlived the open interval (dispatch skipped while its caller was
+    // down) scheduled its deadline at the whole cohort's size.
+    const deadline = branch.deadlineEvent === undefined ? undefined : logicalIndices.get(branch.deadlineEvent);
+    if (deadline !== undefined) logical[deadline].represented = admitted;
     shortCircuited(edge, branch, refused);
     // A whole short circuit counts here when its logical failure drains; this part never settles the call.
     edge.calls.failed += dotsOf(refused);
