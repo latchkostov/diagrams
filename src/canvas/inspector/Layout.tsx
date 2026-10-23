@@ -1,4 +1,4 @@
-import type { ReactNode, Ref } from "react";
+import type { HTMLAttributes, ReactNode, Ref } from "react";
 import "../../styles/inspector-layout.css";
 
 /** Short fields keep their DOM / keyboard order, and stack below a 320px sheet. */
@@ -26,14 +26,15 @@ export function Subgroup({
   children,
   ref,
   testId,
+  ...semantics
 }: {
   title?: string;
   children: ReactNode;
   ref?: Ref<HTMLDivElement>;
   testId?: string;
-}) {
+} & Pick<HTMLAttributes<HTMLDivElement>, "role" | "aria-labelledby" | "aria-describedby">) {
   return (
-    <div className="insp-subgroup" ref={ref} data-testid={testId}>
+    <div {...semantics} className="insp-subgroup" ref={ref} data-testid={testId}>
       {title && <h4>{title}</h4>}
       {children}
     </div>

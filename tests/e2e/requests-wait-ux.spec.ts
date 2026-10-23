@@ -55,6 +55,10 @@ test("call fields take the first keyboard pass while planning downloads, with st
     await expect(pool).toBeFocused();
     await expect(page.getByTestId("inspector-hint-poolConnections")).toBeVisible();
     await expect.poll(() => requested).toBe(true);
+    // The roomier Inspector needs scrolling to reach Appearance & routing. Put that click target in view before
+    // measuring, so navigation scroll is separate from the exact planner-arrival position check below.
+    await page.getByTestId("inspector-section-edge-advanced").scrollIntoViewIfNeeded();
+    await expect(pool).toBeFocused();
     const before = await pool.boundingBox();
     expect(before).not.toBeNull();
     expect(await pool.evaluate((el) => getComputedStyle(el).borderStyle)).toBe("solid");

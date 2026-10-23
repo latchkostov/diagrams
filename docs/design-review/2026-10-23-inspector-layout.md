@@ -20,12 +20,12 @@ The designer review identified and the implementation corrected: missing first-l
 
 The new `inspector-layout.spec.ts` covers all representative node summaries, usable identity fields while Simulation downloads, measured 16 px complete-field gaps and 6 px hint gaps, live summary updates, paired/stacked layouts, semantic retry fieldsets, six light/dark axe cases, Arabic chevrons and long-string/narrow-fact overflow. The fixture is available as the Lab's Inspector layout preset.
 
-Three existing assertions intentionally follow the new structure; a fourth test gains a readiness precondition:
+Three existing assertions intentionally follow the new structure; a fourth test gains readiness and navigation preconditions:
 
 - `planning-p1.spec.ts`: the combined inline capacity/formula check now checks the same capacity and the exact separate formula value.
 - `inspector-live.spec.ts`: checks the exact Live title and the toggle's accessible name, which now includes the status chip placed before the right chevron.
 - `round3.test.ts`: expects the same final peer inside the new `strong` element; the indexed-lookup bound stays unchanged.
-- `requests-wait-ux.spec.ts`: waits for Request fields before pressing Tab while the planning download remains held; every focus and geometry assertion stays unchanged.
+- `requests-wait-ux.spec.ts`: waits for Request fields before pressing Tab while planning remains held. It puts the Appearance & routing click target in view before measuring, because the roomier panel now requires navigation scroll. The diagnostic showed a 69 px scroll on that click and no movement on planner arrival. All keyboard, border, export and exact full bounding-box assertions remain unchanged.
 
 The rhythm regression is verified against a production bundle with the field gap temporarily restored to 6 px, then the implementation is restored. Required Linux repeats, parity, static checks and bundle measurements are recorded in the delivery report.
 
@@ -42,3 +42,7 @@ No new global controls, control restyling, deeper indentation or forced field re
 ## Parity
 
 The sole intentional golden change is `node/i18n/catalogs.json`: 24 English messages, their namespace hashes and fallback accounting. No other output is intentionally changed.
+
+## Integration with current Request groups
+
+Sync retains master’s waiting-limit, retry-budget, retry-timing, retry-safety and breaker groups, their descriptions, controls, origins and keyboard order. Request groups now use the shared subgroup primitive. The rhythm case measures consecutive pool/reply fields inside Simulation because Waiting limits now separates the top-level wait and timeout fields. The fieldset case opens Retry safety before inspecting its choices. All 16 px/6 px and paired/stacked assertions stay unchanged.

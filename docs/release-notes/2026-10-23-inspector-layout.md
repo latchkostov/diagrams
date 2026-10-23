@@ -18,4 +18,4 @@ The complete local screenshot matrix is in `C:\Users\latch\bin\codex-tasks\inspe
 
 ## Output parity
 
-Only `tests/parity/goldens/node/i18n/catalogs.json` changes: the English catalog gains 24 `workspaceInspector` messages, increasing the catalog size from 2,898 to 2,922. The golden records the new namespace's per-language hash and fallback counts. Existing namespace hashes and all simulation, planning, export, layout and browser goldens are expected to remain unchanged. No translated catalogs were edited.
+Only `tests/parity/goldens/node/i18n/catalogs.json` changes: the English catalog gains 24 `workspaceInspector` messages, increasing the catalog size from 2,920 to 2,944. The golden records the new namespace's per-language hash and fallback counts. Existing namespace hashes and all simulation, planning, export, layout and browser goldens are expected to remain unchanged. No translated catalogs were edited.

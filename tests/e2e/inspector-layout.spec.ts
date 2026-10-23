@@ -91,17 +91,19 @@ test("node identity is usable while Simulation fields download", async ({ page }
 test("Simulation keeps 16px between complete fields, including their hints", async ({ page }) => {
   await open(page);
   await page.getByTestId("inspector-section-edge-simulation").click();
-  const wait = page.getByTestId("inspector-unit-wait");
+  await page.getByTestId("inspector-section-call-advanced").click();
+  const pool = page.getByTestId("inspector-unit-poolConnections");
+  const reply = page.getByTestId("inspector-unit-replyMs");
   const timeout = page.getByTestId("inspector-unit-deadlineMs");
-  await expect(timeout).toBeVisible();
+  await expect(reply).toBeVisible();
   await expect
     .poll(async () => {
-      const a = await rect(wait),
-        b = await rect(timeout);
+      const a = await rect(pool),
+        b = await rect(reply);
       return b.y - a.y - a.height;
     })
     .toBe(16);
-  await expect(wait.getByTestId("inspector-hint-wait")).toBeVisible();
+  await expect(pool.getByTestId("inspector-hint-poolConnections")).toBeVisible();
   await expect(timeout.getByTestId("inspector-hint-deadlineMs")).toBeVisible();
   await expect(page.getByTestId("inspector-field-deadlineMs")).toHaveAccessibleName("Timeout ms");
   await expect(page.getByTestId("inspector-field-deadlineMs")).toHaveAccessibleDescription(
@@ -136,6 +138,7 @@ for (const width of [1440, 1000]) {
   test(`short fields ${width === 1440 ? "pair" : "stack"} at ${width}px`, async ({ page }) => {
     await open(page, "edge-call", width);
     await page.getByTestId("inspector-section-edge-simulation").click();
+    await expect(page.getByTestId("inspector-summary-retry-details")).toHaveText("100 ms backoff · Exponential (×2)");
     await page.getByTestId("inspector-section-retry-details").click();
     const backoff = page.getByTestId("inspector-unit-retry-backoff");
     const growth = page.getByTestId("inspector-unit-retry-growth");
@@ -149,6 +152,7 @@ for (const width of [1440, 1000]) {
       expect(b.x).toBe(a.x);
       expect(b.y - a.y - a.height).toBe(16);
     }
+    await page.getByTestId("inspector-section-retry-safety").click();
     const fieldset = page.getByTestId("inspector-field-retry-timeout").evaluate((el) => {
       const fieldset = el.closest("fieldset");
       return {

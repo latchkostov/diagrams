@@ -59,14 +59,6 @@ export function RetryFields({
               id="retry-budget-details"
               title={t("resilience.budget")}
               description={t("resilience.budgetHint")}
-              summary={
-                retry.budget
-                  ? t("resilience.extraCallsCapped", {
-                      percent: retry.budget.percent,
-                      minimum: retry.budget.minPerSec ?? 10,
-                    })
-                  : t("resilience.noBudget")
-              }
             >
               <label className="insp-check">
                 <input
@@ -122,7 +114,10 @@ export function RetryFields({
             id="retry-details"
             title={t("resilience.retryTiming")}
             description={t("resilience.retryTimingHint")}
-            summary={t("workspaceInspector.retrySummary", { backoff: retry.backoffMs, growth: retry.strategy })}
+            summary={t("workspaceInspector.retrySummary", {
+              backoff: retry.backoffMs,
+              growth: retry.strategy === "fixed" ? t("resilience.fixed") : t("resilience.exponential"),
+            })}
           >
             {origin}
             <PairedFields testId="inspector-retry-pairs">
