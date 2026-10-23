@@ -129,6 +129,8 @@ test("a failed Request fields download offers Retry by keyboard, which brings th
   await expect.poll(() => fields.requested()).toBe(true);
   await expect(page.getByTestId("lazy-load-retry")).toHaveCount(0);
   await exportDiagram(page);
+  // The download precedes its lazy success notification; settle it before asking for the failure toast.
+  await expect(page.getByTestId("toast")).toHaveAttribute("data-kind", "success");
   const section = page.getByTestId("inspector-section-edge-simulation");
   await section.click();
   const retry = page.getByTestId("lazy-load-retry");
