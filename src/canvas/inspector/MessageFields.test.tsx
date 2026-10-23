@@ -4,6 +4,12 @@ import { messageTypesFixture } from "../../lab/messageTypesFixture";
 import type { EditorApi } from "../../editor/types";
 import type { DiagramFile } from "../../model/types";
 import { EdgeMessages, NodeMessages } from "./MessageFields";
+import { cachedMessageTypesAt } from "../../model/messageTypes";
+
+// These are markup/choice-budget tests; asynchronous scheduling has its own reader and render-path regressions.
+vi.mock("./useMessageTypes", () => ({
+  useMessageTypes: (d: DiagramFile) => ({ types: cachedMessageTypesAt(d), updating: false }),
+}));
 
 vi.mock("react", async (original) => ({
   ...(await original<typeof import("react")>()),

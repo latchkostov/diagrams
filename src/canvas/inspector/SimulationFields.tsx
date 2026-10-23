@@ -47,6 +47,7 @@ type NodeSimulationProps = Pick<InspectorProps, "editor" | "meta" | "readDiagram
   reveal?: number;
   router: boolean;
   mixer: boolean;
+  paused?: boolean;
 };
 
 export function NodeSimulation({
@@ -66,6 +67,7 @@ export function NodeSimulation({
   router,
   mixer,
   reveal,
+  paused,
 }: NodeSimulationProps) {
   return (
     <Disclosure
@@ -83,7 +85,13 @@ export function NodeSimulation({
       }
     >
       {(role === "source" || role === "processor") && (
-        <MessageFields readDiagram={readDiagram} nodeId={node.id} editor={editor} source={role === "source"} />
+        <MessageFields
+          readDiagram={readDiagram}
+          nodeId={node.id}
+          editor={editor}
+          source={role === "source"}
+          paused={paused}
+        />
       )}
       {broker?.partitioned === false && (
         <p className="insp-note" data-testid="broker-fanout">

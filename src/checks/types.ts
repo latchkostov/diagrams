@@ -45,9 +45,10 @@ export interface CheckFixOption {
 }
 
 export interface Finding {
+  /** Bounded display names, never authored values for edit operations. */
   messageLoop?: { type: string; node: string };
   /**
-   * Request checks only, between the checks worker and runChecks: not a finding but how many of this rule's findings
+   * Between bounded checks and runChecks: not a finding but how many of this rule's findings
    * didn't fit the per-diagram budget. runChecks moves it to `CheckResult.omitted`.
    */
   omitted?: number;
@@ -158,7 +159,7 @@ export interface CheckResult {
   /** Rules that ran. */
   ran: CheckRuleId[];
   /**
-   * Findings worked out but too many to list (one diagram's request findings are bounded), by rule: the result is
+   * Findings worked out but too many to list within the diagram's output budget, by rule: the result is
    * incomplete, never clean. Absent when everything is listed.
    */
   omitted?: { rule: CheckRuleId; count: number }[];
