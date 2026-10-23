@@ -16,7 +16,11 @@ interface Baseline {
   graph: TypeGraph;
   /** Transitions inside a loop, by `edge>from state>to state`. */
   cyclic: Set<string>;
-  /** Legitimate traffic: transitions reachable from the run's inputs without going round a loop. */
+  /**
+   * Legitimate traffic: every transition that doesn't go round a loop. The graph holds only states reachable from
+   * the run's inputs, so this includes exits and branches that leave a loop's component: a message's first pass
+   * through a cycle delivers there before it ever comes back.
+   */
   required: number[];
 }
 
@@ -56,24 +60,12 @@ export function createMessageLoopFixer(
     if (budget.remaining <= 0) return (baselines = null);
     const result: Baseline[] = [];
     for (const graph of graphs) {
-      if (!spend(2 * graph.edge.length + graph.states.length)) return (baselines = null);
+      if (!spend(2 * graph.edge.length)) return (baselines = null);
       const cyclic = new Set<string>();
-      const out: number[][] = graph.states.map(() => []);
-      for (let t = 0; t < graph.edge.length; t++) {
-        if (graph.cyclic.has(t)) cyclic.add(key(graph, t));
-        else out[graph.from[t]].push(t);
-      }
-      const reached = new Set(graph.seeds);
-      const queue = [...reached];
       const required: number[] = [];
-      for (let i = 0; i < queue.length; i++)
-        for (const t of out[queue[i]]) {
-          required.push(t);
-          if (!reached.has(graph.to[t])) {
-            reached.add(graph.to[t]);
-            queue.push(graph.to[t]);
-          }
-        }
+      for (let t = 0; t < graph.edge.length; t++)
+        if (graph.cyclic.has(t)) cyclic.add(key(graph, t));
+        else required.push(t);
       result.push({ graph, cyclic, required });
     }
     return (baselines = result);

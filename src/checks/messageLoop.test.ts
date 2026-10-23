@@ -188,6 +188,54 @@ describe("message-loop", () => {
     }
   });
 
+  it("keeps deliveries that leave a loop's component on a message's first pass", () => {
+    // A and B enter API -> Sender; Sender returns only A to API and also forwards everything to Audit.
+    const d = messageTypesFixture();
+    d.nodes[0].props = { messageType: "A" };
+    d.nodes.push(
+      { ...d.nodes[0], id: "second", label: "Second", props: { messageType: "B" } },
+      { id: "audit", stencil: "generic.email", label: "Audit", x: 720, y: 400 },
+    );
+    d.edges[2].props = { filter: ["A"] };
+    d.edges.push({ id: "second-in", from: "second", to: "api" }, { id: "audit-edge", from: "sender", to: "audit" });
+    const audited = (diagram: DiagramFile) => {
+      const engine = createEngine({ seed: 1 });
+      engine.load(diagram);
+      engine.inject("client", 2);
+      for (let i = 0; i < 200; i++) engine.step(10);
+      return engine.snapshot().nodes.audit.processed;
+    };
+    expect(audited(d)).toBeGreaterThanOrEqual(2);
+    const [finding] = check(d).findings;
+    expect(finding.message).toMatch(/^A messages loop back to API/);
+    // "Only pass B" on API -> Sender would stop A before Sender, so Audit would never receive it.
+    expect(finding.fix?.ops).not.toEqual([{ op: "update", target: "send", props: { filter: ["B"] } }]);
+    for (const ops of [finding.fix?.ops, ...(finding.fix?.options ?? []).map((o) => o.ops)])
+      if (ops) expect(audited(applyOps(d, ops).diagram)).toBeGreaterThanOrEqual(2);
+    expect(audited(applyOps(d, [{ op: "update", target: "send", props: { filter: ["B"] } }]).diagram)).toBe(0);
+  });
+
+  it("withholds automatic loop fixes when a timeline changes emitted types", () => {
+    const d = messageTypesFixture();
+    d.simulations = [
+      savedRun({
+        timeline: [{ atMs: 0, action: { do: "props", node: "api", props: { emits: "Prepared" } } }],
+        traffic: [{ id: "t", node: "client", messageType: "Send", shape: { kind: "burst", count: 3, atMs: 100 } }],
+      }),
+    ];
+    const run = createSimulationRun(d, d.simulations[0]);
+    for (let i = 0; i < 300; i++) run.step(10);
+    // Before any fix, playback renames the burst at API: Sender receives Prepared.
+    expect(run.engine.snapshot().edges.send.delivered).toBeGreaterThanOrEqual(3);
+    const [finding] = check(d).findings;
+    expect(finding.id).toBe("message-loop:api");
+    expect(finding.fix).toBeUndefined();
+    expect(finding.rationale).toContain("No single filter or rename was verified");
+    // The same diagram without the runtime edit gets its verified fix.
+    d.simulations[0].timeline = [];
+    expect(check(d).findings[0].fix).toBeDefined();
+  });
+
   it("keeps request routes apart when proving that non-loop traffic survives a fix", () => {
     const d = messageTypesFixture();
     Object.assign(d, routedFixture());

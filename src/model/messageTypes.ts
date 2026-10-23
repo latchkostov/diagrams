@@ -384,16 +384,19 @@ function propagateTypes(
     }
     return state;
   };
-  const seed = (node: string, type: string) => {
+  const seed = (node: string, type: string, explicit = false) => {
     if (!nodes.has(node)) return;
     const mix = roles.get(node) === "source" ? compileMix(nodes.get(node)?.props?.trafficMix, routes) : undefined;
-    const routesOut = mix ? mix.routes.filter((_, i) => mix.proportions[i] > 0) : [undefined];
+    const addressed = mix ? mix.routes.filter((_, i) => mix.proportions[i] > 0) : [];
+    // An explicit input (a saved burst, a timeline injection) picks a positive-share route, or goes unaddressed when
+    // there is none, as playback's injectedRoute does. Free play's own traffic follows the mix alone.
+    const routesOut = !mix || (explicit && !addressed.length) ? [undefined] : addressed;
     for (const route of routesOut) {
       const state = arrive(node, type, route, false, true);
       if (state) graph?.seeds.push(state.index);
     }
   };
-  if (sources) for (const input of sources) seed(input.node, input.type);
+  if (sources) for (const input of sources) seed(input.node, input.type, true);
   else for (const node of diagram.nodes) if (roles.get(node.id) === "source") seed(node.id, ownType(node));
   for (let at = 0; at < queue.length && complete; at++) {
     const item = queue[at];

@@ -4,11 +4,14 @@ import { messageTypesAt, type MessageTypes } from "./messageTypes";
 /**
  * Message semantics read only these fields. The editor replaces an element (and its props) on every edit and never
  * mutates one, so a snapshot compares references and short strings: no serialization, no allocation on a hit.
- * Moving, measuring or selecting elements reuses the result; renaming a source's label, editing props, a connection
- * or the saved simulations does not.
+ * Moving, measuring or selecting elements reuses the result; renaming a source's label, a subtitle (dead-letter
+ * routes are inferred from target names), editing props, a connection or the saved simulations does not.
  */
-const sameNode = (a: DiagramNode, b: DiagramNode) =>
-  a === b || (a.id === b.id && a.stencil === b.stencil && a.label === b.label && a.props === b.props);
+export const sameRoutingFields = (
+  a: Pick<DiagramNode, "stencil" | "label" | "sublabel" | "props">,
+  b: Pick<DiagramNode, "stencil" | "label" | "sublabel" | "props">,
+) => a.stencil === b.stencil && a.label === b.label && a.sublabel === b.sublabel && a.props === b.props;
+const sameNode = (a: DiagramNode, b: DiagramNode) => a === b || (a.id === b.id && sameRoutingFields(a, b));
 const sameEdge = (a: DiagramEdge, b: DiagramEdge) =>
   a === b ||
   (a.id === b.id &&

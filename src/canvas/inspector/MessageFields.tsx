@@ -1,7 +1,7 @@
 import { TypePicker } from "../../components/MessageTypePicker";
 import { t } from "../../i18n";
 import { cachedMessageTypesAt } from "../../model/messageTypeCache";
-import { useLayoutEffect, useRef } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import type { DiagramFile } from "../../model/types";
 import type { EditorApi } from "../../editor/types";
 import { Field } from "./fields";
@@ -76,6 +76,8 @@ export function EdgeMessages({
   );
 }
 
+const RULE_PAGE = 25;
+
 export function NodeMessages({
   readDiagram,
   nodeId,
@@ -93,6 +95,8 @@ export function NodeMessages({
   // Rows are keyed by their incoming type, so a removed rule's drafts go with it. Changing that type therefore
   // mounts a new row: once it is committed, focus continues at its "When it receives" control (policy row I5).
   const rekeyed = useRef<string | undefined>(undefined);
+  // Imported maps can hold thousands of rules: render a page at a time.
+  const [shownRules, setShownRules] = useState(RULE_PAGE);
   useLayoutEffect(() => {
     const input = rekeyed.current;
     const target = input === undefined ? null : ruleControls.current.get(input)?.querySelector("button");
@@ -136,6 +140,11 @@ export function NodeMessages({
     if (destination) controller.dispatch({ type: "inspector.ruleRemoved", target: destination });
   };
   const arriving = [...(types.arriving.get(nodeId) ?? [])];
+  // Shared by every row, built once per render: rows never rescan each other.
+  const assigned = new Set(rows.map(([key]) => key));
+  const incoming = ["*", ...arriving];
+  const unassigned = incoming.filter((type) => !assigned.has(type));
+  const vocabulary = [...new Set([...arriving, ...types.known])];
   // Message is the simulation default type, diagram data rather than translated UI copy.
   const defaultType = node.label || "Message";
   if (source)
@@ -153,7 +162,7 @@ export function NodeMessages({
     <div className="message-fields" data-testid="inspector-emits-rows">
       <h4>{t("inspector.emits")}</h4>
       <p className="insp-note">{t("messageTypes.emitsHint")}</p>
-      {rows.map(([input, output], i) => (
+      {rows.slice(0, shownRules).map(([input, output], i) => (
         <div
           className="message-type-rule"
           key={input}
@@ -167,10 +176,10 @@ export function NodeMessages({
             name={`receives-${i}`}
             wildcard
             label={t("messageTypes.whenReceives")}
-            choices={["*", ...arriving].filter((type) => type === input || !rows.some(([key]) => key === type))}
+            choices={incoming.filter((type) => type === input || !assigned.has(type))}
             value={[input]}
             onChange={(value) => {
-              if (!value[0] || value[0] === input || rows.some(([key], j) => j !== i && key === value[0])) return;
+              if (!value[0] || assigned.has(value[0])) return;
               rekeyed.current = value[0];
               save(rows.map((row, j) => (j === i ? [value[0], output] : row)));
             }}
@@ -178,7 +187,7 @@ export function NodeMessages({
           <TypePicker
             name={`sends-${i}`}
             label={t("messageTypes.thenSends")}
-            choices={[...new Set([...arriving, ...types.known])]}
+            choices={vocabulary}
             value={[output]}
             onChange={(value) => {
               if (value.length) save(rows.map((row, j) => (j === i ? [input, value[0]] : row)));
@@ -196,14 +205,27 @@ export function NodeMessages({
           </button>
         </div>
       ))}
+      {rows.length > shownRules && (
+        <button
+          type="button"
+          className="insp-link"
+          data-testid="inspector-emits-more"
+          onClick={() => setShownRules((shown) => shown + RULE_PAGE)}
+        >
+          +{t("importReport.more", { count: Math.min(RULE_PAGE, rows.length - shownRules) })}
+        </button>
+      )}
       <button
         type="button"
         className="insp-link"
         ref={addButton}
         data-testid="inspector-emits-add"
-        disabled={rows.some(([key]) => key === "*") && arriving.every((type) => rows.some(([key]) => key === type))}
+        disabled={!unassigned.length}
         onClick={() => {
-          const input = arriving.find((type) => !rows.some(([key]) => key === type)) ?? "*";
+          const input = arriving.find((type) => !assigned.has(type)) ?? "*";
+          // The Add button may disable itself: continue at the new rule once it is committed (policy row I5).
+          rekeyed.current = input;
+          setShownRules((shown) => Math.max(shown, rows.length + 1));
           save([...rows, [input, input === "*" ? (arriving[0] ?? "Message") : input]]);
         }}
       >

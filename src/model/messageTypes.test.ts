@@ -3,9 +3,11 @@ import { describe, expect, it, vi } from "vitest";
 import type { DiagramFile, DiagramNode } from "./types";
 import { MESSAGE_TYPE_WORK_LIMIT, messageTypeBudget, messageTypesAt } from "./messageTypes";
 import { acceptsType } from "../sim/topology";
+import { VENDOR_PARENTS } from "../stencils/vendorParents";
 import { compileTypeFilter, typeFilterAccepts } from "./typeFilter";
 import fc from "fast-check";
 import { createEngine } from "../sim/engine";
+import { createSimulationRun } from "../sim/simulation";
 import { analyzeCapacity } from "../sim/capacity";
 import { countingReads, GROWTH_FACTOR, LINEAR_LIMIT } from "../test/complexity";
 
@@ -328,6 +330,76 @@ describe("messageTypesAt", () => {
     const lengths = Array.from({ length: 600 }, (_, i) => `${"b".repeat(i + 1)}*`);
     const long = Array.from({ length: 300 }, (_, i) => `${"a".repeat(700)}${i}`);
     expect(messageTypesAt(hub(long, lengths)).complete).toBe(false);
+  });
+
+  it.each(Object.entries(VENDOR_PARENTS))(
+    "forwards through vendor %s exactly as through its parent %s",
+    (vendor, parent) => {
+      const d = (stencil: string): DiagramFile => ({
+        format: "diagrams/v2",
+        title: "Vendor",
+        planning: {
+          revision: "p3-a1",
+          requestRoutes: [{ id: "orders", address: { method: "POST", path: "/orders" } }],
+        },
+        nodes: [
+          node("client", "client.browser", {
+            messageType: "Order",
+            trafficMix: { mode: "shares", entries: [{ routeId: "orders", share: 1 }] },
+          }),
+          node("x", stencil, {
+            emits: { Order: "Placed" },
+            routeTable: { rules: [], default: { targets: [{ edgeId: "routed", weight: 1 }] } },
+          }),
+          node("a", "service.go"),
+          node("b", "service.go"),
+          node("c", "service.go"),
+        ],
+        edges: [
+          { id: "in", from: "client", to: "x", kind: "sync" },
+          { id: "routed", from: "x", to: "a", kind: "sync" },
+          { id: "zero", from: "x", to: "b", props: { share: 0 } },
+          { id: "sync", from: "x", to: "c", kind: "sync", props: { filter: ["Pl*", "Order"] } },
+        ],
+      });
+      const carried = (types: ReturnType<typeof messageTypesAt>) =>
+        [...types.carried].map(([id, set]) => [id, [...set]]);
+      expect(carried(messageTypesAt(d(vendor)))).toEqual(carried(messageTypesAt(d(parent))));
+    },
+  );
+
+  it("seeds explicit inputs unaddressed when every traffic-mix rate is zero, as playback does", () => {
+    const d: DiagramFile = {
+      format: "diagrams/v2",
+      title: "Zero mix",
+      planning: { revision: "p3-a1", requestRoutes: [{ id: "orders", address: { method: "POST", path: "/orders" } }] },
+      nodes: [
+        node("client", "client.browser", {
+          messageType: "Order",
+          trafficMix: { mode: "rates", entries: [{ routeId: "orders", ratePerSec: 0 }] },
+        }),
+        node("worker", "service.go"),
+        node("sink", "generic.email"),
+      ],
+      edges: [
+        { id: "in", from: "client", to: "worker" },
+        { id: "out", from: "worker", to: "sink" },
+      ],
+      simulations: [
+        {
+          id: "burst",
+          title: "Burst",
+          traffic: [{ id: "t", node: "client", messageType: "Order", shape: { kind: "burst", count: 3 } }],
+        },
+      ],
+    };
+    const run = createSimulationRun(d, d.simulations![0]);
+    for (let i = 0; i < 300; i++) run.step(10);
+    expect(run.engine.snapshot().nodes.sink.processed).toBe(3);
+    const types = messageTypesAt(d);
+    expect(types.complete).toBe(true);
+    expect(types.carried.get("out")).toEqual(new Set(["Order"]));
+    expect(types.arriving.get("sink")).toEqual(new Set(["Order"]));
   });
 
   it("matches compiled type filters exactly as playback's acceptsType", () => {

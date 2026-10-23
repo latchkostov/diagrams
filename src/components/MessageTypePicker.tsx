@@ -3,6 +3,9 @@ import { Dropdown } from "./Dropdown";
 import { t } from "../i18n";
 import { Field } from "../canvas/inspector/fields";
 import { acceptsType } from "../sim/topology";
+/** At most this many choices render in one picker. */
+const MAX_CHOICES = 100;
+
 /** Native buttons keep chips reachable with Tab, Space and Enter; arrows walk the choices too. */
 export function TypePicker({
   name,
@@ -35,7 +38,12 @@ export function TypePicker({
     if (!adding && wasAdding.current) root.current?.querySelector<HTMLButtonElement>("button")?.focus();
     wasAdding.current = adding;
   }, [adding]);
-  const options = [...new Set([...choices, ...value])];
+  // Rendering is bounded: imported vocabularies can be large. Unlisted types stay reachable through Add a type.
+  const all = [...new Set([...choices, ...value])];
+  const options =
+    all.length > MAX_CHOICES ? [...new Set([...all.slice(0, MAX_CHOICES), ...(multiple ? [] : value)])] : all;
+  const hidden = all.length - options.length;
+  const offered = new Set(choices);
   // Deselecting a type nothing upstream sends removes its chip, focus included: continue at a neighbour.
   const removedChip = useRef<{ type: string; index: number }>(undefined);
   useLayoutEffect(() => {
@@ -118,11 +126,19 @@ export function TypePicker({
             {hint}
           </small>
         )}
-        {value.some(
-          (type) =>
-            !(wildcard && type === "*") &&
-            !choices.some((choice) => (multiple ? acceptsType([type], choice) : choice === type)),
-        ) && (
+        {hidden > 0 && (
+          <small className="insp-note" data-testid={`inspector-${name}-more`}>
+            +{t("importReport.more", { count: hidden })} · {t("messageTypes.addType")}
+          </small>
+        )}
+        {value
+          .slice(0, MAX_CHOICES)
+          .some(
+            (type) =>
+              !(wildcard && type === "*") &&
+              !offered.has(type) &&
+              !(multiple && type.endsWith("*") && choices.some((choice) => acceptsType([type], choice))),
+          ) && (
           <small className="insp-note" role="status" data-testid={`inspector-${name}-unknown`}>
             {t("messageTypes.notSent")}
           </small>
@@ -146,6 +162,8 @@ export function TypePicker({
               value={draft}
               onChange={(event) => setDraft(event.target.value)}
               onKeyDown={(event) => {
+                // An IME confirms or cancels its candidate with these keys: never the draft.
+                if (event.nativeEvent.isComposing) return;
                 if (event.key === "Enter") {
                   event.preventDefault();
                   add();

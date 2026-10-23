@@ -372,3 +372,53 @@ test("keyboard-focused flow edges show and announce carried message types", asyn
   await expect(tip).toHaveCount(0);
   expectNoErrors(consoleErrors);
 });
+
+test("an imported empty filter blocks until explicitly cleared, and Undo restores it", async ({
+  page,
+  consoleErrors,
+}) => {
+  const diagram = messageTypesFixture();
+  diagram.edges[1].props = { filter: [] };
+  await open(page, "en", diagram);
+  const carries = page.getByTestId("inspector-carries");
+  const filter = async () => (await savedDiagram(page)).edges.find((e) => e.id === "send")?.props?.filter;
+  await expect(carries).toContainText("No messages pass");
+  await expect.poll(filter).toEqual([]);
+  await page.getByTestId("inspector-filter-clear").click();
+  await expect.poll(filter).toBeUndefined();
+  await expect(carries).toHaveText("SendCallback");
+  await page.getByTestId("undo-button").click();
+  await expect.poll(filter).toEqual([]);
+  await expect(carries).toContainText("No messages pass");
+  await expect(page.getByTestId("inspector-filter-clear")).toBeVisible();
+  expectNoErrors(consoleErrors);
+});
+
+test("Add a rule moves focus into the new rule when the button disables itself", async ({ page, consoleErrors }) => {
+  const diagram = messageTypesFixture();
+  diagram.nodes.push({ id: "lonely", stencil: "service.go", label: "Lonely", x: 380, y: 400 });
+  await open(page, "en", diagram);
+  await fitDiagram(page);
+  await page.getByTestId("node-lonely").click();
+  await waitForSelectionSettled(page);
+  await page.getByTestId("inspector-section-node-simulation").click();
+  const add = page.getByTestId("inspector-emits-add");
+  await add.focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByTestId("inspector-emits-row-0")).toBeVisible();
+  await expect(add).toBeDisabled();
+  await expect(page.getByTestId("inspector-field-receives-0")).toBeFocused();
+  expectNoErrors(consoleErrors);
+});
+
+test("hovering an edge leaves Escape to the focused inspector draft", async ({ page, consoleErrors }) => {
+  await open(page);
+  await page.getByTestId("inspector-filter-add").click();
+  const draft = page.getByTestId("inspector-filter-new");
+  await expect(draft).toBeFocused();
+  await page.getByTestId("edge-label-callback").hover();
+  await expect(page.getByTestId("edge-label-callback")).toHaveAttribute("title", /Message types: Callback/);
+  await page.keyboard.press("Escape");
+  await expect(draft).toHaveCount(0);
+  expectNoErrors(consoleErrors);
+});

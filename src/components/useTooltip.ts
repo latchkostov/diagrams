@@ -48,7 +48,7 @@ export function useKeyboardFocusOn(selector: string | null): boolean {
  * A hoverable, focusable tooltip; a short leave delay bridges the gap between trigger and card. `shown`: also
  * open (the node or edge it belongs to has keyboard focus).
  */
-export function useTooltip(shown = false) {
+export function useTooltip(shown = false, dismissible = true) {
   const [hovered, setHovered] = useState(false);
   const [focused, setFocused] = useState(false);
   const [dismissed, setDismissed] = useState(false);
@@ -56,7 +56,7 @@ export function useTooltip(shown = false) {
   const open = (hovered || focused || shown) && !dismissed;
   useEffect(() => () => clearTimeout(timer.current), []);
   useEffect(() => {
-    if (!open) return;
+    if (!open || !dismissible) return;
     const escape = (e: KeyboardEvent) => {
       if (e.key !== "Escape") return;
       e.stopPropagation();
@@ -65,7 +65,7 @@ export function useTooltip(shown = false) {
     };
     document.addEventListener("keydown", escape, true);
     return () => document.removeEventListener("keydown", escape, true);
-  }, [open]);
+  }, [open, dismissible]);
   const pointer = {
     onPointerEnter: () => {
       clearTimeout(timer.current);
