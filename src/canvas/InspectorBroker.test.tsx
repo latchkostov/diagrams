@@ -6,6 +6,9 @@ import type { EditorApi } from "../editor/types";
 
 vi.mock("../i18n", async (original) => ({ ...(await original<typeof import("../i18n")>()), useLocale: () => "en" }));
 
+// Resolve the client-only panel loader so this server render still exercises the whole Inspector.
+vi.mock("./inspector/lazyEdgePanel", () => import("./inspector/EdgePanel"));
+
 it("edge typing reads broker vocabulary from metadata without serializing the graph", () => {
   const getDiagram = vi.fn(() => {
     throw new Error("whole graph read during edge typing");

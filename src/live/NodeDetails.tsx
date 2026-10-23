@@ -8,32 +8,15 @@ import type { BadgeProps } from "./NodeBadges";
 import type { LiveState } from "./controller";
 import type { DiagramFile } from "../model/types";
 import { edgeReadoutKind, flowSummary, nodeSummary, requestSummary } from "./hoverSummary";
-import { BreakerReadout } from "./BreakerReadout";
+import { EdgeDetailSection } from "./EdgeDetailSection";
 import { RELATION_META, relationOf } from "../model/relations";
-import { revisionAtLeast } from "../model/revisions";
 import type { CompiledTopology } from "../sim/topology";
+import { NodeSections as Sections } from "./lazyNodeSections";
 import { HoverCard } from "./HoverCard";
 import { formatCount, formatRate } from "./format";
 import { callPolicy } from "../sim/callPolicy";
 import type { EdgeSimProps } from "../sim/types";
 
-const Sections = lazyComponent(
-  () => import("./NodeDetailSections").then((m) => m.NodeDetailSections),
-  (_props, status) => (
-    <div className="hover-rail-body" role="status" data-testid="hover-details-loading">
-      {status.failed ? (
-        <>
-          {t("hover.failed")}{" "}
-          <button data-testid="hover-details-retry" onClick={status.retry}>
-            {t("hover.retry")}
-          </button>
-        </>
-      ) : (
-        t("hover.loading")
-      )}
-    </div>
-  ),
-);
 const History = lazyComponent(() => import("./HoverHistory").then((m) => m.HoverHistory));
 
 export function NodeDetails(props: BadgeProps) {
@@ -169,32 +152,7 @@ export function EdgeDetails({
       summary={requestSummary(c, breaker, policy.blocking, s?.active ?? 0)}
       healthy={policy.blocking ? t("hover.holds") : t("hover.frees")}
     >
-      {(section) => (
-        <div className="hover-rail-body" data-testid={`edge-section-${section}`}>
-          {section === "breaker" ? (
-            breaker ? (
-              <BreakerReadout id={id} breaker={breaker} calls={c} testId={`edge-breaker-${id}`} />
-            ) : revisionAtLeast(diagram.planning?.revision, "p3-w2") ? (
-              <p data-testid="hover-breaker-none">{t("hover.breakerNone")}</p>
-            ) : (
-              // Models before p3-w2 do not simulate breakers, whatever the connection says.
-              <p data-testid="hover-breaker-pending">{t("hover.breakerPending")}</p>
-            )
-          ) : (
-            <>
-              <p>
-                {t("hover.retries")}: {formatCount(c?.retried ?? 0)}
-              </p>
-              <p>
-                {t("hover.timeouts")}: {formatCount(c?.timedOut ?? 0)}
-              </p>
-              <p>
-                {policy.blocking ? t("hover.holds") : t("hover.frees")}: {formatCount(c?.held ?? 0)}
-              </p>
-            </>
-          )}
-        </div>
-      )}
+      {(section) => <EdgeDetailSection diagram={diagram} id={id} section={section} />}
     </HoverCard>
   );
 }

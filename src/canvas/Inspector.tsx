@@ -3,11 +3,14 @@ import { Icon } from "../components/Icon";
 import { t, useLocale } from "../i18n";
 import { kindLabel } from "../i18n/chrome";
 import { lazyComponent, type LoadStatus } from "../lib/lazyLoad";
-
 import { NodePanel } from "./inspector/NodePanel";
+
 import { type InspectorProps } from "./inspector/types";
 import { SheetResizeHandle } from "./SheetResizeHandle";
-import { InteractionContext, useInteraction, useInteractionOrLocal, type InteractionController } from "./interaction";
+import { InteractionContext, useInteractionOrLocal, type InteractionController } from "./interaction";
+
+import { PanelUnavailable } from "./inspector/PanelUnavailable";
+export { PanelUnavailable } from "./inspector/PanelUnavailable";
 
 /**
  * Stands in for a panel while its code downloads: nothing (a rename asked of it meanwhile holds what's typed until
@@ -21,21 +24,8 @@ function pending<P>(owner?: (props: P) => string) {
     status.failed ? <PanelUnavailable owner={owner?.(props)} /> : null;
 }
 
-/**
- * The marker for a panel whose download failed. It mounts by the lazy panel's own state, not a commit of the sheet, so
- * it tells the controller itself: a field request parked on this panel resolves as gone at once, ending its pending
- * rename, and the keys reach the canvas again before Retry.
- */
-export function PanelUnavailable({ owner }: { owner?: string }) {
-  const interaction = useInteraction();
-  useLayoutEffect(() => {
-    interaction?.rendered();
-  }, [interaction]);
-  return <div hidden data-testid="inspector-panel-unavailable" data-panel-unavailable={owner ?? ""} />;
-}
-
 const EdgePanel = lazyComponent(
-  () => import("./inspector/EdgePanel").then((m) => m.EdgePanel),
+  () => import("./inspector/lazyEdgePanel").then((m) => m.EdgePanel),
   pending((p: { edge: { id: string } }) => p.edge.id),
   true,
 );

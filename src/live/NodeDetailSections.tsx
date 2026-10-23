@@ -14,6 +14,7 @@ import type { BadgeProps } from "./NodeBadges";
 import { nodeOutcome } from "./nodeOutcome";
 import { callPolicy } from "../sim/callPolicy";
 import type { EdgeSimProps } from "../sim/types";
+import { ReadoutFacts } from "./ReadoutFacts";
 
 const doneLabel: Record<SimRole, () => string> = {
   source: () => t("hover.sent"),
@@ -42,7 +43,8 @@ export function NodeDetailSections({
   fault,
   properties,
   configuration,
-}: BadgeProps & { section: string }) {
+  docked = false,
+}: BadgeProps & { section: string; docked?: boolean }) {
   useLocale();
   const live = useLive();
   const effective = diagram;
@@ -70,12 +72,22 @@ export function NodeDetailSections({
               <b>
                 {profileOf(node.data.stencil)?.family === "serverless" ? t("threads.executions") : t("threads.heading")}
               </b>
-              <p>
-                {Number.isFinite(s.threads.slots)
-                  ? t("threads.busy", { busy: threadBusy, slots: s.threads.slots, noun: threadNoun })
-                  : t("threads.unknownPool", { busy: threadBusy, noun: threadNoun })}
-              </p>
-              {!pools.length && (
+              {docked ? (
+                <ReadoutFacts
+                  rows={[
+                    [t("workspaceLive.threadsBusy"), `${formatCount(threadBusy)} / ${formatCount(s.threads.slots)}`],
+                    [t("workspaceLive.working"), formatCount(s.threads.working)],
+                    [t("workspaceLive.waitingLabel"), formatCount(s.threads.waiting)],
+                  ]}
+                />
+              ) : (
+                <p>
+                  {Number.isFinite(s.threads.slots)
+                    ? t("threads.busy", { busy: threadBusy, slots: s.threads.slots, noun: threadNoun })
+                    : t("threads.unknownPool", { busy: threadBusy, noun: threadNoun })}
+                </p>
+              )}
+              {!docked && !pools.length && (
                 <p>
                   {s.threads.waiting
                     ? t("threads.waiting", {
@@ -107,15 +119,30 @@ export function NodeDetailSections({
           )}
           {s.threads && Number.isFinite(s.threads.slots) && wait && (
             <ThreadCeiling
+              docked={docked}
               wait={{ ...wait, slots: s.threads.slots, ceiling: (s.threads.slots * 1000) / wait.threadHoldMs }}
               noun={threadNoun}
             />
           )}
-          <CallsReadout diagram={effective} node={node.id} snapshot={live.controller.getState().snapshot} />
+          <CallsReadout
+            docked={docked}
+            diagram={effective}
+            node={node.id}
+            snapshot={live.controller.getState().snapshot}
+          />
         </>
       )}
       {section === "latency" && (
-        <>{s.latency && <LatencyReadout id={node.id} latency={s.latency} diagram={diagram} compact />}</>
+        <>
+          {s.latency && (
+            <LatencyReadout
+              id={docked ? `${node.id}-properties` : node.id}
+              latency={s.latency}
+              diagram={diagram}
+              compact={!docked}
+            />
+          )}
+        </>
       )}
       {section === "outcomes" && (
         <>

@@ -75,6 +75,16 @@ const FORBIDDEN: [string, RegExp][] = [
 export const EDITOR_ONLY: { name: string; path: string; stub: (root: string) => string }[] = [
   { name: "the inspector", path: "/src/canvas/Inspector.tsx", stub: () => "export const Inspector = () => null;" },
   {
+    name: "the docked node Live readout",
+    path: "/src/planning/LiveDetails.tsx",
+    stub: () => "export const LiveDetails = () => null; export const LiveOutcomes = () => null;",
+  },
+  {
+    name: "the docked connection Live readout",
+    path: "/src/planning/EdgeLiveDetails.tsx",
+    stub: () => "export const EdgeLiveDetails = () => null;",
+  },
+  {
     name: "the stencil rail",
     path: "/src/canvas/Palette.tsx",
     stub: (root) =>

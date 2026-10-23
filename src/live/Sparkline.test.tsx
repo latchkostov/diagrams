@@ -2,6 +2,12 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { expect, it } from "vitest";
 import { SampleSparkline } from "./Sparkline";
 
+it("describes an empty docked history without an infinite low value", () => {
+  const markup = renderToStaticMarkup(<SampleSparkline docked samples={[]} />);
+  expect(markup).toContain("low \u20680/s\u2069");
+  expect(markup).not.toContain("Infinity");
+});
+
 it("SampleSparkline describes samples accurately", () => {
   const markup = renderToStaticMarkup(<SampleSparkline samples={[3, 1, 5, 2]} />);
   const text = (testId: string) =>

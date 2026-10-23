@@ -1,3 +1,4 @@
+import { openInspectorLiveDetails } from "./fixtures";
 import type { Page } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import AxeBuilder from "@axe-core/playwright";
@@ -174,13 +175,14 @@ test("A1: keyboard Save flushes a focused numeric draft before downloading", asy
 test("A1: scaling announcements remain in the accessibility tree with Live details closed", async ({ page }) => {
   await seed(page, { live: true });
   await page.getByTestId("node-worker").dblclick();
-  await expect(page.getByTestId("planning-live-details")).not.toHaveAttribute("open");
+  await page.getByTestId("planning-live-details-toggle").click();
+  await expect(page.getByTestId("planning-live-details-toggle")).toHaveAttribute("aria-expanded", "false");
   const status = page.getByTestId("autoscaling-announcement");
   await expect(status).toMatchAriaSnapshot('- status: "Orders · Ready: 1 → Desired: 1"');
   await page.clock.runFor(15_500);
   await expect(status).toContainText("Desired: 2");
   expect(await status.ariaSnapshot()).toContain("Desired: 2");
-  await expect(page.getByTestId("planning-live-details")).not.toHaveAttribute("open");
+  await expect(page.getByTestId("planning-live-details-toggle")).toHaveAttribute("aria-expanded", "false");
 });
 
 test("A1: coalesces partial jittered readiness until completion", async ({ page }) => {
@@ -327,7 +329,7 @@ test("A1: production playback shows starting backlog, ready capacity, real resou
   await page.clock.runFor(6000);
   await expect.poll(async () => Number(await badge.getAttribute("data-ready"))).toBeGreaterThan(1);
   await page.getByTestId("node-worker").dblclick();
-  await page.getByTestId("planning-live-details-toggle").click();
+  await openInspectorLiveDetails(page, "resources");
   await expect(page.getByTestId("autoscaling-cpu")).toContainText("of request");
   await expect(page.getByTestId("autoscaling-memory")).toContainText("of limit");
   await expect(page.getByTestId("autoscaling-chart")).toBeVisible();
@@ -391,7 +393,7 @@ test("A1: a large selected fleet has accessible pagination and stable decision a
   await pauseClock(page);
   await page.clock.runFor(1000);
   await page.getByTestId("node-worker").dblclick();
-  await page.getByTestId("planning-live-details-toggle").click();
+  await openInspectorLiveDetails(page, "resources");
   const next = page.getByTestId("autoscaling-page-next");
   await next.scrollIntoViewIfNeeded();
   await expect(next).toBeEnabled();
@@ -457,7 +459,7 @@ test("A1: public Kafka showcase starts workers and drains its burst within ten s
   await expect(topic).toHaveAttribute("data-backlog", "0");
   await expect(worker).toHaveAttribute("data-backlog", "0");
   await page.getByTestId("node-image-workers").dblclick();
-  await page.getByTestId("planning-live-details-toggle").click();
+  await openInspectorLiveDetails(page, "resources");
   await expect(page.getByTestId("autoscaling-chart")).toBeVisible();
   await expect(page.getByTestId("autoscaling-history-summary")).toContainText("Peak replicas");
   await expect(page.getByTestId("autoscaling-counts")).toContainText("Ready: 5");
@@ -542,7 +544,7 @@ test("A1: exact replica CPU reflects aggregate work before and after fifteen sec
   await pauseClock(page);
   await page.clock.runFor(5000);
   await page.getByTestId("node-worker").dblclick();
-  await page.getByTestId("planning-live-details-toggle").click();
+  await openInspectorLiveDetails(page, "resources");
   const aggregate = page.getByTestId("autoscaling-cpu"),
     replica = page.getByTestId("autoscaling-replica-cpu").first();
   const check = async () => {

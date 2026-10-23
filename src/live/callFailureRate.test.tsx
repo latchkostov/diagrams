@@ -95,6 +95,13 @@ it("uses the identical settled population in the breaker readout, excluding loca
   const html = renderToStaticMarkup(<BreakerReadout id="call" breaker={breaker} calls={calls} testId="breaker" />);
   expect(html).toContain("20%");
   expect(html).toContain("100 settled attempts failed since restart");
+  const diagram = waitingFixture();
+  const engine = createEngine({ seed: 7, scale: 1 });
+  engine.load(diagram);
+  const snapshot = realSnapshot(engine.snapshot());
+  snapshot.edges.call.calls = { ...calls, requests: 100, attempts: 200 };
+  const docked = renderToStaticMarkup(<CallsReadout docked diagram={diagram} node="caller" snapshot={snapshot} />);
+  expect(docked).toContain('<dt>Failing</dt><dd class="mono">\u206820%\u2069</dd>');
 });
 
 it("keeps the failure rate in [0, 1] over random retries, breakers, delays and recovery", () => {

@@ -6,6 +6,9 @@ import en from "../i18n/en";
 import { Inspector, type InspectorProps } from "./Inspector";
 import type { EditorApi } from "../editor/types";
 
+// Resolve the browser-only download so the server render still checks the actual translated fields.
+vi.mock("./inspector/lazyNodeIdentity", () => import("./inspector/NodeIdentity"));
+
 vi.mock("react", async (original) => ({
   ...(await original<typeof import("react")>()),
   useSyncExternalStore: (_subscribe: unknown, getSnapshot: () => unknown) => getSnapshot(),

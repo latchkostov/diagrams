@@ -20,6 +20,8 @@ const NOT_AT_STARTUP: [string, RegExp][] = [
   ["message type propagation", /[/\\]src[/\\]model[/\\]messageTypes\.ts$/],
   ["edge reconnect handles", /[/\\]src[/\\]canvas[/\\]edges[/\\]EdgeEnds\.tsx$/],
   ["edge inspector", /[/\\]src[/\\]canvas[/\\]inspector[/\\]EdgePanel\.tsx$/],
+  ["edge inspector loading and recovery", /[/\\]src[/\\]canvas[/\\]inspector[/\\]lazyEdgePanel\.tsx$/],
+  ["node inspector identity fields", /[/\\]src[/\\]canvas[/\\]inspector[/\\]NodeIdentity\.tsx$/],
   ["connection dot resolver", /[/\\]src[/\\]canvas[/\\]interaction[/\\]connectTarget\.ts$/],
   ["extended outline geometry", /[/\\]src[/\\]canvas[/\\]shapes[/\\]extendedGeometry\.ts$/],
   ["outline attachment sampling", /[/\\]src[/\\]canvas[/\\]shapes[/\\]attachmentGeometry\.ts$/],
@@ -28,6 +30,7 @@ const NOT_AT_STARTUP: [string, RegExp][] = [
   ["custom colour picker", /[/\\]src[/\\]components[/\\]ColorPickerModal\.tsx$/],
   ["bulk inspector", /[/\\]src[/\\]canvas[/\\]inspector[/\\]MultiPanel\.tsx$/],
   ["diagram inspector", /[/\\]src[/\\]canvas[/\\]inspector[/\\]DiagramPanel\.tsx$/],
+  ["connection inspector", /[/\\]src[/\\]canvas[/\\]inspector[/\\]EdgePanel\.tsx$/],
   ["extended shape glyphs", /[/\\]src[/\\]components[/\\](?:ShapeIcon\.tsx|shapeIconPaths\.ts)$/],
   [
     "Markdown rendering and parsing",
@@ -65,6 +68,10 @@ const NOT_AT_STARTUP: [string, RegExp][] = [
   ["collaboration", /[/\\]src[/\\]collab[/\\]/],
   ["Yjs", /[/\\]node_modules[/\\](\.pnpm[/\\][^/\\]+[/\\]node_modules[/\\])?(yjs|lib0)[/\\]/],
   ["the live session", /[/\\]src[/\\]live[/\\]LiveSession\.tsx$/],
+  [
+    "hover and docked Live readouts",
+    /[/\\]src[/\\]live[/\\](?:NodeDetails|HoverCard|HoverReadout|EdgeDetailSection|BreakerReadout|hoverSummary|lazyNodeSections|DockedLive|verdictSection)\.tsx?$/,
+  ],
   ["custom property editing", /[/\\]src[/\\]canvas[/\\]inspector[/\\]PropsEditor\.tsx$/],
   ["fault execution and outage indexes", /[/\\]src[/\\]model[/\\]faultRuntime\.ts$/],
   ["fault display messages", /[/\\]src[/\\]model[/\\]faultWords\.ts$/],
