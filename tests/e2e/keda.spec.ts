@@ -1,3 +1,4 @@
+import { openInspectorLiveDetails } from "./fixtures";
 import { readFileSync } from "node:fs";
 import type { Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
@@ -134,7 +135,7 @@ test("KEDA: production playback sleeps, wakes with cold start and returns to zer
   await page.clock.runFor(1100);
   await expect.poll(async () => Number(await badge.getAttribute("data-ready"))).toBeGreaterThan(0);
   await page.getByTestId("node-render-workers").dblclick();
-  await page.getByTestId("planning-live-details-toggle").click();
+  await openInspectorLiveDetails(page, "resources");
   await expect(page.getByTestId("autoscaling-chart")).toBeVisible();
   await page.getByTestId("autoscaling-why-toggle").click();
   await expect(page.getByTestId("autoscaling-broker-metric")).toBeVisible();

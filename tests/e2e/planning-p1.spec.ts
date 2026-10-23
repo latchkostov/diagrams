@@ -353,11 +353,12 @@ test("P1: live group details stay reachable in a short viewport", async ({ page 
   await expect(card.getByTestId("live-lag-group-23")).toHaveCount(1);
   await page.keyboard.press("Escape");
   await page.keyboard.press("F2");
-  const toggle = page.getByTestId("planning-live-details-toggle");
-  await toggle.focus();
-  await page.keyboard.press("Enter");
-  await expect(page.getByTestId("planning-live-counters")).toContainText("failed attempts");
+  const readers = page.getByTestId("inspector-live-section-readers");
+  await readers.focus();
+  if ((await readers.getAttribute("aria-expanded")) !== "true") await page.keyboard.press("Enter");
   await expect(page.getByTestId("planning-live-lag-group-23")).toBeVisible();
+  await page.getByTestId("inspector-live-section-outcomes").click();
+  await expect(page.getByTestId("inspector-live-outcomes")).toBeVisible();
 });
 
 test("P1: a keyboard-focused hover card follows pan, zoom and pane resizing", async ({ page }) => {

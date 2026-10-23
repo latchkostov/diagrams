@@ -1,3 +1,4 @@
+import { openInspectorLiveDetails } from "./fixtures";
 import { openLiveNodeDetails } from "./fixtures";
 import { test, expect, gotoLive, pauseClock, savedDiagram, fitDiagram, STORAGE_KEYS } from "./fixtures";
 import busy from "../../src/examples/scale-on-busy-threads.json" with { type: "json" };
@@ -19,7 +20,8 @@ test("the callout and planner offer the same verified fix; keyboard apply names 
   const action = page.getByTestId("trouble-action");
   await expect(action).toHaveAttribute("data-action", "scale-threads");
   await page.getByTestId("node-caller").dblclick();
-  await page.getByTestId("planning-live-details-toggle").click();
+  await openInspectorLiveDetails(page, "resources");
+  await openInspectorLiveDetails(page, "scaling");
   await expect(page.getByTestId("autoscaling-plan-text")).toContainText((await action.innerText()).trim());
   const before = await savedDiagram(page);
   await action.focus();

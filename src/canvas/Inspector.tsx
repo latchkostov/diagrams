@@ -4,6 +4,7 @@ import { t, useLocale } from "../i18n";
 import { kindLabel } from "../i18n/chrome";
 import { lazyComponent, type LoadStatus } from "../lib/lazyLoad";
 
+import { EdgePanel } from "./inspector/lazyEdgePanel";
 import { NodePanel } from "./inspector/NodePanel";
 import { type InspectorProps } from "./inspector/types";
 import { SheetResizeHandle } from "./SheetResizeHandle";
@@ -34,11 +35,6 @@ export function PanelUnavailable({ owner }: { owner?: string }) {
   return <div hidden data-testid="inspector-panel-unavailable" data-panel-unavailable={owner ?? ""} />;
 }
 
-const EdgePanel = lazyComponent(
-  () => import("./inspector/EdgePanel").then((m) => m.EdgePanel),
-  pending((p: { edge: { id: string } }) => p.edge.id),
-  true,
-);
 const GroupPanel = lazyComponent(
   () => import("./inspector/GroupPanel").then((m) => m.GroupPanel),
   pending((p: { group: { id: string } }) => p.group.id),

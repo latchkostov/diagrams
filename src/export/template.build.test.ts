@@ -63,6 +63,9 @@ describe("interactive viewer template", () => {
     const real = (path: string) => modules.some((id) => id.endsWith(path));
     expect(EDITOR_ONLY.filter((p) => real(p.path)).map((p) => p.name)).toEqual([]);
     expect(real("/src/live/LoadingSimPanel.tsx")).toBe(false);
+    expect(real("/src/planning/LiveDetails.tsx")).toBe(false);
+    expect(real("/src/planning/EdgeLiveDetails.tsx")).toBe(false);
+    expect(real("/src/live/DockedLive.tsx")).toBe(false);
     expect(real("/src/i18n/stencils.ts")).toBe(false);
     // The icon map the viewer swaps in is one module, wherever the build runs (a Windows path once made two).
     expect(modules.filter((id) => id.endsWith("/src/export/viewer/iconUrls.ts"))).toHaveLength(1);

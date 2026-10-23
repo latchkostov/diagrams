@@ -521,6 +521,15 @@ export async function openLiveNodeDetails(page: Page, id: string, section: strin
   if ((await row.getAttribute("aria-expanded")) !== "true") await row.click();
 }
 
+/** The docked Live area starts open; preserve a verdict's default and explicitly open the requested row. */
+export async function openInspectorLiveDetails(page: Page, section: string) {
+  const toggle = page.getByTestId("planning-live-details-toggle");
+  if ((await toggle.getAttribute("aria-expanded")) === "false") await toggle.click();
+  const row = page.getByTestId(`inspector-live-section-${section}`);
+  await expect(row).toBeVisible();
+  if ((await row.getAttribute("aria-expanded")) !== "true") await row.click();
+}
+
 /** Wait for the requested session's download and mount before asserting its controls.
  * Module loading uses the whole-test hang backstop; the UI assertions keep their normal timeout.
  */

@@ -6,6 +6,7 @@ import { RELATION_CHOICES, applyChoice, choiceOf, relationIcon } from "../../edi
 import { t } from "../../i18n";
 import { brokerSpec } from "../../model/brokers";
 import { relationNote, relationOf, isDependency } from "../../model/relations";
+import { EdgeLiveDetails } from "../../planning/EdgeLiveDetails";
 import { EdgeRouteFields } from "../../planning/lazy";
 import { groupLabel } from "../../stencils/brokerVocabulary";
 import { isDenyRule, isFirewallStencil } from "../../stencils/netDevices";
@@ -44,6 +45,7 @@ const CallWaitFields = lazyComponent(
 
 export function EdgePanel({ edge, editor, nodeLabel, meta }: InspectorProps & { edge: DiagramFlowEdge }) {
   const interaction = useInteraction();
+  // A deferred panel commits after the Inspector frame: retry the name field parked on its download.
   useLayoutEffect(() => interaction?.rendered());
   const naming = useNameFields(editor, "edge", edge.id, edge.id);
   const data = edge.data ?? { kind: "async" as const };
@@ -186,6 +188,7 @@ export function EdgePanel({ edge, editor, nodeLabel, meta }: InspectorProps & { 
           </p>
         )}
       </Section>
+      <EdgeLiveDetails key={edge.id} id={edge.id} />
       {relation === "config" && <SettingsEditor key={edge.id} edge={edge} editor={editor} />}
       {(fanOut || requestWait) && (
         <Disclosure id="edge-simulation" title={t("inspector.simulation")}>

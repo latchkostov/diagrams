@@ -9,7 +9,7 @@ const H = 54;
 const N = 120;
 
 /** A bounded observed series, rather than a configured traffic curve. Its values are also text, for every reader. */
-export function SampleSparkline({ samples }: { samples: readonly number[] }) {
+export function SampleSparkline({ samples, docked = false }: { samples: readonly number[]; docked?: boolean }) {
   const id = useId();
   const peak = Math.max(1, ...samples);
   const line = samples
@@ -17,19 +17,26 @@ export function SampleSparkline({ samples }: { samples: readonly number[] }) {
     .join(" ");
   const summary = t("hover.historySummary", {
     latest: formatRate(samples.at(-1) ?? 0),
-    low: formatRate(Math.min(...samples)),
+    low: formatRate(samples.length ? Math.min(...samples) : 0),
     peak: formatRate(Math.max(0, ...samples)),
   });
   return (
-    <div className="lv-spark" data-testid="hover-history">
+    <div
+      className={`lv-spark${docked ? " is-docked" : ""}`}
+      data-testid="hover-history"
+      title={docked ? t("workspaceLive.lastTenSeconds") : undefined}
+    >
       <svg
         viewBox={`0 0 ${W} ${H}`}
         data-testid="hover-history-chart"
         role="img"
-        aria-label={t("hover.history", { count: samples.length })}
+        aria-label={docked ? t("workspaceLive.lastTenSeconds") : t("hover.history", { count: samples.length })}
         aria-describedby={`${id}summary ${id}values`}
       >
         <path d={line} className="lv-spark-line" fill="none" />
+        {docked && samples.length === 1 && (
+          <circle cx="2" cy={H - 4 - ((samples[0] ?? 0) / peak) * (H - 12)} r="2" fill="currentColor" />
+        )}
       </svg>
       <div className="lv-spark-legend mono">
         <span id={`${id}summary`} data-testid="hover-history-summary">

@@ -42,7 +42,8 @@ export function NodeDetailSections({
   fault,
   properties,
   configuration,
-}: BadgeProps & { section: string }) {
+  docked = false,
+}: BadgeProps & { section: string; docked?: boolean }) {
   useLocale();
   const live = useLive();
   const effective = diagram;
@@ -115,7 +116,16 @@ export function NodeDetailSections({
         </>
       )}
       {section === "latency" && (
-        <>{s.latency && <LatencyReadout id={node.id} latency={s.latency} diagram={diagram} compact />}</>
+        <>
+          {s.latency && (
+            <LatencyReadout
+              id={docked ? `${node.id}-properties` : node.id}
+              latency={s.latency}
+              diagram={diagram}
+              compact={!docked}
+            />
+          )}
+        </>
       )}
       {section === "outcomes" && (
         <>

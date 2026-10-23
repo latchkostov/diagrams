@@ -1,3 +1,4 @@
+import { openInspectorLiveDetails } from "./fixtures";
 import { openLiveNodeDetails } from "./fixtures";
 import { pseudoText } from "../../src/i18n/pseudo";
 import type { Page } from "@playwright/test";
@@ -141,7 +142,7 @@ test("latency hover leaves the node and badges clear in a short viewport, with f
   await openLiveNodeDetails(page, "billing", "latency");
   await expect(page.getByTestId("node-latency-breakdown-billing")).toBeVisible();
   await page.getByTestId("node-billing").dblclick();
-  await page.getByTestId("planning-live-details-toggle").click();
+  await openInspectorLiveDetails(page, "latency");
   await expect(page.getByTestId("node-latency-breakdown-billing-properties")).toBeVisible();
   await expect(page.getByTestId("node-latency-detail-billing-properties")).toContainText(
     "Approximate percentiles exclude travel",
