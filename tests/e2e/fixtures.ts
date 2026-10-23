@@ -493,7 +493,10 @@ export async function gotoLive(page: Page, url: string) {
 /** Live summaries disclose their full readouts only after an explicit pin and section choice. */
 export async function openLiveNodeDetails(page: Page, id: string, section: string) {
   await page.getByTestId(`node-${id}`).evaluate((el) => el.parentElement?.focus());
-  await page.keyboard.press("Enter");
+  const card = page.getByTestId(`node-detail-${id}`);
+  await expect(card).toBeVisible();
+  // Enter names selected items; the header's public pin action works for either selection state.
+  if ((await card.getAttribute("data-pinned")) !== "true") await card.click({ position: { x: 16, y: 16 } });
   const row = page.getByTestId(`hover-section-${section}`);
   await expect(row).toBeVisible();
   if ((await row.getAttribute("aria-expanded")) !== "true") await row.click();

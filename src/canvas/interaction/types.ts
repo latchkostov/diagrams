@@ -160,7 +160,7 @@ export type FocusCommand =
 
 /** The Esc on the canvas, a menu closing, a selection with its cause, ...: everything the focus policy decides on. */
 export type FocusEvent =
-  | { type: "readout.closed"; target: { kind: "node" | "edge"; id: string }; reason: MenuCloseReason }
+  | { type: "readout.closed"; target: { kind: "node" | "edge"; id: string; pinned: boolean }; reason: MenuCloseReason }
   | {
       type: "menu.closed";
       kind: MenuFocusKind;
@@ -294,11 +294,17 @@ export type LiveKeyAction =
   | "toggle"
   | "resume"
   | "repeat"
+  | "close-readout"
+  | "pin-readout"
   | "none";
 
 /** What the call site knows as Space, Enter or Esc arrives (liveKeys.ts decides from it alone). */
 export interface LiveKeyContext {
   key: LiveKey;
+  /** Any open Live readout yields to recording, editors and panels before taking Esc. */
+  readout?: boolean;
+  /** The focused wrapper can pin its readout when naming does not own Enter. */
+  readoutTarget?: boolean;
   /** A held key's repeats. */
   repeat: boolean;
   /** Slow motion is on, and this is a key it handles (Space as " ", Esc). */

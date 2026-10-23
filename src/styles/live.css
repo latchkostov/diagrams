@@ -2675,6 +2675,12 @@ details[open] > summary .lv-disclosure-chevron {
 .lv-call-pill.is-timeout {
   color: var(--danger);
 }
+[data-theme="light"] {
+  --hover-danger-ink: #b82330;
+}
+[data-theme="dark"] {
+  --hover-danger-ink: #ff8589;
+}
 /* Direction C: fixed screen-space summary. Direction B appears only on explicit expansion. */
 .lv-hover-card {
   position: fixed;
@@ -2761,7 +2767,7 @@ details[open] > summary .lv-disclosure-chevron {
 }
 .lv-hover-card.is-bad .hover-status,
 .lv-hover-card .is-bad {
-  color: var(--danger);
+  color: var(--hover-danger-ink);
   background: color-mix(in oklab, var(--status-down) 9%, transparent);
 }
 .lv-hover-card.is-warning .hover-status {

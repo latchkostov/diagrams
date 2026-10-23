@@ -129,9 +129,17 @@ export function EdgeDetails({
   const summary: HoverSummary = {
     problems,
     vitals: [
-      { key: "requests", label: t("hover.requests"), value: formatRate((c?.windowRequests ?? 0) / 10) },
+      {
+        key: "requests",
+        label: t("hover.requests"),
+        value: c?.windowRequests === undefined ? "—" : formatRate(c.windowRequests / 10),
+      },
       { key: "attempts", label: t("hover.attempts"), value: `${ratio.toFixed(1)}×`, bad: ratio >= 1.2 },
-      { key: "goodput", label: t("hover.goodput"), value: formatRate((c?.windowSucceeded ?? 0) / 10) },
+      {
+        key: "goodput",
+        label: t("hover.goodput"),
+        value: c?.windowSucceeded === undefined ? "—" : formatRate(c.windowSucceeded / 10),
+      },
       {
         key: "flight",
         label: t("hover.inFlight"),

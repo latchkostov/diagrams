@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { useStore } from "@xyflow/react";
 import { useInteraction } from "../canvas/interaction";
 import { t } from "../i18n";
+import { calloutOffset } from "./calloutPlacement";
 import { hoverTop, hoverRoom } from "./hoverPlacement";
 import type { HoverFact, HoverSummary } from "./hoverSummary";
 
@@ -31,6 +32,9 @@ export function HoverCard({ kind, id, name, type, pinned, presenting, summary, h
     if (!card || !domNode) return;
     const anchor = domNode.querySelector<HTMLElement>(`[data-testid="${kind}-${CSS.escape(id)}"]`);
     if (!anchor) return;
+    const wrap = domNode.closest('[data-testid="canvas-wrap"]') ?? domNode;
+    const protectedControls =
+      '[data-canvas-overlay], [data-testid="live-controls"], [data-testid="live-toggle"], [data-testid="inspector"]';
     const place = () => {
       const bounds = domNode.getBoundingClientRect();
       const overlays = document.querySelectorAll<HTMLElement>('[data-testid="live-controls"]');
@@ -49,14 +53,56 @@ export function HoverCard({ kind, id, name, type, pinned, presenting, summary, h
         if (rect.right + size.width + 24 <= bounds.right) left = rect.right + 12;
         else if (rect.left - size.width - 24 >= bounds.left) left = rect.left - size.width - 12;
       }
-      card.style.left = `${Math.max(bounds.left + 12, Math.min(left, bounds.right - size.width - 12))}px`;
-      card.style.top = `${hoverTop({ top: bounds.top, bottom }, rect, size.height)}px`;
+      left = Math.max(bounds.left + 12, Math.min(left, bounds.right - size.width - 12));
+      const top = hoverTop({ top: bounds.top, bottom }, rect, size.height);
+      const obstacles = [...wrap.querySelectorAll<HTMLElement>(protectedControls)].map((el) => {
+        const r = el.getBoundingClientRect();
+        return { x: r.left - bounds.left, y: r.top - bounds.top, width: r.width, height: r.height };
+      });
+      // A displaced card must still leave its originating node/connection actionable.
+      obstacles.push({ x: rect.left - bounds.left, y: rect.top - bounds.top, width: rect.width, height: rect.height });
+      let offset = calloutOffset(
+        { x: left - bounds.left, y: top - bounds.top, width: size.width, height: size.height },
+        { width: bounds.width, height: bottom - bounds.top },
+        obstacles,
+      );
+      if (!offset) {
+        // Expanded details can scroll when overlays leave no full-height slot.
+        card.style.maxHeight = `${Math.max(80, (bottom - bounds.top - 24) / scale / 2)}px`;
+        const compact = card.getBoundingClientRect();
+        offset = calloutOffset(
+          { x: left - bounds.left, y: top - bounds.top, width: compact.width, height: compact.height },
+          { width: bounds.width, height: bottom - bounds.top },
+          obstacles,
+        );
+      }
+      // A readout must never obscure an action, even in a pane with no free slot.
+      card.style.visibility = offset ? "" : "hidden";
+      card.style.left = `${left + (offset?.dx ?? 0)}px`;
+      card.style.top = `${top + (offset?.dy ?? 0)}px`;
     };
     place();
     const observer = new ResizeObserver(place);
     observer.observe(domNode);
     observer.observe(card);
-    return () => observer.disconnect();
+    const controls = new MutationObserver((records) => {
+      if (
+        records.some(
+          (record) =>
+            (record.target instanceof Element && !!record.target.closest(protectedControls)) ||
+            [...record.addedNodes, ...record.removedNodes].some(
+              (node) =>
+                node instanceof Element && (node.matches(protectedControls) || !!node.querySelector(protectedControls)),
+            ),
+        )
+      )
+        place();
+    });
+    controls.observe(wrap, { childList: true, subtree: true, attributes: true, attributeFilter: ["style"] });
+    return () => {
+      observer.disconnect();
+      controls.disconnect();
+    };
   }, [domNode, transform, kind, id, presenting]);
   useLayoutEffect(() => {
     if (pinned && ref.current) interaction.dispatch({ type: "node.details", target: ref.current });
@@ -104,6 +150,13 @@ export function HoverCard({ kind, id, name, type, pinned, presenting, summary, h
       onClick={(e) => {
         e.stopPropagation();
         if (!pinned) pin();
+      }}
+      onFocusCapture={(e) => {
+        // Reveal the focused section inside its card without scrolling the canvas.
+        const target = e.target.getBoundingClientRect(),
+          viewport = e.currentTarget.getBoundingClientRect();
+        if (target.top < viewport.top) e.currentTarget.scrollTop -= viewport.top - target.top;
+        else if (target.bottom > viewport.bottom) e.currentTarget.scrollTop += target.bottom - viewport.bottom;
       }}
       onKeyDown={(e) => {
         if (e.key === "Tab" && e.shiftKey && e.target === e.currentTarget) {

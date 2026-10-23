@@ -6,6 +6,7 @@ import {
   waitForStableViewport,
   expectNoErrors,
   openLiveNodeDetails,
+  viewportTransform,
 } from "./fixtures";
 
 test("compact card keeps its screen-space bounds across ten seconds of Live", async ({ page, consoleErrors }) => {
@@ -35,7 +36,6 @@ test("compact card keeps its screen-space bounds across ten seconds of Live", as
 test("Enter pins, keyboard opens rail details, and Esc restores node focus", async ({ page, consoleErrors }) => {
   await gotoLive(page, "./?view=canvas&example=blocking-call&live=1&paused=1");
   const node = page.getByTestId("node-caller");
-  await node.click();
   await node.evaluate((el) => el.parentElement?.focus());
   await page.keyboard.press("Enter");
   const card = page.getByTestId("node-detail-caller");
@@ -184,4 +184,71 @@ test("a held detail chunk preserves focus, cursor, CSS and export; failed downlo
   fail = false;
   await page.getByTestId("hover-details-retry").click();
   await expect(page.getByTestId("thread-detail-caller")).toBeVisible();
+});
+
+test("Escape dismisses an unpinned card until the pointer leaves its item", async ({ page }) => {
+  await gotoLive(page, "./?view=canvas&example=blocking-call&live=1&paused=1");
+  const node = page.getByTestId("node-caller"),
+    card = page.getByTestId("node-detail-caller");
+  await node.hover();
+  await expect(card).toHaveAttribute("data-pinned", "false");
+  await page.keyboard.press("Escape");
+  await expect(card).toHaveCount(0);
+  await node.hover();
+  await expect(card).toHaveCount(0);
+  await page.getByTestId("diagram-title").hover();
+  await node.hover();
+  await expect(card).toBeVisible();
+  await expect(page.getByTestId("live-controls")).toBeVisible();
+});
+
+test("edge card reflects simulation caller overrides", async ({ page }) => {
+  await gotoLive(page, "./?view=canvas&example=blocking-call&live=1&sim=free-thread&paused=1");
+  const edge = page.getByTestId("edge-call"),
+    card = page.getByTestId("edge-detail-call");
+  await edge.evaluate((el) => el.closest<HTMLElement>("[tabindex]")?.focus());
+  await page.keyboard.press("Enter");
+  await expect(card.getByTestId("hover-verdict")).toHaveText(/Frees the thread/);
+  await page.keyboard.press("Escape");
+  await page.getByTestId("live-sim-picker").selectOption("blocking");
+  await edge.evaluate((el) => el.closest<HTMLElement>("[tabindex]")?.focus());
+  await page.keyboard.press("Enter");
+  await expect(card.getByTestId("hover-verdict")).toHaveText(/Holds a thread/);
+});
+
+test("arrow navigation reveals section buttons without moving the canvas", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 600 });
+  await gotoLive(page, "./?view=canvas&example=blocking-call&live=1&paused=1");
+  await openLiveNodeDetails(page, "caller", "threads");
+  const card = page.getByTestId("node-detail-caller");
+  await expect(page.getByTestId("thread-detail-caller")).toBeVisible();
+  await waitForStableViewport(page);
+  const before = await viewportTransform(page);
+  await card.focus();
+  await page.keyboard.press("ArrowUp");
+  const row = page.getByTestId("hover-section-planning");
+  await expect(row).toBeFocused();
+  const button = await row.boundingBox(),
+    box = await card.boundingBox();
+  if (!button || !box) throw new Error("Missing section or card geometry");
+  expect(button.y).toBeGreaterThanOrEqual(box.y);
+  expect(button.y + button.height).toBeLessThanOrEqual(box.y + box.height);
+  expect(await viewportTransform(page)).toEqual(before);
+});
+
+test("Escape dismisses an unpinned card before clearing the selected node", async ({ page }) => {
+  await gotoLive(page, "./?view=canvas&example=blocking-call&live=1&paused=1");
+  const node = page.getByTestId("node-caller"),
+    card = page.getByTestId("node-detail-caller");
+  await node.dblclick();
+  await expect(page.getByTestId("inspector-field-label")).toBeFocused();
+  await page.keyboard.press("Enter");
+  await node.hover();
+  await expect(card).toHaveAttribute("data-pinned", "false");
+  expect(await node.evaluate((el) => el.parentElement?.classList.contains("selected"))).toBe(true);
+  await page.keyboard.press("Escape");
+  await expect(card).toHaveCount(0);
+  await waitForStableViewport(page);
+  expect(await node.evaluate((el) => el.parentElement?.classList.contains("selected"))).toBe(true);
+  await expect(page.getByTestId("live-controls")).toBeVisible();
 });

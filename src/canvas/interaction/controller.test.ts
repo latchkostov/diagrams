@@ -923,6 +923,16 @@ it("unmount cancels conditional recovery beside a parked request", () => {
 });
 
 describe("pinned Live readouts", () => {
+  it("dismissing a hovered readout leaves keyboard focus where it was", () => {
+    const h = harness();
+    h.env.nodes.set("a", { drawn: true });
+    h.controller.pointReadout({ kind: "node", id: "a" });
+    h.controller.closeReadout("escape");
+    expect(h.controller.getSnapshot().readout).toBeNull();
+    expect(h.focused).toEqual([]);
+    h.controller.pointReadout({ kind: "node", id: "a" });
+    expect(h.controller.getSnapshot().readout).toBeNull();
+  });
   it("Esc returns focus to the originating item; opening a menu replaces the readout", () => {
     const h = harness();
     h.env.nodes.set("a", { drawn: true });

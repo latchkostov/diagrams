@@ -51,31 +51,20 @@ export function useLiveKeyboard({
       if (!key) return;
       const t = e.target;
       const reading = interaction.getSnapshot().readout;
-      if (!isEditableTarget(t) && !document.querySelector('[role="menu"], [role="dialog"]')) {
-        if (key === "escape" && reading?.pinned) {
-          e.preventDefault();
-          e.stopImmediatePropagation();
-          interaction.closeReadout("escape");
-          return;
-        }
-        const item =
-          t instanceof Element
-            ? t.closest<HTMLElement>(".react-flow__node-diagram[data-id], .react-flow__edge[data-id]")
-            : null;
-        if (key === "enter" && item && !e.repeat) {
-          e.preventDefault();
-          e.stopImmediatePropagation();
-          interaction.pinReadout({
-            kind: item.classList.contains("react-flow__edge") ? "edge" : "node",
-            id: item.dataset.id!,
-          });
-          return;
-        }
-      }
+      const item =
+        t instanceof Element
+          ? t.closest<HTMLElement>(".react-flow__node-diagram[data-id], .react-flow__edge[data-id]")
+          : null;
+      const control =
+        t instanceof Element &&
+        !!t.closest(
+          'button, select, a, [data-editor-overlay], [data-canvas-reading-region], [role="separator"], [role="button"], summary',
+        );
       const selection = !!document.querySelector(SELECTED);
       // Slow motion has its own keys (useSlowMotion): Space, ← →, and Esc back to live.
       const slowing = !!slowRef.current?.session.active && (key === "escape" || e.key === " ");
       const state = controller.getState();
+      const canName = !!editor && !presenting && !state.run?.waiting;
       const action = interaction.liveKey({
         key,
         repeat: e.repeat,
@@ -83,9 +72,9 @@ export function useLiveKeyboard({
         // A recording owns Esc (it stops the recording, see Recorder).
         recording: key === "escape" && isRecordingActive(),
         editable: isEditableTarget(t),
-        control:
-          t instanceof Element &&
-          !!t.closest('button, select, a, [data-editor-overlay], [data-canvas-reading-region], [role="separator"]'),
+        control,
+        readout: !!reading,
+        readoutTarget: !!item && t === item && !(canName && item.classList.contains("selected")),
         owner: !!document.querySelector(ESC_OWNERS),
         selection,
         // The canvas clears its selection when it has focus; otherwise live view clears it (no dead end).
@@ -97,6 +86,20 @@ export function useLiveKeyboard({
         waiting: !!state.run?.waiting,
       });
       switch (action) {
+        case "close-readout":
+          e.preventDefault();
+          e.stopImmediatePropagation();
+          interaction.closeReadout("escape");
+          return;
+        case "pin-readout":
+          if (!item) return;
+          e.preventDefault();
+          e.stopImmediatePropagation();
+          interaction.pinReadout({
+            kind: item.classList.contains("react-flow__edge") ? "edge" : "node",
+            id: item.dataset.id!,
+          });
+          return;
         case "selection":
           editor?.clearSelection();
           return;

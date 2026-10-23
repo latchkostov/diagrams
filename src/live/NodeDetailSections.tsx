@@ -1,7 +1,6 @@
 import { CallsReadout } from "./CallsReadout";
-import { useMemo, type CSSProperties } from "react";
+import type { CSSProperties } from "react";
 import { waitingDetails } from "./waitingDetails";
-import { simulationEdges } from "../sim/simulationEdges";
 import { profileOf } from "../stencils/profiles";
 import { t, useLocale } from "../i18n";
 import { assignmentLabel, groupLabel } from "../stencils/brokerVocabulary";
@@ -46,8 +45,7 @@ export function NodeDetailSections({
 }: BadgeProps & { section: string }) {
   useLocale();
   const live = useLive();
-  const running = live.controller.getState().running;
-  const effective = useMemo(() => simulationEdges(diagram, running ?? undefined), [diagram, running]);
+  const effective = diagram;
   const wait = waitingDetails(effective, configuration)?.nodes.get(node.id);
   const edge = diagram.edges.find((e) => e.id === s.threads?.waitingOn[0]?.[0]);
   const waitingLabel = diagram.nodes.find((n) => n.id === edge?.to)?.label ?? edge?.to ?? "";

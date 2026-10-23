@@ -422,6 +422,8 @@ const LIVE_ACTIONS: LiveKeyAction[] = [
   "toggle",
   "resume",
   "repeat",
+  "close-readout",
+  "pin-readout",
   "none",
 ];
 const PLATFORMS: Platform[] = ["mac", "other"];

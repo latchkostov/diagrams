@@ -48,6 +48,20 @@ const states: { name: string; open: (page: Page) => Promise<void>; scope?: strin
     },
   },
   {
+    name: "problem hover card",
+    scope: "node-detail-caller",
+    open: async (page) => {
+      await page.clock.install();
+      await gotoLive(page, "./?view=canvas&example=blocking-call&live=1&sim=blocking&paused=1");
+      await page.getByTestId("live-play").click();
+      await page.clock.runFor(5000);
+      await page.getByTestId("live-play").click();
+      await openLiveNodeDetails(page, "caller", "threads");
+      await expect(page.getByTestId("hover-verdict")).toContainText("threads are busy");
+      await expect(page.getByTestId("hover-attention-threads")).toBeVisible();
+    },
+  },
+  {
     name: "pinned hover card",
     scope: "node-detail-caller",
     open: async (page) => {
