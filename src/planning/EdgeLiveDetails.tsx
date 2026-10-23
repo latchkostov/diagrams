@@ -5,10 +5,9 @@ import { planningHost } from "./host";
 import { DockedLive } from "../live/DockedLive";
 import { edgeReadoutKind, flowSummary, requestSummary } from "../live/hoverSummary";
 import { EdgeDetailSection } from "../live/EdgeDetailSection";
-import { compileTopology } from "../sim/topology";
 import { callPolicy } from "../sim/callPolicy";
 import type { EdgeSimProps } from "../sim/types";
-import { simulationEdges } from "../sim/simulationEdges";
+import { readoutDiagram } from "../live/readoutDiagram";
 
 export function EdgeLiveDetails({ id }: { id: string }) {
   const live = useSyncExternalStore(planningHost.subscribe, planningHost.get, planningHost.get);
@@ -22,7 +21,7 @@ export function EdgeLiveDetails({ id }: { id: string }) {
 function ObservedEdge({ id, live }: { id: string; live: LiveUi }) {
   useLocale();
   const state = useLiveState(live.controller);
-  const diagram = simulationEdges(live.controller.currentDiagram, state.running ?? undefined);
+  const { diagram, topology } = readoutDiagram(live.controller.currentDiagram, state.running ?? undefined);
   const edge = diagram.edges.find((e) => e.id === id);
   const s = state.snapshot.edges[id];
   const [previous, setPrevious] = useState({ at: state.snapshot.time, delivered: s?.delivered ?? 0, rate: 0 });
@@ -37,7 +36,7 @@ function ObservedEdge({ id, live }: { id: string; live: LiveUi }) {
   if (!edge) return null;
   const source = diagram.nodes.find((n) => n.id === edge.from);
   const policy = callPolicy(source?.stencil ?? "", edge.props?.caller as EdgeSimProps["caller"]);
-  const kind = edgeReadoutKind(diagram, edge, compileTopology(diagram));
+  const kind = edgeReadoutKind(diagram, edge, topology);
   const summary =
     kind === "request" ? requestSummary(s?.calls, s?.breaker, policy.blocking, s?.active ?? 0) : flowSummary(kind, s);
   if (kind === "request")

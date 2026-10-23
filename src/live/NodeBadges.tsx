@@ -24,7 +24,7 @@ import type { CapacityView, NodeHeat } from "./capacityModel";
 import { CapacityChip, CapacityRing, IdleChip } from "./CapacityLayer";
 import { HA_LABEL } from "../stencils/netDevices";
 import { latencyLabel, latencySampling } from "./latencyFormat";
-import { simulationEdges } from "../sim/simulationEdges";
+import { readoutDiagram } from "./readoutDiagram";
 import { callPolicy } from "../sim/callPolicy";
 import type { EdgeSimProps } from "../sim/types";
 
@@ -57,9 +57,8 @@ export function NodeBadges({
   const faults = state.snapshot.faults;
   const labels = nodeFaultLabels(faults);
   const nodes = useNodes<FlowNode>();
-  const diagram = simulationEdges(ui.controller.currentDiagram, state.running ?? undefined);
+  const { diagram, topology } = readoutDiagram(ui.controller.currentDiagram, state.running ?? undefined);
   const names = useMemo(() => new Map(diagram.nodes.map((n) => [n.id, n.label || n.id])), [diagram]);
-  const topology = useMemo(() => compileTopology(diagram), [diagram]);
   const assignmentMultiplier = resolveMultiplier(state.inputs.capacity ?? state.running?.multipliers?.capacity);
   const assignments = useMemo(
     () => brokerAssignments(diagram, state.configuration, assignmentMultiplier),

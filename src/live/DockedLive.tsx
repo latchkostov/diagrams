@@ -38,13 +38,15 @@ export function DockedLive({
   const [history, setHistory] = useState({ at: time, samples: time >= 1000 ? [value] : ([] as number[]) });
   if (time < history.at) setHistory({ at: time, samples: time >= 1000 ? [value] : [] });
   else if (time - history.at >= 1000) setHistory({ at: time, samples: [...history.samples.slice(-9), value] });
+  else if (history.samples.length && history.samples.at(-1) !== value)
+    setHistory({ ...history, samples: [...history.samples.slice(0, -1), value] });
   const problem = summary.problems[0];
   return (
     <section
       className={`insp-section inspector-live${problem ? (problem.severe ? " is-bad" : " is-warning") : ""}`}
       data-testid="planning-live-details"
     >
-      <h3 className="inspector-live-heading">
+      <h3 className="insp-section-title inspector-live-heading">
         <button
           data-testid="planning-live-details-toggle"
           aria-expanded={expanded}

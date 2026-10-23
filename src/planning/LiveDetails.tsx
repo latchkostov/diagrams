@@ -2,7 +2,6 @@ import { ResourceDetails } from "./ResourceDetails";
 import type { ReplicaRow } from "../sim/autoscaling";
 import { resolveNodeProps } from "../sim/defaults";
 import { groupLabel } from "../stencils/brokerVocabulary";
-import { compileTopology } from "../sim/topology";
 import { memo, useEffect, useMemo, useState } from "react";
 import type { ScalingPlan } from "../sim/scalingPlanner";
 import { planDescriptor, planSentence, reasonText } from "./scalingPlanText";
@@ -19,6 +18,7 @@ import type { LiveState } from "../live/controller";
 import { formatCount, formatRate } from "../live/format";
 import { latencyDuration } from "../live/latencyFormat";
 import type { NodeSimState } from "../sim/types";
+import { readoutDiagram } from "../live/readoutDiagram";
 
 // Coalesce jittered readiness at controller syncs and at startup completion. Completion
 // remains observable for fixed fleets and manual overrides, whose controller is suspended.
@@ -86,17 +86,18 @@ export function LiveDetails({
   state?: LiveState;
 }) {
   useLocale();
+  const { diagram: effective, topology } = readoutDiagram(d, state?.running ?? undefined);
   const groups = useMemo(() => {
     const labels = new Map(d.nodes.map((n) => [n.id, n.label]));
     const groups = new Map<string, string[]>();
-    for (const edge of compileTopology(d).edges) {
+    for (const edge of topology.edges) {
       if (edge.from !== s.id || edge.dlq || edge.deny) continue;
       const members = groups.get(edge.groupName) ?? [];
       members.push(labels.get(edge.to) ?? edge.to);
       groups.set(edge.groupName, members);
     }
     return groups;
-  }, [d, s.id]);
+  }, [d, s.id, topology]);
   const node = d.nodes.find((n) => n.id === s.id);
   const resolved = node ? resolveNodeProps(d, node) : undefined;
   const broker = resolved?.broker;
@@ -203,7 +204,7 @@ export function LiveDetails({
               docked
               section={section}
               node={{ type: "diagram", id: node.id, position: { x: node.x, y: node.y }, data: node }}
-              diagram={d}
+              diagram={effective}
               s={s}
               configuration={state.configuration}
               concurrency={Number(resolved?.concurrency ?? 1)}

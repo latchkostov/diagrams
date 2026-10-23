@@ -175,13 +175,14 @@ test("A1: keyboard Save flushes a focused numeric draft before downloading", asy
 test("A1: scaling announcements remain in the accessibility tree with Live details closed", async ({ page }) => {
   await seed(page, { live: true });
   await page.getByTestId("node-worker").dblclick();
-  await expect(page.getByTestId("planning-live-details")).not.toHaveAttribute("open");
+  await page.getByTestId("planning-live-details-toggle").click();
+  await expect(page.getByTestId("planning-live-details-toggle")).toHaveAttribute("aria-expanded", "false");
   const status = page.getByTestId("autoscaling-announcement");
   await expect(status).toMatchAriaSnapshot('- status: "Orders · Ready: 1 → Desired: 1"');
   await page.clock.runFor(15_500);
   await expect(status).toContainText("Desired: 2");
   expect(await status.ariaSnapshot()).toContain("Desired: 2");
-  await expect(page.getByTestId("planning-live-details")).not.toHaveAttribute("open");
+  await expect(page.getByTestId("planning-live-details-toggle")).toHaveAttribute("aria-expanded", "false");
 });
 
 test("A1: coalesces partial jittered readiness until completion", async ({ page }) => {

@@ -3014,6 +3014,12 @@ const en = {
   "resilience.budgetUsed": " · budget used",
   "resilience.pillTitle":
     "{from} sent {attempts} attempts/s for {requests} requests/s over the last 10 s · {retried, plural, one {# retry} other {# retries}} · {percent}% of attempts failed",
+  "workspaceLive.threadsBusy": "Threads busy",
+  "workspaceLive.working": "Working",
+  "workspaceLive.callsTo": "Calls to {name}",
+  "workspaceLive.failing": "Failing",
+  "workspaceLive.retryPolicy":
+    "{attempts, plural, one {# attempt} other {# attempts}} · {backoff} ms backoff · {budget}",
   "resilience.calls": "Calls",
   "resilience.retriedMetric": "Retry attempts",
   "resilience.amplificationMetric": "Attempts per request",

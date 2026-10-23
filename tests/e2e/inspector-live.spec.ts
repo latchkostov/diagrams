@@ -1,5 +1,5 @@
 import AxeBuilder from "@axe-core/playwright";
-import { breakerFixture } from "../../src/lab/resilienceFixture";
+import { breakerFixture, resilienceFixture } from "../../src/lab/resilienceFixture";
 import {
   test,
   expect,
@@ -11,6 +11,122 @@ import {
   STORAGE_KEYS,
   expectNoErrors,
 } from "./fixtures";
+
+for (const finish of ["typing", "Enter", "Escape"] as const) {
+  test(`held connection chunk preserves rename keys and ${finish}`, async ({ page }) => {
+    let requested = false;
+    let release = () => {};
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    await page.route(
+      /\/(?:assets\/EdgePanel-[\w-]+\.js|src\/canvas\/inspector\/EdgePanel\.tsx)(?:\?.*)?$/,
+      async (route) => {
+        requested = true;
+        await held;
+        await route.continue();
+      },
+    );
+    await page.goto("./?view=canvas&example=blocking-call");
+    await expect(page.getByTestId("canvas-view")).toBeVisible();
+    await waitForStableViewport(page);
+    await page.getByTestId("edge-call").dblclick({ force: true });
+    await expect.poll(() => requested).toBe(true);
+    await page.keyboard.type("test label");
+    if (finish !== "typing") await page.keyboard.press(finish);
+    release();
+    const label = page.getByTestId("inspector-field-label");
+    await expect(label).toHaveValue("test label");
+    await expect(page.getByTestId("inspector-edge-loading")).toHaveCount(0);
+    if (finish === "typing") {
+      await expect(label).toBeFocused();
+      await page.keyboard.type(" extended");
+      await expect(label).toHaveValue("test label extended");
+    } else await expect(label).not.toBeFocused();
+    await expect(page.getByTestId("live-play")).toHaveCount(0);
+    await expect(page.getByTestId(/^annotation-text-/)).toHaveCount(0);
+  });
+}
+
+test("connection Properties Retry retains keyboard focus without a rename request", async ({ page }) => {
+  let fail = true;
+  await page.route(
+    /\/(?:assets\/EdgePanel-[\w-]+\.js|src\/canvas\/inspector\/EdgePanel\.tsx)(?:\?.*)?$/,
+    async (route) => {
+      if (fail) await route.abort("failed");
+      else await route.continue();
+    },
+  );
+  await gotoLive(page, "./?view=canvas&example=blocking-call&live=1&paused=1");
+  await waitForStableViewport(page);
+  await page.getByTestId("edge-call").click({ button: "right", force: true });
+  await page.getByTestId("context-menu-item-node.properties").click();
+  const retry = page.getByTestId("inspector-edge-retry");
+  await expect(retry).toBeVisible();
+  await retry.focus();
+  fail = false;
+  await page.keyboard.press("Enter");
+  await expect(page.getByTestId("inspector-field-label")).toBeFocused();
+  await expect(page.getByTestId("inspector-edge-loading")).toHaveCount(0);
+  await expect(page.getByTestId("inspector-field-label")).toBeFocused();
+});
+
+test("running wait overrides agree in node Inspector and hover", async ({ page }) => {
+  await page.clock.install();
+  await gotoLive(page, "./?view=canvas&example=blocking-call&live=1&sim=free-thread&paused=1");
+  await pauseClock(page);
+  await waitForStableViewport(page);
+  await page.getByTestId("node-caller").dblclick();
+  await openInspectorLiveDetails(page, "threads");
+  const ceiling = page.getByTestId("planning-live-details").getByTestId("thread-ceiling");
+  await expect(ceiling).toContainText("reply");
+  await expect(page.getByTestId("planning-observed")).toHaveCount(0);
+  await expect(page.getByTestId("planning-more-toggle")).toBeVisible();
+  await page.getByTestId("node-caller").evaluate((el) => el.parentElement?.focus());
+  const card = page.getByTestId("node-detail-caller");
+  await expect(card).toBeVisible();
+  await card.click();
+  await card.getByTestId("hover-section-threads").click();
+  await expect(card.getByTestId("thread-ceiling")).toContainText("reply");
+});
+
+test("request Inspector plots successful-request throughput", async ({ page }) => {
+  const d = resilienceFixture();
+  d.nodes[0].props = { ...d.nodes[0].props, ratePerSec: 0 };
+  d.nodes[1].props = { ...d.nodes[1].props, concurrency: 100 };
+  d.nodes[2].stencil = "generic.service";
+  d.nodes[2].props = { latencyMs: 30, jitter: 0, concurrency: 100, failureRate: 0 };
+  d.simulations = [
+    {
+      id: "successful",
+      title: "Successful requests",
+      durationMs: 20000,
+      traffic: [{ id: "batch", node: "source", shape: { kind: "burst", count: 100, atMs: 5500 } }],
+    },
+  ];
+  await page.addInitScript(({ key, d }) => localStorage.setItem(key, JSON.stringify(d)), {
+    key: STORAGE_KEYS.autosavePrefix + "blocking-call",
+    d,
+  });
+  await page.clock.install();
+  await gotoLive(page, "./?view=canvas&example=blocking-call&live=1&sim=successful&paused=1");
+  await pauseClock(page);
+  await waitForStableViewport(page);
+  await page.getByTestId("edge-call").dblclick({ force: true });
+  await page.getByTestId("live-play").click();
+  await page.clock.runFor(5800);
+  await page.getByTestId("live-play").click();
+  const area = page.getByTestId("planning-live-details");
+  // All 100 burst requests completed within this ten-second window, clear of its bucket boundaries.
+  await expect(area.getByTestId("hover-vital-goodput")).toHaveText("10/sGoodput");
+  await expect(area.getByTestId("hover-history-values")).toHaveText(/10\/s$/);
+  await page.getByTestId("live-play").click();
+  await page.clock.runFor(6200);
+  await page.getByTestId("live-play").click();
+  const samples = (await area.getByTestId("hover-history-values").innerText()).match(/\d+(?:\.\d+)?\/s/g) ?? [];
+  expect(samples).toHaveLength(10);
+  await expect(area.getByTestId("hover-history-scope")).toHaveText("Last 10 seconds");
+});
 
 test("a held connection Inspector keeps its frame usable and restores naming after Retry", async ({ page }) => {
   let requested = false;

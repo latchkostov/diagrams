@@ -110,7 +110,7 @@ export function NodePlanning({
   if (!node) return null;
   const x = explanation && {
     ...explanation,
-    ...(observed
+    ...(observed && hover
       ? {
           observed: {
             throughput: observed.throughput,
