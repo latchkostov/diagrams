@@ -381,6 +381,51 @@ const BASE: DiagramFile = {
   edges: [{ id: "ab", from: "a", to: "b", kind: "sync", label: "writes", props: { dlq: true } }],
 };
 
+describe("dot attachment through the editor", () => {
+  it("creates an edge with the sides chosen independently", () => {
+    const t = setup([], { ...BASE, edges: [] });
+    const id = t.api.connect("a", "b", { sourceSide: "bottom", targetSide: "top" })!;
+    t.commit();
+    expect(t.api.getEdge(id)).toMatchObject({ from: "a", to: "b", sourceSide: "bottom", targetSide: "top" });
+  });
+  it("an existing pair takes the sides and is selected without duplicating it", () => {
+    const t = setup();
+    t.api.select({ nodeIds: ["a"] });
+    t.commit();
+    expect(t.api.connect("a", "b", { sourceSide: "bottom", targetSide: "top" })).toBe("ab");
+    t.commit();
+    expect(t.edges()).toHaveLength(1);
+    expect(t.edges()[0]).toMatchObject({
+      selected: true,
+      data: { kind: "sync", label: "writes", props: { dlq: true }, sourceSide: "bottom", targetSide: "top" },
+    });
+    expect(t.nodes().some((n) => n.selected)).toBe(false);
+    expect(t.hint).toHaveBeenCalledTimes(1);
+    t.api.connect("a", "b", { sourceSide: "left" });
+    t.commit();
+    expect(t.api.getEdge("ab")).toMatchObject({ sourceSide: "left" });
+    expect(t.edges()[0].data).not.toHaveProperty("targetSide");
+    expect(t.api.getEdge("ab")?.targetSide).toBeUndefined();
+    expect(t.hint).toHaveBeenCalledTimes(2);
+  });
+  it.each(["stencil", "shape"] as const)(
+    "a connection dropped on empty canvas retains its source dot for a %s",
+    (kind) => {
+      const t = setup();
+      const made = t.api.createConnected({
+        from: "a",
+        sourceSide: "bottom",
+        at: { x: 300, y: 500 },
+        ...(kind === "shape" ? { shape: "ellipse" as const } : { stencil: "redis.cache" }),
+      })!;
+      t.commit();
+      expect(t.api.getEdge(made.edge!)).toMatchObject({ from: "a", to: made.id, sourceSide: "bottom" });
+      expect(t.edges().find((e) => e.id === made.edge)?.data).not.toHaveProperty("targetSide");
+      expect(t.api.getEdge(made.edge!)?.targetSide).toBeUndefined();
+    },
+  );
+});
+
 /** hub alone at (1000, 400); a → b in a row far to the left, with a labelled request edge. */
 function setup(marks: EdgeMark[] = [], diagram: DiagramFile = BASE, lagStore = false) {
   const flow = toFlow(diagram);

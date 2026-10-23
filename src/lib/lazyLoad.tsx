@@ -33,6 +33,11 @@ export type LazyComponent<P> = ((props: P) => ReactNode) & {
 
 export const LOAD_FAILED = "Part of the app couldn't be downloaded. Check your connection and try again.";
 
+/** Says a download failed, in a toast whose Retry runs `retry`: the way back ships with the app, not what failed. */
+export function loadFailed(retry: () => void) {
+  notify(LOAD_FAILED, { kind: "error", action: { label: "Retry", run: retry, testId: "lazy-load-retry" } });
+}
+
 /**
  * A component whose code loads on first render, or earlier with `preload()`. Once loaded it renders in the
  * same frame as whatever shows it. Until then it renders `placeholder` (a dialog passes a modal frame that
@@ -76,8 +81,7 @@ export function lazyComponent<P extends object>(
     const retry = useCallback(() => setState((s) => ({ failed: false, attempt: s.attempt + 1 })), []);
     // Without a placeholder that offers Retry, the failure is reported (with Retry) in a toast.
     useEffect(() => {
-      if (failed && toast)
-        notify(LOAD_FAILED, { kind: "error", action: { label: "Retry", run: retry, testId: "lazy-load-retry" } });
+      if (failed && toast) loadFailed(retry);
     }, [failed, retry]);
     if (component) {
       const Component = component;

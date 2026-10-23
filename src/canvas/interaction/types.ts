@@ -21,6 +21,7 @@ export type GesturePreview =
       over: DropTarget | null;
       target?: ConnectTarget["kind"];
       screen?: Point;
+      at?: Point;
     }
   | { kind: "edge.end"; edge: string; end: EdgeEnd; at: Point; over: DropTarget | null }
   | { kind: "edge.segment"; edge: string; segment: number; waypoints: readonly Point[]; guide?: GuideLine }

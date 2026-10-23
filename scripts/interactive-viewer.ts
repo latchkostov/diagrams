@@ -86,6 +86,30 @@ export const EDITOR_ONLY: { name: string; path: string; stub: (root: string) => 
     path: "/src/canvas/edges/EdgeEnds.tsx",
     stub: () => "export const EdgeEnds = () => null;",
   },
+  // Nor does it draw connections: no connection gesture, snap radius or dot resolver (connectDots.ts and its lazy
+  // connectTarget.ts). Its annotation lookup only serves the stencil rail's drops, and the rail is stubbed too.
+  {
+    name: "the connection gesture",
+    path: "/src/canvas/placement/useConnectionPlacement.ts",
+    stub: () =>
+      "const none = () => {};\nexport const useConnectionPlacement = () => [() => undefined, none, none, none, none, none];",
+  },
+  {
+    name: "the connection snap radius",
+    path: "/src/canvas/interaction/ConnectionRadius.tsx",
+    stub: () => "export const ConnectionRadius = () => null;",
+  },
+  {
+    name: "the connection dot resolver",
+    path: "/src/canvas/interaction/connectDots.ts",
+    stub: () =>
+      [
+        "export const requestDots = () => {};",
+        "export const onDots = () => () => {};",
+        'export const connectionAt = () => ({ target: { kind: "outside" }, at: { x: 0, y: 0 } });',
+        "export const connectionMarks = () => ({ show() {}, clear() {} });",
+      ].join("\n"),
+  },
   { name: "the start card", path: "/src/canvas/StartCard.tsx", stub: () => "export const StartCard = () => null;" },
   {
     name: "the first-run hint",
