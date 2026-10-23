@@ -1,4 +1,5 @@
-import { FALLBACK_STENCIL, iconUrl } from "../stencils/registry";
+import { FALLBACK_STENCIL } from "../stencils/registry";
+import { iconUrl } from "../stencils/iconUrls";
 import type { Stencil } from "../model/types";
 
 /** Renders a stencil's SVG icon, falling back to the generic box, then to an inline glyph. */

@@ -5,3 +5,7 @@ export const iconUrls = import.meta.glob("./icons/*.svg", {
   query: "?url",
   import: "default",
 }) as Record<string, string>;
+
+export function iconUrl(icon: string): string | undefined {
+  return iconUrls[`./icons/${icon}.svg`];
+}

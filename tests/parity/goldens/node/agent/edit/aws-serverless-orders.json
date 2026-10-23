@@ -120,7 +120,7 @@
         "error": "Unknown reference \"no-such-node\".",
         "ref": "no-such-node",
         "candidates": [
-          { "id": "client", "label": "Web shop", "stencil": "client.browser" },
+          { "id": "client", "label": "Web shop", "stencil": "client.nextjs" },
           { "id": "apigw", "label": "Renamed by parity", "stencil": "aws.api-gateway" },
           { "id": "create-order", "label": "CreateOrder", "stencil": "aws.lambda" },
           { "id": "orders-table", "label": "Orders table", "stencil": "aws.dynamodb" },
@@ -214,7 +214,7 @@
     "nodes": [
       {
         "id": "client",
-        "stencil": "client.browser",
+        "stencil": "client.nextjs",
         "label": "Web shop",
         "sublabel": "Signed-in customers",
         "x": 40,

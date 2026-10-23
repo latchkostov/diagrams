@@ -3625,7 +3625,49 @@
    "label": "Web Browser",
    "vendor": "Client",
    "role": "source",
-   "aliases": ["spa","web","frontend","react"]
+   "aliases": ["spa","web","frontend","react","vue","angular","svelte"]
+  },
+  {
+   "id": "client.react",
+   "label": "React",
+   "vendor": "React",
+   "role": "source",
+   "aliases": ["reactjs","react.js","jsx","spa","frontend"]
+  },
+  {
+   "id": "client.vue",
+   "label": "Vue",
+   "vendor": "Vue",
+   "role": "source",
+   "aliases": ["vuejs","vue.js","spa","frontend"]
+  },
+  {
+   "id": "client.angular",
+   "label": "Angular",
+   "vendor": "Angular",
+   "role": "source",
+   "aliases": ["angularjs","spa","frontend"]
+  },
+  {
+   "id": "client.svelte",
+   "label": "Svelte",
+   "vendor": "Svelte",
+   "role": "source",
+   "aliases": ["sveltekit","spa","frontend"]
+  },
+  {
+   "id": "client.nextjs",
+   "label": "Next.js",
+   "vendor": "Next.js",
+   "role": "source",
+   "aliases": ["next","next.js","react","ssr","frontend"]
+  },
+  {
+   "id": "client.nuxt",
+   "label": "Nuxt",
+   "vendor": "Nuxt",
+   "role": "source",
+   "aliases": ["nuxtjs","nuxt.js","vue","ssr","frontend"]
   },
   {
    "id": "client.mobile",
@@ -3633,6 +3675,34 @@
    "vendor": "Client",
    "role": "source",
    "aliases": ["ios","android","app","phone"]
+  },
+  {
+   "id": "client.react-native",
+   "label": "React Native",
+   "vendor": "React Native",
+   "role": "source",
+   "aliases": ["reactnative","ios","android","app","phone"]
+  },
+  {
+   "id": "client.flutter",
+   "label": "Flutter",
+   "vendor": "Flutter",
+   "role": "source",
+   "aliases": ["dart","ios","android","app","phone"]
+  },
+  {
+   "id": "client.swiftui",
+   "label": "SwiftUI (iOS)",
+   "vendor": "SwiftUI (iOS)",
+   "role": "source",
+   "aliases": ["swift","swift ui","ios","iphone","app","phone"]
+  },
+  {
+   "id": "client.compose",
+   "label": "Jetpack Compose (Android)",
+   "vendor": "Jetpack Compose (Android)",
+   "role": "source",
+   "aliases": ["jetpack","kotlin","android","app","phone"]
   },
   {
    "id": "client.iot",

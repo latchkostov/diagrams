@@ -1,5 +1,5 @@
 {
-  "file": { "sha256": "bdedafef62e822ccb556f9daf9abd9638168c94964664dd6ac6ae24a2618233a", "bytes": 49424 },
+  "file": { "sha256": "e7b392e11745385a04f00b39efa40e2037513cfe5a27201895d219e5fd4e948b", "bytes": 50995 },
   "payload": {
     "version": 1,
     "diagram": {
@@ -13,7 +13,7 @@
       "nodes": [
         {
           "id": "client",
-          "stencil": "client.browser",
+          "stencil": "client.nextjs",
           "label": "Web shop",
           "sublabel": "Signed-in customers",
           "x": 40,
@@ -490,11 +490,11 @@
       "aws-sns": { "sha256": "9805176c950fdf2f6840101e64c822ae8b1b978871ccda85fa3eb766c563f509", "bytes": 3726 },
       "aws-sqs": { "sha256": "8c262db53d2142510d9951733380ba5041e572cc26a0bb1751a102d647f05c24", "bytes": 6604 },
       "aws-step-functions": { "sha256": "a058a1115e7a0c2fe490304a3e9b5bacf0dd7feb7bbaf89bc433c3670f1d7fa8", "bytes": 2505 },
-      "client-browser": { "sha256": "c66b629864dc684d451c1c280107fe74cdd69ffb9d17be64673c90c7c92434f7", "bytes": 476 },
       "generic-email": { "sha256": "f0db58eaa97e89831f8591e9a1557e2470bca8fd215a0b887d8430147f9ddd19", "bytes": 447 },
       "generic-external-api": { "sha256": "d3a95660f5a9fb8dbd298a79af1604cd83926a306583abeee407a7389b130be8", "bytes": 369 },
       "generic-identity-provider": { "sha256": "0676c452dd144f732465c06edb4613a3a1778edea71ea777d753b9dc9db8b60c", "bytes": 656 },
       "generic-sms": { "sha256": "7baa86ab3e2c8ded4e3b092cfd34b57d190418db592524b99a476782340d335a", "bytes": 577 },
+      "nextjs": { "sha256": "05e66f699f0b5c51375d9e3a1087d347da17a739bd01147bd0e38b060d4b3b85", "bytes": 1788 },
       "stripe": { "sha256": "d73033ac5105145a1a5dc226c8c4a9b744369e2c0ae7234e97671c799656fd31", "bytes": 738 }
     },
     "options": { "theme": "dark", "banner": "Confidential: internal use only", "startSimulation": null, "exportedOn": "2026-01-01" }

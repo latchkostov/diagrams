@@ -36,6 +36,36 @@ as recommended by `docs/research/planning-model.md` §4.1. No new vendor marks o
 These are functional glyphs, not vendor logos. Brand artwork without a verified redistribution grant remains
 excluded (including the previously rejected Braze mark). Trademarks belong to their owners.
 
+### Branded web and mobile clients
+
+Brand names are nominative labels; no endorsement is implied. Marks use the existing bundled SVG URL
+pipeline, never a CDN. React Native shares the React atom. The Angular press kit licenses its artwork
+under [CC BY 4.0](https://angular.dev/press-kit): Angular logo by Google, normalized without changing the
+artwork (root dimensions/metadata removed, SVG ids namespaced). Attribution applies to `angular.svg`.
+
+| Stencils            | Icon file            | Source and licence                  | Original asset                                                                                                                  |
+| ------------------- | -------------------- | ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| React, React Native | `react.svg`          | gilbarbara/logos, CC0-1.0           | [react.svg](https://github.com/gilbarbara/logos/blob/main/logos/react.svg)                                                      |
+| Angular             | `angular.svg`        | Angular / Google, CC-BY-4.0         | [angular-icon.svg](https://github.com/gilbarbara/logos/blob/main/logos/angular-icon.svg)                                        |
+| Svelte              | `svelte.svg`         | gilbarbara/logos, CC0-1.0           | [svelte-icon.svg](https://github.com/gilbarbara/logos/blob/main/logos/svelte-icon.svg)                                          |
+| Next.js             | `nextjs.svg`         | gilbarbara/logos, CC0-1.0           | [nextjs-icon.svg](https://github.com/gilbarbara/logos/blob/main/logos/nextjs-icon.svg)                                          |
+| Nuxt                | `nuxt.svg`           | gilbarbara/logos, CC0-1.0           | [nuxt-icon.svg](https://github.com/gilbarbara/logos/blob/main/logos/nuxt-icon.svg)                                              |
+| Flutter             | `flutter.svg`        | gilbarbara/logos, CC0-1.0           | [flutter-icon.svg](https://github.com/gilbarbara/logos/blob/main/logos/flutter-icon.svg)                                        |
+| Jetpack Compose     | `compose.svg`        | Devicon, MIT                        | [jetpackcompose-original.svg](https://github.com/devicons/devicon/blob/master/icons/jetpackcompose/jetpackcompose-original.svg) |
+| Vue                 | `client-browser.svg` | Lucide, ISC (neutral browser glyph) | `app-window`                                                                                                                    |
+| SwiftUI (iOS)       | `client-mobile.svg`  | Lucide, ISC (neutral mobile glyph)  | `smartphone`                                                                                                                    |
+
+Collection licences: [gilbarbara/logos CC0](https://github.com/gilbarbara/logos/blob/main/LICENSE.txt),
+[Devicon MIT](https://github.com/devicons/devicon/blob/master/LICENSE) (copyright 2015 konpa;
+full notice reproduced below). The brands remain their owners' trademarks.
+Svelte's [branding conditions](https://github.com/sveltejs/branding) prohibit implying endorsement;
+Flutter's [brand guidelines](https://docs.flutter.dev/brand) permit community support and educational use.
+
+Vue uses a neutral glyph because its [artwork terms](https://github.com/vuejs/art) are
+CC-BY-NC-SA-4.0 with additional restrictions on commercial products. SwiftUI uses a neutral glyph
+because [Apple's guidelines](https://www.apple.com/legal/intellectual-property/guidelinesfor3rdparties.html)
+require express permission for Apple-owned graphic marks. Neither restricted mark is redistributed.
+
 ### Existing files
 
 | Icon file                   | Source                                  | Original asset                                                                                         |
@@ -201,7 +231,7 @@ and Event Hubs Capture (no distinct icon). Kafka Streams reuses `kafka.svg`.
 | `microsoft-fabric.svg`      | theSVG (MIT)                             | `thesvg-color:microsoft-fabric`                                                                                                            |
 | `generic-cdc.svg`           | Lucide (ISC)                             | `database-zap` (Debezium CDC: no permissively licensed Debezium logo found)                                                                |
 | `generic-batch-job.svg`     | Lucide (ISC)                             | `layers`                                                                                                                                   |
-| `generic-cdn.svg`           | Lucide (ISC)                             | `globe`                                                                                                                                    |
+| `generic-cdn.svg`           | Lucide (ISC)                             | `app-window`                                                                                                                               |
 | `generic-dns.svg`           | Lucide (ISC)                             | `signpost`                                                                                                                                 |
 | `generic-firewall.svg`      | Lucide (ISC)                             | `brick-wall-shield`                                                                                                                        |
 | `client-team.svg`           | Lucide (ISC)                             | `users`                                                                                                                                    |
@@ -323,3 +353,22 @@ Not used, and why (docs/research/network-infrastructure.md, "Icons and trademark
 
 Cisco, Juniper, Palo Alto Networks, Fortinet, F5, BIG-IP, Arista, Check Point, HPE Aruba Networking and NetScaler are
 trademarks of their owners, named nominatively (see Trademarks above).
+
+### Devicon MIT notice
+
+Copyright (c) 2015 konpa
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+associated documentation files (the "Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial
+portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT
+LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.

@@ -4,7 +4,7 @@ import { STENCIL_RELATIONS, inferRelation } from "./relations";
 import { inferStencil } from "../interop/infer";
 import { searchStencils } from "../lib/stencilSearch";
 import { familyOf } from "../lib/vendorFamilies";
-import { iconUrl } from "./registry";
+import { iconUrl } from "./iconUrls";
 
 const ids = new Set(catalog.map((s) => s.id));
 

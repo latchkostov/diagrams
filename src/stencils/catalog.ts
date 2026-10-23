@@ -1493,6 +1493,20 @@ const security = group("security", [
   ],
 ]);
 
+// Framework clients inherit their parent's source role and subtitle; only branding differs.
+function frameworkClients(kind: "Web" | "Mobile", defs: [string, string, string, string][]): Def[] {
+  return defs.map(([id, label, icon, accent]) => [
+    `client.${id}`,
+    label,
+    label,
+    icon,
+    accent,
+    "source",
+    `${kind} client built with ${label}.`,
+    kind === "Web" ? "web app" : "mobile app",
+  ]);
+}
+
 const clients = group("clients", [
   ["client.user", "User", "Client", "client-user", "#0EA5E9", "source", "A person using the system.", "user"],
   [
@@ -1505,6 +1519,14 @@ const clients = group("clients", [
     "Web front-end / SPA running in a browser.",
     "web app",
   ],
+  ...frameworkClients("Web", [
+    ["react", "React", "react", "#61DAFB"],
+    ["vue", "Vue", "client-browser", "#42B883"],
+    ["angular", "Angular", "angular", "#DD0031"],
+    ["svelte", "Svelte", "svelte", "#FF3E00"],
+    ["nextjs", "Next.js", "nextjs", "#000000"],
+    ["nuxt", "Nuxt", "nuxt", "#00DC82"],
+  ]),
   [
     "client.mobile",
     "Mobile App",
@@ -1515,6 +1537,12 @@ const clients = group("clients", [
     "iOS / Android application.",
     "mobile app",
   ],
+  ...frameworkClients("Mobile", [
+    ["react-native", "React Native", "react", "#61DAFB"],
+    ["flutter", "Flutter", "flutter", "#02569B"],
+    ["swiftui", "SwiftUI (iOS)", "client-mobile", "#F05138"],
+    ["compose", "Jetpack Compose (Android)", "compose", "#4285F4"],
+  ]),
   [
     "client.iot",
     "IoT Device",
