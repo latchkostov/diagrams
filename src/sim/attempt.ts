@@ -35,6 +35,9 @@ export interface LogicalCall {
 
 export interface LogicalBranch {
   breakerPermit?: import("./breaker").BreakerPermit;
+  /** Real requests this branch still carries after a half-open breaker narrowed it to its test calls;
+   * its attempts, retries and successes are sized by it. Undefined: the caller's whole cohort. */
+  represented?: number;
   attemptStartedAt?: number;
   countedAt?: number;
   state: "queued" | "sent" | "replied" | "failed" | "timedOut" | "backoff";

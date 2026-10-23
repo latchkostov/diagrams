@@ -366,6 +366,11 @@ export interface LiveKeyContext {
   readout?: boolean;
   /** The focused wrapper can pin its readout when naming does not own Enter. */
   readoutTarget?: boolean;
+  /**
+   * An unpinned card the pointer opened after the last key press, while focus rests on unrelated chrome (outside
+   * cards and canvas items): its Enter pins the card before the focused control's own (with readoutTarget).
+   */
+  hovered?: boolean;
   /** A held key's repeats. */
   repeat: boolean;
   /** Slow motion is on, and this is a key it handles (Space as " ", Esc). */

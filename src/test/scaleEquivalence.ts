@@ -2,8 +2,9 @@ import { expect } from "vitest";
 import type { DiagramFile } from "../model/types";
 import { createEngine } from "../sim/engine";
 import { assertLedgerInvariants, assertOutcomeInvariants, assertResourceInvariants } from "../sim/resourceInvariants";
+import { assertResilienceInvariants } from "../sim/resilienceInvariants";
 import { STEP } from "../sim/timing";
-import type { EdgeSimProps, NodeSimProps, SimSnapshot } from "../sim/types";
+import type { EdgeSimProps, NodeSimProps, SimEngine, SimSnapshot } from "../sim/types";
 import { realSnapshot } from "../sim/units";
 
 /** I1 is an additional floor: callers retain their tighter, scenario-specific bounds. */
@@ -59,7 +60,20 @@ export function assertHarnessDriven(diagram: DiagramFile) {
   }
 }
 
-export function drive(diagram: DiagramFile, weight: number, perTick: readonly number[], seed = 7): SimSnapshot {
+export interface DriveOptions {
+  /** Runs before each tick's arrivals at the same simulated time in both runs: faults, edits, observations. */
+  script?: (engine: SimEngine, time: number) => void;
+  /** Also checks the retry, breaker and budget invariants (R1-R6) on every tick. */
+  resilience?: boolean;
+}
+
+export function drive(
+  diagram: DiagramFile,
+  weight: number,
+  perTick: readonly number[],
+  seed = 7,
+  { script, resilience }: DriveOptions = {},
+): SimSnapshot {
   assertHarnessDriven(diagram);
   const e = createEngine({
     scale: weight,
@@ -68,23 +82,25 @@ export function drive(diagram: DiagramFile, weight: number, perTick: readonly nu
     verifyLedger: assertLedgerInvariants,
     verifyOutcomes: assertOutcomeInvariants,
     verifyResources: assertResourceInvariants,
+    ...(resilience ? { verifyResilience: assertResilienceInvariants } : {}),
   });
   e.load(diagram);
-  for (const count of perTick) {
+  perTick.forEach((count, tick) => {
+    script?.(e, tick * STEP);
     if (count > 0) e.inject("source", count);
     e.step(STEP);
-  }
+  });
   return e.snapshot();
 }
 
-type ConstantRateOptions = { seed?: number; ratePerSec?: number; durationMs?: number };
+type ConstantRateOptions = { seed?: number; ratePerSec?: number; durationMs?: number } & DriveOptions;
 
 /** Command histories include edits/restores and are not themselves constant-rate,
  * fixed-scale I1 experiments. Replay fresh runs and keep all generated pools. */
 export function constantRateRuns(
   diagram: DiagramFile,
   scale: number,
-  { seed = 7, ratePerSec = 100, durationMs = 20_000 }: ConstantRateOptions = {},
+  { seed = 7, ratePerSec = 100, durationMs = 20_000, ...hooks }: ConstantRateOptions = {},
 ) {
   assertHarnessDriven(diagram);
   const pools = diagram.nodes.flatMap((n) => {
@@ -107,8 +123,8 @@ export function constantRateRuns(
   const cohorts = cohortArrivals(scale, ratePerSec, durationMs);
   const real = sameArrivals(cohorts, scale);
   return {
-    baseline: drive(diagram, 1, real, seed),
-    sampled: drive(diagram, scale, cohorts, seed),
+    baseline: drive(diagram, 1, real, seed, hooks),
+    sampled: drive(diagram, scale, cohorts, seed, hooks),
     pools,
     cohorts,
     real,

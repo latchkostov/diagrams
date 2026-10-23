@@ -6,6 +6,8 @@ import { waitingFixture } from "../lab/waitingFixture";
 import { createEngine } from "./engine";
 import { assertResilienceInvariants } from "./resilienceInvariants";
 import type { EdgeSimProps } from "./types";
+import type { DiagramFile } from "../model/types";
+import { realFrame, realSnapshot } from "./units";
 
 it("validates an empty breaker and whole-second windows, refusing unknown or invalid settings", () => {
   expect(() => checkJsonSchema({ breaker: {} }, callerSchema)).not.toThrow();
@@ -92,8 +94,11 @@ it("an all-ignored batch is inconclusive and waits another interval before one b
 it("R3 checks each probe's admission evidence and still rejects excess probes or open dispatch", () => {
   const state = { time: 0, inSystem: 1, edges: [], calls: [], logical: [], budgetDecisions: [] };
   const small = { state: "half-open", sent: 1, probes: 3, units: 1 };
+  const narrowed = { state: "half-open", sent: 3, probes: 3, units: 2 };
   const large = { state: "half-open", sent: 11, probes: 3, units: 10 };
-  expect(() => assertResilienceInvariants({ ...state, breakerDispatches: [large, small] })).not.toThrow();
+  expect(() => assertResilienceInvariants({ ...state, breakerDispatches: [small, narrowed] })).not.toThrow();
+  // A whole cohort larger than the batch passed the former whole-dot gate; narrowing makes it an overshoot.
+  expect(() => assertResilienceInvariants({ ...state, breakerDispatches: [large, small] })).toThrow("R3 probe batch");
   expect(() => assertResilienceInvariants({ ...state, breakerDispatches: [{ ...large, sent: 14 }] })).toThrow(
     "R3 probe gate",
   );
@@ -298,11 +303,18 @@ it("rejects probes admitted without sufficient remaining room", () => {
     expect(() =>
       assertResilienceInvariants({ ...state, breakerDispatches: [{ state: "half-open", sent, probes, units }] }),
     ).toThrow("R3 probe gate");
+  // Room for part of the cohort, but the whole cohort was sent: the batch overshoots its test calls.
+  for (const [sent, probes, units] of [
+    [12, 3, 10],
+    [5.5, 5, 1.5],
+  ])
+    expect(() =>
+      assertResilienceInvariants({ ...state, breakerDispatches: [{ state: "half-open", sent, probes, units }] }),
+    ).toThrow("R3 probe batch");
   for (const [sent, probes, units] of [
     [3, 3, 1],
-    [12, 3, 10],
     [5, 5, 0.5],
-    [5.5, 5, 1.5],
+    [5, 5, 1.5],
   ])
     expect(() =>
       assertResilienceInvariants({ ...state, breakerDispatches: [{ state: "half-open", sent, probes, units }] }),
@@ -325,4 +337,191 @@ it("recovers scale-three queue deliveries split between two competing consumers"
   e.inject("source", 10);
   e.step(10000);
   expect(e.snapshot().edges.call.breaker?.state).toBe("closed");
+});
+
+it("half-open, narrows a cohort larger than its remaining test calls and refuses one below a real request", () => {
+  const b = createBreaker(),
+    p = { minimumCalls: 1, halfOpenCalls: 5, openMs: 10 };
+  breakerRecord(b, p, 0, "error", 0, breakerPermits(b, p, 0, 1000)!);
+  expect(b.state).toBe("open");
+  const probe = breakerPermits(b, p, 10, 1000)!;
+  expect(b.state).toBe("half-open");
+  expect(probe).toMatchObject({ probe: true, units: 5, sent: 5 });
+  expect(breakerPermits(b, p, 10, 1000)).toBeUndefined();
+  breakerRecord(b, p, 40, "success", 30, probe);
+  expect(b.state).toBe("closed");
+  // A partial batch: 4.5 sent leaves room for less than one real request.
+  const c = createBreaker();
+  breakerRecord(c, p, 0, "error", 0, breakerPermits(c, p, 0, 1)!);
+  const first = breakerPermits(c, p, 10, 4.5)!;
+  expect(first.units).toBe(4.5);
+  expect(breakerPermits(c, p, 10, 1000)).toBeUndefined();
+  // Room for a whole cohort is never narrowed.
+  const d = createBreaker();
+  breakerRecord(d, p, 0, "error", 0, breakerPermits(d, p, 0, 1)!);
+  expect(breakerPermits(d, p, 10, 3)!.units).toBe(3);
+  expect(breakerPermits(d, p, 10, 3)!.units).toBe(2);
+});
+
+/** A gateway calling a failing service through a breaker at scale 100, where one dot is 100 requests. */
+function narrowingFixture(caller: NonNullable<EdgeSimProps["caller"]>, routed = false): DiagramFile {
+  return {
+    format: "diagrams/v2",
+    planning: {
+      revision: "p3-w2",
+      ...(routed
+        ? { requestRoutes: [{ id: "checkout", label: "Checkout", address: { method: "POST", path: "/checkout" } }] }
+        : {}),
+    },
+    title: "Narrowed probes",
+    nodes: [
+      { id: "source", stencil: "client.user", label: "Clients", x: 0, y: 0, props: { ratePerSec: 0 } },
+      { id: "gateway", stencil: "aws.api-gateway", label: "Gateway", x: 0, y: 0, props: { jitter: 0 } },
+      {
+        id: "db",
+        stencil: "generic.service",
+        label: "Orders",
+        x: 0,
+        y: 0,
+        props: { replicas: 1, concurrency: 1000, latencyMs: 20, jitter: 0, failureRate: 1 },
+      },
+    ],
+    edges: [
+      {
+        id: "in",
+        from: "source",
+        to: "gateway",
+        kind: "sync",
+        props: { travelMs: 10, ...(routed ? { requestRouteId: "checkout" } : {}) },
+      },
+      {
+        id: "call",
+        from: "gateway",
+        to: "db",
+        kind: "sync",
+        props: { travelMs: 10, ...(routed ? { requestRouteId: "checkout" } : {}), caller },
+      },
+    ],
+  };
+}
+
+it.each([10, 100])("a routed half-open recovery completes every request's route at scale %i", (scale) => {
+  const e = createEngine({ seed: 7, scale, maxParticles: 0, verifyResilience: assertResilienceInvariants });
+  e.load(narrowingFixture({ breaker: { minimumCalls: 1, openMs: 200, halfOpenCalls: 5 } }, true));
+  e.inject("source", 1);
+  e.step(150);
+  expect(e.snapshot().edges.call.breaker?.state).toBe("open");
+  e.setNodeProps("db", { failureRate: 0 });
+  e.step(300);
+  e.inject("source", 1);
+  e.step(2000);
+  const frame = realFrame(e.frame());
+  expect(e.snapshot().edges.call.breaker?.state).toBe("closed");
+  expect(frame.inSystem).toBe(0);
+  // The narrowed test calls and the requests short-circuited beside them finish one journey each.
+  expectRoutesWithinSent(frame.routes);
+  expect(frame.routes?.checkout).toEqual({ sent: 2 * scale, rejected: 0, completed: 2 * scale });
+});
+
+it("queued probe resizes its existing deadline", () => {
+  // openMs 0: the failure that opens the breaker drains while the pool's early turnover defers dispatch, so the
+  // waiter meets the breaker half-open, with a deadline scheduled for its whole cohort.
+  const e = createEngine({ seed: 7, scale: 100, maxParticles: 0, verifyResilience: assertResilienceInvariants });
+  e.load(
+    narrowingFixture({
+      breaker: { minimumCalls: 1, openMs: 0, halfOpenCalls: 5 },
+      deadlineMs: 1000,
+      poolConnections: 1,
+    }),
+  );
+  e.inject("source", 2);
+  let narrowed = false;
+  for (let t = 0; t < 300 && !narrowed; t += 10) {
+    e.step(10);
+    const view = e.snapshot().edges.call;
+    narrowed = view.breaker?.state === "half-open" && view.breaker.probesSent === 5 && e.queuedCalls("call") === 1;
+  }
+  expect(narrowed).toBe(true);
+  // The test calls reach a callee that now answers too late: they time out at the waiter's deadline.
+  e.setNodeProps("db", { failureRate: 0, latencyMs: 8000 });
+  const checkpoint = e.checkpoint();
+  const finish = () => {
+    e.step(3000);
+    return realSnapshot(e.snapshot());
+  };
+  for (const snapshot of [finish(), (e.restore(checkpoint), finish())]) {
+    expect(snapshot.inSystem).toBe(0);
+    const calls = snapshot.edges.call.calls!;
+    // Only the five test calls time out; the other 95 failed fast once, beside the first cohort's 100 failures.
+    expect(calls.timedOut).toBeCloseTo(5, 9);
+    expect(calls.shortCircuited).toBeCloseTo(95, 9);
+    expect(calls.failed).toBeCloseTo(100 + 95 + 5, 9);
+    expect(calls.attempts! + calls.shortCircuited!).toBeCloseTo(calls.requests!, 9);
+  }
+});
+
+it.each([
+  ["allowance 10 permits a five-request retry", 1, 5, 0],
+  ["allowance 2 denies it", 0, 0, 5],
+] as const)("narrowed probe spends only admitted requests from retry budget: %s", (_, minPerSec, retried, denied) => {
+  const e = createEngine({ seed: 7, scale: 100, maxParticles: 0, verifyResilience: assertResilienceInvariants });
+  e.load(
+    narrowingFixture({
+      breaker: { minimumCalls: 1, openMs: 100, halfOpenCalls: 5 },
+      // Allowance max(minPerSec x 10, 1% of 200 requests): 10 or 2 real requests, never a whole 100-request dot.
+      retry: {
+        maxAttempts: 2,
+        backoffMs: 0,
+        strategy: "fixed",
+        retryOn: ["transient"],
+        budget: { percent: 1, minPerSec },
+      },
+    }),
+  );
+  e.inject("source", 1);
+  e.step(150);
+  const opened = realSnapshot(e.snapshot()).edges.call;
+  expect(opened.breaker?.state).toBe("open");
+  // The first, whole cohort's retry never fits the budget.
+  expect(opened.calls?.budgetDenied).toBe(100);
+  e.inject("source", 1);
+  e.step(1000);
+  const calls = realSnapshot(e.snapshot()).edges.call.calls!;
+  expect(calls.retried).toBeCloseTo(retried, 9);
+  expect(calls.budgetDenied).toBeCloseTo(100 + denied, 9);
+});
+
+/** Every route's completed journeys are a subset of the requests sent on it. */
+function expectRoutesWithinSent(routes: Record<string, { sent: number; completed: number }> | undefined) {
+  for (const [id, counts] of Object.entries(routes ?? {}))
+    expect(counts.completed, `${id} completed <= sent`).toBeLessThanOrEqual(counts.sent + 1e-9);
+}
+
+it("a downstream route counts only admitted probe requests", () => {
+  const d = narrowingFixture({ breaker: { minimumCalls: 1, openMs: 200, halfOpenCalls: 5 } }, true);
+  d.planning!.requestRoutes!.push({ id: "inventory", label: "Inventory", address: { method: "GET", path: "/stock" } });
+  d.nodes.push({ id: "stock", stencil: "generic.database", label: "Stock", x: 0, y: 0, props: { latencyMs: 5 } });
+  d.edges.push({
+    id: "reserve",
+    from: "db",
+    to: "stock",
+    kind: "sync",
+    props: { travelMs: 10, requestRouteId: "inventory" },
+  });
+  const e = createEngine({ seed: 7, scale: 100, maxParticles: 0, verifyResilience: assertResilienceInvariants });
+  e.load(d);
+  e.inject("source", 1);
+  e.step(150);
+  expect(e.snapshot().edges.call.breaker?.state).toBe("open");
+  e.setNodeProps("db", { failureRate: 0 });
+  e.step(300);
+  // Five test calls reach Orders, which calls Stock on its own route; 95 requests fail fast at the gateway.
+  e.inject("source", 1);
+  e.step(2000);
+  const frame = realFrame(e.frame());
+  expect(frame.inSystem).toBe(0);
+  expectRoutesWithinSent(frame.routes);
+  expect(frame.routes?.checkout).toEqual({ sent: 200, rejected: 0, completed: 200 });
+  expect(frame.routes?.inventory?.sent).toBeCloseTo(5, 9);
+  expect(frame.routes?.inventory?.completed).toBeCloseTo(5, 9);
 });
