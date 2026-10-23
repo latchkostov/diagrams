@@ -38,7 +38,12 @@ import type { FocusCommand, FocusDecision, FocusEvent, FocusMove, FocusState, Fo
  * | D6  | dialog.closed(room)                 |                                 | focus its opener now (else the canvas)                 |
  * | D4  | dialog.opened                      |                                 | focus its first field now, selecting its text         |
  * | D5  | dialog.tab                         | Tab crossed the modal's boundary | focus the other end now                              |
- * | D7  | node.details                       | Tab from a live node            | focus its scrollable details now                     |
+ * | D7  | node.details                       | within a Live readout card      | focus that row or card now                           |
+ * | T5  | readout.entered                    | the readout is shown            | focus its card now                                   |
+ * | T6  | readout.entered                    | it opens with this step         | its card after the commit, else its item             |
+ * | T7  | readout.left                       | Tab past the last node          | its item now (the browser's Tab goes on from there)  |
+ * | T8  | readout.closed(escape)             | it held focus (pinned, or Tab)  | its item now (else the canvas)                       |
+ * | T9  | readout.closed(any other)          |                                 | keep                                                 |
  * | E1  | escape                              | from a node or a connection     | two frames later, back on it if focus was lost         |
  * | C1  | canvas.requested (the gallery)      |                                 | focus the canvas next frame                            |
  * | C2  | presenting                          |                                 | focus the canvas now if focus was lost                 |
@@ -82,6 +87,19 @@ export function focusPolicy(state: FocusState, event: FocusEvent): FocusDecision
       return event.reason === "remote"
         ? { state, command: { type: "recover", target: canvas, when: "frame", onlyIfLost: true } }
         : keep();
+    case "readout.closed":
+      return event.reason === "escape" && event.target.pinned
+        ? move({ target: { kind: event.target.kind, id: event.target.id }, when: "now", fallback: canvas })
+        : keep();
+    case "readout.entered": {
+      const { kind, id } = event.target;
+      const card: FocusTarget = { kind: "readout", item: kind, id };
+      return event.opening
+        ? move({ target: card, when: "commit", fallback: { kind, id } })
+        : move({ target: card, when: "now" });
+    }
+    case "readout.left":
+      return move({ target: { kind: event.target.kind, id: event.target.id }, when: "now" });
     case "menu.closed": {
       const openMenus = [...(state.openMenus ?? [])];
       const index = openMenus.lastIndexOf(event.kind);
@@ -241,6 +259,8 @@ export function describeTarget(target: FocusTarget): string {
       return `${target.kind}:${target.id}`;
     case "field":
       return `field:${target.name}`;
+    case "readout":
+      return `readout:${target.item}:${target.id}`;
     case "panelField":
       return `panelField:${target.field}`;
     default:

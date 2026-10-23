@@ -1,3 +1,4 @@
+import { openLiveNodeDetails } from "./fixtures";
 import payment from "../../src/examples/slow-payment-provider.json" with { type: "json" };
 import { waitingFixture } from "../../src/lab/waitingFixture";
 import { waitForBackgroundChecks } from "./checks-readiness";
@@ -195,6 +196,7 @@ test("pool readouts scale in presentation across meeting sizes", async ({ page }
   await page.clock.runFor(8000);
   await page.getByTestId("live-play").click();
   await page.getByTestId("node-checkout").hover();
+  await openLiveNodeDetails(page, "checkout", "threads");
   await expect(page.getByTestId("pool-detail-pay")).toContainText("40 calls to Payment provider in flight");
   await expect(page.getByTestId("pool-detail-pay")).toContainText("queued for a connection (pool of 40)");
   await expect(page.getByTestId("thread-ceiling")).toContainText("Connection pool limits calls to 200 req/s");
@@ -230,6 +232,7 @@ for (const stencil of ["generic.service", "azure.logic-apps"]) {
     await page.clock.runFor(1000);
     await page.getByTestId("live-play").click();
     await page.getByTestId("node-caller").hover();
+    await openLiveNodeDetails(page, "caller", "threads");
     const detail = page.getByTestId("pool-detail-call");
     await expect(detail).toBeVisible();
     if (stencil === "azure.logic-apps") await expect(detail).toContainText("no thread held");

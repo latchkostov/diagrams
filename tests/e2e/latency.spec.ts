@@ -1,3 +1,4 @@
+import { openLiveNodeDetails } from "./fixtures";
 import { pseudoText } from "../../src/i18n/pseudo";
 import type { Page } from "@playwright/test";
 import { test, expect, gotoLive, waitForCameraIdle, waitForStableViewport, expectNoErrors } from "./fixtures";
@@ -18,20 +19,21 @@ async function editableLatencyDetails(page: Page) {
   await waitForStableViewport(page);
   await node.click();
   await node.evaluate((el) => el.parentElement?.focus());
+  await openLiveNodeDetails(page, "billing", "latency");
   const detail = page.getByTestId("node-detail-billing");
   await expect(detail).toBeVisible();
   await expect.poll(() => detail.evaluate((el) => el.scrollHeight > el.clientHeight)).toBe(true);
   return { node, detail };
 }
 
-test("editable latency details scroll with ArrowDown without moving the selected node", async ({ page }) => {
+test("editable latency details navigate sections with ArrowDown without moving the selected node", async ({ page }) => {
   const { node, detail } = await editableLatencyDetails(page);
   await detail.focus();
   await expect(detail).toBeFocused();
   const position = () => node.evaluate((el) => el.parentElement?.style.transform);
   const before = await position();
   await page.keyboard.press("ArrowDown");
-  await expect.poll(() => detail.evaluate((el) => el.scrollTop)).toBeGreaterThan(0);
+  await expect(page.getByTestId("hover-section-latency")).toBeFocused();
   expect(await position()).toBe(before);
 });
 
@@ -46,18 +48,16 @@ test("editable latency details scroll with Space without changing playback", asy
   await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", playback);
 });
 
-test("editable latency details join Tab reading order before the next node", async ({ page }) => {
+test("pinned latency details join Tab reading order and restore their node with Esc", async ({ page }) => {
   const { node, detail } = await editableLatencyDetails(page);
+  await detail.focus();
   await page.keyboard.press("Tab");
-  await expect(detail).toBeFocused();
+  await expect(page.getByTestId("hover-section-latency")).toBeFocused();
   await page.keyboard.press("Shift+Tab");
-  await expect.poll(() => node.evaluate((el) => document.activeElement?.contains(el))).toBe(true);
-  await page.keyboard.press("Tab");
   await expect(detail).toBeFocused();
-  await page.keyboard.press("Tab");
-  await expect
-    .poll(() => page.getByTestId("node-receipts").evaluate((el) => document.activeElement?.contains(el)))
-    .toBe(true);
+  await page.keyboard.press("Escape");
+  await expect.poll(() => node.evaluate((el) => document.activeElement?.contains(el))).toBe(true);
+  await expect(detail).toHaveCount(0);
 });
 
 for (const locale of ["en-XA", "ar"]) {
@@ -76,6 +76,7 @@ for (const locale of ["en-XA", "ar"]) {
       locale === "en-XA" ? pseudoText("No messages lost") : "No messages lost",
     );
     await page.getByTestId("node-billing").hover();
+    await openLiveNodeDetails(page, "billing", "latency");
     const detail = page.getByTestId("node-latency-detail-billing");
     await expect(detail).toBeVisible();
     await expect
@@ -90,7 +91,12 @@ for (const locale of ["en-XA", "ar"]) {
     expect(box.x + box.width).toBeLessThanOrEqual(pane.x + pane.width);
     expect(box.y).toBeGreaterThanOrEqual(pane.y);
     expect(box.y + box.height).toBeLessThanOrEqual(bar.y);
-    expect(box.y >= node.y + node.height || box.y + box.height <= node.y).toBe(true);
+    expect(
+      box.y >= node.y + node.height ||
+        box.y + box.height <= node.y ||
+        box.x >= node.x + node.width ||
+        box.x + box.width <= node.x,
+    ).toBe(true);
     await page.screenshot({ path: `tests/.output/latency-hover-${locale}.png` });
   });
 }
@@ -109,6 +115,7 @@ test("latency hover leaves the node and badges clear in a short viewport, with f
   await input.dispatchEvent("pointerup");
   await expect(page.getByTestId("live-clock")).toHaveAttribute("data-ms", "9400");
   await page.getByTestId("node-billing").hover();
+  await openLiveNodeDetails(page, "billing", "latency");
   const tooltip = page.getByTestId("node-detail-billing");
   await expect(tooltip).toBeVisible();
   await expect
@@ -121,12 +128,17 @@ test("latency hover leaves the node and badges clear in a short viewport, with f
       return (
         box.y >= pane.y &&
         box.y + box.height <= bar.y &&
-        (box.y >= node.y + node.height + 34 || box.y + box.height <= node.y - 12)
+        (box.y >= node.y + node.height + 34 ||
+          box.y + box.height <= node.y - 12 ||
+          box.x >= node.x + node.width + 12 ||
+          box.x + box.width <= node.x - 12)
       );
     })
     .toBe(true);
   await expect(page.getByTestId("node-latency-percentiles-billing")).toBeVisible();
+  await openLiveNodeDetails(page, "billing", "planning");
   await expect(tooltip.getByTestId("node-detail-more")).toBeVisible();
+  await openLiveNodeDetails(page, "billing", "latency");
   await expect(page.getByTestId("node-latency-breakdown-billing")).toBeVisible();
   await page.getByTestId("node-billing").dblclick();
   await page.getByTestId("planning-live-details-toggle").click();
@@ -160,6 +172,7 @@ test("async percentiles disclose sampling, exclude travel, and replay after seek
   await seek(1000);
   await expect(page.getByTestId("live-note")).toContainText("No messages lost");
   await page.getByTestId("node-billing").hover();
+  await openLiveNodeDetails(page, "billing", "latency");
   const detail = page.getByTestId("node-latency-detail-billing");
   await expect(detail).toBeVisible();
   await expect
@@ -175,6 +188,7 @@ test("async percentiles disclose sampling, exclude travel, and replay after seek
   await seek(350);
   await seek(1000);
   await page.getByTestId("node-billing").hover();
+  await openLiveNodeDetails(page, "billing", "latency");
   await expect(detail).toHaveText(before);
   await page.keyboard.press("c");
   await expect(page.getByTestId("node-latency-billing")).toHaveText(/^p95 3\.9 s$/);
@@ -185,7 +199,12 @@ test("async percentiles disclose sampling, exclude travel, and replay after seek
   if (!pane || !box || !node || !bar) throw new Error("Missing hover geometry");
   expect(box.y).toBeGreaterThanOrEqual(pane.y);
   expect(box.y + box.height).toBeLessThanOrEqual(bar.y);
-  expect(box.y >= node.y + node.height || box.y + box.height <= node.y).toBe(true);
+  expect(
+    box.y >= node.y + node.height ||
+      box.y + box.height <= node.y ||
+      box.x >= node.x + node.width ||
+      box.x + box.width <= node.x,
+  ).toBe(true);
   await page.screenshot({ path: "tests/.output/latency-hover.png" });
   expectNoErrors(consoleErrors);
 });
@@ -203,6 +222,7 @@ for (const surface of ["embed", "presentation"]) {
     await input.press("ArrowRight");
     await waitForCameraIdle(page);
     await page.getByTestId("node-billing").hover();
+    await openLiveNodeDetails(page, "billing", "latency");
     const tooltip = page.getByTestId("node-detail-billing");
     await expect(tooltip).toBeVisible();
     await expect(tooltip.getByTestId("node-detail-more")).toHaveCount(0);
@@ -239,6 +259,7 @@ for (const surface of ["embed", "presentation"]) {
     await page.keyboard.up("Control");
     await waitForStableViewport(page);
     await node.hover();
+    await openLiveNodeDetails(page, "billing", "latency");
     const detail = page.getByTestId("node-detail-billing");
     await expect(detail).toBeVisible();
     await expect.poll(() => detail.evaluate((el) => el.scrollHeight > el.clientHeight)).toBe(true);
@@ -248,11 +269,7 @@ for (const surface of ["embed", "presentation"]) {
     await expect.poll(() => detail.evaluate((el) => el.scrollTop)).toBeGreaterThan(0);
     await page.mouse.wheel(0, await detail.evaluate((el) => el.scrollHeight));
     await expect.poll(() => detail.evaluate((el) => el.scrollTop + el.clientHeight >= el.scrollHeight - 1)).toBe(true);
-    if (surface === "presentation") await detail.click();
-    else {
-      await node.evaluate((el) => el.parentElement?.focus());
-      await page.keyboard.press("Tab");
-    }
+    await detail.focus();
     await expect(detail).toBeFocused();
     await page.keyboard.press("Home");
     await expect.poll(() => detail.evaluate((el) => el.scrollTop)).toBe(0);
@@ -280,6 +297,7 @@ test("drill percentiles restart their window on slowdown and restoration", async
     await input.press("ArrowRight");
     await waitForCameraIdle(page);
     await page.getByTestId("node-billing").hover();
+    await openLiveNodeDetails(page, "billing", "latency");
   };
   await seek("300");
   const scope = page.getByTestId("node-latency-scope-billing");

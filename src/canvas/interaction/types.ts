@@ -153,7 +153,9 @@ export type FocusTarget =
   /** The Live bar's control that opens its side panels ("⋯", data-live-panel-opener). */
   | { kind: "panelOpener" }
   /** A field (by test id) in one of Live's side panels: waits while the panel is open and the field isn't yet. */
-  | { kind: "panelField"; panel: string; field: string };
+  | { kind: "panelField"; panel: string; field: string }
+  /** A node's or a connection's Live readout card (portalled outside canvas-wrap), while it is shown. */
+  | { kind: "readout"; item: "node" | "edge"; id: string };
 
 /**
  * When a focus command runs. `now`: at once. `commit`: once React has committed the change that caused it, after
@@ -206,6 +208,18 @@ export type FocusCommand =
 /** The Esc on the canvas, a menu closing, a selection with its cause, ...: everything the focus policy decides on. */
 export type FocusEvent =
   | { type: "gesture.ended"; kind: GestureKind; reason: GestureEndReason; edge?: string }
+  /**
+   * A Live readout closed. `pinned`: it held the keyboard (pinned, or a summary Tab reached), so Esc gives focus back to
+   * its item; a card only hovered leaves focus alone (readoutLayer.ts decides).
+   */
+  | { type: "readout.closed"; target: { kind: "node" | "edge"; id: string; pinned: boolean }; reason: MenuCloseReason }
+  /**
+   * Tab or Shift+Tab steps into an item's readout card (readout.ts, readoutTab). `opening`: Shift+Tab from the next
+   * node opens it with this step, so it is drawn by the commit that follows; else it is already shown.
+   */
+  | { type: "readout.entered"; target: { kind: "node" | "edge"; id: string }; opening: boolean }
+  /** Tab leaves a readout past the canvas's last node: focus goes to its item now, and the browser's Tab goes on. */
+  | { type: "readout.left"; target: { kind: "node" | "edge"; id: string } }
   | {
       type: "menu.closed";
       kind: MenuFocusKind;
@@ -341,11 +355,17 @@ export type LiveKeyAction =
   | "toggle"
   | "resume"
   | "repeat"
+  | "close-readout"
+  | "pin-readout"
   | "none";
 
 /** What the call site knows as Space, Enter or Esc arrives (liveKeys.ts decides from it alone). */
 export interface LiveKeyContext {
   key: LiveKey;
+  /** Any open Live readout yields to recording, editors and panels before taking Esc. */
+  readout?: boolean;
+  /** The focused wrapper can pin its readout when naming does not own Enter. */
+  readoutTarget?: boolean;
   /** A held key's repeats. */
   repeat: boolean;
   /** Slow motion is on, and this is a key it handles (Space as " ", Esc). */
