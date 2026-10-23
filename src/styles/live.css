@@ -2675,3 +2675,283 @@ details[open] > summary .lv-disclosure-chevron {
 .lv-call-pill.is-timeout {
   color: var(--danger);
 }
+/* Direction C: fixed screen-space summary. Direction B appears only on explicit expansion. */
+.lv-hover-card {
+  position: fixed;
+  z-index: 110;
+  box-sizing: border-box;
+  width: 320px;
+  height: 332px;
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+  overscroll-behavior: contain;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: var(--shadow-2);
+  color: var(--text-2);
+  font: 12px/1.4 var(--font-ui);
+  font-variant-numeric: tabular-nums;
+  transform: scale(var(--hover-scale, 1));
+  transform-origin: top left;
+  pointer-events: auto;
+  cursor: pointer;
+  animation: lv-detail-in 0.15s ease-out;
+}
+.lv-hover-card.is-pinned {
+  height: auto;
+  min-height: min(332px, var(--hover-room, 332px));
+  cursor: default;
+}
+.lv-hover-card:focus-visible,
+.lv-hover-card button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -3px;
+}
+.hover-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  height: 54px;
+  box-sizing: border-box;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--line);
+}
+.hover-kind-icon {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  color: var(--accent);
+  background: color-mix(in oklab, var(--accent) 10%, transparent);
+  border-radius: 7px;
+  font-size: 18px;
+}
+.hover-name {
+  display: grid;
+  flex: 1;
+  min-width: 0;
+}
+.hover-name strong {
+  color: var(--text);
+  font-weight: 700;
+}
+.hover-name strong,
+.hover-name small {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.hover-name small {
+  color: var(--text-3);
+  font-size: 10px;
+}
+.hover-status {
+  max-width: 108px;
+  padding: 2px 6px;
+  border-radius: 6px;
+  color: var(--text);
+  background: color-mix(in oklab, var(--status-up) 12%, transparent);
+  font-size: 10px;
+  font-weight: 650;
+  line-height: 1.2;
+}
+.lv-hover-card.is-bad .hover-status,
+.lv-hover-card .is-bad {
+  color: var(--danger);
+  background: color-mix(in oklab, var(--status-down) 9%, transparent);
+}
+.lv-hover-card.is-warning .hover-status {
+  color: var(--warning-ink);
+  background: color-mix(in oklab, var(--status-paused) 12%, transparent);
+}
+.hover-verdict {
+  display: flex;
+  gap: 7px;
+  height: 48px;
+  flex-shrink: 0;
+  padding: 9px 12px;
+  margin: 0;
+  box-sizing: border-box;
+  color: var(--text);
+  font-weight: 550;
+}
+.hover-verdict > span:first-child {
+  color: var(--status-up);
+}
+.is-bad .hover-verdict > span:first-child {
+  color: var(--status-down);
+}
+.is-warning .hover-verdict > span:first-child {
+  color: var(--warning-ink);
+}
+.hover-verdict > span:last-child {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.hover-vitals {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  height: 62px;
+  margin: 0 12px;
+  flex-shrink: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.hover-vitals > div {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+  padding: 6px;
+  border-inline-end: 1px solid var(--line);
+}
+.hover-vitals > div:last-child {
+  border: 0;
+}
+.hover-vitals b {
+  color: var(--text);
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.hover-vitals small {
+  font-size: 10px;
+  line-height: 1.4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.hover-vitals meter {
+  width: 100%;
+  height: 5px;
+  margin-top: 3px;
+  border: 0;
+  background: var(--line);
+}
+.hover-vitals meter::-webkit-meter-bar {
+  border: 0;
+  background: var(--line);
+  height: 5px;
+}
+.hover-vitals meter::-webkit-meter-optimum-value {
+  background: var(--accent);
+}
+.hover-vitals .is-bad meter::-webkit-meter-optimum-value {
+  background: repeating-linear-gradient(135deg, var(--status-down) 0 2px, var(--surface) 2px 4px);
+}
+.hover-attention {
+  display: grid;
+  grid-template-rows: repeat(2, 24px);
+  padding: 8px 12px;
+  flex-shrink: 0;
+}
+.hover-attention > div {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  padding: 2px 5px;
+  min-width: 0;
+  border-radius: 4px;
+  font-size: 11px;
+}
+.hover-attention > div > span:nth-child(2) {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.hover-attention b {
+  flex-shrink: 0;
+}
+.hover-sections {
+  flex: 1;
+}
+.hover-rail {
+  border-top: 1px solid var(--line);
+}
+.hover-rail > button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  height: 27px;
+  min-width: 0;
+  padding: 4px 12px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  text-align: start;
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+}
+.hover-rail > button > span:first-child {
+  color: var(--accent);
+}
+.hover-rail.is-latency > button > span:first-child {
+  color: var(--text-3);
+}
+.hover-rail > button > strong {
+  font-weight: 600;
+  white-space: nowrap;
+}
+.hover-rail > button > small {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  text-align: end;
+  color: var(--text-3);
+  font-size: 10px;
+}
+.hover-rail-body {
+  border-inline-start: 3px solid var(--accent);
+  margin-inline-start: 12px;
+  padding: 7px 10px;
+  background: color-mix(in oklab, var(--accent) 4%, transparent);
+  overflow-wrap: anywhere;
+}
+.is-latency .hover-rail-body {
+  border-color: var(--text-3);
+}
+.is-outcomes .hover-rail-body {
+  border-color: var(--text-3);
+}
+.hover-rail.is-bad .hover-rail-body {
+  border-color: var(--status-down);
+}
+.hover-rail-body p {
+  margin-block: 4px;
+}
+.lv-hover-card footer {
+  padding: 4px 12px;
+  height: 22px;
+  box-sizing: border-box;
+  flex-shrink: 0;
+  border-top: 1px solid var(--line);
+  background: var(--surface-2);
+  color: var(--text-3);
+  font-size: 10px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .lv-hover-card {
+    animation: none;
+  }
+}
+
+.hover-meter-space {
+  height: 5px;
+  margin-top: 3px;
+}
+.hover-card-content {
+  display: contents;
+}

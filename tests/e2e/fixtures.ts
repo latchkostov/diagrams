@@ -490,6 +490,15 @@ export async function gotoLive(page: Page, url: string) {
   await expect(page.getByTestId("live-controls")).toBeVisible({ timeout: pageLoadTimeout() });
 }
 
+/** Live summaries disclose their full readouts only after an explicit pin and section choice. */
+export async function openLiveNodeDetails(page: Page, id: string, section: string) {
+  await page.getByTestId(`node-${id}`).evaluate((el) => el.parentElement?.focus());
+  await page.keyboard.press("Enter");
+  const row = page.getByTestId(`hover-section-${section}`);
+  await expect(row).toBeVisible();
+  if ((await row.getAttribute("aria-expanded")) !== "true") await row.click();
+}
+
 /** Wait for the requested session's download and mount before asserting its controls.
  * Module loading uses the whole-test hang backstop; the UI assertions keep their normal timeout.
  */

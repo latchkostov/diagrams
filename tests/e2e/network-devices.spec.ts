@@ -1,3 +1,4 @@
+import { openLiveNodeDetails } from "./fixtures";
 import { test, expect, gotoCanvas, gotoLive, expectNoErrors } from "./fixtures";
 
 // On-prem network devices (docs/research/network-infrastructure.md): find a router by the model number people still
@@ -150,6 +151,7 @@ test.describe("network devices", () => {
     });
     expect(contrast).toBeGreaterThanOrEqual(4.5);
     await page.getByTestId("node-firewall").hover();
+    await openLiveNodeDetails(page, "firewall", "outcomes");
     await expect(page.getByTestId("node-detail-firewall")).toContainText("Active-standby pair");
   });
 

@@ -1,3 +1,4 @@
+import { openLiveNodeDetails } from "./fixtures";
 import { isAbsolute, relative, resolve, sep } from "node:path";
 import type { Page } from "@playwright/test";
 import { planningFixture } from "../../src/lab/planningFixture";
@@ -156,6 +157,7 @@ test("P1: live hover and keyboard focus show the same configured explanation and
   await seed(page, "orders", true);
   await page.getByTestId("node-orders").hover();
   const card = page.getByTestId("node-detail-orders");
+  await openLiveNodeDetails(page, "orders", "planning");
   await expect(card.getByTestId("planning-arithmetic")).toContainText("~1 req/s");
   await expect(card.getByTestId("planning-contributors")).toContainText("Checkout: 3 req/s");
   await expect(card.getByTestId("planning-observed")).toContainText("Observed now");
@@ -179,7 +181,8 @@ test("P1: live hover and keyboard focus show the same configured explanation and
   await page.getByTestId("node-orders").click();
   await page.getByTestId("diagram-title").hover();
   await expect(card).toBeVisible();
-  await expect(card).toHaveAttribute("role", "tooltip");
+  await openLiveNodeDetails(page, "orders", "planning");
+  await expect(card).toHaveAttribute("role", "region");
   await expect(page.getByTestId("node-live-focus-orders")).toHaveAccessibleDescription(
     /Orders handles ~1 req\/s.*receives 3 req\/s.*Observed now/,
   );
@@ -253,6 +256,7 @@ test("P1: tall hover cards stay within a short viewport", async ({ page }) => {
   await seed(page, "orders", true);
   await page.getByTestId("node-orders").hover();
   const card = page.getByTestId("node-detail-orders");
+  await openLiveNodeDetails(page, "orders", "planning");
   await expect(card.getByTestId("planning-arithmetic")).toBeVisible();
   await expect
     .poll(async () => {
@@ -343,9 +347,11 @@ test("P1: live group details stay reachable in a short viewport", async ({ page 
   await page.getByTestId("node-topic").click();
   await page.getByTestId("diagram-title").hover();
   const card = page.getByTestId("node-detail-topic");
+  await openLiveNodeDetails(page, "topic", "outcomes");
   await expect(card).toContainText("Throughput");
   await expect(card).toContainText("Lag by consumer group");
   await expect(card.getByTestId("live-lag-group-23")).toHaveCount(1);
+  await page.keyboard.press("Escape");
   await page.keyboard.press("F2");
   const toggle = page.getByTestId("planning-live-details-toggle");
   await toggle.focus();
@@ -400,6 +406,7 @@ test("P1: bounded planning retains keyboard-accessible current counters", async 
   await page.getByTestId("node-orders").click();
   await page.getByTestId("diagram-title").hover();
   const card = page.getByTestId("node-detail-orders");
+  await openLiveNodeDetails(page, "orders", "planning");
   await expect(card.getByTestId("planning-unavailable")).toBeVisible();
   await expect(card.getByTestId("planning-observed")).toContainText("Processed 0");
   await expect(card.getByTestId("planning-observed")).toContainText("In flight 0");

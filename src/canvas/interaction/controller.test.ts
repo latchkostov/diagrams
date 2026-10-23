@@ -921,3 +921,30 @@ it("unmount cancels conditional recovery beside a parked request", () => {
   h.frame();
   expect(h.focused).toEqual([]);
 });
+
+describe("pinned Live readouts", () => {
+  it("Esc returns focus to the originating item; opening a menu replaces the readout", () => {
+    const h = harness();
+    h.env.nodes.set("a", { drawn: true });
+    h.controller.pinReadout({ kind: "node", id: "a" });
+    h.controller.closeReadout("escape");
+    expect(h.focused).toEqual(["node:a"]);
+    expect(h.controller.getSnapshot().readout).toBeNull();
+    h.controller.pointReadout({ kind: "node", id: "a" });
+    expect(h.controller.getSnapshot().readout).toBeNull();
+    h.controller.pinReadout({ kind: "edge", id: "call" });
+    h.controller.openMenu("context", "menu");
+    expect(h.controller.getSnapshot().readout).toBeNull();
+    expect(h.controller.menu?.kind).toBe("context");
+    h.controller.pointReadout({ kind: "node", id: "a" });
+    expect(h.controller.getSnapshot().readout).toBeNull();
+  });
+  it("an outside press leaves the new focus alone and allows a later hover", () => {
+    const h = harness();
+    h.controller.pinReadout({ kind: "node", id: "a" });
+    h.controller.closeReadout("outside");
+    expect(h.focused).toEqual([]);
+    h.controller.pointReadout({ kind: "node", id: "a" });
+    expect(h.controller.getSnapshot().readout).toEqual({ kind: "node", id: "a", pinned: false });
+  });
+});

@@ -1,3 +1,4 @@
+import { openLiveNodeDetails } from "./fixtures";
 import { resilienceFixture } from "../../src/lab/resilienceFixture";
 import type { RetryPolicy } from "../../src/model/admission";
 import {
@@ -118,6 +119,7 @@ for (const locale of ["en", "ar", "en-XA"]) {
     await page.getByTestId("live-play").click();
     await expect(page.getByTestId("call-pill-call")).toContainText("↻");
     await page.getByTestId("node-caller").hover();
+    await openLiveNodeDetails(page, "caller", "threads");
     await expect(page.getByTestId("calls-detail-caller")).toBeVisible();
     await expect(page.getByTestId("calls-detail-edge-call")).toContainText("×");
     await expect

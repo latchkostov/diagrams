@@ -160,6 +160,7 @@ export type FocusCommand =
 
 /** The Esc on the canvas, a menu closing, a selection with its cause, ...: everything the focus policy decides on. */
 export type FocusEvent =
+  | { type: "readout.closed"; target: { kind: "node" | "edge"; id: string }; reason: MenuCloseReason }
   | {
       type: "menu.closed";
       kind: MenuFocusKind;

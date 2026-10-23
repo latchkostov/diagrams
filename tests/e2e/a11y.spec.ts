@@ -1,6 +1,15 @@
 import AxeBuilder from "@axe-core/playwright";
 import type { Page } from "@playwright/test";
-import { test, expect, gotoCanvas, gotoGallery, gotoLab, waitForStableBox, gotoLive } from "./fixtures";
+import {
+  test,
+  expect,
+  gotoCanvas,
+  gotoGallery,
+  gotoLab,
+  waitForStableBox,
+  gotoLive,
+  openLiveNodeDetails,
+} from "./fixtures";
 import { installFakeModelContext } from "./ai-helpers";
 
 /**
@@ -27,6 +36,25 @@ async function expectNoViolations(page: Page, scope?: string) {
 
 /** Each view or overlay: how to reach it, and the test id to scan (the whole page when omitted). */
 const states: { name: string; open: (page: Page) => Promise<void>; scope?: string }[] = [
+  {
+    name: "compact hover card",
+    scope: "node-detail-caller",
+    open: async (page) => {
+      await gotoLive(page, "./?view=canvas&example=blocking-call&live=1&paused=1");
+      await page.getByTestId("node-caller").hover();
+      await expect
+        .poll(() => page.getByTestId("node-detail-caller").evaluate((el) => getComputedStyle(el).opacity))
+        .toBe("1");
+    },
+  },
+  {
+    name: "pinned hover card",
+    scope: "node-detail-caller",
+    open: async (page) => {
+      await gotoLive(page, "./?view=canvas&example=blocking-call&live=1&paused=1");
+      await openLiveNodeDetails(page, "caller", "threads");
+    },
+  },
   {
     name: "colour picker",
     scope: "color-picker-modal",

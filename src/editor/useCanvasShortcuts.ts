@@ -212,6 +212,8 @@ export function useCanvasShortcuts(
           const total = sel.nodeIds.length + sel.groupIds.length + sel.edgeIds.length;
           if (total !== 1) return;
           if (e.key === "Enter") {
+            // Live owns Enter on nodes/edges: it pins the readout (F2 still names the selection).
+            if (optsRef.current.live) return;
             // A key held down doesn't reopen the inspector.
             if (e.repeat || optsRef.current.canRenameEnter?.() === false) return;
             // A focused node or edge that isn't selected: Enter selects it (React Flow's keyboard rule).

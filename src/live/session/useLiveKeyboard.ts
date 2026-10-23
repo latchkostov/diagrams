@@ -29,7 +29,7 @@ export function useLiveKeyboard({
   session: LiveSessionState;
   spotlight: TraceSpotlight;
   /** The canvas's interaction controller: it decides which level takes the key (liveKeys.ts) and journals it. */
-  interaction: Pick<InteractionController, "liveKey">;
+  interaction: Pick<InteractionController, "liveKey" | "getSnapshot" | "pinReadout" | "closeReadout">;
 }) {
   const { controller, traceRef, setTrace } = session;
   const { slowRef } = spotlight;
@@ -50,6 +50,28 @@ export function useLiveKeyboard({
               : null;
       if (!key) return;
       const t = e.target;
+      const reading = interaction.getSnapshot().readout;
+      if (!isEditableTarget(t) && !document.querySelector('[role="menu"], [role="dialog"]')) {
+        if (key === "escape" && reading?.pinned) {
+          e.preventDefault();
+          e.stopImmediatePropagation();
+          interaction.closeReadout("escape");
+          return;
+        }
+        const item =
+          t instanceof Element
+            ? t.closest<HTMLElement>(".react-flow__node-diagram[data-id], .react-flow__edge[data-id]")
+            : null;
+        if (key === "enter" && item && !e.repeat) {
+          e.preventDefault();
+          e.stopImmediatePropagation();
+          interaction.pinReadout({
+            kind: item.classList.contains("react-flow__edge") ? "edge" : "node",
+            id: item.dataset.id!,
+          });
+          return;
+        }
+      }
       const selection = !!document.querySelector(SELECTED);
       // Slow motion has its own keys (useSlowMotion): Space, ← →, and Esc back to live.
       const slowing = !!slowRef.current?.session.active && (key === "escape" || e.key === " ");

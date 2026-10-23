@@ -1,3 +1,4 @@
+import { openLiveNodeDetails } from "./fixtures";
 import { savedDiagram } from "./fixtures";
 import type { Page } from "@playwright/test";
 import {
@@ -175,6 +176,7 @@ test("the owner's diagram: config carries nothing, and a topic nobody reads says
 
   // Its hover card says the same: kept, not lag.
   await page.getByTestId(`node-${topic}`).hover();
+  await openLiveNodeDetails(page, topic, "outcomes");
   await expect(page.getByTestId(`node-detail-unread-${topic}`)).toBeVisible();
   await expect(page.getByTestId(`node-detail-${topic}`)).toContainText("Kept");
   await expect(page.getByTestId(`node-detail-${topic}`)).not.toContainText("Lag (max group)");

@@ -1,6 +1,7 @@
 import type { CameraEvent } from "../camera";
 import { describe, focusPolicy, initialFocus, pendingMove } from "./focusPolicy";
 import { liveKeys } from "./liveKeys";
+import { initialReadout, readout, type ReadoutTarget } from "./readout";
 import { cameraMenuKind, initialMenus, menus } from "./menus";
 import type {
   ElementHandle,
@@ -96,12 +97,17 @@ export function createInteractionController<P = unknown>(
   options: InteractionOptions = {},
 ) {
   let menuState: MenusState<P> = initialMenus<P>();
+  let reading = initialReadout();
   let camera = options.camera;
   let focus: FocusState = initialFocus();
   /** The camera's view of the open menu (it hears of a change of kind only, as before). */
   let cameraMenu: "context" | "quickAdd" | null = null;
   const listeners = new Set<() => void>();
-  let snapshot = { menu: null as OpenSurface<P> | null, roving: undefined as string | undefined };
+  let snapshot = {
+    menu: null as OpenSurface<P> | null,
+    roving: undefined as string | undefined,
+    readout: reading.open,
+  };
   let seq = 0;
   /** The pending move's last resolution was `parked`: it waits on commits, and readiness doesn't count it. */
   let parked = false;
@@ -142,8 +148,8 @@ export function createInteractionController<P = unknown>(
 
   function changed() {
     const next = phase();
-    if (snapshot.menu !== menuState.open || snapshot.roving !== focus.roving)
-      snapshot = { menu: menuState.open, roving: focus.roving };
+    if (snapshot.menu !== menuState.open || snapshot.roving !== focus.roving || snapshot.readout !== reading.open)
+      snapshot = { menu: menuState.open, roving: focus.roving, readout: reading.open };
     if (next !== lastPhase) {
       lastPhase = next;
       port.publish(next);
@@ -338,6 +344,22 @@ export function createInteractionController<P = unknown>(
   }
 
   return {
+    pointReadout(target: ReadoutTarget | null) {
+      if (menuState.open) return;
+      reading = readout(reading, { type: "point", target });
+      changed();
+    },
+    pinReadout(target: ReadoutTarget) {
+      if (menuState.open) return;
+      reading = readout(reading, { type: "pin", target });
+      changed();
+    },
+    closeReadout(reason: MenuCloseReason) {
+      const target = reading.open;
+      reading = reason === "escape" ? readout(reading, { type: "close" }) : initialReadout();
+      if (target) decide({ type: "readout.closed", target, reason });
+      else changed();
+    },
     /** The open menu or dialog, if any. */
     get menu(): OpenSurface<P> | null {
       return menuState.open;
@@ -363,6 +385,7 @@ export function createInteractionController<P = unknown>(
       payload: P,
       how: { via?: MenuVia; platform?: Platform; invoker?: ElementHandle | null } = {},
     ) {
+      reading = readout(reading, { type: "close" });
       const t = menus(menuState, {
         type: "menu.open",
         kind,

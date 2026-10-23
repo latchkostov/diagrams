@@ -74,6 +74,8 @@ export function focusPolicy(state: FocusState, event: FocusEvent): FocusDecision
   };
   const canvas: FocusTarget = { kind: "canvas" };
   switch (event.type) {
+    case "readout.closed":
+      return event.reason === "escape" ? move({ target: event.target, when: "now", fallback: canvas }) : keep();
     case "menu.closed": {
       const openMenus = [...(state.openMenus ?? [])];
       const index = openMenus.lastIndexOf(event.kind);

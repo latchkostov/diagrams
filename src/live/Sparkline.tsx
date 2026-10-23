@@ -2,10 +2,31 @@ import { useMemo, useState } from "react";
 import type { TrafficShape } from "../model/types";
 import { trafficRateAt, trafficWindow } from "../sim/simulation";
 import { formatClock, formatCount, formatRate } from "./format";
+import { t } from "../i18n";
 
 const W = 260;
 const H = 54;
 const N = 120;
+
+/** A bounded observed series, rather than a configured traffic curve. */
+export function SampleSparkline({ samples }: { samples: readonly number[] }) {
+  const peak = Math.max(1, ...samples);
+  const line = samples
+    .map((v, i) => `${i ? "L" : "M"}${(i * W) / Math.max(1, samples.length - 1)} ${H - 4 - (v / peak) * (H - 12)}`)
+    .join(" ");
+  return (
+    <div className="lv-spark" data-testid="hover-history">
+      <svg
+        viewBox={`0 0 ${W} ${H}`}
+        data-testid="hover-history-chart"
+        role="img"
+        aria-label={t("hover.history", { count: samples.length })}
+      >
+        <path d={line} className="lv-spark-line" fill="none" />
+      </svg>
+    </div>
+  );
+}
 
 /** Samples a traffic shape's rate curve; also integrates it for the "≈ N messages" readout. */
 function sampleRate(shape: TrafficShape, points = N): { tMax: number; rates: number[]; peak: number; total: number } {

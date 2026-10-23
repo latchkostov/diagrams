@@ -1,3 +1,4 @@
+import { openLiveNodeDetails } from "./fixtures";
 import { savedDiagram } from "./fixtures";
 import { spawnSync } from "node:child_process";
 import { writeFileSync } from "node:fs";
@@ -213,6 +214,7 @@ test("P2: free-play Capacity changes the assignment count and its broker label t
   await expect(idle).toHaveAttribute("data-idle", "1");
   await expect(idle).toContainText("Shards · Assigned instances: 7 / 8");
   await page.getByTestId("node-worker").hover();
+  await openLiveNodeDetails(page, "worker", "outcomes");
   await expect(page.getByTestId("node-detail-idle-worker")).toHaveText("Assigned instances: 7 / 8 · Shards");
   await info.attach("mixed-assignment.png", {
     body: await page.screenshot({ path: info.outputPath("mixed-assignment.png"), animations: "disabled" }),
