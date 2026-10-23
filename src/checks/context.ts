@@ -53,7 +53,7 @@ export interface CheckContext {
    */
   typesAt(id: string): ReadonlySet<string>;
   messageTypes(): MessageTypes;
-  /** The same analysis's per-run state graphs (free play, then each saved simulation), for loop-fix verification. */
+  /** Per-run state graphs for explicit loop-fix verification only; ordinary Checks never record them. */
   messageGraphs(): { table: TypeTable; graphs: readonly TypeGraph[] };
   /** Position in reading order (rows from the top, each left to right; columns in a TB diagram); a connection's is its start's. */
   rank(id: string): number;
@@ -111,8 +111,7 @@ export function buildContext(diagram: DiagramFile): CheckContext {
   let messageGraphs: { table: TypeTable; graphs: TypeGraph[] } | undefined;
   const analyzeMessages = () => {
     if (!messages) {
-      messageGraphs = { table: typeTable(), graphs: [] };
-      messages = messageTypesAt(diagram, undefined, messageTypeBudget(), { ...messageGraphs, topology });
+      messages = messageTypesAt(diagram, undefined, messageTypeBudget(), { topology });
     }
     return messages;
   };
@@ -150,7 +149,13 @@ export function buildContext(diagram: DiagramFile): CheckContext {
     },
     deadLetterRoute: (id) => deadLetter.get(id),
     messageTypes: analyzeMessages,
-    messageGraphs: () => (analyzeMessages(), messageGraphs!),
+    messageGraphs: () => {
+      if (!messageGraphs) {
+        messageGraphs = { table: typeTable(), graphs: [] };
+        messageTypesAt(diagram, undefined, messageTypeBudget(), { ...messageGraphs, topology });
+      }
+      return messageGraphs;
+    },
     typesAt: (id) => analyzeMessages().arriving.get(id) ?? new Set(),
     // A connection reads where it starts.
     rank: (id) => order.get(id) ?? order.get(edges.get(id)?.from ?? "") ?? Infinity,

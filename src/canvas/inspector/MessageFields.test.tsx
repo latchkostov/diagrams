@@ -49,8 +49,11 @@ it("caps the chips a filter lists and says how many more exist", () => {
   expect(count(html, "inspector-filter-option-")).toBe(100);
   expect(html).toContain('data-testid="inspector-filter-more"');
   expect(html).toContain("+202 more");
-  // Carries still lists every type that passes: the inspector reads the full analysis.
-  expect(html).toContain("Type299");
+  expect(count(html, 'inspector-carries-more"')).toBe(1);
+  const carries = html.split('data-testid="inspector-carries"')[1].split("</div>")[0];
+  expect(count(carries, "inspector-carries-type")).toBe(100);
+  expect(carries).toContain("+202 more");
+  expect(carries).not.toContain("Type299");
 });
 
 it("keeps every selected filter type listed and pressed past the choice limit", () => {

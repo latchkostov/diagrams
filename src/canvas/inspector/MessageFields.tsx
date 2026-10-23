@@ -1,4 +1,4 @@
-import { TypePicker } from "../../components/MessageTypePicker";
+import { MAX_CHOICES, TypePicker } from "../../components/MessageTypePicker";
 import { t } from "../../i18n";
 import { useMessageTypes } from "./useMessageTypes";
 import { useLayoutEffect, useRef, useState } from "react";
@@ -36,13 +36,18 @@ export function EdgeMessages({
       <Field label={t("messageTypes.carries")} group>
         <div className="message-type-chips" aria-live="polite" data-testid="inspector-carries">
           {carries.length ? (
-            carries.map((type) => (
-              <span className="message-type-chip" key={type}>
+            carries.slice(0, MAX_CHOICES).map((type) => (
+              <span className="message-type-chip" key={type} data-testid="inspector-carries-type">
                 {type}
               </span>
             ))
           ) : (
             <small className="insp-note">{t("messageTypes.noMessages")}</small>
+          )}
+          {carries.length > MAX_CHOICES && (
+            <small className="insp-note" data-testid="inspector-carries-more">
+              +{t("importReport.more", { count: carries.length - MAX_CHOICES })}
+            </small>
           )}
         </div>
       </Field>

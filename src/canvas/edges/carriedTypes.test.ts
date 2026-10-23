@@ -7,6 +7,37 @@ import { cachedMessageTypesAt } from "../../model/messageTypes";
 import { messageTypesAt } from "../../model/messageTypes";
 import type { DiagramFile } from "../../model/types";
 import { countingReads } from "../../test/complexity";
+import { state } from "../../i18n";
+
+it("invalidates translated overflow text on the same analysis when the language changes", () => {
+  const types = messageTypesAt(messageTypesFixture());
+  // One long name consumes the display budget, leaving the second type in the translated count.
+  (types.carried as Map<string, Set<string>>).set("locale-test", new Set(["X".repeat(TIP_CHARS), "Other"]));
+  const previous = { locale: state.l, catalog: state.c };
+  try {
+    state.l = "en";
+    state.c = undefined;
+    const english = carriedText(types, "locale-test");
+    state.l = "de";
+    state.c = new Proxy(
+      {},
+      {
+        get:
+          () =>
+          ({ count }: Record<string, unknown>) =>
+            `${String(count)} weitere`,
+      },
+    );
+    expect(carriedText(types, "locale-test")).toContain("+1 weitere");
+    expect(carriedText(types, "locale-test")).not.toBe(english);
+    state.l = "en";
+    state.c = undefined;
+    expect(carriedText(types, "locale-test")).toBe(english);
+  } finally {
+    state.l = previous.locale;
+    state.c = previous.catalog;
+  }
+});
 
 it("shares forwarding-only invalidation between both caches", () => {
   const d = messageTypesFixture();

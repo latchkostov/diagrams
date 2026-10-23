@@ -30,7 +30,23 @@ export function SlowBar({ slow }: { slow: SlowMotion }) {
         </span>
       </span>
     ) : null;
-  return <SlowTimeline slow={slow} state={s} />;
+  return (
+    <>
+      <span
+        className="lv-slowmo-chip"
+        role="status"
+        data-testid="slowmo-chip"
+        title="Live is paused while slow motion replays one message. Esc goes back to live, where it left off."
+      >
+        <LiveIcon name="slowmo" size={13} />
+        <span>
+          Slow motion<span className="lv-slowmo-sep"> · </span>
+          <span className="lv-slowmo-paused">live paused</span>
+        </span>
+      </span>
+      <SlowTimeline slow={slow} state={s} />
+    </>
+  );
 }
 
 /** The latest caption, for screen readers (the canvas draws it for everyone else). */

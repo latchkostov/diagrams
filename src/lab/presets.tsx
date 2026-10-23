@@ -287,6 +287,14 @@ const stress = (nodes: number): Preset => ({
 
 const diagramPresets: Preset[] = [
   {
+    kind: "render",
+    id: "live-message-types",
+    title: "Live: message types",
+    group: "Simulation",
+    description: "The same carried-type reader in the live Lab host.",
+    render: () => <LiveLabStage diagram={messageTypesFixture()} initial={{ traffic: false }} />,
+  },
+  {
     kind: "diagram",
     id: "message-types",
     title: "Message types",

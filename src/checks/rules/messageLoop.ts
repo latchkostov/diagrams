@@ -6,15 +6,23 @@ import { findingBudget, findingName, omission } from "../findingBudget";
 function* outputStrings(loop: MessageLoop, type: string, node: string) {
   yield loop.node; // id suffix
   yield loop.node; // target
-  yield loop.node; // first element
   yield type;
   yield node; // message
   yield type;
   yield node; // messageLoop metadata
+  yield* loopElements(loop);
+}
+
+/** The finding copies each element only once, even when several typed states revisit it. */
+function* loopElements(loop: MessageLoop) {
+  const seen = new Set([loop.node]);
+  yield loop.node;
   for (const step of loop.steps) {
-    yield step.from;
-    yield step.to;
-    yield step.edge;
+    for (const id of [step.from, step.to, step.edge]) {
+      if (seen.has(id)) continue;
+      seen.add(id);
+      yield id;
+    }
   }
 }
 
@@ -46,7 +54,7 @@ export const messageLoop: CheckRule = {
         rule: "message-loop" as const,
         severity: "warning" as const,
         target: loop.node,
-        elements: [...new Set([loop.node, ...loop.steps.flatMap((step) => [step.from, step.to, step.edge])])],
+        elements: [...loopElements(loop)],
         title: "Messages loop back",
         message: `${type} messages loop back to ${node}: each one is sent again.`,
         messageLoop: { type, node },

@@ -20,10 +20,71 @@ const chunk = (name: string, source: string) =>
   new RegExp(String.raw`/(?:assets/${name}-[A-Za-z0-9_-]+\.js|${source.replace(/\./g, "\\.")})(?:\?.*)?$`);
 const CALLOUT = chunk("TroubleCallout", "src/live/TroubleCallout.tsx");
 const SCRIPT = chunk("script", "src/live/slowmo/script.ts");
+const SLOW_READOUT = chunk("SlowTimeline", "src/live/slowmo/SlowTimeline.tsx");
+const TIMELINE = chunk("Timeline", "src/live/Timeline.tsx");
 const PLACEMENT = chunk("useFloatingPlacement", "src/live/useFloatingPlacement.ts");
 const FILE_MESSAGES = chunk("fileMessages", "src/interop/ui/fileMessages.ts");
 const PAYMENT = "./?view=canvas&example=slow-payment-provider&live=1&paused=1&sim=no-timeouts";
 const KAFKA = "./?view=canvas&example=kafka-order-pipeline&live=1";
+
+test("slow-motion status and Escape work while its readout download is held", async ({ page }) => {
+  const readout = await gate(page, SLOW_READOUT);
+  try {
+    await openKafka(page);
+    await slowMotionFromStorefront(page);
+    await expect.poll(readout.requested).toBe(true);
+    await expect(page.getByTestId("slowmo-chip")).toContainText("live paused");
+    await expect(page.getByTestId("slowmo-timeline")).toHaveCount(0);
+    await expect(page.getByTestId("slowmo-chip")).toHaveAttribute("role", "status");
+    expect(await focused(page)).not.toBe("BODY");
+    await page.keyboard.press("Escape");
+    await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "playing");
+    const downloaded = page.waitForEvent("requestfinished", (request) => SLOW_READOUT.test(request.url()));
+    readout.release();
+    await downloaded;
+    await expect(page.getByTestId("slowmo-timeline")).toHaveCount(0);
+    expect(await focused(page)).not.toBe("BODY");
+  } finally {
+    readout.release();
+  }
+});
+
+test("a held simulation scrubber keeps its clock, focus and Escape working", async ({ page }) => {
+  const timeline = await gate(page, TIMELINE);
+  try {
+    await gotoLive(page, PAYMENT);
+    await expect.poll(timeline.requested).toBe(true);
+    await expect(page.getByTestId("live-clock")).toBeVisible();
+    await expect(page.getByTestId("live-timeline-input")).toHaveCount(0);
+    await page.getByTestId("canvas-wrap").focus();
+    await expect(page.getByTestId("canvas-wrap")).toBeFocused();
+    await page.keyboard.press("Escape");
+    await expect(page.getByTestId("live-controls")).toHaveCount(0);
+    const downloaded = page.waitForEvent("requestfinished", (request) => TIMELINE.test(request.url()));
+    timeline.release();
+    await downloaded;
+    await expect(page.getByTestId("live-timeline-input")).toHaveCount(0);
+    await expect(page.getByTestId("canvas-wrap")).toBeFocused();
+  } finally {
+    timeline.release();
+  }
+});
+
+test("a failed simulation scrubber offers shared Retry without taking focus", async ({ page }) => {
+  const timeline = await gate(page, TIMELINE);
+  timeline.fail = true;
+  await gotoLive(page, PAYMENT);
+  await page.getByTestId("live-play").focus();
+  await expect(page.getByTestId("lazy-load-retry")).toBeVisible();
+  await expect(page.getByTestId("live-play")).toBeFocused();
+  timeline.fail = false;
+  timeline.release();
+  await page.getByTestId("lazy-load-retry").focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByTestId("live-timeline-input")).toBeVisible();
+  await expect(page.getByTestId("live-expectations")).toBeVisible();
+  await expect(page.getByTestId("live-play")).toBeFocused();
+});
 
 /** Holds every request for `pattern` until release(); `fail` aborts them while it's true. */
 async function gate(page: Page, pattern: RegExp) {

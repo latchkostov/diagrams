@@ -63,6 +63,8 @@ export interface MenuItem {
   type: "item";
   /** Becomes `data-testid="context-menu-item-<id>"`. Children conventionally use `parent:child`. */
   id: string;
+  /** Stable choice identity across deferred list updates (id remains the UI test address). */
+  identity?: string;
   label: string;
   icon?: IconName;
   /** Render a stencil's icon instead of a glyph. */

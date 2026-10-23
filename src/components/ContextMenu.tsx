@@ -290,14 +290,22 @@ function MenuList(p: ListProps) {
   const [previousShown, setPreviousShown] = useState(shown);
   if (previousShown !== shown) {
     setPreviousShown(shown);
+    // Deferred choices keep the highlighted type even when their numeric values move.
+    const previous = previousShown[active];
+    const retained =
+      !q.trim() && selectable(previous) && previous.identity !== undefined
+        ? shown.findIndex((n) => selectable(n) && n.identity === previous.identity)
+        : -1;
     // Retranslation preserves the active row and open submenu when stable ids have not changed.
     if (
       previousShown.length !== shown.length ||
       previousShown.some(
-        (n, i) => n.type !== shown[i].type || (n.type === "item" && (shown[i].type !== "item" || n.id !== shown[i].id)),
+        (n, i) =>
+          n.type !== shown[i].type ||
+          (n.type === "item" && (shown[i].type !== "item" || n.id !== shown[i].id || n.identity !== shown[i].identity)),
       )
     ) {
-      setActive(shown.findIndex(selectable));
+      setActive(retained >= 0 ? retained : shown.findIndex(selectable));
       setOpen(null);
     }
   }

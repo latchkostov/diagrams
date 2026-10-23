@@ -19,6 +19,7 @@ import { DiagramContext, type InlineEdit } from "../canvas/DiagramContext";
 import { DiagramNode } from "../canvas/nodes/DiagramNode";
 import { GroupNode } from "../canvas/nodes/GroupNode";
 import { EdgeMarkers, FlowEdge } from "../canvas/edges/FlowEdge";
+import { EdgeMessages } from "../canvas/edges/lazyEdgeMessages";
 import type { DiagramFlowEdge, FlowNode } from "../canvas/types";
 import { CameraContext } from "../canvas/camera";
 import { useStandaloneCamera } from "../canvas/camera/useStandaloneCamera";
@@ -89,6 +90,7 @@ function Stage({ diagram, initial, presenting = false, alwaysOn = true }: LiveLa
           attributionPosition="bottom-center"
         >
           <Background variant={BackgroundVariant.Dots} gap={20} size={1.3} color="var(--dot)" />
+          <EdgeMessages meta={flow.meta} />
           <Controls showInteractive={false} position="bottom-left" />
           <CameraContext.Provider value={camera.controller}>
             <LiveView diagram={diagram} presenting={presenting} initial={initial} alwaysOn={alwaysOn} />

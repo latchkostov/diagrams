@@ -59,6 +59,40 @@ function routedFixture(): Pick<DiagramFile, "format" | "planning" | "nodes" | "e
 }
 
 describe("message-loop", () => {
+  it("budgets each emitted element once when typed loop states revisit it", () => {
+    const ctx = buildContext(messageTypesFixture());
+    const types = ctx.messageTypes();
+    const id = "processor".repeat(20);
+    types.loops = [
+      {
+        node: id,
+        type: "Callback",
+        steps: Array.from({ length: 2_000 }, () => ({
+          from: id,
+          to: id,
+          edge: "loop",
+          receives: "Callback",
+          sends: "Callback",
+        })),
+      },
+    ];
+    const result = runChecks(ctx.diagram, { rules: ["message-loop"], context: ctx });
+    expect(result.omitted).toBeUndefined();
+    expect(result.findings).toHaveLength(1);
+    expect(result.findings[0].elements).toEqual([id, "loop"]);
+  });
+
+  it("never records verification graphs during an ordinary Checks run", () => {
+    const compute = vi.spyOn(propagation, "messageTypesAt");
+    try {
+      expect(check().findings).toHaveLength(1);
+      expect(compute).toHaveBeenCalledOnce();
+      expect(compute.mock.calls[0][3]?.graphs).toBeUndefined();
+      expect(compute.mock.calls[0][3]?.table).toBeUndefined();
+    } finally {
+      compute.mockRestore();
+    }
+  });
   it("bounds a 2,000,000-character type amplified across 1,000 independent loops before building findings", () => {
     const type = "X".repeat(2_000_000);
     const d: DiagramFile = {
