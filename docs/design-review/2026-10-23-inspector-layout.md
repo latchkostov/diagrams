@@ -46,3 +46,7 @@ The sole intentional golden change is `node/i18n/catalogs.json`: 24 English mess
 ## Integration with current Request groups
 
 Sync retains master’s waiting-limit, retry-budget, retry-timing, retry-safety and breaker groups, their descriptions, controls, origins and keyboard order. Request groups now use the shared subgroup primitive. The rhythm case measures consecutive pool/reply fields inside Simulation because Waiting limits now separates the top-level wait and timeout fields. The fieldset case opens Retry safety before inspecting its choices. All 16 px/6 px and paired/stacked assertions stay unchanged.
+
+## Export artifact handling under load
+
+One repeated run reached the export metadata test's existing backstop. Its trace showed a 78-second gap after the first download event during artifact saving/reading. The helper now waits for the completed local artifact and copies it directly with Node, avoiding the driver's asynchronous copy queue. All four downloads, metadata and PNG comparisons, final cleanup assertion and existing timeouts remain unchanged.

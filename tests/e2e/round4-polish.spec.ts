@@ -1,6 +1,6 @@
 import { waitForStableViewport } from "./fixtures";
 import { TEXT_END } from "./fixtures";
-import { readFileSync } from "node:fs";
+import { copyFileSync, readFileSync } from "node:fs";
 import type { Locator, Page } from "@playwright/test";
 import {
   test,
@@ -74,7 +74,8 @@ async function exportImage(page: Page, kind: "png" | "svg", title: boolean, file
     page.waitForEvent("download", { timeout: 45_000 }),
     page.getByTestId("image-export").click(),
   ]);
-  await download.saveAs(file);
+  // These browsers are local. Keep the completed artifact copy out of the driver's asynchronous tracing I/O queue.
+  copyFileSync(await download.path(), file);
   return readFileSync(file);
 }
 
