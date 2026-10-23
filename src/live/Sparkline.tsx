@@ -2,6 +2,7 @@ import { useId, useMemo, useState } from "react";
 import type { TrafficShape } from "../model/types";
 import { trafficRateAt, trafficWindow } from "../sim/simulation";
 import { formatClock, formatCount, formatRate } from "./format";
+import { isolate } from "./bidi";
 import { t } from "../i18n";
 
 const W = 260;
@@ -16,9 +17,9 @@ export function SampleSparkline({ samples }: { samples: readonly number[] }) {
     .map((v, i) => `${i ? "L" : "M"}${(i * W) / Math.max(1, samples.length - 1)} ${H - 4 - (v / peak) * (H - 12)}`)
     .join(" ");
   const summary = t("hover.historySummary", {
-    latest: formatRate(samples.at(-1) ?? 0),
-    low: formatRate(Math.min(...samples)),
-    peak: formatRate(Math.max(0, ...samples)),
+    latest: isolate(formatRate(samples.at(-1) ?? 0)),
+    low: isolate(formatRate(Math.min(...samples))),
+    peak: isolate(formatRate(Math.max(0, ...samples))),
   });
   return (
     <div className="lv-spark" data-testid="hover-history">

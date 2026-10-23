@@ -816,13 +816,19 @@ test.describe("live view", () => {
     await expect(page.getByTestId("node-badge-payments")).not.toHaveAttribute("data-status", "down");
   });
 
-  test("Tab reaches timeline markers and Enter jumps to a named event", async ({ page, consoleErrors }) => {
+  test("Tab reaches timeline events, arrows explore and Enter jumps to a named event", async ({
+    page,
+    consoleErrors,
+  }) => {
     await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1&sim=payments-outage&paused=1`);
     await page.getByTestId("live-sim-picker").focus();
     for (let i = 0; i < 12; i++) {
-      if (await page.getByTestId("live-marker-2").evaluate((el) => el === document.activeElement)) break;
+      if (await page.getByTestId("live-marker-0").evaluate((el) => el === document.activeElement)) break;
       await page.keyboard.press("Tab");
     }
+    await expect(page.getByTestId("live-marker-0")).toBeFocused();
+    await page.keyboard.press("ArrowRight");
+    await page.keyboard.press("ArrowRight");
     await expect(page.getByTestId("live-marker-2")).toBeFocused();
     await expect(page.getByTestId("live-marker-2")).toHaveAttribute("aria-label", /Jump to.*Payments/);
     await page.keyboard.press("Enter");

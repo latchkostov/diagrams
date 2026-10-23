@@ -1,3 +1,4 @@
+import { RequestGroup } from "./RequestGroup";
 import { revisionAtLeast } from "../../model/revisions";
 import { RetryFields } from "./RetryFields";
 import { BreakerFields } from "./BreakerFields";
@@ -78,30 +79,72 @@ export function CallWaitFields({
         {t("threads.waitHint")}
       </p>
       {origin("wait")}
-      <SimInput
-        visibleHint
-        name="deadlineMs"
-        integer
-        field={{
-          label: t("threads.timeout"),
-          kind: "number",
-          unit: "ms",
-          min: 0,
-          max: SIM_LIMITS.timeMs,
-          step: 1,
-          placeholder: t("threads.noTimeout"),
-          hint: t("threads.timeoutHint"),
-        }}
-        value={caller?.deadlineMs}
-        onChange={(v) => {
-          if (v === undefined || (typeof v === "number" && Number.isInteger(v) && v >= 0 && v <= SIM_LIMITS.timeMs))
-            set({ deadlineMs: v as number | undefined });
-        }}
-      />
-      {origin("deadlineMs")}
+      <RequestGroup
+        name="waiting-limits"
+        title={t("resilience.waitingLimits")}
+        description={t("resilience.waitingLimitsHint")}
+        origin={origin("deadlineMs")}
+      >
+        <SimInput
+          visibleHint
+          name="deadlineMs"
+          integer
+          field={{
+            label: t("threads.timeout"),
+            kind: "number",
+            unit: "ms",
+            min: 0,
+            max: SIM_LIMITS.timeMs,
+            step: 1,
+            placeholder: t("threads.noTimeout"),
+            hint: t("threads.timeoutHint"),
+          }}
+          value={caller?.deadlineMs}
+          onChange={(v) => {
+            if (v === undefined || (typeof v === "number" && Number.isInteger(v) && v >= 0 && v <= SIM_LIMITS.timeMs))
+              set({ deadlineMs: v as number | undefined });
+          }}
+        />
+        <CallAdvanced enabled={revisionAtLeast(editor.getDiagram().planning?.revision, "p3-w2")}>
+          <SimInput
+            visibleHint
+            name="poolConnections"
+            field={{
+              label: t("threads.pool"),
+              kind: "number",
+              min: 1,
+              max: 10000,
+              placeholder: t("threads.uncapped"),
+              hint: t("threads.poolHint"),
+            }}
+            value={caller?.poolConnections}
+            onChange={(v) => set({ poolConnections: typeof v === "number" ? Math.round(v) : undefined })}
+          />
+          {origin("poolConnections")}
+          {!policy.blocking && stencilRole(stencil) === "processor" && (
+            <SimInput
+              visibleHint
+              name="replyMs"
+              field={{
+                label: t("threads.replyHandling"),
+                kind: "number",
+                unit: "ms",
+                min: 0,
+                max: SIM_LIMITS.timeMs,
+                placeholder: "10",
+                hint: t("threads.replyHint"),
+              }}
+              value={caller?.replyMs}
+              onChange={(v) => set({ replyMs: typeof v === "number" ? v : undefined })}
+            />
+          )}
+          {origin("replyMs")}
+        </CallAdvanced>
+      </RequestGroup>
       {revisionAtLeast(editor.getDiagram().planning?.revision, "p3-w2") && (
         <RetryFields
           retry={caller.retry}
+          origin={origin("retry")}
           method={
             editor
               .getDiagram()
@@ -111,53 +154,16 @@ export function CallWaitFields({
           set={(retry) => set({ retry })}
         />
       )}
-      {origin("retry")}
       {revisionAtLeast(editor.getDiagram().planning?.revision, "p3-w2") && (
-        <BreakerFields breaker={caller.breaker} set={(breaker) => set({ breaker })} />
+        <BreakerFields breaker={caller.breaker} origin={origin("breaker")} set={(breaker) => set({ breaker })} />
       )}
-      {origin("breaker")}
-      <CallAdvanced enabled={revisionAtLeast(editor.getDiagram().planning?.revision, "p3-w2")}>
-        <SimInput
-          visibleHint
-          name="poolConnections"
-          field={{
-            label: t("threads.pool"),
-            kind: "number",
-            min: 1,
-            max: 10000,
-            placeholder: t("threads.uncapped"),
-            hint: t("threads.poolHint"),
-          }}
-          value={caller?.poolConnections}
-          onChange={(v) => set({ poolConnections: typeof v === "number" ? Math.round(v) : undefined })}
-        />
-        {origin("poolConnections")}
-        {!policy.blocking && stencilRole(stencil) === "processor" && (
-          <SimInput
-            visibleHint
-            name="replyMs"
-            field={{
-              label: t("threads.replyHandling"),
-              kind: "number",
-              unit: "ms",
-              min: 0,
-              max: SIM_LIMITS.timeMs,
-              placeholder: "10",
-              hint: t("threads.replyHint"),
-            }}
-            value={caller?.replyMs}
-            onChange={(v) => set({ replyMs: typeof v === "number" ? v : undefined })}
-          />
-        )}
-        {origin("replyMs")}
-      </CallAdvanced>
     </>
   );
 }
 
 function CallAdvanced({ enabled, children }: { enabled: boolean; children: import("react").ReactNode }) {
   return enabled ? (
-    <Disclosure id="call-advanced" title={t("resilience.advanced")}>
+    <Disclosure id="call-advanced" title={t("resilience.poolDetails")} description={t("threads.poolHint")}>
       {children}
     </Disclosure>
   ) : (

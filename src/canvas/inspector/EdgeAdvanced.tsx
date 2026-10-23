@@ -20,7 +20,7 @@ type EdgeAdvancedProps = Pick<InspectorProps, "editor"> & {
 
 export function EdgeAdvanced({ edge, editor, data, props, flow, rule, merge }: EdgeAdvancedProps) {
   return (
-    <Disclosure id="edge-advanced" title={t("inspector.advanced")}>
+    <Disclosure id="edge-advanced" title={t("resilience.appearanceRouting")}>
       <div className="insp-row2">
         <Field label={t("inspector.fromSide")}>
           <SideSelect

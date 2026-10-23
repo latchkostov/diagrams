@@ -1,3 +1,5 @@
+import { callFailureRate } from "./callFailureRate";
+import { isolate } from "./bidi";
 import { memo, useMemo } from "react";
 import { useStore, type InternalNode } from "@xyflow/react";
 import { routeInputFromStore, useAllRoutes, useRoutingOptions } from "../canvas/edges/useEdgeRoute";
@@ -14,6 +16,8 @@ export interface ActiveCall {
   attempts?: number;
   retried?: number;
   failed?: number;
+  succeeded?: number;
+  shortCircuited?: number;
   budgetDenied?: number;
   id: string;
   held: number;
@@ -105,8 +109,8 @@ export const CallPills = memo(
             title: t("resilience.breakerTitle", {
               from,
               to,
-              percent: Math.round(breaker.failurePercent),
-              count: breaker.calls,
+              percent: isolate(`${Math.round(100 * callFailureRate(retry).rate)}%`),
+              count: callFailureRate(retry).total,
             }),
           };
         return showRetry
@@ -122,7 +126,7 @@ export const CallPills = memo(
                 attempts: ((retry.windowAttempts ?? 0) / 10).toFixed(1),
                 requests: ((retry.windowRequests ?? 0) / 10).toFixed(1),
                 retried: retry.retried ?? 0,
-                percent: Math.round((100 * (retry.failed ?? 0)) / Math.max(1, retry.attempts ?? 0)),
+                percent: isolate(`${Math.round(100 * callFailureRate(retry).rate)}%`),
               }),
             }
           : label;
@@ -154,7 +158,7 @@ export const CallPills = memo(
           aria-label={`${text} · ${title}`}
           data-testid={`call-pill-${id}`}
         >
-          {text}
+          <bdi>{text}</bdi>
         </span>
       );
     });

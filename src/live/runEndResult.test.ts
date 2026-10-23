@@ -133,3 +133,21 @@ it("does not report recovered dead letters as lost in the 3PL outage and DLQ red
     controller.dispose();
   }
 });
+
+it("the budget comparison leads with measured recovery and counts requests once", () => {
+  const diagram = storm as DiagramFile;
+  const c = new LiveController(diagram);
+  try {
+    c.selectSimulation(diagram.simulations!.find((s) => s.id === "retry-budget")!);
+    c.seek(60000);
+    const state = c.getState();
+    expect(state.snapshot.nodes.payments.backlog).toBe(3);
+    expect(state.snapshot.nodes.checkout.throughput).toBeCloseTo(300);
+    expect(state.snapshot.nodes.shop.dropped).toBe(9738);
+    expect(runEndResult(state, diagram)?.replace(/[\u2068\u2069]/g, "")).toBe(
+      "Payments recovered: successful checkouts returned to 300/s and the queue drained. 9,738 requests failed during the incident.",
+    );
+  } finally {
+    c.dispose();
+  }
+});

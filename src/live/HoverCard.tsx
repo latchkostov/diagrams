@@ -216,7 +216,9 @@ export function HoverCard({ kind, id, name, type, pinned, presenting, summary, h
             {kind === "edge" ? "↔" : "▤"}
           </span>
           <span className="hover-name">
-            <strong title={name}>{name}</strong>
+            <strong title={name}>
+              <bdi>{name}</bdi>
+            </strong>
             <small>{type}</small>
           </span>
           <span className="hover-status">
@@ -232,7 +234,7 @@ export function HoverCard({ kind, id, name, type, pinned, presenting, summary, h
           {summary.vitals.map((v) => (
             <div key={v.key} className={v.bad ? "is-bad" : ""}>
               <b className="mono" title={v.value}>
-                {v.value}
+                <bdi dir="ltr">{v.value}</bdi>
               </b>
               <small>{v.label}</small>
               {v.ratio !== undefined && Number.isFinite(v.ratio) ? (
@@ -270,7 +272,9 @@ function AttentionRows({ facts }: { facts: HoverFact[] }) {
           <div key={key} className={fact?.bad ? "is-bad" : ""} data-testid={`hover-attention-${key}`}>
             <span aria-hidden>{fact?.bad ? "⊗" : "·"}</span>
             <span title={fact?.label}>{fact?.label ?? t("hover.resolved")}</span>
-            <b className="mono">{fact?.value}</b>
+            <b className="mono">
+              <bdi dir="ltr">{fact?.value}</bdi>
+            </b>
           </div>
         );
       })}
@@ -337,7 +341,9 @@ function SectionRows({
               {s.key === "threads" ? "☷" : s.key === "latency" ? "◷" : s.key === "resources" ? "▦" : "≡"}
             </span>
             <strong>{s.label}</strong>
-            <small>{s.summary}</small>
+            <small>
+              <bdi>{s.summary}</bdi>
+            </small>
             <span aria-hidden>{pinned && open === s.key ? "⌄" : "›"}</span>
           </button>
           {pinned && open === s.key && render(s.key)}

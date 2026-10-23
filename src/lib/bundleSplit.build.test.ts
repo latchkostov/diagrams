@@ -366,6 +366,15 @@ describe("production bundle split", () => {
     expect(found(bundled(closure([narration!])), results)).toEqual(["run-end result messages"]);
   });
 
+  it("omits the development focus journal's formatting from production canvas chunks", () => {
+    for (const build of [plain(), rooms]) {
+      for (const chunk of closure([canvasChunk(build)], build)) {
+        expect(chunk.code).not.toContain("focus.result");
+        expect(chunk.code).not.toContain("selection.committed:");
+      }
+    }
+  });
+
   it("loads the trace card on demand, apart from the Live session", () => {
     const card: [string, RegExp][] = [["trace card", /[/\\]src[/\\]live[/\\]TraceCard\.tsx$/]];
     for (const build of [plain(), rooms]) {

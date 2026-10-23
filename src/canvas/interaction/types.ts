@@ -163,10 +163,15 @@ export type FocusCommand =
 /** The Esc on the canvas, a menu closing, a selection with its cause, ...: everything the focus policy decides on. */
 export type FocusEvent =
   /**
-   * A Live readout closed. `pinned`: it held the keyboard (pinned, or a summary Tab reached), so Esc gives focus back to
+   * A Live readout closed. `pinned` records pin state; `hadFocus` records keyboard focus inside the closing card. Esc gives focus back to
    * its item; a card only hovered leaves focus alone (readoutLayer.ts decides).
    */
-  | { type: "readout.closed"; target: { kind: "node" | "edge"; id: string; pinned: boolean }; reason: MenuCloseReason }
+  | {
+      type: "readout.closed";
+      target: { kind: "node" | "edge"; id: string; pinned: boolean };
+      hadFocus?: boolean;
+      reason: MenuCloseReason;
+    }
   /**
    * Tab or Shift+Tab steps into an item's readout card (readout.ts, readoutTab). `opening`: Shift+Tab from the next
    * node opens it with this step, so it is drawn by the commit that follows; else it is already shown.
@@ -211,7 +216,7 @@ export type FocusEvent =
   | { type: "dialog.opened"; first: ElementHandle }
   | { type: "dialog.tab"; target: ElementHandle }
   /** Tab from a node enters its scrollable live details. */
-  | { type: "node.details"; target: ElementHandle }
+  | { type: "node.details"; target: ElementHandle; source?: "timeline" }
   /**
    * A dialog or panel closed, and focus goes back to what opened it. `checks`: the Checks card (Esc, its close
    * button). `livePanel`: one of Live's side panels (Esc), back to its opener, else the Live bar's panel opener.

@@ -1,6 +1,6 @@
 import { useState, type KeyboardEvent } from "react";
-import { examples, exampleSummary, type Example } from "../examples";
-import { exampleFeatures, exampleThemeLabel, filterExamples } from "../examples/gallery";
+import { examples, type Example } from "../examples";
+import { exampleFeatures, exampleThemeLabel, filterExamples, gallerySummary } from "../examples/gallery";
 import { DiagramThumbnail } from "./DiagramThumbnail";
 import { Dialog } from "../interop/ui/Dialog";
 import { t, useLocale } from "../i18n";
@@ -110,7 +110,7 @@ export function ExamplesDialog({
                   </div>
                   <div className="example-card-body">
                     <h4 id={`example-title-${ex.slug}`}>{ex.title}</h4>
-                    <p>{exampleSummary(ex)}</p>
+                    <p>{gallerySummary(ex)}</p>
                     <div className="example-tags">
                       {ex.shows?.map((id) => (
                         <span key={id}>{exampleFeatures.find((f) => f.id === id)?.label() ?? id}</span>

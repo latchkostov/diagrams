@@ -30,9 +30,15 @@ export function LatencyReadout({
     <div className="lv-latency" data-testid={`node-latency-detail-${id}`}>
       <strong>{latency.callMs === undefined ? t("latency.heading") : t("threads.latency")}</strong>
       <div className="lv-latency-strip mono" data-testid={`node-latency-percentiles-${id}`}>
-        <span>{t("latency.p50", { duration: latencyDuration(latency.p50) })}</span>
-        <span>{latencyLabel(latency)}</span>
-        <span>{t("latency.p99", { duration: latencyDuration(latency.p99) })}</span>
+        <span>
+          <bdi dir="ltr">{t("latency.p50", { duration: latencyDuration(latency.p50) })}</bdi>
+        </span>
+        <span>
+          <bdi dir="ltr">{latencyLabel(latency)}</bdi>
+        </span>
+        <span>
+          <bdi dir="ltr">{t("latency.p99", { duration: latencyDuration(latency.p99) })}</bdi>
+        </span>
       </div>
       {!compact && !latency.sinceFault && <small>{latencySampling(latency)}</small>}
       {latency.typesLimited && <small data-testid={`node-latency-limited-${id}`}>{t("latency.typesLimited")}</small>}

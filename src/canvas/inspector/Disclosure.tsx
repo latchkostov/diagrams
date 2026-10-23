@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useId, useState, type ReactNode } from "react";
 import { Icon } from "../../components/Icon";
 import { safeStorage } from "../../lib/storage";
 
@@ -17,6 +17,7 @@ function readOpen(): Record<string, boolean> {
 export function Disclosure({
   id,
   title,
+  description,
   aside,
   count,
   children,
@@ -24,12 +25,14 @@ export function Disclosure({
 }: {
   id: string;
   title: string;
+  description?: string;
   aside?: ReactNode;
   count?: number;
   children: ReactNode;
   /** An explicit field-focus request opens its section before the first focus pass. */
   reveal?: number;
 }) {
+  const descriptionId = useId();
   const [open, setOpen] = useState(() => reveal !== undefined || readOpen()[id] === true);
   const [revealed, setRevealed] = useState(reveal);
   if (reveal !== undefined && reveal !== revealed) {
@@ -47,6 +50,7 @@ export function Disclosure({
           type="button"
           className="insp-disclosure-head"
           aria-expanded={open}
+          aria-describedby={open && description ? descriptionId : undefined}
           onClick={toggle}
           data-testid={`inspector-section-${id}`}
         >
@@ -56,7 +60,22 @@ export function Disclosure({
         </button>
         {aside}
       </h3>
-      {open && children}
+      {open &&
+        (description ? (
+          <div
+            className="insp-request-content"
+            role="group"
+            data-testid={`inspector-content-${id}`}
+            aria-describedby={descriptionId}
+          >
+            <p id={descriptionId} className="insp-note">
+              {description}
+            </p>
+            {children}
+          </div>
+        ) : (
+          children
+        ))}
     </section>
   );
 }

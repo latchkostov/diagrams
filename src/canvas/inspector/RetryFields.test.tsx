@@ -7,7 +7,11 @@ import { RetryFields } from "./RetryFields";
 it("each retry checkbox has one label, without nested labels stealing its accessible name", () => {
   const read = vi
     .spyOn(safeStorage, "getItem")
-    .mockImplementation((key) => (key === "diagrams.inspector.open.v1" ? '{"retry-details":true}' : null));
+    .mockImplementation((key) =>
+      key === "diagrams.inspector.open.v1"
+        ? '{"retry-details":true,"retry-safety":true,"retry-budget-details":true}'
+        : null,
+    );
   try {
     const html = renderToStaticMarkup(<RetryFields retry={recommendedRetry("GET")} set={() => {}} />);
     let depth = 0;

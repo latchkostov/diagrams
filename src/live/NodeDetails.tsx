@@ -88,12 +88,11 @@ export function NodeDetails(props: BadgeProps) {
             )}
             {s.fleet && <p>{t("hover.readyDesired", s.fleet)}</p>}
             {!s.resources && !s.fleet && <p>{t("hover.unknown")}</p>}
-            <History id={node.id} />
           </div>
         ) : (
           <>
             <Sections {...props} section={section} />
-            {section === "planning" && <History id={node.id} />}
+            {section === "outcomes" && <History id={node.id} />}
           </>
         )
       }
@@ -174,7 +173,7 @@ export function EdgeDetails({
         <div className="hover-rail-body" data-testid={`edge-section-${section}`}>
           {section === "breaker" ? (
             breaker ? (
-              <BreakerReadout id={id} breaker={breaker} testId={`edge-breaker-${id}`} />
+              <BreakerReadout id={id} breaker={breaker} calls={c} testId={`edge-breaker-${id}`} />
             ) : revisionAtLeast(diagram.planning?.revision, "p3-w2") ? (
               <p data-testid="hover-breaker-none">{t("hover.breakerNone")}</p>
             ) : (

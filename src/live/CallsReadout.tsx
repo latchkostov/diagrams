@@ -2,6 +2,8 @@ import type { DiagramFile } from "../model/types";
 import type { EdgeSimProps, SimSnapshot } from "../sim/types";
 import { t } from "../i18n";
 import { retryIdempotency } from "../sim/resiliencePresets";
+import { callFailureRate } from "./callFailureRate";
+import { isolate } from "./bidi";
 import { BreakerReadout } from "./BreakerReadout";
 
 export function CallsReadout({
@@ -28,26 +30,26 @@ export function CallsReadout({
             <p>
               {t("resilience.callsTo", {
                 name: diagram.nodes.find((n) => n.id === e.to)?.label ?? e.to,
-                requests: ((calls.windowRequests ?? 0) / 10).toFixed(1),
-                attempts: ((calls.windowAttempts ?? 0) / 10).toFixed(1),
-                ratio: ((calls.windowRequests ?? 0) > 0 ? calls.windowAttempts! / calls.windowRequests! : 1).toFixed(1),
-                goodput: ((calls.windowSucceeded ?? 0) / 10).toFixed(1),
+                requests: isolate(`${((calls.windowRequests ?? 0) / 10).toFixed(1)}/s`),
+                attempts: isolate(`${((calls.windowAttempts ?? 0) / 10).toFixed(1)}/s`),
+                ratio: isolate(
+                  ((calls.windowRequests ?? 0) > 0 ? calls.windowAttempts! / calls.windowRequests! : 1).toFixed(1),
+                ),
+                goodput: isolate(`${((calls.windowSucceeded ?? 0) / 10).toFixed(1)}/s`),
               })}
             </p>
             <p>
               {t("resilience.policy", {
-                percent: Math.round(
-                  (100 * (calls.failed - (calls.shortCircuited ?? 0))) / Math.max(1, calls.attempts ?? 0),
-                ),
+                percent: isolate(`${Math.round(100 * callFailureRate(calls).rate)}%`),
                 attempts: Math.min(policy.maxAttempts, 10),
-                backoff: policy.backoffMs,
+                backoff: isolate(`${policy.backoffMs} ms`),
                 budget:
                   "budget" in policy && policy.budget
                     ? t("resilience.budgetSummary", { percent: policy.budget.percent })
                     : t("resilience.noBudget"),
               })}
             </p>
-            {breaker && <BreakerReadout id={e.id} breaker={breaker} testId={`calls-breaker-${e.id}`} />}
+            {breaker && <BreakerReadout id={e.id} breaker={breaker} calls={calls} testId={`calls-breaker-${e.id}`} />}
             {!!calls.ambiguous &&
               retryIdempotency((e.props?.caller as EdgeSimProps["caller"])?.retry, request?.address.method) !==
                 true && (

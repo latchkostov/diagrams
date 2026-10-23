@@ -7,6 +7,8 @@ import { stencilRole } from "../stencils/roles";
 import type { BreakerView } from "../sim/breaker";
 import type { NodeSimState, EdgeSimState } from "../sim/types";
 import { formatCount, formatRate } from "./format";
+import { callFailureRate } from "./callFailureRate";
+import { isolate } from "./bidi";
 import { latencyDuration } from "./latencyFormat";
 
 export interface HoverFact {
@@ -119,7 +121,7 @@ export function nodeSummary(
           : queue,
       ];
   const facts: HoverFact[] = [
-    ...problems.map((p) => ({ key: p.key, label: p.text, value: "", bad: p.severe })),
+    ...problems.slice(1).map((p) => ({ key: p.key, label: p.text, value: "", bad: p.severe })),
     ...(s.deadLettered > 0
       ? [{ key: "deadLettered", label: t("hover.deadLettered"), value: formatCount(s.deadLettered) }]
       : []),
@@ -181,7 +183,11 @@ export function edgeReadoutKind(diagram: DiagramFile, edge: DiagramEdge, topolog
 }
 
 const breakerState = (b: BreakerView) =>
-  b.state === "closed" ? t("resilience.closed") : b.state === "open" ? t("resilience.open") : t("resilience.testing");
+  b.state === "closed"
+    ? t("resilience.closedState")
+    : b.state === "open"
+      ? t("resilience.openState")
+      : t("resilience.testingState");
 
 /** An active Request connection: its calls, retries, timeouts and (when it has one) its breaker's runtime state. */
 export function requestSummary(
@@ -232,13 +238,17 @@ export function requestSummary(
       { key: "flight", label: t("hover.inFlight"), value: formatCount(c?.inFlight ?? active) },
     ],
     facts: [
-      ...problems.map((p) => ({ key: p.key, label: p.text, value: "", bad: p.severe })),
+      ...problems.slice(1).map((p) => ({ key: p.key, label: p.text, value: "", bad: p.severe })),
       { key: "held", label: blocking ? t("hover.holds") : t("hover.frees"), value: formatCount(c?.held ?? 0) },
-      { key: "timeouts", label: t("hover.timeouts"), value: formatCount(c?.timedOut ?? 0) },
+      {
+        key: "failureRate",
+        label: t("resilience.failureScope"),
+        value: isolate(`${Math.round(100 * callFailureRate(c).rate)}%`),
+      },
     ],
     sections: [
       { key: "retries", label: t("hover.retries"), summary: formatCount(c?.retried ?? 0) },
-      { key: "timeouts", label: t("hover.timeouts"), summary: formatCount(c?.timedOut ?? 0) },
+      { key: "timeouts", label: t("hover.timeouts"), summary: "" },
       { key: "breaker", label: t("hover.breaker"), summary: breaker ? breakerState(breaker) : "—" },
     ],
   };
