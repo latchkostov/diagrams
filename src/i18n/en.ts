@@ -3180,5 +3180,18 @@ const en = {
   "hover.replicas": "Replicas",
   "hover.parallel": "Parallel per replica",
   "hover.unread": "Nobody reads this yet: it keeps every message. Lag is per consumer group, and it has none.",
+  "hover.breakerNone": "No circuit breaker on this connection.",
+  "hover.breakerOpenVerdict":
+    "Breaker open: calls fail fast with 503 for {seconds, plural, one {# more second} other {# more seconds}}.",
+  "hover.breakerTestingVerdict": "Breaker testing the callee: {settled} of {probes} test calls settled.",
+  "hover.breakerOpenFor": "Tests the callee again in {seconds, plural, one {# second} other {# seconds}}.",
+  "hover.breakerProbes": "{settled} of {probes} test calls settled · {inFlight} in flight",
+  "hover.messageVerdict": "Messages are handed off; the sender doesn't wait for a reply.",
+  "hover.flowVerdict": "Not simulated as a waiting call; no caller thread is held.",
+  "hover.dependencyVerdict": "A dependency: no messages or requests flow over it in Live.",
+  "hover.delivered": "Delivered",
+  "hover.deadLettered": "Moved to the dead-letter queue",
+  "hover.historySummary": "Now {latest} · low {low} · peak {peak}",
+  "hover.historyValues": "Throughput each second, oldest first: {values}",
 } as const;
 export default en;

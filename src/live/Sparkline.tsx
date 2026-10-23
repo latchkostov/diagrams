@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useId, useMemo, useState } from "react";
 import type { TrafficShape } from "../model/types";
 import { trafficRateAt, trafficWindow } from "../sim/simulation";
 import { formatClock, formatCount, formatRate } from "./format";
@@ -8,12 +8,18 @@ const W = 260;
 const H = 54;
 const N = 120;
 
-/** A bounded observed series, rather than a configured traffic curve. */
+/** A bounded observed series, rather than a configured traffic curve. Its values are also text, for every reader. */
 export function SampleSparkline({ samples }: { samples: readonly number[] }) {
+  const id = useId();
   const peak = Math.max(1, ...samples);
   const line = samples
     .map((v, i) => `${i ? "L" : "M"}${(i * W) / Math.max(1, samples.length - 1)} ${H - 4 - (v / peak) * (H - 12)}`)
     .join(" ");
+  const summary = t("hover.historySummary", {
+    latest: formatRate(samples.at(-1) ?? 0),
+    low: formatRate(Math.min(...samples)),
+    peak: formatRate(Math.max(0, ...samples)),
+  });
   return (
     <div className="lv-spark" data-testid="hover-history">
       <svg
@@ -21,9 +27,18 @@ export function SampleSparkline({ samples }: { samples: readonly number[] }) {
         data-testid="hover-history-chart"
         role="img"
         aria-label={t("hover.history", { count: samples.length })}
+        aria-describedby={`${id}summary ${id}values`}
       >
         <path d={line} className="lv-spark-line" fill="none" />
       </svg>
+      <div className="lv-spark-legend mono">
+        <span id={`${id}summary`} data-testid="hover-history-summary">
+          {summary}
+        </span>
+      </div>
+      <span id={`${id}values`} className="sr-only" data-testid="hover-history-values">
+        {t("hover.historyValues", { values: samples.map(formatRate).join(", ") })}
+      </span>
     </div>
   );
 }

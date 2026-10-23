@@ -7,7 +7,11 @@ import { useLive } from "./context";
 import type { BadgeProps } from "./NodeBadges";
 import type { LiveState } from "./controller";
 import type { DiagramFile } from "../model/types";
-import { nodeSummary, type HoverSummary } from "./hoverSummary";
+import { edgeReadoutKind, flowSummary, nodeSummary, requestSummary } from "./hoverSummary";
+import { BreakerReadout } from "./BreakerReadout";
+import { RELATION_META, relationOf } from "../model/relations";
+import { revisionAtLeast } from "../model/revisions";
+import type { CompiledTopology } from "../sim/topology";
 import { HoverCard } from "./HoverCard";
 import { formatCount, formatRate } from "./format";
 import { callPolicy } from "../sim/callPolicy";
@@ -99,11 +103,14 @@ export function NodeDetails(props: BadgeProps) {
 
 export function EdgeDetails({
   diagram,
+  topology,
   state,
   id,
   pinned,
 }: {
   diagram: DiagramFile;
+  /** The effective diagram's compiled routes (NodeBadges compiles them once per diagram). */
+  topology: CompiledTopology;
   state: LiveState;
   id: string;
   pinned: boolean;
@@ -112,51 +119,46 @@ export function EdgeDetails({
   const ui = useLive();
   const edge = diagram.edges.find((e) => e.id === id);
   if (!edge) return null;
-  const c = state.snapshot.edges[id]?.calls;
+  const s = state.snapshot.edges[id];
+  const c = s?.calls;
   const source = diagram.nodes.find((n) => n.id === edge.from);
   const name = t("hover.edge", {
     from: source?.label ?? edge.from,
     to: diagram.nodes.find((n) => n.id === edge.to)?.label ?? edge.to,
   });
+  const kind = edgeReadoutKind(diagram, edge, topology);
+  if (kind !== "request") {
+    // Messages and dependencies have no caller thread, retries, timeouts or breaker: never a fabricated call.
+    const relation = relationOf(edge);
+    return (
+      <HoverCard
+        kind="edge"
+        id={id}
+        name={name}
+        type={
+          relation !== "flow"
+            ? RELATION_META[relation].noun
+            : edge.kind === "sync"
+              ? t("chrome.request")
+              : t("chrome.message")
+        }
+        pinned={pinned}
+        presenting={ui.presenting}
+        summary={flowSummary(kind, s)}
+        healthy={
+          kind === "dependency"
+            ? t("hover.dependencyVerdict")
+            : edge.kind === "sync"
+              ? t("hover.flowVerdict")
+              : t("hover.messageVerdict")
+        }
+      >
+        {() => null}
+      </HoverCard>
+    );
+  }
   const policy = callPolicy(source?.stencil ?? "", edge.props?.caller as EdgeSimProps["caller"]);
-  const ratio = (c?.windowRequests ?? 0) > 0 ? (c?.windowAttempts ?? 0) / c!.windowRequests! : 1;
-  const problems = [
-    ...(c?.timedOut ? [{ key: "timeout", text: t("hover.timeoutVerdict", { count: c.timedOut }), severe: true }] : []),
-    ...(ratio >= 1.2 && (c?.windowRetried ?? 0) >= 10
-      ? [{ key: "retry", text: t("hover.retryVerdict", { ratio: ratio.toFixed(1) }), severe: true }]
-      : []),
-  ];
-  const summary: HoverSummary = {
-    problems,
-    vitals: [
-      {
-        key: "requests",
-        label: t("hover.requests"),
-        value: c?.windowRequests === undefined ? "—" : formatRate(c.windowRequests / 10),
-      },
-      { key: "attempts", label: t("hover.attempts"), value: `${ratio.toFixed(1)}×`, bad: ratio >= 1.2 },
-      {
-        key: "goodput",
-        label: t("hover.goodput"),
-        value: c?.windowSucceeded === undefined ? "—" : formatRate(c.windowSucceeded / 10),
-      },
-      {
-        key: "flight",
-        label: t("hover.inFlight"),
-        value: formatCount(c?.inFlight ?? state.snapshot.edges[id]?.active ?? 0),
-      },
-    ],
-    facts: [
-      ...problems.map((p) => ({ key: p.key, label: p.text, value: "", bad: true })),
-      { key: "held", label: policy.blocking ? t("hover.holds") : t("hover.frees"), value: formatCount(c?.held ?? 0) },
-      { key: "timeouts", label: t("hover.timeouts"), value: formatCount(c?.timedOut ?? 0) },
-    ],
-    sections: [
-      { key: "retries", label: t("hover.retries"), summary: formatCount(c?.retried ?? 0) },
-      { key: "timeouts", label: t("hover.timeouts"), summary: formatCount(c?.timedOut ?? 0) },
-      { key: "breaker", label: t("hover.breaker"), summary: "—" },
-    ],
-  };
+  const breaker = s?.breaker;
   return (
     <HoverCard
       kind="edge"
@@ -165,14 +167,20 @@ export function EdgeDetails({
       type={policy.blocking ? t("hover.holds") : t("hover.frees")}
       pinned={pinned}
       presenting={ui.presenting}
-      summary={summary}
+      summary={requestSummary(c, breaker, policy.blocking, s?.active ?? 0)}
       healthy={policy.blocking ? t("hover.holds") : t("hover.frees")}
     >
       {(section) => (
         <div className="hover-rail-body" data-testid={`edge-section-${section}`}>
-          {/* #245: replace this slot with the sim's public breaker readout when available. */}
           {section === "breaker" ? (
-            <p data-testid="hover-breaker-pending">{t("hover.breakerPending")}</p>
+            breaker ? (
+              <BreakerReadout id={id} breaker={breaker} testId={`edge-breaker-${id}`} />
+            ) : revisionAtLeast(diagram.planning?.revision, "p3-w2") ? (
+              <p data-testid="hover-breaker-none">{t("hover.breakerNone")}</p>
+            ) : (
+              // Models before p3-w2 do not simulate breakers, whatever the connection says.
+              <p data-testid="hover-breaker-pending">{t("hover.breakerPending")}</p>
+            )
           ) : (
             <>
               <p>

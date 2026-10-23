@@ -1,3 +1,4 @@
+import { breakerFixture } from "../../src/lab/resilienceFixture";
 import {
   test,
   expect,
@@ -7,6 +8,7 @@ import {
   expectNoErrors,
   openLiveNodeDetails,
   viewportTransform,
+  STORAGE_KEYS,
 } from "./fixtures";
 
 test("compact card keeps its screen-space bounds across ten seconds of Live", async ({ page, consoleErrors }) => {
@@ -104,6 +106,13 @@ test("only the pinned readout records a bounded ten-sample sparkline", async ({ 
   await expect(page.getByTestId("hover-history-chart")).toHaveAttribute("aria-label", "Recent throughput · 1 sample");
   await page.clock.runFor(12000);
   await expect(page.getByTestId("hover-history-chart")).toHaveAttribute("aria-label", "Recent throughput · 10 samples");
+  // The plotted history is text too: a visible summary and every value, both describing the chart.
+  const chart = page.getByTestId("hover-history-chart");
+  await expect(page.getByTestId("hover-history-summary")).toHaveText(/^Now \S+\/s · low \S+\/s · peak \S+\/s$/);
+  await expect(page.getByTestId("hover-history-values")).toHaveText(
+    /^Throughput each second, oldest first: (\S+\/s, ){9}\S+\/s$/,
+  );
+  await expect(chart).toHaveAccessibleDescription(/^Now .* peak .* oldest first: /);
   await page.keyboard.press("Escape");
   await expect(page.getByTestId("hover-history")).toHaveCount(0);
 });
@@ -340,5 +349,85 @@ test("Tab leaves a pinned readout's sections for the next node, and Shift+Tab re
   await expect(card).toBeFocused();
   await page.keyboard.press("Shift+Tab");
   await expect.poll(() => focusedStop(page)).toBe("node-caller");
+  expectNoErrors(consoleErrors);
+});
+
+test("edge card reflects breaker runtime transitions", async ({ page, consoleErrors }) => {
+  await page.clock.install();
+  await page.addInitScript(({ key, d }) => localStorage.setItem(key, JSON.stringify(d)), {
+    key: STORAGE_KEYS.autosavePrefix + "blocking-call",
+    d: breakerFixture(),
+  });
+  await gotoLive(page, "./?view=canvas&example=blocking-call&live=1&paused=1");
+  await pauseClock(page);
+  const edge = page.getByTestId("edge-call"),
+    card = page.getByTestId("edge-detail-call"),
+    readout = page.getByTestId("edge-breaker-call"),
+    pill = page.getByTestId("call-pill-call");
+  const inspect = async () => {
+    await edge.evaluate((el) => el.closest<HTMLElement>("[tabindex]")?.focus());
+    await page.keyboard.press("Enter");
+    await expect(card).toHaveAttribute("data-pinned", "true");
+    await page.getByTestId("hover-section-breaker").click();
+    await expect(page.getByTestId("hover-breaker-pending")).toHaveCount(0);
+    await expect(page.getByTestId("hover-breaker-none")).toHaveCount(0);
+  };
+  // Before any call: the configured breaker is closed.
+  await inspect();
+  await expect(readout).toHaveAttribute("data-state", "closed");
+  await expect(readout).toContainText("Breaker: Closed");
+  await expect(page.getByTestId("hover-section-breaker")).toContainText("Closed");
+  await page.keyboard.press("Escape");
+  // Every call fails: it opens, and the card says so with the pill.
+  await page.getByTestId("live-play").click();
+  await page.clock.runFor(500);
+  await page.getByTestId("live-play").click();
+  await expect(pill).toContainText("● Open");
+  await inspect();
+  await expect(readout).toHaveAttribute("data-state", "open");
+  await expect(page.getByTestId("breaker-open-call")).toContainText("Tests the callee again in");
+  await expect(card.getByTestId("hover-verdict")).toContainText("Breaker open: calls fail fast with 503");
+  await page.keyboard.press("Escape");
+  // Its open time over, it lets test calls through.
+  await page.getByTestId("live-play").click();
+  for (let i = 0; i < 60 && !/Testing/.test((await pill.textContent()) ?? ""); i++) await page.clock.runFor(25);
+  await page.getByTestId("live-play").click();
+  await expect(pill).toContainText("Testing");
+  await inspect();
+  await expect(readout).toHaveAttribute("data-state", "half-open");
+  await expect(readout).toContainText("Breaker: Testing");
+  await expect(page.getByTestId("breaker-probes-call")).toContainText(/\d+ of 5 test calls settled/);
+  await expect(card.getByTestId("hover-verdict")).toContainText("Breaker testing the callee");
+  expectNoErrors(consoleErrors);
+});
+
+test("non-Request edges omit caller semantics", async ({ page, consoleErrors }) => {
+  const callerWords = /Holds a thread|Frees the thread|Timeouts|Retries|Requests|Goodput|Breaker/;
+  // An active Message out of a service that makes waiting calls.
+  await gotoLive(page, "./?view=canvas&example=blocking-call&live=1&paused=1");
+  await page.getByTestId("edge-publish").evaluate((el) => el.closest<HTMLElement>("[tabindex]")?.focus());
+  await page.keyboard.press("Enter");
+  const message = page.getByTestId("edge-detail-publish");
+  await expect(message).toHaveAttribute("data-pinned", "true");
+  await expect(message.getByTestId("hover-verdict")).toHaveText(/the sender doesn't wait for a reply/);
+  await expect(message.getByTestId("hover-vitals")).toContainText("Delivered");
+  await expect(message).not.toContainText(callerWords);
+  await expect(message.getByTestId(/^hover-section-/)).toHaveCount(0);
+  // Config and secret dependencies carry no traffic at all; a sync flow in a model without waiting callers holds none.
+  await gotoLive(page, "./?view=canvas&example=aks-app-config-key-vault&live=1&paused=1");
+  for (const [id, verdict] of [
+    ["api-to-appcfg", /no messages or requests flow over it/],
+    ["appcfg-to-kv", /no messages or requests flow over it/],
+    ["fd-to-api", /no caller thread is held/],
+  ] as const) {
+    await page.getByTestId(`edge-${id}`).evaluate((el) => el.closest<HTMLElement>("[tabindex]")?.focus());
+    await page.keyboard.press("Enter");
+    const card = page.getByTestId(`edge-detail-${id}`);
+    await expect(card).toHaveAttribute("data-pinned", "true");
+    await expect(card.getByTestId("hover-verdict")).toHaveText(verdict);
+    await expect(card).not.toContainText(callerWords);
+    await page.keyboard.press("Escape");
+    await expect(card).toHaveCount(0);
+  }
   expectNoErrors(consoleErrors);
 });

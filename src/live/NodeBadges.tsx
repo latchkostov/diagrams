@@ -118,7 +118,14 @@ export function NodeBadges({
       style={{ "--inv": inv.toFixed(3) } as CSSProperties}
     >
       {!editing && pointed?.kind === "edge" && (
-        <EdgeDetails key={pointed.id} diagram={diagram} state={state} id={pointed.id} pinned={pointed.pinned} />
+        <EdgeDetails
+          key={pointed.id}
+          diagram={diagram}
+          topology={topology}
+          state={state}
+          id={pointed.id}
+          pinned={pointed.pinned}
+        />
       )}
       {activeCalls.length > 0 && <CallPills calls={activeCalls} readoutScale={inv} presenting={presenting} />}
       {nodes.map((n) => {

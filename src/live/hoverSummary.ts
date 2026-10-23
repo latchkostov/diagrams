@@ -1,4 +1,10 @@
 import { t } from "../i18n";
+import type { DiagramEdge, DiagramFile } from "../model/types";
+import { isDependency } from "../model/relations";
+import { revisionAtLeast } from "../model/revisions";
+import { activeCall, type CompiledTopology } from "../sim/topology";
+import { stencilRole } from "../stencils/roles";
+import type { BreakerView } from "../sim/breaker";
 import type { NodeSimState, EdgeSimState } from "../sim/types";
 import { formatCount, formatRate } from "./format";
 import { latencyDuration } from "./latencyFormat";
@@ -50,7 +56,8 @@ export function nodeSummary(
   const attempts = calls.reduce((n, c) => n + (c.windowAttempts ?? 0), 0);
   const retries = calls.reduce((n, c) => n + (c.windowRetried ?? 0), 0);
   const amplification = requests > 0 ? attempts / requests : 1;
-  const lost = s.dropped + s.deadLettered;
+  // Dead-lettered messages were moved, not lost: the dead-letter queue keeps them for reading or redrive.
+  const lost = s.dropped;
   const broker = ["queue", "topic", "stream"].includes(s.role);
   const candidates: Partial<Record<(typeof PROBLEM_PRIORITY)[number], HoverProblem>> = {
     ...(s.status === "down" && { down: { key: "down", text: t("hover.downVerdict"), severe: true } }),
@@ -113,6 +120,9 @@ export function nodeSummary(
       ];
   const facts: HoverFact[] = [
     ...problems.map((p) => ({ key: p.key, label: p.text, value: "", bad: p.severe })),
+    ...(s.deadLettered > 0
+      ? [{ key: "deadLettered", label: t("hover.deadLettered"), value: formatCount(s.deadLettered) }]
+      : []),
     {
       key: "processed",
       label: s.role === "source" ? t("hover.sent") : t("hover.processed"),
@@ -154,4 +164,97 @@ export function nodeSummary(
         },
       ];
   return { problems, vitals, facts, sections };
+}
+
+/**
+ * What a connection's card describes. `request`: an active call whose caller waits (requests that wait, p3-w1 on):
+ * thread, timeout, retry and breaker semantics. `flow`: messages, or a call this model doesn't simulate as waiting.
+ * `dependency`: config, secrets and the like, which carry no traffic.
+ */
+export type EdgeReadoutKind = "request" | "flow" | "dependency";
+export function edgeReadoutKind(diagram: DiagramFile, edge: DiagramEdge, topology: CompiledTopology): EdgeReadoutKind {
+  if (isDependency(edge)) return "dependency";
+  const compiled = topology.edges.find((e) => e.id === edge.id);
+  const from = diagram.nodes.find((n) => n.id === edge.from);
+  if (!compiled || !from || !revisionAtLeast(diagram.planning?.revision, "p3-w1")) return "flow";
+  return activeCall(stencilRole(from.stencil), compiled) ? "request" : "flow";
+}
+
+const breakerState = (b: BreakerView) =>
+  b.state === "closed" ? t("resilience.closed") : b.state === "open" ? t("resilience.open") : t("resilience.testing");
+
+/** An active Request connection: its calls, retries, timeouts and (when it has one) its breaker's runtime state. */
+export function requestSummary(
+  c: EdgeSimState["calls"] | undefined,
+  breaker: BreakerView | undefined,
+  blocking: boolean,
+  active: number,
+): HoverSummary {
+  const ratio = (c?.windowRequests ?? 0) > 0 ? (c?.windowAttempts ?? 0) / c!.windowRequests! : 1;
+  const problems: HoverProblem[] = [
+    ...(breaker?.state === "open"
+      ? [
+          {
+            key: "breaker",
+            text: t("hover.breakerOpenVerdict", { seconds: Math.ceil(breaker.remainingMs / 1000) }),
+            severe: true,
+          },
+        ]
+      : []),
+    ...(c?.timedOut ? [{ key: "timeout", text: t("hover.timeoutVerdict", { count: c.timedOut }), severe: true }] : []),
+    ...(ratio >= 1.2 && (c?.windowRetried ?? 0) >= 10
+      ? [{ key: "retry", text: t("hover.retryVerdict", { ratio: ratio.toFixed(1) }), severe: true }]
+      : []),
+    ...(breaker?.state === "half-open"
+      ? [
+          {
+            key: "breaker",
+            text: t("hover.breakerTestingVerdict", { settled: breaker.probesSettled, probes: breaker.probes }),
+          },
+        ]
+      : []),
+  ];
+  return {
+    problems,
+    vitals: [
+      {
+        key: "requests",
+        label: t("hover.requests"),
+        value: c?.windowRequests === undefined ? "—" : formatRate(c.windowRequests / 10),
+      },
+      { key: "attempts", label: t("hover.attempts"), value: `${ratio.toFixed(1)}×`, bad: ratio >= 1.2 },
+      {
+        key: "goodput",
+        label: t("hover.goodput"),
+        value: c?.windowSucceeded === undefined ? "—" : formatRate(c.windowSucceeded / 10),
+      },
+      { key: "flight", label: t("hover.inFlight"), value: formatCount(c?.inFlight ?? active) },
+    ],
+    facts: [
+      ...problems.map((p) => ({ key: p.key, label: p.text, value: "", bad: p.severe })),
+      { key: "held", label: blocking ? t("hover.holds") : t("hover.frees"), value: formatCount(c?.held ?? 0) },
+      { key: "timeouts", label: t("hover.timeouts"), value: formatCount(c?.timedOut ?? 0) },
+    ],
+    sections: [
+      { key: "retries", label: t("hover.retries"), summary: formatCount(c?.retried ?? 0) },
+      { key: "timeouts", label: t("hover.timeouts"), summary: formatCount(c?.timedOut ?? 0) },
+      { key: "breaker", label: t("hover.breaker"), summary: breaker ? breakerState(breaker) : "—" },
+    ],
+  };
+}
+
+/** A message flow, or a dependency: what moved over it, with no caller-thread, retry or timeout semantics. */
+export function flowSummary(kind: "flow" | "dependency", s: EdgeSimState | undefined): HoverSummary {
+  return {
+    problems: [],
+    vitals:
+      kind === "dependency"
+        ? []
+        : [
+            { key: "delivered", label: t("hover.delivered"), value: formatCount(s?.delivered ?? 0) },
+            { key: "flight", label: t("hover.inFlight"), value: formatCount(s?.active ?? 0) },
+          ],
+    facts: [],
+    sections: [],
+  };
 }
