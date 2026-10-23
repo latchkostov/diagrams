@@ -1,3 +1,4 @@
+import { connectionRadius } from "./gestures";
 import { gestureTargetRemoved } from "./interaction/gestures";
 import { useShapeResize } from "./shapes/useShapeResize";
 import { preloadMarkdown } from "../components/markdown/lazy";
@@ -55,6 +56,7 @@ import {
   useNodesState,
   useReactFlow,
   useStoreApi,
+  useStore,
   type NodeMouseHandler,
   type NodeTypes,
   type EdgeTypes,
@@ -233,6 +235,7 @@ function CanvasInner({
   const { theme, nodeVariant, edgeStyle } = useSettings();
   const { screenToFlowPosition, getNode, getNodes } = useReactFlow<FlowNode, DiagramFlowEdge>();
   const store = useStoreApi<FlowNode, DiagramFlowEdge>();
+  const connectRadius = useStore((s) => connectionRadius(s.transform[2]));
   const wrapper = useRef<HTMLDivElement>(null);
   useNoCanvasTextSelection(wrapper);
   /** The pointer over the canvas (client coords), for "T adds text here" and Ctrl+V. */
@@ -1111,7 +1114,7 @@ function CanvasInner({
                 connectionLineComponent={ConnectionLine}
                 isValidConnection={isValidConnection}
                 connectionMode={ConnectionMode.Loose}
-                connectionRadius={28}
+                connectionRadius={connectRadius}
                 onEdgeDoubleClick={readOnly ? undefined : onEdgeDoubleClick}
                 // Every drag, the selection's frame included (see onNodeDragStart).
                 onNodeDragStart={onNodeDragStart}

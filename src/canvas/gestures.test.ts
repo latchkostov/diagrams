@@ -1,6 +1,56 @@
 import { describe, expect, it } from "vitest";
-import { connectTarget, edgesBetween, pickInBox, type BoxItem } from "./gestures";
+import {
+  CONNECT_RADIUS,
+  connectionRadius,
+  connectTarget,
+  edgesBetween,
+  pickInBox,
+  portAt,
+  portSide,
+  type BoxItem,
+} from "./gestures";
+import { shapeHandles } from "./shapes/attachmentGeometry";
 import { pickSides } from "./edges/routing";
+
+describe("attaching to measured dots", () => {
+  it("finds the nearest card dot within the radius", () => {
+    const handles = [
+      { id: "left", x: 0, y: 36 },
+      { id: "top", x: 110, y: 0 },
+      { id: "right", x: 220, y: 36 },
+      { id: "bottom", x: 110, y: 72 },
+    ];
+    expect(portAt({ x: 112, y: 75 }, handles, CONNECT_RADIUS)).toBe("bottom");
+    expect(portAt({ x: 110, y: 36 }, handles, CONNECT_RADIUS)).toBeUndefined();
+    expect(portAt({ x: -29, y: 36 }, handles, CONNECT_RADIUS)).toBeUndefined();
+  });
+  it.each(["tri", "ellipse"] as const)("uses the measured %s outline positions", (shape) => {
+    const handles = Object.entries(shapeHandles(shape, 160, 90)).map(([id, p]) => ({ id, x: 300 + p.x, y: 200 + p.y }));
+    for (const handle of handles) expect(portAt(handle, handles, 1)).toBe(handle.id);
+  });
+  it("grow and unknown handles never pin a side or mask a nearby dot", () => {
+    expect(portSide("grow")).toBeUndefined();
+    expect(portAt({ x: 0, y: 0 }, [{ id: "grow", x: 0, y: 0 }], 28)).toBeUndefined();
+    expect(
+      portAt(
+        { x: 0, y: 0 },
+        [
+          { id: "grow", x: 0, y: 0 },
+          { id: "left", x: 4, y: 0 },
+        ],
+        28,
+      ),
+    ).toBe("left");
+    expect(portSide("north")).toBeUndefined();
+  });
+  it("keeps 20 screen pixels at low zoom and changes only at zoom steps", () => {
+    for (const zoom of [0.1, 0.21, 0.49, 0.71, 1, 2]) {
+      expect(connectionRadius(zoom)).toBeGreaterThanOrEqual(CONNECT_RADIUS);
+      expect(connectionRadius(zoom) * zoom).toBeGreaterThanOrEqual(20);
+    }
+    expect(connectionRadius(0.51)).toBe(connectionRadius(0.54));
+  });
+});
 
 describe("connectTarget: what a connection drop does", () => {
   it("connects to a card dropped anywhere on it", () => {

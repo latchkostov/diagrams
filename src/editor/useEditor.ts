@@ -58,7 +58,7 @@ import {
   type Toward,
   type Box as PlaceBox,
 } from "../canvas/placement";
-import { reconnectEdge, splitFlowEdge } from "./edgeEdits";
+import { reconnectEdge, splitFlowEdge, setEdgeSides } from "./edgeEdits";
 import type { InlineEdit, RenameTarget } from "../canvas/DiagramContext";
 import {
   GROUP_PREFIX,
@@ -1145,16 +1145,23 @@ export function createEditor(
       hint(opts?.merge);
       deps().setMeta((m) => ({ ...m, ...patch }));
     },
-    connect: (from, to) => {
+    connect: (from, to, sides) => {
       if (from === to) return null;
       const es = rf.getEdges();
       const existing = es.find((e) => e.source === from && e.target === to);
-      if (existing) return existing.id;
+      if (existing) {
+        if (sides) {
+          if (!commitEdges((cur) => cur.map((e) => (e.id === existing.id ? setEdgeSides(e, sides) : e)))) return null;
+          setSelected({ edgeIds: [existing.id] });
+        }
+        return existing.id;
+      }
       const stencilOf = (nodeId: string) => {
         const n = rf.getNode(nodeId);
         return n && isDiagram(n) ? n.data.stencil : undefined;
       };
-      const edge = newEdge({ id: from, stencil: stencilOf(from) }, { id: to, stencil: stencilOf(to) }, es);
+      const made = newEdge({ id: from, stencil: stencilOf(from) }, { id: to, stencil: stencilOf(to) }, es);
+      const edge = sides ? setEdgeSides(made, sides) : made;
       deps().setEdges((cur) => [...cur, edge]);
       explainEdge(edge);
       return edge.id;
@@ -1214,7 +1221,8 @@ export function createEditor(
           { id, stencil: undefined },
         ];
         const [fromEnd, toEnd] = req.at || isDownstream(toward) ? ends : [ends[1], ends[0]];
-        const edge = newEdge(fromEnd, toEnd, currentEdges());
+        const made = newEdge(fromEnd, toEnd, currentEdges());
+        const edge = req.sourceSide ? setEdgeSides(made, { sourceSide: req.sourceSide }) : made;
         if (!insertAnnotation(node, (cur) => [...cur.map((e) => (e.selected ? { ...e, selected: false } : e)), edge]))
           return null;
         explainEdge(edge);
@@ -1260,7 +1268,8 @@ export function createEditor(
         { id, stencil: data.stencil },
       ];
       const [a, b] = req.at || isDownstream(toward) ? ends : [ends[1], ends[0]];
-      const edge = newEdge(a, b, rf.getEdges());
+      const made = newEdge(a, b, rf.getEdges());
+      const edge = req.sourceSide ? setEdgeSides(made, { sourceSide: req.sourceSide }) : made;
       const merge = `new:${id}`;
       beginCreation(merge);
       if (!addSettled(node, (cur) => [...cur.map((e) => (e.selected ? { ...e, selected: false } : e)), edge]))
@@ -1325,10 +1334,10 @@ export function createEditor(
       deps().reveal?.();
       return id;
     },
-    reconnectEdge: (edgeId, end, nodeId) => {
+    reconnectEdge: (edgeId, end, nodeId, side) => {
       const target = currentNodes().find((n) => n.id === nodeId);
       if (!target || !takesEdges(target)) return false;
-      const next = reconnectEdge(currentEdges(), edgeId, end, nodeId);
+      const next = reconnectEdge(currentEdges(), edgeId, end, nodeId, side);
       if (!next) return false;
       return commitEdges(() => next);
     },

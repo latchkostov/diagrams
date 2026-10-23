@@ -97,4 +97,18 @@ describe("reconnectEdge", () => {
     expect(reconnectEdge([e], "e", "target", "a")).toBeNull();
     expect(reconnectEdge([e], "nope", "target", "c")).toBeNull();
   });
+
+  it("attaches to another side of the same node without losing meaning", () => {
+    const [next] = reconnectEdge([e], "e", "target", "b", "bottom")!;
+    expect(next).toMatchObject({ id: "e", source: "a", target: "b", data: { ...e.data, targetSide: "bottom" } });
+    expect(reconnectEdge([e], "e", "target", "b", "left")).toBeNull();
+  });
+
+  it("pins the new node's dot while retaining the other end's side", () => {
+    const [next] = reconnectEdge([e], "e", "target", "c", "right")!;
+    expect(next).toMatchObject({ source: "a", target: "c", data: { ...e.data, targetSide: "right" } });
+    const [body] = reconnectEdge([next], "e", "target", "d")!;
+    expect(body.data).not.toHaveProperty("targetSide");
+    expect(body.data?.sourceSide).toBe("top");
+  });
 });

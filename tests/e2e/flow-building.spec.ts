@@ -9,6 +9,7 @@ import {
   fitDiagram,
   waitForStableViewport,
   waitForSelectionSettled,
+  waitForCameraIdle,
   pauseClock,
   STORAGE_KEYS,
 } from "./fixtures";
@@ -44,10 +45,20 @@ const SEED = {
 
 type Saved = {
   nodes: { id: string; stencil: string; label: string; x: number; y: number; sublabel?: string }[];
-  edges: { id: string; from: string; to: string; kind?: string; label?: string; relation?: string; props?: object }[];
+  edges: {
+    id: string;
+    from: string;
+    to: string;
+    kind?: string;
+    label?: string;
+    relation?: string;
+    props?: object;
+    sourceSide?: string;
+    targetSide?: string;
+  }[];
 };
 
-async function seed(page: Page) {
+async function seed(page: Page, diagram = SEED) {
   await page.addInitScript(
     ([key, value]) => {
       if (!sessionStorage.getItem("seeded")) {
@@ -55,10 +66,11 @@ async function seed(page: Page) {
         sessionStorage.setItem("seeded", "1");
       }
     },
-    [KEY, JSON.stringify(SEED)] as const,
+    [KEY, JSON.stringify(diagram)] as const,
   );
   await gotoCanvas(page, SLUG);
-  await expect(page.getByTestId("node-hub")).toBeVisible();
+  const readyNode = diagram.nodes.some((node) => node.id === "hub") ? "hub" : diagram.nodes[0].id;
+  await expect(page.getByTestId(`node-${readyNode}`)).toBeVisible();
   await waitForStableViewport(page);
 }
 
@@ -433,8 +445,14 @@ test.describe("edges: reconnect and insert (D8)", () => {
     consoleErrors,
   }) => {
     await expect(page.getByTestId(/^reconnect-/)).toHaveCount(0);
+    // Keep a genuine body drop clear of the dots' zoom-aware snap zones.
+    await page.setViewportSize({ width: 1920, height: 1080 });
     await page.getByTestId("edge-label-api-db").click();
     await waitForSelectionSettled(page);
+    await page.getByTestId("canvas-wrap").focus();
+    await page.keyboard.press("Shift+Digit2");
+    await waitForCameraIdle(page);
+    await waitForStableViewport(page);
     const end = page.getByTestId("reconnect-api-db-target");
     await expect(end).toBeVisible();
     await expect(page.getByTestId("reconnect-api-db-source")).toBeVisible();
@@ -1077,4 +1095,130 @@ test("Escape stops connection auto-pan before release", async ({ page }) => {
   expect(await transform()).toBe(stopped);
   await page.mouse.up();
   await expect(page.getByTestId("undo-button")).toBeDisabled();
+});
+
+test.describe("attach to a dot", () => {
+  const nodes = SEED.nodes
+    .filter((n) => ["api", "db", "billing"].includes(n.id))
+    .map((n) => (n.id === "db" ? { ...n, x: 500 } : n.id === "billing" ? { ...n, x: 250, y: -220 } : n));
+  const pinned = [{ ...SEED.edges[0], sourceSide: "bottom", targetSide: "top" }];
+  async function open(page: Page, edges: typeof SEED.edges = []) {
+    await seed(page, { ...SEED, nodes, edges });
+    await fitDiagram(page);
+    await waitForCameraIdle(page);
+  }
+  async function drag(page: Page, from: Locator, to: Locator) {
+    const a = centre(await box(from));
+    const b = centre(await box(to));
+    await page.mouse.move(a.x, a.y);
+    await page.mouse.down();
+    await page.mouse.move(b.x, b.y, { steps: 12 });
+  }
+  async function selectEnd(page: Page) {
+    await page.getByTestId("edge-label-api-db").click();
+    await waitForSelectionSettled(page);
+    await fitDiagram(page);
+    await waitForCameraIdle(page);
+    await expect(page.getByTestId("reconnect-api-db-target")).toBeVisible();
+  }
+
+  test("bottom to top pins both ends, starts at the dot and undoes once", async ({ page }) => {
+    await open(page);
+    await drag(page, page.getByTestId("handle-api-bottom"), page.getByTestId("handle-db-top"));
+    await expect(page.getByTestId("handle-db-top")).toHaveClass(/is-connect-port/);
+    await expect(page.getByTestId("rf__node-db")).toHaveClass(/has-connect-port/);
+    await expect
+      .poll(() => page.getByTestId("handle-db-left").evaluate((el) => getComputedStyle(el).opacity))
+      .toBe("1");
+    await page.mouse.up();
+    const d = await savedWhen(page, (s) => s.edges[0]?.sourceSide === "bottom" && s.edges[0]?.targetSide === "top");
+    expect(d.edges).toHaveLength(1);
+    const edge = page.getByTestId(`edge-${d.edges[0].id}`);
+    await expect(edge).toHaveAttribute("data-source-side", "bottom");
+    await expect(edge).toHaveAttribute("data-target-side", "top");
+    await waitForStableViewport(page);
+    const start = await edge.evaluate((el) => {
+      const path = [...el.children].find((child) => child instanceof SVGPathElement);
+      if (!(path instanceof SVGPathElement)) throw new Error("Missing edge path");
+      const matrix = path.getScreenCTM();
+      if (!matrix) throw new Error("Missing edge transform");
+      const p = path.getPointAtLength(0);
+      const screen = new DOMPoint(p.x, p.y).matrixTransform(matrix);
+      return { x: screen.x, y: screen.y };
+    });
+    const dot = centre(await box(page.getByTestId("handle-api-bottom")));
+    expect(Math.hypot(start.x - dot.x, start.y - dot.y)).toBeLessThanOrEqual(2);
+    await expect(page.getByTestId("handle-db-top")).not.toHaveClass(/is-connect-port/);
+    await undoUntil(page, (s) => s.edges.length === 0, 1);
+  });
+
+  test("dot to body fixes only the source, reuses the pair and undoes once", async ({ page }) => {
+    await open(page, SEED.edges);
+    await drag(page, page.getByTestId("handle-api-bottom"), page.getByTestId("node-db"));
+    await page.mouse.up();
+    const d = await savedWhen(page, (s) => s.edges[0]?.sourceSide === "bottom");
+    expect(d.edges).toEqual([{ ...SEED.edges[0], sourceSide: "bottom" }]);
+    await expect(page.getByTestId("edge-api-db")).toHaveClass(/is-selected/);
+    await undoUntil(page, (s) => !s.edges[0]?.sourceSide && !s.edges[0]?.targetSide, 1);
+  });
+
+  test("the side dot's hit area keeps preview and committed side consistent beside the plus", async ({ page }) => {
+    await open(page);
+    await page.getByTestId("node-db").click();
+    await waitForSelectionSettled(page);
+    await fitDiagram(page);
+    await waitForCameraIdle(page);
+    const chip = page.getByTestId("grow-chip-db");
+    await page.getByTestId("zoom-out-button").click();
+    await waitForStableViewport(page);
+    const side = await chip.getAttribute("data-side");
+    expect(side).not.toBe("corner");
+    await drag(page, page.getByTestId("handle-api-bottom"), chip);
+    const dot = page.getByTestId(`handle-db-${side}`);
+    await expect(dot).toHaveClass(/is-connect-port/);
+    await page.mouse.up();
+    const d = await savedWhen(page, (s) => s.edges.length === 1);
+    expect(d.edges[0].sourceSide).toBe("bottom");
+    expect(d.edges[0].targetSide).toBe(side);
+    await undoUntil(page, (s) => s.edges.length === 0, 1);
+  });
+
+  for (const node of ["db", "billing"] as const) {
+    test(`reconnect onto ${node}'s left dot keeps meaning and undoes once`, async ({ page }) => {
+      await open(page, pinned);
+      await selectEnd(page);
+      await drag(page, page.getByTestId("reconnect-api-db-target"), page.getByTestId(`handle-${node}-left`));
+      await expect(page.getByTestId(`handle-${node}-left`)).toHaveClass(/is-connect-port/);
+      await page.mouse.up();
+      const d = await savedWhen(page, (s) => s.edges[0]?.to === node && s.edges[0]?.targetSide === "left");
+      expect(d.edges).toEqual([{ ...pinned[0], to: node, targetSide: "left" }]);
+      await expect(page.getByTestId("edge-api-db")).toHaveAttribute("data-target-side", "left");
+      await undoUntil(page, (s) => s.edges[0]?.to === "db" && s.edges[0]?.targetSide === "top", 1);
+    });
+  }
+
+  test("Escape cancels a dot connection, clears the highlight and adds no undo", async ({ page }) => {
+    await open(page);
+    await drag(page, page.getByTestId("handle-api-bottom"), page.getByTestId("handle-db-top"));
+    await expect(page.getByTestId("handle-db-top")).toHaveClass(/is-connect-port/);
+    await page.keyboard.press("Escape");
+    await page.mouse.up();
+    await expect(page.getByTestId("connection-line")).toHaveCount(0);
+    await expect(page.getByTestId("handle-db-top")).not.toHaveClass(/is-connect-port/);
+    await expect(page.getByTestId("undo-button")).toBeDisabled();
+    expect((await saved(page))?.edges).toEqual([]);
+  });
+
+  test("Escape cancels a same-node dot reconnect without an undo step", async ({ page }) => {
+    await open(page, pinned);
+    await selectEnd(page);
+    await drag(page, page.getByTestId("reconnect-api-db-target"), page.getByTestId("handle-db-left"));
+    await expect(page.getByTestId("handle-db-left")).toHaveClass(/is-connect-port/);
+    await page.keyboard.press("Escape");
+    await page.mouse.up();
+    await expect(page.getByTestId("reconnect-line")).toHaveCount(0);
+    await expect(page.getByTestId("handle-db-left")).not.toHaveClass(/is-connect-port/);
+    await expect(page.getByTestId("undo-button")).toBeDisabled();
+    expect((await saved(page))?.edges).toEqual(pinned);
+  });
 });

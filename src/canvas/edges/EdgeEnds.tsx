@@ -1,7 +1,7 @@
 import { useSyncExternalStore, type PointerEvent as ReactPointerEvent } from "react";
-import { ViewportPortal, useReactFlow } from "@xyflow/react";
+import { ViewportPortal, useReactFlow, useStoreApi } from "@xyflow/react";
 import { useDiagram } from "../DiagramContext";
-import { connectHitAt, connectTarget } from "../gestures";
+import { connectionMarks, connectionTargetAt } from "../interaction/connectTarget";
 import type { EdgeEnd } from "../../editor/edgeEdits";
 import type { AnnotationKind } from "../../model/types";
 import type { FlowNode } from "../types";
@@ -30,7 +30,9 @@ export function EdgeEnds({
   end: Point;
 }) {
   const { reconnect } = useDiagram();
-  const { getNode } = useReactFlow<FlowNode>();
+  const flow = useReactFlow<FlowNode>();
+  const { getNode } = flow;
+  const store = useStoreApi<FlowNode>();
   const interaction = useInteraction();
   const active = useSyncExternalStore(
     interaction?.subscribe ?? noSubscribe,
@@ -48,30 +50,26 @@ export function EdgeEnds({
       const n = getNode(nid);
       return n?.type === "annotation" ? (n.data as { kind: AnnotationKind }).kind : undefined;
     };
-    let over: Element | null = null;
-    const mark = (el: Element | null, on: boolean) => el?.classList.toggle("is-connect-target", on);
+    const marks = connectionMarks(wrap);
     pointerGesture(e, {
       kind: "edge.end",
-      preview(at, screen) {
-        wrap?.classList.add("is-connecting");
-        const el = document.elementFromPoint(screen.x, screen.y);
-        const t = connectTarget(connectHitAt(el, kindOf), fixed);
-        const node = t.kind === "node" ? (el?.closest(".react-flow__node") ?? null) : null;
-        if (node !== over) {
-          mark(over, false);
-          mark(node, true);
-          over = node;
-        }
-        wrap?.classList.toggle("is-connect-invalid", t.kind === "invalid" || t.kind === "source");
-        return { kind: "edge.end", edge: id, end: which, at, over: t.kind === "node" ? { node: t.id } : null };
+      preview(_at, screen) {
+        const hit = connectionTargetAt(screen, fixed, flow, store.getState().nodeLookup.values(), kindOf);
+        const t = hit.target;
+        marks.show(t);
+        return {
+          kind: "edge.end",
+          edge: id,
+          end: which,
+          at: hit.at,
+          over: t.kind === "node" ? { node: t.id, side: t.side } : null,
+        };
       },
       commit(p) {
-        if (p.kind === "edge.end" && p.over && p.over.node !== moving) reconnect(id, which, p.over.node);
+        if (p.kind === "edge.end" && p.over && (p.over.node !== moving || p.over.side))
+          reconnect(id, which, p.over.node, p.over.side);
       },
-      clean() {
-        mark(over, false);
-        wrap?.classList.remove("is-connecting", "is-connect-invalid");
-      },
+      clean: marks.clear,
     });
   };
 

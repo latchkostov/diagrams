@@ -335,3 +335,24 @@ button.dn-doc-badge:focus-visible {
   outline-offset: 2px;
   opacity: 1;
 }
+
+/* A dot fixes that end's side; the whole node remains a target between dots. */
+.canvas-wrap.is-connecting .react-flow__node.is-connect-target .dn-handle {
+  opacity: 1;
+  scale: 1.333333;
+}
+.canvas-wrap.is-connecting .dn-handle.is-connect-port {
+  background: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent) 35%, transparent);
+}
+.react-flow__node.is-connect-target.has-connect-port .nb.nb-card,
+.react-flow__node.is-connect-target.has-connect-port .nb.nb-compact {
+  border-color: color-mix(in oklab, var(--accent) 35%, var(--node-border));
+  box-shadow: var(--node-shadow-hover);
+}
+.react-flow__node.is-connect-target.has-connect-port .nb.nb-icon .nb-tile {
+  box-shadow: inset 0 0 0 1.5px color-mix(in oklab, var(--accent) 35%, transparent);
+}
+.react-flow__node.is-connect-target.has-connect-port .ann {
+  outline-color: color-mix(in oklab, var(--accent) 35%, transparent);
+}

@@ -1,6 +1,7 @@
 // Rewiring edges on the canvas (D8): move one end to another node, or split an edge around a node dropped
 // onto it. Pure: they take the canvas's edges and return the next ones (or null when nothing changes).
 
+import type { Side } from "../model/types";
 import type { DiagramFlowEdge } from "../canvas/types";
 import { edgeFromFlow, edgeToFlow } from "../canvas/convert";
 import { splitEdge } from "../model/edgeSplit";
@@ -10,21 +11,24 @@ export type EdgeEnd = "source" | "target";
 
 /**
  * Moves one end of `edgeId` onto `nodeId`, keeping everything else: its id, label, relationship, kind and
- * settings. The side pinned for that end belonged to the old node, so it goes (the other end keeps its own).
- * Null when the edge is missing, the end is already there, or the edge would join a node to itself.
+ * settings. A dot fixes that end's side; a body drop on another node clears it. The other end keeps its side.
+ * Null when the edge is missing, the attachment is unchanged, or the edge would join a node to itself.
  */
 export function reconnectEdge(
   edges: readonly DiagramFlowEdge[],
   edgeId: string,
   end: EdgeEnd,
   nodeId: string,
+  side?: Side,
 ): DiagramFlowEdge[] | null {
   const e = edges.find((x) => x.id === edgeId);
   if (!e) return null;
   const other = end === "source" ? e.target : e.source;
-  if (e[end] === nodeId || other === nodeId) return null;
+  const key = end === "source" ? "sourceSide" : "targetSide";
+  if (other === nodeId || (e[end] === nodeId && (!side || e.data?.[key] === side))) return null;
   const data = { kind: "async" as const, ...e.data };
-  if (end === "source") delete data.sourceSide;
+  if (side) data[key] = side;
+  else if (end === "source") delete data.sourceSide;
   else delete data.targetSide;
   const next: DiagramFlowEdge = { ...e, [end]: nodeId, data };
   return edges.map((x) => (x === e ? next : x));
@@ -52,4 +56,14 @@ export function splitFlowEdge(
     else out.push(a, b);
   }
   return { edges: out, first: e.id, second };
+}
+
+/** Each end decides: an omitted side in a pointer attachment means automatic on that end. */
+export function setEdgeSides(edge: DiagramFlowEdge, sides: { sourceSide?: Side; targetSide?: Side }): DiagramFlowEdge {
+  const data = { kind: "async" as const, ...edge.data };
+  if (sides.sourceSide) data.sourceSide = sides.sourceSide;
+  else delete data.sourceSide;
+  if (sides.targetSide) data.targetSide = sides.targetSide;
+  else delete data.targetSide;
+  return { ...edge, data };
 }

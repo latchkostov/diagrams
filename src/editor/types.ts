@@ -1,4 +1,5 @@
 import type {
+  Side,
   AnnotationKind,
   AnnotationShape,
   DiagramAnnotation,
@@ -128,7 +129,7 @@ export interface EditorApi {
   ): string | null;
   updateAnnotation(id: string, patch: Partial<Omit<DiagramAnnotation, "id">>, opts?: EditOptions): void;
   updateMeta(patch: DiagramMetaPatch, opts?: EditOptions): void;
-  connect(from: string, to: string): string | null;
+  connect(from: string, to: string, sides?: { sourceSide?: Side; targetSide?: Side }): string | null;
   reverseEdge(id: string): void;
   /**
    * Where a node added on `toward` side of `fromId` lands (a box, top-left): one gap that way, stepping
@@ -145,6 +146,7 @@ export interface EditorApi {
    */
   createConnected(req: {
     from: string;
+    sourceSide?: Side;
     stencil?: string;
     shape?: AnnotationShape;
     clone?: boolean;
@@ -166,7 +168,7 @@ export interface EditorApi {
   /** The single selected node a new stencil would follow (rail and Ctrl+K), if any. */
   stencilAnchor(): string | undefined;
   /** Moves one end of an edge onto another node, keeping its label, relationship and settings. */
-  reconnectEdge(edgeId: string, end: EdgeEnd, nodeId: string): boolean;
+  reconnectEdge(edgeId: string, end: EdgeEnd, nodeId: string, side?: Side): boolean;
   /** Splits an edge around a node: A→B becomes A→N→B, both keeping the edge's meaning. */
   insertIntoEdge(edgeId: string, nodeId: string): boolean;
 

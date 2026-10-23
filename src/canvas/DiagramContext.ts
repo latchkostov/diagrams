@@ -1,4 +1,5 @@
 import { createContext, useContext, type MouseEvent as ReactMouseEvent } from "react";
+import type { Side } from "../model/types";
 import type { EdgeEnd } from "../editor/edgeEdits";
 import type { EditorApi } from "../editor/types";
 
@@ -43,7 +44,7 @@ export interface DiagramUi {
   /** Editing only (not live, presenting or embedded): the selected node's "+" opens quick-add for the next node. */
   grow?: (nodeId: string) => void;
   /** Editing only: a selected edge's end dropped on another node moves there. */
-  reconnect?: (edgeId: string, end: EdgeEnd, nodeId: string) => boolean;
+  reconnect?: (edgeId: string, end: EdgeEnd, nodeId: string, side?: Side) => boolean;
   /** Editing only: a boundary resized by hand adopts the nodes now inside it and releases those outside (D12). */
   boundaryResized?: (groupId: string) => void;
 }
