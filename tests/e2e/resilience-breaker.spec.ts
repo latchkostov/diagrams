@@ -42,7 +42,10 @@ test("the Inspector clearly edits a simulation breaker override, persists Off an
   await expect(page.getByTestId("live-controls")).toBeVisible();
   await waitForCameraIdle(page);
   await page.getByTestId("edge-call").dblclick();
-  if (!(await field.isVisible())) await page.getByTestId("inspector-section-edge-simulation").click();
+  const section = page.getByTestId("inspector-section-edge-simulation");
+  await expect(section).toBeVisible();
+  if ((await section.getAttribute("aria-expanded")) !== "true") await section.click();
+  await expect(section).toHaveAttribute("aria-expanded", "true");
   await expect(field).toHaveText("Off");
   await expect(page.getByTestId("call-override-breaker")).toContainText("On");
   await page.screenshot({ path: test.info().outputPath("breaker-override.png") });
