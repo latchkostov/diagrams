@@ -24,8 +24,8 @@ node node_modules/vitest/vitest.mjs run src/checks/examples.test.ts src/sim/scal
 Round one: six failed, 208 passed; it reproduced every failure except sampled
 CPU residence. Round two: seven failed, 207 passed; all seven original test
 names and timeout errors reproduced. Both runs had no type errors. No full
-suite was run on master. `src/checks/` and `src/sim/` have no diff between this
-branch and that master commit.
+suite was run on master. At the tested `d72409df` tree, `src/checks/` and
+`src/sim/` had no diff against that master commit.
 
 Local evidence: `tests/.output/edges-252-unit.log` and
 `tests/.output/edges-master-units-{1,2}.log`. The clean archive is under

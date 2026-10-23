@@ -1,0 +1,3 @@
+## Sampling: narrowed retries count only admitted requests as sent
+
+A retry of a call that a half-open breaker had narrowed to its test calls was addressed at the caller's whole cohort before taking its narrowed size. When the call used a different request route from the caller's, that route counted the whole cohort as sent again: at scale 100, five retried test calls added 100 sent requests. The retry now takes the branch's size before it is addressed, so the route counts the five requests scale 1 retries. Route completion credit is unchanged: the retry still completes its call's route once for the whole cohort.
