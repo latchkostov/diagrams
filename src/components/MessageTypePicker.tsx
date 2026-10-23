@@ -38,20 +38,28 @@ export function TypePicker({
     if (!adding && wasAdding.current) root.current?.querySelector<HTMLButtonElement>("button")?.focus();
     wasAdding.current = adding;
   }, [adding]);
-  // Rendering is bounded: imported vocabularies can be large. Past the limit every selected type still renders
-  // first (so it stays removable), and at most MAX_CHOICES unselected choices follow; the rest stay reachable
-  // through Add a type.
+  // Rendering is bounded: imported vocabularies and filters can be large. Past the limit, at most MAX_CHOICES selected
+  // types render first and at most MAX_CHOICES unselected ones follow. Further selections are counted and cleared
+  // together (Pass all); further choices stay reachable through Add a type.
   const all = [...new Set([...choices, ...value])];
   const selected = new Set(value);
+  const pinned = [...selected].slice(0, MAX_CHOICES);
+  const moreSelected = selected.size - pinned.length;
   const options =
-    all.length > MAX_CHOICES ? [...selected, ...all.filter((type) => !selected.has(type)).slice(0, MAX_CHOICES)] : all;
-  const hidden = all.length - options.length;
+    all.length > MAX_CHOICES ? [...pinned, ...all.filter((type) => !selected.has(type)).slice(0, MAX_CHOICES)] : all;
+  const hidden = all.length - options.length - moreSelected;
   const offered = new Set(choices);
-  // Deselecting a type nothing upstream sends removes its chip, focus included: continue at a neighbour.
+  // Deselecting a chip can remove it (nothing upstream sends it, or past the limit), focus included: continue at a
+  // neighbour.
   const removedChip = useRef<{ type: string; index: number }>(undefined);
   useLayoutEffect(() => {
     const removed = removedChip.current;
-    if (!removed || options.includes(removed.type)) return;
+    if (!removed) return;
+    if (options.includes(removed.type)) {
+      // Still listed once deselected: nothing to recover.
+      if (!selected.has(removed.type)) removedChip.current = undefined;
+      return;
+    }
     removedChip.current = undefined;
     const active = document.activeElement;
     if (active && active !== document.body && active.isConnected) return;
@@ -81,11 +89,11 @@ export function TypePicker({
                 key={type}
                 type="button"
                 className="message-type-chip"
-                aria-pressed={value.includes(type)}
+                aria-pressed={selected.has(type)}
                 data-testid={`inspector-${name}-option-${i}`}
                 onClick={() => {
-                  if (value.includes(type) && !choices.includes(type)) removedChip.current = { type, index: i };
-                  onChange(value.includes(type) ? value.filter((v) => v !== type) : [...value, type]);
+                  if (selected.has(type)) removedChip.current = { type, index: i };
+                  onChange(selected.has(type) ? value.filter((v) => v !== type) : [...value, type]);
                 }}
                 onKeyDown={(event) => {
                   const direction =
@@ -104,6 +112,21 @@ export function TypePicker({
               </button>
             ))}
             {!options.length && <small className="insp-note">{t("messageTypes.noUpstream")}</small>}
+            {moreSelected > 0 && (
+              <>
+                <small className="insp-note" data-testid={`inspector-${name}-more-selected`}>
+                  +{t("inspector.selectedCount", { count: moreSelected })}
+                </small>
+                <button
+                  type="button"
+                  className="insp-link"
+                  data-testid={`inspector-${name}-clear-all`}
+                  onClick={() => onChange([])}
+                >
+                  {t("messageTypes.passAll")}
+                </button>
+              </>
+            )}
           </div>
         ) : (
           <Dropdown

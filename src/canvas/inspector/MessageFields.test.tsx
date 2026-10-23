@@ -66,3 +66,14 @@ it("keeps every selected filter type listed and pressed past the choice limit", 
   expect(html).toMatch(/aria-pressed="true"[^>]*data-testid="inspector-filter-option-0"[^>]*>Type299</);
   expect(html).toMatch(/aria-pressed="true"[^>]*data-testid="inspector-filter-option-1"[^>]*>Custom</);
 });
+
+it("renders at most 100 selected chips of a 30,000-entry imported filter, with a bulk clear", () => {
+  const d = messageTypesFixture();
+  d.edges[1].props = { filter: Array.from({ length: 30_000 }, (_, i) => `F${i}`) };
+  const html = renderToStaticMarkup(<EdgeMessages edgeId="send" editor={editor(d)} />);
+  // 100 selected chips first, then the one unselected upstream type (Send).
+  expect(count(html, "inspector-filter-option-")).toBe(101);
+  expect(html.split('aria-pressed="true"').length - 1).toBe(100);
+  expect(html).toContain("+29,900 selected");
+  expect(html).toContain('data-testid="inspector-filter-clear-all"');
+});

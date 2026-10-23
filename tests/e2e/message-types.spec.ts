@@ -501,3 +501,88 @@ test("a large rename map stays paged: Add shows only the new rule, and more rule
   await expect(page.getByTestId("inspector-field-receives-25")).toBeFocused();
   expectNoErrors(consoleErrors);
 });
+
+test("a 30,000-entry imported filter stays bounded and clears to pass-all in one undoable step", async ({
+  page,
+  consoleErrors,
+}) => {
+  const diagram = messageTypesFixture();
+  diagram.edges[1].props = { filter: Array.from({ length: 30_000 }, (_, i) => `F${i}`) };
+  await open(page, "en", diagram);
+  const filter = async () => (await savedDiagram(page)).edges.find((e) => e.id === "send")?.props?.filter;
+  const chips = page.locator('[data-testid^="inspector-filter-option-"]');
+  await expect(page.getByTestId("inspector-filter-more-selected")).toHaveText("+29,900 selected");
+  await expect(chips).toHaveCount(101);
+  await page.getByTestId("inspector-filter-clear-all").click();
+  await expect.poll(filter).toBeUndefined();
+  await expect(page.getByTestId("inspector-carries")).toHaveText("SendCallback");
+  await expect(page.getByTestId("inspector-filter-more-selected")).toHaveCount(0);
+  await page.getByTestId("undo-button").click();
+  await expect.poll(async () => (await filter())?.length).toBe(30_000);
+  await expect(chips).toHaveCount(101);
+  await expect(page.getByTestId("inspector-filter-more-selected")).toBeVisible();
+  expectNoErrors(consoleErrors);
+});
+
+test("deselecting a known type beyond the choice limit keeps chip focus", async ({ page, consoleErrors }) => {
+  const diagram = messageTypesFixture();
+  diagram.simulations = [
+    {
+      id: "many",
+      title: "Many types",
+      traffic: Array.from({ length: 101 }, (_, i) => ({
+        id: `t${i}`,
+        node: "client",
+        messageType: `Type${i}`,
+        shape: { kind: "burst" as const, count: 1 },
+      })),
+    },
+  ];
+  diagram.edges[1].props = { filter: ["Type100"] };
+  await open(page, "en", diagram);
+  const first = page.getByTestId("inspector-filter-option-0");
+  await expect(first).toHaveText("Type100");
+  await first.focus();
+  await page.keyboard.press("Space");
+  await expect
+    .poll(async () => (await savedDiagram(page)).edges.find((e) => e.id === "send")?.props?.filter)
+    .toBeUndefined();
+  // Type100 is past the listed choices once unselected: focus moves to the chip now in its place.
+  await expect(page.getByTestId("inspector-filter-option-0")).not.toHaveText("Type100");
+  await expect(page.getByTestId("inspector-filter-option-0")).toBeFocused();
+  expectNoErrors(consoleErrors);
+});
+
+test("an appended paged rule stays visible and focused after rekeying", async ({ page, consoleErrors }) => {
+  const diagram = messageTypesFixture();
+  diagram.nodes[1].props = {
+    emits: Object.fromEntries(Array.from({ length: 2_000 }, (_, i) => [`T${i}`, `T${i}Out`])),
+  };
+  await open(page, "en", diagram);
+  await fitDiagram(page);
+  await page.getByTestId("node-api").click();
+  await waitForSelectionSettled(page);
+  await page.getByTestId("inspector-section-node-simulation").click();
+  const rules = page.locator('[data-testid^="inspector-emits-row-"]');
+  await page.getByTestId("inspector-emits-add").click();
+  const receives = page.getByTestId("inspector-field-receives-2000");
+  await expect(receives).toBeFocused();
+  // Unchanged, Any message type, Send (its own), Callback.
+  await page.keyboard.press("Enter");
+  await page.keyboard.press("Home");
+  for (let i = 0; i < 3; i++) await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("Enter");
+  await expect
+    .poll(async () => {
+      const emits = (await savedDiagram(page)).nodes.find((n) => n.id === "api")?.props?.emits as Record<
+        string,
+        string
+      >;
+      return [Object.keys(emits).length, emits.Callback, emits.Send];
+    })
+    .toEqual([2_001, "Send", undefined]);
+  await expect(page.getByTestId("inspector-emits-row-2000")).toBeVisible();
+  await expect(rules).toHaveCount(26);
+  await expect(receives).toBeFocused();
+  expectNoErrors(consoleErrors);
+});
