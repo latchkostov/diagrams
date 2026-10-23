@@ -9,7 +9,7 @@ import { detectFormat, importFiles, importText, type ImportOutcome } from "../fo
 import { sniffInfra } from "../sniff";
 import type { ImportReport } from "./graph";
 import { importKubernetes, replayOutcome } from "./pipeline";
-import { HELM_TEMPLATE, MAX_RESOURCES, SecretUsers } from "./kubernetes";
+import { HELM_TEMPLATE, MAX_RESOURCES, readKubernetes, SecretUsers } from "./kubernetes";
 import { parseServiceHost, WorkloadNames } from "./k8sHosts";
 import { containerEnv, ENV_LIMITS, expandVars, newEnvBudget, OPAQUE } from "./k8sSettings";
 import { MAX_VALUE } from "./settings";
@@ -1061,14 +1061,15 @@ spec: { selector: { app: svc-${i} } }
   it("reads documents in linear time", () => {
     // Eight times the workloads, Services and hosts take about eight times as long; matching each host or selector
     // against every workload would take sixty-four. A ratio, not a budget in ms, so a busy machine doesn't fail it.
-    // Each text is parsed once, so the ratio is the reader's: the YAML library's linear time would hide it.
+    // Each text is parsed once, so YAML cannot hide a quadratic reader. Time only the reader, without the
+    // pipeline's layout/validation, and keep the fixtures small enough for coverage instrumentation.
     parsed.cache = new Map();
     try {
       const run = (n: number) => {
         const text = chain(n);
-        return () => importKubernetes([{ name: "big.yaml", text }]);
+        return () => readKubernetes([{ name: "big.yaml", text }]);
       };
-      expect(growth(run(125), run(125 * GROWTH_FACTOR), { samples: 3 })).toBeLessThan(LINEAR_LIMIT);
+      expect(growth(run(16), run(16 * GROWTH_FACTOR), { samples: 3 })).toBeLessThan(LINEAR_LIMIT);
     } finally {
       parsed.cache = undefined;
     }

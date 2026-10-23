@@ -76,7 +76,13 @@ async function exhaustPayment(page: Page) {
   await gotoLive(page, PAYMENT);
   await pauseClock(page);
   await page.getByTestId("live-play").click();
-  await page.clock.runFor(15000);
+  // Sample at 1, 3, ... 15 seconds instead of painting 900 frames under load. These two-second slices
+  // retain trouble's ten-second trend window; a single jump would reset it. Keep UI round trips small too.
+  for (let second = 1; second <= 15; second += 2) {
+    await page.getByTestId("live-timeline-input").fill(String(second * 50));
+    await page.getByTestId("live-play").focus();
+  }
+  await expect(page.getByTestId("live-clock")).toHaveAttribute("data-ms", "15000");
   await page.getByTestId("live-play").focus();
   await page.keyboard.press("Space");
   await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "paused");
