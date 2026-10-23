@@ -1,6 +1,6 @@
 import { TypePicker } from "../../components/MessageTypePicker";
 import { t } from "../../i18n";
-import { cachedMessageTypesAt } from "../../model/messageTypes";
+import { useMessageTypes } from "./useMessageTypes";
 import { useLayoutEffect, useRef, useState } from "react";
 import type { DiagramFile } from "../../model/types";
 import type { EditorApi } from "../../editor/types";
@@ -12,13 +12,21 @@ export function EdgeMessages({
   readDiagram,
   edgeId,
   editor,
+  paused,
 }: {
   readDiagram?: () => DiagramFile;
   edgeId: string;
   editor: EditorApi;
+  paused?: boolean;
 }) {
   const diagram = readDiagram?.() ?? editor.getDiagram();
-  const types = cachedMessageTypesAt(diagram);
+  const { types, updating } = useMessageTypes(diagram, paused);
+  if (!types)
+    return (
+      <p className="insp-note" role="status">
+        {t("common.loading")}
+      </p>
+    );
   const props = diagram.edges.find((edge) => edge.id === edgeId)?.props ?? {};
   const filter = Array.isArray(props.filter) ? props.filter.filter((v): v is string => typeof v === "string") : [];
   const carries = [...(types.carried.get(edgeId) ?? [])];
@@ -47,6 +55,7 @@ export function EdgeMessages({
         name="filter"
         label={t("messageTypes.onlyPass")}
         multiple
+        updating={updating}
         choices={[...(types.upstream.get(edgeId) ?? [])]}
         value={filter}
         hint={t("messageTypes.filterHint")}
@@ -83,11 +92,13 @@ export function NodeMessages({
   nodeId,
   editor,
   source,
+  paused,
 }: {
   readDiagram?: () => DiagramFile;
   nodeId: string;
   editor: EditorApi;
   source: boolean;
+  paused?: boolean;
 }) {
   const { controller } = useInteractionOrLocal();
   const addButton = useRef<HTMLButtonElement>(null);
@@ -109,7 +120,13 @@ export function NodeMessages({
   // Declared after the effect above, so a move it requests runs in this same commit.
   useLayoutEffect(() => controller.rendered());
   const diagram = readDiagram?.() ?? editor.getDiagram();
-  const types = cachedMessageTypesAt(diagram);
+  const { types } = useMessageTypes(diagram, paused);
+  if (!types)
+    return (
+      <p className="insp-note" role="status">
+        {t("common.loading")}
+      </p>
+    );
   const node = diagram.nodes.find((n) => n.id === nodeId)!;
   const emits = node.props?.emits;
   const rows: [string, string][] =

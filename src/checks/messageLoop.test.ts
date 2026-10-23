@@ -3,7 +3,8 @@ import { messageTypesFixture } from "../lab/messageTypesFixture";
 import { applyOps } from "../ai";
 import * as propagation from "../model/messageTypes";
 import { messageTypesAt } from "../model/messageTypes";
-import { runChecks } from "./run";
+import { runChecks, summarize } from "./run";
+import { FINDINGS_BUDGET, FINDING_NAME_MAX } from "./findingBudget";
 import { createSimulationRun } from "../sim/simulation";
 import { buildContext } from "./context";
 import { createEngine } from "../sim/engine";
@@ -57,6 +58,41 @@ function routedFixture(): Pick<DiagramFile, "format" | "planning" | "nodes" | "e
 }
 
 describe("message-loop", () => {
+  it("bounds a 2,000,000-character type amplified across 1,000 independent loops before building findings", () => {
+    const type = "X".repeat(2_000_000);
+    const d: DiagramFile = {
+      format: "diagrams/v1",
+      title: "Bounded loops",
+      nodes: [{ id: "source", stencil: "client.browser", label: "Source", x: 0, y: 0, props: { messageType: type } }],
+      edges: [],
+    };
+    for (let i = 0; i < 1_000; i++) {
+      const id = `processor${i}`;
+      d.nodes.push({ id, stencil: "service.go", label: `Processor ${i}`, x: 0, y: 0 });
+      d.edges.push({ id: `in${i}`, from: "source", to: id }, { id: `loop${i}`, from: id, to: id });
+    }
+    // The input and traversal stay intact; only the worker's display output is bounded.
+    const ctx = buildContext(d);
+    const types = ctx.messageTypes();
+    expect(types.complete).toBe(true);
+    expect(types.loops).toHaveLength(1_000);
+    expect(types.loops[999].type).toBe(type);
+    expect(types.carried.get("loop999")).toContain(type);
+    const result = runChecks(d, { rules: ["message-loop"], context: ctx });
+    expect(result.findings.length).toBeGreaterThan(0);
+    const count = result.omitted?.find((o) => o.rule === "message-loop")?.count;
+    expect(count).toBeGreaterThan(0);
+    expect(result.findings.length + count!).toBe(1_000);
+    // Inspect string lengths BEFORE serializing: removing the fix must fail safely, never allocate 4 GB.
+    for (const finding of result.findings) {
+      expect(finding.message.length).toBeLessThan(FINDING_NAME_MAX * 2);
+      expect(finding.messageLoop!.type.length).toBeLessThanOrEqual(FINDING_NAME_MAX);
+      expect(finding.messageLoop!.type).toMatch(/…$/);
+    }
+    expect(JSON.stringify(result).length).toBeLessThan(FINDINGS_BUDGET);
+    expect(summarize(result)).toContain(`${count} more message-loop findings not listed`);
+    expect(d.nodes[0].props!.messageType).toBe(type);
+  });
   it("withholds a filter when a converging source masks lost deliveries", () => {
     const d = messageTypesFixture();
     d.nodes[0].props = { messageType: "A", ratePerSec: 0 };

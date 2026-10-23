@@ -29,28 +29,10 @@ import { requestResponseMs } from "../sim/timing";
 import { activeCall } from "../sim/topology";
 import { fitsRef } from "./context";
 import type { Simulation } from "../model/types";
+import { findingName, FINDINGS_BUDGET as REQUEST_FINDINGS_BUDGET, omission } from "./findingBudget";
+export { findingName, FINDING_NAME_MAX, FINDINGS_BUDGET as REQUEST_FINDINGS_BUDGET } from "./findingBudget";
 
 const round = (n: number) => Math.round(n * 1000) / 1000;
-
-/**
- * Names repeated in findings are bounded: a call's finding repeats its callee's name, so one long imported label
- * would otherwise be copied once per connection into the worker's reply, the cache and the Checks card. The file
- * format's own label limit; never cut inside a character. The diagram keeps its labels.
- */
-export const FINDING_NAME_MAX = 200;
-export function findingName(name: string): string {
-  if (name.length <= FINDING_NAME_MAX) return name;
-  // Characters, not UTF-16 units: a prefix twice the limit holds more than the limit's characters if any are cut.
-  const chars = Array.from(name.slice(0, 2 * FINDING_NAME_MAX + 2));
-  return chars.length <= FINDING_NAME_MAX ? name : `${chars.slice(0, FINDING_NAME_MAX - 1).join("")}…`;
-}
-
-/**
- * At most this many characters of request findings (as JSON) per diagram, so a diagram with thousands of calls can't
- * build a reply too big to send or show. Warnings come first; past the budget, later timeout suggestions (in diagram
- * order) are left out. Normal diagrams use a small fraction of it.
- */
-export const REQUEST_FINDINGS_BUDGET = 1_000_000;
 
 /**
  * Whether edit ops can name every element these change: an imported id longer than an op reference allows can't be
@@ -390,21 +372,6 @@ function computeRequestFindings(ctx: CheckContext): Finding[] {
   }
   for (const [rule, count] of omitted) findings.push(omission(rule, count));
   return findings;
-}
-
-/** How many of a rule's findings didn't fit the budget: runChecks reports it as `omitted`, never as a finding. */
-function omission(rule: Finding["rule"], count: number): Finding {
-  return {
-    id: `${rule}:*omitted`,
-    rule,
-    severity: "suggestion",
-    target: "",
-    elements: [],
-    title: "",
-    message: "",
-    rationale: "",
-    omitted: count,
-  };
 }
 
 export const blockedThreads: CheckRule = {

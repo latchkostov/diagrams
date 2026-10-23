@@ -1,4 +1,10 @@
-import { cachedMessageTypesAt, sameElements, sameRoutingFields } from "../../model/messageTypes";
+import {
+  cachedMessageTypesAt,
+  sameElements,
+  sameRoutingFields,
+  sameEdgeRoutingFields,
+  implicitMessageLabels,
+} from "../../model/messageTypes";
 import type { DiagramFile } from "../../model/types";
 import type { DiagramFlowEdge, DiagramFlowNode, FlowNode } from "../types";
 import type { MessageTypes } from "../../model/messageTypes";
@@ -12,19 +18,18 @@ export const TIP_CHARS = 240;
 const texts = new WeakMap<MessageTypes, Map<string, string>>();
 
 /** Only these flow fields reach the analysis (see sameRoutingFields); geometry, measurements and selection never do. */
-const sameNode = (a: FlowNode, b: FlowNode) =>
+const sameNode = (a: FlowNode, b: FlowNode, simulations: DiagramFile["simulations"]) =>
   a === b ||
   (a.id === b.id &&
     a.type === b.type &&
-    (a.type !== "diagram" || sameRoutingFields(a.data, (b as DiagramFlowNode).data)));
+    (a.type !== "diagram" ||
+      sameRoutingFields(a.data, (b as DiagramFlowNode).data, implicitMessageLabels(simulations).has(a.id))));
 const sameEdge = (a: DiagramFlowEdge, b: DiagramFlowEdge) =>
   a === b ||
   (a.id === b.id &&
     a.source === b.source &&
     a.target === b.target &&
-    a.data?.kind === b.data?.kind &&
-    a.data?.relation === b.data?.relation &&
-    a.data?.props === b.data?.props);
+    sameEdgeRoutingFields(a.data ?? {}, b.data ?? {}));
 
 let last:
   | {
@@ -49,7 +54,7 @@ export function carriedTypes(
     last &&
     last.metadata?.simulations === metadata?.simulations &&
     last.metadata?.planning === metadata?.planning &&
-    (last.nodes === nodes || sameElements(last.nodes, nodes, sameNode)) &&
+    (last.nodes === nodes || sameElements(last.nodes, nodes, (a, b) => sameNode(a, b, metadata?.simulations))) &&
     (last.edges === edges || sameElements(last.edges, edges, sameEdge))
   ) {
     last.nodes = nodes;
