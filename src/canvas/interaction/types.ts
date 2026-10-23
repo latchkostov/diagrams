@@ -108,7 +108,9 @@ export type FocusTarget =
   /** The Live bar's control that opens its side panels ("⋯", data-live-panel-opener). */
   | { kind: "panelOpener" }
   /** A field (by test id) in one of Live's side panels: waits while the panel is open and the field isn't yet. */
-  | { kind: "panelField"; panel: string; field: string };
+  | { kind: "panelField"; panel: string; field: string }
+  /** A node's or a connection's Live readout card (portalled outside canvas-wrap), while it is shown. */
+  | { kind: "readout"; item: "node" | "edge"; id: string };
 
 /**
  * When a focus command runs. `now`: at once. `commit`: once React has committed the change that caused it, after
@@ -161,6 +163,13 @@ export type FocusCommand =
 /** The Esc on the canvas, a menu closing, a selection with its cause, ...: everything the focus policy decides on. */
 export type FocusEvent =
   | { type: "readout.closed"; target: { kind: "node" | "edge"; id: string; pinned: boolean }; reason: MenuCloseReason }
+  /**
+   * Tab or Shift+Tab steps into an item's readout card (readout.ts, readoutTab). `opening`: Shift+Tab from the next
+   * node opens it with this step, so it is drawn by the commit that follows; else it is already shown.
+   */
+  | { type: "readout.entered"; target: { kind: "node" | "edge"; id: string }; opening: boolean }
+  /** Tab leaves a readout past the canvas's last node: focus goes to its item now, and the browser's Tab goes on. */
+  | { type: "readout.left"; target: { kind: "node" | "edge"; id: string } }
   | {
       type: "menu.closed";
       kind: MenuFocusKind;

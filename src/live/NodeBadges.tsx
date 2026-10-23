@@ -170,9 +170,10 @@ const noInteraction = () => () => {};
 function useHoveredNode() {
   const interaction = useInteraction();
   const domNode = useStore((s) => s.domNode);
+  // The readout's own subscription: hovering re-renders this layer, never the canvas root.
   const pointed = useSyncExternalStore(
-    interaction?.subscribe ?? noInteraction,
-    () => interaction?.getSnapshot().readout ?? null,
+    interaction?.subscribeReadout ?? noInteraction,
+    () => interaction?.getReadout() ?? null,
     () => null,
   );
   useEffect(() => {
@@ -191,7 +192,7 @@ function useHoveredNode() {
     const point = (e: PointerEvent) => {
       const target = itemAt(e.target instanceof Element ? e.target : null);
       if (!target) {
-        const open = interaction.getSnapshot().readout;
+        const open = interaction.getReadout();
         const card = document.querySelector<HTMLElement>("[data-live-readout]");
         const anchor =
           open && domNode.querySelector<HTMLElement>(`[data-testid="${open.kind}-${CSS.escape(open.id)}"]`);

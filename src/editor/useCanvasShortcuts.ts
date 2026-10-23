@@ -10,12 +10,15 @@ const TOWARD: Record<string, Toward> = { ArrowRight: "right", ArrowLeft: "left",
 /** Keyboard selection between nodes (D14): Tab, Shift+Tab, Ctrl+Alt+arrows, and Ctrl+Alt+] / [ to a node's edges. */
 export type NavStep = "next" | "prev" | Toward | "edge-out" | "edge-in";
 
-/** On a node or an edge of the canvas (or the canvas itself): where Tab steps between nodes. */
+/**
+ * On a node or an edge of the canvas (or the canvas itself): where Tab steps between nodes. A Live readout card is
+ * portalled outside canvas-wrap; navigation bridges it into the reading order and checks it is this canvas's.
+ */
 const onCanvasItem = (t: EventTarget | null) =>
   t instanceof Element &&
-  !!t.closest('[data-testid="canvas-wrap"]') &&
-  (t.matches('[data-testid="canvas-wrap"]') ||
-    !!t.closest(".react-flow__node, .react-flow__edge, [data-live-node-detail]")) &&
+  ((!!t.closest('[data-testid="canvas-wrap"]') &&
+    (t.matches('[data-testid="canvas-wrap"]') || !!t.closest(".react-flow__node, .react-flow__edge"))) ||
+    !!t.closest("[data-live-readout]")) &&
   !isEditableTarget(t);
 
 /** If no `paste` event follows Ctrl+V within this time, paste the internal clipboard. */

@@ -41,7 +41,7 @@ it("leaves Enter's default activation to a control nested inside a node", () => 
   const pinReadout = vi.fn();
   const interaction = {
     liveKey: liveKeys,
-    getSnapshot: () => ({ readout: null }),
+    getReadout: () => null,
     pinReadout,
   } as unknown as InteractionController;
   function Harness() {
@@ -76,7 +76,7 @@ it("lets the recorder own Escape while a readout is pinned", () => {
     useLiveKeyboard({
       interaction: {
         liveKey: liveKeys,
-        getSnapshot: () => ({ readout: { kind: "node", id: "a", pinned: true } }),
+        getReadout: () => ({ kind: "node", id: "a", pinned: true }),
         closeReadout,
       },
       session: { controller: { getState: () => ({}) }, traceRef: {} },
@@ -120,7 +120,7 @@ it.each([
     useLiveKeyboard({
       presenting,
       editor: editable ? {} : undefined,
-      interaction: { liveKey: liveKeys, getSnapshot: () => ({ readout: null }), pinReadout },
+      interaction: { liveKey: liveKeys, getReadout: () => null, pinReadout },
       session: { controller: { getState: () => ({ run: { waiting } }) }, traceRef: {} },
       spotlight: { slowRef: {} },
     } as unknown as Parameters<typeof useLiveKeyboard>[0]);
@@ -134,4 +134,50 @@ it.each([
     stopImmediatePropagation: vi.fn(),
   } as unknown as KeyboardEvent);
   expect(pinReadout).toHaveBeenCalledTimes(pins ? 1 : 0);
+});
+
+it.each([
+  { key: "Enter", pinned: "false", pins: true },
+  { key: "Enter", pinned: "true", pins: false },
+  { key: " ", pinned: "false", pins: false },
+])("$key on a focused summary card pins it only while unpinned (pinned: $pinned)", ({ key, pinned, pins }) => {
+  let listener!: (event: KeyboardEvent) => void;
+  class Target {
+    dataset = { liveReadout: "edge", item: "call", pinned };
+    closest(selector: string) {
+      return selector === "[data-live-readout]" || selector.includes("[data-canvas-reading-region]") ? this : null;
+    }
+  }
+  const card = new Target();
+  vi.stubGlobal("Element", Target);
+  vi.stubGlobal("document", { querySelector: () => null });
+  vi.stubGlobal("window", {
+    addEventListener: (_key: string, handler: typeof listener) => {
+      listener = handler;
+    },
+  });
+  const pinReadout = vi.fn(),
+    togglePlaying = vi.fn();
+  function Harness() {
+    useLiveKeyboard({
+      interaction: {
+        liveKey: liveKeys,
+        getReadout: () => ({ kind: "edge", id: "call", pinned: pinned === "true" }),
+        pinReadout,
+      },
+      session: { controller: { getState: () => ({}), togglePlaying }, traceRef: {} },
+      spotlight: { slowRef: {} },
+    } as unknown as Parameters<typeof useLiveKeyboard>[0]);
+    return null;
+  }
+  renderToStaticMarkup(<Harness />);
+  listener({
+    key,
+    target: card,
+    preventDefault: vi.fn(),
+    stopImmediatePropagation: vi.fn(),
+  } as unknown as KeyboardEvent);
+  expect(pinReadout.mock.calls).toEqual(pins ? [[{ kind: "edge", id: "call" }]] : []);
+  // The card's own Space scrolls it: playback never toggles from inside a readout.
+  expect(togglePlaying).not.toHaveBeenCalled();
 });

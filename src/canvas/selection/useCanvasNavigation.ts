@@ -25,7 +25,7 @@ import { annotationAriaLabel, annotationTitle } from "../annotations";
 import { isAnnotationNode, isDiagramNode, isGroupNode } from "../types";
 import { GROUP_PREFIX, type DiagramFlowEdge, type FlowNode, type GroupFlowNode } from "../types";
 import { useRevealFocused, type useRevealSelection, type CameraController } from "../camera";
-import type { FocusApi } from "../interaction";
+import { readoutStop, readoutTab, type FocusApi } from "../interaction";
 
 export function useSelectionSummary(nodes: FlowNode[], edges: DiagramFlowEdge[]) {
   const diagramNodes = useMemo(() => nodes.filter(isDiagramNode), [nodes]);
@@ -175,7 +175,8 @@ export function useCanvasNavigation({
       const ns = getNodes().filter((n) => !n.hidden);
       const es = store.getState().edges.filter((e) => !e.hidden);
       const el = from instanceof Element ? from : null;
-      const detailOwner = el?.closest<HTMLElement>("[data-live-node-detail]")?.dataset.liveNodeDetail;
+      // A Live readout card is portalled outside canvas-wrap: it stands in its item's place in the reading order.
+      const reading = readoutStop(el);
       // A step's destination until focus lands there, a node's or an edge's: a second Tab or Ctrl+Alt+] in the same
       // frame (two presses queued behind a busy moment) goes on from there, not from what the key event still targets.
       const pending = interaction.pendingTarget();
@@ -183,12 +184,20 @@ export function useCanvasNavigation({
         ? pending.kind === "node"
           ? pending.id
           : undefined
-        : (detailOwner ?? el?.closest(".react-flow__node")?.getAttribute("data-id") ?? undefined);
+        : reading
+          ? reading.target.kind === "node"
+            ? reading.target.id
+            : undefined
+          : (el?.closest(".react-flow__node")?.getAttribute("data-id") ?? undefined);
       const focusedEdge = pending
         ? pending.kind === "edge"
           ? pending.id
           : undefined
-        : (el?.closest(".react-flow__edge")?.getAttribute("data-id") ?? undefined);
+        : reading
+          ? reading.target.kind === "edge"
+            ? reading.target.id
+            : undefined
+          : (el?.closest(".react-flow__edge")?.getAttribute("data-id") ?? undefined);
       const sel = editor.getSelection();
       const selectedFlowIds = [...sel.nodeIds, ...sel.groupIds.map((g) => GROUP_PREFIX + g)];
       const current = focusedNode ?? (!focusedEdge && selectedFlowIds.length === 1 ? selectedFlowIds[0] : undefined);
@@ -231,21 +240,65 @@ export function useCanvasNavigation({
         return true;
       };
 
+      /** Selects and focuses a connection (next frame), bringing it into view; false if it has gone. */
+      const goEdge = (id: string, where = "") => {
+        const e = es.find((x) => x.id === id);
+        if (!e) return false;
+        editor.select({ edgeIds: [e.id] });
+        interaction.dispatch({ type: "selection.changed", cause: "keyboard", target: { kind: "edge", id: e.id } });
+        revealSelection(undefined, 0, "navigation");
+        const said = edgeAriaLabel(
+          labelOf(e.source),
+          labelOf(e.target),
+          e.data?.kind,
+          e.data?.label,
+          e.data?.relation,
+          isDenyRule(e.data?.props),
+        );
+        const settings = settingsSummary(edgeSettings(e.data));
+        announce(`${said}.${settings ? ` ${settings}.` : ""}${where}`);
+        return true;
+      };
+
       if (step === "next" || step === "prev") {
-        // Capture owns node → reading region → next node; embeds retain their local fallback.
-        if (detailOwner && step === "prev") return goNode(detailOwner);
-        if (!detailOwner && focusedNode && step === "next") {
-          const detail = document.getElementById(`live-node-detail-${encodeURIComponent(focusedNode)}`);
-          if (detail?.hasAttribute("data-live-node-detail")) {
-            interaction.dispatch({ type: "node.details", target: detail });
-            return true;
-          }
+        const back = step === "prev";
+        // Inside a readout (readout.ts, readoutTab): back to its item, on past it, or the browser's Tab within it.
+        if (reading && !pending) {
+          const owner = reading.target;
+          // Another canvas's readout, or one whose item has gone: not this canvas's Tab.
+          if (!(owner.kind === "node" ? ns : es).some((x) => x.id === owner.id)) return false;
+          const way = readoutTab(reading, back);
+          if (way === "native") return false;
+          if (way === "owner") return owner.kind === "node" ? goNode(owner.id) : goEdge(owner.id);
+          interaction.releaseReadout();
+          // From a connection's readout, the order goes on from its source.
+          const after = owner.kind === "node" ? owner.id : es.find((e) => e.id === owner.id)?.source;
+          const next = after ? stepInOrder(order, after) : null;
+          if (next) return goNode(next);
+          // Past the last node, Tab leaves the canvas from the readout's item, as it does from the item itself.
+          interaction.dispatch({ type: "readout.left", target: owner });
+          return false;
+        }
+        // Tab from an item whose readout is shown enters the readout before the next node.
+        const item = focusedNode
+          ? { kind: "node" as const, id: focusedNode }
+          : focusedEdge
+            ? { kind: "edge" as const, id: focusedEdge }
+            : undefined;
+        if (!back && !pending && item && interaction.readoutShown(item)) {
+          interaction.enterReadout(item, false);
+          return true;
         }
         // From an edge, the order goes on from its source.
         const start = current ?? (focusedEdge ? es.find((e) => e.id === focusedEdge)?.source : undefined);
         if (!start && el?.matches('[data-testid="canvas-wrap"]') === false) return false;
-        const next = start ? stepInOrder(order, start, step === "prev") : (rovingId ?? order[0]);
-        return next ? goNode(next) : false;
+        const next = start ? stepInOrder(order, start, back) : (rovingId ?? order[0]);
+        if (!next || !goNode(next)) return false;
+        // Shift+Tab retraces Tab: in Live, back through the previous node's readout before the node itself.
+        const prior = ns.find((n) => n.id === next);
+        if (back && start && prior && isDiagramNode(prior) && interaction.getReadout())
+          interaction.enterReadout({ kind: "node", id: next }, true);
+        return true;
       }
 
       if (step === "edge-out" || step === "edge-in") {
@@ -264,22 +317,7 @@ export function useCanvasNavigation({
         }
         const i = edge ? list.findIndex((e) => e.id === edge.id) : -1;
         const e = list[(i + 1) % list.length];
-        editor.select({ edgeIds: [e.id] });
-        interaction.dispatch({ type: "selection.changed", cause: "keyboard", target: { kind: "edge", id: e.id } });
-        revealSelection(undefined, 0, "navigation");
-        const said = edgeAriaLabel(
-          labelOf(e.source),
-          labelOf(e.target),
-          e.data?.kind,
-          e.data?.label,
-          e.data?.relation,
-          isDenyRule(e.data?.props),
-        );
-        const settings = settingsSummary(edgeSettings(e.data));
-        announce(
-          `${said}.${settings ? ` ${settings}.` : ""} ${out ? "Outgoing" : "Incoming"} ${list.indexOf(e) + 1} of ${list.length}.`,
-        );
-        return true;
+        return goEdge(e.id, ` ${out ? "Outgoing" : "Incoming"} ${list.indexOf(e) + 1} of ${list.length}.`);
       }
 
       // Ctrl+Alt+arrows: the nearest node that way (boundaries and zones are backdrops, not stops).

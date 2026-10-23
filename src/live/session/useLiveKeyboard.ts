@@ -14,6 +14,8 @@ const ESC_OWNERS = [
   '[data-testid="sim-panel"]',
   '[data-testid="capacity-panel"]',
 ].join(",");
+/** An open tooltip (a node's dependency list) closes on its own Esc first; Live readouts are the readout level. */
+const ESC_TOOLTIPS = '[role="tooltip"]:not([data-live-readout])';
 /** A selection is cleared before Esc backs out of a trace or live view. */
 const SELECTED = ".react-flow__node.selected, .react-flow__edge.selected";
 
@@ -29,7 +31,7 @@ export function useLiveKeyboard({
   session: LiveSessionState;
   spotlight: TraceSpotlight;
   /** The canvas's interaction controller: it decides which level takes the key (liveKeys.ts) and journals it. */
-  interaction: Pick<InteractionController, "liveKey" | "getSnapshot" | "pinReadout" | "closeReadout">;
+  interaction: Pick<InteractionController, "liveKey" | "getReadout" | "pinReadout" | "closeReadout">;
 }) {
   const { controller, traceRef, setTrace } = session;
   const { slowRef } = spotlight;
@@ -50,13 +52,18 @@ export function useLiveKeyboard({
               : null;
       if (!key) return;
       const t = e.target;
-      const reading = interaction.getSnapshot().readout;
+      const reading = interaction.getReadout();
       const item =
         t instanceof Element
           ? t.closest<HTMLElement>(".react-flow__node-diagram[data-id], .react-flow__edge[data-id]")
           : null;
+      // A focused, unpinned summary card (Tab reaches it from its item): Enter pins it, as a click does.
+      const card = t instanceof Element ? t.closest<HTMLElement>("[data-live-readout]") : null;
+      const summary =
+        key === "enter" && !!card && t === card && !!card.dataset.liveReadout && card.dataset.pinned !== "true";
       const control =
         t instanceof Element &&
+        !summary &&
         !!t.closest(
           'button, select, a, [data-editor-overlay], [data-canvas-reading-region], [role="separator"], [role="button"], summary',
         );
@@ -74,8 +81,8 @@ export function useLiveKeyboard({
         editable: isEditableTarget(t),
         control,
         readout: !!reading,
-        readoutTarget: !!item && t === item && !(canName && item.classList.contains("selected")),
-        owner: !!document.querySelector(ESC_OWNERS),
+        readoutTarget: summary || (!!item && t === item && !(canName && item.classList.contains("selected"))),
+        owner: !!document.querySelector(ESC_OWNERS) || (key === "escape" && !!document.querySelector(ESC_TOOLTIPS)),
         selection,
         // The canvas clears its selection when it has focus; otherwise live view clears it (no dead end).
         canvasFocus: inCanvas(t) && !(t instanceof Element && t.closest('[data-testid="trace-card"]')),
@@ -92,13 +99,14 @@ export function useLiveKeyboard({
           interaction.closeReadout("escape");
           return;
         case "pin-readout":
-          if (!item) return;
+          if (!summary && !item) return;
           e.preventDefault();
           e.stopImmediatePropagation();
-          interaction.pinReadout({
-            kind: item.classList.contains("react-flow__edge") ? "edge" : "node",
-            id: item.dataset.id!,
-          });
+          interaction.pinReadout(
+            summary
+              ? { kind: card!.dataset.liveReadout === "edge" ? "edge" : "node", id: card!.dataset.item! }
+              : { kind: item!.classList.contains("react-flow__edge") ? "edge" : "node", id: item!.dataset.id! },
+          );
           return;
         case "selection":
           editor?.clearSelection();

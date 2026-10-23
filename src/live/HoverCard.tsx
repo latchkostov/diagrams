@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { useStore } from "@xyflow/react";
 import { useInteraction } from "../canvas/interaction";
@@ -26,6 +26,10 @@ export function HoverCard({ kind, id, name, type, pinned, presenting, summary, h
   const domNode = useStore((s) => s.domNode);
   const transform = useStore((s) => s.transform);
   const [open, setOpen] = useState<string | null>(null);
+  // Opaque DOM ids: an imported item id may hold any UTF-16 (an unpaired surrogate can't be URI-encoded).
+  const uid = useId();
+  const cardId = `${uid}card`,
+    descriptionId = `${uid}description`;
   const problem = summary.problems[0];
   useLayoutEffect(() => {
     const card = ref.current;
@@ -33,8 +37,9 @@ export function HoverCard({ kind, id, name, type, pinned, presenting, summary, h
     const anchor = domNode.querySelector<HTMLElement>(`[data-testid="${kind}-${CSS.escape(id)}"]`);
     if (!anchor) return;
     const wrap = domNode.closest('[data-testid="canvas-wrap"]') ?? domNode;
+    // Callouts, the bar, the Inspector and a waiting narration (its Continue) stay actionable.
     const protectedControls =
-      '[data-canvas-overlay], [data-testid="live-controls"], [data-testid="live-toggle"], [data-testid="inspector"]';
+      '[data-canvas-overlay], [data-testid="live-note"][data-waiting], [data-testid="live-controls"], [data-testid="live-toggle"], [data-testid="inspector"]';
     const place = () => {
       const bounds = domNode.getBoundingClientRect();
       const overlays = document.querySelectorAll<HTMLElement>('[data-testid="live-controls"]');
@@ -76,8 +81,9 @@ export function HoverCard({ kind, id, name, type, pinned, presenting, summary, h
           obstacles,
         );
       }
-      // A readout must never obscure an action, even in a pane with no free slot.
-      card.style.visibility = offset ? "" : "hidden";
+      // A hover summary never obscures an action, even in a pane with no free slot. A pinned card was asked for and
+      // may hold focus: it stays readable (its compact height scrolls) until Esc or a click elsewhere closes it.
+      card.style.visibility = offset || pinned ? "" : "hidden";
       card.style.left = `${left + (offset?.dx ?? 0)}px`;
       card.style.top = `${top + (offset?.dy ?? 0)}px`;
     };
@@ -98,12 +104,17 @@ export function HoverCard({ kind, id, name, type, pinned, presenting, summary, h
       )
         place();
     });
-    controls.observe(wrap, { childList: true, subtree: true, attributes: true, attributeFilter: ["style"] });
+    controls.observe(wrap, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ["style", "data-waiting"],
+    });
     return () => {
       observer.disconnect();
       controls.disconnect();
     };
-  }, [domNode, transform, kind, id, presenting]);
+  }, [domNode, transform, kind, id, presenting, pinned]);
   useLayoutEffect(() => {
     if (pinned && ref.current) interaction.dispatch({ type: "node.details", target: ref.current });
   }, [pinned, interaction]);
@@ -114,10 +125,7 @@ export function HoverCard({ kind, id, name, type, pinned, presenting, summary, h
     const old = anchor.getAttribute("aria-describedby");
     const testId = anchor.getAttribute("data-testid");
     if (kind === "node") anchor.setAttribute("data-testid", `node-live-focus-${id}`);
-    anchor.setAttribute(
-      "aria-describedby",
-      [old, `live-${kind}-description-${encodeURIComponent(id)}`].filter(Boolean).join(" "),
-    );
+    anchor.setAttribute("aria-describedby", [old, descriptionId].filter(Boolean).join(" "));
     return () => {
       if (kind === "node") {
         if (testId === null) anchor.removeAttribute("data-testid");
@@ -126,7 +134,7 @@ export function HoverCard({ kind, id, name, type, pinned, presenting, summary, h
       if (old === null) anchor.removeAttribute("aria-describedby");
       else anchor.setAttribute("aria-describedby", old);
     };
-  }, [domNode, kind, id]);
+  }, [domNode, kind, id, descriptionId]);
   const pin = () => interaction.pinReadout({ kind, id });
   const toggle = (key: string) => {
     if (!pinned) pin();
@@ -135,7 +143,7 @@ export function HoverCard({ kind, id, name, type, pinned, presenting, summary, h
   return createPortal(
     <div
       ref={ref}
-      id={`live-${kind}-detail-${encodeURIComponent(id)}`}
+      id={cardId}
       className={`lv-hover-card nowheel nopan${pinned ? " is-pinned" : ""}${problem ? (problem.severe ? " is-bad" : " is-warning") : ""}`}
       role={pinned ? "region" : "tooltip"}
       aria-label={t("hover.card", { name })}
@@ -143,7 +151,6 @@ export function HoverCard({ kind, id, name, type, pinned, presenting, summary, h
       data-testid={`${kind}-detail-${id}`}
       data-live-readout={kind}
       data-item={id}
-      data-live-node-detail={kind === "node" ? id : undefined}
       data-canvas-reading-region=""
       data-pinned={pinned ? "true" : "false"}
       onPointerDown={(e) => e.stopPropagation()}
@@ -203,11 +210,7 @@ export function HoverCard({ kind, id, name, type, pinned, presenting, summary, h
         }
       }}
     >
-      <div
-        id={`live-${kind}-description-${encodeURIComponent(id)}`}
-        data-testid={`hover-description-${kind}-${id}`}
-        className="hover-card-content"
-      >
+      <div id={descriptionId} data-testid={`hover-description-${kind}-${id}`} className="hover-card-content">
         <header className="hover-header">
           <span className="hover-kind-icon" aria-hidden>
             {kind === "edge" ? "↔" : "▤"}

@@ -42,6 +42,8 @@ function harness() {
     version: 0,
     /** One of Live's side panels: open or not, and the fields it lists so far. */
     panel: { open: false, fields: new Set<string>() },
+    /** Live readout cards shown ("node:a"). */
+    readouts: new Set<string>(),
   };
   /** Focus calls on elements that had left the document (must stay empty). */
   const removedFocus: string[] = [];
@@ -91,6 +93,12 @@ function harness() {
         case "panelOpener": {
           const opener = els.get("panel-opener");
           return opener?.connected ? { state: "ready", el: opener } : { state: "gone" };
+        }
+        case "readout": {
+          const key = `${target.item}:${target.id}`;
+          return env.readouts.has(key)
+            ? { state: "ready", el: els.get(`readout:${key}`) ?? el(`readout:${key}`) }
+            : { state: "gone" };
         }
         case "panelField": {
           // Live's panel: gone when it's closed; parked until it lists the field.
@@ -928,10 +936,10 @@ describe("pinned Live readouts", () => {
     h.env.nodes.set("a", { drawn: true });
     h.controller.pointReadout({ kind: "node", id: "a" });
     h.controller.closeReadout("escape");
-    expect(h.controller.getSnapshot().readout).toBeNull();
+    expect(h.controller.getReadout()).toBeNull();
     expect(h.focused).toEqual([]);
     h.controller.pointReadout({ kind: "node", id: "a" });
-    expect(h.controller.getSnapshot().readout).toBeNull();
+    expect(h.controller.getReadout()).toBeNull();
   });
   it("Esc returns focus to the originating item; opening a menu replaces the readout", () => {
     const h = harness();
@@ -939,15 +947,15 @@ describe("pinned Live readouts", () => {
     h.controller.pinReadout({ kind: "node", id: "a" });
     h.controller.closeReadout("escape");
     expect(h.focused).toEqual(["node:a"]);
-    expect(h.controller.getSnapshot().readout).toBeNull();
+    expect(h.controller.getReadout()).toBeNull();
     h.controller.pointReadout({ kind: "node", id: "a" });
-    expect(h.controller.getSnapshot().readout).toBeNull();
+    expect(h.controller.getReadout()).toBeNull();
     h.controller.pinReadout({ kind: "edge", id: "call" });
     h.controller.openMenu("context", "menu");
-    expect(h.controller.getSnapshot().readout).toBeNull();
+    expect(h.controller.getReadout()).toBeNull();
     expect(h.controller.menu?.kind).toBe("context");
     h.controller.pointReadout({ kind: "node", id: "a" });
-    expect(h.controller.getSnapshot().readout).toBeNull();
+    expect(h.controller.getReadout()).toBeNull();
   });
   it("an outside press leaves the new focus alone and allows a later hover", () => {
     const h = harness();
@@ -955,6 +963,65 @@ describe("pinned Live readouts", () => {
     h.controller.closeReadout("outside");
     expect(h.focused).toEqual([]);
     h.controller.pointReadout({ kind: "node", id: "a" });
-    expect(h.controller.getSnapshot().readout).toEqual({ kind: "node", id: "a", pinned: false });
+    expect(h.controller.getReadout()).toEqual({ kind: "node", id: "a", pinned: false });
+  });
+});
+
+describe("Live readouts beside the canvas's snapshot", () => {
+  it("hovering never changes the canvas snapshot; readout subscribers hear only a different card", () => {
+    const h = harness();
+    const before = h.controller.getSnapshot();
+    let core = 0,
+      reads = 0;
+    h.controller.subscribe(() => core++);
+    h.controller.subscribeReadout(() => reads++);
+    h.controller.pointReadout({ kind: "node", id: "a" });
+    h.controller.pointReadout({ kind: "node", id: "a" });
+    h.controller.pointReadout({ kind: "edge", id: "e" });
+    h.controller.pinReadout({ kind: "edge", id: "e" });
+    h.controller.pointReadout({ kind: "node", id: "a" });
+    h.controller.releaseReadout();
+    h.controller.pointReadout(null);
+    expect(reads).toBe(5);
+    expect(core).toBe(0);
+    expect(h.controller.getSnapshot()).toBe(before);
+    expect(h.controller.getReadout()).toBeNull();
+  });
+
+  it("Tab into a shown readout focuses its card now", () => {
+    const h = harness();
+    h.env.readouts.add("edge:call");
+    h.controller.enterReadout({ kind: "edge", id: "call" }, false);
+    expect(h.focused).toEqual(["readout:edge:call"]);
+    expect(h.controller.phase).toBe("idle");
+  });
+
+  it("Shift+Tab opens the previous node's readout (releasing a pin) and focuses it once drawn", () => {
+    const h = harness();
+    h.env.nodes.set("a", { drawn: true });
+    h.controller.pinReadout({ kind: "node", id: "b" });
+    h.controller.enterReadout({ kind: "node", id: "a" }, true);
+    expect(h.controller.getReadout()).toEqual({ kind: "node", id: "a", pinned: false });
+    expect(h.focused).toEqual([]);
+    h.env.readouts.add("node:a");
+    h.commit();
+    expect(h.focused).toEqual(["readout:node:a"]);
+    expect(h.controller.phase).toBe("idle");
+  });
+
+  it("a readout that never draws (no free slot, no figures) leaves focus on its node", () => {
+    const h = harness();
+    h.env.nodes.set("a", { drawn: true });
+    h.controller.enterReadout({ kind: "node", id: "a" }, true);
+    h.drain();
+    expect(h.focused).toEqual(["node:a"]);
+    expect(h.controller.phase).toBe("idle");
+  });
+
+  it("Tab past the last node from a readout focuses its item now, for the browser's Tab to go on", () => {
+    const h = harness();
+    h.env.nodes.set("z", { drawn: true });
+    h.controller.dispatch({ type: "readout.left", target: { kind: "node", id: "z" } });
+    expect(h.focused).toEqual(["node:z"]);
   });
 });

@@ -1,5 +1,6 @@
 import type { InteractionPort, InteractionScheduler, Resolution } from "./controller";
 import type { ElementHandle, FocusTarget, InteractionPhase } from "./types";
+import type { ReadoutStop } from "./readout";
 
 /** Marks the Live bar's control that opens its side panels, so a panel's Esc has somewhere to give focus back. */
 export const PANEL_OPENER_ATTR = "data-live-panel-opener";
@@ -22,6 +23,30 @@ export function dialogTabTarget(panel: HTMLElement, backward: boolean): HTMLElem
   if (backward && (active === first || active === panel)) return last;
   if (!backward && (active === last || active === panel)) return first;
   return null;
+}
+
+/** A Live readout card: portalled to the page's body, outside canvas-wrap. */
+const READOUT = "[data-live-readout]";
+const readoutSelector = (item: "node" | "edge", id: string) =>
+  `[data-live-readout="${item}"][data-item="${CSS.escape(id)}"]`;
+const TABBABLE = 'a[href], button, input, select, textarea, summary, [tabindex]:not([tabindex="-1"])';
+
+/** Where `el` sits in a readout card's Tab stops (null: not in one). Tab's direction is decided in readout.ts. */
+export function readoutStop(el: Element | null): ReadoutStop | null {
+  const card = el?.closest<HTMLElement>(READOUT);
+  const kind = card?.dataset.liveReadout;
+  const id = card?.dataset.item;
+  if (!el || !card || (kind !== "node" && kind !== "edge") || id === undefined) return null;
+  const stops = [card, ...card.querySelectorAll<HTMLElement>(TABBABLE)].filter(
+    (stop) =>
+      stop.tabIndex >= 0 && !stop.hasAttribute("disabled") && !stop.closest("[hidden]") && stop.getClientRects().length,
+  );
+  return {
+    target: { kind, id },
+    pinned: card.dataset.pinned === "true",
+    card: el === card,
+    last: stops.at(-1) === el,
+  };
 }
 
 /** What the DOM port reads from the canvas (absent outside one: the Lab's Inspector). */
@@ -108,6 +133,11 @@ export function createDomPort(canvas: DomCanvas): InteractionPort {
       case "panelOpener": {
         const el = document.querySelector(`[${PANEL_OPENER_ATTR}]`);
         return el ? { state: "ready", el } : { state: "gone" };
+      }
+      case "readout": {
+        // Shown means placed: a card with no free slot is hidden rather than covering an action.
+        const el = document.querySelector(readoutSelector(target.item, target.id));
+        return el && shown(el) ? { state: "ready", el } : { state: "gone" };
       }
       case "panelField": {
         // The panel lists the field once its session catches up (a commit, see the panel's rendered()).

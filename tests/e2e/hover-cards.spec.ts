@@ -252,3 +252,93 @@ test("Escape dismisses an unpinned card before clearing the selected node", asyn
   expect(await node.evaluate((el) => el.parentElement?.classList.contains("selected"))).toBe(true);
   await expect(page.getByTestId("live-controls")).toBeVisible();
 });
+
+/** The keyboard's stop, by test id: a node (its focusable wrapper's body), a readout card, or a control in one. */
+const focusedStop = (page: import("@playwright/test").Page) =>
+  page.evaluate(() => {
+    const el = document.activeElement;
+    if (!el || el === document.body) return "BODY";
+    const own = el.getAttribute("data-testid") ?? "";
+    if (/^(node|edge)-detail-|^hover-section-/.test(own)) return own;
+    return el.querySelector(':scope > [data-testid^="node-"]')?.getAttribute("data-testid") ?? (own || el.tagName);
+  });
+
+test("Tab crosses an unpinned readout between canvas nodes, and Shift+Tab retraces it", async ({
+  page,
+  consoleErrors,
+}) => {
+  await gotoLive(page, "./?view=canvas&example=blocking-call&live=1&paused=1");
+  await page.getByTestId("node-caller").evaluate((el) => el.parentElement?.focus());
+  const card = page.getByTestId("node-detail-caller");
+  await expect(card).toHaveAttribute("data-pinned", "false");
+  // An unpinned summary is one stop: its section rows stay out of the Tab order until it is pinned.
+  await expect(card.getByTestId(/^hover-section-/).first()).toHaveAttribute("tabindex", "-1");
+  await page.keyboard.press("Tab");
+  await expect(card).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect.poll(() => focusedStop(page)).toBe("node-partner");
+  await expect(page.getByTestId("node-detail-partner")).toHaveAttribute("data-pinned", "false");
+  await expect(card).toHaveCount(0);
+  await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-interaction-state", "idle");
+  // Back the same way: the previous node's readout, then the node itself.
+  await page.keyboard.press("Shift+Tab");
+  await expect(card).toBeFocused();
+  await expect(card).toHaveAttribute("data-pinned", "false");
+  await expect(page.getByTestId("node-detail-partner")).toHaveCount(0);
+  await page.keyboard.press("Shift+Tab");
+  await expect.poll(() => focusedStop(page)).toBe("node-caller");
+  await expect(card).toBeVisible();
+  // The summary Tab reached is pinned by Enter, as its footer says, and keeps focus.
+  await page.keyboard.press("Tab");
+  await expect(card).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(card).toHaveAttribute("data-pinned", "true");
+  await expect(card).toBeFocused();
+  await expect(page.getByTestId("hover-section-latency")).toHaveAttribute("tabindex", "0");
+  expectNoErrors(consoleErrors);
+});
+
+test("Tab leaves a pinned readout's sections for the next node, and Shift+Tab returns through the card", async ({
+  page,
+  consoleErrors,
+}) => {
+  await gotoLive(page, "./?view=canvas&example=blocking-call&live=1&paused=1");
+  await page.getByTestId("node-caller").evaluate((el) => el.parentElement?.focus());
+  await page.keyboard.press("Enter");
+  const card = page.getByTestId("node-detail-caller");
+  await expect(card).toHaveAttribute("data-pinned", "true");
+  await expect(card).toBeFocused();
+  // Shift+Tab from the first section goes back through the card to its node.
+  await page.keyboard.press("Tab");
+  const sections = await card
+    .getByTestId(/^hover-section-/)
+    .evaluateAll((rows) => rows.map((row) => row.getAttribute("data-testid") ?? ""));
+  expect(sections.length).toBeGreaterThan(2);
+  await expect.poll(() => focusedStop(page)).toBe(sections[0]);
+  await page.keyboard.press("Shift+Tab");
+  await expect(card).toBeFocused();
+  await page.keyboard.press("Shift+Tab");
+  await expect.poll(() => focusedStop(page)).toBe("node-caller");
+  await expect(card).toHaveAttribute("data-pinned", "true");
+  // Forward through every section, an expanded one included, then on to the next node.
+  await page.keyboard.press("Tab");
+  await expect(card).toBeFocused();
+  await page.keyboard.press("Tab");
+  await page.getByTestId("hover-section-threads").focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByTestId("thread-detail-caller")).toBeVisible();
+  await page.getByTestId(sections[0]).focus();
+  for (const section of sections) {
+    await expect.poll(() => focusedStop(page)).toBe(section);
+    await page.keyboard.press("Tab");
+  }
+  await expect.poll(() => focusedStop(page)).toBe("node-partner");
+  await expect(card).toHaveCount(0);
+  await expect(page.getByTestId("node-detail-partner")).toHaveAttribute("data-pinned", "false");
+  // Reverse: the previous node's readout (no longer pinned), then that node.
+  await page.keyboard.press("Shift+Tab");
+  await expect(card).toBeFocused();
+  await page.keyboard.press("Shift+Tab");
+  await expect.poll(() => focusedStop(page)).toBe("node-caller");
+  expectNoErrors(consoleErrors);
+});

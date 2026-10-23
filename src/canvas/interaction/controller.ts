@@ -1,7 +1,7 @@
 import type { CameraEvent } from "../camera";
 import { describe, focusPolicy, initialFocus, pendingMove } from "./focusPolicy";
 import { liveKeys } from "./liveKeys";
-import { initialReadout, readout, type ReadoutTarget } from "./readout";
+import { initialReadout, readout, type ReadoutEvent, type ReadoutTarget } from "./readout";
 import { cameraMenuKind, initialMenus, menus } from "./menus";
 import type {
   ElementHandle,
@@ -103,11 +103,9 @@ export function createInteractionController<P = unknown>(
   /** The camera's view of the open menu (it hears of a change of kind only, as before). */
   let cameraMenu: "context" | "quickAdd" | null = null;
   const listeners = new Set<() => void>();
-  let snapshot = {
-    menu: null as OpenSurface<P> | null,
-    roving: undefined as string | undefined,
-    readout: reading.open,
-  };
+  /** Live readouts have their own subscribers: hovering never re-renders what reads menus or the Tab stop. */
+  const readoutListeners = new Set<() => void>();
+  let snapshot = { menu: null as OpenSurface<P> | null, roving: undefined as string | undefined };
   let seq = 0;
   /** The pending move's last resolution was `parked`: it waits on commits, and readiness doesn't count it. */
   let parked = false;
@@ -148,13 +146,20 @@ export function createInteractionController<P = unknown>(
 
   function changed() {
     const next = phase();
-    if (snapshot.menu !== menuState.open || snapshot.roving !== focus.roving || snapshot.readout !== reading.open)
-      snapshot = { menu: menuState.open, roving: focus.roving, readout: reading.open };
+    if (snapshot.menu !== menuState.open || snapshot.roving !== focus.roving)
+      snapshot = { menu: menuState.open, roving: focus.roving };
     if (next !== lastPhase) {
       lastPhase = next;
       port.publish(next);
     }
     for (const l of listeners) l();
+  }
+
+  /** Applies a readout event; only a different open card notifies the readout's subscribers. */
+  function read(event: ReadoutEvent) {
+    const before = reading.open;
+    reading = readout(reading, event);
+    if (reading.open !== before) for (const l of readoutListeners) l();
   }
 
   function feedCamera() {
@@ -344,21 +349,51 @@ export function createInteractionController<P = unknown>(
   }
 
   return {
+    /** The open Live readout (useSyncExternalStore with subscribeReadout): apart from the canvas's snapshot. */
+    getReadout() {
+      return reading.open;
+    },
+    subscribeReadout(listener: () => void) {
+      readoutListeners.add(listener);
+      return () => void readoutListeners.delete(listener);
+    },
+    /** The pointer or keyboard focus names an item (null: nothing) for an unpinned readout. */
     pointReadout(target: ReadoutTarget | null) {
       if (menuState.open) return;
-      reading = readout(reading, { type: "point", target });
-      changed();
+      read({ type: "point", target });
     },
     pinReadout(target: ReadoutTarget) {
       if (menuState.open) return;
-      reading = readout(reading, { type: "pin", target });
-      changed();
+      read({ type: "pin", target });
     },
     closeReadout(reason: MenuCloseReason) {
       const target = reading.open;
-      reading = reason === "escape" ? readout(reading, { type: "close" }) : initialReadout();
+      if (reason === "escape") read({ type: "close" });
+      else {
+        const before = reading.open;
+        reading = initialReadout();
+        if (before) for (const l of readoutListeners) l();
+      }
       if (target) decide({ type: "readout.closed", target, reason });
-      else changed();
+    },
+    /** Keyboard traversal moves on from a pinned card: it becomes a summary the next item's readout replaces. */
+    releaseReadout() {
+      read({ type: "release" });
+    },
+    /** Whether this item's readout card is shown (placed, so it can take focus). */
+    readoutShown(target: ReadoutTarget) {
+      return port.resolve({ kind: "readout", item: target.kind, id: target.id }).state === "ready";
+    },
+    /**
+     * Tab or Shift+Tab steps into an item's readout card (readout.ts, readoutTab). `open`: the step opens it (Shift+Tab
+     * from the next node), releasing a pinned one; focus waits for the commit that draws it, else goes to its item.
+     */
+    enterReadout(target: ReadoutTarget, open: boolean) {
+      if (open && !menuState.open) {
+        read({ type: "release" });
+        read({ type: "point", target });
+      }
+      decide({ type: "readout.entered", target: { kind: target.kind, id: target.id }, opening: open });
     },
     /** The open menu or dialog, if any. */
     get menu(): OpenSurface<P> | null {
@@ -385,7 +420,7 @@ export function createInteractionController<P = unknown>(
       payload: P,
       how: { via?: MenuVia; platform?: Platform; invoker?: ElementHandle | null } = {},
     ) {
-      reading = readout(reading, { type: "close" });
+      read({ type: "close" });
       const t = menus(menuState, {
         type: "menu.open",
         kind,
