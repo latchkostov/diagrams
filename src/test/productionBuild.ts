@@ -20,6 +20,8 @@ export async function productionBuild(env: Record<string, string> = {}): Promise
   const saved = { ...process.env };
   // Vitest runs with NODE_ENV=test, which Vite reads as development.
   for (const key of DEPLOYMENT_VARIABLES) Reflect.deleteProperty(process.env, key);
+  // Its process flag also enables engine oracles; real production builds exclude those.
+  Reflect.deleteProperty(process.env, "VITEST");
   Object.assign(process.env, { NODE_ENV: "production", ...env });
   let result: Awaited<ReturnType<typeof build>>;
   try {

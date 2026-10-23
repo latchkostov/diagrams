@@ -3973,7 +3973,15 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       });
     }
     if (TEST_ORACLES && opts.verifyResilience) {
-      opts.verifyResilience({ time, inSystem, edges, calls: calls.values(), logical, budgetDecisions, breakerDispatches });
+      opts.verifyResilience({
+        time,
+        inSystem,
+        edges,
+        calls: calls.values(),
+        logical,
+        budgetDecisions,
+        breakerDispatches,
+      });
       breakerDispatches = [];
       budgetDecisions = [];
     }
