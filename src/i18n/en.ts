@@ -2925,7 +2925,8 @@ const en = {
   "resilience.retryTimingHint": "Wait between attempts and spread them out to avoid retrying together.",
   "resilience.retrySafety": "Retry safety & failure types",
   "resilience.retrySafetyHint": "Retry only failures the caller can handle and requests that are safe to repeat.",
-  "resilience.extraCallsCapped": "Extra calls capped at {percent}% over 10 seconds",
+  "resilience.extraCallsCapped":
+    "Extra calls limited to {percent}% or {minimum, number} retries/s, whichever is greater, over 10 seconds",
   "resilience.poolDetails": "Pool & reply handling",
   "resilience.appearanceRouting": "Appearance & routing",
   "resilience.breakerBehaviour":
@@ -2934,8 +2935,7 @@ const en = {
   "resilience.openState": "Open · failing fast",
   "resilience.testingState": "Testing · checking recovery",
   "resilience.failureScope": "Settled attempts failed since restart",
-  "resilience.runBudgetRecovered":
-    "{name} recovered: successful checkouts returned to {rate} and the queue drained. {count, number} requests failed during the incident.",
+  "resilience.runBudgetRecovered": "{name} recovered: successful requests returned to {rate} and the queue drained.",
   "resilience.timelineJump": "Jump to {time}: {label}",
   "resilience.simulationTime": "Simulation time",
   "hover.recentThroughput": "Recent throughput",
@@ -2955,6 +2955,8 @@ const en = {
   "resilience.open": "Open",
   "resilience.testing": "Testing",
   "resilience.breakerSummary": "Breaker: {state} · {percent} of {count, number} settled attempts failed since restart",
+  "resilience.breakerSummaryUnavailable": "Breaker: {state} · settled failure rate —",
+  "resilience.breakerTitleUnavailable": "{from} → {to}: settled failure rate —",
   "resilience.breaker": "Circuit breaker",
   "resilience.on": "On",
   "resilience.addBreaker": "Add a circuit breaker",
@@ -3021,7 +3023,8 @@ const en = {
   "resilience.noBudget": "No budget",
   "resilience.budgetPercent": "Extra calls allowed (%)",
   "resilience.budgetFloor": "Minimum retries per second",
-  "resilience.budgetHint": "Retries may add at most this share of calls, over 10 s.",
+  "resilience.budgetHint":
+    "Over 10 seconds, extra calls are limited to the greater of this share of calls and the minimum retries/s allowance.",
   "resilience.pill": "{calls} · ↻ ×{ratio}{budget}",
   "resilience.budgetUsed": " · budget used",
   "resilience.pillTitle":

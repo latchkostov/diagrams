@@ -22,6 +22,7 @@ export function CallsReadout({
       <strong>{t("resilience.calls")}</strong>
       {edges.map((e) => {
         const calls = snapshot.edges[e.id].calls!;
+        const failures = callFailureRate(calls);
         const policy = (e.props?.caller as EdgeSimProps["caller"])?.retry ?? { maxAttempts: 1, backoffMs: 0 };
         const breaker = snapshot.edges[e.id].breaker;
         const request = diagram.planning?.requestRoutes?.find((r) => r.id === e.props?.requestRouteId);
@@ -40,7 +41,7 @@ export function CallsReadout({
             </p>
             <p>
               {t("resilience.policy", {
-                percent: isolate(`${Math.round(100 * callFailureRate(calls).rate)}%`),
+                percent: failures.available ? isolate(`${Math.round(100 * failures.rate)}%`) : "—",
                 attempts: Math.min(policy.maxAttempts, 10),
                 backoff: isolate(`${policy.backoffMs} ms`),
                 budget:

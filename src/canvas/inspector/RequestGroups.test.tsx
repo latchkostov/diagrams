@@ -9,7 +9,7 @@ it("keeps retry tuning collapsed and the load limit visible beside attempts", ()
   const read = vi.spyOn(safeStorage, "getItem").mockReturnValue(null);
   try {
     const html = renderToStaticMarkup(<RetryFields retry={recommendedRetry("GET")} set={() => {}} />);
-    expect(html).toContain("Extra calls capped at 20%");
+    expect(html).toContain("Extra calls limited to 20% or 10 retries/s, whichever is greater, over 10 seconds");
     expect(html).toContain('data-testid="inspector-group-retries"');
     expect(html).not.toContain('data-testid="inspector-field-retry-backoff"');
     expect(html).not.toContain('data-testid="inspector-field-retry-budget-percent"');

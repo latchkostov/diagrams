@@ -8,6 +8,38 @@ import type { EdgeSimProps } from "../sim/types";
 import { callPolicy } from "../sim/callPolicy";
 import { stencilRole } from "../stencils/roles";
 
+interface BudgetRecoveryEvidence {
+  /** Recovery is measured at this request edge, not at an arbitrary upstream node. */
+  boundary: { edge: string; from: string; to: string };
+  scope: "request-edge-recovery";
+  successfulRequestsPerSecond: number;
+  // No incident-loss total: snapshots lack unique originating-request outcomes across paths.
+}
+
+function budgetRecoveryEvidence(state: LiveState, diagram: DiagramFile): BudgetRecoveryEvidence | undefined {
+  for (const e of diagram.edges) {
+    const caller = e.props?.caller as EdgeSimProps["caller"];
+    const calls = state.snapshot.edges[e.id]?.calls;
+    const target = state.snapshot.nodes[e.to];
+    if (
+      e.kind === "sync" &&
+      caller?.retry?.budget &&
+      !caller.breaker &&
+      (calls?.failed ?? 0) > 0 &&
+      target?.status === "up" &&
+      target.backlog < (target.threads?.slots ?? 48) &&
+      (calls?.windowRequests ?? 0) > 0 &&
+      (calls?.windowSucceeded ?? 0) >= 0.9 * calls!.windowRequests! &&
+      (!state.snapshot.edges[e.id]?.breaker || state.snapshot.edges[e.id].breaker!.state === "closed")
+    )
+      return {
+        boundary: { edge: e.id, from: e.from, to: e.to },
+        scope: "request-edge-recovery",
+        successfulRequestsPerSecond: calls!.windowSucceeded! / 10,
+      };
+  }
+}
+
 /** The final run evidence, in real units. Authored expectation labels and IDs are never parsed as prose. */
 export function runEndResult(state: LiveState, diagram: DiagramFile): string | undefined {
   if (!state.run?.done) return;
@@ -26,32 +58,11 @@ export function runEndResult(state: LiveState, diagram: DiagramFile): string | u
         ratio: ratio.toFixed(1),
       });
   }
-  // A budget trades incident losses for recovery. Count failed requests at the caller's
-  // upstream boundary once, rather than summing propagated failures or retry attempts.
-  const budgetRecovery = effective.edges.find((e) => {
-    const caller = e.props?.caller as EdgeSimProps["caller"];
-    const calls = state.snapshot.edges[e.id]?.calls;
-    const target = state.snapshot.nodes[e.to];
-    return (
-      caller?.retry?.budget &&
-      !caller.breaker &&
-      (calls?.failed ?? 0) > 0 &&
-      target?.status === "up" &&
-      target.backlog < (target.threads?.slots ?? 48) &&
-      (calls?.windowRequests ?? 0) > 0 &&
-      (calls?.windowSucceeded ?? 0) >= 0.9 * calls!.windowRequests! &&
-      (!state.snapshot.edges[e.id]?.breaker || state.snapshot.edges[e.id].breaker!.state === "closed")
-    );
-  });
+  const budgetRecovery = budgetRecoveryEvidence(state, effective);
   if (budgetRecovery) {
-    const incoming = effective.edges.find((e) => e.to === budgetRecovery.from && e.kind === "sync");
-    const boundary = incoming?.from ?? budgetRecovery.from;
     return t("resilience.runBudgetRecovered", {
-      name: effective.nodes.find((n) => n.id === budgetRecovery.to)?.label ?? budgetRecovery.to,
-      rate: isolate(
-        `${formatNumber(state.snapshot.nodes[budgetRecovery.from].throughput, { maximumFractionDigits: 1 })}/s`,
-      ),
-      count: state.snapshot.nodes[boundary]?.dropped ?? 0,
+      name: effective.nodes.find((n) => n.id === budgetRecovery.boundary.to)?.label ?? budgetRecovery.boundary.to,
+      rate: isolate(`${formatNumber(budgetRecovery.successfulRequestsPerSecond, { maximumFractionDigits: 1 })}/s`),
     });
   }
   const recovered = effective.edges.find((e) => (state.snapshot.edges[e.id]?.calls?.shortCircuited ?? 0) > 0);

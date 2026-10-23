@@ -13,6 +13,34 @@ import { TroubleWatcher } from "./observedTrouble";
 import { CallsReadout } from "./CallsReadout";
 import { BreakerReadout } from "./BreakerReadout";
 import { requestSummary } from "./hoverSummary";
+import { waitingFixture } from "../lab/waitingFixture";
+
+it.each(["p3-w2", "p3-w1"] as const)(
+  "keeps the rate unavailable after ten successes and one failure on an ordinary %s Request",
+  (revision) => {
+    const d = waitingFixture();
+    d.planning!.revision = revision;
+    const engine = createEngine({ seed: 7, scale: 1 });
+    engine.load(d);
+    engine.inject("caller", 10);
+    for (let step = 0; step < 200; step++) engine.step(10);
+    expect(engine.snapshot().nodes.partner.processed).toBe(10);
+    engine.setNodeProps("partner", { failureRate: 1 });
+    engine.inject("caller", 1);
+    for (let step = 0; step < 200; step++) engine.step(10);
+    const calls = engine.snapshot().edges.call.calls!;
+    expect(calls.failed).toBe(1);
+    expect(calls.succeeded).toBeUndefined();
+    expect(callFailureRate(calls)).toEqual({ available: false });
+    expect(requestSummary(calls, undefined, false, 0).facts.find((f) => f.key === "failureRate")?.value).toBe("—");
+  },
+);
+
+it("distinguishes unavailable accounting from an accounted edge with zero settled attempts", () => {
+  expect(callFailureRate(undefined)).toEqual({ available: false });
+  expect(callFailureRate({ failed: 1 })).toEqual({ available: false });
+  expect(callFailureRate({ failed: 0, succeeded: 0 })).toEqual({ available: true, failed: 0, total: 0, rate: 0 });
+});
 
 it("does not divide settled failures by a smaller population of recently started attempts", () => {
   const diagram = storm as DiagramFile;
@@ -36,6 +64,7 @@ it("does not divide settled failures by a smaller population of recently started
     expect(oldFraction).toBeGreaterThan(1);
     const detail = watcher.observe(frame, diagram).find((t) => t.kind === "retry-storm")!.detail;
     const failures = callFailureRate(calls);
+    if (!failures.available) throw new Error("Retry accounting must publish successes");
     expect(failures.rate).toBeLessThanOrEqual(1);
     expect(detail).toContain(`${Math.round(failures.rate * 100)}%`);
     expect(detail).toContain("settled attempts failed since restart");
@@ -62,7 +91,7 @@ it("uses the identical settled population in the breaker readout, excluding loca
     probesInFlight: 0,
     probes: 5,
   };
-  expect(callFailureRate(calls)).toEqual({ failed: 20, total: 100, rate: 0.2 });
+  expect(callFailureRate(calls)).toEqual({ available: true, failed: 20, total: 100, rate: 0.2 });
   const html = renderToStaticMarkup(<BreakerReadout id="call" breaker={breaker} calls={calls} testId="breaker" />);
   expect(html).toContain("20%");
   expect(html).toContain("100 settled attempts failed since restart");
@@ -103,7 +132,9 @@ it("keeps the failure rate in [0, 1] over random retries, breakers, delays and r
           if (step === 15) engine.setNodeProps("partner", { failureRate: 0 });
           engine.step(100);
           const calls = realSnapshot(engine.snapshot()).edges.call.calls!;
-          const { failed, total, rate } = callFailureRate(calls);
+          const failures = callFailureRate(calls);
+          if (!failures.available) throw new Error("Retry accounting must publish successes");
+          const { failed, total, rate } = failures;
           expect(failed).toBeGreaterThanOrEqual(0);
           expect(total).toBeGreaterThanOrEqual(failed);
           expect(rate).toBeGreaterThanOrEqual(0);

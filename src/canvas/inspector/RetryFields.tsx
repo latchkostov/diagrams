@@ -48,7 +48,10 @@ export function RetryFields({
           <>
             <p className="insp-note" data-testid="retry-limit-summary">
               {retry.budget
-                ? t("resilience.extraCallsCapped", { percent: retry.budget.percent })
+                ? t("resilience.extraCallsCapped", {
+                    percent: retry.budget.percent,
+                    minimum: retry.budget.minPerSec ?? 10,
+                  })
                 : t("resilience.noBudget")}
             </p>
             <Disclosure

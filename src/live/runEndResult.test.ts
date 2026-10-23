@@ -134,7 +134,7 @@ it("does not report recovered dead letters as lost in the 3PL outage and DLQ red
   }
 });
 
-it("the budget comparison leads with measured recovery and counts requests once", () => {
+it("the budget comparison reports recovery at its request edge without an inferred incident loss count", () => {
   const diagram = storm as DiagramFile;
   const c = new LiveController(diagram);
   try {
@@ -145,8 +145,35 @@ it("the budget comparison leads with measured recovery and counts requests once"
     expect(state.snapshot.nodes.checkout.throughput).toBeCloseTo(300);
     expect(state.snapshot.nodes.shop.dropped).toBe(9738);
     expect(runEndResult(state, diagram)?.replace(/[\u2068\u2069]/g, "")).toBe(
-      "Payments recovered: successful checkouts returned to 300/s and the queue drained. 9,738 requests failed during the incident.",
+      "Payments recovered: successful requests returned to 270.3/s and the queue drained.",
     );
+  } finally {
+    c.dispose();
+  }
+});
+
+it("budget recovery never infers request losses from multiple upstream sources or their edge order", () => {
+  const diagram = structuredClone(storm) as DiagramFile;
+  const c = new LiveController(diagram);
+  try {
+    c.selectSimulation(diagram.simulations!.find((s) => s.id === "retry-budget")!);
+    c.seek(60000);
+    const state = c.getState();
+    // These aggregate losses include other traffic: even their sum is not an attributed request total.
+    state.snapshot.nodes.shop.dropped = 3;
+    state.snapshot.nodes.checkout.dropped = 999;
+    state.snapshot.nodes.checkout.throughput = 999;
+    state.snapshot.nodes.other = { ...state.snapshot.nodes.shop, id: "other", dropped: 7 };
+    diagram.nodes.push({ ...diagram.nodes[0], id: "other" });
+    const upstream = diagram.edges.find((e) => e.to === "checkout")!;
+    diagram.edges = [
+      { ...upstream, kind: "sync" },
+      { ...upstream, id: "other-input", from: "other", kind: "sync" },
+      ...diagram.edges.filter((e) => e !== upstream),
+    ];
+    const expected = "Payments recovered: successful requests returned to 270.3/s and the queue drained.";
+    for (const edges of [diagram.edges, [...diagram.edges].reverse()])
+      expect(runEndResult(state, { ...diagram, edges })?.replace(/[\u2068\u2069]/g, "")).toBe(expected);
   } finally {
     c.dispose();
   }

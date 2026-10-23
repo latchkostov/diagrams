@@ -197,6 +197,7 @@ export function requestSummary(
   active: number,
 ): HoverSummary {
   const ratio = (c?.windowRequests ?? 0) > 0 ? (c?.windowAttempts ?? 0) / c!.windowRequests! : 1;
+  const failures = callFailureRate(c);
   const problems: HoverProblem[] = [
     ...(breaker?.state === "open"
       ? [
@@ -243,7 +244,7 @@ export function requestSummary(
       {
         key: "failureRate",
         label: t("resilience.failureScope"),
-        value: isolate(`${Math.round(100 * callFailureRate(c).rate)}%`),
+        value: failures.available ? isolate(`${Math.round(100 * failures.rate)}%`) : "—",
       },
     ],
     sections: [

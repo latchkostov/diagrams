@@ -342,12 +342,11 @@ function troubles(frame: WatchedFrame, d: Shape, samples: readonly Sample[]): Tr
       const stuck = clear !== undefined && !frame.faults?.length && (c.windowSucceeded ?? 0) < 0.5 * c.windowRequests;
       if (ratio < 2 || failed <= 0.5 * c.windowAttempts || (!rising && !stuck)) continue;
       const headline = t("resilience.storm", { name: name(target) });
+      const failures = callFailureRate(c);
       const detail = t("resilience.stormDetail", {
         caller: name(caller),
         ratio: isolate(ratio.toFixed(1)),
-        percent: isolate(
-          `${Math.round(100 * callFailureRate({ failed: c.failed ?? 0, shortCircuited: c.shortCircuited, succeeded: c.succeeded }).rate)}%`,
-        ),
+        percent: failures.available ? isolate(`${Math.round(100 * failures.rate)}%`) : "—",
       });
       out.push({
         key: `retry-storm:${edge}`,

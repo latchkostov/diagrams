@@ -6,6 +6,7 @@ import { faultDrillFixture } from "./faultDrillFixture";
 import { kedaFixture } from "./kedaFixture";
 import { ImportRetryLab } from "./ImportRetryLab";
 import { LiveKeyboardLab } from "./LiveKeyboardLab";
+import { CallPillUpdatesLab } from "./CallPillUpdatesLab";
 import { SlowTraceLocaleLab } from "./SlowTraceLocaleLab";
 import { measuredHierarchyFixture, nestedBoundariesFixture } from "./nestedBoundariesFixture";
 import { captionContrastFixture } from "./captionContrastFixture";
@@ -695,6 +696,15 @@ const livePresets: Preset[] = [
         initial={{ traffic: true, seekMs: 2000, paused: true }}
       />
     ),
+  },
+  {
+    kind: "render",
+    id: "call-pill-updates",
+    title: "Live: settled call counters",
+    group: "Simulation",
+    description: "Update failure percentages with unchanged occupancy through the memoized call pill.",
+    controls: [],
+    render: () => <CallPillUpdatesLab />,
   },
   {
     kind: "render",

@@ -80,6 +80,8 @@ export const CallPills = memo(
     const labels = calls.map(
       ({ id, held, inFlight, timedOut, queued = 0, pool, from = "", to = "", breaker, ...retry }) => {
         const amplification = (retry.windowRequests ?? 0) > 0 ? (retry.windowAttempts ?? 0) / retry.windowRequests! : 1;
+        const failures = callFailureRate(retry);
+        const percent = failures.available ? isolate(`${Math.round(100 * failures.rate)}%`) : "—";
         const showRetry = amplification >= 1.2 && (retry.windowRetried ?? 0) >= 10;
         const label = {
           id,
@@ -106,12 +108,9 @@ export const CallPills = memo(
               breaker.state === "open"
                 ? t("resilience.breakerOpen", { seconds: Math.ceil(breaker.remainingMs / 1000) })
                 : t("resilience.breakerTesting", { sent: breaker.probesSettled, probes: breaker.probes }),
-            title: t("resilience.breakerTitle", {
-              from,
-              to,
-              percent: isolate(`${Math.round(100 * callFailureRate(retry).rate)}%`),
-              count: callFailureRate(retry).total,
-            }),
+            title: failures.available
+              ? t("resilience.breakerTitle", { from, to, percent, count: failures.total })
+              : t("resilience.breakerTitleUnavailable", { from, to }),
           };
         return showRetry
           ? {
@@ -126,7 +125,7 @@ export const CallPills = memo(
                 attempts: ((retry.windowAttempts ?? 0) / 10).toFixed(1),
                 requests: ((retry.windowRequests ?? 0) / 10).toFixed(1),
                 retried: retry.retried ?? 0,
-                percent: isolate(`${Math.round(100 * callFailureRate(retry).rate)}%`),
+                percent,
               }),
             }
           : label;
@@ -176,6 +175,8 @@ export const CallPills = memo(
         c.budgetDenied === b.calls[i].budgetDenied &&
         c.retried === b.calls[i].retried &&
         c.failed === b.calls[i].failed &&
+        c.succeeded === b.calls[i].succeeded &&
+        c.shortCircuited === b.calls[i].shortCircuited &&
         c.attempts === b.calls[i].attempts &&
         c.id === b.calls[i].id &&
         c.held === b.calls[i].held &&

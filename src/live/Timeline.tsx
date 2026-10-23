@@ -114,7 +114,7 @@ export function Timeline({
         max={1000}
         step={1}
         value={Math.round(progress * 1000)}
-        tabIndex={markers.length ? -1 : 0}
+        tabIndex={0}
         aria-label={t("resilience.simulationTime")}
         aria-valuetext={formatClock(fractionToTime(progress, total))}
         data-testid="live-timeline-input"

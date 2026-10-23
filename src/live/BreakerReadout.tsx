@@ -29,11 +29,13 @@ export function BreakerReadout({
   return (
     <>
       <p data-testid={testId} data-state={breaker.state}>
-        {t("resilience.breakerSummary", {
-          state,
-          percent: isolate(`${Math.round(100 * failures.rate)}%`),
-          count: failures.total,
-        })}
+        {failures.available
+          ? t("resilience.breakerSummary", {
+              state,
+              percent: isolate(`${Math.round(100 * failures.rate)}%`),
+              count: failures.total,
+            })
+          : t("resilience.breakerSummaryUnavailable", { state })}
       </p>
       {breaker.state === "open" && (
         <p data-testid={`breaker-open-${id}`}>
