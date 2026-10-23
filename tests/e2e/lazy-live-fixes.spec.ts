@@ -147,7 +147,8 @@ test("a failed trouble callout keeps a persistent Retry through toast expiry and
   await expect(retry).toBeVisible();
   await expect(page.getByTestId("live-play")).toBeFocused();
   await exportDiagram(page);
-  await page.clock.runFor(10_000);
+  // Past every toast's expiry in one jump: its timers fire, without stepping each frame.
+  await page.clock.fastForward(10_000);
   await expect(page.getByTestId("toast")).toHaveCount(0);
   await expect(retry).toBeVisible();
   expect(await focused(page)).not.toBe("BODY");

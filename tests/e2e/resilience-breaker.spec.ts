@@ -252,7 +252,8 @@ test("download recovery survives tracker and error-callout chunk failures", asyn
     // An export's notification, and every toast's expiry, leave the way back where it is.
     await exportDiagram(page);
     await expect(page.getByTestId("toast").first()).toBeVisible();
-    await page.clock.runFor(10_000);
+    // Past every toast's expiry in one jump: its timers fire, without stepping each frame.
+    await page.clock.fastForward(10_000);
     await expect(page.getByTestId("toast")).toHaveCount(0);
     await expect(retry).toBeVisible();
     expect(await focused(page)).not.toBe("BODY");
