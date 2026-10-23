@@ -176,6 +176,11 @@ interface Message {
    * it), and every counter adds unitsOf(m) dots. Copies, branches and replies inherit it.
    */
   represented?: number;
+  /**
+   * The cohort whose request route this message completes, when a half-open breaker narrowed it to its test
+   * calls: the journey still finishes once at the whole cohort's size (the refused part ends off the route).
+   */
+  routeCohort?: { represented?: number };
   /** Real requests of this cohort that can occupy capacity at once downstream: the
    * narrowest held caller thread or finite-pool grant on its path (undefined: no limit).
    * Width never increases along a path. It is never a size: it only caps the weight
@@ -808,7 +813,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       const done = (message.family.routesDone ??= []);
       if (!done.includes(message.request.id)) {
         done.push(message.request.id);
-        countRoute(message.request).completed += dotsOf(message);
+        countRoute(message.request).completed += dotsOf(message.routeCohort ?? message);
       }
     }
     if (message.family.trace) {
@@ -1968,10 +1973,14 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
    * callee and the breaker at its real size at any scale. The caller's dot still takes one outcome, the probe's.
    */
   function narrowProbe(edge: Edge, branch: LogicalBranch, message: Message, admitted: number): void {
+    // The refused part ends off the request route; the admitted part completes it once for the whole cohort.
+    message.routeCohort ??= { represented: message.represented };
     const refused: Message = {
       ...copy(edge.from, message),
       attempts: message.attempts,
       represented: sizeOf(message) - admitted,
+      request: undefined,
+      routeCohort: undefined,
     };
     message.represented = branch.represented = admitted;
     // A waiter for a pool connection that outlived the open interval (dispatch skipped while its caller was
@@ -2210,6 +2219,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       callAttempt: timing.attempt,
       ...(timing.represented === undefined ? {} : { represented: timing.represented }),
     };
+    // A narrowed branch's retry still completes its caller's whole cohort's route.
+    if (timing.represented !== undefined) message.routeCohort ??= { represented: call.work.message.represented };
     if (!permitBreaker(call, edge, message)) return;
     pushDue(
       edge.poolPending,
