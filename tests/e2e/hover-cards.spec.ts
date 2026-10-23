@@ -560,7 +560,8 @@ for (const slug of ["retry-storm", "webhook-ingestion"])
         : ["node-receiver", "node-exchange", "node-queue", "node-dlq", "node-workers", "edge-queue-to-dlq"];
     for (const item of items) {
       await page.getByTestId("diagram-title").hover();
-      await page.getByTestId(item).hover({ force: true });
+      // A line's bounding-box centre can lie on another edge; its visible label is an unambiguous hover target.
+      await page.getByTestId(item.replace(/^edge-/, "edge-label-")).hover();
       const card = page.getByTestId(item.replace(/^(node|edge)-/, "$1-detail-"));
       await expect(card).toHaveAttribute("data-pinned", "false");
       // The card is its own scroll container: a summary fits it in both directions, so no scroll bar shows.
