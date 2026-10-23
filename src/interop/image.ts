@@ -133,8 +133,11 @@ export async function renderDiagramImage(kind: "png" | "svg", opts: ImageOptions
   opts.check?.();
   const viewport = findViewport();
   // A pending route is still part of the saved drawing. Wait before measuring its farthest bend.
-  await unlessCancelled(whenEdgeGeometryReady(viewport), opts.signal);
-  flushSync(() => {});
+  const routeReadiness = whenEdgeGeometryReady(viewport);
+  if (routeReadiness) {
+    await unlessCancelled(routeReadiness, opts.signal);
+    flushSync(() => {});
+  }
   const content = bounds(viewport);
   if (!content) throw new Error("This diagram is empty, so there's nothing to export.");
   const header = opts.header?.title.trim() ? addHeader(viewport, content, opts.header) : undefined;
