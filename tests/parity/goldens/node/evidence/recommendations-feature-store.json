@@ -25,5 +25,5 @@
   ],
   "counted": 0,
   "findings": [],
-  "agentReport": { "findings": [], "summary": "Nothing to check. 14 checks ran.", "simulations": "Played 4 saved simulations (at most 60 s each). On purpose, not findings: 10 dropped at ranker-v8 in “The canary misbehaves”." }
+  "agentReport": { "findings": [], "summary": "0 warnings, 0 suggestions; 1 more message-loop finding not listed.", "simulations": "Played 4 saved simulations (at most 60 s each). On purpose, not findings: 10 dropped at ranker-v8 in “The canary misbehaves”." }
 }

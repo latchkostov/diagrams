@@ -8,6 +8,7 @@ import { compileTypeFilter, typeFilterAccepts } from "./typeFilter";
 import fc from "fast-check";
 import { createEngine } from "../sim/engine";
 import { createSimulationRun } from "../sim/simulation";
+import { runChecks, summarize } from "../checks/run";
 import { analyzeCapacity } from "../sim/capacity";
 import { countingReads, GROWTH_FACTOR, LINEAR_LIMIT } from "../test/complexity";
 
@@ -22,6 +23,74 @@ const node = (id: string, stencil = "generic.service", props?: DiagramNode["prop
 const typedCallback = messageTypesFixture;
 
 describe("messageTypesAt", () => {
+  it("marks a timeline emits edit that starts a loop as incomplete", () => {
+    const d = typedCallback();
+    d.nodes[0].props = { messageType: "Loop", ratePerSec: 0 };
+    d.nodes[1].props = { emits: "Stop" };
+    d.edges[2].props = { filter: ["Loop"] };
+    expect(messageTypesAt(d).loops).toEqual([]);
+    d.simulations = [
+      {
+        id: "looping",
+        title: "Start a loop",
+        traffic: [{ id: "t", node: "client", messageType: "Loop", shape: { kind: "burst", count: 1 } }],
+        timeline: [{ atMs: 0, action: { do: "props", node: "api", props: { emits: "Loop" } } }],
+      },
+    ];
+    const run = createSimulationRun(d, d.simulations[0]);
+    for (let i = 0; i < 600; i++) run.step(10);
+    expect(run.engine.snapshot().nodes.api.processed).toBeGreaterThan(1);
+    expect(run.engine.snapshot().nodes.sender.processed).toBeGreaterThan(1);
+    expect(messageTypesAt(d).complete).toBe(false);
+    const checks = runChecks(d, { rules: ["message-loop"] });
+    expect(checks.omitted).toEqual([{ rule: "message-loop", count: 1 }]);
+    expect(summarize(checks)).not.toContain("Nothing to check");
+    expect(checks.findings.every((finding) => !finding.fix)).toBe(true);
+  });
+
+  it.each([
+    { emits: "Loop" },
+    { emits: { Stop: "Loop" } },
+    { emits: undefined },
+    { filter: ["Loop"] },
+    { messageType: "Loop" },
+    { trafficMix: { mode: "shares", entries: [] } },
+    { routeTable: { rules: [] } },
+    { requestFilter: { methods: ["POST"] } },
+    { requestRouteId: "loop" },
+    { share: 0 },
+    { deny: true },
+  ])("withholds completeness for forwarding timeline patches: %j", (props) => {
+    const d = typedCallback();
+    d.simulations = [
+      {
+        id: "edited",
+        title: "Edited",
+        traffic: [],
+        timeline: [{ atMs: 100, action: { do: "props", node: "api", props } }],
+      },
+    ];
+    expect(messageTypesAt(d).complete).toBe(false);
+  });
+
+  it("keeps analysis complete for timeline injections and unrelated property edits", () => {
+    const d = typedCallback();
+    d.simulations = [
+      {
+        id: "edited",
+        title: "Edited",
+        traffic: [],
+        timeline: [
+          { atMs: 0, action: { do: "props", node: "api", props: { latencyMs: 10 } } },
+          { atMs: 100, action: { do: "inject", node: "client", count: 1, messageType: "Other" } },
+        ],
+      },
+    ];
+    const types = messageTypesAt(d);
+    expect(types.complete).toBe(true);
+    expect(types.carried.get("send")).toContain("Other");
+  });
+
   it("propagates async store change feeds but stops sync store output", () => {
     const d: DiagramFile = {
       format: "diagrams/v1",

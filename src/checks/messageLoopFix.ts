@@ -25,6 +25,9 @@ interface Baseline {
 }
 
 /**
+ * Quarantined: Checks do not use this verifier to offer automatic fixes. Global transition membership misses
+ * per-input path loss when sources converge; see docs/backlog/2026-10-23-message-loop-fix-quarantine.md.
+ *
  * One verifier per check run. Candidates are proven on exactly what playback runs: each one edits the base diagram,
  * then every saved simulation applies its own overrides to the edited diagram (configuredDiagram), with request
  * routes and routing context kept in every state. Indexes, baselines, candidate results and one work budget are

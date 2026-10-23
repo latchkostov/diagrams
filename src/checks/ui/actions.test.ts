@@ -20,20 +20,35 @@ import { messageTypesFixture } from "../../lab/messageTypesFixture";
 import * as propagation from "../../model/messageTypes";
 import { presentFinding } from "../presentation";
 
-it("applies the message-loop filter and verified rename through the same one-step action", async () => {
+it("rejects cached message-loop filter and rename actions after quarantine", async () => {
   const d = messageTypesFixture();
   d.edges[1].props = { filter: ["Send", "Callback"] };
   const finding = runChecks(d, { rules: ["message-loop"] }).findings[0];
-  for (const rename of [false, true]) {
+  expect(finding.fix).toBeUndefined();
+  // Simulate a pre-quarantine cached finding: the action must recheck and refuse both old choices.
+  const cached = presentFinding({
+    ...finding,
+    fix: {
+      label: "Only pass Send",
+      ops: [{ op: "update", target: "send", props: { filter: ["Send"] } }],
+      options: [
+        {
+          label: "Send as CallbackReceived",
+          short: "Rename",
+          ops: [{ op: "update", target: "callback", props: { emits: "CallbackReceived" } }],
+        },
+      ],
+    },
+  });
+  for (const option of [undefined, cached.fix!.options![0].label]) {
     const { api, replace } = editorFor(d);
-    const display = presentFinding(finding);
-    expect(await applyFix(api, display, rename ? display.fix!.options![0].label : undefined)).toBe(true);
-    expect(replace).toHaveBeenCalledTimes(1);
-    expect(runChecks(api.getDiagram(), { rules: ["message-loop"] }).findings).toEqual([]);
+    expect(await applyFix(api, cached, option)).toBe(false);
+    expect(replace).not.toHaveBeenCalled();
+    expect(runChecks(api.getDiagram(), { rules: ["message-loop"] }).findings.map((f) => f.id)).toEqual([finding.id]);
   }
 });
 
-it("rechecks only the selected loop's candidates when applying a fix", async () => {
+it("rejects a cached selected-loop fix without candidate replays", async () => {
   const d = messageTypesFixture();
   d.nodes = [];
   d.edges = [];
@@ -53,8 +68,17 @@ it("rechecks only the selected loop's candidates when applying a fix", async () 
   const { api } = editorFor(d);
   const spy = vi.spyOn(propagation, "messageTypesAt");
   try {
-    expect(await applyFix(api, finding)).toBe(true);
-    expect(spy.mock.calls.length).toBeLessThanOrEqual(4);
+    expect(finding.fix).toBeUndefined();
+    const cached = {
+      ...finding,
+      fix: {
+        label: "Only pass Send",
+        ops: [{ op: "update" as const, target: "0-send", props: { filter: ["Send"] } }],
+      },
+    };
+    expect(await applyFix(api, cached)).toBe(false);
+    expect(spy.mock.calls).toHaveLength(1);
+    expect(api.getDiagram().edges.find((edge) => edge.id === "0-send")?.props?.filter).toBeUndefined();
   } finally {
     spy.mockRestore();
   }

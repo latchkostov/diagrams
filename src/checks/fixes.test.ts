@@ -59,10 +59,17 @@ const finding = (d: DiagramFile, id: string) => {
 };
 
 describe("fixes", () => {
-  it("Only pass Send removes the message loop in one undo step", () => {
+  it("message loops withhold fixes; a manual filter remains one undo step", () => {
     const d = messageTypesFixture();
     const found = runChecks(d, { rules: ["message-loop"] }).findings[0];
-    const after = applyFix(d, found);
+    expect(found.fix).toBeUndefined();
+    expect(found.rationale).toContain("Choose where the callback should stop, then check again.");
+    const result = applyOps(d, [{ op: "update", target: "send", props: { filter: ["Send"] } }]);
+    expect(result.errors).toEqual([]);
+    const editor = editorFor(d);
+    expect(editor.api.applyDiagram(result.diagram).hasChanges).toBe(true);
+    expect(editor.steps()).toBe(1);
+    const after = editor.api.getDiagram();
     expect(runChecks(after, { rules: ["message-loop"] }).findings).toEqual([]);
     expect(after.edges.find((edge) => edge.id === "send")?.props?.filter).toEqual(["Send"]);
   });

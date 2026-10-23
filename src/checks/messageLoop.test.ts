@@ -10,6 +10,12 @@ import { createEngine } from "../sim/engine";
 import type { DiagramFile, Simulation } from "../model/types";
 
 const check = (d = messageTypesFixture()) => runChecks(d, { rules: ["message-loop"] });
+const manual = (d: DiagramFile, filter: string[]) => {
+  const finding = check(d).findings[0];
+  expect(finding.fix).toBeUndefined();
+  expect(finding.rationale).toContain("Choose where the callback should stop, then check again.");
+  return applyOps(d, [{ op: "update", target: "send", props: { filter } }]);
+};
 const savedRun = (patch: Partial<Simulation> = {}): Simulation => ({
   id: "saved",
   title: "Saved",
@@ -51,7 +57,40 @@ function routedFixture(): Pick<DiagramFile, "format" | "planning" | "nodes" | "e
 }
 
 describe("message-loop", () => {
-  it("preserves non-loop types supplied only by saved simulations", () => {
+  it("withholds a filter when a converging source masks lost deliveries", () => {
+    const d = messageTypesFixture();
+    d.nodes[0].props = { messageType: "A", ratePerSec: 0 };
+    d.nodes.push(
+      { ...d.nodes[0], id: "second", label: "Second", props: { messageType: "B", ratePerSec: 0 } },
+      { ...d.nodes[0], id: "direct", label: "Direct" },
+      { id: "audit", stencil: "generic.email", label: "Audit", x: 720, y: 400 },
+    );
+    d.edges[2].props = { filter: ["A"] };
+    d.edges.push(
+      { id: "second-in", from: "second", to: "api" },
+      { id: "direct-in", from: "direct", to: "sender" },
+      { id: "audit-edge", from: "sender", to: "audit" },
+    );
+    const audited = (diagram: DiagramFile) => {
+      const engine = createEngine({ seed: 1 });
+      engine.load(diagram);
+      engine.inject("client", 1);
+      for (let i = 0; i < 200; i++) engine.step(10);
+      return engine.snapshot().nodes.audit.processed;
+    };
+    const dropping = applyOps(d, [{ op: "update", target: "send", props: { filter: ["B"] } }]).diagram;
+    // The direct A source keeps this transition in the global graph, but contributes no injected traffic.
+    expect(messageTypesAt(dropping).carried.get("audit-edge")).toContain("A");
+    expect(audited(d)).toBeGreaterThanOrEqual(1);
+    expect(audited(dropping)).toBe(0);
+    const [finding] = check(d).findings;
+    expect(finding.message).toMatch(/^A messages loop back to API/);
+    expect(finding.severity).toBe("warning");
+    expect(finding.fix).toBeUndefined();
+    expect(finding.rationale).toContain("Choose where the callback should stop, then check again.");
+  });
+
+  it("withholds fixes for non-loop types supplied only by saved simulations", () => {
     const d = messageTypesFixture();
     d.edges[1].props = { filter: ["*"] };
     d.simulations = [
@@ -61,9 +100,7 @@ describe("message-loop", () => {
         traffic: [{ id: "t", node: "client", messageType: "Other", shape: { kind: "burst", count: 4 } }],
       },
     ];
-    const finding = check(d).findings[0];
-    expect(finding.fix?.ops).toEqual([{ op: "update", target: "send", props: { filter: ["Send", "Other"] } }]);
-    const fixed = applyOps(d, finding.fix!.ops!).diagram;
+    const fixed = manual(d, ["Send", "Other"]).diagram;
     expect(messageTypesAt(fixed).carried.get("send")).toEqual(new Set(["Send", "Other"]));
     expect(fixed.simulations).toEqual(d.simulations);
     expect(check(fixed).findings).toEqual([]);
@@ -75,7 +112,7 @@ describe("message-loop", () => {
     }
   });
 
-  it("verifies each saved simulation's setup before offering a filter", () => {
+  it("withholds fixes with saved simulation setup overrides", () => {
     const d = messageTypesFixture();
     d.simulations = [
       {
@@ -85,9 +122,7 @@ describe("message-loop", () => {
         traffic: [{ id: "t", node: "client", messageType: "Other", shape: { kind: "burst", count: 4 } }],
       },
     ];
-    const finding = check(d).findings[0];
-    expect(finding.fix?.ops).toEqual([{ op: "update", target: "send", props: { filter: ["Send", "Prepared"] } }]);
-    const fixed = applyOps(d, finding.fix!.ops!).diagram;
+    const fixed = manual(d, ["Send", "Prepared"]).diagram;
     const run = createSimulationRun(fixed, fixed.simulations![0]);
     for (let i = 0; i < 600; i++) run.step(10);
     expect(run.engine.snapshot().edges.send.delivered).toBe(4);
@@ -111,7 +146,7 @@ describe("message-loop", () => {
     expect(check(partial).findings.map((f) => f.id)).toEqual([finding.id]);
   });
 
-  it("offers only fixes and renames that remove their finding and add no loop, in every run", () => {
+  it("withholds all automatic filters and renames in every run", () => {
     const variants: [string, DiagramFile][] = [];
     const add = (name: string, edit: (d: DiagramFile) => void) => {
       const d = messageTypesFixture();
@@ -131,28 +166,17 @@ describe("message-loop", () => {
       d.simulations = [savedRun({ setup: { props: { sender: { emits: { Send: "Other" } } } } })];
     });
     add("routes", (d) => Object.assign(d, routedFixture()));
-    const coarse = (diagram: DiagramFile) =>
-      new Set(messageTypesAt(diagram).loops.flatMap((l) => l.steps.map((s) => `${s.edge}:${s.receives}:${s.sends}`)));
-    let offered = 0;
     for (const [name, d] of variants) {
-      const before = coarse(d);
-      for (const finding of check(d).findings) {
-        for (const ops of [finding.fix?.ops, ...(finding.fix?.options ?? []).map((o) => o.ops)]) {
-          if (!ops) continue;
-          offered++;
-          const fixed = applyOps(d, ops).diagram;
-          expect(
-            check(fixed).findings.map((f) => f.id),
-            name,
-          ).not.toContain(finding.id);
-          for (const step of coarse(fixed)) expect(before, `${name}: ${step}`).toContain(step);
-        }
+      const findings = check(d).findings;
+      expect(findings.length, name).toBeGreaterThan(0);
+      for (const finding of findings) {
+        expect(finding.fix, name).toBeUndefined();
+        expect(finding.rationale, name).toContain("Choose where the callback should stop, then check again.");
       }
     }
-    expect(offered).toBeGreaterThanOrEqual(4);
   });
 
-  it("verifies loop fixes on saved simulations configured exactly as playback configures them", () => {
+  it("withholds fixes on saved simulations while manual edits use playback configuration", () => {
     const d = messageTypesFixture();
     // Saved runs override only waiting-call settings on connections. Playback ignores anything else there, so the
     // verifier must too: the edit goes to the diagram and each run's own overrides are applied after it.
@@ -167,7 +191,7 @@ describe("message-loop", () => {
       }),
     ];
     const finding = check(d).findings[0];
-    expect(finding.fix?.ops).toEqual([{ op: "update", target: "send", props: { filter: ["Send"] } }]);
+    expect(finding.fix).toBeUndefined();
     // In memory, as the reviewers reproduced it: edit validation would refuse the extra setup key.
     const fixed: DiagramFile = {
       ...d,
@@ -231,19 +255,19 @@ describe("message-loop", () => {
     expect(finding.id).toBe("message-loop:api");
     expect(finding.fix).toBeUndefined();
     expect(finding.rationale).toContain("No single filter or rename was verified");
-    // The same diagram without the runtime edit gets its verified fix.
+    // Static cases are quarantined as well.
     d.simulations[0].timeline = [];
-    expect(check(d).findings[0].fix).toBeDefined();
+    expect(check(d).findings[0].fix).toBeUndefined();
   });
 
-  it("keeps request routes apart when proving that non-loop traffic survives a fix", () => {
+  it("withholds fixes when request routes share a message type", () => {
     const d = messageTypesFixture();
     Object.assign(d, routedFixture());
     // Callback loops on /loop only; /oneway Callback crosses the same send edge and legitimately ends at Sender.
     const finding = check(d).findings[0];
     expect(finding.message).toMatch(/^Callback messages loop back to API/);
-    expect(finding.fix?.ops).toEqual([{ op: "update", target: "callback", props: { filter: ["Send"] } }]);
-    const fixed = applyOps(d, finding.fix!.ops!).diagram;
+    expect(finding.fix).toBeUndefined();
+    const fixed = applyOps(d, [{ op: "update", target: "callback", props: { filter: ["Send"] } }]).diagram;
     expect(check(fixed).findings).toEqual([]);
     // What an edge/type verifier offered drops the /oneway requests at API.
     const dropping = applyOps(d, [{ op: "update", target: "send", props: { filter: ["Send"] } }]).diagram;
@@ -259,7 +283,7 @@ describe("message-loop", () => {
     expect(oneway(dropping)).toBe(0);
   });
 
-  it("shares one candidate budget across many loop findings and retains every warning", () => {
+  it("retains every warning without candidate replays, including a selected fix target", () => {
     const d = messageTypesFixture();
     d.nodes = [];
     d.edges = [];
@@ -279,14 +303,13 @@ describe("message-loop", () => {
     try {
       const findings = check(d).findings;
       expect(findings).toHaveLength(80);
-      expect(findings.filter((f) => f.fix).length).toBeGreaterThan(0);
-      expect(findings.filter((f) => f.fix).length).toBeLessThan(80 / 8);
-      expect(spy.mock.calls.length).toBeLessThanOrEqual(25);
+      expect(findings.filter((f) => f.fix)).toHaveLength(0);
+      expect(spy.mock.calls).toHaveLength(1);
       spy.mockClear();
       const selected = runChecks(d, { rules: ["message-loop"], fixTarget: "message-loop:79-api" }).findings;
-      expect(selected.find((f) => f.id === "message-loop:79-api")?.fix).toBeDefined();
-      expect(selected.filter((f) => f.fix)).toHaveLength(1);
-      expect(spy.mock.calls.length).toBeLessThanOrEqual(4);
+      expect(selected.map((f) => f.id)).toContain("message-loop:79-api");
+      expect(selected.filter((f) => f.fix)).toHaveLength(0);
+      expect(spy.mock.calls).toHaveLength(1);
     } finally {
       spy.mockRestore();
     }
@@ -299,36 +322,32 @@ describe("message-loop", () => {
     expect(finding.fix).toBeUndefined();
     expect(finding.rationale).toContain("No single filter or rename was verified");
   });
-  it("warns about the callback and offers the cheapest safe filter", () => {
+  it("warns about the callback and gives manual guidance without a fix", () => {
     const d = messageTypesFixture();
     const [finding] = check(d).findings;
     expect(finding.severity).toBe("warning");
     expect(finding.message).toMatch(/^Callback messages loop back to .+: each one is sent again\.$/);
-    expect(finding.fix?.label).toBe("Only pass Send");
-    expect(finding.fix?.ops).toEqual([{ op: "update", target: "send", props: { filter: ["Send"] } }]);
-    const fixed = applyOps(d, finding.fix!.ops!);
+    const fixed = manual(d, ["Send"]);
     expect(fixed.errors).toEqual([]);
     expect(check(fixed.diagram).findings).toEqual([]);
     expect(messageTypesAt(fixed.diagram).carried.get("callback")).toEqual(new Set(["Callback"]));
   });
 
-  it("offers a rename only when a filter stops its new type", () => {
+  it("withholds rename alternatives even when a filter stops their new type", () => {
     const d = messageTypesFixture();
-    expect(check(d).findings[0].fix?.options).toBeUndefined();
+    expect(check(d).findings[0].fix).toBeUndefined();
     d.edges[1].props = { filter: ["Send", "Callback"] };
-    const [option] = check(d).findings[0].fix!.options!;
-    expect(option.short).toBe("Send as CallbackReceived");
-    expect(option.ops).toEqual([{ op: "update", target: "callback", props: { emits: "CallbackReceived" } }]);
-    const fixed = applyOps(d, option.ops);
+    expect(check(d).findings[0].fix).toBeUndefined();
+    const fixed = applyOps(d, [{ op: "update", target: "callback", props: { emits: "CallbackReceived" } }]);
     expect(check(fixed.diagram).findings).toEqual([]);
   });
 
-  it("preserves non-loop branches and their types", () => {
+  it("withholds fixes alongside non-loop branches and their types", () => {
     const d = messageTypesFixture();
     d.nodes.push({ id: "audit", stencil: "generic.email", label: "Audit", x: 380, y: 400 });
     d.edges.push({ id: "audit-edge", from: "api", to: "audit" });
     const before = messageTypesAt(d).carried.get("audit-edge");
-    const fixed = applyOps(d, check(d).findings[0].fix!.ops!);
+    const fixed = manual(d, ["Send"]);
     expect(messageTypesAt(fixed.diagram).carried.get("audit-edge")).toEqual(before);
   });
 

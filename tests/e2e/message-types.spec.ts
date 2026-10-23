@@ -109,25 +109,15 @@ async function open(page: Page, locale = "en", diagram = messageTypesFixture()) 
   await expect(page.getByTestId("inspector-messages")).toBeVisible();
 }
 
-test("the message-loop Check fixes the callback and one Undo restores its settings", async ({
-  page,
-  consoleErrors,
-}) => {
+test("the message-loop Check warns with manual guidance and no automatic fix", async ({ page, consoleErrors }) => {
   await open(page);
   await page.getByTestId("checks-count").click();
   const row = page.getByTestId("check-row-message-loop:api");
   await expect(row).toContainText("Callback messages loop back to API: each one is sent again.");
-  await page.getByTestId("check-fix-message-loop:api").click();
-  // Applying diagram operations clears selection. Reopen the edited edge before inspecting its fields.
-  await page.getByTestId("edge-label-send").click();
-  await waitForSelectionSettled(page);
-  await expect(page.getByTestId("inspector-carries")).toHaveText("Send");
-  await expect(row).toHaveCount(0);
-  await page.getByTestId("undo-button").click();
-  await page.getByTestId("edge-label-send").click();
-  await waitForSelectionSettled(page);
+  await expect(row).toContainText("Choose where the callback should stop, then check again.");
+  await expect(page.getByTestId("check-fix-message-loop:api")).toHaveCount(0);
   await expect(page.getByTestId("inspector-carries")).toContainText("Callback");
-  await expect(row).toBeVisible();
+  expect((await savedDiagram(page)).edges.find((edge) => edge.id === "send")?.props?.filter).toBeUndefined();
   expectNoErrors(consoleErrors);
 });
 

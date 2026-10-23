@@ -1,5 +1,4 @@
 import type { CheckRule, Finding } from "../types";
-import { createMessageLoopFixer } from "../messageLoopFix";
 import type { MessageLoop } from "../../model/messageTypes";
 
 export const messageLoop: CheckRule = {
@@ -8,8 +7,9 @@ export const messageLoop: CheckRule = {
   about: "Finds message types forwarded around a processor cycle. Retries and broker redelivery do not count.",
   detect(ctx) {
     const types = ctx.messageTypes();
-    const fixFor = createMessageLoopFixer(ctx.diagram, types, undefined, ctx.messageGraphs());
-    // One finding per node: its fix must stop every typed loop reported there, or the warning would stay.
+    // Automatic fixes are quarantined: transition membership cannot prove per-input path preservation.
+    // Keep the verifier in messageLoopFix.ts for docs/backlog/2026-10-23-message-loop-fix-quarantine.md.
+    // One finding per node, with manual guidance for every typed loop reported there.
     const byNode = new Map<string, MessageLoop[]>();
     for (const loop of types.loops) {
       const list = byNode.get(loop.node);
@@ -20,7 +20,6 @@ export const messageLoop: CheckRule = {
       const loop = loops[0];
       const node = ctx.name(loop.node);
       const message = `${loop.type} messages loop back to ${node}: each one is sent again.`;
-      const fix = !ctx.fixTarget || ctx.fixTarget === `message-loop:${loop.node}` ? fixFor(loops) : undefined;
       return {
         id: `message-loop:${loop.node}`,
         rule: "message-loop" as const,
@@ -30,10 +29,8 @@ export const messageLoop: CheckRule = {
         title: "Messages loop back",
         message,
         messageLoop: { type: loop.type, node },
-        fix,
-        rationale: fix
-          ? "Forwarding a callback into the send path can multiply traffic and exhaust processing threads. Filter the returning type out of the send path."
-          : "No single filter or rename was verified to preserve the other message paths. Choose where the callback should stop, then check again.",
+        rationale:
+          "No single filter or rename was verified to preserve the other message paths. Choose where the callback should stop, then check again.",
       };
     });
     if (!types.complete)

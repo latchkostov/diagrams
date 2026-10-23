@@ -47,7 +47,7 @@ export interface MessageTypes {
   carried: ReadonlyMap<string, ReadonlySet<string>>;
   known: ReadonlySet<string>;
   loops: MessageLoop[];
-  /** A hostile diagram exhausted the work budget: never claim it is loop-free. */
+  /** False when the work budget is exhausted or timeline forwarding edits cannot be analyzed safely. */
   complete: boolean;
 }
 
@@ -95,6 +95,7 @@ export interface MessageTypeOptions {
 interface MessageScenario {
   diagram: DiagramFile;
   sources?: { node: string; type: string }[];
+  incomplete?: boolean;
 }
 
 const processor = (role: SimRole) => role === "processor" || role === "none";
@@ -123,6 +124,23 @@ function messageTypeScenarios(diagram: DiagramFile, budget?: MessageTypeBudget):
     ];
     scenarios.push({
       diagram: configured,
+      // Ordered timeline forwarding patches are not modeled yet. Keep static information, but never claim clean.
+      // See docs/backlog/2026-10-23-message-loop-fix-quarantine.md.
+      incomplete: sim.timeline?.some(
+        ({ action }) =>
+          action.do === "props" &&
+          [
+            "emits",
+            "filter",
+            "messageType",
+            "trafficMix",
+            "routeTable",
+            "requestFilter",
+            "requestRouteId",
+            "share",
+            "deny",
+          ].some((key) => Object.hasOwn(action.props, key)),
+      ),
       sources: inputs.map((input) => ({
         node: input.node,
         type: String(input.messageType ?? ownType(nodes.get(input.node))),
@@ -144,7 +162,9 @@ export function messageTypesAt(
   const analyses: MessageTypes[] = [];
   for (const scenario of messageTypeScenarios(diagram, budget)) {
     if (budget.remaining <= 0) break;
-    analyses.push(propagateTypes(scenario.diagram, scenario.sources, budget, table, options.graphs));
+    const analysis = propagateTypes(scenario.diagram, scenario.sources, budget, table, options.graphs);
+    analysis.complete &&= !scenario.incomplete;
+    analyses.push(analysis);
   }
   const result = analyses[0];
   if (!result) return propagateTypes({ ...diagram, simulations: undefined }, [], budget, table);
