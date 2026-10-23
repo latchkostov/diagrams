@@ -45,7 +45,7 @@ import { hasServiceTime, resolveProps, type ResolvedProps } from "./defaults";
 import { activeUnits } from "../stencils/netDevices";
 import { pushDue, popDue, removeDue } from "./dueHeap";
 import { SampledLedger, type Reservation } from "./ledger";
-import { raceReply, settleOnce, type Attempt, type LogicalCall } from "./attempt";
+import { raceReply, settleOnce, type Attempt, type LogicalBranch, type LogicalCall } from "./attempt";
 import { Deque } from "./deque";
 import { createLineage, type Family } from "./lineage";
 import {
@@ -1954,21 +1954,53 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     logBreaker(edge, previous);
   }
 
+  /** Reclassify a logical attempt (or its refused part) as a local short circuit. */
+  function shortCircuited(edge: Edge, branch: LogicalBranch, message: Message): void {
+    edge.calls.shortCircuited! += dotsOf(message);
+    edge.calls.attempts! -= dotsOf(message);
+    const bucket = edge.retry!.window.buckets[Math.floor(branch.countedAt! / 1000) % 10];
+    if (bucket?.second === Math.floor(branch.countedAt! / 1000)) bucket.attempts -= sizeOf(message);
+  }
+
+  /**
+   * A half-open breaker's throttle split: the branch keeps only the admitted test calls, and the rest of its
+   * cohort fails fast at this instant, as scale 1 short-circuits the rest of a burst. The probe reaches the
+   * callee and the breaker at its real size at any scale. The caller's dot still takes one outcome, the probe's.
+   */
+  function narrowProbe(edge: Edge, branch: LogicalBranch, message: Message, admitted: number): void {
+    const refused: Message = {
+      ...copy(edge.from, message),
+      attempts: message.attempts,
+      represented: sizeOf(message) - admitted,
+    };
+    message.represented = branch.represented = admitted;
+    shortCircuited(edge, branch, refused);
+    // A whole short circuit counts here when its logical failure drains; this part never settles the call.
+    edge.calls.failed += dotsOf(refused);
+    gone(edge.from, refused, "end", "breaker open");
+  }
+
+  /** The real requests a call's branch carries: its caller's cohort, unless a half-open breaker narrowed it. */
+  function branchSized(call: Call, edge: Edge): { represented?: number } {
+    const represented = call.branches.get(edge.id)?.represented;
+    return represented === undefined ? call.work.message : { represented };
+  }
+
   function permitBreaker(call: Call, edge: Edge, message: Message): boolean {
     if (!edge.breaker) return true;
     const branch = call.branches.get(edge.id)!;
     const { state, policy } = edge.breaker;
     if (branch.breakerPermit?.generation === state.generation && state.state !== "open") return true;
     const previous = state.state;
-    branch.breakerPermit = breakerPermits(state, policy, time, sizeOf(message));
+    const size = sizeOf(message);
+    branch.breakerPermit = breakerPermits(state, policy, time, size);
     branch.attemptStartedAt ??= time;
     logBreaker(edge, previous);
-    if (branch.breakerPermit) return true;
-    // Reclassify this logical attempt as a local short circuit.
-    edge.calls.shortCircuited! += dotsOf(message);
-    edge.calls.attempts! -= dotsOf(message);
-    const bucket = edge.retry!.window.buckets[Math.floor(branch.countedAt! / 1000) % 10];
-    if (bucket?.second === Math.floor(branch.countedAt! / 1000)) bucket.attempts -= sizeOf(message);
+    if (branch.breakerPermit) {
+      if (size - branch.breakerPermit.units > 1e-9) narrowProbe(edge, branch, message, branch.breakerPermit.units);
+      return true;
+    }
+    shortCircuited(edge, branch, message);
     if (edge.poolPendingIndices.has(call.id)) cancelPending(edge, call.id);
     else gone(edge.from, message, "end", "breaker open");
     scheduleLogical({
@@ -2057,7 +2089,11 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     };
   }
 
-  function retryCount(edge: Edge, field: "requests" | "attempts" | "retried" | "succeeded", message: Message): void {
+  function retryCount(
+    edge: Edge,
+    field: "requests" | "attempts" | "retried" | "succeeded",
+    message: { represented?: number },
+  ): void {
     edge.calls[field] = (edge.calls[field] ?? 0) + dotsOf(message);
     recordRetryWindow(edge.retry!.window, time, field, sizeOf(message));
   }
@@ -2097,16 +2133,18 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     const kind = event.outcome?.class;
     if (!kind || !policy.retryOn.includes(kind) || branch.attempt! >= Math.min(policy.maxAttempts, 10)) return false;
     const message = call.work.message;
+    // Only a narrowed probe's own requests failed and may retry: the rest of its cohort short-circuited.
+    const sized = branchSized(call, edge);
     const w = retryWindow(retry.window, time);
-    if (!retryBudgetPermits(policy.budget, w.requests, w.retried, sizeOf(message))) {
-      edge.calls.budgetDenied! += dotsOf(message);
+    if (!retryBudgetPermits(policy.budget, w.requests, w.retried, sizeOf(sized))) {
+      edge.calls.budgetDenied! += dotsOf(sized);
       return false;
     }
     if (TEST_ORACLES && opts.verifyResilience && policy.budget)
       budgetDecisions.push({
         requests: w.requests,
         retried: w.retried,
-        units: sizeOf(message),
+        units: sizeOf(sized),
         budget: policy.budget,
       });
     let u = 0;
@@ -2116,7 +2154,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       u = draw.value;
     }
     const delay = backoffDelay(policy, branch.attempt!, u);
-    if (event.timeout && branch.state === "sent") edge.calls.ambiguous! += dotsOf(message);
+    if (event.timeout && branch.state === "sent") edge.calls.ambiguous! += dotsOf(sized);
     // A deadline can expire while the pool is full. Remove that queued attempt
     // before resetting its deadline for a retry; otherwise it can dispatch again.
     cancelPending(edge, call.id);
@@ -2124,12 +2162,12 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     if (!(call.backingOff ?? 0)) call.backoffAt = time;
     call.backingOff = (call.backingOff ?? 0) + 1;
     branch.retryEvent = nextLogical++;
-    retryCount(edge, "retried", message);
+    retryCount(edge, "retried", sized);
     // A logical attempt includes its scheduled backoff and pool wait, even if a
     // sibling subsequently cancels it. Wire dispatch is tracked by inFlight.
-    retryCount(edge, "attempts", message);
+    retryCount(edge, "attempts", sized);
     branch.countedAt = time;
-    branch.backoffDots = dotsOf(message);
+    branch.backoffDots = dotsOf(sized);
     edge.calls.backingOff! += branch.backoffDots;
     scheduleLogical({ id: branch.retryEvent, end: time + delay, edge, call: call.id, retry: true });
     const reason = event.timeout ? "timed out" : String(event.code);
@@ -2166,6 +2204,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       returnCall: call.id,
       callDepth: call.depth,
       callAttempt: timing.attempt,
+      ...(timing.represented === undefined ? {} : { represented: timing.represented }),
     };
     if (!permitBreaker(call, edge, message)) return;
     pushDue(
@@ -2516,7 +2555,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           call.work.timeoutOrigin = event.timeout ? edge!.id : event.timeoutOrigin;
         }
         call.outstanding.delete(edge!.id);
-        if (event.ok && edge!.retry) retryCount(edge!, "succeeded", call.work.message);
+        if (event.ok && edge!.retry) retryCount(edge!, "succeeded", branchSized(call, edge!));
         releaseCallEdge(call, edge!);
         call.branches.get(edge!.id)!.state = event.timeout ? "timedOut" : event.ok ? "replied" : "failed";
         if (edge!.policy?.blocking) call.blockingRemaining--;

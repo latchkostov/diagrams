@@ -326,3 +326,27 @@ it("recovers scale-three queue deliveries split between two competing consumers"
   e.step(10000);
   expect(e.snapshot().edges.call.breaker?.state).toBe("closed");
 });
+
+it("half-open, narrows a cohort larger than its remaining test calls and refuses one below a real request", () => {
+  const b = createBreaker(),
+    p = { minimumCalls: 1, halfOpenCalls: 5, openMs: 10 };
+  breakerRecord(b, p, 0, "error", 0, breakerPermits(b, p, 0, 1000)!);
+  expect(b.state).toBe("open");
+  const probe = breakerPermits(b, p, 10, 1000)!;
+  expect(b.state).toBe("half-open");
+  expect(probe).toMatchObject({ probe: true, units: 5, sent: 5 });
+  expect(breakerPermits(b, p, 10, 1000)).toBeUndefined();
+  breakerRecord(b, p, 40, "success", 30, probe);
+  expect(b.state).toBe("closed");
+  // A partial batch: 4.5 sent leaves room for less than one real request.
+  const c = createBreaker();
+  breakerRecord(c, p, 0, "error", 0, breakerPermits(c, p, 0, 1)!);
+  const first = breakerPermits(c, p, 10, 4.5)!;
+  expect(first.units).toBe(4.5);
+  expect(breakerPermits(c, p, 10, 1000)).toBeUndefined();
+  // Room for a whole cohort is never narrowed.
+  const d = createBreaker();
+  breakerRecord(d, p, 0, "error", 0, breakerPermits(d, p, 0, 1)!);
+  expect(breakerPermits(d, p, 10, 3)!.units).toBe(3);
+  expect(breakerPermits(d, p, 10, 3)!.units).toBe(2);
+});

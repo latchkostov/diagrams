@@ -77,14 +77,8 @@ export function autoScale(simulation: Simulation, diagram: DiagramFile): number 
         scale = Math.min(scale, Math.max(1, slots / 4));
       }
   }
-  if (revisionAtLeast(diagram.planning?.revision, "p3-w2"))
-    for (const edge of diagram.edges) {
-      if (edge.kind !== "sync" || (edge.relation && edge.relation !== "flow")) continue;
-      const caller = {
-        ...(edge.props?.caller as import("./types").EdgeSimProps["caller"]),
-        ...simulation.setup?.edges?.[edge.id]?.caller,
-      };
-      if (caller.breaker) scale = Math.min(scale, Math.max(1, (caller.breaker.minimumCalls ?? 20) / 4));
-    }
+  // Circuit breakers never lower the scale: their windows and test calls count real requests, and a
+  // half-open breaker narrows a dot to its remaining test calls (breaker.ts), so no breaker needs
+  // more dots than the entry-rate budget allows, on its own branch or anyone else's.
   return scale;
 }
