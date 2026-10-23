@@ -80,6 +80,12 @@ export const EDITOR_ONLY: { name: string; path: string; stub: (root: string) => 
         resolve(root, "src/lib/canvasBridge.ts").replaceAll("\\", "/"),
       )};`,
   },
+  // A read-only canvas never moves an edge's end: no reconnect handles, so none of their pointer gesture either.
+  {
+    name: "the reconnect handles",
+    path: "/src/canvas/edges/EdgeEnds.tsx",
+    stub: () => "export const EdgeEnds = () => null;",
+  },
   { name: "the start card", path: "/src/canvas/StartCard.tsx", stub: () => "export const StartCard = () => null;" },
   {
     name: "the first-run hint",
