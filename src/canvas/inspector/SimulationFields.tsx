@@ -31,7 +31,7 @@ import { type InspectorProps } from "./types";
 import { formatCount } from "../../live/format";
 import { formatNumber } from "../../i18n/number";
 import { type DiagramFile } from "../../model/types";
-import { NodeMessages } from "./lazyMessageFields";
+import { MessageFields } from "./lazyMessageFields";
 
 type NodeSimulationProps = Pick<InspectorProps, "editor" | "meta" | "readDiagram"> & {
   node: DiagramFlowNode;
@@ -83,7 +83,7 @@ export function NodeSimulation({
       }
     >
       {(role === "source" || role === "processor") && (
-        <NodeMessages readDiagram={readDiagram} nodeId={node.id} editor={editor} source={role === "source"} />
+        <MessageFields readDiagram={readDiagram} nodeId={node.id} editor={editor} source={role === "source"} />
       )}
       {broker?.partitioned === false && (
         <p className="insp-note" data-testid="broker-fanout">

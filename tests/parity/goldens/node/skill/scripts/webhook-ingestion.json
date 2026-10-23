@@ -8,7 +8,7 @@
   "shareLink": {
     "status": 0,
     "prefix": "https://www.livediagrams.dev/#d=",
-    "decoded": { "sha256": "6c2d52f9f83eb3a33cd221f169a515960ac0571e9f0faacce0d7f0e9634addcd", "bytes": 8111 },
+    "decoded": { "sha256": "c2fc0906e02367ed86f39e0a247b64280f3a57833d088350fe92f2b209c074db", "bytes": 8149 },
     "sameAsFile": true,
     "warned": false
   },
@@ -198,6 +198,8 @@
             "to": "receiver",
             "label": "Applied callback",
             "kind": "async",
+            "sourceSide": "top",
+            "targetSide": "top",
             "props": { "travelMs": 300, "filter": ["PartnerChangeApplied"], "emits": "WebhookApplied" }
           },
           {

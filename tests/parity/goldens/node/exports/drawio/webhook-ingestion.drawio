@@ -112,7 +112,7 @@
           </mxCell>
         </object>
         <object id="dg-e-workers-to-receiver" label="Applied callback" dg_id="workers-to-receiver" dg_kind="async" dg_props="{&quot;travelMs&quot;:300,&quot;filter&quot;:[&quot;PartnerChangeApplied&quot;],&quot;emits&quot;:&quot;WebhookApplied&quot;}">
-          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-workers" target="dg-n-receiver">
+          <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;exitX=0.5;exitY=0;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="dg-n-workers" target="dg-n-receiver">
             <mxGeometry relative="1" as="geometry" />
           </mxCell>
         </object>

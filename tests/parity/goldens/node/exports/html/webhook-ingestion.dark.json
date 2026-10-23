@@ -1,5 +1,5 @@
 {
-  "file": { "sha256": "36b4757d49cd21402e196af7e0df2e3acbd4fa107cf95bc27e0f552c9585bf1b", "bytes": 41045 },
+  "file": { "sha256": "fc1170d923d7c9a07994f7a5c524687ebaeb7797939af2b064024c385cc5bc40", "bytes": 41083 },
   "payload": {
     "version": 1,
     "diagram": {
@@ -182,6 +182,8 @@
           "to": "receiver",
           "label": "Applied callback",
           "kind": "async",
+          "sourceSide": "top",
+          "targetSide": "top",
           "props": { "travelMs": 300, "filter": ["PartnerChangeApplied"], "emits": "WebhookApplied" }
         },
         {

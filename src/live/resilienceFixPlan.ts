@@ -1,7 +1,7 @@
 import type { Simulation } from "../model/types";
 import type { EdgeSimProps } from "../sim/types";
 import { advanceHeadless, createHeadlessRun, startWork, type VerificationContext } from "../sim/headless";
-import { simulationEdges } from "../sim/simulationEdges";
+import { simulationEdges } from "../sim/topology";
 import { estimateTotalMs } from "../sim/simulation";
 import { realSnapshot } from "../sim/units";
 import { recoveryPath, recoveryFault } from "../sim/recoveryEvidence";

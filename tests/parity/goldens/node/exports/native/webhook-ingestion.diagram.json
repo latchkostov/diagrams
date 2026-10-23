@@ -253,6 +253,8 @@
       "to": "receiver",
       "label": "Applied callback",
       "kind": "async",
+      "sourceSide": "top",
+      "targetSide": "top",
       "props": {
         "travelMs": 300,
         "filter": [

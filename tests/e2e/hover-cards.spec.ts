@@ -151,6 +151,17 @@ for (const locale of ["ar", "en-XA"])
     expectNoErrors(consoleErrors);
   });
 
+test("a flow connection label opens its live readout", async ({ page, consoleErrors }) => {
+  await gotoLive(page, "./?view=canvas&example=webhook-ingestion&live=1&paused=1");
+  await waitForStableViewport(page);
+  await page.getByTestId("diagram-title").hover();
+  await page.getByTestId("edge-label-queue-to-dlq").hover();
+  const card = page.getByTestId("edge-detail-queue-to-dlq");
+  await expect(card).toHaveAttribute("data-pinned", "false");
+  await expect(card).toBeVisible();
+  expectNoErrors(consoleErrors);
+});
+
 test("a held detail chunk preserves focus, cursor, CSS and export; failed download offers Retry", async ({ page }) => {
   let requested = false,
     fail = true;
@@ -560,8 +571,7 @@ for (const slug of ["retry-storm", "webhook-ingestion"])
         : ["node-receiver", "node-exchange", "node-queue", "node-dlq", "node-workers", "edge-queue-to-dlq"];
     for (const item of items) {
       await page.getByTestId("diagram-title").hover();
-      // A line's bounding-box centre can lie on another edge; its visible label is an unambiguous hover target.
-      await page.getByTestId(item.replace(/^edge-/, "edge-label-")).hover();
+      await page.getByTestId(item).hover({ force: true });
       const card = page.getByTestId(item.replace(/^(node|edge)-/, "$1-detail-"));
       await expect(card).toHaveAttribute("data-pinned", "false");
       // The card is its own scroll container: a summary fits it in both directions, so no scroll bar shows.

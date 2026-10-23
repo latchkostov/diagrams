@@ -38,7 +38,7 @@ test("message fields show loading while the inspector chunk is held and recover 
     await page.goto("./?view=canvas&example=webhook-ingestion");
     await page.getByTestId("edge-label-send").click();
     await waitForSelectionSettled(page);
-    await page.getByTestId("inspector-section-edge-simulation").click();
+    await page.getByTestId("inspector-section-edge-messages").click();
     await held;
     await expect(page.getByTestId("message-fields-loading")).toBeVisible();
     await expect(page.getByTestId("inspector-field-label")).toBeEnabled();
@@ -105,7 +105,7 @@ async function open(page: Page, locale = "en", diagram = messageTypesFixture()) 
   await expect(page.getByTestId("node-api")).toBeVisible();
   await page.getByTestId("edge-label-send").click();
   await waitForSelectionSettled(page);
-  await page.getByTestId("inspector-section-edge-simulation").click();
+  await page.getByTestId("inspector-section-edge-messages").click();
   await expect(page.getByTestId("inspector-messages")).toBeVisible();
 }
 

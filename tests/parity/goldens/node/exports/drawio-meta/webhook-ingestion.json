@@ -1,7 +1,7 @@
 {
   "withIcons": {
-    "sha256": "af55683eccb651e080cf6381b47e68b89a96c6ed547fd7cb6056fa2ead2f2ec6",
-    "bytes": 45873,
+    "sha256": "ba543d1ec0ad0c35604310e871ded20cddfd3d2350d784d95964901b3a70ed0b",
+    "bytes": 45949,
     "inlined": {
       "client.team": "client-team 932a5c20d72853c7",
       "cloudflare": "cloudflare 3dc0e02be1da2a1d",
@@ -198,6 +198,8 @@
             "to": "receiver",
             "label": "Applied callback",
             "kind": "async",
+            "sourceSide": "top",
+            "targetSide": "top",
             "props": { "travelMs": 300, "filter": ["PartnerChangeApplied"], "emits": "WebhookApplied" }
           },
           {

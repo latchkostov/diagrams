@@ -48,13 +48,13 @@ describe("focusPolicy: the rules, row by row", () => {
     [
       "I4 removing a processor rule focuses its surviving control after the commit",
       state(),
-      [{ type: "inspector.ruleRemoved", target: opener }],
+      [{ type: "inspector.rule", target: opener }],
       ["focus:element@commit"],
     ],
     [
       "I5 changing a rule's incoming type focuses the control in its new row after the commit",
       state(),
-      [{ type: "inspector.ruleRekeyed", target: opener }],
+      [{ type: "inspector.rule", target: opener }],
       ["focus:element@commit"],
     ],
     ["M1 Esc in a menu gives focus back to its invoker", state(), [closed("escape")], ["focus:element@commit"]],

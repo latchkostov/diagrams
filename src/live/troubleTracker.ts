@@ -1,6 +1,6 @@
 import type { LiveController } from "./controller";
 import { TroubleWatcher, pickTrouble, type Trouble, type TroubleMemory } from "./observedTrouble";
-import { simulationEdges } from "../sim/simulationEdges";
+import { simulationEdges } from "../sim/topology";
 import { state as language } from "../i18n";
 import { threadFixOffThread, warmChecksWorker } from "../canvas/checks/runner";
 import { revisionAtLeast } from "../model/revisions";

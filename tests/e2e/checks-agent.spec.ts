@@ -100,7 +100,8 @@ test("the file's ignores hold, and a private diagram offers no check_diagram", a
   });
   await expect(page.getByTestId("diagram-title")).toHaveText("Ledger intake");
   await expect.poll(() => toolNames(page)).toContain("check_diagram");
-  expect(await check(page)).toEqual({ findings: [], summary: "Nothing to check. 13 checks ran; 1 ignored." });
+  // The message-loop rule is included even when this acyclic diagram has no finding from it.
+  expect(await check(page)).toEqual({ findings: [], summary: "Nothing to check. 14 checks ran; 1 ignored." });
 
   // File ▸ Privacy ▸ Private diagram: every AI tool goes, check_diagram included.
   await page.getByTestId("file-button").click();
