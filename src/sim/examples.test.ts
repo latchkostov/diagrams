@@ -8,6 +8,8 @@ import { exampleTestLabel } from "./exampleLabels";
 const examples = import.meta.glob<DiagramFile>("../examples/*.json", { eager: true, import: "default" });
 /** Most examples tell two stories; these tell more. */
 const SIMULATIONS: Record<string, number> = {
+  // Catalogue-only showcase: Free play demonstrates the brands without adding a saved scenario.
+  "../examples/vendor-edge-storefront.json": 0,
   "../examples/slow-payment-provider.json": 5,
   "../examples/retry-storm.json": 4,
   "../examples/scale-on-busy-threads.json": 3,
@@ -24,7 +26,8 @@ describe("saved example simulations with the real stencil registry", () => {
   for (const [index, [path, diagram]] of Object.entries(examples).entries()) {
     const label = exampleTestLabel(path, index);
     it(`${label} has the expected number of presentations and valid node references`, () => {
-      expect(diagram.simulations?.length).toBe(SIMULATIONS[path] ?? 2);
+      if (SIMULATIONS[path] === 0) expect(diagram.simulations).toBeUndefined();
+      else expect(diagram.simulations?.length).toBe(SIMULATIONS[path] ?? 2);
       const ids = new Set(diagram.nodes.map((node) => node.id));
       const edgeIds = new Set(diagram.edges.map((edge) => edge.id));
       for (const node of diagram.nodes) expect(getStencil(node.stencil).id).toBe(node.stencil);

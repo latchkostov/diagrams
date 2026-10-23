@@ -1,0 +1,22 @@
+{
+  "autoLayout": {
+    "LR": { "shopper": [40, 220], "cdn": [400, 220], "waf": [760, 220], "checkout": [1120, 220], "receipts": [1480, 40], "payments": [1480, 160], "flags": [1480, 280], "identity": [1480, 400] },
+    "TB": { "shopper": [460, 40], "cdn": [460, 200], "waf": [460, 360], "checkout": [460, 520], "identity": [40, 680], "flags": [320, 680], "receipts": [600, 680], "payments": [880, 680] }
+  },
+  "tidy": { "shopper": [0, 240], "cdn": [340, 240], "waf": [680, 240], "checkout": [1020, 240], "receipts": [1360, 60], "payments": [1360, 180], "flags": [1360, 300], "identity": [1360, 420] },
+  "arrange": {
+    "alignLeft": { "shopper": [0, 160], "cdn": [0, 160], "waf": [0, 160], "checkout": [0, 160], "receipts": [0, 60], "payments": [0, 260], "flags": [0, 420], "identity": [0, 420] },
+    "alignMiddle": { "shopper": [0, 240], "cdn": [340, 240], "waf": [680, 240], "checkout": [1020, 240], "receipts": [1360, 240], "payments": [1360, 240], "flags": [1020, 240], "identity": [680, 240] },
+    "distributeH": { "shopper": [0, 160], "cdn": [194, 160], "waf": [389, 160], "checkout": [777, 160], "receipts": [1166, 60], "payments": [1360, 260], "flags": [971, 420], "identity": [583, 420] },
+    "distributeV": { "shopper": [0, 111], "cdn": [340, 163], "waf": [680, 214], "checkout": [1020, 266], "receipts": [1360, 60], "payments": [1360, 317], "flags": [1020, 369], "identity": [680, 420] },
+    "spreadH": { "shopper": [0, 60], "cdn": [340, 60], "waf": [680, 60], "checkout": [1200, 60], "receipts": [1720, 60], "payments": [1980, 60], "flags": [1460, 60], "identity": [940, 60] },
+    "boundaryAround": { "x": -40, "y": -4, "width": 1660, "height": 536 }
+  },
+  "skillLayout": {
+    "laidOut": true,
+    "fitted": [],
+    "placedNotes": [],
+    "nodes": { "shopper": [40, 220], "cdn": [400, 220], "waf": [760, 220], "checkout": [1120, 220], "receipts": [1480, 40], "payments": [1480, 160], "flags": [1480, 280], "identity": [1480, 400] },
+    "groups": {}
+  }
+}

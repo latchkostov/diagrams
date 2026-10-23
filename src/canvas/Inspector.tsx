@@ -2,18 +2,48 @@ import { useLayoutEffect, type ReactNode } from "react";
 import { Icon } from "../components/Icon";
 import { t, useLocale } from "../i18n";
 import { kindLabel } from "../i18n/chrome";
-import { lazyComponent } from "../lib/lazyLoad";
+import { lazyComponent, type LoadStatus } from "../lib/lazyLoad";
 
 import { NodePanel } from "./inspector/NodePanel";
 import { type InspectorProps } from "./inspector/types";
 import { SheetResizeHandle } from "./SheetResizeHandle";
 import { InteractionContext, useInteractionOrLocal, type InteractionController } from "./interaction";
 
-const EdgePanel = lazyComponent(() => import("./inspector/EdgePanel").then((m) => m.EdgePanel));
-const GroupPanel = lazyComponent(() => import("./inspector/GroupPanel").then((m) => m.GroupPanel));
-const AnnotationPanel = lazyComponent(() => import("./inspector/AnnotationPanel").then((m) => m.AnnotationPanel));
-const DiagramPanel = lazyComponent(() => import("./inspector/DiagramPanel").then((m) => m.DiagramPanel));
-const MultiPanel = lazyComponent(() => import("./inspector/MultiPanel").then((m) => m.MultiPanel));
+/**
+ * Stands in for a panel while its code downloads: nothing (a rename asked of it meanwhile holds what's typed until
+ * its field takes focus: the interaction controller's pending rename). If the download fails, a marker says whose
+ * fields won't come (`owner`: the flow id its name field names), so the DOM port resolves them as gone, the request
+ * ends and the keys go back to the canvas. The way back is the toast's Retry, which ships with the app, never with
+ * the panel's chunk.
+ */
+function pending<P>(owner?: (props: P) => string) {
+  return (props: P, status: LoadStatus): ReactNode =>
+    status.failed ? (
+      <div hidden data-testid="inspector-panel-unavailable" data-panel-unavailable={owner?.(props) ?? ""} />
+    ) : null;
+}
+
+const EdgePanel = lazyComponent(
+  () => import("./inspector/EdgePanel").then((m) => m.EdgePanel),
+  pending((p: { edge: { id: string } }) => p.edge.id),
+  true,
+);
+const GroupPanel = lazyComponent(
+  () => import("./inspector/GroupPanel").then((m) => m.GroupPanel),
+  pending((p: { group: { id: string } }) => p.group.id),
+  true,
+);
+const AnnotationPanel = lazyComponent(
+  () => import("./inspector/AnnotationPanel").then((m) => m.AnnotationPanel),
+  pending(),
+  true,
+);
+const DiagramPanel = lazyComponent(
+  () => import("./inspector/DiagramPanel").then((m) => m.DiagramPanel),
+  pending(),
+  true,
+);
+const MultiPanel = lazyComponent(() => import("./inspector/MultiPanel").then((m) => m.MultiPanel), pending(), true);
 
 export function Inspector(p: InspectorProps) {
   // The canvas's focus controller moves focus into the fields; outside a canvas (the Lab), one of its own.

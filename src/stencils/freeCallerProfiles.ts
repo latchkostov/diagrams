@@ -1,3 +1,4 @@
+import { baseStencilId } from "./vendorParents";
 import type { StencilProfile } from "./profiles";
 
 /** The family records used by canvas wait defaults; full presets remain lazy. */
@@ -47,6 +48,6 @@ export const FREE_CALLER_PROFILES: Readonly<Record<string, StencilProfile>> = {
   "generic.saga": { family: "workflow" },
 };
 
-export const holdsThreadByDefault = (stencil: string) => !Object.hasOwn(FREE_CALLER_PROFILES, stencil);
+export const holdsThreadByDefault = (stencil: string) => !Object.hasOwn(FREE_CALLER_PROFILES, baseStencilId(stencil));
 export const holdsCallerThread = (stencil: string, wait?: "blocking" | "non-blocking") =>
   wait ? wait === "blocking" : holdsThreadByDefault(stencil);

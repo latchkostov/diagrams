@@ -28,6 +28,15 @@ async function screenshot(page: import("@playwright/test").Page, name: string) {
 }
 
 test.describe("external discovery", () => {
+  test("searches Fastly in Stencils and adds the branded CDN", async ({ page, consoleErrors }) => {
+    await gotoCanvas(page, "aws-serverless-orders");
+    await page.getByTestId("palette-search").fill("fastly");
+    await expect(page.getByTestId("palette-item-fastly")).toBeVisible();
+    await page.getByTestId("palette-item-fastly").click();
+    await expect(page.getByTestId("node-fastly-1")).toBeVisible();
+    await expect(page.getByTestId("node-fastly-1")).toContainText("Fastly");
+    expectNoErrors(consoleErrors);
+  });
   test("HTTP API selects External API by default in the rail and Ctrl+K", async ({ page }) => {
     await gotoCanvas(page, "aws-serverless-orders");
     await page.getByTestId("palette-search").fill("HTTP API");

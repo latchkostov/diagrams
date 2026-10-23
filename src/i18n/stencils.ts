@@ -1,3 +1,4 @@
+import { vendorDescriptionParent } from "../stencils/vendorParents";
 import { msg, t } from "./core";
 import type { Stencil } from "../model/types";
 
@@ -394,7 +395,7 @@ export function stencilDescription(s: Stencil): string {
       ? t("stencil.webFrameworkDescription", { framework: s.label })
       : t("stencil.mobileFrameworkDescription", { framework: s.label });
   }
-  return descriptions[s.id]?.() ?? s.description;
+  return descriptions[vendorDescriptionParent(s.id)]?.() ?? s.description;
 }
 export const stencilSubtitle = (s: Stencil): string | undefined =>
   s.defaultSublabel ? (subtitles[s.defaultSublabel]?.() ?? s.defaultSublabel) : undefined;

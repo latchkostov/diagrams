@@ -1,0 +1,210 @@
+{
+  "run": { "time": 60000, "scale": 1, "traffic": true },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 0,
+      "nodes": {
+        "shopper": { "replicas": [1, 1, 0] },
+        "cdn": { "replicas": [1, 1, 0] },
+        "waf": { "replicas": [1, 1, 0] },
+        "checkout": { "replicas": [1, 1, 0] },
+        "receipts": { "replicas": [1, 1, 0] },
+        "payments": { "replicas": [1, 1, 0] },
+        "flags": { "replicas": [1, 1, 0] },
+        "identity": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 10000,
+      "inSystem": 4,
+      "nodes": {
+        "shopper": { "processed": 20, "throughput": 2.528714056021835, "replicas": [1, 1, 0] },
+        "cdn": { "processed": 19, "throughput": 2.0030305101524837, "replicas": [1, 1, 0] },
+        "waf": { "processed": 18, "inFlight": 1, "throughput": 1.5898616699849577, "replicas": [1, 1, 0] },
+        "checkout": { "processed": 18, "throughput": 2.1312836768170293, "replicas": [1, 1, 0] },
+        "receipts": { "processed": 17, "throughput": 1.6506954398319775, "replicas": [1, 1, 0] },
+        "payments": { "processed": 17, "throughput": 1.577836368609966, "replicas": [1, 1, 0] },
+        "flags": { "replicas": [1, 1, 0] },
+        "identity": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 20000,
+      "inSystem": 4,
+      "nodes": {
+        "shopper": { "processed": 40, "throughput": 2.528828859462367, "replicas": [1, 1, 0] },
+        "cdn": { "processed": 39, "throughput": 2.008121187809417, "replicas": [1, 1, 0] },
+        "waf": { "processed": 38, "inFlight": 1, "throughput": 1.5888391995756341, "replicas": [1, 1, 0] },
+        "checkout": { "processed": 38, "throughput": 2.1162069415163383, "replicas": [1, 1, 0] },
+        "receipts": { "processed": 37, "throughput": 1.6354089424003677, "replicas": [1, 1, 0] },
+        "payments": { "processed": 37, "throughput": 1.5594216025296512, "replicas": [1, 1, 0] },
+        "flags": { "replicas": [1, 1, 0] },
+        "identity": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 30000,
+      "inSystem": 4,
+      "nodes": {
+        "shopper": { "processed": 60, "throughput": 2.528828864674435, "replicas": [1, 1, 0] },
+        "cdn": { "processed": 59, "throughput": 2.007656982129983, "replicas": [1, 1, 0] },
+        "waf": { "processed": 58, "inFlight": 1, "throughput": 1.5764727008861275, "replicas": [1, 1, 0] },
+        "checkout": { "processed": 58, "throughput": 2.0963303296784375, "replicas": [1, 1, 0] },
+        "receipts": { "processed": 57, "throughput": 1.612740549774108, "replicas": [1, 1, 0] },
+        "payments": { "processed": 57, "throughput": 1.5453463524252886, "replicas": [1, 1, 0] },
+        "flags": { "replicas": [1, 1, 0] },
+        "identity": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 40000,
+      "inSystem": 4,
+      "nodes": {
+        "shopper": { "processed": 80, "throughput": 2.528828864674673, "replicas": [1, 1, 0] },
+        "cdn": { "processed": 79, "throughput": 1.9965212113628676, "replicas": [1, 1, 0] },
+        "waf": { "processed": 78, "inFlight": 1, "throughput": 1.5912046287823134, "replicas": [1, 1, 0] },
+        "checkout": { "processed": 78, "throughput": 2.104803453662715, "replicas": [1, 1, 0] },
+        "receipts": { "processed": 77, "throughput": 1.6391976928269112, "replicas": [1, 1, 0] },
+        "payments": { "processed": 77, "throughput": 1.565796035271889, "replicas": [1, 1, 0] },
+        "flags": { "replicas": [1, 1, 0] },
+        "identity": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 50000,
+      "inSystem": 4,
+      "nodes": {
+        "shopper": { "processed": 100, "throughput": 2.528828864674673, "replicas": [1, 1, 0] },
+        "cdn": { "processed": 99, "throughput": 2.005759038347209, "replicas": [1, 1, 0] },
+        "waf": { "processed": 98, "inFlight": 1, "throughput": 1.5866644566122, "replicas": [1, 1, 0] },
+        "checkout": { "processed": 98, "throughput": 2.130844607507966, "replicas": [1, 1, 0] },
+        "receipts": { "processed": 97, "throughput": 1.6311765379518317, "replicas": [1, 1, 0] },
+        "payments": { "processed": 97, "throughput": 1.556587262457376, "replicas": [1, 1, 0] },
+        "flags": { "replicas": [1, 1, 0] },
+        "identity": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 60000,
+      "inSystem": 3,
+      "nodes": {
+        "shopper": { "processed": 120, "throughput": 2.528828864674673, "replicas": [1, 1, 0] },
+        "cdn": { "processed": 119, "throughput": 1.9906959667835042, "replicas": [1, 1, 0] },
+        "waf": { "processed": 118, "inFlight": 1, "throughput": 1.5740743627023797, "replicas": [1, 1, 0] },
+        "checkout": { "processed": 118, "throughput": 2.0889799426488205, "replicas": [1, 1, 0] },
+        "receipts": { "processed": 117, "inFlight": 1, "throughput": 1.6350185060562126, "replicas": [1, 1, 0] },
+        "payments": { "processed": 118, "throughput": 2.5514858636925393, "replicas": [1, 1, 0] },
+        "flags": { "replicas": [1, 1, 0] },
+        "identity": { "replicas": [1, 1, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 60000,
+    "inSystem": 3,
+    "real": {
+      "shopper": { "processed": 120, "throughput": 2.528828864674673, "replicas": [1, 1, 0] },
+      "cdn": { "processed": 119, "throughput": 1.9906959667835042, "replicas": [1, 1, 0] },
+      "waf": { "processed": 118, "inFlight": 1, "throughput": 1.5740743627023797, "replicas": [1, 1, 0] },
+      "checkout": { "processed": 118, "throughput": 2.0889799426488205, "replicas": [1, 1, 0] },
+      "receipts": { "processed": 117, "inFlight": 1, "throughput": 1.6350185060562126, "replicas": [1, 1, 0] },
+      "payments": { "processed": 118, "throughput": 2.5514858636925393, "replicas": [1, 1, 0] },
+      "flags": { "replicas": [1, 1, 0] },
+      "identity": { "replicas": [1, 1, 0] }
+    },
+    "edges": { "browse": 119, "protect": 119, "origin": 118, "store": 118, "pay": 118, "config": 0, "authenticate": 0 }
+  },
+  "events": {
+    "total": 1302,
+    "byKind": { "process": 710, "deliver": 592 },
+    "byNode": {
+      "shopper": { "process": 120 },
+      "cdn": { "deliver": 119, "process": 119 },
+      "waf": { "deliver": 119, "process": 118 },
+      "checkout": { "deliver": 118, "process": 118 },
+      "receipts": { "deliver": 118, "process": 117 },
+      "payments": { "deliver": 118, "process": 118 }
+    },
+    "perSecond": [
+      "54fde7da1731",
+      "40ac24d0e8a4",
+      "deea3961cb5b",
+      "8fbd000f3bfa",
+      "3851145ec252",
+      "ddba0df7adbb",
+      "08c95eeeb487",
+      "f925d1711b9b",
+      "fa24f10db92a",
+      "b228a2101186",
+      "bac2f25e1636",
+      "359514740541",
+      "d7f763db37fe",
+      "b4f8bdc774f7",
+      "34a17473a0d1",
+      "8f6a82e03dfd",
+      "48743dab887e",
+      "b91c0c6689d5",
+      "cf4400b7666d",
+      "14e515074d5a",
+      "b6bd05c8e34a",
+      "2f4bebfd5860",
+      "44343a2d18ab",
+      "c4f66cc67c1d",
+      "0800e48ac3ed",
+      "b8d3bd34d37e",
+      "f7aeec8ce529",
+      "dd8ac83e78a6",
+      "beec1ef23f95",
+      "7d2b8f17d7ca",
+      "b6921a65c0b4",
+      "620c0b798eeb",
+      "bd73b25a7366",
+      "294072da1ebd",
+      "0a7be02c8db0",
+      "4c0111f3f77d",
+      "452afb3344d6",
+      "03b13895387a",
+      "da1d7ca0d392",
+      "7ed5f455a143",
+      "d6eec1ca3888",
+      "96c9dea31d4f",
+      "53ac6a216abf",
+      "ea4f71e84e27",
+      "42d285c1532c",
+      "12c9ea2fa534",
+      "e7d15b0258a2",
+      "75ecfa64a227",
+      "3f5b3de43fe3",
+      "416a9b9307b0",
+      "1c3d2805747b",
+      "d6edbf9332fa",
+      "c1c700dc796f",
+      "e33bb657ca98",
+      "0450ed4324d7",
+      "55e630249553",
+      "bd0aa188caa1",
+      "85350e8d71d9",
+      "73269f1a0f65",
+      "292e8457258a",
+      "01c78cda5ac2"
+    ]
+  },
+  "notes": [],
+  "latency": {
+    "journeys": { "done": 117, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0 },
+    "endToEndMs": { "count": 117, "min": 1020, "mean": 1062.991452991453, "p50": 1060, "p90": 1080, "max": 1100 },
+    "waitMs": {
+      "cdn": { "count": 117, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "waf": { "count": 117, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "checkout": { "count": 117, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "receipts": { "count": 117, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 }
+    },
+    "processMs": {
+      "cdn": { "count": 117, "min": 50, "mean": 65.55555555555556, "p50": 70, "p90": 80, "max": 80 },
+      "waf": { "count": 117, "min": 50, "mean": 66.06837606837607, "p50": 70, "p90": 80, "max": 80 },
+      "checkout": { "count": 117, "min": 70, "mean": 86.06837606837607, "p50": 90, "p90": 100, "max": 100 },
+      "receipts": { "count": 117, "min": 40, "mean": 45.2991452991453, "p50": 50, "p90": 50, "max": 50 }
+    }
+  }
+}

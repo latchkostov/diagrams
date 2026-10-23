@@ -1,0 +1,26 @@
+{
+  "viewport": "translate(40px, 245.823px) scale(0.64557)",
+  "nodes": {
+    "shopper": { "kind": "node", "box": "translate(0px, 160px) 220×72", "text": "Shopper Web Browser" },
+    "cdn": { "kind": "node", "box": "translate(340px, 160px) 220×72", "text": "Fastly Fastly" },
+    "waf": { "kind": "node", "box": "translate(680px, 160px) 220×72", "text": "Cloudflare WAF Cloudflare WAF" },
+    "checkout": { "kind": "node", "box": "translate(1020px, 160px) 220×72", "text": "Checkout function Fastly Compute" },
+    "receipts": { "kind": "node", "box": "translate(1360px, 60px) 220×72", "text": "Receipt objects Cloudflare R2" },
+    "payments": { "kind": "node", "box": "translate(1360px, 260px) 220×72", "text": "Square payments Square" },
+    "flags": { "kind": "node", "box": "translate(1020px, 420px) 220×72", "text": "Checkout flags LaunchDarkly" },
+    "identity": { "kind": "node", "box": "translate(680px, 420px) 220×72", "text": "Customer identity Amazon Cognito" }
+  },
+  "edges": {
+    "browse": "M220,196 L340,196",
+    "protect": "M560,196 L680,196",
+    "origin": "M900,196 L956.5,196 Q960,196 960,192.5 L960,192.5 Q960,189 963.5,189 L1020,189",
+    "store": "M1240,189 L1290,189 Q1300,189 1300,179 L1300,106 Q1300,96 1310,96 L1360,96",
+    "pay": "M1240,203 L1290,203 Q1300,203 1300,213 L1300,286 Q1300,296 1310,296 L1360,296",
+    "config": "M1130,232 L1130,420",
+    "authenticate": "M1020,203 L970,203 Q960,203 960,213 L960,446 Q960,456 950,456 L900,456"
+  },
+  "labels": {
+    "config": { "style": "transform: translate(-50%, -50%) translate(1130px, 320px); --fe-w: 20px; --fe-h: 20px;", "text": "" },
+    "authenticate": { "style": "transform: translate(-50%, -50%) translate(960px, 329.5px); --fe-w: 20px; --fe-h: 20px;", "text": "" }
+  }
+}

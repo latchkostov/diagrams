@@ -214,6 +214,71 @@
       "kind": "api",
       "preset": null,
       "newProps": { "preset": "managed-measured", "presetRevision": "2026-10-14", "latencyMs": 250, "failureRate": 0 }
+    },
+    "gcp.apigee": {
+      "kind": "api",
+      "preset": null,
+      "newProps": { "preset": "managed-measured", "presetRevision": "2026-10-14", "latencyMs": 250, "failureRate": 0 }
+    },
+    "apisix": {
+      "kind": "api",
+      "preset": null,
+      "newProps": { "preset": "managed-measured", "presetRevision": "2026-10-14", "latencyMs": 250, "failureRate": 0 }
+    },
+    "square": {
+      "kind": "api",
+      "preset": null,
+      "newProps": { "preset": "managed-measured", "presetRevision": "2026-10-14", "latencyMs": 250, "failureRate": 0 }
+    },
+    "braintree": {
+      "kind": "api",
+      "preset": null,
+      "newProps": { "preset": "managed-measured", "presetRevision": "2026-10-14", "latencyMs": 250, "failureRate": 0 }
+    },
+    "aws.ses": {
+      "kind": "api",
+      "preset": null,
+      "newProps": { "preset": "managed-measured", "presetRevision": "2026-10-14", "latencyMs": 250, "failureRate": 0 }
+    },
+    "mailgun": {
+      "kind": "api",
+      "preset": null,
+      "newProps": { "preset": "managed-measured", "presetRevision": "2026-10-14", "latencyMs": 250, "failureRate": 0 }
+    },
+    "postmark": {
+      "kind": "api",
+      "preset": null,
+      "newProps": { "preset": "managed-measured", "presetRevision": "2026-10-14", "latencyMs": 250, "failureRate": 0 }
+    },
+    "onesignal": {
+      "kind": "api",
+      "preset": null,
+      "newProps": { "preset": "managed-measured", "presetRevision": "2026-10-14", "latencyMs": 250, "failureRate": 0 }
+    },
+    "firebase.fcm": {
+      "kind": "api",
+      "preset": null,
+      "newProps": { "preset": "managed-measured", "presetRevision": "2026-10-14", "latencyMs": 250, "failureRate": 0 }
+    },
+    "fastly.compute": {
+      "kind": "serverless",
+      "preset": null,
+      "newProps": { "preset": "managed-measured", "presetRevision": "2026-10-14", "latencyMs": 250, "failureRate": 0 }
+    },
+    "google.gemini": {
+      "kind": "api",
+      "preset": null,
+      "newProps": { "preset": "managed-measured", "presetRevision": "2026-10-14", "latencyMs": 250, "failureRate": 0 }
+    },
+    "aws.bedrock": {
+      "kind": "api",
+      "preset": null,
+      "newProps": { "preset": "managed-measured", "presetRevision": "2026-10-14", "latencyMs": 250, "failureRate": 0 }
+    },
+    "mistral.api": {
+      "kind": "api",
+      "preset": null,
+      "newProps": { "preset": "managed-measured", "presetRevision": "2026-10-14", "latencyMs": 250, "failureRate": 0 }
     }
   }
 }

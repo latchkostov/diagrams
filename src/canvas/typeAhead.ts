@@ -35,10 +35,14 @@ export const typeAheadActive = () => captures.length > 0;
 
 /**
  * Starts holding keys typed anywhere (capture phase, before the canvas sees them): for a new node's name
- * while its card is measured, or for the palette's search while it loads. `stop` ends it and returns what
- * was typed; calling it again returns the same.
+ * while its card is measured, for a renamed item's field while its panel downloads, or for the palette's search
+ * while it loads. `stop` ends it and returns what was typed; calling it again returns the same. `onDone` hears the
+ * Enter or Esc that finished the typing (the key is held too).
  */
-export function captureTypeAhead(multiline: () => boolean = () => false): { stop: () => TypeAhead } {
+export function captureTypeAhead(
+  multiline: () => boolean = () => false,
+  onDone?: (typed: TypeAhead) => void,
+): { stop: () => TypeAhead } {
   const me = { state: { text: null } as TypeAhead };
   captures.push(me);
   const onKey = (e: KeyboardEvent) => {
@@ -48,6 +52,7 @@ export function captureTypeAhead(multiline: () => boolean = () => false): { stop
     me.state = next;
     e.preventDefault();
     e.stopImmediatePropagation();
+    if (next.done) onDone?.(next);
   };
   window.addEventListener("keydown", onKey, true);
   let stopped = false;

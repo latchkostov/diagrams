@@ -2,7 +2,8 @@ import { stencilLabel, stencilDescription, stencilSubtitle, vendorLabel } from "
 import { tRich } from "../i18n/rich";
 import { formatNumber } from "../i18n/number";
 
-import { categoryLabel, categoryBlurb, familyLabel, familyHint } from "../i18n/chrome";
+import { categoryLabel, familyLabel } from "../i18n/chrome";
+import { categoryBlurb, familyHint } from "../i18n/galleryChrome";
 import { t, useLocale } from "../i18n";
 import {
   memo,
