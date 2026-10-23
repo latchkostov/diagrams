@@ -202,7 +202,8 @@ test("Message connections plot observed deliveries without request semantics", a
   await page.getByTestId("live-play").click();
   await page.clock.runFor(3000);
   await page.getByTestId("live-play").click();
-  await expect(area.getByTestId("hover-history-summary")).toContainText(/Now [1-9]/);
+  // Rates are bidi-isolated in translated prose; still require a nonzero observed delivery rate.
+  await expect(area.getByTestId("hover-history-summary")).toContainText(/Now \u2068[1-9]/);
   await expect(area.getByTestId("hover-vitals")).toContainText("Delivered");
   await expect(area.getByTestId("inspector-live-section-retries")).toHaveCount(0);
 });

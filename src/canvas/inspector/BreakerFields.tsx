@@ -1,3 +1,6 @@
+import { RequestGroup } from "./RequestGroup";
+import type { ReactNode } from "react";
+import { BREAKER_DEFAULTS } from "../../sim/breaker";
 import { Dropdown } from "../../components/Dropdown";
 import { Disclosure } from "./Disclosure";
 import { Field } from "./fields";
@@ -8,13 +11,20 @@ import type { BreakerPolicy } from "../../model/admission";
 /** Ships with Request fields; neither the canvas nor Live downloads these controls. */
 export function BreakerFields({
   breaker,
+  origin,
   set,
 }: {
   breaker?: BreakerPolicy | null;
+  origin?: ReactNode;
   set: (breaker: BreakerPolicy | null) => void;
 }) {
   return (
-    <>
+    <RequestGroup
+      name="breaker"
+      title={t("resilience.breaker")}
+      description={t("resilience.breakerHint")}
+      origin={origin}
+    >
       <Field label={t("resilience.breaker")} hint={t("resilience.breakerHint")}>
         <Dropdown
           testId="inspector-field-breaker"
@@ -28,8 +38,17 @@ export function BreakerFields({
         />
       </Field>
       {breaker && (
-        <Disclosure id="breaker-details" title={t("resilience.breakerDetails")}>
-          <p className="insp-note">{t("resilience.breakerDefaults")}</p>
+        <Disclosure
+          id="breaker-details"
+          title={t("resilience.breakerDetails")}
+          description={t("resilience.breakerBehaviour", {
+            minimum: breaker.minimumCalls ?? BREAKER_DEFAULTS.minimumCalls,
+            percent: breaker.failurePercent ?? BREAKER_DEFAULTS.failurePercent,
+            window: (breaker.windowMs ?? BREAKER_DEFAULTS.windowMs) / 1000,
+            seconds: (breaker.openMs ?? BREAKER_DEFAULTS.openMs) / 1000,
+            probes: breaker.halfOpenCalls ?? BREAKER_DEFAULTS.halfOpenCalls,
+          })}
+        >
           {(
             [
               ["failurePercent", t("resilience.failurePercent"), 50, 1, 100, 1, "%"],
@@ -64,6 +83,6 @@ export function BreakerFields({
           ))}
         </Disclosure>
       )}
-    </>
+    </RequestGroup>
   );
 }

@@ -12,6 +12,7 @@ it("discloses aggregate-only fallback after the shared recording budget is exhau
   const html = renderToStaticMarkup(<LatencyReadout id="sink" latency={latencyMetrics(recorder)} />);
   expect(html).toContain("Recording limit reached: additional message types are included in the aggregate only.");
   expect(html).toContain("p95 0.1 s");
+  expect(html.match(/<bdi dir="ltr">/g)).toHaveLength(3);
   expect(html).toContain("1 sampled message");
 });
 

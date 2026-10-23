@@ -71,12 +71,11 @@ export function NodeDetails(props: BadgeProps) {
             )}
             {s.fleet && <p>{t("hover.readyDesired", s.fleet)}</p>}
             {!s.resources && !s.fleet && <p>{t("hover.unknown")}</p>}
-            <History id={node.id} />
           </div>
         ) : (
           <>
             <Sections {...props} section={section} />
-            {section === "planning" && <History id={node.id} />}
+            {section === "outcomes" && <History id={node.id} />}
           </>
         )
       }

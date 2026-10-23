@@ -344,6 +344,7 @@ describe("production bundle split", () => {
 
   it("opens Live without optional callouts or simulation verification oracles", () => {
     const optional: [string, RegExp][] = [
+      ["simulation expectation results", /[/\\]src[/\\]live[/\\]ExpectationSummary\.tsx$/],
       ["capacity callout", /[/\\]src[/\\]live[/\\]BottleneckCallout\.tsx$/],
       ["callout placement", /[/\\]src[/\\]live[/\\]useFloatingPlacement\.ts$/],
       ["narration callout", /[/\\]src[/\\]live[/\\]NoteCallout\.tsx$/],
@@ -385,6 +386,15 @@ describe("production bundle split", () => {
     const narration = chunks.find((c) => c.name === "NoteCallout");
     expect(narration).toBeDefined();
     expect(found(bundled(closure([narration!])), results)).toEqual(["run-end result messages"]);
+  });
+
+  it("omits the development focus journal's formatting from production canvas chunks", () => {
+    for (const build of [plain(), rooms]) {
+      for (const chunk of closure([canvasChunk(build)], build)) {
+        expect(chunk.code).not.toContain("focus.result");
+        expect(chunk.code).not.toContain("selection.committed:");
+      }
+    }
   });
 
   it("loads the trace card on demand, apart from the Live session", () => {

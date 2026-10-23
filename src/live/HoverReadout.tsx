@@ -26,7 +26,7 @@ export function HoverVitals({ summary }: { summary: HoverSummary }) {
       {summary.vitals.map((v) => (
         <div key={v.key} className={v.bad ? "is-bad" : ""} data-testid={`hover-vital-${v.key}`}>
           <b className="mono" title={v.value}>
-            {v.value}
+            <bdi dir="ltr">{v.value}</bdi>
           </b>
           <small>{v.label}</small>
           {v.ratio !== undefined && Number.isFinite(v.ratio) ? (
@@ -103,7 +103,9 @@ export function SectionRows({
               {s.key === "threads" ? "☷" : s.key === "latency" ? "◷" : s.key === "resources" ? "▦" : "≡"}
             </span>
             <strong>{s.label}</strong>
-            <small>{s.summary}</small>
+            <small>
+              <bdi>{s.summary}</bdi>
+            </small>
             <span aria-hidden>{pinned && open === s.key ? "⌄" : "›"}</span>
           </button>
           {pinned && open === s.key && render(s.key)}

@@ -17,6 +17,10 @@ export const exampleFeatures = [
   { id: "latency", label: msg("examples.latency") },
 ];
 
+/** Full gallery copy is downloaded with the gallery, outside startup. */
+export const gallerySummary = (example: Example) =>
+  example.slug === "retry-storm" ? msg("examples.retryStormGallerySummary")() : exampleSummary(example);
+
 /** Every search word must match; labels are resolved in the current language. */
 export function filterExamples(items: readonly Example[], query: string, feature = "") {
   const words = query.trim().toLocaleLowerCase().split(/\s+/).filter(Boolean);
@@ -26,8 +30,9 @@ export function filterExamples(items: readonly Example[], query: string, feature
       const text = [
         e.slug,
         e.title,
-        exampleSummary(e),
+        gallerySummary(e),
         e.description,
+        ...(e.slug === "retry-storm" ? ["circuit breaker"] : []),
         ...(e.shows ?? []).map((id) => exampleFeatures.find((f) => f.id === id)?.label() ?? id),
       ]
         .join(" ")

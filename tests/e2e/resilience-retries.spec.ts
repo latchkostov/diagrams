@@ -56,6 +56,7 @@ for (const initiallyOff of [false, true]) {
       .toMatchObject({ retry: { ...custom, maxAttempts: 3 } });
     await page.getByTestId("inspector-section-retry-details").click();
     await expect(page.getByTestId("inspector-field-retry-backoff")).toHaveValue("370");
+    await page.getByTestId("inspector-section-retry-budget-details").click();
     await expect(page.getByTestId("inspector-field-retry-budget-percent")).toHaveValue("37");
   });
 }
@@ -93,6 +94,7 @@ for (const locale of ["en", "ar", "en-XA"]) {
     await page.getByTestId("inspector-section-retry-details").focus();
     await page.keyboard.press("Enter");
     await expect(page.getByTestId("inspector-field-retry-backoff")).toHaveValue("100");
+    await page.getByTestId("inspector-section-retry-budget-details").click();
     await expect(page.getByTestId("inspector-field-retry-budget")).toBeChecked();
     if (locale === "ar") expect(await page.evaluate(() => document.documentElement.dir)).toBe("rtl");
     if (locale === "en-XA") await expect(retries).toContainText("[");

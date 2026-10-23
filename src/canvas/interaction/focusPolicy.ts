@@ -41,6 +41,7 @@ import type { FocusCommand, FocusDecision, FocusEvent, FocusMove, FocusState, Fo
  * | D4  | dialog.opened                      |                                 | focus its first field now, selecting its text         |
  * | D5  | dialog.tab                         | Tab crossed the modal's boundary | focus the other end now                              |
  * | D7  | node.details                       | within a Live readout card      | focus that row or card now                           |
+ * | L6  | node.details (timeline arrows)      | current event marker | focus that marker now                                |
  * | T5  | readout.entered                    | the readout is shown            | focus its card now                                   |
  * | T6  | readout.entered                    | it opens with this step         | its card after the commit, else its item             |
  * | T7  | readout.left                       | Tab past the last node          | its item now (the browser's Tab goes on from there)  |
@@ -90,7 +91,7 @@ export function focusPolicy(state: FocusState, event: FocusEvent): FocusDecision
         ? { state, command: { type: "recover", target: canvas, when: "frame", onlyIfLost: true } }
         : keep();
     case "readout.closed":
-      return event.reason === "escape" && event.target.pinned
+      return event.reason === "escape" && (event.target.pinned || event.hadFocus)
         ? move({ target: { kind: event.target.kind, id: event.target.id }, when: "now", fallback: canvas })
         : keep();
     case "readout.entered": {

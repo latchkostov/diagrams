@@ -2,6 +2,7 @@ import { useId, useMemo, useState } from "react";
 import type { TrafficShape } from "../model/types";
 import { trafficRateAt, trafficWindow } from "../sim/simulation";
 import { formatClock, formatCount, formatRate } from "./format";
+import { isolate } from "./bidi";
 import { t } from "../i18n";
 
 const W = 260;
@@ -16,9 +17,9 @@ export function SampleSparkline({ samples, docked = false }: { samples: readonly
   const y = (v: number) => (flat ? H / 2 : H - 4 - (v / peak) * (H - 12));
   const line = samples.map((v, i) => `${i ? "L" : "M"}${(i * W) / Math.max(1, samples.length - 1)} ${y(v)}`).join(" ");
   const summary = t("hover.historySummary", {
-    latest: formatRate(samples.at(-1) ?? 0),
-    low: formatRate(samples.length ? Math.min(...samples) : 0),
-    peak: formatRate(Math.max(0, ...samples)),
+    latest: isolate(formatRate(samples.at(-1) ?? 0)),
+    low: isolate(formatRate(samples.length ? Math.min(...samples) : 0)),
+    peak: isolate(formatRate(Math.max(0, ...samples))),
   });
   return (
     <div

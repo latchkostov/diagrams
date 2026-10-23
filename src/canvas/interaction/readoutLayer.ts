@@ -105,9 +105,9 @@ export function createReadoutLayer(host: ReadoutHost, dom = { stop: readoutStop,
      */
     close(reason: MenuCloseReason) {
       const target = state.open;
-      const restore = !!target && (target.pinned || dom.holds(target));
+      const hadFocus = !!target && dom.holds(target);
       read(reason === "escape" ? { type: "close" } : null);
-      if (target) host.dispatch({ type: "readout.closed", target: { ...target, pinned: restore }, reason });
+      if (target) host.dispatch({ type: "readout.closed", target, hadFocus, reason });
     },
     /** A menu or dialog opened over the canvas: the card goes, focus is the menu's. */
     dismiss: () => read({ type: "close" }),

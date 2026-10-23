@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useLive, useLiveState } from "./context";
+import { t } from "../i18n";
 import { SampleSparkline } from "./Sparkline";
 
 /** Only mounted in a pinned card: bounded history for the one readout being inspected. */
@@ -11,5 +12,10 @@ export function HoverHistory({ id }: { id: string }) {
   if (snapshot.time < history.at) setHistory({ at: snapshot.time, samples: [value] });
   else if (snapshot.time - history.at >= 1000)
     setHistory({ at: snapshot.time, samples: [...history.samples.slice(-9), value] });
-  return <SampleSparkline samples={history.samples} />;
+  return (
+    <section aria-label={t("hover.recentThroughput")}>
+      <p data-testid="hover-history-scope">{t("hover.historyScope")}</p>
+      <SampleSparkline samples={history.samples} />
+    </section>
+  );
 }

@@ -20,7 +20,7 @@ export function EdgeDetailSection({ diagram, id, section }: { diagram: DiagramFi
     <div className="hover-rail-body" data-testid={`edge-section-${section}`}>
       {section === "breaker" ? (
         breaker ? (
-          <BreakerReadout id={id} breaker={breaker} testId={`edge-breaker-${id}`} />
+          <BreakerReadout id={id} breaker={breaker} calls={c} testId={`edge-breaker-${id}`} />
         ) : revisionAtLeast(diagram.planning?.revision, "p3-w2") ? (
           <p data-testid="hover-breaker-none">{t("hover.breakerNone")}</p>
         ) : (

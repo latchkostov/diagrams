@@ -223,7 +223,8 @@ export function createInteractionController<P = unknown>(
     const decision = focusPolicy(focus, event);
     focus = decision.state;
     const command = decision.command;
-    if (options.journal) journal({ event: label(event), command: describe(command) });
+    if ((import.meta.env.DEV || import.meta.env.VITE_E2E === "1") && options.journal)
+      journal({ event: label(event), command: describe(command) });
     if (command.type === "focus") {
       retireRecovery("superseded");
       // A newer move replaces the pending one (its caller hears it didn't run).
@@ -298,7 +299,8 @@ export function createInteractionController<P = unknown>(
     const c = current;
     current = null;
     if (!c) return;
-    if (options.journal) journal({ event: "focus.result", command: describe(c.move), result });
+    if ((import.meta.env.DEV || import.meta.env.VITE_E2E === "1") && options.journal)
+      journal({ event: "focus.result", command: describe(c.move), result });
     c.then?.(result === "focused" || result === "fallback");
   }
 
@@ -307,7 +309,8 @@ export function createInteractionController<P = unknown>(
     recovery = null;
     if (!previous) return;
     previous.cancel();
-    if (options.journal) journal({ event: "focus.result", command: describe(previous.command), result });
+    if ((import.meta.env.DEV || import.meta.env.VITE_E2E === "1") && options.journal)
+      journal({ event: "focus.result", command: describe(previous.command), result });
     previous.then?.(result === "focused");
   }
 
@@ -626,7 +629,8 @@ export function createInteractionController<P = unknown>(
       decided = false;
       if (was === null || was === key) return;
       if (!already) decide({ type: "selection.changed", cause: why });
-      else if (options.journal) journal({ event: `selection.committed:${why}`, command: "keep" });
+      else if ((import.meta.env.DEV || import.meta.env.VITE_E2E === "1") && options.journal)
+        journal({ event: `selection.committed:${why}`, command: "keep" });
       if (!empty)
         camera?.dispatch({ type: "selection.changed", cause: why === "placement" ? "placement" : "selection" });
     },

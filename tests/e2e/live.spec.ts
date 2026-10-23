@@ -795,6 +795,27 @@ test.describe("live view", () => {
     expectNoErrors(consoleErrors);
   });
 
+  test("a held timeline chunk leaves Live controls usable until the timeline arrives", async ({ page }) => {
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => (release = resolve));
+    await page.route("**/Timeline-*.js", async (route) => {
+      await held;
+      await route.continue();
+    });
+    try {
+      await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1&sim=payments-outage&paused=1`);
+      await expect(page.getByTestId("live-timeline-loading")).toBeVisible();
+      await expect(page.getByTestId("live-timeline")).toHaveCount(0);
+      await expect(page.getByTestId("live-play")).toBeEnabled();
+      await page.getByTestId("live-play").click();
+      await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "playing");
+      release();
+      await expect(page.getByTestId("live-timeline")).toBeVisible();
+    } finally {
+      release();
+    }
+  });
+
   test("timeline markers jump to their moment: the outage note, then back to the start", async ({ page }) => {
     await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1&sim=payments-outage&paused=1`);
     await expect(page.getByTestId("live-clock")).toHaveAttribute("data-ms", "0");
@@ -816,13 +837,20 @@ test.describe("live view", () => {
     await expect(page.getByTestId("node-badge-payments")).not.toHaveAttribute("data-status", "down");
   });
 
-  test("Tab reaches timeline markers and Enter jumps to a named event", async ({ page, consoleErrors }) => {
+  test("Tab reaches timeline events, arrows explore and Enter jumps to a named event", async ({
+    page,
+    consoleErrors,
+  }) => {
     await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1&sim=payments-outage&paused=1`);
+    await expect(page.getByTestId("live-timeline")).toBeVisible();
     await page.getByTestId("live-sim-picker").focus();
     for (let i = 0; i < 12; i++) {
-      if (await page.getByTestId("live-marker-2").evaluate((el) => el === document.activeElement)) break;
+      if (await page.getByTestId("live-marker-0").evaluate((el) => el === document.activeElement)) break;
       await page.keyboard.press("Tab");
     }
+    await expect(page.getByTestId("live-marker-0")).toBeFocused();
+    await page.keyboard.press("ArrowRight");
+    await page.keyboard.press("ArrowRight");
     await expect(page.getByTestId("live-marker-2")).toBeFocused();
     await expect(page.getByTestId("live-marker-2")).toHaveAttribute("aria-label", /Jump to.*Payments/);
     await page.keyboard.press("Enter");

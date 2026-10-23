@@ -142,17 +142,17 @@ describe("connection cards", () => {
   it("reports the breaker's published runtime state in its verdict and section", () => {
     const closed = requestSummary(undefined, view({}), true, 0);
     expect(closed.problems).toEqual([]);
-    expect(closed.sections.find((s) => s.key === "breaker")?.summary).toBe("Closed");
+    expect(closed.sections.find((s) => s.key === "breaker")?.summary).toBe("Closed · calls allowed");
     const open = requestSummary(undefined, view({ state: "open", remainingMs: 2500 }), true, 0);
     expect(open.problems[0]).toMatchObject({ key: "breaker", severe: true });
     expect(open.problems[0].text).toContain("3 more seconds");
-    expect(open.sections.find((s) => s.key === "breaker")?.summary).toBe("Open");
+    expect(open.sections.find((s) => s.key === "breaker")?.summary).toBe("Open · failing fast");
     const testing = requestSummary(undefined, view({ state: "half-open", probesSettled: 2 }), true, 0);
     expect(testing.problems[0]).toMatchObject({
       key: "breaker",
       text: "Breaker testing the callee: 2 of 5 test calls settled.",
     });
-    expect(testing.sections.find((s) => s.key === "breaker")?.summary).toBe("Testing");
+    expect(testing.sections.find((s) => s.key === "breaker")?.summary).toBe("Testing · checking recovery");
     expect(requestSummary(undefined, undefined, true, 0).sections.find((s) => s.key === "breaker")?.summary).toBe("—");
     // Current breaker state leads cumulative timeout counts.
     const calls = { inFlight: 5, held: 0, timedOut: 20, failed: 20, late: 0 };
@@ -161,4 +161,14 @@ describe("connection cards", () => {
       "timeout",
     ]);
   });
+});
+
+it("keeps the hero verdict out of attention facts and cumulative timeouts out of duplicate summaries", () => {
+  const calls = { inFlight: 1, held: 1, timedOut: 42, failed: 42, succeeded: 100, late: 0 };
+  const n = nodeSummary(node(), [calls]);
+  expect(n.problems[0].key).toBe("timeout");
+  expect(n.facts.some((f) => f.label === n.problems[0].text)).toBe(false);
+  const e = requestSummary(calls, undefined, true, 0);
+  expect(e.facts.some((f) => f.label === e.problems[0].text)).toBe(false);
+  expect(e.facts.some((f) => f.key === "timeouts")).toBe(false);
 });

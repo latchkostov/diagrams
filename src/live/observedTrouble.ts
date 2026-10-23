@@ -13,6 +13,8 @@ import type { EdgeSimProps } from "../sim/types";
 import { waitingDetails } from "./waitingDetails";
 import type { Fault } from "../model/faults";
 import { resolveNodeProps } from "../sim/defaults";
+import { callFailureRate } from "./callFailureRate";
+import { isolate } from "./bidi";
 import { requestResponseMs } from "../sim/timing";
 
 // What playback shows going wrong, whatever the plan says (docs/research/sim-flows-review.md, F-1, F-5, F-32): a node
@@ -340,10 +342,11 @@ function troubles(frame: WatchedFrame, d: Shape, samples: readonly Sample[]): Tr
       const stuck = clear !== undefined && !frame.faults?.length && (c.windowSucceeded ?? 0) < 0.5 * c.windowRequests;
       if (ratio < 2 || failed <= 0.5 * c.windowAttempts || (!rising && !stuck)) continue;
       const headline = t("resilience.storm", { name: name(target) });
+      const failures = callFailureRate(c);
       const detail = t("resilience.stormDetail", {
         caller: name(caller),
-        ratio: ratio.toFixed(1),
-        percent: Math.round((100 * failed) / c.windowAttempts),
+        ratio: isolate(ratio.toFixed(1)),
+        percent: failures.available ? isolate(`${Math.round(100 * failures.rate)}%`) : "—",
       });
       out.push({
         key: `retry-storm:${edge}`,

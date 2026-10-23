@@ -217,7 +217,9 @@ export function HoverCard({ kind, id, name, type, pinned, presenting, summary, h
             {kind === "edge" ? "↔" : "▤"}
           </span>
           <span className="hover-name">
-            <strong title={name}>{name}</strong>
+            <strong title={name}>
+              <bdi>{name}</bdi>
+            </strong>
             <small>{type}</small>
           </span>
           <HoverStatus summary={summary} />
@@ -251,7 +253,9 @@ function AttentionRows({ facts }: { facts: HoverFact[] }) {
           <div key={key} className={fact?.bad ? "is-bad" : ""} data-testid={`hover-attention-${key}`}>
             <span aria-hidden>{fact?.bad ? "⊗" : "·"}</span>
             <span title={fact?.label}>{fact?.label ?? t("hover.resolved")}</span>
-            <b className="mono">{fact?.value}</b>
+            <b className="mono">
+              <bdi dir="ltr">{fact?.value}</bdi>
+            </b>
           </div>
         );
       })}

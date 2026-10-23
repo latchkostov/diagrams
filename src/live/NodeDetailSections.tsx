@@ -241,7 +241,9 @@ function Row({ label, value, bad }: { label: string; value: string; bad?: boolea
   return (
     <div className={`lv-detail-row${bad ? " is-bad" : ""}`}>
       <span>{label}</span>
-      <b className="mono">{value}</b>
+      <b className="mono">
+        <bdi dir="ltr">{value}</bdi>
+      </b>
     </div>
   );
 }

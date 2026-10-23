@@ -172,3 +172,11 @@ describe("example gallery", () => {
     expect(exampleShows(diagram)).not.toContain("latency");
   });
 });
+
+it("finds the shared retry comparison by its established circuit breaker name", () => {
+  expect(
+    filterExamples(publicItems, "circuit breaker")
+      .flatMap((s) => s.items)
+      .map((e) => e.slug),
+  ).toContain("retry-storm");
+});

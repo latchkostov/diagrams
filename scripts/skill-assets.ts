@@ -74,8 +74,8 @@ export async function zipSkill(files: SkillFile[], folder = SKILL_NAME): Promise
       if (candidate.length < body.length) body = candidate;
     }
     // Zopfli searches for a smaller standard DEFLATE stream without changing the payload or requiring a new
-    // unzip format. Five iterations recover useful headroom for engine growth; keep zlib when it wins an entry.
-    const optimized = Buffer.from(await deflateAsync(f.data, { numiterations: 5 }));
+    // unzip format. Let large viewer entries split into as many blocks as they need; retain five search iterations.
+    const optimized = Buffer.from(await deflateAsync(f.data, { numiterations: 5, blocksplittingmax: 0 }));
     if (optimized.length < body.length) body = optimized;
     const crc = crc32(f.data);
     const local = Buffer.alloc(30);

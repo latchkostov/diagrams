@@ -111,6 +111,9 @@ test("held Request fields keep the inspector usable; once they arrive the keyboa
     await page.keyboard.press("Tab");
     await expect(page.getByTestId("inspector-field-deadlineMs")).toBeFocused();
     await page.keyboard.press("Tab");
+    // Waiting limits now keep pool/reply controls behind their own disclosure before Retries.
+    await expect(page.getByTestId("inspector-section-call-advanced")).toBeFocused();
+    await page.keyboard.press("Tab");
     await expect(page.getByTestId("inspector-field-retries")).toBeFocused();
     await exportDiagram(page);
     expectNoErrors(consoleErrors);

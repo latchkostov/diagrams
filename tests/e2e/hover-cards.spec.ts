@@ -103,13 +103,16 @@ test("only the pinned readout records a bounded ten-sample sparkline", async ({ 
   await gotoLive(page, "./?view=canvas&example=blocking-call&live=1&paused=1");
   await pauseClock(page);
   await page.getByTestId("live-play").click();
-  await openLiveNodeDetails(page, "caller", "resources");
+  await openLiveNodeDetails(page, "caller", "outcomes");
+  await expect(page.getByTestId("hover-history-scope")).toHaveText("Last 10 seconds while pinned");
   await expect(page.getByTestId("hover-history-chart")).toHaveAttribute("aria-label", "Recent throughput · 1 sample");
   await page.clock.runFor(12000);
   await expect(page.getByTestId("hover-history-chart")).toHaveAttribute("aria-label", "Recent throughput · 10 samples");
   // The plotted history is text too: a visible summary and every value, both describing the chart.
   const chart = page.getByTestId("hover-history-chart");
-  await expect(page.getByTestId("hover-history-summary")).toHaveText(/^Now \S+\/s · low \S+\/s · peak \S+\/s$/);
+  await expect(page.getByTestId("hover-history-summary")).toHaveText(
+    /^Now \u2068\S+\/s\u2069 · low \u2068\S+\/s\u2069 · peak \u2068\S+\/s\u2069$/,
+  );
   await expect(page.getByTestId("hover-history-values")).toHaveText(
     /^Throughput each second, oldest first: (\S+\/s, ){9}\S+\/s$/,
   );

@@ -2,6 +2,8 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { expect, it } from "vitest";
 import { SampleSparkline } from "./Sparkline";
 import { ThreadCeiling } from "./ThreadCeiling";
+import { HoverVitals } from "./HoverReadout";
+import { requestSummary } from "./hoverSummary";
 
 it.each([0, 300])("flat observed %s/s spans the strip at mid-height above its text footer", (value) => {
   const html = renderToStaticMarkup(<SampleSparkline docked samples={[value, value, value]} />);
@@ -10,7 +12,13 @@ it.each([0, 300])("flat observed %s/s spans the strip at mid-height above its te
   expect(html).toContain('data-testid="hover-history-baseline"');
   expect(html).toContain('data-testid="hover-history-scope">Last 10 seconds');
   expect(html.indexOf("</svg>")).toBeLessThan(html.indexOf('data-testid="hover-history-summary"'));
-  expect(html).toContain(`Now ${value}/s`);
+  expect(html).toContain(`Now \u2068${value}/s\u2069`);
+});
+
+it("isolates shared hover and inspector vital values from the surrounding text direction", () => {
+  const summary = requestSummary(undefined, undefined, false, 0);
+  const html = renderToStaticMarkup(<HoverVitals summary={summary} />);
+  for (const vital of summary.vitals) expect(html).toContain(`<bdi dir="ltr">${vital.value}</bdi>`);
 });
 
 it("docked ceilings are label/value facts with the shared explanatory sentence", () => {

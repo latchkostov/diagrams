@@ -412,6 +412,23 @@ describe("focusPolicy: the rules, row by row", () => {
     ).toEqual({ type: "keep" });
   });
 
+  it("restores Esc focus for an unpinned card that had focus without claiming it was pinned", () => {
+    const target = { kind: "node" as const, id: "a", pinned: false };
+    expect(
+      say(focusPolicy(state(), { type: "readout.closed", target, hadFocus: true, reason: "escape" }).command),
+    ).toBe("focus:node:a@now");
+    expect(focusPolicy(state(), { type: "readout.closed", target, hadFocus: true, reason: "outside" }).command).toEqual(
+      { type: "keep" },
+    );
+  });
+
+  it("L6 timeline arrows focus the selected event", () => {
+    expect(focusPolicy(state(), { type: "node.details", source: "timeline", target: opener }).command).toMatchObject({
+      target: { kind: "element", handle: opener },
+      when: "now",
+    });
+  });
+
   it("D7 Tab from a live node enters its scrollable details", () => {
     expect(focusPolicy(state(), { type: "node.details", target: opener }).command).toMatchObject({
       target: { kind: "element", handle: opener },
