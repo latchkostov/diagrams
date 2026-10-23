@@ -525,3 +525,50 @@ it("a downstream route counts only admitted probe requests", () => {
   expect(frame.routes?.inventory?.sent).toBeCloseTo(5, 9);
   expect(frame.routes?.inventory?.completed).toBeCloseTo(5, 9);
 });
+
+/** Clients call Checkout on "checkout"; its breaker-guarded call to Orders is its own "payments" route. */
+function retriedProbeRun() {
+  const d = narrowingFixture(
+    {
+      breaker: { minimumCalls: 1, openMs: 200, halfOpenCalls: 5 },
+      retry: { maxAttempts: 2, backoffMs: 0, strategy: "fixed", retryOn: ["transient"] },
+    },
+    true,
+  );
+  d.planning!.requestRoutes!.push({ id: "payments", label: "Payments", address: { method: "POST", path: "/pay" } });
+  d.edges[1].props!.requestRouteId = "payments";
+  // Only a source or a service addresses its calls; a gateway's address is dormant.
+  d.nodes[1] = {
+    ...d.nodes[1],
+    stencil: "generic.service",
+    label: "Checkout",
+    props: { concurrency: 1000, latencyMs: 1, jitter: 0 },
+  };
+  const e = createEngine({ seed: 7, scale: 100, maxParticles: 0, verifyResilience: assertResilienceInvariants });
+  e.load(d);
+  // The first cohort fails and opens the breaker; its retry is short-circuited whole.
+  e.inject("source", 1);
+  e.step(250);
+  // The second meets it half-open: five test calls fail, retry, and are short-circuited by the reopened breaker.
+  e.inject("source", 1);
+  e.step(2000);
+  return { frame: realFrame(e.frame()), calls: realSnapshot(e.snapshot()).edges.call.calls! };
+}
+
+it("a narrowed retry on a different outgoing route counts only its admitted requests as sent", () => {
+  const { frame, calls } = retriedProbeRun();
+  expect(frame.inSystem).toBe(0);
+  expectRoutesWithinSent(frame.routes);
+  expect(calls.retried).toBeCloseTo(100 + 5, 9);
+  // Two whole cohorts, the first cohort's whole retry and the narrowed probe's five-request retry.
+  expect(frame.routes?.payments?.sent).toBeCloseTo(100 + 100 + 100 + 5, 9);
+});
+
+it("a retried narrowed probe completes its whole caller route", () => {
+  const { frame } = retriedProbeRun();
+  // Every request fails, at scale 1 too: Checkout's own journeys never complete.
+  expect(frame.routes?.checkout).toEqual({ sent: 200, rejected: 0, completed: 0 });
+  // Each cohort finishes its call's journey once at its whole size, though the second retried only its five
+  // test calls: the short-circuited retry completes the route for the whole cohort.
+  expect(frame.routes?.payments?.completed).toBeCloseTo(200, 9);
+});

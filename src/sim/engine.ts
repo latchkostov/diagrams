@@ -2218,16 +2218,15 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     timing.attemptStartedAt = time;
     timing.state = "queued";
     timing.expiresAt = time + (edge.policy?.deadlineMs ?? Infinity);
+    const retried = copy(call.node, call.work.outputMessage ?? call.work.message);
+    // A narrowed branch retries only its admitted requests: size it before addressed() counts them as sent.
+    if (timing.represented !== undefined) retried.represented = timing.represented;
     const message = {
-      ...addressed(
-        copy(call.node, call.work.outputMessage ?? call.work.message),
-        edge.requestRoute ?? call.work.message.request,
-      ),
+      ...addressed(retried, edge.requestRoute ?? call.work.message.request),
       width: ledger.get(call.work.thread)?.weight ?? call.work.message.width,
       returnCall: call.id,
       callDepth: call.depth,
       callAttempt: timing.attempt,
-      ...(timing.represented === undefined ? {} : { represented: timing.represented }),
     };
     // A narrowed branch's retry still completes its caller's whole cohort's route.
     if (timing.represented !== undefined) creditRoute(message, call.work.message);
