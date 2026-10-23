@@ -103,6 +103,10 @@ test("Simulation keeps 16px between complete fields, including their hints", asy
     .toBe(16);
   await expect(wait.getByTestId("inspector-hint-wait")).toBeVisible();
   await expect(timeout.getByTestId("inspector-hint-deadlineMs")).toBeVisible();
+  await expect(page.getByTestId("inspector-field-deadlineMs")).toHaveAccessibleName("Timeout ms");
+  await expect(page.getByTestId("inspector-field-deadlineMs")).toHaveAccessibleDescription(
+    await timeout.getByTestId("inspector-hint-deadlineMs").innerText(),
+  );
   const gap = await timeout.getByTestId("inspector-hint-deadlineMs").evaluate((hint) => {
     const control = hint.previousElementSibling;
     if (!control) throw new Error("Missing field control");

@@ -479,6 +479,7 @@ export function SimInput({
           step={field.step}
           value={draft}
           placeholder={field.placeholder}
+          aria-label={field.unit ? `${field.label} ${field.unit}` : field.label}
           aria-invalid={invalid || undefined}
           aria-describedby={
             [invalid ? feedback : "", visibleHint && field.hint ? `${feedback}-hint` : ""].filter(Boolean).join(" ") ||

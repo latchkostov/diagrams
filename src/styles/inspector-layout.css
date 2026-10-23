@@ -12,6 +12,9 @@
   --insp-title-size: 13px;
   container: inspector / inline-size;
 }
+.inspector .insp-body {
+  padding-block-end: 0;
+}
 .inspector .insp-section {
   min-inline-size: 0;
   gap: var(--insp-field-gap);

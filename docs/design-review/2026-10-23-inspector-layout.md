@@ -29,6 +29,10 @@ Three existing assertions intentionally follow the new structure; a fourth test 
 
 The rhythm regression is verified against a production bundle with the field gap temporarily restored to 6 px, then the implementation is restored. Required Linux repeats, parity, static checks and bundle measurements are recorded in the delivery report.
 
+The full browser run caught the visible pool hint entering its input's accessible name. Simulation inputs explicitly retain their label and unit as the name, with the hint remaining a separate description. The existing exact “Connection pool” assertion is unchanged; the rhythm case also checks the timeout's exact name and hint description.
+
+The mixed-selection fit check also caught the legacy body's extra 24 px below the new section spacing. Sections now own the bottom spacing, so the body adds no second bottom gutter. The original one-screen and last-control bounds stay unchanged.
+
 ## Choices rejected
 
 The Linux load pass also preserves the existing 640 px field-width cap on ultrawide sheets. Request fields retain their independent download and Retry contract. The first keyboard-pass test waits for those fields while keeping planning blocked, then keeps the exact focus and position assertions. Eager Request fields were rejected because they prevented the Inspector from remaining usable while that independent download was held.
