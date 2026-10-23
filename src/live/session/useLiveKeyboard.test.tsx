@@ -180,7 +180,7 @@ it.each([
 });
 
 it.each([
-  { case: "a hover after the last key pins it", keyBetween: false, pinned: false, pins: true },
+  { case: "a hover after the last key pins it", keyBetween: false, pinned: false, pins: true, inCard: false },
   {
     case: "a key after the hover leaves Enter to the control",
     keyBetween: true,
@@ -188,8 +188,15 @@ it.each([
     pinned: false,
     pins: false,
   },
-  { case: "a pinned card leaves Enter to the control", keyBetween: false, pinned: true, pins: false },
-])("Enter on focused chrome with a hovered summary: $case", ({ keyBetween, pinned, pins }) => {
+  { case: "a pinned card leaves Enter to the control", keyBetween: false, pinned: true, pins: false, inCard: false },
+  {
+    case: "a section button inside the card keeps its Enter",
+    keyBetween: false,
+    pinned: false,
+    pins: false,
+    inCard: true,
+  },
+])("Enter on a focused control with a hovered summary: $case", ({ keyBetween, pinned, pins, inCard }) => {
   const listeners = new Map<string, (event: Event) => void>();
   class Target {
     dataset = {};
@@ -198,6 +205,7 @@ it.each([
       // A node under the pointer; the focused Live button is a control.
       if (selector.startsWith(".react-flow__node-diagram, .react-flow__edge, [data-call-edge]"))
         return this === node ? this : null;
+      if (this === button && inCard && selector.startsWith("[data-live-readout]")) return this;
       return this === button && selector.includes("button") ? this : null;
     }
   }

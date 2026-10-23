@@ -27,6 +27,8 @@ import type { LiveKeyAction, LiveKeyContext } from "./types";
  * | S4  | Space | a note waits                                        | resume                                      |
  * | S5  | Space | otherwise                                           | toggle (play / pause)                       |
  * | N1  | Enter | in a text field, an inline editor or a control      | none (its own Enter)                        |
+ * | R3  | Enter | a control on unrelated chrome, a card the pointer   | pin-readout (before the control: "Enter     |
+ * |     |       | opened since the last key (`hovered`)               | pins"); a control in a card or item keeps it|
  * | R2  | Enter | focused wrapper, when naming does not own Enter     | pin-readout                                 |
  * | N2  | Enter | a note waits                                        | resume                                      |
  * | N3  | Enter | otherwise                                           | none                                        |
@@ -53,7 +55,7 @@ export function liveKeys(c: LiveKeyContext): LiveKeyAction {
       if (c.repeat) return "repeat";
       return c.waiting ? "resume" : "toggle";
     case "enter":
-      if (c.editable || c.control) return "none";
+      if (c.editable || (c.control && !c.hovered)) return "none";
       if (c.owner) return "none";
       if (c.readoutTarget) return c.repeat ? "none" : "pin-readout";
       return c.waiting ? "resume" : "none";

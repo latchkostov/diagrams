@@ -79,14 +79,19 @@ export function useLiveKeyboard({
       const card = t instanceof Element ? t.closest<HTMLElement>("[data-live-readout]") : null;
       const summary =
         key === "enter" && !!card && t === card && !!card.dataset.liveReadout && card.dataset.pinned !== "true";
-      // Enter pins the summary the pointer opened since the last key, rather than pressing the focused control. Text
-      // fields, editors, menus and dialogs keep their Enter (liveKeys: editable and owner come first).
+      // Enter pins the summary the pointer opened since the last key, rather than pressing a control on unrelated
+      // chrome (the Live button). Controls inside a card or a canvas item, text fields, editors, menus and dialogs keep
+      // their Enter (liveKeys R3).
       const hovered =
-        key === "enter" && pointerLast && !!reading && !reading.pinned && !summary && !(item && t === item);
+        key === "enter" &&
+        pointerLast &&
+        !!reading &&
+        !reading.pinned &&
+        t instanceof Element &&
+        !t.closest("[data-live-readout], .react-flow__node, .react-flow__edge");
       const control =
         t instanceof Element &&
         !summary &&
-        !hovered &&
         !!t.closest(
           'button, select, a, [data-editor-overlay], [data-canvas-reading-region], [role="separator"], [role="button"], summary',
         );
@@ -104,6 +109,7 @@ export function useLiveKeyboard({
         editable: isEditableTarget(t),
         control,
         readout: !!reading,
+        hovered,
         readoutTarget:
           summary || hovered || (!!item && t === item && !(canName && item.classList.contains("selected"))),
         owner: !!document.querySelector(ESC_OWNERS) || (key === "escape" && t instanceof Element && ownTooltipOpen(t)),
