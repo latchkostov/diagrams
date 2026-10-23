@@ -1,4 +1,5 @@
 import { savedDiagram } from "./fixtures";
+import { chunk } from "./chunk";
 import type { Locator, Page } from "@playwright/test";
 import {
   test,
@@ -983,7 +984,7 @@ test("a cold edge inspector takes its requested name field once the fields arriv
     release = resolve;
   });
   let requested = false;
-  await page.route(/\/EdgePanel-[^/]+\.js$/, async (route) => {
+  await page.route(chunk("EdgePanel", "src/canvas/inspector/EdgePanel.tsx"), async (route) => {
     requested = true;
     await held;
     await route.continue();
@@ -1002,4 +1003,78 @@ test("a cold edge inspector takes its requested name field once the fields arriv
   } finally {
     release();
   }
+});
+
+for (const activation of ["mouse", "accessibility"] as const) {
+  test(`click-connect by ${activation} commits without a drag`, async ({ page }) => {
+    await seed(page);
+    const from = page.getByTestId("handle-billing-bottom");
+    const to = page.getByTestId("handle-cache-top");
+    if (activation === "mouse") {
+      await from.click();
+      await to.click();
+    } else {
+      // Assistive technology activates with a detail=0 click, without mouse down/move.
+      await from.dispatchEvent("click", { detail: 0 });
+      await to.dispatchEvent("click", { detail: 0 });
+    }
+    await savedWhen(page, (s) => s.edges.some((e) => e.from === "billing" && e.to === "cache"));
+    await expect(page.getByTestId("canvas-wrap")).not.toHaveClass(/is-connecting/);
+    await undoUntil(page, (s) => s.edges.length === 1, 1);
+  });
+}
+
+for (const cancellation of ["Escape", "window blur"] as const) {
+  test(`${cancellation} cancels a connection${cancellation === "Escape" ? " before release" : ""}`, async ({
+    page,
+  }) => {
+    await seed(page);
+    // Keep nonzero SVG bounds while the preview snaps exactly to its dot.
+    const from = centre(await box(page.getByTestId("handle-billing-right")));
+    const to = centre(await box(page.getByTestId("node-cache")));
+    await page.mouse.move(from.x, from.y);
+    await page.mouse.down();
+    await page.mouse.move(to.x, to.y, { steps: 10 });
+    await expect(page.getByTestId("connection-line")).toBeVisible();
+    await expect(page.getByTestId("rf__node-cache")).toHaveClass(/is-connect-target/);
+    if (cancellation === "Escape") await page.keyboard.press("Escape");
+    else await page.evaluate(() => window.dispatchEvent(new Event("blur")));
+    await expect(page.getByTestId("connection-line")).toHaveCount(0);
+    await expect(page.getByTestId("rf__node-cache")).not.toHaveClass(/is-connect-target/);
+    await page.mouse.move(to.x + 2, to.y + 2);
+    await expect(page.getByTestId("connection-line")).toHaveCount(0);
+    await page.mouse.up();
+    await expect(page.getByTestId("quick-add")).toHaveCount(0);
+    await expect(page.getByTestId("undo-button")).toBeDisabled();
+    expect((await saved(page)).edges).toHaveLength(1);
+    const retry = centre(await box(page.getByTestId("handle-billing-right")));
+    await page.mouse.move(retry.x, retry.y);
+    await page.mouse.down();
+    await page.mouse.move(to.x, to.y, { steps: 10 });
+    await page.mouse.up();
+    await savedWhen(page, (s) => s.edges.some((e) => e.from === "billing" && e.to === "cache"));
+  });
+}
+
+test("Escape stops connection auto-pan before release", async ({ page }) => {
+  await seed(page);
+  await pauseClock(page);
+  const from = centre(await box(page.getByTestId("handle-billing-bottom")));
+  const pane = await box(page.getByTestId("canvas-wrap"));
+  await page.mouse.move(from.x, from.y);
+  await page.mouse.down();
+  await page.mouse.move(pane.x + pane.width - 5, pane.y + pane.height / 2, { steps: 10 });
+  await expect(page.getByTestId("connection-line")).toBeVisible();
+  const transform = () =>
+    page.getByTestId("rf__node-billing").evaluate((el) => el.parentElement?.parentElement?.style.transform);
+  const before = await transform();
+  await page.clock.runFor(8 * 16);
+  expect(await transform()).not.toBe(before);
+  await page.keyboard.press("Escape");
+  await page.clock.runFor(16);
+  const stopped = await transform();
+  await page.clock.runFor(8 * 16);
+  expect(await transform()).toBe(stopped);
+  await page.mouse.up();
+  await expect(page.getByTestId("undo-button")).toBeDisabled();
 });

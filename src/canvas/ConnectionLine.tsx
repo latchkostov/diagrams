@@ -21,11 +21,10 @@ export function ConnectionLine({
   connectionStatus,
 }: ConnectionLineComponentProps<FlowNode>) {
   const interaction = useInteraction();
-  const snapshot = useSyncExternalStore(
+  const preview = useSyncExternalStore(
     interaction?.subscribe ?? noSubscribe,
-    interaction?.getSnapshot ?? emptySnapshot,
+    interaction?.getConnectPreview ?? emptySnapshot,
   );
-  const preview = snapshot?.gesture?.preview;
   const target = preview?.kind === "connect" ? preview.target : null;
   const args = {
     sourceX: fromX,

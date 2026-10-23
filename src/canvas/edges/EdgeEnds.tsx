@@ -32,11 +32,10 @@ export function EdgeEnds({
   const { reconnect } = useDiagram();
   const { getNode } = useReactFlow<FlowNode>();
   const interaction = useInteraction();
-  const snapshot = useSyncExternalStore(
+  const active = useSyncExternalStore(
     interaction?.subscribe ?? noSubscribe,
-    interaction?.getSnapshot ?? emptySnapshot,
+    () => interaction?.getEdgePreview(id) ?? null,
   );
-  const active = snapshot?.gesture?.preview;
   const drag = active?.kind === "edge.end" && active.edge === id ? { which: active.end, at: active.at } : null;
   const pointerGesture = usePointerGesture();
   if (!reconnect) return null;
@@ -102,4 +101,3 @@ export function EdgeEnds({
 }
 
 const noSubscribe = () => () => {};
-const emptySnapshot = () => null;

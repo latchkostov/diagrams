@@ -740,7 +740,7 @@ function CanvasInner({
     grow.current = (from, toward, clone) => (clone ? cloneTo(from, toward) : growTo(from, toward));
   });
 
-  const [annotationKindOf, onConnectStart, onConnectEnd, onConnect] = useConnectionPlacement(
+  const [annotationKindOf, onConnectStart, onConnectEnd, onConnect, onClickConnectEnd] = useConnectionPlacement(
     getNode,
     hideTip,
     wrapper,
@@ -1106,6 +1106,8 @@ function CanvasInner({
                 onConnect={onConnect}
                 onConnectStart={onConnectStart}
                 onConnectEnd={onConnectEnd}
+                onClickConnectStart={onConnectStart}
+                onClickConnectEnd={onClickConnectEnd}
                 connectionLineComponent={ConnectionLine}
                 isValidConnection={isValidConnection}
                 connectionMode={ConnectionMode.Loose}

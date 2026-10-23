@@ -108,7 +108,6 @@ export function createInteractionController<P = unknown>(
   let snapshot = {
     menu: null as OpenSurface<P> | null,
     roving: undefined as string | undefined,
-    gesture: null as Gesture | null,
     keyboardSegment: gestureState.keyboardSegment,
   };
   let seq = 0;
@@ -155,13 +154,11 @@ export function createInteractionController<P = unknown>(
     if (
       snapshot.menu !== menuState.open ||
       snapshot.roving !== focus.roving ||
-      snapshot.gesture !== gestureState.active ||
       snapshot.keyboardSegment !== gestureState.keyboardSegment
     )
       snapshot = {
         menu: menuState.open,
         roving: focus.roving,
-        gesture: gestureState.active,
         keyboardSegment: gestureState.keyboardSegment,
       };
     if (next !== lastPhase) {
@@ -447,6 +444,15 @@ export function createInteractionController<P = unknown>(
     /** For useSyncExternalStore: a new object whenever something it holds changes. */
     getSnapshot() {
       return snapshot;
+    },
+    /** Narrow preview selectors: unrelated edges and the canvas shell keep their identity. */
+    getConnectPreview() {
+      const p = gestureState.active?.preview;
+      return p?.kind === "connect" ? p : null;
+    },
+    getEdgePreview(edge: string) {
+      const p = gestureState.active?.preview;
+      return p?.kind === "edge.end" && p.edge === edge ? p : null;
     },
     subscribe(listener: () => void) {
       listeners.add(listener);

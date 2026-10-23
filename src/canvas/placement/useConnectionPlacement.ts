@@ -71,7 +71,14 @@ export function useConnectionPlacement(
         { kind: "connect", from: nodeId, over: null },
         {
           via: "touches" in event ? "touch" : "mouse",
-          cancel: () => store.getState().cancelConnection(),
+          cancel: () => {
+            store.getState().cancelConnection();
+            store.setState({ connectionClickStartHandle: null });
+            // Retire XYHandle's document listeners and auto-pan frame as well as its store state.
+            // The controller has already ended this gesture, so these late callbacks cannot commit.
+            document.dispatchEvent(new MouseEvent("mouseup", { bubbles: true }));
+            document.dispatchEvent(new TouchEvent("touchend", { bubbles: true, touches: [] }));
+          },
           commit(p) {
             if (p.kind !== "connect" || readOnly) return;
             const from = p.from;
@@ -159,5 +166,9 @@ export function useConnectionPlacement(
     },
     [menus, annotationKindOf],
   );
-  return [annotationKindOf, onConnectStart, onConnectEnd, onConnect] as const;
+  const onClickConnectEnd: OnConnectEnd = useCallback(() => {
+    const gesture = menus.gesture;
+    if (gesture?.kind === "connect") menus.endGesture(gesture.seq, "cancel");
+  }, [menus]);
+  return [annotationKindOf, onConnectStart, onConnectEnd, onConnect, onClickConnectEnd] as const;
 }

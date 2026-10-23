@@ -930,7 +930,7 @@ describe("controller gesture interleavings", () => {
     h.controller.beginGesture("edge.end", preview, { via: "mouse", commit: vi.fn() });
     expect(h.controller.menu).toBeNull();
     expect(h.controller.phase).toBe("gesture");
-    expect(h.controller.getSnapshot().gesture?.preview).toBe(preview);
+    expect(h.controller.getEdgePreview("a-b")).toBe(preview);
     expect(h.journal.some((e) => e.event === "menu.closed:gesture")).toBe(true);
     expect(h.camera).toContainEqual({ type: "gesture", on: true });
   });
@@ -989,4 +989,41 @@ it("segment stepping follows only a sole selected edge and clears when selection
   expect(h.controller.getSnapshot().keyboardSegment).toBeUndefined();
   h.controller.stepSegment("a-b", 1, 3);
   expect(h.controller.getSnapshot().keyboardSegment).toBeUndefined();
+});
+
+it("100 pointer moves leave the CanvasInner snapshot and unrelated edge previews stable", () => {
+  const h = harness();
+  const seq = h.controller.beginGesture(
+    "edge.end",
+    {
+      kind: "edge.end",
+      edge: "a-b",
+      end: "target",
+      at: { x: 0, y: 0 },
+      over: null,
+    },
+    { via: "mouse", commit: vi.fn() },
+  );
+  const shell = h.controller.getSnapshot();
+  const unrelated = h.controller.getEdgePreview("c-d");
+  let changes = 0;
+  h.controller.subscribe(() => {
+    if (h.controller.getSnapshot() !== shell) changes++;
+  });
+  for (let i = 1; i <= 100; i++) {
+    h.controller.updateGesture(seq, { kind: "edge.end", edge: "a-b", end: "target", at: { x: i, y: i }, over: null });
+    expect(h.controller.getEdgePreview("c-d")).toBe(unrelated);
+    expect(h.controller.getEdgePreview("a-b")?.at.x).toBe(i);
+  }
+  h.controller.endGesture(seq, "cancel");
+  const connect = h.controller.beginGesture(
+    "connect",
+    { kind: "connect", from: "a", over: null },
+    { via: "mouse", commit: vi.fn() },
+  );
+  for (let i = 1; i <= 100; i++) {
+    h.controller.updateGesture(connect, { kind: "connect", from: "a", over: null, screen: { x: i, y: i } });
+    expect(h.controller.getEdgePreview("c-d")).toBe(unrelated);
+  }
+  expect(changes).toBe(0);
 });
