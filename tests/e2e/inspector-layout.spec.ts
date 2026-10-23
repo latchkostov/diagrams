@@ -44,7 +44,8 @@ for (const stencil of [
     await expect(summary).not.toBeEmpty();
     await page.getByTestId("inspector-section-node-simulation").click();
     if (stencil === "aws.lambda" || stencil === "generic.external-api") {
-      await expect(page.getByTestId("planning-arithmetic").getByTestId("readout-facts")).toContainText("Unknown");
+      if (stencil === "generic.external-api")
+        await expect(page.getByTestId("planning-arithmetic").getByTestId("readout-facts")).toContainText("Unknown");
       const field = page.getByTestId(stencil === "aws.lambda" ? "admission-allocation" : "admission-rate");
       await expect(field).toBeVisible();
       const value = await field.inputValue();

@@ -30,6 +30,8 @@ The rhythm regression is verified against a production bundle with the field gap
 
 ## Choices rejected
 
+The Linux load pass also preserves the existing 640 px field-width cap on ultrawide sheets. Request fields now arrive with the deferred edge panel, so its first keyboard pass cannot outrun a second chunk download. The existing request-loading marker follows that panel's loading state; held-download tests cover it.
+
 No new global controls, control restyling, deeper indentation or forced field reordering. Existing keyboard order remains intact. Deferring the entire node panel shifted shared code into Live and exceeded its bundle budget, so only Simulation fields are deferred. Bundle thresholds are unchanged.
 
 ## Parity

@@ -44,7 +44,7 @@
 }
 .inspector .insp-field {
   gap: var(--insp-label-gap);
-  max-inline-size: 100%;
+  max-inline-size: 640px;
 }
 .inspector .insp-label,
 .inspector .insp-fieldset > legend {
