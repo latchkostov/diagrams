@@ -19,8 +19,8 @@
 //   Live's keyboard (src/live/session/useLiveKeyboard.ts) asks the controller (liveKey), which journals it.
 // - readout.ts: Live's hover cards, pure: which item's readout is open or pinned, and where Tab goes from inside one
 //   (cards are portalled outside canvas-wrap, so canvas navigation bridges them: node → readout → next node).
-//   The controller keeps them apart from its snapshot (getReadout / subscribeReadout): hovering never re-renders the
-//   canvas root.
+//   readoutLayer.ts holds them: Live creates and attaches it (it ships with Live, not the canvas's first view), with
+//   its own store apart from the controller's snapshot, so hovering never re-renders the canvas root.
 // - domPort.ts: the DOM behind the port; useInteraction.ts: the hooks CanvasView and the Inspector call.
 //
 // Adding menu, focus or selection behaviour
@@ -68,8 +68,9 @@ export {
 } from "./controller";
 export { focusPolicy, initialFocus } from "./focusPolicy";
 export { liveKeys } from "./liveKeys";
-export { dialogTabTarget, domActive, PANEL_OPENER_ATTR, readoutStop } from "./domPort";
-export { readoutTab, type ReadoutStop, type ReadoutTarget } from "./readout";
+export { dialogTabTarget, domActive, PANEL_OPENER_ATTR } from "./domPort";
+export type { ReadoutStop, ReadoutTarget } from "./readout";
+export type { ReadoutLayer, ReadoutNav } from "./readoutLayer";
 export { cameraMenuKind, initialMenus, menus } from "./menus";
 export {
   InteractionContext,
@@ -83,15 +84,7 @@ export {
 /** What the canvas's hooks use to move focus: events in, the pending move and the Tab stop out. */
 export type FocusApi = Pick<
   import("./controller").InteractionController,
-  | "dispatch"
-  | "focusing"
-  | "pendingTarget"
-  | "rendered"
-  | "state"
-  | "getReadout"
-  | "readoutShown"
-  | "enterReadout"
-  | "releaseReadout"
+  "dispatch" | "focusing" | "pendingTarget" | "rendered" | "state" | "readouts"
 >;
 /** Where placements declare themselves: the next selection (and pane change) comes from placing a new item. */
 export type Placing = Pick<import("./controller").InteractionController, "placing">;

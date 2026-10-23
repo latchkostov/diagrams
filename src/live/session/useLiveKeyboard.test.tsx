@@ -41,8 +41,7 @@ it("leaves Enter's default activation to a control nested inside a node", () => 
   const pinReadout = vi.fn();
   const interaction = {
     liveKey: liveKeys,
-    getReadout: () => null,
-    pinReadout,
+    readouts: { get: () => null, pin: pinReadout },
   } as unknown as InteractionController;
   function Harness() {
     useLiveKeyboard({
@@ -76,8 +75,7 @@ it("lets the recorder own Escape while a readout is pinned", () => {
     useLiveKeyboard({
       interaction: {
         liveKey: liveKeys,
-        getReadout: () => ({ kind: "node", id: "a", pinned: true }),
-        closeReadout,
+        readouts: { get: () => ({ kind: "node", id: "a", pinned: true }), close: closeReadout },
       },
       session: { controller: { getState: () => ({}) }, traceRef: {} },
       spotlight: { slowRef: {} },
@@ -120,7 +118,7 @@ it.each([
     useLiveKeyboard({
       presenting,
       editor: editable ? {} : undefined,
-      interaction: { liveKey: liveKeys, getReadout: () => null, pinReadout },
+      interaction: { liveKey: liveKeys, readouts: { get: () => null, pin: pinReadout } },
       session: { controller: { getState: () => ({ run: { waiting } }) }, traceRef: {} },
       spotlight: { slowRef: {} },
     } as unknown as Parameters<typeof useLiveKeyboard>[0]);
@@ -162,8 +160,7 @@ it.each([
     useLiveKeyboard({
       interaction: {
         liveKey: liveKeys,
-        getReadout: () => ({ kind: "edge", id: "call", pinned: pinned === "true" }),
-        pinReadout,
+        readouts: { get: () => ({ kind: "edge", id: "call", pinned: pinned === "true" }), pin: pinReadout },
       },
       session: { controller: { getState: () => ({}), togglePlaying }, traceRef: {} },
       spotlight: { slowRef: {} },

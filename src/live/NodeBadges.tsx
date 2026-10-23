@@ -3,12 +3,13 @@ import { profileOf } from "../stencils/profiles";
 import { ThreadMeter, CallPills } from "./lazyWaitingVisuals";
 import { nodeFaultLabels } from "../model/faultWords";
 import { useInteraction } from "../canvas/interaction";
+import { createReadoutLayer } from "../canvas/interaction/readoutLayer";
 import { compileTopology } from "../sim/topology";
 import { brokerAssignments } from "../sim/brokerAssignments";
 import { resolveMultiplier } from "../sim/units";
 import type { BrokerSpec } from "../model/brokers";
 import { t, useLocale } from "../i18n";
-import { memo, useEffect, useMemo, useState, useSyncExternalStore, type CSSProperties } from "react";
+import { memo, useEffect, useLayoutEffect, useMemo, useState, useSyncExternalStore, type CSSProperties } from "react";
 import { useNodes, useStore } from "@xyflow/react";
 import type { DiagramFile, SimRole } from "../model/types";
 import type { NodeSimState } from "../sim/types";
@@ -177,14 +178,20 @@ const noInteraction = () => () => {};
 function useHoveredNode() {
   const interaction = useInteraction();
   const domNode = useStore((s) => s.domNode);
-  // The readout's own subscription: hovering re-renders this layer, never the canvas root.
+  // Live's readout layer (src/canvas/interaction/readoutLayer.ts), attached to the canvas's controller while shown.
+  const [readouts] = useState(() => (interaction ? createReadoutLayer(interaction) : null));
+  useLayoutEffect(
+    () => (interaction && readouts ? interaction.attachReadouts(readouts) : undefined),
+    [interaction, readouts],
+  );
+  // Its own subscription: hovering re-renders this layer, never the canvas root.
   const pointed = useSyncExternalStore(
-    interaction?.subscribeReadout ?? noInteraction,
-    () => interaction?.getReadout() ?? null,
+    readouts?.subscribe ?? noInteraction,
+    () => readouts?.get() ?? null,
     () => null,
   );
   useEffect(() => {
-    if (!domNode || !interaction) return;
+    if (!domNode || !readouts) return;
     const itemAt = (el: Element | null) => {
       const card = el?.closest<HTMLElement>("[data-live-readout]");
       if (card) return { kind: card.dataset.liveReadout as "node" | "edge", id: card.dataset.item! };
@@ -199,7 +206,7 @@ function useHoveredNode() {
     const point = (e: PointerEvent) => {
       const target = itemAt(e.target instanceof Element ? e.target : null);
       if (!target) {
-        const open = interaction.getReadout();
+        const open = readouts.get();
         const card = document.querySelector<HTMLElement>("[data-live-readout]");
         const anchor =
           open && domNode.querySelector<HTMLElement>(`[data-testid="${open.kind}-${CSS.escape(open.id)}"]`);
@@ -216,12 +223,12 @@ function useHoveredNode() {
             return;
         }
       }
-      interaction.pointReadout(target ?? itemAt(document.activeElement));
+      readouts.point(target ?? itemAt(document.activeElement));
     };
-    const focus = (e: FocusEvent) => interaction.pointReadout(itemAt(e.target instanceof Element ? e.target : null));
+    const focus = (e: FocusEvent) => readouts.point(itemAt(e.target instanceof Element ? e.target : null));
     const down = (e: PointerEvent) => {
       const el = e.target instanceof Element ? e.target : null;
-      if (!el?.closest("[data-live-readout]")) interaction.closeReadout("outside");
+      if (!el?.closest("[data-live-readout]")) readouts.close("outside");
     };
     document.addEventListener("pointermove", point);
     document.addEventListener("focusin", focus);
@@ -230,9 +237,9 @@ function useHoveredNode() {
       document.removeEventListener("pointermove", point);
       document.removeEventListener("focusin", focus);
       document.removeEventListener("pointerdown", down, true);
-      interaction.closeReadout("unmount");
+      readouts.close("unmount");
     };
-  }, [domNode, interaction]);
+  }, [domNode, readouts]);
   return pointed;
 }
 

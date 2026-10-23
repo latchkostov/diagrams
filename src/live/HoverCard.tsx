@@ -135,7 +135,7 @@ export function HoverCard({ kind, id, name, type, pinned, presenting, summary, h
       else anchor.setAttribute("aria-describedby", old);
     };
   }, [domNode, kind, id, descriptionId]);
-  const pin = () => interaction.pinReadout({ kind, id });
+  const pin = () => interaction.readouts?.pin({ kind, id });
   const toggle = (key: string) => {
     if (!pinned) pin();
     setOpen((old) => (old === key ? null : key));
@@ -192,7 +192,7 @@ export function HoverCard({ kind, id, name, type, pinned, presenting, summary, h
         if (e.key === "Escape") {
           e.preventDefault();
           e.stopPropagation();
-          interaction.closeReadout("escape");
+          interaction.readouts?.close("escape");
         } else if (e.key === "ArrowDown" || e.key === "ArrowUp") {
           const rows = [...e.currentTarget.querySelectorAll<HTMLElement>("[data-hover-row]")];
           const current = rows.indexOf(document.activeElement as HTMLElement);

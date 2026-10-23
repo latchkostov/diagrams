@@ -1,7 +1,7 @@
 import type { CameraEvent } from "../camera";
 import { describe, focusPolicy, initialFocus, pendingMove } from "./focusPolicy";
 import { liveKeys } from "./liveKeys";
-import { initialReadout, readout, type ReadoutEvent, type ReadoutTarget } from "./readout";
+import type { ReadoutLayer } from "./readoutLayer";
 import { cameraMenuKind, initialMenus, menus } from "./menus";
 import type {
   ElementHandle,
@@ -97,14 +97,13 @@ export function createInteractionController<P = unknown>(
   options: InteractionOptions = {},
 ) {
   let menuState: MenusState<P> = initialMenus<P>();
-  let reading = initialReadout();
+  /** Live's hover cards, while Live attaches them (readoutLayer.ts): their own store, apart from the snapshot. */
+  let readouts: ReadoutLayer | null = null;
   let camera = options.camera;
   let focus: FocusState = initialFocus();
   /** The camera's view of the open menu (it hears of a change of kind only, as before). */
   let cameraMenu: "context" | "quickAdd" | null = null;
   const listeners = new Set<() => void>();
-  /** Live readouts have their own subscribers: hovering never re-renders what reads menus or the Tab stop. */
-  const readoutListeners = new Set<() => void>();
   let snapshot = { menu: null as OpenSurface<P> | null, roving: undefined as string | undefined };
   let seq = 0;
   /** The pending move's last resolution was `parked`: it waits on commits, and readiness doesn't count it. */
@@ -153,13 +152,6 @@ export function createInteractionController<P = unknown>(
       port.publish(next);
     }
     for (const l of listeners) l();
-  }
-
-  /** Applies a readout event; only a different open card notifies the readout's subscribers. */
-  function read(event: ReadoutEvent) {
-    const before = reading.open;
-    reading = readout(reading, event);
-    if (reading.open !== before) for (const l of readoutListeners) l();
   }
 
   function feedCamera() {
@@ -349,51 +341,16 @@ export function createInteractionController<P = unknown>(
   }
 
   return {
-    /** The open Live readout (useSyncExternalStore with subscribeReadout): apart from the canvas's snapshot. */
-    getReadout() {
-      return reading.open;
+    /** Live attaches its readout layer while it shows hover cards; returns the detach. */
+    attachReadouts(layer: ReadoutLayer) {
+      readouts = layer;
+      return () => {
+        if (readouts === layer) readouts = null;
+      };
     },
-    subscribeReadout(listener: () => void) {
-      readoutListeners.add(listener);
-      return () => void readoutListeners.delete(listener);
-    },
-    /** The pointer or keyboard focus names an item (null: nothing) for an unpinned readout. */
-    pointReadout(target: ReadoutTarget | null) {
-      if (menuState.open) return;
-      read({ type: "point", target });
-    },
-    pinReadout(target: ReadoutTarget) {
-      if (menuState.open) return;
-      read({ type: "pin", target });
-    },
-    closeReadout(reason: MenuCloseReason) {
-      const target = reading.open;
-      if (reason === "escape") read({ type: "close" });
-      else {
-        const before = reading.open;
-        reading = initialReadout();
-        if (before) for (const l of readoutListeners) l();
-      }
-      if (target) decide({ type: "readout.closed", target, reason });
-    },
-    /** Keyboard traversal moves on from a pinned card: it becomes a summary the next item's readout replaces. */
-    releaseReadout() {
-      read({ type: "release" });
-    },
-    /** Whether this item's readout card is shown (placed, so it can take focus). */
-    readoutShown(target: ReadoutTarget) {
-      return port.resolve({ kind: "readout", item: target.kind, id: target.id }).state === "ready";
-    },
-    /**
-     * Tab or Shift+Tab steps into an item's readout card (readout.ts, readoutTab). `open`: the step opens it (Shift+Tab
-     * from the next node), releasing a pinned one; focus waits for the commit that draws it, else goes to its item.
-     */
-    enterReadout(target: ReadoutTarget, open: boolean) {
-      if (open && !menuState.open) {
-        read({ type: "release" });
-        read({ type: "point", target });
-      }
-      decide({ type: "readout.entered", target: { kind: target.kind, id: target.id }, opening: open });
+    /** Live's readout layer, if attached: canvas Tab bridges its cards, Esc and menus defer to it. */
+    get readouts(): ReadoutLayer | null {
+      return readouts;
     },
     /** The open menu or dialog, if any. */
     get menu(): OpenSurface<P> | null {
@@ -420,7 +377,7 @@ export function createInteractionController<P = unknown>(
       payload: P,
       how: { via?: MenuVia; platform?: Platform; invoker?: ElementHandle | null } = {},
     ) {
-      read({ type: "close" });
+      readouts?.dismiss();
       const t = menus(menuState, {
         type: "menu.open",
         kind,
