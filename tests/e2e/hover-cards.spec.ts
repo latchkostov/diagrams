@@ -548,3 +548,27 @@ test("Enter on a focused section button opens it even after the pointer moves ov
   await expect(page.getByTestId(section ?? "")).toHaveAttribute("aria-expanded", "true");
   expectNoErrors(consoleErrors);
 });
+
+for (const slug of ["retry-storm", "webhook-ingestion"])
+  test(`hover summaries never scroll at 1280×800 (${slug})`, async ({ page, consoleErrors }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await gotoLive(page, `./?view=canvas&example=${slug}&live=1&paused=1`);
+    await waitForStableViewport(page);
+    const items =
+      slug === "retry-storm"
+        ? ["node-checkout", "node-payments", "node-orders", "edge-checkouts", "edge-pay", "edge-orders-flow"]
+        : ["node-receiver", "node-exchange", "node-queue", "node-dlq", "node-workers", "edge-queue-to-dlq"];
+    for (const item of items) {
+      await page.getByTestId("diagram-title").hover();
+      await page.getByTestId(item).hover({ force: true });
+      const card = page.getByTestId(item.replace(/^(node|edge)-/, "$1-detail-"));
+      await expect(card).toHaveAttribute("data-pinned", "false");
+      // The card is its own scroll container: a summary fits it in both directions, so no scroll bar shows.
+      const fit = await card.evaluate((el) => ({
+        height: el.scrollHeight <= el.clientHeight,
+        width: el.scrollWidth <= el.clientWidth,
+      }));
+      expect(fit, item).toEqual({ height: true, width: true });
+    }
+    expectNoErrors(consoleErrors);
+  });
