@@ -246,3 +246,83 @@ it("a breaker without retries executes only in w2", () => {
     expect(e.snapshot().inSystem).toBe(0);
   }
 });
+
+it.each([1.01, 1.5, 2.5, 10])("closes after healthy probes at fractional scale %s", (scale) => {
+  const d = fixture();
+  (d.edges[1].props!.caller as NonNullable<EdgeSimProps["caller"]>).breaker!.halfOpenCalls = 5;
+  if (scale === 2.5 || scale === 10) {
+    d.nodes[0].stencil = "generic.queue";
+    d.nodes[0].props = { maxDeliveryCount: 1 };
+    const consumers = scale === 10 ? 4 : 2;
+    for (let i = 1; i < consumers; i++) {
+      const id = `competitor-${i}`;
+      d.nodes.push({ ...d.nodes[1], id });
+      d.edges.push({ ...d.edges[0], id: `delivery-${i}`, to: id });
+    }
+    (d.edges[1].props!.caller as NonNullable<EdgeSimProps["caller"]>).breaker!.halfOpenCalls = 3;
+  }
+  const e = createEngine({ seed: 7, scale, verifyResilience: assertResilienceInvariants });
+  e.load(d);
+  e.inject("source", 10);
+  e.step(1500);
+  expect(e.snapshot().edges.call.breaker?.state).toBe("open");
+  e.setNodeProps("partner", { failureRate: 0 });
+  e.inject("source", 10);
+  e.step(10000);
+  expect(e.snapshot().edges.call.breaker?.state).toBe("closed");
+  expect(e.snapshot().edges.call.calls?.succeeded).toBeGreaterThan(0);
+});
+
+it("settles fractional ignored, cancelled and shed probes as inconclusive", () => {
+  for (const cause of ["no-route", "call-limit", "shed"] as const) {
+    const b = createBreaker(),
+      p = { minimumCalls: 1, halfOpenCalls: 5, openMs: 10 };
+    breakerRecord(b, p, 0, "error", 0, breakerPermits(b, p, 0, 1)!);
+    const permits = Array.from({ length: 3 }, () => breakerPermits(b, p, 10, 1.5)!);
+    expect(breakerPermits(b, p, 10, 1.5)).toBeUndefined();
+    for (const permit of permits) breakerRecord(b, p, 20, cause, 0, permit);
+    expect(b.state).toBe("open");
+    expect(b.lastWindow).toEqual({ calls: 0, failed: 0, slow: 0 });
+    expect(breakerPermits(b, p, 29, 1.5)).toBeUndefined();
+  }
+});
+
+it("rejects probes admitted without sufficient remaining room", () => {
+  const state = { time: 0, inSystem: 1, edges: [], calls: [], logical: [], budgetDecisions: [] };
+  for (const [sent, probes, units] of [
+    [4, 3, 1],
+    [13, 3, 10],
+    [5.25, 5, 0.5],
+    [6, 5, 1.5],
+  ])
+    expect(() =>
+      assertResilienceInvariants({ ...state, breakerDispatches: [{ state: "half-open", sent, probes, units }] }),
+    ).toThrow("R3 probe gate");
+  for (const [sent, probes, units] of [
+    [3, 3, 1],
+    [12, 3, 10],
+    [5, 5, 0.5],
+    [5.5, 5, 1.5],
+  ])
+    expect(() =>
+      assertResilienceInvariants({ ...state, breakerDispatches: [{ state: "half-open", sent, probes, units }] }),
+    ).not.toThrow();
+});
+
+it("recovers scale-three queue deliveries split between two competing consumers", () => {
+  const d = fixture();
+  d.nodes[0].stencil = "generic.queue";
+  d.nodes[0].props = { maxDeliveryCount: 1 };
+  d.nodes.push({ ...d.nodes[1], id: "competitor" });
+  d.edges.push({ ...d.edges[0], id: "competing", to: "competitor" });
+  (d.edges[1].props!.caller as NonNullable<EdgeSimProps["caller"]>).breaker!.halfOpenCalls = 5;
+  const e = createEngine({ seed: 7, scale: 3, verifyResilience: assertResilienceInvariants });
+  e.load(d);
+  e.inject("source", 10);
+  e.step(1500);
+  expect(e.snapshot().edges.call.breaker?.state).toBe("open");
+  e.setNodeProps("partner", { failureRate: 0 });
+  e.inject("source", 10);
+  e.step(10000);
+  expect(e.snapshot().edges.call.breaker?.state).toBe("closed");
+});

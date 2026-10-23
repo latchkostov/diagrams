@@ -215,3 +215,32 @@ it("every reply is classified by its own attempt across pause, outage, drain and
     { numRuns: propertyRuns(20) },
   );
 });
+
+it("a generated healthy callee eventually closes after its fault clears", () => {
+  fc.assert(
+    fc.property(fc.double({ min: 1.001, max: 10, noNaN: true }), fc.integer({ min: 1, max: 12 }), (scale, probes) => {
+      const d = waitingFixture();
+      d.planning!.revision = "p3-w2";
+      d.nodes[2].stencil = "generic.service";
+      d.nodes[2].props = { replicas: 1, concurrency: 10, latencyMs: 30, jitter: 0, failureRate: 1 };
+      d.edges[1].props = { travelMs: 10, caller: { deadlineMs: 200, poolConnections: 1 } };
+      (d.edges[1].props!.caller as NonNullable<EdgeSimProps["caller"]>).breaker = {
+        minimumCalls: 1,
+        openMs: 1000,
+        halfOpenCalls: probes,
+      };
+      const e = createEngine({ seed: 7, scale, verifyResilience: assertResilienceInvariants });
+      e.load(d);
+      e.inject("source", 4);
+      e.step(1000);
+      expect(e.snapshot().edges.call.breaker?.state).toBe("open");
+      e.setNodeProps("partner", { failureRate: 0 });
+      for (let i = 0; i <= probes; i++) {
+        e.inject("source", 1);
+        e.step(1000);
+      }
+      expect(e.snapshot().edges.call.breaker?.state).toBe("closed");
+    }),
+    { numRuns: propertyRuns(30) },
+  );
+});

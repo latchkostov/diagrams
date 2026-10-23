@@ -1,10 +1,10 @@
-import type { DiagramFile, Simulation } from "../model/types";
+import type { Simulation } from "../model/types";
 import type { EdgeSimProps } from "../sim/types";
 import { advanceHeadless, createHeadlessRun, startWork, type VerificationContext } from "../sim/headless";
 import { simulationEdges } from "../sim/simulationEdges";
 import { estimateTotalMs } from "../sim/simulation";
 import { realSnapshot } from "../sim/units";
-import { stencilRole } from "../stencils/roles";
+import { recoveryPath, recoveryFault } from "../sim/recoveryEvidence";
 import { RECOMMENDED_RETRY } from "../sim/resiliencePresets";
 import { THREAD_FIX_LIMITS, THREAD_FIX_WORK, threadFixWork } from "./threadFixPlan";
 import type { TroubleAction } from "./observedTrouble";
@@ -68,20 +68,6 @@ export function recovers(before: RecoveryEvidence, after: RecoveryEvidence): boo
   );
 }
 
-/** Only actual ancestor sources count; an unrelated healthy source cannot certify recovery. */
-function sourceFor(d: DiagramFile, caller: string): string | undefined {
-  const seen = new Set([caller]),
-    queue = [caller];
-  for (const id of queue) {
-    if (stencilRole(d.nodes.find((n) => n.id === id)?.stencil ?? "") === "source") return id;
-    for (const e of d.edges)
-      if (e.to === id && (!e.relation || e.relation === "flow") && !seen.has(e.from)) {
-        seen.add(e.from);
-        queue.push(e.from);
-      }
-  }
-}
-
 export function confirmedResilienceFix({
   context,
   edge,
@@ -93,19 +79,16 @@ export function confirmedResilienceFix({
 }): ResilienceFix | undefined {
   const d = context.origin.diagram,
     base = context.origin.simulation;
+  const horizon = Math.min(60000, estimateTotalMs(base));
+  // Refuse before indexing topology or traversing any ancestor.
+  if (time > horizon || threadFixWork(d.nodes.length, d.edges.length, horizon) * 5 > THREAD_FIX_WORK) return;
   const effective = simulationEdges(d, base),
     connection = effective.edges.find((e) => e.id === edge);
   if (!connection) return;
-  const caller = connection.props?.caller as EdgeSimProps["caller"],
-    source = sourceFor(d, connection.from);
-  const horizon = Math.min(60000, estimateTotalMs(base));
-  if (
-    !caller ||
-    !source ||
-    time > horizon ||
-    threadFixWork(d.nodes.length, d.edges.length, horizon) * 5 > THREAD_FIX_WORK
-  )
-    return;
+  const caller = connection.props?.caller as EdgeSimProps["caller"];
+  if (!caller) return;
+  const path = recoveryPath(d, connection);
+  if (!path) return;
   const sim = { ...base, durationMs: horizon };
   if (startWork(d, sim) > THREAD_FIX_LIMITS.startWork) return;
   const messages = { remaining: THREAD_FIX_LIMITS.messages };
@@ -122,9 +105,9 @@ export function confirmedResilienceFix({
     advanceHeadless(run, horizon, () => {
       const snapshot = realSnapshot(run.engine.snapshot()),
         now = snapshot.time;
-      const fault = !!snapshot.faults?.length || snapshot.nodes[connection.to]?.status !== "up";
+      const fault = recoveryFault(snapshot, path);
       const node = snapshot.nodes[connection.to],
-        processed = snapshot.nodes[source]?.processed ?? 0;
+        processed = snapshot.edges[edge]?.calls?.succeeded ?? 0;
       const previous = [...history].reverse().find((p) => p.time <= now - 2000);
       const goodput = previous ? ((processed - previous.processed) * 1000) / (now - previous.time) : 0;
       const backlog = node?.backlog ?? 0;

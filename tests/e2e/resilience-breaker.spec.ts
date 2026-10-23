@@ -140,10 +140,33 @@ test("held trouble detection keeps keyboard, cursor, styles and export usable, t
 });
 
 test("failed trouble detection offers keyboard Retry without taking focus or blocking export", async ({ page }) => {
+  await page.setViewportSize({ width: 768, height: 800 });
   const tracker = await holdTracker(page);
   tracker.fail = true;
   await open(page);
   await expect(page.getByTestId("trouble-download-retry")).toBeVisible();
+  await expect(page.getByTestId("trouble-download-error")).toHaveAttribute("data-canvas-overlay", "");
+  await expect(page.getByTestId("trouble-download-error")).toHaveAttribute("data-below", "");
+  await page.getByTestId("fit-view-button").click();
+  await waitForCameraIdle(page);
+  await expect
+    .poll(async () => {
+      const callout = await page.getByTestId("trouble-download-error").boundingBox();
+      if (!callout) return false;
+      for (const id of ["source", "caller", "partner", "result"]) {
+        const node = await page.getByTestId(`node-${id}`).boundingBox();
+        if (
+          !node ||
+          (callout.x < node.x + node.width &&
+            callout.x + callout.width > node.x &&
+            callout.y < node.y + node.height &&
+            callout.y + callout.height > node.y)
+        )
+          return false;
+      }
+      return true;
+    })
+    .toBe(true);
   await killPartner(page);
   await page.getByTestId("live-play").focus();
   await exportDiagram(page);
@@ -157,4 +180,26 @@ test("failed trouble detection offers keyboard Retry without taking focus or blo
   await expect(page.getByTestId("trouble-action")).toBeVisible();
   expect(await page.evaluate(() => document.activeElement !== document.body)).toBe(true);
   await exportDiagram(page);
+});
+
+test("the breaker window uses whole seconds and explains fractional input", async ({ page, consoleErrors }) => {
+  await open(page);
+  await waitForCameraIdle(page);
+  await page.getByTestId("edge-call").dblclick();
+  await page.getByTestId("inspector-section-edge-simulation").click();
+  await page.getByTestId("inspector-section-breaker-details").click();
+  const window = page.getByTestId("inspector-field-breaker-windowMs");
+  await expect(window).toHaveAttribute("min", "1");
+  await expect(window).toHaveAttribute("max", "60");
+  await window.fill("2.5");
+  await expect(window).toHaveAttribute("aria-invalid", "true");
+  const error = page.getByTestId("inspector-invalid-breaker-windowMs");
+  await expect(error).toBeVisible();
+  await expect(window).toHaveAttribute("aria-describedby", (await error.getAttribute("id")) ?? "");
+  await window.fill("2");
+  await expect(window).not.toHaveAttribute("aria-invalid", "true");
+  await expect.poll(async () => (await savedDiagram(page)).edges[1].props?.caller?.breaker?.windowMs).toBe(2000);
+  await window.blur();
+  await expect(window).toHaveValue("2");
+  expectNoErrors(consoleErrors);
 });

@@ -33,7 +33,7 @@ export function BreakerFields({
           {(
             [
               ["failurePercent", t("resilience.failurePercent"), 50, 1, 100, 1, "%"],
-              ["windowMs", t("resilience.windowMs"), 10000, 1000, 60000, 1000, "ms"],
+              ["windowMs", t("resilience.windowMs"), 10, 1, 60, 1, "s"],
               ["minimumCalls", t("resilience.minimumCalls"), 20, 1, 1000000, 1, ""],
               ["openMs", t("resilience.openMs"), 5000, 0, 600000, 1, "ms"],
               ["halfOpenCalls", t("resilience.halfOpenCalls"), 5, 1, 10000, 1, ""],
@@ -55,17 +55,10 @@ export function BreakerFields({
                 placeholder: fallback === undefined ? t("resilience.off") : String(fallback),
                 hint: "",
               }}
-              value={breaker[key]}
+              value={key === "windowMs" && breaker[key] !== undefined ? breaker[key] / 1000 : breaker[key]}
               onChange={(v) => {
-                if (
-                  v === undefined ||
-                  (typeof v === "number" &&
-                    v >= min &&
-                    v <= max &&
-                    Number.isInteger(v) &&
-                    (key !== "windowMs" || v % 1000 === 0))
-                )
-                  set({ ...breaker, [key]: v });
+                if (v === undefined || (typeof v === "number" && v >= min && v <= max && Number.isInteger(v)))
+                  set({ ...breaker, [key]: key === "windowMs" && typeof v === "number" ? v * 1000 : v });
               }}
             />
           ))}

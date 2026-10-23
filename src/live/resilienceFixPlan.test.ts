@@ -86,3 +86,43 @@ it("confirms the first recovering cumulative edit by same-seed replay", () => {
   const result = confirmedResilienceFix({ context: context(), edge: "pay", time: 15000 });
   expect(result).toMatchObject({ kind: "resilience", edge: "pay", step: "breaker", caller: { breaker: {} } });
 });
+
+it.each(["async", "broker"])("confirms recovery at the affected request boundary with %s input", (kind) => {
+  const c = context();
+  c.origin.diagram.edges[0].kind = "async";
+  if (kind === "broker") {
+    const d = c.origin.diagram;
+    d.nodes.push({ ...d.nodes[1], id: "queue", stencil: "generic.queue", props: { maxDeliveryCount: 1 } });
+    d.edges[0].to = "queue";
+    d.edges.push({ id: "delivery", from: "queue", to: "checkout" });
+  }
+  expect(confirmedResilienceFix({ context: c, edge: "pay", time: 15000 })).toMatchObject({ step: "breaker" });
+});
+
+it("ignores a persistent fault on a disconnected service when confirming recovery", () => {
+  const c = context();
+  c.origin.diagram.nodes.push({ ...c.origin.diagram.nodes[2], id: "unused" });
+  c.origin.simulation.timeline!.push({
+    atMs: 0,
+    action: { do: "fault", fault: { kind: "fail", node: "unused", rate: 0.5 } },
+  });
+  c.origin.simulation.timeline!.sort((a, b) => a.atMs - b.atMs);
+  expect(confirmedResilienceFix({ context: c, edge: "pay", time: 15000 })).toMatchObject({ step: "breaker" });
+});
+
+it("rejects an oversized replay before reading topology", () => {
+  const c = context(),
+    d = c.origin.diagram;
+  d.nodes = new Array(5000).fill(d.nodes[0]);
+  Object.defineProperty(d, "edges", {
+    get() {
+      return new Proxy([], {
+        get(_target, key) {
+          if (key === "length") return 4999;
+          throw new Error("oversized replay traversed topology");
+        },
+      });
+    },
+  });
+  expect(confirmedResilienceFix({ context: c, edge: "pay", time: 15000 })).toBeUndefined();
+});

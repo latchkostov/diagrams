@@ -10,7 +10,7 @@ import { t, useLocale } from "../i18n";
 import { planningHost } from "../planning/host";
 import { BottleneckCallout } from "./lazyBottleneckCallout";
 import { lazyComponent } from "../lib/lazyLoad";
-import { TroubleDownloadError } from "./TroubleDownloadError";
+const TroubleDownloadError = lazyComponent(() => import("./TroubleDownloadError").then((m) => m.TroubleDownloadError));
 const TroubleCallout = lazyComponent(() => import("./TroubleCallout").then((m) => m.TroubleCallout));
 import { CapacityPanel } from "./lazyCapacityPanel";
 import { ControlBar } from "./ControlBar";

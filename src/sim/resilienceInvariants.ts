@@ -44,7 +44,8 @@ export function assertResilienceInvariants(state: ResilienceState): void {
   check(events.size === 0, "R6 orphan retry event");
   for (const gate of state.breakerDispatches) {
     check(gate.state !== "open", "R3 dispatch while open");
-    if (gate.state === "half-open") check(gate.sent < gate.probes + gate.units + 1e-8, "R3 probe gate");
+    if (gate.state === "half-open")
+      check(gate.probes - (gate.sent - gate.units) + 1e-9 >= Math.min(1, gate.units), "R3 probe gate");
   }
   for (const gate of state.budgetDecisions) {
     const allowance = Math.max((gate.budget.minPerSec ?? 10) * 10, (gate.budget.percent / 100) * gate.requests);

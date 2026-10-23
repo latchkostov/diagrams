@@ -100,7 +100,7 @@ export function breakerRecord(
   const counts = classifyOutcome(cause).breakerCounts;
   const failed = counts === "failure" || counts === "slow";
   const slow = counts === "slow" || (p.slowCallMs !== undefined && elapsed >= p.slowCallMs);
-  const recorded = counts !== "ignored" && counts !== "not-recorded";
+  const recorded = counts !== "ignored" && counts !== "not-recorded" && !(permit.probe && cause === "shed");
   const failurePercent = p.failurePercent ?? BREAKER_DEFAULTS.failurePercent;
   const slowPercent = p.slowPercent ?? BREAKER_DEFAULTS.slowPercent;
   if (permit.probe && b.state === "half-open") {
@@ -110,7 +110,10 @@ export function breakerRecord(
     if (recorded) b.recorded += permit.units;
     if (recorded && failed) b.failed += permit.units;
     if (recorded && slow) b.slow += permit.units;
-    if (b.sent >= (p.halfOpenCalls ?? BREAKER_DEFAULTS.halfOpenCalls) && b.inFlight < 1e-9) {
+    // Admission uses real-request room, including the allocator's one-request
+    // minimum. A fractional cohort can exhaust that room below the nominal cap.
+    const room = (p.halfOpenCalls ?? BREAKER_DEFAULTS.halfOpenCalls) - b.sent;
+    if (!breakerProbePermits(room, 1) && b.settled + 1e-9 >= b.sent) {
       b.lastWindow = { calls: b.recorded, failed: b.failed, slow: b.slow };
       transition(
         b,
