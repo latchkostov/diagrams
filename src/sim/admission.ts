@@ -1,7 +1,7 @@
 import type { ApiBehaviour, ApiEndpoint, Quota } from "../model/admission";
 import type { RetryPolicy } from "../model/admission";
 
-/** Concurrency-like, whole-dot gate until throttle splitting lands: overshoot is less than one dot. */
+/** Whether a half-open batch's remaining room still admits part of a cohort (the allocator's one-request minimum). */
 export function breakerProbePermits(room: number, represented: number): boolean {
   return allocationWeight(represented, room) + 1e-9 >= Math.min(1, represented);
 }
