@@ -1,6 +1,7 @@
 import type { CameraEvent } from "../camera";
 import { describe, focusPolicy, initialFocus, pendingMove } from "./focusPolicy";
 import { liveKeys } from "./liveKeys";
+import type { ReadoutLayer } from "./readoutLayer";
 import { cameraMenuKind, initialMenus, menus } from "./menus";
 import type {
   ElementHandle,
@@ -96,6 +97,8 @@ export function createInteractionController<P = unknown>(
   options: InteractionOptions = {},
 ) {
   let menuState: MenusState<P> = initialMenus<P>();
+  /** Live's hover cards, while Live attaches them (readoutLayer.ts): their own store, apart from the snapshot. */
+  let readouts: ReadoutLayer | null = null;
   let camera = options.camera;
   let focus: FocusState = initialFocus();
   /** The camera's view of the open menu (it hears of a change of kind only, as before). */
@@ -338,6 +341,17 @@ export function createInteractionController<P = unknown>(
   }
 
   return {
+    /** Live attaches its readout layer while it shows hover cards; returns the detach. */
+    attachReadouts(layer: ReadoutLayer) {
+      readouts = layer;
+      return () => {
+        if (readouts === layer) readouts = null;
+      };
+    },
+    /** Live's readout layer, if attached: canvas Tab bridges its cards, Esc and menus defer to it. */
+    get readouts(): ReadoutLayer | null {
+      return readouts;
+    },
     /** The open menu or dialog, if any. */
     get menu(): OpenSurface<P> | null {
       return menuState.open;
@@ -363,6 +377,7 @@ export function createInteractionController<P = unknown>(
       payload: P,
       how: { via?: MenuVia; platform?: Platform; invoker?: ElementHandle | null } = {},
     ) {
+      readouts?.dismiss();
       const t = menus(menuState, {
         type: "menu.open",
         kind,

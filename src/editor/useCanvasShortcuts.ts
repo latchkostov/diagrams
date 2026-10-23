@@ -10,12 +10,15 @@ const TOWARD: Record<string, Toward> = { ArrowRight: "right", ArrowLeft: "left",
 /** Keyboard selection between nodes (D14): Tab, Shift+Tab, Ctrl+Alt+arrows, and Ctrl+Alt+] / [ to a node's edges. */
 export type NavStep = "next" | "prev" | Toward | "edge-out" | "edge-in";
 
-/** On a node or an edge of the canvas (or the canvas itself): where Tab steps between nodes. */
+/**
+ * On a node or an edge of the canvas (or the canvas itself): where Tab steps between nodes. A Live readout card is
+ * portalled outside canvas-wrap; navigation bridges it into the reading order and checks it is this canvas's.
+ */
 const onCanvasItem = (t: EventTarget | null) =>
   t instanceof Element &&
-  !!t.closest('[data-testid="canvas-wrap"]') &&
-  (t.matches('[data-testid="canvas-wrap"]') ||
-    !!t.closest(".react-flow__node, .react-flow__edge, [data-live-node-detail]")) &&
+  ((!!t.closest('[data-testid="canvas-wrap"]') &&
+    (t.matches('[data-testid="canvas-wrap"]') || !!t.closest(".react-flow__node, .react-flow__edge"))) ||
+    !!t.closest("[data-live-readout]")) &&
   !isEditableTarget(t);
 
 /** If no `paste` event follows Ctrl+V within this time, paste the internal clipboard. */
@@ -59,6 +62,8 @@ export function useCanvasShortcuts(
     canRename?: boolean;
     /** A waiting live narration owns Enter before inspector naming. */
     canRenameEnter?: () => boolean;
+    /** A Live readout owns Esc before the canvas clears selection; the session applies its key policy. */
+    canEscape?: () => boolean;
     /** Alt+arrow from `from`: quick-add the next node that way; with Shift, a connected copy (D3). */
     onGrow?: (from: string, toward: Toward, clone: boolean) => void;
     /**
@@ -227,6 +232,7 @@ export function useCanvasShortcuts(
           break;
         }
         case "escape": {
+          if (optsRef.current.canEscape?.() === false) return;
           // Don't stop propagation: the app also uses Esc to leave presentation mode.
           optsRef.current.onEscape();
           // Cleared after React Flow's own Esc handler on a focused node or edge. Cleared before it, the

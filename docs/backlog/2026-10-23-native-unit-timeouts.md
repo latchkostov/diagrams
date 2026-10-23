@@ -1,0 +1,7 @@
+## Native unit timeouts under shared load
+
+During hover-card verification, `pnpm test --maxWorkers 6` reported 19 failures, 14,264 passes, ten expected failures and ten skips. Five feature-related failures were corrected and their focused badge, pill and readout regressions pass. The remaining 14 failures hit the existing five-second native Vitest timeout in checks/examples, checks/simulation-evidence, retry-storm seeds, retries.noop, scalingPlanner, waits.sampling and the skill layout test. No assertion or timeout was loosened.
+
+Only the affected test selection was run twice on clean origin/master `5f47cc876f6c7a37046b3efe71653ca38fe25a6e`, using the same installed dependencies, Node 24 and six workers. Round one: five failed, 113 passed, 303 skipped. Round two: three failed, 115 passed, 303 skipped. Five-second timeouts reproduced in checks/examples blocking-call, retry-storm seed 1, retries.noop, scalingPlanner and waits.sampling; the second run reproduced checks/examples blocking-call, retries.noop and waits.sampling. Other initially timed-out cases passed the focused selection, so they are not independently established baseline failures.
+
+The evidence is retained locally in `tests/.output/hover-all-units.log` and `tests/.output/hover-master-units-{1,2}.log`. Investigate CPU-heavy native examples under contention separately; CI already uses its existing larger timeout backstop. Do not infer a Simulation regression or re-record output goldens from these timeout-only failures.

@@ -358,6 +358,38 @@ describe("focusPolicy: the rules, row by row", () => {
     expect((d.command as FocusMove).fallback).toEqual({ kind: "canvas" });
   });
 
+  it("T5 T6 T7 Tab steps into a readout card, or out of one past the last node", () => {
+    const target = { kind: "node" as const, id: "a" };
+    expect(focusPolicy(state(), { type: "readout.entered", target, opening: false }).command).toEqual({
+      type: "focus",
+      target: { kind: "readout", item: "node", id: "a" },
+      when: "now",
+    });
+    expect(focusPolicy(state(), { type: "readout.entered", target, opening: true }).command).toEqual({
+      type: "focus",
+      target: { kind: "readout", item: "node", id: "a" },
+      when: "commit",
+      fallback: target,
+    });
+    expect(focusPolicy(state(), { type: "readout.left", target }).command).toEqual({
+      type: "focus",
+      target,
+      when: "now",
+    });
+  });
+
+  it("T8 T9 only Esc on a pinned readout gives focus back to its item", () => {
+    const target = { kind: "edge" as const, id: "e", pinned: true };
+    expect(say(focusPolicy(state(), { type: "readout.closed", target, reason: "escape" }).command)).toBe(
+      "focus:edge:e@now",
+    );
+    for (const reason of ["outside", "unmount", "command"] as const)
+      expect(focusPolicy(state(), { type: "readout.closed", target, reason }).command).toEqual({ type: "keep" });
+    expect(
+      focusPolicy(state(), { type: "readout.closed", target: { ...target, pinned: false }, reason: "escape" }).command,
+    ).toEqual({ type: "keep" });
+  });
+
   it("D7 Tab from a live node enters its scrollable details", () => {
     expect(focusPolicy(state(), { type: "node.details", target: opener }).command).toMatchObject({
       target: { kind: "element", handle: opener },
@@ -422,6 +454,8 @@ const LIVE_ACTIONS: LiveKeyAction[] = [
   "toggle",
   "resume",
   "repeat",
+  "close-readout",
+  "pin-readout",
   "none",
 ];
 const PLATFORMS: Platform[] = ["mac", "other"];
@@ -474,6 +508,18 @@ function allEvents(platform: Platform): FocusEvent[] {
     { type: "dependencies.hidden", focusOnDependency: false },
     { type: "document.replaced", active: node },
     { type: "document.replaced", active: null },
+    ...(["node", "edge"] as const).flatMap((kind): FocusEvent[] => [
+      { type: "readout.entered", target: { kind, id: "r" }, opening: false },
+      { type: "readout.entered", target: { kind, id: "r" }, opening: true },
+      { type: "readout.left", target: { kind, id: "r" } },
+      ...REASONS.flatMap((reason) =>
+        [true, false].map((pinned): FocusEvent => ({
+          type: "readout.closed",
+          target: { kind, id: "r", pinned },
+          reason,
+        })),
+      ),
+    ]),
     { type: "focus.entered", id: "b" },
     { type: "focus.resolved", id: "c" },
     { type: "focus.ran" },
@@ -533,6 +579,9 @@ describe("focusPolicy: invariants over every state × event", () => {
       // A move to something that can disappear says where focus goes instead, or only acts if focus was lost.
       if (d.command.type === "focus" && ["element", "selection"].includes(d.command.target.kind))
         expect(!!d.command.fallback || !!d.command.onlyIfLost).toBe(true);
+      // A readout drawn by a later commit always says where focus goes if it never appears: its own item.
+      if (d.command.type === "focus" && d.command.target.kind === "readout" && d.command.when !== "now")
+        expect(d.command.fallback).toEqual({ kind: d.command.target.item, id: d.command.target.id });
       // Live's keys never move focus, at any level; a Live popover gives focus back only on Esc.
       if (e.type === "live.key") expect(d.command.type).toBe("keep");
       if (e.type === "menu.closed" && e.kind === "live" && e.reason !== "escape") expect(d.command.type).toBe("keep");

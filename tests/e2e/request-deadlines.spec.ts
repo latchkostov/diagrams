@@ -1,3 +1,4 @@
+import { openLiveNodeDetails } from "./fixtures";
 import { waitingFixture } from "../../src/lab/waitingFixture";
 import {
   test,
@@ -216,6 +217,7 @@ for (const simulation of ["no-timeouts", "timeout-600"]) {
       await expect(page.getByTestId("call-pill-pay")).toContainText("timed out");
       await expect(page.getByTestId("call-pill-route")).not.toContainText("timed out");
       await page.getByTestId("node-checkout").hover();
+      await openLiveNodeDetails(page, "checkout", "outcomes");
       await expect(page.getByTestId("node-outcome-checkout")).toContainText("all timed out after 0.6 s");
       await expect(page.getByTestId("node-outcome-checkout")).toContainText("late replies discarded");
       for (const mode of ["is-compact", "is-summary"]) {
