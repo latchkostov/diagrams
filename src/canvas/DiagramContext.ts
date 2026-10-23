@@ -1,4 +1,3 @@
-import type { DiagramFile } from "../model/types";
 import { createContext, useContext, type MouseEvent as ReactMouseEvent } from "react";
 import type { EdgeEnd } from "../editor/edgeEdits";
 import type { EditorApi } from "../editor/types";
@@ -23,7 +22,6 @@ export type RenameTarget = Exclude<EditTarget, InlineEdit>;
 
 /** Diagram-level settings + canvas UI state shared with node / edge renderers. */
 export interface DiagramUi {
-  messageMetadata?: Pick<DiagramFile, "simulations" | "planning">;
   /** Flow direction; routing prefers this axis when picking edge sides. */
   direction: "LR" | "TB";
   /** Appearance changes invalidate custom caption contrast measured against the canvas. */

@@ -1,18 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 
-// Modified navigation keys do not always set the browser's :focus-visible heuristic.
-// Track input modality once for all detail readers, rather than attaching key listeners per edge/node.
-let readers = 0,
-  keyboardInput = false;
-const keyboard = () => {
-  keyboardInput = true;
-};
-const pointer = () => {
-  keyboardInput = false;
-};
-
 /**
- * True while the element `selector` names has keyboard focus, including modified navigation. The canvas is one Tab stop
+ * True while the element `selector` names has keyboard focus (`:focus-visible`). The canvas is one Tab stop
  * (D14), so controls inside a node or on an edge aren't Tab stops: their details open when the node or edge
  * itself is reached from the keyboard. Null: nothing to watch.
  */
@@ -20,13 +9,9 @@ export function useKeyboardFocusOn(selector: string | null): boolean {
   const [on, setOn] = useState(false);
   useEffect(() => {
     if (!selector) return;
-    if (readers++ === 0) {
-      document.addEventListener("keydown", keyboard, true);
-      document.addEventListener("pointerdown", pointer, true);
-    }
     const check = () => {
       const el = document.activeElement;
-      setOn(!!el && el.matches(selector) && (el.matches(":focus-visible") || keyboardInput));
+      setOn(!!el && el.matches(selector) && el.matches(":focus-visible"));
     };
     check();
     document.addEventListener("focusin", check);
@@ -34,10 +19,6 @@ export function useKeyboardFocusOn(selector: string | null): boolean {
     return () => {
       document.removeEventListener("focusin", check);
       document.removeEventListener("focusout", check);
-      if (--readers === 0) {
-        document.removeEventListener("keydown", keyboard, true);
-        document.removeEventListener("pointerdown", pointer, true);
-      }
       setOn(false);
     };
   }, [selector]);
@@ -48,7 +29,7 @@ export function useKeyboardFocusOn(selector: string | null): boolean {
  * A hoverable, focusable tooltip; a short leave delay bridges the gap between trigger and card. `shown`: also
  * open (the node or edge it belongs to has keyboard focus).
  */
-export function useTooltip(shown = false, dismissible = true) {
+export function useTooltip(shown = false) {
   const [hovered, setHovered] = useState(false);
   const [focused, setFocused] = useState(false);
   const [dismissed, setDismissed] = useState(false);
@@ -56,7 +37,7 @@ export function useTooltip(shown = false, dismissible = true) {
   const open = (hovered || focused || shown) && !dismissed;
   useEffect(() => () => clearTimeout(timer.current), []);
   useEffect(() => {
-    if (!open || !dismissible) return;
+    if (!open) return;
     const escape = (e: KeyboardEvent) => {
       if (e.key !== "Escape") return;
       e.stopPropagation();
@@ -65,7 +46,7 @@ export function useTooltip(shown = false, dismissible = true) {
     };
     document.addEventListener("keydown", escape, true);
     return () => document.removeEventListener("keydown", escape, true);
-  }, [open, dismissible]);
+  }, [open]);
   const pointer = {
     onPointerEnter: () => {
       clearTimeout(timer.current);

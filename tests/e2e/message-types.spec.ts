@@ -586,3 +586,88 @@ test("an appended paged rule stays visible and focused after rekeying", async ({
   await expect(receives).toBeFocused();
   expectNoErrors(consoleErrors);
 });
+
+/** The canvas-wide flow-edge reader: its own chunk in a build, its source module on the dev server. */
+const EDGE_READER = /\/(?:assets\/EdgeMessages-[\w-]+\.js|src\/canvas\/edges\/EdgeMessages\.tsx)(?:\?.*)?$/;
+
+async function seed(page: Page) {
+  await page.addInitScript(({ key, diagram }) => localStorage.setItem(key, JSON.stringify(diagram)), {
+    key: STORAGE_KEYS.autosavePrefix + "webhook-ingestion",
+    diagram: messageTypesFixture(),
+  });
+  await page.mouse.move(0, 0);
+  await page.goto("./?view=canvas&example=webhook-ingestion");
+}
+
+test("the flow-edge reader loads after the first view; a hover made while it is held reads on arrival", async ({
+  page,
+  consoleErrors,
+}) => {
+  let requested = false;
+  let release!: () => void;
+  const ready = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route(EDGE_READER, async (route) => {
+    requested = true;
+    await ready;
+    await route.continue();
+  });
+  try {
+    await seed(page);
+    await expect.poll(() => requested).toBe(true);
+    // The canvas works while the reader is held: selection, the inspector, hovering.
+    await page.getByTestId("node-api").click();
+    await waitForSelectionSettled(page);
+    await expect(page.getByTestId("inspector-field-label")).toHaveValue("API");
+    const label = page.getByTestId("edge-label-send");
+    await label.hover();
+    await expect(label).not.toHaveAttribute("title", /Message types:/);
+    release();
+    // The pointer was already on the label when the reader arrived: no second hover needed.
+    await expect(label).toHaveAttribute("title", /Message types: Send, Callback/);
+    await page.mouse.move(0, 0);
+    await expect(label).not.toHaveAttribute("title", /Message types:/);
+    expectNoErrors(consoleErrors);
+  } finally {
+    release();
+  }
+});
+
+test("a failed flow-edge reader download offers Retry in a toast, then hovered edges read", async ({ page }) => {
+  let fail = true;
+  await page.route(EDGE_READER, (route) => (fail ? route.abort("failed") : route.continue()));
+  await seed(page);
+  await expect(page.getByTestId("toast")).toContainText("Part of the app couldn't be downloaded");
+  await expect(page.getByTestId("node-api")).toBeVisible();
+  fail = false;
+  await page.getByTestId("lazy-load-retry").click();
+  const label = page.getByTestId("edge-label-send");
+  await label.hover();
+  await expect(label).toHaveAttribute("title", /Message types: Send, Callback/);
+});
+
+test("several processors edit Emits as text, saved once the map parses", async ({ page, consoleErrors }) => {
+  await seed(page);
+  await fitDiagram(page);
+  await page.getByTestId("node-api").click();
+  await waitForSelectionSettled(page);
+  // Selecting brings API into view; fit again so Sender is on screen too.
+  await fitDiagram(page);
+  await page.getByTestId("node-sender").click({ modifiers: ["ControlOrMeta"] });
+  await waitForSelectionSettled(page);
+  await page.getByTestId("inspector-section-multi-simulation").click();
+  const emits = page.getByTestId("inspector-field-emits");
+  const saved = async () =>
+    (await savedDiagram(page)).nodes.filter((n) => n.id === "api" || n.id === "sender").map((n) => n.props?.emits);
+  // An incomplete map keeps its draft without saving.
+  await emits.fill("Send → Order, Callback");
+  await expect(emits).toHaveValue("Send → Order, Callback");
+  await expect.poll(saved).toEqual([undefined, undefined]);
+  await emits.fill("Send → Order, Callback → Done");
+  const map = { Send: "Order", Callback: "Done" };
+  await expect.poll(saved).toEqual([map, map]);
+  await emits.blur();
+  await expect(emits).toHaveValue("Send → Order, Callback → Done");
+  expectNoErrors(consoleErrors);
+});

@@ -29,7 +29,6 @@ import { formatInert } from "./inertValues";
 import { SIM_FIELDS, showSim, type SimField } from "./simFields";
 import { type InspectorProps } from "./types";
 import { formatCount } from "../../live/format";
-import { parseEmits } from "../../editor/emits";
 import { formatNumber } from "../../i18n/number";
 import { type DiagramFile } from "../../model/types";
 import { NodeMessages } from "./lazyMessageFields";
@@ -439,11 +438,6 @@ export function SimInput({
                   .map((x) => x.trim())
                   .filter(Boolean);
                 return onChange(items.length ? items : undefined);
-              }
-              if (field.kind === "map") {
-                const parsed = parseEmits(raw);
-                if (parsed !== null) onChange(parsed);
-                return;
               }
               if (raw.trim() === "") return onChange(undefined);
               const v = Number(raw);
