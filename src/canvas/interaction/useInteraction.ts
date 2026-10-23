@@ -107,10 +107,23 @@ function useInteractionLifecycle<P>(controller: InteractionController<P>) {
   useEffect(() => {
     // Capture input before anything handles it: a move's second attempt stands down.
     const input = () => controller.input();
-    window.addEventListener("keydown", input, true);
+    const key = (event: KeyboardEvent) => {
+      input();
+      const gesture = controller.gesture;
+      if (event.key !== "Escape" || !gesture) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      controller.endGesture(gesture.seq, "escape");
+    };
+    const blur = () => {
+      if (controller.gesture) controller.endGesture(controller.gesture.seq, "blur");
+    };
+    window.addEventListener("keydown", key, true);
+    window.addEventListener("blur", blur);
     window.addEventListener("pointerdown", input, true);
     return () => {
-      window.removeEventListener("keydown", input, true);
+      window.removeEventListener("keydown", key, true);
+      window.removeEventListener("blur", blur);
       window.removeEventListener("pointerdown", input, true);
     };
   }, [controller]);

@@ -1,10 +1,12 @@
-import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { useSyncExternalStore, type PointerEvent as ReactPointerEvent } from "react";
 import { ViewportPortal, useReactFlow } from "@xyflow/react";
 import { useDiagram } from "../DiagramContext";
 import { connectHitAt, connectTarget } from "../gestures";
 import type { EdgeEnd } from "../../editor/edgeEdits";
 import type { AnnotationKind } from "../../model/types";
 import type { FlowNode } from "../types";
+import { useInteraction } from "../interaction/useInteraction";
+import { usePointerGesture } from "../interaction/usePointerGesture";
 
 type Point = { x: number; y: number };
 
@@ -28,19 +30,19 @@ export function EdgeEnds({
   end: Point;
 }) {
   const { reconnect } = useDiagram();
-  const { screenToFlowPosition, getNode } = useReactFlow<FlowNode>();
-  const [drag, setDrag] = useState<{ which: EdgeEnd; at: Point } | null>(null);
-  const stop = useRef<(() => void) | null>(null);
-  useEffect(() => () => stop.current?.(), []);
+  const { getNode } = useReactFlow<FlowNode>();
+  const interaction = useInteraction();
+  const snapshot = useSyncExternalStore(
+    interaction?.subscribe ?? noSubscribe,
+    interaction?.getSnapshot ?? emptySnapshot,
+  );
+  const active = snapshot?.gesture?.preview;
+  const drag = active?.kind === "edge.end" && active.edge === id ? { which: active.end, at: active.at } : null;
+  const pointerGesture = usePointerGesture();
   if (!reconnect) return null;
 
   const begin = (which: EdgeEnd) => (e: ReactPointerEvent) => {
-    if (e.button !== 0) return;
-    e.preventDefault();
-    e.stopPropagation();
-    stop.current?.();
     const wrap = e.currentTarget.closest(".canvas-wrap");
-    // The end that stays: a drop back on it would make a loop.
     const fixed = which === "source" ? target : source;
     const moving = which === "source" ? source : target;
     const kindOf = (nid: string) => {
@@ -48,46 +50,30 @@ export function EdgeEnds({
       return n?.type === "annotation" ? (n.data as { kind: AnnotationKind }).kind : undefined;
     };
     let over: Element | null = null;
-    let to: string | null = null;
     const mark = (el: Element | null, on: boolean) => el?.classList.toggle("is-connect-target", on);
-    wrap?.classList.add("is-connecting");
-    const move = (ev: PointerEvent) => {
-      setDrag({ which, at: screenToFlowPosition({ x: ev.clientX, y: ev.clientY }) });
-      const el = document.elementFromPoint(ev.clientX, ev.clientY);
-      const t = connectTarget(connectHitAt(el, kindOf), fixed);
-      const node = t.kind === "node" ? (el?.closest(".react-flow__node") ?? null) : null;
-      if (node !== over) {
+    pointerGesture(e, {
+      kind: "edge.end",
+      preview(at, screen) {
+        wrap?.classList.add("is-connecting");
+        const el = document.elementFromPoint(screen.x, screen.y);
+        const t = connectTarget(connectHitAt(el, kindOf), fixed);
+        const node = t.kind === "node" ? (el?.closest(".react-flow__node") ?? null) : null;
+        if (node !== over) {
+          mark(over, false);
+          mark(node, true);
+          over = node;
+        }
+        wrap?.classList.toggle("is-connect-invalid", t.kind === "invalid" || t.kind === "source");
+        return { kind: "edge.end", edge: id, end: which, at, over: t.kind === "node" ? { node: t.id } : null };
+      },
+      commit(p) {
+        if (p.kind === "edge.end" && p.over && p.over.node !== moving) reconnect(id, which, p.over.node);
+      },
+      clean() {
         mark(over, false);
-        mark(node, true);
-        over = node;
-      }
-      to = t.kind === "node" ? t.id : null;
-      wrap?.classList.toggle("is-connect-invalid", t.kind === "invalid" || t.kind === "source");
-    };
-    const finish = (commit: boolean) => {
-      window.removeEventListener("pointermove", move, true);
-      window.removeEventListener("pointerup", up, true);
-      window.removeEventListener("pointercancel", cancel, true);
-      window.removeEventListener("keydown", key, true);
-      mark(over, false);
-      wrap?.classList.remove("is-connecting", "is-connect-invalid");
-      stop.current = null;
-      setDrag(null);
-      if (commit && to && to !== moving) reconnect(id, which, to);
-    };
-    const up = () => finish(true);
-    const cancel = () => finish(false);
-    const key = (ev: KeyboardEvent) => {
-      if (ev.key !== "Escape") return;
-      ev.preventDefault();
-      ev.stopPropagation();
-      finish(false);
-    };
-    window.addEventListener("pointermove", move, true);
-    window.addEventListener("pointerup", up, true);
-    window.addEventListener("pointercancel", cancel, true);
-    window.addEventListener("keydown", key, true);
-    stop.current = () => finish(false);
+        wrap?.classList.remove("is-connecting", "is-connect-invalid");
+      },
+    });
   };
 
   const anchor = drag ? (drag.which === "source" ? end : start) : null;
@@ -114,3 +100,6 @@ export function EdgeEnds({
     </ViewportPortal>
   );
 }
+
+const noSubscribe = () => () => {};
+const emptySnapshot = () => null;

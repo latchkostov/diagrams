@@ -158,6 +158,22 @@ const FOCUS_LOCAL = [
   "src/live/BottleneckCallout.tsx",
 ];
 
+// Legacy drags remain local until migrated: insertion/membership, box selection, shape and sheet resizing.
+const POINTER_LOCAL = [
+  "src/canvas/placement/useDragPlacement.ts",
+  "src/canvas/selection/useBoxSelection.ts",
+  "src/canvas/shapes/useShapeResize.ts",
+  // Smart guides observe a node drag owned by React Flow; settled selection observes release only.
+  "src/canvas/useSmartGuides.ts",
+  "src/canvas/selection/useSettledSelection.ts",
+  "src/canvas/SheetResizeHandle.tsx",
+];
+const POINTER_RULE = {
+  selector: 'CallExpression[callee.property.name="addEventListener"][arguments.0.value=/^pointer(move|up|cancel)$/]',
+  message:
+    "Pointer gestures belong to src/canvas/interaction/usePointerGesture.ts. Add a gesture event and machine row instead of local listeners.",
+};
+
 export default tseslint.config(
   {
     ignores: [
@@ -221,6 +237,11 @@ export default tseslint.config(
     files: ["src/canvas/camera/**/*.{ts,tsx}"],
     ignores: ["src/**/*.test.*"],
     rules: { "no-restricted-syntax": ["error", INTERACTION_RULES[0]] },
+  },
+  {
+    files: ["src/canvas/**/*.{ts,tsx}"],
+    ignores: ["src/canvas/interaction/**", "src/canvas/camera/**", "src/**/*.test.*", ...POINTER_LOCAL, ...FOCUS_LOCAL],
+    rules: { "no-restricted-syntax": ["error", ...CAMERA_RESTATED, ...INTERACTION_RULES, POINTER_RULE] },
   },
   {
     files: ["tests/e2e/**/*.ts"],

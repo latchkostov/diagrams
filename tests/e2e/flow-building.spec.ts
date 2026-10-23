@@ -956,3 +956,50 @@ test("gate: the right half of the Kafka example, keyboard only, in under 60 keys
   await expectNoNodeOverlaps(page);
   expectNoErrors(consoleErrors);
 });
+
+test("gesture controller journals Esc and keeps a reconnect cancelled after release", async ({ page }) => {
+  await seed(page);
+  await page.getByTestId("edge-label-api-db").click();
+  await waitForSelectionSettled(page);
+  const from = centre(await box(page.getByTestId("reconnect-api-db-target")));
+  const to = centre(await box(page.getByTestId("node-billing")));
+  await page.mouse.move(from.x, from.y);
+  await page.mouse.down();
+  await page.mouse.move(to.x, to.y, { steps: 10 });
+  await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-interaction-state", "gesture");
+  await page.keyboard.press("Escape");
+  await expect(page.getByTestId("reconnect-line")).toHaveCount(0);
+  await page.mouse.up();
+  const events = await page.evaluate(() => window.__interactionJournal?.map((entry) => entry.event));
+  expect(events).toContain("gesture.start:edge.end");
+  expect(events).toContain("gesture.end:edge.end:escape");
+  expect(events).not.toContain("gesture.end:edge.end:drop");
+  await expect(page.getByTestId("undo-button")).toBeDisabled();
+});
+
+test("a cold edge inspector takes its requested name field once the fields arrive", async ({ page }) => {
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  let requested = false;
+  await page.route(/\/EdgePanel-[^/]+\.js$/, async (route) => {
+    requested = true;
+    await held;
+    await route.continue();
+  });
+  try {
+    await seed(page);
+    await page.getByTestId("edge-label-api-db").dblclick();
+    await expect.poll(() => requested).toBe(true);
+    await waitForSelectionSettled(page);
+    await expect(page.getByTestId("inspector-field-label")).toHaveCount(0);
+    release();
+    await expect(page.getByTestId("inspector-field-label")).toBeFocused();
+    await page.keyboard.type("Orders write");
+    await page.keyboard.press("Enter");
+    await savedWhen(page, (s) => s.edges[0]?.label === "Orders write");
+  } finally {
+    release();
+  }
+});

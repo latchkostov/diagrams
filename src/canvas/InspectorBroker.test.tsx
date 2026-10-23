@@ -1,6 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { expect, it, vi } from "vitest";
-import { Inspector, type InspectorProps } from "./Inspector";
+import type { InspectorProps } from "./Inspector";
+import { EdgePanel } from "./inspector/EdgePanel";
 import type { EditorApi } from "../editor/types";
 
 vi.mock("../i18n", async (original) => ({ ...(await original<typeof import("../i18n")>()), useLocale: () => "en" }));
@@ -26,7 +27,7 @@ it("edge typing reads broker vocabulary from metadata without serializing the gr
       collapsed: false,
       onToggle: () => {},
     } as InspectorProps;
-    expect(renderToStaticMarkup(<Inspector {...props} />)).toContain("Subscription");
+    expect(renderToStaticMarkup(<EdgePanel {...props} edge={props.selectedEdges[0]} />)).toContain("Subscription");
   }
   expect(getDiagram).toHaveBeenCalledTimes(0);
 });

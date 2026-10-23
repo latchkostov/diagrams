@@ -58,6 +58,8 @@ import type { FocusCommand, FocusDecision, FocusEvent, FocusMove, FocusState, Fo
  * | F2  | focus.ran                           | the move goes again             | focus it again next frame, if not there already        |
  * | F3  | focus.done                          |                                 | keep; nothing pending                                  |
  * | F4  | input                               | the pending move is a retry     | keep; the retry stands down                            |
+ * | G1  | gesture.ended(drop/escape/cancel/blur/unmount/superseded) |          | keep                                                   |
+ * | G2  | gesture.ended(remote)               | focus lost                      | canvas next frame, onlyIfLost                         |
  *
  * Every row is the same on macOS (Control-click opens a context menu) as elsewhere: the platform is an input the
  * call site gives (menu.opened, menu.closed), never inferred here. At most one move is pending: a newer move
@@ -74,6 +76,10 @@ export function focusPolicy(state: FocusState, event: FocusEvent): FocusDecision
   };
   const canvas: FocusTarget = { kind: "canvas" };
   switch (event.type) {
+    case "gesture.ended":
+      return event.reason === "remote"
+        ? { state, command: { type: "recover", target: canvas, when: "frame", onlyIfLost: true } }
+        : keep();
     case "menu.closed": {
       const openMenus = [...(state.openMenus ?? [])];
       const index = openMenus.lastIndexOf(event.kind);

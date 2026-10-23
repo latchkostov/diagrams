@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import fc from "fast-check";
 import { propertyRuns } from "../../test/fastCheck";
 import type { CameraEvent } from "../camera";
@@ -920,4 +920,73 @@ it("unmount cancels conditional recovery beside a parked request", () => {
   expect(h.frames).toHaveLength(0);
   h.frame();
   expect(h.focused).toEqual([]);
+});
+
+describe("controller gesture interleavings", () => {
+  const preview = { kind: "edge.end", edge: "a-b", end: "target", at: { x: 1, y: 2 }, over: null } as const;
+  it("starting closes the open menu with gesture and holds the camera", () => {
+    const h = harness();
+    h.controller.openMenu("context", "menu");
+    h.controller.beginGesture("edge.end", preview, { via: "mouse", commit: vi.fn() });
+    expect(h.controller.menu).toBeNull();
+    expect(h.controller.phase).toBe("gesture");
+    expect(h.controller.getSnapshot().gesture?.preview).toBe(preview);
+    expect(h.journal.some((e) => e.event === "menu.closed:gesture")).toBe(true);
+    expect(h.camera).toContainEqual({ type: "gesture", on: true });
+  });
+  it("stale events cannot move or commit a replacement; drop commits the latest preview once", () => {
+    const h = harness();
+    const old = vi.fn(),
+      cancel = vi.fn(),
+      commit = vi.fn();
+    const first = h.controller.beginGesture("edge.end", preview, { via: "mouse", commit: old, cancel });
+    const second = h.controller.beginGesture("edge.end", preview, { via: "pen", commit });
+    h.controller.updateGesture(first, { ...preview, at: { x: 10, y: 20 } });
+    h.controller.endGesture(first, "drop");
+    expect(h.controller.gesture?.seq).toBe(second);
+    expect(old).not.toHaveBeenCalled();
+    expect(cancel).toHaveBeenCalledOnce();
+    const moved = { ...preview, at: { x: 30, y: 40 } };
+    h.controller.updateGesture(second, moved);
+    h.controller.endGesture(second, "drop");
+    h.controller.endGesture(second, "drop");
+    expect(commit).toHaveBeenCalledExactlyOnceWith(moved);
+    expect(h.controller.gesture).toBeNull();
+    expect(h.camera.at(-1)).toEqual({ type: "gesture", on: false });
+  });
+  it.each(["escape", "blur", "remote", "unmount"] as const)("%s cancels with no edit", (reason) => {
+    const h = harness();
+    const commit = vi.fn(),
+      cancel = vi.fn();
+    const disconnect = h.controller.connect();
+    const seq = h.controller.beginGesture("edge.end", preview, { via: "mouse", commit, cancel });
+    if (reason === "unmount") disconnect();
+    else h.controller.endGesture(seq, reason);
+    h.frame();
+    expect(h.controller.gesture).toBeNull();
+    expect(commit).not.toHaveBeenCalled();
+    expect(cancel).toHaveBeenCalledOnce();
+    expect(h.journal.some((e) => e.event === `gesture.end:edge.end:${reason}`)).toBe(true);
+  });
+});
+
+it("remote gesture recovery runs after a pending user move and never replaces it", () => {
+  const h = harness();
+  h.env.nodes.set("a", { drawn: true });
+  h.controller.dispatch({ type: "selection.changed", cause: "keyboard", target: { kind: "node", id: "a" } });
+  h.controller.dispatch({ type: "gesture.ended", kind: "edge.end", reason: "remote" });
+  h.frame();
+  expect(h.env.active?.name).toBe("node:a");
+});
+
+it("segment stepping follows only a sole selected edge and clears when selection changes", () => {
+  const h = harness();
+  h.controller.selectionCommitted('["a-b"]', false);
+  expect(h.controller.stepSegment("a-b", 1, 3)).toBe(0);
+  expect(h.controller.stepSegment("a-b", -1, 3)).toBe(2);
+  expect(h.controller.getSnapshot().keyboardSegment).toEqual({ edge: "a-b", k: 2 });
+  h.controller.selectionCommitted('["a-b","c"]', false);
+  expect(h.controller.getSnapshot().keyboardSegment).toBeUndefined();
+  h.controller.stepSegment("a-b", 1, 3);
+  expect(h.controller.getSnapshot().keyboardSegment).toBeUndefined();
 });

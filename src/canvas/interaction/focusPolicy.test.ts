@@ -647,3 +647,17 @@ it("narration waits for both independently opened Live popovers to close", () =>
     target: { kind: "element", handle: node },
   });
 });
+
+describe("gesture ending focus rows", () => {
+  it.each(["drop", "escape", "cancel", "blur", "unmount", "superseded"] as const)("keeps focus for %s", (reason) => {
+    expect(focusPolicy(state(), { type: "gesture.ended", kind: "edge.end", reason }).command).toEqual({ type: "keep" });
+  });
+  it("recovers remote loss only if focus is lost", () => {
+    expect(focusPolicy(state(), { type: "gesture.ended", kind: "edge.end", reason: "remote" }).command).toEqual({
+      type: "recover",
+      target: { kind: "canvas" },
+      when: "frame",
+      onlyIfLost: true,
+    });
+  });
+});

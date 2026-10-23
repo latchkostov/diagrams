@@ -3,13 +3,13 @@ import { Icon } from "../components/Icon";
 import { t, useLocale } from "../i18n";
 import { kindLabel } from "../i18n/chrome";
 import { lazyComponent } from "../lib/lazyLoad";
-import { EdgePanel } from "./inspector/EdgePanel";
 
 import { NodePanel } from "./inspector/NodePanel";
 import { type InspectorProps } from "./inspector/types";
 import { SheetResizeHandle } from "./SheetResizeHandle";
 import { InteractionContext, useInteractionOrLocal, type InteractionController } from "./interaction";
 
+const EdgePanel = lazyComponent(() => import("./inspector/EdgePanel").then((m) => m.EdgePanel));
 const GroupPanel = lazyComponent(() => import("./inspector/GroupPanel").then((m) => m.GroupPanel));
 const AnnotationPanel = lazyComponent(() => import("./inspector/AnnotationPanel").then((m) => m.AnnotationPanel));
 const DiagramPanel = lazyComponent(() => import("./inspector/DiagramPanel").then((m) => m.DiagramPanel));

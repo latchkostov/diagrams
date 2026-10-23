@@ -1,6 +1,8 @@
 import type { CameraEvent } from "../camera";
 import { describe, focusPolicy, initialFocus, pendingMove } from "./focusPolicy";
 import { liveKeys } from "./liveKeys";
+import { gestures, initialGestures } from "./gestures";
+import type { Gesture, GestureKind, GesturePreview, GestureEndReason } from "./types";
 import { cameraMenuKind, initialMenus, menus } from "./menus";
 import type {
   ElementHandle,
@@ -96,12 +98,19 @@ export function createInteractionController<P = unknown>(
   options: InteractionOptions = {},
 ) {
   let menuState: MenusState<P> = initialMenus<P>();
+  let gestureState = initialGestures();
+  let gestureHow: { commit(p: GesturePreview): void; cancel?(): void } | null = null;
   let camera = options.camera;
   let focus: FocusState = initialFocus();
   /** The camera's view of the open menu (it hears of a change of kind only, as before). */
   let cameraMenu: "context" | "quickAdd" | null = null;
   const listeners = new Set<() => void>();
-  let snapshot = { menu: null as OpenSurface<P> | null, roving: undefined as string | undefined };
+  let snapshot = {
+    menu: null as OpenSurface<P> | null,
+    roving: undefined as string | undefined,
+    gesture: null as Gesture | null,
+    keyboardSegment: gestureState.keyboardSegment,
+  };
   let seq = 0;
   /** The pending move's last resolution was `parked`: it waits on commits, and readiness doesn't count it. */
   let parked = false;
@@ -136,14 +145,25 @@ export function createInteractionController<P = unknown>(
 
   function phase(): InteractionPhase {
     if (menuState.open) return "menu-open";
+    if (gestureState.active) return "gesture";
     if (recovery || (pendingMove(focus) && !parked)) return "focus-pending";
     return "idle";
   }
 
   function changed() {
     const next = phase();
-    if (snapshot.menu !== menuState.open || snapshot.roving !== focus.roving)
-      snapshot = { menu: menuState.open, roving: focus.roving };
+    if (
+      snapshot.menu !== menuState.open ||
+      snapshot.roving !== focus.roving ||
+      snapshot.gesture !== gestureState.active ||
+      snapshot.keyboardSegment !== gestureState.keyboardSegment
+    )
+      snapshot = {
+        menu: menuState.open,
+        roving: focus.roving,
+        gesture: gestureState.active,
+        keyboardSegment: gestureState.keyboardSegment,
+      };
     if (next !== lastPhase) {
       lastPhase = next;
       port.publish(next);
@@ -227,7 +247,7 @@ export function createInteractionController<P = unknown>(
     recovery = next;
     next.cancel = scheduler.frame(() => {
       if (disposed || recovery !== next) return;
-      if (port.active() !== null || port.connected(command.ifGone)) {
+      if (port.active() !== null || (command.ifGone && port.connected(command.ifGone))) {
         retireRecovery("kept");
       } else {
         const found = port.resolve(command.target);
@@ -337,7 +357,82 @@ export function createInteractionController<P = unknown>(
     if (next === "placement") camera?.placing();
   }
 
+  function endGesture(seq: number, reason: GestureEndReason) {
+    const t = gestures(gestureState, { type: "gesture.end", seq, reason });
+    if (!t.ended) return;
+    const how = gestureHow;
+    gestureHow = null;
+    gestureState = t.state;
+    if (options.journal)
+      journal({ event: `gesture.end:${t.ended.kind}:${reason}`, command: t.ended.commit ? "commit" : "cancel" });
+    // Publish before callbacks: capture loss and a commit's re-entrant events see this gesture as finished.
+    changed();
+    try {
+      if (t.ended.commit) how?.commit(t.ended.preview);
+      else how?.cancel?.();
+    } finally {
+      if (!gestureState.active) camera?.dispatch({ type: "gesture", on: false });
+      decide({
+        type: "gesture.ended",
+        kind: t.ended.kind,
+        reason,
+        ...("edge" in t.ended.preview ? { edge: t.ended.preview.edge } : {}),
+      });
+    }
+  }
+
+  function closeMenu(reason: MenuCloseReason, seq?: number) {
+    const t = menus(menuState, { type: "menu.close", reason, seq });
+    if (!t.closed) return;
+    menuState = t.state;
+    feedCamera();
+    decide({
+      type: "menu.closed",
+      kind: t.closed.kind,
+      reason: t.closed.reason,
+      invoker: t.closed.invoker,
+      platform: t.closed.platform,
+    });
+  }
+
   return {
+    get gesture(): Gesture | null {
+      return gestureState.active;
+    },
+    beginGesture(
+      kind: GestureKind,
+      preview: GesturePreview,
+      how: { via: Gesture["via"]; commit(p: GesturePreview): void; cancel?(): void },
+    ) {
+      // Hold pane work before closing a menu: there must be no gap between the two holds.
+      if (gestureState.active) endGesture(gestureState.active.seq, "superseded");
+      camera?.dispatch({ type: "gesture", on: true });
+      closeMenu("gesture");
+      const t = gestures(gestureState, { type: "gesture.start", kind, preview, via: how.via });
+      gestureState = t.state;
+      gestureHow = how;
+      if (options.journal) journal({ event: `gesture.start:${kind}`, command: "keep" });
+      changed();
+      return t.started!.seq;
+    },
+    updateGesture(seq: number, preview: GesturePreview) {
+      const t = gestures(gestureState, { type: "gesture.move", seq, preview });
+      if (t.state === gestureState) return;
+      gestureState = t.state;
+      changed();
+    },
+    endGesture,
+    stepSegment(edge: string, delta: 1 | -1, count: number): number {
+      gestureState = gestures(gestureState, {
+        type: "segment.step",
+        edge,
+        delta,
+        count,
+        alone: selectionKey === JSON.stringify([edge]),
+      }).state;
+      changed();
+      return gestureState.keyboardSegment?.k ?? 0;
+    },
     /** The open menu or dialog, if any. */
     get menu(): OpenSurface<P> | null {
       return menuState.open;
@@ -363,6 +458,7 @@ export function createInteractionController<P = unknown>(
       payload: P,
       how: { via?: MenuVia; platform?: Platform; invoker?: ElementHandle | null } = {},
     ) {
+      if (gestureState.active) endGesture(gestureState.active.seq, "superseded");
       const t = menus(menuState, {
         type: "menu.open",
         kind,
@@ -386,23 +482,12 @@ export function createInteractionController<P = unknown>(
       return o.seq;
     },
     /** Closes the open menu (`seq`: only if it's still that one) with its reason. */
-    closeMenu(reason: MenuCloseReason, seq?: number) {
-      const t = menus(menuState, { type: "menu.close", reason, seq });
-      if (!t.closed) return;
-      menuState = t.state;
-      feedCamera();
-      decide({
-        type: "menu.closed",
-        kind: t.closed.kind,
-        reason: t.closed.reason,
-        invoker: t.closed.invoker,
-        platform: t.closed.platform,
-      });
-    },
+    closeMenu,
     /** The camera to tell of menus (the canvas creates its camera after this controller). */
     attachCamera(next: InteractionCamera) {
       camera = next;
       if (cameraMenu) next.dispatch({ type: "menu.opened", kind: cameraMenu });
+      if (gestureState.active) next.dispatch({ type: "gesture", on: true });
     },
     /** An event for the focus policy; `then` hears whether the move it caused put focus somewhere. */
     dispatch(event: FocusEvent, then?: Done) {
@@ -426,6 +511,12 @@ export function createInteractionController<P = unknown>(
      * camera (a new, non-empty selection); every cause lasts one commit.
      */
     selectionCommitted(key: string, empty: boolean) {
+      const segment = gestureState.keyboardSegment;
+      gestureState = gestures(gestureState, {
+        type: "selection.committed",
+        alone: segment && key === JSON.stringify([segment.edge]) ? segment.edge : undefined,
+      }).state;
+      if (segment !== gestureState.keyboardSegment) changed();
       const was = selectionKey;
       selectionKey = key;
       const why = cause ?? "programmatic";
@@ -478,6 +569,7 @@ export function createInteractionController<P = unknown>(
       disposed = false;
       changed();
       return () => {
+        if (gestureState.active) endGesture(gestureState.active.seq, "unmount");
         disposed = true;
         cancelFrame?.();
         cancelFrame = null;
