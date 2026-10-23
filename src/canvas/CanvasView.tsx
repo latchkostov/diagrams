@@ -1,3 +1,4 @@
+import { gestureTargetRemoved } from "./interaction/gestures";
 import { useShapeResize } from "./shapes/useShapeResize";
 import { preloadMarkdown } from "../components/markdown/lazy";
 import { useCanvasMenuItems, useCanvasContextMenus, platform, type CanvasSurface } from "./menus/useCanvasMenus";
@@ -54,7 +55,6 @@ import {
   useNodesState,
   useReactFlow,
   useStoreApi,
-  type Connection,
   type NodeMouseHandler,
   type NodeTypes,
   type EdgeTypes,
@@ -411,6 +411,12 @@ function CanvasInner({
             }));
         });
       if (remote) {
+        const gesture = interaction.gesture;
+        if (
+          gesture &&
+          gestureTargetRemoved(gesture.preview, new Set(s.nodes.map((n) => n.id)), new Set(s.edges.map((e) => e.id)))
+        )
+          interaction.endGesture(gesture.seq, "remote");
         onRemote.current();
         // A context menu on something a peer deleted closes (M7): its commands would act on nothing.
         const open = interaction.getSnapshot().menu;
@@ -688,8 +694,6 @@ function CanvasInner({
   const editGestures = !readOnly && !live && !presenting;
   // Live's property sheet remains editable; its other gesture gates stay separate.
 
-  // New edges float (sides picked from geometry); pin a side from the menu or inspector.
-  const onConnect = useCallback((c: Connection) => void editor.connect(c.source, c.target), [editor]);
   const isValidConnection: IsValidConnection<DiagramFlowEdge> = useCallback((c) => c.source !== c.target, []);
 
   const { revealSelection } = useRevealSelection(controller);
@@ -739,11 +743,11 @@ function CanvasInner({
     grow.current = (from, toward, clone) => (clone ? cloneTo(from, toward) : growTo(from, toward));
   });
 
-  const [annotationKindOf, onConnectStart, onConnectEnd] = useConnectionPlacement(
+  const [annotationKindOf, onConnectStart, onConnectEnd, onConnect, onClickConnectEnd] = useConnectionPlacement(
     getNode,
     hideTip,
     wrapper,
-    readOnly,
+    !editGestures,
     live,
     editor,
     screenToFlowPosition,
@@ -1105,6 +1109,8 @@ function CanvasInner({
                 onConnect={onConnect}
                 onConnectStart={onConnectStart}
                 onConnectEnd={onConnectEnd}
+                onClickConnectStart={onConnectStart}
+                onClickConnectEnd={onClickConnectEnd}
                 connectionLineComponent={ConnectionLine}
                 isValidConnection={isValidConnection}
                 connectionMode={ConnectionMode.Loose}

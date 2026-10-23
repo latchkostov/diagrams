@@ -32,6 +32,8 @@ import type { FocusCommand, FocusDecision, FocusEvent, FocusMove, FocusState, Fo
  * | I3  | inspector.toggled(panel, selection) |                                 | keep                                                   |
  * | I4  | inspector.rule                      | a rule was removed              | focus its surviving neighbour after the commit         |
  * | I5  | inspector.rule                      | its incoming type changed       | focus the same control of its new row after the commit |
+ * | I6  | inspector.abandoned (Esc in a       | a field request is pending      | keep; nothing pending (its held keys are dropped;      |
+ * |     | pending rename)                     |                                 | focus stays on the canvas)                             |
  * | D1  | dialog.closed(checks)               |                                 | focus its opener now (else the canvas)                 |
  * | D2  | dialog.closed(livePanel)            |                                 | focus its opener now (else the Live bar's opener)      |
  * | D3  | dialog.closed(inject)               |                                 | focus its opener now (else the node it injects at)     |
@@ -65,6 +67,8 @@ import type { FocusCommand, FocusDecision, FocusEvent, FocusMove, FocusState, Fo
  * | F2  | focus.ran                           | the move goes again             | focus it again next frame, if not there already        |
  * | F3  | focus.done                          |                                 | keep; nothing pending                                  |
  * | F4  | input                               | the pending move is a retry     | keep; the retry stands down                            |
+ * | G1  | gesture.ended(drop/escape/cancel/blur/unmount/superseded) |          | keep                                                   |
+ * | G2  | gesture.ended(remote)               | focus lost                      | canvas next frame, onlyIfLost                         |
  *
  * Every row is the same on macOS (Control-click opens a context menu) as elsewhere: the platform is an input the
  * call site gives (menu.opened, menu.closed), never inferred here. At most one move is pending: a newer move
@@ -81,6 +85,10 @@ export function focusPolicy(state: FocusState, event: FocusEvent): FocusDecision
   };
   const canvas: FocusTarget = { kind: "canvas" };
   switch (event.type) {
+    case "gesture.ended":
+      return event.reason === "remote"
+        ? { state, command: { type: "recover", target: canvas, when: "frame", onlyIfLost: true } }
+        : keep();
     case "readout.closed":
       return event.reason === "escape" && event.target.pinned
         ? move({ target: { kind: event.target.kind, id: event.target.id }, when: "now", fallback: canvas })
@@ -150,6 +158,8 @@ export function focusPolicy(state: FocusState, event: FocusEvent): FocusDecision
       );
     case "inspector.toggled":
       return keep();
+    case "inspector.abandoned":
+      return state.pending?.target.kind === "field" ? keep({ pending: null }) : keep();
     case "dialog.opened":
       return move({ target: { kind: "element", handle: event.first }, when: "now", select: "all" });
     case "inspector.rule":

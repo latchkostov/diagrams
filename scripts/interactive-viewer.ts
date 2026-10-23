@@ -89,6 +89,18 @@ export const EDITOR_ONLY: { name: string; path: string; stub: (root: string) => 
     path: "/src/canvas/edges/EdgeMessages.tsx",
     stub: () => "export const EdgeMessages = () => null;",
   },
+  // A read-only canvas never moves an edge's end: no reconnect handles, so none of their pointer gesture either.
+  {
+    name: "the reconnect handles",
+    path: "/src/canvas/edges/EdgeEnds.tsx",
+    stub: () => "export const EdgeEnds = () => null;",
+  },
+  // A read-only file cannot draw connections or drop one to open quick-add.
+  {
+    name: "the connection placement gestures",
+    path: "/src/canvas/placement/useConnectionPlacement.ts",
+    stub: () => "const noop = () => {}; export const useConnectionPlacement = () => [noop, noop, noop, noop, noop];",
+  },
   { name: "the start card", path: "/src/canvas/StartCard.tsx", stub: () => "export const StartCard = () => null;" },
   {
     name: "the first-run hint",

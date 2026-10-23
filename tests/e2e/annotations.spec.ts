@@ -347,8 +347,13 @@ test.describe("annotations", () => {
       await page.getByTestId("canvas-wrap").focus();
       await page.keyboard.press("Escape");
       await expect(page.getByTestId("inspector")).toHaveAttribute("data-collapsed", "1");
+      // Collapse publishes before the pane finishes changing. Measure handles only in its settled view.
+      await waitForStableBox(page.getByTestId("canvas-wrap"));
+      await waitForCameraIdle(page);
       await fitDiagram(page);
+      await waitForCameraIdle(page);
       await waitForStableBox(annotation(page, source));
+      await waitForStableBox(page.getByTestId(`handle-${source}-right`));
       const from = await box(page.getByTestId(`handle-${source}-right`));
       const to = await box(page.getByTestId("handle-target-left"));
       const start = { x: from.x + from.width / 2, y: from.y + from.height / 2 };

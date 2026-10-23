@@ -203,7 +203,8 @@ function useHoveredNode() {
       // Labels live in React Flow's separate HTML layer, outside the SVG edge wrapper. The pointer can hit
       // one even when aimed at the line (for example, at the centre of a straight dead-letter route).
       const label = el.closest<HTMLElement>(".fe-label[data-edge]");
-      if (label) return { kind: "edge" as const, id: label.dataset.edge! };
+      // Dependencies open their own settings card: a second Live readout would cover it.
+      if (label) return label.dataset.dependency ? null : { kind: "edge" as const, id: label.dataset.edge! };
       const edge = el.closest<HTMLElement>(".react-flow__edge[data-id]");
       return edge ? { kind: "edge" as const, id: edge.dataset.id! } : null;
     };

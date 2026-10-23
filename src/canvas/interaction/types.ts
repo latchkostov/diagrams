@@ -4,6 +4,50 @@
  * Elements (a menu's invoker, the Checks card's opener) travel as opaque handles: the pure policy never looks
  * inside one, and the controller's port checks one is still in the document before focus goes to it.
  */
+import type { Side } from "../../model/types";
+import type { Point } from "../geometry/rect";
+import type { EdgeEnd } from "../../editor/edgeEdits";
+import type { GuideLine } from "../guides";
+import type { ConnectTarget } from "../gestures";
+
+export type GestureKind = "connect" | "edge.end" | "edge.segment" | "node.drag";
+export type GestureEndReason = "drop" | "escape" | "cancel" | "blur" | "remote" | "unmount" | "superseded";
+export type DropTarget = { node: string; side?: Side };
+export type GesturePreview =
+  | {
+      kind: "connect";
+      from: string;
+      fromSide?: Side;
+      over: DropTarget | null;
+      target?: ConnectTarget["kind"];
+      screen?: Point;
+    }
+  | { kind: "edge.end"; edge: string; end: EdgeEnd; at: Point; over: DropTarget | null }
+  | { kind: "edge.segment"; edge: string; segment: number; waypoints: readonly Point[]; guide?: GuideLine }
+  | { kind: "node.drag"; origins: ReadonlyMap<string, Point> };
+export interface Gesture {
+  kind: GestureKind;
+  seq: number;
+  via: "mouse" | "pen" | "touch";
+  preview: GesturePreview;
+}
+export interface GesturesState {
+  active: Gesture | null;
+  seq: number;
+  keyboardSegment?: { edge: string; k: number };
+}
+export type GesturesEvent =
+  | { type: "gesture.start"; kind: GestureKind; preview: GesturePreview; via: Gesture["via"] }
+  | { type: "gesture.move"; seq: number; preview: GesturePreview }
+  | { type: "gesture.end"; seq: number; reason: GestureEndReason }
+  | { type: "segment.step"; edge: string; delta: 1 | -1; count: number; alone: boolean }
+  | { type: "selection.committed"; alone?: string };
+export interface GesturesTransition {
+  state: GesturesState;
+  started: Gesture | null;
+  ended: (Gesture & { reason: GestureEndReason; commit: boolean }) | null;
+}
+
 export type ElementHandle = object;
 
 /** The platform, given to the policy by the call site (macOS Control-click opens a menu): never inferred. */
@@ -156,12 +200,13 @@ export type FocusCommand =
   | { type: "keep" }
   | FocusMove
   /** Conditional peer recovery beside a user move; it never consumes that move. */
-  | { type: "recover"; target: FocusTarget; when: "frame"; onlyIfLost: true; ifGone: ElementHandle }
+  | { type: "recover"; target: FocusTarget; when: "frame"; onlyIfLost: true; ifGone?: ElementHandle }
   /** Only the canvas's Tab stop moves (to the target, once it resolves); focus stays where it is. */
   | { type: "roving"; target: FocusTarget; when: FocusWhen };
 
 /** The Esc on the canvas, a menu closing, a selection with its cause, ...: everything the focus policy decides on. */
 export type FocusEvent =
+  | { type: "gesture.ended"; kind: GestureKind; reason: GestureEndReason; edge?: string }
   /**
    * A Live readout closed. `pinned`: it held the keyboard (pinned, or a summary Tab reached), so Esc gives focus back to
    * its item; a card only hovered leaves focus alone (readoutLayer.ts decides).
@@ -207,6 +252,8 @@ export type FocusEvent =
     }
   /** A processor rule was removed, or its incoming type changed (rows are keyed by it): continue at `target`. */
   | { type: "inspector.rule"; target: ElementHandle }
+  /** Esc (or Enter before anything was typed) while a pending rename held the keys: its field request ends. */
+  | { type: "inspector.abandoned" }
   /** The Inspector opened or folded, by its own control (`panel`) or with the selection. */
   | { type: "inspector.toggled"; cause: "panel" | "selection" }
   /** A modal takes its first field, or wraps Tab within its own controls. */
@@ -353,4 +400,4 @@ export interface LiveKeyContext {
 }
 
 /** What tests and the e2e journal see: nothing open or pending, a menu or dialog open, or focus waiting to move. */
-export type InteractionPhase = "idle" | "menu-open" | "focus-pending";
+export type InteractionPhase = "idle" | "menu-open" | "gesture" | "focus-pending";

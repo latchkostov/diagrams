@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import fc from "fast-check";
 import { propertyRuns } from "../../test/fastCheck";
 import type { CameraEvent } from "../camera";
@@ -11,6 +11,7 @@ import {
 import { createReadoutLayer } from "./readoutLayer";
 import type { ReadoutStop } from "./readout";
 import type { FocusTarget, InteractionPhase, LiveKeyContext, MenuCloseReason } from "./types";
+import { typeAheadKey, type TypeAhead } from "../typeAhead";
 
 /** A stand-in element: in the document or not, and able to take focus or not. */
 interface El {
@@ -38,8 +39,8 @@ function harness() {
     /** Nodes in the diagram, and whether React Flow has drawn them yet. */
     nodes: new Map<string, { drawn: boolean }>(),
     edges: new Set<string>(),
-    /** The Inspector: folded, or showing these fields (name → owner). */
-    inspector: { open: true, fields: new Map<string, string | undefined>() },
+    /** The Inspector: folded, or showing these fields (name → owner); `failed`: whose panel failed to download. */
+    inspector: { open: true, fields: new Map<string, string | undefined>(), failed: undefined as string | undefined },
     order: (ids: readonly string[]) => [...ids].sort(),
     version: 0,
     /** One of Live's side panels: open or not, and the fields it lists so far. */
@@ -53,6 +54,9 @@ function harness() {
   const phases: InteractionPhase[] = [];
   const journal: InteractionEntry[] = [];
   const camera: (CameraEvent | { type: "placing" })[] = [];
+  /** Keys held for a field that isn't there yet (the DOM port's capture), and text written into fields. */
+  const holds: { typed: TypeAhead; stopped: boolean; done: (t: TypeAhead) => void }[] = [];
+  const written: string[] = [];
   const nodeEl = (id: string) => els.get(`node:${id}`) ?? el(`node:${id}`);
   const resolveNode = (id: string): Resolution => {
     const n = env.nodes.get(id);
@@ -85,6 +89,8 @@ function harness() {
           return h.connected ? { state: "ready", el: h } : { state: "gone" };
         }
         case "field": {
+          if (env.inspector.open && env.inspector.failed !== undefined && env.inspector.failed === target.owner)
+            return { state: "gone" };
           if (!env.inspector.open || !env.inspector.fields.has(target.name)) return { state: "parked" };
           const owner = env.inspector.fields.get(target.name);
           if (target.owner && owner !== target.owner) return { state: "parked" };
@@ -121,7 +127,33 @@ function harness() {
     connected: (h) => (h as El).connected,
     version: () => env.version,
     publish: (p) => phases.push(p),
+    holdKeys(done) {
+      const hold = { typed: { text: null } as TypeAhead, stopped: false, done };
+      holds.push(hold);
+      return {
+        stop: () => {
+          hold.stopped = true;
+          return hold.typed;
+        },
+      };
+    },
+    type: (e, text) => void written.push(`${(e as El).name}:${text}`),
+    // Elements named input:* stand for text fields outside the canvas.
+    elsewhere: (e) => (e as El).name.startsWith("input:"),
   };
+  /**
+   * A key typed anywhere: the running hold takes it (as typeAhead.ts's capture does), else it reaches the canvas.
+   * Returns whether it was held.
+   */
+  const key = (k: string) => {
+    const hold = [...holds].reverse().find((x) => !x.stopped);
+    const next = hold && typeAheadKey(hold.typed, { key: k, ctrlKey: false, metaKey: false, altKey: false });
+    if (!hold || !next) return false;
+    hold.typed = next;
+    if (next.done) hold.done(next);
+    return true;
+  };
+  const holding = () => holds.some((x) => !x.stopped);
   const controller = createInteractionController<string>(
     port,
     {
@@ -183,6 +215,9 @@ function harness() {
     phases,
     journal,
     camera,
+    key,
+    holding,
+    written,
   };
 }
 
@@ -443,6 +478,179 @@ describe("interaction controller: Inspector fields", () => {
     h.env.inspector.open = true;
     h.commit();
     expect(h.focused).toEqual(["field:label"]);
+  });
+});
+
+describe("interaction controller: pending rename (a name field whose panel is still downloading)", () => {
+  const typeAll = (h: ReturnType<typeof harness>, keys: string[]) => keys.map((k) => h.key(k));
+
+  it("holds the keys typed meanwhile, away from the canvas, and hands them to the field once it takes focus", () => {
+    const h = harness();
+    h.env.active = h.el("edge:e");
+    h.controller.dispatch({ type: "inspector.field", seq: 1, name: "label", owner: "e" });
+    expect(h.holding()).toBe(true);
+    // T would add a text and Backspace delete the connection: both are the name's.
+    expect(typeAll(h, ["T", "Backspace", "O", "k"])).toEqual([true, true, true, true]);
+    h.drain();
+    expect(h.focused).toEqual([]);
+    h.env.inspector.fields.set("label", "e");
+    h.commit();
+    expect(h.focused).toEqual(["field:label"]);
+    expect(h.written).toEqual(["field:label:Ok"]);
+    expect(h.holding()).toBe(false);
+    expect(h.key("x")).toBe(false);
+    expect(h.journal.map((j) => j.event)).toEqual(expect.arrayContaining(["rename.hold", "rename.handed"]));
+  });
+
+  it("a field that's there at once holds nothing; nor does a request that isn't a name (no owner)", () => {
+    const h = harness();
+    h.env.inspector.fields.set("label", "e");
+    h.controller.dispatch({ type: "inspector.field", seq: 1, name: "label", owner: "e" });
+    expect(h.focused).toEqual(["field:label"]);
+    expect(h.holding()).toBe(false);
+    const g = harness();
+    g.controller.dispatch({ type: "inspector.field", seq: 1, name: "group" });
+    expect(g.holding()).toBe(false);
+    g.env.inspector.fields.set("group", undefined);
+    g.commit();
+    expect(g.focused).toEqual(["field:group"]);
+    expect(h.written).toEqual([]);
+    expect(g.written).toEqual([]);
+  });
+
+  it("nothing typed: the field takes focus with its name selected, nothing written", () => {
+    const h = harness();
+    h.controller.dispatch({ type: "inspector.field", seq: 1, name: "label", owner: "e" });
+    h.env.inspector.fields.set("label", "e");
+    h.commit();
+    expect(h.focused).toEqual(["field:label"]);
+    expect(h.written).toEqual([]);
+    expect(h.holding()).toBe(false);
+  });
+
+  it("Esc after typing finishes and saves, as Enter does (and as Esc in the field does)", () => {
+    const h = harness();
+    h.env.nodes.set("a", { drawn: true });
+    h.controller.dispatch({ type: "inspector.field", seq: 1, name: "label", owner: "a" });
+    typeAll(h, ["N", "e", "w"]);
+    expect(h.key("Escape")).toBe(true);
+    expect(h.holding()).toBe(false);
+    expect(h.key("x")).toBe(false);
+    h.env.inspector.fields.set("label", "a");
+    h.commit();
+    expect(h.written).toEqual(["field:label:New"]);
+    expect(h.focused).toEqual(["field:label", "node:a"]);
+  });
+
+  it("Enter ends the typing; the name is written when the field comes, then focus goes back to the item", () => {
+    const h = harness();
+    h.env.nodes.set("a", { drawn: true });
+    h.controller.dispatch({ type: "inspector.field", seq: 1, name: "label", owner: "a" });
+    typeAll(h, ["A", "P", "I"]);
+    expect(h.key("Enter")).toBe(true);
+    expect(h.holding()).toBe(false);
+    // Keys after Enter act on the canvas again, as after Enter in the field.
+    expect(h.key("x")).toBe(false);
+    h.env.inspector.fields.set("label", "a");
+    h.commit();
+    expect(h.written).toEqual(["field:label:API"]);
+    expect(h.focused).toEqual(["field:label", "node:a"]);
+  });
+
+  it.each(["Enter", "Escape"])("%s before anything was typed cancels: focus stays, the field never takes it", (k) => {
+    const h = harness();
+    const edge = h.el("edge:e");
+    h.env.active = edge;
+    h.controller.dispatch({ type: "inspector.field", seq: 1, name: "label", owner: "e" });
+    expect(h.key(k)).toBe(true);
+    expect(h.holding()).toBe(false);
+    expect(h.controller.state.pending).toBeNull();
+    h.env.inspector.fields.set("label", "e");
+    h.drain();
+    expect(h.focused).toEqual([]);
+    expect(h.written).toEqual([]);
+    expect(h.env.active).toBe(edge);
+  });
+
+  it("the panel's download failed (its field is gone): the rename ends and later keys reach the canvas", () => {
+    const h = harness();
+    h.controller.dispatch({ type: "inspector.field", seq: 1, name: "label", owner: "e" });
+    typeAll(h, ["T"]);
+    h.env.inspector.failed = "e";
+    h.commit();
+    expect(h.holding()).toBe(false);
+    expect(h.key("T")).toBe(false);
+    expect(h.controller.state.pending).toBeNull();
+    // Retry downloads it: the field arrives, but the ended request doesn't take focus.
+    h.env.inspector.failed = undefined;
+    h.env.inspector.fields.set("label", "e");
+    h.drain();
+    expect(h.focused).toEqual([]);
+    expect(h.written).toEqual([]);
+  });
+
+  it("a rename asked after its panel had already failed holds nothing", () => {
+    const h = harness();
+    h.env.inspector.failed = "e";
+    h.controller.dispatch({ type: "inspector.field", seq: 1, name: "label", owner: "e" });
+    expect(h.holding()).toBe(false);
+    expect(h.controller.state.pending).toBeNull();
+    expect(h.key("T")).toBe(false);
+  });
+
+  it("a press ends the rename: a later commit never revives the hold, and its field never takes focus", () => {
+    const h = harness();
+    h.controller.dispatch({ type: "inspector.field", seq: 1, name: "label", owner: "e" });
+    h.controller.input("key");
+    expect(h.holding()).toBe(true);
+    typeAll(h, ["a"]);
+    h.controller.input("press");
+    expect(h.holding()).toBe(false);
+    expect(h.controller.state.pending).toBeNull();
+    // The press's own commit (another node selected, the inspector folded) while the field is still downloading.
+    h.commit();
+    h.frame();
+    expect(h.holding()).toBe(false);
+    expect(h.key("b")).toBe(false);
+    h.env.inspector.fields.set("label", "e");
+    h.drain();
+    expect(h.written).toEqual([]);
+    expect(h.focused).toEqual([]);
+  });
+
+  it("focus moving to a field outside the canvas ends the rename; typing there stays there", () => {
+    const h = harness();
+    h.controller.dispatch({ type: "inspector.field", seq: 1, name: "label", owner: "e" });
+    typeAll(h, ["a"]);
+    // Within the canvas (another item): still the rename's.
+    h.controller.focusArrived(h.el("node:b"));
+    expect(h.holding()).toBe(true);
+    const search = h.el("input:search");
+    h.env.active = search;
+    h.controller.focusArrived(search);
+    expect(h.holding()).toBe(false);
+    expect(h.controller.state.pending).toBeNull();
+    h.commit();
+    expect(h.key("r")).toBe(false);
+    h.env.inspector.fields.set("label", "e");
+    h.drain();
+    expect(h.written).toEqual([]);
+    expect(h.focused).toEqual([]);
+    expect(h.env.active).toBe(search);
+  });
+
+  it("a newer move replaces the rename and drops its keys; so does unmounting", () => {
+    const h = harness();
+    h.env.nodes.set("a", { drawn: true });
+    h.controller.dispatch({ type: "inspector.field", seq: 1, name: "label", owner: "e" });
+    typeAll(h, ["x"]);
+    h.controller.dispatch({ type: "selection.changed", cause: "keyboard", target: { kind: "node", id: "a" } });
+    expect(h.holding()).toBe(false);
+    h.controller.dispatch({ type: "inspector.field", seq: 2, name: "label", owner: "e" });
+    expect(h.holding()).toBe(true);
+    const disconnect = h.controller.connect();
+    disconnect();
+    expect(h.holding()).toBe(false);
   });
 });
 
@@ -930,6 +1138,112 @@ it("unmount cancels conditional recovery beside a parked request", () => {
   expect(h.frames).toHaveLength(0);
   h.frame();
   expect(h.focused).toEqual([]);
+});
+
+describe("controller gesture interleavings", () => {
+  const preview = { kind: "edge.end", edge: "a-b", end: "target", at: { x: 1, y: 2 }, over: null } as const;
+  it("starting closes the open menu with gesture and holds the camera", () => {
+    const h = harness();
+    h.controller.openMenu("context", "menu");
+    h.controller.beginGesture("edge.end", preview, { via: "mouse", commit: vi.fn() });
+    expect(h.controller.menu).toBeNull();
+    expect(h.controller.phase).toBe("gesture");
+    expect(h.controller.getEdgePreview("a-b")).toBe(preview);
+    expect(h.journal.some((e) => e.event === "menu.closed:gesture")).toBe(true);
+    expect(h.camera).toContainEqual({ type: "gesture", on: true });
+  });
+  it("stale events cannot move or commit a replacement; drop commits the latest preview once", () => {
+    const h = harness();
+    const old = vi.fn(),
+      cancel = vi.fn(),
+      commit = vi.fn();
+    const first = h.controller.beginGesture("edge.end", preview, { via: "mouse", commit: old, cancel });
+    const second = h.controller.beginGesture("edge.end", preview, { via: "pen", commit });
+    h.controller.updateGesture(first, { ...preview, at: { x: 10, y: 20 } });
+    h.controller.endGesture(first, "drop");
+    expect(h.controller.gesture?.seq).toBe(second);
+    expect(old).not.toHaveBeenCalled();
+    expect(cancel).toHaveBeenCalledOnce();
+    const moved = { ...preview, at: { x: 30, y: 40 } };
+    h.controller.updateGesture(second, moved);
+    h.controller.endGesture(second, "drop");
+    h.controller.endGesture(second, "drop");
+    expect(commit).toHaveBeenCalledExactlyOnceWith(moved);
+    expect(h.controller.gesture).toBeNull();
+    expect(h.camera.at(-1)).toEqual({ type: "gesture", on: false });
+  });
+  it.each(["escape", "blur", "remote", "unmount"] as const)("%s cancels with no edit", (reason) => {
+    const h = harness();
+    const commit = vi.fn(),
+      cancel = vi.fn();
+    const disconnect = h.controller.connect();
+    const seq = h.controller.beginGesture("edge.end", preview, { via: "mouse", commit, cancel });
+    if (reason === "unmount") disconnect();
+    else h.controller.endGesture(seq, reason);
+    h.frame();
+    expect(h.controller.gesture).toBeNull();
+    expect(commit).not.toHaveBeenCalled();
+    expect(cancel).toHaveBeenCalledOnce();
+    expect(h.journal.some((e) => e.event === `gesture.end:edge.end:${reason}`)).toBe(true);
+  });
+});
+
+it("remote gesture recovery runs after a pending user move and never replaces it", () => {
+  const h = harness();
+  h.env.nodes.set("a", { drawn: true });
+  h.controller.dispatch({ type: "selection.changed", cause: "keyboard", target: { kind: "node", id: "a" } });
+  h.controller.dispatch({ type: "gesture.ended", kind: "edge.end", reason: "remote" });
+  h.frame();
+  expect(h.env.active?.name).toBe("node:a");
+});
+
+it("segment stepping follows only a sole selected edge and clears when selection changes", () => {
+  const h = harness();
+  h.controller.selectionCommitted('["a-b"]', false);
+  expect(h.controller.stepSegment("a-b", 1, 3)).toBe(0);
+  expect(h.controller.stepSegment("a-b", -1, 3)).toBe(2);
+  expect(h.controller.getSnapshot().keyboardSegment).toEqual({ edge: "a-b", k: 2 });
+  h.controller.selectionCommitted('["a-b","c"]', false);
+  expect(h.controller.getSnapshot().keyboardSegment).toBeUndefined();
+  h.controller.stepSegment("a-b", 1, 3);
+  expect(h.controller.getSnapshot().keyboardSegment).toBeUndefined();
+});
+
+it("100 pointer moves leave the CanvasInner snapshot and unrelated edge previews stable", () => {
+  const h = harness();
+  const seq = h.controller.beginGesture(
+    "edge.end",
+    {
+      kind: "edge.end",
+      edge: "a-b",
+      end: "target",
+      at: { x: 0, y: 0 },
+      over: null,
+    },
+    { via: "mouse", commit: vi.fn() },
+  );
+  const shell = h.controller.getSnapshot();
+  const unrelated = h.controller.getEdgePreview("c-d");
+  let changes = 0;
+  h.controller.subscribe(() => {
+    if (h.controller.getSnapshot() !== shell) changes++;
+  });
+  for (let i = 1; i <= 100; i++) {
+    h.controller.updateGesture(seq, { kind: "edge.end", edge: "a-b", end: "target", at: { x: i, y: i }, over: null });
+    expect(h.controller.getEdgePreview("c-d")).toBe(unrelated);
+    expect(h.controller.getEdgePreview("a-b")?.at.x).toBe(i);
+  }
+  h.controller.endGesture(seq, "cancel");
+  const connect = h.controller.beginGesture(
+    "connect",
+    { kind: "connect", from: "a", over: null },
+    { via: "mouse", commit: vi.fn() },
+  );
+  for (let i = 1; i <= 100; i++) {
+    h.controller.updateGesture(connect, { kind: "connect", from: "a", over: null, screen: { x: i, y: i } });
+    expect(h.controller.getEdgePreview("c-d")).toBe(unrelated);
+  }
+  expect(changes).toBe(0);
 });
 
 /** Live's readout layer on the harness's controller, with the harness's cards for its DOM. */

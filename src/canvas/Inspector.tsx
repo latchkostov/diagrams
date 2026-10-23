@@ -2,18 +2,59 @@ import { useLayoutEffect, type ReactNode } from "react";
 import { Icon } from "../components/Icon";
 import { t, useLocale } from "../i18n";
 import { kindLabel } from "../i18n/chrome";
-import { lazyComponent } from "../lib/lazyLoad";
-import { EdgePanel } from "./inspector/EdgePanel";
+import { lazyComponent, type LoadStatus } from "../lib/lazyLoad";
 
 import { NodePanel } from "./inspector/NodePanel";
 import { type InspectorProps } from "./inspector/types";
 import { SheetResizeHandle } from "./SheetResizeHandle";
-import { InteractionContext, useInteractionOrLocal, type InteractionController } from "./interaction";
+import { InteractionContext, useInteraction, useInteractionOrLocal, type InteractionController } from "./interaction";
 
-const GroupPanel = lazyComponent(() => import("./inspector/GroupPanel").then((m) => m.GroupPanel));
-const AnnotationPanel = lazyComponent(() => import("./inspector/AnnotationPanel").then((m) => m.AnnotationPanel));
-const DiagramPanel = lazyComponent(() => import("./inspector/DiagramPanel").then((m) => m.DiagramPanel));
-const MultiPanel = lazyComponent(() => import("./inspector/MultiPanel").then((m) => m.MultiPanel));
+/**
+ * Stands in for a panel while its code downloads: nothing (a rename asked of it meanwhile holds what's typed until
+ * its field takes focus: the interaction controller's pending rename). If the download fails, a marker says whose
+ * fields won't come (`owner`: the flow id its name field names), so the DOM port resolves them as gone, the request
+ * ends and the keys go back to the canvas. The way back is the toast's Retry, which ships with the app, never with
+ * the panel's chunk.
+ */
+function pending<P>(owner?: (props: P) => string) {
+  return (props: P, status: LoadStatus): ReactNode =>
+    status.failed ? <PanelUnavailable owner={owner?.(props)} /> : null;
+}
+
+/**
+ * The marker for a panel whose download failed. It mounts by the lazy panel's own state, not a commit of the sheet, so
+ * it tells the controller itself: a field request parked on this panel resolves as gone at once, ending its pending
+ * rename, and the keys reach the canvas again before Retry.
+ */
+export function PanelUnavailable({ owner }: { owner?: string }) {
+  const interaction = useInteraction();
+  useLayoutEffect(() => {
+    interaction?.rendered();
+  }, [interaction]);
+  return <div hidden data-testid="inspector-panel-unavailable" data-panel-unavailable={owner ?? ""} />;
+}
+
+const EdgePanel = lazyComponent(
+  () => import("./inspector/EdgePanel").then((m) => m.EdgePanel),
+  pending((p: { edge: { id: string } }) => p.edge.id),
+  true,
+);
+const GroupPanel = lazyComponent(
+  () => import("./inspector/GroupPanel").then((m) => m.GroupPanel),
+  pending((p: { group: { id: string } }) => p.group.id),
+  true,
+);
+const AnnotationPanel = lazyComponent(
+  () => import("./inspector/AnnotationPanel").then((m) => m.AnnotationPanel),
+  pending(),
+  true,
+);
+const DiagramPanel = lazyComponent(
+  () => import("./inspector/DiagramPanel").then((m) => m.DiagramPanel),
+  pending(),
+  true,
+);
+const MultiPanel = lazyComponent(() => import("./inspector/MultiPanel").then((m) => m.MultiPanel), pending(), true);
 
 export function Inspector(p: InspectorProps) {
   // The canvas's focus controller moves focus into the fields; outside a canvas (the Lab), one of its own.

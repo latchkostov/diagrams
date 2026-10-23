@@ -12,7 +12,7 @@
 //   a frame, or once the target is mounted and measured. The pending move is data: a newer one replaces it, it never
 //   lands on an element that has left the document, and it waits on commits and rendered frames, never on a timer. A
 //   selection change is one selection.changed event with the cause its source declared, heard by the focus policy and
-//   the camera. It publishes data-interaction-state (idle | menu-open | focus-pending) on canvas-wrap and, in e2e
+//   the camera. It publishes data-interaction-state (idle | menu-open | gesture | focus-pending) on canvas-wrap and, in e2e
 //   builds, the journal (journal.ts, window.__interactionJournal).
 // - liveKeys.ts: liveKeys(context) -> level. Pure: which level takes Space, Enter or Esc in live view (Esc backs out
 //   one level: its owners first, then the selection, the message trace, the highlighted path, live view itself).
@@ -88,3 +88,11 @@ export type FocusApi = Pick<
 >;
 /** Where placements declare themselves: the next selection (and pane change) comes from placing a new item. */
 export type Placing = Pick<import("./controller").InteractionController, "placing">;
+
+// Adding a gesture
+// 1. Add its event and preview to types.ts, then a row and a test in gestures.ts / gestures.test.ts.
+// 2. Add its ending's focus row in focusPolicy.ts and test it; the camera holds pane work while active.
+// 3. Bind the call site through usePointerGesture (React Flow connects use its observation adapter).
+// 4. Commit the latest preview only on drop. Esc, blur, remote deletion and unmount cancel through the controller.
+export { gestures, initialGestures, gestureTargetRemoved } from "./gestures";
+export type { Gesture, GestureKind, GesturePreview, GestureEndReason, GesturesState, DropTarget } from "./types";

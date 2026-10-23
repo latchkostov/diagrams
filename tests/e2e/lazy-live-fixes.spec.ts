@@ -21,6 +21,7 @@ const chunk = (name: string, source: string) =>
 const CALLOUT = chunk("TroubleCallout", "src/live/TroubleCallout.tsx");
 const SCRIPT = chunk("script", "src/live/slowmo/script.ts");
 const PLACEMENT = chunk("useFloatingPlacement", "src/live/useFloatingPlacement.ts");
+const FILE_MESSAGES = chunk("fileMessages", "src/interop/ui/fileMessages.ts");
 const PAYMENT = "./?view=canvas&example=slow-payment-provider&live=1&paused=1&sim=no-timeouts";
 const KAFKA = "./?view=canvas&example=kafka-order-pipeline&live=1";
 
@@ -65,6 +66,8 @@ async function exportDiagram(page: Page) {
   await page.getByTestId("export-json").click();
   expect((await download).suggestedFilename()).toMatch(/\.json$/);
   await expect(page.getByTestId("live-controls")).toBeVisible();
+  // The notification's words download beside the file. Observe its publication before a caller expires toasts.
+  await expect(page.getByTestId("toast")).toContainText("Exported");
 }
 
 /** The payment lesson run to its exhaustion (15 s) and paused by keyboard: focus on Play. */
@@ -78,6 +81,34 @@ async function exhaustPayment(page: Page) {
   await page.keyboard.press("Space");
   await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "paused");
 }
+
+test("export readiness waits for a held confirmation before the toast clock advances", async ({ page }) => {
+  const messages = await gate(page, FILE_MESSAGES);
+  await page.clock.install();
+  await gotoLive(page, PAYMENT);
+  await pauseClock(page);
+  const downloaded = page.waitForEvent("download");
+  let complete = false;
+  const exporting = exportDiagram(page).then(() => {
+    complete = true;
+  });
+  try {
+    await downloaded;
+    await expect.poll(messages.requested).toBe(true);
+    // The file arrived and the app stays usable while its confirmation waits on a separate chunk.
+    await expect(page.getByTestId("file-more-formats")).toHaveCount(0);
+    await page.getByTestId("file-button").click();
+    await expect(page.getByTestId("file-more-formats")).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(page.getByTestId("file-more-formats")).toHaveCount(0);
+    expect(complete).toBe(false);
+  } finally {
+    messages.release();
+    await exporting;
+  }
+  await page.clock.fastForward(10_000);
+  await expect(page.getByTestId("toast")).toHaveCount(0);
+});
 
 test("a held trouble callout keeps focus, looks and export; once it arrives its fix applies by keyboard", async ({
   page,
