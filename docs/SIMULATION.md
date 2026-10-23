@@ -579,7 +579,8 @@ Brokers keep sampled backlog; gateways/stores retain their unlimited parallel pr
 `autoScale(simulation, diagram)` (exported from `simulation.ts` and `scale.ts`) returns the next
 1/2/5-series weight so the conservative sum of entry peak rates is at most ~60 sampled messages/s.
 It includes timeline injection batches and the traffic multiplier, ignores missing entry nodes,
-and does not mutate the simulation.
+and does not mutate the simulation. Circuit breakers never lower it: their windows count real requests, and a
+half-open breaker narrows a dot to its remaining test calls, short-circuiting the rest at that instant.
 Bursts use their spread duration, or one second for an instantaneous batch. This is an entry-rate
 budget; graph fan-out and replies can draw more dots. An empty profile list uses source rates for a
 free-play preview. Set the returned scale explicitly when starting a new run; live automatic scale

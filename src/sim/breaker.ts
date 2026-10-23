@@ -1,5 +1,5 @@
 import type { BreakerPolicy } from "../model/admission";
-import { breakerProbePermits } from "./admission";
+import { breakerProbePermits, throttleSplit } from "./admission";
 import { classifyOutcome, type OutcomeKind } from "./retryPolicy";
 
 export const BREAKER_DEFAULTS = {
@@ -75,13 +75,19 @@ function transition(b: BreakerState, state: BreakerState["state"], now: number) 
   b.buckets = [];
   if (state !== "open") b.lastWindow = undefined;
 }
-/** Lazy open expiry; no timers or random draws. A permit precedes pool admission. */
+/**
+ * Lazy open expiry; no timers or random draws. A permit precedes pool admission. Half-open, a cohort larger than
+ * the batch's remaining room is narrowed to it (the throttle split): the permit's units are the admitted test
+ * calls, and the caller short-circuits the rest, as scale 1 lets through only that many of a burst.
+ */
 export function breakerPermits(b: BreakerState, p: BreakerPolicy, now: number, units: number) {
   if (b.state === "open" && now >= b.openedAt + (p.openMs ?? BREAKER_DEFAULTS.openMs)) transition(b, "half-open", now);
   if (b.state === "open") return;
   const probe = b.state === "half-open";
   if (probe) {
-    if (!breakerProbePermits((p.halfOpenCalls ?? BREAKER_DEFAULTS.halfOpenCalls) - b.sent, units)) return;
+    const part = throttleSplit(units, (p.halfOpenCalls ?? BREAKER_DEFAULTS.halfOpenCalls) - b.sent);
+    if (!part) return;
+    units = part.admitted;
     b.sent += units;
     b.inFlight += units;
   }

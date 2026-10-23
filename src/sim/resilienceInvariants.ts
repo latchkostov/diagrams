@@ -44,8 +44,11 @@ export function assertResilienceInvariants(state: ResilienceState): void {
   check(events.size === 0, "R6 orphan retry event");
   for (const gate of state.breakerDispatches) {
     check(gate.state !== "open", "R3 dispatch while open");
-    if (gate.state === "half-open")
+    if (gate.state === "half-open") {
       check(gate.probes - (gate.sent - gate.units) + 1e-9 >= Math.min(1, gate.units), "R3 probe gate");
+      // A half-open breaker narrows a larger cohort to its remaining test calls: a batch never exceeds them.
+      check(gate.sent <= gate.probes + 1e-9, "R3 probe batch");
+    }
   }
   for (const gate of state.budgetDecisions) {
     const allowance = Math.max((gate.budget.minPerSec ?? 10) * 10, (gate.budget.percent / 100) * gate.requests);
