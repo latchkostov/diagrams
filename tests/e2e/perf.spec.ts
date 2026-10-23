@@ -10,6 +10,7 @@ import {
   fitDiagram,
   waitForStableViewport,
   viewportTransform,
+  flowState,
 } from "./fixtures";
 
 // Interaction performance guards (dev server, so React runs in development mode: tagged @dev, which
@@ -161,25 +162,15 @@ test.describe("perf: interactions", { tag: "@dev" }, () => {
     page,
   }) => {
     await openDiagram(page);
-    /** React Flow's own connectionRadius and zoom (its store, from the provider above the canvas), and the resolver's. */
-    const radii = () =>
-      page.evaluate(async () => {
+    /** React Flow's own connectionRadius and zoom (its store, through the e2e probe), and the resolver's at that zoom. */
+    const radii = async () => {
+      const { zoom, connectionRadius } = await flowState(page);
+      const resolver = await page.evaluate(async (z) => {
         const url = "/src/canvas/gestures.ts";
-        const gestures = (await import(url)) as typeof import("../../src/canvas/gestures");
-        const root = document.querySelector(".react-flow") as (Element & Record<string, unknown>) | null;
-        const key = root && Object.keys(root).find((k) => k.startsWith("__reactFiber$"));
-        type Store = { getState(): { connectionRadius: number; transform: [number, number, number] } };
-        type Fiber = { memoizedProps?: { value?: Partial<Store> }; return?: Fiber };
-        for (let f = key ? (root[key] as Fiber) : undefined; f; f = f.return) {
-          const store = f.memoizedProps?.value;
-          if (typeof store?.getState !== "function") continue;
-          const state = (store as Store).getState();
-          if (typeof state.connectionRadius !== "number") continue;
-          const zoom = state.transform[2];
-          return { zoom, flow: state.connectionRadius, resolver: gestures.connectionRadius(zoom) };
-        }
-        throw new Error("No React Flow store above the canvas");
-      });
+        return ((await import(url)) as typeof import("../../src/canvas/gestures")).connectionRadius(z);
+      }, zoom);
+      return { zoom, flow: connectionRadius, resolver };
+    };
     const before = await viewportTransform(page);
     const seen: { zoom: number; flow: number; resolver: number }[] = [];
     const { counts } = await measure(page, async () => {

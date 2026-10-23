@@ -373,6 +373,24 @@ export async function emptyCanvasPoint(page: Page, dx = 0) {
   }, dx);
 }
 
+/** React Flow's zoom and snap radius now, through the canvas's store probe (src/canvas/interaction/flowProbe.ts). */
+export async function flowState(page: Page): Promise<{ zoom: number; connectionRadius: number }> {
+  return page.evaluate(() => {
+    const probe = window.__flowProbe?.();
+    if (!probe) throw new Error("No React Flow store probe (dev and e2e builds publish one with an editable canvas)");
+    return { zoom: probe.zoom, connectionRadius: probe.connectionRadius };
+  });
+}
+
+/** A screen point in flow coordinates, as React Flow maps it now (no grid snapping). */
+export async function flowPoint(page: Page, screen: { x: number; y: number }): Promise<{ x: number; y: number }> {
+  return page.evaluate(({ x, y }) => {
+    const probe = window.__flowProbe?.();
+    if (!probe) throw new Error("No React Flow store probe");
+    return probe.toFlow(x, y);
+  }, screen);
+}
+
 /** The canvas viewport's CSS transform (React Flow's pan and zoom). */
 export const viewportTransform = (page: Page) =>
   page

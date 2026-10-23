@@ -11,6 +11,8 @@ import {
   waitForSelectionSettled,
   waitForCameraIdle,
   pauseClock,
+  flowState,
+  flowPoint,
   STORAGE_KEYS,
 } from "./fixtures";
 
@@ -158,6 +160,21 @@ async function undoUntil(page: Page, gone: (d: Saved) => boolean, max = 3) {
   }
   await savedWhen(page, gone);
 }
+
+/** Where a drawn line ends on screen (its first path's last point). */
+async function pathEnd(line: Locator) {
+  return line
+    .locator("path")
+    .first()
+    .evaluate((path: SVGPathElement) => {
+      const m = path.getScreenCTM();
+      if (!m) throw new Error("The line isn't drawn");
+      const end = path.getPointAtLength(path.getTotalLength()).matrixTransform(m);
+      return { x: end.x, y: end.y };
+    });
+}
+const apart = (a: { x: number; y: number }, b: { x: number; y: number }) =>
+  Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y));
 
 /** Holds the pointer on a point long enough for an edge under it to light up. */
 async function hold(page: Page, p: { x: number; y: number }) {
@@ -1321,18 +1338,31 @@ test("auto-pan keeps the connection's end and its plus under a still pointer, an
   const before = await transform();
   await page.clock.runFor(8 * 16);
   expect(await transform()).not.toBe(before);
-  // The diagram moved under the pointer; the plus did not.
-  await expect
-    .poll(async () => {
-      const at = centre(await box(plus));
-      return Math.max(Math.abs(at.x - still.x), Math.abs(at.y - still.y));
-    })
-    .toBeLessThanOrEqual(1.5);
+  // The diagram moved under the pointer; the line's end and the plus did not.
+  await expect.poll(async () => apart(centre(await box(plus)), still)).toBeLessThanOrEqual(1.5);
+  expect(apart(await pathEnd(page.getByTestId("connection-line")), still)).toBeLessThanOrEqual(1.5);
   await page.mouse.up();
   await expect(page.getByTestId("quick-add")).toBeVisible();
+  // Where the drop is in the diagram, with the viewport as it ended.
+  const drop = await flowPoint(page, still);
+  await page.clock.resume();
+  await page.keyboard.type("redis cache");
+  await page.keyboard.press("Enter");
+  await expect(page.getByTestId("inspector-field-label")).toBeFocused();
   await page.keyboard.press("Escape");
-  await expect(page.getByTestId("quick-add")).toHaveCount(0);
-  await expect(page.getByTestId("undo-button")).toBeDisabled();
+  const d = await savedWhen(page, (s) => s.nodes.length === SEED.nodes.length + 1);
+  const made = must(
+    d.nodes.find((n) => !SEED.nodes.some((x) => x.id === n.id)),
+    "the new node",
+  );
+  expect(d.edges.some((e) => e.from === "billing" && e.to === made.id)).toBe(true);
+  // Centred on the drop point, to the 10 px grid.
+  const at = await flowPos(page, `node-${made.id}`);
+  const size = await page.getByTestId(`node-${made.id}`).evaluate((el) => {
+    const n = el.closest<HTMLElement>(".react-flow__node");
+    return { width: n?.offsetWidth ?? 0, height: n?.offsetHeight ?? 0 };
+  });
+  expect(apart({ x: at.x + size.width / 2, y: at.y + size.height / 2 }, drop)).toBeLessThanOrEqual(5.5);
 });
 
 test.describe("attach to a dot", () => {
@@ -1555,6 +1585,48 @@ test.describe("attach to a dot", () => {
       await undoUntil(page, (s) => s.edges[0]?.from === "api" && s.edges[0]?.sourceSide === "bottom", 1);
     });
   }
+
+  test("held reconnect follows viewport zoom without pointer movement", async ({ page }) => {
+    await open(page, pinned);
+    await selectEnd(page);
+    // Low zoom: the snap radius is wide in the diagram (50 px at 0.4).
+    for (let i = 0; i < 10 && (await flowState(page)).zoom > 0.45; i++) {
+      await page.getByTestId("zoom-out-button").click();
+      await waitForStableViewport(page);
+    }
+    const { zoom } = await flowState(page);
+    expect(zoom).toBeLessThanOrEqual(0.45);
+    const dot = page.getByTestId("handle-billing-left");
+    const near = centre(await box(dot));
+    // 40 diagram px left of billing's left dot: empty canvas, inside the radius now, outside it from zoom 0.75.
+    const still = { x: near.x - 40 * zoom, y: near.y };
+    const from = centre(await box(page.getByTestId("reconnect-api-db-target")));
+    await page.mouse.move(from.x, from.y);
+    await page.mouse.down();
+    await page.mouse.move(still.x, still.y, { steps: 10 });
+    await expect(dot).toHaveClass(/is-connect-port/);
+    await expect(page.getByTestId("rf__node-billing")).toHaveClass(/is-connect-target/);
+    // Ctrl+wheel zooms around the pointer without moving it: the point under it stays, the radius narrows.
+    await page.keyboard.down("Control");
+    for (let i = 0; i < 20 && (await flowState(page)).zoom < 0.75; i++) await page.mouse.wheel(0, -100);
+    await page.keyboard.up("Control");
+    expect((await flowState(page)).zoom).toBeGreaterThanOrEqual(0.75);
+    await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-interaction-state", "gesture");
+    await expect(dot).not.toHaveClass(/is-connect-port/);
+    await expect(page.getByTestId("rf__node-billing")).not.toHaveClass(/is-connect-target/);
+    await expect
+      .poll(async () => apart(await pathEnd(page.getByTestId("reconnect-line")), still))
+      .toBeLessThanOrEqual(1.5);
+    // Onto the dot where the zoom put it: that's what commits, in one undo step.
+    const moved = centre(await box(dot));
+    await page.mouse.move(moved.x, moved.y, { steps: 5 });
+    await expect(dot).toHaveClass(/is-connect-port/);
+    expect(apart(await pathEnd(page.getByTestId("reconnect-line")), moved)).toBeLessThanOrEqual(1.5);
+    await page.mouse.up();
+    const d = await savedWhen(page, (s) => s.edges[0]?.to === "billing" && s.edges[0]?.targetSide === "left");
+    expect(d.edges).toEqual([{ ...pinned[0], to: "billing", targetSide: "left" }]);
+    await undoUntil(page, (s) => s.edges[0]?.to === "db" && s.edges[0]?.targetSide === "top", 1);
+  });
 
   test("Escape cancels a dot connection, clears the highlight and adds no undo", async ({ page }) => {
     await open(page);
