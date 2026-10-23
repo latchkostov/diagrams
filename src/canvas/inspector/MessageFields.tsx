@@ -37,7 +37,7 @@ export function EdgeMessages({
         <div className="message-type-chips" aria-live="polite" data-testid="inspector-carries">
           {carries.length ? (
             carries.slice(0, MAX_CHOICES).map((type) => (
-              <span className="message-type-chip" key={type}>
+              <span className="message-type-chip" key={type} data-testid="inspector-carries-type">
                 {type}
               </span>
             ))

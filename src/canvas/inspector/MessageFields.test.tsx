@@ -51,7 +51,7 @@ it("caps the chips a filter lists and says how many more exist", () => {
   expect(html).toContain("+202 more");
   expect(count(html, 'inspector-carries-more"')).toBe(1);
   const carries = html.split('data-testid="inspector-carries"')[1].split("</div>")[0];
-  expect(carries.split('class="message-type-chip"').length - 1).toBe(100);
+  expect(count(carries, "inspector-carries-type")).toBe(100);
   expect(carries).toContain("+202 more");
   expect(carries).not.toContain("Type299");
 });

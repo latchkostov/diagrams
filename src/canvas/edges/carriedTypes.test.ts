@@ -10,8 +10,7 @@ import { countingReads } from "../../test/complexity";
 import { state } from "../../i18n";
 
 it("invalidates translated overflow text on the same analysis when the language changes", () => {
-  const flow = toFlow(messageTypesFixture());
-  const types = carriedTypes(flow.nodes, flow.edges);
+  const types = messageTypesAt(messageTypesFixture());
   // One long name consumes the display budget, leaving the second type in the translated count.
   (types.carried as Map<string, Set<string>>).set("locale-test", new Set(["X".repeat(TIP_CHARS), "Other"]));
   const previous = { locale: state.l, catalog: state.c };

@@ -53,7 +53,7 @@ export interface CheckContext {
    */
   typesAt(id: string): ReadonlySet<string>;
   messageTypes(): MessageTypes;
-  /** The same analysis's per-run state graphs (free play, then each saved simulation), for loop-fix verification. */
+  /** Per-run state graphs for explicit loop-fix verification only; ordinary Checks never record them. */
   messageGraphs(): { table: TypeTable; graphs: readonly TypeGraph[] };
   /** Position in reading order (rows from the top, each left to right; columns in a TB diagram); a connection's is its start's. */
   rank(id: string): number;

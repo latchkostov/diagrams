@@ -6,4 +6,6 @@ Both Lab canvas hosts now show the same carried-message hover and focus reader a
 
 Message-loop findings budget the unique element IDs they actually emit instead of repeated traversal occurrences. Normal Checks no longer record verification graphs for the quarantined automatic loop fixer; explicit verification callers can still request them on demand.
 
-No bundle budget was raised. Output parity is expected to remain unchanged; only intentional loop-finding output changes would be eligible for golden updates.
+No bundle budget was raised. Output parity: all 3,111 goldens are unchanged (0 added, missing or stale); no loop-finding golden needed an update. After sync, the bundle measured 379,309 bytes for canvas first view against the unchanged 383,000-byte budget.
+
+The saved-simulation lazy loader also landed on master in #255 during this batch. Sync preserves its loading placeholder. Its scrubber and expectation indicators now share one lazy boundary so a single Retry recovers both; separate boundaries could let the indicators' Retry leave the scrubber failed.
