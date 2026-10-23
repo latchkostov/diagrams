@@ -12,7 +12,7 @@ import { FirstRunHint } from "../canvas/FirstRunHint";
 import { Palette } from "../canvas/Palette";
 import { GalleryView } from "../gallery/GalleryView";
 import { SettingsProvider } from "../harness/SettingsProvider";
-import * as stencilRegistry from "../stencils/registry";
+import * as stencilIcons from "../stencils/iconUrls";
 import { ActionRegistry, builtinSections, type MenuItem } from "../editor/actions";
 import { builtinActions, quickAddMenu } from "../editor/builtinActions";
 import { actionCommands, paletteLabel, stencilScore } from "../palette/sources";
@@ -142,7 +142,7 @@ it.each(["Win32", "MacIntel"])(
 );
 
 it("localizes the gallery's missing-icon count inside its complete message", async () => {
-  vi.spyOn(stencilRegistry, "iconUrl").mockReturnValue(undefined);
+  vi.spyOn(stencilIcons, "iconUrl").mockReturnValue(undefined);
   state.l = "en-XA";
   state.c = (await catalogs["en-XA"]()).default as Catalog;
   const html = renderToStaticMarkup(
@@ -151,7 +151,7 @@ it("localizes the gallery's missing-icon count inside its complete message", asy
     </SettingsProvider>,
   );
   const warning = html.match(/<span class="warn">(.*?)<\/span>/)?.[1];
-  const count = stencilRegistry.stencils.length;
+  const count = stencils.length;
   expect(warning).toMatch(new RegExp(`^\\[ ${count} .*\\]$`));
 });
 

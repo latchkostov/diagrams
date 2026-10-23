@@ -1,5 +1,6 @@
 import type { DiagramFile } from "../model/types";
-import { getStencil, iconUrl } from "../stencils/registry";
+import { getStencil } from "../stencils/registry";
+import { iconUrl } from "../stencils/iconUrls";
 import { nativeShape } from "./drawio/mapping";
 import { textToBase64 } from "./codec";
 

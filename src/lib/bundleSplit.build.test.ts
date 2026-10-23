@@ -12,6 +12,7 @@ import { productionBuild } from "../test/productionBuild";
 
 /** Never in the startup JavaScript. */
 const NOT_AT_STARTUP: [string, RegExp][] = [
+  ["stencil artwork URLs", /[/\\]src[/\\]stencils[/\\]iconUrls\.ts$/],
   ["extended outline geometry", /[/\\]src[/\\]canvas[/\\]shapes[/\\]extendedGeometry\.ts$/],
   ["outline attachment sampling", /[/\\]src[/\\]canvas[/\\]shapes[/\\]attachmentGeometry\.ts$/],
   ["provider and format artwork", /[/\\]src[/\\]interop[/\\]ui[/\\]BrandGlyph\.tsx$/],
@@ -84,8 +85,6 @@ const NOT_AT_STARTUP: [string, RegExp][] = [
  */
 const STARTUP_CHUNKS = [
   "annotations",
-  "catalog",
-  "checks",
   "codec",
   "colors",
   "examples",
@@ -95,17 +94,13 @@ const STARTUP_CHUNKS = [
   "i18n",
   "index",
   "jsx-runtime",
-  // Native broker and load-balancer binding validation shares this chunk with the resource schema and the
-  // shared native/engine lifecycle-budget preflight (A3 folded the former resourceBudget chunk into it); no
-  // controller execution at startup.
-  "kedaBindings",
   // Shared by the optional shape engines and menu artwork, while its loader stays preloaded.
   "lazyLoad",
+  // Catalogue, roles, schema constants and file validation share one preloaded model chunk.
   "native",
   "preload-helper",
   "react",
   "react-dom",
-  "registry",
   // Request routing R1's file grammar and bounds (src/model/requestRouting.ts): native validation refuses a bad
   // route table or mix on open. Matching, the engine and the routing inspector stay lazy.
   "requestRouting",
@@ -121,6 +116,7 @@ const NOT_WITH_CANVAS = NOT_AT_STARTUP.filter(
   ([what]) =>
     ![
       "the canvas",
+      "stencil artwork URLs",
       "React Flow",
       "the stencil search index",
       "canvas File actions",
@@ -245,6 +241,7 @@ describe("production bundle split", () => {
     const ids = bundled(set).map((id) => id.replaceAll("\\", "/"));
     for (const module of [
       "src/interop/native.ts",
+      "src/stencils/catalog.ts",
       "src/interop/codec.ts",
       "src/model/annotations.ts",
       "src/model/resourceValidation.ts",

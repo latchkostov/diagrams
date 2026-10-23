@@ -1,23 +1,19 @@
-import type { ComponentType } from "react";
-import { CardNode, CompactNode, IconOnlyNode, type NodeBodyProps } from "../canvas/nodes/variants";
-
 /**
- * Node renderer registry. Each variant is a pure presentational component (no React Flow
- * dependency) so the same renderer is used by the Gallery previews and the Canvas.
+ * Node variant metadata. Safe for startup settings and menus; renderers live in
+ * canvas/nodes/variantRegistry so their artwork URLs load with the canvas or gallery.
  *
- * To try a new look: write a component taking NodeBodyProps, add it here, pick it in the top bar.
+ * To try a new look: add metadata here and a NodeBodyProps renderer in variantRegistry, then pick it in the top bar.
  * `size` is the nominal box, used to centre nodes dropped from the palette.
  */
 export interface NodeVariant {
   label: string;
-  Component: ComponentType<NodeBodyProps>;
   size: { width: number; height: number };
 }
 
 export const nodeVariants = {
-  card: { label: "Card", Component: CardNode, size: { width: 220, height: 72 } },
-  compact: { label: "Compact", Component: CompactNode, size: { width: 180, height: 40 } },
-  iconOnly: { label: "Icon", Component: IconOnlyNode, size: { width: 64, height: 64 } },
+  card: { label: "Card", size: { width: 220, height: 72 } },
+  compact: { label: "Compact", size: { width: 180, height: 40 } },
+  iconOnly: { label: "Icon", size: { width: 64, height: 64 } },
 } satisfies Record<string, NodeVariant>;
 
 export type NodeVariantId = keyof typeof nodeVariants;

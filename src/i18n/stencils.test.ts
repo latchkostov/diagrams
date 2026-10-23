@@ -38,6 +38,16 @@ describe("stencil display text", () => {
     state.c = (await catalogs["en-XA"]()).default as Catalog;
     // Complete product names stay verbatim; product + common-noun names (Kafka Topic) translate.
     const protectedNames = new Set([
+      "client.react",
+      "client.vue",
+      "client.angular",
+      "client.svelte",
+      "client.nextjs",
+      "client.nuxt",
+      "client.react-native",
+      "client.flutter",
+      "client.swiftui",
+      "client.compose",
       "kafka.connect",
       "kafka.ksqldb",
       "azure.event-hubs",
@@ -220,7 +230,16 @@ describe("stencil display text", () => {
     ]);
     const pseudo = (text: string) => textOf(pseudoLocalize(parse(text)));
     for (const s of [...catalog, FALLBACK_STENCIL]) {
-      expect(stencilDescription(s), `${s.id}: description`).toBe(pseudo(s.description));
+      // Framework names are ICU values: preserve the brand inside the translated sentence too.
+      const description =
+        s.id.startsWith("client.") && protectedNames.has(s.id)
+          ? textOf(
+              pseudoLocalize(parse(s.description.replace(s.label, "{framework}"))).map((part) =>
+                part.type === "arg" ? { type: "text" as const, value: s.label } : part,
+              ),
+            )
+          : pseudo(s.description);
+      expect(stencilDescription(s), `${s.id}: description`).toBe(description);
       expect(stencilLabel(s), `${s.id}: name`).toBe(protectedNames.has(s.id) ? s.label : pseudo(s.label));
       expect(stencilSubtitle(s), `${s.id}: subtitle`).toBe(
         s.defaultSublabel && !protectedSubtitles.has(s.defaultSublabel) ? pseudo(s.defaultSublabel) : s.defaultSublabel,

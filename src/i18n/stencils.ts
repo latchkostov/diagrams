@@ -388,7 +388,14 @@ const subtitles: Partial<Record<string, () => string>> = {
 };
 
 export const stencilLabel = (s: Stencil): string => names[s.id]?.() ?? s.label;
-export const stencilDescription = (s: Stencil): string => descriptions[s.id]?.() ?? s.description;
+export function stencilDescription(s: Stencil): string {
+  if (s.id.startsWith("client.") && s.simRole === "source" && s.vendor !== "Client") {
+    return s.defaultSublabel === "web app"
+      ? t("stencil.webFrameworkDescription", { framework: s.label })
+      : t("stencil.mobileFrameworkDescription", { framework: s.label });
+  }
+  return descriptions[s.id]?.() ?? s.description;
+}
 export const stencilSubtitle = (s: Stencil): string | undefined =>
   s.defaultSublabel ? (subtitles[s.defaultSublabel]?.() ?? s.defaultSublabel) : undefined;
 export const vendorLabel = (vendor: string): string =>

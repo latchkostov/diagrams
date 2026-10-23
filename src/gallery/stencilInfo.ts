@@ -50,7 +50,7 @@ const SIMPLE_ICONS = new Set([
   "hubspot",
   "airbyte",
 ]);
-const DEVICON = new Set(["haproxy", "clickhouse", "loki", "jaeger"]);
+const DEVICON = new Set(["haproxy", "clickhouse", "loki", "jaeger", "compose"]);
 
 /** Where a stencil's icon comes from, condensed from docs/ICONS.md. */
 export function iconSource(icon: string): IconSource {
@@ -68,6 +68,7 @@ export function iconSource(icon: string): IconSource {
   if (icon.startsWith("k8s-"))
     return { source: t("gallery.kubernetesCommunityIcons"), licence: t("gallery.apache20OrCCBY40") };
   if (icon === "entra-id") return { source: "selfh.st icons", licence: t("gallery.cCBY40AttributionRequired") };
+  if (icon === "angular") return { source: "Angular", licence: "CC-BY-4.0" };
   if (THE_SVG.has(icon)) return { source: "theSVG", licence: "MIT" };
   if (SIMPLE_ICONS.has(icon))
     return { source: "Simple Icons", licence: t("gallery.cC0ArtworkTheLogoIsItsOwnerSTrademark") };

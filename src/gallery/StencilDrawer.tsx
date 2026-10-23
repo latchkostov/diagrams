@@ -3,7 +3,7 @@ import { categoryLabel, familyLabel } from "../i18n/chrome";
 import { t, useLocale } from "../i18n";
 import { useEffect, useRef, type CSSProperties } from "react";
 import type { Stencil } from "../model/types";
-import { nodeVariants, type NodeVariantId } from "../harness/nodeVariants";
+import { nodeVariants, type NodeVariantId } from "../canvas/nodes/variantRegistry";
 import {} from "../lib/categories";
 import { galleryRoleMeta as simRoleMeta } from "../i18n/galleryRoles";
 import { familyOf, getFamily } from "../lib/vendorFamilies";
