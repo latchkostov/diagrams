@@ -1073,6 +1073,8 @@ export function createEditor(
             } else if ("relationOrigin" in patch) data.relationOrigin = patch.relationOrigin;
             if ("sourceSide" in patch) data.sourceSide = patch.sourceSide;
             if ("targetSide" in patch) data.targetSide = patch.targetSide;
+            if ("waypoints" in patch)
+              data.waypoints = patch.waypoints?.length ? structuredClone(patch.waypoints) : undefined;
             if ("props" in patch) data.props = patch.props && withoutUndefined(patch.props);
             return {
               ...e,
@@ -1179,6 +1181,7 @@ export function createEditor(
                   ...e.data,
                   sourceSide: e.data?.targetSide,
                   targetSide: e.data?.sourceSide,
+                  waypoints: e.data?.waypoints?.slice().reverse(),
                 },
               }
             : e,

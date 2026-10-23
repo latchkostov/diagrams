@@ -14,6 +14,9 @@ import { productionBuild } from "../test/productionBuild";
 
 /** Never in the startup JavaScript. */
 const NOT_AT_STARTUP: [string, RegExp][] = [
+  ["saved-route authoring schema", /[/\\]src[/\\]model[/\\]edgeRouteSchema\.ts$/],
+  ["saved-route image readiness", /[/\\]src[/\\]canvas[/\\]edges[/\\]imageReadiness\.ts$/],
+  ["selection route reset", /[/\\]src[/\\]palette[/\\]routeActions\.ts$/],
   ["node simulation fields", /[/\\]src[/\\]canvas[/\\]inspector[/\\]SimulationFields\.tsx$/],
   ["slow-motion scrubber", /[/\\]src[/\\]live[/\\]slowmo[/\\]SlowTimeline\.tsx$/],
   ["stencil artwork URLs", /[/\\]src[/\\]stencils[/\\]iconUrls\.ts$/],
@@ -25,6 +28,8 @@ const NOT_AT_STARTUP: [string, RegExp][] = [
   ["edge inspector loading and recovery", /[/\\]src[/\\]canvas[/\\]inspector[/\\]lazyEdgePanel\.tsx$/],
   ["node inspector identity fields", /[/\\]src[/\\]canvas[/\\]inspector[/\\]NodeIdentity\.tsx$/],
   ["connection dot resolver", /[/\\]src[/\\]canvas[/\\]interaction[/\\]connectTarget\.ts$/],
+  ["dependency and deny details", /[/\\]src[/\\]canvas[/\\]edges[/\\]SettingsCard\.tsx$/],
+  ["saved-route geometry", /[/\\]src[/\\]canvas[/\\]geometry[/\\]shaped\.ts$/],
   ["extended outline geometry", /[/\\]src[/\\]canvas[/\\]shapes[/\\]extendedGeometry\.ts$/],
   ["outline attachment sampling", /[/\\]src[/\\]canvas[/\\]shapes[/\\]attachmentGeometry\.ts$/],
   ["provider and format artwork", /[/\\]src[/\\]interop[/\\]ui[/\\]BrandGlyph\.tsx$/],

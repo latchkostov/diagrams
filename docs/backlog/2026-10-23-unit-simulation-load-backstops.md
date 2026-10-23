@@ -1,0 +1,3 @@
+## Simulation unit backstops under shared load
+
+The route-model branch's full unit run passed 15,005 tests but hit the unchanged 5-second backstops in scalingPlanner's refined-peak case, retry-storm seed 1, and retries.noop's w1-busy-threads comparison. Focused tests on a clean origin/master source snapshot (87e75d9337) were run twice with the same installed dependencies: scalingPlanner and retry-storm passed both times; retries.noop timed out both times (one failed, two passed, 37 skipped per run). No thresholds or assertions were changed. Investigate the no-op comparison's work separately; keep these simulation changes out of route-model PR 2.

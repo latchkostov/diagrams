@@ -78,6 +78,15 @@ describe("interactive viewer template", () => {
     expect(real("/src/live/LiveSession.tsx")).toBe(true);
   });
 
+  it("renders saved routes without the editing action catalog", () => {
+    expect(modules.some((id) => id.endsWith("/src/editor/builtinActions.ts"))).toBe(false);
+    for (const name of ["router", "shaped"])
+      expect(
+        modules.some((id) => id.endsWith(`/src/canvas/geometry/${name}.ts`)),
+        name,
+      ).toBe(true);
+  });
+
   it("reuses the catalog's English stencil text without changing viewer words", () => {
     for (const stencil of catalog) {
       expect(viewerStencil.stencilLabel(stencil)).toBe(translatedStencil.stencilLabel(stencil));

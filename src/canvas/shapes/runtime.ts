@@ -11,7 +11,8 @@ export const subscribeGeometry = (listener: () => void) => {
   listeners.add(listener);
   return () => void listeners.delete(listener);
 };
-const changed = () => {
+/** Optional geometry engines invalidate attachments and routing together. */
+export const geometryChanged = () => {
   revision++;
   for (const listener of listeners) listener();
 };
@@ -22,9 +23,9 @@ export const loadShapeGeometry = loadOnce(async () => {
   // Publish an outline only when its handles can consume the same stroke in that render.
   await loadShapeAttachments();
   extendedGeometry = module.extendedGeometry;
-  changed();
+  geometryChanged();
 });
 export const loadShapeAttachments = loadOnce(async () => {
   attachmentGeometry = await import("./attachmentGeometry");
-  changed();
+  geometryChanged();
 });

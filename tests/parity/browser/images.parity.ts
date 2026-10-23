@@ -14,7 +14,12 @@ import { sha256 } from "../lib/hash";
 import { openExample } from "./canvas";
 import { expectGoldenPng } from "./png";
 
-const EXAMPLES = ["kafka-order-pipeline", "branch-to-datacentre", "aks-app-config-key-vault"];
+const EXAMPLES = [
+  "corpus-hand-shaped-lines",
+  "kafka-order-pipeline",
+  "branch-to-datacentre",
+  "aks-app-config-key-vault",
+];
 
 async function exportImage(page: Page, kind: "png" | "svg"): Promise<Buffer> {
   await page.getByTestId("file-button").click();

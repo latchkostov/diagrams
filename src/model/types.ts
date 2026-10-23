@@ -315,6 +315,11 @@ export type EdgeRelation = "flow" | "config" | "secret" | "identity" | "telemetr
  */
 export type RelationOrigin = "inferred" | "explicit";
 
+export interface Point {
+  x: number;
+  y: number;
+}
+
 export interface DiagramEdge {
   id: string;
   /** Message / request flows from `from` to `to`. Either end may also be a shape annotation's id. */
@@ -332,6 +337,8 @@ export interface DiagramEdge {
   /** Which side of each node the edge attaches to. Omitted = chosen automatically from node positions. */
   sourceSide?: Side;
   targetSide?: Side;
+  /** Inner corners in canvas pixels; omitted = automatic routing. */
+  waypoints?: Point[];
   props?: Record<string, unknown>;
 }
 

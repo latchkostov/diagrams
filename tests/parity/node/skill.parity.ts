@@ -64,6 +64,18 @@ function script(name: string, args: string[], temporary?: string) {
 
 it("public schemas", () => {
   const files = publicSchemaFiles();
+  const extension = Object.fromEntries(
+    Object.entries(files)
+      .filter(([name]) => name.startsWith("diagram."))
+      .map(([name, text]) => [name, fingerprint(text)]),
+  );
+  expectGolden("skill/corpus-hand-shaped-lines.public-schemas.json", extension);
+  // The old schema fingerprint checks every pre-existing field. The full additive contract is pinned above.
+  for (const name of ["diagram.v1.json", "diagram.v2.json"]) {
+    const json = JSON.parse(files[name]) as { $defs: { Edge: { properties: Record<string, unknown> } } };
+    delete json.$defs.Edge.properties.waypoints;
+    files[name] = JSON.stringify(json, null, 2) + "\n";
+  }
   expectGolden(
     "skill/public-schemas.json",
     Object.fromEntries(
@@ -91,6 +103,18 @@ it("skill data and references", () => {
     "reference/stencils.md",
     "scripts/lib/spec.json",
   ];
+  const currentFormat = readFileSync(join(SKILL, "reference/format.md"), "utf8").replace(/\r\n/g, "\n");
+  const currentSpec = readFileSync(join(SKILL, "scripts/lib/spec.json"), "utf8");
+  expectGolden("skill/corpus-hand-shaped-lines.files.json", {
+    format: fingerprint(currentFormat),
+    spec: fingerprint(currentSpec),
+  });
+  const legacySpec = JSON.parse(currentSpec) as Record<string, unknown>;
+  delete legacySpec.edgeWaypoints;
+  const legacyFormat = currentFormat.replace(
+    /<!-- BEGIN edge-waypoints -->\n[\s\S]*?<!-- END edge-waypoints -->\n\n/,
+    "",
+  );
   expectGolden(
     "skill/files.json",
     Object.fromEntries(
@@ -98,9 +122,13 @@ it("skill data and references", () => {
         f,
         fingerprint(
           // Preserve the original cohort's generated output; also pin the full current reference below.
-          f === "reference/stencils.md"
-            ? stencilsDoc(originals)
-            : readFileSync(join(SKILL, f), "utf8").replace(/\r\n/g, "\n"),
+          f === "reference/format.md"
+            ? legacyFormat
+            : f === "scripts/lib/spec.json"
+              ? JSON.stringify(legacySpec) + "\n"
+              : f === "reference/stencils.md"
+                ? stencilsDoc(originals)
+                : readFileSync(join(SKILL, f), "utf8").replace(/\r\n/g, "\n"),
         ),
       ]),
     ),
@@ -116,10 +144,18 @@ it("validate.mjs", () => {
     "validate.mjs",
     // Keep the original public cohort's transcript stable. New inputs get individual goldens below.
     allDiagrams
-      .filter((d) => d.slug.startsWith("corpus-") || ORIGINAL_EXAMPLES.includes(d.slug))
+      .filter(
+        (d) =>
+          d.slug !== "corpus-hand-shaped-lines" && (d.slug.startsWith("corpus-") || ORIGINAL_EXAMPLES.includes(d.slug)),
+      )
       .map((d) => diagramFile(d.slug)),
   );
   expectGoldenText("skill/validate.txt", `exit ${r.status}\n${r.stdout}${r.stderr}`);
+});
+
+it("validate.mjs saved routes", () => {
+  const r = script("validate.mjs", [diagramFile("corpus-hand-shaped-lines")]);
+  expectGoldenText("skill/validate/corpus-hand-shaped-lines.txt", `exit ${r.status}\n${r.stdout}${r.stderr}`);
 });
 
 describe("validate.mjs added public examples", () => {

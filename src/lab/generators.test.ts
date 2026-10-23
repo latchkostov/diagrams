@@ -141,3 +141,19 @@ describe("diagramProblems", () => {
     expect(p).toContain("node a is in missing group nope");
   });
 });
+
+it("accepts connected shape annotations while rejecting note endpoints", () => {
+  const d: DiagramFile = {
+    format: "diagrams/v1",
+    title: "Shapes",
+    nodes: [],
+    annotations: [
+      { id: "shape", kind: "shape", text: "", x: 0, y: 0, width: 100, height: 100 },
+      { id: "note", kind: "note", text: "", x: 200, y: 0, width: 100, height: 100 },
+    ],
+    edges: [{ id: "loop", from: "shape", to: "shape" }],
+  };
+  expect(diagramProblems(d)).toEqual([]);
+  d.edges[0].to = "note";
+  expect(diagramProblems(d)).toContain("edge loop ends at missing node note");
+});

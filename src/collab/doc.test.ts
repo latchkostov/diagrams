@@ -455,3 +455,57 @@ function deep(n: number): unknown {
   for (let i = 0; i < n; i++) v = { v };
   return v;
 }
+
+it("stores waypoints atomically, converges concurrent edits and validates hostile lists", () => {
+  const a = new CollabDoc(),
+    b = new CollabDoc();
+  const d = sample();
+  d.edges[0].waypoints = [
+    { x: 100, y: 200 },
+    { x: 300, y: 200 },
+  ];
+  a.hydrate(d);
+  sync(a, b);
+  expect(diagramOf(b).edges[0].waypoints).toEqual(d.edges[0].waypoints);
+  const wa = [
+      { x: 100, y: -100 },
+      { x: 300, y: -100 },
+    ],
+    wb = [{ x: 100, y: 500 }];
+  edit(a, (d) => {
+    d.edges[0].waypoints = wa;
+    return d;
+  });
+  edit(b, (d) => {
+    d.edges[0].waypoints = wb;
+    d.edges[0].to = "db";
+    return d;
+  });
+  sync(a, b);
+  const result = diagramOf(a).edges[0];
+  expect(result).toEqual(diagramOf(b).edges[0]);
+  expect([wa, wb]).toContainEqual(result.waypoints);
+  expect(result.to).toBe("db");
+  edit(a, (d) => {
+    d.edges[0].waypoints = Array.from({ length: 65 }, () => ({ x: 0, y: 0 }));
+    return d;
+  });
+  sync(a, b);
+  expect(diagramOf(a).edges[0].waypoints).toBeUndefined();
+  expect(diagramOf(b).edges[0].waypoints).toBeUndefined();
+});
+
+it("projects waypoints after pinned sides and before props", () => {
+  const doc = new CollabDoc();
+  const d = sample();
+  Object.assign(d.edges[0], {
+    props: { travelMs: 10 },
+    waypoints: [{ x: 100, y: 200 }],
+    targetSide: "left",
+    sourceSide: "right",
+  });
+  doc.hydrate(d);
+  const keys = Object.keys(diagramOf(doc).edges[0]);
+  expect(keys.indexOf("waypoints")).toBeGreaterThan(keys.indexOf("targetSide"));
+  expect(keys.indexOf("props")).toBeGreaterThan(keys.indexOf("waypoints"));
+});

@@ -1,3 +1,4 @@
+import { edgeGeometryPending } from "../edges/readiness";
 import { createContext, useContext, useEffect, useLayoutEffect, useState, type RefObject } from "react";
 import { useNodesInitialized, useReactFlow, useStoreApi } from "@xyflow/react";
 import type { EdgeStyle } from "../../harness/edgeStyles";
@@ -148,7 +149,7 @@ function createCanvasCamera(
     },
     centerTarget: (base) => (root ? centerViewport(root, store.getState(), base) : null),
     goToTarget: (base, id) => (root ? goToViewport(root, store.getState(), base, id) : null),
-    liveFitTarget: (room) => liveFitViewport(store.getState(), room),
+    liveFitTarget: (room) => liveFitViewport(store.getState(), room, routing ?? undefined),
     noteFitTarget: (focus, room) => noteFitViewport(store.getState(), focus, room),
     zoomTarget(base, zoom) {
       const { minZoom, maxZoom } = store.getState();
@@ -249,12 +250,12 @@ function transitionStatus(schedule: D3Schedule): MoveStatus {
  */
 export function paneSample(
   s: Pick<ReturnType<Store["getState"]>, "width" | "height" | "nodeLookup">,
-  el: Pick<HTMLElement, "clientWidth" | "clientHeight">,
+  el: Pick<HTMLElement, "clientWidth" | "clientHeight" | "querySelector">,
   selectionMeasured: () => boolean,
 ) {
   // A held/late ResizeObserver must not let pane work consume the old pane.
   if (!s.width || s.width !== el.clientWidth || s.height !== el.clientHeight) return null;
-  if (!selectionMeasured()) return null;
+  if (edgeGeometryPending(el) || !selectionMeasured()) return null;
   let hash = 0;
   const mix = (v: number) => (hash = (Math.imul(hash, 31) + Math.round(v * 16)) | 0);
   for (const n of s.nodeLookup.values()) {

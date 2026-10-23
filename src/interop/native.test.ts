@@ -566,3 +566,41 @@ describe("simulation boundary regressions", () => {
     expect(validateDiagram({ ...base, nodes: [{ ...base.nodes[0], props: { ratePerSec: 1e20 } }] }).ok).toBe(false);
   });
 });
+
+describe("saved hand-shaped lines", () => {
+  const edge = { id: "e", from: "a", to: "a" };
+  it.each([
+    null,
+    {},
+    "bad",
+    Array.from({ length: 65 }, () => ({ x: 0, y: 0 })),
+    [{ x: Infinity, y: 0 }],
+    [{ x: NaN, y: 0 }],
+    [{ x: 1000001, y: 0 }],
+    [{ x: 0, y: -1000001 }],
+    [{ x: 0 }],
+    [null],
+  ])("drops malformed waypoints with a warning: %j", (waypoints) => {
+    const r = validateDiagram({ ...base, edges: [{ ...edge, waypoints }] });
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.diagram.edges[0].waypoints).toBeUndefined();
+    expect(r.warnings.join(" ")).toContain("waypoints");
+  });
+  it("normalizes empty routes and never resurrects reset waypoints through preserveUnknown", () => {
+    const original = { ...base, edges: [{ ...edge, waypoints: [{ x: -1000000, y: 1000000 }] }] } as DiagramFile;
+    const r = validateDiagram(original);
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.diagram.edges[0].waypoints).toEqual(original.edges[0].waypoints);
+    const f = toFlow(r.diagram);
+    f.edges[0].data!.waypoints = undefined;
+    expect(preserveUnknown(fromFlow(f.meta, f.nodes, f.edges), original).edges[0].waypoints).toBeUndefined();
+    const empty = validateDiagram({ ...base, edges: [{ ...edge, waypoints: [] }] });
+    expect(empty.ok).toBe(true);
+    if (empty.ok) {
+      expect(empty.diagram.edges[0].waypoints).toBeUndefined();
+      expect(empty.warnings).toEqual([]);
+    }
+  });
+});

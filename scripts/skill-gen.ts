@@ -137,6 +137,7 @@ function spec() {
     format: DIAGRAM_FORMAT,
     site: SITE,
     shareWarnLength: SHARE_WARN_LENGTH,
+    edgeWaypoints: { maxItems: 64, maxCoordinate: LIMITS.maxCoordinate },
     enums: {
       direction: ["LR", "TB"],
       tone: TONES,

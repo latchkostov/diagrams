@@ -75,3 +75,16 @@ describe("splitEdge", () => {
     expect(canvas.first).toBe("api-db");
   });
 });
+
+it("drops hand-shaped bends from both split halves", () => {
+  const old = {
+    ...OLD,
+    waypoints: [
+      { x: 300, y: 100 },
+      { x: 500, y: 100 },
+    ],
+  };
+  for (const edge of splitEdge(old, "middle", { first: "a", second: "b" })) expect(edge.waypoints).toBeUndefined();
+  const f = toFlow({ ...diagram, edges: [old] });
+  for (const edge of splitFlowEdge(f.edges, "api-db", "middle")!.edges) expect(edge.data?.waypoints).toBeUndefined();
+});

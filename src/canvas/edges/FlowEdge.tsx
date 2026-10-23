@@ -1,17 +1,25 @@
+import { edgeDetailsSnapshot, subscribeEdgeDetails } from "./edgeDetailsRuntime";
 import { isDenyRule } from "../../stencils/netDevices";
 import { useKeyboardFocusOn, useTooltip } from "../../components/useTooltip";
-import { memo, useCallback, type CSSProperties, type MouseEvent, type ReactNode } from "react";
+import {
+  memo,
+  useSyncExternalStore,
+  useCallback,
+  useEffect,
+  type CSSProperties,
+  type MouseEvent,
+  type ReactNode,
+} from "react";
 import { EdgeLabelRenderer, useStore, type EdgeProps, type ReactFlowState } from "@xyflow/react";
-import { Icon } from "../../components/Icon";
 import { useDiagram } from "../DiagramContext";
 import type { DiagramFlowEdge, DiagramNodeData } from "../types";
 import { pointAlong } from "../geometry/path";
 import type { LabelPlacement } from "../geometry/labels";
 import { useEdgeRoute, useRoutingOptions } from "./useEdgeRoute";
-import { relationInfo, type EdgeRelationInfo } from "./relationInfo";
-import { RELATION_META, isDependency, relationOf, type DependencyRelation } from "../../model/relations";
-import { relationIcon } from "../../editor/relationActions";
-import { useReadableScale } from "../useReadableScale";
+import { relationInfo } from "./relationInfo";
+import { isDependency, relationOf, type DependencyRelation } from "../../model/relations";
+import { requireEdgeModules } from "./readiness";
+import { routeGeometry } from "../geometry/shapedRuntime";
 import { lazyComponent } from "../../lib/lazyLoad";
 const EdgeEnds = lazyComponent(() => import("./EdgeEnds").then((m) => m.EdgeEnds));
 
@@ -28,6 +36,16 @@ const EdgeEnds = lazyComponent(() => import("./EdgeEnds").then((m) => m.EdgeEnds
 function FlowEdgeImpl(props: EdgeProps<DiagramFlowEdge>) {
   const { id, data, selected, source, target } = props;
   const { rename, openEdgeMenu, reconnect } = useDiagram();
+  const relation = isDependency(data) ? (relationOf(data) as DependencyRelation) : null;
+  const denied = !relation && isDenyRule(data?.props);
+  const dependency = !!relation || denied;
+  const custom = !!data?.waypoints?.length;
+  useEffect(() => {
+    if (!custom && !dependency) return;
+    requireEdgeModules(custom, dependency);
+  }, [custom, dependency]);
+  const detailsSnapshot = useCallback(() => (dependency ? edgeDetailsSnapshot() : undefined), [dependency]);
+  const Details = useSyncExternalStore(subscribeEdgeDetails, detailsSnapshot, detailsSnapshot);
   const route = useEdgeRoute(id, useRoutingOptions());
   const dep = useStore(useCallback((s: ReactFlowState) => relationInfo(s.edges as DiagramFlowEdge[]).get(id), [id]));
   const sourceStencil = useStore(
@@ -43,14 +61,13 @@ function FlowEdgeImpl(props: EdgeProps<DiagramFlowEdge>) {
   const tooltip = useTooltip(edgeFocused);
   const card = tooltip.open;
   const kind = data?.kind ?? "async";
-  const relation = isDependency(data) ? (relationOf(data) as DependencyRelation) : null;
-  if (!route) return null;
+  if (!route) return custom && !routeGeometry ? <g data-route-pending="shaped" /> : null;
   const { path, label } = route;
   const mid = label ?? pointAlong(route.points, 0.5).point;
   // A firewall rule that denies: a "no entry" glyph just after the source, so it's never colour alone.
-  const deny = !relation && isDenyRule(data?.props) ? denyPoint(route.points) : undefined;
+  const deny = denied ? Details?.denyPoint(route.points) : undefined;
   const settings = dep?.settings ?? [];
-  const tip = relation ? dependencyTip(relation, dep, sourceStencil) : undefined;
+  const tip = relation ? Details?.dependencyTip(relation, dep, sourceStencil) : undefined;
   const marker = selected
     ? relation
       ? "df-arrow-dep-selected"
@@ -73,11 +90,7 @@ function FlowEdgeImpl(props: EdgeProps<DiagramFlowEdge>) {
       : {}),
   };
   const glyph = (size: number) =>
-    relation ? (
-      <span className="fe-glyph-icon" data-testid={`edge-glyph-${id}`} aria-hidden>
-        <Icon name={relationIcon(relation)} size={size} />
-      </span>
-    ) : null;
+    relation && Details ? <Details.RelationGlyph id={id} relation={relation} size={size} /> : null;
 
   let body: ReactNode = null;
   if (label && label.mode !== "glyph") {
@@ -150,6 +163,8 @@ function FlowEdgeImpl(props: EdgeProps<DiagramFlowEdge>) {
           : `fe fe-${kind}${selected ? " is-selected" : ""}${deny ? " is-deny" : ""}`
       }
       data-testid={`edge-${id}`}
+      data-route={route.custom ? "custom" : undefined}
+      data-route-pending={dependency && !Details ? "details" : undefined}
       data-source-side={data?.sourceSide}
       data-target-side={data?.targetSide}
       data-relation={relation ?? undefined}
@@ -158,13 +173,8 @@ function FlowEdgeImpl(props: EdgeProps<DiagramFlowEdge>) {
       <path d={path} className="fe-halo" />
       <path d={path} className="fe-path react-flow__edge-path" markerEnd={`url(#${marker})`} />
       <path d={path} className="react-flow__edge-interaction" fill="none" strokeOpacity={0} strokeWidth={22} />
-      {title(deny ? "Firewall rule: deny. What's routed here is blocked" : tip)}
-      {deny && (
-        <g className="fe-deny" transform={`translate(${deny.x} ${deny.y})`} data-testid={`edge-deny-${id}`}>
-          <circle r={7} />
-          <path d="M-4.2 4.2 4.2-4.2" />
-        </g>
-      )}
+      {title(deny ? Details?.denyTip : tip)}
+      {deny && Details && <Details.DenyMarker id={id} x={deny.x} y={deny.y} />}
       {selected && reconnect && route.points.length > 1 && (
         <EdgeEnds
           id={id}
@@ -177,13 +187,13 @@ function FlowEdgeImpl(props: EdgeProps<DiagramFlowEdge>) {
       {body && (
         <EdgeLabelRenderer>
           {body}
-          {card && settings.length > 0 && label && (
-            <SettingsCard
+          {card && settings.length > 0 && label && Details && (
+            <Details.SettingsCard
               pointer={tooltip.pointer}
               id={id}
               relation={relation!}
               settings={settings}
-              note={referenceNote(relation!, sourceStencil)}
+              note={Details.referenceNote(relation!, sourceStencil)}
               x={mid.x}
               y={mid.y - label.height / 2}
             />
@@ -194,109 +204,16 @@ function FlowEdgeImpl(props: EdgeProps<DiagramFlowEdge>) {
   );
 }
 
-/**
- * Where a deny rule's glyph sits: 34 px along the route from its source (clear of a selected edge's end handle), or
- * a third of the way along a short one.
- */
-function denyPoint(points: readonly { x: number; y: number }[]) {
-  let total = 0;
-  for (let i = 1; i < points.length; i++)
-    total += Math.hypot(points[i].x - points[i - 1].x, points[i].y - points[i - 1].y);
-  return total > 0 ? pointAlong(points, Math.min(34, total / 3) / total).point : undefined;
-}
-
 /** An SVG <title> gives the line itself the implicit label as its hover tooltip. */
 const title = (tip: string | undefined) => (tip ? <title>{tip}</title> : null);
 
-/** "Secret · reads secrets", plus what a derived label summarises and how references resolve. */
-function dependencyTip(relation: DependencyRelation, dep: EdgeRelationInfo | undefined, sourceStencil?: string) {
-  const meta = RELATION_META[relation];
-  // "Depends on" says its verb already ("Depends on · depends on" read twice).
-  const same = meta.label.toLowerCase() === meta.implicit.toLowerCase();
-  const parts = [same ? meta.label : `${meta.label} · ${meta.implicit}`];
-  if (meta.why) parts.push(meta.why);
-  const n = dep?.settings.length ?? 0;
-  if (relation === "config" && n && !dep?.derived) {
-    const secret = dep!.settings.filter((s) => s.secret).length;
-    parts.push(`${n} setting${n === 1 ? "" : "s"}${secret ? ` · ${secret} secret` : ""}`);
-  }
-  const note = n ? referenceNote(relation, sourceStencil) : undefined;
-  if (note) parts.push(note);
-  return parts.join("\n");
-}
-
-/** How a config store's secret references really resolve (the app reads them, not the store). */
-function referenceNote(relation: DependencyRelation, sourceStencil?: string): string | undefined {
-  if (relation !== "secret") return undefined;
-  if (sourceStencil === "azure.app-config")
-    return "Each app resolves these with its own identity; App Configuration never calls Key Vault.";
-  if (sourceStencil === "aws.parameter-store")
-    return "Parameter Store passes these through to Secrets Manager; the caller still needs access to the secret.";
-  return "Entries in the config store reference these secrets.";
-}
-
-function SettingsCard({
-  pointer,
-  id,
-  relation,
-  settings,
-  note,
-  x,
-  y,
-}: {
-  pointer: ReturnType<typeof useTooltip>["pointer"];
-  id: string;
-  relation: DependencyRelation;
-  settings: readonly { key: string; secret?: boolean }[];
-  note?: string;
-  x: number;
-  y: number;
-}) {
-  const heading = relation === "secret" ? "Secret references" : "Settings read";
-  const scale = useReadableScale();
-  return (
-    <div
-      {...pointer}
-      className="fe-card nodrag nopan"
-      style={
-        {
-          transformOrigin: "0 0",
-          transform: `translate(${x}px, ${y - 8}px) scale(${scale}) translate(-50%, -100%)`,
-          "--fe-card-scale": scale,
-        } as CSSProperties
-      }
-      role="tooltip"
-      id={`edge-settings-${id}`}
-      data-testid={`edge-settings-${id}`}
-    >
-      <div className="fe-card-head">{heading}</div>
-      <ul>
-        {settings.slice(0, 24).map((s, i) => (
-          <li key={s.key} data-testid={`edge-setting-${id}-${i}`} data-secret={s.secret ? "1" : undefined}>
-            <span className="fe-card-lock" aria-hidden>
-              {s.secret && <Icon name="lock" size={11} />}
-            </span>
-            <span className="fe-card-key">{s.key}</span>
-            {s.secret && <span className="sr-only"> (secret)</span>}
-          </li>
-        ))}
-        {settings.length > 24 && <li className="fe-card-more">+{settings.length - 24} more</li>}
-      </ul>
-      {relation === "config" && settings.some((s) => s.secret) && (
-        <div className="fe-card-note">
-          <Icon name="lock" size={10} /> = a secret reference, resolved from a secret store
-        </div>
-      )}
-      {note && <div className="fe-card-note">{note}</div>}
-    </div>
-  );
-}
-
 /** Placement is computed in flow px with the pill's exact metrics, so the box is set explicitly. */
-function labelStyle(x: number, y: number, label: LabelPlacement | null): CSSProperties {
-  const base: CSSProperties = { transform: `translate(-50%, -50%) translate(${x}px, ${y}px)` };
-  if (!label) return base;
-  return { ...base, "--fe-w": `${label.width}px`, "--fe-h": `${label.height}px` } as CSSProperties;
+function labelStyle(x: number, y: number, label: LabelPlacement): CSSProperties {
+  return {
+    transform: `translate(-50%, -50%) translate(${x}px, ${y}px)`,
+    "--fe-w": `${label.width}px`,
+    "--fe-h": `${label.height}px`,
+  } as CSSProperties;
 }
 
 export const FlowEdge = memo(FlowEdgeImpl);
@@ -308,41 +225,33 @@ export function EdgeMarkers() {
   const arrow = "M1.5 1.5 L10.5 6 L1.5 10.5 L4 6 Z";
   // Dependencies: an open chevron, stroked in the relation's tint (markers can't inherit a stroke).
   const open = "M3 2.25 L9.75 6 L3 9.75";
+  const markers: [string, string, string, number][] = [
+    ["df-arrow", "m-async", arrow, 12],
+    ["df-arrow-sync", "m-sync", arrow, 12],
+    ["df-arrow-selected", "m-selected", arrow, 12],
+    ...[...DEP_RELATIONS, "selected"].map((r): [string, string, string, number] => [
+      `df-arrow-dep-${r}`,
+      `m-dep m-dep-${r}`,
+      open,
+      11,
+    ]),
+  ];
   return (
     <svg className="df-defs" aria-hidden width="0" height="0">
       <defs>
-        {[
-          ["df-arrow", "m-async"],
-          ["df-arrow-sync", "m-sync"],
-          ["df-arrow-selected", "m-selected"],
-        ].map(([markerId, cls]) => (
+        {markers.map(([markerId, cls, path, size]) => (
           <marker
             key={markerId}
             id={markerId}
             viewBox="0 0 12 12"
             refX="10"
             refY="6"
-            markerWidth="12"
-            markerHeight="12"
+            markerWidth={size}
+            markerHeight={size}
             markerUnits="userSpaceOnUse"
             orient="auto-start-reverse"
           >
-            <path d={arrow} className={cls} />
-          </marker>
-        ))}
-        {[...DEP_RELATIONS, "selected"].map((r) => (
-          <marker
-            key={r}
-            id={`df-arrow-dep-${r}`}
-            viewBox="0 0 12 12"
-            refX="10"
-            refY="6"
-            markerWidth="11"
-            markerHeight="11"
-            markerUnits="userSpaceOnUse"
-            orient="auto-start-reverse"
-          >
-            <path d={open} className={`m-dep m-dep-${r}`} />
+            <path d={path} className={cls} />
           </marker>
         ))}
       </defs>
