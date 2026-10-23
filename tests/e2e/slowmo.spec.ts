@@ -115,9 +115,27 @@ test.describe("slow motion", () => {
     test.fixme(process.platform === "win32", "Nightly native teardown: docs/backlog/2026-10-18-nightly-native-load.md");
     await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1&sim=black-friday&paused=1`);
     await page.getByTestId("live-capacity").click();
-    await page.getByTestId("capacity-traffic-mult").fill("14");
+    // 1,200 orders/s at quarter capacity still overloads consumers and offers Apply fix. Keep capture small:
+    // at 6,000/s, background look-ahead alone can consume half the whole-test backstop under load.
+    await page.getByTestId("capacity-traffic-mult").fill("7");
+    await page.getByTestId("capacity-capacity-mult").fill("0");
     await expect(page.getByTestId("bottleneck-apply")).toBeEnabled();
     await openNodeMenu(page, "shopper", "sim.slowmo-from");
+    // Capturing this busy run yields between look-ahead slices. Its completion, like a lazy download,
+    // uses the whole-test hang backstop; the replay and mutation assertions retain their normal timeout.
+    await play(page).evaluate(
+      (button) =>
+        new Promise<void>((resolve) => {
+          const ready = () => {
+            if (button.hasAttribute("disabled")) return;
+            observer.disconnect();
+            resolve();
+          };
+          const observer = new MutationObserver(ready);
+          observer.observe(button, { attributes: true, attributeFilter: ["disabled"] });
+          ready();
+        }),
+    );
     await expect(play(page)).toHaveAttribute("data-state", "slowmo");
     await expect(page.getByTestId("capacity-context")).toHaveText("Exit slow motion (Esc) first");
     for (const id of [
