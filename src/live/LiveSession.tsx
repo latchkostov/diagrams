@@ -312,7 +312,7 @@ export function LiveSession({
         {/* Mounted empty first, so the cause is heard when it's written; it changes only with the cause. */}
         <span ref={troubleAnnouncement} className="sr-only" role="status" data-testid="trouble-announce" />
         {troubleDownloadFailed && !capturing && !presenting && !panel.open ? (
-          <TroubleDownloadError retry={retryTroubleDownload} />
+          <TroubleDownloadError retry={retryTroubleDownload} announced />
         ) : troubleOnScreen ? (
           <TroubleCallout
             trouble={troubleOnScreen}

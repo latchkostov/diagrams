@@ -1,3 +1,4 @@
+import { chunk } from "./chunk";
 import type { Page } from "@playwright/test";
 import { test, expect, gotoCanvas, gotoLive, expectNoErrors, waitForStableViewport } from "./fixtures";
 import { MOD, SLUG } from "./ai-helpers";
@@ -5,9 +6,6 @@ import { MOD, SLUG } from "./ai-helpers";
 // Code that loads on use (src/lib/lazyLoad.tsx): while it downloads, and when the download fails, what
 // stands in for it stays usable, and the person's intent holds until it arrives.
 
-/** A chunk's production file, or its source module on the dev server. */
-const chunk = (name: string, source: string) =>
-  new RegExp(String.raw`/(?:assets/${name}-[A-Za-z0-9_-]+\.js|${source.replace(/\./g, "\\.")})(?:\?.*)?$`);
 const LIBRARY = chunk("LibraryDialog", "src/components/LibraryDialog.tsx");
 const DIALOGS = chunk("dialogs", "src/interop/ui/dialogs.tsx");
 const SESSION = chunk("LiveSession", "src/live/LiveSession.tsx");

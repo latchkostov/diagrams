@@ -181,7 +181,8 @@ export function useLiveFixes({
       ? trouble
       : undefined;
   const troubleAnnouncement = useRef<HTMLSpanElement>(null);
-  const announcement = troubleOnScreen?.announce ?? "";
+  // A failed detection download is said here too: its notice mounts already worded, which a status may not announce.
+  const announcement = troubleDownloadFailed ? t("resilience.troubleUnavailable") : (troubleOnScreen?.announce ?? "");
   useEffect(() => {
     // Even a run that starts with trouble mounts an empty region before its announcement changes.
     if (troubleAnnouncement.current) troubleAnnouncement.current.textContent = announcement;

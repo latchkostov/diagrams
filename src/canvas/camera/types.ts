@@ -46,6 +46,8 @@ export interface PolicyState {
   owner: CameraOwner;
   mode: CameraMode;
   menu: MenuKind | null;
+  /** An active pointer gesture holds pane work until the drop or cancellation. */
+  gesture?: boolean;
   /** Pane work waiting for the pane to settle (and for any menu to close). */
   pending: PaneWork | null;
   /** Zoom to selection owns the view until the next input: reveals queued before it give way. */
@@ -73,6 +75,7 @@ export interface SettledFacts {
 }
 
 export type CameraEvent =
+  | { type: "gesture"; on: boolean }
   /** The pane's size changed: the Inspector, the stencils, the AI panel, a sheet resize, Live's panel. */
   | { type: "pane.changed"; cause: PaneCause }
   /** A new, non-empty selection (it replaces pending panel work, rule b). */

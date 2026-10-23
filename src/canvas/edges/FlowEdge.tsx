@@ -12,7 +12,8 @@ import { relationInfo, type EdgeRelationInfo } from "./relationInfo";
 import { RELATION_META, isDependency, relationOf, type DependencyRelation } from "../../model/relations";
 import { relationIcon } from "../../editor/relationActions";
 import { useReadableScale } from "../useReadableScale";
-import { EdgeEnds } from "./EdgeEnds";
+import { lazyComponent } from "../../lib/lazyLoad";
+const EdgeEnds = lazyComponent(() => import("./EdgeEnds").then((m) => m.EdgeEnds));
 
 /**
  * An edge. A flow is async (dashed) or sync (solid). A dependency (config, secret, identity,

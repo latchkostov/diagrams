@@ -1,6 +1,9 @@
 import type { CameraEvent } from "../camera";
+import type { TypeAhead } from "../typeAhead";
 import { describe, focusPolicy, initialFocus, pendingMove } from "./focusPolicy";
 import { liveKeys } from "./liveKeys";
+import { gestures, initialGestures } from "./gestures";
+import type { Gesture, GestureKind, GesturePreview, GestureEndReason } from "./types";
 import type { ReadoutLayer } from "./readoutLayer";
 import { cameraMenuKind, initialMenus, menus } from "./menus";
 import type {
@@ -52,6 +55,15 @@ export interface InteractionPort {
   version?(): number;
   /** Readiness: `data-interaction-state` (and the journal, in e2e builds). */
   publish(phase: InteractionPhase): void;
+  /**
+   * Holds keys typed anywhere, before the canvas's shortcuts see them (typeAhead.ts), for a name field that can't
+   * take them yet; `done` hears the Enter or Esc that ended the typing. Absent: nothing is held.
+   */
+  holdKeys?(done: (typed: TypeAhead) => void): { stop(): TypeAhead };
+  /** Writes text typed ahead into the text field that has just taken focus, as typing there would; caret after it. */
+  type?(el: ElementHandle, text: string): void;
+  /** Focus on `el` has left the canvas's keyboard: it's outside the canvas, or a text field. */
+  elsewhere?(el: ElementHandle): boolean;
 }
 
 /**
@@ -97,6 +109,8 @@ export function createInteractionController<P = unknown>(
   options: InteractionOptions = {},
 ) {
   let menuState: MenusState<P> = initialMenus<P>();
+  let gestureState = initialGestures();
+  let gestureHow: { commit(p: GesturePreview): void; cancel?(): void } | null = null;
   /** Live's hover cards, while Live attaches them (readoutLayer.ts): their own store, apart from the snapshot. */
   let readouts: ReadoutLayer | null = null;
   let camera = options.camera;
@@ -104,7 +118,11 @@ export function createInteractionController<P = unknown>(
   /** The camera's view of the open menu (it hears of a change of kind only, as before). */
   let cameraMenu: "context" | "quickAdd" | null = null;
   const listeners = new Set<() => void>();
-  let snapshot = { menu: null as OpenSurface<P> | null, roving: undefined as string | undefined };
+  let snapshot = {
+    menu: null as OpenSurface<P> | null,
+    roving: undefined as string | undefined,
+    keyboardSegment: gestureState.keyboardSegment,
+  };
   let seq = 0;
   /** The pending move's last resolution was `parked`: it waits on commits, and readiness doesn't count it. */
   let parked = false;
@@ -134,19 +152,38 @@ export function createInteractionController<P = unknown>(
   let decided = false;
   /** The selection as of the last commit. */
   let selectionKey: string | null = null;
+  /**
+   * A pending rename: a name field was asked for (a request with an owner: F2, a double-click, Rename) but isn't there
+   * yet (its panel's code is still downloading). Keys typed meanwhile are held for it, out of the canvas shortcuts'
+   * reach (T would add a text, Backspace delete the connection), and handed over once it takes focus. Enter ends the
+   * typing (`keys` null): the text waits for the field, and focus goes back to the item after it's written; Esc after
+   * typing does the same (both finish and save, as in the field), Esc or Enter before any typing cancels. A press, focus
+   * moving out of the canvas, a newer move, or the field resolving as gone (its panel's download failed) ends both the
+   * hold and its field request.
+   */
+  let rename: { move: FocusMove; keys: { stop(): TypeAhead } | null; typed: TypeAhead } | null = null;
 
   const journal = (entry: Omit<InteractionEntry, "seq">) => options.journal?.({ seq: ++seq, ...entry });
 
   function phase(): InteractionPhase {
     if (menuState.open) return "menu-open";
+    if (gestureState.active) return "gesture";
     if (recovery || (pendingMove(focus) && !parked)) return "focus-pending";
     return "idle";
   }
 
   function changed() {
     const next = phase();
-    if (snapshot.menu !== menuState.open || snapshot.roving !== focus.roving)
-      snapshot = { menu: menuState.open, roving: focus.roving };
+    if (
+      snapshot.menu !== menuState.open ||
+      snapshot.roving !== focus.roving ||
+      snapshot.keyboardSegment !== gestureState.keyboardSegment
+    )
+      snapshot = {
+        menu: menuState.open,
+        roving: focus.roving,
+        keyboardSegment: gestureState.keyboardSegment,
+      };
     if (next !== lastPhase) {
       lastPhase = next;
       port.publish(next);
@@ -202,7 +239,51 @@ export function createInteractionController<P = unknown>(
       else if (command.type === "roving") roving(command);
       else then?.(false);
     }
+    // A pending rename lasts exactly as long as its field's move.
+    if (rename && focus.pending !== rename.move) dropRename("superseded");
     changed();
+  }
+
+  /** Starts holding keys for a name field that isn't there yet (once per move). */
+  function holdRename(move: FocusMove) {
+    if (rename?.move === move || !port.holdKeys || move.target.kind !== "field" || !move.target.owner) return;
+    dropRename("superseded");
+    const next: NonNullable<typeof rename> = { move, keys: null, typed: { text: null } };
+    rename = next;
+    next.keys = port.holdKeys((typed) => {
+      if (rename !== next) return;
+      next.keys?.stop();
+      next.keys = null;
+      next.typed = typed;
+      if (typed.text !== null) {
+        if (options.journal) journal({ event: `rename.typed:${typed.done}`, command: "keep" });
+        return;
+      }
+      // Esc or Enter before anything was typed: the rename is over before its field came.
+      decide({ type: "inspector.abandoned" });
+    });
+    if (options.journal) journal({ event: "rename.hold", command: describe(move) });
+  }
+
+  /** Ends the pending rename, returning what it held. */
+  function endRename(): TypeAhead | null {
+    const r = rename;
+    rename = null;
+    if (!r) return null;
+    return r.keys ? r.keys.stop() : r.typed;
+  }
+
+  function dropRename(why: "superseded" | "press" | "focus" | "unmount") {
+    if (!rename) return;
+    endRename();
+    if (options.journal) journal({ event: `rename.dropped:${why}`, command: "keep" });
+  }
+
+  /** The person left a pending rename: its held keys and its field request end together (a later commit can't revive it). */
+  function abandonRename(why: "press" | "focus") {
+    if (!rename) return;
+    dropRename(why);
+    decide({ type: "inspector.abandoned" });
   }
 
   /** Tells the current move's outcome, once. */
@@ -230,7 +311,7 @@ export function createInteractionController<P = unknown>(
     recovery = next;
     next.cancel = scheduler.frame(() => {
       if (disposed || recovery !== next) return;
-      if (port.active() !== null || port.connected(command.ifGone)) {
+      if (port.active() !== null || (command.ifGone && port.connected(command.ifGone))) {
         retireRecovery("kept");
       } else {
         const found = port.resolve(command.target);
@@ -287,8 +368,20 @@ export function createInteractionController<P = unknown>(
         return decide({ type: "focus.done" });
       }
       if (put(move, found.el, move.select)) {
+        // A pending rename hands over what was typed meanwhile, as if it had been typed in the field.
+        const typed = rename?.move === move ? endRename() : null;
+        if (typed?.text != null) port.type?.(found.el, typed.text);
+        if (typed && options.journal)
+          journal({
+            event: "rename.handed",
+            command: typed.text === null ? "keep" : `type${typed.done ? `:${typed.done}` : ""}`,
+          });
         settle("focused");
-        return decide({ type: "focus.ran" });
+        decide({ type: "focus.ran" });
+        // Enter or Esc typed ahead: the name is done, as either does in the field (row N1).
+        if (typed?.done && move.target.kind === "field" && move.target.owner)
+          decide({ type: "naming.done", flowId: move.target.owner });
+        return;
       }
     }
     // A fresh target the diagram hasn't committed yet is on its way, not gone.
@@ -297,6 +390,7 @@ export function createInteractionController<P = unknown>(
       (move.when === "ready" || move.when === "measured") &&
       (found.state === "waiting" || found.state === "parked" || arriving);
     if (waits) {
+      holdRename(move);
       const wasParked = parked;
       parked = found.state === "parked";
       // Measurement arrives on frames; a parked target arrives with a commit (rendered()).
@@ -340,7 +434,82 @@ export function createInteractionController<P = unknown>(
     if (next === "placement") camera?.placing();
   }
 
+  function endGesture(seq: number, reason: GestureEndReason) {
+    const t = gestures(gestureState, { type: "gesture.end", seq, reason });
+    if (!t.ended) return;
+    const how = gestureHow;
+    gestureHow = null;
+    gestureState = t.state;
+    if (options.journal)
+      journal({ event: `gesture.end:${t.ended.kind}:${reason}`, command: t.ended.commit ? "commit" : "cancel" });
+    // Publish before callbacks: capture loss and a commit's re-entrant events see this gesture as finished.
+    changed();
+    try {
+      if (t.ended.commit) how?.commit(t.ended.preview);
+      else how?.cancel?.();
+    } finally {
+      if (!gestureState.active) camera?.dispatch({ type: "gesture", on: false });
+      decide({
+        type: "gesture.ended",
+        kind: t.ended.kind,
+        reason,
+        ...("edge" in t.ended.preview ? { edge: t.ended.preview.edge } : {}),
+      });
+    }
+  }
+
+  function closeMenu(reason: MenuCloseReason, seq?: number) {
+    const t = menus(menuState, { type: "menu.close", reason, seq });
+    if (!t.closed) return;
+    menuState = t.state;
+    feedCamera();
+    decide({
+      type: "menu.closed",
+      kind: t.closed.kind,
+      reason: t.closed.reason,
+      invoker: t.closed.invoker,
+      platform: t.closed.platform,
+    });
+  }
+
   return {
+    get gesture(): Gesture | null {
+      return gestureState.active;
+    },
+    beginGesture(
+      kind: GestureKind,
+      preview: GesturePreview,
+      how: { via: Gesture["via"]; commit(p: GesturePreview): void; cancel?(): void },
+    ) {
+      // Hold pane work before closing a menu: there must be no gap between the two holds.
+      if (gestureState.active) endGesture(gestureState.active.seq, "superseded");
+      camera?.dispatch({ type: "gesture", on: true });
+      closeMenu("gesture");
+      const t = gestures(gestureState, { type: "gesture.start", kind, preview, via: how.via });
+      gestureState = t.state;
+      gestureHow = how;
+      if (options.journal) journal({ event: `gesture.start:${kind}`, command: "keep" });
+      changed();
+      return t.started!.seq;
+    },
+    updateGesture(seq: number, preview: GesturePreview) {
+      const t = gestures(gestureState, { type: "gesture.move", seq, preview });
+      if (t.state === gestureState) return;
+      gestureState = t.state;
+      changed();
+    },
+    endGesture,
+    stepSegment(edge: string, delta: 1 | -1, count: number): number {
+      gestureState = gestures(gestureState, {
+        type: "segment.step",
+        edge,
+        delta,
+        count,
+        alone: selectionKey === JSON.stringify([edge]),
+      }).state;
+      changed();
+      return gestureState.keyboardSegment?.k ?? 0;
+    },
     /** Live attaches its readout layer while it shows hover cards; returns the detach. */
     attachReadouts(layer: ReadoutLayer) {
       readouts = layer;
@@ -367,6 +536,15 @@ export function createInteractionController<P = unknown>(
     getSnapshot() {
       return snapshot;
     },
+    /** Narrow preview selectors: unrelated edges and the canvas shell keep their identity. */
+    getConnectPreview() {
+      const p = gestureState.active?.preview;
+      return p?.kind === "connect" ? p : null;
+    },
+    getEdgePreview(edge: string) {
+      const p = gestureState.active?.preview;
+      return p?.kind === "edge.end" && p.edge === edge ? p : null;
+    },
     subscribe(listener: () => void) {
       listeners.add(listener);
       return () => void listeners.delete(listener);
@@ -377,6 +555,7 @@ export function createInteractionController<P = unknown>(
       payload: P,
       how: { via?: MenuVia; platform?: Platform; invoker?: ElementHandle | null } = {},
     ) {
+      if (gestureState.active) endGesture(gestureState.active.seq, "superseded");
       readouts?.dismiss();
       const t = menus(menuState, {
         type: "menu.open",
@@ -401,23 +580,12 @@ export function createInteractionController<P = unknown>(
       return o.seq;
     },
     /** Closes the open menu (`seq`: only if it's still that one) with its reason. */
-    closeMenu(reason: MenuCloseReason, seq?: number) {
-      const t = menus(menuState, { type: "menu.close", reason, seq });
-      if (!t.closed) return;
-      menuState = t.state;
-      feedCamera();
-      decide({
-        type: "menu.closed",
-        kind: t.closed.kind,
-        reason: t.closed.reason,
-        invoker: t.closed.invoker,
-        platform: t.closed.platform,
-      });
-    },
+    closeMenu,
     /** The camera to tell of menus (the canvas creates its camera after this controller). */
     attachCamera(next: InteractionCamera) {
       camera = next;
       if (cameraMenu) next.dispatch({ type: "menu.opened", kind: cameraMenu });
+      if (gestureState.active) next.dispatch({ type: "gesture", on: true });
     },
     /** An event for the focus policy; `then` hears whether the move it caused put focus somewhere. */
     dispatch(event: FocusEvent, then?: Done) {
@@ -441,6 +609,12 @@ export function createInteractionController<P = unknown>(
      * camera (a new, non-empty selection); every cause lasts one commit.
      */
     selectionCommitted(key: string, empty: boolean) {
+      const segment = gestureState.keyboardSegment;
+      gestureState = gestures(gestureState, {
+        type: "selection.committed",
+        alone: segment && key === JSON.stringify([segment.edge]) ? segment.edge : undefined,
+      }).state;
+      if (segment !== gestureState.keyboardSegment) changed();
       const was = selectionKey;
       selectionKey = key;
       const why = cause ?? "programmatic";
@@ -475,9 +649,18 @@ export function createInteractionController<P = unknown>(
       decide({ type: "live.key", key: context.key, action });
       return action;
     },
-    /** A press or a key anywhere (window capture): a move's second attempt stands down. */
-    input() {
+    /**
+     * A press or a key anywhere (window capture): a move's second attempt stands down. A press also ends a pending
+     * rename (the person went elsewhere): later keys go where they point, nothing held is written, and its field won't
+     * take focus.
+     */
+    input(kind: "key" | "press" = "key") {
+      if (kind === "press") abandonRename("press");
       if (focus.pending?.retry) decide({ type: "input" });
+    },
+    /** Focus arrived on `el` (focusin): Tab or a script taking it out of the canvas ends a pending rename. */
+    focusArrived(el: ElementHandle) {
+      if (rename && !running && port.elsewhere?.(el)) abandonRename("focus");
     },
     /** The move running inside focus() right now (a focusin reads whether its caller reveals the target itself). */
     get focusing(): FocusMove | null {
@@ -493,12 +676,14 @@ export function createInteractionController<P = unknown>(
       disposed = false;
       changed();
       return () => {
+        if (gestureState.active) endGesture(gestureState.active.seq, "unmount");
         disposed = true;
         cancelFrame?.();
         cancelFrame = null;
         cancelRoving?.();
         cancelRoving = null;
         retireRecovery("superseded");
+        dropRename("unmount");
         if (focus.pending) focus = { ...focus, pending: null };
         settle("superseded");
       };

@@ -18,7 +18,8 @@ import { SettingsEditor } from "./SettingsEditor";
 import { SimInput } from "./SimulationFields";
 import { type InspectorProps } from "./types";
 import { useNameFields } from "./useNameFields";
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
+import { useInteraction } from "../interaction/useInteraction";
 import { type EditorApi } from "../../editor/types";
 import { relationLabel } from "../../i18n/chrome";
 import { inferRelation } from "../../stencils/relations";
@@ -42,6 +43,8 @@ const CallWaitFields = lazyComponent(
 );
 
 export function EdgePanel({ edge, editor, nodeLabel, meta }: InspectorProps & { edge: DiagramFlowEdge }) {
+  const interaction = useInteraction();
+  useLayoutEffect(() => interaction?.rendered());
   const naming = useNameFields(editor, "edge", edge.id, edge.id);
   const data = edge.data ?? { kind: "async" as const };
   const props = data.props ?? {};

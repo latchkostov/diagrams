@@ -936,3 +936,12 @@ describe("panePolicy: a note's focus while following a shared run (L10)", () => 
     expect(solo.state.owner).toBe("narration");
   });
 });
+
+it("G1 holds pane work during a gesture and replays it once after ending", () => {
+  const held = run(state(), [{ type: "gesture", on: true }, { type: "pane.changed", cause: "panel" }, settled()]);
+  expect(held.commands).toEqual([]);
+  expect(held.state.pending).toEqual({ cause: "panel" });
+  const released = run(held.state, [{ type: "gesture", on: false }, settled(), settled()]);
+  expect(released.commands).toEqual([FIT("pane")]);
+  expect(released.state.pending).toBeNull();
+});

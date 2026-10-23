@@ -23,6 +23,7 @@ import type {
  * | X1  | pane.changed(any)             | presenting                                 | no new work                             |
  * | M1  | menu.opened                   |                                            | menu := kind; pane work waits           |
  * | M2  | menu.closed                   |                                            | menu := none; pending runs once settled |
+ * | G1  | gesture(on/off)                |                                            | hold/release pane work                  |
  * | R1  | pane.settled                  | pending panel, edit, owner fit             | fit (refit)                             |
  * | R2  | pane.settled                  | Zoom to selection owns the view            | nothing                                 |
  * | R3  | pane.settled                  | pending selection/placement, covered       | reveal (selection), owner unchanged     |
@@ -74,6 +75,8 @@ export function decide(state: PolicyState, event: CameraEvent): Decision {
     commands,
   });
   switch (event.type) {
+    case "gesture":
+      return next({ gesture: event.on });
     case "pane.changed": {
       if (state.mode === "present") return next({});
       // A take, or a node Live added, waiting for the pane fits for the new one too; and a selection doesn't
@@ -186,7 +189,7 @@ export function decide(state: PolicyState, event: CameraEvent): Decision {
       });
     case "pane.settled": {
       const work = state.pending;
-      if (!work || (state.menu && waitsForMenu(work))) return next({});
+      if (!work || ((state.menu || state.gesture) && waitsForMenu(work))) return next({});
       const done = { pending: null };
       if (!isPaneCause(work.cause)) return next(done, ...liveWork(state, work as LiveWork));
       if (work.cause === "panel" && state.slowmo)
@@ -264,5 +267,5 @@ export function initialPolicy(mode: CameraMode = "edit"): PolicyState {
 /** Whether `state` holds work waiting for the pane, and whether a menu defers it. */
 export function pendingPhase(state: PolicyState): "pending" | "deferred" | null {
   if (!state.pending) return null;
-  return state.menu && waitsForMenu(state.pending) ? "deferred" : "pending";
+  return (state.menu || state.gesture) && waitsForMenu(state.pending) ? "deferred" : "pending";
 }

@@ -6,7 +6,7 @@ import {
   getStraightPath,
   type ConnectionLineComponentProps,
 } from "@xyflow/react";
-import { connectOver } from "./gestures";
+import { useInteraction } from "./interaction/useInteraction";
 import type { FlowNode } from "./types";
 
 /** The dashed line while connecting, in the diagram's edge style; over empty canvas it ends in a "+". */
@@ -20,7 +20,12 @@ export function ConnectionLine({
   toPosition,
   connectionStatus,
 }: ConnectionLineComponentProps<FlowNode>) {
-  const target = useSyncExternalStore(connectOver.subscribe, connectOver.get, connectOver.get);
+  const interaction = useInteraction();
+  const preview = useSyncExternalStore(
+    interaction?.subscribe ?? noSubscribe,
+    interaction?.getConnectPreview ?? emptySnapshot,
+  );
+  const target = preview?.kind === "connect" ? preview.target : null;
   const args = {
     sourceX: fromX,
     sourceY: fromY,
@@ -48,3 +53,6 @@ export function ConnectionLine({
     </g>
   );
 }
+
+const noSubscribe = () => () => {};
+const emptySnapshot = () => null;
