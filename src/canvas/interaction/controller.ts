@@ -96,6 +96,13 @@ export type InteractionController<P = unknown> = ReturnType<typeof createInterac
 /** Said once a move has finished: whether focus went where it was asked to go (or to its fallback). */
 type Done = (focused: boolean) => void;
 
+interface GestureHandlers {
+  commit(p: GesturePreview): void;
+  cancel?(): void;
+  /** Current external capture identity. Cancellation belongs only to the token read at gesture start. */
+  capture?(): unknown;
+}
+
 /**
  * The single writer of what's open over the canvas and of keyboard focus in it. Menus open and close through it
  * with a reason (menus.ts); every focus move is a command from the pure policy (focusPolicy.ts), run here
@@ -110,7 +117,7 @@ export function createInteractionController<P = unknown>(
 ) {
   let menuState: MenusState<P> = initialMenus<P>();
   let gestureState = initialGestures();
-  let gestureHow: { commit(p: GesturePreview): void; cancel?(): void } | null = null;
+  let gestureHow: (GestureHandlers & { owner: unknown }) | null = null;
   /** Live's hover cards, while Live attaches them (readoutLayer.ts): their own store, apart from the snapshot. */
   let readouts: ReadoutLayer | null = null;
   let camera = options.camera;
@@ -449,7 +456,7 @@ export function createInteractionController<P = unknown>(
     changed();
     try {
       if (t.ended.commit) how?.commit(t.ended.preview);
-      else how?.cancel?.();
+      else if (!how?.capture || how.capture() === how.owner) how?.cancel?.();
     } finally {
       if (!gestureState.active) camera?.dispatch({ type: "gesture", on: false });
       decide({
@@ -479,18 +486,14 @@ export function createInteractionController<P = unknown>(
     get gesture(): Gesture | null {
       return gestureState.active;
     },
-    beginGesture(
-      kind: GestureKind,
-      preview: GesturePreview,
-      how: { via: Gesture["via"]; commit(p: GesturePreview): void; cancel?(): void },
-    ) {
+    beginGesture(kind: GestureKind, preview: GesturePreview, how: GestureHandlers & { via: Gesture["via"] }) {
       // Hold pane work before closing a menu: there must be no gap between the two holds.
       if (gestureState.active) endGesture(gestureState.active.seq, "superseded");
       camera?.dispatch({ type: "gesture", on: true });
       closeMenu("gesture");
       const t = gestures(gestureState, { type: "gesture.start", kind, preview, via: how.via });
       gestureState = t.state;
-      gestureHow = how;
+      gestureHow = { ...how, owner: how.capture?.() };
       if (options.journal) journal({ event: `gesture.start:${kind}`, command: "keep" });
       changed();
       return t.started!.seq;

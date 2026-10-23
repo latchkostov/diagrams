@@ -1142,6 +1142,55 @@ it("unmount cancels conditional recovery beside a parked request", () => {
 
 describe("controller gesture interleavings", () => {
   const preview = { kind: "edge.end", edge: "a-b", end: "target", at: { x: 1, y: 2 }, over: null } as const;
+  it.each(["same", "another"])("superseding a click connection cannot cancel a new capture on %s dot", (dot) => {
+    const h = harness();
+    const connect = { kind: "connect", from: "a", over: null } as const;
+    let capture: object | null = null;
+    const currentCapture = () => capture;
+    const cancel = vi.fn(() => {
+      capture = null;
+    });
+    const first = h.controller.beginGesture("connect", connect, {
+      via: "mouse",
+      commit: vi.fn(),
+      cancel,
+      capture: currentCapture,
+    });
+    // React Flow installs this capture before it reports onConnectStart.
+    const replacement = { nodeId: dot === "same" ? "a" : "b", id: "bottom" };
+    capture = replacement;
+    const commit = vi.fn();
+    const second = h.controller.beginGesture(
+      "connect",
+      { ...connect, from: replacement.nodeId },
+      {
+        via: "mouse",
+        commit,
+        cancel,
+        capture: currentCapture,
+      },
+    );
+    expect(cancel).not.toHaveBeenCalled();
+    expect(capture).toBe(replacement);
+    h.controller.endGesture(first, "cancel");
+    expect(h.controller.gesture?.seq).toBe(second);
+    h.controller.endGesture(second, "drop");
+    expect(commit).toHaveBeenCalledOnce();
+  });
+  it("cancels an owned capture exactly once", () => {
+    const h = harness();
+    const capture = {};
+    const cancel = vi.fn();
+    const seq = h.controller.beginGesture("edge.end", preview, {
+      via: "mouse",
+      commit: vi.fn(),
+      cancel,
+      capture: () => capture,
+    });
+    h.controller.endGesture(seq, "escape");
+    h.controller.endGesture(seq, "escape");
+    expect(cancel).toHaveBeenCalledOnce();
+  });
   it("starting closes the open menu with gesture and holds the camera", () => {
     const h = harness();
     h.controller.openMenu("context", "menu");
