@@ -8,6 +8,7 @@ import { FINDINGS_BUDGET, FINDING_NAME_MAX } from "./findingBudget";
 import { createSimulationRun } from "../sim/simulation";
 import { buildContext } from "./context";
 import { createEngine } from "../sim/engine";
+import * as topology from "../sim/topology";
 import type { DiagramFile, Simulation } from "../model/types";
 
 const check = (d = messageTypesFixture()) => runChecks(d, { rules: ["message-loop"] });
@@ -414,5 +415,21 @@ describe("message-loop", () => {
     const ctx = buildContext(messageTypesFixture());
     expect(ctx.messageTypes()).toBe(ctx.messageTypes());
     expect(ctx.messageTypes().carried.get("send")).toEqual(new Set(["Send", "Callback"]));
+  });
+
+  it("reuses the checks topology across free play and saved message runs", () => {
+    const d = messageTypesFixture();
+    d.simulations = [savedRun(), savedRun({ id: "renamed", setup: { props: { api: { emits: "Other" } } } })];
+    const expected = messageTypesAt(d);
+    const compile = vi.spyOn(topology, "compileTopology");
+    try {
+      const ctx = buildContext(d);
+      expect(ctx.messageTypes()).toEqual(expected);
+      expect(ctx.typesAt("sender")).toContain("Other");
+      expect(ctx.messageGraphs().graphs).toHaveLength(3);
+      expect(compile).toHaveBeenCalledTimes(1);
+    } finally {
+      compile.mockRestore();
+    }
   });
 });
