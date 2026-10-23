@@ -4,7 +4,7 @@ import { t } from "../i18n";
 import { Field } from "../canvas/inspector/fields";
 import { acceptsType } from "../sim/topology";
 /** At most this many choices render in one picker. */
-const MAX_CHOICES = 100;
+export const MAX_CHOICES = 100;
 
 /** Native buttons keep chips reachable with Tab, Space and Enter; arrows walk the choices too. */
 export function TypePicker({
@@ -149,6 +149,7 @@ export function TypePicker({
               { value: "keep", label: placeholder ?? t("inspector.unchanged") },
               ...options.map((type, i) => ({
                 value: String(i),
+                identity: type,
                 label: wildcard && type === "*" ? t("messageTypes.anyType") : type,
               })),
               { value: "new", label: t("messageTypes.addType") },

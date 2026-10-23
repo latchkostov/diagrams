@@ -6,6 +6,8 @@ import type { MenuNode } from "../editor/actions";
 
 export interface DropdownOption<T extends string = string> {
   value: T;
+  /** Stable identity when a deferred choice list reorders numeric values. */
+  identity?: string;
   label: string;
   icon?: IconName;
   className?: string;
@@ -69,6 +71,7 @@ function toMenuNodes<T extends string>(
         nodes.push({
           type: "item",
           id: opt.value,
+          identity: opt.identity,
           label: opt.label,
           icon: opt.icon,
           hint: opt.hint,
@@ -85,6 +88,7 @@ function toMenuNodes<T extends string>(
       nodes.push({
         type: "item",
         id: item.value,
+        identity: item.identity,
         label: item.label,
         icon: item.icon,
         hint: item.hint,

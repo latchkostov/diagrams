@@ -1,6 +1,5 @@
 import type { CSSProperties } from "react";
 import type { SlowMotion } from "./session";
-import { LiveIcon } from "../icons";
 
 /** Replay readouts load on use; play controls, screen-reader captions and Esc stay outside this chunk. */
 export function SlowTimeline({ slow, state: s }: { slow: SlowMotion; state: ReturnType<SlowMotion["getState"]> }) {
@@ -11,17 +10,6 @@ export function SlowTimeline({ slow, state: s }: { slow: SlowMotion; state: Retu
   const seconds = (ms: number) => `${(Math.max(0, ms) / 1000).toFixed(2)} s`;
   return (
     <>
-      <span
-        className="lv-slowmo-chip"
-        data-testid="slowmo-chip"
-        title="Live is paused while slow motion replays one message. Esc goes back to live, where it left off."
-      >
-        <LiveIcon name="slowmo" size={13} />
-        <span>
-          Slow motion<span className="lv-slowmo-sep"> · </span>
-          <span className="lv-slowmo-paused">live paused</span>
-        </span>
-      </span>
       <span
         className="lv-clock mono"
         data-testid="live-clock"

@@ -6,9 +6,49 @@ import {
   savedDiagram,
   waitForSelectionSettled,
   fitDiagram,
+  gotoLab,
+  pauseClock,
   expectNoErrors,
 } from "./fixtures";
 import type { Page } from "@playwright/test";
+
+for (const preset of ["message-types", "live-message-types"]) {
+  test(`${preset} Lab host shows carried types on hover and keyboard focus`, async ({ page }) => {
+    await gotoLab(page, preset);
+    const label = page.getByTestId("edge-label-send");
+    await label.hover();
+    await expect(label).toHaveAttribute("title", /Message types: Send, Callback/);
+    await page.mouse.move(0, 0);
+    await expect(label).not.toHaveAttribute("title", /Message types:/);
+    await page.getByTestId("edge-send").evaluate((edge) => edge.parentElement?.focus());
+    await expect(page.getByTestId("edge-messages-send")).toContainText("Message types: Send, Callback");
+  });
+}
+
+test("a deferred vocabulary update preserves the highlighted type in an open picker", async ({ page }) => {
+  await page.clock.install();
+  await open(page);
+  await pauseClock(page);
+  await page.getByTestId("inspector-field-emits").click();
+  await page.getByTestId("context-menu-item-new").click();
+  await page.getByTestId("inspector-emits-new").fill("Aardvark");
+  await page.getByTestId("inspector-emits-new").press("Enter");
+  await page.getByTestId("inspector-field-emits").click();
+  await page.keyboard.press("Home");
+  await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("ArrowDown");
+  await expect(page.getByTestId("context-menu-item-1")).toHaveText("Send");
+  await expect(page.getByTestId("context-menu-item-1")).toHaveAttribute("data-active", "true");
+  await page.clock.runFor(1_500);
+  await expect(page.getByTestId("context-menu-item-2")).toHaveText("Send");
+  await expect(page.getByTestId("context-menu-item-2")).toHaveAttribute("data-active", "true");
+  await page.keyboard.press("Enter");
+  await expect(page.getByTestId("inspector-field-emits")).toContainText("Send");
+  await page.clock.runFor(400);
+  await expect
+    .poll(async () => (await savedDiagram(page)).edges.find((e) => e.id === "send")?.props?.emits)
+    .toBe("Send");
+});
 
 test("message fields show loading while the inspector chunk is held and recover after release", async ({
   page,

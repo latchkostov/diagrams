@@ -8,14 +8,14 @@ import {
 import type { DiagramFile } from "../../model/types";
 import type { DiagramFlowEdge, DiagramFlowNode, FlowNode } from "../types";
 import type { MessageTypes } from "../../model/messageTypes";
-import { t } from "../../i18n";
+import { getLocale, t, useLocale } from "../../i18n";
 import { createElement, useCallback, useEffect, useState } from "react";
 import { useStore, type ReactFlowState } from "@xyflow/react";
 import { MessageTypesCard } from "./MessageTypesCard";
 
 /** Characters of type names one tooltip shows; full names stay in the analysis and the inspector. */
 export const TIP_CHARS = 240;
-const texts = new WeakMap<MessageTypes, Map<string, string>>();
+const texts = new WeakMap<MessageTypes, { locale: string; values: Map<string, string> }>();
 
 /** Only these flow fields reach the analysis (see sameRoutingFields); geometry, measurements and selection never do. */
 const sameNode = (a: FlowNode, b: FlowNode, simulations: DiagramFile["simulations"]) =>
@@ -78,9 +78,10 @@ export function carriedTypes(
  * One edge's type list for display, built on request and cached with its analysis: names until TIP_CHARS, a single
  * longer name cut with an ellipsis, then a count of the rest. Never formats the other edges.
  */
-export function carriedText(types: MessageTypes, id: string): string {
-  let cache = texts.get(types);
-  if (!cache) texts.set(types, (cache = new Map()));
+export function carriedText(types: MessageTypes, id: string, locale = getLocale()): string {
+  let entry = texts.get(types);
+  if (entry?.locale !== locale) texts.set(types, (entry = { locale, values: new Map() }));
+  const cache = entry.values;
   let text = cache.get(id);
   if (text !== undefined) return text;
   const carried = types.carried.get(id) ?? new Set<string>();
@@ -106,9 +107,10 @@ export function messageTip(
   edges: readonly DiagramFlowEdge[],
   metadata: Pick<DiagramFile, "simulations" | "planning"> | undefined,
   id: string,
+  locale = getLocale(),
 ): string {
   return t("messageTypes.hover", {
-    types: carriedText(carriedTypes(nodes, edges, metadata), id) || t("messageTypes.noMessages"),
+    types: carriedText(carriedTypes(nodes, edges, metadata), id, locale) || t("messageTypes.noMessages"),
   });
 }
 
@@ -134,10 +136,11 @@ export function MessageTip({
   y: number;
   onTip: (tip: string | undefined) => void;
 }) {
+  const locale = useLocale();
   const tip = useStore(
     useCallback(
-      (s: ReactFlowState) => messageTip(s.nodes as FlowNode[], s.edges as DiagramFlowEdge[], meta, id),
-      [id, meta],
+      (s: ReactFlowState) => messageTip(s.nodes as FlowNode[], s.edges as DiagramFlowEdge[], meta, id, locale),
+      [id, meta, locale],
     ),
   );
   useEffect(() => onTip(tip), [tip, onTip]);

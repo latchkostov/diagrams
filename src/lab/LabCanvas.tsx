@@ -24,6 +24,7 @@ import { toFlow } from "../canvas/convert";
 import { DiagramContext, type InlineEdit } from "../canvas/DiagramContext";
 import { canvasNodeTypes } from "../canvas/nodes/nodeTypes";
 import { EdgeMarkers, FlowEdge } from "../canvas/edges/FlowEdge";
+import { EdgeMessages } from "../canvas/edges/lazyEdgeMessages";
 import type { DiagramFlowEdge, DiagramFlowNode, FlowNode } from "../canvas/types";
 
 /**
@@ -138,6 +139,7 @@ function Stage({ diagram, minimap = true, onRendered, onMove }: Props) {
           attributionPosition="bottom-center"
         >
           <Background variant={BackgroundVariant.Dots} gap={20} size={1.3} color="var(--dot)" />
+          <EdgeMessages meta={flow.meta} />
           <Controls showInteractive={false} position="bottom-left" />
           {minimap && (
             <MiniMap
