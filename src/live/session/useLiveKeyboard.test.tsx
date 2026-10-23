@@ -178,3 +178,66 @@ it.each([
   // The card's own Space scrolls it: playback never toggles from inside a readout.
   expect(togglePlaying).not.toHaveBeenCalled();
 });
+
+it.each([
+  { case: "a hover after the last key pins it", keyBetween: false, pinned: false, pins: true },
+  {
+    case: "a key after the hover leaves Enter to the control",
+    keyBetween: true,
+    editable: false,
+    pinned: false,
+    pins: false,
+  },
+  { case: "a pinned card leaves Enter to the control", keyBetween: false, pinned: true, pins: false },
+])("Enter on focused chrome with a hovered summary: $case", ({ keyBetween, pinned, pins }) => {
+  const listeners = new Map<string, (event: Event) => void>();
+  class Target {
+    dataset = {};
+    classList = { contains: () => false };
+    closest(selector: string) {
+      // A node under the pointer; the focused Live button is a control.
+      if (selector.startsWith(".react-flow__node-diagram, .react-flow__edge, [data-call-edge]"))
+        return this === node ? this : null;
+      return this === button && selector.includes("button") ? this : null;
+    }
+  }
+  const node = new Target(),
+    button = new Target();
+  vi.stubGlobal("Element", Target);
+  vi.stubGlobal("document", { querySelector: () => null });
+  vi.stubGlobal("window", {
+    addEventListener: (type: string, handler: (event: Event) => void) => void listeners.set(type, handler),
+  });
+  const pin = vi.fn(),
+    togglePlaying = vi.fn();
+  function Harness() {
+    useLiveKeyboard({
+      interaction: {
+        liveKey: liveKeys,
+        readouts: { get: () => ({ kind: "node", id: "caller", pinned }), pin },
+      },
+      session: { controller: { getState: () => ({}), togglePlaying }, traceRef: {} },
+      spotlight: { slowRef: {} },
+    } as unknown as Parameters<typeof useLiveKeyboard>[0]);
+    return null;
+  }
+  renderToStaticMarkup(<Harness />);
+  const key = (k: string, timeStamp: number) => {
+    const preventDefault = vi.fn();
+    listeners.get("keydown")!({
+      key: k,
+      target: button,
+      timeStamp,
+      preventDefault,
+      stopImmediatePropagation: vi.fn(),
+    } as unknown as Event);
+    return preventDefault;
+  };
+  key("Tab", 1);
+  listeners.get("pointermove")!({ target: node, timeStamp: 2 } as unknown as Event);
+  if (keyBetween) key("Shift", 3);
+  const prevented = key("Enter", 4);
+  expect(pin.mock.calls).toEqual(pins ? [[{ kind: "node", id: "caller" }]] : []);
+  // Pinning consumes Enter, so the focused button is not pressed; otherwise the button keeps its Enter.
+  expect(prevented).toHaveBeenCalledTimes(pins ? 1 : 0);
+});

@@ -22,6 +22,8 @@ const ownTooltipOpen = (t: Element) =>
   (t.getAttribute("aria-describedby") ?? "")
     .split(/\s+/)
     .some((id) => !!id && !!document.getElementById(id)?.matches('[role="tooltip"]:not([data-live-readout])'));
+/** Where the pointer names a readout: a node, a connection, its call pill, or a card itself. */
+const POINTED = ".react-flow__node-diagram, .react-flow__edge, [data-call-edge], [data-live-readout]";
 /** A selection is cleared before Esc backs out of a trace or live view. */
 const SELECTED = ".react-flow__node.selected, .react-flow__edge.selected";
 
@@ -46,7 +48,16 @@ export function useLiveKeyboard({
   // dialogs, panels and inline editors get theirs first; presentation handles its own Esc (App).
   // The levels are a table (src/canvas/interaction/liveKeys.ts); this runs the one it picks.
   useEffect(() => {
+    // Which came last, the pointer on a readout's item or card, or a key: a card the pointer opened after the last key
+    // owns Enter ("Enter pins"), even while focus rests on chrome (the Live button that started Live).
+    let pointedAt = -Infinity,
+      keyedAt = -Infinity;
+    const onPointer = (e: PointerEvent) => {
+      if (e.target instanceof Element && e.target.closest(POINTED)) pointedAt = e.timeStamp;
+    };
     const onKey = (e: KeyboardEvent) => {
+      const pointerLast = pointedAt > keyedAt;
+      keyedAt = e.timeStamp;
       if (e.ctrlKey || e.metaKey || e.altKey || e.defaultPrevented) return;
       const key: LiveKey | null =
         e.key === "Escape"
@@ -68,9 +79,14 @@ export function useLiveKeyboard({
       const card = t instanceof Element ? t.closest<HTMLElement>("[data-live-readout]") : null;
       const summary =
         key === "enter" && !!card && t === card && !!card.dataset.liveReadout && card.dataset.pinned !== "true";
+      // Enter pins the summary the pointer opened since the last key, rather than pressing the focused control. Text
+      // fields, editors, menus and dialogs keep their Enter (liveKeys: editable and owner come first).
+      const hovered =
+        key === "enter" && pointerLast && !!reading && !reading.pinned && !summary && !(item && t === item);
       const control =
         t instanceof Element &&
         !summary &&
+        !hovered &&
         !!t.closest(
           'button, select, a, [data-editor-overlay], [data-canvas-reading-region], [role="separator"], [role="button"], summary',
         );
@@ -88,7 +104,8 @@ export function useLiveKeyboard({
         editable: isEditableTarget(t),
         control,
         readout: !!reading,
-        readoutTarget: summary || (!!item && t === item && !(canName && item.classList.contains("selected"))),
+        readoutTarget:
+          summary || hovered || (!!item && t === item && !(canName && item.classList.contains("selected"))),
         owner: !!document.querySelector(ESC_OWNERS) || (key === "escape" && t instanceof Element && ownTooltipOpen(t)),
         selection,
         // The canvas clears its selection when it has focus; otherwise live view clears it (no dead end).
@@ -106,13 +123,15 @@ export function useLiveKeyboard({
           readouts?.close("escape");
           return;
         case "pin-readout":
-          if (!summary && !item) return;
+          if (!summary && !hovered && !item) return;
           e.preventDefault();
           e.stopImmediatePropagation();
           readouts?.pin(
-            summary
-              ? { kind: card!.dataset.liveReadout === "edge" ? "edge" : "node", id: card!.dataset.item! }
-              : { kind: item!.classList.contains("react-flow__edge") ? "edge" : "node", id: item!.dataset.id! },
+            hovered
+              ? { kind: reading!.kind, id: reading!.id }
+              : summary
+                ? { kind: card!.dataset.liveReadout === "edge" ? "edge" : "node", id: card!.dataset.item! }
+                : { kind: item!.classList.contains("react-flow__edge") ? "edge" : "node", id: item!.dataset.id! },
           );
           return;
         case "selection":
@@ -139,8 +158,12 @@ export function useLiveKeyboard({
           return;
       }
     };
+    window.addEventListener("pointermove", onPointer, { capture: true, passive: true });
     window.addEventListener("keydown", onKey, true);
-    return () => window.removeEventListener("keydown", onKey, true);
+    return () => {
+      window.removeEventListener("pointermove", onPointer, { capture: true });
+      window.removeEventListener("keydown", onKey, true);
+    };
     // Session-owned refs and state setters are stable; preserve the original effect dependencies.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [controller, presenting, alwaysOn, onExit, editor, interaction]);
