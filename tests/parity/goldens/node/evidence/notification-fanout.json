@@ -1,7 +1,7 @@
 {
   "evidence": {
     "played": [
-      { "id": "shipping-wave", "title": "Holiday shipping wave", "playedMs": 15480, "capped": false },
+      { "id": "shipping-wave", "title": "Holiday shipping wave", "playedMs": 15270, "capped": false },
       { "id": "sms-outage", "title": "SMS provider outage", "playedMs": 11320, "capped": false }
     ],
     "unplayed": [],

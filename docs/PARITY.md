@@ -63,6 +63,82 @@ goldens, every pre-W1 and scale-one W1 golden, and planning, agent, checks, evid
 and routes remain unchanged.
 See [the release fragment](release-notes/2026-10-19-engine-cpu-callees-r4.md).
 
+## Sampling 8a-pre: brokers deliver in real units (2026-10-22)
+
+60 Node-tier goldens change: 37 simulation goldens at scale 2 to 100 and 23 derived from those simulations.
+No scale-one golden changes. A broker's prefetch window now counts real requests (`unitsOf`), as at scale 1, and
+hands out a dot that doesn't fit in parts; competing consumers share a dot, as scale 1 alternates a burst's members.
+Latency samples weigh their dots. See [the release fragment](release-notes/2026-10-22-sampling-broker-units.md).
+
+**The rule (owner decision, 2026-10-22).** A golden at scale > 1 may move only toward its same-arrivals scale-one
+reference: the same run at scale 1, fed at the sampled arrival instants (`EngineOptions.sameArrivals`), compared by
+final real counters per node (processed, failed, dropped, rejected, dead-lettered, blocked). A counter is _away_ only
+if it ends more than one dot (N real requests) further from the reference than master. Counts behind a `share`
+connection, which takes each dot with a random draw, are sampling noise: any change to message order moves them.
+Verdicts: _toward_ (closer in total), _within a dot_, _noise_ (only share-sampled counters further), _away_.
+
+Reproduce the table with
+`GOLDEN_REFS=1 GOLDEN_BASE=origin/master pnpm exec vitest run src/sim/sameArrivalsGoldens.test.ts --silent=false`
+(runner: `src/test/sameArrivalsGoldens.ts`). Σ off is Σ |final − reference| over every node and counter, in real
+requests; master is `origin/master` at 4877f5dc.
+
+| Golden                                       |   N | Σ off (master) | Σ off (branch) | Verdict      | Counters more than a dot further                                                                   |
+| -------------------------------------------- | --: | -------------: | -------------: | ------------ | -------------------------------------------------------------------------------------------------- |
+| `aks-app-config-key-vault/flash-sale`        |   5 |              0 |              0 | within a dot |                                                                                                    |
+| `aws-serverless-orders/flash-sale`           |  10 |              0 |              0 | within a dot |                                                                                                    |
+| `aws-serverless-orders/throttle`             |   2 |              0 |              0 | within a dot |                                                                                                    |
+| `black-friday-commerce/doors-open`           |  50 |            700 |            554 | noise        | catalog-db.processed (share)                                                                       |
+| `black-friday-commerce/free-play`            |  10 |            276 |            705 | noise        | reco.processed (share), features.processed (share)                                                 |
+| `black-friday-commerce/partner-quota`        |  50 |            374 |            798 | noise        | reco.processed (share), features.processed (share), catalog-db.processed (share)                   |
+| `black-friday-commerce/poison-deploy`        |  10 |             90 |            140 | noise        | reco.processed (share), features.processed (share)                                                 |
+| `blocking-call/free-play`                    |  10 |           7388 |          11126 | away         | caller.processed, partner.processed, decisions.processed, store.processed                          |
+| `corpus-a1-max-reached/free-play`            |   2 |              2 |              2 | within a dot |                                                                                                    |
+| `corpus-a3-planner-partitions/black-friday`  |   5 |             13 |              3 | toward       |                                                                                                    |
+| `corpus-planning-p2-kafka/free-play`         |   2 |              0 |              0 | within a dot |                                                                                                    |
+| `corpus-planning-p2-kinesis/free-play`       |   2 |              0 |              0 | within a dot |                                                                                                    |
+| `corpus-planning-p2-queue/free-play`         |   2 |              0 |              0 | within a dot |                                                                                                    |
+| `corpus-planning-p2-sns/free-play`           |   2 |              0 |              0 | within a dot |                                                                                                    |
+| `corpus-w1-busy-threads/blocking`            |   2 |            229 |            257 | away         | caller.processed, partner.processed, store.processed                                               |
+| `corpus-w1-busy-threads/busy-threads`        |   2 |              0 |              0 | within a dot |                                                                                                    |
+| `corpus-w1-busy-threads/free-play`           |  10 |           2019 |            569 | toward       |                                                                                                    |
+| `cqrs-event-sourcing/rebuild`                |   5 |              0 |              0 | within a dot |                                                                                                    |
+| `delivery-dispatch/dinner-rush`              |  20 |             36 |             36 | within a dot |                                                                                                    |
+| `delivery-dispatch/partition-ceiling`        |  50 |              0 |              0 | within a dot |                                                                                                    |
+| `ev-charging-network/free-play`              |  10 |             63 |            309 | noise        | alerts.processed (share), oncall.processed (share), tech-email.processed (share)                   |
+| `ev-charging-network/hot-spot`               |   2 |              9 |             27 | noise        | alerts.processed (share), oncall.processed (share), tech-email.processed (share)                   |
+| `ev-charging-network/reboot-storm`           |  20 |             90 |             30 | toward       |                                                                                                    |
+| `event-driven-data-platform/load-spike`      |  20 |              0 |              0 | within a dot |                                                                                                    |
+| `gcp-streaming-analytics/autoscale`          |  20 |              0 |              0 | within a dot |                                                                                                    |
+| `notification-fanout/shipping-wave`          |  10 |            258 |            246 | toward       |                                                                                                    |
+| `observability-pipeline/log-storm`           |  20 |            544 |            870 | noise        | metrics.processed (share), prom.processed (share), rules.processed (share), siem.processed (share) |
+| `observability-pipeline/loki-outage`         |  10 |            478 |            592 | noise        | metrics.processed (share), prom.processed (share), rules.processed (share)                         |
+| `rag-assistant/reindex`                      |   4 |              4 |             20 | within a dot |                                                                                                    |
+| `recommendations-feature-store/sunday-picks` |  10 |              0 |              0 | within a dot |                                                                                                    |
+| `scale-on-busy-threads/blocking`             |   2 |            229 |            257 | away         | caller.processed, partner.processed, store.processed                                               |
+| `scale-on-busy-threads/busy-threads`         |   2 |              0 |              0 | within a dot |                                                                                                    |
+| `scale-on-busy-threads/free-play`            |  10 |           2019 |            569 | toward       |                                                                                                    |
+| `video-on-demand-pipeline/free-play`         |  10 |            337 |            337 | within a dot |                                                                                                    |
+| `webhook-ingestion/bulk-sync`                |  20 |              0 |              0 | within a dot |                                                                                                    |
+| `where-the-time-goes/billing-spike`          | 100 |           1245 |            275 | toward       |                                                                                                    |
+| `where-the-time-goes/slow-billing-drill`     | 100 |              0 |              0 | within a dot |                                                                                                    |
+
+The three _away_ rows are one class: a sampled blocking caller whose callee outlasts its threads finishes more than
+scale 1, on master too. They are named gaps in `src/sim/sameArrivalsGoldens.test.ts` and
+[the backlog](backlog/2026-10-22-sampling-slow-callee-without-pool.md). Black Friday's competing email and push consumers, which split
+2,145 / 1,955 in an earlier cut of this change, end within a request of scale 1: partner quota 2,051 / 2,049 and
+doors open 2,901 / 2,899, against 2,050 / 2,050 and 2,900 / 2,900 (master equal to scale 1).
+
+Derived goldens follow the simulations they replay:
+
+| Golden                                                                                                                                                                                                              | Simulations                                    | What changed                                                                                                                                                                                                | Verdict                                              |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
+| `agent/describe/corpus-w1-busy-threads.json`, `agent/describe/scale-on-busy-threads.json`                                                                                                                           | busy-threads blocking, busy-threads, free play | planner backlogs (e.g. 6,324 → 6,320; verified 1,158 → 1,146)                                                                                                                                               | follows its simulations (blocking: named gap)        |
+| `autoscaling/a3-planner-partitions/black-friday.json`                                                                                                                                                               | planner-partitions black-friday                | replica and backlog trace: the worker keeps up                                                                                                                                                              | toward                                               |
+| `evidence/` aks-app-config-key-vault, aws-serverless-orders, black-friday-commerce, cqrs-event-sourcing, event-driven-data-platform, gcp-streaming-analytics, notification-fanout, rag-assistant, webhook-ingestion | their saved simulations                        | played time to idle (e.g. 21,790 → 21,770 ms) and evidence rows                                                                                                                                             | follows its simulations                              |
+| `latency/where-the-time-goes/billing-spike.json`, `slow-billing-drill.json`                                                                                                                                         | Billing spike, slow-billing drill              | latency summaries: a sample weighs its dots, so a dot delivered in parts adds up to one sample; percentiles over fractional weights rank by weight, whole samples keep nearest rank (e.g. p95 406 → 363 ms) | follows its simulations (percentile I1 deferred, Q8) |
+| `trace/` black-friday-commerce poison-deploy dead letter, event-driven-data-platform load spike, recommendations-feature-store sunday picks, webhook-ingestion bulk sync                                            | their simulations                              | traced journeys: a traced dot may travel in parts                                                                                                                                                           | follows its simulations                              |
+| `waits/w1-busy-threads/blocking.json`, `busy-threads.json`                                                                                                                                                          | busy-threads blocking, busy-threads            | checkpoint gauges: fractional queues (backlog 3 → 3.5, queued 33 → 32.5) and in-system counts                                                                                                               | follows its simulations (blocking: named gap)        |
+
 ## Resizable Inspector (2026-10-16)
 
 Exactly 19 goldens change intentionally: the three new Inspector messages update

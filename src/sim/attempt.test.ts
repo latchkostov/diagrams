@@ -1,3 +1,4 @@
+import { wholeDotTravelMs } from "../test/brokerFixtures";
 import fc from "fast-check";
 import { expect, it, vi } from "vitest";
 import { settleOnce, raceReply, type Attempt } from "./attempt";
@@ -341,6 +342,8 @@ it("an in-place retry takes over the reservation and adds the previous attempt's
     resources: { ...resourceLesson(), cpuMsPerMessage: 0, startup: { delayMs: 0, jitterFraction: 0 } },
   };
   d.edges[1].props = { travelMs: 10 };
+  // One cohort at the worker: its window must hold the whole dot (a broker otherwise delivers it in parts).
+  d.edges[0].props = { travelMs: wholeDotTravelMs(10, 1, 10) };
   d.nodes[2].props = { api: { latencyMs: 250, errorRate: 1 }, jitter: 0 };
   let parts: unknown;
   const owners = new Set<unknown>();
@@ -398,6 +401,8 @@ it("an acknowledged broker tail never becomes request-scaler waiting pressure", 
       startup: { delayMs: 0, jitterFraction: 0 },
     },
   };
+  // One cohort at the worker: its window must hold the whole dot (a broker otherwise delivers it in parts).
+  d.edges[0].props = { travelMs: wholeDotTravelMs(10, 1, 10) };
   let waiting: number | undefined;
   const e = createEngine({
     scale: 10,

@@ -408,3 +408,30 @@ it("Free play keeps its cumulative latency through faults", () => {
   e.setFault({ kind: "slow", node: "worker", factor: 5 });
   expect(e.snapshot().nodes.sink.latency).toEqual(latency);
 });
+
+// Review of #237: a broker delivers parts of a dot, and each sample weighs its dots, so percentiles rank by weight.
+it.each([
+  { name: "less than a dot", fast: 0.96, slow: 0.04, p50: "fast", p95: "fast" },
+  { name: "less than a dot, slow tail", fast: 0.6, slow: 0.3, p50: "fast", p95: "slow" },
+  { name: "more than a dot", fast: 1.5, slow: 0.7, p50: "fast", p95: "slow" },
+])("weighted percentiles preserve unequal split-dot distributions ($name)", ({ fast, slow, p50, p95 }) => {
+  const recorder = createLatencyRecorder();
+  recordLatency(recorder, "Order", 0, 100, 0, undefined, undefined, undefined, fast);
+  recordLatency(recorder, "Order", 0, 1000, 0, undefined, undefined, undefined, slow);
+  const bucket = (ms: number) => (ms < 200 ? "fast" : "slow");
+  for (const summary of [latencyMetrics(recorder), latencyMetrics(recorder).byType.Order]) {
+    expect(summary.samples).toBeCloseTo(fast + slow, 9);
+    expect([bucket(summary.p50), bucket(summary.p95)]).toEqual([p50, p95]);
+    expect(summary.p99).toBe(1000);
+  }
+});
+
+it("whole samples keep their nearest-rank percentiles", () => {
+  const recorder = createLatencyRecorder();
+  for (let i = 0; i < 95; i++) recordLatency(recorder, "Order", 0, 100, 0);
+  for (let i = 0; i < 5; i++) recordLatency(recorder, "Order", 0, 1000, 0);
+  const summary = latencyMetrics(recorder);
+  expect(summary.samples).toBe(100);
+  expect(summary.p95).toBeLessThan(200);
+  expect(summary.p99).toBe(1000);
+});

@@ -2,7 +2,7 @@
   "evidence": {
     "played": [
       { "id": "busy-day", "title": "Payday: reads outnumber writes", "playedMs": 11180, "capped": false },
-      { "id": "rebuild", "title": "Rebuild a read model", "playedMs": 13180, "capped": false }
+      { "id": "rebuild", "title": "Rebuild a read model", "playedMs": 13220, "capped": false }
     ],
     "unplayed": [],
     "tooBig": [],

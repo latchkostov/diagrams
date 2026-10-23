@@ -33,30 +33,30 @@
     "real": {
       "checkout": { "processed": 8500, "throughput": 640.4296790659504, "replicas": [1, 1, 0] },
       "orders": { "processed": 8500, "throughput": 640.4296790659504, "lag": { "billing": 0 }, "replicas": [1, 1, 0] },
-      "billing": { "processed": 8500, "throughput": 1059.180812088771, "replicas": [12, 12, 0] },
-      "receipts": { "processed": 8500, "throughput": 1069.825756222608, "replicas": [1, 1, 0] }
+      "billing": { "processed": 8500, "throughput": 1142.4472485603478, "replicas": [12, 12, 0] },
+      "receipts": { "processed": 8500, "throughput": 1153.9290342932275, "replicas": [1, 1, 0] }
     },
     "edges": { "intake-orders": 85, "orders-billing": 85, "billing-receipts": 85 }
   },
   "events": {
-    "total": 680,
-    "byKind": { "inject": 85, "process": 340, "deliver": 255 },
+    "total": 848,
+    "byKind": { "inject": 85, "process": 424, "deliver": 339 },
     "byNode": {
       "checkout": { "inject": 85, "process": 85 },
       "orders": { "deliver": 85, "process": 85 },
-      "billing": { "deliver": 85, "process": 85 },
-      "receipts": { "deliver": 85, "process": 85 }
+      "billing": { "deliver": 127, "process": 127 },
+      "receipts": { "deliver": 127, "process": 127 }
     },
     "perSecond": [
       "65c79d6cf9e1",
       "ff9b0925cf45",
       "a5c3a975487e",
-      "8cde8843d40e",
-      "55571c0ce576",
-      "c6ae093812ae",
-      "5a0616a4887a",
-      "7445201c2e90",
-      "ecb6d1c87b02",
+      "ef39becf46ac",
+      "59b00ad1ca89",
+      "4c86604c012b",
+      "ac449778b92e",
+      "e3218ee7f254",
+      "e6a4bd78cd18",
       "-"
     ]
   },
@@ -66,10 +66,10 @@
   ],
   "latency": {
     "journeys": { "done": 85, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0 },
-    "endToEndMs": { "count": 85, "min": 330, "mean": 824.9411764705883, "p50": 330, "p90": 2040, "max": 2300 },
-    "waitMs": { "billing": { "count": 85, "min": 0, "mean": 5.294117647058823, "p50": 0, "p90": 0, "max": 260 } },
+    "endToEndMs": { "count": 85, "min": 330, "mean": 929.6470588235294, "p50": 480, "p90": 1950, "max": 2340 },
+    "waitMs": { "billing": { "count": 127, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 } },
     "processMs": {
-      "billing": { "count": 85, "min": 300, "mean": 582.3529411764706, "p50": 300, "p90": 1500, "max": 1500 }
+      "billing": { "count": 127, "min": 300, "mean": 517.3228346456693, "p50": 300, "p90": 1500, "max": 1500 }
     }
   }
 }

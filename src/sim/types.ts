@@ -497,15 +497,19 @@ export interface SimEngine {
 export interface EngineOptions {
   onLoss?: (loss: LossProvenance) => void;
   /** Optional per-step diagnostic; excluded from ordinary playback. */
+  /** Test-only verify hooks (Vitest only; folded out of shipped builds with __TEST_ORACLES__). */
   verifyResources?: (state: import("./resourceInvariants").ResourceState) => void;
   verifyLedger?: (state: import("./resourceInvariants").LedgerInvariantState) => void;
   /** Per-step write-once attempt diagnostic; excluded from ordinary playback. */
   verifyResilience?: (state: import("./resilienceInvariants").ResilienceState) => void;
   verifyOutcomes?: (state: import("./resourceInvariants").OutcomeInvariantState) => void;
-  /** Test-only I7 probe: release sampled holds at logical completion. */
+  /** Test-only I7 probe: release sampled holds at logical completion (Vitest only; folded out of shipped builds). */
   ledgerHold?: "none";
-  /** Test-only partial dots: every injected message carries this many real requests. */
+  /** Test-only partial dots: every injected message carries this many real requests (Vitest only; folded out). */
   injectRepresented?: number;
+  /** Test-only I1 oracle (Vitest only; folded out of shipped builds): run at scale 1 with the arrival instants of the scale `setScale` names. Every dot a source
+   *  or injection emits arrives as floor-cumulative real requests of that scale (docs/SIMULATION.md, same arrivals). */
+  sameArrivals?: true;
   /** PRNG seed for deterministic runs (tests). Default random. */
   seed?: number;
   /** Resolve a stencil id to its sim role. Default uses the stencil registry. */

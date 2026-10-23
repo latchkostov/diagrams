@@ -1,5 +1,6 @@
 import type { LatencyMetrics, LatencySummary } from "./types";
 import { POWERS } from "./latencyBounds";
+import { roundDots } from "./units";
 
 /** Fixed logarithmic buckets: upper-bound estimates within 12%, up to ~26 minutes.
  * The final bucket covers longer runs and reports the observed maximum. No samples are retained. */
@@ -29,6 +30,8 @@ export function latencyBucket(latency: number): number {
 }
 
 interface Histogram {
+  /** A sample weighed a fraction of a dot (a broker's part): percentiles rank by weight, not by whole samples. */
+  fractional?: true;
   callMs?: number;
   backoffMs?: number;
   buckets: number[];
@@ -77,18 +80,21 @@ export function recordLatency(
   budget?: LatencyBudget,
   callMs?: number,
   backoffMs?: number,
+  /** Dots the measured message carries (unitsOf): a dot delivered in parts adds up to one sample. */
+  weight = 1,
 ) {
   const latency = wait + work;
   const bucket = latencyBucket(latency);
   const add = (h: Histogram) => {
-    h.buckets[bucket]++;
-    h.samples++;
+    if (!Number.isInteger(weight)) h.fractional = true;
+    h.buckets[bucket] += weight;
+    h.samples += weight;
     h.max = Math.max(h.max, latency);
-    h.waitMs += Math.max(0, wait - (callMs ?? 0));
-    if (callMs !== undefined) h.callMs = (h.callMs ?? 0) + Math.max(0, callMs - (backoffMs ?? 0));
-    if (backoffMs !== undefined) h.backoffMs = (h.backoffMs ?? 0) + backoffMs;
-    h.workMs += work;
-    h.travelMs += travel;
+    h.waitMs += Math.max(0, wait - (callMs ?? 0)) * weight;
+    if (callMs !== undefined) h.callMs = (h.callMs ?? 0) + Math.max(0, callMs - (backoffMs ?? 0)) * weight;
+    if (backoffMs !== undefined) h.backoffMs = (h.backoffMs ?? 0) + backoffMs * weight;
+    h.workMs += work * weight;
+    h.travelMs += travel * weight;
   };
   add((recorder.total = writable(recorder.total)));
   let typed = recorder.types.get(type);
@@ -103,23 +109,26 @@ export function recordLatency(
   } else recorder.typesLimited = true;
 }
 
-const summaries = new WeakMap<Histogram, LatencySummary>();
+const summaries = new WeakMap<Histogram, { samples: number; value: LatencySummary }>();
 const views = new WeakMap<LatencyRecorder, LatencyMetrics>();
 
 function summary(h: Histogram): LatencySummary {
   const cached = summaries.get(h);
-  if (cached?.samples === h.samples) return cached;
+  if (cached?.samples === h.samples) return cached.value;
   const at = (q: number) => {
-    const rank = Math.ceil(h.samples * q);
+    // Whole samples keep nearest rank. Fractional weights rank by weight: the q-th share of the recorded weight, so
+    // 0.9 of a dot at 10 ms and 0.1 at 1 s give p50 = 10 ms (a whole-sample rank would read the slowest).
+    const rank = h.fractional ? h.samples * q : Math.ceil(h.samples * q);
     let count = 0;
     for (let i = 0; i < LATENCY_BUCKETS; i++) {
       count += h.buckets[i];
-      if (count >= rank) return i === LATENCY_BUCKETS - 1 ? h.max : Math.min(h.max, BOUNDS[i]);
+      if (h.fractional ? count + 1e-9 >= rank : count >= rank)
+        return i === LATENCY_BUCKETS - 1 ? h.max : Math.min(h.max, BOUNDS[i]);
     }
     return h.max;
   };
   const value = Object.freeze({
-    samples: h.samples,
+    samples: roundDots(h.samples),
     p50: at(0.5),
     p95: at(0.95),
     p99: at(0.99),
@@ -129,13 +138,13 @@ function summary(h: Histogram): LatencySummary {
     ...(h.callMs === undefined ? {} : { callMs: h.callMs }),
     ...(h.backoffMs === undefined ? {} : { backoffMs: h.backoffMs }),
   });
-  summaries.set(h, value);
+  summaries.set(h, { samples: h.samples, value });
   return value;
 }
 
 export function latencyMetrics(recorder: LatencyRecorder): LatencyMetrics {
   const cached = views.get(recorder);
-  if (cached?.samples === recorder.total.samples) return cached;
+  if (cached?.samples === roundDots(recorder.total.samples)) return cached;
   const value = Object.freeze({
     ...summary(recorder.total),
     byType: Object.freeze(Object.fromEntries([...recorder.types].map(([type, h]) => [type, summary(h)]))),

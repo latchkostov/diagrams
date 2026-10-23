@@ -648,28 +648,28 @@
   {
     "time": 5400,
     "billing": {
-      "samples": 12,
+      "samples": 10.26,
       "p50": 1500,
       "p95": 1500,
       "p99": 1500,
       "waitMs": 0,
-      "workMs": 14400,
-      "travelMs": 240,
+      "workMs": 11790,
+      "travelMs": 205.2,
       "byType": {
-        "OrderPlaced": { "samples": 12, "p50": 1500, "p95": 1500, "p99": 1500, "waitMs": 0, "workMs": 14400, "travelMs": 240 }
+        "OrderPlaced": { "samples": 10.26, "p50": 1500, "p95": 1500, "p99": 1500, "waitMs": 0, "workMs": 11790, "travelMs": 205.2 }
       },
       "sinceFault": { "atMs": 3000, "fault": { "kind": "slow", "node": "billing", "factor": 5 } }
     },
     "receipts": {
-      "samples": 12,
+      "samples": 10.26,
       "p50": 1500,
       "p95": 1500,
       "p99": 1500,
       "waitMs": 0,
-      "workMs": 14400,
-      "travelMs": 360,
+      "workMs": 11790,
+      "travelMs": 307.8,
       "byType": {
-        "OrderPlaced": { "samples": 12, "p50": 1500, "p95": 1500, "p99": 1500, "waitMs": 0, "workMs": 14400, "travelMs": 360 }
+        "OrderPlaced": { "samples": 10.26, "p50": 1500, "p95": 1500, "p99": 1500, "waitMs": 0, "workMs": 11790, "travelMs": 307.8 }
       },
       "sinceFault": { "atMs": 3000, "fault": { "kind": "slow", "node": "billing", "factor": 5 } }
     }
@@ -677,28 +677,28 @@
   {
     "time": 5600,
     "billing": {
-      "samples": 13,
+      "samples": 10.26,
       "p50": 1500,
       "p95": 1500,
       "p99": 1500,
       "waitMs": 0,
-      "workMs": 15900,
-      "travelMs": 260,
+      "workMs": 11790,
+      "travelMs": 205.2,
       "byType": {
-        "OrderPlaced": { "samples": 13, "p50": 1500, "p95": 1500, "p99": 1500, "waitMs": 0, "workMs": 15900, "travelMs": 260 }
+        "OrderPlaced": { "samples": 10.26, "p50": 1500, "p95": 1500, "p99": 1500, "waitMs": 0, "workMs": 11790, "travelMs": 205.2 }
       },
       "sinceFault": { "atMs": 3000, "fault": { "kind": "slow", "node": "billing", "factor": 5 } }
     },
     "receipts": {
-      "samples": 13,
+      "samples": 10.26,
       "p50": 1500,
       "p95": 1500,
       "p99": 1500,
       "waitMs": 0,
-      "workMs": 15900,
-      "travelMs": 390,
+      "workMs": 11790,
+      "travelMs": 307.8,
       "byType": {
-        "OrderPlaced": { "samples": 13, "p50": 1500, "p95": 1500, "p99": 1500, "waitMs": 0, "workMs": 15900, "travelMs": 390 }
+        "OrderPlaced": { "samples": 10.26, "p50": 1500, "p95": 1500, "p99": 1500, "waitMs": 0, "workMs": 11790, "travelMs": 307.8 }
       },
       "sinceFault": { "atMs": 3000, "fault": { "kind": "slow", "node": "billing", "factor": 5 } }
     }
@@ -706,28 +706,28 @@
   {
     "time": 5800,
     "billing": {
-      "samples": 13,
+      "samples": 10.26,
       "p50": 1500,
       "p95": 1500,
       "p99": 1500,
       "waitMs": 0,
-      "workMs": 15900,
-      "travelMs": 260,
+      "workMs": 11790,
+      "travelMs": 205.2,
       "byType": {
-        "OrderPlaced": { "samples": 13, "p50": 1500, "p95": 1500, "p99": 1500, "waitMs": 0, "workMs": 15900, "travelMs": 260 }
+        "OrderPlaced": { "samples": 10.26, "p50": 1500, "p95": 1500, "p99": 1500, "waitMs": 0, "workMs": 11790, "travelMs": 205.2 }
       },
       "sinceFault": { "atMs": 3000, "fault": { "kind": "slow", "node": "billing", "factor": 5 } }
     },
     "receipts": {
-      "samples": 13,
+      "samples": 10.26,
       "p50": 1500,
       "p95": 1500,
       "p99": 1500,
       "waitMs": 0,
-      "workMs": 15900,
-      "travelMs": 390,
+      "workMs": 11790,
+      "travelMs": 307.8,
       "byType": {
-        "OrderPlaced": { "samples": 13, "p50": 1500, "p95": 1500, "p99": 1500, "waitMs": 0, "workMs": 15900, "travelMs": 390 }
+        "OrderPlaced": { "samples": 10.26, "p50": 1500, "p95": 1500, "p99": 1500, "waitMs": 0, "workMs": 11790, "travelMs": 307.8 }
       },
       "sinceFault": { "atMs": 3000, "fault": { "kind": "slow", "node": "billing", "factor": 5 } }
     }
@@ -737,27 +737,27 @@
     "time": 6200,
     "billing": {
       "samples": 2,
-      "p50": 2010,
-      "p95": 2010,
-      "p99": 2010,
-      "waitMs": 1020,
+      "p50": 2310,
+      "p95": 2310,
+      "p99": 2310,
+      "waitMs": 1568,
       "workMs": 3000,
       "travelMs": 40,
       "byType": {
-        "OrderPlaced": { "samples": 2, "p50": 2010, "p95": 2010, "p99": 2010, "waitMs": 1020, "workMs": 3000, "travelMs": 40 }
+        "OrderPlaced": { "samples": 2, "p50": 2310, "p95": 2310, "p99": 2310, "waitMs": 1568, "workMs": 3000, "travelMs": 40 }
       },
       "sinceFault": { "atMs": 6000, "fault": { "kind": "slow", "node": "billing", "factor": 1 } }
     },
     "receipts": {
       "samples": 2,
-      "p50": 2010,
-      "p95": 2010,
-      "p99": 2010,
-      "waitMs": 1020,
+      "p50": 2310,
+      "p95": 2310,
+      "p99": 2310,
+      "waitMs": 1568,
       "workMs": 3000,
       "travelMs": 60,
       "byType": {
-        "OrderPlaced": { "samples": 2, "p50": 2010, "p95": 2010, "p99": 2010, "waitMs": 1020, "workMs": 3000, "travelMs": 60 }
+        "OrderPlaced": { "samples": 2, "p50": 2310, "p95": 2310, "p99": 2310, "waitMs": 1568, "workMs": 3000, "travelMs": 60 }
       },
       "sinceFault": { "atMs": 6000, "fault": { "kind": "slow", "node": "billing", "factor": 1 } }
     }
@@ -765,28 +765,28 @@
   {
     "time": 6400,
     "billing": {
-      "samples": 5,
-      "p50": 2010,
-      "p95": 2010,
-      "p99": 2010,
-      "waitMs": 3060,
-      "workMs": 6300,
-      "travelMs": 100,
+      "samples": 5.19,
+      "p50": 2310,
+      "p95": 2310,
+      "p99": 2310,
+      "waitMs": 4989,
+      "workMs": 6357,
+      "travelMs": 103.8,
       "byType": {
-        "OrderPlaced": { "samples": 5, "p50": 2010, "p95": 2010, "p99": 2010, "waitMs": 3060, "workMs": 6300, "travelMs": 100 }
+        "OrderPlaced": { "samples": 5.19, "p50": 2310, "p95": 2310, "p99": 2310, "waitMs": 4989, "workMs": 6357, "travelMs": 103.8 }
       },
       "sinceFault": { "atMs": 6000, "fault": { "kind": "slow", "node": "billing", "factor": 1 } }
     },
     "receipts": {
-      "samples": 5,
-      "p50": 2010,
-      "p95": 2010,
-      "p99": 2010,
-      "waitMs": 3060,
-      "workMs": 6300,
-      "travelMs": 150,
+      "samples": 5.19,
+      "p50": 2310,
+      "p95": 2310,
+      "p99": 2310,
+      "waitMs": 4989,
+      "workMs": 6357,
+      "travelMs": 155.7,
       "byType": {
-        "OrderPlaced": { "samples": 5, "p50": 2010, "p95": 2010, "p99": 2010, "waitMs": 3060, "workMs": 6300, "travelMs": 150 }
+        "OrderPlaced": { "samples": 5.19, "p50": 2310, "p95": 2310, "p99": 2310, "waitMs": 4989, "workMs": 6357, "travelMs": 155.7 }
       },
       "sinceFault": { "atMs": 6000, "fault": { "kind": "slow", "node": "billing", "factor": 1 } }
     }
@@ -794,28 +794,28 @@
   {
     "time": 6600,
     "billing": {
-      "samples": 9,
-      "p50": 2010,
-      "p95": 2010,
-      "p99": 2010,
-      "waitMs": 6120,
-      "workMs": 9900,
-      "travelMs": 180,
+      "samples": 9.19,
+      "p50": 2222.416954479012,
+      "p95": 2310,
+      "p99": 2310,
+      "waitMs": 9655,
+      "workMs": 9957,
+      "travelMs": 183.79999999999998,
       "byType": {
-        "OrderPlaced": { "samples": 9, "p50": 2010, "p95": 2010, "p99": 2010, "waitMs": 6120, "workMs": 9900, "travelMs": 180 }
+        "OrderPlaced": { "samples": 9.19, "p50": 2222.416954479012, "p95": 2310, "p99": 2310, "waitMs": 9655, "workMs": 9957, "travelMs": 183.79999999999998 }
       },
       "sinceFault": { "atMs": 6000, "fault": { "kind": "slow", "node": "billing", "factor": 1 } }
     },
     "receipts": {
-      "samples": 9,
-      "p50": 2010,
-      "p95": 2010,
-      "p99": 2010,
-      "waitMs": 6120,
-      "workMs": 9900,
-      "travelMs": 270,
+      "samples": 9.19,
+      "p50": 2222.416954479012,
+      "p95": 2310,
+      "p99": 2310,
+      "waitMs": 9655,
+      "workMs": 9957,
+      "travelMs": 275.7,
       "byType": {
-        "OrderPlaced": { "samples": 9, "p50": 2010, "p95": 2010, "p99": 2010, "waitMs": 6120, "workMs": 9900, "travelMs": 270 }
+        "OrderPlaced": { "samples": 9.19, "p50": 2222.416954479012, "p95": 2310, "p99": 2310, "waitMs": 9655, "workMs": 9957, "travelMs": 275.7 }
       },
       "sinceFault": { "atMs": 6000, "fault": { "kind": "slow", "node": "billing", "factor": 1 } }
     }
@@ -823,28 +823,28 @@
   {
     "time": 6800,
     "billing": {
-      "samples": 15,
-      "p50": 2050,
-      "p95": 2050,
-      "p99": 2050,
-      "waitMs": 10880,
-      "workMs": 14100,
-      "travelMs": 300,
+      "samples": 14.64,
+      "p50": 1984.3008522134035,
+      "p95": 2310,
+      "p99": 2310,
+      "waitMs": 16695.5,
+      "workMs": 13104,
+      "travelMs": 292.79999999999995,
       "byType": {
-        "OrderPlaced": { "samples": 15, "p50": 2050, "p95": 2050, "p99": 2050, "waitMs": 10880, "workMs": 14100, "travelMs": 300 }
+        "OrderPlaced": { "samples": 14.64, "p50": 1984.3008522134035, "p95": 2310, "p99": 2310, "waitMs": 16695.5, "workMs": 13104, "travelMs": 292.79999999999995 }
       },
       "sinceFault": { "atMs": 6000, "fault": { "kind": "slow", "node": "billing", "factor": 1 } }
     },
     "receipts": {
-      "samples": 15,
-      "p50": 2050,
-      "p95": 2050,
-      "p99": 2050,
-      "waitMs": 10880,
-      "workMs": 14100,
-      "travelMs": 450,
+      "samples": 14.64,
+      "p50": 1984.3008522134035,
+      "p95": 2310,
+      "p99": 2310,
+      "waitMs": 16695.5,
+      "workMs": 13104,
+      "travelMs": 439.2,
       "byType": {
-        "OrderPlaced": { "samples": 15, "p50": 2050, "p95": 2050, "p99": 2050, "waitMs": 10880, "workMs": 14100, "travelMs": 450 }
+        "OrderPlaced": { "samples": 14.64, "p50": 1984.3008522134035, "p95": 2310, "p99": 2310, "waitMs": 16695.5, "workMs": 13104, "travelMs": 439.2 }
       },
       "sinceFault": { "atMs": 6000, "fault": { "kind": "slow", "node": "billing", "factor": 1 } }
     }
@@ -852,28 +852,28 @@
   {
     "time": 7000,
     "billing": {
-      "samples": 21,
-      "p50": 1412.3861523248186,
-      "p95": 2160,
-      "p99": 2160,
-      "waitMs": 14980,
-      "workMs": 17100,
-      "travelMs": 420,
+      "samples": 19.83,
+      "p50": 1984.3008522134035,
+      "p95": 2310,
+      "p99": 2310,
+      "waitMs": 22870.300000000003,
+      "workMs": 14661,
+      "travelMs": 396.59999999999997,
       "byType": {
-        "OrderPlaced": { "samples": 21, "p50": 1412.3861523248186, "p95": 2160, "p99": 2160, "waitMs": 14980, "workMs": 17100, "travelMs": 420 }
+        "OrderPlaced": { "samples": 19.83, "p50": 1984.3008522134035, "p95": 2310, "p99": 2310, "waitMs": 22870.300000000003, "workMs": 14661, "travelMs": 396.59999999999997 }
       },
       "sinceFault": { "atMs": 6000, "fault": { "kind": "slow", "node": "billing", "factor": 1 } }
     },
     "receipts": {
-      "samples": 21,
-      "p50": 1412.3861523248186,
-      "p95": 2160,
-      "p99": 2160,
-      "waitMs": 14980,
-      "workMs": 17100,
-      "travelMs": 630,
+      "samples": 19.83,
+      "p50": 1984.3008522134035,
+      "p95": 2310,
+      "p99": 2310,
+      "waitMs": 22870.300000000003,
+      "workMs": 14661,
+      "travelMs": 594.9000000000001,
       "byType": {
-        "OrderPlaced": { "samples": 21, "p50": 1412.3861523248186, "p95": 2160, "p99": 2160, "waitMs": 14980, "workMs": 17100, "travelMs": 630 }
+        "OrderPlaced": { "samples": 19.83, "p50": 1984.3008522134035, "p95": 2310, "p99": 2310, "waitMs": 22870.300000000003, "workMs": 14661, "travelMs": 594.9000000000001 }
       },
       "sinceFault": { "atMs": 6000, "fault": { "kind": "slow", "node": "billing", "factor": 1 } }
     }
@@ -881,28 +881,28 @@
   {
     "time": 7200,
     "billing": {
-      "samples": 27,
-      "p50": 1412.3861523248186,
-      "p95": 2222.416954479012,
-      "p99": 2270,
-      "waitMs": 17650,
-      "workMs": 20100,
-      "travelMs": 540,
+      "samples": 24.09,
+      "p50": 1771.6971894762528,
+      "p95": 2310,
+      "p99": 2310,
+      "waitMs": 26735.500000000004,
+      "workMs": 15939,
+      "travelMs": 481.79999999999995,
       "byType": {
-        "OrderPlaced": { "samples": 27, "p50": 1412.3861523248186, "p95": 2222.416954479012, "p99": 2270, "waitMs": 17650, "workMs": 20100, "travelMs": 540 }
+        "OrderPlaced": { "samples": 24.09, "p50": 1771.6971894762528, "p95": 2310, "p99": 2310, "waitMs": 26735.500000000004, "workMs": 15939, "travelMs": 481.79999999999995 }
       },
       "sinceFault": { "atMs": 6000, "fault": { "kind": "slow", "node": "billing", "factor": 1 } }
     },
     "receipts": {
-      "samples": 27,
-      "p50": 1412.3861523248186,
-      "p95": 2222.416954479012,
-      "p99": 2270,
-      "waitMs": 17650,
-      "workMs": 20100,
-      "travelMs": 810,
+      "samples": 24.09,
+      "p50": 1771.6971894762528,
+      "p95": 2310,
+      "p99": 2310,
+      "waitMs": 26735.500000000004,
+      "workMs": 15939,
+      "travelMs": 722.7,
       "byType": {
-        "OrderPlaced": { "samples": 27, "p50": 1412.3861523248186, "p95": 2222.416954479012, "p99": 2270, "waitMs": 17650, "workMs": 20100, "travelMs": 810 }
+        "OrderPlaced": { "samples": 24.09, "p50": 1771.6971894762528, "p95": 2310, "p99": 2310, "waitMs": 26735.500000000004, "workMs": 15939, "travelMs": 722.7 }
       },
       "sinceFault": { "atMs": 6000, "fault": { "kind": "slow", "node": "billing", "factor": 1 } }
     }
@@ -910,28 +910,28 @@
   {
     "time": 7400,
     "billing": {
-      "samples": 31,
-      "p50": 1261.0590645757309,
-      "p95": 2222.416954479012,
-      "p99": 2270,
-      "waitMs": 18070,
-      "workMs": 21300,
-      "travelMs": 620,
+      "samples": 29.54,
+      "p50": 1771.6971894762528,
+      "p95": 2310,
+      "p99": 2310,
+      "waitMs": 30145.000000000004,
+      "workMs": 17574,
+      "travelMs": 590.8,
       "byType": {
-        "OrderPlaced": { "samples": 31, "p50": 1261.0590645757309, "p95": 2222.416954479012, "p99": 2270, "waitMs": 18070, "workMs": 21300, "travelMs": 620 }
+        "OrderPlaced": { "samples": 29.54, "p50": 1771.6971894762528, "p95": 2310, "p99": 2310, "waitMs": 30145.000000000004, "workMs": 17574, "travelMs": 590.8 }
       },
       "sinceFault": { "atMs": 6000, "fault": { "kind": "slow", "node": "billing", "factor": 1 } }
     },
     "receipts": {
-      "samples": 31,
-      "p50": 1261.0590645757309,
-      "p95": 2222.416954479012,
-      "p99": 2270,
-      "waitMs": 18070,
-      "workMs": 21300,
-      "travelMs": 930,
+      "samples": 29.54,
+      "p50": 1771.6971894762528,
+      "p95": 2310,
+      "p99": 2310,
+      "waitMs": 30145.000000000004,
+      "workMs": 17574,
+      "travelMs": 886.2,
       "byType": {
-        "OrderPlaced": { "samples": 31, "p50": 1261.0590645757309, "p95": 2222.416954479012, "p99": 2270, "waitMs": 18070, "workMs": 21300, "travelMs": 930 }
+        "OrderPlaced": { "samples": 29.54, "p50": 1771.6971894762528, "p95": 2310, "p99": 2310, "waitMs": 30145.000000000004, "workMs": 17574, "travelMs": 886.2 }
       },
       "sinceFault": { "atMs": 6000, "fault": { "kind": "slow", "node": "billing", "factor": 1 } }
     }
@@ -939,28 +939,28 @@
   {
     "time": 7600,
     "billing": {
-      "samples": 33,
-      "p50": 1261.0590645757309,
-      "p95": 2222.416954479012,
-      "p99": 2270,
-      "waitMs": 18070,
-      "workMs": 21900,
-      "travelMs": 660,
+      "samples": 34.73,
+      "p50": 1581.8724906037971,
+      "p95": 2310,
+      "p99": 2310,
+      "waitMs": 31811.600000000002,
+      "workMs": 19131,
+      "travelMs": 694.5999999999999,
       "byType": {
-        "OrderPlaced": { "samples": 33, "p50": 1261.0590645757309, "p95": 2222.416954479012, "p99": 2270, "waitMs": 18070, "workMs": 21900, "travelMs": 660 }
+        "OrderPlaced": { "samples": 34.73, "p50": 1581.8724906037971, "p95": 2310, "p99": 2310, "waitMs": 31811.600000000002, "workMs": 19131, "travelMs": 694.5999999999999 }
       },
       "sinceFault": { "atMs": 6000, "fault": { "kind": "slow", "node": "billing", "factor": 1 } }
     },
     "receipts": {
-      "samples": 33,
-      "p50": 1261.0590645757309,
-      "p95": 2222.416954479012,
-      "p99": 2270,
-      "waitMs": 18070,
-      "workMs": 21900,
-      "travelMs": 990,
+      "samples": 34.73,
+      "p50": 1581.8724906037971,
+      "p95": 2310,
+      "p99": 2310,
+      "waitMs": 31811.600000000002,
+      "workMs": 19131,
+      "travelMs": 1041.9,
       "byType": {
-        "OrderPlaced": { "samples": 33, "p50": 1261.0590645757309, "p95": 2222.416954479012, "p99": 2270, "waitMs": 18070, "workMs": 21900, "travelMs": 990 }
+        "OrderPlaced": { "samples": 34.73, "p50": 1581.8724906037971, "p95": 2310, "p99": 2310, "waitMs": 31811.600000000002, "workMs": 19131, "travelMs": 1041.9 }
       },
       "sinceFault": { "atMs": 6000, "fault": { "kind": "slow", "node": "billing", "factor": 1 } }
     }
@@ -968,28 +968,28 @@
   {
     "time": 7800,
     "billing": {
-      "samples": 35,
-      "p50": 1125.9455933711881,
-      "p95": 2222.416954479012,
-      "p99": 2270,
-      "waitMs": 18070,
-      "workMs": 22500,
-      "travelMs": 700,
+      "samples": 37.74,
+      "p50": 1412.3861523248186,
+      "p95": 2310,
+      "p99": 2310,
+      "waitMs": 32056.500000000004,
+      "workMs": 20034,
+      "travelMs": 754.8,
       "byType": {
-        "OrderPlaced": { "samples": 35, "p50": 1125.9455933711881, "p95": 2222.416954479012, "p99": 2270, "waitMs": 18070, "workMs": 22500, "travelMs": 700 }
+        "OrderPlaced": { "samples": 37.74, "p50": 1412.3861523248186, "p95": 2310, "p99": 2310, "waitMs": 32056.500000000004, "workMs": 20034, "travelMs": 754.8 }
       },
       "sinceFault": { "atMs": 6000, "fault": { "kind": "slow", "node": "billing", "factor": 1 } }
     },
     "receipts": {
-      "samples": 35,
-      "p50": 1125.9455933711881,
-      "p95": 2222.416954479012,
-      "p99": 2270,
-      "waitMs": 18070,
-      "workMs": 22500,
-      "travelMs": 1050,
+      "samples": 37.74,
+      "p50": 1412.3861523248186,
+      "p95": 2310,
+      "p99": 2310,
+      "waitMs": 32056.500000000004,
+      "workMs": 20034,
+      "travelMs": 1132.2,
       "byType": {
-        "OrderPlaced": { "samples": 35, "p50": 1125.9455933711881, "p95": 2222.416954479012, "p99": 2270, "waitMs": 18070, "workMs": 22500, "travelMs": 1050 }
+        "OrderPlaced": { "samples": 37.74, "p50": 1412.3861523248186, "p95": 2310, "p99": 2310, "waitMs": 32056.500000000004, "workMs": 20034, "travelMs": 1132.2 }
       },
       "sinceFault": { "atMs": 6000, "fault": { "kind": "slow", "node": "billing", "factor": 1 } }
     }
@@ -997,28 +997,28 @@
   {
     "time": 8000,
     "billing": {
-      "samples": 37,
-      "p50": 1125.9455933711881,
-      "p95": 2222.416954479012,
-      "p99": 2270,
-      "waitMs": 18070,
-      "workMs": 23100,
-      "travelMs": 740,
+      "samples": 39.74,
+      "p50": 1412.3861523248186,
+      "p95": 2310,
+      "p99": 2310,
+      "waitMs": 32056.500000000004,
+      "workMs": 20634,
+      "travelMs": 794.8,
       "byType": {
-        "OrderPlaced": { "samples": 37, "p50": 1125.9455933711881, "p95": 2222.416954479012, "p99": 2270, "waitMs": 18070, "workMs": 23100, "travelMs": 740 }
+        "OrderPlaced": { "samples": 39.74, "p50": 1412.3861523248186, "p95": 2310, "p99": 2310, "waitMs": 32056.500000000004, "workMs": 20634, "travelMs": 794.8 }
       },
       "sinceFault": { "atMs": 6000, "fault": { "kind": "slow", "node": "billing", "factor": 1 } }
     },
     "receipts": {
-      "samples": 37,
-      "p50": 1125.9455933711881,
-      "p95": 2222.416954479012,
-      "p99": 2270,
-      "waitMs": 18070,
-      "workMs": 23100,
-      "travelMs": 1110,
+      "samples": 39.74,
+      "p50": 1412.3861523248186,
+      "p95": 2310,
+      "p99": 2310,
+      "waitMs": 32056.500000000004,
+      "workMs": 20634,
+      "travelMs": 1192.2,
       "byType": {
-        "OrderPlaced": { "samples": 37, "p50": 1125.9455933711881, "p95": 2222.416954479012, "p99": 2270, "waitMs": 18070, "workMs": 23100, "travelMs": 1110 }
+        "OrderPlaced": { "samples": 39.74, "p50": 1412.3861523248186, "p95": 2310, "p99": 2310, "waitMs": 32056.500000000004, "workMs": 20634, "travelMs": 1192.2 }
       },
       "sinceFault": { "atMs": 6000, "fault": { "kind": "slow", "node": "billing", "factor": 1 } }
     }
@@ -1026,28 +1026,28 @@
   {
     "time": 8200,
     "billing": {
-      "samples": 39,
-      "p50": 1125.9455933711881,
-      "p95": 2222.416954479012,
-      "p99": 2270,
-      "waitMs": 18070,
-      "workMs": 23700,
-      "travelMs": 780,
+      "samples": 41.74,
+      "p50": 1261.0590645757309,
+      "p95": 2310,
+      "p99": 2310,
+      "waitMs": 32056.500000000004,
+      "workMs": 21234,
+      "travelMs": 834.8,
       "byType": {
-        "OrderPlaced": { "samples": 39, "p50": 1125.9455933711881, "p95": 2222.416954479012, "p99": 2270, "waitMs": 18070, "workMs": 23700, "travelMs": 780 }
+        "OrderPlaced": { "samples": 41.74, "p50": 1261.0590645757309, "p95": 2310, "p99": 2310, "waitMs": 32056.500000000004, "workMs": 21234, "travelMs": 834.8 }
       },
       "sinceFault": { "atMs": 6000, "fault": { "kind": "slow", "node": "billing", "factor": 1 } }
     },
     "receipts": {
-      "samples": 39,
-      "p50": 1125.9455933711881,
-      "p95": 2222.416954479012,
-      "p99": 2270,
-      "waitMs": 18070,
-      "workMs": 23700,
-      "travelMs": 1170,
+      "samples": 41.74,
+      "p50": 1261.0590645757309,
+      "p95": 2310,
+      "p99": 2310,
+      "waitMs": 32056.500000000004,
+      "workMs": 21234,
+      "travelMs": 1252.2,
       "byType": {
-        "OrderPlaced": { "samples": 39, "p50": 1125.9455933711881, "p95": 2222.416954479012, "p99": 2270, "waitMs": 18070, "workMs": 23700, "travelMs": 1170 }
+        "OrderPlaced": { "samples": 41.74, "p50": 1261.0590645757309, "p95": 2310, "p99": 2310, "waitMs": 32056.500000000004, "workMs": 21234, "travelMs": 1252.2 }
       },
       "sinceFault": { "atMs": 6000, "fault": { "kind": "slow", "node": "billing", "factor": 1 } }
     }
@@ -1055,28 +1055,28 @@
   {
     "time": 8400,
     "billing": {
-      "samples": 41,
-      "p50": 1005.3085655099893,
-      "p95": 2222.416954479012,
-      "p99": 2270,
-      "waitMs": 18070,
-      "workMs": 24300,
-      "travelMs": 820,
+      "samples": 43.74,
+      "p50": 1261.0590645757309,
+      "p95": 2310,
+      "p99": 2310,
+      "waitMs": 32056.500000000004,
+      "workMs": 21834,
+      "travelMs": 874.8,
       "byType": {
-        "OrderPlaced": { "samples": 41, "p50": 1005.3085655099893, "p95": 2222.416954479012, "p99": 2270, "waitMs": 18070, "workMs": 24300, "travelMs": 820 }
+        "OrderPlaced": { "samples": 43.74, "p50": 1261.0590645757309, "p95": 2310, "p99": 2310, "waitMs": 32056.500000000004, "workMs": 21834, "travelMs": 874.8 }
       },
       "sinceFault": { "atMs": 6000, "fault": { "kind": "slow", "node": "billing", "factor": 1 } }
     },
     "receipts": {
-      "samples": 41,
-      "p50": 1005.3085655099893,
-      "p95": 2222.416954479012,
-      "p99": 2270,
-      "waitMs": 18070,
-      "workMs": 24300,
-      "travelMs": 1230,
+      "samples": 43.74,
+      "p50": 1261.0590645757309,
+      "p95": 2310,
+      "p99": 2310,
+      "waitMs": 32056.500000000004,
+      "workMs": 21834,
+      "travelMs": 1312.2,
       "byType": {
-        "OrderPlaced": { "samples": 41, "p50": 1005.3085655099893, "p95": 2222.416954479012, "p99": 2270, "waitMs": 18070, "workMs": 24300, "travelMs": 1230 }
+        "OrderPlaced": { "samples": 43.74, "p50": 1261.0590645757309, "p95": 2310, "p99": 2310, "waitMs": 32056.500000000004, "workMs": 21834, "travelMs": 1312.2 }
       },
       "sinceFault": { "atMs": 6000, "fault": { "kind": "slow", "node": "billing", "factor": 1 } }
     }
@@ -1084,28 +1084,28 @@
   {
     "time": 8600,
     "billing": {
-      "samples": 43,
-      "p50": 897.5969334910618,
-      "p95": 2222.416954479012,
-      "p99": 2270,
-      "waitMs": 18070,
-      "workMs": 24900,
-      "travelMs": 860,
+      "samples": 45.74,
+      "p50": 1261.0590645757309,
+      "p95": 2310,
+      "p99": 2310,
+      "waitMs": 32056.500000000004,
+      "workMs": 22434,
+      "travelMs": 914.8,
       "byType": {
-        "OrderPlaced": { "samples": 43, "p50": 897.5969334910618, "p95": 2222.416954479012, "p99": 2270, "waitMs": 18070, "workMs": 24900, "travelMs": 860 }
+        "OrderPlaced": { "samples": 45.74, "p50": 1261.0590645757309, "p95": 2310, "p99": 2310, "waitMs": 32056.500000000004, "workMs": 22434, "travelMs": 914.8 }
       },
       "sinceFault": { "atMs": 6000, "fault": { "kind": "slow", "node": "billing", "factor": 1 } }
     },
     "receipts": {
-      "samples": 43,
-      "p50": 897.5969334910618,
-      "p95": 2222.416954479012,
-      "p99": 2270,
-      "waitMs": 18070,
-      "workMs": 24900,
-      "travelMs": 1290,
+      "samples": 45.74,
+      "p50": 1261.0590645757309,
+      "p95": 2310,
+      "p99": 2310,
+      "waitMs": 32056.500000000004,
+      "workMs": 22434,
+      "travelMs": 1372.2,
       "byType": {
-        "OrderPlaced": { "samples": 43, "p50": 897.5969334910618, "p95": 2222.416954479012, "p99": 2270, "waitMs": 18070, "workMs": 24900, "travelMs": 1290 }
+        "OrderPlaced": { "samples": 45.74, "p50": 1261.0590645757309, "p95": 2310, "p99": 2310, "waitMs": 32056.500000000004, "workMs": 22434, "travelMs": 1372.2 }
       },
       "sinceFault": { "atMs": 6000, "fault": { "kind": "slow", "node": "billing", "factor": 1 } }
     }
@@ -1113,28 +1113,28 @@
   {
     "time": 8800,
     "billing": {
-      "samples": 45,
-      "p50": 897.5969334910618,
-      "p95": 2222.416954479012,
-      "p99": 2270,
-      "waitMs": 18070,
-      "workMs": 25500,
-      "travelMs": 900,
+      "samples": 47.74,
+      "p50": 1261.0590645757309,
+      "p95": 2310,
+      "p99": 2310,
+      "waitMs": 32056.500000000004,
+      "workMs": 23034,
+      "travelMs": 954.8,
       "byType": {
-        "OrderPlaced": { "samples": 45, "p50": 897.5969334910618, "p95": 2222.416954479012, "p99": 2270, "waitMs": 18070, "workMs": 25500, "travelMs": 900 }
+        "OrderPlaced": { "samples": 47.74, "p50": 1261.0590645757309, "p95": 2310, "p99": 2310, "waitMs": 32056.500000000004, "workMs": 23034, "travelMs": 954.8 }
       },
       "sinceFault": { "atMs": 6000, "fault": { "kind": "slow", "node": "billing", "factor": 1 } }
     },
     "receipts": {
-      "samples": 45,
-      "p50": 897.5969334910618,
-      "p95": 2222.416954479012,
-      "p99": 2270,
-      "waitMs": 18070,
-      "workMs": 25500,
-      "travelMs": 1350,
+      "samples": 47.74,
+      "p50": 1261.0590645757309,
+      "p95": 2310,
+      "p99": 2310,
+      "waitMs": 32056.500000000004,
+      "workMs": 23034,
+      "travelMs": 1432.2,
       "byType": {
-        "OrderPlaced": { "samples": 45, "p50": 897.5969334910618, "p95": 2222.416954479012, "p99": 2270, "waitMs": 18070, "workMs": 25500, "travelMs": 1350 }
+        "OrderPlaced": { "samples": 47.74, "p50": 1261.0590645757309, "p95": 2310, "p99": 2310, "waitMs": 32056.500000000004, "workMs": 23034, "travelMs": 1432.2 }
       },
       "sinceFault": { "atMs": 6000, "fault": { "kind": "slow", "node": "billing", "factor": 1 } }
     }
@@ -1142,28 +1142,28 @@
   {
     "time": 9000,
     "billing": {
-      "samples": 46,
-      "p50": 801.4258334741622,
-      "p95": 2222.416954479012,
-      "p99": 2270,
-      "waitMs": 18070,
-      "workMs": 25800,
-      "travelMs": 920,
+      "samples": 48.74,
+      "p50": 1261.0590645757309,
+      "p95": 2310,
+      "p99": 2310,
+      "waitMs": 32056.500000000004,
+      "workMs": 23334,
+      "travelMs": 974.8,
       "byType": {
-        "OrderPlaced": { "samples": 46, "p50": 801.4258334741622, "p95": 2222.416954479012, "p99": 2270, "waitMs": 18070, "workMs": 25800, "travelMs": 920 }
+        "OrderPlaced": { "samples": 48.74, "p50": 1261.0590645757309, "p95": 2310, "p99": 2310, "waitMs": 32056.500000000004, "workMs": 23334, "travelMs": 974.8 }
       },
       "sinceFault": { "atMs": 6000, "fault": { "kind": "slow", "node": "billing", "factor": 1 } }
     },
     "receipts": {
-      "samples": 46,
-      "p50": 801.4258334741622,
-      "p95": 2222.416954479012,
-      "p99": 2270,
-      "waitMs": 18070,
-      "workMs": 25800,
-      "travelMs": 1380,
+      "samples": 48.74,
+      "p50": 1261.0590645757309,
+      "p95": 2310,
+      "p99": 2310,
+      "waitMs": 32056.500000000004,
+      "workMs": 23334,
+      "travelMs": 1462.2,
       "byType": {
-        "OrderPlaced": { "samples": 46, "p50": 801.4258334741622, "p95": 2222.416954479012, "p99": 2270, "waitMs": 18070, "workMs": 25800, "travelMs": 1380 }
+        "OrderPlaced": { "samples": 48.74, "p50": 1261.0590645757309, "p95": 2310, "p99": 2310, "waitMs": 32056.500000000004, "workMs": 23334, "travelMs": 1462.2 }
       },
       "sinceFault": { "atMs": 6000, "fault": { "kind": "slow", "node": "billing", "factor": 1 } }
     }

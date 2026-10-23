@@ -45,8 +45,12 @@ A partial dot is part of a dot split at one instant, and carries its own represe
 dot carries `N`. This is the one represented size: admission, the `min(1, r)` room gate, threads, pools,
 CPU, residence, quotas and ceilings are sized from it, and every counter adds `r / N` dots, so a split's
 parts sum to their dot. Reports round counters to 1e-9 dots. Width only caps the weight a cohort is
-granted; it never changes `r`. Queue depths, lag and in-system counts still count messages, and latency
-samples are unweighted. Nothing splits a dot yet: the engine plumbing comes first.
+granted; it never changes `r`. In-system counts count messages; queue depths and lag count dots, and a
+latency sample weighs its dots, so a split dot adds up to one sample.
+
+A broker hands out a dot larger than its consumer's prefetch room in parts, and shares a dot among
+competing consumers (`docs/release-notes/2026-10-22-sampling-broker-units.md`). The throttle split,
+pooled-deadline cohorts and the resilience kit build on the same parts.
 
 For logical hold `H`, ordinary blocking turnaround includes `T = H + ADMISSION_LAG_MS`, where
 `ADMISSION_LAG_MS = STEP = 10 ms`. The reservation releases no earlier than retirement, at
@@ -238,10 +242,17 @@ accept parallel work; no ineffective new controls are shown.
   edge when the consumer can take it (status `up`), so lag/backlog visibly builds when a consumer is slow,
   paused or down.
 - **A delivery takes its consumer's slot when it arrives, not when it leaves the broker.** Travel is pipelined:
-  the broker keeps at most `units + ⌈units × travelMs ÷ latencyMs⌉ + 1` deliveries outstanding (travelling,
+  the broker keeps at most `units + ⌈units × travelMs ÷ latencyMs⌉ + 1` real requests outstanding (travelling,
   waiting at the consumer, or in work) against `units` slots, enough to keep every slot busy plus a prefetch of
-  one. For a processor `units` is `activeReplicas × concurrency` ÷ scale (a sampled dot costs `scale`
-  messages of service budget), so at a sampling scale the backlog stays at the broker. A non-processor target with
+  one. For a processor `units` is `activeReplicas × concurrency` real requests at any scale, counted with `unitsOf`, so
+  at a sampling scale a dot larger than the room is delivered in parts (each, and the rest left queued, at least one
+  real request) and the backlog stays at the broker, as at scale 1. Competing consumers share a dot: the next ones in
+  round-robin order (at most one per real request) take max-min fair parts capped by their windows (`shareOut` in
+  `src/sim/brokerDelivery.ts`: equal, what a capped one can't take going to the others equally, so route order
+  doesn't matter), as scale 1 alternates a burst's members, and the consumers share a group's room. Each route's room is its consumer's window over that route, as on master (it depends on the route's travel time), so parallel routes to one consumer each have their own: a known gap at sampling scales ([backlog](backlog/2026-10-22-sampling-shared-prefetch-across-routes.md)). A
+  deny route is decided before any capacity: when it's the next ready route it takes the dot whole, whatever the
+  consumers' or the group's room. Stores and gateways serve a dot as one message,
+  so their window counts dots. A non-processor target with
   no service time (a broker, a sink) is never the limit, so a topic → queue hop builds no lag; a 0 ms processor is
   paced as one tick (10 ms), so a burst can't pull a whole backlog onto the edge. A broker-fed
   consumer therefore drains at `activeReplicas × concurrency × 1000 ÷ latencyMs`, what capacity analysis, the heat

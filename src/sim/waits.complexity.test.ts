@@ -107,3 +107,53 @@ it("does not visit thousands of held calls on each sampled resource admission", 
   expect(e.snapshot().nodes.caller.threads?.waiting).toBe(2100);
   expect(visits).toBe(0);
 });
+
+it("admits a burst with constant-time occupancy reads: work visits grow linearly (review of #237)", () => {
+  // Occupancy counts work by its dots. Rescanning the working set for every admission made a burst quadratic
+  // (2,000 messages into a 1 s store: 1,999,000 visits in one tick); a cached sum keeps it linear.
+  function visits(n: number) {
+    let count = 0;
+    const patched = new WeakSet<object>();
+    const e = createEngine({
+      seed: 1,
+      maxParticles: 0,
+      verifyResources(state) {
+        for (const node of state.nodes) {
+          const working = (node as unknown as { workQueues?: { working: unknown[] } }).workQueues?.working;
+          if (!working || patched.has(working)) continue;
+          patched.add(working);
+          Object.defineProperty(working, Symbol.iterator, {
+            configurable: true,
+            *value(this: unknown[]) {
+              for (let i = 0; i < this.length; i++) {
+                count++;
+                yield this[i];
+              }
+            },
+          });
+        }
+      },
+    });
+    e.load({
+      format: "diagrams/v2",
+      planning: { revision: "p3-w1" },
+      title: "Burst",
+      nodes: [
+        { id: "source", stencil: "client.user", label: "Source", x: 0, y: 0, props: { ratePerSec: 0 } },
+        { id: "store", stencil: "generic.database", label: "Store", x: 0, y: 0, props: { latencyMs: 1000, jitter: 0 } },
+      ],
+      edges: [{ id: "write", from: "source", to: "store", props: { travelMs: 10 } }],
+    });
+    e.step(10);
+    e.inject("store", 1);
+    e.step(10);
+    count = 0;
+    e.inject("store", n);
+    e.step(10);
+    expect(e.snapshot().nodes.store.inFlight).toBeGreaterThan(n / 2);
+    return count;
+  }
+  const small = visits(2000),
+    large = visits(4000);
+  expect(large).toBeLessThanOrEqual(2.5 * small);
+});

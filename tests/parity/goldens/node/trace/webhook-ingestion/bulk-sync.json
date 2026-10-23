@@ -29,18 +29,18 @@
     { "t": 1360, "kind": "arrive", "id": 23, "type": "WebhookEvent", "node": "workers", "edge": "queue-to-workers" },
     { "t": 1360, "kind": "start", "id": 23, "type": "WebhookEvent", "node": "workers" },
     { "t": 1520, "kind": "done", "id": 23, "type": "WebhookEvent", "node": "workers" },
-    { "t": 1520, "kind": "copy", "id": 130, "type": "PartnerChangeApplied", "node": "workers", "parent": 23 },
+    { "t": 1520, "kind": "copy", "id": 131, "type": "PartnerChangeApplied", "node": "workers", "parent": 23 },
     { "t": 1520, "kind": "send", "id": 23, "type": "PartnerChangeApplied", "node": "workers", "edge": "workers-to-dedupe", "via": "message", "until": 1720 },
-    { "t": 1520, "kind": "send", "id": 130, "type": "PartnerChangeApplied", "node": "workers", "edge": "workers-to-integration-db", "via": "message", "until": 1720 },
+    { "t": 1520, "kind": "send", "id": 131, "type": "PartnerChangeApplied", "node": "workers", "edge": "workers-to-integration-db", "via": "message", "until": 1720 },
     { "t": 1720, "kind": "arrive", "id": 23, "type": "PartnerChangeApplied", "node": "dedupe", "edge": "workers-to-dedupe" },
-    { "t": 1720, "kind": "arrive", "id": 130, "type": "PartnerChangeApplied", "node": "integration-db", "edge": "workers-to-integration-db" },
+    { "t": 1720, "kind": "arrive", "id": 131, "type": "PartnerChangeApplied", "node": "integration-db", "edge": "workers-to-integration-db" },
     { "t": 1720, "kind": "send", "id": 23, "type": "PartnerChangeApplied", "node": "dedupe", "edge": "workers-to-dedupe", "via": "reply", "until": 1920 },
     { "t": 1720, "kind": "done", "id": 23, "type": "PartnerChangeApplied", "node": "dedupe" },
     { "t": 1720, "kind": "end", "id": 23, "type": "PartnerChangeApplied", "node": "dedupe", "reason": "stored" },
-    { "t": 1720, "kind": "start", "id": 130, "type": "PartnerChangeApplied", "node": "integration-db" },
-    { "t": 1730, "kind": "send", "id": 130, "type": "PartnerChangeApplied", "node": "integration-db", "edge": "workers-to-integration-db", "via": "reply", "until": 1930 },
-    { "t": 1730, "kind": "done", "id": 130, "type": "PartnerChangeApplied", "node": "integration-db" },
-    { "t": 1730, "kind": "end", "id": 130, "type": "PartnerChangeApplied", "node": "integration-db", "reason": "stored" }
+    { "t": 1720, "kind": "start", "id": 131, "type": "PartnerChangeApplied", "node": "integration-db" },
+    { "t": 1730, "kind": "send", "id": 131, "type": "PartnerChangeApplied", "node": "integration-db", "edge": "workers-to-integration-db", "via": "reply", "until": 1930 },
+    { "t": 1730, "kind": "done", "id": 131, "type": "PartnerChangeApplied", "node": "integration-db" },
+    { "t": 1730, "kind": "end", "id": 131, "type": "PartnerChangeApplied", "node": "integration-db", "reason": "stored" }
   ],
   "journey": {
     "rootId": 1,
@@ -60,7 +60,7 @@
       { "key": "22", "kind": "hop", "t": 1040, "id": 23, "type": "WebhookEvent", "node": "queue", "from": "exchange", "edge": "exchange-to-queue", "sync": false, "latencyMs": 300, "waitMs": 0, "travelMs": 300, "renamed": false, "copy": true },
       { "key": "25", "kind": "hop", "t": 1340, "id": 23, "type": "WebhookEvent", "node": "workers", "from": "queue", "edge": "queue-to-workers", "sync": false, "latencyMs": 300, "waitMs": 0, "travelMs": 300, "renamed": false, "copy": true },
       { "key": "31", "kind": "hop", "t": 1700, "id": 23, "type": "PartnerChangeApplied", "node": "dedupe", "from": "workers", "edge": "workers-to-dedupe", "sync": true, "latencyMs": 360, "waitMs": 0, "processMs": 160, "travelMs": 200, "renamed": true, "copy": true },
-      { "key": "32", "kind": "hop", "t": 1700, "id": 130, "type": "PartnerChangeApplied", "node": "integration-db", "from": "workers", "edge": "workers-to-integration-db", "sync": true, "latencyMs": 360, "waitMs": 0, "processMs": 160, "travelMs": 200, "renamed": false, "copy": true }
+      { "key": "32", "kind": "hop", "t": 1700, "id": 131, "type": "PartnerChangeApplied", "node": "integration-db", "from": "workers", "edge": "workers-to-integration-db", "sync": true, "latencyMs": 360, "waitMs": 0, "processMs": 160, "travelMs": 200, "renamed": false, "copy": true }
     ],
     "visits": [
       { "id": 1, "node": "partners", "at": 0, "done": 0, "left": 0 },
@@ -71,11 +71,11 @@
       { "id": 23, "node": "exchange", "at": 740, "done": 740, "left": 740 },
       { "id": 23, "node": "queue", "at": 1040, "done": 1040, "left": 1040 },
       { "id": 23, "node": "workers", "at": 1340, "start": 1340, "done": 1500, "left": 1500 },
-      { "id": 130, "node": "workers", "at": 1340, "start": 1340, "done": 1500, "left": 1500 },
+      { "id": 131, "node": "workers", "at": 1340, "start": 1340, "done": 1500, "left": 1500 },
       { "id": 23, "node": "dedupe", "at": 1700, "done": 1700 },
-      { "id": 130, "node": "integration-db", "at": 1700, "start": 1700, "done": 1710 }
+      { "id": 131, "node": "integration-db", "at": 1700, "start": 1700, "done": 1710 }
     ],
-    "ids": [1, 23, 130],
+    "ids": [1, 23, 131],
     "copies": 2,
     "retries": 0,
     "failures": 0,
@@ -121,9 +121,9 @@
       { "kind": "arrow", "t": 740, "until": 1040, "from": "exchange", "to": "queue", "style": "async", "label": "WebhookEvent", "detail": "webhook.#", "id": 23, "type": "WebhookEvent" },
       { "kind": "arrow", "t": 1040, "until": 1340, "from": "queue", "to": "workers", "style": "async", "label": "WebhookEvent", "detail": "Prefetch 4", "id": 23, "type": "WebhookEvent" },
       { "kind": "arrow", "t": 1500, "until": 1700, "from": "workers", "to": "dedupe", "style": "sync", "label": "PartnerChangeApplied", "detail": "Idempotency check", "id": 23, "type": "PartnerChangeApplied" },
-      { "kind": "arrow", "t": 1500, "until": 1700, "from": "workers", "to": "integration-db", "style": "sync", "label": "PartnerChangeApplied", "detail": "Apply change", "id": 130, "type": "PartnerChangeApplied" },
+      { "kind": "arrow", "t": 1500, "until": 1700, "from": "workers", "to": "integration-db", "style": "sync", "label": "PartnerChangeApplied", "detail": "Apply change", "id": 131, "type": "PartnerChangeApplied" },
       { "kind": "arrow", "t": 1700, "until": 1900, "from": "dedupe", "to": "workers", "style": "reply", "label": "reply", "id": 23, "type": "PartnerChangeApplied" },
-      { "kind": "arrow", "t": 1710, "until": 1910, "from": "integration-db", "to": "workers", "style": "reply", "label": "reply", "id": 130, "type": "PartnerChangeApplied" }
+      { "kind": "arrow", "t": 1710, "until": 1910, "from": "integration-db", "to": "workers", "style": "reply", "label": "reply", "id": 131, "type": "PartnerChangeApplied" }
     ],
     "totalMs": 1710,
     "done": true,
@@ -293,7 +293,7 @@
         "tone": "plain"
       },
       { "kind": "travel", "msg": 23, "type": "PartnerChangeApplied", "edge": "workers-to-dedupe", "reverse": false, "start": 10142.300236765588, "duration": 1000, "realFrom": 1500, "realTo": 1700, "caption": "PartnerChangeApplied", "tone": "plain", "i": 18, "color": "#18a6b5", "rowKey": "31" },
-      { "kind": "travel", "msg": 130, "type": "PartnerChangeApplied", "edge": "workers-to-integration-db", "reverse": false, "start": 10142.300236765588, "duration": 1000, "realFrom": 1500, "realTo": 1700, "caption": "PartnerChangeApplied", "tone": "plain", "i": 19, "color": "#18a6b5", "rowKey": "32" },
+      { "kind": "travel", "msg": 131, "type": "PartnerChangeApplied", "edge": "workers-to-integration-db", "reverse": false, "start": 10142.300236765588, "duration": 1000, "realFrom": 1500, "realTo": 1700, "caption": "PartnerChangeApplied", "tone": "plain", "i": 19, "color": "#18a6b5", "rowKey": "32" },
       {
         "kind": "write",
         "msg": 23,
@@ -314,7 +314,7 @@
       { "kind": "reply", "msg": 23, "type": "PartnerChangeApplied", "edge": "workers-to-dedupe", "reverse": true, "start": 12042.300236765588, "duration": 600, "realFrom": 1700, "realTo": 1900, "i": 21, "color": "#18a6b5", "tone": "plain" },
       {
         "kind": "write",
-        "msg": 130,
+        "msg": 131,
         "type": "PartnerChangeApplied",
         "node": "integration-db",
         "anchor": { "edge": "workers-to-integration-db", "end": 1 },
@@ -329,7 +329,7 @@
         "tone": "plain",
         "short": "write PartnerChangeApplied · 10 ms"
       },
-      { "kind": "reply", "msg": 130, "type": "PartnerChangeApplied", "edge": "workers-to-integration-db", "reverse": true, "start": 12099.094138743041, "duration": 600, "realFrom": 1710, "realTo": 1910, "i": 23, "color": "#18a6b5", "tone": "plain" },
+      { "kind": "reply", "msg": 131, "type": "PartnerChangeApplied", "edge": "workers-to-integration-db", "reverse": true, "start": 12099.094138743041, "duration": 600, "realFrom": 1710, "realTo": 1910, "i": 23, "color": "#18a6b5", "tone": "plain" },
       { "kind": "end", "msg": 1, "type": "WebhookEvent", "node": "integration-db", "start": 12499.094138743041, "duration": 1200, "realFrom": 1710, "realTo": 1710, "caption": "Done · 1.71 s · 2 copies · 3 writes", "tone": "done", "i": 24, "color": "#309bd5" }
     ],
     "duration": 13699.094138743041,

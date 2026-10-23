@@ -1,3 +1,4 @@
+import { wholeDotTravelMs } from "../test/brokerFixtures";
 import { expect, it } from "vitest";
 import { createEngine } from "./engine";
 import { waitingFixture } from "../lab/waitingFixture";
@@ -583,6 +584,8 @@ it.each([0, 100])(
     };
     d.nodes[2].props = { api: { latencyMs: 10, errorRate: 1 }, jitter: 0 };
     d.edges[1].props = { travelMs: 10, networkDelayMs: 10, caller: { poolConnections: 1 } };
+    // One cohort at the worker: its window must hold the whole dot (a broker otherwise delivers it in parts).
+    d.edges[0].props = { travelMs: wholeDotTravelMs(10, 1, 100) };
     let cpu = 0;
     const e = createEngine({
       scale: 10,
@@ -594,7 +597,7 @@ it.each([0, 100])(
     });
     e.load(d);
     e.inject("source", 1);
-    for (let tick = 0; tick < 100 && !e.snapshot().nodes.caller.failed; tick++) e.step(10);
+    for (let tick = 0; tick < 200 && !e.snapshot().nodes.caller.failed; tick++) e.step(10);
     expect(e.snapshot().nodes.caller.failed).toBe(1);
     e.step(80);
     expect(cpu).toBeCloseTo(backoff ? 100 : 110);
@@ -620,6 +623,8 @@ it("shutdown cancels prior CPU tails without resetting the retained retry", () =
   };
   d.nodes[2].props = { api: { latencyMs: 10, errorRate: 1 }, jitter: 0 };
   d.edges[1].props = { travelMs: 10, networkDelayMs: 10, caller: { poolConnections: 1 } };
+  // One cohort at the worker: its window must hold the whole dot (a broker otherwise delivers it in parts).
+  d.edges[0].props = { travelMs: wholeDotTravelMs(10, 1, 100) };
   let state!: ResourceState;
   const e = createEngine({
     scale: 10,
@@ -631,7 +636,7 @@ it("shutdown cancels prior CPU tails without resetting the retained retry", () =
   });
   e.load(d);
   e.inject("source", 1);
-  for (let tick = 0; tick < 100 && !e.snapshot().nodes.caller.failed; tick++) e.step(10);
+  for (let tick = 0; tick < 200 && !e.snapshot().nodes.caller.failed; tick++) e.step(10);
   e.step(10);
   const node = () => [...state.nodes].find((n) => n.id === "caller")!;
   const retry = node().working.find((work) => (work.cpuBacklog ?? 0) > 0)!;

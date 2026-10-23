@@ -1,3 +1,4 @@
+import { wholeDotTravelMs } from "../test/brokerFixtures";
 import * as fleets from "./autoscaling";
 import { sampledParts } from "./sampledResources";
 import { describe, it, expect, vi } from "vitest";
@@ -559,11 +560,14 @@ describe("A1 CPU and fleet execution", () => {
     d.nodes[0].props = { partitions: 1, maxDeliveryCount: 3 };
     d.edges[0].kind = "async";
     Object.assign(d.nodes[1].props!, { concurrency: 1, latencyMs: 100, retry: "inplace", retryBackoffMs: 200 });
+    // One cohort at the worker: its window must hold the whole dot (a broker otherwise delivers it in parts).
+    d.edges[0].props = { ...d.edges[0].props, travelMs: wholeDotTravelMs(scale, 1, 100) };
     const e = engine(d, scale);
     e.inject("source", 1);
     e.step(10);
     e.setNodeStatus("worker", "down");
-    e.step(2000);
+    // Each of the three deliveries crosses the connection both ways.
+    e.step(2000 + 6 * (wholeDotTravelMs(scale, 1, 100) - 10));
     expect(e.frame().nodes.worker).toMatchObject({ failed: 3, inFlight: 0, resources: { executedCpuMs: 0 } });
     expect(e.frame().inSystem).toBe(0);
   });

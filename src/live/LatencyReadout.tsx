@@ -3,7 +3,7 @@ import { faultWindowLabel } from "../model/faultWords";
 import { t } from "../i18n";
 import { formatPercent } from "../i18n/format";
 import type { LatencyMetrics } from "../sim/types";
-import { latencyDuration, latencyLabel, latencySampling } from "./latencyFormat";
+import { latencyDuration, latencyLabel, latencySampling, sampleCount } from "./latencyFormat";
 
 /** The same sampled paths supply all percentiles and the breakdown. */
 export function LatencyReadout({
@@ -24,6 +24,8 @@ export function LatencyReadout({
     (latency.backoffMs ?? 0) +
     (compact ? 0 : latency.travelMs);
   const share = (ms: number) => formatPercent(total > 0 ? ms / total : 0);
+  const count = sampleCount(latency);
+  const change = latency.sinceFault && faultWindowLabel(latency.sinceFault.fault, diagram);
   return (
     <div className="lv-latency" data-testid={`node-latency-detail-${id}`}>
       <strong>{latency.callMs === undefined ? t("latency.heading") : t("threads.latency")}</strong>
@@ -59,13 +61,10 @@ export function LatencyReadout({
                 })}
       </div>
       <small data-testid={`node-latency-scope-${id}`}>
-        {latency.sinceFault
-          ? t("latency.faultScope", {
-              count: latency.samples,
-              change: faultWindowLabel(latency.sinceFault.fault, diagram),
-            })
+        {change !== undefined
+          ? t("latency.faultScope", { count, change })
           : compact
-            ? t("latency.finishedScope", { count: latency.samples })
+            ? t("latency.finishedScope", { count })
             : t("latency.scope")}
       </small>
     </div>
