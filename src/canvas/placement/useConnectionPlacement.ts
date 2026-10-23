@@ -48,6 +48,7 @@ export function useConnectionPlacement(
     (event, { nodeId, handleId }) => {
       if (!nodeId) return;
       clickConnect.current = false;
+      store.setState({ connectionClickStartHandle: null });
       hideTip();
       const wrap = wrapper.current;
       requestDots(true);
@@ -77,6 +78,8 @@ export function useConnectionPlacement(
         { kind: "connect", from: nodeId, fromSide, over: null },
         {
           via: "touches" in event ? "touch" : "mouse",
+          // XYHandle installs a fresh fromHandle before onConnectStart, even for the same dot.
+          capture: () => store.getState().connection.fromHandle,
           cancel: () => {
             store.getState().cancelConnection();
             store.setState({ connectionClickStartHandle: null });
