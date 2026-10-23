@@ -81,6 +81,19 @@ const freePlay = (slug: string) => {
 };
 
 describe("recent-feature showcases", () => {
+  it("shows the vendor edge storefront delivering receipts and payments within ten seconds", async () => {
+    const d = await loadExample("vendor-edge-storefront");
+    expect(validateDiagram(d)).toMatchObject({ ok: true });
+    expect(exampleMetadata["vendor-edge-storefront"].shows).toContain("vendorStencils");
+    const engine = createEngine();
+    engine.load(d);
+    engine.setTraffic(true);
+    for (let i = 0; i < 800; i++) engine.step(10);
+    const snapshot = engine.snapshot();
+    for (const id of ["cdn", "waf", "checkout", "receipts", "payments"])
+      expect(snapshot.nodes[id].processed, id).toBeGreaterThan(0);
+    for (const id of ["flags", "identity"]) expect(snapshot.nodes[id].processed, id).toBe(0);
+  });
   it("shows busy-thread scaling starting within ten seconds and draining on about ten pods", () => {
     const d = diagram("scale-on-busy-threads");
     expect(exampleMetadata["scale-on-busy-threads"].shows).toEqual(

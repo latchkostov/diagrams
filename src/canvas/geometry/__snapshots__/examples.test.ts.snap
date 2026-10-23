@@ -14261,6 +14261,134 @@ exports[`public examples route cleanly (estimated card sizes) > slow-payment-pro
 ]
 `;
 
+exports[`public examples route cleanly (estimated card sizes) > vendor-edge-storefront.json 1`] = `
+[
+  {
+    "id": "browse",
+    "points": [
+      {
+        "x": 220,
+        "y": 196,
+      },
+      {
+        "x": 340,
+        "y": 196,
+      },
+    ],
+  },
+  {
+    "id": "protect",
+    "points": [
+      {
+        "x": 560,
+        "y": 196,
+      },
+      {
+        "x": 680,
+        "y": 196,
+      },
+    ],
+  },
+  {
+    "id": "origin",
+    "points": [
+      {
+        "x": 900,
+        "y": 196,
+      },
+      {
+        "x": 960,
+        "y": 196,
+      },
+      {
+        "x": 960,
+        "y": 189,
+      },
+      {
+        "x": 1020,
+        "y": 189,
+      },
+    ],
+  },
+  {
+    "id": "store",
+    "points": [
+      {
+        "x": 1240,
+        "y": 189,
+      },
+      {
+        "x": 1300,
+        "y": 189,
+      },
+      {
+        "x": 1300,
+        "y": 96,
+      },
+      {
+        "x": 1360,
+        "y": 96,
+      },
+    ],
+  },
+  {
+    "id": "pay",
+    "points": [
+      {
+        "x": 1240,
+        "y": 203,
+      },
+      {
+        "x": 1300,
+        "y": 203,
+      },
+      {
+        "x": 1300,
+        "y": 296,
+      },
+      {
+        "x": 1360,
+        "y": 296,
+      },
+    ],
+  },
+  {
+    "id": "config",
+    "points": [
+      {
+        "x": 1130,
+        "y": 232,
+      },
+      {
+        "x": 1130,
+        "y": 420,
+      },
+    ],
+  },
+  {
+    "id": "authenticate",
+    "points": [
+      {
+        "x": 1020,
+        "y": 203,
+      },
+      {
+        "x": 960,
+        "y": 203,
+      },
+      {
+        "x": 960,
+        "y": 456,
+      },
+      {
+        "x": 900,
+        "y": 456,
+      },
+    ],
+  },
+]
+`;
+
 exports[`public examples route cleanly (estimated card sizes) > video-on-demand-pipeline.json 1`] = `
 [
   {

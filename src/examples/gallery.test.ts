@@ -116,6 +116,7 @@ describe("example gallery", () => {
   });
   it("tags each showcase only with features its configuration demonstrates", () => {
     const expected: Record<string, string[]> = {
+      "vendor-edge-storefront": ["vendorStencils"],
       "scale-on-busy-threads": ["requestsWait", "autoscaling"],
       "slow-payment-provider": ["requestsWait", "resilience", "faultDrills"],
       "retry-storm": ["requestsWait", "resilience", "faultDrills"],

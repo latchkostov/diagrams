@@ -1,0 +1,27 @@
+{
+  "warnings": [],
+  "diagram": {
+    "format": "diagrams/v1",
+    "title": "Independent edge storefront",
+    "direction": "LR",
+    "nodes": [
+      { "id": "shopper", "stencil": "generic.service", "label": "Shopper", "x": 40, "y": 220 },
+      { "id": "cdn", "stencil": "generic.service", "label": "Fastly", "x": 400, "y": 220 },
+      { "id": "waf", "stencil": "cloudflare", "label": "Cloudflare WAF", "x": 760, "y": 220 },
+      { "id": "checkout", "stencil": "generic.service", "label": "Checkout function", "x": 1120, "y": 220 },
+      { "id": "receipts", "stencil": "generic.database", "label": "Receipt objects", "x": 1480, "y": 40 },
+      { "id": "payments", "stencil": "generic.service", "label": "Square payments", "x": 1480, "y": 160 },
+      { "id": "flags", "stencil": "generic.service", "label": "Checkout flags", "x": 1480, "y": 280 },
+      { "id": "identity", "stencil": "client.user", "label": "Customer identity", "x": 1480, "y": 400 }
+    ],
+    "edges": [
+      { "id": "e1-shopper-cdn", "from": "shopper", "to": "cdn", "kind": "sync" },
+      { "id": "e2-cdn-waf", "from": "cdn", "to": "waf", "kind": "sync" },
+      { "id": "e3-waf-checkout", "from": "waf", "to": "checkout", "kind": "sync" },
+      { "id": "e4-checkout-receipts", "from": "checkout", "to": "receipts", "kind": "sync" },
+      { "id": "e5-checkout-payments", "from": "checkout", "to": "payments", "kind": "sync" },
+      { "id": "e6-checkout-flags", "from": "checkout", "to": "flags", "kind": "async", "relation": "config" },
+      { "id": "e7-checkout-identity", "from": "checkout", "to": "identity", "kind": "async", "relation": "identity" }
+    ]
+  }
+}

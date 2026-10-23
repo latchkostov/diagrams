@@ -16,7 +16,7 @@
       { "id": "pulsar.topic", "label": "Pulsar Topic", "vendor": "Apache Pulsar", "category": "messaging", "simRole": "topic", "description": "Multi-tenant pub/sub with tiered storage and shared or exclusive subscriptions." },
       { "id": "confluent.cloud", "label": "Confluent Cloud", "vendor": "Confluent", "category": "messaging", "simRole": "stream", "description": "Managed Kafka from Confluent (Cloud or Platform) with connectors, governance and Flink." },
       { "id": "aws.msk", "label": "Amazon MSK", "vendor": "AWS", "category": "messaging", "simRole": "stream", "description": "Managed Streaming for Apache Kafka: AWS-run Kafka clusters." },
-      { "id": "rabbitmq.exchange", "label": "RabbitMQ Exchange", "vendor": "RabbitMQ", "category": "messaging", "simRole": "topic", "description": "Routes messages to bound queues (direct, topic, fanout, headers)." }
+      { "id": "redpanda.topic", "label": "Redpanda", "vendor": "Redpanda", "category": "messaging", "simRole": "stream", "description": "Partitioned, replicated log; every consumer group gets every record." }
     ]
   },
   "{\"query\":\"postgres\"}": {
@@ -35,6 +35,7 @@
       { "id": "azure.service-bus.queue", "label": "Service Bus Queue", "vendor": "Azure", "category": "messaging", "simRole": "queue", "description": "Durable point-to-point queue with sessions, DLQ and competing consumers." },
       { "id": "azure.storage-queue", "label": "Storage Queue", "vendor": "Azure", "category": "messaging", "simRole": "queue", "description": "Simple, cheap queue in an Azure Storage account." },
       { "id": "rabbitmq.queue", "label": "RabbitMQ Queue", "vendor": "RabbitMQ", "category": "messaging", "simRole": "queue", "description": "Buffers messages for competing consumers." },
+      { "id": "activemq.queue", "label": "ActiveMQ", "vendor": "Apache ActiveMQ", "category": "messaging", "simRole": "queue", "description": "Point-to-point queue: each message goes to one consumer." },
       { "id": "aws.sqs", "label": "Amazon SQS", "vendor": "AWS", "category": "messaging", "simRole": "queue", "description": "Fully managed message queue (standard or FIFO)." },
       { "id": "aws.mq", "label": "Amazon MQ", "vendor": "AWS", "category": "messaging", "simRole": "queue", "description": "Managed ActiveMQ and RabbitMQ brokers for JMS and AMQP workloads." }
     ]
@@ -51,21 +52,27 @@
     "output": [
       { "id": "aws.api-gateway", "label": "Amazon API Gateway", "vendor": "AWS", "category": "network", "simRole": "gateway", "description": "Managed REST, HTTP and WebSocket APIs." },
       { "id": "azure.api-management", "label": "API Management", "vendor": "Azure", "category": "network", "simRole": "gateway", "description": "API gateway with policies, auth, quotas and a developer portal." },
-      { "id": "kong", "label": "Kong Gateway", "vendor": "Kong", "category": "network", "simRole": "gateway", "description": "API gateway with auth, rate-limiting and routing plugins." }
+      { "id": "kong", "label": "Kong Gateway", "vendor": "Kong", "category": "network", "simRole": "gateway", "description": "API gateway with auth, rate-limiting and routing plugins." },
+      { "id": "akamai.app-api-protector", "label": "Akamai App & API Protector", "vendor": "Akamai", "category": "network", "simRole": "gateway", "description": "Filters traffic before it reaches your services." },
+      { "id": "gcp.apigee", "label": "Apigee", "vendor": "Google Cloud", "category": "network", "simRole": "gateway", "description": "API gateway with policies, auth, quotas and a developer portal." }
     ]
   },
   "{\"query\":\"redis cache\"}": {
     "isError": false,
     "output": [
       { "id": "redis.cache", "label": "Redis Cache", "vendor": "Redis", "category": "data", "simRole": "store", "description": "In-memory key-value cache." },
-      { "id": "azure.redis", "label": "Azure Managed Redis", "vendor": "Azure", "category": "data", "simRole": "store", "description": "Managed Redis for caching, sessions and pub/sub." }
+      { "id": "azure.redis", "label": "Azure Managed Redis", "vendor": "Azure", "category": "data", "simRole": "store", "description": "Managed Redis for caching, sessions and pub/sub." },
+      { "id": "valkey", "label": "Valkey", "vendor": "Valkey", "category": "data", "simRole": "store", "description": "Fast in-memory copy of hot data." }
     ]
   },
   "{\"query\":\"s3 bucket\"}": {
     "isError": false,
     "output": [
       { "id": "aws.s3", "label": "Amazon S3", "vendor": "AWS", "category": "data", "simRole": "store", "description": "Object storage." },
-      { "id": "minio", "label": "MinIO", "vendor": "MinIO", "category": "data", "simRole": "store", "description": "S3-compatible object storage you can run anywhere." }
+      { "id": "minio", "label": "MinIO", "vendor": "MinIO", "category": "data", "simRole": "store", "description": "S3-compatible object storage you can run anywhere." },
+      { "id": "cloudflare.r2", "label": "Cloudflare R2", "vendor": "Cloudflare", "category": "data", "simRole": "store", "description": "A file share, blob or object stored by key." },
+      { "id": "backblaze.b2", "label": "Backblaze B2", "vendor": "Backblaze", "category": "data", "simRole": "store", "description": "A file share, blob or object stored by key." },
+      { "id": "wasabi", "label": "Wasabi", "vendor": "Wasabi", "category": "data", "simRole": "store", "description": "A file share, blob or object stored by key." }
     ]
   },
   "{\"query\":\"lambda\"}": {
@@ -95,7 +102,10 @@
       { "id": "paloalto.ngfw", "label": "Palo Alto NGFW", "vendor": "Palo Alto Networks", "category": "onprem", "simRole": "gateway", "description": "PA-Series next-generation firewalls (PA-440 branch to PA-5440 data centre)." },
       { "id": "fortinet.fortigate", "label": "FortiGate", "vendor": "Fortinet", "category": "onprem", "simRole": "gateway", "description": "Next-generation firewalls with SD-WAN built in (FortiGate 70G to 3700F)." },
       { "id": "checkpoint.quantum", "label": "Check Point Quantum", "vendor": "Check Point", "category": "onprem", "simRole": "gateway", "description": "Quantum Force security gateways (3920 branch to 19100 data centre)." },
-      { "id": "juniper.srx", "label": "Juniper SRX", "vendor": "Juniper", "category": "onprem", "simRole": "gateway", "description": "SRX firewalls and secure routers (SRX345 branch to SRX4600 data centre)." }
+      { "id": "juniper.srx", "label": "Juniper SRX", "vendor": "Juniper", "category": "onprem", "simRole": "gateway", "description": "SRX firewalls and secure routers (SRX345 branch to SRX4600 data centre)." },
+      { "id": "cloudflare.waf", "label": "Cloudflare WAF", "vendor": "Cloudflare", "category": "network", "simRole": "gateway", "description": "Filters traffic before it reaches your services." },
+      { "id": "aws.waf", "label": "AWS WAF", "vendor": "AWS", "category": "network", "simRole": "gateway", "description": "Filters traffic before it reaches your services." },
+      { "id": "akamai.app-api-protector", "label": "Akamai App & API Protector", "vendor": "Akamai", "category": "network", "simRole": "gateway", "description": "Filters traffic before it reaches your services." }
     ]
   },
   "{\"query\":\"openai\"}": {
@@ -133,6 +143,7 @@
     "isError": false,
     "output": [
       { "id": "grafana", "label": "Grafana", "vendor": "Grafana Labs", "category": "observability", "simRole": "sink", "description": "Dashboards and alerting over metrics, logs and traces." },
+      { "id": "grafana.tempo", "label": "Grafana Tempo", "vendor": "Grafana Labs", "category": "observability", "simRole": "sink", "description": "Distributed tracing backend for following requests across services." },
       { "id": "loki", "label": "Loki", "vendor": "Grafana Labs", "category": "observability", "simRole": "sink", "description": "Grafana's log aggregation system, indexed by labels." }
     ]
   },

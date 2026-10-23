@@ -1,7 +1,8 @@
+import { VENDOR_PARENTS } from "./vendorParents";
 import { FREE_CALLER_PROFILES } from "./freeCallerProfiles";
 import type { StencilProfile } from "./profiles";
 
-export const PROFILES: Readonly<Record<string, StencilProfile>> = {
+const BASE_PROFILES: Readonly<Record<string, StencilProfile>> = {
   "kafka.topic": { family: "log" },
   "kafka.cluster": { family: "dependency" },
   "kafka.connect": { family: "stream-processor" },
@@ -222,6 +223,11 @@ export const PROFILES: Readonly<Record<string, StencilProfile>> = {
   "generic.saga": FREE_CALLER_PROFILES["generic.saga"],
   "generic.rate-limiter": { family: "service" },
   "generic.marketing": { family: "external-api" },
+};
+
+export const PROFILES: Readonly<Record<string, StencilProfile>> = {
+  ...BASE_PROFILES,
+  ...Object.fromEntries(Object.entries(VENDOR_PARENTS).map(([id, parent]) => [id, BASE_PROFILES[parent]])),
 };
 
 /** Lightweight family lookup for canvas call settings; presets stay lazy. */

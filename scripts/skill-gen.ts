@@ -12,6 +12,7 @@ import path from "node:path";
 import { bundleModule, INJECT, injectModule } from "./skill-viewer";
 import type { DiagramFile } from "../src/model/types";
 import { BROKERS } from "../src/model/brokers";
+import { baseStencilId } from "../src/stencils/vendorParents";
 import { catalog } from "../src/stencils/catalog";
 import { STENCIL_ALIASES } from "../src/lib/stencilSearch";
 import { FAMILIES, familyOf } from "../src/lib/vendorFamilies";
@@ -158,7 +159,7 @@ function spec() {
       label: s.label,
       vendor: s.vendor,
       role: s.simRole,
-      ...(BROKERS[s.id] ? { broker: BROKERS[s.id] } : {}),
+      ...(BROKERS[baseStencilId(s.id)] ? { broker: BROKERS[baseStencilId(s.id)] } : {}),
       ...(STENCIL_ALIASES[s.id]?.length ? { aliases: [...STENCIL_ALIASES[s.id]] } : {}),
     })),
   };

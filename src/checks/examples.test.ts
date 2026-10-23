@@ -22,6 +22,7 @@ const bySlug = Object.fromEntries(
 );
 
 const EXPECTED: Record<string, string[]> = {
+  "vendor-edge-storefront": [],
   "retry-storm": ["warning no-reader:orders"],
   "scale-on-busy-threads": [
     "warning blocked-threads:caller",

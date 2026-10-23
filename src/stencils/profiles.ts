@@ -1,3 +1,4 @@
+import { baseStencilId } from "./vendorParents";
 import { PROFILES } from "./profileFamilies";
 import { BROKERS, type BrokerSpec } from "../model/brokers";
 import type { SimRole } from "../model/types";
@@ -161,7 +162,7 @@ export const FAMILIES: Record<FamilyId, FamilySpec> = {
 };
 export function profileOf(stencil: string | undefined): StencilProfile | undefined {
   return stencil && Object.hasOwn(PROFILES, stencil)
-    ? { ...PROFILES[stencil], ...(BROKERS[stencil] ? { broker: BROKERS[stencil] } : {}) }
+    ? { ...PROFILES[stencil], ...(BROKERS[baseStencilId(stencil)] ? { broker: BROKERS[baseStencilId(stencil)] } : {}) }
     : undefined;
 }
 export function resolvePreset(

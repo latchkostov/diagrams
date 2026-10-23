@@ -1,3 +1,4 @@
+import { VENDOR_ALIASES } from "../stencils/vendorAliases";
 import type { Stencil } from "../model/types";
 import { rankMatches, scoreToken, scoreTokens, searchWords, tokenize, type SearchText } from "./stencilSearchCore";
 export { tokenize } from "./stencilSearchCore";
@@ -27,6 +28,7 @@ const EXTERNAL_API_ALIASES = [
 
 /** Extra words people type for a stencil: abbreviations, old names, generic nouns. */
 export const STENCIL_ALIASES: Record<string, readonly string[]> = {
+  ...VENDOR_ALIASES,
   iterable: [...EXTERNAL_API_ALIASES, "engagement", "campaigns"],
   braze: [...EXTERNAL_API_ALIASES, "engagement", "campaigns"],
   segment: [...EXTERNAL_API_ALIASES, "customer data", "tracking", "analytics"],

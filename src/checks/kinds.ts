@@ -1,6 +1,7 @@
 import type { SimRole } from "../model/types";
 import { stencilRelation } from "../stencils/relations";
 import { isDevice } from "../stencils/netDevices";
+import { baseStencilId } from "../stencils/vendorParents";
 
 // What the rules need to know about stencils beyond their simulation role: which compute is self-hosted (you run
 // its replicas and its front door), which gateways are managed, which clients come from outside, and which stores
@@ -27,7 +28,8 @@ export const isSelfHostedService = (stencil: string) =>
  */
 const SELF_HOSTED_GATEWAYS: ReadonlySet<string> = new Set(["nginx", "kong", "envoy", "traefik", "haproxy", "graphql"]);
 
-export const isSelfHostedGateway = (stencil: string) => SELF_HOSTED_GATEWAYS.has(stencil) || isDevice(stencil);
+export const isSelfHostedGateway = (stencil: string) =>
+  SELF_HOSTED_GATEWAYS.has(baseStencilId(stencil)) || isDevice(stencil);
 export { isDevice };
 
 /**
@@ -43,7 +45,8 @@ const NOT_A_FRONT_DOOR: ReadonlySet<string> = new Set([
   "azure.signalr",
 ]);
 
-export const isFrontDoor = (stencil: string, role: SimRole) => role === "gateway" && !NOT_A_FRONT_DOOR.has(stencil);
+export const isFrontDoor = (stencil: string, role: SimRole) =>
+  role === "gateway" && !NOT_A_FRONT_DOOR.has(baseStencilId(stencil));
 
 /** People, apps and partners calling in from outside. An on-call engineer (`client.team`) is inside. */
 export const isOutsideClient = (stencil: string, role: SimRole) =>
@@ -66,7 +69,7 @@ const SHARED_BY_DESIGN: ReadonlySet<string> = new Set([
   "adobe.aem",
 ]);
 
-export const isSharedByDesign = (stencil: string) => SHARED_BY_DESIGN.has(stencil);
+export const isSharedByDesign = (stencil: string) => SHARED_BY_DESIGN.has(baseStencilId(stencil));
 
 /**
  * Processors that move or use data but own none: connectors, loaders and transforms (they read and write other
@@ -89,7 +92,8 @@ const NOT_A_SERVICE: ReadonlySet<string> = new Set([
 ]);
 
 /** A processor that can own a database: a service, a function, a worker. */
-export const isService = (stencil: string, role: SimRole) => role === "processor" && !NOT_A_SERVICE.has(stencil);
+export const isService = (stencil: string, role: SimRole) =>
+  role === "processor" && !NOT_A_SERVICE.has(baseStencilId(stencil));
 
 /** The cloud a stencil belongs to, from its id. */
 export function cloudOf(stencil: string): "azure" | "aws" | "gcp" | undefined {

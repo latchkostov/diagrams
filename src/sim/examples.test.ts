@@ -8,6 +8,8 @@ import { exampleTestLabel } from "./exampleLabels";
 const examples = import.meta.glob<DiagramFile>("../examples/*.json", { eager: true, import: "default" });
 /** Most examples tell two stories; these tell more. */
 const SIMULATIONS: Record<string, number> = {
+  // Catalogue-only showcase: Free play demonstrates the brands without adding a saved scenario.
+  "../examples/vendor-edge-storefront.json": 0,
   "../examples/slow-payment-provider.json": 5,
   "../examples/retry-storm.json": 4,
   "../examples/scale-on-busy-threads.json": 3,

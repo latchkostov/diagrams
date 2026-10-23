@@ -10,6 +10,7 @@
 // stays.
 
 const en = {
+  "examples.vendorStencils": "Vendor stencils",
   "viewerForge.title": "Live Diagram",
   "viewerForge.chooseFile": "Choose a diagram file",
   "viewerForge.dropHere": "or drop it here",

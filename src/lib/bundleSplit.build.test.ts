@@ -1,4 +1,5 @@
 import type { Rollup } from "vite";
+import { readdirSync, readFileSync } from "node:fs";
 import { beforeAll, describe, expect, it } from "vitest";
 import { APPROVED_STUN, APPROVED_TRACKERS } from "../../scripts/deployment-env";
 import { selfHostHeaderManifest } from "../../scripts/self-host-headers";
@@ -232,6 +233,17 @@ describe("production bundle split", () => {
 
   it("keeps code that isn't needed for the first view out of the startup JavaScript", () => {
     expect(found(bundled(startup()), NOT_AT_STARTUP)).toEqual([]);
+  });
+
+  it("serves every stencil glyph as a separate, byte-preserved cached asset", () => {
+    const files = readdirSync("src/stencils/icons").filter((name) => name.endsWith(".svg"));
+    const emitted = assets.filter((a) => /^assets\/stencils-[\da-f]+\//.test(a.fileName));
+    expect(emitted).toHaveLength(files.length);
+    for (const name of files) {
+      const asset = emitted.find((a) => a.fileName.endsWith(`/${name}`));
+      expect(asset, name).toBeDefined();
+      expect(Buffer.from(asset!.source)).toEqual(readFileSync(`src/stencils/icons/${name}`));
+    }
   });
 
   it("loads the diagram loader at startup, preloaded with the entry, never as a lazy chunk", () => {

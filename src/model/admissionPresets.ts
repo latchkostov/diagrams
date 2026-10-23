@@ -1,3 +1,4 @@
+import { baseStencilId } from "../stencils/vendorParents";
 import type { Quota } from "./admission";
 import type { NodeSimProps } from "../sim/types";
 
@@ -68,6 +69,7 @@ export function admissionPresetFor(stencil?: string): string | undefined {
   return undefined;
 }
 export function managedKind(stencil: string): "serverless" | "api" | undefined {
+  stencil = baseStencilId(stencil);
   if (["aws.lambda", "azure.functions", "gcp.cloud-functions", "cloudflare.workers"].includes(stencil))
     return "serverless";
   if (

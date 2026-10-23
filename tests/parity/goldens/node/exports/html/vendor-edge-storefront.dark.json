@@ -1,0 +1,57 @@
+{
+  "file": { "sha256": "a0dafd866b5d48a4dfd5bff65ed8070d5007c0eaf9e8dd053e969fdc8504a462", "bytes": 15921 },
+  "payload": {
+    "version": 1,
+    "diagram": {
+      "format": "diagrams/v1",
+      "title": "Independent edge storefront",
+      "description": "Fastly and a Cloudflare WAF pass shop requests to Fastly Compute, which calls Square and stores receipts in Cloudflare R2. LaunchDarkly supplies configuration and Cognito supplies identity. CDN caching and vendor performance are not simulated.",
+      "direction": "LR",
+      "nodes": [
+        {
+          "id": "shopper",
+          "stencil": "client.browser",
+          "label": "Shopper",
+          "x": 0,
+          "y": 160,
+          "props": { "ratePerSec": 2, "messageType": "Checkout" }
+        },
+        { "id": "cdn", "stencil": "fastly", "label": "Fastly", "x": 340, "y": 160 },
+        { "id": "waf", "stencil": "cloudflare.waf", "label": "Cloudflare WAF", "x": 680, "y": 160 },
+        {
+          "id": "checkout",
+          "stencil": "fastly.compute",
+          "label": "Checkout function",
+          "x": 1020,
+          "y": 160,
+          "props": { "latencyMs": 80, "failureRate": 0 }
+        },
+        { "id": "receipts", "stencil": "cloudflare.r2", "label": "Receipt objects", "x": 1360, "y": 60 },
+        { "id": "payments", "stencil": "square", "label": "Square payments", "x": 1360, "y": 260 },
+        { "id": "flags", "stencil": "launchdarkly", "label": "Checkout flags", "x": 1020, "y": 420 },
+        { "id": "identity", "stencil": "aws.cognito", "label": "Customer identity", "x": 680, "y": 420 }
+      ],
+      "simulations": [],
+      "edges": [
+        { "id": "browse", "from": "shopper", "to": "cdn", "kind": "sync" },
+        { "id": "protect", "from": "cdn", "to": "waf", "kind": "sync" },
+        { "id": "origin", "from": "waf", "to": "checkout", "kind": "sync" },
+        { "id": "store", "from": "checkout", "to": "receipts", "kind": "sync" },
+        { "id": "pay", "from": "checkout", "to": "payments", "kind": "sync" },
+        { "id": "config", "from": "checkout", "to": "flags", "relation": "config" },
+        { "id": "authenticate", "from": "checkout", "to": "identity", "relation": "identity" }
+      ]
+    },
+    "icons": {
+      "client-browser": { "sha256": "c66b629864dc684d451c1c280107fe74cdd69ffb9d17be64673c90c7c92434f7", "bytes": 476 },
+      "generic-cdn": { "sha256": "de0ca0a8bd4fe3e2c16d9d74338394ad4efb0ec1e9ecbff756ac11a67547ddf4", "bytes": 471 },
+      "generic-config-store": { "sha256": "51f0239c49effadc20e0590df96d2fbf3414eab6535cbf3a5e5a8e5fd43265e7", "bytes": 550 },
+      "generic-external-api": { "sha256": "d3a95660f5a9fb8dbd298a79af1604cd83926a306583abeee407a7389b130be8", "bytes": 369 },
+      "generic-file": { "sha256": "1d0932609061b6b1625415a574bc0444d7fcfa753700d8ef10a0e17a94271385", "bytes": 828 },
+      "generic-firewall": { "sha256": "c93fed518da9b7e4a7e2fbfaa91ddcac1cd8e2ad19caa08b55f9ed211158d636", "bytes": 910 },
+      "generic-identity-provider": { "sha256": "0676c452dd144f732465c06edb4613a3a1778edea71ea777d753b9dc9db8b60c", "bytes": 656 },
+      "generic-service": { "sha256": "3fe5e72fd8c35eb0ef93e590677e2e7ffb6b3d31449533176a4e82fe9b6d0add", "bytes": 579 }
+    },
+    "options": { "theme": "dark", "banner": "Confidential: internal use only", "startSimulation": null, "exportedOn": "2026-01-01" }
+  }
+}

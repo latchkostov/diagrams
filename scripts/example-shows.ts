@@ -4,6 +4,7 @@ import type { AutoscalingConfig } from "../src/model/autoscaling";
 import type { DiagramFile } from "../src/model/types";
 import { catalog } from "../src/stencils/catalog";
 import { stencilRole } from "../src/stencils/roles";
+import { VENDOR_PARENTS } from "../src/stencils/vendorParents";
 
 const brandedClients = new Set(
   catalog.filter((s) => s.id.startsWith("client.") && s.simRole === "source" && s.vendor !== "Client").map((s) => s.id),
@@ -41,6 +42,7 @@ function showsLatency(d: DiagramFile): boolean {
 /** Metadata only: never modifies the diagram, simulation or exported content. */
 export function exampleShows(d: DiagramFile): string[] {
   return [
+    ...(d.nodes.some((n) => Object.hasOwn(VENDOR_PARENTS, n.stencil)) ? ["vendorStencils"] : []),
     ...(d.nodes.some((n) => brandedClients.has(n.stencil)) ? ["brandedClients"] : []),
     ...(revisionAtLeast(d.planning?.revision, "p3-w1") && d.edges.some((e) => e.kind === "sync")
       ? ["requestsWait"]

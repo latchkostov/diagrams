@@ -1,0 +1,61 @@
+{
+  "withIcons": {
+    "sha256": "ad86d1bc7a97c45bf5ebf761f22ee05970eb16ceeb19839b4dcbbe2750039502",
+    "bytes": 11430,
+    "inlined": {
+      "aws.cognito": "generic-identity-provider c3c6cd6f3f68d51f",
+      "client.browser": "client-browser 0022934839e05a07",
+      "cloudflare.r2": "generic-file c874cf0f5bff8cd7",
+      "cloudflare.waf": "generic-firewall a5593e76c933ec7b",
+      "fastly": "generic-cdn 6b4780f7c80bf9cd",
+      "fastly.compute": "generic-service 6ec0da29f56c9e80",
+      "launchdarkly": "generic-config-store ef55f06431b5c98f",
+      "square": "generic-external-api 8115696d1b46c6c6"
+    }
+  },
+  "readBack": [
+    {
+      "warnings": [],
+      "diagram": {
+        "format": "diagrams/v1",
+        "title": "Independent edge storefront",
+        "description": "Fastly and a Cloudflare WAF pass shop requests to Fastly Compute, which calls Square and stores receipts in Cloudflare R2. LaunchDarkly supplies configuration and Cognito supplies identity. CDN caching and vendor performance are not simulated.",
+        "direction": "LR",
+        "nodes": [
+          {
+            "id": "shopper",
+            "stencil": "client.browser",
+            "label": "Shopper",
+            "x": 0,
+            "y": 160,
+            "props": { "ratePerSec": 2, "messageType": "Checkout" }
+          },
+          { "id": "cdn", "stencil": "fastly", "label": "Fastly", "x": 340, "y": 160 },
+          { "id": "waf", "stencil": "cloudflare.waf", "label": "Cloudflare WAF", "x": 680, "y": 160 },
+          {
+            "id": "checkout",
+            "stencil": "fastly.compute",
+            "label": "Checkout function",
+            "x": 1020,
+            "y": 160,
+            "props": { "latencyMs": 80, "failureRate": 0 }
+          },
+          { "id": "receipts", "stencil": "cloudflare.r2", "label": "Receipt objects", "x": 1360, "y": 60 },
+          { "id": "payments", "stencil": "square", "label": "Square payments", "x": 1360, "y": 260 },
+          { "id": "flags", "stencil": "launchdarkly", "label": "Checkout flags", "x": 1020, "y": 420 },
+          { "id": "identity", "stencil": "aws.cognito", "label": "Customer identity", "x": 680, "y": 420 }
+        ],
+        "edges": [
+          { "id": "browse", "from": "shopper", "to": "cdn", "kind": "sync" },
+          { "id": "protect", "from": "cdn", "to": "waf", "kind": "sync" },
+          { "id": "origin", "from": "waf", "to": "checkout", "kind": "sync" },
+          { "id": "store", "from": "checkout", "to": "receipts", "kind": "sync" },
+          { "id": "pay", "from": "checkout", "to": "payments", "kind": "sync" },
+          { "id": "config", "from": "checkout", "to": "flags", "kind": "async", "relation": "config" },
+          { "id": "authenticate", "from": "checkout", "to": "identity", "kind": "async", "relation": "identity" }
+        ],
+        "simulations": []
+      }
+    }
+  ]
+}
