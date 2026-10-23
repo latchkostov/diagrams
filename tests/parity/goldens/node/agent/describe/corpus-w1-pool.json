@@ -1,7 +1,7 @@
 {
   "text": {
     "isError": false,
-    "output": "Diagram \"A pool of 40\" · direction LR · 5 nodes, 4 connections, 0 boundaries, 2 simulations\ndescription: \"A shared Checkout handles payments and order-status requests. Payment calls have forty connections. Blocking pool waits still hold threads; non-blocking waits protect the DB-only status route while payments queue.\"\nnodes:\n  \"shop\" \"client.user\" (\"User\") \"Shop\" props={\"ratePerSec\":120,\"trafficMix\":{\"mode\":\"rates\",\"entries\":[{\"routeId\":\"checkout\",\"ratePerSec\":120},{\"routeId\":\"status\",\"ratePerSec\":20}]}} capabilities=[{\"kind\":\"calls\",\"edge\":\"browse\",\"peer\":\"gateway\"}] explanation=undefined\n  \"gateway\" \"generic.adc\" (\"ADC\") \"API gateway\" / \"5 s timeout\" capabilities=[{\"kind\":\"calls\",\"edge\":\"route\",\"peer\":\"checkout\"}] explanation={\"id\":\"gateway\",\"role\":\"gateway\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":97656.25,\"offered\":140,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":null,\"seconds\":0.0002,\"utilization\":0.0014336,\"growth\":0,\"contributors\":[{\"edge\":\"browse\",\"node\":\"shop\",\"label\":\"Shop\",\"rate\":140}],\"target\":0.5,\"changes\":null,\"converged\":true,\"routes\":[{\"route\":\"checkout\",\"address\":\"POST /checkout\",\"offered\":120,\"rejected\":0,\"throttled\":0},{\"route\":\"status\",\"address\":\"GET /status\",\"offered\":20,\"rejected\":0,\"throttled\":0}]}\n  \"checkout\" \"generic.service\" (\"Service\") \"Checkout\" / \"4 replicas · 25 threads each\" props={\"replicas\":4,\"concurrency\":25,\"latencyMs\":10,\"jitter\":0} capabilities=[{\"kind\":\"calls\",\"edge\":\"pay\",\"peer\":\"payment\"},{\"kind\":\"calls\",\"edge\":\"save\",\"peer\":\"orders\"}] explanation={\"waits\":{\"workMs\":10,\"callMs\":15,\"threadHoldMs\":25,\"memoryResidenceMs\":220,\"replyMs\":10,\"replies\":1,\"poolCeiling\":200,\"slots\":100,\"ceiling\":4000},\"id\":\"checkout\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":200,\"offered\":140,\"replicas\":4,\"baseReplicas\":4,\"omittedContributors\":0,\"activeReplicas\":4,\"assignments\":[],\"slots\":25,\"seconds\":0.025,\"utilization\":0.7,\"growth\":0,\"contributors\":[{\"edge\":\"route\",\"node\":\"gateway\",\"label\":\"Shop\",\"rate\":140,\"via\":\"API gateway\"}],\"target\":0.5,\"minimumReplicas\":4,\"targetReplicas\":6,\"changes\":null,\"converged\":true,\"routes\":[{\"route\":\"checkout\",\"address\":\"POST /checkout\",\"offered\":120,\"rejected\":0,\"throttled\":0},{\"route\":\"status\",\"address\":\"GET /status\",\"offered\":20,\"rejected\":0,\"throttled\":0}]} requestsWait={\"threads\":100,\"holdMs\":25,\"ceilingPerSec\":4000}\n  \"payment\" \"generic.external-api\" (\"External API\") \"Payment provider\" / \"200 ms · slows ×10 at 3 s\" props={\"latencyMs\":200,\"api\":{\"latencyMs\":200},\"jitter\":0} capabilities=[] explanation={\"managed\":\"api\",\"id\":\"payment\",\"role\":\"sink\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":null,\"offered\":120,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":null,\"seconds\":0.2,\"utilization\":0,\"growth\":0,\"contributors\":[{\"edge\":\"pay\",\"node\":\"checkout\",\"label\":\"Checkout\",\"rate\":120}],\"target\":0.5,\"changes\":null,\"converged\":true,\"routes\":[{\"route\":\"checkout\",\"address\":\"POST /checkout\",\"offered\":120,\"rejected\":0,\"throttled\":0}]}\n  \"orders\" \"generic.database\" (\"Database\") \"Orders DB\" props={\"latencyMs\":5,\"jitter\":0} capabilities=[] explanation=undefined\nconnections:\n  \"browse\" \"shop\" -> \"gateway\" sync\n  \"route\" \"gateway\" -> \"checkout\" sync\n  \"pay\" \"checkout\" -> \"payment\" sync requestFilter={\"methods\":[\"POST\"]}\n  \"save\" \"checkout\" -> \"orders\" sync requestFilter={\"methods\":[\"GET\"]}\nrequest routes (2):\n  \"checkout\" POST \"/checkout\" \"Checkout\"\n  \"status\" GET \"/status\" \"Order status\"\nsimulation \"pool-40\" \"A pool of 40\": {\"kind\":\"constant\",\"ratePerSec\":120,\"durationMs\":20000} from \"shop\"; timeline=[{\"atMs\":3000,\"action\":{\"do\":\"fault\",\"fault\":{\"kind\":\"slow\",\"node\":\"payment\",\"factor\":10}}}]; expectations=[{\"id\":\"status\",\"label\":\"Order status keeps completing\",\"metric\":{\"node\":\"orders\",\"field\":\"processed\"},\"op\":\">\",\"value\":300,\"when\":\"end\"},{\"id\":\"expected-shop\",\"label\":\"shop reports payment failures\",\"metric\":{\"node\":\"shop\",\"field\":\"dropped\"},\"op\":\">\",\"value\":0,\"when\":\"eventually\"},{\"id\":\"expected-gateway\",\"label\":\"gateway reports payment failures\",\"metric\":{\"node\":\"gateway\",\"field\":\"dropped\"},\"op\":\">\",\"value\":0,\"when\":\"eventually\"}]\nsimulation \"blocking-pool\" \"Blocking waits still hold threads\": {\"kind\":\"constant\",\"ratePerSec\":120,\"durationMs\":20000} from \"shop\"; timeline=[{\"atMs\":3000,\"action\":{\"do\":\"fault\",\"fault\":{\"kind\":\"slow\",\"node\":\"payment\",\"factor\":10}}}]; expectations=[{\"id\":\"status\",\"label\":\"Order status keeps completing\",\"metric\":{\"node\":\"orders\",\"field\":\"processed\"},\"op\":\">\",\"value\":300,\"when\":\"end\"},{\"id\":\"expected-shop\",\"label\":\"shop reports payment failures\",\"metric\":{\"node\":\"shop\",\"field\":\"dropped\"},\"op\":\">\",\"value\":0,\"when\":\"eventually\"},{\"id\":\"expected-gateway\",\"label\":\"gateway reports payment failures\",\"metric\":{\"node\":\"gateway\",\"field\":\"dropped\"},\"op\":\">\",\"value\":0,\"when\":\"eventually\"}]"
+    "output": "Diagram \"A pool of 40\" · direction LR · 5 nodes, 4 connections, 0 boundaries, 2 simulations\ndescription: \"A shared Checkout handles payments and order-status requests. Payment calls have forty connections. Blocking pool waits still hold threads; non-blocking waits protect the DB-only status route while payments queue.\"\nnodes:\n  \"shop\" \"client.user\" (\"User\") \"Shop\" props={\"ratePerSec\":120,\"trafficMix\":{\"mode\":\"rates\",\"entries\":[{\"routeId\":\"checkout\",\"ratePerSec\":120},{\"routeId\":\"status\",\"ratePerSec\":20}]}} arrivingTypes=[] capabilities=[{\"kind\":\"calls\",\"edge\":\"browse\",\"peer\":\"gateway\"}] explanation=undefined\n  \"gateway\" \"generic.adc\" (\"ADC\") \"API gateway\" / \"5 s timeout\" arrivingTypes=[\"Shop\"] capabilities=[{\"kind\":\"calls\",\"edge\":\"route\",\"peer\":\"checkout\"}] explanation={\"id\":\"gateway\",\"role\":\"gateway\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":97656.25,\"offered\":140,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":null,\"seconds\":0.0002,\"utilization\":0.0014336,\"growth\":0,\"contributors\":[{\"edge\":\"browse\",\"node\":\"shop\",\"label\":\"Shop\",\"rate\":140}],\"target\":0.5,\"changes\":null,\"converged\":true,\"routes\":[{\"route\":\"checkout\",\"address\":\"POST /checkout\",\"offered\":120,\"rejected\":0,\"throttled\":0},{\"route\":\"status\",\"address\":\"GET /status\",\"offered\":20,\"rejected\":0,\"throttled\":0}]}\n  \"checkout\" \"generic.service\" (\"Service\") \"Checkout\" / \"4 replicas · 25 threads each\" props={\"replicas\":4,\"concurrency\":25,\"latencyMs\":10,\"jitter\":0} arrivingTypes=[\"Shop\"] capabilities=[{\"kind\":\"calls\",\"edge\":\"pay\",\"peer\":\"payment\"},{\"kind\":\"calls\",\"edge\":\"save\",\"peer\":\"orders\"}] explanation={\"waits\":{\"workMs\":10,\"callMs\":15,\"threadHoldMs\":25,\"memoryResidenceMs\":220,\"replyMs\":10,\"replies\":1,\"poolCeiling\":200,\"slots\":100,\"ceiling\":4000},\"id\":\"checkout\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":200,\"offered\":140,\"replicas\":4,\"baseReplicas\":4,\"omittedContributors\":0,\"activeReplicas\":4,\"assignments\":[],\"slots\":25,\"seconds\":0.025,\"utilization\":0.7,\"growth\":0,\"contributors\":[{\"edge\":\"route\",\"node\":\"gateway\",\"label\":\"Shop\",\"rate\":140,\"via\":\"API gateway\"}],\"target\":0.5,\"minimumReplicas\":4,\"targetReplicas\":6,\"changes\":null,\"converged\":true,\"routes\":[{\"route\":\"checkout\",\"address\":\"POST /checkout\",\"offered\":120,\"rejected\":0,\"throttled\":0},{\"route\":\"status\",\"address\":\"GET /status\",\"offered\":20,\"rejected\":0,\"throttled\":0}]} requestsWait={\"threads\":100,\"holdMs\":25,\"ceilingPerSec\":4000}\n  \"payment\" \"generic.external-api\" (\"External API\") \"Payment provider\" / \"200 ms · slows ×10 at 3 s\" props={\"latencyMs\":200,\"api\":{\"latencyMs\":200},\"jitter\":0} arrivingTypes=[\"Shop\"] capabilities=[] explanation={\"managed\":\"api\",\"id\":\"payment\",\"role\":\"sink\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":null,\"offered\":120,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":null,\"seconds\":0.2,\"utilization\":0,\"growth\":0,\"contributors\":[{\"edge\":\"pay\",\"node\":\"checkout\",\"label\":\"Checkout\",\"rate\":120}],\"target\":0.5,\"changes\":null,\"converged\":true,\"routes\":[{\"route\":\"checkout\",\"address\":\"POST /checkout\",\"offered\":120,\"rejected\":0,\"throttled\":0}]}\n  \"orders\" \"generic.database\" (\"Database\") \"Orders DB\" props={\"latencyMs\":5,\"jitter\":0} arrivingTypes=[\"Shop\"] capabilities=[] explanation=undefined\nconnections:\n  \"browse\" \"shop\" -> \"gateway\" sync carriedTypes=[\"Shop\"]\n  \"route\" \"gateway\" -> \"checkout\" sync carriedTypes=[\"Shop\"]\n  \"pay\" \"checkout\" -> \"payment\" sync requestFilter={\"methods\":[\"POST\"]} carriedTypes=[\"Shop\"]\n  \"save\" \"checkout\" -> \"orders\" sync requestFilter={\"methods\":[\"GET\"]} carriedTypes=[\"Shop\"]\nrequest routes (2):\n  \"checkout\" POST \"/checkout\" \"Checkout\"\n  \"status\" GET \"/status\" \"Order status\"\nsimulation \"pool-40\" \"A pool of 40\": {\"kind\":\"constant\",\"ratePerSec\":120,\"durationMs\":20000} from \"shop\"; timeline=[{\"atMs\":3000,\"action\":{\"do\":\"fault\",\"fault\":{\"kind\":\"slow\",\"node\":\"payment\",\"factor\":10}}}]; expectations=[{\"id\":\"status\",\"label\":\"Order status keeps completing\",\"metric\":{\"node\":\"orders\",\"field\":\"processed\"},\"op\":\">\",\"value\":300,\"when\":\"end\"},{\"id\":\"expected-shop\",\"label\":\"shop reports payment failures\",\"metric\":{\"node\":\"shop\",\"field\":\"dropped\"},\"op\":\">\",\"value\":0,\"when\":\"eventually\"},{\"id\":\"expected-gateway\",\"label\":\"gateway reports payment failures\",\"metric\":{\"node\":\"gateway\",\"field\":\"dropped\"},\"op\":\">\",\"value\":0,\"when\":\"eventually\"}]\nsimulation \"blocking-pool\" \"Blocking waits still hold threads\": {\"kind\":\"constant\",\"ratePerSec\":120,\"durationMs\":20000} from \"shop\"; timeline=[{\"atMs\":3000,\"action\":{\"do\":\"fault\",\"fault\":{\"kind\":\"slow\",\"node\":\"payment\",\"factor\":10}}}]; expectations=[{\"id\":\"status\",\"label\":\"Order status keeps completing\",\"metric\":{\"node\":\"orders\",\"field\":\"processed\"},\"op\":\">\",\"value\":300,\"when\":\"end\"},{\"id\":\"expected-shop\",\"label\":\"shop reports payment failures\",\"metric\":{\"node\":\"shop\",\"field\":\"dropped\"},\"op\":\">\",\"value\":0,\"when\":\"eventually\"},{\"id\":\"expected-gateway\",\"label\":\"gateway reports payment failures\",\"metric\":{\"node\":\"gateway\",\"field\":\"dropped\"},\"op\":\">\",\"value\":0,\"when\":\"eventually\"}]"
   },
   "json": {
     "isError": false,
@@ -30,6 +30,7 @@
               "entries": [{ "routeId": "checkout", "ratePerSec": 120 }, { "routeId": "status", "ratePerSec": 20 }]
             }
           },
+          "arrivingTypes": [],
           "capabilities": [{ "kind": "calls", "edge": "browse", "peer": "gateway" }]
         },
         {
@@ -39,6 +40,7 @@
           "sublabel": "5 s timeout",
           "x": 320,
           "y": 180,
+          "arrivingTypes": ["Shop"],
           "capabilities": [{ "kind": "calls", "edge": "route", "peer": "checkout" }],
           "explanation": {
             "id": "gateway",
@@ -76,6 +78,7 @@
           "x": 660,
           "y": 180,
           "props": { "replicas": 4, "concurrency": 25, "latencyMs": 10, "jitter": 0 },
+          "arrivingTypes": ["Shop"],
           "capabilities": [
             { "kind": "calls", "edge": "pay", "peer": "payment" },
             { "kind": "calls", "edge": "save", "peer": "orders" }
@@ -122,6 +125,7 @@
           "x": 1020,
           "y": 180,
           "props": { "latencyMs": 200, "api": { "latencyMs": 200 }, "jitter": 0 },
+          "arrivingTypes": ["Shop"],
           "capabilities": [],
           "explanation": {
             "managed": "api",
@@ -158,17 +162,26 @@
           "x": 1020,
           "y": 420,
           "props": { "latencyMs": 5, "jitter": 0 },
+          "arrivingTypes": ["Shop"],
           "capabilities": []
         }
       ],
       "edges": [
-        { "id": "browse", "from": "shop", "to": "gateway", "kind": "sync", "props": { "travelMs": 100 } },
+        {
+          "id": "browse",
+          "from": "shop",
+          "to": "gateway",
+          "kind": "sync",
+          "props": { "travelMs": 100 },
+          "carriedTypes": ["Shop"]
+        },
         {
           "id": "route",
           "from": "gateway",
           "to": "checkout",
           "kind": "sync",
-          "props": { "travelMs": 100, "caller": { "deadlineMs": 5000 } }
+          "props": { "travelMs": 100, "caller": { "deadlineMs": 5000 } },
+          "carriedTypes": ["Shop"]
         },
         {
           "id": "pay",
@@ -179,16 +192,19 @@
             "travelMs": 200,
             "caller": { "wait": "non-blocking", "poolConnections": 40 },
             "requestFilter": { "methods": ["POST"] }
-          }
+          },
+          "carriedTypes": ["Shop"]
         },
         {
           "id": "save",
           "from": "checkout",
           "to": "orders",
           "kind": "sync",
-          "props": { "travelMs": 100, "requestFilter": { "methods": ["GET"] } }
+          "props": { "travelMs": 100, "requestFilter": { "methods": ["GET"] } },
+          "carriedTypes": ["Shop"]
         }
       ],
+      "messageTypesComplete": true,
       "groups": [],
       "annotations": [],
       "simulations": [
@@ -305,6 +321,6 @@
   },
   "focus": {
     "isError": false,
-    "output": "Diagram \"A pool of 40\" · direction LR · 2 nodes, 1 connections, 0 boundaries, 2 simulations\ndescription: \"A shared Checkout handles payments and order-status requests. Payment calls have forty connections. Blocking pool waits still hold threads; non-blocking waits protect the DB-only status route while payments queue.\"\nnodes:\n  \"shop\" \"client.user\" (\"User\") \"Shop\" props={\"ratePerSec\":120,\"trafficMix\":{\"mode\":\"rates\",\"entries\":[{\"routeId\":\"checkout\",\"ratePerSec\":120},{\"routeId\":\"status\",\"ratePerSec\":20}]}} capabilities=[{\"kind\":\"calls\",\"edge\":\"browse\",\"peer\":\"gateway\"}] explanation=undefined\n  \"gateway\" \"generic.adc\" (\"ADC\") \"API gateway\" / \"5 s timeout\" capabilities=[{\"kind\":\"calls\",\"edge\":\"route\",\"peer\":\"checkout\"}] explanation={\"id\":\"gateway\",\"role\":\"gateway\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":97656.25,\"offered\":140,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":null,\"seconds\":0.0002,\"utilization\":0.0014336,\"growth\":0,\"contributors\":[{\"edge\":\"browse\",\"node\":\"shop\",\"label\":\"Shop\",\"rate\":140}],\"target\":0.5,\"changes\":null,\"converged\":true,\"routes\":[{\"route\":\"checkout\",\"address\":\"POST /checkout\",\"offered\":120,\"rejected\":0,\"throttled\":0},{\"route\":\"status\",\"address\":\"GET /status\",\"offered\":20,\"rejected\":0,\"throttled\":0}]}\nconnections:\n  \"browse\" \"shop\" -> \"gateway\" sync\nrequest routes (2):\n  \"checkout\" POST \"/checkout\" \"Checkout\"\n… 3 lines omitted"
+    "output": "Diagram \"A pool of 40\" · direction LR · 2 nodes, 1 connections, 0 boundaries, 2 simulations\ndescription: \"A shared Checkout handles payments and order-status requests. Payment calls have forty connections. Blocking pool waits still hold threads; non-blocking waits protect the DB-only status route while payments queue.\"\nnodes:\n  \"shop\" \"client.user\" (\"User\") \"Shop\" props={\"ratePerSec\":120,\"trafficMix\":{\"mode\":\"rates\",\"entries\":[{\"routeId\":\"checkout\",\"ratePerSec\":120},{\"routeId\":\"status\",\"ratePerSec\":20}]}} arrivingTypes=[] capabilities=[{\"kind\":\"calls\",\"edge\":\"browse\",\"peer\":\"gateway\"}] explanation=undefined\n  \"gateway\" \"generic.adc\" (\"ADC\") \"API gateway\" / \"5 s timeout\" arrivingTypes=[\"Shop\"] capabilities=[{\"kind\":\"calls\",\"edge\":\"route\",\"peer\":\"checkout\"}] explanation={\"id\":\"gateway\",\"role\":\"gateway\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":97656.25,\"offered\":140,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":null,\"seconds\":0.0002,\"utilization\":0.0014336,\"growth\":0,\"contributors\":[{\"edge\":\"browse\",\"node\":\"shop\",\"label\":\"Shop\",\"rate\":140}],\"target\":0.5,\"changes\":null,\"converged\":true,\"routes\":[{\"route\":\"checkout\",\"address\":\"POST /checkout\",\"offered\":120,\"rejected\":0,\"throttled\":0},{\"route\":\"status\",\"address\":\"GET /status\",\"offered\":20,\"rejected\":0,\"throttled\":0}]}\nconnections:\n  \"browse\" \"shop\" -> \"gateway\" sync carriedTypes=[\"Shop\"]\nrequest routes (2):\n  \"checkout\" POST \"/checkout\" \"Checkout\"\n… 3 lines omitted"
   }
 }

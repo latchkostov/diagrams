@@ -11,6 +11,7 @@ import { analyzeCapacity } from "../sim/capacity";
 import { compileTopology } from "../sim/topology";
 import { scenarioPlans } from "../sim/scalingPlanner";
 import { planMessage } from "../checks/scalingFindings";
+import { messageTypesAt } from "../model/messageTypes";
 
 const quote = (s: string) => JSON.stringify(s);
 const round = (n: number) => Math.round(n * 1000) / 1000;
@@ -46,6 +47,7 @@ export function describeDiagram(diagram: DiagramFile, options: DescribeOptions =
     ) ?? [];
   // One shared routing/analysis pass, bounded to modest graphs; describing a large graph stays cheap.
   const topology = compileTopology(d);
+  const types = messageTypesAt(d);
   const connections = resolveCapabilities(d, topology);
   const analysis = d.nodes.length <= 200 && d.edges.length <= 500 ? analyzeCapacity(d) : undefined;
   const resolved = (id: string) => (analysis ? explainNode(d, id, { analysis, topology, fixes: false }) : undefined);
@@ -75,11 +77,13 @@ export function describeDiagram(diagram: DiagramFile, options: DescribeOptions =
       planning: d.planning,
       nodes: take(nodes).map((n) => ({
         ...n,
+        arrivingTypes: [...(types.arriving.get(n.id) ?? [])],
         capabilities: connections[n.id] ?? [],
         explanation: resolved(n.id),
         ...(threads(n.id) ? { requestsWait: threads(n.id) } : {}),
       })),
-      edges: take(edges),
+      edges: take(edges).map((edge) => ({ ...edge, carriedTypes: [...(types.carried.get(edge.id) ?? [])] })),
+      messageTypesComplete: types.complete,
       groups: take(groups),
       annotations: take(notes),
       simulations: take(sims),
@@ -99,17 +103,18 @@ export function describeDiagram(diagram: DiagramFile, options: DescribeOptions =
     `Diagram ${quote(d.title)} · direction ${d.direction ?? "LR"} · ${nodes.length} nodes, ${edges.length} connections, ${groups.length} boundaries, ${sims.length} simulations`,
   ];
   if (d.description) lines.push(`description: ${quote(d.description)}`);
+  if (!types.complete) lines.push("Message type propagation incomplete: work budget reached.");
   lines.push("nodes:");
   const shownNodes = nodes.slice(0, Math.max(0, limit - lines.length - 1));
   for (const n of shownNodes)
     lines.push(
-      `  ${quote(n.id)} ${quote(n.stencil)} (${quote(catalog.find((s) => s.id === n.stencil)?.label ?? "Unknown")}) ${quote(n.label)}${n.sublabel !== undefined ? ` / ${quote(n.sublabel)}` : ""}${n.props ? ` props=${JSON.stringify(n.props)}` : ""}${n.group ? ` in ${quote(n.group)}` : ""} capabilities=${JSON.stringify(connections[n.id] ?? [])}${analysis ? ` explanation=${JSON.stringify(resolved(n.id))}` : ""}${threads(n.id) ? ` requestsWait=${JSON.stringify(threads(n.id))}` : ""}`,
+      `  ${quote(n.id)} ${quote(n.stencil)} (${quote(catalog.find((s) => s.id === n.stencil)?.label ?? "Unknown")}) ${quote(n.label)}${n.sublabel !== undefined ? ` / ${quote(n.sublabel)}` : ""}${n.props ? ` props=${JSON.stringify(n.props)}` : ""}${n.group ? ` in ${quote(n.group)}` : ""} arrivingTypes=${JSON.stringify([...(types.arriving.get(n.id) ?? [])])} capabilities=${JSON.stringify(connections[n.id] ?? [])}${analysis ? ` explanation=${JSON.stringify(resolved(n.id))}` : ""}${threads(n.id) ? ` requestsWait=${JSON.stringify(threads(n.id))}` : ""}`,
     );
   lines.push("connections:");
   for (const e of edges)
     lines.push(
       // A dependency says so: it carries no messages, whatever its kind.
-      `  ${quote(e.id)} ${quote(e.from)} -> ${quote(e.to)} ${isDependency(e) ? `${relationOf(e)} dependency` : (e.kind ?? "async")}${e.label !== undefined ? ` ${quote(e.label)}` : ""}${routing(e.props)}`,
+      `  ${quote(e.id)} ${quote(e.from)} -> ${quote(e.to)} ${isDependency(e) ? `${relationOf(e)} dependency` : (e.kind ?? "async")}${e.label !== undefined ? ` ${quote(e.label)}` : ""}${routing(e.props)} carriedTypes=${JSON.stringify([...(types.carried.get(e.id) ?? [])])}`,
     );
   // Request routing: the definitions (bounded, the rest counted) and the configured demand per route at each node.
   const routes = d.planning?.requestRoutes;

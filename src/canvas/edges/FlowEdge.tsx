@@ -1,6 +1,6 @@
 import { isDenyRule } from "../../stencils/netDevices";
 import { useKeyboardFocusOn, useTooltip } from "../../components/useTooltip";
-import { memo, useCallback, type CSSProperties, type MouseEvent, type ReactNode } from "react";
+import { memo, useCallback, useEffect, useState, type CSSProperties, type MouseEvent, type ReactNode } from "react";
 import { EdgeLabelRenderer, useStore, type EdgeProps, type ReactFlowState } from "@xyflow/react";
 import { Icon } from "../../components/Icon";
 import { useDiagram } from "../DiagramContext";
@@ -13,6 +13,10 @@ import { RELATION_META, isDependency, relationOf, type DependencyRelation } from
 import { relationIcon } from "../../editor/relationActions";
 import { useReadableScale } from "../useReadableScale";
 import { EdgeEnds } from "./EdgeEnds";
+import { loadOnce } from "../../lib/lazyLoad";
+import { t } from "../../i18n";
+import type { DiagramFlowNode } from "../types";
+const loadTypes = loadOnce(() => import("./carriedTypes"));
 
 /**
  * An edge. A flow is async (dashed) or sync (solid). A dependency (config, secret, identity,
@@ -29,6 +33,18 @@ function FlowEdgeImpl(props: EdgeProps<DiagramFlowEdge>) {
   const { rename, openEdgeMenu, reconnect } = useDiagram();
   const route = useEdgeRoute(id, useRoutingOptions());
   const dep = useStore(useCallback((s: ReactFlowState) => relationInfo(s.edges as DiagramFlowEdge[]).get(id), [id]));
+  const [reader, setReader] = useState<typeof import("./carriedTypes")>();
+  const prepareTypes = useCallback(() => {
+    void loadTypes()
+      .then(setReader)
+      .catch(() => {});
+  }, []);
+  const messages = useStore(
+    useCallback(
+      (s: ReactFlowState) => reader?.carriedTypes(s.nodes as DiagramFlowNode[], s.edges as DiagramFlowEdge[]).get(id),
+      [id, reader],
+    ),
+  );
   const sourceStencil = useStore(
     useCallback(
       (s: ReactFlowState) => (s.nodeLookup.get(source)?.data as Partial<DiagramNodeData> | undefined)?.stencil,
@@ -36,10 +52,11 @@ function FlowEdgeImpl(props: EdgeProps<DiagramFlowEdge>) {
     ),
   );
   // The settings open when the edge is reached from the keyboard (its label isn't a Tab stop: D14).
-  const edgeFocused = useKeyboardFocusOn(
-    dep?.settings?.length ? `.react-flow__edge[data-id="${CSS.escape(id)}"]` : null,
-  );
-  const tooltip = useTooltip(edgeFocused);
+  const edgeFocused = useKeyboardFocusOn(`.react-flow__edge[data-id="${CSS.escape(id)}"]`);
+  useEffect(() => {
+    if (edgeFocused) prepareTypes();
+  }, [edgeFocused, prepareTypes]);
+  const tooltip = useTooltip(edgeFocused && !!dep?.settings?.length);
   const card = tooltip.open;
   const kind = data?.kind ?? "async";
   const relation = isDependency(data) ? (relationOf(data) as DependencyRelation) : null;
@@ -49,7 +66,11 @@ function FlowEdgeImpl(props: EdgeProps<DiagramFlowEdge>) {
   // A firewall rule that denies: a "no entry" glyph just after the source, so it's never colour alone.
   const deny = !relation && isDenyRule(data?.props) ? denyPoint(route.points) : undefined;
   const settings = dep?.settings ?? [];
-  const tip = relation ? dependencyTip(relation, dep, sourceStencil) : undefined;
+  const tip = relation
+    ? dependencyTip(relation, dep, sourceStencil)
+    : reader
+      ? t("messageTypes.hover", { types: messages || t("messageTypes.noMessages") })
+      : undefined;
   const marker = selected
     ? relation
       ? "df-arrow-dep-selected"
@@ -60,6 +81,7 @@ function FlowEdgeImpl(props: EdgeProps<DiagramFlowEdge>) {
         ? "df-arrow-sync"
         : "df-arrow";
   const labelEvents = {
+    onPointerEnter: prepareTypes,
     onDoubleClick: (e: MouseEvent) => {
       e.stopPropagation();
       rename?.({ kind: "edge", id });
@@ -148,6 +170,7 @@ function FlowEdgeImpl(props: EdgeProps<DiagramFlowEdge>) {
           : `fe fe-${kind}${selected ? " is-selected" : ""}${deny ? " is-deny" : ""}`
       }
       data-testid={`edge-${id}`}
+      onPointerEnter={prepareTypes}
       data-relation={relation ?? undefined}
       data-deny={deny ? "true" : undefined}
     >

@@ -1,7 +1,7 @@
 {
   "text": {
     "isError": false,
-    "output": "Diagram \"GCP streaming analytics\" · direction LR · 9 nodes, 8 connections, 1 boundaries, 2 simulations\ndescription: \"Clickstream events flow through Pub/Sub and a Dataflow streaming job into BigQuery for Looker, with a raw archive and dead letters.\"\nnodes:\n  \"app\" \"client.mobile\" (\"Mobile App\") \"Mobile and web apps\" / \"Clickstream SDK\" props={\"ratePerSec\":50,\"messageType\":\"ClickEvent\"} capabilities=[{\"kind\":\"calls\",\"edge\":\"app-to-collector\",\"peer\":\"collector\"}] explanation=undefined\n  \"collector\" \"gcp.cloud-run\" (\"Cloud Run\") \"Event collector\" / \"Validate · batch publish\" props={\"concurrency\":400,\"latencyMs\":40} in \"gcp\" capabilities=[{\"kind\":\"publishes\",\"edge\":\"collector-to-topic\",\"peer\":\"pubsub-topic\"}] explanation={\"id\":\"collector\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":10000,\"offered\":50,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":400,\"seconds\":0.04,\"utilization\":0.005,\"growth\":0,\"contributors\":[{\"edge\":\"app-to-collector\",\"node\":\"app\",\"label\":\"Mobile and web apps\",\"rate\":50}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"pubsub-topic\" \"gcp.pubsub\" (\"Pub/Sub\") \"clickstream\" / \"Topic · 7-day retention\" props={\"partitions\":64} in \"gcp\" capabilities=[] explanation=undefined\n  \"dataflow\" \"gcp.dataflow\" (\"Dataflow\") \"Sessionize job\" / \"Streaming · 1-min windows\" props={\"group\":\"dataflow\",\"replicas\":4,\"concurrency\":4,\"latencyMs\":40,\"emits\":{\"ClickEvent\":\"SessionRow\",\"MalformedEvent\":\"DeadLetter\"}} in \"gcp\" capabilities=[{\"kind\":\"consumes\",\"edge\":\"topic-to-dataflow\",\"peer\":\"pubsub-topic\",\"group\":\"dataflow\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"calls\",\"edge\":\"dataflow-to-bigquery\",\"peer\":\"bigquery\",\"filter\":[\"SessionRow\"]},{\"kind\":\"publishes\",\"edge\":\"dataflow-to-dead-letters\",\"peer\":\"dead-letters\",\"filter\":[\"DeadLetter\"]}] explanation={\"id\":\"dataflow\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":400,\"offered\":50,\"replicas\":4,\"baseReplicas\":4,\"omittedContributors\":0,\"activeReplicas\":4,\"assignments\":[{\"broker\":\"pubsub-topic\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":64}],\"slots\":4,\"seconds\":0.04,\"utilization\":0.125,\"growth\":0,\"contributors\":[{\"edge\":\"topic-to-dataflow\",\"node\":\"pubsub-topic\",\"label\":\"clickstream\",\"rate\":50}],\"target\":0.5,\"minimumReplicas\":4,\"targetReplicas\":4,\"changes\":null,\"converged\":true}\n  \"raw-archive\" \"gcp.cloud-storage\" (\"Cloud Storage\") \"Raw archive\" / \"Avro · by hour\" props={\"latencyMs\":0} in \"gcp\" capabilities=[] explanation=undefined\n  \"bigquery\" \"gcp.bigquery\" (\"BigQuery\") \"Analytics dataset\" / \"Storage Write API\" props={\"latencyMs\":0} in \"gcp\" capabilities=[] explanation=undefined\n  \"looker\" \"looker\" (\"Looker\") \"Product dashboards\" / \"Funnels · retention\" props={} in \"gcp\" capabilities=[{\"kind\":\"calls\",\"edge\":\"looker-to-bigquery\",\"peer\":\"bigquery\"}] explanation=undefined\n  \"dead-letters\" \"gcp.pubsub\" (\"Pub/Sub\") \"clickstream-dlq\" / \"Unparseable events\" props={\"partitions\":64} in \"gcp\" capabilities=[] explanation=undefined\n  \"dead-bucket\" \"gcp.cloud-storage\" (\"Cloud Storage\") \"Dead letters\" / \"Inspect · replay\" props={\"latencyMs\":1} in \"gcp\" capabilities=[] explanation=undefined\nconnections:\n  \"app-to-collector\" \"app\" -> \"collector\" sync \"HTTPS batches\"\n  \"collector-to-topic\" \"collector\" -> \"pubsub-topic\" async \"Publish\"\n  \"topic-to-dataflow\" \"pubsub-topic\" -> \"dataflow\" async \"sub: dataflow\"\n  \"topic-to-raw-archive\" \"pubsub-topic\" -> \"raw-archive\" async \"Cloud Storage subscription\"\n  \"dataflow-to-bigquery\" \"dataflow\" -> \"bigquery\" sync \"Sessions\"\n  \"dataflow-to-dead-letters\" \"dataflow\" -> \"dead-letters\" async \"Parse errors\"\n  \"dead-letters-to-dead-bucket\" \"dead-letters\" -> \"dead-bucket\" async \"sub: archive\"\n  \"looker-to-bigquery\" \"looker\" -> \"bigquery\" sync \"SQL\"\nboundary \"gcp\" \"Google Cloud · analytics project\" (gcp): \"collector\", \"pubsub-topic\", \"dataflow\", \"raw-archive\", \"bigquery\", \"looker\", \"dead-letters\", \"dead-bucket\"\nsimulation \"morning-ramp\" \"Morning ramp to 2,000 events/s\": {\"kind\":\"ramp\",\"startRate\":200,\"stages\":[{\"durationMs\":8000,\"targetRate\":2000}]} from \"app\"; {\"kind\":\"burst\",\"count\":200,\"atMs\":4000,\"spreadMs\":1000} from \"app\"; timeline=[{\"atMs\":0,\"action\":{\"do\":\"note\",\"text\":\"Clicks ramp up as people wake up. Pub/Sub keeps each subscription separate: Dataflow and the raw archive each get every event. Each dot is 50 events.\",\"focus\":[\"app\",\"pubsub-topic\",\"dataflow\",\"raw-archive\"]}},{\"atMs\":4000,\"action\":{\"do\":\"note\",\"text\":\"A bad SDK release sends malformed events. Dataflow routes them to a dead-letter topic instead of failing the pipeline.\",\"focus\":[\"dataflow\",\"dead-letters\",\"dead-bucket\"],\"pause\":true}},{\"atMs\":7000,\"action\":{\"do\":\"note\",\"text\":\"Sessions stream into BigQuery within seconds, so Looker's dashboards are current.\",\"focus\":[\"bigquery\",\"looker\"]}}]; expectations=[{\"id\":\"archive\",\"label\":\"Every event is archived raw\",\"metric\":{\"node\":\"raw-archive\",\"field\":\"processed\"},\"op\":\"==\",\"value\":9000,\"when\":\"end\"},{\"id\":\"sessions\",\"label\":\"8,800 valid events reach BigQuery\",\"metric\":{\"node\":\"bigquery\",\"field\":\"processed\"},\"op\":\"==\",\"value\":8800,\"when\":\"end\"},{\"id\":\"dead\",\"label\":\"200 malformed events are kept for replay\",\"metric\":{\"node\":\"dead-bucket\",\"field\":\"processed\"},\"op\":\"==\",\"value\":200,\"when\":\"end\"}]\nsimulation \"autoscale\" \"Backlog until Dataflow autoscales\": {\"kind\":\"constant\",\"ratePerSec\":600,\"durationMs\":10000} from \"app\"; timeline=[{\"atMs\":0,\"action\":{\"do\":\"note\",\"text\":\"Two Dataflow workers handle about 200 events a second, but 600 arrive. Unacknowledged messages pile up in the subscription.\",\"focus\":[\"pubsub-topic\",\"dataflow\"]}},{\"atMs\":4000,\"action\":{\"do\":\"props\",\"node\":\"dataflow\",\"props\":{\"replicas\":8}}},{\"atMs\":4000,\"action\":{\"do\":\"note\",\"text\":\"Autoscaling sees the backlog and adds six workers. The raw archive was never behind: its subscription is independent.\",\"focus\":[\"dataflow\",\"raw-archive\"],\"pause\":true}},{\"atMs\":9000,\"action\":{\"do\":\"note\",\"text\":\"With 800 events a second of capacity, the backlog drains and BigQuery catches up.\",\"focus\":[\"pubsub-topic\",\"bigquery\"]}}]; expectations=[{\"id\":\"backlog\",\"label\":\"Backlog grows with two workers\",\"metric\":{\"node\":\"pubsub-topic\",\"field\":\"lag\",\"group\":\"dataflow\"},\"op\":\">\",\"value\":0,\"when\":\"at\",\"atMs\":3500},{\"id\":\"drained\",\"label\":\"Backlog drains after autoscaling\",\"metric\":{\"node\":\"pubsub-topic\",\"field\":\"lag\",\"group\":\"dataflow\"},\"op\":\"==\",\"value\":0,\"when\":\"end\"},{\"id\":\"sessions\",\"label\":\"All 6,000 events reach BigQuery\",\"metric\":{\"node\":\"bigquery\",\"field\":\"processed\"},\"op\":\"==\",\"value\":6000,\"when\":\"end\"}]"
+    "output": "Diagram \"GCP streaming analytics\" · direction LR · 9 nodes, 8 connections, 1 boundaries, 2 simulations\ndescription: \"Clickstream events flow through Pub/Sub and a Dataflow streaming job into BigQuery for Looker, with a raw archive and dead letters.\"\nnodes:\n  \"app\" \"client.mobile\" (\"Mobile App\") \"Mobile and web apps\" / \"Clickstream SDK\" props={\"ratePerSec\":50,\"messageType\":\"ClickEvent\"} arrivingTypes=[] capabilities=[{\"kind\":\"calls\",\"edge\":\"app-to-collector\",\"peer\":\"collector\"}] explanation=undefined\n  \"collector\" \"gcp.cloud-run\" (\"Cloud Run\") \"Event collector\" / \"Validate · batch publish\" props={\"concurrency\":400,\"latencyMs\":40} in \"gcp\" arrivingTypes=[\"ClickEvent\"] capabilities=[{\"kind\":\"publishes\",\"edge\":\"collector-to-topic\",\"peer\":\"pubsub-topic\"}] explanation={\"id\":\"collector\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":10000,\"offered\":50,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":400,\"seconds\":0.04,\"utilization\":0.005,\"growth\":0,\"contributors\":[{\"edge\":\"app-to-collector\",\"node\":\"app\",\"label\":\"Mobile and web apps\",\"rate\":50}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"pubsub-topic\" \"gcp.pubsub\" (\"Pub/Sub\") \"clickstream\" / \"Topic · 7-day retention\" props={\"partitions\":64} in \"gcp\" arrivingTypes=[\"ClickEvent\"] capabilities=[] explanation=undefined\n  \"dataflow\" \"gcp.dataflow\" (\"Dataflow\") \"Sessionize job\" / \"Streaming · 1-min windows\" props={\"group\":\"dataflow\",\"replicas\":4,\"concurrency\":4,\"latencyMs\":40,\"emits\":{\"ClickEvent\":\"SessionRow\",\"MalformedEvent\":\"DeadLetter\"}} in \"gcp\" arrivingTypes=[\"ClickEvent\"] capabilities=[{\"kind\":\"consumes\",\"edge\":\"topic-to-dataflow\",\"peer\":\"pubsub-topic\",\"group\":\"dataflow\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"calls\",\"edge\":\"dataflow-to-bigquery\",\"peer\":\"bigquery\",\"filter\":[\"SessionRow\"]},{\"kind\":\"publishes\",\"edge\":\"dataflow-to-dead-letters\",\"peer\":\"dead-letters\",\"filter\":[\"DeadLetter\"]}] explanation={\"id\":\"dataflow\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":400,\"offered\":50,\"replicas\":4,\"baseReplicas\":4,\"omittedContributors\":0,\"activeReplicas\":4,\"assignments\":[{\"broker\":\"pubsub-topic\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":64}],\"slots\":4,\"seconds\":0.04,\"utilization\":0.125,\"growth\":0,\"contributors\":[{\"edge\":\"topic-to-dataflow\",\"node\":\"pubsub-topic\",\"label\":\"clickstream\",\"rate\":50}],\"target\":0.5,\"minimumReplicas\":4,\"targetReplicas\":4,\"changes\":null,\"converged\":true}\n  \"raw-archive\" \"gcp.cloud-storage\" (\"Cloud Storage\") \"Raw archive\" / \"Avro · by hour\" props={\"latencyMs\":0} in \"gcp\" arrivingTypes=[\"ClickEvent\"] capabilities=[] explanation=undefined\n  \"bigquery\" \"gcp.bigquery\" (\"BigQuery\") \"Analytics dataset\" / \"Storage Write API\" props={\"latencyMs\":0} in \"gcp\" arrivingTypes=[\"SessionRow\"] capabilities=[] explanation=undefined\n  \"looker\" \"looker\" (\"Looker\") \"Product dashboards\" / \"Funnels · retention\" props={} in \"gcp\" arrivingTypes=[] capabilities=[{\"kind\":\"calls\",\"edge\":\"looker-to-bigquery\",\"peer\":\"bigquery\"}] explanation=undefined\n  \"dead-letters\" \"gcp.pubsub\" (\"Pub/Sub\") \"clickstream-dlq\" / \"Unparseable events\" props={\"partitions\":64} in \"gcp\" arrivingTypes=[] capabilities=[] explanation=undefined\n  \"dead-bucket\" \"gcp.cloud-storage\" (\"Cloud Storage\") \"Dead letters\" / \"Inspect · replay\" props={\"latencyMs\":1} in \"gcp\" arrivingTypes=[] capabilities=[] explanation=undefined\nconnections:\n  \"app-to-collector\" \"app\" -> \"collector\" sync \"HTTPS batches\" carriedTypes=[\"ClickEvent\"]\n  \"collector-to-topic\" \"collector\" -> \"pubsub-topic\" async \"Publish\" carriedTypes=[\"ClickEvent\"]\n  \"topic-to-dataflow\" \"pubsub-topic\" -> \"dataflow\" async \"sub: dataflow\" carriedTypes=[\"ClickEvent\"]\n  \"topic-to-raw-archive\" \"pubsub-topic\" -> \"raw-archive\" async \"Cloud Storage subscription\" carriedTypes=[\"ClickEvent\"]\n  \"dataflow-to-bigquery\" \"dataflow\" -> \"bigquery\" sync \"Sessions\" carriedTypes=[\"SessionRow\"]\n  \"dataflow-to-dead-letters\" \"dataflow\" -> \"dead-letters\" async \"Parse errors\" carriedTypes=[]\n  \"dead-letters-to-dead-bucket\" \"dead-letters\" -> \"dead-bucket\" async \"sub: archive\" carriedTypes=[]\n  \"looker-to-bigquery\" \"looker\" -> \"bigquery\" sync \"SQL\" carriedTypes=[]\nboundary \"gcp\" \"Google Cloud · analytics project\" (gcp): \"collector\", \"pubsub-topic\", \"dataflow\", \"raw-archive\", \"bigquery\", \"looker\", \"dead-letters\", \"dead-bucket\"\nsimulation \"morning-ramp\" \"Morning ramp to 2,000 events/s\": {\"kind\":\"ramp\",\"startRate\":200,\"stages\":[{\"durationMs\":8000,\"targetRate\":2000}]} from \"app\"; {\"kind\":\"burst\",\"count\":200,\"atMs\":4000,\"spreadMs\":1000} from \"app\"; timeline=[{\"atMs\":0,\"action\":{\"do\":\"note\",\"text\":\"Clicks ramp up as people wake up. Pub/Sub keeps each subscription separate: Dataflow and the raw archive each get every event. Each dot is 50 events.\",\"focus\":[\"app\",\"pubsub-topic\",\"dataflow\",\"raw-archive\"]}},{\"atMs\":4000,\"action\":{\"do\":\"note\",\"text\":\"A bad SDK release sends malformed events. Dataflow routes them to a dead-letter topic instead of failing the pipeline.\",\"focus\":[\"dataflow\",\"dead-letters\",\"dead-bucket\"],\"pause\":true}},{\"atMs\":7000,\"action\":{\"do\":\"note\",\"text\":\"Sessions stream into BigQuery within seconds, so Looker's dashboards are current.\",\"focus\":[\"bigquery\",\"looker\"]}}]; expectations=[{\"id\":\"archive\",\"label\":\"Every event is archived raw\",\"metric\":{\"node\":\"raw-archive\",\"field\":\"processed\"},\"op\":\"==\",\"value\":9000,\"when\":\"end\"},{\"id\":\"sessions\",\"label\":\"8,800 valid events reach BigQuery\",\"metric\":{\"node\":\"bigquery\",\"field\":\"processed\"},\"op\":\"==\",\"value\":8800,\"when\":\"end\"},{\"id\":\"dead\",\"label\":\"200 malformed events are kept for replay\",\"metric\":{\"node\":\"dead-bucket\",\"field\":\"processed\"},\"op\":\"==\",\"value\":200,\"when\":\"end\"}]\nsimulation \"autoscale\" \"Backlog until Dataflow autoscales\": {\"kind\":\"constant\",\"ratePerSec\":600,\"durationMs\":10000} from \"app\"; timeline=[{\"atMs\":0,\"action\":{\"do\":\"note\",\"text\":\"Two Dataflow workers handle about 200 events a second, but 600 arrive. Unacknowledged messages pile up in the subscription.\",\"focus\":[\"pubsub-topic\",\"dataflow\"]}},{\"atMs\":4000,\"action\":{\"do\":\"props\",\"node\":\"dataflow\",\"props\":{\"replicas\":8}}},{\"atMs\":4000,\"action\":{\"do\":\"note\",\"text\":\"Autoscaling sees the backlog and adds six workers. The raw archive was never behind: its subscription is independent.\",\"focus\":[\"dataflow\",\"raw-archive\"],\"pause\":true}},{\"atMs\":9000,\"action\":{\"do\":\"note\",\"text\":\"With 800 events a second of capacity, the backlog drains and BigQuery catches up.\",\"focus\":[\"pubsub-topic\",\"bigquery\"]}}]; expectations=[{\"id\":\"backlog\",\"label\":\"Backlog grows with two workers\",\"metric\":{\"node\":\"pubsub-topic\",\"field\":\"lag\",\"group\":\"dataflow\"},\"op\":\">\",\"value\":0,\"when\":\"at\",\"atMs\":3500},{\"id\":\"drained\",\"label\":\"Backlog drains after autoscaling\",\"metric\":{\"node\":\"pubsub-topic\",\"field\":\"lag\",\"group\":\"dataflow\"},\"op\":\"==\",\"value\":0,\"when\":\"end\"},{\"id\":\"sessions\",\"label\":\"All 6,000 events reach BigQuery\",\"metric\":{\"node\":\"bigquery\",\"field\":\"processed\"},\"op\":\"==\",\"value\":6000,\"when\":\"end\"}]"
   },
   "json": {
     "isError": false,
@@ -18,6 +18,7 @@
           "x": 40,
           "y": 240,
           "props": { "ratePerSec": 50, "messageType": "ClickEvent" },
+          "arrivingTypes": [],
           "capabilities": [{ "kind": "calls", "edge": "app-to-collector", "peer": "collector" }]
         },
         {
@@ -29,6 +30,7 @@
           "y": 240,
           "group": "gcp",
           "props": { "concurrency": 400, "latencyMs": 40 },
+          "arrivingTypes": ["ClickEvent"],
           "capabilities": [{ "kind": "publishes", "edge": "collector-to-topic", "peer": "pubsub-topic" }],
           "explanation": {
             "id": "collector",
@@ -65,6 +67,7 @@
           "y": 240,
           "group": "gcp",
           "props": { "partitions": 64 },
+          "arrivingTypes": ["ClickEvent"],
           "capabilities": []
         },
         {
@@ -82,6 +85,7 @@
             "latencyMs": 40,
             "emits": { "ClickEvent": "SessionRow", "MalformedEvent": "DeadLetter" }
           },
+          "arrivingTypes": ["ClickEvent"],
           "capabilities": [
             {
               "kind": "consumes",
@@ -138,6 +142,7 @@
           "y": 360,
           "group": "gcp",
           "props": { "latencyMs": 0 },
+          "arrivingTypes": ["ClickEvent"],
           "capabilities": []
         },
         {
@@ -149,6 +154,7 @@
           "y": 120,
           "group": "gcp",
           "props": { "latencyMs": 0 },
+          "arrivingTypes": ["SessionRow"],
           "capabilities": []
         },
         {
@@ -160,6 +166,7 @@
           "y": 120,
           "group": "gcp",
           "props": {},
+          "arrivingTypes": [],
           "capabilities": [{ "kind": "calls", "edge": "looker-to-bigquery", "peer": "bigquery" }]
         },
         {
@@ -171,6 +178,7 @@
           "y": 240,
           "group": "gcp",
           "props": { "partitions": 64 },
+          "arrivingTypes": [],
           "capabilities": []
         },
         {
@@ -182,6 +190,7 @@
           "y": 240,
           "group": "gcp",
           "props": { "latencyMs": 1 },
+          "arrivingTypes": [],
           "capabilities": []
         }
       ],
@@ -192,7 +201,8 @@
           "to": "collector",
           "label": "HTTPS batches",
           "kind": "sync",
-          "props": { "travelMs": 200 }
+          "props": { "travelMs": 200 },
+          "carriedTypes": ["ClickEvent"]
         },
         {
           "id": "collector-to-topic",
@@ -200,7 +210,8 @@
           "to": "pubsub-topic",
           "label": "Publish",
           "kind": "async",
-          "props": { "travelMs": 300 }
+          "props": { "travelMs": 300 },
+          "carriedTypes": ["ClickEvent"]
         },
         {
           "id": "topic-to-dataflow",
@@ -208,7 +219,8 @@
           "to": "dataflow",
           "label": "sub: dataflow",
           "kind": "async",
-          "props": { "travelMs": 300, "group": "dataflow" }
+          "props": { "travelMs": 300, "group": "dataflow" },
+          "carriedTypes": ["ClickEvent"]
         },
         {
           "id": "topic-to-raw-archive",
@@ -216,7 +228,8 @@
           "to": "raw-archive",
           "label": "Cloud Storage subscription",
           "kind": "async",
-          "props": { "travelMs": 300, "group": "archive" }
+          "props": { "travelMs": 300, "group": "archive" },
+          "carriedTypes": ["ClickEvent"]
         },
         {
           "id": "dataflow-to-bigquery",
@@ -224,7 +237,8 @@
           "to": "bigquery",
           "label": "Sessions",
           "kind": "sync",
-          "props": { "travelMs": 200, "filter": ["SessionRow"] }
+          "props": { "travelMs": 200, "filter": ["SessionRow"] },
+          "carriedTypes": ["SessionRow"]
         },
         {
           "id": "dataflow-to-dead-letters",
@@ -232,7 +246,8 @@
           "to": "dead-letters",
           "label": "Parse errors",
           "kind": "async",
-          "props": { "travelMs": 300, "filter": ["DeadLetter"] }
+          "props": { "travelMs": 300, "filter": ["DeadLetter"] },
+          "carriedTypes": []
         },
         {
           "id": "dead-letters-to-dead-bucket",
@@ -240,7 +255,8 @@
           "to": "dead-bucket",
           "label": "sub: archive",
           "kind": "async",
-          "props": { "travelMs": 300, "group": "dlq-archive", "dlq": false }
+          "props": { "travelMs": 300, "group": "dlq-archive", "dlq": false },
+          "carriedTypes": []
         },
         {
           "id": "looker-to-bigquery",
@@ -248,9 +264,11 @@
           "to": "bigquery",
           "label": "SQL",
           "kind": "sync",
-          "props": { "travelMs": 200 }
+          "props": { "travelMs": 200 },
+          "carriedTypes": []
         }
       ],
+      "messageTypesComplete": true,
       "groups": [
         { "id": "gcp", "label": "Google Cloud · analytics project", "tone": "gcp", "x": 380, "y": 80, "width": 1860, "height": 392 }
       ],
@@ -385,6 +403,6 @@
   },
   "focus": {
     "isError": false,
-    "output": "Diagram \"GCP streaming analytics\" · direction LR · 2 nodes, 1 connections, 1 boundaries, 2 simulations\ndescription: \"Clickstream events flow through Pub/Sub and a Dataflow streaming job into BigQuery for Looker, with a raw archive and dead letters.\"\nnodes:\n  \"app\" \"client.mobile\" (\"Mobile App\") \"Mobile and web apps\" / \"Clickstream SDK\" props={\"ratePerSec\":50,\"messageType\":\"ClickEvent\"} capabilities=[{\"kind\":\"calls\",\"edge\":\"app-to-collector\",\"peer\":\"collector\"}] explanation=undefined\n  \"collector\" \"gcp.cloud-run\" (\"Cloud Run\") \"Event collector\" / \"Validate · batch publish\" props={\"concurrency\":400,\"latencyMs\":40} in \"gcp\" capabilities=[{\"kind\":\"publishes\",\"edge\":\"collector-to-topic\",\"peer\":\"pubsub-topic\"}] explanation={\"id\":\"collector\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":10000,\"offered\":50,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":400,\"seconds\":0.04,\"utilization\":0.005,\"growth\":0,\"contributors\":[{\"edge\":\"app-to-collector\",\"node\":\"app\",\"label\":\"Mobile and web apps\",\"rate\":50}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\nconnections:\n  \"app-to-collector\" \"app\" -> \"collector\" sync \"HTTPS batches\"\nboundary \"gcp\" \"Google Cloud · analytics project\" (gcp): \"collector\"\nsimulation \"morning-ramp\" \"Morning ramp to 2,000 events/s\": {\"kind\":\"ramp\",\"startRate\":200,\"stages\":[{\"durationMs\":8000,\"targetRate\":2000}]} from \"app\"; {\"kind\":\"burst\",\"count\":200,\"atMs\":4000,\"spreadMs\":1000} from \"app\"; timeline=[{\"atMs\":0,\"action\":{\"do\":\"note\",\"text\":\"Clicks ramp up as people wake up. Pub/Sub keeps each subscription separate: Dataflow and the raw archive each get every event. Each dot is 50 events.\",\"focus\":[\"app\",\"pubsub-topic\",\"dataflow\",\"raw-archive\"]}},{\"atMs\":4000,\"action\":{\"do\":\"note\",\"text\":\"A bad SDK release sends malformed events. Dataflow routes them to a dead-letter topic instead of failing the pipeline.\",\"focus\":[\"dataflow\",\"dead-letters\",\"dead-bucket\"],\"pause\":true}},{\"atMs\":7000,\"action\":{\"do\":\"note\",\"text\":\"Sessions stream into BigQuery within seconds, so Looker's dashboards are current.\",\"focus\":[\"bigquery\",\"looker\"]}}]; expectations=[{\"id\":\"archive\",\"label\":\"Every event is archived raw\",\"metric\":{\"node\":\"raw-archive\",\"field\":\"processed\"},\"op\":\"==\",\"value\":9000,\"when\":\"end\"},{\"id\":\"sessions\",\"label\":\"8,800 valid events reach BigQuery\",\"metric\":{\"node\":\"bigquery\",\"field\":\"processed\"},\"op\":\"==\",\"value\":8800,\"when\":\"end\"},{\"id\":\"dead\",\"label\":\"200 malformed events are kept for replay\",\"metric\":{\"node\":\"dead-bucket\",\"field\":\"processed\"},\"op\":\"==\",\"value\":200,\"when\":\"end\"}]\nsimulation \"autoscale\" \"Backlog until Dataflow autoscales\": {\"kind\":\"constant\",\"ratePerSec\":600,\"durationMs\":10000} from \"app\"; timeline=[{\"atMs\":0,\"action\":{\"do\":\"note\",\"text\":\"Two Dataflow workers handle about 200 events a second, but 600 arrive. Unacknowledged messages pile up in the subscription.\",\"focus\":[\"pubsub-topic\",\"dataflow\"]}},{\"atMs\":4000,\"action\":{\"do\":\"props\",\"node\":\"dataflow\",\"props\":{\"replicas\":8}}},{\"atMs\":4000,\"action\":{\"do\":\"note\",\"text\":\"Autoscaling sees the backlog and adds six workers. The raw archive was never behind: its subscription is independent.\",\"focus\":[\"dataflow\",\"raw-archive\"],\"pause\":true}},{\"atMs\":9000,\"action\":{\"do\":\"note\",\"text\":\"With 800 events a second of capacity, the backlog drains and BigQuery catches up.\",\"focus\":[\"pubsub-topic\",\"bigquery\"]}}]; expectations=[{\"id\":\"backlog\",\"label\":\"Backlog grows with two workers\",\"metric\":{\"node\":\"pubsub-topic\",\"field\":\"lag\",\"group\":\"dataflow\"},\"op\":\">\",\"value\":0,\"when\":\"at\",\"atMs\":3500},{\"id\":\"drained\",\"label\":\"Backlog drains after autoscaling\",\"metric\":{\"node\":\"pubsub-topic\",\"field\":\"lag\",\"group\":\"dataflow\"},\"op\":\"==\",\"value\":0,\"when\":\"end\"},{\"id\":\"sessions\",\"label\":\"All 6,000 events reach BigQuery\",\"metric\":{\"node\":\"bigquery\",\"field\":\"processed\"},\"op\":\"==\",\"value\":6000,\"when\":\"end\"}]"
+    "output": "Diagram \"GCP streaming analytics\" · direction LR · 2 nodes, 1 connections, 1 boundaries, 2 simulations\ndescription: \"Clickstream events flow through Pub/Sub and a Dataflow streaming job into BigQuery for Looker, with a raw archive and dead letters.\"\nnodes:\n  \"app\" \"client.mobile\" (\"Mobile App\") \"Mobile and web apps\" / \"Clickstream SDK\" props={\"ratePerSec\":50,\"messageType\":\"ClickEvent\"} arrivingTypes=[] capabilities=[{\"kind\":\"calls\",\"edge\":\"app-to-collector\",\"peer\":\"collector\"}] explanation=undefined\n  \"collector\" \"gcp.cloud-run\" (\"Cloud Run\") \"Event collector\" / \"Validate · batch publish\" props={\"concurrency\":400,\"latencyMs\":40} in \"gcp\" arrivingTypes=[\"ClickEvent\"] capabilities=[{\"kind\":\"publishes\",\"edge\":\"collector-to-topic\",\"peer\":\"pubsub-topic\"}] explanation={\"id\":\"collector\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":10000,\"offered\":50,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":400,\"seconds\":0.04,\"utilization\":0.005,\"growth\":0,\"contributors\":[{\"edge\":\"app-to-collector\",\"node\":\"app\",\"label\":\"Mobile and web apps\",\"rate\":50}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\nconnections:\n  \"app-to-collector\" \"app\" -> \"collector\" sync \"HTTPS batches\" carriedTypes=[\"ClickEvent\"]\nboundary \"gcp\" \"Google Cloud · analytics project\" (gcp): \"collector\"\nsimulation \"morning-ramp\" \"Morning ramp to 2,000 events/s\": {\"kind\":\"ramp\",\"startRate\":200,\"stages\":[{\"durationMs\":8000,\"targetRate\":2000}]} from \"app\"; {\"kind\":\"burst\",\"count\":200,\"atMs\":4000,\"spreadMs\":1000} from \"app\"; timeline=[{\"atMs\":0,\"action\":{\"do\":\"note\",\"text\":\"Clicks ramp up as people wake up. Pub/Sub keeps each subscription separate: Dataflow and the raw archive each get every event. Each dot is 50 events.\",\"focus\":[\"app\",\"pubsub-topic\",\"dataflow\",\"raw-archive\"]}},{\"atMs\":4000,\"action\":{\"do\":\"note\",\"text\":\"A bad SDK release sends malformed events. Dataflow routes them to a dead-letter topic instead of failing the pipeline.\",\"focus\":[\"dataflow\",\"dead-letters\",\"dead-bucket\"],\"pause\":true}},{\"atMs\":7000,\"action\":{\"do\":\"note\",\"text\":\"Sessions stream into BigQuery within seconds, so Looker's dashboards are current.\",\"focus\":[\"bigquery\",\"looker\"]}}]; expectations=[{\"id\":\"archive\",\"label\":\"Every event is archived raw\",\"metric\":{\"node\":\"raw-archive\",\"field\":\"processed\"},\"op\":\"==\",\"value\":9000,\"when\":\"end\"},{\"id\":\"sessions\",\"label\":\"8,800 valid events reach BigQuery\",\"metric\":{\"node\":\"bigquery\",\"field\":\"processed\"},\"op\":\"==\",\"value\":8800,\"when\":\"end\"},{\"id\":\"dead\",\"label\":\"200 malformed events are kept for replay\",\"metric\":{\"node\":\"dead-bucket\",\"field\":\"processed\"},\"op\":\"==\",\"value\":200,\"when\":\"end\"}]\nsimulation \"autoscale\" \"Backlog until Dataflow autoscales\": {\"kind\":\"constant\",\"ratePerSec\":600,\"durationMs\":10000} from \"app\"; timeline=[{\"atMs\":0,\"action\":{\"do\":\"note\",\"text\":\"Two Dataflow workers handle about 200 events a second, but 600 arrive. Unacknowledged messages pile up in the subscription.\",\"focus\":[\"pubsub-topic\",\"dataflow\"]}},{\"atMs\":4000,\"action\":{\"do\":\"props\",\"node\":\"dataflow\",\"props\":{\"replicas\":8}}},{\"atMs\":4000,\"action\":{\"do\":\"note\",\"text\":\"Autoscaling sees the backlog and adds six workers. The raw archive was never behind: its subscription is independent.\",\"focus\":[\"dataflow\",\"raw-archive\"],\"pause\":true}},{\"atMs\":9000,\"action\":{\"do\":\"note\",\"text\":\"With 800 events a second of capacity, the backlog drains and BigQuery catches up.\",\"focus\":[\"pubsub-topic\",\"bigquery\"]}}]; expectations=[{\"id\":\"backlog\",\"label\":\"Backlog grows with two workers\",\"metric\":{\"node\":\"pubsub-topic\",\"field\":\"lag\",\"group\":\"dataflow\"},\"op\":\">\",\"value\":0,\"when\":\"at\",\"atMs\":3500},{\"id\":\"drained\",\"label\":\"Backlog drains after autoscaling\",\"metric\":{\"node\":\"pubsub-topic\",\"field\":\"lag\",\"group\":\"dataflow\"},\"op\":\"==\",\"value\":0,\"when\":\"end\"},{\"id\":\"sessions\",\"label\":\"All 6,000 events reach BigQuery\",\"metric\":{\"node\":\"bigquery\",\"field\":\"processed\"},\"op\":\"==\",\"value\":6000,\"when\":\"end\"}]"
   }
 }

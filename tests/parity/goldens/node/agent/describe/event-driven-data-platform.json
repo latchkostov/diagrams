@@ -1,7 +1,7 @@
 {
   "text": {
     "isError": false,
-    "output": "Diagram \"Event-driven data platform\" · direction LR · 21 nodes, 20 connections, 2 boundaries, 2 simulations\ndescription: \"Operational events stream through Kafka into Snowflake; dbt builds marts and reverse ETL publishes segments back to Kafka.\"\nnodes:\n  \"billing-webhooks\" \"generic.webhook\" (\"Webhook\") \"Billing webhooks\" / \"Stripe · invoice.paid\" props={\"ratePerSec\":5,\"messageType\":\"InvoicePaid\"} capabilities=[{\"kind\":\"calls\",\"edge\":\"billing-webhooks-to-webhook-receiver\",\"peer\":\"webhook-receiver\"}] explanation=undefined\n  \"storefront\" \"client.browser\" (\"Web Browser\") \"Storefront\" / \"Web and mobile checkout\" props={\"ratePerSec\":20,\"messageType\":\"CheckoutRequest\"} capabilities=[{\"kind\":\"calls\",\"edge\":\"storefront-to-checkout\",\"peer\":\"checkout\"}] explanation=undefined\n  \"accounts-db\" \"postgres\" (\"PostgreSQL\") \"Accounts database\" / \"OLTP · logical replication\" props={\"messageType\":\"AccountChanged\",\"latencyMs\":2} capabilities=[] explanation=undefined\n  \"segment-cache\" \"redis.cache\" (\"Redis Cache\") \"Segment cache\" / \"customerId → segments\" props={\"latencyMs\":2} capabilities=[] explanation=undefined\n  \"webhook-receiver\" \"service.node\" (\"Node.js Service\") \"Webhook receiver\" / \"Verify signature · ack 200\" props={\"concurrency\":64,\"latencyMs\":80} capabilities=[{\"kind\":\"publishes\",\"edge\":\"webhook-receiver-to-billing-topic\",\"peer\":\"billing-topic\"}] explanation={\"id\":\"webhook-receiver\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":800,\"offered\":5,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":64,\"seconds\":0.08,\"utilization\":0.00625,\"growth\":0,\"contributors\":[{\"edge\":\"billing-webhooks-to-webhook-receiver\",\"node\":\"billing-webhooks\",\"label\":\"Billing webhooks\",\"rate\":5}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"checkout\" \"service.go\" (\"Go Service\") \"Checkout service\" / \"Commits order · publishes\" props={\"concurrency\":64,\"latencyMs\":120,\"emits\":\"OrderPlaced\"} capabilities=[{\"kind\":\"publishes\",\"edge\":\"checkout-to-orders-topic\",\"peer\":\"orders-topic\"}] explanation={\"id\":\"checkout\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":533.3333333333334,\"offered\":20,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":64,\"seconds\":0.12,\"utilization\":0.0375,\"growth\":0,\"contributors\":[{\"edge\":\"storefront-to-checkout\",\"node\":\"storefront\",\"label\":\"Storefront\",\"rate\":20}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"debezium\" \"debezium\" (\"Debezium CDC\") \"Debezium connector\" / \"Postgres WAL → events\" props={\"ratePerSec\":10,\"messageType\":\"AccountChanged\"} capabilities=[{\"kind\":\"publishes\",\"edge\":\"debezium-to-accounts-topic\",\"peer\":\"accounts-topic\"}] explanation=undefined\n  \"personalization\" \"service.java\" (\"Java Service\") \"Personalization service\" / \"Next-best offer\" props={\"group\":\"personalization\",\"concurrency\":64,\"latencyMs\":100} capabilities=[{\"kind\":\"consumes\",\"edge\":\"segments-topic-to-personalization\",\"peer\":\"segments-topic\",\"group\":\"personalization\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"calls\",\"edge\":\"personalization-to-segment-cache\",\"peer\":\"segment-cache\"}] explanation={\"id\":\"personalization\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":640,\"offered\":20,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"segments-topic\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":6}],\"slots\":64,\"seconds\":0.1,\"utilization\":0.03125,\"growth\":0,\"contributors\":[{\"edge\":\"segments-topic-to-personalization\",\"node\":\"segments-topic\",\"label\":\"customer-segments.v1\",\"rate\":20}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"marketing\" \"generic.marketing\" (\"Marketing Automation\") \"Marketing automation\" / \"Braze · campaigns\" props={\"group\":\"marketing-sync\"} capabilities=[] explanation=undefined\n  \"billing-topic\" \"kafka.topic\" (\"Kafka Topic\") \"billing.invoices.v1\" / \"key: customerId\" props={\"partitions\":6} in \"kafka\" capabilities=[] explanation=undefined\n  \"orders-topic\" \"kafka.topic\" (\"Kafka Topic\") \"orders.v1\" / \"key: orderId\" props={\"partitions\":6} in \"kafka\" capabilities=[] explanation=undefined\n  \"accounts-topic\" \"kafka.topic\" (\"Kafka Topic\") \"cdc.accounts.v1\" / \"Debezium · key: accountId\" props={\"partitions\":6} in \"kafka\" capabilities=[] explanation=undefined\n  \"segments-topic\" \"kafka.topic\" (\"Kafka Topic\") \"customer-segments.v1\" / \"key: customerId\" props={\"partitions\":6} in \"kafka\" capabilities=[] explanation=undefined\n  \"schema-registry\" \"kafka.schema-registry\" (\"Schema Registry\") \"Schema registry\" / \"Avro · backward compatible\" props={\"compatibility\":\"BACKWARD\"} capabilities=[] explanation=undefined\n  \"snowpipe\" \"snowflake.snowpipe\" (\"Snowpipe Streaming\") \"Snowflake connector\" / \"Snowpipe Streaming\" props={\"group\":\"snowflake-sink\",\"replicas\":6,\"concurrency\":4,\"latencyMs\":40,\"emits\":{\"OrderPlaced\":\"RawOrderRow\",\"InvoicePaid\":\"RawInvoiceRow\",\"AccountChanged\":\"RawAccountRow\"}} capabilities=[{\"kind\":\"consumes\",\"edge\":\"billing-topic-to-snowpipe\",\"peer\":\"billing-topic\",\"group\":\"snowflake-sink\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"consumes\",\"edge\":\"orders-topic-to-snowpipe\",\"peer\":\"orders-topic\",\"group\":\"snowflake-sink\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"consumes\",\"edge\":\"accounts-topic-to-snowpipe\",\"peer\":\"accounts-topic\",\"group\":\"snowflake-sink\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"calls\",\"edge\":\"snowpipe-to-raw\",\"peer\":\"raw\"}] explanation={\"id\":\"snowpipe\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":600,\"offered\":35,\"replicas\":6,\"baseReplicas\":6,\"omittedContributors\":0,\"activeReplicas\":6,\"assignments\":[{\"broker\":\"billing-topic\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":6},{\"broker\":\"orders-topic\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":6},{\"broker\":\"accounts-topic\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":6}],\"slots\":4,\"seconds\":0.04,\"utilization\":0.058333333333333334,\"growth\":0,\"contributors\":[{\"edge\":\"billing-topic-to-snowpipe\",\"node\":\"billing-topic\",\"label\":\"billing.invoices.v1\",\"rate\":5},{\"edge\":\"orders-topic-to-snowpipe\",\"node\":\"orders-topic\",\"label\":\"orders.v1\",\"rate\":20},{\"edge\":\"accounts-topic-to-snowpipe\",\"node\":\"accounts-topic\",\"label\":\"cdc.accounts.v1\",\"rate\":10}],\"target\":0.5,\"minimumReplicas\":6,\"targetReplicas\":6,\"changes\":null,\"converged\":true}\n  \"reverse-etl\" \"generic.reverse-etl\" (\"Reverse ETL\") \"Reverse ETL\" / \"Hightouch · diffs only\" props={\"concurrency\":400,\"latencyMs\":1500,\"emits\":\"CustomerSegmentChanged\"} capabilities=[{\"kind\":\"publishes\",\"edge\":\"reverse-etl-to-segments-topic\",\"peer\":\"segments-topic\"}] explanation={\"id\":\"reverse-etl\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":266.6666666666667,\"offered\":20,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":400,\"seconds\":1.5,\"utilization\":0.075,\"growth\":0,\"contributors\":[{\"edge\":\"marts-to-reverse-etl\",\"node\":\"marts\",\"label\":\"Marts\",\"rate\":20}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"raw\" \"snowflake\" (\"Snowflake\") \"Raw tables\" / \"RAW.KAFKA_* · VARIANT\" props={\"latencyMs\":1} in \"snowflake\" capabilities=[] explanation=undefined\n  \"marts\" \"snowflake\" (\"Snowflake\") \"Marts\" / \"Segments · revenue · orders\" props={\"latencyMs\":1} in \"snowflake\" capabilities=[] explanation=undefined\n  \"airflow\" \"airflow\" (\"Apache Airflow\") \"Airflow\" / \"dbt build · every 15 min\" capabilities=[] explanation=undefined\n  \"dbt\" \"dbt\" (\"dbt\") \"dbt models\" / \"Incremental models\" props={\"concurrency\":3000,\"latencyMs\":2500,\"emits\":{\"RawOrderRow\":\"CustomerSegmentRow\",\"RawInvoiceRow\":\"RevenueRow\",\"RawAccountRow\":\"CustomerRow\"}} capabilities=[{\"kind\":\"calls\",\"edge\":\"dbt-to-marts\",\"peer\":\"marts\",\"filter\":[\"CustomerSegmentRow\",\"RevenueRow\",\"CustomerRow\"]}] explanation={\"id\":\"dbt\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":1200,\"offered\":35,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":3000,\"seconds\":2.5,\"utilization\":0.029166666666666667,\"growth\":0,\"contributors\":[{\"edge\":\"raw-to-dbt\",\"node\":\"raw\",\"label\":\"Raw tables\",\"rate\":35}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"bi\" \"tableau\" (\"Tableau\") \"Revenue dashboards\" / \"Tableau · live\" props={} capabilities=[{\"kind\":\"calls\",\"edge\":\"bi-to-marts\",\"peer\":\"marts\"}] explanation=undefined\nconnections:\n  \"billing-webhooks-to-webhook-receiver\" \"billing-webhooks\" -> \"webhook-receiver\" sync \"HTTPS · signed\"\n  \"storefront-to-checkout\" \"storefront\" -> \"checkout\" sync \"POST /checkout\"\n  \"accounts-db-to-debezium\" \"accounts-db\" -> \"debezium\" async \"WAL\"\n  \"webhook-receiver-to-billing-topic\" \"webhook-receiver\" -> \"billing-topic\" async \"InvoicePaid\"\n  \"checkout-to-orders-topic\" \"checkout\" -> \"orders-topic\" async \"OrderPlaced\"\n  \"debezium-to-accounts-topic\" \"debezium\" -> \"accounts-topic\" async \"AccountChanged\"\n  \"billing-topic-to-snowpipe\" \"billing-topic\" -> \"snowpipe\" async\n  \"orders-topic-to-snowpipe\" \"orders-topic\" -> \"snowpipe\" async \"group: snowflake-sink\"\n  \"accounts-topic-to-snowpipe\" \"accounts-topic\" -> \"snowpipe\" async\n  \"snowpipe-to-schema-registry\" \"snowpipe\" -> \"schema-registry\" depends dependency \"Avro schemas\"\n  \"snowpipe-to-raw\" \"snowpipe\" -> \"raw\" sync \"insertRows\"\n  \"raw-to-dbt\" \"raw\" -> \"dbt\" async \"New rows\"\n  \"airflow-to-dbt\" \"airflow\" -> \"dbt\" depends dependency \"dbt build\"\n  \"dbt-to-marts\" \"dbt\" -> \"marts\" sync \"MERGE models\"\n  \"bi-to-marts\" \"bi\" -> \"marts\" sync \"Live queries\"\n  \"marts-to-reverse-etl\" \"marts\" -> \"reverse-etl\" async \"Changed segments\"\n  \"reverse-etl-to-segments-topic\" \"reverse-etl\" -> \"segments-topic\" async \"Segment changes\"\n  \"segments-topic-to-personalization\" \"segments-topic\" -> \"personalization\" async \"group: personalization\"\n  \"segments-topic-to-marketing\" \"segments-topic\" -> \"marketing\" async \"group: marketing-sync\"\n  \"personalization-to-segment-cache\" \"personalization\" -> \"segment-cache\" sync \"SET segments\"\nboundary \"kafka\" \"Kafka · Confluent Cloud\" (neutral): \"billing-topic\", \"orders-topic\", \"accounts-topic\", \"segments-topic\"\nboundary \"snowflake\" \"Snowflake · ANALYTICS\" (neutral): \"raw\", \"marts\"\nsimulation \"one-order\" \"Follow one order end to end\": {\"kind\":\"burst\",\"count\":1} from \"storefront\"; timeline=[{\"atMs\":0,\"action\":{\"do\":\"trace\",\"node\":\"checkout\"}},{\"atMs\":0,\"action\":{\"do\":\"note\",\"text\":\"A shopper checks out. Follow this one order through Kafka, Snowflake and dbt, and back out to Kafka as a segment change.\",\"focus\":[\"storefront\",\"checkout\",\"orders-topic\"],\"pause\":true}},{\"atMs\":1000,\"action\":{\"do\":\"note\",\"text\":\"The Snowflake Kafka connector streams the event into a RAW table within about a second. There is no nightly batch window.\",\"focus\":[\"orders-topic\",\"snowpipe\",\"raw\"]}},{\"atMs\":2600,\"action\":{\"do\":\"note\",\"text\":\"dbt's incremental models turn the raw row into marts. This order moves the customer into a new segment.\",\"focus\":[\"raw\",\"dbt\",\"marts\"]}},{\"atMs\":5600,\"action\":{\"do\":\"note\",\"text\":\"Reverse ETL compares the mart with its last sync and publishes only the changed row to customer-segments.v1.\",\"focus\":[\"marts\",\"reverse-etl\",\"segments-topic\"]}},{\"atMs\":8000,\"action\":{\"do\":\"note\",\"text\":\"Personalization and the marketing tool consume the change like any other event, each in its own consumer group.\",\"focus\":[\"segments-topic\",\"personalization\",\"marketing\"],\"pause\":true}}]; expectations=[{\"id\":\"raw\",\"label\":\"The order lands in RAW\",\"metric\":{\"node\":\"raw\",\"field\":\"processed\"},\"op\":\"==\",\"value\":1,\"when\":\"end\"},{\"id\":\"marts\",\"label\":\"dbt builds it into the marts\",\"metric\":{\"node\":\"marts\",\"field\":\"processed\"},\"op\":\"==\",\"value\":1,\"when\":\"end\"},{\"id\":\"cache\",\"label\":\"Personalization caches the new segment\",\"metric\":{\"node\":\"segment-cache\",\"field\":\"processed\"},\"op\":\"==\",\"value\":1,\"when\":\"end\"},{\"id\":\"marketing\",\"label\":\"The marketing tool receives it\",\"metric\":{\"node\":\"marketing\",\"field\":\"processed\"},\"op\":\"==\",\"value\":1,\"when\":\"end\"}]\nsimulation \"load-spike\" \"Warehouse load spike\": {\"kind\":\"constant\",\"ratePerSec\":200,\"durationMs\":10000} from \"storefront\"; {\"kind\":\"spike\",\"baseRate\":20,\"peakRate\":600,\"atMs\":3000,\"peakMs\":3000,\"durationMs\":10000} from \"billing-webhooks\"; {\"kind\":\"constant\",\"ratePerSec\":50,\"durationMs\":10000} from \"accounts-db\"; timeline=[{\"atMs\":0,\"action\":{\"do\":\"note\",\"text\":\"Orders, invoices and account changes all stream into Snowflake. Each dot is 20 events. The connector loads about 600 rows a second.\",\"focus\":[\"orders-topic\",\"billing-topic\",\"accounts-topic\",\"snowpipe\"]}},{\"atMs\":3000,\"action\":{\"do\":\"note\",\"text\":\"Month-end: invoice webhooks jump to 600 a second. The loader falls behind, and Kafka absorbs the burst as consumer lag.\",\"focus\":[\"billing-webhooks\",\"billing-topic\",\"snowpipe\"],\"pause\":true}},{\"atMs\":6500,\"action\":{\"do\":\"note\",\"text\":\"Producers never slowed down. Once the spike passes, the connector drains the lag and RAW catches up.\",\"focus\":[\"snowpipe\",\"raw\"]}},{\"atMs\":9000,\"action\":{\"do\":\"note\",\"text\":\"Only order-driven segment changes flow back out through reverse ETL. Invoices and account rows stay in the marts.\",\"focus\":[\"marts\",\"reverse-etl\",\"segments-topic\"]}}]; expectations=[{\"id\":\"lag\",\"label\":\"The loader falls behind during the spike\",\"metric\":{\"node\":\"billing-topic\",\"field\":\"lag\",\"group\":\"snowflake-sink\"},\"op\":\">\",\"value\":0,\"when\":\"at\",\"atMs\":5500},{\"id\":\"drained\",\"label\":\"Lag drains to zero\",\"metric\":{\"node\":\"billing-topic\",\"field\":\"lag\",\"group\":\"snowflake-sink\"},\"op\":\"==\",\"value\":0,\"when\":\"end\"},{\"id\":\"raw\",\"label\":\"All 4,440 events land in RAW\",\"metric\":{\"node\":\"raw\",\"field\":\"processed\"},\"op\":\"==\",\"value\":4440,\"when\":\"end\"},{\"id\":\"no-drop\",\"label\":\"Nothing is dropped\",\"metric\":{\"node\":\"billing-topic\",\"field\":\"dropped\"},\"op\":\"==\",\"value\":0,\"when\":\"always\"},{\"id\":\"segments\",\"label\":\"2,000 segment changes reach marketing\",\"metric\":{\"node\":\"marketing\",\"field\":\"processed\"},\"op\":\"==\",\"value\":2000,\"when\":\"end\"}]"
+    "output": "Diagram \"Event-driven data platform\" · direction LR · 21 nodes, 20 connections, 2 boundaries, 2 simulations\ndescription: \"Operational events stream through Kafka into Snowflake; dbt builds marts and reverse ETL publishes segments back to Kafka.\"\nnodes:\n  \"billing-webhooks\" \"generic.webhook\" (\"Webhook\") \"Billing webhooks\" / \"Stripe · invoice.paid\" props={\"ratePerSec\":5,\"messageType\":\"InvoicePaid\"} arrivingTypes=[] capabilities=[{\"kind\":\"calls\",\"edge\":\"billing-webhooks-to-webhook-receiver\",\"peer\":\"webhook-receiver\"}] explanation=undefined\n  \"storefront\" \"client.browser\" (\"Web Browser\") \"Storefront\" / \"Web and mobile checkout\" props={\"ratePerSec\":20,\"messageType\":\"CheckoutRequest\"} arrivingTypes=[] capabilities=[{\"kind\":\"calls\",\"edge\":\"storefront-to-checkout\",\"peer\":\"checkout\"}] explanation=undefined\n  \"accounts-db\" \"postgres\" (\"PostgreSQL\") \"Accounts database\" / \"OLTP · logical replication\" props={\"messageType\":\"AccountChanged\",\"latencyMs\":2} arrivingTypes=[] capabilities=[] explanation=undefined\n  \"segment-cache\" \"redis.cache\" (\"Redis Cache\") \"Segment cache\" / \"customerId → segments\" props={\"latencyMs\":2} arrivingTypes=[] capabilities=[] explanation=undefined\n  \"webhook-receiver\" \"service.node\" (\"Node.js Service\") \"Webhook receiver\" / \"Verify signature · ack 200\" props={\"concurrency\":64,\"latencyMs\":80} arrivingTypes=[\"InvoicePaid\"] capabilities=[{\"kind\":\"publishes\",\"edge\":\"webhook-receiver-to-billing-topic\",\"peer\":\"billing-topic\"}] explanation={\"id\":\"webhook-receiver\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":800,\"offered\":5,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":64,\"seconds\":0.08,\"utilization\":0.00625,\"growth\":0,\"contributors\":[{\"edge\":\"billing-webhooks-to-webhook-receiver\",\"node\":\"billing-webhooks\",\"label\":\"Billing webhooks\",\"rate\":5}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"checkout\" \"service.go\" (\"Go Service\") \"Checkout service\" / \"Commits order · publishes\" props={\"concurrency\":64,\"latencyMs\":120,\"emits\":\"OrderPlaced\"} arrivingTypes=[\"CheckoutRequest\"] capabilities=[{\"kind\":\"publishes\",\"edge\":\"checkout-to-orders-topic\",\"peer\":\"orders-topic\"}] explanation={\"id\":\"checkout\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":533.3333333333334,\"offered\":20,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":64,\"seconds\":0.12,\"utilization\":0.0375,\"growth\":0,\"contributors\":[{\"edge\":\"storefront-to-checkout\",\"node\":\"storefront\",\"label\":\"Storefront\",\"rate\":20}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"debezium\" \"debezium\" (\"Debezium CDC\") \"Debezium connector\" / \"Postgres WAL → events\" props={\"ratePerSec\":10,\"messageType\":\"AccountChanged\"} arrivingTypes=[] capabilities=[{\"kind\":\"publishes\",\"edge\":\"debezium-to-accounts-topic\",\"peer\":\"accounts-topic\"}] explanation=undefined\n  \"personalization\" \"service.java\" (\"Java Service\") \"Personalization service\" / \"Next-best offer\" props={\"group\":\"personalization\",\"concurrency\":64,\"latencyMs\":100} arrivingTypes=[] capabilities=[{\"kind\":\"consumes\",\"edge\":\"segments-topic-to-personalization\",\"peer\":\"segments-topic\",\"group\":\"personalization\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"calls\",\"edge\":\"personalization-to-segment-cache\",\"peer\":\"segment-cache\"}] explanation={\"id\":\"personalization\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":640,\"offered\":20,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"segments-topic\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":6}],\"slots\":64,\"seconds\":0.1,\"utilization\":0.03125,\"growth\":0,\"contributors\":[{\"edge\":\"segments-topic-to-personalization\",\"node\":\"segments-topic\",\"label\":\"customer-segments.v1\",\"rate\":20}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"marketing\" \"generic.marketing\" (\"Marketing Automation\") \"Marketing automation\" / \"Braze · campaigns\" props={\"group\":\"marketing-sync\"} arrivingTypes=[] capabilities=[] explanation=undefined\n  \"billing-topic\" \"kafka.topic\" (\"Kafka Topic\") \"billing.invoices.v1\" / \"key: customerId\" props={\"partitions\":6} in \"kafka\" arrivingTypes=[\"InvoicePaid\"] capabilities=[] explanation=undefined\n  \"orders-topic\" \"kafka.topic\" (\"Kafka Topic\") \"orders.v1\" / \"key: orderId\" props={\"partitions\":6} in \"kafka\" arrivingTypes=[\"OrderPlaced\"] capabilities=[] explanation=undefined\n  \"accounts-topic\" \"kafka.topic\" (\"Kafka Topic\") \"cdc.accounts.v1\" / \"Debezium · key: accountId\" props={\"partitions\":6} in \"kafka\" arrivingTypes=[\"AccountChanged\"] capabilities=[] explanation=undefined\n  \"segments-topic\" \"kafka.topic\" (\"Kafka Topic\") \"customer-segments.v1\" / \"key: customerId\" props={\"partitions\":6} in \"kafka\" arrivingTypes=[] capabilities=[] explanation=undefined\n  \"schema-registry\" \"kafka.schema-registry\" (\"Schema Registry\") \"Schema registry\" / \"Avro · backward compatible\" props={\"compatibility\":\"BACKWARD\"} arrivingTypes=[] capabilities=[] explanation=undefined\n  \"snowpipe\" \"snowflake.snowpipe\" (\"Snowpipe Streaming\") \"Snowflake connector\" / \"Snowpipe Streaming\" props={\"group\":\"snowflake-sink\",\"replicas\":6,\"concurrency\":4,\"latencyMs\":40,\"emits\":{\"OrderPlaced\":\"RawOrderRow\",\"InvoicePaid\":\"RawInvoiceRow\",\"AccountChanged\":\"RawAccountRow\"}} arrivingTypes=[\"AccountChanged\",\"InvoicePaid\",\"OrderPlaced\"] capabilities=[{\"kind\":\"consumes\",\"edge\":\"billing-topic-to-snowpipe\",\"peer\":\"billing-topic\",\"group\":\"snowflake-sink\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"consumes\",\"edge\":\"orders-topic-to-snowpipe\",\"peer\":\"orders-topic\",\"group\":\"snowflake-sink\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"consumes\",\"edge\":\"accounts-topic-to-snowpipe\",\"peer\":\"accounts-topic\",\"group\":\"snowflake-sink\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"calls\",\"edge\":\"snowpipe-to-raw\",\"peer\":\"raw\"}] explanation={\"id\":\"snowpipe\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":600,\"offered\":35,\"replicas\":6,\"baseReplicas\":6,\"omittedContributors\":0,\"activeReplicas\":6,\"assignments\":[{\"broker\":\"billing-topic\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":6},{\"broker\":\"orders-topic\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":6},{\"broker\":\"accounts-topic\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":6}],\"slots\":4,\"seconds\":0.04,\"utilization\":0.058333333333333334,\"growth\":0,\"contributors\":[{\"edge\":\"billing-topic-to-snowpipe\",\"node\":\"billing-topic\",\"label\":\"billing.invoices.v1\",\"rate\":5},{\"edge\":\"orders-topic-to-snowpipe\",\"node\":\"orders-topic\",\"label\":\"orders.v1\",\"rate\":20},{\"edge\":\"accounts-topic-to-snowpipe\",\"node\":\"accounts-topic\",\"label\":\"cdc.accounts.v1\",\"rate\":10}],\"target\":0.5,\"minimumReplicas\":6,\"targetReplicas\":6,\"changes\":null,\"converged\":true}\n  \"reverse-etl\" \"generic.reverse-etl\" (\"Reverse ETL\") \"Reverse ETL\" / \"Hightouch · diffs only\" props={\"concurrency\":400,\"latencyMs\":1500,\"emits\":\"CustomerSegmentChanged\"} arrivingTypes=[] capabilities=[{\"kind\":\"publishes\",\"edge\":\"reverse-etl-to-segments-topic\",\"peer\":\"segments-topic\"}] explanation={\"id\":\"reverse-etl\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":266.6666666666667,\"offered\":20,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":400,\"seconds\":1.5,\"utilization\":0.075,\"growth\":0,\"contributors\":[{\"edge\":\"marts-to-reverse-etl\",\"node\":\"marts\",\"label\":\"Marts\",\"rate\":20}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"raw\" \"snowflake\" (\"Snowflake\") \"Raw tables\" / \"RAW.KAFKA_* · VARIANT\" props={\"latencyMs\":1} in \"snowflake\" arrivingTypes=[\"RawAccountRow\",\"RawInvoiceRow\",\"RawOrderRow\"] capabilities=[] explanation=undefined\n  \"marts\" \"snowflake\" (\"Snowflake\") \"Marts\" / \"Segments · revenue · orders\" props={\"latencyMs\":1} in \"snowflake\" arrivingTypes=[] capabilities=[] explanation=undefined\n  \"airflow\" \"airflow\" (\"Apache Airflow\") \"Airflow\" / \"dbt build · every 15 min\" arrivingTypes=[] capabilities=[] explanation=undefined\n  \"dbt\" \"dbt\" (\"dbt\") \"dbt models\" / \"Incremental models\" props={\"concurrency\":3000,\"latencyMs\":2500,\"emits\":{\"RawOrderRow\":\"CustomerSegmentRow\",\"RawInvoiceRow\":\"RevenueRow\",\"RawAccountRow\":\"CustomerRow\"}} arrivingTypes=[] capabilities=[{\"kind\":\"calls\",\"edge\":\"dbt-to-marts\",\"peer\":\"marts\",\"filter\":[\"CustomerSegmentRow\",\"RevenueRow\",\"CustomerRow\"]}] explanation={\"id\":\"dbt\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":1200,\"offered\":35,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":3000,\"seconds\":2.5,\"utilization\":0.029166666666666667,\"growth\":0,\"contributors\":[{\"edge\":\"raw-to-dbt\",\"node\":\"raw\",\"label\":\"Raw tables\",\"rate\":35}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"bi\" \"tableau\" (\"Tableau\") \"Revenue dashboards\" / \"Tableau · live\" props={} arrivingTypes=[] capabilities=[{\"kind\":\"calls\",\"edge\":\"bi-to-marts\",\"peer\":\"marts\"}] explanation=undefined\nconnections:\n  \"billing-webhooks-to-webhook-receiver\" \"billing-webhooks\" -> \"webhook-receiver\" sync \"HTTPS · signed\" carriedTypes=[\"InvoicePaid\"]\n  \"storefront-to-checkout\" \"storefront\" -> \"checkout\" sync \"POST /checkout\" carriedTypes=[\"CheckoutRequest\"]\n  \"accounts-db-to-debezium\" \"accounts-db\" -> \"debezium\" async \"WAL\" carriedTypes=[]\n  \"webhook-receiver-to-billing-topic\" \"webhook-receiver\" -> \"billing-topic\" async \"InvoicePaid\" carriedTypes=[\"InvoicePaid\"]\n  \"checkout-to-orders-topic\" \"checkout\" -> \"orders-topic\" async \"OrderPlaced\" carriedTypes=[\"OrderPlaced\"]\n  \"debezium-to-accounts-topic\" \"debezium\" -> \"accounts-topic\" async \"AccountChanged\" carriedTypes=[\"AccountChanged\"]\n  \"billing-topic-to-snowpipe\" \"billing-topic\" -> \"snowpipe\" async carriedTypes=[\"InvoicePaid\"]\n  \"orders-topic-to-snowpipe\" \"orders-topic\" -> \"snowpipe\" async \"group: snowflake-sink\" carriedTypes=[\"OrderPlaced\"]\n  \"accounts-topic-to-snowpipe\" \"accounts-topic\" -> \"snowpipe\" async carriedTypes=[\"AccountChanged\"]\n  \"snowpipe-to-schema-registry\" \"snowpipe\" -> \"schema-registry\" depends dependency \"Avro schemas\" carriedTypes=[]\n  \"snowpipe-to-raw\" \"snowpipe\" -> \"raw\" sync \"insertRows\" carriedTypes=[\"RawAccountRow\",\"RawInvoiceRow\",\"RawOrderRow\"]\n  \"raw-to-dbt\" \"raw\" -> \"dbt\" async \"New rows\" carriedTypes=[]\n  \"airflow-to-dbt\" \"airflow\" -> \"dbt\" depends dependency \"dbt build\" carriedTypes=[]\n  \"dbt-to-marts\" \"dbt\" -> \"marts\" sync \"MERGE models\" carriedTypes=[]\n  \"bi-to-marts\" \"bi\" -> \"marts\" sync \"Live queries\" carriedTypes=[]\n  \"marts-to-reverse-etl\" \"marts\" -> \"reverse-etl\" async \"Changed segments\" carriedTypes=[]\n  \"reverse-etl-to-segments-topic\" \"reverse-etl\" -> \"segments-topic\" async \"Segment changes\" carriedTypes=[]\n  \"segments-topic-to-personalization\" \"segments-topic\" -> \"personalization\" async \"group: personalization\" carriedTypes=[]\n  \"segments-topic-to-marketing\" \"segments-topic\" -> \"marketing\" async \"group: marketing-sync\" carriedTypes=[]\n  \"personalization-to-segment-cache\" \"personalization\" -> \"segment-cache\" sync \"SET segments\" carriedTypes=[]\nboundary \"kafka\" \"Kafka · Confluent Cloud\" (neutral): \"billing-topic\", \"orders-topic\", \"accounts-topic\", \"segments-topic\"\nboundary \"snowflake\" \"Snowflake · ANALYTICS\" (neutral): \"raw\", \"marts\"\nsimulation \"one-order\" \"Follow one order end to end\": {\"kind\":\"burst\",\"count\":1} from \"storefront\"; timeline=[{\"atMs\":0,\"action\":{\"do\":\"trace\",\"node\":\"checkout\"}},{\"atMs\":0,\"action\":{\"do\":\"note\",\"text\":\"A shopper checks out. Follow this one order through Kafka, Snowflake and dbt, and back out to Kafka as a segment change.\",\"focus\":[\"storefront\",\"checkout\",\"orders-topic\"],\"pause\":true}},{\"atMs\":1000,\"action\":{\"do\":\"note\",\"text\":\"The Snowflake Kafka connector streams the event into a RAW table within about a second. There is no nightly batch window.\",\"focus\":[\"orders-topic\",\"snowpipe\",\"raw\"]}},{\"atMs\":2600,\"action\":{\"do\":\"note\",\"text\":\"dbt's incremental models turn the raw row into marts. This order moves the customer into a new segment.\",\"focus\":[\"raw\",\"dbt\",\"marts\"]}},{\"atMs\":5600,\"action\":{\"do\":\"note\",\"text\":\"Reverse ETL compares the mart with its last sync and publishes only the changed row to customer-segments.v1.\",\"focus\":[\"marts\",\"reverse-etl\",\"segments-topic\"]}},{\"atMs\":8000,\"action\":{\"do\":\"note\",\"text\":\"Personalization and the marketing tool consume the change like any other event, each in its own consumer group.\",\"focus\":[\"segments-topic\",\"personalization\",\"marketing\"],\"pause\":true}}]; expectations=[{\"id\":\"raw\",\"label\":\"The order lands in RAW\",\"metric\":{\"node\":\"raw\",\"field\":\"processed\"},\"op\":\"==\",\"value\":1,\"when\":\"end\"},{\"id\":\"marts\",\"label\":\"dbt builds it into the marts\",\"metric\":{\"node\":\"marts\",\"field\":\"processed\"},\"op\":\"==\",\"value\":1,\"when\":\"end\"},{\"id\":\"cache\",\"label\":\"Personalization caches the new segment\",\"metric\":{\"node\":\"segment-cache\",\"field\":\"processed\"},\"op\":\"==\",\"value\":1,\"when\":\"end\"},{\"id\":\"marketing\",\"label\":\"The marketing tool receives it\",\"metric\":{\"node\":\"marketing\",\"field\":\"processed\"},\"op\":\"==\",\"value\":1,\"when\":\"end\"}]\nsimulation \"load-spike\" \"Warehouse load spike\": {\"kind\":\"constant\",\"ratePerSec\":200,\"durationMs\":10000} from \"storefront\"; {\"kind\":\"spike\",\"baseRate\":20,\"peakRate\":600,\"atMs\":3000,\"peakMs\":3000,\"durationMs\":10000} from \"billing-webhooks\"; {\"kind\":\"constant\",\"ratePerSec\":50,\"durationMs\":10000} from \"accounts-db\"; timeline=[{\"atMs\":0,\"action\":{\"do\":\"note\",\"text\":\"Orders, invoices and account changes all stream into Snowflake. Each dot is 20 events. The connector loads about 600 rows a second.\",\"focus\":[\"orders-topic\",\"billing-topic\",\"accounts-topic\",\"snowpipe\"]}},{\"atMs\":3000,\"action\":{\"do\":\"note\",\"text\":\"Month-end: invoice webhooks jump to 600 a second. The loader falls behind, and Kafka absorbs the burst as consumer lag.\",\"focus\":[\"billing-webhooks\",\"billing-topic\",\"snowpipe\"],\"pause\":true}},{\"atMs\":6500,\"action\":{\"do\":\"note\",\"text\":\"Producers never slowed down. Once the spike passes, the connector drains the lag and RAW catches up.\",\"focus\":[\"snowpipe\",\"raw\"]}},{\"atMs\":9000,\"action\":{\"do\":\"note\",\"text\":\"Only order-driven segment changes flow back out through reverse ETL. Invoices and account rows stay in the marts.\",\"focus\":[\"marts\",\"reverse-etl\",\"segments-topic\"]}}]; expectations=[{\"id\":\"lag\",\"label\":\"The loader falls behind during the spike\",\"metric\":{\"node\":\"billing-topic\",\"field\":\"lag\",\"group\":\"snowflake-sink\"},\"op\":\">\",\"value\":0,\"when\":\"at\",\"atMs\":5500},{\"id\":\"drained\",\"label\":\"Lag drains to zero\",\"metric\":{\"node\":\"billing-topic\",\"field\":\"lag\",\"group\":\"snowflake-sink\"},\"op\":\"==\",\"value\":0,\"when\":\"end\"},{\"id\":\"raw\",\"label\":\"All 4,440 events land in RAW\",\"metric\":{\"node\":\"raw\",\"field\":\"processed\"},\"op\":\"==\",\"value\":4440,\"when\":\"end\"},{\"id\":\"no-drop\",\"label\":\"Nothing is dropped\",\"metric\":{\"node\":\"billing-topic\",\"field\":\"dropped\"},\"op\":\"==\",\"value\":0,\"when\":\"always\"},{\"id\":\"segments\",\"label\":\"2,000 segment changes reach marketing\",\"metric\":{\"node\":\"marketing\",\"field\":\"processed\"},\"op\":\"==\",\"value\":2000,\"when\":\"end\"}]"
   },
   "json": {
     "isError": false,
@@ -18,6 +18,7 @@
           "x": 40,
           "y": 80,
           "props": { "ratePerSec": 5, "messageType": "InvoicePaid" },
+          "arrivingTypes": [],
           "capabilities": [
             { "kind": "calls", "edge": "billing-webhooks-to-webhook-receiver", "peer": "webhook-receiver" }
           ]
@@ -30,6 +31,7 @@
           "x": 40,
           "y": 200,
           "props": { "ratePerSec": 20, "messageType": "CheckoutRequest" },
+          "arrivingTypes": [],
           "capabilities": [{ "kind": "calls", "edge": "storefront-to-checkout", "peer": "checkout" }]
         },
         {
@@ -40,6 +42,7 @@
           "x": 40,
           "y": 320,
           "props": { "messageType": "AccountChanged", "latencyMs": 2 },
+          "arrivingTypes": [],
           "capabilities": []
         },
         {
@@ -50,6 +53,7 @@
           "x": 40,
           "y": 520,
           "props": { "latencyMs": 2 },
+          "arrivingTypes": [],
           "capabilities": []
         },
         {
@@ -60,6 +64,7 @@
           "x": 420,
           "y": 80,
           "props": { "concurrency": 64, "latencyMs": 80 },
+          "arrivingTypes": ["InvoicePaid"],
           "capabilities": [
             { "kind": "publishes", "edge": "webhook-receiver-to-billing-topic", "peer": "billing-topic" }
           ],
@@ -99,6 +104,7 @@
           "x": 420,
           "y": 200,
           "props": { "concurrency": 64, "latencyMs": 120, "emits": "OrderPlaced" },
+          "arrivingTypes": ["CheckoutRequest"],
           "capabilities": [{ "kind": "publishes", "edge": "checkout-to-orders-topic", "peer": "orders-topic" }],
           "explanation": {
             "id": "checkout",
@@ -136,6 +142,7 @@
           "x": 420,
           "y": 320,
           "props": { "ratePerSec": 10, "messageType": "AccountChanged" },
+          "arrivingTypes": [],
           "capabilities": [{ "kind": "publishes", "edge": "debezium-to-accounts-topic", "peer": "accounts-topic" }]
         },
         {
@@ -146,6 +153,7 @@
           "x": 420,
           "y": 520,
           "props": { "group": "personalization", "concurrency": 64, "latencyMs": 100 },
+          "arrivingTypes": [],
           "capabilities": [
             {
               "kind": "consumes",
@@ -200,6 +208,7 @@
           "x": 420,
           "y": 640,
           "props": { "group": "marketing-sync" },
+          "arrivingTypes": [],
           "capabilities": []
         },
         {
@@ -211,6 +220,7 @@
           "y": 80,
           "group": "kafka",
           "props": { "partitions": 6 },
+          "arrivingTypes": ["InvoicePaid"],
           "capabilities": []
         },
         {
@@ -222,6 +232,7 @@
           "y": 200,
           "group": "kafka",
           "props": { "partitions": 6 },
+          "arrivingTypes": ["OrderPlaced"],
           "capabilities": []
         },
         {
@@ -233,6 +244,7 @@
           "y": 320,
           "group": "kafka",
           "props": { "partitions": 6 },
+          "arrivingTypes": ["AccountChanged"],
           "capabilities": []
         },
         {
@@ -244,6 +256,7 @@
           "y": 520,
           "group": "kafka",
           "props": { "partitions": 6 },
+          "arrivingTypes": [],
           "capabilities": []
         },
         {
@@ -254,6 +267,7 @@
           "x": 1166,
           "y": 80,
           "props": { "compatibility": "BACKWARD" },
+          "arrivingTypes": [],
           "capabilities": []
         },
         {
@@ -270,6 +284,7 @@
             "latencyMs": 40,
             "emits": { "OrderPlaced": "RawOrderRow", "InvoicePaid": "RawInvoiceRow", "AccountChanged": "RawAccountRow" }
           },
+          "arrivingTypes": ["AccountChanged", "InvoicePaid", "OrderPlaced"],
           "capabilities": [
             {
               "kind": "consumes",
@@ -354,6 +369,7 @@
           "x": 1180,
           "y": 520,
           "props": { "concurrency": 400, "latencyMs": 1500, "emits": "CustomerSegmentChanged" },
+          "arrivingTypes": [],
           "capabilities": [{ "kind": "publishes", "edge": "reverse-etl-to-segments-topic", "peer": "segments-topic" }],
           "explanation": {
             "id": "reverse-etl",
@@ -390,6 +406,7 @@
           "y": 200,
           "group": "snowflake",
           "props": { "latencyMs": 1 },
+          "arrivingTypes": ["RawAccountRow", "RawInvoiceRow", "RawOrderRow"],
           "capabilities": []
         },
         {
@@ -401,9 +418,10 @@
           "y": 440,
           "group": "snowflake",
           "props": { "latencyMs": 1 },
+          "arrivingTypes": [],
           "capabilities": []
         },
-        { "id": "airflow", "stencil": "airflow", "label": "Airflow", "sublabel": "dbt build · every 15 min", "x": 1932, "y": 80, "capabilities": [] },
+        { "id": "airflow", "stencil": "airflow", "label": "Airflow", "sublabel": "dbt build · every 15 min", "x": 1932, "y": 80, "arrivingTypes": [], "capabilities": [] },
         {
           "id": "dbt",
           "stencil": "dbt",
@@ -416,6 +434,7 @@
             "latencyMs": 2500,
             "emits": { "RawOrderRow": "CustomerSegmentRow", "RawInvoiceRow": "RevenueRow", "RawAccountRow": "CustomerRow" }
           },
+          "arrivingTypes": [],
           "capabilities": [
             { "kind": "calls", "edge": "dbt-to-marts", "peer": "marts", "filter": ["CustomerSegmentRow", "RevenueRow", "CustomerRow"] }
           ],
@@ -453,6 +472,7 @@
           "x": 1940,
           "y": 560,
           "props": {},
+          "arrivingTypes": [],
           "capabilities": [{ "kind": "calls", "edge": "bi-to-marts", "peer": "marts" }]
         }
       ],
@@ -463,7 +483,8 @@
           "to": "webhook-receiver",
           "label": "HTTPS · signed",
           "kind": "sync",
-          "props": { "travelMs": 200 }
+          "props": { "travelMs": 200 },
+          "carriedTypes": ["InvoicePaid"]
         },
         {
           "id": "storefront-to-checkout",
@@ -471,7 +492,8 @@
           "to": "checkout",
           "label": "POST /checkout",
           "kind": "sync",
-          "props": { "travelMs": 200 }
+          "props": { "travelMs": 200 },
+          "carriedTypes": ["CheckoutRequest"]
         },
         {
           "id": "accounts-db-to-debezium",
@@ -479,7 +501,8 @@
           "to": "debezium",
           "label": "WAL",
           "kind": "async",
-          "props": { "travelMs": 200 }
+          "props": { "travelMs": 200 },
+          "carriedTypes": []
         },
         {
           "id": "webhook-receiver-to-billing-topic",
@@ -487,7 +510,8 @@
           "to": "billing-topic",
           "label": "InvoicePaid",
           "kind": "async",
-          "props": { "travelMs": 300 }
+          "props": { "travelMs": 300 },
+          "carriedTypes": ["InvoicePaid"]
         },
         {
           "id": "checkout-to-orders-topic",
@@ -495,7 +519,8 @@
           "to": "orders-topic",
           "label": "OrderPlaced",
           "kind": "async",
-          "props": { "travelMs": 300 }
+          "props": { "travelMs": 300 },
+          "carriedTypes": ["OrderPlaced"]
         },
         {
           "id": "debezium-to-accounts-topic",
@@ -503,14 +528,16 @@
           "to": "accounts-topic",
           "label": "AccountChanged",
           "kind": "async",
-          "props": { "travelMs": 300 }
+          "props": { "travelMs": 300 },
+          "carriedTypes": ["AccountChanged"]
         },
         {
           "id": "billing-topic-to-snowpipe",
           "from": "billing-topic",
           "to": "snowpipe",
           "kind": "async",
-          "props": { "travelMs": 300, "group": "snowflake-sink" }
+          "props": { "travelMs": 300, "group": "snowflake-sink" },
+          "carriedTypes": ["InvoicePaid"]
         },
         {
           "id": "orders-topic-to-snowpipe",
@@ -518,23 +545,26 @@
           "to": "snowpipe",
           "label": "group: snowflake-sink",
           "kind": "async",
-          "props": { "travelMs": 300, "group": "snowflake-sink" }
+          "props": { "travelMs": 300, "group": "snowflake-sink" },
+          "carriedTypes": ["OrderPlaced"]
         },
         {
           "id": "accounts-topic-to-snowpipe",
           "from": "accounts-topic",
           "to": "snowpipe",
           "kind": "async",
-          "props": { "travelMs": 300, "group": "snowflake-sink" }
+          "props": { "travelMs": 300, "group": "snowflake-sink" },
+          "carriedTypes": ["AccountChanged"]
         },
-        { "id": "snowpipe-to-schema-registry", "from": "snowpipe", "to": "schema-registry", "label": "Avro schemas", "kind": "async", "relation": "depends", "sourceSide": "top", "targetSide": "bottom" },
+        { "id": "snowpipe-to-schema-registry", "from": "snowpipe", "to": "schema-registry", "label": "Avro schemas", "kind": "async", "relation": "depends", "sourceSide": "top", "targetSide": "bottom", "carriedTypes": [] },
         {
           "id": "snowpipe-to-raw",
           "from": "snowpipe",
           "to": "raw",
           "label": "insertRows",
           "kind": "sync",
-          "props": { "travelMs": 200 }
+          "props": { "travelMs": 200 },
+          "carriedTypes": ["RawAccountRow", "RawInvoiceRow", "RawOrderRow"]
         },
         {
           "id": "raw-to-dbt",
@@ -542,16 +572,18 @@
           "to": "dbt",
           "label": "New rows",
           "kind": "async",
-          "props": { "travelMs": 300, "filter": ["Raw*"] }
+          "props": { "travelMs": 300, "filter": ["Raw*"] },
+          "carriedTypes": []
         },
-        { "id": "airflow-to-dbt", "from": "airflow", "to": "dbt", "label": "dbt build", "kind": "async", "relation": "depends", "sourceSide": "bottom", "targetSide": "top" },
+        { "id": "airflow-to-dbt", "from": "airflow", "to": "dbt", "label": "dbt build", "kind": "async", "relation": "depends", "sourceSide": "bottom", "targetSide": "top", "carriedTypes": [] },
         {
           "id": "dbt-to-marts",
           "from": "dbt",
           "to": "marts",
           "label": "MERGE models",
           "kind": "sync",
-          "props": { "travelMs": 200, "filter": ["CustomerSegmentRow", "RevenueRow", "CustomerRow"] }
+          "props": { "travelMs": 200, "filter": ["CustomerSegmentRow", "RevenueRow", "CustomerRow"] },
+          "carriedTypes": []
         },
         {
           "id": "bi-to-marts",
@@ -559,7 +591,8 @@
           "to": "marts",
           "label": "Live queries",
           "kind": "sync",
-          "props": { "travelMs": 200 }
+          "props": { "travelMs": 200 },
+          "carriedTypes": []
         },
         {
           "id": "marts-to-reverse-etl",
@@ -567,7 +600,8 @@
           "to": "reverse-etl",
           "label": "Changed segments",
           "kind": "async",
-          "props": { "travelMs": 300, "filter": ["CustomerSegmentRow"] }
+          "props": { "travelMs": 300, "filter": ["CustomerSegmentRow"] },
+          "carriedTypes": []
         },
         {
           "id": "reverse-etl-to-segments-topic",
@@ -575,7 +609,8 @@
           "to": "segments-topic",
           "label": "Segment changes",
           "kind": "async",
-          "props": { "travelMs": 300 }
+          "props": { "travelMs": 300 },
+          "carriedTypes": []
         },
         {
           "id": "segments-topic-to-personalization",
@@ -583,7 +618,8 @@
           "to": "personalization",
           "label": "group: personalization",
           "kind": "async",
-          "props": { "travelMs": 300, "group": "personalization" }
+          "props": { "travelMs": 300, "group": "personalization" },
+          "carriedTypes": []
         },
         {
           "id": "segments-topic-to-marketing",
@@ -591,7 +627,8 @@
           "to": "marketing",
           "label": "group: marketing-sync",
           "kind": "async",
-          "props": { "travelMs": 300, "group": "marketing-sync" }
+          "props": { "travelMs": 300, "group": "marketing-sync" },
+          "carriedTypes": []
         },
         {
           "id": "personalization-to-segment-cache",
@@ -599,9 +636,11 @@
           "to": "segment-cache",
           "label": "SET segments",
           "kind": "sync",
-          "props": { "travelMs": 200 }
+          "props": { "travelMs": 200 },
+          "carriedTypes": []
         }
       ],
+      "messageTypesComplete": true,
       "groups": [
         { "id": "kafka", "label": "Kafka · Confluent Cloud", "tone": "neutral", "x": 760, "y": 40, "width": 340, "height": 592 },
         { "id": "snowflake", "label": "Snowflake · ANALYTICS", "tone": "neutral", "x": 1520, "y": 160, "width": 340, "height": 392 }
@@ -778,6 +817,6 @@
   },
   "focus": {
     "isError": false,
-    "output": "Diagram \"Event-driven data platform\" · direction LR · 2 nodes, 1 connections, 0 boundaries, 1 simulations\ndescription: \"Operational events stream through Kafka into Snowflake; dbt builds marts and reverse ETL publishes segments back to Kafka.\"\nnodes:\n  \"billing-webhooks\" \"generic.webhook\" (\"Webhook\") \"Billing webhooks\" / \"Stripe · invoice.paid\" props={\"ratePerSec\":5,\"messageType\":\"InvoicePaid\"} capabilities=[{\"kind\":\"calls\",\"edge\":\"billing-webhooks-to-webhook-receiver\",\"peer\":\"webhook-receiver\"}] explanation=undefined\n  \"webhook-receiver\" \"service.node\" (\"Node.js Service\") \"Webhook receiver\" / \"Verify signature · ack 200\" props={\"concurrency\":64,\"latencyMs\":80} capabilities=[{\"kind\":\"publishes\",\"edge\":\"webhook-receiver-to-billing-topic\",\"peer\":\"billing-topic\"}] explanation={\"id\":\"webhook-receiver\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":800,\"offered\":5,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":64,\"seconds\":0.08,\"utilization\":0.00625,\"growth\":0,\"contributors\":[{\"edge\":\"billing-webhooks-to-webhook-receiver\",\"node\":\"billing-webhooks\",\"label\":\"Billing webhooks\",\"rate\":5}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\nconnections:\n  \"billing-webhooks-to-webhook-receiver\" \"billing-webhooks\" -> \"webhook-receiver\" sync \"HTTPS · signed\"\nsimulation \"load-spike\" \"Warehouse load spike\": {\"kind\":\"constant\",\"ratePerSec\":200,\"durationMs\":10000} from \"storefront\"; {\"kind\":\"spike\",\"baseRate\":20,\"peakRate\":600,\"atMs\":3000,\"peakMs\":3000,\"durationMs\":10000} from \"billing-webhooks\"; {\"kind\":\"constant\",\"ratePerSec\":50,\"durationMs\":10000} from \"accounts-db\"; timeline=[{\"atMs\":0,\"action\":{\"do\":\"note\",\"text\":\"Orders, invoices and account changes all stream into Snowflake. Each dot is 20 events. The connector loads about 600 rows a second.\",\"focus\":[\"orders-topic\",\"billing-topic\",\"accounts-topic\",\"snowpipe\"]}},{\"atMs\":3000,\"action\":{\"do\":\"note\",\"text\":\"Month-end: invoice webhooks jump to 600 a second. The loader falls behind, and Kafka absorbs the burst as consumer lag.\",\"focus\":[\"billing-webhooks\",\"billing-topic\",\"snowpipe\"],\"pause\":true}},{\"atMs\":6500,\"action\":{\"do\":\"note\",\"text\":\"Producers never slowed down. Once the spike passes, the connector drains the lag and RAW catches up.\",\"focus\":[\"snowpipe\",\"raw\"]}},{\"atMs\":9000,\"action\":{\"do\":\"note\",\"text\":\"Only order-driven segment changes flow back out through reverse ETL. Invoices and account rows stay in the marts.\",\"focus\":[\"marts\",\"reverse-etl\",\"segments-topic\"]}}]; expectations=[{\"id\":\"lag\",\"label\":\"The loader falls behind during the spike\",\"metric\":{\"node\":\"billing-topic\",\"field\":\"lag\",\"group\":\"snowflake-sink\"},\"op\":\">\",\"value\":0,\"when\":\"at\",\"atMs\":5500},{\"id\":\"drained\",\"label\":\"Lag drains to zero\",\"metric\":{\"node\":\"billing-topic\",\"field\":\"lag\",\"group\":\"snowflake-sink\"},\"op\":\"==\",\"value\":0,\"when\":\"end\"},{\"id\":\"raw\",\"label\":\"All 4,440 events land in RAW\",\"metric\":{\"node\":\"raw\",\"field\":\"processed\"},\"op\":\"==\",\"value\":4440,\"when\":\"end\"},{\"id\":\"no-drop\",\"label\":\"Nothing is dropped\",\"metric\":{\"node\":\"billing-topic\",\"field\":\"dropped\"},\"op\":\"==\",\"value\":0,\"when\":\"always\"},{\"id\":\"segments\",\"label\":\"2,000 segment changes reach marketing\",\"metric\":{\"node\":\"marketing\",\"field\":\"processed\"},\"op\":\"==\",\"value\":2000,\"when\":\"end\"}]"
+    "output": "Diagram \"Event-driven data platform\" · direction LR · 2 nodes, 1 connections, 0 boundaries, 1 simulations\ndescription: \"Operational events stream through Kafka into Snowflake; dbt builds marts and reverse ETL publishes segments back to Kafka.\"\nnodes:\n  \"billing-webhooks\" \"generic.webhook\" (\"Webhook\") \"Billing webhooks\" / \"Stripe · invoice.paid\" props={\"ratePerSec\":5,\"messageType\":\"InvoicePaid\"} arrivingTypes=[] capabilities=[{\"kind\":\"calls\",\"edge\":\"billing-webhooks-to-webhook-receiver\",\"peer\":\"webhook-receiver\"}] explanation=undefined\n  \"webhook-receiver\" \"service.node\" (\"Node.js Service\") \"Webhook receiver\" / \"Verify signature · ack 200\" props={\"concurrency\":64,\"latencyMs\":80} arrivingTypes=[\"InvoicePaid\"] capabilities=[{\"kind\":\"publishes\",\"edge\":\"webhook-receiver-to-billing-topic\",\"peer\":\"billing-topic\"}] explanation={\"id\":\"webhook-receiver\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":800,\"offered\":5,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":64,\"seconds\":0.08,\"utilization\":0.00625,\"growth\":0,\"contributors\":[{\"edge\":\"billing-webhooks-to-webhook-receiver\",\"node\":\"billing-webhooks\",\"label\":\"Billing webhooks\",\"rate\":5}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\nconnections:\n  \"billing-webhooks-to-webhook-receiver\" \"billing-webhooks\" -> \"webhook-receiver\" sync \"HTTPS · signed\" carriedTypes=[\"InvoicePaid\"]\nsimulation \"load-spike\" \"Warehouse load spike\": {\"kind\":\"constant\",\"ratePerSec\":200,\"durationMs\":10000} from \"storefront\"; {\"kind\":\"spike\",\"baseRate\":20,\"peakRate\":600,\"atMs\":3000,\"peakMs\":3000,\"durationMs\":10000} from \"billing-webhooks\"; {\"kind\":\"constant\",\"ratePerSec\":50,\"durationMs\":10000} from \"accounts-db\"; timeline=[{\"atMs\":0,\"action\":{\"do\":\"note\",\"text\":\"Orders, invoices and account changes all stream into Snowflake. Each dot is 20 events. The connector loads about 600 rows a second.\",\"focus\":[\"orders-topic\",\"billing-topic\",\"accounts-topic\",\"snowpipe\"]}},{\"atMs\":3000,\"action\":{\"do\":\"note\",\"text\":\"Month-end: invoice webhooks jump to 600 a second. The loader falls behind, and Kafka absorbs the burst as consumer lag.\",\"focus\":[\"billing-webhooks\",\"billing-topic\",\"snowpipe\"],\"pause\":true}},{\"atMs\":6500,\"action\":{\"do\":\"note\",\"text\":\"Producers never slowed down. Once the spike passes, the connector drains the lag and RAW catches up.\",\"focus\":[\"snowpipe\",\"raw\"]}},{\"atMs\":9000,\"action\":{\"do\":\"note\",\"text\":\"Only order-driven segment changes flow back out through reverse ETL. Invoices and account rows stay in the marts.\",\"focus\":[\"marts\",\"reverse-etl\",\"segments-topic\"]}}]; expectations=[{\"id\":\"lag\",\"label\":\"The loader falls behind during the spike\",\"metric\":{\"node\":\"billing-topic\",\"field\":\"lag\",\"group\":\"snowflake-sink\"},\"op\":\">\",\"value\":0,\"when\":\"at\",\"atMs\":5500},{\"id\":\"drained\",\"label\":\"Lag drains to zero\",\"metric\":{\"node\":\"billing-topic\",\"field\":\"lag\",\"group\":\"snowflake-sink\"},\"op\":\"==\",\"value\":0,\"when\":\"end\"},{\"id\":\"raw\",\"label\":\"All 4,440 events land in RAW\",\"metric\":{\"node\":\"raw\",\"field\":\"processed\"},\"op\":\"==\",\"value\":4440,\"when\":\"end\"},{\"id\":\"no-drop\",\"label\":\"Nothing is dropped\",\"metric\":{\"node\":\"billing-topic\",\"field\":\"dropped\"},\"op\":\"==\",\"value\":0,\"when\":\"always\"},{\"id\":\"segments\",\"label\":\"2,000 segment changes reach marketing\",\"metric\":{\"node\":\"marketing\",\"field\":\"processed\"},\"op\":\"==\",\"value\":2000,\"when\":\"end\"}]"
   }
 }

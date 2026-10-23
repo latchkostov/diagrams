@@ -1,7 +1,7 @@
 {
   "text": {
     "isError": false,
-    "output": "Diagram \"Fields\" · direction LR · 3 nodes, 1 connections, 1 boundaries, 0 simulations\ndescription: \"Platform overview\\nOwned by the core team\"\nnodes:\n  \"a\" \"client.browser\" (\"Web Browser\") \"Order service\" in \"core\" capabilities=[] explanation=undefined\n  \"b\" \"client.browser\" (\"Web Browser\") \"Payments gateway\" in \"core\" capabilities=[] explanation=undefined\n  \"c\" \"client.browser\" (\"Web Browser\") \"Worker\" capabilities=[] explanation=undefined\nconnections:\n  \"ab\" \"a\" -> \"b\" async \"writes\"\nboundary \"core\" \"Core platform\" (neutral): \"a\", \"b\"\nnote \"n1\" \"Sticky reminder\\nSecond line here\""
+    "output": "Diagram \"Fields\" · direction LR · 3 nodes, 1 connections, 1 boundaries, 0 simulations\ndescription: \"Platform overview\\nOwned by the core team\"\nnodes:\n  \"a\" \"client.browser\" (\"Web Browser\") \"Order service\" in \"core\" arrivingTypes=[] capabilities=[] explanation=undefined\n  \"b\" \"client.browser\" (\"Web Browser\") \"Payments gateway\" in \"core\" arrivingTypes=[\"Order service\"] capabilities=[] explanation=undefined\n  \"c\" \"client.browser\" (\"Web Browser\") \"Worker\" arrivingTypes=[] capabilities=[] explanation=undefined\nconnections:\n  \"ab\" \"a\" -> \"b\" async \"writes\" carriedTypes=[\"Order service\"]\nboundary \"core\" \"Core platform\" (neutral): \"a\", \"b\"\nnote \"n1\" \"Sticky reminder\\nSecond line here\""
   },
   "json": {
     "isError": false,
@@ -10,11 +10,14 @@
       "description": "Platform overview\nOwned by the core team",
       "direction": "LR",
       "nodes": [
-        { "id": "a", "stencil": "client.browser", "label": "Order service", "x": 0, "y": 0, "group": "core", "capabilities": [] },
-        { "id": "b", "stencil": "client.browser", "label": "Payments gateway", "x": 400, "y": 0, "group": "core", "capabilities": [] },
-        { "id": "c", "stencil": "client.browser", "label": "Worker", "x": 0, "y": 300, "capabilities": [] }
+        { "id": "a", "stencil": "client.browser", "label": "Order service", "x": 0, "y": 0, "group": "core", "arrivingTypes": [], "capabilities": [] },
+        { "id": "b", "stencil": "client.browser", "label": "Payments gateway", "x": 400, "y": 0, "group": "core", "arrivingTypes": ["Order service"], "capabilities": [] },
+        { "id": "c", "stencil": "client.browser", "label": "Worker", "x": 0, "y": 300, "arrivingTypes": [], "capabilities": [] }
       ],
-      "edges": [{ "id": "ab", "from": "a", "to": "b", "kind": "async", "label": "writes" }],
+      "edges": [
+        { "id": "ab", "from": "a", "to": "b", "kind": "async", "label": "writes", "carriedTypes": ["Order service"] }
+      ],
+      "messageTypesComplete": true,
       "groups": [
         { "id": "core", "label": "Core platform", "tone": "neutral", "x": -40, "y": -60, "width": 740, "height": 180 }
       ],
@@ -27,6 +30,6 @@
   },
   "focus": {
     "isError": false,
-    "output": "Diagram \"Fields\" · direction LR · 2 nodes, 1 connections, 1 boundaries, 0 simulations\ndescription: \"Platform overview\\nOwned by the core team\"\nnodes:\n  \"a\" \"client.browser\" (\"Web Browser\") \"Order service\" in \"core\" capabilities=[] explanation=undefined\n  \"b\" \"client.browser\" (\"Web Browser\") \"Payments gateway\" in \"core\" capabilities=[] explanation=undefined\nconnections:\n  \"ab\" \"a\" -> \"b\" async \"writes\"\nboundary \"core\" \"Core platform\" (neutral): \"a\", \"b\""
+    "output": "Diagram \"Fields\" · direction LR · 2 nodes, 1 connections, 1 boundaries, 0 simulations\ndescription: \"Platform overview\\nOwned by the core team\"\nnodes:\n  \"a\" \"client.browser\" (\"Web Browser\") \"Order service\" in \"core\" arrivingTypes=[] capabilities=[] explanation=undefined\n  \"b\" \"client.browser\" (\"Web Browser\") \"Payments gateway\" in \"core\" arrivingTypes=[\"Order service\"] capabilities=[] explanation=undefined\nconnections:\n  \"ab\" \"a\" -> \"b\" async \"writes\" carriedTypes=[\"Order service\"]\nboundary \"core\" \"Core platform\" (neutral): \"a\", \"b\""
   }
 }

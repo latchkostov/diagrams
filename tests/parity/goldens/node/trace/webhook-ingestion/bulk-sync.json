@@ -1,5 +1,5 @@
 {
-  "trace": { "rootId": 1, "type": "WebhookEvent", "origin": "partners", "startedAt": 20, "done": true, "partial": false, "truncated": false, "steps": 40, "endedAt": 1730 },
+  "trace": { "rootId": 1, "type": "WebhookEvent", "origin": "partners", "startedAt": 20, "done": true, "partial": false, "truncated": false, "steps": 46, "endedAt": 1860 },
   "steps": [
     { "t": 20, "kind": "emit", "id": 1, "type": "WebhookEvent", "node": "partners" },
     { "t": 20, "kind": "done", "id": 1, "type": "WebhookEvent", "node": "partners" },
@@ -30,24 +30,30 @@
     { "t": 1360, "kind": "start", "id": 23, "type": "WebhookEvent", "node": "workers" },
     { "t": 1520, "kind": "done", "id": 23, "type": "WebhookEvent", "node": "workers" },
     { "t": 1520, "kind": "copy", "id": 131, "type": "PartnerChangeApplied", "node": "workers", "parent": 23 },
-    { "t": 1520, "kind": "send", "id": 23, "type": "PartnerChangeApplied", "node": "workers", "edge": "workers-to-dedupe", "via": "message", "until": 1720 },
-    { "t": 1520, "kind": "send", "id": 131, "type": "PartnerChangeApplied", "node": "workers", "edge": "workers-to-integration-db", "via": "message", "until": 1720 },
-    { "t": 1720, "kind": "arrive", "id": 23, "type": "PartnerChangeApplied", "node": "dedupe", "edge": "workers-to-dedupe" },
-    { "t": 1720, "kind": "arrive", "id": 131, "type": "PartnerChangeApplied", "node": "integration-db", "edge": "workers-to-integration-db" },
-    { "t": 1720, "kind": "send", "id": 23, "type": "PartnerChangeApplied", "node": "dedupe", "edge": "workers-to-dedupe", "via": "reply", "until": 1920 },
-    { "t": 1720, "kind": "done", "id": 23, "type": "PartnerChangeApplied", "node": "dedupe" },
-    { "t": 1720, "kind": "end", "id": 23, "type": "PartnerChangeApplied", "node": "dedupe", "reason": "stored" },
-    { "t": 1720, "kind": "start", "id": 131, "type": "PartnerChangeApplied", "node": "integration-db" },
-    { "t": 1730, "kind": "send", "id": 131, "type": "PartnerChangeApplied", "node": "integration-db", "edge": "workers-to-integration-db", "via": "reply", "until": 1930 },
-    { "t": 1730, "kind": "done", "id": 131, "type": "PartnerChangeApplied", "node": "integration-db" },
-    { "t": 1730, "kind": "end", "id": 131, "type": "PartnerChangeApplied", "node": "integration-db", "reason": "stored" }
+    { "t": 1520, "kind": "copy", "id": 132, "type": "PartnerChangeApplied", "node": "workers", "parent": 23 },
+    { "t": 1520, "kind": "send", "id": 23, "type": "WebhookApplied", "node": "workers", "edge": "workers-to-receiver", "via": "message", "until": 1820 },
+    { "t": 1520, "kind": "send", "id": 131, "type": "PartnerChangeApplied", "node": "workers", "edge": "workers-to-dedupe", "via": "message", "until": 1720 },
+    { "t": 1520, "kind": "send", "id": 132, "type": "PartnerChangeApplied", "node": "workers", "edge": "workers-to-integration-db", "via": "message", "until": 1720 },
+    { "t": 1720, "kind": "arrive", "id": 131, "type": "PartnerChangeApplied", "node": "dedupe", "edge": "workers-to-dedupe" },
+    { "t": 1720, "kind": "arrive", "id": 132, "type": "PartnerChangeApplied", "node": "integration-db", "edge": "workers-to-integration-db" },
+    { "t": 1720, "kind": "send", "id": 131, "type": "PartnerChangeApplied", "node": "dedupe", "edge": "workers-to-dedupe", "via": "reply", "until": 1920 },
+    { "t": 1720, "kind": "done", "id": 131, "type": "PartnerChangeApplied", "node": "dedupe" },
+    { "t": 1720, "kind": "end", "id": 131, "type": "PartnerChangeApplied", "node": "dedupe", "reason": "stored" },
+    { "t": 1720, "kind": "start", "id": 132, "type": "PartnerChangeApplied", "node": "integration-db" },
+    { "t": 1730, "kind": "send", "id": 132, "type": "PartnerChangeApplied", "node": "integration-db", "edge": "workers-to-integration-db", "via": "reply", "until": 1930 },
+    { "t": 1730, "kind": "done", "id": 132, "type": "PartnerChangeApplied", "node": "integration-db" },
+    { "t": 1730, "kind": "end", "id": 132, "type": "PartnerChangeApplied", "node": "integration-db", "reason": "stored" },
+    { "t": 1820, "kind": "arrive", "id": 23, "type": "WebhookApplied", "node": "receiver", "edge": "workers-to-receiver" },
+    { "t": 1820, "kind": "start", "id": 23, "type": "WebhookApplied", "node": "receiver" },
+    { "t": 1860, "kind": "done", "id": 23, "type": "WebhookApplied", "node": "receiver" },
+    { "t": 1860, "kind": "end", "id": 23, "type": "WebhookApplied", "node": "receiver", "reason": "consumed" }
   ],
   "journey": {
     "rootId": 1,
     "type": "WebhookEvent",
     "origin": "partners",
     "startedAt": 20,
-    "totalMs": 1710,
+    "totalMs": 1840,
     "done": true,
     "partial": false,
     "truncated": false,
@@ -59,8 +65,9 @@
       { "key": "19", "kind": "hop", "t": 740, "id": 23, "type": "WebhookEvent", "node": "exchange", "from": "receiver", "edge": "receiver-to-exchange", "sync": false, "latencyMs": 330, "waitMs": 0, "processMs": 30, "travelMs": 300, "renamed": false, "copy": true },
       { "key": "22", "kind": "hop", "t": 1040, "id": 23, "type": "WebhookEvent", "node": "queue", "from": "exchange", "edge": "exchange-to-queue", "sync": false, "latencyMs": 300, "waitMs": 0, "travelMs": 300, "renamed": false, "copy": true },
       { "key": "25", "kind": "hop", "t": 1340, "id": 23, "type": "WebhookEvent", "node": "workers", "from": "queue", "edge": "queue-to-workers", "sync": false, "latencyMs": 300, "waitMs": 0, "travelMs": 300, "renamed": false, "copy": true },
-      { "key": "31", "kind": "hop", "t": 1700, "id": 23, "type": "PartnerChangeApplied", "node": "dedupe", "from": "workers", "edge": "workers-to-dedupe", "sync": true, "latencyMs": 360, "waitMs": 0, "processMs": 160, "travelMs": 200, "renamed": true, "copy": true },
-      { "key": "32", "kind": "hop", "t": 1700, "id": 131, "type": "PartnerChangeApplied", "node": "integration-db", "from": "workers", "edge": "workers-to-integration-db", "sync": true, "latencyMs": 360, "waitMs": 0, "processMs": 160, "travelMs": 200, "renamed": false, "copy": true }
+      { "key": "33", "kind": "hop", "t": 1700, "id": 131, "type": "PartnerChangeApplied", "node": "dedupe", "from": "workers", "edge": "workers-to-dedupe", "sync": true, "latencyMs": 360, "waitMs": 0, "processMs": 160, "travelMs": 200, "renamed": false, "copy": true },
+      { "key": "34", "kind": "hop", "t": 1700, "id": 132, "type": "PartnerChangeApplied", "node": "integration-db", "from": "workers", "edge": "workers-to-integration-db", "sync": true, "latencyMs": 360, "waitMs": 0, "processMs": 160, "travelMs": 200, "renamed": false, "copy": true },
+      { "key": "42", "kind": "hop", "t": 1800, "id": 23, "type": "WebhookApplied", "node": "receiver", "from": "workers", "edge": "workers-to-receiver", "sync": false, "latencyMs": 460, "waitMs": 0, "processMs": 160, "travelMs": 300, "renamed": true, "copy": true }
     ],
     "visits": [
       { "id": 1, "node": "partners", "at": 0, "done": 0, "left": 0 },
@@ -72,11 +79,13 @@
       { "id": 23, "node": "queue", "at": 1040, "done": 1040, "left": 1040 },
       { "id": 23, "node": "workers", "at": 1340, "start": 1340, "done": 1500, "left": 1500 },
       { "id": 131, "node": "workers", "at": 1340, "start": 1340, "done": 1500, "left": 1500 },
-      { "id": 23, "node": "dedupe", "at": 1700, "done": 1700 },
-      { "id": 131, "node": "integration-db", "at": 1700, "start": 1700, "done": 1710 }
+      { "id": 132, "node": "workers", "at": 1340, "start": 1340, "done": 1500, "left": 1500 },
+      { "id": 131, "node": "dedupe", "at": 1700, "done": 1700 },
+      { "id": 132, "node": "integration-db", "at": 1700, "start": 1700, "done": 1710 },
+      { "id": 23, "node": "receiver", "at": 1800, "start": 1800, "done": 1840 }
     ],
-    "ids": [1, 23, 131],
-    "copies": 2,
+    "ids": [1, 23, 131, 132],
+    "copies": 3,
     "retries": 0,
     "failures": 0,
     "deadLettered": 0,
@@ -91,14 +100,15 @@
       "receiver-to-exchange",
       "exchange-to-queue",
       "queue-to-workers",
+      "workers-to-receiver",
       "workers-to-dedupe",
       "workers-to-integration-db"
     ],
-    "rowOf": { "0": "0", "3": "3", "8": "8", "15": "15", "19": "19", "22": "22", "25": "25", "31": "31", "32": "32" }
+    "rowOf": { "0": "0", "3": "3", "8": "8", "15": "15", "19": "19", "22": "22", "25": "25", "33": "33", "34": "34", "42": "42" }
   },
   "sequence": {
     "title": "WebhookEvent #1",
-    "summary": "1.71 s end to end · 2 copies",
+    "summary": "1.84 s end to end · 3 copies",
     "participants": [
       { "id": "partners", "label": "Partner webhooks" },
       { "id": "edge", "label": "Cloudflare" },
@@ -120,20 +130,21 @@
       { "kind": "arrow", "t": 640, "until": 840, "from": "raw", "to": "receiver", "style": "reply", "label": "reply", "id": 1, "type": "WebhookEvent" },
       { "kind": "arrow", "t": 740, "until": 1040, "from": "exchange", "to": "queue", "style": "async", "label": "WebhookEvent", "detail": "webhook.#", "id": 23, "type": "WebhookEvent" },
       { "kind": "arrow", "t": 1040, "until": 1340, "from": "queue", "to": "workers", "style": "async", "label": "WebhookEvent", "detail": "Prefetch 4", "id": 23, "type": "WebhookEvent" },
-      { "kind": "arrow", "t": 1500, "until": 1700, "from": "workers", "to": "dedupe", "style": "sync", "label": "PartnerChangeApplied", "detail": "Idempotency check", "id": 23, "type": "PartnerChangeApplied" },
-      { "kind": "arrow", "t": 1500, "until": 1700, "from": "workers", "to": "integration-db", "style": "sync", "label": "PartnerChangeApplied", "detail": "Apply change", "id": 131, "type": "PartnerChangeApplied" },
-      { "kind": "arrow", "t": 1700, "until": 1900, "from": "dedupe", "to": "workers", "style": "reply", "label": "reply", "id": 23, "type": "PartnerChangeApplied" },
-      { "kind": "arrow", "t": 1710, "until": 1910, "from": "integration-db", "to": "workers", "style": "reply", "label": "reply", "id": 131, "type": "PartnerChangeApplied" }
+      { "kind": "arrow", "t": 1500, "until": 1800, "from": "workers", "to": "receiver", "style": "async", "label": "WebhookApplied", "detail": "Applied callback", "id": 23, "type": "WebhookApplied" },
+      { "kind": "arrow", "t": 1500, "until": 1700, "from": "workers", "to": "dedupe", "style": "sync", "label": "PartnerChangeApplied", "detail": "Idempotency check", "id": 131, "type": "PartnerChangeApplied" },
+      { "kind": "arrow", "t": 1500, "until": 1700, "from": "workers", "to": "integration-db", "style": "sync", "label": "PartnerChangeApplied", "detail": "Apply change", "id": 132, "type": "PartnerChangeApplied" },
+      { "kind": "arrow", "t": 1700, "until": 1900, "from": "dedupe", "to": "workers", "style": "reply", "label": "reply", "id": 131, "type": "PartnerChangeApplied" },
+      { "kind": "arrow", "t": 1710, "until": 1910, "from": "integration-db", "to": "workers", "style": "reply", "label": "reply", "id": 132, "type": "PartnerChangeApplied" }
     ],
-    "totalMs": 1710,
+    "totalMs": 1840,
     "done": true,
     "partial": false,
     "truncated": false
   },
-  "mermaidPlain": "---\ntitle: \"WebhookEvent #1 · 1.71 s end to end · 2 copies\"\n---\nsequenceDiagram\n  participant partners as Partner webhooks\n  participant edge as Cloudflare\n  participant receiver as Webhook receiver\n  participant raw as Raw payloads\n  participant exchange as webhooks\n  participant queue as webhooks.process\n  participant workers as Webhook workers\n  participant dedupe as Seen event IDs\n  participant integration_db as Integration database\n  partners->>edge: WebhookEvent (+0.00 s)<br/>HTTPS POST\n  edge-->>partners: reply (+0.21 s)\n  edge->>receiver: WebhookEvent (+0.21 s)<br/>/hooks/:partner\n  receiver-->>edge: reply (+0.44 s)\n  receiver->>raw: WebhookEvent (+0.44 s)<br/>PUT body\n  receiver-)exchange: WebhookEvent (+0.44 s)<br/>Publish\n  raw-->>receiver: reply (+0.64 s)\n  exchange-)queue: WebhookEvent (+0.74 s)<br/>webhook.#35;\n  queue-)workers: WebhookEvent (+1.04 s)<br/>Prefetch 4\n  workers->>dedupe: PartnerChangeApplied (+1.50 s)<br/>Idempotency check\n  workers->>integration_db: PartnerChangeApplied (+1.50 s)<br/>Apply change\n  dedupe-->>workers: reply (+1.70 s)\n  integration_db-->>workers: reply (+1.71 s)\n",
+  "mermaidPlain": "---\ntitle: \"WebhookEvent #1 · 1.84 s end to end · 3 copies\"\n---\nsequenceDiagram\n  participant partners as Partner webhooks\n  participant edge as Cloudflare\n  participant receiver as Webhook receiver\n  participant raw as Raw payloads\n  participant exchange as webhooks\n  participant queue as webhooks.process\n  participant workers as Webhook workers\n  participant dedupe as Seen event IDs\n  participant integration_db as Integration database\n  partners->>edge: WebhookEvent (+0.00 s)<br/>HTTPS POST\n  edge-->>partners: reply (+0.21 s)\n  edge->>receiver: WebhookEvent (+0.21 s)<br/>/hooks/:partner\n  receiver-->>edge: reply (+0.44 s)\n  receiver->>raw: WebhookEvent (+0.44 s)<br/>PUT body\n  receiver-)exchange: WebhookEvent (+0.44 s)<br/>Publish\n  raw-->>receiver: reply (+0.64 s)\n  exchange-)queue: WebhookEvent (+0.74 s)<br/>webhook.#35;\n  queue-)workers: WebhookEvent (+1.04 s)<br/>Prefetch 4\n  workers-)receiver: WebhookApplied (+1.50 s)<br/>Applied callback\n  workers->>dedupe: PartnerChangeApplied (+1.50 s)<br/>Idempotency check\n  workers->>integration_db: PartnerChangeApplied (+1.50 s)<br/>Apply change\n  dedupe-->>workers: reply (+1.70 s)\n  integration_db-->>workers: reply (+1.71 s)\n",
   "svg": {
-    "light": { "sha256": "7c5122d484421bf6b5064de7b77877f62126c5247486d8b479e4392f252dfec6", "bytes": 19515, "width": 1528, "height": 838, "headerHeight": 142 },
-    "dark": { "sha256": "62bb20efa0315b80f725e67e92e1ae932eb64423cac5194b460e4681655ce8ac", "bytes": 19514, "width": 1528, "height": 838, "headerHeight": 142 }
+    "light": { "sha256": "cdcd564522f29f500f1dd0e6854b682d039c939c211d1f16a8f32b23cb793bb9", "bytes": 20779, "width": 1528, "height": 892, "headerHeight": 142 },
+    "dark": { "sha256": "d4c1aae4dcb8cbf853c47ad16a523967cddedd149ecb2552f6dca9f9757d984f", "bytes": 20778, "width": 1528, "height": 892, "headerHeight": 142 }
   },
   "slowMotion": {
     "rootId": 1,
@@ -270,11 +281,11 @@
         "duration": 1185.2555595631493,
         "realFrom": 1340,
         "realTo": 1500,
-        "caption": "Webhook workers · Prefetch 4 · 160 ms → PartnerChangeApplied",
+        "caption": "Webhook workers · Prefetch 4 · 160 ms → WebhookApplied, PartnerChangeApplied",
         "i": 16,
         "color": "#309bd5",
         "tone": "plain",
-        "short": "Prefetch 4 · 160 ms → PartnerChangeApplied"
+        "short": "Prefetch 4 · 160 ms → WebhookApplied, PartnerChangeApplied"
       },
       {
         "kind": "split",
@@ -286,17 +297,18 @@
         "duration": 400,
         "realFrom": 1500,
         "realTo": 1500,
-        "lanes": ["workers-to-dedupe", "workers-to-integration-db"],
-        "copies": 2,
+        "lanes": ["workers-to-receiver", "workers-to-dedupe", "workers-to-integration-db"],
+        "copies": 3,
         "i": 17,
         "color": "#309bd5",
         "tone": "plain"
       },
-      { "kind": "travel", "msg": 23, "type": "PartnerChangeApplied", "edge": "workers-to-dedupe", "reverse": false, "start": 10142.300236765588, "duration": 1000, "realFrom": 1500, "realTo": 1700, "caption": "PartnerChangeApplied", "tone": "plain", "i": 18, "color": "#18a6b5", "rowKey": "31" },
-      { "kind": "travel", "msg": 131, "type": "PartnerChangeApplied", "edge": "workers-to-integration-db", "reverse": false, "start": 10142.300236765588, "duration": 1000, "realFrom": 1500, "realTo": 1700, "caption": "PartnerChangeApplied", "tone": "plain", "i": 19, "color": "#18a6b5", "rowKey": "32" },
+      { "kind": "travel", "msg": 23, "type": "WebhookApplied", "edge": "workers-to-receiver", "reverse": false, "start": 10142.300236765588, "duration": 1000, "realFrom": 1500, "realTo": 1800, "caption": "WebhookApplied", "tone": "plain", "i": 18, "color": "#ca6578", "rowKey": "42" },
+      { "kind": "travel", "msg": 131, "type": "PartnerChangeApplied", "edge": "workers-to-dedupe", "reverse": false, "start": 10142.300236765588, "duration": 1000, "realFrom": 1500, "realTo": 1700, "caption": "PartnerChangeApplied", "tone": "plain", "i": 19, "color": "#18a6b5", "rowKey": "33" },
+      { "kind": "travel", "msg": 132, "type": "PartnerChangeApplied", "edge": "workers-to-integration-db", "reverse": false, "start": 10142.300236765588, "duration": 1000, "realFrom": 1500, "realTo": 1700, "caption": "PartnerChangeApplied", "tone": "plain", "i": 20, "color": "#18a6b5", "rowKey": "34" },
       {
         "kind": "write",
-        "msg": 23,
+        "msg": 131,
         "type": "PartnerChangeApplied",
         "node": "dedupe",
         "anchor": { "edge": "workers-to-dedupe", "end": 1 },
@@ -306,15 +318,15 @@
         "realTo": 1700,
         "caption": "Seen event IDs · write PartnerChangeApplied",
         "sink": 300,
-        "i": 20,
+        "i": 21,
         "color": "#18a6b5",
         "tone": "plain",
         "short": "write PartnerChangeApplied"
       },
-      { "kind": "reply", "msg": 23, "type": "PartnerChangeApplied", "edge": "workers-to-dedupe", "reverse": true, "start": 12042.300236765588, "duration": 600, "realFrom": 1700, "realTo": 1900, "i": 21, "color": "#18a6b5", "tone": "plain" },
+      { "kind": "reply", "msg": 131, "type": "PartnerChangeApplied", "edge": "workers-to-dedupe", "reverse": true, "start": 12042.300236765588, "duration": 600, "realFrom": 1700, "realTo": 1900, "i": 22, "color": "#18a6b5", "tone": "plain" },
       {
         "kind": "write",
-        "msg": 131,
+        "msg": 132,
         "type": "PartnerChangeApplied",
         "node": "integration-db",
         "anchor": { "edge": "workers-to-integration-db", "end": 1 },
@@ -324,16 +336,32 @@
         "realTo": 1710,
         "caption": "Integration database · write PartnerChangeApplied · 10 ms",
         "sink": 300,
-        "i": 22,
+        "i": 23,
         "color": "#18a6b5",
         "tone": "plain",
         "short": "write PartnerChangeApplied · 10 ms"
       },
-      { "kind": "reply", "msg": 131, "type": "PartnerChangeApplied", "edge": "workers-to-integration-db", "reverse": true, "start": 12099.094138743041, "duration": 600, "realFrom": 1710, "realTo": 1910, "i": 23, "color": "#18a6b5", "tone": "plain" },
-      { "kind": "end", "msg": 1, "type": "WebhookEvent", "node": "integration-db", "start": 12499.094138743041, "duration": 1200, "realFrom": 1710, "realTo": 1710, "caption": "Done · 1.71 s · 2 copies · 3 writes", "tone": "done", "i": 24, "color": "#309bd5" }
+      { "kind": "reply", "msg": 132, "type": "PartnerChangeApplied", "edge": "workers-to-integration-db", "reverse": true, "start": 12099.094138743041, "duration": 600, "realFrom": 1710, "realTo": 1910, "i": 24, "color": "#18a6b5", "tone": "plain" },
+      {
+        "kind": "process",
+        "msg": 23,
+        "type": "WebhookApplied",
+        "node": "receiver",
+        "anchor": { "edge": "workers-to-receiver", "end": 1 },
+        "start": 11142.300236765588,
+        "duration": 853.2725571158205,
+        "realFrom": 1800,
+        "realTo": 1840,
+        "caption": "Webhook receiver · Applied callback · 40 ms",
+        "i": 25,
+        "color": "#ca6578",
+        "tone": "plain",
+        "short": "Applied callback · 40 ms"
+      },
+      { "kind": "end", "msg": 1, "type": "WebhookEvent", "node": "integration-db", "start": 12499.094138743041, "duration": 1200, "realFrom": 1840, "realTo": 1840, "caption": "Done · 1.84 s · 3 copies · 3 writes", "tone": "done", "i": 26, "color": "#309bd5" }
     ],
     "duration": 13699.094138743041,
-    "realTotal": 1710,
+    "realTotal": 1840,
     "stops": [0, 800, 2457, 4657, 6107, 7557, 10142, 12499],
     "nodes": ["partners", "edge", "receiver", "raw", "exchange", "queue", "workers", "dedupe", "integration-db"],
     "edges": [
@@ -343,14 +371,15 @@
       "receiver-to-exchange",
       "exchange-to-queue",
       "queue-to-workers",
+      "workers-to-receiver",
       "workers-to-dedupe",
       "workers-to-integration-db"
     ],
     "hiddenCopies": 0,
     "unfinished": false,
-    "summary": "Done · 1.71 s · 2 copies · 3 writes",
+    "summary": "Done · 1.84 s · 3 copies · 3 writes",
     "reduced": false,
-    "rowStart": { "0": 0, "3": 800, "8": 2456.793901977453, "15": 4657.044677202439, "19": 4657.044677202439, "22": 6107.044677202439, "25": 7557.044677202439, "31": 10142.300236765588, "32": 10142.300236765588 }
+    "rowStart": { "0": 0, "3": 800, "8": 2456.793901977453, "15": 4657.044677202439, "19": 4657.044677202439, "22": 6107.044677202439, "25": 7557.044677202439, "33": 10142.300236765588, "34": 10142.300236765588, "42": 10142.300236765588 }
   },
   "slowMotionReduced": {
     "duration": 21000,
@@ -372,8 +401,10 @@
       ["split", 16500, 0],
       ["travel", 16500, 1500],
       ["travel", 16500, 1500],
+      ["travel", 16500, 1500],
       ["write", 18000, 1500],
       ["write", 18000, 1500],
+      ["process", 18000, 1500],
       ["end", 19500, 1500]
     ]
   }

@@ -8,6 +8,7 @@ import type { DiagramFile, Simulation } from "../model/types";
 import { createSimulationRun } from "../sim/simulation";
 import { runChecks } from "./run";
 import type { Finding } from "./types";
+import { messageTypesFixture } from "../lab/messageTypesFixture";
 
 // Every fix is ordinary edit ops: it applies through the same core agents use (applyOps), as one history
 // step in the editor, and the finding it fixes is gone afterwards.
@@ -58,6 +59,13 @@ const finding = (d: DiagramFile, id: string) => {
 };
 
 describe("fixes", () => {
+  it("Only pass Send removes the message loop in one undo step", () => {
+    const d = messageTypesFixture();
+    const found = runChecks(d, { rules: ["message-loop"] }).findings[0];
+    const after = applyFix(d, found);
+    expect(runChecks(after, { rules: ["message-loop"] }).findings).toEqual([]);
+    expect(after.edges.find((edge) => edge.id === "send")?.props?.filter).toEqual(["Send"]);
+  });
   it("Add dead-letter queue: one step, a DLQ route of the same family, and the warning is gone", () => {
     const d = base();
     const after = applyFix(d, finding(d, "dead-letter:q"));

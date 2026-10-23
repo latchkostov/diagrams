@@ -1,7 +1,7 @@
 {
   "text": {
     "isError": false,
-    "output": "Diagram \"Delivery losses\" · direction LR · 3 nodes, 2 connections, 0 boundaries, 0 simulations\nnodes:\n  \"web\" \"client.browser\" (\"Web Browser\") \"Web\" props={\"ratePerSec\":2,\"messageType\":\"Order\"} capabilities=[{\"kind\":\"publishes\",\"edge\":\"web-q\",\"peer\":\"q\"}] explanation=undefined\n  \"q\" \"aws.sqs\" (\"Amazon SQS\") \"orders\" props={\"maxDeliveryCount\":1} capabilities=[] explanation=undefined\n  \"worker\" \"service.go\" (\"Go Service\") \"Worker\" props={\"failureRate\":1,\"latencyMs\":10,\"concurrency\":1,\"jitter\":0} capabilities=[{\"kind\":\"consumes\",\"edge\":\"q-worker\",\"peer\":\"q\",\"retry\":\"requeue\",\"retryBackoffMs\":0}] explanation={\"id\":\"worker\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":100,\"offered\":2,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":1,\"seconds\":0.01,\"utilization\":0.02,\"growth\":0,\"contributors\":[{\"edge\":\"q-worker\",\"node\":\"q\",\"label\":\"orders\",\"rate\":2}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\nconnections:\n  \"web-q\" \"web\" -> \"q\" async\n  \"q-worker\" \"q\" -> \"worker\" async"
+    "output": "Diagram \"Delivery losses\" · direction LR · 3 nodes, 2 connections, 0 boundaries, 0 simulations\nnodes:\n  \"web\" \"client.browser\" (\"Web Browser\") \"Web\" props={\"ratePerSec\":2,\"messageType\":\"Order\"} arrivingTypes=[] capabilities=[{\"kind\":\"publishes\",\"edge\":\"web-q\",\"peer\":\"q\"}] explanation=undefined\n  \"q\" \"aws.sqs\" (\"Amazon SQS\") \"orders\" props={\"maxDeliveryCount\":1} arrivingTypes=[\"Order\"] capabilities=[] explanation=undefined\n  \"worker\" \"service.go\" (\"Go Service\") \"Worker\" props={\"failureRate\":1,\"latencyMs\":10,\"concurrency\":1,\"jitter\":0} arrivingTypes=[\"Order\"] capabilities=[{\"kind\":\"consumes\",\"edge\":\"q-worker\",\"peer\":\"q\",\"retry\":\"requeue\",\"retryBackoffMs\":0}] explanation={\"id\":\"worker\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":100,\"offered\":2,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":1,\"seconds\":0.01,\"utilization\":0.02,\"growth\":0,\"contributors\":[{\"edge\":\"q-worker\",\"node\":\"q\",\"label\":\"orders\",\"rate\":2}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\nconnections:\n  \"web-q\" \"web\" -> \"q\" async carriedTypes=[\"Order\"]\n  \"q-worker\" \"q\" -> \"worker\" async carriedTypes=[\"Order\"]"
   },
   "json": {
     "isError": false,
@@ -16,6 +16,7 @@
           "x": 0,
           "y": 100,
           "props": { "ratePerSec": 2, "messageType": "Order" },
+          "arrivingTypes": [],
           "capabilities": [{ "kind": "publishes", "edge": "web-q", "peer": "q" }]
         },
         {
@@ -25,6 +26,7 @@
           "x": 400,
           "y": 100,
           "props": { "maxDeliveryCount": 1 },
+          "arrivingTypes": ["Order"],
           "capabilities": []
         },
         {
@@ -34,6 +36,7 @@
           "x": 800,
           "y": 100,
           "props": { "failureRate": 1, "latencyMs": 10, "concurrency": 1, "jitter": 0 },
+          "arrivingTypes": ["Order"],
           "capabilities": [
             { "kind": "consumes", "edge": "q-worker", "peer": "q", "retry": "requeue", "retryBackoffMs": 0 }
           ],
@@ -65,9 +68,24 @@
         }
       ],
       "edges": [
-        { "id": "web-q", "from": "web", "to": "q", "kind": "async", "props": { "travelMs": 20 } },
-        { "id": "q-worker", "from": "q", "to": "worker", "kind": "async", "props": { "travelMs": 20 } }
+        {
+          "id": "web-q",
+          "from": "web",
+          "to": "q",
+          "kind": "async",
+          "props": { "travelMs": 20 },
+          "carriedTypes": ["Order"]
+        },
+        {
+          "id": "q-worker",
+          "from": "q",
+          "to": "worker",
+          "kind": "async",
+          "props": { "travelMs": 20 },
+          "carriedTypes": ["Order"]
+        }
       ],
+      "messageTypesComplete": true,
       "groups": [],
       "annotations": [],
       "simulations": [],
@@ -76,6 +94,6 @@
   },
   "focus": {
     "isError": false,
-    "output": "Diagram \"Delivery losses\" · direction LR · 2 nodes, 1 connections, 0 boundaries, 0 simulations\nnodes:\n  \"web\" \"client.browser\" (\"Web Browser\") \"Web\" props={\"ratePerSec\":2,\"messageType\":\"Order\"} capabilities=[{\"kind\":\"publishes\",\"edge\":\"web-q\",\"peer\":\"q\"}] explanation=undefined\n  \"q\" \"aws.sqs\" (\"Amazon SQS\") \"orders\" props={\"maxDeliveryCount\":1} capabilities=[] explanation=undefined\nconnections:\n  \"web-q\" \"web\" -> \"q\" async"
+    "output": "Diagram \"Delivery losses\" · direction LR · 2 nodes, 1 connections, 0 boundaries, 0 simulations\nnodes:\n  \"web\" \"client.browser\" (\"Web Browser\") \"Web\" props={\"ratePerSec\":2,\"messageType\":\"Order\"} arrivingTypes=[] capabilities=[{\"kind\":\"publishes\",\"edge\":\"web-q\",\"peer\":\"q\"}] explanation=undefined\n  \"q\" \"aws.sqs\" (\"Amazon SQS\") \"orders\" props={\"maxDeliveryCount\":1} arrivingTypes=[\"Order\"] capabilities=[] explanation=undefined\nconnections:\n  \"web-q\" \"web\" -> \"q\" async carriedTypes=[\"Order\"]"
   }
 }

@@ -1,7 +1,7 @@
 {
   "format": "diagrams/v1",
   "title": "Webhook ingestion at scale",
-  "description": "Partner webhooks are verified and acknowledged fast, buffered in RabbitMQ, retried with backoff, dead-lettered and replayed on demand.",
+  "description": "Partner webhooks are verified and acknowledged fast, buffered in RabbitMQ, retried with backoff, dead-lettered and replayed on demand. Typed callbacks stop at the receiver.",
   "direction": "LR",
   "groups": [
     {
@@ -196,7 +196,10 @@
       "label": "PUT body",
       "kind": "sync",
       "props": {
-        "travelMs": 200
+        "travelMs": 200,
+        "filter": [
+          "WebhookEvent"
+        ]
       }
     },
     {
@@ -206,7 +209,10 @@
       "label": "Publish",
       "kind": "async",
       "props": {
-        "travelMs": 300
+        "travelMs": 300,
+        "filter": [
+          "WebhookEvent"
+        ]
       }
     },
     {
@@ -239,6 +245,20 @@
       "props": {
         "travelMs": 300,
         "dlq": true
+      }
+    },
+    {
+      "id": "workers-to-receiver",
+      "from": "workers",
+      "to": "receiver",
+      "label": "Applied callback",
+      "kind": "async",
+      "props": {
+        "travelMs": 300,
+        "filter": [
+          "PartnerChangeApplied"
+        ],
+        "emits": "WebhookApplied"
       }
     },
     {

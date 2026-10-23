@@ -1,7 +1,7 @@
 {
   "text": {
     "isError": false,
-    "output": "Diagram \"Slow consumer lag\" · direction LR · 4 nodes, 3 connections, 0 boundaries, 0 simulations\ndescription: \"Fast and slow consumer groups on one topic.\"\nnodes:\n  \"devices\" \"client.iot\" (\"IoT Device\") \"Devices\" props={\"ratePerSec\":6,\"messageType\":\"Reading\"} capabilities=[{\"kind\":\"publishes\",\"edge\":\"devices-topic\",\"peer\":\"topic\"}] explanation=undefined\n  \"topic\" \"azure.event-hubs\" (\"Event Hubs\") \"telemetry\" / \"telemetry\" props={\"partitions\":8} capabilities=[] explanation=undefined\n  \"fast\" \"service.go\" (\"Go Service\") \"Alerts\" / \"fast\" props={\"latencyMs\":80,\"concurrency\":8} capabilities=[{\"kind\":\"consumes\",\"edge\":\"topic-fast\",\"peer\":\"topic\",\"group\":\"topic-fast\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0}] explanation={\"id\":\"fast\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":100,\"offered\":6,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"topic\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":8}],\"slots\":8,\"seconds\":0.08,\"utilization\":0.06,\"growth\":0,\"contributors\":[{\"edge\":\"topic-fast\",\"node\":\"topic\",\"label\":\"telemetry\",\"rate\":6}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"slow\" \"service.python\" (\"Python Service\") \"Reports\" / \"slow\" props={\"latencyMs\":1500,\"concurrency\":1} capabilities=[{\"kind\":\"consumes\",\"edge\":\"topic-slow\",\"peer\":\"topic\",\"group\":\"topic-slow\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0}] explanation={\"id\":\"slow\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"capacity\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":0.6666666666666666,\"offered\":6,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"topic\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":8}],\"slots\":1,\"seconds\":1.5,\"utilization\":9,\"growth\":5.333333333333333,\"contributors\":[{\"edge\":\"topic-slow\",\"node\":\"topic\",\"label\":\"telemetry\",\"rate\":6}],\"target\":0.5,\"minimumReplicas\":9,\"targetReplicas\":18,\"changes\":null,\"converged\":true}\nconnections:\n  \"devices-topic\" \"devices\" -> \"topic\" async\n  \"topic-fast\" \"topic\" -> \"fast\" async\n  \"topic-slow\" \"topic\" -> \"slow\" async"
+    "output": "Diagram \"Slow consumer lag\" · direction LR · 4 nodes, 3 connections, 0 boundaries, 0 simulations\ndescription: \"Fast and slow consumer groups on one topic.\"\nnodes:\n  \"devices\" \"client.iot\" (\"IoT Device\") \"Devices\" props={\"ratePerSec\":6,\"messageType\":\"Reading\"} arrivingTypes=[] capabilities=[{\"kind\":\"publishes\",\"edge\":\"devices-topic\",\"peer\":\"topic\"}] explanation=undefined\n  \"topic\" \"azure.event-hubs\" (\"Event Hubs\") \"telemetry\" / \"telemetry\" props={\"partitions\":8} arrivingTypes=[\"Reading\"] capabilities=[] explanation=undefined\n  \"fast\" \"service.go\" (\"Go Service\") \"Alerts\" / \"fast\" props={\"latencyMs\":80,\"concurrency\":8} arrivingTypes=[\"Reading\"] capabilities=[{\"kind\":\"consumes\",\"edge\":\"topic-fast\",\"peer\":\"topic\",\"group\":\"topic-fast\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0}] explanation={\"id\":\"fast\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":100,\"offered\":6,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"topic\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":8}],\"slots\":8,\"seconds\":0.08,\"utilization\":0.06,\"growth\":0,\"contributors\":[{\"edge\":\"topic-fast\",\"node\":\"topic\",\"label\":\"telemetry\",\"rate\":6}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"slow\" \"service.python\" (\"Python Service\") \"Reports\" / \"slow\" props={\"latencyMs\":1500,\"concurrency\":1} arrivingTypes=[\"Reading\"] capabilities=[{\"kind\":\"consumes\",\"edge\":\"topic-slow\",\"peer\":\"topic\",\"group\":\"topic-slow\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0}] explanation={\"id\":\"slow\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"capacity\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":0.6666666666666666,\"offered\":6,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"topic\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":8}],\"slots\":1,\"seconds\":1.5,\"utilization\":9,\"growth\":5.333333333333333,\"contributors\":[{\"edge\":\"topic-slow\",\"node\":\"topic\",\"label\":\"telemetry\",\"rate\":6}],\"target\":0.5,\"minimumReplicas\":9,\"targetReplicas\":18,\"changes\":null,\"converged\":true}\nconnections:\n  \"devices-topic\" \"devices\" -> \"topic\" async carriedTypes=[\"Reading\"]\n  \"topic-fast\" \"topic\" -> \"fast\" async carriedTypes=[\"Reading\"]\n  \"topic-slow\" \"topic\" -> \"slow\" async carriedTypes=[\"Reading\"]"
   },
   "json": {
     "isError": false,
@@ -17,6 +17,7 @@
           "x": 40,
           "y": 160,
           "props": { "ratePerSec": 6, "messageType": "Reading" },
+          "arrivingTypes": [],
           "capabilities": [{ "kind": "publishes", "edge": "devices-topic", "peer": "topic" }]
         },
         {
@@ -27,6 +28,7 @@
           "y": 160,
           "sublabel": "telemetry",
           "props": { "partitions": 8 },
+          "arrivingTypes": ["Reading"],
           "capabilities": []
         },
         {
@@ -37,6 +39,7 @@
           "y": 40,
           "sublabel": "fast",
           "props": { "latencyMs": 80, "concurrency": 8 },
+          "arrivingTypes": ["Reading"],
           "capabilities": [
             {
               "kind": "consumes",
@@ -88,6 +91,7 @@
           "y": 280,
           "sublabel": "slow",
           "props": { "latencyMs": 1500, "concurrency": 1 },
+          "arrivingTypes": ["Reading"],
           "capabilities": [
             {
               "kind": "consumes",
@@ -133,10 +137,11 @@
         }
       ],
       "edges": [
-        { "id": "devices-topic", "from": "devices", "to": "topic", "kind": "async" },
-        { "id": "topic-fast", "from": "topic", "to": "fast", "kind": "async" },
-        { "id": "topic-slow", "from": "topic", "to": "slow", "kind": "async" }
+        { "id": "devices-topic", "from": "devices", "to": "topic", "kind": "async", "carriedTypes": ["Reading"] },
+        { "id": "topic-fast", "from": "topic", "to": "fast", "kind": "async", "carriedTypes": ["Reading"] },
+        { "id": "topic-slow", "from": "topic", "to": "slow", "kind": "async", "carriedTypes": ["Reading"] }
       ],
+      "messageTypesComplete": true,
       "groups": [],
       "annotations": [],
       "simulations": [],
@@ -145,6 +150,6 @@
   },
   "focus": {
     "isError": false,
-    "output": "Diagram \"Slow consumer lag\" · direction LR · 2 nodes, 1 connections, 0 boundaries, 0 simulations\ndescription: \"Fast and slow consumer groups on one topic.\"\nnodes:\n  \"devices\" \"client.iot\" (\"IoT Device\") \"Devices\" props={\"ratePerSec\":6,\"messageType\":\"Reading\"} capabilities=[{\"kind\":\"publishes\",\"edge\":\"devices-topic\",\"peer\":\"topic\"}] explanation=undefined\n  \"topic\" \"azure.event-hubs\" (\"Event Hubs\") \"telemetry\" / \"telemetry\" props={\"partitions\":8} capabilities=[] explanation=undefined\nconnections:\n  \"devices-topic\" \"devices\" -> \"topic\" async"
+    "output": "Diagram \"Slow consumer lag\" · direction LR · 2 nodes, 1 connections, 0 boundaries, 0 simulations\ndescription: \"Fast and slow consumer groups on one topic.\"\nnodes:\n  \"devices\" \"client.iot\" (\"IoT Device\") \"Devices\" props={\"ratePerSec\":6,\"messageType\":\"Reading\"} arrivingTypes=[] capabilities=[{\"kind\":\"publishes\",\"edge\":\"devices-topic\",\"peer\":\"topic\"}] explanation=undefined\n  \"topic\" \"azure.event-hubs\" (\"Event Hubs\") \"telemetry\" / \"telemetry\" props={\"partitions\":8} arrivingTypes=[\"Reading\"] capabilities=[] explanation=undefined\nconnections:\n  \"devices-topic\" \"devices\" -> \"topic\" async carriedTypes=[\"Reading\"]"
   }
 }

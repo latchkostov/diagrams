@@ -1,11 +1,11 @@
 {
-  "file": { "sha256": "f2b2e68b6efeef3da393b1c59520266c933077ff3acc6390de872af1f4146af7", "bytes": 40767 },
+  "file": { "sha256": "36b4757d49cd21402e196af7e0df2e3acbd4fa107cf95bc27e0f552c9585bf1b", "bytes": 41045 },
   "payload": {
     "version": 1,
     "diagram": {
       "format": "diagrams/v1",
       "title": "Webhook ingestion at scale",
-      "description": "Partner webhooks are verified and acknowledged fast, buffered in RabbitMQ, retried with backoff, dead-lettered and replayed on demand.",
+      "description": "Partner webhooks are verified and acknowledged fast, buffered in RabbitMQ, retried with backoff, dead-lettered and replayed on demand. Typed callbacks stop at the receiver.",
       "direction": "LR",
       "groups": [
         { "id": "k8s", "label": "Kubernetes", "tone": "k8s", "x": 760, "y": 240, "width": 1480, "height": 312 }
@@ -142,7 +142,7 @@
           "to": "raw",
           "label": "PUT body",
           "kind": "sync",
-          "props": { "travelMs": 200 }
+          "props": { "travelMs": 200, "filter": ["WebhookEvent"] }
         },
         {
           "id": "receiver-to-exchange",
@@ -150,7 +150,7 @@
           "to": "exchange",
           "label": "Publish",
           "kind": "async",
-          "props": { "travelMs": 300 }
+          "props": { "travelMs": 300, "filter": ["WebhookEvent"] }
         },
         {
           "id": "exchange-to-queue",
@@ -175,6 +175,14 @@
           "label": "Dead-letter",
           "kind": "async",
           "props": { "travelMs": 300, "dlq": true }
+        },
+        {
+          "id": "workers-to-receiver",
+          "from": "workers",
+          "to": "receiver",
+          "label": "Applied callback",
+          "kind": "async",
+          "props": { "travelMs": 300, "filter": ["PartnerChangeApplied"], "emits": "WebhookApplied" }
         },
         {
           "id": "workers-to-dedupe",

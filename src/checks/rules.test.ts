@@ -405,6 +405,7 @@ describe("runChecks", () => {
     expect(result.ran).toEqual([
       "dead-letter",
       "sync-cycle",
+      "message-loop",
       "sync-chain",
       "shared-database",
       "entry-gateway",

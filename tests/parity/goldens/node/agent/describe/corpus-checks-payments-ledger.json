@@ -1,7 +1,7 @@
 {
   "text": {
     "isError": false,
-    "output": "Diagram \"Payments ledger\" · direction LR · 6 nodes, 6 connections, 0 boundaries, 0 simulations\ndescription: \"Checkout takes a payment through the Payments API, which publishes it to Kafka as Avro; the ledger writer records it. Both read their keys from Key Vault.\"\nnodes:\n  \"web\" \"client.browser\" (\"Web Browser\") \"Checkout\" props={\"ratePerSec\":5} capabilities=[{\"kind\":\"calls\",\"edge\":\"web-api\",\"peer\":\"api\"}] explanation=undefined\n  \"api\" \"azure.container-apps\" (\"Container Apps\") \"Payments API\" / \"Charges cards\" capabilities=[{\"kind\":\"publishes\",\"edge\":\"api-payments\",\"peer\":\"payments\"}] explanation={\"id\":\"api\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":16,\"offered\":5,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.25,\"utilization\":0.3125,\"growth\":0,\"contributors\":[{\"edge\":\"web-api\",\"node\":\"web\",\"label\":\"Checkout\",\"rate\":5}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"payments\" \"kafka.topic\" (\"Kafka Topic\") \"payments.v1\" / \"Avro · key: orderId\" capabilities=[] explanation=undefined\n  \"ledger\" \"azure.functions\" (\"Azure Functions\") \"Ledger writer\" capabilities=[{\"kind\":\"consumes\",\"edge\":\"payments-ledger\",\"peer\":\"payments\",\"group\":\"payments-ledger\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"calls\",\"edge\":\"ledger-db\",\"peer\":\"db\"}] explanation={\"id\":\"ledger\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":16,\"offered\":5,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"payments\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":3}],\"slots\":4,\"seconds\":0.25,\"utilization\":0.3125,\"growth\":0,\"contributors\":[{\"edge\":\"payments-ledger\",\"node\":\"payments\",\"label\":\"payments.v1\",\"rate\":5}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"db\" \"azure.cosmos-db\" (\"Cosmos DB\") \"Ledger\" / \"One entry per payment\" capabilities=[] explanation=undefined\n  \"kv\" \"azure.key-vault\" (\"Key Vault\") \"payments-kv\" / \"Stripe and ledger keys\" capabilities=[] explanation=undefined\nconnections:\n  \"web-api\" \"web\" -> \"api\" sync \"POST /payments\"\n  \"api-payments\" \"api\" -> \"payments\" async \"PaymentTaken\"\n  \"payments-ledger\" \"payments\" -> \"ledger\" async\n  \"ledger-db\" \"ledger\" -> \"db\" sync\n  \"api-kv\" \"api\" -> \"kv\" secret dependency\n  \"ledger-kv\" \"ledger\" -> \"kv\" secret dependency"
+    "output": "Diagram \"Payments ledger\" · direction LR · 6 nodes, 6 connections, 0 boundaries, 0 simulations\ndescription: \"Checkout takes a payment through the Payments API, which publishes it to Kafka as Avro; the ledger writer records it. Both read their keys from Key Vault.\"\nnodes:\n  \"web\" \"client.browser\" (\"Web Browser\") \"Checkout\" props={\"ratePerSec\":5} arrivingTypes=[] capabilities=[{\"kind\":\"calls\",\"edge\":\"web-api\",\"peer\":\"api\"}] explanation=undefined\n  \"api\" \"azure.container-apps\" (\"Container Apps\") \"Payments API\" / \"Charges cards\" arrivingTypes=[\"Checkout\"] capabilities=[{\"kind\":\"publishes\",\"edge\":\"api-payments\",\"peer\":\"payments\"}] explanation={\"id\":\"api\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":16,\"offered\":5,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.25,\"utilization\":0.3125,\"growth\":0,\"contributors\":[{\"edge\":\"web-api\",\"node\":\"web\",\"label\":\"Checkout\",\"rate\":5}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"payments\" \"kafka.topic\" (\"Kafka Topic\") \"payments.v1\" / \"Avro · key: orderId\" arrivingTypes=[\"Checkout\"] capabilities=[] explanation=undefined\n  \"ledger\" \"azure.functions\" (\"Azure Functions\") \"Ledger writer\" arrivingTypes=[\"Checkout\"] capabilities=[{\"kind\":\"consumes\",\"edge\":\"payments-ledger\",\"peer\":\"payments\",\"group\":\"payments-ledger\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"calls\",\"edge\":\"ledger-db\",\"peer\":\"db\"}] explanation={\"id\":\"ledger\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":16,\"offered\":5,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"payments\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":3}],\"slots\":4,\"seconds\":0.25,\"utilization\":0.3125,\"growth\":0,\"contributors\":[{\"edge\":\"payments-ledger\",\"node\":\"payments\",\"label\":\"payments.v1\",\"rate\":5}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"db\" \"azure.cosmos-db\" (\"Cosmos DB\") \"Ledger\" / \"One entry per payment\" arrivingTypes=[\"Checkout\"] capabilities=[] explanation=undefined\n  \"kv\" \"azure.key-vault\" (\"Key Vault\") \"payments-kv\" / \"Stripe and ledger keys\" arrivingTypes=[] capabilities=[] explanation=undefined\nconnections:\n  \"web-api\" \"web\" -> \"api\" sync \"POST /payments\" carriedTypes=[\"Checkout\"]\n  \"api-payments\" \"api\" -> \"payments\" async \"PaymentTaken\" carriedTypes=[\"Checkout\"]\n  \"payments-ledger\" \"payments\" -> \"ledger\" async carriedTypes=[\"Checkout\"]\n  \"ledger-db\" \"ledger\" -> \"db\" sync carriedTypes=[\"Checkout\"]\n  \"api-kv\" \"api\" -> \"kv\" secret dependency carriedTypes=[]\n  \"ledger-kv\" \"ledger\" -> \"kv\" secret dependency carriedTypes=[]"
   },
   "json": {
     "isError": false,
@@ -17,6 +17,7 @@
           "x": 0,
           "y": 120,
           "props": { "ratePerSec": 5 },
+          "arrivingTypes": [],
           "capabilities": [{ "kind": "calls", "edge": "web-api", "peer": "api" }]
         },
         {
@@ -26,6 +27,7 @@
           "sublabel": "Charges cards",
           "x": 300,
           "y": 120,
+          "arrivingTypes": ["Checkout"],
           "capabilities": [{ "kind": "publishes", "edge": "api-payments", "peer": "payments" }],
           "explanation": {
             "id": "api",
@@ -53,13 +55,14 @@
             "converged": true
           }
         },
-        { "id": "payments", "stencil": "kafka.topic", "label": "payments.v1", "sublabel": "Avro · key: orderId", "x": 620, "y": 120, "capabilities": [] },
+        { "id": "payments", "stencil": "kafka.topic", "label": "payments.v1", "sublabel": "Avro · key: orderId", "x": 620, "y": 120, "arrivingTypes": ["Checkout"], "capabilities": [] },
         {
           "id": "ledger",
           "stencil": "azure.functions",
           "label": "Ledger writer",
           "x": 940,
           "y": 120,
+          "arrivingTypes": ["Checkout"],
           "capabilities": [
             {
               "kind": "consumes",
@@ -104,17 +107,18 @@
             "converged": true
           }
         },
-        { "id": "db", "stencil": "azure.cosmos-db", "label": "Ledger", "sublabel": "One entry per payment", "x": 1260, "y": 120, "capabilities": [] },
-        { "id": "kv", "stencil": "azure.key-vault", "label": "payments-kv", "sublabel": "Stripe and ledger keys", "x": 620, "y": 380, "capabilities": [] }
+        { "id": "db", "stencil": "azure.cosmos-db", "label": "Ledger", "sublabel": "One entry per payment", "x": 1260, "y": 120, "arrivingTypes": ["Checkout"], "capabilities": [] },
+        { "id": "kv", "stencil": "azure.key-vault", "label": "payments-kv", "sublabel": "Stripe and ledger keys", "x": 620, "y": 380, "arrivingTypes": [], "capabilities": [] }
       ],
       "edges": [
-        { "id": "web-api", "from": "web", "to": "api", "kind": "sync", "label": "POST /payments" },
-        { "id": "api-payments", "from": "api", "to": "payments", "kind": "async", "label": "PaymentTaken" },
-        { "id": "payments-ledger", "from": "payments", "to": "ledger", "kind": "async" },
-        { "id": "ledger-db", "from": "ledger", "to": "db", "kind": "sync" },
-        { "id": "api-kv", "from": "api", "to": "kv", "relation": "secret" },
-        { "id": "ledger-kv", "from": "ledger", "to": "kv", "relation": "secret" }
+        { "id": "web-api", "from": "web", "to": "api", "kind": "sync", "label": "POST /payments", "carriedTypes": ["Checkout"] },
+        { "id": "api-payments", "from": "api", "to": "payments", "kind": "async", "label": "PaymentTaken", "carriedTypes": ["Checkout"] },
+        { "id": "payments-ledger", "from": "payments", "to": "ledger", "kind": "async", "carriedTypes": ["Checkout"] },
+        { "id": "ledger-db", "from": "ledger", "to": "db", "kind": "sync", "carriedTypes": ["Checkout"] },
+        { "id": "api-kv", "from": "api", "to": "kv", "relation": "secret", "carriedTypes": [] },
+        { "id": "ledger-kv", "from": "ledger", "to": "kv", "relation": "secret", "carriedTypes": [] }
       ],
+      "messageTypesComplete": true,
       "groups": [],
       "annotations": [],
       "simulations": [],
@@ -123,6 +127,6 @@
   },
   "focus": {
     "isError": false,
-    "output": "Diagram \"Payments ledger\" · direction LR · 2 nodes, 1 connections, 0 boundaries, 0 simulations\ndescription: \"Checkout takes a payment through the Payments API, which publishes it to Kafka as Avro; the ledger writer records it. Both read their keys from Key Vault.\"\nnodes:\n  \"web\" \"client.browser\" (\"Web Browser\") \"Checkout\" props={\"ratePerSec\":5} capabilities=[{\"kind\":\"calls\",\"edge\":\"web-api\",\"peer\":\"api\"}] explanation=undefined\n  \"api\" \"azure.container-apps\" (\"Container Apps\") \"Payments API\" / \"Charges cards\" capabilities=[{\"kind\":\"publishes\",\"edge\":\"api-payments\",\"peer\":\"payments\"}] explanation={\"id\":\"api\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":16,\"offered\":5,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.25,\"utilization\":0.3125,\"growth\":0,\"contributors\":[{\"edge\":\"web-api\",\"node\":\"web\",\"label\":\"Checkout\",\"rate\":5}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\nconnections:\n  \"web-api\" \"web\" -> \"api\" sync \"POST /payments\""
+    "output": "Diagram \"Payments ledger\" · direction LR · 2 nodes, 1 connections, 0 boundaries, 0 simulations\ndescription: \"Checkout takes a payment through the Payments API, which publishes it to Kafka as Avro; the ledger writer records it. Both read their keys from Key Vault.\"\nnodes:\n  \"web\" \"client.browser\" (\"Web Browser\") \"Checkout\" props={\"ratePerSec\":5} arrivingTypes=[] capabilities=[{\"kind\":\"calls\",\"edge\":\"web-api\",\"peer\":\"api\"}] explanation=undefined\n  \"api\" \"azure.container-apps\" (\"Container Apps\") \"Payments API\" / \"Charges cards\" arrivingTypes=[\"Checkout\"] capabilities=[{\"kind\":\"publishes\",\"edge\":\"api-payments\",\"peer\":\"payments\"}] explanation={\"id\":\"api\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":16,\"offered\":5,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.25,\"utilization\":0.3125,\"growth\":0,\"contributors\":[{\"edge\":\"web-api\",\"node\":\"web\",\"label\":\"Checkout\",\"rate\":5}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\nconnections:\n  \"web-api\" \"web\" -> \"api\" sync \"POST /payments\" carriedTypes=[\"Checkout\"]"
   }
 }

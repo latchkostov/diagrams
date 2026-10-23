@@ -16,6 +16,21 @@ import { state, type Catalog } from "../../i18n/core";
 import * as toast from "../../interop/ui/toast";
 import { registerRequestChecks, rememberedRequestChecks, awaitRequestChecks } from "../../lib/requestCheckCache";
 import { runChecksOffThread } from "../../canvas/checks/runner";
+import { messageTypesFixture } from "../../lab/messageTypesFixture";
+import { presentFinding } from "../presentation";
+
+it("applies the message-loop filter and verified rename through the same one-step action", async () => {
+  const d = messageTypesFixture();
+  d.edges[1].props = { filter: ["Send", "Callback"] };
+  const finding = runChecks(d, { rules: ["message-loop"] }).findings[0];
+  for (const rename of [false, true]) {
+    const { api, replace } = editorFor(d);
+    const display = presentFinding(finding);
+    expect(await applyFix(api, display, rename ? display.fix!.options![0].label : undefined)).toBe(true);
+    expect(replace).toHaveBeenCalledTimes(1);
+    expect(runChecks(api.getDiagram(), { rules: ["message-loop"] }).findings).toEqual([]);
+  }
+});
 
 // A fix from a cached finding is checked again on the diagram as it is now: never applied twice, never sized
 // from numbers the diagram has since changed. Each check setting is its own undo step.

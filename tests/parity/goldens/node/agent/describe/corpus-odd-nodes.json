@@ -1,7 +1,7 @@
 {
   "text": {
     "isError": false,
-    "output": "Diagram \"Odd nodes\" · direction LR · 6 nodes, 3 connections, 0 boundaries, 0 simulations\ndescription: \"Fallbacks and overflow on the canvas.\"\nnodes:\n  \"normal\" \"kafka.topic\" (\"Kafka Topic\") \"orders\" / \"orders.created.v1\" capabilities=[] explanation=undefined\n  \"unknown\" \"acme.quantum-bus\" (\"Unknown\") \"Unknown stencil\" / \"acme.quantum-bus\" capabilities=[{\"kind\":\"consumes\",\"edge\":\"o1\",\"peer\":\"normal\",\"group\":\"o1\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0}] explanation={\"id\":\"unknown\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":16,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"normal\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":3}],\"slots\":4,\"seconds\":0.25,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"long-label\" \"service.dotnet\" (\".NET Service\") \"Customer Communication Preferences Synchronisation Service\" capabilities=[{\"kind\":\"publishes\",\"edge\":\"o2\",\"peer\":\"long-sub\"}] explanation={\"id\":\"long-label\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":16,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.25,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"long-sub\" \"azure.service-bus.topic\" (\"Service Bus Topic\") \"notifications\" / \"sb://contoso-prod-eastus2.servicebus.windows.net/topics/customer-notification-preferences-changed\" capabilities=[] explanation={\"id\":\"long-sub\",\"role\":\"topic\",\"status\":\"up\",\"reason\":\"no-reader\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":0,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":null,\"seconds\":0,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"changes\":null,\"addConsumer\":\"long-sub\",\"fixId\":\"no-reader:long-sub\",\"converged\":true}\n  \"no-sub\" \"postgres\" (\"PostgreSQL\") \"DB\" capabilities=[{\"kind\":\"calls\",\"edge\":\"o3\",\"peer\":\"empty-label\"}] explanation=undefined\n  \"empty-label\" \"redis.cache\" (\"Redis Cache\") \"\" capabilities=[] explanation=undefined\nconnections:\n  \"o1\" \"normal\" -> \"unknown\" async\n  \"o2\" \"long-label\" -> \"long-sub\" async\n  \"o3\" \"no-sub\" -> \"empty-label\" sync"
+    "output": "Diagram \"Odd nodes\" · direction LR · 6 nodes, 3 connections, 0 boundaries, 0 simulations\ndescription: \"Fallbacks and overflow on the canvas.\"\nnodes:\n  \"normal\" \"kafka.topic\" (\"Kafka Topic\") \"orders\" / \"orders.created.v1\" arrivingTypes=[] capabilities=[] explanation=undefined\n  \"unknown\" \"acme.quantum-bus\" (\"Unknown\") \"Unknown stencil\" / \"acme.quantum-bus\" arrivingTypes=[] capabilities=[{\"kind\":\"consumes\",\"edge\":\"o1\",\"peer\":\"normal\",\"group\":\"o1\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0}] explanation={\"id\":\"unknown\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":16,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"normal\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":3}],\"slots\":4,\"seconds\":0.25,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"long-label\" \"service.dotnet\" (\".NET Service\") \"Customer Communication Preferences Synchronisation Service\" arrivingTypes=[] capabilities=[{\"kind\":\"publishes\",\"edge\":\"o2\",\"peer\":\"long-sub\"}] explanation={\"id\":\"long-label\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":16,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.25,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"long-sub\" \"azure.service-bus.topic\" (\"Service Bus Topic\") \"notifications\" / \"sb://contoso-prod-eastus2.servicebus.windows.net/topics/customer-notification-preferences-changed\" arrivingTypes=[] capabilities=[] explanation={\"id\":\"long-sub\",\"role\":\"topic\",\"status\":\"up\",\"reason\":\"no-reader\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":0,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":null,\"seconds\":0,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"changes\":null,\"addConsumer\":\"long-sub\",\"fixId\":\"no-reader:long-sub\",\"converged\":true}\n  \"no-sub\" \"postgres\" (\"PostgreSQL\") \"DB\" arrivingTypes=[] capabilities=[{\"kind\":\"calls\",\"edge\":\"o3\",\"peer\":\"empty-label\"}] explanation=undefined\n  \"empty-label\" \"redis.cache\" (\"Redis Cache\") \"\" arrivingTypes=[] capabilities=[] explanation=undefined\nconnections:\n  \"o1\" \"normal\" -> \"unknown\" async carriedTypes=[]\n  \"o2\" \"long-label\" -> \"long-sub\" async carriedTypes=[]\n  \"o3\" \"no-sub\" -> \"empty-label\" sync carriedTypes=[]"
   },
   "json": {
     "isError": false,
@@ -10,7 +10,7 @@
       "description": "Fallbacks and overflow on the canvas.",
       "direction": "LR",
       "nodes": [
-        { "id": "normal", "stencil": "kafka.topic", "label": "orders", "sublabel": "orders.created.v1", "x": 40, "y": 40, "capabilities": [] },
+        { "id": "normal", "stencil": "kafka.topic", "label": "orders", "sublabel": "orders.created.v1", "x": 40, "y": 40, "arrivingTypes": [], "capabilities": [] },
         {
           "id": "unknown",
           "stencil": "acme.quantum-bus",
@@ -18,6 +18,7 @@
           "sublabel": "acme.quantum-bus",
           "x": 400,
           "y": 40,
+          "arrivingTypes": [],
           "capabilities": [
             {
               "kind": "consumes",
@@ -67,6 +68,7 @@
           "label": "Customer Communication Preferences Synchronisation Service",
           "x": 40,
           "y": 160,
+          "arrivingTypes": [],
           "capabilities": [{ "kind": "publishes", "edge": "o2", "peer": "long-sub" }],
           "explanation": {
             "id": "long-label",
@@ -101,6 +103,7 @@
           "sublabel": "sb://contoso-prod-eastus2.servicebus.windows.net/topics/customer-notification-preferences-changed",
           "x": 400,
           "y": 160,
+          "arrivingTypes": [],
           "capabilities": [],
           "explanation": {
             "id": "long-sub",
@@ -134,15 +137,17 @@
           "label": "DB",
           "x": 40,
           "y": 280,
+          "arrivingTypes": [],
           "capabilities": [{ "kind": "calls", "edge": "o3", "peer": "empty-label" }]
         },
-        { "id": "empty-label", "stencil": "redis.cache", "label": "", "x": 400, "y": 280, "capabilities": [] }
+        { "id": "empty-label", "stencil": "redis.cache", "label": "", "x": 400, "y": 280, "arrivingTypes": [], "capabilities": [] }
       ],
       "edges": [
-        { "id": "o1", "from": "normal", "to": "unknown", "kind": "async" },
-        { "id": "o2", "from": "long-label", "to": "long-sub", "kind": "async" },
-        { "id": "o3", "from": "no-sub", "to": "empty-label", "kind": "sync" }
+        { "id": "o1", "from": "normal", "to": "unknown", "kind": "async", "carriedTypes": [] },
+        { "id": "o2", "from": "long-label", "to": "long-sub", "kind": "async", "carriedTypes": [] },
+        { "id": "o3", "from": "no-sub", "to": "empty-label", "kind": "sync", "carriedTypes": [] }
       ],
+      "messageTypesComplete": true,
       "groups": [],
       "annotations": [],
       "simulations": [],
@@ -151,6 +156,6 @@
   },
   "focus": {
     "isError": false,
-    "output": "Diagram \"Odd nodes\" · direction LR · 2 nodes, 1 connections, 0 boundaries, 0 simulations\ndescription: \"Fallbacks and overflow on the canvas.\"\nnodes:\n  \"normal\" \"kafka.topic\" (\"Kafka Topic\") \"orders\" / \"orders.created.v1\" capabilities=[] explanation=undefined\n  \"unknown\" \"acme.quantum-bus\" (\"Unknown\") \"Unknown stencil\" / \"acme.quantum-bus\" capabilities=[{\"kind\":\"consumes\",\"edge\":\"o1\",\"peer\":\"normal\",\"group\":\"o1\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0}] explanation={\"id\":\"unknown\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":16,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"normal\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":3}],\"slots\":4,\"seconds\":0.25,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\nconnections:\n  \"o1\" \"normal\" -> \"unknown\" async"
+    "output": "Diagram \"Odd nodes\" · direction LR · 2 nodes, 1 connections, 0 boundaries, 0 simulations\ndescription: \"Fallbacks and overflow on the canvas.\"\nnodes:\n  \"normal\" \"kafka.topic\" (\"Kafka Topic\") \"orders\" / \"orders.created.v1\" arrivingTypes=[] capabilities=[] explanation=undefined\n  \"unknown\" \"acme.quantum-bus\" (\"Unknown\") \"Unknown stencil\" / \"acme.quantum-bus\" arrivingTypes=[] capabilities=[{\"kind\":\"consumes\",\"edge\":\"o1\",\"peer\":\"normal\",\"group\":\"o1\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0}] explanation={\"id\":\"unknown\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":16,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"normal\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":3}],\"slots\":4,\"seconds\":0.25,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\nconnections:\n  \"o1\" \"normal\" -> \"unknown\" async carriedTypes=[]"
   }
 }

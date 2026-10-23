@@ -1,8 +1,8 @@
 {
   "evidence": {
     "played": [
-      { "id": "bulk-sync", "title": "Partner bulk sync: 5,000 in 5 seconds", "playedMs": 15700, "capped": false },
-      { "id": "outage-replay", "title": "Database outage, then replay", "playedMs": 13180, "capped": false }
+      { "id": "bulk-sync", "title": "Partner bulk sync: 5,000 in 5 seconds", "playedMs": 15790, "capped": false },
+      { "id": "outage-replay", "title": "Database outage, then replay", "playedMs": 13300, "capped": false }
     ],
     "unplayed": [],
     "tooBig": [],
@@ -12,5 +12,5 @@
   "planned": [],
   "counted": 0,
   "findings": [],
-  "agentReport": { "findings": [], "summary": "Nothing to check. 13 checks ran.", "simulations": "Played 2 saved simulations (at most 60 s each)." }
+  "agentReport": { "findings": [], "summary": "Nothing to check. 14 checks ran.", "simulations": "Played 2 saved simulations (at most 60 s each)." }
 }

@@ -1,7 +1,7 @@
 {
   "text": {
     "isError": false,
-    "output": "Diagram \"AKS orders API with App Configuration\" · direction LR · 11 nodes, 10 connections, 2 boundaries, 2 simulations\ndescription: \"Bold lines carry requests and events. Dotted lines are dependencies: where the API gets its settings (two are Key Vault references), its identity, and where it reports.\"\nnodes:\n  \"web\" \"client.browser\" (\"Web Browser\") \"Storefront\" / \"Shoppers placing orders\" props={\"ratePerSec\":20,\"messageType\":\"PlaceOrder\"} capabilities=[{\"kind\":\"calls\",\"edge\":\"web-to-fd\",\"peer\":\"fd\"}] explanation=undefined\n  \"fd\" \"azure.front-door\" (\"Front Door\") \"Front Door\" / \"WAF · TLS\" in \"azure\" capabilities=[{\"kind\":\"calls\",\"edge\":\"fd-to-api\",\"peer\":\"api\"}] explanation=undefined\n  \"api\" \"service.dotnet\" (\".NET Service\") \"Orders API\" / \"ASP.NET Core · 3 replicas\" props={\"replicas\":3,\"concurrency\":16,\"latencyMs\":120,\"emits\":\"OrderCreated\"} in \"aks\" capabilities=[{\"kind\":\"calls\",\"edge\":\"api-to-sql\",\"peer\":\"sql\"},{\"kind\":\"publishes\",\"edge\":\"api-to-sb\",\"peer\":\"sb\"}] explanation={\"id\":\"api\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":400,\"offered\":20,\"replicas\":3,\"baseReplicas\":3,\"omittedContributors\":0,\"activeReplicas\":3,\"assignments\":[],\"slots\":16,\"seconds\":0.12,\"utilization\":0.05,\"growth\":0,\"contributors\":[{\"edge\":\"fd-to-api\",\"node\":\"fd\",\"label\":\"Storefront\",\"rate\":20,\"via\":\"Front Door\"}],\"target\":0.5,\"minimumReplicas\":3,\"targetReplicas\":3,\"changes\":null,\"converged\":true}\n  \"sql\" \"azure.sql\" (\"Azure SQL Database\") \"orders-db\" / \"Azure SQL\" in \"azure\" capabilities=[] explanation=undefined\n  \"sb\" \"azure.service-bus.topic\" (\"Service Bus Topic\") \"orders.created\" / \"Service Bus topic\" props={\"partitions\":16} in \"azure\" capabilities=[] explanation=undefined\n  \"notify\" \"azure.functions\" (\"Azure Functions\") \"Order confirmation\" / \"Function · sends email\" props={\"concurrency\":32,\"latencyMs\":150} in \"azure\" capabilities=[{\"kind\":\"consumes\",\"edge\":\"sb-to-notify\",\"peer\":\"sb\",\"group\":\"confirmations\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0}] explanation={\"id\":\"notify\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":213.33333333333334,\"offered\":20,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"sb\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":16}],\"slots\":32,\"seconds\":0.15,\"utilization\":0.09375,\"growth\":0,\"contributors\":[{\"edge\":\"sb-to-notify\",\"node\":\"sb\",\"label\":\"orders.created\",\"rate\":20}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"ai\" \"azure.app-insights\" (\"Application Insights\") \"Application Insights\" / \"traces · logs · metrics\" in \"azure\" capabilities=[] explanation=undefined\n  \"appcfg\" \"azure.app-config\" (\"App Configuration\") \"orders-config\" / \"App Configuration\" in \"azure\" capabilities=[] explanation=undefined\n  \"kv\" \"azure.key-vault\" (\"Key Vault\") \"orders-kv\" / \"Key Vault\" in \"azure\" capabilities=[] explanation=undefined\n  \"mi\" \"azure.managed-identity\" (\"Managed Identity\") \"orders-api-id\" / \"Workload identity\" in \"azure\" capabilities=[] explanation=undefined\n  \"entra\" \"entra-id\" (\"Microsoft Entra ID\") \"Entra ID\" / \"Token issuer\" capabilities=[] explanation=undefined\nconnections:\n  \"web-to-fd\" \"web\" -> \"fd\" sync \"HTTPS\"\n  \"fd-to-api\" \"fd\" -> \"api\" sync \"POST /orders\"\n  \"api-to-sql\" \"api\" -> \"sql\" sync \"EF Core\"\n  \"api-to-sb\" \"api\" -> \"sb\" async \"OrderCreated\"\n  \"sb-to-notify\" \"sb\" -> \"notify\" async \"Subscription\"\n  \"api-to-appcfg\" \"api\" -> \"appcfg\" config dependency\n  \"appcfg-to-kv\" \"appcfg\" -> \"kv\" secret dependency\n  \"api-to-mi\" \"api\" -> \"mi\" identity dependency \"runs as\"\n  \"mi-to-entra\" \"mi\" -> \"entra\" identity dependency \"OIDC federation\"\n  \"api-to-ai\" \"api\" -> \"ai\" telemetry dependency\nboundary \"azure\" \"Azure · prod\" (azure): \"fd\", \"sql\", \"sb\", \"notify\", \"ai\", \"appcfg\", \"kv\", \"mi\"\nboundary \"aks\" \"AKS cluster\" (k8s): \"api\"\nsimulation \"lunch-rush\" \"Lunch rush\": {\"kind\":\"constant\",\"ratePerSec\":40,\"durationMs\":10000} from \"web\"; timeline=[{\"atMs\":0,\"action\":{\"do\":\"note\",\"text\":\"Orders flow through Front Door to the API, then to SQL and Service Bus.\",\"focus\":[\"fd\",\"api\",\"sql\",\"sb\"]}},{\"atMs\":4000,\"action\":{\"do\":\"note\",\"text\":\"No messages go to App Configuration or Key Vault: the API read them at startup and keeps them cached.\",\"focus\":[\"api\",\"appcfg\",\"kv\"]}}]; expectations=[{\"id\":\"written\",\"label\":\"Every order is written\",\"metric\":{\"node\":\"sql\",\"field\":\"processed\"},\"op\":\"==\",\"value\":400,\"when\":\"end\"},{\"id\":\"confirmed\",\"label\":\"Every order is confirmed\",\"metric\":{\"node\":\"notify\",\"field\":\"processed\"},\"op\":\"==\",\"value\":400,\"when\":\"end\"},{\"id\":\"no-drops\",\"label\":\"Nothing is dropped\",\"metric\":{\"node\":\"api\",\"field\":\"dropped\"},\"op\":\"==\",\"value\":0,\"when\":\"always\"}]\nsimulation \"flash-sale\" \"Flash sale\": {\"kind\":\"spike\",\"baseRate\":30,\"peakRate\":300,\"atMs\":3000,\"peakMs\":3000,\"durationMs\":10000} from \"web\"; timeline=[{\"atMs\":3000,\"action\":{\"do\":\"note\",\"text\":\"The sale starts: 300 orders a second for three seconds.\",\"focus\":[\"web\",\"api\"]}}]; expectations=[{\"id\":\"written\",\"label\":\"Every order is written\",\"metric\":{\"node\":\"sql\",\"field\":\"processed\"},\"op\":\"==\",\"value\":1110,\"when\":\"end\"},{\"id\":\"confirmed\",\"label\":\"Every order is confirmed\",\"metric\":{\"node\":\"notify\",\"field\":\"processed\"},\"op\":\"==\",\"value\":1110,\"when\":\"end\"},{\"id\":\"no-drops\",\"label\":\"Nothing is dropped\",\"metric\":{\"node\":\"api\",\"field\":\"dropped\"},\"op\":\"==\",\"value\":0,\"when\":\"always\"}]"
+    "output": "Diagram \"AKS orders API with App Configuration\" · direction LR · 11 nodes, 10 connections, 2 boundaries, 2 simulations\ndescription: \"Bold lines carry requests and events. Dotted lines are dependencies: where the API gets its settings (two are Key Vault references), its identity, and where it reports.\"\nnodes:\n  \"web\" \"client.browser\" (\"Web Browser\") \"Storefront\" / \"Shoppers placing orders\" props={\"ratePerSec\":20,\"messageType\":\"PlaceOrder\"} arrivingTypes=[] capabilities=[{\"kind\":\"calls\",\"edge\":\"web-to-fd\",\"peer\":\"fd\"}] explanation=undefined\n  \"fd\" \"azure.front-door\" (\"Front Door\") \"Front Door\" / \"WAF · TLS\" in \"azure\" arrivingTypes=[\"PlaceOrder\"] capabilities=[{\"kind\":\"calls\",\"edge\":\"fd-to-api\",\"peer\":\"api\"}] explanation=undefined\n  \"api\" \"service.dotnet\" (\".NET Service\") \"Orders API\" / \"ASP.NET Core · 3 replicas\" props={\"replicas\":3,\"concurrency\":16,\"latencyMs\":120,\"emits\":\"OrderCreated\"} in \"aks\" arrivingTypes=[\"PlaceOrder\"] capabilities=[{\"kind\":\"calls\",\"edge\":\"api-to-sql\",\"peer\":\"sql\"},{\"kind\":\"publishes\",\"edge\":\"api-to-sb\",\"peer\":\"sb\"}] explanation={\"id\":\"api\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":400,\"offered\":20,\"replicas\":3,\"baseReplicas\":3,\"omittedContributors\":0,\"activeReplicas\":3,\"assignments\":[],\"slots\":16,\"seconds\":0.12,\"utilization\":0.05,\"growth\":0,\"contributors\":[{\"edge\":\"fd-to-api\",\"node\":\"fd\",\"label\":\"Storefront\",\"rate\":20,\"via\":\"Front Door\"}],\"target\":0.5,\"minimumReplicas\":3,\"targetReplicas\":3,\"changes\":null,\"converged\":true}\n  \"sql\" \"azure.sql\" (\"Azure SQL Database\") \"orders-db\" / \"Azure SQL\" in \"azure\" arrivingTypes=[\"OrderCreated\"] capabilities=[] explanation=undefined\n  \"sb\" \"azure.service-bus.topic\" (\"Service Bus Topic\") \"orders.created\" / \"Service Bus topic\" props={\"partitions\":16} in \"azure\" arrivingTypes=[\"OrderCreated\"] capabilities=[] explanation=undefined\n  \"notify\" \"azure.functions\" (\"Azure Functions\") \"Order confirmation\" / \"Function · sends email\" props={\"concurrency\":32,\"latencyMs\":150} in \"azure\" arrivingTypes=[\"OrderCreated\"] capabilities=[{\"kind\":\"consumes\",\"edge\":\"sb-to-notify\",\"peer\":\"sb\",\"group\":\"confirmations\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0}] explanation={\"id\":\"notify\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":213.33333333333334,\"offered\":20,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"sb\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":16}],\"slots\":32,\"seconds\":0.15,\"utilization\":0.09375,\"growth\":0,\"contributors\":[{\"edge\":\"sb-to-notify\",\"node\":\"sb\",\"label\":\"orders.created\",\"rate\":20}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"ai\" \"azure.app-insights\" (\"Application Insights\") \"Application Insights\" / \"traces · logs · metrics\" in \"azure\" arrivingTypes=[] capabilities=[] explanation=undefined\n  \"appcfg\" \"azure.app-config\" (\"App Configuration\") \"orders-config\" / \"App Configuration\" in \"azure\" arrivingTypes=[] capabilities=[] explanation=undefined\n  \"kv\" \"azure.key-vault\" (\"Key Vault\") \"orders-kv\" / \"Key Vault\" in \"azure\" arrivingTypes=[] capabilities=[] explanation=undefined\n  \"mi\" \"azure.managed-identity\" (\"Managed Identity\") \"orders-api-id\" / \"Workload identity\" in \"azure\" arrivingTypes=[] capabilities=[] explanation=undefined\n  \"entra\" \"entra-id\" (\"Microsoft Entra ID\") \"Entra ID\" / \"Token issuer\" arrivingTypes=[] capabilities=[] explanation=undefined\nconnections:\n  \"web-to-fd\" \"web\" -> \"fd\" sync \"HTTPS\" carriedTypes=[\"PlaceOrder\"]\n  \"fd-to-api\" \"fd\" -> \"api\" sync \"POST /orders\" carriedTypes=[\"PlaceOrder\"]\n  \"api-to-sql\" \"api\" -> \"sql\" sync \"EF Core\" carriedTypes=[\"OrderCreated\"]\n  \"api-to-sb\" \"api\" -> \"sb\" async \"OrderCreated\" carriedTypes=[\"OrderCreated\"]\n  \"sb-to-notify\" \"sb\" -> \"notify\" async \"Subscription\" carriedTypes=[\"OrderCreated\"]\n  \"api-to-appcfg\" \"api\" -> \"appcfg\" config dependency carriedTypes=[]\n  \"appcfg-to-kv\" \"appcfg\" -> \"kv\" secret dependency carriedTypes=[]\n  \"api-to-mi\" \"api\" -> \"mi\" identity dependency \"runs as\" carriedTypes=[]\n  \"mi-to-entra\" \"mi\" -> \"entra\" identity dependency \"OIDC federation\" carriedTypes=[]\n  \"api-to-ai\" \"api\" -> \"ai\" telemetry dependency carriedTypes=[]\nboundary \"azure\" \"Azure · prod\" (azure): \"fd\", \"sql\", \"sb\", \"notify\", \"ai\", \"appcfg\", \"kv\", \"mi\"\nboundary \"aks\" \"AKS cluster\" (k8s): \"api\"\nsimulation \"lunch-rush\" \"Lunch rush\": {\"kind\":\"constant\",\"ratePerSec\":40,\"durationMs\":10000} from \"web\"; timeline=[{\"atMs\":0,\"action\":{\"do\":\"note\",\"text\":\"Orders flow through Front Door to the API, then to SQL and Service Bus.\",\"focus\":[\"fd\",\"api\",\"sql\",\"sb\"]}},{\"atMs\":4000,\"action\":{\"do\":\"note\",\"text\":\"No messages go to App Configuration or Key Vault: the API read them at startup and keeps them cached.\",\"focus\":[\"api\",\"appcfg\",\"kv\"]}}]; expectations=[{\"id\":\"written\",\"label\":\"Every order is written\",\"metric\":{\"node\":\"sql\",\"field\":\"processed\"},\"op\":\"==\",\"value\":400,\"when\":\"end\"},{\"id\":\"confirmed\",\"label\":\"Every order is confirmed\",\"metric\":{\"node\":\"notify\",\"field\":\"processed\"},\"op\":\"==\",\"value\":400,\"when\":\"end\"},{\"id\":\"no-drops\",\"label\":\"Nothing is dropped\",\"metric\":{\"node\":\"api\",\"field\":\"dropped\"},\"op\":\"==\",\"value\":0,\"when\":\"always\"}]\nsimulation \"flash-sale\" \"Flash sale\": {\"kind\":\"spike\",\"baseRate\":30,\"peakRate\":300,\"atMs\":3000,\"peakMs\":3000,\"durationMs\":10000} from \"web\"; timeline=[{\"atMs\":3000,\"action\":{\"do\":\"note\",\"text\":\"The sale starts: 300 orders a second for three seconds.\",\"focus\":[\"web\",\"api\"]}}]; expectations=[{\"id\":\"written\",\"label\":\"Every order is written\",\"metric\":{\"node\":\"sql\",\"field\":\"processed\"},\"op\":\"==\",\"value\":1110,\"when\":\"end\"},{\"id\":\"confirmed\",\"label\":\"Every order is confirmed\",\"metric\":{\"node\":\"notify\",\"field\":\"processed\"},\"op\":\"==\",\"value\":1110,\"when\":\"end\"},{\"id\":\"no-drops\",\"label\":\"Nothing is dropped\",\"metric\":{\"node\":\"api\",\"field\":\"dropped\"},\"op\":\"==\",\"value\":0,\"when\":\"always\"}]"
   },
   "json": {
     "isError": false,
@@ -18,6 +18,7 @@
           "x": 40,
           "y": 300,
           "props": { "ratePerSec": 20, "messageType": "PlaceOrder" },
+          "arrivingTypes": [],
           "capabilities": [{ "kind": "calls", "edge": "web-to-fd", "peer": "fd" }]
         },
         {
@@ -28,6 +29,7 @@
           "x": 440,
           "y": 300,
           "group": "azure",
+          "arrivingTypes": ["PlaceOrder"],
           "capabilities": [{ "kind": "calls", "edge": "fd-to-api", "peer": "api" }]
         },
         {
@@ -39,6 +41,7 @@
           "y": 300,
           "group": "aks",
           "props": { "replicas": 3, "concurrency": 16, "latencyMs": 120, "emits": "OrderCreated" },
+          "arrivingTypes": ["PlaceOrder"],
           "capabilities": [
             { "kind": "calls", "edge": "api-to-sql", "peer": "sql" },
             { "kind": "publishes", "edge": "api-to-sb", "peer": "sb" }
@@ -71,7 +74,7 @@
             "converged": true
           }
         },
-        { "id": "sql", "stencil": "azure.sql", "label": "orders-db", "sublabel": "Azure SQL", "x": 1300, "y": 180, "group": "azure", "capabilities": [] },
+        { "id": "sql", "stencil": "azure.sql", "label": "orders-db", "sublabel": "Azure SQL", "x": 1300, "y": 180, "group": "azure", "arrivingTypes": ["OrderCreated"], "capabilities": [] },
         {
           "id": "sb",
           "stencil": "azure.service-bus.topic",
@@ -81,6 +84,7 @@
           "y": 420,
           "group": "azure",
           "props": { "partitions": 16 },
+          "arrivingTypes": ["OrderCreated"],
           "capabilities": []
         },
         {
@@ -92,6 +96,7 @@
           "y": 420,
           "group": "azure",
           "props": { "concurrency": 32, "latencyMs": 150 },
+          "arrivingTypes": ["OrderCreated"],
           "capabilities": [
             {
               "kind": "consumes",
@@ -135,11 +140,11 @@
             "converged": true
           }
         },
-        { "id": "ai", "stencil": "azure.app-insights", "label": "Application Insights", "sublabel": "traces · logs · metrics", "x": 860, "y": 60, "group": "azure", "capabilities": [] },
-        { "id": "appcfg", "stencil": "azure.app-config", "label": "orders-config", "sublabel": "App Configuration", "x": 860, "y": 560, "group": "azure", "capabilities": [] },
-        { "id": "kv", "stencil": "azure.key-vault", "label": "orders-kv", "sublabel": "Key Vault", "x": 1300, "y": 560, "group": "azure", "capabilities": [] },
-        { "id": "mi", "stencil": "azure.managed-identity", "label": "orders-api-id", "sublabel": "Workload identity", "x": 440, "y": 560, "group": "azure", "capabilities": [] },
-        { "id": "entra", "stencil": "entra-id", "label": "Entra ID", "sublabel": "Token issuer", "x": 40, "y": 560, "capabilities": [] }
+        { "id": "ai", "stencil": "azure.app-insights", "label": "Application Insights", "sublabel": "traces · logs · metrics", "x": 860, "y": 60, "group": "azure", "arrivingTypes": [], "capabilities": [] },
+        { "id": "appcfg", "stencil": "azure.app-config", "label": "orders-config", "sublabel": "App Configuration", "x": 860, "y": 560, "group": "azure", "arrivingTypes": [], "capabilities": [] },
+        { "id": "kv", "stencil": "azure.key-vault", "label": "orders-kv", "sublabel": "Key Vault", "x": 1300, "y": 560, "group": "azure", "arrivingTypes": [], "capabilities": [] },
+        { "id": "mi", "stencil": "azure.managed-identity", "label": "orders-api-id", "sublabel": "Workload identity", "x": 440, "y": 560, "group": "azure", "arrivingTypes": [], "capabilities": [] },
+        { "id": "entra", "stencil": "entra-id", "label": "Entra ID", "sublabel": "Token issuer", "x": 40, "y": 560, "arrivingTypes": [], "capabilities": [] }
       ],
       "edges": [
         {
@@ -148,7 +153,8 @@
           "to": "fd",
           "label": "HTTPS",
           "kind": "sync",
-          "props": { "travelMs": 200 }
+          "props": { "travelMs": 200 },
+          "carriedTypes": ["PlaceOrder"]
         },
         {
           "id": "fd-to-api",
@@ -156,7 +162,8 @@
           "to": "api",
           "label": "POST /orders",
           "kind": "sync",
-          "props": { "travelMs": 200 }
+          "props": { "travelMs": 200 },
+          "carriedTypes": ["PlaceOrder"]
         },
         {
           "id": "api-to-sql",
@@ -164,7 +171,8 @@
           "to": "sql",
           "label": "EF Core",
           "kind": "sync",
-          "props": { "travelMs": 200 }
+          "props": { "travelMs": 200 },
+          "carriedTypes": ["OrderCreated"]
         },
         {
           "id": "api-to-sb",
@@ -172,7 +180,8 @@
           "to": "sb",
           "label": "OrderCreated",
           "kind": "async",
-          "props": { "travelMs": 300 }
+          "props": { "travelMs": 300 },
+          "carriedTypes": ["OrderCreated"]
         },
         {
           "id": "sb-to-notify",
@@ -180,7 +189,8 @@
           "to": "notify",
           "label": "Subscription",
           "kind": "async",
-          "props": { "travelMs": 300, "group": "confirmations" }
+          "props": { "travelMs": 300, "group": "confirmations" },
+          "carriedTypes": ["OrderCreated"]
         },
         {
           "id": "api-to-appcfg",
@@ -197,13 +207,15 @@
               { "key": "ConnectionStrings:Orders", "secret": true },
               { "key": "Stripe:ApiKey", "secret": true }
             ]
-          }
+          },
+          "carriedTypes": []
         },
-        { "id": "appcfg-to-kv", "from": "appcfg", "to": "kv", "kind": "async", "relation": "secret", "sourceSide": "right", "targetSide": "left" },
-        { "id": "api-to-mi", "from": "api", "to": "mi", "label": "runs as", "kind": "async", "relation": "identity", "sourceSide": "bottom", "targetSide": "right" },
-        { "id": "mi-to-entra", "from": "mi", "to": "entra", "label": "OIDC federation", "kind": "async", "relation": "identity", "sourceSide": "left", "targetSide": "right" },
-        { "id": "api-to-ai", "from": "api", "to": "ai", "kind": "async", "relation": "telemetry", "sourceSide": "top", "targetSide": "bottom" }
+        { "id": "appcfg-to-kv", "from": "appcfg", "to": "kv", "kind": "async", "relation": "secret", "sourceSide": "right", "targetSide": "left", "carriedTypes": [] },
+        { "id": "api-to-mi", "from": "api", "to": "mi", "label": "runs as", "kind": "async", "relation": "identity", "sourceSide": "bottom", "targetSide": "right", "carriedTypes": [] },
+        { "id": "mi-to-entra", "from": "mi", "to": "entra", "label": "OIDC federation", "kind": "async", "relation": "identity", "sourceSide": "left", "targetSide": "right", "carriedTypes": [] },
+        { "id": "api-to-ai", "from": "api", "to": "ai", "kind": "async", "relation": "telemetry", "sourceSide": "top", "targetSide": "bottom", "carriedTypes": [] }
       ],
+      "messageTypesComplete": true,
       "groups": [
         { "id": "azure", "label": "Azure · prod", "tone": "azure", "x": 400, "y": 0, "width": 1600, "height": 680 },
         { "id": "aks", "label": "AKS cluster", "tone": "k8s", "x": 820, "y": 236, "width": 320, "height": 172 }
@@ -316,6 +328,6 @@
   },
   "focus": {
     "isError": false,
-    "output": "Diagram \"AKS orders API with App Configuration\" · direction LR · 2 nodes, 1 connections, 1 boundaries, 2 simulations\ndescription: \"Bold lines carry requests and events. Dotted lines are dependencies: where the API gets its settings (two are Key Vault references), its identity, and where it reports.\"\nnodes:\n  \"web\" \"client.browser\" (\"Web Browser\") \"Storefront\" / \"Shoppers placing orders\" props={\"ratePerSec\":20,\"messageType\":\"PlaceOrder\"} capabilities=[{\"kind\":\"calls\",\"edge\":\"web-to-fd\",\"peer\":\"fd\"}] explanation=undefined\n  \"fd\" \"azure.front-door\" (\"Front Door\") \"Front Door\" / \"WAF · TLS\" in \"azure\" capabilities=[{\"kind\":\"calls\",\"edge\":\"fd-to-api\",\"peer\":\"api\"}] explanation=undefined\nconnections:\n  \"web-to-fd\" \"web\" -> \"fd\" sync \"HTTPS\"\nboundary \"azure\" \"Azure · prod\" (azure): \"fd\"\nsimulation \"lunch-rush\" \"Lunch rush\": {\"kind\":\"constant\",\"ratePerSec\":40,\"durationMs\":10000} from \"web\"; timeline=[{\"atMs\":0,\"action\":{\"do\":\"note\",\"text\":\"Orders flow through Front Door to the API, then to SQL and Service Bus.\",\"focus\":[\"fd\",\"api\",\"sql\",\"sb\"]}},{\"atMs\":4000,\"action\":{\"do\":\"note\",\"text\":\"No messages go to App Configuration or Key Vault: the API read them at startup and keeps them cached.\",\"focus\":[\"api\",\"appcfg\",\"kv\"]}}]; expectations=[{\"id\":\"written\",\"label\":\"Every order is written\",\"metric\":{\"node\":\"sql\",\"field\":\"processed\"},\"op\":\"==\",\"value\":400,\"when\":\"end\"},{\"id\":\"confirmed\",\"label\":\"Every order is confirmed\",\"metric\":{\"node\":\"notify\",\"field\":\"processed\"},\"op\":\"==\",\"value\":400,\"when\":\"end\"},{\"id\":\"no-drops\",\"label\":\"Nothing is dropped\",\"metric\":{\"node\":\"api\",\"field\":\"dropped\"},\"op\":\"==\",\"value\":0,\"when\":\"always\"}]\nsimulation \"flash-sale\" \"Flash sale\": {\"kind\":\"spike\",\"baseRate\":30,\"peakRate\":300,\"atMs\":3000,\"peakMs\":3000,\"durationMs\":10000} from \"web\"; timeline=[{\"atMs\":3000,\"action\":{\"do\":\"note\",\"text\":\"The sale starts: 300 orders a second for three seconds.\",\"focus\":[\"web\",\"api\"]}}]; expectations=[{\"id\":\"written\",\"label\":\"Every order is written\",\"metric\":{\"node\":\"sql\",\"field\":\"processed\"},\"op\":\"==\",\"value\":1110,\"when\":\"end\"},{\"id\":\"confirmed\",\"label\":\"Every order is confirmed\",\"metric\":{\"node\":\"notify\",\"field\":\"processed\"},\"op\":\"==\",\"value\":1110,\"when\":\"end\"},{\"id\":\"no-drops\",\"label\":\"Nothing is dropped\",\"metric\":{\"node\":\"api\",\"field\":\"dropped\"},\"op\":\"==\",\"value\":0,\"when\":\"always\"}]"
+    "output": "Diagram \"AKS orders API with App Configuration\" · direction LR · 2 nodes, 1 connections, 1 boundaries, 2 simulations\ndescription: \"Bold lines carry requests and events. Dotted lines are dependencies: where the API gets its settings (two are Key Vault references), its identity, and where it reports.\"\nnodes:\n  \"web\" \"client.browser\" (\"Web Browser\") \"Storefront\" / \"Shoppers placing orders\" props={\"ratePerSec\":20,\"messageType\":\"PlaceOrder\"} arrivingTypes=[] capabilities=[{\"kind\":\"calls\",\"edge\":\"web-to-fd\",\"peer\":\"fd\"}] explanation=undefined\n  \"fd\" \"azure.front-door\" (\"Front Door\") \"Front Door\" / \"WAF · TLS\" in \"azure\" arrivingTypes=[\"PlaceOrder\"] capabilities=[{\"kind\":\"calls\",\"edge\":\"fd-to-api\",\"peer\":\"api\"}] explanation=undefined\nconnections:\n  \"web-to-fd\" \"web\" -> \"fd\" sync \"HTTPS\" carriedTypes=[\"PlaceOrder\"]\nboundary \"azure\" \"Azure · prod\" (azure): \"fd\"\nsimulation \"lunch-rush\" \"Lunch rush\": {\"kind\":\"constant\",\"ratePerSec\":40,\"durationMs\":10000} from \"web\"; timeline=[{\"atMs\":0,\"action\":{\"do\":\"note\",\"text\":\"Orders flow through Front Door to the API, then to SQL and Service Bus.\",\"focus\":[\"fd\",\"api\",\"sql\",\"sb\"]}},{\"atMs\":4000,\"action\":{\"do\":\"note\",\"text\":\"No messages go to App Configuration or Key Vault: the API read them at startup and keeps them cached.\",\"focus\":[\"api\",\"appcfg\",\"kv\"]}}]; expectations=[{\"id\":\"written\",\"label\":\"Every order is written\",\"metric\":{\"node\":\"sql\",\"field\":\"processed\"},\"op\":\"==\",\"value\":400,\"when\":\"end\"},{\"id\":\"confirmed\",\"label\":\"Every order is confirmed\",\"metric\":{\"node\":\"notify\",\"field\":\"processed\"},\"op\":\"==\",\"value\":400,\"when\":\"end\"},{\"id\":\"no-drops\",\"label\":\"Nothing is dropped\",\"metric\":{\"node\":\"api\",\"field\":\"dropped\"},\"op\":\"==\",\"value\":0,\"when\":\"always\"}]\nsimulation \"flash-sale\" \"Flash sale\": {\"kind\":\"spike\",\"baseRate\":30,\"peakRate\":300,\"atMs\":3000,\"peakMs\":3000,\"durationMs\":10000} from \"web\"; timeline=[{\"atMs\":3000,\"action\":{\"do\":\"note\",\"text\":\"The sale starts: 300 orders a second for three seconds.\",\"focus\":[\"web\",\"api\"]}}]; expectations=[{\"id\":\"written\",\"label\":\"Every order is written\",\"metric\":{\"node\":\"sql\",\"field\":\"processed\"},\"op\":\"==\",\"value\":1110,\"when\":\"end\"},{\"id\":\"confirmed\",\"label\":\"Every order is confirmed\",\"metric\":{\"node\":\"notify\",\"field\":\"processed\"},\"op\":\"==\",\"value\":1110,\"when\":\"end\"},{\"id\":\"no-drops\",\"label\":\"Nothing is dropped\",\"metric\":{\"node\":\"api\",\"field\":\"dropped\"},\"op\":\"==\",\"value\":0,\"when\":\"always\"}]"
   }
 }

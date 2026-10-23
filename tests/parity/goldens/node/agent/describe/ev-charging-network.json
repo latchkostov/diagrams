@@ -1,7 +1,7 @@
 {
   "text": {
     "isError": false,
-    "output": "Diagram \"EV charging network\" · direction LR · 43 nodes, 48 connections, 11 boundaries, 4 simulations\ndescription: \"An invented charge-point operator, Voltaic Charge. Depot chargers reach Azure through a firewall pair and an SD-WAN edge; street chargers come in over LTE. Event Hubs fans charger events out to twins, fault detection, metering and a cold path, while drivers start sessions and firmware rolls out in waves.\"\nnodes:\n  \"depot-chargers\" \"client.iot\" (\"IoT Device\") \"Depot chargers\" / \"60 bus chargers · OCPP\" props={\"ratePerSec\":60,\"messageType\":\"MeterValues\"} in \"depot\" capabilities=[{\"kind\":\"calls\",\"edge\":\"depot-chargers--depot-switch\",\"peer\":\"depot-switch\"}] explanation=undefined\n  \"depot-switch\" \"cisco.catalyst\" (\"Cisco Catalyst\") \"Depot switch\" / \"charger VLAN\" props={\"size\":\"branch\"} in \"depot\" capabilities=[{\"kind\":\"calls\",\"edge\":\"depot-switch--depot-fw\",\"peer\":\"depot-fw\",\"filter\":[\"MeterValues\",\"StatusNotification\",\"BootNotification\"]}] explanation={\"id\":\"depot-switch\",\"role\":\"gateway\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":343750,\"offered\":60,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":null,\"seconds\":0.000004,\"utilization\":0.00017454545454545454,\"growth\":0,\"contributors\":[{\"edge\":\"depot-chargers--depot-switch\",\"node\":\"depot-chargers\",\"label\":\"Depot chargers\",\"rate\":60}],\"target\":0.5,\"changes\":null,\"converged\":true}\n  \"depot-fw\" \"paloalto.ngfw\" (\"Palo Alto NGFW\") \"Depot firewall pair\" / \"active-standby\" props={\"size\":\"branch\",\"ha\":\"active-standby\",\"replicas\":2,\"failoverMs\":3000} in \"depot\" capabilities=[{\"kind\":\"calls\",\"edge\":\"depot-fw--depot-router\",\"peer\":\"depot-router\",\"filter\":[\"MeterValues\",\"StatusNotification\",\"BootNotification\"]}] explanation={\"id\":\"depot-fw\",\"role\":\"gateway\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":2343.75,\"offered\":62,\"replicas\":2,\"baseReplicas\":2,\"omittedContributors\":0,\"activeReplicas\":2,\"assignments\":[],\"slots\":null,\"seconds\":0.0005,\"utilization\":0.026453333333333332,\"growth\":0,\"contributors\":[{\"edge\":\"depot-switch--depot-fw\",\"node\":\"depot-switch\",\"label\":\"Depot chargers\",\"rate\":60,\"via\":\"Depot switch\"},{\"edge\":\"router-in\",\"node\":\"depot-router\",\"label\":\"Depot firewall pair, Charger vendor\",\"rate\":2,\"via\":\"SD-WAN edge\"}],\"target\":0.5,\"changes\":null,\"converged\":true}\n  \"depot-router\" \"cisco.isr\" (\"Cisco ISR\") \"SD-WAN edge\" / \"dual LTE and fibre\" props={\"size\":\"branch\"} in \"depot\" capabilities=[{\"kind\":\"calls\",\"edge\":\"depot-router--ingress\",\"peer\":\"ingress\",\"filter\":[\"MeterValues\",\"StatusNotification\",\"BootNotification\"]}] explanation={\"id\":\"depot-router\",\"role\":\"gateway\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":1953.125,\"offered\":62,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":null,\"seconds\":0.00005,\"utilization\":0.031744,\"growth\":0,\"contributors\":[{\"edge\":\"depot-fw--depot-router\",\"node\":\"depot-fw\",\"label\":\"Depot switch, SD-WAN edge\",\"rate\":60,\"via\":\"Depot firewall pair\"},{\"edge\":\"vendor--depot-router\",\"node\":\"vendor\",\"label\":\"Charger vendor\",\"rate\":2}],\"target\":0.5,\"changes\":null,\"converged\":true}\n  \"depot2-chargers\" \"client.iot\" (\"IoT Device\") \"Van chargers\" / \"40 chargers · OCPP\" props={\"ratePerSec\":40,\"messageType\":\"MeterValues\"} in \"depot2\" capabilities=[{\"kind\":\"calls\",\"edge\":\"depot2-chargers--depot2-switch\",\"peer\":\"depot2-switch\"}] explanation=undefined\n  \"depot2-switch\" \"juniper.ex\" (\"Juniper EX\") \"Yard switch\" / \"charger VLAN\" props={\"size\":\"branch\"} in \"depot2\" capabilities=[{\"kind\":\"calls\",\"edge\":\"depot2-switch--depot2-fw\",\"peer\":\"depot2-fw\"}] explanation={\"id\":\"depot2-switch\",\"role\":\"gateway\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":343750,\"offered\":40,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":null,\"seconds\":0.000004,\"utilization\":0.00011636363636363636,\"growth\":0,\"contributors\":[{\"edge\":\"depot2-chargers--depot2-switch\",\"node\":\"depot2-chargers\",\"label\":\"Van chargers\",\"rate\":40}],\"target\":0.5,\"changes\":null,\"converged\":true}\n  \"depot2-fw\" \"juniper.srx\" (\"Juniper SRX\") \"Yard firewall\" / \"standalone\" props={\"size\":\"branch\"} in \"depot2\" capabilities=[{\"kind\":\"calls\",\"edge\":\"depot2-fw--depot2-router\",\"peer\":\"depot2-router\"}] explanation={\"id\":\"depot2-fw\",\"role\":\"gateway\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":576.171875,\"offered\":40,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":null,\"seconds\":0.0005,\"utilization\":0.06942372881355932,\"growth\":0,\"contributors\":[{\"edge\":\"depot2-switch--depot2-fw\",\"node\":\"depot2-switch\",\"label\":\"Van chargers\",\"rate\":40,\"via\":\"Yard switch\"}],\"target\":0.5,\"changes\":null,\"converged\":true}\n  \"depot2-router\" \"juniper.mx\" (\"Juniper MX\") \"Yard router\" / \"fibre\" props={\"size\":\"branch\"} in \"depot2\" capabilities=[{\"kind\":\"calls\",\"edge\":\"depot2-router--ingress\",\"peer\":\"ingress\"}] explanation={\"id\":\"depot2-router\",\"role\":\"gateway\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":781250,\"offered\":40,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":null,\"seconds\":0.00005,\"utilization\":0.0000512,\"growth\":0,\"contributors\":[{\"edge\":\"depot2-fw--depot2-router\",\"node\":\"depot2-fw\",\"label\":\"Yard switch\",\"rate\":40,\"via\":\"Yard firewall\"}],\"target\":0.5,\"changes\":null,\"converged\":true}\n  \"vendor\" \"client.team\" (\"Team\") \"Charger vendor\" / \"remote support\" props={\"ratePerSec\":2,\"messageType\":\"VendorRemoteShell\"} capabilities=[{\"kind\":\"calls\",\"edge\":\"vendor--depot-router\",\"peer\":\"depot-router\"}] explanation=undefined\n  \"street\" \"client.iot\" (\"IoT Device\") \"Street chargers\" / \"1,800 chargers · LTE\" props={\"ratePerSec\":300,\"messageType\":\"MeterValues\"} capabilities=[{\"kind\":\"calls\",\"edge\":\"street--ingress\",\"peer\":\"ingress\"}] explanation=undefined\n  \"drivers\" \"client.mobile\" (\"Mobile App\") \"Driver app\" / \"start, stop, pay\" props={\"ratePerSec\":20,\"messageType\":\"StartSession\"} capabilities=[{\"kind\":\"calls\",\"edge\":\"drivers--apim\",\"peer\":\"apim\"}] explanation=undefined\n  \"ingress\" \"azure.app-gateway\" (\"Application Gateway\") \"OCPP ingress\" / \"mTLS, WAF\" props={\"latencyMs\":0,\"jitter\":0} in \"ingest\" capabilities=[{\"kind\":\"calls\",\"edge\":\"ingress--ocpp\",\"peer\":\"ocpp\"}] explanation=undefined\n  \"ocpp\" \"service.go\" (\"Go Service\") \"OCPP gateway\" / \"websockets per charger\" props={\"preset\":\"processor-lesson\",\"presetRevision\":\"1\",\"replicas\":6,\"concurrency\":128,\"latencyMs\":10,\"jitter\":0.1,\"failureRate\":0} in \"ingest\" capabilities=[{\"kind\":\"publishes\",\"edge\":\"ocpp--events\",\"peer\":\"events\"}] explanation={\"id\":\"ocpp\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":76800,\"offered\":400,\"replicas\":6,\"baseReplicas\":6,\"omittedContributors\":0,\"activeReplicas\":6,\"assignments\":[],\"slots\":128,\"seconds\":0.01,\"utilization\":0.005208333333333333,\"growth\":0,\"contributors\":[{\"edge\":\"ingress--ocpp\",\"node\":\"ingress\",\"label\":\"SD-WAN edge, Street chargers, Yard router\",\"rate\":400,\"via\":\"OCPP ingress\"}],\"target\":0.5,\"minimumReplicas\":6,\"targetReplicas\":6,\"changes\":null,\"converged\":true}\n  \"commands\" \"service.go\" (\"Go Service\") \"Command dispatcher\" / \"remote start, firmware\" props={\"preset\":\"processor-lesson\",\"presetRevision\":\"1\",\"replicas\":2,\"concurrency\":32,\"latencyMs\":20,\"jitter\":0.1,\"failureRate\":0} in \"ingest\" capabilities=[{\"kind\":\"consumes\",\"edge\":\"cmd-q--commands\",\"peer\":\"cmd-q\",\"retry\":\"requeue\",\"retryBackoffMs\":0}] explanation={\"id\":\"commands\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":3200,\"offered\":20.2,\"replicas\":2,\"baseReplicas\":2,\"omittedContributors\":0,\"activeReplicas\":2,\"assignments\":[],\"slots\":32,\"seconds\":0.02,\"utilization\":0.0063124999999999995,\"growth\":0,\"contributors\":[{\"edge\":\"cmd-q--commands\",\"node\":\"cmd-q\",\"label\":\"Charger commands\",\"rate\":20.2}],\"target\":0.5,\"minimumReplicas\":2,\"targetReplicas\":2,\"changes\":null,\"converged\":true}\n  \"registry\" \"azure.cosmos-db\" (\"Cosmos DB\") \"Device registry\" / \"certificates, owners\" props={\"latencyMs\":0} in \"ingest\" capabilities=[] explanation=undefined\n  \"events\" \"azure.event-hubs\" (\"Event Hubs\") \"Charger events\" / \"32 partitions · capture on\" props={\"partitions\":32,\"retentionDays\":7} in \"hub\" capabilities=[] explanation=undefined\n  \"state\" \"azure.container-apps\" (\"Container Apps\") \"Twin updater\" / \"desired vs reported\" props={\"preset\":\"processor-lesson\",\"presetRevision\":\"1\",\"replicas\":4,\"concurrency\":16,\"latencyMs\":20,\"jitter\":0.1,\"failureRate\":0} in \"hot\" capabilities=[{\"kind\":\"consumes\",\"edge\":\"events--state\",\"peer\":\"events\",\"group\":\"state\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"throughput-units\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"calls\",\"edge\":\"state--state-db\",\"peer\":\"state-db\"}] explanation={\"id\":\"state\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":3200,\"offered\":400,\"replicas\":4,\"baseReplicas\":4,\"omittedContributors\":0,\"activeReplicas\":4,\"assignments\":[{\"broker\":\"events\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"throughput-units\",\"producerSizeUnit\":\"kB\"},\"count\":32}],\"slots\":16,\"seconds\":0.02,\"utilization\":0.125,\"growth\":0,\"contributors\":[{\"edge\":\"events--state\",\"node\":\"events\",\"label\":\"Charger events\",\"rate\":400}],\"target\":0.5,\"minimumReplicas\":4,\"targetReplicas\":4,\"changes\":null,\"converged\":true}\n  \"state-db\" \"azure.cosmos-db\" (\"Cosmos DB\") \"Charger twins\" / \"Cosmos DB\" props={\"latencyMs\":0} in \"hot\" capabilities=[] explanation=undefined\n  \"faults\" \"flink\" (\"Apache Flink\") \"Fault detection\" / \"windows per charger\" props={\"preset\":\"processor-lesson\",\"presetRevision\":\"1\",\"replicas\":4,\"concurrency\":64,\"latencyMs\":10,\"jitter\":0.1,\"failureRate\":0} in \"hot\" capabilities=[{\"kind\":\"consumes\",\"edge\":\"events--faults\",\"peer\":\"events\",\"group\":\"faults\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"throughput-units\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"calls\",\"edge\":\"faults--alerts\",\"peer\":\"alerts\",\"share\":0.01}] explanation={\"id\":\"faults\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":25600,\"offered\":400,\"replicas\":4,\"baseReplicas\":4,\"omittedContributors\":0,\"activeReplicas\":4,\"assignments\":[{\"broker\":\"events\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"throughput-units\",\"producerSizeUnit\":\"kB\"},\"count\":32}],\"slots\":64,\"seconds\":0.01,\"utilization\":0.015625,\"growth\":0,\"contributors\":[{\"edge\":\"events--faults\",\"node\":\"events\",\"label\":\"Charger events\",\"rate\":400}],\"target\":0.5,\"minimumReplicas\":4,\"targetReplicas\":4,\"changes\":null,\"converged\":true}\n  \"alerts\" \"azure.event-grid\" (\"Event Grid\") \"Fault alerts\" / \"Event Grid\" in \"hot\" capabilities=[] explanation=undefined\n  \"dashboard\" \"grafana\" (\"Grafana\") \"Fleet dashboard\" / \"availability by site\" in \"hot\" capabilities=[] explanation=undefined\n  \"oncall\" \"azure.logic-apps\" (\"Logic Apps\") \"Field service\" / \"dispatch a technician\" props={\"preset\":\"processor-lesson\",\"presetRevision\":\"1\",\"replicas\":1,\"concurrency\":8,\"latencyMs\":300,\"jitter\":0.1,\"failureRate\":0} in \"hot\" capabilities=[{\"kind\":\"consumes\",\"edge\":\"alerts--oncall\",\"peer\":\"alerts\",\"group\":\"field-service\",\"broker\":{\"partitioned\":false,\"assignment\":\"subscriptions\",\"group\":\"subscription\",\"ingestUnit\":\"messages/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"calls\",\"edge\":\"oncall--tech-email\",\"peer\":\"tech-email\"}] explanation={\"id\":\"oncall\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":26.666666666666668,\"offered\":4,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":8,\"seconds\":0.3,\"utilization\":0.15,\"growth\":0,\"contributors\":[{\"edge\":\"alerts--oncall\",\"node\":\"alerts\",\"label\":\"Fault alerts\",\"rate\":4}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"apim\" \"azure.api-management\" (\"API Management\") \"Driver API\" / \"API Management\" props={\"latencyMs\":0,\"jitter\":0} in \"sessions\" capabilities=[{\"kind\":\"calls\",\"edge\":\"apim--sessions-api\",\"peer\":\"sessions-api\"}] explanation={\"managed\":\"api\",\"id\":\"apim\",\"role\":\"gateway\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":null,\"offered\":20,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":null,\"seconds\":0,\"utilization\":0,\"growth\":0,\"contributors\":[{\"edge\":\"drivers--apim\",\"node\":\"drivers\",\"label\":\"Driver app\",\"rate\":20}],\"target\":0.5,\"changes\":null,\"converged\":true}\n  \"sessions-api\" \"service.java\" (\"Java Service\") \"Sessions API\" / \"start, stop, receipts\" props={\"preset\":\"processor-lesson\",\"presetRevision\":\"1\",\"replicas\":3,\"concurrency\":32,\"latencyMs\":40,\"jitter\":0.1,\"failureRate\":0} in \"sessions\" capabilities=[{\"kind\":\"calls\",\"edge\":\"sessions-api--sessions-db\",\"peer\":\"sessions-db\"},{\"kind\":\"publishes\",\"edge\":\"sessions-api--cmd-q\",\"peer\":\"cmd-q\",\"emits\":\"RemoteStart\"}] explanation={\"id\":\"sessions-api\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":2400,\"offered\":20,\"replicas\":3,\"baseReplicas\":3,\"omittedContributors\":0,\"activeReplicas\":3,\"assignments\":[],\"slots\":32,\"seconds\":0.04,\"utilization\":0.008333333333333333,\"growth\":0,\"contributors\":[{\"edge\":\"apim--sessions-api\",\"node\":\"apim\",\"label\":\"Driver app\",\"rate\":20,\"via\":\"Driver API\"}],\"target\":0.5,\"minimumReplicas\":3,\"targetReplicas\":3,\"changes\":null,\"converged\":true}\n  \"metering\" \"service.java\" (\"Java Service\") \"Metering\" / \"kWh per session\" props={\"preset\":\"processor-lesson\",\"presetRevision\":\"1\",\"replicas\":4,\"concurrency\":32,\"latencyMs\":20,\"jitter\":0.1,\"failureRate\":0} in \"sessions\" capabilities=[{\"kind\":\"consumes\",\"edge\":\"events--metering\",\"peer\":\"events\",\"group\":\"metering\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"throughput-units\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"calls\",\"edge\":\"metering--sessions-db\",\"peer\":\"sessions-db\"}] explanation={\"id\":\"metering\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":6400,\"offered\":400,\"replicas\":4,\"baseReplicas\":4,\"omittedContributors\":0,\"activeReplicas\":4,\"assignments\":[{\"broker\":\"events\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"throughput-units\",\"producerSizeUnit\":\"kB\"},\"count\":32}],\"slots\":32,\"seconds\":0.02,\"utilization\":0.0625,\"growth\":0,\"contributors\":[{\"edge\":\"events--metering\",\"node\":\"events\",\"label\":\"Charger events\",\"rate\":400}],\"target\":0.5,\"minimumReplicas\":4,\"targetReplicas\":4,\"changes\":null,\"converged\":true}\n  \"sessions-db\" \"azure.sql\" (\"Azure SQL Database\") \"Sessions\" / \"Azure SQL\" props={\"latencyMs\":0} in \"sessions\" capabilities=[] explanation=undefined\n  \"billing\" \"service.dotnet\" (\".NET Service\") \"Billing\" / \"tariffs, invoices\" props={\"preset\":\"processor-lesson\",\"presetRevision\":\"1\",\"replicas\":2,\"concurrency\":16,\"latencyMs\":60,\"jitter\":0.1,\"failureRate\":0} in \"sessions\" capabilities=[{\"kind\":\"calls\",\"edge\":\"billing--stripe\",\"peer\":\"stripe\"},{\"kind\":\"calls\",\"edge\":\"billing--roaming\",\"peer\":\"roaming\"}] explanation={\"id\":\"billing\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":533.3333333333334,\"offered\":20,\"replicas\":2,\"baseReplicas\":2,\"omittedContributors\":0,\"activeReplicas\":2,\"assignments\":[],\"slots\":16,\"seconds\":0.06,\"utilization\":0.0375,\"growth\":0,\"contributors\":[{\"edge\":\"sessions-db--billing\",\"node\":\"sessions-db\",\"label\":\"Sessions\",\"rate\":20}],\"target\":0.5,\"minimumReplicas\":2,\"targetReplicas\":2,\"changes\":null,\"converged\":true}\n  \"cmd-q\" \"azure.service-bus.queue\" (\"Service Bus Queue\") \"Charger commands\" / \"Service Bus\" props={\"maxDeliveryCount\":5} in \"ota\" capabilities=[] explanation=undefined\n  \"cmd-dlq\" \"azure.service-bus.queue\" (\"Service Bus Queue\") \"Commands DLQ\" / \"Service Bus\" in \"ota\" capabilities=[] explanation=undefined\n  \"rollout\" \"generic.scheduler\" (\"Scheduler\") \"Firmware rollout\" / \"5% waves\" props={\"ratePerSec\":0.2,\"messageType\":\"FirmwareJob\"} in \"ota\" capabilities=[] explanation=undefined\n  \"firmware\" \"azure.functions\" (\"Azure Functions\") \"Firmware campaigns\" / \"stage, then notify\" props={\"preset\":\"managed-measured\",\"presetRevision\":\"2026-10-14\",\"latencyMs\":80,\"jitter\":0,\"failureRate\":0,\"scaling\":\"auto\",\"maxConcurrency\":10} in \"ota\" capabilities=[{\"kind\":\"calls\",\"edge\":\"firmware--images\",\"peer\":\"images\"},{\"kind\":\"publishes\",\"edge\":\"firmware--cmd-q\",\"peer\":\"cmd-q\",\"emits\":\"UpdateFirmware\"},{\"kind\":\"consumes\",\"edge\":\"cmd-dlq--firmware\",\"peer\":\"cmd-dlq\",\"filter\":[\"UpdateFirmware\"],\"retry\":\"requeue\",\"retryBackoffMs\":0}] explanation={\"managed\":\"serverless\",\"id\":\"firmware\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":125,\"offered\":0.2,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.08,\"utilization\":0.0016,\"growth\":0,\"contributors\":[{\"edge\":\"rollout--firmware\",\"node\":\"rollout\",\"label\":\"Firmware rollout\",\"rate\":0.2}],\"target\":0.5,\"changes\":null,\"converged\":true}\n  \"images\" \"azure.blob-storage\" (\"Blob Storage\") \"Firmware images\" / \"signed builds\" props={\"latencyMs\":0} in \"ota\" capabilities=[] explanation=undefined\n  \"raw\" \"azure.blob-storage\" (\"Blob Storage\") \"Raw telemetry\" / \"ADLS · Parquet\" props={\"latencyMs\":0} in \"cold\" capabilities=[] explanation=undefined\n  \"lakehouse\" \"databricks\" (\"Databricks\") \"Energy analytics\" / \"daily load curves\" props={\"latencyMs\":0} in \"cold\" capabilities=[] explanation=undefined\n  \"reports\" \"generic.scheduler\" (\"Scheduler\") \"Daily reports\" / \"02:00\" props={\"ratePerSec\":0.05,\"messageType\":\"ReportRun\"} in \"cold\" capabilities=[] explanation=undefined\n  \"report-job\" \"generic.batch-job\" (\"Batch Job\") \"Grid reports\" / \"per substation\" props={\"preset\":\"processor-lesson\",\"presetRevision\":\"1\",\"replicas\":1,\"concurrency\":1,\"latencyMs\":2000,\"jitter\":0.1,\"failureRate\":0} in \"cold\" capabilities=[{\"kind\":\"calls\",\"edge\":\"report-job--lakehouse\",\"peer\":\"lakehouse\"},{\"kind\":\"calls\",\"edge\":\"report-job--dso\",\"peer\":\"dso\"}] explanation={\"id\":\"report-job\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":0.5,\"offered\":0.05,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":1,\"seconds\":2,\"utilization\":0.1,\"growth\":0,\"contributors\":[{\"edge\":\"reports--report-job\",\"node\":\"reports\",\"label\":\"Daily reports\",\"rate\":0.05}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"kv\" \"azure.key-vault\" (\"Key Vault\") \"Key Vault\" / \"charger certificates\" in \"platform\" capabilities=[] explanation=undefined\n  \"mi\" \"azure.managed-identity\" (\"Managed Identity\") \"Managed identities\" in \"platform\" capabilities=[] explanation=undefined\n  \"insights\" \"azure.app-insights\" (\"Application Insights\") \"Application Insights\" in \"platform\" capabilities=[] explanation=undefined\n  \"roaming\" \"generic.external-api\" (\"External API\") \"Roaming hub\" / \"OCPI · partner CDRs\" props={\"preset\":\"managed-measured\",\"presetRevision\":\"2026-10-14\",\"latencyMs\":150,\"jitter\":0.1,\"failureRate\":0,\"api\":{\"maxInFlight\":20,\"quotas\":[{\"id\":\"ocpi-rate\",\"unit\":\"requests\",\"amount\":50,\"windowMs\":1000,\"algorithm\":\"token-bucket\"}]}} in \"partners\" capabilities=[] explanation={\"managed\":\"api\",\"id\":\"roaming\",\"role\":\"sink\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":50,\"offered\":20,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":null,\"seconds\":0.15,\"utilization\":0.4,\"growth\":0,\"contributors\":[{\"edge\":\"billing--roaming\",\"node\":\"billing\",\"label\":\"Billing\",\"rate\":20}],\"target\":0.5,\"changes\":null,\"converged\":true}\n  \"stripe\" \"stripe\" (\"Stripe\") \"Stripe\" / \"card payments\" props={\"preset\":\"managed-measured\",\"presetRevision\":\"2026-10-14\",\"latencyMs\":200,\"jitter\":0.1,\"failureRate\":0} in \"partners\" capabilities=[] explanation={\"managed\":\"api\",\"id\":\"stripe\",\"role\":\"sink\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":null,\"offered\":20,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":null,\"seconds\":0.2,\"utilization\":0,\"growth\":0,\"contributors\":[{\"edge\":\"billing--stripe\",\"node\":\"billing\",\"label\":\"Billing\",\"rate\":20}],\"target\":0.5,\"changes\":null,\"converged\":true}\n  \"tech-email\" \"generic.email\" (\"Email\") \"Technician email\" / \"fault tickets\" in \"partners\" capabilities=[] explanation={\"managed\":\"api\",\"id\":\"tech-email\",\"role\":\"sink\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":null,\"offered\":4,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":null,\"seconds\":0.25,\"utilization\":0,\"growth\":0,\"contributors\":[{\"edge\":\"oncall--tech-email\",\"node\":\"oncall\",\"label\":\"Field service\",\"rate\":4}],\"target\":0.5,\"changes\":null,\"converged\":true}\n  \"dso\" \"client.partner\" (\"Partner System\") \"Grid operator\" / \"load reports\" in \"partners\" capabilities=[] explanation={\"managed\":\"api\",\"id\":\"dso\",\"role\":\"sink\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":null,\"offered\":0.05,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":null,\"seconds\":0.25,\"utilization\":0,\"growth\":0,\"contributors\":[{\"edge\":\"report-job--dso\",\"node\":\"report-job\",\"label\":\"Grid reports\",\"rate\":0.05}],\"target\":0.5,\"changes\":null,\"converged\":true}\nconnections:\n  \"depot-chargers--depot-switch\" \"depot-chargers\" -> \"depot-switch\" sync \"OCPP\"\n  \"depot-switch--depot-fw\" \"depot-switch\" -> \"depot-fw\" sync\n  \"depot-fw--depot-router\" \"depot-fw\" -> \"depot-router\" sync \"Allow: OCPP out\"\n  \"depot-router--ingress\" \"depot-router\" -> \"ingress\" sync \"TLS\"\n  \"vendor--depot-router\" \"vendor\" -> \"depot-router\" sync \"Remote shell\"\n  \"router-in\" \"depot-router\" -> \"depot-fw\" async\n  \"deny-vendor-shell\" \"depot-fw\" -> \"depot-switch\" async \"Deny: vendor shell\"\n  \"street--ingress\" \"street\" -> \"ingress\" sync \"TLS\"\n  \"depot2-chargers--depot2-switch\" \"depot2-chargers\" -> \"depot2-switch\" sync \"OCPP\"\n  \"depot2-switch--depot2-fw\" \"depot2-switch\" -> \"depot2-fw\" sync\n  \"depot2-fw--depot2-router\" \"depot2-fw\" -> \"depot2-router\" sync \"Allow: OCPP out\"\n  \"depot2-router--ingress\" \"depot2-router\" -> \"ingress\" sync \"TLS\"\n  \"ocpp--registry\" \"ocpp\" -> \"registry\" depends dependency \"Charger identity\"\n  \"ingress--ocpp\" \"ingress\" -> \"ocpp\" sync\n  \"ocpp--events\" \"ocpp\" -> \"events\" async \"Charger events\"\n  \"events--state\" \"events\" -> \"state\" async\n  \"events--faults\" \"events\" -> \"faults\" async\n  \"events--metering\" \"events\" -> \"metering\" async\n  \"events--raw\" \"events\" -> \"raw\" async \"Capture\"\n  \"state--state-db\" \"state\" -> \"state-db\" sync \"Reported\"\n  \"faults--alerts\" \"faults\" -> \"alerts\" sync \"Fault\"\n  \"alerts--oncall\" \"alerts\" -> \"oncall\" async\n  \"oncall--tech-email\" \"oncall\" -> \"tech-email\" sync \"Ticket\"\n  \"dashboard--state-db\" \"dashboard\" -> \"state-db\" depends dependency \"Queries twins\"\n  \"drivers--apim\" \"drivers\" -> \"apim\" sync \"HTTPS\"\n  \"apim--sessions-api\" \"apim\" -> \"sessions-api\" sync\n  \"sessions-api--sessions-db\" \"sessions-api\" -> \"sessions-db\" sync \"Session\"\n  \"sessions-api--cmd-q\" \"sessions-api\" -> \"cmd-q\" async \"RemoteStart\"\n  \"metering--sessions-db\" \"metering\" -> \"sessions-db\" sync \"kWh\"\n  \"sessions-db--billing\" \"sessions-db\" -> \"billing\" async \"Session closed\"\n  \"billing--stripe\" \"billing\" -> \"stripe\" sync \"Charge\"\n  \"billing--roaming\" \"billing\" -> \"roaming\" sync \"CDR\"\n  \"cmd-q--commands\" \"cmd-q\" -> \"commands\" async\n  \"cmd-q--cmd-dlq\" \"cmd-q\" -> \"cmd-dlq\" async \"After 5 tries\"\n  \"rollout--firmware\" \"rollout\" -> \"firmware\" async \"Wave\"\n  \"firmware--images\" \"firmware\" -> \"images\" sync \"Stage\"\n  \"firmware--cmd-q\" \"firmware\" -> \"cmd-q\" async \"UpdateFirmware\"\n  \"cmd-dlq--firmware\" \"cmd-dlq\" -> \"firmware\" async \"Retry wave\"\n  \"reports--report-job\" \"reports\" -> \"report-job\" async \"Run\"\n  \"report-job--lakehouse\" \"report-job\" -> \"lakehouse\" sync \"Query\"\n  \"report-job--dso\" \"report-job\" -> \"dso\" sync \"Upload\"\n  \"lakehouse--raw\" \"lakehouse\" -> \"raw\" depends dependency \"Reads\"\n  \"ingress--kv\" \"ingress\" -> \"kv\" secret dependency \"Charger CA\"\n  \"ocpp--mi\" \"ocpp\" -> \"mi\" identity dependency\n  \"ingress--mi\" \"ingress\" -> \"mi\" identity dependency\n  \"commands--mi\" \"commands\" -> \"mi\" identity dependency\n  \"ocpp--insights\" \"ocpp\" -> \"insights\" telemetry dependency\n  \"sessions-api--insights\" \"sessions-api\" -> \"insights\" telemetry dependency\nboundary \"depot\" \"Depot · Harbour Road bus garage\" (onprem): \"depot-chargers\", \"depot-switch\", \"depot-fw\", \"depot-router\"\nboundary \"depot2\" \"Depot · Quay Street van yard\" (onprem): \"depot2-chargers\", \"depot2-switch\", \"depot2-fw\", \"depot2-router\"\nboundary \"azure\" \"Azure · West Europe\" (azure): \nboundary \"ingest\" \"AKS · charger connectivity\" (k8s): \"ingress\", \"ocpp\", \"commands\", \"registry\"\nboundary \"hub\" \"Event Hubs · charger events\" (azure): \"events\"\nboundary \"hot\" \"Hot path\" (neutral): \"state\", \"state-db\", \"faults\", \"alerts\", \"dashboard\", \"oncall\"\nboundary \"sessions\" \"AKS · sessions and billing\" (k8s): \"apim\", \"sessions-api\", \"metering\", \"sessions-db\", \"billing\"\nboundary \"ota\" \"Firmware and commands\" (neutral): \"cmd-q\", \"cmd-dlq\", \"rollout\", \"firmware\", \"images\"\nboundary \"cold\" \"Cold path\" (neutral): \"raw\", \"lakehouse\", \"reports\", \"report-job\"\nboundary \"platform\" \"Platform\" (neutral): \"kv\", \"mi\", \"insights\"\nboundary \"partners\" \"Partners\" (neutral): \"roaming\", \"stripe\", \"tech-email\", \"dso\"\nzone \"zone-ot\" \"OT sites · outbound-only\"\nnote \"note-ocpp\" \"OCPP over TLS: chargers hold a websocket to the gateway. Commands and firmware jobs go back down the same socket.\"\nsimulation \"vendor-shell\" \"The depot firewall blocks a vendor shell\": {\"kind\":\"constant\",\"ratePerSec\":60,\"durationMs\":16000} from \"depot-chargers\"; {\"kind\":\"constant\",\"ratePerSec\":300,\"durationMs\":16000} from \"street\"; {\"kind\":\"constant\",\"ratePerSec\":10,\"fromMs\":3000,\"durationMs\":8000} from \"vendor\"; timeline=[{\"atMs\":0,\"action\":{\"do\":\"note\",\"text\":\"Depot chargers reach the cloud through the switch, a firewall pair and the SD-WAN edge. Street chargers come in over LTE.\",\"focus\":[\"depot-chargers\",\"depot-switch\",\"depot-fw\",\"depot-router\",\"street\"]}},{\"atMs\":3000,\"action\":{\"do\":\"note\",\"text\":\"The charger vendor tries to open a remote shell into the depot. Its sessions reach the firewall.\",\"focus\":[\"vendor\",\"depot-router\",\"depot-fw\"]}},{\"atMs\":6000,\"action\":{\"do\":\"note\",\"text\":\"The firewall's deny rule stops every one. Blocked is the rule working, not a loss; vendor support goes through a ticketed jump host instead.\",\"focus\":[\"depot-fw\",\"depot-switch\"]}}]; expectations=[{\"id\":\"blocked\",\"label\":\"The firewall blocks the vendor shell\",\"metric\":{\"node\":\"depot-fw\",\"field\":\"blocked\"},\"op\":\">=\",\"value\":50,\"when\":\"end\"},{\"id\":\"no-drops\",\"label\":\"The firewall drops nothing\",\"metric\":{\"node\":\"depot-fw\",\"field\":\"dropped\"},\"op\":\"==\",\"value\":0,\"when\":\"always\"},{\"id\":\"telemetry\",\"label\":\"Depot telemetry keeps flowing\",\"metric\":{\"node\":\"ingress\",\"field\":\"processed\"},\"op\":\">\",\"value\":5000,\"when\":\"end\"}]\nsimulation \"reboot-storm\" \"A firmware wave reboots the street fleet\": {\"kind\":\"constant\",\"ratePerSec\":60,\"durationMs\":24000} from \"depot-chargers\"; {\"kind\":\"constant\",\"ratePerSec\":300,\"durationMs\":24000} from \"street\"; {\"kind\":\"burst\",\"count\":12000,\"atMs\":4000,\"spreadMs\":3000} from \"street\"; timeline=[{\"atMs\":0,\"action\":{\"do\":\"note\",\"text\":\"Four consumer groups read charger events: twins, fault detection, metering and capture to the lake.\",\"focus\":[\"events\",\"state\",\"faults\",\"state-db\"]}},{\"atMs\":4000,\"action\":{\"do\":\"note\",\"text\":\"The firmware wave lands: 12,000 reconnect messages in three seconds.\",\"focus\":[\"street\",\"ingress\",\"ocpp\",\"events\"]}},{\"atMs\":8000,\"action\":{\"do\":\"note\",\"text\":\"Event Hubs holds the burst. The twin updater works through its lag; fault detection and metering keep their own pace.\",\"focus\":[\"events\",\"state\",\"state-db\"]}},{\"atMs\":18000,\"action\":{\"do\":\"note\",\"text\":\"Every group has caught up, and nothing was dropped.\"}}]; expectations=[{\"id\":\"absorbed\",\"label\":\"The twin updater falls behind for a while\",\"metric\":{\"node\":\"events\",\"field\":\"lag\",\"group\":\"state\"},\"op\":\">\",\"value\":1000,\"when\":\"eventually\"},{\"id\":\"drained\",\"label\":\"Every reconnect reaches the twins\",\"metric\":{\"node\":\"events\",\"field\":\"lag\",\"group\":\"state\"},\"op\":\"==\",\"value\":0,\"when\":\"end\"},{\"id\":\"nothing-lost\",\"label\":\"Nothing is dropped\",\"metric\":{\"node\":\"ocpp\",\"field\":\"dropped\"},\"op\":\"==\",\"value\":0,\"when\":\"always\"}]\nsimulation \"firewall-failover\" \"The depot firewall fails over\": {\"kind\":\"constant\",\"ratePerSec\":60,\"durationMs\":12000} from \"depot-chargers\"; timeline=[{\"atMs\":0,\"action\":{\"do\":\"note\",\"text\":\"One firewall in the pair carries the depot's traffic; the other stands by.\",\"focus\":[\"depot-fw\"]}},{\"atMs\":4000,\"action\":{\"do\":\"props\",\"node\":\"depot-fw\",\"props\":{\"replicas\":1}}},{\"atMs\":4000,\"action\":{\"do\":\"note\",\"text\":\"The active unit fails. Traffic waits at the pair while the standby takes over.\",\"focus\":[\"depot-fw\",\"depot-switch\"]}},{\"atMs\":8000,\"action\":{\"do\":\"note\",\"text\":\"The standby carries everything. Nothing was lost, but the pair has no spare until the failed unit is replaced.\",\"focus\":[\"depot-fw\",\"depot-router\"]}}]; expectations=[{\"id\":\"waits\",\"label\":\"Telemetry waits during the failover\",\"metric\":{\"node\":\"depot-fw\",\"field\":\"backlog\"},\"op\":\">\",\"value\":50,\"when\":\"eventually\"},{\"id\":\"no-drops\",\"label\":\"The firewall never drops a message\",\"metric\":{\"node\":\"depot-fw\",\"field\":\"dropped\"},\"op\":\"==\",\"value\":0,\"when\":\"always\"}]\nsimulation \"hot-spot\" \"One partition runs hot\": {\"kind\":\"constant\",\"ratePerSec\":50,\"durationMs\":4000} from \"street\"; timeline=[{\"atMs\":0,\"action\":{\"do\":\"note\",\"text\":\"Every reading lands on one partition. One partition activates one twin updater; the other 63 replicas sit idle while lag grows.\",\"focus\":[\"events\",\"state\"]}},{\"atMs\":8000,\"action\":{\"do\":\"props\",\"node\":\"events\",\"props\":{\"partitions\":32}}},{\"atMs\":8000,\"action\":{\"do\":\"note\",\"text\":\"The partition key is fixed and spread across 32 partitions. More replicas get work and the lag drains.\",\"focus\":[\"events\",\"state\",\"state-db\"]}}]; expectations=[{\"id\":\"hot-lag\",\"label\":\"Lag builds on the hot partition\",\"metric\":{\"node\":\"events\",\"field\":\"lag\",\"group\":\"state\"},\"op\":\">\",\"value\":0,\"when\":\"at\",\"atMs\":6000},{\"id\":\"twins\",\"label\":\"Every reading reaches the twins\",\"metric\":{\"node\":\"state-db\",\"field\":\"processed\"},\"op\":\"==\",\"value\":200,\"when\":\"end\"},{\"id\":\"drained\",\"label\":\"The lag drains\",\"metric\":{\"node\":\"events\",\"field\":\"lag\",\"group\":\"state\"},\"op\":\"==\",\"value\":0,\"when\":\"end\"}]"
+    "output": "Diagram \"EV charging network\" · direction LR · 43 nodes, 48 connections, 11 boundaries, 4 simulations\ndescription: \"An invented charge-point operator, Voltaic Charge. Depot chargers reach Azure through a firewall pair and an SD-WAN edge; street chargers come in over LTE. Event Hubs fans charger events out to twins, fault detection, metering and a cold path, while drivers start sessions and firmware rolls out in waves.\"\nnodes:\n  \"depot-chargers\" \"client.iot\" (\"IoT Device\") \"Depot chargers\" / \"60 bus chargers · OCPP\" props={\"ratePerSec\":60,\"messageType\":\"MeterValues\"} in \"depot\" arrivingTypes=[] capabilities=[{\"kind\":\"calls\",\"edge\":\"depot-chargers--depot-switch\",\"peer\":\"depot-switch\"}] explanation=undefined\n  \"depot-switch\" \"cisco.catalyst\" (\"Cisco Catalyst\") \"Depot switch\" / \"charger VLAN\" props={\"size\":\"branch\"} in \"depot\" arrivingTypes=[\"MeterValues\"] capabilities=[{\"kind\":\"calls\",\"edge\":\"depot-switch--depot-fw\",\"peer\":\"depot-fw\",\"filter\":[\"MeterValues\",\"StatusNotification\",\"BootNotification\"]}] explanation={\"id\":\"depot-switch\",\"role\":\"gateway\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":343750,\"offered\":60,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":null,\"seconds\":0.000004,\"utilization\":0.00017454545454545454,\"growth\":0,\"contributors\":[{\"edge\":\"depot-chargers--depot-switch\",\"node\":\"depot-chargers\",\"label\":\"Depot chargers\",\"rate\":60}],\"target\":0.5,\"changes\":null,\"converged\":true}\n  \"depot-fw\" \"paloalto.ngfw\" (\"Palo Alto NGFW\") \"Depot firewall pair\" / \"active-standby\" props={\"size\":\"branch\",\"ha\":\"active-standby\",\"replicas\":2,\"failoverMs\":3000} in \"depot\" arrivingTypes=[\"MeterValues\",\"VendorRemoteShell\"] capabilities=[{\"kind\":\"calls\",\"edge\":\"depot-fw--depot-router\",\"peer\":\"depot-router\",\"filter\":[\"MeterValues\",\"StatusNotification\",\"BootNotification\"]}] explanation={\"id\":\"depot-fw\",\"role\":\"gateway\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":2343.75,\"offered\":62,\"replicas\":2,\"baseReplicas\":2,\"omittedContributors\":0,\"activeReplicas\":2,\"assignments\":[],\"slots\":null,\"seconds\":0.0005,\"utilization\":0.026453333333333332,\"growth\":0,\"contributors\":[{\"edge\":\"depot-switch--depot-fw\",\"node\":\"depot-switch\",\"label\":\"Depot chargers\",\"rate\":60,\"via\":\"Depot switch\"},{\"edge\":\"router-in\",\"node\":\"depot-router\",\"label\":\"Depot firewall pair, Charger vendor\",\"rate\":2,\"via\":\"SD-WAN edge\"}],\"target\":0.5,\"changes\":null,\"converged\":true}\n  \"depot-router\" \"cisco.isr\" (\"Cisco ISR\") \"SD-WAN edge\" / \"dual LTE and fibre\" props={\"size\":\"branch\"} in \"depot\" arrivingTypes=[\"VendorRemoteShell\",\"MeterValues\"] capabilities=[{\"kind\":\"calls\",\"edge\":\"depot-router--ingress\",\"peer\":\"ingress\",\"filter\":[\"MeterValues\",\"StatusNotification\",\"BootNotification\"]}] explanation={\"id\":\"depot-router\",\"role\":\"gateway\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":1953.125,\"offered\":62,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":null,\"seconds\":0.00005,\"utilization\":0.031744,\"growth\":0,\"contributors\":[{\"edge\":\"depot-fw--depot-router\",\"node\":\"depot-fw\",\"label\":\"Depot switch, SD-WAN edge\",\"rate\":60,\"via\":\"Depot firewall pair\"},{\"edge\":\"vendor--depot-router\",\"node\":\"vendor\",\"label\":\"Charger vendor\",\"rate\":2}],\"target\":0.5,\"changes\":null,\"converged\":true}\n  \"depot2-chargers\" \"client.iot\" (\"IoT Device\") \"Van chargers\" / \"40 chargers · OCPP\" props={\"ratePerSec\":40,\"messageType\":\"MeterValues\"} in \"depot2\" arrivingTypes=[] capabilities=[{\"kind\":\"calls\",\"edge\":\"depot2-chargers--depot2-switch\",\"peer\":\"depot2-switch\"}] explanation=undefined\n  \"depot2-switch\" \"juniper.ex\" (\"Juniper EX\") \"Yard switch\" / \"charger VLAN\" props={\"size\":\"branch\"} in \"depot2\" arrivingTypes=[\"MeterValues\"] capabilities=[{\"kind\":\"calls\",\"edge\":\"depot2-switch--depot2-fw\",\"peer\":\"depot2-fw\"}] explanation={\"id\":\"depot2-switch\",\"role\":\"gateway\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":343750,\"offered\":40,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":null,\"seconds\":0.000004,\"utilization\":0.00011636363636363636,\"growth\":0,\"contributors\":[{\"edge\":\"depot2-chargers--depot2-switch\",\"node\":\"depot2-chargers\",\"label\":\"Van chargers\",\"rate\":40}],\"target\":0.5,\"changes\":null,\"converged\":true}\n  \"depot2-fw\" \"juniper.srx\" (\"Juniper SRX\") \"Yard firewall\" / \"standalone\" props={\"size\":\"branch\"} in \"depot2\" arrivingTypes=[\"MeterValues\"] capabilities=[{\"kind\":\"calls\",\"edge\":\"depot2-fw--depot2-router\",\"peer\":\"depot2-router\"}] explanation={\"id\":\"depot2-fw\",\"role\":\"gateway\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":576.171875,\"offered\":40,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":null,\"seconds\":0.0005,\"utilization\":0.06942372881355932,\"growth\":0,\"contributors\":[{\"edge\":\"depot2-switch--depot2-fw\",\"node\":\"depot2-switch\",\"label\":\"Van chargers\",\"rate\":40,\"via\":\"Yard switch\"}],\"target\":0.5,\"changes\":null,\"converged\":true}\n  \"depot2-router\" \"juniper.mx\" (\"Juniper MX\") \"Yard router\" / \"fibre\" props={\"size\":\"branch\"} in \"depot2\" arrivingTypes=[\"MeterValues\"] capabilities=[{\"kind\":\"calls\",\"edge\":\"depot2-router--ingress\",\"peer\":\"ingress\"}] explanation={\"id\":\"depot2-router\",\"role\":\"gateway\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":781250,\"offered\":40,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":null,\"seconds\":0.00005,\"utilization\":0.0000512,\"growth\":0,\"contributors\":[{\"edge\":\"depot2-fw--depot2-router\",\"node\":\"depot2-fw\",\"label\":\"Yard switch\",\"rate\":40,\"via\":\"Yard firewall\"}],\"target\":0.5,\"changes\":null,\"converged\":true}\n  \"vendor\" \"client.team\" (\"Team\") \"Charger vendor\" / \"remote support\" props={\"ratePerSec\":2,\"messageType\":\"VendorRemoteShell\"} arrivingTypes=[] capabilities=[{\"kind\":\"calls\",\"edge\":\"vendor--depot-router\",\"peer\":\"depot-router\"}] explanation=undefined\n  \"street\" \"client.iot\" (\"IoT Device\") \"Street chargers\" / \"1,800 chargers · LTE\" props={\"ratePerSec\":300,\"messageType\":\"MeterValues\"} arrivingTypes=[] capabilities=[{\"kind\":\"calls\",\"edge\":\"street--ingress\",\"peer\":\"ingress\"}] explanation=undefined\n  \"drivers\" \"client.mobile\" (\"Mobile App\") \"Driver app\" / \"start, stop, pay\" props={\"ratePerSec\":20,\"messageType\":\"StartSession\"} arrivingTypes=[] capabilities=[{\"kind\":\"calls\",\"edge\":\"drivers--apim\",\"peer\":\"apim\"}] explanation=undefined\n  \"ingress\" \"azure.app-gateway\" (\"Application Gateway\") \"OCPP ingress\" / \"mTLS, WAF\" props={\"latencyMs\":0,\"jitter\":0} in \"ingest\" arrivingTypes=[\"MeterValues\"] capabilities=[{\"kind\":\"calls\",\"edge\":\"ingress--ocpp\",\"peer\":\"ocpp\"}] explanation=undefined\n  \"ocpp\" \"service.go\" (\"Go Service\") \"OCPP gateway\" / \"websockets per charger\" props={\"preset\":\"processor-lesson\",\"presetRevision\":\"1\",\"replicas\":6,\"concurrency\":128,\"latencyMs\":10,\"jitter\":0.1,\"failureRate\":0} in \"ingest\" arrivingTypes=[\"MeterValues\"] capabilities=[{\"kind\":\"publishes\",\"edge\":\"ocpp--events\",\"peer\":\"events\"}] explanation={\"id\":\"ocpp\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":76800,\"offered\":400,\"replicas\":6,\"baseReplicas\":6,\"omittedContributors\":0,\"activeReplicas\":6,\"assignments\":[],\"slots\":128,\"seconds\":0.01,\"utilization\":0.005208333333333333,\"growth\":0,\"contributors\":[{\"edge\":\"ingress--ocpp\",\"node\":\"ingress\",\"label\":\"SD-WAN edge, Street chargers, Yard router\",\"rate\":400,\"via\":\"OCPP ingress\"}],\"target\":0.5,\"minimumReplicas\":6,\"targetReplicas\":6,\"changes\":null,\"converged\":true}\n  \"commands\" \"service.go\" (\"Go Service\") \"Command dispatcher\" / \"remote start, firmware\" props={\"preset\":\"processor-lesson\",\"presetRevision\":\"1\",\"replicas\":2,\"concurrency\":32,\"latencyMs\":20,\"jitter\":0.1,\"failureRate\":0} in \"ingest\" arrivingTypes=[\"UpdateFirmware\",\"RemoteStart\"] capabilities=[{\"kind\":\"consumes\",\"edge\":\"cmd-q--commands\",\"peer\":\"cmd-q\",\"retry\":\"requeue\",\"retryBackoffMs\":0}] explanation={\"id\":\"commands\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":3200,\"offered\":20.2,\"replicas\":2,\"baseReplicas\":2,\"omittedContributors\":0,\"activeReplicas\":2,\"assignments\":[],\"slots\":32,\"seconds\":0.02,\"utilization\":0.0063124999999999995,\"growth\":0,\"contributors\":[{\"edge\":\"cmd-q--commands\",\"node\":\"cmd-q\",\"label\":\"Charger commands\",\"rate\":20.2}],\"target\":0.5,\"minimumReplicas\":2,\"targetReplicas\":2,\"changes\":null,\"converged\":true}\n  \"registry\" \"azure.cosmos-db\" (\"Cosmos DB\") \"Device registry\" / \"certificates, owners\" props={\"latencyMs\":0} in \"ingest\" arrivingTypes=[] capabilities=[] explanation=undefined\n  \"events\" \"azure.event-hubs\" (\"Event Hubs\") \"Charger events\" / \"32 partitions · capture on\" props={\"partitions\":32,\"retentionDays\":7} in \"hub\" arrivingTypes=[\"MeterValues\"] capabilities=[] explanation=undefined\n  \"state\" \"azure.container-apps\" (\"Container Apps\") \"Twin updater\" / \"desired vs reported\" props={\"preset\":\"processor-lesson\",\"presetRevision\":\"1\",\"replicas\":4,\"concurrency\":16,\"latencyMs\":20,\"jitter\":0.1,\"failureRate\":0} in \"hot\" arrivingTypes=[\"MeterValues\"] capabilities=[{\"kind\":\"consumes\",\"edge\":\"events--state\",\"peer\":\"events\",\"group\":\"state\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"throughput-units\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"calls\",\"edge\":\"state--state-db\",\"peer\":\"state-db\"}] explanation={\"id\":\"state\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":3200,\"offered\":400,\"replicas\":4,\"baseReplicas\":4,\"omittedContributors\":0,\"activeReplicas\":4,\"assignments\":[{\"broker\":\"events\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"throughput-units\",\"producerSizeUnit\":\"kB\"},\"count\":32}],\"slots\":16,\"seconds\":0.02,\"utilization\":0.125,\"growth\":0,\"contributors\":[{\"edge\":\"events--state\",\"node\":\"events\",\"label\":\"Charger events\",\"rate\":400}],\"target\":0.5,\"minimumReplicas\":4,\"targetReplicas\":4,\"changes\":null,\"converged\":true}\n  \"state-db\" \"azure.cosmos-db\" (\"Cosmos DB\") \"Charger twins\" / \"Cosmos DB\" props={\"latencyMs\":0} in \"hot\" arrivingTypes=[\"MeterValues\"] capabilities=[] explanation=undefined\n  \"faults\" \"flink\" (\"Apache Flink\") \"Fault detection\" / \"windows per charger\" props={\"preset\":\"processor-lesson\",\"presetRevision\":\"1\",\"replicas\":4,\"concurrency\":64,\"latencyMs\":10,\"jitter\":0.1,\"failureRate\":0} in \"hot\" arrivingTypes=[\"MeterValues\"] capabilities=[{\"kind\":\"consumes\",\"edge\":\"events--faults\",\"peer\":\"events\",\"group\":\"faults\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"throughput-units\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"calls\",\"edge\":\"faults--alerts\",\"peer\":\"alerts\",\"share\":0.01}] explanation={\"id\":\"faults\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":25600,\"offered\":400,\"replicas\":4,\"baseReplicas\":4,\"omittedContributors\":0,\"activeReplicas\":4,\"assignments\":[{\"broker\":\"events\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"throughput-units\",\"producerSizeUnit\":\"kB\"},\"count\":32}],\"slots\":64,\"seconds\":0.01,\"utilization\":0.015625,\"growth\":0,\"contributors\":[{\"edge\":\"events--faults\",\"node\":\"events\",\"label\":\"Charger events\",\"rate\":400}],\"target\":0.5,\"minimumReplicas\":4,\"targetReplicas\":4,\"changes\":null,\"converged\":true}\n  \"alerts\" \"azure.event-grid\" (\"Event Grid\") \"Fault alerts\" / \"Event Grid\" in \"hot\" arrivingTypes=[\"ChargerFault\"] capabilities=[] explanation=undefined\n  \"dashboard\" \"grafana\" (\"Grafana\") \"Fleet dashboard\" / \"availability by site\" in \"hot\" arrivingTypes=[] capabilities=[] explanation=undefined\n  \"oncall\" \"azure.logic-apps\" (\"Logic Apps\") \"Field service\" / \"dispatch a technician\" props={\"preset\":\"processor-lesson\",\"presetRevision\":\"1\",\"replicas\":1,\"concurrency\":8,\"latencyMs\":300,\"jitter\":0.1,\"failureRate\":0} in \"hot\" arrivingTypes=[\"ChargerFault\"] capabilities=[{\"kind\":\"consumes\",\"edge\":\"alerts--oncall\",\"peer\":\"alerts\",\"group\":\"field-service\",\"broker\":{\"partitioned\":false,\"assignment\":\"subscriptions\",\"group\":\"subscription\",\"ingestUnit\":\"messages/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"calls\",\"edge\":\"oncall--tech-email\",\"peer\":\"tech-email\"}] explanation={\"id\":\"oncall\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":26.666666666666668,\"offered\":4,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":8,\"seconds\":0.3,\"utilization\":0.15,\"growth\":0,\"contributors\":[{\"edge\":\"alerts--oncall\",\"node\":\"alerts\",\"label\":\"Fault alerts\",\"rate\":4}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"apim\" \"azure.api-management\" (\"API Management\") \"Driver API\" / \"API Management\" props={\"latencyMs\":0,\"jitter\":0} in \"sessions\" arrivingTypes=[\"StartSession\"] capabilities=[{\"kind\":\"calls\",\"edge\":\"apim--sessions-api\",\"peer\":\"sessions-api\"}] explanation={\"managed\":\"api\",\"id\":\"apim\",\"role\":\"gateway\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":null,\"offered\":20,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":null,\"seconds\":0,\"utilization\":0,\"growth\":0,\"contributors\":[{\"edge\":\"drivers--apim\",\"node\":\"drivers\",\"label\":\"Driver app\",\"rate\":20}],\"target\":0.5,\"changes\":null,\"converged\":true}\n  \"sessions-api\" \"service.java\" (\"Java Service\") \"Sessions API\" / \"start, stop, receipts\" props={\"preset\":\"processor-lesson\",\"presetRevision\":\"1\",\"replicas\":3,\"concurrency\":32,\"latencyMs\":40,\"jitter\":0.1,\"failureRate\":0} in \"sessions\" arrivingTypes=[\"StartSession\"] capabilities=[{\"kind\":\"calls\",\"edge\":\"sessions-api--sessions-db\",\"peer\":\"sessions-db\"},{\"kind\":\"publishes\",\"edge\":\"sessions-api--cmd-q\",\"peer\":\"cmd-q\",\"emits\":\"RemoteStart\"}] explanation={\"id\":\"sessions-api\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":2400,\"offered\":20,\"replicas\":3,\"baseReplicas\":3,\"omittedContributors\":0,\"activeReplicas\":3,\"assignments\":[],\"slots\":32,\"seconds\":0.04,\"utilization\":0.008333333333333333,\"growth\":0,\"contributors\":[{\"edge\":\"apim--sessions-api\",\"node\":\"apim\",\"label\":\"Driver app\",\"rate\":20,\"via\":\"Driver API\"}],\"target\":0.5,\"minimumReplicas\":3,\"targetReplicas\":3,\"changes\":null,\"converged\":true}\n  \"metering\" \"service.java\" (\"Java Service\") \"Metering\" / \"kWh per session\" props={\"preset\":\"processor-lesson\",\"presetRevision\":\"1\",\"replicas\":4,\"concurrency\":32,\"latencyMs\":20,\"jitter\":0.1,\"failureRate\":0} in \"sessions\" arrivingTypes=[\"MeterValues\"] capabilities=[{\"kind\":\"consumes\",\"edge\":\"events--metering\",\"peer\":\"events\",\"group\":\"metering\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"throughput-units\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"calls\",\"edge\":\"metering--sessions-db\",\"peer\":\"sessions-db\"}] explanation={\"id\":\"metering\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":6400,\"offered\":400,\"replicas\":4,\"baseReplicas\":4,\"omittedContributors\":0,\"activeReplicas\":4,\"assignments\":[{\"broker\":\"events\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"throughput-units\",\"producerSizeUnit\":\"kB\"},\"count\":32}],\"slots\":32,\"seconds\":0.02,\"utilization\":0.0625,\"growth\":0,\"contributors\":[{\"edge\":\"events--metering\",\"node\":\"events\",\"label\":\"Charger events\",\"rate\":400}],\"target\":0.5,\"minimumReplicas\":4,\"targetReplicas\":4,\"changes\":null,\"converged\":true}\n  \"sessions-db\" \"azure.sql\" (\"Azure SQL Database\") \"Sessions\" / \"Azure SQL\" props={\"latencyMs\":0} in \"sessions\" arrivingTypes=[\"StartSession\",\"MeterValues\"] capabilities=[] explanation=undefined\n  \"billing\" \"service.dotnet\" (\".NET Service\") \"Billing\" / \"tariffs, invoices\" props={\"preset\":\"processor-lesson\",\"presetRevision\":\"1\",\"replicas\":2,\"concurrency\":16,\"latencyMs\":60,\"jitter\":0.1,\"failureRate\":0} in \"sessions\" arrivingTypes=[] capabilities=[{\"kind\":\"calls\",\"edge\":\"billing--stripe\",\"peer\":\"stripe\"},{\"kind\":\"calls\",\"edge\":\"billing--roaming\",\"peer\":\"roaming\"}] explanation={\"id\":\"billing\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":533.3333333333334,\"offered\":20,\"replicas\":2,\"baseReplicas\":2,\"omittedContributors\":0,\"activeReplicas\":2,\"assignments\":[],\"slots\":16,\"seconds\":0.06,\"utilization\":0.0375,\"growth\":0,\"contributors\":[{\"edge\":\"sessions-db--billing\",\"node\":\"sessions-db\",\"label\":\"Sessions\",\"rate\":20}],\"target\":0.5,\"minimumReplicas\":2,\"targetReplicas\":2,\"changes\":null,\"converged\":true}\n  \"cmd-q\" \"azure.service-bus.queue\" (\"Service Bus Queue\") \"Charger commands\" / \"Service Bus\" props={\"maxDeliveryCount\":5} in \"ota\" arrivingTypes=[\"UpdateFirmware\",\"RemoteStart\"] capabilities=[] explanation=undefined\n  \"cmd-dlq\" \"azure.service-bus.queue\" (\"Service Bus Queue\") \"Commands DLQ\" / \"Service Bus\" in \"ota\" arrivingTypes=[\"UpdateFirmware\",\"RemoteStart\"] capabilities=[] explanation=undefined\n  \"rollout\" \"generic.scheduler\" (\"Scheduler\") \"Firmware rollout\" / \"5% waves\" props={\"ratePerSec\":0.2,\"messageType\":\"FirmwareJob\"} in \"ota\" arrivingTypes=[] capabilities=[] explanation=undefined\n  \"firmware\" \"azure.functions\" (\"Azure Functions\") \"Firmware campaigns\" / \"stage, then notify\" props={\"preset\":\"managed-measured\",\"presetRevision\":\"2026-10-14\",\"latencyMs\":80,\"jitter\":0,\"failureRate\":0,\"scaling\":\"auto\",\"maxConcurrency\":10} in \"ota\" arrivingTypes=[\"FirmwareJob\",\"UpdateFirmware\"] capabilities=[{\"kind\":\"calls\",\"edge\":\"firmware--images\",\"peer\":\"images\"},{\"kind\":\"publishes\",\"edge\":\"firmware--cmd-q\",\"peer\":\"cmd-q\",\"emits\":\"UpdateFirmware\"},{\"kind\":\"consumes\",\"edge\":\"cmd-dlq--firmware\",\"peer\":\"cmd-dlq\",\"filter\":[\"UpdateFirmware\"],\"retry\":\"requeue\",\"retryBackoffMs\":0}] explanation={\"managed\":\"serverless\",\"id\":\"firmware\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":125,\"offered\":0.2,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.08,\"utilization\":0.0016,\"growth\":0,\"contributors\":[{\"edge\":\"rollout--firmware\",\"node\":\"rollout\",\"label\":\"Firmware rollout\",\"rate\":0.2}],\"target\":0.5,\"changes\":null,\"converged\":true}\n  \"images\" \"azure.blob-storage\" (\"Blob Storage\") \"Firmware images\" / \"signed builds\" props={\"latencyMs\":0} in \"ota\" arrivingTypes=[\"FirmwareJob\",\"UpdateFirmware\"] capabilities=[] explanation=undefined\n  \"raw\" \"azure.blob-storage\" (\"Blob Storage\") \"Raw telemetry\" / \"ADLS · Parquet\" props={\"latencyMs\":0} in \"cold\" arrivingTypes=[\"MeterValues\"] capabilities=[] explanation=undefined\n  \"lakehouse\" \"databricks\" (\"Databricks\") \"Energy analytics\" / \"daily load curves\" props={\"latencyMs\":0} in \"cold\" arrivingTypes=[\"ReportRun\"] capabilities=[] explanation=undefined\n  \"reports\" \"generic.scheduler\" (\"Scheduler\") \"Daily reports\" / \"02:00\" props={\"ratePerSec\":0.05,\"messageType\":\"ReportRun\"} in \"cold\" arrivingTypes=[] capabilities=[] explanation=undefined\n  \"report-job\" \"generic.batch-job\" (\"Batch Job\") \"Grid reports\" / \"per substation\" props={\"preset\":\"processor-lesson\",\"presetRevision\":\"1\",\"replicas\":1,\"concurrency\":1,\"latencyMs\":2000,\"jitter\":0.1,\"failureRate\":0} in \"cold\" arrivingTypes=[\"ReportRun\"] capabilities=[{\"kind\":\"calls\",\"edge\":\"report-job--lakehouse\",\"peer\":\"lakehouse\"},{\"kind\":\"calls\",\"edge\":\"report-job--dso\",\"peer\":\"dso\"}] explanation={\"id\":\"report-job\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":0.5,\"offered\":0.05,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":1,\"seconds\":2,\"utilization\":0.1,\"growth\":0,\"contributors\":[{\"edge\":\"reports--report-job\",\"node\":\"reports\",\"label\":\"Daily reports\",\"rate\":0.05}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"kv\" \"azure.key-vault\" (\"Key Vault\") \"Key Vault\" / \"charger certificates\" in \"platform\" arrivingTypes=[] capabilities=[] explanation=undefined\n  \"mi\" \"azure.managed-identity\" (\"Managed Identity\") \"Managed identities\" in \"platform\" arrivingTypes=[] capabilities=[] explanation=undefined\n  \"insights\" \"azure.app-insights\" (\"Application Insights\") \"Application Insights\" in \"platform\" arrivingTypes=[] capabilities=[] explanation=undefined\n  \"roaming\" \"generic.external-api\" (\"External API\") \"Roaming hub\" / \"OCPI · partner CDRs\" props={\"preset\":\"managed-measured\",\"presetRevision\":\"2026-10-14\",\"latencyMs\":150,\"jitter\":0.1,\"failureRate\":0,\"api\":{\"maxInFlight\":20,\"quotas\":[{\"id\":\"ocpi-rate\",\"unit\":\"requests\",\"amount\":50,\"windowMs\":1000,\"algorithm\":\"token-bucket\"}]}} in \"partners\" arrivingTypes=[] capabilities=[] explanation={\"managed\":\"api\",\"id\":\"roaming\",\"role\":\"sink\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":50,\"offered\":20,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":null,\"seconds\":0.15,\"utilization\":0.4,\"growth\":0,\"contributors\":[{\"edge\":\"billing--roaming\",\"node\":\"billing\",\"label\":\"Billing\",\"rate\":20}],\"target\":0.5,\"changes\":null,\"converged\":true}\n  \"stripe\" \"stripe\" (\"Stripe\") \"Stripe\" / \"card payments\" props={\"preset\":\"managed-measured\",\"presetRevision\":\"2026-10-14\",\"latencyMs\":200,\"jitter\":0.1,\"failureRate\":0} in \"partners\" arrivingTypes=[] capabilities=[] explanation={\"managed\":\"api\",\"id\":\"stripe\",\"role\":\"sink\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":null,\"offered\":20,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":null,\"seconds\":0.2,\"utilization\":0,\"growth\":0,\"contributors\":[{\"edge\":\"billing--stripe\",\"node\":\"billing\",\"label\":\"Billing\",\"rate\":20}],\"target\":0.5,\"changes\":null,\"converged\":true}\n  \"tech-email\" \"generic.email\" (\"Email\") \"Technician email\" / \"fault tickets\" in \"partners\" arrivingTypes=[\"FaultTicket\"] capabilities=[] explanation={\"managed\":\"api\",\"id\":\"tech-email\",\"role\":\"sink\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":null,\"offered\":4,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":null,\"seconds\":0.25,\"utilization\":0,\"growth\":0,\"contributors\":[{\"edge\":\"oncall--tech-email\",\"node\":\"oncall\",\"label\":\"Field service\",\"rate\":4}],\"target\":0.5,\"changes\":null,\"converged\":true}\n  \"dso\" \"client.partner\" (\"Partner System\") \"Grid operator\" / \"load reports\" in \"partners\" arrivingTypes=[\"ReportRun\"] capabilities=[] explanation={\"managed\":\"api\",\"id\":\"dso\",\"role\":\"sink\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":null,\"offered\":0.05,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":null,\"seconds\":0.25,\"utilization\":0,\"growth\":0,\"contributors\":[{\"edge\":\"report-job--dso\",\"node\":\"report-job\",\"label\":\"Grid reports\",\"rate\":0.05}],\"target\":0.5,\"changes\":null,\"converged\":true}\nconnections:\n  \"depot-chargers--depot-switch\" \"depot-chargers\" -> \"depot-switch\" sync \"OCPP\" carriedTypes=[\"MeterValues\"]\n  \"depot-switch--depot-fw\" \"depot-switch\" -> \"depot-fw\" sync carriedTypes=[\"MeterValues\"]\n  \"depot-fw--depot-router\" \"depot-fw\" -> \"depot-router\" sync \"Allow: OCPP out\" carriedTypes=[\"MeterValues\"]\n  \"depot-router--ingress\" \"depot-router\" -> \"ingress\" sync \"TLS\" carriedTypes=[\"MeterValues\"]\n  \"vendor--depot-router\" \"vendor\" -> \"depot-router\" sync \"Remote shell\" carriedTypes=[\"VendorRemoteShell\"]\n  \"router-in\" \"depot-router\" -> \"depot-fw\" async carriedTypes=[\"VendorRemoteShell\"]\n  \"deny-vendor-shell\" \"depot-fw\" -> \"depot-switch\" async \"Deny: vendor shell\" carriedTypes=[]\n  \"street--ingress\" \"street\" -> \"ingress\" sync \"TLS\" carriedTypes=[\"MeterValues\"]\n  \"depot2-chargers--depot2-switch\" \"depot2-chargers\" -> \"depot2-switch\" sync \"OCPP\" carriedTypes=[\"MeterValues\"]\n  \"depot2-switch--depot2-fw\" \"depot2-switch\" -> \"depot2-fw\" sync carriedTypes=[\"MeterValues\"]\n  \"depot2-fw--depot2-router\" \"depot2-fw\" -> \"depot2-router\" sync \"Allow: OCPP out\" carriedTypes=[\"MeterValues\"]\n  \"depot2-router--ingress\" \"depot2-router\" -> \"ingress\" sync \"TLS\" carriedTypes=[\"MeterValues\"]\n  \"ocpp--registry\" \"ocpp\" -> \"registry\" depends dependency \"Charger identity\" carriedTypes=[]\n  \"ingress--ocpp\" \"ingress\" -> \"ocpp\" sync carriedTypes=[\"MeterValues\"]\n  \"ocpp--events\" \"ocpp\" -> \"events\" async \"Charger events\" carriedTypes=[\"MeterValues\"]\n  \"events--state\" \"events\" -> \"state\" async carriedTypes=[\"MeterValues\"]\n  \"events--faults\" \"events\" -> \"faults\" async carriedTypes=[\"MeterValues\"]\n  \"events--metering\" \"events\" -> \"metering\" async carriedTypes=[\"MeterValues\"]\n  \"events--raw\" \"events\" -> \"raw\" async \"Capture\" carriedTypes=[\"MeterValues\"]\n  \"state--state-db\" \"state\" -> \"state-db\" sync \"Reported\" carriedTypes=[\"MeterValues\"]\n  \"faults--alerts\" \"faults\" -> \"alerts\" sync \"Fault\" carriedTypes=[\"ChargerFault\"]\n  \"alerts--oncall\" \"alerts\" -> \"oncall\" async carriedTypes=[\"ChargerFault\"]\n  \"oncall--tech-email\" \"oncall\" -> \"tech-email\" sync \"Ticket\" carriedTypes=[\"FaultTicket\"]\n  \"dashboard--state-db\" \"dashboard\" -> \"state-db\" depends dependency \"Queries twins\" carriedTypes=[]\n  \"drivers--apim\" \"drivers\" -> \"apim\" sync \"HTTPS\" carriedTypes=[\"StartSession\"]\n  \"apim--sessions-api\" \"apim\" -> \"sessions-api\" sync carriedTypes=[\"StartSession\"]\n  \"sessions-api--sessions-db\" \"sessions-api\" -> \"sessions-db\" sync \"Session\" carriedTypes=[\"StartSession\"]\n  \"sessions-api--cmd-q\" \"sessions-api\" -> \"cmd-q\" async \"RemoteStart\" carriedTypes=[\"RemoteStart\"]\n  \"metering--sessions-db\" \"metering\" -> \"sessions-db\" sync \"kWh\" carriedTypes=[\"MeterValues\"]\n  \"sessions-db--billing\" \"sessions-db\" -> \"billing\" async \"Session closed\" carriedTypes=[]\n  \"billing--stripe\" \"billing\" -> \"stripe\" sync \"Charge\" carriedTypes=[]\n  \"billing--roaming\" \"billing\" -> \"roaming\" sync \"CDR\" carriedTypes=[]\n  \"cmd-q--commands\" \"cmd-q\" -> \"commands\" async carriedTypes=[\"UpdateFirmware\",\"RemoteStart\"]\n  \"cmd-q--cmd-dlq\" \"cmd-q\" -> \"cmd-dlq\" async \"After 5 tries\" carriedTypes=[\"UpdateFirmware\",\"RemoteStart\"]\n  \"rollout--firmware\" \"rollout\" -> \"firmware\" async \"Wave\" carriedTypes=[\"FirmwareJob\"]\n  \"firmware--images\" \"firmware\" -> \"images\" sync \"Stage\" carriedTypes=[\"FirmwareJob\",\"UpdateFirmware\"]\n  \"firmware--cmd-q\" \"firmware\" -> \"cmd-q\" async \"UpdateFirmware\" carriedTypes=[\"UpdateFirmware\"]\n  \"cmd-dlq--firmware\" \"cmd-dlq\" -> \"firmware\" async \"Retry wave\" carriedTypes=[\"UpdateFirmware\"]\n  \"reports--report-job\" \"reports\" -> \"report-job\" async \"Run\" carriedTypes=[\"ReportRun\"]\n  \"report-job--lakehouse\" \"report-job\" -> \"lakehouse\" sync \"Query\" carriedTypes=[\"ReportRun\"]\n  \"report-job--dso\" \"report-job\" -> \"dso\" sync \"Upload\" carriedTypes=[\"ReportRun\"]\n  \"lakehouse--raw\" \"lakehouse\" -> \"raw\" depends dependency \"Reads\" carriedTypes=[]\n  \"ingress--kv\" \"ingress\" -> \"kv\" secret dependency \"Charger CA\" carriedTypes=[]\n  \"ocpp--mi\" \"ocpp\" -> \"mi\" identity dependency carriedTypes=[]\n  \"ingress--mi\" \"ingress\" -> \"mi\" identity dependency carriedTypes=[]\n  \"commands--mi\" \"commands\" -> \"mi\" identity dependency carriedTypes=[]\n  \"ocpp--insights\" \"ocpp\" -> \"insights\" telemetry dependency carriedTypes=[]\n  \"sessions-api--insights\" \"sessions-api\" -> \"insights\" telemetry dependency carriedTypes=[]\nboundary \"depot\" \"Depot · Harbour Road bus garage\" (onprem): \"depot-chargers\", \"depot-switch\", \"depot-fw\", \"depot-router\"\nboundary \"depot2\" \"Depot · Quay Street van yard\" (onprem): \"depot2-chargers\", \"depot2-switch\", \"depot2-fw\", \"depot2-router\"\nboundary \"azure\" \"Azure · West Europe\" (azure): \nboundary \"ingest\" \"AKS · charger connectivity\" (k8s): \"ingress\", \"ocpp\", \"commands\", \"registry\"\nboundary \"hub\" \"Event Hubs · charger events\" (azure): \"events\"\nboundary \"hot\" \"Hot path\" (neutral): \"state\", \"state-db\", \"faults\", \"alerts\", \"dashboard\", \"oncall\"\nboundary \"sessions\" \"AKS · sessions and billing\" (k8s): \"apim\", \"sessions-api\", \"metering\", \"sessions-db\", \"billing\"\nboundary \"ota\" \"Firmware and commands\" (neutral): \"cmd-q\", \"cmd-dlq\", \"rollout\", \"firmware\", \"images\"\nboundary \"cold\" \"Cold path\" (neutral): \"raw\", \"lakehouse\", \"reports\", \"report-job\"\nboundary \"platform\" \"Platform\" (neutral): \"kv\", \"mi\", \"insights\"\nboundary \"partners\" \"Partners\" (neutral): \"roaming\", \"stripe\", \"tech-email\", \"dso\"\nzone \"zone-ot\" \"OT sites · outbound-only\"\nnote \"note-ocpp\" \"OCPP over TLS: chargers hold a websocket to the gateway. Commands and firmware jobs go back down the same socket.\"\nsimulation \"vendor-shell\" \"The depot firewall blocks a vendor shell\": {\"kind\":\"constant\",\"ratePerSec\":60,\"durationMs\":16000} from \"depot-chargers\"; {\"kind\":\"constant\",\"ratePerSec\":300,\"durationMs\":16000} from \"street\"; {\"kind\":\"constant\",\"ratePerSec\":10,\"fromMs\":3000,\"durationMs\":8000} from \"vendor\"; timeline=[{\"atMs\":0,\"action\":{\"do\":\"note\",\"text\":\"Depot chargers reach the cloud through the switch, a firewall pair and the SD-WAN edge. Street chargers come in over LTE.\",\"focus\":[\"depot-chargers\",\"depot-switch\",\"depot-fw\",\"depot-router\",\"street\"]}},{\"atMs\":3000,\"action\":{\"do\":\"note\",\"text\":\"The charger vendor tries to open a remote shell into the depot. Its sessions reach the firewall.\",\"focus\":[\"vendor\",\"depot-router\",\"depot-fw\"]}},{\"atMs\":6000,\"action\":{\"do\":\"note\",\"text\":\"The firewall's deny rule stops every one. Blocked is the rule working, not a loss; vendor support goes through a ticketed jump host instead.\",\"focus\":[\"depot-fw\",\"depot-switch\"]}}]; expectations=[{\"id\":\"blocked\",\"label\":\"The firewall blocks the vendor shell\",\"metric\":{\"node\":\"depot-fw\",\"field\":\"blocked\"},\"op\":\">=\",\"value\":50,\"when\":\"end\"},{\"id\":\"no-drops\",\"label\":\"The firewall drops nothing\",\"metric\":{\"node\":\"depot-fw\",\"field\":\"dropped\"},\"op\":\"==\",\"value\":0,\"when\":\"always\"},{\"id\":\"telemetry\",\"label\":\"Depot telemetry keeps flowing\",\"metric\":{\"node\":\"ingress\",\"field\":\"processed\"},\"op\":\">\",\"value\":5000,\"when\":\"end\"}]\nsimulation \"reboot-storm\" \"A firmware wave reboots the street fleet\": {\"kind\":\"constant\",\"ratePerSec\":60,\"durationMs\":24000} from \"depot-chargers\"; {\"kind\":\"constant\",\"ratePerSec\":300,\"durationMs\":24000} from \"street\"; {\"kind\":\"burst\",\"count\":12000,\"atMs\":4000,\"spreadMs\":3000} from \"street\"; timeline=[{\"atMs\":0,\"action\":{\"do\":\"note\",\"text\":\"Four consumer groups read charger events: twins, fault detection, metering and capture to the lake.\",\"focus\":[\"events\",\"state\",\"faults\",\"state-db\"]}},{\"atMs\":4000,\"action\":{\"do\":\"note\",\"text\":\"The firmware wave lands: 12,000 reconnect messages in three seconds.\",\"focus\":[\"street\",\"ingress\",\"ocpp\",\"events\"]}},{\"atMs\":8000,\"action\":{\"do\":\"note\",\"text\":\"Event Hubs holds the burst. The twin updater works through its lag; fault detection and metering keep their own pace.\",\"focus\":[\"events\",\"state\",\"state-db\"]}},{\"atMs\":18000,\"action\":{\"do\":\"note\",\"text\":\"Every group has caught up, and nothing was dropped.\"}}]; expectations=[{\"id\":\"absorbed\",\"label\":\"The twin updater falls behind for a while\",\"metric\":{\"node\":\"events\",\"field\":\"lag\",\"group\":\"state\"},\"op\":\">\",\"value\":1000,\"when\":\"eventually\"},{\"id\":\"drained\",\"label\":\"Every reconnect reaches the twins\",\"metric\":{\"node\":\"events\",\"field\":\"lag\",\"group\":\"state\"},\"op\":\"==\",\"value\":0,\"when\":\"end\"},{\"id\":\"nothing-lost\",\"label\":\"Nothing is dropped\",\"metric\":{\"node\":\"ocpp\",\"field\":\"dropped\"},\"op\":\"==\",\"value\":0,\"when\":\"always\"}]\nsimulation \"firewall-failover\" \"The depot firewall fails over\": {\"kind\":\"constant\",\"ratePerSec\":60,\"durationMs\":12000} from \"depot-chargers\"; timeline=[{\"atMs\":0,\"action\":{\"do\":\"note\",\"text\":\"One firewall in the pair carries the depot's traffic; the other stands by.\",\"focus\":[\"depot-fw\"]}},{\"atMs\":4000,\"action\":{\"do\":\"props\",\"node\":\"depot-fw\",\"props\":{\"replicas\":1}}},{\"atMs\":4000,\"action\":{\"do\":\"note\",\"text\":\"The active unit fails. Traffic waits at the pair while the standby takes over.\",\"focus\":[\"depot-fw\",\"depot-switch\"]}},{\"atMs\":8000,\"action\":{\"do\":\"note\",\"text\":\"The standby carries everything. Nothing was lost, but the pair has no spare until the failed unit is replaced.\",\"focus\":[\"depot-fw\",\"depot-router\"]}}]; expectations=[{\"id\":\"waits\",\"label\":\"Telemetry waits during the failover\",\"metric\":{\"node\":\"depot-fw\",\"field\":\"backlog\"},\"op\":\">\",\"value\":50,\"when\":\"eventually\"},{\"id\":\"no-drops\",\"label\":\"The firewall never drops a message\",\"metric\":{\"node\":\"depot-fw\",\"field\":\"dropped\"},\"op\":\"==\",\"value\":0,\"when\":\"always\"}]\nsimulation \"hot-spot\" \"One partition runs hot\": {\"kind\":\"constant\",\"ratePerSec\":50,\"durationMs\":4000} from \"street\"; timeline=[{\"atMs\":0,\"action\":{\"do\":\"note\",\"text\":\"Every reading lands on one partition. One partition activates one twin updater; the other 63 replicas sit idle while lag grows.\",\"focus\":[\"events\",\"state\"]}},{\"atMs\":8000,\"action\":{\"do\":\"props\",\"node\":\"events\",\"props\":{\"partitions\":32}}},{\"atMs\":8000,\"action\":{\"do\":\"note\",\"text\":\"The partition key is fixed and spread across 32 partitions. More replicas get work and the lag drains.\",\"focus\":[\"events\",\"state\",\"state-db\"]}}]; expectations=[{\"id\":\"hot-lag\",\"label\":\"Lag builds on the hot partition\",\"metric\":{\"node\":\"events\",\"field\":\"lag\",\"group\":\"state\"},\"op\":\">\",\"value\":0,\"when\":\"at\",\"atMs\":6000},{\"id\":\"twins\",\"label\":\"Every reading reaches the twins\",\"metric\":{\"node\":\"state-db\",\"field\":\"processed\"},\"op\":\"==\",\"value\":200,\"when\":\"end\"},{\"id\":\"drained\",\"label\":\"The lag drains\",\"metric\":{\"node\":\"events\",\"field\":\"lag\",\"group\":\"state\"},\"op\":\"==\",\"value\":0,\"when\":\"end\"}]"
   },
   "json": {
     "isError": false,
@@ -20,6 +20,7 @@
           "props": { "ratePerSec": 60, "messageType": "MeterValues" },
           "x": 0,
           "y": 200,
+          "arrivingTypes": [],
           "capabilities": [{ "kind": "calls", "edge": "depot-chargers--depot-switch", "peer": "depot-switch" }]
         },
         {
@@ -31,6 +32,7 @@
           "props": { "size": "branch" },
           "x": 420,
           "y": 200,
+          "arrivingTypes": ["MeterValues"],
           "capabilities": [
             { "kind": "calls", "edge": "depot-switch--depot-fw", "peer": "depot-fw", "filter": ["MeterValues", "StatusNotification", "BootNotification"] }
           ],
@@ -69,6 +71,7 @@
           "props": { "size": "branch", "ha": "active-standby", "replicas": 2, "failoverMs": 3000 },
           "x": 840,
           "y": 200,
+          "arrivingTypes": ["MeterValues", "VendorRemoteShell"],
           "capabilities": [
             { "kind": "calls", "edge": "depot-fw--depot-router", "peer": "depot-router", "filter": ["MeterValues", "StatusNotification", "BootNotification"] }
           ],
@@ -108,6 +111,7 @@
           "props": { "size": "branch" },
           "x": 1260,
           "y": 200,
+          "arrivingTypes": ["VendorRemoteShell", "MeterValues"],
           "capabilities": [
             { "kind": "calls", "edge": "depot-router--ingress", "peer": "ingress", "filter": ["MeterValues", "StatusNotification", "BootNotification"] }
           ],
@@ -147,6 +151,7 @@
           "props": { "ratePerSec": 40, "messageType": "MeterValues" },
           "x": 0,
           "y": 520,
+          "arrivingTypes": [],
           "capabilities": [{ "kind": "calls", "edge": "depot2-chargers--depot2-switch", "peer": "depot2-switch" }]
         },
         {
@@ -158,6 +163,7 @@
           "props": { "size": "branch" },
           "x": 420,
           "y": 520,
+          "arrivingTypes": ["MeterValues"],
           "capabilities": [{ "kind": "calls", "edge": "depot2-switch--depot2-fw", "peer": "depot2-fw" }],
           "explanation": {
             "id": "depot2-switch",
@@ -194,6 +200,7 @@
           "props": { "size": "branch" },
           "x": 840,
           "y": 520,
+          "arrivingTypes": ["MeterValues"],
           "capabilities": [{ "kind": "calls", "edge": "depot2-fw--depot2-router", "peer": "depot2-router" }],
           "explanation": {
             "id": "depot2-fw",
@@ -230,6 +237,7 @@
           "props": { "size": "branch" },
           "x": 1260,
           "y": 520,
+          "arrivingTypes": ["MeterValues"],
           "capabilities": [{ "kind": "calls", "edge": "depot2-router--ingress", "peer": "ingress" }],
           "explanation": {
             "id": "depot2-router",
@@ -265,6 +273,7 @@
           "props": { "ratePerSec": 2, "messageType": "VendorRemoteShell" },
           "x": 1260,
           "y": -60,
+          "arrivingTypes": [],
           "capabilities": [{ "kind": "calls", "edge": "vendor--depot-router", "peer": "depot-router" }]
         },
         {
@@ -275,6 +284,7 @@
           "props": { "ratePerSec": 300, "messageType": "MeterValues" },
           "x": 1260,
           "y": 780,
+          "arrivingTypes": [],
           "capabilities": [{ "kind": "calls", "edge": "street--ingress", "peer": "ingress" }]
         },
         {
@@ -285,6 +295,7 @@
           "props": { "ratePerSec": 20, "messageType": "StartSession" },
           "x": 1260,
           "y": 1000,
+          "arrivingTypes": [],
           "capabilities": [{ "kind": "calls", "edge": "drivers--apim", "peer": "apim" }]
         },
         {
@@ -296,6 +307,7 @@
           "props": { "latencyMs": 0, "jitter": 0 },
           "x": 1940,
           "y": 200,
+          "arrivingTypes": ["MeterValues"],
           "capabilities": [{ "kind": "calls", "edge": "ingress--ocpp", "peer": "ocpp" }]
         },
         {
@@ -307,6 +319,7 @@
           "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 6, "concurrency": 128, "latencyMs": 10, "jitter": 0.1, "failureRate": 0 },
           "x": 2360,
           "y": 200,
+          "arrivingTypes": ["MeterValues"],
           "capabilities": [{ "kind": "publishes", "edge": "ocpp--events", "peer": "events" }],
           "explanation": {
             "id": "ocpp",
@@ -345,6 +358,7 @@
           "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 2, "concurrency": 32, "latencyMs": 20, "jitter": 0.1, "failureRate": 0 },
           "x": 2360,
           "y": 480,
+          "arrivingTypes": ["UpdateFirmware", "RemoteStart"],
           "capabilities": [
             { "kind": "consumes", "edge": "cmd-q--commands", "peer": "cmd-q", "retry": "requeue", "retryBackoffMs": 0 }
           ],
@@ -383,6 +397,7 @@
           "props": { "latencyMs": 0 },
           "x": 2360,
           "y": 340,
+          "arrivingTypes": [],
           "capabilities": []
         },
         {
@@ -394,6 +409,7 @@
           "props": { "partitions": 32, "retentionDays": 7 },
           "x": 2780,
           "y": 200,
+          "arrivingTypes": ["MeterValues"],
           "capabilities": []
         },
         {
@@ -405,6 +421,7 @@
           "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 4, "concurrency": 16, "latencyMs": 20, "jitter": 0.1, "failureRate": 0 },
           "x": 3260,
           "y": 60,
+          "arrivingTypes": ["MeterValues"],
           "capabilities": [
             {
               "kind": "consumes",
@@ -458,6 +475,7 @@
           "props": { "latencyMs": 0 },
           "x": 3680,
           "y": 60,
+          "arrivingTypes": ["MeterValues"],
           "capabilities": []
         },
         {
@@ -469,6 +487,7 @@
           "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 4, "concurrency": 64, "latencyMs": 10, "jitter": 0.1, "failureRate": 0 },
           "x": 3260,
           "y": 200,
+          "arrivingTypes": ["MeterValues"],
           "capabilities": [
             {
               "kind": "consumes",
@@ -513,8 +532,8 @@
             "converged": true
           }
         },
-        { "id": "alerts", "stencil": "azure.event-grid", "label": "Fault alerts", "sublabel": "Event Grid", "group": "hot", "x": 3680, "y": 200, "capabilities": [] },
-        { "id": "dashboard", "stencil": "grafana", "label": "Fleet dashboard", "sublabel": "availability by site", "group": "hot", "x": 4100, "y": 60, "capabilities": [] },
+        { "id": "alerts", "stencil": "azure.event-grid", "label": "Fault alerts", "sublabel": "Event Grid", "group": "hot", "x": 3680, "y": 200, "arrivingTypes": ["ChargerFault"], "capabilities": [] },
+        { "id": "dashboard", "stencil": "grafana", "label": "Fleet dashboard", "sublabel": "availability by site", "group": "hot", "x": 4100, "y": 60, "arrivingTypes": [], "capabilities": [] },
         {
           "id": "oncall",
           "stencil": "azure.logic-apps",
@@ -524,6 +543,7 @@
           "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 1, "concurrency": 8, "latencyMs": 300, "jitter": 0.1, "failureRate": 0 },
           "x": 4100,
           "y": 200,
+          "arrivingTypes": ["ChargerFault"],
           "capabilities": [
             {
               "kind": "consumes",
@@ -571,6 +591,7 @@
           "props": { "latencyMs": 0, "jitter": 0 },
           "x": 1940,
           "y": 780,
+          "arrivingTypes": ["StartSession"],
           "capabilities": [{ "kind": "calls", "edge": "apim--sessions-api", "peer": "sessions-api" }],
           "explanation": {
             "managed": "api",
@@ -606,6 +627,7 @@
           "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 3, "concurrency": 32, "latencyMs": 40, "jitter": 0.1, "failureRate": 0 },
           "x": 2360,
           "y": 780,
+          "arrivingTypes": ["StartSession"],
           "capabilities": [
             { "kind": "calls", "edge": "sessions-api--sessions-db", "peer": "sessions-db" },
             { "kind": "publishes", "edge": "sessions-api--cmd-q", "peer": "cmd-q", "emits": "RemoteStart" }
@@ -647,6 +669,7 @@
           "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 4, "concurrency": 32, "latencyMs": 20, "jitter": 0.1, "failureRate": 0 },
           "x": 2360,
           "y": 920,
+          "arrivingTypes": ["MeterValues"],
           "capabilities": [
             {
               "kind": "consumes",
@@ -700,6 +723,7 @@
           "props": { "latencyMs": 0 },
           "x": 2780,
           "y": 780,
+          "arrivingTypes": ["StartSession", "MeterValues"],
           "capabilities": []
         },
         {
@@ -711,6 +735,7 @@
           "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 2, "concurrency": 16, "latencyMs": 60, "jitter": 0.1, "failureRate": 0 },
           "x": 2780,
           "y": 920,
+          "arrivingTypes": [],
           "capabilities": [
             { "kind": "calls", "edge": "billing--stripe", "peer": "stripe" },
             { "kind": "calls", "edge": "billing--roaming", "peer": "roaming" }
@@ -752,9 +777,10 @@
           "props": { "maxDeliveryCount": 5 },
           "x": 2780,
           "y": 1180,
+          "arrivingTypes": ["UpdateFirmware", "RemoteStart"],
           "capabilities": []
         },
-        { "id": "cmd-dlq", "stencil": "azure.service-bus.queue", "label": "Commands DLQ", "sublabel": "Service Bus", "group": "ota", "x": 2780, "y": 1320, "capabilities": [] },
+        { "id": "cmd-dlq", "stencil": "azure.service-bus.queue", "label": "Commands DLQ", "sublabel": "Service Bus", "group": "ota", "x": 2780, "y": 1320, "arrivingTypes": ["UpdateFirmware", "RemoteStart"], "capabilities": [] },
         {
           "id": "rollout",
           "stencil": "generic.scheduler",
@@ -764,6 +790,7 @@
           "props": { "ratePerSec": 0.2, "messageType": "FirmwareJob" },
           "x": 1940,
           "y": 1180,
+          "arrivingTypes": [],
           "capabilities": []
         },
         {
@@ -775,6 +802,7 @@
           "props": { "preset": "managed-measured", "presetRevision": "2026-10-14", "latencyMs": 80, "jitter": 0, "failureRate": 0, "scaling": "auto", "maxConcurrency": 10 },
           "x": 2360,
           "y": 1180,
+          "arrivingTypes": ["FirmwareJob", "UpdateFirmware"],
           "capabilities": [
             { "kind": "calls", "edge": "firmware--images", "peer": "images" },
             { "kind": "publishes", "edge": "firmware--cmd-q", "peer": "cmd-q", "emits": "UpdateFirmware" },
@@ -816,6 +844,7 @@
           "props": { "latencyMs": 0 },
           "x": 2360,
           "y": 1320,
+          "arrivingTypes": ["FirmwareJob", "UpdateFirmware"],
           "capabilities": []
         },
         {
@@ -827,6 +856,7 @@
           "props": { "latencyMs": 0 },
           "x": 3260,
           "y": 500,
+          "arrivingTypes": ["MeterValues"],
           "capabilities": []
         },
         {
@@ -838,6 +868,7 @@
           "props": { "latencyMs": 0 },
           "x": 3680,
           "y": 500,
+          "arrivingTypes": ["ReportRun"],
           "capabilities": []
         },
         {
@@ -849,6 +880,7 @@
           "props": { "ratePerSec": 0.05, "messageType": "ReportRun" },
           "x": 3260,
           "y": 640,
+          "arrivingTypes": [],
           "capabilities": []
         },
         {
@@ -860,6 +892,7 @@
           "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 1, "concurrency": 1, "latencyMs": 2000, "jitter": 0.1, "failureRate": 0 },
           "x": 3680,
           "y": 640,
+          "arrivingTypes": ["ReportRun"],
           "capabilities": [
             { "kind": "calls", "edge": "report-job--lakehouse", "peer": "lakehouse" },
             { "kind": "calls", "edge": "report-job--dso", "peer": "dso" }
@@ -892,9 +925,9 @@
             "converged": true
           }
         },
-        { "id": "kv", "stencil": "azure.key-vault", "label": "Key Vault", "sublabel": "charger certificates", "group": "platform", "x": 3260, "y": 1180, "capabilities": [] },
-        { "id": "mi", "stencil": "azure.managed-identity", "label": "Managed identities", "group": "platform", "x": 3680, "y": 1180, "capabilities": [] },
-        { "id": "insights", "stencil": "azure.app-insights", "label": "Application Insights", "group": "platform", "x": 4100, "y": 1180, "capabilities": [] },
+        { "id": "kv", "stencil": "azure.key-vault", "label": "Key Vault", "sublabel": "charger certificates", "group": "platform", "x": 3260, "y": 1180, "arrivingTypes": [], "capabilities": [] },
+        { "id": "mi", "stencil": "azure.managed-identity", "label": "Managed identities", "group": "platform", "x": 3680, "y": 1180, "arrivingTypes": [], "capabilities": [] },
+        { "id": "insights", "stencil": "azure.app-insights", "label": "Application Insights", "group": "platform", "x": 4100, "y": 1180, "arrivingTypes": [], "capabilities": [] },
         {
           "id": "roaming",
           "stencil": "generic.external-api",
@@ -916,6 +949,7 @@
           },
           "x": 4620,
           "y": 920,
+          "arrivingTypes": [],
           "capabilities": [],
           "explanation": {
             "managed": "api",
@@ -951,6 +985,7 @@
           "props": { "preset": "managed-measured", "presetRevision": "2026-10-14", "latencyMs": 200, "jitter": 0.1, "failureRate": 0 },
           "x": 4620,
           "y": 780,
+          "arrivingTypes": [],
           "capabilities": [],
           "explanation": {
             "managed": "api",
@@ -985,6 +1020,7 @@
           "group": "partners",
           "x": 4620,
           "y": 200,
+          "arrivingTypes": ["FaultTicket"],
           "capabilities": [],
           "explanation": {
             "managed": "api",
@@ -1019,6 +1055,7 @@
           "group": "partners",
           "x": 4620,
           "y": 640,
+          "arrivingTypes": ["ReportRun"],
           "capabilities": [],
           "explanation": {
             "managed": "api",
@@ -1049,13 +1086,14 @@
         }
       ],
       "edges": [
-        { "id": "depot-chargers--depot-switch", "from": "depot-chargers", "to": "depot-switch", "kind": "sync", "label": "OCPP" },
+        { "id": "depot-chargers--depot-switch", "from": "depot-chargers", "to": "depot-switch", "kind": "sync", "label": "OCPP", "carriedTypes": ["MeterValues"] },
         {
           "id": "depot-switch--depot-fw",
           "from": "depot-switch",
           "to": "depot-fw",
           "kind": "sync",
-          "props": { "filter": ["MeterValues", "StatusNotification", "BootNotification"] }
+          "props": { "filter": ["MeterValues", "StatusNotification", "BootNotification"] },
+          "carriedTypes": ["MeterValues"]
         },
         {
           "id": "depot-fw--depot-router",
@@ -1063,7 +1101,8 @@
           "to": "depot-router",
           "kind": "sync",
           "label": "Allow: OCPP out",
-          "props": { "filter": ["MeterValues", "StatusNotification", "BootNotification"] }
+          "props": { "filter": ["MeterValues", "StatusNotification", "BootNotification"] },
+          "carriedTypes": ["MeterValues"]
         },
         {
           "id": "depot-router--ingress",
@@ -1071,15 +1110,17 @@
           "to": "ingress",
           "kind": "sync",
           "label": "TLS",
-          "props": { "filter": ["MeterValues", "StatusNotification", "BootNotification"] }
+          "props": { "filter": ["MeterValues", "StatusNotification", "BootNotification"] },
+          "carriedTypes": ["MeterValues"]
         },
-        { "id": "vendor--depot-router", "from": "vendor", "to": "depot-router", "kind": "sync", "label": "Remote shell" },
+        { "id": "vendor--depot-router", "from": "vendor", "to": "depot-router", "kind": "sync", "label": "Remote shell", "carriedTypes": ["VendorRemoteShell"] },
         {
           "id": "router-in",
           "from": "depot-router",
           "to": "depot-fw",
           "kind": "async",
-          "props": { "filter": ["VendorRemoteShell"] }
+          "props": { "filter": ["VendorRemoteShell"] },
+          "carriedTypes": ["VendorRemoteShell"]
         },
         {
           "id": "deny-vendor-shell",
@@ -1087,24 +1128,40 @@
           "to": "depot-switch",
           "kind": "async",
           "label": "Deny: vendor shell",
-          "props": { "filter": ["VendorRemoteShell"], "deny": true }
+          "props": { "filter": ["VendorRemoteShell"], "deny": true },
+          "carriedTypes": []
         },
-        { "id": "street--ingress", "from": "street", "to": "ingress", "kind": "sync", "label": "TLS" },
-        { "id": "depot2-chargers--depot2-switch", "from": "depot2-chargers", "to": "depot2-switch", "kind": "sync", "label": "OCPP" },
-        { "id": "depot2-switch--depot2-fw", "from": "depot2-switch", "to": "depot2-fw", "kind": "sync" },
-        { "id": "depot2-fw--depot2-router", "from": "depot2-fw", "to": "depot2-router", "kind": "sync", "label": "Allow: OCPP out" },
-        { "id": "depot2-router--ingress", "from": "depot2-router", "to": "ingress", "kind": "sync", "label": "TLS" },
-        { "id": "ocpp--registry", "from": "ocpp", "to": "registry", "kind": "async", "label": "Charger identity", "relation": "depends" },
-        { "id": "ingress--ocpp", "from": "ingress", "to": "ocpp", "kind": "sync" },
-        { "id": "ocpp--events", "from": "ocpp", "to": "events", "kind": "async", "label": "Charger events" },
-        { "id": "events--state", "from": "events", "to": "state", "kind": "async", "props": { "group": "state" } },
-        { "id": "events--faults", "from": "events", "to": "faults", "kind": "async", "props": { "group": "faults" } },
+        { "id": "street--ingress", "from": "street", "to": "ingress", "kind": "sync", "label": "TLS", "carriedTypes": ["MeterValues"] },
+        { "id": "depot2-chargers--depot2-switch", "from": "depot2-chargers", "to": "depot2-switch", "kind": "sync", "label": "OCPP", "carriedTypes": ["MeterValues"] },
+        { "id": "depot2-switch--depot2-fw", "from": "depot2-switch", "to": "depot2-fw", "kind": "sync", "carriedTypes": ["MeterValues"] },
+        { "id": "depot2-fw--depot2-router", "from": "depot2-fw", "to": "depot2-router", "kind": "sync", "label": "Allow: OCPP out", "carriedTypes": ["MeterValues"] },
+        { "id": "depot2-router--ingress", "from": "depot2-router", "to": "ingress", "kind": "sync", "label": "TLS", "carriedTypes": ["MeterValues"] },
+        { "id": "ocpp--registry", "from": "ocpp", "to": "registry", "kind": "async", "label": "Charger identity", "relation": "depends", "carriedTypes": [] },
+        { "id": "ingress--ocpp", "from": "ingress", "to": "ocpp", "kind": "sync", "carriedTypes": ["MeterValues"] },
+        { "id": "ocpp--events", "from": "ocpp", "to": "events", "kind": "async", "label": "Charger events", "carriedTypes": ["MeterValues"] },
+        {
+          "id": "events--state",
+          "from": "events",
+          "to": "state",
+          "kind": "async",
+          "props": { "group": "state" },
+          "carriedTypes": ["MeterValues"]
+        },
+        {
+          "id": "events--faults",
+          "from": "events",
+          "to": "faults",
+          "kind": "async",
+          "props": { "group": "faults" },
+          "carriedTypes": ["MeterValues"]
+        },
         {
           "id": "events--metering",
           "from": "events",
           "to": "metering",
           "kind": "async",
-          "props": { "group": "metering" }
+          "props": { "group": "metering" },
+          "carriedTypes": ["MeterValues"]
         },
         {
           "id": "events--raw",
@@ -1112,23 +1169,26 @@
           "to": "raw",
           "kind": "async",
           "label": "Capture",
-          "props": { "group": "capture" }
+          "props": { "group": "capture" },
+          "carriedTypes": ["MeterValues"]
         },
-        { "id": "state--state-db", "from": "state", "to": "state-db", "kind": "sync", "label": "Reported" },
+        { "id": "state--state-db", "from": "state", "to": "state-db", "kind": "sync", "label": "Reported", "carriedTypes": ["MeterValues"] },
         {
           "id": "faults--alerts",
           "from": "faults",
           "to": "alerts",
           "kind": "sync",
           "label": "Fault",
-          "props": { "emits": "ChargerFault", "share": 0.01 }
+          "props": { "emits": "ChargerFault", "share": 0.01 },
+          "carriedTypes": ["ChargerFault"]
         },
         {
           "id": "alerts--oncall",
           "from": "alerts",
           "to": "oncall",
           "kind": "async",
-          "props": { "group": "field-service" }
+          "props": { "group": "field-service" },
+          "carriedTypes": ["ChargerFault"]
         },
         {
           "id": "oncall--tech-email",
@@ -1136,12 +1196,13 @@
           "to": "tech-email",
           "kind": "sync",
           "label": "Ticket",
-          "props": { "emits": "FaultTicket" }
+          "props": { "emits": "FaultTicket" },
+          "carriedTypes": ["FaultTicket"]
         },
-        { "id": "dashboard--state-db", "from": "dashboard", "to": "state-db", "kind": "async", "label": "Queries twins", "relation": "depends" },
-        { "id": "drivers--apim", "from": "drivers", "to": "apim", "kind": "sync", "label": "HTTPS" },
-        { "id": "apim--sessions-api", "from": "apim", "to": "sessions-api", "kind": "sync" },
-        { "id": "sessions-api--sessions-db", "from": "sessions-api", "to": "sessions-db", "kind": "sync", "label": "Session" },
+        { "id": "dashboard--state-db", "from": "dashboard", "to": "state-db", "kind": "async", "label": "Queries twins", "relation": "depends", "carriedTypes": [] },
+        { "id": "drivers--apim", "from": "drivers", "to": "apim", "kind": "sync", "label": "HTTPS", "carriedTypes": ["StartSession"] },
+        { "id": "apim--sessions-api", "from": "apim", "to": "sessions-api", "kind": "sync", "carriedTypes": ["StartSession"] },
+        { "id": "sessions-api--sessions-db", "from": "sessions-api", "to": "sessions-db", "kind": "sync", "label": "Session", "carriedTypes": ["StartSession"] },
         {
           "id": "sessions-api--cmd-q",
           "from": "sessions-api",
@@ -1149,37 +1210,41 @@
           "kind": "async",
           "label": "RemoteStart",
           "targetSide": "top",
-          "props": { "emits": "RemoteStart" }
+          "props": { "emits": "RemoteStart" },
+          "carriedTypes": ["RemoteStart"]
         },
-        { "id": "metering--sessions-db", "from": "metering", "to": "sessions-db", "kind": "sync", "label": "kWh" },
+        { "id": "metering--sessions-db", "from": "metering", "to": "sessions-db", "kind": "sync", "label": "kWh", "carriedTypes": ["MeterValues"] },
         {
           "id": "sessions-db--billing",
           "from": "sessions-db",
           "to": "billing",
           "kind": "async",
           "label": "Session closed",
-          "props": { "filter": ["StartSession"] }
+          "props": { "filter": ["StartSession"] },
+          "carriedTypes": []
         },
-        { "id": "billing--stripe", "from": "billing", "to": "stripe", "kind": "sync", "label": "Charge" },
-        { "id": "billing--roaming", "from": "billing", "to": "roaming", "kind": "sync", "label": "CDR" },
-        { "id": "cmd-q--commands", "from": "cmd-q", "to": "commands", "kind": "async" },
+        { "id": "billing--stripe", "from": "billing", "to": "stripe", "kind": "sync", "label": "Charge", "carriedTypes": [] },
+        { "id": "billing--roaming", "from": "billing", "to": "roaming", "kind": "sync", "label": "CDR", "carriedTypes": [] },
+        { "id": "cmd-q--commands", "from": "cmd-q", "to": "commands", "kind": "async", "carriedTypes": ["UpdateFirmware", "RemoteStart"] },
         {
           "id": "cmd-q--cmd-dlq",
           "from": "cmd-q",
           "to": "cmd-dlq",
           "kind": "async",
           "label": "After 5 tries",
-          "props": { "dlq": true }
+          "props": { "dlq": true },
+          "carriedTypes": ["UpdateFirmware", "RemoteStart"]
         },
-        { "id": "rollout--firmware", "from": "rollout", "to": "firmware", "kind": "async", "label": "Wave" },
-        { "id": "firmware--images", "from": "firmware", "to": "images", "kind": "sync", "label": "Stage" },
+        { "id": "rollout--firmware", "from": "rollout", "to": "firmware", "kind": "async", "label": "Wave", "carriedTypes": ["FirmwareJob"] },
+        { "id": "firmware--images", "from": "firmware", "to": "images", "kind": "sync", "label": "Stage", "carriedTypes": ["FirmwareJob", "UpdateFirmware"] },
         {
           "id": "firmware--cmd-q",
           "from": "firmware",
           "to": "cmd-q",
           "kind": "async",
           "label": "UpdateFirmware",
-          "props": { "emits": "UpdateFirmware" }
+          "props": { "emits": "UpdateFirmware" },
+          "carriedTypes": ["UpdateFirmware"]
         },
         {
           "id": "cmd-dlq--firmware",
@@ -1187,19 +1252,21 @@
           "to": "firmware",
           "kind": "async",
           "label": "Retry wave",
-          "props": { "filter": ["UpdateFirmware"] }
+          "props": { "filter": ["UpdateFirmware"] },
+          "carriedTypes": ["UpdateFirmware"]
         },
-        { "id": "reports--report-job", "from": "reports", "to": "report-job", "kind": "async", "label": "Run" },
-        { "id": "report-job--lakehouse", "from": "report-job", "to": "lakehouse", "kind": "sync", "label": "Query" },
-        { "id": "report-job--dso", "from": "report-job", "to": "dso", "kind": "sync", "label": "Upload" },
-        { "id": "lakehouse--raw", "from": "lakehouse", "to": "raw", "kind": "async", "label": "Reads", "relation": "depends" },
-        { "id": "ingress--kv", "from": "ingress", "to": "kv", "kind": "async", "label": "Charger CA", "relation": "secret" },
-        { "id": "ocpp--mi", "from": "ocpp", "to": "mi", "kind": "async", "relation": "identity" },
-        { "id": "ingress--mi", "from": "ingress", "to": "mi", "kind": "async", "relation": "identity" },
-        { "id": "commands--mi", "from": "commands", "to": "mi", "kind": "async", "relation": "identity" },
-        { "id": "ocpp--insights", "from": "ocpp", "to": "insights", "kind": "async", "relation": "telemetry", "sourceSide": "top", "targetSide": "top" },
-        { "id": "sessions-api--insights", "from": "sessions-api", "to": "insights", "kind": "async", "relation": "telemetry" }
+        { "id": "reports--report-job", "from": "reports", "to": "report-job", "kind": "async", "label": "Run", "carriedTypes": ["ReportRun"] },
+        { "id": "report-job--lakehouse", "from": "report-job", "to": "lakehouse", "kind": "sync", "label": "Query", "carriedTypes": ["ReportRun"] },
+        { "id": "report-job--dso", "from": "report-job", "to": "dso", "kind": "sync", "label": "Upload", "carriedTypes": ["ReportRun"] },
+        { "id": "lakehouse--raw", "from": "lakehouse", "to": "raw", "kind": "async", "label": "Reads", "relation": "depends", "carriedTypes": [] },
+        { "id": "ingress--kv", "from": "ingress", "to": "kv", "kind": "async", "label": "Charger CA", "relation": "secret", "carriedTypes": [] },
+        { "id": "ocpp--mi", "from": "ocpp", "to": "mi", "kind": "async", "relation": "identity", "carriedTypes": [] },
+        { "id": "ingress--mi", "from": "ingress", "to": "mi", "kind": "async", "relation": "identity", "carriedTypes": [] },
+        { "id": "commands--mi", "from": "commands", "to": "mi", "kind": "async", "relation": "identity", "carriedTypes": [] },
+        { "id": "ocpp--insights", "from": "ocpp", "to": "insights", "kind": "async", "relation": "telemetry", "sourceSide": "top", "targetSide": "top", "carriedTypes": [] },
+        { "id": "sessions-api--insights", "from": "sessions-api", "to": "insights", "kind": "async", "relation": "telemetry", "carriedTypes": [] }
       ],
+      "messageTypesComplete": true,
       "groups": [
         { "id": "depot", "label": "Depot · Harbour Road bus garage", "tone": "onprem", "x": -40, "y": 136, "width": 1560, "height": 176 },
         { "id": "depot2", "label": "Depot · Quay Street van yard", "tone": "onprem", "x": -40, "y": 456, "width": 1560, "height": 176 },
@@ -1473,6 +1540,6 @@
   },
   "focus": {
     "isError": false,
-    "output": "Diagram \"EV charging network\" · direction LR · 2 nodes, 1 connections, 1 boundaries, 3 simulations\ndescription: \"An invented charge-point operator, Voltaic Charge. Depot chargers reach Azure through a firewall pair and an SD-WAN edge; street chargers come in over LTE. Event Hubs fans charger events out to twins, fault detection, metering and a cold path, while drivers start sessions and firmware rolls out in waves.\"\nnodes:\n  \"depot-chargers\" \"client.iot\" (\"IoT Device\") \"Depot chargers\" / \"60 bus chargers · OCPP\" props={\"ratePerSec\":60,\"messageType\":\"MeterValues\"} in \"depot\" capabilities=[{\"kind\":\"calls\",\"edge\":\"depot-chargers--depot-switch\",\"peer\":\"depot-switch\"}] explanation=undefined\n  \"depot-switch\" \"cisco.catalyst\" (\"Cisco Catalyst\") \"Depot switch\" / \"charger VLAN\" props={\"size\":\"branch\"} in \"depot\" capabilities=[{\"kind\":\"calls\",\"edge\":\"depot-switch--depot-fw\",\"peer\":\"depot-fw\",\"filter\":[\"MeterValues\",\"StatusNotification\",\"BootNotification\"]}] explanation={\"id\":\"depot-switch\",\"role\":\"gateway\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":343750,\"offered\":60,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":null,\"seconds\":0.000004,\"utilization\":0.00017454545454545454,\"growth\":0,\"contributors\":[{\"edge\":\"depot-chargers--depot-switch\",\"node\":\"depot-chargers\",\"label\":\"Depot chargers\",\"rate\":60}],\"target\":0.5,\"changes\":null,\"converged\":true}\nconnections:\n  \"depot-chargers--depot-switch\" \"depot-chargers\" -> \"depot-switch\" sync \"OCPP\"\nboundary \"depot\" \"Depot · Harbour Road bus garage\" (onprem): \"depot-chargers\", \"depot-switch\"\nsimulation \"vendor-shell\" \"The depot firewall blocks a vendor shell\": {\"kind\":\"constant\",\"ratePerSec\":60,\"durationMs\":16000} from \"depot-chargers\"; {\"kind\":\"constant\",\"ratePerSec\":300,\"durationMs\":16000} from \"street\"; {\"kind\":\"constant\",\"ratePerSec\":10,\"fromMs\":3000,\"durationMs\":8000} from \"vendor\"; timeline=[{\"atMs\":0,\"action\":{\"do\":\"note\",\"text\":\"Depot chargers reach the cloud through the switch, a firewall pair and the SD-WAN edge. Street chargers come in over LTE.\",\"focus\":[\"depot-chargers\",\"depot-switch\",\"depot-fw\",\"depot-router\",\"street\"]}},{\"atMs\":3000,\"action\":{\"do\":\"note\",\"text\":\"The charger vendor tries to open a remote shell into the depot. Its sessions reach the firewall.\",\"focus\":[\"vendor\",\"depot-router\",\"depot-fw\"]}},{\"atMs\":6000,\"action\":{\"do\":\"note\",\"text\":\"The firewall's deny rule stops every one. Blocked is the rule working, not a loss; vendor support goes through a ticketed jump host instead.\",\"focus\":[\"depot-fw\",\"depot-switch\"]}}]; expectations=[{\"id\":\"blocked\",\"label\":\"The firewall blocks the vendor shell\",\"metric\":{\"node\":\"depot-fw\",\"field\":\"blocked\"},\"op\":\">=\",\"value\":50,\"when\":\"end\"},{\"id\":\"no-drops\",\"label\":\"The firewall drops nothing\",\"metric\":{\"node\":\"depot-fw\",\"field\":\"dropped\"},\"op\":\"==\",\"value\":0,\"when\":\"always\"},{\"id\":\"telemetry\",\"label\":\"Depot telemetry keeps flowing\",\"metric\":{\"node\":\"ingress\",\"field\":\"processed\"},\"op\":\">\",\"value\":5000,\"when\":\"end\"}]\n… 2 lines omitted"
+    "output": "Diagram \"EV charging network\" · direction LR · 2 nodes, 1 connections, 1 boundaries, 3 simulations\ndescription: \"An invented charge-point operator, Voltaic Charge. Depot chargers reach Azure through a firewall pair and an SD-WAN edge; street chargers come in over LTE. Event Hubs fans charger events out to twins, fault detection, metering and a cold path, while drivers start sessions and firmware rolls out in waves.\"\nnodes:\n  \"depot-chargers\" \"client.iot\" (\"IoT Device\") \"Depot chargers\" / \"60 bus chargers · OCPP\" props={\"ratePerSec\":60,\"messageType\":\"MeterValues\"} in \"depot\" arrivingTypes=[] capabilities=[{\"kind\":\"calls\",\"edge\":\"depot-chargers--depot-switch\",\"peer\":\"depot-switch\"}] explanation=undefined\n  \"depot-switch\" \"cisco.catalyst\" (\"Cisco Catalyst\") \"Depot switch\" / \"charger VLAN\" props={\"size\":\"branch\"} in \"depot\" arrivingTypes=[\"MeterValues\"] capabilities=[{\"kind\":\"calls\",\"edge\":\"depot-switch--depot-fw\",\"peer\":\"depot-fw\",\"filter\":[\"MeterValues\",\"StatusNotification\",\"BootNotification\"]}] explanation={\"id\":\"depot-switch\",\"role\":\"gateway\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":343750,\"offered\":60,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":null,\"seconds\":0.000004,\"utilization\":0.00017454545454545454,\"growth\":0,\"contributors\":[{\"edge\":\"depot-chargers--depot-switch\",\"node\":\"depot-chargers\",\"label\":\"Depot chargers\",\"rate\":60}],\"target\":0.5,\"changes\":null,\"converged\":true}\nconnections:\n  \"depot-chargers--depot-switch\" \"depot-chargers\" -> \"depot-switch\" sync \"OCPP\" carriedTypes=[\"MeterValues\"]\nboundary \"depot\" \"Depot · Harbour Road bus garage\" (onprem): \"depot-chargers\", \"depot-switch\"\nsimulation \"vendor-shell\" \"The depot firewall blocks a vendor shell\": {\"kind\":\"constant\",\"ratePerSec\":60,\"durationMs\":16000} from \"depot-chargers\"; {\"kind\":\"constant\",\"ratePerSec\":300,\"durationMs\":16000} from \"street\"; {\"kind\":\"constant\",\"ratePerSec\":10,\"fromMs\":3000,\"durationMs\":8000} from \"vendor\"; timeline=[{\"atMs\":0,\"action\":{\"do\":\"note\",\"text\":\"Depot chargers reach the cloud through the switch, a firewall pair and the SD-WAN edge. Street chargers come in over LTE.\",\"focus\":[\"depot-chargers\",\"depot-switch\",\"depot-fw\",\"depot-router\",\"street\"]}},{\"atMs\":3000,\"action\":{\"do\":\"note\",\"text\":\"The charger vendor tries to open a remote shell into the depot. Its sessions reach the firewall.\",\"focus\":[\"vendor\",\"depot-router\",\"depot-fw\"]}},{\"atMs\":6000,\"action\":{\"do\":\"note\",\"text\":\"The firewall's deny rule stops every one. Blocked is the rule working, not a loss; vendor support goes through a ticketed jump host instead.\",\"focus\":[\"depot-fw\",\"depot-switch\"]}}]; expectations=[{\"id\":\"blocked\",\"label\":\"The firewall blocks the vendor shell\",\"metric\":{\"node\":\"depot-fw\",\"field\":\"blocked\"},\"op\":\">=\",\"value\":50,\"when\":\"end\"},{\"id\":\"no-drops\",\"label\":\"The firewall drops nothing\",\"metric\":{\"node\":\"depot-fw\",\"field\":\"dropped\"},\"op\":\"==\",\"value\":0,\"when\":\"always\"},{\"id\":\"telemetry\",\"label\":\"Depot telemetry keeps flowing\",\"metric\":{\"node\":\"ingress\",\"field\":\"processed\"},\"op\":\">\",\"value\":5000,\"when\":\"end\"}]\n… 2 lines omitted"
   }
 }

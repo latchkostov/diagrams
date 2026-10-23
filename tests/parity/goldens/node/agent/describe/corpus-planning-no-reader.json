@@ -1,7 +1,7 @@
 {
   "text": {
     "isError": false,
-    "output": "Diagram \"Planning: shared capacity\" · direction LR · 2 nodes, 1 connections, 0 boundaries, 0 simulations\nnodes:\n  \"checkout\" \"client.browser\" (\"Web Browser\") \"Checkout\" props={\"ratePerSec\":3} capabilities=[{\"kind\":\"publishes\",\"edge\":\"publish\",\"peer\":\"topic\"}] explanation=undefined\n  \"topic\" \"kafka.topic\" (\"Kafka Topic\") \"Order events\" capabilities=[] explanation={\"id\":\"topic\",\"role\":\"topic\",\"status\":\"up\",\"reason\":\"no-reader\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":0,\"offered\":3,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":null,\"seconds\":0,\"utilization\":null,\"growth\":3,\"contributors\":[{\"edge\":\"publish\",\"node\":\"checkout\",\"label\":\"Checkout\",\"rate\":3}],\"target\":0.5,\"changes\":null,\"addConsumer\":\"topic\",\"fixId\":\"no-reader:topic\",\"converged\":true}\nconnections:\n  \"publish\" \"checkout\" -> \"topic\" async"
+    "output": "Diagram \"Planning: shared capacity\" · direction LR · 2 nodes, 1 connections, 0 boundaries, 0 simulations\nnodes:\n  \"checkout\" \"client.browser\" (\"Web Browser\") \"Checkout\" props={\"ratePerSec\":3} arrivingTypes=[] capabilities=[{\"kind\":\"publishes\",\"edge\":\"publish\",\"peer\":\"topic\"}] explanation=undefined\n  \"topic\" \"kafka.topic\" (\"Kafka Topic\") \"Order events\" arrivingTypes=[\"Checkout\"] capabilities=[] explanation={\"id\":\"topic\",\"role\":\"topic\",\"status\":\"up\",\"reason\":\"no-reader\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":0,\"offered\":3,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":null,\"seconds\":0,\"utilization\":null,\"growth\":3,\"contributors\":[{\"edge\":\"publish\",\"node\":\"checkout\",\"label\":\"Checkout\",\"rate\":3}],\"target\":0.5,\"changes\":null,\"addConsumer\":\"topic\",\"fixId\":\"no-reader:topic\",\"converged\":true}\nconnections:\n  \"publish\" \"checkout\" -> \"topic\" async carriedTypes=[\"Checkout\"]"
   },
   "json": {
     "isError": false,
@@ -16,6 +16,7 @@
           "x": 0,
           "y": 140,
           "props": { "ratePerSec": 3 },
+          "arrivingTypes": [],
           "capabilities": [{ "kind": "publishes", "edge": "publish", "peer": "topic" }]
         },
         {
@@ -24,6 +25,7 @@
           "label": "Order events",
           "x": 320,
           "y": 20,
+          "arrivingTypes": ["Checkout"],
           "capabilities": [],
           "explanation": {
             "id": "topic",
@@ -52,7 +54,17 @@
           }
         }
       ],
-      "edges": [{ "id": "publish", "from": "checkout", "to": "topic", "kind": "async", "props": { "travelMs": 0 } }],
+      "edges": [
+        {
+          "id": "publish",
+          "from": "checkout",
+          "to": "topic",
+          "kind": "async",
+          "props": { "travelMs": 0 },
+          "carriedTypes": ["Checkout"]
+        }
+      ],
+      "messageTypesComplete": true,
       "groups": [],
       "annotations": [],
       "simulations": [],
@@ -61,6 +73,6 @@
   },
   "focus": {
     "isError": false,
-    "output": "Diagram \"Planning: shared capacity\" · direction LR · 2 nodes, 1 connections, 0 boundaries, 0 simulations\nnodes:\n  \"checkout\" \"client.browser\" (\"Web Browser\") \"Checkout\" props={\"ratePerSec\":3} capabilities=[{\"kind\":\"publishes\",\"edge\":\"publish\",\"peer\":\"topic\"}] explanation=undefined\n  \"topic\" \"kafka.topic\" (\"Kafka Topic\") \"Order events\" capabilities=[] explanation={\"id\":\"topic\",\"role\":\"topic\",\"status\":\"up\",\"reason\":\"no-reader\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":0,\"offered\":3,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":null,\"seconds\":0,\"utilization\":null,\"growth\":3,\"contributors\":[{\"edge\":\"publish\",\"node\":\"checkout\",\"label\":\"Checkout\",\"rate\":3}],\"target\":0.5,\"changes\":null,\"addConsumer\":\"topic\",\"fixId\":\"no-reader:topic\",\"converged\":true}\nconnections:\n  \"publish\" \"checkout\" -> \"topic\" async"
+    "output": "Diagram \"Planning: shared capacity\" · direction LR · 2 nodes, 1 connections, 0 boundaries, 0 simulations\nnodes:\n  \"checkout\" \"client.browser\" (\"Web Browser\") \"Checkout\" props={\"ratePerSec\":3} arrivingTypes=[] capabilities=[{\"kind\":\"publishes\",\"edge\":\"publish\",\"peer\":\"topic\"}] explanation=undefined\n  \"topic\" \"kafka.topic\" (\"Kafka Topic\") \"Order events\" arrivingTypes=[\"Checkout\"] capabilities=[] explanation={\"id\":\"topic\",\"role\":\"topic\",\"status\":\"up\",\"reason\":\"no-reader\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":0,\"offered\":3,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":null,\"seconds\":0,\"utilization\":null,\"growth\":3,\"contributors\":[{\"edge\":\"publish\",\"node\":\"checkout\",\"label\":\"Checkout\",\"rate\":3}],\"target\":0.5,\"changes\":null,\"addConsumer\":\"topic\",\"fixId\":\"no-reader:topic\",\"converged\":true}\nconnections:\n  \"publish\" \"checkout\" -> \"topic\" async carriedTypes=[\"Checkout\"]"
   }
 }

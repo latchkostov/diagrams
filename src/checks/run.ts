@@ -5,6 +5,7 @@ import type { CheckResult, CheckRule, Finding } from "./types";
 import { deadLetter } from "./rules/deadLetter";
 import { noReader } from "./rules/noReader";
 import { syncCycle } from "./rules/syncCycle";
+import { messageLoop } from "./rules/messageLoop";
 import { syncChain } from "./rules/syncChain";
 import { sharedDatabase } from "./rules/sharedDatabase";
 import { entryGateway } from "./rules/entryGateway";
@@ -24,6 +25,7 @@ export const RULES: readonly CheckRule[] = [
   deadLetter,
   noReader,
   syncCycle,
+  messageLoop,
   syncChain,
   sharedDatabase,
   entryGateway,

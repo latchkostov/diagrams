@@ -1,7 +1,7 @@
 {
   "text": {
     "isError": false,
-    "output": "Diagram \"CQRS with event sourcing\" · direction LR · 12 nodes, 13 connections, 2 boundaries, 2 simulations\ndescription: \"Commands append events to an event store; projections build read models that queries hit, and an outbound feed shares events.\"\nnodes:\n  \"app\" \"client.mobile\" (\"Mobile App\") \"Banking app\" / \"Commands and queries\" props={\"ratePerSec\":20,\"messageType\":\"Deposit\"} capabilities=[{\"kind\":\"calls\",\"edge\":\"app-to-gateway\",\"peer\":\"gateway\"}] explanation=undefined\n  \"gateway\" \"kong\" (\"Kong Gateway\") \"API gateway\" / \"Routes by verb\" props={\"latencyMs\":2} capabilities=[{\"kind\":\"calls\",\"edge\":\"gateway-to-command-handler\",\"peer\":\"command-handler\",\"filter\":[\"Deposit\",\"Withdraw\"]},{\"kind\":\"calls\",\"edge\":\"gateway-to-query-api\",\"peer\":\"query-api\",\"filter\":[\"Get*\"]}] explanation=undefined\n  \"command-handler\" \"service.dotnet\" (\".NET Service\") \"Command handler\" / \"Load · decide · append\" props={\"concurrency\":32,\"latencyMs\":60,\"emits\":{\"Deposit\":\"MoneyDeposited\",\"Withdraw\":\"MoneyWithdrawn\"}} in \"write\" capabilities=[{\"kind\":\"calls\",\"edge\":\"command-handler-to-event-store\",\"peer\":\"event-store\"}] explanation={\"id\":\"command-handler\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":533.3333333333334,\"offered\":20,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":32,\"seconds\":0.06,\"utilization\":0.0375,\"growth\":0,\"contributors\":[{\"edge\":\"gateway-to-command-handler\",\"node\":\"gateway\",\"label\":\"Banking app\",\"rate\":20,\"via\":\"API gateway\"}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"event-store\" \"generic.event-store\" (\"Event Store\") \"Event store\" / \"Stream per account\" props={\"partitions\":16} in \"write\" capabilities=[] explanation=undefined\n  \"publisher\" \"kafka.connect\" (\"Kafka Connect\") \"Event publisher\" / \"group: integration\" props={\"concurrency\":32,\"latencyMs\":50} capabilities=[{\"kind\":\"consumes\",\"edge\":\"event-store-to-publisher\",\"peer\":\"event-store\",\"group\":\"integration\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"publishes\",\"edge\":\"publisher-to-integration-topic\",\"peer\":\"integration-topic\"}] explanation={\"id\":\"publisher\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":640,\"offered\":20,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"event-store\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":16}],\"slots\":32,\"seconds\":0.05,\"utilization\":0.03125,\"growth\":0,\"contributors\":[{\"edge\":\"event-store-to-publisher\",\"node\":\"event-store\",\"label\":\"Event store\",\"rate\":20}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"integration-topic\" \"kafka.topic\" (\"Kafka Topic\") \"accounts.events.v1\" / \"Public contract\" props={\"partitions\":16} capabilities=[] explanation=undefined\n  \"query-api\" \"service.node\" (\"Node.js Service\") \"Query API\" / \"Reads only\" props={\"concurrency\":64,\"latencyMs\":20} in \"read\" capabilities=[{\"kind\":\"calls\",\"edge\":\"query-api-to-balances-db\",\"peer\":\"balances-db\",\"filter\":[\"GetBalance\"]},{\"kind\":\"calls\",\"edge\":\"query-api-to-statements\",\"peer\":\"statements\",\"filter\":[\"GetStatement\"]}] explanation={\"id\":\"query-api\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":3200,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":64,\"seconds\":0.02,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"balances-db\" \"postgres\" (\"PostgreSQL\") \"Balances\" / \"Read model · one row each\" props={\"latencyMs\":2} in \"read\" capabilities=[] explanation=undefined\n  \"statements\" \"elasticsearch\" (\"Elasticsearch\") \"Statements\" / \"Read model · searchable\" props={\"latencyMs\":2} in \"read\" capabilities=[] explanation=undefined\n  \"balance-proj\" \"generic.projection\" (\"Projection\") \"Balance projection\" / \"group: balances\" props={\"concurrency\":32,\"latencyMs\":40} in \"read\" capabilities=[{\"kind\":\"consumes\",\"edge\":\"event-store-to-balance-proj\",\"peer\":\"event-store\",\"group\":\"balances\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"calls\",\"edge\":\"balance-proj-to-balances-db\",\"peer\":\"balances-db\"}] explanation={\"id\":\"balance-proj\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":800,\"offered\":20,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"event-store\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":16}],\"slots\":32,\"seconds\":0.04,\"utilization\":0.025,\"growth\":0,\"contributors\":[{\"edge\":\"event-store-to-balance-proj\",\"node\":\"event-store\",\"label\":\"Event store\",\"rate\":20}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"statement-proj\" \"generic.projection\" (\"Projection\") \"Statement projection\" / \"group: statements\" props={\"concurrency\":32,\"latencyMs\":80} in \"read\" capabilities=[{\"kind\":\"consumes\",\"edge\":\"event-store-to-statement-proj\",\"peer\":\"event-store\",\"group\":\"statements\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"calls\",\"edge\":\"statement-proj-to-statements\",\"peer\":\"statements\"}] explanation={\"id\":\"statement-proj\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":400,\"offered\":20,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"event-store\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":16}],\"slots\":32,\"seconds\":0.08,\"utilization\":0.05,\"growth\":0,\"contributors\":[{\"edge\":\"event-store-to-statement-proj\",\"node\":\"event-store\",\"label\":\"Event store\",\"rate\":20}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"fraud\" \"service.python\" (\"Python Service\") \"Fraud scoring\" / \"Another team · group: fraud\" props={\"concurrency\":32,\"latencyMs\":60} capabilities=[{\"kind\":\"consumes\",\"edge\":\"integration-topic-to-fraud\",\"peer\":\"integration-topic\",\"group\":\"fraud\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0}] explanation={\"id\":\"fraud\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":533.3333333333334,\"offered\":20,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"integration-topic\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":16}],\"slots\":32,\"seconds\":0.06,\"utilization\":0.0375,\"growth\":0,\"contributors\":[{\"edge\":\"integration-topic-to-fraud\",\"node\":\"integration-topic\",\"label\":\"accounts.events.v1\",\"rate\":20}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\nconnections:\n  \"app-to-gateway\" \"app\" -> \"gateway\" sync \"HTTPS\"\n  \"gateway-to-command-handler\" \"gateway\" -> \"command-handler\" sync \"POST · commands\"\n  \"gateway-to-query-api\" \"gateway\" -> \"query-api\" sync \"GET · queries\"\n  \"command-handler-to-event-store\" \"command-handler\" -> \"event-store\" sync \"Append · expectedVersion\"\n  \"event-store-to-publisher\" \"event-store\" -> \"publisher\" async \"Subscription\"\n  \"publisher-to-integration-topic\" \"publisher\" -> \"integration-topic\" async \"Integration events\"\n  \"event-store-to-balance-proj\" \"event-store\" -> \"balance-proj\" async\n  \"event-store-to-statement-proj\" \"event-store\" -> \"statement-proj\" async\n  \"balance-proj-to-balances-db\" \"balance-proj\" -> \"balances-db\" sync \"Upsert balance\"\n  \"statement-proj-to-statements\" \"statement-proj\" -> \"statements\" sync \"Index entry\"\n  \"query-api-to-balances-db\" \"query-api\" -> \"balances-db\" sync \"GetBalance\"\n  \"query-api-to-statements\" \"query-api\" -> \"statements\" sync \"GetStatement\"\n  \"integration-topic-to-fraud\" \"integration-topic\" -> \"fraud\" async \"group: fraud\"\nboundary \"write\" \"Write side\" (neutral): \"command-handler\", \"event-store\"\nboundary \"read\" \"Read side\" (neutral): \"query-api\", \"balances-db\", \"statements\", \"balance-proj\", \"statement-proj\"\nsimulation \"busy-day\" \"Payday: reads outnumber writes\": {\"kind\":\"constant\",\"ratePerSec\":40,\"durationMs\":8000} from \"app\"; {\"kind\":\"constant\",\"ratePerSec\":10,\"durationMs\":8000} from \"app\"; {\"kind\":\"constant\",\"ratePerSec\":150,\"durationMs\":8000} from \"app\"; {\"kind\":\"constant\",\"ratePerSec\":50,\"durationMs\":8000} from \"app\"; timeline=[{\"atMs\":0,\"action\":{\"do\":\"note\",\"text\":\"Payday. Commands go to the write side; queries never touch it. Each dot is five requests.\",\"focus\":[\"gateway\",\"command-handler\",\"query-api\"]}},{\"atMs\":2500,\"action\":{\"do\":\"note\",\"text\":\"The event store is the source of truth: an append-only log of what happened. Each projection keeps its own position in it.\",\"focus\":[\"event-store\",\"balance-proj\",\"statement-proj\",\"publisher\"],\"pause\":true}},{\"atMs\":6000,\"action\":{\"do\":\"note\",\"text\":\"Queries read denormalized tables, so reads stay fast however long an account's history grows.\",\"focus\":[\"query-api\",\"balances-db\",\"statements\"]}}]; expectations=[{\"id\":\"appended\",\"label\":\"All 400 commands are appended\",\"metric\":{\"node\":\"event-store\",\"field\":\"processed\"},\"op\":\"==\",\"value\":400,\"when\":\"end\"},{\"id\":\"published\",\"label\":\"All 400 events are shared\",\"metric\":{\"node\":\"integration-topic\",\"field\":\"processed\"},\"op\":\"==\",\"value\":400,\"when\":\"end\"},{\"id\":\"statements\",\"label\":\"Statements: 400 entries + 400 searches\",\"metric\":{\"node\":\"statements\",\"field\":\"processed\"},\"op\":\"==\",\"value\":800,\"when\":\"end\"},{\"id\":\"caught-up\",\"label\":\"Projections catch up\",\"metric\":{\"node\":\"event-store\",\"field\":\"lag\"},\"op\":\"==\",\"value\":0,\"when\":\"end\"}]\nsimulation \"rebuild\" \"Rebuild a read model\": {\"kind\":\"constant\",\"ratePerSec\":40,\"durationMs\":10000} from \"app\"; {\"kind\":\"constant\",\"ratePerSec\":100,\"durationMs\":10000} from \"app\"; timeline=[{\"atMs\":0,\"action\":{\"do\":\"note\",\"text\":\"Statements need a new field. Instead of migrating the index, we deploy a new projection and rebuild it from the log.\",\"focus\":[\"statement-proj\",\"statements\"]}},{\"atMs\":2000,\"action\":{\"do\":\"status\",\"node\":\"statement-proj\",\"status\":\"paused\"}},{\"atMs\":2000,\"action\":{\"do\":\"note\",\"text\":\"The old projection stops. New events wait in its subscription; balances and the public feed are unaffected.\",\"focus\":[\"event-store\",\"statement-proj\",\"balance-proj\"]}},{\"atMs\":4000,\"action\":{\"do\":\"status\",\"node\":\"statement-proj\",\"status\":\"up\"}},{\"atMs\":4000,\"action\":{\"do\":\"inject\",\"node\":\"statement-proj\",\"count\":2000,\"messageType\":\"MoneyDeposited\",\"spreadMs\":500}},{\"atMs\":4000,\"action\":{\"do\":\"note\",\"text\":\"Version 2 replays 2,000 historical events from position zero, then picks up the live ones. Statements are briefly stale; nothing is lost.\",\"focus\":[\"statement-proj\",\"statements\"],\"pause\":true}}]; expectations=[{\"id\":\"behind\",\"label\":\"Statements fall behind during the rebuild\",\"metric\":{\"node\":\"event-store\",\"field\":\"lag\",\"group\":\"statements\"},\"op\":\">\",\"value\":0,\"when\":\"at\",\"atMs\":5000},{\"id\":\"balances-current\",\"label\":\"Balances keep up\",\"metric\":{\"node\":\"event-store\",\"field\":\"lag\",\"group\":\"balances\"},\"op\":\"<=\",\"value\":40,\"when\":\"always\"},{\"id\":\"rebuilt\",\"label\":\"History and live events are indexed\",\"metric\":{\"node\":\"statements\",\"field\":\"processed\"},\"op\":\"==\",\"value\":2400,\"when\":\"end\"},{\"id\":\"caught-up\",\"label\":\"The new projection catches up\",\"metric\":{\"node\":\"event-store\",\"field\":\"lag\",\"group\":\"statements\"},\"op\":\"==\",\"value\":0,\"when\":\"end\"}]"
+    "output": "Diagram \"CQRS with event sourcing\" · direction LR · 12 nodes, 13 connections, 2 boundaries, 2 simulations\ndescription: \"Commands append events to an event store; projections build read models that queries hit, and an outbound feed shares events.\"\nnodes:\n  \"app\" \"client.mobile\" (\"Mobile App\") \"Banking app\" / \"Commands and queries\" props={\"ratePerSec\":20,\"messageType\":\"Deposit\"} arrivingTypes=[] capabilities=[{\"kind\":\"calls\",\"edge\":\"app-to-gateway\",\"peer\":\"gateway\"}] explanation=undefined\n  \"gateway\" \"kong\" (\"Kong Gateway\") \"API gateway\" / \"Routes by verb\" props={\"latencyMs\":2} arrivingTypes=[\"Deposit\"] capabilities=[{\"kind\":\"calls\",\"edge\":\"gateway-to-command-handler\",\"peer\":\"command-handler\",\"filter\":[\"Deposit\",\"Withdraw\"]},{\"kind\":\"calls\",\"edge\":\"gateway-to-query-api\",\"peer\":\"query-api\",\"filter\":[\"Get*\"]}] explanation=undefined\n  \"command-handler\" \"service.dotnet\" (\".NET Service\") \"Command handler\" / \"Load · decide · append\" props={\"concurrency\":32,\"latencyMs\":60,\"emits\":{\"Deposit\":\"MoneyDeposited\",\"Withdraw\":\"MoneyWithdrawn\"}} in \"write\" arrivingTypes=[\"Deposit\"] capabilities=[{\"kind\":\"calls\",\"edge\":\"command-handler-to-event-store\",\"peer\":\"event-store\"}] explanation={\"id\":\"command-handler\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":533.3333333333334,\"offered\":20,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":32,\"seconds\":0.06,\"utilization\":0.0375,\"growth\":0,\"contributors\":[{\"edge\":\"gateway-to-command-handler\",\"node\":\"gateway\",\"label\":\"Banking app\",\"rate\":20,\"via\":\"API gateway\"}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"event-store\" \"generic.event-store\" (\"Event Store\") \"Event store\" / \"Stream per account\" props={\"partitions\":16} in \"write\" arrivingTypes=[\"MoneyDeposited\"] capabilities=[] explanation=undefined\n  \"publisher\" \"kafka.connect\" (\"Kafka Connect\") \"Event publisher\" / \"group: integration\" props={\"concurrency\":32,\"latencyMs\":50} arrivingTypes=[\"MoneyDeposited\"] capabilities=[{\"kind\":\"consumes\",\"edge\":\"event-store-to-publisher\",\"peer\":\"event-store\",\"group\":\"integration\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"publishes\",\"edge\":\"publisher-to-integration-topic\",\"peer\":\"integration-topic\"}] explanation={\"id\":\"publisher\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":640,\"offered\":20,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"event-store\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":16}],\"slots\":32,\"seconds\":0.05,\"utilization\":0.03125,\"growth\":0,\"contributors\":[{\"edge\":\"event-store-to-publisher\",\"node\":\"event-store\",\"label\":\"Event store\",\"rate\":20}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"integration-topic\" \"kafka.topic\" (\"Kafka Topic\") \"accounts.events.v1\" / \"Public contract\" props={\"partitions\":16} arrivingTypes=[\"MoneyDeposited\"] capabilities=[] explanation=undefined\n  \"query-api\" \"service.node\" (\"Node.js Service\") \"Query API\" / \"Reads only\" props={\"concurrency\":64,\"latencyMs\":20} in \"read\" arrivingTypes=[] capabilities=[{\"kind\":\"calls\",\"edge\":\"query-api-to-balances-db\",\"peer\":\"balances-db\",\"filter\":[\"GetBalance\"]},{\"kind\":\"calls\",\"edge\":\"query-api-to-statements\",\"peer\":\"statements\",\"filter\":[\"GetStatement\"]}] explanation={\"id\":\"query-api\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":3200,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":64,\"seconds\":0.02,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"balances-db\" \"postgres\" (\"PostgreSQL\") \"Balances\" / \"Read model · one row each\" props={\"latencyMs\":2} in \"read\" arrivingTypes=[\"MoneyDeposited\"] capabilities=[] explanation=undefined\n  \"statements\" \"elasticsearch\" (\"Elasticsearch\") \"Statements\" / \"Read model · searchable\" props={\"latencyMs\":2} in \"read\" arrivingTypes=[\"MoneyDeposited\"] capabilities=[] explanation=undefined\n  \"balance-proj\" \"generic.projection\" (\"Projection\") \"Balance projection\" / \"group: balances\" props={\"concurrency\":32,\"latencyMs\":40} in \"read\" arrivingTypes=[\"MoneyDeposited\"] capabilities=[{\"kind\":\"consumes\",\"edge\":\"event-store-to-balance-proj\",\"peer\":\"event-store\",\"group\":\"balances\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"calls\",\"edge\":\"balance-proj-to-balances-db\",\"peer\":\"balances-db\"}] explanation={\"id\":\"balance-proj\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":800,\"offered\":20,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"event-store\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":16}],\"slots\":32,\"seconds\":0.04,\"utilization\":0.025,\"growth\":0,\"contributors\":[{\"edge\":\"event-store-to-balance-proj\",\"node\":\"event-store\",\"label\":\"Event store\",\"rate\":20}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"statement-proj\" \"generic.projection\" (\"Projection\") \"Statement projection\" / \"group: statements\" props={\"concurrency\":32,\"latencyMs\":80} in \"read\" arrivingTypes=[\"MoneyDeposited\"] capabilities=[{\"kind\":\"consumes\",\"edge\":\"event-store-to-statement-proj\",\"peer\":\"event-store\",\"group\":\"statements\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"calls\",\"edge\":\"statement-proj-to-statements\",\"peer\":\"statements\"}] explanation={\"id\":\"statement-proj\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":400,\"offered\":20,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"event-store\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":16}],\"slots\":32,\"seconds\":0.08,\"utilization\":0.05,\"growth\":0,\"contributors\":[{\"edge\":\"event-store-to-statement-proj\",\"node\":\"event-store\",\"label\":\"Event store\",\"rate\":20}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"fraud\" \"service.python\" (\"Python Service\") \"Fraud scoring\" / \"Another team · group: fraud\" props={\"concurrency\":32,\"latencyMs\":60} arrivingTypes=[\"MoneyDeposited\"] capabilities=[{\"kind\":\"consumes\",\"edge\":\"integration-topic-to-fraud\",\"peer\":\"integration-topic\",\"group\":\"fraud\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0}] explanation={\"id\":\"fraud\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":533.3333333333334,\"offered\":20,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"integration-topic\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":16}],\"slots\":32,\"seconds\":0.06,\"utilization\":0.0375,\"growth\":0,\"contributors\":[{\"edge\":\"integration-topic-to-fraud\",\"node\":\"integration-topic\",\"label\":\"accounts.events.v1\",\"rate\":20}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\nconnections:\n  \"app-to-gateway\" \"app\" -> \"gateway\" sync \"HTTPS\" carriedTypes=[\"Deposit\"]\n  \"gateway-to-command-handler\" \"gateway\" -> \"command-handler\" sync \"POST · commands\" carriedTypes=[\"Deposit\"]\n  \"gateway-to-query-api\" \"gateway\" -> \"query-api\" sync \"GET · queries\" carriedTypes=[]\n  \"command-handler-to-event-store\" \"command-handler\" -> \"event-store\" sync \"Append · expectedVersion\" carriedTypes=[\"MoneyDeposited\"]\n  \"event-store-to-publisher\" \"event-store\" -> \"publisher\" async \"Subscription\" carriedTypes=[\"MoneyDeposited\"]\n  \"publisher-to-integration-topic\" \"publisher\" -> \"integration-topic\" async \"Integration events\" carriedTypes=[\"MoneyDeposited\"]\n  \"event-store-to-balance-proj\" \"event-store\" -> \"balance-proj\" async carriedTypes=[\"MoneyDeposited\"]\n  \"event-store-to-statement-proj\" \"event-store\" -> \"statement-proj\" async carriedTypes=[\"MoneyDeposited\"]\n  \"balance-proj-to-balances-db\" \"balance-proj\" -> \"balances-db\" sync \"Upsert balance\" carriedTypes=[\"MoneyDeposited\"]\n  \"statement-proj-to-statements\" \"statement-proj\" -> \"statements\" sync \"Index entry\" carriedTypes=[\"MoneyDeposited\"]\n  \"query-api-to-balances-db\" \"query-api\" -> \"balances-db\" sync \"GetBalance\" carriedTypes=[]\n  \"query-api-to-statements\" \"query-api\" -> \"statements\" sync \"GetStatement\" carriedTypes=[]\n  \"integration-topic-to-fraud\" \"integration-topic\" -> \"fraud\" async \"group: fraud\" carriedTypes=[\"MoneyDeposited\"]\nboundary \"write\" \"Write side\" (neutral): \"command-handler\", \"event-store\"\nboundary \"read\" \"Read side\" (neutral): \"query-api\", \"balances-db\", \"statements\", \"balance-proj\", \"statement-proj\"\nsimulation \"busy-day\" \"Payday: reads outnumber writes\": {\"kind\":\"constant\",\"ratePerSec\":40,\"durationMs\":8000} from \"app\"; {\"kind\":\"constant\",\"ratePerSec\":10,\"durationMs\":8000} from \"app\"; {\"kind\":\"constant\",\"ratePerSec\":150,\"durationMs\":8000} from \"app\"; {\"kind\":\"constant\",\"ratePerSec\":50,\"durationMs\":8000} from \"app\"; timeline=[{\"atMs\":0,\"action\":{\"do\":\"note\",\"text\":\"Payday. Commands go to the write side; queries never touch it. Each dot is five requests.\",\"focus\":[\"gateway\",\"command-handler\",\"query-api\"]}},{\"atMs\":2500,\"action\":{\"do\":\"note\",\"text\":\"The event store is the source of truth: an append-only log of what happened. Each projection keeps its own position in it.\",\"focus\":[\"event-store\",\"balance-proj\",\"statement-proj\",\"publisher\"],\"pause\":true}},{\"atMs\":6000,\"action\":{\"do\":\"note\",\"text\":\"Queries read denormalized tables, so reads stay fast however long an account's history grows.\",\"focus\":[\"query-api\",\"balances-db\",\"statements\"]}}]; expectations=[{\"id\":\"appended\",\"label\":\"All 400 commands are appended\",\"metric\":{\"node\":\"event-store\",\"field\":\"processed\"},\"op\":\"==\",\"value\":400,\"when\":\"end\"},{\"id\":\"published\",\"label\":\"All 400 events are shared\",\"metric\":{\"node\":\"integration-topic\",\"field\":\"processed\"},\"op\":\"==\",\"value\":400,\"when\":\"end\"},{\"id\":\"statements\",\"label\":\"Statements: 400 entries + 400 searches\",\"metric\":{\"node\":\"statements\",\"field\":\"processed\"},\"op\":\"==\",\"value\":800,\"when\":\"end\"},{\"id\":\"caught-up\",\"label\":\"Projections catch up\",\"metric\":{\"node\":\"event-store\",\"field\":\"lag\"},\"op\":\"==\",\"value\":0,\"when\":\"end\"}]\nsimulation \"rebuild\" \"Rebuild a read model\": {\"kind\":\"constant\",\"ratePerSec\":40,\"durationMs\":10000} from \"app\"; {\"kind\":\"constant\",\"ratePerSec\":100,\"durationMs\":10000} from \"app\"; timeline=[{\"atMs\":0,\"action\":{\"do\":\"note\",\"text\":\"Statements need a new field. Instead of migrating the index, we deploy a new projection and rebuild it from the log.\",\"focus\":[\"statement-proj\",\"statements\"]}},{\"atMs\":2000,\"action\":{\"do\":\"status\",\"node\":\"statement-proj\",\"status\":\"paused\"}},{\"atMs\":2000,\"action\":{\"do\":\"note\",\"text\":\"The old projection stops. New events wait in its subscription; balances and the public feed are unaffected.\",\"focus\":[\"event-store\",\"statement-proj\",\"balance-proj\"]}},{\"atMs\":4000,\"action\":{\"do\":\"status\",\"node\":\"statement-proj\",\"status\":\"up\"}},{\"atMs\":4000,\"action\":{\"do\":\"inject\",\"node\":\"statement-proj\",\"count\":2000,\"messageType\":\"MoneyDeposited\",\"spreadMs\":500}},{\"atMs\":4000,\"action\":{\"do\":\"note\",\"text\":\"Version 2 replays 2,000 historical events from position zero, then picks up the live ones. Statements are briefly stale; nothing is lost.\",\"focus\":[\"statement-proj\",\"statements\"],\"pause\":true}}]; expectations=[{\"id\":\"behind\",\"label\":\"Statements fall behind during the rebuild\",\"metric\":{\"node\":\"event-store\",\"field\":\"lag\",\"group\":\"statements\"},\"op\":\">\",\"value\":0,\"when\":\"at\",\"atMs\":5000},{\"id\":\"balances-current\",\"label\":\"Balances keep up\",\"metric\":{\"node\":\"event-store\",\"field\":\"lag\",\"group\":\"balances\"},\"op\":\"<=\",\"value\":40,\"when\":\"always\"},{\"id\":\"rebuilt\",\"label\":\"History and live events are indexed\",\"metric\":{\"node\":\"statements\",\"field\":\"processed\"},\"op\":\"==\",\"value\":2400,\"when\":\"end\"},{\"id\":\"caught-up\",\"label\":\"The new projection catches up\",\"metric\":{\"node\":\"event-store\",\"field\":\"lag\",\"group\":\"statements\"},\"op\":\"==\",\"value\":0,\"when\":\"end\"}]"
   },
   "json": {
     "isError": false,
@@ -18,6 +18,7 @@
           "x": 40,
           "y": 340,
           "props": { "ratePerSec": 20, "messageType": "Deposit" },
+          "arrivingTypes": [],
           "capabilities": [{ "kind": "calls", "edge": "app-to-gateway", "peer": "gateway" }]
         },
         {
@@ -28,6 +29,7 @@
           "x": 420,
           "y": 340,
           "props": { "latencyMs": 2 },
+          "arrivingTypes": ["Deposit"],
           "capabilities": [
             { "kind": "calls", "edge": "gateway-to-command-handler", "peer": "command-handler", "filter": ["Deposit", "Withdraw"] },
             { "kind": "calls", "edge": "gateway-to-query-api", "peer": "query-api", "filter": ["Get*"] }
@@ -46,6 +48,7 @@
             "latencyMs": 60,
             "emits": { "Deposit": "MoneyDeposited", "Withdraw": "MoneyWithdrawn" }
           },
+          "arrivingTypes": ["Deposit"],
           "capabilities": [{ "kind": "calls", "edge": "command-handler-to-event-store", "peer": "event-store" }],
           "explanation": {
             "id": "command-handler",
@@ -84,6 +87,7 @@
           "y": 160,
           "group": "write",
           "props": { "partitions": 16 },
+          "arrivingTypes": ["MoneyDeposited"],
           "capabilities": []
         },
         {
@@ -94,6 +98,7 @@
           "x": 1560,
           "y": 160,
           "props": { "concurrency": 32, "latencyMs": 50 },
+          "arrivingTypes": ["MoneyDeposited"],
           "capabilities": [
             {
               "kind": "consumes",
@@ -148,6 +153,7 @@
           "x": 1940,
           "y": 160,
           "props": { "partitions": 16 },
+          "arrivingTypes": ["MoneyDeposited"],
           "capabilities": []
         },
         {
@@ -159,6 +165,7 @@
           "y": 520,
           "group": "read",
           "props": { "concurrency": 64, "latencyMs": 20 },
+          "arrivingTypes": [],
           "capabilities": [
             { "kind": "calls", "edge": "query-api-to-balances-db", "peer": "balances-db", "filter": ["GetBalance"] },
             { "kind": "calls", "edge": "query-api-to-statements", "peer": "statements", "filter": ["GetStatement"] }
@@ -198,6 +205,7 @@
           "y": 400,
           "group": "read",
           "props": { "latencyMs": 2 },
+          "arrivingTypes": ["MoneyDeposited"],
           "capabilities": []
         },
         {
@@ -209,6 +217,7 @@
           "y": 640,
           "group": "read",
           "props": { "latencyMs": 2 },
+          "arrivingTypes": ["MoneyDeposited"],
           "capabilities": []
         },
         {
@@ -220,6 +229,7 @@
           "y": 400,
           "group": "read",
           "props": { "concurrency": 32, "latencyMs": 40 },
+          "arrivingTypes": ["MoneyDeposited"],
           "capabilities": [
             {
               "kind": "consumes",
@@ -275,6 +285,7 @@
           "y": 640,
           "group": "read",
           "props": { "concurrency": 32, "latencyMs": 80 },
+          "arrivingTypes": ["MoneyDeposited"],
           "capabilities": [
             {
               "kind": "consumes",
@@ -329,6 +340,7 @@
           "x": 1940,
           "y": 40,
           "props": { "concurrency": 32, "latencyMs": 60 },
+          "arrivingTypes": ["MoneyDeposited"],
           "capabilities": [
             {
               "kind": "consumes",
@@ -382,7 +394,8 @@
           "to": "gateway",
           "label": "HTTPS",
           "kind": "sync",
-          "props": { "travelMs": 200 }
+          "props": { "travelMs": 200 },
+          "carriedTypes": ["Deposit"]
         },
         {
           "id": "gateway-to-command-handler",
@@ -390,7 +403,8 @@
           "to": "command-handler",
           "label": "POST · commands",
           "kind": "sync",
-          "props": { "travelMs": 200, "filter": ["Deposit", "Withdraw"] }
+          "props": { "travelMs": 200, "filter": ["Deposit", "Withdraw"] },
+          "carriedTypes": ["Deposit"]
         },
         {
           "id": "gateway-to-query-api",
@@ -398,7 +412,8 @@
           "to": "query-api",
           "label": "GET · queries",
           "kind": "sync",
-          "props": { "travelMs": 200, "filter": ["Get*"] }
+          "props": { "travelMs": 200, "filter": ["Get*"] },
+          "carriedTypes": []
         },
         {
           "id": "command-handler-to-event-store",
@@ -406,7 +421,8 @@
           "to": "event-store",
           "label": "Append · expectedVersion",
           "kind": "sync",
-          "props": { "travelMs": 200 }
+          "props": { "travelMs": 200 },
+          "carriedTypes": ["MoneyDeposited"]
         },
         {
           "id": "event-store-to-publisher",
@@ -414,7 +430,8 @@
           "to": "publisher",
           "label": "Subscription",
           "kind": "async",
-          "props": { "travelMs": 300, "group": "integration" }
+          "props": { "travelMs": 300, "group": "integration" },
+          "carriedTypes": ["MoneyDeposited"]
         },
         {
           "id": "publisher-to-integration-topic",
@@ -422,21 +439,24 @@
           "to": "integration-topic",
           "label": "Integration events",
           "kind": "async",
-          "props": { "travelMs": 300 }
+          "props": { "travelMs": 300 },
+          "carriedTypes": ["MoneyDeposited"]
         },
         {
           "id": "event-store-to-balance-proj",
           "from": "event-store",
           "to": "balance-proj",
           "kind": "async",
-          "props": { "travelMs": 300, "group": "balances" }
+          "props": { "travelMs": 300, "group": "balances" },
+          "carriedTypes": ["MoneyDeposited"]
         },
         {
           "id": "event-store-to-statement-proj",
           "from": "event-store",
           "to": "statement-proj",
           "kind": "async",
-          "props": { "travelMs": 300, "group": "statements" }
+          "props": { "travelMs": 300, "group": "statements" },
+          "carriedTypes": ["MoneyDeposited"]
         },
         {
           "id": "balance-proj-to-balances-db",
@@ -444,7 +464,8 @@
           "to": "balances-db",
           "label": "Upsert balance",
           "kind": "sync",
-          "props": { "travelMs": 200 }
+          "props": { "travelMs": 200 },
+          "carriedTypes": ["MoneyDeposited"]
         },
         {
           "id": "statement-proj-to-statements",
@@ -452,7 +473,8 @@
           "to": "statements",
           "label": "Index entry",
           "kind": "sync",
-          "props": { "travelMs": 200 }
+          "props": { "travelMs": 200 },
+          "carriedTypes": ["MoneyDeposited"]
         },
         {
           "id": "query-api-to-balances-db",
@@ -460,7 +482,8 @@
           "to": "balances-db",
           "label": "GetBalance",
           "kind": "sync",
-          "props": { "travelMs": 200, "filter": ["GetBalance"] }
+          "props": { "travelMs": 200, "filter": ["GetBalance"] },
+          "carriedTypes": []
         },
         {
           "id": "query-api-to-statements",
@@ -468,7 +491,8 @@
           "to": "statements",
           "label": "GetStatement",
           "kind": "sync",
-          "props": { "travelMs": 200, "filter": ["GetStatement"] }
+          "props": { "travelMs": 200, "filter": ["GetStatement"] },
+          "carriedTypes": []
         },
         {
           "id": "integration-topic-to-fraud",
@@ -476,9 +500,11 @@
           "to": "fraud",
           "label": "group: fraud",
           "kind": "async",
-          "props": { "travelMs": 300, "group": "fraud" }
+          "props": { "travelMs": 300, "group": "fraud" },
+          "carriedTypes": ["MoneyDeposited"]
         }
       ],
+      "messageTypesComplete": true,
       "groups": [
         { "id": "write", "label": "Write side", "tone": "neutral", "x": 760, "y": 120, "width": 720, "height": 152 },
         { "id": "read", "label": "Read side", "tone": "neutral", "x": 760, "y": 360, "width": 1100, "height": 392 }
@@ -654,6 +680,6 @@
   },
   "focus": {
     "isError": false,
-    "output": "Diagram \"CQRS with event sourcing\" · direction LR · 2 nodes, 1 connections, 0 boundaries, 2 simulations\ndescription: \"Commands append events to an event store; projections build read models that queries hit, and an outbound feed shares events.\"\nnodes:\n  \"app\" \"client.mobile\" (\"Mobile App\") \"Banking app\" / \"Commands and queries\" props={\"ratePerSec\":20,\"messageType\":\"Deposit\"} capabilities=[{\"kind\":\"calls\",\"edge\":\"app-to-gateway\",\"peer\":\"gateway\"}] explanation=undefined\n  \"gateway\" \"kong\" (\"Kong Gateway\") \"API gateway\" / \"Routes by verb\" props={\"latencyMs\":2} capabilities=[{\"kind\":\"calls\",\"edge\":\"gateway-to-command-handler\",\"peer\":\"command-handler\",\"filter\":[\"Deposit\",\"Withdraw\"]},{\"kind\":\"calls\",\"edge\":\"gateway-to-query-api\",\"peer\":\"query-api\",\"filter\":[\"Get*\"]}] explanation=undefined\nconnections:\n  \"app-to-gateway\" \"app\" -> \"gateway\" sync \"HTTPS\"\nsimulation \"busy-day\" \"Payday: reads outnumber writes\": {\"kind\":\"constant\",\"ratePerSec\":40,\"durationMs\":8000} from \"app\"; {\"kind\":\"constant\",\"ratePerSec\":10,\"durationMs\":8000} from \"app\"; {\"kind\":\"constant\",\"ratePerSec\":150,\"durationMs\":8000} from \"app\"; {\"kind\":\"constant\",\"ratePerSec\":50,\"durationMs\":8000} from \"app\"; timeline=[{\"atMs\":0,\"action\":{\"do\":\"note\",\"text\":\"Payday. Commands go to the write side; queries never touch it. Each dot is five requests.\",\"focus\":[\"gateway\",\"command-handler\",\"query-api\"]}},{\"atMs\":2500,\"action\":{\"do\":\"note\",\"text\":\"The event store is the source of truth: an append-only log of what happened. Each projection keeps its own position in it.\",\"focus\":[\"event-store\",\"balance-proj\",\"statement-proj\",\"publisher\"],\"pause\":true}},{\"atMs\":6000,\"action\":{\"do\":\"note\",\"text\":\"Queries read denormalized tables, so reads stay fast however long an account's history grows.\",\"focus\":[\"query-api\",\"balances-db\",\"statements\"]}}]; expectations=[{\"id\":\"appended\",\"label\":\"All 400 commands are appended\",\"metric\":{\"node\":\"event-store\",\"field\":\"processed\"},\"op\":\"==\",\"value\":400,\"when\":\"end\"},{\"id\":\"published\",\"label\":\"All 400 events are shared\",\"metric\":{\"node\":\"integration-topic\",\"field\":\"processed\"},\"op\":\"==\",\"value\":400,\"when\":\"end\"},{\"id\":\"statements\",\"label\":\"Statements: 400 entries + 400 searches\",\"metric\":{\"node\":\"statements\",\"field\":\"processed\"},\"op\":\"==\",\"value\":800,\"when\":\"end\"},{\"id\":\"caught-up\",\"label\":\"Projections catch up\",\"metric\":{\"node\":\"event-store\",\"field\":\"lag\"},\"op\":\"==\",\"value\":0,\"when\":\"end\"}]\nsimulation \"rebuild\" \"Rebuild a read model\": {\"kind\":\"constant\",\"ratePerSec\":40,\"durationMs\":10000} from \"app\"; {\"kind\":\"constant\",\"ratePerSec\":100,\"durationMs\":10000} from \"app\"; timeline=[{\"atMs\":0,\"action\":{\"do\":\"note\",\"text\":\"Statements need a new field. Instead of migrating the index, we deploy a new projection and rebuild it from the log.\",\"focus\":[\"statement-proj\",\"statements\"]}},{\"atMs\":2000,\"action\":{\"do\":\"status\",\"node\":\"statement-proj\",\"status\":\"paused\"}},{\"atMs\":2000,\"action\":{\"do\":\"note\",\"text\":\"The old projection stops. New events wait in its subscription; balances and the public feed are unaffected.\",\"focus\":[\"event-store\",\"statement-proj\",\"balance-proj\"]}},{\"atMs\":4000,\"action\":{\"do\":\"status\",\"node\":\"statement-proj\",\"status\":\"up\"}},{\"atMs\":4000,\"action\":{\"do\":\"inject\",\"node\":\"statement-proj\",\"count\":2000,\"messageType\":\"MoneyDeposited\",\"spreadMs\":500}},{\"atMs\":4000,\"action\":{\"do\":\"note\",\"text\":\"Version 2 replays 2,000 historical events from position zero, then picks up the live ones. Statements are briefly stale; nothing is lost.\",\"focus\":[\"statement-proj\",\"statements\"],\"pause\":true}}]; expectations=[{\"id\":\"behind\",\"label\":\"Statements fall behind during the rebuild\",\"metric\":{\"node\":\"event-store\",\"field\":\"lag\",\"group\":\"statements\"},\"op\":\">\",\"value\":0,\"when\":\"at\",\"atMs\":5000},{\"id\":\"balances-current\",\"label\":\"Balances keep up\",\"metric\":{\"node\":\"event-store\",\"field\":\"lag\",\"group\":\"balances\"},\"op\":\"<=\",\"value\":40,\"when\":\"always\"},{\"id\":\"rebuilt\",\"label\":\"History and live events are indexed\",\"metric\":{\"node\":\"statements\",\"field\":\"processed\"},\"op\":\"==\",\"value\":2400,\"when\":\"end\"},{\"id\":\"caught-up\",\"label\":\"The new projection catches up\",\"metric\":{\"node\":\"event-store\",\"field\":\"lag\",\"group\":\"statements\"},\"op\":\"==\",\"value\":0,\"when\":\"end\"}]"
+    "output": "Diagram \"CQRS with event sourcing\" · direction LR · 2 nodes, 1 connections, 0 boundaries, 2 simulations\ndescription: \"Commands append events to an event store; projections build read models that queries hit, and an outbound feed shares events.\"\nnodes:\n  \"app\" \"client.mobile\" (\"Mobile App\") \"Banking app\" / \"Commands and queries\" props={\"ratePerSec\":20,\"messageType\":\"Deposit\"} arrivingTypes=[] capabilities=[{\"kind\":\"calls\",\"edge\":\"app-to-gateway\",\"peer\":\"gateway\"}] explanation=undefined\n  \"gateway\" \"kong\" (\"Kong Gateway\") \"API gateway\" / \"Routes by verb\" props={\"latencyMs\":2} arrivingTypes=[\"Deposit\"] capabilities=[{\"kind\":\"calls\",\"edge\":\"gateway-to-command-handler\",\"peer\":\"command-handler\",\"filter\":[\"Deposit\",\"Withdraw\"]},{\"kind\":\"calls\",\"edge\":\"gateway-to-query-api\",\"peer\":\"query-api\",\"filter\":[\"Get*\"]}] explanation=undefined\nconnections:\n  \"app-to-gateway\" \"app\" -> \"gateway\" sync \"HTTPS\" carriedTypes=[\"Deposit\"]\nsimulation \"busy-day\" \"Payday: reads outnumber writes\": {\"kind\":\"constant\",\"ratePerSec\":40,\"durationMs\":8000} from \"app\"; {\"kind\":\"constant\",\"ratePerSec\":10,\"durationMs\":8000} from \"app\"; {\"kind\":\"constant\",\"ratePerSec\":150,\"durationMs\":8000} from \"app\"; {\"kind\":\"constant\",\"ratePerSec\":50,\"durationMs\":8000} from \"app\"; timeline=[{\"atMs\":0,\"action\":{\"do\":\"note\",\"text\":\"Payday. Commands go to the write side; queries never touch it. Each dot is five requests.\",\"focus\":[\"gateway\",\"command-handler\",\"query-api\"]}},{\"atMs\":2500,\"action\":{\"do\":\"note\",\"text\":\"The event store is the source of truth: an append-only log of what happened. Each projection keeps its own position in it.\",\"focus\":[\"event-store\",\"balance-proj\",\"statement-proj\",\"publisher\"],\"pause\":true}},{\"atMs\":6000,\"action\":{\"do\":\"note\",\"text\":\"Queries read denormalized tables, so reads stay fast however long an account's history grows.\",\"focus\":[\"query-api\",\"balances-db\",\"statements\"]}}]; expectations=[{\"id\":\"appended\",\"label\":\"All 400 commands are appended\",\"metric\":{\"node\":\"event-store\",\"field\":\"processed\"},\"op\":\"==\",\"value\":400,\"when\":\"end\"},{\"id\":\"published\",\"label\":\"All 400 events are shared\",\"metric\":{\"node\":\"integration-topic\",\"field\":\"processed\"},\"op\":\"==\",\"value\":400,\"when\":\"end\"},{\"id\":\"statements\",\"label\":\"Statements: 400 entries + 400 searches\",\"metric\":{\"node\":\"statements\",\"field\":\"processed\"},\"op\":\"==\",\"value\":800,\"when\":\"end\"},{\"id\":\"caught-up\",\"label\":\"Projections catch up\",\"metric\":{\"node\":\"event-store\",\"field\":\"lag\"},\"op\":\"==\",\"value\":0,\"when\":\"end\"}]\nsimulation \"rebuild\" \"Rebuild a read model\": {\"kind\":\"constant\",\"ratePerSec\":40,\"durationMs\":10000} from \"app\"; {\"kind\":\"constant\",\"ratePerSec\":100,\"durationMs\":10000} from \"app\"; timeline=[{\"atMs\":0,\"action\":{\"do\":\"note\",\"text\":\"Statements need a new field. Instead of migrating the index, we deploy a new projection and rebuild it from the log.\",\"focus\":[\"statement-proj\",\"statements\"]}},{\"atMs\":2000,\"action\":{\"do\":\"status\",\"node\":\"statement-proj\",\"status\":\"paused\"}},{\"atMs\":2000,\"action\":{\"do\":\"note\",\"text\":\"The old projection stops. New events wait in its subscription; balances and the public feed are unaffected.\",\"focus\":[\"event-store\",\"statement-proj\",\"balance-proj\"]}},{\"atMs\":4000,\"action\":{\"do\":\"status\",\"node\":\"statement-proj\",\"status\":\"up\"}},{\"atMs\":4000,\"action\":{\"do\":\"inject\",\"node\":\"statement-proj\",\"count\":2000,\"messageType\":\"MoneyDeposited\",\"spreadMs\":500}},{\"atMs\":4000,\"action\":{\"do\":\"note\",\"text\":\"Version 2 replays 2,000 historical events from position zero, then picks up the live ones. Statements are briefly stale; nothing is lost.\",\"focus\":[\"statement-proj\",\"statements\"],\"pause\":true}}]; expectations=[{\"id\":\"behind\",\"label\":\"Statements fall behind during the rebuild\",\"metric\":{\"node\":\"event-store\",\"field\":\"lag\",\"group\":\"statements\"},\"op\":\">\",\"value\":0,\"when\":\"at\",\"atMs\":5000},{\"id\":\"balances-current\",\"label\":\"Balances keep up\",\"metric\":{\"node\":\"event-store\",\"field\":\"lag\",\"group\":\"balances\"},\"op\":\"<=\",\"value\":40,\"when\":\"always\"},{\"id\":\"rebuilt\",\"label\":\"History and live events are indexed\",\"metric\":{\"node\":\"statements\",\"field\":\"processed\"},\"op\":\"==\",\"value\":2400,\"when\":\"end\"},{\"id\":\"caught-up\",\"label\":\"The new projection catches up\",\"metric\":{\"node\":\"event-store\",\"field\":\"lag\",\"group\":\"statements\"},\"op\":\"==\",\"value\":0,\"when\":\"end\"}]"
   }
 }

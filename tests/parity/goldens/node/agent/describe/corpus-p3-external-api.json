@@ -1,7 +1,7 @@
 {
   "text": {
     "isError": false,
-    "output": "Diagram \"Managed admission\" · direction LR · 2 nodes, 1 connections, 0 boundaries, 0 simulations\nnodes:\n  \"source\" \"client.browser\" (\"Web Browser\") \"Checkout\" props={\"ratePerSec\":20} capabilities=[{\"kind\":\"calls\",\"edge\":\"call\",\"peer\":\"api\"}] explanation=undefined\n  \"api\" \"generic.external-api\" (\"External API\") \"generic.external-api\" props={\"preset\":\"managed-measured\",\"presetRevision\":\"2026-10-14\",\"latencyMs\":1000,\"failureRate\":0,\"jitter\":0,\"api\":{\"maxInFlight\":2,\"quotas\":[{\"id\":\"local-rate\",\"unit\":\"requests\",\"amount\":10,\"windowMs\":1000,\"algorithm\":\"token-bucket\"}]}} capabilities=[] explanation={\"managed\":\"api\",\"id\":\"api\",\"role\":\"sink\",\"status\":\"up\",\"reason\":\"capacity\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":2,\"offered\":20,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":null,\"seconds\":1,\"utilization\":10,\"growth\":18,\"contributors\":[{\"edge\":\"call\",\"node\":\"source\",\"label\":\"Checkout\",\"rate\":20}],\"target\":0.5,\"changes\":null,\"converged\":true}\nconnections:\n  \"call\" \"source\" -> \"api\" sync"
+    "output": "Diagram \"Managed admission\" · direction LR · 2 nodes, 1 connections, 0 boundaries, 0 simulations\nnodes:\n  \"source\" \"client.browser\" (\"Web Browser\") \"Checkout\" props={\"ratePerSec\":20} arrivingTypes=[] capabilities=[{\"kind\":\"calls\",\"edge\":\"call\",\"peer\":\"api\"}] explanation=undefined\n  \"api\" \"generic.external-api\" (\"External API\") \"generic.external-api\" props={\"preset\":\"managed-measured\",\"presetRevision\":\"2026-10-14\",\"latencyMs\":1000,\"failureRate\":0,\"jitter\":0,\"api\":{\"maxInFlight\":2,\"quotas\":[{\"id\":\"local-rate\",\"unit\":\"requests\",\"amount\":10,\"windowMs\":1000,\"algorithm\":\"token-bucket\"}]}} arrivingTypes=[\"Checkout\"] capabilities=[] explanation={\"managed\":\"api\",\"id\":\"api\",\"role\":\"sink\",\"status\":\"up\",\"reason\":\"capacity\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":2,\"offered\":20,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":null,\"seconds\":1,\"utilization\":10,\"growth\":18,\"contributors\":[{\"edge\":\"call\",\"node\":\"source\",\"label\":\"Checkout\",\"rate\":20}],\"target\":0.5,\"changes\":null,\"converged\":true}\nconnections:\n  \"call\" \"source\" -> \"api\" sync carriedTypes=[\"Checkout\"]"
   },
   "json": {
     "isError": false,
@@ -17,6 +17,7 @@
           "x": 0,
           "y": 130,
           "props": { "ratePerSec": 20 },
+          "arrivingTypes": [],
           "capabilities": [{ "kind": "calls", "edge": "call", "peer": "api" }]
         },
         {
@@ -38,6 +39,7 @@
               ]
             }
           },
+          "arrivingTypes": ["Checkout"],
           "capabilities": [],
           "explanation": {
             "managed": "api",
@@ -77,9 +79,11 @@
               "deadlineMs": 1,
               "retry": { "maxAttempts": 3, "strategy": "exponential", "backoffMs": 100, "retryOn": ["throttled"] }
             }
-          }
+          },
+          "carriedTypes": ["Checkout"]
         }
       ],
+      "messageTypesComplete": true,
       "groups": [],
       "annotations": [],
       "simulations": [],
@@ -88,6 +92,6 @@
   },
   "focus": {
     "isError": false,
-    "output": "Diagram \"Managed admission\" · direction LR · 2 nodes, 1 connections, 0 boundaries, 0 simulations\nnodes:\n  \"source\" \"client.browser\" (\"Web Browser\") \"Checkout\" props={\"ratePerSec\":20} capabilities=[{\"kind\":\"calls\",\"edge\":\"call\",\"peer\":\"api\"}] explanation=undefined\n  \"api\" \"generic.external-api\" (\"External API\") \"generic.external-api\" props={\"preset\":\"managed-measured\",\"presetRevision\":\"2026-10-14\",\"latencyMs\":1000,\"failureRate\":0,\"jitter\":0,\"api\":{\"maxInFlight\":2,\"quotas\":[{\"id\":\"local-rate\",\"unit\":\"requests\",\"amount\":10,\"windowMs\":1000,\"algorithm\":\"token-bucket\"}]}} capabilities=[] explanation={\"managed\":\"api\",\"id\":\"api\",\"role\":\"sink\",\"status\":\"up\",\"reason\":\"capacity\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":2,\"offered\":20,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":null,\"seconds\":1,\"utilization\":10,\"growth\":18,\"contributors\":[{\"edge\":\"call\",\"node\":\"source\",\"label\":\"Checkout\",\"rate\":20}],\"target\":0.5,\"changes\":null,\"converged\":true}\nconnections:\n  \"call\" \"source\" -> \"api\" sync"
+    "output": "Diagram \"Managed admission\" · direction LR · 2 nodes, 1 connections, 0 boundaries, 0 simulations\nnodes:\n  \"source\" \"client.browser\" (\"Web Browser\") \"Checkout\" props={\"ratePerSec\":20} arrivingTypes=[] capabilities=[{\"kind\":\"calls\",\"edge\":\"call\",\"peer\":\"api\"}] explanation=undefined\n  \"api\" \"generic.external-api\" (\"External API\") \"generic.external-api\" props={\"preset\":\"managed-measured\",\"presetRevision\":\"2026-10-14\",\"latencyMs\":1000,\"failureRate\":0,\"jitter\":0,\"api\":{\"maxInFlight\":2,\"quotas\":[{\"id\":\"local-rate\",\"unit\":\"requests\",\"amount\":10,\"windowMs\":1000,\"algorithm\":\"token-bucket\"}]}} arrivingTypes=[\"Checkout\"] capabilities=[] explanation={\"managed\":\"api\",\"id\":\"api\",\"role\":\"sink\",\"status\":\"up\",\"reason\":\"capacity\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":2,\"offered\":20,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":null,\"seconds\":1,\"utilization\":10,\"growth\":18,\"contributors\":[{\"edge\":\"call\",\"node\":\"source\",\"label\":\"Checkout\",\"rate\":20}],\"target\":0.5,\"changes\":null,\"converged\":true}\nconnections:\n  \"call\" \"source\" -> \"api\" sync carriedTypes=[\"Checkout\"]"
   }
 }

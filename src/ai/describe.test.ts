@@ -1,6 +1,16 @@
 import { describe, expect, it } from "vitest";
 import type { DiagramFile } from "../model/types";
 import { describeDiagram } from "./describe";
+import { messageTypesFixture } from "../lab/messageTypesFixture";
+
+it("reports arriving and carried message types in text and JSON", () => {
+  const d = messageTypesFixture();
+  const result = JSON.parse(describeDiagram(d, { format: "json" }));
+  expect(result.nodes.find((n: { id: string }) => n.id === "api").arrivingTypes).toEqual(["Send", "Callback"]);
+  expect(result.edges.find((e: { id: string }) => e.id === "send").carriedTypes).toEqual(["Send", "Callback"]);
+  expect(describeDiagram(d)).toContain('arrivingTypes=["Send","Callback"]');
+  expect(describeDiagram(d)).toContain('carriedTypes=["Send","Callback"]');
+});
 
 const diagram = (): DiagramFile => ({
   format: "diagrams/v1",

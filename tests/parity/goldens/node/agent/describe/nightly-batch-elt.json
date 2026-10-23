@@ -1,7 +1,7 @@
 {
   "text": {
     "isError": false,
-    "output": "Diagram \"Nightly batch ELT\" · direction LR · 10 nodes, 10 connections, 1 boundaries, 2 simulations\ndescription: \"Airflow runs a nightly Airbyte sync from app, CRM and billing sources into Snowflake, then dbt builds marts for Tableau.\"\nnodes:\n  \"airflow\" \"airflow\" (\"Apache Airflow\") \"Airflow\" / \"Nightly DAG · 02:00 UTC\" capabilities=[] explanation=undefined\n  \"app-db\" \"postgres\" (\"PostgreSQL\") \"App database\" / \"Read replica\" props={\"latencyMs\":0,\"messageType\":\"AppTableBatch\"} capabilities=[] explanation=undefined\n  \"crm\" \"salesforce\" (\"Salesforce\") \"Salesforce\" / \"Accounts · opportunities\" props={\"messageType\":\"CrmObjectBatch\"} capabilities=[] explanation=undefined\n  \"billing\" \"stripe\" (\"Stripe\") \"Stripe\" / \"Invoices · subscriptions\" props={\"messageType\":\"BillingObjectBatch\"} capabilities=[] explanation=undefined\n  \"airbyte\" \"airbyte\" (\"Airbyte\") \"Airbyte\" / \"Incremental syncs\" props={\"replicas\":3,\"concurrency\":5,\"latencyMs\":250,\"emits\":\"RawBatch\"} capabilities=[{\"kind\":\"calls\",\"edge\":\"airbyte-to-raw\",\"peer\":\"raw\"}] explanation={\"id\":\"airbyte\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":60,\"offered\":0,\"replicas\":3,\"baseReplicas\":3,\"omittedContributors\":0,\"activeReplicas\":3,\"assignments\":[],\"slots\":5,\"seconds\":0.25,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":3,\"targetReplicas\":3,\"changes\":null,\"converged\":true}\n  \"raw\" \"snowflake\" (\"Snowflake\") \"Raw tables\" / \"RAW schema · 3 sources\" props={\"latencyMs\":0} in \"snowflake\" capabilities=[] explanation=undefined\n  \"dbt\" \"dbt\" (\"dbt\") \"dbt build\" / \"120 models · tests\" props={\"concurrency\":8,\"latencyMs\":400,\"emits\":{\"DbtModel\":\"MartTable\"}} in \"snowflake\" capabilities=[{\"kind\":\"calls\",\"edge\":\"dbt-to-marts\",\"peer\":\"marts\",\"filter\":[\"MartTable\"]}] explanation={\"id\":\"dbt\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":20,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":8,\"seconds\":0.4,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"marts\" \"snowflake\" (\"Snowflake\") \"Marts\" / \"Revenue · pipeline · churn\" props={\"latencyMs\":0} in \"snowflake\" capabilities=[] explanation=undefined\n  \"tableau\" \"tableau\" (\"Tableau\") \"Tableau\" / \"Extract refresh 06:00\" props={} capabilities=[{\"kind\":\"calls\",\"edge\":\"tableau-to-marts\",\"peer\":\"marts\"}] explanation=undefined\n  \"slack\" \"slack\" (\"Slack\") \"#data-alerts\" / \"Failed tests\" props={} capabilities=[] explanation=undefined\nconnections:\n  \"app-db-to-airbyte\" \"app-db\" -> \"airbyte\" async \"Incremental\"\n  \"crm-to-airbyte\" \"crm\" -> \"airbyte\" async \"Bulk API\"\n  \"billing-to-airbyte\" \"billing\" -> \"airbyte\" async \"Events API\"\n  \"airflow-to-airbyte\" \"airflow\" -> \"airbyte\" depends dependency \"1 · Sync sources\"\n  \"airflow-to-dbt\" \"airflow\" -> \"dbt\" depends dependency \"2 · dbt build\"\n  \"airbyte-to-raw\" \"airbyte\" -> \"raw\" sync \"COPY INTO\"\n  \"dbt-to-raw\" \"dbt\" -> \"raw\" depends dependency \"SELECT\"\n  \"dbt-to-marts\" \"dbt\" -> \"marts\" sync \"CREATE TABLE AS\"\n  \"dbt-to-slack\" \"dbt\" -> \"slack\" async \"Test failed\"\n  \"tableau-to-marts\" \"tableau\" -> \"marts\" sync \"Refresh extracts\"\nboundary \"snowflake\" \"Snowflake · ANALYTICS\" (neutral): \"raw\", \"dbt\", \"marts\"\nsimulation \"nightly-run\" \"The nightly run\": {\"kind\":\"burst\",\"count\":150,\"spreadMs\":1500} from \"app-db\"; {\"kind\":\"burst\",\"count\":75,\"spreadMs\":1500} from \"crm\"; {\"kind\":\"burst\",\"count\":75,\"spreadMs\":1500} from \"billing\"; {\"kind\":\"burst\",\"atMs\":7000,\"count\":120,\"spreadMs\":500} from \"dbt\"; timeline=[{\"atMs\":0,\"action\":{\"do\":\"note\",\"text\":\"02:00. Airflow starts the nightly DAG: Airbyte copies whatever changed since yesterday from three sources into raw tables.\",\"focus\":[\"airflow\",\"airbyte\",\"raw\"],\"pause\":true}},{\"atMs\":7000,\"action\":{\"do\":\"note\",\"text\":\"03:00. The load is done, so dbt rebuilds the marts and runs its tests. A failing test posts to Slack.\",\"focus\":[\"airflow\",\"dbt\",\"marts\",\"slack\"]}},{\"atMs\":12000,\"action\":{\"do\":\"note\",\"text\":\"06:00. Tableau refreshes. Simple and cheap, but dashboards show yesterday. Compare the event-driven data platform, where rows land in seconds.\",\"focus\":[\"marts\",\"tableau\"]}}]; expectations=[{\"id\":\"loaded\",\"label\":\"300 batches loaded\",\"metric\":{\"node\":\"raw\",\"field\":\"processed\"},\"op\":\"==\",\"value\":300,\"when\":\"end\"},{\"id\":\"built\",\"label\":\"120 marts built\",\"metric\":{\"node\":\"marts\",\"field\":\"processed\"},\"op\":\"==\",\"value\":120,\"when\":\"end\"},{\"id\":\"alerted\",\"label\":\"A failing test alerts the team\",\"metric\":{\"node\":\"slack\",\"field\":\"processed\"},\"op\":\">\",\"value\":0,\"when\":\"end\"}]\nsimulation \"late-load\" \"Slow source, stale marts\": {\"kind\":\"burst\",\"count\":150,\"spreadMs\":1500} from \"app-db\"; {\"kind\":\"burst\",\"count\":75,\"spreadMs\":1500} from \"crm\"; {\"kind\":\"burst\",\"count\":75,\"spreadMs\":1500} from \"billing\"; {\"kind\":\"burst\",\"atMs\":7000,\"count\":120,\"spreadMs\":500} from \"dbt\"; timeline=[{\"atMs\":0,\"action\":{\"do\":\"note\",\"text\":\"Tonight Salesforce throttles its bulk API, so every sync runs about three times slower.\",\"focus\":[\"crm\",\"airbyte\"]}},{\"atMs\":7000,\"action\":{\"do\":\"note\",\"text\":\"03:00 arrives and the load isn't finished. A time-based schedule starts dbt anyway, so some marts are built from partial data.\",\"focus\":[\"airbyte\",\"raw\",\"dbt\"],\"pause\":true}},{\"atMs\":12000,\"action\":{\"do\":\"note\",\"text\":\"The fix: make dbt wait for the load (a sensor or a data-aware schedule), or stream the data so there's no window to miss.\",\"focus\":[\"airflow\",\"dbt\"]}}]; expectations=[{\"id\":\"overrun\",\"label\":\"The load is unfinished at 03:00\",\"metric\":{\"node\":\"raw\",\"field\":\"processed\"},\"op\":\"<\",\"value\":300,\"when\":\"at\",\"atMs\":7000},{\"id\":\"loaded\",\"label\":\"All 300 batches land eventually\",\"metric\":{\"node\":\"raw\",\"field\":\"processed\"},\"op\":\"==\",\"value\":300,\"when\":\"end\"},{\"id\":\"built\",\"label\":\"dbt built 120 marts anyway\",\"metric\":{\"node\":\"marts\",\"field\":\"processed\"},\"op\":\"==\",\"value\":120,\"when\":\"end\"}]"
+    "output": "Diagram \"Nightly batch ELT\" · direction LR · 10 nodes, 10 connections, 1 boundaries, 2 simulations\ndescription: \"Airflow runs a nightly Airbyte sync from app, CRM and billing sources into Snowflake, then dbt builds marts for Tableau.\"\nnodes:\n  \"airflow\" \"airflow\" (\"Apache Airflow\") \"Airflow\" / \"Nightly DAG · 02:00 UTC\" arrivingTypes=[] capabilities=[] explanation=undefined\n  \"app-db\" \"postgres\" (\"PostgreSQL\") \"App database\" / \"Read replica\" props={\"latencyMs\":0,\"messageType\":\"AppTableBatch\"} arrivingTypes=[] capabilities=[] explanation=undefined\n  \"crm\" \"salesforce\" (\"Salesforce\") \"Salesforce\" / \"Accounts · opportunities\" props={\"messageType\":\"CrmObjectBatch\"} arrivingTypes=[] capabilities=[] explanation=undefined\n  \"billing\" \"stripe\" (\"Stripe\") \"Stripe\" / \"Invoices · subscriptions\" props={\"messageType\":\"BillingObjectBatch\"} arrivingTypes=[] capabilities=[] explanation=undefined\n  \"airbyte\" \"airbyte\" (\"Airbyte\") \"Airbyte\" / \"Incremental syncs\" props={\"replicas\":3,\"concurrency\":5,\"latencyMs\":250,\"emits\":\"RawBatch\"} arrivingTypes=[] capabilities=[{\"kind\":\"calls\",\"edge\":\"airbyte-to-raw\",\"peer\":\"raw\"}] explanation={\"id\":\"airbyte\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":60,\"offered\":0,\"replicas\":3,\"baseReplicas\":3,\"omittedContributors\":0,\"activeReplicas\":3,\"assignments\":[],\"slots\":5,\"seconds\":0.25,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":3,\"targetReplicas\":3,\"changes\":null,\"converged\":true}\n  \"raw\" \"snowflake\" (\"Snowflake\") \"Raw tables\" / \"RAW schema · 3 sources\" props={\"latencyMs\":0} in \"snowflake\" arrivingTypes=[] capabilities=[] explanation=undefined\n  \"dbt\" \"dbt\" (\"dbt\") \"dbt build\" / \"120 models · tests\" props={\"concurrency\":8,\"latencyMs\":400,\"emits\":{\"DbtModel\":\"MartTable\"}} in \"snowflake\" arrivingTypes=[] capabilities=[{\"kind\":\"calls\",\"edge\":\"dbt-to-marts\",\"peer\":\"marts\",\"filter\":[\"MartTable\"]}] explanation={\"id\":\"dbt\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":20,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":8,\"seconds\":0.4,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"marts\" \"snowflake\" (\"Snowflake\") \"Marts\" / \"Revenue · pipeline · churn\" props={\"latencyMs\":0} in \"snowflake\" arrivingTypes=[] capabilities=[] explanation=undefined\n  \"tableau\" \"tableau\" (\"Tableau\") \"Tableau\" / \"Extract refresh 06:00\" props={} arrivingTypes=[] capabilities=[{\"kind\":\"calls\",\"edge\":\"tableau-to-marts\",\"peer\":\"marts\"}] explanation=undefined\n  \"slack\" \"slack\" (\"Slack\") \"#data-alerts\" / \"Failed tests\" props={} arrivingTypes=[] capabilities=[] explanation=undefined\nconnections:\n  \"app-db-to-airbyte\" \"app-db\" -> \"airbyte\" async \"Incremental\" carriedTypes=[]\n  \"crm-to-airbyte\" \"crm\" -> \"airbyte\" async \"Bulk API\" carriedTypes=[]\n  \"billing-to-airbyte\" \"billing\" -> \"airbyte\" async \"Events API\" carriedTypes=[]\n  \"airflow-to-airbyte\" \"airflow\" -> \"airbyte\" depends dependency \"1 · Sync sources\" carriedTypes=[]\n  \"airflow-to-dbt\" \"airflow\" -> \"dbt\" depends dependency \"2 · dbt build\" carriedTypes=[]\n  \"airbyte-to-raw\" \"airbyte\" -> \"raw\" sync \"COPY INTO\" carriedTypes=[]\n  \"dbt-to-raw\" \"dbt\" -> \"raw\" depends dependency \"SELECT\" carriedTypes=[]\n  \"dbt-to-marts\" \"dbt\" -> \"marts\" sync \"CREATE TABLE AS\" carriedTypes=[]\n  \"dbt-to-slack\" \"dbt\" -> \"slack\" async \"Test failed\" carriedTypes=[]\n  \"tableau-to-marts\" \"tableau\" -> \"marts\" sync \"Refresh extracts\" carriedTypes=[]\nboundary \"snowflake\" \"Snowflake · ANALYTICS\" (neutral): \"raw\", \"dbt\", \"marts\"\nsimulation \"nightly-run\" \"The nightly run\": {\"kind\":\"burst\",\"count\":150,\"spreadMs\":1500} from \"app-db\"; {\"kind\":\"burst\",\"count\":75,\"spreadMs\":1500} from \"crm\"; {\"kind\":\"burst\",\"count\":75,\"spreadMs\":1500} from \"billing\"; {\"kind\":\"burst\",\"atMs\":7000,\"count\":120,\"spreadMs\":500} from \"dbt\"; timeline=[{\"atMs\":0,\"action\":{\"do\":\"note\",\"text\":\"02:00. Airflow starts the nightly DAG: Airbyte copies whatever changed since yesterday from three sources into raw tables.\",\"focus\":[\"airflow\",\"airbyte\",\"raw\"],\"pause\":true}},{\"atMs\":7000,\"action\":{\"do\":\"note\",\"text\":\"03:00. The load is done, so dbt rebuilds the marts and runs its tests. A failing test posts to Slack.\",\"focus\":[\"airflow\",\"dbt\",\"marts\",\"slack\"]}},{\"atMs\":12000,\"action\":{\"do\":\"note\",\"text\":\"06:00. Tableau refreshes. Simple and cheap, but dashboards show yesterday. Compare the event-driven data platform, where rows land in seconds.\",\"focus\":[\"marts\",\"tableau\"]}}]; expectations=[{\"id\":\"loaded\",\"label\":\"300 batches loaded\",\"metric\":{\"node\":\"raw\",\"field\":\"processed\"},\"op\":\"==\",\"value\":300,\"when\":\"end\"},{\"id\":\"built\",\"label\":\"120 marts built\",\"metric\":{\"node\":\"marts\",\"field\":\"processed\"},\"op\":\"==\",\"value\":120,\"when\":\"end\"},{\"id\":\"alerted\",\"label\":\"A failing test alerts the team\",\"metric\":{\"node\":\"slack\",\"field\":\"processed\"},\"op\":\">\",\"value\":0,\"when\":\"end\"}]\nsimulation \"late-load\" \"Slow source, stale marts\": {\"kind\":\"burst\",\"count\":150,\"spreadMs\":1500} from \"app-db\"; {\"kind\":\"burst\",\"count\":75,\"spreadMs\":1500} from \"crm\"; {\"kind\":\"burst\",\"count\":75,\"spreadMs\":1500} from \"billing\"; {\"kind\":\"burst\",\"atMs\":7000,\"count\":120,\"spreadMs\":500} from \"dbt\"; timeline=[{\"atMs\":0,\"action\":{\"do\":\"note\",\"text\":\"Tonight Salesforce throttles its bulk API, so every sync runs about three times slower.\",\"focus\":[\"crm\",\"airbyte\"]}},{\"atMs\":7000,\"action\":{\"do\":\"note\",\"text\":\"03:00 arrives and the load isn't finished. A time-based schedule starts dbt anyway, so some marts are built from partial data.\",\"focus\":[\"airbyte\",\"raw\",\"dbt\"],\"pause\":true}},{\"atMs\":12000,\"action\":{\"do\":\"note\",\"text\":\"The fix: make dbt wait for the load (a sensor or a data-aware schedule), or stream the data so there's no window to miss.\",\"focus\":[\"airflow\",\"dbt\"]}}]; expectations=[{\"id\":\"overrun\",\"label\":\"The load is unfinished at 03:00\",\"metric\":{\"node\":\"raw\",\"field\":\"processed\"},\"op\":\"<\",\"value\":300,\"when\":\"at\",\"atMs\":7000},{\"id\":\"loaded\",\"label\":\"All 300 batches land eventually\",\"metric\":{\"node\":\"raw\",\"field\":\"processed\"},\"op\":\"==\",\"value\":300,\"when\":\"end\"},{\"id\":\"built\",\"label\":\"dbt built 120 marts anyway\",\"metric\":{\"node\":\"marts\",\"field\":\"processed\"},\"op\":\"==\",\"value\":120,\"when\":\"end\"}]"
   },
   "json": {
     "isError": false,
@@ -10,7 +10,7 @@
       "description": "Airflow runs a nightly Airbyte sync from app, CRM and billing sources into Snowflake, then dbt builds marts for Tableau.",
       "direction": "LR",
       "nodes": [
-        { "id": "airflow", "stencil": "airflow", "label": "Airflow", "sublabel": "Nightly DAG · 02:00 UTC", "x": 800, "y": 40, "capabilities": [] },
+        { "id": "airflow", "stencil": "airflow", "label": "Airflow", "sublabel": "Nightly DAG · 02:00 UTC", "x": 800, "y": 40, "arrivingTypes": [], "capabilities": [] },
         {
           "id": "app-db",
           "stencil": "postgres",
@@ -19,6 +19,7 @@
           "x": 40,
           "y": 160,
           "props": { "latencyMs": 0, "messageType": "AppTableBatch" },
+          "arrivingTypes": [],
           "capabilities": []
         },
         {
@@ -29,6 +30,7 @@
           "x": 40,
           "y": 320,
           "props": { "messageType": "CrmObjectBatch" },
+          "arrivingTypes": [],
           "capabilities": []
         },
         {
@@ -39,6 +41,7 @@
           "x": 40,
           "y": 480,
           "props": { "messageType": "BillingObjectBatch" },
+          "arrivingTypes": [],
           "capabilities": []
         },
         {
@@ -49,6 +52,7 @@
           "x": 420,
           "y": 320,
           "props": { "replicas": 3, "concurrency": 5, "latencyMs": 250, "emits": "RawBatch" },
+          "arrivingTypes": [],
           "capabilities": [{ "kind": "calls", "edge": "airbyte-to-raw", "peer": "raw" }],
           "explanation": {
             "id": "airbyte",
@@ -85,6 +89,7 @@
           "y": 320,
           "group": "snowflake",
           "props": { "latencyMs": 0 },
+          "arrivingTypes": [],
           "capabilities": []
         },
         {
@@ -96,6 +101,7 @@
           "y": 320,
           "group": "snowflake",
           "props": { "concurrency": 8, "latencyMs": 400, "emits": { "DbtModel": "MartTable" } },
+          "arrivingTypes": [],
           "capabilities": [{ "kind": "calls", "edge": "dbt-to-marts", "peer": "marts", "filter": ["MartTable"] }],
           "explanation": {
             "id": "dbt",
@@ -132,6 +138,7 @@
           "y": 320,
           "group": "snowflake",
           "props": { "latencyMs": 0 },
+          "arrivingTypes": [],
           "capabilities": []
         },
         {
@@ -142,6 +149,7 @@
           "x": 1940,
           "y": 320,
           "props": {},
+          "arrivingTypes": [],
           "capabilities": [{ "kind": "calls", "edge": "tableau-to-marts", "peer": "marts" }]
         },
         {
@@ -152,6 +160,7 @@
           "x": 1180,
           "y": 520,
           "props": {},
+          "arrivingTypes": [],
           "capabilities": []
         }
       ],
@@ -162,7 +171,8 @@
           "to": "airbyte",
           "label": "Incremental",
           "kind": "async",
-          "props": { "travelMs": 300 }
+          "props": { "travelMs": 300 },
+          "carriedTypes": []
         },
         {
           "id": "crm-to-airbyte",
@@ -170,7 +180,8 @@
           "to": "airbyte",
           "label": "Bulk API",
           "kind": "async",
-          "props": { "travelMs": 300 }
+          "props": { "travelMs": 300 },
+          "carriedTypes": []
         },
         {
           "id": "billing-to-airbyte",
@@ -178,26 +189,29 @@
           "to": "airbyte",
           "label": "Events API",
           "kind": "async",
-          "props": { "travelMs": 300 }
+          "props": { "travelMs": 300 },
+          "carriedTypes": []
         },
-        { "id": "airflow-to-airbyte", "from": "airflow", "to": "airbyte", "label": "1 · Sync sources", "kind": "async", "relation": "depends", "targetSide": "top" },
-        { "id": "airflow-to-dbt", "from": "airflow", "to": "dbt", "label": "2 · dbt build", "kind": "async", "relation": "depends", "targetSide": "top" },
+        { "id": "airflow-to-airbyte", "from": "airflow", "to": "airbyte", "label": "1 · Sync sources", "kind": "async", "relation": "depends", "targetSide": "top", "carriedTypes": [] },
+        { "id": "airflow-to-dbt", "from": "airflow", "to": "dbt", "label": "2 · dbt build", "kind": "async", "relation": "depends", "targetSide": "top", "carriedTypes": [] },
         {
           "id": "airbyte-to-raw",
           "from": "airbyte",
           "to": "raw",
           "label": "COPY INTO",
           "kind": "sync",
-          "props": { "travelMs": 200 }
+          "props": { "travelMs": 200 },
+          "carriedTypes": []
         },
-        { "id": "dbt-to-raw", "from": "dbt", "to": "raw", "label": "SELECT", "kind": "async", "relation": "depends" },
+        { "id": "dbt-to-raw", "from": "dbt", "to": "raw", "label": "SELECT", "kind": "async", "relation": "depends", "carriedTypes": [] },
         {
           "id": "dbt-to-marts",
           "from": "dbt",
           "to": "marts",
           "label": "CREATE TABLE AS",
           "kind": "sync",
-          "props": { "travelMs": 200, "filter": ["MartTable"] }
+          "props": { "travelMs": 200, "filter": ["MartTable"] },
+          "carriedTypes": []
         },
         {
           "id": "dbt-to-slack",
@@ -205,7 +219,8 @@
           "to": "slack",
           "label": "Test failed",
           "kind": "async",
-          "props": { "travelMs": 300, "share": 0.05, "emits": "TestFailed" }
+          "props": { "travelMs": 300, "share": 0.05, "emits": "TestFailed" },
+          "carriedTypes": []
         },
         {
           "id": "tableau-to-marts",
@@ -213,9 +228,11 @@
           "to": "marts",
           "label": "Refresh extracts",
           "kind": "sync",
-          "props": { "travelMs": 200 }
+          "props": { "travelMs": 200 },
+          "carriedTypes": []
         }
       ],
+      "messageTypesComplete": true,
       "groups": [
         { "id": "snowflake", "label": "Snowflake · ANALYTICS", "tone": "neutral", "x": 760, "y": 280, "width": 1100, "height": 152 }
       ],
@@ -383,6 +400,6 @@
   },
   "focus": {
     "isError": false,
-    "output": "Diagram \"Nightly batch ELT\" · direction LR · 3 nodes, 2 connections, 1 boundaries, 2 simulations\ndescription: \"Airflow runs a nightly Airbyte sync from app, CRM and billing sources into Snowflake, then dbt builds marts for Tableau.\"\nnodes:\n  \"airflow\" \"airflow\" (\"Apache Airflow\") \"Airflow\" / \"Nightly DAG · 02:00 UTC\" capabilities=[] explanation=undefined\n  \"airbyte\" \"airbyte\" (\"Airbyte\") \"Airbyte\" / \"Incremental syncs\" props={\"replicas\":3,\"concurrency\":5,\"latencyMs\":250,\"emits\":\"RawBatch\"} capabilities=[{\"kind\":\"calls\",\"edge\":\"airbyte-to-raw\",\"peer\":\"raw\"}] explanation={\"id\":\"airbyte\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":60,\"offered\":0,\"replicas\":3,\"baseReplicas\":3,\"omittedContributors\":0,\"activeReplicas\":3,\"assignments\":[],\"slots\":5,\"seconds\":0.25,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":3,\"targetReplicas\":3,\"changes\":null,\"converged\":true}\n  \"dbt\" \"dbt\" (\"dbt\") \"dbt build\" / \"120 models · tests\" props={\"concurrency\":8,\"latencyMs\":400,\"emits\":{\"DbtModel\":\"MartTable\"}} in \"snowflake\" capabilities=[{\"kind\":\"calls\",\"edge\":\"dbt-to-marts\",\"peer\":\"marts\",\"filter\":[\"MartTable\"]}] explanation={\"id\":\"dbt\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":20,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":8,\"seconds\":0.4,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\nconnections:\n  \"airflow-to-airbyte\" \"airflow\" -> \"airbyte\" depends dependency \"1 · Sync sources\"\n  \"airflow-to-dbt\" \"airflow\" -> \"dbt\" depends dependency \"2 · dbt build\"\n… 3 lines omitted"
+    "output": "Diagram \"Nightly batch ELT\" · direction LR · 3 nodes, 2 connections, 1 boundaries, 2 simulations\ndescription: \"Airflow runs a nightly Airbyte sync from app, CRM and billing sources into Snowflake, then dbt builds marts for Tableau.\"\nnodes:\n  \"airflow\" \"airflow\" (\"Apache Airflow\") \"Airflow\" / \"Nightly DAG · 02:00 UTC\" arrivingTypes=[] capabilities=[] explanation=undefined\n  \"airbyte\" \"airbyte\" (\"Airbyte\") \"Airbyte\" / \"Incremental syncs\" props={\"replicas\":3,\"concurrency\":5,\"latencyMs\":250,\"emits\":\"RawBatch\"} arrivingTypes=[] capabilities=[{\"kind\":\"calls\",\"edge\":\"airbyte-to-raw\",\"peer\":\"raw\"}] explanation={\"id\":\"airbyte\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":60,\"offered\":0,\"replicas\":3,\"baseReplicas\":3,\"omittedContributors\":0,\"activeReplicas\":3,\"assignments\":[],\"slots\":5,\"seconds\":0.25,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":3,\"targetReplicas\":3,\"changes\":null,\"converged\":true}\n  \"dbt\" \"dbt\" (\"dbt\") \"dbt build\" / \"120 models · tests\" props={\"concurrency\":8,\"latencyMs\":400,\"emits\":{\"DbtModel\":\"MartTable\"}} in \"snowflake\" arrivingTypes=[] capabilities=[{\"kind\":\"calls\",\"edge\":\"dbt-to-marts\",\"peer\":\"marts\",\"filter\":[\"MartTable\"]}] explanation={\"id\":\"dbt\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":20,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":8,\"seconds\":0.4,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\nconnections:\n  \"airflow-to-airbyte\" \"airflow\" -> \"airbyte\" depends dependency \"1 · Sync sources\" carriedTypes=[]\n  \"airflow-to-dbt\" \"airflow\" -> \"dbt\" depends dependency \"2 · dbt build\" carriedTypes=[]\n… 3 lines omitted"
   }
 }

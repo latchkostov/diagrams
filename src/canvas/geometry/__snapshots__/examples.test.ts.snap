@@ -15574,6 +15574,14 @@ exports[`public examples route cleanly (estimated card sizes) > webhook-ingestio
     "points": [
       {
         "x": 1022,
+        "y": 309,
+      },
+      {
+        "x": 1104,
+        "y": 309,
+      },
+      {
+        "x": 1104,
         "y": 316,
       },
       {
@@ -15603,8 +15611,16 @@ exports[`public examples route cleanly (estimated card sizes) > webhook-ingestio
         "y": 316,
       },
       {
-        "x": 1940,
+        "x": 1870.5,
         "y": 316,
+      },
+      {
+        "x": 1870.5,
+        "y": 309,
+      },
+      {
+        "x": 1940,
+        "y": 309,
       },
     ],
   },
@@ -15617,15 +15633,44 @@ exports[`public examples route cleanly (estimated card sizes) > webhook-ingestio
       },
       {
         "x": 1680.5,
-        "y": 396,
+        "y": 398.5,
       },
       {
         "x": 1670,
-        "y": 396,
+        "y": 398.5,
       },
       {
         "x": 1670,
         "y": 440,
+      },
+    ],
+  },
+  {
+    "id": "workers-to-receiver",
+    "points": [
+      {
+        "x": 1940,
+        "y": 323,
+      },
+      {
+        "x": 1870.5,
+        "y": 323,
+      },
+      {
+        "x": 1870.5,
+        "y": 387.5,
+      },
+      {
+        "x": 1041,
+        "y": 387.5,
+      },
+      {
+        "x": 1041,
+        "y": 323,
+      },
+      {
+        "x": 1022,
+        "y": 323,
       },
     ],
   },
