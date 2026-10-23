@@ -3,8 +3,7 @@ import { messageTypesFixture } from "../../lab/messageTypesFixture";
 import type { DiagramFlowNode } from "../types";
 import { fromFlow, toFlow } from "../convert";
 import { TIP_CHARS, carriedText, carriedTypes, messageTip } from "./carriedTypes";
-import { cachedMessageTypesAt } from "../../model/messageTypeCache";
-import * as propagation from "../../model/messageTypes";
+import { cachedMessageTypesAt } from "../../model/messageTypes";
 import { messageTypesAt } from "../../model/messageTypes";
 import type { DiagramFile } from "../../model/types";
 import { countingReads } from "../../test/complexity";
@@ -14,8 +13,8 @@ it("does not recompute propagation on position, selection or measurement updates
   d.nodes[0].props = { messageType: "CacheTest" };
   const flow = toFlow(d);
   const nodes = flow.nodes.filter((node): node is DiagramFlowNode => node.type === "diagram");
-  const spy = vi.spyOn(propagation, "messageTypesAt");
-  try {
+  // Every analysis is a new object: returning the same one proves nothing was recomputed.
+  {
     const first = carriedTypes(nodes, flow.edges);
     const moved = nodes.map((node) => ({
       ...node,
@@ -29,17 +28,16 @@ it("does not recompute propagation on position, selection or measurement updates
         flow.edges.map((edge) => ({ ...edge, selected: true })),
       ),
     ).toBe(first);
-    expect(
-      cachedMessageTypesAt({ ...d, nodes: d.nodes.map((node) => ({ ...node, x: 123, y: 456 })) }).carried.get("send"),
-    ).toContain("CacheTest");
-    expect(spy).toHaveBeenCalledTimes(1);
+    const repositioned = cachedMessageTypesAt({ ...d, nodes: d.nodes.map((node) => ({ ...node, x: 123, y: 456 })) });
+    expect(repositioned).toBe(first);
+    expect(repositioned.carried.get("send")).toContain("CacheTest");
     const edited = flow.edges.map((edge) =>
       edge.id === "send" ? { ...edge, data: { ...edge.data!, props: { filter: ["CacheTest"] } } } : edge,
     );
-    expect(carriedTypes(moved, edited).carried.get("send")).toEqual(new Set(["CacheTest"]));
-    expect(spy).toHaveBeenCalledTimes(2);
-  } finally {
-    spy.mockRestore();
+    const recomputed = carriedTypes(moved, edited);
+    expect(recomputed).not.toBe(first);
+    expect(recomputed.carried.get("send")).toEqual(new Set(["CacheTest"]));
+    expect(carriedTypes(moved, edited)).toBe(recomputed);
   }
 });
 
@@ -56,7 +54,6 @@ it("answers pan, zoom and drag store updates without serializing or re-reading t
   const metadata = () => ({ simulations: flow.meta.simulations, planning: flow.meta.planning });
   const first = carriedTypes(nodes.items, edges.items, metadata());
   const stringify = vi.spyOn(JSON, "stringify");
-  const analysis = vi.spyOn(propagation, "messageTypesAt");
   try {
     const read = nodes.reads() + edges.reads();
     // A transform-only update hands every edge the same arrays (and a fresh context object).
@@ -67,15 +64,12 @@ it("answers pan, zoom and drag store updates without serializing or re-reading t
     const dragged = flow.nodes.map((node) => ({ ...node, position: { x: node.position.x + 5, y: 9 }, dragging: true }));
     expect(carriedTypes(dragged, edges.items, metadata())).toBe(first);
     expect(edges.reads()).toBe(edgeReads);
-    // The inspector reads the dragged canvas through fromFlow: same propagation, nothing serialized.
-    expect(cachedMessageTypesAt(fromFlow(flow.meta, dragged, flow.edges)).carried.get("send")).toEqual(
-      new Set(["Send", "Callback"]),
-    );
+    // The inspector reads the dragged canvas through fromFlow: the same analysis object, nothing serialized.
+    expect(cachedMessageTypesAt(fromFlow(flow.meta, dragged, flow.edges))).toBe(first);
+    expect(first.carried.get("send")).toEqual(new Set(["Send", "Callback"]));
     expect(stringify).not.toHaveBeenCalled();
-    expect(analysis).not.toHaveBeenCalled();
   } finally {
     stringify.mockRestore();
-    analysis.mockRestore();
   }
 });
 

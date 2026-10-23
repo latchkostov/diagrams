@@ -1,6 +1,6 @@
 import { TypePicker } from "../../components/MessageTypePicker";
 import { t } from "../../i18n";
-import { cachedMessageTypesAt } from "../../model/messageTypeCache";
+import { cachedMessageTypesAt } from "../../model/messageTypes";
 import { useLayoutEffect, useRef, useState } from "react";
 import type { DiagramFile } from "../../model/types";
 import type { EditorApi } from "../../editor/types";
@@ -104,7 +104,7 @@ export function NodeMessages({
     const target = input === undefined ? null : ruleControls.current.get(input)?.querySelector("button");
     if (!target) return;
     rekeyed.current = undefined;
-    controller.dispatch({ type: "inspector.ruleRekeyed", target });
+    controller.dispatch({ type: "inspector.rule", target });
   });
   // Declared after the effect above, so a move it requests runs in this same commit.
   useLayoutEffect(() => controller.rendered());
@@ -139,7 +139,7 @@ export function NodeMessages({
       ];
     const target = neighbor && ruleControls.current.get(neighbor[0])?.querySelector<HTMLButtonElement>("button");
     const destination = target || addButton.current;
-    if (destination) controller.dispatch({ type: "inspector.ruleRemoved", target: destination });
+    if (destination) controller.dispatch({ type: "inspector.rule", target: destination });
   };
   const arriving = [...(types.arriving.get(nodeId) ?? [])];
   // Shared by every row, built once per render: rows never rescan each other.
@@ -189,6 +189,8 @@ export function NodeMessages({
               onChange={(value) => {
                 if (!value[0] || assigned.has(value[0])) return;
                 rekeyed.current = value[0];
+                // A rule appended after the page keeps its place under its new incoming type.
+                if (input === added) setAdded(value[0]);
                 save(rows.map((row, j) => (j === i ? [value[0], output] : row)));
               }}
             />
@@ -247,3 +249,13 @@ export function NodeMessages({
     </div>
   );
 }
+
+/** One lazy entry for both inspector panels: a connection's messages, or a node's. */
+export function MessageFields(
+  props: Parameters<typeof EdgeMessages>[0] | (Parameters<typeof NodeMessages>[0] & { edgeId?: undefined }),
+) {
+  return props.edgeId === undefined ? <NodeMessages {...props} /> : <EdgeMessages {...props} />;
+}
+
+/** The edge hover reader shares this chunk: message-type UI loads once, on intent. */
+export { MessageTip } from "../edges/carriedTypes";
