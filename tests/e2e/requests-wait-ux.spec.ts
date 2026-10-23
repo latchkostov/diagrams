@@ -43,6 +43,9 @@ test("call fields take the first keyboard pass while planning downloads, with st
     const section = page.getByTestId("inspector-section-edge-simulation");
     await section.focus();
     await section.press("Enter");
+    // This case holds planning, while the independently loaded Request fields must be ready for its first Tab.
+    await expect(page.getByTestId("inspector-field-wait")).toBeVisible();
+    await expect(section).toBeFocused();
     await page.keyboard.press("Tab");
     await expect(page.getByTestId("inspector-field-wait")).toBeFocused();
     await page.keyboard.press("Tab");

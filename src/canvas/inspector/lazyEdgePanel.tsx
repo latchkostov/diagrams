@@ -7,7 +7,7 @@ import { notify } from "../../interop/ui/toast";
 
 const DeferredEdgePanel = lazyComponent(
   () => import("./EdgePanel").then((m) => m.EdgePanel),
-  (props, status) => <PendingEdge owner={props.edge.id} request={props.edge.data?.kind === "sync"} {...status} />,
+  (props, status) => <PendingEdge owner={props.edge.id} {...status} />,
 );
 
 export function EdgePanel(props: ComponentProps<typeof DeferredEdgePanel>) {
@@ -15,7 +15,7 @@ export function EdgePanel(props: ComponentProps<typeof DeferredEdgePanel>) {
 }
 
 /** Recovery ships with the shell; the interaction controller holds naming until the deferred field arrives. */
-function PendingEdge({ owner, request, failed, retry: load }: LoadStatus & { owner: string; request: boolean }) {
+function PendingEdge({ owner, failed, retry: load }: LoadStatus & { owner: string }) {
   const interaction = useInteraction();
   const retry = useCallback(() => {
     interaction?.dispatch({ type: "panel.field", panel: "inspector", field: "inspector-field-label" });
@@ -38,10 +38,6 @@ function PendingEdge({ owner, request, failed, retry: load }: LoadStatus & { own
             {t("hover.retry")}
           </button>
         </>
-      ) : request ? (
-        <p className="insp-note" role="status" aria-live="polite" data-testid="call-fields-loading">
-          {t("common.loading")}
-        </p>
       ) : (
         t("common.loading")
       )}

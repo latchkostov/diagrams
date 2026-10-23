@@ -20,17 +20,18 @@ The designer review identified and the implementation corrected: missing first-l
 
 The new `inspector-layout.spec.ts` covers all representative node summaries, usable identity fields while Simulation downloads, measured 16 px complete-field gaps and 6 px hint gaps, live summary updates, paired/stacked layouts, semantic retry fieldsets, six light/dark axe cases, Arabic chevrons and long-string/narrow-fact overflow. The fixture is available as the Lab's Inspector layout preset.
 
-Three existing assertions intentionally follow the new structure:
+Three existing assertions intentionally follow the new structure; a fourth test gains a readiness precondition:
 
 - `planning-p1.spec.ts`: the combined inline capacity/formula check now checks the same capacity and the exact separate formula value.
 - `inspector-live.spec.ts`: checks the exact Live title and the toggle's accessible name, which now includes the status chip placed before the right chevron.
 - `round3.test.ts`: expects the same final peer inside the new `strong` element; the indexed-lookup bound stays unchanged.
+- `requests-wait-ux.spec.ts`: waits for Request fields before pressing Tab while the planning download remains held; every focus and geometry assertion stays unchanged.
 
 The rhythm regression is verified against a production bundle with the field gap temporarily restored to 6 px, then the implementation is restored. Required Linux repeats, parity, static checks and bundle measurements are recorded in the delivery report.
 
 ## Choices rejected
 
-The Linux load pass also preserves the existing 640 px field-width cap on ultrawide sheets. Request fields now arrive with the deferred edge panel, so its first keyboard pass cannot outrun a second chunk download. The existing request-loading marker follows that panel's loading state; held-download tests cover it.
+The Linux load pass also preserves the existing 640 px field-width cap on ultrawide sheets. Request fields retain their independent download and Retry contract. The first keyboard-pass test waits for those fields while keeping planning blocked, then keeps the exact focus and position assertions. Eager Request fields were rejected because they prevented the Inspector from remaining usable while that independent download was held.
 
 No new global controls, control restyling, deeper indentation or forced field reordering. Existing keyboard order remains intact. Deferring the entire node panel shifted shared code into Live and exceeded its bundle budget, so only Simulation fields are deferred. Bundle thresholds are unchanged.
 

@@ -20,7 +20,7 @@ import { SettingsEditor } from "./SettingsEditor";
 import { SimInput } from "./SimulationFields";
 import { type InspectorProps } from "./types";
 import { useNameFields } from "./useNameFields";
-import { useLayoutEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useLayoutEffect, useState, useSyncExternalStore } from "react";
 import { useInteraction } from "../interaction/useInteraction";
 import { type EditorApi } from "../../editor/types";
 import { relationLabel } from "../../i18n/chrome";
@@ -28,7 +28,6 @@ import { inferRelation } from "../../stencils/relations";
 import { revisionAtLeast } from "../../model/revisions";
 import { routingEnabled } from "../../model/requestRouting";
 import { MessageFields } from "./lazyMessageFields";
-import { CallWaitFields } from "./CallWaitFields";
 import { callPolicy } from "../../sim/callPolicy";
 import type { EdgeSimProps } from "../../sim/types";
 import { planningHost } from "../../live/planningHost";
@@ -36,7 +35,20 @@ const noSubscribe = () => () => {};
 const noState = () => null;
 
 const EdgeAdvanced = lazyComponent(() => import("./EdgeAdvanced").then((m) => m.EdgeAdvanced));
-// Request controls arrive with this deferred panel, so its first Tab reaches While waiting even under load.
+/**
+ * A Request's wait, timeout, pool and retry fields: their own chunk, asked for as its inspector opens. While they
+ * download, a polite status says so (as slow motion's does); a failed download offers Retry in a toast.
+ */
+const CallWaitFields = lazyComponent(
+  () => import("./CallWaitFields").then((m) => m.CallWaitFields),
+  (_, { failed }) =>
+    failed ? null : (
+      <p className="insp-note" role="status" aria-live="polite" data-testid="call-fields-loading">
+        {t("common.loading")}
+      </p>
+    ),
+  true,
+);
 
 export function EdgePanel({ edge, editor, nodeLabel, meta, readDiagram }: InspectorProps & { edge: DiagramFlowEdge }) {
   const interaction = useInteraction();
@@ -85,6 +97,10 @@ export function EdgePanel({ edge, editor, nodeLabel, meta, readDiagram }: Inspec
         label: t("inspector.shareOfMessages"),
         value: `${typeof props.share === "number" ? Math.round(props.share * 1000) / 10 : 100}%`,
       });
+  // On intent: by the time the Simulation section opens, its fields are usually here.
+  useEffect(() => {
+    if (requestWait) CallWaitFields.preload();
+  }, [requestWait]);
   const routeCaller =
     data.kind === "sync" && (sourceRole === "source" || sourceRole === "processor" || sourceRole === "none");
   return (

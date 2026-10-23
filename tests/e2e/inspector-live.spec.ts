@@ -33,7 +33,6 @@ for (const panel of ["EdgePanel", "lazyEdgePanel", "NodeIdentity"] as const) {
       await waitForStableViewport(page);
       await page.getByTestId(panel === "NodeIdentity" ? "node-caller" : "edge-call").dblclick({ force: true });
       await expect.poll(() => requested).toBe(true);
-      if (panel === "EdgePanel") await expect(page.getByTestId("call-fields-loading")).toBeVisible();
       await page.keyboard.type("test label");
       if (finish !== "typing") await page.keyboard.press(finish);
       release();
