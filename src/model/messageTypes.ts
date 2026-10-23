@@ -6,6 +6,7 @@ import {
   outputType,
   deadLetterRoutes,
   simulationSetup,
+  isDlqEdge,
   type CompiledEdge,
   type ForwardingMode,
 } from "../sim/topology";
@@ -100,7 +101,7 @@ interface MessageScenario {
 
 const processor = (role: SimRole) => role === "processor" || role === "none";
 /** The type a node's own traffic carries, as the engine resolves it (src/sim/defaults.ts). */
-const ownType = (node: DiagramNode | undefined) =>
+const ownType = (node: Pick<DiagramNode, "label" | "props"> | undefined) =>
   typeof node?.props?.messageType === "string" ? node.props.messageType : node?.label || "Message";
 
 /**
@@ -525,23 +526,71 @@ function configuredDiagram(diagram: DiagramFile, simulation: Simulation): Diagra
 // The shared routing-content cache lives here, in the analysis's own chunk: no separate chunk for the readers.
 /**
  * Message semantics read only these fields. The editor replaces an element (and its props) on every edit and never
- * mutates one, so a snapshot compares references and short strings: no serialization, no allocation on a hit.
- * Moving, measuring or selecting elements reuses the result; renaming a source's label, a subtitle (dead-letter
- * routes are inferred from target names), editing props, a connection or the saved simulations does not.
+ * mutates one, so a snapshot compares references and short strings without serializing the graph.
+ * Only forwarding properties invalidate propagation. A source's fallback type and inferred dead-letter names
+ * matter; ordinary labels, latency, geometry and selection do not. Nested routing values are immutable too.
  */
+const forwardingKeys = [
+  "emits",
+  "messageType",
+  "trafficMix",
+  "routeTable",
+  "filter",
+  "requestFilter",
+  "requestRouteId",
+  "dlq",
+  "share",
+  "deny",
+] as const;
+const inferenceEdge = { id: "", from: "", to: "" };
+const noImplicitLabels: ReadonlySet<string> = new Set();
+const implicitLabels = new WeakMap<Simulation[], ReadonlySet<string>>();
+/** Saved injections without a type use the injected node's label too, even when it isn't a traffic source. */
+export function implicitMessageLabels(simulations: DiagramFile["simulations"]): ReadonlySet<string> {
+  if (!simulations) return noImplicitLabels;
+  let labels = implicitLabels.get(simulations);
+  if (!labels) {
+    const found = new Set<string>();
+    for (const simulation of simulations) {
+      for (const input of simulation.traffic) if (input.messageType === undefined) found.add(input.node);
+      for (const { action } of simulation.timeline ?? [])
+        if (action.do === "inject" && action.messageType === undefined) found.add(action.node);
+    }
+    implicitLabels.set(simulations, (labels = found));
+  }
+  return labels;
+}
+export const sameForwardingProps = (a?: Record<string, unknown>, b?: Record<string, unknown>) =>
+  a === b || forwardingKeys.every((key) => a?.[key] === b?.[key]);
 export const sameRoutingFields = (
   a: Pick<DiagramNode, "stencil" | "label" | "sublabel" | "props">,
   b: Pick<DiagramNode, "stencil" | "label" | "sublabel" | "props">,
-) => a.stencil === b.stencil && a.label === b.label && a.sublabel === b.sublabel && a.props === b.props;
-const sameNode = (a: DiagramNode, b: DiagramNode) => a === b || (a.id === b.id && sameRoutingFields(a, b));
+  injectedLabel = false,
+) => {
+  if (a === b) return true;
+  if (a.stencil !== b.stencil || !sameForwardingProps(a.props, b.props)) return false;
+  if (a.label === b.label && a.sublabel === b.sublabel) return true;
+  if (injectedLabel && a.label !== b.label) return false;
+  const role = stencilRole(a.stencil);
+  if (role === "source" && ownType(a) !== ownType(b)) return false;
+  // Reuse playback's inference, including matches spanning the label/subtitle boundary.
+  return isDlqEdge(inferenceEdge, "queue", a, role) === isDlqEdge(inferenceEdge, "queue", b, role);
+};
+const sameNode = (a: DiagramNode, b: DiagramNode, labels: ReadonlySet<string>) =>
+  a === b || (a.id === b.id && sameRoutingFields(a, b, labels.has(a.id)));
+export const sameEdgeRoutingFields = (
+  a: Pick<DiagramEdge, "kind" | "relation" | "props">,
+  b: Pick<DiagramEdge, "kind" | "relation" | "props">,
+) => a.kind === b.kind && a.relation === b.relation && sameForwardingProps(a.props, b.props);
 const sameEdge = (a: DiagramEdge, b: DiagramEdge) =>
-  a === b ||
-  (a.id === b.id &&
-    a.from === b.from &&
-    a.to === b.to &&
-    a.kind === b.kind &&
-    a.relation === b.relation &&
-    a.props === b.props);
+  a === b || (a.id === b.id && a.from === b.from && a.to === b.to && sameEdgeRoutingFields(a, b));
+
+type RoutingSnapshot = Pick<DiagramFile, "nodes" | "edges" | "planning" | "simulations">;
+export const sameMessageRouting = (a: RoutingSnapshot, b: RoutingSnapshot) =>
+  a.planning === b.planning &&
+  a.simulations === b.simulations &&
+  sameElements(a.nodes, b.nodes, (x, y) => sameNode(x, y, implicitMessageLabels(a.simulations))) &&
+  sameElements(a.edges, b.edges, sameEdge);
 
 export function sameElements<T>(a: readonly T[], b: readonly T[], same: (x: T, y: T) => boolean): boolean {
   if (a.length !== b.length) return false;
@@ -561,14 +610,7 @@ const snapshots: Snapshot[] = [];
 
 /** The same propagation while the routing content is unchanged. Shared by inspector and hover readers. */
 export function cachedMessageTypesAt(diagram: DiagramFile): MessageTypes {
-  for (const snapshot of snapshots)
-    if (
-      snapshot.planning === diagram.planning &&
-      snapshot.simulations === diagram.simulations &&
-      sameElements(snapshot.nodes, diagram.nodes, sameNode) &&
-      sameElements(snapshot.edges, diagram.edges, sameEdge)
-    )
-      return snapshot.result;
+  for (const snapshot of snapshots) if (sameMessageRouting(snapshot, diagram)) return snapshot.result;
   const result = messageTypesAt(diagram);
   // A few recent semantic snapshots cover undo and several simultaneous canvases without retaining a history.
   snapshots.unshift({

@@ -111,6 +111,7 @@ export function NodePanel({
       />
 
       <NodeSimulation
+        paused={namingActive}
         reveal={focus?.name === "autoscaling-target" ? focus.seq : undefined}
         node={node}
         editor={editor}

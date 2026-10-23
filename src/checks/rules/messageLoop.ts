@@ -1,5 +1,22 @@
 import type { CheckRule, Finding } from "../types";
 import type { MessageLoop } from "../../model/messageTypes";
+import { findingBudget, findingName, omission } from "../findingBudget";
+
+/** Every authored string occurrence that the finding will copy, before building its text or elements array. */
+function* outputStrings(loop: MessageLoop, type: string, node: string) {
+  yield loop.node; // id suffix
+  yield loop.node; // target
+  yield loop.node; // first element
+  yield type;
+  yield node; // message
+  yield type;
+  yield node; // messageLoop metadata
+  for (const step of loop.steps) {
+    yield step.from;
+    yield step.to;
+    yield step.edge;
+  }
+}
 
 export const messageLoop: CheckRule = {
   id: "message-loop",
@@ -10,29 +27,34 @@ export const messageLoop: CheckRule = {
     // Automatic fixes are quarantined: transition membership cannot prove per-input path preservation.
     // Keep the verifier in messageLoopFix.ts for docs/backlog/2026-10-23-message-loop-fix-quarantine.md.
     // One finding per node, with manual guidance for every typed loop reported there.
-    const byNode = new Map<string, MessageLoop[]>();
+    const byNode = new Map<string, MessageLoop>();
     for (const loop of types.loops) {
-      const list = byNode.get(loop.node);
-      if (list) list.push(loop);
-      else byNode.set(loop.node, [loop]);
+      if (!byNode.has(loop.node)) byNode.set(loop.node, loop);
     }
-    const findings: Finding[] = [...byNode.values()].map((loops) => {
-      const loop = loops[0];
-      const node = ctx.name(loop.node);
-      const message = `${loop.type} messages loop back to ${node}: each one is sent again.`;
-      return {
+    const budget = findingBudget();
+    let omitted = 0;
+    const findings: Finding[] = [];
+    for (const loop of byNode.values()) {
+      const node = findingName(ctx.name(loop.node));
+      const type = findingName(loop.type);
+      if (!budget.take(outputStrings(loop, type, node))) {
+        omitted++;
+        continue;
+      }
+      findings.push({
         id: `message-loop:${loop.node}`,
         rule: "message-loop" as const,
         severity: "warning" as const,
         target: loop.node,
         elements: [...new Set([loop.node, ...loop.steps.flatMap((step) => [step.from, step.to, step.edge])])],
         title: "Messages loop back",
-        message,
-        messageLoop: { type: loop.type, node },
+        message: `${type} messages loop back to ${node}: each one is sent again.`,
+        messageLoop: { type, node },
         rationale:
           "No single filter or rename was verified to preserve the other message paths. Choose where the callback should stop, then check again.",
-      };
-    });
+      });
+    }
+    if (omitted) findings.push(omission("message-loop", omitted));
     if (!types.complete)
       findings.push({
         omitted: 1,
