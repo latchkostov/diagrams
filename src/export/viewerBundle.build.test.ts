@@ -5,7 +5,29 @@ import { buildViewerBundle } from "../../scripts/viewer-bundle";
 
 describe("static platform viewer", () => {
   it("builds deterministic external assets and self-hosted fonts without workers or editing", async () => {
-    const files = await buildViewerBundle(resolve("."));
+    const modules: string[] = [];
+    const files = await buildViewerBundle(resolve("."), {
+      plugins: [
+        {
+          name: "viewer-module-regression",
+          generateBundle(_options, bundle) {
+            for (const chunk of Object.values(bundle))
+              if (chunk.type === "chunk")
+                modules.push(
+                  ...Object.entries(chunk.modules)
+                    .filter(([, module]) => module.renderedLength > 0)
+                    .map(([id]) => id.replaceAll("\\", "/")),
+                );
+          },
+        },
+      ],
+    });
+    expect(modules.some((id) => id.endsWith("/src/editor/builtinActions.ts"))).toBe(false);
+    for (const name of ["router", "shaped"])
+      expect(
+        modules.some((id) => id.endsWith(`/src/canvas/geometry/${name}.ts`)),
+        name,
+      ).toBe(true);
     vi.stubEnv("VITE_BRAND_NAME", "UNEXPECTED_VIEWER_BRAND");
     vi.stubEnv("VITE_E2E", "1");
     vi.stubEnv("VITE_COLLAB", "1");

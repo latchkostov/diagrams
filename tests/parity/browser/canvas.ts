@@ -78,7 +78,7 @@ export async function settledCanvas(page: Page, root = "canvas-wrap"): Promise<D
         );
         const ready = await page.getByTestId(root).evaluate(
           (scope) =>
-            !scope.querySelector('[data-route-pending="true"]') &&
+            !scope.querySelector("[data-route-pending]") &&
             scope.dataset.fitPending !== "true" &&
             scope.dataset.panePending !== "true" &&
             [...scope.querySelectorAll<HTMLElement>('[data-testid^="rf__node-"]')].every((el) => {

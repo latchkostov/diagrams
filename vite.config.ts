@@ -201,7 +201,7 @@ export default defineConfig({
             // across manual groups creates a dependency cycle and wastes compression headroom.
             {
               name: "native",
-              test: /[/\\]src[/\\](?:interop[/\\]native|stencils[/\\](?:roles|catalog|vendorCatalog|vendorParents)|model[/\\](?:types|kedaBindings|resourceBudget|autoscalingSchema|autoscaling|faults|brokerRoutes|checks|admissionSchema|admission|ids|relations|revisions|jsonSchema|simProps|routingValidation|resourceValidation))\.ts$/,
+              test: /[/\\]src[/\\](?:interop[/\\]native|stencils[/\\](?:roles|catalog|vendorCatalog|vendorParents)|model[/\\](?:edgeRoute|types|kedaBindings|resourceBudget|autoscalingSchema|autoscaling|faults|brokerRoutes|checks|admissionSchema|admission|ids|relations|revisions|jsonSchema|simProps|routingValidation|resourceValidation))\.ts$/,
               includeDependenciesRecursively: false,
             },
             // The headless core stays separate in source, but shares the browser's existing runtime request.

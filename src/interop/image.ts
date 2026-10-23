@@ -12,7 +12,7 @@ import { dataUrlToBlob } from "./files";
 import { holdInput } from "../lib/inputHold";
 import type { AnnotationShape } from "../model/types";
 import { whenShapeGeometryReady } from "../canvas/shapes/readiness";
-import { whenEdgeGeometryReady } from "../canvas/edges/readiness";
+import { whenEdgeGeometryReady } from "../canvas/edges/imageReadiness";
 import { geometrySnapshot } from "../canvas/shapes/runtime";
 import { t } from "../i18n";
 

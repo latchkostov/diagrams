@@ -14,9 +14,11 @@ import { productionBuild } from "../test/productionBuild";
 
 /** Never in the startup JavaScript. */
 const NOT_AT_STARTUP: [string, RegExp][] = [
+  ["saved-route authoring schema", /[/\\]src[/\\]model[/\\]edgeRouteSchema\.ts$/],
+  ["saved-route image readiness", /[/\\]src[/\\]canvas[/\\]edges[/\\]imageReadiness\.ts$/],
+  ["selection route reset", /[/\\]src[/\\]palette[/\\]routeActions\.ts$/],
   ["node simulation fields", /[/\\]src[/\\]canvas[/\\]inspector[/\\]SimulationFields\.tsx$/],
   ["slow-motion scrubber", /[/\\]src[/\\]live[/\\]slowmo[/\\]SlowTimeline\.tsx$/],
-  ["selection route reset", /[/\\]src[/\\]palette[/\\]routeActions\.ts$/],
   ["stencil artwork URLs", /[/\\]src[/\\]stencils[/\\]iconUrls\.ts$/],
   ["message type inspector", /[/\\]src[/\\]canvas[/\\]inspector[/\\]MessageFields\.tsx$/],
   ["message type picker", /[/\\]src[/\\]components[/\\]MessageTypePicker\.tsx$/],

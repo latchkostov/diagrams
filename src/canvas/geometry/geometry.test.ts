@@ -772,7 +772,7 @@ it("keeps fixed bends when opposing stubs overlap", () => {
     ).get("fixed"),
   ).toEqual(fixed);
 });
-it("reports pending headless saved routes until their geometry is injected", () => {
+it("reports pending headless saved routes until their geometry is injected", async () => {
   const input: RouteInput = {
     nodes: [
       { id: "a", rect: card(0, 0) },
@@ -784,4 +784,27 @@ it("reports pending headless saved routes until their geometry is injected", () 
   const ready = routeDiagram({ ...input, geometry });
   expect(ready.pending.size).toBe(0);
   expect(ready.get("e")?.points).toContainEqual({ x: 110, y: 500 });
+  const { whenRouteGeometryReady } = await import("./shapedRuntime");
+  expect(routeDiagram(await whenRouteGeometryReady(input))).toEqual(ready);
+  expect(routeDiagram(input).pending).toEqual(new Set(["e"]));
+});
+
+it("handles a large fixed lane crossed by one automatic route without recursive unions", () => {
+  const routes = new Map<string, Point[]>();
+  for (let i = 0; i < 1200; i++)
+    routes.set(
+      `fixed-${i}`,
+      Array.from({ length: 64 }, (_, k) => ({
+        x: k % 4 < 2 ? 0 : 100,
+        y: i * 600 + Math.floor((k + 1) / 2) * 10,
+      })),
+    );
+  const fixed = new Set(routes.keys());
+  routes.set("auto", [
+    { x: 0, y: -1000 },
+    { x: 0, y: 720_000 },
+  ]);
+  const result = nudgeRoutes(routes, [], { fixed });
+  expect(result.size).toBe(routes.size);
+  for (const id of fixed) expect(result.get(id)).toEqual(routes.get(id));
 });

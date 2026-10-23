@@ -44,7 +44,8 @@ function FlowEdgeImpl(props: EdgeProps<DiagramFlowEdge>) {
     if (!custom && !dependency) return;
     requireEdgeModules(custom, dependency);
   }, [custom, dependency]);
-  const Details = useSyncExternalStore(subscribeEdgeDetails, edgeDetailsSnapshot, edgeDetailsSnapshot);
+  const detailsSnapshot = useCallback(() => (dependency ? edgeDetailsSnapshot() : undefined), [dependency]);
+  const Details = useSyncExternalStore(subscribeEdgeDetails, detailsSnapshot, detailsSnapshot);
   const route = useEdgeRoute(id, useRoutingOptions());
   const dep = useStore(useCallback((s: ReactFlowState) => relationInfo(s.edges as DiagramFlowEdge[]).get(id), [id]));
   const sourceStencil = useStore(
@@ -60,7 +61,7 @@ function FlowEdgeImpl(props: EdgeProps<DiagramFlowEdge>) {
   const tooltip = useTooltip(edgeFocused);
   const card = tooltip.open;
   const kind = data?.kind ?? "async";
-  if (!route) return custom && !routeGeometry ? <g data-route-pending="true" data-route-module="shaped" /> : null;
+  if (!route) return custom && !routeGeometry ? <g data-route-pending="shaped" /> : null;
   const { path, label } = route;
   const mid = label ?? pointAlong(route.points, 0.5).point;
   // A firewall rule that denies: a "no entry" glyph just after the source, so it's never colour alone.
@@ -163,8 +164,7 @@ function FlowEdgeImpl(props: EdgeProps<DiagramFlowEdge>) {
       }
       data-testid={`edge-${id}`}
       data-route={route.custom ? "custom" : undefined}
-      data-route-pending={dependency && !Details ? "true" : undefined}
-      data-route-module={dependency && !Details ? "details" : undefined}
+      data-route-pending={dependency && !Details ? "details" : undefined}
       data-source-side={data?.sourceSide}
       data-target-side={data?.targetSide}
       data-relation={relation ?? undefined}

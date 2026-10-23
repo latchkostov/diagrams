@@ -73,6 +73,13 @@ const FORBIDDEN: [string, RegExp][] = [
  * ("missing export"), and the module itself coming back fails it too (FORBIDDEN, below).
  */
 export const EDITOR_ONLY: { name: string; path: string; stub: (root: string) => string }[] = [
+  // Read-only canvases never open editing menus or quick-add. In particular, saved-route
+  // rendering must not carry the actions that author and reset those routes.
+  {
+    name: "the editing action catalog",
+    path: "/src/editor/builtinActions.ts",
+    stub: () => "export const builtinActions = () => []; export const quickAddMenu = () => [];",
+  },
   { name: "the inspector", path: "/src/canvas/Inspector.tsx", stub: () => "export const Inspector = () => null;" },
   {
     name: "the docked node Live readout",

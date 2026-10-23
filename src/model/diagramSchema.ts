@@ -1,4 +1,4 @@
-import { waypointsSchema } from "./edgeRoute";
+import { waypointsSchema } from "./edgeRouteSchema";
 import { METRIC_FIELDS as METRICS } from "./types";
 import { DOCUMENTATION_LIMITS } from "./documentation";
 import { faultSchema, DRILL_PRESETS } from "./faults";
