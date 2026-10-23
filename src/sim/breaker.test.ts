@@ -419,6 +419,7 @@ it.each([10, 100])("a routed half-open recovery completes every request's route 
   expect(e.snapshot().edges.call.breaker?.state).toBe("closed");
   expect(frame.inSystem).toBe(0);
   // The narrowed test calls and the requests short-circuited beside them finish one journey each.
+  expectRoutesWithinSent(frame.routes);
   expect(frame.routes?.checkout).toEqual({ sent: 2 * scale, rejected: 0, completed: 2 * scale });
 });
 
@@ -488,4 +489,39 @@ it.each([
   const calls = realSnapshot(e.snapshot()).edges.call.calls!;
   expect(calls.retried).toBeCloseTo(retried, 9);
   expect(calls.budgetDenied).toBeCloseTo(100 + denied, 9);
+});
+
+/** Every route's completed journeys are a subset of the requests sent on it. */
+function expectRoutesWithinSent(routes: Record<string, { sent: number; completed: number }> | undefined) {
+  for (const [id, counts] of Object.entries(routes ?? {}))
+    expect(counts.completed, `${id} completed <= sent`).toBeLessThanOrEqual(counts.sent + 1e-9);
+}
+
+it("a downstream route counts only admitted probe requests", () => {
+  const d = narrowingFixture({ breaker: { minimumCalls: 1, openMs: 200, halfOpenCalls: 5 } }, true);
+  d.planning!.requestRoutes!.push({ id: "inventory", label: "Inventory", address: { method: "GET", path: "/stock" } });
+  d.nodes.push({ id: "stock", stencil: "generic.database", label: "Stock", x: 0, y: 0, props: { latencyMs: 5 } });
+  d.edges.push({
+    id: "reserve",
+    from: "db",
+    to: "stock",
+    kind: "sync",
+    props: { travelMs: 10, requestRouteId: "inventory" },
+  });
+  const e = createEngine({ seed: 7, scale: 100, maxParticles: 0, verifyResilience: assertResilienceInvariants });
+  e.load(d);
+  e.inject("source", 1);
+  e.step(150);
+  expect(e.snapshot().edges.call.breaker?.state).toBe("open");
+  e.setNodeProps("db", { failureRate: 0 });
+  e.step(300);
+  // Five test calls reach Orders, which calls Stock on its own route; 95 requests fail fast at the gateway.
+  e.inject("source", 1);
+  e.step(2000);
+  const frame = realFrame(e.frame());
+  expect(frame.inSystem).toBe(0);
+  expectRoutesWithinSent(frame.routes);
+  expect(frame.routes?.checkout).toEqual({ sent: 200, rejected: 0, completed: 200 });
+  expect(frame.routes?.inventory?.sent).toBeCloseTo(5, 9);
+  expect(frame.routes?.inventory?.completed).toBeCloseTo(5, 9);
 });

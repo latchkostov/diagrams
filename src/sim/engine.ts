@@ -177,10 +177,11 @@ interface Message {
    */
   represented?: number;
   /**
-   * The cohort whose request route this message completes, when a half-open breaker narrowed it to its test
-   * calls: the journey still finishes once at the whole cohort's size (the refused part ends off the route).
+   * Completion credit for one request route, when a half-open breaker narrowed this message to its test calls:
+   * that route's journey still finishes once at the whole cohort's size (the refused part ends off it). Any other
+   * route counts the message's own size; readdressing clears it (creditRoute, addressed).
    */
-  routeCohort?: { represented?: number };
+  routeCohort?: { route: string; represented?: number };
   /** Real requests of this cohort that can occupy capacity at once downstream: the
    * narrowest held caller thread or finite-pool grant on its path (undefined: no limit).
    * Width never increases along a path. It is never a size: it only caps the weight
@@ -813,7 +814,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       const done = (message.family.routesDone ??= []);
       if (!done.includes(message.request.id)) {
         done.push(message.request.id);
-        countRoute(message.request).completed += dotsOf(message.routeCohort ?? message);
+        const credit = message.routeCohort?.route === message.request.id ? message.routeCohort : message;
+        countRoute(message.request).completed += dotsOf(credit);
       }
     }
     if (message.family.trace) {
@@ -832,7 +834,15 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   function addressed(message: Message, route: CompiledRoute | undefined): Message {
     if (message.request?.id === route?.id) return message;
     if (route) countRoute(route).sent += dotsOf(message);
-    return { ...message, request: route };
+    // Completion credit belongs to the route it was granted on, never to a new address.
+    return { ...message, request: route, routeCohort: undefined };
+  }
+
+  /** Before a half-open breaker narrows it, the message keeps completing its current route at the cohort's size. */
+  function creditRoute(message: Message, cohort: { represented?: number }): void {
+    if (!message.request) message.routeCohort = undefined;
+    else if (message.routeCohort?.route !== message.request.id)
+      message.routeCohort = { route: message.request.id, represented: cohort.represented };
   }
 
   /** Headless planning's shared message budget: refuses the message before it is allocated. */
@@ -1974,7 +1984,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
    */
   function narrowProbe(edge: Edge, branch: LogicalBranch, message: Message, admitted: number): void {
     // The refused part ends off the request route; the admitted part completes it once for the whole cohort.
-    message.routeCohort ??= { represented: message.represented };
+    creditRoute(message, message);
     const refused: Message = {
       ...copy(edge.from, message),
       attempts: message.attempts,
@@ -2220,7 +2230,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       ...(timing.represented === undefined ? {} : { represented: timing.represented }),
     };
     // A narrowed branch's retry still completes its caller's whole cohort's route.
-    if (timing.represented !== undefined) message.routeCohort ??= { represented: call.work.message.represented };
+    if (timing.represented !== undefined) creditRoute(message, call.work.message);
     if (!permitBreaker(call, edge, message)) return;
     pushDue(
       edge.poolPending,
