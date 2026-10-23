@@ -66,6 +66,42 @@ describe("self-host smoke container ownership", () => {
     expect(args).toContain("LD_STATIC=off");
   });
 
+  it("starts the browser CLI on Docker's isolated default network with only its package mounted read-only", async () => {
+    const { run } = docker();
+    await withSmokeContainer(run, "browser-image", async () => {}, {
+      mounts: { "/packages/playwright-core": "/playwright" },
+      command: ["node", "/playwright/cli.js", "run-server"],
+    });
+    const args = run.mock.calls[0][1];
+    expect(args).toContain("/packages/playwright-core:/playwright:ro");
+    expect(args).not.toContain("--network");
+    expect(args).toContain("--read-only");
+    expect(args.slice(-4)).toEqual(["browser-image", "node", "/playwright/cli.js", "run-server"]);
+  });
+
+  it("prints container logs before removal, retaining the check failure even if log collection fails", async () => {
+    const { run } = docker();
+    vi.spyOn(console, "error").mockImplementation(() => {});
+    const failure = new Error("app did not boot");
+    const original = run.getMockImplementation()!;
+    run.mockImplementation((command, args) => {
+      if (args[0] === "logs") throw new Error("unavailable logs");
+      return original(command, args);
+    });
+    try {
+      await expect(
+        withSmokeContainer(run, "image", async () => {
+          throw failure;
+        }),
+      ).rejects.toBe(failure);
+      const commands = run.mock.calls.map(([, args]) => args[0]);
+      expect(commands.indexOf("logs")).toBeGreaterThan(commands.indexOf("port"));
+      expect(commands.indexOf("rm")).toBeGreaterThan(commands.indexOf("logs"));
+    } finally {
+      vi.restoreAllMocks();
+    }
+  });
+
   it("failed creation never removes a container it did not create", async () => {
     const { containers, run } = docker("create");
     await expect(withSmokeContainer(run, "image", vi.fn())).rejects.toThrow("failed create");

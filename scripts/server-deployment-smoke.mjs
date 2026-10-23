@@ -5,15 +5,18 @@ import { createRequire } from "node:module";
 import path from "node:path";
 import console from "node:console";
 import { URL } from "node:url";
-import { chromium, expect } from "@playwright/test";
+import { expect } from "@playwright/test";
+import { runnerImport } from "vite";
+
+const { withSmokeBrowser } = (
+  await runnerImport(path.resolve("scripts/self-host-browser.ts"), { configFile: false, logLevel: "error" })
+).module;
 
 const { fetch, AbortSignal } = globalThis;
-// ws belongs to the server workspace, rather than the browser application's dependencies.
-// First paint through a cold container and proxy on a loaded CI runner can exceed Playwright's 5 s
-// default (it flaked four times on 2026-10-20). Only the app-boot waits get this allowance; every
-// assertion is unchanged.
+// A hang backstop for app boot, not a startup performance budget.
 const BOOT_TIMEOUT = 30_000;
 
+// ws belongs to the server workspace, rather than the browser application's dependencies.
 const { WebSocket } = createRequire(new URL("../services/server/package.json", import.meta.url))("ws");
 const { build } = createRequire(new URL("../services/server/package.json", import.meta.url))("esbuild");
 
@@ -90,11 +93,10 @@ async function exerciseRelay(origin, base, protocol) {
 }
 
 async function exerciseBrowserRooms(origin, base) {
-  const browser = await chromium.launch();
-  try {
+  await withSmokeBrowser(async (newContext) => {
     const errors = [];
-    const hostContext = await browser.newContext();
-    const guestContext = await browser.newContext();
+    const hostContext = await newContext();
+    const guestContext = await newContext();
     for (const context of [hostContext, guestContext]) {
       await context.addInitScript(() => {
         globalThis.document.addEventListener("securitypolicyviolation", (event) => {
@@ -133,9 +135,7 @@ async function exerciseBrowserRooms(origin, base) {
       await expect(receiver.getByTestId("node-gateway")).toContainText(label);
     }
     expect(errors).toEqual([]);
-  } finally {
-    await browser.close();
-  }
+  });
 }
 
 /** Deployment variants forward collaboration at root and subpaths. */
@@ -270,6 +270,11 @@ export async function deploymentVariants({ run, image, scratch, hostingTemplates
             "exec",
             "-d",
             proxyName,
+            // Detached exec output is otherwise absent from `docker logs` (PID 1 reserves the port).
+            "sh",
+            "-c",
+            'exec "$@" >/proc/1/fd/1 2>/proc/1/fd/2',
+            "smoke-proxy",
             ...(nginx
               ? ["nginx", "-g", "daemon off;"]
               : ["caddy", "run", "--config", configPath, "--adapter", "caddyfile"]),
@@ -288,9 +293,9 @@ export async function deploymentVariants({ run, image, scratch, hostingTemplates
             continue;
           }
           if (!relayOnly) {
-            const browser = await chromium.launch();
-            try {
-              const page = await browser.newPage();
+            await withSmokeBrowser(async (newContext) => {
+              const context = await newContext();
+              const page = await context.newPage();
               const errors = [];
               page.on("pageerror", (error) => errors.push(error.message));
               // When the app doesn’t boot, the start-up page alone says nothing: keep what the browser saw.
@@ -335,9 +340,7 @@ export async function deploymentVariants({ run, image, scratch, hostingTemplates
               await page.getByTestId("file-button").click();
               await expect(page.getByTestId("file-share")).toBeVisible();
               expect(errors).toEqual([]);
-            } finally {
-              await browser.close();
-            }
+            });
           }
           await exerciseRelay(origin, base, protocol);
           // Each container has its own network address. Client A fills its quota and keeps it
@@ -383,6 +386,17 @@ export async function deploymentVariants({ run, image, scratch, hostingTemplates
           console.log(
             `PASS deployment variants forward collaboration at root and subpaths: ${proxy} ${base} LD_STATIC=${relayOnly ? "off" : "on"}; app content, two-way frames, origin, spoofed-XFF and independent client quotas`,
           );
+        } catch (error) {
+          console.error(`Deployment failed: ${proxy} ${base} ${scenario}`);
+          for (const id of containers) {
+            try {
+              console.error(`Container logs: ${id}`);
+              run("docker", ["logs", id]);
+            } catch (diagnosticError) {
+              console.error("Could not capture container logs:", diagnosticError);
+            }
+          }
+          throw error;
         } finally {
           try {
             if (containers.length) run("docker", ["rm", "-f", ...containers.reverse()]);
