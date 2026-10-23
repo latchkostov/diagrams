@@ -548,6 +548,159 @@
         }
       ],
       "description": "A 20% budget limits extra attempts over ten seconds. Queued work peaks around 4,000; Shop recovers to at least 270/s with fewer than 100 queued around 38 s. All chips pass at 60 s."
+    },
+    {
+      "id": "circuit-breaker",
+      "title": "A circuit breaker",
+      "seed": 7,
+      "scale": 1,
+      "durationMs": 60000,
+      "setup": {
+        "edges": {
+          "pay": {
+            "caller": {
+              "retry": {
+                "maxAttempts": 3,
+                "backoffMs": 100,
+                "strategy": "exponential",
+                "retryOn": ["throttled", "transient", "timeout"],
+                "maxBackoffMs": 1000,
+                "jitter": 1,
+                "budget": {
+                  "percent": 20,
+                  "minPerSec": 10
+                }
+              },
+              "breaker": {}
+            }
+          }
+        }
+      },
+      "traffic": [
+        {
+          "id": "checkouts",
+          "node": "shop",
+          "shape": {
+            "kind": "constant",
+            "ratePerSec": 300,
+            "durationMs": 60000
+          }
+        }
+      ],
+      "timeline": [
+        {
+          "atMs": 1000,
+          "action": {
+            "do": "fault",
+            "fault": {
+              "kind": "fail",
+              "node": "payments",
+              "rate": 0.1
+            }
+          }
+        },
+        {
+          "atMs": 2000,
+          "action": {
+            "do": "fault",
+            "fault": {
+              "kind": "fail",
+              "node": "payments",
+              "rate": 0
+            }
+          }
+        },
+        {
+          "atMs": 3000,
+          "action": {
+            "do": "fault",
+            "fault": {
+              "kind": "slow",
+              "node": "payments",
+              "factor": 5
+            }
+          }
+        },
+        {
+          "atMs": 8000,
+          "action": {
+            "do": "fault",
+            "fault": {
+              "kind": "slow",
+              "node": "payments",
+              "factor": 1
+            }
+          }
+        },
+        {
+          "atMs": 1200,
+          "action": {
+            "do": "note",
+            "text": "Retries absorb a brief blip. The circuit breaker watches settled attempts.",
+            "focus": ["payments", "checkout"]
+          }
+        },
+        {
+          "atMs": 3500,
+          "action": {
+            "do": "note",
+            "text": "The slowdown pushes calls past their timeout. Once failures fill the window, the breaker opens and fails fast.",
+            "focus": ["payments", "checkout"]
+          }
+        },
+        {
+          "atMs": 9000,
+          "action": {
+            "do": "note",
+            "text": "Payments is fast again. The open breaker gives its queue room to drain before testing five calls.",
+            "focus": ["payments", "checkout"]
+          }
+        },
+        {
+          "atMs": 15000,
+          "action": {
+            "do": "note",
+            "text": "The breaker tests a few calls after each pause. If they still fail, it opens again so the queue can keep draining.",
+            "focus": ["payments", "checkout"]
+          }
+        }
+      ],
+      "expectations": [
+        {
+          "id": "goodput",
+          "label": "Shop goodput â‰¥ 270/s at the end",
+          "metric": {
+            "node": "shop",
+            "field": "goodput"
+          },
+          "op": ">=",
+          "value": 270,
+          "when": "end"
+        },
+        {
+          "id": "backlog",
+          "label": "Payments backlog < 100 at the end",
+          "metric": {
+            "node": "payments",
+            "field": "backlog"
+          },
+          "op": "<",
+          "value": 100,
+          "when": "end"
+        },
+        {
+          "id": "amplification",
+          "label": "Checkout attempts per request < 1.5 at the end",
+          "metric": {
+            "node": "checkout",
+            "field": "amplification"
+          },
+          "op": "<",
+          "value": 1.5,
+          "when": "end"
+        }
+      ],
+      "description": "A circuit breaker fails fast while Payments drains abandoned work, then tests recovery with five calls."
     }
   ]
 }

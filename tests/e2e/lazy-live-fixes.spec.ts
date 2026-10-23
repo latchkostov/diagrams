@@ -20,6 +20,7 @@ const chunk = (name: string, source: string) =>
   new RegExp(String.raw`/(?:assets/${name}-[A-Za-z0-9_-]+\.js|${source.replace(/\./g, "\\.")})(?:\?.*)?$`);
 const CALLOUT = chunk("TroubleCallout", "src/live/TroubleCallout.tsx");
 const SCRIPT = chunk("script", "src/live/slowmo/script.ts");
+const PLACEMENT = chunk("useFloatingPlacement", "src/live/useFloatingPlacement.ts");
 const PAYMENT = "./?view=canvas&example=slow-payment-provider&live=1&paused=1&sim=no-timeouts";
 const KAFKA = "./?view=canvas&example=kafka-order-pipeline&live=1";
 
@@ -131,6 +132,38 @@ test("a failed trouble callout download offers Retry; Retry brings it and gives 
   await page.clock.runFor(100);
   await expect(page.getByTestId("trouble-action")).toHaveAttribute("data-action", "add-timeout");
   await expect(page.getByTestId("live-play")).toBeFocused();
+});
+
+test("a failed trouble callout keeps a persistent Retry through toast expiry and export, then brings the callout", async ({
+  page,
+}) => {
+  const callout = await gate(page, CALLOUT);
+  const placement = await gate(page, PLACEMENT);
+  callout.fail = true;
+  placement.fail = true;
+  await exhaustPayment(page);
+  // In the callout's place: the notice, without taking the keyboard.
+  const retry = page.getByTestId("trouble-download-retry");
+  await expect(retry).toBeVisible();
+  await expect(page.getByTestId("live-play")).toBeFocused();
+  await exportDiagram(page);
+  // Past every toast's expiry in one jump: its timers fire, without stepping each frame.
+  await page.clock.fastForward(10_000);
+  await expect(page.getByTestId("toast")).toHaveCount(0);
+  await expect(retry).toBeVisible();
+  expect(await focused(page)).not.toBe("BODY");
+  // Back online: Retry by keyboard brings the callout, and the keyboard stays on the page.
+  callout.fail = false;
+  placement.fail = false;
+  callout.release();
+  placement.release();
+  await retry.focus();
+  await page.keyboard.press("Enter");
+  await page.clock.runFor(100);
+  await expect(page.getByTestId("trouble-action")).toHaveAttribute("data-action", "add-timeout");
+  await expect(page.getByTestId("trouble-download-error")).toHaveCount(0);
+  expect(await focused(page)).not.toBe("BODY");
+  await exportDiagram(page);
 });
 
 /** Kafka in free play, traffic flowing. */

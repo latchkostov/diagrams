@@ -302,6 +302,9 @@ describe("production bundle split", () => {
       ["fault step editor", /[/\\]src[/\\]live[/\\]FaultStep\.tsx$/],
       ["drill presets", /[/\\]src[/\\]live[/\\]faults\.ts$/],
       ["simulation warnings", /[/\\]src[/\\]live[/\\]validate\.ts$/],
+      ["trouble detection and messages", /[/\\]src[/\\]live[/\\](?:troubleTracker|observedTrouble)\.ts$/],
+      ["breaker inspector", /[/\\]src[/\\]canvas[/\\]inspector[/\\]BreakerFields\.tsx$/],
+      ["call pill formatting", /[/\\]src[/\\]live[/\\]CallPills\.tsx$/],
     ];
     expect(found(bundled(closure([live!])), editor)).toEqual([]);
     // Keep the editor available on demand, rather than deleting it to satisfy the split.
@@ -317,12 +320,19 @@ describe("production bundle split", () => {
     const oracles: [string, RegExp][] = [
       ["resource, ledger and CPU oracles", /[/\\]src[/\\]sim[/\\]resourceInvariants\.ts$/],
     ];
+    const recovery: [string, RegExp] = ["download recovery", /[/\\]src[/\\]live[/\\]TroubleDownloadError\.tsx$/];
     for (const build of [plain(), rooms]) {
       const live = build.chunks.find((c) => c.name === "LiveSession");
       expect(live).toBeDefined();
       expect(found(bundled(closure([live!], build)), [...optional, ...oracles])).toEqual([]);
       expect(found(bundled(build.chunks), optional)).toEqual(optional.map(([what]) => what));
+      // What recovers a failed optional download ships with Live itself: its Retry never needs another download.
+      expect(found(bundled(closure([live!], build)), [recovery])).toEqual(["download recovery"]);
       expect(found(bundled(build.chunks), oracles)).toEqual([]);
+      // R3 lives inside the engine: module boundaries alone cannot detect a missing test-only guard.
+      expect(
+        build.chunks.filter((chunk) => chunk.code.includes("verifyResilience")).map((chunk) => chunk.name),
+      ).toEqual([]);
     }
   });
 

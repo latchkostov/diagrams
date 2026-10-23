@@ -210,3 +210,37 @@ it("creates a saved simulation override even when the edge inherited its diagram
   expect(controller.getState().running?.setup?.edges?.call.caller).toEqual({ deadlineMs: 600 });
   controller.dispose();
 });
+
+it("a saved simulation persists Off over a diagram breaker and can turn it back On", () => {
+  const diagram = waitingFixture();
+  diagram.planning!.revision = "p3-w2";
+  diagram.nodes[2].props = { replicas: 1, concurrency: 10, latencyMs: 30, jitter: 0, failureRate: 1 };
+  diagram.edges[1].props = { caller: { breaker: { minimumCalls: 1, openMs: 5000 } } };
+  diagram.simulations = [{ id: "run", title: "Override", traffic: [] }];
+  const controller = new LiveController(diagram, { replayDelayMs: 0 });
+  controller.selectSimulation(diagram.simulations[0]);
+  const editor = {
+    getDiagram: () => diagram,
+    getEdge: (id: string) => diagram.edges.find((e) => e.id === id),
+    getNode: (id: string) => diagram.nodes.find((n) => n.id === id),
+    updateMeta: vi.fn<EditorApi["updateMeta"]>((patch) => Object.assign(diagram, patch)),
+    setEdgeProps: vi.fn(),
+  };
+  const live = { controller, slowmo: { active: false } };
+  effectiveCallerPolicy(editor, "call", live)!.set({ breaker: undefined });
+  const saved = JSON.parse(JSON.stringify(diagram.simulations[0])) as import("../model/types").Simulation;
+  expect(saved.setup?.edges?.call.caller?.breaker).toBeNull();
+  expect(() => checkJsonSchema(saved.setup?.edges?.call.caller, callerSchema)).not.toThrow();
+  controller.selectSimulation(saved);
+  expect(effectiveCallerPolicy(editor, "call", live)!.caller.breaker).toBeNull();
+  controller.inject("source", 4);
+  controller.step(1000);
+  expect(controller.getState().snapshot.edges.call.breaker).toBeUndefined();
+  effectiveCallerPolicy(editor, "call", live)!.set({ breaker: { minimumCalls: 1 } });
+  controller.inject("source", 4);
+  controller.step(1000);
+  expect(controller.getState().snapshot.edges.call.breaker?.state).toBe("open");
+  expect(diagram.edges[1].props?.caller).toEqual({ breaker: { minimumCalls: 1, openMs: 5000 } });
+  expect(editor.setEdgeProps).not.toHaveBeenCalled();
+  controller.dispose();
+});

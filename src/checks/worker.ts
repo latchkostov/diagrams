@@ -7,6 +7,7 @@ import type { CheckResult, Finding } from "./types";
 import { executeChecks, executeRequestChecks } from "./execute";
 import { planScaling, type ScalingPlan } from "../sim/scalingPlanner";
 import { confirmedThreadFix, type ThreadFixRequest } from "../live/threadFixPlan";
+import { confirmedResilienceFix } from "../live/resilienceFixPlan";
 import type { TroubleAction } from "../live/observedTrouble";
 
 export interface CheckRequest {
@@ -39,8 +40,20 @@ const scope = self as unknown as WorkerScope;
 scope.onmessage = (e) => {
   const { id, diagram, plan } = e.data;
   try {
-    if (e.data.threadFix) scope.postMessage({ id, threadFix: confirmedThreadFix(e.data.threadFix) });
-    else if (plan) scope.postMessage({ id, plans: planScaling(diagram) });
+    if (e.data.threadFix) {
+      const request = e.data.threadFix;
+      scope.postMessage({
+        id,
+        threadFix:
+          request.trouble.action.kind === "resilience"
+            ? confirmedResilienceFix({
+                context: request.context,
+                edge: request.trouble.action.edge,
+                time: request.time,
+              })
+            : confirmedThreadFix(request),
+      });
+    } else if (plan) scope.postMessage({ id, plans: planScaling(diagram) });
     else if (e.data.requests) {
       const { requests, plans } = executeRequestChecks(diagram);
       scope.postMessage({ id, requestsOnly: requests, plans });

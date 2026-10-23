@@ -87,15 +87,21 @@ export function NodeBadges({
   const inv = Math.min(presenting ? 1.8 : 1.6, Math.max(1, (presenting ? 0.95 : 0.72) / zoom));
   const activeCalls = diagram.edges.flatMap((e) => {
     const calls = state.snapshot.edges[e.id]?.calls;
+    const breaker = state.snapshot.edges[e.id]?.breaker;
     if (!calls) return [];
     const queued = ui.controller.queuedCalls(e.id);
-    if (!(calls.held || calls.inFlight || calls.timedOut || (calls.windowRetried ?? 0) >= 10 || queued)) return [];
+    if (
+      !(breaker && breaker.state !== "closed") &&
+      !(calls.held || calls.inFlight || calls.timedOut || (calls.windowRetried ?? 0) >= 10 || queued)
+    )
+      return [];
     const override = state.running?.setup?.edges?.[e.id]?.caller;
     const policy = callPolicy("", { ...(e.props?.caller as EdgeSimProps["caller"]), ...override });
     return [
       {
         id: e.id,
         ...calls,
+        breaker,
         queued,
         pool: policy.pool,
         from: names.get(e.from) ?? e.from,

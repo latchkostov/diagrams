@@ -1,5 +1,6 @@
 import { revisionAtLeast } from "../../model/revisions";
 import { RetryFields } from "./RetryFields";
+import { BreakerFields } from "./BreakerFields";
 import { Disclosure } from "./Disclosure";
 import { Dropdown } from "../../components/Dropdown";
 import { Field } from "./fields";
@@ -36,19 +37,23 @@ export function CallWaitFields({
     if (!override || !Object.hasOwn(override, key)) return null;
     const base = diagramCaller?.[key];
     const value =
-      key === "retry"
-        ? base && typeof base === "object" && "maxAttempts" in base && Number(base.maxAttempts) > 1
-          ? t("resilience.attempts", { count: Number(base.maxAttempts) })
+      key === "breaker"
+        ? base
+          ? t("resilience.on")
           : t("resilience.off")
-        : key === "wait"
-          ? callPolicy(stencil, diagramCaller).blocking
-            ? t("threads.holds")
-            : t("threads.frees")
-          : base == null
-            ? key === "deadlineMs"
-              ? t("threads.noTimeout")
-              : t("threads.uncapped")
-            : String(base);
+        : key === "retry"
+          ? base && typeof base === "object" && "maxAttempts" in base && Number(base.maxAttempts) > 1
+            ? t("resilience.attempts", { count: Number(base.maxAttempts) })
+            : t("resilience.off")
+          : key === "wait"
+            ? callPolicy(stencil, diagramCaller).blocking
+              ? t("threads.holds")
+              : t("threads.frees")
+            : base == null
+              ? key === "deadlineMs"
+                ? t("threads.noTimeout")
+                : t("threads.uncapped")
+              : String(base);
     return (
       <p className="insp-note" data-testid={`call-override-${key}`}>
         {t("threads.simulationOverride", { value })}
@@ -107,6 +112,10 @@ export function CallWaitFields({
         />
       )}
       {origin("retry")}
+      {revisionAtLeast(editor.getDiagram().planning?.revision, "p3-w2") && (
+        <BreakerFields breaker={caller.breaker} set={(breaker) => set({ breaker })} />
+      )}
+      {origin("breaker")}
       <CallAdvanced enabled={revisionAtLeast(editor.getDiagram().planning?.revision, "p3-w2")}>
         <SimInput
           visibleHint

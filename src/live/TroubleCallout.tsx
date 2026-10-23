@@ -9,6 +9,7 @@ import { applyThreadFix, type ApplyThreadFix } from "./threadFixes";
 
 /** The callout's one action for what playback shows, by kind: what to press, and its test id. */
 const TROUBLE_ACTIONS: Record<TroubleAction["kind"], { label: () => string; icon?: "plus" | "play" }> = {
+  resilience: { label: msg("resilience.addBreaker") },
   "scale-threads": { label: msg("autoscaling.scaleBusy") },
   "add-timeout": {
     label: msg("threads.addTimeout"),
@@ -49,11 +50,13 @@ export function TroubleCallout({ trouble, onAction, onDismiss, onShown, floating
   const label =
     trouble.action.kind === "restore-boundary"
       ? t("fault.restoreNamed", { label: trouble.action.label })
-      : trouble.action.kind === "scale-threads"
-        ? (planFixLabel(trouble.action.plan) ?? "")
-        : trouble.action.kind === "clear-fault"
-          ? t("fault.clearAction")
-          : action.label();
+      : trouble.action.kind === "resilience"
+        ? resilienceFixLabel(trouble.action.step)
+        : trouble.action.kind === "scale-threads"
+          ? (planFixLabel(trouble.action.plan) ?? "")
+          : trouble.action.kind === "clear-fault"
+            ? t("fault.clearAction")
+            : action.label();
   // On screen: this cause has had its turn this run (one hidden behind a panel or a presentation hasn't).
   useEffect(() => onShown?.(trouble.key), [onShown, trouble.key]);
   const box = useRef<HTMLDivElement>(null);
@@ -62,6 +65,10 @@ export function TroubleCallout({ trouble, onAction, onDismiss, onShown, floating
   // (focus policy row L3).
   const focused = useRef(false);
   const interaction = useInteraction();
+  const detail =
+    trouble.action.kind === "resilience"
+      ? t("resilience.fixDescription", { reason: trouble.detail, changes: resilienceFixDetail(trouble.action.step) })
+      : trouble.detail;
   useEffect(() => {
     return () => interaction?.dispatch({ type: "callout.closed", hadFocus: focused.current });
   }, [interaction]);
@@ -69,7 +76,7 @@ export function TroubleCallout({ trouble, onAction, onDismiss, onShown, floating
     <div
       ref={box}
       className={`cap-callout is-over${floating ? " is-floating" : ""}${placement.compact ? " is-compact" : ""}`}
-      title={placement.compact ? trouble.detail : undefined}
+      title={placement.compact ? detail : undefined}
       data-compact={placement.compact ? "" : undefined}
       style={placement.style}
       data-testid="trouble-callout"
@@ -86,7 +93,7 @@ export function TroubleCallout({ trouble, onAction, onDismiss, onShown, floating
       <span className="cap-callout-dot" aria-hidden />
       <div className="cap-callout-text">
         <strong data-testid="trouble-headline">{trouble.headline}</strong>
-        {trouble.detail && <span data-testid="trouble-detail">{trouble.detail}</span>}
+        {detail && <span data-testid="trouble-detail">{detail}</span>}
       </div>
       {onAction && (
         <button
@@ -111,4 +118,30 @@ export function TroubleCallout({ trouble, onAction, onDismiss, onShown, floating
       </button>
     </div>
   );
+}
+
+function resilienceFixLabel(step: import("./resilienceFixPlan").ResilienceStep): string {
+  switch (step) {
+    case "jitter":
+      return t("resilience.fixJitter");
+    case "budget":
+      return t("resilience.fixBudget");
+    case "breaker":
+      return t("resilience.addBreaker");
+    case "attempts":
+      return t("resilience.fixAttempts");
+  }
+}
+
+function resilienceFixDetail(step: import("./resilienceFixPlan").ResilienceStep): string {
+  switch (step) {
+    case "jitter":
+      return t("resilience.fixJitterDetail");
+    case "budget":
+      return t("resilience.fixBudgetDetail");
+    case "breaker":
+      return t("resilience.fixBreakerDetail");
+    case "attempts":
+      return t("resilience.fixAttemptsDetail");
+  }
 }

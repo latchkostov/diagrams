@@ -10,7 +10,13 @@ import { t, useLocale } from "../i18n";
 import { planningHost } from "../planning/host";
 import { BottleneckCallout } from "./lazyBottleneckCallout";
 import { lazyComponent } from "../lib/lazyLoad";
-const TroubleCallout = lazyComponent(() => import("./TroubleCallout").then((m) => m.TroubleCallout));
+// A failed download's notice and Retry are part of this chunk: recovering never waits for another download.
+import { CalloutUnavailable, TroubleDownloadError } from "./TroubleDownloadError";
+const TroubleCallout = lazyComponent(
+  () => import("./TroubleCallout").then((m) => m.TroubleCallout),
+  (_, status) => <CalloutUnavailable status={status} />,
+  true,
+);
 import { CapacityPanel } from "./lazyCapacityPanel";
 import { ControlBar } from "./ControlBar";
 const EventLog = lazyComponent(() => import("./EventLog").then((m) => m.EventLog));
@@ -177,6 +183,8 @@ export function LiveSession({
     addReader,
     runTroubleAction,
     troubleOnScreen,
+    troubleDownloadFailed,
+    retryTroubleDownload,
     troubleAnnouncement,
     troubleActionHere,
     troubleShown,
@@ -303,7 +311,9 @@ export function LiveSession({
         )}
         {/* Mounted empty first, so the cause is heard when it's written; it changes only with the cause. */}
         <span ref={troubleAnnouncement} className="sr-only" role="status" data-testid="trouble-announce" />
-        {troubleOnScreen ? (
+        {troubleDownloadFailed && !capturing && !presenting && !panel.open ? (
+          <TroubleDownloadError retry={retryTroubleDownload} />
+        ) : troubleOnScreen ? (
           <TroubleCallout
             trouble={troubleOnScreen}
             onShown={troubleShown}

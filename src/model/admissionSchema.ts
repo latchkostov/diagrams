@@ -83,6 +83,24 @@ export const callerSchema: JsonSchema = {
     replyMs: time,
     deadlineMs: { anyOf: [time, { type: "null" }] },
     retry,
+    breaker: {
+      anyOf: [
+        { type: "null" },
+        {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            failurePercent: { type: "number", minimum: 1, maximum: 100 },
+            slowCallMs: time,
+            slowPercent: { type: "number", minimum: 1, maximum: 100 },
+            windowMs: { enum: Array.from({ length: 60 }, (_, i) => (i + 1) * 1000) },
+            minimumCalls: { type: "integer", minimum: 1, maximum: 1000000 },
+            openMs: time,
+            halfOpenCalls: { type: "integer", minimum: 1, maximum: 10000 },
+          },
+        },
+      ],
+    },
     poolConnections: { type: "integer", minimum: 1, maximum: 10000 },
   },
 };

@@ -25,3 +25,12 @@ export function resilienceFixture(): DiagramFile {
   };
   return d;
 }
+
+/** An inherited breaker and a saved run for explicit On/Off overrides. */
+export function breakerFixture(): DiagramFile {
+  const d = resilienceFixture();
+  const caller = d.edges[1].props!.caller as NonNullable<import("../sim/types").EdgeSimProps["caller"]>;
+  caller.breaker = { minimumCalls: 1, openMs: 1000 };
+  d.simulations = [{ id: "breaker", title: "Breaker override", durationMs: 10000, traffic: [] }];
+  return d;
+}
