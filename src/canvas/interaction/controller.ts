@@ -117,7 +117,7 @@ export function createInteractionController<P = unknown>(
 ) {
   let menuState: MenusState<P> = initialMenus<P>();
   let gestureState = initialGestures();
-  let gestureHow: (GestureHandlers & { token: unknown }) | null = null;
+  let gestureHow: (GestureHandlers & { owner: unknown }) | null = null;
   /** Live's hover cards, while Live attaches them (readoutLayer.ts): their own store, apart from the snapshot. */
   let readouts: ReadoutLayer | null = null;
   let camera = options.camera;
@@ -453,7 +453,7 @@ export function createInteractionController<P = unknown>(
     changed();
     try {
       if (t.ended.commit) how?.commit(t.ended.preview);
-      else if (!how?.capture || how.capture() === how.token) how?.cancel?.();
+      else if (!how?.capture || how.capture() === how.owner) how?.cancel?.();
     } finally {
       if (!gestureState.active) camera?.dispatch({ type: "gesture", on: false });
       decide({
@@ -490,7 +490,7 @@ export function createInteractionController<P = unknown>(
       closeMenu("gesture");
       const t = gestures(gestureState, { type: "gesture.start", kind, preview, via: how.via });
       gestureState = t.state;
-      gestureHow = { ...how, token: how.capture?.() };
+      gestureHow = { ...how, owner: how.capture?.() };
       if (options.journal) journal({ event: `gesture.start:${kind}`, command: "keep" });
       changed();
       return t.started!.seq;

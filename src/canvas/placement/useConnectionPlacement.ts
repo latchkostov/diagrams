@@ -85,8 +85,8 @@ export function useConnectionPlacement(
             store.setState({ connectionClickStartHandle: null });
             // Retire XYHandle's document listeners and auto-pan frame as well as its store state.
             // The controller has already ended this gesture, so these late callbacks cannot commit.
+            // XYHandle's mouseup handler also removes its touch listeners; no TouchEvent constructor is needed.
             document.dispatchEvent(new MouseEvent("mouseup", { bubbles: true }));
-            document.dispatchEvent(new TouchEvent("touchend", { bubbles: true, touches: [] }));
           },
           commit(p) {
             if (p.kind !== "connect" || readOnly) return;
