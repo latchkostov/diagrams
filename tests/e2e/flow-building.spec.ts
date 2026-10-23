@@ -1102,6 +1102,55 @@ test("a rename whose edge inspector fails to download leaves the canvas untouche
   }
 });
 
+test("failed inspector download releases canvas keys before Retry", async ({ page }) => {
+  const panel = await holdEdgePanel(page);
+  try {
+    await seed(page);
+    await page.getByTestId("edge-label-api-db").click();
+    await waitForSelectionSettled(page);
+    await expect.poll(() => panel.requests).toBe(1);
+    await page.keyboard.press("F2");
+    await page.keyboard.type("x");
+    panel.fail = true;
+    panel.release();
+    await expect(page.getByTestId("lazy-load-retry")).toBeVisible();
+    // No click, no other change on the canvas: T is the canvas's again, and adds a text.
+    await page.keyboard.press("T");
+    await expect.poll(async () => (await annotations(page)).length).toBe(1);
+    expect((await saved(page)).edges[0]?.label).toBe("writes");
+  } finally {
+    panel.release();
+  }
+});
+
+test("typing in another field during a cold rename stays there across commits and the panel's arrival", async ({
+  page,
+}) => {
+  const panel = await holdEdgePanel(page);
+  try {
+    await seed(page);
+    await page.getByTestId("edge-label-api-db").click();
+    await waitForSelectionSettled(page);
+    await expect.poll(() => panel.requests).toBe(1);
+    await page.keyboard.press("F2");
+    await page.keyboard.type("ab");
+    // Focus leaves the canvas for the stencil search (as Tab or a script would), without a press.
+    const search = page.getByTestId("palette-search");
+    await search.focus();
+    await page.keyboard.type("redis");
+    await expect(search).toHaveValue("redis");
+    panel.release();
+    await expect(page.getByTestId("inspector-field-label")).toHaveValue("writes");
+    await expect(search).toBeFocused();
+    await page.keyboard.type("x");
+    await expect(search).toHaveValue("redisx");
+    await expect(page.getByTestId("inspector-field-label")).toHaveValue("writes");
+    expect((await saved(page)).edges[0]?.label).toBe("writes");
+  } finally {
+    panel.release();
+  }
+});
+
 for (const loss of ["pointercancel", "lostpointercapture"] as const) {
   test(`reconnect ${loss} releases capture and permits another drag`, async ({ page }) => {
     await seed(page);

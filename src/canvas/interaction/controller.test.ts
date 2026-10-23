@@ -128,6 +128,8 @@ function harness() {
       };
     },
     type: (e, text) => void written.push(`${(e as El).name}:${text}`),
+    // Elements named input:* stand for text fields outside the canvas.
+    elsewhere: (e) => (e as El).name.startsWith("input:"),
   };
   /**
    * A key typed anywhere: the running hold takes it (as typeAhead.ts's capture does), else it reaches the canvas.
@@ -516,20 +518,18 @@ describe("interaction controller: pending rename (a name field whose panel is st
     expect(h.holding()).toBe(false);
   });
 
-  it("Esc cancels the rename: nothing written, focus stays, and the field never takes it later", () => {
+  it("Esc after typing finishes and saves, as Enter does (and as Esc in the field does)", () => {
     const h = harness();
-    const edge = h.el("edge:e");
-    h.env.active = edge;
-    h.controller.dispatch({ type: "inspector.field", seq: 1, name: "label", owner: "e" });
+    h.env.nodes.set("a", { drawn: true });
+    h.controller.dispatch({ type: "inspector.field", seq: 1, name: "label", owner: "a" });
     typeAll(h, ["N", "e", "w"]);
     expect(h.key("Escape")).toBe(true);
     expect(h.holding()).toBe(false);
-    expect(h.controller.state.pending).toBeNull();
-    h.env.inspector.fields.set("label", "e");
-    h.drain();
-    expect(h.focused).toEqual([]);
-    expect(h.written).toEqual([]);
-    expect(h.env.active).toBe(edge);
+    expect(h.key("x")).toBe(false);
+    h.env.inspector.fields.set("label", "a");
+    h.commit();
+    expect(h.written).toEqual(["field:label:New"]);
+    expect(h.focused).toEqual(["field:label", "node:a"]);
   });
 
   it("Enter ends the typing; the name is written when the field comes, then focus goes back to the item", () => {
@@ -547,14 +547,19 @@ describe("interaction controller: pending rename (a name field whose panel is st
     expect(h.focused).toEqual(["field:label", "node:a"]);
   });
 
-  it("Enter before anything was typed cancels, as Esc does", () => {
+  it.each(["Enter", "Escape"])("%s before anything was typed cancels: focus stays, the field never takes it", (k) => {
     const h = harness();
+    const edge = h.el("edge:e");
+    h.env.active = edge;
     h.controller.dispatch({ type: "inspector.field", seq: 1, name: "label", owner: "e" });
-    h.key("Enter");
+    expect(h.key(k)).toBe(true);
+    expect(h.holding()).toBe(false);
     expect(h.controller.state.pending).toBeNull();
     h.env.inspector.fields.set("label", "e");
     h.drain();
     expect(h.focused).toEqual([]);
+    expect(h.written).toEqual([]);
+    expect(h.env.active).toBe(edge);
   });
 
   it("the panel's download failed (its field is gone): the rename ends and later keys reach the canvas", () => {
@@ -583,7 +588,7 @@ describe("interaction controller: pending rename (a name field whose panel is st
     expect(h.key("T")).toBe(false);
   });
 
-  it("a press elsewhere drops what was held; a key doesn't", () => {
+  it("a press ends the rename: a later commit never revives the hold, and its field never takes focus", () => {
     const h = harness();
     h.controller.dispatch({ type: "inspector.field", seq: 1, name: "label", owner: "e" });
     h.controller.input("key");
@@ -591,10 +596,37 @@ describe("interaction controller: pending rename (a name field whose panel is st
     typeAll(h, ["a"]);
     h.controller.input("press");
     expect(h.holding()).toBe(false);
+    expect(h.controller.state.pending).toBeNull();
+    // The press's own commit (another node selected, the inspector folded) while the field is still downloading.
+    h.commit();
+    h.frame();
+    expect(h.holding()).toBe(false);
     expect(h.key("b")).toBe(false);
     h.env.inspector.fields.set("label", "e");
-    h.commit();
+    h.drain();
     expect(h.written).toEqual([]);
+    expect(h.focused).toEqual([]);
+  });
+
+  it("focus moving to a field outside the canvas ends the rename; typing there stays there", () => {
+    const h = harness();
+    h.controller.dispatch({ type: "inspector.field", seq: 1, name: "label", owner: "e" });
+    typeAll(h, ["a"]);
+    // Within the canvas (another item): still the rename's.
+    h.controller.focusArrived(h.el("node:b"));
+    expect(h.holding()).toBe(true);
+    const search = h.el("input:search");
+    h.env.active = search;
+    h.controller.focusArrived(search);
+    expect(h.holding()).toBe(false);
+    expect(h.controller.state.pending).toBeNull();
+    h.commit();
+    expect(h.key("r")).toBe(false);
+    h.env.inspector.fields.set("label", "e");
+    h.drain();
+    expect(h.written).toEqual([]);
+    expect(h.focused).toEqual([]);
+    expect(h.env.active).toBe(search);
   });
 
   it("a newer move replaces the rename and drops its keys; so does unmounting", () => {
