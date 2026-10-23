@@ -2,6 +2,7 @@ import type { DiagramFile } from "../model/types";
 import type { EdgeSimProps, SimSnapshot } from "../sim/types";
 import { t } from "../i18n";
 import { retryIdempotency } from "../sim/resiliencePresets";
+import { BreakerReadout } from "./BreakerReadout";
 
 export function CallsReadout({
   diagram,
@@ -46,20 +47,7 @@ export function CallsReadout({
                     : t("resilience.noBudget"),
               })}
             </p>
-            {breaker && (
-              <p data-testid={`calls-breaker-${e.id}`}>
-                {t("resilience.breakerSummary", {
-                  state:
-                    breaker.state === "closed"
-                      ? t("resilience.closed")
-                      : breaker.state === "open"
-                        ? t("resilience.open")
-                        : t("resilience.testing"),
-                  percent: Math.round(breaker.failurePercent),
-                  count: breaker.calls,
-                })}
-              </p>
-            )}
+            {breaker && <BreakerReadout id={e.id} breaker={breaker} testId={`calls-breaker-${e.id}`} />}
             {!!calls.ambiguous &&
               retryIdempotency((e.props?.caller as EdgeSimProps["caller"])?.retry, request?.address.method) !==
                 true && (

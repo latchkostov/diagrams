@@ -1,3 +1,4 @@
+import { openLiveNodeDetails } from "./fixtures";
 import { savedDiagram } from "./fixtures";
 import { currentDiagram } from "./fixtures";
 import { openExample } from "./fixtures";
@@ -86,7 +87,7 @@ test("Escape still leaves live when an earlier handler commits a host render", a
 });
 
 for (const presenting of [false, true]) {
-  test(`Enter continues a waiting narration with a selected node (${presenting ? "presenting" : "live"})`, async ({
+  test(`Enter pins a selected node while narration waits; Continue resumes (${presenting ? "presenting" : "live"})`, async ({
     page,
     consoleErrors,
   }) => {
@@ -114,6 +115,12 @@ for (const presenting of [false, true]) {
     } else await expect(label).toHaveCount(0);
     await expect(play).toHaveAttribute("data-state", "waiting");
     await page.keyboard.press("Enter");
+    await expect(page.getByTestId("node-detail-payments")).toHaveAttribute("data-pinned", "true");
+    await expect(play).toHaveAttribute("data-state", "waiting");
+    await page.keyboard.press("Escape");
+    await expect(page.getByTestId("node-detail-payments")).toHaveCount(0);
+    await expect.poll(() => node.evaluate((el) => !!document.activeElement?.contains(el))).toBe(true);
+    await page.getByTestId("live-note-continue").click();
     await expect(play).toHaveAttribute("data-state", "playing");
     if (presenting) await expect(label).toHaveCount(0);
     else await expect(label).not.toBeFocused();
@@ -223,6 +230,7 @@ test.describe("live view", () => {
     await page.getByTestId("node-inventory").hover();
     // The hover opens before the planning chunk arrives. Wait for its own ready marker;
     // the following content assertion still has the normal UI timeout.
+    await openLiveNodeDetails(page, "inventory", "planning");
     await page.getByTestId("node-detail-inventory").evaluate(
       (detail) =>
         new Promise<void>((resolve) => {
@@ -273,6 +281,7 @@ test.describe("live view", () => {
     await expect(page.getByTestId("node-badge-stock-db")).toHaveAttribute("data-processed", "20000");
     await expect(page.getByTestId("node-badge-shopper")).toHaveAttribute("data-processed", "20000");
     await page.getByTestId("node-stock-db").hover();
+    await openLiveNodeDetails(page, "stock-db", "outcomes");
     await expect(page.getByTestId("node-detail-stock-db")).toContainText("20k");
     await page.getByTestId("live-more").click();
     await page.getByTestId("live-events-toggle").click();
@@ -421,7 +430,7 @@ test.describe("live view", () => {
     await node.evaluate((el) => el.closest<HTMLElement>("[data-id]")?.focus());
     await expect(page.getByTestId("node-detail-inventory")).toBeVisible();
     await expect(page.getByTestId("node-detail-inventory")).toContainText("In flight");
-    const tooltip = await page.getByTestId("node-detail-inventory").getAttribute("id");
+    const tooltip = await page.getByTestId("hover-description-node-inventory").getAttribute("id");
     expect(tooltip).toBeTruthy();
     expect(await node.evaluate((el) => el.closest("[data-id]")?.getAttribute("aria-describedby"))).toContain(tooltip);
     await page.getByTestId("live-play").focus();

@@ -1,3 +1,4 @@
+import { openLiveNodeDetails } from "./fixtures";
 import { test, expect, gotoLive, pauseClock, savedDiagram, fitDiagram, STORAGE_KEYS } from "./fixtures";
 import busy from "../../src/examples/scale-on-busy-threads.json" with { type: "json" };
 import payment from "../../src/examples/slow-payment-provider.json" with { type: "json" };
@@ -71,12 +72,14 @@ for (const locale of ["en", "ar", "en-XA"]) {
     await page.getByTestId("node-checkout").hover();
     const detail = page.getByTestId("node-detail-checkout");
     const outcome = page.getByTestId("node-outcome-checkout");
+    await openLiveNodeDetails(page, "checkout", "outcomes");
     await expect(outcome).toBeVisible();
     // Close the pointer-opened detail before testing the independent keyboard path.
+    await page.keyboard.press("Escape");
     await page.getByTestId("brand").hover();
     await page.getByTestId("live-play").focus();
     await expect(outcome).toHaveCount(0);
-    await page.getByTestId("rf__node-checkout").focus();
+    await openLiveNodeDetails(page, "checkout", "outcomes");
     await expect(outcome).toBeVisible();
     await expect(outcome).toHaveCount(1);
     if (locale === "en") {

@@ -8,6 +8,8 @@ import {
   type InteractionPort,
   type Resolution,
 } from "./controller";
+import { createReadoutLayer } from "./readoutLayer";
+import type { ReadoutStop } from "./readout";
 import type { FocusTarget, InteractionPhase, LiveKeyContext, MenuCloseReason } from "./types";
 
 /** A stand-in element: in the document or not, and able to take focus or not. */
@@ -42,6 +44,8 @@ function harness() {
     version: 0,
     /** One of Live's side panels: open or not, and the fields it lists so far. */
     panel: { open: false, fields: new Set<string>() },
+    /** Live readout cards shown ("node:a"). */
+    readouts: new Set<string>(),
   };
   /** Focus calls on elements that had left the document (must stay empty). */
   const removedFocus: string[] = [];
@@ -91,6 +95,12 @@ function harness() {
         case "panelOpener": {
           const opener = els.get("panel-opener");
           return opener?.connected ? { state: "ready", el: opener } : { state: "gone" };
+        }
+        case "readout": {
+          const key = `${target.item}:${target.id}`;
+          return env.readouts.has(key)
+            ? { state: "ready", el: els.get(`readout:${key}`) ?? el(`readout:${key}`) }
+            : { state: "gone" };
         }
         case "panelField": {
           // Live's panel: gone when it's closed; parked until it lists the field.
@@ -920,4 +930,198 @@ it("unmount cancels conditional recovery beside a parked request", () => {
   expect(h.frames).toHaveLength(0);
   h.frame();
   expect(h.focused).toEqual([]);
+});
+
+/** Live's readout layer on the harness's controller, with the harness's cards for its DOM. */
+function withReadouts(h: ReturnType<typeof harness>, stop: ReadoutStop | null = null) {
+  const layer = createReadoutLayer(h.controller, {
+    stop: () => stop,
+    shown: (t) => h.env.readouts.has(`${t.kind}:${t.id}`),
+    holds: (t) => h.env.active?.name === `readout:${t.kind}:${t.id}`,
+  });
+  h.controller.attachReadouts(layer);
+  return layer;
+}
+
+describe("pinned Live readouts", () => {
+  it("dismissing a hovered readout leaves keyboard focus where it was", () => {
+    const h = harness();
+    const r = withReadouts(h);
+    h.env.nodes.set("a", { drawn: true });
+    r.point({ kind: "node", id: "a" });
+    r.close("escape");
+    expect(r.get()).toBeNull();
+    expect(h.focused).toEqual([]);
+    r.point({ kind: "node", id: "a" });
+    expect(r.get()).toBeNull();
+  });
+  it("Esc returns focus to the originating item; opening a menu replaces the readout", () => {
+    const h = harness();
+    const r = withReadouts(h);
+    h.env.nodes.set("a", { drawn: true });
+    r.pin({ kind: "node", id: "a" });
+    r.close("escape");
+    expect(h.focused).toEqual(["node:a"]);
+    expect(r.get()).toBeNull();
+    r.point({ kind: "node", id: "a" });
+    expect(r.get()).toBeNull();
+    r.pin({ kind: "edge", id: "call" });
+    h.controller.openMenu("context", "menu");
+    expect(r.get()).toBeNull();
+    expect(h.controller.menu?.kind).toBe("context");
+    r.point({ kind: "node", id: "a" });
+    expect(r.get()).toBeNull();
+  });
+  it("Esc on an unpinned summary Tab reached gives focus back to its item; a hovered one leaves focus alone", () => {
+    const h = harness();
+    const r = withReadouts(h);
+    h.env.nodes.set("a", { drawn: true });
+    h.env.readouts.add("node:a");
+    r.point({ kind: "node", id: "a" });
+    expect(r.enter({ kind: "node", id: "a" })).toBe(true);
+    expect(h.focused).toEqual(["readout:node:a"]);
+    r.close("escape");
+    expect(h.focused).toEqual(["readout:node:a", "node:a"]);
+    expect(r.get()).toBeNull();
+    // Hovered while focus is elsewhere (the Live bar): Esc closes it and focus stays put.
+    const bar = h.el("live-play");
+    h.env.active = bar;
+    r.point({ kind: "node", id: "b" });
+    r.close("escape");
+    expect(h.focused).toEqual(["readout:node:a", "node:a"]);
+    expect(h.env.active).toBe(bar);
+  });
+  it("an outside press leaves the new focus alone and allows a later hover", () => {
+    const h = harness();
+    const r = withReadouts(h);
+    r.pin({ kind: "node", id: "a" });
+    r.close("outside");
+    expect(h.focused).toEqual([]);
+    r.point({ kind: "node", id: "a" });
+    expect(r.get()).toEqual({ kind: "node", id: "a", pinned: false });
+  });
+});
+
+describe("Live readouts beside the canvas's snapshot", () => {
+  it("hovering never changes the canvas snapshot; readout subscribers hear only a different card", () => {
+    const h = harness();
+    const r = withReadouts(h);
+    const before = h.controller.getSnapshot();
+    let core = 0,
+      reads = 0;
+    h.controller.subscribe(() => core++);
+    r.subscribe(() => reads++);
+    r.point({ kind: "node", id: "a" });
+    r.point({ kind: "node", id: "a" });
+    r.point({ kind: "edge", id: "e" });
+    r.pin({ kind: "edge", id: "e" });
+    r.point({ kind: "node", id: "a" });
+    r.point(null);
+    expect(reads).toBe(3);
+    expect(core).toBe(0);
+    expect(h.controller.getSnapshot()).toBe(before);
+    expect(r.get()).toEqual({ kind: "edge", id: "e", pinned: true });
+  });
+
+  it("is the controller's while attached, and only the layer that attached detaches", () => {
+    const h = harness();
+    const first = createReadoutLayer(h.controller);
+    const second = createReadoutLayer(h.controller);
+    const detachFirst = h.controller.attachReadouts(first);
+    const detachSecond = h.controller.attachReadouts(second);
+    detachFirst();
+    expect(h.controller.readouts).toBe(second);
+    detachSecond();
+    expect(h.controller.readouts).toBeNull();
+  });
+
+  it("Tab into a shown readout focuses its card now", () => {
+    const h = harness();
+    const r = withReadouts(h);
+    expect(r.enter({ kind: "edge", id: "call" })).toBe(false);
+    h.env.readouts.add("edge:call");
+    expect(r.enter({ kind: "edge", id: "call" })).toBe(true);
+    expect(h.focused).toEqual(["readout:edge:call"]);
+    expect(h.controller.phase).toBe("idle");
+  });
+
+  it("Shift+Tab opens the previous node's readout (releasing a pin) and focuses it once drawn", () => {
+    const h = harness();
+    const r = withReadouts(h);
+    h.env.nodes.set("a", { drawn: true });
+    r.pin({ kind: "node", id: "b" });
+    r.retrace({ kind: "node", id: "a" });
+    expect(r.get()).toEqual({ kind: "node", id: "a", pinned: false });
+    expect(h.focused).toEqual([]);
+    h.env.readouts.add("node:a");
+    h.commit();
+    expect(h.focused).toEqual(["readout:node:a"]);
+    expect(h.controller.phase).toBe("idle");
+  });
+
+  it("a readout that never draws leaves focus on its node; with no card open, Shift+Tab opens nothing", () => {
+    const h = harness();
+    const r = withReadouts(h);
+    h.env.nodes.set("a", { drawn: true });
+    r.retrace({ kind: "node", id: "a" });
+    expect(r.get()).toBeNull();
+    expect(h.controller.phase).toBe("idle");
+    r.point({ kind: "node", id: "b" });
+    r.retrace({ kind: "node", id: "a" });
+    h.drain();
+    expect(h.focused).toEqual(["node:a"]);
+    expect(h.controller.phase).toBe("idle");
+  });
+
+  const nav = (next: string | null) => {
+    const went: string[] = [];
+    return {
+      went,
+      nav: {
+        has: (t: { id: string }) => t.id !== "elsewhere",
+        go: (t: { kind: string; id: string }) => {
+          went.push(`${t.kind}:${t.id}`);
+          return true;
+        },
+        after: () => next,
+      },
+    };
+  };
+  const stop = (pinned: boolean, card: boolean, last: boolean, id = "a"): ReadoutStop => ({
+    target: { kind: "node", id },
+    pinned,
+    card,
+    last,
+  });
+
+  it("Tab from a card goes on to the next node, releasing a pin; Shift+Tab returns to its item", () => {
+    const h = harness();
+    const r = withReadouts(h, stop(true, false, true));
+    r.pin({ kind: "node", id: "a" });
+    const forward = nav("b");
+    expect(r.tab(null, false, forward.nav)).toBe(true);
+    expect(forward.went).toEqual(["node:b"]);
+    expect(r.get()).toEqual({ kind: "node", id: "a", pinned: false });
+    const back = nav("b");
+    expect(withReadouts(h, stop(false, true, false)).tab(null, true, back.nav)).toBe(true);
+    expect(back.went).toEqual(["node:a"]);
+  });
+
+  it("leaves Tab to the browser within a pinned card, outside any card, and for another canvas's card", () => {
+    const h = harness();
+    expect(withReadouts(h, stop(true, false, false)).tab(null, false, nav("b").nav)).toBe(false);
+    expect(withReadouts(h, null).tab(null, false, nav("b").nav)).toBeUndefined();
+    const other = nav("b");
+    expect(withReadouts(h, stop(false, true, false, "elsewhere")).tab(null, false, other.nav)).toBe(false);
+    expect(other.went).toEqual([]);
+  });
+
+  it("Tab past the last node focuses the card's item now, for the browser's Tab to go on", () => {
+    const h = harness();
+    h.env.nodes.set("a", { drawn: true });
+    const last = nav(null);
+    expect(withReadouts(h, stop(false, true, false)).tab(null, false, last.nav)).toBe(false);
+    expect(last.went).toEqual([]);
+    expect(h.focused).toEqual(["node:a"]);
+  });
 });

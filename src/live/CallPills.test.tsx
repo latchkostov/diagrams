@@ -56,7 +56,9 @@ it.each([true, false])("shows the pool and its queue in the existing pill (held:
   expect(markup).toContain(held ? "40 calls · 60 waiting for a connection" : "40 of 40 connections · 312 queued");
   expect(markup).toContain(held ? "100 Checkout threads held" : "no thread held");
   expect(markup).toContain("transform:scale(1.8)");
-  expect(markup).toContain('title="');
+  expect(markup).toContain('aria-label="');
+  expect(markup).toContain('data-call-edge="call"');
+  expect(markup).not.toContain('title="');
 });
 
 it("explains the pool ceiling instead of claiming all free threads can send calls", () => {

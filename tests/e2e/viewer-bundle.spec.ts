@@ -1,3 +1,4 @@
+import { openLiveNodeDetails } from "./fixtures";
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { readFileSync } from "node:fs";
@@ -249,6 +250,7 @@ test("arrow keys scroll Live reading regions without panning the bundle's camera
   await page.keyboard.up("Control");
   await waitForStableViewport(page);
   await node.hover();
+  await openLiveNodeDetails(page, "billing", "latency");
   const detail = page.getByTestId("node-detail-billing");
   await expect(detail).toBeVisible();
   await expect.poll(() => detail.evaluate((el) => el.scrollHeight > el.clientHeight)).toBe(true);
@@ -268,9 +270,10 @@ test("arrow keys scroll Live reading regions without panning the bundle's camera
   const before = await node.boundingBox();
   await page.keyboard.press("ArrowDown");
   await expect(detail).toHaveAttribute("data-arrow-default-prevented", "true");
-  await expect.poll(() => detail.evaluate((el) => el.scrollTop)).toBeGreaterThan(0);
+  await expect(page.getByTestId("hover-section-latency")).toBeFocused();
   await waitForCameraIdle(page);
   expect(await node.boundingBox()).toEqual(before);
+  await detail.focus();
   await page.keyboard.press("Home");
   await expect.poll(() => detail.evaluate((el) => el.scrollTop)).toBe(0);
 });

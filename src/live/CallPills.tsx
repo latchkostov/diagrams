@@ -150,7 +150,7 @@ export const CallPills = memo(
           key={id}
           className={`lv-call-pill${timedOut ? " is-timeout" : ""}`}
           style={{ left: box.x, top: box.y, transform: `scale(${readoutScale})`, transformOrigin: "top left" }}
-          title={title}
+          data-call-edge={id}
           aria-label={`${text} · ${title}`}
           data-testid={`call-pill-${id}`}
         >
