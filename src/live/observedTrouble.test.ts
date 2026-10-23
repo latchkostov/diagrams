@@ -7,7 +7,7 @@ import { waitingFixture } from "../lab/waitingFixture";
 import { GROWTH_FACTOR, LINEAR_LIMIT, growth } from "../test/complexity";
 import * as admission from "../model/admissionSchema";
 import * as defaults from "../sim/defaults";
-import { simulationEdges } from "../sim/simulationEdges";
+import { simulationEdges } from "../sim/topology";
 
 // What playback shows going wrong, read from seeded runs: rising lag, lost messages, a node that's down.
 

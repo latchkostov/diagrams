@@ -9,7 +9,7 @@ import {
   type TypeTable,
 } from "../model/messageTypes";
 import type { DiagramFile } from "../model/types";
-import { compileTypeFilter, typeFilterAccepts } from "../sim/topology";
+import { compileTypeFilter, typeFilterAccepts } from "../model/typeFilter";
 import type { CheckFix } from "./types";
 
 interface Baseline {

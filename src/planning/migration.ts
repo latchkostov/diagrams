@@ -5,7 +5,7 @@ import { stencilRole } from "../stencils/roles";
 import { profileOf, FAMILIES, PROCESSOR_LESSON } from "../stencils/profiles";
 import { revisionAtLeast } from "../model/revisions";
 import type { EdgeSimProps } from "../sim/types";
-import { simulationEdges } from "../sim/simulationEdges";
+import { simulationEdges } from "../sim/topology";
 import { activeCall, compileTopology } from "../sim/topology";
 
 /** Resolve behaviour before changing the resolver revision; retain unknown authored properties. */

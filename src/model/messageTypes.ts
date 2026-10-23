@@ -1,16 +1,13 @@
-import type { DiagramFile, DiagramNode, SimRole } from "./types";
+import type { DiagramFile, DiagramNode, SimRole, Simulation } from "./types";
 import {
   compileTopology,
-  compileTypeFilter,
-  forwardingFraction,
+  forwardingShare,
   forwardingTargets,
-  forwardsFrom,
   outputType,
   deadLetterRoutes,
-  typeFilterAccepts,
+  simulationSetup,
   type CompiledEdge,
   type ForwardingMode,
-  type TypeFilter,
 } from "../sim/topology";
 import {
   compileRoutes,
@@ -24,7 +21,7 @@ import {
   type CompiledTable,
   type RouteChoice,
 } from "../sim/routeMatching";
-import { configuredDiagram } from "../sim/simulationSetup";
+import { compileTypeFilter, typeFilterAccepts, type TypeFilter } from "./typeFilter";
 import { routeTableCapable } from "./requestRouting";
 import { stencilRole } from "../stencils/roles";
 import { stronglyConnected } from "./stronglyConnected";
@@ -319,7 +316,8 @@ function propagateTypes(
     }
     return choice;
   };
-  // forwardingShare's decision, composed from the same steps with each filter check budgeted and memoized.
+  // Playback's forwardingShare itself decides the role gate and the share; its two filters are checked here,
+  // compiled, budgeted and memoized, exactly as it checks them (a property test proves the type filter equal).
   const share = (
     role: SimRole,
     edge: CompiledEdge,
@@ -327,10 +325,10 @@ function propagateTypes(
     typeId: number,
     mode: ForwardingMode,
     route: CompiledRoute | undefined,
-  ) =>
-    forwardsFrom(role, edge, mode) && typeAccepted(edge, type, typeId) && requestAccepted(edge.id, route)
-      ? forwardingFraction(role, edge, mode)
-      : 0;
+  ) => {
+    const fraction = forwardingShare(role, { sync: edge.sync, share: edge.share }, type, mode);
+    return fraction && typeAccepted(edge, type, typeId) && requestAccepted(edge.id, route) ? fraction : 0;
+  };
   const addresses = new Map(
     diagram.edges.flatMap((edge) => {
       const role = roles.get(edge.from);
@@ -471,4 +469,32 @@ function propagateTypes(
   }
   graphs?.push(graph!);
   return { arriving, upstream, carried, known, loops, complete };
+}
+
+/** A node patch as setNodePropsBatch applies it: an undefined value removes the property; the rest replace. */
+function patchNodeProps(
+  raw: Record<string, unknown> | undefined,
+  patch: Record<string, unknown>,
+): Record<string, unknown> {
+  const next: Record<string, unknown> = { ...raw };
+  for (const [key, value] of Object.entries(patch)) {
+    if (key === "resumeAutoscaling") continue;
+    if (value === undefined) Reflect.deleteProperty(next, key);
+    else next[key] = value;
+  }
+  return next;
+}
+
+/** The diagram one saved simulation plays, as data: unknown node ids are ignored, like the engine does. */
+function configuredDiagram(diagram: DiagramFile, simulation: Simulation): DiagramFile {
+  const setup = simulationSetup(diagram, simulation);
+  return {
+    ...setup.diagram,
+    simulations: undefined,
+    nodes: setup.diagram.nodes.map((node) =>
+      Object.hasOwn(setup.props, node.id)
+        ? { ...node, props: patchNodeProps(node.props, setup.props[node.id] as Record<string, unknown>) }
+        : node,
+    ),
+  };
 }

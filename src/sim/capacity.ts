@@ -1,7 +1,7 @@
 import { expectedRetries } from "./retryPolicy";
 import { revisionAtLeast } from "../model/revisions";
 import { compileWaitingPlan, waitingPlan, type WaitCapacity } from "./waitingPlan";
-import { simulationEdges } from "./simulationEdges";
+import { simulationEdges } from "./topology";
 import { replyCpuMs } from "./callPolicy";
 import { resolvedTiming } from "./timing";
 import { resourcePlan, type ResourcePlan } from "./resourcePlanning";

@@ -1,6 +1,8 @@
 import { matchesRequest, type CompiledMatch, type CompiledRoute } from "./routeMatching";
 import { isDenyRule } from "../stencils/netDevices";
-import type { DiagramFile, SimRole } from "../model/types";
+import type { DiagramFile, SimRole, Simulation } from "../model/types";
+import type { NodeSimProps } from "./types";
+import { revisionAtLeast } from "../model/revisions";
 import { stencilRole } from "../stencils/roles";
 import { flowEdges } from "../model/relations";
 /**
@@ -57,7 +59,7 @@ export function outputType(role: SimRole, emits: unknown, type: string): string 
  * Deny routes stay eligible so playback and planning can count their blocked share.
  * Tables and brokers ignore fan-out shares; stores publish only async change feeds.
  * Request matching is evaluated after the type filter. Random draws stay in playback. Static message-type
- * analysis composes the same three steps (forwardsFrom, the type and request filters, forwardingFraction).
+ * analysis calls this for the role gate and share, then checks both filters with a budgeted, compiled matcher.
  */
 export function forwardingShare(
   role: SimRole,
@@ -67,70 +69,12 @@ export function forwardingShare(
   requestFilter?: CompiledMatch,
   route?: CompiledRoute,
 ): number {
-  if (!forwardsFrom(role, edge, mode)) return 0;
+  if (mode === "output" && (role === "sink" || (role === "store" && edge.sync))) return 0;
   if (!acceptsType(edge.filter, type) || (requestFilter && !matchesRequest(requestFilter, route))) return 0;
-  return forwardingFraction(role, edge, mode);
-}
-
-export type ForwardingMode = "output" | "injected" | "routed";
-
-/** forwardingShare's role gate, before any filter: sinks keep their output, stores publish only async feeds. */
-export function forwardsFrom(role: SimRole, edge: Pick<CompiledEdge, "sync">, mode: ForwardingMode): boolean {
-  return !(mode === "output" && (role === "sink" || (role === "store" && edge.sync)));
-}
-
-/** forwardingShare's result once both filters accept: tables and brokers ignore fan-out shares. */
-export function forwardingFraction(role: SimRole, edge: Pick<CompiledEdge, "share">, mode: ForwardingMode): number {
   return mode === "routed" || role === "gateway" || brokerRole(role) ? 1 : (edge.share ?? 1);
 }
 
-/**
- * acceptsType compiled once for repeated static analysis: exact names in a set and wildcard prefixes grouped by
- * length, so one check costs a lookup per distinct prefix length no longer than the type. `cost` is the work
- * compiling took. Callers charge it, and every typeFilterAccepts check, to their own work budget.
- */
-export interface TypeFilter {
-  exact: Set<string>;
-  prefixes: Map<number, Set<string>>;
-  lengths: number[];
-  cost: number;
-}
-
-export function compileTypeFilter(filter: readonly unknown[]): TypeFilter {
-  const exact = new Set<string>();
-  const prefixes = new Map<number, Set<string>>();
-  let cost = 1;
-  for (const pattern of filter) {
-    cost++;
-    if (typeof pattern !== "string") continue;
-    cost += pattern.length >> 4;
-    if (!pattern.endsWith("*")) {
-      exact.add(pattern);
-      continue;
-    }
-    const prefix = pattern.slice(0, -1);
-    const set = prefixes.get(prefix.length) ?? new Set<string>();
-    set.add(prefix);
-    prefixes.set(prefix.length, set);
-  }
-  return { exact, prefixes, lengths: [...prefixes.keys()].sort((a, b) => a - b), cost };
-}
-
-/** Exactly acceptsType(filter, type) for the compiled filter; undefined once `spend` refuses more work. */
-export function typeFilterAccepts(
-  filter: TypeFilter,
-  type: string,
-  spend: (amount: number) => boolean,
-): boolean | undefined {
-  if (!spend(1 + (type.length >> 4))) return undefined;
-  if (filter.exact.has(type)) return true;
-  for (const length of filter.lengths) {
-    if (length > type.length) break;
-    if (!spend(1 + (length >> 4))) return undefined;
-    if (filter.prefixes.get(length)!.has(type.slice(0, length))) return true;
-  }
-  return false;
-}
+export type ForwardingMode = "output" | "injected" | "routed";
 
 /** A table action considers positive-weight targets in authored order; no fallback after filtering. */
 export function forwardingTargets<Edge>(
@@ -312,4 +256,46 @@ export function brokerFeeds(compiled: CompiledTopology, roleOf: (id: string) => 
     else known.add(edge.from);
   }
   return new Map([...indexed].map(([id, brokers]) => [id, brokers ? [...brokers] : null]));
+}
+
+// Saved-simulation configuration lives here, beside the routes it configures: every playback and analysis chunk
+// already shares this module, so the one implementation adds no chunk of its own.
+const effectiveDiagrams = new WeakMap<DiagramFile, WeakMap<object, DiagramFile>>();
+
+export function simulationEdges(diagram: DiagramFile, simulation?: Simulation): DiagramFile {
+  const overrides = simulation?.setup?.edges;
+  if (!overrides || !revisionAtLeast(diagram.planning?.revision, "p3-w1")) return diagram;
+  const cache = effectiveDiagrams.get(diagram) ?? new WeakMap<object, DiagramFile>();
+  effectiveDiagrams.set(diagram, cache);
+  const cached = cache.get(overrides);
+  if (cached) return cached;
+  const result = {
+    ...diagram,
+    edges: diagram.edges.map((e) =>
+      Object.hasOwn(overrides, e.id)
+        ? {
+            ...e,
+            props: { ...e.props, caller: { ...(e.props?.caller as object | undefined), ...overrides[e.id].caller } },
+          }
+        : e,
+    ),
+  };
+  cache.set(overrides, result);
+  return result;
+}
+
+/**
+ * How playback configures a saved simulation, in one place: the diagram with the run's caller overrides
+ * (simulationEdges), then the run's node patches. Playback loads the first and hands the second to the engine's
+ * setNodePropsBatch. A static analysis uses configuredDiagram, so any edit to the diagram is followed by the run's
+ * overrides, exactly as when the edited diagram plays.
+ */
+export function simulationSetup(
+  diagram: DiagramFile,
+  simulation: Simulation,
+): { diagram: DiagramFile; props: Record<string, NodeSimProps> } {
+  return {
+    diagram: simulationEdges(diagram, simulation),
+    props: (simulation.setup?.props ?? {}) as Record<string, NodeSimProps>,
+  };
 }

@@ -2,7 +2,7 @@ import { expect, it } from "vitest";
 import payment from "../examples/slow-payment-provider.json";
 import type { DiagramFile } from "../model/types";
 import { LiveController } from "./controller";
-import { simulationEdges } from "../sim/simulationEdges";
+import { simulationEdges } from "../sim/topology";
 import { nodeOutcome } from "./nodeOutcome";
 
 it("summarizes timeout losses and late replies once, retaining distinct retry attempts", () => {
