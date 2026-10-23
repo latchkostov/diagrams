@@ -937,6 +937,7 @@ function withReadouts(h: ReturnType<typeof harness>, stop: ReadoutStop | null = 
   const layer = createReadoutLayer(h.controller, {
     stop: () => stop,
     shown: (t) => h.env.readouts.has(`${t.kind}:${t.id}`),
+    holds: (t) => h.env.active?.name === `readout:${t.kind}:${t.id}`,
   });
   h.controller.attachReadouts(layer);
   return layer;
@@ -970,6 +971,25 @@ describe("pinned Live readouts", () => {
     expect(h.controller.menu?.kind).toBe("context");
     r.point({ kind: "node", id: "a" });
     expect(r.get()).toBeNull();
+  });
+  it("Esc on an unpinned summary Tab reached gives focus back to its item; a hovered one leaves focus alone", () => {
+    const h = harness();
+    const r = withReadouts(h);
+    h.env.nodes.set("a", { drawn: true });
+    h.env.readouts.add("node:a");
+    r.point({ kind: "node", id: "a" });
+    expect(r.enter({ kind: "node", id: "a" })).toBe(true);
+    expect(h.focused).toEqual(["readout:node:a"]);
+    r.close("escape");
+    expect(h.focused).toEqual(["readout:node:a", "node:a"]);
+    expect(r.get()).toBeNull();
+    // Hovered while focus is elsewhere (the Live bar): Esc closes it and focus stays put.
+    const bar = h.el("live-play");
+    h.env.active = bar;
+    r.point({ kind: "node", id: "b" });
+    r.close("escape");
+    expect(h.focused).toEqual(["readout:node:a", "node:a"]);
+    expect(h.env.active).toBe(bar);
   });
   it("an outside press leaves the new focus alone and allows a later hover", () => {
     const h = harness();

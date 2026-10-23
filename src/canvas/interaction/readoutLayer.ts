@@ -63,13 +63,19 @@ const shown = (target: ReadoutTarget) => {
   return !!el && el.style.visibility !== "hidden";
 };
 
+/** Whether keyboard focus is inside this item's card (Tab reached it, or it was pinned and took focus). */
+const holds = (target: ReadoutTarget) => {
+  const card = document.activeElement?.closest<HTMLElement>(READOUT);
+  return card?.dataset.liveReadout === target.kind && card.dataset.item === target.id;
+};
+
 /**
  * Live's hover cards, attached to the canvas's interaction controller while Live shows them (NodeBadges). The open
  * card is its own store (get / subscribe): hovering never re-renders what reads the canvas's snapshot. Every focus move
  * it causes is a focus-policy event (readout.closed, readout.entered, readout.left) the controller runs. It ships with
  * Live, not in the canvas's first view.
  */
-export function createReadoutLayer(host: ReadoutHost, dom = { stop: readoutStop, shown }): ReadoutLayer {
+export function createReadoutLayer(host: ReadoutHost, dom = { stop: readoutStop, shown, holds }): ReadoutLayer {
   let state: ReadoutState = initialReadout();
   const listeners = new Set<() => void>();
   /** Applies a readout event; only a different open card notifies subscribers. */
@@ -92,11 +98,16 @@ export function createReadoutLayer(host: ReadoutHost, dom = { stop: readoutStop,
     pin(target: ReadoutTarget) {
       if (!host.menu) read({ type: "pin", target });
     },
-    /** Esc dismisses it until something else is pointed at; anything else closes it outright. */
+    /**
+     * Esc dismisses it until something else is pointed at; anything else closes it outright. A card that held keyboard
+     * focus (pinned, or an unpinned summary Tab reached) gives it back to its item on Esc: it is about to unmount. A card
+     * only hovered leaves focus wherever it is.
+     */
     close(reason: MenuCloseReason) {
       const target = state.open;
+      const restore = !!target && (target.pinned || dom.holds(target));
       read(reason === "escape" ? { type: "close" } : null);
-      if (target) host.dispatch({ type: "readout.closed", target, reason });
+      if (target) host.dispatch({ type: "readout.closed", target: { ...target, pinned: restore }, reason });
     },
     /** A menu or dialog opened over the canvas: the card goes, focus is the menu's. */
     dismiss: () => read({ type: "close" }),

@@ -40,7 +40,7 @@ import type { FocusCommand, FocusDecision, FocusEvent, FocusMove, FocusState, Fo
  * | T5  | readout.entered                    | the readout is shown            | focus its card now                                   |
  * | T6  | readout.entered                    | it opens with this step         | its card after the commit, else its item             |
  * | T7  | readout.left                       | Tab past the last node          | its item now (the browser's Tab goes on from there)  |
- * | T8  | readout.closed(escape)             | it was pinned                   | its item now (else the canvas)                       |
+ * | T8  | readout.closed(escape)             | it held focus (pinned, or Tab)  | its item now (else the canvas)                       |
  * | T9  | readout.closed(any other)          |                                 | keep                                                 |
  * | E1  | escape                              | from a node or a connection     | two frames later, back on it if focus was lost         |
  * | C1  | canvas.requested (the gallery)      |                                 | focus the canvas next frame                            |

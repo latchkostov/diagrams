@@ -446,3 +446,45 @@ test("non-Request edges omit caller semantics", async ({ page, consoleErrors }) 
   }
   expectNoErrors(consoleErrors);
 });
+
+test("Escape on a summary reached with Tab gives focus back to its node", async ({ page, consoleErrors }) => {
+  await gotoLive(page, "./?view=canvas&example=blocking-call&live=1&paused=1");
+  await page.getByTestId("node-caller").evaluate((el) => el.parentElement?.focus());
+  const card = page.getByTestId("node-detail-caller");
+  // Focus shows the summary (its code loads on first use); Tab steps into it.
+  await expect(card).toHaveAttribute("data-pinned", "false");
+  await page.keyboard.press("Tab");
+  await expect(card).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(card).toHaveCount(0);
+  await expect.poll(() => focusedStop(page)).toBe("node-caller");
+  await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-interaction-state", "idle");
+  expectNoErrors(consoleErrors);
+});
+
+for (const pinned of [false, true])
+  test(`Tab exits the final Live readout (${pinned ? "pinned" : "unpinned"}) to the canvas controls`, async ({
+    page,
+    consoleErrors,
+  }) => {
+    await gotoLive(page, "./?view=canvas&example=blocking-call&live=1&paused=1");
+    await page.getByTestId("node-store").evaluate((el) => el.parentElement?.focus());
+    const card = page.getByTestId("node-detail-store");
+    await expect(card).toHaveAttribute("data-pinned", "false");
+    await page.keyboard.press(pinned ? "Enter" : "Tab");
+    await expect(card).toBeFocused();
+    await expect(card).toHaveAttribute("data-pinned", String(pinned));
+    // Past its sections (pinned) or at once (a summary is one stop), Tab leaves the canvas from the last node.
+    const stops: string[] = [];
+    for (let i = 0; i < 12; i++) {
+      await page.keyboard.press("Tab");
+      const stop = await focusedStop(page);
+      stops.push(stop);
+      if (!/^(node-detail-store|hover-section-)/.test(stop)) break;
+    }
+    expect(stops.at(-1)).toBe("zoom-in-button");
+    expect(stops.filter((stop) => stop === "node-detail-store")).toEqual([]);
+    expect(stops).not.toContain("BODY");
+    await expect(card).toHaveCount(0);
+    expectNoErrors(consoleErrors);
+  });
