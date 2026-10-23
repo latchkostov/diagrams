@@ -1,7 +1,7 @@
 import { useSyncExternalStore, type PointerEvent as ReactPointerEvent } from "react";
 import { ViewportPortal, useReactFlow, useStoreApi } from "@xyflow/react";
 import { useDiagram } from "../DiagramContext";
-import { connectionMarks, connectionTargetAt } from "../interaction/connectTarget";
+import { connectionAt, connectionMarks, requestDots } from "../interaction/connectDots";
 import type { EdgeEnd } from "../../editor/edgeEdits";
 import type { AnnotationKind } from "../../model/types";
 import type { FlowNode } from "../types";
@@ -50,12 +50,13 @@ export function EdgeEnds({
       const n = getNode(nid);
       return n?.type === "annotation" ? (n.data as { kind: AnnotationKind }).kind : undefined;
     };
+    requestDots(true);
     const marks = connectionMarks(wrap);
     pointerGesture(e, {
       kind: "edge.end",
       activationDistance: 3,
       preview(_at, screen) {
-        const hit = connectionTargetAt(screen, fixed, flow, store.getState().nodeLookup.values(), kindOf);
+        const hit = connectionAt(screen, fixed, flow, store.getState().nodeLookup.values(), kindOf);
         const t = hit.target;
         marks.show(t);
         return {

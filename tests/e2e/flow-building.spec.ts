@@ -1043,14 +1043,14 @@ test("a cold edge inspector takes its requested name field once the fields arriv
   }
 });
 
-/** Holds the edge inspector's code until release(); with `fail` set by then, its download fails instead. */
-async function holdEdgePanel(page: Page) {
+/** Holds a chunk's code until release(); with `fail` set by then, its download fails instead (each request). */
+async function holdChunk(page: Page, pattern: RegExp) {
   let release!: () => void;
   const open = new Promise<void>((resolve) => {
     release = resolve;
   });
   const control = { fail: false, requests: 0, release };
-  await page.route(chunk("EdgePanel", "src/canvas/inspector/EdgePanel.tsx"), async (route) => {
+  await page.route(pattern, async (route) => {
     control.requests++;
     await open;
     if (control.fail) return route.abort("failed");
@@ -1058,6 +1058,9 @@ async function holdEdgePanel(page: Page) {
   });
   return control;
 }
+
+/** Holds the edge inspector's code until release(); with `fail` set by then, its download fails instead. */
+const holdEdgePanel = (page: Page) => holdChunk(page, chunk("EdgePanel", "src/canvas/inspector/EdgePanel.tsx"));
 
 /** The diagram's annotations as autosaved (none in the seed). */
 const annotations = async (page: Page) =>
@@ -1626,6 +1629,71 @@ test.describe("attach to a dot", () => {
     const d = await savedWhen(page, (s) => s.edges[0]?.to === "billing" && s.edges[0]?.targetSide === "left");
     expect(d.edges).toEqual([{ ...pinned[0], to: "billing", targetSide: "left" }]);
     await undoUntil(page, (s) => s.edges[0]?.to === "db" && s.edges[0]?.targetSide === "top", 1);
+  });
+
+  const DOTS = chunk("connectTarget", "src/canvas/interaction/connectTarget.ts");
+
+  test("while the dots' resolver downloads a drop attaches to the node; it takes a dot the moment it arrives", async ({
+    page,
+  }) => {
+    const dots = await holdChunk(page, DOTS);
+    try {
+      await open(page);
+      await drag(page, page.getByTestId("handle-api-bottom"), page.getByTestId("handle-db-top"));
+      await expect.poll(() => dots.requests).toBeGreaterThan(0);
+      // The node lights up, as before dots; its dot doesn't, and the drop attaches to the node.
+      await expect(page.getByTestId("rf__node-db")).toHaveClass(/is-connect-target/);
+      await expect(page.getByTestId("handle-db-top")).not.toHaveClass(/is-connect-port/);
+      await page.mouse.up();
+      const body = await savedWhen(page, (s) => s.edges.length === 1);
+      expect(body.edges[0]).toMatchObject({ from: "api", to: "db", sourceSide: "bottom" });
+      expect(body.edges[0]).not.toHaveProperty("targetSide");
+      await undoUntil(page, (s) => s.edges.length === 0, 1);
+      // Held again over the dot, then the code arrives: the preview takes the dot without another pointer move.
+      await drag(page, page.getByTestId("handle-api-bottom"), page.getByTestId("handle-db-top"));
+      await expect(page.getByTestId("handle-db-top")).not.toHaveClass(/is-connect-port/);
+      dots.release();
+      await expect(page.getByTestId("handle-db-top")).toHaveClass(/is-connect-port/);
+      await page.mouse.up();
+      const dot = await savedWhen(page, (s) => s.edges[0]?.targetSide === "top");
+      expect(dot.edges).toHaveLength(1);
+      expect(dot.edges[0]).toMatchObject({ from: "api", to: "db", sourceSide: "bottom", targetSide: "top" });
+    } finally {
+      dots.release();
+    }
+  });
+
+  test("a failed dots download still connects to nodes, and the toast's Retry brings the dots", async ({ page }) => {
+    const dots = await holdChunk(page, DOTS);
+    dots.fail = true;
+    dots.release();
+    await open(page);
+    await drag(page, page.getByTestId("handle-api-bottom"), page.getByTestId("handle-db-top"));
+    const toast = page.getByTestId("toast");
+    await expect(toast).toContainText("Part of the app couldn't be downloaded");
+    await expect(toast).toHaveAttribute("role", "alert");
+    await expect(page.getByTestId("rf__node-db")).toHaveClass(/is-connect-target/);
+    await expect(page.getByTestId("handle-db-top")).not.toHaveClass(/is-connect-port/);
+    await page.mouse.up();
+    const body = await savedWhen(page, (s) => s.edges.length === 1);
+    expect(body.edges[0]).toMatchObject({ from: "api", to: "db" });
+    expect(body.edges[0]).not.toHaveProperty("targetSide");
+    // The drop's own notice replaced that one; the next gesture asks again and says so again. Cancel it, then Retry.
+    const asked = dots.requests;
+    await drag(page, page.getByTestId("handle-api-right"), page.getByTestId("handle-billing-left"));
+    await expect(page.getByTestId("lazy-load-retry")).toBeVisible();
+    expect(dots.requests).toBeGreaterThan(asked);
+    await page.keyboard.press("Escape");
+    await page.mouse.up();
+    await expect(page.getByTestId("connection-line")).toHaveCount(0);
+    dots.fail = false;
+    const retried = dots.requests;
+    await page.getByTestId("lazy-load-retry").click();
+    await expect.poll(() => dots.requests).toBeGreaterThan(retried);
+    await drag(page, page.getByTestId("handle-api-right"), page.getByTestId("handle-billing-left"));
+    await expect(page.getByTestId("handle-billing-left")).toHaveClass(/is-connect-port/);
+    await page.mouse.up();
+    await savedWhen(page, (s) => s.edges.some((e) => e.to === "billing" && e.targetSide === "left"));
   });
 
   test("Escape cancels a dot connection, clears the highlight and adds no undo", async ({ page }) => {

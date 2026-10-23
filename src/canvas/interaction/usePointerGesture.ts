@@ -5,6 +5,7 @@ import type { InteractionController } from "./controller";
 import type { GestureKind, GesturePreview } from "./types";
 import type { Point } from "../geometry/rect";
 import { useInteraction } from "./useInteraction";
+import { onDots } from "./connectDots";
 
 type GestureApi = Pick<InteractionController, "updateGesture" | "subscribe" | "gesture">;
 
@@ -41,11 +42,15 @@ export function watchConnectionGesture(
     controller.updateGesture(seq, move(last));
   };
   document.addEventListener("pointermove", pointer, true);
-  const panned = viewport ? onViewportMove(viewport, () => last && controller.updateGesture(seq, move(last))) : null;
+  const again = () => last && controller.updateGesture(seq, move(last));
+  const panned = viewport ? onViewportMove(viewport, again) : null;
+  // The dots arriving mid-gesture (connectDots.ts): the preview is resolved again where the pointer is.
+  const dotted = onDots(again);
   const unsubscribe = controller.subscribe(() => {
     if (controller.gesture?.seq === seq) return;
     document.removeEventListener("pointermove", pointer, true);
     panned?.();
+    dotted();
     unsubscribe();
     clean();
   });
@@ -97,7 +102,9 @@ export function usePointerGesture() {
       last = { x: e.clientX, y: e.clientY };
       controller.updateGesture(seq, preview(last));
     };
-    const panned = onViewportMove(store, () => controller.updateGesture(seq, preview(last)));
+    const again = () => controller.updateGesture(seq, preview(last));
+    const panned = onViewportMove(store, again);
+    const dotted = onDots(again);
     const up = (e: PointerEvent) => {
       if (e.pointerId !== pointerId) return;
       move(e);
@@ -114,6 +121,7 @@ export function usePointerGesture() {
       if (controller.gesture?.seq === seq) return;
       unsubscribe();
       panned();
+      dotted();
       element.removeEventListener("pointermove", move as EventListener);
       element.removeEventListener("pointerup", up as EventListener);
       element.removeEventListener("pointercancel", cancel as EventListener);

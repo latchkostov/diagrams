@@ -8,7 +8,7 @@ import { t as tr } from "../../i18n";
 import type { AnnotationFlowNode, DiagramFlowEdge, FlowNode } from "../types";
 import { platform, type CanvasMenus } from "../menus/useCanvasMenus";
 import { portSide } from "../gestures";
-import { connectionMarks, connectionTargetAt } from "../interaction/connectTarget";
+import { connectionAt, connectionMarks, requestDots } from "../interaction/connectDots";
 import { watchConnectionGesture } from "../interaction/usePointerGesture";
 import type { GesturePreview } from "../interaction/types";
 
@@ -50,10 +50,11 @@ export function useConnectionPlacement(
       clickConnect.current = false;
       hideTip();
       const wrap = wrapper.current;
+      requestDots(true);
       const marks = connectionMarks(wrap);
       const fromSide = portSide(handleId);
       const preview = (screen: { x: number; y: number }): GesturePreview => {
-        const { target: t, at } = connectionTargetAt(
+        const { target: t, at } = connectionAt(
           screen,
           nodeId,
           flow,
@@ -172,7 +173,7 @@ export function useConnectionPlacement(
         return;
       }
       const screen = { x: pt.clientX, y: pt.clientY };
-      const { target: t, at } = connectionTargetAt(
+      const { target: t, at } = connectionAt(
         screen,
         gesture.preview.from,
         flow,

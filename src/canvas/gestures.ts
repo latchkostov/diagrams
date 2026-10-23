@@ -111,22 +111,3 @@ export function connectionRadius(zoom: number): number {
 export function portSide(id: string | null | undefined): Side | undefined {
   return id === "top" || id === "right" || id === "bottom" || id === "left" ? id : undefined;
 }
-
-/** The nearest measured dot within radius, in absolute flow coordinates (including shape-outline dots). */
-export function portAt(
-  p: { x: number; y: number },
-  handles: readonly { id: string; x: number; y: number }[],
-  radius: number,
-): Side | undefined {
-  let found: Side | undefined;
-  let distance = radius * radius;
-  for (const handle of handles) {
-    const side = portSide(handle.id);
-    const d = (p.x - handle.x) ** 2 + (p.y - handle.y) ** 2;
-    if (side && d <= distance && (d < distance || !found)) {
-      found = side;
-      distance = d;
-    }
-  }
-  return found;
-}

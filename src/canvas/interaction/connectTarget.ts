@@ -2,7 +2,10 @@ import type { InternalNode, ReactFlowInstance } from "@xyflow/react";
 import type { AnnotationKind } from "../../model/types";
 import type { DiagramFlowEdge, FlowNode } from "../types";
 import type { Point } from "../geometry/rect";
-import { connectHitAt, connectTarget, connectionRadius, portAt, portSide, type ConnectTarget } from "../gestures";
+import type { Side } from "../../model/types";
+import { connectHitAt, connectTarget, connectionRadius, portSide, type ConnectTarget } from "../gestures";
+
+// The dots' resolver: its own chunk, loaded by connectDots.ts (which falls back to node bodies until it arrives).
 
 type Flow = Pick<ReactFlowInstance<FlowNode, DiagramFlowEdge>, "getZoom" | "screenToFlowPosition">;
 
@@ -68,27 +71,21 @@ export function connectionTargetAt(
   return { target, at: snapped };
 }
 
-/** Transient DOM feedback stays local to its gesture; it never changes the document. */
-export function connectionMarks(wrap: Element | null) {
-  let node: Element | null = null;
-  const clearTarget = () => {
-    node?.classList.remove("is-connect-target", "has-connect-port");
-  };
-  return {
-    show(target: ConnectTarget) {
-      clearTarget();
-      node =
-        target.kind === "node"
-          ? (wrap?.querySelector(`.react-flow__node[data-id="${CSS.escape(target.id)}"]`) ?? null)
-          : null;
-      node?.classList.add("is-connect-target");
-      node?.classList.toggle("has-connect-port", target.kind === "node" && !!target.side);
-      wrap?.classList.add("is-connecting");
-      wrap?.classList.toggle("is-connect-invalid", target.kind === "invalid" || target.kind === "source");
-    },
-    clear() {
-      clearTarget();
-      wrap?.classList.remove("is-connecting", "is-connect-invalid");
-    },
-  };
+/** The nearest measured dot within radius, in absolute flow coordinates (including shape-outline dots). */
+export function portAt(
+  p: { x: number; y: number },
+  handles: readonly { id: string; x: number; y: number }[],
+  radius: number,
+): Side | undefined {
+  let found: Side | undefined;
+  let distance = radius * radius;
+  for (const handle of handles) {
+    const side = portSide(handle.id);
+    const d = (p.x - handle.x) ** 2 + (p.y - handle.y) ** 2;
+    if (side && d <= distance && (d < distance || !found)) {
+      found = side;
+      distance = d;
+    }
+  }
+  return found;
 }

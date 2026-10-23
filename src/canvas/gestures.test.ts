@@ -5,10 +5,10 @@ import {
   connectTarget,
   edgesBetween,
   pickInBox,
-  portAt,
   portSide,
   type BoxItem,
 } from "./gestures";
+import { portAt } from "./interaction/connectTarget";
 import { shapeHandles } from "./shapes/attachmentGeometry";
 import { pickSides } from "./edges/routing";
 
