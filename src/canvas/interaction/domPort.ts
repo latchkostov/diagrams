@@ -139,6 +139,13 @@ export function createDomPort(canvas: DomCanvas): InteractionPort {
     },
     connected: (handle) => (handle as Node).isConnected,
     holdKeys: (done) => captureTypeAhead(() => false, done),
+    elsewhere(handle) {
+      const el = handle as Element;
+      return (
+        !canvas.root()?.contains(el) ||
+        el.matches('input, textarea, select, [contenteditable]:not([contenteditable="false"])')
+      );
+    },
     type(handle, text) {
       const el = handle as HTMLElement;
       if (!(el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement)) return;
