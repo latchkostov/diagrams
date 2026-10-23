@@ -1,7 +1,7 @@
 {
   "text": {
     "isError": false,
-    "output": "Diagram \"A blocking call caps throughput\" · direction LR · 6 nodes, 5 connections, 0 boundaries, 2 simulations\ndescription: \"Decision service holds 64 threads while Partner scoring API replies. Compare the blocking run with freeing threads: the queue drains, and CPU scaling responds to a traffic spike.\"\nnodes:\n  \"source\" \"client.user\" (\"User\") \"Applications submitted\" props={\"ratePerSec\":400} arrivingTypes=[] capabilities=[{\"kind\":\"publishes\",\"edge\":\"submit\",\"peer\":\"applications\"}] explanation=undefined\n  \"applications\" \"generic.topic\" (\"Topic\") \"Applications\" props={\"partitions\":12} arrivingTypes=[\"Applications submitted\"] capabilities=[] explanation=undefined\n  \"caller\" \"generic.service\" (\"Service\") \"Decision service\" / \"4 replicas · 16 threads each\" props={\"replicas\":4,\"concurrency\":16,\"latencyMs\":10,\"jitter\":0,\"resources\":{\"preset\":\"io-service\",\"presetRevision\":\"1\",\"cpuMsPerMessage\":5,\"baselineMemoryMiB\":128,\"memoryMiBPerMessage\":2,\"cpuRequestMilli\":1000,\"cpuLimitMilli\":1000,\"memoryRequestMiB\":512,\"memoryLimitMiB\":1024,\"startup\":{\"delayMs\":5000,\"jitterFraction\":0},\"terminationGraceMs\":30000},\"autoscaling\":{\"mode\":\"on\",\"modelRevision\":\"a1\",\"preset\":\"hpa-service\",\"presetRevision\":\"1\",\"controller\":{\"kind\":\"hpa\",\"initialReplicas\":4,\"minReplicas\":4,\"maxReplicas\":12,\"settings\":{\"syncMs\":15000,\"tolerance\":0.1,\"initialReadinessDelayMs\":30000,\"cpuInitializationPeriodMs\":300000,\"metrics\":[{\"source\":{\"kind\":\"resource\",\"resource\":\"cpu\"},\"target\":{\"kind\":\"utilization\",\"percentOfRequest\":70},\"windowMs\":15000,\"metricDelayMs\":0}],\"up\":{\"stabilizationMs\":0,\"selectPolicy\":\"Max\",\"policies\":[{\"type\":\"Pods\",\"value\":4,\"periodMs\":15000},{\"type\":\"Percent\",\"value\":100,\"periodMs\":15000}]},\"down\":{\"stabilizationMs\":300000,\"selectPolicy\":\"Max\",\"policies\":[{\"type\":\"Percent\",\"value\":100,\"periodMs\":15000}]}}}}} arrivingTypes=[\"Applications submitted\"] capabilities=[{\"kind\":\"consumes\",\"edge\":\"consume\",\"peer\":\"applications\",\"group\":\"decisions\",\"broker\":{\"partitioned\":false,\"assignment\":\"subscriptions\",\"group\":\"subscription\",\"ingestUnit\":\"messages/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"calls\",\"edge\":\"call\",\"peer\":\"partner\"},{\"kind\":\"publishes\",\"edge\":\"publish\",\"peer\":\"decisions\"}] explanation={\"resources\":{\"perReplica\":61.53846153846154,\"initial\":4,\"min\":4,\"max\":12,\"initialCapacity\":246.15384615384616,\"maxCapacity\":738.4615384615385,\"targetReplicas\":4,\"cpuRequestPct\":50,\"memoryPeakMiB\":160,\"memoryRisk\":false,\"baselineAboveTarget\":false,\"partitionLimited\":false,\"startupMs\":5000,\"cpuUnbounded\":false},\"waits\":{\"workMs\":10,\"callMs\":250,\"threadHoldMs\":260,\"memoryResidenceMs\":260,\"slots\":64,\"ceiling\":246.15384615384616},\"id\":\"caller\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"capacity\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":246.15384615384616,\"offered\":400,\"replicas\":4,\"baseReplicas\":4,\"omittedContributors\":0,\"activeReplicas\":4,\"assignments\":[],\"slots\":16,\"seconds\":0.26,\"utilization\":1.625,\"growth\":153.84615384615384,\"contributors\":[{\"edge\":\"consume\",\"node\":\"applications\",\"label\":\"Applications\",\"rate\":400}],\"target\":0.5,\"changes\":null,\"converged\":true} requestsWait={\"threads\":64,\"holdMs\":260,\"ceilingPerSec\":246.15384615384616}\n  \"partner\" \"generic.external-api\" (\"External API\") \"Partner scoring API\" props={\"latencyMs\":250,\"api\":{\"latencyMs\":250},\"jitter\":0} arrivingTypes=[\"Applications submitted\"] capabilities=[] explanation={\"managed\":\"api\",\"id\":\"partner\",\"role\":\"sink\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":null,\"offered\":400,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":null,\"seconds\":0.25,\"utilization\":0,\"growth\":0,\"contributors\":[{\"edge\":\"call\",\"node\":\"caller\",\"label\":\"Decision service\",\"rate\":400}],\"target\":0.5,\"changes\":null,\"converged\":true}\n  \"decisions\" \"generic.topic\" (\"Topic\") \"Decisions\" props={\"partitions\":12} arrivingTypes=[\"Applications submitted\"] capabilities=[] explanation=undefined\n  \"store\" \"generic.database\" (\"Database\") \"Case store\" props={\"latencyMs\":1} arrivingTypes=[\"Applications submitted\"] capabilities=[] explanation=undefined\nconnections:\n  \"submit\" \"source\" -> \"applications\" async carriedTypes=[\"Applications submitted\"]\n  \"consume\" \"applications\" -> \"caller\" async carriedTypes=[\"Applications submitted\"]\n  \"call\" \"caller\" -> \"partner\" sync carriedTypes=[\"Applications submitted\"]\n  \"publish\" \"caller\" -> \"decisions\" async carriedTypes=[\"Applications submitted\"]\n  \"save\" \"decisions\" -> \"store\" async carriedTypes=[\"Applications submitted\"]\nsimulation \"blocking\" \"Threads held: CPU says all is well\": {\"kind\":\"constant\",\"ratePerSec\":400,\"durationMs\":20000} from \"source\"; timeline=[]; expectations=[{\"id\":\"lag\",\"label\":\"Applications lag stays below 1,000\",\"metric\":{\"node\":\"applications\",\"field\":\"backlog\"},\"op\":\"<\",\"value\":1000,\"when\":\"end\"}]\nsimulation \"free-thread\" \"Free the thread while waiting\": {\"kind\":\"spike\",\"baseRate\":400,\"peakRate\":700,\"atMs\":15000,\"peakMs\":30000,\"durationMs\":60000} from \"source\"; timeline=[]; expectations=[{\"id\":\"lag\",\"label\":\"Applications lag stays below 100\",\"metric\":{\"node\":\"applications\",\"field\":\"backlog\"},\"op\":\"<\",\"value\":100,\"when\":\"end\"}]"
+    "output": "Diagram \"A blocking call caps throughput\" · direction LR · 6 nodes, 5 connections, 0 boundaries, 2 simulations\ndescription: \"Decision service holds 64 threads while Partner scoring API replies. Compare the blocking run with freeing threads: the queue drains, and CPU scaling responds to a traffic spike.\"\nnodes:\n  \"source\" \"client.user\" (\"User\") \"Applications submitted\" props={\"ratePerSec\":400} arrivingTypes=[] capabilities=[{\"kind\":\"publishes\",\"edge\":\"submit\",\"peer\":\"applications\"}] explanation=undefined\n  \"applications\" \"generic.topic\" (\"Topic\") \"Applications\" props={\"partitions\":12} arrivingTypes=[\"Applications submitted\",\"ApplicationSubmitted\"] capabilities=[] explanation=undefined\n  \"caller\" \"generic.service\" (\"Service\") \"Decision service\" / \"4 replicas · 16 threads each\" props={\"replicas\":4,\"concurrency\":16,\"latencyMs\":10,\"jitter\":0,\"resources\":{\"preset\":\"io-service\",\"presetRevision\":\"1\",\"cpuMsPerMessage\":5,\"baselineMemoryMiB\":128,\"memoryMiBPerMessage\":2,\"cpuRequestMilli\":1000,\"cpuLimitMilli\":1000,\"memoryRequestMiB\":512,\"memoryLimitMiB\":1024,\"startup\":{\"delayMs\":5000,\"jitterFraction\":0},\"terminationGraceMs\":30000},\"autoscaling\":{\"mode\":\"on\",\"modelRevision\":\"a1\",\"preset\":\"hpa-service\",\"presetRevision\":\"1\",\"controller\":{\"kind\":\"hpa\",\"initialReplicas\":4,\"minReplicas\":4,\"maxReplicas\":12,\"settings\":{\"syncMs\":15000,\"tolerance\":0.1,\"initialReadinessDelayMs\":30000,\"cpuInitializationPeriodMs\":300000,\"metrics\":[{\"source\":{\"kind\":\"resource\",\"resource\":\"cpu\"},\"target\":{\"kind\":\"utilization\",\"percentOfRequest\":70},\"windowMs\":15000,\"metricDelayMs\":0}],\"up\":{\"stabilizationMs\":0,\"selectPolicy\":\"Max\",\"policies\":[{\"type\":\"Pods\",\"value\":4,\"periodMs\":15000},{\"type\":\"Percent\",\"value\":100,\"periodMs\":15000}]},\"down\":{\"stabilizationMs\":300000,\"selectPolicy\":\"Max\",\"policies\":[{\"type\":\"Percent\",\"value\":100,\"periodMs\":15000}]}}}}} arrivingTypes=[\"Applications submitted\",\"ApplicationSubmitted\"] capabilities=[{\"kind\":\"consumes\",\"edge\":\"consume\",\"peer\":\"applications\",\"group\":\"decisions\",\"broker\":{\"partitioned\":false,\"assignment\":\"subscriptions\",\"group\":\"subscription\",\"ingestUnit\":\"messages/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"calls\",\"edge\":\"call\",\"peer\":\"partner\"},{\"kind\":\"publishes\",\"edge\":\"publish\",\"peer\":\"decisions\"}] explanation={\"resources\":{\"perReplica\":61.53846153846154,\"initial\":4,\"min\":4,\"max\":12,\"initialCapacity\":246.15384615384616,\"maxCapacity\":738.4615384615385,\"targetReplicas\":4,\"cpuRequestPct\":50,\"memoryPeakMiB\":160,\"memoryRisk\":false,\"baselineAboveTarget\":false,\"partitionLimited\":false,\"startupMs\":5000,\"cpuUnbounded\":false},\"waits\":{\"workMs\":10,\"callMs\":250,\"threadHoldMs\":260,\"memoryResidenceMs\":260,\"slots\":64,\"ceiling\":246.15384615384616},\"id\":\"caller\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"capacity\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":246.15384615384616,\"offered\":400,\"replicas\":4,\"baseReplicas\":4,\"omittedContributors\":0,\"activeReplicas\":4,\"assignments\":[],\"slots\":16,\"seconds\":0.26,\"utilization\":1.625,\"growth\":153.84615384615384,\"contributors\":[{\"edge\":\"consume\",\"node\":\"applications\",\"label\":\"Applications\",\"rate\":400}],\"target\":0.5,\"changes\":null,\"converged\":true} requestsWait={\"threads\":64,\"holdMs\":260,\"ceilingPerSec\":246.15384615384616}\n  \"partner\" \"generic.external-api\" (\"External API\") \"Partner scoring API\" props={\"latencyMs\":250,\"api\":{\"latencyMs\":250},\"jitter\":0} arrivingTypes=[\"Applications submitted\",\"ApplicationSubmitted\"] capabilities=[] explanation={\"managed\":\"api\",\"id\":\"partner\",\"role\":\"sink\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":null,\"offered\":400,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":null,\"seconds\":0.25,\"utilization\":0,\"growth\":0,\"contributors\":[{\"edge\":\"call\",\"node\":\"caller\",\"label\":\"Decision service\",\"rate\":400}],\"target\":0.5,\"changes\":null,\"converged\":true}\n  \"decisions\" \"generic.topic\" (\"Topic\") \"Decisions\" props={\"partitions\":12} arrivingTypes=[\"Applications submitted\",\"ApplicationSubmitted\"] capabilities=[] explanation=undefined\n  \"store\" \"generic.database\" (\"Database\") \"Case store\" props={\"latencyMs\":1} arrivingTypes=[\"Applications submitted\",\"ApplicationSubmitted\"] capabilities=[] explanation=undefined\nconnections:\n  \"submit\" \"source\" -> \"applications\" async carriedTypes=[\"Applications submitted\",\"ApplicationSubmitted\"]\n  \"consume\" \"applications\" -> \"caller\" async carriedTypes=[\"Applications submitted\",\"ApplicationSubmitted\"]\n  \"call\" \"caller\" -> \"partner\" sync carriedTypes=[\"Applications submitted\",\"ApplicationSubmitted\"]\n  \"publish\" \"caller\" -> \"decisions\" async carriedTypes=[\"Applications submitted\",\"ApplicationSubmitted\"]\n  \"save\" \"decisions\" -> \"store\" async carriedTypes=[\"Applications submitted\",\"ApplicationSubmitted\"]\nsimulation \"blocking\" \"Threads held: CPU says all is well\": {\"kind\":\"constant\",\"ratePerSec\":400,\"durationMs\":20000} from \"source\"; timeline=[]; expectations=[{\"id\":\"lag\",\"label\":\"Applications lag stays below 1,000\",\"metric\":{\"node\":\"applications\",\"field\":\"backlog\"},\"op\":\"<\",\"value\":1000,\"when\":\"end\"}]\nsimulation \"free-thread\" \"Free the thread while waiting\": {\"kind\":\"spike\",\"baseRate\":400,\"peakRate\":700,\"atMs\":15000,\"peakMs\":30000,\"durationMs\":60000} from \"source\"; timeline=[]; expectations=[{\"id\":\"lag\",\"label\":\"Applications lag stays below 100\",\"metric\":{\"node\":\"applications\",\"field\":\"backlog\"},\"op\":\"<\",\"value\":100,\"when\":\"end\"}]"
   },
   "json": {
     "isError": false,
@@ -28,7 +28,7 @@
           "x": 320,
           "y": 180,
           "props": { "partitions": 12 },
-          "arrivingTypes": ["Applications submitted"],
+          "arrivingTypes": ["Applications submitted", "ApplicationSubmitted"],
           "capabilities": []
         },
         {
@@ -96,7 +96,7 @@
               }
             }
           },
-          "arrivingTypes": ["Applications submitted"],
+          "arrivingTypes": ["Applications submitted", "ApplicationSubmitted"],
           "capabilities": [
             {
               "kind": "consumes",
@@ -144,7 +144,7 @@
           "x": 1010,
           "y": 180,
           "props": { "latencyMs": 250, "api": { "latencyMs": 250 }, "jitter": 0 },
-          "arrivingTypes": ["Applications submitted"],
+          "arrivingTypes": ["Applications submitted", "ApplicationSubmitted"],
           "capabilities": [],
           "explanation": {
             "managed": "api",
@@ -178,7 +178,7 @@
           "x": 660,
           "y": 420,
           "props": { "partitions": 12 },
-          "arrivingTypes": ["Applications submitted"],
+          "arrivingTypes": ["Applications submitted", "ApplicationSubmitted"],
           "capabilities": []
         },
         {
@@ -188,7 +188,7 @@
           "x": 1010,
           "y": 420,
           "props": { "latencyMs": 1 },
-          "arrivingTypes": ["Applications submitted"],
+          "arrivingTypes": ["Applications submitted", "ApplicationSubmitted"],
           "capabilities": []
         }
       ],
@@ -198,14 +198,14 @@
           "from": "source",
           "to": "applications",
           "props": { "travelMs": 100 },
-          "carriedTypes": ["Applications submitted"]
+          "carriedTypes": ["Applications submitted", "ApplicationSubmitted"]
         },
         {
           "id": "consume",
           "from": "applications",
           "to": "caller",
           "props": { "travelMs": 100, "group": "decisions" },
-          "carriedTypes": ["Applications submitted"]
+          "carriedTypes": ["Applications submitted", "ApplicationSubmitted"]
         },
         {
           "id": "call",
@@ -213,21 +213,21 @@
           "to": "partner",
           "kind": "sync",
           "props": { "travelMs": 200 },
-          "carriedTypes": ["Applications submitted"]
+          "carriedTypes": ["Applications submitted", "ApplicationSubmitted"]
         },
         {
           "id": "publish",
           "from": "caller",
           "to": "decisions",
           "props": { "travelMs": 100 },
-          "carriedTypes": ["Applications submitted"]
+          "carriedTypes": ["Applications submitted", "ApplicationSubmitted"]
         },
         {
           "id": "save",
           "from": "decisions",
           "to": "store",
           "props": { "travelMs": 100 },
-          "carriedTypes": ["Applications submitted"]
+          "carriedTypes": ["Applications submitted", "ApplicationSubmitted"]
         }
       ],
       "messageTypesComplete": true,
@@ -295,6 +295,6 @@
   },
   "focus": {
     "isError": false,
-    "output": "Diagram \"A blocking call caps throughput\" · direction LR · 2 nodes, 1 connections, 0 boundaries, 2 simulations\ndescription: \"Decision service holds 64 threads while Partner scoring API replies. Compare the blocking run with freeing threads: the queue drains, and CPU scaling responds to a traffic spike.\"\nnodes:\n  \"source\" \"client.user\" (\"User\") \"Applications submitted\" props={\"ratePerSec\":400} arrivingTypes=[] capabilities=[{\"kind\":\"publishes\",\"edge\":\"submit\",\"peer\":\"applications\"}] explanation=undefined\n  \"applications\" \"generic.topic\" (\"Topic\") \"Applications\" props={\"partitions\":12} arrivingTypes=[\"Applications submitted\"] capabilities=[] explanation=undefined\nconnections:\n  \"submit\" \"source\" -> \"applications\" async carriedTypes=[\"Applications submitted\"]\nsimulation \"blocking\" \"Threads held: CPU says all is well\": {\"kind\":\"constant\",\"ratePerSec\":400,\"durationMs\":20000} from \"source\"; timeline=[]; expectations=[{\"id\":\"lag\",\"label\":\"Applications lag stays below 1,000\",\"metric\":{\"node\":\"applications\",\"field\":\"backlog\"},\"op\":\"<\",\"value\":1000,\"when\":\"end\"}]\nsimulation \"free-thread\" \"Free the thread while waiting\": {\"kind\":\"spike\",\"baseRate\":400,\"peakRate\":700,\"atMs\":15000,\"peakMs\":30000,\"durationMs\":60000} from \"source\"; timeline=[]; expectations=[{\"id\":\"lag\",\"label\":\"Applications lag stays below 100\",\"metric\":{\"node\":\"applications\",\"field\":\"backlog\"},\"op\":\"<\",\"value\":100,\"when\":\"end\"}]"
+    "output": "Diagram \"A blocking call caps throughput\" · direction LR · 2 nodes, 1 connections, 0 boundaries, 2 simulations\ndescription: \"Decision service holds 64 threads while Partner scoring API replies. Compare the blocking run with freeing threads: the queue drains, and CPU scaling responds to a traffic spike.\"\nnodes:\n  \"source\" \"client.user\" (\"User\") \"Applications submitted\" props={\"ratePerSec\":400} arrivingTypes=[] capabilities=[{\"kind\":\"publishes\",\"edge\":\"submit\",\"peer\":\"applications\"}] explanation=undefined\n  \"applications\" \"generic.topic\" (\"Topic\") \"Applications\" props={\"partitions\":12} arrivingTypes=[\"Applications submitted\",\"ApplicationSubmitted\"] capabilities=[] explanation=undefined\nconnections:\n  \"submit\" \"source\" -> \"applications\" async carriedTypes=[\"Applications submitted\",\"ApplicationSubmitted\"]\nsimulation \"blocking\" \"Threads held: CPU says all is well\": {\"kind\":\"constant\",\"ratePerSec\":400,\"durationMs\":20000} from \"source\"; timeline=[]; expectations=[{\"id\":\"lag\",\"label\":\"Applications lag stays below 1,000\",\"metric\":{\"node\":\"applications\",\"field\":\"backlog\"},\"op\":\"<\",\"value\":1000,\"when\":\"end\"}]\nsimulation \"free-thread\" \"Free the thread while waiting\": {\"kind\":\"spike\",\"baseRate\":400,\"peakRate\":700,\"atMs\":15000,\"peakMs\":30000,\"durationMs\":60000} from \"source\"; timeline=[]; expectations=[{\"id\":\"lag\",\"label\":\"Applications lag stays below 100\",\"metric\":{\"node\":\"applications\",\"field\":\"backlog\"},\"op\":\"<\",\"value\":100,\"when\":\"end\"}]"
   }
 }

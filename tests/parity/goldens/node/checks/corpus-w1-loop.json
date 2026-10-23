@@ -25,7 +25,17 @@
       "elements": ["caller", "call"],
       "fix": { "ops": [{ "op": "update", "target": "call", "kind": "async" }], "needsChoice": false }
     },
-    { "id": "message-loop:caller", "rule": "message-loop", "severity": "warning", "target": "caller", "elements": ["caller", "call"] }
+    {
+      "id": "message-loop:caller",
+      "rule": "message-loop",
+      "severity": "warning",
+      "target": "caller",
+      "elements": ["caller", "call"],
+      "fix": {
+        "ops": [{ "op": "update", "target": "call", "props": { "filter": ["ApplicationSubmitted"] } }],
+        "needsChoice": false
+      }
+    }
   ],
   "ignored": [],
   "fixes": {
@@ -38,6 +48,16 @@
       "nodes": 4,
       "edges": 3,
       "findingsAfter": ["message-loop:caller"]
+    },
+    "message-loop:caller (default)": {
+      "ok": true,
+      "errors": [],
+      "warnings": [],
+      "summary": "1 changed",
+      "results": [{ "i": 0, "op": "update", "id": "call" }],
+      "nodes": 4,
+      "edges": 3,
+      "findingsAfter": ["sync-cycle:caller", "message-loop:caller"]
     }
   }
 }

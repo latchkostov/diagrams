@@ -1,3 +1,4 @@
+import { matchesRequest, type CompiledMatch, type CompiledRoute } from "./routeMatching";
 import { isDenyRule } from "../stencils/netDevices";
 import type { DiagramFile, SimRole } from "../model/types";
 import { stencilRole } from "../stencils/roles";
@@ -44,6 +45,48 @@ export function emittedType(emits: unknown, type: string): string {
     if (typeof value === "string") return value;
   }
   return type;
+}
+
+/** Node output is renamed before connection filters, for services and pass-through nodes only. */
+export function outputType(role: SimRole, emits: unknown, type: string): string {
+  return role === "processor" || role === "none" ? emittedType(emits, type) : type;
+}
+
+/**
+ * Pure forwarding decision: the fraction a route may carry (zero excludes it).
+ * Deny routes stay eligible so playback and planning can count their blocked share.
+ * Tables and brokers ignore fan-out shares; stores publish only async change feeds.
+ * Request matching is evaluated after the type filter. Random draws stay in playback.
+ */
+export function forwardingShare(
+  role: SimRole,
+  edge: Pick<CompiledEdge, "sync" | "filter" | "share">,
+  type: string,
+  mode: "output" | "injected" | "routed" = "output",
+  requestFilter?: CompiledMatch,
+  route?: CompiledRoute,
+): number {
+  if (mode === "output" && (role === "sink" || (role === "store" && edge.sync))) return 0;
+  if (!acceptsType(edge.filter, type) || (requestFilter && !matchesRequest(requestFilter, route))) return 0;
+  return mode === "routed" || role === "gateway" || brokerRole(role) ? 1 : (edge.share ?? 1);
+}
+
+/** A table action considers positive-weight targets in authored order; no fallback after filtering. */
+export function forwardingTargets<Edge>(
+  targets: readonly { edgeId: string; weight: number }[],
+  edgeAt: (id: string) => Edge | undefined,
+  accepts: (edge: Edge) => boolean,
+): { eligible: Edge[]; weights: number[] } {
+  const eligible: Edge[] = [],
+    weights: number[] = [];
+  for (const target of targets) {
+    if (!(target.weight > 0)) continue;
+    const edge = edgeAt(target.edgeId);
+    if (!edge || !accepts(edge)) continue;
+    eligible.push(edge);
+    weights.push(target.weight);
+  }
+  return { eligible, weights };
 }
 
 export interface CompiledEdge {

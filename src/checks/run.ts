@@ -40,6 +40,7 @@ export const RULES: readonly CheckRule[] = [
 ];
 
 export interface RunOptions {
+  fixTarget?: string;
   /** Worker-unavailable fallback only: permit verification on this thread. */
   local?: boolean;
   /** Only these rules (default: all). Rules turned off in the diagram stay off. */
@@ -64,6 +65,7 @@ export function runChecks(diagram: DiagramFile, opts: RunOptions = {}): CheckRes
     (r) => r.id,
   );
   const ctx = opts.context ?? buildContext(diagram);
+  ctx.fixTarget = opts.fixTarget;
   if (opts.local) ctx.local = true;
   if (opts.requests) provideRequestFindings(ctx, opts.requests);
   ctx.ran = new Set(ran);

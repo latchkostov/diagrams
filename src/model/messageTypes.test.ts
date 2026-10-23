@@ -1,7 +1,9 @@
 import { messageTypesFixture } from "../lab/messageTypesFixture";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { DiagramFile, DiagramNode } from "./types";
 import { MESSAGE_TYPE_WORK_LIMIT, messageTypesAt } from "./messageTypes";
+import { createEngine } from "../sim/engine";
+import { analyzeCapacity } from "../sim/capacity";
 import { countingReads, GROWTH_FACTOR, LINEAR_LIMIT } from "../test/complexity";
 
 const node = (id: string, stencil = "generic.service", props?: DiagramNode["props"]): DiagramNode => ({
@@ -15,6 +17,167 @@ const node = (id: string, stencil = "generic.service", props?: DiagramNode["prop
 const typedCallback = messageTypesFixture;
 
 describe("messageTypesAt", () => {
+  it("propagates async store change feeds but stops sync store output", () => {
+    const d: DiagramFile = {
+      format: "diagrams/v1",
+      title: "CDC",
+      nodes: [
+        node("client", "client.browser", { messageType: "Write" }),
+        node("store", "postgres"),
+        node("feed", "generic.email"),
+        node("sync", "generic.email"),
+        node("filtered", "generic.email"),
+      ],
+      edges: [
+        { id: "write", from: "client", to: "store", kind: "sync" },
+        { id: "cdc", from: "store", to: "feed", kind: "async", props: { filter: ["Wr*"], emits: "Changed" } },
+        { id: "sync", from: "store", to: "sync", kind: "sync" },
+        { id: "filtered", from: "store", to: "filtered", props: { filter: ["Other"] } },
+      ],
+    };
+    const types = messageTypesAt(d);
+    expect(types.carried.get("cdc")).toEqual(new Set(["Changed"]));
+    expect(types.arriving.get("feed")).toEqual(new Set(["Changed"]));
+    expect(types.carried.get("sync")?.size).toBe(0);
+    expect(types.carried.get("filtered")?.size).toBe(0);
+    const sim = createEngine({ seed: 1 });
+    sim.load(d);
+    sim.inject("client", 1, { type: "Write" });
+    for (let i = 0; i < 600; i++) sim.step(10);
+    expect(sim.snapshot().nodes.feed.processed).toBe(1);
+    expect(sim.snapshot().nodes.sync.processed).toBe(0);
+    expect(sim.snapshot().nodes.filtered.processed).toBe(0);
+    const plan = analyzeCapacity(d);
+    expect(plan.connections.cdc).toBeGreaterThan(0);
+    expect(plan.connections.sync ?? 0).toBe(0);
+  });
+
+  it.each(["generic.queue", "generic.topic", "redis.stream"])(
+    "ignores share on broker delivery routes: %s",
+    (stencil) => {
+      const d = typedCallback();
+      d.nodes[1].stencil = stencil;
+      d.nodes[2].stencil = "generic.email";
+      d.edges[1].props = { share: 0 };
+      d.edges.pop();
+      expect(messageTypesAt(d).carried.get("send")).toEqual(new Set(["Send"]));
+      const sim = createEngine({ seed: 1 });
+      sim.load(d);
+      sim.inject("client", 1, { type: "Send" });
+      for (let i = 0; i < 600; i++) sim.step(10);
+      expect(sim.snapshot().nodes.sender.processed).toBe(1);
+      expect(analyzeCapacity(d).connections.send).toBeGreaterThan(0);
+      d.nodes[1].stencil = "generic.service";
+      expect(messageTypesAt(d).carried.get("send")?.size).toBe(0);
+    },
+  );
+
+  it("includes saved-simulation-only traffic and its setup overrides without mixing runs", () => {
+    const d = typedCallback();
+    d.simulations = [
+      {
+        id: "other",
+        title: "Other traffic",
+        setup: { props: { api: { emits: { Other: "Prepared" } } } },
+        traffic: [{ id: "t", node: "client", messageType: "Other", shape: { kind: "burst", count: 1 } }],
+      },
+    ];
+    const types = messageTypesAt(d);
+    expect(types.known).toContain("Other");
+    expect(types.carried.get("send")).toEqual(new Set(["Send", "Callback", "Prepared"]));
+    expect(types.arriving.get("sender")).not.toContain("Other");
+  });
+
+  it("shares table target eligibility and caller request filters with playback and capacity", () => {
+    const d: DiagramFile = {
+      format: "diagrams/v1",
+      title: "Routed",
+      planning: { revision: "p3-a1", requestRoutes: [{ id: "orders", address: { method: "POST", path: "/orders" } }] },
+      nodes: [
+        node("client", "client.browser", {
+          messageType: "Order",
+          trafficMix: { mode: "shares", entries: [{ routeId: "orders", share: 1 }] },
+        }),
+        node("router", "kong", {
+          routeTable: {
+            rules: [
+              {
+                id: "orders",
+                match: { methods: ["POST"] },
+                targets: [
+                  { edgeId: "send", weight: 1 },
+                  { edgeId: "zero", weight: 0 },
+                ],
+              },
+            ],
+            default: { targets: [{ edgeId: "fallback", weight: 1 }] },
+          },
+        }),
+        node("worker", "generic.email"),
+        node("other", "generic.email"),
+      ],
+      edges: [
+        { id: "in", from: "client", to: "router", kind: "sync" },
+        {
+          id: "send",
+          from: "router",
+          to: "worker",
+          props: { share: 0, filter: ["Order"], emits: "Accepted", requestFilter: { methods: ["POST"] } },
+        },
+        { id: "zero", from: "router", to: "other" },
+        { id: "fallback", from: "router", to: "other" },
+      ],
+    };
+    const types = messageTypesAt(d);
+    expect(types.carried.get("send")).toEqual(new Set(["Accepted"]));
+    expect(types.carried.get("zero")?.size).toBe(0);
+    expect(types.carried.get("fallback")?.size).toBe(0);
+    const engine = createEngine({ seed: 1 });
+    engine.load(d);
+    engine.inject("client", 1, { type: "Order" });
+    for (let i = 0; i < 600; i++) engine.step(10);
+    expect(engine.snapshot().nodes.worker.processed).toBe(1);
+    expect(engine.snapshot().nodes.other.processed).toBe(0);
+    expect(analyzeCapacity(d).connections.send).toBeGreaterThan(0);
+    d.edges[1].props!.filter = ["Other"];
+    expect(messageTypesAt(d).carried.get("send")?.size).toBe(0);
+    expect(messageTypesAt(d).carried.get("fallback")?.size).toBe(0);
+  });
+
+  it("interns long type names instead of copying them into each traversal key", () => {
+    const type = "T".repeat(20_000);
+    const d: DiagramFile = {
+      format: "diagrams/v1",
+      title: "Long type",
+      nodes: [
+        node("source", "client.browser", { messageType: type }),
+        ...Array.from({ length: 500 }, (_, i) => node(String(i))),
+      ],
+      edges: [
+        { id: "in", from: "source", to: "0" },
+        ...Array.from({ length: 499 }, (_, i) => ({ id: String(i), from: String(i), to: String(i + 1) })),
+      ],
+    };
+    const stringify = JSON.stringify;
+    let copied = 0;
+    const spy = vi.spyOn(JSON, "stringify").mockImplementation((...args: Parameters<typeof stringify>) => {
+      const result = stringify(...args);
+      copied += result?.length ?? 0;
+      return result;
+    });
+    let result;
+    try {
+      result = messageTypesAt(d);
+    } finally {
+      spy.mockRestore();
+    }
+    expect(result.complete).toBe(true);
+    expect(result.arriving.get("499")).toEqual(new Set([type]));
+    expect(copied).toBeLessThan(type.length * 8);
+    d.nodes[0].props = { messageType: "T".repeat(MESSAGE_TYPE_WORK_LIMIT * 16 + 1) };
+    expect(messageTypesAt(d).complete).toBe(false);
+  });
+
   it("does linear indexed work rather than rescanning the diagram per hop", () => {
     const reads = (count: number) => {
       const nodes = countingReads([

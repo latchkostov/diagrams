@@ -1,7 +1,7 @@
 {
   "text": {
     "isError": false,
-    "output": "Diagram \"Outbox and saga checkout\" · direction LR · 18 nodes, 20 connections, 1 boundaries, 2 simulations\ndescription: \"A transactional outbox publishes order events; a saga orchestrates inventory and payment, compensating when a step fails.\"\nnodes:\n  \"client\" \"client.mobile\" (\"Mobile App\") \"Mobile checkout\" / \"Place order\" props={\"ratePerSec\":5,\"messageType\":\"PlaceOrder\"} arrivingTypes=[] capabilities=[{\"kind\":\"calls\",\"edge\":\"client-to-order-api\",\"peer\":\"order-api\"}] explanation=undefined\n  \"order-api\" \"service.dotnet\" (\".NET Service\") \"Order service\" / \"Owns order state\" props={\"concurrency\":32,\"latencyMs\":100,\"emits\":{\"PlaceOrder\":\"OrderCreated\",\"ConfirmOrder\":\"OrderConfirmed\",\"CancelOrder\":\"OrderCancelled\"}} arrivingTypes=[\"PlaceOrder\"] capabilities=[{\"kind\":\"calls\",\"edge\":\"order-api-to-orders-db\",\"peer\":\"orders-db\"}] explanation={\"id\":\"order-api\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":320,\"offered\":10,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":32,\"seconds\":0.1,\"utilization\":0.03125,\"growth\":0,\"contributors\":[{\"edge\":\"client-to-order-api\",\"node\":\"client\",\"label\":\"Mobile checkout\",\"rate\":5},{\"edge\":\"saga-to-order-api\",\"node\":\"saga\",\"label\":\"Checkout saga\",\"rate\":5}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"orders-db\" \"postgres\" (\"PostgreSQL\") \"Orders database\" / \"orders + outbox table\" props={\"latencyMs\":10} arrivingTypes=[\"OrderCreated\"] capabilities=[] explanation=undefined\n  \"outbox-relay\" \"kafka.connect\" (\"Kafka Connect\") \"Outbox relay\" / \"Debezium outbox router\" props={\"concurrency\":32,\"latencyMs\":80} arrivingTypes=[] capabilities=[{\"kind\":\"publishes\",\"edge\":\"outbox-relay-to-order-events\",\"peer\":\"order-events\"}] explanation={\"id\":\"outbox-relay\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":400,\"offered\":10,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":32,\"seconds\":0.08,\"utilization\":0.025,\"growth\":0,\"contributors\":[{\"edge\":\"orders-db-to-outbox-relay\",\"node\":\"orders-db\",\"label\":\"Orders database\",\"rate\":10}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"order-events\" \"kafka.topic\" (\"Kafka Topic\") \"orders.events\" / \"key: orderId\" props={\"partitions\":12} arrivingTypes=[] capabilities=[] explanation=undefined\n  \"notifications\" \"service.node\" (\"Node.js Service\") \"Notification service\" / \"group: notifications\" props={\"concurrency\":32,\"latencyMs\":100,\"emits\":{\"OrderConfirmed\":\"ReceiptEmail\",\"OrderCancelled\":\"CancellationEmail\"}} arrivingTypes=[] capabilities=[{\"kind\":\"consumes\",\"edge\":\"order-events-to-notifications\",\"peer\":\"order-events\",\"group\":\"notifications\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"filter\":[\"OrderConfirmed\",\"OrderCancelled\"],\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"calls\",\"edge\":\"notifications-to-email\",\"peer\":\"email\"}] explanation={\"id\":\"notifications\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":320,\"offered\":5,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"order-events\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":12}],\"slots\":32,\"seconds\":0.1,\"utilization\":0.015625,\"growth\":0,\"contributors\":[{\"edge\":\"order-events-to-notifications\",\"node\":\"order-events\",\"label\":\"orders.events\",\"rate\":5}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"email\" \"sendgrid\" (\"SendGrid\") \"SendGrid\" / \"Receipts\" props={} arrivingTypes=[] capabilities=[] explanation=undefined\n  \"saga\" \"generic.saga\" (\"Saga Orchestrator\") \"Checkout saga\" / \"Orchestrator · group: saga\" props={\"concurrency\":64,\"latencyMs\":50,\"emits\":{\"OrderCreated\":\"ReserveInventory\",\"InventoryReserved\":\"ChargePayment\",\"PaymentCaptured\":\"ConfirmOrder\",\"PaymentDeclined\":\"ReleaseInventory\",\"InventoryReleased\":\"CancelOrder\"}} arrivingTypes=[] capabilities=[{\"kind\":\"consumes\",\"edge\":\"order-events-to-saga\",\"peer\":\"order-events\",\"group\":\"saga\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"filter\":[\"OrderCreated\"],\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"calls\",\"edge\":\"saga-to-saga-db\",\"peer\":\"saga-db\"},{\"kind\":\"publishes\",\"edge\":\"saga-to-inventory-cmds\",\"peer\":\"inventory-cmds\",\"filter\":[\"ReserveInventory\",\"ReleaseInventory\"]},{\"kind\":\"publishes\",\"edge\":\"saga-to-payment-cmds\",\"peer\":\"payment-cmds\",\"filter\":[\"ChargePayment\"]},{\"kind\":\"consumes\",\"edge\":\"saga-replies-to-saga\",\"peer\":\"saga-replies\",\"group\":\"saga\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0}] explanation={\"id\":\"saga\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":1280,\"offered\":15,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"order-events\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":12},{\"broker\":\"saga-replies\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":12}],\"slots\":64,\"seconds\":0.05,\"utilization\":0.01171875,\"growth\":0,\"contributors\":[{\"edge\":\"order-events-to-saga\",\"node\":\"order-events\",\"label\":\"orders.events\",\"rate\":5},{\"edge\":\"saga-replies-to-saga\",\"node\":\"saga-replies\",\"label\":\"saga.replies\",\"rate\":10}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"saga-db\" \"postgres\" (\"PostgreSQL\") \"Saga state\" / \"One row per checkout\" props={\"latencyMs\":10} arrivingTypes=[] capabilities=[] explanation=undefined\n  \"inventory-cmds\" \"kafka.topic\" (\"Kafka Topic\") \"inventory.commands\" / \"Reserve · Release\" props={\"partitions\":12} in \"kafka\" arrivingTypes=[] capabilities=[] explanation=undefined\n  \"saga-replies\" \"kafka.topic\" (\"Kafka Topic\") \"saga.replies\" / \"Step results\" props={\"partitions\":12} in \"kafka\" arrivingTypes=[] capabilities=[] explanation=undefined\n  \"payment-cmds\" \"kafka.topic\" (\"Kafka Topic\") \"payments.commands\" / \"ChargePayment\" props={\"partitions\":12,\"maxDeliveryCount\":5} in \"kafka\" arrivingTypes=[] capabilities=[] explanation=undefined\n  \"payments-dlq\" \"kafka.topic\" (\"Kafka Topic\") \"payments.commands.dlq\" / \"Dead letters · replayable\" props={\"isDeadLetter\":true} in \"kafka\" arrivingTypes=[] capabilities=[] explanation={\"id\":\"payments-dlq\",\"role\":\"topic\",\"status\":\"up\",\"reason\":\"no-reader\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":0,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":null,\"seconds\":0,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"changes\":null,\"addConsumer\":\"payments-dlq\",\"fixId\":\"no-reader:payments-dlq\",\"converged\":true}\n  \"inventory-svc\" \"service.java\" (\"Java Service\") \"Inventory service\" / \"group: inventory\" props={\"concurrency\":32,\"latencyMs\":100,\"emits\":{\"ReserveInventory\":\"InventoryReserved\",\"ReleaseInventory\":\"InventoryReleased\"}} arrivingTypes=[] capabilities=[{\"kind\":\"consumes\",\"edge\":\"inventory-cmds-to-inventory-svc\",\"peer\":\"inventory-cmds\",\"group\":\"inventory\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"calls\",\"edge\":\"inventory-svc-to-inventory-db\",\"peer\":\"inventory-db\"},{\"kind\":\"publishes\",\"edge\":\"inventory-svc-to-saga-replies\",\"peer\":\"saga-replies\"}] explanation={\"id\":\"inventory-svc\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":320,\"offered\":5,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"inventory-cmds\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":12}],\"slots\":32,\"seconds\":0.1,\"utilization\":0.015625,\"growth\":0,\"contributors\":[{\"edge\":\"inventory-cmds-to-inventory-svc\",\"node\":\"inventory-cmds\",\"label\":\"inventory.commands\",\"rate\":5}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"payment-svc\" \"service.go\" (\"Go Service\") \"Payment service\" / \"group: payments\" props={\"concurrency\":32,\"latencyMs\":150,\"retry\":\"inplace\",\"retryBackoffMs\":300,\"emits\":{\"ChargePayment\":\"PaymentCaptured\"}} arrivingTypes=[] capabilities=[{\"kind\":\"consumes\",\"edge\":\"payment-cmds-to-payment-svc\",\"peer\":\"payment-cmds\",\"group\":\"payments\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"inplace\",\"retryBackoffMs\":300},{\"kind\":\"calls\",\"edge\":\"payment-svc-to-stripe\",\"peer\":\"stripe\",\"filter\":[\"PaymentCaptured\"]},{\"kind\":\"publishes\",\"edge\":\"payment-svc-to-saga-replies\",\"peer\":\"saga-replies\"}] explanation={\"id\":\"payment-svc\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":213.33333333333334,\"offered\":5,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"payment-cmds\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":12}],\"slots\":32,\"seconds\":0.15,\"utilization\":0.0234375,\"growth\":0,\"contributors\":[{\"edge\":\"payment-cmds-to-payment-svc\",\"node\":\"payment-cmds\",\"label\":\"payments.commands\",\"rate\":5}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"inventory-db\" \"postgres\" (\"PostgreSQL\") \"Inventory database\" / \"Reservations by orderId\" props={\"latencyMs\":10} arrivingTypes=[] capabilities=[] explanation=undefined\n  \"stripe\" \"stripe\" (\"Stripe\") \"Stripe\" / \"Payment intents\" props={} arrivingTypes=[] capabilities=[] explanation=undefined\n  \"vault\" \"vault\" (\"HashiCorp Vault\") \"Vault\" / \"Stripe API key\" arrivingTypes=[] capabilities=[] explanation=undefined\nconnections:\n  \"client-to-order-api\" \"client\" -> \"order-api\" sync \"POST /orders\" carriedTypes=[\"PlaceOrder\"]\n  \"order-api-to-orders-db\" \"order-api\" -> \"orders-db\" sync \"Order + outbox, one tx\" carriedTypes=[\"OrderCreated\"]\n  \"orders-db-to-outbox-relay\" \"orders-db\" -> \"outbox-relay\" async \"WAL\" carriedTypes=[]\n  \"outbox-relay-to-order-events\" \"outbox-relay\" -> \"order-events\" async \"Outbox events\" carriedTypes=[]\n  \"order-events-to-saga\" \"order-events\" -> \"saga\" async \"OrderCreated\" carriedTypes=[]\n  \"order-events-to-notifications\" \"order-events\" -> \"notifications\" async \"Confirmed · Cancelled\" carriedTypes=[]\n  \"notifications-to-email\" \"notifications\" -> \"email\" sync \"Send email\" carriedTypes=[]\n  \"saga-to-saga-db\" \"saga\" -> \"saga-db\" sync \"Persist step\" carriedTypes=[]\n  \"saga-to-inventory-cmds\" \"saga\" -> \"inventory-cmds\" async \"Reserve / Release\" carriedTypes=[]\n  \"saga-to-payment-cmds\" \"saga\" -> \"payment-cmds\" async \"ChargePayment\" carriedTypes=[]\n  \"saga-to-order-api\" \"saga\" -> \"order-api\" async \"Confirm / Cancel\" carriedTypes=[]\n  \"inventory-cmds-to-inventory-svc\" \"inventory-cmds\" -> \"inventory-svc\" async carriedTypes=[]\n  \"inventory-svc-to-inventory-db\" \"inventory-svc\" -> \"inventory-db\" sync \"Reserve stock\" carriedTypes=[]\n  \"inventory-svc-to-saga-replies\" \"inventory-svc\" -> \"saga-replies\" async \"Reserved / Released\" carriedTypes=[]\n  \"payment-cmds-to-payment-svc\" \"payment-cmds\" -> \"payment-svc\" async carriedTypes=[]\n  \"payment-cmds-to-payments-dlq\" \"payment-cmds\" -> \"payments-dlq\" async \"After 5 attempts\" carriedTypes=[]\n  \"payment-svc-to-stripe\" \"payment-svc\" -> \"stripe\" sync \"Idempotency-Key\" carriedTypes=[]\n  \"payment-svc-to-saga-replies\" \"payment-svc\" -> \"saga-replies\" async \"Captured / Declined\" carriedTypes=[]\n  \"saga-replies-to-saga\" \"saga-replies\" -> \"saga\" async \"Next step\" carriedTypes=[]\n  \"payment-svc-to-vault\" \"payment-svc\" -> \"vault\" secret dependency carriedTypes=[]\nboundary \"kafka\" \"Kafka · saga channels\" (neutral): \"inventory-cmds\", \"saga-replies\", \"payment-cmds\", \"payments-dlq\"\nsimulation \"happy-path\" \"Twenty checkouts, happy path\": {\"kind\":\"burst\",\"count\":20,\"spreadMs\":4000} from \"client\"; timeline=[{\"atMs\":0,\"action\":{\"do\":\"trace\",\"node\":\"order-api\"}},{\"atMs\":0,\"action\":{\"do\":\"note\",\"text\":\"The order row and its OrderCreated event commit in one database transaction. No dual write, so no lost events.\",\"focus\":[\"order-api\",\"orders-db\"],\"pause\":true}},{\"atMs\":900,\"action\":{\"do\":\"note\",\"text\":\"The outbox relay tails the write-ahead log and publishes each outbox row to Kafka.\",\"focus\":[\"orders-db\",\"outbox-relay\",\"order-events\"]}},{\"atMs\":2500,\"action\":{\"do\":\"note\",\"text\":\"The saga runs one step at a time: reserve stock, charge the card, then confirm the order. Every step is saved, so a restart resumes where it left off.\",\"focus\":[\"saga\",\"saga-db\",\"inventory-cmds\",\"payment-cmds\",\"saga-replies\"]}},{\"atMs\":6000,\"action\":{\"do\":\"note\",\"text\":\"OrderConfirmed goes out through the same outbox, and the customer gets a receipt.\",\"focus\":[\"order-events\",\"notifications\",\"email\"]}}]; expectations=[{\"id\":\"stock\",\"label\":\"20 reservations\",\"metric\":{\"node\":\"inventory-db\",\"field\":\"processed\"},\"op\":\"==\",\"value\":20,\"when\":\"end\"},{\"id\":\"charges\",\"label\":\"20 cards charged once each\",\"metric\":{\"node\":\"stripe\",\"field\":\"processed\"},\"op\":\"==\",\"value\":20,\"when\":\"end\"},{\"id\":\"receipts\",\"label\":\"20 receipts sent\",\"metric\":{\"node\":\"email\",\"field\":\"processed\"},\"op\":\"==\",\"value\":20,\"when\":\"end\"},{\"id\":\"orders\",\"label\":\"20 orders created, 20 confirmed\",\"metric\":{\"node\":\"orders-db\",\"field\":\"processed\"},\"op\":\"==\",\"value\":40,\"when\":\"end\"}]\nsimulation \"declines\" \"Declines and flaky payments\": {\"kind\":\"constant\",\"ratePerSec\":10,\"durationMs\":6000} from \"client\"; timeline=[{\"atMs\":0,\"action\":{\"do\":\"note\",\"text\":\"One payment call in five times out. The consumer retries in place with the same Idempotency-Key, so a retry never charges twice.\",\"focus\":[\"payment-svc\",\"stripe\"]}},{\"atMs\":2500,\"action\":{\"do\":\"props\",\"node\":\"payment-svc\",\"props\":{\"emits\":{\"ChargePayment\":\"PaymentDeclined\"}}}},{\"atMs\":2500,\"action\":{\"do\":\"note\",\"text\":\"A fraud rule starts declining every card. The saga compensates: it releases the reserved stock, then cancels the order.\",\"focus\":[\"payment-svc\",\"saga\",\"inventory-cmds\",\"order-api\"],\"pause\":true}},{\"atMs\":5500,\"action\":{\"do\":\"props\",\"node\":\"payment-svc\",\"props\":{\"emits\":{\"ChargePayment\":\"PaymentCaptured\"}}}},{\"atMs\":5500,\"action\":{\"do\":\"note\",\"text\":\"The rule is rolled back. Every customer still hears back: a receipt or a cancellation.\",\"focus\":[\"notifications\",\"email\"]}}]; expectations=[{\"id\":\"everyone\",\"label\":\"All 60 customers get an email\",\"metric\":{\"node\":\"email\",\"field\":\"processed\"},\"op\":\"==\",\"value\":60,\"when\":\"end\"},{\"id\":\"compensated\",\"label\":\"Declined orders release their stock\",\"metric\":{\"node\":\"inventory-db\",\"field\":\"processed\"},\"op\":\">\",\"value\":60,\"when\":\"end\"},{\"id\":\"retried\",\"label\":\"Transient errors were retried\",\"metric\":{\"node\":\"payment-svc\",\"field\":\"failed\"},\"op\":\">\",\"value\":0,\"when\":\"end\"},{\"id\":\"no-dlq\",\"label\":\"Nothing is dead-lettered\",\"metric\":{\"node\":\"payment-cmds\",\"field\":\"deadLettered\"},\"op\":\"==\",\"value\":0,\"when\":\"always\"}]"
+    "output": "Diagram \"Outbox and saga checkout\" · direction LR · 18 nodes, 20 connections, 1 boundaries, 2 simulations\ndescription: \"A transactional outbox publishes order events; a saga orchestrates inventory and payment, compensating when a step fails.\"\nnodes:\n  \"client\" \"client.mobile\" (\"Mobile App\") \"Mobile checkout\" / \"Place order\" props={\"ratePerSec\":5,\"messageType\":\"PlaceOrder\"} arrivingTypes=[] capabilities=[{\"kind\":\"calls\",\"edge\":\"client-to-order-api\",\"peer\":\"order-api\"}] explanation=undefined\n  \"order-api\" \"service.dotnet\" (\".NET Service\") \"Order service\" / \"Owns order state\" props={\"concurrency\":32,\"latencyMs\":100,\"emits\":{\"PlaceOrder\":\"OrderCreated\",\"ConfirmOrder\":\"OrderConfirmed\",\"CancelOrder\":\"OrderCancelled\"}} arrivingTypes=[\"PlaceOrder\",\"ConfirmOrder\"] capabilities=[{\"kind\":\"calls\",\"edge\":\"order-api-to-orders-db\",\"peer\":\"orders-db\"}] explanation={\"id\":\"order-api\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":320,\"offered\":10,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":32,\"seconds\":0.1,\"utilization\":0.03125,\"growth\":0,\"contributors\":[{\"edge\":\"client-to-order-api\",\"node\":\"client\",\"label\":\"Mobile checkout\",\"rate\":5},{\"edge\":\"saga-to-order-api\",\"node\":\"saga\",\"label\":\"Checkout saga\",\"rate\":5}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"orders-db\" \"postgres\" (\"PostgreSQL\") \"Orders database\" / \"orders + outbox table\" props={\"latencyMs\":10} arrivingTypes=[\"OrderCreated\",\"OrderConfirmed\"] capabilities=[] explanation=undefined\n  \"outbox-relay\" \"kafka.connect\" (\"Kafka Connect\") \"Outbox relay\" / \"Debezium outbox router\" props={\"concurrency\":32,\"latencyMs\":80} arrivingTypes=[\"OrderCreated\",\"OrderConfirmed\"] capabilities=[{\"kind\":\"publishes\",\"edge\":\"outbox-relay-to-order-events\",\"peer\":\"order-events\"}] explanation={\"id\":\"outbox-relay\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":400,\"offered\":10,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":32,\"seconds\":0.08,\"utilization\":0.025,\"growth\":0,\"contributors\":[{\"edge\":\"orders-db-to-outbox-relay\",\"node\":\"orders-db\",\"label\":\"Orders database\",\"rate\":10}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"order-events\" \"kafka.topic\" (\"Kafka Topic\") \"orders.events\" / \"key: orderId\" props={\"partitions\":12} arrivingTypes=[\"OrderCreated\",\"OrderConfirmed\"] capabilities=[] explanation=undefined\n  \"notifications\" \"service.node\" (\"Node.js Service\") \"Notification service\" / \"group: notifications\" props={\"concurrency\":32,\"latencyMs\":100,\"emits\":{\"OrderConfirmed\":\"ReceiptEmail\",\"OrderCancelled\":\"CancellationEmail\"}} arrivingTypes=[\"OrderConfirmed\"] capabilities=[{\"kind\":\"consumes\",\"edge\":\"order-events-to-notifications\",\"peer\":\"order-events\",\"group\":\"notifications\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"filter\":[\"OrderConfirmed\",\"OrderCancelled\"],\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"calls\",\"edge\":\"notifications-to-email\",\"peer\":\"email\"}] explanation={\"id\":\"notifications\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":320,\"offered\":5,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"order-events\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":12}],\"slots\":32,\"seconds\":0.1,\"utilization\":0.015625,\"growth\":0,\"contributors\":[{\"edge\":\"order-events-to-notifications\",\"node\":\"order-events\",\"label\":\"orders.events\",\"rate\":5}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"email\" \"sendgrid\" (\"SendGrid\") \"SendGrid\" / \"Receipts\" props={} arrivingTypes=[\"ReceiptEmail\"] capabilities=[] explanation=undefined\n  \"saga\" \"generic.saga\" (\"Saga Orchestrator\") \"Checkout saga\" / \"Orchestrator · group: saga\" props={\"concurrency\":64,\"latencyMs\":50,\"emits\":{\"OrderCreated\":\"ReserveInventory\",\"InventoryReserved\":\"ChargePayment\",\"PaymentCaptured\":\"ConfirmOrder\",\"PaymentDeclined\":\"ReleaseInventory\",\"InventoryReleased\":\"CancelOrder\"}} arrivingTypes=[\"OrderCreated\",\"InventoryReserved\",\"PaymentCaptured\"] capabilities=[{\"kind\":\"consumes\",\"edge\":\"order-events-to-saga\",\"peer\":\"order-events\",\"group\":\"saga\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"filter\":[\"OrderCreated\"],\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"calls\",\"edge\":\"saga-to-saga-db\",\"peer\":\"saga-db\"},{\"kind\":\"publishes\",\"edge\":\"saga-to-inventory-cmds\",\"peer\":\"inventory-cmds\",\"filter\":[\"ReserveInventory\",\"ReleaseInventory\"]},{\"kind\":\"publishes\",\"edge\":\"saga-to-payment-cmds\",\"peer\":\"payment-cmds\",\"filter\":[\"ChargePayment\"]},{\"kind\":\"consumes\",\"edge\":\"saga-replies-to-saga\",\"peer\":\"saga-replies\",\"group\":\"saga\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0}] explanation={\"id\":\"saga\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":1280,\"offered\":15,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"order-events\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":12},{\"broker\":\"saga-replies\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":12}],\"slots\":64,\"seconds\":0.05,\"utilization\":0.01171875,\"growth\":0,\"contributors\":[{\"edge\":\"order-events-to-saga\",\"node\":\"order-events\",\"label\":\"orders.events\",\"rate\":5},{\"edge\":\"saga-replies-to-saga\",\"node\":\"saga-replies\",\"label\":\"saga.replies\",\"rate\":10}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"saga-db\" \"postgres\" (\"PostgreSQL\") \"Saga state\" / \"One row per checkout\" props={\"latencyMs\":10} arrivingTypes=[\"ReserveInventory\",\"ChargePayment\",\"ConfirmOrder\"] capabilities=[] explanation=undefined\n  \"inventory-cmds\" \"kafka.topic\" (\"Kafka Topic\") \"inventory.commands\" / \"Reserve · Release\" props={\"partitions\":12} in \"kafka\" arrivingTypes=[\"ReserveInventory\"] capabilities=[] explanation=undefined\n  \"saga-replies\" \"kafka.topic\" (\"Kafka Topic\") \"saga.replies\" / \"Step results\" props={\"partitions\":12} in \"kafka\" arrivingTypes=[\"InventoryReserved\",\"PaymentCaptured\"] capabilities=[] explanation=undefined\n  \"payment-cmds\" \"kafka.topic\" (\"Kafka Topic\") \"payments.commands\" / \"ChargePayment\" props={\"partitions\":12,\"maxDeliveryCount\":5} in \"kafka\" arrivingTypes=[\"ChargePayment\"] capabilities=[] explanation=undefined\n  \"payments-dlq\" \"kafka.topic\" (\"Kafka Topic\") \"payments.commands.dlq\" / \"Dead letters · replayable\" props={\"isDeadLetter\":true} in \"kafka\" arrivingTypes=[\"ChargePayment\"] capabilities=[] explanation={\"id\":\"payments-dlq\",\"role\":\"topic\",\"status\":\"up\",\"reason\":\"no-reader\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":0,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":null,\"seconds\":0,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"changes\":null,\"addConsumer\":\"payments-dlq\",\"fixId\":\"no-reader:payments-dlq\",\"converged\":true}\n  \"inventory-svc\" \"service.java\" (\"Java Service\") \"Inventory service\" / \"group: inventory\" props={\"concurrency\":32,\"latencyMs\":100,\"emits\":{\"ReserveInventory\":\"InventoryReserved\",\"ReleaseInventory\":\"InventoryReleased\"}} arrivingTypes=[\"ReserveInventory\"] capabilities=[{\"kind\":\"consumes\",\"edge\":\"inventory-cmds-to-inventory-svc\",\"peer\":\"inventory-cmds\",\"group\":\"inventory\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"calls\",\"edge\":\"inventory-svc-to-inventory-db\",\"peer\":\"inventory-db\"},{\"kind\":\"publishes\",\"edge\":\"inventory-svc-to-saga-replies\",\"peer\":\"saga-replies\"}] explanation={\"id\":\"inventory-svc\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":320,\"offered\":5,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"inventory-cmds\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":12}],\"slots\":32,\"seconds\":0.1,\"utilization\":0.015625,\"growth\":0,\"contributors\":[{\"edge\":\"inventory-cmds-to-inventory-svc\",\"node\":\"inventory-cmds\",\"label\":\"inventory.commands\",\"rate\":5}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"payment-svc\" \"service.go\" (\"Go Service\") \"Payment service\" / \"group: payments\" props={\"concurrency\":32,\"latencyMs\":150,\"retry\":\"inplace\",\"retryBackoffMs\":300,\"emits\":{\"ChargePayment\":\"PaymentCaptured\"}} arrivingTypes=[\"ChargePayment\"] capabilities=[{\"kind\":\"consumes\",\"edge\":\"payment-cmds-to-payment-svc\",\"peer\":\"payment-cmds\",\"group\":\"payments\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"inplace\",\"retryBackoffMs\":300},{\"kind\":\"calls\",\"edge\":\"payment-svc-to-stripe\",\"peer\":\"stripe\",\"filter\":[\"PaymentCaptured\"]},{\"kind\":\"publishes\",\"edge\":\"payment-svc-to-saga-replies\",\"peer\":\"saga-replies\"}] explanation={\"id\":\"payment-svc\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":213.33333333333334,\"offered\":5,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"payment-cmds\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":12}],\"slots\":32,\"seconds\":0.15,\"utilization\":0.0234375,\"growth\":0,\"contributors\":[{\"edge\":\"payment-cmds-to-payment-svc\",\"node\":\"payment-cmds\",\"label\":\"payments.commands\",\"rate\":5}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"inventory-db\" \"postgres\" (\"PostgreSQL\") \"Inventory database\" / \"Reservations by orderId\" props={\"latencyMs\":10} arrivingTypes=[\"InventoryReserved\"] capabilities=[] explanation=undefined\n  \"stripe\" \"stripe\" (\"Stripe\") \"Stripe\" / \"Payment intents\" props={} arrivingTypes=[\"PaymentCaptured\"] capabilities=[] explanation=undefined\n  \"vault\" \"vault\" (\"HashiCorp Vault\") \"Vault\" / \"Stripe API key\" arrivingTypes=[] capabilities=[] explanation=undefined\nconnections:\n  \"client-to-order-api\" \"client\" -> \"order-api\" sync \"POST /orders\" carriedTypes=[\"PlaceOrder\"]\n  \"order-api-to-orders-db\" \"order-api\" -> \"orders-db\" sync \"Order + outbox, one tx\" carriedTypes=[\"OrderCreated\",\"OrderConfirmed\"]\n  \"orders-db-to-outbox-relay\" \"orders-db\" -> \"outbox-relay\" async \"WAL\" carriedTypes=[\"OrderCreated\",\"OrderConfirmed\"]\n  \"outbox-relay-to-order-events\" \"outbox-relay\" -> \"order-events\" async \"Outbox events\" carriedTypes=[\"OrderCreated\",\"OrderConfirmed\"]\n  \"order-events-to-saga\" \"order-events\" -> \"saga\" async \"OrderCreated\" carriedTypes=[\"OrderCreated\"]\n  \"order-events-to-notifications\" \"order-events\" -> \"notifications\" async \"Confirmed · Cancelled\" carriedTypes=[\"OrderConfirmed\"]\n  \"notifications-to-email\" \"notifications\" -> \"email\" sync \"Send email\" carriedTypes=[\"ReceiptEmail\"]\n  \"saga-to-saga-db\" \"saga\" -> \"saga-db\" sync \"Persist step\" carriedTypes=[\"ReserveInventory\",\"ChargePayment\",\"ConfirmOrder\"]\n  \"saga-to-inventory-cmds\" \"saga\" -> \"inventory-cmds\" async \"Reserve / Release\" carriedTypes=[\"ReserveInventory\"]\n  \"saga-to-payment-cmds\" \"saga\" -> \"payment-cmds\" async \"ChargePayment\" carriedTypes=[\"ChargePayment\"]\n  \"saga-to-order-api\" \"saga\" -> \"order-api\" async \"Confirm / Cancel\" carriedTypes=[\"ConfirmOrder\"]\n  \"inventory-cmds-to-inventory-svc\" \"inventory-cmds\" -> \"inventory-svc\" async carriedTypes=[\"ReserveInventory\"]\n  \"inventory-svc-to-inventory-db\" \"inventory-svc\" -> \"inventory-db\" sync \"Reserve stock\" carriedTypes=[\"InventoryReserved\"]\n  \"inventory-svc-to-saga-replies\" \"inventory-svc\" -> \"saga-replies\" async \"Reserved / Released\" carriedTypes=[\"InventoryReserved\"]\n  \"payment-cmds-to-payment-svc\" \"payment-cmds\" -> \"payment-svc\" async carriedTypes=[\"ChargePayment\"]\n  \"payment-cmds-to-payments-dlq\" \"payment-cmds\" -> \"payments-dlq\" async \"After 5 attempts\" carriedTypes=[\"ChargePayment\"]\n  \"payment-svc-to-stripe\" \"payment-svc\" -> \"stripe\" sync \"Idempotency-Key\" carriedTypes=[\"PaymentCaptured\"]\n  \"payment-svc-to-saga-replies\" \"payment-svc\" -> \"saga-replies\" async \"Captured / Declined\" carriedTypes=[\"PaymentCaptured\"]\n  \"saga-replies-to-saga\" \"saga-replies\" -> \"saga\" async \"Next step\" carriedTypes=[\"InventoryReserved\",\"PaymentCaptured\"]\n  \"payment-svc-to-vault\" \"payment-svc\" -> \"vault\" secret dependency carriedTypes=[]\nboundary \"kafka\" \"Kafka · saga channels\" (neutral): \"inventory-cmds\", \"saga-replies\", \"payment-cmds\", \"payments-dlq\"\nsimulation \"happy-path\" \"Twenty checkouts, happy path\": {\"kind\":\"burst\",\"count\":20,\"spreadMs\":4000} from \"client\"; timeline=[{\"atMs\":0,\"action\":{\"do\":\"trace\",\"node\":\"order-api\"}},{\"atMs\":0,\"action\":{\"do\":\"note\",\"text\":\"The order row and its OrderCreated event commit in one database transaction. No dual write, so no lost events.\",\"focus\":[\"order-api\",\"orders-db\"],\"pause\":true}},{\"atMs\":900,\"action\":{\"do\":\"note\",\"text\":\"The outbox relay tails the write-ahead log and publishes each outbox row to Kafka.\",\"focus\":[\"orders-db\",\"outbox-relay\",\"order-events\"]}},{\"atMs\":2500,\"action\":{\"do\":\"note\",\"text\":\"The saga runs one step at a time: reserve stock, charge the card, then confirm the order. Every step is saved, so a restart resumes where it left off.\",\"focus\":[\"saga\",\"saga-db\",\"inventory-cmds\",\"payment-cmds\",\"saga-replies\"]}},{\"atMs\":6000,\"action\":{\"do\":\"note\",\"text\":\"OrderConfirmed goes out through the same outbox, and the customer gets a receipt.\",\"focus\":[\"order-events\",\"notifications\",\"email\"]}}]; expectations=[{\"id\":\"stock\",\"label\":\"20 reservations\",\"metric\":{\"node\":\"inventory-db\",\"field\":\"processed\"},\"op\":\"==\",\"value\":20,\"when\":\"end\"},{\"id\":\"charges\",\"label\":\"20 cards charged once each\",\"metric\":{\"node\":\"stripe\",\"field\":\"processed\"},\"op\":\"==\",\"value\":20,\"when\":\"end\"},{\"id\":\"receipts\",\"label\":\"20 receipts sent\",\"metric\":{\"node\":\"email\",\"field\":\"processed\"},\"op\":\"==\",\"value\":20,\"when\":\"end\"},{\"id\":\"orders\",\"label\":\"20 orders created, 20 confirmed\",\"metric\":{\"node\":\"orders-db\",\"field\":\"processed\"},\"op\":\"==\",\"value\":40,\"when\":\"end\"}]\nsimulation \"declines\" \"Declines and flaky payments\": {\"kind\":\"constant\",\"ratePerSec\":10,\"durationMs\":6000} from \"client\"; timeline=[{\"atMs\":0,\"action\":{\"do\":\"note\",\"text\":\"One payment call in five times out. The consumer retries in place with the same Idempotency-Key, so a retry never charges twice.\",\"focus\":[\"payment-svc\",\"stripe\"]}},{\"atMs\":2500,\"action\":{\"do\":\"props\",\"node\":\"payment-svc\",\"props\":{\"emits\":{\"ChargePayment\":\"PaymentDeclined\"}}}},{\"atMs\":2500,\"action\":{\"do\":\"note\",\"text\":\"A fraud rule starts declining every card. The saga compensates: it releases the reserved stock, then cancels the order.\",\"focus\":[\"payment-svc\",\"saga\",\"inventory-cmds\",\"order-api\"],\"pause\":true}},{\"atMs\":5500,\"action\":{\"do\":\"props\",\"node\":\"payment-svc\",\"props\":{\"emits\":{\"ChargePayment\":\"PaymentCaptured\"}}}},{\"atMs\":5500,\"action\":{\"do\":\"note\",\"text\":\"The rule is rolled back. Every customer still hears back: a receipt or a cancellation.\",\"focus\":[\"notifications\",\"email\"]}}]; expectations=[{\"id\":\"everyone\",\"label\":\"All 60 customers get an email\",\"metric\":{\"node\":\"email\",\"field\":\"processed\"},\"op\":\"==\",\"value\":60,\"when\":\"end\"},{\"id\":\"compensated\",\"label\":\"Declined orders release their stock\",\"metric\":{\"node\":\"inventory-db\",\"field\":\"processed\"},\"op\":\">\",\"value\":60,\"when\":\"end\"},{\"id\":\"retried\",\"label\":\"Transient errors were retried\",\"metric\":{\"node\":\"payment-svc\",\"field\":\"failed\"},\"op\":\">\",\"value\":0,\"when\":\"end\"},{\"id\":\"no-dlq\",\"label\":\"Nothing is dead-lettered\",\"metric\":{\"node\":\"payment-cmds\",\"field\":\"deadLettered\"},\"op\":\"==\",\"value\":0,\"when\":\"always\"}]"
   },
   "json": {
     "isError": false,
@@ -33,7 +33,7 @@
             "latencyMs": 100,
             "emits": { "PlaceOrder": "OrderCreated", "ConfirmOrder": "OrderConfirmed", "CancelOrder": "OrderCancelled" }
           },
-          "arrivingTypes": ["PlaceOrder"],
+          "arrivingTypes": ["PlaceOrder", "ConfirmOrder"],
           "capabilities": [{ "kind": "calls", "edge": "order-api-to-orders-db", "peer": "orders-db" }],
           "explanation": {
             "id": "order-api",
@@ -72,7 +72,7 @@
           "x": 420,
           "y": 480,
           "props": { "latencyMs": 10 },
-          "arrivingTypes": ["OrderCreated"],
+          "arrivingTypes": ["OrderCreated", "OrderConfirmed"],
           "capabilities": []
         },
         {
@@ -83,7 +83,7 @@
           "x": 800,
           "y": 480,
           "props": { "concurrency": 32, "latencyMs": 80 },
-          "arrivingTypes": [],
+          "arrivingTypes": ["OrderCreated", "OrderConfirmed"],
           "capabilities": [{ "kind": "publishes", "edge": "outbox-relay-to-order-events", "peer": "order-events" }],
           "explanation": {
             "id": "outbox-relay",
@@ -121,7 +121,7 @@
           "x": 800,
           "y": 160,
           "props": { "partitions": 12 },
-          "arrivingTypes": [],
+          "arrivingTypes": ["OrderCreated", "OrderConfirmed"],
           "capabilities": []
         },
         {
@@ -136,7 +136,7 @@
             "latencyMs": 100,
             "emits": { "OrderConfirmed": "ReceiptEmail", "OrderCancelled": "CancellationEmail" }
           },
-          "arrivingTypes": [],
+          "arrivingTypes": ["OrderConfirmed"],
           "capabilities": [
             {
               "kind": "consumes",
@@ -192,7 +192,7 @@
           "x": 1560,
           "y": 40,
           "props": {},
-          "arrivingTypes": [],
+          "arrivingTypes": ["ReceiptEmail"],
           "capabilities": []
         },
         {
@@ -207,7 +207,7 @@
             "latencyMs": 50,
             "emits": { "OrderCreated": "ReserveInventory", "InventoryReserved": "ChargePayment", "PaymentCaptured": "ConfirmOrder", "PaymentDeclined": "ReleaseInventory", "InventoryReleased": "CancelOrder" }
           },
-          "arrivingTypes": [],
+          "arrivingTypes": ["OrderCreated", "InventoryReserved", "PaymentCaptured"],
           "capabilities": [
             {
               "kind": "consumes",
@@ -280,7 +280,7 @@
           "x": 1180,
           "y": 480,
           "props": { "latencyMs": 10 },
-          "arrivingTypes": [],
+          "arrivingTypes": ["ReserveInventory", "ChargePayment", "ConfirmOrder"],
           "capabilities": []
         },
         {
@@ -292,7 +292,7 @@
           "y": 160,
           "group": "kafka",
           "props": { "partitions": 12 },
-          "arrivingTypes": [],
+          "arrivingTypes": ["ReserveInventory"],
           "capabilities": []
         },
         {
@@ -304,7 +304,7 @@
           "y": 320,
           "group": "kafka",
           "props": { "partitions": 12 },
-          "arrivingTypes": [],
+          "arrivingTypes": ["InventoryReserved", "PaymentCaptured"],
           "capabilities": []
         },
         {
@@ -316,7 +316,7 @@
           "y": 480,
           "group": "kafka",
           "props": { "partitions": 12, "maxDeliveryCount": 5 },
-          "arrivingTypes": [],
+          "arrivingTypes": ["ChargePayment"],
           "capabilities": []
         },
         {
@@ -328,7 +328,7 @@
           "y": 640,
           "group": "kafka",
           "props": { "isDeadLetter": true },
-          "arrivingTypes": [],
+          "arrivingTypes": ["ChargePayment"],
           "capabilities": [],
           "explanation": {
             "id": "payments-dlq",
@@ -368,7 +368,7 @@
             "latencyMs": 100,
             "emits": { "ReserveInventory": "InventoryReserved", "ReleaseInventory": "InventoryReleased" }
           },
-          "arrivingTypes": [],
+          "arrivingTypes": ["ReserveInventory"],
           "capabilities": [
             {
               "kind": "consumes",
@@ -430,7 +430,7 @@
             "retryBackoffMs": 300,
             "emits": { "ChargePayment": "PaymentCaptured" }
           },
-          "arrivingTypes": [],
+          "arrivingTypes": ["ChargePayment"],
           "capabilities": [
             {
               "kind": "consumes",
@@ -486,7 +486,7 @@
           "x": 2320,
           "y": 160,
           "props": { "latencyMs": 10 },
-          "arrivingTypes": [],
+          "arrivingTypes": ["InventoryReserved"],
           "capabilities": []
         },
         {
@@ -497,7 +497,7 @@
           "x": 2320,
           "y": 480,
           "props": {},
-          "arrivingTypes": [],
+          "arrivingTypes": ["PaymentCaptured"],
           "capabilities": []
         },
         { "id": "vault", "stencil": "vault", "label": "Vault", "sublabel": "Stripe API key", "x": 1940, "y": 640, "arrivingTypes": [], "capabilities": [] }
@@ -519,7 +519,7 @@
           "label": "Order + outbox, one tx",
           "kind": "sync",
           "props": { "travelMs": 200 },
-          "carriedTypes": ["OrderCreated"]
+          "carriedTypes": ["OrderCreated", "OrderConfirmed"]
         },
         {
           "id": "orders-db-to-outbox-relay",
@@ -528,7 +528,7 @@
           "label": "WAL",
           "kind": "async",
           "props": { "travelMs": 200 },
-          "carriedTypes": []
+          "carriedTypes": ["OrderCreated", "OrderConfirmed"]
         },
         {
           "id": "outbox-relay-to-order-events",
@@ -537,7 +537,7 @@
           "label": "Outbox events",
           "kind": "async",
           "props": { "travelMs": 300 },
-          "carriedTypes": []
+          "carriedTypes": ["OrderCreated", "OrderConfirmed"]
         },
         {
           "id": "order-events-to-saga",
@@ -546,7 +546,7 @@
           "label": "OrderCreated",
           "kind": "async",
           "props": { "travelMs": 300, "group": "saga", "filter": ["OrderCreated"] },
-          "carriedTypes": []
+          "carriedTypes": ["OrderCreated"]
         },
         {
           "id": "order-events-to-notifications",
@@ -555,7 +555,7 @@
           "label": "Confirmed · Cancelled",
           "kind": "async",
           "props": { "travelMs": 300, "group": "notifications", "filter": ["OrderConfirmed", "OrderCancelled"] },
-          "carriedTypes": []
+          "carriedTypes": ["OrderConfirmed"]
         },
         {
           "id": "notifications-to-email",
@@ -564,7 +564,7 @@
           "label": "Send email",
           "kind": "sync",
           "props": { "travelMs": 200 },
-          "carriedTypes": []
+          "carriedTypes": ["ReceiptEmail"]
         },
         {
           "id": "saga-to-saga-db",
@@ -573,7 +573,7 @@
           "label": "Persist step",
           "kind": "sync",
           "props": { "travelMs": 200 },
-          "carriedTypes": []
+          "carriedTypes": ["ReserveInventory", "ChargePayment", "ConfirmOrder"]
         },
         {
           "id": "saga-to-inventory-cmds",
@@ -582,7 +582,7 @@
           "label": "Reserve / Release",
           "kind": "async",
           "props": { "travelMs": 300, "filter": ["ReserveInventory", "ReleaseInventory"] },
-          "carriedTypes": []
+          "carriedTypes": ["ReserveInventory"]
         },
         {
           "id": "saga-to-payment-cmds",
@@ -591,7 +591,7 @@
           "label": "ChargePayment",
           "kind": "async",
           "props": { "travelMs": 300, "filter": ["ChargePayment"] },
-          "carriedTypes": []
+          "carriedTypes": ["ChargePayment"]
         },
         {
           "id": "saga-to-order-api",
@@ -600,7 +600,7 @@
           "label": "Confirm / Cancel",
           "kind": "async",
           "props": { "travelMs": 300, "filter": ["ConfirmOrder", "CancelOrder"] },
-          "carriedTypes": []
+          "carriedTypes": ["ConfirmOrder"]
         },
         {
           "id": "inventory-cmds-to-inventory-svc",
@@ -608,7 +608,7 @@
           "to": "inventory-svc",
           "kind": "async",
           "props": { "travelMs": 300, "group": "inventory" },
-          "carriedTypes": []
+          "carriedTypes": ["ReserveInventory"]
         },
         {
           "id": "inventory-svc-to-inventory-db",
@@ -617,7 +617,7 @@
           "label": "Reserve stock",
           "kind": "sync",
           "props": { "travelMs": 200 },
-          "carriedTypes": []
+          "carriedTypes": ["InventoryReserved"]
         },
         {
           "id": "inventory-svc-to-saga-replies",
@@ -626,7 +626,7 @@
           "label": "Reserved / Released",
           "kind": "async",
           "props": { "travelMs": 300 },
-          "carriedTypes": []
+          "carriedTypes": ["InventoryReserved"]
         },
         {
           "id": "payment-cmds-to-payment-svc",
@@ -634,7 +634,7 @@
           "to": "payment-svc",
           "kind": "async",
           "props": { "travelMs": 300, "group": "payments" },
-          "carriedTypes": []
+          "carriedTypes": ["ChargePayment"]
         },
         {
           "id": "payment-cmds-to-payments-dlq",
@@ -643,7 +643,7 @@
           "label": "After 5 attempts",
           "kind": "async",
           "props": { "travelMs": 300, "dlq": true },
-          "carriedTypes": []
+          "carriedTypes": ["ChargePayment"]
         },
         {
           "id": "payment-svc-to-stripe",
@@ -652,7 +652,7 @@
           "label": "Idempotency-Key",
           "kind": "sync",
           "props": { "travelMs": 200, "filter": ["PaymentCaptured"] },
-          "carriedTypes": []
+          "carriedTypes": ["PaymentCaptured"]
         },
         {
           "id": "payment-svc-to-saga-replies",
@@ -661,7 +661,7 @@
           "label": "Captured / Declined",
           "kind": "async",
           "props": { "travelMs": 300 },
-          "carriedTypes": []
+          "carriedTypes": ["PaymentCaptured"]
         },
         {
           "id": "saga-replies-to-saga",
@@ -670,7 +670,7 @@
           "label": "Next step",
           "kind": "async",
           "props": { "travelMs": 300, "group": "saga" },
-          "carriedTypes": []
+          "carriedTypes": ["InventoryReserved", "PaymentCaptured"]
         },
         { "id": "payment-svc-to-vault", "from": "payment-svc", "to": "vault", "kind": "async", "relation": "secret", "sourceSide": "bottom", "targetSide": "top", "carriedTypes": [] }
       ],
@@ -836,6 +836,6 @@
   },
   "focus": {
     "isError": false,
-    "output": "Diagram \"Outbox and saga checkout\" · direction LR · 2 nodes, 1 connections, 0 boundaries, 2 simulations\ndescription: \"A transactional outbox publishes order events; a saga orchestrates inventory and payment, compensating when a step fails.\"\nnodes:\n  \"client\" \"client.mobile\" (\"Mobile App\") \"Mobile checkout\" / \"Place order\" props={\"ratePerSec\":5,\"messageType\":\"PlaceOrder\"} arrivingTypes=[] capabilities=[{\"kind\":\"calls\",\"edge\":\"client-to-order-api\",\"peer\":\"order-api\"}] explanation=undefined\n  \"order-api\" \"service.dotnet\" (\".NET Service\") \"Order service\" / \"Owns order state\" props={\"concurrency\":32,\"latencyMs\":100,\"emits\":{\"PlaceOrder\":\"OrderCreated\",\"ConfirmOrder\":\"OrderConfirmed\",\"CancelOrder\":\"OrderCancelled\"}} arrivingTypes=[\"PlaceOrder\"] capabilities=[{\"kind\":\"calls\",\"edge\":\"order-api-to-orders-db\",\"peer\":\"orders-db\"}] explanation={\"id\":\"order-api\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":320,\"offered\":10,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":32,\"seconds\":0.1,\"utilization\":0.03125,\"growth\":0,\"contributors\":[{\"edge\":\"client-to-order-api\",\"node\":\"client\",\"label\":\"Mobile checkout\",\"rate\":5},{\"edge\":\"saga-to-order-api\",\"node\":\"saga\",\"label\":\"Checkout saga\",\"rate\":5}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\nconnections:\n  \"client-to-order-api\" \"client\" -> \"order-api\" sync \"POST /orders\" carriedTypes=[\"PlaceOrder\"]\nsimulation \"happy-path\" \"Twenty checkouts, happy path\": {\"kind\":\"burst\",\"count\":20,\"spreadMs\":4000} from \"client\"; timeline=[{\"atMs\":0,\"action\":{\"do\":\"trace\",\"node\":\"order-api\"}},{\"atMs\":0,\"action\":{\"do\":\"note\",\"text\":\"The order row and its OrderCreated event commit in one database transaction. No dual write, so no lost events.\",\"focus\":[\"order-api\",\"orders-db\"],\"pause\":true}},{\"atMs\":900,\"action\":{\"do\":\"note\",\"text\":\"The outbox relay tails the write-ahead log and publishes each outbox row to Kafka.\",\"focus\":[\"orders-db\",\"outbox-relay\",\"order-events\"]}},{\"atMs\":2500,\"action\":{\"do\":\"note\",\"text\":\"The saga runs one step at a time: reserve stock, charge the card, then confirm the order. Every step is saved, so a restart resumes where it left off.\",\"focus\":[\"saga\",\"saga-db\",\"inventory-cmds\",\"payment-cmds\",\"saga-replies\"]}},{\"atMs\":6000,\"action\":{\"do\":\"note\",\"text\":\"OrderConfirmed goes out through the same outbox, and the customer gets a receipt.\",\"focus\":[\"order-events\",\"notifications\",\"email\"]}}]; expectations=[{\"id\":\"stock\",\"label\":\"20 reservations\",\"metric\":{\"node\":\"inventory-db\",\"field\":\"processed\"},\"op\":\"==\",\"value\":20,\"when\":\"end\"},{\"id\":\"charges\",\"label\":\"20 cards charged once each\",\"metric\":{\"node\":\"stripe\",\"field\":\"processed\"},\"op\":\"==\",\"value\":20,\"when\":\"end\"},{\"id\":\"receipts\",\"label\":\"20 receipts sent\",\"metric\":{\"node\":\"email\",\"field\":\"processed\"},\"op\":\"==\",\"value\":20,\"when\":\"end\"},{\"id\":\"orders\",\"label\":\"20 orders created, 20 confirmed\",\"metric\":{\"node\":\"orders-db\",\"field\":\"processed\"},\"op\":\"==\",\"value\":40,\"when\":\"end\"}]\nsimulation \"declines\" \"Declines and flaky payments\": {\"kind\":\"constant\",\"ratePerSec\":10,\"durationMs\":6000} from \"client\"; timeline=[{\"atMs\":0,\"action\":{\"do\":\"note\",\"text\":\"One payment call in five times out. The consumer retries in place with the same Idempotency-Key, so a retry never charges twice.\",\"focus\":[\"payment-svc\",\"stripe\"]}},{\"atMs\":2500,\"action\":{\"do\":\"props\",\"node\":\"payment-svc\",\"props\":{\"emits\":{\"ChargePayment\":\"PaymentDeclined\"}}}},{\"atMs\":2500,\"action\":{\"do\":\"note\",\"text\":\"A fraud rule starts declining every card. The saga compensates: it releases the reserved stock, then cancels the order.\",\"focus\":[\"payment-svc\",\"saga\",\"inventory-cmds\",\"order-api\"],\"pause\":true}},{\"atMs\":5500,\"action\":{\"do\":\"props\",\"node\":\"payment-svc\",\"props\":{\"emits\":{\"ChargePayment\":\"PaymentCaptured\"}}}},{\"atMs\":5500,\"action\":{\"do\":\"note\",\"text\":\"The rule is rolled back. Every customer still hears back: a receipt or a cancellation.\",\"focus\":[\"notifications\",\"email\"]}}]; expectations=[{\"id\":\"everyone\",\"label\":\"All 60 customers get an email\",\"metric\":{\"node\":\"email\",\"field\":\"processed\"},\"op\":\"==\",\"value\":60,\"when\":\"end\"},{\"id\":\"compensated\",\"label\":\"Declined orders release their stock\",\"metric\":{\"node\":\"inventory-db\",\"field\":\"processed\"},\"op\":\">\",\"value\":60,\"when\":\"end\"},{\"id\":\"retried\",\"label\":\"Transient errors were retried\",\"metric\":{\"node\":\"payment-svc\",\"field\":\"failed\"},\"op\":\">\",\"value\":0,\"when\":\"end\"},{\"id\":\"no-dlq\",\"label\":\"Nothing is dead-lettered\",\"metric\":{\"node\":\"payment-cmds\",\"field\":\"deadLettered\"},\"op\":\"==\",\"value\":0,\"when\":\"always\"}]"
+    "output": "Diagram \"Outbox and saga checkout\" · direction LR · 2 nodes, 1 connections, 0 boundaries, 2 simulations\ndescription: \"A transactional outbox publishes order events; a saga orchestrates inventory and payment, compensating when a step fails.\"\nnodes:\n  \"client\" \"client.mobile\" (\"Mobile App\") \"Mobile checkout\" / \"Place order\" props={\"ratePerSec\":5,\"messageType\":\"PlaceOrder\"} arrivingTypes=[] capabilities=[{\"kind\":\"calls\",\"edge\":\"client-to-order-api\",\"peer\":\"order-api\"}] explanation=undefined\n  \"order-api\" \"service.dotnet\" (\".NET Service\") \"Order service\" / \"Owns order state\" props={\"concurrency\":32,\"latencyMs\":100,\"emits\":{\"PlaceOrder\":\"OrderCreated\",\"ConfirmOrder\":\"OrderConfirmed\",\"CancelOrder\":\"OrderCancelled\"}} arrivingTypes=[\"PlaceOrder\",\"ConfirmOrder\"] capabilities=[{\"kind\":\"calls\",\"edge\":\"order-api-to-orders-db\",\"peer\":\"orders-db\"}] explanation={\"id\":\"order-api\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":320,\"offered\":10,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":32,\"seconds\":0.1,\"utilization\":0.03125,\"growth\":0,\"contributors\":[{\"edge\":\"client-to-order-api\",\"node\":\"client\",\"label\":\"Mobile checkout\",\"rate\":5},{\"edge\":\"saga-to-order-api\",\"node\":\"saga\",\"label\":\"Checkout saga\",\"rate\":5}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\nconnections:\n  \"client-to-order-api\" \"client\" -> \"order-api\" sync \"POST /orders\" carriedTypes=[\"PlaceOrder\"]\nsimulation \"happy-path\" \"Twenty checkouts, happy path\": {\"kind\":\"burst\",\"count\":20,\"spreadMs\":4000} from \"client\"; timeline=[{\"atMs\":0,\"action\":{\"do\":\"trace\",\"node\":\"order-api\"}},{\"atMs\":0,\"action\":{\"do\":\"note\",\"text\":\"The order row and its OrderCreated event commit in one database transaction. No dual write, so no lost events.\",\"focus\":[\"order-api\",\"orders-db\"],\"pause\":true}},{\"atMs\":900,\"action\":{\"do\":\"note\",\"text\":\"The outbox relay tails the write-ahead log and publishes each outbox row to Kafka.\",\"focus\":[\"orders-db\",\"outbox-relay\",\"order-events\"]}},{\"atMs\":2500,\"action\":{\"do\":\"note\",\"text\":\"The saga runs one step at a time: reserve stock, charge the card, then confirm the order. Every step is saved, so a restart resumes where it left off.\",\"focus\":[\"saga\",\"saga-db\",\"inventory-cmds\",\"payment-cmds\",\"saga-replies\"]}},{\"atMs\":6000,\"action\":{\"do\":\"note\",\"text\":\"OrderConfirmed goes out through the same outbox, and the customer gets a receipt.\",\"focus\":[\"order-events\",\"notifications\",\"email\"]}}]; expectations=[{\"id\":\"stock\",\"label\":\"20 reservations\",\"metric\":{\"node\":\"inventory-db\",\"field\":\"processed\"},\"op\":\"==\",\"value\":20,\"when\":\"end\"},{\"id\":\"charges\",\"label\":\"20 cards charged once each\",\"metric\":{\"node\":\"stripe\",\"field\":\"processed\"},\"op\":\"==\",\"value\":20,\"when\":\"end\"},{\"id\":\"receipts\",\"label\":\"20 receipts sent\",\"metric\":{\"node\":\"email\",\"field\":\"processed\"},\"op\":\"==\",\"value\":20,\"when\":\"end\"},{\"id\":\"orders\",\"label\":\"20 orders created, 20 confirmed\",\"metric\":{\"node\":\"orders-db\",\"field\":\"processed\"},\"op\":\"==\",\"value\":40,\"when\":\"end\"}]\nsimulation \"declines\" \"Declines and flaky payments\": {\"kind\":\"constant\",\"ratePerSec\":10,\"durationMs\":6000} from \"client\"; timeline=[{\"atMs\":0,\"action\":{\"do\":\"note\",\"text\":\"One payment call in five times out. The consumer retries in place with the same Idempotency-Key, so a retry never charges twice.\",\"focus\":[\"payment-svc\",\"stripe\"]}},{\"atMs\":2500,\"action\":{\"do\":\"props\",\"node\":\"payment-svc\",\"props\":{\"emits\":{\"ChargePayment\":\"PaymentDeclined\"}}}},{\"atMs\":2500,\"action\":{\"do\":\"note\",\"text\":\"A fraud rule starts declining every card. The saga compensates: it releases the reserved stock, then cancels the order.\",\"focus\":[\"payment-svc\",\"saga\",\"inventory-cmds\",\"order-api\"],\"pause\":true}},{\"atMs\":5500,\"action\":{\"do\":\"props\",\"node\":\"payment-svc\",\"props\":{\"emits\":{\"ChargePayment\":\"PaymentCaptured\"}}}},{\"atMs\":5500,\"action\":{\"do\":\"note\",\"text\":\"The rule is rolled back. Every customer still hears back: a receipt or a cancellation.\",\"focus\":[\"notifications\",\"email\"]}}]; expectations=[{\"id\":\"everyone\",\"label\":\"All 60 customers get an email\",\"metric\":{\"node\":\"email\",\"field\":\"processed\"},\"op\":\"==\",\"value\":60,\"when\":\"end\"},{\"id\":\"compensated\",\"label\":\"Declined orders release their stock\",\"metric\":{\"node\":\"inventory-db\",\"field\":\"processed\"},\"op\":\">\",\"value\":60,\"when\":\"end\"},{\"id\":\"retried\",\"label\":\"Transient errors were retried\",\"metric\":{\"node\":\"payment-svc\",\"field\":\"failed\"},\"op\":\">\",\"value\":0,\"when\":\"end\"},{\"id\":\"no-dlq\",\"label\":\"Nothing is dead-lettered\",\"metric\":{\"node\":\"payment-cmds\",\"field\":\"deadLettered\"},\"op\":\"==\",\"value\":0,\"when\":\"always\"}]"
   }
 }

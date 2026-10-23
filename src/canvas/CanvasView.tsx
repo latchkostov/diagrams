@@ -845,6 +845,7 @@ function CanvasInner({
   const [settleText, boundaryResized] = usePlacementSettling(editor);
   const ui = useMemo<DiagramUi>(
     () => ({
+      messageMetadata: { simulations: meta.simulations, planning: meta.planning },
       theme,
       canvasColor: meta.color,
       direction,
@@ -869,6 +870,8 @@ function CanvasInner({
     [
       theme,
       meta.color,
+      meta.simulations,
+      meta.planning,
       direction,
       presenting,
       editing,

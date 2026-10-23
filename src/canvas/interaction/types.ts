@@ -205,6 +205,8 @@ export type FocusEvent =
       caret?: "end";
       claim?: () => boolean;
     }
+  /** A processor mapping was removed: continue at a surviving rule or Add a rule. */
+  | { type: "inspector.ruleRemoved"; target: ElementHandle }
   /** The Inspector opened or folded, by its own control (`panel`) or with the selection. */
   | { type: "inspector.toggled"; cause: "panel" | "selection" }
   /** A modal takes its first field, or wraps Tab within its own controls. */

@@ -17,6 +17,7 @@ import * as toast from "../../interop/ui/toast";
 import { registerRequestChecks, rememberedRequestChecks, awaitRequestChecks } from "../../lib/requestCheckCache";
 import { runChecksOffThread } from "../../canvas/checks/runner";
 import { messageTypesFixture } from "../../lab/messageTypesFixture";
+import * as propagation from "../../model/messageTypes";
 import { presentFinding } from "../presentation";
 
 it("applies the message-loop filter and verified rename through the same one-step action", async () => {
@@ -29,6 +30,33 @@ it("applies the message-loop filter and verified rename through the same one-ste
     expect(await applyFix(api, display, rename ? display.fix!.options![0].label : undefined)).toBe(true);
     expect(replace).toHaveBeenCalledTimes(1);
     expect(runChecks(api.getDiagram(), { rules: ["message-loop"] }).findings).toEqual([]);
+  }
+});
+
+it("rechecks only the selected loop's candidates when applying a fix", async () => {
+  const d = messageTypesFixture();
+  d.nodes = [];
+  d.edges = [];
+  for (let i = 0; i < 40; i++) {
+    const fixture = messageTypesFixture();
+    d.nodes.push(...fixture.nodes.map((node) => ({ ...node, id: `${i}-${node.id}` })));
+    d.edges.push(
+      ...fixture.edges.map((edge) => ({
+        ...edge,
+        id: `${i}-${edge.id}`,
+        from: `${i}-${edge.from}`,
+        to: `${i}-${edge.to}`,
+      })),
+    );
+  }
+  const finding = runChecks(d, { rules: ["message-loop"] }).findings[0];
+  const { api } = editorFor(d);
+  const spy = vi.spyOn(propagation, "messageTypesAt");
+  try {
+    expect(await applyFix(api, finding)).toBe(true);
+    expect(spy.mock.calls.length).toBeLessThanOrEqual(4);
+  } finally {
+    spy.mockRestore();
   }
 });
 

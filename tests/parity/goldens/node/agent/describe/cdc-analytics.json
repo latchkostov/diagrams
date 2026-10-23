@@ -1,7 +1,7 @@
 {
   "text": {
     "isError": false,
-    "output": "Diagram \"CDC search and analytics\" · direction LR · 10 nodes, 11 connections, 2 boundaries, 2 simulations\ndescription: \"Debezium captures retail table changes for search projections, a warehouse and raw lake retention.\"\nnodes:\n  \"sql\" \"sqlserver\" (\"SQL Server\") \"Retail SQL Server\" / \"retail-prod · CDC enabled\" props={\"ratePerSec\":120} in \"onprem\" arrivingTypes=[] capabilities=[] explanation=undefined\n  \"debezium\" \"kafka.connect\" (\"Kafka Connect\") \"Debezium SQL Server\" / \"retail-cdc · snapshot then tail\" props={\"connector\":\"debezium-sqlserver\",\"source\":true,\"concurrency\":64,\"latencyMs\":150} in \"platform\" arrivingTypes=[] capabilities=[{\"kind\":\"publishes\",\"edge\":\"debezium-to-orders-topic\",\"peer\":\"orders-topic\",\"filter\":[\"OrderRow*\"]},{\"kind\":\"publishes\",\"edge\":\"debezium-to-customers-topic\",\"peer\":\"customers-topic\",\"filter\":[\"CustomerRow*\"]},{\"kind\":\"calls\",\"edge\":\"debezium-to-registry\",\"peer\":\"registry\"}] explanation={\"id\":\"debezium\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":426.6666666666667,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":64,\"seconds\":0.15,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"orders-topic\" \"kafka.topic\" (\"Kafka Topic\") \"retail.dbo.orders\" / \"CDC envelope · key: order_id\" props={\"partitions\":64} in \"platform\" arrivingTypes=[] capabilities=[] explanation=undefined\n  \"customers-topic\" \"kafka.topic\" (\"Kafka Topic\") \"retail.dbo.customers\" / \"CDC envelope · key: customer_id\" props={\"partitions\":64} in \"platform\" arrivingTypes=[] capabilities=[] explanation=undefined\n  \"processor\" \"service.java\" (\"Java Service\") \"Retail projections\" / \"Kafka Streams · group: retail-projector\" props={\"group\":\"retail-projector\",\"processingGuarantee\":\"exactly_once_v2\",\"concurrency\":64,\"latencyMs\":150} in \"platform\" arrivingTypes=[] capabilities=[{\"kind\":\"consumes\",\"edge\":\"orders-topic-to-processor\",\"peer\":\"orders-topic\",\"group\":\"retail-projector\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"consumes\",\"edge\":\"customers-topic-to-processor\",\"peer\":\"customers-topic\",\"group\":\"retail-projector\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"calls\",\"edge\":\"processor-to-search\",\"peer\":\"search\"},{\"kind\":\"calls\",\"edge\":\"processor-to-warehouse\",\"peer\":\"warehouse\"}] explanation={\"id\":\"processor\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":426.6666666666667,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"orders-topic\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":64},{\"broker\":\"customers-topic\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":64}],\"slots\":64,\"seconds\":0.15,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"search\" \"elasticsearch\" (\"Elasticsearch\") \"Retail search\" / \"orders-v1 · customer-v1 indexes\" props={} arrivingTypes=[] capabilities=[] explanation=undefined\n  \"warehouse\" \"snowflake\" (\"Snowflake\") \"Retail warehouse\" / \"RETAIL_ANALYTICS · MERGE by key\" props={} arrivingTypes=[] capabilities=[] explanation=undefined\n  \"s3-sink\" \"kafka.connect\" (\"Kafka Connect\") \"S3 sink connector\" / \"retail-raw-sink · Parquet\" props={\"group\":\"retail-raw-sink\",\"flushSize\":10000,\"concurrency\":64,\"latencyMs\":150} in \"platform\" arrivingTypes=[] capabilities=[{\"kind\":\"consumes\",\"edge\":\"orders-topic-to-s3-sink\",\"peer\":\"orders-topic\",\"group\":\"retail-raw-sink\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"consumes\",\"edge\":\"customers-topic-to-s3-sink\",\"peer\":\"customers-topic\",\"group\":\"retail-raw-sink\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"calls\",\"edge\":\"s3-sink-to-lake\",\"peer\":\"lake\"}] explanation={\"id\":\"s3-sink\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":426.6666666666667,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"orders-topic\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":64},{\"broker\":\"customers-topic\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":64}],\"slots\":64,\"seconds\":0.15,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"lake\" \"aws.s3\" (\"Amazon S3\") \"Retail raw lake\" / \"s3://retail-cdc-raw/table/date/\" props={} arrivingTypes=[] capabilities=[] explanation=undefined\n  \"registry\" \"kafka.schema-registry\" (\"Schema Registry\") \"CDC schemas\" / \"Avro envelopes · compatibility checks\" props={} in \"platform\" arrivingTypes=[] capabilities=[] explanation=undefined\nconnections:\n  \"sql-to-debezium\" \"sql\" -> \"debezium\" async \"CDC · transaction log\" carriedTypes=[]\n  \"debezium-to-orders-topic\" \"debezium\" -> \"orders-topic\" async \"Order row changes\" carriedTypes=[]\n  \"debezium-to-customers-topic\" \"debezium\" -> \"customers-topic\" async \"Customer row changes\" carriedTypes=[]\n  \"orders-topic-to-processor\" \"orders-topic\" -> \"processor\" async \"group: retail-projector\" carriedTypes=[]\n  \"customers-topic-to-processor\" \"customers-topic\" -> \"processor\" async \"group: retail-projector\" carriedTypes=[]\n  \"processor-to-search\" \"processor\" -> \"search\" sync \"Bulk index / delete\" carriedTypes=[]\n  \"processor-to-warehouse\" \"processor\" -> \"warehouse\" sync \"Batch MERGE\" carriedTypes=[]\n  \"orders-topic-to-s3-sink\" \"orders-topic\" -> \"s3-sink\" async \"group: retail-raw-sink\" carriedTypes=[]\n  \"customers-topic-to-s3-sink\" \"customers-topic\" -> \"s3-sink\" async \"group: retail-raw-sink\" carriedTypes=[]\n  \"s3-sink-to-lake\" \"s3-sink\" -> \"lake\" sync \"PutObject · Parquet\" carriedTypes=[]\n  \"debezium-to-registry\" \"debezium\" -> \"registry\" sync \"Register schema\" carriedTypes=[]\nboundary \"onprem\" \"On-prem · retail datacenter\" (onprem): \"sql\"\nboundary \"platform\" \"Kubernetes · CDC platform\" (k8s): \"debezium\", \"orders-topic\", \"customers-topic\", \"processor\", \"s3-sink\", \"registry\"\nsimulation \"backfill\" \"Bulk backfill\": {\"kind\":\"burst\",\"count\":600,\"spreadMs\":3000} from \"sql\"; timeline=[{\"atMs\":0,\"action\":{\"do\":\"note\",\"text\":\"A SQL Server backfill produces order CDC envelopes. Customer subscriptions skip this batch.\",\"focus\":[\"sql\",\"debezium\",\"orders-topic\"]}},{\"atMs\":5000,\"action\":{\"do\":\"note\",\"text\":\"Independent groups build search projections and retain raw rows.\",\"focus\":[\"processor\",\"s3-sink\"]}}]; expectations=[{\"id\":\"search\",\"label\":\"Search\",\"metric\":{\"node\":\"search\",\"field\":\"processed\"},\"op\":\"==\",\"value\":600,\"when\":\"end\"},{\"id\":\"warehouse\",\"label\":\"Warehouse\",\"metric\":{\"node\":\"warehouse\",\"field\":\"processed\"},\"op\":\"==\",\"value\":600,\"when\":\"end\"},{\"id\":\"lake\",\"label\":\"Lake\",\"metric\":{\"node\":\"lake\",\"field\":\"processed\"},\"op\":\"==\",\"value\":600,\"when\":\"end\"},{\"id\":\"customer-filter\",\"label\":\"Customer filter\",\"metric\":{\"node\":\"customers-topic\",\"field\":\"processed\"},\"op\":\"==\",\"value\":0,\"when\":\"end\"}]\nsimulation \"search-slow\" \"Elasticsearch slow\": {\"kind\":\"burst\",\"count\":200,\"spreadMs\":2000} from \"sql\"; timeline=[{\"atMs\":0,\"action\":{\"do\":\"props\",\"node\":\"search\",\"props\":{\"latencyMs\":5000}}},{\"atMs\":0,\"action\":{\"do\":\"note\",\"text\":\"Slow Elasticsearch writes remain in flight; the warehouse and raw lake continue.\",\"focus\":[\"search\",\"warehouse\",\"lake\"]}},{\"atMs\":8000,\"action\":{\"do\":\"props\",\"node\":\"search\",\"props\":{\"latencyMs\":40}}},{\"atMs\":8000,\"action\":{\"do\":\"note\",\"text\":\"Index latency recovers. Every projection eventually lands.\",\"focus\":[\"search\"]}}]; expectations=[{\"id\":\"slow-writes\",\"label\":\"Slow writes\",\"metric\":{\"node\":\"search\",\"field\":\"inFlight\"},\"op\":\">\",\"value\":0,\"when\":\"at\",\"atMs\":3000},{\"id\":\"search\",\"label\":\"Search\",\"metric\":{\"node\":\"search\",\"field\":\"processed\"},\"op\":\"==\",\"value\":200,\"when\":\"end\"},{\"id\":\"warehouse\",\"label\":\"Warehouse\",\"metric\":{\"node\":\"warehouse\",\"field\":\"processed\"},\"op\":\"==\",\"value\":200,\"when\":\"end\"},{\"id\":\"lake\",\"label\":\"Lake\",\"metric\":{\"node\":\"lake\",\"field\":\"processed\"},\"op\":\"==\",\"value\":200,\"when\":\"end\"}]"
+    "output": "Diagram \"CDC search and analytics\" · direction LR · 10 nodes, 11 connections, 2 boundaries, 2 simulations\ndescription: \"Debezium captures retail table changes for search projections, a warehouse and raw lake retention.\"\nnodes:\n  \"sql\" \"sqlserver\" (\"SQL Server\") \"Retail SQL Server\" / \"retail-prod · CDC enabled\" props={\"ratePerSec\":120} in \"onprem\" arrivingTypes=[\"OrderRowChanged\"] capabilities=[] explanation=undefined\n  \"debezium\" \"kafka.connect\" (\"Kafka Connect\") \"Debezium SQL Server\" / \"retail-cdc · snapshot then tail\" props={\"connector\":\"debezium-sqlserver\",\"source\":true,\"concurrency\":64,\"latencyMs\":150} in \"platform\" arrivingTypes=[\"OrderRowChanged\"] capabilities=[{\"kind\":\"publishes\",\"edge\":\"debezium-to-orders-topic\",\"peer\":\"orders-topic\",\"filter\":[\"OrderRow*\"]},{\"kind\":\"publishes\",\"edge\":\"debezium-to-customers-topic\",\"peer\":\"customers-topic\",\"filter\":[\"CustomerRow*\"]},{\"kind\":\"calls\",\"edge\":\"debezium-to-registry\",\"peer\":\"registry\"}] explanation={\"id\":\"debezium\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":426.6666666666667,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":64,\"seconds\":0.15,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"orders-topic\" \"kafka.topic\" (\"Kafka Topic\") \"retail.dbo.orders\" / \"CDC envelope · key: order_id\" props={\"partitions\":64} in \"platform\" arrivingTypes=[\"OrderRowChanged\"] capabilities=[] explanation=undefined\n  \"customers-topic\" \"kafka.topic\" (\"Kafka Topic\") \"retail.dbo.customers\" / \"CDC envelope · key: customer_id\" props={\"partitions\":64} in \"platform\" arrivingTypes=[] capabilities=[] explanation=undefined\n  \"processor\" \"service.java\" (\"Java Service\") \"Retail projections\" / \"Kafka Streams · group: retail-projector\" props={\"group\":\"retail-projector\",\"processingGuarantee\":\"exactly_once_v2\",\"concurrency\":64,\"latencyMs\":150} in \"platform\" arrivingTypes=[\"OrderRowChanged\"] capabilities=[{\"kind\":\"consumes\",\"edge\":\"orders-topic-to-processor\",\"peer\":\"orders-topic\",\"group\":\"retail-projector\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"consumes\",\"edge\":\"customers-topic-to-processor\",\"peer\":\"customers-topic\",\"group\":\"retail-projector\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"calls\",\"edge\":\"processor-to-search\",\"peer\":\"search\"},{\"kind\":\"calls\",\"edge\":\"processor-to-warehouse\",\"peer\":\"warehouse\"}] explanation={\"id\":\"processor\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":426.6666666666667,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"orders-topic\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":64},{\"broker\":\"customers-topic\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":64}],\"slots\":64,\"seconds\":0.15,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"search\" \"elasticsearch\" (\"Elasticsearch\") \"Retail search\" / \"orders-v1 · customer-v1 indexes\" props={} arrivingTypes=[\"SearchDocument\"] capabilities=[] explanation=undefined\n  \"warehouse\" \"snowflake\" (\"Snowflake\") \"Retail warehouse\" / \"RETAIL_ANALYTICS · MERGE by key\" props={} arrivingTypes=[\"WarehouseRow\"] capabilities=[] explanation=undefined\n  \"s3-sink\" \"kafka.connect\" (\"Kafka Connect\") \"S3 sink connector\" / \"retail-raw-sink · Parquet\" props={\"group\":\"retail-raw-sink\",\"flushSize\":10000,\"concurrency\":64,\"latencyMs\":150} in \"platform\" arrivingTypes=[\"OrderRowChanged\"] capabilities=[{\"kind\":\"consumes\",\"edge\":\"orders-topic-to-s3-sink\",\"peer\":\"orders-topic\",\"group\":\"retail-raw-sink\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"consumes\",\"edge\":\"customers-topic-to-s3-sink\",\"peer\":\"customers-topic\",\"group\":\"retail-raw-sink\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"calls\",\"edge\":\"s3-sink-to-lake\",\"peer\":\"lake\"}] explanation={\"id\":\"s3-sink\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":426.6666666666667,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"orders-topic\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":64},{\"broker\":\"customers-topic\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":64}],\"slots\":64,\"seconds\":0.15,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"lake\" \"aws.s3\" (\"Amazon S3\") \"Retail raw lake\" / \"s3://retail-cdc-raw/table/date/\" props={} arrivingTypes=[\"OrderRowChanged\"] capabilities=[] explanation=undefined\n  \"registry\" \"kafka.schema-registry\" (\"Schema Registry\") \"CDC schemas\" / \"Avro envelopes · compatibility checks\" props={} in \"platform\" arrivingTypes=[\"OrderRowChanged\"] capabilities=[] explanation=undefined\nconnections:\n  \"sql-to-debezium\" \"sql\" -> \"debezium\" async \"CDC · transaction log\" carriedTypes=[\"OrderRowChanged\"]\n  \"debezium-to-orders-topic\" \"debezium\" -> \"orders-topic\" async \"Order row changes\" carriedTypes=[\"OrderRowChanged\"]\n  \"debezium-to-customers-topic\" \"debezium\" -> \"customers-topic\" async \"Customer row changes\" carriedTypes=[]\n  \"orders-topic-to-processor\" \"orders-topic\" -> \"processor\" async \"group: retail-projector\" carriedTypes=[\"OrderRowChanged\"]\n  \"customers-topic-to-processor\" \"customers-topic\" -> \"processor\" async \"group: retail-projector\" carriedTypes=[]\n  \"processor-to-search\" \"processor\" -> \"search\" sync \"Bulk index / delete\" carriedTypes=[\"SearchDocument\"]\n  \"processor-to-warehouse\" \"processor\" -> \"warehouse\" sync \"Batch MERGE\" carriedTypes=[\"WarehouseRow\"]\n  \"orders-topic-to-s3-sink\" \"orders-topic\" -> \"s3-sink\" async \"group: retail-raw-sink\" carriedTypes=[\"OrderRowChanged\"]\n  \"customers-topic-to-s3-sink\" \"customers-topic\" -> \"s3-sink\" async \"group: retail-raw-sink\" carriedTypes=[]\n  \"s3-sink-to-lake\" \"s3-sink\" -> \"lake\" sync \"PutObject · Parquet\" carriedTypes=[\"OrderRowChanged\"]\n  \"debezium-to-registry\" \"debezium\" -> \"registry\" sync \"Register schema\" carriedTypes=[\"OrderRowChanged\"]\nboundary \"onprem\" \"On-prem · retail datacenter\" (onprem): \"sql\"\nboundary \"platform\" \"Kubernetes · CDC platform\" (k8s): \"debezium\", \"orders-topic\", \"customers-topic\", \"processor\", \"s3-sink\", \"registry\"\nsimulation \"backfill\" \"Bulk backfill\": {\"kind\":\"burst\",\"count\":600,\"spreadMs\":3000} from \"sql\"; timeline=[{\"atMs\":0,\"action\":{\"do\":\"note\",\"text\":\"A SQL Server backfill produces order CDC envelopes. Customer subscriptions skip this batch.\",\"focus\":[\"sql\",\"debezium\",\"orders-topic\"]}},{\"atMs\":5000,\"action\":{\"do\":\"note\",\"text\":\"Independent groups build search projections and retain raw rows.\",\"focus\":[\"processor\",\"s3-sink\"]}}]; expectations=[{\"id\":\"search\",\"label\":\"Search\",\"metric\":{\"node\":\"search\",\"field\":\"processed\"},\"op\":\"==\",\"value\":600,\"when\":\"end\"},{\"id\":\"warehouse\",\"label\":\"Warehouse\",\"metric\":{\"node\":\"warehouse\",\"field\":\"processed\"},\"op\":\"==\",\"value\":600,\"when\":\"end\"},{\"id\":\"lake\",\"label\":\"Lake\",\"metric\":{\"node\":\"lake\",\"field\":\"processed\"},\"op\":\"==\",\"value\":600,\"when\":\"end\"},{\"id\":\"customer-filter\",\"label\":\"Customer filter\",\"metric\":{\"node\":\"customers-topic\",\"field\":\"processed\"},\"op\":\"==\",\"value\":0,\"when\":\"end\"}]\nsimulation \"search-slow\" \"Elasticsearch slow\": {\"kind\":\"burst\",\"count\":200,\"spreadMs\":2000} from \"sql\"; timeline=[{\"atMs\":0,\"action\":{\"do\":\"props\",\"node\":\"search\",\"props\":{\"latencyMs\":5000}}},{\"atMs\":0,\"action\":{\"do\":\"note\",\"text\":\"Slow Elasticsearch writes remain in flight; the warehouse and raw lake continue.\",\"focus\":[\"search\",\"warehouse\",\"lake\"]}},{\"atMs\":8000,\"action\":{\"do\":\"props\",\"node\":\"search\",\"props\":{\"latencyMs\":40}}},{\"atMs\":8000,\"action\":{\"do\":\"note\",\"text\":\"Index latency recovers. Every projection eventually lands.\",\"focus\":[\"search\"]}}]; expectations=[{\"id\":\"slow-writes\",\"label\":\"Slow writes\",\"metric\":{\"node\":\"search\",\"field\":\"inFlight\"},\"op\":\">\",\"value\":0,\"when\":\"at\",\"atMs\":3000},{\"id\":\"search\",\"label\":\"Search\",\"metric\":{\"node\":\"search\",\"field\":\"processed\"},\"op\":\"==\",\"value\":200,\"when\":\"end\"},{\"id\":\"warehouse\",\"label\":\"Warehouse\",\"metric\":{\"node\":\"warehouse\",\"field\":\"processed\"},\"op\":\"==\",\"value\":200,\"when\":\"end\"},{\"id\":\"lake\",\"label\":\"Lake\",\"metric\":{\"node\":\"lake\",\"field\":\"processed\"},\"op\":\"==\",\"value\":200,\"when\":\"end\"}]"
   },
   "json": {
     "isError": false,
@@ -19,7 +19,7 @@
           "y": 280,
           "group": "onprem",
           "props": { "ratePerSec": 120 },
-          "arrivingTypes": [],
+          "arrivingTypes": ["OrderRowChanged"],
           "capabilities": []
         },
         {
@@ -31,7 +31,7 @@
           "y": 280,
           "group": "platform",
           "props": { "connector": "debezium-sqlserver", "source": true, "concurrency": 64, "latencyMs": 150 },
-          "arrivingTypes": [],
+          "arrivingTypes": ["OrderRowChanged"],
           "capabilities": [
             { "kind": "publishes", "edge": "debezium-to-orders-topic", "peer": "orders-topic", "filter": ["OrderRow*"] },
             { "kind": "publishes", "edge": "debezium-to-customers-topic", "peer": "customers-topic", "filter": ["CustomerRow*"] },
@@ -72,7 +72,7 @@
           "y": 160,
           "group": "platform",
           "props": { "partitions": 64 },
-          "arrivingTypes": [],
+          "arrivingTypes": ["OrderRowChanged"],
           "capabilities": []
         },
         {
@@ -96,7 +96,7 @@
           "y": 280,
           "group": "platform",
           "props": { "group": "retail-projector", "processingGuarantee": "exactly_once_v2", "concurrency": 64, "latencyMs": 150 },
-          "arrivingTypes": [],
+          "arrivingTypes": ["OrderRowChanged"],
           "capabilities": [
             {
               "kind": "consumes",
@@ -164,7 +164,7 @@
           "x": 1560,
           "y": 160,
           "props": {},
-          "arrivingTypes": [],
+          "arrivingTypes": ["SearchDocument"],
           "capabilities": []
         },
         {
@@ -175,7 +175,7 @@
           "x": 1560,
           "y": 400,
           "props": {},
-          "arrivingTypes": [],
+          "arrivingTypes": ["WarehouseRow"],
           "capabilities": []
         },
         {
@@ -187,7 +187,7 @@
           "y": 520,
           "group": "platform",
           "props": { "group": "retail-raw-sink", "flushSize": 10000, "concurrency": 64, "latencyMs": 150 },
-          "arrivingTypes": [],
+          "arrivingTypes": ["OrderRowChanged"],
           "capabilities": [
             {
               "kind": "consumes",
@@ -254,7 +254,7 @@
           "x": 1560,
           "y": 520,
           "props": {},
-          "arrivingTypes": [],
+          "arrivingTypes": ["OrderRowChanged"],
           "capabilities": []
         },
         {
@@ -266,7 +266,7 @@
           "y": 40,
           "group": "platform",
           "props": {},
-          "arrivingTypes": [],
+          "arrivingTypes": ["OrderRowChanged"],
           "capabilities": []
         }
       ],
@@ -278,7 +278,7 @@
           "label": "CDC · transaction log",
           "kind": "async",
           "props": { "travelMs": 300 },
-          "carriedTypes": []
+          "carriedTypes": ["OrderRowChanged"]
         },
         {
           "id": "debezium-to-orders-topic",
@@ -287,7 +287,7 @@
           "label": "Order row changes",
           "kind": "async",
           "props": { "travelMs": 300, "filter": ["OrderRow*"] },
-          "carriedTypes": []
+          "carriedTypes": ["OrderRowChanged"]
         },
         {
           "id": "debezium-to-customers-topic",
@@ -305,7 +305,7 @@
           "label": "group: retail-projector",
           "kind": "async",
           "props": { "travelMs": 300, "group": "retail-projector" },
-          "carriedTypes": []
+          "carriedTypes": ["OrderRowChanged"]
         },
         {
           "id": "customers-topic-to-processor",
@@ -323,7 +323,7 @@
           "label": "Bulk index / delete",
           "kind": "sync",
           "props": { "travelMs": 200, "emits": "SearchDocument" },
-          "carriedTypes": []
+          "carriedTypes": ["SearchDocument"]
         },
         {
           "id": "processor-to-warehouse",
@@ -332,7 +332,7 @@
           "label": "Batch MERGE",
           "kind": "sync",
           "props": { "travelMs": 200, "emits": "WarehouseRow" },
-          "carriedTypes": []
+          "carriedTypes": ["WarehouseRow"]
         },
         {
           "id": "orders-topic-to-s3-sink",
@@ -341,7 +341,7 @@
           "label": "group: retail-raw-sink",
           "kind": "async",
           "props": { "travelMs": 300, "group": "retail-raw-sink" },
-          "carriedTypes": []
+          "carriedTypes": ["OrderRowChanged"]
         },
         {
           "id": "customers-topic-to-s3-sink",
@@ -359,7 +359,7 @@
           "label": "PutObject · Parquet",
           "kind": "sync",
           "props": { "travelMs": 200 },
-          "carriedTypes": []
+          "carriedTypes": ["OrderRowChanged"]
         },
         {
           "id": "debezium-to-registry",
@@ -368,7 +368,7 @@
           "label": "Register schema",
           "kind": "sync",
           "props": { "travelMs": 200 },
-          "carriedTypes": []
+          "carriedTypes": ["OrderRowChanged"]
         }
       ],
       "messageTypesComplete": true,
@@ -505,6 +505,6 @@
   },
   "focus": {
     "isError": false,
-    "output": "Diagram \"CDC search and analytics\" · direction LR · 2 nodes, 1 connections, 2 boundaries, 2 simulations\ndescription: \"Debezium captures retail table changes for search projections, a warehouse and raw lake retention.\"\nnodes:\n  \"sql\" \"sqlserver\" (\"SQL Server\") \"Retail SQL Server\" / \"retail-prod · CDC enabled\" props={\"ratePerSec\":120} in \"onprem\" arrivingTypes=[] capabilities=[] explanation=undefined\n  \"debezium\" \"kafka.connect\" (\"Kafka Connect\") \"Debezium SQL Server\" / \"retail-cdc · snapshot then tail\" props={\"connector\":\"debezium-sqlserver\",\"source\":true,\"concurrency\":64,\"latencyMs\":150} in \"platform\" arrivingTypes=[] capabilities=[{\"kind\":\"publishes\",\"edge\":\"debezium-to-orders-topic\",\"peer\":\"orders-topic\",\"filter\":[\"OrderRow*\"]},{\"kind\":\"publishes\",\"edge\":\"debezium-to-customers-topic\",\"peer\":\"customers-topic\",\"filter\":[\"CustomerRow*\"]},{\"kind\":\"calls\",\"edge\":\"debezium-to-registry\",\"peer\":\"registry\"}] explanation={\"id\":\"debezium\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":426.6666666666667,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":64,\"seconds\":0.15,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\nconnections:\n  \"sql-to-debezium\" \"sql\" -> \"debezium\" async \"CDC · transaction log\" carriedTypes=[]\nboundary \"onprem\" \"On-prem · retail datacenter\" (onprem): \"sql\"\nboundary \"platform\" \"Kubernetes · CDC platform\" (k8s): \"debezium\"\n… 2 lines omitted"
+    "output": "Diagram \"CDC search and analytics\" · direction LR · 2 nodes, 1 connections, 2 boundaries, 2 simulations\ndescription: \"Debezium captures retail table changes for search projections, a warehouse and raw lake retention.\"\nnodes:\n  \"sql\" \"sqlserver\" (\"SQL Server\") \"Retail SQL Server\" / \"retail-prod · CDC enabled\" props={\"ratePerSec\":120} in \"onprem\" arrivingTypes=[\"OrderRowChanged\"] capabilities=[] explanation=undefined\n  \"debezium\" \"kafka.connect\" (\"Kafka Connect\") \"Debezium SQL Server\" / \"retail-cdc · snapshot then tail\" props={\"connector\":\"debezium-sqlserver\",\"source\":true,\"concurrency\":64,\"latencyMs\":150} in \"platform\" arrivingTypes=[\"OrderRowChanged\"] capabilities=[{\"kind\":\"publishes\",\"edge\":\"debezium-to-orders-topic\",\"peer\":\"orders-topic\",\"filter\":[\"OrderRow*\"]},{\"kind\":\"publishes\",\"edge\":\"debezium-to-customers-topic\",\"peer\":\"customers-topic\",\"filter\":[\"CustomerRow*\"]},{\"kind\":\"calls\",\"edge\":\"debezium-to-registry\",\"peer\":\"registry\"}] explanation={\"id\":\"debezium\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":426.6666666666667,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":64,\"seconds\":0.15,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\nconnections:\n  \"sql-to-debezium\" \"sql\" -> \"debezium\" async \"CDC · transaction log\" carriedTypes=[\"OrderRowChanged\"]\nboundary \"onprem\" \"On-prem · retail datacenter\" (onprem): \"sql\"\nboundary \"platform\" \"Kubernetes · CDC platform\" (k8s): \"debezium\"\n… 2 lines omitted"
   }
 }

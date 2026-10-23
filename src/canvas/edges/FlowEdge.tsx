@@ -30,9 +30,12 @@ const loadTypes = loadOnce(() => import("./carriedTypes"));
  */
 function FlowEdgeImpl(props: EdgeProps<DiagramFlowEdge>) {
   const { id, data, selected, source, target } = props;
-  const { rename, openEdgeMenu, reconnect } = useDiagram();
+  const { rename, openEdgeMenu, reconnect, messageMetadata } = useDiagram();
   const route = useEdgeRoute(id, useRoutingOptions());
   const dep = useStore(useCallback((s: ReactFlowState) => relationInfo(s.edges as DiagramFlowEdge[]).get(id), [id]));
+  const [hovered, setHovered] = useState(false);
+  const edgeFocused = useKeyboardFocusOn(`.react-flow__edge[data-id="${CSS.escape(id)}"]`);
+  const active = hovered || edgeFocused;
   const [reader, setReader] = useState<typeof import("./carriedTypes")>();
   const prepareTypes = useCallback(() => {
     void loadTypes()
@@ -41,8 +44,11 @@ function FlowEdgeImpl(props: EdgeProps<DiagramFlowEdge>) {
   }, []);
   const messages = useStore(
     useCallback(
-      (s: ReactFlowState) => reader?.carriedTypes(s.nodes as DiagramFlowNode[], s.edges as DiagramFlowEdge[]).get(id),
-      [id, reader],
+      (s: ReactFlowState) =>
+        active
+          ? reader?.carriedTypes(s.nodes as DiagramFlowNode[], s.edges as DiagramFlowEdge[], messageMetadata).get(id)
+          : undefined,
+      [id, reader, active, messageMetadata],
     ),
   );
   const sourceStencil = useStore(
@@ -52,12 +58,16 @@ function FlowEdgeImpl(props: EdgeProps<DiagramFlowEdge>) {
     ),
   );
   // The settings open when the edge is reached from the keyboard (its label isn't a Tab stop: D14).
-  const edgeFocused = useKeyboardFocusOn(`.react-flow__edge[data-id="${CSS.escape(id)}"]`);
   useEffect(() => {
-    if (edgeFocused) prepareTypes();
-  }, [edgeFocused, prepareTypes]);
+    if (edgeFocused && !isDependency(data)) prepareTypes();
+  }, [edgeFocused, prepareTypes, data]);
   const tooltip = useTooltip(edgeFocused && !!dep?.settings?.length);
   const card = tooltip.open;
+  const enter = () => {
+    setHovered(true);
+    if (!isDependency(data)) prepareTypes();
+  };
+  const leave = () => setHovered(false);
   const kind = data?.kind ?? "async";
   const relation = isDependency(data) ? (relationOf(data) as DependencyRelation) : null;
   if (!route) return null;
@@ -81,7 +91,8 @@ function FlowEdgeImpl(props: EdgeProps<DiagramFlowEdge>) {
         ? "df-arrow-sync"
         : "df-arrow";
   const labelEvents = {
-    onPointerEnter: prepareTypes,
+    onPointerEnter: enter,
+    onPointerLeave: leave,
     onDoubleClick: (e: MouseEvent) => {
       e.stopPropagation();
       rename?.({ kind: "edge", id });
@@ -170,7 +181,8 @@ function FlowEdgeImpl(props: EdgeProps<DiagramFlowEdge>) {
           : `fe fe-${kind}${selected ? " is-selected" : ""}${deny ? " is-deny" : ""}`
       }
       data-testid={`edge-${id}`}
-      onPointerEnter={prepareTypes}
+      onPointerEnter={enter}
+      onPointerLeave={leave}
       data-relation={relation ?? undefined}
       data-deny={deny ? "true" : undefined}
     >
@@ -193,9 +205,12 @@ function FlowEdgeImpl(props: EdgeProps<DiagramFlowEdge>) {
           end={route.points[route.points.length - 1]}
         />
       )}
-      {body && (
+      {(body || (edgeFocused && !relation && tip)) && (
         <EdgeLabelRenderer>
           {body}
+          {edgeFocused && !relation && tip && reader && (
+            <reader.MessageTypesCard id={id} text={tip} x={mid.x} y={mid.y} />
+          )}
           {card && settings.length > 0 && label && (
             <SettingsCard
               pointer={tooltip.pointer}

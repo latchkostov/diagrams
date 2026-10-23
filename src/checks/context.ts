@@ -21,6 +21,8 @@ import { messageTypesAt, type MessageTypes } from "../model/messageTypes";
  * share the simulation's model, so a check and the live view never disagree.
  */
 export interface CheckContext {
+  /** When applying a fix, generate candidates only for this finding. Safety still analyzes the whole graph. */
+  fixTarget?: string;
   /** Worker-unavailable fallback (and the worker itself): request checks may replay simulations on this thread. */
   local?: boolean;
   /** The rules this run checks, set by runChecks; rules that defer to another read it (unset: every rule). */
@@ -96,7 +98,6 @@ export function buildContext(diagram: DiagramFile): CheckContext {
   let planning: Simulation | undefined;
   let capacity: CapacityAnalysis | undefined;
   let scenario: ScalingPlan[] | undefined | null = null;
-  let types: Map<string, Set<string>> | undefined;
   let messages: MessageTypes | undefined;
   let requests: Map<string, CompiledEdge[]> | undefined;
   /** Boundary and annotation ids, for freshKey. */
@@ -132,47 +133,7 @@ export function buildContext(diagram: DiagramFile): CheckContext {
     },
     deadLetterRoute: (id) => deadLetter.get(id),
     messageTypes: () => (messages ??= messageTypesAt(diagram)),
-    typesAt(id) {
-      if (!types) {
-        types = new Map();
-        const analyses = [
-          (messages ??= messageTypesAt(diagram)),
-          ...(diagram.simulations ?? []).map((sim) => {
-            const configured = {
-              ...diagram,
-              nodes: diagram.nodes.map((node) => ({
-                ...node,
-                props: { ...node.props, ...sim.setup?.props?.[node.id] },
-              })),
-              edges: diagram.edges.map((edge) => ({
-                ...edge,
-                props: { ...edge.props, ...sim.setup?.edges?.[edge.id] },
-              })),
-            };
-            return messageTypesAt(
-              configured,
-              sim.traffic.map((traffic) => ({
-                node: traffic.node,
-                type:
-                  traffic.messageType ??
-                  String(
-                    sim.setup?.props?.[traffic.node]?.messageType ??
-                      nodes.get(traffic.node)?.props?.messageType ??
-                      (nodes.get(traffic.node)?.label || "Message"),
-                  ),
-              })),
-            );
-          }),
-        ];
-        for (const analysis of analyses)
-          for (const [node, list] of analysis.arriving) {
-            const set = types.get(node) ?? new Set<string>();
-            for (const type of list) set.add(type);
-            types.set(node, set);
-          }
-      }
-      return types.get(id) ?? new Set();
-    },
+    typesAt: (id) => (messages ??= messageTypesAt(diagram)).arriving.get(id) ?? new Set(),
     // A connection reads where it starts.
     rank: (id) => order.get(id) ?? order.get(edges.get(id)?.from ?? "") ?? Infinity,
     name: (id) => nodes.get(id)?.label.trim() || id,

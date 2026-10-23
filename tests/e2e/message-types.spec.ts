@@ -22,11 +22,14 @@ test("message fields show loading while the inspector chunk is held and recover 
   const ready = new Promise<void>((resolve) => {
     release = resolve;
   });
-  await page.route(/\/assets\/MessageFields-[\w-]+\.js$/, async (route) => {
-    requested();
-    await ready;
-    await route.continue();
-  });
+  await page.route(
+    /\/(?:assets\/MessageFields-[\w-]+\.js|src\/canvas\/inspector\/MessageFields\.tsx)(?:\?.*)?$/,
+    async (route) => {
+      requested();
+      await ready;
+      await route.continue();
+    },
+  );
   try {
     await page.addInitScript(({ key, diagram }) => localStorage.setItem(key, JSON.stringify(diagram)), {
       key: STORAGE_KEYS.autosavePrefix + "webhook-ingestion",
@@ -59,11 +62,14 @@ test("hover types load on intent and the canvas stays usable while their chunk i
   const ready = new Promise<void>((resolve) => {
     release = resolve;
   });
-  await page.route(/\/assets\/carriedTypes-[\w-]+\.js$/, async (route) => {
-    requested();
-    await ready;
-    await route.continue();
-  });
+  await page.route(
+    /\/(?:assets\/carriedTypes-[\w-]+\.js|src\/canvas\/edges\/carriedTypes\.ts)(?:\?.*)?$/,
+    async (route) => {
+      requested();
+      await ready;
+      await route.continue();
+    },
+  );
   try {
     await page.addInitScript(({ key, diagram }) => localStorage.setItem(key, JSON.stringify(diagram)), {
       key: STORAGE_KEYS.autosavePrefix + "webhook-ingestion",
@@ -85,13 +91,13 @@ test("hover types load on intent and the canvas stays usable while their chunk i
   }
 });
 
-async function open(page: Page, locale = "en") {
+async function open(page: Page, locale = "en", diagram = messageTypesFixture()) {
   await page.addInitScript(
     ({ key, diagram, locale }) => {
       localStorage.setItem(key, JSON.stringify(diagram));
       localStorage.setItem("diagrams.locale", locale);
     },
-    { key: STORAGE_KEYS.autosavePrefix + "webhook-ingestion", diagram: messageTypesFixture(), locale },
+    { key: STORAGE_KEYS.autosavePrefix + "webhook-ingestion", diagram, locale },
   );
   await page.goto("./?view=canvas&example=webhook-ingestion");
   await expect(page.getByTestId("node-api")).toBeVisible();
@@ -110,9 +116,14 @@ test("the message-loop Check fixes the callback and one Undo restores its settin
   const row = page.getByTestId("check-row-message-loop:api");
   await expect(row).toContainText("Callback messages loop back to API: each one is sent again.");
   await page.getByTestId("check-fix-message-loop:api").click();
+  // Applying diagram operations clears selection. Reopen the edited edge before inspecting its fields.
+  await page.getByTestId("edge-label-send").click();
+  await waitForSelectionSettled(page);
   await expect(page.getByTestId("inspector-carries")).toHaveText("Send");
   await expect(row).toHaveCount(0);
   await page.getByTestId("undo-button").click();
+  await page.getByTestId("edge-label-send").click();
+  await waitForSelectionSettled(page);
   await expect(page.getByTestId("inspector-carries")).toContainText("Callback");
   await expect(row).toBeVisible();
   expectNoErrors(consoleErrors);
@@ -199,6 +210,7 @@ test("Send as and source Sends pick existing types; processor Emits edits and re
     .toEqual({ Callback: "Processed" });
   await page.getByTestId("inspector-emits-remove-0").click();
   await expect(page.getByTestId("inspector-emits-row-0")).toHaveCount(0);
+  await expect(page.getByTestId("inspector-emits-add")).toBeFocused();
   await page.getByTestId("undo-button").click();
   await expect(page.getByTestId("inspector-emits-row-0")).toContainText("Processed");
   expectNoErrors(consoleErrors);
@@ -216,3 +228,77 @@ for (const locale of ["ar", "en-XA"])
     expect(box.content).toBeLessThanOrEqual(box.width);
     expectNoErrors(consoleErrors);
   });
+
+test("a new-type draft focuses once and does not steal focus from another field", async ({ page, consoleErrors }) => {
+  await open(page);
+  await page.getByTestId("inspector-filter-add").click();
+  await expect(page.getByTestId("inspector-filter-new")).toBeFocused();
+  const label = page.getByTestId("inspector-field-label");
+  await label.focus();
+  await label.fill("Dispatch renamed");
+  await expect(label).toBeFocused();
+  await label.press("End");
+  await label.press("x");
+  await expect(label).toHaveValue("Dispatch renamedx");
+  expectNoErrors(consoleErrors);
+});
+
+test("removing a processor rule discards its draft and both removal paths restore focus", async ({
+  page,
+  consoleErrors,
+}) => {
+  const diagram = messageTypesFixture();
+  diagram.nodes[1].props = { emits: { Send: "Send", Callback: "Callback" } };
+  await open(page, "en", diagram);
+  await fitDiagram(page);
+  await page.getByTestId("node-api").click();
+  await waitForSelectionSettled(page);
+  await page.getByTestId("inspector-section-node-simulation").click();
+  await page.getByTestId("inspector-field-sends-0").click();
+  await page.getByTestId("context-menu-item-new").click();
+  await page.getByTestId("inspector-sends-0-new").fill("DiscardedDraft");
+  await page.getByTestId("inspector-emits-remove-0").focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByTestId("inspector-emits-row-1")).toHaveCount(0);
+  await expect(page.getByTestId("inspector-sends-0-new")).toHaveCount(0);
+  await expect(page.getByTestId("inspector-field-receives-0")).toBeFocused();
+  await page.getByTestId("inspector-field-sends-0").press("Enter");
+  await page.keyboard.press("Home");
+  await page.keyboard.press("Enter");
+  await expect(page.getByTestId("inspector-emits-row-0")).toHaveCount(0);
+  await expect(page.getByTestId("inspector-emits-add")).toBeFocused();
+  expectNoErrors(consoleErrors);
+});
+
+test("keyboard-focused flow edges show and announce carried message types", async ({ page, consoleErrors }) => {
+  await open(page);
+  await fitDiagram(page);
+  const node = page.getByTestId("node-api");
+  await node.click();
+  await waitForSelectionSettled(page);
+  // Keyboard navigation focuses the React Flow edge wrapper, the canvas's own Tab stop.
+  // eslint-disable-next-line no-restricted-syntax -- Canvas navigation uses literal Ctrl+Alt on every OS.
+  await page.keyboard.press("Control+Alt+BracketRight");
+  const tip = page.getByTestId("edge-messages-send");
+  await expect(tip).toBeVisible();
+  await expect(tip).toContainText("Message types: Send, Callback");
+  expect(
+    await page.getByTestId("edge-send").evaluate((element) => {
+      const wrapper = element.parentElement;
+      return (
+        wrapper === document.activeElement &&
+        wrapper?.getAttribute("aria-describedby")?.split(" ").includes("edge-messages-send")
+      );
+    }),
+  ).toBe(true);
+  await page.keyboard.press("Escape");
+  await expect(tip).toHaveCount(0);
+  await node.click();
+  await waitForSelectionSettled(page);
+  // eslint-disable-next-line no-restricted-syntax -- Canvas navigation uses literal Ctrl+Alt on every OS.
+  await page.keyboard.press("Control+Alt+BracketRight");
+  await expect(tip).toBeVisible();
+  await page.getByTestId("inspector-field-label").focus();
+  await expect(tip).toHaveCount(0);
+  expectNoErrors(consoleErrors);
+});

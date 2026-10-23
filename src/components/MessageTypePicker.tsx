@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { Dropdown } from "./Dropdown";
 import { t } from "../i18n";
 import { Field } from "../canvas/inspector/fields";
@@ -25,6 +25,7 @@ export function TypePicker({
   placeholder?: string;
   wildcard?: boolean;
 }) {
+  const focusDraft = useCallback((input: HTMLInputElement | null) => input?.focus(), []);
   const [adding, setAdding] = useState(false);
   const [draft, setDraft] = useState("");
   const hintId = useId();
@@ -124,7 +125,7 @@ export function TypePicker({
         {adding && (
           <div className="message-type-add">
             <input
-              ref={(input) => input?.focus()}
+              ref={focusDraft}
               className="insp-input"
               aria-label={t("inspector.messageType")}
               value={draft}

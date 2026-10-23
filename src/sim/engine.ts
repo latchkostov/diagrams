@@ -58,9 +58,10 @@ import {
 } from "./latency";
 import { mulberry32 } from "./rng";
 import {
-  acceptsType,
+  forwardingShare,
+  forwardingTargets,
+  outputType,
   callEligible,
-  emittedType,
   allocateGroupReplicas,
   compileTopology,
   deadLetterRoutes,
@@ -92,7 +93,6 @@ import {
   compileRoutes,
   compileTable,
   drawStream,
-  matchesRequest,
   nextByDeficit,
   pickWeighted,
   streamSeed,
@@ -962,11 +962,16 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   }
 
   /** A connection takes a message when its type filter does and, if it has one, its request filter matches. */
-  function accepts(edge: Edge, message: Message): boolean {
-    return (
-      acceptsType(edge.filter, message.type) &&
-      (edge.requestFilter === undefined || matchesRequest(edge.requestFilter, message.request))
+  function accepts(edge: Edge, message: Message, fanout = false, injected = true): boolean {
+    const share = forwardingShare(
+      edge.from.role,
+      edge,
+      message.type,
+      !fanout ? "routed" : injected ? "injected" : "output",
+      edge.requestFilter,
+      message.request,
     );
+    return share >= 1 || (share > 0 && random() < share);
   }
 
   function rename(message: Message, type: string | undefined): Message {
@@ -1537,10 +1542,6 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       }
   }
 
-  function takesShare(edge: Edge): boolean {
-    return edge.share === undefined || edge.share >= 1 || (edge.share > 0 && random() < edge.share);
-  }
-
   function travel(
     edge: Edge,
     message: Message,
@@ -1822,23 +1823,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   function beginCall(node: Node, work: Work, ok = true): boolean {
     if (!node.waits) return false;
     let message = work.message;
-    if (node.role === "processor" || node.role === "none") {
-      message = rename(message, emittedType(node.props.emits, message.type));
-    }
-    let outgoing = !ok
-      ? []
-      : work.route
-        ? [work.route.edge]
-        : node.outgoing.filter(
-            (edge) =>
-              accepts(edge, edge.requestRoute ? addressedView(message, edge.requestRoute) : message) &&
-              (node.role === "gateway" || takesShare(edge)),
-          );
-    if (!work.route && node.role === "gateway" && outgoing.length) {
-      const healthy = node.props.healthChecks ? outgoing.filter((e) => e.to.status !== "down" && !cut(e)) : outgoing;
-      const pool = healthy.length ? healthy : outgoing;
-      outgoing = [pool[node.cursor++ % pool.length]];
-    }
+    message = rename(message, outputType(node.role, node.props.emits, message.type));
+    const outgoing = !ok ? [] : work.route ? [work.route.edge] : outputRoutes(node, message);
     work.outputMessage = message;
     work.outputs = outgoing.filter((edge) => !edge.sync);
     const requests = outgoing.filter((edge) => edge.sync);
@@ -2611,15 +2597,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   }
 
   function forward(node: Node, message: Message, decision?: RouteDecision, selected?: Edge[]): void {
-    if (selected) {
-      if (!selected.length) gone(node, message, "end", "consumed");
-      else {
-        const copies = fanOut(node, message, selected.length);
-        selected.forEach((edge, i) => deliver(edge, copies[i], "message"));
-      }
-      return;
-    }
-    if (decision) {
+    if (decision && !selected) {
       // The router's table chose this connection on arrival: no round-robin, no fallback.
       deliver(decision.edge, { ...message, attempts: 0 }, "message", undefined, {
         rule: decision.rule,
@@ -2627,40 +2605,34 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       });
       return;
     }
-    if (node.role === "processor" || node.role === "none") {
-      const emits = node.props.emits;
-      const type =
-        typeof emits === "string"
-          ? emits
-          : emits && Object.hasOwn(emits, message.type)
-            ? emits[message.type]
-            : emits?.["*"];
-      message = rename(message, type);
-    }
-    // A caller's explicit address applies to its own branch, before that branch's filters; others keep theirs.
-    const outgoing = node.outgoing.filter(
-      (edge) =>
-        accepts(edge, edge.requestRoute ? addressedView(message, edge.requestRoute) : message) &&
-        (node.role === "gateway" || takesShare(edge)),
-    );
+    if (!selected) message = rename(message, outputType(node.role, node.props.emits, message.type));
+    const outgoing = selected ?? outputRoutes(node, message);
     // A node with nowhere to send (e.g. a final worker) is a terminal consumer, not a drop.
     if (!outgoing.length) {
       gone(node, message, "end", "consumed");
       return;
     }
-    if (node.role === "gateway") {
-      // Health checks: targets that are down get nothing while any other target is up.
-      const healthy = node.props.healthChecks
-        ? outgoing.filter((edge) => edge.to.status !== "down" && !cut(edge))
-        : outgoing;
-      const pool = healthy.length ? healthy : outgoing;
-      deliver(pool[node.cursor++ % pool.length], { ...message, attempts: 0 }, "message");
+    if (!selected && node.role === "gateway") {
+      deliver(outgoing[0], { ...message, attempts: 0 }, "message");
     } else {
       const copies = fanOut(node, message, outgoing.length);
       outgoing.forEach((edge, i) =>
-        deliver(edge, edge.requestRoute ? addressed(copies[i], edge.requestRoute) : copies[i], "message"),
+        deliver(edge, !selected && edge.requestRoute ? addressed(copies[i], edge.requestRoute) : copies[i], "message"),
       );
     }
+  }
+
+  /** Draw ordinary fan-out once, or choose one healthy gateway target in stable round-robin order. */
+  function outputRoutes(node: Node, message: Message): Edge[] {
+    const outgoing = node.outgoing.filter((edge) =>
+      accepts(edge, edge.requestRoute ? addressedView(message, edge.requestRoute) : message, true),
+    );
+    if (node.role !== "gateway" || !outgoing.length) return outgoing;
+    const healthy = node.props.healthChecks
+      ? outgoing.filter((edge) => edge.to.status !== "down" && !cut(edge))
+      : outgoing;
+    const pool = healthy.length ? healthy : outgoing;
+    return [pool[node.cursor++ % pool.length]];
   }
 
   /** For filtering only: the branch's message as it would leave, without counting a call that may not happen. */
@@ -2825,7 +2797,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     else if (node.role === "sink") gone(node, work.message, "end", "received");
     else if (node.role === "store") {
       // Outgoing async edges from a store model change feeds / CDC: each gets a copy.
-      const feeds = node.outgoing.filter((edge) => !edge.sync && accepts(edge, work.message) && takesShare(edge));
+      const feeds = node.outgoing.filter((edge) => accepts(edge, work.message, true, false));
       if (!feeds.length) {
         gone(node, work.message, "end", "stored");
         return;
@@ -3034,17 +3006,12 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       return false;
     }
     const { action, rule } = choice;
-    const eligible: Edge[] = [];
-    const weights: number[] = [];
-    let total = 0;
-    for (const target of action.targets) {
-      if (!(target.weight > 0)) continue;
-      const edge = node.targets.get(target.edgeId);
-      if (!edge || !accepts(edge, message)) continue;
-      eligible.push(edge);
-      weights.push(target.weight);
-      total += target.weight;
-    }
+    const { eligible, weights } = forwardingTargets(
+      action.targets,
+      (id) => node.targets.get(id),
+      (edge) => accepts(edge, message),
+    );
+    const total = weights.reduce((sum, weight) => sum + weight, 0);
     if (!eligible.length) {
       refuse(node, work, "route-no-eligible-target", "no-route", 404, rule);
       return false;

@@ -28,6 +28,7 @@ import type { FocusCommand, FocusDecision, FocusEvent, FocusMove, FocusState, Fo
  * | I1  | inspector.field                     | a new request                   | focus the field once mounted for its item, all of its  |
  * |     |                                     |                                 | text selected (or the caret at the end); again a frame |
  * |     |                                     |                                 | later unless input came first                          |
+ * | I3  | inspector.ruleRemoved               | a mapping was removed           | focus its surviving neighbour after the commit         |
  * | I2  | inspector.field                     | a request already taken         | keep                                                   |
  * | I3  | inspector.toggled(panel, selection) |                                 | keep                                                   |
  * | D1  | dialog.closed(checks)               |                                 | focus its opener now (else the canvas)                 |
@@ -146,6 +147,8 @@ export function focusPolicy(state: FocusState, event: FocusEvent): FocusDecision
         },
         { fieldSeq: event.seq },
       );
+    case "inspector.ruleRemoved":
+      return move({ target: { kind: "element", handle: event.target }, when: "commit" });
     case "inspector.toggled":
       return keep();
     case "dialog.opened":

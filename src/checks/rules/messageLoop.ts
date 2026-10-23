@@ -1,5 +1,5 @@
 import type { CheckRule, Finding } from "../types";
-import { messageLoopFix } from "../messageLoopFix";
+import { createMessageLoopFixer } from "../messageLoopFix";
 
 export const messageLoop: CheckRule = {
   id: "message-loop",
@@ -7,13 +7,14 @@ export const messageLoop: CheckRule = {
   about: "Finds message types forwarded around a processor cycle. Retries and broker redelivery do not count.",
   detect(ctx) {
     const types = ctx.messageTypes();
+    const fixFor = createMessageLoopFixer(ctx.diagram, types);
     const seen = new Set<string>();
     const findings: Finding[] = types.loops
       .filter((loop) => !seen.has(loop.node) && !!seen.add(loop.node))
       .map((loop) => {
         const node = ctx.name(loop.node);
         const message = `${loop.type} messages loop back to ${node}: each one is sent again.`;
-        const fix = messageLoopFix(ctx.diagram, types, loop);
+        const fix = !ctx.fixTarget || ctx.fixTarget === `message-loop:${loop.node}` ? fixFor(loop) : undefined;
         return {
           id: `message-loop:${loop.node}`,
           rule: "message-loop" as const,

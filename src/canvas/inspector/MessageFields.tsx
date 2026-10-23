@@ -1,9 +1,11 @@
 import { TypePicker } from "../../components/MessageTypePicker";
 import { t } from "../../i18n";
-import { messageTypesAt } from "../../model/messageTypes";
+import { cachedMessageTypesAt } from "../../model/messageTypeCache";
+import { useLayoutEffect, useRef } from "react";
 import type { DiagramFile } from "../../model/types";
 import type { EditorApi } from "../../editor/types";
 import { Field } from "./fields";
+import { useInteractionOrLocal } from "../interaction";
 import { bulkStep } from "./editTransactions";
 
 export function EdgeMessages({
@@ -16,7 +18,7 @@ export function EdgeMessages({
   editor: EditorApi;
 }) {
   const diagram = readDiagram?.() ?? editor.getDiagram();
-  const types = messageTypesAt(diagram);
+  const types = cachedMessageTypesAt(diagram);
   const props = diagram.edges.find((edge) => edge.id === edgeId)?.props ?? {};
   const filter = Array.isArray(props.filter) ? props.filter.filter((v): v is string => typeof v === "string") : [];
   const carries = [...(types.carried.get(edgeId) ?? [])];
@@ -85,8 +87,12 @@ export function NodeMessages({
   editor: EditorApi;
   source: boolean;
 }) {
+  const { controller } = useInteractionOrLocal();
+  useLayoutEffect(() => controller.rendered());
+  const addButton = useRef<HTMLButtonElement>(null);
+  const ruleControls = useRef(new Map<string, HTMLDivElement>());
   const diagram = readDiagram?.() ?? editor.getDiagram();
-  const types = messageTypesAt(diagram);
+  const types = cachedMessageTypesAt(diagram);
   const node = diagram.nodes.find((n) => n.id === nodeId)!;
   const emits = node.props?.emits;
   const rows: [string, string][] =
@@ -104,6 +110,20 @@ export function NodeMessages({
       },
       bulkStep("message-emits"),
     );
+  const remove = (input: string) => {
+    const next = rows.filter(([key]) => key !== input);
+    save(next);
+    const neighbor =
+      next[
+        Math.min(
+          rows.findIndex(([key]) => key === input),
+          next.length - 1,
+        )
+      ];
+    const target = neighbor && ruleControls.current.get(neighbor[0])?.querySelector<HTMLButtonElement>("button");
+    const destination = target || addButton.current;
+    if (destination) controller.dispatch({ type: "inspector.ruleRemoved", target: destination });
+  };
   const arriving = [...(types.arriving.get(nodeId) ?? [])];
   // Message is the simulation default type, diagram data rather than translated UI copy.
   const defaultType = node.label || "Message";
@@ -123,7 +143,15 @@ export function NodeMessages({
       <h4>{t("inspector.emits")}</h4>
       <p className="insp-note">{t("messageTypes.emitsHint")}</p>
       {rows.map(([input, output], i) => (
-        <div className="message-type-rule" key={i} data-testid={`inspector-emits-row-${i}`}>
+        <div
+          className="message-type-rule"
+          key={input}
+          ref={(element) => {
+            if (element) ruleControls.current.set(input, element);
+            else ruleControls.current.delete(input);
+          }}
+          data-testid={`inspector-emits-row-${i}`}
+        >
           <TypePicker
             name={`receives-${i}`}
             wildcard
@@ -140,20 +168,17 @@ export function NodeMessages({
             label={t("messageTypes.thenSends")}
             choices={[...new Set([...arriving, ...types.known])]}
             value={[output]}
-            onChange={(value) =>
-              save(
-                value.length
-                  ? rows.map((row, j) => (j === i ? [input, value[0]] : row))
-                  : rows.filter((_, j) => i !== j),
-              )
-            }
+            onChange={(value) => {
+              if (value.length) save(rows.map((row, j) => (j === i ? [input, value[0]] : row)));
+              else remove(input);
+            }}
           />
           <button
             type="button"
             className="insp-link"
             aria-label={t("messageTypes.removeRule")}
             data-testid={`inspector-emits-remove-${i}`}
-            onClick={() => save(rows.filter((_, j) => i !== j))}
+            onClick={() => remove(input)}
           >
             {t("messageTypes.remove")}
           </button>
@@ -162,6 +187,7 @@ export function NodeMessages({
       <button
         type="button"
         className="insp-link"
+        ref={addButton}
         data-testid="inspector-emits-add"
         disabled={rows.some(([key]) => key === "*") && arriving.every((type) => rows.some(([key]) => key === type))}
         onClick={() => {
