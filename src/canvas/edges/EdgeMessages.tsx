@@ -5,8 +5,9 @@ import type { DiagramFile } from "../../model/types";
 import { pointAlong } from "../geometry/path";
 import { useEdgeRoute, useRoutingOptions } from "./useEdgeRoute";
 
-// The carried-types reader ships with the message-type UI and loads on intent: the first hover or focus on a flow.
-const MessageTip = lazyComponent(() => import("../inspector/MessageFields").then((m) => m.MessageTip));
+// The carried-types reader loads on intent (the first hover or focus on a flow) without the inspector's pickers,
+// which a read-only canvas, an exported file's included, never shows.
+const MessageTip = lazyComponent(() => import("./carriedTypes").then((m) => m.MessageTip));
 
 type Meta = Pick<DiagramFile, "simulations" | "planning">;
 

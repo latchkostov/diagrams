@@ -62,9 +62,10 @@ test("hover types load on intent and the canvas stays usable while their chunk i
   const ready = new Promise<void>((resolve) => {
     release = resolve;
   });
-  // The hover reader ships in the message-type UI chunk (MessageFields) in a build; dev serves its own module.
+  // The hover reader is its own chunk (carriedTypes, without the inspector's pickers) in a build and its own module
+  // on the dev server.
   await page.route(
-    /\/(?:assets\/MessageFields-[\w-]+\.js|src\/canvas\/edges\/carriedTypes\.ts)(?:\?.*)?$/,
+    /\/(?:assets\/carriedTypes-[\w-]+\.js|src\/canvas\/edges\/carriedTypes\.ts)(?:\?.*)?$/,
     async (route) => {
       requested();
       await ready;
