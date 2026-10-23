@@ -1,7 +1,7 @@
 {
   "text": {
     "isError": false,
-    "output": "Diagram \"Sync chain of 3 hops\" · direction LR · 5 nodes, 4 connections, 0 boundaries, 0 simulations\nnodes:\n  \"web\" \"client.browser\" (\"Web Browser\") \"Web\" capabilities=[{\"kind\":\"calls\",\"edge\":\"e-web\",\"peer\":\"s0\"}] explanation=undefined\n  \"s0\" \"service.go\" (\"Go Service\") \"s0\" capabilities=[{\"kind\":\"calls\",\"edge\":\"e0\",\"peer\":\"s1\"}] explanation={\"id\":\"s0\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":16,\"offered\":2,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.25,\"utilization\":0.125,\"growth\":0,\"contributors\":[{\"edge\":\"e-web\",\"node\":\"web\",\"label\":\"Web\",\"rate\":2}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"s1\" \"service.go\" (\"Go Service\") \"s1\" capabilities=[{\"kind\":\"calls\",\"edge\":\"e1\",\"peer\":\"s2\"}] explanation={\"id\":\"s1\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":16,\"offered\":2,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.25,\"utilization\":0.125,\"growth\":0,\"contributors\":[{\"edge\":\"e0\",\"node\":\"s0\",\"label\":\"s0\",\"rate\":2}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"s2\" \"service.go\" (\"Go Service\") \"s2\" capabilities=[{\"kind\":\"calls\",\"edge\":\"e2\",\"peer\":\"s3\"}] explanation={\"id\":\"s2\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":16,\"offered\":2,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.25,\"utilization\":0.125,\"growth\":0,\"contributors\":[{\"edge\":\"e1\",\"node\":\"s1\",\"label\":\"s1\",\"rate\":2}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"s3\" \"service.go\" (\"Go Service\") \"s3\" capabilities=[] explanation={\"id\":\"s3\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":16,\"offered\":2,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.25,\"utilization\":0.125,\"growth\":0,\"contributors\":[{\"edge\":\"e2\",\"node\":\"s2\",\"label\":\"s2\",\"rate\":2}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\nconnections:\n  \"e-web\" \"web\" -> \"s0\" sync\n  \"e0\" \"s0\" -> \"s1\" sync\n  \"e1\" \"s1\" -> \"s2\" sync\n  \"e2\" \"s2\" -> \"s3\" sync"
+    "output": "Diagram \"Sync chain of 3 hops\" · direction LR · 5 nodes, 4 connections, 0 boundaries, 0 simulations\nnodes:\n  \"web\" \"client.browser\" (\"Web Browser\") \"Web\" arrivingTypes=[] capabilities=[{\"kind\":\"calls\",\"edge\":\"e-web\",\"peer\":\"s0\"}] explanation=undefined\n  \"s0\" \"service.go\" (\"Go Service\") \"s0\" arrivingTypes=[\"Web\"] capabilities=[{\"kind\":\"calls\",\"edge\":\"e0\",\"peer\":\"s1\"}] explanation={\"id\":\"s0\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":16,\"offered\":2,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.25,\"utilization\":0.125,\"growth\":0,\"contributors\":[{\"edge\":\"e-web\",\"node\":\"web\",\"label\":\"Web\",\"rate\":2}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"s1\" \"service.go\" (\"Go Service\") \"s1\" arrivingTypes=[\"Web\"] capabilities=[{\"kind\":\"calls\",\"edge\":\"e1\",\"peer\":\"s2\"}] explanation={\"id\":\"s1\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":16,\"offered\":2,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.25,\"utilization\":0.125,\"growth\":0,\"contributors\":[{\"edge\":\"e0\",\"node\":\"s0\",\"label\":\"s0\",\"rate\":2}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"s2\" \"service.go\" (\"Go Service\") \"s2\" arrivingTypes=[\"Web\"] capabilities=[{\"kind\":\"calls\",\"edge\":\"e2\",\"peer\":\"s3\"}] explanation={\"id\":\"s2\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":16,\"offered\":2,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.25,\"utilization\":0.125,\"growth\":0,\"contributors\":[{\"edge\":\"e1\",\"node\":\"s1\",\"label\":\"s1\",\"rate\":2}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"s3\" \"service.go\" (\"Go Service\") \"s3\" arrivingTypes=[\"Web\"] capabilities=[] explanation={\"id\":\"s3\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":16,\"offered\":2,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.25,\"utilization\":0.125,\"growth\":0,\"contributors\":[{\"edge\":\"e2\",\"node\":\"s2\",\"label\":\"s2\",\"rate\":2}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\nconnections:\n  \"e-web\" \"web\" -> \"s0\" sync carriedTypes=[\"Web\"]\n  \"e0\" \"s0\" -> \"s1\" sync carriedTypes=[\"Web\"]\n  \"e1\" \"s1\" -> \"s2\" sync carriedTypes=[\"Web\"]\n  \"e2\" \"s2\" -> \"s3\" sync carriedTypes=[\"Web\"]"
   },
   "json": {
     "isError": false,
@@ -15,6 +15,7 @@
           "label": "Web",
           "x": 0,
           "y": 100,
+          "arrivingTypes": [],
           "capabilities": [{ "kind": "calls", "edge": "e-web", "peer": "s0" }]
         },
         {
@@ -23,6 +24,7 @@
           "label": "s0",
           "x": 300,
           "y": 100,
+          "arrivingTypes": ["Web"],
           "capabilities": [{ "kind": "calls", "edge": "e0", "peer": "s1" }],
           "explanation": {
             "id": "s0",
@@ -56,6 +58,7 @@
           "label": "s1",
           "x": 600,
           "y": 100,
+          "arrivingTypes": ["Web"],
           "capabilities": [{ "kind": "calls", "edge": "e1", "peer": "s2" }],
           "explanation": {
             "id": "s1",
@@ -89,6 +92,7 @@
           "label": "s2",
           "x": 900,
           "y": 100,
+          "arrivingTypes": ["Web"],
           "capabilities": [{ "kind": "calls", "edge": "e2", "peer": "s3" }],
           "explanation": {
             "id": "s2",
@@ -122,6 +126,7 @@
           "label": "s3",
           "x": 1200,
           "y": 100,
+          "arrivingTypes": ["Web"],
           "capabilities": [],
           "explanation": {
             "id": "s3",
@@ -151,11 +156,12 @@
         }
       ],
       "edges": [
-        { "id": "e-web", "from": "web", "to": "s0", "kind": "sync" },
-        { "id": "e0", "from": "s0", "to": "s1", "kind": "sync" },
-        { "id": "e1", "from": "s1", "to": "s2", "kind": "sync" },
-        { "id": "e2", "from": "s2", "to": "s3", "kind": "sync" }
+        { "id": "e-web", "from": "web", "to": "s0", "kind": "sync", "carriedTypes": ["Web"] },
+        { "id": "e0", "from": "s0", "to": "s1", "kind": "sync", "carriedTypes": ["Web"] },
+        { "id": "e1", "from": "s1", "to": "s2", "kind": "sync", "carriedTypes": ["Web"] },
+        { "id": "e2", "from": "s2", "to": "s3", "kind": "sync", "carriedTypes": ["Web"] }
       ],
+      "messageTypesComplete": true,
       "groups": [],
       "annotations": [],
       "simulations": [],
@@ -164,6 +170,6 @@
   },
   "focus": {
     "isError": false,
-    "output": "Diagram \"Sync chain of 3 hops\" · direction LR · 2 nodes, 1 connections, 0 boundaries, 0 simulations\nnodes:\n  \"web\" \"client.browser\" (\"Web Browser\") \"Web\" capabilities=[{\"kind\":\"calls\",\"edge\":\"e-web\",\"peer\":\"s0\"}] explanation=undefined\n  \"s0\" \"service.go\" (\"Go Service\") \"s0\" capabilities=[{\"kind\":\"calls\",\"edge\":\"e0\",\"peer\":\"s1\"}] explanation={\"id\":\"s0\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":16,\"offered\":2,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.25,\"utilization\":0.125,\"growth\":0,\"contributors\":[{\"edge\":\"e-web\",\"node\":\"web\",\"label\":\"Web\",\"rate\":2}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\nconnections:\n  \"e-web\" \"web\" -> \"s0\" sync"
+    "output": "Diagram \"Sync chain of 3 hops\" · direction LR · 2 nodes, 1 connections, 0 boundaries, 0 simulations\nnodes:\n  \"web\" \"client.browser\" (\"Web Browser\") \"Web\" arrivingTypes=[] capabilities=[{\"kind\":\"calls\",\"edge\":\"e-web\",\"peer\":\"s0\"}] explanation=undefined\n  \"s0\" \"service.go\" (\"Go Service\") \"s0\" arrivingTypes=[\"Web\"] capabilities=[{\"kind\":\"calls\",\"edge\":\"e0\",\"peer\":\"s1\"}] explanation={\"id\":\"s0\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":16,\"offered\":2,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.25,\"utilization\":0.125,\"growth\":0,\"contributors\":[{\"edge\":\"e-web\",\"node\":\"web\",\"label\":\"Web\",\"rate\":2}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\nconnections:\n  \"e-web\" \"web\" -> \"s0\" sync carriedTypes=[\"Web\"]"
   }
 }

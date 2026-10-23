@@ -29,9 +29,9 @@ import { formatInert } from "./inertValues";
 import { SIM_FIELDS, showSim, type SimField } from "./simFields";
 import { type InspectorProps } from "./types";
 import { formatCount } from "../../live/format";
-import { parseEmits } from "../../editor/emits";
 import { formatNumber } from "../../i18n/number";
 import { type DiagramFile } from "../../model/types";
+import { MessageFields } from "./lazyMessageFields";
 
 type NodeSimulationProps = Pick<InspectorProps, "editor" | "meta" | "readDiagram"> & {
   node: DiagramFlowNode;
@@ -82,6 +82,9 @@ export function NodeSimulation({
         </span>
       }
     >
+      {(role === "source" || role === "processor") && (
+        <MessageFields readDiagram={readDiagram} nodeId={node.id} editor={editor} source={role === "source"} />
+      )}
       {broker?.partitioned === false && (
         <p className="insp-note" data-testid="broker-fanout">
           {assignmentLabel(broker)} · {t("broker.fanout")}
@@ -92,18 +95,6 @@ export function NodeSimulation({
           stencil={node.data.stencil}
           props={props}
           set={(patch, key) => editor.setNodeProps(node.id, patch, key ? merge(key) : undefined)}
-          advanced={
-            simFields.includes("emits") ? (
-              <SimInput
-                name="emits"
-                field={SIM_FIELDS.emits!}
-                value={props.emits}
-                onChange={(value) =>
-                  editor.setNodeProps(node.id, { emits: value as NodeSimProps["emits"] }, merge("emits"))
-                }
-              />
-            ) : undefined
-          }
         />
       ) : device ? (
         <DeviceFields
@@ -121,26 +112,28 @@ export function NodeSimulation({
           props={props}
           set={(patch, key) => editor.setNodeProps(node.id, patch, key ? merge(key) : undefined)}
         >
-          {simFields.map((k) => (
-            <SimInput
-              key={k}
-              name={k}
-              field={
-                k === "partitions"
-                  ? {
-                      ...SIM_FIELDS[k]!,
-                      label: assignmentLabel(broker),
-                      hint: t("broker.assignmentHint"),
-                      note: revisionAtLeast(meta.planning?.revision, "p2") ? undefined : SIM_FIELDS[k]!.note,
-                    }
-                  : k === "replicas"
-                    ? { ...SIM_FIELDS[k]!, hint: t("broker.replicaHint") }
-                    : SIM_FIELDS[k]!
-              }
-              value={props[k]}
-              onChange={(v) => editor.setNodeProps(node.id, { [k]: v }, merge(k))}
-            />
-          ))}
+          {simFields
+            .filter((key) => key !== "emits" && key !== "messageType")
+            .map((k) => (
+              <SimInput
+                key={k}
+                name={k}
+                field={
+                  k === "partitions"
+                    ? {
+                        ...SIM_FIELDS[k]!,
+                        label: assignmentLabel(broker),
+                        hint: t("broker.assignmentHint"),
+                        note: revisionAtLeast(meta.planning?.revision, "p2") ? undefined : SIM_FIELDS[k]!.note,
+                      }
+                    : k === "replicas"
+                      ? { ...SIM_FIELDS[k]!, hint: t("broker.replicaHint") }
+                      : SIM_FIELDS[k]!
+                }
+                value={props[k]}
+                onChange={(v) => editor.setNodeProps(node.id, { [k]: v }, merge(k))}
+              />
+            ))}
         </AutoscalingWorkload>
       ) : isClusterWrapper(node.data.stencil) ? (
         <p className="insp-note" data-testid="broker-wrapper">
@@ -445,11 +438,6 @@ export function SimInput({
                   .map((x) => x.trim())
                   .filter(Boolean);
                 return onChange(items.length ? items : undefined);
-              }
-              if (field.kind === "map") {
-                const parsed = parseEmits(raw);
-                if (parsed !== null) onChange(parsed);
-                return;
               }
               if (raw.trim() === "") return onChange(undefined);
               const v = Number(raw);

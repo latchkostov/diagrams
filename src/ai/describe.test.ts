@@ -1,6 +1,66 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { DiagramFile } from "../model/types";
-import { describeDiagram } from "./describe";
+import { DESCRIBE_TYPE_CHARS, describeDiagram } from "./describe";
+import { messageTypesFixture } from "../lab/messageTypesFixture";
+
+it("reports arriving and carried message types in text and JSON", () => {
+  const d = messageTypesFixture();
+  const result = JSON.parse(describeDiagram(d, { format: "json" }));
+  expect(result.nodes.find((n: { id: string }) => n.id === "api").arrivingTypes).toEqual(["Send", "Callback"]);
+  expect(result.edges.find((e: { id: string }) => e.id === "send").carriedTypes).toEqual(["Send", "Callback"]);
+  expect(describeDiagram(d)).toContain('arrivingTypes=["Send","Callback"]');
+  expect(describeDiagram(d)).toContain('carriedTypes=["Send","Callback"]');
+});
+
+it("bounds repeated message-type names in both formats and never builds omitted lines", () => {
+  const type = "T".repeat(10_000);
+  const d: DiagramFile = {
+    format: "diagrams/v1",
+    title: "Long type",
+    nodes: [
+      { id: "source", stencil: "client.browser", label: "Source", x: 0, y: 0, props: { messageType: type } },
+      ...Array.from({ length: 250 }, (_, i) => ({ id: `n${i}`, stencil: "service.go", label: `N${i}`, x: 0, y: 0 })),
+    ],
+    edges: [
+      { id: "in", from: "source", to: "n0" },
+      ...Array.from({ length: 249 }, (_, i) => ({ id: `e${i}`, from: `n${i}`, to: `n${i + 1}` })),
+    ],
+  };
+  const text = describeDiagram(d, { limit: 500 });
+  const json = describeDiagram(d, { format: "json", limit: 500 });
+  // Every one of 500 rows reaches the 10,000-character type: about 5 MB if each list repeated it.
+  for (const output of [text, json]) expect(output.length).toBeLessThan(DESCRIBE_TYPE_CHARS * 2);
+  expect(text).toContain("arrivingTypesOmitted=1");
+  expect(text).toContain("carriedTypesOmitted=1");
+  const parsed = JSON.parse(json);
+  // Spent in output order: the first rows name the type, later rows count it.
+  expect(parsed.nodes[1].arrivingTypes).toEqual([type]);
+  expect(parsed.nodes.at(-1)).toMatchObject({ arrivingTypes: [], arrivingTypesOmitted: 1 });
+  expect(parsed.edges.at(-1)).toMatchObject({ carriedTypes: [], carriedTypesOmitted: 1 });
+  // A small limit builds only the lines it shows: the 5,000 omitted connections are counted, never written.
+  const wide: DiagramFile = {
+    format: "diagrams/v1",
+    title: "Wide",
+    nodes: [{ id: "hub", stencil: "service.go", label: "Hub", x: 0, y: 0 }],
+    edges: Array.from({ length: 5_000 }, (_, i) => ({ id: `w${i}`, from: "hub", to: "hub", label: `W${i}` })),
+  };
+  const stringify = JSON.stringify;
+  let calls = 0;
+  const spy = vi.spyOn(JSON, "stringify").mockImplementation((...args: Parameters<typeof stringify>) => {
+    calls++;
+    return stringify(...args);
+  });
+  let short: string;
+  try {
+    calls = 0;
+    short = describeDiagram(wide, { limit: 20 });
+  } finally {
+    spy.mockRestore();
+  }
+  expect(short.split("\n")).toHaveLength(20);
+  expect(short).toContain("lines omitted");
+  expect(calls).toBeLessThan(500);
+});
 
 const diagram = (): DiagramFile => ({
   format: "diagrams/v1",

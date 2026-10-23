@@ -3,12 +3,12 @@ import { Icon } from "../components/Icon";
 import { t, useLocale } from "../i18n";
 import { kindLabel } from "../i18n/chrome";
 import { lazyComponent, type LoadStatus } from "../lib/lazyLoad";
-
-import { EdgePanel } from "./inspector/lazyEdgePanel";
 import { NodePanel } from "./inspector/NodePanel";
+
 import { type InspectorProps } from "./inspector/types";
 import { SheetResizeHandle } from "./SheetResizeHandle";
 import { InteractionContext, useInteractionOrLocal, type InteractionController } from "./interaction";
+
 import { PanelUnavailable } from "./inspector/PanelUnavailable";
 export { PanelUnavailable } from "./inspector/PanelUnavailable";
 
@@ -24,6 +24,11 @@ function pending<P>(owner?: (props: P) => string) {
     status.failed ? <PanelUnavailable owner={owner?.(props)} /> : null;
 }
 
+const EdgePanel = lazyComponent(
+  () => import("./inspector/lazyEdgePanel").then((m) => m.EdgePanel),
+  pending((p: { edge: { id: string } }) => p.edge.id),
+  true,
+);
 const GroupPanel = lazyComponent(
   () => import("./inspector/GroupPanel").then((m) => m.GroupPanel),
   pending((p: { group: { id: string } }) => p.group.id),

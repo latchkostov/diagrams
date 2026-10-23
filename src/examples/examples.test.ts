@@ -8,12 +8,27 @@ import { validateDiagram } from "../interop/native";
 import { createEngine } from "../sim/engine";
 import { createSimulationRun } from "../sim/simulation";
 import { analyzeCapacity } from "../sim/capacity";
+import { messageTypesAt } from "../model/messageTypes";
 
 // Public fixtures only: this shallow glob never descends into local-only examples.
 const files = import.meta.glob<DiagramFile>("./*.json", { eager: true, import: "default" });
 const publicExamples = examples.filter((e) => !e.localOnly);
 
 describe("example metadata and loading", () => {
+  it("typed webhook callbacks arrive within ten seconds and stop at the receiver", () => {
+    const d = files["./webhook-ingestion.json"];
+    expect(exampleMetadata["webhook-ingestion"].shows).toContain("messageTypes");
+    const types = messageTypesAt(d);
+    expect(types.arriving.get("receiver")).toContain("WebhookApplied");
+    expect(types.carried.get("receiver-to-exchange")).toEqual(new Set(["WebhookEvent"]));
+    expect(types.carried.get("receiver-to-raw")).toEqual(new Set(["WebhookEvent"]));
+    expect(types.loops).toEqual([]);
+    const engine = createEngine({ seed: 7 });
+    engine.load(d);
+    engine.setTraffic(true);
+    for (let i = 0; i < 1000; i++) engine.step(10);
+    expect(engine.snapshot().edges["workers-to-receiver"].delivered).toBeGreaterThan(0);
+  });
   it("covers every public JSON exactly once and keeps eager metadata in sync", () => {
     const slugs = Object.keys(files)
       .map((path) => path.slice(2, -5))

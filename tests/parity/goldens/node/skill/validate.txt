@@ -14,7 +14,7 @@ VALID <repo>/src/examples/nightly-batch-elt.json: 10 nodes, 10 edges, 1 boundary
 VALID <repo>/src/examples/notification-fanout.json: 20 nodes, 23 edges, 1 boundary, 2 simulations
 VALID <repo>/src/examples/outbox-saga-checkout.json: 18 nodes, 20 edges, 1 boundary, 2 simulations
 VALID <repo>/src/examples/rag-assistant.json: 15 nodes, 16 edges, 2 simulations
-VALID <repo>/src/examples/webhook-ingestion.json: 13 nodes, 13 edges, 1 boundary, 2 simulations
+VALID <repo>/src/examples/webhook-ingestion.json: 13 nodes, 14 edges, 1 boundary, 2 simulations
 VALID <repo>/tests/parity/corpus/a1-burst-scale-up.diagram.json: 3 nodes, 2 edges, 1 simulation
 VALID <repo>/tests/parity/corpus/a1-downscale-stabilization.diagram.json: 3 nodes, 2 edges, 1 simulation
 VALID <repo>/tests/parity/corpus/a1-idle-partitions.diagram.json: 3 nodes, 2 edges, 1 simulation

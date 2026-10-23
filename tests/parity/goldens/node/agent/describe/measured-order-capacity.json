@@ -1,7 +1,7 @@
 {
   "text": {
     "isError": false,
-    "output": "Diagram \"Measured order capacity\" · direction TB · 5 nodes, 4 connections, 0 boundaries, 2 simulations\ndescription: \"Northwind compares the pinned processor lesson with a measured one-second payment workload: today fits, but at three times traffic the two-slot payment worker saturates.\"\nnodes:\n  \"orders\" \"generic.webhook\" (\"Webhook\") \"Northwind orders\" / \"1 order/s today\" props={\"ratePerSec\":1,\"messageType\":\"OrderPlaced\"} capabilities=[] explanation=undefined\n  \"intake\" \"service.node\" (\"Node.js Service\") \"Order intake\" / \"Pinned lesson: 1 × 4 / 0.25 s\" props={\"preset\":\"processor-lesson\",\"presetRevision\":\"1\"} capabilities=[{\"kind\":\"publishes\",\"edge\":\"queue-payment\",\"peer\":\"queue\"}] explanation={\"id\":\"intake\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":16,\"offered\":1,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.25,\"utilization\":0.0625,\"growth\":0,\"contributors\":[{\"edge\":\"submit\",\"node\":\"orders\",\"label\":\"Northwind orders\",\"rate\":1}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"queue\" \"generic.queue\" (\"Queue\") \"Payment jobs\" / \"Buffer before measured work\" props={} capabilities=[] explanation=undefined\n  \"payment-worker\" \"service.java\" (\"Java Service\") \"Payment worker\" / \"Measured: 2 × 1 / 1 s = 2/s\" props={\"preset\":\"processor-lesson\",\"presetRevision\":\"1\",\"replicas\":2,\"concurrency\":1,\"latencyMs\":1000,\"jitter\":0,\"failureRate\":0} capabilities=[{\"kind\":\"consumes\",\"edge\":\"pay\",\"peer\":\"queue\",\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"calls\",\"edge\":\"record\",\"peer\":\"ledger\"}] explanation={\"id\":\"payment-worker\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":2,\"offered\":1,\"replicas\":2,\"baseReplicas\":2,\"omittedContributors\":0,\"activeReplicas\":2,\"assignments\":[],\"slots\":1,\"seconds\":1,\"utilization\":0.5,\"growth\":0,\"contributors\":[{\"edge\":\"pay\",\"node\":\"queue\",\"label\":\"Payment jobs\",\"rate\":1}],\"target\":0.5,\"minimumReplicas\":2,\"targetReplicas\":2,\"changes\":null,\"converged\":true}\n  \"ledger\" \"postgres\" (\"PostgreSQL\") \"Northwind ledger\" / \"Completed payments\" props={\"latencyMs\":1} capabilities=[] explanation=undefined\nconnections:\n  \"submit\" \"orders\" -> \"intake\" async \"Order\"\n  \"queue-payment\" \"intake\" -> \"queue\" async \"Payment job\"\n  \"pay\" \"queue\" -> \"payment-worker\" async \"Workers\"\n  \"record\" \"payment-worker\" -> \"ledger\" sync \"Record\"\nsimulation \"today\" \"Measured baseline\": {\"kind\":\"constant\",\"ratePerSec\":1,\"durationMs\":6000} from \"orders\"; timeline=[]; expectations=[{\"id\":\"ledger-processed-end\",\"label\":\"ledger: processed == 6\",\"metric\":{\"node\":\"ledger\",\"field\":\"processed\"},\"op\":\"==\",\"value\":6,\"when\":\"end\"},{\"id\":\"queue-lag-end\",\"label\":\"queue: lag == 0\",\"metric\":{\"node\":\"queue\",\"field\":\"lag\"},\"op\":\"==\",\"value\":0,\"when\":\"end\"}]\nsimulation \"triple\" \"Three times the orders\": {\"kind\":\"constant\",\"ratePerSec\":1,\"durationMs\":8000} from \"orders\"; timeline=[{\"atMs\":1000,\"action\":{\"do\":\"note\",\"text\":\"Three orders/s exceed the measured 2/s payment capacity. Show capacity or open Payment worker Properties to see the arithmetic.\",\"focus\":[\"payment-worker\",\"queue\"]}}]; expectations=[{\"id\":\"queue-lag-at\",\"label\":\"queue: lag > 0\",\"metric\":{\"node\":\"queue\",\"field\":\"lag\"},\"op\":\">\",\"value\":0,\"when\":\"at\",\"atMs\":6000},{\"id\":\"ledger-processed-end\",\"label\":\"ledger: processed == 24\",\"metric\":{\"node\":\"ledger\",\"field\":\"processed\"},\"op\":\"==\",\"value\":24,\"when\":\"end\"},{\"id\":\"queue-dropped-always\",\"label\":\"queue: dropped == 0\",\"metric\":{\"node\":\"queue\",\"field\":\"dropped\"},\"op\":\"==\",\"value\":0,\"when\":\"always\"}]"
+    "output": "Diagram \"Measured order capacity\" · direction TB · 5 nodes, 4 connections, 0 boundaries, 2 simulations\ndescription: \"Northwind compares the pinned processor lesson with a measured one-second payment workload: today fits, but at three times traffic the two-slot payment worker saturates.\"\nnodes:\n  \"orders\" \"generic.webhook\" (\"Webhook\") \"Northwind orders\" / \"1 order/s today\" props={\"ratePerSec\":1,\"messageType\":\"OrderPlaced\"} arrivingTypes=[] capabilities=[] explanation=undefined\n  \"intake\" \"service.node\" (\"Node.js Service\") \"Order intake\" / \"Pinned lesson: 1 × 4 / 0.25 s\" props={\"preset\":\"processor-lesson\",\"presetRevision\":\"1\"} arrivingTypes=[\"OrderPlaced\"] capabilities=[{\"kind\":\"publishes\",\"edge\":\"queue-payment\",\"peer\":\"queue\"}] explanation={\"id\":\"intake\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":16,\"offered\":1,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.25,\"utilization\":0.0625,\"growth\":0,\"contributors\":[{\"edge\":\"submit\",\"node\":\"orders\",\"label\":\"Northwind orders\",\"rate\":1}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"queue\" \"generic.queue\" (\"Queue\") \"Payment jobs\" / \"Buffer before measured work\" props={} arrivingTypes=[\"OrderPlaced\"] capabilities=[] explanation=undefined\n  \"payment-worker\" \"service.java\" (\"Java Service\") \"Payment worker\" / \"Measured: 2 × 1 / 1 s = 2/s\" props={\"preset\":\"processor-lesson\",\"presetRevision\":\"1\",\"replicas\":2,\"concurrency\":1,\"latencyMs\":1000,\"jitter\":0,\"failureRate\":0} arrivingTypes=[\"OrderPlaced\"] capabilities=[{\"kind\":\"consumes\",\"edge\":\"pay\",\"peer\":\"queue\",\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"calls\",\"edge\":\"record\",\"peer\":\"ledger\"}] explanation={\"id\":\"payment-worker\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":2,\"offered\":1,\"replicas\":2,\"baseReplicas\":2,\"omittedContributors\":0,\"activeReplicas\":2,\"assignments\":[],\"slots\":1,\"seconds\":1,\"utilization\":0.5,\"growth\":0,\"contributors\":[{\"edge\":\"pay\",\"node\":\"queue\",\"label\":\"Payment jobs\",\"rate\":1}],\"target\":0.5,\"minimumReplicas\":2,\"targetReplicas\":2,\"changes\":null,\"converged\":true}\n  \"ledger\" \"postgres\" (\"PostgreSQL\") \"Northwind ledger\" / \"Completed payments\" props={\"latencyMs\":1} arrivingTypes=[\"OrderPlaced\"] capabilities=[] explanation=undefined\nconnections:\n  \"submit\" \"orders\" -> \"intake\" async \"Order\" carriedTypes=[\"OrderPlaced\"]\n  \"queue-payment\" \"intake\" -> \"queue\" async \"Payment job\" carriedTypes=[\"OrderPlaced\"]\n  \"pay\" \"queue\" -> \"payment-worker\" async \"Workers\" carriedTypes=[\"OrderPlaced\"]\n  \"record\" \"payment-worker\" -> \"ledger\" sync \"Record\" carriedTypes=[\"OrderPlaced\"]\nsimulation \"today\" \"Measured baseline\": {\"kind\":\"constant\",\"ratePerSec\":1,\"durationMs\":6000} from \"orders\"; timeline=[]; expectations=[{\"id\":\"ledger-processed-end\",\"label\":\"ledger: processed == 6\",\"metric\":{\"node\":\"ledger\",\"field\":\"processed\"},\"op\":\"==\",\"value\":6,\"when\":\"end\"},{\"id\":\"queue-lag-end\",\"label\":\"queue: lag == 0\",\"metric\":{\"node\":\"queue\",\"field\":\"lag\"},\"op\":\"==\",\"value\":0,\"when\":\"end\"}]\nsimulation \"triple\" \"Three times the orders\": {\"kind\":\"constant\",\"ratePerSec\":1,\"durationMs\":8000} from \"orders\"; timeline=[{\"atMs\":1000,\"action\":{\"do\":\"note\",\"text\":\"Three orders/s exceed the measured 2/s payment capacity. Show capacity or open Payment worker Properties to see the arithmetic.\",\"focus\":[\"payment-worker\",\"queue\"]}}]; expectations=[{\"id\":\"queue-lag-at\",\"label\":\"queue: lag > 0\",\"metric\":{\"node\":\"queue\",\"field\":\"lag\"},\"op\":\">\",\"value\":0,\"when\":\"at\",\"atMs\":6000},{\"id\":\"ledger-processed-end\",\"label\":\"ledger: processed == 24\",\"metric\":{\"node\":\"ledger\",\"field\":\"processed\"},\"op\":\"==\",\"value\":24,\"when\":\"end\"},{\"id\":\"queue-dropped-always\",\"label\":\"queue: dropped == 0\",\"metric\":{\"node\":\"queue\",\"field\":\"dropped\"},\"op\":\"==\",\"value\":0,\"when\":\"always\"}]"
   },
   "json": {
     "isError": false,
@@ -19,6 +19,7 @@
           "props": { "ratePerSec": 1, "messageType": "OrderPlaced" },
           "x": 40,
           "y": 40,
+          "arrivingTypes": [],
           "capabilities": []
         },
         {
@@ -29,6 +30,7 @@
           "props": { "preset": "processor-lesson", "presetRevision": "1" },
           "x": 40,
           "y": 200,
+          "arrivingTypes": ["OrderPlaced"],
           "capabilities": [{ "kind": "publishes", "edge": "queue-payment", "peer": "queue" }],
           "explanation": {
             "id": "intake",
@@ -64,6 +66,7 @@
           "props": {},
           "x": 40,
           "y": 360,
+          "arrivingTypes": ["OrderPlaced"],
           "capabilities": []
         },
         {
@@ -74,6 +77,7 @@
           "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 2, "concurrency": 1, "latencyMs": 1000, "jitter": 0, "failureRate": 0 },
           "x": 40,
           "y": 520,
+          "arrivingTypes": ["OrderPlaced"],
           "capabilities": [
             { "kind": "consumes", "edge": "pay", "peer": "queue", "retry": "requeue", "retryBackoffMs": 0 },
             { "kind": "calls", "edge": "record", "peer": "ledger" }
@@ -112,6 +116,7 @@
           "props": { "latencyMs": 1 },
           "x": 40,
           "y": 680,
+          "arrivingTypes": ["OrderPlaced"],
           "capabilities": []
         }
       ],
@@ -122,7 +127,8 @@
           "to": "intake",
           "label": "Order",
           "kind": "async",
-          "props": { "travelMs": 200 }
+          "props": { "travelMs": 200 },
+          "carriedTypes": ["OrderPlaced"]
         },
         {
           "id": "queue-payment",
@@ -130,7 +136,8 @@
           "to": "queue",
           "label": "Payment job",
           "kind": "async",
-          "props": { "travelMs": 200 }
+          "props": { "travelMs": 200 },
+          "carriedTypes": ["OrderPlaced"]
         },
         {
           "id": "pay",
@@ -138,7 +145,8 @@
           "to": "payment-worker",
           "label": "Workers",
           "kind": "async",
-          "props": { "travelMs": 200 }
+          "props": { "travelMs": 200 },
+          "carriedTypes": ["OrderPlaced"]
         },
         {
           "id": "record",
@@ -146,9 +154,11 @@
           "to": "ledger",
           "label": "Record",
           "kind": "sync",
-          "props": { "travelMs": 200 }
+          "props": { "travelMs": 200 },
+          "carriedTypes": ["OrderPlaced"]
         }
       ],
+      "messageTypesComplete": true,
       "groups": [],
       "annotations": [],
       "simulations": [
@@ -241,6 +251,6 @@
   },
   "focus": {
     "isError": false,
-    "output": "Diagram \"Measured order capacity\" · direction TB · 2 nodes, 1 connections, 0 boundaries, 2 simulations\ndescription: \"Northwind compares the pinned processor lesson with a measured one-second payment workload: today fits, but at three times traffic the two-slot payment worker saturates.\"\nnodes:\n  \"orders\" \"generic.webhook\" (\"Webhook\") \"Northwind orders\" / \"1 order/s today\" props={\"ratePerSec\":1,\"messageType\":\"OrderPlaced\"} capabilities=[] explanation=undefined\n  \"intake\" \"service.node\" (\"Node.js Service\") \"Order intake\" / \"Pinned lesson: 1 × 4 / 0.25 s\" props={\"preset\":\"processor-lesson\",\"presetRevision\":\"1\"} capabilities=[{\"kind\":\"publishes\",\"edge\":\"queue-payment\",\"peer\":\"queue\"}] explanation={\"id\":\"intake\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":16,\"offered\":1,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.25,\"utilization\":0.0625,\"growth\":0,\"contributors\":[{\"edge\":\"submit\",\"node\":\"orders\",\"label\":\"Northwind orders\",\"rate\":1}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\nconnections:\n  \"submit\" \"orders\" -> \"intake\" async \"Order\"\nsimulation \"today\" \"Measured baseline\": {\"kind\":\"constant\",\"ratePerSec\":1,\"durationMs\":6000} from \"orders\"; timeline=[]; expectations=[{\"id\":\"ledger-processed-end\",\"label\":\"ledger: processed == 6\",\"metric\":{\"node\":\"ledger\",\"field\":\"processed\"},\"op\":\"==\",\"value\":6,\"when\":\"end\"},{\"id\":\"queue-lag-end\",\"label\":\"queue: lag == 0\",\"metric\":{\"node\":\"queue\",\"field\":\"lag\"},\"op\":\"==\",\"value\":0,\"when\":\"end\"}]\nsimulation \"triple\" \"Three times the orders\": {\"kind\":\"constant\",\"ratePerSec\":1,\"durationMs\":8000} from \"orders\"; timeline=[{\"atMs\":1000,\"action\":{\"do\":\"note\",\"text\":\"Three orders/s exceed the measured 2/s payment capacity. Show capacity or open Payment worker Properties to see the arithmetic.\",\"focus\":[\"payment-worker\",\"queue\"]}}]; expectations=[{\"id\":\"queue-lag-at\",\"label\":\"queue: lag > 0\",\"metric\":{\"node\":\"queue\",\"field\":\"lag\"},\"op\":\">\",\"value\":0,\"when\":\"at\",\"atMs\":6000},{\"id\":\"ledger-processed-end\",\"label\":\"ledger: processed == 24\",\"metric\":{\"node\":\"ledger\",\"field\":\"processed\"},\"op\":\"==\",\"value\":24,\"when\":\"end\"},{\"id\":\"queue-dropped-always\",\"label\":\"queue: dropped == 0\",\"metric\":{\"node\":\"queue\",\"field\":\"dropped\"},\"op\":\"==\",\"value\":0,\"when\":\"always\"}]"
+    "output": "Diagram \"Measured order capacity\" · direction TB · 2 nodes, 1 connections, 0 boundaries, 2 simulations\ndescription: \"Northwind compares the pinned processor lesson with a measured one-second payment workload: today fits, but at three times traffic the two-slot payment worker saturates.\"\nnodes:\n  \"orders\" \"generic.webhook\" (\"Webhook\") \"Northwind orders\" / \"1 order/s today\" props={\"ratePerSec\":1,\"messageType\":\"OrderPlaced\"} arrivingTypes=[] capabilities=[] explanation=undefined\n  \"intake\" \"service.node\" (\"Node.js Service\") \"Order intake\" / \"Pinned lesson: 1 × 4 / 0.25 s\" props={\"preset\":\"processor-lesson\",\"presetRevision\":\"1\"} arrivingTypes=[\"OrderPlaced\"] capabilities=[{\"kind\":\"publishes\",\"edge\":\"queue-payment\",\"peer\":\"queue\"}] explanation={\"id\":\"intake\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":16,\"offered\":1,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.25,\"utilization\":0.0625,\"growth\":0,\"contributors\":[{\"edge\":\"submit\",\"node\":\"orders\",\"label\":\"Northwind orders\",\"rate\":1}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\nconnections:\n  \"submit\" \"orders\" -> \"intake\" async \"Order\" carriedTypes=[\"OrderPlaced\"]\nsimulation \"today\" \"Measured baseline\": {\"kind\":\"constant\",\"ratePerSec\":1,\"durationMs\":6000} from \"orders\"; timeline=[]; expectations=[{\"id\":\"ledger-processed-end\",\"label\":\"ledger: processed == 6\",\"metric\":{\"node\":\"ledger\",\"field\":\"processed\"},\"op\":\"==\",\"value\":6,\"when\":\"end\"},{\"id\":\"queue-lag-end\",\"label\":\"queue: lag == 0\",\"metric\":{\"node\":\"queue\",\"field\":\"lag\"},\"op\":\"==\",\"value\":0,\"when\":\"end\"}]\nsimulation \"triple\" \"Three times the orders\": {\"kind\":\"constant\",\"ratePerSec\":1,\"durationMs\":8000} from \"orders\"; timeline=[{\"atMs\":1000,\"action\":{\"do\":\"note\",\"text\":\"Three orders/s exceed the measured 2/s payment capacity. Show capacity or open Payment worker Properties to see the arithmetic.\",\"focus\":[\"payment-worker\",\"queue\"]}}]; expectations=[{\"id\":\"queue-lag-at\",\"label\":\"queue: lag > 0\",\"metric\":{\"node\":\"queue\",\"field\":\"lag\"},\"op\":\">\",\"value\":0,\"when\":\"at\",\"atMs\":6000},{\"id\":\"ledger-processed-end\",\"label\":\"ledger: processed == 24\",\"metric\":{\"node\":\"ledger\",\"field\":\"processed\"},\"op\":\"==\",\"value\":24,\"when\":\"end\"},{\"id\":\"queue-dropped-always\",\"label\":\"queue: dropped == 0\",\"metric\":{\"node\":\"queue\",\"field\":\"dropped\"},\"op\":\"==\",\"value\":0,\"when\":\"always\"}]"
   }
 }

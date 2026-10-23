@@ -1,6 +1,6 @@
 {
   "run": {
-    "time": 13180,
+    "time": 13300,
     "totalMs": 20000,
     "done": true,
     "scale": 1,
@@ -49,11 +49,11 @@
       "nodes": {
         "partners": { "processed": 240, "throughput": 4.160974805094151, "replicas": [1, 1, 0] },
         "edge": { "processed": 240, "throughput": 5.082226103576966, "replicas": [1, 1, 0] },
-        "raw": { "processed": 240, "throughput": 7.853672775267697, "replicas": [1, 1, 0] },
-        "receiver": { "processed": 240, "throughput": 6.430043425722971, "replicas": [4, 4, 0] },
+        "raw": { "processed": 240, "throughput": 7.858251033815179, "replicas": [1, 1, 0] },
+        "receiver": { "processed": 444, "throughput": 46.509673174548944, "replicas": [4, 4, 0] },
         "exchange": {
           "processed": 240,
-          "throughput": 8.679650751308314,
+          "throughput": 8.684710509510424,
           "lag": { "process": 0 },
           "replicas": [1, 1, 0]
         },
@@ -61,7 +61,7 @@
         "queue": {
           "processed": 240,
           "deadLettered": 36,
-          "throughput": 11.716303013337182,
+          "throughput": 11.723132972510506,
           "lag": { "queue": 0 },
           "replicas": [1, 1, 0]
         },
@@ -72,53 +72,48 @@
           "lag": { "queue": 36 },
           "replicas": [1, 1, 0]
         },
-        "workers": { "processed": 204, "failed": 503, "throughput": 28.604905273818623, "replicas": [4, 4, 0] },
-        "dedupe": { "processed": 204, "throughput": 34.938110198352426, "replicas": [1, 1, 0] },
-        "integration-db": { "processed": 204, "throughput": 35.28924404345094, "replicas": [1, 1, 0] },
+        "workers": { "processed": 204, "failed": 503, "throughput": 28.688134840613053, "replicas": [4, 4, 0] },
+        "dedupe": { "processed": 204, "throughput": 35.0397670207956, "replicas": [1, 1, 0] },
+        "integration-db": { "processed": 204, "throughput": 35.391922533944914, "replicas": [1, 1, 0] },
         "operator": { "replicas": [1, 1, 0] },
         "vault": { "replicas": [1, 1, 0] }
       }
     }
   ],
   "final": {
-    "atMs": 13180,
+    "atMs": 13300,
     "inSystem": 0,
     "real": {
-      "partners": { "processed": 240, "throughput": 0.173036863212539, "replicas": [1, 1, 0] },
-      "edge": { "processed": 240, "throughput": 0.21134770199117903, "replicas": [1, 1, 0] },
-      "raw": { "processed": 240, "throughput": 0.32660012746683464, "replicas": [1, 1, 0] },
-      "receiver": { "processed": 240, "throughput": 0.2673975683162866, "replicas": [4, 4, 0] },
-      "exchange": {
-        "processed": 276,
-        "throughput": 3.2567384789322844,
-        "lag": { "process": 0 },
-        "replicas": [1, 1, 0]
-      },
-      "replay": { "processed": 36, "throughput": 2.1452536368720145, "replicas": [1, 1, 0] },
+      "partners": { "processed": 240, "throughput": 0.15346993028863223, "replicas": [1, 1, 0] },
+      "edge": { "processed": 240, "throughput": 0.18744859614918424, "replicas": [1, 1, 0] },
+      "raw": { "processed": 240, "throughput": 0.28983718836117794, "replicas": [1, 1, 0] },
+      "receiver": { "processed": 480, "throughput": 9.44542997693535, "replicas": [4, 4, 0] },
+      "exchange": { "processed": 276, "throughput": 2.889368152559323, "lag": { "process": 0 }, "replicas": [1, 1, 0] },
+      "replay": { "processed": 36, "throughput": 1.9031979541764732, "replicas": [1, 1, 0] },
       "queue": {
         "processed": 276,
         "deadLettered": 36,
-        "throughput": 4.3961371197584125,
+        "throughput": 3.9002390490618,
         "lag": { "queue": 0 },
         "replicas": [1, 1, 0]
       },
-      "dlq": { "processed": 36, "throughput": 0.07732054978408619, "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
-      "workers": { "processed": 240, "failed": 503, "throughput": 7.408240074541202, "replicas": [4, 4, 0] },
-      "dedupe": { "processed": 240, "throughput": 9.04844486015732, "replicas": [1, 1, 0] },
-      "integration-db": { "processed": 240, "throughput": 9.139383242853782, "replicas": [1, 1, 0] },
+      "dlq": { "processed": 36, "throughput": 0.06857717578171248, "lag": { "queue": 0 }, "replicas": [1, 1, 0] },
+      "workers": { "processed": 240, "failed": 503, "throughput": 6.576824381962435, "replicas": [4, 4, 0] },
+      "dedupe": { "processed": 240, "throughput": 8.032951440063963, "replicas": [1, 1, 0] },
+      "integration-db": { "processed": 240, "throughput": 8.113683944215614, "replicas": [1, 1, 0] },
       "operator": { "replicas": [1, 1, 0] },
       "vault": { "replicas": [1, 1, 0] }
     },
-    "edges": { "partners-to-edge": 240, "edge-to-receiver": 240, "receiver-to-raw": 240, "receiver-to-exchange": 240, "exchange-to-queue": 276, "queue-to-workers": 743, "queue-to-dlq": 36, "workers-to-dedupe": 240, "workers-to-integration-db": 240, "dlq-to-replay": 36, "replay-to-exchange": 36, "operator-to-replay": 0, "receiver-to-vault": 0 }
+    "edges": { "partners-to-edge": 240, "edge-to-receiver": 240, "receiver-to-raw": 240, "receiver-to-exchange": 240, "exchange-to-queue": 276, "queue-to-workers": 743, "queue-to-dlq": 36, "workers-to-receiver": 240, "workers-to-dedupe": 240, "workers-to-integration-db": 240, "dlq-to-replay": 36, "replay-to-exchange": 36, "operator-to-replay": 0, "receiver-to-vault": 0 }
   },
   "events": {
-    "total": 6155,
-    "byKind": { "status": 2, "inject": 240, "process": 2304, "deliver": 2567, "fail": 503, "retry": 503, "deadletter": 36 },
+    "total": 6635,
+    "byKind": { "status": 2, "inject": 240, "process": 2544, "deliver": 2807, "fail": 503, "retry": 503, "deadletter": 36 },
     "byNode": {
       "dlq": { "status": 2, "deliver": 36, "process": 36 },
       "partners": { "inject": 240, "process": 240 },
       "edge": { "deliver": 240, "process": 240 },
-      "receiver": { "deliver": 240, "process": 240 },
+      "receiver": { "deliver": 480, "process": 480 },
       "raw": { "deliver": 240, "process": 240 },
       "exchange": { "deliver": 276, "process": 276 },
       "queue": { "deliver": 276, "process": 276, "retry": 503, "deadletter": 36 },
@@ -135,11 +130,11 @@
       "4b4aa5717282",
       "db6e792193a4",
       "f338a7897850",
-      "1d722e45fafd",
-      "e58f3372403d",
-      "99f714c7089f",
-      "ce31c0a7f3c6",
-      "d9528c507abf",
+      "e230cefd54ec",
+      "fabde48bb4c6",
+      "80fa3592154b",
+      "5b6c845d07b9",
+      "d7134e0c4b3d",
       "-",
       "-"
     ]
@@ -151,21 +146,21 @@
     { "atMs": 10000, "text": "The on-call engineer replays the DLQ. Republished events run through the same idempotent workers.", "focus": ["operator", "replay", "dlq", "exchange"] }
   ],
   "latency": {
-    "journeys": { "done": 166, "retried": 142, "deadLettered": 36, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0 },
-    "endToEndMs": { "count": 166, "min": 1690, "mean": 5317.349397590361, "p50": 4830, "p90": 11070, "max": 11640 },
+    "journeys": { "done": 167, "retried": 147, "deadLettered": 36, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0 },
+    "endToEndMs": { "count": 167, "min": 1810, "mean": 5549.580838323353, "p50": 4990, "p90": 11210, "max": 11750 },
     "waitMs": {
-      "edge": { "count": 166, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
-      "receiver": { "count": 166, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "edge": { "count": 167, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "receiver": { "count": 334, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
       "replay": { "count": 36, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
-      "workers": { "count": 593, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
-      "integration-db": { "count": 166, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 }
+      "workers": { "count": 614, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 },
+      "integration-db": { "count": 167, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 }
     },
     "processMs": {
-      "edge": { "count": 166, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 },
-      "receiver": { "count": 166, "min": 30, "mean": 35.36144578313253, "p50": 40, "p90": 40, "max": 40 },
-      "replay": { "count": 36, "min": 50, "mean": 54.72222222222222, "p50": 50, "p90": 60, "max": 60 },
-      "workers": { "count": 166, "min": 130, "mean": 163.13253012048193, "p50": 160, "p90": 190, "max": 200 },
-      "integration-db": { "count": 166, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 }
+      "edge": { "count": 167, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 },
+      "receiver": { "count": 334, "min": 30, "mean": 35.35928143712575, "p50": 40, "p90": 40, "max": 40 },
+      "replay": { "count": 36, "min": 50, "mean": 55, "p50": 60, "p90": 60, "max": 60 },
+      "workers": { "count": 167, "min": 130, "mean": 164.311377245509, "p50": 170, "p90": 190, "max": 200 },
+      "integration-db": { "count": 167, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 }
     }
   }
 }

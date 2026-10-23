@@ -3,6 +3,7 @@
     "dead-letter",
     "no-reader",
     "sync-cycle",
+    "message-loop",
     "sync-chain",
     "shared-database",
     "entry-gateway",
@@ -23,7 +24,8 @@
       "target": "caller",
       "elements": ["caller", "call"],
       "fix": { "ops": [{ "op": "update", "target": "call", "kind": "async" }], "needsChoice": false }
-    }
+    },
+    { "id": "message-loop:caller", "rule": "message-loop", "severity": "warning", "target": "caller", "elements": ["caller", "call"] }
   ],
   "ignored": [],
   "fixes": {
@@ -35,7 +37,7 @@
       "results": [{ "i": 0, "op": "update", "id": "call" }],
       "nodes": 4,
       "edges": 3,
-      "findingsAfter": []
+      "findingsAfter": ["message-loop:caller"]
     }
   }
 }

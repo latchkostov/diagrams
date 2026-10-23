@@ -95,6 +95,7 @@ export const CHECK_RULES = [
   "dead-letter",
   "no-reader",
   "sync-cycle",
+  "message-loop",
   "sync-chain",
   "shared-database",
   "entry-gateway",

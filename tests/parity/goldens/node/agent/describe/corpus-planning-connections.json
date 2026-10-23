@@ -1,7 +1,7 @@
 {
   "text": {
     "isError": false,
-    "output": "Diagram \"Planning: shared capacity\" · direction LR · 6 nodes, 6 connections, 0 boundaries, 0 simulations\nnodes:\n  \"checkout\" \"client.browser\" (\"Web Browser\") \"Checkout\" props={\"ratePerSec\":3} capabilities=[{\"kind\":\"publishes\",\"edge\":\"publish\",\"peer\":\"topic\"},{\"kind\":\"publishes\",\"edge\":\"publish2\",\"peer\":\"topic2\"}] explanation=undefined\n  \"orders\" \"service.dotnet\" (\".NET Service\") \"Orders\" props={\"latencyMs\":4000,\"jitter\":0} capabilities=[{\"kind\":\"consumes\",\"edge\":\"consume\",\"peer\":\"topic\",\"group\":\"billing\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"filter\":[\"Checkout\"],\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"consumes\",\"edge\":\"consume2\",\"peer\":\"topic2\",\"group\":\"returns\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"calls\",\"edge\":\"call\",\"peer\":\"payments\"},{\"kind\":\"publishes\",\"edge\":\"audit\",\"peer\":\"queue\",\"emits\":\"OrderHandled\"}] explanation={\"id\":\"orders\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"capacity\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":1,\"offered\":6,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"topic\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":3},{\"broker\":\"topic2\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":3}],\"slots\":4,\"seconds\":4,\"utilization\":6,\"growth\":5,\"contributors\":[{\"edge\":\"consume\",\"node\":\"topic\",\"label\":\"Order events\",\"rate\":3},{\"edge\":\"consume2\",\"node\":\"topic2\",\"label\":\"Returns\",\"rate\":3}],\"target\":0.5,\"minimumReplicas\":6,\"targetReplicas\":12,\"changes\":null,\"converged\":true}\n  \"topic\" \"kafka.topic\" (\"Kafka Topic\") \"Order events\" capabilities=[] explanation=undefined\n  \"topic2\" \"azure.service-bus.topic\" (\"Service Bus Topic\") \"Returns\" capabilities=[] explanation=undefined\n  \"payments\" \"generic.service\" (\"Service\") \"Payments\" capabilities=[] explanation={\"id\":\"payments\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":16,\"offered\":6,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.25,\"utilization\":0.375,\"growth\":0,\"contributors\":[{\"edge\":\"call\",\"node\":\"orders\",\"label\":\"Orders\",\"rate\":6}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"queue\" \"generic.queue\" (\"Queue\") \"Audit\" capabilities=[] explanation={\"id\":\"queue\",\"role\":\"queue\",\"status\":\"up\",\"reason\":\"no-reader\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":0,\"offered\":6,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":null,\"seconds\":0,\"utilization\":null,\"growth\":6,\"contributors\":[{\"edge\":\"audit\",\"node\":\"orders\",\"label\":\"Orders\",\"rate\":6}],\"target\":0.5,\"changes\":null,\"addConsumer\":\"queue\",\"fixId\":\"no-reader:queue\",\"converged\":true}\nconnections:\n  \"publish\" \"checkout\" -> \"topic\" async\n  \"publish2\" \"checkout\" -> \"topic2\" async\n  \"consume\" \"topic\" -> \"orders\" async\n  \"consume2\" \"topic2\" -> \"orders\" async\n  \"call\" \"orders\" -> \"payments\" sync\n  \"audit\" \"orders\" -> \"queue\" async"
+    "output": "Diagram \"Planning: shared capacity\" · direction LR · 6 nodes, 6 connections, 0 boundaries, 0 simulations\nnodes:\n  \"checkout\" \"client.browser\" (\"Web Browser\") \"Checkout\" props={\"ratePerSec\":3} arrivingTypes=[] capabilities=[{\"kind\":\"publishes\",\"edge\":\"publish\",\"peer\":\"topic\"},{\"kind\":\"publishes\",\"edge\":\"publish2\",\"peer\":\"topic2\"}] explanation=undefined\n  \"orders\" \"service.dotnet\" (\".NET Service\") \"Orders\" props={\"latencyMs\":4000,\"jitter\":0} arrivingTypes=[\"Checkout\"] capabilities=[{\"kind\":\"consumes\",\"edge\":\"consume\",\"peer\":\"topic\",\"group\":\"billing\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"filter\":[\"Checkout\"],\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"consumes\",\"edge\":\"consume2\",\"peer\":\"topic2\",\"group\":\"returns\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"calls\",\"edge\":\"call\",\"peer\":\"payments\"},{\"kind\":\"publishes\",\"edge\":\"audit\",\"peer\":\"queue\",\"emits\":\"OrderHandled\"}] explanation={\"id\":\"orders\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"capacity\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":1,\"offered\":6,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"topic\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":3},{\"broker\":\"topic2\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":3}],\"slots\":4,\"seconds\":4,\"utilization\":6,\"growth\":5,\"contributors\":[{\"edge\":\"consume\",\"node\":\"topic\",\"label\":\"Order events\",\"rate\":3},{\"edge\":\"consume2\",\"node\":\"topic2\",\"label\":\"Returns\",\"rate\":3}],\"target\":0.5,\"minimumReplicas\":6,\"targetReplicas\":12,\"changes\":null,\"converged\":true}\n  \"topic\" \"kafka.topic\" (\"Kafka Topic\") \"Order events\" arrivingTypes=[\"Checkout\"] capabilities=[] explanation=undefined\n  \"topic2\" \"azure.service-bus.topic\" (\"Service Bus Topic\") \"Returns\" arrivingTypes=[\"Checkout\"] capabilities=[] explanation=undefined\n  \"payments\" \"generic.service\" (\"Service\") \"Payments\" arrivingTypes=[\"Checkout\"] capabilities=[] explanation={\"id\":\"payments\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":16,\"offered\":6,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.25,\"utilization\":0.375,\"growth\":0,\"contributors\":[{\"edge\":\"call\",\"node\":\"orders\",\"label\":\"Orders\",\"rate\":6}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"queue\" \"generic.queue\" (\"Queue\") \"Audit\" arrivingTypes=[\"OrderHandled\"] capabilities=[] explanation={\"id\":\"queue\",\"role\":\"queue\",\"status\":\"up\",\"reason\":\"no-reader\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":0,\"offered\":6,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":null,\"seconds\":0,\"utilization\":null,\"growth\":6,\"contributors\":[{\"edge\":\"audit\",\"node\":\"orders\",\"label\":\"Orders\",\"rate\":6}],\"target\":0.5,\"changes\":null,\"addConsumer\":\"queue\",\"fixId\":\"no-reader:queue\",\"converged\":true}\nconnections:\n  \"publish\" \"checkout\" -> \"topic\" async carriedTypes=[\"Checkout\"]\n  \"publish2\" \"checkout\" -> \"topic2\" async carriedTypes=[\"Checkout\"]\n  \"consume\" \"topic\" -> \"orders\" async carriedTypes=[\"Checkout\"]\n  \"consume2\" \"topic2\" -> \"orders\" async carriedTypes=[\"Checkout\"]\n  \"call\" \"orders\" -> \"payments\" sync carriedTypes=[\"Checkout\"]\n  \"audit\" \"orders\" -> \"queue\" async carriedTypes=[\"OrderHandled\"]"
   },
   "json": {
     "isError": false,
@@ -16,6 +16,7 @@
           "x": 0,
           "y": 140,
           "props": { "ratePerSec": 3 },
+          "arrivingTypes": [],
           "capabilities": [
             { "kind": "publishes", "edge": "publish", "peer": "topic" },
             { "kind": "publishes", "edge": "publish2", "peer": "topic2" }
@@ -28,6 +29,7 @@
           "x": 640,
           "y": 140,
           "props": { "latencyMs": 4000, "jitter": 0 },
+          "arrivingTypes": ["Checkout"],
           "capabilities": [
             {
               "kind": "consumes",
@@ -91,14 +93,15 @@
             "converged": true
           }
         },
-        { "id": "topic", "stencil": "kafka.topic", "label": "Order events", "x": 320, "y": 20, "capabilities": [] },
-        { "id": "topic2", "stencil": "azure.service-bus.topic", "label": "Returns", "x": 320, "y": 260, "capabilities": [] },
+        { "id": "topic", "stencil": "kafka.topic", "label": "Order events", "x": 320, "y": 20, "arrivingTypes": ["Checkout"], "capabilities": [] },
+        { "id": "topic2", "stencil": "azure.service-bus.topic", "label": "Returns", "x": 320, "y": 260, "arrivingTypes": ["Checkout"], "capabilities": [] },
         {
           "id": "payments",
           "stencil": "generic.service",
           "label": "Payments",
           "x": 960,
           "y": 140,
+          "arrivingTypes": ["Checkout"],
           "capabilities": [],
           "explanation": {
             "id": "payments",
@@ -132,6 +135,7 @@
           "label": "Audit",
           "x": 640,
           "y": 400,
+          "arrivingTypes": ["OrderHandled"],
           "capabilities": [],
           "explanation": {
             "id": "queue",
@@ -161,19 +165,42 @@
         }
       ],
       "edges": [
-        { "id": "publish", "from": "checkout", "to": "topic", "kind": "async", "props": { "travelMs": 0 } },
-        { "id": "publish2", "from": "checkout", "to": "topic2", "kind": "async" },
+        {
+          "id": "publish",
+          "from": "checkout",
+          "to": "topic",
+          "kind": "async",
+          "props": { "travelMs": 0 },
+          "carriedTypes": ["Checkout"]
+        },
+        { "id": "publish2", "from": "checkout", "to": "topic2", "kind": "async", "carriedTypes": ["Checkout"] },
         {
           "id": "consume",
           "from": "topic",
           "to": "orders",
           "kind": "async",
-          "props": { "group": "billing", "filter": ["Checkout"] }
+          "props": { "group": "billing", "filter": ["Checkout"] },
+          "carriedTypes": ["Checkout"]
         },
-        { "id": "consume2", "from": "topic2", "to": "orders", "kind": "async", "props": { "group": "returns" } },
-        { "id": "call", "from": "orders", "to": "payments", "kind": "sync" },
-        { "id": "audit", "from": "orders", "to": "queue", "kind": "async", "props": { "emits": "OrderHandled" } }
+        {
+          "id": "consume2",
+          "from": "topic2",
+          "to": "orders",
+          "kind": "async",
+          "props": { "group": "returns" },
+          "carriedTypes": ["Checkout"]
+        },
+        { "id": "call", "from": "orders", "to": "payments", "kind": "sync", "carriedTypes": ["Checkout"] },
+        {
+          "id": "audit",
+          "from": "orders",
+          "to": "queue",
+          "kind": "async",
+          "props": { "emits": "OrderHandled" },
+          "carriedTypes": ["OrderHandled"]
+        }
       ],
+      "messageTypesComplete": true,
       "groups": [],
       "annotations": [],
       "simulations": [],
@@ -182,6 +209,6 @@
   },
   "focus": {
     "isError": false,
-    "output": "Diagram \"Planning: shared capacity\" · direction LR · 3 nodes, 2 connections, 0 boundaries, 0 simulations\nnodes:\n  \"checkout\" \"client.browser\" (\"Web Browser\") \"Checkout\" props={\"ratePerSec\":3} capabilities=[{\"kind\":\"publishes\",\"edge\":\"publish\",\"peer\":\"topic\"},{\"kind\":\"publishes\",\"edge\":\"publish2\",\"peer\":\"topic2\"}] explanation=undefined\n  \"topic\" \"kafka.topic\" (\"Kafka Topic\") \"Order events\" capabilities=[] explanation=undefined\n  \"topic2\" \"azure.service-bus.topic\" (\"Service Bus Topic\") \"Returns\" capabilities=[] explanation=undefined\nconnections:\n  \"publish\" \"checkout\" -> \"topic\" async\n  \"publish2\" \"checkout\" -> \"topic2\" async"
+    "output": "Diagram \"Planning: shared capacity\" · direction LR · 3 nodes, 2 connections, 0 boundaries, 0 simulations\nnodes:\n  \"checkout\" \"client.browser\" (\"Web Browser\") \"Checkout\" props={\"ratePerSec\":3} arrivingTypes=[] capabilities=[{\"kind\":\"publishes\",\"edge\":\"publish\",\"peer\":\"topic\"},{\"kind\":\"publishes\",\"edge\":\"publish2\",\"peer\":\"topic2\"}] explanation=undefined\n  \"topic\" \"kafka.topic\" (\"Kafka Topic\") \"Order events\" arrivingTypes=[\"Checkout\"] capabilities=[] explanation=undefined\n  \"topic2\" \"azure.service-bus.topic\" (\"Service Bus Topic\") \"Returns\" arrivingTypes=[\"Checkout\"] capabilities=[] explanation=undefined\nconnections:\n  \"publish\" \"checkout\" -> \"topic\" async carriedTypes=[\"Checkout\"]\n  \"publish2\" \"checkout\" -> \"topic2\" async carriedTypes=[\"Checkout\"]"
   }
 }

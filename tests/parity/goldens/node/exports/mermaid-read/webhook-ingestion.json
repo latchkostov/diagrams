@@ -30,12 +30,13 @@
       { "id": "e5-exchange-queue", "from": "exchange", "to": "queue", "label": "webhook.#", "kind": "async" },
       { "id": "e6-queue-workers", "from": "queue", "to": "workers", "label": "Prefetch 4", "kind": "async" },
       { "id": "e7-queue-dlq", "from": "queue", "to": "dlq", "label": "Dead-letter", "kind": "async" },
-      { "id": "e8-workers-dedupe", "from": "workers", "to": "dedupe", "label": "Idempotency check", "kind": "sync" },
-      { "id": "e9-workers-integration_db", "from": "workers", "to": "integration_db", "label": "Apply change", "kind": "sync" },
-      { "id": "e10-dlq-replay", "from": "dlq", "to": "replay", "label": "Drain", "kind": "async" },
-      { "id": "e11-replay-exchange", "from": "replay", "to": "exchange", "label": "Republish", "kind": "async" },
-      { "id": "e12-operator-replay", "from": "operator", "to": "replay", "label": "Start replay", "kind": "async", "relation": "depends" },
-      { "id": "e13-receiver-vault", "from": "receiver", "to": "vault", "kind": "async", "relation": "secret" }
+      { "id": "e8-workers-receiver", "from": "workers", "to": "receiver", "label": "Applied callback", "kind": "async" },
+      { "id": "e9-workers-dedupe", "from": "workers", "to": "dedupe", "label": "Idempotency check", "kind": "sync" },
+      { "id": "e10-workers-integration_db", "from": "workers", "to": "integration_db", "label": "Apply change", "kind": "sync" },
+      { "id": "e11-dlq-replay", "from": "dlq", "to": "replay", "label": "Drain", "kind": "async" },
+      { "id": "e12-replay-exchange", "from": "replay", "to": "exchange", "label": "Republish", "kind": "async" },
+      { "id": "e13-operator-replay", "from": "operator", "to": "replay", "label": "Start replay", "kind": "async", "relation": "depends" },
+      { "id": "e14-receiver-vault", "from": "receiver", "to": "vault", "kind": "async", "relation": "secret" }
     ]
   }
 }

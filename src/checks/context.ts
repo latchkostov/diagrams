@@ -13,6 +13,14 @@ import { planningSimulation, sourceTraffic } from "../sim/capacityPlanning";
 import { scenarioPlans, type ScalingPlan } from "../sim/scalingPlanner";
 import { readingOrder } from "../canvas/keyboardNav";
 import { estimateCardSize } from "../canvas/nodes/size";
+import {
+  messageTypeBudget,
+  messageTypesAt,
+  typeTable,
+  type MessageTypes,
+  type TypeGraph,
+  type TypeTable,
+} from "../model/messageTypes";
 
 /**
  * What every rule reads, built once per run: roles, the simulation's compiled topology (consumers,
@@ -20,6 +28,8 @@ import { estimateCardSize } from "../canvas/nodes/size";
  * share the simulation's model, so a check and the live view never disagree.
  */
 export interface CheckContext {
+  /** When applying a fix, generate candidates only for this finding. Safety still analyzes the whole graph. */
+  fixTarget?: string;
   /** Worker-unavailable fallback (and the worker itself): request checks may replay simulations on this thread. */
   local?: boolean;
   /** The rules this run checks, set by runChecks; rules that defer to another read it (unset: every rule). */
@@ -38,10 +48,13 @@ export interface CheckContext {
   /** The dead-letter route playback sends this broker's exhausted messages to (deadLetterRoutes). */
   deadLetterRoute(id: string): CompiledEdge | undefined;
   /**
-   * The message types that reach a node: in free play and in each saved simulation (capacity analysis, so
-   * emits and filters count). Computed on first use.
+   * The message types that reach a node: the shared static propagation in free play and each saved
+   * simulation's configured inputs, emits and filters. Computed on first use.
    */
   typesAt(id: string): ReadonlySet<string>;
+  messageTypes(): MessageTypes;
+  /** The same analysis's per-run state graphs (free play, then each saved simulation), for loop-fix verification. */
+  messageGraphs(): { table: TypeTable; graphs: readonly TypeGraph[] };
   /** Position in reading order (rows from the top, each left to right; columns in a TB diagram); a connection's is its start's. */
   rank(id: string): number;
   /** The node's label, or its id when it has none. */
@@ -94,7 +107,15 @@ export function buildContext(diagram: DiagramFile): CheckContext {
   let planning: Simulation | undefined;
   let capacity: CapacityAnalysis | undefined;
   let scenario: ScalingPlan[] | undefined | null = null;
-  let types: Map<string, Set<string>> | undefined;
+  let messages: MessageTypes | undefined;
+  let messageGraphs: { table: TypeTable; graphs: TypeGraph[] } | undefined;
+  const analyzeMessages = () => {
+    if (!messages) {
+      messageGraphs = { table: typeTable(), graphs: [] };
+      messages = messageTypesAt(diagram, undefined, messageTypeBudget(), messageGraphs);
+    }
+    return messages;
+  };
   let requests: Map<string, CompiledEdge[]> | undefined;
   /** Boundary and annotation ids, for freshKey. */
   let others: Set<string> | undefined;
@@ -128,22 +149,9 @@ export function buildContext(diagram: DiagramFile): CheckContext {
       return requests.get(id) ?? [];
     },
     deadLetterRoute: (id) => deadLetter.get(id),
-    typesAt(id) {
-      if (!types) {
-        types = new Map();
-        const analyses = [
-          capacity ?? analyzeCapacity(diagram, plan()),
-          ...(diagram.simulations ?? []).map((sim) => analyzeCapacity(diagram, planningSimulation(diagram, sim))),
-        ];
-        for (const analysis of analyses)
-          for (const [node, list] of Object.entries(analysis.offeredTypes)) {
-            const set = types.get(node) ?? new Set<string>();
-            for (const type of list) set.add(type);
-            types.set(node, set);
-          }
-      }
-      return types.get(id) ?? new Set();
-    },
+    messageTypes: analyzeMessages,
+    messageGraphs: () => (analyzeMessages(), messageGraphs!),
+    typesAt: (id) => analyzeMessages().arriving.get(id) ?? new Set(),
     // A connection reads where it starts.
     rank: (id) => order.get(id) ?? order.get(edges.get(id)?.from ?? "") ?? Infinity,
     name: (id) => nodes.get(id)?.label.trim() || id,

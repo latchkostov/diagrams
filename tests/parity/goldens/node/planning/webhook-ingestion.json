@@ -25,7 +25,7 @@
         "partners": ["Infinity", 20, 0, 1, 1, 0],
         "edge": ["Infinity", 20, 0, 1, 1, 0],
         "raw": ["Infinity", 20, 0, 1, 1, 0],
-        "receiver": [17066.666666666668, 20, 0.001171875, 4, 4, 0],
+        "receiver": [17066.666666666668, 40, 0.00234375, 4, 4, 0],
         "exchange": ["Infinity", 20, 0, 1, 1, 0],
         "replay": [1280, 0, 0, 1, 1, 0],
         "queue": [400, 20, 0.05, 1, 1, 0],
@@ -36,8 +36,8 @@
         "operator": ["Infinity", 2, 0, 1, 1, 0],
         "vault": ["Infinity", 0, 0, 1, 1, 0]
       },
-      "connections": { "partners-to-edge": 20, "edge-to-receiver": 20, "receiver-to-raw": 20, "receiver-to-exchange": 20, "exchange-to-queue": 20, "queue-to-workers": 20, "workers-to-dedupe": 20, "workers-to-integration-db": 20 },
-      "offeredTypes": { "partners": ["WebhookEvent"], "operator": ["On-call engineer"], "edge": ["WebhookEvent"], "receiver": ["WebhookEvent"], "raw": ["WebhookEvent"], "exchange": ["WebhookEvent"], "queue": ["WebhookEvent"], "workers": ["WebhookEvent"], "dedupe": ["PartnerChangeApplied"], "integration-db": ["PartnerChangeApplied"] }
+      "connections": { "partners-to-edge": 20, "edge-to-receiver": 20, "receiver-to-raw": 20, "receiver-to-exchange": 20, "exchange-to-queue": 20, "queue-to-workers": 20, "workers-to-receiver": 20, "workers-to-dedupe": 20, "workers-to-integration-db": 20 },
+      "offeredTypes": { "partners": ["WebhookEvent"], "operator": ["On-call engineer"], "edge": ["WebhookEvent"], "receiver": ["WebhookEvent", "WebhookApplied"], "raw": ["WebhookEvent"], "exchange": ["WebhookEvent"], "queue": ["WebhookEvent"], "workers": ["WebhookEvent"], "dedupe": ["PartnerChangeApplied"], "integration-db": ["PartnerChangeApplied"] }
     },
     "explanations": {
       "receiver": {
@@ -46,9 +46,9 @@
         "status": "up",
         "reason": "throughput",
         "evidence": "configured",
-        "unit": "req/s",
+        "unit": "msg/s",
         "capacity": 17066.666666666668,
-        "offered": 20,
+        "offered": 40,
         "replicas": 4,
         "baseReplicas": 4,
         "omittedContributors": 0,
@@ -56,10 +56,11 @@
         "assignments": [],
         "slots": 128,
         "seconds": 0.03,
-        "utilization": 0.001171875,
+        "utilization": 0.00234375,
         "growth": 0,
         "contributors": [
-          { "edge": "edge-to-receiver", "node": "edge", "label": "Partner webhooks", "rate": 20, "via": "Cloudflare" }
+          { "edge": "edge-to-receiver", "node": "edge", "label": "Partner webhooks", "rate": 20, "via": "Cloudflare" },
+          { "edge": "workers-to-receiver", "node": "workers", "label": "Webhook workers", "rate": 20 }
         ],
         "target": 0.5,
         "minimumReplicas": 4,
@@ -119,8 +120,8 @@
       "partners": [{ "kind": "calls", "edge": "partners-to-edge", "peer": "edge" }],
       "edge": [{ "kind": "calls", "edge": "edge-to-receiver", "peer": "receiver" }],
       "receiver": [
-        { "kind": "calls", "edge": "receiver-to-raw", "peer": "raw" },
-        { "kind": "publishes", "edge": "receiver-to-exchange", "peer": "exchange" }
+        { "kind": "calls", "edge": "receiver-to-raw", "peer": "raw", "filter": ["WebhookEvent"] },
+        { "kind": "publishes", "edge": "receiver-to-exchange", "peer": "exchange", "filter": ["WebhookEvent"] }
       ],
       "exchange": [{ "kind": "publishes", "edge": "exchange-to-queue", "peer": "queue" }],
       "replay": [
@@ -348,7 +349,7 @@
           "partners": ["Infinity", 1000, 0, 1, 1, 0],
           "edge": ["Infinity", 1000, 0, 1, 1, 0],
           "raw": ["Infinity", 1000, 0, 1, 1, 0],
-          "receiver": [17066.666666666668, 1000, 0.05859374999999999, 4, 4, 0],
+          "receiver": [17066.666666666668, 2000, 0.11718749999999999, 4, 4, 0],
           "exchange": ["Infinity", 1000, 0, 1, 1, 0],
           "replay": [1280, 0, 0, 1, 1, 0],
           "queue": [400, 1000, 2.5, 1, 1, 0],
@@ -359,8 +360,8 @@
           "operator": ["Infinity", 0, 0, 1, 1, 0],
           "vault": ["Infinity", 0, 0, 1, 1, 0]
         },
-        "connections": { "partners-to-edge": 1000, "edge-to-receiver": 1000, "receiver-to-raw": 1000, "receiver-to-exchange": 1000, "exchange-to-queue": 1000, "queue-to-workers": 1000, "workers-to-dedupe": 1000, "workers-to-integration-db": 1000 },
-        "offeredTypes": { "partners": ["WebhookEvent"], "edge": ["WebhookEvent"], "receiver": ["WebhookEvent"], "raw": ["WebhookEvent"], "exchange": ["WebhookEvent"], "queue": ["WebhookEvent"], "workers": ["WebhookEvent"], "dedupe": ["PartnerChangeApplied"], "integration-db": ["PartnerChangeApplied"] }
+        "connections": { "partners-to-edge": 1000, "edge-to-receiver": 1000, "receiver-to-raw": 1000, "receiver-to-exchange": 1000, "exchange-to-queue": 1000, "queue-to-workers": 1000, "workers-to-receiver": 1000, "workers-to-dedupe": 1000, "workers-to-integration-db": 1000 },
+        "offeredTypes": { "partners": ["WebhookEvent"], "edge": ["WebhookEvent"], "receiver": ["WebhookEvent", "WebhookApplied"], "raw": ["WebhookEvent"], "exchange": ["WebhookEvent"], "queue": ["WebhookEvent"], "workers": ["WebhookEvent"], "dedupe": ["PartnerChangeApplied"], "integration-db": ["PartnerChangeApplied"] }
       },
       "explanations": {
         "receiver": {
@@ -369,9 +370,9 @@
           "status": "up",
           "reason": "throughput",
           "evidence": "configured",
-          "unit": "req/s",
+          "unit": "msg/s",
           "capacity": 17066.666666666668,
-          "offered": 1000,
+          "offered": 2000,
           "replicas": 4,
           "baseReplicas": 4,
           "omittedContributors": 0,
@@ -379,10 +380,11 @@
           "assignments": [],
           "slots": 128,
           "seconds": 0.03,
-          "utilization": 0.05859374999999999,
+          "utilization": 0.11718749999999999,
           "growth": 0,
           "contributors": [
-            { "edge": "edge-to-receiver", "node": "edge", "label": "Partner webhooks", "rate": 1000, "via": "Cloudflare" }
+            { "edge": "edge-to-receiver", "node": "edge", "label": "Partner webhooks", "rate": 1000, "via": "Cloudflare" },
+            { "edge": "workers-to-receiver", "node": "workers", "label": "Webhook workers", "rate": 1000 }
           ],
           "target": 0.5,
           "minimumReplicas": 4,
@@ -457,7 +459,7 @@
           "partners": ["Infinity", 30, 0, 1, 1, 0],
           "edge": ["Infinity", 30, 0, 1, 1, 0],
           "raw": ["Infinity", 30, 0, 1, 1, 0],
-          "receiver": [17066.666666666668, 30, 0.0017578124999999998, 4, 4, 0],
+          "receiver": [17066.666666666668, 60, 0.0035156249999999997, 4, 4, 0],
           "exchange": ["Infinity", 30, 0, 1, 1, 0],
           "replay": [1280, 0, 0, 1, 1, 0],
           "queue": [400, 30, 0.075, 1, 1, 0],
@@ -468,8 +470,8 @@
           "operator": ["Infinity", 0, 0, 1, 1, 0],
           "vault": ["Infinity", 0, 0, 1, 1, 0]
         },
-        "connections": { "partners-to-edge": 30, "edge-to-receiver": 30, "receiver-to-raw": 30, "receiver-to-exchange": 30, "exchange-to-queue": 30, "queue-to-workers": 30, "workers-to-dedupe": 30, "workers-to-integration-db": 30 },
-        "offeredTypes": { "partners": ["WebhookEvent"], "edge": ["WebhookEvent"], "receiver": ["WebhookEvent"], "raw": ["WebhookEvent"], "exchange": ["WebhookEvent"], "queue": ["WebhookEvent"], "workers": ["WebhookEvent"], "dedupe": ["PartnerChangeApplied"], "integration-db": ["PartnerChangeApplied"] }
+        "connections": { "partners-to-edge": 30, "edge-to-receiver": 30, "receiver-to-raw": 30, "receiver-to-exchange": 30, "exchange-to-queue": 30, "queue-to-workers": 30, "workers-to-receiver": 30, "workers-to-dedupe": 30, "workers-to-integration-db": 30 },
+        "offeredTypes": { "partners": ["WebhookEvent"], "edge": ["WebhookEvent"], "receiver": ["WebhookEvent", "WebhookApplied"], "raw": ["WebhookEvent"], "exchange": ["WebhookEvent"], "queue": ["WebhookEvent"], "workers": ["WebhookEvent"], "dedupe": ["PartnerChangeApplied"], "integration-db": ["PartnerChangeApplied"] }
       },
       "explanations": {
         "receiver": {
@@ -478,9 +480,9 @@
           "status": "up",
           "reason": "throughput",
           "evidence": "configured",
-          "unit": "req/s",
+          "unit": "msg/s",
           "capacity": 17066.666666666668,
-          "offered": 30,
+          "offered": 60,
           "replicas": 4,
           "baseReplicas": 4,
           "omittedContributors": 0,
@@ -488,10 +490,11 @@
           "assignments": [],
           "slots": 128,
           "seconds": 0.03,
-          "utilization": 0.0017578124999999998,
+          "utilization": 0.0035156249999999997,
           "growth": 0,
           "contributors": [
-            { "edge": "edge-to-receiver", "node": "edge", "label": "Partner webhooks", "rate": 30, "via": "Cloudflare" }
+            { "edge": "edge-to-receiver", "node": "edge", "label": "Partner webhooks", "rate": 30, "via": "Cloudflare" },
+            { "edge": "workers-to-receiver", "node": "workers", "label": "Webhook workers", "rate": 30 }
           ],
           "target": 0.5,
           "minimumReplicas": 4,
@@ -569,7 +572,7 @@
             "partners": ["idle", "20/s · no limit", { "modeled": false }],
             "edge": ["idle", "20/s · no limit", { "modeled": false }],
             "raw": ["idle", "20/s · no limit", { "modeled": false }],
-            "receiver": ["ok", "0% · 20/s of 17k/s"],
+            "receiver": ["ok", "0% · 40/s of 17k/s"],
             "exchange": ["idle", "20/s · no limit"],
             "replay": ["idle", ""],
             "queue": ["ok", "5% · 20/s of 400/s"],
@@ -597,7 +600,7 @@
             "partners": ["idle", "100/s · no limit", { "modeled": false }],
             "edge": ["idle", "100/s · no limit", { "modeled": false }],
             "raw": ["idle", "100/s · no limit", { "modeled": false }],
-            "receiver": ["ok", "1% · 100/s of 17k/s"],
+            "receiver": ["ok", "1% · 200/s of 17k/s"],
             "exchange": ["idle", "100/s · no limit"],
             "replay": ["idle", ""],
             "queue": ["ok", "25% · 100/s of 400/s"],
@@ -625,7 +628,7 @@
             "partners": ["idle", "20/s · no limit", { "modeled": false }],
             "edge": ["idle", "20/s · no limit", { "modeled": false }],
             "raw": ["idle", "20/s · no limit", { "modeled": false }],
-            "receiver": ["ok", "0% · 20/s of 8.5k/s"],
+            "receiver": ["ok", "0% · 40/s of 8.5k/s"],
             "exchange": ["idle", "20/s · no limit"],
             "replay": ["idle", ""],
             "queue": ["ok", "10% · 20/s of 200/s"],
@@ -653,7 +656,7 @@
             "partners": ["idle", "20/s · no limit", { "modeled": false }],
             "edge": ["idle", "20/s · no limit", { "modeled": false }],
             "raw": ["idle", "20/s · no limit", { "modeled": false }],
-            "receiver": ["ok", "0% · 20/s of 17k/s"],
+            "receiver": ["ok", "0% · 40/s of 17k/s"],
             "exchange": ["idle", "20/s · no limit"],
             "replay": ["idle", ""],
             "queue": ["ok", "5% · 20/s of 400/s"],
@@ -683,7 +686,7 @@
         "partners": ["idle", "1k/s · no limit", { "modeled": false }],
         "edge": ["idle", "1k/s · no limit", { "modeled": false }],
         "raw": ["idle", "1k/s · no limit", { "modeled": false }],
-        "receiver": ["ok", "6% · 1k/s of 17k/s"],
+        "receiver": ["ok", "12% · 2k/s of 17k/s"],
         "exchange": ["idle", "1k/s · no limit"],
         "replay": ["idle", ""],
         "queue": ["over", "250% · 1k/s of 400/s"],
@@ -707,7 +710,7 @@
         "partners": ["idle", "30/s · no limit", { "modeled": false }],
         "edge": ["idle", "30/s · no limit", { "modeled": false }],
         "raw": ["idle", "30/s · no limit", { "modeled": false }],
-        "receiver": ["ok", "0% · 30/s of 17k/s"],
+        "receiver": ["ok", "0% · 60/s of 17k/s"],
         "exchange": ["idle", "30/s · no limit"],
         "replay": ["idle", ""],
         "queue": ["ok", "8% · 30/s of 400/s"],

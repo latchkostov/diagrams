@@ -38,18 +38,6 @@ export const SIM_FIELDS: Partial<Record<SimKey, SimField>> = {
       return t("inspector.messagesPerSecondWhileTrafficIsOn");
     },
   },
-  messageType: {
-    get label() {
-      return t("inspector.messageType");
-    },
-    kind: "text",
-    get placeholder() {
-      return t("inspector.derivedFromLabel");
-    },
-    get hint() {
-      return t("inspector.typeEmittedByThisSource");
-    },
-  },
   latencyMs: {
     get label() {
       return t("inspector.latency");
@@ -147,21 +135,10 @@ export const SIM_FIELDS: Partial<Record<SimKey, SimField>> = {
       return t("inspector.howManyConsumersInOneGroupCanWorkIn");
     },
   },
-  emits: {
-    get label() {
-      return t("inspector.emits");
-    },
-    kind: "map",
-    get placeholder() {
-      return t("inspector.unchangedOrInOutOther");
-    },
-    get hint() {
-      return t("inspector.messageTypeSentDownstreamOneNameRenamesEverythingOrderplaced");
-    },
-  },
 };
 
-export const SIM_KEYS = new Set<string>(Object.keys(SIM_FIELDS));
+// The message type and emits are edited with the message-type pickers (several nodes: MultiPanel's MESSAGE_FIELDS).
+export const SIM_KEYS = new Set<string>([...Object.keys(SIM_FIELDS), "messageType", "emits"]);
 
 // A setting leaves Custom properties only where a control for it shows: a device's own section, a firewall's rule.
 // Anywhere else (an nginx with a `gbps`, a service's connection with `deny`) it stays there, to see, change or remove.

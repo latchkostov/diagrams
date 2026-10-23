@@ -4,6 +4,7 @@ import type { AutoscalingConfig } from "../src/model/autoscaling";
 import type { DiagramFile } from "../src/model/types";
 import { catalog } from "../src/stencils/catalog";
 import { stencilRole } from "../src/stencils/roles";
+import { acceptsType } from "../src/sim/topology";
 import { VENDOR_PARENTS } from "../src/stencils/vendorParents";
 
 const brandedClients = new Set(
@@ -44,6 +45,18 @@ export function exampleShows(d: DiagramFile): string[] {
   return [
     ...(d.nodes.some((n) => Object.hasOwn(VENDOR_PARENTS, n.stencil)) ? ["vendorStencils"] : []),
     ...(d.nodes.some((n) => brandedClients.has(n.stencil)) ? ["brandedClients"] : []),
+    ...(d.edges.some(
+      (edge) =>
+        typeof edge.props?.emits === "string" &&
+        d.edges.some(
+          (next) =>
+            next.from === edge.to &&
+            Array.isArray(next.props?.filter) &&
+            !acceptsType(next.props.filter, String(edge.props?.emits)),
+        ),
+    )
+      ? ["messageTypes"]
+      : []),
     ...(revisionAtLeast(d.planning?.revision, "p3-w1") && d.edges.some((e) => e.kind === "sync")
       ? ["requestsWait"]
       : []),

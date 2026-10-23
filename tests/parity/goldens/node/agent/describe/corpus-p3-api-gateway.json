@@ -1,7 +1,7 @@
 {
   "text": {
     "isError": false,
-    "output": "Diagram \"Managed admission\" · direction LR · 2 nodes, 1 connections, 0 boundaries, 0 simulations\nnodes:\n  \"source\" \"client.browser\" (\"Web Browser\") \"Checkout\" props={\"ratePerSec\":20} capabilities=[{\"kind\":\"calls\",\"edge\":\"call\",\"peer\":\"api\"}] explanation=undefined\n  \"api\" \"aws.api-gateway\" (\"Amazon API Gateway\") \"aws.api-gateway\" props={\"preset\":\"api-gateway-account\",\"presetRevision\":\"2026-10-14\",\"latencyMs\":1000,\"api\":{\"quotas\":[{\"id\":\"global-rate\",\"unit\":\"requests\",\"amount\":10000,\"burst\":5000,\"windowMs\":1000,\"algorithm\":\"token-bucket\",\"sharedGroup\":\"api-gateway-account-region\"}]},\"jitter\":0} capabilities=[] explanation={\"managed\":\"api\",\"id\":\"api\",\"role\":\"gateway\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":10000,\"offered\":20,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":null,\"seconds\":1,\"utilization\":0.002,\"growth\":0,\"contributors\":[{\"edge\":\"call\",\"node\":\"source\",\"label\":\"Checkout\",\"rate\":20}],\"target\":0.5,\"changes\":null,\"converged\":true}\nconnections:\n  \"call\" \"source\" -> \"api\" sync"
+    "output": "Diagram \"Managed admission\" · direction LR · 2 nodes, 1 connections, 0 boundaries, 0 simulations\nnodes:\n  \"source\" \"client.browser\" (\"Web Browser\") \"Checkout\" props={\"ratePerSec\":20} arrivingTypes=[] capabilities=[{\"kind\":\"calls\",\"edge\":\"call\",\"peer\":\"api\"}] explanation=undefined\n  \"api\" \"aws.api-gateway\" (\"Amazon API Gateway\") \"aws.api-gateway\" props={\"preset\":\"api-gateway-account\",\"presetRevision\":\"2026-10-14\",\"latencyMs\":1000,\"api\":{\"quotas\":[{\"id\":\"global-rate\",\"unit\":\"requests\",\"amount\":10000,\"burst\":5000,\"windowMs\":1000,\"algorithm\":\"token-bucket\",\"sharedGroup\":\"api-gateway-account-region\"}]},\"jitter\":0} arrivingTypes=[\"Checkout\"] capabilities=[] explanation={\"managed\":\"api\",\"id\":\"api\",\"role\":\"gateway\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":10000,\"offered\":20,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":null,\"seconds\":1,\"utilization\":0.002,\"growth\":0,\"contributors\":[{\"edge\":\"call\",\"node\":\"source\",\"label\":\"Checkout\",\"rate\":20}],\"target\":0.5,\"changes\":null,\"converged\":true}\nconnections:\n  \"call\" \"source\" -> \"api\" sync carriedTypes=[\"Checkout\"]"
   },
   "json": {
     "isError": false,
@@ -17,6 +17,7 @@
           "x": 0,
           "y": 130,
           "props": { "ratePerSec": 20 },
+          "arrivingTypes": [],
           "capabilities": [{ "kind": "calls", "edge": "call", "peer": "api" }]
         },
         {
@@ -36,6 +37,7 @@
             },
             "jitter": 0
           },
+          "arrivingTypes": ["Checkout"],
           "capabilities": [],
           "explanation": {
             "managed": "api",
@@ -75,9 +77,11 @@
               "deadlineMs": 1,
               "retry": { "maxAttempts": 3, "strategy": "exponential", "backoffMs": 100, "retryOn": ["throttled"] }
             }
-          }
+          },
+          "carriedTypes": ["Checkout"]
         }
       ],
+      "messageTypesComplete": true,
       "groups": [],
       "annotations": [],
       "simulations": [],
@@ -86,6 +90,6 @@
   },
   "focus": {
     "isError": false,
-    "output": "Diagram \"Managed admission\" · direction LR · 2 nodes, 1 connections, 0 boundaries, 0 simulations\nnodes:\n  \"source\" \"client.browser\" (\"Web Browser\") \"Checkout\" props={\"ratePerSec\":20} capabilities=[{\"kind\":\"calls\",\"edge\":\"call\",\"peer\":\"api\"}] explanation=undefined\n  \"api\" \"aws.api-gateway\" (\"Amazon API Gateway\") \"aws.api-gateway\" props={\"preset\":\"api-gateway-account\",\"presetRevision\":\"2026-10-14\",\"latencyMs\":1000,\"api\":{\"quotas\":[{\"id\":\"global-rate\",\"unit\":\"requests\",\"amount\":10000,\"burst\":5000,\"windowMs\":1000,\"algorithm\":\"token-bucket\",\"sharedGroup\":\"api-gateway-account-region\"}]},\"jitter\":0} capabilities=[] explanation={\"managed\":\"api\",\"id\":\"api\",\"role\":\"gateway\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":10000,\"offered\":20,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":null,\"seconds\":1,\"utilization\":0.002,\"growth\":0,\"contributors\":[{\"edge\":\"call\",\"node\":\"source\",\"label\":\"Checkout\",\"rate\":20}],\"target\":0.5,\"changes\":null,\"converged\":true}\nconnections:\n  \"call\" \"source\" -> \"api\" sync"
+    "output": "Diagram \"Managed admission\" · direction LR · 2 nodes, 1 connections, 0 boundaries, 0 simulations\nnodes:\n  \"source\" \"client.browser\" (\"Web Browser\") \"Checkout\" props={\"ratePerSec\":20} arrivingTypes=[] capabilities=[{\"kind\":\"calls\",\"edge\":\"call\",\"peer\":\"api\"}] explanation=undefined\n  \"api\" \"aws.api-gateway\" (\"Amazon API Gateway\") \"aws.api-gateway\" props={\"preset\":\"api-gateway-account\",\"presetRevision\":\"2026-10-14\",\"latencyMs\":1000,\"api\":{\"quotas\":[{\"id\":\"global-rate\",\"unit\":\"requests\",\"amount\":10000,\"burst\":5000,\"windowMs\":1000,\"algorithm\":\"token-bucket\",\"sharedGroup\":\"api-gateway-account-region\"}]},\"jitter\":0} arrivingTypes=[\"Checkout\"] capabilities=[] explanation={\"managed\":\"api\",\"id\":\"api\",\"role\":\"gateway\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":10000,\"offered\":20,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":null,\"seconds\":1,\"utilization\":0.002,\"growth\":0,\"contributors\":[{\"edge\":\"call\",\"node\":\"source\",\"label\":\"Checkout\",\"rate\":20}],\"target\":0.5,\"changes\":null,\"converged\":true}\nconnections:\n  \"call\" \"source\" -> \"api\" sync carriedTypes=[\"Checkout\"]"
   }
 }

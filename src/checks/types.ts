@@ -12,6 +12,7 @@ export type { CheckRuleId } from "../model/checks";
 export type CheckSeverity = "warning" | "suggestion";
 
 export interface CheckFix {
+  messageLabel?: { kind: "filter" | "rename"; types: string[] };
   planLabel?: NonNullable<Finding["scalingPlan"]>;
   requestLabel?: { kind: "free" | "scale" | "timeout" | "replicas"; value?: number };
   /** Neutral broker vocabulary, translated only by the UI; label stays English for agents and workers. */
@@ -30,6 +31,7 @@ export interface CheckFix {
 }
 
 export interface CheckFixOption {
+  messageLabel?: CheckFix["messageLabel"];
   requestLabel?: CheckFix["requestLabel"];
   /** Partition changes this option makes too (a consumer's sizing), named in its translated words. */
   brokerChanges?: CheckFix["brokerChanges"];
@@ -43,6 +45,7 @@ export interface CheckFixOption {
 }
 
 export interface Finding {
+  messageLoop?: { type: string; node: string };
   /**
    * Request checks only, between the checks worker and runChecks: not a finding but how many of this rule's findings
    * didn't fit the per-diagram budget. runChecks moves it to `CheckResult.omitted`.

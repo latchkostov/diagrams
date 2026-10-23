@@ -1,7 +1,7 @@
 {
   "withIcons": {
-    "sha256": "20741fd9715efa39277bb76c3b350fab72aca4bde3e5747b4b5f44d39e67ddce",
-    "bytes": 45099,
+    "sha256": "ba543d1ec0ad0c35604310e871ded20cddfd3d2350d784d95964901b3a70ed0b",
+    "bytes": 45949,
     "inlined": {
       "client.team": "client-team 932a5c20d72853c7",
       "cloudflare": "cloudflare 3dc0e02be1da2a1d",
@@ -21,7 +21,7 @@
       "diagram": {
         "format": "diagrams/v1",
         "title": "Webhook ingestion at scale",
-        "description": "Partner webhooks are verified and acknowledged fast, buffered in RabbitMQ, retried with backoff, dead-lettered and replayed on demand.",
+        "description": "Partner webhooks are verified and acknowledged fast, buffered in RabbitMQ, retried with backoff, dead-lettered and replayed on demand. Typed callbacks stop at the receiver.",
         "direction": "LR",
         "groups": [
           { "id": "k8s", "label": "Kubernetes", "tone": "k8s", "x": 760, "y": 240, "width": 1480, "height": 312 }
@@ -158,7 +158,7 @@
             "to": "raw",
             "label": "PUT body",
             "kind": "sync",
-            "props": { "travelMs": 200 }
+            "props": { "travelMs": 200, "filter": ["WebhookEvent"] }
           },
           {
             "id": "receiver-to-exchange",
@@ -166,7 +166,7 @@
             "to": "exchange",
             "label": "Publish",
             "kind": "async",
-            "props": { "travelMs": 300 }
+            "props": { "travelMs": 300, "filter": ["WebhookEvent"] }
           },
           {
             "id": "exchange-to-queue",
@@ -191,6 +191,16 @@
             "label": "Dead-letter",
             "kind": "async",
             "props": { "travelMs": 300, "dlq": true }
+          },
+          {
+            "id": "workers-to-receiver",
+            "from": "workers",
+            "to": "receiver",
+            "label": "Applied callback",
+            "kind": "async",
+            "sourceSide": "top",
+            "targetSide": "top",
+            "props": { "travelMs": 300, "filter": ["PartnerChangeApplied"], "emits": "WebhookApplied" }
           },
           {
             "id": "workers-to-dedupe",

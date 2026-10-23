@@ -8,6 +8,7 @@ import type { DiagramFile, Simulation } from "../model/types";
 import { createSimulationRun } from "../sim/simulation";
 import { runChecks } from "./run";
 import type { Finding } from "./types";
+import { messageTypesFixture } from "../lab/messageTypesFixture";
 
 // Every fix is ordinary edit ops: it applies through the same core agents use (applyOps), as one history
 // step in the editor, and the finding it fixes is gone afterwards.
@@ -58,6 +59,20 @@ const finding = (d: DiagramFile, id: string) => {
 };
 
 describe("fixes", () => {
+  it("message loops withhold fixes; a manual filter remains one undo step", () => {
+    const d = messageTypesFixture();
+    const found = runChecks(d, { rules: ["message-loop"] }).findings[0];
+    expect(found.fix).toBeUndefined();
+    expect(found.rationale).toContain("Choose where the callback should stop, then check again.");
+    const result = applyOps(d, [{ op: "update", target: "send", props: { filter: ["Send"] } }]);
+    expect(result.errors).toEqual([]);
+    const editor = editorFor(d);
+    expect(editor.api.applyDiagram(result.diagram).hasChanges).toBe(true);
+    expect(editor.steps()).toBe(1);
+    const after = editor.api.getDiagram();
+    expect(runChecks(after, { rules: ["message-loop"] }).findings).toEqual([]);
+    expect(after.edges.find((edge) => edge.id === "send")?.props?.filter).toEqual(["Send"]);
+  });
   it("Add dead-letter queue: one step, a DLQ route of the same family, and the warning is gone", () => {
     const d = base();
     const after = applyFix(d, finding(d, "dead-letter:q"));

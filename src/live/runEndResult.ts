@@ -1,7 +1,7 @@
 import { t } from "../i18n";
 import type { DiagramFile } from "../model/types";
 import type { LiveState } from "./controller";
-import { simulationEdges } from "../sim/simulationEdges";
+import { simulationEdges } from "../sim/topology";
 import type { EdgeSimProps } from "../sim/types";
 import { callPolicy } from "../sim/callPolicy";
 import { stencilRole } from "../stencils/roles";

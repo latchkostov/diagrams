@@ -1,5 +1,8 @@
+import { matchesRequest, type CompiledMatch, type CompiledRoute } from "./routeMatching";
 import { isDenyRule } from "../stencils/netDevices";
-import type { DiagramFile, SimRole } from "../model/types";
+import type { DiagramFile, SimRole, Simulation } from "../model/types";
+import type { NodeSimProps } from "./types";
+import { revisionAtLeast } from "../model/revisions";
 import { stencilRole } from "../stencils/roles";
 import { flowEdges } from "../model/relations";
 /**
@@ -44,6 +47,51 @@ export function emittedType(emits: unknown, type: string): string {
     if (typeof value === "string") return value;
   }
   return type;
+}
+
+/** Node output is renamed before connection filters, for services and pass-through nodes only. */
+export function outputType(role: SimRole, emits: unknown, type: string): string {
+  return role === "processor" || role === "none" ? emittedType(emits, type) : type;
+}
+
+/**
+ * Pure forwarding decision: the fraction a route may carry (zero excludes it).
+ * Deny routes stay eligible so playback and planning can count their blocked share.
+ * Tables and brokers ignore fan-out shares; stores publish only async change feeds.
+ * Request matching is evaluated after the type filter. Random draws stay in playback. Static message-type
+ * analysis calls this for the role gate and share, then checks both filters with a budgeted, compiled matcher.
+ */
+export function forwardingShare(
+  role: SimRole,
+  edge: Pick<CompiledEdge, "sync" | "filter" | "share">,
+  type: string,
+  mode: ForwardingMode = "output",
+  requestFilter?: CompiledMatch,
+  route?: CompiledRoute,
+): number {
+  if (mode === "output" && (role === "sink" || (role === "store" && edge.sync))) return 0;
+  if (!acceptsType(edge.filter, type) || (requestFilter && !matchesRequest(requestFilter, route))) return 0;
+  return mode === "routed" || role === "gateway" || brokerRole(role) ? 1 : (edge.share ?? 1);
+}
+
+export type ForwardingMode = "output" | "injected" | "routed";
+
+/** A table action considers positive-weight targets in authored order; no fallback after filtering. */
+export function forwardingTargets<Edge>(
+  targets: readonly { edgeId: string; weight: number }[],
+  edgeAt: (id: string) => Edge | undefined,
+  accepts: (edge: Edge) => boolean,
+): { eligible: Edge[]; weights: number[] } {
+  const eligible: Edge[] = [],
+    weights: number[] = [];
+  for (const target of targets) {
+    if (!(target.weight > 0)) continue;
+    const edge = edgeAt(target.edgeId);
+    if (!edge || !accepts(edge)) continue;
+    eligible.push(edge);
+    weights.push(target.weight);
+  }
+  return { eligible, weights };
 }
 
 export interface CompiledEdge {
@@ -208,4 +256,46 @@ export function brokerFeeds(compiled: CompiledTopology, roleOf: (id: string) => 
     else known.add(edge.from);
   }
   return new Map([...indexed].map(([id, brokers]) => [id, brokers ? [...brokers] : null]));
+}
+
+// Saved-simulation configuration lives here, beside the routes it configures: every playback and analysis chunk
+// already shares this module, so the one implementation adds no chunk of its own.
+const effectiveDiagrams = new WeakMap<DiagramFile, WeakMap<object, DiagramFile>>();
+
+export function simulationEdges(diagram: DiagramFile, simulation?: Simulation): DiagramFile {
+  const overrides = simulation?.setup?.edges;
+  if (!overrides || !revisionAtLeast(diagram.planning?.revision, "p3-w1")) return diagram;
+  const cache = effectiveDiagrams.get(diagram) ?? new WeakMap<object, DiagramFile>();
+  effectiveDiagrams.set(diagram, cache);
+  const cached = cache.get(overrides);
+  if (cached) return cached;
+  const result = {
+    ...diagram,
+    edges: diagram.edges.map((e) =>
+      Object.hasOwn(overrides, e.id)
+        ? {
+            ...e,
+            props: { ...e.props, caller: { ...(e.props?.caller as object | undefined), ...overrides[e.id].caller } },
+          }
+        : e,
+    ),
+  };
+  cache.set(overrides, result);
+  return result;
+}
+
+/**
+ * How playback configures a saved simulation, in one place: the diagram with the run's caller overrides
+ * (simulationEdges), then the run's node patches. Playback loads the first and hands the second to the engine's
+ * setNodePropsBatch. A static analysis uses configuredDiagram, so any edit to the diagram is followed by the run's
+ * overrides, exactly as when the edited diagram plays.
+ */
+export function simulationSetup(
+  diagram: DiagramFile,
+  simulation: Simulation,
+): { diagram: DiagramFile; props: Record<string, NodeSimProps> } {
+  return {
+    diagram: simulationEdges(diagram, simulation),
+    props: (simulation.setup?.props ?? {}) as Record<string, NodeSimProps>,
+  };
 }

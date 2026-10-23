@@ -12,40 +12,42 @@ import {
   expectNoErrors,
 } from "./fixtures";
 
-for (const finish of ["typing", "Enter", "Escape"] as const) {
-  test(`held connection chunk preserves rename keys and ${finish}`, async ({ page }) => {
-    let requested = false;
-    let release = () => {};
-    const held = new Promise<void>((resolve) => {
-      release = resolve;
+for (const panel of ["EdgePanel", "lazyEdgePanel", "NodeIdentity"] as const) {
+  for (const finish of ["typing", "Enter", "Escape"] as const) {
+    test(`held connection ${panel} chunk preserves rename keys and ${finish}`, async ({ page }) => {
+      let requested = false;
+      let release = () => {};
+      const held = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      await page.route(
+        new RegExp(`/\\b(?:assets/${panel}-[\\w-]+\\.js|src/canvas/inspector/${panel}\\.tsx)(?:\\?.*)?$`),
+        async (route) => {
+          requested = true;
+          await held;
+          await route.continue();
+        },
+      );
+      await page.goto("./?view=canvas&example=blocking-call");
+      await expect(page.getByTestId("canvas-view")).toBeVisible();
+      await waitForStableViewport(page);
+      await page.getByTestId(panel === "NodeIdentity" ? "node-caller" : "edge-call").dblclick({ force: true });
+      await expect.poll(() => requested).toBe(true);
+      await page.keyboard.type("test label");
+      if (finish !== "typing") await page.keyboard.press(finish);
+      release();
+      const label = page.getByTestId("inspector-field-label");
+      await expect(label).toHaveValue("test label");
+      await expect(page.getByTestId("inspector-edge-loading")).toHaveCount(0);
+      if (finish === "typing") {
+        await expect(label).toBeFocused();
+        await page.keyboard.type(" extended");
+        await expect(label).toHaveValue("test label extended");
+      } else await expect(label).not.toBeFocused();
+      await expect(page.getByTestId("live-play")).toHaveCount(0);
+      await expect(page.getByTestId(/^annotation-text-/)).toHaveCount(0);
     });
-    await page.route(
-      /\/(?:assets\/EdgePanel-[\w-]+\.js|src\/canvas\/inspector\/EdgePanel\.tsx)(?:\?.*)?$/,
-      async (route) => {
-        requested = true;
-        await held;
-        await route.continue();
-      },
-    );
-    await page.goto("./?view=canvas&example=blocking-call");
-    await expect(page.getByTestId("canvas-view")).toBeVisible();
-    await waitForStableViewport(page);
-    await page.getByTestId("edge-call").dblclick({ force: true });
-    await expect.poll(() => requested).toBe(true);
-    await page.keyboard.type("test label");
-    if (finish !== "typing") await page.keyboard.press(finish);
-    release();
-    const label = page.getByTestId("inspector-field-label");
-    await expect(label).toHaveValue("test label");
-    await expect(page.getByTestId("inspector-edge-loading")).toHaveCount(0);
-    if (finish === "typing") {
-      await expect(label).toBeFocused();
-      await page.keyboard.type(" extended");
-      await expect(label).toHaveValue("test label extended");
-    } else await expect(label).not.toBeFocused();
-    await expect(page.getByTestId("live-play")).toHaveCount(0);
-    await expect(page.getByTestId(/^annotation-text-/)).toHaveCount(0);
-  });
+  }
 }
 
 test("connection Properties Retry retains keyboard focus without a rename request", async ({ page }) => {
