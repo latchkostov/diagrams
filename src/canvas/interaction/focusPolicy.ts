@@ -30,6 +30,8 @@ import type { FocusCommand, FocusDecision, FocusEvent, FocusMove, FocusState, Fo
  * |     |                                     |                                 | later unless input came first                          |
  * | I2  | inspector.field                     | a request already taken         | keep                                                   |
  * | I3  | inspector.toggled(panel, selection) |                                 | keep                                                   |
+ * | I4  | inspector.abandoned (Esc in a       | a field request is pending      | keep; nothing pending (its held keys are dropped;      |
+ * |     | pending rename)                     |                                 | focus stays on the canvas)                             |
  * | D1  | dialog.closed(checks)               |                                 | focus its opener now (else the canvas)                 |
  * | D2  | dialog.closed(livePanel)            |                                 | focus its opener now (else the Live bar's opener)      |
  * | D3  | dialog.closed(inject)               |                                 | focus its opener now (else the node it injects at)     |
@@ -136,6 +138,8 @@ export function focusPolicy(state: FocusState, event: FocusEvent): FocusDecision
       );
     case "inspector.toggled":
       return keep();
+    case "inspector.abandoned":
+      return state.pending?.target.kind === "field" ? keep({ pending: null }) : keep();
     case "dialog.opened":
       return move({ target: { kind: "element", handle: event.first }, when: "now", select: "all" });
     case "node.details":

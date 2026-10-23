@@ -1,4 +1,5 @@
 import type { CameraEvent } from "../camera";
+import type { TypeAhead } from "../typeAhead";
 import { describe, focusPolicy, initialFocus, pendingMove } from "./focusPolicy";
 import { liveKeys } from "./liveKeys";
 import { gestures, initialGestures } from "./gestures";
@@ -53,6 +54,13 @@ export interface InteractionPort {
   version?(): number;
   /** Readiness: `data-interaction-state` (and the journal, in e2e builds). */
   publish(phase: InteractionPhase): void;
+  /**
+   * Holds keys typed anywhere, before the canvas's shortcuts see them (typeAhead.ts), for a name field that can't
+   * take them yet; `done` hears the Enter or Esc that ended the typing. Absent: nothing is held.
+   */
+  holdKeys?(done: (typed: TypeAhead) => void): { stop(): TypeAhead };
+  /** Writes text typed ahead into the text field that has just taken focus, as typing there would; caret after it. */
+  type?(el: ElementHandle, text: string): void;
 }
 
 /**
@@ -139,6 +147,15 @@ export function createInteractionController<P = unknown>(
   let decided = false;
   /** The selection as of the last commit. */
   let selectionKey: string | null = null;
+  /**
+   * A pending rename: a name field was asked for (a request with an owner: F2, a double-click, Rename) but isn't there
+   * yet (its panel's code is still downloading). Keys typed meanwhile are held for it, out of the canvas shortcuts'
+   * reach (T would add a text, Backspace delete the connection), and handed over once it takes focus. Enter ends the
+   * typing (`keys` null): the text waits for the field, and focus goes back to the item after it's written. Esc
+   * cancels the rename; a press elsewhere, a newer move, or the field resolving as gone (its panel's download failed)
+   * drops what was held.
+   */
+  let rename: { move: FocusMove; keys: { stop(): TypeAhead } | null; typed: TypeAhead } | null = null;
 
   const journal = (entry: Omit<InteractionEntry, "seq">) => options.journal?.({ seq: ++seq, ...entry });
 
@@ -216,7 +233,44 @@ export function createInteractionController<P = unknown>(
       else if (command.type === "roving") roving(command);
       else then?.(false);
     }
+    // A pending rename lasts exactly as long as its field's move.
+    if (rename && focus.pending !== rename.move) dropRename("superseded");
     changed();
+  }
+
+  /** Starts holding keys for a name field that isn't there yet (once per move). */
+  function holdRename(move: FocusMove) {
+    if (rename?.move === move || !port.holdKeys || move.target.kind !== "field" || !move.target.owner) return;
+    dropRename("superseded");
+    const next: NonNullable<typeof rename> = { move, keys: null, typed: { text: null } };
+    rename = next;
+    next.keys = port.holdKeys((typed) => {
+      if (rename !== next) return;
+      next.keys?.stop();
+      next.keys = null;
+      next.typed = typed;
+      if (typed.done === "enter" && typed.text !== null) {
+        if (options.journal) journal({ event: "rename.typed:enter", command: "keep" });
+        return;
+      }
+      // Esc, or Enter before anything was typed: the rename is over before its field came.
+      decide({ type: "inspector.abandoned" });
+    });
+    if (options.journal) journal({ event: "rename.hold", command: describe(move) });
+  }
+
+  /** Ends the pending rename, returning what it held. */
+  function endRename(): TypeAhead | null {
+    const r = rename;
+    rename = null;
+    if (!r) return null;
+    return r.keys ? r.keys.stop() : r.typed;
+  }
+
+  function dropRename(why: "superseded" | "press" | "unmount") {
+    if (!rename) return;
+    endRename();
+    if (options.journal) journal({ event: `rename.dropped:${why}`, command: "keep" });
   }
 
   /** Tells the current move's outcome, once. */
@@ -301,8 +355,20 @@ export function createInteractionController<P = unknown>(
         return decide({ type: "focus.done" });
       }
       if (put(move, found.el, move.select)) {
+        // A pending rename hands over what was typed meanwhile, as if it had been typed in the field.
+        const typed = rename?.move === move ? endRename() : null;
+        if (typed?.text != null) port.type?.(found.el, typed.text);
+        if (typed && options.journal)
+          journal({
+            event: "rename.handed",
+            command: typed.text === null ? "keep" : `type${typed.done ? ":enter" : ""}`,
+          });
         settle("focused");
-        return decide({ type: "focus.ran" });
+        decide({ type: "focus.ran" });
+        // Enter typed ahead: the name is done, as Enter in the field does (row N1).
+        if (typed?.done === "enter" && move.target.kind === "field" && move.target.owner)
+          decide({ type: "naming.done", flowId: move.target.owner });
+        return;
       }
     }
     // A fresh target the diagram hasn't committed yet is on its way, not gone.
@@ -311,6 +377,7 @@ export function createInteractionController<P = unknown>(
       (move.when === "ready" || move.when === "measured") &&
       (found.state === "waiting" || found.state === "parked" || arriving);
     if (waits) {
+      holdRename(move);
       const wasParked = parked;
       parked = found.state === "parked";
       // Measurement arrives on frames; a parked target arrives with a commit (rendered()).
@@ -557,8 +624,12 @@ export function createInteractionController<P = unknown>(
       decide({ type: "live.key", key: context.key, action });
       return action;
     },
-    /** A press or a key anywhere (window capture): a move's second attempt stands down. */
-    input() {
+    /**
+     * A press or a key anywhere (window capture): a move's second attempt stands down. A press also ends a pending
+     * rename's hold (the person went elsewhere): later keys go where they point, and nothing held is written.
+     */
+    input(kind: "key" | "press" = "key") {
+      if (kind === "press") dropRename("press");
       if (focus.pending?.retry) decide({ type: "input" });
     },
     /** The move running inside focus() right now (a focusin reads whether its caller reveals the target itself). */
@@ -582,6 +653,7 @@ export function createInteractionController<P = unknown>(
         cancelRoving?.();
         cancelRoving = null;
         retireRecovery("superseded");
+        dropRename("unmount");
         if (focus.pending) focus = { ...focus, pending: null };
         settle("superseded");
       };

@@ -236,6 +236,8 @@ export type FocusEvent =
       caret?: "end";
       claim?: () => boolean;
     }
+  /** Esc (or Enter before anything was typed) while a pending rename held the keys: its field request ends. */
+  | { type: "inspector.abandoned" }
   /** The Inspector opened or folded, by its own control (`panel`) or with the selection. */
   | { type: "inspector.toggled"; cause: "panel" | "selection" }
   /** A modal takes its first field, or wraps Tab within its own controls. */

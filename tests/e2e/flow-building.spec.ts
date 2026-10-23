@@ -1005,6 +1005,161 @@ test("a cold edge inspector takes its requested name field once the fields arriv
   }
 });
 
+/** Holds the edge inspector's code until release(); with `fail` set by then, its download fails instead. */
+async function holdEdgePanel(page: Page) {
+  let release!: () => void;
+  const open = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const control = { fail: false, requests: 0, release };
+  await page.route(chunk("EdgePanel", "src/canvas/inspector/EdgePanel.tsx"), async (route) => {
+    control.requests++;
+    await open;
+    if (control.fail) return route.abort("failed");
+    await route.continue();
+  });
+  return control;
+}
+
+/** The diagram's annotations as autosaved (none in the seed). */
+const annotations = async (page: Page) =>
+  ((await saved(page)) as Saved & { annotations?: unknown[] }).annotations ?? [];
+
+test("a rename typed while the edge inspector downloads goes to its label, never to canvas shortcuts", async ({
+  page,
+}) => {
+  const panel = await holdEdgePanel(page);
+  try {
+    await seed(page);
+    await page.getByTestId("edge-label-api-db").click();
+    await waitForSelectionSettled(page);
+    await expect.poll(() => panel.requests).toBe(1);
+    await page.keyboard.press("F2");
+    // On the canvas T adds a text and Backspace deletes the connection: typed for a rename, they're its name.
+    await page.keyboard.press("T");
+    await page.keyboard.press("Backspace");
+    await page.keyboard.type("Orders write");
+    await expect(page.getByTestId("inspector-field-label")).toHaveCount(0);
+    panel.release();
+    const field = page.getByTestId("inspector-field-label");
+    await expect(field).toBeFocused();
+    await expect(field).toHaveValue("Orders write");
+    // The caret follows what was typed, so typing goes on from there.
+    await page.keyboard.type("s");
+    await expect(field).toHaveValue("Orders writes");
+    await page.keyboard.press("Enter");
+    const after = await savedWhen(page, (d) => d.edges[0]?.label === "Orders writes");
+    expect(after.edges).toHaveLength(1);
+    expect(after.edges[0]).toMatchObject({ id: "api-db", from: "api", to: "db" });
+    expect(await annotations(page)).toEqual([]);
+    await expect(page.getByTestId("edge-label-api-db")).toBeVisible();
+    // The rename is one step.
+    await undoUntil(page, (d) => d.edges[0]?.label === "writes", 1);
+  } finally {
+    panel.release();
+  }
+});
+
+test("a rename whose edge inspector fails to download leaves the canvas untouched and offers Retry", async ({
+  page,
+}) => {
+  const panel = await holdEdgePanel(page);
+  try {
+    await seed(page);
+    await page.getByTestId("edge-label-api-db").click();
+    await waitForSelectionSettled(page);
+    await expect.poll(() => panel.requests).toBe(1);
+    await page.keyboard.press("F2");
+    await page.keyboard.press("T");
+    await page.keyboard.press("Backspace");
+    await page.keyboard.type("x");
+    panel.fail = true;
+    panel.release();
+    const toast = page.getByTestId("toast");
+    await expect(toast).toContainText("Part of the app couldn't be downloaded");
+    await expect(toast).toHaveAttribute("role", "alert");
+    await expect(page.getByTestId("lazy-load-retry")).toBeVisible();
+    await expect(page.getByTestId("inspector-panel-unavailable")).toHaveCount(1);
+    // Nothing typed reached the canvas, and nothing is held any more.
+    expect(await page.evaluate(() => document.activeElement?.closest("[data-testid=toast]"))).toBeNull();
+    await expect(page.getByTestId("edge-label-api-db")).toHaveText("writes");
+    const before = await saved(page);
+    expect(before.edges).toHaveLength(1);
+    expect(before.edges[0]?.label).toBe("writes");
+    expect(await annotations(page)).toEqual([]);
+    await expect(page.getByTestId("undo-button")).toBeDisabled();
+    // Retry brings the fields, and the next rename takes its field at once.
+    panel.fail = false;
+    await page.getByTestId("lazy-load-retry").click();
+    await expect(page.getByTestId("inspector-field-label")).toHaveValue("writes");
+    await expect(page.getByTestId("inspector-panel-unavailable")).toHaveCount(0);
+    await page.getByTestId("edge-label-api-db").click();
+    await waitForSelectionSettled(page);
+    await page.keyboard.press("F2");
+    await expect(page.getByTestId("inspector-field-label")).toBeFocused();
+  } finally {
+    panel.release();
+  }
+});
+
+for (const loss of ["pointercancel", "lostpointercapture"] as const) {
+  test(`reconnect ${loss} releases capture and permits another drag`, async ({ page }) => {
+    await seed(page);
+    await page.getByTestId("edge-label-api-db").click();
+    await waitForSelectionSettled(page);
+    // Remember which element took the pointer, to interrupt it as the browser would.
+    await page.evaluate(() => {
+      document.addEventListener(
+        "gotpointercapture",
+        (e) => {
+          const w = window as unknown as { captured?: { el: Element; id: number } };
+          w.captured = { el: e.target as Element, id: e.pointerId };
+        },
+        { capture: true, once: true },
+      );
+    });
+    const handle = page.getByTestId("reconnect-api-db-target");
+    const from = centre(await box(handle));
+    const to = centre(await box(page.getByTestId("node-billing")));
+    await page.mouse.move(from.x, from.y);
+    await page.mouse.down();
+    await page.mouse.move(to.x, to.y, { steps: 10 });
+    await expect(page.getByTestId("reconnect-line")).toBeVisible();
+    await expect(page.getByTestId("rf__node-billing")).toHaveClass(/is-connect-target/);
+    await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-interaction-state", "gesture");
+    await page.evaluate((kind) => {
+      const c = (window as unknown as { captured?: { el: Element; id: number } }).captured;
+      if (!c) throw new Error("No element took the pointer");
+      if (kind === "pointercancel")
+        c.el.dispatchEvent(new PointerEvent("pointercancel", { pointerId: c.id, bubbles: true }));
+      else c.el.releasePointerCapture(c.id);
+    }, loss);
+    // The browser tells of a released capture before the next pointer event.
+    await page.mouse.move(to.x + 2, to.y + 2);
+    await expect(page.getByTestId("reconnect-line")).toHaveCount(0);
+    await expect(page.getByTestId("rf__node-billing")).not.toHaveClass(/is-connect-target/);
+    await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-interaction-state", "idle");
+    const events = await page.evaluate(() => window.__interactionJournal?.map((entry) => entry.event));
+    expect(events).toContain("gesture.end:edge.end:cancel");
+    expect(
+      await page.evaluate(() => {
+        const c = (window as unknown as { captured?: { el: Element; id: number } }).captured;
+        return !!c && c.el.isConnected && c.el.hasPointerCapture(c.id);
+      }),
+    ).toBe(false);
+    await page.mouse.up();
+    await expect(page.getByTestId("undo-button")).toBeDisabled();
+    expect((await saved(page)).edges[0]).toMatchObject({ from: "api", to: "db" });
+    // Another drag reconnects as usual.
+    const again = centre(await box(page.getByTestId("reconnect-api-db-target")));
+    await page.mouse.move(again.x, again.y);
+    await page.mouse.down();
+    await page.mouse.move(to.x, to.y, { steps: 10 });
+    await page.mouse.up();
+    await savedWhen(page, (d) => d.edges.length === 1 && d.edges[0]?.from === "api" && d.edges[0]?.to === "billing");
+  });
+}
+
 for (const activation of ["mouse", "accessibility"] as const) {
   test(`click-connect by ${activation} commits without a drag`, async ({ page }) => {
     await seed(page);

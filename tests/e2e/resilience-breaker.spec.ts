@@ -145,6 +145,11 @@ test("failed trouble detection offers keyboard Retry without taking focus or blo
   tracker.fail = true;
   await open(page);
   await expect(page.getByTestId("trouble-download-retry")).toBeVisible();
+  // Said through Live's trouble region, mounted empty before: the notice itself mounts worded, without a status.
+  await expect(page.getByTestId("trouble-announce")).toHaveText(
+    "Live issue detection couldn't be downloaded. Check your connection and retry.",
+  );
+  await expect(page.getByTestId("trouble-download-error").locator("[role=status]")).toHaveCount(0);
   await expect(page.getByTestId("trouble-download-error")).toHaveAttribute("data-canvas-overlay", "");
   await expect(page.getByTestId("trouble-download-error")).toHaveAttribute("data-below", "");
   await page.getByTestId("fit-view-button").click();
@@ -178,6 +183,7 @@ test("failed trouble detection offers keyboard Retry without taking focus or blo
   await page.keyboard.press("Enter");
   await expect(page.getByTestId("trouble-callout")).toHaveAttribute("data-kind", "down");
   await expect(page.getByTestId("trouble-action")).toBeVisible();
+  await expect(page.getByTestId("trouble-announce")).not.toHaveText(/couldn't be downloaded/);
   expect(await page.evaluate(() => document.activeElement !== document.body)).toBe(true);
   await exportDiagram(page);
 });
