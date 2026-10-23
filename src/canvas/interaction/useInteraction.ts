@@ -111,6 +111,7 @@ function useInteractionLifecycle<P>(controller: InteractionController<P>) {
       controller.input("key");
       const gesture = controller.gesture;
       if (event.key !== "Escape" || !gesture) return;
+      if (document.querySelector('[role="dialog"]')) return;
       event.preventDefault();
       event.stopImmediatePropagation();
       controller.endGesture(gesture.seq, "escape");

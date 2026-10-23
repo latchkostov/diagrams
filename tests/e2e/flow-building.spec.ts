@@ -1269,6 +1269,54 @@ for (const activation of ["mouse", "accessibility"] as const) {
   });
 }
 
+for (const source of ["billing", "api"] as const) {
+  test(`click-connect then drag from ${source === "billing" ? "the same" : "another"} dot lasts until release`, async ({
+    page,
+  }) => {
+    await seed(page);
+    await page.getByTestId("handle-billing-bottom").click();
+    await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-interaction-state", "gesture");
+    const from = centre(await box(page.getByTestId(`handle-${source}-bottom`)));
+    const empty = { x: from.x + 60, y: from.y + 70 };
+    await page.mouse.move(from.x, from.y);
+    await page.mouse.down();
+    await page.mouse.move(empty.x, empty.y, { steps: 10 });
+    await expect(page.getByTestId("quick-add")).toHaveCount(0);
+    await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-interaction-state", "gesture");
+    await expect(page.getByTestId("connection-add")).toBeVisible();
+    await expect
+      .poll(async () => apart(centre(await box(page.getByTestId("connection-add"))), empty))
+      .toBeLessThanOrEqual(1.5);
+    const to = centre(await box(page.getByTestId("node-cache")));
+    await page.mouse.move(to.x, to.y, { steps: 10 });
+    await expect(page.getByTestId("quick-add")).toHaveCount(0);
+    await expect(page.getByTestId("connection-line")).toBeVisible();
+    await expect(page.getByTestId("rf__node-cache")).toHaveClass(/is-connect-target/);
+    await expect(page.getByTestId("undo-button")).toBeDisabled();
+    await page.mouse.up();
+    await savedWhen(page, (s) =>
+      s.edges.some((e) => e.from === source && e.to === "cache" && e.sourceSide === "bottom"),
+    );
+    await expect(page.getByTestId("quick-add")).toHaveCount(0);
+    await expect(page.getByTestId("connection-line")).toHaveCount(0);
+  });
+}
+
+test("a foreground dialog gets Escape before a click connection", async ({ page }) => {
+  await seed(page);
+  await page.getByTestId("handle-billing-bottom").click();
+  await page.getByTestId("file-button").click();
+  await page.getByTestId("file-share").click();
+  await expect(page.getByTestId("share-chooser")).toBeVisible();
+  await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-interaction-state", "gesture");
+  await page.keyboard.press("Escape");
+  await expect(page.getByTestId("share-chooser")).toHaveCount(0);
+  await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-interaction-state", "gesture");
+  await page.keyboard.press("Escape");
+  await expect(page.getByTestId("canvas-wrap")).not.toHaveAttribute("data-interaction-state", "gesture");
+  await expect(page.getByTestId("undo-button")).toBeDisabled();
+});
+
 for (const cancellation of ["Escape", "window blur"] as const) {
   test(`${cancellation} cancels a connection${cancellation === "Escape" ? " before release" : ""}`, async ({
     page,
@@ -1611,7 +1659,12 @@ test.describe("attach to a dot", () => {
     await expect(page.getByTestId("rf__node-billing")).toHaveClass(/is-connect-target/);
     // Ctrl+wheel zooms around the pointer without moving it: the point under it stays, the radius narrows.
     await page.keyboard.down("Control");
-    for (let i = 0; i < 20 && (await flowState(page)).zoom < 0.75; i++) await page.mouse.wheel(0, -100);
+    for (let i = 0; i < 20 && (await flowState(page)).zoom < 0.75; i++) {
+      const before = (await flowState(page)).zoom;
+      await page.mouse.wheel(0, -100);
+      await expect.poll(async () => (await flowState(page)).zoom).toBeGreaterThan(before);
+      await waitForStableViewport(page);
+    }
     await page.keyboard.up("Control");
     expect((await flowState(page)).zoom).toBeGreaterThanOrEqual(0.75);
     await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-interaction-state", "gesture");
