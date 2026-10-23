@@ -1,3 +1,4 @@
+import { openInspectorLiveDetails } from "./fixtures";
 import { waitingFixture } from "../../src/lab/waitingFixture";
 import { hpaLesson, kedaLesson, resourceLesson } from "../../src/model/autoscaling";
 import {
@@ -68,7 +69,8 @@ test("planner offers Scale on busy threads for a waiting majority", async ({ pag
   await gotoLive(page, "./?view=canvas&example=scale-on-busy-threads&live=1&sim=blocking&paused=1");
   await pauseClock(page);
   await page.getByTestId("node-caller").dblclick();
-  await page.getByTestId("planning-live-details-toggle").click();
+  await openInspectorLiveDetails(page, "resources");
+  await openInspectorLiveDetails(page, "scaling");
   await expect(page.getByTestId("autoscaling-plan-text")).toContainText("most of its threads are waiting on calls");
   await expect(page.getByTestId("autoscaling-plan-text")).toContainText("Scale on busy threads");
   await expect(page.getByTestId("autoscaling-plan-text")).not.toContainText("Lower the target");

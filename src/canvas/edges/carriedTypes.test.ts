@@ -8,6 +8,42 @@ import { messageTypesAt } from "../../model/messageTypes";
 import type { DiagramFile } from "../../model/types";
 import { countingReads } from "../../test/complexity";
 
+it("shares forwarding-only invalidation between both caches", () => {
+  const d = messageTypesFixture();
+  const flow = toFlow(d);
+  const first = carriedTypes(flow.nodes, flow.edges);
+  const unchanged: DiagramFile = {
+    ...d,
+    nodes: d.nodes.map((n) => ({
+      ...n,
+      label: n.id === "api" ? "New label" : n.label,
+      props: { ...n.props, latencyMs: 123, concurrency: 8 },
+    })),
+    edges: d.edges.map((e) => ({ ...e, label: "New edge label", props: { ...e.props, travelMs: 99 } })),
+  };
+  const next = toFlow(unchanged);
+  expect(carriedTypes(next.nodes, next.edges)).toBe(first);
+  expect(cachedMessageTypesAt(unchanged)).toBe(first);
+  const emitted: DiagramFile = {
+    ...unchanged,
+    nodes: unchanged.nodes.map((n) => (n.id === "api" ? { ...n, props: { ...n.props, emits: "Changed" } } : n)),
+  };
+  const edited = toFlow(emitted);
+  const result = carriedTypes(edited.nodes, edited.edges);
+  expect(result).not.toBe(first);
+  expect(cachedMessageTypesAt(emitted)).toBe(result);
+  expect(result.carried.get("send")).toEqual(new Set(["Changed"]));
+  // A source label still names its implicit type. Explicit types make that label display-only.
+  const renamed = {
+    ...d,
+    nodes: d.nodes.map((n) => (n.id === "client" ? { ...n, label: "New source", props: undefined } : n)),
+  };
+  expect(cachedMessageTypesAt(renamed).carried.get("in")).toContain("New source");
+  const explicit = { ...d, nodes: d.nodes.map((n) => ({ ...n, props: { ...n.props, messageType: "Explicit" } })) };
+  const typed = cachedMessageTypesAt(explicit);
+  expect(cachedMessageTypesAt({ ...explicit, nodes: explicit.nodes.map((n) => ({ ...n, label: "New" })) })).toBe(typed);
+});
+
 it("does not recompute propagation on position, selection or measurement updates", () => {
   const d = messageTypesFixture();
   d.nodes[0].props = { messageType: "CacheTest" };
@@ -39,6 +75,22 @@ it("does not recompute propagation on position, selection or measurement updates
     expect(recomputed.carried.get("send")).toEqual(new Set(["CacheTest"]));
     expect(carriedTypes(moved, edited)).toBe(recomputed);
   }
+});
+
+it("invalidates implicit types from saved processor injections when their label changes", () => {
+  const d = messageTypesFixture();
+  d.simulations = [
+    { id: "injected", title: "Injected", traffic: [{ id: "burst", node: "api", shape: { kind: "burst", count: 1 } }] },
+  ];
+  const flow = toFlow(d);
+  const first = carriedTypes(flow.nodes, flow.edges, d);
+  expect(first.carried.get("send")).toContain("API");
+  const edited = { ...d, nodes: d.nodes.map((n) => (n.id === "api" ? { ...n, label: "Injected type" } : n)) };
+  const next = toFlow(edited);
+  const result = carriedTypes(next.nodes, next.edges, edited);
+  expect(result).not.toBe(first);
+  expect(result.carried.get("send")).toContain("Injected type");
+  expect(cachedMessageTypesAt(edited)).toBe(result);
 });
 
 it("answers pan, zoom and drag store updates without serializing or re-reading the graph", () => {

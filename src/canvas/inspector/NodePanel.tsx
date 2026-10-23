@@ -1,6 +1,5 @@
-import { DOCUMENTATION_LIMITS } from "../../model/documentation";
 import { revisionAtLeast } from "../../model/revisions";
-import { useState, useSyncExternalStore, type FocusEvent, type CSSProperties } from "react";
+import { useState, useSyncExternalStore, type FocusEvent } from "react";
 import { ContextMenu } from "../../components/ContextMenu";
 import { stencilMenu } from "../../editor/builtinActions";
 import { routingIntent } from "../../editor/routingIntent";
@@ -13,18 +12,19 @@ import { deviceSpec } from "../../stencils/netDevices";
 import { getStencil } from "../../stencils/registry";
 import { nodeSimFields } from "../simFieldRules";
 import { type DiagramFlowNode } from "../types";
-import { Section, CopyId, Field } from "./fields";
+import { Section } from "./fields";
 import { Disclosure } from "./Disclosure";
-import { NodeSimulation } from "./SimulationFields";
+import { lazyComponent } from "../../lib/lazyLoad";
 import { PropsEditor } from "./lazyPropsEditor";
 import { customCount } from "./propertyValues";
 import { ADC_KEYS, DEVICE_KEYS, SIM_KEYS } from "./simFields";
 import { type InspectorProps } from "./types";
 import { useNameFields } from "./useNameFields";
-import { Icon } from "../../components/Icon";
-import { MarkdownEditor } from "../../components/markdown/lazy";
-import { StencilIcon } from "../../components/StencilIcon";
-import { stencilLabel, vendorLabel } from "../../i18n/stencils";
+import { NodeIdentity } from "./lazyNodeIdentity";
+
+// Simulation settings are needed only after selection. Identity and naming load independently of these settings;
+// the shared lazy loader supplies the failure toast and Retry outside this chunk.
+const NodeSimulation = lazyComponent(() => import("./SimulationFields").then((m) => m.NodeSimulation));
 
 export function NodePanel({
   node,
@@ -115,6 +115,7 @@ export function NodePanel({
       />
 
       <NodeSimulation
+        paused={namingActive}
         reveal={focus?.name === "autoscaling-target" ? focus.seq : undefined}
         node={node}
         editor={editor}
@@ -158,122 +159,5 @@ export function NodePanel({
         />
       )}
     </>
-  );
-}
-
-type NodeIdentityProps = Pick<InspectorProps, "editor" | "groups" | "connection"> & {
-  node: DiagramFlowNode;
-  stencil: ReturnType<typeof getStencil>;
-  naming: ReturnType<typeof useNameFields>;
-  nameKeys: ReturnType<typeof useNameFields>["keys"];
-  setPicker: (anchor: { x: number; y: number }) => void;
-};
-
-export function NodeIdentity({
-  node,
-  editor,
-  groups,
-  connection,
-  stencil,
-  naming,
-  nameKeys,
-  setPicker,
-}: NodeIdentityProps) {
-  return (
-    <Section>
-      <Field label={t("inspector.stencil")} group>
-        <button
-          className="insp-stencil"
-          data-testid="inspector-field-stencil"
-          aria-label={t("inspector.stencilValue", {
-            stencil: stencilLabel(stencil),
-            vendor: vendorLabel(stencil.vendor),
-          })}
-          aria-haspopup="menu"
-          style={{ "--accent": stencil.accent } as CSSProperties}
-          onClick={(e) => {
-            const r = e.currentTarget.getBoundingClientRect();
-            setPicker({ x: r.left, y: r.bottom + 4 });
-          }}
-        >
-          <span className="palette-tile">
-            <StencilIcon stencil={stencil} size={18} />
-          </span>
-          <span className="insp-stencil-name">
-            {stencilLabel(stencil)}
-            <small>{vendorLabel(stencil.vendor)}</small>
-          </span>
-          <Icon name="chevron-down" size={14} />
-        </button>
-      </Field>
-      <Field label={t("inspector.label")}>
-        <input
-          className="insp-input"
-          value={node.data.label}
-          onChange={(e) => editor.updateNode(node.id, { label: e.target.value }, naming.merge())}
-          {...nameKeys}
-          name="label"
-          data-testid="inspector-field-label"
-        />
-      </Field>
-      <Field label={t("inspector.subtitle")}>
-        <input
-          className="insp-input mono"
-          value={node.data.sublabel ?? ""}
-          placeholder={stencilLabel(stencil)}
-          onChange={(e) => editor.updateNode(node.id, { sublabel: e.target.value }, naming.merge())}
-          {...nameKeys}
-          name="sublabel"
-          data-testid="inspector-field-sublabel"
-        />
-      </Field>
-      {connection && (
-        <Field label={t("inspector.connection")}>
-          <input
-            className="insp-input"
-            value={connection.label}
-            placeholder={t("inspector.eGReserveStock")}
-            onChange={(e) => editor.updateEdge(connection.id, { label: e.target.value || undefined }, naming.merge())}
-            {...nameKeys}
-            name="connection"
-            data-testid="inspector-field-connection"
-          />
-        </Field>
-      )}
-      <Field label={t("inspector.description")} group>
-        <MarkdownEditor
-          value={node.data.description ?? ""}
-          placeholder={t("inspector.writeSomething")}
-          onChange={(val) =>
-            editor.updateNode(
-              node.id,
-              { description: val || undefined },
-              { merge: `inspector:node:${node.id}:description` },
-            )
-          }
-          maxLength={DOCUMENTATION_LIMITS.maxLength}
-          name="node-description"
-          ariaLabel={t("inspector.description")}
-          testId="inspector-field-node-description"
-        />
-      </Field>
-      <Field label={t("inspector.boundary")}>
-        <select
-          className="insp-input"
-          value={node.data.group ?? ""}
-          onChange={(e) => editor.updateNode(node.id, { group: e.target.value || undefined })}
-          name="group"
-          data-testid="inspector-field-group"
-        >
-          <option value="">{t("inspector.none")}</option>
-          {groups.map((g) => (
-            <option key={g.id} value={g.data.groupId}>
-              {g.data.label}
-            </option>
-          ))}
-        </select>
-      </Field>
-      <CopyId id={node.id} />
-    </Section>
   );
 }

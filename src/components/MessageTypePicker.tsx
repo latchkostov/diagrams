@@ -17,6 +17,7 @@ export function TypePicker({
   hint,
   placeholder,
   wildcard = false,
+  updating = false,
 }: {
   name: string;
   label: string;
@@ -27,6 +28,8 @@ export function TypePicker({
   hint?: string;
   placeholder?: string;
   wildcard?: boolean;
+  /** Upstream choices still describe the previous forwarding snapshot. */
+  updating?: boolean;
 }) {
   const focusDraft = useCallback((input: HTMLInputElement | null) => input?.focus(), []);
   const [adding, setAdding] = useState(false);
@@ -51,21 +54,28 @@ export function TypePicker({
   const offered = new Set(choices);
   // Deselecting a chip can remove it (nothing upstream sends it, or past the limit), focus included: continue at a
   // neighbour.
-  const removedChip = useRef<{ type: string; index: number }>(undefined);
+  const removedChip = useRef<{ type: string; index: number; recovered?: HTMLButtonElement }>(undefined);
   useLayoutEffect(() => {
     const removed = removedChip.current;
     if (!removed) return;
     if (options.includes(removed.type)) {
       // Still listed once deselected: nothing to recover.
-      if (!selected.has(removed.type)) removedChip.current = undefined;
+      if (!selected.has(removed.type) && !updating) removedChip.current = undefined;
       return;
     }
-    removedChip.current = undefined;
     const active = document.activeElement;
-    if (active && active !== document.body && active.isConnected) return;
+    if (active && active !== document.body && active.isConnected && active !== removed.recovered) {
+      removedChip.current = undefined;
+      return;
+    }
     const chips = root.current?.querySelectorAll<HTMLButtonElement>(".message-type-chips button");
     const next = chips?.[Math.min(removed.index, chips.length - 1)];
-    (next ?? root.current?.querySelector<HTMLButtonElement>(`[data-testid="inspector-${name}-add"]`))?.focus();
+    const destination = next ?? root.current?.querySelector<HTMLButtonElement>(`[data-testid="inspector-${name}-add"]`);
+    destination?.focus();
+    // Recover immediately, then follow the same neighbour once deferred upstream choices arrive. A user's
+    // intervening focus move wins. Without this, the temporary neighbour can leave focus one chip too far back.
+    if (updating) removed.recovered = destination ?? undefined;
+    else removedChip.current = undefined;
   });
   const add = () => {
     const type = draft.trim();

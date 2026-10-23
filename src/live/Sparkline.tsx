@@ -9,28 +9,45 @@ const H = 54;
 const N = 120;
 
 /** A bounded observed series, rather than a configured traffic curve. Its values are also text, for every reader. */
-export function SampleSparkline({ samples }: { samples: readonly number[] }) {
+export function SampleSparkline({ samples, docked = false }: { samples: readonly number[]; docked?: boolean }) {
   const id = useId();
   const peak = Math.max(1, ...samples);
-  const line = samples
-    .map((v, i) => `${i ? "L" : "M"}${(i * W) / Math.max(1, samples.length - 1)} ${H - 4 - (v / peak) * (H - 12)}`)
-    .join(" ");
+  const flat = samples.length > 0 && samples.every((v) => v === samples[0]);
+  const y = (v: number) => (flat ? H / 2 : H - 4 - (v / peak) * (H - 12));
+  const line = samples.map((v, i) => `${i ? "L" : "M"}${(i * W) / Math.max(1, samples.length - 1)} ${y(v)}`).join(" ");
   const summary = t("hover.historySummary", {
     latest: formatRate(samples.at(-1) ?? 0),
-    low: formatRate(Math.min(...samples)),
+    low: formatRate(samples.length ? Math.min(...samples) : 0),
     peak: formatRate(Math.max(0, ...samples)),
   });
   return (
-    <div className="lv-spark" data-testid="hover-history">
+    <div
+      className={`lv-spark${docked ? " is-docked" : ""}`}
+      data-testid="hover-history"
+      title={docked ? t("workspaceLive.lastTenSeconds") : undefined}
+    >
       <svg
         viewBox={`0 0 ${W} ${H}`}
+        preserveAspectRatio={docked ? "none" : undefined}
         data-testid="hover-history-chart"
         role="img"
-        aria-label={t("hover.history", { count: samples.length })}
+        aria-label={docked ? t("workspaceLive.lastTenSeconds") : t("hover.history", { count: samples.length })}
         aria-describedby={`${id}summary ${id}values`}
       >
-        <path d={line} className="lv-spark-line" fill="none" />
+        <line x1="0" x2={W} y1={H - 4} y2={H - 4} className="lv-spark-base" data-testid="hover-history-baseline" />
+        <path
+          d={flat ? `M0 ${H / 2} L${W} ${H / 2}` : line}
+          className="lv-spark-line"
+          fill="none"
+          vectorEffect="non-scaling-stroke"
+          data-testid="hover-history-line"
+        />
       </svg>
+      {docked && (
+        <span className="lv-spark-scope" data-testid="hover-history-scope">
+          {t("workspaceLive.lastTenSeconds")}
+        </span>
+      )}
       <div className="lv-spark-legend mono">
         <span id={`${id}summary`} data-testid="hover-history-summary">
           {summary}

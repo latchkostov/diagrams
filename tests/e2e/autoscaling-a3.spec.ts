@@ -1,3 +1,4 @@
+import { openInspectorLiveDetails } from "./fixtures";
 import { readFileSync } from "node:fs";
 import type { Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
@@ -148,9 +149,11 @@ test("Cloud Run showcase: sleeps, wakes on demand, hits its maximum with scenari
   await expect(badge).toHaveAttribute("data-desired", "6");
   await page.getByTestId("live-play").click();
   await page.getByTestId("node-worker").dblclick();
-  await page.getByTestId("planning-live-details-toggle").click();
+  await openInspectorLiveDetails(page, "resources");
   // Playback shows the planner's own verified suggestion, the same words Checks uses.
+  await openInspectorLiveDetails(page, "scaling");
   await expect(page.getByTestId("autoscaling-plan-text")).toContainText("Raise the maximum to 11");
+  await openInspectorLiveDetails(page, "resources");
   await page.getByTestId("autoscaling-why-toggle").click();
   await expect(page.getByTestId("autoscaling-reason")).toBeVisible();
   await expect(page.getByTestId("autoscaling-metric")).toContainText("CPU");
@@ -227,7 +230,8 @@ test("Checks and live playback show the same scenario sizing sentence", async ({
   await gotoLive(page, `./?view=canvas&example=${slug}&live=1&sim=morning-rush&paused=1`);
   await pauseClock(page);
   await page.getByTestId("node-worker").dblclick();
-  await page.getByTestId("planning-live-details-toggle").click();
+  await openInspectorLiveDetails(page, "resources");
+  await openInspectorLiveDetails(page, "scaling");
   const live = page.getByTestId("autoscaling-plan-text");
   await expect(live).toContainText("Raise the maximum to 11");
   expect(checks).toContain((await live.textContent()) ?? "missing");

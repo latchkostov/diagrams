@@ -2775,7 +2775,8 @@ details[open] > summary .lv-disclosure-chevron {
   line-height: 1.2;
 }
 .lv-hover-card.is-bad .hover-status,
-.lv-hover-card .is-bad {
+.lv-hover-card .is-bad,
+.inspector-live .hover-vitals .is-bad {
   color: var(--hover-danger-ink);
   background: color-mix(in oklab, var(--status-down) 9%, transparent);
 }
@@ -2946,6 +2947,128 @@ details[open] > summary .lv-disclosure-chevron {
 }
 .hover-rail-body p {
   margin-block: 4px;
+}
+.inspector-live {
+  gap: 8px;
+  container-type: inline-size;
+  min-width: 0;
+  font: 12px/1.4 var(--font-ui);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-2);
+  overflow-wrap: anywhere;
+}
+.inspector-live-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0 0 6px;
+}
+.inspector-live-heading > button {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  font: inherit;
+}
+.inspector-live.is-bad .hover-status {
+  color: var(--hover-danger-ink);
+  background: color-mix(in oklab, var(--status-down) 9%, transparent);
+}
+.inspector-live.is-warning .hover-status {
+  color: var(--warning-ink);
+  background: color-mix(in oklab, var(--status-paused) 12%, transparent);
+}
+.inspector-live button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+.inspector-live .hover-verdict {
+  height: auto;
+  min-height: 0;
+  padding: 0;
+}
+.inspector-live .hover-verdict > span:last-child {
+  display: block;
+  overflow: visible;
+}
+.inspector-live .hover-vitals {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  height: auto;
+  margin: 0;
+}
+.inspector-live .hover-vitals > div {
+  min-height: 54px;
+  box-sizing: border-box;
+}
+.inspector-live .hover-vitals small {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.inspector-live .hover-rail > button {
+  height: auto;
+  min-height: 32px;
+  padding-inline: 0;
+}
+.inspector-live .hover-rail > button > small {
+  white-space: normal;
+  overflow: visible;
+}
+.inspector-live .hover-rail > button > strong {
+  white-space: normal;
+  flex-shrink: 0;
+  max-width: 42%;
+}
+.inspector-live .hover-rail-body {
+  margin: 0 0 8px;
+}
+.inspector-live-outcomes {
+  margin: 0;
+}
+.inspector-live-outcomes > div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: 12px;
+  padding-block: 3px;
+}
+.inspector-live-outcomes dt {
+  color: var(--text-3);
+}
+.inspector-live-outcomes dd {
+  margin: 0;
+  color: var(--text);
+  font-weight: 650;
+  text-align: end;
+}
+.lv-spark.is-docked {
+  margin-block: 0;
+  gap: 4px;
+}
+.lv-spark.is-docked svg {
+  width: 100%;
+  height: 32px;
+  background: color-mix(in oklab, var(--accent) 5%, var(--surface));
+  border-radius: 5px;
+  cursor: default;
+}
+.lv-spark.is-docked .lv-spark-legend {
+  justify-content: flex-start;
+  font-size: 10.5px;
+  color: var(--text-3);
+}
+.lv-spark-scope {
+  font-size: 10.5px;
+  color: var(--text-3);
+}
+@container (width < 300px) {
+  .inspector-live .hover-vitals {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 .lv-hover-card footer {
   padding: 4px 12px;

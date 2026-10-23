@@ -1,3 +1,4 @@
+import { openInspectorLiveDetails } from "./fixtures";
 import { openLiveNodeDetails } from "./fixtures";
 import { savedDiagram } from "./fixtures";
 import { spawnSync } from "node:child_process";
@@ -337,7 +338,7 @@ test("P2: observed subscriptions exclude an explicit DLQ with the same name", as
   await page.clock.runFor(5_000);
   await page.getByTestId("node-broker").click();
   await page.keyboard.press("F2");
-  await page.getByTestId("planning-live-details-toggle").click();
+  await openInspectorLiveDetails(page, "readers");
   const row = page.getByTestId("planning-live-lag-billing");
   await expect(row).toContainText("Subscription billing (Readers)");
   await expect(row).not.toContainText("Recovery");
