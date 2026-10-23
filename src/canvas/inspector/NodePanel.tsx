@@ -14,13 +14,17 @@ import { nodeSimFields } from "../simFieldRules";
 import { type DiagramFlowNode } from "../types";
 import { Section } from "./fields";
 import { Disclosure } from "./Disclosure";
-import { NodeSimulation } from "./SimulationFields";
+import { lazyComponent } from "../../lib/lazyLoad";
 import { PropsEditor } from "./lazyPropsEditor";
 import { customCount } from "./propertyValues";
 import { ADC_KEYS, DEVICE_KEYS, SIM_KEYS } from "./simFields";
 import { type InspectorProps } from "./types";
 import { useNameFields } from "./useNameFields";
 import { NodeIdentity } from "./lazyNodeIdentity";
+
+// Simulation settings are needed only after selection. Identity and naming load independently of these settings;
+// the shared lazy loader supplies the failure toast and Retry outside this chunk.
+const NodeSimulation = lazyComponent(() => import("./SimulationFields").then((m) => m.NodeSimulation));
 
 export function NodePanel({
   node,

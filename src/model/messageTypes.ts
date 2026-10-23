@@ -7,6 +7,7 @@ import {
   deadLetterRoutes,
   simulationSetup,
   type CompiledEdge,
+  type CompiledTopology,
   type ForwardingMode,
 } from "../sim/topology";
 import {
@@ -86,6 +87,8 @@ export interface TypeGraph {
 }
 
 export interface MessageTypeOptions {
+  /** The diagram's topology, shared with Checks. Setup patches change node props and caller overrides only. */
+  topology?: CompiledTopology;
   /** Shared by analyses whose graphs are compared. */
   table?: TypeTable;
   /** Receives each analyzed run's graph: free play, then each saved simulation in order. */
@@ -158,16 +161,20 @@ export function messageTypesAt(
   options: MessageTypeOptions = {},
 ): MessageTypes {
   const table = options.table ?? typeTable();
-  if (sources || !diagram.simulations?.length) return propagateTypes(diagram, sources, budget, table, options.graphs);
+  // Configured runs keep stencils, labels and forwarding edges: node props and caller overrides do not change
+  // compileTopology's routes. Propagation still reads each run's patched node props independently below.
+  const topology = options.topology ?? compileTopology(diagram);
+  if (sources || !diagram.simulations?.length)
+    return propagateTypes(diagram, sources, budget, table, topology, options.graphs);
   const analyses: MessageTypes[] = [];
   for (const scenario of messageTypeScenarios(diagram, budget)) {
     if (budget.remaining <= 0) break;
-    const analysis = propagateTypes(scenario.diagram, scenario.sources, budget, table, options.graphs);
+    const analysis = propagateTypes(scenario.diagram, scenario.sources, budget, table, topology, options.graphs);
     analysis.complete &&= !scenario.incomplete;
     analyses.push(analysis);
   }
   const result = analyses[0];
-  if (!result) return propagateTypes({ ...diagram, simulations: undefined }, [], budget, table);
+  if (!result) return propagateTypes({ ...diagram, simulations: undefined }, [], budget, table, topology);
   for (const analysis of analyses.slice(1)) {
     for (const field of ["arriving", "upstream", "carried"] as const)
       for (const [id, types] of analysis[field]) {
@@ -212,6 +219,7 @@ function propagateTypes(
   sources: readonly { node: string; type: string }[] | undefined,
   budget: MessageTypeBudget,
   table: TypeTable,
+  topology: CompiledTopology,
   graphs?: TypeGraph[],
 ): MessageTypes {
   const arriving = new Map(diagram.nodes.map((n) => [n.id, new Set<string>()]));
@@ -221,7 +229,6 @@ function propagateTypes(
   const order = new Map(diagram.nodes.map((n, index) => [n.id, index]));
   const edgeOrder = new Map(diagram.edges.map((e, index) => [e.id, index]));
   const roles = new Map(diagram.nodes.map((n) => [n.id, stencilRole(n.stencil)]));
-  const topology = compileTopology(diagram);
   const targetEdges = new Map(topology.edges.filter((edge) => !edge.dlq).map((edge) => [edge.id, edge]));
   const deadLetters = deadLetterRoutes(topology);
   const outgoing = new Map<string, CompiledEdge[]>();

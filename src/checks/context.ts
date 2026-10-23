@@ -112,7 +112,7 @@ export function buildContext(diagram: DiagramFile): CheckContext {
   const analyzeMessages = () => {
     if (!messages) {
       messageGraphs = { table: typeTable(), graphs: [] };
-      messages = messageTypesAt(diagram, undefined, messageTypeBudget(), messageGraphs);
+      messages = messageTypesAt(diagram, undefined, messageTypeBudget(), { ...messageGraphs, topology });
     }
     return messages;
   };
