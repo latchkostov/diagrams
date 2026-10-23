@@ -12,6 +12,7 @@ import type { DiagramFlowNode } from "../types";
 import { useShowDependencies } from "../dependencyVisibility";
 import { DependencyPips } from "./DependencyPips";
 import { GrowChip } from "./GrowChip";
+import { useConnectPort } from "../interaction/useConnectPort";
 
 /**
  * The one selected thing, when it's a single node (only it shows a "+"); null otherwise. Worked out once per
@@ -51,6 +52,7 @@ function DiagramNodeImpl({
   useLocale();
   const { nodeVariant } = useSettings();
   const { rename, openDoc, grow, presenting } = useDiagram();
+  const connectPort = useConnectPort(id);
   const single = useStore(selected && grow ? (s: ReactFlowState) => soleSelectedNode(s) === id : never);
   const stencil = getStencil(data.stencil);
   const unknown = stencil === FALLBACK_STENCIL;
@@ -102,7 +104,7 @@ function DiagramNodeImpl({
           id={side}
           type="source"
           position={sidePosition[side]}
-          className="dn-handle"
+          className={`dn-handle${connectPort === side ? " is-connect-port" : ""}`}
           data-testid={`handle-${id}-${side}`}
         />
       ))}

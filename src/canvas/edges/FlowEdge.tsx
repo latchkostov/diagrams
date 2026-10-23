@@ -150,6 +150,8 @@ function FlowEdgeImpl(props: EdgeProps<DiagramFlowEdge>) {
           : `fe fe-${kind}${selected ? " is-selected" : ""}${deny ? " is-deny" : ""}`
       }
       data-testid={`edge-${id}`}
+      data-source-side={data?.sourceSide}
+      data-target-side={data?.targetSide}
       data-relation={relation ?? undefined}
       data-deny={deny ? "true" : undefined}
     >

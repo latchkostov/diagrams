@@ -67,13 +67,15 @@ function noTestHooks(): Plugin {
       for (const out of Object.values(bundle)) {
         if (out.type !== "chunk") continue;
         const hooks = Object.entries(out.modules).filter(([id, m]) => isHook(id) && m.renderedLength > 0);
-        // The camera's command journal (src/canvas/camera/journal.ts) and the interaction journal
-        // (src/canvas/interaction/journal.ts) fold away outside e2e builds.
+        // The camera's command journal (src/canvas/camera/journal.ts), the interaction journal
+        // (src/canvas/interaction/journal.ts) and the React Flow store probe (src/canvas/interaction/flowProbe.ts)
+        // fold away outside e2e builds.
         if (
           hooks.length ||
           out.code.includes("Test storage") ||
           out.code.includes("__cameraJournal") ||
-          out.code.includes("__interactionJournal")
+          out.code.includes("__interactionJournal") ||
+          out.code.includes("__flowProbe")
         )
           this.error(`e2e-only test hooks bundled into ${out.fileName}; only VITE_E2E=1 builds may include them`);
       }

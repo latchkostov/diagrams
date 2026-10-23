@@ -384,9 +384,9 @@ test.describe("annotations", () => {
       await expect.poll(async () => (await savedDiagram(page)).edges).toMatchObject([{ from: source, to: "target" }]);
       const saved = await savedDiagram(page);
       const edge = saved.edges[0];
-      // New connections save automatic sides; verify their resolved sides as well as their endpoints.
-      expect(edge.sourceSide).toBeUndefined();
-      expect(edge.targetSide).toBeUndefined();
+      // A dot fixes its own side; verify the stored choice, resolved sides and exact endpoints.
+      expect(edge.sourceSide).toBe("right");
+      expect(edge.targetSide).toBe("left");
       const sourceBox = saved.annotations?.find((a) => a.id === source);
       const targetBox = saved.annotations?.find((a) => a.id === "target");
       if (!sourceBox || !targetBox) throw new Error("Missing saved connection endpoint");
@@ -1158,12 +1158,15 @@ test.describe("annotations", () => {
     await expect(annotation(page, "note-retry")).toBeVisible();
     await page.getByTestId("file-button").click();
     await page.getByTestId("file-more-formats").click();
-    const [download] = await Promise.all([page.waitForEvent("download"), page.getByTestId("export-json").click()]);
+    const [download] = await Promise.all([
+      page.waitForEvent("download"),
+      expect(page.getByTestId("toast")).toContainText("Exported"),
+      page.getByTestId("export-json").click(),
+    ]);
     const file = info.outputPath("annotated.diagram.json");
     await download.saveAs(file);
-    // The download precedes its lazy notification. Finish this operation before
-    // importing, or a late export toast can replace the import notification.
-    await expect(page.getByTestId("toast")).toContainText("Exported");
+    // Observe the lazy notification with the click, before saving the download can outlast it.
+    // Export is complete before importing, so its toast cannot replace the import notification.
     const saved = JSON.parse(readFileSync(file, "utf8"));
     expect(saved.annotations.map((a: { id: string }) => a.id).sort()).toEqual(
       annotatedKafka.annotations.map((a: { id: string }) => a.id).sort(),

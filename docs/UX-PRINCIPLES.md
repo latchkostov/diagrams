@@ -121,8 +121,13 @@ One word per idea, everywhere (menus, inspector, File menu, live bar, docs):
   same way. The new node lands clear of everything, in view, its name ready to type; the gap along the flow
   leaves room for the connection's label. A rail click or Ctrl+K "Add …" with one node selected adds after it
   the same way (the rail's footer says "A click adds after Order service"), without opening the name.
+- **Dot**: a connection point on a node's side. **Attach to a dot** to fix that end's side; drop on the body
+  to let it face the other node automatically. Each end decides independently. The "+" starts automatically.
+  A fixed side can still spread its connections apart. Dropping on empty canvas keeps the starting dot when
+  quick-add makes the next node. An existing pair takes the chosen sides in one undo step, without a duplicate.
 - **Reconnect**: a selected edge shows a round end at each side; drag one onto another node to move that end
-  there. The edge keeps its label, relationship and settings; dropped anywhere else (or Esc) it snaps back. From
+  there, or onto a dot of the same node to change its side. Its own body leaves it alone. The edge keeps its label,
+  relationship and settings; dropped anywhere else (or Esc) it snaps back. Each reconnect is one undo step. From
   the keyboard: the edge's right-click and Ctrl+K, **Reconnect ▸ From / To**, with a node search.
 - **Insert**: hold a node with no edges of its own (or a stencil from the rail) over an edge for a moment, and
   the edge lights up; drop it there and it goes in between (A→B becomes A→N→B, both keeping the edge's
@@ -213,9 +218,11 @@ One word per idea, everywhere (menus, inspector, File menu, live bar, docs):
   Keys typed before Ctrl+K's search or a new node's name can take them are kept for it ("Ctrl+K kafka").
   The shortcuts sheet (`?`) lists every key here, the File menu's (Ctrl+O, Ctrl+S, Ctrl+Shift+S) and slow motion's
   (← →) included.
-- While **connecting**: a crosshair throughout, the node a drop connects to lit up (anywhere on it), a "+"
-  at the line's end over empty canvas, and `not-allowed` over a text, note or zone. Handles are hittable
-  from at least 20 px on screen at any zoom, just outside the card.
+- While **connecting or reconnecting**: a crosshair throughout, the node a drop connects to lit up, and all
+  its dots fully visible at 12 px. The nearest dot within the snap radius has an accent fill and 3 px halo;
+  the body glow dims and the preview snaps to its centre. Connecting shows a "+" at the line's end over empty
+  canvas, and `not-allowed` over a text, note or zone. Dots are hittable from at least 20 px on screen at any zoom,
+  just outside the card.
 - **Your diagrams** is the user's own library in this browser (File > Your diagrams…, the picker's
   first group, the start card's first list). Open, Import, Paste and **Save a copy** each add a diagram
   to it; nothing ever replaces another. A blank **New diagram** joins it on its first edit. The
@@ -444,26 +451,26 @@ One word per idea, everywhere (menus, inspector, File menu, live bar, docs):
 The shortcuts sheet's Mouse rows (`src/components/ShortcutsDialog.tsx`) say these in short; keep the two
 in step:
 
-| Gesture                              | Does                                                                            |
-| ------------------------------------ | ------------------------------------------------------------------------------- |
-| Right-click                          | Context menu for the canvas, a node, an edge or a boundary                      |
-| Double-click canvas                  | Quick-add a stencil at the cursor, its name open to type                        |
-| Double-click node / edge / boundary  | Rename it in the inspector: its Label focused, all selected                     |
-| Double-click text / note / zone      | Edit its text in place, all selected                                            |
-| Drag on the canvas                   | Selection box (Ctrl/⌘: only inside; Shift: adds). Live, presenting, embeds: pan |
-| Shift / Ctrl / ⌘ + click             | Add to or take out of the selection                                             |
-| Scroll, two-finger swipe             | Pan (Shift + scroll: sideways). In an embed the wheel scrolls the page          |
-| Ctrl / ⌘ + scroll, pinch             | Zoom at the pointer                                                             |
-| Space + drag, middle-drag            | Pan, even starting on a node                                                    |
-| Drag from a handle                   | Connect: drop on a node (anywhere on it), or on empty canvas to add one         |
-| Click a selected node's +            | Quick-add the next node there, connected (drag it: connect)                     |
-| Drag a selected edge's end           | Move that end onto another node; anywhere else it snaps back                    |
-| Hold a node on an edge               | Lights the edge up; drop to insert the node in between (Ctrl/⌘: don't)          |
-| Drag a node                          | Lines up with nearby edges, centres and equal gaps, else the grid               |
-| Ctrl / ⌘ while dragging              | Move freely: no guides, no grid                                                 |
-| Alt + drag                           | Duplicate what you drag                                                         |
-| Drag a node across a boundary's edge | Joins it (its outline lights up) or leaves it (dashed)                          |
-| Drag a boundary's corner             | Resize; it takes in the nodes now inside it and lets go of the rest             |
+| Gesture                              | Does                                                                                       |
+| ------------------------------------ | ------------------------------------------------------------------------------------------ |
+| Right-click                          | Context menu for the canvas, a node, an edge or a boundary                                 |
+| Double-click canvas                  | Quick-add a stencil at the cursor, its name open to type                                   |
+| Double-click node / edge / boundary  | Rename it in the inspector: its Label focused, all selected                                |
+| Double-click text / note / zone      | Edit its text in place, all selected                                                       |
+| Drag on the canvas                   | Selection box (Ctrl/⌘: only inside; Shift: adds). Live, presenting, embeds: pan            |
+| Shift / Ctrl / ⌘ + click             | Add to or take out of the selection                                                        |
+| Scroll, two-finger swipe             | Pan (Shift + scroll: sideways). In an embed the wheel scrolls the page                     |
+| Ctrl / ⌘ + scroll, pinch             | Zoom at the pointer                                                                        |
+| Space + drag, middle-drag            | Pan, even starting on a node                                                               |
+| Drag from a dot                      | Connect: each dot fixes its end's side; body drops are automatic; empty canvas adds a node |
+| Click a selected node's +            | Quick-add the next node there, connected (drag it: connect)                                |
+| Drag a selected edge's end           | Attach to a dot (also on the same node), or another node's body; elsewhere snaps back      |
+| Hold a node on an edge               | Lights the edge up; drop to insert the node in between (Ctrl/⌘: don't)                     |
+| Drag a node                          | Lines up with nearby edges, centres and equal gaps, else the grid                          |
+| Ctrl / ⌘ while dragging              | Move freely: no guides, no grid                                                            |
+| Alt + drag                           | Duplicate what you drag                                                                    |
+| Drag a node across a boundary's edge | Joins it (its outline lights up) or leaves it (dashed)                                     |
+| Drag a boundary's corner             | Resize; it takes in the nodes now inside it and lets go of the rest                        |
 
 ## Process
 
