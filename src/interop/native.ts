@@ -380,6 +380,21 @@ export function validateDiagram(data: unknown): NativeResult {
     if (out.kind !== undefined && out.kind !== "async" && out.kind !== "sync") delete out.kind;
     if (out.sourceSide !== undefined && !SIDES.has(out.sourceSide as string)) delete out.sourceSide;
     if (out.targetSide !== undefined && !SIDES.has(out.targetSide as string)) delete out.targetSide;
+    if (out.waypoints !== undefined) {
+      const w = out.waypoints;
+      if (
+        !Array.isArray(w) ||
+        w.length > 64 ||
+        w.findIndex(
+          (p: unknown) =>
+            !isObj(p) ||
+            [p.x, p.y].some((v) => !Number.isFinite(v) || Math.abs(v as number) > ANNOTATION_LIMITS.maxCoordinate),
+        ) >= 0
+      ) {
+        warnings.push(`Ignored waypoints: "${e.id}"`);
+        delete out.waypoints;
+      } else if (!w.length) delete out.waypoints;
+    }
     if (out.props !== undefined && !isObj(out.props)) delete out.props;
     if (invalidPlanningDelay(out.props))
       return { ok: false, error: t("planning.delayInvalid", { id: e.id, limit: SIM_LIMITS.timeMs }) };
@@ -789,6 +804,7 @@ const KNOWN_EDGE = new Set([
   "relationOrigin",
   "sourceSide",
   "targetSide",
+  "waypoints",
   "props",
 ]);
 const KNOWN_GROUP = new Set(["id", "label", "tone", "x", "y", "width", "height", "group"]);

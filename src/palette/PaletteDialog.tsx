@@ -1,3 +1,4 @@
+import "./routeActions";
 import { t, useLocale } from "../i18n";
 import { ROOMS } from "../lib/localOnly";
 import { EDIT_TOGETHER } from "../lib/roomEntry";

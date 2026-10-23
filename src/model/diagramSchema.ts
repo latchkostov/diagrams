@@ -179,6 +179,18 @@ function diagramSchema(a1 = false) {
             description: "Side of the from node it attaches to. Omitted = chosen from the positions.",
           },
           targetSide: { type: "string", enum: SIDES, description: "Side of the to node it attaches to." },
+          waypoints: {
+            type: "array",
+            maxItems: 64,
+            description:
+              "A line shaped by hand: its inner corners, source to target, in canvas pixels (read as an orthogonal route). Omitted = routed automatically.",
+            items: {
+              type: "object",
+              required: ["x", "y"],
+              additionalProperties: false,
+              properties: { x: num, y: num },
+            },
+          },
           props: { $ref: "#/$defs/EdgeProps" },
         } satisfies Fields<DiagramEdge>,
       },

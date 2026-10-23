@@ -321,7 +321,11 @@ export function remapPayload(
     const id = allocateId(e.id, used);
     used.add(id);
     emap.set(e.id, id);
-    return { ...remapConnection(e, nmap), id };
+    return {
+      ...remapConnection(e, nmap),
+      id,
+      ...(e.waypoints ? { waypoints: e.waypoints.map((p) => ({ x: p.x + offset.x, y: p.y + offset.y })) } : {}),
+    };
   });
   const scalerGroups = scalerGroupRemap(p.edges, nmap, emap);
   for (const n of nodes) remapScaler(n.props, nmap, scalerGroups);

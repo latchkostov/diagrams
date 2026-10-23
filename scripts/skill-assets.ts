@@ -7,6 +7,7 @@
 // Code's marketplace, which installs from git. The site serves them fresh from the current viewer instead, so the
 // folder and the zip people download always match the app.
 
+import { createHash } from "node:crypto";
 import { readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import { constants, crc32, deflateRawSync } from "node:zlib";
@@ -54,6 +55,25 @@ export function withFresh(files: SkillFile[], fresh: Readonly<Record<string, str
   );
 }
 
+// Repeated builds and deterministic ZIP checks reuse the two large immutable streams.
+// Content hashes prevent a refreshed viewer or icon file from reusing stale bytes; memory stays bounded.
+const largeStreams = new Map<string, Promise<Buffer<ArrayBuffer>>>();
+function optimize(data: Buffer): Promise<Buffer<ArrayBuffer>> {
+  if (data.length < 400_000) return deflateAsync(data, { numiterations: 5, blocksplittingmax: 0 }).then(Buffer.from);
+  const key = createHash("sha256").update(data).digest("hex");
+  let stream = largeStreams.get(key);
+  if (!stream) {
+    stream = deflateAsync(data, { numiterations: data.length > 1_000_000 ? 30 : 100, blocksplittingmax: 0 }).then(
+      Buffer.from,
+    );
+    largeStreams.set(key, stream);
+    const oldest = largeStreams.keys().next().value;
+    if (largeStreams.size > 2 && oldest) largeStreams.delete(oldest);
+    void stream.catch(() => largeStreams.delete(key));
+  }
+  return stream;
+}
+
 /**
  * A deterministic zip (fixed timestamps, sorted entries, DEFLATE), so the same skill always gives the
  * same bytes. Entries sit in a top-level `livediagrams/` folder, as Claude's skill upload expects.
@@ -61,6 +81,8 @@ export function withFresh(files: SkillFile[], fresh: Readonly<Record<string, str
 export async function zipSkill(files: SkillFile[], folder = SKILL_NAME): Promise<Buffer> {
   const DOS_TIME = 0; // 00:00:00
   const DOS_DATE = ((2026 - 1980) << 9) | (1 << 5) | 1; // 2026-01-01
+  const large = files.filter((file) => file.data.length >= 400_000);
+  if (large.length === 2) await Promise.all(large.map((file) => optimize(file.data)));
   const locals: Buffer[] = [];
   const centrals: Buffer[] = [];
   let offset = 0;
@@ -74,8 +96,8 @@ export async function zipSkill(files: SkillFile[], folder = SKILL_NAME): Promise
       if (candidate.length < body.length) body = candidate;
     }
     // Zopfli searches for a smaller standard DEFLATE stream without changing the payload or requiring a new
-    // unzip format. Let large viewer entries split into as many blocks as they need; retain five search iterations.
-    const optimized = Buffer.from(await deflateAsync(f.data, { numiterations: 5, blocksplittingmax: 0 }));
+    // unzip format. The large viewer and icon catalog get unrestricted block splitting; keep zlib when it wins an entry.
+    const optimized = await optimize(f.data);
     if (optimized.length < body.length) body = optimized;
     const crc = crc32(f.data);
     const local = Buffer.alloc(30);

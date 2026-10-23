@@ -1,3 +1,4 @@
+import handShapedLines from "../../tests/parity/corpus/hand-shaped-lines.diagram.json";
 import { waitingFixture } from "./waitingFixture";
 import { messageTypesFixture } from "./messageTypesFixture";
 import { resilienceFixture, breakerFixture } from "./resilienceFixture";
@@ -200,6 +201,15 @@ const nodePresets: Preset[] = [
 // ---------- edges ----------
 
 const edgePresets: Preset[] = [
+  {
+    kind: "diagram",
+    id: "hand-shaped-lines",
+    title: "Hand-shaped lines",
+    group: "Edges",
+    description:
+      "Saved bends, fixed dots, a jog and an outlying detour. Route > Reset route returns a line to automatic.",
+    diagram: () => structuredClone(handShapedLines) as DiagramFile,
+  },
   {
     kind: "diagram",
     id: "edges-kinds",

@@ -4,6 +4,7 @@
 // whose search area changed node or boundary geometry touched; the global passes (ports, nudging, labels) are cheap.
 
 import type { AnnotationShape, Side } from "../../model/types";
+import { routeGeometry } from "./shapedRuntime";
 import { pickSides } from "../edges/routing";
 import { placeLabels, type LabelPlacement } from "./labels";
 import { nudgeRoutes } from "./nudge";
@@ -35,6 +36,7 @@ export interface RouteEdge {
   target: string;
   sourceSide?: Side;
   targetSide?: Side;
+  waypoints?: readonly Point[];
   label?: string;
   /** A dependency edge: its label leads with a glyph, or is just a glyph chip when there's no text. */
   glyph?: boolean;
@@ -58,6 +60,7 @@ export interface EdgeRoute {
   label: LabelPlacement | null;
   /** False when no obstacle-free route existed and a plain elbow was drawn. */
   ok: boolean;
+  custom?: true;
 }
 
 export const ROUTE_PAD = 16;
@@ -160,7 +163,8 @@ export class Router {
     for (const e of edges) {
       const s = rects.get(e.source)!;
       const t = rects.get(e.target)!;
-      if (e.source === e.target)
+      if (e.waypoints?.length && routeGeometry) sides.set(e.id, routeGeometry.sides(e, s, t));
+      else if (e.source === e.target)
         sides.set(e.id, { sourceSide: e.sourceSide ?? "right", targetSide: e.targetSide ?? "top" });
       else sides.set(e.id, pickSides(s, t, { direction, sourceSide: e.sourceSide, targetSide: e.targetSide }));
     }
@@ -171,8 +175,20 @@ export class Router {
       const sd = sides.get(e.id)!;
       const sc = centerOf(rects.get(e.source)!);
       const tc = centerOf(rects.get(e.target)!);
-      ends.push({ key: `${e.id}\u0000s`, node: e.source, side: sd.sourceSide, toward: tc, order: e.id });
-      ends.push({ key: `${e.id}\u0000t`, node: e.target, side: sd.targetSide, toward: sc, order: e.id });
+      ends.push({
+        key: `${e.id}\u0000s`,
+        node: e.source,
+        side: sd.sourceSide,
+        toward: e.waypoints?.[0] ?? tc,
+        order: e.id,
+      });
+      ends.push({
+        key: `${e.id}\u0000t`,
+        node: e.target,
+        side: sd.targetSide,
+        toward: e.waypoints?.at(-1) ?? sc,
+        order: e.id,
+      });
     }
     const ports = spreadPorts(ends, rects, PORT_SPACING);
 
@@ -193,6 +209,7 @@ export class Router {
     // ---- per-edge geometry
     const polylines = new Map<string, Point[]>();
     const curves = new Map<string, string>();
+    const fixed = new Set<string>();
     const okMap = new Map<string, boolean>();
     this.lastRouted = 0;
     // Built once, on the first edge that needs a search: each search then reads the obstacles near it only, and
@@ -207,6 +224,25 @@ export class Router {
       const s = sourcePort.attachment;
       const targetPort = ports.get(`${e.id}\u0000t`)!;
       const t = targetPort.attachment;
+      if (e.waypoints?.length) {
+        this.raw.delete(e.id);
+        if (routeGeometry)
+          polylines.set(
+            e.id,
+            routeGeometry.shapedRoute(
+              sourcePort,
+              sd.sourceSide,
+              targetPort,
+              sd.targetSide,
+              e.waypoints,
+              rects.get(e.source)!,
+              rects.get(e.target)!,
+            ),
+          );
+        okMap.set(e.id, true);
+        fixed.add(e.id);
+        continue;
+      }
       if (e.source === e.target) {
         polylines.set(e.id, selfLoop(sd.sourceSide, sd.targetSide, s, t));
         okMap.set(e.id, true);
@@ -252,12 +288,12 @@ export class Router {
     for (const id of this.raw.keys()) if (!seen.has(id)) this.raw.delete(id);
 
     // ---- nudging (orthogonal only)
-    const final = style === "smoothstep" ? nudgeRoutes(polylines, obstacles) : polylines;
+    const final = style === "smoothstep" ? nudgeRoutes(polylines, obstacles, { fixed }) : polylines;
 
     // ---- labels
     const labels = placeLabels(
       edges
-        .filter((e) => e.label?.trim() || e.glyph)
+        .filter((e) => final.has(e.id) && (e.label?.trim() || e.glyph))
         .map((e) => ({ id: e.id, text: e.label ?? "", points: final.get(e.id)!, glyph: e.glyph })),
       {
         nodes: [...nodeRects, ...input.nodes.flatMap((n) => (n.extra ? [n.extra] : []))],
@@ -269,14 +305,18 @@ export class Router {
     // ---- assemble, reusing unchanged results so React skips re-rendering those edges
     const out = new Map<string, EdgeRoute>();
     for (const e of edges) {
-      const pts = final.get(e.id)!;
+      const pts = final.get(e.id);
+      if (!pts) continue;
       const sd = sides.get(e.id)!;
-      const path = curves.get(e.id) ?? (style === "straight" ? roundedPath(pts, 0) : roundedPath(pts, 10));
+      const path =
+        curves.get(e.id) ??
+        roundedPath(pts, style === "straight" ? 0 : fixed.has(e.id) && style === "bezier" ? 24 : 10);
       const label = labels.get(e.id) ?? null;
       const old = this.prev.get(e.id);
       if (
         old &&
         old.path === path &&
+        !!old.custom === fixed.has(e.id) &&
         old.sourceSide === sd.sourceSide &&
         old.targetSide === sd.targetSide &&
         sameLabel(old.label, label)
@@ -290,6 +330,7 @@ export class Router {
           targetSide: sd.targetSide,
           label,
           ok: okMap.get(e.id) ?? true,
+          custom: fixed.has(e.id) || undefined,
         });
     }
     this.prev = out;

@@ -16,6 +16,7 @@ import { productionBuild } from "../test/productionBuild";
 const NOT_AT_STARTUP: [string, RegExp][] = [
   ["node simulation fields", /[/\\]src[/\\]canvas[/\\]inspector[/\\]SimulationFields\.tsx$/],
   ["slow-motion scrubber", /[/\\]src[/\\]live[/\\]slowmo[/\\]SlowTimeline\.tsx$/],
+  ["selection route reset", /[/\\]src[/\\]palette[/\\]routeActions\.ts$/],
   ["stencil artwork URLs", /[/\\]src[/\\]stencils[/\\]iconUrls\.ts$/],
   ["message type inspector", /[/\\]src[/\\]canvas[/\\]inspector[/\\]MessageFields\.tsx$/],
   ["message type picker", /[/\\]src[/\\]components[/\\]MessageTypePicker\.tsx$/],
@@ -25,6 +26,8 @@ const NOT_AT_STARTUP: [string, RegExp][] = [
   ["edge inspector loading and recovery", /[/\\]src[/\\]canvas[/\\]inspector[/\\]lazyEdgePanel\.tsx$/],
   ["node inspector identity fields", /[/\\]src[/\\]canvas[/\\]inspector[/\\]NodeIdentity\.tsx$/],
   ["connection dot resolver", /[/\\]src[/\\]canvas[/\\]interaction[/\\]connectTarget\.ts$/],
+  ["dependency and deny details", /[/\\]src[/\\]canvas[/\\]edges[/\\]SettingsCard\.tsx$/],
+  ["saved-route geometry", /[/\\]src[/\\]canvas[/\\]geometry[/\\]shaped\.ts$/],
   ["extended outline geometry", /[/\\]src[/\\]canvas[/\\]shapes[/\\]extendedGeometry\.ts$/],
   ["outline attachment sampling", /[/\\]src[/\\]canvas[/\\]shapes[/\\]attachmentGeometry\.ts$/],
   ["provider and format artwork", /[/\\]src[/\\]interop[/\\]ui[/\\]BrandGlyph\.tsx$/],

@@ -1,3 +1,6 @@
+import { beforeAll } from "vitest";
+import { loadShapedRoutes } from "./shapedRuntime";
+beforeAll(loadShapedRoutes);
 import { describe, expect, it, vi } from "vitest";
 import { auditLayout, countViolations } from "./audit";
 import { fitAvoiding } from "./fit";
@@ -692,5 +695,56 @@ describe("inset outline routing", () => {
       for (let i = 1; i < route.points.length; i++)
         expect(segmentHitsRect(route.points[i - 1], route.points[i], obstacle)).toBe(false);
     }
+  });
+});
+
+describe("custom routes", () => {
+  it("never searches for custom edges, faces bends, and invalidates custom identity on reset", () => {
+    const router = new Router();
+    const input: RouteInput = {
+      nodes: [
+        { id: "a", rect: card(0, 0) },
+        { id: "b", rect: card(600, 0) },
+      ],
+      edges: [
+        {
+          id: "e",
+          source: "a",
+          target: "b",
+          waypoints: [
+            { x: 110, y: 200 },
+            { x: 710, y: 200 },
+          ],
+        },
+      ],
+    };
+    vi.mocked(routeOrthogonal).mockClear();
+    for (const style of ["smoothstep", "straight", "bezier"] as const) {
+      const r = router.route({ ...input, style }).get("e")!;
+      expect(r.custom).toBe(true);
+      expect(r.sourceSide).toBe("bottom");
+      expect(r.targetSide).toBe("bottom");
+      expect(r.points).toContainEqual({ x: 110, y: 200 });
+      expect(router.lastRouted).toBe(0);
+    }
+    expect(routeOrthogonal).not.toHaveBeenCalled();
+    const r = router.route({ ...input, edges: [{ id: "e", source: "a", target: "b" }] }).get("e")!;
+    expect(r.custom).toBeUndefined();
+    expect(router.lastRouted).toBe(1);
+  });
+  it("does not nudge any segment or swap the neighbours of a fixed edge", () => {
+    const p = [
+      { x: 0, y: 0 },
+      { x: 100, y: 0 },
+      { x: 100, y: 100 },
+      { x: 200, y: 100 },
+    ];
+    const routes = new Map([
+      ["fixed", p],
+      ["auto", p.map((p) => ({ ...p }))],
+    ]);
+    const result = nudgeRoutes(routes, [], { fixed: new Set(["fixed"]) });
+    expect(result.get("fixed")).toEqual(p);
+    expect(result.get("auto")).not.toEqual(p);
   });
 });

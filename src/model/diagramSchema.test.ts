@@ -63,6 +63,7 @@ const edge: Required<DiagramEdge> = {
   relationOrigin: "inferred",
   sourceSide: "right",
   targetSide: "left",
+  waypoints: [{ x: 300, y: 100 }],
   props: { settings: [{ key: "Orders:Timeout" }, { key: "Db:Password", secret: true }], travelMs: 5 },
 };
 const group: Required<DiagramGroup> = {
@@ -264,4 +265,15 @@ it("limits authored descriptions while preserving longer native imports", () => 
     else expect(() => check(file)).toThrow();
     expect(parseNative(JSON.stringify(file)).ok).toBe(true);
   }
+});
+
+it("bounds saved waypoints and closes their point objects", () => {
+  expect(() => check({ ...edge, waypoints: [{ x: -100, y: 200 }] }, "Edge")).not.toThrow();
+  for (const waypoints of [
+    [{ x: 1 }],
+    [{ x: 1, y: 2, z: 3 }],
+    Array.from({ length: 65 }, () => ({ x: 1, y: 2 })),
+    "bad",
+  ])
+    expect(() => check({ ...edge, waypoints }, "Edge")).toThrow();
 });

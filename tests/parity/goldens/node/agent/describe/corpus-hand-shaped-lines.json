@@ -1,0 +1,140 @@
+{
+  "text": {
+    "isError": false,
+    "output": "Diagram \"Hand-shaped lines\" · direction LR · 3 nodes, 4 connections, 0 boundaries, 0 simulations\nnodes:\n  \"api\" \"service.node\" (\"Node.js Service\") \"Orders API\" arrivingTypes=[] capabilities=[{\"kind\":\"calls\",\"edge\":\"api-db\",\"peer\":\"db\"}] explanation={\"id\":\"api\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":16,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.25,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"db\" \"postgres\" (\"PostgreSQL\") \"Orders DB\" arrivingTypes=[] capabilities=[] explanation=undefined\n  \"worker\" \"service.go\" (\"Go Service\") \"Receipt worker\" arrivingTypes=[] capabilities=[] explanation={\"id\":\"worker\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":16,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.25,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\nconnections:\n  \"api-db\" \"api\" -> \"db\" sync \"writes\" carriedTypes=[]\n  \"jog\" \"api\" -> \"worker\" async \"receipts\" carriedTypes=[]\n  \"detour\" \"api\" -> \"db\" async \"audit\" carriedTypes=[]\n  \"shape-end\" \"worker\" -> \"shape\" async carriedTypes=[]\nshape \"shape\" \"Archive\""
+  },
+  "json": {
+    "isError": false,
+    "output": {
+      "title": "Hand-shaped lines",
+      "direction": "LR",
+      "nodes": [
+        {
+          "id": "api",
+          "stencil": "service.node",
+          "label": "Orders API",
+          "x": 0,
+          "y": 0,
+          "arrivingTypes": [],
+          "capabilities": [{ "kind": "calls", "edge": "api-db", "peer": "db" }],
+          "explanation": {
+            "id": "api",
+            "role": "processor",
+            "status": "up",
+            "reason": "throughput",
+            "evidence": "configured",
+            "unit": "msg/s",
+            "capacity": 16,
+            "offered": 0,
+            "replicas": 1,
+            "baseReplicas": 1,
+            "omittedContributors": 0,
+            "activeReplicas": 1,
+            "assignments": [],
+            "slots": 4,
+            "seconds": 0.25,
+            "utilization": 0,
+            "growth": 0,
+            "contributors": [],
+            "target": 0.5,
+            "minimumReplicas": 1,
+            "targetReplicas": 1,
+            "changes": null,
+            "converged": true
+          }
+        },
+        { "id": "db", "stencil": "postgres", "label": "Orders DB", "x": 650, "y": 0, "arrivingTypes": [], "capabilities": [] },
+        {
+          "id": "worker",
+          "stencil": "service.go",
+          "label": "Receipt worker",
+          "x": 650,
+          "y": 320,
+          "arrivingTypes": [],
+          "capabilities": [],
+          "explanation": {
+            "id": "worker",
+            "role": "processor",
+            "status": "up",
+            "reason": "throughput",
+            "evidence": "configured",
+            "unit": "msg/s",
+            "capacity": 16,
+            "offered": 0,
+            "replicas": 1,
+            "baseReplicas": 1,
+            "omittedContributors": 0,
+            "activeReplicas": 1,
+            "assignments": [],
+            "slots": 4,
+            "seconds": 0.25,
+            "utilization": 0,
+            "growth": 0,
+            "contributors": [],
+            "target": 0.5,
+            "minimumReplicas": 1,
+            "targetReplicas": 1,
+            "changes": null,
+            "converged": true
+          }
+        }
+      ],
+      "edges": [
+        {
+          "id": "api-db",
+          "from": "api",
+          "to": "db",
+          "kind": "sync",
+          "label": "writes",
+          "sourceSide": "bottom",
+          "targetSide": "bottom",
+          "waypoints": [{ "x": 110, "y": 220 }, { "x": 760, "y": 220 }],
+          "carriedTypes": []
+        },
+        {
+          "id": "jog",
+          "from": "api",
+          "to": "worker",
+          "waypoints": [{ "x": 360, "y": 36 }, { "x": 360, "y": 356 }],
+          "label": "receipts",
+          "carriedTypes": []
+        },
+        {
+          "id": "detour",
+          "from": "api",
+          "to": "db",
+          "sourceSide": "right",
+          "targetSide": "top",
+          "waypoints": [
+            { "x": -180, "y": -200 },
+            { "x": 400, "y": -200 },
+            { "x": 400, "y": -160 },
+            { "x": 760, "y": -160 }
+          ],
+          "label": "audit",
+          "carriedTypes": []
+        },
+        {
+          "id": "shape-end",
+          "from": "worker",
+          "to": "shape",
+          "sourceSide": "bottom",
+          "targetSide": "bottom",
+          "waypoints": [{ "x": 760, "y": 580 }, { "x": 1170, "y": 580 }],
+          "carriedTypes": []
+        }
+      ],
+      "messageTypesComplete": true,
+      "groups": [],
+      "annotations": [
+        { "id": "shape", "kind": "shape", "text": "Archive", "x": 1100, "y": 320, "width": 140, "height": 100, "shape": "diamond" }
+      ],
+      "simulations": [],
+      "truncated": false
+    }
+  },
+  "focus": {
+    "isError": false,
+    "output": "Diagram \"Hand-shaped lines\" · direction LR · 3 nodes, 3 connections, 0 boundaries, 0 simulations\nnodes:\n  \"api\" \"service.node\" (\"Node.js Service\") \"Orders API\" arrivingTypes=[] capabilities=[{\"kind\":\"calls\",\"edge\":\"api-db\",\"peer\":\"db\"}] explanation={\"id\":\"api\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":16,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.25,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"db\" \"postgres\" (\"PostgreSQL\") \"Orders DB\" arrivingTypes=[] capabilities=[] explanation=undefined\n  \"worker\" \"service.go\" (\"Go Service\") \"Receipt worker\" arrivingTypes=[] capabilities=[] explanation={\"id\":\"worker\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":16,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.25,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\nconnections:\n  \"api-db\" \"api\" -> \"db\" sync \"writes\" carriedTypes=[]\n  \"jog\" \"api\" -> \"worker\" async \"receipts\" carriedTypes=[]\n  \"detour\" \"api\" -> \"db\" async \"audit\" carriedTypes=[]"
+  }
+}

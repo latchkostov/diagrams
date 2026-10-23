@@ -329,3 +329,26 @@ it.each([123, null, {}, [], true, "x".repeat(50_001)])(
     ).toBeNull();
   },
 );
+
+it("offsets copied waypoints with both endpoints without modifying the source", () => {
+  const d = structuredClone(diagram);
+  d.edges[0].waypoints = [
+    { x: 300, y: -100 },
+    { x: 350, y: -100 },
+  ];
+  const payload = makePayload(d, ["a", "b"]);
+  if (!payload) throw new Error("Missing copied nodes");
+  const copied = remapPayload(
+    payload,
+    { nodes: new Set(["a", "b"]), edges: new Set(["e1"]), groups: new Set() },
+    { x: 45, y: 60 },
+  );
+  expect(copied.edges[0].waypoints).toEqual([
+    { x: 345, y: -40 },
+    { x: 395, y: -40 },
+  ]);
+  expect(d.edges[0].waypoints).toEqual([
+    { x: 300, y: -100 },
+    { x: 350, y: -100 },
+  ]);
+});

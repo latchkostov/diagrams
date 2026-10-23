@@ -1,3 +1,6 @@
+import { beforeAll } from "vitest";
+import { loadShapedRoutes } from "./shapedRuntime";
+beforeAll(loadShapedRoutes);
 // Routing benchmark over the public examples, the obstacle course and the 150-node stress preset.
 import { expect, it, vi } from "vitest";
 import type { DiagramFile } from "../../model/types";
@@ -324,4 +327,31 @@ it.skipIf(!process.env.ROUTE_BENCH)("routing benchmark", () => {
     nudgeRoutes(routes, []);
     console.log(`PERF separated ${count}: ${(performance.now() - start).toFixed(2)} ms`);
   }
+});
+
+it("routes 300 saved and 300 automatic edges with searches only for automatic edges", () => {
+  const nodes = Array.from({ length: 600 }, (_, i) => ({
+    id: `n${i}`,
+    rect: { x: (i % 2) * 600, y: Math.floor(i / 2) * 240, width: 220, height: 72 },
+  }));
+  const edges = Array.from({ length: 300 }, (_, i) => ({
+    id: `auto${i}`,
+    source: `n${i * 2}`,
+    target: `n${i * 2 + 1}`,
+  }));
+  const custom = edges.map((e, i) => ({
+    ...e,
+    id: `saved${i}`,
+    waypoints: [
+      { x: 110, y: i * 240 + 140 },
+      { x: 710, y: i * 240 + 140 },
+    ],
+  }));
+  const router = new Router();
+  const result = router.route({ nodes, edges: [...edges, ...custom] });
+  expect(result.size).toBe(600);
+  expect(router.lastRouted).toBe(300);
+  for (const e of custom) expect(result.get(e.id)?.custom).toBe(true);
+  router.route({ nodes, edges: [...edges, ...custom] });
+  expect(router.lastRouted).toBe(0);
 });

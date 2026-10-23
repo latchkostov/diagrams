@@ -13,9 +13,12 @@ import { fingerprint } from "../lib/hash";
 import { openExample, settledCanvas } from "./canvas";
 import { expectGoldenPng } from "./png";
 
-const EXAMPLES = ["kafka-order-pipeline", "branch-to-datacentre"];
+const EXAMPLES = ["corpus-hand-shaped-lines", "kafka-order-pipeline", "branch-to-datacentre"];
 
-async function exportHtml(page: Page, options?: { theme: "dark"; banner: string }): Promise<string> {
+async function exportHtml(
+  page: Page,
+  options?: { theme: "dark"; banner: string; noSimulations?: boolean },
+): Promise<string> {
   const template = page.waitForResponse((r) =>
     /\/export\/interactive-viewer(?:-[a-f0-9]+)?\.html$/.test(new URL(r.url()).pathname),
   );
@@ -30,7 +33,8 @@ async function exportHtml(page: Page, options?: { theme: "dark"; banner: string 
     await page.getByTestId(`html-export-theme-${options.theme}`).click();
     await page.getByTestId("html-export-banner").fill(options.banner);
     // Opens on the diagram, not playing, so what it draws settles.
-    await page.getByTestId("html-export-start").selectOption("");
+    if (options.noSimulations) await expect(page.getByTestId("html-export-start")).toHaveCount(0);
+    else await page.getByTestId("html-export-start").selectOption("");
   }
   const [download] = await Promise.all([
     page.waitForEvent("download"),
@@ -80,7 +84,11 @@ for (const slug of EXAMPLES) {
 
   test(`interactive HTML: ${slug} (dark, banner, not playing) and what it draws`, async ({ page, context }, info) => {
     await openExample(page, slug);
-    const html = await exportHtml(page, { theme: "dark", banner: "Confidential: internal use only" });
+    const html = await exportHtml(page, {
+      theme: "dark",
+      banner: "Confidential: internal use only",
+      noSimulations: slug === "corpus-hand-shaped-lines",
+    });
     const { shell, payload } = normalise(html);
     expectGoldenText(`html/${slug}.dark.html`, shell);
     expectGolden(`html/${slug}.dark.json`, payload);

@@ -23,11 +23,13 @@ interface Seg {
 export interface NudgeOptions {
   /** Distance between parallel segments in a shared track. */
   separation?: number;
+  /** Every segment of these hand-shaped edges stays put. */
+  fixed?: ReadonlySet<string>;
   /** Segments closer than this count as sharing a track. */
   tolerance?: number;
 }
 
-function segmentsOf(edge: string, pts: Point[], vertical: boolean): Seg[] {
+function segmentsOf(edge: string, pts: Point[], vertical: boolean, fixed = false): Seg[] {
   const out: Seg[] = [];
   const n = pts.length - 1;
   for (let k = 0; k < n; k++) {
@@ -53,7 +55,7 @@ function segmentsOf(edge: string, pts: Point[], vertical: boolean): Seg[] {
       c: perp(a),
       lo: Math.min(along(a), along(b)),
       hi: Math.max(along(a), along(b)),
-      pinned: k === 0 || k === n - 1,
+      pinned: fixed || k === 0 || k === n - 1,
       loTurn: loIsA ? turnA : turnB,
       hiTurn: loIsA ? turnB : turnA,
     });
@@ -194,7 +196,7 @@ export function nudgeRoutes(
   const spread = () => {
     for (const vertical of [true, false]) {
       const segs: Seg[] = [];
-      for (const [id, pts] of out) segs.push(...segmentsOf(id, pts, vertical));
+      for (const [id, pts] of out) segs.push(...segmentsOf(id, pts, vertical, opts.fixed?.has(id)));
       for (const group of clusters(segs, tol)) {
         const ordered = order(group);
         const n = ordered.length;
@@ -233,7 +235,7 @@ export function nudgeRoutes(
   };
   spread();
   // Swapping bends can land a segment on someone else's track: spread once more.
-  if (resolvePinnedOverlaps(out, obstacles, tol)) spread();
+  if (resolvePinnedOverlaps(out, obstacles, tol, opts.fixed)) spread();
   return out;
 }
 
@@ -242,11 +244,17 @@ export function nudgeRoutes(
  * the channel at the same height) can't move, so if they overlap, the bends next to them are in
  * the wrong order: swap those bends' positions so each stub ends before the other begins.
  */
-function resolvePinnedOverlaps(out: Map<string, Point[]>, obstacles: Obstacles, tol: number): boolean {
+function resolvePinnedOverlaps(
+  out: Map<string, Point[]>,
+  obstacles: Obstacles,
+  tol: number,
+  fixed?: ReadonlySet<string>,
+): boolean {
   let swapped = false;
   for (const vertical of [false, true]) {
     const segs: Seg[] = [];
-    for (const [id, pts] of out) segs.push(...segmentsOf(id, pts, vertical).filter((s) => s.pinned));
+    for (const [id, pts] of out)
+      if (!fixed?.has(id)) segs.push(...segmentsOf(id, pts, vertical).filter((s) => s.pinned));
     const index = new SpatialGrid<number>();
     const box = (s: Seg): Rect =>
       vertical

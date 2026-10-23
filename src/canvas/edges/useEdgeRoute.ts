@@ -152,6 +152,7 @@ export function routeInputFromStore(
           target: e.target,
           sourceSide: e.data?.sourceSide,
           targetSide: e.data?.targetSide,
+          waypoints: e.data?.waypoints,
           label: dep ? dep.text : e.data?.label,
           ...(dep ? { glyph: true } : {}),
         };

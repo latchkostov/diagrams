@@ -93,6 +93,12 @@ Annotations are documentation only, and the simulation never sees them. Use them
 `layout.mjs` places a `note` or `text` without a position in a row under the diagram. A `zone` (a dashed region)
 and a `shape` (a plain outline, the only kind an edge may end on) need `x`, `y`, `width` and `height`.
 
+<!-- BEGIN edge-waypoints -->
+
+Connections may save `waypoints`: up to 64 `{x,y}` canvas-pixel corners, read orthogonally. Omitted = automatic.
+Agents preserve bends; they never author them.
+<!-- END edge-waypoints -->
+
 ## Values
 
 <!-- BEGIN GENERATED enums -->

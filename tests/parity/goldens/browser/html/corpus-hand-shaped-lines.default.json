@@ -1,0 +1,66 @@
+{
+  "version": 1,
+  "diagram": {
+    "format": "diagrams/v1",
+    "title": "Hand-shaped lines",
+    "direction": "LR",
+    "nodes": [
+      { "id": "api", "stencil": "service.node", "label": "Orders API", "x": 0, "y": 0 },
+      { "id": "db", "stencil": "postgres", "label": "Orders DB", "x": 650, "y": 0 },
+      { "id": "worker", "stencil": "service.go", "label": "Receipt worker", "x": 650, "y": 320 }
+    ],
+    "edges": [
+      {
+        "id": "api-db",
+        "from": "api",
+        "to": "db",
+        "label": "writes",
+        "kind": "sync",
+        "sourceSide": "bottom",
+        "targetSide": "bottom",
+        "waypoints": [{ "x": 110, "y": 220 }, { "x": 760, "y": 220 }]
+      },
+      {
+        "id": "jog",
+        "from": "api",
+        "to": "worker",
+        "label": "receipts",
+        "kind": "async",
+        "waypoints": [{ "x": 360, "y": 36 }, { "x": 360, "y": 356 }]
+      },
+      {
+        "id": "detour",
+        "from": "api",
+        "to": "db",
+        "label": "audit",
+        "kind": "async",
+        "sourceSide": "right",
+        "targetSide": "top",
+        "waypoints": [
+          { "x": -180, "y": -200 },
+          { "x": 400, "y": -200 },
+          { "x": 400, "y": -160 },
+          { "x": 760, "y": -160 }
+        ]
+      },
+      {
+        "id": "shape-end",
+        "from": "worker",
+        "to": "shape",
+        "kind": "async",
+        "sourceSide": "bottom",
+        "targetSide": "bottom",
+        "waypoints": [{ "x": 760, "y": 580 }, { "x": 1170, "y": 580 }]
+      }
+    ],
+    "annotations": [
+      { "id": "shape", "kind": "shape", "text": "Archive", "x": 1100, "y": 320, "width": 140, "height": 100, "shape": "diamond" }
+    ]
+  },
+  "icons": {
+    "go": { "sha256": "f1f50429f38e0fa91b2c77cf600cee410845b58e30935a09cb206cfc88efff9c", "bytes": 2404 },
+    "nodejs": { "sha256": "5d31625856d847dbfd22e16f061e65622e638f5621e5b49b8fec1fdde933de7e", "bytes": 1848 },
+    "postgresql": { "sha256": "95779d4aab758053d1839595cc9716e1eedb1021a015a00331e54268a5daf5c0", "bytes": 7732 }
+  },
+  "options": { "theme": "light", "startSimulation": null, "exportedOn": "2026-01-01" }
+}

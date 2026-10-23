@@ -1,0 +1,120 @@
+{
+  "format": "diagrams/v1",
+  "title": "Hand-shaped lines",
+  "direction": "LR",
+  "nodes": [
+    {
+      "id": "api",
+      "stencil": "service.node",
+      "label": "Orders API",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "id": "db",
+      "stencil": "postgres",
+      "label": "Orders DB",
+      "x": 650,
+      "y": 0
+    },
+    {
+      "id": "worker",
+      "stencil": "service.go",
+      "label": "Receipt worker",
+      "x": 650,
+      "y": 320
+    }
+  ],
+  "annotations": [
+    {
+      "id": "shape",
+      "kind": "shape",
+      "shape": "diamond",
+      "text": "Archive",
+      "x": 1100,
+      "y": 320,
+      "width": 140,
+      "height": 100
+    }
+  ],
+  "edges": [
+    {
+      "id": "api-db",
+      "from": "api",
+      "to": "db",
+      "kind": "sync",
+      "label": "writes",
+      "sourceSide": "bottom",
+      "targetSide": "bottom",
+      "waypoints": [
+        {
+          "x": 110,
+          "y": 220
+        },
+        {
+          "x": 760,
+          "y": 220
+        }
+      ]
+    },
+    {
+      "id": "jog",
+      "from": "api",
+      "to": "worker",
+      "waypoints": [
+        {
+          "x": 360,
+          "y": 36
+        },
+        {
+          "x": 360,
+          "y": 356
+        }
+      ],
+      "label": "receipts"
+    },
+    {
+      "id": "detour",
+      "from": "api",
+      "to": "db",
+      "sourceSide": "right",
+      "targetSide": "top",
+      "waypoints": [
+        {
+          "x": -180,
+          "y": -200
+        },
+        {
+          "x": 400,
+          "y": -200
+        },
+        {
+          "x": 400,
+          "y": -160
+        },
+        {
+          "x": 760,
+          "y": -160
+        }
+      ],
+      "label": "audit"
+    },
+    {
+      "id": "shape-end",
+      "from": "worker",
+      "to": "shape",
+      "sourceSide": "bottom",
+      "targetSide": "bottom",
+      "waypoints": [
+        {
+          "x": 760,
+          "y": 580
+        },
+        {
+          "x": 1170,
+          "y": 580
+        }
+      ]
+    }
+  ]
+}
