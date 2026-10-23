@@ -17,6 +17,7 @@ export interface BreakerState {
   lastWindow?: { calls: number; failed: number; slow: number };
   sent: number;
   settled: number;
+  recorded: number;
   failed: number;
   slow: number;
   inFlight: number;
@@ -38,6 +39,7 @@ export const createBreaker = (): BreakerState => ({
   openedAt: 0,
   sent: 0,
   settled: 0,
+  recorded: 0,
   failed: 0,
   slow: 0,
   inFlight: 0,
@@ -61,7 +63,7 @@ export function breakerWindow(b: BreakerState, p: BreakerPolicy, now: number) {
 function transition(b: BreakerState, state: BreakerState["state"], now: number) {
   b.state = state;
   b.generation++;
-  b.sent = b.settled = b.failed = b.slow = b.inFlight = 0;
+  b.sent = b.settled = b.recorded = b.failed = b.slow = b.inFlight = 0;
   if (state === "open") b.openedAt = now;
   b.buckets = [];
   if (state !== "open") b.lastWindow = undefined;
@@ -96,20 +98,18 @@ export function breakerRecord(
   const slowPercent = p.slowPercent ?? BREAKER_DEFAULTS.slowPercent;
   if (permit.probe && b.state === "half-open") {
     b.inFlight = Math.max(0, b.inFlight - permit.units);
-    // A routing refusal or cancelled sibling says nothing about the callee's health.
-    // Release this permit for a replacement probe; only recorded answers finish the test.
-    if (!recorded) {
-      b.sent = Math.max(0, b.sent - permit.units);
-      return;
-    }
     b.settled += permit.units;
+    // Every dispatch consumes the fixed batch; only health evidence enters its denominator.
+    if (recorded) b.recorded += permit.units;
     if (recorded && failed) b.failed += permit.units;
     if (recorded && slow) b.slow += permit.units;
     if (b.sent >= (p.halfOpenCalls ?? BREAKER_DEFAULTS.halfOpenCalls) && b.inFlight < 1e-9) {
-      b.lastWindow = { calls: b.settled, failed: b.failed, slow: b.slow };
+      b.lastWindow = { calls: b.recorded, failed: b.failed, slow: b.slow };
       transition(
         b,
-        b.failed * 100 >= failurePercent * b.settled || b.slow * 100 >= slowPercent * b.settled ? "open" : "closed",
+        b.recorded === 0 || b.failed * 100 >= failurePercent * b.recorded || b.slow * 100 >= slowPercent * b.recorded
+          ? "open"
+          : "closed",
         now,
       );
     }

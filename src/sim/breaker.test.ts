@@ -53,7 +53,7 @@ it("reopens at the failure threshold, counts slow calls, and ignores stale probe
   expect(b.state).toBe("open");
 });
 
-it("ignored or cancelled half-open probes release room without certifying recovery", () => {
+it("ignored or cancelled probes stay within the fixed batch and never dilute failures", () => {
   const b = createBreaker(),
     p = { minimumCalls: 1, halfOpenCalls: 3, openMs: 10 };
   breakerRecord(b, p, 0, "error", 0, breakerPermits(b, p, 0, 1)!);
@@ -62,13 +62,30 @@ it("ignored or cancelled half-open probes release room without certifying recove
     d = breakerPermits(b, p, 10, 1)!;
   breakerRecord(b, p, 20, "error", 10, a);
   breakerRecord(b, p, 20, "no-route", 10, c);
+  expect(b.sent).toBe(3);
+  expect(breakerPermits(b, p, 20, 1)).toBeUndefined();
   breakerRecord(b, p, 20, "call-limit", 10, d);
-  expect(b.state).toBe("half-open");
-  expect(b.settled).toBe(1);
-  expect(b.sent).toBe(1);
-  expect(b.inFlight).toBe(0);
-  for (let i = 0; i < 2; i++) breakerRecord(b, p, 30, "error", 10, breakerPermits(b, p, 20, 1)!);
   expect(b.state).toBe("open");
+  expect(b.lastWindow).toEqual({ calls: 1, failed: 1, slow: 0 });
+  expect(breakerView(b, p, 20).failurePercent).toBe(100);
+  expect(b.inFlight).toBe(0);
+  expect(breakerPermits(b, p, 20, 1)).toBeUndefined();
+});
+
+it("an all-ignored batch is inconclusive and waits another interval before one bounded test", () => {
+  const b = createBreaker(),
+    p = { minimumCalls: 1, halfOpenCalls: 1, openMs: 10 };
+  breakerRecord(b, p, 0, "error", 0, breakerPermits(b, p, 0, 1)!);
+  for (const time of [10, 20, 30]) {
+    const permit = breakerPermits(b, p, time, 1)!;
+    expect(breakerPermits(b, p, time, 1)).toBeUndefined();
+    breakerRecord(b, p, time, "no-route", 0, permit);
+    expect(b.state).toBe("open");
+    expect(b.lastWindow).toEqual({ calls: 0, failed: 0, slow: 0 });
+    expect(breakerPermits(b, p, time + 9, 1)).toBeUndefined();
+  }
+  breakerRecord(b, p, 40, "success", 0, breakerPermits(b, p, 40, 1)!);
+  expect(b.state).toBe("closed");
 });
 
 function fixture() {

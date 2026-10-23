@@ -1933,7 +1933,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         "status",
         edge.from,
         undefined,
-        `${edge.from.label} → ${edge.to.label} breaker ${edge.breaker!.state.state === "open" ? "opened" : edge.breaker!.state.state === "half-open" ? "testing" : "closed"}${view.state === "open" ? ` (${Math.round(view.failurePercent)}% failing over ${(edge.breaker!.policy.windowMs ?? 10000) / 1000} s)` : ""}`,
+        `${edge.from.label} → ${edge.to.label} breaker ${edge.breaker!.state.state === "open" ? "opened" : edge.breaker!.state.state === "half-open" ? "testing" : "closed"}${view.state === "open" ? (view.calls ? ` (${Math.round(view.failurePercent)}% failing over ${(edge.breaker!.policy.windowMs ?? 10000) / 1000} s)` : " (probes inconclusive)") : ""}`,
       );
     }
   }

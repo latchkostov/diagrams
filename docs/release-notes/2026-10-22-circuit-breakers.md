@@ -4,6 +4,8 @@ Request connections in `p3-w2` can fail fast with a circuit breaker. Closed brea
 attempts in real units; open breakers return a local 503 without taking a pool connection or retrying.
 After the open interval, a bounded half-open probe gate tests recovery. Breakers are shared across
 the connection's caller replicas. Defaults follow resilience4j, shortened for short demonstrations.
+Ignored routing refusals and cancelled calls consume their probe slot but never dilute the failure
+rate. A batch with no health evidence is inconclusive and waits another open interval before testing.
 
 The connection Inspector and Simulation context menu provide On/Off. Details stay folded away.
 A saved simulation can explicitly override a diagram breaker with `caller.breaker: null` (Off),
