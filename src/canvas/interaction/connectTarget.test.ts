@@ -54,3 +54,52 @@ it.each(["top", "grow"])("matches React Flow's direct %s handle priority beyond 
     at: id === "top" ? { x: 0, y: 0 } : at,
   });
 });
+
+it("a direct source dot stays rejected when another dot is inside its snap radius at zoom 0.4", () => {
+  vi.stubGlobal("document", {
+    elementFromPoint: () => ({
+      closest: (selector: string) => (selector === ".react-flow" ? {} : null),
+      classList: { contains: () => true },
+      getAttribute: (key: string) => (key === "data-nodeid" ? "source" : "top"),
+    }),
+  });
+  const neighbour = { ...node, internals: { ...node.internals, positionAbsolute: { x: 40, y: 0 } } };
+  const hit = connectionTargetAt(
+    { x: 0, y: 0 },
+    "source",
+    {
+      getZoom: () => 0.4,
+      screenToFlowPosition: (p) => p,
+    },
+    [{ ...node, id: "source" }, neighbour],
+    () => undefined,
+  );
+  expect(hit).toEqual({ target: { kind: "source" }, at: { x: 0, y: 0 } });
+});
+
+it("nearest grow handle is excluded from the shared side-dot resolution", () => {
+  vi.stubGlobal("document", {
+    elementFromPoint: () => ({ closest: (selector: string) => (selector === ".react-flow" ? {} : null) }),
+  });
+  const target = {
+    ...node,
+    measured: { width: 220, height: 72 },
+    internals: {
+      ...node.internals,
+      handleBounds: {
+        source: [
+          { id: "right", x: 215.5, y: 31.5, width: 9, height: 9 },
+          { id: "grow", x: 241.5, y: 31.5, width: 9, height: 9 },
+        ],
+      },
+    },
+  } as InternalNode<FlowNode>;
+  const hit = connectionTargetAt(
+    { x: 240, y: 55 },
+    "source",
+    { getZoom: () => 1, screenToFlowPosition: (p) => p },
+    [target],
+    () => undefined,
+  );
+  expect(hit).toEqual({ target: { kind: "node", id: "target", side: "right" }, at: { x: 220, y: 36 } });
+});

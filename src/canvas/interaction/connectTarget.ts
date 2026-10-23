@@ -21,6 +21,7 @@ export function connectionTargetAt(
   // React Flow gives the actual handle under the pointer priority over distance (including its hit area).
   const directNode = element?.classList?.contains("react-flow__handle") ? element.getAttribute("data-nodeid") : null;
   const directSide = directNode ? portSide(element?.getAttribute("data-handleid")) : undefined;
+  if (directNode === from) return { target: { kind: "source" as const }, at };
   const radius = connectionRadius(flow.getZoom());
   let distance = Infinity;
   let target: ConnectTarget = body;

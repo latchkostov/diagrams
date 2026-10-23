@@ -53,6 +53,7 @@ export function EdgeEnds({
     const marks = connectionMarks(wrap);
     pointerGesture(e, {
       kind: "edge.end",
+      activationDistance: 3,
       preview(_at, screen) {
         const hit = connectionTargetAt(screen, fixed, flow, store.getState().nodeLookup.values(), kindOf);
         const t = hit.target;

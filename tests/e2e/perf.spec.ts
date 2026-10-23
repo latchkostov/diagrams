@@ -1,6 +1,16 @@
 import { TEXT_END } from "./fixtures";
 import type { Page } from "@playwright/test";
-import { test, expect, gotoCanvas, expectNoErrors, pageLoadTimeout, waitForStableBox, fitDiagram } from "./fixtures";
+import {
+  test,
+  expect,
+  gotoCanvas,
+  expectNoErrors,
+  pageLoadTimeout,
+  waitForStableBox,
+  fitDiagram,
+  waitForStableViewport,
+  viewportTransform,
+} from "./fixtures";
 
 // Interaction performance guards (dev server, so React runs in development mode: tagged @dev, which
 // playwright.config.ts runs in the "dev" project).
@@ -147,6 +157,19 @@ async function prepareNodeInteractions(page: Page) {
 }
 
 test.describe("perf: interactions", { tag: "@dev" }, () => {
+  test("zooming updates snap radius without rendering the canvas shell", async ({ page }) => {
+    await openDiagram(page);
+    const before = await viewportTransform(page);
+    const { counts } = await measure(page, async () => {
+      for (let i = 0; i < 5; i++) {
+        await page.getByTestId("zoom-out-button").click();
+        await waitForStableViewport(page);
+      }
+    });
+    expect(await viewportTransform(page)).not.toBe(before);
+    expect(counts.CanvasInner ?? 0, JSON.stringify(counts)).toBe(0);
+  });
+
   test("hovering the canvas menu re-renders only the rows that change", async ({ page, consoleErrors }) => {
     await openDiagram(page);
     await openCanvasMenu(page);

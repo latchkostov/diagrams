@@ -40,6 +40,7 @@ export function usePointerGesture() {
     event: ReactPointerEvent,
     how: {
       kind: GestureKind;
+      activationDistance?: number;
       preview(at: Point, screen: Point): GesturePreview;
       commit(preview: GesturePreview): void;
       cancel?(): void;
@@ -49,6 +50,8 @@ export function usePointerGesture() {
     if (!controller || event.button !== 0 || (event.pointerType === "touch" && !event.isPrimary)) return;
     event.preventDefault();
     event.stopPropagation();
+    const start = { x: event.clientX, y: event.clientY };
+    let activated = how.activationDistance === undefined;
     const element = event.currentTarget;
     const pointerId = event.pointerId;
     element.setPointerCapture(pointerId);
@@ -60,12 +63,15 @@ export function usePointerGesture() {
     });
     owned.current = seq;
     const move = (e: PointerEvent) => {
-      if (e.pointerId === pointerId) controller.updateGesture(seq, preview({ x: e.clientX, y: e.clientY }));
+      if (e.pointerId !== pointerId) return;
+      const distance = how.activationDistance ?? 0;
+      if ((e.clientX - start.x) ** 2 + (e.clientY - start.y) ** 2 > distance ** 2) activated = true;
+      controller.updateGesture(seq, preview({ x: e.clientX, y: e.clientY }));
     };
     const up = (e: PointerEvent) => {
       if (e.pointerId !== pointerId) return;
       move(e);
-      controller.endGesture(seq, "drop");
+      controller.endGesture(seq, activated ? "drop" : "cancel");
     };
     const cancel = (e: PointerEvent) => {
       if (e.pointerId === pointerId) controller.endGesture(seq, "cancel");

@@ -56,6 +56,7 @@ type Saved = {
     sourceSide?: string;
     targetSide?: string;
   }[];
+  annotations?: { id: string; kind: string; text: string }[];
 };
 
 async function seed(page: Page, diagram = SEED) {
@@ -445,12 +446,14 @@ test.describe("edges: reconnect and insert (D8)", () => {
     consoleErrors,
   }) => {
     await expect(page.getByTestId(/^reconnect-/)).toHaveCount(0);
-    // Keep a genuine body drop clear of the dots' zoom-aware snap zones.
-    await page.setViewportSize({ width: 1920, height: 1080 });
+    // Prepare a body drop outside the dots' snap zones at the standard viewport.
     await page.getByTestId("edge-label-api-db").click();
     await waitForSelectionSettled(page);
     await page.getByTestId("canvas-wrap").focus();
     await page.keyboard.press("Shift+Digit2");
+    await waitForCameraIdle(page);
+    await waitForStableViewport(page);
+    await page.keyboard.press("Shift+Digit0");
     await waitForCameraIdle(page);
     await waitForStableViewport(page);
     const end = page.getByTestId("reconnect-api-db-target");
@@ -1120,6 +1123,108 @@ test.describe("attach to a dot", () => {
     await fitDiagram(page);
     await waitForCameraIdle(page);
     await expect(page.getByTestId("reconnect-api-db-target")).toBeVisible();
+  }
+
+  test("nearest grow handle keeps preview and commit consistent", async ({ page }) => {
+    await open(page);
+    await page.getByTestId("node-db").click();
+    await waitForSelectionSettled(page);
+    await fitDiagram(page);
+    await waitForCameraIdle(page);
+    await page.getByTestId("zoom-out-button").click();
+    await waitForStableViewport(page);
+    const chip = page.getByTestId("grow-chip-db");
+    await expect(chip).toHaveAttribute("data-side", "right");
+    const dotBox = await box(page.getByTestId("handle-db-right"));
+    const growBox = await box(chip);
+    const dot = centre(dotBox);
+    const grow = centre(growBox);
+    const at = { x: dot.x + 14, y: dot.y + 12 };
+    expect(at.y).toBeGreaterThan(Math.max(dotBox.y + dotBox.height, growBox.y + growBox.height));
+    expect(Math.hypot(at.x - grow.x, at.y - grow.y)).toBeLessThan(Math.hypot(at.x - dot.x, at.y - dot.y));
+    const from = centre(await box(page.getByTestId("handle-api-bottom")));
+    await page.mouse.move(from.x, from.y);
+    await page.mouse.down();
+    await page.mouse.move(at.x, at.y, { steps: 12 });
+    await expect(page.getByTestId("handle-db-right")).toHaveClass(/is-connect-port/);
+    const far = { x: grow.x + 14, y: grow.y + 12 };
+    await page.mouse.move(far.x, far.y, { steps: 4 });
+    await expect(page.getByTestId("connection-line")).toHaveAttribute("data-over", "canvas");
+    await expect(page.getByTestId("connection-add")).toBeVisible();
+    const plus = await page.getByTestId("connection-add").evaluate((el) => {
+      const matrix = (el as unknown as SVGGraphicsElement).getScreenCTM();
+      if (!matrix) throw new Error("Missing plus transform");
+      const point = new DOMPoint(0, 0).matrixTransform(matrix);
+      return { x: point.x, y: point.y };
+    });
+    expect(Math.hypot(plus.x - far.x, plus.y - far.y)).toBeLessThanOrEqual(2);
+    await page.mouse.move(at.x, at.y, { steps: 4 });
+    await expect(page.getByTestId("handle-db-right")).toHaveClass(/is-connect-port/);
+    const lineEnd = await page.getByTestId("connection-line").evaluate((el) => {
+      const path = [...el.children].find((child) => child instanceof SVGPathElement);
+      if (!(path instanceof SVGPathElement)) throw new Error("Missing connection path");
+      const matrix = path.getScreenCTM();
+      if (!matrix) throw new Error("Missing connection transform");
+      const p = path.getPointAtLength(path.getTotalLength());
+      const end = new DOMPoint(p.x, p.y).matrixTransform(matrix);
+      return { x: end.x, y: end.y };
+    });
+    const highlighted = centre(await box(page.getByTestId("handle-db-right")));
+    expect(Math.hypot(lineEnd.x - highlighted.x, lineEnd.y - highlighted.y)).toBeLessThanOrEqual(2);
+    await page.mouse.up();
+    const d = await savedWhen(page, (s) => s.edges.length === 1);
+    expect(d.edges[0]).toMatchObject({ from: "api", to: "db", sourceSide: "bottom", targetSide: "right" });
+    await undoUntil(page, (s) => s.edges.length === 0, 1);
+  });
+
+  for (const movement of [0, 2]) {
+    test(`a same-node reconnect requires drag activation (${movement}px movement)`, async ({ page }) => {
+      await open(page, SEED.edges);
+      await selectEnd(page);
+      const end = centre(await box(page.getByTestId("reconnect-api-db-target")));
+      await page.mouse.move(end.x, end.y);
+      await page.mouse.down();
+      if (movement) await page.mouse.move(end.x + movement, end.y, { steps: 2 });
+      await page.mouse.up();
+      await expect(page.getByTestId("reconnect-line")).toHaveCount(0);
+      await expect(page.getByTestId("undo-button")).toBeDisabled();
+      expect((await saved(page)).edges).toEqual(SEED.edges);
+    });
+  }
+
+  for (const pick of ["stencil", "shape"] as const) {
+    test(`empty-canvas quick-add retains the starting dot: ${pick}`, async ({ page }) => {
+      await open(page);
+      const from = centre(await box(page.getByTestId("handle-api-bottom")));
+      const pane = await box(page.getByTestId("canvas-wrap"));
+      const at = { x: from.x + 60, y: Math.min(from.y + 70, pane.y + pane.height - 105) };
+      await page.mouse.move(from.x, from.y);
+      await page.mouse.down();
+      await page.mouse.move(at.x, at.y, { steps: 12 });
+      await expect(page.getByTestId("connection-add")).toBeVisible();
+      await page.mouse.up();
+      await expect(page.getByTestId("quick-add")).toBeVisible();
+      await page.keyboard.type(pick === "stencil" ? "redis cache" : "ellipse");
+      await page.keyboard.press("Enter");
+      await expect(page.getByTestId(pick === "shape" ? "annotation-editor" : "inspector-field-label")).toBeFocused();
+      await page.keyboard.type("Review target");
+      await page.keyboard.press(pick === "shape" ? `${MOD}+Enter` : "Enter");
+      const d = await savedWhen(
+        page,
+        (s) =>
+          s.edges.length === 1 &&
+          (pick === "shape"
+            ? s.annotations?.some((a) => a.text === "Review target") === true
+            : s.nodes.some((n) => n.label === "Review target")),
+      );
+      expect(d.edges[0].sourceSide).toBe("bottom");
+      expect(d.edges[0].targetSide).toBeUndefined();
+      await undoUntil(
+        page,
+        (s) => s.edges.length === 0 && s.nodes.length === 3 && (s.annotations?.length ?? 0) === 0,
+        1,
+      );
+    });
   }
 
   test("bottom to top pins both ends, starts at the dot and undoes once", async ({ page }) => {

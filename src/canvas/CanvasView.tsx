@@ -1,4 +1,4 @@
-import { connectionRadius } from "./gestures";
+import { ConnectionRadius } from "./interaction/ConnectionRadius";
 import { gestureTargetRemoved } from "./interaction/gestures";
 import { useShapeResize } from "./shapes/useShapeResize";
 import { preloadMarkdown } from "../components/markdown/lazy";
@@ -56,7 +56,6 @@ import {
   useNodesState,
   useReactFlow,
   useStoreApi,
-  useStore,
   type NodeMouseHandler,
   type NodeTypes,
   type EdgeTypes,
@@ -235,7 +234,6 @@ function CanvasInner({
   const { theme, nodeVariant, edgeStyle } = useSettings();
   const { screenToFlowPosition, getNode, getNodes } = useReactFlow<FlowNode, DiagramFlowEdge>();
   const store = useStoreApi<FlowNode, DiagramFlowEdge>();
-  const connectRadius = useStore((s) => connectionRadius(s.transform[2]));
   const wrapper = useRef<HTMLDivElement>(null);
   useNoCanvasTextSelection(wrapper);
   /** The pointer over the canvas (client coords), for "T adds text here" and Ctrl+V. */
@@ -743,17 +741,18 @@ function CanvasInner({
     grow.current = (from, toward, clone) => (clone ? cloneTo(from, toward) : growTo(from, toward));
   });
 
-  const [annotationKindOf, onConnectStart, onConnectEnd, onConnect, onClickConnectEnd] = useConnectionPlacement(
-    getNode,
-    hideTip,
-    wrapper,
-    !editGestures,
-    live,
-    editor,
-    screenToFlowPosition,
-    pickNamed,
-    interaction,
-  );
+  const [annotationKindOf, onConnectStart, onConnectEnd, onConnect, onClickConnectEnd, onClickConnectStart] =
+    useConnectionPlacement(
+      getNode,
+      hideTip,
+      wrapper,
+      !editGestures,
+      live,
+      editor,
+      screenToFlowPosition,
+      pickNamed,
+      interaction,
+    );
 
   const { contain: containRef, boxBase: boxBaseRef } = useBoxSelection({
     editGestures,
@@ -967,6 +966,10 @@ function CanvasInner({
     setOpenedByHand((o) => ({ ...o, palette: paletteHidden }));
   }, [paletteHidden]);
   const addFromPalette = useAddFromPalette(editor, live, interaction);
+  const viewerDiagram = useMemo(
+    () => (readOnly ? fromFlow(meta, nodes, edges) : undefined),
+    [readOnly, meta, nodes, edges],
+  );
   const anchorLabel = useMemo(() => {
     if (selectedNodes.length + selectedAnnotations.length + selectedGroups.length + selectedEdges.length !== 1)
       return undefined;
@@ -1109,12 +1112,11 @@ function CanvasInner({
                 onConnect={onConnect}
                 onConnectStart={onConnectStart}
                 onConnectEnd={onConnectEnd}
-                onClickConnectStart={onConnectStart}
+                onClickConnectStart={onClickConnectStart}
                 onClickConnectEnd={onClickConnectEnd}
                 connectionLineComponent={ConnectionLine}
                 isValidConnection={isValidConnection}
                 connectionMode={ConnectionMode.Loose}
-                connectionRadius={connectRadius}
                 onEdgeDoubleClick={readOnly ? undefined : onEdgeDoubleClick}
                 // Every drag, the selection's frame included (see onNodeDragStart).
                 onNodeDragStart={onNodeDragStart}
@@ -1168,6 +1170,7 @@ function CanvasInner({
                 }
               >
                 <ZoomVar host={wrapper} />
+                {!readOnly && <ConnectionRadius />}
                 {prefs.grid && <DotGrid />}
                 {editGestures && (
                   <svg ref={guideLayer} className="smart-guides" data-testid="smart-guides" aria-hidden />
@@ -1191,7 +1194,7 @@ function CanvasInner({
                     initial={viewer?.live}
                     onHandle={receiveLiveHandle}
                     editor={readOnly ? undefined : editor}
-                    diagram={readOnly ? fromFlow(meta, nodes, edges) : undefined}
+                    diagram={viewerDiagram}
                     presenting={presenting}
                     simulations={meta.simulations}
                     planning={meta.planning}

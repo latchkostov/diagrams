@@ -1,4 +1,4 @@
-import { useCallback, useEffect, type RefObject } from "react";
+import { useCallback, useEffect, useRef, type RefObject } from "react";
 import { useReactFlow, useStoreApi } from "@xyflow/react";
 import type { Connection, OnConnectEnd, OnConnectStart, ReactFlowInstance } from "@xyflow/react";
 import type { EditorApi, NewNode } from "../../editor/types";
@@ -25,6 +25,7 @@ export function useConnectionPlacement(
 ) {
   const store = useStoreApi<FlowNode, DiagramFlowEdge>();
   const flow = useReactFlow<FlowNode, DiagramFlowEdge>();
+  const clickConnect = useRef(false);
   // ---------------------------------------------------------------- connecting (D1, D2)
   // While a connection is drawn: a crosshair throughout, the node a drop would connect to lit up (a
   // drop anywhere on it connects), not-allowed over things that take no edges, and a "+" at the end
@@ -46,12 +47,13 @@ export function useConnectionPlacement(
   const onConnectStart: OnConnectStart = useCallback(
     (event, { nodeId, handleId }) => {
       if (!nodeId) return;
+      clickConnect.current = false;
       hideTip();
       const wrap = wrapper.current;
       const marks = connectionMarks(wrap);
       const fromSide = portSide(handleId);
       const preview = (screen: { x: number; y: number }): GesturePreview => {
-        const { target: t } = connectionTargetAt(
+        const { target: t, at } = connectionTargetAt(
           screen,
           nodeId,
           flow,
@@ -66,6 +68,7 @@ export function useConnectionPlacement(
           over: t.kind === "node" ? { node: t.id, side: t.side } : null,
           target: t.kind,
           screen,
+          at,
         };
       };
       const seq = menus.beginGesture(
@@ -136,6 +139,8 @@ export function useConnectionPlacement(
   );
   const onConnect = useCallback(
     (c: Connection) => {
+      // Clicks name an explicit handle; pointer drops resolve in onConnectEnd, exactly as their preview.
+      if (!clickConnect.current) return;
       const gesture = menus.gesture;
       if (gesture?.preview.kind !== "connect" || gesture.preview.from !== c.source) return;
       menus.updateGesture(gesture.seq, {
@@ -150,20 +155,16 @@ export function useConnectionPlacement(
     [menus],
   );
   const onConnectEnd: OnConnectEnd = useCallback(
-    (event, state) => {
+    (event) => {
       const gesture = menus.gesture;
       if (gesture?.preview.kind !== "connect") return;
-      if (state.isValid) {
-        menus.endGesture(gesture.seq, "cancel");
-        return;
-      }
       const pt = "changedTouches" in event ? event.changedTouches[0] : event;
       if (!pt) {
         menus.endGesture(gesture.seq, "cancel");
         return;
       }
       const screen = { x: pt.clientX, y: pt.clientY };
-      const { target: t } = connectionTargetAt(
+      const { target: t, at } = connectionTargetAt(
         screen,
         gesture.preview.from,
         flow,
@@ -175,14 +176,22 @@ export function useConnectionPlacement(
         over: t.kind === "node" ? { node: t.id, side: t.side } : null,
         target: t.kind,
         screen,
+        at,
       });
       menus.endGesture(gesture.seq, "drop");
     },
     [menus, annotationKindOf, flow, store],
   );
+  const onClickConnectStart: OnConnectStart = useCallback(
+    (event, params) => {
+      onConnectStart(event, params);
+      clickConnect.current = true;
+    },
+    [onConnectStart],
+  );
   const onClickConnectEnd: OnConnectEnd = useCallback(() => {
     const gesture = menus.gesture;
     if (gesture?.kind === "connect") menus.endGesture(gesture.seq, "cancel");
   }, [menus]);
-  return [annotationKindOf, onConnectStart, onConnectEnd, onConnect, onClickConnectEnd] as const;
+  return [annotationKindOf, onConnectStart, onConnectEnd, onConnect, onClickConnectEnd, onClickConnectStart] as const;
 }
