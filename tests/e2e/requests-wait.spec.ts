@@ -1,3 +1,4 @@
+import { openLiveNodeDetails } from "./fixtures";
 import { cloudLesson, resourceLesson } from "../../src/model/autoscaling";
 import { waitingFixture } from "../../src/lab/waitingFixture";
 import {
@@ -91,6 +92,7 @@ test("the caller meter and hover explain held threads and their throughput ceili
   await expect(meter).toHaveAttribute("aria-valuenow", "4");
   await expect(page.getByTestId("call-pill-call")).toContainText("held");
   await page.getByTestId("node-caller").hover();
+  await openLiveNodeDetails(page, "caller", "threads");
   await expect(page.getByTestId("thread-detail-caller")).toContainText("4 waiting on Partner scoring API");
   await expect(page.getByTestId("thread-ceiling")).toBeVisible();
   await expect(page.getByTestId("thread-ceiling")).toContainText("15.4 req/s = 4 threads ÷ 0.26 s");
@@ -162,6 +164,7 @@ test("a freed call shows its in-flight meter, pill and continuation ceiling", as
   await expect(page.getByTestId("call-pill-call")).toContainText("↗");
   await expect(page.getByTestId("call-pill-call")).toContainText("in flight");
   await page.getByTestId("node-caller").hover();
+  await openLiveNodeDetails(page, "caller", "threads");
   await expect(page.getByTestId("thread-ceiling")).toContainText("200 req/s");
   await expect(page.getByTestId("thread-ceiling")).toContainText("10 ms work + 10 ms reply handling");
   await page.clock.runFor(200);

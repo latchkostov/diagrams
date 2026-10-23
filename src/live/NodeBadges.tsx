@@ -3,12 +3,13 @@ import { profileOf } from "../stencils/profiles";
 import { ThreadMeter, CallPills } from "./lazyWaitingVisuals";
 import { nodeFaultLabels } from "../model/faultWords";
 import { useInteraction } from "../canvas/interaction";
+import { createReadoutLayer } from "../canvas/interaction/readoutLayer";
 import { compileTopology } from "../sim/topology";
 import { brokerAssignments } from "../sim/brokerAssignments";
 import { resolveMultiplier } from "../sim/units";
 import type { BrokerSpec } from "../model/brokers";
 import { t, useLocale } from "../i18n";
-import { memo, useEffect, useMemo, useState, type CSSProperties } from "react";
+import { memo, useEffect, useLayoutEffect, useMemo, useState, useSyncExternalStore, type CSSProperties } from "react";
 import { useNodes, useStore } from "@xyflow/react";
 import type { DiagramFile, SimRole } from "../model/types";
 import type { NodeSimState } from "../sim/types";
@@ -23,12 +24,15 @@ import type { CapacityView, NodeHeat } from "./capacityModel";
 import { CapacityChip, CapacityRing, IdleChip } from "./CapacityLayer";
 import { HA_LABEL } from "../stencils/netDevices";
 import { latencyLabel, latencySampling } from "./latencyFormat";
+import { simulationEdges } from "../sim/simulationEdges";
 import { callPolicy } from "../sim/callPolicy";
 import type { EdgeSimProps } from "../sim/types";
 
 import { lazyComponent } from "../lib/lazyLoad";
 
 const NodeDetails = lazyComponent(() => import("./NodeDetails").then((m) => m.NodeDetails));
+
+const EdgeDetails = lazyComponent(() => import("./NodeDetails").then((m) => m.EdgeDetails));
 
 const BROKERS: ReadonlySet<SimRole> = new Set(["topic", "queue", "stream"]);
 
@@ -53,7 +57,7 @@ export function NodeBadges({
   const faults = state.snapshot.faults;
   const labels = nodeFaultLabels(faults);
   const nodes = useNodes<FlowNode>();
-  const diagram = ui.controller.currentDiagram;
+  const diagram = simulationEdges(ui.controller.currentDiagram, state.running ?? undefined);
   const names = useMemo(() => new Map(diagram.nodes.map((n) => [n.id, n.label || n.id])), [diagram]);
   const topology = useMemo(() => compileTopology(diagram), [diagram]);
   const assignmentMultiplier = resolveMultiplier(state.inputs.capacity ?? state.running?.multipliers?.capacity);
@@ -65,7 +69,7 @@ export function NodeBadges({
   // focus in the editor would otherwise count as hovering its node.
   const { editing } = useDiagram();
   const pointed = useHoveredNode();
-  const hovered = editing ? null : pointed;
+  const hovered = !editing && pointed?.kind === "node" ? pointed.id : null;
   // Badges live in flow space; counter-scale them when zoomed out so they stay readable.
   const zoom = useStore((s) => s.transform[2]);
   const inputs = [state, nodes, ui, hovered, zoom, presenting];
@@ -95,8 +99,8 @@ export function NodeBadges({
       !(calls.held || calls.inFlight || calls.timedOut || (calls.windowRetried ?? 0) >= 10 || queued)
     )
       return [];
-    const override = state.running?.setup?.edges?.[e.id]?.caller;
-    const policy = callPolicy("", { ...(e.props?.caller as EdgeSimProps["caller"]), ...override });
+    // Pills only read the pool; source wait semantics are already measured by held/inFlight.
+    const policy = callPolicy("", e.props?.caller as EdgeSimProps["caller"]);
     return [
       {
         id: e.id,
@@ -114,6 +118,16 @@ export function NodeBadges({
       className={`lv-badges${presenting ? " is-presenting" : ""}`}
       style={{ "--inv": inv.toFixed(3) } as CSSProperties}
     >
+      {!editing && pointed?.kind === "edge" && (
+        <EdgeDetails
+          key={pointed.id}
+          diagram={diagram}
+          topology={topology}
+          state={state}
+          id={pointed.id}
+          pinned={pointed.pinned}
+        />
+      )}
       {activeCalls.length > 0 && <CallPills calls={activeCalls} readoutScale={inv} presenting={presenting} />}
       {nodes.map((n) => {
         if (n.type !== "diagram") return null;
@@ -137,6 +151,7 @@ export function NodeBadges({
             properties={ui.canEdit && !presenting}
             peak={peak}
             hovered={hovered === n.id}
+            pinned={pointed?.pinned ?? false}
             cap={capacity?.nodes[n.id]}
             assignment={assignments.consumers.get(n.id)?.spec}
             brokerSpec={assignments.brokers.get(n.id)}
@@ -159,72 +174,73 @@ export function NodeBadges({
  * The diagram node under the pointer, or the focused one (the badge layer itself ignores the pointer).
  * Whichever moved last wins: a node focused after its label edit doesn't hide the one hovered next.
  */
-function useHoveredNode(): string | null {
+const noInteraction = () => () => {};
+function useHoveredNode() {
   const interaction = useInteraction();
   const domNode = useStore((s) => s.domNode);
-  const [id, setId] = useState<string | null>(null);
-  const [focused, setFocused] = useState<string | null>(null);
-  const [pointerLast, setPointerLast] = useState(false);
+  // Live's readout layer (src/canvas/interaction/readoutLayer.ts), attached to the canvas's controller while shown.
+  const [readouts] = useState(() => (interaction ? createReadoutLayer(interaction) : null));
+  useLayoutEffect(
+    () => (interaction && readouts ? interaction.attachReadouts(readouts) : undefined),
+    [interaction, readouts],
+  );
+  // Its own subscription: hovering re-renders this layer, never the canvas root.
+  const pointed = useSyncExternalStore(
+    readouts?.subscribe ?? noInteraction,
+    () => readouts?.get() ?? null,
+    () => null,
+  );
   useEffect(() => {
-    if (!domNode) return;
-    const nodeAt = (target: Element | null) => {
-      const detail = target?.closest<HTMLElement>("[data-live-node-detail]");
-      return (
-        detail?.dataset.liveNodeDetail ??
-        target?.closest<HTMLElement>(".react-flow__node-diagram[data-id]")?.dataset.id ??
-        null
-      );
+    if (!domNode || !readouts) return;
+    const itemAt = (el: Element | null) => {
+      const card = el?.closest<HTMLElement>("[data-live-readout]");
+      if (card) return { kind: card.dataset.liveReadout as "node" | "edge", id: card.dataset.item! };
+      if (!el || !domNode.contains(el)) return null;
+      const pill = el.closest<HTMLElement>("[data-call-edge]");
+      if (pill) return { kind: "edge" as const, id: pill.dataset.callEdge! };
+      const node = el.closest<HTMLElement>(".react-flow__node-diagram[data-id]");
+      if (node) return { kind: "node" as const, id: node.dataset.id! };
+      const edge = el.closest<HTMLElement>(".react-flow__edge[data-id]");
+      return edge ? { kind: "edge" as const, id: edge.dataset.id! } : null;
     };
-    const over = (e: PointerEvent) => {
-      const node = nodeAt(e.target instanceof Element ? e.target : null);
-      // Latency details stay open across the gap to their scrollable surface.
-      if (node || !domNode.querySelector("[data-live-node-detail].is-summary")) setId(node);
-      setPointerLast(true);
-    };
-    const leave = () => setId(null);
-    const focus = () => {
-      setFocused(nodeAt(document.activeElement));
-      setPointerLast(false);
-    };
-    const down = (e: PointerEvent) => {
-      if (!nodeAt(e.target instanceof Element ? e.target : null)) setId(null);
-    };
-    const key = (e: KeyboardEvent) => {
-      if (e.key !== "Tab") return;
-      const active = document.activeElement;
-      if (e.shiftKey && active?.hasAttribute("data-live-node-detail")) {
-        const card = domNode.querySelector<HTMLElement>(`[data-testid="node-${CSS.escape(nodeAt(active)!)}"]`);
-        const target = card?.parentElement;
-        if (target?.hasAttribute("tabindex")) {
-          e.preventDefault();
-          interaction?.dispatch({ type: "node.details", target });
+    const point = (e: PointerEvent) => {
+      const target = itemAt(e.target instanceof Element ? e.target : null);
+      if (!target) {
+        const open = readouts.get();
+        const card = document.querySelector<HTMLElement>("[data-live-readout]");
+        const anchor =
+          open && domNode.querySelector<HTMLElement>(`[data-testid="${open.kind}-${CSS.escape(open.id)}"]`);
+        // A geometric bridge makes the card clickable without a timer or a hover race.
+        if (card && anchor) {
+          const a = anchor.getBoundingClientRect(),
+            b = card.getBoundingClientRect();
+          if (
+            e.clientX >= Math.min(a.left, b.left) &&
+            e.clientX <= Math.max(a.right, b.right) &&
+            e.clientY >= Math.min(a.top, b.top) &&
+            e.clientY <= Math.max(a.bottom, b.bottom)
+          )
+            return;
         }
-        return;
       }
-      if (e.shiftKey) return;
-      if (!active?.matches(".react-flow__node-diagram[data-id]")) return;
-      const detail = document.getElementById(`live-node-detail-${encodeURIComponent(nodeAt(active)!)}`);
-      if (!detail?.hasAttribute("data-live-node-detail")) return;
-      e.preventDefault();
-      interaction?.dispatch({ type: "node.details", target: detail });
+      readouts.point(target ?? itemAt(document.activeElement));
     };
-    focus();
-    domNode.addEventListener("pointerover", over);
-    domNode.addEventListener("pointerleave", leave);
-    domNode.addEventListener("pointerdown", down);
-    domNode.addEventListener("keydown", key);
-    domNode.addEventListener("focusin", focus);
-    domNode.addEventListener("focusout", focus);
+    const focus = (e: FocusEvent) => readouts.point(itemAt(e.target instanceof Element ? e.target : null));
+    const down = (e: PointerEvent) => {
+      const el = e.target instanceof Element ? e.target : null;
+      if (!el?.closest("[data-live-readout]")) readouts.close("outside");
+    };
+    document.addEventListener("pointermove", point);
+    document.addEventListener("focusin", focus);
+    document.addEventListener("pointerdown", down, true);
     return () => {
-      domNode.removeEventListener("pointerover", over);
-      domNode.removeEventListener("pointerleave", leave);
-      domNode.removeEventListener("pointerdown", down);
-      domNode.removeEventListener("keydown", key);
-      domNode.removeEventListener("focusin", focus);
-      domNode.removeEventListener("focusout", focus);
+      document.removeEventListener("pointermove", point);
+      document.removeEventListener("focusin", focus);
+      document.removeEventListener("pointerdown", down, true);
+      readouts.close("unmount");
     };
-  }, [domNode, interaction]);
-  return pointerLast ? (id ?? focused) : (focused ?? id);
+  }, [domNode, readouts]);
+  return pointed;
 }
 
 /** Consumer-group name → who consumes it, for the lag breakdown. */
@@ -249,6 +265,7 @@ export interface BadgeProps {
   s: NodeSimState;
   peak: number;
   hovered: boolean;
+  pinned: boolean;
   concurrency: number;
   /** A network device in a pair or cluster: how its units work ("Active-standby pair"). */
   units?: string;

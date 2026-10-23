@@ -1,5 +1,5 @@
 import { stencilLabel, stencilDescription } from "../i18n/stencils";
-import { useLocale } from "../i18n";
+import { t, useLocale } from "../i18n";
 import { getStencil } from "../stencils/registry";
 import { useSyncExternalStore, useRef, useLayoutEffect, type RefObject } from "react";
 import { MarkdownView } from "../components/markdown/lazy";
@@ -51,9 +51,17 @@ export function NodeTooltip({ tip }: { tip: NodeTip }) {
       role="tooltip"
       data-testid="node-tooltip"
     >
-      <strong>{tip.label}</strong>
+      <div className="node-tip-header">
+        <span className="node-tip-icon" aria-hidden>
+          ▤
+        </span>
+        <span>
+          <strong>{tip.label}</strong>
+          <span className="node-tip-kind">{stencilLabel(stencil)}</span>
+        </span>
+        <small>{t("hover.editing")}</small>
+      </div>
       {tip.sublabel && <span className="node-tip-sub mono">{tip.sublabel}</span>}
-      <span className="node-tip-kind">{stencilLabel(stencil)}</span>
       {stencil.description && <span className="node-tip-desc">{stencilDescription(stencil)}</span>}
       {hasDoc && (
         <div className="node-tip-doc" data-testid="node-tooltip-doc">

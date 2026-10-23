@@ -114,6 +114,11 @@ export function createDomPort(canvas: DomCanvas): InteractionPort {
         const el = document.querySelector(`[${PANEL_OPENER_ATTR}]`);
         return el ? { state: "ready", el } : { state: "gone" };
       }
+      case "readout": {
+        // Shown means placed: a card with no free slot is hidden rather than covering an action.
+        const el = document.querySelector(`[data-live-readout="${target.item}"][data-item="${CSS.escape(target.id)}"]`);
+        return el && shown(el) ? { state: "ready", el } : { state: "gone" };
+      }
       case "panelField": {
         // The panel lists the field once its session catches up (a commit, see the panel's rendered()).
         const panel = document.querySelector(`[data-testid="${CSS.escape(target.panel)}"]`);

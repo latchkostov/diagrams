@@ -14,6 +14,14 @@ const ESC_OWNERS = [
   '[data-testid="sim-panel"]',
   '[data-testid="capacity-panel"]',
 ].join(",");
+/**
+ * The focused control's own open tooltip (a node's dependency list, named by its aria-describedby) closes on its Esc
+ * first. Live readouts are the readout level, not a tooltip owner.
+ */
+const ownTooltipOpen = (t: Element) =>
+  (t.getAttribute("aria-describedby") ?? "")
+    .split(/\s+/)
+    .some((id) => !!id && !!document.getElementById(id)?.matches('[role="tooltip"]:not([data-live-readout])'));
 /** A selection is cleared before Esc backs out of a trace or live view. */
 const SELECTED = ".react-flow__node.selected, .react-flow__edge.selected";
 
@@ -29,7 +37,7 @@ export function useLiveKeyboard({
   session: LiveSessionState;
   spotlight: TraceSpotlight;
   /** The canvas's interaction controller: it decides which level takes the key (liveKeys.ts) and journals it. */
-  interaction: Pick<InteractionController, "liveKey">;
+  interaction: Pick<InteractionController, "liveKey" | "readouts">;
 }) {
   const { controller, traceRef, setTrace } = session;
   const { slowRef } = spotlight;
@@ -50,10 +58,27 @@ export function useLiveKeyboard({
               : null;
       if (!key) return;
       const t = e.target;
+      const readouts = interaction.readouts;
+      const reading = readouts?.get();
+      const item =
+        t instanceof Element
+          ? t.closest<HTMLElement>(".react-flow__node-diagram[data-id], .react-flow__edge[data-id]")
+          : null;
+      // A focused, unpinned summary card (Tab reaches it from its item): Enter pins it, as a click does.
+      const card = t instanceof Element ? t.closest<HTMLElement>("[data-live-readout]") : null;
+      const summary =
+        key === "enter" && !!card && t === card && !!card.dataset.liveReadout && card.dataset.pinned !== "true";
+      const control =
+        t instanceof Element &&
+        !summary &&
+        !!t.closest(
+          'button, select, a, [data-editor-overlay], [data-canvas-reading-region], [role="separator"], [role="button"], summary',
+        );
       const selection = !!document.querySelector(SELECTED);
       // Slow motion has its own keys (useSlowMotion): Space, ← →, and Esc back to live.
       const slowing = !!slowRef.current?.session.active && (key === "escape" || e.key === " ");
       const state = controller.getState();
+      const canName = !!editor && !presenting && !state.run?.waiting;
       const action = interaction.liveKey({
         key,
         repeat: e.repeat,
@@ -61,10 +86,10 @@ export function useLiveKeyboard({
         // A recording owns Esc (it stops the recording, see Recorder).
         recording: key === "escape" && isRecordingActive(),
         editable: isEditableTarget(t),
-        control:
-          t instanceof Element &&
-          !!t.closest('button, select, a, [data-editor-overlay], [data-canvas-reading-region], [role="separator"]'),
-        owner: !!document.querySelector(ESC_OWNERS),
+        control,
+        readout: !!reading,
+        readoutTarget: summary || (!!item && t === item && !(canName && item.classList.contains("selected"))),
+        owner: !!document.querySelector(ESC_OWNERS) || (key === "escape" && t instanceof Element && ownTooltipOpen(t)),
         selection,
         // The canvas clears its selection when it has focus; otherwise live view clears it (no dead end).
         canvasFocus: inCanvas(t) && !(t instanceof Element && t.closest('[data-testid="trace-card"]')),
@@ -75,6 +100,21 @@ export function useLiveKeyboard({
         waiting: !!state.run?.waiting,
       });
       switch (action) {
+        case "close-readout":
+          e.preventDefault();
+          e.stopImmediatePropagation();
+          readouts?.close("escape");
+          return;
+        case "pin-readout":
+          if (!summary && !item) return;
+          e.preventDefault();
+          e.stopImmediatePropagation();
+          readouts?.pin(
+            summary
+              ? { kind: card!.dataset.liveReadout === "edge" ? "edge" : "node", id: card!.dataset.item! }
+              : { kind: item!.classList.contains("react-flow__edge") ? "edge" : "node", id: item!.dataset.id! },
+          );
+          return;
         case "selection":
           editor?.clearSelection();
           return;

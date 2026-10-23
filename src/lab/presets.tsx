@@ -713,6 +713,45 @@ const livePresets: Preset[] = [
   },
   {
     kind: "render",
+    id: "hover-cards",
+    title: t("hover.labTitle"),
+    group: "Simulation",
+    description: t("hover.labDescription"),
+    controls: [
+      {
+        type: "select",
+        key: "case",
+        label: t("hover.details"),
+        default: "blocking-call",
+        options: [
+          { value: "where-the-time-goes", label: t("hover.healthy") },
+          { value: "blocking-call", label: t("hover.threads") },
+          { value: "kafka-order-pipeline", label: t("hover.groups") },
+          { value: "retry-storm", label: t("hover.retries") },
+        ],
+      },
+      livePresent,
+    ],
+    render: (v) => {
+      const slug = String(v.case);
+      const simulation: Record<string, string> = {
+        "where-the-time-goes": "billing-spike",
+        "blocking-call": "blocking",
+        "kafka-order-pipeline": "payments-outage",
+        "retry-storm": "three-quick-retries",
+      };
+      return (
+        <LiveLabStage
+          key={slug}
+          diagram={exampleDiagram(slug)}
+          presenting={!!v.livepresent}
+          initial={{ sim: simulation[slug], seekMs: slug === "kafka-order-pipeline" ? 6000 : 10000, paused: true }}
+        />
+      );
+    },
+  },
+  {
+    kind: "render",
     id: "live-badge-states",
     title: "Live: badge states",
     group: "Simulation",

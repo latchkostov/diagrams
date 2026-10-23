@@ -2,6 +2,7 @@ import { expect, it, vi } from "vitest";
 import { createInteractionController, type InteractionPort } from "./interaction/controller";
 import type { InteractionController } from "./interaction";
 import type { TypeAhead } from "./typeAhead";
+import { PanelUnavailable } from "./Inspector";
 
 // Unit tests run without a DOM renderer: the marker is called as it mounts, its layout effect runs then, and it reads
 // this controller from context. Nothing else commits, so only the marker can wake a parked request.
@@ -15,8 +16,8 @@ vi.mock("./interaction/useInteraction", async (original) => ({
   useInteraction: () => context.controller,
 }));
 
-it("a failed panel's marker ends a pending rename as it mounts, without a commit of the sheet", async () => {
-  const { PanelUnavailable } = await import("./Inspector");
+// Mocks are hoisted above the imports: the Inspector module loads with them, before any test's time runs.
+it("a failed panel's marker ends a pending rename as it mounts, without a commit of the sheet", () => {
   let failed = false;
   let holding = false;
   const port: InteractionPort = {

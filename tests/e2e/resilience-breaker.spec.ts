@@ -9,6 +9,7 @@ import {
   STORAGE_KEYS,
   waitForCameraIdle,
   expectNoErrors,
+  openLiveNodeDetails,
 } from "./fixtures";
 
 async function open(page: Page, simulation = false) {
@@ -73,9 +74,11 @@ test("an open breaker uses the existing call pill and Calls hover", async ({ pag
   await page.clock.runFor(500);
   await page.getByTestId("live-play").click();
   await expect(page.getByTestId("call-pill-call")).toContainText("● Open");
-  await page.getByTestId("node-caller").hover();
+  // The Calls readout is disclosed by pinning the caller's card and opening its Threads & calls section.
+  await openLiveNodeDetails(page, "caller", "threads");
   await expect(page.getByTestId("calls-breaker-call")).toContainText("Open");
-  await expect(page.getByTestId("call-pill-call")).toHaveAttribute("title", /503/);
+  // The pill explains the 503 through its accessible name (it has no title tooltip).
+  await expect(page.getByTestId("call-pill-call")).toHaveAccessibleName(/503/);
   expectNoErrors(consoleErrors);
 });
 
