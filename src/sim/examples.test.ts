@@ -9,7 +9,7 @@ const examples = import.meta.glob<DiagramFile>("../examples/*.json", { eager: tr
 /** Most examples tell two stories; these tell more. */
 const SIMULATIONS: Record<string, number> = {
   "../examples/slow-payment-provider.json": 5,
-  "../examples/retry-storm.json": 3,
+  "../examples/retry-storm.json": 4,
   "../examples/scale-on-busy-threads.json": 3,
   "../examples/where-the-time-goes.json": 3,
   "../examples/aws-serverless-orders.json": 3,
@@ -67,7 +67,8 @@ describe("saved example simulations with the real stencil registry", () => {
           (simulation.expectations ?? []).map((e) => ({
             id: e.id,
             status:
-              (path === "../examples/retry-storm.json" && simulation.id !== "retry-budget") ||
+              (path === "../examples/retry-storm.json" &&
+                ["three-quick-retries", "jittered-backoff"].includes(simulation.id)) ||
               (["../examples/blocking-call.json", "../examples/scale-on-busy-threads.json"].includes(path) &&
                 simulation.id === "blocking" &&
                 e.id === "lag") ||
