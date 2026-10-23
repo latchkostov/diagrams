@@ -7,7 +7,7 @@ the Live Diagrams skill and plugin for Claude, and the self-hosted images and He
 
 Please report security issues privately through GitHub:
 **[Report a vulnerability](https://github.com/latchkostov/diagrams/security/advisories/new)**
-(the repository's Security tab → *Report a vulnerability*). Don't open a public issue for a security
+(the repository's Security tab → _Report a vulnerability_). Don't open a public issue for a security
 problem, and never attach private or work diagrams to a report.
 
 Include what you found, how to reproduce it, which part is affected (web app, Confluence app, Claude
