@@ -1,5 +1,6 @@
 import type { InteractionPort, InteractionScheduler, Resolution } from "./controller";
 import type { ElementHandle, FocusTarget, InteractionPhase } from "./types";
+import { captureTypeAhead } from "../typeAhead";
 
 /** Marks the Live bar's control that opens its side panels, so a panel's Esc has somewhere to give focus back. */
 export const PANEL_OPENER_ATTR = "data-live-panel-opener";
@@ -93,6 +94,10 @@ export function createDomPort(canvas: DomCanvas): InteractionPort {
         // A request made while the Inspector is folded (or still shows the previous item) waits for it.
         const inspector = document.querySelector('[data-testid="inspector"]');
         if (!inspector || inspector.getAttribute("data-collapsed") === "1") return { state: "parked" };
+        // The panel's code failed to download (Inspector.tsx): its fields won't come until Retry.
+        const failed = inspector.querySelector("[data-panel-unavailable]")?.getAttribute("data-panel-unavailable");
+        if (failed !== undefined && failed !== null && (!target.owner || failed === target.owner))
+          return { state: "gone" };
         const el = inspector.querySelector(
           target.name === "autoscaling-target"
             ? '[data-testid="autoscaling-target"]'
@@ -138,6 +143,23 @@ export function createDomPort(canvas: DomCanvas): InteractionPort {
       return document.activeElement === el;
     },
     connected: (handle) => (handle as Node).isConnected,
+    holdKeys: (done) => captureTypeAhead(() => false, done),
+    elsewhere(handle) {
+      const el = handle as Element;
+      return (
+        !canvas.root()?.contains(el) ||
+        el.matches('input, textarea, select, [contenteditable]:not([contenteditable="false"])')
+      );
+    },
+    type(handle, text) {
+      const el = handle as HTMLElement;
+      if (!(el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement)) return;
+      // A controlled field hears a value set through its prototype's setter, then an input event, as typing.
+      const proto = el instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
+      Object.getOwnPropertyDescriptor(proto, "value")?.set?.call(el, text);
+      el.dispatchEvent(new Event("input", { bubbles: true }));
+      el.setSelectionRange(el.value.length, el.value.length);
+    },
     version: () => canvas.version?.() ?? 0,
     publish: (phase) => canvas.publish?.(phase),
   };

@@ -99,22 +99,3 @@ export function edgesBetween<E extends { id: string; source: string; target: str
   for (const e of edges) if (picked.has(e.source) && picked.has(e.target)) out.add(e.id);
   return out;
 }
-
-/**
- * What the connection being drawn is over (set by the canvas as the pointer moves, only when it
- * changes). The connection line reads it to end in a "+" over empty canvas, where a drop adds a node.
- */
-let over: ConnectTarget["kind"] | null = null;
-const listeners = new Set<() => void>();
-export const connectOver = {
-  get: () => over,
-  set(next: ConnectTarget["kind"] | null) {
-    if (next === over) return;
-    over = next;
-    for (const l of listeners) l();
-  },
-  subscribe(l: () => void) {
-    listeners.add(l);
-    return () => void listeners.delete(l);
-  },
-};

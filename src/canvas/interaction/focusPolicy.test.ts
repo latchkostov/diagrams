@@ -134,6 +134,16 @@ describe("focusPolicy: the rules, row by row", () => {
       ["keep", "keep"],
     ],
     [
+      "I4 a field request abandoned (Esc in its pending rename): nothing pending, focus stays",
+      state(),
+      [
+        { type: "inspector.field", seq: 1, name: "label", owner: "e" },
+        { type: "inspector.abandoned" },
+        { type: "inspector.abandoned" },
+      ],
+      ["focus:field:label@ready", "keep", "keep"],
+    ],
+    [
       "D1 the Checks card closed: focus goes to its opener",
       state(),
       [{ type: "dialog.closed", dialog: "checks", opener }],
@@ -498,6 +508,7 @@ function allEvents(platform: Platform): FocusEvent[] {
     { type: "inspector.field", seq: 9, name: "sublabel", caret: "end", owner: "a" },
     { type: "inspector.toggled", cause: "panel" },
     { type: "inspector.toggled", cause: "selection" },
+    { type: "inspector.abandoned" },
     { type: "dialog.closed", dialog: "checks", opener },
     { type: "dialog.closed", dialog: "checks", opener: null },
     { type: "dialog.closed", dialog: "room", opener },
@@ -570,6 +581,8 @@ describe("focusPolicy: invariants over every state × event", () => {
       expect(say(focusPolicy(s, onMac).command)).toBe(say(d.command));
       // A move is the one pending move; keep and roving leave pending as it was (unless the event retires it).
       if (d.command.type === "focus") expect(d.state.pending).toBe(d.command);
+      else if (e.type === "inspector.abandoned")
+        expect(d.state.pending).toBe(s.pending?.target.kind === "field" ? null : s.pending);
       else if (!["focus.ran", "focus.done", "input"].includes(e.type)) expect(d.state.pending).toBe(s.pending);
       if (d.command.type === "recover") {
         expect(e.type).toBe("document.replaced");
@@ -711,5 +724,19 @@ it("narration waits for both independently opened Live popovers to close", () =>
   expect(run(r.state, [closed("outside", { kind: "live" }), waiting]).commands.at(-1)).toMatchObject({
     type: "focus",
     target: { kind: "element", handle: node },
+  });
+});
+
+describe("gesture ending focus rows", () => {
+  it.each(["drop", "escape", "cancel", "blur", "unmount", "superseded"] as const)("keeps focus for %s", (reason) => {
+    expect(focusPolicy(state(), { type: "gesture.ended", kind: "edge.end", reason }).command).toEqual({ type: "keep" });
+  });
+  it("recovers remote loss only if focus is lost", () => {
+    expect(focusPolicy(state(), { type: "gesture.ended", kind: "edge.end", reason: "remote" }).command).toEqual({
+      type: "recover",
+      target: { kind: "canvas" },
+      when: "frame",
+      onlyIfLost: true,
+    });
   });
 });

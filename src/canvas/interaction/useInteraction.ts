@@ -105,13 +105,31 @@ export function useSelectionEvents<P>(
 function useInteractionLifecycle<P>(controller: InteractionController<P>) {
   useEffect(() => controller.connect(), [controller]);
   useEffect(() => {
-    // Capture input before anything handles it: a move's second attempt stands down.
-    const input = () => controller.input();
-    window.addEventListener("keydown", input, true);
-    window.addEventListener("pointerdown", input, true);
+    // Capture input before anything handles it: a move's second attempt stands down (a press also ends a held rename).
+    const press = () => controller.input("press");
+    const key = (event: KeyboardEvent) => {
+      controller.input("key");
+      const gesture = controller.gesture;
+      if (event.key !== "Escape" || !gesture) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      controller.endGesture(gesture.seq, "escape");
+    };
+    const blur = () => {
+      if (controller.gesture) controller.endGesture(controller.gesture.seq, "blur");
+    };
+    const focusin = (event: FocusEvent) => {
+      if (event.target instanceof Element) controller.focusArrived(event.target);
+    };
+    window.addEventListener("keydown", key, true);
+    window.addEventListener("blur", blur);
+    window.addEventListener("pointerdown", press, true);
+    window.addEventListener("focusin", focusin, true);
     return () => {
-      window.removeEventListener("keydown", input, true);
-      window.removeEventListener("pointerdown", input, true);
+      window.removeEventListener("keydown", key, true);
+      window.removeEventListener("blur", blur);
+      window.removeEventListener("pointerdown", press, true);
+      window.removeEventListener("focusin", focusin, true);
     };
   }, [controller]);
   // Every commit: a move waiting for it runs, and a target waiting for its panel is tried again.
@@ -140,12 +158,18 @@ function useLocalLifecycle(own: InteractionController | null) {
   useEffect(() => own?.connect(), [own]);
   useEffect(() => {
     if (!own) return;
-    const input = () => own.input();
-    window.addEventListener("keydown", input, true);
-    window.addEventListener("pointerdown", input, true);
+    const key = () => own.input("key");
+    const press = () => own.input("press");
+    const focusin = (event: FocusEvent) => {
+      if (event.target instanceof Element) own.focusArrived(event.target);
+    };
+    window.addEventListener("keydown", key, true);
+    window.addEventListener("pointerdown", press, true);
+    window.addEventListener("focusin", focusin, true);
     return () => {
-      window.removeEventListener("keydown", input, true);
-      window.removeEventListener("pointerdown", input, true);
+      window.removeEventListener("keydown", key, true);
+      window.removeEventListener("pointerdown", press, true);
+      window.removeEventListener("focusin", focusin, true);
     };
   }, [own]);
 }

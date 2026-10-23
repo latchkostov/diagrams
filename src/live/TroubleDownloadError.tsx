@@ -11,8 +11,11 @@ import type { FloatingPlace, FloatingPlacement } from "./useFloatingPlacement";
 // LiveView) put it, and Retry asks for the placement again with the download it retries.
 const loadPlacement = loadOnce(() => import("./useFloatingPlacement").then((m) => m.FloatingPlacement));
 
-/** A background download failure stays recoverable through exports and other notifications. */
-export function TroubleDownloadError({ retry }: { retry: () => void }) {
+/**
+ * A background download failure stays recoverable through exports and other notifications. `announced`: the session's
+ * trouble announcement region already says it.
+ */
+export function TroubleDownloadError({ retry, announced = false }: { retry: () => void; announced?: boolean }) {
   const focused = useRef(false);
   const box = useRef<HTMLDivElement>(null);
   const [Placement, setPlacement] = useState<typeof FloatingPlacement>();
@@ -51,7 +54,8 @@ export function TroubleDownloadError({ retry }: { retry: () => void }) {
           if (!e.currentTarget.contains(e.relatedTarget as Node | null)) focused.current = false;
         }}
       >
-        <span role="status">{t("resilience.troubleUnavailable")}</span>
+        {/* `announced`: Live's trouble region (mounted empty first) says it, since this notice mounts worded. */}
+        <span role={announced ? undefined : "status"}>{t("resilience.troubleUnavailable")}</span>
         <button
           className="btn cap-callout-apply"
           data-testid="trouble-download-retry"
