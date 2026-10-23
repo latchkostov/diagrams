@@ -135,3 +135,6 @@ export function Timeline({
     </div>
   );
 }
+
+// Both controls belong to saved simulations and share this download.
+export { SimulationExpectations } from "./ExpectationSummary";

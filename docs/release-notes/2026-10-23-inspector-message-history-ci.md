@@ -12,3 +12,8 @@ are intended or re-recorded.
 
 The head's Benchmarks run 40014978090 passed 94 of 95 gates, including every bundle gate. Its only
 failure was the known `checks/compileTopology-per-run` issue addressed separately by PR #262.
+
+After merging #262, the combined branch exceeded the unchanged Live-session bundle budget by
+324 bytes. The compact simulation-expectation results now share the saved timeline's existing
+download instead of loading when entering Live. The production bundle test pins this boundary;
+the summary's labels, results, keyboard behavior and markup are preserved.

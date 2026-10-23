@@ -14,6 +14,8 @@ import { productionBuild } from "../test/productionBuild";
 
 /** Never in the startup JavaScript. */
 const NOT_AT_STARTUP: [string, RegExp][] = [
+  ["node simulation fields", /[/\\]src[/\\]canvas[/\\]inspector[/\\]SimulationFields\.tsx$/],
+  ["slow-motion scrubber", /[/\\]src[/\\]live[/\\]slowmo[/\\]SlowTimeline\.tsx$/],
   ["stencil artwork URLs", /[/\\]src[/\\]stencils[/\\]iconUrls\.ts$/],
   ["message type inspector", /[/\\]src[/\\]canvas[/\\]inspector[/\\]MessageFields\.tsx$/],
   ["message type picker", /[/\\]src[/\\]components[/\\]MessageTypePicker\.tsx$/],
@@ -342,6 +344,7 @@ describe("production bundle split", () => {
 
   it("opens Live without optional callouts or simulation verification oracles", () => {
     const optional: [string, RegExp][] = [
+      ["simulation expectation results", /[/\\]src[/\\]live[/\\]ExpectationSummary\.tsx$/],
       ["capacity callout", /[/\\]src[/\\]live[/\\]BottleneckCallout\.tsx$/],
       ["callout placement", /[/\\]src[/\\]live[/\\]useFloatingPlacement\.ts$/],
       ["narration callout", /[/\\]src[/\\]live[/\\]NoteCallout\.tsx$/],
@@ -368,6 +371,12 @@ describe("production bundle split", () => {
   it("loads fault playback and outage lookup with Live, and run results with narration", () => {
     const live = chunks.find((c) => c.name === "LiveSession");
     expect(live).toBeDefined();
+    expect(
+      found(
+        bundled(closure([live!])),
+        NOT_AT_STARTUP.filter(([what]) => what === "slow-motion scrubber"),
+      ),
+    ).toEqual([]);
     const playback = NOT_AT_STARTUP.filter(([what]) =>
       ["fault execution and outage indexes", "fault display messages"].includes(what),
     );

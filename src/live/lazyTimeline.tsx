@@ -7,3 +7,5 @@ export const Timeline = lazyComponent<ComponentProps<typeof TimelineComponent>>(
   () => <div className="lv-timeline" data-testid="live-timeline-loading" aria-busy="true" />,
   true,
 );
+
+export const SimulationExpectations = lazyComponent(() => import("./Timeline").then((m) => m.SimulationExpectations));
