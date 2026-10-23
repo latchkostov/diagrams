@@ -1,7 +1,7 @@
 {
   "text": {
     "isError": false,
-    "output": "Diagram \"Gateway round-robin\" · direction LR · 5 nodes, 4 connections, 0 boundaries, 0 simulations\ndescription: \"3 backends behind one API gateway.\"\nnodes:\n  \"web\" \"client.browser\" (\"Web Browser\") \"Browser\" capabilities=[{\"kind\":\"calls\",\"edge\":\"web-gw\",\"peer\":\"gw\"}] explanation=undefined\n  \"gw\" \"aws.api-gateway\" (\"Amazon API Gateway\") \"API Gateway\" capabilities=[{\"kind\":\"calls\",\"edge\":\"gw-b1\",\"peer\":\"b1\"},{\"kind\":\"calls\",\"edge\":\"gw-b2\",\"peer\":\"b2\"},{\"kind\":\"calls\",\"edge\":\"gw-b3\",\"peer\":\"b3\"}] explanation=undefined\n  \"b1\" \"aws.lambda\" (\"AWS Lambda\") \"Backend 1\" capabilities=[] explanation={\"id\":\"b1\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":16,\"offered\":0.6666666666666666,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.25,\"utilization\":0.041666666666666664,\"growth\":0,\"contributors\":[{\"edge\":\"gw-b1\",\"node\":\"gw\",\"label\":\"Browser\",\"rate\":0.6666666666666666,\"via\":\"API Gateway\"}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"b2\" \"aws.lambda\" (\"AWS Lambda\") \"Backend 2\" capabilities=[] explanation={\"id\":\"b2\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":16,\"offered\":0.6666666666666666,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.25,\"utilization\":0.041666666666666664,\"growth\":0,\"contributors\":[{\"edge\":\"gw-b2\",\"node\":\"gw\",\"label\":\"Browser\",\"rate\":0.6666666666666666,\"via\":\"API Gateway\"}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"b3\" \"aws.lambda\" (\"AWS Lambda\") \"Backend 3\" capabilities=[] explanation={\"id\":\"b3\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":16,\"offered\":0.6666666666666666,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.25,\"utilization\":0.041666666666666664,\"growth\":0,\"contributors\":[{\"edge\":\"gw-b3\",\"node\":\"gw\",\"label\":\"Browser\",\"rate\":0.6666666666666666,\"via\":\"API Gateway\"}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\nconnections:\n  \"web-gw\" \"web\" -> \"gw\" sync\n  \"gw-b1\" \"gw\" -> \"b1\" sync\n  \"gw-b2\" \"gw\" -> \"b2\" sync\n  \"gw-b3\" \"gw\" -> \"b3\" sync"
+    "output": "Diagram \"Gateway round-robin\" · direction LR · 5 nodes, 4 connections, 0 boundaries, 0 simulations\ndescription: \"3 backends behind one API gateway.\"\nnodes:\n  \"web\" \"client.browser\" (\"Web Browser\") \"Browser\" arrivingTypes=[] capabilities=[{\"kind\":\"calls\",\"edge\":\"web-gw\",\"peer\":\"gw\"}] explanation=undefined\n  \"gw\" \"aws.api-gateway\" (\"Amazon API Gateway\") \"API Gateway\" arrivingTypes=[\"Browser\"] capabilities=[{\"kind\":\"calls\",\"edge\":\"gw-b1\",\"peer\":\"b1\"},{\"kind\":\"calls\",\"edge\":\"gw-b2\",\"peer\":\"b2\"},{\"kind\":\"calls\",\"edge\":\"gw-b3\",\"peer\":\"b3\"}] explanation=undefined\n  \"b1\" \"aws.lambda\" (\"AWS Lambda\") \"Backend 1\" arrivingTypes=[\"Browser\"] capabilities=[] explanation={\"id\":\"b1\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":16,\"offered\":0.6666666666666666,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.25,\"utilization\":0.041666666666666664,\"growth\":0,\"contributors\":[{\"edge\":\"gw-b1\",\"node\":\"gw\",\"label\":\"Browser\",\"rate\":0.6666666666666666,\"via\":\"API Gateway\"}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"b2\" \"aws.lambda\" (\"AWS Lambda\") \"Backend 2\" arrivingTypes=[\"Browser\"] capabilities=[] explanation={\"id\":\"b2\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":16,\"offered\":0.6666666666666666,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.25,\"utilization\":0.041666666666666664,\"growth\":0,\"contributors\":[{\"edge\":\"gw-b2\",\"node\":\"gw\",\"label\":\"Browser\",\"rate\":0.6666666666666666,\"via\":\"API Gateway\"}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"b3\" \"aws.lambda\" (\"AWS Lambda\") \"Backend 3\" arrivingTypes=[\"Browser\"] capabilities=[] explanation={\"id\":\"b3\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":16,\"offered\":0.6666666666666666,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.25,\"utilization\":0.041666666666666664,\"growth\":0,\"contributors\":[{\"edge\":\"gw-b3\",\"node\":\"gw\",\"label\":\"Browser\",\"rate\":0.6666666666666666,\"via\":\"API Gateway\"}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\nconnections:\n  \"web-gw\" \"web\" -> \"gw\" sync carriedTypes=[\"Browser\"]\n  \"gw-b1\" \"gw\" -> \"b1\" sync carriedTypes=[\"Browser\"]\n  \"gw-b2\" \"gw\" -> \"b2\" sync carriedTypes=[\"Browser\"]\n  \"gw-b3\" \"gw\" -> \"b3\" sync carriedTypes=[\"Browser\"]"
   },
   "json": {
     "isError": false,
@@ -16,6 +16,7 @@
           "label": "Browser",
           "x": 40,
           "y": 160,
+          "arrivingTypes": [],
           "capabilities": [{ "kind": "calls", "edge": "web-gw", "peer": "gw" }]
         },
         {
@@ -24,6 +25,7 @@
           "label": "API Gateway",
           "x": 400,
           "y": 160,
+          "arrivingTypes": ["Browser"],
           "capabilities": [
             { "kind": "calls", "edge": "gw-b1", "peer": "b1" },
             { "kind": "calls", "edge": "gw-b2", "peer": "b2" },
@@ -36,6 +38,7 @@
           "label": "Backend 1",
           "x": 760,
           "y": 40,
+          "arrivingTypes": ["Browser"],
           "capabilities": [],
           "explanation": {
             "id": "b1",
@@ -71,6 +74,7 @@
           "label": "Backend 2",
           "x": 760,
           "y": 160,
+          "arrivingTypes": ["Browser"],
           "capabilities": [],
           "explanation": {
             "id": "b2",
@@ -106,6 +110,7 @@
           "label": "Backend 3",
           "x": 760,
           "y": 280,
+          "arrivingTypes": ["Browser"],
           "capabilities": [],
           "explanation": {
             "id": "b3",
@@ -137,11 +142,12 @@
         }
       ],
       "edges": [
-        { "id": "web-gw", "from": "web", "to": "gw", "kind": "sync" },
-        { "id": "gw-b1", "from": "gw", "to": "b1", "kind": "sync" },
-        { "id": "gw-b2", "from": "gw", "to": "b2", "kind": "sync" },
-        { "id": "gw-b3", "from": "gw", "to": "b3", "kind": "sync" }
+        { "id": "web-gw", "from": "web", "to": "gw", "kind": "sync", "carriedTypes": ["Browser"] },
+        { "id": "gw-b1", "from": "gw", "to": "b1", "kind": "sync", "carriedTypes": ["Browser"] },
+        { "id": "gw-b2", "from": "gw", "to": "b2", "kind": "sync", "carriedTypes": ["Browser"] },
+        { "id": "gw-b3", "from": "gw", "to": "b3", "kind": "sync", "carriedTypes": ["Browser"] }
       ],
+      "messageTypesComplete": true,
       "groups": [],
       "annotations": [],
       "simulations": [],
@@ -150,6 +156,6 @@
   },
   "focus": {
     "isError": false,
-    "output": "Diagram \"Gateway round-robin\" · direction LR · 2 nodes, 1 connections, 0 boundaries, 0 simulations\ndescription: \"3 backends behind one API gateway.\"\nnodes:\n  \"web\" \"client.browser\" (\"Web Browser\") \"Browser\" capabilities=[{\"kind\":\"calls\",\"edge\":\"web-gw\",\"peer\":\"gw\"}] explanation=undefined\n  \"gw\" \"aws.api-gateway\" (\"Amazon API Gateway\") \"API Gateway\" capabilities=[{\"kind\":\"calls\",\"edge\":\"gw-b1\",\"peer\":\"b1\"},{\"kind\":\"calls\",\"edge\":\"gw-b2\",\"peer\":\"b2\"},{\"kind\":\"calls\",\"edge\":\"gw-b3\",\"peer\":\"b3\"}] explanation=undefined\nconnections:\n  \"web-gw\" \"web\" -> \"gw\" sync"
+    "output": "Diagram \"Gateway round-robin\" · direction LR · 2 nodes, 1 connections, 0 boundaries, 0 simulations\ndescription: \"3 backends behind one API gateway.\"\nnodes:\n  \"web\" \"client.browser\" (\"Web Browser\") \"Browser\" arrivingTypes=[] capabilities=[{\"kind\":\"calls\",\"edge\":\"web-gw\",\"peer\":\"gw\"}] explanation=undefined\n  \"gw\" \"aws.api-gateway\" (\"Amazon API Gateway\") \"API Gateway\" arrivingTypes=[\"Browser\"] capabilities=[{\"kind\":\"calls\",\"edge\":\"gw-b1\",\"peer\":\"b1\"},{\"kind\":\"calls\",\"edge\":\"gw-b2\",\"peer\":\"b2\"},{\"kind\":\"calls\",\"edge\":\"gw-b3\",\"peer\":\"b3\"}] explanation=undefined\nconnections:\n  \"web-gw\" \"web\" -> \"gw\" sync carriedTypes=[\"Browser\"]"
   }
 }

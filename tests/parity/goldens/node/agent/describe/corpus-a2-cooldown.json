@@ -1,7 +1,7 @@
 {
   "text": {
     "isError": false,
-    "output": "Diagram \"a2-cooldown\" · direction LR · 3 nodes, 2 connections, 0 boundaries, 1 simulations\ndescription: \"An invented poster-rendering pipeline. KEDA observes real Kafka group lag, wakes from zero, and sends the active fleet through HPA. The burst drains and workers return to zero within ten simulated seconds. Teaching timings: 1 s polling and HPA sync, 1 s startup, 2 s final-zero cooldown; these are deliberately shorter than the published 30/15/300 s defaults. Kafka offset history starts empty and rebalance delay is not simulated.\"\nnodes:\n  \"source\" \"client.browser\" (\"Web Browser\") \"Poster studio\" props={\"ratePerSec\":2} capabilities=[{\"kind\":\"publishes\",\"edge\":\"publish\",\"peer\":\"uploads\"}] explanation=undefined\n  \"uploads\" \"kafka.topic\" (\"Kafka Topic\") \"Render requests\" / \"3 partitions\" props={\"partitions\":3} capabilities=[] explanation=undefined\n  \"worker\" \"service.go\" (\"Go Service\") \"Poster workers\" props={\"replicas\":1,\"concurrency\":4,\"latencyMs\":250,\"jitter\":0,\"resources\":{\"preset\":\"io-service\",\"presetRevision\":\"1\",\"cpuMsPerMessage\":40,\"baselineMemoryMiB\":128,\"memoryMiBPerMessage\":2,\"cpuRequestMilli\":500,\"cpuLimitMilli\":1000,\"memoryRequestMiB\":256,\"memoryLimitMiB\":512,\"startup\":{\"delayMs\":1000,\"jitterFraction\":0},\"terminationGraceMs\":30000},\"autoscaling\":{\"mode\":\"on\",\"modelRevision\":\"a2\",\"preset\":\"keda-kafka\",\"presetRevision\":\"1\",\"controller\":{\"kind\":\"keda\",\"minReplicas\":0,\"maxReplicas\":6,\"initialReplicas\":0,\"pollingMs\":30000,\"cooldownMs\":300000,\"initialCooldownMs\":0,\"triggers\":[{\"type\":\"kafka\",\"source\":{\"node\":\"uploads\",\"group\":\"renders\"},\"target\":10,\"activation\":0,\"useCachedMetrics\":false,\"allowIdleConsumers\":false}],\"settings\":{\"syncMs\":1000,\"tolerance\":0.1,\"initialReadinessDelayMs\":0,\"cpuInitializationPeriodMs\":0,\"metrics\":[],\"up\":{\"stabilizationMs\":0,\"selectPolicy\":\"Max\",\"policies\":[{\"type\":\"Pods\",\"value\":4,\"periodMs\":15000},{\"type\":\"Percent\",\"value\":100,\"periodMs\":15000}]},\"down\":{\"stabilizationMs\":300000,\"selectPolicy\":\"Max\",\"policies\":[{\"type\":\"Percent\",\"value\":100,\"periodMs\":15000}]}}}}} capabilities=[{\"kind\":\"consumes\",\"edge\":\"consume\",\"peer\":\"uploads\",\"group\":\"renders\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0}] explanation={\"resources\":{\"keda\":{\"pollingMs\":30000,\"cooldownMs\":300000,\"lagBeforePoll\":60,\"offered\":2},\"perReplica\":16,\"initial\":0,\"min\":0,\"max\":6,\"initialCapacity\":0,\"maxCapacity\":96,\"cpuRequestPct\":16,\"memoryPeakMiB\":136,\"memoryRisk\":false,\"baselineAboveTarget\":false,\"partitionLimited\":false,\"startupMs\":1000,\"cpuUnbounded\":false},\"id\":\"worker\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"capacity\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":0,\"offered\":2,\"replicas\":0,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":0,\"assignments\":[{\"broker\":\"uploads\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":3}],\"slots\":4,\"seconds\":0.25,\"utilization\":null,\"growth\":2,\"contributors\":[{\"edge\":\"consume\",\"node\":\"uploads\",\"label\":\"Render requests\",\"rate\":2}],\"target\":0.5,\"changes\":null,\"converged\":true}\nconnections:\n  \"publish\" \"source\" -> \"uploads\" async\n  \"consume\" \"uploads\" -> \"worker\" async\nsimulation \"wake-on-burst\" \"Wake on a burst\": {\"kind\":\"burst\",\"count\":80,\"atMs\":1000} from \"source\"; timeline=[]; expectations=[]"
+    "output": "Diagram \"a2-cooldown\" · direction LR · 3 nodes, 2 connections, 0 boundaries, 1 simulations\ndescription: \"An invented poster-rendering pipeline. KEDA observes real Kafka group lag, wakes from zero, and sends the active fleet through HPA. The burst drains and workers return to zero within ten simulated seconds. Teaching timings: 1 s polling and HPA sync, 1 s startup, 2 s final-zero cooldown; these are deliberately shorter than the published 30/15/300 s defaults. Kafka offset history starts empty and rebalance delay is not simulated.\"\nnodes:\n  \"source\" \"client.browser\" (\"Web Browser\") \"Poster studio\" props={\"ratePerSec\":2} arrivingTypes=[] capabilities=[{\"kind\":\"publishes\",\"edge\":\"publish\",\"peer\":\"uploads\"}] explanation=undefined\n  \"uploads\" \"kafka.topic\" (\"Kafka Topic\") \"Render requests\" / \"3 partitions\" props={\"partitions\":3} arrivingTypes=[\"Poster studio\"] capabilities=[] explanation=undefined\n  \"worker\" \"service.go\" (\"Go Service\") \"Poster workers\" props={\"replicas\":1,\"concurrency\":4,\"latencyMs\":250,\"jitter\":0,\"resources\":{\"preset\":\"io-service\",\"presetRevision\":\"1\",\"cpuMsPerMessage\":40,\"baselineMemoryMiB\":128,\"memoryMiBPerMessage\":2,\"cpuRequestMilli\":500,\"cpuLimitMilli\":1000,\"memoryRequestMiB\":256,\"memoryLimitMiB\":512,\"startup\":{\"delayMs\":1000,\"jitterFraction\":0},\"terminationGraceMs\":30000},\"autoscaling\":{\"mode\":\"on\",\"modelRevision\":\"a2\",\"preset\":\"keda-kafka\",\"presetRevision\":\"1\",\"controller\":{\"kind\":\"keda\",\"minReplicas\":0,\"maxReplicas\":6,\"initialReplicas\":0,\"pollingMs\":30000,\"cooldownMs\":300000,\"initialCooldownMs\":0,\"triggers\":[{\"type\":\"kafka\",\"source\":{\"node\":\"uploads\",\"group\":\"renders\"},\"target\":10,\"activation\":0,\"useCachedMetrics\":false,\"allowIdleConsumers\":false}],\"settings\":{\"syncMs\":1000,\"tolerance\":0.1,\"initialReadinessDelayMs\":0,\"cpuInitializationPeriodMs\":0,\"metrics\":[],\"up\":{\"stabilizationMs\":0,\"selectPolicy\":\"Max\",\"policies\":[{\"type\":\"Pods\",\"value\":4,\"periodMs\":15000},{\"type\":\"Percent\",\"value\":100,\"periodMs\":15000}]},\"down\":{\"stabilizationMs\":300000,\"selectPolicy\":\"Max\",\"policies\":[{\"type\":\"Percent\",\"value\":100,\"periodMs\":15000}]}}}}} arrivingTypes=[\"Poster studio\"] capabilities=[{\"kind\":\"consumes\",\"edge\":\"consume\",\"peer\":\"uploads\",\"group\":\"renders\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0}] explanation={\"resources\":{\"keda\":{\"pollingMs\":30000,\"cooldownMs\":300000,\"lagBeforePoll\":60,\"offered\":2},\"perReplica\":16,\"initial\":0,\"min\":0,\"max\":6,\"initialCapacity\":0,\"maxCapacity\":96,\"cpuRequestPct\":16,\"memoryPeakMiB\":136,\"memoryRisk\":false,\"baselineAboveTarget\":false,\"partitionLimited\":false,\"startupMs\":1000,\"cpuUnbounded\":false},\"id\":\"worker\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"capacity\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":0,\"offered\":2,\"replicas\":0,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":0,\"assignments\":[{\"broker\":\"uploads\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":3}],\"slots\":4,\"seconds\":0.25,\"utilization\":null,\"growth\":2,\"contributors\":[{\"edge\":\"consume\",\"node\":\"uploads\",\"label\":\"Render requests\",\"rate\":2}],\"target\":0.5,\"changes\":null,\"converged\":true}\nconnections:\n  \"publish\" \"source\" -> \"uploads\" async carriedTypes=[\"Poster studio\"]\n  \"consume\" \"uploads\" -> \"worker\" async carriedTypes=[\"Poster studio\"]\nsimulation \"wake-on-burst\" \"Wake on a burst\": {\"kind\":\"burst\",\"count\":80,\"atMs\":1000} from \"source\"; timeline=[]; expectations=[]"
   },
   "json": {
     "isError": false,
@@ -18,6 +18,7 @@
           "x": 80,
           "y": 180,
           "props": { "ratePerSec": 2 },
+          "arrivingTypes": [],
           "capabilities": [{ "kind": "publishes", "edge": "publish", "peer": "uploads" }]
         },
         {
@@ -28,6 +29,7 @@
           "x": 420,
           "y": 180,
           "props": { "partitions": 3 },
+          "arrivingTypes": ["Poster studio"],
           "capabilities": []
         },
         {
@@ -100,6 +102,7 @@
               }
             }
           },
+          "arrivingTypes": ["Poster studio"],
           "capabilities": [
             {
               "kind": "consumes",
@@ -159,15 +162,24 @@
         }
       ],
       "edges": [
-        { "id": "publish", "from": "source", "to": "uploads", "kind": "async", "props": { "travelMs": 10 } },
+        {
+          "id": "publish",
+          "from": "source",
+          "to": "uploads",
+          "kind": "async",
+          "props": { "travelMs": 10 },
+          "carriedTypes": ["Poster studio"]
+        },
         {
           "id": "consume",
           "from": "uploads",
           "to": "worker",
           "kind": "async",
-          "props": { "travelMs": 10, "group": "renders" }
+          "props": { "travelMs": 10, "group": "renders" },
+          "carriedTypes": ["Poster studio"]
         }
       ],
+      "messageTypesComplete": true,
       "groups": [],
       "annotations": [],
       "simulations": [
@@ -185,6 +197,6 @@
   },
   "focus": {
     "isError": false,
-    "output": "Diagram \"a2-cooldown\" · direction LR · 2 nodes, 1 connections, 0 boundaries, 1 simulations\ndescription: \"An invented poster-rendering pipeline. KEDA observes real Kafka group lag, wakes from zero, and sends the active fleet through HPA. The burst drains and workers return to zero within ten simulated seconds. Teaching timings: 1 s polling and HPA sync, 1 s startup, 2 s final-zero cooldown; these are deliberately shorter than the published 30/15/300 s defaults. Kafka offset history starts empty and rebalance delay is not simulated.\"\nnodes:\n  \"source\" \"client.browser\" (\"Web Browser\") \"Poster studio\" props={\"ratePerSec\":2} capabilities=[{\"kind\":\"publishes\",\"edge\":\"publish\",\"peer\":\"uploads\"}] explanation=undefined\n  \"uploads\" \"kafka.topic\" (\"Kafka Topic\") \"Render requests\" / \"3 partitions\" props={\"partitions\":3} capabilities=[] explanation=undefined\nconnections:\n  \"publish\" \"source\" -> \"uploads\" async\nsimulation \"wake-on-burst\" \"Wake on a burst\": {\"kind\":\"burst\",\"count\":80,\"atMs\":1000} from \"source\"; timeline=[]; expectations=[]"
+    "output": "Diagram \"a2-cooldown\" · direction LR · 2 nodes, 1 connections, 0 boundaries, 1 simulations\ndescription: \"An invented poster-rendering pipeline. KEDA observes real Kafka group lag, wakes from zero, and sends the active fleet through HPA. The burst drains and workers return to zero within ten simulated seconds. Teaching timings: 1 s polling and HPA sync, 1 s startup, 2 s final-zero cooldown; these are deliberately shorter than the published 30/15/300 s defaults. Kafka offset history starts empty and rebalance delay is not simulated.\"\nnodes:\n  \"source\" \"client.browser\" (\"Web Browser\") \"Poster studio\" props={\"ratePerSec\":2} arrivingTypes=[] capabilities=[{\"kind\":\"publishes\",\"edge\":\"publish\",\"peer\":\"uploads\"}] explanation=undefined\n  \"uploads\" \"kafka.topic\" (\"Kafka Topic\") \"Render requests\" / \"3 partitions\" props={\"partitions\":3} arrivingTypes=[\"Poster studio\"] capabilities=[] explanation=undefined\nconnections:\n  \"publish\" \"source\" -> \"uploads\" async carriedTypes=[\"Poster studio\"]\nsimulation \"wake-on-burst\" \"Wake on a burst\": {\"kind\":\"burst\",\"count\":80,\"atMs\":1000} from \"source\"; timeline=[]; expectations=[]"
   }
 }

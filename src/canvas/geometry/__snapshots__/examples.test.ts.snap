@@ -15552,11 +15552,11 @@ exports[`public examples route cleanly (estimated card sizes) > webhook-ingestio
     "id": "receiver-to-raw",
     "points": [
       {
-        "x": 911,
+        "x": 904,
         "y": 280,
       },
       {
-        "x": 911,
+        "x": 904,
         "y": 222,
       },
       {
@@ -15630,11 +15630,40 @@ exports[`public examples route cleanly (estimated card sizes) > webhook-ingestio
     ],
   },
   {
+    "id": "workers-to-receiver",
+    "points": [
+      {
+        "x": 2043,
+        "y": 280,
+      },
+      {
+        "x": 2043,
+        "y": 222,
+      },
+      {
+        "x": 918,
+        "y": 222,
+      },
+      {
+        "x": 918,
+        "y": 280,
+      },
+    ],
+  },
+  {
     "id": "workers-to-dedupe",
     "points": [
       {
-        "x": 2050,
+        "x": 2057,
         "y": 280,
+      },
+      {
+        "x": 2057,
+        "y": 208,
+      },
+      {
+        "x": 2050,
+        "y": 208,
       },
       {
         "x": 2050,

@@ -14,9 +14,10 @@
             "label": "Make Decision service → Decision service a message",
             "ops": [{ "op": "update", "target": "call", "kind": "async" }]
           }
-        }
+        },
+        { "id": "message-loop:caller", "rule": "message-loop", "severity": "warning", "title": "Messages loop back", "message": "Applications messages loop back to Decision service: each one is sent again.", "targets": ["caller", "call"] }
       ],
-      "summary": "1 warning, 0 suggestions.",
+      "summary": "2 warnings, 0 suggestions.",
       "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding."
     }
   },
@@ -35,9 +36,10 @@
             "label": "Make Decision service → Decision service a message",
             "ops": [{ "op": "update", "target": "call", "kind": "async" }]
           }
-        }
+        },
+        { "id": "message-loop:caller", "rule": "message-loop", "severity": "warning", "title": "Messages loop back", "message": "Applications messages loop back to Decision service: each one is sent again.", "targets": ["caller", "call"] }
       ],
-      "summary": "1 warning, 0 suggestions.",
+      "summary": "2 warnings, 0 suggestions.",
       "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding."
     }
   },
@@ -57,9 +59,10 @@
             "label": "Make Decision service → Decision service a message",
             "ops": [{ "op": "update", "target": "call", "kind": "async" }]
           }
-        }
+        },
+        { "id": "message-loop:caller", "rule": "message-loop", "severity": "warning", "title": "Messages loop back", "message": "Applications messages loop back to Decision service: each one is sent again.", "targets": ["caller", "call"] }
       ],
-      "summary": "1 warning, 0 suggestions.",
+      "summary": "2 warnings, 0 suggestions.",
       "simulations": "Played 1 saved simulation (at most 60 s each).",
       "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding."
     }

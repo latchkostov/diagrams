@@ -1,9 +1,9 @@
 {
-  "all": { "isError": false, "output": { "findings": [], "summary": "Nothing to check. 13 checks ran." } },
-  "warnings": { "isError": false, "output": { "findings": [], "summary": "Nothing to check. 13 checks ran." } },
+  "all": { "isError": false, "output": { "findings": [], "summary": "Nothing to check. 14 checks ran." } },
+  "warnings": { "isError": false, "output": { "findings": [], "summary": "Nothing to check. 14 checks ran." } },
   "oneRule": { "isError": false, "output": { "findings": [], "summary": "Nothing to check. 2 checks ran." } },
   "simulations": {
     "isError": false,
-    "output": { "findings": [], "summary": "Nothing to check. 13 checks ran.", "simulations": "Played 1 saved simulation (at most 60 s each)." }
+    "output": { "findings": [], "summary": "Nothing to check. 14 checks ran.", "simulations": "Played 1 saved simulation (at most 60 s each)." }
   }
 }

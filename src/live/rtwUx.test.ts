@@ -3,7 +3,7 @@ import type { DiagramFile } from "../model/types";
 import payment from "../examples/slow-payment-provider.json";
 import busy from "../examples/scale-on-busy-threads.json";
 import { createSimulationRun } from "../sim/simulation";
-import { simulationEdges } from "../sim/simulationEdges";
+import { simulationEdges } from "../sim/topology";
 import { realSnapshot } from "../sim/units";
 import { affordableTimeout } from "./affordableTimeout";
 import { TroubleWatcher } from "./observedTrouble";

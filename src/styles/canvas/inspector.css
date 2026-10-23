@@ -799,3 +799,47 @@ button.insp-input.dropdown-trigger {
 .autoscaling-replicas th:first-child {
   inline-size: 12%;
 }
+.message-fields h4 {
+  margin-block: 6px;
+  font-size: inherit;
+}
+.message-type-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.message-type-chip {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 3px 8px;
+  background: var(--bg);
+  color: inherit;
+  font: inherit;
+  overflow-wrap: anywhere;
+  min-inline-size: 0;
+  max-inline-size: 100%;
+}
+button.message-type-chip {
+  cursor: pointer;
+}
+.message-type-chip[aria-pressed="true"] {
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+.message-type-chip:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.message-type-add {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.message-type-add input {
+  min-inline-size: 0;
+}
+.message-type-rule {
+  border-inline-start: 2px solid var(--line);
+  padding-inline-start: 8px;
+  margin-block: 8px;
+}

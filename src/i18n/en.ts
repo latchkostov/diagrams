@@ -10,6 +10,40 @@
 // stays.
 
 const en = {
+  "examples.messageTypes": "Message types",
+  "messageTypes.messages": "Messages",
+  "messageTypes.passAll": "Pass all message types",
+  "messageTypes.carries": "Carries",
+  "messageTypes.onlyPass": "Only pass",
+  "messageTypes.sendAs": "Send as",
+  "messageTypes.sends": "Sends",
+  "messageTypes.addType": "Add a type…",
+  "messageTypes.add": "Add",
+  "messageTypes.remove": "Remove",
+  "messageTypes.noUpstream": "No message types reach this link yet.",
+  "messageTypes.notSent": "Nothing upstream sends this type yet.",
+  "messageTypes.noMessages": "No messages pass with these settings.",
+  "messageTypes.filterHint": "Pass only selected message types. Select none to pass all.",
+  "messageTypes.renameHint": "Change the message type as it leaves this link.",
+  "messageTypes.anyType": "Any message type",
+  "messageTypes.emitsHint":
+    "Choose what this processor sends for each incoming message type. Other types keep their names.",
+  "messageTypes.whenReceives": "When it receives",
+  "messageTypes.thenSends": "It sends",
+  "messageTypes.removeRule": "Remove this message type rule",
+  "messageTypes.addRule": "Add a rule",
+  "messageTypes.incomplete": "This diagram has too many message paths to list completely.",
+  "messageTypes.hover": "Message types: {types}",
+  "messageLoop.name": "Messages loop back",
+  "messageLoop.about":
+    "Finds message types forwarded around a processor cycle. Retries and broker redelivery do not count.",
+  "messageLoop.message": "{type} messages loop back to {node}: each one is sent again.",
+  "messageLoop.why":
+    "Forwarding a callback into the send path can multiply traffic and exhaust processing threads. Filter the returning type out of the send path.",
+  "messageLoop.filter": "Only pass {types}",
+  "messageLoop.rename": "Send as {type}",
+  "messageLoop.manual":
+    "No single filter or rename was verified to preserve the other message paths. Choose where the callback should stop, then check again.",
   "examples.vendorStencils": "Vendor stencils",
   "viewerForge.title": "Live Diagram",
   "viewerForge.chooseFile": "Choose a diagram file",

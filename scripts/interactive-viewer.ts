@@ -62,6 +62,8 @@ const FORBIDDEN: [string, RegExp][] = [
   // Architecture checks are for editing: the engine, the Checks card and the checks worker never ship in a file.
   ["the architecture checks", /[/\\]src[/\\]checks[/\\]/],
   ["the checks markers", /[/\\]src[/\\]canvas[/\\]checks[/\\]ChecksMarkers\.tsx$/],
+  // Message-type analysis serves the inspector, Checks and the app's edge reader; a file carries none of them.
+  ["the message-type analysis", /[/\\]src[/\\](model[/\\]messageTypes|canvas[/\\]edges[/\\]carriedTypes)\.ts$/],
 ];
 
 /**
@@ -79,6 +81,13 @@ export const EDITOR_ONLY: { name: string; path: string; stub: (root: string) => 
       `export const Palette = () => null;\nexport { STENCIL_DND_MIME } from ${JSON.stringify(
         resolve(root, "src/lib/canvasBridge.ts").replaceAll("\\", "/"),
       )};`,
+  },
+  // Carried types on hovered and focused flow edges: the app shows them; a file stays within the skill's download
+  // budget (src/ai/skill/skill.test.ts) without the message-type analysis they need.
+  {
+    name: "the carried-types reader",
+    path: "/src/canvas/edges/EdgeMessages.tsx",
+    stub: () => "export const EdgeMessages = () => null;",
   },
   // A read-only canvas never moves an edge's end: no reconnect handles, so none of their pointer gesture either.
   {

@@ -1,7 +1,7 @@
 {
   "text": {
     "isError": false,
-    "output": "Diagram \"Independent edge storefront\" · direction LR · 8 nodes, 7 connections, 0 boundaries, 0 simulations\ndescription: \"Fastly and a Cloudflare WAF pass shop requests to Fastly Compute, which calls Square and stores receipts in Cloudflare R2. LaunchDarkly supplies configuration and Cognito supplies identity. CDN caching and vendor performance are not simulated.\"\nnodes:\n  \"shopper\" \"client.browser\" (\"Web Browser\") \"Shopper\" props={\"ratePerSec\":2,\"messageType\":\"Checkout\"} capabilities=[{\"kind\":\"calls\",\"edge\":\"browse\",\"peer\":\"cdn\"}] explanation=undefined\n  \"cdn\" \"fastly\" (\"Fastly\") \"Fastly\" capabilities=[{\"kind\":\"calls\",\"edge\":\"protect\",\"peer\":\"waf\"}] explanation=undefined\n  \"waf\" \"cloudflare.waf\" (\"Cloudflare WAF\") \"Cloudflare WAF\" capabilities=[{\"kind\":\"calls\",\"edge\":\"origin\",\"peer\":\"checkout\"}] explanation=undefined\n  \"checkout\" \"fastly.compute\" (\"Fastly Compute\") \"Checkout function\" props={\"latencyMs\":80,\"failureRate\":0} capabilities=[{\"kind\":\"calls\",\"edge\":\"store\",\"peer\":\"receipts\"},{\"kind\":\"calls\",\"edge\":\"pay\",\"peer\":\"payments\"}] explanation={\"id\":\"checkout\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":50,\"offered\":2,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.08,\"utilization\":0.04,\"growth\":0,\"contributors\":[{\"edge\":\"origin\",\"node\":\"waf\",\"label\":\"Fastly\",\"rate\":2,\"via\":\"Cloudflare WAF\"}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"receipts\" \"cloudflare.r2\" (\"Cloudflare R2\") \"Receipt objects\" capabilities=[] explanation=undefined\n  \"payments\" \"square\" (\"Square\") \"Square payments\" capabilities=[] explanation=undefined\n  \"flags\" \"launchdarkly\" (\"LaunchDarkly\") \"Checkout flags\" capabilities=[] explanation=undefined\n  \"identity\" \"aws.cognito\" (\"Amazon Cognito\") \"Customer identity\" capabilities=[] explanation=undefined\nconnections:\n  \"browse\" \"shopper\" -> \"cdn\" sync\n  \"protect\" \"cdn\" -> \"waf\" sync\n  \"origin\" \"waf\" -> \"checkout\" sync\n  \"store\" \"checkout\" -> \"receipts\" sync\n  \"pay\" \"checkout\" -> \"payments\" sync\n  \"config\" \"checkout\" -> \"flags\" config dependency\n  \"authenticate\" \"checkout\" -> \"identity\" identity dependency"
+    "output": "Diagram \"Independent edge storefront\" · direction LR · 8 nodes, 7 connections, 0 boundaries, 0 simulations\ndescription: \"Fastly and a Cloudflare WAF pass shop requests to Fastly Compute, which calls Square and stores receipts in Cloudflare R2. LaunchDarkly supplies configuration and Cognito supplies identity. CDN caching and vendor performance are not simulated.\"\nnodes:\n  \"shopper\" \"client.browser\" (\"Web Browser\") \"Shopper\" props={\"ratePerSec\":2,\"messageType\":\"Checkout\"} arrivingTypes=[] capabilities=[{\"kind\":\"calls\",\"edge\":\"browse\",\"peer\":\"cdn\"}] explanation=undefined\n  \"cdn\" \"fastly\" (\"Fastly\") \"Fastly\" arrivingTypes=[\"Checkout\"] capabilities=[{\"kind\":\"calls\",\"edge\":\"protect\",\"peer\":\"waf\"}] explanation=undefined\n  \"waf\" \"cloudflare.waf\" (\"Cloudflare WAF\") \"Cloudflare WAF\" arrivingTypes=[\"Checkout\"] capabilities=[{\"kind\":\"calls\",\"edge\":\"origin\",\"peer\":\"checkout\"}] explanation=undefined\n  \"checkout\" \"fastly.compute\" (\"Fastly Compute\") \"Checkout function\" props={\"latencyMs\":80,\"failureRate\":0} arrivingTypes=[\"Checkout\"] capabilities=[{\"kind\":\"calls\",\"edge\":\"store\",\"peer\":\"receipts\"},{\"kind\":\"calls\",\"edge\":\"pay\",\"peer\":\"payments\"}] explanation={\"id\":\"checkout\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":50,\"offered\":2,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.08,\"utilization\":0.04,\"growth\":0,\"contributors\":[{\"edge\":\"origin\",\"node\":\"waf\",\"label\":\"Fastly\",\"rate\":2,\"via\":\"Cloudflare WAF\"}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"receipts\" \"cloudflare.r2\" (\"Cloudflare R2\") \"Receipt objects\" arrivingTypes=[\"Checkout\"] capabilities=[] explanation=undefined\n  \"payments\" \"square\" (\"Square\") \"Square payments\" arrivingTypes=[\"Checkout\"] capabilities=[] explanation=undefined\n  \"flags\" \"launchdarkly\" (\"LaunchDarkly\") \"Checkout flags\" arrivingTypes=[] capabilities=[] explanation=undefined\n  \"identity\" \"aws.cognito\" (\"Amazon Cognito\") \"Customer identity\" arrivingTypes=[] capabilities=[] explanation=undefined\nconnections:\n  \"browse\" \"shopper\" -> \"cdn\" sync carriedTypes=[\"Checkout\"]\n  \"protect\" \"cdn\" -> \"waf\" sync carriedTypes=[\"Checkout\"]\n  \"origin\" \"waf\" -> \"checkout\" sync carriedTypes=[\"Checkout\"]\n  \"store\" \"checkout\" -> \"receipts\" sync carriedTypes=[\"Checkout\"]\n  \"pay\" \"checkout\" -> \"payments\" sync carriedTypes=[\"Checkout\"]\n  \"config\" \"checkout\" -> \"flags\" config dependency carriedTypes=[]\n  \"authenticate\" \"checkout\" -> \"identity\" identity dependency carriedTypes=[]"
   },
   "json": {
     "isError": false,
@@ -17,6 +17,7 @@
           "x": 0,
           "y": 160,
           "props": { "ratePerSec": 2, "messageType": "Checkout" },
+          "arrivingTypes": [],
           "capabilities": [{ "kind": "calls", "edge": "browse", "peer": "cdn" }]
         },
         {
@@ -25,6 +26,7 @@
           "label": "Fastly",
           "x": 340,
           "y": 160,
+          "arrivingTypes": ["Checkout"],
           "capabilities": [{ "kind": "calls", "edge": "protect", "peer": "waf" }]
         },
         {
@@ -33,6 +35,7 @@
           "label": "Cloudflare WAF",
           "x": 680,
           "y": 160,
+          "arrivingTypes": ["Checkout"],
           "capabilities": [{ "kind": "calls", "edge": "origin", "peer": "checkout" }]
         },
         {
@@ -42,6 +45,7 @@
           "x": 1020,
           "y": 160,
           "props": { "latencyMs": 80, "failureRate": 0 },
+          "arrivingTypes": ["Checkout"],
           "capabilities": [
             { "kind": "calls", "edge": "store", "peer": "receipts" },
             { "kind": "calls", "edge": "pay", "peer": "payments" }
@@ -74,20 +78,21 @@
             "converged": true
           }
         },
-        { "id": "receipts", "stencil": "cloudflare.r2", "label": "Receipt objects", "x": 1360, "y": 60, "capabilities": [] },
-        { "id": "payments", "stencil": "square", "label": "Square payments", "x": 1360, "y": 260, "capabilities": [] },
-        { "id": "flags", "stencil": "launchdarkly", "label": "Checkout flags", "x": 1020, "y": 420, "capabilities": [] },
-        { "id": "identity", "stencil": "aws.cognito", "label": "Customer identity", "x": 680, "y": 420, "capabilities": [] }
+        { "id": "receipts", "stencil": "cloudflare.r2", "label": "Receipt objects", "x": 1360, "y": 60, "arrivingTypes": ["Checkout"], "capabilities": [] },
+        { "id": "payments", "stencil": "square", "label": "Square payments", "x": 1360, "y": 260, "arrivingTypes": ["Checkout"], "capabilities": [] },
+        { "id": "flags", "stencil": "launchdarkly", "label": "Checkout flags", "x": 1020, "y": 420, "arrivingTypes": [], "capabilities": [] },
+        { "id": "identity", "stencil": "aws.cognito", "label": "Customer identity", "x": 680, "y": 420, "arrivingTypes": [], "capabilities": [] }
       ],
       "edges": [
-        { "id": "browse", "from": "shopper", "to": "cdn", "kind": "sync" },
-        { "id": "protect", "from": "cdn", "to": "waf", "kind": "sync" },
-        { "id": "origin", "from": "waf", "to": "checkout", "kind": "sync" },
-        { "id": "store", "from": "checkout", "to": "receipts", "kind": "sync" },
-        { "id": "pay", "from": "checkout", "to": "payments", "kind": "sync" },
-        { "id": "config", "from": "checkout", "to": "flags", "relation": "config" },
-        { "id": "authenticate", "from": "checkout", "to": "identity", "relation": "identity" }
+        { "id": "browse", "from": "shopper", "to": "cdn", "kind": "sync", "carriedTypes": ["Checkout"] },
+        { "id": "protect", "from": "cdn", "to": "waf", "kind": "sync", "carriedTypes": ["Checkout"] },
+        { "id": "origin", "from": "waf", "to": "checkout", "kind": "sync", "carriedTypes": ["Checkout"] },
+        { "id": "store", "from": "checkout", "to": "receipts", "kind": "sync", "carriedTypes": ["Checkout"] },
+        { "id": "pay", "from": "checkout", "to": "payments", "kind": "sync", "carriedTypes": ["Checkout"] },
+        { "id": "config", "from": "checkout", "to": "flags", "relation": "config", "carriedTypes": [] },
+        { "id": "authenticate", "from": "checkout", "to": "identity", "relation": "identity", "carriedTypes": [] }
       ],
+      "messageTypesComplete": true,
       "groups": [],
       "annotations": [],
       "simulations": [],
@@ -96,6 +101,6 @@
   },
   "focus": {
     "isError": false,
-    "output": "Diagram \"Independent edge storefront\" · direction LR · 2 nodes, 1 connections, 0 boundaries, 0 simulations\ndescription: \"Fastly and a Cloudflare WAF pass shop requests to Fastly Compute, which calls Square and stores receipts in Cloudflare R2. LaunchDarkly supplies configuration and Cognito supplies identity. CDN caching and vendor performance are not simulated.\"\nnodes:\n  \"shopper\" \"client.browser\" (\"Web Browser\") \"Shopper\" props={\"ratePerSec\":2,\"messageType\":\"Checkout\"} capabilities=[{\"kind\":\"calls\",\"edge\":\"browse\",\"peer\":\"cdn\"}] explanation=undefined\n  \"cdn\" \"fastly\" (\"Fastly\") \"Fastly\" capabilities=[{\"kind\":\"calls\",\"edge\":\"protect\",\"peer\":\"waf\"}] explanation=undefined\nconnections:\n  \"browse\" \"shopper\" -> \"cdn\" sync"
+    "output": "Diagram \"Independent edge storefront\" · direction LR · 2 nodes, 1 connections, 0 boundaries, 0 simulations\ndescription: \"Fastly and a Cloudflare WAF pass shop requests to Fastly Compute, which calls Square and stores receipts in Cloudflare R2. LaunchDarkly supplies configuration and Cognito supplies identity. CDN caching and vendor performance are not simulated.\"\nnodes:\n  \"shopper\" \"client.browser\" (\"Web Browser\") \"Shopper\" props={\"ratePerSec\":2,\"messageType\":\"Checkout\"} arrivingTypes=[] capabilities=[{\"kind\":\"calls\",\"edge\":\"browse\",\"peer\":\"cdn\"}] explanation=undefined\n  \"cdn\" \"fastly\" (\"Fastly\") \"Fastly\" arrivingTypes=[\"Checkout\"] capabilities=[{\"kind\":\"calls\",\"edge\":\"protect\",\"peer\":\"waf\"}] explanation=undefined\nconnections:\n  \"browse\" \"shopper\" -> \"cdn\" sync carriedTypes=[\"Checkout\"]"
   }
 }

@@ -1,5 +1,5 @@
 ---
-title: "WebhookEvent #1 · 1.73 s end to end · 2 copies"
+title: "WebhookEvent #1 · 1.85 s end to end · 3 copies"
 ---
 sequenceDiagram
   participant partners as Partner webhooks
@@ -20,6 +20,7 @@ sequenceDiagram
   raw-->>receiver: reply (+0.64 s)
   exchange-)queue: WebhookEvent (+0.74 s)<br/>webhook.#35;
   queue-)workers: WebhookEvent (+1.04 s)<br/>Prefetch 4
+  workers-)receiver: WebhookApplied (+1.52 s)<br/>Applied callback
   workers->>dedupe: PartnerChangeApplied (+1.52 s)<br/>Idempotency check
   workers->>integration_db: PartnerChangeApplied (+1.52 s)<br/>Apply change
   dedupe-->>workers: reply (+1.72 s)

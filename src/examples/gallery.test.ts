@@ -130,9 +130,9 @@ describe("example gallery", () => {
       // The large showcases: each tag is backed by a configured node.
       "black-friday-commerce": ["partitions", "rateLimits", "autoscaling", "routing"],
       "delivery-dispatch": ["partitions", "rateLimits", "autoscaling", "routing"],
-      "payments-ledger": ["partitions", "rateLimits", "routing"],
+      "payments-ledger": ["messageTypes", "partitions", "rateLimits", "routing"],
       "ev-charging-network": ["partitions", "rateLimits", "networkDevices"],
-      "cell-based-bookings": [],
+      "cell-based-bookings": ["messageTypes"],
       "recommendations-feature-store": ["faultDrills", "partitions", "autoscaling", "routing"],
       "video-on-demand-pipeline": ["latency", "partitions", "rateLimits", "autoscaling", "routing"],
       "observability-pipeline": ["faultDrills", "partitions", "rateLimits", "autoscaling"],

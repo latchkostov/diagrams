@@ -138,6 +138,8 @@ import { targetRemoved } from "./menus/menuTargets";
  * The keyboard shortcuts sheet (?) loads when it's first opened: it isn't part of the canvas's first view. Until it
  * arrives (or if its download fails) a dialog of the same name stands in: Esc and Close dismiss it, Retry tries again.
  */
+/** Carried message types on hovered and focused flow edges: one canvas-wide reader, after the first view. */
+const EdgeMessages = lazyComponent(() => import("./edges/EdgeMessages").then((m) => m.EdgeMessages));
 const ShortcutsDialog = lazyComponent(
   () => import("../components/ShortcutsDialog").then((m) => m.ShortcutsDialog),
   ({ onClose }, status) => <ShortcutsShell onClose={onClose} status={status} />,
@@ -1217,6 +1219,7 @@ function CanvasInner({
                   <CanvasFitContext.Provider value={fit}>{viewer.controls}</CanvasFitContext.Provider>
                 )}
                 {checksOn && checksCard && <ChecksMarkersView store={checks} />}
+                <EdgeMessages meta={meta} />
                 {presence && <PresenceLayer presence={presence} onChange={presenceChanged} />}
               </ReactFlow>
 

@@ -1,7 +1,7 @@
 {
   "text": {
     "isError": false,
-    "output": "Diagram \"Planning: shared capacity\" · direction LR · 2 nodes, 1 connections, 0 boundaries, 0 simulations\nnodes:\n  \"checkout\" \"client.browser\" (\"Web Browser\") \"Checkout\" props={\"ratePerSec\":3} capabilities=[{\"kind\":\"calls\",\"edge\":\"request\",\"peer\":\"orders\"}] explanation=undefined\n  \"orders\" \"service.dotnet\" (\".NET Service\") \"Orders\" props={\"latencyMs\":4000,\"jitter\":0} capabilities=[] explanation={\"id\":\"orders\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"capacity\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":1,\"offered\":3,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":4,\"utilization\":3,\"growth\":2,\"contributors\":[{\"edge\":\"request\",\"node\":\"checkout\",\"label\":\"Checkout\",\"rate\":3}],\"target\":0.5,\"minimumReplicas\":3,\"targetReplicas\":6,\"changes\":null,\"converged\":true}\nconnections:\n  \"request\" \"checkout\" -> \"orders\" sync"
+    "output": "Diagram \"Planning: shared capacity\" · direction LR · 2 nodes, 1 connections, 0 boundaries, 0 simulations\nnodes:\n  \"checkout\" \"client.browser\" (\"Web Browser\") \"Checkout\" props={\"ratePerSec\":3} arrivingTypes=[] capabilities=[{\"kind\":\"calls\",\"edge\":\"request\",\"peer\":\"orders\"}] explanation=undefined\n  \"orders\" \"service.dotnet\" (\".NET Service\") \"Orders\" props={\"latencyMs\":4000,\"jitter\":0} arrivingTypes=[\"Checkout\"] capabilities=[] explanation={\"id\":\"orders\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"capacity\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":1,\"offered\":3,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":4,\"utilization\":3,\"growth\":2,\"contributors\":[{\"edge\":\"request\",\"node\":\"checkout\",\"label\":\"Checkout\",\"rate\":3}],\"target\":0.5,\"minimumReplicas\":3,\"targetReplicas\":6,\"changes\":null,\"converged\":true}\nconnections:\n  \"request\" \"checkout\" -> \"orders\" sync carriedTypes=[\"Checkout\"]"
   },
   "json": {
     "isError": false,
@@ -16,6 +16,7 @@
           "x": 0,
           "y": 140,
           "props": { "ratePerSec": 3 },
+          "arrivingTypes": [],
           "capabilities": [{ "kind": "calls", "edge": "request", "peer": "orders" }]
         },
         {
@@ -25,6 +26,7 @@
           "x": 640,
           "y": 140,
           "props": { "latencyMs": 4000, "jitter": 0 },
+          "arrivingTypes": ["Checkout"],
           "capabilities": [],
           "explanation": {
             "id": "orders",
@@ -53,7 +55,17 @@
           }
         }
       ],
-      "edges": [{ "id": "request", "from": "checkout", "to": "orders", "kind": "sync", "props": { "travelMs": 0 } }],
+      "edges": [
+        {
+          "id": "request",
+          "from": "checkout",
+          "to": "orders",
+          "kind": "sync",
+          "props": { "travelMs": 0 },
+          "carriedTypes": ["Checkout"]
+        }
+      ],
+      "messageTypesComplete": true,
       "groups": [],
       "annotations": [],
       "simulations": [],
@@ -62,6 +74,6 @@
   },
   "focus": {
     "isError": false,
-    "output": "Diagram \"Planning: shared capacity\" · direction LR · 2 nodes, 1 connections, 0 boundaries, 0 simulations\nnodes:\n  \"checkout\" \"client.browser\" (\"Web Browser\") \"Checkout\" props={\"ratePerSec\":3} capabilities=[{\"kind\":\"calls\",\"edge\":\"request\",\"peer\":\"orders\"}] explanation=undefined\n  \"orders\" \"service.dotnet\" (\".NET Service\") \"Orders\" props={\"latencyMs\":4000,\"jitter\":0} capabilities=[] explanation={\"id\":\"orders\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"capacity\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":1,\"offered\":3,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":4,\"utilization\":3,\"growth\":2,\"contributors\":[{\"edge\":\"request\",\"node\":\"checkout\",\"label\":\"Checkout\",\"rate\":3}],\"target\":0.5,\"minimumReplicas\":3,\"targetReplicas\":6,\"changes\":null,\"converged\":true}\nconnections:\n  \"request\" \"checkout\" -> \"orders\" sync"
+    "output": "Diagram \"Planning: shared capacity\" · direction LR · 2 nodes, 1 connections, 0 boundaries, 0 simulations\nnodes:\n  \"checkout\" \"client.browser\" (\"Web Browser\") \"Checkout\" props={\"ratePerSec\":3} arrivingTypes=[] capabilities=[{\"kind\":\"calls\",\"edge\":\"request\",\"peer\":\"orders\"}] explanation=undefined\n  \"orders\" \"service.dotnet\" (\".NET Service\") \"Orders\" props={\"latencyMs\":4000,\"jitter\":0} arrivingTypes=[\"Checkout\"] capabilities=[] explanation={\"id\":\"orders\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"capacity\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":1,\"offered\":3,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":4,\"utilization\":3,\"growth\":2,\"contributors\":[{\"edge\":\"request\",\"node\":\"checkout\",\"label\":\"Checkout\",\"rate\":3}],\"target\":0.5,\"minimumReplicas\":3,\"targetReplicas\":6,\"changes\":null,\"converged\":true}\nconnections:\n  \"request\" \"checkout\" -> \"orders\" sync carriedTypes=[\"Checkout\"]"
   }
 }

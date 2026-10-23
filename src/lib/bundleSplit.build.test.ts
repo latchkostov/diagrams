@@ -15,6 +15,9 @@ import { productionBuild } from "../test/productionBuild";
 /** Never in the startup JavaScript. */
 const NOT_AT_STARTUP: [string, RegExp][] = [
   ["stencil artwork URLs", /[/\\]src[/\\]stencils[/\\]iconUrls\.ts$/],
+  ["message type inspector", /[/\\]src[/\\]canvas[/\\]inspector[/\\]MessageFields\.tsx$/],
+  ["message type picker", /[/\\]src[/\\]components[/\\]MessageTypePicker\.tsx$/],
+  ["message type propagation", /[/\\]src[/\\]model[/\\]messageTypes\.ts$/],
   ["edge reconnect handles", /[/\\]src[/\\]canvas[/\\]edges[/\\]EdgeEnds\.tsx$/],
   ["edge inspector", /[/\\]src[/\\]canvas[/\\]inspector[/\\]EdgePanel\.tsx$/],
   ["connection dot resolver", /[/\\]src[/\\]canvas[/\\]interaction[/\\]connectTarget\.ts$/],

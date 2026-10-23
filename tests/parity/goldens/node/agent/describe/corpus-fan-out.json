@@ -1,7 +1,7 @@
 {
   "text": {
     "isError": false,
-    "output": "Diagram \"Fan-out 3×3\" · direction LR · 53 nodes, 52 connections, 0 boundaries, 0 simulations\ndescription: \"53 nodes: every level fans out to 3 consumers.\"\nnodes:\n  \"n\" \"client.browser\" (\"Web Browser\") \"Producer\" capabilities=[{\"kind\":\"publishes\",\"edge\":\"e-n-1\",\"peer\":\"n-1\"}] explanation=undefined\n  \"n-1\" \"kafka.topic\" (\"Kafka Topic\") \"Topic 1\" / \"events.1\" capabilities=[] explanation=undefined\n  \"n-1-1\" \"service.go\" (\"Go Service\") \"Service 1-1\" capabilities=[{\"kind\":\"consumes\",\"edge\":\"e-n-1-1\",\"peer\":\"n-1\",\"group\":\"e-n-1-1\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"publishes\",\"edge\":\"e-n-1-1-1\",\"peer\":\"n-1-1-1\"}] explanation={\"id\":\"n-1-1\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":16,\"offered\":2,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"n-1\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":3}],\"slots\":4,\"seconds\":0.25,\"utilization\":0.125,\"growth\":0,\"contributors\":[{\"edge\":\"e-n-1-1\",\"node\":\"n-1\",\"label\":\"Topic 1\",\"rate\":2}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"n-1-1-1\" \"kafka.topic\" (\"Kafka Topic\") \"Topic 1-1-1\" / \"events.1-1-1\" capabilities=[] explanation=undefined\n  \"n-1-1-1-1\" \"service.go\" (\"Go Service\") \"Service 1-1-1-1\" capabilities=[{\"kind\":\"consumes\",\"edge\":\"e-n-1-1-1-1\",\"peer\":\"n-1-1-1\",\"group\":\"e-n-1-1-1-1\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"publishes\",\"edge\":\"e-n-1-1-1-1-1\",\"peer\":\"n-1-1-1-1-1\"}] explanation={\"id\":\"n-1-1-1-1\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":16,\"offered\":2,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"n-1-1-1\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":3}],\"slots\":4,\"seconds\":0.25,\"utilization\":0.125,\"growth\":0,\"contributors\":[{\"edge\":\"e-n-1-1-1-1\",\"node\":\"n-1-1-1\",\"label\":\"Topic 1-1-1\",\"rate\":2}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"n-1-1-1-1-1\" \"kafka.topic\" (\"Kafka Topic\") \"Topic 1-1-1-1-1\" / \"events.1-1-1-1-1\" capabilities=[] explanation=undefined\n  \"n-1-1-1-1-1-1\" \"postgres\" (\"PostgreSQL\") \"Store 1-1-1-1-1-1\" capabilities=[] explanation=undefined\n  \"n-1-1-1-1-1-2\" \"postgres\" (\"PostgreSQL\") \"Store 1-1-1-1-1-2\" capabilities=[] explanation=undefined\n  \"n-1-1-1-1-1-3\" \"postgres\" (\"PostgreSQL\") \"Store 1-1-1-1-1-3\" capabilities=[] explanation=undefined\n  \"n-1-1-1-2\" \"service.go\" (\"Go Service\") \"Service 1-1-1-2\" capabilities=[{\"kind\":\"consumes\",\"edge\":\"e-n-1-1-1-2\",\"peer\":\"n-1-1-1\",\"group\":\"e-n-1-1-1-2\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"publishes\",\"edge\":\"e-n-1-1-1-2-1\",\"peer\":\"n-1-1-1-2-1\"}] explanation={\"id\":\"n-1-1-1-2\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":16,\"offered\":2,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"n-1-1-1\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":3}],\"slots\":4,\"seconds\":0.25,\"utilization\":0.125,\"growth\":0,\"contributors\":[{\"edge\":\"e-n-1-1-1-2\",\"node\":\"n-1-1-1\",\"label\":\"Topic 1-1-1\",\"rate\":2}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"n-1-1-1-2-1\" \"kafka.topic\" (\"Kafka Topic\") \"Topic 1-1-1-2-1\" / \"events.1-1-1-2-1\" capabilities=[] explanation=undefined\n  \"n-1-1-1-2-1-1\" \"postgres\" (\"PostgreSQL\") \"Store 1-1-1-2-1-1\" capabilities=[] explanation=undefined\n  \"n-1-1-1-2-1-2\" \"postgres\" (\"PostgreSQL\") \"Store 1-1-1-2-1-2\" capabilities=[] explanation=undefined\n  \"n-1-1-1-2-1-3\" \"postgres\" (\"PostgreSQL\") \"Store 1-1-1-2-1-3\" capabilities=[] explanation=undefined\n  \"n-1-1-1-3\" \"service.go\" (\"Go Service\") \"Service 1-1-1-3\" capabilities=[{\"kind\":\"consumes\",\"edge\":\"e-n-1-1-1-3\",\"peer\":\"n-1-1-1\",\"group\":\"e-n-1-1-1-3\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"publishes\",\"edge\":\"e-n-1-1-1-3-1\",\"peer\":\"n-1-1-1-3-1\"}] explanation={\"id\":\"n-1-1-1-3\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":16,\"offered\":2,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"n-1-1-1\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":3}],\"slots\":4,\"seconds\":0.25,\"utilization\":0.125,\"growth\":0,\"contributors\":[{\"edge\":\"e-n-1-1-1-3\",\"node\":\"n-1-1-1\",\"label\":\"Topic 1-1-1\",\"rate\":2}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"n-1-1-1-3-1\" \"kafka.topic\" (\"Kafka Topic\") \"Topic 1-1-1-3-1\" / \"events.1-1-1-3-1\" capabilities=[] explanation=undefined\n  \"n-1-1-1-3-1-1\" \"postgres\" (\"PostgreSQL\") \"Store 1-1-1-3-1-1\" capabilities=[] explanation=undefined\n  \"n-1-1-1-3-1-2\" \"postgres\" (\"PostgreSQL\") \"Store 1-1-1-3-1-2\" capabilities=[] explanation=undefined\n  \"n-1-1-1-3-1-3\" \"postgres\" (\"PostgreSQL\") \"Store 1-1-1-3-1-3\" capabilities=[] explanation=undefined\n  \"n-1-2\" \"service.go\" (\"Go Service\") \"Service 1-2\" capabilities=[{\"kind\":\"consumes\",\"edge\":\"e-n-1-2\",\"peer\":\"n-1\",\"group\":\"e-n-1-2\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"publishes\",\"edge\":\"e-n-1-2-1\",\"peer\":\"n-1-2-1\"}] explanation={\"id\":\"n-1-2\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":16,\"offered\":2,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"n-1\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":3}],\"slots\":4,\"seconds\":0.25,\"utilization\":0.125,\"growth\":0,\"contributors\":[{\"edge\":\"e-n-1-2\",\"node\":\"n-1\",\"label\":\"Topic 1\",\"rate\":2}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"n-1-2-1\" \"kafka.topic\" (\"Kafka Topic\") \"Topic 1-2-1\" / \"events.1-2-1\" capabilities=[] explanation=undefined\n  \"n-1-2-1-1\" \"service.go\" (\"Go Service\") \"Service 1-2-1-1\" capabilities=[{\"kind\":\"consumes\",\"edge\":\"e-n-1-2-1-1\",\"peer\":\"n-1-2-1\",\"group\":\"e-n-1-2-1-1\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"publishes\",\"edge\":\"e-n-1-2-1-1-1\",\"peer\":\"n-1-2-1-1-1\"}] explanation={\"id\":\"n-1-2-1-1\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":16,\"offered\":2,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"n-1-2-1\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":3}],\"slots\":4,\"seconds\":0.25,\"utilization\":0.125,\"growth\":0,\"contributors\":[{\"edge\":\"e-n-1-2-1-1\",\"node\":\"n-1-2-1\",\"label\":\"Topic 1-2-1\",\"rate\":2}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"n-1-2-1-1-1\" \"kafka.topic\" (\"Kafka Topic\") \"Topic 1-2-1-1-1\" / \"events.1-2-1-1-1\" capabilities=[] explanation=undefined\n  \"n-1-2-1-1-1-1\" \"postgres\" (\"PostgreSQL\") \"Store 1-2-1-1-1-1\" capabilities=[] explanation=undefined\n  \"n-1-2-1-1-1-2\" \"postgres\" (\"PostgreSQL\") \"Store 1-2-1-1-1-2\" capabilities=[] explanation=undefined\n  \"n-1-2-1-1-1-3\" \"postgres\" (\"PostgreSQL\") \"Store 1-2-1-1-1-3\" capabilities=[] explanation=undefined\n  \"n-1-2-1-2\" \"service.go\" (\"Go Service\") \"Service 1-2-1-2\" capabilities=[{\"kind\":\"consumes\",\"edge\":\"e-n-1-2-1-2\",\"peer\":\"n-1-2-1\",\"group\":\"e-n-1-2-1-2\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"publishes\",\"edge\":\"e-n-1-2-1-2-1\",\"peer\":\"n-1-2-1-2-1\"}] explanation={\"id\":\"n-1-2-1-2\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":16,\"offered\":2,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"n-1-2-1\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":3}],\"slots\":4,\"seconds\":0.25,\"utilization\":0.125,\"growth\":0,\"contributors\":[{\"edge\":\"e-n-1-2-1-2\",\"node\":\"n-1-2-1\",\"label\":\"Topic 1-2-1\",\"rate\":2}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"n-1-2-1-2-1\" \"kafka.topic\" (\"Kafka Topic\") \"Topic 1-2-1-2-1\" / \"events.1-2-1-2-1\" capabilities=[] explanation=undefined\n  \"n-1-2-1-2-1-1\" \"postgres\" (\"PostgreSQL\") \"Store 1-2-1-2-1-1\" capabilities=[] explanation=undefined\n  \"n-1-2-1-2-1-2\" \"postgres\" (\"PostgreSQL\") \"Store 1-2-1-2-1-2\" capabilities=[] explanation=undefined\n  \"n-1-2-1-2-1-3\" \"postgres\" (\"PostgreSQL\") \"Store 1-2-1-2-1-3\" capabilities=[] explanation=undefined\n  \"n-1-2-1-3\" \"service.go\" (\"Go Service\") \"Service 1-2-1-3\" capabilities=[{\"kind\":\"consumes\",\"edge\":\"e-n-1-2-1-3\",\"peer\":\"n-1-2-1\",\"group\":\"e-n-1-2-1-3\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"publishes\",\"edge\":\"e-n-1-2-1-3-1\",\"peer\":\"n-1-2-1-3-1\"}] explanation={\"id\":\"n-1-2-1-3\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":16,\"offered\":2,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"n-1-2-1\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":3}],\"slots\":4,\"seconds\":0.25,\"utilization\":0.125,\"growth\":0,\"contributors\":[{\"edge\":\"e-n-1-2-1-3\",\"node\":\"n-1-2-1\",\"label\":\"Topic 1-2-1\",\"rate\":2}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"n-1-2-1-3-1\" \"kafka.topic\" (\"Kafka Topic\") \"Topic 1-2-1-3-1\" / \"events.1-2-1-3-1\" capabilities=[] explanation=undefined\n  \"n-1-2-1-3-1-1\" \"postgres\" (\"PostgreSQL\") \"Store 1-2-1-3-1-1\" capabilities=[] explanation=undefined\n  \"n-1-2-1-3-1-2\" \"postgres\" (\"PostgreSQL\") \"Store 1-2-1-3-1-2\" capabilities=[] explanation=undefined\n  \"n-1-2-1-3-1-3\" \"postgres\" (\"PostgreSQL\") \"Store 1-2-1-3-1-3\" capabilities=[] explanation=undefined\n  \"n-1-3\" \"service.go\" (\"Go Service\") \"Service 1-3\" capabilities=[{\"kind\":\"consumes\",\"edge\":\"e-n-1-3\",\"peer\":\"n-1\",\"group\":\"e-n-1-3\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"publishes\",\"edge\":\"e-n-1-3-1\",\"peer\":\"n-1-3-1\"}] explanation={\"id\":\"n-1-3\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":16,\"offered\":2,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"n-1\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":3}],\"slots\":4,\"seconds\":0.25,\"utilization\":0.125,\"growth\":0,\"contributors\":[{\"edge\":\"e-n-1-3\",\"node\":\"n-1\",\"label\":\"Topic 1\",\"rate\":2}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"n-1-3-1\" \"kafka.topic\" (\"Kafka Topic\") \"Topic 1-3-1\" / \"events.1-3-1\" capabilities=[] explanation=undefined\n  \"n-1-3-1-1\" \"service.go\" (\"Go Service\") \"Service 1-3-1-1\" capabilities=[{\"kind\":\"consumes\",\"edge\":\"e-n-1-3-1-1\",\"peer\":\"n-1-3-1\",\"group\":\"e-n-1-3-1-1\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"publishes\",\"edge\":\"e-n-1-3-1-1-1\",\"peer\":\"n-1-3-1-1-1\"}] explanation={\"id\":\"n-1-3-1-1\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":16,\"offered\":2,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"n-1-3-1\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":3}],\"slots\":4,\"seconds\":0.25,\"utilization\":0.125,\"growth\":0,\"contributors\":[{\"edge\":\"e-n-1-3-1-1\",\"node\":\"n-1-3-1\",\"label\":\"Topic 1-3-1\",\"rate\":2}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"n-1-3-1-1-1\" \"kafka.topic\" (\"Kafka Topic\") \"Topic 1-3-1-1-1\" / \"events.1-3-1-1-1\" capabilities=[] explanation=undefined\n  \"n-1-3-1-1-1-1\" \"postgres\" (\"PostgreSQL\") \"Store 1-3-1-1-1-1\" capabilities=[] explanation=undefined\n  \"n-1-3-1-1-1-2\" \"postgres\" (\"PostgreSQL\") \"Store 1-3-1-1-1-2\" capabilities=[] explanation=undefined\n  \"n-1-3-1-1-1-3\" \"postgres\" (\"PostgreSQL\") \"Store 1-3-1-1-1-3\" capabilities=[] explanation=undefined\n  \"n-1-3-1-2\" \"service.go\" (\"Go Service\") \"Service 1-3-1-2\" capabilities=[{\"kind\":\"consumes\",\"edge\":\"e-n-1-3-1-2\",\"peer\":\"n-1-3-1\",\"group\":\"e-n-1-3-1-2\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"publishes\",\"edge\":\"e-n-1-3-1-2-1\",\"peer\":\"n-1-3-1-2-1\"}] explanation={\"id\":\"n-1-3-1-2\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":16,\"offered\":2,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"n-1-3-1\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":3}],\"slots\":4,\"seconds\":0.25,\"utilization\":0.125,\"growth\":0,\"contributors\":[{\"edge\":\"e-n-1-3-1-2\",\"node\":\"n-1-3-1\",\"label\":\"Topic 1-3-1\",\"rate\":2}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"n-1-3-1-2-1\" \"kafka.topic\" (\"Kafka Topic\") \"Topic 1-3-1-2-1\" / \"events.1-3-1-2-1\" capabilities=[] explanation=undefined\n  \"n-1-3-1-2-1-1\" \"postgres\" (\"PostgreSQL\") \"Store 1-3-1-2-1-1\" capabilities=[] explanation=undefined\n  \"n-1-3-1-2-1-2\" \"postgres\" (\"PostgreSQL\") \"Store 1-3-1-2-1-2\" capabilities=[] explanation=undefined\n  \"n-1-3-1-2-1-3\" \"postgres\" (\"PostgreSQL\") \"Store 1-3-1-2-1-3\" capabilities=[] explanation=undefined\n  \"n-1-3-1-3\" \"service.go\" (\"Go Service\") \"Service 1-3-1-3\" capabilities=[{\"kind\":\"consumes\",\"edge\":\"e-n-1-3-1-3\",\"peer\":\"n-1-3-1\",\"group\":\"e-n-1-3-1-3\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"publishes\",\"edge\":\"e-n-1-3-1-3-1\",\"peer\":\"n-1-3-1-3-1\"}] explanation={\"id\":\"n-1-3-1-3\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":16,\"offered\":2,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"n-1-3-1\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":3}],\"slots\":4,\"seconds\":0.25,\"utilization\":0.125,\"growth\":0,\"contributors\":[{\"edge\":\"e-n-1-3-1-3\",\"node\":\"n-1-3-1\",\"label\":\"Topic 1-3-1\",\"rate\":2}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"n-1-3-1-3-1\" \"kafka.topic\" (\"Kafka Topic\") \"Topic 1-3-1-3-1\" / \"events.1-3-1-3-1\" capabilities=[] explanation=undefined\n  \"n-1-3-1-3-1-1\" \"postgres\" (\"PostgreSQL\") \"Store 1-3-1-3-1-1\" capabilities=[] explanation=undefined\n  \"n-1-3-1-3-1-2\" \"postgres\" (\"PostgreSQL\") \"Store 1-3-1-3-1-2\" capabilities=[] explanation=undefined\n  \"n-1-3-1-3-1-3\" \"postgres\" (\"PostgreSQL\") \"Store 1-3-1-3-1-3\" capabilities=[] explanation=undefined\nconnections:\n  \"e-n-1\" \"n\" -> \"n-1\" async\n  \"e-n-1-1\" \"n-1\" -> \"n-1-1\" async\n  \"e-n-1-1-1\" \"n-1-1\" -> \"n-1-1-1\" async\n  \"e-n-1-1-1-1\" \"n-1-1-1\" -> \"n-1-1-1-1\" async\n  \"e-n-1-1-1-1-1\" \"n-1-1-1-1\" -> \"n-1-1-1-1-1\" async\n  \"e-n-1-1-1-1-1-1\" \"n-1-1-1-1-1\" -> \"n-1-1-1-1-1-1\" async\n  \"e-n-1-1-1-1-1-2\" \"n-1-1-1-1-1\" -> \"n-1-1-1-1-1-2\" async\n  \"e-n-1-1-1-1-1-3\" \"n-1-1-1-1-1\" -> \"n-1-1-1-1-1-3\" async\n  \"e-n-1-1-1-2\" \"n-1-1-1\" -> \"n-1-1-1-2\" async\n  \"e-n-1-1-1-2-1\" \"n-1-1-1-2\" -> \"n-1-1-1-2-1\" async\n  \"e-n-1-1-1-2-1-1\" \"n-1-1-1-2-1\" -> \"n-1-1-1-2-1-1\" async\n  \"e-n-1-1-1-2-1-2\" \"n-1-1-1-2-1\" -> \"n-1-1-1-2-1-2\" async\n  \"e-n-1-1-1-2-1-3\" \"n-1-1-1-2-1\" -> \"n-1-1-1-2-1-3\" async\n  \"e-n-1-1-1-3\" \"n-1-1-1\" -> \"n-1-1-1-3\" async\n  \"e-n-1-1-1-3-1\" \"n-1-1-1-3\" -> \"n-1-1-1-3-1\" async\n  \"e-n-1-1-1-3-1-1\" \"n-1-1-1-3-1\" -> \"n-1-1-1-3-1-1\" async\n  \"e-n-1-1-1-3-1-2\" \"n-1-1-1-3-1\" -> \"n-1-1-1-3-1-2\" async\n  \"e-n-1-1-1-3-1-3\" \"n-1-1-1-3-1\" -> \"n-1-1-1-3-1-3\" async\n  \"e-n-1-2\" \"n-1\" -> \"n-1-2\" async\n  \"e-n-1-2-1\" \"n-1-2\" -> \"n-1-2-1\" async\n  \"e-n-1-2-1-1\" \"n-1-2-1\" -> \"n-1-2-1-1\" async\n  \"e-n-1-2-1-1-1\" \"n-1-2-1-1\" -> \"n-1-2-1-1-1\" async\n  \"e-n-1-2-1-1-1-1\" \"n-1-2-1-1-1\" -> \"n-1-2-1-1-1-1\" async\n  \"e-n-1-2-1-1-1-2\" \"n-1-2-1-1-1\" -> \"n-1-2-1-1-1-2\" async\n  \"e-n-1-2-1-1-1-3\" \"n-1-2-1-1-1\" -> \"n-1-2-1-1-1-3\" async\n  \"e-n-1-2-1-2\" \"n-1-2-1\" -> \"n-1-2-1-2\" async\n  \"e-n-1-2-1-2-1\" \"n-1-2-1-2\" -> \"n-1-2-1-2-1\" async\n  \"e-n-1-2-1-2-1-1\" \"n-1-2-1-2-1\" -> \"n-1-2-1-2-1-1\" async\n  \"e-n-1-2-1-2-1-2\" \"n-1-2-1-2-1\" -> \"n-1-2-1-2-1-2\" async\n  \"e-n-1-2-1-2-1-3\" \"n-1-2-1-2-1\" -> \"n-1-2-1-2-1-3\" async\n  \"e-n-1-2-1-3\" \"n-1-2-1\" -> \"n-1-2-1-3\" async\n  \"e-n-1-2-1-3-1\" \"n-1-2-1-3\" -> \"n-1-2-1-3-1\" async\n  \"e-n-1-2-1-3-1-1\" \"n-1-2-1-3-1\" -> \"n-1-2-1-3-1-1\" async\n  \"e-n-1-2-1-3-1-2\" \"n-1-2-1-3-1\" -> \"n-1-2-1-3-1-2\" async\n  \"e-n-1-2-1-3-1-3\" \"n-1-2-1-3-1\" -> \"n-1-2-1-3-1-3\" async\n  \"e-n-1-3\" \"n-1\" -> \"n-1-3\" async\n  \"e-n-1-3-1\" \"n-1-3\" -> \"n-1-3-1\" async\n  \"e-n-1-3-1-1\" \"n-1-3-1\" -> \"n-1-3-1-1\" async\n  \"e-n-1-3-1-1-1\" \"n-1-3-1-1\" -> \"n-1-3-1-1-1\" async\n  \"e-n-1-3-1-1-1-1\" \"n-1-3-1-1-1\" -> \"n-1-3-1-1-1-1\" async\n  \"e-n-1-3-1-1-1-2\" \"n-1-3-1-1-1\" -> \"n-1-3-1-1-1-2\" async\n  \"e-n-1-3-1-1-1-3\" \"n-1-3-1-1-1\" -> \"n-1-3-1-1-1-3\" async\n  \"e-n-1-3-1-2\" \"n-1-3-1\" -> \"n-1-3-1-2\" async\n  \"e-n-1-3-1-2-1\" \"n-1-3-1-2\" -> \"n-1-3-1-2-1\" async\n  \"e-n-1-3-1-2-1-1\" \"n-1-3-1-2-1\" -> \"n-1-3-1-2-1-1\" async\n  \"e-n-1-3-1-2-1-2\" \"n-1-3-1-2-1\" -> \"n-1-3-1-2-1-2\" async\n  \"e-n-1-3-1-2-1-3\" \"n-1-3-1-2-1\" -> \"n-1-3-1-2-1-3\" async\n  \"e-n-1-3-1-3\" \"n-1-3-1\" -> \"n-1-3-1-3\" async\n  \"e-n-1-3-1-3-1\" \"n-1-3-1-3\" -> \"n-1-3-1-3-1\" async\n  \"e-n-1-3-1-3-1-1\" \"n-1-3-1-3-1\" -> \"n-1-3-1-3-1-1\" async\n  \"e-n-1-3-1-3-1-2\" \"n-1-3-1-3-1\" -> \"n-1-3-1-3-1-2\" async\n  \"e-n-1-3-1-3-1-3\" \"n-1-3-1-3-1\" -> \"n-1-3-1-3-1-3\" async"
+    "output": "Diagram \"Fan-out 3×3\" · direction LR · 53 nodes, 52 connections, 0 boundaries, 0 simulations\ndescription: \"53 nodes: every level fans out to 3 consumers.\"\nnodes:\n  \"n\" \"client.browser\" (\"Web Browser\") \"Producer\" arrivingTypes=[] capabilities=[{\"kind\":\"publishes\",\"edge\":\"e-n-1\",\"peer\":\"n-1\"}] explanation=undefined\n  \"n-1\" \"kafka.topic\" (\"Kafka Topic\") \"Topic 1\" / \"events.1\" arrivingTypes=[\"Producer\"] capabilities=[] explanation=undefined\n  \"n-1-1\" \"service.go\" (\"Go Service\") \"Service 1-1\" arrivingTypes=[\"Producer\"] capabilities=[{\"kind\":\"consumes\",\"edge\":\"e-n-1-1\",\"peer\":\"n-1\",\"group\":\"e-n-1-1\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"publishes\",\"edge\":\"e-n-1-1-1\",\"peer\":\"n-1-1-1\"}] explanation={\"id\":\"n-1-1\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":16,\"offered\":2,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"n-1\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":3}],\"slots\":4,\"seconds\":0.25,\"utilization\":0.125,\"growth\":0,\"contributors\":[{\"edge\":\"e-n-1-1\",\"node\":\"n-1\",\"label\":\"Topic 1\",\"rate\":2}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"n-1-1-1\" \"kafka.topic\" (\"Kafka Topic\") \"Topic 1-1-1\" / \"events.1-1-1\" arrivingTypes=[\"Producer\"] capabilities=[] explanation=undefined\n  \"n-1-1-1-1\" \"service.go\" (\"Go Service\") \"Service 1-1-1-1\" arrivingTypes=[\"Producer\"] capabilities=[{\"kind\":\"consumes\",\"edge\":\"e-n-1-1-1-1\",\"peer\":\"n-1-1-1\",\"group\":\"e-n-1-1-1-1\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"publishes\",\"edge\":\"e-n-1-1-1-1-1\",\"peer\":\"n-1-1-1-1-1\"}] explanation={\"id\":\"n-1-1-1-1\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":16,\"offered\":2,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"n-1-1-1\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":3}],\"slots\":4,\"seconds\":0.25,\"utilization\":0.125,\"growth\":0,\"contributors\":[{\"edge\":\"e-n-1-1-1-1\",\"node\":\"n-1-1-1\",\"label\":\"Topic 1-1-1\",\"rate\":2}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"n-1-1-1-1-1\" \"kafka.topic\" (\"Kafka Topic\") \"Topic 1-1-1-1-1\" / \"events.1-1-1-1-1\" arrivingTypes=[\"Producer\"] capabilities=[] explanation=undefined\n  \"n-1-1-1-1-1-1\" \"postgres\" (\"PostgreSQL\") \"Store 1-1-1-1-1-1\" arrivingTypes=[\"Producer\"] capabilities=[] explanation=undefined\n  \"n-1-1-1-1-1-2\" \"postgres\" (\"PostgreSQL\") \"Store 1-1-1-1-1-2\" arrivingTypes=[\"Producer\"] capabilities=[] explanation=undefined\n  \"n-1-1-1-1-1-3\" \"postgres\" (\"PostgreSQL\") \"Store 1-1-1-1-1-3\" arrivingTypes=[\"Producer\"] capabilities=[] explanation=undefined\n  \"n-1-1-1-2\" \"service.go\" (\"Go Service\") \"Service 1-1-1-2\" arrivingTypes=[\"Producer\"] capabilities=[{\"kind\":\"consumes\",\"edge\":\"e-n-1-1-1-2\",\"peer\":\"n-1-1-1\",\"group\":\"e-n-1-1-1-2\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"publishes\",\"edge\":\"e-n-1-1-1-2-1\",\"peer\":\"n-1-1-1-2-1\"}] explanation={\"id\":\"n-1-1-1-2\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":16,\"offered\":2,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"n-1-1-1\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":3}],\"slots\":4,\"seconds\":0.25,\"utilization\":0.125,\"growth\":0,\"contributors\":[{\"edge\":\"e-n-1-1-1-2\",\"node\":\"n-1-1-1\",\"label\":\"Topic 1-1-1\",\"rate\":2}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"n-1-1-1-2-1\" \"kafka.topic\" (\"Kafka Topic\") \"Topic 1-1-1-2-1\" / \"events.1-1-1-2-1\" arrivingTypes=[\"Producer\"] capabilities=[] explanation=undefined\n  \"n-1-1-1-2-1-1\" \"postgres\" (\"PostgreSQL\") \"Store 1-1-1-2-1-1\" arrivingTypes=[\"Producer\"] capabilities=[] explanation=undefined\n  \"n-1-1-1-2-1-2\" \"postgres\" (\"PostgreSQL\") \"Store 1-1-1-2-1-2\" arrivingTypes=[\"Producer\"] capabilities=[] explanation=undefined\n  \"n-1-1-1-2-1-3\" \"postgres\" (\"PostgreSQL\") \"Store 1-1-1-2-1-3\" arrivingTypes=[\"Producer\"] capabilities=[] explanation=undefined\n  \"n-1-1-1-3\" \"service.go\" (\"Go Service\") \"Service 1-1-1-3\" arrivingTypes=[\"Producer\"] capabilities=[{\"kind\":\"consumes\",\"edge\":\"e-n-1-1-1-3\",\"peer\":\"n-1-1-1\",\"group\":\"e-n-1-1-1-3\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"publishes\",\"edge\":\"e-n-1-1-1-3-1\",\"peer\":\"n-1-1-1-3-1\"}] explanation={\"id\":\"n-1-1-1-3\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":16,\"offered\":2,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"n-1-1-1\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":3}],\"slots\":4,\"seconds\":0.25,\"utilization\":0.125,\"growth\":0,\"contributors\":[{\"edge\":\"e-n-1-1-1-3\",\"node\":\"n-1-1-1\",\"label\":\"Topic 1-1-1\",\"rate\":2}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"n-1-1-1-3-1\" \"kafka.topic\" (\"Kafka Topic\") \"Topic 1-1-1-3-1\" / \"events.1-1-1-3-1\" arrivingTypes=[\"Producer\"] capabilities=[] explanation=undefined\n  \"n-1-1-1-3-1-1\" \"postgres\" (\"PostgreSQL\") \"Store 1-1-1-3-1-1\" arrivingTypes=[\"Producer\"] capabilities=[] explanation=undefined\n  \"n-1-1-1-3-1-2\" \"postgres\" (\"PostgreSQL\") \"Store 1-1-1-3-1-2\" arrivingTypes=[\"Producer\"] capabilities=[] explanation=undefined\n  \"n-1-1-1-3-1-3\" \"postgres\" (\"PostgreSQL\") \"Store 1-1-1-3-1-3\" arrivingTypes=[\"Producer\"] capabilities=[] explanation=undefined\n  \"n-1-2\" \"service.go\" (\"Go Service\") \"Service 1-2\" arrivingTypes=[\"Producer\"] capabilities=[{\"kind\":\"consumes\",\"edge\":\"e-n-1-2\",\"peer\":\"n-1\",\"group\":\"e-n-1-2\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"publishes\",\"edge\":\"e-n-1-2-1\",\"peer\":\"n-1-2-1\"}] explanation={\"id\":\"n-1-2\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":16,\"offered\":2,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"n-1\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":3}],\"slots\":4,\"seconds\":0.25,\"utilization\":0.125,\"growth\":0,\"contributors\":[{\"edge\":\"e-n-1-2\",\"node\":\"n-1\",\"label\":\"Topic 1\",\"rate\":2}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"n-1-2-1\" \"kafka.topic\" (\"Kafka Topic\") \"Topic 1-2-1\" / \"events.1-2-1\" arrivingTypes=[\"Producer\"] capabilities=[] explanation=undefined\n  \"n-1-2-1-1\" \"service.go\" (\"Go Service\") \"Service 1-2-1-1\" arrivingTypes=[\"Producer\"] capabilities=[{\"kind\":\"consumes\",\"edge\":\"e-n-1-2-1-1\",\"peer\":\"n-1-2-1\",\"group\":\"e-n-1-2-1-1\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"publishes\",\"edge\":\"e-n-1-2-1-1-1\",\"peer\":\"n-1-2-1-1-1\"}] explanation={\"id\":\"n-1-2-1-1\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":16,\"offered\":2,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"n-1-2-1\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":3}],\"slots\":4,\"seconds\":0.25,\"utilization\":0.125,\"growth\":0,\"contributors\":[{\"edge\":\"e-n-1-2-1-1\",\"node\":\"n-1-2-1\",\"label\":\"Topic 1-2-1\",\"rate\":2}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"n-1-2-1-1-1\" \"kafka.topic\" (\"Kafka Topic\") \"Topic 1-2-1-1-1\" / \"events.1-2-1-1-1\" arrivingTypes=[\"Producer\"] capabilities=[] explanation=undefined\n  \"n-1-2-1-1-1-1\" \"postgres\" (\"PostgreSQL\") \"Store 1-2-1-1-1-1\" arrivingTypes=[\"Producer\"] capabilities=[] explanation=undefined\n  \"n-1-2-1-1-1-2\" \"postgres\" (\"PostgreSQL\") \"Store 1-2-1-1-1-2\" arrivingTypes=[\"Producer\"] capabilities=[] explanation=undefined\n  \"n-1-2-1-1-1-3\" \"postgres\" (\"PostgreSQL\") \"Store 1-2-1-1-1-3\" arrivingTypes=[\"Producer\"] capabilities=[] explanation=undefined\n  \"n-1-2-1-2\" \"service.go\" (\"Go Service\") \"Service 1-2-1-2\" arrivingTypes=[\"Producer\"] capabilities=[{\"kind\":\"consumes\",\"edge\":\"e-n-1-2-1-2\",\"peer\":\"n-1-2-1\",\"group\":\"e-n-1-2-1-2\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"publishes\",\"edge\":\"e-n-1-2-1-2-1\",\"peer\":\"n-1-2-1-2-1\"}] explanation={\"id\":\"n-1-2-1-2\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":16,\"offered\":2,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"n-1-2-1\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":3}],\"slots\":4,\"seconds\":0.25,\"utilization\":0.125,\"growth\":0,\"contributors\":[{\"edge\":\"e-n-1-2-1-2\",\"node\":\"n-1-2-1\",\"label\":\"Topic 1-2-1\",\"rate\":2}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"n-1-2-1-2-1\" \"kafka.topic\" (\"Kafka Topic\") \"Topic 1-2-1-2-1\" / \"events.1-2-1-2-1\" arrivingTypes=[\"Producer\"] capabilities=[] explanation=undefined\n  \"n-1-2-1-2-1-1\" \"postgres\" (\"PostgreSQL\") \"Store 1-2-1-2-1-1\" arrivingTypes=[\"Producer\"] capabilities=[] explanation=undefined\n  \"n-1-2-1-2-1-2\" \"postgres\" (\"PostgreSQL\") \"Store 1-2-1-2-1-2\" arrivingTypes=[\"Producer\"] capabilities=[] explanation=undefined\n  \"n-1-2-1-2-1-3\" \"postgres\" (\"PostgreSQL\") \"Store 1-2-1-2-1-3\" arrivingTypes=[\"Producer\"] capabilities=[] explanation=undefined\n  \"n-1-2-1-3\" \"service.go\" (\"Go Service\") \"Service 1-2-1-3\" arrivingTypes=[\"Producer\"] capabilities=[{\"kind\":\"consumes\",\"edge\":\"e-n-1-2-1-3\",\"peer\":\"n-1-2-1\",\"group\":\"e-n-1-2-1-3\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"publishes\",\"edge\":\"e-n-1-2-1-3-1\",\"peer\":\"n-1-2-1-3-1\"}] explanation={\"id\":\"n-1-2-1-3\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":16,\"offered\":2,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"n-1-2-1\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":3}],\"slots\":4,\"seconds\":0.25,\"utilization\":0.125,\"growth\":0,\"contributors\":[{\"edge\":\"e-n-1-2-1-3\",\"node\":\"n-1-2-1\",\"label\":\"Topic 1-2-1\",\"rate\":2}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"n-1-2-1-3-1\" \"kafka.topic\" (\"Kafka Topic\") \"Topic 1-2-1-3-1\" / \"events.1-2-1-3-1\" arrivingTypes=[\"Producer\"] capabilities=[] explanation=undefined\n  \"n-1-2-1-3-1-1\" \"postgres\" (\"PostgreSQL\") \"Store 1-2-1-3-1-1\" arrivingTypes=[\"Producer\"] capabilities=[] explanation=undefined\n  \"n-1-2-1-3-1-2\" \"postgres\" (\"PostgreSQL\") \"Store 1-2-1-3-1-2\" arrivingTypes=[\"Producer\"] capabilities=[] explanation=undefined\n  \"n-1-2-1-3-1-3\" \"postgres\" (\"PostgreSQL\") \"Store 1-2-1-3-1-3\" arrivingTypes=[\"Producer\"] capabilities=[] explanation=undefined\n  \"n-1-3\" \"service.go\" (\"Go Service\") \"Service 1-3\" arrivingTypes=[\"Producer\"] capabilities=[{\"kind\":\"consumes\",\"edge\":\"e-n-1-3\",\"peer\":\"n-1\",\"group\":\"e-n-1-3\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"publishes\",\"edge\":\"e-n-1-3-1\",\"peer\":\"n-1-3-1\"}] explanation={\"id\":\"n-1-3\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":16,\"offered\":2,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"n-1\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":3}],\"slots\":4,\"seconds\":0.25,\"utilization\":0.125,\"growth\":0,\"contributors\":[{\"edge\":\"e-n-1-3\",\"node\":\"n-1\",\"label\":\"Topic 1\",\"rate\":2}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"n-1-3-1\" \"kafka.topic\" (\"Kafka Topic\") \"Topic 1-3-1\" / \"events.1-3-1\" arrivingTypes=[\"Producer\"] capabilities=[] explanation=undefined\n  \"n-1-3-1-1\" \"service.go\" (\"Go Service\") \"Service 1-3-1-1\" arrivingTypes=[\"Producer\"] capabilities=[{\"kind\":\"consumes\",\"edge\":\"e-n-1-3-1-1\",\"peer\":\"n-1-3-1\",\"group\":\"e-n-1-3-1-1\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"publishes\",\"edge\":\"e-n-1-3-1-1-1\",\"peer\":\"n-1-3-1-1-1\"}] explanation={\"id\":\"n-1-3-1-1\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":16,\"offered\":2,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"n-1-3-1\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":3}],\"slots\":4,\"seconds\":0.25,\"utilization\":0.125,\"growth\":0,\"contributors\":[{\"edge\":\"e-n-1-3-1-1\",\"node\":\"n-1-3-1\",\"label\":\"Topic 1-3-1\",\"rate\":2}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"n-1-3-1-1-1\" \"kafka.topic\" (\"Kafka Topic\") \"Topic 1-3-1-1-1\" / \"events.1-3-1-1-1\" arrivingTypes=[\"Producer\"] capabilities=[] explanation=undefined\n  \"n-1-3-1-1-1-1\" \"postgres\" (\"PostgreSQL\") \"Store 1-3-1-1-1-1\" arrivingTypes=[\"Producer\"] capabilities=[] explanation=undefined\n  \"n-1-3-1-1-1-2\" \"postgres\" (\"PostgreSQL\") \"Store 1-3-1-1-1-2\" arrivingTypes=[\"Producer\"] capabilities=[] explanation=undefined\n  \"n-1-3-1-1-1-3\" \"postgres\" (\"PostgreSQL\") \"Store 1-3-1-1-1-3\" arrivingTypes=[\"Producer\"] capabilities=[] explanation=undefined\n  \"n-1-3-1-2\" \"service.go\" (\"Go Service\") \"Service 1-3-1-2\" arrivingTypes=[\"Producer\"] capabilities=[{\"kind\":\"consumes\",\"edge\":\"e-n-1-3-1-2\",\"peer\":\"n-1-3-1\",\"group\":\"e-n-1-3-1-2\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"publishes\",\"edge\":\"e-n-1-3-1-2-1\",\"peer\":\"n-1-3-1-2-1\"}] explanation={\"id\":\"n-1-3-1-2\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":16,\"offered\":2,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"n-1-3-1\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":3}],\"slots\":4,\"seconds\":0.25,\"utilization\":0.125,\"growth\":0,\"contributors\":[{\"edge\":\"e-n-1-3-1-2\",\"node\":\"n-1-3-1\",\"label\":\"Topic 1-3-1\",\"rate\":2}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"n-1-3-1-2-1\" \"kafka.topic\" (\"Kafka Topic\") \"Topic 1-3-1-2-1\" / \"events.1-3-1-2-1\" arrivingTypes=[\"Producer\"] capabilities=[] explanation=undefined\n  \"n-1-3-1-2-1-1\" \"postgres\" (\"PostgreSQL\") \"Store 1-3-1-2-1-1\" arrivingTypes=[\"Producer\"] capabilities=[] explanation=undefined\n  \"n-1-3-1-2-1-2\" \"postgres\" (\"PostgreSQL\") \"Store 1-3-1-2-1-2\" arrivingTypes=[\"Producer\"] capabilities=[] explanation=undefined\n  \"n-1-3-1-2-1-3\" \"postgres\" (\"PostgreSQL\") \"Store 1-3-1-2-1-3\" arrivingTypes=[\"Producer\"] capabilities=[] explanation=undefined\n  \"n-1-3-1-3\" \"service.go\" (\"Go Service\") \"Service 1-3-1-3\" arrivingTypes=[\"Producer\"] capabilities=[{\"kind\":\"consumes\",\"edge\":\"e-n-1-3-1-3\",\"peer\":\"n-1-3-1\",\"group\":\"e-n-1-3-1-3\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"publishes\",\"edge\":\"e-n-1-3-1-3-1\",\"peer\":\"n-1-3-1-3-1\"}] explanation={\"id\":\"n-1-3-1-3\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":16,\"offered\":2,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"n-1-3-1\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":3}],\"slots\":4,\"seconds\":0.25,\"utilization\":0.125,\"growth\":0,\"contributors\":[{\"edge\":\"e-n-1-3-1-3\",\"node\":\"n-1-3-1\",\"label\":\"Topic 1-3-1\",\"rate\":2}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"n-1-3-1-3-1\" \"kafka.topic\" (\"Kafka Topic\") \"Topic 1-3-1-3-1\" / \"events.1-3-1-3-1\" arrivingTypes=[\"Producer\"] capabilities=[] explanation=undefined\n  \"n-1-3-1-3-1-1\" \"postgres\" (\"PostgreSQL\") \"Store 1-3-1-3-1-1\" arrivingTypes=[\"Producer\"] capabilities=[] explanation=undefined\n  \"n-1-3-1-3-1-2\" \"postgres\" (\"PostgreSQL\") \"Store 1-3-1-3-1-2\" arrivingTypes=[\"Producer\"] capabilities=[] explanation=undefined\n  \"n-1-3-1-3-1-3\" \"postgres\" (\"PostgreSQL\") \"Store 1-3-1-3-1-3\" arrivingTypes=[\"Producer\"] capabilities=[] explanation=undefined\nconnections:\n  \"e-n-1\" \"n\" -> \"n-1\" async carriedTypes=[\"Producer\"]\n  \"e-n-1-1\" \"n-1\" -> \"n-1-1\" async carriedTypes=[\"Producer\"]\n  \"e-n-1-1-1\" \"n-1-1\" -> \"n-1-1-1\" async carriedTypes=[\"Producer\"]\n  \"e-n-1-1-1-1\" \"n-1-1-1\" -> \"n-1-1-1-1\" async carriedTypes=[\"Producer\"]\n  \"e-n-1-1-1-1-1\" \"n-1-1-1-1\" -> \"n-1-1-1-1-1\" async carriedTypes=[\"Producer\"]\n  \"e-n-1-1-1-1-1-1\" \"n-1-1-1-1-1\" -> \"n-1-1-1-1-1-1\" async carriedTypes=[\"Producer\"]\n  \"e-n-1-1-1-1-1-2\" \"n-1-1-1-1-1\" -> \"n-1-1-1-1-1-2\" async carriedTypes=[\"Producer\"]\n  \"e-n-1-1-1-1-1-3\" \"n-1-1-1-1-1\" -> \"n-1-1-1-1-1-3\" async carriedTypes=[\"Producer\"]\n  \"e-n-1-1-1-2\" \"n-1-1-1\" -> \"n-1-1-1-2\" async carriedTypes=[\"Producer\"]\n  \"e-n-1-1-1-2-1\" \"n-1-1-1-2\" -> \"n-1-1-1-2-1\" async carriedTypes=[\"Producer\"]\n  \"e-n-1-1-1-2-1-1\" \"n-1-1-1-2-1\" -> \"n-1-1-1-2-1-1\" async carriedTypes=[\"Producer\"]\n  \"e-n-1-1-1-2-1-2\" \"n-1-1-1-2-1\" -> \"n-1-1-1-2-1-2\" async carriedTypes=[\"Producer\"]\n  \"e-n-1-1-1-2-1-3\" \"n-1-1-1-2-1\" -> \"n-1-1-1-2-1-3\" async carriedTypes=[\"Producer\"]\n  \"e-n-1-1-1-3\" \"n-1-1-1\" -> \"n-1-1-1-3\" async carriedTypes=[\"Producer\"]\n  \"e-n-1-1-1-3-1\" \"n-1-1-1-3\" -> \"n-1-1-1-3-1\" async carriedTypes=[\"Producer\"]\n  \"e-n-1-1-1-3-1-1\" \"n-1-1-1-3-1\" -> \"n-1-1-1-3-1-1\" async carriedTypes=[\"Producer\"]\n  \"e-n-1-1-1-3-1-2\" \"n-1-1-1-3-1\" -> \"n-1-1-1-3-1-2\" async carriedTypes=[\"Producer\"]\n  \"e-n-1-1-1-3-1-3\" \"n-1-1-1-3-1\" -> \"n-1-1-1-3-1-3\" async carriedTypes=[\"Producer\"]\n  \"e-n-1-2\" \"n-1\" -> \"n-1-2\" async carriedTypes=[\"Producer\"]\n  \"e-n-1-2-1\" \"n-1-2\" -> \"n-1-2-1\" async carriedTypes=[\"Producer\"]\n  \"e-n-1-2-1-1\" \"n-1-2-1\" -> \"n-1-2-1-1\" async carriedTypes=[\"Producer\"]\n  \"e-n-1-2-1-1-1\" \"n-1-2-1-1\" -> \"n-1-2-1-1-1\" async carriedTypes=[\"Producer\"]\n  \"e-n-1-2-1-1-1-1\" \"n-1-2-1-1-1\" -> \"n-1-2-1-1-1-1\" async carriedTypes=[\"Producer\"]\n  \"e-n-1-2-1-1-1-2\" \"n-1-2-1-1-1\" -> \"n-1-2-1-1-1-2\" async carriedTypes=[\"Producer\"]\n  \"e-n-1-2-1-1-1-3\" \"n-1-2-1-1-1\" -> \"n-1-2-1-1-1-3\" async carriedTypes=[\"Producer\"]\n  \"e-n-1-2-1-2\" \"n-1-2-1\" -> \"n-1-2-1-2\" async carriedTypes=[\"Producer\"]\n  \"e-n-1-2-1-2-1\" \"n-1-2-1-2\" -> \"n-1-2-1-2-1\" async carriedTypes=[\"Producer\"]\n  \"e-n-1-2-1-2-1-1\" \"n-1-2-1-2-1\" -> \"n-1-2-1-2-1-1\" async carriedTypes=[\"Producer\"]\n  \"e-n-1-2-1-2-1-2\" \"n-1-2-1-2-1\" -> \"n-1-2-1-2-1-2\" async carriedTypes=[\"Producer\"]\n  \"e-n-1-2-1-2-1-3\" \"n-1-2-1-2-1\" -> \"n-1-2-1-2-1-3\" async carriedTypes=[\"Producer\"]\n  \"e-n-1-2-1-3\" \"n-1-2-1\" -> \"n-1-2-1-3\" async carriedTypes=[\"Producer\"]\n  \"e-n-1-2-1-3-1\" \"n-1-2-1-3\" -> \"n-1-2-1-3-1\" async carriedTypes=[\"Producer\"]\n  \"e-n-1-2-1-3-1-1\" \"n-1-2-1-3-1\" -> \"n-1-2-1-3-1-1\" async carriedTypes=[\"Producer\"]\n  \"e-n-1-2-1-3-1-2\" \"n-1-2-1-3-1\" -> \"n-1-2-1-3-1-2\" async carriedTypes=[\"Producer\"]\n  \"e-n-1-2-1-3-1-3\" \"n-1-2-1-3-1\" -> \"n-1-2-1-3-1-3\" async carriedTypes=[\"Producer\"]\n  \"e-n-1-3\" \"n-1\" -> \"n-1-3\" async carriedTypes=[\"Producer\"]\n  \"e-n-1-3-1\" \"n-1-3\" -> \"n-1-3-1\" async carriedTypes=[\"Producer\"]\n  \"e-n-1-3-1-1\" \"n-1-3-1\" -> \"n-1-3-1-1\" async carriedTypes=[\"Producer\"]\n  \"e-n-1-3-1-1-1\" \"n-1-3-1-1\" -> \"n-1-3-1-1-1\" async carriedTypes=[\"Producer\"]\n  \"e-n-1-3-1-1-1-1\" \"n-1-3-1-1-1\" -> \"n-1-3-1-1-1-1\" async carriedTypes=[\"Producer\"]\n  \"e-n-1-3-1-1-1-2\" \"n-1-3-1-1-1\" -> \"n-1-3-1-1-1-2\" async carriedTypes=[\"Producer\"]\n  \"e-n-1-3-1-1-1-3\" \"n-1-3-1-1-1\" -> \"n-1-3-1-1-1-3\" async carriedTypes=[\"Producer\"]\n  \"e-n-1-3-1-2\" \"n-1-3-1\" -> \"n-1-3-1-2\" async carriedTypes=[\"Producer\"]\n  \"e-n-1-3-1-2-1\" \"n-1-3-1-2\" -> \"n-1-3-1-2-1\" async carriedTypes=[\"Producer\"]\n  \"e-n-1-3-1-2-1-1\" \"n-1-3-1-2-1\" -> \"n-1-3-1-2-1-1\" async carriedTypes=[\"Producer\"]\n  \"e-n-1-3-1-2-1-2\" \"n-1-3-1-2-1\" -> \"n-1-3-1-2-1-2\" async carriedTypes=[\"Producer\"]\n  \"e-n-1-3-1-2-1-3\" \"n-1-3-1-2-1\" -> \"n-1-3-1-2-1-3\" async carriedTypes=[\"Producer\"]\n  \"e-n-1-3-1-3\" \"n-1-3-1\" -> \"n-1-3-1-3\" async carriedTypes=[\"Producer\"]\n  \"e-n-1-3-1-3-1\" \"n-1-3-1-3\" -> \"n-1-3-1-3-1\" async carriedTypes=[\"Producer\"]\n  \"e-n-1-3-1-3-1-1\" \"n-1-3-1-3-1\" -> \"n-1-3-1-3-1-1\" async carriedTypes=[\"Producer\"]\n  \"e-n-1-3-1-3-1-2\" \"n-1-3-1-3-1\" -> \"n-1-3-1-3-1-2\" async carriedTypes=[\"Producer\"]\n  \"e-n-1-3-1-3-1-3\" \"n-1-3-1-3-1\" -> \"n-1-3-1-3-1-3\" async carriedTypes=[\"Producer\"]"
   },
   "json": {
     "isError": false,
@@ -16,15 +16,17 @@
           "label": "Producer",
           "x": 40,
           "y": 1600,
+          "arrivingTypes": [],
           "capabilities": [{ "kind": "publishes", "edge": "e-n-1", "peer": "n-1" }]
         },
-        { "id": "n-1", "stencil": "kafka.topic", "label": "Topic 1", "x": 400, "y": 1600, "sublabel": "events.1", "capabilities": [] },
+        { "id": "n-1", "stencil": "kafka.topic", "label": "Topic 1", "x": 400, "y": 1600, "sublabel": "events.1", "arrivingTypes": ["Producer"], "capabilities": [] },
         {
           "id": "n-1-1",
           "stencil": "service.go",
           "label": "Service 1-1",
           "x": 760,
           "y": 520,
+          "arrivingTypes": ["Producer"],
           "capabilities": [
             {
               "kind": "consumes",
@@ -69,13 +71,14 @@
             "converged": true
           }
         },
-        { "id": "n-1-1-1", "stencil": "kafka.topic", "label": "Topic 1-1-1", "x": 1120, "y": 520, "sublabel": "events.1-1-1", "capabilities": [] },
+        { "id": "n-1-1-1", "stencil": "kafka.topic", "label": "Topic 1-1-1", "x": 1120, "y": 520, "sublabel": "events.1-1-1", "arrivingTypes": ["Producer"], "capabilities": [] },
         {
           "id": "n-1-1-1-1",
           "stencil": "service.go",
           "label": "Service 1-1-1-1",
           "x": 1480,
           "y": 160,
+          "arrivingTypes": ["Producer"],
           "capabilities": [
             {
               "kind": "consumes",
@@ -120,16 +123,17 @@
             "converged": true
           }
         },
-        { "id": "n-1-1-1-1-1", "stencil": "kafka.topic", "label": "Topic 1-1-1-1-1", "x": 1840, "y": 160, "sublabel": "events.1-1-1-1-1", "capabilities": [] },
-        { "id": "n-1-1-1-1-1-1", "stencil": "postgres", "label": "Store 1-1-1-1-1-1", "x": 2200, "y": 40, "capabilities": [] },
-        { "id": "n-1-1-1-1-1-2", "stencil": "postgres", "label": "Store 1-1-1-1-1-2", "x": 2200, "y": 160, "capabilities": [] },
-        { "id": "n-1-1-1-1-1-3", "stencil": "postgres", "label": "Store 1-1-1-1-1-3", "x": 2200, "y": 280, "capabilities": [] },
+        { "id": "n-1-1-1-1-1", "stencil": "kafka.topic", "label": "Topic 1-1-1-1-1", "x": 1840, "y": 160, "sublabel": "events.1-1-1-1-1", "arrivingTypes": ["Producer"], "capabilities": [] },
+        { "id": "n-1-1-1-1-1-1", "stencil": "postgres", "label": "Store 1-1-1-1-1-1", "x": 2200, "y": 40, "arrivingTypes": ["Producer"], "capabilities": [] },
+        { "id": "n-1-1-1-1-1-2", "stencil": "postgres", "label": "Store 1-1-1-1-1-2", "x": 2200, "y": 160, "arrivingTypes": ["Producer"], "capabilities": [] },
+        { "id": "n-1-1-1-1-1-3", "stencil": "postgres", "label": "Store 1-1-1-1-1-3", "x": 2200, "y": 280, "arrivingTypes": ["Producer"], "capabilities": [] },
         {
           "id": "n-1-1-1-2",
           "stencil": "service.go",
           "label": "Service 1-1-1-2",
           "x": 1480,
           "y": 520,
+          "arrivingTypes": ["Producer"],
           "capabilities": [
             {
               "kind": "consumes",
@@ -174,16 +178,17 @@
             "converged": true
           }
         },
-        { "id": "n-1-1-1-2-1", "stencil": "kafka.topic", "label": "Topic 1-1-1-2-1", "x": 1840, "y": 520, "sublabel": "events.1-1-1-2-1", "capabilities": [] },
-        { "id": "n-1-1-1-2-1-1", "stencil": "postgres", "label": "Store 1-1-1-2-1-1", "x": 2200, "y": 400, "capabilities": [] },
-        { "id": "n-1-1-1-2-1-2", "stencil": "postgres", "label": "Store 1-1-1-2-1-2", "x": 2200, "y": 520, "capabilities": [] },
-        { "id": "n-1-1-1-2-1-3", "stencil": "postgres", "label": "Store 1-1-1-2-1-3", "x": 2200, "y": 640, "capabilities": [] },
+        { "id": "n-1-1-1-2-1", "stencil": "kafka.topic", "label": "Topic 1-1-1-2-1", "x": 1840, "y": 520, "sublabel": "events.1-1-1-2-1", "arrivingTypes": ["Producer"], "capabilities": [] },
+        { "id": "n-1-1-1-2-1-1", "stencil": "postgres", "label": "Store 1-1-1-2-1-1", "x": 2200, "y": 400, "arrivingTypes": ["Producer"], "capabilities": [] },
+        { "id": "n-1-1-1-2-1-2", "stencil": "postgres", "label": "Store 1-1-1-2-1-2", "x": 2200, "y": 520, "arrivingTypes": ["Producer"], "capabilities": [] },
+        { "id": "n-1-1-1-2-1-3", "stencil": "postgres", "label": "Store 1-1-1-2-1-3", "x": 2200, "y": 640, "arrivingTypes": ["Producer"], "capabilities": [] },
         {
           "id": "n-1-1-1-3",
           "stencil": "service.go",
           "label": "Service 1-1-1-3",
           "x": 1480,
           "y": 880,
+          "arrivingTypes": ["Producer"],
           "capabilities": [
             {
               "kind": "consumes",
@@ -228,16 +233,17 @@
             "converged": true
           }
         },
-        { "id": "n-1-1-1-3-1", "stencil": "kafka.topic", "label": "Topic 1-1-1-3-1", "x": 1840, "y": 880, "sublabel": "events.1-1-1-3-1", "capabilities": [] },
-        { "id": "n-1-1-1-3-1-1", "stencil": "postgres", "label": "Store 1-1-1-3-1-1", "x": 2200, "y": 760, "capabilities": [] },
-        { "id": "n-1-1-1-3-1-2", "stencil": "postgres", "label": "Store 1-1-1-3-1-2", "x": 2200, "y": 880, "capabilities": [] },
-        { "id": "n-1-1-1-3-1-3", "stencil": "postgres", "label": "Store 1-1-1-3-1-3", "x": 2200, "y": 1000, "capabilities": [] },
+        { "id": "n-1-1-1-3-1", "stencil": "kafka.topic", "label": "Topic 1-1-1-3-1", "x": 1840, "y": 880, "sublabel": "events.1-1-1-3-1", "arrivingTypes": ["Producer"], "capabilities": [] },
+        { "id": "n-1-1-1-3-1-1", "stencil": "postgres", "label": "Store 1-1-1-3-1-1", "x": 2200, "y": 760, "arrivingTypes": ["Producer"], "capabilities": [] },
+        { "id": "n-1-1-1-3-1-2", "stencil": "postgres", "label": "Store 1-1-1-3-1-2", "x": 2200, "y": 880, "arrivingTypes": ["Producer"], "capabilities": [] },
+        { "id": "n-1-1-1-3-1-3", "stencil": "postgres", "label": "Store 1-1-1-3-1-3", "x": 2200, "y": 1000, "arrivingTypes": ["Producer"], "capabilities": [] },
         {
           "id": "n-1-2",
           "stencil": "service.go",
           "label": "Service 1-2",
           "x": 760,
           "y": 1600,
+          "arrivingTypes": ["Producer"],
           "capabilities": [
             {
               "kind": "consumes",
@@ -282,13 +288,14 @@
             "converged": true
           }
         },
-        { "id": "n-1-2-1", "stencil": "kafka.topic", "label": "Topic 1-2-1", "x": 1120, "y": 1600, "sublabel": "events.1-2-1", "capabilities": [] },
+        { "id": "n-1-2-1", "stencil": "kafka.topic", "label": "Topic 1-2-1", "x": 1120, "y": 1600, "sublabel": "events.1-2-1", "arrivingTypes": ["Producer"], "capabilities": [] },
         {
           "id": "n-1-2-1-1",
           "stencil": "service.go",
           "label": "Service 1-2-1-1",
           "x": 1480,
           "y": 1240,
+          "arrivingTypes": ["Producer"],
           "capabilities": [
             {
               "kind": "consumes",
@@ -333,16 +340,17 @@
             "converged": true
           }
         },
-        { "id": "n-1-2-1-1-1", "stencil": "kafka.topic", "label": "Topic 1-2-1-1-1", "x": 1840, "y": 1240, "sublabel": "events.1-2-1-1-1", "capabilities": [] },
-        { "id": "n-1-2-1-1-1-1", "stencil": "postgres", "label": "Store 1-2-1-1-1-1", "x": 2200, "y": 1120, "capabilities": [] },
-        { "id": "n-1-2-1-1-1-2", "stencil": "postgres", "label": "Store 1-2-1-1-1-2", "x": 2200, "y": 1240, "capabilities": [] },
-        { "id": "n-1-2-1-1-1-3", "stencil": "postgres", "label": "Store 1-2-1-1-1-3", "x": 2200, "y": 1360, "capabilities": [] },
+        { "id": "n-1-2-1-1-1", "stencil": "kafka.topic", "label": "Topic 1-2-1-1-1", "x": 1840, "y": 1240, "sublabel": "events.1-2-1-1-1", "arrivingTypes": ["Producer"], "capabilities": [] },
+        { "id": "n-1-2-1-1-1-1", "stencil": "postgres", "label": "Store 1-2-1-1-1-1", "x": 2200, "y": 1120, "arrivingTypes": ["Producer"], "capabilities": [] },
+        { "id": "n-1-2-1-1-1-2", "stencil": "postgres", "label": "Store 1-2-1-1-1-2", "x": 2200, "y": 1240, "arrivingTypes": ["Producer"], "capabilities": [] },
+        { "id": "n-1-2-1-1-1-3", "stencil": "postgres", "label": "Store 1-2-1-1-1-3", "x": 2200, "y": 1360, "arrivingTypes": ["Producer"], "capabilities": [] },
         {
           "id": "n-1-2-1-2",
           "stencil": "service.go",
           "label": "Service 1-2-1-2",
           "x": 1480,
           "y": 1600,
+          "arrivingTypes": ["Producer"],
           "capabilities": [
             {
               "kind": "consumes",
@@ -387,16 +395,17 @@
             "converged": true
           }
         },
-        { "id": "n-1-2-1-2-1", "stencil": "kafka.topic", "label": "Topic 1-2-1-2-1", "x": 1840, "y": 1600, "sublabel": "events.1-2-1-2-1", "capabilities": [] },
-        { "id": "n-1-2-1-2-1-1", "stencil": "postgres", "label": "Store 1-2-1-2-1-1", "x": 2200, "y": 1480, "capabilities": [] },
-        { "id": "n-1-2-1-2-1-2", "stencil": "postgres", "label": "Store 1-2-1-2-1-2", "x": 2200, "y": 1600, "capabilities": [] },
-        { "id": "n-1-2-1-2-1-3", "stencil": "postgres", "label": "Store 1-2-1-2-1-3", "x": 2200, "y": 1720, "capabilities": [] },
+        { "id": "n-1-2-1-2-1", "stencil": "kafka.topic", "label": "Topic 1-2-1-2-1", "x": 1840, "y": 1600, "sublabel": "events.1-2-1-2-1", "arrivingTypes": ["Producer"], "capabilities": [] },
+        { "id": "n-1-2-1-2-1-1", "stencil": "postgres", "label": "Store 1-2-1-2-1-1", "x": 2200, "y": 1480, "arrivingTypes": ["Producer"], "capabilities": [] },
+        { "id": "n-1-2-1-2-1-2", "stencil": "postgres", "label": "Store 1-2-1-2-1-2", "x": 2200, "y": 1600, "arrivingTypes": ["Producer"], "capabilities": [] },
+        { "id": "n-1-2-1-2-1-3", "stencil": "postgres", "label": "Store 1-2-1-2-1-3", "x": 2200, "y": 1720, "arrivingTypes": ["Producer"], "capabilities": [] },
         {
           "id": "n-1-2-1-3",
           "stencil": "service.go",
           "label": "Service 1-2-1-3",
           "x": 1480,
           "y": 1960,
+          "arrivingTypes": ["Producer"],
           "capabilities": [
             {
               "kind": "consumes",
@@ -441,16 +450,17 @@
             "converged": true
           }
         },
-        { "id": "n-1-2-1-3-1", "stencil": "kafka.topic", "label": "Topic 1-2-1-3-1", "x": 1840, "y": 1960, "sublabel": "events.1-2-1-3-1", "capabilities": [] },
-        { "id": "n-1-2-1-3-1-1", "stencil": "postgres", "label": "Store 1-2-1-3-1-1", "x": 2200, "y": 1840, "capabilities": [] },
-        { "id": "n-1-2-1-3-1-2", "stencil": "postgres", "label": "Store 1-2-1-3-1-2", "x": 2200, "y": 1960, "capabilities": [] },
-        { "id": "n-1-2-1-3-1-3", "stencil": "postgres", "label": "Store 1-2-1-3-1-3", "x": 2200, "y": 2080, "capabilities": [] },
+        { "id": "n-1-2-1-3-1", "stencil": "kafka.topic", "label": "Topic 1-2-1-3-1", "x": 1840, "y": 1960, "sublabel": "events.1-2-1-3-1", "arrivingTypes": ["Producer"], "capabilities": [] },
+        { "id": "n-1-2-1-3-1-1", "stencil": "postgres", "label": "Store 1-2-1-3-1-1", "x": 2200, "y": 1840, "arrivingTypes": ["Producer"], "capabilities": [] },
+        { "id": "n-1-2-1-3-1-2", "stencil": "postgres", "label": "Store 1-2-1-3-1-2", "x": 2200, "y": 1960, "arrivingTypes": ["Producer"], "capabilities": [] },
+        { "id": "n-1-2-1-3-1-3", "stencil": "postgres", "label": "Store 1-2-1-3-1-3", "x": 2200, "y": 2080, "arrivingTypes": ["Producer"], "capabilities": [] },
         {
           "id": "n-1-3",
           "stencil": "service.go",
           "label": "Service 1-3",
           "x": 760,
           "y": 2680,
+          "arrivingTypes": ["Producer"],
           "capabilities": [
             {
               "kind": "consumes",
@@ -495,13 +505,14 @@
             "converged": true
           }
         },
-        { "id": "n-1-3-1", "stencil": "kafka.topic", "label": "Topic 1-3-1", "x": 1120, "y": 2680, "sublabel": "events.1-3-1", "capabilities": [] },
+        { "id": "n-1-3-1", "stencil": "kafka.topic", "label": "Topic 1-3-1", "x": 1120, "y": 2680, "sublabel": "events.1-3-1", "arrivingTypes": ["Producer"], "capabilities": [] },
         {
           "id": "n-1-3-1-1",
           "stencil": "service.go",
           "label": "Service 1-3-1-1",
           "x": 1480,
           "y": 2320,
+          "arrivingTypes": ["Producer"],
           "capabilities": [
             {
               "kind": "consumes",
@@ -546,16 +557,17 @@
             "converged": true
           }
         },
-        { "id": "n-1-3-1-1-1", "stencil": "kafka.topic", "label": "Topic 1-3-1-1-1", "x": 1840, "y": 2320, "sublabel": "events.1-3-1-1-1", "capabilities": [] },
-        { "id": "n-1-3-1-1-1-1", "stencil": "postgres", "label": "Store 1-3-1-1-1-1", "x": 2200, "y": 2200, "capabilities": [] },
-        { "id": "n-1-3-1-1-1-2", "stencil": "postgres", "label": "Store 1-3-1-1-1-2", "x": 2200, "y": 2320, "capabilities": [] },
-        { "id": "n-1-3-1-1-1-3", "stencil": "postgres", "label": "Store 1-3-1-1-1-3", "x": 2200, "y": 2440, "capabilities": [] },
+        { "id": "n-1-3-1-1-1", "stencil": "kafka.topic", "label": "Topic 1-3-1-1-1", "x": 1840, "y": 2320, "sublabel": "events.1-3-1-1-1", "arrivingTypes": ["Producer"], "capabilities": [] },
+        { "id": "n-1-3-1-1-1-1", "stencil": "postgres", "label": "Store 1-3-1-1-1-1", "x": 2200, "y": 2200, "arrivingTypes": ["Producer"], "capabilities": [] },
+        { "id": "n-1-3-1-1-1-2", "stencil": "postgres", "label": "Store 1-3-1-1-1-2", "x": 2200, "y": 2320, "arrivingTypes": ["Producer"], "capabilities": [] },
+        { "id": "n-1-3-1-1-1-3", "stencil": "postgres", "label": "Store 1-3-1-1-1-3", "x": 2200, "y": 2440, "arrivingTypes": ["Producer"], "capabilities": [] },
         {
           "id": "n-1-3-1-2",
           "stencil": "service.go",
           "label": "Service 1-3-1-2",
           "x": 1480,
           "y": 2680,
+          "arrivingTypes": ["Producer"],
           "capabilities": [
             {
               "kind": "consumes",
@@ -600,16 +612,17 @@
             "converged": true
           }
         },
-        { "id": "n-1-3-1-2-1", "stencil": "kafka.topic", "label": "Topic 1-3-1-2-1", "x": 1840, "y": 2680, "sublabel": "events.1-3-1-2-1", "capabilities": [] },
-        { "id": "n-1-3-1-2-1-1", "stencil": "postgres", "label": "Store 1-3-1-2-1-1", "x": 2200, "y": 2560, "capabilities": [] },
-        { "id": "n-1-3-1-2-1-2", "stencil": "postgres", "label": "Store 1-3-1-2-1-2", "x": 2200, "y": 2680, "capabilities": [] },
-        { "id": "n-1-3-1-2-1-3", "stencil": "postgres", "label": "Store 1-3-1-2-1-3", "x": 2200, "y": 2800, "capabilities": [] },
+        { "id": "n-1-3-1-2-1", "stencil": "kafka.topic", "label": "Topic 1-3-1-2-1", "x": 1840, "y": 2680, "sublabel": "events.1-3-1-2-1", "arrivingTypes": ["Producer"], "capabilities": [] },
+        { "id": "n-1-3-1-2-1-1", "stencil": "postgres", "label": "Store 1-3-1-2-1-1", "x": 2200, "y": 2560, "arrivingTypes": ["Producer"], "capabilities": [] },
+        { "id": "n-1-3-1-2-1-2", "stencil": "postgres", "label": "Store 1-3-1-2-1-2", "x": 2200, "y": 2680, "arrivingTypes": ["Producer"], "capabilities": [] },
+        { "id": "n-1-3-1-2-1-3", "stencil": "postgres", "label": "Store 1-3-1-2-1-3", "x": 2200, "y": 2800, "arrivingTypes": ["Producer"], "capabilities": [] },
         {
           "id": "n-1-3-1-3",
           "stencil": "service.go",
           "label": "Service 1-3-1-3",
           "x": 1480,
           "y": 3040,
+          "arrivingTypes": ["Producer"],
           "capabilities": [
             {
               "kind": "consumes",
@@ -654,65 +667,66 @@
             "converged": true
           }
         },
-        { "id": "n-1-3-1-3-1", "stencil": "kafka.topic", "label": "Topic 1-3-1-3-1", "x": 1840, "y": 3040, "sublabel": "events.1-3-1-3-1", "capabilities": [] },
-        { "id": "n-1-3-1-3-1-1", "stencil": "postgres", "label": "Store 1-3-1-3-1-1", "x": 2200, "y": 2920, "capabilities": [] },
-        { "id": "n-1-3-1-3-1-2", "stencil": "postgres", "label": "Store 1-3-1-3-1-2", "x": 2200, "y": 3040, "capabilities": [] },
-        { "id": "n-1-3-1-3-1-3", "stencil": "postgres", "label": "Store 1-3-1-3-1-3", "x": 2200, "y": 3160, "capabilities": [] }
+        { "id": "n-1-3-1-3-1", "stencil": "kafka.topic", "label": "Topic 1-3-1-3-1", "x": 1840, "y": 3040, "sublabel": "events.1-3-1-3-1", "arrivingTypes": ["Producer"], "capabilities": [] },
+        { "id": "n-1-3-1-3-1-1", "stencil": "postgres", "label": "Store 1-3-1-3-1-1", "x": 2200, "y": 2920, "arrivingTypes": ["Producer"], "capabilities": [] },
+        { "id": "n-1-3-1-3-1-2", "stencil": "postgres", "label": "Store 1-3-1-3-1-2", "x": 2200, "y": 3040, "arrivingTypes": ["Producer"], "capabilities": [] },
+        { "id": "n-1-3-1-3-1-3", "stencil": "postgres", "label": "Store 1-3-1-3-1-3", "x": 2200, "y": 3160, "arrivingTypes": ["Producer"], "capabilities": [] }
       ],
       "edges": [
-        { "id": "e-n-1", "from": "n", "to": "n-1", "kind": "async" },
-        { "id": "e-n-1-1", "from": "n-1", "to": "n-1-1", "kind": "async" },
-        { "id": "e-n-1-1-1", "from": "n-1-1", "to": "n-1-1-1", "kind": "async" },
-        { "id": "e-n-1-1-1-1", "from": "n-1-1-1", "to": "n-1-1-1-1", "kind": "async" },
-        { "id": "e-n-1-1-1-1-1", "from": "n-1-1-1-1", "to": "n-1-1-1-1-1", "kind": "async" },
-        { "id": "e-n-1-1-1-1-1-1", "from": "n-1-1-1-1-1", "to": "n-1-1-1-1-1-1", "kind": "async" },
-        { "id": "e-n-1-1-1-1-1-2", "from": "n-1-1-1-1-1", "to": "n-1-1-1-1-1-2", "kind": "async" },
-        { "id": "e-n-1-1-1-1-1-3", "from": "n-1-1-1-1-1", "to": "n-1-1-1-1-1-3", "kind": "async" },
-        { "id": "e-n-1-1-1-2", "from": "n-1-1-1", "to": "n-1-1-1-2", "kind": "async" },
-        { "id": "e-n-1-1-1-2-1", "from": "n-1-1-1-2", "to": "n-1-1-1-2-1", "kind": "async" },
-        { "id": "e-n-1-1-1-2-1-1", "from": "n-1-1-1-2-1", "to": "n-1-1-1-2-1-1", "kind": "async" },
-        { "id": "e-n-1-1-1-2-1-2", "from": "n-1-1-1-2-1", "to": "n-1-1-1-2-1-2", "kind": "async" },
-        { "id": "e-n-1-1-1-2-1-3", "from": "n-1-1-1-2-1", "to": "n-1-1-1-2-1-3", "kind": "async" },
-        { "id": "e-n-1-1-1-3", "from": "n-1-1-1", "to": "n-1-1-1-3", "kind": "async" },
-        { "id": "e-n-1-1-1-3-1", "from": "n-1-1-1-3", "to": "n-1-1-1-3-1", "kind": "async" },
-        { "id": "e-n-1-1-1-3-1-1", "from": "n-1-1-1-3-1", "to": "n-1-1-1-3-1-1", "kind": "async" },
-        { "id": "e-n-1-1-1-3-1-2", "from": "n-1-1-1-3-1", "to": "n-1-1-1-3-1-2", "kind": "async" },
-        { "id": "e-n-1-1-1-3-1-3", "from": "n-1-1-1-3-1", "to": "n-1-1-1-3-1-3", "kind": "async" },
-        { "id": "e-n-1-2", "from": "n-1", "to": "n-1-2", "kind": "async" },
-        { "id": "e-n-1-2-1", "from": "n-1-2", "to": "n-1-2-1", "kind": "async" },
-        { "id": "e-n-1-2-1-1", "from": "n-1-2-1", "to": "n-1-2-1-1", "kind": "async" },
-        { "id": "e-n-1-2-1-1-1", "from": "n-1-2-1-1", "to": "n-1-2-1-1-1", "kind": "async" },
-        { "id": "e-n-1-2-1-1-1-1", "from": "n-1-2-1-1-1", "to": "n-1-2-1-1-1-1", "kind": "async" },
-        { "id": "e-n-1-2-1-1-1-2", "from": "n-1-2-1-1-1", "to": "n-1-2-1-1-1-2", "kind": "async" },
-        { "id": "e-n-1-2-1-1-1-3", "from": "n-1-2-1-1-1", "to": "n-1-2-1-1-1-3", "kind": "async" },
-        { "id": "e-n-1-2-1-2", "from": "n-1-2-1", "to": "n-1-2-1-2", "kind": "async" },
-        { "id": "e-n-1-2-1-2-1", "from": "n-1-2-1-2", "to": "n-1-2-1-2-1", "kind": "async" },
-        { "id": "e-n-1-2-1-2-1-1", "from": "n-1-2-1-2-1", "to": "n-1-2-1-2-1-1", "kind": "async" },
-        { "id": "e-n-1-2-1-2-1-2", "from": "n-1-2-1-2-1", "to": "n-1-2-1-2-1-2", "kind": "async" },
-        { "id": "e-n-1-2-1-2-1-3", "from": "n-1-2-1-2-1", "to": "n-1-2-1-2-1-3", "kind": "async" },
-        { "id": "e-n-1-2-1-3", "from": "n-1-2-1", "to": "n-1-2-1-3", "kind": "async" },
-        { "id": "e-n-1-2-1-3-1", "from": "n-1-2-1-3", "to": "n-1-2-1-3-1", "kind": "async" },
-        { "id": "e-n-1-2-1-3-1-1", "from": "n-1-2-1-3-1", "to": "n-1-2-1-3-1-1", "kind": "async" },
-        { "id": "e-n-1-2-1-3-1-2", "from": "n-1-2-1-3-1", "to": "n-1-2-1-3-1-2", "kind": "async" },
-        { "id": "e-n-1-2-1-3-1-3", "from": "n-1-2-1-3-1", "to": "n-1-2-1-3-1-3", "kind": "async" },
-        { "id": "e-n-1-3", "from": "n-1", "to": "n-1-3", "kind": "async" },
-        { "id": "e-n-1-3-1", "from": "n-1-3", "to": "n-1-3-1", "kind": "async" },
-        { "id": "e-n-1-3-1-1", "from": "n-1-3-1", "to": "n-1-3-1-1", "kind": "async" },
-        { "id": "e-n-1-3-1-1-1", "from": "n-1-3-1-1", "to": "n-1-3-1-1-1", "kind": "async" },
-        { "id": "e-n-1-3-1-1-1-1", "from": "n-1-3-1-1-1", "to": "n-1-3-1-1-1-1", "kind": "async" },
-        { "id": "e-n-1-3-1-1-1-2", "from": "n-1-3-1-1-1", "to": "n-1-3-1-1-1-2", "kind": "async" },
-        { "id": "e-n-1-3-1-1-1-3", "from": "n-1-3-1-1-1", "to": "n-1-3-1-1-1-3", "kind": "async" },
-        { "id": "e-n-1-3-1-2", "from": "n-1-3-1", "to": "n-1-3-1-2", "kind": "async" },
-        { "id": "e-n-1-3-1-2-1", "from": "n-1-3-1-2", "to": "n-1-3-1-2-1", "kind": "async" },
-        { "id": "e-n-1-3-1-2-1-1", "from": "n-1-3-1-2-1", "to": "n-1-3-1-2-1-1", "kind": "async" },
-        { "id": "e-n-1-3-1-2-1-2", "from": "n-1-3-1-2-1", "to": "n-1-3-1-2-1-2", "kind": "async" },
-        { "id": "e-n-1-3-1-2-1-3", "from": "n-1-3-1-2-1", "to": "n-1-3-1-2-1-3", "kind": "async" },
-        { "id": "e-n-1-3-1-3", "from": "n-1-3-1", "to": "n-1-3-1-3", "kind": "async" },
-        { "id": "e-n-1-3-1-3-1", "from": "n-1-3-1-3", "to": "n-1-3-1-3-1", "kind": "async" },
-        { "id": "e-n-1-3-1-3-1-1", "from": "n-1-3-1-3-1", "to": "n-1-3-1-3-1-1", "kind": "async" },
-        { "id": "e-n-1-3-1-3-1-2", "from": "n-1-3-1-3-1", "to": "n-1-3-1-3-1-2", "kind": "async" },
-        { "id": "e-n-1-3-1-3-1-3", "from": "n-1-3-1-3-1", "to": "n-1-3-1-3-1-3", "kind": "async" }
+        { "id": "e-n-1", "from": "n", "to": "n-1", "kind": "async", "carriedTypes": ["Producer"] },
+        { "id": "e-n-1-1", "from": "n-1", "to": "n-1-1", "kind": "async", "carriedTypes": ["Producer"] },
+        { "id": "e-n-1-1-1", "from": "n-1-1", "to": "n-1-1-1", "kind": "async", "carriedTypes": ["Producer"] },
+        { "id": "e-n-1-1-1-1", "from": "n-1-1-1", "to": "n-1-1-1-1", "kind": "async", "carriedTypes": ["Producer"] },
+        { "id": "e-n-1-1-1-1-1", "from": "n-1-1-1-1", "to": "n-1-1-1-1-1", "kind": "async", "carriedTypes": ["Producer"] },
+        { "id": "e-n-1-1-1-1-1-1", "from": "n-1-1-1-1-1", "to": "n-1-1-1-1-1-1", "kind": "async", "carriedTypes": ["Producer"] },
+        { "id": "e-n-1-1-1-1-1-2", "from": "n-1-1-1-1-1", "to": "n-1-1-1-1-1-2", "kind": "async", "carriedTypes": ["Producer"] },
+        { "id": "e-n-1-1-1-1-1-3", "from": "n-1-1-1-1-1", "to": "n-1-1-1-1-1-3", "kind": "async", "carriedTypes": ["Producer"] },
+        { "id": "e-n-1-1-1-2", "from": "n-1-1-1", "to": "n-1-1-1-2", "kind": "async", "carriedTypes": ["Producer"] },
+        { "id": "e-n-1-1-1-2-1", "from": "n-1-1-1-2", "to": "n-1-1-1-2-1", "kind": "async", "carriedTypes": ["Producer"] },
+        { "id": "e-n-1-1-1-2-1-1", "from": "n-1-1-1-2-1", "to": "n-1-1-1-2-1-1", "kind": "async", "carriedTypes": ["Producer"] },
+        { "id": "e-n-1-1-1-2-1-2", "from": "n-1-1-1-2-1", "to": "n-1-1-1-2-1-2", "kind": "async", "carriedTypes": ["Producer"] },
+        { "id": "e-n-1-1-1-2-1-3", "from": "n-1-1-1-2-1", "to": "n-1-1-1-2-1-3", "kind": "async", "carriedTypes": ["Producer"] },
+        { "id": "e-n-1-1-1-3", "from": "n-1-1-1", "to": "n-1-1-1-3", "kind": "async", "carriedTypes": ["Producer"] },
+        { "id": "e-n-1-1-1-3-1", "from": "n-1-1-1-3", "to": "n-1-1-1-3-1", "kind": "async", "carriedTypes": ["Producer"] },
+        { "id": "e-n-1-1-1-3-1-1", "from": "n-1-1-1-3-1", "to": "n-1-1-1-3-1-1", "kind": "async", "carriedTypes": ["Producer"] },
+        { "id": "e-n-1-1-1-3-1-2", "from": "n-1-1-1-3-1", "to": "n-1-1-1-3-1-2", "kind": "async", "carriedTypes": ["Producer"] },
+        { "id": "e-n-1-1-1-3-1-3", "from": "n-1-1-1-3-1", "to": "n-1-1-1-3-1-3", "kind": "async", "carriedTypes": ["Producer"] },
+        { "id": "e-n-1-2", "from": "n-1", "to": "n-1-2", "kind": "async", "carriedTypes": ["Producer"] },
+        { "id": "e-n-1-2-1", "from": "n-1-2", "to": "n-1-2-1", "kind": "async", "carriedTypes": ["Producer"] },
+        { "id": "e-n-1-2-1-1", "from": "n-1-2-1", "to": "n-1-2-1-1", "kind": "async", "carriedTypes": ["Producer"] },
+        { "id": "e-n-1-2-1-1-1", "from": "n-1-2-1-1", "to": "n-1-2-1-1-1", "kind": "async", "carriedTypes": ["Producer"] },
+        { "id": "e-n-1-2-1-1-1-1", "from": "n-1-2-1-1-1", "to": "n-1-2-1-1-1-1", "kind": "async", "carriedTypes": ["Producer"] },
+        { "id": "e-n-1-2-1-1-1-2", "from": "n-1-2-1-1-1", "to": "n-1-2-1-1-1-2", "kind": "async", "carriedTypes": ["Producer"] },
+        { "id": "e-n-1-2-1-1-1-3", "from": "n-1-2-1-1-1", "to": "n-1-2-1-1-1-3", "kind": "async", "carriedTypes": ["Producer"] },
+        { "id": "e-n-1-2-1-2", "from": "n-1-2-1", "to": "n-1-2-1-2", "kind": "async", "carriedTypes": ["Producer"] },
+        { "id": "e-n-1-2-1-2-1", "from": "n-1-2-1-2", "to": "n-1-2-1-2-1", "kind": "async", "carriedTypes": ["Producer"] },
+        { "id": "e-n-1-2-1-2-1-1", "from": "n-1-2-1-2-1", "to": "n-1-2-1-2-1-1", "kind": "async", "carriedTypes": ["Producer"] },
+        { "id": "e-n-1-2-1-2-1-2", "from": "n-1-2-1-2-1", "to": "n-1-2-1-2-1-2", "kind": "async", "carriedTypes": ["Producer"] },
+        { "id": "e-n-1-2-1-2-1-3", "from": "n-1-2-1-2-1", "to": "n-1-2-1-2-1-3", "kind": "async", "carriedTypes": ["Producer"] },
+        { "id": "e-n-1-2-1-3", "from": "n-1-2-1", "to": "n-1-2-1-3", "kind": "async", "carriedTypes": ["Producer"] },
+        { "id": "e-n-1-2-1-3-1", "from": "n-1-2-1-3", "to": "n-1-2-1-3-1", "kind": "async", "carriedTypes": ["Producer"] },
+        { "id": "e-n-1-2-1-3-1-1", "from": "n-1-2-1-3-1", "to": "n-1-2-1-3-1-1", "kind": "async", "carriedTypes": ["Producer"] },
+        { "id": "e-n-1-2-1-3-1-2", "from": "n-1-2-1-3-1", "to": "n-1-2-1-3-1-2", "kind": "async", "carriedTypes": ["Producer"] },
+        { "id": "e-n-1-2-1-3-1-3", "from": "n-1-2-1-3-1", "to": "n-1-2-1-3-1-3", "kind": "async", "carriedTypes": ["Producer"] },
+        { "id": "e-n-1-3", "from": "n-1", "to": "n-1-3", "kind": "async", "carriedTypes": ["Producer"] },
+        { "id": "e-n-1-3-1", "from": "n-1-3", "to": "n-1-3-1", "kind": "async", "carriedTypes": ["Producer"] },
+        { "id": "e-n-1-3-1-1", "from": "n-1-3-1", "to": "n-1-3-1-1", "kind": "async", "carriedTypes": ["Producer"] },
+        { "id": "e-n-1-3-1-1-1", "from": "n-1-3-1-1", "to": "n-1-3-1-1-1", "kind": "async", "carriedTypes": ["Producer"] },
+        { "id": "e-n-1-3-1-1-1-1", "from": "n-1-3-1-1-1", "to": "n-1-3-1-1-1-1", "kind": "async", "carriedTypes": ["Producer"] },
+        { "id": "e-n-1-3-1-1-1-2", "from": "n-1-3-1-1-1", "to": "n-1-3-1-1-1-2", "kind": "async", "carriedTypes": ["Producer"] },
+        { "id": "e-n-1-3-1-1-1-3", "from": "n-1-3-1-1-1", "to": "n-1-3-1-1-1-3", "kind": "async", "carriedTypes": ["Producer"] },
+        { "id": "e-n-1-3-1-2", "from": "n-1-3-1", "to": "n-1-3-1-2", "kind": "async", "carriedTypes": ["Producer"] },
+        { "id": "e-n-1-3-1-2-1", "from": "n-1-3-1-2", "to": "n-1-3-1-2-1", "kind": "async", "carriedTypes": ["Producer"] },
+        { "id": "e-n-1-3-1-2-1-1", "from": "n-1-3-1-2-1", "to": "n-1-3-1-2-1-1", "kind": "async", "carriedTypes": ["Producer"] },
+        { "id": "e-n-1-3-1-2-1-2", "from": "n-1-3-1-2-1", "to": "n-1-3-1-2-1-2", "kind": "async", "carriedTypes": ["Producer"] },
+        { "id": "e-n-1-3-1-2-1-3", "from": "n-1-3-1-2-1", "to": "n-1-3-1-2-1-3", "kind": "async", "carriedTypes": ["Producer"] },
+        { "id": "e-n-1-3-1-3", "from": "n-1-3-1", "to": "n-1-3-1-3", "kind": "async", "carriedTypes": ["Producer"] },
+        { "id": "e-n-1-3-1-3-1", "from": "n-1-3-1-3", "to": "n-1-3-1-3-1", "kind": "async", "carriedTypes": ["Producer"] },
+        { "id": "e-n-1-3-1-3-1-1", "from": "n-1-3-1-3-1", "to": "n-1-3-1-3-1-1", "kind": "async", "carriedTypes": ["Producer"] },
+        { "id": "e-n-1-3-1-3-1-2", "from": "n-1-3-1-3-1", "to": "n-1-3-1-3-1-2", "kind": "async", "carriedTypes": ["Producer"] },
+        { "id": "e-n-1-3-1-3-1-3", "from": "n-1-3-1-3-1", "to": "n-1-3-1-3-1-3", "kind": "async", "carriedTypes": ["Producer"] }
       ],
+      "messageTypesComplete": true,
       "groups": [],
       "annotations": [],
       "simulations": [],
@@ -721,6 +735,6 @@
   },
   "focus": {
     "isError": false,
-    "output": "Diagram \"Fan-out 3×3\" · direction LR · 2 nodes, 1 connections, 0 boundaries, 0 simulations\ndescription: \"53 nodes: every level fans out to 3 consumers.\"\nnodes:\n  \"n\" \"client.browser\" (\"Web Browser\") \"Producer\" capabilities=[{\"kind\":\"publishes\",\"edge\":\"e-n-1\",\"peer\":\"n-1\"}] explanation=undefined\n  \"n-1\" \"kafka.topic\" (\"Kafka Topic\") \"Topic 1\" / \"events.1\" capabilities=[] explanation=undefined\nconnections:\n  \"e-n-1\" \"n\" -> \"n-1\" async"
+    "output": "Diagram \"Fan-out 3×3\" · direction LR · 2 nodes, 1 connections, 0 boundaries, 0 simulations\ndescription: \"53 nodes: every level fans out to 3 consumers.\"\nnodes:\n  \"n\" \"client.browser\" (\"Web Browser\") \"Producer\" arrivingTypes=[] capabilities=[{\"kind\":\"publishes\",\"edge\":\"e-n-1\",\"peer\":\"n-1\"}] explanation=undefined\n  \"n-1\" \"kafka.topic\" (\"Kafka Topic\") \"Topic 1\" / \"events.1\" arrivingTypes=[\"Producer\"] capabilities=[] explanation=undefined\nconnections:\n  \"e-n-1\" \"n\" -> \"n-1\" async carriedTypes=[\"Producer\"]"
   }
 }

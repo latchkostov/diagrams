@@ -1,7 +1,7 @@
 {
   "text": {
     "isError": false,
-    "output": "Diagram \"Shared account quota and an endpoint budget\" · direction LR · 4 nodes, 2 connections, 0 boundaries, 3 simulations\nnodes:\n  \"web\" \"client.browser\" (\"Web Browser\") \"Web\" props={\"ratePerSec\":40} capabilities=[{\"kind\":\"calls\",\"edge\":\"web-a\",\"peer\":\"a\"}] explanation=undefined\n  \"batch\" \"client.browser\" (\"Web Browser\") \"Batch\" props={\"ratePerSec\":80} capabilities=[{\"kind\":\"calls\",\"edge\":\"batch-b\",\"peer\":\"b\"}] explanation=undefined\n  \"a\" \"generic.external-api\" (\"External API\") \"Partner API a\" props={\"preset\":\"managed-measured\",\"presetRevision\":\"2026-10-14\",\"latencyMs\":100,\"jitter\":0,\"api\":{\"maxInFlight\":40,\"quotas\":[{\"id\":\"account-rate\",\"unit\":\"requests\",\"amount\":103,\"windowMs\":1000,\"algorithm\":\"token-bucket\",\"sharedGroup\":\"acct\"}]},\"endpoints\":[{\"id\":\"refunds\",\"method\":\"POST\",\"path\":\"/refunds\",\"behaviour\":{\"quotas\":[{\"id\":\"refund-rate\",\"unit\":\"requests\",\"amount\":5,\"windowMs\":1000,\"algorithm\":\"token-bucket\"}]}}]} capabilities=[] explanation={\"managed\":\"api\",\"id\":\"a\",\"role\":\"sink\",\"status\":\"up\",\"reason\":\"capacity\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":5,\"offered\":40,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":null,\"seconds\":0.1,\"utilization\":8,\"growth\":35,\"contributors\":[{\"edge\":\"web-a\",\"node\":\"web\",\"label\":\"Web\",\"rate\":40}],\"target\":0.5,\"changes\":null,\"converged\":true}\n  \"b\" \"generic.external-api\" (\"External API\") \"Partner API b\" props={\"preset\":\"managed-measured\",\"presetRevision\":\"2026-10-14\",\"latencyMs\":100,\"jitter\":0,\"api\":{\"maxInFlight\":40,\"quotas\":[{\"id\":\"account-rate\",\"unit\":\"requests\",\"amount\":103,\"windowMs\":1000,\"algorithm\":\"token-bucket\",\"sharedGroup\":\"acct\"}],\"sharedConcurrency\":\"pool\"}} capabilities=[] explanation={\"managed\":\"api\",\"id\":\"b\",\"role\":\"sink\",\"status\":\"up\",\"reason\":\"capacity\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":68.66666666666667,\"offered\":80,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":null,\"seconds\":0.1,\"utilization\":1.1650485436893203,\"growth\":11.333333333333329,\"contributors\":[{\"edge\":\"batch-b\",\"node\":\"batch\",\"label\":\"Batch\",\"rate\":80}],\"target\":0.5,\"changes\":null,\"converged\":true}\nconnections:\n  \"web-a\" \"web\" -> \"a\" sync\n  \"batch-b\" \"batch\" -> \"b\" sync\nsimulation \"exact\" \"200 calls in 0.2 s at scale 1\": {\"kind\":\"burst\",\"count\":200,\"spreadMs\":200} from \"batch\"; timeline=[]; expectations=[]\nsimulation \"sampled\" \"200 calls in 0.2 s at scale 10\": {\"kind\":\"burst\",\"count\":200,\"spreadMs\":200} from \"batch\"; timeline=[]; expectations=[]\nsimulation \"refunds\" \"60 calls in 1 s at scale 1\": {\"kind\":\"burst\",\"count\":60,\"spreadMs\":1000} from \"web\"; timeline=[]; expectations=[]"
+    "output": "Diagram \"Shared account quota and an endpoint budget\" · direction LR · 4 nodes, 2 connections, 0 boundaries, 3 simulations\nnodes:\n  \"web\" \"client.browser\" (\"Web Browser\") \"Web\" props={\"ratePerSec\":40} arrivingTypes=[] capabilities=[{\"kind\":\"calls\",\"edge\":\"web-a\",\"peer\":\"a\"}] explanation=undefined\n  \"batch\" \"client.browser\" (\"Web Browser\") \"Batch\" props={\"ratePerSec\":80} arrivingTypes=[] capabilities=[{\"kind\":\"calls\",\"edge\":\"batch-b\",\"peer\":\"b\"}] explanation=undefined\n  \"a\" \"generic.external-api\" (\"External API\") \"Partner API a\" props={\"preset\":\"managed-measured\",\"presetRevision\":\"2026-10-14\",\"latencyMs\":100,\"jitter\":0,\"api\":{\"maxInFlight\":40,\"quotas\":[{\"id\":\"account-rate\",\"unit\":\"requests\",\"amount\":103,\"windowMs\":1000,\"algorithm\":\"token-bucket\",\"sharedGroup\":\"acct\"}]},\"endpoints\":[{\"id\":\"refunds\",\"method\":\"POST\",\"path\":\"/refunds\",\"behaviour\":{\"quotas\":[{\"id\":\"refund-rate\",\"unit\":\"requests\",\"amount\":5,\"windowMs\":1000,\"algorithm\":\"token-bucket\"}]}}]} arrivingTypes=[\"Web\",\"Charge\"] capabilities=[] explanation={\"managed\":\"api\",\"id\":\"a\",\"role\":\"sink\",\"status\":\"up\",\"reason\":\"capacity\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":5,\"offered\":40,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":null,\"seconds\":0.1,\"utilization\":8,\"growth\":35,\"contributors\":[{\"edge\":\"web-a\",\"node\":\"web\",\"label\":\"Web\",\"rate\":40}],\"target\":0.5,\"changes\":null,\"converged\":true}\n  \"b\" \"generic.external-api\" (\"External API\") \"Partner API b\" props={\"preset\":\"managed-measured\",\"presetRevision\":\"2026-10-14\",\"latencyMs\":100,\"jitter\":0,\"api\":{\"maxInFlight\":40,\"quotas\":[{\"id\":\"account-rate\",\"unit\":\"requests\",\"amount\":103,\"windowMs\":1000,\"algorithm\":\"token-bucket\",\"sharedGroup\":\"acct\"}],\"sharedConcurrency\":\"pool\"}} arrivingTypes=[\"Batch\",\"Charge\"] capabilities=[] explanation={\"managed\":\"api\",\"id\":\"b\",\"role\":\"sink\",\"status\":\"up\",\"reason\":\"capacity\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":68.66666666666667,\"offered\":80,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":null,\"seconds\":0.1,\"utilization\":1.1650485436893203,\"growth\":11.333333333333329,\"contributors\":[{\"edge\":\"batch-b\",\"node\":\"batch\",\"label\":\"Batch\",\"rate\":80}],\"target\":0.5,\"changes\":null,\"converged\":true}\nconnections:\n  \"web-a\" \"web\" -> \"a\" sync carriedTypes=[\"Web\",\"Charge\"]\n  \"batch-b\" \"batch\" -> \"b\" sync carriedTypes=[\"Batch\",\"Charge\"]\nsimulation \"exact\" \"200 calls in 0.2 s at scale 1\": {\"kind\":\"burst\",\"count\":200,\"spreadMs\":200} from \"batch\"; timeline=[]; expectations=[]\nsimulation \"sampled\" \"200 calls in 0.2 s at scale 10\": {\"kind\":\"burst\",\"count\":200,\"spreadMs\":200} from \"batch\"; timeline=[]; expectations=[]\nsimulation \"refunds\" \"60 calls in 1 s at scale 1\": {\"kind\":\"burst\",\"count\":60,\"spreadMs\":1000} from \"web\"; timeline=[]; expectations=[]"
   },
   "json": {
     "isError": false,
@@ -23,6 +23,7 @@
           "x": 0,
           "y": 60,
           "props": { "ratePerSec": 40 },
+          "arrivingTypes": [],
           "capabilities": [{ "kind": "calls", "edge": "web-a", "peer": "a" }]
         },
         {
@@ -32,6 +33,7 @@
           "x": 0,
           "y": 260,
           "props": { "ratePerSec": 80 },
+          "arrivingTypes": [],
           "capabilities": [{ "kind": "calls", "edge": "batch-b", "peer": "b" }]
         },
         {
@@ -64,6 +66,7 @@
               }
             ]
           },
+          "arrivingTypes": ["Web", "Charge"],
           "capabilities": [],
           "explanation": {
             "managed": "api",
@@ -109,6 +112,7 @@
               "sharedConcurrency": "pool"
             }
           },
+          "arrivingTypes": ["Batch", "Charge"],
           "capabilities": [],
           "explanation": {
             "managed": "api",
@@ -142,10 +146,19 @@
           "from": "web",
           "to": "a",
           "kind": "sync",
-          "props": { "travelMs": 0, "endpointId": "refunds" }
+          "props": { "travelMs": 0, "endpointId": "refunds" },
+          "carriedTypes": ["Web", "Charge"]
         },
-        { "id": "batch-b", "from": "batch", "to": "b", "kind": "sync", "props": { "travelMs": 0 } }
+        {
+          "id": "batch-b",
+          "from": "batch",
+          "to": "b",
+          "kind": "sync",
+          "props": { "travelMs": 0 },
+          "carriedTypes": ["Batch", "Charge"]
+        }
       ],
+      "messageTypesComplete": true,
       "groups": [],
       "annotations": [],
       "simulations": [
@@ -200,6 +213,6 @@
   },
   "focus": {
     "isError": false,
-    "output": "Diagram \"Shared account quota and an endpoint budget\" · direction LR · 2 nodes, 1 connections, 0 boundaries, 1 simulations\nnodes:\n  \"web\" \"client.browser\" (\"Web Browser\") \"Web\" props={\"ratePerSec\":40} capabilities=[{\"kind\":\"calls\",\"edge\":\"web-a\",\"peer\":\"a\"}] explanation=undefined\n  \"a\" \"generic.external-api\" (\"External API\") \"Partner API a\" props={\"preset\":\"managed-measured\",\"presetRevision\":\"2026-10-14\",\"latencyMs\":100,\"jitter\":0,\"api\":{\"maxInFlight\":40,\"quotas\":[{\"id\":\"account-rate\",\"unit\":\"requests\",\"amount\":103,\"windowMs\":1000,\"algorithm\":\"token-bucket\",\"sharedGroup\":\"acct\"}]},\"endpoints\":[{\"id\":\"refunds\",\"method\":\"POST\",\"path\":\"/refunds\",\"behaviour\":{\"quotas\":[{\"id\":\"refund-rate\",\"unit\":\"requests\",\"amount\":5,\"windowMs\":1000,\"algorithm\":\"token-bucket\"}]}}]} capabilities=[] explanation={\"managed\":\"api\",\"id\":\"a\",\"role\":\"sink\",\"status\":\"up\",\"reason\":\"capacity\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":5,\"offered\":40,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":null,\"seconds\":0.1,\"utilization\":8,\"growth\":35,\"contributors\":[{\"edge\":\"web-a\",\"node\":\"web\",\"label\":\"Web\",\"rate\":40}],\"target\":0.5,\"changes\":null,\"converged\":true}\nconnections:\n  \"web-a\" \"web\" -> \"a\" sync\nsimulation \"refunds\" \"60 calls in 1 s at scale 1\": {\"kind\":\"burst\",\"count\":60,\"spreadMs\":1000} from \"web\"; timeline=[]; expectations=[]"
+    "output": "Diagram \"Shared account quota and an endpoint budget\" · direction LR · 2 nodes, 1 connections, 0 boundaries, 1 simulations\nnodes:\n  \"web\" \"client.browser\" (\"Web Browser\") \"Web\" props={\"ratePerSec\":40} arrivingTypes=[] capabilities=[{\"kind\":\"calls\",\"edge\":\"web-a\",\"peer\":\"a\"}] explanation=undefined\n  \"a\" \"generic.external-api\" (\"External API\") \"Partner API a\" props={\"preset\":\"managed-measured\",\"presetRevision\":\"2026-10-14\",\"latencyMs\":100,\"jitter\":0,\"api\":{\"maxInFlight\":40,\"quotas\":[{\"id\":\"account-rate\",\"unit\":\"requests\",\"amount\":103,\"windowMs\":1000,\"algorithm\":\"token-bucket\",\"sharedGroup\":\"acct\"}]},\"endpoints\":[{\"id\":\"refunds\",\"method\":\"POST\",\"path\":\"/refunds\",\"behaviour\":{\"quotas\":[{\"id\":\"refund-rate\",\"unit\":\"requests\",\"amount\":5,\"windowMs\":1000,\"algorithm\":\"token-bucket\"}]}}]} arrivingTypes=[\"Web\",\"Charge\"] capabilities=[] explanation={\"managed\":\"api\",\"id\":\"a\",\"role\":\"sink\",\"status\":\"up\",\"reason\":\"capacity\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":5,\"offered\":40,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":null,\"seconds\":0.1,\"utilization\":8,\"growth\":35,\"contributors\":[{\"edge\":\"web-a\",\"node\":\"web\",\"label\":\"Web\",\"rate\":40}],\"target\":0.5,\"changes\":null,\"converged\":true}\nconnections:\n  \"web-a\" \"web\" -> \"a\" sync carriedTypes=[\"Web\",\"Charge\"]\nsimulation \"refunds\" \"60 calls in 1 s at scale 1\": {\"kind\":\"burst\",\"count\":60,\"spreadMs\":1000} from \"web\"; timeline=[]; expectations=[]"
   }
 }

@@ -1,7 +1,7 @@
 import { expectedRetries } from "./retryPolicy";
 import { revisionAtLeast } from "../model/revisions";
 import { compileWaitingPlan, waitingPlan, type WaitCapacity } from "./waitingPlan";
-import { simulationEdges } from "./simulationEdges";
+import { simulationEdges } from "./topology";
 import { replyCpuMs } from "./callPolicy";
 import { resolvedTiming } from "./timing";
 import { resourcePlan, type ResourcePlan } from "./resourcePlanning";
@@ -13,11 +13,12 @@ import { resolveProps, type ResolvedProps } from "./defaults";
 import { activeUnits } from "../stencils/netDevices";
 import { peakRate } from "./scale";
 import {
-  acceptsType,
+  forwardingShare,
+  forwardingTargets,
+  outputType,
   allocateGroupReplicas,
   brokerRole,
   compileTopology,
-  emittedType,
   type CompiledEdge,
 } from "./topology";
 import type { NodeStatus } from "./types";
@@ -32,7 +33,6 @@ import {
   compileMix,
   compileRoutes,
   compileTable,
-  matchesRequest,
   routingCounters,
   type CompiledMatch,
   type CompiledMix,
@@ -330,8 +330,7 @@ export function analyzeCapacity(
   };
   const classOf = (key: string): TrafficClass => classes.get(key) ?? { type: key };
   const takes = (edge: CompiledEdge, c: TrafficClass) =>
-    acceptsType(edge.filter, c.type) &&
-    (!requestFilter.has(edge.id) || matchesRequest(requestFilter.get(edge.id)!, c.route));
+    forwardingShare(entries.get(edge.from)!.role, edge, c.type, "routed", requestFilter.get(edge.id), c.route) > 0;
   /** The class leaving along an edge into `to`: an unaddressed Request into a router remembers it was a Request. */
   const along = (edge: CompiledEdge, type: string, route: CompiledRoute | undefined) =>
     classKey(type, route, !route && edge.sync && !!entries.get(edge.to)?.table);
@@ -364,17 +363,11 @@ export function analyzeCapacity(
     const choice = chooseAction(table, route, sync);
     let decision: Decision | "legacy" = "legacy";
     if (!("legacy" in choice)) {
-      const eligible: CompiledEdge[] = [];
-      const weights: number[] = [];
-      const self = { type, route };
-      if ("action" in choice)
-        for (const target of choice.action.targets) {
-          const edge = target.weight > 0 ? (outgoing.get(id) ?? []).find((e) => e.id === target.edgeId) : undefined;
-          if (edge && takes(edge, self)) {
-            eligible.push(edge);
-            weights.push(target.weight);
-          }
-        }
+      const { eligible, weights } = forwardingTargets(
+        "action" in choice ? choice.action.targets : [],
+        (edgeId) => (outgoing.get(id) ?? []).find((edge) => edge.id === edgeId),
+        (edge) => takes(edge, { type, route }),
+      );
       const sum = weights.reduce((a, b) => a + b, 0);
       const action = "action" in choice ? choice.action.key : "";
       decision = {
@@ -509,6 +502,9 @@ export function analyzeCapacity(
     const allocated = group.allocations.get(edge.to) ?? 0;
     return allocated ? serviceRate(target, allocated, edge.endpointId) : 0;
   };
+  function send(next: Rates, edge: CompiledEdge, type: string, rate: number, route?: CompiledRoute): void {
+    if (!edge.deny) add(next, edge.to, along(edge, edge.emits ?? type, route), rate, edge);
+  }
   function split(
     next: Rates,
     candidates: CompiledEdge[],
@@ -528,7 +524,7 @@ export function analyzeCapacity(
           ? weights[index] / sum
           : 1 / candidates.length;
       // A deny rule's share is blocked at the broker and goes no further.
-      if (!edge.deny) add(next, edge.to, along(edge, emittedType(edge.emits, type), route), rate * fraction, edge);
+      send(next, edge, type, rate * fraction, route);
     });
   }
   function propagate(next: Rates, entry: Entry, key: string, rate: number, injected: boolean): void {
@@ -538,7 +534,7 @@ export function analyzeCapacity(
     let type = c.type;
     const route = c.route;
     if (routes) routeDemandAt(id, route).offered += rate;
-    if (entry.role === "processor" || entry.role === "none") type = emittedType(entry.props.emits, type);
+    type = outputType(entry.role, entry.props.emits, type);
     const self = { type, route };
     if (entry.table && entry.role === "gateway") {
       const decision = decide(id, entry.table, key, type, route, !!c.sync);
@@ -568,14 +564,7 @@ export function analyzeCapacity(
         }
         decision.eligible.forEach((edge, i) => {
           // A deny rule's share is blocked at this router and goes no further.
-          if (!edge.deny)
-            add(
-              next,
-              edge.to,
-              along(edge, emittedType(edge.emits, type), route),
-              (rate * decision.weights[i]) / decision.sum,
-              edge,
-            );
+          send(next, edge, type, (rate * decision.weights[i]) / decision.sum, route);
         });
         return;
       }
@@ -593,9 +582,7 @@ export function analyzeCapacity(
           // A deny rule is an unbounded exit (playback: always ready, no slot): each allowed route takes its round-robin
           // share at most what it can handle, and the rest is blocked at the broker.
           const share = rate / accepting.length;
-          allowed.forEach((edge, i) =>
-            add(next, edge.to, along(edge, emittedType(edge.emits, type), route), Math.min(share, weights[i]), edge),
-          );
+          allowed.forEach((edge, i) => send(next, edge, type, Math.min(share, weights[i]), route));
         }
       }
     } else if (entry.role === "gateway") {
@@ -603,15 +590,13 @@ export function analyzeCapacity(
       // blocked at this node and goes no further.
       const healthy = entry.props.healthChecks ? routesOut.filter((edge) => !entries.get(edge.to)!.down) : routesOut;
       const pool = healthy.length ? healthy : routesOut;
-      for (const edge of pool)
-        if (!edge.deny) add(next, edge.to, along(edge, emittedType(edge.emits, type), route), rate / pool.length, edge);
+      for (const edge of pool) send(next, edge, type, rate / pool.length, route);
     } else {
       for (const edge of routesOut) {
         if (edge.deny) continue;
-        if (!injected && (entry.role === "sink" || (entry.role === "store" && edge.sync))) continue;
-        const share =
-          typeof edge.share === "number" && Number.isFinite(edge.share) ? Math.max(0, Math.min(1, edge.share)) : 1;
-        add(next, edge.to, along(edge, emittedType(edge.emits, type), branchRoute(edge, route)), rate * share, edge);
+        const share = forwardingShare(entry.role, edge, type, injected ? "injected" : "output");
+        if (!share) continue;
+        send(next, edge, type, rate * share, branchRoute(edge, route));
       }
     }
   }

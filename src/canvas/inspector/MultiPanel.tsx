@@ -17,8 +17,9 @@ import { assignmentLabel } from "../../stencils/brokerVocabulary";
 import { getStencil } from "../../stencils/registry";
 import { nodeSimFields } from "../simFieldRules";
 import { Disclosure } from "./Disclosure";
-import { SIM_FIELDS, showSim } from "./simFields";
+import { SIM_FIELDS, showSim, type SimField } from "./simFields";
 import { SimInput } from "./SimulationFields";
+import { parseEmits } from "../../editor/emits";
 import { relationDropdownItems } from "./edgeChoices";
 import { bulkStep } from "./editTransactions";
 import { countText, countLabel, MIXED, MIXED_VALUE, shared } from "./selectionSummary";
@@ -189,6 +190,34 @@ export function MultiPanel(p: InspectorProps) {
   );
 }
 
+/** One node edits these with the message-type pickers; several share them as text, defined here (not first view). */
+const MESSAGE_FIELDS: Partial<Record<string, SimField>> = {
+  messageType: {
+    get label() {
+      return t("inspector.messageType");
+    },
+    kind: "text",
+    get placeholder() {
+      return t("inspector.derivedFromLabel");
+    },
+    get hint() {
+      return t("inspector.typeEmittedByThisSource");
+    },
+  },
+  emits: {
+    get label() {
+      return t("inspector.emits");
+    },
+    kind: "map",
+    get placeholder() {
+      return t("inspector.unchangedOrInOutOther");
+    },
+    get hint() {
+      return t("inspector.messageTypeSentDownstreamOneNameRenamesEverythingOrderplaced");
+    },
+  },
+};
+
 /** The fields several nodes share (D11): Stencil, Boundary, and the simulation settings their roles have in common. */
 export function BulkNodes({ editor, selectedNodes, groups, meta }: InspectorProps) {
   const ids = selectedNodes.map((n) => n.id);
@@ -279,21 +308,28 @@ export function BulkNodes({ editor, selectedNodes, groups, meta }: InspectorProp
             />
           )}
           {simKeys.map((k) => {
-            const value = shared(selectedNodes, (n) => showSim(SIM_FIELDS[k]!.kind, n.data.props?.[k]));
+            const base = SIM_FIELDS[k] ?? MESSAGE_FIELDS[k]!;
+            const value = shared(selectedNodes, (n) => showSim(base.kind, n.data.props?.[k]));
             const first = selectedNodes[0].data.props?.[k];
             return (
               <SimInput
                 key={k}
                 name={k}
                 field={{
-                  ...SIM_FIELDS[k]!,
+                  ...base,
+                  // Only several nodes edit emits as text (one node's rules use the message-type pickers), so the map
+                  // syntax is parsed here, keeping its parser out of the first view; SimInput keeps the draft meanwhile.
+                  ...(k === "emits" ? { kind: "text" as const } : {}),
                   ...(k === "partitions"
                     ? { label: assignmentLabels, hint: t("broker.assignmentHint"), note: undefined }
                     : {}),
                   ...(value === MIXED ? { placeholder: t("inspector.mixed") } : {}),
                 }}
-                value={value === MIXED ? undefined : first}
-                onChange={(v) => editor.setNodesProps(ids, { [k]: v }, { merge: `bulk:${mergeKey}:${k}` })}
+                value={value === MIXED ? undefined : k === "emits" ? value : first}
+                onChange={(v) => {
+                  const next = k === "emits" ? parseEmits(String(v ?? "")) : v;
+                  if (next !== null) editor.setNodesProps(ids, { [k]: next }, { merge: `bulk:${mergeKey}:${k}` });
+                }}
               />
             );
           })}

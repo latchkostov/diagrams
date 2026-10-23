@@ -86,6 +86,7 @@ function FlowEdgeImpl(props: EdgeProps<DiagramFlowEdge>) {
         className={`fe-label fe-label-${relation ? `dep fe-rel-${relation}` : kind} is-${label.mode}${selected ? " is-selected" : ""}${relation ? " has-glyph" : ""} nodrag nopan`}
         style={labelStyle(mid.x, mid.y, label)}
         data-testid={`edge-label-${id}`}
+        data-edge={id}
         data-dependency={relation ? "true" : undefined}
         title={
           settings.length

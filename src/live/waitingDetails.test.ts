@@ -2,7 +2,7 @@ import { afterEach, expect, it, vi } from "vitest";
 import type { DiagramFile } from "../model/types";
 import * as planning from "../sim/waitingPlan";
 import { waitingDetails } from "./waitingDetails";
-import { simulationEdges } from "../sim/simulationEdges";
+import { simulationEdges } from "../sim/topology";
 import { waitingFixture } from "../lab/waitingFixture";
 import type { Simulation } from "../model/types";
 

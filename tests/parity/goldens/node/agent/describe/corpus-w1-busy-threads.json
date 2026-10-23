@@ -1,7 +1,7 @@
 {
   "text": {
     "isError": false,
-    "output": "Diagram \"Scale on busy threads\" · direction LR · 6 nodes, 5 connections, 0 boundaries, 3 simulations\ndescription: \"A modelled custom metric sees held threads that CPU scaling misses. Compare blocking on four pods, busy-thread scaling to about ten, and non-blocking calls on four. Sampling stays at two requests per dot; partner latency varies by 10%. This lesson uses one-second metric windows and cadence, five-second startup and five-second scale-down stabilization, capped at ten pods.\"\nnodes:\n  \"source\" \"client.user\" (\"User\") \"Applications submitted\" props={\"ratePerSec\":400} capabilities=[{\"kind\":\"publishes\",\"edge\":\"submit\",\"peer\":\"applications\"}] explanation=undefined\n  \"applications\" \"generic.topic\" (\"Topic\") \"Applications\" props={\"partitions\":12} capabilities=[] explanation=undefined\n  \"caller\" \"generic.service\" (\"Service\") \"Decision service\" / \"4 replicas · 16 threads each\" props={\"replicas\":4,\"concurrency\":16,\"latencyMs\":10,\"jitter\":0,\"resources\":{\"preset\":\"io-service\",\"presetRevision\":\"1\",\"cpuMsPerMessage\":5,\"baselineMemoryMiB\":128,\"memoryMiBPerMessage\":2,\"cpuRequestMilli\":1000,\"cpuLimitMilli\":1000,\"memoryRequestMiB\":512,\"memoryLimitMiB\":1024,\"startup\":{\"delayMs\":5000,\"jitterFraction\":0},\"terminationGraceMs\":30000},\"autoscaling\":{\"mode\":\"on\",\"modelRevision\":\"a1\",\"preset\":\"hpa-service\",\"presetRevision\":\"1\",\"controller\":{\"kind\":\"hpa\",\"initialReplicas\":4,\"minReplicas\":4,\"maxReplicas\":10,\"settings\":{\"syncMs\":1000,\"tolerance\":0.1,\"initialReadinessDelayMs\":30000,\"cpuInitializationPeriodMs\":300000,\"metrics\":[{\"source\":{\"kind\":\"resource\",\"resource\":\"cpu\"},\"target\":{\"kind\":\"utilization\",\"percentOfRequest\":70},\"windowMs\":1000,\"metricDelayMs\":0}],\"up\":{\"stabilizationMs\":0,\"selectPolicy\":\"Max\",\"policies\":[{\"type\":\"Pods\",\"value\":4,\"periodMs\":15000},{\"type\":\"Percent\",\"value\":100,\"periodMs\":15000}]},\"down\":{\"stabilizationMs\":5000,\"selectPolicy\":\"Max\",\"policies\":[{\"type\":\"Percent\",\"value\":100,\"periodMs\":15000}]}}}}} capabilities=[{\"kind\":\"consumes\",\"edge\":\"consume\",\"peer\":\"applications\",\"group\":\"decisions\",\"broker\":{\"partitioned\":false,\"assignment\":\"subscriptions\",\"group\":\"subscription\",\"ingestUnit\":\"messages/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"calls\",\"edge\":\"call\",\"peer\":\"partner\"},{\"kind\":\"publishes\",\"edge\":\"publish\",\"peer\":\"decisions\"}] explanation={\"resources\":{\"perReplica\":61.53846153846154,\"initial\":4,\"min\":4,\"max\":10,\"initialCapacity\":246.15384615384616,\"maxCapacity\":615.3846153846154,\"targetReplicas\":4,\"cpuRequestPct\":50,\"memoryPeakMiB\":160,\"memoryRisk\":false,\"baselineAboveTarget\":false,\"partitionLimited\":false,\"startupMs\":5000,\"cpuUnbounded\":false},\"waits\":{\"workMs\":10,\"callMs\":250,\"threadHoldMs\":260,\"memoryResidenceMs\":260,\"slots\":64,\"ceiling\":246.15384615384616},\"id\":\"caller\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"capacity\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":246.15384615384616,\"offered\":400,\"replicas\":4,\"baseReplicas\":4,\"omittedContributors\":0,\"activeReplicas\":4,\"assignments\":[],\"slots\":16,\"seconds\":0.26,\"utilization\":1.625,\"growth\":153.84615384615384,\"contributors\":[{\"edge\":\"consume\",\"node\":\"applications\",\"label\":\"Applications\",\"rate\":400}],\"target\":0.5,\"changes\":null,\"converged\":true} requestsWait={\"threads\":64,\"holdMs\":260,\"ceilingPerSec\":246.15384615384616}\n  \"partner\" \"generic.external-api\" (\"External API\") \"Partner scoring API\" props={\"latencyMs\":250,\"api\":{\"latencyMs\":250},\"jitter\":0.1} capabilities=[] explanation={\"managed\":\"api\",\"id\":\"partner\",\"role\":\"sink\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":null,\"offered\":400,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":null,\"seconds\":0.25,\"utilization\":0,\"growth\":0,\"contributors\":[{\"edge\":\"call\",\"node\":\"caller\",\"label\":\"Decision service\",\"rate\":400}],\"target\":0.5,\"changes\":null,\"converged\":true}\n  \"decisions\" \"generic.topic\" (\"Topic\") \"Decisions\" props={\"partitions\":12} capabilities=[] explanation=undefined\n  \"store\" \"generic.database\" (\"Database\") \"Case store\" props={\"latencyMs\":1} capabilities=[] explanation=undefined\nconnections:\n  \"submit\" \"source\" -> \"applications\" async\n  \"consume\" \"applications\" -> \"caller\" async\n  \"call\" \"caller\" -> \"partner\" sync\n  \"publish\" \"caller\" -> \"decisions\" async\n  \"save\" \"decisions\" -> \"store\" async\nsimulation \"blocking\" \"Blocking: CPU says all is well\": {\"kind\":\"constant\",\"ratePerSec\":400,\"durationMs\":40000} from \"source\"; timeline=[]; expectations=[{\"id\":\"lag\",\"label\":\"Applications lag stays below 1,000\",\"metric\":{\"node\":\"applications\",\"field\":\"backlog\"},\"op\":\"<\",\"value\":1000,\"when\":\"end\"}]\nsimulation \"busy-threads\" \"Scale on busy threads\": {\"kind\":\"constant\",\"ratePerSec\":400,\"durationMs\":40000} from \"source\"; timeline=[]; expectations=[{\"id\":\"lag\",\"label\":\"Applications lag stays below 1,000\",\"metric\":{\"node\":\"applications\",\"field\":\"backlog\"},\"op\":\"<\",\"value\":100,\"when\":\"end\"}]\nsimulation \"free-thread\" \"Free the thread while waiting\": {\"kind\":\"constant\",\"ratePerSec\":400,\"durationMs\":40000} from \"source\"; timeline=[]; expectations=[{\"id\":\"lag\",\"label\":\"Applications lag stays below 1,000\",\"metric\":{\"node\":\"applications\",\"field\":\"backlog\"},\"op\":\"<\",\"value\":100,\"when\":\"end\"}]\nscenario sizing \"blocking\" \"caller\": \"In “Blocking: CPU says all is well”, more than half the busy threads are waiting. Scale on busy threads (modelled custom metric). A rerun with this change confirmed it.\" fix=[{\"node\":\"caller\",\"props\":{\"autoscaling\":{\"mode\":\"on\",\"modelRevision\":\"a1\",\"preset\":\"hpa-service\",\"presetRevision\":\"1\",\"controller\":{\"kind\":\"hpa\",\"initialReplicas\":4,\"minReplicas\":4,\"maxReplicas\":10,\"settings\":{\"syncMs\":1000,\"tolerance\":0.1,\"initialReadinessDelayMs\":30000,\"cpuInitializationPeriodMs\":300000,\"metrics\":[{\"source\":{\"kind\":\"pods\",\"metric\":\"busyThreads\"},\"target\":{\"kind\":\"utilization\",\"percentOfRequest\":70},\"windowMs\":1000,\"metricDelayMs\":0}],\"up\":{\"stabilizationMs\":0,\"selectPolicy\":\"Max\",\"policies\":[{\"type\":\"Pods\",\"value\":4,\"periodMs\":15000},{\"type\":\"Percent\",\"value\":100,\"periodMs\":15000}]},\"down\":{\"stabilizationMs\":5000,\"selectPolicy\":\"Max\",\"policies\":[{\"type\":\"Percent\",\"value\":100,\"periodMs\":15000}]}}}}}}]"
+    "output": "Diagram \"Scale on busy threads\" · direction LR · 6 nodes, 5 connections, 0 boundaries, 3 simulations\ndescription: \"A modelled custom metric sees held threads that CPU scaling misses. Compare blocking on four pods, busy-thread scaling to about ten, and non-blocking calls on four. Sampling stays at two requests per dot; partner latency varies by 10%. This lesson uses one-second metric windows and cadence, five-second startup and five-second scale-down stabilization, capped at ten pods.\"\nnodes:\n  \"source\" \"client.user\" (\"User\") \"Applications submitted\" props={\"ratePerSec\":400} arrivingTypes=[] capabilities=[{\"kind\":\"publishes\",\"edge\":\"submit\",\"peer\":\"applications\"}] explanation=undefined\n  \"applications\" \"generic.topic\" (\"Topic\") \"Applications\" props={\"partitions\":12} arrivingTypes=[\"Applications submitted\",\"ApplicationSubmitted\"] capabilities=[] explanation=undefined\n  \"caller\" \"generic.service\" (\"Service\") \"Decision service\" / \"4 replicas · 16 threads each\" props={\"replicas\":4,\"concurrency\":16,\"latencyMs\":10,\"jitter\":0,\"resources\":{\"preset\":\"io-service\",\"presetRevision\":\"1\",\"cpuMsPerMessage\":5,\"baselineMemoryMiB\":128,\"memoryMiBPerMessage\":2,\"cpuRequestMilli\":1000,\"cpuLimitMilli\":1000,\"memoryRequestMiB\":512,\"memoryLimitMiB\":1024,\"startup\":{\"delayMs\":5000,\"jitterFraction\":0},\"terminationGraceMs\":30000},\"autoscaling\":{\"mode\":\"on\",\"modelRevision\":\"a1\",\"preset\":\"hpa-service\",\"presetRevision\":\"1\",\"controller\":{\"kind\":\"hpa\",\"initialReplicas\":4,\"minReplicas\":4,\"maxReplicas\":10,\"settings\":{\"syncMs\":1000,\"tolerance\":0.1,\"initialReadinessDelayMs\":30000,\"cpuInitializationPeriodMs\":300000,\"metrics\":[{\"source\":{\"kind\":\"resource\",\"resource\":\"cpu\"},\"target\":{\"kind\":\"utilization\",\"percentOfRequest\":70},\"windowMs\":1000,\"metricDelayMs\":0}],\"up\":{\"stabilizationMs\":0,\"selectPolicy\":\"Max\",\"policies\":[{\"type\":\"Pods\",\"value\":4,\"periodMs\":15000},{\"type\":\"Percent\",\"value\":100,\"periodMs\":15000}]},\"down\":{\"stabilizationMs\":5000,\"selectPolicy\":\"Max\",\"policies\":[{\"type\":\"Percent\",\"value\":100,\"periodMs\":15000}]}}}}} arrivingTypes=[\"Applications submitted\",\"ApplicationSubmitted\"] capabilities=[{\"kind\":\"consumes\",\"edge\":\"consume\",\"peer\":\"applications\",\"group\":\"decisions\",\"broker\":{\"partitioned\":false,\"assignment\":\"subscriptions\",\"group\":\"subscription\",\"ingestUnit\":\"messages/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"calls\",\"edge\":\"call\",\"peer\":\"partner\"},{\"kind\":\"publishes\",\"edge\":\"publish\",\"peer\":\"decisions\"}] explanation={\"resources\":{\"perReplica\":61.53846153846154,\"initial\":4,\"min\":4,\"max\":10,\"initialCapacity\":246.15384615384616,\"maxCapacity\":615.3846153846154,\"targetReplicas\":4,\"cpuRequestPct\":50,\"memoryPeakMiB\":160,\"memoryRisk\":false,\"baselineAboveTarget\":false,\"partitionLimited\":false,\"startupMs\":5000,\"cpuUnbounded\":false},\"waits\":{\"workMs\":10,\"callMs\":250,\"threadHoldMs\":260,\"memoryResidenceMs\":260,\"slots\":64,\"ceiling\":246.15384615384616},\"id\":\"caller\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"capacity\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":246.15384615384616,\"offered\":400,\"replicas\":4,\"baseReplicas\":4,\"omittedContributors\":0,\"activeReplicas\":4,\"assignments\":[],\"slots\":16,\"seconds\":0.26,\"utilization\":1.625,\"growth\":153.84615384615384,\"contributors\":[{\"edge\":\"consume\",\"node\":\"applications\",\"label\":\"Applications\",\"rate\":400}],\"target\":0.5,\"changes\":null,\"converged\":true} requestsWait={\"threads\":64,\"holdMs\":260,\"ceilingPerSec\":246.15384615384616}\n  \"partner\" \"generic.external-api\" (\"External API\") \"Partner scoring API\" props={\"latencyMs\":250,\"api\":{\"latencyMs\":250},\"jitter\":0.1} arrivingTypes=[\"Applications submitted\",\"ApplicationSubmitted\"] capabilities=[] explanation={\"managed\":\"api\",\"id\":\"partner\",\"role\":\"sink\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":null,\"offered\":400,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":null,\"seconds\":0.25,\"utilization\":0,\"growth\":0,\"contributors\":[{\"edge\":\"call\",\"node\":\"caller\",\"label\":\"Decision service\",\"rate\":400}],\"target\":0.5,\"changes\":null,\"converged\":true}\n  \"decisions\" \"generic.topic\" (\"Topic\") \"Decisions\" props={\"partitions\":12} arrivingTypes=[\"Applications submitted\",\"ApplicationSubmitted\"] capabilities=[] explanation=undefined\n  \"store\" \"generic.database\" (\"Database\") \"Case store\" props={\"latencyMs\":1} arrivingTypes=[\"Applications submitted\",\"ApplicationSubmitted\"] capabilities=[] explanation=undefined\nconnections:\n  \"submit\" \"source\" -> \"applications\" async carriedTypes=[\"Applications submitted\",\"ApplicationSubmitted\"]\n  \"consume\" \"applications\" -> \"caller\" async carriedTypes=[\"Applications submitted\",\"ApplicationSubmitted\"]\n  \"call\" \"caller\" -> \"partner\" sync carriedTypes=[\"Applications submitted\",\"ApplicationSubmitted\"]\n  \"publish\" \"caller\" -> \"decisions\" async carriedTypes=[\"Applications submitted\",\"ApplicationSubmitted\"]\n  \"save\" \"decisions\" -> \"store\" async carriedTypes=[\"Applications submitted\",\"ApplicationSubmitted\"]\nsimulation \"blocking\" \"Blocking: CPU says all is well\": {\"kind\":\"constant\",\"ratePerSec\":400,\"durationMs\":40000} from \"source\"; timeline=[]; expectations=[{\"id\":\"lag\",\"label\":\"Applications lag stays below 1,000\",\"metric\":{\"node\":\"applications\",\"field\":\"backlog\"},\"op\":\"<\",\"value\":1000,\"when\":\"end\"}]\nsimulation \"busy-threads\" \"Scale on busy threads\": {\"kind\":\"constant\",\"ratePerSec\":400,\"durationMs\":40000} from \"source\"; timeline=[]; expectations=[{\"id\":\"lag\",\"label\":\"Applications lag stays below 1,000\",\"metric\":{\"node\":\"applications\",\"field\":\"backlog\"},\"op\":\"<\",\"value\":100,\"when\":\"end\"}]\nsimulation \"free-thread\" \"Free the thread while waiting\": {\"kind\":\"constant\",\"ratePerSec\":400,\"durationMs\":40000} from \"source\"; timeline=[]; expectations=[{\"id\":\"lag\",\"label\":\"Applications lag stays below 1,000\",\"metric\":{\"node\":\"applications\",\"field\":\"backlog\"},\"op\":\"<\",\"value\":100,\"when\":\"end\"}]\nscenario sizing \"blocking\" \"caller\": \"In “Blocking: CPU says all is well”, more than half the busy threads are waiting. Scale on busy threads (modelled custom metric). A rerun with this change confirmed it.\" fix=[{\"node\":\"caller\",\"props\":{\"autoscaling\":{\"mode\":\"on\",\"modelRevision\":\"a1\",\"preset\":\"hpa-service\",\"presetRevision\":\"1\",\"controller\":{\"kind\":\"hpa\",\"initialReplicas\":4,\"minReplicas\":4,\"maxReplicas\":10,\"settings\":{\"syncMs\":1000,\"tolerance\":0.1,\"initialReadinessDelayMs\":30000,\"cpuInitializationPeriodMs\":300000,\"metrics\":[{\"source\":{\"kind\":\"pods\",\"metric\":\"busyThreads\"},\"target\":{\"kind\":\"utilization\",\"percentOfRequest\":70},\"windowMs\":1000,\"metricDelayMs\":0}],\"up\":{\"stabilizationMs\":0,\"selectPolicy\":\"Max\",\"policies\":[{\"type\":\"Pods\",\"value\":4,\"periodMs\":15000},{\"type\":\"Percent\",\"value\":100,\"periodMs\":15000}]},\"down\":{\"stabilizationMs\":5000,\"selectPolicy\":\"Max\",\"policies\":[{\"type\":\"Percent\",\"value\":100,\"periodMs\":15000}]}}}}}}]"
   },
   "json": {
     "isError": false,
@@ -18,6 +18,7 @@
           "x": 0,
           "y": 180,
           "props": { "ratePerSec": 400 },
+          "arrivingTypes": [],
           "capabilities": [{ "kind": "publishes", "edge": "submit", "peer": "applications" }]
         },
         {
@@ -27,6 +28,7 @@
           "x": 320,
           "y": 180,
           "props": { "partitions": 12 },
+          "arrivingTypes": ["Applications submitted", "ApplicationSubmitted"],
           "capabilities": []
         },
         {
@@ -94,6 +96,7 @@
               }
             }
           },
+          "arrivingTypes": ["Applications submitted", "ApplicationSubmitted"],
           "capabilities": [
             {
               "kind": "consumes",
@@ -141,6 +144,7 @@
           "x": 1010,
           "y": 180,
           "props": { "latencyMs": 250, "api": { "latencyMs": 250 }, "jitter": 0.1 },
+          "arrivingTypes": ["Applications submitted", "ApplicationSubmitted"],
           "capabilities": [],
           "explanation": {
             "managed": "api",
@@ -174,6 +178,7 @@
           "x": 660,
           "y": 420,
           "props": { "partitions": 12 },
+          "arrivingTypes": ["Applications submitted", "ApplicationSubmitted"],
           "capabilities": []
         },
         {
@@ -183,16 +188,49 @@
           "x": 1010,
           "y": 420,
           "props": { "latencyMs": 1 },
+          "arrivingTypes": ["Applications submitted", "ApplicationSubmitted"],
           "capabilities": []
         }
       ],
       "edges": [
-        { "id": "submit", "from": "source", "to": "applications", "props": { "travelMs": 100 } },
-        { "id": "consume", "from": "applications", "to": "caller", "props": { "travelMs": 10, "group": "decisions" } },
-        { "id": "call", "from": "caller", "to": "partner", "kind": "sync", "props": { "travelMs": 200 } },
-        { "id": "publish", "from": "caller", "to": "decisions", "props": { "travelMs": 100 } },
-        { "id": "save", "from": "decisions", "to": "store", "props": { "travelMs": 100 } }
+        {
+          "id": "submit",
+          "from": "source",
+          "to": "applications",
+          "props": { "travelMs": 100 },
+          "carriedTypes": ["Applications submitted", "ApplicationSubmitted"]
+        },
+        {
+          "id": "consume",
+          "from": "applications",
+          "to": "caller",
+          "props": { "travelMs": 10, "group": "decisions" },
+          "carriedTypes": ["Applications submitted", "ApplicationSubmitted"]
+        },
+        {
+          "id": "call",
+          "from": "caller",
+          "to": "partner",
+          "kind": "sync",
+          "props": { "travelMs": 200 },
+          "carriedTypes": ["Applications submitted", "ApplicationSubmitted"]
+        },
+        {
+          "id": "publish",
+          "from": "caller",
+          "to": "decisions",
+          "props": { "travelMs": 100 },
+          "carriedTypes": ["Applications submitted", "ApplicationSubmitted"]
+        },
+        {
+          "id": "save",
+          "from": "decisions",
+          "to": "store",
+          "props": { "travelMs": 100 },
+          "carriedTypes": ["Applications submitted", "ApplicationSubmitted"]
+        }
       ],
+      "messageTypesComplete": true,
       "groups": [],
       "annotations": [],
       "simulations": [
@@ -401,6 +439,6 @@
   },
   "focus": {
     "isError": false,
-    "output": "Diagram \"Scale on busy threads\" · direction LR · 2 nodes, 1 connections, 0 boundaries, 3 simulations\ndescription: \"A modelled custom metric sees held threads that CPU scaling misses. Compare blocking on four pods, busy-thread scaling to about ten, and non-blocking calls on four. Sampling stays at two requests per dot; partner latency varies by 10%. This lesson uses one-second metric windows and cadence, five-second startup and five-second scale-down stabilization, capped at ten pods.\"\nnodes:\n  \"source\" \"client.user\" (\"User\") \"Applications submitted\" props={\"ratePerSec\":400} capabilities=[{\"kind\":\"publishes\",\"edge\":\"submit\",\"peer\":\"applications\"}] explanation=undefined\n  \"applications\" \"generic.topic\" (\"Topic\") \"Applications\" props={\"partitions\":12} capabilities=[] explanation=undefined\nconnections:\n  \"submit\" \"source\" -> \"applications\" async\nsimulation \"blocking\" \"Blocking: CPU says all is well\": {\"kind\":\"constant\",\"ratePerSec\":400,\"durationMs\":40000} from \"source\"; timeline=[]; expectations=[{\"id\":\"lag\",\"label\":\"Applications lag stays below 1,000\",\"metric\":{\"node\":\"applications\",\"field\":\"backlog\"},\"op\":\"<\",\"value\":1000,\"when\":\"end\"}]\nsimulation \"busy-threads\" \"Scale on busy threads\": {\"kind\":\"constant\",\"ratePerSec\":400,\"durationMs\":40000} from \"source\"; timeline=[]; expectations=[{\"id\":\"lag\",\"label\":\"Applications lag stays below 1,000\",\"metric\":{\"node\":\"applications\",\"field\":\"backlog\"},\"op\":\"<\",\"value\":100,\"when\":\"end\"}]\n… 2 lines omitted"
+    "output": "Diagram \"Scale on busy threads\" · direction LR · 2 nodes, 1 connections, 0 boundaries, 3 simulations\ndescription: \"A modelled custom metric sees held threads that CPU scaling misses. Compare blocking on four pods, busy-thread scaling to about ten, and non-blocking calls on four. Sampling stays at two requests per dot; partner latency varies by 10%. This lesson uses one-second metric windows and cadence, five-second startup and five-second scale-down stabilization, capped at ten pods.\"\nnodes:\n  \"source\" \"client.user\" (\"User\") \"Applications submitted\" props={\"ratePerSec\":400} arrivingTypes=[] capabilities=[{\"kind\":\"publishes\",\"edge\":\"submit\",\"peer\":\"applications\"}] explanation=undefined\n  \"applications\" \"generic.topic\" (\"Topic\") \"Applications\" props={\"partitions\":12} arrivingTypes=[\"Applications submitted\",\"ApplicationSubmitted\"] capabilities=[] explanation=undefined\nconnections:\n  \"submit\" \"source\" -> \"applications\" async carriedTypes=[\"Applications submitted\",\"ApplicationSubmitted\"]\nsimulation \"blocking\" \"Blocking: CPU says all is well\": {\"kind\":\"constant\",\"ratePerSec\":400,\"durationMs\":40000} from \"source\"; timeline=[]; expectations=[{\"id\":\"lag\",\"label\":\"Applications lag stays below 1,000\",\"metric\":{\"node\":\"applications\",\"field\":\"backlog\"},\"op\":\"<\",\"value\":1000,\"when\":\"end\"}]\nsimulation \"busy-threads\" \"Scale on busy threads\": {\"kind\":\"constant\",\"ratePerSec\":400,\"durationMs\":40000} from \"source\"; timeline=[]; expectations=[{\"id\":\"lag\",\"label\":\"Applications lag stays below 1,000\",\"metric\":{\"node\":\"applications\",\"field\":\"backlog\"},\"op\":\"<\",\"value\":100,\"when\":\"end\"}]\n… 2 lines omitted"
   }
 }

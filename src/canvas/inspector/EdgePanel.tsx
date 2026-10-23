@@ -25,6 +25,7 @@ import { relationLabel } from "../../i18n/chrome";
 import { inferRelation } from "../../stencils/relations";
 import { revisionAtLeast } from "../../model/revisions";
 import { routingEnabled } from "../../model/requestRouting";
+import { MessageFields } from "./lazyMessageFields";
 
 const EdgeAdvanced = lazyComponent(() => import("./EdgeAdvanced").then((m) => m.EdgeAdvanced));
 /**
@@ -42,7 +43,7 @@ const CallWaitFields = lazyComponent(
   true,
 );
 
-export function EdgePanel({ edge, editor, nodeLabel, meta }: InspectorProps & { edge: DiagramFlowEdge }) {
+export function EdgePanel({ edge, editor, nodeLabel, meta, readDiagram }: InspectorProps & { edge: DiagramFlowEdge }) {
   const interaction = useInteraction();
   useLayoutEffect(() => interaction?.rendered());
   const naming = useNameFields(editor, "edge", edge.id, edge.id);
@@ -211,6 +212,11 @@ export function EdgePanel({ edge, editor, nodeLabel, meta }: InspectorProps & { 
               }
             />
           )}
+        </Disclosure>
+      )}
+      {flow && (
+        <Disclosure id="edge-messages" title={t("messageTypes.messages")}>
+          <MessageFields readDiagram={readDiagram} edgeId={edge.id} editor={editor} />
         </Disclosure>
       )}
       {flow && routingEnabled(meta.planning) && (routeCaller || source?.props?.routeTable) && (

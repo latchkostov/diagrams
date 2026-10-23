@@ -24,13 +24,14 @@ flowchart LR
   exchange -.->|"webhook.#"| queue
   queue -.->|"Prefetch 4"| workers
   queue -.->|"Dead-letter"| dlq
+  workers -.->|"Applied callback"| receiver
   workers -->|"Idempotency check"| dedupe
   workers -->|"Apply change"| integration_db
   dlq -.->|"Drain"| replay
   replay -.->|"Republish"| exchange
   operator -.->|"depends on: Start replay"| replay
   receiver -.->|"reads secrets"| vault
-  linkStyle 3,4,5,6,9,10 stroke-dasharray: 6 4
-  linkStyle 11 stroke:#556075,stroke-width:1.25px,stroke-dasharray: 2 4
-  linkStyle 12 stroke:#A6720C,stroke-width:1.25px,stroke-dasharray: 2 4
-%% diagrams:{"v":1,"description":"Partner webhooks are verified and acknowledged fast, buffered in RabbitMQ, retried with backoff, dead-lettered and replayed on demand.","nodes":{"partners":["partners","generic.webhook"],"edge":["edge","cloudflare"],"raw":["raw","aws.s3"],"receiver":["receiver","service.go"],"exchange":["exchange","rabbitmq.exchange"],"replay":["replay","service.node"],"queue":["queue","rabbitmq.queue"],"dlq":["dlq","rabbitmq.queue"],"workers":["workers","k8s.deployment"],"dedupe":["dedupe","redis.cache"],"integration_db":["integration-db","postgres"],"operator":["operator","client.team"],"vault":["vault","vault"]},"groups":{"g_k8s":["k8s","k8s"]},"edges":["partners-to-edge","edge-to-receiver","receiver-to-raw","receiver-to-exchange","exchange-to-queue","queue-to-workers","queue-to-dlq","workers-to-dedupe","workers-to-integration-db","dlq-to-replay","replay-to-exchange","operator-to-replay","receiver-to-vault"],"relations":{"11":"depends","12":"secret"}}
+  linkStyle 3,4,5,6,7,10,11 stroke-dasharray: 6 4
+  linkStyle 12 stroke:#556075,stroke-width:1.25px,stroke-dasharray: 2 4
+  linkStyle 13 stroke:#A6720C,stroke-width:1.25px,stroke-dasharray: 2 4
+%% diagrams:{"v":1,"description":"Partner webhooks are verified and acknowledged fast, buffered in RabbitMQ, retried with backoff, dead-lettered and replayed on demand. Typed callbacks stop at the receiver.","nodes":{"partners":["partners","generic.webhook"],"edge":["edge","cloudflare"],"raw":["raw","aws.s3"],"receiver":["receiver","service.go"],"exchange":["exchange","rabbitmq.exchange"],"replay":["replay","service.node"],"queue":["queue","rabbitmq.queue"],"dlq":["dlq","rabbitmq.queue"],"workers":["workers","k8s.deployment"],"dedupe":["dedupe","redis.cache"],"integration_db":["integration-db","postgres"],"operator":["operator","client.team"],"vault":["vault","vault"]},"groups":{"g_k8s":["k8s","k8s"]},"edges":["partners-to-edge","edge-to-receiver","receiver-to-raw","receiver-to-exchange","exchange-to-queue","queue-to-workers","queue-to-dlq","workers-to-receiver","workers-to-dedupe","workers-to-integration-db","dlq-to-replay","replay-to-exchange","operator-to-replay","receiver-to-vault"],"relations":{"12":"depends","13":"secret"}}
