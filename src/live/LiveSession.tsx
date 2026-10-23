@@ -10,8 +10,13 @@ import { t, useLocale } from "../i18n";
 import { planningHost } from "../planning/host";
 import { BottleneckCallout } from "./lazyBottleneckCallout";
 import { lazyComponent } from "../lib/lazyLoad";
-const TroubleDownloadError = lazyComponent(() => import("./TroubleDownloadError").then((m) => m.TroubleDownloadError));
-const TroubleCallout = lazyComponent(() => import("./TroubleCallout").then((m) => m.TroubleCallout));
+// A failed download's notice and Retry are part of this chunk: recovering never waits for another download.
+import { CalloutUnavailable, TroubleDownloadError } from "./TroubleDownloadError";
+const TroubleCallout = lazyComponent(
+  () => import("./TroubleCallout").then((m) => m.TroubleCallout),
+  (_, status) => <CalloutUnavailable status={status} />,
+  true,
+);
 import { CapacityPanel } from "./lazyCapacityPanel";
 import { ControlBar } from "./ControlBar";
 const EventLog = lazyComponent(() => import("./EventLog").then((m) => m.EventLog));

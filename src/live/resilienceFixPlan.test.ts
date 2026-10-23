@@ -126,3 +126,29 @@ it("rejects an oversized replay before reading topology", () => {
   });
   expect(confirmedResilienceFix({ context: c, edge: "pay", time: 15000 })).toBeUndefined();
 });
+
+/** A service that is down for the whole run, with nothing playback sends it. */
+function downService(c: ReturnType<typeof context>, id: string) {
+  c.origin.diagram.nodes.push({ ...c.origin.diagram.nodes[2], id });
+  c.origin.simulation.timeline!.push({ atMs: 0, action: { do: "status", node: id, status: "down" } });
+  c.origin.simulation.timeline!.sort((a, b) => a.atMs - b.atMs);
+}
+
+it.each([
+  ["a synchronous call from the callee", { from: "payments", to: "unused", kind: "sync" as const }],
+  ["a synchronous call from the caller", { from: "checkout", to: "unused", kind: "sync" as const }],
+  ["an asynchronous feed into the caller", { from: "unused", to: "checkout", kind: "async" as const }],
+])("a down service behind %s with share 0 cannot suppress a confirmed fix", (_, edge) => {
+  const c = context();
+  downService(c, "unused");
+  c.origin.diagram.edges.push({ id: "idle", ...edge, props: { share: 0 } });
+  expect(confirmedResilienceFix({ context: c, edge: "pay", time: 15000 })).toMatchObject({ step: "breaker" });
+});
+
+it("a connection ending on a documentation shape cannot suppress a confirmed fix", () => {
+  const c = context(),
+    d = c.origin.diagram;
+  d.annotations = [{ id: "note", kind: "shape", text: "Ledger (planned)", x: 900, y: 0, width: 120, height: 60 }];
+  d.edges.push({ id: "documented", from: "payments", to: "note", kind: "sync" });
+  expect(confirmedResilienceFix({ context: c, edge: "pay", time: 15000 })).toMatchObject({ step: "breaker" });
+});

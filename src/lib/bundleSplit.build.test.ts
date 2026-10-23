@@ -323,11 +323,14 @@ describe("production bundle split", () => {
     const oracles: [string, RegExp][] = [
       ["resource, ledger and CPU oracles", /[/\\]src[/\\]sim[/\\]resourceInvariants\.ts$/],
     ];
+    const recovery: [string, RegExp] = ["download recovery", /[/\\]src[/\\]live[/\\]TroubleDownloadError\.tsx$/];
     for (const build of [plain(), rooms]) {
       const live = build.chunks.find((c) => c.name === "LiveSession");
       expect(live).toBeDefined();
       expect(found(bundled(closure([live!], build)), [...optional, ...oracles])).toEqual([]);
       expect(found(bundled(build.chunks), optional)).toEqual(optional.map(([what]) => what));
+      // What recovers a failed optional download ships with Live itself: its Retry never needs another download.
+      expect(found(bundled(closure([live!], build)), [recovery])).toEqual(["download recovery"]);
       expect(found(bundled(build.chunks), oracles)).toEqual([]);
       // R3 lives inside the engine: module boundaries alone cannot detect a missing test-only guard.
       expect(

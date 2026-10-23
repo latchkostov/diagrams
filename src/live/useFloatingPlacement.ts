@@ -1,4 +1,4 @@
-import { useLayoutEffect, useState, type CSSProperties, type RefObject } from "react";
+import { useLayoutEffect, useMemo, useState, type CSSProperties, type RefObject } from "react";
 import { calloutOffset } from "./calloutPlacement";
 import { inflate, type Rect } from "../canvas/geometry/rect";
 
@@ -101,22 +101,44 @@ export function useFloatingPlacement(box: RefObject<HTMLElement | null>, floatin
       movement.disconnect();
     };
   }, [box, floating]);
-  return {
-    below: place.below,
-    compact: place.compact,
-    style: {
-      translate: `${place.dx}px ${place.dy}px`,
-      ...(place.below
-        ? ({
-            "--callout-top": `${place.top}px`,
-            left: 16,
-            right: "auto",
-            maxWidth: place.room,
-            minWidth: Math.min(340, place.room ?? 340),
-          } as CSSProperties)
-        : place.left !== undefined && place.room !== undefined
-          ? ({ left: place.left, maxWidth: place.room, minWidth: Math.min(340, place.room) } as CSSProperties)
-          : {}),
-    },
-  };
+  // The same object while the placement holds, so FloatingPlacement reports only changes.
+  return useMemo(
+    () => ({
+      below: place.below,
+      compact: place.compact,
+      style: {
+        translate: `${place.dx}px ${place.dy}px`,
+        ...(place.below
+          ? ({
+              "--callout-top": `${place.top}px`,
+              left: 16,
+              right: "auto",
+              maxWidth: place.room,
+              minWidth: Math.min(340, place.room ?? 340),
+            } as CSSProperties)
+          : place.left !== undefined && place.room !== undefined
+            ? ({ left: place.left, maxWidth: place.room, minWidth: Math.min(340, place.room) } as CSSProperties)
+            : {}),
+      },
+    }),
+    [place],
+  );
+}
+
+export type FloatingPlace = ReturnType<typeof useFloatingPlacement>;
+
+/**
+ * Places a floating callout whose own code is always loaded (src/live/TroubleDownloadError.tsx): renders nothing and
+ * reports each placement, so the callout can show at once and move aside when this downloads.
+ */
+export function FloatingPlacement({
+  box,
+  onPlace,
+}: {
+  box: RefObject<HTMLElement | null>;
+  onPlace: (place: FloatingPlace) => void;
+}) {
+  const place = useFloatingPlacement(box, true);
+  useLayoutEffect(() => onPlace(place), [place, onPlace]);
+  return null;
 }

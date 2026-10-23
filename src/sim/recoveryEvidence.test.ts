@@ -11,6 +11,8 @@ it("tracks enclosing boundary, feeding link and synchronous descendant faults on
     { id: "inner", label: "Zone", x: 0, y: 0, width: 800, height: 800, group: "outer" },
   ];
   d.nodes[2].group = "inner";
+  // The partner calls on: a service (a sink, the fixture's external API, ends every request; playback calls nothing).
+  d.nodes[2].stencil = "generic.service";
   d.nodes.push({ ...d.nodes[2], id: "child" }, { ...d.nodes[2], id: "unused", group: undefined });
   d.edges.push({ id: "nested", from: "partner", to: "child", kind: "sync" });
   const path = recoveryPath(d, d.edges[1])!;
@@ -45,4 +47,33 @@ it("indexes a long ancestor chain with linear edge inspections", () => {
   const path = recoveryPath(d, { id: "call", from: String(count - 2), to: String(count - 1) });
   expect(path?.nodes.size).toBe(count);
   expect(reads).toBeLessThan(count * 8);
+});
+
+it("depends only on connections playback sends traffic along, between nodes the simulation knows", () => {
+  const d = waitingFixture();
+  d.nodes[2].stencil = "generic.service";
+  d.nodes.push(
+    { ...d.nodes[2], id: "idle" },
+    { ...d.nodes[2], id: "denied" },
+    { ...d.nodes[2], id: "feeder" },
+    { ...d.nodes[2], id: "api", stencil: "generic.external-api" },
+    { ...d.nodes[2], id: "behind-api" },
+  );
+  d.annotations = [{ id: "note", kind: "shape", text: "Planned", x: 0, y: 0, width: 100, height: 50 }];
+  d.edges.push(
+    { id: "to-idle", from: "partner", to: "idle", kind: "sync", props: { share: 0 } },
+    { id: "to-denied", from: "partner", to: "denied", kind: "sync", props: { deny: true } },
+    { id: "from-feeder", from: "feeder", to: d.edges[1].from, kind: "async", props: { share: 0 } },
+    { id: "to-note", from: "partner", to: "note", kind: "sync" },
+    { id: "from-note", from: "note", to: d.edges[1].from, kind: "sync" },
+    // A sink ends the request: playback never calls on from it.
+    { id: "to-api", from: "partner", to: "api", kind: "sync" },
+    { id: "past-api", from: "api", to: "behind-api", kind: "sync" },
+  );
+  const path = recoveryPath(d, d.edges[1])!;
+  expect([...path.nodes].sort()).toEqual(["api", "caller", "partner", "source"]);
+  expect([...path.edges].sort()).toEqual(["call", "input", "to-api"]);
+  const e = createEngine();
+  e.load(d);
+  expect(recoveryFault(realSnapshot(e.snapshot()), path)).toBe(false);
 });

@@ -182,6 +182,102 @@ test("failed trouble detection offers keyboard Retry without taking focus or blo
   await exportDiagram(page);
 });
 
+/** A chunk's production file, or its source module on the dev server (as tests/e2e/lazy-live-fixes.spec.ts). */
+const chunk = (name: string, source?: string) =>
+  new RegExp(
+    String.raw`/(?:assets/${name}-[A-Za-z0-9_-]+\.js${source ? `|${source.replace(/\./g, "\\.")}` : ""})(?:\?.*)?$`,
+  );
+const TRACKER = chunk("troubleTracker", "src/live/troubleTracker.ts");
+const PLACEMENT = chunk("useFloatingPlacement", "src/live/useFloatingPlacement.ts");
+// Where the download-error notice itself lived before it shipped with Live (production only: in development it's a
+// static import of the live session, which is never optional).
+const ERROR_NOTICE = chunk("TroubleDownloadError");
+
+/** Holds every request for `patterns` until release(), counting them; `fail` aborts them while it's true. */
+async function holdChunks(page: Page, patterns: RegExp[]) {
+  const counts = new Map<RegExp, number>();
+  let release!: () => void;
+  const open = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const control = { fail: false, release, count: (pattern: RegExp) => counts.get(pattern) ?? 0 };
+  for (const pattern of patterns)
+    await page.route(pattern, async (route) => {
+      counts.set(pattern, control.count(pattern) + 1);
+      if (control.fail) return route.abort("failed");
+      await open;
+      // Failed while held: the download that was waiting fails too.
+      return control.fail ? route.abort("failed") : route.continue();
+    });
+  return control;
+}
+
+const focused = (page: Page) => page.evaluate(() => document.activeElement?.getAttribute("data-testid") ?? "BODY");
+
+/** Tab forward from where the keyboard is until `id` has focus (false: the keyboard never got there). */
+async function tabTo(page: Page, id: string) {
+  for (let i = 0; i < 120; i++) {
+    if ((await focused(page)) === id) return true;
+    await page.keyboard.press("Tab");
+  }
+  return false;
+}
+
+test("download recovery survives tracker and error-callout chunk failures", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.clock.install();
+  const downloads = await holdChunks(page, [TRACKER, PLACEMENT, ERROR_NOTICE]);
+  try {
+    await open(page);
+    await pauseClock(page);
+    await expect.poll(() => downloads.count(TRACKER)).toBe(1);
+    const play = page.getByTestId("live-play");
+    await play.focus();
+    // The connection drops: detection fails, and so does every download the error notice could need.
+    downloads.fail = true;
+    downloads.release();
+    const notice = page.getByTestId("trouble-download-error");
+    const retry = page.getByTestId("trouble-download-retry");
+    await expect(retry).toBeVisible();
+    await expect(notice).toContainText("couldn't be downloaded");
+    await expect(play).toBeFocused();
+    // Its placement failed to download as well: it stands where the callout styles put it, styled and usable.
+    await expect.poll(() => downloads.count(PLACEMENT)).toBeGreaterThan(0);
+    await expect(notice).not.toHaveAttribute("data-placed", "");
+    expect(await notice.evaluate((el) => getComputedStyle(el).position)).toBe("absolute");
+    expect(await page.evaluate(() => getComputedStyle(document.body).cursor)).not.toMatch(/wait|progress/);
+    // The keyboard reaches Retry from the bar.
+    expect(await tabTo(page, "trouble-download-retry")).toBe(true);
+    await play.focus();
+    // An export's notification, and every toast's expiry, leave the way back where it is.
+    await exportDiagram(page);
+    await expect(page.getByTestId("toast").first()).toBeVisible();
+    await page.clock.runFor(10_000);
+    await expect(page.getByTestId("toast")).toHaveCount(0);
+    await expect(retry).toBeVisible();
+    expect(await focused(page)).not.toBe("BODY");
+    // Back online: Retry, by keyboard, downloads both again and detection works.
+    const before = { tracker: downloads.count(TRACKER), placement: downloads.count(PLACEMENT) };
+    downloads.fail = false;
+    await play.focus();
+    expect(await tabTo(page, "trouble-download-retry")).toBe(true);
+    await page.keyboard.press("Enter");
+    await expect.poll(() => downloads.count(TRACKER)).toBeGreaterThan(before.tracker);
+    await expect.poll(() => downloads.count(PLACEMENT)).toBeGreaterThan(before.placement);
+    await expect(notice).toHaveCount(0);
+    expect(await focused(page)).not.toBe("BODY");
+    await killPartner(page);
+    await expect(page.getByTestId("trouble-callout")).toHaveAttribute("data-kind", "down");
+    await page.getByTestId("trouble-action").focus();
+    await page.keyboard.press("Enter");
+    await expect(page.getByTestId("trouble-callout")).toHaveCount(0);
+    expect(await focused(page)).not.toBe("BODY");
+    await exportDiagram(page);
+  } finally {
+    downloads.release();
+  }
+});
+
 test("the breaker window uses whole seconds and explains fractional input", async ({ page, consoleErrors }) => {
   await open(page);
   await waitForCameraIdle(page);
