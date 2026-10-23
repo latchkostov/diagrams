@@ -1,3 +1,4 @@
+import { baseStencilId } from "../stencils/vendorParents";
 import type { Quota } from "./admission";
 import type { NodeSimProps } from "../sim/types";
 
@@ -62,12 +63,14 @@ export const ADMISSION_PRESETS: Readonly<Record<string, Partial<NodeSimProps>>> 
   "managed-measured": { latencyMs: 250, failureRate: 0 },
 };
 export function admissionPresetFor(stencil?: string): string | undefined {
+  stencil = stencil && baseStencilId(stencil);
   if (stencil === "aws.lambda") return "lambda-account";
   if (stencil === "stripe") return "stripe-live";
   if (stencil === "aws.api-gateway") return "api-gateway-account";
   return undefined;
 }
 export function managedKind(stencil: string): "serverless" | "api" | undefined {
+  stencil = baseStencilId(stencil);
   if (["aws.lambda", "azure.functions", "gcp.cloud-functions", "cloudflare.workers"].includes(stencil))
     return "serverless";
   if (

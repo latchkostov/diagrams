@@ -6,6 +6,7 @@ import { scalingReasonCode } from "../model/scalingReason";
 import { resourceWorkload } from "../model/autoscaling";
 import type { DiagramFile } from "../model/types";
 import { profileOf } from "../stencils/profiles";
+import { baseStencilId } from "../stencils/vendorParents";
 import { checkAutoscaling } from "../model/autoscalingSchema";
 import { useState, useMemo, useRef, type ReactNode } from "react";
 import { NumberField } from "./NumberField";
@@ -48,6 +49,7 @@ const PROVIDER: Record<CloudController["kind"], string> = {
 };
 /** Cloud presets grouped by provider. A Kubernetes Deployment has none; the current preset always stays listed. */
 function cloudGroups(stencil: string, current: CloudPreset | null): [string, typeof CLOUD_PRESETS][] {
+  stencil = baseStencilId(stencil);
   if (stencil === "k8s.deployment") return [];
   const own = STENCIL_PLATFORM[stencil];
   const groups = new Map<string, typeof CLOUD_PRESETS>();

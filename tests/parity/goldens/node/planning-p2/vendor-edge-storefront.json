@@ -1,0 +1,312 @@
+{
+  "format": "diagrams/v2",
+  "planning": { "revision": "p3" },
+  "nodeProps": {
+    "shopper": { "ratePerSec": 2, "messageType": "Checkout", "latencyMs": 0, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "healthChecks": false },
+    "cdn": { "ratePerSec": 2, "latencyMs": 60, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Fastly", "healthChecks": false },
+    "waf": { "ratePerSec": 2, "latencyMs": 60, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Cloudflare WAF", "healthChecks": false },
+    "checkout": { "latencyMs": 80, "failureRate": 0, "ratePerSec": 2, "concurrency": 4, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Checkout function", "healthChecks": false, "preset": "managed-measured", "presetRevision": "2026-10-14" },
+    "receipts": { "ratePerSec": 2, "latencyMs": 40, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Receipt objects", "healthChecks": false },
+    "payments": { "ratePerSec": 2, "latencyMs": 0, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Square payments", "healthChecks": false, "preset": "managed-measured", "presetRevision": "2026-10-14" },
+    "flags": { "ratePerSec": 2, "latencyMs": 0, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Checkout flags", "healthChecks": false, "preset": "processor-lesson", "presetRevision": "1" },
+    "identity": { "ratePerSec": 2, "latencyMs": 0, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Customer identity", "healthChecks": false, "preset": "processor-lesson", "presetRevision": "1" }
+  },
+  "legacyExport": { "format": "diagrams/v1", "losses": ["planning.revision", "checkout.props.preset", "checkout.props.presetRevision", "payments.props.preset", "payments.props.presetRevision", "flags.props.preset", "flags.props.presetRevision", "identity.props.preset", "identity.props.presetRevision"] },
+  "autoScale": { "freePlay": 1 },
+  "brokerAssignments": { "brokers": {}, "consumers": {} },
+  "edit": {
+    "configured": true,
+    "simulation": "free-play",
+    "analysis": {
+      "bottleneck": "checkout",
+      "suggestion": "Checkout function: 4% utilized",
+      "converged": true,
+      "iterations": 5,
+      "nodes [capacity, offered, utilization, replicas, active, idle]": { "shopper": ["Infinity", 2, 0, 1, 1, 0], "cdn": ["Infinity", 2, 0, 1, 1, 0], "waf": ["Infinity", 2, 0, 1, 1, 0], "checkout": [50, 2, 0.04, 1, 1, 0], "receipts": ["Infinity", 2, 0, 1, 1, 0], "payments": ["Infinity", 2, 0, 1, 1, 0], "flags": ["Infinity", 0, 0, 1, 1, 0], "identity": ["Infinity", 0, 0, 1, 1, 0] },
+      "connections": { "browse": 2, "protect": 2, "origin": 2, "store": 2, "pay": 2 },
+      "offeredTypes": { "shopper": ["Checkout"], "cdn": ["Checkout"], "waf": ["Checkout"], "checkout": ["Checkout"], "receipts": ["Checkout"], "payments": ["Checkout"] }
+    },
+    "explanations": {
+      "checkout": {
+        "managed": "serverless",
+        "id": "checkout",
+        "role": "processor",
+        "status": "up",
+        "reason": "throughput",
+        "evidence": "configured",
+        "unit": "req/s",
+        "capacity": 50,
+        "offered": 2,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [],
+        "slots": 4,
+        "seconds": 0.08,
+        "utilization": 0.04,
+        "growth": 0,
+        "contributors": [{ "edge": "origin", "node": "waf", "label": "Fastly", "rate": 2, "via": "Cloudflare WAF" }],
+        "target": 0.5,
+        "changes": null,
+        "converged": true
+      },
+      "payments": {
+        "managed": "api",
+        "id": "payments",
+        "role": "sink",
+        "status": "up",
+        "reason": "throughput",
+        "evidence": "configured",
+        "unit": "req/s",
+        "capacity": "Infinity",
+        "offered": 2,
+        "replicas": 1,
+        "baseReplicas": 1,
+        "omittedContributors": 0,
+        "activeReplicas": 1,
+        "assignments": [],
+        "slots": "Infinity",
+        "seconds": 0,
+        "utilization": 0,
+        "growth": 0,
+        "contributors": [{ "edge": "pay", "node": "checkout", "label": "Checkout function", "rate": 2 }],
+        "target": 0.5,
+        "changes": null,
+        "converged": true
+      }
+    },
+    "capabilities": {
+      "shopper": [{ "kind": "calls", "edge": "browse", "peer": "cdn" }],
+      "cdn": [{ "kind": "calls", "edge": "protect", "peer": "waf" }],
+      "waf": [{ "kind": "calls", "edge": "origin", "peer": "checkout" }],
+      "checkout": [
+        { "kind": "calls", "edge": "store", "peer": "receipts" },
+        { "kind": "calls", "edge": "pay", "peer": "payments" }
+      ]
+    },
+    "sizing": null,
+    "redundancy": {},
+    "resolved": {
+      "shopper": {
+        "profile": { "family": "client", "revision": "p3", "evidence": [], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Checkout",
+        "healthChecks": false
+      },
+      "cdn": {
+        "profile": { "family": "edge", "revision": "p3", "evidence": [], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Fastly",
+        "healthChecks": false
+      },
+      "waf": {
+        "profile": { "family": "device", "revision": "p3", "evidence": [], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Cloudflare WAF",
+        "healthChecks": false
+      },
+      "checkout": {
+        "admission": { "api": {}, "endpoints": [], "fixedSlotsPerReplica": 4 },
+        "profile": { "family": "serverless", "revision": "p3", "preset": "managed-measured", "presetRevision": "2026-10-14", "evidence": ["api", "latencyMs"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 80,
+        "concurrency": 4,
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Checkout function",
+        "healthChecks": false
+      },
+      "receipts": {
+        "profile": { "family": "object", "revision": "p3", "evidence": [], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Receipt objects",
+        "healthChecks": false
+      },
+      "payments": {
+        "admission": { "api": {}, "endpoints": [] },
+        "profile": { "family": "external-api", "revision": "p3", "preset": "managed-measured", "presetRevision": "2026-10-14", "evidence": ["api", "latencyMs"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Square payments",
+        "healthChecks": false
+      },
+      "flags": {
+        "profile": { "family": "dependency", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Checkout flags",
+        "healthChecks": false
+      },
+      "identity": {
+        "profile": { "family": "dependency", "revision": "p3", "preset": "processor-lesson", "presetRevision": "1", "evidence": ["replicas", "concurrency", "latencyMs", "failureRate"], "units": "real" },
+        "ratePerSec": 2,
+        "latencyMs": 0,
+        "concurrency": "Infinity",
+        "replicas": 1,
+        "jitter": 0.2,
+        "retry": "requeue",
+        "retryBackoffMs": 0,
+        "failureRate": 0,
+        "maxDeliveryCount": 3,
+        "partitions": 3,
+        "messageType": "Customer identity",
+        "healthChecks": false
+      }
+    }
+  },
+  "simulations": {},
+  "capacity": {
+    "freePlay": {
+      "normal": {
+        "inputs": { "props": {}, "rates": {}, "traffic": 1, "capacity": 1 },
+        "view": {
+          "tone": "ok",
+          "top": "checkout",
+          "headline": "Healthy: every service has headroom",
+          "detail": "Busiest: Checkout function at 4% · 2/s of 50/s",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "shopper": ["idle", "2/s · no limit", { "modeled": false }],
+            "cdn": ["idle", "2/s · no limit", { "modeled": false }],
+            "waf": ["idle", "2/s · no limit", { "modeled": false }],
+            "checkout": ["ok", "4% · 2/s of 50/s"],
+            "receipts": ["idle", "2/s · no limit", { "modeled": false }],
+            "payments": ["idle", "Limits unknown; enter measured or contracted values."],
+            "flags": ["idle", "", { "modeled": false }],
+            "identity": ["idle", "", { "modeled": false }]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "black-friday": {
+        "inputs": { "props": {}, "rates": {}, "traffic": 5 },
+        "view": {
+          "tone": "ok",
+          "top": "checkout",
+          "headline": "Healthy: every service has headroom",
+          "detail": "Busiest: Checkout function at 20% · 10/s of 50/s",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "shopper": ["idle", "10/s · no limit", { "modeled": false }],
+            "cdn": ["idle", "10/s · no limit", { "modeled": false }],
+            "waf": ["idle", "10/s · no limit", { "modeled": false }],
+            "checkout": ["ok", "20% · 10/s of 50/s"],
+            "receipts": ["idle", "10/s · no limit", { "modeled": false }],
+            "payments": ["idle", "Limits unknown; enter measured or contracted values."],
+            "flags": ["idle", "", { "modeled": false }],
+            "identity": ["idle", "", { "modeled": false }]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "half-pods": {
+        "inputs": { "props": {}, "rates": {}, "capacity": 0.5 },
+        "view": {
+          "tone": "ok",
+          "top": "checkout",
+          "headline": "Healthy: every service has headroom",
+          "detail": "Busiest: Checkout function at 4% · 2/s of 50/s",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "shopper": ["idle", "2/s · no limit", { "modeled": false }],
+            "cdn": ["idle", "2/s · no limit", { "modeled": false }],
+            "waf": ["idle", "2/s · no limit", { "modeled": false }],
+            "checkout": ["ok", "4% · 2/s of 50/s"],
+            "receipts": ["idle", "2/s · no limit", { "modeled": false }],
+            "payments": ["idle", "Limits unknown; enter measured or contracted values."],
+            "flags": ["idle", "", { "modeled": false }],
+            "identity": ["idle", "", { "modeled": false }]
+          }
+        },
+        "partitionsNotes": {}
+      },
+      "double-partitions": {
+        "inputs": { "props": {}, "rates": {} },
+        "view": {
+          "tone": "ok",
+          "top": "checkout",
+          "headline": "Healthy: every service has headroom",
+          "detail": "Busiest: Checkout function at 4% · 2/s of 50/s",
+          "fix": null,
+          "addConsumer": null,
+          "converged": true,
+          "nodes": {
+            "shopper": ["idle", "2/s · no limit", { "modeled": false }],
+            "cdn": ["idle", "2/s · no limit", { "modeled": false }],
+            "waf": ["idle", "2/s · no limit", { "modeled": false }],
+            "checkout": ["ok", "4% · 2/s of 50/s"],
+            "receipts": ["idle", "2/s · no limit", { "modeled": false }],
+            "payments": ["idle", "Limits unknown; enter measured or contracted values."],
+            "flags": ["idle", "", { "modeled": false }],
+            "identity": ["idle", "", { "modeled": false }]
+          }
+        },
+        "partitionsNotes": {}
+      }
+    }
+  }
+}

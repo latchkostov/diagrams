@@ -30,7 +30,7 @@
             "op": "add_node",
             "id": "dotnet-1",
             "label": "Parity reader",
-            "stencil": { "id": "service.dotnet", "label": ".NET Service", "confidence": "medium", "alternatives": ["azure.functions", "azure.app-service", "azure.container-apps"] }
+            "stencil": { "id": "service.dotnet", "label": ".NET Service", "confidence": "medium", "alternatives": ["bunny.cdn", "azure.functions", "azure.app-service"] }
           },
           { "i": 1, "op": "connect", "id": "e-2", "from": "topic-1", "to": "dotnet-1" },
           {
@@ -189,7 +189,7 @@
         {
           "nodeId": "dotnet-1",
           "kind": ".NET consumer",
-          "stencil": { "id": "service.dotnet", "label": ".NET Service", "confidence": "medium", "alternatives": ["azure.functions", "azure.app-service", "azure.container-apps"] },
+          "stencil": { "id": "service.dotnet", "label": ".NET Service", "confidence": "medium", "alternatives": ["bunny.cdn", "azure.functions", "azure.app-service"] },
           "node": {
             "id": "dotnet-1",
             "stencil": "service.dotnet",

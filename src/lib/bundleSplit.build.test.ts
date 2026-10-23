@@ -1,4 +1,6 @@
 import type { Rollup } from "vite";
+import { createHash } from "node:crypto";
+import { readdirSync, readFileSync } from "node:fs";
 import { beforeAll, describe, expect, it } from "vitest";
 import { APPROVED_STUN, APPROVED_TRACKERS } from "../../scripts/deployment-env";
 import { selfHostHeaderManifest } from "../../scripts/self-host-headers";
@@ -29,6 +31,7 @@ const NOT_AT_STARTUP: [string, RegExp][] = [
   ["annotation editing", /[/\\]src[/\\]canvas[/\\]nodes[/\\]AnnotationEditor\.tsx$/],
   ["annotation Markdown enhancement", /[/\\]src[/\\]canvas[/\\]nodes[/\\]AnnotationFormatting\.tsx$/],
   ["Markdown formatting keys", /[/\\]src[/\\]components[/\\]markdown[/\\]markdownKeys\.ts$/],
+  ["stencil gallery descriptions", /[/\\]src[/\\]i18n[/\\]galleryChrome\.ts$/],
   ["stencil display messages", /[/\\]src[/\\]i18n[/\\]stencils\.ts$/],
   ["File operation messages", /[/\\]src[/\\]interop[/\\]ui[/\\]fileMessages\.ts$/],
   ["canvas File actions", /[/\\]src[/\\]interop[/\\]fileActions\.ts$/],
@@ -232,6 +235,19 @@ describe("production bundle split", () => {
 
   it("keeps code that isn't needed for the first view out of the startup JavaScript", () => {
     expect(found(bundled(startup()), NOT_AT_STARTUP)).toEqual([]);
+  });
+
+  it("serves every stencil glyph as a separate, byte-preserved cached asset", () => {
+    const files = readdirSync("src/stencils/icons").filter((name) => name.endsWith(".svg"));
+    const emitted = assets.filter((a) => /^assets\/[\w-]{8}\.svg$/.test(a.fileName));
+    expect(emitted).toHaveLength(files.length);
+    for (const name of files) {
+      const source = readFileSync(`src/stencils/icons/${name}`);
+      const hash = createHash("sha256").update(source).digest("base64url").slice(0, 8);
+      const asset = emitted.find((a) => a.fileName === `assets/${hash}.svg`);
+      expect(asset, name).toBeDefined();
+      expect(Buffer.from(asset!.source)).toEqual(source);
+    }
   });
 
   it("loads the diagram loader at startup, preloaded with the entry, never as a lazy chunk", () => {

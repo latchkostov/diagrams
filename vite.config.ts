@@ -5,6 +5,7 @@ import react from "@vitejs/plugin-react";
 import { execSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { exampleMetadataPlugin } from "./scripts/example-metadata";
+import { stencilIconAssets } from "./scripts/stencil-icon-assets";
 import { skillAssetsPlugin } from "./scripts/skill-assets";
 import { securityHeaders } from "./scripts/security-headers";
 import { interactiveViewer } from "./scripts/interactive-viewer";
@@ -160,6 +161,7 @@ export default defineConfig({
     skillAssetsPlugin(viewer.api.template),
     // CSP and the other security headers on `vite preview`, exactly as vercel.json sends them. Not in dev.
     securityHeaders(),
+    stencilIconAssets(),
     canvas.plugin,
     viewer,
     ...(E2E_BUILD ? [viewerBundleFixture()] : []),
@@ -197,7 +199,7 @@ export default defineConfig({
             // across manual groups creates a dependency cycle and wastes compression headroom.
             {
               name: "native",
-              test: /[/\\]src[/\\](?:interop[/\\]native|stencils[/\\](?:roles|catalog)|model[/\\](?:types|kedaBindings|resourceBudget|autoscalingSchema|autoscaling|faults|brokerRoutes|checks|admissionSchema|admission|ids|relations|revisions|jsonSchema|simProps|routingValidation|resourceValidation))\.ts$/,
+              test: /[/\\]src[/\\](?:interop[/\\]native|stencils[/\\](?:roles|catalog|vendorCatalog|vendorParents)|model[/\\](?:types|kedaBindings|resourceBudget|autoscalingSchema|autoscaling|faults|brokerRoutes|checks|admissionSchema|admission|ids|relations|revisions|jsonSchema|simProps|routingValidation|resourceValidation))\.ts$/,
               includeDependenciesRecursively: false,
             },
             // The headless core stays separate in source, but shares the browser's existing runtime request.

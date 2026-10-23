@@ -1,0 +1,20 @@
+---
+title: "Checkout #1 · 1.05 s end to end · 1 copy"
+---
+sequenceDiagram
+  participant shopper as Shopper
+  participant cdn as Fastly
+  participant waf as Cloudflare WAF
+  participant checkout as Checkout function
+  participant receipts as Receipt objects
+  participant payments as Square payments
+  shopper->>cdn: Checkout (+0.00 s)
+  cdn-->>shopper: reply (+0.25 s)
+  cdn->>waf: Checkout (+0.25 s)
+  waf-->>cdn: reply (+0.50 s)
+  waf->>checkout: Checkout (+0.50 s)
+  checkout-->>waf: reply (+0.80 s)
+  checkout->>receipts: Checkout (+0.80 s)
+  checkout->>payments: Checkout (+0.80 s)
+  payments-->>checkout: reply (+1.00 s)
+  receipts-->>checkout: reply (+1.05 s)

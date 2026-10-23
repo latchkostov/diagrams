@@ -1,3 +1,4 @@
+import { baseStencilId } from "./vendorParents";
 // On-prem network devices: routers, switches, firewalls and application delivery controllers (ADCs). Each device
 // stencil is a gateway (a pass-through hop) with a throughput ceiling from a size preset: branch, campus or data
 // centre. Presets are approximate, from the vendors' datasheets (docs/research/network-infrastructure.md lists the
@@ -157,12 +158,12 @@ export const DEVICE_SPECS: Readonly<Record<string, DeviceSpec>> = {
 };
 
 export function deviceSpec(stencil: string | undefined): DeviceSpec | undefined {
-  return stencil === undefined ? undefined : DEVICE_SPECS[stencil];
+  return stencil === undefined ? undefined : DEVICE_SPECS[baseStencilId(stencil)];
 }
 
 export const isDevice = (stencil: string | undefined) => deviceSpec(stencil) !== undefined;
 export const isFirewallStencil = (stencil: string | undefined) =>
-  stencil === "generic.firewall" || deviceSpec(stencil)?.kind === "firewall";
+  (stencil !== undefined && baseStencilId(stencil) === "generic.firewall") || deviceSpec(stencil)?.kind === "firewall";
 
 export const isDeviceSize = (v: unknown): v is DeviceSize => v === "branch" || v === "campus" || v === "datacentre";
 export const isDeviceHa = (v: unknown): v is DeviceHa =>

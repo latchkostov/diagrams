@@ -1,0 +1,319 @@
+{
+  "steps": [
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "+1 node, +1 connection",
+        "undo": "One undo step reverts this call.",
+        "results": [
+          {
+            "i": 0,
+            "op": "add_node",
+            "id": "topic-1",
+            "label": "parity.events",
+            "stencil": { "id": "kafka.topic", "label": "Kafka Topic", "confidence": "high", "alternatives": ["pulsar.topic", "confluent.cloud", "aws.msk"] }
+          },
+          { "i": 1, "op": "connect", "id": "e-1", "from": "shopper", "to": "topic-1" }
+        ]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "+2 nodes, +2 connections",
+        "undo": "One undo step reverts this call.",
+        "results": [
+          {
+            "i": 0,
+            "op": "add_node",
+            "id": "dotnet-1",
+            "label": "Parity reader",
+            "stencil": { "id": "service.dotnet", "label": ".NET Service", "confidence": "medium", "alternatives": ["bunny.cdn", "azure.functions", "azure.app-service"] }
+          },
+          { "i": 1, "op": "connect", "id": "e-2", "from": "topic-1", "to": "dotnet-1" },
+          {
+            "i": 2,
+            "op": "add_node",
+            "id": "key-vault-1",
+            "label": "Parity secrets",
+            "stencil": { "id": "azure.key-vault", "label": "Key Vault", "confidence": "high", "alternatives": [] }
+          },
+          { "i": 3, "op": "connect", "id": "e-3", "from": "dotnet-1", "to": "key-vault-1" }
+        ]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "+1 node, +2 connections, −1 connection",
+        "undo": "One undo step reverts this call.",
+        "results": [
+          {
+            "i": 0,
+            "op": "insert_between",
+            "id": "queue-1",
+            "label": "buffer",
+            "stencil": { "id": "rabbitmq.queue", "label": "RabbitMQ Queue", "confidence": "high", "alternatives": ["aws.mq"] },
+            "from": "shopper",
+            "to": "cdn"
+          }
+        ]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "1 changed",
+        "undo": "One undo step reverts this call.",
+        "results": [{ "i": 0, "op": "update", "id": "cdn" }]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "1 changed",
+        "undo": "One undo step reverts this call.",
+        "results": [
+          {
+            "i": 0,
+            "op": "update",
+            "id": "waf",
+            "stencil": { "id": "aws.lambda", "label": "AWS Lambda", "confidence": "high", "alternatives": [] }
+          }
+        ]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "+1 boundary, 2 changed",
+        "undo": "One undo step reverts this call.",
+        "results": [{ "i": 0, "op": "add_boundary", "id": "boundary-1", "label": "Parity zone" }]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "+1 note",
+        "undo": "One undo step reverts this call.",
+        "results": [{ "i": 0, "op": "add_note", "id": "note-1" }]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "title or direction changed",
+        "undo": "One undo step reverts this call.",
+        "results": [{ "i": 0, "op": "set_meta" }]
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "summary": "−1 node, −2 connections",
+        "undo": "One undo step reverts this call.",
+        "results": [{ "i": 0, "op": "remove", "ids": ["dotnet-1", "e-2", "e-3"] }]
+      }
+    },
+    {
+      "isError": true,
+      "output": {
+        "ok": false,
+        "i": 0,
+        "error": "Unknown reference \"no-such-node\".",
+        "ref": "no-such-node",
+        "candidates": [
+          { "id": "shopper", "label": "Shopper", "stencil": "client.browser" },
+          { "id": "cdn", "label": "Renamed by parity", "stencil": "fastly" },
+          { "id": "waf", "label": "AWS Lambda", "stencil": "aws.lambda" },
+          { "id": "checkout", "label": "Checkout function", "stencil": "fastly.compute" },
+          { "id": "receipts", "label": "Receipt objects", "stencil": "cloudflare.r2" },
+          { "id": "payments", "label": "Square payments", "stencil": "square" },
+          { "id": "flags", "label": "Checkout flags", "stencil": "launchdarkly" },
+          { "id": "identity", "label": "Customer identity", "stencil": "aws.cognito" },
+          { "id": "topic-1", "label": "parity.events", "stencil": "kafka.topic" },
+          { "id": "key-vault-1", "label": "Parity secrets", "stencil": "azure.key-vault" },
+          { "id": "queue-1", "label": "buffer", "stencil": "rabbitmq.queue" },
+          { "id": "note-1", "label": "Pinned by the parity harness" }
+        ],
+        "hint": "Use an id from candidates, or call describe_diagram.",
+        "applied": false
+      }
+    },
+    {
+      "isError": false,
+      "output": {
+        "ok": true,
+        "dryRun": true,
+        "summary": "+1 node",
+        "results": [
+          {
+            "i": 0,
+            "op": "add_node",
+            "id": "postgres-1",
+            "label": "Dry run only",
+            "stencil": { "id": "postgres", "label": "PostgreSQL", "confidence": "high", "alternatives": ["gcp.cloud-sql", "aws.aurora", "supabase"] }
+          }
+        ],
+        "warnings": []
+      }
+    },
+    {
+      "isError": false,
+      "output": { "ok": true, "id": "sim-1", "title": "Parity rush", "summary": "Added simulation \"Parity rush\": 4 traffic, 2 events, 1 expectations.", "undo": "One undo step reverts this call.", "play": "The user plays it in live view (L), or from the command palette." }
+    },
+    {
+      "isError": true,
+      "output": { "ok": false, "error": "constant traffic needs ratePerSec.", "hint": "Check the input against the tool's schema and try again." }
+    }
+  ],
+  "applied": [
+    { "tool": "edit_diagram", "summary": "+1 node, +1 connection", "changed": ["topic-1", "e-1"] },
+    {
+      "tool": "edit_diagram",
+      "summary": "+2 nodes, +2 connections",
+      "changed": ["dotnet-1", "key-vault-1", "e-2", "e-3"],
+      "choices": [
+        {
+          "nodeId": "dotnet-1",
+          "kind": ".NET consumer",
+          "stencil": { "id": "service.dotnet", "label": ".NET Service", "confidence": "medium", "alternatives": ["bunny.cdn", "azure.functions", "azure.app-service"] },
+          "node": {
+            "id": "dotnet-1",
+            "stencil": "service.dotnet",
+            "label": "Parity reader",
+            "x": 600,
+            "y": 272,
+            "props": { "replicas": 3 }
+          }
+        }
+      ]
+    },
+    { "tool": "edit_diagram", "summary": "+1 node, +2 connections, −1 connection", "changed": ["queue-1", "e-4", "e-5"] },
+    { "tool": "edit_diagram", "summary": "1 changed", "changed": ["cdn"] },
+    { "tool": "edit_diagram", "summary": "1 changed", "changed": ["waf"] },
+    { "tool": "edit_diagram", "summary": "+1 boundary, 2 changed", "changed": ["boundary-1", "shopper", "cdn"] },
+    { "tool": "edit_diagram", "summary": "+1 note", "changed": ["note-1"] },
+    { "tool": "edit_diagram", "summary": "title or direction changed", "changed": [] },
+    { "tool": "edit_diagram", "summary": "−1 node, −2 connections", "changed": [] },
+    { "tool": "set_simulation", "summary": "Added simulation “Parity rush”", "changed": ["shopper"] }
+  ],
+  "diagram": {
+    "format": "diagrams/v1",
+    "title": "Parity edit",
+    "description": "Fastly and a Cloudflare WAF pass shop requests to Fastly Compute, which calls Square and stores receipts in Cloudflare R2. LaunchDarkly supplies configuration and Cognito supplies identity. CDN caching and vendor performance are not simulated.",
+    "direction": "TB",
+    "nodes": [
+      {
+        "id": "shopper",
+        "stencil": "client.browser",
+        "label": "Shopper",
+        "x": 0,
+        "y": 160,
+        "props": { "ratePerSec": 2, "messageType": "Checkout" },
+        "group": "boundary-1"
+      },
+      {
+        "id": "cdn",
+        "stencil": "fastly",
+        "label": "Renamed by parity",
+        "x": 340,
+        "y": 160,
+        "props": { "latencyMs": 120 },
+        "group": "boundary-1"
+      },
+      { "id": "waf", "stencil": "aws.lambda", "label": "AWS Lambda", "x": 680, "y": 160 },
+      {
+        "id": "checkout",
+        "stencil": "fastly.compute",
+        "label": "Checkout function",
+        "x": 1020,
+        "y": 160,
+        "props": { "latencyMs": 80, "failureRate": 0 }
+      },
+      { "id": "receipts", "stencil": "cloudflare.r2", "label": "Receipt objects", "x": 1360, "y": 60 },
+      { "id": "payments", "stencil": "square", "label": "Square payments", "x": 1360, "y": 260 },
+      { "id": "flags", "stencil": "launchdarkly", "label": "Checkout flags", "x": 1020, "y": 420 },
+      { "id": "identity", "stencil": "aws.cognito", "label": "Customer identity", "x": 680, "y": 420 },
+      { "id": "topic-1", "stencil": "kafka.topic", "label": "parity.events", "x": 300, "y": 272 },
+      { "id": "key-vault-1", "stencil": "azure.key-vault", "label": "Parity secrets", "x": 40, "y": 24 },
+      { "id": "queue-1", "stencil": "rabbitmq.queue", "label": "buffer", "x": 300, "y": 384 }
+    ],
+    "edges": [
+      { "id": "protect", "from": "cdn", "to": "waf", "kind": "sync" },
+      { "id": "origin", "from": "waf", "to": "checkout", "kind": "sync" },
+      { "id": "store", "from": "checkout", "to": "receipts", "kind": "sync" },
+      { "id": "pay", "from": "checkout", "to": "payments", "kind": "sync" },
+      { "id": "config", "from": "checkout", "to": "flags", "relation": "config" },
+      { "id": "authenticate", "from": "checkout", "to": "identity", "relation": "identity" },
+      { "id": "e-1", "from": "shopper", "to": "topic-1", "kind": "async" },
+      { "id": "e-4", "from": "shopper", "to": "queue-1", "kind": "sync" },
+      { "id": "e-5", "from": "queue-1", "to": "cdn", "kind": "sync" }
+    ],
+    "groups": [
+      { "id": "boundary-1", "label": "Parity zone", "tone": "neutral", "x": -40, "y": 96, "width": 640, "height": 176 }
+    ],
+    "annotations": [
+      { "id": "note-1", "kind": "note", "text": "Pinned by the parity harness", "x": 0, "y": 280, "width": 240, "height": 160 }
+    ],
+    "simulations": [
+      {
+        "id": "sim-1",
+        "title": "Parity rush",
+        "durationMs": 20000,
+        "traffic": [
+          {
+            "id": "traffic-1",
+            "node": "shopper",
+            "shape": { "kind": "constant", "ratePerSec": 20, "fromMs": 0, "durationMs": 10000 }
+          },
+          {
+            "id": "traffic-2",
+            "node": "shopper",
+            "shape": { "kind": "burst", "count": 50, "atMs": 5000, "spreadMs": 2000 },
+            "messageType": "ParityBurst"
+          },
+          {
+            "id": "traffic-3",
+            "node": "shopper",
+            "shape": {
+              "kind": "ramp",
+              "fromMs": 0,
+              "startRate": 1,
+              "stages": [{ "durationMs": 8000, "targetRate": 30 }]
+            }
+          },
+          {
+            "id": "traffic-4",
+            "node": "shopper",
+            "shape": { "kind": "spike", "baseRate": 5, "peakRate": 40, "atMs": 12000, "peakMs": 1000, "durationMs": 4000 }
+          }
+        ],
+        "timeline": [
+          { "atMs": 6000, "action": { "do": "status", "node": "waf", "status": "down" } },
+          { "atMs": 6000, "action": { "do": "note", "text": "It goes down", "focus": ["waf"] } }
+        ],
+        "expectations": [
+          {
+            "id": "expectation-1",
+            "label": "Nothing dropped",
+            "metric": { "node": "waf", "field": "dropped" },
+            "op": "==",
+            "value": 0,
+            "when": "end"
+          }
+        ],
+        "scale": 2
+      }
+    ]
+  }
+}

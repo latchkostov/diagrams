@@ -1,3 +1,4 @@
+import { baseStencilId } from "./vendorParents";
 import type { SimRole } from "../model/types";
 import { stencilRole } from "./roles";
 
@@ -23,6 +24,8 @@ const isClient = (stencil: string, role: SimRole) =>
  */
 export function inferKind(source: string | undefined, target: string | undefined): "sync" | "async" {
   if (source === undefined || target === undefined) return "async";
+  source = baseStencilId(source);
+  target = baseStencilId(target);
   const from = stencilRole(source),
     to = stencilRole(target);
   if (isBroker(source, from) || isBroker(target, to)) return "async";

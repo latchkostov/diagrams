@@ -1,3 +1,4 @@
+import { baseStencilId } from "../stencils/vendorParents";
 import { revisionAtLeast } from "./revisions";
 import type { PlanningModel, SimRole } from "./types";
 
@@ -74,9 +75,10 @@ export function brokerSpec(
   planning?: PlanningModel,
 ): BrokerSpec | undefined {
   if (role !== "topic" && role !== "stream") return undefined;
+  stencil = stencil && baseStencilId(stencil);
   return revisionAtLeast(planning?.revision, "p2") && stencil && Object.hasOwn(BROKERS, stencil)
     ? BROKERS[stencil]
     : log;
 }
 /** Infrastructure, never a topic or an extra delivery hop. */
-export const isClusterWrapper = (stencil: string) => stencil === "kafka.cluster";
+export const isClusterWrapper = (stencil: string) => baseStencilId(stencil) === "kafka.cluster";

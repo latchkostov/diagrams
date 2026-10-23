@@ -1,3 +1,4 @@
+import { baseStencilId } from "../stencils/vendorParents";
 import { revisionAtLeast } from "./revisions";
 import type { DiagramEdge, DiagramFile, DiagramNode, PlanningModel, SimRole } from "./types";
 import type { Quota } from "./admission";
@@ -113,7 +114,7 @@ export const ROUTE_TABLE_STENCILS: ReadonlySet<string> = new Set([
 ]);
 
 export const routeTableCapable = (stencil: string | undefined, role: SimRole): boolean =>
-  role === "gateway" && !!stencil && ROUTE_TABLE_STENCILS.has(stencil);
+  role === "gateway" && !!stencil && ROUTE_TABLE_STENCILS.has(baseStencilId(stencil));
 export const trafficMixCapable = (role: SimRole): boolean => role === "source";
 
 /** Routing is on for a p3-a1 document that declares its request routes (an empty list counts). */
