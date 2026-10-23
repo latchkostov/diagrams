@@ -256,6 +256,62 @@ test("image export waits for pending saved routes", async ({ page }) => {
   expect(svg).toContain('data-route="custom"');
   expect(svg).toContain('data-testid="edge-detour"');
 });
+test("image export waits for shaped dependency details", async ({ page, consoleErrors }) => {
+  const releases: (() => void)[] = [];
+  const requested = new Set<number>();
+  for (const [i, pattern] of [
+    chunk("shaped", "src/canvas/geometry/shaped.ts"),
+    chunk("SettingsCard", "src/canvas/edges/SettingsCard.tsx"),
+  ].entries()) {
+    const held = new Promise<void>((resolve) => {
+      releases[i] = resolve;
+    });
+    await page.route(pattern, async (route) => {
+      requested.add(i);
+      await held;
+      await route.continue();
+    });
+  }
+  const diagram = {
+    ...fixture,
+    edges: fixture.edges.map((e) =>
+      e.id === "api-db" ? { ...e, relation: "config", props: { settings: [{ key: "Orders:Timeout" }] } } : e,
+    ),
+  };
+  await seed(page, diagram);
+  await gotoCanvas(page, "kafka-order-pipeline");
+  await expect.poll(() => requested.size).toBe(2);
+  await expect(page.getByTestId("edge-api-db")).toHaveCount(0);
+  await page.getByTestId("file-button").click();
+  await page.getByTestId("file-more-formats").click();
+  await page.getByTestId("export-image").click();
+  await page.getByTestId("image-options-toggle").click();
+  await page.getByTestId("image-format-svg").click();
+  let downloaded = false;
+  const download = page.waitForEvent("download").then((file) => {
+    downloaded = true;
+    return file;
+  });
+  await page.getByTestId("image-export").click();
+  await expect(page.getByTestId("image-export-cancel")).toBeVisible();
+  releases[0]();
+  await expect(page.getByTestId("edge-api-db")).toHaveAttribute("data-route-pending", "details");
+  await page
+    .getByTestId("canvas-wrap")
+    .evaluate(
+      () => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))),
+    );
+  await expect(page.getByTestId("image-export-cancel")).toBeVisible();
+  expect(downloaded).toBe(false);
+  await expect(page.getByTestId("edge-glyph-api-db")).toHaveCount(0);
+  releases[1]();
+  const file = await download;
+  expect(await file.failure()).toBeNull();
+  const svg = await readFile(await file.path(), "utf8");
+  expect(svg).toContain('data-route="custom"');
+  expect(svg).toContain('data-testid="edge-glyph-api-db"');
+  expectNoErrors(consoleErrors);
+});
 test("one surviving Retry recovers failed shaped routes and separate dependency details", async ({ page }) => {
   const patterns = [
     chunk("shaped", "src/canvas/geometry/shaped.ts"),
