@@ -140,12 +140,10 @@ test("held trouble detection keeps keyboard, cursor, styles and export usable, t
 });
 
 test("failed trouble detection offers keyboard Retry without taking focus or blocking export", async ({ page }) => {
-  await page.clock.install();
   const tracker = await holdTracker(page);
   tracker.fail = true;
   await open(page);
   await expect(page.getByTestId("trouble-download-retry")).toBeVisible();
-  await pauseClock(page);
   await killPartner(page);
   await page.getByTestId("live-play").focus();
   await exportDiagram(page);
