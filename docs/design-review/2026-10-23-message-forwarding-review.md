@@ -17,3 +17,7 @@ A lower SCC count cannot prove safety: two loops can merge. Array identities can
 ## Validation
 
 Targeted regressions cover playback/capacity agreement, saved traffic and setup preservation, rename rejection, position-only call counts, bounded verification and long names. Reverting the implementations to the review head reproduces ten unit failures and all five loading/focus regressions. Final repeated browser checks and parity are recorded in the release verification report.
+
+## Round 3: focus that follows the edit
+
+No controls were added. Changing a rule's incoming type, from its menu or a typed new type, continues at that rule's "When it receives" control once the edit commits, through the focus controller (policy row I5); removed rules still discard their drafts. Deselecting a filter type nothing upstream sends removes its chip, so focus moves to the neighbouring chip, or Add a type when none is left, instead of falling to the page. A Check whose finding has several typed loops at one node now offers a fix only when it stops all of them; otherwise the manual guidance shows, so applying a fix never leaves the same warning behind.

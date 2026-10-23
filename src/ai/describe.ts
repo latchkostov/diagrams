@@ -15,6 +15,8 @@ import { messageTypesAt } from "../model/messageTypes";
 
 const quote = (s: string) => JSON.stringify(s);
 const round = (n: number) => Math.round(n * 1000) / 1000;
+/** Type names in one description, in characters: a long name is repeated at every node and connection it reaches. */
+export const DESCRIBE_TYPE_CHARS = 100_000;
 /** A connection's routing settings, in describe's words (absent: nothing). */
 const routing = (props: Record<string, unknown> | undefined) =>
   (props?.requestRouteId !== undefined ? ` requestRoute=${JSON.stringify(props.requestRouteId)}` : "") +
@@ -63,6 +65,28 @@ export function describeDiagram(diagram: DiagramFile, options: DescribeOptions =
       )
     : [];
   const name = (id: string) => d.nodes.find((n) => n.id === id)?.label ?? id;
+  // Spent as lists are written, never before: omitted rows and lines cost nothing.
+  let typeChars = DESCRIBE_TYPE_CHARS;
+  const typeList = (types: ReadonlySet<string> | undefined) => {
+    const shown: string[] = [];
+    let omitted = 0;
+    for (const type of types ?? []) {
+      if (omitted || type.length + 3 > typeChars) omitted++;
+      else {
+        typeChars -= type.length + 3;
+        shown.push(type);
+      }
+    }
+    return { shown, omitted };
+  };
+  const typeFields = (field: string, types: ReadonlySet<string> | undefined) => {
+    const { shown, omitted } = typeList(types);
+    return { [field]: shown, ...(omitted ? { [`${field}Omitted`]: omitted } : {}) };
+  };
+  const typeText = (field: string, types: ReadonlySet<string> | undefined) => {
+    const { shown, omitted } = typeList(types);
+    return ` ${field}=${JSON.stringify(shown)}${omitted ? ` ${field}Omitted=${omitted}` : ""}`;
+  };
   if (options.format === "json") {
     let remaining = limit;
     const take = <T>(items: T[]) => {
@@ -77,12 +101,12 @@ export function describeDiagram(diagram: DiagramFile, options: DescribeOptions =
       planning: d.planning,
       nodes: take(nodes).map((n) => ({
         ...n,
-        arrivingTypes: [...(types.arriving.get(n.id) ?? [])],
+        ...typeFields("arrivingTypes", types.arriving.get(n.id)),
         capabilities: connections[n.id] ?? [],
         explanation: resolved(n.id),
         ...(threads(n.id) ? { requestsWait: threads(n.id) } : {}),
       })),
-      edges: take(edges).map((edge) => ({ ...edge, carriedTypes: [...(types.carried.get(edge.id) ?? [])] })),
+      edges: take(edges).map((edge) => ({ ...edge, ...typeFields("carriedTypes", types.carried.get(edge.id)) })),
       messageTypesComplete: types.complete,
       groups: take(groups),
       annotations: take(notes),
@@ -108,52 +132,64 @@ export function describeDiagram(diagram: DiagramFile, options: DescribeOptions =
   const shownNodes = nodes.slice(0, Math.max(0, limit - lines.length - 1));
   for (const n of shownNodes)
     lines.push(
-      `  ${quote(n.id)} ${quote(n.stencil)} (${quote(catalog.find((s) => s.id === n.stencil)?.label ?? "Unknown")}) ${quote(n.label)}${n.sublabel !== undefined ? ` / ${quote(n.sublabel)}` : ""}${n.props ? ` props=${JSON.stringify(n.props)}` : ""}${n.group ? ` in ${quote(n.group)}` : ""} arrivingTypes=${JSON.stringify([...(types.arriving.get(n.id) ?? [])])} capabilities=${JSON.stringify(connections[n.id] ?? [])}${analysis ? ` explanation=${JSON.stringify(resolved(n.id))}` : ""}${threads(n.id) ? ` requestsWait=${JSON.stringify(threads(n.id))}` : ""}`,
+      `  ${quote(n.id)} ${quote(n.stencil)} (${quote(catalog.find((s) => s.id === n.stencil)?.label ?? "Unknown")}) ${quote(n.label)}${n.sublabel !== undefined ? ` / ${quote(n.sublabel)}` : ""}${n.props ? ` props=${JSON.stringify(n.props)}` : ""}${n.group ? ` in ${quote(n.group)}` : ""}${typeText("arrivingTypes", types.arriving.get(n.id))} capabilities=${JSON.stringify(connections[n.id] ?? [])}${analysis ? ` explanation=${JSON.stringify(resolved(n.id))}` : ""}${threads(n.id) ? ` requestsWait=${JSON.stringify(threads(n.id))}` : ""}`,
     );
-  lines.push("connections:");
+  // Past the limit a line is only counted: omitted connections, routes and simulations are never built.
+  let skipped = 0;
+  const add = (line: () => string) => {
+    if (lines.length < limit) lines.push(line());
+    else skipped++;
+  };
+  add(() => "connections:");
   for (const e of edges)
-    lines.push(
-      // A dependency says so: it carries no messages, whatever its kind.
-      `  ${quote(e.id)} ${quote(e.from)} -> ${quote(e.to)} ${isDependency(e) ? `${relationOf(e)} dependency` : (e.kind ?? "async")}${e.label !== undefined ? ` ${quote(e.label)}` : ""}${routing(e.props)} carriedTypes=${JSON.stringify([...(types.carried.get(e.id) ?? [])])}`,
+    add(
+      () =>
+        // A dependency says so: it carries no messages, whatever its kind.
+        `  ${quote(e.id)} ${quote(e.from)} -> ${quote(e.to)} ${isDependency(e) ? `${relationOf(e)} dependency` : (e.kind ?? "async")}${e.label !== undefined ? ` ${quote(e.label)}` : ""}${routing(e.props)}${typeText("carriedTypes", types.carried.get(e.id))}`,
     );
   // Request routing: the definitions (bounded, the rest counted) and the configured demand per route at each node.
   const routes = d.planning?.requestRoutes;
   if (routes) {
-    lines.push(`request routes (${routes.length}):`);
+    add(() => `request routes (${routes.length}):`);
     const shown = routes.slice(0, 50);
     for (const r of shown)
-      lines.push(
-        `  ${quote(r.id)} ${r.address.method} ${quote(r.address.path)}${r.label ? ` ${quote(r.label)}` : ""}${r.address.host ? ` host=${quote(r.address.host)}` : ""}`,
+      add(
+        () =>
+          `  ${quote(r.id)} ${r.address.method} ${quote(r.address.path)}${r.label ? ` ${quote(r.label)}` : ""}${r.address.host ? ` host=${quote(r.address.host)}` : ""}`,
       );
-    if (routes.length > shown.length) lines.push(`  … ${routes.length - shown.length} more routes omitted`);
+    if (routes.length > shown.length) add(() => `  … ${routes.length - shown.length} more routes omitted`);
     for (const [node, byRoute] of Object.entries(analysis?.routeDemand ?? {}))
       for (const [route, demand] of Object.entries(byRoute))
         if (demand.rejected > 0 || demand.throttled > 0 || nodes.some((n) => n.id === node && n.props?.routeTable))
-          lines.push(
-            `route demand ${quote(node)} ${route ? quote(route) : "(no address)"}: offered ${round(demand.offered)} req/s, refused 404 ${round(demand.rejected)} req/s, rate-limited 429 ${round(demand.throttled)} req/s`,
+          add(
+            () =>
+              `route demand ${quote(node)} ${route ? quote(route) : "(no address)"}: offered ${round(demand.offered)} req/s, refused 404 ${round(demand.rejected)} req/s, rate-limited 429 ${round(demand.throttled)} req/s`,
           );
   }
   for (const g of groups)
-    lines.push(
-      `boundary ${quote(g.id)} ${quote(g.label)} (${g.tone ?? "neutral"}): ${nodes
-        .filter((n) => n.group === g.id)
-        .map((n) => quote(n.id))
-        .join(", ")}`,
+    add(
+      () =>
+        `boundary ${quote(g.id)} ${quote(g.label)} (${g.tone ?? "neutral"}): ${nodes
+          .filter((n) => n.group === g.id)
+          .map((n) => quote(n.id))
+          .join(", ")}`,
     );
-  for (const a of notes) lines.push(`${a.kind} ${quote(a.id)} ${quote(a.text)}`);
+  for (const a of notes) add(() => `${a.kind} ${quote(a.id)} ${quote(a.text)}`);
   for (const s of sims)
-    lines.push(
-      `simulation ${quote(s.id)} ${quote(s.title)}: ${s.traffic.map((t) => `${JSON.stringify(t.shape)} from ${quote(t.node)}`).join("; ")}; timeline=${JSON.stringify(s.timeline ?? [])}; expectations=${JSON.stringify(s.expectations ?? [])}`,
+    add(
+      () =>
+        `simulation ${quote(s.id)} ${quote(s.title)}: ${s.traffic.map((t) => `${JSON.stringify(t.shape)} from ${quote(t.node)}`).join("; ")}; timeline=${JSON.stringify(s.timeline ?? [])}; expectations=${JSON.stringify(s.expectations ?? [])}`,
     );
   for (const p of plans)
     if (p.status === "unavailable")
-      lines.push(`scenario sizing ${quote(p.simulation)}: unavailable (${p.reason ?? "budget"})`);
+      add(() => `scenario sizing ${quote(p.simulation)}: unavailable (${p.reason ?? "budget"})`);
     else
       for (const s of p.suggestions)
-        lines.push(
-          `scenario sizing ${quote(p.simulation)} ${quote(s.node)}: ${JSON.stringify(planMessage(p, s, name))}${s.fix ? ` fix=${JSON.stringify(s.fix)}` : ""}`,
+        add(
+          () =>
+            `scenario sizing ${quote(p.simulation)} ${quote(s.node)}: ${JSON.stringify(planMessage(p, s, name))}${s.fix ? ` fix=${JSON.stringify(s.fix)}` : ""}`,
         );
-  const totalLines = lines.length + nodes.length - shownNodes.length;
+  const totalLines = lines.length + skipped + nodes.length - shownNodes.length;
   return totalLines > limit
     ? [...lines.slice(0, limit - 1), `… ${totalLines - limit + 1} lines omitted`].join("\n")
     : lines.join("\n");

@@ -1,5 +1,6 @@
 import type { CheckRule, Finding } from "../types";
 import { createMessageLoopFixer } from "../messageLoopFix";
+import type { MessageLoop } from "../../model/messageTypes";
 
 export const messageLoop: CheckRule = {
   id: "message-loop",
@@ -7,29 +8,34 @@ export const messageLoop: CheckRule = {
   about: "Finds message types forwarded around a processor cycle. Retries and broker redelivery do not count.",
   detect(ctx) {
     const types = ctx.messageTypes();
-    const fixFor = createMessageLoopFixer(ctx.diagram, types);
-    const seen = new Set<string>();
-    const findings: Finding[] = types.loops
-      .filter((loop) => !seen.has(loop.node) && !!seen.add(loop.node))
-      .map((loop) => {
-        const node = ctx.name(loop.node);
-        const message = `${loop.type} messages loop back to ${node}: each one is sent again.`;
-        const fix = !ctx.fixTarget || ctx.fixTarget === `message-loop:${loop.node}` ? fixFor(loop) : undefined;
-        return {
-          id: `message-loop:${loop.node}`,
-          rule: "message-loop" as const,
-          severity: "warning" as const,
-          target: loop.node,
-          elements: [...new Set([loop.node, ...loop.steps.flatMap((step) => [step.from, step.to, step.edge])])],
-          title: "Messages loop back",
-          message,
-          messageLoop: { type: loop.type, node },
-          fix,
-          rationale: fix
-            ? "Forwarding a callback into the send path can multiply traffic and exhaust processing threads. Filter the returning type out of the send path."
-            : "No single filter or rename was verified to preserve the other message paths. Choose where the callback should stop, then check again.",
-        };
-      });
+    const fixFor = createMessageLoopFixer(ctx.diagram, types, undefined, ctx.messageGraphs());
+    // One finding per node: its fix must stop every typed loop reported there, or the warning would stay.
+    const byNode = new Map<string, MessageLoop[]>();
+    for (const loop of types.loops) {
+      const list = byNode.get(loop.node);
+      if (list) list.push(loop);
+      else byNode.set(loop.node, [loop]);
+    }
+    const findings: Finding[] = [...byNode.values()].map((loops) => {
+      const loop = loops[0];
+      const node = ctx.name(loop.node);
+      const message = `${loop.type} messages loop back to ${node}: each one is sent again.`;
+      const fix = !ctx.fixTarget || ctx.fixTarget === `message-loop:${loop.node}` ? fixFor(loops) : undefined;
+      return {
+        id: `message-loop:${loop.node}`,
+        rule: "message-loop" as const,
+        severity: "warning" as const,
+        target: loop.node,
+        elements: [...new Set([loop.node, ...loop.steps.flatMap((step) => [step.from, step.to, step.edge])])],
+        title: "Messages loop back",
+        message,
+        messageLoop: { type: loop.type, node },
+        fix,
+        rationale: fix
+          ? "Forwarding a callback into the send path can multiply traffic and exhaust processing threads. Filter the returning type out of the send path."
+          : "No single filter or rename was verified to preserve the other message paths. Choose where the callback should stop, then check again.",
+      };
+    });
     if (!types.complete)
       findings.push({
         omitted: 1,

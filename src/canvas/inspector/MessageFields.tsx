@@ -88,9 +88,20 @@ export function NodeMessages({
   source: boolean;
 }) {
   const { controller } = useInteractionOrLocal();
-  useLayoutEffect(() => controller.rendered());
   const addButton = useRef<HTMLButtonElement>(null);
   const ruleControls = useRef(new Map<string, HTMLDivElement>());
+  // Rows are keyed by their incoming type, so a removed rule's drafts go with it. Changing that type therefore
+  // mounts a new row: once it is committed, focus continues at its "When it receives" control (policy row I5).
+  const rekeyed = useRef<string | undefined>(undefined);
+  useLayoutEffect(() => {
+    const input = rekeyed.current;
+    const target = input === undefined ? null : ruleControls.current.get(input)?.querySelector("button");
+    if (!target) return;
+    rekeyed.current = undefined;
+    controller.dispatch({ type: "inspector.ruleRekeyed", target });
+  });
+  // Declared after the effect above, so a move it requests runs in this same commit.
+  useLayoutEffect(() => controller.rendered());
   const diagram = readDiagram?.() ?? editor.getDiagram();
   const types = cachedMessageTypesAt(diagram);
   const node = diagram.nodes.find((n) => n.id === nodeId)!;
@@ -159,8 +170,9 @@ export function NodeMessages({
             choices={["*", ...arriving].filter((type) => type === input || !rows.some(([key]) => key === type))}
             value={[input]}
             onChange={(value) => {
-              if (value[0] && !rows.some(([key], j) => j !== i && key === value[0]))
-                save(rows.map((row, j) => (j === i ? [value[0], output] : row)));
+              if (!value[0] || value[0] === input || rows.some(([key], j) => j !== i && key === value[0])) return;
+              rekeyed.current = value[0];
+              save(rows.map((row, j) => (j === i ? [value[0], output] : row)));
             }}
           />
           <TypePicker

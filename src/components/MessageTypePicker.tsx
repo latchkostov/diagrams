@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { Dropdown } from "./Dropdown";
 import { t } from "../i18n";
 import { Field } from "../canvas/inspector/fields";
@@ -36,6 +36,18 @@ export function TypePicker({
     wasAdding.current = adding;
   }, [adding]);
   const options = [...new Set([...choices, ...value])];
+  // Deselecting a type nothing upstream sends removes its chip, focus included: continue at a neighbour.
+  const removedChip = useRef<{ type: string; index: number }>(undefined);
+  useLayoutEffect(() => {
+    const removed = removedChip.current;
+    if (!removed || options.includes(removed.type)) return;
+    removedChip.current = undefined;
+    const active = document.activeElement;
+    if (active && active !== document.body && active.isConnected) return;
+    const chips = root.current?.querySelectorAll<HTMLButtonElement>(".message-type-chips button");
+    const next = chips?.[Math.min(removed.index, chips.length - 1)];
+    (next ?? root.current?.querySelector<HTMLButtonElement>(`[data-testid="inspector-${name}-add"]`))?.focus();
+  });
   const add = () => {
     const type = draft.trim();
     if (!type) return;
@@ -60,7 +72,10 @@ export function TypePicker({
                 className="message-type-chip"
                 aria-pressed={value.includes(type)}
                 data-testid={`inspector-${name}-option-${i}`}
-                onClick={() => onChange(value.includes(type) ? value.filter((v) => v !== type) : [...value, type])}
+                onClick={() => {
+                  if (value.includes(type) && !choices.includes(type)) removedChip.current = { type, index: i };
+                  onChange(value.includes(type) ? value.filter((v) => v !== type) : [...value, type]);
+                }}
                 onKeyDown={(event) => {
                   const direction =
                     event.key === "ArrowRight" || event.key === "ArrowDown"

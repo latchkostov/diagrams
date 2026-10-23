@@ -207,6 +207,8 @@ export type FocusEvent =
     }
   /** A processor mapping was removed: continue at a surviving rule or Add a rule. */
   | { type: "inspector.ruleRemoved"; target: ElementHandle }
+  /** A processor mapping's incoming type changed (its row is keyed by it): continue at the same control. */
+  | { type: "inspector.ruleRekeyed"; target: ElementHandle }
   /** The Inspector opened or folded, by its own control (`panel`) or with the selection. */
   | { type: "inspector.toggled"; cause: "panel" | "selection" }
   /** A modal takes its first field, or wraps Tab within its own controls. */

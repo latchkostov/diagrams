@@ -13,7 +13,14 @@ import { planningSimulation, sourceTraffic } from "../sim/capacityPlanning";
 import { scenarioPlans, type ScalingPlan } from "../sim/scalingPlanner";
 import { readingOrder } from "../canvas/keyboardNav";
 import { estimateCardSize } from "../canvas/nodes/size";
-import { messageTypesAt, type MessageTypes } from "../model/messageTypes";
+import {
+  messageTypeBudget,
+  messageTypesAt,
+  typeTable,
+  type MessageTypes,
+  type TypeGraph,
+  type TypeTable,
+} from "../model/messageTypes";
 
 /**
  * What every rule reads, built once per run: roles, the simulation's compiled topology (consumers,
@@ -46,6 +53,8 @@ export interface CheckContext {
    */
   typesAt(id: string): ReadonlySet<string>;
   messageTypes(): MessageTypes;
+  /** The same analysis's per-run state graphs (free play, then each saved simulation), for loop-fix verification. */
+  messageGraphs(): { table: TypeTable; graphs: readonly TypeGraph[] };
   /** Position in reading order (rows from the top, each left to right; columns in a TB diagram); a connection's is its start's. */
   rank(id: string): number;
   /** The node's label, or its id when it has none. */
@@ -99,6 +108,14 @@ export function buildContext(diagram: DiagramFile): CheckContext {
   let capacity: CapacityAnalysis | undefined;
   let scenario: ScalingPlan[] | undefined | null = null;
   let messages: MessageTypes | undefined;
+  let messageGraphs: { table: TypeTable; graphs: TypeGraph[] } | undefined;
+  const analyzeMessages = () => {
+    if (!messages) {
+      messageGraphs = { table: typeTable(), graphs: [] };
+      messages = messageTypesAt(diagram, undefined, messageTypeBudget(), messageGraphs);
+    }
+    return messages;
+  };
   let requests: Map<string, CompiledEdge[]> | undefined;
   /** Boundary and annotation ids, for freshKey. */
   let others: Set<string> | undefined;
@@ -132,8 +149,9 @@ export function buildContext(diagram: DiagramFile): CheckContext {
       return requests.get(id) ?? [];
     },
     deadLetterRoute: (id) => deadLetter.get(id),
-    messageTypes: () => (messages ??= messageTypesAt(diagram)),
-    typesAt: (id) => (messages ??= messageTypesAt(diagram)).arriving.get(id) ?? new Set(),
+    messageTypes: analyzeMessages,
+    messageGraphs: () => (analyzeMessages(), messageGraphs!),
+    typesAt: (id) => analyzeMessages().arriving.get(id) ?? new Set(),
     // A connection reads where it starts.
     rank: (id) => order.get(id) ?? order.get(edges.get(id)?.from ?? "") ?? Infinity,
     name: (id) => nodes.get(id)?.label.trim() || id,

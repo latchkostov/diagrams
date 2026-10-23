@@ -1,11 +1,16 @@
-import type { DiagramFile, SimRole } from "./types";
+import type { DiagramFile, DiagramNode, SimRole } from "./types";
 import {
   compileTopology,
-  forwardingShare,
+  compileTypeFilter,
+  forwardingFraction,
   forwardingTargets,
+  forwardsFrom,
   outputType,
   deadLetterRoutes,
+  typeFilterAccepts,
   type CompiledEdge,
+  type ForwardingMode,
+  type TypeFilter,
 } from "../sim/topology";
 import {
   compileRoutes,
@@ -13,8 +18,13 @@ import {
   compileTable,
   compileFilter,
   chooseAction,
+  matchesRequest,
+  type CompiledMatch,
   type CompiledRoute,
+  type CompiledTable,
+  type RouteChoice,
 } from "../sim/routeMatching";
+import { configuredDiagram } from "../sim/simulationSetup";
 import { routeTableCapable } from "./requestRouting";
 import { stencilRole } from "../stencils/roles";
 import { stronglyConnected } from "./stronglyConnected";
@@ -48,42 +58,81 @@ export const MESSAGE_TYPE_WORK_LIMIT = 200_000;
 export interface MessageTypeBudget {
   remaining: number;
 }
-export const messageTypeBudget = (): MessageTypeBudget => ({ remaining: MESSAGE_TYPE_WORK_LIMIT });
-const processor = (role: SimRole) => role === "processor" || role === "none";
+export const messageTypeBudget = (limit = MESSAGE_TYPE_WORK_LIMIT): MessageTypeBudget => ({ remaining: limit });
 
-/** Each run is analyzed with its own overrides: never invent a path by mixing simulation configurations. */
-export function* messageTypeScenarios(
-  diagram: DiagramFile,
-  budget?: MessageTypeBudget,
-): Generator<{ diagram: DiagramFile; sources?: { node: string; type: string }[] }> {
-  yield { diagram: { ...diagram, simulations: undefined } };
+/** Type names interned once per comparison session, so analyses of edited diagrams share state identities. */
+export interface TypeTable {
+  ids: Map<string, number>;
+  names: string[];
+}
+export const typeTable = (): TypeTable => ({ ids: new Map(), names: [] });
+
+/**
+ * One run's typed state graph. A state is a node, a type and the routing context playback keeps with a message:
+ * its request route, whether it is an unaddressed request into a router, and whether it was injected there.
+ * Keys are `context|type id`, comparable between analyses that share a TypeTable and the same nodes, edges and
+ * request routes (a fix edits only an edge's properties).
+ */
+export interface TypeGraph {
+  states: string[];
+  contexts: string[];
+  types: number[];
+  seeds: number[];
+  /** Transition i: from states[from[i]] along the diagram's edges[edge[i]] to states[to[i]]. */
+  edge: number[];
+  from: number[];
+  to: number[];
+  /** The type that left the node before the edge's filter and rename. */
+  output: number[];
+  /** Transitions inside a message loop (a processor cycle's strongly connected component). */
+  cyclic: Set<number>;
+}
+
+export interface MessageTypeOptions {
+  /** Shared by analyses whose graphs are compared. */
+  table?: TypeTable;
+  /** Receives each analyzed run's graph: free play, then each saved simulation in order. */
+  graphs?: TypeGraph[];
+}
+
+interface MessageScenario {
+  diagram: DiagramFile;
+  sources?: { node: string; type: string }[];
+}
+
+const processor = (role: SimRole) => role === "processor" || role === "none";
+/** The type a node's own traffic carries, as the engine resolves it (src/sim/defaults.ts). */
+const ownType = (node: DiagramNode | undefined) =>
+  typeof node?.props?.messageType === "string" ? node.props.messageType : node?.label || "Message";
+
+/**
+ * Free play, then each saved simulation configured exactly as playback configures it (configuredDiagram): edits to
+ * `diagram` come first and the run's overrides after. Each run is analyzed alone: never invent a path by mixing
+ * simulation configurations.
+ */
+function messageTypeScenarios(diagram: DiagramFile, budget?: MessageTypeBudget): MessageScenario[] {
+  const scenarios: MessageScenario[] = [{ diagram: { ...diagram, simulations: undefined } }];
   for (const sim of diagram.simulations ?? []) {
     if (budget) {
       budget.remaining -=
         diagram.nodes.length + diagram.edges.length + sim.traffic.length + (sim.timeline?.length ?? 0);
-      if (budget.remaining <= 0) return;
+      if (budget.remaining <= 0) break;
     }
-    const configured = {
-      ...diagram,
-      simulations: undefined,
-      nodes: diagram.nodes.map((node) => ({ ...node, props: { ...node.props, ...sim.setup?.props?.[node.id] } })),
-      edges: diagram.edges.map((edge) => ({ ...edge, props: { ...edge.props, ...sim.setup?.edges?.[edge.id] } })),
-    };
+    const configured = configuredDiagram(diagram, sim);
     const nodes = new Map(configured.nodes.map((node) => [node.id, node]));
     const inputs = [
       ...sim.traffic,
       ...(sim.timeline ?? []).flatMap(({ action }) => (action.do === "inject" ? [action] : [])),
     ];
-    yield {
+    scenarios.push({
       diagram: configured,
       sources: inputs.map((input) => ({
         node: input.node,
-        type:
-          input.messageType ??
-          String(nodes.get(input.node)?.props?.messageType ?? (nodes.get(input.node)?.label || "Message")),
+        type: String(input.messageType ?? ownType(nodes.get(input.node))),
       })),
-    };
+    });
   }
+  return scenarios;
 }
 
 /** Finite monotone fixed point. All scenarios share a work/allocation budget, including authored vocabulary. */
@@ -91,15 +140,17 @@ export function messageTypesAt(
   diagram: DiagramFile,
   sources?: readonly { node: string; type: string }[],
   budget = messageTypeBudget(),
+  options: MessageTypeOptions = {},
 ): MessageTypes {
-  if (sources || !diagram.simulations?.length) return propagateTypes(diagram, sources, budget);
+  const table = options.table ?? typeTable();
+  if (sources || !diagram.simulations?.length) return propagateTypes(diagram, sources, budget, table, options.graphs);
   const analyses: MessageTypes[] = [];
   for (const scenario of messageTypeScenarios(diagram, budget)) {
     if (budget.remaining <= 0) break;
-    analyses.push(propagateTypes(scenario.diagram, scenario.sources, budget));
+    analyses.push(propagateTypes(scenario.diagram, scenario.sources, budget, table, options.graphs));
   }
   const result = analyses[0];
-  if (!result) return propagateTypes({ ...diagram, simulations: undefined }, [], budget);
+  if (!result) return propagateTypes({ ...diagram, simulations: undefined }, [], budget, table);
   for (const analysis of analyses.slice(1)) {
     for (const field of ["arriving", "upstream", "carried"] as const)
       for (const [id, types] of analysis[field]) {
@@ -130,16 +181,28 @@ export function messageTypesAt(
   return result;
 }
 
+/** Predicates a request filter or rule evaluates: what matching it costs. */
+const matchCost = (match: CompiledMatch | undefined) =>
+  1 +
+  (match?.methods?.length ?? 0) +
+  (match?.segments?.length ?? 0) +
+  (match?.hosts?.length ?? 0) +
+  (match?.headers?.length ?? 0) +
+  (match?.query?.length ?? 0);
+
 function propagateTypes(
   diagram: DiagramFile,
   sources: readonly { node: string; type: string }[] | undefined,
   budget: MessageTypeBudget,
+  table: TypeTable,
+  graphs?: TypeGraph[],
 ): MessageTypes {
   const arriving = new Map(diagram.nodes.map((n) => [n.id, new Set<string>()]));
   const upstream = new Map(diagram.edges.map((e) => [e.id, new Set<string>()]));
   const carried = new Map(diagram.edges.map((e) => [e.id, new Set<string>()]));
   const nodes = new Map(diagram.nodes.map((n) => [n.id, n]));
   const order = new Map(diagram.nodes.map((n, index) => [n.id, index]));
+  const edgeOrder = new Map(diagram.edges.map((e, index) => [e.id, index]));
   const roles = new Map(diagram.nodes.map((n) => [n.id, stencilRole(n.stencil)]));
   const topology = compileTopology(diagram);
   const targetEdges = new Map(topology.edges.filter((edge) => !edge.dlq).map((edge) => [edge.id, edge]));
@@ -151,6 +214,7 @@ function propagateTypes(
     outgoing.set(edge.from, list);
   }
   let complete = true;
+  // Every step below that grows with authored input (names, patterns, rules, states, transitions) spends here.
   const spend = (amount = 1) => {
     budget.remaining -= amount;
     if (budget.remaining < 0) complete = false;
@@ -158,16 +222,18 @@ function propagateTypes(
   };
   spend(diagram.nodes.length + diagram.edges.length);
   const known = new Set<string>();
-  const typeIds = new Map<string, number>();
   const remember = (value: unknown) => {
-    if (typeof value !== "string" || typeIds.has(value)) return;
-    // Retain each authored string once. State keys below contain only interned integers.
-    if (!spend(1 + Math.ceil(value.length / 16))) return;
-    typeIds.set(value, typeIds.size);
+    if (typeof value !== "string" || known.has(value)) return;
+    if (!table.ids.has(value)) {
+      // Retain each authored string once. State keys below contain only interned integers.
+      if (!spend(1 + Math.ceil(value.length / 16))) return;
+      table.ids.set(value, table.names.length);
+      table.names.push(value);
+    } else if (!spend()) return;
     known.add(value);
   };
   for (const node of diagram.nodes) {
-    if (roles.get(node.id) === "source") remember(node.props?.messageType ?? (node.label || "Message"));
+    if (roles.get(node.id) === "source") remember(ownType(node));
     remember(node.props?.messageType);
     const emits = node.props?.emits;
     if (emits && typeof emits === "object" && !Array.isArray(emits)) {
@@ -182,18 +248,89 @@ function propagateTypes(
     if (Array.isArray(edge.props?.filter))
       for (const type of edge.props.filter) if (typeof type === "string" && !type.endsWith("*")) remember(type);
   }
+  // Type filters compile once per analysis, wildcard patterns included, and every check below is charged.
+  const typeFilters = new Map<string, TypeFilter>();
+  for (const edge of topology.edges) {
+    if (!edge.filter) continue;
+    // Refuse before allocating when the patterns alone exceed what is left.
+    if (budget.remaining < edge.filter.length) {
+      spend(edge.filter.length);
+      continue;
+    }
+    const compiled = compileTypeFilter(edge.filter);
+    if (spend(compiled.cost)) typeFilters.set(edge.id, compiled);
+  }
+  const typeChecks = new Map<string, Map<number, boolean>>();
+  const typeAccepted = (edge: CompiledEdge, type: string, typeId: number): boolean => {
+    if (!edge.filter) return true;
+    const filter = typeFilters.get(edge.id);
+    if (!filter) return false;
+    let checks = typeChecks.get(edge.id);
+    const cached = checks?.get(typeId);
+    if (cached !== undefined) return cached;
+    const accepted = typeFilterAccepts(filter, type, spend);
+    if (accepted === undefined) return false;
+    if (!checks) typeChecks.set(edge.id, (checks = new Map()));
+    checks.set(typeId, accepted);
+    return accepted;
+  };
   const routes = compileRoutes(diagram.planning);
-  const tables = new Map(
-    diagram.nodes.flatMap((node) =>
-      routes && node.props?.routeTable !== undefined && routeTableCapable(node.stencil, roles.get(node.id)!)
-        ? [[node.id, compileTable(node.props.routeTable)] as const]
-        : [],
-    ),
-  );
+  const tables = new Map<string, CompiledTable | undefined>();
+  const tableCost = new Map<string, number>();
+  for (const node of diagram.nodes) {
+    if (!routes || node.props?.routeTable === undefined || !routeTableCapable(node.stencil, roles.get(node.id)!))
+      continue;
+    const compiled = compileTable(node.props.routeTable);
+    const cost =
+      1 + (compiled?.rules.reduce((sum, rule) => sum + matchCost(rule.match) + rule.action.targets.length, 0) ?? 0);
+    spend(cost);
+    tables.set(node.id, compiled);
+    tableCost.set(node.id, cost);
+  }
   const routeIds = new Map([...(routes?.values() ?? [])].map((route, i) => [route, i + 1]));
   const filters = new Map(
-    diagram.edges.map((edge) => [edge.id, routes ? compileFilter(edge.props?.requestFilter) : undefined]),
+    diagram.edges.map((edge) => {
+      const filter = routes ? compileFilter(edge.props?.requestFilter) : undefined;
+      spend(matchCost(filter));
+      return [edge.id, filter] as const;
+    }),
   );
+  const requestChecks = new Map<string, Map<number, boolean>>();
+  const requestAccepted = (edgeId: string, route: CompiledRoute | undefined): boolean => {
+    const filter = filters.get(edgeId);
+    if (!filter) return true;
+    const id = routeIds.get(route!) ?? 0;
+    let checks = requestChecks.get(edgeId);
+    const cached = checks?.get(id);
+    if (cached !== undefined) return cached;
+    if (!spend(matchCost(filter))) return false;
+    const accepted = matchesRequest(filter, route);
+    if (!checks) requestChecks.set(edgeId, (checks = new Map()));
+    checks.set(id, accepted);
+    return accepted;
+  };
+  const choices = new Map<string, RouteChoice>();
+  const choose = (node: string, compiled: CompiledTable, route: CompiledRoute | undefined, sync: boolean) => {
+    const key = `${order.get(node)}:${routeIds.get(route!) ?? 0}:${+sync}`;
+    let choice = choices.get(key);
+    if (!choice) {
+      spend(tableCost.get(node));
+      choices.set(key, (choice = chooseAction(compiled, route, sync)));
+    }
+    return choice;
+  };
+  // forwardingShare's decision, composed from the same steps with each filter check budgeted and memoized.
+  const share = (
+    role: SimRole,
+    edge: CompiledEdge,
+    type: string,
+    typeId: number,
+    mode: ForwardingMode,
+    route: CompiledRoute | undefined,
+  ) =>
+    forwardsFrom(role, edge, mode) && typeAccepted(edge, type, typeId) && requestAccepted(edge.id, route)
+      ? forwardingFraction(role, edge, mode)
+      : 0;
   const addresses = new Map(
     diagram.edges.flatMap((edge) => {
       const role = roles.get(edge.from);
@@ -206,79 +343,116 @@ function propagateTypes(
     }),
   );
   interface State {
+    key: string;
+    index: number;
     node: string;
     type: string;
+    typeId: number;
     route?: CompiledRoute;
-    sync?: boolean;
-    injected?: boolean;
+    sync: boolean;
+    injected: boolean;
   }
+  const graph: TypeGraph | undefined = graphs && {
+    states: [],
+    contexts: [],
+    types: [],
+    seeds: [],
+    edge: [],
+    from: [],
+    to: [],
+    output: [],
+    cyclic: new Set(),
+  };
   const queue: State[] = [];
   const states = new Map<string, State>();
-  const steps = new Map<string, { step: TypeStep; target: string }[]>();
-  const keyOf = (state: State) =>
-    `${order.get(state.node)}:${typeIds.get(state.type)}:${routeIds.get(state.route!) ?? 0}:${+!!state.sync}:${+!!state.injected}`;
-  const arrive = (state: State) => {
-    remember(state.type);
-    const key = keyOf(state);
-    if (states.has(key) || !spend()) return key;
-    if (!(state.injected && roles.get(state.node) === "source")) arriving.get(state.node)!.add(state.type);
+  const steps = new Map<string, { step: TypeStep; target: string; transition: number }[]>();
+  let stepCount = 0;
+  const arrive = (node: string, type: string, route: CompiledRoute | undefined, sync: boolean, injected: boolean) => {
+    remember(type);
+    const typeId = table.ids.get(type);
+    if (typeId === undefined) return undefined;
+    const context = `${order.get(node)}:${routeIds.get(route!) ?? 0}:${+sync}:${+injected}`;
+    const key = `${context}|${typeId}`;
+    const existing = states.get(key);
+    if (existing || !spend()) return existing;
+    if (!(injected && roles.get(node) === "source")) arriving.get(node)!.add(type);
+    const state: State = { key, index: states.size, node, type, typeId, route, sync, injected };
     states.set(key, state);
     queue.push(state);
-    return key;
+    if (graph) {
+      graph.states.push(key);
+      graph.contexts.push(context);
+      graph.types.push(typeId);
+    }
+    return state;
   };
   const seed = (node: string, type: string) => {
     if (!nodes.has(node)) return;
     const mix = roles.get(node) === "source" ? compileMix(nodes.get(node)?.props?.trafficMix, routes) : undefined;
-    if (mix)
-      mix.routes.forEach((route, i) => {
-        if (mix.proportions[i] > 0) arrive({ node, type, route, injected: true });
-      });
-    else arrive({ node, type, injected: true });
+    const routesOut = mix ? mix.routes.filter((_, i) => mix.proportions[i] > 0) : [undefined];
+    for (const route of routesOut) {
+      const state = arrive(node, type, route, false, true);
+      if (state) graph?.seeds.push(state.index);
+    }
   };
   if (sources) for (const input of sources) seed(input.node, input.type);
-  else
-    for (const node of diagram.nodes)
-      if (roles.get(node.id) === "source") seed(node.id, String(node.props?.messageType ?? (node.label || "Message")));
+  else for (const node of diagram.nodes) if (roles.get(node.id) === "source") seed(node.id, ownType(node));
   for (let at = 0; at < queue.length && complete; at++) {
     const item = queue[at];
     const role = roles.get(item.node)!;
     const type = outputType(role, nodes.get(item.node)?.props?.emits, item.type);
-    const table = tables.get(item.node);
-    const choice = table ? chooseAction(table, item.route, !!item.sync) : undefined;
+    remember(type);
+    const typeId = table.ids.get(type);
+    if (typeId === undefined) break;
+    const compiled = tables.get(item.node);
+    const choice = compiled ? choose(item.node, compiled, item.route, item.sync) : undefined;
     const routed = !!choice && !("legacy" in choice);
-    const targets =
-      choice && "action" in choice
-        ? new Set(
-            forwardingTargets(
-              choice.action.targets,
-              (id) => {
-                const edge = targetEdges.get(id);
-                return edge?.from === item.node ? edge : undefined;
-              },
-              (edge) => forwardingShare(role, edge, type, "routed", filters.get(edge.id), item.route) > 0,
-            ).eligible.map((edge) => edge.id),
-          )
-        : undefined;
+    let targets: Set<string> | undefined;
+    if (choice && "action" in choice) {
+      spend(choice.action.targets.length);
+      targets = new Set(
+        forwardingTargets(
+          choice.action.targets,
+          (id) => {
+            const edge = targetEdges.get(id);
+            return edge?.from === item.node ? edge : undefined;
+          },
+          (edge) => share(role, edge, type, typeId, "routed", item.route) > 0,
+        ).eligible.map((edge) => edge.id),
+      );
+    }
     for (const edge of outgoing.get(item.node) ?? []) {
       if (!spend()) break;
       upstream.get(edge.id)!.add(type);
       if (edge.deny || (edge.dlq && (processor(role) || deadLetters.get(edge.from)?.id !== edge.id))) continue;
       if (routed && !targets?.has(edge.id)) continue;
       const route = !routed && addresses.has(edge.id) ? addresses.get(edge.id) : item.route;
-      const filter = filters.get(edge.id);
-      if (!forwardingShare(role, edge, type, routed ? "routed" : item.injected ? "injected" : "output", filter, route))
-        continue;
+      if (!share(role, edge, type, typeId, routed ? "routed" : item.injected ? "injected" : "output", route)) continue;
       const sent = edge.emits ?? type;
       carried.get(edge.id)!.add(sent);
-      const target = arrive({ node: edge.to, type: sent, route, sync: !route && edge.sync && !!tables.get(edge.to) });
+      const target = arrive(edge.to, sent, route, !route && edge.sync && !!tables.get(edge.to), false);
+      if (!target) continue;
+      const transition = graph ? graph.edge.length : -1;
+      if (graph) {
+        graph.edge.push(edgeOrder.get(edge.id)!);
+        graph.from.push(item.index);
+        graph.to.push(target.index);
+        graph.output.push(typeId);
+      }
       if (!item.injected && !edge.dlq && processor(role) && processor(roles.get(edge.to)!)) {
-        const key = keyOf(item);
-        const list = steps.get(key) ?? [];
-        list.push({ target, step: { edge: edge.id, from: item.node, to: edge.to, receives: item.type, sends: sent } });
-        steps.set(key, list);
+        const list = steps.get(item.key) ?? [];
+        list.push({
+          target: target.key,
+          transition,
+          step: { edge: edge.id, from: item.node, to: edge.to, receives: item.type, sends: sent },
+        });
+        steps.set(item.key, list);
+        stepCount++;
       }
     }
   }
+  // Tarjan's linear pass over the states and processor steps.
+  spend(states.size + stepCount);
   const targets = new Map([...steps].map(([key, list]) => [key, list.map((s) => s.target)]));
   const loops: MessageLoop[] = [];
   for (const component of stronglyConnected([...states.keys()], (id) => targets.get(id) ?? [])) {
@@ -291,11 +465,10 @@ function propagateTypes(
           ? state
           : best,
       );
-    loops.push({
-      node: first.node,
-      type: first.type,
-      steps: component.flatMap((id) => (steps.get(id) ?? []).filter((s) => members.has(s.target)).map((s) => s.step)),
-    });
+    const inside = component.flatMap((id) => (steps.get(id) ?? []).filter((s) => members.has(s.target)));
+    if (graph) for (const s of inside) graph.cyclic.add(s.transition);
+    loops.push({ node: first.node, type: first.type, steps: inside.map((s) => s.step) });
   }
+  graphs?.push(graph!);
   return { arriving, upstream, carried, known, loops, complete };
 }

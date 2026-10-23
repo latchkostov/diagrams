@@ -1,7 +1,9 @@
 import { messageTypesFixture } from "../lab/messageTypesFixture";
 import { describe, expect, it, vi } from "vitest";
 import type { DiagramFile, DiagramNode } from "./types";
-import { MESSAGE_TYPE_WORK_LIMIT, messageTypesAt } from "./messageTypes";
+import { MESSAGE_TYPE_WORK_LIMIT, messageTypeBudget, messageTypesAt } from "./messageTypes";
+import { acceptsType, compileTypeFilter, typeFilterAccepts } from "../sim/topology";
+import fc from "fast-check";
 import { createEngine } from "../sim/engine";
 import { analyzeCapacity } from "../sim/capacity";
 import { countingReads, GROWTH_FACTOR, LINEAR_LIMIT } from "../test/complexity";
@@ -289,6 +291,52 @@ describe("messageTypesAt", () => {
     expect(result.complete).toBe(true);
     expect(result.loops).toHaveLength(1);
     expect(result.loops[0].steps).toHaveLength(count);
+  });
+
+  it("charges filter compilation and every pattern check to the budget, wildcards included", () => {
+    const hub = (types: string[], filter: string[]): DiagramFile => ({
+      format: "diagrams/v1",
+      title: "Filtered hub",
+      nodes: [
+        ...types.map((type, i) => node(`s${i}`, "client.browser", { messageType: type })),
+        node("hub"),
+        node("out", "generic.email"),
+      ],
+      edges: [
+        ...types.map((_, i) => ({ id: `in${i}`, from: `s${i}`, to: "hub" })),
+        { id: "out", from: "hub", to: "out", props: { filter } },
+      ],
+    });
+    // Compiling 100,000 wildcard entries is half the budget: charged, not free. Each type then costs a few lookups.
+    const budget = messageTypeBudget();
+    const exact = messageTypesAt(
+      hub(
+        Array.from({ length: 400 }, (_, i) => `T${i}`),
+        Array.from({ length: 100_000 }, (_, i) => (i === 7 ? "T7" : `P${i}*`)),
+      ),
+      undefined,
+      budget,
+    );
+    expect(exact.complete).toBe(true);
+    expect(exact.carried.get("out")).toEqual(new Set(["T7"]));
+    expect(MESSAGE_TYPE_WORK_LIMIT - budget.remaining).toBeGreaterThan(100_000);
+    // Wildcards are charged too: more patterns than the budget never report a complete analysis.
+    const wildcards = Array.from({ length: MESSAGE_TYPE_WORK_LIMIT }, (_, i) => `W${i}*`);
+    expect(messageTypesAt(hub(["T"], wildcards)).complete).toBe(false);
+    // So is each check: many distinct prefix lengths tried against many long names exhaust the budget.
+    const lengths = Array.from({ length: 600 }, (_, i) => `${"b".repeat(i + 1)}*`);
+    const long = Array.from({ length: 300 }, (_, i) => `${"a".repeat(700)}${i}`);
+    expect(messageTypesAt(hub(long, lengths)).complete).toBe(false);
+  });
+
+  it("matches compiled type filters exactly as playback's acceptsType", () => {
+    const name = fc.stringMatching(/^[ab*]{0,4}$/);
+    fc.assert(
+      fc.property(fc.array(fc.oneof(name, fc.integer()), { maxLength: 6 }), name, (filter, type) => {
+        const compiled = compileTypeFilter(filter);
+        expect(typeFilterAccepts(compiled, type, () => true)).toBe(acceptsType(filter, type));
+      }),
+    );
   });
 
   it("bounds work on a vocabulary amplified across a dense graph", () => {

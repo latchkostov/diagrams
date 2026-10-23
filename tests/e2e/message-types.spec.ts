@@ -186,7 +186,10 @@ test("Send as and source Sends pick existing types; processor Emits edits and re
   await open(page);
   await page.getByTestId("inspector-field-emits").click();
   await page.getByTestId("context-menu-item-0").click();
-  await expect(page.getByTestId("inspector-carries")).toContainText("Callback");
+  await expect(page.getByTestId("inspector-carries")).toHaveText("Callback");
+  await expect
+    .poll(async () => (await savedDiagram(page)).edges.find((e) => e.id === "send")?.props?.emits)
+    .toBe("Callback");
   await fitDiagram(page);
   await page.getByTestId("node-client").click();
   await waitForSelectionSettled(page);
@@ -213,6 +216,73 @@ test("Send as and source Sends pick existing types; processor Emits edits and re
   await expect(page.getByTestId("inspector-emits-add")).toBeFocused();
   await page.getByTestId("undo-button").click();
   await expect(page.getByTestId("inspector-emits-row-0")).toContainText("Processed");
+  expectNoErrors(consoleErrors);
+});
+
+test("Send as persists an edge rename and Undo restores it", async ({ page, consoleErrors }) => {
+  await open(page);
+  const carries = page.getByTestId("inspector-carries");
+  await expect(carries).toHaveText("SendCallback");
+  const emits = async () => (await savedDiagram(page)).edges.find((e) => e.id === "send")?.props?.emits;
+  expect(await emits()).toBeUndefined();
+  await page.getByTestId("inspector-field-emits").click();
+  await page.getByTestId("context-menu-item-0").click();
+  await expect.poll(emits).toBe("Callback");
+  await expect(carries).toHaveText("Callback");
+  await page.getByTestId("undo-button").click();
+  await expect.poll(emits).toBeUndefined();
+  await expect(carries).toHaveText("SendCallback");
+  expectNoErrors(consoleErrors);
+});
+
+test("changing a rule's incoming type keeps keyboard focus on that rule", async ({ page, consoleErrors }) => {
+  const diagram = messageTypesFixture();
+  diagram.nodes[1].props = { emits: { Send: "Send", Callback: "Callback" } };
+  await open(page, "en", diagram);
+  await fitDiagram(page);
+  await page.getByTestId("node-api").click();
+  await waitForSelectionSettled(page);
+  await page.getByTestId("inspector-section-node-simulation").click();
+  const receives = page.getByTestId("inspector-field-receives-0");
+  const saved = async () => (await savedDiagram(page)).nodes.find((n) => n.id === "api")?.props?.emits;
+  // From the menu: Unchanged, Any type, Send.
+  await receives.focus();
+  await page.keyboard.press("Enter");
+  await page.keyboard.press("Home");
+  await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("Enter");
+  await expect.poll(saved).toEqual({ "*": "Send", Callback: "Callback" });
+  await expect(receives).toBeFocused();
+  // From a new-type draft.
+  await page.keyboard.press("Enter");
+  await page.keyboard.press("End");
+  await page.keyboard.press("Enter");
+  const draft = page.getByTestId("inspector-receives-0-new");
+  await expect(draft).toBeFocused();
+  await draft.fill("Fresh");
+  await draft.press("Enter");
+  await expect.poll(saved).toEqual({ Fresh: "Send", Callback: "Callback" });
+  await expect(receives).toBeFocused();
+  expectNoErrors(consoleErrors);
+});
+
+test("deselecting a type nothing upstream sends keeps focus among the chips", async ({ page, consoleErrors }) => {
+  await open(page);
+  await page.getByTestId("inspector-filter-add").click();
+  await page.getByTestId("inspector-filter-new").fill("FutureCallback");
+  await page.getByTestId("inspector-filter-new").press("Enter");
+  // Only FutureCallback passes, so Callback no longer reaches this link: the chips are Send and FutureCallback.
+  const custom = page.getByTestId("inspector-filter-option-1");
+  await expect(custom).toHaveText("FutureCallback");
+  await custom.focus();
+  await page.keyboard.press("Space");
+  // Passing all again brings Callback back in its place; focus stays on that chip rather than the page.
+  await expect(custom).toHaveText("Callback");
+  await expect(custom).toBeFocused();
+  await expect(page.getByTestId("inspector-filter-option-2")).toHaveCount(0);
+  await expect
+    .poll(async () => (await savedDiagram(page)).edges.find((e) => e.id === "send")?.props?.filter)
+    .toBeUndefined();
   expectNoErrors(consoleErrors);
 });
 

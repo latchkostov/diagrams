@@ -1,10 +1,11 @@
 import { expect, it, vi } from "vitest";
 import { messageTypesFixture } from "../../lab/messageTypesFixture";
 import type { DiagramFlowNode } from "../types";
-import { toFlow } from "../convert";
+import { fromFlow, toFlow } from "../convert";
 import { carriedTypes } from "./carriedTypes";
-import { cachedMessageTypesAt, routingContentKey } from "../../model/messageTypeCache";
+import { cachedMessageTypesAt } from "../../model/messageTypeCache";
 import * as propagation from "../../model/messageTypes";
+import { countingReads } from "../../test/complexity";
 
 it("does not recompute propagation on position, selection or measurement updates", () => {
   const d = messageTypesFixture();
@@ -40,12 +41,38 @@ it("does not recompute propagation on position, selection or measurement updates
   }
 });
 
-it("bounds long type strings in routing keys without colliding when a name changes", () => {
+it("answers pan, zoom and drag store updates without serializing or re-reading the graph", () => {
   const d = messageTypesFixture();
-  const prefix = "A".repeat(20_000);
-  d.nodes[0].props = { messageType: prefix + "1", emits: { [prefix]: prefix } };
-  const first = routingContentKey(d);
-  expect(first.length).toBeLessThan(prefix.length / 8);
-  d.nodes[0].props.messageType = prefix + "2";
-  expect(routingContentKey(d)).not.toBe(first);
+  for (let i = 0; i < 2_000; i++) {
+    d.nodes.push({ id: `n${i}`, stencil: "service.go", label: `N${i}`, x: i, y: 0, props: { emits: "X".repeat(300) } });
+    d.edges.push({ id: `e${i}`, from: i ? `n${i - 1}` : "sender", to: `n${i}`, props: { filter: ["*"] } });
+  }
+  d.simulations = [{ id: "s", title: "S", traffic: [{ id: "t", node: "client", shape: { kind: "burst", count: 1 } }] }];
+  const flow = toFlow(d);
+  const nodes = countingReads(flow.nodes);
+  const edges = countingReads(flow.edges);
+  const metadata = () => ({ simulations: flow.meta.simulations, planning: flow.meta.planning });
+  const first = carriedTypes(nodes.items, edges.items, metadata());
+  const stringify = vi.spyOn(JSON, "stringify");
+  const analysis = vi.spyOn(propagation, "messageTypesAt");
+  try {
+    const read = nodes.reads() + edges.reads();
+    // A transform-only update hands every edge the same arrays (and a fresh context object).
+    for (let i = 0; i < 1_000; i++) expect(carriedTypes(nodes.items, edges.items, metadata())).toBe(first);
+    expect(nodes.reads() + edges.reads()).toBe(read);
+    // A drag replaces node objects, never their data; the edge array is untouched.
+    const edgeReads = edges.reads();
+    const dragged = flow.nodes.map((node) => ({ ...node, position: { x: node.position.x + 5, y: 9 }, dragging: true }));
+    expect(carriedTypes(dragged, edges.items, metadata())).toBe(first);
+    expect(edges.reads()).toBe(edgeReads);
+    // The inspector reads the dragged canvas through fromFlow: same propagation, nothing serialized.
+    expect(cachedMessageTypesAt(fromFlow(flow.meta, dragged, flow.edges)).carried.get("send")).toEqual(
+      new Set(["Send", "Callback"]),
+    );
+    expect(stringify).not.toHaveBeenCalled();
+    expect(analysis).not.toHaveBeenCalled();
+  } finally {
+    stringify.mockRestore();
+    analysis.mockRestore();
+  }
 });

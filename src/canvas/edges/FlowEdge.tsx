@@ -15,7 +15,7 @@ import { useReadableScale } from "../useReadableScale";
 import { EdgeEnds } from "./EdgeEnds";
 import { loadOnce } from "../../lib/lazyLoad";
 import { t } from "../../i18n";
-import type { DiagramFlowNode } from "../types";
+import type { FlowNode } from "../types";
 const loadTypes = loadOnce(() => import("./carriedTypes"));
 
 /**
@@ -46,7 +46,7 @@ function FlowEdgeImpl(props: EdgeProps<DiagramFlowEdge>) {
     useCallback(
       (s: ReactFlowState) =>
         active
-          ? reader?.carriedTypes(s.nodes as DiagramFlowNode[], s.edges as DiagramFlowEdge[], messageMetadata).get(id)
+          ? reader?.carriedTypes(s.nodes as FlowNode[], s.edges as DiagramFlowEdge[], messageMetadata).get(id)
           : undefined,
       [id, reader, active, messageMetadata],
     ),
