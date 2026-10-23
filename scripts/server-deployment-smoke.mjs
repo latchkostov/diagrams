@@ -293,9 +293,45 @@ export async function deploymentVariants({ run, image, scratch, hostingTemplates
               const page = await browser.newPage();
               const errors = [];
               page.on("pageerror", (error) => errors.push(error.message));
-              await page.goto(`${origin}${base}a/deep/route?view=canvas&example=kafka-order-pipeline`);
-              await expect(page.getByTestId("brand")).toHaveText("Live Diagrams", { timeout: BOOT_TIMEOUT });
-              await expect(page.getByTestId("node-gateway")).toBeVisible({ timeout: BOOT_TIMEOUT });
+              // When the app doesn’t boot, the start-up page alone says nothing: keep what the browser saw.
+              const evidence = [];
+              const pending = new Set();
+              page.on("console", (message) => {
+                if (["error", "warning"].includes(message.type()))
+                  evidence.push(`console.${message.type()}: ${message.text()}`);
+              });
+              page.on("request", (request) => pending.add(request));
+              page.on("requestfinished", (request) => pending.delete(request));
+              page.on("requestfailed", (request) => {
+                pending.delete(request);
+                evidence.push(`request failed: ${request.url()} ${request.failure()?.errorText ?? ""}`);
+              });
+              page.on("response", (response) => {
+                if (response.status() >= 400) evidence.push(`HTTP ${response.status()}: ${response.url()}`);
+              });
+              try {
+                await page.goto(`${origin}${base}a/deep/route?view=canvas&example=kafka-order-pipeline`);
+                await expect(page.getByTestId("brand")).toHaveText("Live Diagrams", { timeout: BOOT_TIMEOUT });
+                await expect(page.getByTestId("node-gateway")).toBeVisible({ timeout: BOOT_TIMEOUT });
+              } catch (error) {
+                let logs;
+                try {
+                  logs = run("docker", ["logs", "--tail", "100", serverName], true);
+                } catch (failure) {
+                  logs = `(no server logs: ${failure.message})`;
+                }
+                console.error(
+                  [
+                    `Boot evidence: ${proxy} ${base}`,
+                    ...errors.map((message) => `page error: ${message}`),
+                    ...evidence,
+                    ...[...pending].map((request) => `still pending: ${request.method()} ${request.url()}`),
+                    "server logs:",
+                    logs,
+                  ].join("\n"),
+                );
+                throw error;
+              }
               await page.getByTestId("file-button").click();
               await expect(page.getByTestId("file-share")).toBeVisible();
               expect(errors).toEqual([]);
