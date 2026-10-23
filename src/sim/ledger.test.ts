@@ -7,7 +7,7 @@ import { waitingFixture } from "../lab/waitingFixture";
 import { ledgerFixture } from "../lab/ledgerFixture";
 import { createEngine, randomDraws } from "./engine";
 import { resourceLesson } from "../model/autoscaling";
-import { realSnapshot } from "./units";
+import { realSnapshot, roundDots } from "./units";
 import {
   assertResourceInvariants,
   assertAdmissionInvariants,
@@ -160,9 +160,11 @@ it("fractional caller releases keep a one-slot caller usable", () => {
   expect(engine.snapshot().nodes.caller.processed).toBe(3);
   engine.setNodeProps("caller", { concurrency: 1, api: { latencyMs: 10 } });
   engine.inject("caller", 1);
-  expect(engine.snapshot().nodes.caller.rejected).toBe(0);
+  // The one slot admits one request of the 1.01 (residue does not block it); the throttle split refuses the
+  // remaining hundredth, as scale 1 throttles what exceeds the slot.
+  expect(engine.snapshot().nodes.caller.rejected).toBe(roundDots(0.01 / 1.01));
   engine.step(1000);
-  expect(engine.snapshot().nodes.caller.processed).toBe(4);
+  expect(engine.snapshot().nodes.caller.processed).toBe(roundDots(3 + 1 / 1.01));
   expect(engine.metrics().inSystem).toBe(0);
   expect(state.ledger.reservations.size).toBe(0);
   expect([...state.admissionInFlight.values()].every((weight) => weight === 0)).toBe(true);
@@ -982,7 +984,10 @@ it("a quota-refused retry retains execution keys until its sampled thread hold e
   p.d.nodes[0].props = { maxDeliveryCount: 2 };
   p.d.nodes[1].stencil = "aws.lambda";
   Object.assign(p.d.nodes[1].props!, {
-    maxConcurrency: 2,
+    // Room for the whole dot: its first attempt spends all ten tokens, so its retry is refused by the quota. (Two
+    // slots would split the dot, and a refused part spends no tokens, so the admitted part's retry would fit.)
+    concurrency: 10,
+    maxConcurrency: 10,
     scaling: "fixed",
     retry: "inplace",
     retryBackoffMs: 0,
@@ -999,13 +1004,16 @@ it("a quota-refused retry retains execution keys until its sampled thread hold e
   p.engine.inject("source", 1);
   p.engine.step(travel + 120);
   expect(p.engine.snapshot().nodes.caller).toMatchObject({ failed: 1, rejected: 1 });
-  const thread = [...p.state().ledger.reservations.values()].find((r) => r.scope === "thread")!;
-  expect(thread.keys).toHaveLength(1);
-  expect(p.state().admissionInFlight.get(thread.keys![0])).toBe(2);
+  // At full weight the refused retry holds nothing past its refusal, as at scale 1: no thread outlives it and its
+  // execution keys are free. (A partial hold needs a narrower grant than the dot, and a throttle now splits instead;
+  // the quota checks the whole dot and charges only an admitted part, so that part's retry would fit the bucket.)
+  expect([...p.state().ledger.reservations.values()].filter((r) => r.scope === "thread")).toEqual([]);
+  expect([...p.state().admissionInFlight.values()].every((w) => w === 0)).toBe(true);
   p.engine.setNodeProps("caller", { api: { latencyMs: 100 } });
   p.engine.inject("caller", 1);
   expect(() => p.engine.step(10)).not.toThrow();
-  expect(p.engine.snapshot().nodes.caller.rejected).toBe(2);
+  // Free keys admit the next dot (a retained partial hold used to refuse it).
+  expect(p.engine.snapshot().nodes.caller.rejected).toBe(1);
   p.engine.step(3000);
   expect(p.state().ledger.reservations.size).toBe(0);
   expect([...p.state().admissionInFlight.values()].every((w) => w === 0)).toBe(true);

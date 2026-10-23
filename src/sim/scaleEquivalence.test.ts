@@ -3,7 +3,14 @@ import { beforeAll, describe, expect, it } from "vitest";
 import { waitingFixture } from "../lab/waitingFixture";
 import { createEngine } from "./engine";
 import { assertLedgerInvariants } from "./resourceInvariants";
-import { checkConstantRateEquivalence, constantRateRuns, expectScaleEquivalent } from "../test/scaleEquivalence";
+import {
+  checkConstantRateEquivalence,
+  cohortArrivals,
+  constantRateRuns,
+  drive,
+  expectScaleEquivalent,
+  sameArrivals,
+} from "../test/scaleEquivalence";
 import { propertyRuns } from "../test/fastCheck";
 import { arbWaitDiagram } from "../test/waitScenarios";
 import { realSnapshot } from "./units";
@@ -139,8 +146,10 @@ function slowCallee() {
 // Same arrivals: guard every required caller completion/rejection row at its best value so far
 // (master 61957d3; CPU-with-pool and fragmentation rows ratcheted in sampling PR 5; CPU without a pool
 // and CPU-bound standalone at 1.01 in sampling PR 6; CPU-bound standalone at 2 and 10, legacy worker at 10 and
-// Lambda join at 10 in sampling 8a-pre, as queues deliver in real requests).
+// Lambda join at 10 in sampling 8a-pre, as queues deliver in real requests; managed admission, managed zero-work
+// and Lambda join in sampling 8a, as throttles split dots).
 const accuracyFixtures = {
+  managedCall,
   managedZeroWork,
   cpuBoundStandalone,
   cpuPool: () => cpuContention(true),
@@ -151,12 +160,20 @@ const accuracyFixtures = {
   fragmentation,
 };
 const accuracyMaster = {
+  // Sampling 8a: the throttle split. Scale 2.5 is a known gap (below).
+  managedCall: [
+    [1.01, 661.99999999954, 1335.7900000003601],
+    [1.1, 635.0000000003, 1362.6999999998002],
+    [2, 499, 1498],
+    [2.5, 399, 1597.5],
+    [10, 398, 1592],
+  ],
   managedZeroWork: [
-    [1.01, 669.63, 1329.16],
-    [1.1, 699.6, 1299.1000000000001],
-    [2, 1000, 1000],
-    [2.5, 1000, 1000],
-    [10, 1000, 1000],
+    [1.01, 990.00000000002, 1009.7999999999801],
+    [1.1, 909.0000000004001, 1090.7999999996002],
+    [2, 999, 1000],
+    [2.5, 799, 1200],
+    [10, 199, 1800],
   ],
   cpuBoundStandalone: [
     [1.01, 189.88, 0],
@@ -194,11 +211,11 @@ const accuracyMaster = {
     [10, 500, 0],
   ],
   managedJoin: [
-    [1.01, 398.95, 1598.83],
-    [1.1, 399.3, 1598.3000000000002],
-    [2, 500, 1498],
-    [2.5, 500, 1497.5],
-    [10, 465, 1525],
+    [1.01, 493.99999999991, 1503.78999999999],
+    [1.1, 484.00000000000006, 1513.7000000001],
+    [2, 499, 1498],
+    [2.5, 399, 1597.5],
+    [10, 398, 1592],
   ],
   fragmentation: [
     [1.01, 998.89, 0],
@@ -237,9 +254,11 @@ for (const [fixture, rows] of Object.entries(accuracyMaster)) {
 // Same-arrivals I1 gaps: simulation and verification hooks run outside it.fails.
 // Exact siblings prevent an unrelated mismatch from satisfying an expected failure.
 // docs/backlog/2026-10-20-engine-r5-i1-counterexamples.md
+// Managed admission at 2.5 is an accepted known gap (owner decision, 2026-10-22): scale 1 alternates bursts of two
+// and three requests, which a constant 2.5-request dot can't, so the throttle splits a dot of 2.5 where scale 1 sees
+// two or three (docs/backlog/2026-10-22-sampling-managed-admission-bursts.md).
 const gaps = [
-  { name: "managed request admission and retained holds", fixture: managedCall, scale: 1.01, baseline: 662, dots: 396 },
-  { name: "managed request admission", fixture: managedCall, scale: 2.5, baseline: 599, dots: 200 },
+  { name: "managed request admission", fixture: managedCall, scale: 2.5, baseline: 599, dots: 159.6, processed: 399 },
   { name: "slow one-slot callee without a pool", fixture: slowCallee, scale: 10, baseline: 662, dots: 57 },
 ];
 // Preserve the historical serviceCredit snapshot: only W1 moves onto ledger pacing.
@@ -265,7 +284,16 @@ const cpuTailPin = {
   baseline: 570,
   dots: 518,
 };
-const closed = [fragmentationPin, cpuTailPin];
+// Closed by sampling 8a: the throttle split admits one request and refuses the hundredth.
+const managedPin = {
+  name: "managed request admission and retained holds",
+  fixture: managedCall,
+  scale: 1.01,
+  baseline: 662,
+  dots: 655.445544554,
+  processed: 661.99999999954,
+};
+const closed = [fragmentationPin, cpuTailPin, managedPin];
 for (const gap of [legacyPin, ...closed, ...gaps]) {
   describe(`${gap.name} at scale ${gap.scale}`, () => {
     let runs: ReturnType<typeof constantRateRuns>;
@@ -274,7 +302,9 @@ for (const gap of [legacyPin, ...closed, ...gaps]) {
     });
     it("pins the exact baseline and sampled completions", () => {
       expect(realSnapshot(runs.baseline).nodes.caller.processed).toBe(gap.baseline);
-      expect(realSnapshot(runs.sampled).nodes.caller.processed).toBe(gap.dots * gap.scale);
+      expect(realSnapshot(runs.sampled).nodes.caller.processed).toBe(
+        "processed" in gap ? gap.processed : gap.dots * gap.scale,
+      );
     });
     it("pins every node outcome and downstream timeout/late reply", () => {
       const outcomes = (snapshot: SimSnapshot) => {
@@ -335,6 +365,24 @@ it.each([
   expectScaleEquivalent(runs.baseline, runs.sampled, Math.min(...runs.pools));
 });
 
+// Sampling 8a: a concurrency throttle with room for w < N real requests admits w and refuses the rest at one instant.
+it.each([
+  { scale: 1.1, baseline: [635, 1362], sampled: [635.0000000003, 1362.6999999998002] },
+  { scale: 2, baseline: [499, 1498], sampled: [499, 1498] },
+])(
+  "I1 regression: managed request admission splits at its throttle at scale $scale",
+  ({ scale, baseline, sampled }) => {
+    const runs = constantRateRuns(managedCall(), scale);
+    const outcome = (snapshot: SimSnapshot) => {
+      const caller = realSnapshot(snapshot).nodes.caller;
+      return [caller.processed, caller.rejected];
+    };
+    expect(outcome(runs.baseline)).toEqual(baseline);
+    expect(outcome(runs.sampled)).toEqual(sampled);
+    expectScaleEquivalent(runs.baseline, runs.sampled, Math.min(...runs.pools));
+  },
+);
+
 it.each([1.1, 1.3, 1.5])("I1 regression: fractional capacity fragmentation at scale %s", (scale) => {
   checkConstantRateEquivalence(fragmentation(), scale);
 });
@@ -381,17 +429,19 @@ it("I1 regression: review CPU-bound standalone repro stays within the scale-one 
 it.each([2, 4])("I1 regression: Lambda joins ordinary and fleet replies at scale %s", (scale) => {
   const runs = constantRateRuns(managedJoin(), scale);
   expect(realSnapshot(runs.baseline).nodes.caller.processed).toBe(scale === 4 ? 498 : 499);
-  // Sampling 8a-pre: at scale 4 the queue delivers in real requests (500 before).
-  expect(realSnapshot(runs.sampled).nodes.caller.processed).toBe(scale === 4 ? 499 : 500);
+  // Sampling 8a-pre: at scale 4 the queue delivers in real requests (500 before); sampling 8a: the throttle split
+  // matches scale 1 exactly at both scales.
+  expect(realSnapshot(runs.sampled).nodes.caller.processed).toBe(scale === 4 ? 498 : 499);
   expectScaleEquivalent(runs.baseline, runs.sampled, Math.min(...runs.pools));
 });
 
 // Ordinary-clock arrivals admit before the tick's due releases; the cohort's last turnaround
 // must not wait for another phase (review of #227: 666 completed, 1,332 rejected at scale 2).
 it.each([
-  { scale: 2, ratePerSec: 100, baseline: [999, 1000], sampled: [1000, 1000] },
+  // Sampling 8a: the throttle split (before: [1000, 1000] and [1000.5, 2998.5]).
+  { scale: 2, ratePerSec: 100, baseline: [999, 1000], sampled: [999, 1000] },
   { scale: 2, ratePerSec: 200, baseline: [1000, 3000], sampled: [1000, 3000] },
-  { scale: 1.5, ratePerSec: 200, baseline: [1000, 2999], sampled: [1000.5, 2998.5] },
+  { scale: 1.5, ratePerSec: 200, baseline: [1000, 2999], sampled: [1000.0000000005, 2998.9999999995] },
 ])(
   "I1 regression: managed zero-work caller turnaround with zero network delay at scale $scale, $ratePerSec/s",
   ({ scale, ratePerSec, baseline, sampled }) => {
@@ -441,6 +491,41 @@ for (const scale of [1.01, 2.5]) {
 
 it.each([1.01, 2.5])("I1 regression: same-arrivals zero-work throughput at scale %s", (scale) => {
   checkConstantRateEquivalence(zeroWorkCall(), scale);
+});
+
+// Corpus index 12 (seed 20261018): two one-slot Lambdas share a concurrency allocation of one, behind a queue. Whoever
+// has a dot arriving first after the slot frees takes it, so the division follows the arrival phase against the
+// hold. It swings at scale 1 itself with the rate, so no sampling rule can follow it within a dot; the total is exact.
+// docs/backlog/2026-10-22-sampling-managed-admission-bursts.md
+describe("two callers sharing one concurrency slot at scale 1.5 (corpus index 12)", () => {
+  const sample = () => fc.sample(arbWaitDiagram, { seed: 20261018, numRuns: 40 }).filter(({ scale }) => scale > 1)[12];
+  const shares = (snapshot: SimSnapshot) => {
+    const nodes = realSnapshot(snapshot).nodes;
+    return [nodes.tier0.processed, nodes.sibling.processed];
+  };
+  let runs: ReturnType<typeof constantRateRuns>;
+  beforeAll(() => {
+    runs = constantRateRuns(sample().diagram, sample().scale);
+  });
+  it("pins the exact division and its exact total", () => {
+    expect(sample().scale).toBe(1.5);
+    expect(shares(runs.baseline)).toEqual([28, 29]);
+    expect(shares(runs.sampled)).toEqual([24, 33]);
+  });
+  it("divides the slot by arrival phase at scale 1 itself", () => {
+    const divisions = [90, 95].map((ratePerSec) => {
+      const { diagram } = sample();
+      const real = sameArrivals(cohortArrivals(1.5, ratePerSec), 1.5);
+      return shares(drive(diagram, 1, real));
+    });
+    expect(divisions).toEqual([
+      [39, 18],
+      [9, 49],
+    ]);
+  });
+  it.fails("I1 known gap: each caller keeps its scale-one share", () => {
+    expectScaleEquivalent(runs.baseline, runs.sampled, Math.min(...runs.pools));
+  });
 });
 
 it.skipIf(process.env.FC_I1 !== "1")("I1 exploration: generated constant-rate graphs preserve real outcomes", () => {
