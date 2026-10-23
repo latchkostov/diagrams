@@ -1,7 +1,7 @@
 {
   "text": {
     "isError": false,
-    "output": "Diagram \"Two inputs, one worker pool\" · direction TB · 6 nodes, 5 connections, 0 boundaries, 2 simulations\ndescription: \"Acme merges orders and refunds into one four-slot worker: two consumer policies share capacity, so six events a second build lag despite plentiful partitions.\"\nnodes:\n  \"orders\" \"generic.webhook\" (\"Webhook\") \"Acme orders\" / \"3 orders/s\" props={\"ratePerSec\":3,\"messageType\":\"OrderPlaced\"} capabilities=[{\"kind\":\"publishes\",\"edge\":\"order-publish\",\"peer\":\"order-log\"}] explanation=undefined\n  \"refunds\" \"generic.webhook\" (\"Webhook\") \"Acme refunds\" / \"3 refunds/s\" props={\"ratePerSec\":3,\"messageType\":\"RefundRequested\"} capabilities=[{\"kind\":\"publishes\",\"edge\":\"refund-publish\",\"peer\":\"refund-log\"}] explanation=undefined\n  \"order-log\" \"kafka.topic\" (\"Kafka Topic\") \"Order events\" / \"8 partitions\" props={\"partitions\":8} capabilities=[] explanation=undefined\n  \"refund-log\" \"kafka.topic\" (\"Kafka Topic\") \"Refund events\" / \"8 partitions\" props={\"partitions\":8} capabilities=[] explanation=undefined\n  \"worker\" \"service.go\" (\"Go Service\") \"Ledger worker\" / \"One shared pool: 1 × 4 / 1 s\" props={\"preset\":\"processor-lesson\",\"presetRevision\":\"1\",\"replicas\":1,\"concurrency\":4,\"latencyMs\":1000,\"jitter\":0,\"failureRate\":0} capabilities=[{\"kind\":\"consumes\",\"edge\":\"read-orders\",\"peer\":\"order-log\",\"group\":\"order-posting\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"consumes\",\"edge\":\"read-refunds\",\"peer\":\"refund-log\",\"group\":\"refund-posting\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"calls\",\"edge\":\"save\",\"peer\":\"ledger\"}] explanation={\"id\":\"worker\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"capacity\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":4,\"offered\":6,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"order-log\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":8},{\"broker\":\"refund-log\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":8}],\"slots\":4,\"seconds\":1,\"utilization\":1.5,\"growth\":2,\"contributors\":[{\"edge\":\"read-orders\",\"node\":\"order-log\",\"label\":\"Order events\",\"rate\":3},{\"edge\":\"read-refunds\",\"node\":\"refund-log\",\"label\":\"Refund events\",\"rate\":3}],\"target\":0.5,\"minimumReplicas\":2,\"targetReplicas\":3,\"changes\":null,\"converged\":true}\n  \"ledger\" \"postgres\" (\"PostgreSQL\") \"Acme ledger\" / \"Orders and refunds\" props={\"latencyMs\":1} capabilities=[] explanation=undefined\nconnections:\n  \"order-publish\" \"orders\" -> \"order-log\" async \"Order\"\n  \"refund-publish\" \"refunds\" -> \"refund-log\" async \"Refund\"\n  \"read-orders\" \"order-log\" -> \"worker\" async \"order-posting\"\n  \"read-refunds\" \"refund-log\" -> \"worker\" async \"refund-posting\"\n  \"save\" \"worker\" -> \"ledger\" sync \"Record\"\nsimulation \"shared-slots\" \"Six events, four slots\": {\"kind\":\"constant\",\"ratePerSec\":3,\"durationMs\":6000} from \"orders\"; {\"kind\":\"constant\",\"ratePerSec\":3,\"durationMs\":6000} from \"refunds\"; timeline=[{\"atMs\":1500,\"action\":{\"do\":\"note\",\"text\":\"Properties shows two Consumes rows, but one 4/s pool. At 6/s total, waiting work grows by about 2/s.\",\"focus\":[\"worker\",\"order-log\",\"refund-log\"]}}]; expectations=[{\"id\":\"order-log-lag-at\",\"label\":\"order-log: lag > 0\",\"metric\":{\"node\":\"order-log\",\"field\":\"lag\"},\"op\":\">\",\"value\":0,\"when\":\"at\",\"atMs\":5000},{\"id\":\"refund-log-lag-at\",\"label\":\"refund-log: lag > 0\",\"metric\":{\"node\":\"refund-log\",\"field\":\"lag\"},\"op\":\">\",\"value\":0,\"when\":\"at\",\"atMs\":5000},{\"id\":\"ledger-processed-end\",\"label\":\"ledger: processed == 36\",\"metric\":{\"node\":\"ledger\",\"field\":\"processed\"},\"op\":\"==\",\"value\":36,\"when\":\"end\"}]\nsimulation \"measured-faster\" \"Measured faster work\": {\"kind\":\"constant\",\"ratePerSec\":3,\"durationMs\":6000} from \"orders\"; {\"kind\":\"constant\",\"ratePerSec\":3,\"durationMs\":6000} from \"refunds\"; timeline=[]; expectations=[{\"id\":\"ledger-processed-end\",\"label\":\"ledger: processed == 36\",\"metric\":{\"node\":\"ledger\",\"field\":\"processed\"},\"op\":\"==\",\"value\":36,\"when\":\"end\"},{\"id\":\"order-log-lag-end\",\"label\":\"order-log: lag == 0\",\"metric\":{\"node\":\"order-log\",\"field\":\"lag\"},\"op\":\"==\",\"value\":0,\"when\":\"end\"},{\"id\":\"refund-log-lag-end\",\"label\":\"refund-log: lag == 0\",\"metric\":{\"node\":\"refund-log\",\"field\":\"lag\"},\"op\":\"==\",\"value\":0,\"when\":\"end\"}]"
+    "output": "Diagram \"Two inputs, one worker pool\" · direction TB · 6 nodes, 5 connections, 0 boundaries, 2 simulations\ndescription: \"Acme merges orders and refunds into one four-slot worker: two consumer policies share capacity, so six events a second build lag despite plentiful partitions.\"\nnodes:\n  \"orders\" \"generic.webhook\" (\"Webhook\") \"Acme orders\" / \"3 orders/s\" props={\"ratePerSec\":3,\"messageType\":\"OrderPlaced\"} arrivingTypes=[] capabilities=[{\"kind\":\"publishes\",\"edge\":\"order-publish\",\"peer\":\"order-log\"}] explanation=undefined\n  \"refunds\" \"generic.webhook\" (\"Webhook\") \"Acme refunds\" / \"3 refunds/s\" props={\"ratePerSec\":3,\"messageType\":\"RefundRequested\"} arrivingTypes=[] capabilities=[{\"kind\":\"publishes\",\"edge\":\"refund-publish\",\"peer\":\"refund-log\"}] explanation=undefined\n  \"order-log\" \"kafka.topic\" (\"Kafka Topic\") \"Order events\" / \"8 partitions\" props={\"partitions\":8} arrivingTypes=[\"OrderPlaced\"] capabilities=[] explanation=undefined\n  \"refund-log\" \"kafka.topic\" (\"Kafka Topic\") \"Refund events\" / \"8 partitions\" props={\"partitions\":8} arrivingTypes=[\"RefundRequested\"] capabilities=[] explanation=undefined\n  \"worker\" \"service.go\" (\"Go Service\") \"Ledger worker\" / \"One shared pool: 1 × 4 / 1 s\" props={\"preset\":\"processor-lesson\",\"presetRevision\":\"1\",\"replicas\":1,\"concurrency\":4,\"latencyMs\":1000,\"jitter\":0,\"failureRate\":0} arrivingTypes=[\"OrderPlaced\",\"RefundRequested\"] capabilities=[{\"kind\":\"consumes\",\"edge\":\"read-orders\",\"peer\":\"order-log\",\"group\":\"order-posting\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"consumes\",\"edge\":\"read-refunds\",\"peer\":\"refund-log\",\"group\":\"refund-posting\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"calls\",\"edge\":\"save\",\"peer\":\"ledger\"}] explanation={\"id\":\"worker\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"capacity\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":4,\"offered\":6,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"order-log\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":8},{\"broker\":\"refund-log\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":8}],\"slots\":4,\"seconds\":1,\"utilization\":1.5,\"growth\":2,\"contributors\":[{\"edge\":\"read-orders\",\"node\":\"order-log\",\"label\":\"Order events\",\"rate\":3},{\"edge\":\"read-refunds\",\"node\":\"refund-log\",\"label\":\"Refund events\",\"rate\":3}],\"target\":0.5,\"minimumReplicas\":2,\"targetReplicas\":3,\"changes\":null,\"converged\":true}\n  \"ledger\" \"postgres\" (\"PostgreSQL\") \"Acme ledger\" / \"Orders and refunds\" props={\"latencyMs\":1} arrivingTypes=[\"OrderPlaced\",\"RefundRequested\"] capabilities=[] explanation=undefined\nconnections:\n  \"order-publish\" \"orders\" -> \"order-log\" async \"Order\" carriedTypes=[\"OrderPlaced\"]\n  \"refund-publish\" \"refunds\" -> \"refund-log\" async \"Refund\" carriedTypes=[\"RefundRequested\"]\n  \"read-orders\" \"order-log\" -> \"worker\" async \"order-posting\" carriedTypes=[\"OrderPlaced\"]\n  \"read-refunds\" \"refund-log\" -> \"worker\" async \"refund-posting\" carriedTypes=[\"RefundRequested\"]\n  \"save\" \"worker\" -> \"ledger\" sync \"Record\" carriedTypes=[\"OrderPlaced\",\"RefundRequested\"]\nsimulation \"shared-slots\" \"Six events, four slots\": {\"kind\":\"constant\",\"ratePerSec\":3,\"durationMs\":6000} from \"orders\"; {\"kind\":\"constant\",\"ratePerSec\":3,\"durationMs\":6000} from \"refunds\"; timeline=[{\"atMs\":1500,\"action\":{\"do\":\"note\",\"text\":\"Properties shows two Consumes rows, but one 4/s pool. At 6/s total, waiting work grows by about 2/s.\",\"focus\":[\"worker\",\"order-log\",\"refund-log\"]}}]; expectations=[{\"id\":\"order-log-lag-at\",\"label\":\"order-log: lag > 0\",\"metric\":{\"node\":\"order-log\",\"field\":\"lag\"},\"op\":\">\",\"value\":0,\"when\":\"at\",\"atMs\":5000},{\"id\":\"refund-log-lag-at\",\"label\":\"refund-log: lag > 0\",\"metric\":{\"node\":\"refund-log\",\"field\":\"lag\"},\"op\":\">\",\"value\":0,\"when\":\"at\",\"atMs\":5000},{\"id\":\"ledger-processed-end\",\"label\":\"ledger: processed == 36\",\"metric\":{\"node\":\"ledger\",\"field\":\"processed\"},\"op\":\"==\",\"value\":36,\"when\":\"end\"}]\nsimulation \"measured-faster\" \"Measured faster work\": {\"kind\":\"constant\",\"ratePerSec\":3,\"durationMs\":6000} from \"orders\"; {\"kind\":\"constant\",\"ratePerSec\":3,\"durationMs\":6000} from \"refunds\"; timeline=[]; expectations=[{\"id\":\"ledger-processed-end\",\"label\":\"ledger: processed == 36\",\"metric\":{\"node\":\"ledger\",\"field\":\"processed\"},\"op\":\"==\",\"value\":36,\"when\":\"end\"},{\"id\":\"order-log-lag-end\",\"label\":\"order-log: lag == 0\",\"metric\":{\"node\":\"order-log\",\"field\":\"lag\"},\"op\":\"==\",\"value\":0,\"when\":\"end\"},{\"id\":\"refund-log-lag-end\",\"label\":\"refund-log: lag == 0\",\"metric\":{\"node\":\"refund-log\",\"field\":\"lag\"},\"op\":\"==\",\"value\":0,\"when\":\"end\"}]"
   },
   "json": {
     "isError": false,
@@ -19,6 +19,7 @@
           "props": { "ratePerSec": 3, "messageType": "OrderPlaced" },
           "x": 40,
           "y": 40,
+          "arrivingTypes": [],
           "capabilities": [{ "kind": "publishes", "edge": "order-publish", "peer": "order-log" }]
         },
         {
@@ -29,6 +30,7 @@
           "props": { "ratePerSec": 3, "messageType": "RefundRequested" },
           "x": 360,
           "y": 40,
+          "arrivingTypes": [],
           "capabilities": [{ "kind": "publishes", "edge": "refund-publish", "peer": "refund-log" }]
         },
         {
@@ -39,6 +41,7 @@
           "props": { "partitions": 8 },
           "x": 40,
           "y": 200,
+          "arrivingTypes": ["OrderPlaced"],
           "capabilities": []
         },
         {
@@ -49,6 +52,7 @@
           "props": { "partitions": 8 },
           "x": 360,
           "y": 200,
+          "arrivingTypes": ["RefundRequested"],
           "capabilities": []
         },
         {
@@ -59,6 +63,7 @@
           "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 1, "concurrency": 4, "latencyMs": 1000, "jitter": 0, "failureRate": 0 },
           "x": 200,
           "y": 360,
+          "arrivingTypes": ["OrderPlaced", "RefundRequested"],
           "capabilities": [
             {
               "kind": "consumes",
@@ -128,6 +133,7 @@
           "props": { "latencyMs": 1 },
           "x": 200,
           "y": 520,
+          "arrivingTypes": ["OrderPlaced", "RefundRequested"],
           "capabilities": []
         }
       ],
@@ -138,7 +144,8 @@
           "to": "order-log",
           "label": "Order",
           "kind": "async",
-          "props": { "travelMs": 200 }
+          "props": { "travelMs": 200 },
+          "carriedTypes": ["OrderPlaced"]
         },
         {
           "id": "refund-publish",
@@ -146,7 +153,8 @@
           "to": "refund-log",
           "label": "Refund",
           "kind": "async",
-          "props": { "travelMs": 200 }
+          "props": { "travelMs": 200 },
+          "carriedTypes": ["RefundRequested"]
         },
         {
           "id": "read-orders",
@@ -154,7 +162,8 @@
           "to": "worker",
           "label": "order-posting",
           "kind": "async",
-          "props": { "travelMs": 200, "group": "order-posting" }
+          "props": { "travelMs": 200, "group": "order-posting" },
+          "carriedTypes": ["OrderPlaced"]
         },
         {
           "id": "read-refunds",
@@ -162,7 +171,8 @@
           "to": "worker",
           "label": "refund-posting",
           "kind": "async",
-          "props": { "travelMs": 200, "group": "refund-posting" }
+          "props": { "travelMs": 200, "group": "refund-posting" },
+          "carriedTypes": ["RefundRequested"]
         },
         {
           "id": "save",
@@ -170,9 +180,11 @@
           "to": "ledger",
           "label": "Record",
           "kind": "sync",
-          "props": { "travelMs": 200 }
+          "props": { "travelMs": 200 },
+          "carriedTypes": ["OrderPlaced", "RefundRequested"]
         }
       ],
+      "messageTypesComplete": true,
       "groups": [],
       "annotations": [],
       "simulations": [
@@ -286,6 +298,6 @@
   },
   "focus": {
     "isError": false,
-    "output": "Diagram \"Two inputs, one worker pool\" · direction TB · 2 nodes, 1 connections, 0 boundaries, 2 simulations\ndescription: \"Acme merges orders and refunds into one four-slot worker: two consumer policies share capacity, so six events a second build lag despite plentiful partitions.\"\nnodes:\n  \"orders\" \"generic.webhook\" (\"Webhook\") \"Acme orders\" / \"3 orders/s\" props={\"ratePerSec\":3,\"messageType\":\"OrderPlaced\"} capabilities=[{\"kind\":\"publishes\",\"edge\":\"order-publish\",\"peer\":\"order-log\"}] explanation=undefined\n  \"order-log\" \"kafka.topic\" (\"Kafka Topic\") \"Order events\" / \"8 partitions\" props={\"partitions\":8} capabilities=[] explanation=undefined\nconnections:\n  \"order-publish\" \"orders\" -> \"order-log\" async \"Order\"\nsimulation \"shared-slots\" \"Six events, four slots\": {\"kind\":\"constant\",\"ratePerSec\":3,\"durationMs\":6000} from \"orders\"; {\"kind\":\"constant\",\"ratePerSec\":3,\"durationMs\":6000} from \"refunds\"; timeline=[{\"atMs\":1500,\"action\":{\"do\":\"note\",\"text\":\"Properties shows two Consumes rows, but one 4/s pool. At 6/s total, waiting work grows by about 2/s.\",\"focus\":[\"worker\",\"order-log\",\"refund-log\"]}}]; expectations=[{\"id\":\"order-log-lag-at\",\"label\":\"order-log: lag > 0\",\"metric\":{\"node\":\"order-log\",\"field\":\"lag\"},\"op\":\">\",\"value\":0,\"when\":\"at\",\"atMs\":5000},{\"id\":\"refund-log-lag-at\",\"label\":\"refund-log: lag > 0\",\"metric\":{\"node\":\"refund-log\",\"field\":\"lag\"},\"op\":\">\",\"value\":0,\"when\":\"at\",\"atMs\":5000},{\"id\":\"ledger-processed-end\",\"label\":\"ledger: processed == 36\",\"metric\":{\"node\":\"ledger\",\"field\":\"processed\"},\"op\":\"==\",\"value\":36,\"when\":\"end\"}]\nsimulation \"measured-faster\" \"Measured faster work\": {\"kind\":\"constant\",\"ratePerSec\":3,\"durationMs\":6000} from \"orders\"; {\"kind\":\"constant\",\"ratePerSec\":3,\"durationMs\":6000} from \"refunds\"; timeline=[]; expectations=[{\"id\":\"ledger-processed-end\",\"label\":\"ledger: processed == 36\",\"metric\":{\"node\":\"ledger\",\"field\":\"processed\"},\"op\":\"==\",\"value\":36,\"when\":\"end\"},{\"id\":\"order-log-lag-end\",\"label\":\"order-log: lag == 0\",\"metric\":{\"node\":\"order-log\",\"field\":\"lag\"},\"op\":\"==\",\"value\":0,\"when\":\"end\"},{\"id\":\"refund-log-lag-end\",\"label\":\"refund-log: lag == 0\",\"metric\":{\"node\":\"refund-log\",\"field\":\"lag\"},\"op\":\"==\",\"value\":0,\"when\":\"end\"}]"
+    "output": "Diagram \"Two inputs, one worker pool\" · direction TB · 2 nodes, 1 connections, 0 boundaries, 2 simulations\ndescription: \"Acme merges orders and refunds into one four-slot worker: two consumer policies share capacity, so six events a second build lag despite plentiful partitions.\"\nnodes:\n  \"orders\" \"generic.webhook\" (\"Webhook\") \"Acme orders\" / \"3 orders/s\" props={\"ratePerSec\":3,\"messageType\":\"OrderPlaced\"} arrivingTypes=[] capabilities=[{\"kind\":\"publishes\",\"edge\":\"order-publish\",\"peer\":\"order-log\"}] explanation=undefined\n  \"order-log\" \"kafka.topic\" (\"Kafka Topic\") \"Order events\" / \"8 partitions\" props={\"partitions\":8} arrivingTypes=[\"OrderPlaced\"] capabilities=[] explanation=undefined\nconnections:\n  \"order-publish\" \"orders\" -> \"order-log\" async \"Order\" carriedTypes=[\"OrderPlaced\"]\nsimulation \"shared-slots\" \"Six events, four slots\": {\"kind\":\"constant\",\"ratePerSec\":3,\"durationMs\":6000} from \"orders\"; {\"kind\":\"constant\",\"ratePerSec\":3,\"durationMs\":6000} from \"refunds\"; timeline=[{\"atMs\":1500,\"action\":{\"do\":\"note\",\"text\":\"Properties shows two Consumes rows, but one 4/s pool. At 6/s total, waiting work grows by about 2/s.\",\"focus\":[\"worker\",\"order-log\",\"refund-log\"]}}]; expectations=[{\"id\":\"order-log-lag-at\",\"label\":\"order-log: lag > 0\",\"metric\":{\"node\":\"order-log\",\"field\":\"lag\"},\"op\":\">\",\"value\":0,\"when\":\"at\",\"atMs\":5000},{\"id\":\"refund-log-lag-at\",\"label\":\"refund-log: lag > 0\",\"metric\":{\"node\":\"refund-log\",\"field\":\"lag\"},\"op\":\">\",\"value\":0,\"when\":\"at\",\"atMs\":5000},{\"id\":\"ledger-processed-end\",\"label\":\"ledger: processed == 36\",\"metric\":{\"node\":\"ledger\",\"field\":\"processed\"},\"op\":\"==\",\"value\":36,\"when\":\"end\"}]\nsimulation \"measured-faster\" \"Measured faster work\": {\"kind\":\"constant\",\"ratePerSec\":3,\"durationMs\":6000} from \"orders\"; {\"kind\":\"constant\",\"ratePerSec\":3,\"durationMs\":6000} from \"refunds\"; timeline=[]; expectations=[{\"id\":\"ledger-processed-end\",\"label\":\"ledger: processed == 36\",\"metric\":{\"node\":\"ledger\",\"field\":\"processed\"},\"op\":\"==\",\"value\":36,\"when\":\"end\"},{\"id\":\"order-log-lag-end\",\"label\":\"order-log: lag == 0\",\"metric\":{\"node\":\"order-log\",\"field\":\"lag\"},\"op\":\"==\",\"value\":0,\"when\":\"end\"},{\"id\":\"refund-log-lag-end\",\"label\":\"refund-log: lag == 0\",\"metric\":{\"node\":\"refund-log\",\"field\":\"lag\"},\"op\":\"==\",\"value\":0,\"when\":\"end\"}]"
   }
 }

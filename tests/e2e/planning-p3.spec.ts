@@ -128,20 +128,19 @@ test("P3: admission undo groups slow typing by field", async ({ page, consoleErr
   expectNoErrors(consoleErrors);
 });
 for (const stencil of ["aws.lambda", "openai"])
-  test(`P3: ${stencil} keeps Emits editable under Advanced`, async ({ page, consoleErrors }) => {
+  test(`P3: ${stencil} edits Emits rows in Simulation`, async ({ page, consoleErrors }) => {
     await seed(page, stencil, false, "en", false, true);
     await page.getByTestId("node-api").click();
-    await page.getByTestId("admission-advanced-toggle").click();
-    const emits = page.getByTestId("inspector-field-emits");
-    await expect(emits).toHaveValue("* → Processed");
-    await emits.fill("Renamed");
-    await emits.press("Tab");
-    await expect(emits).toHaveValue("Renamed");
-    await emits.fill("");
-    await emits.press("Tab");
-    await expect(emits).toHaveValue("");
-    await page.keyboard.press("ControlOrMeta+z");
-    await expect(emits).toHaveValue("* → Processed");
+    await expect(page.getByTestId("inspector-emits-row-0")).toContainText("Processed");
+    await page.getByTestId("inspector-field-sends-0").click();
+    await page.getByTestId("context-menu-item-new").click();
+    await page.getByTestId("inspector-sends-0-new").fill("Renamed");
+    await page.getByTestId("inspector-sends-0-new").press("Enter");
+    await expect(page.getByTestId("inspector-emits-row-0")).toContainText("Renamed");
+    await page.getByTestId("inspector-emits-remove-0").click();
+    await expect(page.getByTestId("inspector-emits-row-0")).toHaveCount(0);
+    await page.getByTestId("undo-button").click();
+    await expect(page.getByTestId("inspector-emits-row-0")).toContainText("Renamed");
     expectNoErrors(consoleErrors);
   });
 test("P3: numeric keyboard drafts survive clearing and fractional entry", async ({ page, consoleErrors }) => {

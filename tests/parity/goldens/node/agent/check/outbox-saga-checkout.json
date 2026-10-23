@@ -13,10 +13,13 @@
           "fix": { "label": "Add a reader…", "needsChoice": "Pick what reads payments.commands.dlq, then add it and connect payments-dlq to it." }
         }
       ],
-      "summary": "0 warnings, 1 suggestion."
+      "summary": "0 warnings, 1 suggestion; 1 more message-loop finding not listed."
     }
   },
-  "warnings": { "isError": false, "output": { "findings": [], "summary": "0 warnings, 1 suggestion." } },
+  "warnings": {
+    "isError": false,
+    "output": { "findings": [], "summary": "0 warnings, 1 suggestion; 1 more message-loop finding not listed." }
+  },
   "oneRule": { "isError": false, "output": { "findings": [], "summary": "Nothing to check. 2 checks ran." } },
   "simulations": {
     "isError": false,
@@ -32,7 +35,7 @@
           "fix": { "label": "Add a reader…", "needsChoice": "Pick what reads payments.commands.dlq, then add it and connect payments-dlq to it." }
         }
       ],
-      "summary": "0 warnings, 1 suggestion.",
+      "summary": "0 warnings, 1 suggestion; 1 more message-loop finding not listed.",
       "simulations": "Played 2 saved simulations (at most 60 s each)."
     }
   }

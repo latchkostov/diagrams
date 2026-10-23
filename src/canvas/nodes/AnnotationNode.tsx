@@ -32,6 +32,7 @@ import { beginShapeResize, endShapeResize, shapeResizeModifier } from "../shapes
 import { useDiagram } from "../DiagramContext";
 import { SIDES, sidePosition } from "../edges/routing";
 import type { AnnotationFlowNode, FlowNode } from "../types";
+import { useConnectPort } from "../interaction/useConnectPort";
 
 /**
  * Text, notes, zones and shapes. Documentation only: no simulation role, no badges.
@@ -51,6 +52,7 @@ function AnnotationNodeImpl({
   positionAbsoluteY,
 }: NodeProps<AnnotationFlowNode>) {
   const { editing, setEditing, settleText, annotationCommands } = useDiagram();
+  const connectPort = useConnectPort(id);
   const { updateNode, deleteElements } = useReactFlow<FlowNode>();
   const kind = data.kind;
   const resolved = resolveAnnotationColor(data.color, kind);
@@ -209,7 +211,7 @@ function AnnotationNodeImpl({
               id={side}
               type="source"
               position={sidePosition[side]}
-              className="dn-handle"
+              className={`dn-handle${connectPort === side ? " is-connect-port" : ""}`}
               data-testid={`handle-${id}-${side}`}
               style={{ left: p.x, top: p.y, right: "auto", bottom: "auto", transform: "translate(-50%, -50%)" }}
             />

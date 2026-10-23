@@ -5,6 +5,7 @@ import { groupByTheme, type ExampleTheme } from "./themes";
 export const exampleFeatures = [
   { id: "vendorStencils", label: msg("examples.vendorStencils") },
   { id: "brandedClients", label: msg("examples.brandedClients") },
+  { id: "messageTypes", label: msg("examples.messageTypes") },
   { id: "resilience", label: msg("resilience.gallery") },
   { id: "requestsWait", label: msg("examples.requestsWait") },
   { id: "faultDrills", label: msg("examples.faultDrills") },

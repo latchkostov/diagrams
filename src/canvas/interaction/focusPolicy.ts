@@ -30,7 +30,9 @@ import type { FocusCommand, FocusDecision, FocusEvent, FocusMove, FocusState, Fo
  * |     |                                     |                                 | later unless input came first                          |
  * | I2  | inspector.field                     | a request already taken         | keep                                                   |
  * | I3  | inspector.toggled(panel, selection) |                                 | keep                                                   |
- * | I4  | inspector.abandoned (Esc in a       | a field request is pending      | keep; nothing pending (its held keys are dropped;      |
+ * | I4  | inspector.rule                      | a rule was removed              | focus its surviving neighbour after the commit         |
+ * | I5  | inspector.rule                      | its incoming type changed       | focus the same control of its new row after the commit |
+ * | I6  | inspector.abandoned (Esc in a       | a field request is pending      | keep; nothing pending (its held keys are dropped;      |
  * |     | pending rename)                     |                                 | focus stays on the canvas)                             |
  * | D1  | dialog.closed(checks)               |                                 | focus its opener now (else the canvas)                 |
  * | D2  | dialog.closed(livePanel)            |                                 | focus its opener now (else the Live bar's opener)      |
@@ -161,9 +163,14 @@ export function focusPolicy(state: FocusState, event: FocusEvent): FocusDecision
       return state.pending?.target.kind === "field" ? keep({ pending: null }) : keep();
     case "dialog.opened":
       return move({ target: { kind: "element", handle: event.first }, when: "now", select: "all" });
+    case "inspector.rule":
     case "node.details":
     case "dialog.tab":
-      return move({ target: { kind: "element", handle: event.target }, when: "now" });
+      // A rule's control exists only once its edit commits.
+      return move({
+        target: { kind: "element", handle: event.target },
+        when: event.type === "inspector.rule" ? "commit" : "now",
+      });
     case "dialog.closed": {
       const back: FocusTarget =
         event.dialog === "livePanel"

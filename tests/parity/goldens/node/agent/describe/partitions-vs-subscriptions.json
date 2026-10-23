@@ -1,7 +1,7 @@
 {
   "text": {
     "isError": false,
-    "output": "Diagram \"Partitions versus subscriptions\" · direction TB · 6 nodes, 5 connections, 0 boundaries, 2 simulations\ndescription: \"Northwind publishes the same events to a three-partition Kafka topic and SNS: five Kafka readers sit idle while both subscriptions use all eight workers.\"\nnodes:\n  \"publisher\" \"generic.webhook\" (\"Webhook\") \"Northwind events\" / \"6 events/s to both brokers\" props={\"ratePerSec\":6,\"messageType\":\"OrderPlaced\"} capabilities=[{\"kind\":\"publishes\",\"edge\":\"publish-log\",\"peer\":\"log\"},{\"kind\":\"publishes\",\"edge\":\"publish-fanout\",\"peer\":\"fanout\"}] explanation=undefined\n  \"log\" \"kafka.topic\" (\"Kafka Topic\") \"Order log\" / \"3 partitions\" props={\"partitions\":3} capabilities=[] explanation=undefined\n  \"fanout\" \"aws.sns\" (\"Amazon SNS\") \"Order notifications\" / \"Independent subscriptions\" props={} capabilities=[] explanation=undefined\n  \"log-readers\" \"service.java\" (\"Java Service\") \"Kafka readers\" / \"8 replicas · only 3 assigned\" props={\"preset\":\"processor-lesson\",\"presetRevision\":\"1\",\"replicas\":8,\"concurrency\":1,\"latencyMs\":1000,\"jitter\":0,\"failureRate\":0} capabilities=[{\"kind\":\"consumes\",\"edge\":\"read-log\",\"peer\":\"log\",\"group\":\"orders\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0}] explanation={\"id\":\"log-readers\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"capacity\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":3,\"offered\":6,\"replicas\":8,\"baseReplicas\":8,\"omittedContributors\":0,\"activeReplicas\":3,\"assignments\":[{\"broker\":\"log\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":3}],\"slots\":1,\"seconds\":1,\"utilization\":2,\"growth\":3,\"contributors\":[{\"edge\":\"read-log\",\"node\":\"log\",\"label\":\"Order log\",\"rate\":6}],\"target\":0.5,\"minimumReplicas\":8,\"targetReplicas\":12,\"changes\":null,\"converged\":true}\n  \"receipts\" \"service.node\" (\"Node.js Service\") \"Receipt subscription\" / \"8 replicas · all available\" props={\"preset\":\"processor-lesson\",\"presetRevision\":\"1\",\"replicas\":8,\"concurrency\":1,\"latencyMs\":1000,\"jitter\":0,\"failureRate\":0} capabilities=[{\"kind\":\"consumes\",\"edge\":\"read-receipts\",\"peer\":\"fanout\",\"group\":\"receipts\",\"broker\":{\"partitioned\":false,\"assignment\":\"subscriptions\",\"group\":\"subscription\",\"ingestUnit\":\"messages/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0}] explanation={\"id\":\"receipts\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":8,\"offered\":6,\"replicas\":8,\"baseReplicas\":8,\"omittedContributors\":0,\"activeReplicas\":8,\"assignments\":[],\"slots\":1,\"seconds\":1,\"utilization\":0.75,\"growth\":0,\"contributors\":[{\"edge\":\"read-receipts\",\"node\":\"fanout\",\"label\":\"Order notifications\",\"rate\":6}],\"target\":0.5,\"minimumReplicas\":8,\"targetReplicas\":12,\"changes\":null,\"converged\":true}\n  \"audit\" \"service.go\" (\"Go Service\") \"Audit subscription\" / \"8 replicas · independent copy\" props={\"preset\":\"processor-lesson\",\"presetRevision\":\"1\",\"replicas\":8,\"concurrency\":1,\"latencyMs\":1000,\"jitter\":0,\"failureRate\":0} capabilities=[{\"kind\":\"consumes\",\"edge\":\"read-audit\",\"peer\":\"fanout\",\"group\":\"audit\",\"broker\":{\"partitioned\":false,\"assignment\":\"subscriptions\",\"group\":\"subscription\",\"ingestUnit\":\"messages/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0}] explanation={\"id\":\"audit\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":8,\"offered\":6,\"replicas\":8,\"baseReplicas\":8,\"omittedContributors\":0,\"activeReplicas\":8,\"assignments\":[],\"slots\":1,\"seconds\":1,\"utilization\":0.75,\"growth\":0,\"contributors\":[{\"edge\":\"read-audit\",\"node\":\"fanout\",\"label\":\"Order notifications\",\"rate\":6}],\"target\":0.5,\"minimumReplicas\":8,\"targetReplicas\":12,\"changes\":null,\"converged\":true}\nconnections:\n  \"publish-log\" \"publisher\" -> \"log\" async \"Append\"\n  \"publish-fanout\" \"publisher\" -> \"fanout\" async \"Publish\"\n  \"read-log\" \"log\" -> \"log-readers\" async \"orders group\"\n  \"read-receipts\" \"fanout\" -> \"receipts\" async \"receipts\"\n  \"read-audit\" \"fanout\" -> \"audit\" async \"audit\"\nsimulation \"compare\" \"Same events, different assignment\": {\"kind\":\"constant\",\"ratePerSec\":6,\"durationMs\":6000} from \"publisher\"; timeline=[{\"atMs\":1000,\"action\":{\"do\":\"note\",\"text\":\"Kafka assigns three of eight replicas. Each SNS subscription can use all eight; subscriptions receive independent copies.\",\"focus\":[\"log-readers\",\"receipts\",\"audit\"]}}]; expectations=[{\"id\":\"log-lag-at\",\"label\":\"log: lag > 0\",\"metric\":{\"node\":\"log\",\"field\":\"lag\"},\"op\":\">\",\"value\":0,\"when\":\"at\",\"atMs\":5000},{\"id\":\"log-readers-processed-end\",\"label\":\"log-readers: processed == 36\",\"metric\":{\"node\":\"log-readers\",\"field\":\"processed\"},\"op\":\"==\",\"value\":36,\"when\":\"end\"},{\"id\":\"receipts-processed-end\",\"label\":\"receipts: processed == 36\",\"metric\":{\"node\":\"receipts\",\"field\":\"processed\"},\"op\":\"==\",\"value\":36,\"when\":\"end\"},{\"id\":\"audit-processed-end\",\"label\":\"audit: processed == 36\",\"metric\":{\"node\":\"audit\",\"field\":\"processed\"},\"op\":\"==\",\"value\":36,\"when\":\"end\"}]\nsimulation \"more-partitions\" \"Give every reader a partition\": {\"kind\":\"constant\",\"ratePerSec\":6,\"durationMs\":6000} from \"publisher\"; timeline=[{\"atMs\":1000,\"action\":{\"do\":\"note\",\"text\":\"Only the Kafka partition count changed. SNS has no partition setting.\",\"focus\":[\"log\",\"fanout\"]}}]; expectations=[{\"id\":\"log-lag-end\",\"label\":\"log: lag == 0\",\"metric\":{\"node\":\"log\",\"field\":\"lag\"},\"op\":\"==\",\"value\":0,\"when\":\"end\"},{\"id\":\"log-readers-processed-end\",\"label\":\"log-readers: processed == 36\",\"metric\":{\"node\":\"log-readers\",\"field\":\"processed\"},\"op\":\"==\",\"value\":36,\"when\":\"end\"}]"
+    "output": "Diagram \"Partitions versus subscriptions\" · direction TB · 6 nodes, 5 connections, 0 boundaries, 2 simulations\ndescription: \"Northwind publishes the same events to a three-partition Kafka topic and SNS: five Kafka readers sit idle while both subscriptions use all eight workers.\"\nnodes:\n  \"publisher\" \"generic.webhook\" (\"Webhook\") \"Northwind events\" / \"6 events/s to both brokers\" props={\"ratePerSec\":6,\"messageType\":\"OrderPlaced\"} arrivingTypes=[] capabilities=[{\"kind\":\"publishes\",\"edge\":\"publish-log\",\"peer\":\"log\"},{\"kind\":\"publishes\",\"edge\":\"publish-fanout\",\"peer\":\"fanout\"}] explanation=undefined\n  \"log\" \"kafka.topic\" (\"Kafka Topic\") \"Order log\" / \"3 partitions\" props={\"partitions\":3} arrivingTypes=[\"OrderPlaced\"] capabilities=[] explanation=undefined\n  \"fanout\" \"aws.sns\" (\"Amazon SNS\") \"Order notifications\" / \"Independent subscriptions\" props={} arrivingTypes=[\"OrderPlaced\"] capabilities=[] explanation=undefined\n  \"log-readers\" \"service.java\" (\"Java Service\") \"Kafka readers\" / \"8 replicas · only 3 assigned\" props={\"preset\":\"processor-lesson\",\"presetRevision\":\"1\",\"replicas\":8,\"concurrency\":1,\"latencyMs\":1000,\"jitter\":0,\"failureRate\":0} arrivingTypes=[\"OrderPlaced\"] capabilities=[{\"kind\":\"consumes\",\"edge\":\"read-log\",\"peer\":\"log\",\"group\":\"orders\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0}] explanation={\"id\":\"log-readers\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"capacity\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":3,\"offered\":6,\"replicas\":8,\"baseReplicas\":8,\"omittedContributors\":0,\"activeReplicas\":3,\"assignments\":[{\"broker\":\"log\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":3}],\"slots\":1,\"seconds\":1,\"utilization\":2,\"growth\":3,\"contributors\":[{\"edge\":\"read-log\",\"node\":\"log\",\"label\":\"Order log\",\"rate\":6}],\"target\":0.5,\"minimumReplicas\":8,\"targetReplicas\":12,\"changes\":null,\"converged\":true}\n  \"receipts\" \"service.node\" (\"Node.js Service\") \"Receipt subscription\" / \"8 replicas · all available\" props={\"preset\":\"processor-lesson\",\"presetRevision\":\"1\",\"replicas\":8,\"concurrency\":1,\"latencyMs\":1000,\"jitter\":0,\"failureRate\":0} arrivingTypes=[\"OrderPlaced\"] capabilities=[{\"kind\":\"consumes\",\"edge\":\"read-receipts\",\"peer\":\"fanout\",\"group\":\"receipts\",\"broker\":{\"partitioned\":false,\"assignment\":\"subscriptions\",\"group\":\"subscription\",\"ingestUnit\":\"messages/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0}] explanation={\"id\":\"receipts\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":8,\"offered\":6,\"replicas\":8,\"baseReplicas\":8,\"omittedContributors\":0,\"activeReplicas\":8,\"assignments\":[],\"slots\":1,\"seconds\":1,\"utilization\":0.75,\"growth\":0,\"contributors\":[{\"edge\":\"read-receipts\",\"node\":\"fanout\",\"label\":\"Order notifications\",\"rate\":6}],\"target\":0.5,\"minimumReplicas\":8,\"targetReplicas\":12,\"changes\":null,\"converged\":true}\n  \"audit\" \"service.go\" (\"Go Service\") \"Audit subscription\" / \"8 replicas · independent copy\" props={\"preset\":\"processor-lesson\",\"presetRevision\":\"1\",\"replicas\":8,\"concurrency\":1,\"latencyMs\":1000,\"jitter\":0,\"failureRate\":0} arrivingTypes=[\"OrderPlaced\"] capabilities=[{\"kind\":\"consumes\",\"edge\":\"read-audit\",\"peer\":\"fanout\",\"group\":\"audit\",\"broker\":{\"partitioned\":false,\"assignment\":\"subscriptions\",\"group\":\"subscription\",\"ingestUnit\":\"messages/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0}] explanation={\"id\":\"audit\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":8,\"offered\":6,\"replicas\":8,\"baseReplicas\":8,\"omittedContributors\":0,\"activeReplicas\":8,\"assignments\":[],\"slots\":1,\"seconds\":1,\"utilization\":0.75,\"growth\":0,\"contributors\":[{\"edge\":\"read-audit\",\"node\":\"fanout\",\"label\":\"Order notifications\",\"rate\":6}],\"target\":0.5,\"minimumReplicas\":8,\"targetReplicas\":12,\"changes\":null,\"converged\":true}\nconnections:\n  \"publish-log\" \"publisher\" -> \"log\" async \"Append\" carriedTypes=[\"OrderPlaced\"]\n  \"publish-fanout\" \"publisher\" -> \"fanout\" async \"Publish\" carriedTypes=[\"OrderPlaced\"]\n  \"read-log\" \"log\" -> \"log-readers\" async \"orders group\" carriedTypes=[\"OrderPlaced\"]\n  \"read-receipts\" \"fanout\" -> \"receipts\" async \"receipts\" carriedTypes=[\"OrderPlaced\"]\n  \"read-audit\" \"fanout\" -> \"audit\" async \"audit\" carriedTypes=[\"OrderPlaced\"]\nsimulation \"compare\" \"Same events, different assignment\": {\"kind\":\"constant\",\"ratePerSec\":6,\"durationMs\":6000} from \"publisher\"; timeline=[{\"atMs\":1000,\"action\":{\"do\":\"note\",\"text\":\"Kafka assigns three of eight replicas. Each SNS subscription can use all eight; subscriptions receive independent copies.\",\"focus\":[\"log-readers\",\"receipts\",\"audit\"]}}]; expectations=[{\"id\":\"log-lag-at\",\"label\":\"log: lag > 0\",\"metric\":{\"node\":\"log\",\"field\":\"lag\"},\"op\":\">\",\"value\":0,\"when\":\"at\",\"atMs\":5000},{\"id\":\"log-readers-processed-end\",\"label\":\"log-readers: processed == 36\",\"metric\":{\"node\":\"log-readers\",\"field\":\"processed\"},\"op\":\"==\",\"value\":36,\"when\":\"end\"},{\"id\":\"receipts-processed-end\",\"label\":\"receipts: processed == 36\",\"metric\":{\"node\":\"receipts\",\"field\":\"processed\"},\"op\":\"==\",\"value\":36,\"when\":\"end\"},{\"id\":\"audit-processed-end\",\"label\":\"audit: processed == 36\",\"metric\":{\"node\":\"audit\",\"field\":\"processed\"},\"op\":\"==\",\"value\":36,\"when\":\"end\"}]\nsimulation \"more-partitions\" \"Give every reader a partition\": {\"kind\":\"constant\",\"ratePerSec\":6,\"durationMs\":6000} from \"publisher\"; timeline=[{\"atMs\":1000,\"action\":{\"do\":\"note\",\"text\":\"Only the Kafka partition count changed. SNS has no partition setting.\",\"focus\":[\"log\",\"fanout\"]}}]; expectations=[{\"id\":\"log-lag-end\",\"label\":\"log: lag == 0\",\"metric\":{\"node\":\"log\",\"field\":\"lag\"},\"op\":\"==\",\"value\":0,\"when\":\"end\"},{\"id\":\"log-readers-processed-end\",\"label\":\"log-readers: processed == 36\",\"metric\":{\"node\":\"log-readers\",\"field\":\"processed\"},\"op\":\"==\",\"value\":36,\"when\":\"end\"}]"
   },
   "json": {
     "isError": false,
@@ -19,6 +19,7 @@
           "props": { "ratePerSec": 6, "messageType": "OrderPlaced" },
           "x": 360,
           "y": 40,
+          "arrivingTypes": [],
           "capabilities": [
             { "kind": "publishes", "edge": "publish-log", "peer": "log" },
             { "kind": "publishes", "edge": "publish-fanout", "peer": "fanout" }
@@ -32,6 +33,7 @@
           "props": { "partitions": 3 },
           "x": 200,
           "y": 200,
+          "arrivingTypes": ["OrderPlaced"],
           "capabilities": []
         },
         {
@@ -42,6 +44,7 @@
           "props": {},
           "x": 520,
           "y": 200,
+          "arrivingTypes": ["OrderPlaced"],
           "capabilities": []
         },
         {
@@ -52,6 +55,7 @@
           "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 8, "concurrency": 1, "latencyMs": 1000, "jitter": 0, "failureRate": 0 },
           "x": 40,
           "y": 360,
+          "arrivingTypes": ["OrderPlaced"],
           "capabilities": [
             {
               "kind": "consumes",
@@ -103,6 +107,7 @@
           "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 8, "concurrency": 1, "latencyMs": 1000, "jitter": 0, "failureRate": 0 },
           "x": 360,
           "y": 360,
+          "arrivingTypes": ["OrderPlaced"],
           "capabilities": [
             {
               "kind": "consumes",
@@ -148,6 +153,7 @@
           "props": { "preset": "processor-lesson", "presetRevision": "1", "replicas": 8, "concurrency": 1, "latencyMs": 1000, "jitter": 0, "failureRate": 0 },
           "x": 680,
           "y": 360,
+          "arrivingTypes": ["OrderPlaced"],
           "capabilities": [
             {
               "kind": "consumes",
@@ -193,7 +199,8 @@
           "to": "log",
           "label": "Append",
           "kind": "async",
-          "props": { "travelMs": 200 }
+          "props": { "travelMs": 200 },
+          "carriedTypes": ["OrderPlaced"]
         },
         {
           "id": "publish-fanout",
@@ -201,7 +208,8 @@
           "to": "fanout",
           "label": "Publish",
           "kind": "async",
-          "props": { "travelMs": 200 }
+          "props": { "travelMs": 200 },
+          "carriedTypes": ["OrderPlaced"]
         },
         {
           "id": "read-log",
@@ -209,7 +217,8 @@
           "to": "log-readers",
           "label": "orders group",
           "kind": "async",
-          "props": { "travelMs": 200, "group": "orders" }
+          "props": { "travelMs": 200, "group": "orders" },
+          "carriedTypes": ["OrderPlaced"]
         },
         {
           "id": "read-receipts",
@@ -217,7 +226,8 @@
           "to": "receipts",
           "label": "receipts",
           "kind": "async",
-          "props": { "travelMs": 200, "group": "receipts" }
+          "props": { "travelMs": 200, "group": "receipts" },
+          "carriedTypes": ["OrderPlaced"]
         },
         {
           "id": "read-audit",
@@ -225,9 +235,11 @@
           "to": "audit",
           "label": "audit",
           "kind": "async",
-          "props": { "travelMs": 200, "group": "audit" }
+          "props": { "travelMs": 200, "group": "audit" },
+          "carriedTypes": ["OrderPlaced"]
         }
       ],
+      "messageTypesComplete": true,
       "groups": [],
       "annotations": [],
       "simulations": [
@@ -333,6 +345,6 @@
   },
   "focus": {
     "isError": false,
-    "output": "Diagram \"Partitions versus subscriptions\" · direction TB · 3 nodes, 2 connections, 0 boundaries, 2 simulations\ndescription: \"Northwind publishes the same events to a three-partition Kafka topic and SNS: five Kafka readers sit idle while both subscriptions use all eight workers.\"\nnodes:\n  \"publisher\" \"generic.webhook\" (\"Webhook\") \"Northwind events\" / \"6 events/s to both brokers\" props={\"ratePerSec\":6,\"messageType\":\"OrderPlaced\"} capabilities=[{\"kind\":\"publishes\",\"edge\":\"publish-log\",\"peer\":\"log\"},{\"kind\":\"publishes\",\"edge\":\"publish-fanout\",\"peer\":\"fanout\"}] explanation=undefined\n  \"log\" \"kafka.topic\" (\"Kafka Topic\") \"Order log\" / \"3 partitions\" props={\"partitions\":3} capabilities=[] explanation=undefined\n  \"fanout\" \"aws.sns\" (\"Amazon SNS\") \"Order notifications\" / \"Independent subscriptions\" props={} capabilities=[] explanation=undefined\nconnections:\n  \"publish-log\" \"publisher\" -> \"log\" async \"Append\"\n  \"publish-fanout\" \"publisher\" -> \"fanout\" async \"Publish\"\n… 2 lines omitted"
+    "output": "Diagram \"Partitions versus subscriptions\" · direction TB · 3 nodes, 2 connections, 0 boundaries, 2 simulations\ndescription: \"Northwind publishes the same events to a three-partition Kafka topic and SNS: five Kafka readers sit idle while both subscriptions use all eight workers.\"\nnodes:\n  \"publisher\" \"generic.webhook\" (\"Webhook\") \"Northwind events\" / \"6 events/s to both brokers\" props={\"ratePerSec\":6,\"messageType\":\"OrderPlaced\"} arrivingTypes=[] capabilities=[{\"kind\":\"publishes\",\"edge\":\"publish-log\",\"peer\":\"log\"},{\"kind\":\"publishes\",\"edge\":\"publish-fanout\",\"peer\":\"fanout\"}] explanation=undefined\n  \"log\" \"kafka.topic\" (\"Kafka Topic\") \"Order log\" / \"3 partitions\" props={\"partitions\":3} arrivingTypes=[\"OrderPlaced\"] capabilities=[] explanation=undefined\n  \"fanout\" \"aws.sns\" (\"Amazon SNS\") \"Order notifications\" / \"Independent subscriptions\" props={} arrivingTypes=[\"OrderPlaced\"] capabilities=[] explanation=undefined\nconnections:\n  \"publish-log\" \"publisher\" -> \"log\" async \"Append\" carriedTypes=[\"OrderPlaced\"]\n  \"publish-fanout\" \"publisher\" -> \"fanout\" async \"Publish\" carriedTypes=[\"OrderPlaced\"]\n… 2 lines omitted"
   }
 }

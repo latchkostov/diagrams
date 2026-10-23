@@ -1,7 +1,7 @@
 {
   "text": {
     "isError": false,
-    "output": "Diagram \"Overlapping layers\" · direction LR · 1 nodes, 0 connections, 0 boundaries, 0 simulations\nnodes:\n  \"service\" \"service.go\" (\"Go Service\") \"Service\" capabilities=[] explanation={\"id\":\"service\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":16,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.25,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\nconnections:\nnote \"note\" \"Overlapping note\""
+    "output": "Diagram \"Overlapping layers\" · direction LR · 1 nodes, 0 connections, 0 boundaries, 0 simulations\nnodes:\n  \"service\" \"service.go\" (\"Go Service\") \"Service\" arrivingTypes=[] capabilities=[] explanation={\"id\":\"service\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":16,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.25,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\nconnections:\nnote \"note\" \"Overlapping note\""
   },
   "json": {
     "isError": false,
@@ -15,6 +15,7 @@
           "label": "Service",
           "x": 100,
           "y": 100,
+          "arrivingTypes": [],
           "capabilities": [],
           "explanation": {
             "id": "service",
@@ -44,6 +45,7 @@
         }
       ],
       "edges": [],
+      "messageTypesComplete": true,
       "groups": [],
       "annotations": [
         { "id": "note", "kind": "note", "text": "Overlapping note", "x": 100, "y": 100, "width": 220, "height": 120 }
@@ -54,6 +56,6 @@
   },
   "focus": {
     "isError": false,
-    "output": "Diagram \"Overlapping layers\" · direction LR · 1 nodes, 0 connections, 0 boundaries, 0 simulations\nnodes:\n  \"service\" \"service.go\" (\"Go Service\") \"Service\" capabilities=[] explanation={\"id\":\"service\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":16,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.25,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\nconnections:"
+    "output": "Diagram \"Overlapping layers\" · direction LR · 1 nodes, 0 connections, 0 boundaries, 0 simulations\nnodes:\n  \"service\" \"service.go\" (\"Go Service\") \"Service\" arrivingTypes=[] capabilities=[] explanation={\"id\":\"service\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":16,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.25,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\nconnections:"
   }
 }

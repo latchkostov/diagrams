@@ -62,6 +62,8 @@ const FORBIDDEN: [string, RegExp][] = [
   // Architecture checks are for editing: the engine, the Checks card and the checks worker never ship in a file.
   ["the architecture checks", /[/\\]src[/\\]checks[/\\]/],
   ["the checks markers", /[/\\]src[/\\]canvas[/\\]checks[/\\]ChecksMarkers\.tsx$/],
+  // Message-type analysis serves the inspector, Checks and the app's edge reader; a file carries none of them.
+  ["the message-type analysis", /[/\\]src[/\\](model[/\\]messageTypes|canvas[/\\]edges[/\\]carriedTypes)\.ts$/],
 ];
 
 /**
@@ -80,11 +82,42 @@ export const EDITOR_ONLY: { name: string; path: string; stub: (root: string) => 
         resolve(root, "src/lib/canvasBridge.ts").replaceAll("\\", "/"),
       )};`,
   },
+  // Carried types on hovered and focused flow edges: the app shows them; a file stays within the skill's download
+  // budget (src/ai/skill/skill.test.ts) without the message-type analysis they need.
+  {
+    name: "the carried-types reader",
+    path: "/src/canvas/edges/EdgeMessages.tsx",
+    stub: () => "export const EdgeMessages = () => null;",
+  },
   // A read-only canvas never moves an edge's end: no reconnect handles, so none of their pointer gesture either.
   {
     name: "the reconnect handles",
     path: "/src/canvas/edges/EdgeEnds.tsx",
     stub: () => "export const EdgeEnds = () => null;",
+  },
+  // Nor does it draw connections: no connection gesture, snap radius or dot resolver (connectDots.ts and its lazy
+  // connectTarget.ts). Its annotation lookup only serves the stencil rail's drops, and the rail is stubbed too.
+  {
+    name: "the connection gesture",
+    path: "/src/canvas/placement/useConnectionPlacement.ts",
+    stub: () =>
+      "const none = () => {};\nexport const useConnectionPlacement = () => [() => undefined, none, none, none, none, none];",
+  },
+  {
+    name: "the connection snap radius",
+    path: "/src/canvas/interaction/ConnectionRadius.tsx",
+    stub: () => "export const ConnectionRadius = () => null;",
+  },
+  {
+    name: "the connection dot resolver",
+    path: "/src/canvas/interaction/connectDots.ts",
+    stub: () =>
+      [
+        "export const requestDots = () => {};",
+        "export const onDots = () => () => {};",
+        'export const connectionAt = () => ({ target: { kind: "outside" }, at: { x: 0, y: 0 } });',
+        "export const connectionMarks = () => ({ show() {}, clear() {} });",
+      ].join("\n"),
   },
   { name: "the start card", path: "/src/canvas/StartCard.tsx", stub: () => "export const StartCard = () => null;" },
   {

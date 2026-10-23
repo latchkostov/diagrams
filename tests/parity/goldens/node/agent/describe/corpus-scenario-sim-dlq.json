@@ -1,7 +1,7 @@
 {
   "text": {
     "isError": false,
-    "output": "Diagram \"Retries and dead-lettering\" · direction LR · 4 nodes, 3 connections, 0 boundaries, 0 simulations\ndescription: \"maxDeliveryCount 3; the DLQ edge is inferred from the target's label.\"\nnodes:\n  \"api\" \"service.dotnet\" (\".NET Service\") \"Orders API\" capabilities=[{\"kind\":\"publishes\",\"edge\":\"api-queue\",\"peer\":\"queue\"}] explanation={\"id\":\"api\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":16,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.25,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"queue\" \"azure.service-bus.queue\" (\"Service Bus Queue\") \"orders\" / \"orders\" props={\"maxDeliveryCount\":3} capabilities=[] explanation=undefined\n  \"worker\" \"azure.functions\" (\"Azure Functions\") \"Fulfilment\" props={\"failureRate\":1,\"latencyMs\":200} capabilities=[{\"kind\":\"consumes\",\"edge\":\"queue-worker\",\"peer\":\"queue\",\"retry\":\"requeue\",\"retryBackoffMs\":0}] explanation={\"id\":\"worker\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":20,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.2,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"dlq\" \"azure.service-bus.queue\" (\"Service Bus Queue\") \"Dead-letter queue\" / \"orders/$deadletterqueue\" capabilities=[] explanation={\"id\":\"dlq\",\"role\":\"queue\",\"status\":\"up\",\"reason\":\"no-reader\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":0,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":null,\"seconds\":0,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"changes\":null,\"addConsumer\":\"dlq\",\"fixId\":\"no-reader:dlq\",\"converged\":true}\nconnections:\n  \"api-queue\" \"api\" -> \"queue\" async\n  \"queue-worker\" \"queue\" -> \"worker\" async\n  \"queue-dlq\" \"queue\" -> \"dlq\" async"
+    "output": "Diagram \"Retries and dead-lettering\" · direction LR · 4 nodes, 3 connections, 0 boundaries, 0 simulations\ndescription: \"maxDeliveryCount 3; the DLQ edge is inferred from the target's label.\"\nnodes:\n  \"api\" \"service.dotnet\" (\".NET Service\") \"Orders API\" arrivingTypes=[] capabilities=[{\"kind\":\"publishes\",\"edge\":\"api-queue\",\"peer\":\"queue\"}] explanation={\"id\":\"api\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":16,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.25,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"queue\" \"azure.service-bus.queue\" (\"Service Bus Queue\") \"orders\" / \"orders\" props={\"maxDeliveryCount\":3} arrivingTypes=[] capabilities=[] explanation=undefined\n  \"worker\" \"azure.functions\" (\"Azure Functions\") \"Fulfilment\" props={\"failureRate\":1,\"latencyMs\":200} arrivingTypes=[] capabilities=[{\"kind\":\"consumes\",\"edge\":\"queue-worker\",\"peer\":\"queue\",\"retry\":\"requeue\",\"retryBackoffMs\":0}] explanation={\"id\":\"worker\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":20,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.2,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"dlq\" \"azure.service-bus.queue\" (\"Service Bus Queue\") \"Dead-letter queue\" / \"orders/$deadletterqueue\" arrivingTypes=[] capabilities=[] explanation={\"id\":\"dlq\",\"role\":\"queue\",\"status\":\"up\",\"reason\":\"no-reader\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":0,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":null,\"seconds\":0,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"changes\":null,\"addConsumer\":\"dlq\",\"fixId\":\"no-reader:dlq\",\"converged\":true}\nconnections:\n  \"api-queue\" \"api\" -> \"queue\" async carriedTypes=[]\n  \"queue-worker\" \"queue\" -> \"worker\" async carriedTypes=[]\n  \"queue-dlq\" \"queue\" -> \"dlq\" async carriedTypes=[]"
   },
   "json": {
     "isError": false,
@@ -16,6 +16,7 @@
           "label": "Orders API",
           "x": 40,
           "y": 160,
+          "arrivingTypes": [],
           "capabilities": [{ "kind": "publishes", "edge": "api-queue", "peer": "queue" }],
           "explanation": {
             "id": "api",
@@ -51,6 +52,7 @@
           "y": 160,
           "sublabel": "orders",
           "props": { "maxDeliveryCount": 3 },
+          "arrivingTypes": [],
           "capabilities": []
         },
         {
@@ -60,6 +62,7 @@
           "x": 760,
           "y": 40,
           "props": { "failureRate": 1, "latencyMs": 200 },
+          "arrivingTypes": [],
           "capabilities": [
             { "kind": "consumes", "edge": "queue-worker", "peer": "queue", "retry": "requeue", "retryBackoffMs": 0 }
           ],
@@ -96,6 +99,7 @@
           "x": 760,
           "y": 280,
           "sublabel": "orders/$deadletterqueue",
+          "arrivingTypes": [],
           "capabilities": [],
           "explanation": {
             "id": "dlq",
@@ -125,10 +129,18 @@
         }
       ],
       "edges": [
-        { "id": "api-queue", "from": "api", "to": "queue", "kind": "async" },
-        { "id": "queue-worker", "from": "queue", "to": "worker", "kind": "async" },
-        { "id": "queue-dlq", "from": "queue", "to": "dlq", "kind": "async", "props": { "dlq": true } }
+        { "id": "api-queue", "from": "api", "to": "queue", "kind": "async", "carriedTypes": [] },
+        { "id": "queue-worker", "from": "queue", "to": "worker", "kind": "async", "carriedTypes": [] },
+        {
+          "id": "queue-dlq",
+          "from": "queue",
+          "to": "dlq",
+          "kind": "async",
+          "props": { "dlq": true },
+          "carriedTypes": []
+        }
       ],
+      "messageTypesComplete": true,
       "groups": [],
       "annotations": [],
       "simulations": [],
@@ -137,6 +149,6 @@
   },
   "focus": {
     "isError": false,
-    "output": "Diagram \"Retries and dead-lettering\" · direction LR · 2 nodes, 1 connections, 0 boundaries, 0 simulations\ndescription: \"maxDeliveryCount 3; the DLQ edge is inferred from the target's label.\"\nnodes:\n  \"api\" \"service.dotnet\" (\".NET Service\") \"Orders API\" capabilities=[{\"kind\":\"publishes\",\"edge\":\"api-queue\",\"peer\":\"queue\"}] explanation={\"id\":\"api\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":16,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.25,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"queue\" \"azure.service-bus.queue\" (\"Service Bus Queue\") \"orders\" / \"orders\" props={\"maxDeliveryCount\":3} capabilities=[] explanation=undefined\nconnections:\n  \"api-queue\" \"api\" -> \"queue\" async"
+    "output": "Diagram \"Retries and dead-lettering\" · direction LR · 2 nodes, 1 connections, 0 boundaries, 0 simulations\ndescription: \"maxDeliveryCount 3; the DLQ edge is inferred from the target's label.\"\nnodes:\n  \"api\" \"service.dotnet\" (\".NET Service\") \"Orders API\" arrivingTypes=[] capabilities=[{\"kind\":\"publishes\",\"edge\":\"api-queue\",\"peer\":\"queue\"}] explanation={\"id\":\"api\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":16,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.25,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"queue\" \"azure.service-bus.queue\" (\"Service Bus Queue\") \"orders\" / \"orders\" props={\"maxDeliveryCount\":3} arrivingTypes=[] capabilities=[] explanation=undefined\nconnections:\n  \"api-queue\" \"api\" -> \"queue\" async carriedTypes=[]"
   }
 }

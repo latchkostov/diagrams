@@ -1,7 +1,7 @@
 {
   "text": {
     "isError": false,
-    "output": "Diagram \"Managed admission\" · direction LR · 2 nodes, 1 connections, 0 boundaries, 1 simulations\nnodes:\n  \"source\" \"client.browser\" (\"Web Browser\") \"Checkout\" props={\"ratePerSec\":20} capabilities=[{\"kind\":\"calls\",\"edge\":\"call\",\"peer\":\"api\"}] explanation=undefined\n  \"api\" \"stripe\" (\"Stripe\") \"Stripe\" props={\"preset\":\"stripe-live\",\"presetRevision\":\"2026-10-14\",\"latencyMs\":1000,\"api\":{\"maxInFlight\":50,\"sharedConcurrency\":\"stripe-live-account\",\"quotas\":[{\"id\":\"global-rate\",\"unit\":\"requests\",\"amount\":100,\"windowMs\":1000,\"algorithm\":\"token-bucket\",\"sharedGroup\":\"stripe-live-account\"}]},\"jitter\":0} capabilities=[] explanation={\"managed\":\"api\",\"id\":\"api\",\"role\":\"sink\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":50,\"offered\":20,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":null,\"seconds\":1,\"utilization\":0.4,\"growth\":0,\"contributors\":[{\"edge\":\"call\",\"node\":\"source\",\"label\":\"Checkout\",\"rate\":20}],\"target\":0.5,\"changes\":null,\"converged\":true}\nconnections:\n  \"call\" \"source\" -> \"api\" sync\nsimulation \"rush\" \"300 calls in 1 s at scale 1\": {\"kind\":\"burst\",\"count\":300,\"spreadMs\":1000} from \"source\"; timeline=[]; expectations=[]"
+    "output": "Diagram \"Managed admission\" · direction LR · 2 nodes, 1 connections, 0 boundaries, 1 simulations\nnodes:\n  \"source\" \"client.browser\" (\"Web Browser\") \"Checkout\" props={\"ratePerSec\":20} arrivingTypes=[] capabilities=[{\"kind\":\"calls\",\"edge\":\"call\",\"peer\":\"api\"}] explanation=undefined\n  \"api\" \"stripe\" (\"Stripe\") \"Stripe\" props={\"preset\":\"stripe-live\",\"presetRevision\":\"2026-10-14\",\"latencyMs\":1000,\"api\":{\"maxInFlight\":50,\"sharedConcurrency\":\"stripe-live-account\",\"quotas\":[{\"id\":\"global-rate\",\"unit\":\"requests\",\"amount\":100,\"windowMs\":1000,\"algorithm\":\"token-bucket\",\"sharedGroup\":\"stripe-live-account\"}]},\"jitter\":0} arrivingTypes=[\"Checkout\",\"Charge\"] capabilities=[] explanation={\"managed\":\"api\",\"id\":\"api\",\"role\":\"sink\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":50,\"offered\":20,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":null,\"seconds\":1,\"utilization\":0.4,\"growth\":0,\"contributors\":[{\"edge\":\"call\",\"node\":\"source\",\"label\":\"Checkout\",\"rate\":20}],\"target\":0.5,\"changes\":null,\"converged\":true}\nconnections:\n  \"call\" \"source\" -> \"api\" sync carriedTypes=[\"Checkout\",\"Charge\"]\nsimulation \"rush\" \"300 calls in 1 s at scale 1\": {\"kind\":\"burst\",\"count\":300,\"spreadMs\":1000} from \"source\"; timeline=[]; expectations=[]"
   },
   "json": {
     "isError": false,
@@ -17,6 +17,7 @@
           "x": 0,
           "y": 130,
           "props": { "ratePerSec": 20 },
+          "arrivingTypes": [],
           "capabilities": [{ "kind": "calls", "edge": "call", "peer": "api" }]
         },
         {
@@ -38,6 +39,7 @@
             },
             "jitter": 0
           },
+          "arrivingTypes": ["Checkout", "Charge"],
           "capabilities": [],
           "explanation": {
             "managed": "api",
@@ -77,9 +79,11 @@
               "deadlineMs": 1,
               "retry": { "maxAttempts": 3, "strategy": "exponential", "backoffMs": 100, "retryOn": ["throttled"] }
             }
-          }
+          },
+          "carriedTypes": ["Checkout", "Charge"]
         }
       ],
+      "messageTypesComplete": true,
       "groups": [],
       "annotations": [],
       "simulations": [
@@ -104,6 +108,6 @@
   },
   "focus": {
     "isError": false,
-    "output": "Diagram \"Managed admission\" · direction LR · 2 nodes, 1 connections, 0 boundaries, 1 simulations\nnodes:\n  \"source\" \"client.browser\" (\"Web Browser\") \"Checkout\" props={\"ratePerSec\":20} capabilities=[{\"kind\":\"calls\",\"edge\":\"call\",\"peer\":\"api\"}] explanation=undefined\n  \"api\" \"stripe\" (\"Stripe\") \"Stripe\" props={\"preset\":\"stripe-live\",\"presetRevision\":\"2026-10-14\",\"latencyMs\":1000,\"api\":{\"maxInFlight\":50,\"sharedConcurrency\":\"stripe-live-account\",\"quotas\":[{\"id\":\"global-rate\",\"unit\":\"requests\",\"amount\":100,\"windowMs\":1000,\"algorithm\":\"token-bucket\",\"sharedGroup\":\"stripe-live-account\"}]},\"jitter\":0} capabilities=[] explanation={\"managed\":\"api\",\"id\":\"api\",\"role\":\"sink\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":50,\"offered\":20,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":null,\"seconds\":1,\"utilization\":0.4,\"growth\":0,\"contributors\":[{\"edge\":\"call\",\"node\":\"source\",\"label\":\"Checkout\",\"rate\":20}],\"target\":0.5,\"changes\":null,\"converged\":true}\nconnections:\n  \"call\" \"source\" -> \"api\" sync\nsimulation \"rush\" \"300 calls in 1 s at scale 1\": {\"kind\":\"burst\",\"count\":300,\"spreadMs\":1000} from \"source\"; timeline=[]; expectations=[]"
+    "output": "Diagram \"Managed admission\" · direction LR · 2 nodes, 1 connections, 0 boundaries, 1 simulations\nnodes:\n  \"source\" \"client.browser\" (\"Web Browser\") \"Checkout\" props={\"ratePerSec\":20} arrivingTypes=[] capabilities=[{\"kind\":\"calls\",\"edge\":\"call\",\"peer\":\"api\"}] explanation=undefined\n  \"api\" \"stripe\" (\"Stripe\") \"Stripe\" props={\"preset\":\"stripe-live\",\"presetRevision\":\"2026-10-14\",\"latencyMs\":1000,\"api\":{\"maxInFlight\":50,\"sharedConcurrency\":\"stripe-live-account\",\"quotas\":[{\"id\":\"global-rate\",\"unit\":\"requests\",\"amount\":100,\"windowMs\":1000,\"algorithm\":\"token-bucket\",\"sharedGroup\":\"stripe-live-account\"}]},\"jitter\":0} arrivingTypes=[\"Checkout\",\"Charge\"] capabilities=[] explanation={\"managed\":\"api\",\"id\":\"api\",\"role\":\"sink\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":50,\"offered\":20,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":null,\"seconds\":1,\"utilization\":0.4,\"growth\":0,\"contributors\":[{\"edge\":\"call\",\"node\":\"source\",\"label\":\"Checkout\",\"rate\":20}],\"target\":0.5,\"changes\":null,\"converged\":true}\nconnections:\n  \"call\" \"source\" -> \"api\" sync carriedTypes=[\"Checkout\",\"Charge\"]\nsimulation \"rush\" \"300 calls in 1 s at scale 1\": {\"kind\":\"burst\",\"count\":300,\"spreadMs\":1000} from \"source\"; timeline=[]; expectations=[]"
   }
 }

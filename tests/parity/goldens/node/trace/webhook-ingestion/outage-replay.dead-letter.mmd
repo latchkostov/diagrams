@@ -1,5 +1,5 @@
 ---
-title: "WebhookEvent #2 · 11.6 s end to end · 2 copies · 4 retries · dead-lettered"
+title: "WebhookEvent #2 · 11.7 s end to end · 3 copies · 4 retries · dead-lettered"
 ---
 sequenceDiagram
   participant partners as Partner webhooks
@@ -45,7 +45,8 @@ sequenceDiagram
   replay-)exchange: WebhookEvent (+10.29 s)<br/>Republish
   exchange-)queue: WebhookEvent (+10.59 s)<br/>webhook.#35;
   queue-)workers: WebhookEvent (+10.89 s)<br/>Prefetch 4
-  workers->>dedupe: PartnerChangeApplied (+11.38 s)<br/>Idempotency check
-  workers->>integration_db: PartnerChangeApplied (+11.38 s)<br/>Apply change
-  dedupe-->>workers: reply (+11.58 s)
-  integration_db-->>workers: reply (+11.59 s)
+  workers-)receiver: WebhookApplied (+11.37 s)<br/>Applied callback
+  workers->>dedupe: PartnerChangeApplied (+11.37 s)<br/>Idempotency check
+  workers->>integration_db: PartnerChangeApplied (+11.37 s)<br/>Apply change
+  dedupe-->>workers: reply (+11.57 s)
+  integration_db-->>workers: reply (+11.58 s)

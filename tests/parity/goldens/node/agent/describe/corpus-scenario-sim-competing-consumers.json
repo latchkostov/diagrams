@@ -1,7 +1,7 @@
 {
   "text": {
     "isError": false,
-    "output": "Diagram \"Competing consumers\" · direction LR · 5 nodes, 4 connections, 0 boundaries, 0 simulations\ndescription: \"Three workers pull from one queue.\"\nnodes:\n  \"producer\" \"service.go\" (\"Go Service\") \"Producer\" capabilities=[{\"kind\":\"publishes\",\"edge\":\"producer-broker\",\"peer\":\"broker\"}] explanation={\"id\":\"producer\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":16,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.25,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"broker\" \"azure.service-bus.queue\" (\"Service Bus Queue\") \"jobs queue\" / \"jobs\" capabilities=[] explanation=undefined\n  \"w1\" \"azure.functions\" (\"Azure Functions\") \"Worker 1\" capabilities=[{\"kind\":\"consumes\",\"edge\":\"broker-w1\",\"peer\":\"broker\",\"retry\":\"requeue\",\"retryBackoffMs\":0}] explanation={\"id\":\"w1\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":16,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.25,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"w2\" \"azure.functions\" (\"Azure Functions\") \"Worker 2\" capabilities=[{\"kind\":\"consumes\",\"edge\":\"broker-w2\",\"peer\":\"broker\",\"retry\":\"requeue\",\"retryBackoffMs\":0}] explanation={\"id\":\"w2\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":16,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.25,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"w3\" \"azure.functions\" (\"Azure Functions\") \"Worker 3\" capabilities=[{\"kind\":\"consumes\",\"edge\":\"broker-w3\",\"peer\":\"broker\",\"retry\":\"requeue\",\"retryBackoffMs\":0}] explanation={\"id\":\"w3\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":16,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.25,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\nconnections:\n  \"producer-broker\" \"producer\" -> \"broker\" async\n  \"broker-w1\" \"broker\" -> \"w1\" async\n  \"broker-w2\" \"broker\" -> \"w2\" async\n  \"broker-w3\" \"broker\" -> \"w3\" async"
+    "output": "Diagram \"Competing consumers\" · direction LR · 5 nodes, 4 connections, 0 boundaries, 0 simulations\ndescription: \"Three workers pull from one queue.\"\nnodes:\n  \"producer\" \"service.go\" (\"Go Service\") \"Producer\" arrivingTypes=[] capabilities=[{\"kind\":\"publishes\",\"edge\":\"producer-broker\",\"peer\":\"broker\"}] explanation={\"id\":\"producer\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":16,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.25,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"broker\" \"azure.service-bus.queue\" (\"Service Bus Queue\") \"jobs queue\" / \"jobs\" arrivingTypes=[] capabilities=[] explanation=undefined\n  \"w1\" \"azure.functions\" (\"Azure Functions\") \"Worker 1\" arrivingTypes=[] capabilities=[{\"kind\":\"consumes\",\"edge\":\"broker-w1\",\"peer\":\"broker\",\"retry\":\"requeue\",\"retryBackoffMs\":0}] explanation={\"id\":\"w1\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":16,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.25,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"w2\" \"azure.functions\" (\"Azure Functions\") \"Worker 2\" arrivingTypes=[] capabilities=[{\"kind\":\"consumes\",\"edge\":\"broker-w2\",\"peer\":\"broker\",\"retry\":\"requeue\",\"retryBackoffMs\":0}] explanation={\"id\":\"w2\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":16,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.25,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"w3\" \"azure.functions\" (\"Azure Functions\") \"Worker 3\" arrivingTypes=[] capabilities=[{\"kind\":\"consumes\",\"edge\":\"broker-w3\",\"peer\":\"broker\",\"retry\":\"requeue\",\"retryBackoffMs\":0}] explanation={\"id\":\"w3\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":16,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.25,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\nconnections:\n  \"producer-broker\" \"producer\" -> \"broker\" async carriedTypes=[]\n  \"broker-w1\" \"broker\" -> \"w1\" async carriedTypes=[]\n  \"broker-w2\" \"broker\" -> \"w2\" async carriedTypes=[]\n  \"broker-w3\" \"broker\" -> \"w3\" async carriedTypes=[]"
   },
   "json": {
     "isError": false,
@@ -16,6 +16,7 @@
           "label": "Producer",
           "x": 40,
           "y": 160,
+          "arrivingTypes": [],
           "capabilities": [{ "kind": "publishes", "edge": "producer-broker", "peer": "broker" }],
           "explanation": {
             "id": "producer",
@@ -43,13 +44,14 @@
             "converged": true
           }
         },
-        { "id": "broker", "stencil": "azure.service-bus.queue", "label": "jobs queue", "x": 400, "y": 160, "sublabel": "jobs", "capabilities": [] },
+        { "id": "broker", "stencil": "azure.service-bus.queue", "label": "jobs queue", "x": 400, "y": 160, "sublabel": "jobs", "arrivingTypes": [], "capabilities": [] },
         {
           "id": "w1",
           "stencil": "azure.functions",
           "label": "Worker 1",
           "x": 760,
           "y": 40,
+          "arrivingTypes": [],
           "capabilities": [
             { "kind": "consumes", "edge": "broker-w1", "peer": "broker", "retry": "requeue", "retryBackoffMs": 0 }
           ],
@@ -85,6 +87,7 @@
           "label": "Worker 2",
           "x": 760,
           "y": 160,
+          "arrivingTypes": [],
           "capabilities": [
             { "kind": "consumes", "edge": "broker-w2", "peer": "broker", "retry": "requeue", "retryBackoffMs": 0 }
           ],
@@ -120,6 +123,7 @@
           "label": "Worker 3",
           "x": 760,
           "y": 280,
+          "arrivingTypes": [],
           "capabilities": [
             { "kind": "consumes", "edge": "broker-w3", "peer": "broker", "retry": "requeue", "retryBackoffMs": 0 }
           ],
@@ -151,11 +155,12 @@
         }
       ],
       "edges": [
-        { "id": "producer-broker", "from": "producer", "to": "broker", "kind": "async" },
-        { "id": "broker-w1", "from": "broker", "to": "w1", "kind": "async" },
-        { "id": "broker-w2", "from": "broker", "to": "w2", "kind": "async" },
-        { "id": "broker-w3", "from": "broker", "to": "w3", "kind": "async" }
+        { "id": "producer-broker", "from": "producer", "to": "broker", "kind": "async", "carriedTypes": [] },
+        { "id": "broker-w1", "from": "broker", "to": "w1", "kind": "async", "carriedTypes": [] },
+        { "id": "broker-w2", "from": "broker", "to": "w2", "kind": "async", "carriedTypes": [] },
+        { "id": "broker-w3", "from": "broker", "to": "w3", "kind": "async", "carriedTypes": [] }
       ],
+      "messageTypesComplete": true,
       "groups": [],
       "annotations": [],
       "simulations": [],
@@ -164,6 +169,6 @@
   },
   "focus": {
     "isError": false,
-    "output": "Diagram \"Competing consumers\" · direction LR · 2 nodes, 1 connections, 0 boundaries, 0 simulations\ndescription: \"Three workers pull from one queue.\"\nnodes:\n  \"producer\" \"service.go\" (\"Go Service\") \"Producer\" capabilities=[{\"kind\":\"publishes\",\"edge\":\"producer-broker\",\"peer\":\"broker\"}] explanation={\"id\":\"producer\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":16,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.25,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"broker\" \"azure.service-bus.queue\" (\"Service Bus Queue\") \"jobs queue\" / \"jobs\" capabilities=[] explanation=undefined\nconnections:\n  \"producer-broker\" \"producer\" -> \"broker\" async"
+    "output": "Diagram \"Competing consumers\" · direction LR · 2 nodes, 1 connections, 0 boundaries, 0 simulations\ndescription: \"Three workers pull from one queue.\"\nnodes:\n  \"producer\" \"service.go\" (\"Go Service\") \"Producer\" arrivingTypes=[] capabilities=[{\"kind\":\"publishes\",\"edge\":\"producer-broker\",\"peer\":\"broker\"}] explanation={\"id\":\"producer\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":16,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.25,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"broker\" \"azure.service-bus.queue\" (\"Service Bus Queue\") \"jobs queue\" / \"jobs\" arrivingTypes=[] capabilities=[] explanation=undefined\nconnections:\n  \"producer-broker\" \"producer\" -> \"broker\" async carriedTypes=[]"
   }
 }

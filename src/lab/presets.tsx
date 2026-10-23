@@ -1,4 +1,5 @@
 import { waitingFixture } from "./waitingFixture";
+import { messageTypesFixture } from "./messageTypesFixture";
 import { resilienceFixture, breakerFixture } from "./resilienceFixture";
 import { annotationShapesFixture } from "./annotationShapesFixture";
 import slowPayment from "../examples/slow-payment-provider.json";
@@ -285,6 +286,14 @@ const stress = (nodes: number): Preset => ({
 });
 
 const diagramPresets: Preset[] = [
+  {
+    kind: "diagram",
+    id: "message-types",
+    title: "Message types",
+    group: "Diagrams",
+    description: "A typed callback loop and the filter that stops it.",
+    diagram: messageTypesFixture,
+  },
   {
     kind: "diagram",
     id: "request-deadlines",

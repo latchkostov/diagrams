@@ -215,7 +215,7 @@
   "diagram": {
     "format": "diagrams/v1",
     "title": "Parity edit",
-    "description": "Partner webhooks are verified and acknowledged fast, buffered in RabbitMQ, retried with backoff, dead-lettered and replayed on demand.",
+    "description": "Partner webhooks are verified and acknowledged fast, buffered in RabbitMQ, retried with backoff, dead-lettered and replayed on demand. Typed callbacks stop at the receiver.",
     "direction": "TB",
     "groups": [
       { "id": "k8s", "label": "Kubernetes", "tone": "k8s", "x": 760, "y": 240, "width": 1480, "height": 312 },
@@ -350,7 +350,7 @@
         "to": "raw",
         "label": "PUT body",
         "kind": "sync",
-        "props": { "travelMs": 200 }
+        "props": { "travelMs": 200, "filter": ["WebhookEvent"] }
       },
       {
         "id": "receiver-to-exchange",
@@ -358,7 +358,7 @@
         "to": "exchange",
         "label": "Publish",
         "kind": "async",
-        "props": { "travelMs": 300 }
+        "props": { "travelMs": 300, "filter": ["WebhookEvent"] }
       },
       {
         "id": "exchange-to-queue",
@@ -383,6 +383,16 @@
         "label": "Dead-letter",
         "kind": "async",
         "props": { "travelMs": 300, "dlq": true }
+      },
+      {
+        "id": "workers-to-receiver",
+        "from": "workers",
+        "to": "receiver",
+        "label": "Applied callback",
+        "kind": "async",
+        "sourceSide": "top",
+        "targetSide": "top",
+        "props": { "travelMs": 300, "filter": ["PartnerChangeApplied"], "emits": "WebhookApplied" }
       },
       {
         "id": "workers-to-dedupe",

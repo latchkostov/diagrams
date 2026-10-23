@@ -382,19 +382,25 @@ test.describe("drawing basics", () => {
     await expect(page.getByTestId(NODES)).toHaveCount(before);
   });
 
-  test("a connection dropped anywhere on a node connects to it, on the side facing the source", async ({
-    page,
-    consoleErrors,
-  }) => {
+  test("a connection dropped on the body away from dots faces the source", async ({ page, consoleErrors }) => {
     // shopper (far left) to schemas (top middle): no edge between them yet.
     await expect(page.getByTestId("edge-e-1")).toHaveCount(0);
+    // Zoom these endpoints into view so the card's centre is outside both 20 px dot snap zones.
+    await page.setViewportSize({ width: 1920, height: 1080 });
+    await page.getByTestId("node-shopper").click();
+    await page.getByTestId("node-schemas").click({ modifiers: ["Shift"] });
+    await waitForSelectionSettled(page);
+    await page.getByTestId("canvas-wrap").focus();
+    await page.keyboard.press("Shift+Digit2");
+    await waitForCameraIdle(page);
+    await waitForStableViewport(page);
     const target = await box(page.getByTestId("node-schemas"));
     // The middle of the card, away from every handle.
     await dragFromHandle(
       page,
       "shopper",
       "right",
-      { x: target.x + target.width / 2, y: target.y + target.height * 0.6 },
+      { x: target.x + target.width / 2, y: target.y + target.height / 2 },
       false,
     );
     // The target lights up while hovered.

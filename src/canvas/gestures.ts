@@ -1,7 +1,7 @@
 // Pure rules behind the canvas gestures: what a connection drag is over (D1, D2) and what a selection
 // box picks (D5). The canvas feeds them what's under the pointer and the nodes' boxes; they decide.
 
-import type { AnnotationKind } from "../model/types";
+import type { Side, AnnotationKind } from "../model/types";
 import { isConnectable } from "./annotations";
 import { overlaps, type Box } from "./placement";
 
@@ -23,7 +23,7 @@ export interface ConnectHit {
  * - `outside`: chrome or off the canvas: a drop does nothing.
  */
 export type ConnectTarget =
-  | { kind: "node"; id: string }
+  | { kind: "node"; id: string; side?: Side }
   | { kind: "invalid"; id: string }
   | { kind: "source" }
   | { kind: "canvas" }
@@ -98,4 +98,16 @@ export function edgesBetween<E extends { id: string; source: string; target: str
   const out = new Set<string>();
   for (const e of edges) if (picked.has(e.source) && picked.has(e.target)) out.add(e.id);
   return out;
+}
+
+/** React Flow measures its snap radius in flow pixels; retain at least 20 screen pixels at low zoom. */
+export const CONNECT_RADIUS = 28;
+export function connectionRadius(zoom: number): number {
+  const step = Math.max(0.05, Math.floor(zoom * 20) / 20);
+  return Math.max(CONNECT_RADIUS, 20 / step);
+}
+
+/** Side dots only: the quick-add handle (grow) is never a pinned side. */
+export function portSide(id: string | null | undefined): Side | undefined {
+  return id === "top" || id === "right" || id === "bottom" || id === "left" ? id : undefined;
 }

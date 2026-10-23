@@ -1,7 +1,7 @@
 {
   "text": {
     "isError": false,
-    "output": "Diagram \"Notification fan-out\" · direction LR · 20 nodes, 23 connections, 1 boundaries, 2 simulations\ndescription: \"One shipping event fans out by customer preference to email, SMS and push queues, each sender respecting its provider's rate limit; failures dead-letter per channel and the senders sign in with a managed identity.\"\nnodes:\n  \"carrier\" \"generic.webhook\" (\"Webhook\") \"Carrier tracking\" / \"Parcel scanned\" props={\"ratePerSec\":10,\"messageType\":\"ParcelScanned\"} capabilities=[{\"kind\":\"calls\",\"edge\":\"carrier-to-shipping\",\"peer\":\"shipping\"}] explanation=undefined\n  \"shipping\" \"azure.container-apps\" (\"Container Apps\") \"Shipping service\" / \"Publishes OrderShipped\" props={\"concurrency\":200,\"latencyMs\":50,\"emits\":\"OrderShipped\"} in \"azure\" capabilities=[{\"kind\":\"publishes\",\"edge\":\"shipping-to-events\",\"peer\":\"events\"}] explanation={\"id\":\"shipping\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":4000,\"offered\":10,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":200,\"seconds\":0.05,\"utilization\":0.0025,\"growth\":0,\"contributors\":[{\"edge\":\"carrier-to-shipping\",\"node\":\"carrier\",\"label\":\"Carrier tracking\",\"rate\":10}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"events\" \"azure.service-bus.topic\" (\"Service Bus Topic\") \"order-events\" / \"Topic\" props={\"partitions\":32} in \"azure\" capabilities=[] explanation=undefined\n  \"preferences\" \"azure.cosmos-db\" (\"Cosmos DB\") \"Preferences\" / \"Channels · quiet hours\" props={\"latencyMs\":0} in \"azure\" capabilities=[] explanation=undefined\n  \"router\" \"azure.functions\" (\"Azure Functions\") \"Notification router\" / \"sub: notifications\" props={\"concurrency\":400,\"latencyMs\":60} in \"azure\" capabilities=[{\"kind\":\"consumes\",\"edge\":\"events-to-router\",\"peer\":\"events\",\"group\":\"notifications\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"calls\",\"edge\":\"router-to-preferences\",\"peer\":\"preferences\"},{\"kind\":\"publishes\",\"edge\":\"router-to-email-q\",\"peer\":\"email-q\",\"share\":0.9},{\"kind\":\"publishes\",\"edge\":\"router-to-sms-q\",\"peer\":\"sms-q\",\"share\":0.3},{\"kind\":\"publishes\",\"edge\":\"router-to-push-q\",\"peer\":\"push-q\",\"share\":0.7}] explanation={\"id\":\"router\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":6666.666666666667,\"offered\":10,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"events\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":32}],\"slots\":400,\"seconds\":0.06,\"utilization\":0.0015,\"growth\":0,\"contributors\":[{\"edge\":\"events-to-router\",\"node\":\"events\",\"label\":\"order-events\",\"rate\":10}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"email-q\" \"azure.service-bus.queue\" (\"Service Bus Queue\") \"email\" / \"~90% opted in\" props={\"maxDeliveryCount\":10} in \"azure\" capabilities=[] explanation=undefined\n  \"sms-q\" \"azure.service-bus.queue\" (\"Service Bus Queue\") \"sms\" / \"~30% opted in\" props={\"maxDeliveryCount\":10} in \"azure\" capabilities=[] explanation=undefined\n  \"push-q\" \"azure.service-bus.queue\" (\"Service Bus Queue\") \"push\" / \"~70% have the app\" props={\"maxDeliveryCount\":10} in \"azure\" capabilities=[] explanation=undefined\n  \"email-sender\" \"azure.functions\" (\"Azure Functions\") \"Email sender\" / \"Templates · 500/s\" props={\"replicas\":10,\"concurrency\":5,\"latencyMs\":100,\"emits\":\"EmailSent\"} in \"azure\" capabilities=[{\"kind\":\"consumes\",\"edge\":\"email-q-to-email-sender\",\"peer\":\"email-q\",\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"calls\",\"edge\":\"email-sender-to-sendgrid\",\"peer\":\"sendgrid\"}] explanation={\"id\":\"email-sender\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":500,\"offered\":9,\"replicas\":10,\"baseReplicas\":10,\"omittedContributors\":0,\"activeReplicas\":10,\"assignments\":[],\"slots\":5,\"seconds\":0.1,\"utilization\":0.018,\"growth\":0,\"contributors\":[{\"edge\":\"email-q-to-email-sender\",\"node\":\"email-q\",\"label\":\"email\",\"rate\":9}],\"target\":0.5,\"minimumReplicas\":10,\"targetReplicas\":10,\"changes\":null,\"converged\":true}\n  \"sms-limiter\" \"generic.rate-limiter\" (\"Rate Limiter\") \"SMS rate limiter\" / \"Token bucket · 50/s\" props={\"replicas\":1,\"concurrency\":5,\"latencyMs\":100,\"emits\":\"SmsSent\"} in \"azure\" capabilities=[{\"kind\":\"consumes\",\"edge\":\"sms-q-to-sms-limiter\",\"peer\":\"sms-q\",\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"calls\",\"edge\":\"sms-limiter-to-twilio\",\"peer\":\"twilio\"}] explanation={\"id\":\"sms-limiter\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":50,\"offered\":3,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":5,\"seconds\":0.1,\"utilization\":0.06,\"growth\":0,\"contributors\":[{\"edge\":\"sms-q-to-sms-limiter\",\"node\":\"sms-q\",\"label\":\"sms\",\"rate\":3}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"push-sender\" \"azure.functions\" (\"Azure Functions\") \"Push sender\" / \"Batches of 500\" props={\"replicas\":10,\"concurrency\":5,\"latencyMs\":100,\"emits\":\"PushSent\"} in \"azure\" capabilities=[{\"kind\":\"consumes\",\"edge\":\"push-q-to-push-sender\",\"peer\":\"push-q\",\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"calls\",\"edge\":\"push-sender-to-push\",\"peer\":\"push\"}] explanation={\"id\":\"push-sender\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":500,\"offered\":7,\"replicas\":10,\"baseReplicas\":10,\"omittedContributors\":0,\"activeReplicas\":10,\"assignments\":[],\"slots\":5,\"seconds\":0.1,\"utilization\":0.014,\"growth\":0,\"contributors\":[{\"edge\":\"push-q-to-push-sender\",\"node\":\"push-q\",\"label\":\"push\",\"rate\":7}],\"target\":0.5,\"minimumReplicas\":10,\"targetReplicas\":10,\"changes\":null,\"converged\":true}\n  \"sendgrid\" \"sendgrid\" (\"SendGrid\") \"SendGrid\" / \"Email\" props={} capabilities=[] explanation=undefined\n  \"key-vault\" \"azure.key-vault\" (\"Key Vault\") \"notify-kv\" / \"Provider API keys\" in \"azure\" capabilities=[] explanation=undefined\n  \"twilio\" \"twilio\" (\"Twilio\") \"Twilio\" / \"SMS\" props={} capabilities=[] explanation=undefined\n  \"push\" \"generic.push\" (\"Mobile Push\") \"FCM and APNs\" / \"Mobile push\" props={} capabilities=[] explanation=undefined\n  \"email-dlq\" \"azure.service-bus.queue\" (\"Service Bus Queue\") \"Email DLQ\" / \"$DeadLetterQueue\" in \"azure\" capabilities=[] explanation=undefined\n  \"sms-dlq\" \"azure.service-bus.queue\" (\"Service Bus Queue\") \"SMS DLQ\" / \"$DeadLetterQueue\" in \"azure\" capabilities=[] explanation=undefined\n  \"push-dlq\" \"azure.service-bus.queue\" (\"Service Bus Queue\") \"Push DLQ\" / \"$DeadLetterQueue\" in \"azure\" capabilities=[] explanation=undefined\n  \"dlq-triage\" \"azure.functions\" (\"Azure Functions\") \"DLQ triage\" / \"alert, then replay\" props={\"concurrency\":8,\"latencyMs\":100} in \"azure\" capabilities=[{\"kind\":\"consumes\",\"edge\":\"email-dlq-to-dlq-triage\",\"peer\":\"email-dlq\",\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"consumes\",\"edge\":\"sms-dlq-to-dlq-triage\",\"peer\":\"sms-dlq\",\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"consumes\",\"edge\":\"push-dlq-to-dlq-triage\",\"peer\":\"push-dlq\",\"retry\":\"requeue\",\"retryBackoffMs\":0}] explanation={\"id\":\"dlq-triage\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":80,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":8,\"seconds\":0.1,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"identity\" \"azure.managed-identity\" (\"Managed Identity\") \"Sender identity\" / \"user-assigned\" in \"azure\" capabilities=[] explanation=undefined\nconnections:\n  \"carrier-to-shipping\" \"carrier\" -> \"shipping\" sync \"Webhook\"\n  \"shipping-to-events\" \"shipping\" -> \"events\" async \"OrderShipped\"\n  \"events-to-router\" \"events\" -> \"router\" async \"Subscription\"\n  \"router-to-preferences\" \"router\" -> \"preferences\" sync \"Read preferences\"\n  \"router-to-email-q\" \"router\" -> \"email-q\" async \"If email\"\n  \"router-to-sms-q\" \"router\" -> \"sms-q\" async \"If SMS\"\n  \"router-to-push-q\" \"router\" -> \"push-q\" async \"If push\"\n  \"email-q-to-email-sender\" \"email-q\" -> \"email-sender\" async\n  \"sms-q-to-sms-limiter\" \"sms-q\" -> \"sms-limiter\" async\n  \"push-q-to-push-sender\" \"push-q\" -> \"push-sender\" async\n  \"email-sender-to-sendgrid\" \"email-sender\" -> \"sendgrid\" sync \"Mail Send API\"\n  \"sms-limiter-to-twilio\" \"sms-limiter\" -> \"twilio\" sync \"Messages API\"\n  \"push-sender-to-push\" \"push-sender\" -> \"push\" sync \"Send\"\n  \"email-sender-to-key-vault\" \"email-sender\" -> \"key-vault\" secret dependency\n  \"sms-limiter-to-key-vault\" \"sms-limiter\" -> \"key-vault\" secret dependency\n  \"email-q-to-email-dlq\" \"email-q\" -> \"email-dlq\" async \"After 10 tries\"\n  \"sms-q-to-sms-dlq\" \"sms-q\" -> \"sms-dlq\" async \"After 10 tries\"\n  \"push-q-to-push-dlq\" \"push-q\" -> \"push-dlq\" async \"After 10 tries\"\n  \"email-dlq-to-dlq-triage\" \"email-dlq\" -> \"dlq-triage\" async\n  \"sms-dlq-to-dlq-triage\" \"sms-dlq\" -> \"dlq-triage\" async\n  \"push-dlq-to-dlq-triage\" \"push-dlq\" -> \"dlq-triage\" async\n  \"email-sender-to-identity\" \"email-sender\" -> \"identity\" identity dependency \"runs as\"\n  \"sms-limiter-to-identity\" \"sms-limiter\" -> \"identity\" identity dependency \"runs as\"\nboundary \"azure\" \"Azure · notifications\" (azure): \"shipping\", \"events\", \"preferences\", \"router\", \"email-q\", \"sms-q\", \"push-q\", \"email-sender\", \"sms-limiter\", \"push-sender\", \"key-vault\", \"email-dlq\", \"sms-dlq\", \"push-dlq\", \"dlq-triage\", \"identity\"\nsimulation \"shipping-wave\" \"Holiday shipping wave\": {\"kind\":\"constant\",\"ratePerSec\":400,\"durationMs\":5000} from \"carrier\"; timeline=[{\"atMs\":0,\"action\":{\"do\":\"note\",\"text\":\"Every shipped parcel becomes one OrderShipped event. The router reads the customer's preferences and fans out to the channels they chose. Each dot is 10 events.\",\"focus\":[\"events\",\"router\",\"preferences\"]}},{\"atMs\":2500,\"action\":{\"do\":\"note\",\"text\":\"SMS is limited to 50 a second to stay inside the provider's throughput. Its queue grows while email and push keep pace.\",\"focus\":[\"sms-q\",\"sms-limiter\",\"email-q\",\"push-q\"],\"pause\":true}},{\"atMs\":9000,\"action\":{\"do\":\"note\",\"text\":\"The SMS queue drains at its own pace. Separate queues mean one slow channel never delays the others.\",\"focus\":[\"sms-q\",\"twilio\"]}}]; expectations=[{\"id\":\"sms-backlog\",\"label\":\"SMS queues behind its rate limit\",\"metric\":{\"node\":\"sms-q\",\"field\":\"lag\"},\"op\":\">\",\"value\":100,\"when\":\"at\",\"atMs\":5000},{\"id\":\"email-current\",\"label\":\"Email keeps up\",\"metric\":{\"node\":\"email-q\",\"field\":\"lag\"},\"op\":\"<=\",\"value\":200,\"when\":\"always\"},{\"id\":\"sms-drained\",\"label\":\"Every SMS is eventually sent\",\"metric\":{\"node\":\"sms-q\",\"field\":\"lag\"},\"op\":\"==\",\"value\":0,\"when\":\"end\"},{\"id\":\"preferences\",\"label\":\"Preferences read for all 2,000\",\"metric\":{\"node\":\"preferences\",\"field\":\"processed\"},\"op\":\"==\",\"value\":2000,\"when\":\"end\"}]\nsimulation \"sms-outage\" \"SMS provider outage\": {\"kind\":\"constant\",\"ratePerSec\":40,\"durationMs\":8000} from \"carrier\"; timeline=[{\"atMs\":1500,\"action\":{\"do\":\"status\",\"node\":\"sms-limiter\",\"status\":\"paused\"}},{\"atMs\":1500,\"action\":{\"do\":\"note\",\"text\":\"Twilio starts returning errors. The circuit breaker opens and SMS sending pauses; messages wait in the queue instead of failing.\",\"focus\":[\"sms-limiter\",\"twilio\",\"sms-q\"],\"pause\":true}},{\"atMs\":6500,\"action\":{\"do\":\"status\",\"node\":\"sms-limiter\",\"status\":\"up\"}},{\"atMs\":6500,\"action\":{\"do\":\"note\",\"text\":\"The breaker closes. The backlog drains at 50 a second; email and push never noticed.\",\"focus\":[\"sms-q\",\"sms-limiter\",\"sendgrid\",\"push\"]}}]; expectations=[{\"id\":\"waiting\",\"label\":\"SMS waits during the outage\",\"metric\":{\"node\":\"sms-q\",\"field\":\"lag\"},\"op\":\">\",\"value\":20,\"when\":\"at\",\"atMs\":6000},{\"id\":\"drained\",\"label\":\"The SMS backlog drains\",\"metric\":{\"node\":\"sms-q\",\"field\":\"lag\"},\"op\":\"==\",\"value\":0,\"when\":\"end\"},{\"id\":\"email\",\"label\":\"Email is unaffected\",\"metric\":{\"node\":\"email-q\",\"field\":\"lag\"},\"op\":\"<=\",\"value\":10,\"when\":\"always\"},{\"id\":\"all-routed\",\"label\":\"All 320 events are routed\",\"metric\":{\"node\":\"preferences\",\"field\":\"processed\"},\"op\":\"==\",\"value\":320,\"when\":\"end\"}]"
+    "output": "Diagram \"Notification fan-out\" · direction LR · 20 nodes, 23 connections, 1 boundaries, 2 simulations\ndescription: \"One shipping event fans out by customer preference to email, SMS and push queues, each sender respecting its provider's rate limit; failures dead-letter per channel and the senders sign in with a managed identity.\"\nnodes:\n  \"carrier\" \"generic.webhook\" (\"Webhook\") \"Carrier tracking\" / \"Parcel scanned\" props={\"ratePerSec\":10,\"messageType\":\"ParcelScanned\"} arrivingTypes=[] capabilities=[{\"kind\":\"calls\",\"edge\":\"carrier-to-shipping\",\"peer\":\"shipping\"}] explanation=undefined\n  \"shipping\" \"azure.container-apps\" (\"Container Apps\") \"Shipping service\" / \"Publishes OrderShipped\" props={\"concurrency\":200,\"latencyMs\":50,\"emits\":\"OrderShipped\"} in \"azure\" arrivingTypes=[\"ParcelScanned\"] capabilities=[{\"kind\":\"publishes\",\"edge\":\"shipping-to-events\",\"peer\":\"events\"}] explanation={\"id\":\"shipping\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":4000,\"offered\":10,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":200,\"seconds\":0.05,\"utilization\":0.0025,\"growth\":0,\"contributors\":[{\"edge\":\"carrier-to-shipping\",\"node\":\"carrier\",\"label\":\"Carrier tracking\",\"rate\":10}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"events\" \"azure.service-bus.topic\" (\"Service Bus Topic\") \"order-events\" / \"Topic\" props={\"partitions\":32} in \"azure\" arrivingTypes=[\"OrderShipped\"] capabilities=[] explanation=undefined\n  \"preferences\" \"azure.cosmos-db\" (\"Cosmos DB\") \"Preferences\" / \"Channels · quiet hours\" props={\"latencyMs\":0} in \"azure\" arrivingTypes=[\"OrderShipped\"] capabilities=[] explanation=undefined\n  \"router\" \"azure.functions\" (\"Azure Functions\") \"Notification router\" / \"sub: notifications\" props={\"concurrency\":400,\"latencyMs\":60} in \"azure\" arrivingTypes=[\"OrderShipped\"] capabilities=[{\"kind\":\"consumes\",\"edge\":\"events-to-router\",\"peer\":\"events\",\"group\":\"notifications\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"calls\",\"edge\":\"router-to-preferences\",\"peer\":\"preferences\"},{\"kind\":\"publishes\",\"edge\":\"router-to-email-q\",\"peer\":\"email-q\",\"share\":0.9},{\"kind\":\"publishes\",\"edge\":\"router-to-sms-q\",\"peer\":\"sms-q\",\"share\":0.3},{\"kind\":\"publishes\",\"edge\":\"router-to-push-q\",\"peer\":\"push-q\",\"share\":0.7}] explanation={\"id\":\"router\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":6666.666666666667,\"offered\":10,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"events\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":32}],\"slots\":400,\"seconds\":0.06,\"utilization\":0.0015,\"growth\":0,\"contributors\":[{\"edge\":\"events-to-router\",\"node\":\"events\",\"label\":\"order-events\",\"rate\":10}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"email-q\" \"azure.service-bus.queue\" (\"Service Bus Queue\") \"email\" / \"~90% opted in\" props={\"maxDeliveryCount\":10} in \"azure\" arrivingTypes=[\"OrderShipped\"] capabilities=[] explanation=undefined\n  \"sms-q\" \"azure.service-bus.queue\" (\"Service Bus Queue\") \"sms\" / \"~30% opted in\" props={\"maxDeliveryCount\":10} in \"azure\" arrivingTypes=[\"OrderShipped\"] capabilities=[] explanation=undefined\n  \"push-q\" \"azure.service-bus.queue\" (\"Service Bus Queue\") \"push\" / \"~70% have the app\" props={\"maxDeliveryCount\":10} in \"azure\" arrivingTypes=[\"OrderShipped\"] capabilities=[] explanation=undefined\n  \"email-sender\" \"azure.functions\" (\"Azure Functions\") \"Email sender\" / \"Templates · 500/s\" props={\"replicas\":10,\"concurrency\":5,\"latencyMs\":100,\"emits\":\"EmailSent\"} in \"azure\" arrivingTypes=[\"OrderShipped\"] capabilities=[{\"kind\":\"consumes\",\"edge\":\"email-q-to-email-sender\",\"peer\":\"email-q\",\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"calls\",\"edge\":\"email-sender-to-sendgrid\",\"peer\":\"sendgrid\"}] explanation={\"id\":\"email-sender\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":500,\"offered\":9,\"replicas\":10,\"baseReplicas\":10,\"omittedContributors\":0,\"activeReplicas\":10,\"assignments\":[],\"slots\":5,\"seconds\":0.1,\"utilization\":0.018,\"growth\":0,\"contributors\":[{\"edge\":\"email-q-to-email-sender\",\"node\":\"email-q\",\"label\":\"email\",\"rate\":9}],\"target\":0.5,\"minimumReplicas\":10,\"targetReplicas\":10,\"changes\":null,\"converged\":true}\n  \"sms-limiter\" \"generic.rate-limiter\" (\"Rate Limiter\") \"SMS rate limiter\" / \"Token bucket · 50/s\" props={\"replicas\":1,\"concurrency\":5,\"latencyMs\":100,\"emits\":\"SmsSent\"} in \"azure\" arrivingTypes=[\"OrderShipped\"] capabilities=[{\"kind\":\"consumes\",\"edge\":\"sms-q-to-sms-limiter\",\"peer\":\"sms-q\",\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"calls\",\"edge\":\"sms-limiter-to-twilio\",\"peer\":\"twilio\"}] explanation={\"id\":\"sms-limiter\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":50,\"offered\":3,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":5,\"seconds\":0.1,\"utilization\":0.06,\"growth\":0,\"contributors\":[{\"edge\":\"sms-q-to-sms-limiter\",\"node\":\"sms-q\",\"label\":\"sms\",\"rate\":3}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"push-sender\" \"azure.functions\" (\"Azure Functions\") \"Push sender\" / \"Batches of 500\" props={\"replicas\":10,\"concurrency\":5,\"latencyMs\":100,\"emits\":\"PushSent\"} in \"azure\" arrivingTypes=[\"OrderShipped\"] capabilities=[{\"kind\":\"consumes\",\"edge\":\"push-q-to-push-sender\",\"peer\":\"push-q\",\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"calls\",\"edge\":\"push-sender-to-push\",\"peer\":\"push\"}] explanation={\"id\":\"push-sender\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":500,\"offered\":7,\"replicas\":10,\"baseReplicas\":10,\"omittedContributors\":0,\"activeReplicas\":10,\"assignments\":[],\"slots\":5,\"seconds\":0.1,\"utilization\":0.014,\"growth\":0,\"contributors\":[{\"edge\":\"push-q-to-push-sender\",\"node\":\"push-q\",\"label\":\"push\",\"rate\":7}],\"target\":0.5,\"minimumReplicas\":10,\"targetReplicas\":10,\"changes\":null,\"converged\":true}\n  \"sendgrid\" \"sendgrid\" (\"SendGrid\") \"SendGrid\" / \"Email\" props={} arrivingTypes=[\"EmailSent\"] capabilities=[] explanation=undefined\n  \"key-vault\" \"azure.key-vault\" (\"Key Vault\") \"notify-kv\" / \"Provider API keys\" in \"azure\" arrivingTypes=[] capabilities=[] explanation=undefined\n  \"twilio\" \"twilio\" (\"Twilio\") \"Twilio\" / \"SMS\" props={} arrivingTypes=[\"SmsSent\"] capabilities=[] explanation=undefined\n  \"push\" \"generic.push\" (\"Mobile Push\") \"FCM and APNs\" / \"Mobile push\" props={} arrivingTypes=[\"PushSent\"] capabilities=[] explanation=undefined\n  \"email-dlq\" \"azure.service-bus.queue\" (\"Service Bus Queue\") \"Email DLQ\" / \"$DeadLetterQueue\" in \"azure\" arrivingTypes=[\"OrderShipped\"] capabilities=[] explanation=undefined\n  \"sms-dlq\" \"azure.service-bus.queue\" (\"Service Bus Queue\") \"SMS DLQ\" / \"$DeadLetterQueue\" in \"azure\" arrivingTypes=[\"OrderShipped\"] capabilities=[] explanation=undefined\n  \"push-dlq\" \"azure.service-bus.queue\" (\"Service Bus Queue\") \"Push DLQ\" / \"$DeadLetterQueue\" in \"azure\" arrivingTypes=[\"OrderShipped\"] capabilities=[] explanation=undefined\n  \"dlq-triage\" \"azure.functions\" (\"Azure Functions\") \"DLQ triage\" / \"alert, then replay\" props={\"concurrency\":8,\"latencyMs\":100} in \"azure\" arrivingTypes=[\"OrderShipped\"] capabilities=[{\"kind\":\"consumes\",\"edge\":\"email-dlq-to-dlq-triage\",\"peer\":\"email-dlq\",\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"consumes\",\"edge\":\"sms-dlq-to-dlq-triage\",\"peer\":\"sms-dlq\",\"retry\":\"requeue\",\"retryBackoffMs\":0},{\"kind\":\"consumes\",\"edge\":\"push-dlq-to-dlq-triage\",\"peer\":\"push-dlq\",\"retry\":\"requeue\",\"retryBackoffMs\":0}] explanation={\"id\":\"dlq-triage\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":80,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":8,\"seconds\":0.1,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"identity\" \"azure.managed-identity\" (\"Managed Identity\") \"Sender identity\" / \"user-assigned\" in \"azure\" arrivingTypes=[] capabilities=[] explanation=undefined\nconnections:\n  \"carrier-to-shipping\" \"carrier\" -> \"shipping\" sync \"Webhook\" carriedTypes=[\"ParcelScanned\"]\n  \"shipping-to-events\" \"shipping\" -> \"events\" async \"OrderShipped\" carriedTypes=[\"OrderShipped\"]\n  \"events-to-router\" \"events\" -> \"router\" async \"Subscription\" carriedTypes=[\"OrderShipped\"]\n  \"router-to-preferences\" \"router\" -> \"preferences\" sync \"Read preferences\" carriedTypes=[\"OrderShipped\"]\n  \"router-to-email-q\" \"router\" -> \"email-q\" async \"If email\" carriedTypes=[\"OrderShipped\"]\n  \"router-to-sms-q\" \"router\" -> \"sms-q\" async \"If SMS\" carriedTypes=[\"OrderShipped\"]\n  \"router-to-push-q\" \"router\" -> \"push-q\" async \"If push\" carriedTypes=[\"OrderShipped\"]\n  \"email-q-to-email-sender\" \"email-q\" -> \"email-sender\" async carriedTypes=[\"OrderShipped\"]\n  \"sms-q-to-sms-limiter\" \"sms-q\" -> \"sms-limiter\" async carriedTypes=[\"OrderShipped\"]\n  \"push-q-to-push-sender\" \"push-q\" -> \"push-sender\" async carriedTypes=[\"OrderShipped\"]\n  \"email-sender-to-sendgrid\" \"email-sender\" -> \"sendgrid\" sync \"Mail Send API\" carriedTypes=[\"EmailSent\"]\n  \"sms-limiter-to-twilio\" \"sms-limiter\" -> \"twilio\" sync \"Messages API\" carriedTypes=[\"SmsSent\"]\n  \"push-sender-to-push\" \"push-sender\" -> \"push\" sync \"Send\" carriedTypes=[\"PushSent\"]\n  \"email-sender-to-key-vault\" \"email-sender\" -> \"key-vault\" secret dependency carriedTypes=[]\n  \"sms-limiter-to-key-vault\" \"sms-limiter\" -> \"key-vault\" secret dependency carriedTypes=[]\n  \"email-q-to-email-dlq\" \"email-q\" -> \"email-dlq\" async \"After 10 tries\" carriedTypes=[\"OrderShipped\"]\n  \"sms-q-to-sms-dlq\" \"sms-q\" -> \"sms-dlq\" async \"After 10 tries\" carriedTypes=[\"OrderShipped\"]\n  \"push-q-to-push-dlq\" \"push-q\" -> \"push-dlq\" async \"After 10 tries\" carriedTypes=[\"OrderShipped\"]\n  \"email-dlq-to-dlq-triage\" \"email-dlq\" -> \"dlq-triage\" async carriedTypes=[\"OrderShipped\"]\n  \"sms-dlq-to-dlq-triage\" \"sms-dlq\" -> \"dlq-triage\" async carriedTypes=[\"OrderShipped\"]\n  \"push-dlq-to-dlq-triage\" \"push-dlq\" -> \"dlq-triage\" async carriedTypes=[\"OrderShipped\"]\n  \"email-sender-to-identity\" \"email-sender\" -> \"identity\" identity dependency \"runs as\" carriedTypes=[]\n  \"sms-limiter-to-identity\" \"sms-limiter\" -> \"identity\" identity dependency \"runs as\" carriedTypes=[]\nboundary \"azure\" \"Azure · notifications\" (azure): \"shipping\", \"events\", \"preferences\", \"router\", \"email-q\", \"sms-q\", \"push-q\", \"email-sender\", \"sms-limiter\", \"push-sender\", \"key-vault\", \"email-dlq\", \"sms-dlq\", \"push-dlq\", \"dlq-triage\", \"identity\"\nsimulation \"shipping-wave\" \"Holiday shipping wave\": {\"kind\":\"constant\",\"ratePerSec\":400,\"durationMs\":5000} from \"carrier\"; timeline=[{\"atMs\":0,\"action\":{\"do\":\"note\",\"text\":\"Every shipped parcel becomes one OrderShipped event. The router reads the customer's preferences and fans out to the channels they chose. Each dot is 10 events.\",\"focus\":[\"events\",\"router\",\"preferences\"]}},{\"atMs\":2500,\"action\":{\"do\":\"note\",\"text\":\"SMS is limited to 50 a second to stay inside the provider's throughput. Its queue grows while email and push keep pace.\",\"focus\":[\"sms-q\",\"sms-limiter\",\"email-q\",\"push-q\"],\"pause\":true}},{\"atMs\":9000,\"action\":{\"do\":\"note\",\"text\":\"The SMS queue drains at its own pace. Separate queues mean one slow channel never delays the others.\",\"focus\":[\"sms-q\",\"twilio\"]}}]; expectations=[{\"id\":\"sms-backlog\",\"label\":\"SMS queues behind its rate limit\",\"metric\":{\"node\":\"sms-q\",\"field\":\"lag\"},\"op\":\">\",\"value\":100,\"when\":\"at\",\"atMs\":5000},{\"id\":\"email-current\",\"label\":\"Email keeps up\",\"metric\":{\"node\":\"email-q\",\"field\":\"lag\"},\"op\":\"<=\",\"value\":200,\"when\":\"always\"},{\"id\":\"sms-drained\",\"label\":\"Every SMS is eventually sent\",\"metric\":{\"node\":\"sms-q\",\"field\":\"lag\"},\"op\":\"==\",\"value\":0,\"when\":\"end\"},{\"id\":\"preferences\",\"label\":\"Preferences read for all 2,000\",\"metric\":{\"node\":\"preferences\",\"field\":\"processed\"},\"op\":\"==\",\"value\":2000,\"when\":\"end\"}]\nsimulation \"sms-outage\" \"SMS provider outage\": {\"kind\":\"constant\",\"ratePerSec\":40,\"durationMs\":8000} from \"carrier\"; timeline=[{\"atMs\":1500,\"action\":{\"do\":\"status\",\"node\":\"sms-limiter\",\"status\":\"paused\"}},{\"atMs\":1500,\"action\":{\"do\":\"note\",\"text\":\"Twilio starts returning errors. The circuit breaker opens and SMS sending pauses; messages wait in the queue instead of failing.\",\"focus\":[\"sms-limiter\",\"twilio\",\"sms-q\"],\"pause\":true}},{\"atMs\":6500,\"action\":{\"do\":\"status\",\"node\":\"sms-limiter\",\"status\":\"up\"}},{\"atMs\":6500,\"action\":{\"do\":\"note\",\"text\":\"The breaker closes. The backlog drains at 50 a second; email and push never noticed.\",\"focus\":[\"sms-q\",\"sms-limiter\",\"sendgrid\",\"push\"]}}]; expectations=[{\"id\":\"waiting\",\"label\":\"SMS waits during the outage\",\"metric\":{\"node\":\"sms-q\",\"field\":\"lag\"},\"op\":\">\",\"value\":20,\"when\":\"at\",\"atMs\":6000},{\"id\":\"drained\",\"label\":\"The SMS backlog drains\",\"metric\":{\"node\":\"sms-q\",\"field\":\"lag\"},\"op\":\"==\",\"value\":0,\"when\":\"end\"},{\"id\":\"email\",\"label\":\"Email is unaffected\",\"metric\":{\"node\":\"email-q\",\"field\":\"lag\"},\"op\":\"<=\",\"value\":10,\"when\":\"always\"},{\"id\":\"all-routed\",\"label\":\"All 320 events are routed\",\"metric\":{\"node\":\"preferences\",\"field\":\"processed\"},\"op\":\"==\",\"value\":320,\"when\":\"end\"}]"
   },
   "json": {
     "isError": false,
@@ -18,6 +18,7 @@
           "x": 40,
           "y": 280,
           "props": { "ratePerSec": 10, "messageType": "ParcelScanned" },
+          "arrivingTypes": [],
           "capabilities": [{ "kind": "calls", "edge": "carrier-to-shipping", "peer": "shipping" }]
         },
         {
@@ -29,6 +30,7 @@
           "y": 280,
           "group": "azure",
           "props": { "concurrency": 200, "latencyMs": 50, "emits": "OrderShipped" },
+          "arrivingTypes": ["ParcelScanned"],
           "capabilities": [{ "kind": "publishes", "edge": "shipping-to-events", "peer": "events" }],
           "explanation": {
             "id": "shipping",
@@ -67,6 +69,7 @@
           "y": 280,
           "group": "azure",
           "props": { "partitions": 32 },
+          "arrivingTypes": ["OrderShipped"],
           "capabilities": []
         },
         {
@@ -78,6 +81,7 @@
           "y": 120,
           "group": "azure",
           "props": { "latencyMs": 0 },
+          "arrivingTypes": ["OrderShipped"],
           "capabilities": []
         },
         {
@@ -89,6 +93,7 @@
           "y": 280,
           "group": "azure",
           "props": { "concurrency": 400, "latencyMs": 60 },
+          "arrivingTypes": ["OrderShipped"],
           "capabilities": [
             {
               "kind": "consumes",
@@ -145,6 +150,7 @@
           "y": 40,
           "group": "azure",
           "props": { "maxDeliveryCount": 10 },
+          "arrivingTypes": ["OrderShipped"],
           "capabilities": []
         },
         {
@@ -156,6 +162,7 @@
           "y": 280,
           "group": "azure",
           "props": { "maxDeliveryCount": 10 },
+          "arrivingTypes": ["OrderShipped"],
           "capabilities": []
         },
         {
@@ -167,6 +174,7 @@
           "y": 400,
           "group": "azure",
           "props": { "maxDeliveryCount": 10 },
+          "arrivingTypes": ["OrderShipped"],
           "capabilities": []
         },
         {
@@ -178,6 +186,7 @@
           "y": 40,
           "group": "azure",
           "props": { "replicas": 10, "concurrency": 5, "latencyMs": 100, "emits": "EmailSent" },
+          "arrivingTypes": ["OrderShipped"],
           "capabilities": [
             { "kind": "consumes", "edge": "email-q-to-email-sender", "peer": "email-q", "retry": "requeue", "retryBackoffMs": 0 },
             { "kind": "calls", "edge": "email-sender-to-sendgrid", "peer": "sendgrid" }
@@ -217,6 +226,7 @@
           "y": 280,
           "group": "azure",
           "props": { "replicas": 1, "concurrency": 5, "latencyMs": 100, "emits": "SmsSent" },
+          "arrivingTypes": ["OrderShipped"],
           "capabilities": [
             { "kind": "consumes", "edge": "sms-q-to-sms-limiter", "peer": "sms-q", "retry": "requeue", "retryBackoffMs": 0 },
             { "kind": "calls", "edge": "sms-limiter-to-twilio", "peer": "twilio" }
@@ -256,6 +266,7 @@
           "y": 400,
           "group": "azure",
           "props": { "replicas": 10, "concurrency": 5, "latencyMs": 100, "emits": "PushSent" },
+          "arrivingTypes": ["OrderShipped"],
           "capabilities": [
             { "kind": "consumes", "edge": "push-q-to-push-sender", "peer": "push-q", "retry": "requeue", "retryBackoffMs": 0 },
             { "kind": "calls", "edge": "push-sender-to-push", "peer": "push" }
@@ -294,9 +305,10 @@
           "x": 2320,
           "y": 40,
           "props": {},
+          "arrivingTypes": ["EmailSent"],
           "capabilities": []
         },
-        { "id": "key-vault", "stencil": "azure.key-vault", "label": "notify-kv", "sublabel": "Provider API keys", "x": 1940, "y": 160, "group": "azure", "capabilities": [] },
+        { "id": "key-vault", "stencil": "azure.key-vault", "label": "notify-kv", "sublabel": "Provider API keys", "x": 1940, "y": 160, "group": "azure", "arrivingTypes": [], "capabilities": [] },
         {
           "id": "twilio",
           "stencil": "twilio",
@@ -305,6 +317,7 @@
           "x": 2320,
           "y": 280,
           "props": {},
+          "arrivingTypes": ["SmsSent"],
           "capabilities": []
         },
         {
@@ -315,11 +328,12 @@
           "x": 2320,
           "y": 400,
           "props": {},
+          "arrivingTypes": ["PushSent"],
           "capabilities": []
         },
-        { "id": "email-dlq", "stencil": "azure.service-bus.queue", "label": "Email DLQ", "sublabel": "$DeadLetterQueue", "x": 1560, "y": 160, "group": "azure", "capabilities": [] },
-        { "id": "sms-dlq", "stencil": "azure.service-bus.queue", "label": "SMS DLQ", "sublabel": "$DeadLetterQueue", "x": 1560, "y": 520, "group": "azure", "capabilities": [] },
-        { "id": "push-dlq", "stencil": "azure.service-bus.queue", "label": "Push DLQ", "sublabel": "$DeadLetterQueue", "x": 1560, "y": 640, "group": "azure", "capabilities": [] },
+        { "id": "email-dlq", "stencil": "azure.service-bus.queue", "label": "Email DLQ", "sublabel": "$DeadLetterQueue", "x": 1560, "y": 160, "group": "azure", "arrivingTypes": ["OrderShipped"], "capabilities": [] },
+        { "id": "sms-dlq", "stencil": "azure.service-bus.queue", "label": "SMS DLQ", "sublabel": "$DeadLetterQueue", "x": 1560, "y": 520, "group": "azure", "arrivingTypes": ["OrderShipped"], "capabilities": [] },
+        { "id": "push-dlq", "stencil": "azure.service-bus.queue", "label": "Push DLQ", "sublabel": "$DeadLetterQueue", "x": 1560, "y": 640, "group": "azure", "arrivingTypes": ["OrderShipped"], "capabilities": [] },
         {
           "id": "dlq-triage",
           "stencil": "azure.functions",
@@ -329,6 +343,7 @@
           "y": 580,
           "group": "azure",
           "props": { "concurrency": 8, "latencyMs": 100 },
+          "arrivingTypes": ["OrderShipped"],
           "capabilities": [
             { "kind": "consumes", "edge": "email-dlq-to-dlq-triage", "peer": "email-dlq", "retry": "requeue", "retryBackoffMs": 0 },
             { "kind": "consumes", "edge": "sms-dlq-to-dlq-triage", "peer": "sms-dlq", "retry": "requeue", "retryBackoffMs": 0 },
@@ -360,7 +375,7 @@
             "converged": true
           }
         },
-        { "id": "identity", "stencil": "azure.managed-identity", "label": "Sender identity", "sublabel": "user-assigned", "x": 1180, "y": 520, "group": "azure", "capabilities": [] }
+        { "id": "identity", "stencil": "azure.managed-identity", "label": "Sender identity", "sublabel": "user-assigned", "x": 1180, "y": 520, "group": "azure", "arrivingTypes": [], "capabilities": [] }
       ],
       "edges": [
         {
@@ -369,7 +384,8 @@
           "to": "shipping",
           "label": "Webhook",
           "kind": "sync",
-          "props": { "travelMs": 200 }
+          "props": { "travelMs": 200 },
+          "carriedTypes": ["ParcelScanned"]
         },
         {
           "id": "shipping-to-events",
@@ -377,7 +393,8 @@
           "to": "events",
           "label": "OrderShipped",
           "kind": "async",
-          "props": { "travelMs": 300 }
+          "props": { "travelMs": 300 },
+          "carriedTypes": ["OrderShipped"]
         },
         {
           "id": "events-to-router",
@@ -385,7 +402,8 @@
           "to": "router",
           "label": "Subscription",
           "kind": "async",
-          "props": { "travelMs": 300, "group": "notifications" }
+          "props": { "travelMs": 300, "group": "notifications" },
+          "carriedTypes": ["OrderShipped"]
         },
         {
           "id": "router-to-preferences",
@@ -393,7 +411,8 @@
           "to": "preferences",
           "label": "Read preferences",
           "kind": "sync",
-          "props": { "travelMs": 200 }
+          "props": { "travelMs": 200 },
+          "carriedTypes": ["OrderShipped"]
         },
         {
           "id": "router-to-email-q",
@@ -401,7 +420,8 @@
           "to": "email-q",
           "label": "If email",
           "kind": "async",
-          "props": { "travelMs": 300, "share": 0.9 }
+          "props": { "travelMs": 300, "share": 0.9 },
+          "carriedTypes": ["OrderShipped"]
         },
         {
           "id": "router-to-sms-q",
@@ -409,7 +429,8 @@
           "to": "sms-q",
           "label": "If SMS",
           "kind": "async",
-          "props": { "travelMs": 300, "share": 0.3 }
+          "props": { "travelMs": 300, "share": 0.3 },
+          "carriedTypes": ["OrderShipped"]
         },
         {
           "id": "router-to-push-q",
@@ -417,28 +438,32 @@
           "to": "push-q",
           "label": "If push",
           "kind": "async",
-          "props": { "travelMs": 300, "share": 0.7 }
+          "props": { "travelMs": 300, "share": 0.7 },
+          "carriedTypes": ["OrderShipped"]
         },
         {
           "id": "email-q-to-email-sender",
           "from": "email-q",
           "to": "email-sender",
           "kind": "async",
-          "props": { "travelMs": 300 }
+          "props": { "travelMs": 300 },
+          "carriedTypes": ["OrderShipped"]
         },
         {
           "id": "sms-q-to-sms-limiter",
           "from": "sms-q",
           "to": "sms-limiter",
           "kind": "async",
-          "props": { "travelMs": 300 }
+          "props": { "travelMs": 300 },
+          "carriedTypes": ["OrderShipped"]
         },
         {
           "id": "push-q-to-push-sender",
           "from": "push-q",
           "to": "push-sender",
           "kind": "async",
-          "props": { "travelMs": 300 }
+          "props": { "travelMs": 300 },
+          "carriedTypes": ["OrderShipped"]
         },
         {
           "id": "email-sender-to-sendgrid",
@@ -446,7 +471,8 @@
           "to": "sendgrid",
           "label": "Mail Send API",
           "kind": "sync",
-          "props": { "travelMs": 200 }
+          "props": { "travelMs": 200 },
+          "carriedTypes": ["EmailSent"]
         },
         {
           "id": "sms-limiter-to-twilio",
@@ -454,7 +480,8 @@
           "to": "twilio",
           "label": "Messages API",
           "kind": "sync",
-          "props": { "travelMs": 200 }
+          "props": { "travelMs": 200 },
+          "carriedTypes": ["SmsSent"]
         },
         {
           "id": "push-sender-to-push",
@@ -462,17 +489,19 @@
           "to": "push",
           "label": "Send",
           "kind": "sync",
-          "props": { "travelMs": 200 }
+          "props": { "travelMs": 200 },
+          "carriedTypes": ["PushSent"]
         },
-        { "id": "email-sender-to-key-vault", "from": "email-sender", "to": "key-vault", "kind": "async", "relation": "secret", "sourceSide": "bottom", "targetSide": "top" },
-        { "id": "sms-limiter-to-key-vault", "from": "sms-limiter", "to": "key-vault", "kind": "async", "relation": "secret", "sourceSide": "top", "targetSide": "bottom" },
+        { "id": "email-sender-to-key-vault", "from": "email-sender", "to": "key-vault", "kind": "async", "relation": "secret", "sourceSide": "bottom", "targetSide": "top", "carriedTypes": [] },
+        { "id": "sms-limiter-to-key-vault", "from": "sms-limiter", "to": "key-vault", "kind": "async", "relation": "secret", "sourceSide": "top", "targetSide": "bottom", "carriedTypes": [] },
         {
           "id": "email-q-to-email-dlq",
           "from": "email-q",
           "to": "email-dlq",
           "kind": "async",
           "label": "After 10 tries",
-          "props": { "dlq": true }
+          "props": { "dlq": true },
+          "carriedTypes": ["OrderShipped"]
         },
         {
           "id": "sms-q-to-sms-dlq",
@@ -482,7 +511,8 @@
           "label": "After 10 tries",
           "sourceSide": "left",
           "targetSide": "left",
-          "props": { "dlq": true }
+          "props": { "dlq": true },
+          "carriedTypes": ["OrderShipped"]
         },
         {
           "id": "push-q-to-push-dlq",
@@ -490,14 +520,16 @@
           "to": "push-dlq",
           "kind": "async",
           "label": "After 10 tries",
-          "props": { "dlq": true }
+          "props": { "dlq": true },
+          "carriedTypes": ["OrderShipped"]
         },
-        { "id": "email-dlq-to-dlq-triage", "from": "email-dlq", "to": "dlq-triage", "kind": "async" },
-        { "id": "sms-dlq-to-dlq-triage", "from": "sms-dlq", "to": "dlq-triage", "kind": "async" },
-        { "id": "push-dlq-to-dlq-triage", "from": "push-dlq", "to": "dlq-triage", "kind": "async" },
-        { "id": "email-sender-to-identity", "from": "email-sender", "to": "identity", "kind": "async", "label": "runs as", "relation": "identity" },
-        { "id": "sms-limiter-to-identity", "from": "sms-limiter", "to": "identity", "kind": "async", "label": "runs as", "relation": "identity" }
+        { "id": "email-dlq-to-dlq-triage", "from": "email-dlq", "to": "dlq-triage", "kind": "async", "carriedTypes": ["OrderShipped"] },
+        { "id": "sms-dlq-to-dlq-triage", "from": "sms-dlq", "to": "dlq-triage", "kind": "async", "carriedTypes": ["OrderShipped"] },
+        { "id": "push-dlq-to-dlq-triage", "from": "push-dlq", "to": "dlq-triage", "kind": "async", "carriedTypes": ["OrderShipped"] },
+        { "id": "email-sender-to-identity", "from": "email-sender", "to": "identity", "kind": "async", "label": "runs as", "relation": "identity", "carriedTypes": [] },
+        { "id": "sms-limiter-to-identity", "from": "sms-limiter", "to": "identity", "kind": "async", "label": "runs as", "relation": "identity", "carriedTypes": [] }
       ],
+      "messageTypesComplete": true,
       "groups": [
         { "id": "azure", "label": "Azure · notifications", "tone": "azure", "x": 380, "y": -24, "width": 1820, "height": 776 }
       ],
@@ -637,6 +669,6 @@
   },
   "focus": {
     "isError": false,
-    "output": "Diagram \"Notification fan-out\" · direction LR · 2 nodes, 1 connections, 1 boundaries, 2 simulations\ndescription: \"One shipping event fans out by customer preference to email, SMS and push queues, each sender respecting its provider's rate limit; failures dead-letter per channel and the senders sign in with a managed identity.\"\nnodes:\n  \"carrier\" \"generic.webhook\" (\"Webhook\") \"Carrier tracking\" / \"Parcel scanned\" props={\"ratePerSec\":10,\"messageType\":\"ParcelScanned\"} capabilities=[{\"kind\":\"calls\",\"edge\":\"carrier-to-shipping\",\"peer\":\"shipping\"}] explanation=undefined\n  \"shipping\" \"azure.container-apps\" (\"Container Apps\") \"Shipping service\" / \"Publishes OrderShipped\" props={\"concurrency\":200,\"latencyMs\":50,\"emits\":\"OrderShipped\"} in \"azure\" capabilities=[{\"kind\":\"publishes\",\"edge\":\"shipping-to-events\",\"peer\":\"events\"}] explanation={\"id\":\"shipping\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":4000,\"offered\":10,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":200,\"seconds\":0.05,\"utilization\":0.0025,\"growth\":0,\"contributors\":[{\"edge\":\"carrier-to-shipping\",\"node\":\"carrier\",\"label\":\"Carrier tracking\",\"rate\":10}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\nconnections:\n  \"carrier-to-shipping\" \"carrier\" -> \"shipping\" sync \"Webhook\"\nboundary \"azure\" \"Azure · notifications\" (azure): \"shipping\"\nsimulation \"shipping-wave\" \"Holiday shipping wave\": {\"kind\":\"constant\",\"ratePerSec\":400,\"durationMs\":5000} from \"carrier\"; timeline=[{\"atMs\":0,\"action\":{\"do\":\"note\",\"text\":\"Every shipped parcel becomes one OrderShipped event. The router reads the customer's preferences and fans out to the channels they chose. Each dot is 10 events.\",\"focus\":[\"events\",\"router\",\"preferences\"]}},{\"atMs\":2500,\"action\":{\"do\":\"note\",\"text\":\"SMS is limited to 50 a second to stay inside the provider's throughput. Its queue grows while email and push keep pace.\",\"focus\":[\"sms-q\",\"sms-limiter\",\"email-q\",\"push-q\"],\"pause\":true}},{\"atMs\":9000,\"action\":{\"do\":\"note\",\"text\":\"The SMS queue drains at its own pace. Separate queues mean one slow channel never delays the others.\",\"focus\":[\"sms-q\",\"twilio\"]}}]; expectations=[{\"id\":\"sms-backlog\",\"label\":\"SMS queues behind its rate limit\",\"metric\":{\"node\":\"sms-q\",\"field\":\"lag\"},\"op\":\">\",\"value\":100,\"when\":\"at\",\"atMs\":5000},{\"id\":\"email-current\",\"label\":\"Email keeps up\",\"metric\":{\"node\":\"email-q\",\"field\":\"lag\"},\"op\":\"<=\",\"value\":200,\"when\":\"always\"},{\"id\":\"sms-drained\",\"label\":\"Every SMS is eventually sent\",\"metric\":{\"node\":\"sms-q\",\"field\":\"lag\"},\"op\":\"==\",\"value\":0,\"when\":\"end\"},{\"id\":\"preferences\",\"label\":\"Preferences read for all 2,000\",\"metric\":{\"node\":\"preferences\",\"field\":\"processed\"},\"op\":\"==\",\"value\":2000,\"when\":\"end\"}]\nsimulation \"sms-outage\" \"SMS provider outage\": {\"kind\":\"constant\",\"ratePerSec\":40,\"durationMs\":8000} from \"carrier\"; timeline=[{\"atMs\":1500,\"action\":{\"do\":\"status\",\"node\":\"sms-limiter\",\"status\":\"paused\"}},{\"atMs\":1500,\"action\":{\"do\":\"note\",\"text\":\"Twilio starts returning errors. The circuit breaker opens and SMS sending pauses; messages wait in the queue instead of failing.\",\"focus\":[\"sms-limiter\",\"twilio\",\"sms-q\"],\"pause\":true}},{\"atMs\":6500,\"action\":{\"do\":\"status\",\"node\":\"sms-limiter\",\"status\":\"up\"}},{\"atMs\":6500,\"action\":{\"do\":\"note\",\"text\":\"The breaker closes. The backlog drains at 50 a second; email and push never noticed.\",\"focus\":[\"sms-q\",\"sms-limiter\",\"sendgrid\",\"push\"]}}]; expectations=[{\"id\":\"waiting\",\"label\":\"SMS waits during the outage\",\"metric\":{\"node\":\"sms-q\",\"field\":\"lag\"},\"op\":\">\",\"value\":20,\"when\":\"at\",\"atMs\":6000},{\"id\":\"drained\",\"label\":\"The SMS backlog drains\",\"metric\":{\"node\":\"sms-q\",\"field\":\"lag\"},\"op\":\"==\",\"value\":0,\"when\":\"end\"},{\"id\":\"email\",\"label\":\"Email is unaffected\",\"metric\":{\"node\":\"email-q\",\"field\":\"lag\"},\"op\":\"<=\",\"value\":10,\"when\":\"always\"},{\"id\":\"all-routed\",\"label\":\"All 320 events are routed\",\"metric\":{\"node\":\"preferences\",\"field\":\"processed\"},\"op\":\"==\",\"value\":320,\"when\":\"end\"}]"
+    "output": "Diagram \"Notification fan-out\" · direction LR · 2 nodes, 1 connections, 1 boundaries, 2 simulations\ndescription: \"One shipping event fans out by customer preference to email, SMS and push queues, each sender respecting its provider's rate limit; failures dead-letter per channel and the senders sign in with a managed identity.\"\nnodes:\n  \"carrier\" \"generic.webhook\" (\"Webhook\") \"Carrier tracking\" / \"Parcel scanned\" props={\"ratePerSec\":10,\"messageType\":\"ParcelScanned\"} arrivingTypes=[] capabilities=[{\"kind\":\"calls\",\"edge\":\"carrier-to-shipping\",\"peer\":\"shipping\"}] explanation=undefined\n  \"shipping\" \"azure.container-apps\" (\"Container Apps\") \"Shipping service\" / \"Publishes OrderShipped\" props={\"concurrency\":200,\"latencyMs\":50,\"emits\":\"OrderShipped\"} in \"azure\" arrivingTypes=[\"ParcelScanned\"] capabilities=[{\"kind\":\"publishes\",\"edge\":\"shipping-to-events\",\"peer\":\"events\"}] explanation={\"id\":\"shipping\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":4000,\"offered\":10,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":200,\"seconds\":0.05,\"utilization\":0.0025,\"growth\":0,\"contributors\":[{\"edge\":\"carrier-to-shipping\",\"node\":\"carrier\",\"label\":\"Carrier tracking\",\"rate\":10}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\nconnections:\n  \"carrier-to-shipping\" \"carrier\" -> \"shipping\" sync \"Webhook\" carriedTypes=[\"ParcelScanned\"]\nboundary \"azure\" \"Azure · notifications\" (azure): \"shipping\"\nsimulation \"shipping-wave\" \"Holiday shipping wave\": {\"kind\":\"constant\",\"ratePerSec\":400,\"durationMs\":5000} from \"carrier\"; timeline=[{\"atMs\":0,\"action\":{\"do\":\"note\",\"text\":\"Every shipped parcel becomes one OrderShipped event. The router reads the customer's preferences and fans out to the channels they chose. Each dot is 10 events.\",\"focus\":[\"events\",\"router\",\"preferences\"]}},{\"atMs\":2500,\"action\":{\"do\":\"note\",\"text\":\"SMS is limited to 50 a second to stay inside the provider's throughput. Its queue grows while email and push keep pace.\",\"focus\":[\"sms-q\",\"sms-limiter\",\"email-q\",\"push-q\"],\"pause\":true}},{\"atMs\":9000,\"action\":{\"do\":\"note\",\"text\":\"The SMS queue drains at its own pace. Separate queues mean one slow channel never delays the others.\",\"focus\":[\"sms-q\",\"twilio\"]}}]; expectations=[{\"id\":\"sms-backlog\",\"label\":\"SMS queues behind its rate limit\",\"metric\":{\"node\":\"sms-q\",\"field\":\"lag\"},\"op\":\">\",\"value\":100,\"when\":\"at\",\"atMs\":5000},{\"id\":\"email-current\",\"label\":\"Email keeps up\",\"metric\":{\"node\":\"email-q\",\"field\":\"lag\"},\"op\":\"<=\",\"value\":200,\"when\":\"always\"},{\"id\":\"sms-drained\",\"label\":\"Every SMS is eventually sent\",\"metric\":{\"node\":\"sms-q\",\"field\":\"lag\"},\"op\":\"==\",\"value\":0,\"when\":\"end\"},{\"id\":\"preferences\",\"label\":\"Preferences read for all 2,000\",\"metric\":{\"node\":\"preferences\",\"field\":\"processed\"},\"op\":\"==\",\"value\":2000,\"when\":\"end\"}]\nsimulation \"sms-outage\" \"SMS provider outage\": {\"kind\":\"constant\",\"ratePerSec\":40,\"durationMs\":8000} from \"carrier\"; timeline=[{\"atMs\":1500,\"action\":{\"do\":\"status\",\"node\":\"sms-limiter\",\"status\":\"paused\"}},{\"atMs\":1500,\"action\":{\"do\":\"note\",\"text\":\"Twilio starts returning errors. The circuit breaker opens and SMS sending pauses; messages wait in the queue instead of failing.\",\"focus\":[\"sms-limiter\",\"twilio\",\"sms-q\"],\"pause\":true}},{\"atMs\":6500,\"action\":{\"do\":\"status\",\"node\":\"sms-limiter\",\"status\":\"up\"}},{\"atMs\":6500,\"action\":{\"do\":\"note\",\"text\":\"The breaker closes. The backlog drains at 50 a second; email and push never noticed.\",\"focus\":[\"sms-q\",\"sms-limiter\",\"sendgrid\",\"push\"]}}]; expectations=[{\"id\":\"waiting\",\"label\":\"SMS waits during the outage\",\"metric\":{\"node\":\"sms-q\",\"field\":\"lag\"},\"op\":\">\",\"value\":20,\"when\":\"at\",\"atMs\":6000},{\"id\":\"drained\",\"label\":\"The SMS backlog drains\",\"metric\":{\"node\":\"sms-q\",\"field\":\"lag\"},\"op\":\"==\",\"value\":0,\"when\":\"end\"},{\"id\":\"email\",\"label\":\"Email is unaffected\",\"metric\":{\"node\":\"email-q\",\"field\":\"lag\"},\"op\":\"<=\",\"value\":10,\"when\":\"always\"},{\"id\":\"all-routed\",\"label\":\"All 320 events are routed\",\"metric\":{\"node\":\"preferences\",\"field\":\"processed\"},\"op\":\"==\",\"value\":320,\"when\":\"end\"}]"
   }
 }

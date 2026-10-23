@@ -21,6 +21,7 @@ export type GesturePreview =
       over: DropTarget | null;
       target?: ConnectTarget["kind"];
       screen?: Point;
+      at?: Point;
     }
   | { kind: "edge.end"; edge: string; end: EdgeEnd; at: Point; over: DropTarget | null }
   | { kind: "edge.segment"; edge: string; segment: number; waypoints: readonly Point[]; guide?: GuideLine }
@@ -255,6 +256,8 @@ export type FocusEvent =
       caret?: "end";
       claim?: () => boolean;
     }
+  /** A processor rule was removed, or its incoming type changed (rows are keyed by it): continue at `target`. */
+  | { type: "inspector.rule"; target: ElementHandle }
   /** Esc (or Enter before anything was typed) while a pending rename held the keys: its field request ends. */
   | { type: "inspector.abandoned" }
   /** The Inspector opened or folded, by its own control (`panel`) or with the selection. */

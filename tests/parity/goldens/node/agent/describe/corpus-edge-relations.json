@@ -1,7 +1,7 @@
 {
   "text": {
     "isError": false,
-    "output": "Diagram \"Relationships\" · direction LR · 17 nodes, 9 connections, 0 boundaries, 0 simulations\nnodes:\n  \"message-a\" \"service.node\" (\"Node.js Service\") \"message source\" capabilities=[{\"kind\":\"publishes\",\"edge\":\"edge-message\",\"peer\":\"message-b\"}] explanation={\"id\":\"message-a\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":16,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.25,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"message-b\" \"kafka.topic\" (\"Kafka Topic\") \"message target\" capabilities=[] explanation={\"id\":\"message-b\",\"role\":\"topic\",\"status\":\"up\",\"reason\":\"no-reader\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":0,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":null,\"seconds\":0,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"changes\":null,\"addConsumer\":\"message-b\",\"fixId\":\"no-reader:message-b\",\"converged\":true}\n  \"request-a\" \"aws.api-gateway\" (\"Amazon API Gateway\") \"request source\" capabilities=[{\"kind\":\"calls\",\"edge\":\"edge-request\",\"peer\":\"request-b\"}] explanation=undefined\n  \"request-b\" \"service.java\" (\"Java Service\") \"request target\" capabilities=[] explanation={\"id\":\"request-b\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":16,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.25,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"config-a\" \"service.dotnet\" (\".NET Service\") \"config source\" capabilities=[] explanation={\"id\":\"config-a\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":16,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.25,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"config-b\" \"azure.app-config\" (\"App Configuration\") \"config target\" capabilities=[] explanation=undefined\n  \"secret-a\" \"service.go\" (\"Go Service\") \"secret source\" capabilities=[] explanation={\"id\":\"secret-a\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":16,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.25,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"secret-b\" \"aws.secrets-manager\" (\"Secrets Manager\") \"secret target\" capabilities=[] explanation=undefined\n  \"identity-a\" \"aws.lambda\" (\"AWS Lambda\") \"identity source\" capabilities=[] explanation={\"id\":\"identity-a\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":16,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.25,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"identity-b\" \"aws.iam-role\" (\"IAM Role\") \"identity target\" capabilities=[] explanation=undefined\n  \"telemetry-a\" \"service.python\" (\"Python Service\") \"telemetry source\" capabilities=[] explanation={\"id\":\"telemetry-a\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":16,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.25,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"telemetry-b\" \"azure.app-insights\" (\"Application Insights\") \"telemetry target\" capabilities=[] explanation=undefined\n  \"deploy-a\" \"github-actions\" (\"GitHub Actions\") \"deploy source\" capabilities=[] explanation=undefined\n  \"deploy-b\" \"azure.aks\" (\"AKS\") \"deploy target\" capabilities=[] explanation={\"id\":\"deploy-b\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":16,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.25,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"depends-a\" \"azure.aks\" (\"AKS\") \"depends source\" capabilities=[] explanation={\"id\":\"depends-a\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":16,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.25,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"depends-b\" \"generic.dns\" (\"DNS\") \"depends target\" capabilities=[] explanation=undefined\n  \"kv\" \"azure.key-vault\" (\"Key Vault\") \"Key Vault\" capabilities=[] explanation=undefined\nconnections:\n  \"edge-message\" \"message-a\" -> \"message-b\" async \"Message\"\n  \"edge-request\" \"request-a\" -> \"request-b\" sync \"Request\"\n  \"edge-config\" \"config-a\" -> \"config-b\" config dependency\n  \"edge-secret\" \"secret-a\" -> \"secret-b\" secret dependency\n  \"edge-identity\" \"identity-a\" -> \"identity-b\" identity dependency \"execution role\"\n  \"edge-telemetry\" \"telemetry-a\" -> \"telemetry-b\" telemetry dependency\n  \"edge-deploy\" \"deploy-a\" -> \"deploy-b\" deploy dependency \"helm upgrade\"\n  \"edge-depends\" \"depends-a\" -> \"depends-b\" depends dependency \"resolves orders.internal\"\n  \"edge-references\" \"config-b\" -> \"kv\" secret dependency"
+    "output": "Diagram \"Relationships\" · direction LR · 17 nodes, 9 connections, 0 boundaries, 0 simulations\nnodes:\n  \"message-a\" \"service.node\" (\"Node.js Service\") \"message source\" arrivingTypes=[] capabilities=[{\"kind\":\"publishes\",\"edge\":\"edge-message\",\"peer\":\"message-b\"}] explanation={\"id\":\"message-a\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":16,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.25,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"message-b\" \"kafka.topic\" (\"Kafka Topic\") \"message target\" arrivingTypes=[] capabilities=[] explanation={\"id\":\"message-b\",\"role\":\"topic\",\"status\":\"up\",\"reason\":\"no-reader\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":0,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":null,\"seconds\":0,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"changes\":null,\"addConsumer\":\"message-b\",\"fixId\":\"no-reader:message-b\",\"converged\":true}\n  \"request-a\" \"aws.api-gateway\" (\"Amazon API Gateway\") \"request source\" arrivingTypes=[] capabilities=[{\"kind\":\"calls\",\"edge\":\"edge-request\",\"peer\":\"request-b\"}] explanation=undefined\n  \"request-b\" \"service.java\" (\"Java Service\") \"request target\" arrivingTypes=[] capabilities=[] explanation={\"id\":\"request-b\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":16,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.25,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"config-a\" \"service.dotnet\" (\".NET Service\") \"config source\" arrivingTypes=[] capabilities=[] explanation={\"id\":\"config-a\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":16,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.25,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"config-b\" \"azure.app-config\" (\"App Configuration\") \"config target\" arrivingTypes=[] capabilities=[] explanation=undefined\n  \"secret-a\" \"service.go\" (\"Go Service\") \"secret source\" arrivingTypes=[] capabilities=[] explanation={\"id\":\"secret-a\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":16,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.25,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"secret-b\" \"aws.secrets-manager\" (\"Secrets Manager\") \"secret target\" arrivingTypes=[] capabilities=[] explanation=undefined\n  \"identity-a\" \"aws.lambda\" (\"AWS Lambda\") \"identity source\" arrivingTypes=[] capabilities=[] explanation={\"id\":\"identity-a\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":16,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.25,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"identity-b\" \"aws.iam-role\" (\"IAM Role\") \"identity target\" arrivingTypes=[] capabilities=[] explanation=undefined\n  \"telemetry-a\" \"service.python\" (\"Python Service\") \"telemetry source\" arrivingTypes=[] capabilities=[] explanation={\"id\":\"telemetry-a\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":16,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.25,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"telemetry-b\" \"azure.app-insights\" (\"Application Insights\") \"telemetry target\" arrivingTypes=[] capabilities=[] explanation=undefined\n  \"deploy-a\" \"github-actions\" (\"GitHub Actions\") \"deploy source\" arrivingTypes=[] capabilities=[] explanation=undefined\n  \"deploy-b\" \"azure.aks\" (\"AKS\") \"deploy target\" arrivingTypes=[] capabilities=[] explanation={\"id\":\"deploy-b\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":16,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.25,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"depends-a\" \"azure.aks\" (\"AKS\") \"depends source\" arrivingTypes=[] capabilities=[] explanation={\"id\":\"depends-a\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":16,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.25,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"depends-b\" \"generic.dns\" (\"DNS\") \"depends target\" arrivingTypes=[] capabilities=[] explanation=undefined\n  \"kv\" \"azure.key-vault\" (\"Key Vault\") \"Key Vault\" arrivingTypes=[] capabilities=[] explanation=undefined\nconnections:\n  \"edge-message\" \"message-a\" -> \"message-b\" async \"Message\" carriedTypes=[]\n  \"edge-request\" \"request-a\" -> \"request-b\" sync \"Request\" carriedTypes=[]\n  \"edge-config\" \"config-a\" -> \"config-b\" config dependency carriedTypes=[]\n  \"edge-secret\" \"secret-a\" -> \"secret-b\" secret dependency carriedTypes=[]\n  \"edge-identity\" \"identity-a\" -> \"identity-b\" identity dependency \"execution role\" carriedTypes=[]\n  \"edge-telemetry\" \"telemetry-a\" -> \"telemetry-b\" telemetry dependency carriedTypes=[]\n  \"edge-deploy\" \"deploy-a\" -> \"deploy-b\" deploy dependency \"helm upgrade\" carriedTypes=[]\n  \"edge-depends\" \"depends-a\" -> \"depends-b\" depends dependency \"resolves orders.internal\" carriedTypes=[]\n  \"edge-references\" \"config-b\" -> \"kv\" secret dependency carriedTypes=[]"
   },
   "json": {
     "isError": false,
@@ -15,6 +15,7 @@
           "label": "message source",
           "x": 40,
           "y": 40,
+          "arrivingTypes": [],
           "capabilities": [{ "kind": "publishes", "edge": "edge-message", "peer": "message-b" }],
           "explanation": {
             "id": "message-a",
@@ -48,6 +49,7 @@
           "label": "message target",
           "x": 544,
           "y": 40,
+          "arrivingTypes": [],
           "capabilities": [],
           "explanation": {
             "id": "message-b",
@@ -81,6 +83,7 @@
           "label": "request source",
           "x": 40,
           "y": 190,
+          "arrivingTypes": [],
           "capabilities": [{ "kind": "calls", "edge": "edge-request", "peer": "request-b" }]
         },
         {
@@ -89,6 +92,7 @@
           "label": "request target",
           "x": 544,
           "y": 190,
+          "arrivingTypes": [],
           "capabilities": [],
           "explanation": {
             "id": "request-b",
@@ -122,6 +126,7 @@
           "label": "config source",
           "x": 40,
           "y": 340,
+          "arrivingTypes": [],
           "capabilities": [],
           "explanation": {
             "id": "config-a",
@@ -149,13 +154,14 @@
             "converged": true
           }
         },
-        { "id": "config-b", "stencil": "azure.app-config", "label": "config target", "x": 544, "y": 340, "capabilities": [] },
+        { "id": "config-b", "stencil": "azure.app-config", "label": "config target", "x": 544, "y": 340, "arrivingTypes": [], "capabilities": [] },
         {
           "id": "secret-a",
           "stencil": "service.go",
           "label": "secret source",
           "x": 40,
           "y": 490,
+          "arrivingTypes": [],
           "capabilities": [],
           "explanation": {
             "id": "secret-a",
@@ -183,13 +189,14 @@
             "converged": true
           }
         },
-        { "id": "secret-b", "stencil": "aws.secrets-manager", "label": "secret target", "x": 544, "y": 490, "capabilities": [] },
+        { "id": "secret-b", "stencil": "aws.secrets-manager", "label": "secret target", "x": 544, "y": 490, "arrivingTypes": [], "capabilities": [] },
         {
           "id": "identity-a",
           "stencil": "aws.lambda",
           "label": "identity source",
           "x": 40,
           "y": 640,
+          "arrivingTypes": [],
           "capabilities": [],
           "explanation": {
             "id": "identity-a",
@@ -217,13 +224,14 @@
             "converged": true
           }
         },
-        { "id": "identity-b", "stencil": "aws.iam-role", "label": "identity target", "x": 544, "y": 640, "capabilities": [] },
+        { "id": "identity-b", "stencil": "aws.iam-role", "label": "identity target", "x": 544, "y": 640, "arrivingTypes": [], "capabilities": [] },
         {
           "id": "telemetry-a",
           "stencil": "service.python",
           "label": "telemetry source",
           "x": 40,
           "y": 790,
+          "arrivingTypes": [],
           "capabilities": [],
           "explanation": {
             "id": "telemetry-a",
@@ -251,14 +259,15 @@
             "converged": true
           }
         },
-        { "id": "telemetry-b", "stencil": "azure.app-insights", "label": "telemetry target", "x": 544, "y": 790, "capabilities": [] },
-        { "id": "deploy-a", "stencil": "github-actions", "label": "deploy source", "x": 40, "y": 940, "capabilities": [] },
+        { "id": "telemetry-b", "stencil": "azure.app-insights", "label": "telemetry target", "x": 544, "y": 790, "arrivingTypes": [], "capabilities": [] },
+        { "id": "deploy-a", "stencil": "github-actions", "label": "deploy source", "x": 40, "y": 940, "arrivingTypes": [], "capabilities": [] },
         {
           "id": "deploy-b",
           "stencil": "azure.aks",
           "label": "deploy target",
           "x": 544,
           "y": 940,
+          "arrivingTypes": [],
           "capabilities": [],
           "explanation": {
             "id": "deploy-b",
@@ -292,6 +301,7 @@
           "label": "depends source",
           "x": 40,
           "y": 1090,
+          "arrivingTypes": [],
           "capabilities": [],
           "explanation": {
             "id": "depends-a",
@@ -319,12 +329,12 @@
             "converged": true
           }
         },
-        { "id": "depends-b", "stencil": "generic.dns", "label": "depends target", "x": 544, "y": 1090, "capabilities": [] },
-        { "id": "kv", "stencil": "azure.key-vault", "label": "Key Vault", "x": 1048, "y": 340, "capabilities": [] }
+        { "id": "depends-b", "stencil": "generic.dns", "label": "depends target", "x": 544, "y": 1090, "arrivingTypes": [], "capabilities": [] },
+        { "id": "kv", "stencil": "azure.key-vault", "label": "Key Vault", "x": 1048, "y": 340, "arrivingTypes": [], "capabilities": [] }
       ],
       "edges": [
-        { "id": "edge-message", "from": "message-a", "to": "message-b", "kind": "async", "label": "Message" },
-        { "id": "edge-request", "from": "request-a", "to": "request-b", "kind": "sync", "label": "Request" },
+        { "id": "edge-message", "from": "message-a", "to": "message-b", "kind": "async", "label": "Message", "carriedTypes": [] },
+        { "id": "edge-request", "from": "request-a", "to": "request-b", "kind": "sync", "label": "Request", "carriedTypes": [] },
         {
           "id": "edge-config",
           "from": "config-a",
@@ -338,15 +348,17 @@
               { "key": "ConnectionStrings:Orders", "secret": true },
               { "key": "Stripe:ApiKey", "secret": true }
             ]
-          }
+          },
+          "carriedTypes": []
         },
-        { "id": "edge-secret", "from": "secret-a", "to": "secret-b", "kind": "async", "relation": "secret" },
-        { "id": "edge-identity", "from": "identity-a", "to": "identity-b", "kind": "async", "relation": "identity", "label": "execution role" },
-        { "id": "edge-telemetry", "from": "telemetry-a", "to": "telemetry-b", "kind": "async", "relation": "telemetry" },
-        { "id": "edge-deploy", "from": "deploy-a", "to": "deploy-b", "kind": "async", "relation": "deploy", "label": "helm upgrade" },
-        { "id": "edge-depends", "from": "depends-a", "to": "depends-b", "kind": "async", "relation": "depends", "label": "resolves orders.internal" },
-        { "id": "edge-references", "from": "config-b", "to": "kv", "kind": "async", "relation": "secret" }
+        { "id": "edge-secret", "from": "secret-a", "to": "secret-b", "kind": "async", "relation": "secret", "carriedTypes": [] },
+        { "id": "edge-identity", "from": "identity-a", "to": "identity-b", "kind": "async", "relation": "identity", "label": "execution role", "carriedTypes": [] },
+        { "id": "edge-telemetry", "from": "telemetry-a", "to": "telemetry-b", "kind": "async", "relation": "telemetry", "carriedTypes": [] },
+        { "id": "edge-deploy", "from": "deploy-a", "to": "deploy-b", "kind": "async", "relation": "deploy", "label": "helm upgrade", "carriedTypes": [] },
+        { "id": "edge-depends", "from": "depends-a", "to": "depends-b", "kind": "async", "relation": "depends", "label": "resolves orders.internal", "carriedTypes": [] },
+        { "id": "edge-references", "from": "config-b", "to": "kv", "kind": "async", "relation": "secret", "carriedTypes": [] }
       ],
+      "messageTypesComplete": true,
       "groups": [],
       "annotations": [],
       "simulations": [],
@@ -355,6 +367,6 @@
   },
   "focus": {
     "isError": false,
-    "output": "Diagram \"Relationships\" · direction LR · 2 nodes, 1 connections, 0 boundaries, 0 simulations\nnodes:\n  \"message-a\" \"service.node\" (\"Node.js Service\") \"message source\" capabilities=[{\"kind\":\"publishes\",\"edge\":\"edge-message\",\"peer\":\"message-b\"}] explanation={\"id\":\"message-a\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":16,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.25,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"message-b\" \"kafka.topic\" (\"Kafka Topic\") \"message target\" capabilities=[] explanation={\"id\":\"message-b\",\"role\":\"topic\",\"status\":\"up\",\"reason\":\"no-reader\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":0,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":null,\"seconds\":0,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"changes\":null,\"addConsumer\":\"message-b\",\"fixId\":\"no-reader:message-b\",\"converged\":true}\nconnections:\n  \"edge-message\" \"message-a\" -> \"message-b\" async \"Message\""
+    "output": "Diagram \"Relationships\" · direction LR · 2 nodes, 1 connections, 0 boundaries, 0 simulations\nnodes:\n  \"message-a\" \"service.node\" (\"Node.js Service\") \"message source\" arrivingTypes=[] capabilities=[{\"kind\":\"publishes\",\"edge\":\"edge-message\",\"peer\":\"message-b\"}] explanation={\"id\":\"message-a\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":16,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.25,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"message-b\" \"kafka.topic\" (\"Kafka Topic\") \"message target\" arrivingTypes=[] capabilities=[] explanation={\"id\":\"message-b\",\"role\":\"topic\",\"status\":\"up\",\"reason\":\"no-reader\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":0,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":null,\"seconds\":0,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"changes\":null,\"addConsumer\":\"message-b\",\"fixId\":\"no-reader:message-b\",\"converged\":true}\nconnections:\n  \"edge-message\" \"message-a\" -> \"message-b\" async \"Message\" carriedTypes=[]"
   }
 }

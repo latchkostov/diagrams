@@ -1,7 +1,7 @@
 {
   "text": {
     "isError": false,
-    "output": "Diagram \"Load just under the busy line\" · direction LR · 3 nodes, 2 connections, 0 boundaries, 0 simulations\ndescription: \"One replica of 4 slots at 250 ms handles 16 req/s.\"\nnodes:\n  \"web\" \"client.browser\" (\"Web Browser\") \"Web\" props={\"ratePerSec\":12.6} capabilities=[{\"kind\":\"calls\",\"edge\":\"call\",\"peer\":\"api\"}] explanation=undefined\n  \"api\" \"service.go\" (\"Go Service\") \"api\" props={\"replicas\":1,\"concurrency\":4,\"latencyMs\":250,\"jitter\":0} capabilities=[{\"kind\":\"calls\",\"edge\":\"write\",\"peer\":\"db\"}] explanation={\"id\":\"api\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":16,\"offered\":12.6,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.25,\"utilization\":0.7875,\"growth\":0,\"contributors\":[{\"edge\":\"call\",\"node\":\"web\",\"label\":\"Web\",\"rate\":12.6}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":2,\"changes\":null,\"converged\":true}\n  \"db\" \"postgres\" (\"PostgreSQL\") \"Ledger\" capabilities=[] explanation=undefined\nconnections:\n  \"call\" \"web\" -> \"api\" sync\n  \"write\" \"api\" -> \"db\" sync"
+    "output": "Diagram \"Load just under the busy line\" · direction LR · 3 nodes, 2 connections, 0 boundaries, 0 simulations\ndescription: \"One replica of 4 slots at 250 ms handles 16 req/s.\"\nnodes:\n  \"web\" \"client.browser\" (\"Web Browser\") \"Web\" props={\"ratePerSec\":12.6} arrivingTypes=[] capabilities=[{\"kind\":\"calls\",\"edge\":\"call\",\"peer\":\"api\"}] explanation=undefined\n  \"api\" \"service.go\" (\"Go Service\") \"api\" props={\"replicas\":1,\"concurrency\":4,\"latencyMs\":250,\"jitter\":0} arrivingTypes=[\"Web\"] capabilities=[{\"kind\":\"calls\",\"edge\":\"write\",\"peer\":\"db\"}] explanation={\"id\":\"api\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":16,\"offered\":12.6,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.25,\"utilization\":0.7875,\"growth\":0,\"contributors\":[{\"edge\":\"call\",\"node\":\"web\",\"label\":\"Web\",\"rate\":12.6}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":2,\"changes\":null,\"converged\":true}\n  \"db\" \"postgres\" (\"PostgreSQL\") \"Ledger\" arrivingTypes=[\"Web\"] capabilities=[] explanation=undefined\nconnections:\n  \"call\" \"web\" -> \"api\" sync carriedTypes=[\"Web\"]\n  \"write\" \"api\" -> \"db\" sync carriedTypes=[\"Web\"]"
   },
   "json": {
     "isError": false,
@@ -17,6 +17,7 @@
           "x": 0,
           "y": 100,
           "props": { "ratePerSec": 12.6 },
+          "arrivingTypes": [],
           "capabilities": [{ "kind": "calls", "edge": "call", "peer": "api" }]
         },
         {
@@ -26,6 +27,7 @@
           "x": 320,
           "y": 100,
           "props": { "replicas": 1, "concurrency": 4, "latencyMs": 250, "jitter": 0 },
+          "arrivingTypes": ["Web"],
           "capabilities": [{ "kind": "calls", "edge": "write", "peer": "db" }],
           "explanation": {
             "id": "api",
@@ -53,12 +55,13 @@
             "converged": true
           }
         },
-        { "id": "db", "stencil": "postgres", "label": "Ledger", "x": 640, "y": 100, "capabilities": [] }
+        { "id": "db", "stencil": "postgres", "label": "Ledger", "x": 640, "y": 100, "arrivingTypes": ["Web"], "capabilities": [] }
       ],
       "edges": [
-        { "id": "call", "from": "web", "to": "api", "kind": "sync" },
-        { "id": "write", "from": "api", "to": "db", "kind": "sync" }
+        { "id": "call", "from": "web", "to": "api", "kind": "sync", "carriedTypes": ["Web"] },
+        { "id": "write", "from": "api", "to": "db", "kind": "sync", "carriedTypes": ["Web"] }
       ],
+      "messageTypesComplete": true,
       "groups": [],
       "annotations": [],
       "simulations": [],
@@ -67,6 +70,6 @@
   },
   "focus": {
     "isError": false,
-    "output": "Diagram \"Load just under the busy line\" · direction LR · 2 nodes, 1 connections, 0 boundaries, 0 simulations\ndescription: \"One replica of 4 slots at 250 ms handles 16 req/s.\"\nnodes:\n  \"web\" \"client.browser\" (\"Web Browser\") \"Web\" props={\"ratePerSec\":12.6} capabilities=[{\"kind\":\"calls\",\"edge\":\"call\",\"peer\":\"api\"}] explanation=undefined\n  \"api\" \"service.go\" (\"Go Service\") \"api\" props={\"replicas\":1,\"concurrency\":4,\"latencyMs\":250,\"jitter\":0} capabilities=[{\"kind\":\"calls\",\"edge\":\"write\",\"peer\":\"db\"}] explanation={\"id\":\"api\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":16,\"offered\":12.6,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.25,\"utilization\":0.7875,\"growth\":0,\"contributors\":[{\"edge\":\"call\",\"node\":\"web\",\"label\":\"Web\",\"rate\":12.6}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":2,\"changes\":null,\"converged\":true}\nconnections:\n  \"call\" \"web\" -> \"api\" sync"
+    "output": "Diagram \"Load just under the busy line\" · direction LR · 2 nodes, 1 connections, 0 boundaries, 0 simulations\ndescription: \"One replica of 4 slots at 250 ms handles 16 req/s.\"\nnodes:\n  \"web\" \"client.browser\" (\"Web Browser\") \"Web\" props={\"ratePerSec\":12.6} arrivingTypes=[] capabilities=[{\"kind\":\"calls\",\"edge\":\"call\",\"peer\":\"api\"}] explanation=undefined\n  \"api\" \"service.go\" (\"Go Service\") \"api\" props={\"replicas\":1,\"concurrency\":4,\"latencyMs\":250,\"jitter\":0} arrivingTypes=[\"Web\"] capabilities=[{\"kind\":\"calls\",\"edge\":\"write\",\"peer\":\"db\"}] explanation={\"id\":\"api\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":16,\"offered\":12.6,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.25,\"utilization\":0.7875,\"growth\":0,\"contributors\":[{\"edge\":\"call\",\"node\":\"web\",\"label\":\"Web\",\"rate\":12.6}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":2,\"changes\":null,\"converged\":true}\nconnections:\n  \"call\" \"web\" -> \"api\" sync carriedTypes=[\"Web\"]"
   }
 }

@@ -8,6 +8,7 @@ import { planFixLabel, planSentence } from "../planning/scalingPlanText";
 import type { CheckFix, CheckRule } from "./types";
 
 export function presentRule(rule: CheckRule): CheckRule {
+  if (rule.id === "message-loop") return { ...rule, name: t("messageLoop.name"), about: t("messageLoop.about") };
   if (rule.id === "blocked-threads")
     return { ...rule, name: t("waitChecks.blockedName"), about: t("waitChecks.blockedAbout") };
   if (rule.id === "scaling-blind")
@@ -32,6 +33,28 @@ function requestLabel(label: NonNullable<CheckFix["requestLabel"]>): string {
 
 /** Localize broker descriptors at render time, keeping cached and worker findings deterministic. */
 export function presentFinding(finding: Finding): Finding {
+  if (finding.messageLoop)
+    return {
+      ...finding,
+      title: t("messageLoop.name"),
+      message: t("messageLoop.message", finding.messageLoop),
+      rationale: finding.fix ? t("messageLoop.why") : t("messageLoop.manual"),
+      ...(finding.fix
+        ? {
+            fix: {
+              ...finding.fix,
+              label: finding.fix.messageLabel
+                ? t("messageLoop.filter", { types: formatList(finding.fix.messageLabel.types) })
+                : finding.fix.label,
+              options: finding.fix.options?.map((option) => ({
+                ...option,
+                label: t("messageLoop.rename", { type: option.messageLabel?.types[0] ?? "" }),
+                short: t("messageLoop.rename", { type: option.messageLabel?.types[0] ?? "" }),
+              })),
+            },
+          }
+        : {}),
+    };
   const wait = finding.requestFinding;
   if (wait)
     return {

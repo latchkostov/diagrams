@@ -54,28 +54,6 @@ export function EdgeAdvanced({ edge, editor, data, props, flow, rule, merge }: E
             value={props.travelMs}
             onChange={(v) => editor.setEdgeProps(edge.id, { travelMs: v }, merge("travelMs"))}
           />
-          <SimInput
-            name="filter"
-            field={{
-              label: t("inspector.filter"),
-              kind: "list",
-              placeholder: t("inspector.allMessageTypes"),
-              hint: t("inspector.onlyTheseMessageTypesTravelThisEdgeTrailingWildcard"),
-            }}
-            value={props.filter}
-            onChange={(v) => editor.setEdgeProps(edge.id, { filter: v }, merge("filter"))}
-          />
-          <SimInput
-            name="emits"
-            field={{
-              label: t("inspector.renameTo"),
-              kind: "text",
-              placeholder: t("inspector.unchanged"),
-              hint: t("inspector.renameMessagesAsTheyLeaveAlongThisEdge"),
-            }}
-            value={props.emits}
-            onChange={(v) => editor.setEdgeProps(edge.id, { emits: v }, merge("emits"))}
-          />
         </>
       )}
       <span className="insp-label">{t("inspector.customProperties")}</span>

@@ -1,3 +1,4 @@
+import { ConnectionRadius } from "./interaction/ConnectionRadius";
 import { gestureTargetRemoved } from "./interaction/gestures";
 import { useShapeResize } from "./shapes/useShapeResize";
 import { preloadMarkdown } from "../components/markdown/lazy";
@@ -137,6 +138,8 @@ import { targetRemoved } from "./menus/menuTargets";
  * The keyboard shortcuts sheet (?) loads when it's first opened: it isn't part of the canvas's first view. Until it
  * arrives (or if its download fails) a dialog of the same name stands in: Esc and Close dismiss it, Retry tries again.
  */
+/** Carried message types on hovered and focused flow edges: one canvas-wide reader, after the first view. */
+const EdgeMessages = lazyComponent(() => import("./edges/EdgeMessages").then((m) => m.EdgeMessages));
 const ShortcutsDialog = lazyComponent(
   () => import("../components/ShortcutsDialog").then((m) => m.ShortcutsDialog),
   ({ onClose }, status) => <ShortcutsShell onClose={onClose} status={status} />,
@@ -741,17 +744,18 @@ function CanvasInner({
     grow.current = (from, toward, clone) => (clone ? cloneTo(from, toward) : growTo(from, toward));
   });
 
-  const [annotationKindOf, onConnectStart, onConnectEnd, onConnect, onClickConnectEnd] = useConnectionPlacement(
-    getNode,
-    hideTip,
-    wrapper,
-    !editGestures,
-    live,
-    editor,
-    screenToFlowPosition,
-    pickNamed,
-    interaction,
-  );
+  const [annotationKindOf, onConnectStart, onConnectEnd, onConnect, onClickConnectEnd, onClickConnectStart] =
+    useConnectionPlacement(
+      getNode,
+      hideTip,
+      wrapper,
+      !editGestures,
+      live,
+      editor,
+      screenToFlowPosition,
+      pickNamed,
+      interaction,
+    );
 
   const { contain: containRef, boxBase: boxBaseRef } = useBoxSelection({
     editGestures,
@@ -965,6 +969,10 @@ function CanvasInner({
     setOpenedByHand((o) => ({ ...o, palette: paletteHidden }));
   }, [paletteHidden]);
   const addFromPalette = useAddFromPalette(editor, live, interaction);
+  const viewerDiagram = useMemo(
+    () => (readOnly ? fromFlow(meta, nodes, edges) : undefined),
+    [readOnly, meta, nodes, edges],
+  );
   const anchorLabel = useMemo(() => {
     if (selectedNodes.length + selectedAnnotations.length + selectedGroups.length + selectedEdges.length !== 1)
       return undefined;
@@ -1107,12 +1115,11 @@ function CanvasInner({
                 onConnect={onConnect}
                 onConnectStart={onConnectStart}
                 onConnectEnd={onConnectEnd}
-                onClickConnectStart={onConnectStart}
+                onClickConnectStart={onClickConnectStart}
                 onClickConnectEnd={onClickConnectEnd}
                 connectionLineComponent={ConnectionLine}
                 isValidConnection={isValidConnection}
                 connectionMode={ConnectionMode.Loose}
-                connectionRadius={28}
                 onEdgeDoubleClick={readOnly ? undefined : onEdgeDoubleClick}
                 // Every drag, the selection's frame included (see onNodeDragStart).
                 onNodeDragStart={onNodeDragStart}
@@ -1166,6 +1173,7 @@ function CanvasInner({
                 }
               >
                 <ZoomVar host={wrapper} />
+                {!readOnly && <ConnectionRadius />}
                 {prefs.grid && <DotGrid />}
                 {editGestures && (
                   <svg ref={guideLayer} className="smart-guides" data-testid="smart-guides" aria-hidden />
@@ -1189,7 +1197,7 @@ function CanvasInner({
                     initial={viewer?.live}
                     onHandle={receiveLiveHandle}
                     editor={readOnly ? undefined : editor}
-                    diagram={readOnly ? fromFlow(meta, nodes, edges) : undefined}
+                    diagram={viewerDiagram}
                     presenting={presenting}
                     simulations={meta.simulations}
                     planning={meta.planning}
@@ -1211,6 +1219,7 @@ function CanvasInner({
                   <CanvasFitContext.Provider value={fit}>{viewer.controls}</CanvasFitContext.Provider>
                 )}
                 {checksOn && checksCard && <ChecksMarkersView store={checks} />}
+                <EdgeMessages meta={meta} />
                 {presence && <PresenceLayer presence={presence} onChange={presenceChanged} />}
               </ReactFlow>
 

@@ -7,7 +7,7 @@ import { SPEEDS } from "./controller";
 import { useLive, type TraceChoice } from "./context";
 import { formatClock, formatCount, formatSpeed, formatScale } from "./format";
 import { LiveIcon } from "./icons";
-import { Timeline } from "./Timeline";
+import { Timeline } from "./lazyTimeline";
 import { PANEL_OPENER_ATTR } from "./usePanelEscape";
 import { useLivePopover } from "./useLivePopover";
 import { SlowBar } from "./slowmo/SlowBar";

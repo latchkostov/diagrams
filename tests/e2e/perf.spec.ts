@@ -1,6 +1,17 @@
 import { TEXT_END } from "./fixtures";
 import type { Page } from "@playwright/test";
-import { test, expect, gotoCanvas, expectNoErrors, pageLoadTimeout, waitForStableBox, fitDiagram } from "./fixtures";
+import {
+  test,
+  expect,
+  gotoCanvas,
+  expectNoErrors,
+  pageLoadTimeout,
+  waitForStableBox,
+  fitDiagram,
+  waitForStableViewport,
+  viewportTransform,
+  flowState,
+} from "./fixtures";
 
 // Interaction performance guards (dev server, so React runs in development mode: tagged @dev, which
 // playwright.config.ts runs in the "dev" project).
@@ -147,6 +158,35 @@ async function prepareNodeInteractions(page: Page) {
 }
 
 test.describe("perf: interactions", { tag: "@dev" }, () => {
+  test("zoom keeps React Flow snap radius aligned with the resolver, without rendering the canvas shell", async ({
+    page,
+  }) => {
+    await openDiagram(page);
+    /** React Flow's own connectionRadius and zoom (its store, through the e2e probe), and the resolver's at that zoom. */
+    const radii = async () => {
+      const { zoom, connectionRadius } = await flowState(page);
+      const resolver = await page.evaluate(async (z) => {
+        const url = "/src/canvas/gestures.ts";
+        return ((await import(url)) as typeof import("../../src/canvas/gestures")).connectionRadius(z);
+      }, zoom);
+      return { zoom, flow: connectionRadius, resolver };
+    };
+    const before = await viewportTransform(page);
+    const seen: { zoom: number; flow: number; resolver: number }[] = [];
+    const { counts } = await measure(page, async () => {
+      for (let i = 0; i < 5; i++) {
+        await page.getByTestId("zoom-out-button").click();
+        await waitForStableViewport(page);
+        seen.push(await radii());
+      }
+    });
+    expect(await viewportTransform(page)).not.toBe(before);
+    for (const r of seen) expect(r.flow, JSON.stringify(r)).toBe(r.resolver);
+    // Low zoom widens the radius past its floor, and it follows each step.
+    expect(new Set(seen.map((r) => r.flow)).size, JSON.stringify(seen)).toBeGreaterThan(1);
+    expect(counts.CanvasInner ?? 0, JSON.stringify(counts)).toBe(0);
+  });
+
   test("hovering the canvas menu re-renders only the rows that change", async ({ page, consoleErrors }) => {
     await openDiagram(page);
     await openCanvasMenu(page);

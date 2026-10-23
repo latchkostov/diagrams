@@ -40,9 +40,18 @@ export async function applyFix(editor: EditorApi, finding: Finding, option?: str
     current = editor.getDiagram();
     if (simulationContent(current) !== content) return false;
   }
-  const fresh = runChecks(current, { rules, requests }).findings.find((f) => f.id === finding.id);
+  const fresh = runChecks(current, { rules, requests, fixTarget: finding.id }).findings.find(
+    (f) => f.id === finding.id,
+  );
   // One of the fix's other options, by its words (the same option worked out now).
-  const chosen = option === undefined ? undefined : fresh?.fix?.options?.find((o) => o.label === option);
+  const optionIndex =
+    option === undefined
+      ? -1
+      : (presentFinding(fresh ?? finding).fix?.options?.findIndex((o) => o.label === option) ?? -1);
+  const chosen =
+    option === undefined
+      ? undefined
+      : (fresh?.fix?.options?.find((o) => o.label === option) ?? fresh?.fix?.options?.[optionIndex]);
   const ops = option === undefined ? fresh?.fix?.ops : chosen?.ops;
   if (!ops) {
     notify("Nothing to fix: the diagram already changed.", { kind: "info" });

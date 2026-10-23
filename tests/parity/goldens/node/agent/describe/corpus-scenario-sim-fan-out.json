@@ -1,7 +1,7 @@
 {
   "text": {
     "isError": false,
-    "output": "Diagram \"Fan-out to 3 consumer groups\" · direction LR · 5 nodes, 4 connections, 0 boundaries, 0 simulations\ndescription: \"Each subscriber is its own consumer group, so each gets a copy.\"\nnodes:\n  \"orders\" \"service.node\" (\"Node.js Service\") \"Orders API\" capabilities=[{\"kind\":\"publishes\",\"edge\":\"orders-topic\",\"peer\":\"topic\"}] explanation={\"id\":\"orders\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":16,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.25,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"topic\" \"kafka.topic\" (\"Kafka Topic\") \"orders\" / \"orders.created\" capabilities=[] explanation=undefined\n  \"billing\" \"service.dotnet\" (\".NET Service\") \"Billing\" / \"group: billing\" capabilities=[{\"kind\":\"consumes\",\"edge\":\"topic-billing\",\"peer\":\"topic\",\"group\":\"topic-billing\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0}] explanation={\"id\":\"billing\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":16,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"topic\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":3}],\"slots\":4,\"seconds\":0.25,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"shipping\" \"service.java\" (\"Java Service\") \"Shipping\" / \"group: shipping\" capabilities=[{\"kind\":\"consumes\",\"edge\":\"topic-shipping\",\"peer\":\"topic\",\"group\":\"topic-shipping\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0}] explanation={\"id\":\"shipping\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":16,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"topic\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":3}],\"slots\":4,\"seconds\":0.25,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"analytics\" \"service.python\" (\"Python Service\") \"Analytics\" / \"group: analytics\" capabilities=[{\"kind\":\"consumes\",\"edge\":\"topic-analytics\",\"peer\":\"topic\",\"group\":\"topic-analytics\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0}] explanation={\"id\":\"analytics\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":16,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"topic\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":3}],\"slots\":4,\"seconds\":0.25,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\nconnections:\n  \"orders-topic\" \"orders\" -> \"topic\" async\n  \"topic-billing\" \"topic\" -> \"billing\" async\n  \"topic-shipping\" \"topic\" -> \"shipping\" async\n  \"topic-analytics\" \"topic\" -> \"analytics\" async"
+    "output": "Diagram \"Fan-out to 3 consumer groups\" · direction LR · 5 nodes, 4 connections, 0 boundaries, 0 simulations\ndescription: \"Each subscriber is its own consumer group, so each gets a copy.\"\nnodes:\n  \"orders\" \"service.node\" (\"Node.js Service\") \"Orders API\" arrivingTypes=[] capabilities=[{\"kind\":\"publishes\",\"edge\":\"orders-topic\",\"peer\":\"topic\"}] explanation={\"id\":\"orders\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":16,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.25,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"topic\" \"kafka.topic\" (\"Kafka Topic\") \"orders\" / \"orders.created\" arrivingTypes=[] capabilities=[] explanation=undefined\n  \"billing\" \"service.dotnet\" (\".NET Service\") \"Billing\" / \"group: billing\" arrivingTypes=[] capabilities=[{\"kind\":\"consumes\",\"edge\":\"topic-billing\",\"peer\":\"topic\",\"group\":\"topic-billing\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0}] explanation={\"id\":\"billing\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":16,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"topic\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":3}],\"slots\":4,\"seconds\":0.25,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"shipping\" \"service.java\" (\"Java Service\") \"Shipping\" / \"group: shipping\" arrivingTypes=[] capabilities=[{\"kind\":\"consumes\",\"edge\":\"topic-shipping\",\"peer\":\"topic\",\"group\":\"topic-shipping\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0}] explanation={\"id\":\"shipping\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":16,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"topic\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":3}],\"slots\":4,\"seconds\":0.25,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"analytics\" \"service.python\" (\"Python Service\") \"Analytics\" / \"group: analytics\" arrivingTypes=[] capabilities=[{\"kind\":\"consumes\",\"edge\":\"topic-analytics\",\"peer\":\"topic\",\"group\":\"topic-analytics\",\"broker\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"retry\":\"requeue\",\"retryBackoffMs\":0}] explanation={\"id\":\"analytics\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":16,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[{\"broker\":\"topic\",\"spec\":{\"partitioned\":true,\"assignment\":\"partitions\",\"group\":\"group\",\"ingestUnit\":\"MB/s\",\"producerSizeUnit\":\"kB\"},\"count\":3}],\"slots\":4,\"seconds\":0.25,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\nconnections:\n  \"orders-topic\" \"orders\" -> \"topic\" async carriedTypes=[]\n  \"topic-billing\" \"topic\" -> \"billing\" async carriedTypes=[]\n  \"topic-shipping\" \"topic\" -> \"shipping\" async carriedTypes=[]\n  \"topic-analytics\" \"topic\" -> \"analytics\" async carriedTypes=[]"
   },
   "json": {
     "isError": false,
@@ -16,6 +16,7 @@
           "label": "Orders API",
           "x": 40,
           "y": 160,
+          "arrivingTypes": [],
           "capabilities": [{ "kind": "publishes", "edge": "orders-topic", "peer": "topic" }],
           "explanation": {
             "id": "orders",
@@ -43,7 +44,7 @@
             "converged": true
           }
         },
-        { "id": "topic", "stencil": "kafka.topic", "label": "orders", "x": 400, "y": 160, "sublabel": "orders.created", "capabilities": [] },
+        { "id": "topic", "stencil": "kafka.topic", "label": "orders", "x": 400, "y": 160, "sublabel": "orders.created", "arrivingTypes": [], "capabilities": [] },
         {
           "id": "billing",
           "stencil": "service.dotnet",
@@ -51,6 +52,7 @@
           "x": 760,
           "y": 40,
           "sublabel": "group: billing",
+          "arrivingTypes": [],
           "capabilities": [
             {
               "kind": "consumes",
@@ -101,6 +103,7 @@
           "x": 760,
           "y": 160,
           "sublabel": "group: shipping",
+          "arrivingTypes": [],
           "capabilities": [
             {
               "kind": "consumes",
@@ -151,6 +154,7 @@
           "x": 760,
           "y": 280,
           "sublabel": "group: analytics",
+          "arrivingTypes": [],
           "capabilities": [
             {
               "kind": "consumes",
@@ -196,11 +200,12 @@
         }
       ],
       "edges": [
-        { "id": "orders-topic", "from": "orders", "to": "topic", "kind": "async" },
-        { "id": "topic-billing", "from": "topic", "to": "billing", "kind": "async" },
-        { "id": "topic-shipping", "from": "topic", "to": "shipping", "kind": "async" },
-        { "id": "topic-analytics", "from": "topic", "to": "analytics", "kind": "async" }
+        { "id": "orders-topic", "from": "orders", "to": "topic", "kind": "async", "carriedTypes": [] },
+        { "id": "topic-billing", "from": "topic", "to": "billing", "kind": "async", "carriedTypes": [] },
+        { "id": "topic-shipping", "from": "topic", "to": "shipping", "kind": "async", "carriedTypes": [] },
+        { "id": "topic-analytics", "from": "topic", "to": "analytics", "kind": "async", "carriedTypes": [] }
       ],
+      "messageTypesComplete": true,
       "groups": [],
       "annotations": [],
       "simulations": [],
@@ -209,6 +214,6 @@
   },
   "focus": {
     "isError": false,
-    "output": "Diagram \"Fan-out to 3 consumer groups\" · direction LR · 2 nodes, 1 connections, 0 boundaries, 0 simulations\ndescription: \"Each subscriber is its own consumer group, so each gets a copy.\"\nnodes:\n  \"orders\" \"service.node\" (\"Node.js Service\") \"Orders API\" capabilities=[{\"kind\":\"publishes\",\"edge\":\"orders-topic\",\"peer\":\"topic\"}] explanation={\"id\":\"orders\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":16,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.25,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"topic\" \"kafka.topic\" (\"Kafka Topic\") \"orders\" / \"orders.created\" capabilities=[] explanation=undefined\nconnections:\n  \"orders-topic\" \"orders\" -> \"topic\" async"
+    "output": "Diagram \"Fan-out to 3 consumer groups\" · direction LR · 2 nodes, 1 connections, 0 boundaries, 0 simulations\ndescription: \"Each subscriber is its own consumer group, so each gets a copy.\"\nnodes:\n  \"orders\" \"service.node\" (\"Node.js Service\") \"Orders API\" arrivingTypes=[] capabilities=[{\"kind\":\"publishes\",\"edge\":\"orders-topic\",\"peer\":\"topic\"}] explanation={\"id\":\"orders\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":16,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.25,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"topic\" \"kafka.topic\" (\"Kafka Topic\") \"orders\" / \"orders.created\" arrivingTypes=[] capabilities=[] explanation=undefined\nconnections:\n  \"orders-topic\" \"orders\" -> \"topic\" async carriedTypes=[]"
   }
 }
