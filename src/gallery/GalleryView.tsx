@@ -15,10 +15,11 @@ import {
   type CSSProperties,
   type DragEvent,
 } from "react";
-import { iconUrl, stencils } from "../stencils/registry";
+import { stencils } from "../stencils/registry";
+import { iconUrl } from "../stencils/iconUrls";
 import type { Stencil, StencilCategory } from "../model/types";
 import { useSettings } from "../harness/settings";
-import { getNodeVariant } from "../harness/nodeVariants";
+import { getNodeVariant } from "../canvas/nodes/variantRegistry";
 import { CATEGORY_ORDER, clientSections } from "../lib/categories";
 import { galleryRoleMeta as simRoleMeta } from "../i18n/galleryRoles";
 import {

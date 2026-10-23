@@ -4,7 +4,7 @@ import { t, useLocale } from "../../i18n";
 import { stencilLabel } from "../../i18n/stencils";
 import { Handle, useStore, type NodeProps, type ReactFlowState } from "@xyflow/react";
 import { FALLBACK_STENCIL, getStencil } from "../../stencils/registry";
-import { getNodeVariant } from "../../harness/nodeVariants";
+import { getNodeVariant } from "./variantRegistry";
 import { useSettings } from "../../harness/settings";
 import { useDiagram } from "../DiagramContext";
 import { SIDES, sidePosition } from "../edges/routing";

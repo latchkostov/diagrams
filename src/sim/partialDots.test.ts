@@ -461,9 +461,16 @@ it("counter copies keep route ids named like prototype members", () => {
       expect(Object.keys(rejections).sort()).toEqual([...ids].sort());
       expect(view.rejected).toBeCloseTo(30 * dot, 9);
       expect(Object.hasOwn(view.rejectionReasons!, "route-not-found")).toBe(true);
+      // Never the other way round: an inherited (prototype) member is not a counter, in any copy.
+      for (const counts of [rejections, view.rejectionReasons!])
+        for (const inherited of ["toString", "valueOf", "isPrototypeOf", "__defineGetter__"])
+          expect(inherited in counts, inherited).toBe(false);
     }
     const real = realSnapshot(e.snapshot()).nodes.kong.routeRejections!;
     for (const id of ids) expect(real[id]).toBeCloseTo(10 * dot * 10, 9);
+    expect(Object.keys(real).sort()).toEqual([...ids].sort());
+    for (const inherited of ["toString", "valueOf", "isPrototypeOf"])
+      expect(Object.hasOwn(real, inherited), inherited).toBe(false);
     const routes = e.frame().routes!;
     for (const id of ids) expect(Object.hasOwn(routes, id) && routes[id].rejected).toBeCloseTo(10 * dot, 9);
   }
@@ -475,6 +482,12 @@ it("counter copies keep route ids named like prototype members", () => {
     const copy = roundCounts(source);
     for (const key of Object.keys(source)) expect(Object.hasOwn(copy, key), key).toBe(true);
   }
+  // A dictionary whose prototype has an enumerable member: for...in sees it, the copy must not.
+  const inheriting = Object.assign(Object.create({ inherited: 5 }), { own: 0.30000000000000004 });
+  const copy = roundCounts(inheriting);
+  expect("inherited" in copy).toBe(false);
+  expect(Object.keys(copy)).toEqual(["own"]);
+  expect(copy.own).toBe(0.3);
 });
 
 it("backlog counts queued continuations by their dots, as frames and measure() both report (review of #237)", () => {

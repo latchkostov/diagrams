@@ -2,7 +2,7 @@ import { t } from "../i18n";
 import { formatBytes } from "../i18n/format";
 import { templatePath } from "virtual:interactive-viewer";
 import type { DiagramFile } from "../model/types";
-import { iconUrl } from "../stencils/registry";
+import { iconUrl } from "../stencils/iconUrls";
 import { loadOnce } from "../lib/lazyLoad";
 import { downloadText } from "../interop/files";
 import { validateDiagram } from "../interop/native";

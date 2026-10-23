@@ -34,5 +34,5 @@
     ]
   },
   "ops.v1.json": { "sha256": "66819e8f2cb42cfa88e02bafa056e5a757af2e12e90d6b52f59e3c0f5c381b93", "bytes": 2194501, "properties": ["ops", "layout", "dryRun", "summary"], "defs": ["Ref", "NodeProps", "Tone", "PropsPatch"] },
-  "stencils.json": { "sha256": "1a8f75fb03a6cea7b02a6ef81f75773e892d17bb7813c4b1001f8f118ca28736", "bytes": 78451, "properties": [], "defs": [] }
+  "stencils.json": { "sha256": "e38beb9a5c7e25fa3de18af850f6bd8b31a23c33d74455b998b8770758d8ab8e", "bytes": 81702, "properties": [], "defs": [] }
 }

@@ -31,7 +31,12 @@ export async function withSmokeContainer(
   run: Run,
   image: string,
   check: (container: { id: string; origin: string }) => Promise<void>,
-  options: { server?: boolean; env?: Record<string, string> } = {},
+  options: {
+    server?: boolean;
+    env?: Record<string, string>;
+    mounts?: Record<string, string>;
+    command?: string[];
+  } = {},
 ): Promise<void> {
   const id = run(
     "docker",
@@ -47,7 +52,9 @@ export async function withSmokeContainer(
       "-p",
       "127.0.0.1::8080",
       ...Object.entries(options.env ?? {}).flatMap(([key, value]) => ["--env", `${key}=${value}`]),
+      ...Object.entries(options.mounts ?? {}).flatMap(([source, target]) => ["--volume", `${source}:${target}:ro`]),
       image,
+      ...(options.command ?? []),
     ],
     true,
   ).trim();
@@ -57,6 +64,14 @@ export async function withSmokeContainer(
     const binding = run("docker", ["port", id, "8080/tcp"], true).trim();
     if (!/^127\.0\.0\.1:\d+$/.test(binding)) throw new Error(`Unexpected container binding: ${binding}`);
     await check({ id, origin: `http://${binding}` });
+  } catch (error) {
+    try {
+      console.error(`Container logs: ${id}`);
+      run("docker", ["logs", id]);
+    } catch (diagnosticError) {
+      console.error("Could not capture container logs:", diagnosticError);
+    }
+    throw error;
   } finally {
     run("docker", ["rm", "-f", id]);
   }

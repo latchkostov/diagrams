@@ -1,8 +1,8 @@
 {
   "withIcons": {
-    "sha256": "6c240b94ffdbc18e83afd9fee2295ff931d63d7eb3c159ac5b00d0dfe73e3fb1",
-    "bytes": 41375,
-    "inlined": { "client.browser": "client-browser 0022934839e05a07", "generic.email": "generic-email ce10423898f3e51d", "generic.external-api": "generic-external-api 8115696d1b46c6c6", "generic.identity-provider": "generic-identity-provider c3c6cd6f3f68d51f", "generic.sms": "generic-sms 55c103aea330a376", "stripe": "stripe 2a95514be7dd30ec" }
+    "sha256": "7b2e5ca1aa5f5cdf416c1835d847b0726d1b87b908ebddd66a6be56cf4abbc8d",
+    "bytes": 42570,
+    "inlined": { "client.nextjs": "nextjs f9ff42aee13090c3", "generic.email": "generic-email ce10423898f3e51d", "generic.external-api": "generic-external-api 8115696d1b46c6c6", "generic.identity-provider": "generic-identity-provider c3c6cd6f3f68d51f", "generic.sms": "generic-sms 55c103aea330a376", "stripe": "stripe 2a95514be7dd30ec" }
   },
   "readBack": [
     {
@@ -18,7 +18,7 @@
         "nodes": [
           {
             "id": "client",
-            "stencil": "client.browser",
+            "stencil": "client.nextjs",
             "label": "Web shop",
             "sublabel": "Signed-in customers",
             "x": 40,

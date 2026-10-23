@@ -33,10 +33,9 @@ export async function buildViewerBundle(
         {
           name: "viewer-bundle-assets",
           enforce: "pre",
-          resolveId(source, importer) {
+          resolveId(source) {
             if (source === "virtual:viewer-fonts.css") return "\0viewer-fonts.css";
-            if (source === "./iconUrls" && importer?.replaceAll("\\", "/").endsWith("/src/stencils/registry.ts"))
-              return "\0viewer-bundle-icons";
+            if (source.endsWith("/stencils/iconUrls")) return "\0viewer-bundle-icons";
           },
           transform(code, id) {
             if (!id.replaceAll("\\", "/").endsWith("/src/live/liveRenderer.ts")) return null;
@@ -58,7 +57,7 @@ export async function buildViewerBundle(
                 this.emitFile({ type: "asset", fileName: `assets/${file}`, source });
                 return `${JSON.stringify(`./icons/${name}.svg`)}: new URL(/* @vite-ignore */ ${JSON.stringify(`./${file}`)}, import.meta.url).href`;
               });
-              return `export const iconUrls = {${entries.join(",")}};`;
+              return `export const iconUrls = {${entries.join(",")}}; export function iconUrl(icon) { return iconUrls["./icons/" + icon + ".svg"]; }`;
             }
           },
         },

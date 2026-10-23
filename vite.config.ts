@@ -192,19 +192,12 @@ export default defineConfig({
         codeSplitting: {
           groups: [
             canvas.group,
-            // These file-format helpers are already preloaded by native validation. Keep them in
-            // that existing model request when hover-only Live code gains another lazy importer.
-            {
-              name: "kedaBindings",
-              test: /[/\\]src[/\\](?:model[/\\](?:kedaBindings|resourceBudget|autoscalingSchema|autoscaling|faults|brokerRoutes)|stencils[/\\]roles)\.ts$/,
-              includeDependenciesRecursively: false,
-            },
-            // Keep the model-level admission validator in the existing preloaded native chunk.
-            // Headless simulation and lazy inspectors import the model directly; keep their shared
-            // resource/routing validation in this same request rather than adding another startup chunk.
+            // The file-format catalogue, role lookup and validators already load together.
+            // Keep their initialization in one model chunk; splitting the schema constants
+            // across manual groups creates a dependency cycle and wastes compression headroom.
             {
               name: "native",
-              test: /[/\\]src[/\\](?:interop[/\\]native|model[/\\](?:admissionSchema|admission|ids|relations|revisions|jsonSchema|simProps|routingValidation|resourceValidation))\.ts$/,
+              test: /[/\\]src[/\\](?:interop[/\\]native|stencils[/\\](?:roles|catalog)|model[/\\](?:types|kedaBindings|resourceBudget|autoscalingSchema|autoscaling|faults|brokerRoutes|checks|admissionSchema|admission|ids|relations|revisions|jsonSchema|simProps|routingValidation|resourceValidation))\.ts$/,
               includeDependenciesRecursively: false,
             },
             // The headless core stays separate in source, but shares the browser's existing runtime request.

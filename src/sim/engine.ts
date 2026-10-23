@@ -629,9 +629,9 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     time: () => time,
     waits,
     callerReservations,
-    // A settled wait's lag to its node's next admission phase. Ordinary-clock arrivals
-    // admit before that tick's due releases, so only a cohort's N/w - 1 inner turnarounds
-    // wait for a later phase; its final release must precede the next arrivals.
+    // A settled wait's lag to its node's next admission phase. Ordinary-clock arrivals admit
+    // in the tick's arrival phase, ahead of its node loop, so only a cohort's N/w - 1 inner
+    // turnarounds wait for a later phase; its final release settles before the next arrivals.
     admissionLag: (node, reservation) =>
       node.admittedAt !== time || (node.props.admission && incomingAt !== time)
         ? 0
@@ -664,7 +664,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   let sourceEmitted = 0;
   let time = 0;
   let incomingAt: number | undefined;
-  /** The last arrival phase ran before the tick's due releases (no resource clock). */
+  /** The last arrival phase ran ahead of the tick's node loop (no resource clock); due releases settle before both. */
   let incomingBeforeReleases = false;
   let accumulator = 0;
   let speed = 1;
@@ -2789,7 +2789,53 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     }
   }
 
-  function reserveAdmission(node: Node, work: Work): boolean {
+  /** A dot this node's admission refused: counted rejected, acknowledged and answered, and its journey ends. */
+  function rejectAdmission(node: Node, work: Work, reason: string): void {
+    retireThread(node, work);
+    const kind = quotaReason(reason) || reason === "concurrency" ? "quota" : "invalid-admission";
+    if (node.table) {
+      refuse(node, work, reason, kind, quotaReason(reason) ? 429 : undefined, work.route?.rule);
+      return;
+    }
+    if (waits() && !commitAttempt(attempt(node, work), kind)) return;
+    const units = dotsOf(work.message);
+    node.rejected += units;
+    node.rejectionReasons[reason] = (node.rejectionReasons[reason] ?? 0) + units;
+    log("reject", node, work.message, reason);
+    acknowledge(node, work);
+    answer(work, false);
+    gone(node, work.message, "reject", reason);
+  }
+
+  /**
+   * The throttle split: this work keeps the admitted partial dot, and a sibling partial dot of the refused
+   * requests is rejected at the same instant. The sibling has no delivery of its own: the admitted part keeps
+   * the dot's broker slot, and a redelivery carries only the admitted part.
+   */
+  function splitDot(node: Node, work: Work, admitted: number, refused: number): void {
+    const sibling: Message = { ...copy(node, work.message), attempts: work.message.attempts, represented: refused };
+    work.message = { ...work.message, represented: admitted };
+    if (work.cohort !== undefined) work.cohort = admitted;
+    if (work.attempt) work.attempt.message = work.message;
+    // The refused part leaves the broker's counters now, as scale 1 acknowledges a rejected delivery.
+    if (work.delivery) {
+      const d = work.delivery,
+        units = Math.min(d.units, dotsOf(sibling));
+      d.units -= units;
+      d.group.active = settled(d.group.active - units);
+      d.group.activeByNode[d.edge.to.id] = settled((d.group.activeByNode[d.edge.to.id] ?? units) - units);
+    }
+    rejectAdmission(node, { message: sibling, via: work.via, remaining: 0, route: work.route }, "concurrency");
+  }
+
+  /** A split needs every part to settle on its own: no caller awaits this dot's one reply, and no CPU is sized. */
+  const splittable = (work: Work) =>
+    work.message.returnCall === undefined &&
+    work.cpuRemaining === undefined &&
+    work.cpuParts === undefined &&
+    work.replica === undefined;
+
+  function reserveAdmission(node: Node, work: Work, split = false): boolean {
     const policy = node.props.admission;
     if (!policy) return true;
     const retainedRequest = ledger.get<Group>(work.requestLease);
@@ -2820,6 +2866,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
             (retainedThread?.weight ?? 0) +
             (!callerReservations(node) && work.replica !== undefined ? 1 : 0)
         : Infinity,
+      split && splittable(work),
     );
     if ("rejected" in outcome) {
       if (outcome.waiting) {
@@ -2827,22 +2874,10 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         admit(node, work);
         return false;
       }
-      retireThread(node, work);
-      const kind = quotaReason(outcome.rejected) || outcome.rejected === "concurrency" ? "quota" : "invalid-admission";
-      if (node.table) {
-        refuse(node, work, outcome.rejected, kind, quotaReason(outcome.rejected) ? 429 : undefined, work.route?.rule);
-        return false;
-      }
-      if (waits() && !commitAttempt(attempt(node, work), kind)) return false;
-      const units = dotsOf(work.message);
-      node.rejected += units;
-      node.rejectionReasons[outcome.rejected] = (node.rejectionReasons[outcome.rejected] ?? 0) + units;
-      log("reject", node, work.message, outcome.rejected);
-      acknowledge(node, work);
-      answer(work, false);
-      gone(node, work.message, "reject", outcome.rejected);
+      rejectAdmission(node, work, outcome.rejected);
       return false;
     }
+    if (outcome.refused) splitDot(node, work, outcome.leases.request.represented, outcome.refused);
     const leases = outcome.leases;
     work.lease = leases.request;
     work.threadLease = leases.thread;
@@ -2889,7 +2924,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         stage(group, node, work);
         return;
       }
-      if (!reserveAdmission(node, work)) return;
+      if (!reserveAdmission(node, work, true)) return;
       if (node.status === "paused") scheduleWork(node, work, "pending");
       else if (work.remaining <= 0 && !node.props.resources?.cpuMsPerMessage) {
         startAttempt(node, work);
@@ -3051,6 +3086,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     trip.message = {
       ...trip.delivery!.original,
       attempts: trip.message.attempts,
+      // A partial dot (a throttle split's admitted part) is redelivered at its own size.
+      represented: trip.message.represented,
       workMs: trip.message.workMs,
       travelMs: trip.message.travelMs,
       requested: trip.message.requested,
@@ -3427,7 +3464,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           node.props.admission &&
           !work.lease &&
           node.status === "up" &&
-          !reserveAdmission(node, work)
+          !reserveAdmission(node, work, true)
         ) {
           endResources(node, work);
           continue;
@@ -3618,13 +3655,18 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         resourceClock = true;
         break;
       }
+    // Settle due turnovers before this tick's arrivals, so a node that admits on arrival sees the
+    // capacity its cohorts released. At scale 1 nothing is ever due (whole weights release at once).
+    earlyPoolWakes = new Set();
+    releasingEarly = true;
+    for (const node of nodes.values()) ledger.releaseDue(node.id, node.activeMs);
+    releasingEarly = false;
     incomingBeforeReleases = !resourceClock;
     if (!resourceClock) {
       admitIncoming();
       incomingAt = time;
     }
 
-    earlyPoolWakes = new Set();
     for (const node of nodes.values()) {
       node.cpuTick =
         TEST_ORACLES && opts.verifyResources && node.fleet
@@ -3640,9 +3682,6 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
               charges: [],
             }
           : undefined;
-      releasingEarly = true;
-      ledger.releaseDue(node.id, node.activeMs);
-      releasingEarly = false;
       // Pre-W1 processors use service pacing; W1 turnover belongs to the ledger.
       if (
         !waits() &&

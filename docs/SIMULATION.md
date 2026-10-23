@@ -48,9 +48,13 @@ parts sum to their dot. Reports round counters to 1e-9 dots. Width only caps the
 granted; it never changes `r`. In-system counts count messages; queue depths and lag count dots, and a
 latency sample weighs its dots, so a split dot adds up to one sample.
 
-A broker hands out a dot larger than its consumer's prefetch room in parts, and shares a dot among
-competing consumers (`docs/release-notes/2026-10-22-sampling-broker-units.md`). The throttle split,
-pooled-deadline cohorts and the resilience kit build on the same parts.
+Two things split a dot. A broker hands out a dot larger than its consumer's prefetch room in parts, and
+shares a dot among competing consumers (`docs/release-notes/2026-10-22-sampling-broker-units.md`). A
+concurrency throttle with room for w < N real requests (a node or endpoint `maxInFlight`, a shared
+allocation, or a managed node's slots) admits a partial dot of w at full weight and refuses a sibling of
+N − w at the same instant, as scale 1 admits w members of a burst and throttles the rest. A shortfall in
+execution slots still queues the dot (stretch), token-bucket quotas stay whole-dot, and a dot a caller
+awaits is not split (`docs/release-notes/2026-10-22-sampling-throttle-split.md`).
 
 For logical hold `H`, ordinary blocking turnaround includes `T = H + ADMISSION_LAG_MS`, where
 `ADMISSION_LAG_MS = STEP = 10 ms`. The reservation releases no earlier than retirement, at

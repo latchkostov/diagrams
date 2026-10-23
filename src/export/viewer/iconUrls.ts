@@ -16,3 +16,7 @@ export function addIcons(icons: Readonly<Record<string, string>>): void {
 }
 
 if (payload.ok) addIcons(payload.icons);
+
+export function iconUrl(icon: string): string | undefined {
+  return iconUrls[`./icons/${icon}.svg`];
+}

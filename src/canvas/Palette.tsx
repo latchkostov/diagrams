@@ -1,3 +1,4 @@
+import { getNodeVariant } from "./nodes/variantRegistry";
 import { stencilLabel, stencilDescription, stencilSubtitle, vendorLabel } from "../i18n/stencils";
 import { tRich } from "../i18n/rich";
 import { formatNumber } from "../i18n/number";
@@ -16,7 +17,7 @@ import {
 } from "react";
 import { railAnchor } from "./railAnchor";
 import { flushSync } from "react-dom";
-import { DEFAULT_NODE_VARIANT, getNodeVariant, type NodeVariantId } from "../harness/nodeVariants";
+import { DEFAULT_NODE_VARIANT, type NodeVariantId } from "../harness/nodeVariants";
 import { getStencil, stencils } from "../stencils/registry";
 import type { AnnotationKind, AnnotationShape, Stencil, StencilCategory } from "../model/types";
 import { StencilIcon } from "../components/StencilIcon";

@@ -1,6 +1,5 @@
 import type { Stencil } from "../model/types";
 import { catalog } from "./catalog";
-import { iconUrls } from "./iconUrls";
 
 const byId = new Map(catalog.map((s) => [s.id, s]));
 
@@ -19,8 +18,4 @@ export const FALLBACK_STENCIL: Stencil = {
 
 export function getStencil(id: string): Stencil {
   return byId.get(id) ?? FALLBACK_STENCIL;
-}
-
-export function iconUrl(icon: string): string | undefined {
-  return iconUrls[`./icons/${icon}.svg`];
 }

@@ -227,8 +227,9 @@ it.each([
   p.engine.setNodeProps("partner", { api: { latencyMs: 250, errorRate: 0 } });
   p.engine.inject("source", 1);
   p.tick(1000);
-  expect(p.engine.snapshot().nodes.caller.processed).toBe(1);
-  expect(p.engine.snapshot().nodes.caller.rejected).toBe(0);
+  // The shrunk slots split the next dot, as scale 1 admits `shrunk` of the burst and throttles the rest.
+  expect(p.engine.snapshot().nodes.caller.processed).toBe(shrunk / scale);
+  expect(p.engine.snapshot().nodes.caller.rejected).toBe(1 - shrunk / scale);
   expect(p.engine.snapshot().inSystem).toBe(0);
 });
 

@@ -28,7 +28,9 @@ it.each([1, 10])("quota-refused in-place retries release resident weight (scale 
   d.nodes[0].stencil = "generic.queue";
   d.nodes[0].props = { maxDeliveryCount: 3 };
   d.nodes[1].props = {
-    concurrency: 1,
+    // A slot per request of the dot: the whole dot's first attempt spends the token, so its retry is refused by the
+    // quota. (Fewer slots would split the dot, and an admitted part would leave the rest of the token for retries.)
+    concurrency: scale,
     latencyMs: 10,
     jitter: 0,
     failureRate: 1,

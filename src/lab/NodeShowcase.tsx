@@ -1,7 +1,7 @@
 import type { CSSProperties } from "react";
 import type { Stencil } from "../model/types";
 import { FALLBACK_STENCIL, getStencil, stencils } from "../stencils/registry";
-import { nodeVariants, type NodeVariantId } from "../harness/nodeVariants";
+import { nodeVariants, type NodeVariantId } from "../canvas/nodes/variantRegistry";
 
 import type { NodeState } from "./nodeStates";
 

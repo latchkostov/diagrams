@@ -9,6 +9,18 @@ const searches = [
   ["HTTP API", "generic.external-api"],
 ] as const;
 
+test("keyboard search adds a Vue client from the Stencils panel", async ({ page, consoleErrors }) => {
+  await gotoCanvas(page, "aws-serverless-orders");
+  const search = page.getByTestId("palette-search");
+  await search.focus();
+  await search.pressSequentially("vue");
+  await expect(page.getByTestId(/^palette-item-/).first()).toHaveAttribute("data-testid", "palette-item-client.vue");
+  await expect(page.getByTestId("palette-item-client.browser")).toBeVisible();
+  await search.press("Enter");
+  await expect(page.getByTestId("node-vue-1")).toBeVisible();
+  expectNoErrors(consoleErrors);
+});
+
 async function screenshot(page: import("@playwright/test").Page, name: string) {
   if (!process.env.P5A_SCREENSHOTS) return;
   mkdirSync("docs/screenshots/round35", { recursive: true });

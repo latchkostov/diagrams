@@ -85,18 +85,22 @@ it.each(["reply", "local"])("sampled managed retries preserve endpoint residence
   e.load(d);
   e.inject("source", 1);
   const untilFailed = (count: number) => {
-    for (let i = 0; i < 1000 && e.snapshot().nodes.caller.failed < count; i++) e.step(10);
+    for (let i = 0; i < 1000 && e.snapshot().nodes.caller.failed < count - 1e-9; i++) e.step(10);
     expect(e.snapshot().nodes.caller.failed).toBe(count);
     return e.snapshot().time;
   };
-  const first = untilFailed(1),
-    second = untilFailed(2);
-  // Outcomes follow the first wave; endpoint capacity still covers both cohorts.
+  // One slot splits the dot: one request is admitted (a tenth of the dot), the other nine are refused.
+  const first = untilFailed(0.1),
+    second = untilFailed(0.2);
+  expect(e.snapshot().nodes.caller.rejected).toBeCloseTo(0.9, 9);
+  // The retry keeps its endpoint residence across attempts. The admitted part holds its full weight (no
+  // stretched partial grant), so, as a scale-one request, it holds nothing once its last attempt has answered.
   expect(first / (100 + (failure === "reply" ? 250 : 0))).toBeLessThan(2);
   expect(second - first).toBe(100 + (failure === "reply" ? 260 : 10));
-  expect(e.snapshot().nodes.caller.inFlight).toBeGreaterThan(0);
+  // The second failure was the part's last delivery: nothing is held.
+  expect(e.snapshot().nodes.caller.inFlight).toBe(0);
   e.step(2 * first);
-  expect(e.snapshot().nodes.caller.inFlight).toBeGreaterThan(0);
+  expect(e.snapshot().nodes.caller.inFlight).toBe(0);
   e.step(20 * first);
   expect(e.snapshot().nodes.caller.inFlight).toBe(0);
   expect(e.snapshot().inSystem).toBe(0);
@@ -150,19 +154,22 @@ it("retained caller retries use their renewed admission reservation", () => {
   e.load(d);
   e.inject("source", 1);
   const untilFailed = (count: number) => {
-    for (let i = 0; i < 1000 && e.snapshot().nodes.caller.failed < count; i++) e.step(10);
+    for (let i = 0; i < 1000 && e.snapshot().nodes.caller.failed < count - 1e-9; i++) e.step(10);
     expect(e.snapshot().nodes.caller.failed).toBe(count);
     return e.snapshot().time;
   };
-  const first = untilFailed(1);
+  // The endpoint's two slots split the dot: two requests are admitted, the other eight refused.
+  const first = untilFailed(0.2);
+  expect(e.snapshot().nodes.caller.rejected).toBeCloseTo(0.8, 9);
   e.setNodeProps("caller", {
     endpoints: [{ id: "one", method: "GET", path: "/", behaviour: { maxInFlight: 1 } }],
   });
-  const second = untilFailed(2);
+  const second = untilFailed(0.4);
   expect((second - first) / first).toBeLessThan(1.2);
-  // The smaller renewed endpoint extends only the retained hold, not its answer.
+  // The retry keeps the part's retained occupancy after the endpoint shrinks: at full weight, its hold ends with
+  // its answer (a stretched partial grant used to outlive it).
   e.step(5 * first);
-  expect(e.snapshot().nodes.caller.inFlight).toBeGreaterThan(0);
+  expect(e.snapshot().nodes.caller.inFlight).toBe(0);
   e.step(20 * first);
   expect(e.snapshot().inSystem).toBe(0);
   expect(e.snapshot().nodes.caller.threads).toMatchObject({ working: 0, waiting: 0, queued: 0 });
@@ -274,17 +281,22 @@ it.each([1, 10, 500])("sampled resource callers charge CPU residence once (%i CP
   expect(Math.abs(counts[1] / counts[0] - 1)).toBeLessThan(0.01);
 });
 
-it.each(["aws.lambda", "azure.functions"])("admits a sampled request into a partial managed pool (%s)", (stencil) => {
-  const d = waitingFixture();
-  d.nodes[1].stencil = stencil;
-  Object.assign(d.nodes[1].props!, { concurrency: 1, maxConcurrency: 1, scaling: "fixed", api: { latencyMs: 10 } });
-  const e = createEngine({ scale: 4 });
-  e.load(d);
-  expect(e.snapshot().scale).toBe(4);
-  e.inject("source", 1);
-  drain(e, 4);
-  expect(e.snapshot().nodes.caller.rejected).toBe(0);
-});
+it.each(["aws.lambda", "azure.functions"])(
+  "a sampled burst into a one-slot managed pool admits one request, as at scale 1 (%s)",
+  (stencil) => {
+    // Scale 1 admits one of a burst of four into one slot and throttles three, and so does the throttle split
+    // (a stretched partial grant used to admit all four, one after another).
+    const d = waitingFixture();
+    d.nodes[1].stencil = stencil;
+    Object.assign(d.nodes[1].props!, { concurrency: 1, maxConcurrency: 1, scaling: "fixed", api: { latencyMs: 10 } });
+    const e = createEngine({ scale: 4 });
+    e.load(d);
+    expect(e.snapshot().scale).toBe(4);
+    e.inject("source", 1);
+    drain(e, 1);
+    expect(realSnapshot(e.snapshot()).nodes.caller.rejected).toBe(3);
+  },
+);
 
 it("nested sampled callers account for a downstream sampling delay once", () => {
   const d = waitingFixture();

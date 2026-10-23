@@ -3,6 +3,6 @@
   "reference/format.md": { "sha256": "930d56ee0cd3916e30b72d70bafc4006f01694132559e48e9d05d6c26fb73919", "bytes": 17720 },
   "reference/outputs.md": { "sha256": "dc58cd2b112d11f210200fa940469e7f74303a5c0b9ecc885b5fd0a6a8be07a4", "bytes": 5477 },
   "reference/simulation.md": { "sha256": "27144ac558f3e52737fafccb48217368baf00ffba30166737b07998af5814c48", "bytes": 6957 },
-  "reference/stencils.md": { "sha256": "4340628f78e229668ca42b4f8391457db94e5cda5f611fc12a35124b40c7698e", "bytes": 17492 },
-  "scripts/lib/spec.json": { "sha256": "950f2cac26f3725638d04c0dcdb67c6e404a774e47dea39bdb025b1a17fc05e7", "bytes": 68711 }
+  "reference/stencils.md": { "sha256": "d1ee7706b079a1d9c29a58303524920eeb26eda0a901425e4075f18b4a0826dd", "bytes": 18218 },
+  "scripts/lib/spec.json": { "sha256": "7f7e9a3ab1365e432f5e0c73610ef8a86fc4a2a278700bbf079eefb81bae80b0", "bytes": 70050 }
 }
