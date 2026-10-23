@@ -46,3 +46,23 @@ it("caps the chips a filter lists and says how many more exist", () => {
   // Carries still lists every type that passes: the inspector reads the full analysis.
   expect(html).toContain("Type299");
 });
+
+it("keeps every selected filter type listed and pressed past the choice limit", () => {
+  const d = messageTypesFixture();
+  d.nodes.push(
+    ...Array.from({ length: 300 }, (_, i) => ({
+      id: `s${i}`,
+      stencil: "client.browser",
+      label: `S${i}`,
+      x: 0,
+      y: 0,
+      props: { messageType: `Type${i}` },
+    })),
+  );
+  d.edges.push(...Array.from({ length: 300 }, (_, i) => ({ id: `in${i}`, from: `s${i}`, to: "api" })));
+  d.edges[1].props = { filter: ["Type299", "Custom"] };
+  const html = renderToStaticMarkup(<EdgeMessages edgeId="send" editor={editor(d)} />);
+  expect(count(html, "inspector-filter-option-")).toBe(102);
+  expect(html).toMatch(/aria-pressed="true"[^>]*data-testid="inspector-filter-option-0"[^>]*>Type299</);
+  expect(html).toMatch(/aria-pressed="true"[^>]*data-testid="inspector-filter-option-1"[^>]*>Custom</);
+});

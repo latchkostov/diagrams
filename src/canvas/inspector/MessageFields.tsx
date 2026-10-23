@@ -97,6 +97,8 @@ export function NodeMessages({
   const rekeyed = useRef<string | undefined>(undefined);
   // Imported maps can hold thousands of rules: render a page at a time.
   const [shownRules, setShownRules] = useState(RULE_PAGE);
+  // A rule added here renders after the current page (the page itself never grows to reach it).
+  const [added, setAdded] = useState<string>();
   useLayoutEffect(() => {
     const input = rekeyed.current;
     const target = input === undefined ? null : ruleControls.current.get(input)?.querySelector("button");
@@ -145,6 +147,10 @@ export function NodeMessages({
   const incoming = ["*", ...arriving];
   const unassigned = incoming.filter((type) => !assigned.has(type));
   const vocabulary = [...new Set([...arriving, ...types.known])];
+  const page = Math.min(shownRules, rows.length);
+  const addedAt = added === undefined ? -1 : rows.findIndex(([key]) => key === added);
+  const visible = [...Array(page).keys(), ...(addedAt >= page ? [addedAt] : [])];
+  const remaining = rows.length - visible.length;
   // Message is the simulation default type, diagram data rather than translated UI copy.
   const defaultType = node.label || "Message";
   if (source)
@@ -162,57 +168,64 @@ export function NodeMessages({
     <div className="message-fields" data-testid="inspector-emits-rows">
       <h4>{t("inspector.emits")}</h4>
       <p className="insp-note">{t("messageTypes.emitsHint")}</p>
-      {rows.slice(0, shownRules).map(([input, output], i) => (
-        <div
-          className="message-type-rule"
-          key={input}
-          ref={(element) => {
-            if (element) ruleControls.current.set(input, element);
-            else ruleControls.current.delete(input);
-          }}
-          data-testid={`inspector-emits-row-${i}`}
-        >
-          <TypePicker
-            name={`receives-${i}`}
-            wildcard
-            label={t("messageTypes.whenReceives")}
-            choices={incoming.filter((type) => type === input || !assigned.has(type))}
-            value={[input]}
-            onChange={(value) => {
-              if (!value[0] || assigned.has(value[0])) return;
-              rekeyed.current = value[0];
-              save(rows.map((row, j) => (j === i ? [value[0], output] : row)));
+      {visible.map((i) => {
+        const [input, output] = rows[i];
+        return (
+          <div
+            className="message-type-rule"
+            key={input}
+            ref={(element) => {
+              if (element) ruleControls.current.set(input, element);
+              else ruleControls.current.delete(input);
             }}
-          />
-          <TypePicker
-            name={`sends-${i}`}
-            label={t("messageTypes.thenSends")}
-            choices={vocabulary}
-            value={[output]}
-            onChange={(value) => {
-              if (value.length) save(rows.map((row, j) => (j === i ? [input, value[0]] : row)));
-              else remove(input);
-            }}
-          />
-          <button
-            type="button"
-            className="insp-link"
-            aria-label={t("messageTypes.removeRule")}
-            data-testid={`inspector-emits-remove-${i}`}
-            onClick={() => remove(input)}
+            data-testid={`inspector-emits-row-${i}`}
           >
-            {t("messageTypes.remove")}
-          </button>
-        </div>
-      ))}
-      {rows.length > shownRules && (
+            <TypePicker
+              name={`receives-${i}`}
+              wildcard
+              label={t("messageTypes.whenReceives")}
+              choices={incoming.filter((type) => type === input || !assigned.has(type))}
+              value={[input]}
+              onChange={(value) => {
+                if (!value[0] || assigned.has(value[0])) return;
+                rekeyed.current = value[0];
+                save(rows.map((row, j) => (j === i ? [value[0], output] : row)));
+              }}
+            />
+            <TypePicker
+              name={`sends-${i}`}
+              label={t("messageTypes.thenSends")}
+              choices={vocabulary}
+              value={[output]}
+              onChange={(value) => {
+                if (value.length) save(rows.map((row, j) => (j === i ? [input, value[0]] : row)));
+                else remove(input);
+              }}
+            />
+            <button
+              type="button"
+              className="insp-link"
+              aria-label={t("messageTypes.removeRule")}
+              data-testid={`inspector-emits-remove-${i}`}
+              onClick={() => remove(input)}
+            >
+              {t("messageTypes.remove")}
+            </button>
+          </div>
+        );
+      })}
+      {remaining > 0 && (
         <button
           type="button"
           className="insp-link"
           data-testid="inspector-emits-more"
-          onClick={() => setShownRules((shown) => shown + RULE_PAGE)}
+          onClick={() => {
+            // The button may unmount: continue at the first rule it reveals (policy row I5).
+            rekeyed.current = rows[page][0];
+            setShownRules(page + RULE_PAGE);
+          }}
         >
-          +{t("importReport.more", { count: Math.min(RULE_PAGE, rows.length - shownRules) })}
+          +{t("importReport.more", { count: Math.min(RULE_PAGE, remaining) })}
         </button>
       )}
       <button
@@ -225,7 +238,7 @@ export function NodeMessages({
           const input = arriving.find((type) => !assigned.has(type)) ?? "*";
           // The Add button may disable itself: continue at the new rule once it is committed (policy row I5).
           rekeyed.current = input;
-          setShownRules((shown) => Math.max(shown, rows.length + 1));
+          setAdded(input);
           save([...rows, [input, input === "*" ? (arriving[0] ?? "Message") : input]]);
         }}
       >

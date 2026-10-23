@@ -38,10 +38,13 @@ export function TypePicker({
     if (!adding && wasAdding.current) root.current?.querySelector<HTMLButtonElement>("button")?.focus();
     wasAdding.current = adding;
   }, [adding]);
-  // Rendering is bounded: imported vocabularies can be large. Unlisted types stay reachable through Add a type.
+  // Rendering is bounded: imported vocabularies can be large. Past the limit every selected type still renders
+  // first (so it stays removable), and at most MAX_CHOICES unselected choices follow; the rest stay reachable
+  // through Add a type.
   const all = [...new Set([...choices, ...value])];
+  const selected = new Set(value);
   const options =
-    all.length > MAX_CHOICES ? [...new Set([...all.slice(0, MAX_CHOICES), ...(multiple ? [] : value)])] : all;
+    all.length > MAX_CHOICES ? [...selected, ...all.filter((type) => !selected.has(type)).slice(0, MAX_CHOICES)] : all;
   const hidden = all.length - options.length;
   const offered = new Set(choices);
   // Deselecting a type nothing upstream sends removes its chip, focus included: continue at a neighbour.

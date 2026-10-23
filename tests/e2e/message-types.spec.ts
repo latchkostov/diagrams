@@ -422,3 +422,81 @@ test("hovering an edge leaves Escape to the focused inspector draft", async ({ p
   await expect(draft).toHaveCount(0);
   expectNoErrors(consoleErrors);
 });
+
+test("selected filters beyond the choice limit remain removable", async ({ page, consoleErrors }) => {
+  const diagram = messageTypesFixture();
+  // 101 saved-run types reach the send link: more than a picker lists.
+  diagram.simulations = [
+    {
+      id: "many",
+      title: "Many types",
+      traffic: Array.from({ length: 101 }, (_, i) => ({
+        id: `t${i}`,
+        node: "client",
+        messageType: `Type${i}`,
+        shape: { kind: "burst" as const, count: 1 },
+      })),
+    },
+  ];
+  diagram.edges[1].props = { filter: ["Type100"] };
+  await open(page, "en", diagram);
+  const filter = async () => (await savedDiagram(page)).edges.find((e) => e.id === "send")?.props?.filter;
+  await expect(page.getByTestId("inspector-filter-more")).toBeVisible();
+  // The imported selection renders first, pressed, although it is past the listed choices.
+  const imported = page.getByTestId("inspector-filter-option-0");
+  await expect(imported).toHaveText("Type100");
+  await expect(imported).toHaveAttribute("aria-pressed", "true");
+  await imported.click();
+  await expect.poll(filter).toBeUndefined();
+  await expect(page.getByTestId("inspector-filter-option-0")).toHaveAttribute("aria-pressed", "false");
+  await page.getByTestId("undo-button").click();
+  await expect.poll(filter).toEqual(["Type100"]);
+  await expect(page.getByTestId("inspector-filter-option-0")).toHaveText("Type100");
+  await expect(page.getByTestId("inspector-filter-option-0")).toHaveAttribute("aria-pressed", "true");
+  // A newly added custom type is listed with it, and removable too.
+  await page.getByTestId("inspector-filter-add").click();
+  await page.getByTestId("inspector-filter-new").fill("Custom");
+  await page.getByTestId("inspector-filter-new").press("Enter");
+  await expect.poll(filter).toEqual(["Type100", "Custom"]);
+  const custom = page.getByTestId("inspector-filter-option-1");
+  await expect(custom).toHaveText("Custom");
+  await expect(custom).toHaveAttribute("aria-pressed", "true");
+  await custom.click();
+  await expect.poll(filter).toEqual(["Type100"]);
+  await page.getByTestId("undo-button").click();
+  await expect.poll(filter).toEqual(["Type100", "Custom"]);
+  await expect(page.getByTestId("inspector-filter-option-1")).toHaveText("Custom");
+  expectNoErrors(consoleErrors);
+});
+
+test("a large rename map stays paged: Add shows only the new rule, and more rules take focus", async ({
+  page,
+  consoleErrors,
+}) => {
+  const diagram = messageTypesFixture();
+  diagram.nodes[1].props = {
+    emits: Object.fromEntries(Array.from({ length: 2_000 }, (_, i) => [`T${i}`, `T${i}Out`])),
+  };
+  await open(page, "en", diagram);
+  await fitDiagram(page);
+  await page.getByTestId("node-api").click();
+  await waitForSelectionSettled(page);
+  await page.getByTestId("inspector-section-node-simulation").click();
+  const rules = page.locator('[data-testid^="inspector-emits-row-"]');
+  await expect(rules).toHaveCount(25);
+  await page.getByTestId("inspector-emits-add").click();
+  // The new rule (index 2,000) renders after the page and takes focus; nothing in between mounts.
+  await expect(page.getByTestId("inspector-emits-row-2000")).toBeVisible();
+  await expect(rules).toHaveCount(26);
+  await expect(page.getByTestId("inspector-field-receives-2000")).toBeFocused();
+  await page.getByTestId("undo-button").click();
+  await expect(page.getByTestId("inspector-emits-row-2000")).toHaveCount(0);
+  await expect(rules).toHaveCount(25);
+  const more = page.getByTestId("inspector-emits-more");
+  await expect(more).toHaveText("+25 more");
+  await more.focus();
+  await page.keyboard.press("Enter");
+  await expect(rules).toHaveCount(50);
+  await expect(page.getByTestId("inspector-field-receives-25")).toBeFocused();
+  expectNoErrors(consoleErrors);
+});
