@@ -5,6 +5,7 @@ import { useInteraction } from "../canvas/interaction";
 import { t } from "../i18n";
 import { isolate } from "./bidi";
 import { formatClock } from "./format";
+import { SimulationExpectations } from "./ExpectationSummary";
 import {
   fractionToTime,
   markerSeekTime,
@@ -18,6 +19,23 @@ import {
  * Scrubber for a saved simulation: traffic windows as bands, notes / fault actions as markers,
  * progress fill and a playhead. Dragging seeks (runs are seeded, so going back replays exactly).
  */
+export function SimulationTimeline(props: Parameters<typeof Timeline>[0]) {
+  const expectations = props.run.expectations ?? [];
+  return (
+    <>
+      <Timeline {...props} />
+      {expectations.length > 0 && (
+        <SimulationExpectations
+          expectations={expectations}
+          passed={expectations.filter((e) => e.status === "pass").length}
+          failed={expectations.some((e) => e.status === "fail")}
+          done={!!props.run.done}
+        />
+      )}
+    </>
+  );
+}
+
 export function Timeline({
   sim,
   run,
@@ -137,4 +155,3 @@ export function Timeline({
 }
 
 // Both controls belong to saved simulations and share this download.
-export { SimulationExpectations } from "./ExpectationSummary";

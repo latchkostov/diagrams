@@ -7,7 +7,7 @@ import { SPEEDS } from "./controller";
 import { useLive, type TraceChoice } from "./context";
 import { formatClock, formatCount, formatSpeed, formatScale } from "./format";
 import { LiveIcon } from "./icons";
-import { Timeline, SimulationExpectations } from "./lazyTimeline";
+import { Timeline } from "./lazyTimeline";
 import { PANEL_OPENER_ATTR } from "./usePanelEscape";
 import { useLivePopover } from "./useLivePopover";
 import { SlowBar } from "./slowmo/SlowBar";
@@ -149,9 +149,6 @@ export function ControlBar({ state }: { state: LiveState }) {
                 onSeek={(ms) => c.seek(ms)}
                 disabled={lookingAhead || state.needsRestart}
               />
-              {expectations.length > 0 && (
-                <SimulationExpectations expectations={expectations} passed={passed} failed={failed} done={done} />
-              )}
               {done && (
                 <span
                   className={`lv-done${failed ? " is-fail" : " is-pass"}`}

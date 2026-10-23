@@ -82,6 +82,7 @@ test("a failed simulation scrubber offers shared Retry without taking focus", as
   await page.getByTestId("lazy-load-retry").focus();
   await page.keyboard.press("Enter");
   await expect(page.getByTestId("live-timeline-input")).toBeVisible();
+  await expect(page.getByTestId("live-expectations")).toBeVisible();
   await expect(page.getByTestId("live-play")).toBeFocused();
 });
 
