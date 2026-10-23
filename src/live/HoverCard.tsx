@@ -39,7 +39,7 @@ export function HoverCard({ kind, id, name, type, pinned, presenting, summary, h
     const wrap = domNode.closest('[data-testid="canvas-wrap"]') ?? domNode;
     // Callouts, the bar, the Inspector and a waiting narration (its Continue) stay actionable.
     const protectedControls =
-      '[data-canvas-overlay], [data-testid="live-note"][data-waiting], [data-testid="live-controls"], [data-testid="live-toggle"], [data-testid="inspector"]';
+      '[data-canvas-overlay], .lv-note[data-waiting], [data-testid="live-controls"], [data-testid="live-toggle"], [data-testid="inspector"]';
     const place = () => {
       const bounds = domNode.getBoundingClientRect();
       const overlays = document.querySelectorAll<HTMLElement>('[data-testid="live-controls"]');

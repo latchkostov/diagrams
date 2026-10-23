@@ -8,8 +8,8 @@ Configured estimates, full outcomes and bounded throughput sparklines live in pi
 
 ## Breaker integration
 
-This base exposes retry and timeout counters, but no runtime breaker state. The connection card contains an explicit, marked slot for #245; it does not infer an open or closed breaker from retries.
+A Request connection's card reads the circuit breaker's runtime state as the engine publishes it: Closed, Open with its countdown, or Testing with its test calls. An open or testing breaker leads the card's verdict, and the node's Calls readout shows the same state. Models that don't simulate breakers say so; newer models without one say there is none.
 
 ## Output parity
 
-Only `tests/parity/goldens/node/i18n/catalogs.json` changes: 84 new English hover messages add the `hover` area and update catalog counts, fallback counts and fingerprints across the 38 locales. Existing message-area fingerprints are unchanged. The full comparison checked 3,080 goldens; every browser render, Simulation, planning, layout and export golden stayed unchanged. After the deliberate catalog update, the focused i18n comparison reports zero changes.
+Only `tests/parity/goldens/node/i18n/catalogs.json` changes: 96 new English hover messages add the `hover` area and update catalog counts, fallback counts and fingerprints across the 38 locales. Existing message-area fingerprints are unchanged. The full comparison checked 3,080 goldens; every browser render, Simulation, planning, layout and export golden stayed unchanged. After the deliberate catalog update, the focused i18n comparison reports zero changes.

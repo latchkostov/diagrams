@@ -29,10 +29,10 @@ The new ten-second bounding-box test was run against the original card implement
 
 The new production spec passed three times (30 tests). Targeted readout, summary, controller and existing badge/pill unit tests passed. The affected browser suites and axe checks passed after migrating explicit expanded-detail expectations; the narration regression additionally closes its pinned card with Esc before using Continue, checking focus return. Bundle benchmarks passed all four gates: entry 108.3 kB gzip, startup 176.8 kB, canvas first view 382.5 kB. Size checks passed without budget increases.
 
-The full parity comparison checked 3,080 goldens: only the catalog metadata changed for 84 new hover messages. The focused i18n comparison passed after that deliberate update. All browser render and other output goldens stayed unchanged.
+The full parity comparison checked 3,080 goldens: only the catalog metadata changed for the new hover messages (96 after round 3). The focused i18n comparison passed after that deliberate update. All browser render and other output goldens stayed unchanged.
 
 The initial native full unit run reported 19 failures. Five feature-related failures were fixed and their targeted tests pass. Fourteen remaining results were five-second native timeouts; focused clean-master runs reproduced five and three timeout failures respectively. See the [follow-up](../backlog/2026-10-23-native-unit-timeouts.md) for the exact scope and evidence. This is not a claim that the initial full unit suite passed.
 
 ## Rejected alternatives
 
-No live re-sorting, measured-height compact/summary flags, always-visible sparklines, extra toolbar buttons, or bundle-budget increases. Breaker state remains explicitly unavailable until #245 supplies it.
+No live re-sorting, measured-height compact/summary flags, always-visible sparklines, extra toolbar buttons, or bundle-budget increases. Breaker state comes from the engine's published runtime view (#245); unavailable wording is kept for models that don't simulate breakers.

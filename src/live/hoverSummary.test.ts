@@ -154,5 +154,11 @@ describe("connection cards", () => {
     });
     expect(testing.sections.find((s) => s.key === "breaker")?.summary).toBe("Testing");
     expect(requestSummary(undefined, undefined, true, 0).sections.find((s) => s.key === "breaker")?.summary).toBe("—");
+    // Current breaker state leads cumulative timeout counts.
+    const calls = { inFlight: 5, held: 0, timedOut: 20, failed: 20, late: 0 };
+    expect(requestSummary(calls, view({ state: "half-open" }), true, 0).problems.map((p) => p.key)).toEqual([
+      "breaker",
+      "timeout",
+    ]);
   });
 });

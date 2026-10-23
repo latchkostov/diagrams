@@ -201,10 +201,7 @@ export function requestSummary(
           },
         ]
       : []),
-    ...(c?.timedOut ? [{ key: "timeout", text: t("hover.timeoutVerdict", { count: c.timedOut }), severe: true }] : []),
-    ...(ratio >= 1.2 && (c?.windowRetried ?? 0) >= 10
-      ? [{ key: "retry", text: t("hover.retryVerdict", { ratio: ratio.toFixed(1) }), severe: true }]
-      : []),
+    // The breaker is current runtime state: it leads cumulative timeout and retry counts.
     ...(breaker?.state === "half-open"
       ? [
           {
@@ -212,6 +209,10 @@ export function requestSummary(
             text: t("hover.breakerTestingVerdict", { settled: breaker.probesSettled, probes: breaker.probes }),
           },
         ]
+      : []),
+    ...(c?.timedOut ? [{ key: "timeout", text: t("hover.timeoutVerdict", { count: c.timedOut }), severe: true }] : []),
+    ...(ratio >= 1.2 && (c?.windowRetried ?? 0) >= 10
+      ? [{ key: "retry", text: t("hover.retryVerdict", { ratio: ratio.toFixed(1) }), severe: true }]
       : []),
   ];
   return {

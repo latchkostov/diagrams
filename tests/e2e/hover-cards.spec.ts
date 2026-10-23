@@ -354,9 +354,12 @@ test("Tab leaves a pinned readout's sections for the next node, and Shift+Tab re
 
 test("edge card reflects breaker runtime transitions", async ({ page, consoleErrors }) => {
   await page.clock.install();
+  // A slow callee: test calls stay in flight until the caller's 200 ms deadline, so Testing lasts that long.
+  const diagram = breakerFixture();
+  diagram.nodes[2].props = { ...diagram.nodes[2].props, latencyMs: 1000 };
   await page.addInitScript(({ key, d }) => localStorage.setItem(key, JSON.stringify(d)), {
     key: STORAGE_KEYS.autosavePrefix + "blocking-call",
-    d: breakerFixture(),
+    d: diagram,
   });
   await gotoLive(page, "./?view=canvas&example=blocking-call&live=1&paused=1");
   await pauseClock(page);
@@ -389,9 +392,21 @@ test("edge card reflects breaker runtime transitions", async ({ page, consoleErr
   await expect(card.getByTestId("hover-verdict")).toContainText("Breaker open: calls fail fast with 503");
   await page.keyboard.press("Escape");
   // Its open time over, it lets test calls through.
-  await page.getByTestId("live-play").click();
-  for (let i = 0; i < 60 && !/Testing/.test((await pill.textContent()) ?? ""); i++) await page.clock.runFor(25);
-  await page.getByTestId("live-play").click();
+  const play = page.getByTestId("live-play");
+  await play.click();
+  await expect(play).toHaveAttribute("data-state", "playing");
+  // Simulated time moves only with the fake clock: step it until the pill reports the test calls.
+  await expect
+    .poll(
+      async () => {
+        await page.clock.runFor(50);
+        return (await pill.textContent()) ?? "";
+      },
+      { intervals: [0] },
+    )
+    .toContain("Testing");
+  await play.click();
+  await expect(play).not.toHaveAttribute("data-state", "playing");
   await expect(pill).toContainText("Testing");
   await inspect();
   await expect(readout).toHaveAttribute("data-state", "half-open");
