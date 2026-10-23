@@ -1,5 +1,6 @@
 import { isDlqEdge } from "./brokerRoutes";
 import { stencilRole } from "../stencils/roles";
+import { baseStencilId } from "../stencils/vendorParents";
 import type { AutoscalingConfig, KedaTrigger } from "./autoscaling";
 import type { DiagramNode, DiagramEdge } from "./types";
 import type { DiagramFile } from "./types";
@@ -40,7 +41,7 @@ export function brokerChoices(d: DiagramFile | undefined, node: string, type: Ke
     )
       continue;
     const group =
-      type === "kafka" || n.stencil === "azure.service-bus.topic"
+      type === "kafka" || baseStencilId(n.stencil) === "azure.service-bus.topic"
         ? typeof e.props?.group === "string"
           ? e.props.group
           : e.id
@@ -68,11 +69,15 @@ export function loadBalancerChoices(d: DiagramFile | undefined, node: string) {
 }
 function requestRoute(e: DiagramEdge, stencil: string): boolean {
   return (
-    stencil === LOAD_BALANCER_STENCIL && e.kind === "sync" && (!e.relation || e.relation === "flow") && !e.props?.deny
+    baseStencilId(stencil) === LOAD_BALANCER_STENCIL &&
+    e.kind === "sync" &&
+    (!e.relation || e.relation === "flow") &&
+    !e.props?.deny
   );
 }
 
 export function triggerFits(t: KedaTrigger["type"], stencil: string): boolean {
+  stencil = baseStencilId(stencil);
   return t === "kafka"
     ? ["kafka.topic", "aws.msk", "confluent.cloud"].includes(stencil)
     : t === "aws-sqs-queue"
@@ -147,7 +152,7 @@ export function bindingValidator(
     scalerTriggers(a).every((t) => {
       const source = byId.get(t.source.node);
       if (!source || !triggerFits(t.type, source.stencil)) return false;
-      const named = t.type === "kafka" || source.stencil === "azure.service-bus.topic";
+      const named = t.type === "kafka" || baseStencilId(source.stencil) === "azure.service-bus.topic";
       return named
         ? !!t.source.group && !!groups.get(source.id)?.has(t.source.group)
         : t.source.group === undefined || t.source.group === "queue";

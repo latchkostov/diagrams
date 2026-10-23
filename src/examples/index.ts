@@ -184,6 +184,11 @@ const publicExamples: PublicExample[] = (
       summary: "Shared model tokens and payment rate limits",
     },
     {
+      slug: "vendor-edge-storefront",
+      theme: "cloud",
+      summary: "Fastly, Cloudflare WAF, R2, Cognito and Square",
+    },
+    {
       slug: "aws-serverless-orders",
       theme: "cloud",
       summary: "Lambda, DynamoDB Streams, EventBridge fan-out",

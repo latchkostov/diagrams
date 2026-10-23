@@ -1,3 +1,4 @@
+import { baseStencilId } from "./vendorParents";
 import { PROFILES } from "./profileFamilies";
 import { BROKERS, type BrokerSpec } from "../model/brokers";
 import type { SimRole } from "../model/types";
@@ -160,6 +161,7 @@ export const FAMILIES: Record<FamilyId, FamilySpec> = {
   dependency: { roles: ["none", "processor", "source"], defaults: {}, settings: [], overLimit: "none" },
 };
 export function profileOf(stencil: string | undefined): StencilProfile | undefined {
+  stencil = stencil && baseStencilId(stencil);
   return stencil && Object.hasOwn(PROFILES, stencil)
     ? { ...PROFILES[stencil], ...(BROKERS[stencil] ? { broker: BROKERS[stencil] } : {}) }
     : undefined;
@@ -170,6 +172,7 @@ export function resolvePreset(
   revision: unknown,
   size?: unknown,
 ): Preset | undefined {
+  stencil = stencil && baseStencilId(stencil);
   const family = profileOf(stencil)?.family;
   if (
     typeof id === "string" &&

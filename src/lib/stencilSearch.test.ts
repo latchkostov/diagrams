@@ -1,11 +1,43 @@
 import { describe, expect, it } from "vitest";
+import { VENDOR_PARENTS } from "../stencils/vendorParents";
 import { catalog } from "../stencils/catalog";
 import { matchesStencil, searchStencils, STENCIL_ALIASES, tokenize } from "./stencilSearch";
+import masterSearch from "../test/fixtures/stencil-search-master.json";
+import { searchStencils as displaySearch } from "./stencilDisplaySearch";
 import { withRecent } from "./recentStencils";
 
 const ids = (q: string) => searchStencils(catalog, q).map((s) => s.id);
 
 describe("stencil search", () => {
+  it("preserves origin/master's top results for e2e search inputs", () => {
+    // Recorded with d614cf7a's catalog and scorer. Covers the released e2e inputs plus common queries.
+    // A category menu may enumerate vendors before established stencils (Redpanda before Redis Cache).
+    const menuOrder = [...catalog.filter((s) => VENDOR_PARENTS[s.id]), ...catalog.filter((s) => !VENDOR_PARENTS[s.id])];
+    for (const search of [searchStencils, displaySearch]) {
+      expect(
+        search(menuOrder, "red")
+          .slice(0, 2)
+          .map((s) => s.id),
+      ).toEqual(["redis.stream", "redis.cache"]);
+    }
+    for (const [query, top] of Object.entries(masterSearch)) {
+      for (const list of [catalog, menuOrder]) {
+        expect(searchStencils(list, query)[0]?.id, query).toBe(top ?? undefined);
+        expect(displaySearch(list, query)[0]?.id, query).toBe(top ?? undefined);
+      }
+    }
+  });
+
+  it("keeps both Redis prefixes ahead of Redpanda in either input order", () => {
+    for (const list of [catalog, [...catalog].reverse()]) {
+      for (const search of [searchStencils, displaySearch]) {
+        const hits = search(list, "red").map((s) => s.id);
+        expect(hits.indexOf("redis.stream")).toBeLessThan(hits.indexOf("redpanda.topic"));
+        expect(hits.indexOf("redis.cache")).toBeLessThan(hits.indexOf("redpanda.topic"));
+      }
+    }
+  });
+
   it("matches everything for an empty query", () => {
     expect(ids("")).toHaveLength(catalog.length);
     expect(ids("   ")).toHaveLength(catalog.length);

@@ -1,0 +1,22 @@
+---
+title: Independent edge storefront
+---
+flowchart LR
+  shopper(["Shopper"])
+  cdn["Fastly"]
+  waf["Cloudflare WAF"]
+  checkout["Checkout function"]
+  receipts[("Receipt objects")]
+  payments(["Square payments"])
+  flags["Checkout flags"]
+  identity["Customer identity"]
+  shopper --> cdn
+  cdn --> waf
+  waf --> checkout
+  checkout --> receipts
+  checkout --> payments
+  checkout -.->|"reads config"| flags
+  checkout -.->|"gets tokens from"| identity
+  linkStyle 5 stroke:#2A8A83,stroke-width:1.25px,stroke-dasharray: 2 4
+  linkStyle 6 stroke:#5A61C4,stroke-width:1.25px,stroke-dasharray: 2 4
+%% diagrams:{"v":1,"description":"Fastly and a Cloudflare WAF pass shop requests to Fastly Compute, which calls Square and stores receipts in Cloudflare R2. LaunchDarkly supplies configuration and Cognito supplies identity. CDN caching and vendor performance are not simulated.","nodes":{"shopper":["shopper","client.browser"],"cdn":["cdn","fastly"],"waf":["waf","cloudflare.waf"],"checkout":["checkout","fastly.compute"],"receipts":["receipts","cloudflare.r2"],"payments":["payments","square"],"flags":["flags","launchdarkly"],"identity":["identity","aws.cognito"]},"edges":["browse","protect","origin","store","pay","config","authenticate"],"relations":{"5":"config","6":"identity"}}

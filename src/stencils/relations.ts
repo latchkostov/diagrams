@@ -1,3 +1,4 @@
+import { baseStencilId } from "./vendorParents";
 import type { EdgeRelation } from "../model/types";
 import { RELATION_META, relationOf, type DependencyRelation } from "../model/relations";
 
@@ -50,7 +51,7 @@ export const STENCIL_RELATIONS: Readonly<Record<string, StencilRelation>> = Obje
 ]);
 
 export const stencilRelation = (stencilId: string | undefined): StencilRelation =>
-  (stencilId && STENCIL_RELATIONS[stencilId]) || {};
+  (stencilId && STENCIL_RELATIONS[baseStencilId(stencilId)]) || {};
 
 /**
  * The relationship for a new edge from `source` to `target` (stencil ids). The target's `in` wins,

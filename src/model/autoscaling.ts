@@ -1,8 +1,10 @@
+import { baseStencilId } from "../stencils/vendorParents";
+
 /** A1 is opt-in. CPU work is CPU-ms per real attempt, never elapsed latency. */
 export function resourceWorkload(stencil: string | undefined, family: string | undefined, revision = "a1"): boolean {
   // A Deployment remains infrastructure in older profile evidence. Explicit resource execution is compute.
   return (
-    (stencil === "k8s.deployment" && revision === "a2") ||
+    (stencil !== undefined && baseStencilId(stencil) === "k8s.deployment" && revision === "a2") ||
     ["service", "workflow", "stream-processor"].includes(family ?? "")
   );
 }

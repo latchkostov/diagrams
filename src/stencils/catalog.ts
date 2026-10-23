@@ -1,5 +1,7 @@
 import type { SimRole, Stencil, StencilCategory } from "../model/types";
 
+import { createVendorStencils } from "./vendorCatalog";
+
 // The stencil catalog. Icons live in ./icons/<icon>.svg — sources & licenses in docs/ICONS.md.
 // Ids are persisted in saved diagrams: never rename one once shipped.
 
@@ -2103,7 +2105,7 @@ const patternsGeneric = group("generic", [
   ],
 ]);
 
-export const catalog: Stencil[] = [
+const baseCatalog: Stencil[] = [
   ...messaging,
   ...compute,
   ...data,
@@ -2117,3 +2119,5 @@ export const catalog: Stencil[] = [
   ...patternsNetwork,
   ...patternsGeneric,
 ];
+
+export const catalog: Stencil[] = [...baseCatalog, ...createVendorStencils(baseCatalog)];

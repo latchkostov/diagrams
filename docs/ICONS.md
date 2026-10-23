@@ -372,3 +372,70 @@ LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE A
 IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
 WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+### Popular vendor variants (2026-10)
+
+Every stencil below uses a neutral category glyph. No new vendor mark was downloaded or bundled. Names are nominative trademarks of their respective owners. Existing normalisation and individual SVG loading are retained. Production URLs share a content-addressed directory, keeping the URL manifest small without inlining artwork or changing SVG bytes. Development keeps Vite's glob, and the offline viewer keeps its existing subset of icons.
+
+The one new category glyph, `generic-telemetry.svg`, is Lucide's [chart-no-axes-combined](https://github.com/lucide-icons/lucide/blob/main/icons/chart-no-axes-combined.svg), retrieved 2026-10-23 under [ISC](https://lucide.dev/license). The existing normalisation removes fixed dimensions and sets stroke `#475569` at width 1.75. It is used for Dynatrace, Elastic APM and Grafana Tempo. The remaining glyphs are reused from Lucide 1.55.0.
+
+| Stencil                                                 | Icon file                       | Source and licence                                    |
+| ------------------------------------------------------- | ------------------------------- | ----------------------------------------------------- |
+| Fastly (`fastly`)                                       | `generic-cdn.svg`               | [Lucide 1.55.0](https://lucide.dev/license), ISC      |
+| Akamai CDN (`akamai`)                                   | `generic-cdn.svg`               | [Lucide 1.55.0](https://lucide.dev/license), ISC      |
+| Amazon CloudFront (`aws.cloudfront`)                    | `generic-cdn.svg`               | [Lucide 1.55.0](https://lucide.dev/license), ISC      |
+| Bunny CDN (`bunny.cdn`)                                 | `generic-cdn.svg`               | [Lucide 1.55.0](https://lucide.dev/license), ISC      |
+| Google Cloud CDN (`gcp.cloud-cdn`)                      | `generic-cdn.svg`               | [Lucide 1.55.0](https://lucide.dev/license), ISC      |
+| Cloudflare WAF (`cloudflare.waf`)                       | `generic-firewall.svg`          | [Lucide 1.55.0](https://lucide.dev/license), ISC      |
+| AWS WAF (`aws.waf`)                                     | `generic-firewall.svg`          | [Lucide 1.55.0](https://lucide.dev/license), ISC      |
+| Akamai App & API Protector (`akamai.app-api-protector`) | `generic-firewall.svg`          | [Lucide 1.55.0](https://lucide.dev/license), ISC      |
+| Imperva WAF (`imperva.waf`)                             | `generic-firewall.svg`          | [Lucide 1.55.0](https://lucide.dev/license), ISC      |
+| Sucuri WAF (`sucuri.waf`)                               | `generic-firewall.svg`          | [Lucide 1.55.0](https://lucide.dev/license), ISC      |
+| Cloudflare DNS (`cloudflare.dns`)                       | `generic-dns.svg`               | [Lucide 1.55.0](https://lucide.dev/license), ISC      |
+| GoDaddy DNS (`godaddy.dns`)                             | `generic-dns.svg`               | [Lucide 1.55.0](https://lucide.dev/license), ISC      |
+| Hostinger DNS (`hostinger.dns`)                         | `generic-dns.svg`               | [Lucide 1.55.0](https://lucide.dev/license), ISC      |
+| IONOS DNS (`ionos.dns`)                                 | `generic-dns.svg`               | [Lucide 1.55.0](https://lucide.dev/license), ISC      |
+| Google Cloud DNS (`gcp.cloud-dns`)                      | `generic-dns.svg`               | [Lucide 1.55.0](https://lucide.dev/license), ISC      |
+| Apigee (`gcp.apigee`)                                   | `generic-load-balancer.svg`     | [Lucide 1.55.0](https://lucide.dev/license), ISC      |
+| Apache APISIX (`apisix`)                                | `generic-load-balancer.svg`     | [Lucide 1.55.0](https://lucide.dev/license), ISC      |
+| ActiveMQ (`activemq.queue`)                             | `generic-queue.svg`             | [Lucide 1.55.0](https://lucide.dev/license), ISC      |
+| Redpanda (`redpanda.topic`)                             | `generic-event-store.svg`       | [Lucide 1.55.0](https://lucide.dev/license), ISC      |
+| SQLite (`sqlite`)                                       | `generic-database.svg`          | [Lucide 1.55.0](https://lucide.dev/license), ISC      |
+| MariaDB (`mariadb`)                                     | `generic-database.svg`          | [Lucide 1.55.0](https://lucide.dev/license), ISC      |
+| Oracle Database (`oracle.database`)                     | `generic-database.svg`          | [Lucide 1.55.0](https://lucide.dev/license), ISC      |
+| Couchbase (`couchbase`)                                 | `generic-database.svg`          | [Lucide 1.55.0](https://lucide.dev/license), ISC      |
+| Memcached (`memcached`)                                 | `generic-cache.svg`             | [Lucide 1.55.0](https://lucide.dev/license), ISC      |
+| Valkey (`valkey`)                                       | `generic-cache.svg`             | [Lucide 1.55.0](https://lucide.dev/license), ISC      |
+| OpenSearch (`opensearch`)                               | `generic-search-index.svg`      | [Lucide 1.55.0](https://lucide.dev/license), ISC      |
+| Apache Solr (`solr`)                                    | `generic-search-index.svg`      | [Lucide 1.55.0](https://lucide.dev/license), ISC      |
+| InfluxDB (`influxdb`)                                   | `generic-database.svg`          | [Lucide 1.55.0](https://lucide.dev/license), ISC      |
+| TimescaleDB (`timescaledb`)                             | `generic-database.svg`          | [Lucide 1.55.0](https://lucide.dev/license), ISC      |
+| Milvus (`milvus`)                                       | `generic-vector-db.svg`         | [Lucide 1.55.0](https://lucide.dev/license), ISC      |
+| Qdrant (`qdrant`)                                       | `generic-vector-db.svg`         | [Lucide 1.55.0](https://lucide.dev/license), ISC      |
+| Weaviate (`weaviate`)                                   | `generic-vector-db.svg`         | [Lucide 1.55.0](https://lucide.dev/license), ISC      |
+| Cloudflare R2 (`cloudflare.r2`)                         | `generic-file.svg`              | [Lucide 1.55.0](https://lucide.dev/license), ISC      |
+| Backblaze B2 (`backblaze.b2`)                           | `generic-file.svg`              | [Lucide 1.55.0](https://lucide.dev/license), ISC      |
+| Wasabi (`wasabi`)                                       | `generic-file.svg`              | [Lucide 1.55.0](https://lucide.dev/license), ISC      |
+| Dynatrace (`dynatrace`)                                 | `generic-telemetry.svg`         | [Lucide, 2026-10-23](https://lucide.dev/license), ISC |
+| Elastic APM (`elastic.apm`)                             | `generic-telemetry.svg`         | [Lucide, 2026-10-23](https://lucide.dev/license), ISC |
+| Grafana Tempo (`grafana.tempo`)                         | `generic-telemetry.svg`         | [Lucide, 2026-10-23](https://lucide.dev/license), ISC |
+| Amazon Cognito (`aws.cognito`)                          | `generic-identity-provider.svg` | [Lucide 1.55.0](https://lucide.dev/license), ISC      |
+| Firebase Authentication (`firebase.auth`)               | `generic-identity-provider.svg` | [Lucide 1.55.0](https://lucide.dev/license), ISC      |
+| Clerk (`clerk`)                                         | `generic-identity-provider.svg` | [Lucide 1.55.0](https://lucide.dev/license), ISC      |
+| Square (`square`)                                       | `generic-external-api.svg`      | [Lucide 1.55.0](https://lucide.dev/license), ISC      |
+| Braintree (`braintree`)                                 | `generic-external-api.svg`      | [Lucide 1.55.0](https://lucide.dev/license), ISC      |
+| Amazon SES (`aws.ses`)                                  | `generic-email.svg`             | [Lucide 1.55.0](https://lucide.dev/license), ISC      |
+| Mailgun (`mailgun`)                                     | `generic-email.svg`             | [Lucide 1.55.0](https://lucide.dev/license), ISC      |
+| Postmark (`postmark`)                                   | `generic-email.svg`             | [Lucide 1.55.0](https://lucide.dev/license), ISC      |
+| OneSignal (`onesignal`)                                 | `generic-push.svg`              | [Lucide 1.55.0](https://lucide.dev/license), ISC      |
+| Firebase Cloud Messaging (`firebase.fcm`)               | `generic-push.svg`              | [Lucide 1.55.0](https://lucide.dev/license), ISC      |
+| LaunchDarkly (`launchdarkly`)                           | `generic-config-store.svg`      | [Lucide 1.55.0](https://lucide.dev/license), ISC      |
+| Unleash (`unleash`)                                     | `generic-config-store.svg`      | [Lucide 1.55.0](https://lucide.dev/license), ISC      |
+| Statsig (`statsig`)                                     | `generic-config-store.svg`      | [Lucide 1.55.0](https://lucide.dev/license), ISC      |
+| GitLab CI/CD (`gitlab.ci`)                              | `generic-scheduler.svg`         | [Lucide 1.55.0](https://lucide.dev/license), ISC      |
+| Jenkins (`jenkins`)                                     | `generic-scheduler.svg`         | [Lucide 1.55.0](https://lucide.dev/license), ISC      |
+| CircleCI (`circleci`)                                   | `generic-scheduler.svg`         | [Lucide 1.55.0](https://lucide.dev/license), ISC      |
+| Fastly Compute (`fastly.compute`)                       | `generic-service.svg`           | [Lucide 1.55.0](https://lucide.dev/license), ISC      |
+| Google Gemini API (`google.gemini`)                     | `generic-llm.svg`               | [Lucide 1.55.0](https://lucide.dev/license), ISC      |
+| Amazon Bedrock (`aws.bedrock`)                          | `generic-llm.svg`               | [Lucide 1.55.0](https://lucide.dev/license), ISC      |
+| Mistral AI API (`mistral.api`)                          | `generic-llm.svg`               | [Lucide 1.55.0](https://lucide.dev/license), ISC      |
