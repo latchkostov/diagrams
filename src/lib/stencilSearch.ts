@@ -1,9 +1,8 @@
-import { VENDOR_ALIASES } from "../stencils/vendorAliases";
+import { VENDOR_ALIASES, VENDOR_KEYWORDS } from "../stencils/vendorAliases";
 import type { Stencil } from "../model/types";
 import { rankMatches, scoreToken, scoreTokens, searchWords, tokenize, type SearchText } from "./stencilSearchCore";
 export { tokenize } from "./stencilSearchCore";
 import { categoryLabel } from "./categories";
-import { simRoleMeta } from "./simRoles";
 import { familyOf, getFamily } from "./vendorFamilies";
 
 /**
@@ -28,7 +27,7 @@ const EXTERNAL_API_ALIASES = [
 
 /** Extra words people type for a stencil: abbreviations, old names, generic nouns. */
 export const STENCIL_ALIASES: Record<string, readonly string[]> = {
-  ...VENDOR_ALIASES,
+  ...VENDOR_KEYWORDS,
   iterable: [...EXTERNAL_API_ALIASES, "engagement", "campaigns"],
   braze: [...EXTERNAL_API_ALIASES, "engagement", "campaigns"],
   segment: [...EXTERNAL_API_ALIASES, "customer data", "tracking", "analytics"],
@@ -345,20 +344,22 @@ const index = new WeakMap<Stencil, Indexed>();
 function indexed(s: Stencil): Indexed {
   let hit = index.get(s);
   if (hit) return hit;
-  const aliases = (STENCIL_ALIASES[s.id] ?? []).map((a) => a.toLowerCase());
+  const terms = (STENCIL_ALIASES[s.id] ?? []).map((a) => a.toLowerCase());
+  // Vendor discovery terms describe compatible products and roles, not alternative names.
+  const aliases = VENDOR_KEYWORDS[s.id] ? terms.filter((term) => VENDOR_ALIASES.has(term)) : terms;
   const fields = [
     s.label,
     s.vendor,
     s.id,
     s.simRole,
-    simRoleMeta[s.simRole]?.label ?? "",
+    s.simRole === "none" ? "decorative" : "",
     // Ordinary traffic sources are clients; the renamed category must not make a browser an external API.
-    s.category === "clients" && s.simRole === "source" ? "Clients" : (categoryLabel[s.category] ?? s.category),
+    s.category === "clients" && s.simRole === "source" ? "Clients" : categoryLabel[s.category],
     getFamily(familyOf(s)).label,
     s.defaultSublabel ?? "",
-    ...aliases,
-  ].map((f) => f.toLowerCase());
-  const hay = fields.join(" ");
+    ...terms,
+  ];
+  const hay = fields.join(" ").toLowerCase();
   const label = s.label.toLowerCase();
   hit = {
     id: s.id,
@@ -374,7 +375,8 @@ function indexed(s: Stencil): Indexed {
 
 /** 0 when the stencil doesn't match the query; higher is a better match. An empty query matches everything (score 1). */
 export function scoreStencil(s: Stencil, q: string): number {
-  return scoreTokens(tokenize(q), (token) => scoreToken(indexed(s), token));
+  // Preserve established picks even when menus group a new vendor before its peers.
+  return scoreTokens(tokenize(q), (token) => scoreToken(indexed(s), token) * (VENDOR_KEYWORDS[s.id] ? 1 : 1.01));
 }
 
 export function matchesStencil(s: Stencil, q: string): boolean {

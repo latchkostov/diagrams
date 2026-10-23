@@ -175,7 +175,13 @@ const BY_THEME: Record<string, string[]> = {
     "rag-assistant",
     "shared-api-quotas",
   ],
-  cloud: ["aws-serverless-orders", "aks-app-config-key-vault", "serverless-burst-buffer", "cloud-run-timetable-api"],
+  cloud: [
+    "vendor-edge-storefront",
+    "aws-serverless-orders",
+    "aks-app-config-key-vault",
+    "serverless-burst-buffer",
+    "cloud-run-timetable-api",
+  ],
   integration: ["webhook-ingestion", "api-route-table", "notification-fanout", "azure-service-bus-integration"],
   reliability: [
     "blocking-call",

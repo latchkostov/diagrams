@@ -31,6 +31,7 @@ const NOT_AT_STARTUP: [string, RegExp][] = [
   ["annotation editing", /[/\\]src[/\\]canvas[/\\]nodes[/\\]AnnotationEditor\.tsx$/],
   ["annotation Markdown enhancement", /[/\\]src[/\\]canvas[/\\]nodes[/\\]AnnotationFormatting\.tsx$/],
   ["Markdown formatting keys", /[/\\]src[/\\]components[/\\]markdown[/\\]markdownKeys\.ts$/],
+  ["stencil gallery descriptions", /[/\\]src[/\\]i18n[/\\]galleryChrome\.ts$/],
   ["stencil display messages", /[/\\]src[/\\]i18n[/\\]stencils\.ts$/],
   ["File operation messages", /[/\\]src[/\\]interop[/\\]ui[/\\]fileMessages\.ts$/],
   ["canvas File actions", /[/\\]src[/\\]interop[/\\]fileActions\.ts$/],

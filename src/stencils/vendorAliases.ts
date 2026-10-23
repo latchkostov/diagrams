@@ -1,5 +1,6 @@
-// Discovery terms for the vendor batch; loaded with the search index, never the entry.
-export const VENDOR_ALIASES: Record<string, readonly string[]> = {
+// Discovery keywords for the vendor batch; loaded with the search index, never the entry.
+// Compatibility and role terms are searchable metadata, not exact-name aliases.
+export const VENDOR_KEYWORDS: Record<string, readonly string[]> = {
   fastly: ["cdn", "edge", "content delivery"],
   akamai: ["cdn", "edge", "content delivery"],
   "aws.cloudfront": ["cdn", "edge", "cloud front"],
@@ -59,3 +60,17 @@ export const VENDOR_ALIASES: Record<string, readonly string[]> = {
   "aws.bedrock": ["llm", "ai", "model", "inference"],
   "mistral.api": ["llm", "ai", "model", "inference"],
 };
+
+// Alternative product names keep exact-alias relevance; generic compatibility terms above do not.
+export const VENDOR_ALIASES = new Set([
+  "bunny.net",
+  "bunnycdn",
+  "&",
+  "kona",
+  "incapsula",
+  "1and1",
+  "artemis",
+  "sqlite3",
+  "timescale",
+  "fcm",
+]);

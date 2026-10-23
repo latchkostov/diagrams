@@ -16,7 +16,7 @@
       { "id": "pulsar.topic", "label": "Pulsar Topic", "vendor": "Apache Pulsar", "category": "messaging", "simRole": "topic", "description": "Multi-tenant pub/sub with tiered storage and shared or exclusive subscriptions." },
       { "id": "confluent.cloud", "label": "Confluent Cloud", "vendor": "Confluent", "category": "messaging", "simRole": "stream", "description": "Managed Kafka from Confluent (Cloud or Platform) with connectors, governance and Flink." },
       { "id": "aws.msk", "label": "Amazon MSK", "vendor": "AWS", "category": "messaging", "simRole": "stream", "description": "Managed Streaming for Apache Kafka: AWS-run Kafka clusters." },
-      { "id": "redpanda.topic", "label": "Redpanda", "vendor": "Redpanda", "category": "messaging", "simRole": "stream", "description": "Partitioned, replicated log; every consumer group gets every record." }
+      { "id": "rabbitmq.exchange", "label": "RabbitMQ Exchange", "vendor": "RabbitMQ", "category": "messaging", "simRole": "topic", "description": "Routes messages to bound queues (direct, topic, fanout, headers)." }
     ]
   },
   "{\"query\":\"postgres\"}": {
@@ -35,9 +35,9 @@
       { "id": "azure.service-bus.queue", "label": "Service Bus Queue", "vendor": "Azure", "category": "messaging", "simRole": "queue", "description": "Durable point-to-point queue with sessions, DLQ and competing consumers." },
       { "id": "azure.storage-queue", "label": "Storage Queue", "vendor": "Azure", "category": "messaging", "simRole": "queue", "description": "Simple, cheap queue in an Azure Storage account." },
       { "id": "rabbitmq.queue", "label": "RabbitMQ Queue", "vendor": "RabbitMQ", "category": "messaging", "simRole": "queue", "description": "Buffers messages for competing consumers." },
-      { "id": "activemq.queue", "label": "ActiveMQ", "vendor": "Apache ActiveMQ", "category": "messaging", "simRole": "queue", "description": "Point-to-point queue: each message goes to one consumer." },
       { "id": "aws.sqs", "label": "Amazon SQS", "vendor": "AWS", "category": "messaging", "simRole": "queue", "description": "Fully managed message queue (standard or FIFO)." },
-      { "id": "aws.mq", "label": "Amazon MQ", "vendor": "AWS", "category": "messaging", "simRole": "queue", "description": "Managed ActiveMQ and RabbitMQ brokers for JMS and AMQP workloads." }
+      { "id": "aws.mq", "label": "Amazon MQ", "vendor": "AWS", "category": "messaging", "simRole": "queue", "description": "Managed ActiveMQ and RabbitMQ brokers for JMS and AMQP workloads." },
+      { "id": "activemq.queue", "label": "ActiveMQ", "vendor": "Apache ActiveMQ", "category": "messaging", "simRole": "queue", "description": "Point-to-point queue: each message goes to one consumer." }
     ]
   },
   "{\"query\":\"azure function\"}": {
