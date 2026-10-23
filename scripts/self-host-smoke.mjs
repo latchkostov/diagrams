@@ -5,7 +5,7 @@ import process from "node:process";
 import console from "node:console";
 import path from "node:path";
 import { URL } from "node:url";
-import { chromium, expect } from "@playwright/test";
+import { expect } from "@playwright/test";
 
 if (!process.argv.includes("--static-only")) await import("./server-smoke.mjs");
 if (process.argv.includes("--server-only")) process.exit(0);
@@ -13,6 +13,9 @@ if (process.argv.includes("--server-only")) process.exit(0);
 const fetch = globalThis.fetch;
 const { withSmokeContainer, waitForStableEndpoint } = (
   await runnerImport(path.resolve("scripts/self-host-container.ts"), { configFile: false, logLevel: "error" })
+).module;
+const { withSmokeBrowser } = (
+  await runnerImport(path.resolve("scripts/self-host-browser.ts"), { configFile: false, logLevel: "error" })
 ).module;
 const invocation = randomUUID();
 
@@ -143,9 +146,9 @@ for (const [base, tag] of [
     }
     if (base !== "/" && (await fetch(`${origin}/`)).status !== 404)
       throw new Error("Sub-path image exposes root unexpectedly");
-    const browser = await chromium.launch();
-    try {
-      const page = await browser.newPage();
+    await withSmokeBrowser(async (newContext) => {
+      const context = await newContext();
+      const page = await context.newPage();
       const errors = [];
       const outside = [];
       page.on("pageerror", (error) => errors.push(error.message));
@@ -174,9 +177,7 @@ for (const [base, tag] of [
       expect(module.headers.get("Content-Type")).toMatch(/javascript/);
       expect(outside).toEqual([]);
       expect(errors).toEqual([]);
-    } finally {
-      await browser.close();
-    }
+    });
     console.log(`PASS ${tag}: non-root, CSP/CORS, cache, gzip, fallback and path routing`);
   });
 }

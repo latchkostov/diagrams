@@ -7,15 +7,15 @@ import process from "node:process";
 import console from "node:console";
 import { spawnSync } from "node:child_process";
 import { runnerImport } from "vite";
-import { chromium, expect } from "@playwright/test";
+import { expect } from "@playwright/test";
 import { deploymentVariants } from "./server-deployment-smoke.mjs";
 
-// First paint through a cold server on a loaded CI runner can exceed Playwright's 5 s default; only the
-// app-boot waits get this allowance, and every assertion is unchanged.
+// A hang backstop for app boot, not a startup performance budget.
 const BOOT_TIMEOUT = 30_000;
 
 const load = async (name) => (await runnerImport(path.resolve(name), { configFile: false, logLevel: "error" })).module;
 const { withSmokeContainer, waitForStableEndpoint } = await load("scripts/self-host-container.ts");
+const { withSmokeBrowser } = await load("scripts/self-host-browser.ts");
 const { compressedImageBytes } = await load("scripts/server-image-size.ts");
 const run = (command, args, capture = false) => {
   const result = spawnSync(command, args, { encoding: "utf8", stdio: capture ? "pipe" : "inherit" });
@@ -92,12 +92,11 @@ try {
           { stdio: "inherit" },
         );
         if (verify.status !== 0) throw new Error("Server headers failed verification");
-        const browser = await chromium.launch();
         const canary = `synthetic-diagram-canary-${randomUUID()}`;
         const rooms = new Set();
-        try {
-          const hostContext = await browser.newContext();
-          const guestContext = await browser.newContext();
+        await withSmokeBrowser(async (newContext) => {
+          const hostContext = await newContext();
+          const guestContext = await newContext();
           const errors = [];
           const outside = [];
           for (const context of [hostContext, guestContext]) {
@@ -154,9 +153,7 @@ try {
           expect(rooms.size).toBeGreaterThan(0);
           expect(errors).toEqual([]);
           expect(outside).toEqual([]);
-        } finally {
-          await browser.close();
-        }
+        });
         const logs = run("docker", ["logs", id], true);
         expect(logs).toContain('"event":"listening"');
         expect(logs).not.toContain(canary);
