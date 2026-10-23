@@ -133,7 +133,15 @@ export function useConnectionPlacement(
         },
       );
       wrap?.classList.add("is-connecting");
-      watchConnectionGesture(menus, seq, preview, marks.clear);
+      const pt = "touches" in event ? event.touches[0] : event;
+      watchConnectionGesture(
+        menus,
+        seq,
+        preview,
+        marks.clear,
+        store,
+        pt ? { x: pt.clientX, y: pt.clientY } : undefined,
+      );
     },
     [hideTip, wrapper, annotationKindOf, menus, readOnly, editor, live, screenToFlowPosition, pickNamed, store, flow],
   );

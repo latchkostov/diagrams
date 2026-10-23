@@ -104,6 +104,24 @@ describe("reconnectEdge", () => {
     expect(reconnectEdge([e], "e", "target", "b", "left")).toBeNull();
   });
 
+  it.each([
+    ["target", "b", "c", "sourceSide", "top", "targetSide"],
+    ["source", "a", "c", "targetSide", "left", "sourceSide"],
+  ] as const)(
+    "a %s dot reconnect pins that end and preserves the other end's attachment",
+    (end, same, other, keptKey, kept, movedKey) => {
+      // The same node, another of its dots; then another node's dot.
+      const [onSame] = reconnectEdge([e], "e", end, same, "bottom")!;
+      expect(onSame).toMatchObject({ id: "e", source: "a", target: "b" });
+      expect(onSame.data).toEqual({ ...e.data, [movedKey]: "bottom" });
+      expect(onSame.data?.[keptKey]).toBe(kept);
+      const [onOther] = reconnectEdge([e], "e", end, other, "right")!;
+      expect(onOther).toMatchObject({ id: "e", [end]: other });
+      expect(onOther.data).toEqual({ ...e.data, [movedKey]: "right" });
+      expect(onOther.data?.[keptKey]).toBe(kept);
+    },
+  );
+
   it("pins the new node's dot while retaining the other end's side", () => {
     const [next] = reconnectEdge([e], "e", "target", "c", "right")!;
     expect(next).toMatchObject({ source: "a", target: "c", data: { ...e.data, targetSide: "right" } });

@@ -1255,6 +1255,37 @@ test("Escape stops connection auto-pan before release", async ({ page }) => {
   await expect(page.getByTestId("undo-button")).toBeDisabled();
 });
 
+test("auto-pan keeps the connection's end and its plus under a still pointer, and drops there", async ({ page }) => {
+  await seed(page);
+  await pauseClock(page);
+  const from = centre(await box(page.getByTestId("handle-billing-bottom")));
+  const pane = await box(page.getByTestId("canvas-wrap"));
+  // Empty canvas at the right edge, above the row of nodes: auto-pan runs, and a drop here opens quick-add.
+  const still = { x: pane.x + pane.width - 5, y: pane.y + pane.height * 0.3 };
+  await page.mouse.move(from.x, from.y);
+  await page.mouse.down();
+  await page.mouse.move(still.x, still.y, { steps: 10 });
+  const plus = page.getByTestId("connection-add");
+  await expect(plus).toBeVisible();
+  const transform = () =>
+    page.getByTestId("rf__node-billing").evaluate((el) => el.parentElement?.parentElement?.style.transform);
+  const before = await transform();
+  await page.clock.runFor(8 * 16);
+  expect(await transform()).not.toBe(before);
+  // The diagram moved under the pointer; the plus did not.
+  await expect
+    .poll(async () => {
+      const at = centre(await box(plus));
+      return Math.max(Math.abs(at.x - still.x), Math.abs(at.y - still.y));
+    })
+    .toBeLessThanOrEqual(1.5);
+  await page.mouse.up();
+  await expect(page.getByTestId("quick-add")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.getByTestId("quick-add")).toHaveCount(0);
+  await expect(page.getByTestId("undo-button")).toBeDisabled();
+});
+
 test.describe("attach to a dot", () => {
   const nodes = SEED.nodes
     .filter((n) => ["api", "db", "billing"].includes(n.id))
@@ -1454,6 +1485,25 @@ test.describe("attach to a dot", () => {
       expect(d.edges).toEqual([{ ...pinned[0], to: node, targetSide: "left" }]);
       await expect(page.getByTestId("edge-api-db")).toHaveAttribute("data-target-side", "left");
       await undoUntil(page, (s) => s.edges[0]?.to === "db" && s.edges[0]?.targetSide === "top", 1);
+    });
+  }
+
+  for (const [node, side] of [
+    ["api", "right"],
+    ["billing", "left"],
+  ] as const) {
+    test(`source end onto ${node}'s ${side} dot keeps the target's attachment and undoes once`, async ({ page }) => {
+      await open(page, pinned);
+      await selectEnd(page);
+      await expect(page.getByTestId("reconnect-api-db-source")).toBeVisible();
+      await drag(page, page.getByTestId("reconnect-api-db-source"), page.getByTestId(`handle-${node}-${side}`));
+      await expect(page.getByTestId(`handle-${node}-${side}`)).toHaveClass(/is-connect-port/);
+      await page.mouse.up();
+      const d = await savedWhen(page, (s) => s.edges[0]?.from === node && s.edges[0]?.sourceSide === side);
+      expect(d.edges).toEqual([{ ...pinned[0], from: node, sourceSide: side }]);
+      await expect(page.getByTestId("edge-api-db")).toHaveAttribute("data-source-side", side);
+      await expect(page.getByTestId("edge-api-db")).toHaveAttribute("data-target-side", "top");
+      await undoUntil(page, (s) => s.edges[0]?.from === "api" && s.edges[0]?.sourceSide === "bottom", 1);
     });
   }
 

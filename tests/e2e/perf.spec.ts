@@ -157,16 +157,42 @@ async function prepareNodeInteractions(page: Page) {
 }
 
 test.describe("perf: interactions", { tag: "@dev" }, () => {
-  test("zooming updates snap radius without rendering the canvas shell", async ({ page }) => {
+  test("zoom keeps React Flow snap radius aligned with the resolver, without rendering the canvas shell", async ({
+    page,
+  }) => {
     await openDiagram(page);
+    /** React Flow's own connectionRadius and zoom (its store, from the provider above the canvas), and the resolver's. */
+    const radii = () =>
+      page.evaluate(async () => {
+        const url = "/src/canvas/gestures.ts";
+        const gestures = (await import(url)) as typeof import("../../src/canvas/gestures");
+        const root = document.querySelector(".react-flow") as (Element & Record<string, unknown>) | null;
+        const key = root && Object.keys(root).find((k) => k.startsWith("__reactFiber$"));
+        type Store = { getState(): { connectionRadius: number; transform: [number, number, number] } };
+        type Fiber = { memoizedProps?: { value?: Partial<Store> }; return?: Fiber };
+        for (let f = key ? (root[key] as Fiber) : undefined; f; f = f.return) {
+          const store = f.memoizedProps?.value;
+          if (typeof store?.getState !== "function") continue;
+          const state = (store as Store).getState();
+          if (typeof state.connectionRadius !== "number") continue;
+          const zoom = state.transform[2];
+          return { zoom, flow: state.connectionRadius, resolver: gestures.connectionRadius(zoom) };
+        }
+        throw new Error("No React Flow store above the canvas");
+      });
     const before = await viewportTransform(page);
+    const seen: { zoom: number; flow: number; resolver: number }[] = [];
     const { counts } = await measure(page, async () => {
       for (let i = 0; i < 5; i++) {
         await page.getByTestId("zoom-out-button").click();
         await waitForStableViewport(page);
+        seen.push(await radii());
       }
     });
     expect(await viewportTransform(page)).not.toBe(before);
+    for (const r of seen) expect(r.flow, JSON.stringify(r)).toBe(r.resolver);
+    // Low zoom widens the radius past its floor, and it follows each step.
+    expect(new Set(seen.map((r) => r.flow)).size, JSON.stringify(seen)).toBeGreaterThan(1);
     expect(counts.CanvasInner ?? 0, JSON.stringify(counts)).toBe(0);
   });
 

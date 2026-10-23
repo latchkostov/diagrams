@@ -17,7 +17,9 @@ export function connectionTargetAt(
   const at = flow.screenToFlowPosition(screen, { snapToGrid: false });
   const element = document.elementFromPoint(screen.x, screen.y);
   const body = connectTarget(connectHitAt(element, kindOf), from);
-  if (body.kind === "outside") return { target: body, at };
+  // Outside the canvas, on the source itself, or on something that takes no connections (a note, a text): rejected,
+  // however near another node's dot it is.
+  if (body.kind === "outside" || body.kind === "source" || body.kind === "invalid") return { target: body, at };
   // React Flow gives the actual handle under the pointer priority over distance (including its hit area).
   const directNode = element?.classList?.contains("react-flow__handle") ? element.getAttribute("data-nodeid") : null;
   const directSide = directNode ? portSide(element?.getAttribute("data-handleid")) : undefined;

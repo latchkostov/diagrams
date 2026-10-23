@@ -103,3 +103,65 @@ it("nearest grow handle is excluded from the shared side-dot resolution", () => 
   );
   expect(hit).toEqual({ target: { kind: "node", id: "target", side: "right" }, at: { x: 220, y: 36 } });
 });
+
+/** The element under the pointer: a node's body (`id`, React Flow's node type class), not one of its handles. */
+const bodyOf = (id: string, type: "diagram" | "annotation") => ({
+  closest: (selector: string) =>
+    selector === ".react-flow"
+      ? {}
+      : selector === ".react-flow__node"
+        ? { dataset: { id }, classList: { contains: (c: string) => c === `react-flow__node-${type}` } }
+        : null,
+  classList: { contains: () => false },
+  getAttribute: () => null,
+});
+
+it.each([
+  ["the source's own body, 10 flow px inside its right edge", "source", "diagram", { kind: "source" }],
+  ["a note, which takes no connections", "note", "annotation", { kind: "invalid", id: "note" }],
+] as const)("a drop on %s stays rejected though a neighbour's dot is in reach at zoom 0.4", (_, id, type, target) => {
+  vi.stubGlobal("document", { elementFromPoint: () => bodyOf(id, type) });
+  // The neighbour's left dot sits 40 flow px to the right of the pointer: inside the zoom-0.4 radius (50).
+  const neighbour = {
+    ...node,
+    id: "neighbour",
+    internals: {
+      ...node.internals,
+      positionAbsolute: { x: 140, y: -50 },
+      handleBounds: { source: [{ id: "left", x: -4.5, y: 45.5, width: 9, height: 9 }] },
+    },
+  } as InternalNode<FlowNode>;
+  const source = { ...node, id: "source" } as InternalNode<FlowNode>;
+  const at = { x: 100, y: 0 };
+  const hit = connectionTargetAt(
+    at,
+    "source",
+    { getZoom: () => 0.4, screenToFlowPosition: (p) => p },
+    [source, neighbour],
+    (n) => (n === "note" ? "note" : undefined),
+  );
+  expect(hit).toEqual({ target, at });
+});
+
+it("an empty canvas drop still snaps to a neighbour's dot in reach", () => {
+  vi.stubGlobal("document", {
+    elementFromPoint: () => ({ closest: (selector: string) => (selector === ".react-flow" ? {} : null) }),
+  });
+  const neighbour = {
+    ...node,
+    id: "neighbour",
+    internals: {
+      ...node.internals,
+      positionAbsolute: { x: 140, y: -50 },
+      handleBounds: { source: [{ id: "left", x: -4.5, y: 45.5, width: 9, height: 9 }] },
+    },
+  } as InternalNode<FlowNode>;
+  const hit = connectionTargetAt(
+    { x: 100, y: 0 },
+    "source",
+    { getZoom: () => 0.4, screenToFlowPosition: (p) => p },
+    [neighbour],
+    () => undefined,
+  );
+  expect(hit).toEqual({ target: { kind: "node", id: "neighbour", side: "left" }, at: { x: 140, y: 0 } });
+});
