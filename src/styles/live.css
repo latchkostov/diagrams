@@ -2705,6 +2705,15 @@ details[open] > summary .lv-disclosure-chevron {
   cursor: pointer;
   animation: lv-detail-in 0.15s ease-out;
 }
+/* A hover summary never scrolls: its fixed parts and three 26 px rows fit the frame, and a frame capped shorter (a
+   short viewport) drops whole section rows rather than showing a scroll bar. A pinned card may scroll. */
+.lv-hover-card:not(.is-pinned) {
+  overflow: hidden;
+}
+.lv-hover-card:not(.is-pinned) .hover-sections {
+  min-height: 0;
+  overflow: hidden;
+}
 .lv-hover-card.is-pinned {
   height: auto;
   min-height: min(332px, var(--hover-room, 332px));
@@ -2888,7 +2897,7 @@ details[open] > summary .lv-disclosure-chevron {
   align-items: center;
   gap: 6px;
   width: 100%;
-  height: 27px;
+  height: 25px;
   min-width: 0;
   padding: 4px 12px;
   border: 0;

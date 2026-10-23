@@ -33,6 +33,13 @@ describe("liveKeys: the levels, row by row", () => {
     ["panel owns Esc before readout", { readout: true, owner: true }, "owner"],
     ["Enter pins an unselected wrapper", { key: "enter", readoutTarget: true }, "pin-readout"],
     ["Enter activates a node control", { key: "enter", readoutTarget: true, control: true }, "none"],
+    [
+      "R3 a hovered card's Enter beats unrelated chrome",
+      { key: "enter", readoutTarget: true, hovered: true, control: true },
+      "pin-readout",
+    ],
+    ["R3 a text field keeps Enter", { key: "enter", readoutTarget: true, hovered: true, editable: true }, "none"],
+    ["R3 a menu or dialog keeps Enter", { key: "enter", readoutTarget: true, hovered: true, owner: true }, "none"],
     ["a focused node pins while narration waits", { key: "enter", readoutTarget: true, waiting: true }, "pin-readout"],
     ["held Enter does not pin or resume", { key: "enter", readoutTarget: true, repeat: true, waiting: true }, "none"],
     ["X5 a selection, focus on the canvas: the canvas clears it", { selection: true, canvasFocus: true }, "canvas"],

@@ -9,6 +9,7 @@ import {
   openLiveNodeDetails,
   viewportTransform,
   STORAGE_KEYS,
+  gotoCanvas,
 } from "./fixtures";
 
 test("compact card keeps its screen-space bounds across ten seconds of Live", async ({ page, consoleErrors }) => {
@@ -489,5 +490,88 @@ for (const pinned of [false, true])
     expect(stops.filter((stop) => stop === "node-detail-store")).toEqual([]);
     expect(stops).not.toContain("BODY");
     await expect(card).toHaveCount(0);
+    expectNoErrors(consoleErrors);
+  });
+
+test("Enter pins the hovered card instead of pressing the focused Live button", async ({ page, consoleErrors }) => {
+  await gotoCanvas(page, "blocking-call");
+  const toggle = page.getByTestId("live-toggle");
+  await toggle.click();
+  await expect(page.getByTestId("live-controls")).toBeVisible();
+  // Live started from its button, which keeps keyboard focus; then the pointer opens a card.
+  await expect(toggle).toBeFocused();
+  await page.getByTestId("node-caller").hover();
+  const card = page.getByTestId("node-detail-caller");
+  await expect(card).toHaveAttribute("data-pinned", "false");
+  await expect(card).toContainText("Enter or click to pin");
+  await page.keyboard.press("Enter");
+  await expect(card).toHaveAttribute("data-pinned", "true");
+  await expect(card).toBeFocused();
+  await expect(page.getByTestId("live-controls")).toBeVisible();
+  expectNoErrors(consoleErrors);
+});
+
+test("Enter completes inspector editing while another card is hovered", async ({ page, consoleErrors }) => {
+  await gotoLive(page, "./?view=canvas&example=blocking-call&live=1&paused=1");
+  await page.getByTestId("node-caller").dblclick();
+  const name = page.getByTestId("inspector-field-label");
+  await expect(name).toBeFocused();
+  await page.getByTestId("node-applications").hover();
+  await expect(page.getByTestId("node-detail-applications")).toHaveAttribute("data-pinned", "false");
+  await name.focus();
+  await page.keyboard.press("Enter");
+  // The field handled its Enter: naming is done and focus is back on the node it named.
+  await expect.poll(() => focusedStop(page)).toBe("node-caller");
+  await expect(page.getByTestId("live-controls")).toBeVisible();
+  const pinned = await page
+    .getByTestId(/^(node|edge)-detail-/)
+    .evaluateAll((cards) => cards.filter((card) => card.getAttribute("data-pinned") === "true").length);
+  expect(pinned).toBe(0);
+  expectNoErrors(consoleErrors);
+});
+
+test("Enter on a focused section button opens it even after the pointer moves over the card", async ({
+  page,
+  consoleErrors,
+}) => {
+  await gotoLive(page, "./?view=canvas&example=blocking-call&live=1&paused=1");
+  await page.getByTestId("node-caller").evaluate((el) => el.parentElement?.focus());
+  const card = page.getByTestId("node-detail-caller");
+  await expect(card).toHaveAttribute("data-pinned", "false");
+  await page.keyboard.press("Tab");
+  await expect(card).toBeFocused();
+  await page.keyboard.press("ArrowDown");
+  const row = card.getByTestId(/^hover-section-/).first();
+  await expect(row).toBeFocused();
+  const section = await row.getAttribute("data-testid");
+  // The pointer moves over the card after the last key: the focused button still owns Enter.
+  await row.hover();
+  await page.keyboard.press("Enter");
+  // The button ran: its section is open (activating a section also pins its card, as a click does).
+  await expect(page.getByTestId(section ?? "")).toHaveAttribute("aria-expanded", "true");
+  expectNoErrors(consoleErrors);
+});
+
+for (const slug of ["retry-storm", "webhook-ingestion"])
+  test(`hover summaries never scroll at 1280×800 (${slug})`, async ({ page, consoleErrors }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await gotoLive(page, `./?view=canvas&example=${slug}&live=1&paused=1`);
+    await waitForStableViewport(page);
+    const items =
+      slug === "retry-storm"
+        ? ["node-checkout", "node-payments", "node-orders", "edge-checkouts", "edge-pay", "edge-orders-flow"]
+        : ["node-receiver", "node-exchange", "node-queue", "node-dlq", "node-workers", "edge-queue-to-dlq"];
+    for (const item of items) {
+      await page.getByTestId("diagram-title").hover();
+      await page.getByTestId(item).hover({ force: true });
+      const card = page.getByTestId(item.replace(/^(node|edge)-/, "$1-detail-"));
+      await expect(card).toHaveAttribute("data-pinned", "false");
+      // The card is its own scroll container: a summary fits it in both directions, so no scroll bar shows.
+      const fit = await card.evaluate((el) => ({
+        height: el.scrollHeight <= el.clientHeight,
+        width: el.scrollWidth <= el.clientWidth,
+      }));
+      expect(fit, item).toEqual({ height: true, width: true });
+    }
     expectNoErrors(consoleErrors);
   });

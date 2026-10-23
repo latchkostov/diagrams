@@ -58,7 +58,9 @@ const states: { name: string; open: (page: Page) => Promise<void>; scope?: strin
       await page.getByTestId("live-play").click();
       await openLiveNodeDetails(page, "caller", "threads");
       await expect(page.getByTestId("hover-verdict")).toContainText("threads are busy");
-      await expect(page.getByTestId("hover-attention-threads")).toBeVisible();
+      // The leading problem is the verdict; its meter stays in vitals instead of a duplicate attention row.
+      await expect(page.getByTestId("hover-vitals")).toContainText("64/64");
+      await expect(page.getByTestId("hover-attention-threads")).toHaveCount(0);
     },
   },
   {
