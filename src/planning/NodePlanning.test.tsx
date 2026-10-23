@@ -1,4 +1,5 @@
 import { renderToStaticMarkup } from "react-dom/server";
+import type { ReactNode } from "react";
 import { expect, it, vi } from "vitest";
 import { autoscalingFixture } from "../lab/autoscalingFixture";
 import { resourceLesson } from "../model/autoscaling";
@@ -12,6 +13,10 @@ vi.mock("react", async (original) => ({
   useSyncExternalStore: <T,>(_subscribe: unknown, read: () => T) => read(),
 }));
 vi.mock("../i18n", async (original) => ({ ...(await original<typeof import("../i18n")>()), useLocale: () => "en" }));
+// Resources is now a collapsed row. Render that body here; browser tests cover opening the disclosure.
+vi.mock("../live/DockedLive", () => ({
+  DockedLive: ({ children }: { children(section: string): ReactNode }) => children("resources"),
+}));
 it("resource totals and replica rows share one clock between live publications", () => {
   const d = autoscalingFixture();
   d.nodes[0].props!.ratePerSec = 1;

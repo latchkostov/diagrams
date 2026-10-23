@@ -95,6 +95,8 @@ export function NodePlanning({
         {!hover && observed && d && (
           <LiveDetails
             key={id}
+            live={live ?? undefined}
+            state={state ?? undefined}
             metrics={observed}
             diagram={d}
             readPage={live ? (page) => live.controller.replicaPage(id, page) : undefined}
@@ -108,7 +110,7 @@ export function NodePlanning({
   if (!node) return null;
   const x = explanation && {
     ...explanation,
-    ...(observed
+    ...(observed && hover
       ? {
           observed: {
             throughput: observed.throughput,
@@ -170,6 +172,8 @@ export function NodePlanning({
       {observed && d && (
         <LiveDetails
           key={id}
+          live={live ?? undefined}
+          state={state ?? undefined}
           metrics={observed}
           diagram={d}
           readPage={live ? (page) => live.controller.replicaPage(id, page) : undefined}

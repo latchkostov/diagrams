@@ -1,0 +1,22 @@
+## Inspector Live: pinned hover card, docked
+
+Reviewed against the approved owner design, `docs/UX-PRINCIPLES.md`, and the actual production UI. The status, verdict, tiles, section rows, latency/call details, formatters, breaker content and observed sparkline reuse the hover-card implementation. Resources retains its existing replica pagination and decision readouts inside its row; scenario sizing moves to Scaling. Outcomes has semantic `dl` rows and no zero-value clutter.
+
+The 32 reference captures cover A retry storm / Checkout and Webhook ingestion / Webhook receiver, each at 1280×800 and 1920×1080, light and dark, Inspector and pinned hover. The complete before/after matrix is saved at `C:\Users\latch\bin\codex-tasks\live-details-polish\before-*.png` and `after-*.png`. Reduced motion keeps the reference hover cards fully painted while the simulation clock is paused.
+
+| Public example    | Light                                                                                                                                                 | Dark                                                                                                                                                |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| A retry storm     | [Before](inspector-live/before-retry-storm-1280-light-inspector.png) / [After](inspector-live/after-retry-storm-1280-light-inspector.png)             | [Before](inspector-live/before-retry-storm-1280-dark-inspector.png) / [After](inspector-live/after-retry-storm-1280-dark-inspector.png)             |
+| Webhook ingestion | [Before](inspector-live/before-webhook-ingestion-1280-light-inspector.png) / [After](inspector-live/after-webhook-ingestion-1280-light-inspector.png) | [Before](inspector-live/before-webhook-ingestion-1280-dark-inspector.png) / [After](inspector-live/after-webhook-ingestion-1280-dark-inspector.png) |
+
+The designer review approved the revised layout after three fixes: waiting broker verdicts lead to Readers where applicable, message connections plot observed deliveries, and warning tiles retain the card's danger treatment. Long summaries wrap, values use tabular numerals, and two columns below 300 px avoid horizontal overflow. Rows retain visible focus and `aria-expanded`; the heading is a real heading, chart values remain text, and no new announcement region was added.
+
+Rejected a separate visual system, always-open resource paragraphs, shimmer placeholders and startup-budget increases. The integration stays behind the existing deferred inspector/planning paths. This is a presentation change to existing simulation capabilities, so the existing public examples serve as the showcase rather than adding a duplicate scenario.
+
+The new English keys use the workspace Live namespace to preserve existing numeric catalog IDs. Connection Properties now loads as a deferred Inspector chunk, with its heading, pending message and Retry outside that chunk; the original naming intent is retained across download failure. Its Live area precedes the optional Simulation and Advanced settings. This provides canvas startup headroom while keeping the new connection UI in an Inspector chunk. The read-only HTML viewer explicitly excludes docked Inspector readouts through its existing editor-only module swaps; its hover cards retain their full details. This keeps the skill ZIP within 835,000 bytes without changing compression or raising a budget.
+
+Existing browser assertions intentionally change only their navigation: autoscaling, KEDA, pool sizing and owner-request tests open Resources or Scaling; latency opens Latency; P1/P2 consumer-group tests open Readers. P1's removed run-on-counter assertion becomes an Outcomes definition-list assertion. No assertion is relaxed.
+
+The resource-clock unit test renders the Resources body through a mock disclosure because it now starts collapsed. Its positive CPU and aggregate-versus-replica equality assertions remain intact; browser tests exercise the actual disclosure.
+
+The broker-vocabulary unit test resolves the new client panel loader during its server render. It still exercises the complete Inspector and retains its Subscription wording and zero whole-graph reads assertions.
