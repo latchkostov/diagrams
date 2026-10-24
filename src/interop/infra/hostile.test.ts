@@ -1,3 +1,4 @@
+import { patternGrowth } from "../../test/patternComplexity";
 import { readFileSync } from "node:fs";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { detectFormat, importFiles, importText } from "../formats";
@@ -5,7 +6,7 @@ import { sniffInfra } from "../sniff";
 import { interpolate } from "./compose";
 import { parseUrl, readSetting } from "./settings";
 import { TOO_MANY_ALIASES } from "./yaml";
-import { growth, GROWTH_FACTOR, LINEAR_LIMIT } from "../../test/complexity";
+import { GROWTH_FACTOR, LINEAR_LIMIT } from "../../test/complexity";
 
 // Everything an import reads is untrusted (docs/research/imports.md § Security and § Privacy): alias bombs,
 // deep nesting, prototype keys, adversarial patterns, credentials in values, and never a network request.
@@ -101,7 +102,7 @@ x-tag: !!js/function "function () { return 1 }"
           detectFormat(input);
         };
       };
-      expect(growth(run(times / GROWTH_FACTOR), run(times), { samples: 3 }), head + unit).toBeLessThan(LINEAR_LIMIT);
+      expect(patternGrowth(run(times / GROWTH_FACTOR), run(times)), head + unit).toBeLessThan(LINEAR_LIMIT);
     }
   });
 });

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { calibrate, countingReads, growth, MAX_REPS } from "./complexity";
+import { calibrate, countingReads, MAX_REPS } from "./complexity";
 
 describe("growth's calibration", () => {
   it("sizes batches from warmed-up calls, not one slow first call", () => {
@@ -20,21 +20,6 @@ describe("growth's calibration", () => {
 
   it("stops at MAX_REPS for a call too cheap to time", () => {
     expect(calibrate(() => undefined, 1e6)).toBe(MAX_REPS);
-  });
-
-  it("tells linear from quadratic", () => {
-    const linear = (n: number) => () => {
-      let s = 0;
-      for (let i = 0; i < n; i++) s += i;
-      return s;
-    };
-    const quadratic = (n: number) => () => {
-      let s = 0;
-      for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) s += j;
-      return s;
-    };
-    expect(growth(linear(20_000), linear(160_000))).toBeLessThan(24);
-    expect(growth(quadratic(200), quadratic(1_600))).toBeGreaterThan(24);
   });
 });
 

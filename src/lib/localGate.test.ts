@@ -420,9 +420,9 @@ it("full gate stamps only a complete unchanged-HEAD success", async () => {
                       stats: { expected: 1, unexpected: 0, flaky: scenario === "flaky" ? 1 : 0, skipped: 0 },
                     }),
                   );
-                if (args.includes("test:coverage"))
+                if (args.includes("test:coverage") || args.includes("test:heavy"))
                   writeFileSync(
-                    join(directory, "unit/results.json"),
+                    join(directory, args.includes("test:heavy") ? "heavy/results.json" : "unit/results.json"),
                     JSON.stringify({
                       success: true,
                       numPassedTests: 1,
@@ -464,6 +464,7 @@ it("plans all CI builds together without shards or retries", () => {
     "i18n",
     "skill",
     "unit",
+    "heavy",
     "build",
     "size",
     "parity",
@@ -755,10 +756,10 @@ it("applies the capped worker count to Vitest as well as Playwright", async () =
         expect(existsSync(env.TEMP)).toBe(true);
         expect(env.TMP).toBe(env.TEMP);
         expect(env.TMPDIR).toBe(env.TEMP);
-        if (args[0] === "test:coverage") {
+        if (args[0] === "test:coverage" || args[0] === "test:heavy") {
           expect(args).toContain("--maxWorkers=1");
           writeFileSync(
-            join(dir, "unit/results.json"),
+            join(dir, args[0] === "test:heavy" ? "heavy/results.json" : "unit/results.json"),
             JSON.stringify({ success: true, numPassedTests: 1, numFailedTests: 0, numPendingTests: 0 }),
           );
         }

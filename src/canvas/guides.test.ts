@@ -1,6 +1,7 @@
+import { opGrowth } from "../test/opCounter";
 import { describe, expect, it } from "vitest";
 import { guideIndex, nudgeOnGrid, snapMove, type Box, type SnapOptions } from "./guides";
-import { countingReads, growth, GROWTH_FACTOR, LINEAR_LIMIT } from "../test/complexity";
+import { countingReads, GROWTH_FACTOR, LINEAR_LIMIT } from "../test/complexity";
 
 const card = (x: number, y: number, width = 120, height = 40): Box => ({ x, y, width, height });
 const opts: SnapOptions = { threshold: 6, reach: 600, guides: true, grid: 10 };
@@ -149,7 +150,7 @@ describe("guideIndex", () => {
     const small = grid(150);
     const large = grid(150 * GROWTH_FACTOR);
     expect(
-      growth(
+      opGrowth(
         () => guideIndex(small),
         () => guideIndex(large),
       ),

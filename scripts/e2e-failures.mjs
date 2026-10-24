@@ -18,7 +18,7 @@ export function collectNative(directory) {
     if (!run.isDirectory()) continue;
     const root = path.join(directory, run.name);
     for (const step of fs.readdirSync(root, { withFileTypes: true })) {
-      if (!step.isDirectory() || !/^(unit|e\d+)$/.test(step.name)) continue;
+      if (!step.isDirectory() || !/^(unit|heavy|e\d+)$/.test(step.name)) continue;
       let report;
       try {
         report = readTestReport(path.join(root, step.name));

@@ -1,7 +1,8 @@
+import { opGrowth } from "../test/opCounter";
 import { describe, expect, it } from "vitest";
 import type { DiagramFile } from "../model/types";
 import { CHECK_LIMITS, sanitizeChecks } from "../model/checks";
-import { countingReads, growth, GROWTH_FACTOR } from "../test/complexity";
+import { countingReads, GROWTH_FACTOR } from "../test/complexity";
 import { toFlow, fromFlow } from "../canvas/convert";
 import { importText } from "./formats";
 import { diagramToDrawio } from "./drawio/write";
@@ -137,7 +138,7 @@ describe("checks validation", () => {
     const small = reason(1_000_000 / GROWTH_FACTOR);
     const large = reason(1_000_000);
     expect(
-      growth(
+      opGrowth(
         () => sanitizeChecks(small, ids, []),
         () => sanitizeChecks(large, ids, []),
       ),

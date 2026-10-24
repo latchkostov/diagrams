@@ -1109,7 +1109,7 @@ measurements are explicitly historical; the C1 beta must supply current Live Dia
 [ld-sim-types]: ../../src/sim/types.ts
 [ld-parity]: ../PARITY.md
 [ld-bench]: ../BENCHMARKS.md
-[ld-split]: ../../src/lib/bundleSplit.build.test.ts
+[ld-split]: ../../src/lib/bundleSplit.build.heavy.test.ts
 [ex-readme]: https://github.com/excalidraw/excalidraw/blob/master/README.md
 [ex-reconcile]: https://github.com/excalidraw/excalidraw/blob/master/packages/excalidraw/data/reconcile.ts
 [ex-room]: https://github.com/excalidraw/excalidraw-room

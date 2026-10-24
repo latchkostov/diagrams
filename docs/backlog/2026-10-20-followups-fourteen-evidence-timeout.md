@@ -1,7 +1,0 @@
-## Public-example evidence timeout under concurrent verification
-
-The Follow-ups 14 review correction run of `pnpm test --maxWorkers=2` reported 12,981 passed, four skipped and one failed: `src/checks/examples.test.ts` → `simulation evidence on the public examples` → `blocking-call`, exceeding the existing 5,000 ms local hang backstop (observed 6,505 ms). Concurrent browser parity and other admitted gates were running. No assertion or timeout was changed.
-
-The isolated spec passed on this branch and in a clean archive of origin/master `be35d15b38b425d70a7fa7f1dd4e0fd59adcf0ce`, created inside this checkout's ignored test output. Both commands used the installed Vitest CLI with `--maxWorkers=2 --repeats=1` and reported 96 passed, no type errors. The checks, simulation and planning sources match origin/master. This establishes that the loaded-suite failure is intermittent; it does not establish an identical failure on clean master. The full clean-master suite was not run, following the verification budget.
-
-Follow up with the CI full-suite result and diagnose scheduling or work amplification if the evidence case continues to time out. Keep its assertions and operation-count contracts. The shape-routing and resize regressions pass; the touched production-browser specs passed three times (213 tests), and parity checked 2,719 goldens unchanged. The requested Linux repeat gate exited 75 because the shared worker budget was full; no capacity lock was removed or bypassed.

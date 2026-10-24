@@ -215,25 +215,12 @@ export default defineConfig({
       },
     },
   },
+  // Shared runtime defaults also used by the parity/benchmark configs that extend this config.
   test: {
     globalSetup: ["src/test/globalSetup.ts"],
     setupFiles: ["src/test/setup.ts"],
-    include: ["src/**/*.test.ts", "src/**/*.test.tsx", "services/server/test/**/*.test.ts"],
     environment: "node",
-    // CI runners with coverage are several times slower. Timing tests compare sizes or count work instead of
-    // budgets in ms (docs/QUALITY.md § Timing in tests), so only the timeout scales.
     testTimeout: process.env.CI ? 40_000 : 5_000,
     css: { include: [/tokens\.css/] },
-    typecheck: {
-      enabled: true,
-      tsconfig: "tsconfig.node.json",
-      include: ["src/**/*.test.ts", "src/**/*.test.tsx", "services/server/test/**/*.test.ts"],
-    },
-    coverage: {
-      provider: "v8",
-      include: ["src/**/*.{ts,tsx}"],
-      exclude: ["src/**/*.test.*", "src/examples/**", "src/lab/**", "src/test/**"],
-      reporter: ["text-summary", "html"],
-    },
   },
 });

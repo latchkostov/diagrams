@@ -116,6 +116,21 @@ const contentFramesTo = (net: MemoryNetwork, peer: string) => {
 };
 
 describe("knock-to-join", () => {
+  it("a targeted Live message cannot bypass membership while its recipient is at the door", async () => {
+    const r = await knockRoom(550);
+    const host = r.host.client!;
+    const knocker = await r.knock("wren");
+    const received = vi.fn();
+    const stop = knocker.client.session.onLive(received);
+    onTestFinished(stop);
+    const sent = host.session.stats.framesSent;
+    expect(host.session.sendLive(new Uint8Array([1]), knocker.transport.self)).toBe(true);
+    await r.settle();
+    expect(host.session.stats.framesSent).toBe(sent);
+    expect(received).not.toHaveBeenCalled();
+    expect(knocker.outcome()).toBeUndefined();
+  });
+
   it("the link alone only knocks: someone at the door gets none of the room, and can't ask for it", async () => {
     const r = await knockRoom(51);
     const host = r.host.client!;

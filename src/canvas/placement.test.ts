@@ -1,5 +1,6 @@
+import { opGrowth } from "../test/opCounter";
 import { describe, expect, it, vi } from "vitest";
-import { countingReads, growth, GROWTH_FACTOR, LINEAR_LIMIT } from "../test/complexity";
+import { countingReads, GROWTH_FACTOR, LINEAR_LIMIT } from "../test/complexity";
 import {
   boundsOf,
   clearOffset,
@@ -277,7 +278,7 @@ describe("findClearTranslation (the one free-place search)", () => {
     // Measured against a one-ring search of the same field (indexing it, then eight spots): the budgeted 40-ring
     // search costs a few times that, an unbounded one (every ring, every box) over a hundred. A comparison in the
     // same run, not a budget in ms, so a busy machine doesn't fail it.
-    expect(growth(search(1), search(40))).toBeLessThan(LINEAR_LIMIT);
+    expect(opGrowth(search(1), search(40))).toBeLessThan(LINEAR_LIMIT);
   });
 
   it("indexes obstacles once: hundreds of boxes against thousands of far obstacles stay fast", () => {

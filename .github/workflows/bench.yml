@@ -41,6 +41,8 @@ jobs:
         run: pnpm exec tsc --noEmit -p tests/bench
       - name: Gates
         run: pnpm bench:gates
+      - name: Native pattern complexity
+        run: node scripts/ci/patterns.mjs
       - name: Summary
         if: ${{ !cancelled() }}
         run: |

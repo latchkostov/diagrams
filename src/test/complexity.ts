@@ -1,7 +1,6 @@
-// Complexity guards for unit tests (docs/QUALITY.md § Timing in tests). A test that guards how work grows compares
-// two input sizes run on the same machine at the same moment, never a wall-clock budget: a busy machine or CI
-// with coverage slows both sizes alike, but a quadratic slip still multiplies the work by 64 where linear is 8.
-// Where the work can be counted (reads, calls, iterations), count it instead: counts don't depend on the clock.
+// Shared complexity scales and counted array reads (docs/QUALITY.md § Timing in tests).
+// Unit guards use opCounter.ts. The clock helpers below remain only for native-regexp timing companions
+// in the Benchmarks workflow: JavaScript operation probes cannot observe regex-engine backtracking.
 
 /** How many times larger the large input is than the small one. */
 export const GROWTH_FACTOR = 8;

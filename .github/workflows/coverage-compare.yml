@@ -1,0 +1,64 @@
+name: Compare merged unit coverage
+on:
+  workflow_dispatch:
+    inputs:
+      run-id:
+        description: CI run containing the merged unit-coverage artifact
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  CI: "true"
+
+jobs:
+  compare:
+    name: Unsharded coverage equivalence
+    runs-on: ubuntu-26.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: unit-coverage
+          run-id: ${{ inputs.run-id }}
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          path: ${{ runner.temp }}/merged-coverage
+      - name: Read tested revision
+        id: revision
+        env:
+          REPORT: ${{ runner.temp }}/merged-coverage/tested-sha.txt
+        run: |
+          sha="$(cat "$REPORT")"
+          [[ "$sha" =~ ^[0-9a-f]{40}$ ]] || exit 1
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ steps.revision.outputs.sha }}
+      - uses: ./.github/actions/toolchain
+      - name: Unsharded reference
+        run: pnpm test:coverage --maxWorkers=3 --coverage.reportsDirectory=coverage-reference
+      - name: Record reference revision
+        run: git rev-parse HEAD > coverage-reference/tested-sha.txt
+      - name: Require identical tested revisions
+        shell: bash
+        env:
+          REVISION: ${{ runner.temp }}/merged-coverage/tested-sha.txt
+        run: test "$(cat "$REVISION")" = "$(git rev-parse HEAD)"
+      - name: Compare every file and total
+        shell: bash
+        env:
+          MERGED: ${{ runner.temp }}/merged-coverage/coverage-summary.json
+        run: node scripts/ci/compare-coverage.mjs "$MERGED" coverage-reference/coverage-summary.json | tee -a "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v7
+        if: ${{ !cancelled() }}
+        with:
+          name: unit-unsharded-coverage
+          path: |
+            coverage-reference/coverage-summary.json
+            coverage-reference/coverage-final.json
+            coverage-reference/tested-sha.txt
+          retention-days: 14

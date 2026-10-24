@@ -173,26 +173,35 @@ describe("the signed roster", () => {
   });
 
   it("an admission concurrent with its admitter's 'Not a co-host' stays: what counted counts for good", async () => {
-    const [host, cohost, newt] = await people(3);
-    const base = roster(host);
-    const made = (await base.append(host, "cohost", { who: cohost.key }))!;
-    // A partition: the co-host admits a newcomer on one side; the host takes the co-hosting back on the other.
-    const side = await copyOf(base);
-    const admission = (await side.append(cohost, "admit", { who: newt.key }))!;
-    expect(side.state().editors.has(newt.key)).toBe(true);
-    const revoked = (await base.append(host, "uncohost", { who: cohost.key }))!;
-    // The side that admitted, then the revocation (it sorts first: same counter, the host's key may be lower).
-    expect(await side.add([revoked])).toMatchObject({ added: 1 });
-    expect(side.state().editors.has(newt.key)).toBe(true);
-    expect(side.state().cohosts).toEqual([]);
-    // The host's side, in either order.
-    expect(await base.add([admission])).toMatchObject({ added: 1 });
-    expect(base.state().editors.has(newt.key)).toBe(true);
-    expect(made.n).toBe(1);
-    // A fresh admission by the former co-host, on the revocation, doesn't count.
-    expect(await base.add([await on(base, cohost, "admit", { who: host.key }, base.heads())])).toMatchObject({
-      refused: 1,
-    });
+    const [first, second, newt] = await people(3);
+    const authorOrders = new Set<string>();
+    for (const [host, cohost] of [
+      [first, second],
+      [second, first],
+    ]) {
+      const base = roster(host);
+      const made = (await base.append(host, "cohost", { who: cohost.key }))!;
+      // A partition: the co-host admits a newcomer on one side; the host takes the co-hosting back on the other.
+      const side = await copyOf(base);
+      const admission = (await side.append(cohost, "admit", { who: newt.key }))!;
+      expect(side.state().editors.has(newt.key)).toBe(true);
+      const revoked = (await base.append(host, "uncohost", { who: cohost.key }))!;
+      // Reverse the two roles as well, so both same-counter author orders are always exercised.
+      expect(await side.add([revoked])).toMatchObject({ added: 1 });
+      const sameCounter = side.log().filter((entry) => entry.n === revoked.n);
+      authorOrders.add(sameCounter[0].by === host.key ? "revocation-first" : "admission-first");
+      expect(side.state().editors.has(newt.key)).toBe(true);
+      expect(side.state().cohosts).toEqual([]);
+      // The host's side, in either order.
+      expect(await base.add([admission])).toMatchObject({ added: 1 });
+      expect(base.state().editors.has(newt.key)).toBe(true);
+      expect(made.n).toBe(1);
+      // A fresh admission by the former co-host, on the revocation, doesn't count.
+      expect(await base.add([await on(base, cohost, "admit", { who: host.key }, base.heads())])).toMatchObject({
+        refused: 1,
+      });
+    }
+    expect(authorOrders).toEqual(new Set(["revocation-first", "admission-first"]));
   });
 
   it("an admission concurrent with turning on 'view only' stays: a co-host may admit, and it counted when made", async () => {

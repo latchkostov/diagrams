@@ -1,5 +1,6 @@
+import { patternGrowth } from "../../test/patternComplexity";
 import { describe, expect, it } from "vitest";
-import { growth, GROWTH_FACTOR, LINEAR_LIMIT } from "../../test/complexity";
+import { GROWTH_FACTOR, LINEAR_LIMIT } from "../../test/complexity";
 import { betweenIntent } from "./compactOps";
 import { splitClauses, tokenize } from "./requestClauses";
 import { editIntents, fillEdits } from "./requestEdits";
@@ -206,7 +207,7 @@ describe("the shared clause tokenizer", () => {
         requestRelations(s);
         betweenIntent(s);
       };
-      expect(growth(run(small[i]), run(input), { samples: 3 }), input.slice(0, 12)).toBeLessThan(LINEAR_LIMIT);
+      expect(patternGrowth(run(small[i]), run(input)), input.slice(0, 12)).toBeLessThan(LINEAR_LIMIT);
     }
   });
 });

@@ -148,27 +148,30 @@ describe("message lineage: recording", () => {
     expect(e.tracer.current()).toEqual(before);
   });
 
-  it("measures checkpoint playback with a large retained fan-out history", () => {
-    const branches = Array.from({ length: 100 }, (_, i) => node(`sink${i}`, "sink"));
-    const e = engine(
-      diagram(
-        [node("src", "source"), node("topic", "topic"), ...branches],
-        [edge("src", "topic"), ...branches.map((b) => edge("topic", b.id))],
-      ),
-      { traceHistory: 160 },
-    );
-    e.inject("src", 160);
-    run(e, 2000);
-    expect(e.tracer.recent()).toHaveLength(160);
-    const steps = e.tracer.recent().reduce((n, r) => n + e.tracer.get(r.rootId)!.steps.length, 0);
-    const start = performance.now();
-    for (let i = 0; i < 24; i++) {
-      e.step(16);
-      e.checkpoint();
-    }
-    const perCheckpoint = (performance.now() - start) / 24;
-    console.info(`trace checkpoint playback: ${steps} steps, ${perCheckpoint.toFixed(2)} ms/checkpoint`);
-  });
+  it.skipIf(process.env.COMPLEXITY_TIMING !== "1")(
+    "measures checkpoint playback with a large retained fan-out history",
+    () => {
+      const branches = Array.from({ length: 100 }, (_, i) => node(`sink${i}`, "sink"));
+      const e = engine(
+        diagram(
+          [node("src", "source"), node("topic", "topic"), ...branches],
+          [edge("src", "topic"), ...branches.map((b) => edge("topic", b.id))],
+        ),
+        { traceHistory: 160 },
+      );
+      e.inject("src", 160);
+      run(e, 2000);
+      expect(e.tracer.recent()).toHaveLength(160);
+      const steps = e.tracer.recent().reduce((n, r) => n + e.tracer.get(r.rootId)!.steps.length, 0);
+      const start = performance.now();
+      for (let i = 0; i < 24; i++) {
+        e.step(16);
+        e.checkpoint();
+      }
+      const perCheckpoint = (performance.now() - start) / 24;
+      console.info(`trace checkpoint playback: ${steps} steps, ${perCheckpoint.toFixed(2)} ms/checkpoint`);
+    },
+  );
   it("records a linear journey hop by hop, with times, and finishes when the message is consumed", () => {
     const e = engine(pipeline);
     e.tracer.request({ next: "message", node: "src" });

@@ -1,3 +1,4 @@
+import { opGrowth } from "../test/opCounter";
 import { describe, expect, it, vi } from "vitest";
 import type { DiagramEdge, DiagramFile, DiagramNode } from "../model/types";
 import gcp from "../examples/gcp-streaming-analytics.json";
@@ -5,7 +6,7 @@ import { analyzeCapacity } from "./capacity";
 import { createEngine } from "./engine";
 import { DEFAULT_TRAVEL_MS } from "./topology";
 import * as topology from "./topology";
-import { countingReads, GROWTH_FACTOR, LINEAR_LIMIT, growth } from "../test/complexity";
+import { countingReads, GROWTH_FACTOR, LINEAR_LIMIT } from "../test/complexity";
 
 // A consumer behind a broker drains at the rate capacity analysis reports: its slots are taken when a delivery
 // arrives, not while it travels (docs/research/sim-flows-review.md, F-1). Seeded runs, compared as ratios and
@@ -180,23 +181,16 @@ describe("staged deliveries cost nothing while they wait", () => {
   });
 
   it("a tick's work doesn't grow with the staged backlog", () => {
-    // Fresh engines per measurement (stepping changes them); the fastest of several, both sizes interleaved.
-    const time = (n: number) => {
+    const tick = (n: number) => {
       const engine = staged(n);
-      const start = performance.now();
       const before = engine.frame().nodes.billing.processed;
-      engine.step(500);
-      expect(engine.frame().nodes.billing.processed - before).toBeGreaterThanOrEqual(49);
-      return performance.now() - start;
+      return () => {
+        engine.step(500);
+        expect(engine.frame().nodes.billing.processed - before).toBeGreaterThanOrEqual(49);
+      };
     };
-    let small = Infinity,
-      large = Infinity;
-    for (let i = 0; i < 5; i++) {
-      small = Math.min(small, time(GROWTH_FACTOR * 250));
-      large = Math.min(large, time(GROWTH_FACTOR * 2_000));
-    }
     // A rescan of the backlog each tick grows with it (about 8× here); admitting only as slots free doesn't.
-    expect(large / small).toBeLessThan(3);
+    expect(opGrowth(tick(GROWTH_FACTOR * 250), tick(GROWTH_FACTOR * 2_000))).toBeLessThan(3);
   });
 });
 
@@ -387,7 +381,7 @@ describe("third review", () => {
       };
     };
     // Waiting trips do no work until due; drawing visits only its bounded set.
-    expect(growth(idle(12_500), idle(100_000))).toBeLessThan(3);
+    expect(opGrowth(idle(12_500), idle(100_000))).toBeLessThan(3);
   });
 
   it("unlimited broker arrivals still all finish at their due time, including after restore", () => {

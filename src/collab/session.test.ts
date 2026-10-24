@@ -20,6 +20,48 @@ import type { CollabTransport, Connectivity, TransportHandlers } from "./transpo
 
 const room = roomFor(1);
 
+it("leaving drops an already queued incoming frame and a late sealed-frame callback", async () => {
+  const net = new MemoryNetwork();
+  const clock = new FakeClock();
+  const raw = net.connect();
+  let handlers: TransportHandlers | undefined;
+  const send = vi.fn(raw.send.bind(raw));
+  const session = await CollabSession.open({
+    room: roomFor(908),
+    clock,
+    privacy: {},
+    initial: canaryDiagram(),
+    transport: {
+      ...raw,
+      send,
+      subscribe(next) {
+        handlers = next;
+        return raw.subscribe(next);
+      },
+    },
+  });
+  onTestFinished(async () => {
+    await session.leave();
+    session.doc.destroy();
+  });
+  await session.idle();
+  // Retain the async outbox callback seam before leaving, then complete it after transport shutdown.
+  const late = (session as unknown as { sendFrames(frames: Uint8Array[]): void }).sendFrames.bind(session);
+  const received = session.stats.framesReceived;
+  const queued = handlers!.frame("departed", new Uint8Array([1]));
+  await session.leave();
+  await queued;
+  await session.idle();
+  expect(session.stats.framesReceived).toBe(received);
+  const sent = session.stats.framesSent;
+  send.mockClear();
+  late([new Uint8Array([2])]);
+  expect(send).not.toHaveBeenCalled();
+  expect(session.stats.framesSent).toBe(sent);
+  expect(session.status).toBe("left");
+  expect(clock.pending).toBe(0);
+});
+
 it("a rejected initial diagram leaves room creation eligible for a corrected retry", async () => {
   const clock = new FakeClock(),
     net = new MemoryNetwork(),

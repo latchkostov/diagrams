@@ -302,6 +302,16 @@ describe("signed rooms", () => {
     expect(verify.mock.calls.length).toBeLessThanOrEqual(COLLAB_LIMITS.verifiesPerWindow);
     expect(rejected(a, "verify-throttled")).toBeGreaterThanOrEqual(50 + COLLAB_LIMITS.liveFramesPerWindow);
     expect(rejected(a, "live-throttled")).toBe(20);
+    // Presence shares the exhausted verification bucket; exercise its own early return explicitly.
+    const throttled = rejected(a, "verify-throttled");
+    evil.send(
+      await sealer.seal(
+        "presence",
+        frame(PRESENCE.state, encodePresence({ alias: "m", colour: 1, status: "active", ...binding })),
+      ),
+    );
+    await r.settle();
+    expect(rejected(a, "verify-throttled")).toBe(throttled + 1);
     // A window later, the sender's frames are checked again.
     verify.mockClear();
     r.clock.advance(COLLAB_LIMITS.senderWindowMs);
@@ -309,6 +319,24 @@ describe("signed rooms", () => {
     await r.settle();
     expect(verify.mock.calls.length).toBe(1);
   }, 60_000);
+
+  it("a present co-host admits a newcomer after the host disconnects", async () => {
+    const r = await signedRoom(46);
+    const [host] = r.clients;
+    const cohost = await r.join("cohost", 462);
+    expect(await host.session.appendRoster("cohost", { who: cohost.session.signed!.key })).toBe(true);
+    await r.settle();
+    await host.session.leave();
+    await r.settle();
+    const newcomer = await r.join("newcomer", 463);
+    await r.settle();
+    expect(newcomer.session.canEdit).toBe(true);
+    const admissions = newcomer.session
+      .signed!.roster.log()
+      .filter((entry) => entry.op === "admit" && entry.who === newcomer.session.signed!.key);
+    expect(admissions).toHaveLength(1);
+    expect(admissions[0].by).toBe(cohost.session.signed!.key);
+  });
 
   it("with no host or co-host here, an editor doesn't admit a newcomer: they view until one is back", async () => {
     const r = await signedRoom(43);

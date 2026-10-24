@@ -1,0 +1,114 @@
+[
+  {
+    "id": "slowmo-native-controls",
+    "spec": "tests/e2e/slowmo.spec.ts",
+    "title": "engine changes are disabled consistently; tracing, sequence and recording remain available",
+    "firstSeen": "2026-10-18",
+    "lastSeen": "2026-10-18",
+    "count": 1,
+    "owner": "latchkostov",
+    "tracking": "docs/backlog/2026-10-23-native-load-backstops.md"
+  },
+  {
+    "id": "slowmo-native-viewport",
+    "spec": "tests/e2e/slowmo.spec.ts",
+    "title": "Esc restores the pre-replay viewport (fitted)",
+    "firstSeen": "2026-10-18",
+    "lastSeen": "2026-10-18",
+    "count": 1,
+    "owner": "latchkostov",
+    "tracking": "docs/backlog/2026-10-23-native-load-backstops.md"
+  },
+  {
+    "id": "slowmo-native-command",
+    "spec": "tests/e2e/slowmo.spec.ts",
+    "title": "Trace a message ▸ and the command palette start it; Record video offers this slow motion",
+    "firstSeen": "2026-10-18",
+    "lastSeen": "2026-10-18",
+    "count": 1,
+    "owner": "latchkostov",
+    "tracking": "docs/backlog/2026-10-23-native-load-backstops.md"
+  },
+  {
+    "id": "checks-typing-load",
+    "spec": "tests/e2e/checks-ui.spec.ts",
+    "title": "typing a label is as responsive while checks run as with them held",
+    "firstSeen": "2026-10-18",
+    "lastSeen": "2026-10-18",
+    "count": 2,
+    "owner": "latchkostov",
+    "tracking": "docs/backlog/2026-10-23-native-load-backstops.md"
+  },
+  {
+    "id": "library-duplicate-toast",
+    "spec": "tests/e2e/library.spec.ts",
+    "title": "rename, duplicate and delete (with Undo)",
+    "firstSeen": "2026-10-18",
+    "lastSeen": "2026-10-18",
+    "count": 1,
+    "owner": "latchkostov",
+    "tracking": "docs/backlog/2026-10-23-native-load-backstops.md"
+  },
+  {
+    "id": "record-march-pixels",
+    "spec": "tests/e2e/live-record-capture.spec.ts",
+    "title": "the particles and the marching edges are each in the video",
+    "firstSeen": "2026-10-18",
+    "lastSeen": "2026-10-18",
+    "count": 1,
+    "owner": "latchkostov",
+    "tracking": "docs/backlog/2026-10-23-native-load-backstops.md"
+  },
+  {
+    "id": "fault-restored-dark-style",
+    "spec": "tests/e2e/fault-drills.spec.ts",
+    "title": "cut and restored Request and Message styles are distinct in dark",
+    "firstSeen": "2026-10-19",
+    "lastSeen": "2026-10-19",
+    "count": 1,
+    "owner": "latchkostov",
+    "tracking": "docs/backlog/2026-10-23-native-load-backstops.md"
+  },
+  {
+    "id": "viewer-live-scroll",
+    "spec": "tests/e2e/viewer-bundle.spec.ts",
+    "title": "arrow keys scroll Live reading regions without panning the bundle's camera",
+    "firstSeen": "2026-10-19",
+    "lastSeen": "2026-10-19",
+    "count": 1,
+    "owner": "latchkostov",
+    "tracking": "docs/backlog/2026-10-23-native-load-backstops.md"
+  },
+  {
+    "id": "sampled-burst-backstop",
+    "spec": "src/sim/waits.sampling.heavy.test.ts",
+    "title": "bounds the review's bursts import at the saved scale",
+    "firstSeen": "2026-10-22",
+    "lastSeen": "2026-10-22",
+    "count": 5,
+    "owner": "latchkostov",
+    "tracking": "docs/backlog/2026-10-23-native-load-backstops.md",
+    "failurePattern": "Test timed out"
+  },
+  {
+    "id": "skill-zip-backstop",
+    "spec": "src/ai/skill/skill.heavy.test.ts",
+    "title": "zips the skill folder deterministically, under livediagrams/",
+    "firstSeen": "2026-10-23",
+    "lastSeen": "2026-10-23",
+    "count": 2,
+    "owner": "latchkostov",
+    "tracking": "docs/backlog/2026-10-23-native-load-backstops.md",
+    "failurePattern": "Test timed out"
+  },
+  {
+    "id": "simulations-typing-readiness",
+    "spec": "tests/e2e/checks-simulations.spec.ts",
+    "title": "typing is as responsive while simulations play as with none playing",
+    "firstSeen": "2026-10-19",
+    "lastSeen": "2026-10-19",
+    "count": 1,
+    "owner": "latchkostov",
+    "tracking": "docs/backlog/2026-10-23-native-load-backstops.md"
+  }
+]

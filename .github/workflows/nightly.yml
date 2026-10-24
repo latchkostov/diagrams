@@ -187,7 +187,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/toolchain
-      - run: pnpm exec vitest run src/sim/autoscaling.invariants.test.ts
+      - run: pnpm exec vitest run src/sim/autoscaling.invariants.heavy.test.ts
         env:
           A1_FUZZ_NIGHTLY: "1"
           RESOURCE_FUZZ_SHARD: ${{ matrix.shard }}/4
