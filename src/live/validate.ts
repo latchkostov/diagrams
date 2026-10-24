@@ -7,7 +7,7 @@ import { t } from "../i18n";
 import type { DiagramFile, Simulation } from "../model/types";
 import { LIMITS } from "../interop/native";
 import { faultTargets } from "./faults";
-import { SIM_LIMITS } from "../model/simLimits";
+import { editableProperties } from "./editableProperties";
 
 export interface SimFieldError {
   field: string;
@@ -92,16 +92,9 @@ export function simulationFieldErrors(sim: Simulation, diagram: DiagramFile): Si
     else if (a.do !== "note") target(`${id}-node`, `${label}: Target node`, nodes.has(a.node));
     if (a.do === "inject") range(`${id}-count`, `${label}: Messages`, a.count, LIMITS.maxMessageCount, true);
     if (a.do === "props") {
-      const bounds: Record<string, number> = {
-        latencyMs: SIM_LIMITS.timeMs,
-        ratePerSec: SIM_LIMITS.ratePerSec,
-        failureRate: 1,
-        concurrency: SIM_LIMITS.count,
-        partitions: SIM_LIMITS.count,
-        maxDeliveryCount: SIM_LIMITS.count,
-      };
       const key = Object.keys(a.props)[0];
-      if (key in bounds) range(`${id}-value`, `${label}: ${key}`, Number(a.props[key]), bounds[key]);
+      const property = editableProperties.find((property) => property.key === key);
+      if (property) range(`${id}-value`, `${label}: ${key}`, Number(a.props[key]), property.maximum);
     }
   });
   sim.expectations?.forEach((e, i) => {

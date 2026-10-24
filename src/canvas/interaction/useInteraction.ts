@@ -1,4 +1,12 @@
-import { useEffect, useLayoutEffect, useMemo, useState, useSyncExternalStore, type RefObject } from "react";
+import {
+  useEffect,
+  useInsertionEffect,
+  useLayoutEffect,
+  useMemo,
+  useState,
+  useSyncExternalStore,
+  type RefObject,
+} from "react";
 import type { useStoreApi } from "@xyflow/react";
 import type { DiagramFlowEdge, FlowNode } from "../types";
 import { createInteractionController, type InteractionCamera, type InteractionController } from "./controller";
@@ -62,7 +70,10 @@ export function useInteractionCore<P>(
       controller: createInteractionController<P>(createDomPort(canvas), domScheduler, { journal: interactionJournal }),
     };
   });
-  useLayoutEffect(() => commit({ nodes, edges }), [commit, nodes, edges]);
+  // Publish membership before child layout effects request their fields. A new boundary's Inspector can
+  // ask for Label before React Flow's passive store update; it must already be known to the DOM port.
+  // This only updates the port's snapshot: it neither reads DOM refs nor schedules React updates.
+  useInsertionEffect(() => commit({ nodes, edges }), [commit, nodes, edges]);
   useInteractionLifecycle(controller);
   // What's on screen, for readers outside the canvas (a tutorial): the editor's mode and its guide.
   useEffect(() => canvasInteraction.publish(controller), [controller]);

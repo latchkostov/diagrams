@@ -1262,7 +1262,7 @@ test("P2 a peer deleting an edge announces why its menu closed", async ({ browse
   }
 });
 
-test("P2 peer deletion ends cold rename capture before the inspector arrives", async ({ browser, context, page }) => {
+test("P2 peer deletion keeps rename canceled after the inspector loads", async ({ browser, context, page }) => {
   const other = await browser.newContext();
   const held = Promise.withResolvers<undefined>();
   let requested = false;
@@ -1287,8 +1287,18 @@ test("P2 peer deletion ends cold rename capture before the inspector arrives", a
     await guest.bringToFront();
     await guest.keyboard.press("t");
     await expect(guest.getByTestId("annotation-editor")).toBeVisible();
+    const loaded = guest.waitForResponse(chunk("NodeIdentity", "src/canvas/inspector/NodeIdentity.tsx"));
     held.resolve(undefined);
+    const response = await loaded;
+    await response.finished();
+    await expect
+      .poll(() => guest.evaluate(() => window.__lazySurfaces?.states()["inspector.identity"]?.state))
+      .toBe("loaded");
+    await expect(guest.getByTestId("inspector")).toHaveAttribute("data-inspector-mode", "text");
     await expect(guest.getByTestId("inspector-field-label")).toHaveCount(0);
+    await expect(guest.getByTestId("annotation-editor")).toBeFocused();
+    await guest.keyboard.type("Still editing");
+    await expect(guest.getByTestId("annotation-editor")).toHaveValue("Still editing");
   } finally {
     held.resolve(undefined);
     await other.close();

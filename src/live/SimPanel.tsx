@@ -1,4 +1,5 @@
 import { SimErrors } from "./validationContext";
+import { editableProperties } from "./editableProperties";
 import { ValidationInput, ValidationSelect } from "./validationFields";
 import { useInteraction } from "../canvas/interaction";
 import { DRILL_PRESETS, type DrillPreset } from "../model/faults";
@@ -115,7 +116,6 @@ const WHENS: { value: NonNullable<Expectation["when"]>; label: string }[] = [
   { value: "eventually", label: "eventually" },
   { value: "at", label: "at time" },
 ];
-const PROP_KEYS = ["latencyMs", "concurrency", "failureRate", "partitions", "ratePerSec", "maxDeliveryCount"] as const;
 
 const sec = (ms: number | undefined) => Math.round(((ms ?? 0) / 1000) * 100) / 100;
 const ms = (s: number) => Math.max(0, Math.round((Number.isFinite(s) ? s : 0) * 1000));
@@ -1207,9 +1207,9 @@ function StepRow({ index, step, diagram, types, warnings, onChange, onRemove, on
                 data-testid={`${t}-prop`}
                 name={`${t}-prop`}
               >
-                {PROP_KEYS.map((k) => (
-                  <option key={k} value={k}>
-                    {k}
+                {editableProperties.map(({ key }) => (
+                  <option key={key} value={key}>
+                    {key}
                   </option>
                 ))}
               </ValidationSelect>
