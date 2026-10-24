@@ -30,6 +30,7 @@ import { activeCall } from "../sim/topology";
 import { fitsRef } from "./context";
 import type { Simulation } from "../model/types";
 import { findingName, FINDINGS_BUDGET as REQUEST_FINDINGS_BUDGET, omission } from "./findingBudget";
+import { computeResilienceFindings } from "./resilienceFindings";
 export { findingName, FINDING_NAME_MAX, FINDINGS_BUDGET as REQUEST_FINDINGS_BUDGET } from "./findingBudget";
 
 const round = (n: number) => Math.round(n * 1000) / 1000;
@@ -111,7 +112,7 @@ export function requestFindings(ctx: CheckContext): Finding[] {
       ? result.error
       : new Error("Request checks are pending. Await request checks before reading findings.");
   }
-  const findings = computeRequestFindings(ctx);
+  const findings = [...computeRequestFindings(ctx), ...computeResilienceFindings(ctx)];
   known.set(ctx, findings);
   rememberRequestChecks(ctx.diagram, findings);
   return findings;

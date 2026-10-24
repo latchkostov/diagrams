@@ -214,6 +214,8 @@ function compatibleScale(demand: { rate: number; consumers: string[] }[], capaci
 }
 
 export interface CapacityOptions {
+  /** Already compiled for this effective diagram (Checks share their one static graph). */
+  topology?: import("./topology").CompiledTopology;
   /** Current eligible fleet, only for resource-enabled live nodes. Omitted means configured initial capacity. */
   readyReplicas?: Readonly<Record<string, number>>;
   /** Node statuses right now (a live run's chaos), overriding the setup's and the diagram's. */
@@ -259,7 +261,7 @@ export function analyzeCapacity(
     });
   }
   const waitProps = Object.fromEntries([...entries].map(([id, e]) => [id, e.props]));
-  const compiled = compileTopology(diagram);
+  const compiled = options.topology ?? compileTopology(diagram);
   const waitGraph = compileWaitingPlan(diagram, compiled);
   let waiting = waitingPlan(diagram, waitProps, {}, waitGraph);
   for (const [id, wait] of waiting.nodes)

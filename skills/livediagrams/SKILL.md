@@ -37,13 +37,13 @@ Paths below are relative to this skill's folder. Run the scripts with `node`.
    `azure.service-bus.queue`, `aws.sqs`, `postgres`, `service.dotnet`, `client.browser`. If nothing fits, use a
    `generic.*` stencil.
 4. **Write `<name>.diagram.json`.** The format is in [reference/format.md](reference/format.md). Leave out
-   x and y. New diagrams use planning p2: logs assign instances by partitions or shards; subscription/binding
-   fan-out uses all configured instances. Preserve an existing diagram's model; never silently upgrade it:
+   x and y. New diagrams use planning `p3-w2`, including partition assignment, caller waits and resilience.
+   Preserve an existing diagram's model; never silently upgrade it:
 
    ```json
    {
      "format": "diagrams/v2",
-     "planning": { "revision": "p2" },
+     "planning": { "revision": "p3-w2" },
      "title": "Order events",
      "nodes": [
        { "id": "api", "stencil": "service.node", "label": "Orders API" },
@@ -68,6 +68,7 @@ Paths below are relative to this skill's folder. Run the scripts with `node`.
 
    For thread exhaustion, timeouts or connection pools, use `p3-w1` and read the Requests that wait section
    in [reference/simulation.md](reference/simulation.md). Preserve older models unless the user asks to upgrade.
+   For executable retries, circuit breakers or load shedding, use `p3-w2` and its resilience section.
 
 5. **Lay it out.** Run `node scripts/layout.mjs <file>`. It fills in x and y and the boundary boxes with the
    app's own layout and updates the file in place.

@@ -1,6 +1,87 @@
 {
-  "summary": "Nothing to check. 14 checks ran.",
-  "findings": {},
-  "agentReport": { "findings": [], "summary": "Nothing to check. 14 checks ran." },
-  "agentReportWarnings": { "findings": [], "summary": "Nothing to check. 14 checks ran." }
+  "summary": "2 warnings, 1 suggestion.",
+  "findings": {
+    "retry-backoff:call": {
+      "title": "Retries to Partner scoring API need jittered backoff.",
+      "message": "Decision service retries in step with every other caller: waves of retries reach Partner scoring API together.",
+      "rationale": "Retries add load when a dependency is struggling. Bound repeated work and keep it safe to repeat.",
+      "fix": { "label": "Use jittered backoff (100 ms ×2, up to 2 s, full jitter)" }
+    },
+    "retry-budget:call": {
+      "title": "No retry budget on the call to Partner scoring API.",
+      "message": "If Partner scoring API slows down, 3 attempts per request multiply its load by 3.",
+      "rationale": "Retries add load when a dependency is struggling. Bound repeated work and keep it safe to repeat.",
+      "fix": { "label": "Add a 20% retry budget" }
+    },
+    "call-breaker:call": {
+      "title": "No circuit breaker on the call to Partner scoring API.",
+      "message": "If Partner scoring API keeps failing, every caller keeps trying it.",
+      "rationale": "Retries add load when a dependency is struggling. Bound repeated work and keep it safe to repeat.",
+      "fix": { "label": "Add a circuit breaker (50% over 10 s, open 5 s)" }
+    }
+  },
+  "agentReport": {
+    "findings": [
+      {
+        "id": "retry-backoff:call",
+        "resilienceFinding": { "kind": "retry-backoff", "caller": "Decision service", "callee": "Partner scoring API", "attempts": 3, "amplification": 3 },
+        "rule": "retry-backoff",
+        "severity": "warning",
+        "title": "Retries to Partner scoring API need jittered backoff.",
+        "message": "Decision service retries in step with every other caller: waves of retries reach Partner scoring API together.",
+        "targets": ["call", "caller", "partner"],
+        "fix": {
+          "label": "Use jittered backoff (100 ms ×2, up to 2 s, full jitter)",
+          "ops": [
+            {
+              "op": "update",
+              "target": "call",
+              "props": {
+                "caller": {
+                  "wait": "blocking",
+                  "deadlineMs": 200,
+                  "retry": { "maxAttempts": 3, "backoffMs": 100, "strategy": "exponential", "retryOn": ["timeout", "transient", "throttled"], "maxBackoffMs": 2000, "jitter": 1 }
+                }
+              }
+            }
+          ]
+        }
+      }
+    ],
+    "summary": "2 warnings, 1 suggestion.",
+    "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding.",
+    "more": "2 more findings omitted; call check_diagram with rules to see them."
+  },
+  "agentReportWarnings": {
+    "findings": [
+      {
+        "id": "retry-backoff:call",
+        "resilienceFinding": { "kind": "retry-backoff", "caller": "Decision service", "callee": "Partner scoring API", "attempts": 3, "amplification": 3 },
+        "rule": "retry-backoff",
+        "severity": "warning",
+        "title": "Retries to Partner scoring API need jittered backoff.",
+        "message": "Decision service retries in step with every other caller: waves of retries reach Partner scoring API together.",
+        "targets": ["call", "caller", "partner"],
+        "fix": {
+          "label": "Use jittered backoff (100 ms ×2, up to 2 s, full jitter)",
+          "ops": [
+            {
+              "op": "update",
+              "target": "call",
+              "props": {
+                "caller": {
+                  "wait": "blocking",
+                  "deadlineMs": 200,
+                  "retry": { "maxAttempts": 3, "backoffMs": 100, "strategy": "exponential", "retryOn": ["timeout", "transient", "throttled"], "maxBackoffMs": 2000, "jitter": 1 }
+                }
+              }
+            }
+          ]
+        }
+      }
+    ],
+    "summary": "2 warnings, 1 suggestion.",
+    "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding.",
+    "more": "1 more finding omitted; call check_diagram with rules to see them."
+  }
 }

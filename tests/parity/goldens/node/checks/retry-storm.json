@@ -11,6 +11,13 @@
     "blocked-threads",
     "scaling-blind",
     "call-timeout",
+    "retry-backoff",
+    "retry-budget",
+    "retry-idempotency",
+    "retry-layers",
+    "call-breaker",
+    "queue-limit",
+    "retry-storm",
     "single-point",
     "secret-identity",
     "schema-registry"
@@ -25,8 +32,150 @@
       "elements": ["orders", "checkout"],
       "brokerRationale": "no-reader",
       "fix": { "ops": null, "needsChoice": true }
+    },
+    {
+      "id": "retry-backoff:pay",
+      "rule": "retry-backoff",
+      "severity": "warning",
+      "target": "pay",
+      "elements": ["pay", "checkout", "payments"],
+      "fix": {
+        "ops": [
+          {
+            "op": "update",
+            "target": "pay",
+            "props": {
+              "caller": {
+                "wait": "non-blocking",
+                "deadlineMs": 300,
+                "retry": { "maxAttempts": 3, "backoffMs": 100, "strategy": "exponential", "retryOn": ["throttled", "transient", "timeout"], "maxBackoffMs": 2000, "jitter": 1 }
+              }
+            }
+          }
+        ],
+        "needsChoice": false
+      }
+    },
+    {
+      "id": "retry-idempotency:pay",
+      "rule": "retry-idempotency",
+      "severity": "warning",
+      "target": "pay",
+      "elements": ["pay", "checkout", "payments"],
+      "fix": {
+        "ops": [
+          {
+            "op": "update",
+            "target": "pay",
+            "props": {
+              "caller": {
+                "wait": "non-blocking",
+                "deadlineMs": 300,
+                "retry": { "maxAttempts": 3, "backoffMs": 0, "strategy": "fixed", "retryOn": ["throttled"] }
+              }
+            }
+          }
+        ],
+        "needsChoice": false,
+        "options": [
+          {
+            "kind": null,
+            "ops": [
+              {
+                "op": "update",
+                "target": "pay",
+                "props": {
+                  "caller": {
+                    "wait": "non-blocking",
+                    "deadlineMs": 300,
+                    "retry": { "maxAttempts": 3, "backoffMs": 0, "strategy": "fixed", "retryOn": ["throttled", "transient", "timeout"], "idempotent": true }
+                  }
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "retry-storm:pay",
+      "rule": "retry-storm",
+      "severity": "warning",
+      "target": "pay",
+      "elements": ["pay", "checkout", "payments"],
+      "fix": {
+        "ops": [
+          {
+            "op": "update",
+            "target": "pay",
+            "props": {
+              "caller": {
+                "wait": "non-blocking",
+                "deadlineMs": 300,
+                "retry": {
+                  "maxAttempts": 3,
+                  "backoffMs": 100,
+                  "strategy": "exponential",
+                  "retryOn": ["throttled", "transient", "timeout"],
+                  "maxBackoffMs": 2000,
+                  "jitter": 1,
+                  "budget": { "percent": 20, "minPerSec": 10 }
+                },
+                "breaker": {}
+              }
+            }
+          },
+          {
+            "op": "update",
+            "target": "payments",
+            "props": { "queue": { "limit": 120, "order": "lifo", "maxWaitMs": 200 } }
+          }
+        ],
+        "needsChoice": false
+      }
     }
   ],
   "ignored": [],
-  "fixes": {}
+  "fixes": {
+    "retry-backoff:pay (default)": {
+      "ok": true,
+      "errors": [],
+      "warnings": [],
+      "summary": "1 changed",
+      "results": [{ "i": 0, "op": "update", "id": "pay" }],
+      "nodes": 4,
+      "edges": 3,
+      "findingsAfter": ["no-reader:orders", "retry-idempotency:pay", "retry-storm:pay"]
+    },
+    "retry-idempotency:pay (default)": {
+      "ok": true,
+      "errors": [],
+      "warnings": [],
+      "summary": "1 changed",
+      "results": [{ "i": 0, "op": "update", "id": "pay" }],
+      "nodes": 4,
+      "edges": 3,
+      "findingsAfter": ["no-reader:orders", "retry-backoff:pay", "retry-budget:pay"]
+    },
+    "retry-idempotency:pay (option 1)": {
+      "ok": true,
+      "errors": [],
+      "warnings": [],
+      "summary": "1 changed",
+      "results": [{ "i": 0, "op": "update", "id": "pay" }],
+      "nodes": 4,
+      "edges": 3,
+      "findingsAfter": ["no-reader:orders", "retry-backoff:pay", "retry-storm:pay"]
+    },
+    "retry-storm:pay (default)": {
+      "ok": true,
+      "errors": [],
+      "warnings": [],
+      "summary": "2 changed",
+      "results": [{ "i": 0, "op": "update", "id": "pay" }, { "i": 1, "op": "update", "id": "payments" }],
+      "nodes": 4,
+      "edges": 3,
+      "findingsAfter": ["no-reader:orders", "retry-idempotency:pay"]
+    }
+  }
 }

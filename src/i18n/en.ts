@@ -3473,5 +3473,71 @@ const en = {
   "route.resetButton": "Reset",
   "route.automatic": "Automatic",
   "route.bends": "Shaped by hand · {count, plural, one {# bend} other {# bends}}",
+  "resilienceChecks.why":
+    "Retries add load when a dependency is struggling. Bound repeated work and keep it safe to repeat.",
+  "resilienceChecks.shortCircuitedMetric": "Calls failed fast by the breaker",
+  "resilienceChecks.shedMetric": "Requests shed",
+  "resilienceChecks.backoffTitle": "Retries to {callee} need jittered backoff.",
+  "resilienceChecks.backoffMessage":
+    "{caller} retries in step with every other caller: waves of retries reach {callee} together.",
+  "resilienceChecks.budgetTitle": "No retry budget on the call to {callee}.",
+  "resilienceChecks.budgetMessage":
+    "If {callee} slows down, {attempts} attempts per request multiply its load by {attempts}.",
+  "resilienceChecks.idempotencyTitle": "Retries to {callee} may repeat a {method}.",
+  "resilienceChecks.sideEffect": "side effect",
+  "resilienceChecks.idempotencyMessage": "A timed-out request may have succeeded; repeating it can charge twice.",
+  "resilienceChecks.layersTitle": "Retries multiply across {layers, plural, one {# layer} other {# layers}}.",
+  "resilienceChecks.layersMessage": "{path}: up to {amplification}× the load on {callee}.",
+  "resilienceChecks.breakerTitle": "No circuit breaker on the call to {callee}.",
+  "resilienceChecks.breakerMessage": "If {callee} keeps failing, every caller keeps trying it.",
+  "resilienceChecks.queueTitle": "{callee} queues without limit.",
+  "resilienceChecks.queueMessage":
+    "Under overload, requests wait longer than {caller}'s {seconds} s timeout, and {callee} works on requests nobody is waiting for.",
+  "resilienceChecks.stormTitle": "A slowdown at {callee} would become a retry storm.",
+  "resilienceChecks.stormMessage":
+    "In a 5 s slowdown (×5), retries keep {callee} overloaded {seconds} s after it recovers.",
+  "resilienceChecks.atLeast": "at least {seconds}",
+  "resilienceChecks.evidence":
+    "The replayed change recovers in {seconds} s; successful work after clearing rises from {before} to {after}.",
+  "resilienceChecks.unproven": "No fix was proven within the replay budget.",
+  "resilienceChecks.jitterFix": "Use jittered backoff (100 ms ×2, up to 2 s, full jitter)",
+  "resilienceChecks.budgetFix": "Add a 20% retry budget",
+  "resilienceChecks.throttledFix": "Retry only throttled responses",
+  "resilienceChecks.idempotentFix": "It's idempotent (it has an idempotency key)",
+  "resilienceChecks.breakerFix": "Add a circuit breaker (50% over 10 s, open 5 s)",
+  "resilienceChecks.queueFix": "Shed requests that wait over {ms} ms",
+  "resilienceChecks.outerFix": "Retry only at {name}",
+  "resilienceChecks.provenFix": "Apply proven recovery policy",
+  "resilienceChecks.jitterChange": "Uses 100 ms exponential backoff, capped at 2 s, with full jitter.",
+  "resilienceChecks.budgetChange": "Uses jittered backoff and a 20% retry budget (at least 10 retries/s).",
+  "resilienceChecks.breakerChange":
+    "Uses jittered backoff, a 20% retry budget and a circuit breaker (50% over 10 s, open 5 s).",
+  "resilienceChecks.sheddingChange":
+    "Uses jittered backoff, a 20% retry budget, a circuit breaker and a deadline-based queue limit.",
+  "resilienceChecks.attemptsChange":
+    "Uses jittered backoff, a 20% retry budget, a circuit breaker, any proposed queue limit and at most 2 attempts.",
+  "resilienceChecks.notChecked":
+    "{count, plural, one {# retried call not checked for retry storms} other {# retried calls not checked for retry storms}}",
+  "resilienceChecks.backoffName": "Retries need jittered backoff",
+  "resilienceChecks.backoffAbout":
+    "Retries without backoff or jitter arrive in waves. Checks active Requests on p3-w2.",
+  "resilienceChecks.budgetName": "Retries need a budget",
+  "resilienceChecks.budgetAbout":
+    "A retry budget limits added load when a dependency fails. Checks active Requests on p3-w2.",
+  "resilienceChecks.idempotencyName": "Retries may repeat a side effect",
+  "resilienceChecks.idempotencyAbout":
+    "A timed-out request may have succeeded. Checks explicit idempotency and the request route method.",
+  "resilienceChecks.layersName": "Retries multiply across layers",
+  "resilienceChecks.layersAbout":
+    "Attempts multiply down a Request chain. Warns above ten attempts at the innermost dependency.",
+  "resilienceChecks.breakerName": "Failing dependencies need a circuit breaker",
+  "resilienceChecks.breakerAbout":
+    "A breaker fails calls fast while a dependency keeps failing. Checks retried external, model and failure-prone calls.",
+  "resilienceChecks.queueName": "Queues can outlive the caller",
+  "resilienceChecks.queueAbout":
+    "At configured rates an overloaded processor can queue work past its caller's deadline. Suggests a wait and queue limit.",
+  "resilienceChecks.stormName": "A slowdown could become a retry storm",
+  "resilienceChecks.stormAbout":
+    "Probes up to three retried Requests at configured rates: slow the callee fivefold at 5 s, clear at 10 s, replay to 30 s. Offers only the first cumulative fix proven to recover.",
 } as const;
 export default en;

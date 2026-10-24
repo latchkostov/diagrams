@@ -199,3 +199,39 @@ it("queue presets subtract round-trip residence and size by actual capacity", ()
   expect(recommendedQueue(300, 120, 32, 400)).toEqual({ limit: 40, order: "lifo", maxWaitMs: 100 });
   expect(recommendedQueue(100, 120, 32, 400)).toBeUndefined();
 });
+
+it("probe storm health ignores historical failures once they leave the shared health window", () => {
+  const c = context(),
+    original = headless.createHeadlessRun;
+  c.origin.simulation.durationMs = 30000;
+  const spy = vi.spyOn(headless, "createHeadlessRun").mockImplementation((...args) => {
+    const run = original(...args),
+      snapshot = run.engine.snapshot.bind(run.engine);
+    run.engine.snapshot = () => {
+      const frame = snapshot(),
+        calls = frame.edges.pay.calls!;
+      calls.failed = 20000;
+      calls.windowRequests = 100;
+      calls.windowAttempts = 300;
+      frame.nodes.payments.backlog = frame.time;
+      return frame;
+    };
+    return run;
+  });
+  let baseline: RecoveryEvidence | undefined;
+  try {
+    confirmedResilienceFix({
+      context: c,
+      edge: "pay",
+      time: 0,
+      baseline: (e) => {
+        baseline = e;
+        return false;
+      },
+    });
+    expect(baseline).toBeDefined();
+    expect(baseline!.points.filter((p) => p.time >= 20000).every((p) => p.storm === false)).toBe(true);
+  } finally {
+    spy.mockRestore();
+  }
+});

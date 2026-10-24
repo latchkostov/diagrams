@@ -47,7 +47,12 @@ export async function applyFix(editor: EditorApi, finding: Finding, option?: str
   const optionIndex =
     option === undefined
       ? -1
-      : (presentFinding(fresh ?? finding).fix?.options?.findIndex((o) => o.label === option) ?? -1);
+      : (() => {
+          const raw = fresh?.fix?.options?.findIndex((o) => o.label === option) ?? -1;
+          return raw >= 0
+            ? raw
+            : (presentFinding(fresh ?? finding).fix?.options?.findIndex((o) => o.label === option) ?? -1);
+        })();
   const chosen =
     option === undefined
       ? undefined
@@ -73,18 +78,19 @@ export async function applyFix(editor: EditorApi, finding: Finding, option?: str
     editor.openInspector("autoscaling-target");
   }
   const added = diff.added.nodes.map((id) => result.diagram.nodes.find((n) => n.id === id)?.label).filter(Boolean);
-  const displayed = fresh?.requestFinding ? presentFinding(fresh) : fresh;
-  const displayedOption = fresh?.fix?.options?.findIndex((o) => o.label === option) ?? -1;
+  const translated = !!fresh?.requestFinding || !!fresh?.resilienceFinding;
+  const displayed = fresh && translated ? presentFinding(fresh) : fresh;
+  const displayedOption = optionIndex;
   const label = displayed?.fix?.options?.[displayedOption]?.label ?? displayed?.fix?.label ?? "";
   const text = added.length
     ? `Added ${added.join(", ")}`
-    : fresh?.requestFinding
+    : translated
       ? t("waitChecks.done", { fix: label })
       : `${chosen?.label ?? fresh!.fix!.label}: done`;
   notify(text, {
     kind: "success",
     action: {
-      label: fresh?.requestFinding ? t("shortcuts.undo") : "Undo",
+      label: translated ? t("shortcuts.undo") : "Undo",
       run: () => editor.undo(),
       testId: "check-fix-undo",
       undoes: true,

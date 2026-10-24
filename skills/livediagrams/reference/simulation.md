@@ -18,6 +18,37 @@ Stencil roles are listed in [stencils.md](stencils.md):
 Broker-delivered processing failures retry up to `maxDeliveryCount` (default 3), then follow a
 broker edge with `props.dlq: true` (or a DLQ/dead-letter target label), or drop without one.
 
+## Retries, breakers and shedding
+
+`p3-w2` executes Request `props.caller.retry`: `maxAttempts` includes the first (execution caps at 10),
+`backoffMs`, `strategy` (fixed/exponential), `maxBackoffMs`, `jitter` (0..1), `retryOn`
+(throttled/transient/timeout), `idempotent`, and optional `budget: {percent: 20, minPerSec: 10}`.
+Each attempt has its own deadline. Blocking callers hold their thread through backoff.
+Unset idempotency follows the request route's HTTP method; POST/PATCH are unsafe to repeat.
+Use jittered 100 ms exponential backoff capped at 2 s, and a budget to bound added load.
+
+`caller.breaker: {}` uses shortened resilience4j defaults: 50% failures over 10 s, minimum 20 calls,
+open 5 s, then 5 test calls. Open-breaker failures are never retried. Ordinary processors accept
+`props.queue: {limit: 60, order: "lifo", maxWaitMs: 200}`; waiting pushed work beyond these limits
+is shed as 503 throttled. Active and broker-fed work is exempt. `edge.props.priority` is critical,
+normal (default) or sheddable. These are ordinary update ops; preserve other caller settings.
+
+Node expectations include `retried` (outgoing retry attempts), `amplification` (outgoing attempts /
+requests in the last 10 s, one when idle), `shortCircuited` (outgoing fast failures), `shed` (local
+requests refused) and `goodput` (successful responses/s, smoothed like throughput). Counts use real units.
+Example: `metric: {node: "checkout", field: "amplification"}, op: "<", value: 1.5, when: "end"`.
+
+Browser tools: `describe_diagram` exposes each Request's `resilience` (attempts, backoff, retryOn,
+idempotent, budget, breaker, priority, steady/worst amplification), processor `queue` (limit, order,
+whenFull, maxWaitMs, waitCeilingMs), and retry-inclusive `requestsWait.holdMs`. Null means unbounded
+or unknown. `check_diagram` includes `resilienceFinding` and executable `fix`/options. Static rules:
+retry-backoff, retry-budget, retry-idempotency, retry-layers, call-breaker, queue-limit. `retry-storm`
+probes up to three calls at configured rates (×5 slowdown at 5 s, clear at 10 s, horizon 30 s), returning
+only the first cumulative change proved to recover by same-seed replay, with evidence. Never invent a
+second fix or scale to absorb retries. `notChecked.retryStorm` counts skipped/refused probes; incomplete
+is never clean. A retry storm supersedes budget/breaker rows for its connection. Other static advice stays.
+The public **A retry storm** compares naive retries, jitter, budget, breaker and shedding.
+
 ## Faults and drills
 
 A saved drill uses timeline `do: "fault"` actions. Four forms:
@@ -97,7 +128,7 @@ Times are milliseconds from the start, and rates and counts are real messages.
 
 - Rates up to 10,000,000/s, bursts and injections up to 100,000 messages, times up to 600,000 ms.
 - All traffic in the file together: at most 200,000 messages as played (rate × duration, summed, ÷ each simulation's `scale`, the real messages per dot).
-- Expectation metrics: `processed`, `backlog`, `inFlight`, `failed`, `timedOut`, `retried`, `amplification`, `goodput`, `threadsBusy`, `threadsWaiting`, `deadLettered`, `dropped`, `blocked`, `rejected`, `throughput`, `lag`, or `{ "system": "inSystem" }`; `op`: `<`, `<=`, `==`, `>=`, `>`; `when`: `always`, `eventually`, `end`, `at`.
+- Expectation metrics: `processed`, `backlog`, `inFlight`, `failed`, `timedOut`, `retried`, `shortCircuited`, `shed`, `amplification`, `goodput`, `threadsBusy`, `threadsWaiting`, `deadLettered`, `dropped`, `blocked`, `rejected`, `throughput`, `lag`, or `{ "system": "inSystem" }`; `op`: `<`, `<=`, `==`, `>=`, `>`; `when`: `always`, `eventually`, `end`, `at`.
 
 <!-- END GENERATED sim-limits -->
 

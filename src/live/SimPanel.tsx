@@ -83,6 +83,18 @@ const FIELDS: { value: MetricField; label: string }[] = [
     },
   },
   {
+    value: "shortCircuited",
+    get label() {
+      return translate("resilienceChecks.shortCircuitedMetric");
+    },
+  },
+  {
+    value: "shed",
+    get label() {
+      return translate("resilienceChecks.shedMetric");
+    },
+  },
+  {
     value: "timedOut",
     get label() {
       return translate("threads.timedOutMetric");

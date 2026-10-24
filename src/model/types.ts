@@ -262,6 +262,8 @@ export const METRIC_FIELDS = [
   "failed",
   "timedOut",
   "retried",
+  "shortCircuited",
+  "shed",
   "amplification",
   "goodput",
   "threadsBusy",
