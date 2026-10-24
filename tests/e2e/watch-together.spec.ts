@@ -9,6 +9,7 @@ import {
 } from "./fixtures";
 import type { BrowserContext, Page } from "@playwright/test";
 import { emulateTracker } from "./collab-tracker";
+import { BEACON_MS, HOST_SILENT_MS } from "../../src/collab/room/liveShare";
 
 // Watch together (shared Live design, P2) between two browsers in one room, with real WebRTC between them and the
 // tracker emulated in the test runner (./collab-tracker.ts). The host (the room's creator) drives Live; the guest
@@ -57,12 +58,15 @@ async function twoInARoom(
   context: BrowserContext,
   other: BrowserContext,
   example = "kafka-order-pipeline",
+  clocks = false,
 ): Promise<Page> {
   await emulateTracker([context, other]);
+  if (clocks) await page.clock.install();
   await page.goto(`./?view=canvas&example=${example}`);
   await expect(page.getByTestId("node-gateway")).toBeVisible({ timeout: pageLoadTimeout() });
   const link = await startRoom(page);
   const guest = await other.newPage();
+  if (clocks) await guest.clock.install();
   await guest.goto(link);
   await guest.getByTestId("room-join-accept").click();
   // Knock-to-join: the host lets them in.
@@ -272,26 +276,23 @@ test.describe("Watch together", () => {
     test.slow();
     const other = await browser.newContext();
     try {
-      const guest = await twoInARoom(page, context, other);
+      const guest = await twoInARoom(page, context, other, undefined, true);
       await hostPlays(page);
       await guestWatches(guest, "toast");
-      await guest.clock.install();
-      // The host's page stops answering for twelve seconds (no beacons, no ops).
-      void page.evaluate(() => {
-        const end = Date.now() + 12_000;
-        while (Date.now() < end) {
-          /* a hung tab */
-        }
-      });
+      // Hold the host's beacon and playback timers; advance the guest through the actual
+      // silence threshold. A busy loop can starve the guest itself on a loaded runner.
+      await pauseClock(page);
+      await pauseClock(guest);
+      await guest.clock.runFor(HOST_SILENT_MS + BEACON_MS);
       await expect(chip(guest)).toHaveAttribute("data-watch", "host-dropped", { timeout: 10_000 });
       await expect(chip(guest)).toContainText("connection dropped");
       const held = (await run(guest)).tick;
-      await pauseClock(guest);
       await guest.clock.runFor(1000);
       expect((await run(guest)).tick).toBe(held);
       await guest.clock.resume();
       await expect(chip(page)).toHaveAttribute("data-watch", "host");
       // The host is back: the guest goes on following.
+      await page.clock.resume();
       await expect(chip(guest)).toHaveAttribute("data-watch", "following", { timeout: 15_000 });
     } finally {
       await other.close();

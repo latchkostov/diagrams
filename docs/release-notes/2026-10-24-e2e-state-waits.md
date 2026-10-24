@@ -3,6 +3,9 @@
 Replaced all 71 E2E `waitForTimeout` calls with completion signals, assertions, rendering opportunities,
 or controlled Playwright clocks. History, autosave, smart-guide settlement and complete password-link
 work expose read-only E2E probes; production builds reject any leaked probe.
+Time-driven tests install their clocks before mounting the relevant UI. The Watch together
+connection-loss test pauses host beacons and advances the guest through the actual silence threshold,
+instead of starving a browser thread with a busy loop.
 
 The lazy simulation-inspector contract now waits for the independent identity surface and its pending
 rename focus before exercising shell keyboard navigation. A held-identity regression covers the race.

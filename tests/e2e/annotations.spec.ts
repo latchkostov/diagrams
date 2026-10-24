@@ -15,6 +15,7 @@ import {
   waitForStableViewport,
   pauseClock,
   fitDiagram,
+  waitForLiveSession,
 } from "./fixtures";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -1210,6 +1211,7 @@ test.describe("annotations", () => {
   });
 
   test("live view keeps annotation text opaque and sends no traffic to or from them", async ({ page }) => {
+    await page.clock.install();
     const diagram = {
       format: "diagrams/v1",
       title: "Only a shape downstream",
@@ -1236,13 +1238,14 @@ test.describe("annotations", () => {
     await expect(page.getByTestId("live-toggle")).toHaveAttribute("aria-pressed", "true");
     await expect.poll(opacity).toBe(1);
     await expect(annotation(page, "box")).toBeVisible();
-    await page.clock.install();
+    await waitForLiveSession(page);
     await pauseClock(page);
     // Traffic leaves the storefront, but its only edge ends on a shape: nothing is ever drawn.
     for (let i = 0; i < 8; i++) {
       await page.clock.runFor(250);
       expect(Number((await page.getByTestId("live-canvas").getAttribute("data-particles")) ?? 0)).toBe(0);
     }
+    expect(Number(await page.getByTestId("live-canvas").getAttribute("data-sim-time"))).toBeGreaterThan(0);
     // T adds nothing while live.
     await page.keyboard.press("t");
     await expect(page.getByTestId("annotation-editor")).toHaveCount(0);
