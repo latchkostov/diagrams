@@ -23,6 +23,24 @@ describe("static platform viewer", () => {
       ],
     });
     expect(modules.some((id) => id.endsWith("/src/editor/builtinActions.ts"))).toBe(false);
+    for (const path of [
+      "/src/canvas/inspector/QueueFields.tsx",
+      "/src/canvas/inspector/PriorityField.tsx",
+      "/src/live/session/useLiveFixes.ts",
+      "/src/live/TroubleCallout.tsx",
+      "/src/live/threadFixes.ts",
+      "/src/live/resilienceFixPlan.ts",
+    ])
+      expect(
+        modules.some((id) => id.endsWith(path)),
+        path,
+      ).toBe(false);
+    expect(modules.filter((id) => /\/src\/tutorials\/(?!sandbox\.ts$)/.test(id))).toEqual([]);
+    for (const path of ["/src/sim/shedQueue.ts", "/src/live/session/useLiveDiagramChanges.ts"])
+      expect(
+        modules.some((id) => id.endsWith(path)),
+        path,
+      ).toBe(true);
     for (const name of ["router", "shaped"])
       expect(
         modules.some((id) => id.endsWith(`/src/canvas/geometry/${name}.ts`)),

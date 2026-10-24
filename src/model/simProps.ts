@@ -37,7 +37,18 @@ export const cardinality = { type: "integer", minimum: 1, maximum: SIM_LIMITS.co
 const time = { type: "number", minimum: 0, maximum: SIM_LIMITS.timeMs };
 const fraction = { type: "number", minimum: 0, maximum: 1 };
 // Field coverage is checked against the engine interfaces by TypeScript.
+export const queueSchema: JsonSchema = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    limit: { type: "integer", minimum: 1, maximum: 1_000_000 },
+    whenFull: { type: "string", enum: ["reject-new", "drop-oldest"] },
+    order: { type: "string", enum: ["fifo", "lifo"] },
+    maxWaitMs: time,
+  },
+};
 export const nodeProperties = {
+  queue: queueSchema,
   resources: resourcesSchema,
   autoscaling: autoscalingSchema,
   resumeAutoscaling: { type: "boolean" },
@@ -72,6 +83,7 @@ export const nodeProperties = {
   routeTable: routeTableSchema,
 } satisfies Record<keyof NodeSimProps, JsonSchema>;
 export const edgeProperties = {
+  priority: { type: "string", enum: ["critical", "normal", "sheddable"] },
   requestRouteId: { type: "string", minLength: 1, maxLength: 200 },
   requestFilter: routeMatchSchema,
   endpointId: { type: "string", minLength: 1, maxLength: 200 },

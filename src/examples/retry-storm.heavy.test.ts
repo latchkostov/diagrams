@@ -66,7 +66,15 @@ it.each([1, 7, 17, 42, 99])("retry storm outcome bands at seed %s", (seed) => {
           calls: final.edges.pay.calls,
         }),
       );
-    if (simulation.id === "circuit-breaker") {
+    if (simulation.id === "shed-load") {
+      expect(peak).toBeLessThanOrEqual(60);
+      expect(final.nodes.payments.shed).toBeGreaterThan(0);
+      expect(recoveredAt).toBeDefined();
+      // The 1 s EWMA reaches 90% after the raw goodput has recovered at the 8 s clear.
+      expect(recoveredAt).toBeLessThanOrEqual(11000);
+      expect(final.nodes.shop.throughput).toBeGreaterThanOrEqual(270);
+      expect(run.state().expectations.every((e) => e.status === "pass")).toBe(true);
+    } else if (simulation.id === "circuit-breaker") {
       expect(recoveredAt).toBeGreaterThanOrEqual(18000);
       expect(recoveredAt).toBeLessThanOrEqual(18400);
       expect(peak).toBeGreaterThan(650);

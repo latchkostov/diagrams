@@ -1,4 +1,4 @@
-import { Suspense, use, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { Suspense, use, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { LazyCanvasView as CanvasView } from "../canvas/loadCanvasView";
 import {
   createLibraryDiagram,
@@ -127,7 +127,10 @@ function Running({
   const [libraryError, setLibraryError] = useState<string | null>(null);
   const [libraryUndo, setLibraryUndo] = useState<{ message: string; run: () => void } | null>(null);
   const openCopy = tutorialRoute.openDiagram;
-  const { openDiagram, openShared, newDiagram } = diagramOpenActions(TUTORIAL_SLUG, openCopy);
+  const { openDiagram, openShared, newDiagram } = useMemo(
+    () => diagramOpenActions(TUTORIAL_SLUG, openCopy),
+    [openCopy],
+  );
   const libraryAction = (action: string, operation: () => void) => {
     setLibraryError(null);
     try {

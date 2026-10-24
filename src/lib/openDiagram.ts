@@ -11,6 +11,12 @@ import {
 } from "./diagramIO";
 import { newDiagramsPrivate } from "./privacyPrefs";
 
+/** Shared links do not depend on the diagram that was open before them. */
+export function openSharedDiagram(d: DiagramFile, navigate: (slug: string) => void) {
+  setShared(d);
+  navigate(SHARED_SLUG);
+}
+
 /** Both app shells persist imports before navigating, with the same privacy and save destination policy. */
 export function diagramOpenActions(current: string, navigate: (slug: string) => void) {
   return {
@@ -25,8 +31,7 @@ export function diagramOpenActions(current: string, navigate: (slug: string) => 
       return created;
     },
     openShared(d: DiagramFile) {
-      setShared(d);
-      navigate(SHARED_SLUG);
+      openSharedDiagram(d, navigate);
     },
     newDiagram() {
       newDraft();

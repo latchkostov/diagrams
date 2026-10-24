@@ -35,7 +35,7 @@ import {
   writeAutosave,
 } from "./lib/diagramIO";
 import { useLibrary } from "./lib/useLibrary";
-import { diagramOpenActions } from "./lib/openDiagram";
+import { diagramOpenActions, openSharedDiagram } from "./lib/openDiagram";
 import { Icon } from "./components/Icon";
 import { formatAgo } from "./i18n/relativeTime";
 import { stopStorageWrites } from "./lib/storage";
@@ -380,13 +380,14 @@ function MainApp() {
     return () => window.removeEventListener("keydown", onKey);
   }, [url.present, setUrl]);
 
-  const {
-    openDiagram,
-    openShared,
-    newDiagram: openNewDiagram,
-  } = useMemo(
+  const { openDiagram, newDiagram: openNewDiagram } = useMemo(
     () => diagramOpenActions(slug, (example) => setUrl({ view: "canvas", example, present: false })),
     [slug, setUrl],
+  );
+  // Keep hash-link processing attached to the same password prompt across diagram navigation.
+  const openShared = useCallback(
+    (d: DiagramFile) => openSharedDiagram(d, (example) => setUrl({ view: "canvas", example, present: false })),
+    [setUrl],
   );
   const newDiagram = useCallback(() => {
     canvasRef.current?.flush();

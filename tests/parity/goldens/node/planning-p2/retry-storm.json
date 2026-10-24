@@ -11,7 +11,7 @@
     "orders": { "ratePerSec": 2, "latencyMs": 0, "replicas": 1, "jitter": 0.2, "retry": "requeue", "retryBackoffMs": 0, "failureRate": 0, "maxDeliveryCount": 3, "partitions": 3, "messageType": "Orders", "healthChecks": false }
   },
   "legacyExport": { "format": "diagrams/v1", "losses": ["planning.revision", "planning.requestRoutes", "checkout.props.preset", "checkout.props.presetRevision", "payments.props.preset", "payments.props.presetRevision", "checkouts.props.requestRouteId", "pay.props.caller", "pay.props.requestRouteId"] },
-  "autoScale": { "freePlay": 5, "three-quick-retries": 5, "jittered-backoff": 5, "retry-budget": 5, "circuit-breaker": 5 },
+  "autoScale": { "freePlay": 5, "three-quick-retries": 5, "jittered-backoff": 5, "retry-budget": 5, "circuit-breaker": 5, "shed-load": 5 },
   "brokerAssignments": { "brokers": {}, "consumers": {} },
   "edit": {
     "configured": true,
@@ -177,7 +177,8 @@
     "three-quick-retries": { "configured": "(same as edit)", "simulation": "three-quick-retries", "analysis": "(same as edit)", "explanations": "(same as edit)", "capabilities": "(same as edit)", "sizing": "(same as edit)", "redundancy": "(same as edit)", "resolved": "(same as edit)" },
     "jittered-backoff": { "configured": "(same as edit)", "simulation": "jittered-backoff", "analysis": "(same as edit)", "explanations": "(same as edit)", "capabilities": "(same as edit)", "sizing": "(same as edit)", "redundancy": "(same as edit)", "resolved": "(same as edit)" },
     "retry-budget": { "configured": "(same as edit)", "simulation": "retry-budget", "analysis": "(same as edit)", "explanations": "(same as edit)", "capabilities": "(same as edit)", "sizing": "(same as edit)", "redundancy": "(same as edit)", "resolved": "(same as edit)" },
-    "circuit-breaker": { "configured": "(same as edit)", "simulation": "circuit-breaker", "analysis": "(same as edit)", "explanations": "(same as edit)", "capabilities": "(same as edit)", "sizing": "(same as edit)", "redundancy": "(same as edit)", "resolved": "(same as edit)" }
+    "circuit-breaker": { "configured": "(same as edit)", "simulation": "circuit-breaker", "analysis": "(same as edit)", "explanations": "(same as edit)", "capabilities": "(same as edit)", "sizing": "(same as edit)", "redundancy": "(same as edit)", "resolved": "(same as edit)" },
+    "shed-load": { "configured": "(same as edit)", "simulation": "shed-load", "analysis": "(same as edit)", "explanations": "(same as edit)", "capabilities": "(same as edit)", "sizing": "(same as edit)", "redundancy": "(same as edit)", "resolved": "(same as edit)" }
   },
   "capacity": {
     "freePlay": {
@@ -310,6 +311,21 @@
       }
     },
     "circuit-breaker": {
+      "tone": "warn",
+      "top": "orders",
+      "headline": "Nobody reads Orders",
+      "detail": "No readers. Add a reader.",
+      "fix": null,
+      "addConsumer": "orders",
+      "converged": true,
+      "nodes": {
+        "shop": ["idle", "300/s · no limit", { "modeled": false }],
+        "checkout": ["ok", "0% · 300/s of 80k/s"],
+        "payments": ["ok", "50% · 300/s of 600/s"],
+        "orders": ["warn", "Nobody reads this yet · 300/s kept", { "noReader": true }]
+      }
+    },
+    "shed-load": {
       "tone": "warn",
       "top": "orders",
       "headline": "Nobody reads Orders",

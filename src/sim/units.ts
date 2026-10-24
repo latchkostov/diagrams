@@ -82,6 +82,9 @@ export function realNodeMetrics(node: NodeSimState, scale = 1): RealNodeMetrics 
     dropped: real(node.dropped),
     ...(node.outageDropped === undefined ? {} : { outageDropped: real(node.outageDropped) }),
     ...(node.blocked === undefined ? {} : { blocked: real(node.blocked) }),
+    ...(node.shedLost === undefined ? {} : { shedLost: real(node.shedLost) }),
+    ...(node.queueDepth === undefined ? {} : { queueDepth: real(node.queueDepth) }),
+    ...(node.shed === undefined ? {} : { shed: real(node.shed) }),
     ...(node.rejected === undefined ? {} : { rejected: real(node.rejected) }),
     ...(node.rejectionReasons === undefined
       ? {}

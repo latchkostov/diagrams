@@ -1,8 +1,9 @@
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
 import storm from "../examples/retry-storm.json";
 import type { DiagramFile } from "../model/types";
 import { resilienceLadder, recovers, confirmedResilienceFix, type RecoveryEvidence } from "./resilienceFixPlan";
-import { RECOMMENDED_RETRY } from "../sim/resiliencePresets";
+import { RECOMMENDED_RETRY, recommendedQueue } from "../sim/resiliencePresets";
+import * as headless from "../sim/headless";
 import { THREAD_FIX_LIMITS } from "./threadFixPlan";
 import { TroubleWatcher } from "./observedTrouble";
 import { createSimulationRun } from "../sim/simulation";
@@ -151,4 +152,50 @@ it("a connection ending on a documentation shape cannot suppress a confirmed fix
   d.annotations = [{ id: "note", kind: "shape", text: "Ledger (planned)", x: 900, y: 0, width: 120, height: 60 }];
   d.edges.push({ id: "documented", from: "payments", to: "note", kind: "sync" });
   expect(confirmedResilienceFix({ context: c, edge: "pay", time: 15000 })).toMatchObject({ step: "breaker" });
+});
+
+it("shedding is the fourth cumulative step and fewer attempts retains its exact queue preset", () => {
+  const policy = recommendedQueue(300, 80, 32)!;
+  expect(policy).toEqual({ limit: 80, order: "lifo", maxWaitMs: 200 });
+  const ladder = resilienceLadder(
+    { deadlineMs: 300, retry: { maxAttempts: 3, backoffMs: 0, strategy: "fixed", retryOn: ["throttled", "timeout"] } },
+    { node: "payments", policy },
+  );
+  expect(ladder.map((p) => p.step)).toEqual(["jitter", "budget", "breaker", "shedding", "attempts"]);
+  expect(ladder[3]).toEqual({ step: "shedding", caller: ladder[2].caller, queue: { node: "payments", policy } });
+  expect(ladder[4].queue).toEqual(ladder[3].queue);
+  expect(recommendedQueue(50, 80, 32)).toBeUndefined();
+});
+
+it("offers shedding only when its cumulative replay is the first recovery that passes", () => {
+  const c = context();
+  (
+    c.origin.diagram.edges.find((e) => e.id === "pay")!.props!.caller as NonNullable<
+      import("../sim/types").EdgeSimProps["caller"]
+    >
+  ).breaker = { minimumCalls: 1000000 };
+  expect(confirmedResilienceFix({ context: c, edge: "pay", time: 15000 })).toMatchObject({
+    step: "shedding",
+    queue: { node: "payments", policy: { order: "lifo", maxWaitMs: 200 } },
+  });
+});
+
+it("the sixth replay cannot exceed the shared deterministic work bound", () => {
+  const c = context();
+  c.origin.diagram.nodes.push({ ...c.origin.diagram.nodes[0], id: "unused" });
+  c.origin.diagram.nodes[0].props!.ratePerSec = 0;
+  c.origin.simulation.traffic[0].shape = { kind: "constant", ratePerSec: 0, durationMs: 60000 };
+  const replay = vi.spyOn(headless, "createHeadlessRun");
+  try {
+    expect(confirmedResilienceFix({ context: c, edge: "pay", time: 15000 })).toBeUndefined();
+    expect(replay).toHaveBeenCalledTimes(5);
+  } finally {
+    replay.mockRestore();
+  }
+});
+
+it("queue presets subtract round-trip residence and size by actual capacity", () => {
+  // 80 ms local work + 40 ms network, with 400/s effective capacity.
+  expect(recommendedQueue(300, 120, 32, 400)).toEqual({ limit: 40, order: "lifo", maxWaitMs: 100 });
+  expect(recommendedQueue(100, 120, 32, 400)).toBeUndefined();
 });
