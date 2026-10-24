@@ -8,7 +8,9 @@ import type * as Script from "./script";
 /** The script code slow motion runs once it has a journey. */
 export type SlowScriptCode = Pick<typeof Script, "buildScript" | "frameAt" | "stepStop">;
 
-let loaded: SlowScriptCode | undefined;
+type LoadedScript = SlowScriptCode &
+  Pick<typeof Script, "planCamera" | "followPan" | "followTargets" | "screenScript" | "publishReplay">;
+let loaded: LoadedScript | undefined;
 let painter: typeof Script.SlowPainter | undefined;
 
 /** Downloads the script code once; a failed download is forgotten, so the next start retries it. */
@@ -20,7 +22,7 @@ export const loadSlowScript: () => Promise<SlowScriptCode> = loadOnce(() =>
 );
 
 /** The script code, once it has arrived. */
-export const slowScript = (): SlowScriptCode | undefined => loaded;
+export const slowScript = (): LoadedScript | undefined => loaded;
 
 /** Slow motion's painter, which arrives in the script's chunk. */
 export const slowPainter = (): typeof Script.SlowPainter | undefined => painter;

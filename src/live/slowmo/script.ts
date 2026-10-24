@@ -1,3 +1,5 @@
+import type { PaintedLabel } from "./overlay";
+import type { SlowMotion } from "./session";
 import { t } from "../../i18n";
 // Slow motion: one message's recorded journey, retold as a paced script of "beats" (a hop, a pause
 // at a node, a split, a write...). Pure: no DOM, no clocks. The live view records the journey first
@@ -5,6 +7,7 @@ import { t } from "../../i18n";
 // what to draw at script time t. Real timings only ever appear as text; the motion is paced for
 // people. Contract: docs/SIMULATION.md, "Slow motion"; research: docs/research/watchable-simulation.md.
 
+import { stencilRole } from "../../stencils/roles";
 import type { SimRole } from "../../model/types";
 import { messageColor } from "../../sim/colors";
 import type { MessageTrace, TraceStep } from "../../sim/types";
@@ -1166,4 +1169,93 @@ export function stepStop(script: SlowScript, t: number, dir: 1 | -1): number {
   // Just past a hop's start, ← goes to the one before it (like a media player's previous track).
   for (let i = stops.length - 1; i >= 0; i--) if (stops[i] < t - 250) return stops[i];
   return 0;
+}
+
+// Replay geometry arrives with the replay code, keeping the Live download unchanged.
+export { planCamera, followPan } from "./camera";
+
+/** Nodes to reveal between hops, including the next targets before their dots leave. */
+export function followTargets(script: SlowScript, t: number, frame: SlowFrame, diagram: DiagramLike) {
+  const next = new Set(frame.frontier);
+  const focus = new Set<string>();
+  const edges = new Map(diagram.edges.map((e) => [e.id, e]));
+  for (const b of script.beats) {
+    if (b.node && b.start <= t && t < b.start + b.duration) focus.add(b.node);
+    if (b.edge && b.kind !== "reply" && b.start > t && b.start <= t + 1200) {
+      const e = edges.get(b.edge);
+      if (e) {
+        next.add(b.reverse ? e.from : e.to);
+        focus.add(b.reverse ? e.from : e.to);
+      }
+    }
+  }
+  return { next, focus };
+}
+
+/** Builds the screen-paced script after replay code has arrived. */
+export function screenScript(o: {
+  trace: MessageTrace;
+  diagram: DiagramLike;
+  reduced: boolean;
+  waiting?: { lag(nodeId: string): number | undefined };
+  root: ParentNode | null;
+  zoom: number;
+}): SlowScript {
+  const stencils = new Map(o.diagram.nodes.map((n) => [n.id, n.stencil]));
+  return buildScript({
+    trace: o.trace,
+    diagram: o.diagram,
+    reduced: o.reduced,
+    waiting: o.waiting,
+    roleOf: (id) => stencilRole(stencils.get(id) ?? ""),
+    edgeLength: (id) => {
+      const path = o.root?.querySelector<SVGPathElement>(
+        `.react-flow__edge[data-id="${CSS.escape(id)}"] path.react-flow__edge-path`,
+      );
+      const length = path?.getTotalLength?.() ?? 0;
+      return length > 0 ? length * o.zoom : 260;
+    },
+  });
+}
+
+/** Publishes the replay painter's readout and dims badges outside its path. */
+export function publishReplay(
+  canvas: HTMLCanvasElement,
+  labels: readonly PaintedLabel[],
+  root: HTMLElement | null,
+  session: Pick<SlowMotion, "getState" | "publish" | "frame">,
+  mode: string,
+  reset: () => void,
+) {
+  const s = session.getState();
+  if (s.status === "on") {
+    if (s.playing) session.publish();
+    const f = session.frame();
+    canvas.dataset.slowmo = s.playing ? "playing" : "paused";
+    canvas.dataset.slowmoCamera = mode;
+    canvas.dataset.slowmoProgress = String(s.script ? Math.round((s.t / Math.max(1, s.script.duration)) * 1000) : 0);
+    canvas.dataset.slowmoBeat = String(f?.beat ?? -1);
+    canvas.dataset.slowmoDots = String(f?.moving ?? 0);
+    canvas.dataset.slowmoCaptions = JSON.stringify(labels);
+    root?.setAttribute("data-live-slowmo", "on");
+    // Badges off the path step back with their nodes.
+    const path = new Set(s.script?.nodes ?? []);
+    for (const el of root?.querySelectorAll<HTMLElement>('[data-testid^="node-badge-"]') ?? []) {
+      const off = !path.has(el.dataset.testid!.slice("node-badge-".length));
+      if (off !== el.hasAttribute("data-slowmo-off")) el.toggleAttribute("data-slowmo-off", off);
+    }
+  } else if (canvas.dataset.slowmo) {
+    for (const a of [
+      "data-slowmo",
+      "data-slowmo-camera",
+      "data-slowmo-progress",
+      "data-slowmo-beat",
+      "data-slowmo-dots",
+      "data-slowmo-captions",
+    ])
+      canvas.removeAttribute(a);
+    root?.removeAttribute("data-live-slowmo");
+    for (const el of root?.querySelectorAll("[data-slowmo-off]") ?? []) el.removeAttribute("data-slowmo-off");
+    reset();
+  }
 }
