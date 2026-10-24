@@ -19,7 +19,7 @@ const hasBox = (o: Obj) => BOX.every((k) => isNum(o[k]));
 export type LayoutResult =
   | {
       ok: true;
-      /** The input with node/annotation positions and boundary boxes updated; authored fields survive. */
+      /** The input with geometry updated and routes reset by full layout; other authored fields survive. */
       diagram: Obj & { nodes: unknown[]; groups?: unknown; annotations?: unknown };
       /** Every node was placed by the layered layout. */
       laidOut: boolean;
@@ -34,7 +34,8 @@ export type LayoutResult =
  * Fills in what an agent may leave out: node x/y (any node without them, or `force`, lays out every
  * node with the app's layered layout), boundary boxes (fitted around their members) and note/text
  * boxes (a row under everything else). The layout runs on a copy checked by the app's own validator,
- * and only the positions are written back, so the rest of the input is returned exactly as written.
+ * and only geometry changes are written back (including route resets on full layout); other authored
+ * fields are returned exactly as written.
  */
 export function layoutDiagram(input: unknown, opts: { force?: boolean } = {}): LayoutResult {
   if (!isObj(input)) return { ok: false, error: "The file must hold one JSON object: the diagram." };
@@ -80,7 +81,7 @@ export function layoutDiagram(input: unknown, opts: { force?: boolean } = {}): L
     fitted = (d.groups ?? []).filter((g) => unboxed.has(g.id)).map((g) => g.id);
   }
 
-  // Write the positions back onto the input.
+  // Write geometry back onto the input, keeping authored fields the validator may have normalized.
   const nodeAt = new Map(d.nodes.map((n) => [n.id, n]));
   const groupAt = new Map((d.groups ?? []).map((g) => [g.id, g]));
   const out: Extract<LayoutResult, { ok: true }>["diagram"] = {
@@ -90,6 +91,12 @@ export function layoutDiagram(input: unknown, opts: { force?: boolean } = {}): L
       return placed ? { ...n, x: placed.x, y: placed.y } : n;
     }),
   };
+  if (needsLayout && Array.isArray(input.edges))
+    out.edges = input.edges.map((raw: unknown) => {
+      if (!isObj(raw)) return raw;
+      const { waypoints: _waypoints, ...edge } = raw;
+      return edge;
+    });
   if (Array.isArray(input.groups))
     out.groups = groupsIn.map((g) => {
       const box = isObj(g) && fitted.includes(g.id as string) ? groupAt.get(g.id as string) : undefined;

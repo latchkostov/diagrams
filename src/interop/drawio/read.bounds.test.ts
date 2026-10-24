@@ -107,5 +107,8 @@ it("rejects excessive connectors before pairwise spacing", () => {
   const model = parseXml(pageXml(2));
   const edge = parseXml('<mxCell id="e" edge="1" source="n0" target="n1"/>');
   model.children[0].children.push(...Array.from({ length: LIMITS.maxEdges + 1 }, () => edge));
+  vi.spyOn(Math, "abs").mockImplementation(() => {
+    throw new Error("Pairwise spacing ran before rejecting connectors");
+  });
   expect(() => drawioPageToDiagram({ id: "p", name: "Page-1", model })).toThrow("connector budget");
 });
