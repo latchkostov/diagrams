@@ -175,3 +175,15 @@ test("a drag along a segment does not freeze an unchanged automatic route", asyn
   await expect(page.getByTestId("edge-api-db")).not.toHaveAttribute("data-route", "custom");
   expect(await path(page)).toBe(before);
 });
+
+test("the shortcuts sheet explains dots and pointer shaping", async ({ page }) => {
+  await open(page);
+  await page.getByTestId("canvas-wrap").focus();
+  await page.keyboard.press("?");
+  const mouse = page.getByTestId("shortcuts-mouse");
+  await expect(mouse).toContainText("Drag from a dot");
+  await expect(mouse).toContainText("Connect: attach to a dot, let a node choose, or add on empty canvas");
+  await expect(mouse).toContainText("Drag a selected line");
+  await expect(mouse).toContainText("Line up neighbouring segments");
+  await expect(mouse).toContainText("Route ▸ Reset route");
+});
