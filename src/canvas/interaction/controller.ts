@@ -45,6 +45,7 @@ export type Resolution =
 /** The DOM, as the controller sees it. Only the port calls focus(). */
 export interface PendingMenuInput {
   readonly active: boolean;
+  failed(failed: boolean): void;
   capture(ownsFocus: () => boolean, acceptsKey?: () => boolean, escape?: () => void): () => void;
   ready(deliver: (key: PendingKey) => void, focus: () => void): void;
   cancel(): void;
@@ -575,6 +576,7 @@ export function createInteractionController<P = unknown>(
     menuInput(): PendingMenuInput {
       let ownsFocus = () => true;
       let active = true;
+      let failed = false;
       let stop: (() => void) | undefined;
       let keys: PendingKey[] = [];
       let generation = 0;
@@ -586,6 +588,9 @@ export function createInteractionController<P = unknown>(
         keys = [];
       };
       return {
+        failed(value) {
+          failed = value;
+        },
         get active() {
           return active && ownsFocus();
         },
@@ -597,7 +602,8 @@ export function createInteractionController<P = unknown>(
               cancel();
               return false;
             }
-            if (!acceptsKey()) return false;
+            // Keep the queue, but let native Tab/Enter reach recovery controls.
+            if (failed || !acceptsKey()) return false;
             if (key.key === "Escape" && !keys.length && escape) {
               cancel();
               escape();

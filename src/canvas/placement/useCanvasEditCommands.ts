@@ -36,17 +36,18 @@ export function useCanvasNaming(
         t.kind === "node" ? { nodeIds: [t.id] } : t.kind === "edge" ? { edgeIds: [t.id] } : { groupIds: [t.id] },
       );
       setNaming(t.kind === "node" && t.edge ? { node: t.id, edge: t.edge } : null);
+      const field = t.kind === "node" && t.field === "sublabel" ? "sublabel" : "label";
       const typed = t.kind === "node" && t.text !== undefined;
-      if (typed) editor.updateNode(t.id, { label: t.text }, { merge: editor.creating(t.id) });
+      if (typed) editor.updateNode(t.id, { [field]: t.text }, { merge: editor.creating(t.id) });
       const creation = t.kind === "node" ? editor.creating(t.id) : undefined;
       openInspector(
-        t.kind === "node" && t.field === "sublabel" ? "sublabel" : "label",
+        field,
         typed ? "end" : undefined,
         t.kind === "group" ? GROUP_PREFIX + t.id : t.id,
         typed ? t.text : undefined,
         creation
           ? (typed) => {
-              if (typed.text !== null) editor.updateNode(t.id, { label: typed.text }, { merge: creation });
+              if (typed.text !== null) editor.updateNode(t.id, { [field]: typed.text }, { merge: creation });
               if (typed.done) {
                 endCreation(creation);
                 setNaming(null);
