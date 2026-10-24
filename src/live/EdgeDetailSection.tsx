@@ -4,6 +4,7 @@ import { revisionAtLeast } from "../model/revisions";
 import { callPolicy } from "../sim/callPolicy";
 import type { EdgeSimProps } from "../sim/types";
 import { useLive } from "./context";
+import { CallOutcomes } from "./CallOutcomes";
 import { BreakerReadout } from "./BreakerReadout";
 import { formatCount } from "./format";
 
@@ -27,13 +28,13 @@ export function EdgeDetailSection({ diagram, id, section }: { diagram: DiagramFi
           // Models before p3-w2 do not simulate breakers, whatever the connection says.
           <p data-testid="hover-breaker-pending">{t("hover.breakerPending")}</p>
         )
+      ) : section === "outcomes" ? (
+        <CallOutcomes calls={c} />
       ) : (
         <>
+          <p>{t("health.sinceRestart")}</p>
           <p>
             {t("hover.retries")}: {formatCount(c?.retried ?? 0)}
-          </p>
-          <p>
-            {t("hover.timeouts")}: {formatCount(c?.timedOut ?? 0)}
           </p>
           <p>
             {policy.blocking ? t("hover.holds") : t("hover.frees")}: {formatCount(c?.held ?? 0)}

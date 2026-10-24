@@ -13,7 +13,7 @@
     "markers": [
       { "atMs": 0, "kind": "traffic", "label": "checkouts" },
       { "atMs": 1000, "kind": "fault", "label": "Fail: Payments" },
-      { "atMs": 1200, "kind": "note", "label": "Retries absorb a brief blip. The circuit breaker watches settled attempts." },
+      { "atMs": 1200, "kind": "note", "label": "Watch the Payments connection and queue. At 3 s, Payments slows for five seconds: the breaker pauses failing calls, then tests recovery. Watch for Closed and calls succeeding." },
       { "atMs": 2000, "kind": "fault", "label": "Fail: Payments" },
       { "atMs": 3000, "kind": "fault", "label": "Slow down: Payments" },
       { "atMs": 3500, "kind": "note", "label": "The slowdown pushes calls past their timeout. Once failures fill the window, the breaker opens and fails fast." },
@@ -180,7 +180,7 @@
     ]
   },
   "notes": [
-    { "atMs": 1200, "text": "Retries absorb a brief blip. The circuit breaker watches settled attempts.", "focus": ["payments", "checkout"] },
+    { "atMs": 1200, "text": "Watch the Payments connection and queue. At 3 s, Payments slows for five seconds: the breaker pauses failing calls, then tests recovery. Watch for Closed and calls succeeding.", "focus": ["payments", "checkout"] },
     { "atMs": 3500, "text": "The slowdown pushes calls past their timeout. Once failures fill the window, the breaker opens and fails fast.", "focus": ["payments", "checkout"] },
     { "atMs": 9000, "text": "Payments is fast again. The open breaker gives its queue room to drain before testing five calls.", "focus": ["payments", "checkout"] },
     { "atMs": 15000, "text": "The breaker tests a few calls after each pause. If they still fail, it opens again so the queue can keep draining.", "focus": ["payments", "checkout"] }

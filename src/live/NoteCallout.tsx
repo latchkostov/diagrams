@@ -130,7 +130,7 @@ export function NoteCallout({ state }: { state: LiveState }) {
           <span className="lv-note-time mono">{formatClock(note.atMs)}</span>
         </div>
       )}
-      <p className="lv-note-text" data-testid={result ? "live-run-result" : undefined}>
+      <p className="lv-note-text" data-testid={result ? "live-run-result" : "live-note-text"}>
         {note.text}
       </p>
       {waiting && (

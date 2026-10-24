@@ -59,6 +59,7 @@ import { autoScale } from "../sim/scale";
 import { effectiveSimulation, emptyInputs, freePlayProps, freePlayScale, type LiveInputs } from "./capacityModel";
 import { DEFAULT_SEED } from "./storm";
 import { snapshotContinuity } from "./snapshotContinuity";
+import { HealthWindow } from "./healthWindow";
 import { own, replayed, tickTime, timeTick, type LiveOp, type LogEntry, type OpOrigin } from "./controlLog";
 
 export const SPEEDS = [0.25, 0.5, 1, 2, 4, 8] as const;
@@ -181,13 +182,19 @@ export class LiveController {
   private snap!: SimSnapshot;
   private continuity = {};
   private real: RealSimSnapshot | null = null;
+  private health = new HealthWindow();
   /** Free play's fractional injection credit per node and type (runs keep their own). */
   private injector!: ReturnType<typeof createRealCountInjector>;
   /**
    * Full-run checkpoints, each with the log position it was taken at (ops after it are replayed on restore) and the
    * trail's length then.
    */
-  private checkpoints: { cp: SimulationRunCheckpoint; seq: number; trail: number }[] = [];
+  private checkpoints: {
+    cp: SimulationRunCheckpoint;
+    seq: number;
+    trail: number;
+    health: ReturnType<HealthWindow["checkpoint"]>;
+  }[] = [];
   private log: LogEntry[] = [];
   private seq = 0;
   /** The last logged op the engine's state reflects: `seq` live, behind it while a replay catches up. */
@@ -652,6 +659,7 @@ export class LiveController {
   /** Rebuilds the published state and tells subscribers. Called by actions and the UI clock. */
   publish(): void {
     const snapshot = this.realSnapshot();
+    this.health.observe(snapshot, this.generation);
     const configuration = this.engine.configuration();
     // Inputs, diagram edits, timeline actions and seeking can supersede a live tweak.
     // Keep only keys still present in the engine, preserving unrelated tweaks and old snapshots.
@@ -1033,6 +1041,7 @@ export class LiveController {
       const found = [...this.checkpoints].reverse().find((p) => p.cp.time <= target);
       if (found) {
         this.runner.restore(found.cp);
+        this.health.restore(found.health, this.generation);
         this.checkpoints = this.checkpoints.filter((p) => p.cp.time <= found.cp.time);
         this.trail = this.trail.slice(0, found.trail);
         this.applySpeed();
@@ -1049,6 +1058,7 @@ export class LiveController {
       this.keepTrace(intent);
     }
     const pending = this.timedPending(after);
+    this.observeHealth();
     let cursor = 0;
     let guard = 0;
     while (guard++ < 10_000) {
@@ -1062,6 +1072,7 @@ export class LiveController {
       const before = s.time;
       const ms = Math.min(1000, target - s.time, this.untilNext(pending, cursor));
       if (!this.updateRunner(() => this.runner?.step(ms / this.speed))) return;
+      this.observeHealth();
       this.captureCheckpoint();
       if (this.runner.state().time <= before && !this.runner.state().waiting) break;
     }
@@ -1538,12 +1549,49 @@ export class LiveController {
     this.nodeProps = new Map(d.nodes.map((n) => [n.id, propsKey(n.props)]));
   }
 
+  /** Replay samples health without building rendering snapshots for models without waiting calls. */
+  private observeHealth(): void {
+    if (revisionAtLeast(this.diagram.planning?.revision, "p3-w1")) {
+      this.dirty = true;
+      this.health.observe(this.realSnapshot(), this.generation);
+    } else {
+      const scale = this.state?.scale ?? 1;
+      const measure = (node: string, field: "failed" | "dropped" | "rejected" | "backlog") =>
+        (this.engine.measure({ node, field }) ?? 0) * scale;
+      this.health.observe(
+        {
+          time: this.engine.metrics().time,
+          scale,
+          nodes: Object.fromEntries(
+            this.diagram.nodes.map(({ id }) => [
+              id,
+              {
+                failed: measure(id, "failed"),
+                dropped: measure(id, "dropped"),
+                rejected: measure(id, "rejected"),
+                backlog: measure(id, "backlog"),
+              },
+            ]),
+          ),
+          edges: {},
+        },
+        this.generation,
+      );
+    }
+  }
+
   private captureCheckpoint(force = false): void {
     if (!this.runner) return;
     const time = this.runner.state().time;
     const last = this.checkpoints.at(-1);
     if (!force && last && time < last.cp.time + 5000) return;
-    this.checkpoints.push({ cp: this.runner.checkpoint(), seq: this.applied, trail: this.trail.length });
+    this.observeHealth();
+    this.checkpoints.push({
+      cp: this.runner.checkpoint(),
+      seq: this.applied,
+      trail: this.trail.length,
+      health: this.health.checkpoint(),
+    });
     // Keep the origin and at most 23 recent samples (~two minutes); old tokens are GC-able.
     if (this.checkpoints.length > 24) this.checkpoints.splice(1, 1);
   }

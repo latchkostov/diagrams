@@ -13,7 +13,7 @@
     "markers": [
       { "atMs": 0, "kind": "traffic", "label": "checkouts" },
       { "atMs": 1000, "kind": "fault", "label": "Fail: Payments" },
-      { "atMs": 1200, "kind": "note", "label": "Retries absorb most of a brief blip. Repeating a POST can still run it twice." },
+      { "atMs": 1200, "kind": "note", "label": "Watch Checkout's attempts per request and the Payments queue. At 3 s, Payments slows for five seconds: quick retries pile up. Repeating a POST can run it twice." },
       { "atMs": 2000, "kind": "fault", "label": "Fail: Payments" },
       { "atMs": 3000, "kind": "fault", "label": "Slow down: Payments" },
       { "atMs": 3500, "kind": "note", "label": "Three attempts amplify the load. The 48 Payments threads can handle 600/s when healthy, but retries approach 900/s." },
@@ -180,7 +180,7 @@
     ]
   },
   "notes": [
-    { "atMs": 1200, "text": "Retries absorb most of a brief blip. Repeating a POST can still run it twice.", "focus": ["payments", "checkout"] },
+    { "atMs": 1200, "text": "Watch Checkout's attempts per request and the Payments queue. At 3 s, Payments slows for five seconds: quick retries pile up. Repeating a POST can run it twice.", "focus": ["payments", "checkout"] },
     { "atMs": 3500, "text": "Three attempts amplify the load. The 48 Payments threads can handle 600/s when healthy, but retries approach 900/s.", "focus": ["payments", "checkout"] },
     { "atMs": 9000, "text": "At 8 s, Payments is fast again with about 3,600 requests already queued. Timeouts do not cancel that work.", "focus": ["payments", "checkout"] },
     { "atMs": 15000, "text": "Over 9,000 requests are queued. The slowdown has gone; the retry storm remains.", "focus": ["payments", "checkout"] }

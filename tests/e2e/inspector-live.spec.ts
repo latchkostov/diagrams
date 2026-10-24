@@ -349,15 +349,15 @@ for (const theme of ["light", "dark"] as const) {
     await expect(area.getByTestId("edge-breaker-call")).toHaveAttribute("data-state", "open");
     await area.getByTestId("inspector-live-section-retries").click();
     await expect(area.getByTestId("edge-section-retries")).toContainText("Retries");
-    await area.getByTestId("inspector-live-section-timeouts").click();
-    await expect(area.getByTestId("edge-section-timeouts")).toContainText("Timeouts");
+    await area.getByTestId("inspector-live-section-outcomes").click();
+    await expect(area.getByTestId("edge-section-outcomes")).toContainText("Timeouts");
     await expect(area.getByTestId("hover-history-chart")).toHaveAccessibleName("Last 10 seconds");
     const history = (await area.getByTestId("hover-history-values").textContent()) ?? "";
     await page.getByTestId("live-play").click();
     await page.clock.runFor(3000);
     await page.getByTestId("live-play").click();
     await expect(area.getByTestId("hover-history-values")).not.toHaveText(history);
-    await expect(area.getByTestId("inspector-live-section-timeouts")).toHaveAttribute("aria-expanded", "true");
+    await expect(area.getByTestId("inspector-live-section-outcomes")).toHaveAttribute("aria-expanded", "true");
     await page.clock.resume();
     const violations = (
       await new AxeBuilder({ page })

@@ -1,5 +1,5 @@
 {
-  "file": { "sha256": "707d60e21cc7c3027e8cff24c9411554ecf7110f09a0bba4476d803bbc2e21f1", "bytes": 14664 },
+  "file": { "sha256": "fc27af42a073d582b8644b1577da56e445f556f71cfb640f5efd9106b335d8c2", "bytes": 14765 },
   "payload": {
     "version": 1,
     "diagram": {
@@ -97,7 +97,7 @@
             { "atMs": 8000, "action": { "do": "fault", "fault": { "kind": "slow", "node": "payments", "factor": 1 } } },
             {
               "atMs": 1200,
-              "action": { "do": "note", "text": "Retries absorb a brief blip. The circuit breaker watches settled attempts.", "focus": ["payments", "checkout"] }
+              "action": { "do": "note", "text": "Watch the Payments connection and queue. At 3 s, Payments slows for five seconds: the breaker pauses failing calls, then tests recovery. Watch for Closed and calls succeeding.", "focus": ["payments", "checkout"] }
             },
             {
               "atMs": 3500,

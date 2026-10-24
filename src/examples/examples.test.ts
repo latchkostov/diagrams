@@ -29,6 +29,17 @@ describe("example metadata and loading", () => {
     for (let i = 0; i < 1000; i++) engine.step(10);
     expect(engine.snapshot().edges["workers-to-receiver"].delivered).toBeGreaterThan(0);
   });
+  it("each retry comparison says what to watch at 1.2 seconds without shortening the lesson", () => {
+    const diagram = files["./retry-storm.json"];
+    for (const simulation of diagram.simulations!) {
+      expect(simulation.durationMs).toBe(60000);
+      const run = createSimulationRun(diagram, simulation);
+      run.step(1200);
+      expect(run.state().note?.text).toMatch(/^Watch /);
+      expect(run.state().note?.atMs).toBe(1200);
+      expect(run.state().note?.text).toContain("At 3 s");
+    }
+  });
   it("covers every public JSON exactly once and keeps eager metadata in sync", () => {
     const slugs = Object.keys(files)
       .map((path) => path.slice(2, -5))
