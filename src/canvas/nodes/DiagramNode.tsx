@@ -1,4 +1,4 @@
-import { memo, type CSSProperties } from "react";
+import { memo, useMemo, type CSSProperties } from "react";
 import { Icon } from "../../components/Icon";
 import { t, useLocale } from "../../i18n";
 import { stencilLabel } from "../../i18n/stencils";
@@ -59,6 +59,24 @@ function DiagramNodeImpl({
   const { Component } = getNodeVariant(nodeVariant);
   const showDeps = useShowDependencies();
   const hasDoc = Boolean(data.description?.trim());
+  const handles = useMemo(
+    () =>
+      SIDES.map((side) => (
+        <Handle
+          key={side}
+          id={side}
+          type="source"
+          position={sidePosition[side]}
+          className={`dn-handle${connectPort === side ? " is-connect-port" : ""}`}
+          data-testid={`handle-${id}-${side}`}
+        />
+      )),
+    [connectPort, id],
+  );
+  const chip = useMemo(
+    () => single && !dragging && <GrowChip id={id} x={positionAbsoluteX} y={positionAbsoluteY} />,
+    [single, dragging, id, positionAbsoluteX, positionAbsoluteY],
+  );
 
   return (
     <div
@@ -98,17 +116,8 @@ function DiagramNodeImpl({
             <Icon name="note" size={11} />
           </span>
         ))}
-      {SIDES.map((side) => (
-        <Handle
-          key={side}
-          id={side}
-          type="source"
-          position={sidePosition[side]}
-          className={`dn-handle${connectPort === side ? " is-connect-port" : ""}`}
-          data-testid={`handle-${id}-${side}`}
-        />
-      ))}
-      {single && !dragging && <GrowChip id={id} x={positionAbsoluteX} y={positionAbsoluteY} />}
+      {handles}
+      {chip}
       {!showDeps && <DependencyPips id={id} />}
       {unknown && (
         <div className="dn-unknown" title={`Unknown stencil "${data.stencil}"`}>

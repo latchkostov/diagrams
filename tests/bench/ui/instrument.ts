@@ -91,6 +91,8 @@ export const RENDER_HOOK = `(() => {
   let on = false;
   let commits = 0;
   const counts = new Map();
+  let explain = false;
+  const causes = new Map();
   const name = (t) => t.displayName || t.name || (t.render && (t.render.displayName || t.render.name)) || (t.type && (t.type.displayName || t.type.name)) || "anonymous";
   // FunctionComponent 0, ClassComponent 1, ForwardRef 11, SimpleMemoComponent 15: the fibers that run a component.
   // MemoComponent (14) is the wrapper around one of those, counted through its child.
@@ -112,6 +114,25 @@ export const RENDER_HOOK = `(() => {
         if (COMPONENT.has(f.tag) && (!f.alternate || (f.flags & 1) === 1)) {
           const t = f.type;
           counts.set(t, (counts.get(t) || 0) + 1);
+          // Opt-in why-did-you-render style diagnostics. Test-installed only, never app code.
+          if (explain) {
+            const before = f.alternate;
+            const props = before ? Object.keys(f.memoizedProps || {}).filter(k => !Object.is(f.memoizedProps[k], before.memoizedProps?.[k])) : [];
+            const hooks = [];
+            let a = f.memoizedState, b = before?.memoizedState, index = 0;
+            while (a && b) {
+              if (!Object.is(a.memoizedState, b.memoizedState)) hooks.push(index);
+              a = a.next; b = b.next; index++;
+            }
+            let aContext = f.dependencies?.firstContext, bContext = before?.dependencies?.firstContext;
+            let context = false;
+            while (aContext && bContext) {
+              context ||= !Object.is(aContext.memoizedValue, bContext.memoizedValue);
+              aContext = aContext.next; bContext = bContext.next;
+            }
+            const cause = JSON.stringify({ component: name(t), props, hooks, context, parent: f.return?.type ? name(f.return.type) : null });
+            causes.set(cause, (causes.get(cause) || 0) + 1);
+          }
         }
         // Children not reconciled in this commit are shared with the alternate tree: skip them.
         if (f.child && !(f.alternate && f.alternate.child === f.child)) stack.push(f.child);
@@ -120,14 +141,14 @@ export const RENDER_HOOK = `(() => {
     },
   };
   window.__benchRenders = {
-    start() { counts.clear(); commits = 0; on = true; },
+    start(why = false) { counts.clear(); causes.clear(); explain = why; commits = 0; on = true; },
     stop() {
       on = false;
       const byName = {};
       for (const [t, n] of counts) { const k = name(t); byName[k] = (byName[k] || 0) + n; }
       let total = 0;
       for (const n of counts.values()) total += n;
-      return { commits, total, byName };
+      return { commits, total, byName, ...(explain ? { causes: [...causes].map(([cause, count]) => ({ ...JSON.parse(cause), count })) } : {}) };
     },
   };
 })();`;
@@ -149,8 +170,20 @@ declare global {
       flush(): void;
     };
     __benchRenders?: {
-      start(): void;
-      stop(): { commits: number; total: number; byName: Record<string, number> };
+      start(explain?: boolean): void;
+      stop(): {
+        commits: number;
+        total: number;
+        byName: Record<string, number>;
+        causes?: {
+          component: string;
+          props: string[];
+          hooks: number[];
+          context: boolean;
+          parent: string | null;
+          count: number;
+        }[];
+      };
     };
   }
 }

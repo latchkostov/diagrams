@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef } from "react";
+import { useCallback, useLayoutEffect, useRef } from "react";
 import type { DiagramFlowEdge, FlowNode } from "../types";
 import type { CameraController } from "./controller";
 
@@ -34,7 +34,7 @@ export function usePaneCamera(controller: CameraController, p: PaneInputs) {
   const { live, presenting } = p;
   // The Checks card opened over a diagram that was all in view: refit it clear of the card (the card is floating
   // chrome, data-canvas-overlay), once the card has drawn. A view the user panned or zoomed stays put.
-  const checksMounted = () => controller.dispatch({ type: "overlay.opened" });
+  const checksMounted = useCallback(() => controller.dispatch({ type: "overlay.opened" }), [controller]);
   const dock = `${paletteHidden}:${aiDock.open}:${aiDock.open ? Math.round(aiDock.width / 40) : 0}`;
   /** The pane's geometry. */
   const dockKey = `${dock}:${inspectorHidden}:${sheetResize}`;

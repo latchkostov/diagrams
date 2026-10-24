@@ -1,6 +1,6 @@
 import { NodePanel } from "./inspector/NodePanel";
 import { defineLazySurface } from "../lib/lazySurface";
-import { useLayoutEffect, type ReactNode } from "react";
+import { useLayoutEffect, useMemo, type ReactNode } from "react";
 import { Icon } from "../components/Icon";
 import { t, useLocale } from "../i18n";
 import { kindLabel } from "../i18n/chrome";
@@ -8,7 +8,7 @@ import { type LoadStatus } from "../lib/lazyLoad";
 
 import { type InspectorProps } from "./inspector/types";
 import { SheetResizeHandle } from "./SheetResizeHandle";
-import { InteractionContext, useInteractionOrLocal, type InteractionController } from "./interaction";
+import { InteractionContext, useInteractionOrLocal } from "./interaction";
 
 import { PanelUnavailable } from "./inspector/PanelUnavailable";
 export { PanelUnavailable } from "./inspector/PanelUnavailable";
@@ -71,14 +71,11 @@ const MultiPanel = defineLazySurface({
 });
 
 export function Inspector(p: InspectorProps) {
-  // The canvas's focus controller moves focus into the fields; outside a canvas (the Lab), one of its own.
-  const { controller, local } = useInteractionOrLocal();
-  const sheet = <InspectorSheet {...p} interaction={controller} />;
-  return local ? <InteractionContext.Provider value={controller}>{sheet}</InteractionContext.Provider> : sheet;
-}
-
-function InspectorSheet({ interaction, ...p }: InspectorProps & { interaction: InteractionController }) {
-  useLocale();
+  // The Lab can render an inspector without a canvas's interaction provider.
+  const { controller: interaction, local } = useInteractionOrLocal();
+  const within = (sheet: ReactNode) =>
+    local ? <InteractionContext.Provider value={interaction}>{sheet}</InteractionContext.Provider> : sheet;
+  const locale = useLocale();
 
   // A field asked for (F2 then a name; a double-click then a name) takes focus at once, so the next key typed
   // reaches it, and again a frame later only if something took focus back meanwhile (the menu that asked for it,
@@ -100,27 +97,6 @@ function InspectorSheet({ interaction, ...p }: InspectorProps & { interaction: I
   }, [p.focus, takeFocus, interaction]);
   // Every commit of the sheet: a field waiting for its panel (or for the inspector to open) may be there now.
   useLayoutEffect(() => interaction.rendered());
-
-  if (p.collapsed) {
-    return (
-      <aside
-        className="inspector is-collapsed"
-        data-testid="inspector"
-        data-collapsed="1"
-        aria-label={t("inspector.inspector")}
-      >
-        <button
-          className="icon-btn"
-          onClick={p.onToggle}
-          title={t("inspector.showInspector")}
-          aria-label={t("inspector.showInspector")}
-          data-testid="inspector-toggle"
-        >
-          <Icon name="panel-right" />
-        </button>
-      </aside>
-    );
-  }
 
   const annotations = p.selectedAnnotations ?? [];
   const n = p.selectedNodes.length + p.selectedGroups.length + p.selectedEdges.length + annotations.length;
@@ -150,7 +126,51 @@ function InspectorSheet({ interaction, ...p }: InspectorProps & { interaction: I
     content = <MultiPanel {...p} />;
   }
 
-  return (
+  const head = useMemo(
+    () => (
+      <>
+        <SheetResizeHandle onResize={p.onResize} />
+        <div className="insp-head">
+          <span className="insp-title" data-testid="inspector-title">
+            {title}
+          </span>
+          <button
+            className="icon-btn"
+            onClick={p.onToggle}
+            title={t("inspector.hideInspector")}
+            aria-label={t("inspector.hideInspector")}
+            data-testid="inspector-toggle"
+          >
+            <Icon name="panel-right" />
+          </button>
+        </div>
+      </>
+    ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- The active locale invalidates translated text.
+    [p.onResize, p.onToggle, locale, title],
+  );
+  if (p.collapsed) {
+    return within(
+      <aside
+        className="inspector is-collapsed"
+        data-testid="inspector"
+        data-collapsed="1"
+        aria-label={t("inspector.inspector")}
+      >
+        <button
+          className="icon-btn"
+          onClick={p.onToggle}
+          title={t("inspector.showInspector")}
+          aria-label={t("inspector.showInspector")}
+          data-testid="inspector-toggle"
+        >
+          <Icon name="panel-right" />
+        </button>
+      </aside>,
+    );
+  }
+
+  return within(
     <aside
       className="inspector"
       data-testid="inspector"
@@ -160,27 +180,13 @@ function InspectorSheet({ interaction, ...p }: InspectorProps & { interaction: I
         n === 1 ? (p.selectedNodes[0] ?? p.selectedEdges[0] ?? p.selectedGroups[0] ?? annotations[0])?.id : undefined
       }
     >
-      <SheetResizeHandle onResize={p.onResize} />
-      <div className="insp-head">
-        <span className="insp-title" data-testid="inspector-title">
-          {title}
-        </span>
-        <button
-          className="icon-btn"
-          onClick={p.onToggle}
-          title={t("inspector.hideInspector")}
-          aria-label={t("inspector.hideInspector")}
-          data-testid="inspector-toggle"
-        >
-          <Icon name="panel-right" />
-        </button>
-      </div>
+      {head}
       {/* Where focus goes after a finding's fix when no other finding is left to take it. */}
       <div className="insp-body" data-testid="inspector-body" data-check-fallback-scope>
         {n === 1 && !p.selectedNodes[0] && p.findings}
         {content}
       </div>
-    </aside>
+    </aside>,
   );
 }
 

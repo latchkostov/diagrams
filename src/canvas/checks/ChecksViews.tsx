@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useSyncExternalStore, type ReactNode } from "react";
 import { Icon } from "../../components/Icon";
 import { lazyComponent } from "../../lib/lazyLoad";
 import type { RowHost } from "../../checks/ui/FindingRow";
@@ -42,8 +42,7 @@ export function DiagramCardMeta({
   open: boolean;
   showWarnings: boolean;
 }) {
-  const state = useChecksState(store);
-  const warnings = showWarnings ? state.warnings : 0;
+  const warnings = useSyncExternalStore(store.subscribe, () => (showWarnings ? store.get().warnings : 0));
   if (!reset && !warnings) return null;
   return (
     <div className="diagram-card-meta">

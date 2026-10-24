@@ -161,6 +161,7 @@ const ShortcutsDialog = lazyComponent(
 
 const nodeTypes: NodeTypes = canvasNodeTypes;
 const edgeTypes: EdgeTypes = { flow: FlowEdge };
+const EDGE_MARKERS = <EdgeMarkers />;
 
 /** Editing: Shift+click and Ctrl/Cmd+click both toggle an item in the selection, as in other tools. */
 const MULTI_SELECT_KEYS = ["Shift", "Control", "Meta"];
@@ -696,13 +697,13 @@ function CanvasInner({
   // covers mistakes). Examples and shared diagrams keep "Edited, reset".
   const ownDiagram = isLibrarySlug(slug) || slug === DRAFT_SLUG;
   /** Reset is a normal (undoable) edit. */
-  const reset = () => {
+  const reset = useCallback(() => {
     const f = toFlow(original);
     setMeta(f.meta);
     setNodes(f.nodes);
     setEdges(f.edges);
     resetView();
-  };
+  }, [original, setNodes, setEdges, resetView]);
 
   // Editing gestures (D4, D5): a drag on empty canvas draws the selection box, the wheel pans, and
   // Space+drag or the middle button pan. Live view, presentation and embeds keep drag-to-pan.
@@ -848,7 +849,10 @@ function CanvasInner({
     hideTip();
   }, [hideTip]);
 
-  const onPaneDoubleClick = paneQuickAdd(readOnly, screenToFlowPosition, interaction, pickNamed, editor);
+  const onPaneDoubleClick = useMemo(
+    () => paneQuickAdd(readOnly, screenToFlowPosition, interaction, pickNamed, editor),
+    [readOnly, screenToFlowPosition, interaction, pickNamed, editor],
+  );
 
   const [onRailDragOver, endRailDrop, onDrop] = useRailPlacement(
     editGestures,
@@ -918,8 +922,10 @@ function CanvasInner({
     nothingSelected,
     soleId,
   } = useSelectionSummary(nodes, edges);
-  const inspectorFindings =
-    soleId && checksOn ? <SelectionFindings store={checks} id={soleId} host={checksHost} /> : undefined;
+  const inspectorFindings = useMemo(
+    () => (soleId && checksOn ? <SelectionFindings store={checks} id={soleId} host={checksHost} /> : undefined),
+    [soleId, checksOn, checks, checksHost],
+  );
   // Below ROOMY an open AI panel folds the stencils to their rail too, as live view does: at 1440 the
   // dock, the stencils and the inspector's rail left the diagram 780 px.
   const paletteHidden = paletteCollapsed || ((live || (narrow && aiDockOpen)) && !openedByHand.palette);
@@ -1030,7 +1036,295 @@ function CanvasInner({
   const nodeCount = diagramNodes.length;
   /** Anything drawn: an annotations-only canvas isn't "empty", though there's nothing to simulate. */
   const contentCount = nodeCount + annotationNodes.length;
+  const inspectorCounts = useMemo(
+    () => ({ nodes: nodeCount, edges: edges.length, groups: groupNodes.length }),
+    [nodeCount, edges.length, groupNodes.length],
+  );
+  const inspectorResize = useCallback(() => setSheetResize((revision) => revision + 1), []);
+  const inspectorToggle = useCallback(() => {
+    interaction.dispatch({ type: "inspector.toggled", cause: "panel" });
+    setPref("inspector", inspectorHidden);
+    setOpenedByHand((o) => ({ ...o, inspector: inspectorHidden }));
+  }, [interaction, setPref, inspectorHidden]);
+  const namedNode = selectedNodes[0]?.id;
+  const onNamed = useCallback(
+    () => setNaming((current) => (current?.node === namedNode ? null : current)),
+    [namedNode],
+  );
   const diagramColor = meta.color ? resolveAnnotationColor(meta.color).hex : undefined;
+  const canUndo = editor.canUndo(history.canUndo);
+  const canRedo = editor.canRedo(history.canRedo);
+
+  // Document edits change the controlled graph, not its chrome. Reusing these elements also
+  // lets React Flow's own memoized children bail out of parent reconciliation.
+  const flowChildren = useMemo(
+    () => (
+      <>
+        <ZoomVar host={wrapper} />
+        {!readOnly && <ConnectionRadius />}
+        {prefs.grid && <DotGrid />}
+        {editGestures && <svg ref={guideLayer} className="smart-guides" data-testid="smart-guides" aria-hidden />}
+        {editGestures && <LandingOutline />}
+        {!hideChrome && (
+          <CanvasControls
+            editor={editor}
+            canUndo={canUndo}
+            canRedo={canRedo}
+            menus={interaction}
+            menu={menu}
+            fit={fit}
+            zoomedByButton={zoomedByButton}
+            onShortcuts={showShortcuts}
+          />
+        )}
+        {!hideChrome && prefs.minimap && contentCount > 0 && <CanvasMinimap />}
+        {/* Nothing to simulate on a blank canvas: the Live toggle appears with the first node. */}
+        {(nodeCount > 0 || live) && (
+          <LiveView
+            readOnly={readOnly}
+            initial={viewer?.live}
+            onHandle={receiveLiveHandle}
+            editor={readOnly ? undefined : editor}
+            diagram={viewerDiagram}
+            presenting={presenting}
+            simulations={meta.simulations}
+            planning={meta.planning}
+            privateDiagram={privacy !== null}
+            documentId={documentId}
+            onLiveChange={onLiveChange}
+            onPanelChange={setLivePanelOpen}
+            onSaveDiagram={
+              readOnly
+                ? undefined
+                : (diagram) => {
+                    const mod = flushSave(diagram);
+                    if (mod !== undefined) setModified(mod);
+                  }
+            }
+          />
+        )}
+        {viewer?.controls && <CanvasFitContext.Provider value={fit}>{viewer.controls}</CanvasFitContext.Provider>}
+        {checksOn && checksCard && <ChecksMarkersView store={checks} />}
+        <EdgeMessages meta={meta} />
+        {presence && <PresenceLayer presence={presence} onChange={presenceChanged} />}
+      </>
+    ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- Refresh translated descendants when the locale changes.
+    [
+      locale,
+      wrapper,
+      readOnly,
+      prefs.grid,
+      prefs.minimap,
+      editGestures,
+      guideLayer,
+      hideChrome,
+      editor,
+      interaction,
+      menu,
+      fit,
+      zoomedByButton,
+      showShortcuts,
+      contentCount,
+      nodeCount,
+      live,
+      viewer,
+      receiveLiveHandle,
+      viewerDiagram,
+      presenting,
+      meta,
+      privacy,
+      documentId,
+      onLiveChange,
+      flushSave,
+      checksOn,
+      checksCard,
+      checks,
+      presence,
+      presenceChanged,
+      canUndo,
+      canRedo,
+    ],
+  );
+  const overlays = useMemo(
+    () => (
+      <CanvasOverlays
+        card={card}
+        cardCovers={cardCovers}
+        presenting={presenting}
+        privacy={privacy}
+        hideChrome={hideChrome}
+        nodeCount={nodeCount}
+        meta={meta}
+        checks={checks}
+        checksCard={checksCard}
+        openingFitDone={openingFitDone}
+        modified={modified}
+        ownDiagram={ownDiagram}
+        reset={reset}
+        checksOn={checksOn}
+        checksHost={checksHost}
+        checksTop={checksTop}
+        checksMounted={checksMounted}
+        onExitPresent={onExitPresent}
+        contentCount={contentCount}
+        live={live}
+        start={start}
+        startDismissed={startDismissed}
+        onBlank={() => {
+          setStartDismissed(true);
+          // A blank canvas starts from the stencil list: open it and put the cursor in its search.
+          setPaletteCollapsed(false);
+          setOpenedByHand((o) => ({ ...o, palette: true }));
+          interaction.dispatch({ type: "start.blank" });
+        }}
+        paletteHidden={paletteHidden}
+        hintSeen={hintSeen}
+        dismissHint={dismissHint}
+      />
+    ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- Refresh translated overlay text when the locale changes.
+    [
+      locale,
+      card,
+      cardCovers,
+      presenting,
+      privacy,
+      hideChrome,
+      nodeCount,
+      meta,
+      checks,
+      checksCard,
+      openingFitDone,
+      modified,
+      ownDiagram,
+      reset,
+      checksOn,
+      checksHost,
+      checksTop,
+      checksMounted,
+      onExitPresent,
+      contentCount,
+      live,
+      start,
+      startDismissed,
+      setStartDismissed,
+      interaction,
+      paletteHidden,
+      hintSeen,
+      dismissHint,
+    ],
+  );
+  const tips = useMemo(
+    () => <NodeTipLayer tips={nodeTips} enabled={tipsEnabled} covered={!!menu} root={wrapper} />,
+    [nodeTips, tipsEnabled, menu, wrapper],
+  );
+
+  const flowView = useMemo(
+    () => (
+      <ReactFlow<FlowNode, DiagramFlowEdge>
+        fitView={bootstrapFit}
+        fitViewOptions={presenting ? FIT_PRESENT : FIT}
+        // Focus brings a node into view clear of the chrome (revealFocused above).
+        autoPanOnNodeFocus={false}
+        onNodesChange={handleNodesChange}
+        onEdgesChange={handleEdgesChange}
+        onConnect={onConnect}
+        onConnectStart={onConnectStart}
+        onConnectEnd={onConnectEnd}
+        onClickConnectStart={onClickConnectStart}
+        onClickConnectEnd={onClickConnectEnd}
+        connectionLineComponent={ConnectionLine}
+        isValidConnection={isValidConnection}
+        connectionMode={ConnectionMode.Loose}
+        onEdgeDoubleClick={readOnly ? undefined : onEdgeDoubleClick}
+        // Every drag, the selection's frame included (see onNodeDragStart).
+        onNodeDragStart={onNodeDragStart}
+        onNodeDragStop={onNodeDragStop}
+        onPaneContextMenu={onPaneContextMenu}
+        onNodeContextMenu={onNodeContextMenu}
+        onEdgeContextMenu={onEdgeContextMenu}
+        onSelectionContextMenu={onSelectionContextMenu}
+        onDoubleClick={onPaneDoubleClick}
+        onMoveStart={onMoveStart}
+        onMove={onMove}
+        onNodeMouseEnter={onNodeMouseEnter}
+        onNodeMouseLeave={onNodeMouseLeave}
+        nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
+        colorMode={theme}
+        // Bottom-right, lifted above the minimap (canvas.css): never under the live bar or the hint.
+        attributionPosition="bottom-right"
+        proOptions={viewer?.attribution === "hide" ? HIDE_ATTRIBUTION : undefined}
+        minZoom={0.15}
+        maxZoom={2.5}
+        snapToGrid={prefs.snap}
+        snapGrid={SNAP_GRID}
+        elevateNodesOnSelect={false}
+        // Space held: a drag pans even from a node, so nodes neither drag nor connect meanwhile.
+        nodesDraggable={!readOnly && !spaceHeld}
+        nodesConnectable={!readOnly && !spaceHeld}
+        elementsSelectable={!readOnly}
+        // The wheel and a two-finger swipe pan (Shift+wheel sideways); Ctrl/Cmd+wheel and pinch zoom
+        // at the pointer. Embedded in a page, the wheel scrolls the page (pinch / Ctrl+wheel zoom).
+        panOnScroll={!readOnly || !!viewer?.wheel}
+        panOnScrollSpeed={1}
+        zoomOnScroll={false}
+        preventScrolling={!readOnly || !!viewer?.wheel}
+        // Editing: a drag on empty canvas draws the selection box (it picks what it touches), the
+        // middle button and Space+drag pan, Shift/Ctrl/Cmd+click toggle. Elsewhere a drag pans.
+        panOnDrag={editGestures && !spaceHeld ? PAN_MIDDLE : true}
+        // usePanKeys owns Space; React Flow's global listener would cancel reading-region scrolling.
+        panActivationKeyCode={null}
+        selectionOnDrag={editGestures}
+        selectionKeyCode={editGestures ? null : "Shift"}
+        multiSelectionKeyCode={editGestures ? MULTI_SELECT_KEYS : undefined}
+        zoomOnDoubleClick={false}
+        deleteKeyCode={null}
+        connectionLineType={
+          edgeStyle === "bezier"
+            ? ConnectionLineType.Bezier
+            : edgeStyle === "straight"
+              ? ConnectionLineType.Straight
+              : ConnectionLineType.SmoothStep
+        }
+      >
+        {flowChildren}
+      </ReactFlow>
+    ),
+    [
+      bootstrapFit,
+      presenting,
+      handleNodesChange,
+      handleEdgesChange,
+      onConnect,
+      onConnectStart,
+      onConnectEnd,
+      onClickConnectStart,
+      onClickConnectEnd,
+      isValidConnection,
+      readOnly,
+      onEdgeDoubleClick,
+      onNodeDragStart,
+      onNodeDragStop,
+      onPaneContextMenu,
+      onNodeContextMenu,
+      onEdgeContextMenu,
+      onSelectionContextMenu,
+      onPaneDoubleClick,
+      onMoveStart,
+      onMove,
+      onNodeMouseEnter,
+      onNodeMouseLeave,
+      theme,
+      viewer,
+      prefs.snap,
+      spaceHeld,
+      editGestures,
+      edgeStyle,
+      flowChildren,
+    ],
+  );
 
   return (
     <CameraContext.Provider value={controller}>
@@ -1115,162 +1409,12 @@ function CanvasInner({
               }}
               onDrop={onDrop}
             >
-              <EdgeMarkers />
+              {EDGE_MARKERS}
               {!hideChrome && copyNotice && <CopyNotice text={copyNotice} />}
-              <ReactFlow<FlowNode, DiagramFlowEdge>
-                nodes={ariaNodes}
-                fitView={bootstrapFit}
-                fitViewOptions={presenting ? FIT_PRESENT : FIT}
-                // Focus brings a node into view clear of the chrome (revealFocused above).
-                autoPanOnNodeFocus={false}
-                edges={ariaEdges}
-                onNodesChange={handleNodesChange}
-                onEdgesChange={handleEdgesChange}
-                onConnect={onConnect}
-                onConnectStart={onConnectStart}
-                onConnectEnd={onConnectEnd}
-                onClickConnectStart={onClickConnectStart}
-                onClickConnectEnd={onClickConnectEnd}
-                connectionLineComponent={ConnectionLine}
-                isValidConnection={isValidConnection}
-                connectionMode={ConnectionMode.Loose}
-                onEdgeDoubleClick={readOnly ? undefined : onEdgeDoubleClick}
-                // Every drag, the selection's frame included (see onNodeDragStart).
-                onNodeDragStart={onNodeDragStart}
-                onNodeDragStop={onNodeDragStop}
-                onPaneContextMenu={onPaneContextMenu}
-                onNodeContextMenu={onNodeContextMenu}
-                onEdgeContextMenu={onEdgeContextMenu}
-                onSelectionContextMenu={onSelectionContextMenu}
-                onDoubleClick={onPaneDoubleClick}
-                onMoveStart={onMoveStart}
-                onMove={onMove}
-                onNodeMouseEnter={onNodeMouseEnter}
-                onNodeMouseLeave={onNodeMouseLeave}
-                nodeTypes={nodeTypes}
-                edgeTypes={edgeTypes}
-                colorMode={theme}
-                // Bottom-right, lifted above the minimap (canvas.css): never under the live bar or the hint.
-                attributionPosition="bottom-right"
-                proOptions={viewer?.attribution === "hide" ? HIDE_ATTRIBUTION : undefined}
-                minZoom={0.15}
-                maxZoom={2.5}
-                snapToGrid={prefs.snap}
-                snapGrid={SNAP_GRID}
-                elevateNodesOnSelect={false}
-                // Space held: a drag pans even from a node, so nodes neither drag nor connect meanwhile.
-                nodesDraggable={!readOnly && !spaceHeld}
-                nodesConnectable={!readOnly && !spaceHeld}
-                elementsSelectable={!readOnly}
-                // The wheel and a two-finger swipe pan (Shift+wheel sideways); Ctrl/Cmd+wheel and pinch zoom
-                // at the pointer. Embedded in a page, the wheel scrolls the page (pinch / Ctrl+wheel zoom).
-                panOnScroll={!readOnly || !!viewer?.wheel}
-                panOnScrollSpeed={1}
-                zoomOnScroll={false}
-                preventScrolling={!readOnly || !!viewer?.wheel}
-                // Editing: a drag on empty canvas draws the selection box (it picks what it touches), the
-                // middle button and Space+drag pan, Shift/Ctrl/Cmd+click toggle. Elsewhere a drag pans.
-                panOnDrag={editGestures && !spaceHeld ? PAN_MIDDLE : true}
-                // usePanKeys owns Space; React Flow's global listener would cancel reading-region scrolling.
-                panActivationKeyCode={null}
-                selectionOnDrag={editGestures}
-                selectionKeyCode={editGestures ? null : "Shift"}
-                multiSelectionKeyCode={editGestures ? MULTI_SELECT_KEYS : undefined}
-                zoomOnDoubleClick={false}
-                deleteKeyCode={null}
-                connectionLineType={
-                  edgeStyle === "bezier"
-                    ? ConnectionLineType.Bezier
-                    : edgeStyle === "straight"
-                      ? ConnectionLineType.Straight
-                      : ConnectionLineType.SmoothStep
-                }
-              >
-                <ZoomVar host={wrapper} />
-                {!readOnly && <ConnectionRadius />}
-                {prefs.grid && <DotGrid />}
-                {editGestures && (
-                  <svg ref={guideLayer} className="smart-guides" data-testid="smart-guides" aria-hidden />
-                )}
-                {editGestures && <LandingOutline />}
-                {!hideChrome && (
-                  <CanvasControls
-                    editor={editor}
-                    menus={interaction}
-                    menu={menu}
-                    fit={fit}
-                    zoomedByButton={zoomedByButton}
-                    onShortcuts={showShortcuts}
-                  />
-                )}
-                {!hideChrome && prefs.minimap && contentCount > 0 && <CanvasMinimap />}
-                {/* Nothing to simulate on a blank canvas: the Live toggle appears with the first node. */}
-                {(nodeCount > 0 || live) && (
-                  <LiveView
-                    readOnly={readOnly}
-                    initial={viewer?.live}
-                    onHandle={receiveLiveHandle}
-                    editor={readOnly ? undefined : editor}
-                    diagram={viewerDiagram}
-                    presenting={presenting}
-                    simulations={meta.simulations}
-                    planning={meta.planning}
-                    privateDiagram={privacy !== null}
-                    documentId={documentId}
-                    onLiveChange={onLiveChange}
-                    onPanelChange={setLivePanelOpen}
-                    onSaveDiagram={
-                      readOnly
-                        ? undefined
-                        : (diagram) => {
-                            const mod = flushSave(diagram);
-                            if (mod !== undefined) setModified(mod);
-                          }
-                    }
-                  />
-                )}
-                {viewer?.controls && (
-                  <CanvasFitContext.Provider value={fit}>{viewer.controls}</CanvasFitContext.Provider>
-                )}
-                {checksOn && checksCard && <ChecksMarkersView store={checks} />}
-                <EdgeMessages meta={meta} />
-                {presence && <PresenceLayer presence={presence} onChange={presenceChanged} />}
-              </ReactFlow>
+              {flowView}
+              <FlowGraph nodes={ariaNodes} edges={ariaEdges} />
 
-              <CanvasOverlays
-                card={card}
-                cardCovers={cardCovers}
-                presenting={presenting}
-                privacy={privacy}
-                hideChrome={hideChrome}
-                nodeCount={nodeCount}
-                meta={meta}
-                checks={checks}
-                checksCard={checksCard}
-                openingFitDone={openingFitDone}
-                modified={modified}
-                ownDiagram={ownDiagram}
-                reset={reset}
-                checksOn={checksOn}
-                checksHost={checksHost}
-                checksTop={checksTop}
-                checksMounted={checksMounted}
-                onExitPresent={onExitPresent}
-                contentCount={contentCount}
-                live={live}
-                start={start}
-                startDismissed={startDismissed}
-                onBlank={() => {
-                  setStartDismissed(true);
-                  // A blank canvas starts from the stencil list: open it and put the cursor in its search.
-                  setPaletteCollapsed(false);
-                  setOpenedByHand((o) => ({ ...o, palette: true }));
-                  interaction.dispatch({ type: "start.blank" });
-                }}
-                paletteHidden={paletteHidden}
-                hintSeen={hintSeen}
-                dismissHint={dismissHint}
-              />
+              {overlays}
             </div>
             {!hideChrome && (
               <Inspector
@@ -1284,15 +1428,11 @@ function CanvasInner({
                 selectedAnnotations={selectedAnnotations}
                 groups={groupNodes}
                 nodeLabel={(id) => labels.get(id) ?? id}
-                counts={{ nodes: nodeCount, edges: edges.length, groups: groupNodes.length }}
+                counts={inspectorCounts}
                 collapsed={inspectorHidden}
-                onResize={() => setSheetResize((revision) => revision + 1)}
+                onResize={inspectorResize}
                 onTextSettled={settleText}
-                onToggle={() => {
-                  interaction.dispatch({ type: "inspector.toggled", cause: "panel" });
-                  setPref("inspector", inspectorHidden);
-                  setOpenedByHand((o) => ({ ...o, inspector: inspectorHidden }));
-                }}
+                onToggle={inspectorToggle}
                 focus={inspectorFocus}
                 takeFocus={takeInspectorFocus}
                 connection={
@@ -1300,7 +1440,7 @@ function CanvasInner({
                     ? { id: naming.edge, label: edges.find((e) => e.id === naming.edge)?.data?.label ?? "" }
                     : undefined
                 }
-                onNamed={() => setNaming((current) => (current?.node === selectedNodes[0]?.id ? null : current))}
+                onNamed={onNamed}
                 findings={inspectorFindings}
               />
             )}
@@ -1330,9 +1470,20 @@ function CanvasInner({
               {announcement.text}
             </div>
           )}
-          <NodeTipLayer tips={nodeTips} enabled={tipsEnabled} covered={!!menu} root={wrapper} />
+          {tips}
         </DiagramContext.Provider>
       </InteractionContext.Provider>
     </CameraContext.Provider>
   );
+}
+
+/** The controlled graph's only React Flow write, with the same passive handoff as StoreUpdater.
+ * Keep graph changes out of ReactFlow's props so its unrelated infrastructure can bail out.
+ * No defaultNodes/defaultEdges: selection, dragging and commands still use our controlled handlers.
+ */
+function FlowGraph({ nodes, edges }: { nodes: FlowNode[]; edges: DiagramFlowEdge[] }) {
+  const store = useStoreApi<FlowNode, DiagramFlowEdge>();
+  useEffect(() => store.getState().setNodes(nodes), [store, nodes]);
+  useEffect(() => store.getState().setEdges(edges), [store, edges]);
+  return null;
 }

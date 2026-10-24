@@ -5,6 +5,7 @@ import { CHIP_ORDER, freeSide, type Rect } from "./chipPlacement";
 import { sidePosition } from "../edges/routing";
 import { useDiagram } from "../DiagramContext";
 import { formatCombo } from "../../editor/shortcuts";
+import { createGrowEdgesEqual } from "./growEdges";
 
 /**
  * The "+" on a single selected node (D3): a click opens quick-add for the next node, connected downstream;
@@ -19,10 +20,13 @@ export function GrowChip({ id, x, y }: { id: string; x: number; y: number }) {
   // React Flow learns a handle's place when its node is measured: tell it about the chip as it moves.
   // On screen the chip keeps its size at any zoom, so in flow terms it moves as the zoom does.
   const zoomStep = useStore((s) => Math.floor(s.transform[2] * 50));
+  const width = useStore((s) => s.nodeLookup.get(id)?.measured?.width);
+  const height = useStore((s) => s.nodeLookup.get(id)?.measured?.height);
   /** The side the last placement chose: until the chip has moved there, telling React Flow would be told again. */
   const placed = useRef<Side | "corner" | undefined>(undefined);
   // Where the edges' labels are: they move when edges change (an insert, a reconnect) or reroute.
-  const edges = useStore((s) => s.edges);
+  const [edgesEqual] = useState(createGrowEdgesEqual);
+  const edges = useStore((s) => s.edges, edgesEqual);
   useLayoutEffect(() => {
     const place = () => {
       const node = ref.current?.closest(".react-flow__node");
@@ -42,7 +46,7 @@ export function GrowChip({ id, x, y }: { id: string; x: number; y: number }) {
     // Again once the routes and their labels (and the zoom's CSS) have caught up with this change.
     const id = requestAnimationFrame(() => requestAnimationFrame(place));
     return () => cancelAnimationFrame(id);
-  }, [x, y, direction, edges, zoomStep]);
+  }, [x, y, width, height, direction, edges, zoomStep]);
   // After the placement above (effects run in order): when it moves the chip, React Flow measures it once, from the
   // render that moved it, not also from this one (a selection measured the new chip twice).
   useLayoutEffect(() => {

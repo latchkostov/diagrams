@@ -27,10 +27,22 @@ import { GROUP_PREFIX, type DiagramFlowEdge, type FlowNode, type GroupFlowNode }
 import { useRevealFocused, type useRevealSelection, type CameraController } from "../camera";
 import type { FocusApi } from "../interaction";
 
+/** Memoize a filtered projection by its members, rather than by the whole graph's identity. */
+function sharedFilter<T, U extends T>(predicate: (value: T) => value is U) {
+  let previous: U[] = [];
+  return (values: T[]) => {
+    const next = values.filter(predicate);
+    if (next.length !== previous.length || next.some((value, i) => value !== previous[i])) previous = next;
+    return previous;
+  };
+}
+
 export function useSelectionSummary(nodes: FlowNode[], edges: DiagramFlowEdge[]) {
   const diagramNodes = useMemo(() => nodes.filter(isDiagramNode), [nodes]);
-  const groupNodes = useMemo(() => nodes.filter(isGroupNode), [nodes]);
-  const annotationNodes = useMemo(() => nodes.filter(isAnnotationNode), [nodes]);
+  const [groups] = useState(() => sharedFilter(isGroupNode));
+  const [annotations] = useState(() => sharedFilter(isAnnotationNode));
+  const groupNodes = groups(nodes);
+  const annotationNodes = annotations(nodes);
   const selectedNodes = useMemo(() => diagramNodes.filter((n) => n.selected), [diagramNodes]);
   const selectedAnnotations = useMemo(() => annotationNodes.filter((n) => n.selected), [annotationNodes]);
   const selectedGroups = useMemo(() => groupNodes.filter((n) => n.selected), [groupNodes]);

@@ -242,8 +242,9 @@ export interface EditorApi {
   // ---- history ----
   undo(): void;
   redo(): void;
-  canUndo(): boolean;
-  canRedo(): boolean;
+  /** A render can supply its current history flags before updateDeps' layout effect. */
+  canUndo(historyAvailable?: boolean): boolean;
+  canRedo(historyAvailable?: boolean): boolean;
 
   // ---- view / UI ----
   fitView(): void;

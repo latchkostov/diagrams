@@ -63,8 +63,11 @@ export function AiMount({
   onNewDiagram: () => void;
 }) {
   // App subscribes to the locale and renders this shell; the lazy panel subscribes independently.
-  const host = useSyncExternalStore(paletteHost.subscribe, paletteHost.get);
-  const canvas = view === "canvas" ? host.canvas : null;
+  // The dock needs identity and mode, not every diagram revision published to the palette.
+  const canvas = useSyncExternalStore(paletteHost.subscribe, () => view === "canvas" && !!paletteHost.get().canvas);
+  const instanceId = useSyncExternalStore(paletteHost.subscribe, () => paletteHost.get().canvas?.instanceId);
+  const hostDocumentId = useSyncExternalStore(paletteHost.subscribe, () => paletteHost.get().canvas?.documentId);
+  const canvasLive = useSyncExternalStore(paletteHost.subscribe, () => !!paletteHost.get().canvas?.live);
   const dock = useAiDock();
   // The actions register once (re-registering would rebuild an open menu under the pointer).
   const newDiagram = useRef(onNewDiagram);
@@ -84,7 +87,7 @@ export function AiMount({
   // that will immediately remount, or remount it during a host's detach/attach.
   // Saving an example as an owned copy changes its storage identity while the editor stays mounted.
   // Keep the composer and dictation with that editor; a different editor still starts a fresh panel.
-  const identity = canvas ? (canvas.instanceId ?? canvas.documentId ?? "none") : null;
+  const identity = canvas ? (instanceId ?? hostDocumentId ?? "none") : null;
   const [panelIdentity, setPanelIdentity] = useState(identity);
   if (identity !== null && identity !== panelIdentity) setPanelIdentity(identity);
   if (view !== "canvas" && panelIdentity !== null) setPanelIdentity(null);
@@ -152,7 +155,7 @@ export function AiMount({
   );
 
   // Agent changes made while folded show as a count on the rail; opening the panel shows them.
-  const documentId = canvas?.documentId;
+  const documentId = canvas ? hostDocumentId : undefined;
   const fresh = useUnseen(documentId);
   const shown = docked && dock.open;
   useEffect(() => {
@@ -160,11 +163,11 @@ export function AiMount({
   }, [shown, documentId, fresh]);
 
   // Once a diagram is up (not while the canvas itself is still downloading), and not while live view runs.
-  const canvasUp = docked && !!canvas && !canvas.live;
+  const canvasUp = docked && !!canvas && !canvasLive;
   useEffect(() => (canvasUp ? whenIdle(AiPanel.preload) : undefined), [canvasUp]);
 
   const [mcp] = useState(() => AI_TOOLS && hasModelContext());
-  const live = !!canvas?.live || presenting;
+  const live = canvasLive || presenting;
 
   return (
     <>

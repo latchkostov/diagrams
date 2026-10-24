@@ -65,6 +65,8 @@ export function CanvasControls({
   onShortcuts,
   menus,
   menu,
+  canUndo,
+  canRedo,
 }: {
   editor: EditorApi;
   fit: () => void;
@@ -72,6 +74,8 @@ export function CanvasControls({
   onShortcuts: () => void;
   menus: CanvasMenus;
   menu: MenuState | null;
+  canUndo: boolean;
+  canRedo: boolean;
 }) {
   const locale = useLocale();
   const bodyRef = useRef<HTMLDivElement>(null);
@@ -165,7 +169,7 @@ export function CanvasControls({
             <div className="rf-ctrl-sep" role="separator" data-testid="toolbar-divider-history" />
             <ControlButton
               onClick={editor.undo}
-              disabled={!editor.canUndo()}
+              disabled={!canUndo}
               title={tr("canvas.undoValue", { combo: formatCombo(shortcutKeys("undo")) })}
               aria-label={tr("ai.undo")}
               data-testid="undo-button"
@@ -174,7 +178,7 @@ export function CanvasControls({
             </ControlButton>
             <ControlButton
               onClick={editor.redo}
-              disabled={!editor.canRedo()}
+              disabled={!canRedo}
               title={tr("canvas.redoValue", { combo: formatCombo(shortcutKeys("redo")) })}
               aria-label={tr("shortcuts.redo")}
               data-testid="redo-button"

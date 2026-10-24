@@ -1,18 +1,13 @@
 import { defineLazySurface } from "../../lib/lazySurface";
-import { revisionAtLeast } from "../../model/revisions";
-import { useState, useSyncExternalStore, type FocusEvent } from "react";
+import { useCallback, useMemo, useState, useSyncExternalStore, type FocusEvent } from "react";
 import { ContextMenu } from "../../components/ContextMenu";
 import { stencilMenu } from "../../editor/builtinActions";
 import { routingIntent } from "../../editor/routingIntent";
-import { t } from "../../i18n";
-import { managedKind } from "../../model/admissionPresets";
-import { brokerSpec } from "../../model/brokers";
+import { t, useLocale } from "../../i18n";
 import { routeTableCapable, trafficMixCapable } from "../../model/requestRouting";
 import { NodePlanning, RouteTableFields, TrafficMixFields } from "../../planning/lazy";
 import { deviceSpec } from "../../stencils/netDevices";
 import { getStencil } from "../../stencils/registry";
-import { assignmentLabel } from "../../stencils/brokerVocabulary";
-import { nodeSimFields } from "../simFieldRules";
 import { type DiagramFlowNode } from "../types";
 import { Section } from "./fields";
 import { Disclosure } from "./Disclosure";
@@ -22,6 +17,8 @@ import { ADC_KEYS, DEVICE_KEYS, SIM_KEYS } from "./simFields";
 import { type InspectorProps } from "./types";
 import { useNameFields } from "./useNameFields";
 import { NodeIdentity } from "./lazyNodeIdentity";
+
+const EMPTY_PROPS: Record<string, unknown> = {};
 
 // Simulation settings are needed only after selection. Identity and naming load independently of these settings;
 // the shared lazy loader supplies the failure toast and Retry outside this chunk.
@@ -47,28 +44,35 @@ export function NodePanel({
   meta,
   focus,
 }: InspectorProps & { node: DiagramFlowNode }) {
+  useLocale();
   const stencil = getStencil(node.data.stencil);
   const role = stencil.simRole;
-  const props = node.data.props ?? {};
+  const props = node.data.props ?? EMPTY_PROPS;
   // A new node keeps its creation step while these name fields are focused.
-  const [namingActive, setNamingActive] = useState(false);
-  const naming = useNameFields(editor, "node", node.id, node.id, () => {
-    setNamingActive(false);
+  const [textActive, setTextActive] = useState<"name" | "description" | null>(null);
+  const namingActive = textActive !== null;
+  const onDescriptionFocus = useCallback(() => setTextActive("description"), []);
+  const onDescriptionBlur = useCallback(
+    () => setTextActive((current) => (current === "description" ? null : current)),
+    [],
+  );
+  const done = useCallback(() => {
+    setTextActive((current) => (current === "name" ? null : current));
     onNamed?.();
-  });
-  const nameKeys = {
-    ...naming.keys,
-    onFocus: (e: FocusEvent<HTMLInputElement>) => {
-      setNamingActive(true);
-      naming.keys.onFocus(e);
-    },
-  };
-  const merge = (f: string) => ({ merge: `inspector:node:${node.id}:${f}` });
+  }, [onNamed]);
+  const naming = useNameFields(editor, "node", node.id, node.id, done);
+  const nameKeys = useMemo(
+    () => ({
+      ...naming.keys,
+      onFocus: (e: FocusEvent<HTMLInputElement>) => {
+        setTextActive("name");
+        naming.keys.onFocus(e);
+      },
+    }),
+    [naming.keys],
+  );
   const [picker, setPicker] = useState<{ x: number; y: number } | null>(null);
   const [routingPinned, setRoutingPinned] = useState(false);
-  const broker = brokerSpec(node.data.stencil, role, meta.planning);
-  const simFields = nodeSimFields(role, node.data.stencil, meta.planning, props);
-  const managed = revisionAtLeast(meta.planning?.revision, "p3") && !!managedKind(node.data.stencil);
   const device = role === "gateway" ? deviceSpec(node.data.stencil) : undefined;
   // What Custom properties leaves out: only the settings a control here shows.
   const hidden = !device ? SIM_KEYS : device.kind === "adc" ? ADC_KEYS : DEVICE_KEYS;
@@ -78,11 +82,15 @@ export function NodePanel({
   const mixer = trafficMixCapable(role);
   // Each routing request (right-click, or the first route chosen into a mix) remounts the fields onto it.
   const intentSerial = useSyncExternalStore(routingIntent.subscribe, () => routingIntent.serial(node.id));
-  const routing = router ? (
-    <RouteTableFields key={intentSerial} editor={editor} nodeId={node.id} props={props} planning={meta.planning} />
-  ) : mixer ? (
-    <TrafficMixFields key={intentSerial} editor={editor} nodeId={node.id} props={props} planning={meta.planning} />
-  ) : null;
+  const routing = useMemo(
+    () =>
+      router ? (
+        <RouteTableFields key={intentSerial} editor={editor} nodeId={node.id} props={props} planning={meta.planning} />
+      ) : mixer ? (
+        <TrafficMixFields key={intentSerial} editor={editor} nodeId={node.id} props={props} planning={meta.planning} />
+      ) : null,
+    [router, mixer, intentSerial, editor, node.id, props, meta.planning],
+  );
   // A right-click "Add …" opens the section on its own; it stays there while this node is selected, so an
   // unfinished form never moves (and loses its fields) once the form has consumed the intent.
   const intended = (router || mixer) && routingIntent.peek(node.id) !== undefined;
@@ -92,6 +100,73 @@ export function NodePanel({
     (mixer && props.trafficMix !== undefined) ||
     intended ||
     ((router || mixer) && routingPinned);
+
+  // These sections already pause their analyses while text is being edited. The editor's
+  // stable reader keeps bindings and validation on the current graph without a new closure per key.
+  const planningRevision = namingActive ? undefined : (revision ?? node);
+  const planningRead = namingActive ? editor.getDiagram : readDiagram;
+  const planning = useMemo(
+    () => (
+      <NodePlanning
+        id={node.id}
+        editor={editor}
+        revision={planningRevision}
+        readDiagram={planningRead}
+        paused={namingActive}
+        counts={counts}
+      />
+    ),
+    [node.id, editor, planningRevision, planningRead, namingActive, counts],
+  );
+  const simulation = useMemo(
+    () => (
+      <NodeSimulation
+        paused={namingActive}
+        reveal={focus?.name === "autoscaling-target" ? focus.seq : undefined}
+        nodeId={node.id}
+        stencil={node.data.stencil}
+        editor={editor}
+        meta={meta}
+        readDiagram={planningRead}
+        props={props}
+        routed={routed}
+        routing={routing}
+        router={router}
+        mixer={mixer}
+      />
+    ),
+    [
+      namingActive,
+      focus,
+      node.id,
+      node.data.stencil,
+      editor,
+      meta,
+      planningRead,
+      props,
+      routed,
+      routing,
+      router,
+      mixer,
+    ],
+  );
+
+  const customPropertiesTitle = t("inspector.customProperties");
+  const customProperties = useMemo(
+    () => (
+      <Disclosure id="node-properties" title={customPropertiesTitle} count={customCount(props, hidden)}>
+        <PropsEditor
+          props={props}
+          hidden={hidden}
+          onSet={(patch) => editor.setNodeProps(node.id, patch)}
+          onSetMerged={(patch, key) =>
+            editor.setNodeProps(node.id, patch, { merge: `inspector:node:${node.id}:prop:${key}` })
+          }
+        />
+      </Disclosure>
+    ),
+    [props, hidden, editor, node.id, customPropertiesTitle],
+  );
 
   return (
     <>
@@ -105,6 +180,8 @@ export function NodePanel({
         naming={naming}
         nameKeys={nameKeys}
         setPicker={setPicker}
+        onDescriptionFocus={onDescriptionFocus}
+        onDescriptionBlur={onDescriptionBlur}
       />
 
       {routed && (
@@ -113,44 +190,10 @@ export function NodePanel({
         </Section>
       )}
 
-      <NodePlanning
-        id={node.id}
-        editor={editor}
-        revision={revision ?? node}
-        readDiagram={readDiagram}
-        paused={namingActive}
-        counts={counts}
-      />
+      {planning}
+      {simulation}
 
-      <NodeSimulation
-        paused={namingActive}
-        reveal={focus?.name === "autoscaling-target" ? focus.seq : undefined}
-        node={node}
-        editor={editor}
-        meta={meta}
-        readDiagram={readDiagram}
-        props={props}
-        role={role}
-        broker={broker}
-        assignment={assignmentLabel(broker)}
-        simFields={simFields}
-        managed={managed}
-        device={device}
-        merge={merge}
-        routed={routed}
-        routing={routing}
-        router={router}
-        mixer={mixer}
-      />
-
-      <Disclosure id="node-properties" title={t("inspector.customProperties")} count={customCount(props, hidden)}>
-        <PropsEditor
-          props={props}
-          hidden={hidden}
-          onSet={(patch) => editor.setNodeProps(node.id, patch)}
-          onSetMerged={(patch, key) => editor.setNodeProps(node.id, patch, merge(`prop:${key}`))}
-        />
-      </Disclosure>
+      {customProperties}
 
       {picker && (
         <ContextMenu

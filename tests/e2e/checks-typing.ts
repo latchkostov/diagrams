@@ -312,7 +312,13 @@ export async function checksTyping(page: Page, info: TestInfo, measureCpu = fals
     expect(heldOperations).toHaveLength(21);
     expect(runningOperations).toHaveLength(21);
     // The same-run median excludes isolated background commits observed in both modes, while
-    // one extra render/commit on every checking key changes it. Master and #271 both read 99/3.
+    // one extra render/commit on every checking key changes it. Before isolation this read 100/3.
+    // The finding's stale/fix path and both adjacent edges add five renders to the 15-render name path.
+    expect(
+      median(heldOperations.map((r) => r.total)),
+      "renders per key including the stale finding",
+    ).toBeLessThanOrEqual(20);
+    expect(median(heldOperations.map((r) => r.commits)), "commits per key").toBeLessThanOrEqual(2);
     for (const key of ["total", "commits"] as const) {
       const baseline = median(heldOperations.map((r) => r[key]));
       expect(baseline, "the React hook counted typing work").toBeGreaterThan(0);
