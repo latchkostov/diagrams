@@ -35,6 +35,7 @@ export interface Scope {
   mode: string;
   files: string[];
   lines: Record<string, number[]>;
+  since?: string;
 }
 export interface Plan {
   round: number;
@@ -42,12 +43,15 @@ export interface Plan {
   scope: Scope;
   state?: State | null;
   nextCommand?: string;
+  prScope?: Pick<Scope, "files">;
+  context?: string;
 }
 export interface Result {
   issues: Issue[];
   resolutions: { id: string; status: string; answers: { angle: string; status: string; detail: string }[] }[];
   excluded: Finding[];
   rawCount: number;
+  warnings: string[];
 }
 export const rank: Record<string, number>;
 export function sameIssue(a: Finding, b: Finding): boolean;

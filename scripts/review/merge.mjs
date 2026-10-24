@@ -15,6 +15,7 @@ const reports = plan.angles.map((angle) => ({
   report: JSON.parse(fs.readFileSync(path.join(dir, `${angle}.json`), "utf8")),
 }));
 const result = consolidate(reports, plan);
+for (const warning of result.warnings) console.warn(warning);
 const reportFile = path.join(dir, "REPORT.md");
 fs.writeFileSync(path.join(dir, "triage.json"), JSON.stringify(result, null, 2));
 fs.writeFileSync(reportFile, renderReport(path.basename(dir), plan, result, reports));

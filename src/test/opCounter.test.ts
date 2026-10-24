@@ -95,3 +95,24 @@ it("restores scopes on nesting and errors, and rejects unobserved work", () => {
   ).toThrow("No operation probes");
   expect(() => ops(() => Promise.resolve())).toThrow("synchronous");
 });
+
+it("applies probe exclusions relative to checkout roots containing test or lab segments", async () => {
+  const { operationProbes } = await import("../../scripts/operation-probes");
+  for (const root of ["/src/test/repo", "/src/lab/repo", "/checkout.test/repo", "C:\\src\\test\\repo"]) {
+    const plugin = operationProbes();
+    const configure = plugin.configResolved as (config: { root: string }) => void;
+    const transform = plugin.transform as (code: string, id: string) => { code: string } | undefined;
+    configure({ root });
+    const code = "export function sample() { return 1; }";
+    expect(transform(code, `${root}/src/model/sample.ts?coverage`)?.code).toContain("__ldOpCounter");
+    expect(transform(code, `${root}/src/test/opCounterFixture.ts`)?.code).toContain("__ldOpCounter");
+    for (const file of [
+      "src/lab/sample.ts",
+      "src/test/sample.ts",
+      "src/model/sample.test.ts",
+      "src/model/sample.bench.ts",
+      "scripts/sample.ts",
+    ])
+      expect(transform(code, `${root}/${file}`)).toBeUndefined();
+  }
+});

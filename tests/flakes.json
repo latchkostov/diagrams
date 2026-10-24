@@ -22,7 +22,7 @@
   {
     "id": "slowmo-native-command",
     "spec": "tests/e2e/slowmo.spec.ts",
-    "title": "Trace a message ▸ and the command palette start it; Record video offers this slow motion",
+    "title": "Trace a message \u00e2\u2013\u00b8 and the command palette start it; Record video offers this slow motion",
     "firstSeen": "2026-10-18",
     "lastSeen": "2026-10-18",
     "count": 1,
@@ -110,5 +110,15 @@
     "count": 1,
     "owner": "latchkostov",
     "tracking": "docs/backlog/2026-10-23-native-load-backstops.md"
+  },
+  {
+    "id": "colour-picker-light-background",
+    "spec": "tests/e2e/colour-picker.spec.ts",
+    "title": "background tint is undoable and survives presentation in light",
+    "firstSeen": "2026-10-23",
+    "lastSeen": "2026-10-23",
+    "count": 1,
+    "owner": "latchkostov",
+    "tracking": "docs/backlog/2026-10-24-colour-picker-light-background.md"
   }
 ]

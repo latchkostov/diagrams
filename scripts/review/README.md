@@ -3,6 +3,7 @@
 ```sh
 pnpm review --brief /path/to/brief.md --pr 123
 pnpm review --pr 123                # next delta round for that PR, including on detached HEAD
+pnpm review --pr 123 --refresh-intent # explicitly replace saved intent with the current PR description
 pnpm review --branch feature/name   # explicit state identity without a PR
 pnpm review --pr 123 --since <reviewed-sha> # explicit first-parent starting point for that PR
 ANGLES="correctness security" pnpm review --brief brief.md
@@ -16,8 +17,10 @@ pnpm review --pr 123 --reset-state  # restart at round one, all lenses
 and description plus `headRefName` and `baseRefOid` with authenticated `gh`; either or both may be supplied
 in any order. A PR review works on a detached HEAD and uses the PR's branch and base metadata, without
 requiring a local branch. Without `--pr`, use the current branch or supply `--branch <name>` on a detached
-checkout. A supplied `--branch` must match the PR branch when both are given. Intent persists
-to subsequent rounds; supplying fresh context replaces the saved context. Failures to read a brief
+checkout. A supplied `--branch` must match the PR branch when both are given. `--pr` selects review
+identity; it does not replace saved intent on continuation. Saved acceptance criteria also remain
+available to standalone `--full` runs. Supply `--brief` to replace intent with a fresh brief and PR
+description, or `--refresh-intent` with `--pr` to replace it with the current PR description alone. Failures to read a brief
 or fetch a description stop before reviewers start. `CODEX_MODEL` and `CODEX_EFFORT` retain their
 existing overrides.
 
@@ -36,13 +39,18 @@ Deleted hunks use their adjacent HEAD line as an anchor. Reviewers use the recor
 unscoped two-dot range. Surrounding source is context only; the reviewed scope is committed HEAD.
 
 Each run writes `.reviews/<stamp>/scope.patch`, `plan.json`, the previous report, prompt, raw lens
-JSON/logs, `triage.json` and `REPORT.md`. The round, file count and exact next-round command precede
+JSON/logs, `triage.json` and `REPORT.md`. Delta plans retain the whole PR scope as `prScope` for
+context, separately from the authoritative fix `scope`; prompts and reports name the delta's starting
+SHA and distinguish it from the whole PR. The round, file count and exact next-round command precede
 the file list at the top of the report. The
-deterministic consolidator clusters matching normalized paths within 12 lines and title-token
-Jaccard similarity of at least 0.5. Every member must match every other member, preventing accidental
+deterministic consolidator clusters matching normalized paths at the same line across lenses even
+when titles differ. Nearby locations within 12 lines require title-token Jaccard similarity of at
+least 0.5. Every member must match every other member, preventing accidental
 chains. Explicit `previousId` takes precedence over fuzzy matches; different explicit identities never
 cluster together. It keeps the highest severity, lists every contributing lens and retains each member's
-evidence. Different wording can remain separate; the raw evidence supports human triage. No extra
+evidence. Unknown or already resolved `previousId` references are logged in the console, triage JSON
+and report, then treated as new findings with normal delta severity caps. Active P1 assessments
+remain mandatory. The raw evidence supports human triage. No extra
 model session is needed. Out-of-scope findings are recorded as excluded in `triage.json`.
 
 PR state lives at `.reviews/state/pr-<number>.json`, independent of branch smoke runs or checkout mode.
@@ -67,7 +75,7 @@ P1, instead of fix instructions. It does not modify tests, quarantine product be
 Round four is refused unless the owner explicitly approves `--allow-round-4`; that flag also lifts
 the decision-block policy for the approved run. `--full` reviews the whole PR merge-base diff, rather
 than the next fix delta. Only explicit `--audit` reviews all tracked repository files (also allowed on
-detached HEAD without a PR). Neither mode creates, consumes or resets state. `--full`, `--audit` and
+detached HEAD without a PR). Neither mode creates, advances or resets state. `--full`, `--audit` and
 `--since` are mutually exclusive; `--reset-state` cannot be combined with any of them.
 
 Tests can set `REVIEW_PR_RESOLVER` to an absolute Node module path. It receives the PR number as its
