@@ -1207,6 +1207,7 @@ const en = {
   "edge.shape.useHorizontal": "Use ← → to move a vertical segment.",
   "edge.shape.useVertical": "Use ↑ ↓ to move a horizontal segment.",
   "edge.shape.moved": "Moved {direction, select, right {right} left {left} up {up} other {down}} {distance} px.",
+  "edge.shape.selectionReset": "Segment selection reset",
   "edge.shape.reset": "Route reset; automatic.",
   "shortcuts.segmentPrev": "Previous segment of the selected line",
   "shortcuts.segmentNext": "Next segment of the selected line",

@@ -1512,3 +1512,25 @@ describe("Live readouts beside the canvas's snapshot", () => {
     expect(h.focused).toEqual(["node:a"]);
   });
 });
+
+it("route observation survives control remounts, allows only the expected nudge and resets without deselecting", () => {
+  const c = harness().controller;
+  c.selectionCommitted('["a-b"]', false);
+  expect(c.observeSegmentRoute("a-b", "original")).toBe(false);
+  c.stepSegment("a-b", 1);
+  c.expectSegmentRoute("a-b", "nudged");
+  expect(c.observeSegmentRoute("a-b", "original")).toBe(false);
+  expect(c.observeSegmentRoute("a-b", "nudged")).toBe(false);
+  expect(c.getSnapshot().keyboardSegment).toEqual({ edge: "a-b", k: 1 });
+  // A new control instance observes a pointer-shaped route using the same controller.
+  expect(c.observeSegmentRoute("a-b", "pointer-shaped")).toBe(true);
+  expect(c.getSnapshot().keyboardSegment).toEqual({ edge: "a-b", k: -1 });
+  expect(c.observeSegmentRoute("a-b", "pointer-shaped")).toBe(false);
+  expect(c.stepSegment("a-b", 0)).toBe(0);
+  c.expectSegmentRoute("a-b", "next-nudge");
+  expect(c.observeSegmentRoute("a-b", "remote-edit")).toBe(true);
+  expect(c.observeSegmentRoute("a-b", "next-nudge")).toBe(false);
+  c.selectionCommitted("[]", true);
+  c.selectionCommitted('["a-b"]', false);
+  expect(c.observeSegmentRoute("a-b", "fresh-selection")).toBe(false);
+});

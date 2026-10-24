@@ -326,9 +326,16 @@ test("three keyboard nudges separated by history commits merge into one undo ste
       if (el.firstChild instanceof Element) el.firstChild.setAttribute("data-previous-announcement", "1");
     });
     await page.keyboard.press("ArrowRight");
-    // Commit each nudge separately, while keeping the run inside the history merge window under load.
-    await page.clock.runFor(400);
+    // Effects may register the debounce after a clock tick. Drive it until the actual commit;
+    // the single-Undo assertion below still proves the nudges stayed within the merge window.
+    await expect
+      .poll(async () => {
+        await page.clock.runFor(400);
+        return page.evaluate(() => window.__historyProbe?.().pending);
+      })
+      .toBe(false);
     const bends = await custom(page);
+    await expect(page.getByTestId("route-segment-api-db-1")).toHaveClass(/is-active/);
     const x = (Math.floor(initialX / 10) + n + 1) * 10;
     expect(bends).toEqual([
       { x, y: 36 },
@@ -361,24 +368,53 @@ test("keyboard nudging a straight line adds a jog, then merges its segments back
   const original = await path(page);
   await page.keyboard.press("ArrowDown");
   expect(await custom(page)).toHaveLength(4);
+  await expect(page.getByTestId("canvas-announce")).toHaveText("Segment selection reset");
+  await expectNoActiveSegment(page);
+  await page.keyboard.press("]");
+  await expect(page.getByTestId("route-segment-api-db-0")).toHaveClass(/is-active/);
+  await page.keyboard.press("]");
+  await page.keyboard.press("]");
   await page.keyboard.press("ArrowUp");
+  await expectNoActiveSegment(page);
   await expect(page.getByTestId("edge-api-db")).not.toHaveAttribute("data-route", "custom");
   await expect.poll(() => path(page)).toBe(original);
-  await expect(page.getByTestId("canvas-announce")).toHaveText("Route reset; automatic.");
+  await expect(page.getByTestId("canvas-announce")).toHaveText("Segment selection reset");
+  await page.keyboard.press("]");
+  await expect(page.getByTestId("route-segment-api-db-0")).toHaveClass(/is-active/);
 });
 
-test("keyboard selection follows the moved leg through an endpoint escape detour", async ({ page }) => {
+async function expectNoActiveSegment(page: Page) {
+  for (const segment of await page.getByTestId(/^route-segment-api-db-/).all())
+    await expect(segment).not.toHaveClass(/is-active/);
+}
+
+test("pointer shaping resets the active segment and cycling restarts at the first leg", async ({ page }) => {
+  await open(page);
+  await focusEdge(page);
+  await startDrag(page, 1, 60, 0);
+  await page.mouse.up();
+  await custom(page);
+  await expectNoActiveSegment(page);
+  await expect(page.getByTestId("canvas-announce")).toHaveText("Segment selection reset");
+  // Restore edge focus without changing selection.
+  await page.getByTestId("edge-api-db").evaluate((el) => (el.parentElement as HTMLElement).focus());
+  await page.keyboard.press("]");
+  await expect(page.getByTestId("route-segment-api-db-0")).toHaveClass(/is-active/);
+});
+
+test("keyboard selection resets when an endpoint escape detour renumbers its legs", async ({ page }) => {
   await open(page, false, "smoothstep", [
     { x: 240, y: 36 },
     { x: 240, y: 276 },
   ]);
   await focusEdge(page);
-  for (const x of [230, 220, 210]) {
-    await page.keyboard.press("ArrowLeft");
-    const bends = await custom(page);
-    expect(bends.some((p, i) => p.x === x && bends[i + 1]?.x === x)).toBe(true);
-    await expect(page.getByTestId("route-segment-api-db-3")).toHaveClass(/is-active/);
-  }
+  await page.keyboard.press("ArrowLeft");
+  const bends = await custom(page);
+  expect(bends.some((p, i) => p.x === 230 && bends[i + 1]?.x === 230)).toBe(true);
+  await expectNoActiveSegment(page);
+  await expect(page.getByTestId("canvas-announce")).toHaveText("Segment selection reset");
+  await page.keyboard.press("]");
+  await expect(page.getByTestId("route-segment-api-db-0")).toHaveClass(/is-active/);
 });
 
 test.describe("touch shaping", () => {

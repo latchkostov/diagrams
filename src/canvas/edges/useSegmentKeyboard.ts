@@ -5,7 +5,7 @@ import { createMachine, defineMachine } from "../../lib/machine";
 import type { EdgeRoute } from "../geometry/router";
 import { useInteraction } from "../interaction/useInteraction";
 import { useDiagram } from "../DiagramContext";
-import { startSegment, nudgeSegment, followSegment } from "./segmentKeyboard";
+import { startSegment, nudgeSegment } from "./segmentKeyboard";
 import { routeSegments, type RouteSegment } from "./segments";
 
 export const routeAnnouncementMachine = defineMachine<
@@ -46,20 +46,16 @@ export function useSegmentKeyboard(
     () => interaction?.getSnapshot().keyboardSegment,
   );
   const initial = startSegment(segments, route.label);
-  const index =
-    selected?.edge === id
-      ? selected.leg
-        ? followSegment(segments, selected.leg)
-        : Math.min(selected.k, segments.length - 1)
-      : initial;
-  useLayoutEffect(() => {
-    if (selected?.edge === id && segments.length && selected.k !== index)
-      interaction?.stepSegment(id, index, selected.leg);
-  }, [selected, id, index, interaction, segments.length]);
+  const index = selected?.edge === id ? selected.k : initial;
+  // Fingerprints detect route changes without retaining a selected leg's geometry.
+  const signature = segmentSignature(segments);
   useLayoutEffect(() => {
     const result = announcements.send({ type: "route", custom: !!route.custom });
-    for (const command of result.commands) if (command === "reset") announce?.(t("edge.shape.reset"));
-  }, [announcements, route.custom, announce]);
+    for (const command of result.commands) if (command === "reset" && index >= 0) announce?.(t("edge.shape.reset"));
+  }, [announcements, route.custom, announce, index]);
+  useLayoutEffect(() => {
+    if (alone && interaction?.observeSegmentRoute(id, signature)) announce?.(t("edge.shape.selectionReset"));
+  }, [signature, alone, interaction, id, announce]);
   const key = useEffectEvent((event: KeyboardEvent) => {
     if (!alone || !reshape || !interaction || !segments.length) return;
     const describe = (at: number) => {
@@ -74,10 +70,15 @@ export function useSegmentKeyboard(
     const shortcut = shortcutFor(event);
     if (!["segment-prev", "segment-next", "nudge", "nudge-far"].includes(shortcut ?? "")) return;
     const cycling = shortcut === "segment-prev" || shortcut === "segment-next";
+    if (!cycling && index < 0) return;
     const nextIndex = cycling
-      ? (index + (shortcut === "segment-next" ? 1 : -1) + segments.length) % segments.length
+      ? index < 0
+        ? shortcut === "segment-next"
+          ? 0
+          : segments.length - 1
+        : (index + (shortcut === "segment-next" ? 1 : -1) + segments.length) % segments.length
       : index;
-    const at = interaction.stepSegment(id, nextIndex, segments[nextIndex]);
+    const at = interaction.stepSegment(id, nextIndex);
     if (at < 0) return;
     event.preventDefault();
     event.stopPropagation();
@@ -95,9 +96,17 @@ export function useSegmentKeyboard(
     const next = nudgeSegment(route.points, s, sign, shortcut === "nudge-far", snap(), stubs());
     const waypoints = next.points.slice(1, -1);
     if (waypoints.length > 64) return;
-    interaction.stepSegment(id, next.index, routeSegments(next.points)[next.index]);
+    if (next.index < 0) interaction.resetSegment(id);
+    else {
+      interaction.expectSegmentRoute(id, segmentSignature(routeSegments(next.points)));
+      interaction.stepSegment(id, next.index);
+    }
     reshape(id, { waypoints: waypoints.length ? waypoints : undefined }, { merge: `waypoints:${id}` });
-    announce?.(t("edge.shape.moved", { direction: event.key.slice(5).toLowerCase(), distance: next.distance }));
+    announce?.(
+      next.index < 0
+        ? t("edge.shape.selectionReset")
+        : t("edge.shape.moved", { direction: event.key.slice(5).toLowerCase(), distance: next.distance }),
+    );
   });
   const enabled = alone && !!reshape && !!interaction && segments.length > 0;
   useLayoutEffect(() => {
@@ -111,3 +120,7 @@ export function useSegmentKeyboard(
   return segments[index]?.k;
 }
 const noSubscribe = () => () => {};
+
+function segmentSignature(segments: readonly RouteSegment[]) {
+  return JSON.stringify(segments.map((s) => [s.k, s.axis, s.a.x, s.a.y, s.b.x, s.b.y]));
+}

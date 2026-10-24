@@ -25,16 +25,17 @@ it("uses the node grid rule, Shift distance and snapping-off steps", () => {
   expect(nudge(1, false, false).distance).toBe(1);
   expect(nudge(1, true, false).distance).toBe(10);
 });
-it("selects the moving middle leg after an end jog and merges aligned segments", () => {
+it("resets selection after an end jog or a merge", () => {
   const straight = [
     { x: 0, y: 0 },
     { x: 300, y: 0 },
   ];
   const jog = nudgeSegment(straight, routeSegments(straight)[0], 1, false, true, [24, 24]);
-  expect(jog.index).toBe(2);
+  expect(jog.index).toBe(-1);
   expect(jog.points).toHaveLength(6);
-  const merged = nudgeSegment(jog.points, routeSegments(jog.points)[jog.index], -1, false, true, [24, 24]);
+  const merged = nudgeSegment(jog.points, routeSegments(jog.points)[2], -1, false, true, [24, 24]);
   expect(merged.points).toEqual(straight);
+  expect(merged.index).toBe(-1);
 });
 it("keeps a short first jog from an off-grid port and a one-pixel unsnapped jog", () => {
   const straight = [

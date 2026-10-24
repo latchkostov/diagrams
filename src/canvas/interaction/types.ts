@@ -11,8 +11,6 @@ import type { GuideLine } from "../guides";
 import type { ConnectTarget } from "../gestures";
 
 export type GestureKind = "connect" | "edge.end" | "edge.segment" | "node.drag";
-/** Geometry survives lazy edge-control remounts and endpoint rerouting. */
-export type KeyboardLeg = { axis: "h" | "v"; a: Point; b: Point };
 export type GestureEndReason = "drop" | "escape" | "cancel" | "blur" | "remote" | "unmount" | "superseded";
 export type DropTarget = { node: string; side?: Side };
 export type GesturePreview =
@@ -37,13 +35,15 @@ export interface Gesture {
 export interface GesturesState {
   active: Gesture | null;
   seq: number;
-  keyboardSegment?: { edge: string; k: number; leg?: KeyboardLeg };
+  /** Index in the current segment list; -1 explicitly leaves the edge without an active segment. */
+  keyboardSegment?: { edge: string; k: number };
 }
 export type GesturesEvent =
   | { type: "gesture.start"; kind: GestureKind; preview: GesturePreview; via: Gesture["via"] }
   | { type: "gesture.move"; seq: number; preview: GesturePreview }
   | { type: "gesture.end"; seq: number; reason: GestureEndReason }
-  | { type: "segment.step"; edge: string; k: number; alone: boolean; leg?: KeyboardLeg }
+  | { type: "segment.step"; edge: string; k: number; alone: boolean }
+  | { type: "segment.reset"; edge: string }
   | { type: "selection.committed"; alone?: string };
 export interface GesturesTransition {
   state: GesturesState;

@@ -36,10 +36,12 @@ export function gestures(state: GesturesState, event: GesturesEvent): GesturesTr
         ...unchanged,
         state: {
           ...state,
-          keyboardSegment: { edge: event.edge, k: event.k, ...(event.leg ? { leg: event.leg } : {}) },
+          keyboardSegment: { edge: event.edge, k: event.k },
         },
       };
     }
+    case "segment.reset":
+      return { ...unchanged, state: { ...state, keyboardSegment: { edge: event.edge, k: -1 } } };
     case "selection.committed":
       return state.keyboardSegment && state.keyboardSegment.edge !== event.alone
         ? { ...unchanged, state: { ...state, keyboardSegment: undefined } }
