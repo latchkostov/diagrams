@@ -9,7 +9,8 @@ Auto-layout and Tidy up reset shaped lines incident to nodes that actually moved
 how many lines went back to automatic and offers Undo for the layout and bends together. Fixed
 attachment sides stay as chosen. Duplicate and paste keep their existing bend offsets.
 
-Only `tests/parity/goldens/node/i18n/corpus-hand-shaped-lines.json` changes: the new plural reset
+`tests/parity/goldens/node/i18n/corpus-hand-shaped-lines.json` changes: the new plural reset
 notice adds one message and one English fallback per translated language in the existing route
 shaping message area. Read-only exports exclude node-drag editing code to keep the fixed skill ZIP budget.
-All diagram, routing, simulation, export and image goldens remain unchanged.
+The approved layout golden exception is described in the
+[route-reset parity note](2026-10-24-edge-node-moves-layout-parity.md).
