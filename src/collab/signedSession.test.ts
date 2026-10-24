@@ -76,6 +76,51 @@ function onlyTo(from: TestClient, to: TestClient): () => void {
 }
 
 describe("signed rooms", () => {
+  it("bounds document reads and notifications for many rejected roster items", async () => {
+    const r = await signedRoom(50);
+    const [host] = r.clients;
+    const doc = host.session.doc;
+    const updates = Array.from({ length: 512 }, (_, i) => {
+      const source = new Y.Doc();
+      source.clientID = i + 1;
+      source.getMap("meta").set(`field${i}`, i);
+      const update = Y.encodeStateAsUpdate(source);
+      source.destroy();
+      return update;
+    });
+    Y.applyUpdate(doc.ydoc, Y.mergeUpdates(updates));
+    await r.settle();
+    const clients = doc.ydoc.store.clients;
+    expect(clients.size).toBeGreaterThanOrEqual(512);
+    let clientReads = 0;
+    const forEach = clients.forEach.bind(clients);
+    const scan = vi.spyOn(clients, "forEach").mockImplementation((callback, thisArg) =>
+      forEach((value, key, map) => {
+        if (++clientReads > clients.size) throw new Error("Rejected items repeatedly scan document clients");
+        callback.call(thisArg, value, key, map);
+      }),
+    );
+    onTestFinished(() => scan.mockRestore());
+    const changed = vi.fn();
+    const stop = host.session.onChange(changed);
+    onTestFinished(stop);
+    const count = 100_000;
+    const before = rejected(host, "roster-refused");
+    // Exercise the authenticated document-message boundary without unrelated encryption or network work.
+    await (
+      host.session as unknown as {
+        handleDoc(from: string, sender: string, msg: { type: number; payload: Uint8Array }): Promise<void>;
+      }
+    ).handleDoc("bound-peer", "bound-sender", {
+      type: DOC.roster,
+      payload: textToBytes(JSON.stringify({ e: Array.from({ length: count }, () => null) })),
+    });
+    expect(rejected(host, "roster-refused") - before).toBe(count);
+    expect(clientReads).toBe(0);
+    expect(changed).toHaveBeenCalledTimes(1);
+    expect(host.session.diagnostics().rejected["roster-refused"]).toBe(before + count);
+  });
+
   it("a dropped sender admitted later is asked again and recovers the full diagram", async () => {
     const r = await signedRoom(49, { viewOnly: true });
     const [host] = r.clients;

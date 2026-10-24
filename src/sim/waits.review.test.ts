@@ -177,18 +177,26 @@ it("aggregates invisible echoes and keeps drained checkpoints small", () => {
 function checkNonDivisiblePoolCapacity(capacity: number, scale: number) {
   const d = waitingFixture();
   d.nodes[1].props!.concurrency = capacity;
+  d.nodes[2].props!.latencyMs = 50;
+  d.nodes[2].props!.api = { latencyMs: 50 };
   const run = (weight: number) => {
     const e = createEngine({ scale: weight, maxParticles: 0 });
     e.load(d);
     expect(e.snapshot().scale).toBe(weight);
     const dots = Math.ceil(capacity / scale);
-    e.inject("source", 400 * dots * scale);
+    const volume = 160 * dots * scale;
+    e.inject("source", volume / weight);
+    // A 60-ms hold (10 ms work + 50 ms partner) still completes over 100 pool
+    // cycles. Keep the 1% contract while shortening the horizon, even at 1/20.
     for (let i = 0; i < 100; i++) {
-      e.step((300 * scale * dots) / capacity);
+      e.step((70 * scale * dots) / capacity);
       const t = realSnapshot(e.snapshot()).nodes.caller.threads!;
       expect(t.working + t.waiting).toBeLessThanOrEqual(capacity + 1e-9);
     }
-    return realSnapshot(e.snapshot()).nodes.caller.processed;
+    const processed = realSnapshot(e.snapshot()).nodes.caller.processed;
+    e.step(((volume - processed) * 100) / capacity + 1000);
+    expect(realSnapshot(e.snapshot()).inSystem).toBe(0);
+    return processed;
   };
   const sampled = run(scale),
     baseline = run(1);
@@ -207,16 +215,11 @@ it.each([
 it.each(Array.from({ length: 12 }, (_, i) => i + 1))(
   "sampled callers preserve non-divisible pool capacity: generated scales for %s slots",
   (capacity) => {
-    // Each run advances 100 * 300 * scale * ceil(capacity / scale) / capacity ms.
-    // Bound that work to 60,000 simulated ms per engine; keep the extreme 1/10 case above.
-    // Partition by capacity so the expanded corpus cannot exhaust one test's
-    // hang backstop. All twelve capacities run: 36 usual / 180 fivefold cases.
     fc.assert(
-      fc.property(fc.integer({ min: 1, max: Math.min(20, 2 * capacity) }), (scale) =>
-        checkNonDivisiblePoolCapacity(capacity, scale),
-      ),
+      fc.property(fc.integer({ min: 1, max: 20 }), (scale) => checkNonDivisiblePoolCapacity(capacity, scale)),
       {
-        numRuns: propertyRuns(3),
+        numRuns: propertyRuns(20),
+        examples: Array.from({ length: 20 }, (_, i) => [i + 1] as [number]),
       },
     );
   },

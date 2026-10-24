@@ -473,10 +473,11 @@ it.each(["bursts", "rate"])("bounds the review's %s import at the saved scale", 
     id: "s",
     title: "s",
     scale: kind === "bursts" ? 1000 : 30_000,
-    durationMs: 600_000,
+    durationMs: kind === "bursts" ? 1 : 600_000,
     traffic:
       kind === "bursts"
-        ? Array.from({ length: 2000 }, (_, i) => ({
+        ? // All unspread bursts fire at startup; this is exactly the sampled source-volume cap.
+          Array.from({ length: (SOURCE_VOLUME_CAP * 1000) / 100_000 }, (_, i) => ({
             id: `b${i}`,
             node: "source",
             shape: { kind: "burst", count: 100_000 },
@@ -487,7 +488,7 @@ it.each(["bursts", "rate"])("bounds the review's %s import at the saved scale", 
   const e = createEngine();
   const inject = vi.spyOn(e, "inject").mockImplementation(() => {});
   const run = createSimulationRun(d, s, { engine: e });
-  run.step(600_000);
+  run.step(s.durationMs!);
   const scheduled = inject.mock.calls.reduce((sum, [, count]) => sum + count, 0);
   expect(scheduled).toBe(SOURCE_VOLUME_CAP);
   expect(run.state().scale).toBe(s.scale);

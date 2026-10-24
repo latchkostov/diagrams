@@ -216,7 +216,8 @@ export class CollabDoc {
   }
 
   isEmpty(): boolean {
-    return Y.encodeStateVector(this.ydoc).length <= 1;
+    // A state vector has one entry per stored client. Checking its size needs no encoding or client scan.
+    return this.ydoc.store.clients.size === 0;
   }
 
   /**

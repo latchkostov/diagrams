@@ -52,7 +52,7 @@ export function consolidate(reports, plan) {
       const unknownPrevious = x.previousId && !previous.some((old) => old.id === x.previousId);
       if (unknownPrevious)
         warnings.push(`${angle}: unknown or resolved previous issue ${x.previousId}; treating finding as new.`);
-      return { ...x, ...(unknownPrevious ? { previousId: null } : {}), file: fileKey(x.file), lenses: [angle] };
+      return { ...x, file: fileKey(x.file), lenses: [angle] };
     }),
   );
   const excluded = raw.filter((x) => !plan.scope.files.includes(x.file));
@@ -75,7 +75,7 @@ export function consolidate(reports, plan) {
     // Complete linkage avoids merging a chain of nearby but unrelated issues.
     const cluster = clusters.find((items) =>
       items.every((x) =>
-        x.id && finding.id
+        x.id || finding.id
           ? x.id === finding.id
           : sameIssue(x, finding) ||
             (x.file === finding.file && x.line === finding.line && x.lenses[0] !== finding.lenses[0]),
@@ -89,7 +89,13 @@ export function consolidate(reports, plan) {
     id:
       items.find((x) => x.id)?.id ??
       `R-${createHash("sha256")
-        .update(`${items[0].file}:${items[0].line}:${[...words(items[0].title)].sort().join(" ")}`)
+        .update(
+          `${items[0].file}:${items[0].line}:${[...words(items[0].title)].sort().join(" ")}${
+            items[0].previousId && !previous.some((old) => old.id === items[0].previousId)
+              ? `:unknown:${items[0].previousId}`
+              : ""
+          }`,
+        )
         .digest("hex")
         .slice(0, 10)}`,
     lenses: [...new Set(items.flatMap((x) => x.lenses))].sort(),

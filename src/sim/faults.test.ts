@@ -37,6 +37,28 @@ const make = (d = diagram) => {
 };
 
 describe("fault overlays", () => {
+  it.each(["slow", "fail"] as const)("charges changes between two active %s magnitudes before allocation", (kind) => {
+    const d = {
+      ...diagram,
+      nodes: Array.from({ length: 5000 }, (_, i) => ({ ...diagram.nodes[1], id: i ? `n${i}` : "worker" })),
+    };
+    // Each change touches 5,000 recorders and its one target. The 200th exceeds 1,000,000.
+    const timeline: NonNullable<Simulation["timeline"]> = Array.from({ length: 200 }, (_, i) => ({
+      atMs: i,
+      action: {
+        do: "fault",
+        fault:
+          kind === "slow"
+            ? { kind, node: "worker", factor: i % 2 ? 5 : 2 }
+            : { kind, node: "worker", rate: i % 2 ? 0.1 : 0.5 },
+      },
+    }));
+    const sim = { id: "s", title: "Active magnitude changes", traffic: [], timeline };
+    expect(faultTimelineProblem(d, { ...sim, timeline: timeline.slice(0, 199) })).toBeUndefined();
+    const problem = "Fault timeline affects too many nodes. Remove repeated outages or use smaller boundaries.";
+    expect(faultTimelineProblem(d, sim)).toBe(problem);
+    expect(() => createSimulationRun(d, sim)).toThrow(problem);
+  });
   it("charges global latency resets to the fault-work budget for node and link changes", () => {
     const d = {
       ...diagram,
