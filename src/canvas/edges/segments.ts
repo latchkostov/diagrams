@@ -1,4 +1,6 @@
-import type { Point } from "../geometry/rect";
+import { sideNormal, type Point, type Rect } from "../geometry/rect";
+import { ROUTE_PAD } from "../geometry/router";
+import type { Side } from "../../model/types";
 import type { GuideLine } from "../guides";
 
 export interface RouteSegment {
@@ -21,10 +23,27 @@ export function routeSegments(points: readonly Point[]): RouteSegment[] {
 /** Copy the nudged corners as drawn, without touching the routing input. */
 export const freezeRoute = (points: readonly Point[]): Point[] => points.slice(1, -1).map((p) => ({ ...p }));
 
+/** Inset shape ports may need more than the usual 24 px to escape their owning box. */
+export function portStub(point: Point, side: Side, rect?: Rect): number {
+  if (!rect) return 24;
+  const normal = sideNormal[side];
+  const boundary = {
+    x: side === "right" ? rect.x + rect.width : rect.x,
+    y: side === "bottom" ? rect.y + rect.height : rect.y,
+  };
+  return Math.max(24, (boundary.x - point.x) * normal.x + (boundary.y - point.y) * normal.y + ROUTE_PAD);
+}
+
 /** Full preview polyline. The saved document receives only its inner corners, on drop. */
-export function dragSegment(points: readonly Point[], k: number, to: number): Point[] {
+export function dragSegment(
+  points: readonly Point[],
+  k: number,
+  to: number,
+  stubs: readonly [number, number] = [24, 24],
+): Point[] {
   if (k < 0 || k >= points.length - 1) return points.map((p) => ({ ...p }));
-  if (k === points.length - 2 && k !== 0) return dragSegment([...points].reverse(), 0, to).reverse();
+  if (k === points.length - 2 && k !== 0)
+    return dragSegment([...points].reverse(), 0, to, [stubs[1], stubs[0]]).reverse();
   const out = points.map((p) => ({ ...p }));
   const a = out[k],
     b = out[k + 1];
@@ -38,10 +57,10 @@ export function dragSegment(points: readonly Point[], k: number, to: number): Po
   }
   const stub = {
     ...a,
-    [along]: a[along] + Math.sign(b[along] - a[along]) * Math.min(24, Math.abs(b[along] - a[along]) / 3),
+    [along]: a[along] + Math.sign(b[along] - a[along]) * stubs[0],
   };
   if (points.length === 2) {
-    const tail = { ...b, [along]: b[along] - (stub[along] - a[along]) };
+    const tail = { ...b, [along]: b[along] - Math.sign(b[along] - a[along]) * stubs[1] };
     return [a, stub, { ...stub, [cross]: to }, { ...tail, [cross]: to }, tail, b];
   }
   return [a, stub, { ...stub, [cross]: to }, { ...b, [cross]: to }, ...out.slice(2)];

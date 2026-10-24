@@ -9,6 +9,8 @@ import {
   waitForStableViewport,
   waitForHistoryIdle,
   waitForCameraIdle,
+  pauseClock,
+  viewportTransform,
 } from "./fixtures";
 
 const SLUG = "kafka-order-pipeline";
@@ -22,9 +24,13 @@ const seedDiagram = {
   ],
   edges: [{ id: "api-db", from: "api", to: "db", kind: "sync" }],
 };
-async function open(page: Page, straight = false) {
+async function open(page: Page, straight = false, style: "smoothstep" | "bezier" | "straight" = "smoothstep") {
   const diagram = structuredClone(seedDiagram);
   if (straight) diagram.nodes[1].y = 0;
+  await page.addInitScript(({ key, style }) => localStorage.setItem(key, JSON.stringify({ edgeStyle: style })), {
+    key: STORAGE_KEYS.settings,
+    style,
+  });
   await page.addInitScript(({ key, diagram }) => localStorage.setItem(key, JSON.stringify(diagram)), {
     key: STORAGE_KEYS.autosavePrefix + SLUG,
     diagram,
@@ -40,10 +46,61 @@ async function open(page: Page, straight = false) {
     return { x: screen.x, y: screen.y };
   });
   await page.mouse.click(at.x, at.y);
-  await expect(page.getByTestId("route-segment-api-db-0")).toBeVisible();
+  await expect(page.getByTestId("reconnect-api-db-source")).toBeVisible();
+  if (style === "smoothstep") await expect(page.getByTestId("route-segment-api-db-0")).toBeVisible();
   await waitForCameraIdle(page);
   await waitForStableViewport(page);
 }
+for (const style of ["bezier", "straight"] as const)
+  test(`${style} automatic routes expose reconnect controls without segment handles`, async ({ page }) => {
+    await open(page, true, style);
+    // At 100% the collinear samples of this aligned Bezier are long enough for handles.
+    await page.getByTestId("canvas-wrap").focus();
+    await page.keyboard.press("Shift+0");
+    await waitForStableViewport(page);
+    await expect(page.getByTestId(/^route-segment-/)).toHaveCount(0);
+    await expect(page.getByTestId("reconnect-api-db-source")).toBeVisible();
+  });
+
+test("two consecutive segment drops have separate undo steps inside the history debounce", async ({ page }) => {
+  await page.clock.install();
+  await open(page);
+  await waitForHistoryIdle(page);
+  await pauseClock(page);
+  const original = await path(page);
+  await startDrag(page, 1, 60, 0);
+  await page.mouse.up();
+  await page.clock.runFor(16);
+  const first = await path(page);
+  expect(first).not.toBe(original);
+  await startDrag(page, 1, 60, 0);
+  await page.mouse.up();
+  await page.clock.runFor(16);
+  expect(await path(page)).not.toBe(first);
+  await page.keyboard.press("ControlOrMeta+z");
+  await expect.poll(() => path(page)).toBe(first);
+  await page.keyboard.press("ControlOrMeta+z");
+  await expect.poll(() => path(page)).toBe(original);
+});
+
+test("Space drag over a segment handle pans without reshaping", async ({ page }) => {
+  await open(page);
+  const before = await path(page);
+  const viewport = await viewportTransform(page);
+  const box = await page.getByTestId("route-segment-api-db-1").boundingBox();
+  if (!box) throw new Error("Missing segment handle");
+  await page.getByTestId("canvas-wrap").focus();
+  await page.keyboard.down("Space");
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width / 2 + 60, box.y + box.height / 2 + 30, { steps: 5 });
+  await expect(page.getByTestId("route-preview")).toHaveCount(0);
+  await page.mouse.up();
+  await page.keyboard.up("Space");
+  await expect.poll(() => viewportTransform(page)).not.toBe(viewport);
+  expect(await path(page)).toBe(before);
+  expect((await savedDiagram(page)).edges[0].waypoints).toBeUndefined();
+});
 const path = (page: Page) => page.getByTestId("edge-api-db").evaluate((el) => el.children[1].getAttribute("d"));
 async function startDrag(page: Page, k: number, dx: number, dy: number) {
   const box = await page.getByTestId(`route-segment-api-db-${k}`).boundingBox();
@@ -105,14 +162,34 @@ test("a straight line gains a jog and lining its middle up removes all bends", a
 });
 
 for (const modifier of ["Control", "Meta"])
-  test(`${modifier} drag bypasses snapping guides`, async ({ page }) => {
+  test(`${modifier} drag preserves an off-grid position while an unmodified drag snaps`, async ({ page }) => {
     await open(page);
+    const geometry = await page.getByTestId("edge-api-db").evaluate((el) => {
+      const line = el.children[1] as SVGPathElement;
+      const matrix = line.getScreenCTM();
+      if (!matrix) throw new Error("Missing edge transform");
+      return { zoom: matrix.a };
+    });
+    const handle = await page.getByTestId("route-segment-api-db-1").evaluate((el) => {
+      const matrix = new DOMMatrix(getComputedStyle(el).transform);
+      return matrix.m41;
+    });
+    // Aim close to a grid line, away from ports/node guides and beyond the drag activation distance.
+    const grid = Math.round((handle + 60) / 10) * 10;
+    const expected = grid + 2;
+    const dx = (expected - handle) * geometry.zoom;
+    await startDrag(page, 1, dx, 0);
+    await page.mouse.up();
+    expect((await custom(page))[0].x).toBe(grid);
+    await page.keyboard.press("ControlOrMeta+z");
+    await waitForCameraIdle(page);
+    await waitForStableViewport(page);
     await page.keyboard.down(modifier);
-    await startDrag(page, 1, 5, 0);
+    await startDrag(page, 1, dx, 0);
     await expect(page.getByTestId("route-guide")).toHaveCount(0);
     await page.mouse.up();
     await page.keyboard.up(modifier);
-    await custom(page);
+    expect((await custom(page))[0].x).toBeCloseTo(expected, 5);
   });
 
 test("Escape and blur cancel the preview without freezing the line", async ({ page }) => {

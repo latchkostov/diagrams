@@ -117,6 +117,7 @@ export function createInteractionController<P = unknown>(
 ) {
   let menuState: MenusState<P> = initialMenus<P>();
   let gestureState = initialGestures();
+  let panHeld = false;
   let gestureHow: (GestureHandlers & { owner: unknown }) | null = null;
   /** Live's hover cards, while Live attaches them (readoutLayer.ts): their own store, apart from the snapshot. */
   let readouts: ReadoutLayer | null = null;
@@ -483,6 +484,16 @@ export function createInteractionController<P = unknown>(
   }
 
   return {
+    /** Space panning owns pointer input before any editing gesture can capture it. */
+    get panHeld() {
+      return panHeld;
+    },
+    setPanHeld(on: boolean) {
+      if (on === panHeld) return;
+      panHeld = on;
+      if (on && gestureState.active) endGesture(gestureState.active.seq, "cancel");
+      changed();
+    },
     get gesture(): Gesture | null {
       return gestureState.active;
     },

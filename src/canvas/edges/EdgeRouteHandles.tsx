@@ -8,8 +8,12 @@ import type { EdgeRoute } from "../geometry/router";
 import type { DiagramFlowEdge, FlowNode } from "../types";
 import { t, useLocale } from "../../i18n";
 import { EdgeEnds } from "./EdgeEnds";
-import { dragSegment, freezeRoute, normalizeWaypoints, routeSegments, snapSegment } from "./segments";
+import { useRoutingOptions } from "./useEdgeRoute";
+import { hasSingleEdgeSelection } from "./singleEdgeSelection";
+import { dragSegment, freezeRoute, normalizeWaypoints, portStub, routeSegments, snapSegment } from "./segments";
 import "./routeHandles.css";
+
+let reshapeSequence = 0;
 
 export function EdgeRouteHandles({
   id,
@@ -26,10 +30,12 @@ export function EdgeRouteHandles({
   const { reshape } = useDiagram();
   const interaction = useInteraction();
   const pointerGesture = usePointerGesture();
+  const { style } = useRoutingOptions();
   const flow = useReactFlow<FlowNode, DiagramFlowEdge>();
   const store = useStoreApi<FlowNode, DiagramFlowEdge>();
   const zoom = useStore((s) => s.transform[2]);
-  const alone = useStore((s) => s.edges.filter((e) => e.selected).length === 1 && !s.nodes.some((n) => n.selected));
+  const alone = useStore(hasSingleEdgeSelection);
+  const panHeld = useSyncExternalStore(interaction?.subscribe ?? noSubscribe, () => interaction?.panHeld ?? false);
   const active = useSyncExternalStore(interaction?.subscribe ?? noSubscribe, () => {
     const p = interaction?.gesture?.preview;
     return p?.kind === "edge.segment" && p.edge === id ? p : null;
@@ -53,12 +59,28 @@ export function EdgeRouteHandles({
       />
     );
   const points = route.points;
-  const segments = routeSegments(points);
+  // Display samples (including collinear Bezier samples) are never editable route vertices.
+  const segments = route.custom || style === "smoothstep" ? routeSegments(points) : [];
   const begin = (k: number) => (event: PointerEvent) => {
+    if (interaction?.panHeld) return;
     const segment = segments.find((s) => s.k === k);
     if (!segment) return;
     // Freeze the displayed route once. No routing or document mutation happens during the gesture.
     const frozen = [points[0], ...freezeRoute(points), points[points.length - 1]];
+    const rectOf = (nodeId: string) => {
+      const node = store.getState().nodeLookup.get(nodeId);
+      return (
+        node && {
+          ...node.internals.positionAbsolute,
+          width: node.measured.width ?? node.width ?? 0,
+          height: node.measured.height ?? node.height ?? 0,
+        }
+      );
+    };
+    const stubs: [number, number] = [
+      portStub(points[0], route.sourceSide, rectOf(source)),
+      portStub(points[points.length - 1], route.targetSide, rectOf(target)),
+    ];
     const origin = flow.screenToFlowPosition({ x: event.clientX, y: event.clientY }, { snapToGrid: false });
     const cross = segment.axis === "h" ? "y" : "x";
     const along = segment.axis === "h" ? "x" : "y";
@@ -96,7 +118,7 @@ export function EdgeRouteHandles({
           kind: "edge.segment",
           edge: id,
           segment: k,
-          waypoints: dragSegment(frozen, k, snapped.value),
+          waypoints: dragSegment(frozen, k, snapped.value, stubs),
           guide: snapped.guide,
         };
       },
@@ -112,7 +134,7 @@ export function EdgeRouteHandles({
         const waypoints = normalized.slice(1, -1);
         if (waypoints.length > 64) return;
         // A click without motion never freezes an automatic route.
-        reshape(id, { waypoints: waypoints.length ? waypoints : undefined });
+        reshape(id, { waypoints: waypoints.length ? waypoints : undefined }, { merge: `reshape:${++reshapeSequence}` });
       },
     });
   };
@@ -147,7 +169,7 @@ export function EdgeRouteHandles({
           return (
             <div
               key={s.k}
-              className={`edge-seg edge-seg-${s.axis} nodrag nopan`}
+              className={`edge-seg edge-seg-${s.axis} nodrag${panHeld ? "" : " nopan"}`}
               style={{ transform: `translate(${x}px, ${y}px)` }}
               title={t("edge.shape.drag")}
               data-testid={`route-segment-${id}-${s.k}`}

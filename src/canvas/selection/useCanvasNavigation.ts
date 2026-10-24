@@ -26,6 +26,7 @@ import { isAnnotationNode, isDiagramNode, isGroupNode } from "../types";
 import { GROUP_PREFIX, type DiagramFlowEdge, type FlowNode, type GroupFlowNode } from "../types";
 import { useRevealFocused, type useRevealSelection, type CameraController } from "../camera";
 import type { FocusApi } from "../interaction";
+import type { InteractionController } from "../interaction/controller";
 
 /** Memoize a filtered projection by its members, rather than by the whole graph's identity. */
 function sharedFilter<T, U extends T>(predicate: (value: T) => value is U) {
@@ -424,7 +425,11 @@ export function useCanvasNavigation({
   return { ariaNodes, ariaEdges };
 }
 
-export function usePanKeys(wrapper: RefObject<HTMLDivElement | null>, editGestures: boolean) {
+export function usePanKeys(
+  wrapper: RefObject<HTMLDivElement | null>,
+  editGestures: boolean,
+  interaction: Pick<InteractionController, "setPanHeld">,
+) {
   // ---------------------------------------------------------------- Space, Alt and the middle button (D4, D9)
   // Space held: a drag pans from anywhere, even starting on a node (nodes don't drag meanwhile), with a
   // grab cursor. Alt held over a selected node: the copy cursor (Alt-drag duplicates).
@@ -433,6 +438,7 @@ export function usePanKeys(wrapper: RefObject<HTMLDivElement | null>, editGestur
     const wrap = wrapper.current;
     if (!editGestures || !wrap) return;
     const setSpace = (on: boolean) => {
+      interaction.setPanHeld(on);
       wrap.classList.toggle("is-space-pan", on);
       setSpaceHeld(on);
     };
@@ -459,8 +465,7 @@ export function usePanKeys(wrapper: RefObject<HTMLDivElement | null>, editGestur
       window.removeEventListener("blur", reset);
       reset();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- wrapper is CanvasView's stable lifetime ref; preserve the original dependencies
-  }, [editGestures]);
+  }, [editGestures, interaction, wrapper]);
 
   // The middle button pans (everywhere); it never starts the browser's autoscroll.
   useEffect(() => {

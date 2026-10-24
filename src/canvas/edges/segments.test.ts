@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { dragSegment, freezeRoute, normalizeWaypoints, routeSegments, snapSegment } from "./segments";
+import { dragSegment, freezeRoute, normalizeWaypoints, portStub, routeSegments, snapSegment } from "./segments";
+import { hasSingleEdgeSelection } from "./singleEdgeSelection";
+import { shapedRoute } from "../geometry/shaped";
+import { routedPort } from "../geometry/ports";
+import type { DiagramFlowEdge, FlowNode } from "../types";
 const points = [
   { x: 0, y: 0 },
   { x: 100, y: 0 },
@@ -72,7 +76,24 @@ describe("segment shaping", () => {
         0,
         30,
       )[1],
-    ).toEqual({ x: 10, y: 0 });
+    ).toEqual({ x: 24, y: 0 });
+  });
+  it.each(["horizontal", "vertical", "reversed"])("keeps a 40 px jog beyond both port escapes: %s", (direction) => {
+    const sourceRect = { x: -220, y: -36, width: 220, height: 72 };
+    const targetRect = { x: 40, y: -36, width: 220, height: 72 };
+    const source = routedPort(sourceRect, "right");
+    const target = routedPort(targetRect, "left");
+    const transform = ({ x, y }: { x: number; y: number }) =>
+      direction === "vertical" ? { x: y, y: x } : direction === "reversed" ? { x: -x, y } : { x, y };
+    const original = [source.attachment, target.attachment].map(transform);
+    const preview = dragSegment(original, 0, 60);
+    expect(preview[1]).toEqual(transform({ x: 24, y: 0 }));
+    expect(preview.at(-2)).toEqual(transform({ x: 16, y: 0 }));
+    // Compare the actual saved renderer too: dropping must not introduce a detour.
+    if (direction === "horizontal")
+      expect(shapedRoute(source, "right", target, "left", preview.slice(1, -1), sourceRect, targetRect)).toEqual(
+        preview,
+      );
   });
   it("merges a jog lined up with its neighbours back to automatic", () => {
     const jog = dragSegment(
@@ -91,6 +112,36 @@ describe("segment shaping", () => {
       { x: 0, y: 0 },
       { x: 300, y: 0 },
     ]);
+  });
+  it("keeps short end legs and inset shape ports outside their escapes", () => {
+    const original = [
+      { x: 0, y: 0 },
+      { x: 16, y: 0 },
+      { x: 16, y: 100 },
+      { x: 32, y: 100 },
+    ];
+    expect(dragSegment(original, 0, 60)[1]).toEqual({ x: 24, y: 0 });
+    expect(dragSegment([...original].reverse(), 0, 60).at(1)).toEqual({ x: 8, y: 100 });
+    const rect = { x: -100, y: -36, width: 140, height: 72 };
+    const stub = portStub(original[0], "right", rect);
+    expect(stub).toBe(56);
+    expect(dragSegment(original, 0, 60, [stub, 24])[1]).toEqual({ x: 56, y: 0 });
+  });
+  it("shares the selection scan across edges and invalidates it on node/edge changes", () => {
+    let reads = 0;
+    const edges = Array.from({ length: 500 }, () => ({
+      get selected() {
+        reads++;
+        return false;
+      },
+    })) as DiagramFlowEdge[];
+    const nodes: FlowNode[] = [];
+    for (let i = 0; i < edges.length; i++) expect(hasSingleEdgeSelection({ nodes, edges })).toBe(false);
+    expect(reads).toBe(edges.length);
+    const selected = [...edges, { selected: true } as DiagramFlowEdge];
+    expect(hasSingleEdgeSelection({ nodes, edges: selected })).toBe(true);
+    expect(hasSingleEdgeSelection({ nodes: [{ selected: true } as FlowNode], edges: selected })).toBe(false);
+    expect(hasSingleEdgeSelection({ nodes, edges: [...selected, { selected: true } as DiagramFlowEdge] })).toBe(false);
   });
   it("short-leg merging remains orthogonal", () => {
     expect(

@@ -808,7 +808,7 @@ function CanvasInner({
     interaction,
   );
 
-  const spaceHeld = usePanKeys(wrapper, editGestures);
+  const spaceHeld = usePanKeys(wrapper, editGestures, interaction);
 
   const [onPaneContextMenu, onNodeContextMenu, openEdgeMenu, onEdgeContextMenu, onSelectionContextMenu] =
     useCanvasContextMenus(

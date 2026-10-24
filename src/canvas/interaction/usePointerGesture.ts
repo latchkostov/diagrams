@@ -30,7 +30,8 @@ export function usePointerGesture() {
       clean?(): void;
     },
   ) => {
-    if (!controller || event.button !== 0 || (event.pointerType === "touch" && !event.isPrimary)) return;
+    if (!controller || controller.panHeld || event.button !== 0 || (event.pointerType === "touch" && !event.isPrimary))
+      return;
     event.preventDefault();
     event.stopPropagation();
     const start = { x: event.clientX, y: event.clientY };
