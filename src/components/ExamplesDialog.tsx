@@ -5,6 +5,13 @@ import { DiagramThumbnail } from "./DiagramThumbnail";
 import { Dialog } from "../interop/ui/Dialog";
 import { t, useLocale } from "../i18n";
 import "../styles/examples.css";
+import { lazyComponent } from "../lib/lazyLoad";
+
+/** Tutorials are previewed in development and e2e builds first (src/App.tsx): production drops the row. */
+const TutorialsRow =
+  import.meta.env.DEV || import.meta.env.VITE_E2E === "1"
+    ? lazyComponent(() => import("../tutorials/TutorialsRow").then((m) => m.TutorialsRow))
+    : null;
 
 export function ExamplesDialog({
   onClose,
@@ -83,6 +90,7 @@ export function ExamplesDialog({
         </label>
       </div>
       <div className="examples-results" data-testid="examples-results">
+        {TutorialsRow && !query && !feature && <TutorialsRow onClose={onClose} />}
         {sections.length === 0 && (
           <p role="status" data-testid="examples-empty">
             {t("examples.empty")}

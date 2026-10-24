@@ -10,7 +10,7 @@ import { createRunQueue, type RunRequest } from "../live/runQueue";
  *
  *   useCanvasHost(editor, { live, enabled: !readOnly });   // CanvasView (./canvasHost, needs React Flow)
  *   useLiveHost(toggle, goLive, enabled);                  // LiveView (the Live toggle)
- *   useLiveSessionHost(selectSimulation, enabled, hint, getState); // LiveView's running session
+ *   useLiveSessionHost(selectSimulation, enabled, hint, getState, subscribe); // LiveView's running session
  *
  * Each hook unpublishes on unmount, so the palette only offers what is on screen.
  */
@@ -52,6 +52,8 @@ export interface SessionHost {
   disabledHint?: string;
   /** What's running now (the AI panel's Explain, in live view). */
   state?(): LiveState;
+  /** Told when `state()` changes (about 8 times a second while playing): a tutorial step waiting on traffic. */
+  subscribe?(listener: () => void): () => void;
 }
 
 interface HostState {
@@ -136,10 +138,11 @@ export function useLiveSessionHost(
   enabled: boolean,
   disabledHint?: string,
   getState?: () => LiveState,
+  subscribe?: (listener: () => void) => () => void,
 ) {
   useEffect(() => {
     if (!enabled) return;
-    const off = publish("session", { run, disabledHint, ...(getState ? { state: getState } : {}) });
+    const off = publish("session", { run, disabledHint, ...(getState ? { state: getState, subscribe } : {}) });
     return off;
-  }, [run, enabled, disabledHint, getState]);
+  }, [run, enabled, disabledHint, getState, subscribe]);
 }
