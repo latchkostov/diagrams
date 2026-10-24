@@ -1,7 +1,8 @@
 import { createHash } from "node:crypto";
 import { readdirSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { beforeAll, describe, expect, it } from "vitest";
+import { runInNewContext } from "node:vm";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 import { buildViewer, buildViewerTemplate, EDITOR_ONLY } from "../../scripts/interactive-viewer";
 import { exportHtml, PAYLOAD_BLOCK, templateStencilIcons } from "./inject";
 import { catalog } from "../stencils/catalog";
@@ -34,6 +35,38 @@ const allIcons = () =>
   );
 
 describe("interactive viewer template", () => {
+  it("forwards read-only measurements and selection causes while omitting node-drag authoring", () => {
+    const entry = EDITOR_ONLY.find((e) => e.path === "/src/canvas/placement/useDragPlacement.ts")!;
+    const make = runInNewContext(`${entry.stub(resolve(".")).replaceAll("export ", "")}; useDragPlacement`) as (
+      ...args: unknown[]
+    ) => [unknown, (changes: unknown[]) => void, (changes: unknown[]) => void];
+    let userSelectionActive = false;
+    const nodes = vi.fn(),
+      edges = vi.fn(),
+      selecting = vi.fn();
+    const [, onNodes, onEdges] = make(
+      { getState: () => ({ userSelectionActive }) },
+      null,
+      false,
+      nodes,
+      edges,
+      ...Array<null>(11).fill(null),
+      { selecting },
+    );
+    const measurement = { type: "dimensions", id: "a", dimensions: { width: 220, height: 72 } };
+    const selection = { type: "select", id: "a", selected: true };
+    onNodes([measurement]);
+    expect(nodes).toHaveBeenLastCalledWith([measurement]);
+    expect(selecting).not.toHaveBeenCalled();
+    onNodes([selection]);
+    onEdges([selection]);
+    expect(selecting.mock.calls).toEqual([["click"], ["click"]]);
+    expect(edges).toHaveBeenLastCalledWith([selection]);
+    userSelectionActive = true;
+    onNodes([selection, measurement]);
+    expect(nodes).toHaveBeenLastCalledWith([measurement]);
+    expect(selecting).toHaveBeenCalledTimes(2);
+  });
   it("allows its one inline script and one inline style by hash, and nothing else", () => {
     const scripts = blocks(template, "script");
     const styles = blocks(template, "style");
