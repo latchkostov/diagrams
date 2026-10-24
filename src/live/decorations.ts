@@ -4,12 +4,14 @@
 // lives in live.css.
 
 import type { SimSnapshot } from "../sim/types";
-import { HealthWindow, currentHealth } from "./healthWindow";
+import { currentHealth } from "./healthWindow";
 import { heatOf } from "./format";
 import { snapshotContinuity } from "./snapshotContinuity";
 
 export interface DecorationInput {
   snapshot: SimSnapshot;
+  /** Controller-observed real-unit readings, including the history restored by a seek. */
+  health: Pick<SimSnapshot, "nodes">;
   /** When set, everything outside these nodes / edges is dimmed (narration focus, path trace). */
   spotlight: { nodes: ReadonlySet<string>; edges: ReadonlySet<string>; kind: "focus" | "trace" } | null;
   /** The simulation isn't moving (paused, a note waiting, slow motion): the marching edges stop too. */
@@ -49,7 +51,6 @@ export interface DecorationStats {
 
 export class Decorator {
   private applied = new Map<Element, string>();
-  private health = new HealthWindow();
   /** Edge id → the publish it last carried a message in (dropped once its hold ends). */
   private lastActive = new Map<string, number>();
   private lastTime = NaN;
@@ -58,14 +59,13 @@ export class Decorator {
 
   constructor(private root: HTMLElement) {}
 
-  apply({ snapshot, spotlight, still }: DecorationInput): void {
+  apply({ snapshot, health, spotlight, still }: DecorationInput): void {
     const root = this.root;
     const stats = this.stats;
     stats.applies++;
     // A seek in either direction or a rebuilt/replayed run starts a new presentation interval.
     const continuity = snapshotContinuity.get(snapshot);
     if (continuity !== this.continuity || snapshot.time < this.lastTime) this.lastActive.clear();
-    this.health.observe(snapshot, continuity, snapshot.scale ?? 1);
     this.continuity = continuity;
     // Holds count publishes of a moving simulation: while it stands still, every edge keeps its state.
     if (!still && snapshot.time !== this.lastTime) stats.publishes++;
@@ -84,7 +84,7 @@ export class Decorator {
       elements++;
       // Unread retained messages stay neutral; attention needs sustained queue growth.
       const kept = !!n.noConsumer && n.role !== "queue";
-      const rising = !kept && currentHealth(n).growing;
+      const rising = !kept && currentHealth(health.nodes[id]).growing;
       const heat = rising ? Math.max(1, Math.ceil(heatOf(n.backlog) * 3)) : kept && n.backlog > 0 ? 1 : 0;
       const dim = spotlight ? !spotlight.nodes.has(id) : false;
       const key = `${n.status}|${heat}|${rising}|${dim}`;
@@ -155,7 +155,6 @@ export class Decorator {
         el.removeAttribute(a);
     }
     this.applied.clear();
-    this.health = new HealthWindow();
     this.lastActive.clear();
     this.lastTime = NaN;
     this.continuity = undefined;

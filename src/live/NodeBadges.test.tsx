@@ -71,9 +71,9 @@ it("counts terminal losses once and excludes failed attempts that recovered", ()
     health.observe({ ...state.snapshot, time: 1000 }, 0);
     const html = renderToStaticMarkup(<NodeBadges state={state} presenting={false} />);
     expect(html).toContain('data-testid="node-alert-caller">5</div>');
-    sample.dropped = 0;
-    sample.deadLettered = 0;
-    health.observe({ ...state.snapshot, time: 12000 }, 0);
+    for (let time = 2000; time <= 12000; time += 1000) health.observe({ ...state.snapshot, time }, 0);
+    expect(sample.dropped).toBe(5);
+    expect(sample.deadLettered).toBe(2);
     expect(renderToStaticMarkup(<NodeBadges state={state} presenting={false} />)).not.toContain(
       'data-testid="node-alert-caller"',
     );

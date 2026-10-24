@@ -311,6 +311,7 @@ export class LiveController {
       inject: (node, count, opts) => this.injectReal(node, count, opts),
       setMultipliers: runner ? (patch) => runner.setMultipliers(patch) : undefined,
     });
+    this.dirty = true;
     this.trail.push(deepFreeze({ time, op: structuredClone(op) }));
   }
 
@@ -413,14 +414,15 @@ export class LiveController {
         }
         const before = s.time;
         if (!this.updateRunner(() => this.runner?.step(Math.min(1000, target - s.time) / this.speed))) return;
+        this.dirty = true;
         this.captureCheckpoint();
         if (this.runner.state().time <= before) break;
       }
     } else {
       const ms = target - this.engine.metrics().time;
       if (ms > 0 && !this.updateRunner(() => this.engine.step(ms / this.speed))) return;
+      this.dirty = true;
     }
-    this.dirty = true;
   }
 
   /** Simulated ms a seek to `targetMs` would run at once: forward from now, or back from the nearest checkpoint. */
@@ -896,8 +898,8 @@ export class LiveController {
     if (this.needsRestart || !this.playing || this.held || this.replayTarget !== null || !(wallMs > 0)) return;
     if (this.runner) {
       if (!this.updateRunner(() => this.runner?.step(wallMs))) return;
-      this.captureCheckpoint();
       this.dirty = true;
+      this.captureCheckpoint();
       this.snapshot();
       if (this.runState?.done) {
         this.playing = false;
@@ -985,9 +987,12 @@ export class LiveController {
     if (this.runner) {
       if (this.runState?.waiting || this.runState?.done) return;
       if (!this.updateRunner(() => this.runner?.step(wall))) return;
+      this.dirty = true;
       this.captureCheckpoint();
-    } else if (!this.updateRunner(() => this.engine.step(wall))) return;
-    this.dirty = true;
+    } else {
+      if (!this.updateRunner(() => this.engine.step(wall))) return;
+      this.dirty = true;
+    }
     this.publish();
   }
 
@@ -1058,6 +1063,7 @@ export class LiveController {
       this.keepTrace(intent);
     }
     const pending = this.timedPending(after);
+    this.dirty = true;
     this.observeHealth();
     let cursor = 0;
     let guard = 0;
@@ -1072,6 +1078,7 @@ export class LiveController {
       const before = s.time;
       const ms = Math.min(1000, target - s.time, this.untilNext(pending, cursor));
       if (!this.updateRunner(() => this.runner?.step(ms / this.speed))) return;
+      this.dirty = true;
       this.observeHealth();
       this.captureCheckpoint();
       if (this.runner.state().time <= before && !this.runner.state().waiting) break;
@@ -1081,7 +1088,6 @@ export class LiveController {
     if (this.log.some((e) => e.tick > reached)) this.log = this.log.filter((e) => e.tick <= reached);
     this.invalidateVerification();
     this.record({ kind: "seek", targetMs: target });
-    this.dirty = true;
     this.publish();
   }
 
@@ -1363,10 +1369,10 @@ export class LiveController {
           })
         )
           return;
+        this.dirty = true;
         this.captureCheckpoint();
         if (performance.now() - start >= 6) break;
       }
-      this.dirty = true;
       this.publish();
       if (this.replayTarget !== null) this.yieldReplay(chunk);
     };
@@ -1512,7 +1518,6 @@ export class LiveController {
     if (!this.sim) this.applyInputs();
     this.checkpoints = [];
     this.captureCheckpoint(true);
-    this.dirty = true;
     this.publish();
   }
 
@@ -1552,7 +1557,6 @@ export class LiveController {
   /** Replay samples health without building rendering snapshots for models without waiting calls. */
   private observeHealth(): void {
     if (revisionAtLeast(this.diagram.planning?.revision, "p3-w1")) {
-      this.dirty = true;
       this.health.observe(this.realSnapshot(), this.generation);
     } else {
       const scale = this.state?.scale ?? 1;
@@ -1661,10 +1665,10 @@ export class LiveController {
     this.checkpoints = [];
     // A fresh engine reflects no logged op: whoever replays the log moves this on.
     this.applied = 0;
-    this.captureCheckpoint(true);
     this.generation++;
     this.needsRestart = false;
     this.dirty = true;
+    this.captureCheckpoint(true);
     return "ok";
   }
 }

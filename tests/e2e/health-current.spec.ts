@@ -34,6 +34,8 @@ for (const theme of ["light", "dark"] as const) {
         { intervals: [0] },
       )
       .toContain("Open");
+    await expect(page.getByTestId("trouble-callout")).toBeVisible();
+    await expect(page.getByTestId("trouble-announce")).not.toBeEmpty();
     await page.clock.runFor(15000);
     await page.getByTestId("live-play").click();
     await waitForStableViewport(page);
@@ -114,6 +116,10 @@ for (const simulation of ["three-quick-retries", "jittered-backoff", "retry-budg
     await page.clock.runFor(1500);
     await expect(page.getByTestId("live-note-text")).toHaveText(/^Watch /);
     await expect(page.getByTestId("live-note")).toContainText("At 3 s");
+    await expect(page.getByTestId("live-note-continue")).toBeVisible();
+    const guidanceTime = await page.getByTestId("live-clock").innerText();
+    await page.clock.runFor(3000);
+    await expect(page.getByTestId("live-clock")).toHaveText(guidanceTime);
     await expect(page.getByTestId("live-clock")).toHaveAttribute("title", "of 1:00");
   });
 }

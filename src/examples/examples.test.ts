@@ -38,6 +38,12 @@ describe("example metadata and loading", () => {
       expect(run.state().note?.text).toMatch(/^Watch /);
       expect(run.state().note?.atMs).toBe(1200);
       expect(run.state().note?.text).toContain("At 3 s");
+      expect(run.state().waiting).toBe(true);
+      run.step(10000);
+      expect(run.state().time).toBe(1200);
+      run.resume();
+      run.step(1000);
+      expect(run.state().time).toBe(2200);
     }
   });
   it("covers every public JSON exactly once and keeps eager metadata in sync", () => {

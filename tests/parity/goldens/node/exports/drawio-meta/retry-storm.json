@@ -1,7 +1,7 @@
 {
   "withIcons": {
-    "sha256": "f596e80b93b9340887cf43e46f625172e9d59c9a6b918cfc5f17ae4ed064b444",
-    "bytes": 21717,
+    "sha256": "70e75a9019b08941c219a77dbbbee04a74014aaf6f9ec9278a1438455b3a733f",
+    "bytes": 21809,
     "inlined": { "client.user": "client-user c8aa1007847a06e5", "generic.service": "generic-service 6ec0da29f56c9e80", "generic.topic": "generic-topic 7f5daeea368c1577" }
   },
   "readBack": [
@@ -102,7 +102,7 @@
               },
               {
                 "atMs": 1200,
-                "action": { "do": "note", "text": "Watch Checkout's attempts per request and the Payments queue. At 3 s, Payments slows for five seconds: quick retries pile up. Repeating a POST can run it twice.", "focus": ["payments", "checkout"] }
+                "action": { "do": "note", "pause": true, "text": "Watch Checkout's attempts per request and the Payments queue. At 3 s, Payments slows for five seconds: quick retries pile up. Repeating a POST can run it twice.", "focus": ["payments", "checkout"] }
               },
               {
                 "atMs": 3500,
@@ -183,7 +183,7 @@
               },
               {
                 "atMs": 1200,
-                "action": { "do": "note", "text": "Watch Checkout's attempts per request and the Payments queue. At 3 s, Payments slows for five seconds: jitter spreads retries, but does the queue drain? Repeating a POST can run it twice.", "focus": ["payments", "checkout"] }
+                "action": { "do": "note", "pause": true, "text": "Watch Checkout's attempts per request and the Payments queue. At 3 s, Payments slows for five seconds: jitter spreads retries, but does the queue drain? Repeating a POST can run it twice.", "focus": ["payments", "checkout"] }
               },
               {
                 "atMs": 3500,
@@ -272,7 +272,7 @@
               },
               {
                 "atMs": 1200,
-                "action": { "do": "note", "text": "Watch Checkout's attempts per request and Shop's goodput. At 3 s, Payments slows for five seconds: the retry budget caps extra calls. Watch its queue drain and goodput recover later in this 60-second run. Repeating a POST can run it twice.", "focus": ["payments", "checkout"] }
+                "action": { "do": "note", "pause": true, "text": "Watch Checkout's attempts per request and Shop's goodput. At 3 s, Payments slows for five seconds: the retry budget caps extra calls. Watch its queue drain and goodput recover later in this 60-second run. Repeating a POST can run it twice.", "focus": ["payments", "checkout"] }
               },
               {
                 "atMs": 3500,
@@ -362,7 +362,7 @@
               },
               {
                 "atMs": 1200,
-                "action": { "do": "note", "text": "Watch the Payments connection and queue. At 3 s, Payments slows for five seconds: the breaker pauses failing calls, then tests recovery. Watch for Closed and calls succeeding.", "focus": ["payments", "checkout"] }
+                "action": { "do": "note", "pause": true, "text": "Watch the Payments connection and queue. At 3 s, Payments slows for five seconds: the breaker pauses failing calls, then tests recovery. Watch for Closed and calls succeeding.", "focus": ["payments", "checkout"] }
               },
               {
                 "atMs": 3500,

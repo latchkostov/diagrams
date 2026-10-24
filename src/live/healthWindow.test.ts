@@ -1,4 +1,5 @@
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
+import * as engines from "../sim/engine";
 import type { BreakerView } from "../sim/breaker";
 import type { EdgeSimState, NodeSimState } from "../sim/types";
 import { HealthWindow, currentHealth, HEALTH_WINDOW_MS } from "./healthWindow";
@@ -30,6 +31,31 @@ const calls = (patch: Partial<NonNullable<EdgeSimState["calls"]>> = {}) => ({
   succeeded: 0,
   late: 0,
   ...patch,
+});
+
+it("reuses rendering snapshots for checkpoint sampling, seeking and publication", () => {
+  const create = vi.spyOn(engines, "createEngine");
+  const diagram = healthFixture();
+  const controller = new LiveController(diagram);
+  controller.selectSimulation(diagram.simulations![0]);
+  const snapshot = vi.spyOn(create.mock.results.at(-1)!.value!, "snapshot");
+  try {
+    controller.setPlaying(true);
+    controller.advance(5000);
+    controller.publish();
+    expect(snapshot).toHaveBeenCalledOnce();
+    for (const target of [7000, 5000, 16000]) {
+      snapshot.mockClear();
+      controller.seek(target);
+      controller.publish();
+      const times = snapshot.mock.results.map((result) => result.value.time);
+      expect(new Set(times).size, `one snapshot per engine state seeking to ${target}`).toBe(times.length);
+    }
+  } finally {
+    snapshot.mockRestore();
+    create.mockRestore();
+    controller.dispose();
+  }
 });
 const breaker: BreakerView = {
   state: "closed" as const,
