@@ -6,6 +6,7 @@ import { queueGrant } from "./admission";
 import { assertResilienceInvariants } from "./resilienceInvariants";
 import { assertLedgerInvariants, assertOutcomeInvariants } from "./resourceInvariants";
 import { realSnapshot } from "./units";
+import { resourceLesson } from "../model/autoscaling";
 import { propsProblem } from "../model/simProps";
 import type { DiagramFile } from "../model/types";
 import type { QueuePolicy } from "./types";
@@ -251,4 +252,60 @@ it("a live sampling edit never resizes requests already resident in the shed que
   e.setNodeStatus("worker", "up");
   e.step(3000);
   expect(realSnapshot(e.snapshot()).nodes.worker.processed).toBe(3);
+});
+
+it("resource recovery keeps already-started work out of maximum-wait shedding", () => {
+  const d = diagram({ limit: 1, maxWaitMs: 1 });
+  d.nodes[1].props!.status = "up";
+  d.nodes[1].props!.latencyMs = 1000;
+  const e = engine(d);
+  e.inject("source", 1);
+  e.step(100);
+  expect(e.snapshot().nodes.worker.inFlight).toBeGreaterThan(0);
+  e.setNodeProps("worker", {
+    resources: { ...resourceLesson(), cpuMsPerMessage: 0, startup: { delayMs: 1000, jitterFraction: 0 } },
+  });
+  e.step(3000);
+  expect(e.snapshot().nodes.worker.shed).toBe(0);
+  expect(e.snapshot().nodes.worker.processed).toBe(1);
+});
+
+it("a critical arrival evicts the newest lowest-priority waiter and is served first", () => {
+  const d = diagram({ limit: 2 });
+  d.nodes.push({ ...d.nodes[0], id: "critical" });
+  d.edges.push({ id: "critical-input", from: "critical", to: "worker", props: { travelMs: 10, priority: "critical" } });
+  const e = engine(d);
+  e.inject("source", 2);
+  e.step(100);
+  const normal = e
+    .snapshot()
+    .events.filter((event) => event.nodeId === "worker" && event.kind === "deliver")
+    .map((event) => event.messageId);
+  e.inject("critical", 1);
+  e.step(100);
+  expect(e.snapshot().nodes.worker).toMatchObject({ queueDepth: 2, shed: 1 });
+  expect(e.snapshot().events.find((event) => event.kind === "reject")?.messageId).toBe(normal[1]);
+  const critical = e
+    .snapshot()
+    .events.filter((event) => event.nodeId === "worker" && event.kind === "deliver")
+    .at(-1)!.messageId;
+  e.setNodeStatus("worker", "up");
+  e.step(1000);
+  expect(
+    e
+      .snapshot()
+      .events.filter((event) => event.nodeId === "worker" && event.kind === "process")
+      .map((event) => event.messageId),
+  ).toEqual([critical, normal[0]]);
+});
+it.each([2, 10])("a partial shed Request settles only its retained branch at scale %s", (scale) => {
+  const e = engine(diagram({ limit: 1 }, true), scale);
+  e.inject("source", 1);
+  e.step(100);
+  expect(realSnapshot(e.snapshot()).nodes.worker.shed).toBe(scale - 1);
+  e.setNodeStatus("worker", "up");
+  e.step(2000);
+  const snapshot = realSnapshot(e.snapshot());
+  expect(snapshot.edges.input.calls).toMatchObject({ failed: scale - 1, succeeded: 1, inFlight: 0 });
+  expect(snapshot.inSystem).toBe(0);
 });

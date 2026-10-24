@@ -2902,7 +2902,9 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     ) {
       enqueue(node, work);
       admitPending(node);
-      return;
+      if (!node.pending.length) return;
+      // A physical resource gate can still refuse the apparent thread room. This request really is waiting.
+      dequeue(node, node.pending);
     }
     if (!(node.pending instanceof ShedQueue)) {
       const queue = new ShedQueue<Work>();
@@ -3619,7 +3621,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         const next = (back ? queue.peekBack() : queue.peek())!;
         if (
           queue === node.pending &&
-          !next.delivery &&
+          queueEligible(next) &&
           next.queuedAt !== undefined &&
           node.props.queue?.maxWaitMs !== undefined &&
           time - next.queuedAt > node.props.queue.maxWaitMs
