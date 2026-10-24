@@ -11,6 +11,56 @@ import { nudgeRoutes } from "./nudge";
 import { GROWTH_FACTOR, LINEAR_LIMIT } from "../../test/complexity";
 import type { Point, Rect } from "./rect";
 import { RectIndex } from "./spatial";
+import { opGrowth } from "../../test/opCounter";
+import { routeInputFromStore } from "../edges/useEdgeRoute";
+import type { InternalNode } from "@xyflow/react";
+import type { FlowNode, DiagramFlowEdge } from "../types";
+import { nodeToFlow } from "../convert";
+
+it("dragging one node among N shaped edges prepares routing in linear operations", () => {
+  const scene = (count: number) => {
+    const nodes: InternalNode<FlowNode>[] = Array.from({ length: count * 2 }, (_, i) => {
+      const n = nodeToFlow({
+        id: `n${i}`,
+        stencil: "service.node",
+        label: "Node",
+        x: (i % 2) * 800 + (i === 0 ? 20 : 0),
+        y: Math.floor(i / 2) * 400,
+      });
+      return {
+        ...n,
+        measured: { width: 220, height: 72 },
+        internals: { positionAbsolute: n.position, userNode: n, z: 0 },
+      };
+    });
+    const edges: DiagramFlowEdge[] = Array.from({ length: count }, (_, i) => ({
+      id: `e${i}`,
+      source: `n${i * 2}`,
+      target: `n${i * 2 + 1}`,
+      data: {
+        kind: "sync",
+        waypoints: [
+          { x: 400, y: i * 400 + 36 },
+          { x: 400, y: i * 400 + 36 + 200 },
+        ],
+      },
+    }));
+    return { nodes, edges };
+  };
+  const small = scene(40),
+    large = scene(40 * GROWTH_FACTOR);
+  const opts = { style: "smoothstep", direction: "LR" } as const;
+  const run = (s: ReturnType<typeof scene>) => {
+    const input = routeInputFromStore(s.nodes, s.edges, opts);
+    expect(input.edges[0].waypoints).toBe(s.edges[0].data!.waypoints);
+  };
+  expect(
+    opGrowth(
+      () => run(small),
+      () => run(large),
+    ),
+  ).toBeLessThan(LINEAR_LIMIT);
+});
 
 /**
  * Reads of the padded obstacles the router makes (every `inflate`d box), while `rectReads.on`; past `limit` the
@@ -352,6 +402,13 @@ it("routes 300 saved and 300 automatic edges with searches only for automatic ed
   for (const e of custom) expect(result.get(e.id)?.custom).toBe(true);
   router.route({ geometry, nodes, edges: [...edges, ...custom] });
   expect(router.lastRouted).toBe(0);
+  const dragged = router.route({
+    geometry,
+    nodes: nodes.map((n, i) => (i ? n : { ...n, rect: { ...n.rect, x: n.rect.x + 20 } })),
+    edges: [...edges, ...custom],
+  });
+  expect(router.lastRouted).toBe(1);
+  expect(dragged.get("saved299")).toBe(result.get("saved299"));
 });
 
 for (const mixed of [false, true])

@@ -1,5 +1,8 @@
 import { opGrowth } from "../test/opCounter";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import { editorHarness } from "../test/editorHarness";
+import { notify } from "../interop/ui/toast";
+vi.mock("../interop/ui/toast", () => ({ notify: vi.fn() }));
 import { fitAxis, scaleAcross, tidyLayout, TIDY_GAP, type TidyBox } from "./tidy";
 import { spreadOverlaps } from "./arrange";
 import { GROWTH_FACTOR, LINEAR_LIMIT, QUADRATIC_LIMIT } from "../test/complexity";
@@ -32,6 +35,46 @@ const chain = [
   { from: "b", to: "c" },
   { from: "b", to: "d" },
 ];
+
+it("Tidy resets only lines with moved ends and reports the count with Undo", () => {
+  const h = editorHarness({
+    format: "diagrams/v1",
+    title: "Tidy",
+    nodes: [
+      ...messy.map((n) => ({ id: n.id, stencil: "service.node", label: n.id, x: n.x, y: n.y })),
+      { id: "outside", stencil: "service.node", label: "Outside", x: 5000, y: 0 },
+    ],
+    edges: [
+      ...chain.map((e, i) => ({
+        id: `e${i}`,
+        ...e,
+        sourceSide: "right" as const,
+        waypoints: [
+          { x: 1400, y: 200 },
+          { x: 1600, y: 200 },
+        ],
+      })),
+      { id: "still", from: "outside", to: "outside", waypoints: [{ x: 5000, y: -100 }] },
+    ],
+  });
+  const before = h.edges();
+  vi.mocked(notify).mockClear();
+  expect(h.api.tidy(messy.map((n) => n.id))).toBe(true);
+  expect(
+    h
+      .edges()
+      .slice(0, 3)
+      .every((e) => !e.data?.waypoints),
+  ).toBe(true);
+  expect(h.edges()[0].data?.sourceSide).toBe("right");
+  expect(h.edges()[3]).toBe(before[3]);
+  expect(notify).toHaveBeenCalledWith(
+    "3 shaped lines went back to automatic",
+    expect.objectContaining({ action: expect.objectContaining({ testId: "route-reset-undo", undoes: true }) }),
+  );
+  vi.mocked(notify).mock.calls.at(-1)![1]!.action!.run();
+  expect(h.deps.history.undo).toHaveBeenCalledOnce();
+});
 
 describe("tidyLayout", () => {
   it("lays the selection out in layers by its edges, keeping its top-left", () => {

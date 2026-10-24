@@ -7,6 +7,55 @@ import { selectRoutes } from "./useEdgeRoute";
 import { segmentHitsRect } from "../geometry/rect";
 import { annotationToFlow, nodeToFlow } from "../convert";
 import { Router } from "../geometry/router";
+import { loadShapedRoutes } from "../geometry/shapedRuntime";
+
+it("keeps saved bends fixed when both nodes move and keeps unrelated routes stable", async () => {
+  await loadShapedRoutes();
+  const internal = (id: string, x: number, y: number): InternalNode<FlowNode> => {
+    const n = nodeToFlow({ id, stencil: "service.go", label: id, x, y });
+    return {
+      ...n,
+      measured: { width: 220, height: 72 },
+      internals: { positionAbsolute: n.position, z: 0, userNode: n },
+    };
+  };
+  const lookup = new Map([
+    ["a", internal("a", 0, 0)],
+    ["b", internal("b", 800, 240)],
+    ["c", internal("c", 0, 2000)],
+    ["d", internal("d", 800, 2240)],
+  ]);
+  const bends = [
+    { x: 400, y: 36 },
+    { x: 400, y: 276 },
+  ];
+  const edges: DiagramFlowEdge[] = [
+    { id: "ab", source: "a", target: "b", data: { kind: "sync", waypoints: bends } },
+    {
+      id: "cd",
+      source: "c",
+      target: "d",
+      data: { kind: "sync", waypoints: bends.map((p) => ({ x: p.x, y: p.y + 2000 })) },
+    },
+  ];
+  const state = () => ({ nodeLookup: lookup, edges }) as ReactFlowState<FlowNode, DiagramFlowEdge>;
+  const opts = { style: "smoothstep", direction: "LR" } as const;
+  const before = selectRoutes(state(), opts);
+  for (const id of ["a", "b"])
+    lookup.set(id, internal(id, lookup.get(id)!.position.x + 50, lookup.get(id)!.position.y + 80));
+  const s = state();
+  const route = vi.spyOn(Router.prototype, "route");
+  try {
+    const during = selectRoutes(s, opts);
+    expect(route.mock.calls[0][0].edges[0].waypoints).toBe(bends);
+    expect(during.get("ab")!.points).not.toEqual(before.get("ab")!.points.map((p) => ({ x: p.x + 50, y: p.y + 80 })));
+    expect(during.get("cd")).toBe(before.get("cd"));
+    expect(edges[0].data!.waypoints).toBe(bends);
+    expect(selectRoutes(s, opts)).toBe(during);
+  } finally {
+    route.mockRestore();
+  }
+});
 
 it("changing a measured annotation outline invalidates attachments in the store cache", () => {
   const internal = (n: FlowNode): InternalNode<FlowNode> => ({

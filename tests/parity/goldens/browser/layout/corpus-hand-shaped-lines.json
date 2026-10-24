@@ -1,6 +1,6 @@
 {
   "autoLayout": {
-    "viewport": "translate(170.549px, 290.403px) scale(0.7173)",
+    "viewport": "translate(6px, 232.006px) scale(0.85)",
     "nodes": {
       "api": { "kind": "node", "box": "translate(40px, 100px) 220×72", "text": "Orders API Node.js Service" },
       "db": { "kind": "node", "box": "translate(400px, 40px) 220×72", "text": "Orders DB PostgreSQL" },
@@ -8,19 +8,19 @@
       "shape": { "kind": "annotation", "box": "translate(1100px, 320px) 140×100", "text": "Archive" }
     },
     "edges": {
-      "api-db": "M150,172 L150,210 Q150,220 160,220 L500,220 Q510,220 510,210 L510,112",
-      "jog": "M260,143 L350,143 Q360,143 360,153 L360,346 Q360,356 370,356 L493,356 Q503,356 503,346 L503,232",
-      "detour": "M260,129 L268,129 Q276,129 276,121 L276,94 Q276,84 266,84 L-170,84 Q-180,84 -180,74 L-180,-190 Q-180,-200 -170,-200 L390,-200 Q400,-200 400,-190 L400,-170 Q400,-160 410,-160 L500,-160 Q510,-160 510,-150 L510,40",
-      "shape-end": "M517,232 L517,570 Q517,580 527,580 L1160,580 Q1170,580 1170,570 L1170,419.3"
+      "api-db": "M150,172 L150,208 Q150,218 160,218 L314.5,218 Q324.5,218 324.5,208 L324.5,150 Q324.5,140 334.5,140 L500,140 Q510,140 510,130 L510,112",
+      "jog": "M260,143 L325.5,143 Q335.5,143 335.5,153 L335.5,186 Q335.5,196 345.5,196 L400,196",
+      "detour": "M260,129 L320,129 Q330,129 330,119 L330,12 Q330,2 340,2 L500,2 Q510,2 510,12 L510,40",
+      "shape-end": "M510,232 L510,447.3 Q510,457.3 520,457.3 L1160,457.3 Q1170,457.3 1170,447.3 L1170,419.3"
     },
     "labels": {
-      "api-db": { "style": "transform: translate(-50%, -50%) translate(330px, 220px); --fe-w: 53px; --fe-h: 19px;", "text": "writes" },
-      "jog": { "style": "transform: translate(-50%, -50%) translate(360px, 249.5px); --fe-w: 65px; --fe-h: 19px;", "text": "receipts" },
-      "detour": { "style": "transform: translate(-50%, -50%) translate(110px, -200px); --fe-w: 47px; --fe-h: 19px;", "text": "audit" }
+      "api-db": { "style": "transform: translate(-50%, -50%) translate(417.25px, 140px); --fe-w: 53px; --fe-h: 19px;", "text": "writes" },
+      "jog": { "style": "transform: translate(-50%, -50%) translate(360.75px, 196px); --fe-w: 65px; --fe-h: 19px;", "text": "receipts" },
+      "detour": { "style": "transform: translate(-50%, -50%) translate(420px, 2px); --fe-w: 47px; --fe-h: 19px;", "text": "audit" }
     }
   },
   "tidy": {
-    "viewport": "translate(105.949px, 290.403px) scale(0.7173)",
+    "viewport": "translate(-35.75px, 250.075px) scale(0.85)",
     "nodes": {
       "api": { "kind": "node", "box": "translate(0px, 60px) 220×72", "text": "Orders API Node.js Service" },
       "db": { "kind": "node", "box": "translate(360px, 0px) 220×72", "text": "Orders DB PostgreSQL" },
@@ -28,15 +28,15 @@
       "shape": { "kind": "annotation", "box": "translate(1100px, 320px) 140×100", "text": "Archive" }
     },
     "edges": {
-      "api-db": "M110,132 L110,210 Q110,220 120,220 L460,220 Q470,220 470,210 L470,72",
-      "jog": "M220,103 L350,103 Q360,103 360,113 L360,346 Q360,356 370,356 L453,356 Q463,356 463,346 L463,192",
-      "detour": "M220,89 L228,89 Q236,89 236,81 L236,54 Q236,44 226,44 L-170,44 Q-180,44 -180,34 L-180,-190 Q-180,-200 -170,-200 L390,-200 Q400,-200 400,-190 L400,-170 Q400,-160 410,-160 L460,-160 Q470,-160 470,-150 L470,0",
-      "shape-end": "M477,192 L477,570 Q477,580 487,580 L1160,580 Q1170,580 1170,570 L1170,419.3"
+      "api-db": "M110,132 L110,168 Q110,178 120,178 L274.5,178 Q284.5,178 284.5,168 L284.5,110 Q284.5,100 294.5,100 L460,100 Q470,100 470,90 L470,72",
+      "jog": "M220,103 L285.5,103 Q295.5,103 295.5,113 L295.5,146 Q295.5,156 305.5,156 L360,156",
+      "detour": "M220,89 L280,89 Q290,89 290,79 L290,-28 Q290,-38 300,-38 L460,-38 Q470,-38 470,-28 L470,0",
+      "shape-end": "M470,192 L470,447.3 Q470,457.3 480,457.3 L1160,457.3 Q1170,457.3 1170,447.3 L1170,419.3"
     },
     "labels": {
-      "api-db": { "style": "transform: translate(-50%, -50%) translate(290px, 220px); --fe-w: 53px; --fe-h: 19px;", "text": "writes" },
-      "jog": { "style": "transform: translate(-50%, -50%) translate(360px, 229.5px); --fe-w: 65px; --fe-h: 19px;", "text": "receipts" },
-      "detour": { "style": "transform: translate(-50%, -50%) translate(110px, -200px); --fe-w: 47px; --fe-h: 19px;", "text": "audit" }
+      "api-db": { "style": "transform: translate(-50%, -50%) translate(377.25px, 100px); --fe-w: 53px; --fe-h: 19px;", "text": "writes" },
+      "jog": { "style": "transform: translate(-50%, -50%) translate(320.75px, 156px); --fe-w: 65px; --fe-h: 19px;", "text": "receipts" },
+      "detour": { "style": "transform: translate(-50%, -50%) translate(380px, -38px); --fe-w: 47px; --fe-h: 19px;", "text": "audit" }
     }
   }
 }

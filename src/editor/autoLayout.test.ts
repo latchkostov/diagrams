@@ -5,6 +5,55 @@ import type { DiagramFlowEdge, FlowNode } from "../canvas/types";
 import { boundaryAround } from "./arrange";
 import { createEditor, type EditorDeps } from "./useEditor";
 import { measuredHierarchyFixture } from "../lab/nestedBoundariesFixture";
+import { editorHarness } from "../test/editorHarness";
+import { notify } from "../interop/ui/toast";
+vi.mock("../interop/ui/toast", () => ({ notify: vi.fn() }));
+
+it("Auto-layout resets moved routes once, keeping fixed sides; an unchanged rerun has no notice", () => {
+  const h = editorHarness({
+    format: "diagrams/v1",
+    title: "Layout",
+    nodes: [
+      { id: "a", stencil: "service.node", label: "A", x: 900, y: 900 },
+      { id: "b", stencil: "service.node", label: "B", x: 0, y: 0 },
+    ],
+    edges: [{ id: "ab", from: "a", to: "b", sourceSide: "bottom", waypoints: [{ x: 500, y: -100 }] }],
+  });
+  vi.mocked(notify).mockClear();
+  h.api.autoLayout();
+  expect(h.edges()[0].data).toMatchObject({ sourceSide: "bottom" });
+  expect(h.edges()[0].data?.waypoints).toBeUndefined();
+  expect(notify).toHaveBeenCalledWith(
+    "1 shaped line went back to automatic",
+    expect.objectContaining({ action: expect.objectContaining({ undoes: true }) }),
+  );
+  vi.mocked(notify).mockClear();
+  h.api.autoLayout();
+  expect(notify).not.toHaveBeenCalled();
+});
+
+it("Auto-layout preserves shaped routes when neither endpoint moves", () => {
+  const h = editorHarness({
+    format: "diagrams/v1",
+    title: "Stationary layout",
+    nodes: [
+      { id: "a", stencil: "service.node", label: "A", x: 900, y: 900 },
+      { id: "b", stencil: "service.node", label: "B", x: 0, y: 0 },
+    ],
+    edges: [{ id: "ab", from: "a", to: "b" }],
+  });
+  h.api.autoLayout();
+  h.commit();
+  const positions = h.nodes().map((n) => ({ ...n.position }));
+  const waypoints = [{ x: 500, y: -100 }];
+  h.api.updateEdge("ab", { waypoints });
+  h.commit();
+  vi.mocked(notify).mockClear();
+  h.api.autoLayout();
+  expect(h.nodes().map((n) => n.position)).toEqual(positions);
+  expect(h.edges()[0].data?.waypoints).toEqual(waypoints);
+  expect(notify).not.toHaveBeenCalled();
+});
 
 it("Auto-layout waits for measured cards before refitting boundaries and requests its fit after the edit", () => {
   const flow = toFlow({

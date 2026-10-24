@@ -16,6 +16,8 @@ import { t as tr } from "../../i18n";
 import type { RenameTarget } from "../DiagramContext";
 import type { DiagramMeta } from "../convert";
 import type { CanvasMenus } from "../menus/useCanvasMenus";
+import type { InteractionController } from "../interaction/controller";
+import { draggedGroupIds } from "../useSmartGuides";
 import {
   GROUP_PREFIX,
   isAnnotationNode,
@@ -33,6 +35,7 @@ import { dependencyVisibility } from "../dependencyVisibility";
 import { insertLine } from "../landing";
 import { memberBoxes } from "../memberBoxes";
 import { previewMembership, type GroupRect, type MemberBox } from "../membership";
+import { selectionChanges } from "./changeForwarding";
 
 export function useDragPlacement(
   store: ReturnType<typeof useStoreApi<FlowNode, DiagramFlowEdge>>,
@@ -51,7 +54,7 @@ export function useDragPlacement(
   editor: EditorApi,
   dragStarted: () => void,
   hideTip: () => void,
-  menus: CanvasMenus,
+  menus: CanvasMenus & Pick<InteractionController, "beginGesture" | "endGesture" | "gesture">,
 ) {
   // ---------------------------------------------------------------- Alt-drag duplicates (D9), smart guides (D6)
   /** While an Alt-drag runs: original flow id → its copy. The drag moves the copies; the originals stay. */
@@ -72,10 +75,7 @@ export function useDragPlacement(
         // Boundary adoption also runs in this frame; close only after both have rendered.
         requestAnimationFrame(endGesture);
       }
-      let next = changes;
-      if (store.getState().userSelectionActive) next = next.filter((c) => c.type !== "select");
-      // React Flow's own selection: a click (or its Enter on a focused node).
-      if (next.some((c) => c.type === "select")) menus.selecting("click");
+      let next = selectionChanges(store, menus, changes);
       const copies = altCopies.current;
       if (copies)
         next = next.map((c) => (c.type === "position" && copies.has(c.id) ? { ...c, id: copies.get(c.id)! } : c));
@@ -87,8 +87,7 @@ export function useDragPlacement(
   );
   const handleEdgesChange = useCallback(
     (changes: EdgeChange<DiagramFlowEdge>[]) => {
-      const next = store.getState().userSelectionActive ? changes.filter((c) => c.type !== "select") : changes;
-      if (next.some((c) => c.type === "select")) menus.selecting("click");
+      const next = selectionChanges(store, menus, changes);
       if (next.length) onEdgesChange(next);
     },
     [store, onEdgesChange, menus],
@@ -295,6 +294,24 @@ export function useDragPlacement(
         });
         if (made.size) altCopies.current = made;
       }
+      const groups = draggedGroupIds(dragged, store.getState().nodes);
+      const moving = new Set(dragged.map((n) => n.id));
+      const origins = new Map(
+        store
+          .getState()
+          .nodes.filter((n) => moving.has(n.id) || (n.data.group && groups.has(n.data.group)))
+          .map((n) => [altCopies.current?.get(n.id) ?? n.id, { ...n.position }]),
+      );
+      menus.beginGesture(
+        "node.drag",
+        { kind: "node.drag", origins },
+        {
+          via: "mouse",
+          commit: (p) => {
+            if (p.kind === "node.drag") editor.carryRoutes(p.origins);
+          },
+        },
+      );
       guides.start(e, dragged, altCopies.current);
       if (editGestures) watchMembership(dragged, altCopies.current);
     },
@@ -317,11 +334,12 @@ export function useDragPlacement(
       // Members a dragged boundary carries stay in it; every other dropped node settles where it landed.
       const draggedGroups = dragged.filter(isGroupNode);
       const ids = droppedNodes(dragged, copies);
+      const seq = menus.gesture?.kind === "node.drag" ? menus.gesture.seq : undefined;
       // Once the drop has rendered: a copy dropped onto something moves to the nearest free place (nothing
       // overlaps by default), then the dropped nodes settle into the boundaries around them, which grow to hold
       // a member poking out (D12), in the drop's undo step. A member that left its boundary says so.
       requestAnimationFrame(() => {
-        endGesture();
+        if (seq !== undefined) menus.endGesture(seq, "drop");
         if (copies) {
           const made = [...copies.values()];
           editor.keepClear({
@@ -329,6 +347,7 @@ export function useDragPlacement(
             groupIds: made.filter((id) => id.startsWith(GROUP_PREFIX)).map((id) => id.slice(GROUP_PREFIX.length)),
           });
         }
+        endGesture();
         if (!ids.length && !draggedGroups.length) return;
         if (ids.length) {
           const left = editor.settleMembership(ids);
@@ -340,7 +359,7 @@ export function useDragPlacement(
         }
       });
     },
-    [editor, guides, editGestures, sayLeft, droppedNodes, endGesture],
+    [editor, guides, editGestures, sayLeft, droppedNodes, endGesture, menus],
   );
   return [
     guideLayer,

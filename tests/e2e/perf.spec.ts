@@ -11,6 +11,8 @@ import {
   waitForStableViewport,
   viewportTransform,
   flowState,
+  STORAGE_KEYS,
+  waitForSelectionSettled,
 } from "./fixtures";
 
 // Interaction performance guards (dev server, so React runs in development mode: tagged @dev, which
@@ -54,6 +56,10 @@ const RENDER_HOOK = `(() => {
         if ([0, 1, 11, 14, 15].includes(f.tag) && f.actualStartTime >= start && (f.flags & 1)) {
           const k = name(f);
           counts.set(k, (counts.get(k) || 0) + 1);
+          if (k === "FlowEdgeImpl") {
+            const edge = k + ":" + f.memoizedProps.id;
+            counts.set(edge, (counts.get(edge) || 0) + 1);
+          }
         }
         if (f.child) stack.push(f.child);
         if (f.sibling) stack.push(f.sibling);
@@ -158,6 +164,47 @@ async function prepareNodeInteractions(page: Page) {
 }
 
 test.describe("perf: interactions", { tag: "@dev" }, () => {
+  test("dragging one node does not render unrelated shaped edges", async ({ page }) => {
+    const nodes = Array.from({ length: 8 }, (_, i) => ({
+      id: `n${i}`,
+      stencil: "service.node",
+      label: `Service ${i}`,
+      x: (i % 2) * 800,
+      y: Math.floor(i / 2) * 400,
+    }));
+    const edges = Array.from({ length: 4 }, (_, i) => ({
+      id: `e${i}`,
+      from: `n${i * 2}`,
+      to: `n${i * 2 + 1}`,
+      waypoints: [
+        { x: 400, y: i * 400 + 36 },
+        { x: 400, y: i * 400 + 200 },
+      ],
+    }));
+    await page.addInitScript(({ key, diagram }) => localStorage.setItem(key, JSON.stringify(diagram)), {
+      key: STORAGE_KEYS.autosavePrefix + SLUG,
+      diagram: { format: "diagrams/v1", title: "Isolated routes", nodes, edges },
+    });
+    await gotoCanvas(page, SLUG);
+    await page.getByTestId("node-n0").click();
+    await waitForSelectionSettled(page);
+    await fitDiagram(page);
+    await page.waitForLoadState("networkidle");
+    const b = await page.getByTestId("node-n0").boundingBox();
+    if (!b) throw new Error("Missing dragged node");
+    const before = await page.getByTestId("edge-e0").evaluate((g) => g.children[1].getAttribute("d"));
+    const { counts } = await measure(page, async () => {
+      await page.mouse.move(b.x + b.width * 0.3, b.y + b.height / 2);
+      await page.mouse.down();
+      await page.mouse.move(b.x + b.width * 0.3 + 50, b.y + b.height / 2 + 30, { steps: 6 });
+      await page.mouse.up();
+      await expect
+        .poll(() => page.getByTestId("edge-e0").evaluate((g) => g.children[1].getAttribute("d")))
+        .not.toBe(before);
+    });
+    expect(counts["FlowEdgeImpl:e0"] ?? 0).toBeGreaterThan(0);
+    for (const id of ["e1", "e2", "e3"]) expect(counts[`FlowEdgeImpl:${id}`] ?? 0, JSON.stringify(counts)).toBe(0);
+  });
   test("zoom keeps React Flow snap radius aligned with the resolver, without rendering the canvas shell", async ({
     page,
   }) => {
