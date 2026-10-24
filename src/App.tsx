@@ -58,6 +58,7 @@ import { AiMount } from "./ai/ui/AiMount";
 import { unseen } from "./ai/ui/unseen";
 import { AI_PANEL } from "./lib/deployment";
 import { t, useLocale } from "./i18n";
+import { tutorialRoute } from "./tutorials/route";
 import "./styles/interop.css";
 
 // Views are code-split: the gallery and canvas each pull in their own weight (React Flow lives
@@ -171,13 +172,39 @@ if (EMBED) {
   preloadCanvasView();
 }
 
+/**
+ * A tutorial (src/tutorials) takes the place of the app while it runs, on a diagram of its own; leaving goes back.
+ * Development and e2e builds only until the owner has previewed it: spelled out from the build's literals, as the Lab
+ * is, so a production build drops it and its chunks. Only the address check is in the first view: the surface (a
+ * defineLazySurface, with the shared Retry) is fetched on the way in, so its machinery stays out of startup.
+ */
+const useTutorial =
+  import.meta.env.DEV || import.meta.env.VITE_E2E === "1"
+    ? () => useSyncExternalStore(tutorialRoute.subscribe, tutorialRoute.get)
+    : () => null;
+const TutorialSurface =
+  import.meta.env.DEV || import.meta.env.VITE_E2E === "1"
+    ? lazyComponent(
+        () => import("./tutorials/lazyTutorial").then((m) => m.TutorialSurface),
+        () => <ViewLoading />,
+        true,
+      )
+    : null;
+
 // Only public examples appear in prompts, the palette and the start card.
 const publicSlugs = new Set(examples.filter((e) => !e.localOnly).map((e) => e.slug));
 
 export function App() {
+  const tutorial = useTutorial();
   return (
     <>
-      {EMBED ? <EmbedView /> : <MainApp />}
+      {EMBED ? (
+        <EmbedView />
+      ) : TutorialSurface && tutorial ? (
+        <TutorialSurface id={tutorial} onExit={tutorialRoute.close} />
+      ) : (
+        <MainApp />
+      )}
       <Toaster />
     </>
   );

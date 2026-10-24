@@ -1,0 +1,279 @@
+/* Tutorials (src/tutorials): the bar in place of the top bar, the step strip, and the coach mark. */
+
+.tutorial-app {
+  grid-template-rows: var(--topbar-h) auto 1fr;
+}
+
+/* Above the coach mark's dimming, so the words stay readable while it points at the canvas. */
+.tutorial-bar,
+.tutorial-strip {
+  position: relative;
+  z-index: 275;
+}
+
+.tutorial-chip {
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.tutorial-name {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.tutorial-progress {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-inline-start: 6px;
+}
+
+.tutorial-dots {
+  display: flex;
+  gap: 5px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tutorial-dots li {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--line-strong);
+}
+
+.tutorial-dots li.is-done {
+  background: var(--accent);
+}
+
+.tutorial-dots li.is-current {
+  width: 20px;
+  border-radius: 4px;
+  background: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.tutorial-count {
+  color: var(--text-2);
+  font-size: 12.5px;
+  white-space: nowrap;
+}
+
+.tutorial-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-2);
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.tutorial-strip {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding-block: 10px;
+  padding-inline: 16px 12px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+  /* Three lines (what was just done, the goal over two): the canvas doesn't jump as steps change. */
+  min-height: 76px;
+}
+
+.tutorial-words {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 3px;
+}
+
+.tutorial-words p {
+  margin: 0;
+}
+
+.tutorial-goal {
+  font-size: 14px;
+  line-height: 1.45;
+  max-width: 130ch;
+}
+
+.tutorial-aside {
+  color: var(--text-2);
+  font-size: 12.5px;
+  line-height: 1.45;
+  max-width: 130ch;
+}
+
+.tutorial-done {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  color: var(--accent);
+  font-size: 12.5px;
+}
+
+.tutorial-done svg {
+  flex: none;
+  translate: 0 2px;
+}
+
+.tutorial-actions {
+  display: flex;
+  gap: 8px;
+  flex: none;
+}
+
+.tutorial-actions a.btn {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* ---------- the coach mark: never takes pointer events or focus ---------- */
+
+.tutorial-coach {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 260;
+}
+
+.tutorial-spot {
+  position: fixed;
+  border-radius: 10px;
+  box-shadow:
+    0 0 0 2px var(--accent),
+    0 0 0 6px var(--accent-soft);
+  animation: tutorial-pulse 1.6s var(--ease-out) infinite;
+  transition:
+    left var(--dur-2) var(--ease-out),
+    top var(--dur-2) var(--ease-out),
+    width var(--dur-2) var(--ease-out),
+    height var(--dur-2) var(--ease-out);
+}
+
+.tutorial-spot.is-dimming {
+  box-shadow:
+    0 0 0 2px var(--accent),
+    0 0 0 6px var(--accent-soft),
+    0 0 0 100vmax rgb(15 23 42 / 0.2);
+}
+
+[data-theme="dark"] .tutorial-spot.is-dimming {
+  box-shadow:
+    0 0 0 2px var(--accent),
+    0 0 0 6px var(--accent-soft),
+    0 0 0 100vmax rgb(0 0 0 / 0.38);
+}
+
+@keyframes tutorial-pulse {
+  50% {
+    outline: 2px solid var(--accent);
+    outline-offset: 6px;
+  }
+  0%,
+  100% {
+    outline: 2px solid transparent;
+    outline-offset: 2px;
+  }
+}
+
+.tutorial-tip {
+  position: fixed;
+  z-index: 270;
+  width: max-content;
+  padding: 7px 10px;
+  border-radius: 8px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-size: 12.5px;
+  font-weight: 550;
+  line-height: 1.35;
+  box-shadow: var(--shadow-2);
+}
+
+.tutorial-tip::before {
+  content: "";
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  background: inherit;
+  rotate: 45deg;
+}
+
+.tutorial-tip.is-right::before {
+  left: -4px;
+  top: 13px;
+}
+
+.tutorial-tip.is-left::before {
+  right: -4px;
+  top: 13px;
+}
+
+.tutorial-tip.is-below {
+  translate: -50% 0;
+}
+
+.tutorial-tip.is-below::before {
+  top: -4px;
+  left: calc(50% - 4px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tutorial-spot {
+    animation: none;
+    transition: none;
+  }
+}
+
+/* ---------- the Examples dialog's Tutorials row ---------- */
+
+.examples-tutorials {
+  display: grid;
+  gap: 8px;
+}
+
+.examples-tutorials > p {
+  margin: 0;
+  color: var(--text-2);
+  font-size: 13px;
+}
+
+.tutorial-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-m);
+  background: var(--surface);
+}
+
+.tutorial-card h4 {
+  margin: 0 0 2px;
+  font-size: 14px;
+}
+
+.tutorial-card p {
+  margin: 0;
+  color: var(--text-2);
+  font-size: 12.5px;
+}
+
+.tutorial-card > div {
+  flex: 1;
+  min-width: 0;
+}

@@ -29,6 +29,8 @@ export const DRAFT_SLUG = "new";
 export const SHARED_SLUG = "shared";
 /** The single "Your diagram" slot from before the library. Kept in place as a library entry. */
 export const LEGACY_SLUG = "imported";
+/** A tutorial's sandbox (src/tutorials): its own temporary diagram, never stored. */
+export const TUTORIAL_SLUG = "tutorial";
 const LIBRARY_SLUG_PREFIX = "my-";
 
 const AUTOSAVE_PREFIX = "diagrams.autosave.v1:";
@@ -392,6 +394,7 @@ export function writeAutosave(
     if (!entry) return false;
     slug = entry;
   }
+  if (slug === TUTORIAL_SLUG) return true;
   if (identity !== undefined && getDiagramIdentity(slug) !== identity) return false;
   if (isLibrarySlug(slug) && isDeleted(slug)) return false;
   const key = AUTOSAVE_PREFIX + slug;
