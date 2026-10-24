@@ -145,7 +145,7 @@ export function describeDiagram(diagram: DiagramFile, options: DescribeOptions =
     add(
       () =>
         // A dependency says so: it carries no messages, whatever its kind.
-        `  ${quote(e.id)} ${quote(e.from)} -> ${quote(e.to)} ${isDependency(e) ? `${relationOf(e)} dependency` : (e.kind ?? "async")}${e.label !== undefined ? ` ${quote(e.label)}` : ""}${routing(e.props)}${typeText("carriedTypes", types.carried.get(e.id))}`,
+        `  ${quote(e.id)} ${quote(e.from)} -> ${quote(e.to)} ${isDependency(e) ? `${relationOf(e)} dependency` : (e.kind ?? "async")}${e.label !== undefined ? ` ${quote(e.label)}` : ""}${routing(e.props)}${typeText("carriedTypes", types.carried.get(e.id))}${e.sourceSide || e.targetSide ? ` sides=${e.sourceSide ?? "auto"}->${e.targetSide ?? "auto"}` : ""}${e.waypoints?.length ? ` shaped(${e.waypoints.length} bends)` : ""}`,
     );
   // Request routing: the definitions (bounded, the rest counted) and the configured demand per route at each node.
   const routes = d.planning?.requestRoutes;

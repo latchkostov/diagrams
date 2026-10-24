@@ -34,6 +34,8 @@ describe("shared tool schemas", () => {
         ops: [
           { op: "add_node", kind: ".NET consumer", label: "Worker" },
           { op: "update", target: "Worker", sublabel: null, props: { replicas: null } },
+          { op: "connect", from: "Worker", to: "Store", fromSide: "bottom", toSide: "top" },
+          { op: "update", target: "connection", fromSide: null, toSide: "left", route: "auto" },
         ],
       },
       flatOpsSchema,

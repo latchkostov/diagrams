@@ -146,6 +146,43 @@ describe("generated skill files", () => {
 });
 
 describe("layout.mjs", () => {
+  it.each(["force", "missing coordinates", "already placed"])(
+    "resets bends only for full layout while preserving sides and authored fields (%s)",
+    (trigger) => {
+      const edge = {
+        id: "e",
+        from: "a",
+        to: "b",
+        kind: "sync",
+        label: "Orders",
+        fromSide: "bottom",
+        toSide: "top",
+        waypoints: [{ x: 200, y: 300 }],
+        props: { latencyMs: 25 },
+        custom: { keep: "authored metadata" },
+      };
+      const input = {
+        format: "diagrams/v1",
+        title: "Shaped route",
+        nodes: [
+          { id: "a", stencil: "generic.service", label: "API", x: 900, y: 800 },
+          { id: "b", stencil: "generic.service", label: "Worker", x: 1200, y: 800 },
+        ].map((n) => (trigger === "missing coordinates" && n.id === "b" ? { ...n, x: undefined } : n)),
+        edges: [edge, { id: "automatic", from: "b", to: "a" }],
+      };
+      const before = structuredClone(input);
+      const file = write(input);
+      const r = run("layout.mjs", file, ...(trigger === "force" ? ["--force"] : []));
+      expect(r.code, r.err).toBe(0);
+      const out = read(file);
+      const { waypoints: _waypoints, ...reset } = edge;
+      expect(out.edges).toEqual([trigger === "already placed" ? edge : reset, input.edges[1]]);
+      if (trigger === "already placed") expect(out).toEqual(input);
+      else expect(out.nodes).not.toEqual(input.nodes);
+      expect(input).toEqual(before);
+    },
+  );
+
   it.each(examples.map((e) => [e.slug, e.diagram] as const))("lays out %s like the app", (_slug, diagram) => {
     const file = write(unplaced(diagram));
     const r = run("layout.mjs", file);

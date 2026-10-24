@@ -388,6 +388,8 @@ const en = {
   "format.importSeconds": "{duration} s",
   "format.importMinutes": "{duration} min",
   "importReport.namedCount": "{name} ×{count, number}",
+  "importReport.drawioRoutesDropped":
+    "{count, plural, one {# connector's hand-drawn route was left to automatic routing.} other {# connectors' hand-drawn routes were left to automatic routing.}}",
   "importReport.aclWide":
     "{action, select, both {read and write} read {read} other {write}} {scope, select, all {every topic} other {topics starting “{name}”}}",
   "importReport.aclHosts":

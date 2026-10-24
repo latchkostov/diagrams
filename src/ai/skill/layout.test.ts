@@ -3,6 +3,44 @@ import type { DiagramFile } from "../../model/types";
 import { placeNew } from "../place";
 import { layoutDiagram } from "./layout";
 
+it.each(["force", "missing coordinates", "already placed"])(
+  "resets shaped routes only when laying out nodes (%s), preserving sides, metadata and input",
+  (trigger) => {
+    const edge = {
+      id: "e",
+      from: "a",
+      to: "b",
+      kind: "sync",
+      label: "Orders",
+      fromSide: "bottom",
+      toSide: "top",
+      waypoints: [{ x: 200, y: 300 }],
+      props: { latencyMs: 25 },
+      custom: { keep: "authored metadata" },
+    };
+    const input = {
+      format: "diagrams/v1",
+      title: "Shaped route",
+      nodes: [
+        { id: "a", stencil: "generic.service", label: "API", x: 900, y: 800 },
+        { id: "b", stencil: "generic.service", label: "Worker", x: 1200, y: 800 },
+      ].map((n) => (trigger === "missing coordinates" && n.id === "b" ? { ...n, x: undefined } : n)),
+      edges: [edge, { id: "automatic", from: "b", to: "a" }],
+    };
+    const before = structuredClone(input);
+    const result = layoutDiagram(input, { force: trigger === "force" });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const { waypoints: _waypoints, ...reset } = edge;
+    const laidOut = trigger !== "already placed";
+    expect(result.laidOut).toBe(laidOut);
+    expect(result.diagram.edges).toEqual([laidOut ? reset : edge, input.edges[1]]);
+    if (laidOut) expect(result.diagram.nodes).not.toEqual(input.nodes);
+    else expect(result.diagram).toEqual(input);
+    expect(input).toEqual(before);
+  },
+);
+
 it("tracks boxed annotations through skipped entries and repaired duplicate IDs", () => {
   const notes = [
     { id: "note", kind: "note", text: "First", x: 40, y: 50, width: 120, height: 80 },

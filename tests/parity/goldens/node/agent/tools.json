@@ -2725,7 +2725,8 @@
                 }
               }
             }
-          }
+          },
+          "Side": { "type": "string", "enum": ["top", "right", "bottom", "left"] }
         }
       },
       "adapterKeys": ["name", "title", "description", "inputSchema", "annotations", "execute"]
@@ -5445,7 +5446,8 @@
                 }
               }
             }
-          }
+          },
+          "Side": { "type": "string", "enum": ["top", "right", "bottom", "left"] }
         }
       },
       "adapterKeys": ["name", "title", "description", "inputSchema", "annotations", "execute"]
@@ -8161,7 +8163,8 @@
                 }
               }
             }
-          }
+          },
+          "Side": { "type": "string", "enum": ["top", "right", "bottom", "left"] }
         }
       },
       "adapterKeys": ["name", "title", "description", "inputSchema", "annotations", "execute"]
@@ -8207,6 +8210,8 @@
                     "label": { "type": "string", "maxLength": 200 },
                     "kind": { "type": "string", "enum": ["async", "sync"], "description": "async = messages/events; sync = request/response, writes to a database. Left out: sync into a database, gateway, outside or model API, or out of a client or gateway; async into or out of a queue, topic or stream, and otherwise." },
                     "relation": { "type": "string", "enum": ["flow", "config", "secret", "identity", "telemetry", "deploy", "depends"], "description": "Left out: infer from the stencils as in the editor (e.g. into Key Vault: secret; otherwise a flow). An explicit relation wins; flow carries traffic, while config, secret, identity, telemetry, deploy and depends are dotted dependencies with no traffic." },
+                    "fromSide": { "$ref": "#/$defs/Side", "description": "Fix the source end to this side." },
+                    "toSide": { "$ref": "#/$defs/Side", "description": "Fix the target end to this side." },
                     "key": { "type": "string", "minLength": 1, "maxLength": 50 }
                   }
                 },
@@ -8214,7 +8219,7 @@
                   "type": "object",
                   "required": ["op", "from", "to", "kind", "label"],
                   "additionalProperties": false,
-                  "description": "Put a new node on the connection from -> to: it becomes from -> new -> to. Both new connections keep the old one's kind, relation and props; its label and source side go on the first, its target side on the second.",
+                  "description": "Put a new node on the connection from -> to: it becomes from -> new -> to. Both new connections keep the old one's kind, relation and props; its label and source side go on the first, its target side on the second. Hand-shaped routes are reset.",
                   "properties": {
                     "op": { "const": "insert_between" },
                     "from": { "$ref": "#/$defs/Ref" },
@@ -8238,7 +8243,16 @@
                     "in": { "type": ["string", "null"], "description": "Move into this boundary; null removes it from its boundary." },
                     "props": { "$ref": "#/$defs/PropsPatch" },
                     "members": { "type": "array", "items": { "$ref": "#/$defs/Ref" } },
-                    "tone": { "$ref": "#/$defs/Tone" }
+                    "tone": { "$ref": "#/$defs/Tone" },
+                    "fromSide": {
+                      "anyOf": [{ "$ref": "#/$defs/Side" }, { "type": "null" }],
+                      "description": "Connections only: source side; null restores automatic side selection."
+                    },
+                    "toSide": {
+                      "anyOf": [{ "$ref": "#/$defs/Side" }, { "type": "null" }],
+                      "description": "Connections only: target side; null restores automatic side selection."
+                    },
+                    "route": { "type": "string", "enum": ["auto"], "description": "Connections only: reset a hand-shaped route. Agents never write bend coordinates." }
                   }
                 },
                 {
@@ -11037,7 +11051,8 @@
                 }
               }
             }
-          }
+          },
+          "Side": { "type": "string", "enum": ["top", "right", "bottom", "left"] }
         }
       },
       "adapterKeys": ["name", "title", "description", "inputSchema", "annotations", "execute"]
@@ -13869,7 +13884,8 @@
                 }
               }
             }
-          }
+          },
+          "Side": { "type": "string", "enum": ["top", "right", "bottom", "left"] }
         }
       },
       "adapterKeys": ["name", "title", "description", "inputSchema", "annotations", "execute"]
@@ -16584,7 +16600,8 @@
                 }
               }
             }
-          }
+          },
+          "Side": { "type": "string", "enum": ["top", "right", "bottom", "left"] }
         }
       },
       "adapterKeys": ["name", "title", "description", "inputSchema", "annotations", "execute"]
@@ -19295,7 +19312,8 @@
                 }
               }
             }
-          }
+          },
+          "Side": { "type": "string", "enum": ["top", "right", "bottom", "left"] }
         }
       },
       "adapterKeys": ["name", "title", "description", "inputSchema", "annotations", "execute"]

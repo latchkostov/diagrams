@@ -23,6 +23,72 @@ const run = (d: DiagramFile, ops: DiagramOp[]) => {
 };
 
 describe("applyOps", () => {
+  it("full agent layout resets bends while preserving fixed sides and the original input", () => {
+    const d = graph();
+    Object.assign(d.edges[0], { sourceSide: "bottom", targetSide: "top", waypoints: [{ x: 100, y: 200 }] });
+    const before = structuredClone(d);
+    const laid = applyOps(d, [], { layout: "full" });
+    expect(laid.ok).toBe(true);
+    expect(laid.diagram.edges[0]).toMatchObject({ sourceSide: "bottom", targetSide: "top" });
+    expect(laid.diagram.edges[0].waypoints).toBeUndefined();
+    expect(d).toEqual(before);
+  });
+  it("sets connection sides, preserves bends on side edits, and resets each independently", () => {
+    const created = run(graph(), [{ op: "connect", from: "API", to: "DB", fromSide: "bottom", toSide: "top" }]);
+    const d = created.diagram;
+    const edge = d.edges.at(-1)!;
+    expect(edge).toMatchObject({ sourceSide: "bottom", targetSide: "top" });
+    edge.waypoints = [
+      { x: 100, y: 200 },
+      { x: 400, y: 200 },
+    ];
+    const before = structuredClone(d);
+    const changed = run(d, [{ op: "update", target: edge.id, fromSide: null, toSide: "left" }]).diagram;
+    expect(changed.edges.at(-1)?.sourceSide).toBeUndefined();
+    expect(changed.edges.at(-1)).toMatchObject({ targetSide: "left", waypoints: edge.waypoints });
+    const reset = run(changed, [
+      { op: "update", target: edge.id, route: "auto", toSide: null, fromSide: "right" },
+    ]).diagram;
+    expect(reset.edges.at(-1)).toMatchObject({ sourceSide: "right" });
+    expect(reset.edges.at(-1)?.targetSide).toBeUndefined();
+    expect(reset.edges.at(-1)?.waypoints).toBeUndefined();
+    expect(d).toEqual(before);
+  });
+
+  it("insert_between keeps outer sides and drops the replaced route", () => {
+    const d = graph();
+    Object.assign(d.edges[0], { sourceSide: "bottom", targetSide: "top", waypoints: [{ x: 100, y: 200 }] });
+    const { diagram } = run(d, [
+      { op: "insert_between", from: "API", to: "DB", kind: "generic.service", label: "Proxy" },
+    ]);
+    expect(diagram.edges[0].sourceSide).toBe("bottom");
+    expect(diagram.edges[0].targetSide).toBeUndefined();
+    expect(diagram.edges[1].targetSide).toBe("top");
+    expect(diagram.edges[1].sourceSide).toBeUndefined();
+    for (const edge of diagram.edges) expect(edge.waypoints).toBeUndefined();
+  });
+
+  it("rejects geometry writes and side/reset fields on non-connections atomically", () => {
+    const d = graph();
+    for (const fields of [
+      { fromSide: "diagonal" },
+      { toSide: "diagonal" },
+      { route: "custom" },
+      { waypoints: [{ x: 1, y: 2 }] },
+    ]) {
+      const out = applyOps(d, [{ op: "update", target: d.edges[0].id, ...fields } as DiagramOp]);
+      expect(out.ok).toBe(false);
+      expect(out.diagram).toBe(d);
+    }
+    for (const fields of [{ fromSide: null }, { toSide: "left" }, { route: "auto" }]) {
+      const out = applyOps(d, [{ op: "update", target: "API", ...fields } as DiagramOp]);
+      expect(out.ok).toBe(false);
+      expect(out.errors[0].error).toContain("require a connection");
+      expect(out.diagram).toBe(d);
+    }
+    for (const fields of [{ fromSide: null }, { toSide: "diagonal" }, { waypoints: [] }])
+      expect(applyOps(d, [{ op: "connect", from: "API", to: "DB", ...fields } as DiagramOp]).ok).toBe(false);
+  });
   it("is atomic on a later error, reports its index and preserves input identity", () => {
     const d = graph(),
       saved = structuredClone(d);

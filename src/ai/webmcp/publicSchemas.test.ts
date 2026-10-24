@@ -1,9 +1,26 @@
 import { describe, expect, it } from "vitest";
 import { catalog } from "../../stencils/catalog";
 import { publicSchemaFiles } from "./publicSchemas";
+import { checkSchema } from "../validation";
 
 describe("public/schema", () => {
   const files = publicSchemaFiles();
+
+  it("publishes side selection and automatic route reset, without agent waypoint writes", () => {
+    const schema = JSON.parse(files["ops.v1.json"]);
+    for (const op of [
+      { op: "connect", from: "a", to: "b", fromSide: "bottom", toSide: "top" },
+      { op: "update", target: "e", fromSide: null, toSide: "left", route: "auto" },
+    ])
+      expect(() => checkSchema({ ops: [op] }, schema)).not.toThrow();
+    for (const op of [
+      { op: "connect", from: "a", to: "b", fromSide: null },
+      { op: "update", target: "e", toSide: "diagonal" },
+      { op: "update", target: "e", route: "custom" },
+      { op: "update", target: "e", waypoints: [{ x: 0, y: 0 }] },
+    ])
+      expect(() => checkSchema({ ops: [op] }, schema)).toThrow();
+  });
 
   it("lists every stencil and describes the file and ops formats", () => {
     const stencils = JSON.parse(files["stencils.json"]).stencils as { id: string; aliases?: string[] }[];

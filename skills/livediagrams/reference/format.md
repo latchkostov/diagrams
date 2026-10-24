@@ -71,6 +71,13 @@ Concurrency; `averageValue.value` is threads per pod. This is a modelled custom 
 - `relationOrigin` (optional, written by the app): `inferred` when the relation came from the stencils at its ends,
   `explicit` when someone chose it. Changing a node's stencil re-infers its edges, except `explicit` ones.
 - `props` (optional): simulation settings (see below).
+- `sourceSide` / `targetSide` (optional): `top`, `right`, `bottom` or `left`; omitted means automatic.
+  Preserve existing sides. App edit ops call them `fromSide` / `toSide`; update accepts `null` to clear one.
+- `waypoints` (app-owned): a person's hand-shaped route. Preserve it when editing; never write bend
+  coordinates. `describe_diagram` marks it `shaped(N bends)` and reports fixed `sides=bottom->top`
+  (`auto` for an unfixed end). A connection update with `route: "auto"` resets it; full layout resets
+  routes too. `insert_between` resets bends, keeps the source side on the first connection and the
+  target side on the second.
 
 ## Boundaries (`groups`)
 

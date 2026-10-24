@@ -4,6 +4,7 @@ import { LIMITS } from "../native";
 import { importText } from "../formats";
 import { parseXml } from "../xml";
 import { drawioPageToDiagram, htmlToLines } from "./read";
+import { ROUTE_LIMITS } from "../../model/edgeRoute";
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -87,4 +88,27 @@ it("keeps the foreign-page spacing calculation for normal nodes", () => {
     { id: "n0", label: "Service", x: 20, y: 30 },
     { id: "n1", label: "Service", x: 340, y: 30 },
   ]);
+});
+
+it("rejects oversized point lists before pairwise spacing, even across multiple arrays", () => {
+  const model = parseXml(pageXml(2));
+  const root = model.children[0];
+  const edge = parseXml(`<mxCell id="e" edge="1" source="n0" target="n1"><mxGeometry>
+    <Array as="points">${'<mxPoint x="0" y="0"/>'.repeat(ROUTE_LIMITS.maxPoints)}</Array>
+    <Array as="points"><mxPoint x="1" y="1"/></Array></mxGeometry></mxCell>`);
+  root.children.push(edge);
+  vi.spyOn(Math, "abs").mockImplementation(() => {
+    throw new Error("Pairwise spacing before point budget");
+  });
+  expect(() => drawioPageToDiagram({ id: "p", name: "Page-1", model })).toThrow("waypoint budget");
+});
+
+it("rejects excessive connectors before pairwise spacing", () => {
+  const model = parseXml(pageXml(2));
+  const edge = parseXml('<mxCell id="e" edge="1" source="n0" target="n1"/>');
+  model.children[0].children.push(...Array.from({ length: LIMITS.maxEdges + 1 }, () => edge));
+  vi.spyOn(Math, "abs").mockImplementation(() => {
+    throw new Error("Pairwise spacing ran before rejecting connectors");
+  });
+  expect(() => drawioPageToDiagram({ id: "p", name: "Page-1", model })).toThrow("connector budget");
 });
