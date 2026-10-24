@@ -31,11 +31,10 @@ export function gestures(state: GesturesState, event: GesturesEvent): GesturesTr
           }
         : unchanged;
     case "segment.step": {
-      if (!event.alone || event.count < 1) return unchanged;
-      const k = state.keyboardSegment?.edge === event.edge ? state.keyboardSegment.k + event.delta : 0;
+      if (!event.alone || state.active || event.k < 0) return unchanged;
       return {
         ...unchanged,
-        state: { ...state, keyboardSegment: { edge: event.edge, k: (k + event.count) % event.count } },
+        state: { ...state, keyboardSegment: { edge: event.edge, k: event.k } },
       };
     }
     case "selection.committed":

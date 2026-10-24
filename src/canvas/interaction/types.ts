@@ -41,7 +41,7 @@ export type GesturesEvent =
   | { type: "gesture.start"; kind: GestureKind; preview: GesturePreview; via: Gesture["via"] }
   | { type: "gesture.move"; seq: number; preview: GesturePreview }
   | { type: "gesture.end"; seq: number; reason: GestureEndReason }
-  | { type: "segment.step"; edge: string; delta: 1 | -1; count: number; alone: boolean }
+  | { type: "segment.step"; edge: string; k: number; alone: boolean }
   | { type: "selection.committed"; alone?: string };
 export interface GesturesTransition {
   state: GesturesState;

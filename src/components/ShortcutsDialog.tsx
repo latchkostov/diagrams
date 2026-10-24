@@ -10,7 +10,7 @@ const GROUPS: Shortcut["group"][] = ["Edit", "Clipboard", "Selection", "View", "
 
 type Row = [keys: string, does: () => string];
 
-/** The sheet's words for each group and shortcut (the table's own labels are for code, not people). */
+/** Display labels stay with the lazy shortcuts sheet, apart from the eager key bindings. */
 const GROUP_NAMES: Record<Shortcut["group"], () => string> = {
   Edit: msg("shortcuts.group.edit"),
   Clipboard: msg("shortcuts.group.clipboard"),
@@ -34,6 +34,8 @@ const LABELS: Record<ShortcutId, () => string> = {
   "select-all": msg("shortcuts.selectAll"),
   nudge: msg("shortcuts.nudge"),
   "nudge-far": msg("shortcuts.nudgeFar"),
+  "segment-prev": msg("shortcuts.segmentPrev"),
+  "segment-next": msg("shortcuts.segmentNext"),
   "select-next": msg("shortcuts.selectNext"),
   "select-prev": msg("shortcuts.selectPrev"),
   "select-toward": msg("shortcuts.selectToward"),
@@ -84,6 +86,8 @@ const TEXT: Row[] = [
   // A route table's rule, focused in the inspector (src/planning/RoutingFields.tsx).
   ["Alt+ArrowUp", msg("routing.shortcutReorder")],
 ];
+
+const LINE: Row[] = [["← ↑ → ↓", msg("shortcuts.segmentNudge")]];
 
 /** The File menu's keys (src/interop/ui/menus.tsx), shown there beside Open…, Save and Save to ▸ This device…. */
 const FILE: Row[] = [
@@ -221,6 +225,18 @@ export function ShortcutsDialog({ onClose }: { onClose: () => void }) {
                   </span>
                 </div>
               ))}
+              {g === "Edit" && (
+                <>
+                  {LINE.map(([k, v]) => (
+                    <div key={k} className="sc-row" data-testid="shortcut-segment-nudge">
+                      <span>{v()}</span>
+                      <span className="sc-keys">
+                        <kbd>{k}</kbd>
+                      </span>
+                    </div>
+                  ))}
+                </>
+              )}
             </section>
           ))}
           <section>

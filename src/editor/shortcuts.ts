@@ -14,6 +14,8 @@ export type ShortcutId =
   | "group"
   | "nudge"
   | "nudge-far"
+  | "segment-prev"
+  | "segment-next"
   | "rename"
   | "add-text"
   | "add-next"
@@ -37,75 +39,67 @@ export interface Shortcut {
    * on every platform (⌃ on a Mac, where ⌘⌥ + arrows already switch the browser's tabs).
    */
   keys: string[];
-  label: string;
   group: "Edit" | "Clipboard" | "Selection" | "View" | "Help";
 }
 
-/* eslint-disable local/no-literal-ui-text -- Internal diagnostic labels. The sheet renders its translated LABELS table. */
 export const SHORTCUTS: readonly Shortcut[] = [
-  { id: "undo", keys: ["Mod+Z"], label: "Undo", group: "Edit" },
-  { id: "redo", keys: ["Mod+Shift+Z", "Mod+Y"], label: "Redo", group: "Edit" },
-  { id: "rename", keys: ["Enter", "F2"], label: "Rename the selection, or edit its text", group: "Edit" },
-  { id: "delete", keys: ["Delete", "Backspace"], label: "Delete selection", group: "Edit" },
-  { id: "duplicate", keys: ["Mod+D"], label: "Duplicate selection", group: "Edit" },
-  { id: "group", keys: ["Mod+G"], label: "Add a boundary around the selection", group: "Edit" },
-  { id: "add-text", keys: ["T"], label: "Add text at the pointer", group: "Edit" },
+  { id: "undo", keys: ["Mod+Z"], group: "Edit" },
+  { id: "redo", keys: ["Mod+Shift+Z", "Mod+Y"], group: "Edit" },
+  { id: "rename", keys: ["Enter", "F2"], group: "Edit" },
+  { id: "delete", keys: ["Delete", "Backspace"], group: "Edit" },
+  { id: "duplicate", keys: ["Mod+D"], group: "Edit" },
+  { id: "group", keys: ["Mod+G"], group: "Edit" },
+  { id: "segment-prev", keys: ["["], group: "Edit" },
+  { id: "segment-next", keys: ["]"], group: "Edit" },
+  { id: "add-text", keys: ["T"], group: "Edit" },
   {
     id: "add-next",
     keys: ["Alt+ArrowRight", "Alt+ArrowDown", "Alt+ArrowLeft", "Alt+ArrowUp"],
-    label: "Next node that way, connected",
     group: "Edit",
   },
   {
     id: "clone-next",
     keys: ["Alt+Shift+ArrowRight", "Alt+Shift+ArrowDown", "Alt+Shift+ArrowLeft", "Alt+Shift+ArrowUp"],
-    label: "A copy that way, connected",
     group: "Edit",
   },
-  { id: "copy", keys: ["Mod+C"], label: "Copy", group: "Clipboard" },
-  { id: "cut", keys: ["Mod+X"], label: "Cut", group: "Clipboard" },
-  { id: "paste", keys: ["Mod+V"], label: "Paste", group: "Clipboard" },
-  { id: "select-all", keys: ["Mod+A"], label: "Select all", group: "Selection" },
+  { id: "copy", keys: ["Mod+C"], group: "Clipboard" },
+  { id: "cut", keys: ["Mod+X"], group: "Clipboard" },
+  { id: "paste", keys: ["Mod+V"], group: "Clipboard" },
+  { id: "select-all", keys: ["Mod+A"], group: "Selection" },
   {
     id: "nudge",
     keys: ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"],
-    label: "Nudge to the next grid line (Snapping off: 1 px)",
     group: "Selection",
   },
   {
     id: "nudge-far",
     keys: ["Shift+ArrowUp", "Shift+ArrowDown", "Shift+ArrowLeft", "Shift+ArrowRight"],
-    label: "Nudge 50 px (Snapping off: 10 px)",
     group: "Selection",
   },
-  { id: "select-next", keys: ["Tab"], label: "Next node, in reading order", group: "Selection" },
-  { id: "select-prev", keys: ["Shift+Tab"], label: "Previous node", group: "Selection" },
+  { id: "select-next", keys: ["Tab"], group: "Selection" },
+  { id: "select-prev", keys: ["Shift+Tab"], group: "Selection" },
   {
     id: "select-toward",
     keys: ["Ctrl+Alt+ArrowRight", "Ctrl+Alt+ArrowDown", "Ctrl+Alt+ArrowLeft", "Ctrl+Alt+ArrowUp"],
-    label: "Nearest node that way",
     group: "Selection",
   },
-  { id: "select-edge-out", keys: ["Ctrl+Alt+]"], label: "The node's next outgoing edge", group: "Selection" },
-  { id: "select-edge-in", keys: ["Ctrl+Alt+["], label: "The node's next incoming edge", group: "Selection" },
+  { id: "select-edge-out", keys: ["Ctrl+Alt+]"], group: "Selection" },
+  { id: "select-edge-in", keys: ["Ctrl+Alt+["], group: "Selection" },
   {
     id: "escape",
     keys: ["Escape"],
-    label: "Close menus, clear selection, close Checks, then leave live view",
     group: "Selection",
   },
-  { id: "fit-view", keys: ["Shift+1"], label: "Fit diagram to view", group: "View" },
-  { id: "zoom-selection", keys: ["Shift+2"], label: "Zoom to selection", group: "View" },
-  { id: "zoom-100", keys: ["Shift+0"], label: "Zoom to 100%", group: "View" },
+  { id: "fit-view", keys: ["Shift+1"], group: "View" },
+  { id: "zoom-selection", keys: ["Shift+2"], group: "View" },
+  { id: "zoom-100", keys: ["Shift+0"], group: "View" },
   {
     id: "command-palette",
     keys: ["Mod+K"],
-    label: "Command palette: run an action, find a node, add a stencil",
     group: "Help",
   },
-  { id: "shortcuts", keys: ["?"], label: "Show keyboard shortcuts", group: "Help" },
+  { id: "shortcuts", keys: ["?"], group: "Help" },
 ];
-/* eslint-enable local/no-literal-ui-text */
 
 export const shortcutKeys = (id: ShortcutId): string => SHORTCUTS.find((s) => s.id === id)?.keys[0] ?? "";
 

@@ -26,7 +26,7 @@ const seedDiagram = {
 };
 async function open(page: Page, straight = false, style: "smoothstep" | "bezier" | "straight" = "smoothstep") {
   const diagram = structuredClone(seedDiagram);
-  if (straight) diagram.nodes[1].y = 0;
+  if (straight) diagram.nodes[0].y = diagram.nodes[1].y = 4;
   await page.addInitScript(({ key, style }) => localStorage.setItem(key, JSON.stringify({ edgeStyle: style })), {
     key: STORAGE_KEYS.settings,
     style,
@@ -263,4 +263,133 @@ test("the shortcuts sheet explains dots and pointer shaping", async ({ page }) =
   await expect(mouse).toContainText("Drag a selected line");
   await expect(mouse).toContainText("Line up neighbouring segments");
   await expect(mouse).toContainText("Route ▸ Reset route");
+  await expect(page.getByTestId("shortcut-segment-prev")).toContainText("Previous segment");
+  await expect(page.getByTestId("shortcut-segment-next")).toContainText("Next segment");
+  await expect(page.getByTestId("shortcut-segment-nudge")).toContainText("On a selected line");
+});
+
+async function focusEdge(page: Page, straight = false) {
+  await page.getByTestId("node-api").click();
+  // eslint-disable-next-line no-restricted-syntax -- Edge navigation uses literal Ctrl on every platform.
+  await page.keyboard.press("Control+Alt+]");
+  await expect
+    .poll(() => page.getByTestId("edge-api-db").evaluate((el) => el.parentElement === document.activeElement))
+    .toBe(true);
+  await expect(page.getByTestId(`route-segment-api-db-${straight ? 0 : 1}`)).toBeVisible();
+}
+
+test("keyboard segment cycling keeps edge focus and announces the active leg", async ({ page }) => {
+  await open(page);
+  await focusEdge(page);
+  const initial = page.getByTestId("route-segment-api-db-1");
+  await expect(initial).toHaveClass(/is-active/);
+  expect(await initial.evaluate((el) => getComputedStyle(el, "::after").outlineStyle)).toBe("solid");
+  // The label lies on the inner vertical leg. Stepping next reaches the horizontal tail.
+  await page.keyboard.press("]");
+  await expect(page.getByTestId("route-segment-api-db-2")).toHaveClass(/is-active/);
+  await expect(page.getByTestId("canvas-announce")).toHaveText("Segment 3 of 3, horizontal. Up and down move it.");
+  await page.keyboard.press("[");
+  await expect(page.getByTestId("route-segment-api-db-1")).toHaveClass(/is-active/);
+  await expect(page.getByTestId("canvas-announce")).toHaveText("Segment 2 of 3, vertical. Left and right move it.");
+  await page.keyboard.press("ArrowUp");
+  await expect(page.getByTestId("canvas-announce")).toHaveText("Use ← → to move a vertical segment.");
+  expect((await savedDiagram(page)).edges[0].waypoints).toBeUndefined();
+  expect(await page.getByTestId("edge-api-db").evaluate((el) => el.parentElement === document.activeElement)).toBe(
+    true,
+  );
+});
+
+test("three keyboard nudges separated by history commits merge into one undo step", async ({ page }) => {
+  await open(page);
+  await focusEdge(page);
+  const original = await path(page);
+  let previousAnnouncement: string | undefined;
+  for (let n = 0; n < 3; n++) {
+    await page.getByTestId("canvas-announce").evaluate((el) => {
+      if (el.firstChild instanceof Element) el.firstChild.setAttribute("data-previous-announcement", "1");
+    });
+    await page.keyboard.press("ArrowRight");
+    await custom(page);
+    const announcement = await page.getByTestId("canvas-announce").getAttribute("data-seq");
+    expect(announcement).not.toBe(previousAnnouncement);
+    previousAnnouncement = announcement ?? undefined;
+    expect(
+      await page
+        .getByTestId("canvas-announce")
+        .evaluate((el) => el.firstChild instanceof Element && el.firstChild.hasAttribute("data-previous-announcement")),
+    ).toBe(false);
+  }
+  const after = await path(page);
+  expect(after).not.toBe(original);
+  await expect(page.getByTestId("canvas-announce")).toHaveText("Moved right 10 px.");
+  await page.keyboard.press("ControlOrMeta+z");
+  await expect.poll(() => path(page)).toBe(original);
+  await expect(page.getByTestId("edge-api-db")).not.toHaveAttribute("data-route", "custom");
+  await page.keyboard.press("ControlOrMeta+Shift+z");
+  await expect.poll(() => path(page)).toBe(after);
+});
+
+test("keyboard nudging a straight line adds a jog, then merges its segments back to automatic", async ({ page }) => {
+  await open(page, true);
+  await focusEdge(page, true);
+  const original = await path(page);
+  await page.keyboard.press("ArrowDown");
+  expect(await custom(page)).toHaveLength(4);
+  await page.keyboard.press("ArrowUp");
+  await expect(page.getByTestId("edge-api-db")).not.toHaveAttribute("data-route", "custom");
+  await expect.poll(() => path(page)).toBe(original);
+  await expect(page.getByTestId("canvas-announce")).toHaveText("Route reset; automatic.");
+});
+
+test.describe("touch shaping", () => {
+  test.use({ hasTouch: true });
+  for (const cancel of [false, true])
+    test(
+      cancel ? "pointercancel snaps back without history" : "touch release commits once despite implicit capture loss",
+      async ({ page, context }) => {
+        await open(page);
+        await waitForHistoryIdle(page);
+        const before = await path(page);
+        const viewport = await viewportTransform(page);
+        const handle = page.getByTestId("route-segment-api-db-1");
+        expect(await handle.evaluate((el) => getComputedStyle(el).touchAction)).toBe("none");
+        expect(await handle.evaluate((el) => el.getBoundingClientRect().width)).toBeCloseTo(44);
+        await handle.evaluate((el) =>
+          el.addEventListener(
+            "pointerdown",
+            (event) => {
+              el.setAttribute("data-pointer-type", (event as PointerEvent).pointerType);
+            },
+            { once: true },
+          ),
+        );
+        const box = await handle.boundingBox();
+        if (!box) throw new Error("Missing touch handle");
+        const x = box.x + box.width / 2,
+          y = box.y + box.height / 2;
+        const cdp = await context.newCDPSession(page);
+        await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x, y }] });
+        await expect(handle).toHaveAttribute("data-pointer-type", "touch");
+        await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x: x + 60, y }] });
+        await expect(page.getByTestId("route-preview")).toBeVisible();
+        if (cancel) await cdp.send("Input.dispatchTouchEvent", { type: "touchCancel", touchPoints: [] });
+        else await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+        await expect(page.getByTestId("route-preview")).toHaveCount(0);
+        await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-interaction-state", "idle");
+        expect(await viewportTransform(page)).toBe(viewport);
+        if (cancel) {
+          expect(await path(page)).toBe(before);
+          expect((await savedDiagram(page)).edges[0].waypoints).toBeUndefined();
+          await expect(page.getByTestId("undo-button")).toBeDisabled();
+        } else {
+          await custom(page);
+          expect(await path(page)).not.toBe(before);
+          await page.getByTestId("canvas-wrap").focus();
+          await page.keyboard.press("ControlOrMeta+z");
+          await expect.poll(() => path(page)).toBe(before);
+          await expect(page.getByTestId("undo-button")).toBeDisabled();
+        }
+        await cdp.detach();
+      },
+    );
 });

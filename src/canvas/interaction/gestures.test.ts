@@ -36,10 +36,10 @@ describe("gestures: G1–G7 and K1–K2", () => {
     expect(gestures(empty, { type: "gesture.end", seq: 1, reason: "drop" }).state).toBe(empty);
   });
   it("K1 wraps the sole edge's segment; K2 retains it only for that selection", () => {
-    const step = { type: "segment.step", edge: "a-b", count: 3, delta: 1, alone: true } as const;
+    const step = { type: "segment.step", edge: "a-b", k: 0, alone: true } as const;
     const first = gestures(initialGestures(), step).state;
     expect(first.keyboardSegment).toEqual({ edge: "a-b", k: 0 });
-    expect(gestures(first, { ...step, delta: -1 }).state.keyboardSegment?.k).toBe(2);
+    expect(gestures(first, { ...step, k: 2 }).state.keyboardSegment?.k).toBe(2);
     expect(gestures(first, { ...step, alone: false }).state).toBe(first);
     expect(gestures(first, { type: "selection.committed", alone: "a-b" }).state).toBe(first);
     expect(gestures(first, { type: "selection.committed" }).state.keyboardSegment).toBeUndefined();

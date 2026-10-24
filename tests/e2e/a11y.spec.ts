@@ -9,8 +9,10 @@ import {
   waitForStableBox,
   gotoLive,
   openLiveNodeDetails,
+  STORAGE_KEYS,
 } from "./fixtures";
 import { installFakeModelContext } from "./ai-helpers";
+import shapedLines from "../parity/corpus/hand-shaped-lines.diagram.json" with { type: "json" };
 
 /**
  * Automated accessibility: axe-core (WCAG 2.0/2.1 A and AA rules) on each main view and overlay, in both
@@ -36,6 +38,22 @@ async function expectNoViolations(page: Page, scope?: string) {
 
 /** Each view or overlay: how to reach it, and the test id to scan (the whole page when omitted). */
 const states: { name: string; open: (page: Page) => Promise<void>; scope?: string }[] = [
+  {
+    name: "selected shaped edge",
+    open: async (page) => {
+      await page.addInitScript(({ key, diagram }) => localStorage.setItem(key, JSON.stringify(diagram)), {
+        key: STORAGE_KEYS.autosavePrefix + KAFKA,
+        diagram: shapedLines,
+      });
+      await gotoCanvas(page, KAFKA);
+      await page.getByTestId("node-api").click();
+      // eslint-disable-next-line no-restricted-syntax -- Edge navigation uses literal Ctrl on every platform.
+      await page.keyboard.press("Control+Alt+]");
+      await expect(page.getByTestId(/^route-segment-/).first()).toBeVisible();
+      await page.keyboard.press("]");
+      await expect(page.getByTestId("edge-api-db")).toHaveAttribute("data-route", "custom");
+    },
+  },
   {
     name: "compact hover card",
     scope: "node-detail-caller",

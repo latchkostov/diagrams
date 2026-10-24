@@ -516,13 +516,14 @@ export function createInteractionController<P = unknown>(
       changed();
     },
     endGesture,
-    stepSegment(edge: string, delta: 1 | -1, count: number): number {
+    /** Keys on a selected line yield to menus, panning and captured gestures. Geometry stays in its lazy surface. */
+    stepSegment(edge: string, k: number): number {
+      if (panHeld || menuState.open || gestureState.active || selectionKey !== JSON.stringify([edge])) return -1;
       gestureState = gestures(gestureState, {
         type: "segment.step",
         edge,
-        delta,
-        count,
-        alone: selectionKey === JSON.stringify([edge]),
+        k,
+        alone: true,
       }).state;
       changed();
       return gestureState.keyboardSegment?.k ?? 0;

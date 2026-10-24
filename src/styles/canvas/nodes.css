@@ -347,6 +347,11 @@ button.dn-doc-badge:focus-visible {
   background: var(--accent);
   box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent) 35%, transparent);
 }
+@media (pointer: coarse) {
+  .canvas-wrap.is-connecting .dn-handle.is-connect-port {
+    box-shadow: 0 0 0 4.5px color-mix(in oklab, var(--accent) 35%, transparent);
+  }
+}
 .react-flow__node.is-connect-target.has-connect-port .nb.nb-card,
 .react-flow__node.is-connect-target.has-connect-port .nb.nb-compact {
   border-color: color-mix(in oklab, var(--accent) 35%, var(--node-border));

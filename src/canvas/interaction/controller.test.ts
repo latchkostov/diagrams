@@ -221,6 +221,30 @@ function harness() {
   };
 }
 
+it("segment keys yield to selection changes, menus, panning and touch gesture ownership", () => {
+  const { controller: c } = harness();
+  expect(c.stepSegment("a-b", 2)).toBe(-1);
+  c.selectionCommitted(JSON.stringify(["a-b"]), false);
+  expect(c.stepSegment("a-b", 2)).toBe(2);
+  expect(c.stepSegment("a-b", 1)).toBe(1);
+  c.setPanHeld(true);
+  expect(c.stepSegment("a-b", 2)).toBe(-1);
+  c.setPanHeld(false);
+  c.openMenu("context", "test");
+  expect(c.stepSegment("a-b", 2)).toBe(-1);
+  c.closeMenu("escape");
+  const seq = c.beginGesture(
+    "edge.segment",
+    { kind: "edge.segment", edge: "a-b", segment: 1, waypoints: [] },
+    { via: "touch", commit() {} },
+  );
+  expect(c.stepSegment("a-b", 2)).toBe(-1);
+  c.endGesture(seq, "cancel");
+  expect(c.stepSegment("a-b", 3)).toBe(3);
+  c.selectionCommitted(JSON.stringify(["other"]), false);
+  expect(c.getSnapshot().keyboardSegment).toBeUndefined();
+});
+
 describe("interaction controller: menus", () => {
   it("Esc in a menu gives focus back to its invoker once React has committed the close (M1)", () => {
     const h = harness();
@@ -1249,12 +1273,12 @@ it("remote gesture recovery runs after a pending user move and never replaces it
 it("segment stepping follows only a sole selected edge and clears when selection changes", () => {
   const h = harness();
   h.controller.selectionCommitted('["a-b"]', false);
-  expect(h.controller.stepSegment("a-b", 1, 3)).toBe(0);
-  expect(h.controller.stepSegment("a-b", -1, 3)).toBe(2);
+  expect(h.controller.stepSegment("a-b", 0)).toBe(0);
+  expect(h.controller.stepSegment("a-b", 2)).toBe(2);
   expect(h.controller.getSnapshot().keyboardSegment).toEqual({ edge: "a-b", k: 2 });
   h.controller.selectionCommitted('["a-b","c"]', false);
   expect(h.controller.getSnapshot().keyboardSegment).toBeUndefined();
-  h.controller.stepSegment("a-b", 1, 3);
+  h.controller.stepSegment("a-b", 2);
   expect(h.controller.getSnapshot().keyboardSegment).toBeUndefined();
 });
 

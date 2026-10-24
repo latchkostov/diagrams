@@ -1,4 +1,5 @@
 .edge-seg {
+  touch-action: none;
   position: absolute;
   left: 0;
   top: 0;
@@ -30,6 +31,23 @@
 }
 .edge-seg:hover::after {
   background: var(--accent);
+}
+.canvas-wrap:has(.react-flow__edge:focus) .edge-seg.is-active::after {
+  outline: calc(2px / var(--rf-zoom, 1)) solid var(--accent);
+  outline-offset: calc(3px / var(--rf-zoom, 1));
+}
+.edge-end {
+  touch-action: none;
+}
+@media (pointer: coarse) {
+  .edge-seg {
+    width: calc(44px / var(--rf-zoom, 1));
+    height: calc(44px / var(--rf-zoom, 1));
+    margin: calc(-22px / var(--rf-zoom, 1));
+  }
+  .edge-end::after {
+    --hit: calc(44px / var(--rf-zoom, 1));
+  }
 }
 .fe.is-reshaping {
   opacity: 0.35;
