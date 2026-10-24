@@ -300,8 +300,11 @@ test("keyboard segment cycling keeps edge focus and announces the active leg", a
 });
 
 test("three keyboard nudges separated by history commits merge into one undo step", async ({ page }) => {
+  await page.clock.install();
   await open(page);
   await focusEdge(page);
+  await waitForHistoryIdle(page);
+  await pauseClock(page);
   const original = await path(page);
   let previousAnnouncement: string | undefined;
   for (let n = 0; n < 3; n++) {
@@ -309,6 +312,8 @@ test("three keyboard nudges separated by history commits merge into one undo ste
       if (el.firstChild instanceof Element) el.firstChild.setAttribute("data-previous-announcement", "1");
     });
     await page.keyboard.press("ArrowRight");
+    // Commit each nudge separately, while keeping the run inside the history merge window under load.
+    await page.clock.runFor(400);
     await custom(page);
     const announcement = await page.getByTestId("canvas-announce").getAttribute("data-seq");
     expect(announcement).not.toBe(previousAnnouncement);
@@ -323,9 +328,11 @@ test("three keyboard nudges separated by history commits merge into one undo ste
   expect(after).not.toBe(original);
   await expect(page.getByTestId("canvas-announce")).toHaveText("Moved right 10 px.");
   await page.keyboard.press("ControlOrMeta+z");
+  await page.clock.runFor(32);
   await expect.poll(() => path(page)).toBe(original);
   await expect(page.getByTestId("edge-api-db")).not.toHaveAttribute("data-route", "custom");
   await page.keyboard.press("ControlOrMeta+Shift+z");
+  await page.clock.runFor(32);
   await expect.poll(() => path(page)).toBe(after);
 });
 

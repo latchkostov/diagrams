@@ -9,3 +9,11 @@ Keyboard movement reuses node grid rules and exact alignment for segment merging
 Touch keeps the existing interaction controller and capture adapter. The release path ends ownership before implicit capture loss; cancellation never writes the document. Coarse-pointer handles grow through CSS, with touch-action suppression limited to the handles. The 22 px edge interaction path remains unchanged.
 
 The existing generic shaped-line fixture supplies the accessibility scan. This batch adds editing affordances, so no new simulation, planning or stencil showcase is needed. Live carry preview remains quarantined, and interop/agents remain PR 6.
+
+## Gate follow-up: pointer reachability and rapid keyboard intent
+
+The full gate exposed a constrained active marker intercepting an edge double-click. It now remains visible for keyboard focus while both its box and pseudo-element pass pointer events through whenever the original size or label-space guard would omit a pointer handle. Ordinary mouse and coarse-pointer handles remain draggable.
+
+The Inspector's segmented control also suppressed a fresh arrow-key choice while its previous controlled-value update was pending. Moves to another focused option now emit that intent; clicks and Home/End on the selected option retain their no-op guard. A deterministic delayed-prop unit regression covers End followed by ArrowLeft, with focus returning to the original option. The designer-agent follow-up approved both narrow fixes without changing the existing browser assertions.
+
+The keyboard-history browser regression advances a paused fake clock through each quiet-time commit. This keeps successive nudges within the existing merge window even under CPU load, while still proving that three separate commits undo as one step.

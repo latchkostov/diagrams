@@ -13,6 +13,10 @@
 .edge-seg-v {
   cursor: col-resize;
 }
+.edge-seg[data-keyboard-only],
+.edge-seg[data-keyboard-only]::after {
+  pointer-events: none;
+}
 .edge-seg::after {
   content: "";
   position: absolute;

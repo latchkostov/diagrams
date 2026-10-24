@@ -136,6 +136,10 @@ test("connection Simulation offers the same undoable wait toggle as its inspecto
     .toMatchObject({ wait: "non-blocking" });
   await page.getByTestId("undo-button").click();
   await expect.poll(async () => (await savedDiagram(page)).edges[1].props?.caller).toBeUndefined();
+  const marker = page.getByTestId("route-segment-call-1");
+  await expect(marker).toHaveAttribute("data-keyboard-only", "true");
+  expect(await marker.evaluate((el) => getComputedStyle(el).pointerEvents)).toBe("none");
+  expect(await marker.evaluate((el) => getComputedStyle(el, "::after").pointerEvents)).toBe("none");
   await page.getByTestId("edge-call").dblclick();
   await page.getByTestId("inspector-section-edge-simulation").click();
   await expect(page.getByTestId("inspector-field-wait-blocking")).toHaveAttribute("aria-checked", "true");

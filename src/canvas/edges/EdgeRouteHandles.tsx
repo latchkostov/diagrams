@@ -149,7 +149,8 @@ export function EdgeRouteHandles({
       <ViewportPortal>
         {segments.map((s) => {
           const current = s.k === keyboardSegment;
-          if (!current && Math.hypot(s.b.x - s.a.x, s.b.y - s.a.y) * zoom < 28) return null;
+          let keyboardOnly = Math.hypot(s.b.x - s.a.x, s.b.y - s.a.y) * zoom < 28;
+          if (!current && keyboardOnly) return null;
           let x = (s.a.x + s.b.x) / 2,
             y = (s.a.y + s.b.y) / 2;
           const label = route.label;
@@ -166,7 +167,9 @@ export function EdgeRouteHandles({
               const hi = Math.max(horizontal ? s.a.x : s.a.y, horizontal ? s.b.x : s.b.y);
               const left = Math.max(0, centre - size - lo),
                 right = Math.max(0, hi - centre - size);
-              if (!current && Math.max(left, right) * zoom < 28) return null;
+              const cramped = Math.max(left, right) * zoom < 28;
+              if (!current && cramped) return null;
+              keyboardOnly ||= cramped;
               const at = left >= right ? lo + left / 2 : hi - right / 2;
               if (horizontal) x = at;
               else y = at;
@@ -179,6 +182,8 @@ export function EdgeRouteHandles({
               style={{ transform: `translate(${x}px, ${y}px)` }}
               title={t("edge.shape.drag")}
               data-testid={`route-segment-${id}-${s.k}`}
+              data-keyboard-only={keyboardOnly || undefined}
+              aria-hidden={keyboardOnly || undefined}
               onPointerDown={begin(s.k)}
             />
           );
