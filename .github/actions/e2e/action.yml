@@ -1,12 +1,17 @@
 name: E2E shard
 description: >-
-  Sets up pnpm, Node and Chromium, builds what the suite serves, and runs one shard of the Playwright suite
-  (whole spec files, balanced by scripts/e2e-shard.mjs). Shared by ci.yml and nightly.yml so both test the
-  same environment. Check out the repository first.
+  Sets up pnpm and Node, restores shared builds (or builds locally for Nightly), and runs one shard
+  of whole spec files balanced by scripts/e2e-shard.mjs. Check out the repository first.
 inputs:
   target:
     description: '"build" (the production e2e build with test hooks) or "dev" (the Vite dev server).'
     default: build
+  builds-artifact:
+    description: Same-run artifact containing the prebuilt dist directories. Empty builds locally.
+    default: ""
+  browser-setup:
+    description: '"install" provisions Chromium; "image" uses the matching Playwright job container.'
+    default: install
   shard:
     description: This shard's number, one-based.
     required: true
@@ -20,32 +25,44 @@ inputs:
     description: Playwright --repeat-each.
     default: "1"
   blob-name:
-    description: >-
-      The blob report's file name, unique per job: without --shard every blob would be report.zip, and a
-      merge would keep only one.
+    description: A unique blob report file name per job, since these shards do not use --shard.
     required: true
 runs:
   using: composite
   steps:
     - uses: ./.github/actions/toolchain
-    - uses: ./.github/actions/chromium-cache
-    # The builds the servers use run while apt installs Chromium's system libraries: the production build
-    # (the subpath project, every target) and, for the build target, the e2e build with test hooks.
-    - name: System deps and builds
+    - name: Select shard and self-hosting variants
       shell: bash
       env:
         TARGET: ${{ inputs.target }}
         SHARD: ${{ inputs.shard }}
         TOTAL: ${{ inputs.total }}
+        BROWSER_SETUP: ${{ inputs.browser-setup }}
       run: |
         case "$TARGET" in build|dev) ;; *) echo "::error::target must be build or dev, got $TARGET"; exit 1 ;; esac
-        # The self-hosting builds only where this shard runs their specs (E2E_SELF_HOST, playwright.config.ts).
-        list=" $(node scripts/e2e-shard.mjs "$SHARD" "$TOTAL" 2>/dev/null) "
+        case "$BROWSER_SETUP" in install|image) ;; *) echo "::error::unknown browser setup $BROWSER_SETUP"; exit 1 ;; esac
+        list=" $(node scripts/e2e-shard.mjs "$SHARD" "$TOTAL") "
         self_host=""
         case "$list" in *" tests/e2e/self-host.spec.ts "*) self_host="internal" ;; esac
         case "$list" in *" tests/e2e/self-host-locked.spec.ts "*) self_host="${self_host:+$self_host,}locked" ;; esac
         echo "E2E_SELF_HOST=$self_host" >> "$GITHUB_ENV"
-        echo "Self-hosting builds for this shard: ${self_host:-none}"
+        echo "Self-hosting variants for this shard: ${self_host:-none}"
+    - uses: ./.github/actions/chromium-cache
+      if: inputs.browser-setup == 'install'
+    - name: Download shared E2E builds
+      if: inputs.builds-artifact != ''
+      uses: actions/download-artifact@v8
+      with:
+        name: ${{ inputs.builds-artifact }}
+        path: tests/.output
+    # Nightly keeps its dev/build target and per-shard self-host build selection.
+    - name: Local builds
+      if: inputs.builds-artifact == ''
+      shell: bash
+      env:
+        TARGET: ${{ inputs.target }}
+        BROWSER_SETUP: ${{ inputs.browser-setup }}
+      run: |
         e2e=""
         if [ "$TARGET" = "build" ]; then
           node scripts/e2e-build.mjs e2e > "$RUNNER_TEMP/e2e-build.log" 2>&1 &
@@ -53,18 +70,17 @@ runs:
         fi
         node scripts/e2e-build.mjs preview > "$RUNNER_TEMP/prod-build.log" 2>&1 &
         prod=$!
-        # The self-hosting builds this shard needs (scripts/e2e-profiles.mjs).
         internal=""
         locked=""
-        case ",$self_host," in *,internal,*)
+        case ",$E2E_SELF_HOST," in *,internal,*)
           node scripts/e2e-build.mjs internal > "$RUNNER_TEMP/internal-build.log" 2>&1 &
           internal=$! ;;
         esac
-        case ",$self_host," in *,locked,*)
+        case ",$E2E_SELF_HOST," in *,locked,*)
           node scripts/e2e-build.mjs locked > "$RUNNER_TEMP/locked-build.log" 2>&1 &
           locked=$! ;;
         esac
-        pnpm exec playwright install-deps chromium
+        if [ "$BROWSER_SETUP" = "install" ]; then pnpm exec playwright install-deps chromium; fi
         status=0
         if [ -n "$e2e" ]; then
           wait "$e2e" || { echo "::error::e2e build failed"; cat "$RUNNER_TEMP/e2e-build.log"; status=1; }
@@ -77,12 +93,31 @@ runs:
           wait "$locked" || { echo "::error::locked build failed"; cat "$RUNNER_TEMP/locked-build.log"; status=1; }
         fi
         exit "$status"
+    - name: Browser system dependencies
+      if: inputs.browser-setup == 'install' && inputs.builds-artifact != ''
+      shell: bash
+      run: pnpm exec playwright install-deps chromium
+    - name: Verify served builds
+      shell: bash
+      env:
+        TARGET: ${{ inputs.target }}
+        SHARD: ${{ inputs.shard }}
+        TOTAL: ${{ inputs.total }}
+      run: |
+        list="$(node scripts/e2e-shard.mjs "$SHARD" "$TOTAL")"
+        read -ra specs <<< "$list"
+        node scripts/ci/e2e-builds.mjs check "$TARGET" "${specs[@]}"
     - name: Playwright
       shell: bash
       env:
         E2E_TARGET: ${{ inputs.target }}
-        # Serve the builds made above instead of building inside Playwright.
         E2E_PREBUILT: "1"
+        E2E_GATE: "1"
+        E2E_PORT: "6400"
+        E2E_DEV_PORT: "6401"
+        E2E_PREVIEW_PORT: "6402"
+        E2E_INTERNAL_PORT: "6403"
+        E2E_LOCKED_PORT: "6404"
         SHARD: ${{ inputs.shard }}
         TOTAL: ${{ inputs.total }}
         RETRIES: ${{ inputs.retries }}
