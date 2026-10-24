@@ -17,7 +17,10 @@ import {
   type DiagramGroup,
   type DiagramNode,
   type Side,
+  type Point,
 } from "../../model/types";
+import { ROUTE_LIMITS, validWaypoints } from "../../model/edgeRoute";
+import { t } from "../../i18n";
 import { catalog } from "../../stencils/catalog";
 import { base64ToBytes, bytesToText, inflateRaw, textToBytes, TooLargeError } from "../codec";
 import { LIMITS, tooLargeMessage } from "../native";
@@ -151,6 +154,7 @@ interface Cell {
   geo?: { x: number; y: number; width: number; height: number; relative: boolean };
   /** Custom properties (attributes of an <object>/<UserObject> wrapper). */
   data: Record<string, string>;
+  points?: Point[];
 }
 
 const num = (v: string | undefined, d = 0) => {
@@ -162,6 +166,7 @@ function readCells(model: XmlElement): Cell[] {
   const root = childrenNamed(model, "root")[0];
   if (!root) return [];
   const cells: Cell[] = [];
+  let edges = 0;
   for (const el of root.children) {
     let mx: XmlElement | undefined;
     let data: Record<string, string> = {};
@@ -178,7 +183,22 @@ function readCells(model: XmlElement): Cell[] {
       value = el.attrs.label;
     }
     if (!mx || id === undefined) continue;
+    if (mx.attrs.edge === "1" && ++edges > LIMITS.maxEdges)
+      throw new DrawioError("This page exceeds the connector budget.");
     const g = childrenNamed(mx, "mxGeometry")[0];
+    // Bound every connector before the pairwise spacing pass, including foreign routes we drop.
+    const points: Point[] = [];
+    if (mx.attrs.edge === "1" && g)
+      for (const array of g.children) {
+        if (array.name !== "Array" || array.attrs.as !== "points") continue;
+        for (const p of array.children) {
+          if (p.name !== "mxPoint") continue;
+          if (points.length >= ROUTE_LIMITS.maxPoints)
+            throw new DrawioError("This page exceeds the connector waypoint budget.");
+          const coordinate = (v: string | undefined) => (v?.trim() ? Number(v) : NaN);
+          points.push({ x: coordinate(p.attrs.x), y: coordinate(p.attrs.y) });
+        }
+      }
     cells.push({
       id,
       value: value ?? "",
@@ -198,6 +218,7 @@ function readCells(model: XmlElement): Cell[] {
           }
         : undefined,
       data,
+      ...(points.length ? { points } : {}),
     });
   }
   return cells;
@@ -619,6 +640,7 @@ export function drawioPageToDiagram(page: DrawioPage, fallbackTitle = "Imported 
   }
   const edges: DiagramEdge[] = [];
   let dangling = 0;
+  let droppedRoutes = 0;
   for (const c of cells) {
     if (!c.edge) continue;
     const from = nodeFor(c.source);
@@ -648,6 +670,9 @@ export function drawioPageToDiagram(page: DrawioPage, fallbackTitle = "Imported 
     }
     const sourceSide = ours ? sideFor(c.style.exitX, c.style.exitY) : undefined;
     const targetSide = ours ? sideFor(c.style.entryX, c.style.entryY) : undefined;
+    const waypoints = ours && validWaypoints(c.points) ? c.points : undefined;
+    if (c.points && !ours) droppedRoutes++;
+    else if (c.points && !waypoints) warnings.push(`Ignored waypoints: "${id}"`);
     edges.push({
       id,
       from,
@@ -657,9 +682,11 @@ export function drawioPageToDiagram(page: DrawioPage, fallbackTitle = "Imported 
       ...(relation ? { relation } : {}),
       ...(sourceSide ? { sourceSide } : {}),
       ...(targetSide ? { targetSide } : {}),
+      ...(waypoints ? { waypoints } : {}),
       ...(props ? { props } : {}),
     });
   }
+  if (droppedRoutes) warnings.push(t("importReport.drawioRoutesDropped", { count: droppedRoutes }));
   if (dangling)
     warnings.push(
       `${dangling} connector${dangling === 1 ? " wasn't" : "s weren't"} attached to two shapes and ${dangling === 1 ? "was" : "were"} skipped.`,

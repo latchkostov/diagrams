@@ -9,6 +9,7 @@ import { RELATION_STROKE } from "../drawio/write";
 // become subgraphs. A trailing `%% diagrams:` comment keeps our ids, stencils and tones so importing
 // the text back restores them (Mermaid itself ignores comments). Shape annotations become plain
 // Mermaid nodes of the same shape; text, notes and zones have no Mermaid equivalent and are left out.
+// Mermaid has no line geometry: fixed sides and hand-shaped routes are dropped, including in metadata.
 
 export const META_PREFIX = "%% diagrams:";
 

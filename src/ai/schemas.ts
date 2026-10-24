@@ -29,6 +29,7 @@ export const sharedDefs = {
     enum: ["azure", "aws", "gcp", "k8s", "onprem", "neutral"],
   },
   PropsPatch: simPropsPatchSchema,
+  Side: { type: "string", enum: ["top", "right", "bottom", "left"] },
 };
 export const describe_diagramSchema: JsonSchema = {
   ...{
@@ -188,6 +189,8 @@ export const edit_diagramSchema: JsonSchema = {
                   description:
                     "Left out: infer from the stencils as in the editor (e.g. into Key Vault: secret; otherwise a flow). An explicit relation wins; flow carries traffic, while config, secret, identity, telemetry, deploy and depends are dotted dependencies with no traffic.",
                 },
+                fromSide: { $ref: "#/$defs/Side", description: "Fix the source end to this side." },
+                toSide: { $ref: "#/$defs/Side", description: "Fix the target end to this side." },
                 key: {
                   type: "string",
                   minLength: 1,
@@ -200,7 +203,7 @@ export const edit_diagramSchema: JsonSchema = {
               required: ["op", "from", "to", "kind", "label"],
               additionalProperties: false,
               description:
-                "Put a new node on the connection from -> to: it becomes from -> new -> to. Both new connections keep the old one's kind, relation and props; its label and source side go on the first, its target side on the second.",
+                "Put a new node on the connection from -> to: it becomes from -> new -> to. Both new connections keep the old one's kind, relation and props; its label and source side go on the first, its target side on the second. Hand-shaped routes are reset.",
               properties: {
                 op: {
                   const: "insert_between",
@@ -271,6 +274,19 @@ export const edit_diagramSchema: JsonSchema = {
                 },
                 tone: {
                   $ref: "#/$defs/Tone",
+                },
+                fromSide: {
+                  anyOf: [{ $ref: "#/$defs/Side" }, { type: "null" }],
+                  description: "Connections only: source side; null restores automatic side selection.",
+                },
+                toSide: {
+                  anyOf: [{ $ref: "#/$defs/Side" }, { type: "null" }],
+                  description: "Connections only: target side; null restores automatic side selection.",
+                },
+                route: {
+                  type: "string",
+                  enum: ["auto"],
+                  description: "Connections only: reset a hand-shaped route. Agents never write bend coordinates.",
                 },
               },
             },

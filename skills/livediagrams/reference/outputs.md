@@ -13,6 +13,10 @@ already specified; offer these in order:
 
 ## Choosing for the user
 
+The app's draw.io export preserves fixed sides and hand-shaped routes when re-imported. Foreign draw.io
+routes are dropped with an import report because their nodes are rescaled. Mermaid has no line geometry:
+export drops fixed sides and routes without a warning, including from its metadata comment.
+
 For work, employer, team, client or customer systems, or internal names, hosts, accounts or clusters,
 recommend HTML or a diagram file. Set `"private": true`: the app keeps it on the device, with no
 share links, cloud saves or AI tools. Offer HTML encryption because files get forwarded.

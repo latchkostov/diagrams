@@ -185,6 +185,8 @@ export function applyOps(diagram: DiagramFile, ops: readonly DiagramOp[], opts: 
               { kind: op.kind, relation: op.relation },
             ),
             ...(op.label !== undefined ? { label: op.label } : {}),
+            ...(op.fromSide !== undefined ? { sourceSide: op.fromSide } : {}),
+            ...(op.toSide !== undefined ? { targetSide: op.toSide } : {}),
           });
           Object.assign(result, { id, from, to });
           break;
@@ -193,6 +195,8 @@ export function applyOps(diagram: DiagramFile, ops: readonly DiagramOp[], opts: 
           const id = ref(op.target);
           result.id = id;
           const kind = kindOf(id);
+          if (kind !== "edge" && (op.fromSide !== undefined || op.toSide !== undefined || op.route !== undefined))
+            throw new Error("fromSide, toSide and route require a connection.");
           const n = kind === "node" && next.nodes.find((n) => n.id === id),
             e = kind === "edge" && next.edges.find((e) => e.id === id),
             g = kind === "group" && next.groups?.find((g) => g.id === id),
@@ -221,12 +225,17 @@ export function applyOps(diagram: DiagramFile, ops: readonly DiagramOp[], opts: 
             if (n.group) touched.add(n.group);
           } else if (e) {
             if (op.in !== undefined || op.sublabel !== undefined || op.members || op.tone)
-              throw new Error("Connection updates support label, kind and props.");
+              throw new Error("Connection updates support label, kind, props, fromSide, toSide and route.");
             if (op.kind !== undefined && op.kind !== "async" && op.kind !== "sync")
               throw new Error("Connection kind must be async or sync.");
             if (op.kind !== undefined) e.kind = op.kind as "async" | "sync";
             if (op.label !== undefined) e.label = op.label;
             if (op.props) e.props = mergeProps(e.props, connectionProps(e.props, op.props));
+            if (op.fromSide === null) delete e.sourceSide;
+            else if (op.fromSide !== undefined) e.sourceSide = op.fromSide;
+            if (op.toSide === null) delete e.targetSide;
+            else if (op.toSide !== undefined) e.targetSide = op.toSide;
+            if (op.route === "auto") delete e.waypoints;
           } else if (g) {
             touched.add(g.id);
             if (op.kind !== undefined || op.in !== undefined || op.props || op.sublabel !== undefined)

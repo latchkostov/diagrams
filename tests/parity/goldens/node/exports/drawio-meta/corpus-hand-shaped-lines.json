@@ -1,7 +1,7 @@
 {
   "withIcons": {
-    "sha256": "868da4c05e2535d11005fbe5adc2c7a7dd1acde6d1544491d2008ec0bd88ff4e",
-    "bytes": 17944,
+    "sha256": "d739729d10bb6c2cafe1223b2a856d3ce72cc40f3d25746a0bf0f1fe7dfcddb7",
+    "bytes": 18713,
     "inlined": { "postgres": "postgresql 5bc8dcc1fbb1ec10", "service.go": "go 6f494b4da5a84f2a", "service.node": "nodejs ad81b1a87b698cc5" }
   },
   "readBack": [
@@ -17,10 +17,48 @@
           { "id": "worker", "stencil": "service.go", "label": "Receipt worker", "x": 650, "y": 320 }
         ],
         "edges": [
-          { "id": "api-db", "from": "api", "to": "db", "label": "writes", "kind": "sync", "sourceSide": "bottom", "targetSide": "bottom" },
-          { "id": "jog", "from": "api", "to": "worker", "label": "receipts", "kind": "async" },
-          { "id": "detour", "from": "api", "to": "db", "label": "audit", "kind": "async", "sourceSide": "right", "targetSide": "top" },
-          { "id": "shape-end", "from": "worker", "to": "shape", "kind": "async", "sourceSide": "bottom", "targetSide": "bottom" }
+          {
+            "id": "api-db",
+            "from": "api",
+            "to": "db",
+            "label": "writes",
+            "kind": "sync",
+            "sourceSide": "bottom",
+            "targetSide": "bottom",
+            "waypoints": [{ "x": 110, "y": 220 }, { "x": 760, "y": 220 }]
+          },
+          {
+            "id": "jog",
+            "from": "api",
+            "to": "worker",
+            "label": "receipts",
+            "kind": "async",
+            "waypoints": [{ "x": 360, "y": 36 }, { "x": 360, "y": 356 }]
+          },
+          {
+            "id": "detour",
+            "from": "api",
+            "to": "db",
+            "label": "audit",
+            "kind": "async",
+            "sourceSide": "right",
+            "targetSide": "top",
+            "waypoints": [
+              { "x": -180, "y": -200 },
+              { "x": 400, "y": -200 },
+              { "x": 400, "y": -160 },
+              { "x": 760, "y": -160 }
+            ]
+          },
+          {
+            "id": "shape-end",
+            "from": "worker",
+            "to": "shape",
+            "kind": "async",
+            "sourceSide": "bottom",
+            "targetSide": "bottom",
+            "waypoints": [{ "x": 760, "y": 580 }, { "x": 1170, "y": 580 }]
+          }
         ],
         "annotations": [
           { "id": "shape", "kind": "shape", "text": "Archive", "x": 1100, "y": 320, "width": 140, "height": 100, "shape": "diamond" }

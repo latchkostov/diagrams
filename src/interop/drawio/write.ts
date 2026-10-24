@@ -170,7 +170,15 @@ export function diagramToDrawio(d: DiagramFile, opts: DrawioWriteOptions = {}): 
     lines.push(
       `        <object id="${escapeXml(cellId("e", e.id))}" label="${escapeXml(escapeXml(e.label ?? "", false))}" dg_id="${escapeXml(e.id)}" dg_kind="${kind}"${attr("dg_relation", relation)}${attr("dg_props", json(e.props))}>`,
       `          <mxCell style="${escapeXml(style)}" edge="1" parent="1" source="${escapeXml(end(e.from))}" target="${escapeXml(end(e.to))}">`,
-      `            <mxGeometry relative="1" as="geometry" />`,
+      ...(e.waypoints?.length
+        ? [
+            `            <mxGeometry relative="1" as="geometry">`,
+            `              <Array as="points">`,
+            ...e.waypoints.map((p) => `                <mxPoint x="${p.x}" y="${p.y}" />`),
+            `              </Array>`,
+            `            </mxGeometry>`,
+          ]
+        : [`            <mxGeometry relative="1" as="geometry" />`]),
       `          </mxCell>`,
       `        </object>`,
     );

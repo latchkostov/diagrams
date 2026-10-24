@@ -28,22 +28,44 @@
         </object>
         <object id="dg-e-api-db" label="writes" dg_id="api-db" dg_kind="sync">
           <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#475569;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" edge="1" parent="1" source="dg-n-api" target="dg-n-db">
-            <mxGeometry relative="1" as="geometry" />
+            <mxGeometry relative="1" as="geometry">
+              <Array as="points">
+                <mxPoint x="110" y="220" />
+                <mxPoint x="760" y="220" />
+              </Array>
+            </mxGeometry>
           </mxCell>
         </object>
         <object id="dg-e-jog" label="receipts" dg_id="jog" dg_kind="async">
           <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;" edge="1" parent="1" source="dg-n-api" target="dg-n-worker">
-            <mxGeometry relative="1" as="geometry" />
+            <mxGeometry relative="1" as="geometry">
+              <Array as="points">
+                <mxPoint x="360" y="36" />
+                <mxPoint x="360" y="356" />
+              </Array>
+            </mxGeometry>
           </mxCell>
         </object>
         <object id="dg-e-detour" label="audit" dg_id="detour" dg_kind="async">
           <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="dg-n-api" target="dg-n-db">
-            <mxGeometry relative="1" as="geometry" />
+            <mxGeometry relative="1" as="geometry">
+              <Array as="points">
+                <mxPoint x="-180" y="-200" />
+                <mxPoint x="400" y="-200" />
+                <mxPoint x="400" y="-160" />
+                <mxPoint x="760" y="-160" />
+              </Array>
+            </mxGeometry>
           </mxCell>
         </object>
         <object id="dg-e-shape-end" label="" dg_id="shape-end" dg_kind="async">
           <mxCell style="edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeWidth=1.5;fontSize=11;labelBackgroundColor=default;strokeColor=#7C8597;dashed=1;dashPattern=6 4;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" edge="1" parent="1" source="dg-n-worker" target="dg-a-shape">
-            <mxGeometry relative="1" as="geometry" />
+            <mxGeometry relative="1" as="geometry">
+              <Array as="points">
+                <mxPoint x="760" y="580" />
+                <mxPoint x="1170" y="580" />
+              </Array>
+            </mxGeometry>
           </mxCell>
         </object>
       </root>
