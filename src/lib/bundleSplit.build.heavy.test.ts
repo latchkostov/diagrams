@@ -305,7 +305,6 @@ describe("production bundle split", () => {
     const canvasFeatures: [string, RegExp][] = [
       ["node inspector shell", /[/\\]src[/\\]canvas[/\\]inspector[/\\]NodePanel\.tsx$/],
       ["node inspector field metadata", /[/\\]src[/\\]canvas[/\\]inspector[/\\]simFields\.ts$/],
-      ["menu rows", /[/\\]src[/\\]components[/\\]MenuList\.tsx$/],
       ["room presence", /[/\\]src[/\\]canvas[/\\]PresenceLayer\.tsx$/],
       ["editing tooltips", /[/\\]src[/\\]canvas[/\\]NodeTooltip\.tsx$/],
       ["check markers", /[/\\]src[/\\]canvas[/\\]checks[/\\]ChecksMarkers\.tsx$/],
@@ -325,6 +324,17 @@ describe("production bundle split", () => {
       expect(found(bundled(build.chunks), [...canvasFeatures, ...liveFeatures])).toEqual(
         [...canvasFeatures, ...liveFeatures].map(([name]) => name),
       );
+    }
+  });
+
+  it("keeps all searchable menu code in the canvas first view", () => {
+    for (const build of [plain(), rooms]) {
+      const menuModules = bundled(build.chunks).filter((id) =>
+        /[/\\]src[/\\]components[/\\](?:ContextMenu|MenuList)\.tsx$/.test(id),
+      );
+      expect(menuModules.length).toBeGreaterThan(0);
+      const canvasModules = bundled(closure([canvasChunk(build)], build));
+      expect(menuModules.filter((id) => !canvasModules.includes(id))).toEqual([]);
     }
   });
 

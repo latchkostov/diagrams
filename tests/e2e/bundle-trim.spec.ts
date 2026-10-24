@@ -36,44 +36,13 @@ async function hold(page: Page, name: string, source: string) {
   };
 }
 
-test("pending quick-add retains search through one keyboard Retry and lets Escape cancel", async ({ page }) => {
-  await seed(page);
-  const menu = await hold(page, "MenuList", "src/components/MenuList.tsx");
-  try {
-    await gotoCanvas(page, "blocking-call");
-    await waitForStableViewport(page);
-    await page.getByTestId("node-caller").click();
-    await page.getByTestId("canvas-wrap").focus();
-    await page.keyboard.press("Alt+ArrowRight");
-    await expect.poll(menu.requested).toBe(true);
-    await expect(page.getByTestId("quick-add")).toBeFocused();
-    await page.keyboard.type("redis");
-    const before = await savedDiagram(page);
-    menu.fail();
-    const retry = page.getByTestId("menu-load-retry");
-    await expect(retry).toBeVisible();
-    await page.keyboard.press("Tab");
-    await expect(retry).toBeFocused();
-    menu.pass();
-    await page.keyboard.press("Enter");
-    await expect(page.getByTestId("quick-add-search")).toHaveValue("redis");
-    expect(await savedDiagram(page)).toEqual(before);
-    await page.keyboard.press("Escape"); // Clear the search, as before.
-    await page.keyboard.press("Escape");
-    await expect(page.getByTestId("quick-add")).toHaveCount(0);
-  } finally {
-    menu.release();
-  }
-});
-
 for (const editAfterArrow of [false, true])
-  test(`searchable menu replays buffered navigation${editAfterArrow ? " and later edits" : ""} as a loaded menu`, async ({
+  test(`searchable menu navigation${editAfterArrow ? " and later edits" : ""} picks the highlighted row`, async ({
     browser,
   }) => {
     const picks: string[] = [];
-    for (const cold of [false, true]) {
+    for (const keyboardPick of [false, true]) {
       const page = await browser.newPage();
-      const menu = cold ? await hold(page, "MenuList", "src/components/MenuList.tsx") : undefined;
       try {
         await seed(page);
         await gotoCanvas(page, "blocking-call");
@@ -82,25 +51,29 @@ for (const editAfterArrow of [false, true])
         await page.getByTestId("canvas-wrap").focus();
         const before = await savedDiagram(page);
         await page.keyboard.press("Alt+ArrowRight");
-        if (menu) {
-          await expect.poll(menu.requested).toBe(true);
-          await expect(page.getByTestId("quick-add")).toBeFocused();
-        } else await expect(page.getByTestId("quick-add-search")).toBeFocused();
+        await expect(page.getByTestId("quick-add-search")).toBeFocused();
         await page.keyboard.type(editAfterArrow ? "ca" : "cache");
         await page.keyboard.press("ArrowDown");
         if (editAfterArrow) {
           await page.keyboard.type("che");
           await page.keyboard.press("ArrowDown");
         }
-        await page.keyboard.press("Enter");
-        menu?.release();
+        if (keyboardPick) await page.keyboard.press("Enter");
+        else {
+          const active = await page
+            .getByTestId(/^context-menu-item-/)
+            .evaluateAll((rows) =>
+              rows.find((row) => row.getAttribute("data-active") === "true")?.getAttribute("data-testid"),
+            );
+          if (!active) throw new Error("Quick-add has no highlighted row");
+          await page.getByTestId(active).click();
+        }
         await expect(page.getByTestId("quick-add")).toHaveCount(0);
         await expect.poll(async () => (await savedDiagram(page)).nodes.length).toBe(before.nodes.length + 1);
         const added = (await savedDiagram(page)).nodes.find((node) => !before.nodes.some((old) => old.id === node.id));
         if (!added) throw new Error("Quick-add did not create a node");
         picks.push(added.stencil);
       } finally {
-        menu?.release();
         await page.close();
       }
     }
@@ -162,78 +135,45 @@ test("Live overflow keeps its trace fold across dismissal", async ({ page }) => 
   await expect(page.getByTestId("live-trace-message")).toHaveAttribute("aria-expanded", "true");
 });
 
-test("quick-add Enter commits before held rows arrive, and the next Escape finishes naming", async ({ page }) => {
-  await seed(page);
-  const menu = await hold(page, "MenuList", "src/components/MenuList.tsx");
-  try {
+for (const name of [undefined, "Cache audit"])
+  test(`quick-add navigation picks before ${name ? "typing hands over to naming" : "Escape finishes naming"}`, async ({
+    page,
+  }) => {
+    await seed(page);
     await gotoCanvas(page, "blocking-call");
     await waitForStableViewport(page);
     await page.getByTestId("node-caller").click();
     await page.getByTestId("canvas-wrap").focus();
     const before = await savedDiagram(page);
     await page.keyboard.press("Alt+ArrowRight");
-    await expect.poll(menu.requested).toBe(true);
-    await page.keyboard.type("redis cache");
+    await expect(page.getByTestId("quick-add-search")).toBeFocused();
+    await page.keyboard.type("cache");
+    await page.keyboard.press("ArrowDown");
     await page.keyboard.press("Enter");
+    if (name) await page.keyboard.type(name);
     await page.keyboard.press("Escape");
     await expect(page.getByTestId("quick-add")).toHaveCount(0);
     await expect.poll(async () => (await savedDiagram(page)).edges.length).toBe(before.edges.length + 1);
     const after = await savedDiagram(page);
     expect(after.nodes).toHaveLength(before.nodes.length + 1);
-    expect(after.nodes.some((node) => node.stencil === "redis.cache")).toBe(true);
-  } finally {
-    menu.release();
-  }
-});
+    const added = after.nodes.find((node) => !before.nodes.some((old) => old.id === node.id));
+    expect(added).toBeDefined();
+    if (name) expect(added?.label).toBe(name);
+  });
 
-test("a held quick-add leaves another control's Enter available", async ({ page }) => {
+test("quick-add leaves another control's Enter available", async ({ page }) => {
   await seed(page);
-  const menu = await hold(page, "MenuList", "src/components/MenuList.tsx");
-  try {
-    await gotoCanvas(page, "blocking-call");
-    await waitForStableViewport(page);
-    await page.getByTestId("node-caller").click();
-    await page.getByTestId("canvas-wrap").focus();
-    const before = await savedDiagram(page);
-    await page.keyboard.press("Alt+ArrowRight");
-    await expect.poll(menu.requested).toBe(true);
-    await page.keyboard.type("redis");
-    await page.getByTestId("file-button").focus();
-    await page.keyboard.press("Enter");
-    await expect(page.getByTestId("file-more-formats")).toBeVisible();
-    expect(await savedDiagram(page)).toEqual(before);
-  } finally {
-    menu.release();
-  }
-});
-
-test("the first Enter after search focus uses the buffered query", async ({ page }) => {
-  await seed(page);
-  const menu = await hold(page, "MenuList", "src/components/MenuList.tsx");
-  try {
-    await gotoCanvas(page, "blocking-call");
-    await waitForStableViewport(page);
-    await page.getByTestId("node-caller").click();
-    await page.getByTestId("canvas-wrap").focus();
-    await page.keyboard.press("Alt+ArrowRight");
-    await expect.poll(menu.requested).toBe(true);
-    await page.keyboard.type("redis cache");
-    await page.evaluate(() => {
-      const enter = (event: FocusEvent) => {
-        const input = event.target;
-        if (!(input instanceof HTMLElement) || input.dataset.testid !== "quick-add-search") return;
-        document.removeEventListener("focusin", enter);
-        queueMicrotask(() => input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true })));
-      };
-      document.addEventListener("focusin", enter);
-    });
-    menu.release();
-    await expect(page.getByTestId("quick-add")).toHaveCount(0);
-    await expect(page.getByTestId("inspector-field-label")).toBeFocused();
-    expect((await savedDiagram(page)).nodes.some((node) => node.stencil === "redis.cache")).toBe(true);
-  } finally {
-    menu.release();
-  }
+  await gotoCanvas(page, "blocking-call");
+  await waitForStableViewport(page);
+  await page.getByTestId("node-caller").click();
+  await page.getByTestId("canvas-wrap").focus();
+  const before = await savedDiagram(page);
+  await page.keyboard.press("Alt+ArrowRight");
+  await page.keyboard.type("redis");
+  await page.getByTestId("file-button").focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByTestId("file-more-formats")).toBeVisible();
+  expect(await savedDiagram(page)).toEqual(before);
 });
 
 test("typing before the node panel arrives preserves the first character", async ({ page }) => {
@@ -254,31 +194,24 @@ test("typing before the node panel arrives preserves the first character", async
   }
 });
 
-test("a held plain menu keeps Home, arrows and Enter in order", async ({ page }) => {
+test("a plain menu keeps Home, arrows and Enter in order", async ({ page }) => {
   const diagram = messageTypesFixture();
   diagram.nodes[1].props = { emits: { Send: "Send", Callback: "Callback" } };
   await page.addInitScript(({ diagram, key }) => localStorage.setItem(key, JSON.stringify(diagram)), {
     diagram,
     key: STORAGE_KEYS.autosavePrefix + "webhook-ingestion",
   });
-  const menu = await hold(page, "MenuList", "src/components/MenuList.tsx");
-  try {
-    await gotoCanvas(page, "webhook-ingestion");
-    await page.getByTestId("node-api").click();
-    await page.getByTestId("inspector-section-node-simulation").click();
-    const receives = page.getByTestId("inspector-field-receives-0");
-    await receives.focus();
-    await page.keyboard.press("Enter");
-    await expect.poll(menu.requested).toBe(true);
-    await page.keyboard.press("Home");
-    await page.keyboard.press("ArrowDown");
-    await page.keyboard.press("Enter");
-    menu.release();
-    await expect
-      .poll(async () => (await savedDiagram(page)).nodes.find((node) => node.id === "api")?.props?.emits)
-      .toEqual({ "*": "Send", Callback: "Callback" });
-    await expect(receives).toBeFocused();
-  } finally {
-    menu.release();
-  }
+  await gotoCanvas(page, "webhook-ingestion");
+  await page.getByTestId("node-api").click();
+  await page.getByTestId("inspector-section-node-simulation").click();
+  const receives = page.getByTestId("inspector-field-receives-0");
+  await receives.focus();
+  await page.keyboard.press("Enter");
+  await page.keyboard.press("Home");
+  await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("Enter");
+  await expect
+    .poll(async () => (await savedDiagram(page)).nodes.find((node) => node.id === "api")?.props?.emits)
+    .toEqual({ "*": "Send", Callback: "Callback" });
+  await expect(receives).toBeFocused();
 });

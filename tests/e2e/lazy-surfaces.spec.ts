@@ -47,13 +47,6 @@ async function open(page: Page, id: LazySurfaceId) {
     await page.getByTestId("command-item-action:canvas.check-diagram").click();
     return;
   }
-  if (id === "canvas.menu") {
-    await gotoCanvas(page, SLUG);
-    await waitForStableViewport(page);
-    await page.getByTestId("node-caller").click({ button: "right" });
-    return;
-  }
-
   if (id === "canvas.presence") {
     await page.addInitScript(() => {
       window.__collabEndpoints = { trackers: [], iceServers: [] };

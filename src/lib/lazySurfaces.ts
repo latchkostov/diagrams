@@ -4,7 +4,6 @@ declare const __LAZY_SURFACE_METADATA__: boolean | undefined;
 // Node-side browser test discovery imports this file directly, without Vite's compile-time flag.
 const names = typeof __LAZY_SURFACE_METADATA__ === "undefined" || __LAZY_SURFACE_METADATA__;
 export const lazySurfaces = [
-  ["canvas.menu", names ? "MenuList" : "", names ? "components/MenuList" : "", "skip"],
   ["canvas.presence", names ? "CanvasReadouts" : "", names ? "canvas/CanvasReadouts" : "", "skip"],
   ["canvas.node-tips", names ? "CanvasReadouts" : "", names ? "canvas/CanvasReadouts" : "", "skip"],
   ["canvas.check-markers", names ? "ChecksMarkers" : "", names ? "canvas/checks/ChecksMarkers" : "", "skip"],

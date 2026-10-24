@@ -42,12 +42,11 @@ export const typeAheadActive = () => captures.length > 0;
 export function captureTypeAhead(
   multiline: () => boolean = () => false,
   onDone?: (typed: TypeAhead) => void,
-  accepts: (event: KeyboardEvent) => boolean = () => true,
 ): { stop: () => TypeAhead } {
   const me = { state: { text: null } as TypeAhead };
   captures.push(me);
   const onKey = (e: KeyboardEvent) => {
-    if (captures[captures.length - 1] !== me || e.isComposing || !accepts(e)) return;
+    if (captures[captures.length - 1] !== me || e.isComposing) return;
     const next = typeAheadKey(me.state, e, multiline());
     if (!next) return;
     me.state = next;
