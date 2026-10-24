@@ -130,10 +130,13 @@ const MAX_PIXELS = 16_000_000; // keep well under browsers' canvas limits
 
 /** The picture as a file: a PNG, or the SVG's text (what its data URL would decode to). */
 export async function renderDiagramImage(kind: "png" | "svg", opts: ImageOptions = {}): Promise<Blob> {
-  await unlessCancelled(ensureLazySurfacesLoaded(), opts.signal);
-  flushSync(() => {});
   opts.signal?.throwIfAborted();
   opts.check?.();
+  const surfaces = ensureLazySurfacesLoaded();
+  if (surfaces) {
+    await unlessCancelled(surfaces, opts.signal);
+    flushSync(() => {});
+  }
   const viewport = findViewport();
   // A pending route is still part of the saved drawing. Wait before measuring its farthest bend.
   const routeReadiness = whenEdgeGeometryReady(viewport);

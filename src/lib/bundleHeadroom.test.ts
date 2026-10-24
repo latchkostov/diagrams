@@ -2,6 +2,16 @@ import { expect, it } from "vitest";
 import { bundleBudget } from "../../scripts/bench/headroom.mjs";
 import { summary } from "../../scripts/bench/report.mjs";
 import { ESLint } from "eslint";
+import { readFileSync } from "node:fs";
+import { parse } from "yaml";
+
+it("fetches merge-base history for both PR gates and manually dispatched branch benchmarks", () => {
+  const workflow = parse(readFileSync(".github/workflows/bench.yml", "utf8")) as {
+    jobs: Record<string, { steps: { uses?: string; with?: Record<string, unknown> }[] }>;
+  };
+  for (const job of ["gates", "nightly"])
+    expect(workflow.jobs[job].steps.find((step) => step.uses === "actions/checkout@v7")?.with?.["fetch-depth"]).toBe(0);
+});
 
 it("warns only below the fixed floor, fails only above budget, and preserves signed PR deltas", () => {
   expect(bundleBudget(10_000, 18_192, 11_000)).toEqual({ headroom: 8192, warning: false, base: 11_000, delta: -1000 });

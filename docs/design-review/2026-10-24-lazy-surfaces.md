@@ -14,3 +14,9 @@ controls, unavailable-owner markers and inline retries remain. The shared shell 
 the downloaded chunks, and recovering a shared chunk repairs every failed active consumer.
 Specialised hold tests remain alongside the registry contracts so their stronger interaction and
 styling assertions are preserved.
+
+The capture follow-up was reviewed again after CI exposed unconditional yielding. Loaded surfaces
+preserve synchronous header/countdown setup; pending imports flush React commits without animation
+clock advancement. Track error/ended listeners precede the wait, cancellation stops the stream and
+the generation check prevents stale framing. No additional focus, chrome or cancellation regression
+was found in that source review.

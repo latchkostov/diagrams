@@ -1,4 +1,5 @@
 /** Metadata stays separate from loaders: enumerating surfaces never downloads their chunks. */
+import { flushSync } from "react-dom";
 export const lazySurfaces = [
   ["inspector.edge", "EdgePanel", "canvas/inspector/EdgePanel", "skip"],
   ["inspector.identity", "NodeIdentity", "canvas/inspector/NodeIdentity", "skip"],
@@ -57,7 +58,7 @@ if (typeof window !== "undefined" && import.meta.env.VITE_E2E === "1") {
       Object.fromEntries(
         [...runtimes].map(([id, runtime]) => [id, { state: runtime.getState(), active: runtime.active() }]),
       ),
-    ensureLoaded: ensureLazySurfacesLoaded,
+    ensureLoaded: () => Promise.resolve(ensureLazySurfacesLoaded()),
     pendingOutputs: () => pendingOutputs,
   };
 }
@@ -78,20 +79,26 @@ export function retryLazySurfaces() {
 /** Used by export, image capture, print and recording. Only visible, output-bearing surfaces matter.
  * Recheck after each load: a loaded surface can mount another registered surface.
  */
-export async function ensureLazySurfacesLoaded(): Promise<void> {
+export function ensureLazySurfacesLoaded(): Promise<void> | undefined {
+  const pending = pendingSurfaces();
+  if (pending.length) return waitForSurfaces(pending);
+}
+
+function pendingSurfaces() {
+  return lazySurfaces.flatMap(([id, , , policy]) => {
+    const runtime = runtimes.get(id);
+    return policy === "await" && runtime?.active() && runtime.getState() !== "loaded" ? [runtime] : [];
+  });
+}
+
+async function waitForSurfaces(pending: SurfaceRuntime[]): Promise<void> {
   if (import.meta.env.VITE_E2E === "1") pendingOutputs++;
   try {
-    const seen = new Set<SurfaceRuntime>();
-    for (;;) {
-      const pending = lazySurfaces.flatMap(([id, , , policy]) => {
-        const runtime = runtimes.get(id);
-        return policy === "await" && runtime?.active() && !seen.has(runtime) ? [runtime] : [];
-      });
-      if (!pending.length) return;
+    while (pending.length) {
       await Promise.all(pending.map((surface) => surface.ensureLoaded()));
-      pending.forEach((surface) => seen.add(surface));
-      // Subscribers commit child surfaces before the next readiness pass.
-      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+      // Commit subscriber updates and discover nested surfaces without depending on a running clock.
+      flushSync(() => {});
+      pending = pendingSurfaces();
     }
   } finally {
     if (import.meta.env.VITE_E2E === "1") pendingOutputs--;

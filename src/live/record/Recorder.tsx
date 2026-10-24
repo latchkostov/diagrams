@@ -182,11 +182,6 @@ export function Recorder({
             return;
           }
           stream.current = media;
-          await ensureLazySurfacesLoaded();
-          if (!valid(token)) {
-            stopStream(media);
-            return;
-          }
           const track = media.getVideoTracks()[0];
           const failure = () =>
             fail(token, "Recording failed: the browser lost the capture. Start again and keep this tab open.");
@@ -204,6 +199,12 @@ export function Recorder({
           }
           if (!track || track.readyState === "ended") {
             failure();
+            return;
+          }
+          const surfaces = ensureLazySurfacesLoaded();
+          if (surfaces) await surfaces;
+          if (!valid(token)) {
+            stopStream(media);
             return;
           }
           const el = target();

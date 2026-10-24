@@ -16,6 +16,7 @@ beforeEach(() => {
 afterEach(async () => {
   await act(() => root.unmount());
   host.remove();
+  vi.unstubAllGlobals();
 });
 const deferred = <T,>() => {
   let resolve!: (value: T) => void;
@@ -200,29 +201,35 @@ it("Retry dispatches focus through the declared panel root", async () => {
 });
 
 it("awaits active output surfaces, discovers children, skips UI and propagates load failure", async () => {
+  const frame = vi.fn(() => {
+    throw new Error("Readiness must not depend on a running animation clock");
+  });
+  vi.stubGlobal("requestAnimationFrame", frame);
   const { registerLazySurface, ensureLazySurfacesLoaded } = await import("./lazySurfaces");
   const held = deferred<undefined>();
   const child = vi.fn().mockResolvedValue(undefined);
   const skip = vi.fn();
+  let parentLoaded = false;
   registerLazySurface({ id: "live.timeline", active: () => true, ensureLoaded: skip, getState: () => "idle" });
   registerLazySurface({ id: "live.calls", active: () => false, ensureLoaded: skip, getState: () => "idle" });
   registerLazySurface({
     id: "live.session",
     active: () => true,
-    getState: () => "loading",
+    getState: () => (parentLoaded ? "loaded" : "loading"),
     ensureLoaded: () =>
       held.promise.then(() => {
+        parentLoaded = true;
         if (!child.mock.calls.length)
           registerLazySurface({
             id: "live.threads",
             active: () => true,
             ensureLoaded: child,
-            getState: () => "loaded",
+            getState: () => (child.mock.calls.length ? "loaded" : "idle"),
           });
       }),
   });
   let done = false;
-  const ready = ensureLazySurfacesLoaded().then(() => {
+  const ready = Promise.resolve(ensureLazySurfacesLoaded()).then(() => {
     done = true;
   });
   await Promise.resolve();
@@ -231,6 +238,8 @@ it("awaits active output surfaces, discovers children, skips UI and propagates l
   held.resolve(undefined);
   await ready;
   expect(child).toHaveBeenCalledTimes(1);
+  expect(ensureLazySurfacesLoaded()).toBeUndefined();
+  expect(frame).not.toHaveBeenCalled();
   registerLazySurface({
     id: "live.note",
     active: () => true,

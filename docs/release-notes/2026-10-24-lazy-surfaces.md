@@ -7,6 +7,10 @@ including surfaces sharing a chunk. Reopening retries a failed download even aft
 Image export and recording await active output-bearing surfaces; editor-only UI and data exports
 are skipped. The same readiness hook is available to a future print command.
 
+Readiness stays synchronous when output surfaces are already loaded, preserving export-header setup
+and recording countdown behavior. Pending downloads commit their React updates without waiting for
+an animation clock, and recording watches capture-track errors while those downloads are held.
+
 The generated browser contract iterates all 32 registered surfaces with real entry points and
 held/failed chunks. Additional generated image-export cases cover the four output-bearing surfaces.
 Existing specialised hold tests remain because they also check styling, cursor, held typing,
