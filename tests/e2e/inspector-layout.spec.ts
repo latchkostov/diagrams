@@ -11,10 +11,12 @@ async function open(
   locale = "en",
   stencil?: string,
   rates = false,
+  firewall = false,
 ) {
   await page.setViewportSize({ width, height: 900 });
   await page.emulateMedia({ colorScheme: theme === "dark" ? "dark" : "light", reducedMotion: "reduce" });
   const diagram = inspectorLayoutFixture();
+  if (firewall) diagram.nodes[1].stencil = "generic.firewall";
   if (stencil) diagram.nodes[1].stencil = stencil;
   if (rates) {
     diagram.planning = {
@@ -46,8 +48,12 @@ async function open(
     { diagram, theme, locale },
   );
   await gotoCanvas(page, "kafka-order-pipeline");
-  await page.getByTestId(target.startsWith("group-") ? target.replace("group-", "group-label-") : target).dblclick();
-  await expect(page.getByTestId("inspector-field-label")).toBeVisible();
+  if (target) {
+    await page.getByTestId(target.startsWith("group-") ? target.replace("group-", "group-label-") : target).dblclick();
+    await expect(page.getByTestId("inspector-field-label")).toBeVisible();
+  } else if ((await page.getByTestId("inspector").getAttribute("data-collapsed")) === "1") {
+    await page.getByTestId("inspector-toggle").click();
+  }
   await waitForSelectionSettled(page);
 }
 
@@ -88,6 +94,87 @@ async function rect(locator: Locator) {
     const { x, y, width, height } = el.getBoundingClientRect();
     return { x, y, width, height };
   });
+}
+
+async function expectCompleteSegments(page: Page, testId: string, singleLine = false, fullColumn = true) {
+  const group = page.getByTestId(testId);
+  await expect(group).toBeVisible();
+  const metrics = await group.evaluate((el) => {
+    const field = el.parentElement;
+    if (!field) throw new Error("Missing segmented field");
+    const columns = getComputedStyle(field).gridTemplateColumns.split(" ");
+    return {
+      width: el.getBoundingClientRect().width,
+      available: Number.parseFloat(columns.at(-1) ?? ""),
+      overflow: el.scrollWidth - el.clientWidth,
+    };
+  });
+  if (fullColumn) expect(metrics.width).toBeCloseTo(metrics.available, 0);
+  expect(metrics.overflow).toBe(0);
+  for (const segment of await group.getByTestId(new RegExp(`^${testId}-.+`)).all()) {
+    const text = await segment.evaluate((el) => {
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      const style = getComputedStyle(el);
+      const lineHeight = Number.parseFloat(style.lineHeight) || Number.parseFloat(style.fontSize) * 1.2;
+      return {
+        overflowX: el.scrollWidth - el.clientWidth,
+        overflowY: el.scrollHeight - el.clientHeight,
+        lines: Math.round(range.getBoundingClientRect().height / lineHeight),
+      };
+    });
+    expect(text.overflowX).toBe(0);
+    expect(text.overflowY).toBe(0);
+    expect(text.lines).toBeGreaterThan(0);
+    expect(text.lines).toBeLessThanOrEqual(singleLine ? 1 : 2);
+  }
+}
+
+for (const width of [1280, 1440]) {
+  for (const locale of ["en", "en-XA", "ar"]) {
+    test(`segmented labels remain complete at ${width}px in ${locale}`, async ({ page }, testInfo) => {
+      await open(page, "edge-call", width, "light", locale);
+      await page.getByTestId("inspector-section-edge-simulation").click();
+      await expectCompleteSegments(page, "inspector-field-wait", locale === "en");
+      await expectCompleteSegments(page, "inspector-field-breaker");
+      await page.screenshot({ path: testInfo.outputPath(`impl-H-request-sim-${width}-${locale}.png`) });
+      await page.getByTestId("inspector-section-retry-details").click();
+      await expectCompleteSegments(page, "inspector-field-retry-growth");
+      await expectCompleteSegments(page, "inspector-field-retry-jitter");
+
+      await page.getByTestId("node-caller").dblclick();
+      await waitForSelectionSettled(page);
+      await page.getByTestId("inspector-section-node-simulation").click();
+      await expect(page.getByTestId("inspector-field-concurrency")).toBeVisible();
+      await page
+        .getByTestId("inspector-section-node-simulation")
+        .evaluate((el) => el.scrollIntoView({ block: "start" }));
+      await page.screenshot({ path: testInfo.outputPath(`impl-H-service-sim-${width}-${locale}.png`) });
+      await page.getByTestId("autoscaling-preset").selectOption("hpa-service");
+      await page.getByTestId("autoscaling-advanced-toggle").click();
+      await page.getByTestId("autoscaling-metric").selectOption("busyThreads");
+      // This compact unit selector shares its input rather than occupying a ledger row.
+      await expectCompleteSegments(page, "autoscaling-busy-unit", true, false);
+
+      // The diagram and annotation choices share the same value-column treatment.
+      await open(page, "", width, "light", locale);
+      await expectCompleteSegments(page, "inspector-field-direction");
+      if (!(await page.getByTestId("palette-annotate-note").isVisible())) {
+        await page.getByTestId("palette-toggle").click();
+      }
+      await page.getByTestId("palette-annotate-note").click();
+      await page.keyboard.press("Escape");
+      await expectCompleteSegments(page, "inspector-field-text-size");
+
+      await open(page, "node-source", width, "light", locale, undefined, true);
+      await page.getByTestId("inspector-section-node-simulation").click();
+      await expectCompleteSegments(page, "mix-mode");
+
+      await open(page, "edge-call", width, "light", locale, undefined, false, true);
+      await expectCompleteSegments(page, "inspector-field-rule");
+      expect(await page.getByTestId("inspector-body").evaluate((el) => el.scrollWidth - el.clientWidth)).toBe(0);
+    });
+  }
 }
 
 test("node identity is usable while Simulation fields download", async ({ page }) => {

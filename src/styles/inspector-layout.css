@@ -551,6 +551,8 @@
 .inspector .insp-field > .segmented.insp-seg {
   display: flex;
   inline-size: 100%;
+  min-inline-size: 0;
+  justify-self: stretch;
   box-sizing: border-box;
 }
 .inspector .insp-field > .segmented.insp-seg > button {
@@ -558,12 +560,13 @@
   flex: 1 1 auto;
   text-align: center;
   min-inline-size: 0;
-  height: 26px;
-  padding-inline: 8px;
-  font-size: 12px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  height: auto;
+  min-block-size: 26px;
+  padding: 4px 6px;
+  font-size: 11px;
+  line-height: 1.2;
+  white-space: normal;
+  overflow-wrap: anywhere;
 }
 .inspector .insp-field > .segmented.insp-seg > button:focus-visible {
   outline: 2px solid var(--accent);
