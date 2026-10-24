@@ -4,7 +4,15 @@ import type { LoadStatus } from "../lib/lazyLoad";
 import type { ListProps } from "./MenuList";
 
 /** The menu's focus and Escape stay available while its rows download. */
-export function LoadingMenu({ anchor, label, testId, menuId, onCloseAll, status }: ListProps & { status: LoadStatus }) {
+export function LoadingMenu({
+  anchor,
+  label,
+  testId,
+  menuId,
+  onCloseAll,
+  queueNavigation,
+  status,
+}: ListProps & { status: LoadStatus }) {
   const ref = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => ref.current?.focus({ preventScroll: true }), []);
   return (
@@ -26,6 +34,7 @@ export function LoadingMenu({ anchor, label, testId, menuId, onCloseAll, status 
         event.preventDefault();
         event.stopPropagation();
         if (event.key === "Escape") onCloseAll("escape");
+        else queueNavigation?.(event.nativeEvent);
       }}
     >
       <span role="status">{status.failed ? t("fileDialog.loadFailed") : t("common.loading")}</span>

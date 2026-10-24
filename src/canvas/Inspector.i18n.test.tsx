@@ -8,7 +8,6 @@ import { Inspector, type InspectorProps } from "./Inspector";
 import type { EditorApi } from "../editor/types";
 
 // Resolve the browser-only download so the server render still checks the actual translated fields.
-vi.mock("./inspector/lazyNodeIdentity", () => import("./inspector/NodeIdentity"));
 beforeAll(async () => {
   await NodePanel.ensureLoaded();
 });

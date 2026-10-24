@@ -73,7 +73,6 @@ async function open(page: Page, id: LazySurfaceId) {
           await page.getByTestId("inspector-toggle").click();
         return;
       case "inspector.node":
-      case "inspector.identity":
       case "inspector.simulation":
       case "inspector.properties":
         await page.getByTestId("node-caller").dblclick();

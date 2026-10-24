@@ -16,3 +16,7 @@ fold retention and capacity-panel focus return. Menu matching and the early Ente
 
 The designer-agent recheck found no remaining blocking issues after these corrections. Test-driver
 names and paths are removed only at build time; runtime surface ids and export policies stay intact.
+
+The final cold-load recheck covers committing the buffered query before search focus, replaying
+held Home/arrow/Enter navigation in order, and consolidating node identity with its deferred panel
+so a second download cannot steal later focus. The designer agent found no blocking source concerns.

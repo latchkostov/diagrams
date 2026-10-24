@@ -116,6 +116,8 @@ export function ContextMenu({
     typing.current = null;
     return t;
   }, []);
+  const navigation = useRef<KeyboardEvent[]>([]);
+  const takeNavigation = useCallback(() => navigation.current.splice(0), []);
   // The same anchor while the menu stays put: the list places itself whenever its anchor changes, so a new one on
   // every render moved a searchable menu that typing had shortened (from under the pointer: nightly #78).
   const anchor = useMemo(() => ({ x, y, flipX, alignment, minWidth }), [x, y, flipX, alignment, minWidth]);
@@ -154,6 +156,8 @@ export function ContextMenu({
         depth={0}
         searchable={searchable}
         takeTypeAhead={takeTypeAhead}
+        takeNavigation={takeNavigation}
+        queueNavigation={(event) => navigation.current.push(event)}
         focusOnMount
         activateFirst={false}
         onCloseAll={(reason) => closeRef.current(reason)}

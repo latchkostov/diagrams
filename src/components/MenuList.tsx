@@ -18,6 +18,7 @@ import { getStencil } from "../stencils/registry";
 import { Icon } from "./Icon";
 import { StencilIcon } from "./StencilIcon";
 import { type TypeAhead } from "../canvas/typeAhead";
+import { flushSync } from "react-dom";
 
 import type { Anchor } from "./ContextMenu";
 const MARGIN = 8;
@@ -30,6 +31,8 @@ export interface ListProps {
   searchable?: string;
   /** Keys typed before the search had focus (the root of a searchable menu). */
   takeTypeAhead?: () => TypeAhead | undefined;
+  takeNavigation?: () => globalThis.KeyboardEvent[];
+  queueNavigation?: (event: globalThis.KeyboardEvent) => void;
   focusOnMount: boolean;
   activateFirst: boolean;
   onCloseAll: (reason: "pick" | "escape") => void;
@@ -100,25 +103,48 @@ export function MenuList(p: ListProps) {
     if (!p.focusOnMount || !placed) return;
     (input.current ?? ref.current)?.focus({ preventScroll: true });
   }, [p.focusOnMount, placed]);
+  const takeNavigation = p.takeNavigation;
+  useLayoutEffect(() => {
+    if (!placed || !takeNavigation || p.searchable) return;
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (cancelled || !ref.current) return;
+      ref.current.focus({ preventScroll: true });
+      for (const event of takeNavigation()) {
+        if (!ref.current) break;
+        flushSync(() => document.activeElement?.dispatchEvent(new KeyboardEvent("keydown", event)));
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [placed, takeNavigation, p.searchable]);
   // The search takes what was typed before it could: Esc among it closes, Enter runs the best match.
   const take = p.takeTypeAhead;
   useLayoutEffect(() => {
     if (!placed || !take || !input.current) return;
-    input.current.focus({ preventScroll: true });
-    const t = take();
-    if (!t) return;
-    if (t.done === "escape") return p.onCloseAll("escape");
-    if (t.done === "enter") {
-      const best = (t.text ? search(p.items, t.text) : p.items).find(selectable);
-      if (best && !best.children) {
-        p.onCloseAll("pick");
-        best.run?.();
-        return;
+    let cancelled = false;
+    // Leave capture in charge until the buffered query and highlight have committed. Focusing an
+    // empty search first lets the next Enter run before the queued state update has selected a row.
+    queueMicrotask(() => {
+      if (cancelled || !input.current) return;
+      const t = take();
+      if (t?.done === "escape") return p.onCloseAll("escape");
+      if (t?.done === "enter") {
+        const best = (t.text ? search(p.items, t.text) : p.items).find(selectable);
+        if (best && !best.children) {
+          p.onCloseAll("pick");
+          best.run?.();
+          return;
+        }
       }
-    }
-    // Before any later key reaches the (now focused) field, and before the next paint.
-    const text = t.text;
-    if (text) queueMicrotask(() => setQ(text));
+      const text = t?.text;
+      if (text) flushSync(() => setQ(text));
+      input.current?.focus({ preventScroll: true });
+    });
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- once, as the menu is placed
   }, [placed, take]);
 

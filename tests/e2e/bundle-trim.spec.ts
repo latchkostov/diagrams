@@ -2,6 +2,7 @@ import type { Page } from "@playwright/test";
 import { test, expect, gotoCanvas, gotoLive, waitForStableViewport, savedDiagram, STORAGE_KEYS } from "./fixtures";
 import { lazySurfacesFixture } from "../../src/lab/lazySurfacesFixture";
 import { chunk } from "./chunk";
+import { messageTypesFixture } from "../../src/lab/messageTypesFixture";
 
 async function seed(page: Page) {
   await page.addInitScript(({ diagram, key }) => localStorage.setItem(key, JSON.stringify(diagram)), {
@@ -156,6 +157,82 @@ test("a held quick-add leaves another control's Enter available", async ({ page 
     await page.keyboard.press("Enter");
     await expect(page.getByTestId("file-more-formats")).toBeVisible();
     expect(await savedDiagram(page)).toEqual(before);
+  } finally {
+    menu.release();
+  }
+});
+
+test("the first Enter after search focus uses the buffered query", async ({ page }) => {
+  await seed(page);
+  const menu = await hold(page, "MenuList", "src/components/MenuList.tsx");
+  try {
+    await gotoCanvas(page, "blocking-call");
+    await waitForStableViewport(page);
+    await page.getByTestId("node-caller").click();
+    await page.getByTestId("canvas-wrap").focus();
+    await page.keyboard.press("Alt+ArrowRight");
+    await expect.poll(menu.requested).toBe(true);
+    await page.keyboard.type("redis cache");
+    await page.evaluate(() => {
+      const enter = (event: FocusEvent) => {
+        const input = event.target;
+        if (!(input instanceof HTMLElement) || input.dataset.testid !== "quick-add-search") return;
+        document.removeEventListener("focusin", enter);
+        queueMicrotask(() => input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true })));
+      };
+      document.addEventListener("focusin", enter);
+    });
+    menu.release();
+    await expect(page.getByTestId("quick-add")).toHaveCount(0);
+    await expect(page.getByTestId("inspector-field-label")).toBeFocused();
+    expect((await savedDiagram(page)).nodes.some((node) => node.stencil === "redis.cache")).toBe(true);
+  } finally {
+    menu.release();
+  }
+});
+
+test("typing before the node panel arrives preserves the first character", async ({ page }) => {
+  await seed(page);
+  const panel = await hold(page, "NodePanel", "src/canvas/inspector/NodePanel.tsx");
+  try {
+    await gotoCanvas(page, "blocking-call");
+    await waitForStableViewport(page);
+    await page.getByTestId("node-caller").dblclick();
+    await expect.poll(panel.requested).toBe(true);
+    await page.keyboard.type("t");
+    panel.release();
+    await expect(page.getByTestId("inspector-field-label")).toBeFocused();
+    await page.keyboard.type("x.audit");
+    await expect(page.getByTestId("inspector-field-label")).toHaveValue("tx.audit");
+  } finally {
+    panel.release();
+  }
+});
+
+test("a held plain menu keeps Home, arrows and Enter in order", async ({ page }) => {
+  const diagram = messageTypesFixture();
+  diagram.nodes[1].props = { emits: { Send: "Send", Callback: "Callback" } };
+  await page.addInitScript(({ diagram, key }) => localStorage.setItem(key, JSON.stringify(diagram)), {
+    diagram,
+    key: STORAGE_KEYS.autosavePrefix + "webhook-ingestion",
+  });
+  const menu = await hold(page, "MenuList", "src/components/MenuList.tsx");
+  try {
+    await gotoCanvas(page, "webhook-ingestion");
+    await page.getByTestId("node-api").click();
+    await page.getByTestId("inspector-section-node-simulation").click();
+    const receives = page.getByTestId("inspector-field-receives-0");
+    await receives.focus();
+    await page.keyboard.press("Enter");
+    await expect.poll(menu.requested).toBe(true);
+    await page.keyboard.press("Home");
+    await page.keyboard.press("ArrowDown");
+    await page.keyboard.press("Enter");
+    menu.release();
+    await expect
+      .poll(async () => (await savedDiagram(page)).nodes.find((node) => node.id === "api")?.props?.emits)
+      .toEqual({ "*": "Send", Callback: "Callback" });
+    await expect(receives).toBeFocused();
   } finally {
     menu.release();
   }
