@@ -6,6 +6,7 @@ import { gestures, initialGestures } from "./gestures";
 import type { Gesture, GestureKind, GesturePreview, GestureEndReason } from "./types";
 import type { ReadoutLayer } from "./readoutLayer";
 import { cameraMenuKind, initialMenus, menus } from "./menus";
+import { editorModeStep, initialEditorMode, type EditorModeEvent, type EditorModeState } from "./mode";
 import type {
   ElementHandle,
   FocusCommand,
@@ -64,6 +65,8 @@ export interface InteractionPort {
   type?(el: ElementHandle, text: string): void;
   /** Focus on `el` has left the canvas's keyboard: it's outside the canvas, or a text field. */
   elsewhere?(el: ElementHandle): boolean;
+  /** The text field `el` is, for the editor's mode: a name field (`target`: whose) or another field. Else null. */
+  field?(el: ElementHandle): { target?: string; field?: string } | null;
 }
 
 /**
@@ -172,7 +175,21 @@ export function createInteractionController<P = unknown>(
    */
   let rename: { move: FocusMove; keys: { stop(): TypeAhead } | null; typed: TypeAhead } | null = null;
 
+  /** The editor's mode (mode.ts): what the person is in the middle of, told to whoever reads it, as transitions. */
+  let mode: EditorModeState = initialEditorMode;
+  const modeListeners = new Set<(mode: EditorModeState, previous: EditorModeState) => void>();
+  /** What a guide (a tutorial step) suggests: quick-add opens searched for this. Data only; it never moves focus. */
+  let guide: { quickAdd?: string } | null = null;
+
   const journal = (entry: Omit<InteractionEntry, "seq">) => options.journal?.({ seq: ++seq, ...entry });
+
+  function toMode(event: EditorModeEvent) {
+    const previous = mode;
+    mode = editorModeStep(mode, event);
+    // Not journaled: the interaction journal records focus decisions, and its readers compare it whole.
+    if (mode === previous) return;
+    for (const l of modeListeners) l(mode, previous);
+  }
 
   function phase(): InteractionPhase {
     if (menuState.open) return "menu-open";
@@ -452,6 +469,7 @@ export function createInteractionController<P = unknown>(
     const how = gestureHow;
     gestureHow = null;
     gestureState = t.state;
+    toMode({ type: "gesture.ended" });
     if (options.journal)
       journal({ event: `gesture.end:${t.ended.kind}:${reason}`, command: t.ended.commit ? "commit" : "cancel" });
     // Publish before callbacks: capture loss and a commit's re-entrant events see this gesture as finished.
@@ -475,6 +493,7 @@ export function createInteractionController<P = unknown>(
     if (!t.closed) return;
     menuState = t.state;
     feedCamera();
+    toMode({ type: "menu.closed" });
     decide({
       type: "menu.closed",
       kind: t.closed.kind,
@@ -506,6 +525,7 @@ export function createInteractionController<P = unknown>(
       const t = gestures(gestureState, { type: "gesture.start", kind, preview, via: how.via });
       gestureState = t.state;
       gestureHow = { ...how, owner: how.capture?.() };
+      toMode({ type: "gesture.started" });
       if (options.journal) journal({ event: `gesture.start:${kind}`, command: "keep" });
       changed();
       return t.started!.seq;
@@ -617,6 +637,7 @@ export function createInteractionController<P = unknown>(
           platform: t.closed.platform,
         });
       const o = t.opened!;
+      toMode({ type: "menu.opened", kind: o.kind });
       decide({ type: "menu.opened", kind: o.kind, via: o.via, platform: o.platform });
       return o.seq;
     },
@@ -630,6 +651,7 @@ export function createInteractionController<P = unknown>(
     },
     /** An event for the focus policy; `then` hears whether the move it caused put focus somewhere. */
     dispatch(event: FocusEvent, then?: Done) {
+      if (event.type === "naming.done") toMode({ type: "naming.done" });
       if (event.type === "selection.changed") {
         cause = event.cause;
         decided = true;
@@ -659,6 +681,7 @@ export function createInteractionController<P = unknown>(
       if (segment !== gestureState.keyboardSegment) changed();
       const was = selectionKey;
       selectionKey = key;
+      if (was !== key) toMode({ type: "selection", ids: JSON.parse(key) as string[] });
       const why = cause ?? "programmatic";
       const already = decided;
       cause = null;
@@ -704,6 +727,32 @@ export function createInteractionController<P = unknown>(
     /** Focus arrived on `el` (focusin): Tab or a script taking it out of the canvas ends a pending rename. */
     focusArrived(el: ElementHandle) {
       if (rename && !running && port.elsewhere?.(el)) abandonRename("focus");
+      const field = port.field?.(el);
+      toMode(field ? { type: "field.focused", ...field } : { type: "field.left" });
+    },
+    /** Focus left for nothing (focusout with no next element): no field is being edited. */
+    focusLeft() {
+      toMode({ type: "field.left" });
+    },
+    /** Live's session: off, playing or paused (useLiveSessionState.ts tells it). */
+    live(state: EditorModeState["live"]) {
+      toMode({ type: "live", state });
+    },
+    /** The editor's mode (mode.ts). */
+    get mode(): EditorModeState {
+      return mode;
+    },
+    /** Hears each change of mode, with the one before it. */
+    subscribeMode(listener: (mode: EditorModeState, previous: EditorModeState) => void) {
+      modeListeners.add(listener);
+      return () => void modeListeners.delete(listener);
+    },
+    /** What quick-add opens searched for (a tutorial step's guide), or null. */
+    get guide() {
+      return guide;
+    },
+    setGuide(next: { quickAdd?: string } | null) {
+      guide = next;
     },
     /** The move running inside focus() right now (a focusin reads whether its caller reveals the target itself). */
     get focusing(): FocusMove | null {

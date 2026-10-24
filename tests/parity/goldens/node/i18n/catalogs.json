@@ -1,7 +1,7 @@
 {
   "ar": {
-    "messages": 2969,
-    "fallback": 836,
+    "messages": 3059,
+    "fallback": 923,
     "areas": {
       "admission": "238b91c0dd7e",
       "ai": "ff5a7a5d025f",
@@ -70,6 +70,7 @@
       "threads": "9f9e669d981d",
       "topbar": "4da44658f789",
       "trouble": "9f8dcfa8ac2a",
+      "tutorials": "bf61cacc2ce0",
       "view": "c4fc417ad54a",
       "viewerForge": "4d3bcbf516ea",
       "waitChecks": "c316f74a21e4",
@@ -78,8 +79,8 @@
     }
   },
   "bg": {
-    "messages": 2969,
-    "fallback": 999,
+    "messages": 3059,
+    "fallback": 1086,
     "areas": {
       "admission": "13b970ecd28f",
       "ai": "be21a15fe0c2",
@@ -148,6 +149,7 @@
       "threads": "3541c43836c5",
       "topbar": "dbefc69135ec",
       "trouble": "af003ab89d3f",
+      "tutorials": "127e12d137ae",
       "view": "584e25e11a7c",
       "viewerForge": "64bee278d220",
       "waitChecks": "dd6a426cc5b6",
@@ -156,8 +158,8 @@
     }
   },
   "cs": {
-    "messages": 2969,
-    "fallback": 999,
+    "messages": 3059,
+    "fallback": 1086,
     "areas": {
       "admission": "a2e34e702232",
       "ai": "cdac78f5eabc",
@@ -226,6 +228,7 @@
       "threads": "3541c43836c5",
       "topbar": "997f6b0fa264",
       "trouble": "af003ab89d3f",
+      "tutorials": "b57d410dacfa",
       "view": "0ad0289db97f",
       "viewerForge": "5e26de923e3f",
       "waitChecks": "dd6a426cc5b6",
@@ -234,8 +237,8 @@
     }
   },
   "da": {
-    "messages": 2969,
-    "fallback": 999,
+    "messages": 3059,
+    "fallback": 1086,
     "areas": {
       "admission": "53ca49457461",
       "ai": "30c366fbcaa3",
@@ -304,6 +307,7 @@
       "threads": "3541c43836c5",
       "topbar": "cabde7ae8cde",
       "trouble": "af003ab89d3f",
+      "tutorials": "25012224a65c",
       "view": "81799e312a30",
       "viewerForge": "f94da429f104",
       "waitChecks": "dd6a426cc5b6",
@@ -312,8 +316,8 @@
     }
   },
   "de": {
-    "messages": 2969,
-    "fallback": 999,
+    "messages": 3059,
+    "fallback": 1086,
     "areas": {
       "admission": "3d63200e08d5",
       "ai": "857638035ad7",
@@ -382,6 +386,7 @@
       "threads": "3541c43836c5",
       "topbar": "cd9cc0259bbd",
       "trouble": "af003ab89d3f",
+      "tutorials": "d5a3ee93a5a2",
       "view": "9c266495cfb8",
       "viewerForge": "8848d4978e10",
       "waitChecks": "dd6a426cc5b6",
@@ -390,8 +395,8 @@
     }
   },
   "el": {
-    "messages": 2969,
-    "fallback": 999,
+    "messages": 3059,
+    "fallback": 1086,
     "areas": {
       "admission": "bd087957dbeb",
       "ai": "c7556c1b9ccf",
@@ -460,6 +465,7 @@
       "threads": "3541c43836c5",
       "topbar": "a2409c158506",
       "trouble": "af003ab89d3f",
+      "tutorials": "fd1fa688c47c",
       "view": "9768da1398c2",
       "viewerForge": "8dd98344588f",
       "waitChecks": "dd6a426cc5b6",
@@ -468,7 +474,7 @@
     }
   },
   "en-XA": {
-    "messages": 2969,
+    "messages": 3059,
     "fallback": 0,
     "areas": {
       "admission": "fb2a4fa76975",
@@ -538,6 +544,7 @@
       "threads": "5def0f1f8117",
       "topbar": "b7fddc9b6d21",
       "trouble": "8fd79596b605",
+      "tutorials": "2a160c8a7274",
       "view": "9a1eebb66b6e",
       "viewerForge": "9f91d360961f",
       "waitChecks": "04abb63af9c0",
@@ -546,8 +553,8 @@
     }
   },
   "es": {
-    "messages": 2969,
-    "fallback": 999,
+    "messages": 3059,
+    "fallback": 1086,
     "areas": {
       "admission": "940995b7afcd",
       "ai": "5f18f254b452",
@@ -616,6 +623,7 @@
       "threads": "3541c43836c5",
       "topbar": "78bdea724ab6",
       "trouble": "af003ab89d3f",
+      "tutorials": "0ece9d26ae0d",
       "view": "ca61fccea3e0",
       "viewerForge": "57601855d5cf",
       "waitChecks": "dd6a426cc5b6",
@@ -624,8 +632,8 @@
     }
   },
   "et": {
-    "messages": 2969,
-    "fallback": 999,
+    "messages": 3059,
+    "fallback": 1086,
     "areas": {
       "admission": "47f90cd6d8b0",
       "ai": "d66d3769adc9",
@@ -694,6 +702,7 @@
       "threads": "3541c43836c5",
       "topbar": "9866bed63dd2",
       "trouble": "af003ab89d3f",
+      "tutorials": "dfa4b73a53cf",
       "view": "1ca5fe8e446d",
       "viewerForge": "b90b85595733",
       "waitChecks": "dd6a426cc5b6",
@@ -702,8 +711,8 @@
     }
   },
   "fi": {
-    "messages": 2969,
-    "fallback": 999,
+    "messages": 3059,
+    "fallback": 1086,
     "areas": {
       "admission": "144ace930fee",
       "ai": "e9b23cd51b4e",
@@ -772,6 +781,7 @@
       "threads": "3541c43836c5",
       "topbar": "9cf65300cc6c",
       "trouble": "af003ab89d3f",
+      "tutorials": "103f5b1be84a",
       "view": "9731ec8da6eb",
       "viewerForge": "e91fe1f64b97",
       "waitChecks": "dd6a426cc5b6",
@@ -780,8 +790,8 @@
     }
   },
   "fr": {
-    "messages": 2969,
-    "fallback": 999,
+    "messages": 3059,
+    "fallback": 1086,
     "areas": {
       "admission": "fa545e2eb8fa",
       "ai": "8372266af473",
@@ -850,6 +860,7 @@
       "threads": "3541c43836c5",
       "topbar": "26c0ce0fa3ab",
       "trouble": "af003ab89d3f",
+      "tutorials": "c0681411bc4f",
       "view": "80a8faf01d71",
       "viewerForge": "a36422dc6bd7",
       "waitChecks": "dd6a426cc5b6",
@@ -858,8 +869,8 @@
     }
   },
   "he": {
-    "messages": 2969,
-    "fallback": 999,
+    "messages": 3059,
+    "fallback": 1086,
     "areas": {
       "admission": "5be967e1d426",
       "ai": "1c4de3ee24a5",
@@ -928,6 +939,7 @@
       "threads": "3541c43836c5",
       "topbar": "5a44d80c3c13",
       "trouble": "af003ab89d3f",
+      "tutorials": "3017d3aaaa4b",
       "view": "cd31b0f75835",
       "viewerForge": "8d70607e9494",
       "waitChecks": "dd6a426cc5b6",
@@ -936,8 +948,8 @@
     }
   },
   "hi": {
-    "messages": 2969,
-    "fallback": 999,
+    "messages": 3059,
+    "fallback": 1086,
     "areas": {
       "admission": "cf0a445d68ef",
       "ai": "c2134710abdb",
@@ -1006,6 +1018,7 @@
       "threads": "3541c43836c5",
       "topbar": "34ceed57d926",
       "trouble": "af003ab89d3f",
+      "tutorials": "516bbcc3e7b1",
       "view": "461573e69e61",
       "viewerForge": "8f4009516378",
       "waitChecks": "dd6a426cc5b6",
@@ -1014,8 +1027,8 @@
     }
   },
   "hr": {
-    "messages": 2969,
-    "fallback": 999,
+    "messages": 3059,
+    "fallback": 1086,
     "areas": {
       "admission": "96ea6d84c0a2",
       "ai": "41b8c5bd02f8",
@@ -1084,6 +1097,7 @@
       "threads": "3541c43836c5",
       "topbar": "9f7b612472e5",
       "trouble": "af003ab89d3f",
+      "tutorials": "bd90054864a2",
       "view": "370fba9f2e1d",
       "viewerForge": "588351633f4e",
       "waitChecks": "dd6a426cc5b6",
@@ -1092,8 +1106,8 @@
     }
   },
   "hu": {
-    "messages": 2969,
-    "fallback": 999,
+    "messages": 3059,
+    "fallback": 1086,
     "areas": {
       "admission": "5f6bd46de3d6",
       "ai": "999015b453fc",
@@ -1162,6 +1176,7 @@
       "threads": "3541c43836c5",
       "topbar": "3c7d62fcb42e",
       "trouble": "af003ab89d3f",
+      "tutorials": "8285beaefee5",
       "view": "720ee6692d5f",
       "viewerForge": "f830295118d9",
       "waitChecks": "dd6a426cc5b6",
@@ -1170,8 +1185,8 @@
     }
   },
   "id": {
-    "messages": 2969,
-    "fallback": 999,
+    "messages": 3059,
+    "fallback": 1086,
     "areas": {
       "admission": "f7bfbf2f3cef",
       "ai": "7508253d3643",
@@ -1240,6 +1255,7 @@
       "threads": "3541c43836c5",
       "topbar": "a4296b4e4f78",
       "trouble": "af003ab89d3f",
+      "tutorials": "07a86b4bf553",
       "view": "53c962267399",
       "viewerForge": "e7d37c99e2d6",
       "waitChecks": "dd6a426cc5b6",
@@ -1248,8 +1264,8 @@
     }
   },
   "it": {
-    "messages": 2969,
-    "fallback": 999,
+    "messages": 3059,
+    "fallback": 1086,
     "areas": {
       "admission": "a619707fb337",
       "ai": "b1bdb1b943f2",
@@ -1318,6 +1334,7 @@
       "threads": "3541c43836c5",
       "topbar": "525f8abd5937",
       "trouble": "af003ab89d3f",
+      "tutorials": "e25b9fdb9d64",
       "view": "f3c5dd66e8a7",
       "viewerForge": "a70484a837bd",
       "waitChecks": "dd6a426cc5b6",
@@ -1326,8 +1343,8 @@
     }
   },
   "ja": {
-    "messages": 2969,
-    "fallback": 999,
+    "messages": 3059,
+    "fallback": 1086,
     "areas": {
       "admission": "29dad36ceb3a",
       "ai": "16916e4a6466",
@@ -1396,6 +1413,7 @@
       "threads": "3541c43836c5",
       "topbar": "1f590f5a6ae0",
       "trouble": "af003ab89d3f",
+      "tutorials": "a2f9e9e85a44",
       "view": "41683011b4a8",
       "viewerForge": "476667bc1597",
       "waitChecks": "dd6a426cc5b6",
@@ -1404,8 +1422,8 @@
     }
   },
   "ko": {
-    "messages": 2969,
-    "fallback": 999,
+    "messages": 3059,
+    "fallback": 1086,
     "areas": {
       "admission": "9fce04bf81b4",
       "ai": "b9713b0ebc36",
@@ -1474,6 +1492,7 @@
       "threads": "3541c43836c5",
       "topbar": "4aa2acdefe38",
       "trouble": "af003ab89d3f",
+      "tutorials": "494e0c546002",
       "view": "a524e7670a1d",
       "viewerForge": "7cc445d8d713",
       "waitChecks": "dd6a426cc5b6",
@@ -1482,8 +1501,8 @@
     }
   },
   "lt": {
-    "messages": 2969,
-    "fallback": 999,
+    "messages": 3059,
+    "fallback": 1086,
     "areas": {
       "admission": "49637fe3d76f",
       "ai": "a60d18c72aca",
@@ -1552,6 +1571,7 @@
       "threads": "3541c43836c5",
       "topbar": "65d5f1a22203",
       "trouble": "af003ab89d3f",
+      "tutorials": "c598adbe75be",
       "view": "bd0f81625b77",
       "viewerForge": "22c899349986",
       "waitChecks": "dd6a426cc5b6",
@@ -1560,8 +1580,8 @@
     }
   },
   "lv": {
-    "messages": 2969,
-    "fallback": 999,
+    "messages": 3059,
+    "fallback": 1086,
     "areas": {
       "admission": "1d5b72c5a705",
       "ai": "7abcc8e0fca5",
@@ -1630,6 +1650,7 @@
       "threads": "3541c43836c5",
       "topbar": "ca074b665a12",
       "trouble": "af003ab89d3f",
+      "tutorials": "d5a065ef5aaa",
       "view": "26dec6cefd4d",
       "viewerForge": "d0f7be3bf9a2",
       "waitChecks": "dd6a426cc5b6",
@@ -1638,8 +1659,8 @@
     }
   },
   "nb": {
-    "messages": 2969,
-    "fallback": 999,
+    "messages": 3059,
+    "fallback": 1086,
     "areas": {
       "admission": "df2d46d07b93",
       "ai": "1f5a7dd90494",
@@ -1708,6 +1729,7 @@
       "threads": "3541c43836c5",
       "topbar": "d4b7f2bd2ee8",
       "trouble": "af003ab89d3f",
+      "tutorials": "6303de3069f3",
       "view": "e8ed4c3e2cfe",
       "viewerForge": "e8981ee121bf",
       "waitChecks": "dd6a426cc5b6",
@@ -1716,8 +1738,8 @@
     }
   },
   "nl": {
-    "messages": 2969,
-    "fallback": 999,
+    "messages": 3059,
+    "fallback": 1086,
     "areas": {
       "admission": "cb2843887446",
       "ai": "9c887bebfb5c",
@@ -1786,6 +1808,7 @@
       "threads": "3541c43836c5",
       "topbar": "85d3f9f78bbc",
       "trouble": "af003ab89d3f",
+      "tutorials": "19b922e5dceb",
       "view": "7090c0d9d7ac",
       "viewerForge": "dac110756068",
       "waitChecks": "dd6a426cc5b6",
@@ -1794,8 +1817,8 @@
     }
   },
   "pl": {
-    "messages": 2969,
-    "fallback": 999,
+    "messages": 3059,
+    "fallback": 1086,
     "areas": {
       "admission": "de7e287ea39a",
       "ai": "0076fec882b3",
@@ -1864,6 +1887,7 @@
       "threads": "3541c43836c5",
       "topbar": "0cab1c9581c8",
       "trouble": "af003ab89d3f",
+      "tutorials": "c688ab3ee4c0",
       "view": "52245f57ee3c",
       "viewerForge": "12c126390fac",
       "waitChecks": "dd6a426cc5b6",
@@ -1872,8 +1896,8 @@
     }
   },
   "pt-BR": {
-    "messages": 2969,
-    "fallback": 999,
+    "messages": 3059,
+    "fallback": 1086,
     "areas": {
       "admission": "67f5c6e17a30",
       "ai": "a599e0c7104c",
@@ -1942,6 +1966,7 @@
       "threads": "3541c43836c5",
       "topbar": "299ad6afe7d8",
       "trouble": "af003ab89d3f",
+      "tutorials": "e7e44d63fe1e",
       "view": "78c66bf35c24",
       "viewerForge": "e0b3251bfa40",
       "waitChecks": "dd6a426cc5b6",
@@ -1950,8 +1975,8 @@
     }
   },
   "pt-PT": {
-    "messages": 2969,
-    "fallback": 999,
+    "messages": 3059,
+    "fallback": 1086,
     "areas": {
       "admission": "0cc17e6ce3fc",
       "ai": "da44ea732c3a",
@@ -2020,6 +2045,7 @@
       "threads": "3541c43836c5",
       "topbar": "55cc68c96d9f",
       "trouble": "af003ab89d3f",
+      "tutorials": "90d5bf832358",
       "view": "91a652688523",
       "viewerForge": "839ba9b26afe",
       "waitChecks": "dd6a426cc5b6",
@@ -2028,8 +2054,8 @@
     }
   },
   "ro": {
-    "messages": 2969,
-    "fallback": 999,
+    "messages": 3059,
+    "fallback": 1086,
     "areas": {
       "admission": "4d8dcef9d9a0",
       "ai": "690dd0af944f",
@@ -2098,6 +2124,7 @@
       "threads": "3541c43836c5",
       "topbar": "b468dce1cb21",
       "trouble": "af003ab89d3f",
+      "tutorials": "8cd1573049ff",
       "view": "7a5365f6d38a",
       "viewerForge": "4648a1fbd346",
       "waitChecks": "dd6a426cc5b6",
@@ -2106,8 +2133,8 @@
     }
   },
   "ru": {
-    "messages": 2969,
-    "fallback": 999,
+    "messages": 3059,
+    "fallback": 1086,
     "areas": {
       "admission": "1c86dd6d3ac0",
       "ai": "419829673723",
@@ -2176,6 +2203,7 @@
       "threads": "3541c43836c5",
       "topbar": "2902968f8171",
       "trouble": "af003ab89d3f",
+      "tutorials": "c638fd9cb9be",
       "view": "25d7e0addfa3",
       "viewerForge": "e791eeb89ed3",
       "waitChecks": "dd6a426cc5b6",
@@ -2184,8 +2212,8 @@
     }
   },
   "sk": {
-    "messages": 2969,
-    "fallback": 999,
+    "messages": 3059,
+    "fallback": 1086,
     "areas": {
       "admission": "a359cea5efb6",
       "ai": "b584a1750e62",
@@ -2254,6 +2282,7 @@
       "threads": "3541c43836c5",
       "topbar": "430b5d834fe7",
       "trouble": "af003ab89d3f",
+      "tutorials": "d25cdf3cc336",
       "view": "0aa61ce55954",
       "viewerForge": "f4eb36e8ae21",
       "waitChecks": "dd6a426cc5b6",
@@ -2262,8 +2291,8 @@
     }
   },
   "sl": {
-    "messages": 2969,
-    "fallback": 999,
+    "messages": 3059,
+    "fallback": 1086,
     "areas": {
       "admission": "f65a0648a4bd",
       "ai": "844c5fe53eda",
@@ -2332,6 +2361,7 @@
       "threads": "3541c43836c5",
       "topbar": "3950ab3a6255",
       "trouble": "af003ab89d3f",
+      "tutorials": "24e4aab34b0a",
       "view": "6fb21d2e1c8e",
       "viewerForge": "080a4e49daf3",
       "waitChecks": "dd6a426cc5b6",
@@ -2340,8 +2370,8 @@
     }
   },
   "sr-Latn": {
-    "messages": 2969,
-    "fallback": 999,
+    "messages": 3059,
+    "fallback": 1086,
     "areas": {
       "admission": "357300a00b2c",
       "ai": "571bcb1e2693",
@@ -2410,6 +2440,7 @@
       "threads": "3541c43836c5",
       "topbar": "0144bfe1aef3",
       "trouble": "af003ab89d3f",
+      "tutorials": "583610a00075",
       "view": "40a3a35f1d53",
       "viewerForge": "a07f86b5bf62",
       "waitChecks": "dd6a426cc5b6",
@@ -2418,8 +2449,8 @@
     }
   },
   "sv": {
-    "messages": 2969,
-    "fallback": 999,
+    "messages": 3059,
+    "fallback": 1086,
     "areas": {
       "admission": "fc08156d35c3",
       "ai": "488379e2ee77",
@@ -2488,6 +2519,7 @@
       "threads": "3541c43836c5",
       "topbar": "741650b06efd",
       "trouble": "af003ab89d3f",
+      "tutorials": "1177edfaf67c",
       "view": "b969f3f3b733",
       "viewerForge": "5c8b593ab979",
       "waitChecks": "dd6a426cc5b6",
@@ -2496,8 +2528,8 @@
     }
   },
   "th": {
-    "messages": 2969,
-    "fallback": 999,
+    "messages": 3059,
+    "fallback": 1086,
     "areas": {
       "admission": "a955b0904e0f",
       "ai": "25e5a5758e0a",
@@ -2566,6 +2598,7 @@
       "threads": "3541c43836c5",
       "topbar": "616145b83262",
       "trouble": "af003ab89d3f",
+      "tutorials": "679f174578a9",
       "view": "24a0b35079e8",
       "viewerForge": "ec9d4bc7213f",
       "waitChecks": "dd6a426cc5b6",
@@ -2574,8 +2607,8 @@
     }
   },
   "tr": {
-    "messages": 2969,
-    "fallback": 999,
+    "messages": 3059,
+    "fallback": 1086,
     "areas": {
       "admission": "07979dad2b38",
       "ai": "2c45c177a3eb",
@@ -2644,6 +2677,7 @@
       "threads": "3541c43836c5",
       "topbar": "e36918eef669",
       "trouble": "af003ab89d3f",
+      "tutorials": "e5017f109fe4",
       "view": "581204ffb774",
       "viewerForge": "677f4f4b227b",
       "waitChecks": "dd6a426cc5b6",
@@ -2652,8 +2686,8 @@
     }
   },
   "uk": {
-    "messages": 2969,
-    "fallback": 999,
+    "messages": 3059,
+    "fallback": 1086,
     "areas": {
       "admission": "cc0fa1f82285",
       "ai": "00c91ebd48c1",
@@ -2722,6 +2756,7 @@
       "threads": "3541c43836c5",
       "topbar": "3df1f4c0094c",
       "trouble": "af003ab89d3f",
+      "tutorials": "c98c7f5d249c",
       "view": "85fc18d651c8",
       "viewerForge": "684acb05142a",
       "waitChecks": "dd6a426cc5b6",
@@ -2730,8 +2765,8 @@
     }
   },
   "vi": {
-    "messages": 2969,
-    "fallback": 999,
+    "messages": 3059,
+    "fallback": 1086,
     "areas": {
       "admission": "eae897074c1c",
       "ai": "88456409d7c5",
@@ -2800,6 +2835,7 @@
       "threads": "3541c43836c5",
       "topbar": "33cb7e4144b1",
       "trouble": "af003ab89d3f",
+      "tutorials": "14e54a1f3224",
       "view": "7ee2243cf8b7",
       "viewerForge": "60d0f3ab0fac",
       "waitChecks": "dd6a426cc5b6",
@@ -2808,8 +2844,8 @@
     }
   },
   "zh-CN": {
-    "messages": 2969,
-    "fallback": 999,
+    "messages": 3059,
+    "fallback": 1086,
     "areas": {
       "admission": "99f4c5c633c6",
       "ai": "3ef50488a156",
@@ -2878,6 +2914,7 @@
       "threads": "3541c43836c5",
       "topbar": "68882424f948",
       "trouble": "af003ab89d3f",
+      "tutorials": "72d859773d84",
       "view": "513660a908ec",
       "viewerForge": "cc2f5374e68d",
       "waitChecks": "dd6a426cc5b6",
@@ -2886,8 +2923,8 @@
     }
   },
   "zh-TW": {
-    "messages": 2969,
-    "fallback": 999,
+    "messages": 3059,
+    "fallback": 1086,
     "areas": {
       "admission": "474bc2d177fc",
       "ai": "aa167b14e4aa",
@@ -2956,6 +2993,7 @@
       "threads": "3541c43836c5",
       "topbar": "0c815c0f43a5",
       "trouble": "af003ab89d3f",
+      "tutorials": "f896abf74f25",
       "view": "d21359af73e2",
       "viewerForge": "490e554bfa68",
       "waitChecks": "dd6a426cc5b6",

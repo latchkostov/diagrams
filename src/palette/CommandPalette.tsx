@@ -40,13 +40,15 @@ const PaletteDialogLazy = lazy(preloadPalette);
 const PALETTE_COMBO = shortcutKeys("command-palette");
 
 export interface CommandPaletteProps {
-  view: "canvas" | "gallery" | "lab";
+  view: "canvas" | "gallery" | "lab" | "tutorials";
   /** "Your diagram" slots and public examples, as in the diagram picker. */
   diagrams: readonly DiagramOption[];
   currentSlug?: string;
   onOpenDiagram(slug: string): void;
   /** Present the open diagram (the top bar's Present); absent while presenting. */
   onPresent?(): void;
+  /** The Tutorials view, where there is one. */
+  onTutorials?(): void;
 }
 
 export function CommandPalette(props: CommandPaletteProps) {

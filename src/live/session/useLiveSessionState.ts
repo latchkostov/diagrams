@@ -10,6 +10,7 @@ import { liveMutationGuard } from "../liveActions";
 import type { SlowMotionView } from "../slowmo/useSlowMotion";
 import { useTraceState } from "./useTraceSpotlight";
 import { liveDiagramReader } from "../diagramReader";
+import { useInteraction } from "../../canvas/interaction/context";
 
 import type { SessionProps } from "../LiveSession";
 import type { LiveCommands } from "./useLiveCommands";
@@ -133,6 +134,18 @@ export function useLiveSessionBridge({
 }) {
   const { controller, panel, setPanel, suspendedPanelRef, panelDraft } = session;
   const { selectSimulation } = commands;
+  // The editor's mode hears Live as a region of its own: playing or paused while this session runs, off once it goes.
+  const interaction = useInteraction();
+  useEffect(() => {
+    if (!interaction) return;
+    const tell = () => interaction.live(controller.getState().playing ? "playing" : "paused");
+    tell();
+    const off = controller.subscribe(tell);
+    return () => {
+      off();
+      interaction.live("off");
+    };
+  }, [interaction, controller]);
   // A page driving live view from outside (the host-supplied embed) gets the controller and the bar's switch.
   const closePanel = useCallback(() => {
     if (!panel.open) return;
@@ -152,6 +165,7 @@ export function useLiveSessionBridge({
     !!editor && !alwaysOn,
     liveMutationGuard(() => slow.session.active).hint(),
     controller.getState,
+    controller.subscribe,
   );
 }
 

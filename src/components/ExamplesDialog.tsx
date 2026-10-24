@@ -9,11 +9,14 @@ import "../styles/examples.css";
 export function ExamplesDialog({
   onClose,
   onOpen,
+  onTutorials,
   catalog = examples,
 }: {
   catalog?: readonly Example[];
   onClose: () => void;
   onOpen: (slug: string, simulation?: string) => void;
+  /** The Tutorials view, where there is one: a link above the examples. */
+  onTutorials?: () => void;
 }) {
   useLocale();
   const [query, setQuery] = useState("");
@@ -83,6 +86,14 @@ export function ExamplesDialog({
         </label>
       </div>
       <div className="examples-results" data-testid="examples-results">
+        {onTutorials && !query && !feature && (
+          <p className="examples-tutorials-link" data-testid="examples-tutorials">
+            {t("tutorials.examplesLink")}{" "}
+            <button className="link-btn" onClick={onTutorials} data-testid="examples-open-tutorials">
+              {t("tutorials.openTutorials")}
+            </button>
+          </p>
+        )}
         {sections.length === 0 && (
           <p role="status" data-testid="examples-empty">
             {t("examples.empty")}

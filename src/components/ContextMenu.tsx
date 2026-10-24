@@ -53,6 +53,8 @@ export interface ContextMenuProps {
   onClose: (reason: ContextMenuCloseReason) => void;
   /** Root-level search box placeholder (quick-add, stencil picker). */
   searchable?: string;
+  /** The search, already typed (a tutorial step's guide): its first match is highlighted, so Enter picks it. */
+  query?: string;
   /** Accessible name. */
   label?: string;
   testId?: string;
@@ -76,6 +78,7 @@ export function ContextMenu({
   items,
   onClose,
   searchable,
+  query,
   label = t("chrome.contextMenu"),
   testId = "context-menu",
   menuId,
@@ -139,6 +142,7 @@ export function ContextMenu({
         anchor={anchor}
         depth={0}
         searchable={searchable}
+        query={query}
         takeTypeAhead={takeTypeAhead}
         focusOnMount
         activateFirst={false}
@@ -158,6 +162,7 @@ interface ListProps {
   anchor: Anchor;
   depth: number;
   searchable?: string;
+  query?: string;
   /** Keys typed before the search had focus (the root of a searchable menu). */
   takeTypeAhead?: () => TypeAhead | undefined;
   focusOnMount: boolean;
@@ -210,10 +215,10 @@ function MenuList(p: ListProps) {
   const ref = useRef<HTMLDivElement>(null);
   const input = useRef<HTMLInputElement>(null);
   const [pos, setPos] = useState<{ left: number; top: number; maxHeight: number } | null>(null);
-  const [q, setQ] = useState("");
+  const [q, setQ] = useState(() => (p.searchable && p.query) || "");
   // eslint-disable-next-line react-hooks/exhaustive-deps -- stencil scoring reads the locale-dependent shared search index
   const shown = useMemo(() => (q.trim() ? search(p.items, q) : p.items), [p.items, q, locale]);
-  const [active, setActive] = useState(() => (p.activateFirst ? shown.findIndex(selectable) : -1));
+  const [active, setActive] = useState(() => (p.activateFirst || q ? shown.findIndex(selectable) : -1));
   const [open, setOpen] = useState<{ index: number; anchor: Anchor; viaKeyboard: boolean } | null>(null);
   const hoverTimer = useRef<number | undefined>(undefined);
   /**

@@ -110,6 +110,14 @@ async function open(page: Page, id: LazySurfaceId) {
         return;
     }
   }
+  if (id === "tutorial.app") {
+    await page.goto("./?tutorial=mobile-api");
+    return;
+  }
+  if (id === "tutorial.list") {
+    await page.goto("./?view=tutorials");
+    return;
+  }
   switch (id) {
     case "live.session":
       await page.goto(`./?view=canvas&example=${SLUG}&live=1&paused=1`);
@@ -307,20 +315,29 @@ for (const [id, name, source, policy] of lazySurfaces) {
       if (id === "live.calls") await page.getByTestId("live-play").click();
       // A surviving shell control remains a keyboard stop. The specialised rename/modal tests keep
       // their stronger typing, Escape and cancellation assertions alongside this generated contract.
+      // A tutorial replaces the app (no top bar, no saved diagram): its stand-in bar keeps the way out. The
+      // Tutorials view has the top bar but no diagram open.
+      const tutorial = id === "tutorial.app";
       const focus = page.getByTestId(
         id === "live.inject"
           ? "inject-loading-close"
           : id === "live.simulations"
             ? "sim-panel-close"
-            : "example-picker",
+            : tutorial
+              ? "tutorial-exit"
+              : id === "tutorial.list"
+                ? "view-canvas"
+                : "example-picker",
       );
       await focus.focus();
       await expect(focus).toBeFocused();
-      const before = await savedDiagram(page);
-      await page.keyboard.press("Tab");
-      expect(await page.evaluate(() => document.activeElement !== document.body)).toBe(true);
-      await page.keyboard.press("Shift+Tab");
-      await expect(focus).toBeFocused();
+      const before = id.startsWith("tutorial.") ? undefined : await savedDiagram(page);
+      if (!tutorial) {
+        await page.keyboard.press("Tab");
+        expect(await page.evaluate(() => document.activeElement !== document.body)).toBe(true);
+        await page.keyboard.press("Shift+Tab");
+        await expect(focus).toBeFocused();
+      }
       expect(await page.evaluate(() => getComputedStyle(document.body).cursor)).not.toMatch(/wait|progress/);
       // This is the readiness hook used by image export and recording. It must signal skip without
       // waiting, or remain pending until the held output chunk arrives. No elapsed-time assertion.
@@ -350,7 +367,7 @@ for (const [id, name, source, policy] of lazySurfaces) {
       await page.getByTestId("lazy-load-retry").focus();
       await page.keyboard.press("Enter");
       await expect.poll(() => page.evaluate((key) => window.__lazySurfaces?.states()[key]?.state, id)).toBe("loaded");
-      expect(await savedDiagram(page)).toEqual(before);
+      if (before) expect(await savedDiagram(page)).toEqual(before);
       expect(await page.evaluate(() => document.activeElement !== document.body)).toBe(true);
     } finally {
       release();
