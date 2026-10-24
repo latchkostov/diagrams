@@ -456,10 +456,10 @@ it("coprime caller pools keep coarse sampling and continuous traffic", () => {
   d.nodes.push({ ...d.nodes[1], id: "other", props: { ...d.nodes[1].props, concurrency: 1001 } });
   d.edges.push({ id: "other-call", from: "other", to: "partner", kind: "sync" });
   const scale = autoScale({ id: "s", title: "s", traffic: [] }, d);
-  expect(scale).toBe(250);
+  expect(scale).toBe(5000);
   const e = createEngine({ scale });
   e.load(d);
-  expect(e.snapshot().scale).toBe(250);
+  expect(e.snapshot().scale).toBe(5000);
   expect(e.trafficLimit()).toBeUndefined();
   e.setTraffic(true);
   e.step(100);

@@ -1,6 +1,3 @@
-import { revisionAtLeast } from "../model/revisions";
-import { replicaRange } from "../model/autoscaling";
-import { resolveProps } from "./defaults";
 import type { DiagramFile, Simulation, TrafficShape } from "../model/types";
 import { stencilRole } from "../stencils/roles";
 import { resolveMultiplier } from "./units";
@@ -54,31 +51,11 @@ export function autoScale(simulation: Simulation, diagram: DiagramFile): number 
   // Multiplication keeps dot-scale rounding identical across JavaScript engines.
   let power = 1;
   while (power * 10 <= required) power *= 10;
-  let scale = Math.min(Number.MAX_SAFE_INTEGER, [1, 2, 5, 10].find((value) => value * power >= required)! * power);
-  if (revisionAtLeast(diagram.planning?.revision, "p3-w1")) {
-    const callers = new Set(
-      diagram.edges.filter((e) => e.kind === "sync" && (!e.relation || e.relation === "flow")).map((e) => e.from),
-    );
-    for (const node of diagram.nodes)
-      if (callers.has(node.id) && stencilRole(node.stencil) === "processor") {
-        const props = resolveProps(
-          "processor",
-          node.label,
-          { ...node.props, ...simulation.setup?.props?.[node.id] },
-          node.stencil,
-          diagram.planning,
-        );
-        const multiplier = resolveMultiplier(simulation.multipliers?.capacity);
-        const replicas =
-          props.autoscaling?.mode === "on"
-            ? replicaRange(props.autoscaling.controller, multiplier).initial
-            : Math.max(1, Math.round(props.replicas * multiplier));
-        const slots = props.admission?.slots ?? replicas * props.concurrency;
-        scale = Math.min(scale, Math.max(1, slots / 4));
-      }
-  }
+  // Processor callers keep accuracy locally: the sampled ledger grants only the available real
+  // threads/pool connections, then holds that weight for the cohort's represented/weight waves.
+  // Neither a tiny caller nor an unrelated branch needs extra entry dots for thread resolution.
   // Circuit breakers never lower the scale: their windows and test calls count real requests, and a
   // half-open breaker narrows a dot to its remaining test calls (breaker.ts), so no breaker needs
   // more dots than the entry-rate budget allows, on its own branch or anyone else's.
-  return scale;
+  return Math.min(Number.MAX_SAFE_INTEGER, [1, 2, 5, 10].find((value) => value * power >= required)! * power);
 }
