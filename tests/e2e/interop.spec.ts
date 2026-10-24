@@ -14,6 +14,7 @@ import {
   expectNoErrors,
   gotoLive,
   shareVia,
+  fitDiagram,
 } from "./fixtures";
 
 // Import / export / storage (src/interop). Selectors are data-testid only.
@@ -716,6 +717,8 @@ test("reopening an example never overwrites its Private copy's destination", asy
   await page.keyboard.press("ControlOrMeta+s");
   await expect.poll(() => page.evaluate(() => window.__fs.writes.length)).toBe(3);
   expect(await page.evaluate(() => window.__fs.pickerCalls)).toBe(2);
+  // Bring the reopened drawing into the current pane before the next pointer action.
+  await fitDiagram(page);
   await page.getByTestId("node-shopper").click();
   await page.getByTestId("inspector-field-label").fill("Second storefront");
   await expect(page.getByTestId("example-picker")).toHaveAttribute("data-diagram-slug", /^my-/);

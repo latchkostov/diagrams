@@ -12,6 +12,7 @@ import {
 } from "./fixtures";
 import { typingWork, median } from "./typing-work";
 import { installChecksMeasurement } from "./checks-measurement";
+import { installCheckNotifications, waitForCheckCompletion } from "./checks-notifications";
 import { RENDER_HOOK } from "../bench/ui/instrument";
 
 type Renders = ReturnType<NonNullable<Window["__benchRenders"]>["stop"]>;
@@ -123,22 +124,10 @@ export async function checksTyping(page: Page, info: TestInfo, measureCpu = fals
   // that call out to the test before the run goes on. (A poll couldn't hear of a run on the main thread until it
   // had finished, and the next key would never meet it.)
   let onDue = () => {};
+  let onSettled = () => {};
   await page.exposeFunction("__checkDue", () => onDue());
-  await page.evaluate(() => {
-    const stats = (window as unknown as { __checks: Record<string, unknown> }).__checks;
-    const announce = (window as unknown as { __checkDue: () => void }).__checkDue;
-    for (const key of ["started", "skipped"]) {
-      let value = stats[key];
-      Object.defineProperty(stats, key, {
-        enumerable: true,
-        get: () => value,
-        set: (next) => {
-          value = next;
-          announce();
-        },
-      });
-    }
-  });
+  if (controlled) await page.exposeFunction("__checkSettled", () => onSettled());
+  await page.evaluate(installCheckNotifications, controlled);
   /** Resolves when the next run comes due; a backstop at the scale of the first run's wait, for a run that never does. */
   const nextDue = () => {
     let timer: ReturnType<typeof setTimeout> | undefined;
@@ -163,13 +152,15 @@ export async function checksTyping(page: Page, info: TestInfo, measureCpu = fals
     // Advance four clock frames, then await the scheduler's actual start signal below.
     if (controlled) await page.clock.runFor(64);
   };
-  const finished = () =>
-    expect
-      .poll(async () => {
-        const stats = await runStats(page);
-        return stats.pending;
-      })
-      .toBe(false);
+  // Completion messages follow the scheduler's cleanup without accumulating polling delays over 42 samples.
+  // The CPU benchmark retains its existing wait outside the sample.
+  const finished = controlled
+    ? () =>
+        waitForCheckCompletion(
+          async () => (await runStats(page)).pending,
+          () => new Promise<void>((resolve) => (onSettled = resolve)),
+        )
+    : () => expect.poll(async () => (await runStats(page)).pending).toBe(false);
   const scheduled = () => expect.poll(async () => (await runStats(page)).pending).toBe(true);
 
   /** Restore the exact input and fresh findings before either member of a pair. */
