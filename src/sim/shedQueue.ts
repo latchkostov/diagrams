@@ -3,6 +3,11 @@ import type { QueuePriority } from "./types";
 
 /** Priority service with FIFO/LIFO within a class. Eviction always chooses the lowest class. */
 export class ShedQueue<T extends { priority?: QueuePriority; queueProtected?: boolean }> {
+  /** Invalidates the independent test oracle only when membership or an item’s size changes. */
+  revision = 0;
+  touch(): void {
+    this.revision++;
+  }
   private protected = new Deque<T>();
   private queues = [new Deque<T>(), new Deque<T>(), new Deque<T>()];
   get length(): number {
@@ -22,12 +27,15 @@ export class ShedQueue<T extends { priority?: QueuePriority; queueProtected?: bo
     return this.protected.length ? this.protected.peek() : this.service()?.peekBack();
   }
   shift(): T | undefined {
+    this.touch();
     return this.service()?.shift();
   }
   pop(): T | undefined {
+    this.touch();
     return this.protected.length ? this.protected.shift() : this.service()?.pop();
   }
   push(item: T): void {
+    this.touch();
     if (item.queueProtected) this.protected.push(item);
     else this.queues[this.rank(item)].push(item);
   }
@@ -44,6 +52,7 @@ export class ShedQueue<T extends { priority?: QueuePriority; queueProtected?: bo
     const rank = this.lowest();
     if (rank < 0) return undefined;
     if (!take) return oldest ? this.queues[rank].peek() : this.queues[rank].peekBack();
+    this.touch();
     return oldest ? this.queues[rank].shift() : this.queues[rank].pop();
   }
   find(test: (item: T) => boolean): T | undefined {
@@ -58,6 +67,7 @@ export class ShedQueue<T extends { priority?: QueuePriority; queueProtected?: bo
     for (const q of this.queues) yield* q;
   }
   clear(): void {
+    this.touch();
     this.protected.clear();
     for (const q of this.queues) q.clear();
   }

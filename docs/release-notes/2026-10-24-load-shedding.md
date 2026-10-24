@@ -54,3 +54,9 @@ Disabling queue resolution deliberately fails the scale-2 and scale-10 regressio
 negative check proves that a sixth replay would exceed the shared work bound without its guard.
 The public example’s expected inventory is five simulations. Final gate and sweep results are in
 the PR verification report.
+
+R4 still checks every engine tick. Its independent queue recount is cached by a membership/size
+revision, so unchanged queues are not scanned again on idle ticks. An operation-count regression
+rejects the former per-tick scan; no property cases, assertions or test backstops were reduced.
+Queue eligibility in the outer inspector uses lightweight stencil metadata; the full resolver and
+profile catalog remain behind the lazy simulation fields, guarded by the production bundle tests.

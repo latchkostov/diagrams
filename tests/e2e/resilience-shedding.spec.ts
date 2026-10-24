@@ -32,7 +32,9 @@ test("queue fields at 1024 px edit the effective saved simulation and undo as on
   await page.getByTestId("inspector-section-queue-details").click();
   const limit = page.getByTestId("inspector-field-queue-limit");
   await expect(limit).toHaveValue("2");
-  await expect(page.getByTestId("queue-simulation-override")).toContainText("3");
+  await expect(page.getByTestId("inspector-body-queue-details").getByTestId("queue-simulation-override")).toContainText(
+    "Limit 3",
+  );
   await limit.fill("5");
   await limit.press("Tab");
   await expect
@@ -84,7 +86,7 @@ test("incoming connection priority persists through the existing inspector dropd
   await page.getByTestId("inspector-section-edge-simulation").click();
   await page.getByTestId("inspector-section-queue-priority").click();
   await page.getByTestId("inspector-field-priority").click();
-  await page.getByTestId("inspector-field-priority-menu-item-critical").click();
+  await page.getByTestId("context-menu-item-critical").click();
   await expect
     .poll(async () => (await savedDiagram(page)).edges.find((e) => e.id === "call")?.props?.priority)
     .toBe("critical");

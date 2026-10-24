@@ -16,3 +16,7 @@ and a menu of unproven fixes were rejected. The callout retains one replay-confi
 The production browser regression covers the 1024 px queue ledger, saved-simulation overrides,
 undo, the reachable cumulative Calls explanation and the connection priority dropdown. Its result
 and screenshot review are recorded in the PR verification report.
+
+The 1024 px screenshot review found the simulation-origin note visually attached to Failure rate.
+It now sits inside the queue ledger and names the diagram’s queue limit/order. All four queue fields
+fit the narrow inspector without horizontal overflow; the existing canvas pane stays clear.

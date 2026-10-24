@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { useSimulationSetting } from "./useSimulationSetting";
 import type { EditorApi } from "../../editor/types";
 import { Disclosure } from "./Disclosure";
@@ -9,7 +10,15 @@ import type { QueuePolicy } from "../../sim/types";
 import { Dropdown } from "../../components/Dropdown";
 
 /** Queue policy stays in the lazy processor inspector's advanced tier. */
-export function QueueFields({ queue = {}, set }: { queue?: QueuePolicy; set: (queue: QueuePolicy) => void }) {
+export function QueueFields({
+  queue = {},
+  set,
+  origin,
+}: {
+  queue?: QueuePolicy;
+  set: (queue: QueuePolicy) => void;
+  origin?: ReactNode;
+}) {
   return (
     <Disclosure
       id="queue-details"
@@ -20,6 +29,7 @@ export function QueueFields({ queue = {}, set }: { queue?: QueuePolicy; set: (qu
       })}
       description={t("resilience.queueHint")}
     >
+      {origin}
       <PairedFields>
         <SimInput
           name="queue-limit"
@@ -84,16 +94,23 @@ export function QueueFields({ queue = {}, set }: { queue?: QueuePolicy; set: (qu
 export function NodeQueueFields({ editor, nodeId }: { editor: EditorApi; nodeId: string }) {
   const setting = useSimulationSetting(editor, "node", nodeId, "queue");
   if (!setting.editable) return null;
+  const base = setting.base as QueuePolicy | undefined;
   return (
-    <>
-      {setting.overridden && (
-        <p className="insp-note" data-testid="queue-simulation-override">
-          {t("threads.simulationOverride", {
-            value: (setting.base as QueuePolicy | undefined)?.limit ?? t("threads.uncapped"),
-          })}
-        </p>
-      )}
-      <QueueFields queue={setting.value as QueuePolicy | undefined} set={setting.set} />
-    </>
+    <QueueFields
+      queue={setting.value as QueuePolicy | undefined}
+      set={setting.set}
+      origin={
+        setting.overridden && (
+          <p className="insp-note" data-testid="queue-simulation-override">
+            {t("threads.simulationOverride", {
+              value: t("resilience.queueSummary", {
+                limit: base?.limit ?? t("threads.uncapped"),
+                order: base?.order === "lifo" ? t("resilience.newestFirst") : t("resilience.oldestFirst"),
+              }),
+            })}
+          </p>
+        )
+      }
+    />
   );
 }

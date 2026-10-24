@@ -1,4 +1,4 @@
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
 import { createEngine, observeEngineEvents } from "./engine";
 import { Deque } from "./deque";
 import { ShedQueue } from "./shedQueue";
@@ -308,4 +308,22 @@ it.each([2, 10])("a partial shed Request settles only its retained branch at sca
   const snapshot = realSnapshot(e.snapshot());
   expect(snapshot.edges.input.calls).toMatchObject({ failed: scale - 1, succeeded: 1, inFlight: 0 });
   expect(snapshot.inSystem).toBe(0);
+});
+
+it("R4 independently recounts only changed queues, without rescanning idle ticks", () => {
+  const e = createEngine({ maxParticles: 0, verifyResilience: assertResilienceInvariants });
+  e.load(diagram({ limit: 3 }));
+  e.inject("source", 3);
+  e.step(100);
+  const iterate = vi.spyOn(ShedQueue.prototype, Symbol.iterator);
+  try {
+    e.step(1000);
+    expect(iterate).not.toHaveBeenCalled();
+    e.setNodeStatus("worker", "up");
+    e.step(1000);
+    expect(iterate).toHaveBeenCalled();
+    expect(e.snapshot().nodes.worker.processed).toBe(3);
+  } finally {
+    iterate.mockRestore();
+  }
 });

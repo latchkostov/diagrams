@@ -135,6 +135,7 @@ const PLANNED: Record<string, string[]> = {
     "30 dropped payments in Jittered backoff (fails)",
     "30 dropped payments in A retry budget (fails)",
     "30 dropped payments in A circuit breaker (fails)",
+    "30 dropped payments in Shed load at Payments (fails)",
   ],
   "slow-payment-provider": [
     "1059 dropped shop in No timeouts (expected)",
@@ -179,13 +180,13 @@ describe("simulation evidence on the public examples", () => {
     if (slug === "retry-storm") {
       expect(shown.result.findings.map((f) => f.id)).toEqual(["no-reader:orders", "dropped:shop", "dropped:checkout"]);
       for (const finding of shown.result.findings) {
-        expect(finding.evidence).toHaveLength(4);
+        expect(finding.evidence).toHaveLength(5);
         expect(finding.evidence!.every((e) => e.count > 0)).toBe(true);
       }
       expect(shown.result.findings.map((f) => f.evidence!.at(-1))).toEqual([
-        { simulation: "A circuit breaker", what: "unread", count: 14123 },
-        { simulation: "A circuit breaker", what: "dropped", count: 3808 },
-        { simulation: "A circuit breaker", what: "dropped", count: 3808 },
+        { simulation: "Shed load at Payments", what: "unread", count: 16413 },
+        { simulation: "Shed load at Payments", what: "dropped", count: 1521 },
+        { simulation: "Shed load at Payments", what: "dropped", count: 1521 },
       ]);
       expect(shown.counted).toBe(3);
     } else if (slug === "zone-outage-drill") {

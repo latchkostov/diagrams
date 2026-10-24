@@ -578,6 +578,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   // playback has no history map and drained checkpoints retain no attempt history.
   let outcomeChecks = new Map<number, Attempt<Message>>();
   let nextLogical = 1;
+  const queuedChecks = TEST_ORACLES ? new WeakMap<ShedQueue<Work>, { revision: number; units: number }>() : undefined;
   let breakerDispatches: import("./resilienceInvariants").ResilienceState["breakerDispatches"][number][] = [];
   let budgetDecisions: import("./resilienceInvariants").ResilienceState["budgetDecisions"][number][] = [];
   const waits = () => revisionAtLeast(planning?.revision, "p3-w1");
@@ -2936,6 +2937,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       node.queueUnits = settled(node.queueUnits - excess);
       victim.queueSize! -= excess;
       victim.queuedUnits! -= excess / scale;
+      (node.pending as ShedQueue<Work>).touch();
     } else {
       (node.pending as ShedQueue<Work>).evictLowest(oldest);
       node.pendingUnits = node.pending.length ? node.pendingUnits - victim.queuedUnits! : 0;
@@ -2946,6 +2948,16 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   }
 
   /** Reindex once per configuration edit, including work already waiting when a policy is enabled. */
+  function checkedQueued(node: Node): number {
+    const queue = node.pending;
+    const previous = queue instanceof ShedQueue ? queuedChecks?.get(queue) : undefined;
+    if (queue instanceof ShedQueue && previous?.revision === queue.revision) return previous.units;
+    let units = 0;
+    for (const work of queue) if (queueEligible(work)) units += execution.cohort(work);
+    if (queue instanceof ShedQueue) queuedChecks?.set(queue, { revision: queue.revision, units });
+    return units;
+  }
+
   function configureShedQueue(node: Node): void {
     const queue = node.props.queue ? new ShedQueue<Work>() : new Deque<Work>();
     node.queueUnits = 0;
@@ -4233,7 +4245,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         queues: [...nodes.values()]
           .filter((n) => n.props.queue)
           .map((n) => ({
-            queued: [...n.pending].filter(queueEligible).reduce((sum, work) => sum + execution.cohort(work), 0),
+            queued: checkedQueued(n),
             accounted: n.queueUnits,
             limit: n.props.queue?.limit,
           })),

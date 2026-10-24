@@ -99,6 +99,7 @@ const NOT_AT_STARTUP: [string, RegExp][] = [
   ["slow motion", /[/\\]src[/\\]live[/\\]slowmo[/\\]/],
   ["autoscaling execution", /[/\\]src[/\\]sim[/\\]autoscaling\.ts$/],
   ["KEDA execution", /[/\\]src[/\\]sim[/\\]keda\.ts$/],
+  ["processor property resolution", /[/\\]src[/\\]sim[/\\]defaults\.ts$/],
   ["the simulation engine", /[/\\]src[/\\]sim[/\\]engine\.ts$/],
   ["the architecture checks", /[/\\]src[/\\]checks[/\\]/],
   ["the AI panel", /[/\\]src[/\\]ai[/\\]ui[/\\]AiPanel\.tsx$/],
