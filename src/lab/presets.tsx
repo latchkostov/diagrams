@@ -1210,6 +1210,14 @@ const tracePresets: Preset[] = [
 
 export const presets: readonly Preset[] = [
   {
+    kind: "diagram",
+    id: "edge-shaping",
+    title: "Edge shaping",
+    group: "Edges",
+    description: "Select a shaped line and drag a segment; line up neighbours to merge bends, or reset its route.",
+    diagram: () => structuredClone(handShapedLines) as DiagramFile,
+  },
+  {
     kind: "render",
     id: "lazy-surfaces",
     title: "Lazy surface recovery",

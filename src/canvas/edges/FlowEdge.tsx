@@ -20,8 +20,15 @@ import { relationInfo } from "./relationInfo";
 import { isDependency, relationOf, type DependencyRelation } from "../../model/relations";
 import { requireEdgeModules } from "./readiness";
 import { routeGeometry } from "../geometry/shapedRuntime";
-import { lazyComponent } from "../../lib/lazyLoad";
-const EdgeEnds = lazyComponent(() => import("./EdgeEnds").then((m) => m.EdgeEnds));
+import { defineLazySurface } from "../../lib/lazySurface";
+const EdgeControls = defineLazySurface({
+  id: "edge.shaping",
+  load: () => import("./EdgeRouteHandles").then((m) => m.EdgeRouteHandles),
+  placeholder: { render: () => null },
+  focus: {},
+  export: "skip",
+  retryToast: true,
+});
 
 /**
  * An edge. A flow is async (dashed) or sync (solid). A dependency (config, secret, identity,
@@ -176,13 +183,7 @@ function FlowEdgeImpl(props: EdgeProps<DiagramFlowEdge>) {
       {title(deny ? Details?.denyTip : tip)}
       {deny && Details && <Details.DenyMarker id={id} x={deny.x} y={deny.y} />}
       {selected && reconnect && route.points.length > 1 && (
-        <EdgeEnds
-          id={id}
-          source={source}
-          target={target}
-          start={route.points[0]}
-          end={route.points[route.points.length - 1]}
-        />
+        <EdgeControls id={id} source={source} target={target} route={route} />
       )}
       {body && (
         <EdgeLabelRenderer>

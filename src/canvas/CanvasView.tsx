@@ -890,6 +890,7 @@ function CanvasInner({
       settleText: editGestures ? settleText : undefined,
       grow: editGestures ? growFromChip : undefined,
       reconnect: editGestures ? editor.reconnectEdge : undefined,
+      reshape: editGestures ? editor.updateEdge : undefined,
       boundaryResized: editGestures ? boundaryResized : undefined,
     }),
     [

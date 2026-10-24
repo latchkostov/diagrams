@@ -9,7 +9,7 @@ import type { AnnotationFlowNode, DiagramFlowEdge, FlowNode } from "../types";
 import { platform, type CanvasMenus } from "../menus/useCanvasMenus";
 import { portSide } from "../gestures";
 import { connectionAt, connectionMarks, requestDots } from "../interaction/connectDots";
-import { watchConnectionGesture } from "../interaction/usePointerGesture";
+import { watchConnectionGesture } from "../interaction/watchConnectionGesture";
 import type { GesturePreview } from "../interaction/types";
 
 export function useConnectionPlacement(

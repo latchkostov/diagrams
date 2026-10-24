@@ -1,6 +1,8 @@
+import { readFileSync } from "node:fs";
 import type { Page } from "@playwright/test";
 import {
   test,
+  STORAGE_KEYS,
   expect,
   gotoCanvas,
   gotoLive,
@@ -366,4 +368,19 @@ test.describe("presenting full screen", () => {
         )
         .toEqual([]);
     });
+});
+
+test("presenting hides the selected line's segment handles", async ({ page }) => {
+  const diagram = JSON.parse(readFileSync("tests/parity/corpus/hand-shaped-lines.diagram.json", "utf8"));
+  await page.addInitScript(
+    ([key, value]) => localStorage.setItem(key, value),
+    [STORAGE_KEYS.autosavePrefix + KAFKA, JSON.stringify(diagram)],
+  );
+  await gotoCanvas(page, KAFKA);
+  await waitForStableViewport(page);
+  await page.getByTestId("edge-label-api-db").click();
+  await expect(page.getByTestId("route-segment-api-db-1")).toBeVisible();
+  await page.getByTestId("present-toggle").click();
+  await expect(page.getByTestId("present-exit")).toBeVisible();
+  await expect(page.getByTestId(/^route-segment-/)).toHaveCount(0);
 });

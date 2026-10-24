@@ -227,9 +227,7 @@ export async function renderDiagramImage(kind: "png" | "svg", opts: ImageOptions
       },
       // Editing affordances aren't part of the picture: connection and resize handles (the "+" too), and the
       // "Double-click to write" placeholder of an empty note.
-      filter: (node: Node) =>
-        !(node instanceof HTMLElement && EDITING_ONLY.some((cls) => node.classList.contains(cls))) &&
-        !(node instanceof SVGElement && EDITING_ONLY_SVG.some((cls) => node.classList.contains(cls))),
+      filter: imageNodeFilter,
     };
     const image =
       kind === "png"
@@ -272,6 +270,7 @@ const EDITING_ONLY = [
   "ann-placeholder",
   // A selected edge's ends and the outline of where a node will land (flow building, D3 and D8).
   "edge-end",
+  "edge-seg",
   "landing-outline",
   // The Checks card's markers: a review aid, and their tooltips carry the findings' words.
   "check-markers",
@@ -279,9 +278,9 @@ const EDITING_ONLY = [
   "presence-layer",
 ];
 // SVG editing chrome (not an HTMLElement): the line an insert would split.
-const EDITING_ONLY_SVG = ["insert-line", "edge-end-line"];
+const EDITING_ONLY_SVG = ["insert-line", "edge-end-line", "edge-route-preview"];
 
-const SELECTION_CLASSES = ["selected", "is-selected", "is-editing"] as const;
+const SELECTION_CLASSES = ["selected", "is-selected", "is-editing", "is-reshaping"] as const;
 
 /** Takes the selection classes off for the shot; returns the function that puts them back. */
 function clearSelectionMarks(root: HTMLElement): () => void {
@@ -372,4 +371,12 @@ export async function svgToPng(svg: string, width: number, height: number, scale
   } finally {
     URL.revokeObjectURL(url);
   }
+}
+
+/** Editing chrome is never part of the exported picture. */
+export function imageNodeFilter(node: Node): boolean {
+  return (
+    !(node instanceof HTMLElement && EDITING_ONLY.some((cls) => node.classList.contains(cls))) &&
+    !(node instanceof SVGElement && EDITING_ONLY_SVG.some((cls) => node.classList.contains(cls)))
+  );
 }

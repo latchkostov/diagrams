@@ -17,7 +17,7 @@ vi.mock("../interaction/connectDots", () => ({
   requestDots: vi.fn(),
   connectionMarks: () => ({ show: vi.fn(), clear: vi.fn() }),
 }));
-vi.mock("../interaction/usePointerGesture", () => ({ watchConnectionGesture: vi.fn() }));
+vi.mock("../interaction/watchConnectionGesture", () => ({ watchConnectionGesture: vi.fn() }));
 
 afterEach(() => {
   vi.unstubAllGlobals();
