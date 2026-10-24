@@ -103,6 +103,29 @@ it("a small stable queue at 300/s and five of 400 threads busy is neutral", () =
   }
 });
 
+it("shedding refusals need attention only in the shared health window while totals survive recovery", () => {
+  const health = new HealthWindow();
+  health.observe(frame(0), 0);
+  const incident = frame(1000, node({ rejected: 12, shed: 12 }));
+  health.observe(incident, 0);
+  expect(currentHealth(incident.nodes.api).rejected).toBe(12);
+  expect(currentHealth(incident.nodes.api).shed).toBe(12);
+  expect(nodeSummary(incident.nodes.api, []).problems).toEqual([{ key: "shed", text: "12 shed" }]);
+  expect(verdictSection("shed")).toBe("outcomes");
+  // Publishing while paused does not age the incident.
+  health.observe(incident, 0);
+  expect(nodeSummary(incident.nodes.api, []).problems[0].key).toBe("shed");
+  for (let time = 2000; time <= HEALTH_WINDOW_MS + 2000; time += 1000) {
+    const recovered = frame(time, node({ rejected: 12, shed: 12 }));
+    health.observe(recovered, 0);
+    if (time > HEALTH_WINDOW_MS + 1000) {
+      expect(nodeSummary(recovered.nodes.api, []).problems).toEqual([]);
+      expect(recovered.nodes.api.shed).toBe(12);
+      expect(recovered.nodes.api.rejected).toBe(12);
+    }
+  }
+});
+
 it.each(["processor", "queue"] as const)(
   "sustained growing %s queues need attention, and stop when they level off",
   (role) => {

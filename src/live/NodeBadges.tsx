@@ -312,7 +312,8 @@ const NodeBadge = memo(function NodeBadge(props: BadgeProps) {
   const problems = currentHealth(s).dropped;
   // Blocked by a deny rule: on purpose, so never in the red count, and shown apart from it.
   const blocked = s.blocked ?? 0;
-  const rejected = Math.max(0, (s.rejected ?? 0) - (s.shed ?? 0));
+  const recent = currentHealth(s);
+  const rejected = Math.max(0, recent.rejected - recent.shed);
   const active = s.processed > 0 || s.inFlight > 0 || s.backlog > 0 || problems > 0 || blocked > 0 || rejected > 0;
   // One slot under the node: with the heat map on, its label (which carries the rate) replaces the
   // throughput readout; a broker keeps its lag only while something is waiting.

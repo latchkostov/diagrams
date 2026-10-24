@@ -6,7 +6,7 @@ import { queueGrant } from "./admission";
 import { assertResilienceInvariants } from "./resilienceInvariants";
 import { assertLedgerInvariants, assertOutcomeInvariants } from "./resourceInvariants";
 import { realSnapshot } from "./units";
-import { resourceLesson } from "../model/autoscaling";
+import { resourceLesson } from "../model/autoscalingLessons";
 import { propsProblem } from "../model/simProps";
 import type { DiagramFile } from "../model/types";
 import type { QueuePolicy } from "./types";

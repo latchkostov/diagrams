@@ -1,7 +1,7 @@
 {
   "withIcons": {
-    "sha256": "32ff3bfffd0fb0cd7aa2854bf22474b9faa848f022b4c1bcd5c90f983b1d5d39",
-    "bytes": 25218,
+    "sha256": "d7ffafa037649c440e323c8c59360cf36064fefe8f16d69df8087582cbe4e544",
+    "bytes": 25302,
     "inlined": { "client.user": "client-user c8aa1007847a06e5", "generic.service": "generic-service 6ec0da29f56c9e80", "generic.topic": "generic-topic 7f5daeea368c1577" }
   },
   "readBack": [
@@ -435,7 +435,7 @@
               },
               {
                 "atMs": 1200,
-                "action": { "do": "note", "text": "Retries absorb a brief blip. Payments keeps a bounded queue for the longer slowdown.", "focus": ["payments", "checkout"] }
+                "action": { "do": "note", "text": "Watch the Payments queue and its shed count. At 3 s, Payments slows for five seconds: its bounded queue refuses excess work with 503 instead of building abandoned work.", "focus": ["payments", "checkout"] }
               },
               {
                 "atMs": 3500,

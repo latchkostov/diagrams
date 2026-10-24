@@ -13,7 +13,7 @@
     "markers": [
       { "atMs": 0, "kind": "traffic", "label": "checkouts" },
       { "atMs": 1000, "kind": "fault", "label": "Fail: Payments" },
-      { "atMs": 1200, "kind": "note", "label": "Retries absorb a brief blip. Payments keeps a bounded queue for the longer slowdown." },
+      { "atMs": 1200, "kind": "note", "label": "Watch the Payments queue and its shed count. At 3 s, Payments slows for five seconds: its bounded queue refuses excess work with 503 instead of building abandoned work." },
       { "atMs": 2000, "kind": "fault", "label": "Fail: Payments" },
       { "atMs": 3000, "kind": "fault", "label": "Slow down: Payments" },
       { "atMs": 3500, "kind": "note", "label": "Payments refuses excess work with 503. The queue stays bounded instead of building abandoned work." },
@@ -257,7 +257,7 @@
     ]
   },
   "notes": [
-    { "atMs": 1200, "text": "Retries absorb a brief blip. Payments keeps a bounded queue for the longer slowdown.", "focus": ["payments", "checkout"] },
+    { "atMs": 1200, "text": "Watch the Payments queue and its shed count. At 3 s, Payments slows for five seconds: its bounded queue refuses excess work with 503 instead of building abandoned work.", "focus": ["payments", "checkout"] },
     { "atMs": 3500, "text": "Payments refuses excess work with 503. The queue stays bounded instead of building abandoned work.", "focus": ["payments", "checkout"] },
     { "atMs": 9000, "text": "Payments is fast again. Fresh requests can succeed because stale work is shed.", "focus": ["payments", "checkout"] },
     { "atMs": 15000, "text": "Load shedding keeps the queue bounded. Callers receive fast 503 refusals while capacity is unavailable.", "focus": ["payments", "checkout"] }

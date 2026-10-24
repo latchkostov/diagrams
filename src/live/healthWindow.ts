@@ -12,6 +12,7 @@ type Recent = {
   timedOut: number;
   dropped: number;
   rejected: number;
+  shed: number;
   succeeded: number;
   growing: boolean;
   breaker: boolean;
@@ -21,6 +22,7 @@ const neutral: Recent = {
   timedOut: 0,
   dropped: 0,
   rejected: 0,
+  shed: 0,
   succeeded: 0,
   growing: false,
   breaker: false,
@@ -37,11 +39,11 @@ export function callsSucceeding(calls: EdgeSimState["calls"]): boolean {
 type Frame = {
   time: number;
   scale?: number;
-  nodes: Record<string, Pick<NodeSimState, "failed" | "dropped" | "rejected" | "backlog">>;
+  nodes: Record<string, Pick<NodeSimState, "failed" | "dropped" | "rejected" | "backlog" | "shed">>;
   edges: Record<string, Pick<EdgeSimState, "calls" | "breaker">>;
 };
 type Sample = { time: number; nodes: Record<string, number[]>; edges: Record<string, number[]> };
-const nodeCounts = (n: Frame["nodes"][string]) => [n.failed, n.dropped, n.rejected ?? 0, n.backlog];
+const nodeCounts = (n: Frame["nodes"][string]) => [n.failed, n.dropped, n.rejected ?? 0, n.backlog, n.shed ?? 0];
 const callCounts = (c: EdgeSimState["calls"]) => [c?.failed ?? 0, c?.timedOut ?? 0, c?.succeeded ?? 0];
 
 /** One bounded history per Live controller, shared by cards, badges, Properties and trouble announcements.
@@ -86,6 +88,7 @@ export class HealthWindow {
         failed: delta(n.failed, before?.[0]),
         dropped: delta(n.dropped, before?.[1]),
         rejected: delta(n.rejected ?? 0, before?.[2]),
+        shed: delta(n.shed ?? 0, before?.[4]),
         growing,
       });
     }

@@ -71,8 +71,11 @@ test("shedding shows a cumulative chip and reachable hover explanation with the 
   await expect(page.getByTestId("node-shed-partner")).toContainText("⤓");
   await expect(page.getByTestId("node-shed-partner")).toHaveAttribute("title", /since restart/);
   await openLiveNodeDetails(page, "partner", "threads");
-  await expect(page.getByTestId("node-shed-detail-partner")).toContainText("since restart");
   await expect(page.getByTestId("node-queue-detail-partner")).toContainText("of 3 queued");
+  await expect(page.getByTestId("node-shed-detail-partner")).toHaveCount(0);
+  await page.getByTestId("hover-section-outcomes").click();
+  await expect(page.getByTestId("node-outcomes-scope")).toHaveText("Since restart");
+  await expect(page.getByTestId("node-shed-detail-partner")).toContainText("since restart");
   expectNoErrors(consoleErrors);
 });
 

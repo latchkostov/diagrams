@@ -194,28 +194,29 @@ it("keeps the hero verdict out of attention facts and cumulative timeouts out of
   expect(e.facts.some((f) => f.key === "timeouts")).toBe(false);
 });
 
-it("historical shedding is a cumulative fact, never a current rejection verdict", () => {
+it("historical shedding stays out of current verdicts and facts", () => {
   const summary = nodeSummary(node({ rejected: 12, shed: 12, queueDepth: 2, queueLimit: 3 }), []);
   expect(summary.problems).toEqual([]);
-  expect(summary.facts.find((f) => f.key === "shed")?.label).toContain("since restart");
+  expect(summary.facts.some((f) => f.key === "shed")).toBe(false);
   expect(summary.facts.find((f) => f.key === "queueLimit")?.value).toBe("2 of 3 queued");
 });
 
-it("keeps secondary problem explanations ahead of cumulative shedding facts", () => {
-  const summary = nodeSummary(
-    node({
-      threads: { working: 1, waiting: 0, slots: 1, queued: 2, waitingOn: [] },
-      failed: 3,
-      backlog: 2,
-      rejected: 12,
-      shed: 12,
-      queueDepth: 2,
-      queueLimit: 3,
-    }),
-    [],
-  );
+it("keeps secondary problem explanations ahead of queue facts", () => {
+  const state = node({
+    threads: { working: 1, waiting: 0, slots: 1, queued: 2, waitingOn: [] },
+    failed: 3,
+    backlog: 2,
+    rejected: 12,
+    shed: 12,
+    queueDepth: 2,
+    queueLimit: 3,
+  });
+  const window = new HealthWindow();
+  window.observe({ time: 0, nodes: { api: node({ rejected: 12, shed: 12 }) }, edges: {} }, 0);
+  window.observe({ time: 1000, nodes: { api: state }, edges: {} }, 0);
+  const summary = nodeSummary(state, [], true);
   expect(summary.problems[0].key).toBe("threads");
   expect(summary.facts.slice(0, 2).map((f) => f.key)).toEqual(["failed", "waiting"]);
-  expect(summary.facts.map((f) => f.key)).toContain("shed");
+  expect(summary.facts.map((f) => f.key)).not.toContain("shed");
   expect(summary.facts.map((f) => f.key)).toContain("queueLimit");
 });

@@ -847,7 +847,7 @@
           "atMs": 1200,
           "action": {
             "do": "note",
-            "text": "Retries absorb a brief blip. Payments keeps a bounded queue for the longer slowdown.",
+            "text": "Watch the Payments queue and its shed count. At 3 s, Payments slows for five seconds: its bounded queue refuses excess work with 503 instead of building abandoned work.",
             "focus": [
               "payments",
               "checkout"
