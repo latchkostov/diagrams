@@ -152,6 +152,7 @@ export function useLiveSessionBridge({
     !!editor && !alwaysOn,
     liveMutationGuard(() => slow.session.active).hint(),
     controller.getState,
+    controller.subscribe,
   );
 }
 
