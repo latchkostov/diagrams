@@ -480,7 +480,7 @@ export function createEditor(
     setEdges(next);
     if (reset) {
       const count = edges.reduce((n, e, i) => n + (e !== next[i] ? 1 : 0), 0);
-      notify(t("chrome.shapedLinesReset", { count }), {
+      notify(t("route.shapedLinesReset", { count }), {
         action: {
           get label() {
             return t("ai.undo");

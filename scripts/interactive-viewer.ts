@@ -73,6 +73,25 @@ const FORBIDDEN: [string, RegExp][] = [
  * ("missing export"), and the module itself coming back fails it too (FORBIDDEN, below).
  */
 export const EDITOR_ONLY: { name: string; path: string; stub: (root: string) => string }[] = [
+  // A viewer displays saved bends, but never carries or resets them by moving nodes.
+  {
+    name: "node-move route editing",
+    path: "/src/editor/routeCarry.ts",
+    stub: () =>
+      "export const sharedDelta = () => undefined; export const carryWaypoints = edges => edges; export const resetMovedWaypoints = edges => edges;",
+  },
+  {
+    name: "node-drag route previews",
+    path: "/src/canvas/interaction/routeGesture.ts",
+    stub: () => "export const routeGestures = { get: () => undefined, set() {}, delete() {} };",
+  },
+  {
+    name: "node-drag placement",
+    path: "/src/canvas/placement/useDragPlacement.ts",
+    // Measurements still reach the controlled canvas; read-only nodes cannot start a drag.
+    stub: () =>
+      "const none = () => {}; export const useDragPlacement = (_store, _prefs, _edit, nodes, edges) => [{ current: null }, nodes, edges, none, none, none, () => ({ at: none, clear: none, lit: () => null })];",
+  },
   // Read-only canvases never open editing menus or quick-add. In particular, saved-route
   // rendering must not carry the actions that author and reset those routes.
   {

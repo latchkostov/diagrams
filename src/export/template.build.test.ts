@@ -64,6 +64,9 @@ describe("interactive viewer template", () => {
     expect(EDITOR_ONLY.filter((p) => real(p.path)).map((p) => p.name)).toEqual([]);
     expect(real("/src/canvas/edges/EdgeRouteHandles.tsx")).toBe(false);
     expect(real("/src/canvas/edges/segments.ts")).toBe(false);
+    expect(real("/src/editor/routeCarry.ts")).toBe(false);
+    expect(real("/src/canvas/interaction/routeGesture.ts")).toBe(false);
+    expect(real("/src/canvas/placement/useDragPlacement.ts")).toBe(false);
     expect(real("/src/canvas/interaction/usePointerGesture.ts")).toBe(false);
     expect(real("/src/live/LoadingSimPanel.tsx")).toBe(false);
     expect(real("/src/planning/LiveDetails.tsx")).toBe(false);
