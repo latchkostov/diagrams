@@ -7,11 +7,13 @@ Every feature batch goes through the same gates before the next one starts:
    PR CI is the default full gate and runs with zero retries. For timing-sensitive UI, first repeat affected specs and neighbours
    under load (`--linux --repeat 5 --workers N`). A local full gate is optional for flake hunts, red CI,
    or anyone who wants the complete run before pushing.
-3. **Code review:** `pnpm review` runs seven Codex reviewers in parallel on the changes since
-   `review-base` (correctness, architecture, performance, tests, security, accessibility, types; prompts in
-   `scripts/review/angles/`). Findings are structured JSON merged into `.reviews/<stamp>/REPORT.md`.
-4. **Triage & fix:** P0/P1 are fixed (with a regression test each); P2 are fixed when cheap or ticketed in
-   `docs/BACKLOG.md`; false positives are noted. Then `git branch -f review-base HEAD`.
+3. **Code review:** `pnpm review --brief <file> --pr <number>` starts seven lenses on the merge-base
+   diff. Later rounds assess open P1s and first-parent fix diffs using correctness plus contributing
+   lenses. Reports count distinct issues; raw lens evidence stays in `.reviews/`. See
+   [review usage](../scripts/review/README.md) for scope, context, lens overrides and saved state.
+4. **Triage & fix:** fix P0/P1 with regression tests; record worthwhile P2s in dated `docs/backlog/`
+   fragments. Round three ends with quarantine-or-merge suggestions; a fourth round requires the
+   owner's explicit `--allow-round-4`. No manual `review-base` branch update is needed.
 5. **UX gate:** a designer agent reviews the app against `docs/UX-PRINCIPLES.md` and simplifies.
 
 Standards: strict TypeScript, ESLint (typescript-eslint strict, react-hooks, jsx-a11y), Prettier,
@@ -109,6 +111,9 @@ including `--shard 1/1`.
 the merge-base with origin/master, and only the explicit or changed E2E specs on production
 builds. It warns if origin/master is ahead. `--only unit,e2e` selects categories and includes
 their build dependencies. `--repeat N` repeats the entire E2E invocation back to back.
+Explicit `.test.ts` / `.test.tsx` arguments select only those Vitest files instead of related tests
+and are excluded from E2E arguments. Reviewers use explicit files with `--only unit --workers 1
+--max-wait 1`, never an unscoped suite.
 
 `pnpm gate full --linux` exports exactly HEAD into a Linux volume and runs in the installed
 Playwright version's noble image. Dependencies use a platform/architecture/lock-hash volume;

@@ -1,19 +1,33 @@
 {
   "type": "object",
   "additionalProperties": false,
-  "required": ["summary", "findings"],
+  "required": ["summary", "findings", "assessments"],
   "properties": {
     "summary": { "type": "string" },
+    "assessments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "status", "detail"],
+        "properties": {
+          "id": { "type": "string" },
+          "status": { "type": "string", "enum": ["fixed", "open"] },
+          "detail": { "type": "string" }
+        }
+      }
+    },
     "findings": {
       "type": "array",
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["severity", "file", "line", "title", "detail", "suggestion", "confidence"],
+        "required": ["severity", "file", "line", "title", "detail", "suggestion", "confidence", "previousId"],
         "properties": {
           "severity": { "type": "string", "enum": ["P0", "P1", "P2", "P3"] },
           "file": { "type": "string" },
-          "line": { "type": "integer" },
+          "line": { "type": "integer", "minimum": 1 },
+          "previousId": { "type": ["string", "null"] },
           "title": { "type": "string" },
           "detail": { "type": "string" },
           "suggestion": { "type": "string" },

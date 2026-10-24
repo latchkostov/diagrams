@@ -184,12 +184,18 @@ export function plan(config, changed = [], root) {
   ])
     if (wanted.has(name)) groups.push([step(name, [script, ...(name === "i18n" ? ["check"] : [])])]);
   if (wanted.has("unit")) {
-    const args = config.command === "quick" ? ["exec", "node", "scripts/gate/related.mjs"] : ["test:coverage"];
-    if (config.command !== "quick" || changed.length)
+    const unitFiles = config.specs.filter((file) => /\.test\.tsx?$/.test(file));
+    const targeted = config.command === "quick" && unitFiles.length > 0;
+    const args = targeted
+      ? ["exec", "vitest", "run", ...unitFiles]
+      : config.command === "quick"
+        ? ["exec", "node", "scripts/gate/related.mjs"]
+        : ["test:coverage"];
+    if (config.command !== "quick" || targeted || changed.length)
       groups.push([
         {
           ...step("unit", [...args, "--allowOnly=false"]),
-          ...(config.command === "quick" ? { related: changed } : {}),
+          ...(config.command === "quick" && !targeted ? { related: changed } : {}),
         },
       ]);
   }
@@ -200,7 +206,7 @@ export function plan(config, changed = [], root) {
   const specs = config.shard
     ? shardFiles(config.shard.current, config.shard.total, root)
     : config.specs.length
-      ? config.specs
+      ? config.specs.filter((file) => !/\.test\.tsx?$/.test(file))
       : changed.filter((f) => /^tests\/e2e\/.*\.spec\.ts$/.test(f));
   if (wanted.has("e2e") && (config.command !== "quick" || specs.length)) {
     const selfHost = selfHostProfiles(specs);
