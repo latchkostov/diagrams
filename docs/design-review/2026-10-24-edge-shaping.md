@@ -18,4 +18,4 @@ The pointer adapter was split from React Flow's connection observer so selected-
 The owner reversed the former no-manual-waypoints decision on 2026-10-22; drawing-ux records why.
 Node-move adaptation, keyboard/touch interaction and interop/agents remain PRs 4–6. Automatic diagonal
 or sampled curved routes do not expose invalid handles; the default orthogonal route and custom routes
-are editable. This review used code and browser assertions, without a separate visual design walkthrough.
+are editable. Review combined code, browser assertions and visual inspection of the selected-line preview. The HTML viewer excludes authoring code as well as chrome.

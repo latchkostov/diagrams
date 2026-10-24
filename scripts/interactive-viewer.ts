@@ -106,6 +106,12 @@ export const EDITOR_ONLY: { name: string; path: string; stub: (root: string) => 
     path: "/src/canvas/edges/EdgeMessages.tsx",
     stub: () => "export const EdgeMessages = () => null;",
   },
+  // Shaping is editing chrome too: keep its code, styles and pointer adapter out of offline viewers.
+  {
+    name: "the route-shaping handles",
+    path: "/src/canvas/edges/EdgeRouteHandles.tsx",
+    stub: () => "export const EdgeRouteHandles = () => null;",
+  },
   // A read-only canvas never moves an edge's end: no reconnect handles, so none of their pointer gesture either.
   {
     name: "the reconnect handles",

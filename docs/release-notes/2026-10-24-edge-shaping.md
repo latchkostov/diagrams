@@ -7,7 +7,7 @@ merge bends and return a straight line to automatic. Snapping prefers ports, oth
 node edges/centres before the grid; Ctrl/⌘ drags freely.
 
 Handles avoid label pills, load only on selection, and stay out of Live, presentation, read-only views
-and image exports. The shortcuts sheet and drawing interaction docs explain the gestures. The Lab's
+and image exports. Read-only HTML viewers exclude the authoring code and styles entirely, retaining the fixed skill ZIP budget. The shortcuts sheet and drawing interaction docs explain the gestures. The Lab's
 Edge shaping preset uses the existing hand-shaped-lines corpus. Particles already follow the drawn
 path; travel duration remains the configured duration, so longer lines move particles faster.
 
