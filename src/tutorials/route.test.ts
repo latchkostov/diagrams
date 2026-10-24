@@ -38,3 +38,17 @@ it("Next replaces the lesson while Exit keeps the original return destination", 
     vi.unstubAllGlobals();
   }
 });
+
+it("opens an explicit draft without reloading or retaining tutorial, Live or share-link state", () => {
+  const pushState = vi.fn();
+  vi.stubGlobal("window", {
+    location: new URL("https://example.test/tools/?tutorial=lesson&live=1&sim=demo#d=old"),
+    history: { pushState },
+  });
+  try {
+    tutorialRoute.openDiagram("new");
+    expect(pushState).toHaveBeenCalledExactlyOnceWith(null, "", "/tools/?view=canvas&example=new");
+  } finally {
+    vi.unstubAllGlobals();
+  }
+});

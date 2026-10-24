@@ -48,6 +48,33 @@ describe("runtime check kinds", () => {
     expect(met({ kind: "prop", subject: "app", prop: "settings", op: "=", value: { b: [2, 3], a: 1 } }, v)).toBe(true);
     expect(met({ kind: "prop", subject: "app", prop: "settings", op: "=", value: { b: [3, 2], a: 1 } }, v)).toBe(false);
   });
+  it.each(["=", ">=", "<="] as const)("compares props and metrics below, at and above thresholds (%s)", (op) => {
+    for (const actual of [11, 12, 13]) {
+      const v = view();
+      v.diagram = {
+        ...diagram,
+        nodes: [{ ...diagram.nodes[0], props: { rate: actual } }, diagram.nodes[1]],
+        edges: [{ ...diagram.edges[0], props: { timeoutMs: actual } }],
+      };
+      v.session!.snapshot.nodes.b.processed = actual;
+      v.session!.snapshot.nodes.b.latency = {
+        samples: 1,
+        p50: actual,
+        p95: actual,
+        p99: actual,
+        waitMs: 0,
+        workMs: actual,
+        travelMs: 0,
+        byType: {},
+      };
+      v.session!.snapshot.nodes.b.threads = { slots: 24, working: 0, waiting: actual, waitingOn: [], queued: 0 };
+      const expected = op === "=" ? actual === 12 : op === ">=" ? actual >= 12 : actual <= 12;
+      expect(met({ kind: "prop", subject: "app", prop: "rate", op, value: 12 }, v)).toBe(expected);
+      expect(met({ kind: "prop", edge: ["app", "api"], prop: "timeoutMs", op, value: 12 }, v)).toBe(expected);
+      for (const field of ["processed", "latency.p95", "threads.waiting"] as const)
+        expect(met({ kind: "metric", subject: "api", field, op, value: 12 }, v)).toBe(expected);
+    }
+  });
   it("checks relationships and Request versus Message in the requested direction", () => {
     expect(met({ kind: "relation", from: "app", to: "api", relation: "flow", edgeKind: "sync" })).toBe(true);
     expect(met({ kind: "relation", from: "app", to: "api", edgeKind: "async" })).toBe(false);

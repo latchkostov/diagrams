@@ -22,10 +22,7 @@ import type { OpenTarget } from "./lab/LabView";
 import type { DiagramFile } from "./model/types";
 import { showDiagram, useUrlState, type View } from "./lib/urlState";
 import {
-  clearShared,
-  createLibraryDiagram,
   deleteLibraryDiagram,
-  DEVICE_PROVIDER,
   DRAFT_SLUG,
   duplicateLibraryDiagram,
   getDiagramIdentity,
@@ -33,14 +30,12 @@ import {
   OPEN_LIBRARY,
   renameLibraryDiagram,
   resolveSlug,
-  type SaveTarget,
-  setShared,
   SHARED_SLUG,
   UNTITLED,
   writeAutosave,
 } from "./lib/diagramIO";
 import { useLibrary } from "./lib/useLibrary";
-import { newDiagramsPrivate } from "./lib/privacyPrefs";
+import { diagramOpenActions } from "./lib/openDiagram";
 import { Icon } from "./components/Icon";
 import { formatAgo } from "./i18n/relativeTime";
 import { stopStorageWrites } from "./lib/storage";
@@ -385,36 +380,18 @@ function MainApp() {
     return () => window.removeEventListener("keydown", onKey);
   }, [url.present, setUrl]);
 
-  /** Open, Import, Paste, the Lab and "Save a copy": a new entry in Your diagrams, never a replacement. */
-  const openDiagram = useCallback(
-    (d: DiagramFile, target?: SaveTarget, sourceSlug?: string) => {
-      // Validates and stores first; on failure the current diagram stays (and the caller reports why).
-      // "New diagrams are private" covers what comes in from this device; a cloud file keeps saving back there.
-      const fromCloud = !!target && target.providerId !== DEVICE_PROVIDER;
-      const created = createLibraryDiagram(d, target, undefined, {
-        sourceSlug,
-        private: !fromCloud && newDiagramsPrivate.get(),
-      });
-      if (slug === SHARED_SLUG) clearShared();
-      setUrl({ view: "canvas", example: created, present: false });
-      return created;
-    },
-    [setUrl, slug],
+  const {
+    openDiagram,
+    openShared,
+    newDiagram: openNewDiagram,
+  } = useMemo(
+    () => diagramOpenActions(slug, (example) => setUrl({ view: "canvas", example, present: false })),
+    [slug, setUrl],
   );
-  const openShared = useCallback(
-    (d: DiagramFile) => {
-      setShared(d);
-      setUrl({ view: "canvas", example: SHARED_SLUG, present: false });
-    },
-    [setUrl],
-  );
-
-  /** File > New diagram: a blank draft. Nothing is replaced, so there's nothing to undo. */
   const newDiagram = useCallback(() => {
     canvasRef.current?.flush();
-    newDraft();
-    setUrl({ view: "canvas", example: DRAFT_SLUG, present: false });
-  }, [setUrl]);
+    openNewDiagram();
+  }, [openNewDiagram]);
 
   // Rooms: a joiner's new entry opens here; a room that ends keeps what its canvas shows.
   const shownSlug = useRef(slug);

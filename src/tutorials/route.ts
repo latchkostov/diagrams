@@ -30,6 +30,12 @@ export const tutorialRoute = {
     );
     emit();
   },
+  /** Leave for a document without dropping in-memory file handles or draft identity. */
+  openDiagram(slug: string): void {
+    const query = new URLSearchParams({ view: "canvas", example: slug });
+    window.history.pushState(null, "", `${window.location.pathname}?${query}`);
+    emit();
+  },
   /** Back where the tutorial was opened from; a tutorial reached by its link goes to the app instead. */
   close(): void {
     if ((window.history.state as Record<string, unknown> | null)?.[OPENED]) return window.history.back();

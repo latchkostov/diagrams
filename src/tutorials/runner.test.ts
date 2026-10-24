@@ -426,3 +426,86 @@ it("subscribes to slow motion's published state and cleans up that subscription"
   cleanup.length = 0;
   expect(listeners.size).toBe(0);
 });
+
+it.each([false, true])(
+  "waits for a deferred Live session and enabled fault action (cancelled: %s)",
+  async (cancelled) => {
+    const tutorial: Tutorial = {
+      ...mobileApi,
+      steps: [
+        { ...mobileApi.steps[0], id: "live", check: { kind: "live" }, demo: [{ kind: "live" }] },
+        {
+          ...mobileApi.steps[0],
+          id: "fault",
+          check: { kind: "fault", subject: "api", fault: "down" },
+          demo: [{ kind: "fault", subject: "api", fault: "down" }],
+        },
+        { ...mobileApi.steps[0], id: "watch", check: { kind: "processed", subject: "api", atLeast: 1 }, demo: [] },
+      ],
+    };
+    saveProgress(tutorial, 2, false);
+    const s = sandbox(tutorial, named());
+    const session = s.hostState.session;
+    s.hostState.session = null as unknown as SessionHost;
+    s.hostState.canvas.editor.getSelection = () => ({ nodeIds: [], edgeIds: [], groupIds: [] });
+    const run = vi.fn();
+    s.runner.send({ type: "resume" });
+    await vi.waitFor(() => expect(s.hostState.canvas.live).toBe(true));
+    // Resume must replay the fault after going Live, even while the lazy session is absent.
+    await Promise.resolve();
+    expect(run).not.toHaveBeenCalled();
+    if (cancelled) s.runner.send({ type: "exit" });
+    s.hostState.session = session;
+    s.publish();
+    await Promise.resolve();
+    expect(run).not.toHaveBeenCalled();
+    let enabled = false;
+    const action = {
+      id: "sim.kill",
+      section: "simulation",
+      targets: ["node"] as const,
+      modes: ["live"] as const,
+      label: "Kill",
+      enabled: () => enabled,
+      run,
+    };
+    cleanup.push(actionRegistry.register([action]));
+    expect(run).not.toHaveBeenCalled();
+    enabled = true;
+    cleanup.push(actionRegistry.register([action]));
+    await Promise.resolve();
+    expect(run).toHaveBeenCalledTimes(cancelled ? 0 : 1);
+  },
+);
+
+it("ends active slow motion and waits for simulation switching before Restart", async () => {
+  const s = sandbox();
+  const runSimulation = vi.fn(() => !s.hostState.session.disabledHint);
+  s.host.runSimulation = runSimulation;
+  const runner = createTutorialRunner(
+    { ...mobileApi, start: { example: "retry-storm", simulation: "demo" } },
+    { close: vi.fn(), host: s.host, initial: named() },
+  );
+  cleanup.push(runner.connect());
+  runner.send({ type: "start" });
+  runSimulation.mockClear();
+  const end = vi.fn();
+  s.hostState.session = {
+    ...s.hostState.session,
+    disabledHint: "Slow motion",
+    slowmo: {
+      getState: () => ({ status: "on" }),
+      subscribe: () => () => {},
+      end,
+    } as unknown as SessionHost["slowmo"],
+  };
+  s.publish();
+  runner.send({ type: "restart" });
+  expect(end).toHaveBeenCalledOnce();
+  expect(runSimulation).not.toHaveBeenCalled();
+  s.hostState.session = { ...s.hostState.session, disabledHint: undefined };
+  s.publish();
+  await Promise.resolve();
+  expect(runSimulation).toHaveBeenCalledExactlyOnceWith("demo");
+  expect(runSimulation).toHaveReturnedWith(true);
+});

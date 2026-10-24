@@ -5,10 +5,10 @@ import {
   deleteLibraryDiagram,
   duplicateLibraryDiagram,
   renameLibraryDiagram,
-  newDraft,
   getDiagramIdentity,
   TUTORIAL_SLUG,
 } from "../lib/diagramIO";
+import { diagramOpenActions } from "../lib/openDiagram";
 import { showDiagram } from "../lib/urlState";
 import { Icon } from "../components/Icon";
 import { Dialog } from "../interop/ui/Dialog";
@@ -125,10 +125,9 @@ function Running({
   const library = useLibrary();
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [libraryError, setLibraryError] = useState<string | null>(null);
-  const newDiagram = () => {
-    newDraft();
-    window.location.assign("?view=canvas");
-  };
+  const [libraryUndo, setLibraryUndo] = useState<{ message: string; run: () => void } | null>(null);
+  const openCopy = tutorialRoute.openDiagram;
+  const { openDiagram, openShared, newDiagram } = diagramOpenActions(TUTORIAL_SLUG, openCopy);
   const libraryAction = (action: string, operation: () => void) => {
     setLibraryError(null);
     try {
@@ -141,9 +140,6 @@ function Running({
       setLibraryError(message);
       toast.error(message);
     }
-  };
-  const openCopy = (slug: string) => {
-    window.location.assign(`?view=canvas&example=${encodeURIComponent(slug)}`);
   };
   const saveCopy = () => {
     const diagram = paletteHost.get().canvas?.editor.getDiagram();
@@ -161,12 +157,8 @@ function Running({
     view: "canvas",
     slug: TUTORIAL_SLUG,
     canvas,
-    openDiagram: (diagram) => {
-      const slug = createLibraryDiagram(diagram);
-      openCopy(slug);
-      return slug;
-    },
-    openShared: (diagram) => paletteHost.get().canvas?.editor.applyDiagram(diagram),
+    openDiagram,
+    openShared,
     isPublicExample: () => false,
   });
   // File Save / Save as explicitly keeps a library copy. No tutorial edit auto-saves.
@@ -280,6 +272,7 @@ function Running({
           entries={library.entries}
           current={TUTORIAL_SLUG}
           error={libraryError}
+          undo={libraryUndo}
           onClose={() => setLibraryOpen(false)}
           onOpen={openCopy}
           onNew={newDiagram}
@@ -292,16 +285,17 @@ function Running({
           onDelete={(slug) => {
             libraryAction("delete", () => {
               const undo = deleteLibraryDiagram(slug);
-              toast.info(t("library.deleted", { title: library.entries.find((e) => e.slug === slug)?.title ?? "" }), {
-                action: {
-                  label: t("shortcuts.undo"),
-                  run: () => {
-                    libraryAction("restore", () => {
-                      if (!undo()) throw new Error(t("library.restoreFull"));
-                    });
-                  },
-                  testId: "tutorial-undo-delete",
-                },
+              const message = t("library.deleted", {
+                title: library.entries.find((e) => e.slug === slug)?.title ?? "",
+              });
+              const restore = () =>
+                libraryAction("restore", () => {
+                  if (!undo()) throw new Error(t("library.restoreFull"));
+                  setLibraryUndo(null);
+                });
+              setLibraryUndo({ message, run: restore });
+              toast.info(message, {
+                action: { label: t("shortcuts.undo"), run: restore, testId: "delete-undo" },
               });
             });
           }}

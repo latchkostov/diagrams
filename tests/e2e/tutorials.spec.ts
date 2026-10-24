@@ -1,5 +1,15 @@
+import { deflateRawSync } from "node:zlib";
 import type { Page } from "@playwright/test";
-import { test, expect, expectNoErrors, gotoCanvas, pageLoadTimeout, fitDiagram } from "./fixtures";
+import {
+  test,
+  expect,
+  expectNoErrors,
+  gotoCanvas,
+  pageLoadTimeout,
+  fitDiagram,
+  pauseClock,
+  waitForCameraIdle,
+} from "./fixtures";
 import { tutorialIds } from "../../src/tutorials/catalog/ids";
 import type { ResolvedUiStep } from "../../src/tutorials/solution";
 import { expectNoViolations } from "./a11y-helpers";
@@ -238,7 +248,7 @@ test("example start waits for loading and recovers from a failed download", asyn
     release = resolve;
   });
   let attempts = 0;
-  await page.route(/\/assets\/retry-storm-[^/]+\.js$/, async (route) => {
+  await page.route(/\/(?:assets\/retry-storm-[^/]+\.js|src\/examples\/retry-storm\.json)(?:\?.*)?$/, async (route) => {
     attempts++;
     if (attempts === 1) {
       await held;
@@ -248,6 +258,7 @@ test("example start waits for loading and recovers from a failed download", asyn
   await page.goto("./?tutorial=lab-tutorial-runtime");
   await expect(page.getByTestId("view-loading")).toBeVisible({ timeout: pageLoadTimeout() });
   await expect(page.getByTestId("tutorial-start")).toHaveCount(0);
+  await expect.poll(() => attempts).toBe(1);
   release();
   await expect(page.getByTestId("tutorial-load-retry")).toBeVisible();
   await page.getByTestId("tutorial-load-retry").click();
@@ -508,4 +519,123 @@ test("clicking Go live finishes a matching rename without restoring label focus"
   await expect
     .poll(() => page.evaluate(() => document.activeElement?.getAttribute("data-testid")))
     .not.toBe("inspector-field-label");
+});
+
+const importedDiagram = {
+  format: "diagrams/v1",
+  title: "Imported practice diagram",
+  nodes: [{ id: "imported-api", stencil: "generic.service", label: "Imported API", x: 0, y: 0 }],
+  edges: [],
+};
+
+for (const policy of ["marked", "default"] as const)
+  test(`tutorial file imports preserve privacy (${policy})`, async ({ page }) => {
+    if (policy === "default")
+      await page.addInitScript(() => localStorage.setItem("diagrams.newDiagramsPrivate.v1", "1"));
+    await openTutorial(page, "lab-tutorial-runtime");
+    await page.getByTestId("tutorial-start").click();
+    await page.getByTestId("import-input").setInputFiles({
+      name: "practice.diagram.json",
+      mimeType: "application/json",
+      buffer: Buffer.from(JSON.stringify({ ...importedDiagram, ...(policy === "marked" ? { private: true } : {}) })),
+    });
+    await expect(page.getByTestId("tutorial-app")).toHaveCount(0);
+    await expect(page.getByTestId("diagram-title")).toHaveText(importedDiagram.title);
+    await expect(page.getByTestId("private-badge")).toBeVisible();
+    const entries = await savedEntries(page);
+    expect(entries).toHaveLength(1);
+    expect(entries[0]).toMatchObject({ private: true });
+    await page.reload();
+    await expect(page.getByTestId("private-badge")).toBeVisible({ timeout: pageLoadTimeout() });
+  });
+
+test("tutorial share-link imports persist privately before opening and retain subsequent edits", async ({ page }) => {
+  await openTutorial(page, "lab-tutorial-runtime");
+  await page.getByTestId("tutorial-start").click();
+  await page.getByTestId("file-button").click();
+  await page.getByTestId("file-import-from").click();
+  await page.getByTestId("import-share-link").click();
+  const payload = deflateRawSync(JSON.stringify({ ...importedDiagram, private: true })).toString("base64url");
+  await page.getByTestId("open-link-input").fill(`#d=${payload}`);
+  await page.getByTestId("open-link-submit").click();
+  await expect(page.getByTestId("tutorial-app")).toHaveCount(0);
+  await expect(page.getByTestId("example-picker")).toHaveAttribute("data-diagram-slug", "shared");
+  await expect(page.getByTestId("private-badge")).toBeVisible();
+  await page.reload();
+  await expect(page.getByTestId("node-imported-api")).toBeVisible({ timeout: pageLoadTimeout() });
+  await page.getByTestId("node-imported-api").dblclick();
+  await page.getByTestId("inspector-field-label").fill("Kept API");
+  await page.keyboard.press("Enter");
+  await expect
+    .poll(() =>
+      page.evaluate(() => {
+        return Object.keys(localStorage).some(
+          (key) => key.startsWith("diagrams.autosave.") && localStorage.getItem(key)?.includes("Kept API"),
+        );
+      }),
+    )
+    .toBe(true);
+  await page.reload();
+  await expect(page.getByTestId("node-imported-api")).toContainText("Kept API", { timeout: pageLoadTimeout() });
+  await expect(page.getByTestId("private-badge")).toBeVisible();
+});
+
+test("tutorial library deletion keeps keyboard Undo inside the dialog", async ({ page }) => {
+  await openTutorial(page, "lab-tutorial-runtime");
+  await page.getByTestId("tutorial-start").click();
+  await page.keyboard.press("ControlOrMeta+Shift+s");
+  await expect(page.getByTestId("tutorial-open-copy")).toBeVisible();
+  const [entry] = await savedEntries(page);
+  await page.getByTestId("file-button").click();
+  await page.getByTestId("file-library").click();
+  await page.getByTestId(`library-delete-${entry.slug}`).focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByTestId(`library-item-${entry.slug}`)).toHaveCount(0);
+  await expect(page.getByTestId("library-delete-undo")).toBeVisible();
+  for (let i = 0; i < 24; i++) {
+    await page.keyboard.press("Tab");
+    if (await page.getByTestId("library-delete-undo").evaluate((button) => button === document.activeElement)) break;
+  }
+  await expect(page.getByTestId("library-delete-undo")).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(page.getByTestId(`library-item-${entry.slug}`)).toBeVisible();
+  await expect(page.getByTestId("library-delete-undo")).toHaveCount(0);
+  expect(await savedEntries(page)).toHaveLength(1);
+});
+
+test("New diagram from a tutorial explicitly opens the blank draft after visiting a saved diagram", async ({
+  page,
+}) => {
+  await openTutorial(page, "lab-tutorial-runtime");
+  await page.getByTestId("tutorial-start").click();
+  await page.keyboard.press("ControlOrMeta+Shift+s");
+  await page.getByTestId("tutorial-open-copy").click();
+  await expect(page.getByTestId("node-payments")).toBeVisible();
+  await openTutorial(page, "lab-tutorial-runtime");
+  await page.getByTestId("tutorial-start").click();
+  await page.getByTestId("file-button").click();
+  await page.getByTestId("file-new").click();
+  await expect(page.getByTestId("example-picker")).toHaveAttribute("data-diagram-slug", "new");
+  await expect(page.getByTestId("node-payments")).toHaveCount(0);
+  expect(await savedEntries(page)).toHaveLength(1);
+});
+
+test("tutorial Restart ends slow motion and restarts its saved simulation", async ({ page }) => {
+  await page.clock.install();
+  await openTutorial(page, "lab-tutorial-runtime");
+  await page.getByTestId("tutorial-start").click();
+  await expect(strip(page)).toHaveAttribute("data-phase", "finished");
+  await waitForCameraIdle(page);
+  await page.getByTestId("node-shop").click({ button: "right" });
+  await page.getByTestId("context-menu-item-sim.slowmo-from").click();
+  await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "slowmo");
+  await pauseClock(page);
+  const before = Number(await page.getByTestId("live-canvas").getAttribute("data-sim-time"));
+  expect(before).toBeGreaterThan(0);
+  await page.getByTestId("tutorial-restart").click();
+  await expect(page.getByTestId("live-play")).not.toHaveAttribute("data-state", "slowmo");
+  await expect
+    .poll(async () => Number(await page.getByTestId("live-clock").getAttribute("data-ms")))
+    .toBeLessThan(before);
+  await expectNothingSaved(page);
 });

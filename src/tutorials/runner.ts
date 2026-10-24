@@ -226,7 +226,7 @@ export function createTutorialRunner(
       }
       case "fault": {
         const id = demo.edge ? edge(demo.edge)?.id : subjects[demo.subject];
-        if (!id || !h.canvas?.live) return;
+        if (!id || !h.canvas?.live || !h.session) return false;
         const group = !!ed.getDiagram().groups?.some((g) => g.id === id);
         const target = demo.edge ? "edge" : group ? "group" : "node";
         const action =
@@ -256,8 +256,8 @@ export function createTutorialRunner(
           current,
           subjects,
         );
-        if (active === !demo.restore) return;
-        find(
+        if (active === !demo.restore) return true;
+        const apply = find(
           actionRegistry.build({
             editor: ed,
             mode: "live",
@@ -266,8 +266,10 @@ export function createTutorialRunner(
             ...(demo.edge ? { edgeId: id } : group ? { groupId: id } : { nodeId: id }),
             selection: ed.getSelection(),
           }),
-        )?.();
-        return;
+        );
+        if (!apply) return false;
+        apply();
+        return true;
       }
       case "add": {
         const after = demo.after ? subjects[demo.after] : undefined;
@@ -311,7 +313,12 @@ export function createTutorialRunner(
     for (const i of steps) {
       if (run !== generation) return;
       if (state.observed[i]) continue;
-      for (const d of tutorial.steps[i].demo) perform(d);
+      for (const d of tutorial.steps[i].demo) {
+        // Live publishes before its lazy session registers actions. Retry on session/registry changes.
+        if (d.kind === "fault") {
+          if (!(await until(() => perform(d) !== false, run))) return;
+        } else perform(d);
+      }
       // The next step's demo may need this one's node: wait for the canvas to report it.
       if (tutorial.steps[i].demo.length && !(await until(() => state.observed[i], run))) return;
     }
@@ -339,10 +346,19 @@ export function createTutorialRunner(
         const ed = editor();
         if (!ed) return;
         const simulation = typeof tutorial.start !== "function" ? tutorial.start.simulation : undefined;
+        h.session?.slowmo?.end();
         if (!simulation && h.canvas?.live) h.live?.toggle();
         host.cancelRun?.();
         if (initial) ed.applyDiagram(structuredClone(initial));
-        if (simulation) host.runSimulation?.(simulation);
+        if (simulation) {
+          const run = generation;
+          const ready = () => !host.get().session?.disabledHint;
+          if (ready()) host.runSimulation?.(simulation);
+          else
+            void until(ready, run).then((ok) => {
+              if (ok) host.runSimulation?.(simulation);
+            });
+        }
         return;
       }
       case "reveal":
@@ -419,10 +435,12 @@ export function createTutorialRunner(
     };
     const offHost = host.subscribe(sync);
     const offCanvas = canvasInteraction.subscribe(sync);
+    const offActions = actionRegistry.subscribe(observe);
     sync();
     return () => {
       offHost();
       offCanvas();
+      offActions();
       offSession?.();
       offSlow?.();
       generation++;
