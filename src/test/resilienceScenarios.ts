@@ -17,12 +17,29 @@ export const arbResilienceDiagram = fc
       ),
     }),
     fc.constantFrom(0, 0.1, 0.5, 1),
+    fc.option(
+      fc.record({
+        limit: fc.integer({ min: 1, max: 12 }),
+        order: fc.constantFrom("fifo" as const, "lifo" as const),
+        whenFull: fc.constantFrom("reject-new" as const, "drop-oldest" as const),
+        maxWaitMs: fc.integer({ min: 0, max: 400 }),
+      }),
+      { nil: undefined },
+    ),
   )
-  .map(([base, policy, failureRate]) => {
+  .map(([base, policy, failureRate, queue]) => {
     const diagram = structuredClone(base.diagram);
     diagram.planning!.revision = "p3-w2";
-    for (const node of diagram.nodes) if (node.id.startsWith("tier")) node.props!.failureRate = failureRate;
-    for (const edge of diagram.edges)
+    for (const node of diagram.nodes)
+      if (node.id.startsWith("tier")) {
+        node.props!.failureRate = failureRate;
+        node.props!.queue = queue;
+      }
+    for (const edge of diagram.edges) {
+      edge.props = {
+        ...edge.props,
+        priority: failureRate >= 0.5 ? "critical" : failureRate > 0 ? "sheddable" : "normal",
+      };
       if (edge.kind === "sync") {
         const caller = (edge.props?.caller ?? {}) as import("../sim/types").EdgeSimProps["caller"];
         edge.props = {
@@ -35,5 +52,6 @@ export const arbResilienceDiagram = fc
           },
         };
       }
+    }
     return { ...base, diagram };
   });

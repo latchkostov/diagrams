@@ -186,10 +186,13 @@ function* play(
   if (clock.now() > clock.deadline) return undefined;
   const scale = state.scale ?? 1;
   const real = (v: number | undefined) => Math.round(toRealUnits(v ?? 0, scale));
+  const snapshot = run.engine.snapshot();
   const dropped: Counts["dropped"] = new Map();
   const failed = new Set<string>();
   for (const n of diagram.nodes) {
-    const count = real(run.engine.measure({ node: n.id, field: "dropped" }));
+    const count = real(
+      (run.engine.measure({ node: n.id, field: "dropped" }) ?? 0) + (snapshot.nodes[n.id]?.shedLost ?? 0),
+    );
     const l = lost.get(n.id);
     if (count > 0) dropped.set(n.id, { count, down: real(l?.down), fails: real(l?.fails) });
     if ((run.engine.measure({ node: n.id, field: "failed" }) ?? 0) > 0) failed.add(n.id);

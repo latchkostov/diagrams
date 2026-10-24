@@ -586,6 +586,70 @@
         "description": "A circuit breaker fails fast while Payments drains abandoned work, then tests recovery with five calls."
       },
       {
+        "id": "shed-load",
+        "title": "Shed load at Payments",
+        "seed": 7,
+        "scale": 1,
+        "durationMs": 60000,
+        "setup": { "props": { "payments": { "queue": { "limit": 60, "order": "lifo", "maxWaitMs": 200 } } } },
+        "traffic": [
+          {
+            "id": "checkouts",
+            "node": "shop",
+            "shape": { "kind": "constant", "ratePerSec": 300, "durationMs": 60000 }
+          }
+        ],
+        "timeline": [
+          { "atMs": 1000, "action": { "do": "fault", "fault": { "kind": "fail", "node": "payments", "rate": 0.1 } } },
+          { "atMs": 2000, "action": { "do": "fault", "fault": { "kind": "fail", "node": "payments", "rate": 0 } } },
+          { "atMs": 3000, "action": { "do": "fault", "fault": { "kind": "slow", "node": "payments", "factor": 5 } } },
+          { "atMs": 8000, "action": { "do": "fault", "fault": { "kind": "slow", "node": "payments", "factor": 1 } } },
+          {
+            "atMs": 1200,
+            "action": { "do": "note", "text": "Retries absorb a brief blip. Payments keeps a bounded queue for the longer slowdown.", "focus": ["payments", "checkout"] }
+          },
+          {
+            "atMs": 3500,
+            "action": { "do": "note", "text": "Payments refuses excess work with 503. The queue stays bounded instead of building abandoned work.", "focus": ["payments", "checkout"] }
+          },
+          {
+            "atMs": 9000,
+            "action": { "do": "note", "text": "Payments is fast again. Fresh requests can succeed because stale work is shed.", "focus": ["payments", "checkout"] }
+          },
+          {
+            "atMs": 15000,
+            "action": { "do": "note", "text": "Load shedding keeps the queue bounded. Callers receive fast 503 refusals while capacity is unavailable.", "focus": ["payments", "checkout"] }
+          }
+        ],
+        "expectations": [
+          {
+            "id": "goodput",
+            "label": "Shop goodput â‰¥ 270/s at the end",
+            "metric": { "node": "shop", "field": "goodput" },
+            "op": ">=",
+            "value": 270,
+            "when": "end"
+          },
+          {
+            "id": "backlog",
+            "label": "Payments backlog < 100 at the end",
+            "metric": { "node": "payments", "field": "backlog" },
+            "op": "<",
+            "value": 100,
+            "when": "end"
+          },
+          {
+            "id": "amplification",
+            "label": "Checkout attempts per request < 1.5 at the end",
+            "metric": { "node": "checkout", "field": "amplification" },
+            "op": "<",
+            "value": 1.5,
+            "when": "end"
+          }
+        ],
+        "description": "Payments keeps at most 60 waiting requests, serves newest first and sheds work waiting over 200 ms. Fast 503 refusals bound abandoned work during the slowdown; goodput returns after it clears."
+      },
+      {
         "id": "sim-1",
         "title": "Parity rush",
         "durationMs": 20000,

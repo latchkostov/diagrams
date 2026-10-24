@@ -46,6 +46,8 @@ import { activeUnits } from "../stencils/netDevices";
 import { pushDue, popDue, removeDue } from "./dueHeap";
 import { SampledLedger, type Reservation } from "./ledger";
 import { raceReply, settleOnce, type Attempt, type LogicalBranch, type LogicalCall } from "./attempt";
+import { ShedQueue } from "./shedQueue";
+import { queueGrant } from "./admission";
 import { Deque } from "./deque";
 import { createLineage, type Family } from "./lineage";
 import {
@@ -240,6 +242,10 @@ interface Delivery {
   original: Message;
 }
 interface Work extends ExecutionWork<Group> {
+  priority?: import("./types").QueuePriority;
+  queueProtected?: boolean;
+  queueSize?: number;
+  queuedAt?: number;
   /** Dots this work added to its node's pending, continuation or staged units when it last queued there (set on entry). */
   queuedUnits?: number;
   /** A join's continuation is a fresh attempt. It carries the join's settled cause explicitly and replies
@@ -303,7 +309,7 @@ interface Node {
   outgoing: Edge[];
   dlq?: Edge;
   groups: Group[];
-  pending: Deque<Work>;
+  pending: Deque<Work> | ShedQueue<Work>;
   resume: Deque<Work>;
   takeovers: Work[];
   frees: boolean;
@@ -336,6 +342,7 @@ interface Node {
   incomingUnits: number;
   pendingUnits: number;
   stagedUnits: number;
+  queueUnits: number;
   /** Dots (unitsOf) of `working`, kept with it so occupancy reads stay constant-time. */
   workingUnits: number;
   /** Dots (unitsOf) of continuations queued in `resume`. */
@@ -349,6 +356,8 @@ interface Node {
   timeoutLosses: Map<string, number>;
   /** Stopped by a deny rule on an outgoing connection (on purpose, so never `dropped`). */
   blocked: number;
+  shedLost: number;
+  shed: number;
   rejected: number;
   rejectionReasons: Record<string, number>;
   throughput: number;
@@ -407,6 +416,7 @@ interface Logical {
   visualAt?: number;
 }
 interface Edge {
+  priority?: import("./types").QueuePriority;
   breaker?: { policy: BreakerPolicy; state: BreakerState };
   policy?: CallPolicy;
   poolUsed: number;
@@ -471,6 +481,14 @@ function isBroker(node: Node): boolean {
 }
 
 // Runner seed configuration for reused native engines, without widening the public contract.
+const eventObservers = new WeakMap<SimEngine, (event: SimEvent) => void>();
+/** Test-only lossless event tap; the shipped UI keeps its bounded ring. */
+export function observeEngineEvents(engine: SimEngine, observer: (event: SimEvent) => void): () => void {
+  if (!TEST_ORACLES) throw new Error("Event observation is test-only");
+  eventObservers.set(engine, observer);
+  return () => eventObservers.delete(engine);
+}
+
 const seedSetters = new WeakMap<SimEngine, (seed: number) => void>();
 export function seedEngine(engine: SimEngine, seed: number): void {
   seedSetters.get(engine)?.(seed);
@@ -751,6 +769,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       ...(message ? { messageId: message.id } : {}),
       text: `${node.label} ${kind}${message ? ` ${message.type} #${message.id}` : ""}${detail ? ` (${detail})` : ""}`,
     };
+    if (TEST_ORACLES) eventObservers.get(engine)?.(event);
     if (events.length < EVENT_CAP) events.push(event);
     else {
       events[eventHead] = event;
@@ -1152,13 +1171,27 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     node.incomingUnits = --node.incoming ? node.incomingUnits - dotsOf(message) : 0;
   }
 
+  const queueEligible = (work: Work) =>
+    !work.delivery && !work.continuation && work.workedAt === undefined && !work.recoveryCapacity;
+
   function enqueue(node: Node, work: Work): void {
+    work.queueProtected = !queueEligible(work);
+    work.queuedAt ??= time;
+    if (node.props.queue && queueEligible(work)) {
+      work.cohort ??= sizeOf(work.message);
+      work.message = { ...work.message, represented: execution.cohort(work) };
+      node.queueUnits += work.queueSize = execution.cohort(work);
+    }
     node.pendingUnits += work.queuedUnits = dotsOf(work.message);
     node.pending.push(work);
   }
 
-  function dequeue(node: Node, queue: Deque<Work>): Work {
-    const work = queue.shift()!;
+  function dequeue(node: Node, queue: Deque<Work> | ShedQueue<Work>, back = false): Work {
+    const work = (back ? queue.pop() : queue.shift())!;
+    if (queue === node.pending && work.queueSize !== undefined) {
+      node.queueUnits = settled(node.queueUnits - work.queueSize);
+      work.queueSize = undefined;
+    }
     if (queue === node.pending) node.pendingUnits = node.pending.length ? node.pendingUnits - work.queuedUnits! : 0;
     else if (queue === node.resume) node.resumeUnits = node.resume.length ? node.resumeUnits - work.queuedUnits! : 0;
     return work;
@@ -1429,6 +1462,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           admissionChanged ? undefined : previous.admission,
         ),
       );
+      if (node.props.queue) classifies = true;
+      if ("queue" in patch || (previous.queue && !node.props.queue)) configureShedQueue(node);
       if (node.fleet) {
         if (scale > 1 && node.props.concurrency < previous.concurrency)
           for (const work of [...node.working, ...node.takeovers])
@@ -2842,6 +2877,139 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     gone(node, work.message, "reject", reason);
   }
 
+  function shedWork(node: Node, work: Work, reason: string): void {
+    const dots = dotsOf(work.message);
+    node.shed += dots;
+    if (work.message.returnCall === undefined && !work.via?.sync) {
+      node.shedLost += dots;
+      opts.onLoss?.({ node: node.id, connection: work.via?.id, reason, dots });
+    }
+    refuse(node, work, reason, "shed", 503);
+  }
+
+  /** Only fresh pushed work competes for this queue; broker deliveries and continuations retain ownership. */
+  function admitPushed(node: Node, work: Work): void {
+    const policy = node.props.queue!;
+    work.priority = work.via?.priority ?? "normal";
+    // Work that can start immediately is not waiting and does not spend queue room.
+    admitPending(node);
+    if (
+      node.status === "up" &&
+      !node.pending.length &&
+      !node.resume.length &&
+      slots(node) - executionOccupancy(node) + 1e-9 >= Math.min(1, sizeOf(work.message))
+    ) {
+      enqueue(node, work);
+      admitPending(node);
+      return;
+    }
+    if (!(node.pending instanceof ShedQueue)) {
+      const queue = new ShedQueue<Work>();
+      for (const pending of node.pending) queue.push(pending);
+      node.pending = queue;
+    }
+    const limit = policy.limit ?? Infinity;
+    let grant = queueGrant(node.queueUnits, limit, sizeOf(work.message), true);
+    while (grant + 1e-9 < sizeOf(work.message)) {
+      const oldest = policy.whenFull === "drop-oldest";
+      const victim = node.pending.evict(work, oldest, false);
+      if (!victim) break;
+      const excess = node.queueUnits + sizeOf(work.message) - limit;
+      evictQueued(node, victim, excess, oldest);
+      grant = queueGrant(node.queueUnits, limit, sizeOf(work.message), true);
+    }
+    if (!grant) {
+      shedWork(node, work, "shed: queue full");
+      return;
+    }
+    if (grant + 1e-9 < sizeOf(work.message)) splitShed(node, work, grant);
+    enqueue(node, work);
+  }
+
+  function evictQueued(node: Node, victim: Work, excess: number, oldest: boolean): void {
+    if (sizeOf(victim.message) > excess + 1e-9) {
+      splitShed(node, victim, sizeOf(victim.message) - excess);
+      node.pendingUnits -= excess / scale;
+      node.queueUnits = settled(node.queueUnits - excess);
+      victim.queueSize! -= excess;
+      victim.queuedUnits! -= excess / scale;
+    } else {
+      (node.pending as ShedQueue<Work>).evictLowest(oldest);
+      node.pendingUnits = node.pending.length ? node.pendingUnits - victim.queuedUnits! : 0;
+      node.queueUnits = settled(node.queueUnits - (victim.queueSize ?? 0));
+      victim.queueSize = undefined;
+      shedWork(node, victim, "shed: queue full");
+    }
+  }
+
+  /** Reindex once per configuration edit, including work already waiting when a policy is enabled. */
+  function configureShedQueue(node: Node): void {
+    const queue = node.props.queue ? new ShedQueue<Work>() : new Deque<Work>();
+    node.queueUnits = 0;
+    for (const work of node.pending) {
+      work.queueProtected = !queueEligible(work);
+      work.priority ??= work.via?.priority ?? "normal";
+      work.queueSize = undefined;
+      if (node.props.queue && queueEligible(work)) {
+        work.cohort ??= sizeOf(work.message);
+        work.message = { ...work.message, represented: execution.cohort(work) };
+        node.queueUnits += work.queueSize = execution.cohort(work);
+      }
+      queue.push(work);
+    }
+    node.pending = queue;
+    if (!(queue instanceof ShedQueue)) return;
+    const oldest = node.props.queue?.whenFull === "drop-oldest";
+    const limit = node.props.queue?.limit ?? Infinity;
+    while (node.queueUnits > limit + 1e-9) {
+      const victim = queue.evictLowest(oldest, false);
+      if (!victim) break;
+      evictQueued(node, victim, node.queueUnits - limit, oldest);
+    }
+  }
+
+  function splitShed(node: Node, work: Work, kept: number): void {
+    const original = work.message;
+    const sibling = { ...copy(node, original), attempts: original.attempts, represented: sizeOf(original) - kept };
+    work.message = { ...original, represented: kept };
+    if (work.cohort !== undefined) work.cohort = kept;
+    if (work.attempt) work.attempt.message = work.message;
+    // As with half-open probes, the retained branch determines the caller cohort's one outcome.
+    // The refused sibling cannot settle it before its admitted requests finish.
+    if (original.returnCall !== undefined && work.via) {
+      const call = calls.get(original.returnCall),
+        branch = call?.branches.get(work.via.id);
+      if (
+        call &&
+        !call.attempt.outcome &&
+        branch?.state === "sent" &&
+        (branch.attempt ?? 1) === (original.callAttempt ?? 1)
+      ) {
+        creditRoute(work.message, original);
+        branch.represented = kept;
+        const deadline = branch.deadlineEvent === undefined ? undefined : logicalIndices.get(branch.deadlineEvent);
+        if (deadline !== undefined) logical[deadline].represented = kept;
+        work.via.calls.failed += dotsOf(sibling);
+        if (branch.breakerPermit && work.via.breaker) {
+          const permit = { ...branch.breakerPermit, units: sizeOf(sibling) };
+          breakerRecord(
+            work.via.breaker.state,
+            work.via.breaker.policy,
+            time,
+            "shed",
+            time - (branch.attemptStartedAt ?? time),
+            permit,
+          );
+          branch.breakerPermit.units -= permit.units;
+        }
+      }
+      sibling.returnCall = undefined;
+      sibling.request = undefined;
+      sibling.routeCohort = undefined;
+    }
+    shedWork(node, { message: sibling, via: work.via, remaining: 0 }, "shed: queue full");
+  }
+
   /**
    * The throttle split: this work keeps the admitted partial dot, and a sibling partial dot of the refused
    * requests is rejected at the same instant. The sibling has no delivery of its own: the admitted part keeps
@@ -2983,12 +3151,14 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       return;
     }
     if (node.status === "paused") {
-      admit(node, work);
+      if (node.props.queue && !work.delivery) admitPushed(node, work);
+      else admit(node, work);
       return;
     }
     if (node.role === "source" || node.role === "sink" || node.role === "none") {
       finish(node, work);
-    } else admit(node, work);
+    } else if (node.props.queue && !work.delivery) admitPushed(node, work);
+    else admit(node, work);
   }
 
   /**
@@ -3444,7 +3614,18 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           resume && !(admittedPending && !resume.threadLease && !ledger.get(resume.thread))
             ? node.resume
             : node.pending;
-        const next = queue.peek()!;
+        const back = queue === node.pending && node.props.queue?.order === "lifo";
+        const next = (back ? queue.peekBack() : queue.peek())!;
+        if (
+          queue === node.pending &&
+          !next.delivery &&
+          next.queuedAt !== undefined &&
+          node.props.queue?.maxWaitMs !== undefined &&
+          time - next.queuedAt > node.props.queue.maxWaitMs
+        ) {
+          shedWork(node, dequeue(node, queue, back), "shed: waited too long");
+          continue;
+        }
         // Admission needs room for at least min(1, N) real units of the next cohort.
         if (
           node.status !== "down" &&
@@ -3486,7 +3667,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           endResources(node, next);
           break;
         }
-        const work = dequeue(node, queue);
+        const work = dequeue(node, queue, back);
         if (work.continuation) wakeDelivery(work);
         if (
           !work.continuation &&
@@ -4046,6 +4227,13 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         time,
         inSystem,
         edges,
+        queues: [...nodes.values()]
+          .filter((n) => n.props.queue)
+          .map((n) => ({
+            queued: [...n.pending].filter(queueEligible).reduce((sum, work) => sum + execution.cohort(work), 0),
+            accounted: n.queueUnits,
+            limit: n.props.queue?.limit,
+          })),
         calls: calls.values(),
         logical,
         budgetDecisions,
@@ -4153,7 +4341,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       node.resumeUnits = 0;
       node.takeovers = [];
       node.staged = 0;
-      node.pendingUnits = node.stagedUnits = 0;
+      node.pendingUnits = node.stagedUnits = node.queueUnits = 0;
       node.working.length = 0;
       node.workingUnits = 0;
       node.calls.clear();
@@ -4181,6 +4369,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       node.outageDropped = 0;
       node.timeoutLosses.clear();
       node.blocked = 0;
+      node.shedLost = 0;
+      node.shed = 0;
       node.rejected = 0;
       node.rejectionReasons = Object.create(null);
       node.holdUntil = 0;
@@ -4311,7 +4501,10 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         latencyBudget = copy.latencyBudget;
         nodes.clear();
         for (const [id, node] of copy.nodes) {
-          Object.setPrototypeOf(node.pending, Deque.prototype);
+          if ("queues" in node.pending) {
+            Object.setPrototypeOf(node.pending, ShedQueue.prototype);
+            (node.pending as ShedQueue<Work>).restore();
+          } else Object.setPrototypeOf(node.pending, Deque.prototype);
           Object.setPrototypeOf(node.resume, Deque.prototype);
           for (const group of node.groups) {
             Object.setPrototypeOf(group.pending, Deque.prototype);
@@ -4471,10 +4664,13 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           activeReplicas: 1,
           outgoing: [],
           groups: [],
-          pending: new Deque(),
+          pending: resolveProps(role, input.label, rawProps, input.stencil, planning).queue
+            ? new ShedQueue<Work>()
+            : new Deque<Work>(),
           staged: 0,
           pendingUnits: 0,
           stagedUnits: 0,
+          queueUnits: 0,
           incomingUnits: 0,
           working: [],
           workingUnits: 0,
@@ -4511,6 +4707,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           outageDropped: 0,
           timeoutLosses: new Map(),
           blocked: 0,
+          shedLost: 0,
+          shed: 0,
           rejected: 0,
           rejectionReasons: Object.create(null),
           throughput: 0,
@@ -4526,6 +4724,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           targets: new Map(),
         });
       }
+      if (retries() && [...nodes.values()].some((n) => n.props.queue)) classifies = true;
       routes = compileRoutes(planning);
       const edgeProps = routes || waits() ? new Map(diagram.edges.map((e) => [e.id, e.props])) : undefined;
       const edgeById = new Map<string, Edge>();
@@ -4535,6 +4734,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           to = nodes.get(input.to)!;
         const edge: Edge = {
           ...input,
+          priority: edgeProps?.get(input.id)?.priority as import("./types").QueuePriority,
           from,
           to,
           delivered: 0,
@@ -4679,7 +4879,15 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           dropped: roundDots(node.dropped),
           ...(node.outageDropped ? { outageDropped: roundDots(node.outageDropped) } : {}),
           ...(node.blocked ? { blocked: roundDots(node.blocked) } : {}),
-          ...(node.props.admission || node.table
+          ...(node.props.queue || node.shed
+            ? {
+                shed: roundDots(node.shed),
+                queueDepth: roundDots(node.queueUnits / scale),
+                ...(node.shedLost ? { shedLost: roundDots(node.shedLost) } : {}),
+                ...(node.props.queue?.limit === undefined ? {} : { queueLimit: node.props.queue.limit }),
+              }
+            : {}),
+          ...(node.props.admission || node.table || node.props.queue || node.shed
             ? { rejected: roundDots(node.rejected), rejectionReasons: roundCounts(node.rejectionReasons) }
             : {}),
           ...(node.table ? { routeRejections: roundCounts(node.routeRejections) } : {}),

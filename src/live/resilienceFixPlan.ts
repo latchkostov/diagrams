@@ -1,21 +1,28 @@
 import type { Simulation } from "../model/types";
-import type { EdgeSimProps } from "../sim/types";
+import { stencilRole } from "../stencils/roles";
+import { resolveNodeProps } from "../sim/defaults";
+import type { EdgeSimProps, QueuePolicy } from "../sim/types";
 import { advanceHeadless, createHeadlessRun, startWork, type VerificationContext } from "../sim/headless";
 import { simulationEdges } from "../sim/topology";
 import { estimateTotalMs } from "../sim/simulation";
 import { realSnapshot } from "../sim/units";
 import { recoveryPath, recoveryFault } from "../sim/recoveryEvidence";
-import { RECOMMENDED_RETRY } from "../sim/resiliencePresets";
+import { RECOMMENDED_RETRY, recommendedQueue } from "../sim/resiliencePresets";
 import { THREAD_FIX_LIMITS, THREAD_FIX_WORK, threadFixWork } from "./threadFixPlan";
 import type { TroubleAction } from "./observedTrouble";
 
-export type ResilienceStep = "jitter" | "budget" | "breaker" | "attempts";
+export type ResilienceStep = "jitter" | "budget" | "breaker" | "shedding" | "attempts";
 export type ResilienceFix = Extract<TroubleAction, { kind: "resilience" }>;
 
 /** Cumulative, cheapest first. Preserve the call's outcome and idempotency choices. */
 export function resilienceLadder(
   caller: NonNullable<EdgeSimProps["caller"]>,
-): { step: ResilienceStep; caller: NonNullable<EdgeSimProps["caller"]> }[] {
+  queue?: { node: string; policy: QueuePolicy },
+): {
+  step: ResilienceStep;
+  caller: NonNullable<EdgeSimProps["caller"]>;
+  queue?: { node: string; policy: QueuePolicy };
+}[] {
   if (!caller.retry || caller.retry.maxAttempts < 2) return [];
   const jitter = {
     ...caller,
@@ -33,7 +40,12 @@ export function resilienceLadder(
     { step: "jitter", caller: jitter },
     { step: "budget", caller: budget },
     { step: "breaker", caller: breaker },
-    { step: "attempts", caller: { ...breaker, retry: { ...breaker.retry, maxAttempts: 2 } } },
+    ...(queue ? [{ step: "shedding" as const, caller: breaker, queue }] : []),
+    {
+      step: "attempts",
+      caller: { ...breaker, retry: { ...breaker.retry, maxAttempts: 2 } },
+      ...(queue ? { queue } : {}),
+    },
   ];
 }
 
@@ -141,9 +153,25 @@ export function confirmedResilienceFix({
   try {
     const before = measure(sim);
     if (!before) return;
-    for (const candidate of resilienceLadder(caller)) {
+    const target = effective.nodes.find((n) => n.id === connection.to);
+    const props = target && resolveNodeProps(d, target);
+    const policy =
+      props && !props.admission
+        ? recommendedQueue(caller.deadlineMs ?? undefined, props.latencyMs, props.replicas * props.concurrency)
+        : undefined;
+    for (const candidate of resilienceLadder(
+      caller,
+      target && props && policy && stencilRole(target.stencil) === "processor"
+        ? { node: target.id, policy }
+        : undefined,
+    )) {
       const next = structuredClone(sim);
       next.setup = { ...next.setup, edges: { ...next.setup?.edges, [edge]: { caller: candidate.caller } } };
+      if (candidate.queue)
+        next.setup.props = {
+          ...next.setup.props,
+          [candidate.queue.node]: { ...next.setup.props?.[candidate.queue.node], queue: candidate.queue.policy },
+        };
       const after = measure(next);
       if (!after) return;
       if (recovers(before, after)) return { kind: "resilience", edge, ...candidate };

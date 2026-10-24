@@ -4,7 +4,8 @@
       { "id": "three-quick-retries", "title": "Three quick retries", "playedMs": 60000, "capped": false },
       { "id": "jittered-backoff", "title": "Jittered backoff", "playedMs": 60000, "capped": false },
       { "id": "retry-budget", "title": "A retry budget", "playedMs": 60000, "capped": false },
-      { "id": "circuit-breaker", "title": "A circuit breaker", "playedMs": 60000, "capped": false }
+      { "id": "circuit-breaker", "title": "A circuit breaker", "playedMs": 60000, "capped": false },
+      { "id": "shed-load", "title": "Shed load at Payments", "playedMs": 60000, "capped": false }
     ],
     "unplayed": [],
     "tooBig": [],
@@ -52,7 +53,18 @@
         "count": 30,
         "onPurpose": { "count": 30, "why": "fails" }
       },
-      { "simulation": "A circuit breaker", "node": "orders", "broker": true, "what": "unread", "count": 14123 }
+      { "simulation": "A circuit breaker", "node": "orders", "broker": true, "what": "unread", "count": 14123 },
+      { "simulation": "Shed load at Payments", "node": "shop", "broker": false, "what": "dropped", "count": 1521 },
+      { "simulation": "Shed load at Payments", "node": "checkout", "broker": false, "what": "dropped", "count": 1521 },
+      {
+        "simulation": "Shed load at Payments",
+        "node": "payments",
+        "broker": false,
+        "what": "dropped",
+        "count": 30,
+        "onPurpose": { "count": 30, "why": "fails" }
+      },
+      { "simulation": "Shed load at Payments", "node": "orders", "broker": true, "what": "unread", "count": 16413 }
     ],
     "dropped": [
       {
@@ -83,7 +95,8 @@
     { "node": "payments", "simulation": "Three quick retries", "what": "dropped", "count": 21, "why": "fails" },
     { "node": "payments", "simulation": "Jittered backoff", "what": "dropped", "count": 30, "why": "fails" },
     { "node": "payments", "simulation": "A retry budget", "what": "dropped", "count": 30, "why": "fails" },
-    { "node": "payments", "simulation": "A circuit breaker", "what": "dropped", "count": 30, "why": "fails" }
+    { "node": "payments", "simulation": "A circuit breaker", "what": "dropped", "count": 30, "why": "fails" },
+    { "node": "payments", "simulation": "Shed load at Payments", "what": "dropped", "count": 30, "why": "fails" }
   ],
   "counted": 3,
   "findings": [
@@ -99,13 +112,15 @@
         { "simulation": "Three quick retries", "what": "unread", "count": 894 },
         { "simulation": "Jittered backoff", "what": "unread", "count": 894 },
         { "simulation": "A retry budget", "what": "unread", "count": 8193 },
-        { "simulation": "A circuit breaker", "what": "unread", "count": 14123 }
+        { "simulation": "A circuit breaker", "what": "unread", "count": 14123 },
+        { "simulation": "Shed load at Payments", "what": "unread", "count": 16413 }
       ],
       "evidenceText": [
         "894 left unread in “Three quick retries”",
         "894 left unread in “Jittered backoff”",
         "8,193 left unread in “A retry budget”",
-        "14,123 left unread in “A circuit breaker”"
+        "14,123 left unread in “A circuit breaker”",
+        "16,413 left unread in “Shed load at Payments”"
       ]
     },
     {
@@ -118,13 +133,15 @@
         { "simulation": "Three quick retries", "what": "dropped", "count": 16821 },
         { "simulation": "Jittered backoff", "what": "dropped", "count": 16775 },
         { "simulation": "A retry budget", "what": "dropped", "count": 9738 },
-        { "simulation": "A circuit breaker", "what": "dropped", "count": 3808 }
+        { "simulation": "A circuit breaker", "what": "dropped", "count": 3808 },
+        { "simulation": "Shed load at Payments", "what": "dropped", "count": 1521 }
       ],
       "evidenceText": [
         "16,821 dropped in “Three quick retries”",
         "16,775 dropped in “Jittered backoff”",
         "9,738 dropped in “A retry budget”",
-        "3,808 dropped in “A circuit breaker”"
+        "3,808 dropped in “A circuit breaker”",
+        "1,521 dropped in “Shed load at Payments”"
       ]
     },
     {
@@ -137,13 +154,15 @@
         { "simulation": "Three quick retries", "what": "dropped", "count": 16821 },
         { "simulation": "Jittered backoff", "what": "dropped", "count": 16775 },
         { "simulation": "A retry budget", "what": "dropped", "count": 9738 },
-        { "simulation": "A circuit breaker", "what": "dropped", "count": 3808 }
+        { "simulation": "A circuit breaker", "what": "dropped", "count": 3808 },
+        { "simulation": "Shed load at Payments", "what": "dropped", "count": 1521 }
       ],
       "evidenceText": [
         "16,821 dropped in “Three quick retries”",
         "16,775 dropped in “Jittered backoff”",
         "9,738 dropped in “A retry budget”",
-        "3,808 dropped in “A circuit breaker”"
+        "3,808 dropped in “A circuit breaker”",
+        "1,521 dropped in “Shed load at Payments”"
       ]
     }
   ],
@@ -178,7 +197,7 @@
       }
     ],
     "summary": "1 warning, 2 suggestions.",
-    "simulations": "Played 4 saved simulations (at most 60 s each). On purpose, not findings: 21 dropped at payments in “Three quick retries”; 30 dropped at payments in “Jittered backoff”; 30 dropped at payments in “A retry budget”; 30 dropped at payments in “A circuit breaker”.",
+    "simulations": "Played 5 saved simulations (at most 60 s each). On purpose, not findings: 21 dropped at payments in “Three quick retries”; 30 dropped at payments in “Jittered backoff”; 30 dropped at payments in “A retry budget”; 30 dropped at payments in “A circuit breaker”; 30 dropped at payments in “Shed load at…",
     "more": "1 more finding omitted; call check_diagram with rules to see them."
   }
 }
