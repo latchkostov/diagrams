@@ -1,3 +1,4 @@
+import { defineLazySurface } from "../../lib/lazySurface";
 import { revisionAtLeast } from "../../model/revisions";
 import { useState, useSyncExternalStore, type FocusEvent } from "react";
 import { ContextMenu } from "../../components/ContextMenu";
@@ -15,7 +16,6 @@ import { nodeSimFields } from "../simFieldRules";
 import { type DiagramFlowNode } from "../types";
 import { Section } from "./fields";
 import { Disclosure } from "./Disclosure";
-import { lazyComponent } from "../../lib/lazyLoad";
 import { PropsEditor } from "./lazyPropsEditor";
 import { customCount } from "./propertyValues";
 import { ADC_KEYS, DEVICE_KEYS, SIM_KEYS } from "./simFields";
@@ -25,7 +25,14 @@ import { NodeIdentity } from "./lazyNodeIdentity";
 
 // Simulation settings are needed only after selection. Identity and naming load independently of these settings;
 // the shared lazy loader supplies the failure toast and Retry outside this chunk.
-const NodeSimulation = lazyComponent(() => import("./SimulationFields").then((m) => m.NodeSimulation));
+const NodeSimulation = defineLazySurface({
+  id: "inspector.simulation",
+  load: () => import("./SimulationFields").then((m) => m.NodeSimulation),
+  placeholder: { size: {}, testId: "inspector.simulation-loading" },
+  focus: {},
+  export: "skip",
+  retryToast: true,
+});
 
 export function NodePanel({
   node,

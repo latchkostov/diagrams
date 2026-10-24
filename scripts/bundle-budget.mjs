@@ -1,6 +1,6 @@
 // Fails if the main entry JS chunk (the <script type="module"> in the built index.html) grows past its
 // gzip budget. Run after a build: `pnpm size` (or `node scripts/bundle-budget.mjs <outDir>`).
-// Raise the budget deliberately, in the same change that needs it, and say why in the commit message.
+// Limits stay fixed; low headroom schedules a dedicated trim PR (docs/QUALITY.md).
 import fs from "node:fs";
 import path from "node:path";
 import process from "node:process";

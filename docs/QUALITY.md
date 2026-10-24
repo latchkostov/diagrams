@@ -19,6 +19,24 @@ Every feature batch goes through the same gates before the next one starts:
 Standards: strict TypeScript, ESLint (typescript-eslint strict, react-hooks, jsx-a11y), Prettier,
 `data-testid` selectors, deterministic tests, coverage reported in CI (`pnpm test:coverage`).
 
+## Lazy surfaces and bundle headroom
+
+Feature UI that is not needed for first paint must use `defineLazySurface` and register in
+`src/lib/lazySurfaces.ts`. The primitive owns its loading lifecycle, pending UI and one recoverable
+failure toast outside the downloaded chunk. Declare focus behavior and whether visual exports
+await the surface or skip it. Image export and recording await active output-bearing surfaces;
+data exports serialize the model and skip UI. Any future print command must await the same readiness
+hook before calling the browser's synchronous print API.
+
+Hold each surface's chunk in browser tests: keep focus and keyboard behavior, recover with Retry,
+verify its export policy and reject stray canvas actions. Keep integration tests with additional
+cursor, styling, cancellation and field-order assertions. Always review the trim commit itself.
+
+Bundle limits stay fixed. Benchmarks reports each budget's gzip bytes, delta against the PR's
+merge-base and remaining headroom. Headroom below **8,192 B** warns without failing; only exceeding
+a budget fails. Warnings schedule dedicated trim PRs with one owner. Feature PRs do not perform
+unrelated trims or increase limits. CanvasView cannot statically import inspector Fields or Panel UI.
+
 ## Lifecycles with modes
 
 Lifecycles with modes go through a machine (src/lib/machine.ts or an existing controller), never effects + flags.

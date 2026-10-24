@@ -19,10 +19,12 @@ import process from "node:process";
 import console from "node:console";
 import zlib from "node:zlib";
 import { Buffer } from "node:buffer";
+import { bundleBase } from "./bundle-base.mjs";
+import { bundleBudget, HEADROOM_FLOOR } from "./headroom.mjs";
 
 const OUT = path.resolve(process.env.BENCH_OUT ?? path.join("tests", ".output", "bench"));
 
-/** Gzip bytes, measured 2026-10-15 on master plus about 15%. Raise one on purpose, in the change that needs it. */
+/** Fixed gzip budgets. Low headroom schedules a dedicated trim PR; feature PRs do not raise limits. */
 const BUDGETS = {
   // 154,224 B measured: the entry, React, React DOM and the diagram loader's chunks (20 files).
   startup: 177_000,
@@ -153,6 +155,15 @@ const info = {
 };
 
 const dir = path.join(OUT, "parts");
+const base = bundleBase(OUT);
+if (base) info.mergeBase = base.sha;
+for (const metric of metrics.filter((m) => m.gate)) {
+  metric.budget = bundleBudget(metric.value, metric.gate.limit, base?.metrics.find((m) => m.id === metric.id)?.value);
+  if (metric.budget.warning)
+    console.warn(
+      `bundle: warning: ${metric.id} has ${metric.budget.headroom} B headroom (floor ${HEADROOM_FLOOR} B); schedule a trim PR`,
+    );
+}
 fs.mkdirSync(dir, { recursive: true });
 fs.writeFileSync(
   path.join(dir, "build-bundle.json"),

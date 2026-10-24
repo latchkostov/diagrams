@@ -1,5 +1,5 @@
+import { defineLazySurface } from "../../lib/lazySurface";
 import "../../styles/inspector-layout.css";
-import { lazyComponent } from "../../lib/lazyLoad";
 import { isFanOut, relationDropdownItems } from "./edgeChoices";
 import { Dropdown } from "../../components/Dropdown";
 import { Icon } from "../../components/Icon";
@@ -32,21 +32,35 @@ import { callPolicy } from "../../sim/callPolicy";
 import type { EdgeSimProps } from "../../sim/types";
 import { useCallerOverride } from "./useCallerOverride";
 
-const EdgeAdvanced = lazyComponent(() => import("./EdgeAdvanced").then((m) => m.EdgeAdvanced));
+const EdgeAdvanced = defineLazySurface({
+  id: "inspector.advanced",
+  load: () => import("./EdgeAdvanced").then((m) => m.EdgeAdvanced),
+  placeholder: { size: {}, testId: "inspector.advanced-loading" },
+  focus: {},
+  export: "skip",
+  retryToast: true,
+});
 /**
  * A Request's wait, timeout, pool and retry fields: their own chunk, asked for as its inspector opens. While they
  * download, a polite status says so (as slow motion's does); a failed download offers Retry in a toast.
  */
-const CallWaitFields = lazyComponent(
-  () => import("./CallWaitFields").then((m) => m.CallWaitFields),
-  (_, { failed }) =>
-    failed ? null : (
-      <p className="insp-note" role="status" aria-live="polite" data-testid="call-fields-loading">
-        {t("common.loading")}
-      </p>
-    ),
-  true,
-);
+const CallWaitFields = defineLazySurface({
+  id: "inspector.call",
+  load: () => import("./CallWaitFields").then((m) => m.CallWaitFields),
+  placeholder: {
+    size: {},
+    testId: "inspector.call-loading",
+    render: (_, { failed }) =>
+      failed ? null : (
+        <p className="insp-note" role="status" aria-live="polite" data-testid="call-fields-loading">
+          {t("common.loading")}
+        </p>
+      ),
+  },
+  focus: { restoreTo: "inspector-section-edge-simulation" },
+  export: "skip",
+  retryToast: true,
+});
 
 export function EdgePanel({ edge, editor, nodeLabel, meta, readDiagram }: InspectorProps & { edge: DiagramFlowEdge }) {
   const interaction = useInteraction();

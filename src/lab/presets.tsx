@@ -1,5 +1,6 @@
 import handShapedLines from "../../tests/parity/corpus/hand-shaped-lines.diagram.json";
 import { waitingFixture } from "./waitingFixture";
+import { lazySurfacesFixture } from "./lazySurfacesFixture";
 import { inspectorLayoutFixture } from "./inspectorLayoutFixture";
 import { messageTypesFixture } from "./messageTypesFixture";
 import { resilienceFixture, breakerFixture } from "./resilienceFixture";
@@ -1200,6 +1201,14 @@ const tracePresets: Preset[] = [
 ];
 
 export const presets: readonly Preset[] = [
+  {
+    kind: "render",
+    id: "lazy-surfaces",
+    title: "Lazy surface recovery",
+    group: "Playground",
+    description: "The small request system used by the registered surface hold-and-retry contracts.",
+    render: () => <LiveLabStage diagram={lazySurfacesFixture()} initial={{ live: true, paused: true }} />,
+  },
   {
     kind: "render",
     id: "collab-c1a",

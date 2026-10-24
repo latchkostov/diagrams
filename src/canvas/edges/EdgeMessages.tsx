@@ -1,13 +1,20 @@
+import { defineLazySurface } from "../../lib/lazySurface";
 import { EdgeLabelRenderer } from "@xyflow/react";
 import { useEffect, useLayoutEffect, useState } from "react";
-import { lazyComponent } from "../../lib/lazyLoad";
 import type { DiagramFile } from "../../model/types";
 import { pointAlong } from "../geometry/path";
 import { useEdgeRoute, useRoutingOptions } from "./useEdgeRoute";
 
 // The carried-types reader loads on intent (the first hover or focus on a flow) without the inspector's pickers,
 // which a read-only canvas, an exported file's included, never shows.
-const MessageTip = lazyComponent(() => import("./carriedTypes").then((m) => m.MessageTip));
+const MessageTip = defineLazySurface({
+  id: "edge.message-tip",
+  load: () => import("./carriedTypes").then((m) => m.MessageTip),
+  placeholder: { size: {}, testId: "edge.message-tip-loading" },
+  focus: {},
+  export: "skip",
+  retryToast: true,
+});
 
 type Meta = Pick<DiagramFile, "simulations" | "planning">;
 

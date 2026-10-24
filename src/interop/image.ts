@@ -15,6 +15,7 @@ import { whenShapeGeometryReady } from "../canvas/shapes/readiness";
 import { whenEdgeGeometryReady } from "../canvas/edges/imageReadiness";
 import { geometrySnapshot } from "../canvas/shapes/runtime";
 import { t } from "../i18n";
+import { ensureLazySurfacesLoaded } from "../lib/lazySurfaces";
 
 export interface ImageOptions {
   /** Pixel ratio for PNG (1 or 2). */
@@ -129,6 +130,8 @@ const MAX_PIXELS = 16_000_000; // keep well under browsers' canvas limits
 
 /** The picture as a file: a PNG, or the SVG's text (what its data URL would decode to). */
 export async function renderDiagramImage(kind: "png" | "svg", opts: ImageOptions = {}): Promise<Blob> {
+  await unlessCancelled(ensureLazySurfacesLoaded(), opts.signal);
+  flushSync(() => {});
   opts.signal?.throwIfAborted();
   opts.check?.();
   const viewport = findViewport();

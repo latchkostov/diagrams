@@ -1,8 +1,9 @@
+import { defineLazySurface } from "../lib/lazySurface";
 import { useLayoutEffect, type ReactNode } from "react";
 import { Icon } from "../components/Icon";
 import { t, useLocale } from "../i18n";
 import { kindLabel } from "../i18n/chrome";
-import { lazyComponent, type LoadStatus } from "../lib/lazyLoad";
+import { type LoadStatus } from "../lib/lazyLoad";
 import { NodePanel } from "./inspector/NodePanel";
 
 import { type InspectorProps } from "./inspector/types";
@@ -24,27 +25,54 @@ function pending<P>(owner?: (props: P) => string) {
     status.failed ? <PanelUnavailable owner={owner?.(props)} /> : null;
 }
 
-const EdgePanel = lazyComponent(
-  () => import("./inspector/lazyEdgePanel").then((m) => m.EdgePanel),
-  pending((p: { edge: { id: string } }) => p.edge.id),
-  true,
-);
-const GroupPanel = lazyComponent(
-  () => import("./inspector/GroupPanel").then((m) => m.GroupPanel),
-  pending((p: { group: { id: string } }) => p.group.id),
-  true,
-);
-const AnnotationPanel = lazyComponent(
-  () => import("./inspector/AnnotationPanel").then((m) => m.AnnotationPanel),
-  pending(),
-  true,
-);
-const DiagramPanel = lazyComponent(
-  () => import("./inspector/DiagramPanel").then((m) => m.DiagramPanel),
-  pending(),
-  true,
-);
-const MultiPanel = lazyComponent(() => import("./inspector/MultiPanel").then((m) => m.MultiPanel), pending(), true);
+const EdgePanel = defineLazySurface({
+  id: "inspector.edge-shell",
+  load: () => import("./inspector/lazyEdgePanel").then((m) => m.EdgePanel),
+  placeholder: {
+    size: {},
+    testId: "inspector.edge-shell-loading",
+    render: pending((p: { edge: { id: string } }) => p.edge.id),
+  },
+  focus: {},
+  export: "skip",
+  retryToast: true,
+});
+const GroupPanel = defineLazySurface({
+  id: "inspector.group",
+  load: () => import("./inspector/GroupPanel").then((m) => m.GroupPanel),
+  placeholder: {
+    size: {},
+    testId: "inspector.group-loading",
+    render: pending((p: { group: { id: string } }) => p.group.id),
+  },
+  focus: {},
+  export: "skip",
+  retryToast: true,
+});
+const AnnotationPanel = defineLazySurface({
+  id: "inspector.annotation",
+  load: () => import("./inspector/AnnotationPanel").then((m) => m.AnnotationPanel),
+  placeholder: { size: {}, testId: "inspector.annotation-loading", render: pending() },
+  focus: {},
+  export: "skip",
+  retryToast: true,
+});
+const DiagramPanel = defineLazySurface({
+  id: "inspector.diagram",
+  load: () => import("./inspector/DiagramPanel").then((m) => m.DiagramPanel),
+  placeholder: { size: {}, testId: "inspector.diagram-loading", render: pending() },
+  focus: {},
+  export: "skip",
+  retryToast: true,
+});
+const MultiPanel = defineLazySurface({
+  id: "inspector.multi",
+  load: () => import("./inspector/MultiPanel").then((m) => m.MultiPanel),
+  placeholder: { size: {}, testId: "inspector.multi-loading", render: pending() },
+  focus: {},
+  export: "skip",
+  retryToast: true,
+});
 
 export function Inspector(p: InspectorProps) {
   // The canvas's focus controller moves focus into the fields; outside a canvas (the Lab), one of its own.

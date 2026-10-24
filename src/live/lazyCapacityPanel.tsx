@@ -1,7 +1,8 @@
+import { defineLazySurface } from "../lib/lazySurface";
 import { useState, type ComponentProps } from "react";
 import { domActive } from "../canvas/interaction";
 import { t, useLocale } from "../i18n";
-import { lazyComponent, type LoadStatus } from "../lib/lazyLoad";
+import { type LoadStatus } from "../lib/lazyLoad";
 import type { ElementHandle } from "../canvas/interaction/types";
 import { LiveIcon } from "./icons";
 import { usePanelEscape } from "./usePanelEscape";
@@ -44,10 +45,18 @@ function LoadingCapacity({
   );
 }
 
-const LazyCapacityPanel = lazyComponent(
-  () => import("./CapacityPanel").then((m) => m.CapacityPanel),
-  (props, status) => <LoadingCapacity onClose={props.onClose} opener={props.opener} {...status} />,
-);
+const LazyCapacityPanel = defineLazySurface({
+  id: "live.capacity",
+  load: () => import("./CapacityPanel").then((m) => m.CapacityPanel),
+  placeholder: {
+    size: {},
+    testId: "live.capacity-loading",
+    render: (props, status) => <LoadingCapacity onClose={props.onClose} opener={props.opener} {...status} />,
+  },
+  focus: {},
+  export: "skip",
+  retryToast: true,
+});
 
 export function CapacityPanel(props: ComponentProps<typeof LazyCapacityPanel>) {
   const [opener] = useState(domActive);

@@ -1,3 +1,10 @@
-import { lazyComponent } from "../lib/lazyLoad";
+import { defineLazySurface } from "../lib/lazySurface";
 
-export const BottleneckCallout = lazyComponent(() => import("./BottleneckCallout").then((m) => m.BottleneckCallout));
+export const BottleneckCallout = defineLazySurface({
+  id: "live.bottleneck",
+  load: () => import("./BottleneckCallout").then((m) => m.BottleneckCallout),
+  placeholder: { size: {}, testId: "live.bottleneck-loading" },
+  focus: {},
+  export: "skip",
+  retryToast: true,
+});

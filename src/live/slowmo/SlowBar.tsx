@@ -1,9 +1,16 @@
+import { defineLazySurface } from "../../lib/lazySurface";
 import { useSyncExternalStore } from "react";
 import "../../styles/slowmo.css";
 import { LiveIcon } from "../icons";
 import type { SlowMotion } from "./session";
-import { lazyComponent } from "../../lib/lazyLoad";
-const SlowTimeline = lazyComponent(() => import("./SlowTimeline").then((m) => m.SlowTimeline));
+const SlowTimeline = defineLazySurface({
+  id: "live.slow-timeline",
+  load: () => import("./SlowTimeline").then((m) => m.SlowTimeline),
+  placeholder: { size: {}, testId: "live.slow-timeline-loading" },
+  focus: {},
+  export: "skip",
+  retryToast: true,
+});
 
 /**
  * The live bar's middle while slow motion plays: what's going on ("Slow motion · live paused"),

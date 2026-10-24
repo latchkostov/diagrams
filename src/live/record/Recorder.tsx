@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type Dispatch } from "react";
 import { createPortal } from "react-dom";
+import { ensureLazySurfacesLoaded } from "../../lib/lazySurfaces";
 import { Dialog } from "../../interop/ui/Dialog";
 import { notify } from "../../interop/ui/toast";
 import type { LiveController, LiveState } from "../controller";
@@ -181,6 +182,11 @@ export function Recorder({
             return;
           }
           stream.current = media;
+          await ensureLazySurfacesLoaded();
+          if (!valid(token)) {
+            stopStream(media);
+            return;
+          }
           const track = media.getVideoTracks()[0];
           const failure = () =>
             fail(token, "Recording failed: the browser lost the capture. Start again and keep this tab open.");
