@@ -1,5 +1,5 @@
-import { expect, it } from "vitest";
-import { createMachine, defineMachine, describeMachine, machinePaths } from "./machine";
+import { expect, expectTypeOf, it } from "vitest";
+import { createMachine, defineMachine, describeMachine, machinePaths, type Transition } from "./machine";
 
 type State = { value: "idle" | "running"; count: number };
 type Event = { type: "start"; allowed: boolean } | { type: "stop" };
@@ -65,4 +65,33 @@ it("enumerates executable payload paths and honours the depth, including zero", 
 it("describes the same transition table as a dev Mermaid statechart", () => {
   expect(describeMachine(def)).toContain("idle --> running: start [guard]");
   expect(describeMachine(def)).toContain("running --> idle: stop");
+});
+
+it("requires the target variant's payload and preserves it after narrowing", () => {
+  type Variant = { value: "idle" } | { value: "ready"; script: string };
+  type Load = { type: "load"; script: string };
+  type Row = Transition<Variant, Load, string>;
+  expectTypeOf<{ target: "ready" }>().not.toExtend<Row>();
+  expectTypeOf<{ target: "ready"; reduce: () => { value: "idle" } }>().not.toExtend<Row>();
+  expectTypeOf<{ target: "ready"; reduce: () => { value: "ready" } }>().not.toExtend<Row>();
+  const machine = createMachine(
+    defineMachine<Variant, Load, string>({
+      initial: { value: "idle" },
+      states: ["idle", "ready"],
+      events: [{ type: "load", script: "journey" }],
+      on: {
+        idle: {
+          load: {
+            target: "ready",
+            reduce: (_s, e) => ({ value: "ready", script: e.script }),
+            effects: (_s, _e, next) => [next.script],
+          },
+        },
+      },
+    }),
+  );
+  expect(machine.send({ type: "load", script: "journey" }).commands).toEqual(["journey"]);
+  const state = machine.state;
+  expect(state.value).toBe("ready");
+  if (state.value === "ready") expect(state.script).toBe("journey");
 });

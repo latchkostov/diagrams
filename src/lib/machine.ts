@@ -9,12 +9,21 @@ export interface MachineStep<S, C> {
   state: S;
   commands: readonly C[];
 }
-export interface Transition<S extends MachineState, E, C> {
-  target: S["value"];
-  guard?: (state: S, event: E) => boolean;
-  reduce?: (state: S, event: E) => S;
-  effects?: (state: S, event: E, next: S) => readonly C[];
-}
+/** Shared-context states can change mode in place; union variants must construct their own payload. */
+type StateAt<S extends MachineState, V extends S["value"]> = S extends unknown
+  ? V extends S["value"]
+    ? S
+    : never
+  : never;
+export type Transition<S extends MachineState, E, C> = {
+  [V in S["value"]]: {
+    target: V;
+    guard?: (state: S, event: E) => boolean;
+    effects?: (state: S, event: E, next: StateAt<S, V>) => readonly C[];
+  } & (Omit<S, "value"> extends Omit<StateAt<S, V>, "value">
+    ? { reduce?: (state: S, event: E) => StateAt<S, V> }
+    : { reduce: (state: S, event: E) => StateAt<S, V> });
+}[S["value"]];
 type Rows<S extends MachineState, E extends MachineEvent, C> = {
   [K in E["type"]]?: Transition<S, E & { type: K }, C> | readonly Transition<S, E & { type: K }, C>[];
 };
@@ -47,7 +56,12 @@ export function machineStep<S extends MachineState, E extends MachineEvent, C>(
 ): MachineStep<S, C> & { accepted: boolean } {
   const row = def.on[state.value as S["value"]]?.[event.type as E["type"]] ?? def.on["*"]?.[event.type as E["type"]];
   // Indexing by the event's discriminant preserves the row/payload relationship at runtime.
-  const choices = (Array.isArray(row) ? row : row ? [row] : []) as readonly Transition<S, E, C>[];
+  const choices = (Array.isArray(row) ? row : row ? [row] : []) as readonly {
+    target: S["value"];
+    guard?: (state: S, event: E) => boolean;
+    reduce?: (state: S, event: E) => S;
+    effects?: (state: S, event: E, next: S) => readonly C[];
+  }[];
   const transition = choices.find((t) => !t.guard || t.guard(state, event));
   if (!transition) return { state, commands: [], accepted: false };
   const next = { ...(transition.reduce?.(state, event) ?? state), value: transition.target };

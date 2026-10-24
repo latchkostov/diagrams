@@ -54,11 +54,49 @@ it("covers every reachable mode and event through executable paths of depth four
     // Exercise all event representatives at each reached state, including ignored events.
     for (const event of def.events) {
       const result = machineStep(def, s, event);
-      covered.add(event.type);
+      if (result.accepted) covered.add(`${s.value}:${event.type}`);
       if (!result.accepted) expect(result.state).toBe(s);
     }
   }
-  expect(covered).toEqual(new Set(def.events.map((e) => e.type)));
+  const expected = new Set(def.states.flatMap((s) => [`${s}:start`, `${s}:liveChanged`]));
+  for (const s of ["capturing", "armed", "playing", "paused", "finished"]) {
+    expected.add(`${s}:exit`);
+    expected.add(`${s}:Escape`);
+  }
+  for (const e of ["captureProgress", "captureDone", "captureEmpty", "captureRefused", "chunkFailure"])
+    expected.add(`capturing:${e}`);
+  for (const s of ["playing", "paused", "finished"])
+    for (const e of ["play", "pause", "restart", "seek", "step", "speed", "roomChanged"]) expected.add(`${s}:${e}`);
+  expected.add("playing:tick");
+  expect(covered).toEqual(expected);
+});
+
+it("speed returns the pace command during replay", () => {
+  const m = createMachine(slowMachine);
+  m.send({ type: "start", source: { kind: "next" } });
+  m.send(done);
+  for (const value of ["playing", "paused", "finished"] as const) {
+    const state = { ...m.state, value, playing: value === "playing" };
+    expect(machineStep(slowMachine, state, { type: "speed", speed: 0.5 })).toEqual({
+      state,
+      commands: [{ type: "speed", speed: 0.5 }],
+      accepted: true,
+    });
+  }
+});
+
+it("roomChanged requests a camera take in each replay phase", () => {
+  const m = createMachine(slowMachine);
+  m.send({ type: "start", source: { kind: "next" } });
+  m.send(done);
+  for (const value of ["playing", "paused", "finished"] as const) {
+    const state = { ...m.state, value, playing: value === "playing" };
+    expect(machineStep(slowMachine, state, { type: "roomChanged" })).toEqual({
+      state,
+      commands: [{ type: "camera", on: true, take: true }],
+      accepted: true,
+    });
+  }
 });
 
 it("rejects a late capture completion and failure after Escape and a new start", () => {

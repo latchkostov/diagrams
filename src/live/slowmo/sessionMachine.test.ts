@@ -29,6 +29,31 @@ it("publishes camera commands before rendering and preserves a paused snapshot o
       { type: "camera", on: true },
       { type: "camera", on: true, take: true },
     ]);
+    const script = slow.getState().script!;
+    const beat = script.beats.find((b) => b.realFrom > 0 && b.rowKey && b.caption)!;
+    expect(beat).toBeDefined();
+    slow.seek(beat.start + beat.duration / 2);
+    slow.publish();
+    const published = slow.getState();
+    expect(published.real).toBeGreaterThan(0);
+    expect(published.caption).not.toBe("");
+    expect(published.row).toBeDefined();
+    expect(published.activeRows.length).toBeGreaterThan(0);
+    const listener = vi.fn();
+    const unsubscribe = slow.subscribe(listener);
+    slow.advance(beat.duration / 8, 1);
+    const unpublished = slow.getState();
+    expect(unpublished.t).toBeGreaterThan(published.t);
+    for (const key of ["real", "caption", "row", "activeRows", "done"] as const)
+      expect(unpublished[key]).toEqual(published[key]);
+    expect(listener).not.toHaveBeenCalled();
+    // A live speed publication can render this snapshot before slow motion publishes again.
+    controller.setSpeed(0.5);
+    expect(slow.getState()).toBe(unpublished);
+    slow.publish();
+    expect(slow.getState().real).toBe(slow.frame()!.real);
+    expect(listener).toHaveBeenCalledOnce();
+    unsubscribe();
     slow.pause();
     slow.step(1);
     slow.step(1);

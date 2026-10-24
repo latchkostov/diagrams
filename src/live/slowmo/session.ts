@@ -296,7 +296,9 @@ export class SlowMotion {
     const previous = this.machine.state;
     const result = this.machine.send(event);
     if (result.state === previous && !result.commands.length) return;
-    this.state = result.state;
+    // The machine owns the playback clock; derived readouts change only when published.
+    const { row, activeRows, real, caption, done } = this.state;
+    this.state = { ...result.state, row, activeRows, real, caption, done };
     for (const command of result.commands) this.run(command);
     // Commands may synchronously send another event (a short capture finishes without yielding).
     if (publish) this.publish();
