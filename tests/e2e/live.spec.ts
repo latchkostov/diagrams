@@ -1,9 +1,9 @@
-import { openLiveNodeDetails } from "./fixtures";
-import { savedDiagram } from "./fixtures";
-import { currentDiagram } from "./fixtures";
-import { openExample } from "./fixtures";
-import type { Page } from "@playwright/test";
 import {
+  pauseClock,
+  openLiveNodeDetails,
+  savedDiagram,
+  currentDiagram,
+  openExample,
   test,
   expect,
   gotoCanvas,
@@ -12,13 +12,13 @@ import {
   pageLoadTimeout,
   gotoLive,
   waitForLiveSession,
-  pauseClock,
   waitForCameraIdle,
   cameraMoves,
   interactionJournalMark,
   interactionLog,
   liveKeyLevels,
 } from "./fixtures";
+import type { Page } from "@playwright/test";
 
 // Live view: the toggle, injection from the context menu, saved simulations, narration, the storm
 // flow, presentation mode and the Lab presets. Selectors are data-testid only. Runs are seeded, and
@@ -290,6 +290,7 @@ test.describe("live view", () => {
   });
 
   test("a pausing note waits for Continue", async ({ page, consoleErrors }) => {
+    await page.clock.install();
     await gotoLive(page, `./?view=canvas&example=${KAFKA}&sim=payments-outage&speed=8`);
     await expect(page.getByTestId("live-note-continue")).toBeVisible();
     await expect(page.getByTestId("live-note")).toContainText("Payments is offline");
@@ -297,7 +298,9 @@ test.describe("live view", () => {
     const clock = page.getByTestId("live-clock");
     const at = await clock.getAttribute("data-ms");
     if (at === null) throw new Error("Live clock has no timestamp");
-    await page.waitForTimeout(800);
+    await pauseClock(page);
+    await page.clock.runFor(800);
+    await page.clock.resume();
     await expect(clock).toHaveAttribute("data-ms", at);
 
     await page.getByTestId("live-note-continue").click();

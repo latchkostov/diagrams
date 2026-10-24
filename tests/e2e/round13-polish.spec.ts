@@ -1,6 +1,7 @@
-import type { Page } from "@playwright/test";
-import { settledCanvas } from "../parity/browser/canvas";
 import {
+  waitForHistoryIdle,
+  waitForInteractionIdle,
+  animationFrames,
   test,
   expect,
   gotoCanvas,
@@ -12,6 +13,8 @@ import {
   waitForSelectionSettled,
   fitDiagram,
 } from "./fixtures";
+import type { Page } from "@playwright/test";
+import { settledCanvas } from "../parity/browser/canvas";
 import {
   callTool,
   installFakeLanguageModel,
@@ -178,7 +181,7 @@ test("an edit between adding a node and naming it keeps the name a step of its o
   await expect(made).toBeVisible();
   // Nudge it (an edit), then name it.
   await page.keyboard.press("ArrowDown");
-  await page.waitForTimeout(600);
+  await waitForHistoryIdle(page);
   await page.keyboard.press("Enter");
   await page.keyboard.type("Ops cache");
   await page.keyboard.press("Enter");
@@ -369,11 +372,13 @@ test("Esc clears a node's selection and leaves focus on it; a second Esc never s
   await expect(page.getByTestId("inspector-title")).toHaveCount(0);
   await expect(card).toBeFocused();
   // Esc dismissed the node's tooltip; focus coming back to the node (after React Flow's blur) doesn't reopen it.
-  await page.waitForTimeout(150);
+  await waitForInteractionIdle(page);
+  await animationFrames(page);
   await expect(page.getByTestId("node-tooltip")).toHaveCount(0);
   await page.keyboard.press("Escape");
   // Give React Flow's own Esc (which selects a focused, unselected node) its chance.
-  await page.waitForTimeout(150);
+  await waitForInteractionIdle(page);
+  await animationFrames(page);
   await expect(page.getByTestId("inspector-title")).toHaveCount(0);
   await expect(card).toBeFocused();
   // Tab goes on to the next node in reading order, from where focus was.

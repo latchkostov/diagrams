@@ -75,7 +75,11 @@ function noTestHooks(): Plugin {
           out.code.includes("Test storage") ||
           out.code.includes("__cameraJournal") ||
           out.code.includes("__interactionJournal") ||
-          out.code.includes("__flowProbe")
+          out.code.includes("__flowProbe") ||
+          out.code.includes("__historyProbe") ||
+          out.code.includes("__documentProbe") ||
+          out.code.includes("__guidesProbe") ||
+          out.code.includes("__passwordWork")
         )
           this.error(`e2e-only test hooks bundled into ${out.fileName}; only VITE_E2E=1 builds may include them`);
       }

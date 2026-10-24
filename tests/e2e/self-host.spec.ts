@@ -1,7 +1,15 @@
+import {
+  waitForCameraIdle,
+  waitForInteractionIdle,
+  test,
+  expect,
+  gotoCanvas,
+  expectNoErrors,
+  publicExamples,
+} from "./fixtures";
 import { readFileSync } from "node:fs";
 import { deflateRawSync } from "node:zlib";
 import type { Page } from "@playwright/test";
-import { test, expect, gotoCanvas, expectNoErrors, publicExamples } from "./fixtures";
 import { installFakeLanguageModel, installFakeModelContext, must, toolNames } from "./ai-helpers";
 import { expectHostEmbed, expectShareWithoutLinks, serveHostPage } from "./self-host-helpers";
 
@@ -177,8 +185,8 @@ test.describe("self-hosted build", () => {
     await gotoCanvas(page, SLUG);
     await expect(page.getByTestId(`node-${kafka.nodeIds[0]}`)).toBeVisible();
     // The public build registers its tools as the editor mounts (tests/e2e/ai-webmcp.spec.ts); here, never.
-    await page.waitForLoadState("networkidle");
-    await page.waitForTimeout(500);
+    await waitForCameraIdle(page);
+    await waitForInteractionIdle(page);
     expect(await toolNames(page)).toEqual([]);
     expect(await page.evaluate(() => (window as unknown as { __mcp: { log: string[] } }).__mcp.log)).toEqual([]);
 

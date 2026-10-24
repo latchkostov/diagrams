@@ -1,11 +1,22 @@
-import { currentDiagram } from "./fixtures";
-import { openExample } from "./fixtures";
+import {
+  waitForAutosave,
+  animationFrames,
+  waitForPasswordWork,
+  currentDiagram,
+  openExample,
+  waitForHtmlTemplate,
+  test,
+  expect,
+  gotoCanvas,
+  expectNoErrors,
+  openShareChooser,
+  shareVia,
+} from "./fixtures";
 import { planningFixture } from "../../src/lab/planningFixture";
 import { upgradePlanning } from "../../src/planning/migration";
 import { filePayload } from "./html-viewer";
 import { readFileSync } from "node:fs";
 import type { Page } from "@playwright/test";
-import { waitForHtmlTemplate, test, expect, gotoCanvas, expectNoErrors, openShareChooser, shareVia } from "./fixtures";
 import {
   MOD,
   SLUG,
@@ -404,7 +415,7 @@ async function deleteIntake(page: Page) {
   await page.getByTestId("node-intake").click();
   await page.keyboard.press("Delete");
   await expect(page.getByTestId("node-intake")).toHaveCount(0);
-  await page.waitForTimeout(400); // the autosave
+  await waitForAutosave(page);
 }
 
 test("private Ctrl+S leaves the bound cloud file unchanged", async ({ page, consoleErrors }) => {
@@ -416,7 +427,7 @@ test("private Ctrl+S leaves the bound cloud file unchanged", async ({ page, cons
   await page.getByTestId("canvas-wrap").click({ position: { x: 700, y: 420 } });
   await page.keyboard.press(`${MOD}+s`);
   await expect(page.getByTestId("toast-private-save-device")).toBeVisible();
-  await page.waitForTimeout(300);
+  await animationFrames(page);
   expect(await testFile(page)).toEqual(before);
   expectNoErrors(consoleErrors);
 });
@@ -580,7 +591,7 @@ test("revoking the on-device permission cancels a pending reply", async ({ page 
   await expect(page.getByTestId("ai-ondevice")).toHaveCount(0);
   await expect.poll(async () => (await fakeModel(page)).aborted).toBe(1);
   await releaseModel(page);
-  await page.waitForTimeout(300);
+  await animationFrames(page);
   await expect(page.getByTestId("ai-turn-0")).toHaveCount(0);
   expect(await nodeCount(page)).toBe(2);
 });
@@ -605,7 +616,7 @@ test("private dictation never falls back to the speech service when the local la
   await speech(page, "silence");
   await expect(page.getByTestId("ai-ondevice-dictation-message")).toContainText("this diagram is private");
   await expect(page.getByTestId("ai-ondevice-mic")).toHaveAttribute("data-status", "idle");
-  await page.waitForTimeout(300);
+  await animationFrames(page);
   expect((await speechState(page)).starts).toBe(1);
   expectNoErrors(consoleErrors);
 });
@@ -678,7 +689,7 @@ test("a private diagram gets no password link: the rows are off, and an open dia
   await expect(page.getByTestId("password-link-dialog")).toHaveCount(0);
   await expect(page.getByTestId("toast").filter({ hasText: PRIVATE_SHARE })).toBeVisible();
   await page.evaluate(() => (window as unknown as { __releaseEncrypt?: () => void }).__releaseEncrypt?.());
-  await page.waitForTimeout(500);
+  await waitForPasswordWork(page);
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe("before");
 
   // Share… here no longer offers it, from the File menu or the right-click's Export ▸.

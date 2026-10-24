@@ -1,6 +1,11 @@
-import { savedDiagram, interactionJournalMark, interactionLog, waitForInteractionIdle } from "./fixtures";
-import type { Locator, Page } from "@playwright/test";
 import {
+  waitForGuides,
+  waitForHistoryIdle,
+  waitForAutosave,
+  savedDiagram,
+  interactionJournalMark,
+  interactionLog,
+  waitForInteractionIdle,
   test,
   expect,
   gotoCanvas,
@@ -10,6 +15,7 @@ import {
   waitForSelectionSettled,
   STORAGE_KEYS,
 } from "./fixtures";
+import type { Locator, Page } from "@playwright/test";
 
 // Structure and bulk (docs/research/drawing-ux.md, batch 4): boundaries that keep up (D12), bulk edit in the
 // inspector and Select similar (D11), tidy the selection (D15), and keyboard selection between nodes (D14).
@@ -136,7 +142,7 @@ async function dragTo(page: Page, id: string, to: { x: number; y: number }, duri
   await page.mouse.move(from.x + 8, from.y + 8, { steps: 2 });
   await page.mouse.move(to.x, to.y, { steps: 16 });
   // Rest so the guides settle where the pointer is.
-  await page.waitForTimeout(150);
+  await waitForGuides(page);
   if (during) await during();
   await page.mouse.up();
 }
@@ -772,7 +778,8 @@ test("Tidy up with no room says so and moves nothing", async ({ page }) => {
   await page.keyboard.press(`${MOD}+a`);
   await page.getByTestId("inspector-tidy").click();
   await expect(page.getByTestId("toast")).toContainText("Couldn't find room. Nothing moved.");
-  await page.waitForTimeout(500);
+  await waitForHistoryIdle(page);
+  await waitForAutosave(page);
   const d = await saved(page);
   // Nothing was written (no change), or the nodes are where they were.
   if (d) for (const n of diagram.nodes) expect(node(d, n.id)).toMatchObject({ x: n.x, y: n.y });

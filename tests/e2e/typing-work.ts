@@ -6,7 +6,7 @@ import type { Page } from "@playwright/test";
  * Include all tasks, React commits and layout, so moving simulation work onto this thread still fails.
  * With measureCpu=false, retain trusted input and the paint boundary for operation counts without reading a clock.
  */
-export async function typingWork(page: Page, measureCpu = true) {
+export async function typingWork(page: Page, measureCpu = true, painted?: () => Promise<unknown>) {
   const cdp = await page.context().newCDPSession(page);
   if (measureCpu) await cdp.send("Performance.enable", { timeDomain: "threadTicks" });
   const read = async () => {
@@ -22,10 +22,12 @@ export async function typingWork(page: Page, measureCpu = true) {
       await cdp.send("Input.dispatchKeyEvent", { type: "keyDown", key: ch, text: ch });
       await cdp.send("Input.dispatchKeyEvent", { type: "keyUp", key: ch });
       await settled();
-      await cdp.send("Runtime.evaluate", {
-        expression: "new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))",
-        awaitPromise: true,
-      });
+      if (painted) await painted();
+      else
+        await cdp.send("Runtime.evaluate", {
+          expression: "new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))",
+          awaitPromise: true,
+        });
       return measureCpu ? (await read()) - before : 0;
     },
     close: () => cdp.detach(),

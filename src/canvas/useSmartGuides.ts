@@ -34,6 +34,12 @@ const FAST = 1;
 /** After a fast move, the guides catch up once the pointer has rested this long. */
 const SETTLE_MS = 90;
 
+declare global {
+  interface Window {
+    __guidesProbe?: () => { active: boolean; settled: boolean };
+  }
+}
+
 interface Session {
   /** Where each moving node started (a copy, for an Alt-drag, from its original's place). */
   start: Map<string, XY>;
@@ -151,6 +157,14 @@ export function useSmartGuides({
   apply: (changes: NodeChange<FlowNode>[]) => void;
 }) {
   const session = useRef<Session | null>(null);
+  useEffect(() => {
+    if (!(import.meta.env.DEV || import.meta.env.VITE_E2E === "1")) return;
+    const probe = () => ({ active: session.current !== null, settled: !session.current?.fast });
+    window.__guidesProbe = probe;
+    return () => {
+      if (window.__guidesProbe === probe) delete window.__guidesProbe;
+    };
+  }, []);
   const applyRef = useRef(apply);
   useEffect(() => {
     applyRef.current = apply;

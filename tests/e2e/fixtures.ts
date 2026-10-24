@@ -93,6 +93,10 @@ export const publicExampleCards = (page: Page) =>
 
 declare global {
   interface Window {
+    __historyProbe?: () => { pending: boolean };
+    __documentProbe?: () => { saved: boolean };
+    __guidesProbe?: () => { active: boolean; settled: boolean };
+    __passwordWork?: { pending: number };
     /** Dev and e2e builds: RGBA pixels of a live canvas layer inside a client rect (src/live/LiveView.tsx). */
     __liveProbe?: (
       layer: "base" | "over" | "march",
@@ -196,6 +200,47 @@ export const performanceTest = test.extend({
 });
 
 export { expect };
+
+/** The real history debounce committed the current edit, including a completed drag. */
+export async function waitForHistoryIdle(page: Page) {
+  await expect.poll(() => page.evaluate(() => window.__historyProbe?.().pending)).toBe(false);
+}
+
+/** The pointer's last fast move has been processed and the smart guides have caught up. */
+export async function waitForGuides(page: Page) {
+  await expect.poll(() => page.evaluate(() => window.__guidesProbe?.())).toEqual({ active: true, settled: true });
+}
+
+/** The current document reached local storage, rather than merely finding an older saved copy. */
+export async function waitForAutosave(page: Page) {
+  await expect.poll(() => page.evaluate(() => window.__documentProbe?.().saved)).toBe(true);
+}
+
+/** Crypto and decompression finished, then the consumer got its result and React could commit. */
+export async function waitForPasswordWork(page: Page) {
+  await expect.poll(() => page.evaluate(() => window.__passwordWork?.pending)).toBe(0);
+  await animationFrames(page);
+}
+
+/** Check an invariant across actual rendering opportunities, including React's queued focus work. */
+export async function animationFrames(page: Page, count = 2) {
+  await page.evaluate(async (count) => {
+    for (let frame = 0; frame < count; frame++)
+      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+  }, count);
+}
+
+/** Wait for scheduled checks to finish even when their result has no visible warning count. */
+export async function waitForChecks(page: Page) {
+  await expect
+    .poll(() =>
+      page.evaluate(() => {
+        const checks = (window as unknown as { __checks?: { finished: number; pending(): boolean } }).__checks;
+        return !!checks && checks.finished > 0 && !checks.pending();
+      }),
+    )
+    .toBe(true);
+}
 
 /**
  * What the app server is (the same rule as playwright.config.ts): "build" serves the production e2e build

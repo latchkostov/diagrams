@@ -1,6 +1,15 @@
-import { currentDiagram } from "./fixtures";
+import {
+  waitForPasswordWork,
+  currentDiagram,
+  test,
+  expect,
+  gotoCanvas,
+  publicExamples,
+  expectNoErrors,
+  pageLoadTimeout,
+  shareVia,
+} from "./fixtures";
 import type { BrowserContext, Page } from "@playwright/test";
-import { test, expect, gotoCanvas, publicExamples, expectNoErrors, pageLoadTimeout, shareVia } from "./fixtures";
 
 // Password links (#e=v1.<salt>.<iv>.<ciphertext>, src/interop/shareCrypto.ts). Selectors are data-testid only.
 
@@ -204,7 +213,7 @@ test.describe("password links", () => {
     // Changed mid-encryption: the pending link (for the first password) is stale.
     await page.getByTestId("password-link-input").fill(PASSWORD);
     await release(page, "encrypt");
-    await page.waitForTimeout(500);
+    await waitForPasswordWork(page);
     await expect(page.getByTestId("password-link-url")).toHaveCount(0);
     expect(await page.evaluate(() => navigator.clipboard.readText())).toBe("before");
     // The link made now is the current password's, and it opens with it.
@@ -242,7 +251,7 @@ test.describe("password links", () => {
       else await other.getByTestId("password-prompt-input").press("Escape");
       await expect(other.getByTestId("password-prompt")).toHaveCount(0);
       await release(other, "decrypt");
-      await other.waitForTimeout(500);
+      await waitForPasswordWork(other);
       await expect(other.getByTestId("shared-banner")).toHaveCount(0);
       await expect(other.getByTestId("example-picker")).toHaveAttribute("data-diagram-slug", before);
       await expect(other, "the link stays, so a reload asks again").toHaveURL(/#e=v1\./);
@@ -260,7 +269,7 @@ test.describe("password links", () => {
     await other.evaluate((t) => (window.location.hash = `e=${t}`), newer);
     await expect(other.getByTestId("password-prompt-input")).toHaveValue("");
     await release(other, "decrypt");
-    await other.waitForTimeout(500);
+    await waitForPasswordWork(other);
     await expect(other.getByTestId("password-prompt")).toBeVisible();
     await expect(other.getByTestId("shared-banner")).toHaveCount(0);
     await expect(other).toHaveURL(new RegExp(`#e=${newer}$`));
@@ -275,7 +284,7 @@ test.describe("password links", () => {
     await expect.poll(() => held(embed, "decrypt"), { timeout: 15_000 }).toBeGreaterThan(0);
     await embed.getByTestId("password-prompt-cancel").click();
     await release(embed, "decrypt");
-    await embed.waitForTimeout(500);
+    await waitForPasswordWork(embed);
     await expect(embed.getByTestId("embed-locked")).toBeVisible();
     await expect(embed.getByTestId(`node-${publicExamples[0].nodeIds[0]}`)).toHaveCount(0);
   });

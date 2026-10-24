@@ -1,17 +1,21 @@
+import {
+  waitForCameraIdle,
+  test,
+  expect,
+  expectNoErrors,
+  gotoLab,
+  gotoLive,
+  interactionJournalMark,
+  interactionLog,
+  liveKeyLevels,
+  waitForStableViewport,
+  pauseClock,
+} from "./fixtures";
 import { readFileSync } from "node:fs";
 import type { Locator, Page } from "@playwright/test";
 import type { DiagramFile } from "../../src/model/types";
 import { createSimulationRun } from "../../src/sim/simulation";
 import { pseudoText } from "../../src/i18n/pseudo";
-import { test, expect, expectNoErrors, gotoLab, gotoLive } from "./fixtures";
-import {
-  interactionJournalMark,
-  interactionLog,
-  liveKeyLevels,
-  waitForStableViewport,
-  waitForCameraIdle,
-  pauseClock,
-} from "./fixtures";
 
 // Message trace: follow one message (and its fan-out copies) hop by hop, then turn its journey into
 // a sequence diagram. Selectors are data-testid only.
@@ -205,7 +209,7 @@ test.describe("message trace", () => {
   test("focus in the trace card never moves or deletes the selected canvas node", async ({ page }) => {
     await traceKafkaOrder(page);
     const node = page.getByTestId("node-shopper");
-    await page.waitForTimeout(1000); // Let the trace refit finish before measuring the node.
+    await waitForCameraIdle(page);
     const before = await rect(node);
     await page.getByTestId("trace-hops-list").focus();
     await page.keyboard.press("ArrowDown");
@@ -443,12 +447,12 @@ test.describe("message trace", () => {
     // A node card's on-screen width tells the zoom.
     const scaleOf = async () => (await page.getByTestId("node-shopper").boundingBox())?.width ?? 0;
     // Initial fitting animates, too. Sample only after both scheduled fits have settled.
-    await page.waitForTimeout(1200);
+    await waitForCameraIdle(page);
     const before = await scaleOf();
     await openNodeMenu(page, "shopper", "sim.trace-next");
     await expect(page.getByTestId("trace-waiting")).toBeVisible();
     // The card opened and the view refitted: the wide diagram moved down, it didn't shrink.
-    await page.waitForTimeout(1000); // 120 ms refit delay + 700 ms animation, plus frame margin.
+    await waitForCameraIdle(page);
     expect(await scaleOf()).toBeGreaterThan(before * 0.95);
     const traceBox = await rect(card(page));
     for (const id of KAFKA_NODES) {

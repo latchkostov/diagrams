@@ -1,7 +1,7 @@
-import { savedDiagram } from "./fixtures";
-import { chunk } from "./chunk";
-import type { Locator, Page } from "@playwright/test";
 import {
+  waitForHistoryIdle,
+  waitForAutosave,
+  savedDiagram,
   test,
   expect,
   gotoCanvas,
@@ -15,6 +15,9 @@ import {
   flowPoint,
   STORAGE_KEYS,
 } from "./fixtures";
+import { chunk } from "./chunk";
+import type { Locator, Page } from "@playwright/test";
+import { INSERT_HOVER_MS } from "../../src/canvas/edgeHover";
 
 // Flow building (docs/research/drawing-ux.md, batch 3): the "+" on a selected node and Alt+arrow quick-add
 // with Alt+Shift+arrow clone-and-connect (D3), reconnecting an edge's end and inserting a node by dropping
@@ -150,13 +153,10 @@ async function select(page: Page, id: string) {
  */
 async function undoUntil(page: Page, gone: (d: Saved) => boolean, max = 3) {
   for (let i = 0; i < max; i++) {
-    await page.waitForTimeout(450);
+    await waitForHistoryIdle(page);
     await page.getByTestId("undo-button").click();
-    for (let t = 0; t < 8; t++) {
-      await page.waitForTimeout(150);
-      const d = await saved(page);
-      if (d && gone(d)) return;
-    }
+    await waitForAutosave(page);
+    if (gone(await saved(page))) return;
   }
   await savedWhen(page, gone);
 }
@@ -177,10 +177,16 @@ const apart = (a: { x: number; y: number }, b: { x: number; y: number }) =>
   Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y));
 
 /** Holds the pointer on a point long enough for an edge under it to light up. */
-async function hold(page: Page, p: { x: number; y: number }) {
+async function hold(page: Page, p: { x: number; y: number }, inserting = true) {
   await page.mouse.move(p.x + 2, p.y, { steps: 2 });
   await page.mouse.move(p.x, p.y, { steps: 2 });
-  await page.waitForTimeout(450);
+  if (inserting) await expect(page.getByTestId("edge-api-db")).toHaveAttribute("data-insert", "1");
+  else {
+    // An ineligible node has no positive insertion signal. Exercise the real dwell timer.
+    await pauseClock(page);
+    await page.clock.runFor(INSERT_HOVER_MS + 1);
+    await page.clock.resume();
+  }
 }
 
 /** The middle of an edge's drawn line, on screen. */
@@ -508,7 +514,8 @@ test.describe("edges: reconnect and insert (D8)", () => {
     await page.mouse.move(wrap.x + 60, wrap.y + wrap.height - 140, { steps: 8 });
     await page.mouse.up();
     await expect(page.getByTestId("reconnect-line")).toHaveCount(0);
-    await page.waitForTimeout(500);
+    await waitForHistoryIdle(page);
+    await waitForAutosave(page);
     const d = await saved(page);
     expect(d?.edges[0] ?? SEED.edges[0]).toMatchObject({ from: "api", to: "db" });
   });
@@ -530,7 +537,8 @@ test.describe("edges: reconnect and insert (D8)", () => {
     await expect(page.getByTestId("rf__node-billing")).not.toHaveClass(/is-connect-target/);
     // Released over Billing after Esc: still nothing.
     await page.mouse.up();
-    await page.waitForTimeout(600);
+    await waitForHistoryIdle(page);
+    await waitForAutosave(page);
     expect((await saved(page))?.edges[0] ?? SEED.edges[0]).toMatchObject({ from: "api", to: "db" });
     await expect(page.getByTestId("undo-button")).toBeDisabled();
   });
@@ -644,7 +652,8 @@ test.describe("edges: reconnect and insert (D8)", () => {
     await page.mouse.move(mid.x, mid.y, { steps: 6 });
     await page.mouse.move(mid.x + 60, mid.y - 160, { steps: 6 });
     await page.mouse.up();
-    await page.waitForTimeout(500);
+    await waitForHistoryIdle(page);
+    await waitForAutosave(page);
     expect(must(await saved(page), "the autosave").edges).toHaveLength(1);
     // Held, but dropped with Ctrl/Cmd.
     const at = centre(await box(page.getByTestId("node-cache")));
@@ -657,11 +666,13 @@ test.describe("edges: reconnect and insert (D8)", () => {
     await page.mouse.move(mid2.x + 1, mid2.y);
     await page.mouse.up();
     await page.keyboard.up(MOD);
-    await page.waitForTimeout(500);
+    await waitForHistoryIdle(page);
+    await waitForAutosave(page);
     expect(must(await saved(page), "the autosave").edges).toHaveLength(1);
   });
 
   test("a connected node never splits an edge it's dropped on", async ({ page }) => {
+    await page.clock.install();
     // Connect billing first, so it has an edge.
     await select(page, "billing");
     await page.keyboard.press("Alt+ArrowUp");
@@ -677,7 +688,7 @@ test.describe("edges: reconnect and insert (D8)", () => {
     await page.mouse.move(press.x, press.y);
     await page.mouse.down();
     await page.mouse.move(mid.x, mid.y, { steps: 10 });
-    await hold(page, mid);
+    await hold(page, mid, false);
     await expect(page.getByTestId("edge-api-db")).not.toHaveAttribute("data-insert", "1");
     await page.mouse.up();
     // It did move (onto the line), and the edges are as they were.
@@ -775,7 +786,6 @@ test.describe("the stencil rail (D13)", () => {
     const mid = await edgeMiddle(page, "api-db");
     const at = { clientX: mid.x, clientY: mid.y };
     await page.getByTestId("canvas-wrap").dispatchEvent("dragover", { dataTransfer: dt, ...at });
-    await page.waitForTimeout(400);
     await page.getByTestId("canvas-wrap").dispatchEvent("dragover", { dataTransfer: dt, ...at });
     await expect(page.getByTestId("edge-api-db")).toHaveAttribute("data-insert", "1");
     await page.getByTestId("canvas-wrap").dispatchEvent("drop", { dataTransfer: dt, ...at });

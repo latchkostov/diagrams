@@ -27,6 +27,17 @@ import { command, git, pnpmCommand } from "../../scripts/gate/commands.mjs";
 import { runGate } from "../../scripts/gate.mjs";
 import { acquireBudget } from "../../scripts/gate/budget.mjs";
 
+it("passes per-test load repetition to Playwright in a scoped quick gate", () => {
+  const config = options(["quick", "tests/e2e/lazy-surfaces.spec.ts", "--only", "e2e", "--repeat-each", "5"]);
+  const browser = plan(config)
+    .flat()
+    .find((step) => step.name === "e2e-1");
+  expect(browser?.args).toContain("--repeat-each=5");
+  expect(browser?.args).toContain("tests/e2e/lazy-surfaces.spec.ts");
+  for (const count of ["0", "1.5", "no"])
+    expect(() => options(["quick", "--repeat-each", count])).toThrow("--repeat-each");
+});
+
 it("invokes standalone pnpm and JS shims without shell interpretation", () => {
   const args = ["exec", "tool", "a path with spaces", "$(literal)"];
   expect(pnpmCommand(args, process.execPath)).toEqual([process.execPath, args]);

@@ -1,5 +1,14 @@
 import type { Page, TestInfo } from "@playwright/test";
-import { expect, openMissingDlq, pageLoadTimeout, TEXT_END } from "./fixtures";
+import {
+  expect,
+  openMissingDlq,
+  pageLoadTimeout,
+  TEXT_END,
+  pauseClock,
+  waitForCameraIdle,
+  waitForHistoryIdle,
+  waitForAutosave,
+} from "./fixtures";
 import { typingWork, median } from "./typing-work";
 import { installChecksMeasurement } from "./checks-measurement";
 import { RENDER_HOOK } from "../bench/ui/instrument";
@@ -35,6 +44,8 @@ const holdChecks = (page: Page, held: boolean) =>
   page.evaluate((h) => void ((window as unknown as { __checks: CheckRunStats }).__checks.held = h), held);
 
 export async function checksTyping(page: Page, info: TestInfo, measureCpu = false) {
+  const controlled = !measureCpu;
+  if (controlled) await page.clock.install();
   // A worker may finish before the sample's two paints, especially under uneven CPU load.
   // Queue its result until the input reading is taken: publishing findings belongs after the sample
   // in both modes. The real worker still computes, and posting/copying stays inside the sample.
@@ -84,7 +95,19 @@ export async function checksTyping(page: Page, info: TestInfo, measureCpu = fals
     await cdp.send("Emulation.setCPUThrottlingRate", { rate: Number(process.env.CHECKS_CPU) });
   }
 
-  const work = await typingWork(page, measureCpu);
+  if (controlled) {
+    await waitForCameraIdle(page);
+    await waitForHistoryIdle(page);
+    await waitForAutosave(page);
+    await pauseClock(page);
+  }
+  // Operation counts use the same idle handoff and two final virtual frames in both modes. An asynchronous worker
+  // handoff must not let the 300/350 ms autosave/history timers enter only one sample.
+  const painted = () =>
+    controlled
+      ? page.clock.runFor(32)
+      : page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+  const work = await typingWork(page, measureCpu, controlled ? painted : undefined);
 
   // Each check run as it comes due (started, or held back), told at once: `started` and `skipped` become setters
   // that call out to the test before the run goes on. (A poll couldn't hear of a run on the main thread until it
@@ -121,12 +144,15 @@ export async function checksTyping(page: Page, info: TestInfo, measureCpu = fals
   // This test measures the work when a run starts, not the debounce's quiet time (the scheduler's unit
   // tests cover that). Start the scheduled idle callback explicitly, without paying 400 ms for every
   // unmeasured prefix restoration. A run that already started on a busy machine is never queued twice.
-  const flush = (before: { started: number; skipped: number }) =>
-    page.evaluate((count) => {
+  const flush = async (before: { started: number; skipped: number }) => {
+    await page.evaluate((count) => {
       const stats = (window as unknown as { __checks: CheckRunStats }).__checks;
       if (stats.started + stats.skipped === count) stats.flush();
     }, before.started + before.skipped);
-  const painted = () => page.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));
+    // Playwright's controlled idle callback runs after 50 ms when edit timers are pending.
+    // Advance four clock frames, then await the scheduler's actual start signal below.
+    if (controlled) await page.clock.runFor(64);
+  };
   const finished = () =>
     expect
       .poll(async () => {
@@ -134,6 +160,7 @@ export async function checksTyping(page: Page, info: TestInfo, measureCpu = fals
         return stats.pending;
       })
       .toBe(false);
+  const scheduled = () => expect.poll(async () => (await runStats(page)).pending).toBe(true);
 
   /** Restore the exact input and fresh findings before either member of a pair. */
   async function prepare(text: string, restoring = false) {
@@ -145,6 +172,7 @@ export async function checksTyping(page: Page, info: TestInfo, measureCpu = fals
       try {
         await label.fill(text);
         await label.press(TEXT_END);
+        if (controlled) await scheduled();
         await flush(before);
         await due;
       } finally {
@@ -153,6 +181,13 @@ export async function checksTyping(page: Page, info: TestInfo, measureCpu = fals
     }
     await finished();
     await painted();
+    if (controlled) {
+      // Finish background edit work before starting either member of the next pair.
+      await page.clock.runFor(400);
+      await waitForHistoryIdle(page);
+      await waitForAutosave(page);
+      await painted();
+    }
     await expect(label).toHaveValue(text);
     await expect(findings).toHaveAttribute("data-stale", "false");
     if (restoring) {
@@ -184,10 +219,22 @@ export async function checksTyping(page: Page, info: TestInfo, measureCpu = fals
       // The run starts inside the sample, including document reads, copying/posting,
       // or the entire engine if it regresses onto the main thread. Replies publish afterwards.
       cpu = await work.key(ch, async () => {
+        if (controlled) await scheduled();
         await flush(before);
         await due;
       });
-      renders = await page.evaluate(() => window.__benchRenders?.stop());
+      const end = await page.evaluate((operations) => {
+        const edits = operations
+          ? { historyPending: window.__historyProbe?.().pending, saved: window.__documentProbe?.().saved }
+          : undefined;
+        return { edits, renders: window.__benchRenders?.stop() };
+      }, !measureCpu);
+      renders = end.renders;
+      if (!measureCpu)
+        expect(end.edits, "edit debounces stay outside the paint-boundary sample").toEqual({
+          historyPending: true,
+          saved: false,
+        });
       publishedInSample += (await runStats(page)).finished - before.finished;
     } finally {
       await page.evaluate(() => {
@@ -278,5 +325,6 @@ export async function checksTyping(page: Page, info: TestInfo, measureCpu = fals
       );
   }
   expect(publishedInSample, "worker results publish only after the input sample").toBe(0);
+  if (controlled) await page.clock.resume();
   return { held, running };
 }

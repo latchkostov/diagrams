@@ -1,5 +1,5 @@
+import { pauseClock, waitForCameraIdle, test, expect, gotoCanvas, expectNoErrors, gotoLive } from "./fixtures";
 import type { Page } from "@playwright/test";
-import { test, expect, gotoCanvas, expectNoErrors, gotoLive } from "./fixtures";
 
 // Round 7 of the UX review (docs/DESIGN-REVIEW.md): Esc on a clicked node, toasts inside the canvas
 // pane, live view refitting around the AI panel, readable hover cards, a shorter canvas menu, the
@@ -90,8 +90,11 @@ test("live view with a trace refits when the AI panel opens: every node stays in
   await page.getByTestId("live-trace-message").click();
   await page.getByTestId("live-more-menu").getByText("Next message", { exact: true }).click();
   await expect(page.getByTestId("trace-card")).toBeVisible();
+  await waitForCameraIdle(page);
   await expect.poll(() => allNodesInPane(page)).toBe(true);
   await openAiPanel(page);
+  await expect(page.getByTestId("ai-panel")).toBeVisible();
+  await waitForCameraIdle(page);
   await expect.poll(() => allNodesInPane(page), { timeout: 5000 }).toBe(true);
 });
 
@@ -155,15 +158,17 @@ for (const width of [1024, 1280, 1440]) {
 
 test("slow motion keeps the hop at work out from under the trace card", async ({ page }) => {
   test.slow();
+  await page.clock.install();
   await page.setViewportSize({ width: 1280, height: 800 });
   await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1`);
   await page.getByTestId("live-more").click();
   await page.getByTestId("live-trace-message").click();
   await page.getByTestId("live-more-menu").getByText("Next message, in slow motion").click();
   await expect(page.getByTestId("live-canvas")).toHaveAttribute("data-slowmo", "playing", { timeout: 15_000 });
+  await pauseClock(page);
   let checked = 0;
   for (let i = 0; i < 48; i++) {
-    await page.waitForTimeout(250);
+    await page.clock.runFor(250);
     if ((await page.getByTestId("live-canvas").getAttribute("data-slowmo")) !== "playing") break;
     const current = page.getByTestId("trace-row-current");
     const id = await current.getAttribute("data-node").catch(() => null);

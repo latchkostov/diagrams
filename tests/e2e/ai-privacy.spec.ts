@@ -1,11 +1,18 @@
-import { currentDiagram } from "./fixtures";
-import { openExample } from "./fixtures";
+import {
+  animationFrames,
+  currentDiagram,
+  openExample,
+  test,
+  expect,
+  gotoCanvas,
+  expectNoErrors,
+  openShareChooser,
+} from "./fixtures";
 // Runs on the dev server (see DEV_ONLY in playwright.config.ts): local-only examples and the content
 // fingerprint exist only in development builds, by design.
 import type { Page } from "@playwright/test";
 import { deflateRawSync } from "node:zlib";
 import { localOnlyFixture, localOnlySimulationFixture } from "../../src/lab/localOnlyFixture";
-import { test, expect, gotoCanvas, expectNoErrors, openShareChooser } from "./fixtures";
 import {
   SLUG,
   fakeModel,
@@ -229,7 +236,7 @@ test("a request in flight when the diagram switches to a local-only one never co
   await expect(page.getByTestId("ai-privacy-note")).toContainText("Local-only");
   await expect.poll(async () => (await fakeModel(page)).aborted).toBe(1);
   await releaseModel(page);
-  await page.waitForTimeout(300);
+  await animationFrames(page);
   await expect(page.getByTestId("ai-turn-0")).toHaveCount(0);
   await expect(page.getByTestId("node-late-queue")).toHaveCount(0);
   await openExample(page, SLUG);

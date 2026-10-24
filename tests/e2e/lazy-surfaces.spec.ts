@@ -1,9 +1,3 @@
-import type { Page } from "@playwright/test";
-import { lazySurfaces, type LazySurfaceId } from "../../src/lib/lazySurfaces";
-import { lazySurfacesFixture } from "../../src/lab/lazySurfacesFixture";
-import { readFileSync } from "node:fs";
-import type { DiagramFile } from "../../src/model/types";
-import { chunk } from "./chunk";
 import {
   test,
   expect,
@@ -11,10 +5,17 @@ import {
   gotoLive,
   pauseClock,
   waitForStableViewport,
+  waitForInteractionIdle,
   openLiveNodeDetails,
   savedDiagram,
   STORAGE_KEYS,
 } from "./fixtures";
+import type { Page } from "@playwright/test";
+import { lazySurfaces, type LazySurfaceId } from "../../src/lib/lazySurfaces";
+import { lazySurfacesFixture } from "../../src/lab/lazySurfacesFixture";
+import { readFileSync } from "node:fs";
+import type { DiagramFile } from "../../src/model/types";
+import { chunk } from "./chunk";
 
 const SLUG = "blocking-call";
 const slowPayment = JSON.parse(readFileSync("src/examples/slow-payment-provider.json", "utf8")) as DiagramFile;
@@ -69,6 +70,15 @@ async function open(page: Page, id: LazySurfaceId) {
       case "inspector.simulation":
       case "inspector.properties":
         await page.getByTestId("node-caller").dblclick();
+        if (id !== "inspector.identity") {
+          // Rename's identity chunk can finish after the settings chunk requested below. Let its
+          // pending field-focus request finish before the keyboard contract focuses the shell.
+          await expect
+            .poll(() => page.evaluate(() => window.__lazySurfaces?.states()["inspector.identity"]))
+            .toEqual({ state: "loaded", active: true });
+          await expect(page.getByTestId("inspector-field-label")).toBeFocused();
+          await waitForInteractionIdle(page);
+        }
         if (id === "inspector.properties") await page.getByTestId("inspector-section-node-properties").click();
         return;
       case "inspector.group":
@@ -187,6 +197,42 @@ async function open(page: Page, id: LazySurfaceId) {
       throw new Error(`Missing lazy surface entry point: ${id}`);
   }
 }
+
+test("simulation keyboard setup waits for the independently held identity and rename focus", async ({ page }) => {
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route(chunk("NodeIdentity", "src/canvas/inspector/NodeIdentity.tsx"), async (route) => {
+    await held;
+    await route.continue();
+  });
+  let opened = false;
+  const opening = open(page, "inspector.simulation").then(() => {
+    opened = true;
+  });
+  try {
+    await expect(page.getByTestId("canvas-view")).toBeVisible();
+    await expect
+      .poll(() => page.evaluate(() => window.__lazySurfaces?.states()["inspector.identity"]))
+      .toEqual({ state: "loading", active: true });
+    await expect
+      .poll(() => page.evaluate(() => window.__lazySurfaces?.states()["inspector.simulation"]?.state))
+      .toBe("loaded");
+    expect(opened, "settings readiness alone must not finish keyboard setup").toBe(false);
+    release();
+    await opening;
+    await expect(page.getByTestId("inspector-field-label")).toBeFocused();
+    const picker = page.getByTestId("example-picker");
+    await picker.focus();
+    await page.keyboard.press("Tab");
+    await page.keyboard.press("Shift+Tab");
+    await expect(picker).toBeFocused();
+  } finally {
+    release();
+    await opening;
+  }
+});
 
 for (const [id, name, source, policy] of lazySurfaces) {
   if (policy === "await")
