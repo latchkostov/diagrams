@@ -13,7 +13,7 @@
     "markers": [
       { "atMs": 0, "kind": "traffic", "label": "checkouts" },
       { "atMs": 1000, "kind": "fault", "label": "Fail: Payments" },
-      { "atMs": 1200, "kind": "note", "label": "Retries absorb most of a brief blip. Repeating a POST can still run it twice." },
+      { "atMs": 1200, "kind": "note", "label": "Watch Checkout's attempts per request and Shop's goodput. At 3 s, Payments slows for five seconds: the retry budget caps extra calls. Watch its queue drain and goodput recover later in this 60-second run. Repeating a POST can run it twice." },
       { "atMs": 2000, "kind": "fault", "label": "Fail: Payments" },
       { "atMs": 3000, "kind": "fault", "label": "Slow down: Payments" },
       { "atMs": 3500, "kind": "note", "label": "The budget limits extra attempts over ten seconds, instead of retrying every timeout twice." },
@@ -180,7 +180,7 @@
     ]
   },
   "notes": [
-    { "atMs": 1200, "text": "Retries absorb most of a brief blip. Repeating a POST can still run it twice.", "focus": ["payments", "checkout"] },
+    { "atMs": 1200, "text": "Watch Checkout's attempts per request and Shop's goodput. At 3 s, Payments slows for five seconds: the retry budget caps extra calls. Watch its queue drain and goodput recover later in this 60-second run. Repeating a POST can run it twice.", "focus": ["payments", "checkout"] },
     { "atMs": 3500, "text": "The budget limits extra attempts over ten seconds, instead of retrying every timeout twice.", "focus": ["payments", "checkout"] },
     { "atMs": 9000, "text": "At 8 s, Payments is fast again with about 1,300 queued requests still to finish.", "focus": ["payments", "checkout"] },
     { "atMs": 15000, "text": "About 3,000 requests remain queued. The budget lets abandoned work drain; Shop recovers around 38 s.", "focus": ["payments", "checkout"] }

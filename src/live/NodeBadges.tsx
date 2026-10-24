@@ -26,6 +26,7 @@ import { CapacityChip, CapacityRing, IdleChip } from "./CapacityLayer";
 import { HA_LABEL } from "../stencils/netDevices";
 import { latencyLabel, latencySampling } from "./latencyFormat";
 import { readoutDiagram } from "./readoutDiagram";
+import { currentHealth, retryPressure } from "./healthWindow";
 import { callPolicy } from "../sim/callPolicy";
 import type { EdgeSimProps } from "../sim/types";
 
@@ -106,9 +107,10 @@ export function NodeBadges({
     const breaker = state.snapshot.edges[e.id]?.breaker;
     if (!calls) return [];
     const queued = ui.controller.queuedCalls(e.id);
+    const timedOut = currentHealth(calls).timedOut;
     if (
       !(breaker && breaker.state !== "closed") &&
-      !(calls.held || calls.inFlight || calls.timedOut || (calls.windowRetried ?? 0) >= 10 || queued)
+      !(calls.held || calls.inFlight || timedOut || retryPressure(calls) || queued)
     )
       return [];
     // Pills only read the pool; source wait semantics are already measured by held/inFlight.
@@ -117,6 +119,7 @@ export function NodeBadges({
       {
         id: e.id,
         ...calls,
+        timedOut,
         breaker,
         queued,
         pool: policy.pool,
@@ -306,7 +309,7 @@ const NodeBadge = memo(function NodeBadge(props: BadgeProps) {
   const h = node.measured?.height ?? node.height ?? 72;
   const broker = BROKERS.has(s.role);
   const heat = heatOf(s.backlog);
-  const problems = s.deadLettered + s.dropped;
+  const problems = currentHealth(s).dropped;
   // Blocked by a deny rule: on purpose, so never in the red count, and shown apart from it.
   const blocked = s.blocked ?? 0;
   const rejected = s.rejected ?? 0;
@@ -356,13 +359,13 @@ const NodeBadge = memo(function NodeBadge(props: BadgeProps) {
           <LiveIcon name="pause" size={9} /> paused
         </div>
       )}
-      {showOutageLoss && s.status === "down" && s.dropped > 0 && (
+      {showOutageLoss && s.status === "down" && currentHealth(s).dropped > 0 && (
         <div
           className="lv-alert mono"
-          title={t("fault.droppedCount", { count: s.dropped })}
+          title={t("fault.droppedCount", { count: currentHealth(s).dropped })}
           data-testid={`node-loss-${node.id}`}
         >
-          {formatCount(s.dropped)}
+          {formatCount(currentHealth(s).dropped)}
         </div>
       )}
       {problems > 0 && s.status !== "down" && (
@@ -402,7 +405,7 @@ const NodeBadge = memo(function NodeBadge(props: BadgeProps) {
           )}
           {!showMetric ? null : broker ? (
             <span
-              className={`lv-metric is-backlog${s.backlog > 0 ? " is-hot" : ""}`}
+              className={`lv-metric is-backlog${currentHealth(s).growing ? " is-hot" : ""}`}
               // Kept, not falling behind: the backlog's amber, never heating towards red.
               style={{ "--heat": unread ? "0" : heat.toFixed(3) } as CSSProperties}
               data-testid={`node-metric-${node.id}`}

@@ -183,7 +183,7 @@
           "atMs": 1200,
           "action": {
             "do": "note",
-            "text": "Retries absorb most of a brief blip. Repeating a POST can still run it twice.",
+            "text": "Watch Checkout's attempts per request and the Payments queue. At 3 s, Payments slows for five seconds: quick retries pile up. Repeating a POST can run it twice.",
             "focus": ["payments", "checkout"]
           }
         },
@@ -331,7 +331,7 @@
           "atMs": 1200,
           "action": {
             "do": "note",
-            "text": "Retries absorb most of a brief blip. Repeating a POST can still run it twice.",
+            "text": "Watch Checkout's attempts per request and the Payments queue. At 3 s, Payments slows for five seconds: jitter spreads retries, but does the queue drain? Repeating a POST can run it twice.",
             "focus": ["payments", "checkout"]
           }
         },
@@ -483,7 +483,7 @@
           "atMs": 1200,
           "action": {
             "do": "note",
-            "text": "Retries absorb most of a brief blip. Repeating a POST can still run it twice.",
+            "text": "Watch Checkout's attempts per request and Shop's goodput. At 3 s, Payments slows for five seconds: the retry budget caps extra calls. Watch its queue drain and goodput recover later in this 60-second run. Repeating a POST can run it twice.",
             "focus": ["payments", "checkout"]
           }
         },
@@ -636,7 +636,7 @@
           "atMs": 1200,
           "action": {
             "do": "note",
-            "text": "Retries absorb a brief blip. The circuit breaker watches settled attempts.",
+            "text": "Watch the Payments connection and queue. At 3 s, Payments slows for five seconds: the breaker pauses failing calls, then tests recovery. Watch for Closed and calls succeeding.",
             "focus": ["payments", "checkout"]
           }
         },

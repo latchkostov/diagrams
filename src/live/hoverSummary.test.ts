@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { HealthWindow } from "./healthWindow";
+import type { EdgeSimState } from "../sim/types";
 import type { NodeSimState } from "../sim/types";
 import type { DiagramFile } from "../model/types";
 import { compileTopology } from "../sim/topology";
@@ -18,6 +20,27 @@ const node = (patch: Partial<NodeSimState> = {}): NodeSimState => ({
   throughput: 0,
   ...patch,
 });
+function observe(s: NodeSimState, calls: NonNullable<EdgeSimState["calls"]>[] = []) {
+  const window = new HealthWindow();
+  window.observe(
+    {
+      time: 0,
+      nodes: { api: node() },
+      edges: Object.fromEntries(
+        calls.map((c, i) => [i, { id: String(i), active: 0, delivered: 0, calls: { ...c, timedOut: 0, failed: 0 } }]),
+      ),
+    },
+    0,
+  );
+  window.observe(
+    {
+      time: 1000,
+      nodes: { api: s },
+      edges: Object.fromEntries(calls.map((c, i) => [i, { id: String(i), active: 0, delivered: 0, calls: c }])),
+    },
+    0,
+  );
+}
 describe("problem-first summaries", () => {
   it("prioritizes down, timeouts, exhausted threads and retries in that order", () => {
     const s = node({
@@ -38,15 +61,9 @@ describe("problem-first summaries", () => {
         windowRetried: 20,
       },
     ];
-    expect(nodeSummary(s, calls).problems.map((p) => p.key)).toEqual([
-      "down",
-      "timeout",
-      "threads",
-      "retry",
-      "loss",
-      "waiting",
-    ]);
-    expect(PROBLEM_PRIORITY.slice(0, 4)).toEqual(["down", "timeout", "threads", "retry"]);
+    observe(s, calls);
+    expect(nodeSummary(s, calls).problems.map((p) => p.key)).toEqual(["down", "timeout", "threads", "retry", "loss"]);
+    expect(PROBLEM_PRIORITY.slice(0, 5)).toEqual(["down", "timeout", "threads", "breaker", "retry"]);
   });
   it("reserves exactly four vitals and three summary sections as values change", () => {
     for (const role of ["source", "processor", "queue", "topic", "stream", "store", "sink", "gateway"] as const) {
@@ -60,11 +77,11 @@ describe("problem-first summaries", () => {
   it("does not call retained unread messages lag, or deny-rule refusals losses", () => {
     const summary = nodeSummary(node({ role: "topic", noConsumer: true, backlog: 30, blocked: 4 }), [], true);
     expect(summary.vitals[1].label).toBe("Kept");
-    expect(summary.problems.map((p) => p.key)).toEqual(["unread", "waiting"]);
+    expect(summary.problems.map((p) => p.key)).toEqual(["unread"]);
     expect(summary.vitals[3].value).toBe("0");
   });
   it("only calls lag growing when observed backlog grew", () => {
-    expect(nodeSummary(node({ role: "topic", backlog: 30 }), []).problems[0].key).toBe("waiting");
+    expect(nodeSummary(node({ role: "topic", backlog: 30 }), []).problems).toEqual([]);
     expect(nodeSummary(node({ role: "topic", backlog: 30 }), [], true).problems[0].key).toBe("lag");
   });
 });
@@ -76,9 +93,11 @@ describe("dead letters are moved, not lost", () => {
     expect(moved.vitals.find((v) => v.key === "loss")?.value).toBeUndefined();
     expect(moved.facts.find((f) => f.key === "deadLettered")).toMatchObject({ value: "10" });
     expect(moved.facts.find((f) => f.key === "deadLettered")?.bad).toBeFalsy();
-    const broker = nodeSummary(node({ role: "queue", deadLettered: 10, dropped: 2 }), []);
+    const state = node({ role: "queue", deadLettered: 10, dropped: 2 });
+    observe(state);
+    const broker = nodeSummary(state, []);
     expect(broker.problems.find((p) => p.key === "loss")?.text).toBe("2 messages lost.");
-    expect(broker.vitals.find((v) => v.key === "loss")).toMatchObject({ value: "2", bad: true });
+    expect(broker.vitals.find((v) => v.key === "loss")).toBeUndefined();
   });
 });
 
@@ -156,6 +175,7 @@ describe("connection cards", () => {
     expect(requestSummary(undefined, undefined, true, 0).sections.find((s) => s.key === "breaker")?.summary).toBe("—");
     // Current breaker state leads cumulative timeout counts.
     const calls = { inFlight: 5, held: 0, timedOut: 20, failed: 20, late: 0 };
+    observe(node(), [calls]);
     expect(requestSummary(calls, view({ state: "half-open" }), true, 0).problems.map((p) => p.key)).toEqual([
       "breaker",
       "timeout",
@@ -165,6 +185,7 @@ describe("connection cards", () => {
 
 it("keeps the hero verdict out of attention facts and cumulative timeouts out of duplicate summaries", () => {
   const calls = { inFlight: 1, held: 1, timedOut: 42, failed: 42, succeeded: 100, late: 0 };
+  observe(node(), [calls]);
   const n = nodeSummary(node(), [calls]);
   expect(n.problems[0].key).toBe("timeout");
   expect(n.facts.some((f) => f.label === n.problems[0].text)).toBe(false);

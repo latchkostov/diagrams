@@ -12,6 +12,7 @@ import { LiveController } from "./controller";
 import { TroubleWatcher } from "./observedTrouble";
 import { CallsReadout } from "./CallsReadout";
 import { BreakerReadout } from "./BreakerReadout";
+import { CallOutcomes } from "./CallOutcomes";
 import { requestSummary } from "./hoverSummary";
 import { waitingFixture } from "../lab/waitingFixture";
 
@@ -32,7 +33,8 @@ it.each(["p3-w2", "p3-w1"] as const)(
     expect(calls.failed).toBe(1);
     expect(calls.succeeded).toBeUndefined();
     expect(callFailureRate(calls)).toEqual({ available: false });
-    expect(requestSummary(calls, undefined, false, 0).facts.find((f) => f.key === "failureRate")?.value).toBe("—");
+    expect(renderToStaticMarkup(<CallOutcomes calls={calls} />)).toContain("—");
+    expect(requestSummary(calls, undefined, false, 0).facts.find((f) => f.key === "failureRate")).toBeUndefined();
   },
 );
 
@@ -71,9 +73,7 @@ it("does not divide settled failures by a smaller population of recently started
     expect(detail).not.toMatch(/1\d\d%/);
     const html = renderToStaticMarkup(<CallsReadout diagram={diagram} node="checkout" snapshot={frame} />);
     expect(html).toContain(`${Math.round(failures.rate * 100)}%`);
-    expect(requestSummary(calls, undefined, false, 0).facts.find((f) => f.key === "failureRate")?.value).toContain(
-      `${Math.round(failures.rate * 100)}%`,
-    );
+    expect(renderToStaticMarkup(<CallOutcomes calls={calls} />)).toContain(`${Math.round(failures.rate * 100)}%`);
   } finally {
     controller.dispose();
   }

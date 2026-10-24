@@ -66,10 +66,6 @@ for (const locale of ["en", "ar", "en-XA"]) {
     const badge = page.getByTestId("node-badge-checkout");
     const lost = Number(await badge.getAttribute("data-dropped")) + Number(await badge.getAttribute("data-dlq"));
     expect(Number(await badge.getAttribute("data-failed"))).toBe(lost);
-    const alert = page.getByTestId("node-alert-checkout");
-    const englishTitle = `${lost.toLocaleString("en")} messages lost`;
-    if (locale === "en") await expect(alert).toHaveAttribute("title", englishTitle);
-    else await expect(alert).not.toHaveAttribute("title", englishTitle);
     await fitDiagram(page);
     await page.getByTestId("node-checkout").hover();
     const detail = page.getByTestId("node-detail-checkout");
@@ -84,7 +80,13 @@ for (const locale of ["en", "ar", "en-XA"]) {
     await openLiveNodeDetails(page, "checkout", "outcomes");
     await expect(outcome).toBeVisible();
     await expect(outcome).toHaveCount(1);
+    await expect(page.getByTestId("node-loss-total")).toHaveCount(0);
+    await expect(page.getByTestId("node-failed-total")).toHaveCount(0);
+    await expect(page.getByTestId("node-outcomes-scope")).toHaveCount(1);
     if (locale === "en") {
+      await expect(page.getByTestId("node-outcomes-scope")).toHaveText("Since restart");
+      // Cumulative loss belongs in one outcome, rather than the current-window alert badge.
+      await expect(outcome).toContainText(`${lost.toLocaleString("en")} lost`);
       await expect(outcome).toContainText("all timed out after 0.6 s");
       await expect(outcome).toContainText("late replies discarded");
       await expect(detail).not.toContainText("Failed attempts");

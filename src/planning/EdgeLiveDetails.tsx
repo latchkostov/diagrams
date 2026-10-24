@@ -3,7 +3,7 @@ import { t, useLocale } from "../i18n";
 import { LiveContext, useLiveState, type LiveUi } from "../live/context";
 import { planningHost } from "./host";
 import { DockedLive } from "../live/DockedLive";
-import { edgeReadoutKind, flowSummary, requestSummary } from "../live/hoverSummary";
+import { edgeReadoutKind, flowSummary, requestSummary, requestHealthy } from "../live/hoverSummary";
 import { EdgeDetailSection } from "../live/EdgeDetailSection";
 import { callPolicy } from "../sim/callPolicy";
 import type { EdgeSimProps } from "../sim/types";
@@ -41,13 +41,11 @@ function ObservedEdge({ id, live }: { id: string; live: LiveUi }) {
     kind === "request" ? requestSummary(s?.calls, s?.breaker, policy.blocking, s?.active ?? 0) : flowSummary(kind, s);
   if (kind === "request")
     summary.sections.sort(
-      (a, b) => ["breaker", "timeouts", "retries"].indexOf(a.key) - ["breaker", "timeouts", "retries"].indexOf(b.key),
+      (a, b) => ["breaker", "outcomes", "retries"].indexOf(a.key) - ["breaker", "outcomes", "retries"].indexOf(b.key),
     );
   const healthy =
     kind === "request"
-      ? policy.blocking
-        ? t("hover.holds")
-        : t("hover.frees")
+      ? requestHealthy(s?.calls, s?.breaker, policy.blocking)
       : kind === "dependency"
         ? t("hover.dependencyVerdict")
         : edge.kind === "sync"

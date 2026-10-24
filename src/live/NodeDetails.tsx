@@ -1,5 +1,4 @@
 import { defineLazySurface } from "../lib/lazySurface";
-import { useState } from "react";
 import { t, useLocale } from "../i18n";
 import { stencilLabel } from "../i18n/stencils";
 import { getStencil } from "../stencils/registry";
@@ -7,7 +6,7 @@ import { useLive } from "./context";
 import type { BadgeProps } from "./NodeBadges";
 import type { LiveState } from "./controller";
 import type { DiagramFile } from "../model/types";
-import { edgeReadoutKind, flowSummary, nodeSummary, requestSummary } from "./hoverSummary";
+import { edgeReadoutKind, flowSummary, nodeSummary, requestSummary, requestHealthy } from "./hoverSummary";
 import { EdgeDetailSection } from "./EdgeDetailSection";
 import { RELATION_META, relationOf } from "../model/relations";
 import type { CompiledTopology } from "../sim/topology";
@@ -34,14 +33,7 @@ export function NodeDetails(props: BadgeProps) {
   const calls = diagram.edges
     .filter((e) => e.from === node.id)
     .flatMap((e) => (snapshot.edges[e.id]?.calls ? [snapshot.edges[e.id].calls!] : []));
-  const [previous, setPrevious] = useState({ at: snapshot.time, backlog: s.backlog, growing: false });
-  if (snapshot.time < previous.at || snapshot.time - previous.at >= 1000)
-    setPrevious({
-      at: snapshot.time,
-      backlog: s.backlog,
-      growing: snapshot.time > previous.at && s.backlog > previous.backlog,
-    });
-  const summary = nodeSummary(s, calls, previous.growing);
+  const summary = nodeSummary(s, calls);
   const waitingEdge = diagram.edges.find((e) => e.id === s.threads?.waitingOn[0]?.[0]);
   if (waitingEdge && s.threads?.waiting)
     summary.facts.splice(summary.problems.length, 0, {
@@ -157,7 +149,7 @@ export function EdgeDetails({
       pinned={pinned}
       presenting={ui.presenting}
       summary={requestSummary(c, breaker, policy.blocking, s?.active ?? 0)}
-      healthy={policy.blocking ? t("hover.holds") : t("hover.frees")}
+      healthy={requestHealthy(c, breaker, policy.blocking)}
     >
       {(section) => <EdgeDetailSection diagram={diagram} id={id} section={section} />}
     </HoverCard>

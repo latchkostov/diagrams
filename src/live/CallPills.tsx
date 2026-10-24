@@ -1,3 +1,4 @@
+import { retryPressure } from "./healthWindow";
 import { callFailureRate } from "./callFailureRate";
 import { isolate } from "./bidi";
 import { memo, useMemo } from "react";
@@ -82,7 +83,7 @@ export const CallPills = memo(
         const amplification = (retry.windowRequests ?? 0) > 0 ? (retry.windowAttempts ?? 0) / retry.windowRequests! : 1;
         const failures = callFailureRate(retry);
         const percent = failures.available ? isolate(`${Math.round(100 * failures.rate)}%`) : "—";
-        const showRetry = amplification >= 1.2 && (retry.windowRetried ?? 0) >= 10;
+        const showRetry = retryPressure(retry);
         const label = {
           id,
           timedOut,

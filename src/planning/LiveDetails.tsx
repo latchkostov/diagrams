@@ -103,13 +103,10 @@ export function LiveDetails({
   const broker = resolved?.broker;
   const cpuAllocated = resolved?.autoscaling?.mode === "on" && resolved.autoscaling.modelRevision === "a3";
   const time = state?.snapshot.time ?? 0;
-  const [previous, setPrevious] = useState({ at: time, backlog: s.backlog, growing: false });
-  if (time < previous.at || time - previous.at >= 1000)
-    setPrevious({ at: time, backlog: s.backlog, growing: time > previous.at && s.backlog > previous.backlog });
   const calls = d.edges
     .filter((e) => e.from === s.id)
     .flatMap((e) => (state?.snapshot.edges[e.id]?.calls ? [state.snapshot.edges[e.id].calls!] : []));
-  const summary = nodeSummary(s, calls, previous.growing);
+  const summary = nodeSummary(s, calls);
   // Three primary vitals per row; secondary resource/queue values stay in their sections.
   summary.vitals = summary.vitals.slice(0, 3);
   const cpu = s.resources?.cpuRequestPct ?? s.resources?.cpuAllocatedPct;
@@ -236,6 +233,7 @@ export function LiveOutcomes({ metrics: s }: { metrics: NodeSimState }) {
   ] as const;
   return (
     <>
+      <p data-testid="node-outcomes-scope">{t("health.sinceRestart")}</p>
       <dl className="inspector-live-outcomes" data-testid="inspector-live-outcomes">
         {rows
           .filter(([, , count]) => count > 0)
