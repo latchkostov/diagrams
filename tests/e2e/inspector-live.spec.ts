@@ -12,7 +12,7 @@ import {
   expectNoErrors,
 } from "./fixtures";
 
-for (const panel of ["EdgePanel", "lazyEdgePanel", "NodeIdentity"] as const) {
+for (const panel of ["EdgePanel", "lazyEdgePanel", "NodePanel"] as const) {
   for (const finish of ["typing", "Enter", "Escape"] as const) {
     test(`held connection ${panel} chunk preserves rename keys and ${finish}`, async ({ page }) => {
       let requested = false;
@@ -31,7 +31,7 @@ for (const panel of ["EdgePanel", "lazyEdgePanel", "NodeIdentity"] as const) {
       await page.goto("./?view=canvas&example=blocking-call");
       await expect(page.getByTestId("canvas-view")).toBeVisible();
       await waitForStableViewport(page);
-      await page.getByTestId(panel === "NodeIdentity" ? "node-caller" : "edge-call").dblclick({ force: true });
+      await page.getByTestId(panel === "NodePanel" ? "node-caller" : "edge-call").dblclick({ force: true });
       await expect.poll(() => requested).toBe(true);
       await page.keyboard.type("test label");
       if (finish !== "typing") await page.keyboard.press(finish);

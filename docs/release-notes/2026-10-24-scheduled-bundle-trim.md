@@ -70,3 +70,9 @@ The final targeted unit/SSR run passes all 194 tests. Output parity remains unch
 The final affected-spec Linux run passes 820 tests across five repetitions with 10 workers and
 10 CPUs, with zero failures or flakes. The final Node parity recheck passes 1,855 tests and
 3,016 goldens, with zero changed, added, missing or stale outputs.
+
+The neighboring sweep passed 199 tests and exposed three held-chunk cases still intercepting the
+removed identity chunk. They now hold the containing node-panel chunk instead, retaining every
+typing, Enter, Escape and focus assertion.
+The corrected inspector suite passes all five Linux repetitions at 12 workers/CPUs: 105 passed,
+zero failed and zero flaky.
