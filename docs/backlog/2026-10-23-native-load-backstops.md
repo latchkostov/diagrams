@@ -103,3 +103,23 @@ backstop and removes coverage contention; native isolation cost remains an open 
 | [2026-10-23-unit-simulation-load-backstops.md](https://github.com/latchkostov/diagrams/blob/d8850ec5/docs/backlog/2026-10-23-unit-simulation-load-backstops.md)                 | Simulation unit backstops under shared load                        |
 | [2026-10-23-ux-merge-verification-capacity.md](https://github.com/latchkostov/diagrams/blob/d8850ec5/docs/backlog/2026-10-23-ux-merge-verification-capacity.md)                 | Complete broad verification of the PR #255 merge in CI             |
 | [2026-10-23-vendor-ci-test-backstops.md](https://github.com/latchkostov/diagrams/blob/d8850ec5/docs/backlog/2026-10-23-vendor-ci-test-backstops.md)                             | Vendor CI follow-up: existing simulation backstops (2026-10-23)    |
+
+## Final Linux gate observation
+
+The full Linux gate on `d59988710159e9c45b7787d475e1fdc4b4e1a911` completed all stages.
+Its sole failure was `tests/e2e/html-export.spec.ts:457`, “exports the Kafka example encrypted,
+and opens it from file:// with the password”: the export toast was absent at line 471 after
+the downloaded file had been saved and read. The assertion kept its original seven-second
+backstop. No product behavior, test assertion or timeout changed.
+
+```text
+SUMMARY: d59988710159e9c45b7787d475e1fdc4b4e1a911 | unit={"passed":10196,"failed":0,"skipped":5} parity={"goldens":3146,"changed":0,"added":0,"missing":0,"stale":0} e2e={"passed":2184,"failed":1,"flaky":0,"skipped":0} gate_failures=1
+```
+
+Only this case was replayed twice on an untouched archive of `origin/master`
+`c26f37d9c64d8402393dcdf43374f743aa66332a`, using a frozen offline dependency install,
+the production E2E build, explicit ports 6450–6454 and two workers: `2 passed (31.8s)`.
+Thus this is an unconfirmed load observation, not proven pre-existing and not a seeded
+known flake. The verification-budget rule calls for recording the isolated master result
+and continuing to CI without another full-suite run. The owned gate container and its
+servers were stopped; the isolated Playwright run also stopped its server.
