@@ -63,6 +63,7 @@ const edge: Required<DiagramEdge> = {
   relationOrigin: "inferred",
   sourceSide: "right",
   targetSide: "left",
+  waypoints: [{ x: 300, y: 100 }],
   props: { settings: [{ key: "Orders:Timeout" }, { key: "Db:Password", secret: true }], travelMs: 5 },
 };
 const group: Required<DiagramGroup> = {
@@ -263,5 +264,37 @@ it("limits authored descriptions while preserving longer native imports", () => 
     if (length === 2000) expect(() => check(file)).not.toThrow();
     else expect(() => check(file)).toThrow();
     expect(parseNative(JSON.stringify(file)).ok).toBe(true);
+  }
+});
+
+it("bounds saved waypoints and closes their point objects", () => {
+  expect(() => check({ ...edge, waypoints: [{ x: -100, y: 200 }] }, "Edge")).not.toThrow();
+  for (const waypoints of [
+    [{ x: 1 }],
+    [{ x: 1, y: 2, z: 3 }],
+    Array.from({ length: 65 }, () => ({ x: 1, y: 2 })),
+    "bad",
+  ])
+    expect(() => check({ ...edge, waypoints }, "Edge")).toThrow();
+});
+
+it("uses the same waypoint coordinate boundaries as native loading", () => {
+  for (const value of [-1_000_000, 1_000_000]) {
+    const saved = { ...edge, waypoints: [{ x: value, y: -value }] };
+    expect(() => check(saved, "Edge")).not.toThrow();
+    const result = parseNative(
+      JSON.stringify({
+        format: "diagrams/v1",
+        title: "Bounds",
+        nodes: [
+          { id: saved.from, stencil: "service.go", label: "A", x: 0, y: 0 },
+          { id: saved.to, stencil: "service.go", label: "B", x: 400, y: 0 },
+        ],
+        edges: [saved],
+      }),
+    );
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.diagram.edges[0].waypoints).toEqual(saved.waypoints);
+    expect(() => check({ ...saved, waypoints: [{ x: value + Math.sign(value), y: 0 }] }, "Edge")).toThrow();
   }
 });

@@ -188,14 +188,17 @@ export function ExplanationView({
                       : t("planning.unlimited")}
                   {!x.managed && !x.resources && Number.isFinite(x.slots) && Number.isFinite(x.capacity) && (
                     <small data-testid="planning-capacity-formula">
-                      {t("workspaceInspector.formula", {
-                        replicas: x.activeReplicas,
-                        slots: x.slots,
-                        seconds: formatProcessingSeconds(x.seconds),
-                      })}
+                      <bdi>
+                        {t("workspaceInspector.formula", {
+                          replicas: x.activeReplicas,
+                          slots: x.slots,
+                          seconds: formatProcessingSeconds(x.seconds),
+                        })}
+                      </bdi>
                     </small>
                   )}
                 </>,
+                "capacity",
               ],
               [t("workspaceInspector.receives"), rate(x.offered)],
             ]}

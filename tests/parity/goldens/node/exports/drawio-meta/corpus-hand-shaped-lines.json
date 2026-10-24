@@ -1,0 +1,31 @@
+{
+  "withIcons": {
+    "sha256": "868da4c05e2535d11005fbe5adc2c7a7dd1acde6d1544491d2008ec0bd88ff4e",
+    "bytes": 17944,
+    "inlined": { "postgres": "postgresql 5bc8dcc1fbb1ec10", "service.go": "go 6f494b4da5a84f2a", "service.node": "nodejs ad81b1a87b698cc5" }
+  },
+  "readBack": [
+    {
+      "warnings": [],
+      "diagram": {
+        "format": "diagrams/v1",
+        "title": "Hand-shaped lines",
+        "direction": "LR",
+        "nodes": [
+          { "id": "api", "stencil": "service.node", "label": "Orders API", "x": 0, "y": 0 },
+          { "id": "db", "stencil": "postgres", "label": "Orders DB", "x": 650, "y": 0 },
+          { "id": "worker", "stencil": "service.go", "label": "Receipt worker", "x": 650, "y": 320 }
+        ],
+        "edges": [
+          { "id": "api-db", "from": "api", "to": "db", "label": "writes", "kind": "sync", "sourceSide": "bottom", "targetSide": "bottom" },
+          { "id": "jog", "from": "api", "to": "worker", "label": "receipts", "kind": "async" },
+          { "id": "detour", "from": "api", "to": "db", "label": "audit", "kind": "async", "sourceSide": "right", "targetSide": "top" },
+          { "id": "shape-end", "from": "worker", "to": "shape", "kind": "async", "sourceSide": "bottom", "targetSide": "bottom" }
+        ],
+        "annotations": [
+          { "id": "shape", "kind": "shape", "text": "Archive", "x": 1100, "y": 320, "width": 140, "height": 100, "shape": "diamond" }
+        ]
+      }
+    }
+  ]
+}

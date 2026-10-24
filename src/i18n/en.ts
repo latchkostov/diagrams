@@ -3297,5 +3297,12 @@ const en = {
   "hover.deadLettered": "Moved to the dead-letter queue",
   "hover.historySummary": "Now {latest} · low {low} · peak {peak}",
   "hover.historyValues": "Throughput each second, oldest first: {values}",
+  "route.shaped": "shaped by hand",
+  "route.reset": "Reset route",
+  "route.resetLine": "Reset route (line)",
+  "route.resetSelection": "Reset routes of the selection",
+  "route.resetButton": "Reset",
+  "route.automatic": "Automatic",
+  "route.bends": "Shaped by hand · {count, plural, one {# bend} other {# bends}}",
 } as const;
 export default en;

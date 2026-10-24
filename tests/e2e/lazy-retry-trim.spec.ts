@@ -107,7 +107,7 @@ test("held Request fields keep the inspector usable; once they arrive the keyboa
     expect(await label.evaluate((el) => getComputedStyle(el).borderStyle)).toBe("solid");
     // The keyboard carries on into the fields that arrived, in their order.
     await page.keyboard.press("Tab");
-    await expect(page.getByTestId("inspector-field-wait")).toBeFocused();
+    await expect(page.getByTestId("inspector-field-wait-non-blocking")).toBeFocused();
     await page.keyboard.press("Tab");
     await expect(page.getByTestId("inspector-field-deadlineMs")).toBeFocused();
     await page.keyboard.press("Tab");

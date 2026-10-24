@@ -1044,6 +1044,7 @@ export function builtinActions(): Action[] {
     {
       // Pinning a side is rare (the router picks them): one row, From side ▸ and To side ▸ under it.
       id: "edge.route",
+      hint: (ctx) => (ctx.editor.getEdge(ctx.edgeId!)?.waypoints?.length ? t("route.shaped") : undefined),
       section: "edge",
       targets: ["edge"],
       get label() {
@@ -1071,6 +1072,19 @@ export function builtinActions(): Action[] {
           hint: SIDE_HINT(ctx.editor.getEdge(ctx.edgeId!)?.targetSide),
           children: sideMenu(ctx, "targetSide"),
         },
+        ...(ctx.editor.getEdge(ctx.edgeId!)?.waypoints?.length
+          ? [
+              { type: "separator" as const },
+              {
+                type: "item" as const,
+                id: "edge.reset-route",
+                label: t("route.reset"),
+                paletteLabel: t("route.resetLine"),
+                icon: "route" as const,
+                run: () => ctx.editor.updateEdge(ctx.edgeId!, { waypoints: undefined }),
+              },
+            ]
+          : []),
       ],
     },
 

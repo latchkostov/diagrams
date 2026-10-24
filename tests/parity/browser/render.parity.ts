@@ -10,6 +10,7 @@ const slugs = readdirSync(join(ROOT, "src/examples"), { withFileTypes: true })
   .filter((e) => e.isFile() && e.name.endsWith(".json"))
   .map((e) => e.name.slice(0, -".json".length))
   .sort();
+slugs.push("corpus-hand-shaped-lines");
 
 for (const slug of slugs) {
   test(`canvas: ${slug}`, async ({ page }) => {

@@ -1,0 +1,20 @@
+{
+  "warnings": [],
+  "diagram": {
+    "format": "diagrams/v1",
+    "title": "Hand-shaped lines",
+    "direction": "LR",
+    "nodes": [
+      { "id": "api", "stencil": "generic.service", "label": "Orders API", "x": 40, "y": 100 },
+      { "id": "db", "stencil": "generic.database", "label": "Orders DB", "x": 400, "y": 40 },
+      { "id": "worker", "stencil": "generic.service", "label": "Receipt worker", "x": 400, "y": 160 },
+      { "id": "shape", "stencil": "generic.service", "label": "Archive", "x": 760, "y": 100 }
+    ],
+    "edges": [
+      { "id": "e1-api-db", "from": "api", "to": "db", "label": "writes", "kind": "sync" },
+      { "id": "e2-api-worker", "from": "api", "to": "worker", "label": "receipts", "kind": "async" },
+      { "id": "e3-api-db", "from": "api", "to": "db", "label": "audit", "kind": "async" },
+      { "id": "e4-worker-shape", "from": "worker", "to": "shape", "kind": "async" }
+    ]
+  }
+}

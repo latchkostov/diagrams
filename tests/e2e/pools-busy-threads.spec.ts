@@ -31,8 +31,7 @@ test("Connection pool is the same editable field for held and freed threads", as
   await expect
     .poll(async () => (await savedDiagram(page)).edges[1].props?.caller)
     .toMatchObject({ poolConnections: 40 });
-  await page.getByTestId("inspector-field-wait").click();
-  await page.getByTestId("context-menu-item-non-blocking").click();
+  await page.getByTestId("inspector-field-wait-non-blocking").click();
   await expect(pool).toHaveValue("40");
   await expect(pool).toHaveAccessibleName("Connection pool");
 });

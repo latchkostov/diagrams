@@ -1,3 +1,4 @@
+import { routeGeometry } from "../geometry/shapedRuntime";
 import { useSettings } from "../../harness/settings";
 import { useDiagram } from "../DiagramContext";
 import { useShowDependencies } from "../dependencyVisibility";
@@ -138,6 +139,7 @@ export function routeInputFromStore(
   }
   const deps = relationInfo(edges);
   return {
+    geometry: routeGeometry,
     nodes: routeNodes,
     groups,
     direction: opts.direction,
@@ -152,6 +154,7 @@ export function routeInputFromStore(
           target: e.target,
           sourceSide: e.data?.sourceSide,
           targetSide: e.data?.targetSide,
+          waypoints: e.data?.waypoints,
           label: dep ? dep.text : e.data?.label,
           ...(dep ? { glyph: true } : {}),
         };

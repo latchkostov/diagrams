@@ -1,3 +1,4 @@
+import * as geometry from "./shaped";
 // Routing benchmark over the public examples, the obstacle course and the 150-node stress preset.
 import { expect, it, vi } from "vitest";
 import type { DiagramFile } from "../../model/types";
@@ -325,3 +326,66 @@ it.skipIf(!process.env.ROUTE_BENCH)("routing benchmark", () => {
     console.log(`PERF separated ${count}: ${(performance.now() - start).toFixed(2)} ms`);
   }
 });
+
+it("routes 300 saved and 300 automatic edges with searches only for automatic edges", () => {
+  const nodes = Array.from({ length: 600 }, (_, i) => ({
+    id: `n${i}`,
+    rect: { x: (i % 2) * 600, y: Math.floor(i / 2) * 240, width: 220, height: 72 },
+  }));
+  const edges = Array.from({ length: 300 }, (_, i) => ({
+    id: `auto${i}`,
+    source: `n${i * 2}`,
+    target: `n${i * 2 + 1}`,
+  }));
+  const custom = edges.map((e, i) => ({
+    ...e,
+    id: `saved${i}`,
+    waypoints: [
+      { x: 110, y: i * 240 + 140 },
+      { x: 710, y: i * 240 + 140 },
+    ],
+  }));
+  const router = new Router();
+  const result = router.route({ geometry, nodes, edges: [...edges, ...custom] });
+  expect(result.size).toBe(600);
+  expect(router.lastRouted).toBe(300);
+  for (const e of custom) expect(result.get(e.id)?.custom).toBe(true);
+  router.route({ geometry, nodes, edges: [...edges, ...custom] });
+  expect(router.lastRouted).toBe(0);
+});
+
+for (const mixed of [false, true])
+  it(`bounds clustering work for many fixed saved routes (${mixed ? "mixed" : "all fixed"})`, () => {
+    const measure = (count: number, budget = count * 64 * LINEAR_LIMIT) => {
+      const routes = new Map(
+        Array.from({ length: count }, (_, i) => [
+          String(i),
+          Array.from({ length: 64 }, (_, k) => ({
+            x: k % 4 < 2 ? 0 : 100,
+            y: i * 1000 + Math.floor((k + 1) / 2) * 10,
+          })),
+        ]),
+      );
+      const fixed = new Set(routes.keys());
+      if (mixed)
+        routes.set("auto", [
+          { x: 0, y: -1000 },
+          { x: 100, y: -1000 },
+        ]);
+      const min = Math.min;
+      let countOps = 0;
+      const spy = vi.spyOn(Math, "min").mockImplementation((...args) => {
+        if (++countOps > budget) throw new Error("Saved-route clustering exceeded linear work");
+        return min(...args);
+      });
+      try {
+        expect(nudgeRoutes(routes, [], { fixed }).get("0")).toEqual(routes.get("0"));
+      } finally {
+        spy.mockRestore();
+      }
+      return countOps;
+    };
+    const small = measure(100);
+    const large = measure(100 * GROWTH_FACTOR, Math.max(1, small) * LINEAR_LIMIT);
+    expect(large).toBeLessThanOrEqual(Math.max(1, small) * LINEAR_LIMIT);
+  });

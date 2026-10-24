@@ -12,6 +12,18 @@ import type { DiagramFlowEdge, FlowNode } from "../types";
 
 type State = ReactFlowState<FlowNode, DiagramFlowEdge>;
 
+/** Shared node bounds; Live waits for measured sizes, while editor fits may use explicit sizes. */
+function nodeRects(s: State, only?: ReadonlySet<string>, measuredOnly = false, includeEmpty = false): Rect[] {
+  const out: Rect[] = [];
+  for (const n of s.nodeLookup.values()) {
+    if (n.hidden || (only && !only.has(n.id))) continue;
+    const width = n.measured?.width ?? (measuredOnly ? 0 : (n.width ?? 0));
+    const height = n.measured?.height ?? (measuredOnly ? 0 : (n.height ?? 0));
+    if (includeEmpty || (width && height)) out.push({ ...n.internals.positionAbsolute, width, height });
+  }
+  return out;
+}
+
 /**
  * Flow-space rects of everything that should stay visible: nodes, groups, routes and labels. With
  * `only`, just those nodes and the routes and labels of the `onlyEdges` (zoom to selection).
@@ -22,13 +34,7 @@ function contentRects(
   only?: ReadonlySet<string>,
   onlyEdges: ReadonlySet<string> = new Set(),
 ): Rect[] {
-  const out: Rect[] = [];
-  for (const n of s.nodeLookup.values()) {
-    if (n.hidden || (only && !only.has(n.id))) continue;
-    const w = n.measured?.width ?? n.width ?? 0;
-    const h = n.measured?.height ?? n.height ?? 0;
-    if (w && h) out.push({ x: n.internals.positionAbsolute.x, y: n.internals.positionAbsolute.y, width: w, height: h });
-  }
+  const out = nodeRects(s, only);
   for (const [id, r] of selectRoutes(s, opts)) {
     if (only && !onlyEdges.has(id)) continue;
     pushRoute(out, r);
@@ -197,16 +203,7 @@ export function focusBoxes(
 
 /** The diagram's centre brought back into the pane (keeping the zoom), when it's within 40 px of its edge. */
 export function centerViewport(root: HTMLElement, s: State, viewport: Viewport): Viewport | null {
-  const bounds = union(
-    [...s.nodeLookup.values()]
-      .filter((n) => !n.hidden)
-      .map((n) => ({
-        x: n.internals.positionAbsolute.x,
-        y: n.internals.positionAbsolute.y,
-        width: n.measured?.width ?? n.width ?? 0,
-        height: n.measured?.height ?? n.height ?? 0,
-      })),
-  );
+  const bounds = union(nodeRects(s, undefined, false, true));
   const pane = root.getBoundingClientRect();
   if (!bounds) return null;
   const { x, y, zoom } = viewport;
@@ -255,24 +252,10 @@ const CARD_RIGHT = 400;
  * pane inside px paddings, through React Flow's own getViewportForBounds. Null when none is measured.
  */
 export function fitNodesViewport(s: State, only: ReadonlySet<string> | null, insets: Insets, maxZoom: number) {
-  let x0 = Infinity;
-  let y0 = Infinity;
-  let x1 = -Infinity;
-  let y1 = -Infinity;
-  for (const n of s.nodeLookup.values()) {
-    const w = n.measured.width;
-    const h = n.measured.height;
-    if (!w || !h || n.hidden || (only && !only.has(n.id))) continue;
-    const { x, y } = n.internals.positionAbsolute;
-    x0 = Math.min(x0, x);
-    y0 = Math.min(y0, y);
-    x1 = Math.max(x1, x + w);
-    y1 = Math.max(y1, y + h);
-  }
-  if (!Number.isFinite(x0) || !s.width || !s.height) return null;
+  const bounds = union(nodeRects(s, only ?? undefined, true));
+  if (!bounds || !Number.isFinite(bounds.x) || !s.width || !s.height) return null;
   const px = (v: number) => `${v}px` as const;
   const padding = { top: px(insets.top), right: px(insets.right), bottom: px(insets.bottom), left: px(insets.left) };
-  const bounds = { x: x0, y: y0, width: x1 - x0, height: y1 - y0 };
   return getViewportForBounds(bounds, s.width, s.height, s.minZoom, maxZoom, padding);
 }
 
@@ -280,14 +263,7 @@ export function fitNodesViewport(s: State, only: ReadonlySet<string> | null, ins
  * A fit of every node that leaves the trace card's footprint (its first rows, top right) clear: beside it, below
  * it, or untouched when nothing sits there anyway (see geometry/fit.ts). Null when there's nothing to fit.
  */
-function fitBesideCard(s: State): Viewport | null {
-  const items: Rect[] = [];
-  for (const n of s.nodeLookup.values()) {
-    const width = n.measured?.width ?? 0;
-    const height = n.measured?.height ?? 0;
-    if (n.hidden || !width || !height) continue;
-    items.push({ x: n.internals.positionAbsolute.x, y: n.internals.positionAbsolute.y, width, height });
-  }
+function fitBesideCard(s: State, items: Rect[]): Viewport | null {
   const pane = s.domNode?.getBoundingClientRect();
   const el = s.domNode?.querySelector<HTMLElement>('[data-testid="trace-card"]')?.getBoundingClientRect();
   const width = el?.width || 352;
@@ -305,12 +281,24 @@ function fitBesideCard(s: State): Viewport | null {
  * only: a wide diagram moves down a little instead of shrinking to the left of a full-height column, so tracing
  * costs no zoom. With the side panel open, it fits into what the panel leaves.
  */
-export function liveFitViewport(s: State, room: { panel: boolean; card: boolean }): Viewport | null {
+export function liveFitViewport(
+  s: State,
+  room: { panel: boolean; card: boolean },
+  routing: RouteOptions = { style: "smoothstep", direction: "LR" },
+): Viewport | null {
+  const items = s.edges.some((e) => e.data?.waypoints?.length) ? contentRects(s, routing) : null;
   if (room.card && !room.panel) {
-    const beside = fitBesideCard(s);
+    const beside = fitBesideCard(s, items ?? nodeRects(s, undefined, true));
     if (beside) return beside;
   }
   const right = room.panel ? PANEL_RIGHT : room.card ? CARD_RIGHT : LIVE_FIT.insets.right;
+  if (items) {
+    return fitAvoiding(items, { width: s.width, height: s.height }, [], {
+      margin: 0,
+      maxZoom: LIVE_FIT.maxZoom,
+      insets: { ...LIVE_FIT.insets, right },
+    });
+  }
   return fitNodesViewport(s, null, { ...LIVE_FIT.insets, right }, LIVE_FIT.maxZoom);
 }
 

@@ -2,7 +2,7 @@ import { RequestGroup } from "./RequestGroup";
 import type { ReactNode } from "react";
 import { Dropdown } from "../../components/Dropdown";
 import { Disclosure } from "./Disclosure";
-import { Field } from "./fields";
+import { Field, Segmented } from "./fields";
 import { Fieldset, PairedFields } from "./Layout";
 import { SimInput } from "./SimulationFields";
 import { t } from "../../i18n";
@@ -135,11 +135,12 @@ export function RetryFields({
                 value={retry.backoffMs}
                 onChange={(v) => update({ backoffMs: typeof v === "number" ? v : 0 })}
               />
-              <Field label={t("resilience.growth")} testId="inspector-unit-retry-growth">
-                <Dropdown
+              <Field group label={t("resilience.growth")} testId="inspector-unit-retry-growth">
+                <Segmented
                   testId="inspector-field-retry-growth"
+                  label={t("resilience.growth")}
                   value={retry.strategy}
-                  items={[
+                  options={[
                     { value: "fixed", label: t("resilience.fixed") },
                     { value: "exponential", label: t("resilience.exponential") },
                   ]}
@@ -160,11 +161,12 @@ export function RetryFields({
                 value={retry.maxBackoffMs}
                 onChange={(v) => update({ maxBackoffMs: typeof v === "number" ? v : undefined })}
               />
-              <Field label={t("resilience.jitter")} hint={t("resilience.jitterHint")}>
-                <Dropdown
+              <Field group label={t("resilience.jitter")} hint={t("resilience.jitterHint")}>
+                <Segmented
                   testId="inspector-field-retry-jitter"
+                  label={t("resilience.jitter")}
                   value={String(retry.jitter ?? 0)}
-                  items={[
+                  options={[
                     { value: "0", label: t("resilience.jitterNone") },
                     { value: "0.5", label: t("resilience.jitterEqual") },
                     { value: "1", label: t("resilience.jitterFull") },

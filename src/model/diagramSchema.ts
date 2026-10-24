@@ -1,3 +1,4 @@
+import { waypointsSchema } from "./edgeRouteSchema";
 import { METRIC_FIELDS as METRICS } from "./types";
 import { DOCUMENTATION_LIMITS } from "./documentation";
 import { faultSchema, DRILL_PRESETS } from "./faults";
@@ -179,6 +180,7 @@ function diagramSchema(a1 = false) {
             description: "Side of the from node it attaches to. Omitted = chosen from the positions.",
           },
           targetSide: { type: "string", enum: SIDES, description: "Side of the to node it attaches to." },
+          waypoints: waypointsSchema,
           props: { $ref: "#/$defs/EdgeProps" },
         } satisfies Fields<DiagramEdge>,
       },

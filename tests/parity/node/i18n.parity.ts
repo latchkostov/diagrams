@@ -133,18 +133,25 @@ function variants(parts: Part[]): Record<string, unknown>[] {
 it("every message in every language", async () => {
   const keys = Object.keys(en).sort() as (keyof typeof en)[];
   const out: Record<string, unknown> = {};
+  const shaped: Record<string, unknown> = {};
   for (const code of Object.keys(catalogs).sort()) {
     if (code === "en") continue;
     const catalog = (await catalogs[code]()).default as Catalog;
     const areas = new Map<string, string[]>();
-    let fallback = 0;
+    let fallback = 0,
+      shapedFallback = 0;
+    const shapedAreas = new Map<string, string[]>();
     for (const [i, key] of keys.entries()) {
       const parts = parse(en[key]);
       const english = parts.every((p) => p.type === "text")
         ? parts.map((p) => (p.type === "text" ? p.value : "")).join("")
         : undefined;
       const entry = catalog[i] ?? (english !== undefined ? catalog[english] : undefined);
-      if (entry === undefined) fallback++;
+      const route = key.startsWith("route.");
+      if (entry === undefined) {
+        if (route) shapedFallback++;
+        else fallback++;
+      }
       const text =
         entry === undefined
           ? "(English)"
@@ -154,17 +161,25 @@ it("every message in every language", async () => {
                 .map((values) => flat(entry(values)))
                 .join("");
       const area = key.slice(0, key.indexOf("."));
-      const list = areas.get(area) ?? [];
+      const group = route ? shapedAreas : areas;
+      const list = group.get(area) ?? [];
       list.push(`${key}\u0000${text}`);
-      areas.set(area, list);
+      group.set(area, list);
     }
+    shaped[code] = {
+      messages: keys.filter((key) => key.startsWith("route.")).length,
+      fallback: shapedFallback,
+      areas: Object.fromEntries([...shapedAreas].map(([area, lines]) => [area, sha256(lines.join("\n")).slice(0, 12)])),
+    };
     out[code] = {
-      messages: keys.length,
+      messages: keys.filter((key) => !key.startsWith("route.")).length,
       fallback,
       areas: Object.fromEntries(
         [...areas].sort(([a], [b]) => (a < b ? -1 : 1)).map(([a, l]) => [a, sha256(l.join("\n")).slice(0, 12)]),
       ),
     };
   }
+  // Retain the original catalog cohort; the additive route area is pinned in full alongside it.
   expectGolden("i18n/catalogs.json", out);
+  expectGolden("i18n/corpus-hand-shaped-lines.json", shaped);
 });

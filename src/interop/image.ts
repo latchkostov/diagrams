@@ -12,6 +12,7 @@ import { dataUrlToBlob } from "./files";
 import { holdInput } from "../lib/inputHold";
 import type { AnnotationShape } from "../model/types";
 import { whenShapeGeometryReady } from "../canvas/shapes/readiness";
+import { whenEdgeGeometryReady } from "../canvas/edges/imageReadiness";
 import { geometrySnapshot } from "../canvas/shapes/runtime";
 import { t } from "../i18n";
 
@@ -106,6 +107,13 @@ function bounds(viewport: HTMLElement): Bounds | undefined {
     maxX = Math.max(maxX, x + el.offsetWidth);
     maxY = Math.max(maxY, y + el.offsetHeight);
   }
+  for (const path of viewport.querySelectorAll<SVGGraphicsElement>('g[data-route="custom"] path.fe-path')) {
+    const r = path.getBBox();
+    minX = Math.min(minX, r.x);
+    minY = Math.min(minY, r.y);
+    maxX = Math.max(maxX, r.x + r.width);
+    maxY = Math.max(maxY, r.y + r.height);
+  }
   return Number.isFinite(minX) ? { x: minX, y: minY, width: maxX - minX, height: maxY - minY } : undefined;
 }
 
@@ -124,6 +132,12 @@ export async function renderDiagramImage(kind: "png" | "svg", opts: ImageOptions
   opts.signal?.throwIfAborted();
   opts.check?.();
   const viewport = findViewport();
+  // A pending route is still part of the saved drawing. Wait before measuring its farthest bend.
+  const routeReadiness = whenEdgeGeometryReady(viewport);
+  if (routeReadiness) {
+    await unlessCancelled(routeReadiness, opts.signal);
+    flushSync(() => {});
+  }
   const content = bounds(viewport);
   if (!content) throw new Error("This diagram is empty, so there's nothing to export.");
   const header = opts.header?.title.trim() ? addHeader(viewport, content, opts.header) : undefined;

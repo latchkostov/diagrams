@@ -60,7 +60,10 @@ test("Request groups expose plain associated explanations and preserve collapsed
   await expect(page.getByTestId("inspector-content-breaker-details")).toHaveAccessibleDescription(
     /at least 1 calls.*wait 1 seconds, then try 5 calls/,
   );
-  await expect(page.getByTestId("inspector-section-edge-advanced")).toHaveText("Appearance & routing");
+  await expect(page.getByTestId("inspector-section-edge-advanced")).toHaveAccessibleName("Appearance & routing");
+  await expect(
+    page.getByTestId("inspector-section-edge-advanced").getByTestId("inspector-summary-edge-advanced"),
+  ).toHaveText("Auto → Auto · 10 ms travel");
 });
 
 test("timeline events form one roving keyboard stop and retain pointer access", async ({ page }) => {

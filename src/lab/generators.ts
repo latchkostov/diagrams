@@ -484,12 +484,13 @@ export function diagramProblems(d: DiagramFile): string[] {
   const groupIds = new Set((d.groups ?? []).map((g) => g.id));
   for (const n of d.nodes)
     if (n.group && !groupIds.has(n.group)) problems.push(`node ${n.id} is in missing group ${n.group}`);
+  const ends = new Set([...ids, ...(d.annotations ?? []).filter((a) => a.kind === "shape").map((a) => a.id)]);
   const edgeIds = new Set<string>();
   for (const e of d.edges) {
     if (edgeIds.has(e.id)) problems.push(`duplicate edge id ${e.id}`);
     edgeIds.add(e.id);
-    if (!ids.has(e.from)) problems.push(`edge ${e.id} starts at missing node ${e.from}`);
-    if (!ids.has(e.to)) problems.push(`edge ${e.id} ends at missing node ${e.to}`);
+    if (!ends.has(e.from)) problems.push(`edge ${e.id} starts at missing node ${e.from}`);
+    if (!ends.has(e.to)) problems.push(`edge ${e.id} ends at missing node ${e.to}`);
   }
   return problems;
 }

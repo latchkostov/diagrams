@@ -1,7 +1,7 @@
 import type { HTMLAttributes, ReactNode, Ref } from "react";
 import "../../styles/inspector-layout.css";
 
-/** Short fields keep their DOM / keyboard order, and stack below a 320px sheet. */
+/** Related fields keep DOM / keyboard order; the Inspector ledger places each on its own row. */
 export function PairedFields({ children, testId }: { children: ReactNode; testId?: string }) {
   return (
     <div className="insp-paired" data-testid={testId}>

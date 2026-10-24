@@ -105,7 +105,9 @@ export function NodeSimulation({
               })
             : role === "source"
               ? t("workspaceInspector.rateSummary", {
-                  rate: String(props.ratePerSec ?? SIM_FIELDS.ratePerSec!.placeholder),
+                  rate: formatNumber(
+                    resolveProps(role, node.data.label, props, node.data.stencil, meta.planning).ratePerSec,
+                  ),
                 })
               : simFields.includes("replicas") && simFields.includes("concurrency")
                 ? t("workspaceInspector.replicaSummary", {

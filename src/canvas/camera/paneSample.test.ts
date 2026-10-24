@@ -19,7 +19,7 @@ const node = (id: string, x: number, measured: Node["measured"], extra: Partial<
 const sample = (nodes: Node[]) =>
   paneSample(
     { width: 1000, height: 800, nodeLookup: new Map(nodes.map((n) => [n.id, n])) as never },
-    { clientWidth: 1000, clientHeight: 800 },
+    { clientWidth: 1000, clientHeight: 800, querySelector: () => null },
     () => true,
   );
 
@@ -44,4 +44,13 @@ describe("paneSample: pane work runs on complete geometry only", () => {
     expect(sample([placed, node("b", 9, {}, { type: "boundary", width: 0, height: 50 })])).not.toBeNull();
     expect(sample([placed, node("b", 9, {}, { type: "boundary", width: 300, height: 200 })])).toBeNull();
   });
+});
+
+it("keeps pane refits pending while saved-route geometry is missing", () => {
+  const s = { width: 1000, height: 800, nodeLookup: new Map([["a", node("a", 0, { width: 220, height: 72 })]]) };
+  let pending = true;
+  const el = { clientWidth: 1000, clientHeight: 800, querySelector: () => (pending ? {} : null) };
+  expect(paneSample(s as never, el as never, () => true)).toBeNull();
+  pending = false;
+  expect(paneSample(s as never, el as never, () => true)).not.toBeNull();
 });

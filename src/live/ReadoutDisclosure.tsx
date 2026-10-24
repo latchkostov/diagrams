@@ -23,13 +23,13 @@ export function ReadoutDisclosure({
     <details className="readout-disclosure" data-testid={testId} open={open}>
       <summary className="readout-row" data-testid={toggleId} aria-describedby={summary ? description : undefined}>
         <span>{title}</span>
+        {summary && (
+          <span className="readout-summary" id={description} aria-hidden data-testid={`${testId}-summary`}>
+            {summary}
+          </span>
+        )}
         <Icon name="chevron-right" size={12} />
       </summary>
-      {summary && (
-        <p className="readout-summary" id={description} data-testid={`${testId}-summary`}>
-          {summary}
-        </p>
-      )}
       <div className="insp-section-body">{children}</div>
     </details>
   );

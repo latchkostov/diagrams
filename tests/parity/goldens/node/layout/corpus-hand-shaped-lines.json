@@ -1,0 +1,22 @@
+{
+  "autoLayout": {
+    "LR": { "api": [40, 100], "db": [400, 40], "worker": [400, 160] },
+    "TB": { "api": [180, 40], "db": [40, 200], "worker": [320, 200] }
+  },
+  "tidy": { "api": [0, 60], "db": [360, 0], "worker": [360, 120] },
+  "arrange": {
+    "alignLeft": { "api": [0, 0], "db": [0, 0], "worker": [0, 320] },
+    "alignMiddle": { "api": [0, 160], "db": [650, 160], "worker": [650, 160] },
+    "distributeH": { "api": [0, 0], "db": [325, 0], "worker": [650, 320] },
+    "distributeV": { "api": [0, 0], "db": [650, 160], "worker": [650, 320] },
+    "spreadH": { "api": [0, 0], "db": [650, 0], "worker": [910, 0] },
+    "boundaryAround": { "x": -40, "y": -64, "width": 950, "height": 496 }
+  },
+  "skillLayout": {
+    "laidOut": true,
+    "fitted": [],
+    "placedNotes": [],
+    "nodes": { "api": [40, 100], "db": [400, 40], "worker": [400, 160] },
+    "groups": {}
+  }
+}

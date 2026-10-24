@@ -7,6 +7,10 @@ Edit together is part of copies built with it (`VITE_ENABLE_COLLAB=1`). On lived
 site's owner. A self-hosted copy has it only if whoever builds that copy turns it on
 ([SELF-HOSTING.md](SELF-HOSTING.md#edit-together)).
 
+## Saved route compatibility
+
+Use the same app revision in every tab when editing saved bends. Older tabs do not carry waypoints through their editor and may erase them when changing a connection. Concurrent edits replace the whole waypoint list atomically; a reconnect and a reshape remain independent fields.
+
 ## Start a room
 
 1. Open the diagram, then choose **File ▸ Share… ▸ Edit together…**. You can also press Ctrl+K and type "Edit

@@ -194,6 +194,7 @@ export const edgeToFlow = (e: DiagramEdge): DiagramFlowEdge => ({
     label: e.label,
     sourceSide: e.sourceSide,
     targetSide: e.targetSide,
+    waypoints: e.waypoints,
     props: e.props,
   },
 });
@@ -209,6 +210,7 @@ export const edgeFromFlow = (e: DiagramFlowEdge): DiagramEdge => ({
   relationOrigin: isRelationOrigin(e.data?.relationOrigin) ? e.data.relationOrigin : undefined,
   sourceSide: e.data?.sourceSide,
   targetSide: e.data?.targetSide,
+  waypoints: e.data?.waypoints,
   props: e.data?.props,
 });
 

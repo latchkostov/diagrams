@@ -27,7 +27,20 @@ describe("convert", () => {
         { id: "a", stencil: "kafka.topic", label: "A", x: 0, y: 0 },
         { id: "b", stencil: "service.go", label: "B", x: 360, y: 0 },
       ],
-      edges: [{ id: "e", from: "a", to: "b", kind: "async", sourceSide: "bottom", targetSide: "left" }],
+      edges: [
+        {
+          id: "e",
+          from: "a",
+          to: "b",
+          kind: "async",
+          sourceSide: "bottom",
+          targetSide: "left",
+          waypoints: [
+            { x: 110, y: 200 },
+            { x: 300, y: 200 },
+          ],
+        },
+      ],
       simulations,
     };
     const f = toFlow(d);

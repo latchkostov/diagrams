@@ -1,3 +1,4 @@
+import { validWaypoints } from "../model/edgeRoute";
 import { validDocumentation } from "../model/documentation";
 import { revisionAtLeast } from "../model/revisions";
 import {
@@ -173,7 +174,8 @@ export function parsePayload(text: string): ClipboardPayload | null {
     (e): e is DiagramEdge =>
       isObj(e) && typeof e.id === "string" && ids.has(e.from as string) && ids.has(e.to as string),
   );
-  if (edges.some((e) => invalidPlanningDelay(e.props))) return null;
+  if (edges.some((e) => invalidPlanningDelay(e.props) || (e.waypoints !== undefined && !validWaypoints(e.waypoints))))
+    return null;
   const groups = (Array.isArray(data.groups) ? data.groups : []).filter(
     (g): g is DiagramGroup =>
       isObj(g) &&
@@ -321,7 +323,11 @@ export function remapPayload(
     const id = allocateId(e.id, used);
     used.add(id);
     emap.set(e.id, id);
-    return { ...remapConnection(e, nmap), id };
+    return {
+      ...remapConnection(e, nmap),
+      id,
+      ...(e.waypoints ? { waypoints: e.waypoints.map((p) => ({ x: p.x + offset.x, y: p.y + offset.y })) } : {}),
+    };
   });
   const scalerGroups = scalerGroupRemap(p.edges, nmap, emap);
   for (const n of nodes) remapScaler(n.props, nmap, scalerGroups);

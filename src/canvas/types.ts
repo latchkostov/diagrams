@@ -8,6 +8,7 @@ import type {
   EdgeRelation,
   RelationOrigin,
   Side,
+  Point,
 } from "../model/types";
 
 export type { GroupTone };
@@ -55,6 +56,8 @@ export type FlowEdgeData = {
   /** Pinned attachment sides. Omitted = chosen from node positions on every render (floating). */
   sourceSide?: Side;
   targetSide?: Side;
+  /** Inner corners in canvas pixels; omitted = automatic routing. */
+  waypoints?: Point[];
   props?: Record<string, unknown>;
 };
 export type DiagramFlowEdge = Edge<FlowEdgeData, "flow">;

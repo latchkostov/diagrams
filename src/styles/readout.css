@@ -65,7 +65,9 @@
 }
 
 .readout-summary {
-  margin: 0 0 12px;
+  min-inline-size: 0;
+  margin: 0;
+  margin-inline-start: auto;
   color: var(--text-3);
   font-size: 12px;
   line-height: 1.45;
@@ -73,6 +75,6 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.readout-disclosure[open] > .readout-summary {
+.readout-disclosure[open] > summary .readout-summary {
   display: none;
 }

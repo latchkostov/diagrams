@@ -1,3 +1,4 @@
+import { validWaypoints } from "../model/edgeRoute";
 import { revisionAtLeast } from "../model/revisions";
 import { DRILL_PRESETS, faultProblem, faultTarget, type Fault } from "../model/faults";
 import { createResourceValidator } from "../model/resourceValidation";
@@ -380,6 +381,13 @@ export function validateDiagram(data: unknown): NativeResult {
     if (out.kind !== undefined && out.kind !== "async" && out.kind !== "sync") delete out.kind;
     if (out.sourceSide !== undefined && !SIDES.has(out.sourceSide as string)) delete out.sourceSide;
     if (out.targetSide !== undefined && !SIDES.has(out.targetSide as string)) delete out.targetSide;
+    if (out.waypoints !== undefined) {
+      const w = out.waypoints;
+      if (!validWaypoints(w)) {
+        warnings.push(`Ignored waypoints: "${e.id}"`);
+        delete out.waypoints;
+      } else if (!w.length) delete out.waypoints;
+    }
     if (out.props !== undefined && !isObj(out.props)) delete out.props;
     if (invalidPlanningDelay(out.props))
       return { ok: false, error: t("planning.delayInvalid", { id: e.id, limit: SIM_LIMITS.timeMs }) };
@@ -789,6 +797,7 @@ const KNOWN_EDGE = new Set([
   "relationOrigin",
   "sourceSide",
   "targetSide",
+  "waypoints",
   "props",
 ]);
 const KNOWN_GROUP = new Set(["id", "label", "tone", "x", "y", "width", "height", "group"]);

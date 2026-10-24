@@ -19,6 +19,10 @@ export interface Drawn {
 
 /** The diagram as the app's file has it (for counts), read from src/examples. */
 export function exampleFile(slug: string): DiagramFile {
+  if (slug === "corpus-hand-shaped-lines")
+    return JSON.parse(
+      readFileSync(join(ROOT, "tests/parity/corpus/hand-shaped-lines.diagram.json"), "utf8"),
+    ) as DiagramFile;
   return JSON.parse(readFileSync(join(ROOT, "src/examples", `${slug}.json`), "utf8")) as DiagramFile;
 }
 
@@ -74,6 +78,7 @@ export async function settledCanvas(page: Page, root = "canvas-wrap"): Promise<D
         );
         const ready = await page.getByTestId(root).evaluate(
           (scope) =>
+            !scope.querySelector("[data-route-pending]") &&
             scope.dataset.fitPending !== "true" &&
             scope.dataset.panePending !== "true" &&
             [...scope.querySelectorAll<HTMLElement>('[data-testid^="rf__node-"]')].every((el) => {
@@ -117,7 +122,14 @@ export async function settledCanvas(page: Page, root = "canvas-wrap"): Promise<D
  */
 export async function openExample(page: Page, slug: string): Promise<Drawn> {
   const file = exampleFile(slug);
-  await page.goto(`./?view=canvas&example=${encodeURIComponent(slug)}`);
+  if (slug === "corpus-hand-shaped-lines")
+    await page.addInitScript(
+      (diagram) => localStorage.setItem("diagrams.autosave.v1:kafka-order-pipeline", JSON.stringify(diagram)),
+      file,
+    );
+  await page.goto(
+    `./?view=canvas&example=${encodeURIComponent(slug === "corpus-hand-shaped-lines" ? "kafka-order-pipeline" : slug)}`,
+  );
   await expect(page.getByTestId("canvas-view")).toBeVisible();
   const nodeIds = [
     ...file.nodes.map((n) => n.id),

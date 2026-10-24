@@ -1,9 +1,8 @@
 import { RequestGroup } from "./RequestGroup";
 import type { ReactNode } from "react";
 import { BREAKER_DEFAULTS } from "../../sim/breaker";
-import { Dropdown } from "../../components/Dropdown";
 import { Disclosure } from "./Disclosure";
-import { Field } from "./fields";
+import { Field, Segmented } from "./fields";
 import { PairedFields } from "./Layout";
 import { SimInput } from "./SimulationFields";
 import { t } from "../../i18n";
@@ -26,12 +25,12 @@ export function BreakerFields({
       description={t("resilience.breakerHint")}
       origin={origin}
     >
-      <Field label={t("resilience.breaker")} hint={t("resilience.breakerHint")}>
-        <Dropdown
+      <Field group label={t("resilience.breaker")} hint={t("resilience.breakerHint")}>
+        <Segmented
           testId="inspector-field-breaker"
-          aria-label={t("resilience.breaker")}
+          label={t("resilience.breaker")}
           value={breaker ? "on" : "off"}
-          items={[
+          options={[
             { value: "off", label: t("resilience.off") },
             { value: "on", label: t("resilience.on") },
           ]}

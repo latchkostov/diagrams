@@ -11,7 +11,7 @@ import { metricPhrase, reasonText } from "./scalingPlanText";
 
 export function ResourceEstimate({ plan: p }: { plan: ResourcePlan }) {
   return (
-    <div data-testid="autoscaling-estimate">
+    <div className="planning-estimate" data-testid="autoscaling-estimate">
       {p.unmeasured && <p>{t("autoscaling.unmeasured")}</p>}
       <p>{t("workspaceInspector.capacityAssumption")}</p>
       <ReadoutFacts

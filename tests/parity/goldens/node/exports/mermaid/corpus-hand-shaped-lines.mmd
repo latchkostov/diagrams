@@ -1,0 +1,14 @@
+---
+title: Hand-shaped lines
+---
+flowchart LR
+  api["Orders API"]
+  db[("Orders DB")]
+  worker["Receipt worker"]
+  shape{"Archive"}
+  api -->|"writes"| db
+  api -.->|"receipts"| worker
+  api -.->|"audit"| db
+  worker -.-> shape
+  linkStyle 1,2,3 stroke-dasharray: 6 4
+%% diagrams:{"v":1,"nodes":{"api":["api","service.node"],"db":["db","postgres"],"worker":["worker","service.go"]},"edges":["api-db","jog","detour","shape-end"],"relations":{}}

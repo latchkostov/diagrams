@@ -1,3 +1,4 @@
+import { useInteraction } from "../interaction/useInteraction";
 import { t } from "../../i18n";
 import { SIM_LIMITS } from "../../model/simLimits";
 import { DEFAULT_TRAVEL_MS } from "../../sim/topology";
@@ -20,6 +21,7 @@ type EdgeAdvancedProps = Pick<InspectorProps, "editor"> & {
 };
 
 export function EdgeAdvanced({ edge, editor, data, props, flow, rule, merge }: EdgeAdvancedProps) {
+  const interaction = useInteraction();
   return (
     <Disclosure
       id="edge-advanced"
@@ -53,6 +55,30 @@ export function EdgeAdvanced({ edge, editor, data, props, flow, rule, merge }: E
           />
         </Field>
       </div>
+      <Field group label={t("menu.route")}>
+        <span data-testid="inspector-route-state">
+          {data.waypoints?.length ? t("route.bends", { count: data.waypoints.length }) : t("route.automatic")}
+        </span>
+        {!!data.waypoints?.length && (
+          <button
+            type="button"
+            className="insp-link"
+            aria-label={t("route.reset")}
+            data-testid="inspector-route-reset"
+            onClick={(event) => {
+              if (document.activeElement === event.currentTarget) {
+                const target = event.currentTarget
+                  .closest("section")
+                  ?.querySelector<HTMLElement>('[data-testid="inspector-section-edge-advanced"]');
+                if (target) interaction?.dispatch({ type: "notice.closed", status: target });
+              }
+              editor.updateEdge(edge.id, { waypoints: undefined });
+            }}
+          >
+            {t("route.resetButton")}
+          </button>
+        )}
+      </Field>
       {flow && (
         <>
           <SimInput

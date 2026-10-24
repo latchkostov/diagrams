@@ -35,18 +35,14 @@ export function Disclosure({
   reveal?: number;
   summary?: string;
 }) {
-  const summaryId = useId();
+  // The open description and collapsed summary never coexist.
   const descriptionId = useId();
   const [open, setOpen] = useState(() => reveal !== undefined || readOpen()[id] === true);
   const [revealed, setRevealed] = useState(reveal);
   if (reveal !== undefined && reveal !== revealed) {
     setRevealed(reveal);
-    if (!open) setOpen(true);
+    setOpen(true);
   }
-  const toggle = () => {
-    setOpen(!open);
-    safeStorage.setItem(OPEN_KEY, JSON.stringify({ ...readOpen(), [id]: !open }));
-  };
   return (
     <section className={`insp-section insp-disclosure${open ? " is-open" : ""}`}>
       <h3>
@@ -54,8 +50,11 @@ export function Disclosure({
           type="button"
           className="insp-disclosure-head"
           aria-expanded={open}
-          aria-describedby={open && description ? descriptionId : !open && summary ? summaryId : undefined}
-          onClick={toggle}
+          aria-describedby={(open ? description : summary) ? descriptionId : undefined}
+          onClick={() => {
+            setOpen(!open);
+            safeStorage.setItem(OPEN_KEY, JSON.stringify({ ...readOpen(), [id]: !open }));
+          }}
           data-testid={`inspector-section-${id}`}
         >
           <span className="insp-disclosure-title">{title}</span>
@@ -65,19 +64,19 @@ export function Disclosure({
             </span>
           )}
           {aside}
+          {!open && summary && (
+            <span id={descriptionId} className="insp-summary" aria-hidden data-testid={`inspector-summary-${id}`}>
+              {summary}
+            </span>
+          )}
           <Icon name="chevron-right" size={12} />
         </button>
       </h3>
-      {!open && summary && (
-        <p id={summaryId} className="insp-summary" data-testid={`inspector-summary-${id}`}>
-          {summary}
-        </p>
-      )}
       {open && (
         <div className="insp-section-body" data-testid={`inspector-body-${id}`}>
           {description ? (
             <div
-              className="insp-section-body insp-request-content"
+              className="insp-section-body"
               role="group"
               data-testid={`inspector-content-${id}`}
               aria-describedby={descriptionId}

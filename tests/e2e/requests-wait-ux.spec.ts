@@ -47,7 +47,7 @@ test("call fields take the first keyboard pass while planning downloads, with st
     await expect(page.getByTestId("inspector-field-wait")).toBeVisible();
     await expect(section).toBeFocused();
     await page.keyboard.press("Tab");
-    await expect(page.getByTestId("inspector-field-wait")).toBeFocused();
+    await expect(page.getByTestId("inspector-field-wait-blocking")).toBeFocused();
     await page.keyboard.press("Tab");
     await expect(page.getByTestId("inspector-field-deadlineMs")).toBeFocused();
     await page.keyboard.press("Tab");

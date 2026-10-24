@@ -29,12 +29,10 @@ test("the Inspector clearly edits a simulation breaker override, persists Off an
   await waitForCameraIdle(page);
   await page.getByTestId("edge-call").dblclick();
   await page.getByTestId("inspector-section-edge-simulation").click();
-  const field = page.getByTestId("inspector-field-breaker");
-  await expect(field).toHaveText("On");
-  await field.focus();
-  await page.keyboard.press("Enter");
+  await expect(page.getByTestId("inspector-field-breaker-on")).toHaveAttribute("aria-checked", "true");
+  await page.getByTestId("inspector-field-breaker-on").focus();
   await page.keyboard.press("Home");
-  await page.keyboard.press("Enter");
+  await expect(page.getByTestId("inspector-field-breaker-off")).toBeFocused();
   await expect(page.getByTestId("call-override-breaker")).toContainText("On");
   await expect
     .poll(async () => (await savedDiagram(page)).simulations?.[0].setup?.edges?.call.caller?.breaker)
@@ -47,14 +45,14 @@ test("the Inspector clearly edits a simulation breaker override, persists Off an
   await expect(section).toBeVisible();
   if ((await section.getAttribute("aria-expanded")) !== "true") await section.click();
   await expect(section).toHaveAttribute("aria-expanded", "true");
-  await expect(field).toHaveText("Off");
+  await expect(page.getByTestId("inspector-field-breaker-off")).toHaveAttribute("aria-checked", "true");
   await expect(page.getByTestId("call-override-breaker")).toContainText("On");
   await page.screenshot({ path: test.info().outputPath("breaker-override.png") });
   await waitForCameraIdle(page);
   await page.getByTestId("edge-call").click({ button: "right" });
   await page.getByTestId("context-menu-item-edge.simulation").click();
   await page.getByTestId("context-menu-item-edge.breaker").click();
-  await expect(field).toHaveText("On");
+  await expect(page.getByTestId("inspector-field-breaker-on")).toHaveAttribute("aria-checked", "true");
   await expect
     .poll(async () => (await savedDiagram(page)).simulations?.[0].setup?.edges?.call.caller?.breaker)
     .toEqual({});
@@ -62,7 +60,7 @@ test("the Inspector clearly edits a simulation breaker override, persists Off an
     breaker: { minimumCalls: 1, openMs: 1000 },
   });
   await page.getByTestId("undo-button").click();
-  await expect(field).toHaveText("Off");
+  await expect(page.getByTestId("inspector-field-breaker-off")).toHaveAttribute("aria-checked", "true");
   expectNoErrors(consoleErrors);
 });
 

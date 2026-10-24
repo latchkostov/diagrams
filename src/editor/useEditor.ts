@@ -286,6 +286,8 @@ export function createEditor(
   };
   const setMeta: EditorDeps["setMeta"] = (update) => {
     documentEdited();
+    // Expose our writes to Live immediately; keep functional updates for React's queued edits.
+    latest = { ...latest, meta: typeof update === "function" ? update(latest.meta) : update };
     latest.setMeta(update);
   };
   const deps = () => ({ ...latest, setNodes, setEdges, setMeta });
@@ -293,10 +295,10 @@ export function createEditor(
     id: n.id,
     x: n.position.x,
     y: n.position.y,
-    width: n.measured?.width ?? n.width ?? deps().nodeSize.width,
-    height: n.measured?.height ?? n.height ?? deps().nodeSize.height,
+    width: n.measured?.width ?? n.width ?? latest.nodeSize.width,
+    height: n.measured?.height ?? n.height ?? latest.nodeSize.height,
   });
-  const diagram = () => fromFlow(deps().meta, committed.getNodes(), committed.getEdges());
+  const diagram = () => fromFlow(latest.meta, committed.getNodes(), committed.getEdges());
   const directMembers = (groupId: string): FlowNode[] => rf.getNodes().filter((n) => n.data.group === groupId);
   const expandSelection = (sel: Partial<Selection>, allNodes: readonly FlowNode[]) => {
     const groupIds = expandGroupIds(
@@ -382,7 +384,7 @@ export function createEditor(
       meta: stripped.simulations ? { ...meta, simulations: stripped.simulations } : meta,
     };
   };
-  const acceptNodes = (nodes: FlowNode[], edges = currentEdges(), meta = deps().meta, retry?: () => void): boolean => {
+  const acceptNodes = (nodes: FlowNode[], edges = currentEdges(), meta = latest.meta, retry?: () => void): boolean => {
     const candidate = routingDoc(nodes, edges, meta);
     const resourceError = validateResources(candidate);
     const routingError = resourceError ? undefined : validateRouting(candidate);
@@ -409,14 +411,14 @@ export function createEditor(
     let candidate = update(current);
     const edges = updateEdges(currentEdges());
     if (repair) {
-      const fixed = repaired(candidate, edges, meta ?? deps().meta);
+      const fixed = repaired(candidate, edges, meta ?? latest.meta);
       candidate = fixed.nodes;
-      if (fixed.meta !== (meta ?? deps().meta)) meta = fixed.meta;
+      if (fixed.meta !== (meta ?? latest.meta)) meta = fixed.meta;
     }
     const retry = repair ? undefined : () => void commitNodes(update, updateEdges, opts, meta, true);
     if (!acceptNodes(candidate, edges, meta, retry)) return false;
     // Metadata the insertion needs (request routes it brought) lands in the same step.
-    if (meta && meta !== deps().meta) deps().setMeta(meta);
+    if (meta && meta !== latest.meta) setMeta(meta);
     if (opts) deps().history.hint(opts.merge);
     setNodes(candidate);
     setEdges(edges);
@@ -482,7 +484,7 @@ export function createEditor(
 
   /** Inserts a payload moved by `offset`, selected. Returns old flow id → new flow id (null: refused). */
   const insert = (p: ClipboardPayload, offset: XY): Map<string, string> | null => {
-    if (revisionAtLeast(p.planning?.revision, "p3-a1") && !revisionAtLeast(deps().meta.planning?.revision, "p3-a1")) {
+    if (revisionAtLeast(p.planning?.revision, "p3-a1") && !revisionAtLeast(latest.meta.planning?.revision, "p3-a1")) {
       explainModelRequired();
       return null;
     }
@@ -502,19 +504,19 @@ export function createEditor(
       remapped.nodes.some((n) => hasNodeRouting(n.props)) ||
       remapped.edges.some((e) => hasEdgeRouting(e.props));
     if (routed) {
-      const planning = deps().meta.planning;
+      const planning = latest.meta.planning;
       if (!planning || !revisionAtLeast(planning.revision, "p3-a1")) {
         explainModelRequired();
         return null;
       }
       const merged = mergeRoutes(planning.requestRoutes ?? [], remapped);
       r = { ...remapped, nodes: merged.nodes, edges: merged.edges };
-      meta = { ...deps().meta, planning: { ...planning, requestRoutes: merged.routes } };
+      meta = { ...latest.meta, planning: { ...planning, requestRoutes: merged.routes } };
     }
     const newGroups = new Set(r.groups.map((g) => g.id));
     const groupNodes = r.groups.map((g) => ({ ...groupToFlow(g), selected: true }));
     const all = [...ns, ...groupNodes];
-    const { width, height } = deps().nodeSize;
+    const { width, height } = latest.nodeSize;
     const nodes = r.nodes.map((n): DiagramFlowNode => {
       const f = nodeToFlow(n);
       const group = n.group && newGroups.has(n.group) ? n.group : groupAt(all, n.x + width / 2, n.y + height / 2);
@@ -563,7 +565,7 @@ export function createEditor(
   };
   /** The payload's boxes where they were copied from. */
   const payloadBoxes = (p: ClipboardPayload): PlaceBox[] => [
-    ...p.nodes.map((n) => ({ x: n.x, y: n.y, ...sizeOf(n.id, deps().nodeSize) })),
+    ...p.nodes.map((n) => ({ x: n.x, y: n.y, ...sizeOf(n.id, latest.nodeSize) })),
     ...(p.annotations ?? []).map((a) => ({ x: a.x, y: a.y, width: a.width, height: a.height })),
     ...p.groups.map((g) => ({ x: g.x, y: g.y, width: g.width, height: g.height })),
   ];
@@ -623,7 +625,7 @@ export function createEditor(
       width: n.width ?? n.measured?.width ?? 0,
       height: n.height ?? n.measured?.height ?? 0,
     }));
-  const memberBoxes = (ns: readonly FlowNode[]): MemberBox[] => membershipBoxes(ns, deps().nodeSize);
+  const memberBoxes = (ns: readonly FlowNode[]): MemberBox[] => membershipBoxes(ns, latest.nodeSize);
   /**
    * Nodes `ids` (at their new places) settled into boundaries (D12): each one in the boundary around its
    * centre, and that boundary grown to hold it when it pokes out (never onto another boundary or a node that
@@ -739,7 +741,7 @@ export function createEditor(
    */
   const spotBeside = (from: PlaceBox, toward: Toward | undefined, size: { width: number; height: number }) => {
     const others = obstacles();
-    const dir = toward ?? towardOf(deps().meta.direction === "TB" ? "TB" : "LR");
+    const dir = toward ?? towardOf(latest.meta.direction === "TB" ? "TB" : "LR");
     const c = placeToward(from, size, others, dir, COPY_MARGIN, FLOW_GAP);
     const at = { x: snap10(c.x - size.width / 2), y: snap10(c.y - size.height / 2), ...size };
     const d = snappedClear(at, clearOffset(at, others), others);
@@ -757,7 +759,7 @@ export function createEditor(
         ? { width: from.width, height: from.height }
         : destination === "shape"
           ? defaultSize.shape
-          : deps().nodeSize;
+          : latest.nodeSize;
     return at
       ? { x: snap10(at.x - size.width / 2), y: snap10(at.y - size.height / 2), ...size }
       : spotBeside(from, toward, size);
@@ -779,7 +781,7 @@ export function createEditor(
       source: a.id,
       target: b.id,
       type: "flow",
-      data: connectionDefaults(a, b, deps().meta.planning),
+      data: connectionDefaults(a, b, latest.meta.planning),
     };
   };
   /**
@@ -926,7 +928,7 @@ export function createEditor(
 
     addNode: (stencilId, at) => {
       const s = getStencil(stencilId);
-      const { width, height } = deps().nodeSize;
+      const { width, height } = latest.nodeSize;
       const ns = rf.getNodes();
       // No spot given (a click in the rail or the palette): the free place nearest the view's centre.
       const c =
@@ -944,7 +946,7 @@ export function createEditor(
           label: s.label,
           sublabel: s.defaultSublabel,
           group: groupAt(ns, c.x, c.y),
-          props: newPlanningProps(s.simRole, deps().meta.planning, s.id),
+          props: newPlanningProps(s.simRole, latest.meta.planning, s.id),
         },
       };
       addSettled(node, (cur) => cur.map((e) => (e.selected ? { ...e, selected: false } : e)));
@@ -1073,6 +1075,8 @@ export function createEditor(
             } else if ("relationOrigin" in patch) data.relationOrigin = patch.relationOrigin;
             if ("sourceSide" in patch) data.sourceSide = patch.sourceSide;
             if ("targetSide" in patch) data.targetSide = patch.targetSide;
+            if ("waypoints" in patch)
+              data.waypoints = patch.waypoints?.length ? structuredClone(patch.waypoints) : undefined;
             if ("props" in patch) data.props = patch.props && withoutUndefined(patch.props);
             return {
               ...e,
@@ -1139,11 +1143,11 @@ export function createEditor(
       if (!validDocumentation(patch.description, DOCUMENTATION_LIMITS.maxDiagramLength)) return;
       if (
         ("planning" in patch || "simulations" in patch) &&
-        !acceptNodes(currentNodes(), currentEdges(), { ...deps().meta, ...patch })
+        !acceptNodes(currentNodes(), currentEdges(), { ...latest.meta, ...patch })
       )
         return;
       hint(opts?.merge);
-      deps().setMeta((m) => ({ ...m, ...patch }));
+      setMeta((meta) => ({ ...meta, ...patch }));
     },
     connect: (from, to, sides) => {
       if (from === to) return null;
@@ -1179,6 +1183,7 @@ export function createEditor(
                   ...e.data,
                   sourceSide: e.data?.targetSide,
                   targetSide: e.data?.sourceSide,
+                  waypoints: e.data?.waypoints?.slice().reverse(),
                 },
               }
             : e,
@@ -1195,7 +1200,7 @@ export function createEditor(
       const src = ns.find((n) => n.id === req.from);
       if (!src || !takesEdges(src)) return null;
       const srcStencil = isDiagram(src) ? src.data.stencil : undefined;
-      const toward = req.toward ?? towardOf(deps().meta.direction === "TB" ? "TB" : "LR");
+      const toward = req.toward ?? towardOf(latest.meta.direction === "TB" ? "TB" : "LR");
       const plan = connectedPlan(src, toward, req.clone ? true : req.shape ? "shape" : "stencil", req.at);
 
       if (req.shape || (req.clone && isAnnotation(src))) {
@@ -1230,7 +1235,7 @@ export function createEditor(
       }
 
       let data: DiagramFlowNode["data"];
-      let size = deps().nodeSize;
+      let size = latest.nodeSize;
       if (req.clone) {
         if (!isDiagram(src)) return null;
         const b = box(src);
@@ -1248,7 +1253,7 @@ export function createEditor(
           stencil: s.id,
           label: s.label,
           sublabel: s.defaultSublabel,
-          props: newPlanningProps(s.simRole, deps().meta.planning, s.id),
+          props: newPlanningProps(s.simRole, latest.meta.planning, s.id),
         };
       }
       // Where: the drop point (a dropped connection, centred on it), else one gap beside the node that way.
@@ -1284,7 +1289,7 @@ export function createEditor(
       const b = e && rf.getNode(e.target);
       if (!e || !a || !b) return null;
       const s = getStencil(stencilId);
-      const size = deps().nodeSize;
+      const size = latest.nodeSize;
       const ns = rf.getNodes();
       // Where it was dropped; from a menu, the free place nearest the middle of the two ends (the edge itself
       // doesn't count: it's about to go through the node).
@@ -1306,7 +1311,7 @@ export function createEditor(
           label: s.label,
           sublabel: s.defaultSublabel,
           group: groupAt(ns, c.x, c.y),
-          props: newPlanningProps(s.simRole, deps().meta.planning, s.id),
+          props: newPlanningProps(s.simRole, latest.meta.planning, s.id),
         },
       };
       const r = splitFlowEdge(es, edgeId, id, takenIds().add(id), allocateId);
@@ -1381,7 +1386,7 @@ export function createEditor(
       }
       offset = snappedClear(
         from,
-        offset ?? placeCopy(from, others, deps().meta.direction === "TB" ? "TB" : "LR"),
+        offset ?? placeCopy(from, others, latest.meta.direction === "TB" ? "TB" : "LR"),
         others,
       );
       const ids = insert(p, offset);
@@ -1449,7 +1454,7 @@ export function createEditor(
       const pos = tidyLayout({
         nodes: picked.map((n) => ({ ...box(n), label: n.data.label })),
         edges: rf.getEdges().map((e) => ({ from: e.source, to: e.target, label: e.data?.label })),
-        direction: deps().meta.direction === "TB" ? "TB" : "LR",
+        direction: latest.meta.direction === "TB" ? "TB" : "LR",
         // Everything else stays put, so the tidied nodes land clear of it (boundaries and zones are backdrops).
         others: ns
           .filter((n) => !moving.has(n.id) && (isDiagram(n) || (isAnnotation(n) && isObstacle(n.data.kind))))
@@ -1864,7 +1869,7 @@ export function createEditor(
     },
     doneNaming: (tag) => {
       deps().history.end(tag);
-      deps().flushSave?.(fromFlow(deps().meta, currentNodes(), currentEdges()));
+      deps().flushSave?.(fromFlow(latest.meta, currentNodes(), currentEdges()));
     },
     openInspector: (field) => deps().openInspector(field),
     showShortcuts: () => deps().showShortcuts(),
@@ -1892,7 +1897,7 @@ export function createEditor(
         deps().fit();
       };
       cancelLayout();
-      const before = JSON.stringify(fromFlow(deps().meta, currentNodes(), currentEdges()));
+      const before = JSON.stringify(fromFlow(latest.meta, currentNodes(), currentEdges()));
       const waiting: NonNullable<typeof waitingLayout> = {};
       waitingLayout = waiting;
       commandsChanged();

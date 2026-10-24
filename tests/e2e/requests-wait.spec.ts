@@ -138,10 +138,9 @@ test("connection Simulation offers the same undoable wait toggle as its inspecto
   await expect.poll(async () => (await savedDiagram(page)).edges[1].props?.caller).toBeUndefined();
   await page.getByTestId("edge-call").dblclick();
   await page.getByTestId("inspector-section-edge-simulation").click();
-  await expect(page.getByTestId("inspector-field-wait")).toContainText("Holds a thread");
-  await page.getByTestId("inspector-field-wait").click();
-  await page.getByTestId("context-menu-item-non-blocking").click();
-  await expect(page.getByTestId("inspector-field-wait")).toContainText("Frees the thread");
+  await expect(page.getByTestId("inspector-field-wait-blocking")).toHaveAttribute("aria-checked", "true");
+  await page.getByTestId("inspector-field-wait-non-blocking").click();
+  await expect(page.getByTestId("inspector-field-wait-non-blocking")).toHaveAttribute("aria-checked", "true");
   await expect
     .poll(async () => (await savedDiagram(page)).edges[1].props?.caller)
     .toMatchObject({ wait: "non-blocking" });
@@ -288,9 +287,8 @@ test("menu and inspector read and change the active caller override", async ({ p
   await page.getByTestId("undo-button").click();
   await page.getByTestId("edge-call").dblclick();
   await page.getByTestId("inspector-section-edge-simulation").click();
-  await expect(page.getByTestId("inspector-field-wait")).toContainText("Holds a thread");
-  await page.getByTestId("inspector-field-wait").click();
-  await page.getByTestId("context-menu-item-non-blocking").click();
+  await expect(page.getByTestId("inspector-field-wait-blocking")).toHaveAttribute("aria-checked", "true");
+  await page.getByTestId("inspector-field-wait-non-blocking").click();
   await expect
     .poll(async () => (await savedDiagram(page)).simulations?.[0].setup?.edges?.call.caller?.wait)
     .toBe("non-blocking");
