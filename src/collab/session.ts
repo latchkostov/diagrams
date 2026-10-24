@@ -2,7 +2,7 @@ import * as Y from "yjs";
 import { canCollaborate, type CanvasPrivacyState } from "../lib/localOnly";
 import type { DiagramFile } from "../model/types";
 import { realClock, type Clock } from "./clock";
-import { CollabDoc, REMOTE } from "./doc";
+import { CollabDoc, REMOTE, type RemoteProblem } from "./doc";
 import {
   frameChannel,
   FRAME_SIGNATURE_BYTES,
@@ -13,7 +13,7 @@ import {
   type Rejection,
 } from "./envelope";
 import { ChainCatchUp } from "./chainCatchUp";
-import { structClients, type GuardProblem } from "./guard";
+import { structClients } from "./guard";
 import {
   checkMemberProof,
   deriveEpochKeys,
@@ -114,8 +114,7 @@ export const CONNECTION_WAIT_MS = COLLAB_LIMITS.connectionWaitMs;
 export type RoomStatus = "connecting" | "offline" | "saved-device" | "synced";
 export type RejectReason =
   | Rejection
-  | GuardProblem
-  | "apply-failed"
+  | RemoteProblem
   | "quarantined"
   | "rate-limited"
   | "reply-throttled"
@@ -1717,6 +1716,7 @@ export class CollabSession {
       this.sealer = new Sealer(keys, sender);
       this.sealer.sign = room.signFrame;
       this.opener = new Opener(keys, sender);
+      this.doc.restartSenders();
       room.rekey(keys, start);
       this.memberPeers.clear();
       this.provedKeys.clear();
@@ -2128,7 +2128,7 @@ export class CollabSession {
       case DOC.syncReply:
       case DOC.update: {
         if (msg.type === DOC.syncReply) this.asked.delete(from);
-        const result = this.doc.applyRemote(msg.payload);
+        const result = this.doc.applyRemote(msg.payload, opened.sender);
         if (!result.ok) {
           this.quarantine(opened.sender, from);
           this.reject(result.problem);

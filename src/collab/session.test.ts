@@ -711,6 +711,35 @@ describe("sessions refuse hostile input", () => {
     }
   });
 
+  it("quarantines a room editor that accumulates state past its receive budget", async () => {
+    const { net, a, b, c, settle } = await room3();
+    const evil = await rogue(net);
+    onTestFinished(() => evil.transport.close());
+    const limits = COLLAB_LIMITS as unknown as Record<string, number>;
+    const saved = limits.maxMessageBytes;
+    onTestFinished(() => {
+      limits.maxMessageBytes = saved;
+    });
+    limits.maxMessageBytes = 4096;
+    // Each independently valid update is below the wire limit; their retained state is not.
+    for (let i = 0; i < 24; i++) {
+      const doc = new Y.Doc();
+      doc.clientID = 10000 + i;
+      metaOf(doc).set(`hostile${i}`, "x".repeat(300));
+      await evil.send("doc", frame(DOC.update, Y.encodeStateAsUpdate(doc)));
+      doc.destroy();
+      await settle();
+    }
+    for (const client of [a, b, c]) {
+      expect(client.session.stats.rejected["peer-full"]).toBe(1);
+      expect(client.session.stats.rejected.quarantined).toBeGreaterThan(0);
+      expect(client.session.doc.encodeDiff().length).toBeLessThan(2 * limits.maxMessageBytes);
+    }
+    expect(b.edit((d) => ({ ...d, title: "Honest edit" }))).toBe(true);
+    await settle();
+    for (const client of [a, b, c]) expect(client.diagram?.title).toBe("Honest edit");
+  });
+
   it("refuses malformed presence and unknown message types", async () => {
     const { net, a, settle } = await room3();
     const evil = await rogue(net);

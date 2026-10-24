@@ -207,10 +207,21 @@ function readCells(model: XmlElement): Cell[] {
 export function htmlToLines(value: string, html: boolean): string[] {
   let s = value;
   if (html) {
-    s = s
-      .replace(/<br\s*\/?>/gi, "\n")
-      .replace(/<\/?(div|p|li|h\d)\b[^>]*>/gi, "\n")
-      .replace(/<[^>]*>/g, "");
+    const parts: string[] = [];
+    let from = 0;
+    while (from < value.length) {
+      const start = value.indexOf("<", from);
+      if (start < 0) break;
+      const end = value.indexOf(">", start + 1);
+      // Preserve an unfinished tag as text. Never retry every '<' in this suffix.
+      if (end < 0) break;
+      parts.push(value.slice(from, start));
+      const tag = value.slice(start + 1, end);
+      if (/^br\s*\/?$/i.test(tag) || /^\/?(?:div|p|li|h\d)\b/i.test(tag)) parts.push("\n");
+      from = end + 1;
+    }
+    parts.push(value.slice(from));
+    s = parts.join("");
     s = decodeEntities(s);
   }
   return s
@@ -347,6 +358,9 @@ export function drawioPageToDiagram(page: DrawioPage, fallbackTitle = "Imported 
     }
     nodeCells.push(c);
   }
+
+  // Validate before constructing nodes or the pairwise spacing pass, not at the import front door afterward.
+  if (nodeCells.length > LIMITS.maxNodes) throw new DrawioError("This page exceeds the node budget.");
 
   // ---- nodes
   // Ids the page repeats: shapes and notes (which connections end on) need their own, and so do boundaries (which
