@@ -67,6 +67,9 @@ export const pillHeight = (lines: number) => lines * LABEL.lineH + 2 * (LABEL.pa
 
 /** Greedy word wrap into at most `maxLines`, as narrow as possible. Null when it can't be done. */
 export function wrapLines(text: string, maxLines: number): string[] | null {
+  // Longer labels cannot fit a three-line pill. Reject before splitting or searching widths:
+  // imported text may contain millions of words (including more than Math.max can spread).
+  if (text.length > LABEL.maxLineChars * 3 + 2) return null;
   const words = text.split(/\s+/).filter(Boolean);
   if (words.length < 2) return null;
   const longest = Math.max(...words.map((w) => w.length));

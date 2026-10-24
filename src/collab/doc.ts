@@ -79,6 +79,8 @@ export interface CollabDocOptions {
   clientId?: number;
 }
 
+export type RemoteProblem = GuardProblem | "apply-failed" | "peer-full" | "room-full" | "too-many-peers";
+
 export class CollabDoc {
   readonly ydoc: Y.Doc;
   readonly undoManager: Y.UndoManager;
@@ -109,19 +111,25 @@ export class CollabDoc {
   private roomBytes = 0;
   private revision = 0;
   private measuredAt = -1;
+  /** Conservative retained-state contributions, keyed by authenticated transport sender (not Yjs client id). */
+  private peerBytes = new Map<string, number>();
   private proofCache?: { revision: number; value: Promise<Uint8Array> };
   /** Estimated bytes of each Undo/Redo step (local steps: their checked bound; Undo's own: what it reversed). */
   private stepSizes = new WeakMap<object, number>();
   private stepBytes = 0;
   private poppedBytes = 0;
 
-  private roomHas(bytes: number): boolean {
-    if (this.roomBytes + bytes <= COLLAB_LIMITS.maxRoomBytes) return true;
+  private measureRoom(): void {
     if (this.measuredAt !== this.revision) {
       this.roomBytes = Y.encodeStateAsUpdate(this.ydoc).length;
       this.measuredAt = this.revision;
       this.stats.roomMeasurements++;
     }
+  }
+
+  private roomHas(bytes: number): boolean {
+    if (this.roomBytes + bytes <= COLLAB_LIMITS.maxRoomBytes) return true;
+    this.measureRoom();
     return this.roomBytes + bytes <= COLLAB_LIMITS.maxRoomBytes;
   }
 
@@ -227,25 +235,49 @@ export class CollabDoc {
   }
 
   /** Applies a peer's update after the guard's state-independent checks. */
-  applyRemote(update: Uint8Array): { ok: true } | { ok: false; problem: GuardProblem | "apply-failed" } {
-    return this.applyChecked(update, inspectUpdate(update));
+  applyRemote(update: Uint8Array, sender = "remote"): { ok: true } | { ok: false; problem: RemoteProblem } {
+    return this.applyChecked(update, inspectUpdate(update), sender);
   }
 
-  applyCheckpoint(update: Uint8Array): { ok: true } | { ok: false; problem: GuardProblem | "apply-failed" } {
-    return this.applyChecked(update, inspectCheckpoint(update));
+  applyCheckpoint(update: Uint8Array): { ok: true } | { ok: false; problem: RemoteProblem } {
+    return this.applyChecked(update, inspectCheckpoint(update), "checkpoint");
   }
 
   private applyChecked(
     update: Uint8Array,
     check: GuardResult,
-  ): { ok: true } | { ok: false; problem: GuardProblem | "apply-failed" } {
+    sender: string,
+  ): { ok: true } | { ok: false; problem: RemoteProblem } {
     if (!check.ok) {
       this.stats.remoteRefused++;
       return { ok: false, problem: check.problem };
     }
     try {
+      let contribution = this.peerBytes.get(sender) ?? 0;
+      let problem: RemoteProblem | undefined;
+      if (!this.peerBytes.has(sender) && this.peerBytes.size >= COLLAB_LIMITS.maxSenders) problem = "too-many-peers";
+      // Leave headroom beyond the local soft budget for concurrent edits and a full sync reply. The
+      // hard budgets are one message's worth per sender and two in total, including pending Yjs state.
+      if (
+        contribution + update.length > COLLAB_LIMITS.maxMessageBytes ||
+        this.roomBytes + update.length > 2 * COLLAB_LIMITS.maxMessageBytes
+      ) {
+        this.measureRoom();
+        // The entire retained document also bounds any sender's retained contribution. This reclaims
+        // conservative charges for duplicate sync replies and garbage-collected replacements.
+        contribution = Math.min(contribution, this.roomBytes);
+        // Repeated sync replies carry already-integrated structs. Charge and apply only what is missing.
+        update = Y.diffUpdate(update, this.stateVector());
+        if (contribution + update.length > COLLAB_LIMITS.maxMessageBytes) problem = "peer-full";
+        else if (this.roomBytes + update.length > 2 * COLLAB_LIMITS.maxMessageBytes) problem = "room-full";
+      }
+      if (problem) {
+        this.stats.remoteRefused++;
+        return { ok: false, problem };
+      }
       Y.applyUpdate(this.ydoc, update, REMOTE);
       this.roomBytes += update.length;
+      this.peerBytes.set(sender, contribution + update.length);
     } catch {
       this.stats.remoteRefused++;
       return { ok: false, problem: "apply-failed" };

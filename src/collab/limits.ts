@@ -13,7 +13,8 @@ export const COLLAB_LIMITS = {
   maxDocFrameBytes: 1024 * 1024 + 1024,
   /**
    * A whole document message once reassembled: one update or one sync reply. A full 5,000-node diagram is about
-   * 2 MB (src/collab/scale.test.ts); a sync reply larger than this is split by Yjs client.
+   * 2 MB (src/collab/scale.test.ts); a sync reply larger than this is split by Yjs client. Also bounds
+   * accumulated remote state per sender; the document's hard receive cap is twice this (including pending state).
    */
   maxMessageBytes: 32 * 1024 * 1024,
   /** Messages one sender may have half-delivered at once, and how long a half-delivered one is kept (room clock). */
