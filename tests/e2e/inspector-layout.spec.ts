@@ -1,7 +1,9 @@
 import AxeBuilder from "@axe-core/playwright";
 import type { Locator, Page } from "@playwright/test";
+import type { DiagramFile } from "../../src/model/types";
+import type { EdgeSimProps } from "../../src/sim/types";
 import { inspectorLayoutFixture } from "../../src/lab/inspectorLayoutFixture";
-import { test, expect, gotoCanvas, waitForSelectionSettled, savedDiagram } from "./fixtures";
+import { test, expect, gotoCanvas, waitForSelectionSettled, savedDiagram, pauseClock } from "./fixtures";
 
 async function open(
   page: Page,
@@ -12,6 +14,7 @@ async function open(
   stencil?: string,
   rates = false,
   firewall = false,
+  customize?: (diagram: DiagramFile) => void,
 ) {
   await page.setViewportSize({ width, height: 900 });
   await page.emulateMedia({ colorScheme: theme === "dark" ? "dark" : "light", reducedMotion: "reduce" });
@@ -38,6 +41,7 @@ async function open(
       },
     };
   }
+  customize?.(diagram);
   await page.addInitScript(
     ({ diagram, theme, locale }) => {
       localStorage.setItem("diagrams.settings.v1", JSON.stringify({ theme }));
@@ -176,6 +180,88 @@ for (const width of [1280, 1440]) {
     });
   }
 }
+
+test("reselecting breaker On preserves tuned settings and Undo history", async ({ page }) => {
+  await page.clock.install();
+  await open(page);
+  await pauseClock(page);
+  await page.getByTestId("inspector-section-edge-simulation").click();
+  const on = page.getByTestId("inspector-field-breaker-on");
+  await on.click();
+  await page.clock.runFor(1000);
+  await page.getByTestId("inspector-section-breaker-details").click();
+  const failure = page.getByTestId("inspector-field-breaker-failurePercent");
+  const minimum = page.getByTestId("inspector-field-breaker-minimumCalls");
+  const duration = page.getByTestId("inspector-field-breaker-openMs");
+  const breaker = async () =>
+    ((await savedDiagram(page)).edges.find((edge) => edge.id === "call")?.props?.caller as EdgeSimProps["caller"])
+      ?.breaker;
+  // Advance the fake clock past history/autosave debounces between distinct edits.
+  await failure.fill("35");
+  await page.clock.runFor(1000);
+  await expect.poll(breaker).toEqual({ failurePercent: 35 });
+  await minimum.fill("12");
+  await page.clock.runFor(1000);
+  await expect.poll(breaker).toEqual({ failurePercent: 35, minimumCalls: 12 });
+  await duration.fill("7000");
+  await page.clock.runFor(1000);
+  await expect.poll(breaker).toEqual({ failurePercent: 35, minimumCalls: 12, openMs: 7000 });
+  await on.click();
+  await on.press("End");
+  await page.clock.runFor(1000);
+  await expect(failure).toHaveValue("35");
+  await expect(minimum).toHaveValue("12");
+  await expect(duration).toHaveValue("7000");
+  await expect.poll(breaker).toEqual({ failurePercent: 35, minimumCalls: 12, openMs: 7000 });
+  await page.getByTestId("undo-button").click();
+  await page.clock.runFor(1000);
+  await expect.poll(breaker).toEqual({ failurePercent: 35, minimumCalls: 12 });
+  // A redundant selection must also preserve the redo branch.
+  await on.click();
+  await on.press("End");
+  await page.clock.runFor(1000);
+  await expect(page.getByTestId("redo-button")).toBeEnabled();
+  await page.getByTestId("redo-button").click();
+  await page.clock.runFor(1000);
+  await expect.poll(breaker).toEqual({ failurePercent: 35, minimumCalls: 12, openMs: 7000 });
+});
+
+test("retry segments persist selections and preserve custom policies", async ({ page }) => {
+  await page.clock.install();
+  await open(page, "edge-call", 1440, "light", "en", undefined, false, false, (diagram) => {
+    const caller = diagram.edges.find((edge) => edge.id === "call")?.props?.caller as EdgeSimProps["caller"];
+    if (!caller?.retry) throw new Error("Missing fixture retry policy");
+    caller.retry = {
+      ...caller.retry,
+      jitter: 0.3,
+      maxBackoffMs: 900,
+      idempotent: true,
+      budget: { percent: 17, minPerSec: 4 },
+    };
+  });
+  await pauseClock(page);
+  await page.getByTestId("inspector-section-edge-simulation").click();
+  await page.getByTestId("inspector-section-retry-details").click();
+  await expect(page.getByTestId("inspector-field-retry-jitter-0.3")).toHaveAttribute("aria-checked", "true");
+  const retry = async () =>
+    ((await savedDiagram(page)).edges.find((edge) => edge.id === "call")?.props?.caller as EdgeSimProps["caller"])
+      ?.retry;
+  const original = await retry();
+  await page.getByTestId("inspector-field-retry-growth-fixed").click();
+  await page.clock.runFor(1000);
+  await expect.poll(retry).toEqual({ ...original, strategy: "fixed" });
+  await page.getByTestId("inspector-field-retry-jitter-0.5").click();
+  await page.clock.runFor(1000);
+  await expect.poll(retry).toEqual({ ...original, strategy: "fixed", jitter: 0.5 });
+  await page.getByTestId("undo-button").click();
+  await page.clock.runFor(1000);
+  await expect.poll(retry).toEqual({ ...original, strategy: "fixed" });
+  await expect(page.getByTestId("inspector-field-retry-jitter-0.3")).toHaveAttribute("aria-checked", "true");
+  await page.getByTestId("undo-button").click();
+  await page.clock.runFor(1000);
+  await expect.poll(retry).toEqual(original);
+  await expect(page.getByTestId("inspector-field-retry-growth-exponential")).toHaveAttribute("aria-checked", "true");
+});
 
 test("node identity is usable while Simulation fields download", async ({ page }) => {
   let release = () => {};

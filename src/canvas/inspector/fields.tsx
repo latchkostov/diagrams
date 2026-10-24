@@ -162,6 +162,9 @@ export function Segmented<T extends string>({
     0,
     options.findIndex((o) => o.value === value),
   );
+  const select = (next: T) => {
+    if (next !== value) onChange(next);
+  };
   const move = (e: KeyboardEvent<HTMLButtonElement>, index: number) => {
     const last = options.length - 1;
     const next =
@@ -180,7 +183,7 @@ export function Segmented<T extends string>({
               : -1;
     if (next < 0) return;
     e.preventDefault();
-    onChange(options[next].value);
+    select(options[next].value);
     const group = e.currentTarget.parentElement;
     group?.querySelectorAll<HTMLButtonElement>('[role="radio"]')[next]?.focus();
   };
@@ -195,7 +198,7 @@ export function Segmented<T extends string>({
           tabIndex={i === current ? 0 : -1}
           className={value === o.value ? "is-on" : ""}
           title={o.hint}
-          onClick={() => onChange(o.value)}
+          onClick={() => select(o.value)}
           onKeyDown={(e) => move(e, i)}
           data-testid={`${testId}-${o.value}`}
         >

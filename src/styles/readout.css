@@ -32,6 +32,15 @@
   text-align: end;
 }
 
+.readout-disclosure-body {
+  display: flex;
+  flex-direction: column;
+  min-inline-size: 0;
+  gap: 0;
+}
+.readout-disclosure-body:empty {
+  display: none;
+}
 .readout-disclosure > summary {
   display: flex;
   align-items: center;

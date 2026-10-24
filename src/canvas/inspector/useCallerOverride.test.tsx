@@ -1,4 +1,6 @@
-import { renderToStaticMarkup } from "react-dom/server";
+// @vitest-environment happy-dom
+import { act } from "react";
+import { createRoot } from "react-dom/client";
 import { expect, it, vi } from "vitest";
 import { LiveController } from "../../live/controller";
 import { planningHost } from "../../live/planningHost";
@@ -6,24 +8,18 @@ import type { LiveUi } from "../../live/context";
 import { breakerFixture } from "../../lab/resilienceFixture";
 import { useCallerOverride } from "./useCallerOverride";
 
-const snapshots = vi.hoisted(() => [] as (() => unknown)[]);
-vi.mock("react", async (original) => ({
-  ...(await original<typeof import("react")>()),
-  useSyncExternalStore: (_subscribe: unknown, snapshot: () => unknown) => {
-    snapshots.push(snapshot);
-    return snapshot();
-  },
-}));
-
-it("does not invalidate the edge inspector on ticks, but observes policy edits and run removal", () => {
-  const title = "Test";
-  const emptyTitle = "No overrides";
+it("edge inspector skips ticks but observes policy and host changes", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
   const controller = new LiveController(breakerFixture());
-  const stop = planningHost.publish({ controller } as LiveUi);
+  const container = document.createElement("div");
+  const root = createRoot(container);
+  let renders = 0;
+  const title = "Test";
   function Probe() {
-    useCallerOverride("call");
-    return null;
+    renders++;
+    return <output>{useCallerOverride("call")?.wait ?? "none"}</output>;
   }
+  const stop = planningHost.publish({ controller } as LiveUi);
   try {
     controller.setBase({
       id: "test",
@@ -31,27 +27,40 @@ it("does not invalidate the edge inspector on ticks, but observes policy edits a
       traffic: [],
       setup: { edges: { call: { caller: { wait: "blocking" } } } },
     });
-    renderToStaticMarkup(<Probe />);
-    const read = snapshots.at(-1)!;
-    const before = read();
-    expect(before).toEqual({ wait: "blocking" });
+    await act(() => root.render(<Probe />));
+    expect(container.textContent).toBe("blocking");
+    const before = renders;
     const state = controller.getState();
-    controller.step(100);
+    for (let tick = 0; tick < 8; tick++) await act(() => controller.step(100));
     expect(controller.getState()).not.toBe(state);
-    expect(read()).toBe(before);
-    controller.setBase({
-      id: "test",
-      title,
-      traffic: [],
-      setup: { edges: { call: { caller: { wait: "non-blocking" } } } },
-    });
-    expect(read()).toEqual({ wait: "non-blocking" });
-    expect(read()).not.toBe(before);
-    controller.setBase({ id: "empty", title: emptyTitle, traffic: [] });
-    expect(read()).toBeUndefined();
+    expect(renders).toBe(before);
+    await act(() =>
+      controller.setBase({
+        id: "test",
+        title,
+        traffic: [],
+        setup: { edges: { call: { caller: { wait: "non-blocking" } } } },
+      }),
+    );
+    expect(container.textContent).toBe("non-blocking");
+    expect(renders).toBeGreaterThan(before);
+    await act(() => controller.setBase({ id: "empty", title, traffic: [] }));
+    expect(container.textContent).toBe("none");
+    await act(() =>
+      controller.setBase({
+        id: "test",
+        title,
+        traffic: [],
+        setup: { edges: { call: { caller: { wait: "non-blocking" } } } },
+      }),
+    );
+    expect(container.textContent).toBe("non-blocking");
+    await act(() => stop());
+    expect(container.textContent).toBe("none");
   } finally {
+    await act(() => root.unmount());
     stop();
     controller.dispose();
-    snapshots.length = 0;
+    vi.unstubAllGlobals();
   }
 });

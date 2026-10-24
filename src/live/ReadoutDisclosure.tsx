@@ -30,7 +30,9 @@ export function ReadoutDisclosure({
         )}
         <Icon name="chevron-right" size={12} />
       </summary>
-      <div className="insp-section-body">{children}</div>
+      <div className="readout-disclosure-body" data-testid={`${testId}-body`}>
+        {children}
+      </div>
     </details>
   );
 }
