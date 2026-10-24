@@ -95,6 +95,27 @@ describe("interactive viewer template", () => {
       ).toBe(true);
   });
 
+  it("plays shedding without its inspector, fix authoring or tutorial UI", () => {
+    for (const path of [
+      "/src/canvas/inspector/QueueFields.tsx",
+      "/src/canvas/inspector/PriorityField.tsx",
+      "/src/live/session/useLiveFixes.ts",
+      "/src/live/TroubleCallout.tsx",
+      "/src/live/threadFixes.ts",
+      "/src/live/resilienceFixPlan.ts",
+    ])
+      expect(
+        modules.some((id) => id.endsWith(path)),
+        path,
+      ).toBe(false);
+    expect(modules.filter((id) => /\/src\/tutorials\/(?!sandbox\.ts$)/.test(id))).toEqual([]);
+    for (const path of ["/src/sim/shedQueue.ts", "/src/live/session/useLiveDiagramChanges.ts"])
+      expect(
+        modules.some((id) => id.endsWith(path)),
+        path,
+      ).toBe(true);
+  });
+
   it("reuses the catalog's English stencil text without changing viewer words", () => {
     for (const stencil of catalog) {
       expect(viewerStencil.stencilLabel(stencil)).toBe(translatedStencil.stencilLabel(stencil));
