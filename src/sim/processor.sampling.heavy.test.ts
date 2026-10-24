@@ -5,11 +5,57 @@ import { cohortArrivals, expectScaleEquivalent, sameArrivals } from "../test/sca
 import { createEngine } from "./engine";
 import { autoScale } from "./scale";
 import { realSnapshot } from "./units";
-import { assertLedgerInvariants } from "./resourceInvariants";
+import { assertLedgerInvariants, type LedgerInvariantState } from "./resourceInvariants";
 import { STEP } from "./timing";
 import type { EdgeSimProps, NodeSimProps } from "./types";
 
 const freePlay = { id: "free", title: "Free play", traffic: [] };
+
+it("a caller paused during downstream queueing keeps its remaining represented waves", () => {
+  const d = processorCaller({}, { concurrency: 4, latencyMs: 0 });
+  d.nodes[2].stencil = "generic.service";
+  d.nodes[2].props = { replicas: 1, concurrency: 1, latencyMs: 30, jitter: 0 };
+  d.nodes.push({ ...d.nodes[0], id: "blocker" });
+  d.edges.push({ id: "block", from: "blocker", to: "partner", props: { travelMs: 10 } });
+  let state: LedgerInvariantState;
+  const e = createEngine({
+    scale: 10,
+    seed: 7,
+    maxParticles: 0,
+    verifyLedger: (value) => {
+      assertLedgerInvariants(value);
+      state = value;
+    },
+  });
+  const advanceUntil = (done: () => boolean) => {
+    for (let tick = 0; tick < 200 && !done(); tick++) e.step(STEP);
+    expect(done()).toBe(true);
+  };
+  e.load(d);
+  // This first cohort paces the one-slot callee before the blocking request arrives.
+  e.inject("blocker", 1);
+  e.step(2 * STEP);
+  e.inject("source", 2);
+  advanceUntil(() => e.snapshot().nodes.partner.backlog > 0);
+  e.setNodeStatus("caller", "paused");
+  // Resume during the queued cohort's first service wave, before it can reply.
+  advanceUntil(() =>
+    [...state.ledger.reservations.values()].some(
+      (r) => r.owner === "partner" && r.scope === "thread" && r.startActive > STEP && r.releaseAt === undefined,
+    ),
+  );
+  expect(e.snapshot().nodes.caller.processed).toBe(0);
+  e.setNodeStatus("caller", "up");
+  advanceUntil(() => e.snapshot().nodes.caller.processed > 0);
+  const thread = [...state!.ledger.reservations.values()].find((r) => r.owner === "caller" && r.scope === "thread");
+  expect(thread).toMatchObject({ weight: 4, represented: 10 });
+  expect(thread!.unscaledWaitMs ?? 0).toBe(0);
+  expect(thread!.releaseAt).toBeGreaterThan(thread!.retiredActive!);
+  const queued = e.snapshot().nodes.caller.threads!.queued;
+  expect(queued).toBe(1);
+  e.step(STEP);
+  expect(e.snapshot().nodes.caller.threads!.queued).toBe(queued);
+});
 
 function processorCaller(caller: EdgeSimProps["caller"] = {}, props: NodeSimProps = {}): DiagramFile {
   return {
@@ -50,6 +96,48 @@ function processorCaller(caller: EdgeSimProps["caller"] = {}, props: NodeSimProp
     ],
   };
 }
+
+it("joined narrow processors credit overlapping queue time once", () => {
+  const d = processorCaller({ wait: "blocking", replyMs: 0 }, { concurrency: 4, latencyMs: 0 });
+  d.nodes[2].stencil = "generic.service";
+  d.nodes[2].props = { replicas: 1, concurrency: 1, latencyMs: 30, jitter: 0 };
+  d.edges[1].props!.networkDelayMs = 10;
+  const cohorts = cohortArrivals(10);
+  const run = (scale: number, joined: boolean) => {
+    const diagram = structuredClone(d);
+    if (joined) {
+      diagram.nodes.push({ ...diagram.nodes[2], id: "second" });
+      diagram.edges.push({ ...diagram.edges[1], id: "second-call", to: "second" });
+    }
+    const credits = new Map<number, number>();
+    const e = createEngine({
+      scale,
+      seed: 7,
+      maxParticles: 0,
+      verifyLedger: (state) => {
+        assertLedgerInvariants(state);
+        for (const r of state.ledger.reservations.values())
+          if (r.owner === "caller" && r.scope === "thread" && (r.unscaledWaitMs ?? 0) > 0)
+            credits.set(r.id, r.unscaledWaitMs!);
+      },
+    });
+    e.load(diagram);
+    for (const count of scale === 1 ? sameArrivals(cohorts, 10) : cohorts) {
+      if (count) e.inject("source", count);
+      e.step(STEP);
+    }
+    return { snapshot: e.snapshot(), credits: [...credits.values()] };
+  };
+  const single = run(10, false);
+  const joined = run(10, true);
+  const baseline = run(1, true);
+  expect(single.credits.length).toBeGreaterThan(0);
+  expect(joined.credits).toEqual(single.credits);
+  expect(realSnapshot(joined.snapshot).nodes.caller.processed).toBe(
+    realSnapshot(single.snapshot).nodes.caller.processed,
+  );
+  expectScaleEquivalent(baseline.snapshot, joined.snapshot, 1);
+});
 
 describe("processor callers keep the entry-rate work budget", () => {
   it.each([

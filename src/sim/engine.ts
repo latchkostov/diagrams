@@ -240,6 +240,8 @@ interface Delivery {
   original: Message;
 }
 interface Work extends ExecutionWork<Group> {
+  /** A pause anywhere in this request's downstream queue interval disables paced queue credit. */
+  callerPausedDuringQueue?: boolean;
   /** Dots this work added to its node's pending, continuation or staged units when it last queued there (set on entry). */
   queuedUnits?: number;
   /** A join's continuation is a fresh attempt. It carries the join's settled cause explicitly and replies
@@ -374,6 +376,8 @@ interface Node {
   targets: Map<string, Edge>;
 }
 interface Call extends LogicalCall {
+  /** Requests still waiting for their callee's first service wave. */
+  queuedRequests?: Set<Work>;
   attempt: Attempt<Message>;
   replyMs?: number;
   replies?: number;
@@ -986,6 +990,9 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
 
   function changeStatus(node: Node, status: NodeStatus): void {
     if (node.status === status) return;
+    if (status === "paused")
+      for (const call of node.calls.values())
+        for (const work of call.queuedRequests ?? []) work.callerPausedDuringQueue = true;
     if (node.fleet) {
       const f = node.fleet;
       if (node.status === "paused") {
@@ -1106,6 +1113,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   }
 
   function startAttempt(node: Node, work: Work): void {
+    if (work.message.returnCall !== undefined) calls.get(work.message.returnCall)?.queuedRequests?.delete(work);
     if (waits()) {
       if (work.residentWeight === undefined) {
         work.residentWeight = sizeOf(work.message);
@@ -1736,7 +1744,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           visualAt: start + Math.max(STEP, edge.travelMs),
           represented: work.message.represented,
           pacedQueue:
-            edge.policy?.blocking && !Number.isFinite(edge.policy.pool) && child
+            edge.policy?.blocking && !Number.isFinite(edge.policy.pool) && child && !work.callerPausedDuringQueue
               ? {
                   ms: Math.max(0, child.startActive - (work.admissibleActive ?? child.startActive)),
                   weight: child.weight,
@@ -2578,8 +2586,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         if (!event.timeout && event.pacedQueue && thread && event.pacedQueue.weight < thread.weight) {
           // A narrower processor queues behind earlier cohorts' stretched holds. That elapsed
           // queue time has already been paced; stretching it again can leave the callee idle.
-          // Parallel branches share the wait, so credit its maximum, never their sum. Bound it
-          // by the caller's active wait (a paused caller does not accrue reservation time).
+          // Only uninterrupted active queue intervals qualify. Parallel branches share the
+          // wait, so credit its maximum, never their sum, bounded by the caller's active wait.
           thread.unscaledWaitMs = Math.max(
             thread.unscaledWaitMs ?? 0,
             Math.min(event.pacedQueue.ms, call.node.activeMs - (thread.segmentActive ?? thread.startActive)),
@@ -2954,6 +2962,13 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
 
   function arrive(node: Node, work: Work): void {
     work.admissibleActive = node.activeMs;
+    if (work.via?.policy?.blocking && !Number.isFinite(work.via.policy.pool) && node.role === "processor") {
+      const call = work.message.returnCall === undefined ? undefined : calls.get(work.message.returnCall);
+      if (call) {
+        work.callerPausedDuringQueue = call.node.status === "paused";
+        (call.queuedRequests ??= new Set()).add(work);
+      }
+    }
     // Pushed requests (not broker deliveries) for request-rate scalers; real units.
     if (node.fleet && !work.delivery) node.fleet.arrivals += sizeOf(work.message);
     if (node.status === "down") {
