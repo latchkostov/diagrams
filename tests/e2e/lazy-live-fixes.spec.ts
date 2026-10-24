@@ -316,9 +316,11 @@ test("slow motion waits for its script with focus, looks and export intact, then
 test("a failed slow-motion download returns to live with a focused Retry that starts it and gives focus back", async ({
   page,
 }) => {
+  await page.clock.install();
   const script = await gate(page, SCRIPT);
   script.fail = true;
   await openKafka(page);
+  await pauseClock(page);
   await slowMotionFromStorefront(page);
   const retry = page.getByTestId("lazy-load-retry");
   await expect(page.getByTestId("toast")).toContainText("Part of the app couldn't be downloaded");
@@ -327,9 +329,28 @@ test("a failed slow-motion download returns to live with a focused Retry that st
   await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "playing");
   script.fail = false;
   script.release();
+  const retryClock = await page.evaluate(() => performance.now());
   await page.keyboard.press("Enter");
-  await expect(page.getByTestId("live-canvas")).toHaveAttribute("data-slowmo", "playing");
+  expect(await page.evaluate(() => performance.now()), "Retry assertions run on the held replay clock").toBe(
+    retryClock,
+  );
+  // Capture and focus handoff yield through animation frames; advance them explicitly.
+  await expect
+    .poll(async () => {
+      await page.clock.runFor(250);
+      return page.getByTestId("live-canvas").getAttribute("data-slowmo");
+    })
+    .toBe("playing");
+  expect(Number(await page.getByTestId("live-canvas").getAttribute("data-slowmo-progress"))).toBeLessThan(1000);
+  await expect(page.getByTestId("live-canvas")).toHaveAttribute("data-slowmo-machine", "playing");
   expect(await focused(page)).not.toBe("BODY");
+  // Pin both ends of the race: Retry starts at the beginning while the clock is held.
+  // Seek to the final fraction, then let the replay clock actually cross its last beat.
+  await page.getByTestId("slowmo-timeline-input").fill("999");
+  await expect(page.getByTestId("live-canvas")).toHaveAttribute("data-slowmo-machine", "playing");
+  await page.clock.runFor(1_000);
+  await expect(page.getByTestId("live-canvas")).toHaveAttribute("data-slowmo-progress", "1000");
+  await expect(page.getByTestId("live-canvas")).toHaveAttribute("data-slowmo-machine", "finished");
 });
 
 test("pending script download freezes live controls and says so; Esc gives them back", async ({ page }) => {

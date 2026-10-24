@@ -2,6 +2,13 @@
 
 ## Runner evidence collection
 
+Hosted evidence is now collected: see [the 2026-10-24 inventory](2026-10-24-p2-native-evidence.md).
+Nightly 40062802399 executed all 12 diagnostic cases: 3 passed, 9 failed, zero skipped/flaky.
+The same inventory accounts for every native failure in Nightly 39137867503 and separates the
+four quarantines, recording clock fixes, paused-camera fix and unresolved observations. These
+results supersede the earlier request below to wait for original-runner evidence; they do not
+establish a disposal fix or authorize lifting any quarantine.
+
 Nightly's report-only `slowmo-teardown-diagnostic` job now runs these four cases on
 `windows-latest`, unquarantined only under its explicit diagnostic opt-in, three times
 with zero retries. Artifact `nightly-slowmo-teardown-evidence` contains failure traces,

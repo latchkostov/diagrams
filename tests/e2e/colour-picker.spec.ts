@@ -2,7 +2,18 @@ import { currentDiagram, savedDiagram } from "./fixtures";
 import { readFileSync } from "node:fs";
 import type { Page } from "@playwright/test";
 import { customColoursFixture } from "../../src/lab/customColoursFixture";
-import { test, expect, gotoCanvas, gotoLab, waitForStableViewport, STORAGE_KEYS, expectNoErrors } from "./fixtures";
+import {
+  test,
+  expect,
+  gotoCanvas,
+  gotoLab,
+  waitForStableViewport,
+  STORAGE_KEYS,
+  expectNoErrors,
+  animationFrames,
+} from "./fixtures";
+import { chunk } from "./chunk";
+import { openBackgroundPicker } from "./colour-picker-setup";
 
 const SLUG = "kafka-order-pipeline";
 const KEY = STORAGE_KEYS.autosavePrefix + SLUG;
@@ -37,6 +48,35 @@ async function dismiss(page: Page, how: string) {
   else await page.getByTestId("color-picker-close").click();
   await expect(page.getByTestId("color-picker-modal")).toHaveCount(0);
 }
+
+test("background picker waits for the held description layout before clicking Colour", async ({ page }) => {
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  let requested = false;
+  await page.route(chunk("MarkdownEditor", "src/components/markdown/MarkdownEditor.tsx"), async (route) => {
+    requested = true;
+    await held;
+    await route.continue();
+  });
+  await seed(page);
+  let opened = false;
+  const opening = openBackgroundPicker(page).then(() => {
+    opened = true;
+  });
+  try {
+    await expect.poll(() => requested).toBe(true);
+    await expect(page.getByTestId("inspector-diagram-color-custom-btn")).toBeVisible();
+    await animationFrames(page);
+    await expect(page.getByTestId("color-picker-modal")).toHaveCount(0);
+    expect(opened).toBe(false);
+  } finally {
+    release();
+    await opening;
+  }
+  await expect(page.getByTestId("color-picker-hex-input")).toBeFocused();
+});
 
 for (const how of ["Escape", "outside", "close"]) {
   test(`dismissing an untouched mixed-color picker preserves each annotation: ${how}`, async ({ page }) => {
@@ -132,8 +172,7 @@ for (const theme of ["light", "dark"]) {
     const canvas = page.getByTestId("canvas-wrap");
     const background = () => canvas.evaluate((el) => getComputedStyle(el).backgroundColor);
     const before = await background();
-    await page.getByTestId("inspector-toggle").click();
-    await page.getByTestId("inspector-diagram-color-custom-btn").click();
+    await openBackgroundPicker(page);
     await page.getByTestId("color-picker-hex-input").fill("#FF000080");
     await page.keyboard.press("Enter");
     await expect.poll(background).not.toBe(before);

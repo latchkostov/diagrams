@@ -256,7 +256,7 @@ it("Nightly covers each OS's shards exactly once and leaves time to upload repor
         .every((step: { if: string }) => step.if === "always()"),
     ).toBe(true);
   }
-  expect(jobs.report.needs).toEqual(["e2e", "native-unit", "native-e2e", "properties", "engines"]);
+  expect(jobs.report.needs).toEqual(["e2e", "native-unit", "native-e2e", "properties", "engines", "canvas-engines"]);
   expect(jobs["native-unit"].strategy.matrix.os).toEqual(["windows-latest", "macos-latest"]);
 });
 

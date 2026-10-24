@@ -4,6 +4,7 @@ import { createRequire } from "node:module";
 import { dirname } from "node:path";
 import { chromium, type Browser } from "@playwright/test";
 import { waitForStableEndpoint, withSmokeContainer } from "./self-host-container";
+import { duringStartup, type StartupProbe } from "./smoke-startup";
 
 const requireTest = createRequire(import.meta.resolve("@playwright/test/package.json"));
 const requirePlaywright = createRequire(requireTest.resolve("playwright/package.json"));
@@ -18,7 +19,10 @@ const run = (command: string, args: string[], capture = false): string => {
 };
 
 /** Docker bridge churn must not reach Chromium's network-change notifier and abort startup chunks. */
-export async function withIsolatedBrowser(check: (browser: Browser) => Promise<void>): Promise<void> {
+export async function withIsolatedBrowser(
+  check: (browser: Browser) => Promise<void>,
+  startup?: StartupProbe,
+): Promise<void> {
   await withSmokeContainer(
     run,
     `mcr.microsoft.com/playwright:v${version}-noble`,
@@ -26,10 +30,16 @@ export async function withIsolatedBrowser(check: (browser: Browser) => Promise<v
       await waitForStableEndpoint(origin);
       // Only the browser's loopback requests use the host tunnel. Its network namespace stays fixed
       // while the harness creates/removes deployment networks; every context still starts empty.
-      const browser = await chromium.connect({
-        wsEndpoint: origin.replace("http:", "ws:"),
-        exposeNetwork: "<loopback>",
-      });
+      const browser = await duringStartup(
+        "browser",
+        () =>
+          chromium.connect({
+            wsEndpoint: origin.replace("http:", "ws:"),
+            exposeNetwork: "<loopback>",
+            timeout: 30_000,
+          }),
+        startup,
+      );
       try {
         await check(browser);
       } finally {

@@ -1,14 +1,16 @@
 import type { BrowserContext } from "@playwright/test";
 import { withIsolatedBrowser } from "./isolated-smoke-browser";
+import { duringStartup, type StartupProbe } from "./smoke-startup";
 
 /** Keep boot evidence in CI stdout, before pages and their containers are disposed. */
 export async function withSmokeBrowser(
   check: (newContext: () => Promise<BrowserContext>) => Promise<void>,
+  startup?: StartupProbe,
 ): Promise<void> {
   await withIsolatedBrowser(async (browser) => {
     const requests: string[] = [];
     const newContext = async () => {
-      const context = await browser.newContext();
+      const context = await duringStartup("context", () => browser.newContext(), startup);
       await context.addInitScript(() => {
         document.addEventListener("securitypolicyviolation", (event) => {
           console.error(
@@ -45,16 +47,32 @@ export async function withSmokeBrowser(
       await check(newContext);
     } catch (error) {
       console.error("Smoke browser responses:\n" + requests.join("\n"));
-      for (const context of browser.contexts()) {
-        for (const page of context.pages()) {
-          try {
-            console.error("Final page:", page.url(), "\n" + (await page.evaluate(() => document.head.outerHTML)));
-          } catch (diagnosticError) {
-            console.error("Could not capture page head:", diagnosticError);
-          }
-        }
+      const deadline = new AbortController();
+      const timer = setTimeout(() => deadline.abort(new Error("Browser diagnostics deadline exceeded")), 5_000);
+      try {
+        await Promise.race([
+          new Promise<never>((_, reject) => {
+            deadline.signal.addEventListener("abort", () => reject(deadline.signal.reason), { once: true });
+          }),
+          (async () => {
+            for (const context of browser.contexts()) {
+              for (const page of context.pages()) {
+                if (deadline.signal.aborted) return;
+                try {
+                  console.error("Final page:", page.url(), "\n" + (await page.evaluate(() => document.head.outerHTML)));
+                } catch (diagnosticError) {
+                  console.error("Could not capture page head:", diagnosticError);
+                }
+              }
+            }
+          })(),
+        ]);
+      } catch (diagnosticError) {
+        console.error("Could not finish browser diagnostics:", diagnosticError);
+      } finally {
+        clearTimeout(timer);
       }
       throw error;
     }
-  });
+  }, startup);
 }

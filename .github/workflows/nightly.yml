@@ -93,6 +93,36 @@ jobs:
           path: tests/.output/engines-results.json
           retention-days: 14
 
+  canvas-engines:
+    name: Canvas gestures (Firefox, WebKit)
+    runs-on: ubuntu-26.04
+    timeout-minutes: 20
+    env:
+      E2E_TARGET: build
+      E2E_CHROMIUM_ONLY: "1"
+      E2E_PORT: "6960"
+      E2E_DEV_PORT: "6961"
+      E2E_PREVIEW_PORT: "6962"
+      E2E_INTERNAL_PORT: "6963"
+      E2E_LOCKED_PORT: "6964"
+      PLAYWRIGHT_JSON_OUTPUT_NAME: tests/.output/canvas-engines-results.json
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/toolchain
+      - name: Install lockfile-pinned Firefox and WebKit
+        run: pnpm exec playwright install --with-deps firefox webkit
+      - name: Run canvas gestures against the production E2E build
+        run: pnpm exec playwright test -c tests/engines/canvas.config.ts --workers=2 --retries=0 --forbid-only --reporter=list,json
+      - name: Upload canvas results and failure traces
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: nightly-results-canvas-engines
+          path: |
+            tests/.output/canvas-engines-results.json
+            tests/.output/engines-canvas-results
+          retention-days: 14
+
   native-unit:
     name: Native unit (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
@@ -362,12 +392,12 @@ jobs:
   # comment notifies its subscribers), listing the failed tests and linking the run.
   report:
     name: Report failure
-    needs: [e2e, native-unit, native-e2e, properties, engines]
+    needs: [e2e, native-unit, native-e2e, properties, engines, canvas-engines]
     if: >-
       always() && (needs.e2e.result == 'failure' || needs.native-unit.result == 'failure' ||
       needs.native-e2e.result == 'failure' || needs.native-unit.result == 'cancelled' ||
       needs.native-e2e.result == 'cancelled' || needs.properties.result == 'failure' ||
-      needs.engines.result == 'failure')
+      needs.engines.result == 'failure' || needs.canvas-engines.result == 'failure')
     runs-on: ubuntu-26.04
     timeout-minutes: 5
     permissions:
@@ -396,6 +426,9 @@ jobs:
           done
           for f in results/nightly-results-engines/engines-results.json; do
             [ -f "$f" ] && args+=("Engine determinism: Chromium, Firefox, WebKit=$f")
+          done
+          for f in results/nightly-results-canvas-engines/canvas-engines-results.json; do
+            [ -f "$f" ] && args+=("Canvas gestures: Firefox, WebKit=$f")
           done
           for f in results/nightly-results-dev-*/results.json; do
             [ -f "$f" ] && args+=("Dev server: every project, once=$f")
