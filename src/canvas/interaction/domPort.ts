@@ -151,6 +151,15 @@ export function createDomPort(canvas: DomCanvas): InteractionPort {
         el.matches('input, textarea, select, [contenteditable]:not([contenteditable="false"])')
       );
     },
+    field(handle) {
+      const el = handle as Element;
+      // A name field says whose name it is (useNameFields); any other text field of the Inspector is a field.
+      const named = el.getAttribute?.("data-name-field");
+      if (named) return { target: named };
+      if (!el.matches?.('input, textarea, select, [contenteditable]:not([contenteditable="false"])')) return null;
+      if (!el.closest('[data-testid="inspector"]')) return null;
+      return { field: (el.getAttribute("data-testid") ?? "").replace(/^inspector-field-/, "") };
+    },
     type(handle, text) {
       const el = handle as HTMLElement;
       if (!(el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement)) return;

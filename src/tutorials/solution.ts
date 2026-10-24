@@ -1,6 +1,7 @@
 import { fillTestId } from "./checks";
 import type { RunnerSnapshot } from "./runner";
 import type { Tutorial } from "./types";
+import { inStep } from "./machine";
 
 /** A solution step with its subjects and words filled in: what the generated e2e plays. */
 export type ResolvedUiStep =
@@ -19,7 +20,7 @@ const fill = (testId: string, subjects: RunnerSnapshot["subjects"]) => {
 
 /** The current step's solution path (empty outside a step). */
 export function solutionNow(tutorial: Tutorial, snap: RunnerSnapshot): ResolvedUiStep[] {
-  if (snap.state.value !== "step") return [];
+  if (!inStep(snap.state)) return [];
   const { subjects } = snap;
   return tutorial.steps[snap.state.index].solution.map((s): ResolvedUiStep => {
     if ("click" in s) return { click: fill(s.click, subjects) };

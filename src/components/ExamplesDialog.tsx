@@ -5,22 +5,18 @@ import { DiagramThumbnail } from "./DiagramThumbnail";
 import { Dialog } from "../interop/ui/Dialog";
 import { t, useLocale } from "../i18n";
 import "../styles/examples.css";
-import { lazyComponent } from "../lib/lazyLoad";
-
-/** Tutorials are previewed in development and e2e builds first (src/App.tsx): production drops the row. */
-const TutorialsRow =
-  import.meta.env.DEV || import.meta.env.VITE_E2E === "1"
-    ? lazyComponent(() => import("../tutorials/TutorialsRow").then((m) => m.TutorialsRow))
-    : null;
 
 export function ExamplesDialog({
   onClose,
   onOpen,
+  onTutorials,
   catalog = examples,
 }: {
   catalog?: readonly Example[];
   onClose: () => void;
   onOpen: (slug: string, simulation?: string) => void;
+  /** The Tutorials view, where there is one: a link above the examples. */
+  onTutorials?: () => void;
 }) {
   useLocale();
   const [query, setQuery] = useState("");
@@ -90,7 +86,14 @@ export function ExamplesDialog({
         </label>
       </div>
       <div className="examples-results" data-testid="examples-results">
-        {TutorialsRow && !query && !feature && <TutorialsRow onClose={onClose} />}
+        {onTutorials && !query && !feature && (
+          <p className="examples-tutorials-link" data-testid="examples-tutorials">
+            {t("tutorials.examplesLink")}{" "}
+            <button className="link-btn" onClick={onTutorials} data-testid="examples-open-tutorials">
+              {t("tutorials.openTutorials")}
+            </button>
+          </p>
+        )}
         {sections.length === 0 && (
           <p role="status" data-testid="examples-empty">
             {t("examples.empty")}

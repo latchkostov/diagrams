@@ -64,7 +64,14 @@ import {
 } from "@xyflow/react";
 import { useSettings } from "../harness/settings";
 import { getNodeVariant } from "../harness/nodeVariants";
-import { DRAFT_SLUG, getDiagramIdentity, isLibrarySlug, setDiagramPrivate, setOnDeviceAllowed } from "../lib/diagramIO";
+import {
+  DRAFT_SLUG,
+  getDiagramIdentity,
+  isLibrarySlug,
+  setDiagramPrivate,
+  setOnDeviceAllowed,
+  TUTORIAL_SLUG,
+} from "../lib/diagramIO";
 import { privacyOf } from "../lib/localOnly";
 import { usePrivacyFlags } from "../lib/usePrivacy";
 import type { DiagramFile } from "../model/types";
@@ -339,7 +346,9 @@ function CanvasInner({
   const [naming, setNaming] = useState<{ node: string; edge: string } | null>(null);
   /** Names a node, connection or boundary in the inspector (set below, once the editor exists). */
   const rename = useRef<(t: RenameTarget) => void>(() => {});
-  const { startDismissed, setStartDismissed, hintSeen, dismissHint } = useChromeHint(readOnly);
+  // A tutorial's sandbox is coached: the canvas's own first-time tips stay quiet (the tutorial says it).
+  const coached = slug === TUTORIAL_SLUG;
+  const { startDismissed, setStartDismissed, hintSeen, dismissHint } = useChromeHint(readOnly || coached);
   // Going live counts as having found the live view (so the first-run hint retires).
   const onLiveChange = useCallback(
     (on: boolean) => {
@@ -695,7 +704,7 @@ function CanvasInner({
 
   // Your own diagrams have no "original" worth going back to: the edits are the diagram (and undo
   // covers mistakes). Examples and shared diagrams keep "Edited, reset".
-  const ownDiagram = isLibrarySlug(slug) || slug === DRAFT_SLUG;
+  const ownDiagram = isLibrarySlug(slug) || slug === DRAFT_SLUG || coached;
   /** Reset is a normal (undoable) edit. */
   const reset = useCallback(() => {
     const f = toFlow(original);
@@ -1451,6 +1460,7 @@ function CanvasInner({
             (menu.connected ? (
               <ConnectedQuickAddMenu
                 {...menu}
+                query={interaction.guide?.quickAdd}
                 anchor={menu.connected}
                 root={wrapper}
                 items={menuItems}
@@ -1458,7 +1468,13 @@ function CanvasInner({
                 returnFocus={false}
               />
             ) : (
-              <ContextMenu {...menu} items={menuItems} onClose={closeMenu} returnFocus={false} />
+              <ContextMenu
+                {...menu}
+                query={menu.searchable ? interaction.guide?.quickAdd : undefined}
+                items={menuItems}
+                onClose={closeMenu}
+                returnFocus={false}
+              />
             ))}
           {shortcutsOpen && <ShortcutsDialog onClose={closeShortcuts} />}
           {!readOnly && (

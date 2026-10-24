@@ -32,7 +32,7 @@ export interface SourceInput {
   live: LiveHost | null;
   session?: SessionHost | null;
   /** The app view: actions, nodes and simulations need the canvas. */
-  view: "canvas" | "gallery" | "lab";
+  view: "canvas" | "gallery" | "lab" | "tutorials";
   stencils: readonly Stencil[];
   recentStencils: readonly string[];
   diagrams: readonly DiagramOption[];
@@ -49,6 +49,8 @@ export interface SourceInput {
   editTogether?(): void;
   /** View ▸ Language…, so Ctrl+K finds it too (absent in a copy built for one language). */
   language?(): void;
+  /** The Tutorials view, where there is one. */
+  tutorials?(): void;
 }
 
 const EMPTY: Selection = { nodeIds: [], edgeIds: [], groupIds: [] };
@@ -263,6 +265,15 @@ export function collectCommands(input: SourceInput): Command[] {
       // explanation, never a disabled row.
       keywords: `${t("collab.paletteKeywords")} collaborate room edit together share`,
       run: input.editTogether,
+    });
+  if (input.tutorials)
+    out.push({
+      id: "view:tutorials",
+      group: "actions",
+      label: t("tutorials.section"),
+      icon: "checklist",
+      keywords: `${t("tutorials.paletteKeywords")} tutorial learn help guide lesson`,
+      run: input.tutorials,
     });
   if (input.language)
     out.push({

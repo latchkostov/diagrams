@@ -2,86 +2,103 @@ import { defineMachine, type Transition } from "../lib/machine";
 
 /**
  * The step runner (docs/QUALITY.md, "Lifecycles with modes"). Pure: the runner (./runner.ts) sends it what the
- * sandbox shows (`observe`, each step's check) and what the learner presses, and executes the commands it returns.
+ * sandbox shows and what the learner presses, and executes the commands it returns.
  *
- * The current step is always the first step not held. A step is held while its check holds, or for good once a
- * sticky step's check has held (or it was skipped). So Undo goes back a step by itself, a step already done (the
- * "+" also connects) is passed over, and leaving Live while watching traffic goes back to "Go live".
+ *   intro ──start──▶ step n ──(its check holds and the learner has finished)──▶ step n+1 … ──▶ finished
+ *                    step n is one of: active ──showMe──▶ hinting
+ *                                      active | hinting ──(check holds, learner still at it)──▶ completing
+ *   any ──exit──▶ closed        step | finished ──restart──▶ active (step 1)        step ──skip──▶ (done for you)
+ *
+ * The current step is always the first step not held. A step is held once its check holds *and* it has settled (the
+ * editor's mode says the learner has finished: a name typed and Entered, not half typed), or for good once a sticky
+ * step's check has held or it was skipped. So Undo goes back a step by itself, a step already done (the "+" also
+ * connects) is passed over, and leaving Live while watching traffic goes back to "Go live". `completing` is the
+ * moment between: the check holds, the strip says so, and the step waits for the learner to finish, never for a timer.
  */
-export type RunnerPhase = "intro" | "step" | "finished" | "closed";
+export type RunnerPhase = "intro" | "active" | "hinting" | "completing" | "finished" | "closed";
 export interface RunnerState {
   value: RunnerPhase;
-  /** The current step (intro: where Start begins). */
+  /** The current step (intro: where Start begins; finished: the last). */
   index: number;
   /** Each step's check, as last observed. */
   observed: readonly boolean[];
+  /** Whether the learner has finished what each step's check is about (the editor's mode). */
+  settled: readonly boolean[];
   /** Sticky steps whose check held once, or that were skipped. */
   latched: readonly boolean[];
   /** From the definition: which steps latch. */
   sticky: readonly boolean[];
   /** The step done most recently, for its "done" words. */
   last: number | null;
-  /** "Show me" pressed on the current step: its hint shows and its target is highlighted even with highlights off. */
-  shown: boolean;
   highlights: boolean;
   /** Saved progress: the step this tutorial was left at, or 0. */
   resumeAt: number;
 }
 export type RunnerEvent =
-  | { type: "start" | "resume" | "showMe" | "skip" | "restart" | "exit" }
-  | { type: "observe"; met: readonly boolean[] }
+  /** fix: a near miss's one-click fix ("Use Orders API"): the step's own demo, as Skip does it. */
+  | { type: "start" | "resume" | "showMe" | "skip" | "fix" | "restart" | "exit" }
+  | { type: "observe"; met: readonly boolean[]; settled: readonly boolean[] }
   | { type: "highlights"; on: boolean };
 export type RunnerCommand =
   /** Do these steps for the learner, in order, each once its predecessors' changes have landed. */
   | { type: "demo"; steps: readonly number[] }
   /** Put the starting diagram back and leave Live. */
   | { type: "reset" }
-  /** Bring the current step's target into view. */
+  /** Bring the current step's target into view (through the canvas's own camera and focus paths). */
   | { type: "reveal"; step: number }
   | { type: "announce"; step: number | "finished" }
   | { type: "save"; step: number; completed: boolean }
   | { type: "prefs"; highlights: boolean }
   | { type: "close" };
 
+const STEP_STATES = ["active", "hinting", "completing"] as const;
+export const inStep = (s: RunnerState) => (STEP_STATES as readonly string[]).includes(s.value);
+
 export function runnerInitial(
   sticky: readonly boolean[],
   opts: { highlights: boolean; resumeAt: number },
 ): RunnerState {
+  const none = sticky.map(() => false);
   return {
     value: "intro",
     index: 0,
-    observed: sticky.map(() => false),
-    latched: sticky.map(() => false),
+    observed: none,
+    settled: none,
+    latched: none,
     sticky,
     last: null,
-    shown: false,
     highlights: opts.highlights,
     resumeAt: Math.max(0, Math.min(opts.resumeAt, sticky.length - 1)),
   };
 }
 
-const held = (s: Pick<RunnerState, "observed" | "latched">, i: number) => s.observed[i] || s.latched[i];
+type Facts = Pick<RunnerState, "observed" | "settled" | "latched">;
+const held = (s: Facts, i: number) => s.latched[i] || (s.observed[i] && s.settled[i]);
 /** The first step not held, or the step count when all are. */
-export const firstOpen = (s: Pick<RunnerState, "observed" | "latched">): number => {
+export const firstOpen = (s: Facts): number => {
   const i = s.observed.findIndex((_, n) => !held(s, n));
   return i < 0 ? s.observed.length : i;
 };
-const latch = (s: RunnerState, observed: readonly boolean[]) =>
-  s.latched.map((on, i) => on || (s.sticky[i] && observed[i]));
-/** Where the step pointer goes, keeping `last` and "Show me" right as it moves. */
-function settle(s: RunnerState, observed: readonly boolean[], latched: readonly boolean[]): RunnerState {
-  const index = firstOpen({ observed, latched });
-  const moved = index !== s.index;
+const latchSeen = (s: RunnerState, met: readonly boolean[]) => s.latched.map((on, i) => on || (s.sticky[i] && met[i]));
+
+/** Where the facts put the pointer, and in which step state. */
+function position(s: RunnerState, facts: Facts): RunnerState {
+  const index = firstOpen(facts);
+  const n = s.observed.length;
+  if (index === n) return { ...s, ...facts, value: "finished", index: n - 1, last: n - 1 };
+  const moved = index !== s.index || !inStep(s);
   return {
     ...s,
-    observed,
-    latched,
+    ...facts,
     index,
-    shown: moved ? false : s.shown,
-    last: index > s.index ? index - 1 : moved ? null : s.last,
+    value: facts.observed[index] ? "completing" : !moved && s.value === "hinting" ? "hinting" : "active",
+    last: index > s.index ? index - 1 : moved && index < s.index ? null : s.last,
   };
 }
-const moves = (s: RunnerState, n: RunnerState) => n.index !== s.index || n.value !== s.value;
+const observed = (s: RunnerState, e: RunnerEvent) =>
+  e.type === "observe" ? position(s, { observed: e.met, settled: e.settled, latched: latchSeen(s, e.met) }) : s;
+const fits = (s: RunnerState, e: RunnerEvent) =>
+  e.type === "observe" && e.met.length === s.observed.length && e.settled.length === s.observed.length;
 const progress = (n: RunnerState): RunnerCommand[] =>
   n.value === "finished"
     ? [
@@ -92,93 +109,105 @@ const progress = (n: RunnerState): RunnerCommand[] =>
         { type: "announce", step: n.index },
         { type: "save", step: n.index, completed: false },
       ];
+const moves = (s: RunnerState, n: RunnerState) =>
+  n.index !== s.index || (n.value === "finished") !== (s.value === "finished");
 
 type Row = Transition<RunnerState, RunnerEvent, RunnerCommand>;
-const done = (s: RunnerState, e: RunnerEvent) => {
-  if (e.type !== "observe") return false;
-  return firstOpen({ observed: e.met, latched: latch(s, e.met) }) === s.observed.length;
-};
-const observe: Row[] = [
+/** One row per state the facts can lead to: the first whose guard agrees with `position` wins. */
+const goTo = (
+  reduce: (s: RunnerState, e: RunnerEvent) => RunnerState,
+  accept: (s: RunnerState, e: RunnerEvent) => boolean,
+  announce: (s: RunnerState, n: RunnerState) => boolean,
+): Row[] =>
+  (["finished", "completing", "hinting", "active"] as const).map((target) => ({
+    target,
+    guard: (s, e) => accept(s, e) && reduce(s, e).value === target,
+    reduce,
+    effects: (s, _e, n) => (announce(s, n) ? progress(n) : []),
+  }));
+
+const observe = goTo(observed, fits, moves);
+const latchCurrent = (s: RunnerState) =>
+  position(s, { observed: s.observed, settled: s.settled, latched: s.latched.map((on, i) => on || i === s.index) });
+const skip: Row[] = [
+  // A step with a demo is done for you, then passes like any other.
   {
-    target: "finished",
-    guard: done,
-    reduce: (s, e) => {
-      const met = (e as Extract<RunnerEvent, { type: "observe" }>).met;
-      return { ...settle(s, met, latch(s, met)), index: s.observed.length - 1, last: s.observed.length - 1 };
-    },
-    effects: (_s, _e, n) => progress(n),
+    target: "active",
+    guard: (s) => !s.sticky[s.index] && s.value === "active",
+    effects: (s) => [{ type: "demo", steps: [s.index] }],
   },
   {
-    target: "step",
-    guard: (s, e) => e.type === "observe" && e.met.length === s.observed.length,
-    reduce: (s, e) => {
-      const met = (e as Extract<RunnerEvent, { type: "observe" }>).met;
-      return settle(s, met, latch(s, met));
-    },
-    effects: (s, _e, n) => (moves(s, n) ? progress(n) : []),
+    target: "hinting",
+    guard: (s) => !s.sticky[s.index] && s.value === "hinting",
+    effects: (s) => [{ type: "demo", steps: [s.index] }],
   },
+  {
+    target: "completing",
+    guard: (s) => !s.sticky[s.index] && s.value === "completing",
+    effects: (s) => [{ type: "demo", steps: [s.index] }],
+  },
+  // A moment (traffic seen) has nothing to do: it's latched.
+  ...goTo(latchCurrent, () => true, moves),
 ];
 const restart: Row = {
-  target: "step",
+  target: "active",
   // The sandbox goes back to its start: nothing is known to hold until the next observation says so.
-  reduce: (s) => ({
-    ...s,
-    index: 0,
-    observed: s.sticky.map(() => false),
-    latched: s.sticky.map(() => false),
-    last: null,
-    shown: false,
-    resumeAt: 0,
-  }),
+  reduce: (s) => {
+    const none = s.sticky.map(() => false);
+    return { ...s, index: 0, observed: none, settled: none, latched: none, last: null, resumeAt: 0 };
+  },
   effects: () => [{ type: "reset" }, { type: "announce", step: 0 }, { type: "save", step: 0, completed: false }],
 };
 const exit: Row = { target: "closed", effects: () => [{ type: "close" }] };
-const highlights: Row = {
-  target: "step",
-  reduce: (s, e) => ({ ...s, highlights: e.type === "highlights" ? e.on : s.highlights }),
-  effects: (_s, _e, n) => [{ type: "prefs", highlights: n.highlights }],
-};
+const highlights = (target: RunnerPhase): Row =>
+  ({
+    target,
+    reduce: (s: RunnerState, e: RunnerEvent) => ({ ...s, highlights: e.type === "highlights" ? e.on : s.highlights }),
+    effects: (_s: RunnerState, _e: RunnerEvent, n: RunnerState) => [{ type: "prefs", highlights: n.highlights }],
+  }) as Row;
+const stepRows = (state: "active" | "hinting" | "completing") => ({
+  observe,
+  skip,
+  fix: skip.slice(0, 3),
+  restart,
+  highlights: highlights(state),
+  exit,
+});
 
 export const runnerMachine = defineMachine<RunnerState, RunnerEvent, RunnerCommand>({
   initial: runnerInitial([false, true], { highlights: true, resumeAt: 0 }),
-  states: ["intro", "step", "finished", "closed"],
+  states: ["intro", "active", "hinting", "completing", "finished", "closed"],
   events: [
     { type: "start" },
     { type: "resume" },
-    { type: "observe", met: [true, false] },
-    { type: "observe", met: [true, true] },
-    { type: "observe", met: [false, false] },
+    { type: "observe", met: [true, false], settled: [true, true] },
+    { type: "observe", met: [true, false], settled: [false, true] },
+    { type: "observe", met: [true, true], settled: [true, true] },
+    { type: "observe", met: [false, false], settled: [true, true] },
     { type: "showMe" },
     { type: "skip" },
+    { type: "fix" },
     { type: "restart" },
     { type: "highlights", on: false },
     { type: "exit" },
   ],
   on: {
     intro: {
-      // Observing in the intro keeps the checks current; the pointer moves once the learner starts.
+      // Observing in the intro keeps the facts current; the pointer moves once the learner starts.
       observe: {
         target: "intro",
-        guard: (s, e) => e.type === "observe" && e.met.length === s.observed.length,
-        reduce: (s, e) => ({ ...s, observed: e.type === "observe" ? e.met : s.observed }),
+        guard: fits,
+        reduce: (s, e) =>
+          e.type === "observe" ? { ...s, observed: e.met, settled: e.settled, latched: latchSeen(s, e.met) } : s,
       },
-      // Everything may already hold (a learner who built ahead of the intro): then it's done.
-      start: [
-        {
-          target: "finished",
-          guard: (s) => firstOpen(s) === s.observed.length,
-          reduce: (s) => ({ ...s, resumeAt: 0, index: s.observed.length - 1, last: s.observed.length - 1 }),
-          effects: (_s, _e, n) => progress(n),
-        },
-        {
-          target: "step",
-          reduce: (s) => settle({ ...s, resumeAt: 0 }, s.observed, s.latched),
-          effects: (_s, _e, n) => progress(n),
-        },
-      ],
+      start: goTo(
+        (s) => position({ ...s, resumeAt: 0 }, s),
+        () => true,
+        () => true,
+      ),
       // Continue: the earlier steps are done for you (the sandbox isn't kept between visits), then on from there.
       resume: {
-        target: "step",
+        target: "active",
         guard: (s) => s.resumeAt > 0,
         reduce: (s) => ({
           ...s,
@@ -190,48 +219,15 @@ export const runnerMachine = defineMachine<RunnerState, RunnerEvent, RunnerComma
           { type: "announce", step: s.resumeAt },
         ],
       },
-      highlights: { ...highlights, target: "intro" },
+      highlights: highlights("intro"),
       exit,
     },
-    step: {
-      observe,
-      showMe: {
-        target: "step",
-        guard: (s) => !s.shown,
-        reduce: (s) => ({ ...s, shown: true }),
-        effects: (s) => [{ type: "reveal", step: s.index }],
-      },
-      // A step with a demo is done for you and then passes like any other; one without (a moment, like traffic
-      // seen) is latched.
-      skip: [
-        {
-          target: "step",
-          guard: (s) => !s.sticky[s.index],
-          effects: (s) => [{ type: "demo", steps: [s.index] }],
-        },
-        {
-          target: "step",
-          guard: (s) =>
-            firstOpen({ observed: s.observed, latched: s.latched.map((on, i) => on || i === s.index) }) <
-            s.observed.length,
-          reduce: (s) =>
-            settle(
-              s,
-              s.observed,
-              s.latched.map((on, i) => on || i === s.index),
-            ),
-          effects: (s, _e, n) => (moves(s, n) ? progress(n) : []),
-        },
-        {
-          target: "finished",
-          reduce: (s) => ({ ...s, latched: s.latched.map((on, i) => on || i === s.index), last: s.index }),
-          effects: (_s, _e, n) => progress(n),
-        },
-      ],
-      restart,
-      highlights,
-      exit,
+    active: {
+      ...stepRows("active"),
+      showMe: { target: "hinting", effects: (s) => [{ type: "reveal", step: s.index }] },
     },
-    finished: { restart, highlights: { ...highlights, target: "finished" }, exit },
+    hinting: stepRows("hinting"),
+    completing: stepRows("completing"),
+    finished: { restart, highlights: highlights("finished"), exit },
   },
 });

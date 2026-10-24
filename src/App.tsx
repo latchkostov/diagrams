@@ -190,6 +190,15 @@ const TutorialSurface =
         true,
       )
     : null;
+/** The Tutorials view (Diagram | Stencils | Tutorials): tracks, cards and progress. */
+const TutorialsView =
+  import.meta.env.DEV || import.meta.env.VITE_E2E === "1"
+    ? lazyComponent(
+        () => import("./tutorials/lazyTutorial").then((m) => m.TutorialsListSurface),
+        () => <ViewLoading />,
+        true,
+      )
+    : null;
 
 // Only public examples appear in prompts, the palette and the start card.
 const publicSlugs = new Set(examples.filter((e) => !e.localOnly).map((e) => e.slug));
@@ -618,6 +627,8 @@ function MainApp() {
             <Suspense fallback={<ViewLoading />}>
               {url.view === "gallery" ? (
                 <GalleryView />
+              ) : url.view === "tutorials" && TutorialsView ? (
+                <TutorialsView />
               ) : url.view === "lab" ? (
                 <LabView onOpen={onLabOpen} />
               ) : displayedSlug === undefined ? (
@@ -663,7 +674,9 @@ function MainApp() {
           </ViewBoundary>
         </div>
         {/* No AI panel in a copy deployed without AI tools or the on-device model (src/lib/deployment.ts). */}
-        {AI_PANEL && <AiMount view={url.view} presenting={presenting} onNewDiagram={newDiagram} />}
+        {AI_PANEL && url.view !== "tutorials" && (
+          <AiMount view={url.view} presenting={presenting} onNewDiagram={newDiagram} />
+        )}
       </div>
       <div className="sr-only" role="status" data-testid="example-loading">
         {url.view === "canvas" && waitingForExample
@@ -673,6 +686,14 @@ function MainApp() {
       {examplesOpen && (
         <ExamplesDialog
           onClose={() => setExamplesOpen(false)}
+          onTutorials={
+            TutorialsView
+              ? () => {
+                  setExamplesOpen(false);
+                  goTo("tutorials");
+                }
+              : undefined
+          }
           onOpen={(example, simulation) => {
             paletteHost.cancelRun();
             canvasRef.current?.flush();
@@ -711,6 +732,7 @@ function MainApp() {
         currentSlug={slug}
         onOpenDiagram={(example) => setUrl({ view: "canvas", example, present: false })}
         onPresent={url.view === "canvas" && !url.present ? () => setUrl({ present: true }) : undefined}
+        onTutorials={TutorialsView ? () => goTo("tutorials") : undefined}
       />
     </div>
   );
@@ -726,7 +748,12 @@ function ViewLoading() {
 
 const centered = { position: "absolute", inset: 0, display: "grid", placeItems: "center" } as const;
 
-const viewName: Record<View, string> = { gallery: "the stencil library", canvas: "the diagram", lab: "the Lab" };
+const viewName: Record<View, string> = {
+  gallery: "the stencil library",
+  canvas: "the diagram",
+  lab: "the Lab",
+  tutorials: "the tutorials",
+};
 
 interface BoundaryProps {
   resetKey: string;

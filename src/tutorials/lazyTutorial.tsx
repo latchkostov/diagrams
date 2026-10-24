@@ -26,3 +26,19 @@ export const TutorialSurface = defineLazySurface<{ id: string; onExit(): void }>
   export: "skip",
   retryToast: true,
 });
+
+/** The Tutorials view (the top bar's Diagram | Stencils | Tutorials): its page loads when it's first opened. */
+export const TutorialsListSurface = defineLazySurface<object>({
+  id: "tutorial.list",
+  load: () => import("./TutorialsView").then((m) => m.TutorialsView),
+  placeholder: {
+    render: (_props, status) => (
+      <div className="view-loading" data-testid="tutorials-view-loading" aria-busy={!status.failed} role="status">
+        {t("tutorials.loading")}
+      </div>
+    ),
+  },
+  focus: {},
+  export: "skip",
+  retryToast: true,
+});

@@ -9,6 +9,7 @@ import { isLocalOnly, privacyOf } from "./localOnly";
 import { newDiagramsPrivate } from "./privacyPrefs";
 import { AI_THREAD_PREFIX } from "./aiThreadKey";
 import { exampleIdentity, readConversation, withoutConversationSnapshots } from "./exampleConversations";
+import { TUTORIAL_SLUG } from "../tutorials/sandbox";
 
 // Where diagrams live in the browser.
 //
@@ -30,7 +31,7 @@ export const SHARED_SLUG = "shared";
 /** The single "Your diagram" slot from before the library. Kept in place as a library entry. */
 export const LEGACY_SLUG = "imported";
 /** A tutorial's sandbox (src/tutorials): its own temporary diagram, never stored. */
-export const TUTORIAL_SLUG = "tutorial";
+export { TUTORIAL_SLUG };
 const LIBRARY_SLUG_PREFIX = "my-";
 
 const AUTOSAVE_PREFIX = "diagrams.autosave.v1:";

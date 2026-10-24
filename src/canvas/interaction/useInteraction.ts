@@ -6,6 +6,7 @@ import { createDomPort, domScheduler, type DomCanvas } from "./domPort";
 import { interactionJournal } from "./journal";
 import { dependencyVisibility } from "../dependencyVisibility";
 import { useInteraction } from "./context";
+import { canvasInteraction } from "./canvasInteraction";
 export { InteractionContext, useInteraction } from "./context";
 import { isDependency } from "../../model/relations";
 
@@ -63,6 +64,8 @@ export function useInteractionCore<P>(
   });
   useLayoutEffect(() => commit({ nodes, edges }), [commit, nodes, edges]);
   useInteractionLifecycle(controller);
+  // What's on screen, for readers outside the canvas (a tutorial): the editor's mode and its guide.
+  useEffect(() => canvasInteraction.publish(controller), [controller]);
   const state = useSyncExternalStore(controller.subscribe, controller.getSnapshot);
   return { controller, state, setOrder };
 }
@@ -114,15 +117,21 @@ function useInteractionLifecycle<P>(controller: InteractionController<P>) {
     const focusin = (event: FocusEvent) => {
       if (event.target instanceof Element) controller.focusArrived(event.target);
     };
+    // Focus going nowhere (a field removed, a click on the page): the editor's mode leaves the field.
+    const focusout = (event: FocusEvent) => {
+      if (!event.relatedTarget) controller.focusLeft();
+    };
     window.addEventListener("keydown", key, true);
     window.addEventListener("blur", blur);
     window.addEventListener("pointerdown", press, true);
     window.addEventListener("focusin", focusin, true);
+    window.addEventListener("focusout", focusout, true);
     return () => {
       window.removeEventListener("keydown", key, true);
       window.removeEventListener("blur", blur);
       window.removeEventListener("pointerdown", press, true);
       window.removeEventListener("focusin", focusin, true);
+      window.removeEventListener("focusout", focusout, true);
     };
   }, [controller]);
   // Every commit: a move waiting for it runs, and a target waiting for its panel is tried again.

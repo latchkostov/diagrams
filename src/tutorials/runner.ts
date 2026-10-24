@@ -3,8 +3,16 @@ import { t } from "../i18n";
 import { readTutorials, savedProgress, writeTutorials } from "./progress";
 import { paletteHost } from "../palette/host";
 import type { EditorApi } from "../editor/types";
-import { observeSteps, resolveSubjects } from "./checks";
-import { runnerInitial, runnerMachine, type RunnerCommand, type RunnerEvent, type RunnerState } from "./machine";
+import { nearMiss, observeSteps, resolveSubjects } from "./checks";
+import {
+  inStep,
+  runnerInitial,
+  runnerMachine,
+  type RunnerCommand,
+  type RunnerEvent,
+  type RunnerState,
+} from "./machine";
+import { canvasInteraction } from "../canvas/interaction/canvasInteraction";
 import type { Demo, Tutorial } from "./types";
 
 /**
@@ -21,6 +29,8 @@ export interface RunnerSnapshot {
   selected: readonly string[];
   /** What the screen reader hears next (a polite live region). */
   announcement: string;
+  /** The current step's expectText near miss, once the learner has finished naming: what's expected, what they typed. */
+  nearMiss: { expected: string; typed: string } | null;
 }
 
 type Host = Pick<typeof paletteHost, "get" | "subscribe">;
@@ -37,7 +47,7 @@ export function createTutorialRunner(tutorial: Tutorial, ports: { close(): void;
     }),
   });
   let state: RunnerState = machine.state;
-  let snapshot: RunnerSnapshot = { state, subjects: {}, selected: [], announcement: "" };
+  let snapshot: RunnerSnapshot = { state, subjects: {}, selected: [], announcement: "", nearMiss: null };
   const listeners = new Set<() => void>();
   const publish = (patch: Partial<RunnerSnapshot>) => {
     snapshot = { ...snapshot, ...patch };
@@ -58,10 +68,19 @@ export function createTutorialRunner(tutorial: Tutorial, ports: { close(): void;
   function send(event: RunnerEvent) {
     const { state: next, commands } = machine.send(event);
     if (next !== state) {
+      const step = inStep(state) ? state.index : -1;
       state = next;
       publish({ state });
+      if ((inStep(state) ? state.index : -1) !== step) guide();
     }
     for (const c of commands) run(c);
+  }
+
+  /** The current step's guide for the canvas (quick-add opens searched for its pick); data, never a focus move. */
+  function guide() {
+    const step = inStep(state) ? tutorial.steps[state.index] : undefined;
+    const quickAdd = step?.guide?.quickAdd?.();
+    canvasInteraction.get()?.setGuide(quickAdd ? { quickAdd } : null);
   }
 
   function observe() {
@@ -69,11 +88,19 @@ export function createTutorialRunner(tutorial: Tutorial, ports: { close(): void;
     if (!h.canvas) return changed.forEach((f) => f());
     const v = view();
     const subjects = resolveSubjects(tutorial, v.diagram);
-    const selected = h.canvas.editor.getSelection().nodeIds;
+    // The editor's mode (src/canvas/interaction/mode.ts): the selection, and whether the learner is mid-naming.
+    const mode = canvasInteraction.get()?.mode;
+    const selected = mode?.selection ?? [];
     if (JSON.stringify(subjects) !== JSON.stringify(snapshot.subjects) || selected.join() !== snapshot.selected.join())
       publish({ subjects, selected });
     const met = observeSteps(tutorial, v);
-    if (met.some((m, i) => m !== state.observed[i])) send({ type: "observe", met });
+    const settled = tutorial.steps.map((s) => !(s.settle === "naming" && mode?.value === "naming"));
+    if (met.some((m, i) => m !== state.observed[i]) || settled.some((m, i) => m !== state.settled[i]))
+      send({ type: "observe", met, settled });
+    // Judged only once naming is over: a name is never "wrong" half typed.
+    const current = inStep(state) ? tutorial.steps[state.index] : undefined;
+    const miss = current && mode?.value !== "naming" ? nearMiss(current.check, v, subjects) : null;
+    if (JSON.stringify(miss) !== JSON.stringify(snapshot.nearMiss)) publish({ nearMiss: miss });
     changed.forEach((f) => f());
   }
 
@@ -142,9 +169,8 @@ export function createTutorialRunner(tutorial: Tutorial, ports: { close(): void;
     const target = tutorial.steps[step]?.targets.find((t) => t.testId.startsWith("node-{"));
     const name = target?.testId.slice(6, -1);
     const id = name ? snapshot.subjects[name] : undefined;
-    if (id && !document.querySelector(`[data-testid="node-${CSS.escape(id)}"]`)?.checkVisibility?.()) {
-      host.get().canvas?.focusNode(id);
-    }
+    // Through the canvas's own path (Ctrl+K's "go to"): the camera and the focus policy decide the rest.
+    if (id) host.get().canvas?.focusNode(id);
   }
 
   function run(command: RunnerCommand) {
@@ -200,10 +226,15 @@ export function createTutorialRunner(tutorial: Tutorial, ports: { close(): void;
     });
   }
 
-  let off: (() => void) | undefined;
-  let offSession: (() => void) | undefined;
-  let session: unknown;
+  /**
+   * Three sources, each a subscription: the palette host (the document, Live on or off), Live's session (its counters)
+   * and the canvas's editor mode (its transitions). A check is evaluated when one of them changes.
+   */
   function connect() {
+    let session: unknown;
+    let offSession: (() => void) | undefined;
+    let interaction: unknown;
+    let offMode: (() => void) | undefined;
     const sync = () => {
       const current = host.get().session;
       if (current !== session) {
@@ -211,15 +242,24 @@ export function createTutorialRunner(tutorial: Tutorial, ports: { close(): void;
         session = current;
         offSession = current?.subscribe?.(observe);
       }
+      const canvas = canvasInteraction.get();
+      if (canvas !== interaction) {
+        offMode?.();
+        interaction = canvas;
+        offMode = canvas?.subscribeMode(observe);
+        guide();
+      }
       observe();
     };
-    off = host.subscribe(sync);
+    const offHost = host.subscribe(sync);
+    const offCanvas = canvasInteraction.subscribe(sync);
     sync();
     return () => {
-      off?.();
+      offHost();
+      offCanvas();
       offSession?.();
-      off = offSession = undefined;
-      session = undefined;
+      offMode?.();
+      canvasInteraction.get()?.setGuide(null);
     };
   }
 

@@ -58,17 +58,99 @@ for (const id of tutorialIds)
     expectNoErrors(consoleErrors);
   });
 
-test("the Examples dialog starts a tutorial, and Exit goes back to the diagram it left", async ({ page }) => {
+test("Tutorials is a view of its own: a card starts the tutorial, Enter starts it, Exit comes back", async ({
+  page,
+}) => {
   await gotoCanvas(page, "retry-storm");
+  // The Examples dialog links to it.
   await page.getByTestId("example-picker").click();
   await page.getByTestId("picker-browse-examples").click();
+  await page.getByTestId("examples-open-tutorials").click();
+  await expect(page.getByTestId("tutorials-view")).toBeVisible({ timeout: pageLoadTimeout() });
+  await expect(page.getByTestId("view-tutorials")).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByTestId("tutorials-track-basics")).toContainText("A mobile app talks to an API");
   await page.getByTestId("tutorial-open-mobile-api").click();
   await expect(page.getByTestId("tutorial-app")).toBeVisible({ timeout: pageLoadTimeout() });
   await expect(page.getByTestId("topbar")).toHaveCount(0);
-  await expect(page).toHaveURL(/tutorial=mobile-api/);
+  // The intro is one focused card: its Start has the keyboard, so Enter starts.
+  await expect(page.getByTestId("tutorial-start")).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(page.getByTestId("tutorial-intro")).toHaveCount(0);
+  await expect(strip(page)).toHaveAttribute("data-step", "add-app");
   await page.getByTestId("tutorial-exit").click();
+  await expect(page.getByTestId("tutorials-view")).toBeVisible();
+  // Progress shows on its card: it was left at step 1, so it starts (step 1 isn't "continue").
+  await expect(page.getByTestId("tutorial-open-mobile-api")).toHaveText("Start");
+  // Back to the diagram it all started from.
+  await page.getByTestId("view-canvas").click();
   await expect(page.getByTestId("example-picker")).toHaveAttribute("data-diagram-slug", "retry-storm");
-  await expect(page).not.toHaveURL(/tutorial=/);
+});
+
+test("Ctrl+K opens Tutorials, and works inside a tutorial", async ({ page }) => {
+  await gotoCanvas(page, "retry-storm");
+  await page.getByTestId("canvas-wrap").focus();
+  await page.keyboard.press("ControlOrMeta+k");
+  await page.getByTestId("command-input").fill("tutorials");
+  await page.getByTestId("command-item-view:tutorials").click();
+  await expect(page.getByTestId("tutorials-view")).toBeVisible({ timeout: pageLoadTimeout() });
+  await page.getByTestId("tutorial-open-mobile-api").click();
+  await page.getByTestId("tutorial-start").click();
+  await page.getByTestId("canvas-wrap").focus();
+  await page.keyboard.press("ControlOrMeta+k");
+  await expect(page.getByTestId("command-input")).toBeVisible({ timeout: pageLoadTimeout() });
+});
+
+test("quick-add opens already searched for the step's pick, and the name step waits for the name to be finished", async ({
+  page,
+}) => {
+  await openTutorial(page, "mobile-api");
+  await page.getByTestId("tutorial-start").click();
+  await page.getByTestId("tutorial-skip").click();
+  await expect(strip(page)).toHaveAttribute("data-step", "add-api");
+  await page.getByTestId("node-mobile-1").click();
+  await page.getByTestId("grow-chip-mobile-1").click();
+  await expect(page.getByTestId("quick-add-search")).toHaveValue("service");
+  // Highlighted at once, no hover: it's the first match and the coach mark rings it.
+  await expect(page.getByTestId("tutorial-coach")).toHaveAttribute(
+    "data-target",
+    "context-menu-item-quick-add:generic.service",
+  );
+  await page.keyboard.press("Enter");
+  // The + also connected it, so the name is next; its field already has the keyboard (quick-add's own rule).
+  await expect(strip(page)).toHaveAttribute("data-step", "name-api");
+  await expect(page.getByTestId("inspector-field-label")).toBeFocused();
+  await page.keyboard.type("Orders API");
+  // The name matches, but it's still being typed: completing, and nothing moves the keyboard.
+  await expect(strip(page)).toHaveAttribute("data-state", "completing");
+  await expect(page.getByTestId("tutorial-coach")).toHaveCount(0);
+  await expect(page.getByTestId("inspector-field-label")).toBeFocused();
+  await page.keyboard.press("Enter");
+  await expect(strip(page)).toHaveAttribute("data-step", "go-live");
+  // The canvas's own first-time tips stay quiet in a tutorial.
+  await expect(page.getByTestId("first-run-hint")).toHaveCount(0);
+  await expect(page.getByTestId("toast-make-message")).toHaveCount(0);
+  await expect(page.getByTestId("reset-diagram")).toHaveCount(0);
+});
+
+test("a near-miss name says what's expected and fixes it in one click", async ({ page }) => {
+  await openTutorial(page, "mobile-api");
+  await page.getByTestId("tutorial-start").click();
+  await page.getByTestId("tutorial-skip").click();
+  await expect(strip(page)).toHaveAttribute("data-step", "add-api");
+  await page.getByTestId("tutorial-skip").click();
+  await expect(strip(page)).toHaveAttribute("data-step", "name-api");
+  // The service the demo added is the one the Inspector shows.
+  await expect(page.getByTestId("inspector")).toHaveAttribute("data-inspector-target", "service-1");
+  await page.getByTestId("inspector-field-label").fill("Order API");
+  // Still typing: no verdict yet.
+  await expect(page.getByTestId("tutorial-near-miss")).toHaveCount(0);
+  await page.keyboard.press("Enter");
+  await expect(page.getByTestId("tutorial-near-miss")).toContainText("Orders API");
+  await expect(page.getByTestId("tutorial-near-miss")).toContainText("Order API");
+  await expect(strip(page)).toHaveAttribute("data-step", "name-api");
+  await page.getByTestId("tutorial-use-expected").click();
+  await expect(strip(page)).toHaveAttribute("data-step", "go-live");
+  await expect(page.getByTestId("node-service-1")).toContainText("Orders API");
 });
 
 test("Skip does every step for you, and the tutorial remembers it was completed", async ({ page }) => {

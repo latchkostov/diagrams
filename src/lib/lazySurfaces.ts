@@ -43,6 +43,7 @@ export const lazySurfaces = [
   ["edge.reader", names ? "EdgeMessages" : "", names ? "canvas/edges/EdgeMessages" : "", "skip"],
   ["edge.message-tip", names ? "carriedTypes" : "", names ? "canvas/edges/carriedTypes" : "", "skip"],
   ["tutorial.app", names ? "TutorialApp" : "", names ? "tutorials/TutorialApp" : "", "skip"],
+  ["tutorial.list", names ? "TutorialsView" : "", names ? "tutorials/TutorialsView" : "", "skip"],
 ] as const;
 
 export type LazySurfaceId = (typeof lazySurfaces)[number][0];

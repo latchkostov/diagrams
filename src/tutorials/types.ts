@@ -25,7 +25,10 @@ export type Check =
   | { kind: "node"; subject: string }
   /** A flow (never a dependency) from one subject to the other. */
   | { kind: "edge"; from: string; to: string }
-  /** The subject's label, ignoring case and outer spaces. */
+  /**
+   * expectText: the subject's label is this, ignoring case and outer spaces. A name of the learner's own that isn't it
+   * is a near miss (checks.ts, nearMiss): the strip says what's expected and offers it in one click.
+   */
   | { kind: "label"; subject: string; is: Words }
   | { kind: "live" }
   /** Live counters (real messages) since the run started. */
@@ -72,6 +75,13 @@ export interface TutorialStep {
   check: Check;
   /** Once met, stays met: a moment rather than a state (traffic seen). Steps without a demo are sticky too. */
   sticky?: boolean;
+  /**
+   * "naming": the step is done when its check holds and the learner has finished naming (Enter, Esc or leaving the
+   * field), as the editor's mode says; until then it's `completing`. A name is never judged half typed.
+   */
+  settle?: "naming";
+  /** What the canvas is guided to while this step is current: quick-add opens searched for this (its pick). */
+  guide?: { quickAdd?: Words };
   targets: readonly Target[];
   demo: readonly Demo[];
   solution: readonly UiStep[];

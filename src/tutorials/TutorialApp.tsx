@@ -3,9 +3,13 @@ import { LazyCanvasView as CanvasView } from "../canvas/loadCanvasView";
 import { TUTORIAL_SLUG } from "../lib/diagramIO";
 import { showDiagram } from "../lib/urlState";
 import { Icon } from "../components/Icon";
+import { Dialog } from "../interop/ui/Dialog";
+import { CommandPalette } from "../palette/CommandPalette";
 import { t, useLocale } from "../i18n";
+import { tRich } from "../i18n/rich";
 import { findTutorial, trackLabel } from "./catalog";
 import { Coachmark } from "./Coachmark";
+import { inStep, type RunnerEvent } from "./machine";
 import { createTutorialRunner, type RunnerSnapshot } from "./runner";
 import { tutorialRoute } from "./route";
 import type { Tutorial } from "./types";
@@ -23,7 +27,7 @@ function startFresh() {
 }
 
 const noop = () => {};
-const focusOnMount = (el: HTMLButtonElement | null) => el?.focus({ preventScroll: true });
+const NO_DIAGRAMS: never[] = [];
 
 /**
  * A tutorial: its bar in place of the top bar, the step strip under it, and the canvas on a sandbox diagram of its
@@ -54,8 +58,9 @@ function Running({ tutorial }: { tutorial: Tutorial }) {
   }, [runner, tutorial]);
   const snap = useSyncExternalStore(runner.subscribe, runner.getSnapshot);
   const { state } = snap;
-  const step = state.value === "step" ? tutorial.steps[state.index] : undefined;
-  const spot = !!step && (state.highlights || state.shown);
+  const step = inStep(state) ? tutorial.steps[state.index] : undefined;
+  // The ring points while a step is being done; once its check holds (completing), there's nothing left to point at.
+  const spot = !!step && state.value !== "completing" && (state.highlights || state.value === "hinting");
 
   return (
     <div className="app tutorial-app" data-testid="tutorial-app" data-tutorial={tutorial.id}>
@@ -92,11 +97,61 @@ function Running({ tutorial }: { tutorial: Tutorial }) {
           </Suspense>
         </div>
       </div>
+      {state.value === "intro" && <Intro tutorial={tutorial} snap={snap} send={runner.send} />}
       {spot && <Coachmark targets={step.targets} subjects={snap.subjects} selected={snap.selected} />}
+      {/* Ctrl+K works here as on any canvas: actions, nodes, stencils. There are no other diagrams to open. */}
+      <CommandPalette view="canvas" diagrams={NO_DIAGRAMS} currentSlug={TUTORIAL_SLUG} onOpenDiagram={noop} />
       <div className="sr-only" role="status" aria-live="polite" data-testid="tutorial-announce">
         {snap.announcement}
       </div>
     </div>
+  );
+}
+
+/**
+ * The intro: one focused card with one primary action. It's a dialog, so its Start takes the keyboard as a dialog's
+ * first action does (Enter starts) and Esc or "Not now" leaves the tutorial.
+ */
+function Intro({ tutorial, snap, send }: { tutorial: Tutorial; snap: RunnerSnapshot; send: (e: RunnerEvent) => void }) {
+  const { resumeAt } = snap.state;
+  return (
+    <Dialog
+      title={tutorial.title()}
+      subtitle={`${t("tutorials.meta", { track: trackLabel(tutorial.track), minutes: tutorial.minutes })} · ${t("tutorials.sandbox")}`}
+      onClose={() => send({ type: "exit" })}
+      testId="tutorial-intro"
+      width={520}
+      footer={
+        <>
+          <button className="btn btn-ghost" onClick={() => send({ type: "exit" })} data-testid="tutorial-not-now">
+            {t("tutorials.notNow")}
+          </button>
+          {resumeAt > 0 && (
+            <button className="btn" onClick={() => send({ type: "start" })} data-testid="tutorial-start-over">
+              {t("tutorials.startOver")}
+            </button>
+          )}
+          <button
+            className="btn btn-primary tutorial-start"
+            data-autofocus
+            onClick={() => send({ type: resumeAt > 0 ? "resume" : "start" })}
+            data-testid="tutorial-start"
+          >
+            {resumeAt > 0 ? t("tutorials.resume", { step: resumeAt + 1 }) : t("tutorials.start")}
+          </button>
+        </>
+      }
+    >
+      <p className="tutorial-intro-summary">{tutorial.summary()}</p>
+      <h3 className="tutorial-intro-head">{t("tutorials.youWill")}</h3>
+      <ol className="tutorial-intro-steps">
+        {tutorial.steps.map((s, i) => (
+          <li key={s.id} className={i < resumeAt ? "is-done" : undefined}>
+            {s.title()}
+          </li>
+        ))}
+      </ol>
+    </Dialog>
   );
 }
 
@@ -108,8 +163,8 @@ function Progress({ tutorial, snap }: { tutorial: Tutorial; snap: RunnerSnapshot
     <div className="tutorial-progress">
       <ol className="tutorial-dots" aria-label={t("tutorials.steps")}>
         {tutorial.steps.map((s, i) => {
-          const done = finished || state.observed[i] || state.latched[i];
-          const here = state.value === "step" && i === state.index;
+          const done = finished || state.latched[i] || (state.observed[i] && state.settled[i]);
+          const here = inStep(state) && i === state.index;
           return (
             <li
               key={s.id}
@@ -134,59 +189,49 @@ function Progress({ tutorial, snap }: { tutorial: Tutorial; snap: RunnerSnapshot
   );
 }
 
-function Strip({
-  tutorial,
-  snap,
-  send,
-}: {
-  tutorial: Tutorial;
-  snap: RunnerSnapshot;
-  send: ReturnType<typeof createTutorialRunner>["send"];
-}) {
+/**
+ * The step strip: the instruction first, in bold; under it, smaller, the hint once asked for, or what was just done.
+ * Three lines high whatever it says, so the canvas never jumps.
+ */
+function Strip({ tutorial, snap, send }: { tutorial: Tutorial; snap: RunnerSnapshot; send: (e: RunnerEvent) => void }) {
   const { state } = snap;
   const phase = state.value;
-  const step = phase === "step" ? tutorial.steps[state.index] : undefined;
+  const step = inStep(state) ? tutorial.steps[state.index] : undefined;
   const last = state.last !== null ? tutorial.steps[state.last] : undefined;
   return (
     <section
       className="tutorial-strip"
       aria-label={t("tutorials.tutorial")}
       data-testid="tutorial-step"
-      data-phase={phase}
+      data-phase={inStep(state) ? "step" : phase}
+      data-state={phase}
       data-step={step?.id ?? ""}
     >
-      {phase === "intro" && (
-        <>
-          <div className="tutorial-words">
-            <p className="tutorial-goal">{tutorial.summary()}</p>
-            <p className="tutorial-aside">
-              {t("tutorials.meta", { track: trackLabel(tutorial.track), minutes: tutorial.minutes })} ·{" "}
-              {t("tutorials.sandbox")}
-            </p>
-          </div>
-          <div className="tutorial-actions">
-            {state.resumeAt > 0 && (
-              <button className="btn" onClick={() => send({ type: "start" })} data-testid="tutorial-start-over">
-                {t("tutorials.startOver")}
-              </button>
-            )}
-            <button
-              className="btn btn-primary"
-              // The intro's one action takes focus: the tutorial replaced the whole view, like a dialog opening.
-              ref={focusOnMount}
-              onClick={() => send({ type: state.resumeAt > 0 ? "resume" : "start" })}
-              data-testid="tutorial-start"
-            >
-              {state.resumeAt > 0 ? t("tutorials.resume", { step: state.resumeAt + 1 }) : t("tutorials.start")}
-            </button>
-          </div>
-        </>
-      )}
+      {/* The intro says it all in its card: the strip waits, at its height. */}
       {step && (
         <>
           <div className="tutorial-words">
-            {/* One line above the goal: the hint once asked for, else what was just done. The strip keeps its height. */}
-            {state.shown && step.hint ? (
+            <p className="tutorial-goal" data-testid="tutorial-goal">
+              <strong>
+                {step.title()}. {step.goal()}
+              </strong>
+            </p>
+            {snap.nearMiss && phase !== "completing" ? (
+              <p className="tutorial-near-miss" data-testid="tutorial-near-miss" role="status">
+                {tRich("tutorials.nearMiss", {
+                  b: (chunks) => <strong>{chunks}</strong>,
+                  expected: snap.nearMiss.expected,
+                  typed: snap.nearMiss.typed,
+                })}{" "}
+                <button className="link-btn" onClick={() => send({ type: "fix" })} data-testid="tutorial-use-expected">
+                  {t("tutorials.useExpected", { expected: snap.nearMiss.expected })}
+                </button>
+              </p>
+            ) : phase === "completing" ? (
+              <p className="tutorial-done" data-testid="tutorial-completing">
+                <Icon name="check" size={13} /> {step.done?.() ?? ""} {t("tutorials.finishUp")}
+              </p>
+            ) : phase === "hinting" && step.hint ? (
               <p className="tutorial-aside" data-testid="tutorial-hint">
                 {step.hint()}
               </p>
@@ -197,12 +242,9 @@ function Strip({
                 </p>
               )
             )}
-            <p className="tutorial-goal" data-testid="tutorial-goal">
-              <strong>{step.title()}.</strong> {step.goal()}
-            </p>
           </div>
           <div className="tutorial-actions">
-            {!state.shown && (
+            {phase === "active" && (
               <button className="btn" onClick={() => send({ type: "showMe" })} data-testid="tutorial-show-me">
                 {t("tutorials.showMe")}
               </button>
@@ -221,11 +263,6 @@ function Strip({
       {phase === "finished" && (
         <>
           <div className="tutorial-words">
-            {last?.done && (
-              <p className="tutorial-done">
-                <Icon name="check" size={13} /> {last.done()}
-              </p>
-            )}
             <p className="tutorial-goal" data-testid="tutorial-finished">
               <strong>{t("tutorials.finished")}.</strong> {tutorial.finish.text()}
             </p>

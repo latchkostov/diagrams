@@ -41,6 +41,7 @@ export const mobileApi: Tutorial = {
       hint: msg("tutorials.mobileApi.addApiHint"),
       done: msg("tutorials.mobileApi.addApiDone"),
       check: { kind: "node", subject: "api" },
+      guide: { quickAdd: msg("tutorials.mobileApi.searchApi") },
       targets: [
         // Quick-add lists a stencil used lately under Recent, with its own id.
         { testId: "context-menu-item-quick-add:recent:generic.service", tip: msg("tutorials.mobileApi.addApiTipPick") },
@@ -52,7 +53,7 @@ export const mobileApi: Tutorial = {
       solution: [
         { click: "node-{app}" },
         { click: "grow-chip-{app}" },
-        { fill: "quick-add-search", text: msg("tutorials.mobileApi.searchApi") },
+        // No typing: the step's guide opens quick-add already searched for Service (the e2e proves it).
         { click: "context-menu-item-quick-add:generic.service" },
       ],
     },
@@ -74,6 +75,7 @@ export const mobileApi: Tutorial = {
       hint: msg("tutorials.mobileApi.nameHint"),
       done: msg("tutorials.mobileApi.nameDone"),
       check: { kind: "label", subject: "api", is: apiName },
+      settle: "naming",
       targets: [
         { testId: "inspector-field-label", tip: msg("tutorials.mobileApi.nameTipLabel"), selected: "api" },
         { testId: "node-{api}", tip: msg("tutorials.mobileApi.nameTipNode") },

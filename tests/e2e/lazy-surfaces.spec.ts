@@ -114,6 +114,10 @@ async function open(page: Page, id: LazySurfaceId) {
     await page.goto("./?tutorial=mobile-api");
     return;
   }
+  if (id === "tutorial.list") {
+    await page.goto("./?view=tutorials");
+    return;
+  }
   switch (id) {
     case "live.session":
       await page.goto(`./?view=canvas&example=${SLUG}&live=1&paused=1`);
@@ -311,7 +315,8 @@ for (const [id, name, source, policy] of lazySurfaces) {
       if (id === "live.calls") await page.getByTestId("live-play").click();
       // A surviving shell control remains a keyboard stop. The specialised rename/modal tests keep
       // their stronger typing, Escape and cancellation assertions alongside this generated contract.
-      // A tutorial replaces the app (no top bar, no saved diagram): its stand-in bar keeps the way out.
+      // A tutorial replaces the app (no top bar, no saved diagram): its stand-in bar keeps the way out. The
+      // Tutorials view has the top bar but no diagram open.
       const tutorial = id === "tutorial.app";
       const focus = page.getByTestId(
         id === "live.inject"
@@ -320,11 +325,13 @@ for (const [id, name, source, policy] of lazySurfaces) {
             ? "sim-panel-close"
             : tutorial
               ? "tutorial-exit"
-              : "example-picker",
+              : id === "tutorial.list"
+                ? "view-canvas"
+                : "example-picker",
       );
       await focus.focus();
       await expect(focus).toBeFocused();
-      const before = tutorial ? undefined : await savedDiagram(page);
+      const before = id.startsWith("tutorial.") ? undefined : await savedDiagram(page);
       if (!tutorial) {
         await page.keyboard.press("Tab");
         expect(await page.evaluate(() => document.activeElement !== document.body)).toBe(true);

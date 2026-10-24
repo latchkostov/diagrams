@@ -1,5 +1,7 @@
 import type { DiagramFile } from "../model/types";
 import { stencilRole } from "../stencils/roles";
+import { getStencil } from "../stencils/registry";
+import { stencilLabel } from "../i18n/stencils";
 import type { Check, SubjectSpec, Tutorial } from "./types";
 
 /** What a step can see: the sandbox diagram, whether it's live, and Live's counters (real messages). */
@@ -23,6 +25,27 @@ export function resolveSubjects(tutorial: Tutorial, diagram: DiagramFile): Recor
 }
 
 const same = (a: string, b: string) => a.trim().toLocaleLowerCase() === b.trim().toLocaleLowerCase();
+
+/**
+ * The expectText pattern's near miss: a `label` check whose subject has been given a name of its own that isn't the
+ * expected one ("Order API" for "Orders API"). Null while it matches (case and outer spaces aside), while it still has
+ * its stencil's own name, or before it exists. Every naming step gets it: the strip says what's expected and offers it.
+ */
+export function nearMiss(
+  check: Check,
+  view: Pick<SandboxView, "diagram">,
+  subjects: Record<string, string | undefined>,
+): { expected: string; typed: string } | null {
+  if (check.kind !== "label") return null;
+  const id = subjects[check.subject];
+  const node = id ? view.diagram.nodes.find((n) => n.id === id) : undefined;
+  const typed = node?.label.trim() ?? "";
+  const expected = check.is();
+  if (!node || !typed || same(typed, expected)) return null;
+  const stencil = getStencil(node.stencil);
+  if (same(typed, stencil.label) || same(typed, stencilLabel(stencil))) return null;
+  return { expected, typed };
+}
 
 export function holds(check: Check, view: SandboxView, subjects: Record<string, string | undefined>): boolean {
   switch (check.kind) {

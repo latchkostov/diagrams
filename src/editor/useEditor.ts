@@ -107,6 +107,7 @@ import {
   type GroupBox,
   type HierarchyElementBox,
 } from "../model/groupHierarchy";
+import { TUTORIAL_SLUG } from "../tutorials/sandbox";
 
 // The EditorApi implementation over React Flow state. Built once per canvas; reads the latest
 // committed props so menus / shortcuts never see stale state.
@@ -877,7 +878,8 @@ export function createEditor(
       explainInference(relation as DependencyRelation, () =>
         api.updateEdge(edge.id, { relation: undefined }, { merge: `inference:flow:${edge.id}` }),
       );
-    else if (edge.data?.kind === "sync")
+    // A tutorial's sandbox teaches this itself (src/tutorials).
+    else if (edge.data?.kind === "sync" && latest.slug !== TUTORIAL_SLUG)
       explainRequest(() => api.updateEdge(edge.id, { kind: "async" }, { merge: `inference:kind:${edge.id}` }));
   };
 
