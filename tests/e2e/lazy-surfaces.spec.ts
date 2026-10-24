@@ -72,6 +72,7 @@ async function open(page: Page, id: LazySurfaceId) {
         if ((await page.getByTestId("inspector").getAttribute("data-collapsed")) === "1")
           await page.getByTestId("inspector-toggle").click();
         return;
+      case "inspector.node-settings":
       case "inspector.identity":
       case "inspector.simulation":
       case "inspector.properties":

@@ -2,7 +2,7 @@ import { METRIC_FIELDS } from "../model/types";
 import { faultSchema, DRILL_PRESETS } from "../model/faults";
 import { requestRoutesSchema } from "../model/requestRouting";
 // JSON Schema draft 2020-12. Shared by paste, WebMCP and static schema generation.
-import { aiNodePropsSchema, simPropsPatchSchema } from "../model/simProps";
+import { aiNodePropsSchema, simPropsPatchSchema } from "../model/aiSimProps";
 import { CHECK_RULES } from "../model/checks";
 import { EDGE_RELATIONS } from "../model/relations";
 export type { JsonSchema } from "../model/jsonSchema";

@@ -1,6 +1,6 @@
 import { expect, it, vi } from "vitest";
 import { autoscalingFixture } from "../lab/autoscalingFixture";
-import { hpaLesson, resourceLesson } from "../model/autoscaling";
+import { hpaLesson, resourceLesson } from "../model/autoscalingLessons";
 import { createEngine } from "./engine";
 import * as fleets from "./autoscaling";
 import { sampledParts, releaseCpuParts, canDrainSampled } from "./sampledResources";

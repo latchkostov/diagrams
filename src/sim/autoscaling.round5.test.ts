@@ -4,7 +4,7 @@ import * as resourceBudgets from "../model/resourceBudget";
 import * as allocations from "./allocation";
 import { expect, it, vi } from "vitest";
 import { autoscalingFixture } from "../lab/autoscalingFixture";
-import { hpaLesson, resourceLesson } from "../model/autoscaling";
+import { hpaLesson, resourceLesson } from "../model/autoscalingLessons";
 import { upgradeAutoscaling } from "../planning/migration";
 import { countingReads } from "../test/complexity";
 import { createEngine } from "./engine";

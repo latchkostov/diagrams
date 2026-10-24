@@ -1,6 +1,6 @@
 import fc from "fast-check";
 import { waitingFixture } from "../lab/waitingFixture";
-import { resourceLesson } from "../model/autoscaling";
+import { resourceLesson } from "../model/autoscalingLessons";
 
 const tier = fc.record({
   concurrency: fc.integer({ min: 1, max: 16 }),

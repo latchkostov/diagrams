@@ -1,5 +1,5 @@
 import { autoscalingFixture } from "./autoscalingFixture";
-import { cloudLesson, resourceLesson, type CloudPreset } from "../model/autoscaling";
+import { cloudLesson, resourceLesson, type CloudPreset } from "../model/autoscalingLessons";
 import type { DiagramFile } from "../model/types";
 
 const WORKER_STENCIL: Record<CloudPreset, string> = {

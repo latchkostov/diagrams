@@ -19,12 +19,12 @@ import type { ApplyOpsOptions, ApplyOpsResult, DiagramOp, OpResult } from "./ind
 import {
   hasEdgeRouting,
   hasNodeRouting,
-  nextAppearance,
   routeTableCapable,
   trafficMixCapable,
   type RequestRoute,
   type RouteTable,
 } from "../model/requestRouting";
+import { nextAppearance } from "../model/routingAppearance";
 import { stencilRole } from "../stencils/roles";
 
 /**

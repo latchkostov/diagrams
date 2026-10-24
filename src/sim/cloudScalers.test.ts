@@ -16,8 +16,6 @@ import {
 } from "./cloudScalers";
 import { createEngine } from "./engine";
 import {
-  cloudLesson,
-  resourceLesson,
   type AcaController,
   type AppServiceController,
   type CloudController,
@@ -25,6 +23,7 @@ import {
   type EcsController,
   type EcsStepScaling,
 } from "../model/autoscaling";
+import { cloudLesson, resourceLesson } from "../model/autoscalingLessons";
 import { checkAutoscaling, autoscalingProblem } from "../model/autoscalingSchema";
 import { bindingValidator } from "../model/kedaBindings";
 import { cloudFixture } from "../lab/cloudFixture";

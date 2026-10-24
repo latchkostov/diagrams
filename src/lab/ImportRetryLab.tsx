@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { kedaLesson } from "../model/autoscaling";
+import { kedaLesson } from "../model/autoscalingLessons";
 import type { DiagramFile } from "../model/types";
 import type { ImportGraph } from "../interop/infra/graph";
 import { defaultSelection, pickGraph, pickGroups } from "../interop/infra/pick";

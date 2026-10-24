@@ -11,7 +11,7 @@ import {
 } from "./resourceInvariants";
 import { waitingFixture } from "../lab/waitingFixture";
 import { cloudFixture } from "../lab/cloudFixture";
-import { resourceLesson } from "../model/autoscaling";
+import { resourceLesson } from "../model/autoscalingLessons";
 import { arbWaitDiagram } from "../test/waitScenarios";
 import { propertyRuns } from "../test/fastCheck";
 import type { EngineOptions } from "./types";

@@ -1,5 +1,5 @@
 import type { DiagramFile } from "../model/types";
-import { hpaLesson, resourceLesson } from "../model/autoscaling";
+import { hpaLesson, resourceLesson } from "../model/autoscalingLessons";
 export function autoscalingFixture(): DiagramFile {
   return {
     format: "diagrams/v2",

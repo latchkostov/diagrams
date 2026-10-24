@@ -9,7 +9,7 @@ import { diagramToDrawio } from "./write";
 import { nativeShape, parseStyle, stencilFromStyle } from "./mapping";
 import { revisionAtLeast } from "../../model/revisions";
 import { waitingFixture } from "../../lab/waitingFixture";
-import { resourceLesson } from "../../model/autoscaling";
+import { resourceLesson } from "../../model/autoscalingLessons";
 import { createEngine } from "../../sim/engine";
 import azureOrders from "./fixtures/azure-orders.drawio?raw";
 import twoPages from "./fixtures/two-pages-compressed.drawio?raw";

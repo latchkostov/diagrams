@@ -1,4 +1,4 @@
-import { resourceLesson, hpaLesson } from "./autoscaling";
+import { resourceLesson, hpaLesson } from "./autoscalingLessons";
 import { parseNative } from "../interop/native";
 import { describe, expect, it } from "vitest";
 import { checkJsonSchema, type JsonSchema } from "./jsonSchema";

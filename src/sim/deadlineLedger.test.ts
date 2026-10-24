@@ -1,6 +1,6 @@
 import { expect, it } from "vitest";
 import { waitingFixture } from "../lab/waitingFixture";
-import { resourceLesson } from "../model/autoscaling";
+import { resourceLesson } from "../model/autoscalingLessons";
 import { realSnapshot } from "./units";
 import { createEngine } from "./engine";
 import { assertLedgerInvariants, assertOutcomeInvariants, type LedgerInvariantState } from "./resourceInvariants";

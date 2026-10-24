@@ -14,17 +14,8 @@ import { useState, useMemo, useRef, type ReactNode } from "react";
 import { NumberField } from "./NumberField";
 import { Segmented } from "../canvas/inspector/fields";
 import { flushSync } from "react-dom";
-import {
-  cloudLesson,
-  hpaLesson,
-  kedaLesson,
-  resourceLesson,
-  unmeasured,
-  type CloudController,
-  type CloudPreset,
-  type ComputeResources,
-  type KedaTrigger,
-} from "../model/autoscaling";
+import { unmeasured, type CloudController, type ComputeResources, type KedaTrigger } from "../model/autoscaling";
+import { cloudLesson, hpaLesson, kedaLesson, resourceLesson, type CloudPreset } from "../model/autoscalingLessons";
 
 /** One preset per platform, in a fixed order; each label names its product (never translated). */
 const CLOUD_PRESETS: { preset: CloudPreset; kind: CloudController["kind"]; variant: string }[] = [

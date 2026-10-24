@@ -4,7 +4,7 @@ import { arbResilienceDiagram } from "../test/resilienceScenarios";
 import { propertyRuns } from "../test/fastCheck";
 import type { DiagramFile } from "../model/types";
 import { waitingFixture } from "../lab/waitingFixture";
-import { resourceLesson } from "../model/autoscaling";
+import { resourceLesson } from "../model/autoscalingLessons";
 import type { EdgeSimProps, NodeSimProps } from "./types";
 import { createEngine } from "./engine";
 import { backoffDelay } from "./retryPolicy";

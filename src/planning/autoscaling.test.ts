@@ -3,7 +3,7 @@ import { countingReads, LINEAR_LIMIT } from "../test/complexity";
 import { describe, it, expect } from "vitest";
 import { autoscalingFixture } from "../lab/autoscalingFixture";
 import { autoscalingProblem } from "../model/autoscalingSchema";
-import { hpaLesson, resourceLesson } from "../model/autoscaling";
+import { hpaLesson, resourceLesson } from "../model/autoscalingLessons";
 import { parseNative, serializeNative } from "../interop/native";
 import { applyOps } from "../ai/ops";
 import { makePayload, parsePayload, remapPayload } from "../editor/clipboard";

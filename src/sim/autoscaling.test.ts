@@ -4,7 +4,7 @@ import { sampledParts } from "./sampledResources";
 import { describe, it, expect, vi } from "vitest";
 import { createEngine } from "./engine";
 import { createFleet, advanceFleet, evaluateHpa, reconcileFleet, chargeCpu, integrateResources } from "./autoscaling";
-import { hpaLesson, resourceLesson } from "../model/autoscaling";
+import { hpaLesson, resourceLesson } from "../model/autoscalingLessons";
 import { autoscalingFixture } from "../lab/autoscalingFixture";
 import { analyzeCapacity } from "./capacity";
 

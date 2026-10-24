@@ -17,12 +17,7 @@ import type { DiagramFile, PlanningModel } from "../model/types";
 import {
   checkAddress,
   checkRouteMatch,
-  matchText,
-  routeLook,
-  routeName,
   routingEnabled,
-  addressText,
-  ROUTE_PALETTE,
   type HttpMethod,
   type PathMatchKind,
   type RequestAddress,
@@ -34,6 +29,7 @@ import {
   type RouteTable,
   type TrafficMix,
 } from "../model/requestRouting";
+import { matchText, routeLook, routeName, addressText, ROUTE_PALETTE } from "../model/routingAppearance";
 import {
   addMixRow,
   addRoute,

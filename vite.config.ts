@@ -135,6 +135,14 @@ function canvasChunks() {
       }
       const shared = reach(lazy.filter((id) => !withCanvas.has(id)));
       for (const id of own) groups.set(id, shared.has(id) ? "canvas-shared" : "CanvasView");
+      // Optional surfaces share this runtime without acquiring the canvas implementation.
+      for (const id of own)
+        if (
+          /[/\\]src[/\\](?:lib[/\\](?:lazySurface|lazySurfaces|machine)\.tsx?|canvas[/\\]interaction[/\\]context\.ts)$/.test(
+            id,
+          )
+        )
+          groups.set(id, "canvas-shared");
     },
   };
   return {

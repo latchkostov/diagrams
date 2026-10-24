@@ -14,7 +14,7 @@ import {
 import { propertyRuns } from "../test/fastCheck";
 import { arbWaitDiagram } from "../test/waitScenarios";
 import { realSnapshot } from "./units";
-import { resourceLesson } from "../model/autoscaling";
+import { resourceLesson } from "../model/autoscalingLessons";
 import type { SimSnapshot } from "./types";
 
 function zeroWorkCall() {

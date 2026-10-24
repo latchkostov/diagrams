@@ -1,6 +1,6 @@
 import { routeWords, type RouteWords } from "../trace/routeWords";
 import { RouteSwatch } from "../components/RouteSwatch";
-import { routeName } from "../model/requestRouting";
+import { routeName } from "../model/routingAppearance";
 import { t, useLocale } from "../i18n";
 import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import "../styles/trace.css";

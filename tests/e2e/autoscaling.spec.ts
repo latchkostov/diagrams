@@ -3,7 +3,7 @@ import type { Page } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import AxeBuilder from "@axe-core/playwright";
 import { makePayload } from "../../src/editor/clipboard";
-import { hpaLesson } from "../../src/model/autoscaling";
+import { hpaLesson } from "../../src/model/autoscalingLessons";
 import { autoscalingFixture, sampledCpuBudgetFixture } from "../../src/lab/autoscalingFixture";
 import {
   test,

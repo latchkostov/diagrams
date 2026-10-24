@@ -5,7 +5,7 @@ import { LiveController, structuralKey } from "./controller";
 import kafka from "../examples/kafka-order-pipeline.json";
 import { emptyInputs, freePlaySaveProps } from "./capacityModel";
 import { autoscalingFixture, sampledCpuBudgetFixture } from "../lab/autoscalingFixture";
-import { resourceLesson } from "../model/autoscaling";
+import { resourceLesson } from "../model/autoscalingLessons";
 import * as admissions from "../sim/admission";
 import * as allocations from "../sim/allocation";
 import { LifecycleBudgetError } from "../model/resourceBudget";

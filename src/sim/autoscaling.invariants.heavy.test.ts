@@ -5,14 +5,8 @@ import { createSimulationRun } from "./simulation";
 import { describe, expect, it, vi } from "vitest";
 import type { DiagramFile } from "../model/types";
 import type { NodeSimProps, NodeStatus } from "./types";
-import {
-  cloudLesson,
-  hpaLesson,
-  kedaLesson,
-  resourceLesson,
-  type CloudConfig,
-  type CloudPreset,
-} from "../model/autoscaling";
+import { type CloudConfig } from "../model/autoscaling";
+import { cloudLesson, hpaLesson, kedaLesson, resourceLesson, type CloudPreset } from "../model/autoscalingLessons";
 import { autoscalingFixture } from "../lab/autoscalingFixture";
 import { createEngine } from "./engine";
 import { mulberry32 } from "./rng";

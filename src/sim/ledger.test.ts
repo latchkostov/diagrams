@@ -6,7 +6,7 @@ import { drainRetiredLedger } from "../test/ledgerDrain";
 import { waitingFixture } from "../lab/waitingFixture";
 import { ledgerFixture } from "../lab/ledgerFixture";
 import { createEngine, randomDraws } from "./engine";
-import { resourceLesson } from "../model/autoscaling";
+import { resourceLesson } from "../model/autoscalingLessons";
 import { realSnapshot, roundDots } from "./units";
 import {
   assertResourceInvariants,

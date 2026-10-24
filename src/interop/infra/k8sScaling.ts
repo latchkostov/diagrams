@@ -1,11 +1,10 @@
 import {
-  hpaLesson,
-  kedaLesson,
   type AutoscalingConfig,
   type ComputeResources,
   type HpaSettings,
   type KedaTrigger,
 } from "../../model/autoscaling";
+import { hpaLesson, kedaLesson } from "../../model/autoscalingLessons";
 import { checkAutoscaling } from "../../model/autoscalingSchema";
 import { isMap, list, own, str } from "./yaml";
 

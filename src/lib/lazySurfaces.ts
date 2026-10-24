@@ -7,6 +7,7 @@ export const lazySurfaces = [
   ["canvas.presence", names ? "CanvasReadouts" : "", names ? "canvas/CanvasReadouts" : "", "skip"],
   ["canvas.node-tips", names ? "CanvasReadouts" : "", names ? "canvas/CanvasReadouts" : "", "skip"],
   ["canvas.check-markers", names ? "ChecksMarkers" : "", names ? "canvas/checks/ChecksMarkers" : "", "skip"],
+  ["inspector.node-settings", names ? "NodeSettings" : "", names ? "canvas/inspector/NodeSettings" : "", "skip"],
   ["inspector.identity", names ? "NodeIdentity" : "", names ? "canvas/inspector/NodeIdentity" : "", "skip"],
   ["inspector.edge", names ? "EdgePanel" : "", names ? "canvas/inspector/EdgePanel" : "", "skip"],
   ["inspector.messages", names ? "MessageFields" : "", names ? "canvas/inspector/MessageFields" : "", "skip"],

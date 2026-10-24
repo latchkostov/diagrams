@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { DiagramFile, Simulation } from "../model/types";
-import { resourceLesson } from "../model/autoscaling";
+import { resourceLesson } from "../model/autoscalingLessons";
 import { WorkBudgetError } from "../sim/engine";
 import * as simulations from "../sim/simulation";
 import { emptyInputs } from "./capacityModel";

@@ -1,7 +1,7 @@
 import { revisionAtLeast } from "../model/revisions";
 import { effectiveCallerPolicy } from "./callerPolicy";
 import { routeTableCapable, trafficMixCapable } from "../model/requestRouting";
-import { withRouteTable } from "../model/routingEdits";
+import { withRouteTable } from "../model/routingTopology";
 import { routingIntent } from "./routingIntent";
 import { stencilLabel, vendorLabel } from "../i18n/stencils";
 import { t } from "../i18n";

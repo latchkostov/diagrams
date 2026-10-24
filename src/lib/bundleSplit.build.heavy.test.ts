@@ -14,6 +14,13 @@ import { productionBuild } from "../test/productionBuild";
 
 /** Never in the startup JavaScript. */
 const NOT_AT_STARTUP: [string, RegExp][] = [
+  ["route presentation and authoring", /[/\\]src[/\\]model[/\\]routingAppearance\.ts$/],
+  ["resource playback arithmetic", /[/\\]src[/\\]model[/\\]resourceRuntime\.ts$/],
+  ["AI authoring simulation schemas", /[/\\]src[/\\]model[/\\]aiSimProps\.ts$/],
+  ["node settings container", /[/\\]src[/\\]canvas[/\\]inspector[/\\]NodeSettings\.tsx$/],
+  ["autoscaling authoring presets", /[/\\]src[/\\]model[/\\]autoscalingLessons\.ts$/],
+  ["settings paste and editing codecs", /[/\\]src[/\\]model[/\\]settingsInput\.ts$/],
+  ["routing form helpers", /[/\\]src[/\\]model[/\\]routingEdits\.ts$/],
   ["selected-edge pointer adapter", /[/\\]src[/\\]canvas[/\\]interaction[/\\]usePointerGesture\.ts$/],
   [
     "route shaping controls",
@@ -338,6 +345,16 @@ describe("production bundle split", () => {
       expect(menuModules.length).toBeGreaterThan(0);
       const canvasModules = bundled(closure([canvasChunk(build)], build));
       expect(menuModules.filter((id) => !canvasModules.includes(id))).toEqual([]);
+    }
+  });
+
+  it("shares the lazy surface runtime without importing the canvas implementation", () => {
+    for (const build of [plain(), rooms]) {
+      const runtime = build.chunks.find((chunk) =>
+        Object.keys(chunk.modules).some((id) => /[/\\]src[/\\]lib[/\\]lazySurface\.tsx$/.test(id)),
+      );
+      expect(runtime?.name).toBe("canvas-shared");
+      expect([...closure([runtime!], build)].map((chunk) => chunk.name)).not.toContain("CanvasView");
     }
   });
 

@@ -1,5 +1,5 @@
 import { revisionAtLeast } from "../model/revisions";
-import { replicaRange } from "../model/autoscaling";
+import { replicaRange } from "../model/resourceRuntime";
 // Inputs & capacity: the pure model behind the "Inputs & capacity" panel and the capacity heat map.
 // No React, no DOM. It turns a diagram plus an optional saved simulation plus the panel's what-if
 // inputs into (a) the simulation to run, (b) a planning analysis per node, (c) a bottleneck headline
@@ -14,7 +14,8 @@ import type { NodeCapacity } from "../sim/capacity";
 import { compileTopology } from "../sim/topology";
 import type { NodeStatus } from "../sim/types";
 import { mixTotal, resolveNodeProps } from "../sim/defaults";
-import { scaleMix, type TrafficMix } from "../model/requestRouting";
+import { type TrafficMix } from "../model/requestRouting";
+import { scaleMix } from "../model/routingAppearance";
 import { autoScale, peakRate } from "../sim/scale";
 import { trafficWindow } from "../sim/simulation";
 import { sourceTraffic, withSizing, type SizingChange } from "../sim/capacityInputs";

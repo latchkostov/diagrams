@@ -1,6 +1,6 @@
 import { roundDots } from "./units";
 import fc from "fast-check";
-import { resourceLesson } from "../model/autoscaling";
+import { resourceLesson } from "../model/autoscalingLessons";
 import { expect, it } from "vitest";
 import { arbWaitDiagram } from "../test/waitScenarios";
 import { propertyRuns } from "../test/fastCheck";

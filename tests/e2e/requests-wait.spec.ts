@@ -1,5 +1,5 @@
 import { openLiveNodeDetails } from "./fixtures";
-import { cloudLesson, resourceLesson } from "../../src/model/autoscaling";
+import { cloudLesson, resourceLesson } from "../../src/model/autoscalingLessons";
 import { waitingFixture } from "../../src/lab/waitingFixture";
 import {
   test,

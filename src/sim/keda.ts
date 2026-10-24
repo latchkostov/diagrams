@@ -1,5 +1,5 @@
 import type { ComputeResources, KedaController, KedaTrigger } from "../model/autoscaling";
-import { replicaRange } from "../model/autoscaling";
+import { replicaRange } from "../model/resourceRuntime";
 import { evaluateHpa, type Fleet, type ScalingDecision } from "./autoscaling";
 
 /** Real messages, including outstanding deliveries exactly once. Unknown is never an empty broker. */

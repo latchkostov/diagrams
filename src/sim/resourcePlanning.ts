@@ -1,10 +1,5 @@
-import {
-  resourceCapacity,
-  replicaRange,
-  unmeasured,
-  type ComputeResources,
-  type ExecutableController,
-} from "../model/autoscaling";
+import { unmeasured, type ComputeResources, type ExecutableController } from "../model/autoscaling";
+import { resourceCapacity, replicaRange } from "../model/resourceRuntime";
 import type { ResolvedProps } from "./defaults";
 import { resolvedTiming, type ResolvedTiming } from "./timing";
 

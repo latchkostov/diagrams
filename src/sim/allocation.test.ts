@@ -1,6 +1,6 @@
 import { expect, it, vi } from "vitest";
 import { validateAllocationActions } from "./allocation";
-import { resourceLesson } from "../model/autoscaling";
+import { resourceLesson } from "../model/autoscalingLessons";
 import type { NodeSimProps } from "./types";
 import { LifecycleBudgetError } from "../model/resourceBudget";
 import * as budgets from "../model/resourceBudget";

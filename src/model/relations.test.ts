@@ -9,16 +9,14 @@ import {
   implicitLabel,
   isDependency,
   MAX_SETTINGS,
-  parseSettings,
-  parseSettingsEditor,
   edgeSemanticSignature,
   referencedSettings,
   relationLabel,
   relationOf,
   sanitizeSettings,
   settingsSummary,
-  settingsText,
 } from "./relations";
+import { parseSettings, parseSettingsEditor, settingsText } from "./settingsInput";
 
 describe("relation of an edge", () => {
   it("defaults to flow, and treats unknown values as flow", () => {

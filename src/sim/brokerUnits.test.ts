@@ -5,7 +5,7 @@ import { createEngine } from "./engine";
 import { assertLedgerInvariants, assertOutcomeInvariants, assertResourceInvariants } from "./resourceInvariants";
 import type { ResourceState } from "./resourceInvariants";
 import { realSnapshot } from "./units";
-import { resourceLesson } from "../model/autoscaling";
+import { resourceLesson } from "../model/autoscalingLessons";
 import { resilienceFixture } from "../lab/resilienceFixture";
 import type { EdgeSimProps, SimSnapshot } from "./types";
 

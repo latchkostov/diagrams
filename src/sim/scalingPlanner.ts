@@ -1,7 +1,7 @@
 import { revisionAtLeast } from "../model/revisions";
 import type { DiagramEdge, DiagramFile, Simulation } from "../model/types";
 import type { AutoscalingConfig, ExecutableController } from "../model/autoscaling";
-import { replicaRange } from "../model/autoscaling";
+import { replicaRange } from "../model/resourceRuntime";
 import { stencilRole } from "../stencils/roles";
 import { brokerRole } from "../model/brokerRoutes";
 import { estimateTotalMs } from "./simulation";

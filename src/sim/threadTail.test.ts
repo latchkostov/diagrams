@@ -1,7 +1,7 @@
 import { wholeDotTravelMs } from "../test/brokerFixtures";
 import { expect, it, vi } from "vitest";
 import { waitingFixture } from "../lab/waitingFixture";
-import { resourceLesson } from "../model/autoscaling";
+import { resourceLesson } from "../model/autoscalingLessons";
 import { createEngine } from "./engine";
 import { realSnapshot } from "./units";
 import { GROWTH_FACTOR, LINEAR_LIMIT } from "../test/complexity";

@@ -2,7 +2,7 @@ import { openInspectorLiveDetails } from "./fixtures";
 import { readFileSync } from "node:fs";
 import type { Page } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
-import { resourceLesson } from "../../src/model/autoscaling";
+import { resourceLesson } from "../../src/model/autoscalingLessons";
 import { kedaFixture } from "../../src/lab/kedaFixture";
 import {
   test,
