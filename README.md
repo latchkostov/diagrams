@@ -86,7 +86,7 @@ pnpm dev            # http://localhost:5173
 pnpm check          # typecheck, lint, unit tests (Vitest), e2e tests (Playwright)
 pnpm build          # production build in dist/
 pnpm build:internal # the same for a self-hosted copy (docs/SELF-HOSTING.md)
-pnpm review         # multi-angle Codex review of changes since review-base
+pnpm review --pr 123 # scoped Codex review; repeat for the next fix round
 ```
 
 The Lab (`?view=lab`) renders the current components with presets: node and edge states, stress diagrams, overlap

@@ -41,6 +41,7 @@ export interface Plan {
   capped: boolean;
   scope: Scope;
   state?: State | null;
+  nextCommand?: string;
 }
 export interface Result {
   issues: Issue[];
