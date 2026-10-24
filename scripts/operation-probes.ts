@@ -17,14 +17,14 @@ export function operationProbes(): Plugin {
     },
     transform(code, id) {
       const file = id.replaceAll("\\", "/").split("?")[0];
+      const source = file.slice(root.length);
       if (
         !file.startsWith(root + "src/") ||
         !/\.tsx?$/.test(file) ||
-        /\.(?:test|bench)\./.test(file) ||
-        (/\/src\/(?:examples|lab|test)\//.test(file) && !file.endsWith("/opCounterFixture.ts"))
+        /\.(?:test|bench)\./.test(source) ||
+        (/^src\/(?:examples|lab|test)\//.test(source) && source !== "src/test/opCounterFixture.ts")
       )
         return;
-      const source = file.slice(root.length);
       const hit = `globalThis.__ldOpCounter?.add(1,${JSON.stringify(source)});`;
       const tree = ts.createSourceFile(
         file,

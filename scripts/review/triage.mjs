@@ -29,6 +29,7 @@ export const compare = (a, b) =>
 
 export function consolidate(reports, plan) {
   const previous = plan.state?.openP1s ?? [];
+  const warnings = [];
   for (const { angle, report } of reports) {
     if (!Array.isArray(report.findings) || !Array.isArray(report.assessments) || typeof report.summary !== "string")
       throw new Error(`Invalid ${angle} report`);
@@ -48,9 +49,10 @@ export function consolidate(reports, plan) {
         [x.file, x.title, x.detail, x.suggestion].some((s) => typeof s !== "string" || !s.trim())
       )
         throw new Error(`Invalid finding from ${angle}`);
-      if (x.previousId && !previous.some((old) => old.id === x.previousId))
-        throw new Error(`Unknown previous issue ${x.previousId}`);
-      return { ...x, file: fileKey(x.file), lenses: [angle] };
+      const unknownPrevious = x.previousId && !previous.some((old) => old.id === x.previousId);
+      if (unknownPrevious)
+        warnings.push(`${angle}: unknown or resolved previous issue ${x.previousId}; treating finding as new.`);
+      return { ...x, ...(unknownPrevious ? { previousId: null } : {}), file: fileKey(x.file), lenses: [angle] };
     }),
   );
   const excluded = raw.filter((x) => !plan.scope.files.includes(x.file));
@@ -72,7 +74,12 @@ export function consolidate(reports, plan) {
   for (const finding of findings) {
     // Complete linkage avoids merging a chain of nearby but unrelated issues.
     const cluster = clusters.find((items) =>
-      items.every((x) => (x.id && finding.id ? x.id === finding.id : sameIssue(x, finding))),
+      items.every((x) =>
+        x.id && finding.id
+          ? x.id === finding.id
+          : sameIssue(x, finding) ||
+            (x.file === finding.file && x.line === finding.line && x.lenses[0] !== finding.lenses[0]),
+      ),
     );
     if (cluster) cluster.push(finding);
     else clusters.push([finding]);
@@ -103,7 +110,7 @@ export function consolidate(reports, plan) {
       }
     }
   }
-  return { issues: issues.sort(compare), resolutions, excluded, rawCount: raw.length };
+  return { issues: issues.sort(compare), resolutions, excluded, warnings, rawCount: raw.length };
 }
 
 export function renderReport(name, plan, result, reports) {
@@ -117,6 +124,9 @@ export function renderReport(name, plan, result, reports) {
     "",
     `HEAD ${plan.scope.head}`,
     "",
+    ...(plan.scope.mode === "delta"
+      ? [`Fix delta since ${plan.scope.since}; whole PR: ${plan.prScope?.files.length ?? "unknown"} files.`, ""]
+      : []),
     ...(plan.nextCommand
       ? [`Next round${plan.capped ? " (requires owner approval)" : ""}:`, "", "```sh", plan.nextCommand, "```", ""]
       : []),
@@ -131,6 +141,7 @@ export function renderReport(name, plan, result, reports) {
     "",
     ...reports.map(({ angle, report }) => `- **${angle}**: ${report.summary}`),
     "",
+    ...result.warnings.flatMap((warning) => [`Warning: ${warning}`, ""]),
     "## Previous P1 assessments",
     "",
     ...result.resolutions.flatMap((x) => [

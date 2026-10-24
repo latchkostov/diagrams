@@ -1,7 +1,7 @@
 export interface FailedTest {
   spec: string;
   title: string;
-  message?: string;
+  messages?: string[];
   failurePattern?: string;
 }
 export interface Job {

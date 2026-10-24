@@ -20,7 +20,7 @@ export function failedTests(report) {
           failed.push({
             spec: normalize(suite.name),
             title: test.title,
-            message: test.failureMessages?.join("\n") ?? "",
+            messages: test.failureMessages ?? [],
           });
       if (suite.message || (suite.status === "failed" && !assertions.some((test) => test.status === "failed")))
         unknown.push(`suite/setup failure: ${normalize(suite.name)}`);
@@ -46,7 +46,12 @@ export function failedTests(report) {
             failed.push({
               spec: specFile,
               title: spec.title,
-              message: test.results.map((result) => result.error?.message ?? "").join("\n"),
+              messages: test.results
+                .filter((result) => !["passed", "skipped"].includes(result.status))
+                .flatMap((result) => {
+                  const errors = [...(result.errors ?? []), ...(result.error ? [result.error] : [])];
+                  return errors.length ? errors.map((error) => error.message ?? error.value ?? "") : [""];
+                }),
             });
       }
       for (const child of suite.suites ?? []) visit(child);
@@ -98,7 +103,9 @@ export function classifyRun(jobs, reports, ledger) {
             (entry) =>
               entry.spec === test.spec &&
               entry.title === test.title &&
-              (!entry.failurePattern || new RegExp(entry.failurePattern, "i").test(test.message)),
+              (!entry.failurePattern ||
+                (test.messages.length > 0 &&
+                  test.messages.every((message) => new RegExp(entry.failurePattern, "i").test(message)))),
           )
         )
           unknown.push(`${test.spec} > ${test.title}`);
@@ -112,8 +119,12 @@ export function classifyRun(jobs, reports, ledger) {
 export function checkRun(runId, { gh = (...args) => execFileSync("gh", args, { encoding: "utf8" }) } = {}) {
   if (!/^\d+$/.test(runId)) throw new Error("Usage: known-flakes.mjs <run-id>");
   const repo = process.env.GITHUB_REPOSITORY ?? "latchkostov/diagrams";
+  const endpoint = `repos/${repo}/actions/runs/${runId}`;
+  const run = JSON.parse(gh("api", endpoint));
+  if (run.status !== "completed" || !Number.isSafeInteger(run.run_attempt))
+    throw new Error("Run is incomplete or missing its attempt");
   const pages = (endpoint) => JSON.parse(gh("api", "--paginate", "--slurp", endpoint));
-  const jobs = pages(`repos/${repo}/actions/runs/${runId}/jobs?per_page=100`).flatMap((page) => page.jobs);
+  const jobs = pages(`${endpoint}/attempts/${run.run_attempt}/jobs?per_page=100`).flatMap((page) => page.jobs);
   if (!jobs.length) throw new Error("Run has no jobs");
   const artifacts = pages(`repos/${repo}/actions/runs/${runId}/artifacts?per_page=100`).flatMap(
     (page) => page.artifacts,
@@ -124,8 +135,6 @@ export function checkRun(runId, { gh = (...args) => execFileSync("gh", args, { e
     for (const artifact of artifacts) {
       const match = /^(?:unit-results-(\d+)|heavy-results|skill-results|e2e-durations-(\d+))$/.exec(artifact.name);
       if (!match || artifact.expired) continue;
-      const into = path.join(directory, artifact.name);
-      gh("run", "download", runId, "--repo", repo, "--name", artifact.name, "--dir", into);
       const job = match[1]
         ? `Unit coverage ${match[1]}/3`
         : match[2]
@@ -133,11 +142,26 @@ export function checkRun(runId, { gh = (...args) => execFileSync("gh", args, { e
           : artifact.name === "heavy-results"
             ? "Heavy tests"
             : "Build, size, skill ZIP";
+      const current = jobs.find((candidate) => candidate.name === job);
+      const created = Date.parse(artifact.created_at);
+      // Artifact names survive reruns. Only a unique report uploaded during this attempt's job is evidence.
+      if (
+        !current ||
+        !Number.isFinite(created) ||
+        !(created >= Date.parse(current.started_at) && created <= Date.parse(current.completed_at)) ||
+        artifacts.filter((candidate) => candidate.name === artifact.name && !candidate.expired).length !== 1
+      )
+        continue;
+      const into = path.join(directory, artifact.name);
+      gh("run", "download", runId, "--repo", repo, "--name", artifact.name, "--dir", into);
       for (const file of readdirSync(into))
         if (file.endsWith(".json"))
           reports.push({ job, report: JSON.parse(readFileSync(path.join(into, file), "utf8")) });
     }
     const ledger = JSON.parse(readFileSync(new URL("../../tests/flakes.json", import.meta.url), "utf8"));
+    const latest = JSON.parse(gh("api", endpoint));
+    if (latest.run_attempt !== run.run_attempt || latest.status !== "completed")
+      throw new Error("Run attempt changed while collecting reports");
     return classifyRun(jobs, reports, ledger);
   } finally {
     rmSync(directory, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });

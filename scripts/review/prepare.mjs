@@ -17,6 +17,7 @@ while (args.length) {
   } else if (arg === "--full") options.full = true;
   else if (arg === "--audit") options.audit = true;
   else if (arg === "--reset-state") options.resetState = true;
+  else if (arg === "--refresh-intent") options.refreshIntent = true;
   else if (arg === "--allow-round-4") options.allowRound4 = true;
   else throw new Error(`Unknown argument: ${arg}`);
 }
@@ -25,6 +26,7 @@ if ([options.full, options.audit, !!options.since].filter(Boolean).length > 1)
 if (options.resetState && (options.full || options.audit || options.since))
   throw new Error("--reset-state cannot be combined with --full, --audit or --since");
 if (options.pr && !/^[1-9]\d*$/.test(options.pr)) throw new Error("--pr requires a positive PR number");
+if (options.refreshIntent && !options.pr) throw new Error("--refresh-intent requires --pr");
 const root = process.cwd();
 // A resolver module lets fixture repositories supply gh's response without network access.
 const pr = options.pr
@@ -70,10 +72,15 @@ const scope = reviewScope(root, {
   baseRef: pr?.baseRefOid,
   since: options.since ?? state?.lastReviewedSha,
 });
+const prScope = { files: (scope.mode === "delta" ? reviewScope(root, { baseRef: pr?.baseRefOid }) : scope).files };
 const context = [];
-if (options.brief)
-  context.push(`## Owner brief (including acceptance criteria)\n${fs.readFileSync(options.brief, "utf8")}`);
-if (options.pr) context.push(`## PR #${options.pr} intent\n${pr.title ?? ""}\n${pr.body ?? ""}`);
+const savedContext = savedState?.context;
+if (!options.brief && !options.refreshIntent && savedContext) context.push(savedContext);
+else {
+  if (options.brief)
+    context.push(`## Owner brief (including acceptance criteria)\n${fs.readFileSync(options.brief, "utf8")}`);
+  if (options.pr) context.push(`## PR #${options.pr} intent\n${pr.title ?? ""}\n${pr.body ?? ""}`);
+}
 if (!context.length)
   context.push(
     state?.context ??
@@ -95,6 +102,7 @@ fs.writeFileSync(
     {
       ...plan,
       scope,
+      prScope,
       branch,
       pr: options.pr,
       state,
@@ -115,6 +123,12 @@ fs.writeFileSync(
   [
     `## Exact review scope: round ${plan.round}, ${scope.mode}`,
     `Reviewed HEAD: ${scope.head}. Merge base: ${scope.base}.`,
+    ...(scope.mode === "delta"
+      ? [
+          `Whole PR files (context only): ${JSON.stringify(prScope.files)}.`,
+          `This run reviews only the fix delta since ${scope.since}, not the whole PR.`,
+        ]
+      : []),
     `Files: ${JSON.stringify(scope.files)}. Only report findings in these files.`,
     `Read ${out}/scope.patch for the authoritative diff, and ${out}/plan.json for changed HEAD line numbers.`,
     scope.mode === "audit"

@@ -127,6 +127,36 @@ describe("deterministic consolidation", () => {
       consolidate(reports, { ...plan, scope: { ...scope, files: ["feature.txt", "other.txt"] } }).issues,
     ).toHaveLength(4);
   });
+  it("clusters different titles at the same file and line across lenses", () => {
+    const reports = [lens("correctness"), lens("types", [finding({ title: "Stop replay after a deleted owner" })])];
+    const result = consolidate(reports, plan);
+    expect(result.issues).toHaveLength(1);
+    expect(result.issues[0].lenses).toEqual(["correctness", "types"]);
+    expect(result.issues[0].evidence).toHaveLength(2);
+  });
+  it("logs unknown previous IDs and treats their findings as new without losing active assessments", () => {
+    const old = { ...finding(), id: "R-active", lenses: ["correctness"] };
+    const second = {
+      ...plan,
+      round: 2,
+      state: { round: 1, lastReviewedSha: "old", openP1Ids: [old.id], openP1s: [old] },
+    };
+    const reports = [
+      lens(
+        "correctness",
+        [finding({ previousId: "R-resolved", line: 40 })],
+        [{ id: old.id, status: "fixed", detail: "Confirmed fixed." }],
+      ),
+    ];
+    const result = consolidate(reports, second);
+    expect(result.warnings).toEqual([
+      "correctness: unknown or resolved previous issue R-resolved; treating finding as new.",
+    ]);
+    expect(result.issues[0]).toMatchObject({ severity: "P2", previousId: null });
+    expect(result.issues[0].id).not.toBe("R-resolved");
+    expect(result.resolutions[0]).toMatchObject({ id: old.id, status: "fixed" });
+    expect(renderReport("fixture", second, result, reports)).toContain("unknown or resolved previous issue R-resolved");
+  });
   it("caps new P1s on unchanged lines in delta rounds, but leaves changed-line P1s", () => {
     const result = consolidate([lens("correctness", [finding(), finding({ line: 40 })])], { ...plan, round: 2 });
     expect(result.issues.map((x) => x.severity)).toEqual(["P1", "P2"]);
@@ -365,6 +395,50 @@ describe("review CLI in a detached checkout", () => {
     expect(report.split("## Exact files reviewed")[0]).toContain("**Round 1 · 2 files · branch**");
     expect(report).toContain("pnpm review '--pr' '123'");
     expect(prepare("detached-next", ["--pr", "123"]).prepared.round).toBe(2);
+  });
+  it("retains saved intent when --pr only identifies a continuation and replaces it explicitly", () => {
+    const { file, saved } = seed("pr-123", true);
+    const continuation = prepare("intent-continuation", ["--pr", "123"]);
+    expect(continuation.prepared.context).toBe(saved.context);
+    expect(readFileSync(join(continuation.out, "prompt.md"), "utf8")).toContain(saved.context);
+    merge(continuation.out, continuation.prepared);
+    expect(readState(file)?.context).toBe(saved.context);
+    const refreshed = prepare("intent-refresh", ["--pr", "123", "--refresh-intent"]);
+    expect(refreshed.prepared.context).toContain("Keep the PR scoped.");
+    expect(refreshed.prepared.context).not.toContain(saved.context);
+    const brief = join(checkout, "replacement.md");
+    writeFileSync(brief, "Replacement acceptance criteria.");
+    expect(prepare("intent-brief", ["--pr", "123", "--brief", brief]).prepared.context).toContain(
+      "Replacement acceptance criteria.",
+    );
+    expect(prepare("intent-full", ["--pr", "123", "--full"]).prepared.context).toBe(saved.context);
+    expect(() => prepare("refresh-without-pr", ["--branch", "feature", "--refresh-intent"])).toThrow("requires --pr");
+  });
+  it("labels the saved fix delta separately from the whole PR scope", () => {
+    const { file, saved } = seed("pr-123", true);
+    const merged = git(checkout, "rev-parse", "HEAD^").trim();
+    writeFileSync(file, JSON.stringify({ ...saved, lastReviewedSha: merged }));
+    const { out, prepared } = prepare("delta-scope", ["--pr", "123"]);
+    expect(prepared.scope).toMatchObject({ mode: "delta", since: merged, files: ["feature.txt"] });
+    expect(prepared.prScope?.files).toEqual(["feature.txt", "shared.txt"]);
+    const prompt = readFileSync(join(out, "prompt.md"), "utf8");
+    expect(prompt).toContain(`only the fix delta since ${merged}, not the whole PR`);
+    expect(prompt).toContain('Whole PR files (context only): ["feature.txt","shared.txt"]');
+    merge(out, prepared);
+    expect(readFileSync(join(out, "REPORT.md"), "utf8")).toContain(`Fix delta since ${merged}; whole PR: 2 files.`);
+  });
+  it("merges round two with an unknown previous ID, logging it and advancing state", () => {
+    const { file } = seed("pr-123", true);
+    const { out, prepared } = prepare("unknown-previous", ["--pr", "123"]);
+    writeReports(out, prepared);
+    const reportFile = join(out, "correctness.json");
+    const report = JSON.parse(readFileSync(reportFile, "utf8"));
+    report.findings = [finding({ previousId: "R-not-in-state", file: "feature.txt", line: 1 })];
+    writeFileSync(reportFile, JSON.stringify(report));
+    const output = execFileSync(process.execPath, [mergeScript, out], { cwd: checkout, stdio: "pipe" });
+    expect(output.toString()).toContain("Consolidated");
+    expect(readState(file)?.round).toBe(2);
+    expect(readFileSync(join(out, "REPORT.md"), "utf8")).toContain("unknown or resolved previous issue R-not-in-state");
   });
   it("uses --branch on detached HEAD and explains how to resolve an unnamed review", () => {
     const { prepared } = prepare("explicit-branch", ["--branch", "explicit/feature"]);
