@@ -4,6 +4,7 @@ import type { Thumb } from "../lib/thumbnail";
 import type { ThemeSection } from "../examples/themes";
 import { t, useLocale } from "../i18n";
 import { tRich } from "../i18n/rich";
+import type { ReactNode } from "react";
 
 export interface StartExample {
   slug: string;
@@ -24,6 +25,7 @@ export interface StartRecent {
 }
 
 export interface StartOptions {
+  tutorial?: ReactNode;
   /** Your diagrams, most recent first (the open one excluded). */
   recent: StartRecent[];
   /**
@@ -67,6 +69,7 @@ export function StartCard({ start, onBlank }: { start: StartOptions; onBlank: ()
     <section className="start-card" data-testid="start-card" aria-labelledby="start-card-title">
       <h2 id="start-card-title">{t("start.title")}</h2>
       <p className="start-lede">{recent.length ? t("start.ledeRecent") : t("start.lede")}</p>
+      {start.tutorial}
 
       {recent.length > 0 && (
         <>

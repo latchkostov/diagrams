@@ -1,11 +1,12 @@
 import { msg, t } from "../../i18n";
 import type { Tutorial } from "../types";
+import type { DiagramFile } from "../../model/types";
 
 const apiName = msg("tutorials.mobileApi.apiName");
 const appWord = msg("tutorials.mobileApi.searchApp");
 
 /** The pilot: static drawing (rail, the "+", dots, naming) and a first look at Live. */
-export const mobileApi: Tutorial = {
+export const mobileApi: Tutorial & { start(): DiagramFile } = {
   id: "mobile-api",
   version: 1,
   track: "basics",

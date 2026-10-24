@@ -193,6 +193,21 @@ describe("palette sources", () => {
     ...over,
   });
 
+  it("finds each tutorial by title without catalog steps, and keeps the Tutorials view command", () => {
+    const startTutorial = vi.fn(),
+      openTutorials = vi.fn();
+    const commands = collectCommands(
+      input({ tutorials: [{ id: "mobile-api", title: "A mobile app talks to an API" }], startTutorial, openTutorials }),
+    );
+    const lesson = commands.find((c) => c.id === "tutorial:mobile-api")!;
+    expect(lesson.label).toBe("Tutorial: A mobile app talks to an API");
+    lesson.run?.();
+    commands.find((c) => c.id === "view:tutorials")!.run?.();
+    expect(startTutorial).toHaveBeenCalledExactlyOnceWith("mobile-api");
+    expect(openTutorials).toHaveBeenCalledOnce();
+    expect(collectCommands(input()).some((c) => c.id.startsWith("tutorial:"))).toBe(false);
+  });
+
   it("aggregates every source on the canvas", () => {
     const cs = collectCommands(input());
     const all = ids(cs);

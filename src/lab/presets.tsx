@@ -1218,6 +1218,18 @@ const tracePresets: Preset[] = [
 
 export const presets: readonly Preset[] = [
   {
+    kind: "render",
+    id: "tutorial-runtime",
+    title: "Tutorial runtime",
+    group: "Playground",
+    description: "Example loading, saved simulation, app chrome, explicit copies and the next tutorial.",
+    render: () => (
+      <a className="btn" href="?tutorial=lab-tutorial-runtime" data-testid="lab-tutorial-runtime">
+        {t("tutorials.runtime.title")}
+      </a>
+    ),
+  },
+  {
     kind: "diagram",
     id: "edge-shaping",
     title: "Edge shaping",

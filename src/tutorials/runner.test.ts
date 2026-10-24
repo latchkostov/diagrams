@@ -4,11 +4,13 @@ import type { EditorApi } from "../editor/types";
 import type { DiagramFile, DiagramNode } from "../model/types";
 import { canvasInteraction } from "../canvas/interaction/canvasInteraction";
 import { initialEditorMode, type EditorModeState } from "../canvas/interaction/mode";
-import type { paletteHost } from "../palette/host";
+import type { paletteHost, SessionHost } from "../palette/host";
 import { mobileApi } from "./catalog/mobileApi";
 import { createTutorialRunner } from "./runner";
 import { savedProgress, saveProgress } from "./progress";
 import type { Tutorial } from "./types";
+import type { Demo } from "./types";
+import { actionRegistry } from "../editor/actions";
 
 const cleanup: (() => void)[] = [];
 beforeEach(() => {
@@ -22,9 +24,14 @@ afterEach(() => {
   cleanup.reverse().forEach((f) => f());
   cleanup.length = 0;
   vi.unstubAllGlobals();
+  vi.restoreAllMocks();
 });
 
-function sandbox(tutorial = mobileApi, initial = tutorial.start(), deferAdds = false) {
+function sandbox(
+  tutorial: Tutorial = mobileApi,
+  initial: DiagramFile = typeof tutorial.start === "function" ? tutorial.start() : mobileApi.start(),
+  deferAdds = false,
+) {
   let diagram = initial;
   let version = { identity: {}, revision: 0 };
   let mode = initialEditorMode;
@@ -61,7 +68,13 @@ function sandbox(tutorial = mobileApi, initial = tutorial.start(), deferAdds = f
       edit({ ...diagram, edges: [...diagram.edges, { id: "edge", from, to, kind: "sync" }] }),
   };
   const hostState = {
-    canvas: { editor: editor as unknown as EditorApi, live: false, addStencil: add, focusNode: vi.fn() },
+    canvas: {
+      editor: editor as unknown as EditorApi,
+      live: false,
+      documentId: "sandbox",
+      addStencil: add,
+      focusNode: vi.fn(),
+    },
     live: {
       goLive: vi.fn(() => {
         hostState.canvas.live = true;
@@ -75,7 +88,7 @@ function sandbox(tutorial = mobileApi, initial = tutorial.start(), deferAdds = f
         sessions.add(f);
         return () => sessions.delete(f);
       },
-    },
+    } as SessionHost,
     pendingRun: null,
   };
   cleanup.push(
@@ -91,7 +104,8 @@ function sandbox(tutorial = mobileApi, initial = tutorial.start(), deferAdds = f
       },
     }),
   );
-  const host: Pick<typeof paletteHost, "get" | "subscribe"> = {
+  const host: Pick<typeof paletteHost, "get" | "subscribe"> &
+    Partial<Pick<typeof paletteHost, "runSimulation" | "cancelRun">> = {
     get: () => hostState,
     subscribe: (f) => {
       changes.add(f);
@@ -105,6 +119,8 @@ function sandbox(tutorial = mobileApi, initial = tutorial.start(), deferAdds = f
     editor,
     getDiagram,
     hostState,
+    host,
+    publish: notify,
     edit,
     mode: (patch: Partial<EditorModeState>) => {
       mode = { ...mode, ...patch };
@@ -225,7 +241,7 @@ it("demo additions bind their declared subjects even when selectors overlap", as
       },
     ],
   };
-  const s = sandbox(tutorial, tutorial.start(), true);
+  const s = sandbox(tutorial, mobileApi.start(), true);
   s.runner.send({ type: "start" });
   s.runner.send({ type: "skip", stepId: "second" });
   await vi.waitFor(() => expect(s.runner.getSnapshot().subjects.second).toBe("node-1"));
@@ -255,4 +271,158 @@ it("announces Show me's hint through the runner's status and leaves focus to the
   s.runner.send({ type: "showMe" });
   expect(s.runner.getSnapshot().announcement).toBe(mobileApi.steps[0].hint?.());
   expect(s.hostState.canvas.focusNode).not.toHaveBeenCalled();
+});
+
+it.each<{ demo: Demo; method: keyof EditorApi; args: unknown[] }>([
+  {
+    demo: { kind: "prop", subject: "api", props: { concurrency: 12 } },
+    method: "setNodeProps",
+    args: ["api", { concurrency: 12 }],
+  },
+  {
+    demo: { kind: "prop", edge: ["app", "api"], props: { timeoutMs: 50 } },
+    method: "setEdgeProps",
+    args: ["edge", { timeoutMs: 50 }],
+  },
+  {
+    demo: { kind: "relation", from: "app", to: "api", relation: "flow", edgeKind: "async" },
+    method: "updateEdge",
+    args: ["edge", { relation: "flow", kind: "async" }],
+  },
+  { demo: { kind: "group", subjects: ["app", "api"], boundary: "box" }, method: "groupNodes", args: [["app", "api"]] },
+  { demo: { kind: "annotate", annotation: "note" }, method: "addAnnotation", args: ["note"] },
+  {
+    demo: { kind: "select", subjects: ["api"] },
+    method: "select",
+    args: [{ nodeIds: ["api"], groupIds: [], edgeIds: [] }],
+  },
+])("performs $demo.kind through one editor operation", async ({ demo, method, args }) => {
+  const tutorial: Tutorial = {
+    ...mobileApi,
+    subjects: { ...mobileApi.subjects, box: { boundary: true } },
+    steps: [{ ...mobileApi.steps[0], check: { kind: "mode", value: "quickAdd" }, demo: [demo] }],
+  };
+  const s = sandbox(tutorial, named());
+  const edit = vi.fn();
+  s.hostState.canvas.editor = { ...s.hostState.canvas.editor, [method]: edit };
+  s.runner.send({ type: "start" });
+  s.runner.send({ type: "skip", stepId: tutorial.steps[0].id });
+  await Promise.resolve();
+  expect(edit).toHaveBeenCalledExactlyOnceWith(...args);
+});
+
+it("runs a simulation through the palette queue and cancels pending work on exit", async () => {
+  const tutorial: Tutorial = {
+    ...mobileApi,
+    steps: [
+      {
+        ...mobileApi.steps[0],
+        check: { kind: "simulation", id: "demo" },
+        demo: [{ kind: "runSimulation", id: "demo" }],
+      },
+    ],
+  };
+  const s = sandbox(tutorial, named());
+  const runSimulation = vi.fn(() => true),
+    cancelRun = vi.fn();
+  const runner = createTutorialRunner(tutorial, {
+    close: vi.fn(),
+    host: { get: () => s.hostState, subscribe: () => () => {}, runSimulation, cancelRun },
+  });
+  cleanup.push(runner.connect());
+  runner.send({ type: "start" });
+  runner.send({ type: "skip", stepId: tutorial.steps[0].id });
+  await Promise.resolve();
+  expect(runSimulation).toHaveBeenCalledExactlyOnceWith("demo");
+  runner.send({ type: "exit" });
+  expect(cancelRun).toHaveBeenCalledOnce();
+});
+
+it.each([
+  [{ kind: "fault", subject: "api", fault: "down" }, "sim.kill", "node"],
+  [{ kind: "fault", subject: "api", fault: "slow" }, "sim.slow:5", "node"],
+  [{ kind: "fault", subject: "api", fault: "fail" }, "sim.failure:0.5", "node"],
+  [{ kind: "fault", edge: ["app", "api"], fault: "cut" }, "sim.cut-link", "edge"],
+] as const)("uses the same registry fault action as the palette: %s", async (demo, id, target) => {
+  const tutorial: Tutorial = {
+    ...mobileApi,
+    steps: [{ ...mobileApi.steps[0], check: { kind: "fault", subject: "api" }, demo: [demo] }],
+  };
+  const s = sandbox(tutorial, named());
+  s.hostState.canvas.live = true;
+  s.hostState.canvas.editor.getSelection = () => ({ nodeIds: [], edgeIds: [], groupIds: [] });
+  const run = vi.fn();
+  const build = vi
+    .spyOn(actionRegistry, "build")
+    .mockReturnValue([
+      { type: "item", id: "sim.fault", label: "Fault", children: [{ type: "item", id, label: "Apply", run }] },
+    ]);
+  s.runner.send({ type: "start" });
+  s.runner.send({ type: "skip", stepId: tutorial.steps[0].id });
+  await Promise.resolve();
+  expect(run).toHaveBeenCalledOnce();
+  expect(build).toHaveBeenCalledWith(expect.objectContaining({ target, mode: "live", surface: "palette" }));
+});
+
+it("rechecks mode checks when the editor mode changes, without a diagram edit", () => {
+  const tutorial: Tutorial = {
+    ...mobileApi,
+    steps: [{ ...mobileApi.steps[0], check: { kind: "mode", value: "menu" }, sticky: true, demo: [] }],
+  };
+  const s = sandbox(tutorial);
+  s.runner.send({ type: "start" });
+  s.mode({ value: "menu" });
+  expect(s.runner.getSnapshot().state.value).toBe("finished");
+});
+
+it("starts an example's simulation once its own sandbox publishes, and restores the loaded start on Restart", () => {
+  const s = sandbox();
+  s.hostState.canvas.documentId = "other";
+  const runSimulation = vi.fn(() => true);
+  s.host.runSimulation = runSimulation;
+  const initial = named();
+  const runner = createTutorialRunner(
+    { ...mobileApi, start: { example: "retry-storm", simulation: "demo" } },
+    { close: vi.fn(), host: s.host, initial, documentId: "sandbox" },
+  );
+  cleanup.push(runner.connect());
+  expect(runSimulation).not.toHaveBeenCalled();
+  s.hostState.canvas.documentId = "sandbox";
+  s.publish();
+  s.publish();
+  expect(runSimulation).toHaveBeenCalledExactlyOnceWith("demo");
+  runner.send({ type: "start" });
+  s.editor.updateNode("api", { label: "Changed" });
+  runner.send({ type: "restart" });
+  expect(s.editor.getDiagram()).toEqual(initial);
+  expect(runSimulation).toHaveBeenCalledTimes(2);
+});
+
+it("subscribes to slow motion's published state and cleans up that subscription", () => {
+  const tutorial: Tutorial = {
+    ...mobileApi,
+    steps: [{ ...mobileApi.steps[0], check: { kind: "slowmo" }, sticky: true, demo: [] }],
+  };
+  const s = sandbox(tutorial);
+  const listeners = new Set<() => void>();
+  let status: "off" | "on" = "off";
+  const slowmo = {
+    getState: () => ({ status }),
+    subscribe: (fn: () => void) => {
+      listeners.add(fn);
+      return () => {
+        listeners.delete(fn);
+      };
+    },
+  } as SessionHost["slowmo"];
+  s.hostState.session = { ...s.hostState.session, slowmo };
+  s.hostState.canvas.live = true;
+  s.publish();
+  s.runner.send({ type: "start" });
+  status = "on";
+  listeners.forEach((fn) => fn());
+  expect(s.runner.getSnapshot().state.value).toBe("finished");
+  cleanup.reverse().forEach((fn) => fn());
+  cleanup.length = 0;
+  expect(listeners.size).toBe(0);
 });

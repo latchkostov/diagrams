@@ -59,6 +59,7 @@ import { unseen } from "./ai/ui/unseen";
 import { AI_PANEL } from "./lib/deployment";
 import { t, useLocale } from "./i18n";
 import { tutorialRoute } from "./tutorials/route";
+import { tutorialMetadata } from "./tutorials/metadata";
 import "./styles/interop.css";
 
 // Views are code-split: the gallery and canvas each pull in their own weight (React Flow lives
@@ -569,6 +570,13 @@ function MainApp() {
     [locale],
   );
   const start: StartOptions = {
+    tutorial: TutorialSurface ? (
+      <p className="start-note">
+        <button className="link-btn" data-testid="start-tutorial" onClick={() => tutorialRoute.open("mobile-api")}>
+          {t("tutorials.startCard")}
+        </button>
+      </p>
+    ) : undefined,
     recent: library.entries
       .filter((e) => e.slug !== slug)
       .map((e) => ({
@@ -733,6 +741,8 @@ function MainApp() {
         onOpenDiagram={(example) => setUrl({ view: "canvas", example, present: false })}
         onPresent={url.view === "canvas" && !url.present ? () => setUrl({ present: true }) : undefined}
         onTutorials={TutorialsView ? () => goTo("tutorials") : undefined}
+        tutorials={TutorialSurface ? tutorialMetadata.map((x) => ({ id: x.id, title: x.title() })) : undefined}
+        onOpenTutorial={TutorialSurface ? tutorialRoute.open : undefined}
       />
     </div>
   );

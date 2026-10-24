@@ -2,6 +2,7 @@ import type { Page } from "@playwright/test";
 import { test, expect, expectNoErrors, gotoCanvas, pageLoadTimeout, fitDiagram } from "./fixtures";
 import { tutorialIds } from "../../src/tutorials/catalog/ids";
 import type { ResolvedUiStep } from "../../src/tutorials/solution";
+import { expectNoViolations } from "./a11y-helpers";
 
 // Tutorials (src/tutorials): one generated test per tutorial plays its solution path through the real UI, step by
 // step, and waits on the runner's state (the strip's data-step) to move on. Then the entry point, Skip ("do it for
@@ -24,6 +25,29 @@ async function play(page: Page, step: ResolvedUiStep) {
 
 const strip = (page: Page) => page.getByTestId("tutorial-step");
 
+async function finishSolution(page: Page, highlightsOff = false) {
+  const seen: string[] = [];
+  while ((await strip(page).getAttribute("data-phase")) === "step") {
+    const current = (await strip(page).getAttribute("data-step")) ?? "";
+    expect(seen, `step ${current} came back`).not.toContain(current);
+    seen.push(current);
+    if (highlightsOff) await expect(page.getByTestId("tutorial-coach")).toHaveCount(0);
+    const steps = await page.evaluate(() => window.__tutorial?.solution() ?? []);
+    for (const step of steps) await play(page, step);
+    await expect(strip(page)).not.toHaveAttribute("data-step", current, { timeout: 20_000 });
+  }
+  await expect(strip(page)).toHaveAttribute("data-phase", "finished");
+}
+
+async function skipAll(page: Page) {
+  while ((await strip(page).getAttribute("data-phase")) === "step") {
+    const current = (await strip(page).getAttribute("data-step")) ?? "";
+    await page.getByTestId("tutorial-skip").click();
+    await expect(strip(page)).not.toHaveAttribute("data-step", current);
+  }
+  await expect(strip(page)).toHaveAttribute("data-phase", "finished");
+}
+
 /** Nothing a tutorial does is stored as a diagram: no library entry, no autosave for its sandbox. */
 async function expectNothingSaved(page: Page) {
   const keys = await page.evaluate(() => Object.keys(localStorage));
@@ -36,27 +60,200 @@ async function expectNothingSaved(page: Page) {
   if (library) expect(JSON.parse(library).entries).toEqual([]);
 }
 
+async function savedEntries(page: Page): Promise<{ slug: string; title: string }[]> {
+  return page.evaluate(() =>
+    Object.keys(localStorage)
+      .filter((k) => k.startsWith("diagrams.library-entry.v1:"))
+      .map((k) => JSON.parse(localStorage.getItem(k) ?? "{}")),
+  );
+}
+
 for (const id of tutorialIds)
   test(`${id}: its solution plays through the real UI`, async ({ page, consoleErrors }) => {
     test.slow(); // Live has to carry real traffic for the last step.
     await openTutorial(page, id);
     await page.getByTestId("tutorial-start").click();
     await expect(strip(page)).toHaveAttribute("data-phase", "step");
-    const seen: string[] = [];
-    while ((await strip(page).getAttribute("data-phase")) === "step") {
-      const current = (await strip(page).getAttribute("data-step")) ?? "";
-      expect(seen, `step ${current} came back`).not.toContain(current);
-      seen.push(current);
-      const steps = await page.evaluate(() => window.__tutorial?.solution() ?? []);
-      for (const step of steps) await play(page, step);
-      // A moment (traffic seen) waits on the simulation itself.
-      await expect(strip(page)).not.toHaveAttribute("data-step", current, { timeout: 20_000 });
-    }
-    await expect(strip(page)).toHaveAttribute("data-phase", "finished");
+    await finishSolution(page);
     await expect(page.getByTestId("tutorial-progress")).toBeVisible();
     await expectNothingSaved(page);
     expectNoErrors(consoleErrors);
   });
+
+for (const id of tutorialIds)
+  test(`${id}: Skip-all finishes without saving a diagram`, async ({ page, consoleErrors }) => {
+    await openTutorial(page, id);
+    await page.getByTestId("tutorial-start").click();
+    await skipAll(page);
+    await expectNothingSaved(page);
+    expectNoErrors(consoleErrors);
+  });
+
+test("Tutorials view and running tutorial pass the shared axe scan", async ({ page }) => {
+  await page.goto("./?view=tutorials");
+  await expect(page.getByTestId("tutorials-view")).toBeVisible({ timeout: pageLoadTimeout() });
+  await expectNoViolations(page);
+  await openTutorial(page, "mobile-api");
+  await page.getByTestId("tutorial-start").click();
+  await expect(strip(page)).toHaveAttribute("data-phase", "step");
+  await expectNoViolations(page);
+});
+
+test("mobile-api plays with Highlights off throughout", async ({ page }) => {
+  test.slow();
+  await openTutorial(page, "mobile-api");
+  await page.getByTestId("tutorial-start").click();
+  await page.getByTestId("tutorial-highlights").uncheck();
+  await finishSolution(page, true);
+  await expect(page.getByTestId("tutorial-coach")).toHaveCount(0);
+  await expectNothingSaved(page);
+});
+
+test("mobile-api plays in Arabic, with tips on the inline-end side", async ({ page }) => {
+  test.slow();
+  await gotoCanvas(page, "retry-storm");
+  await page.getByTestId("view-button").click();
+  await page.getByTestId("view-language").click();
+  await page.getByTestId("language-option-ar").click();
+  await expect.poll(() => page.evaluate(() => document.documentElement.dir)).toBe("rtl");
+  await openTutorial(page, "mobile-api");
+  await page.getByTestId("tutorial-start").click();
+  await page.getByTestId("tutorial-skip").click();
+  await expect(strip(page)).toHaveAttribute("data-step", "add-api");
+  // The canvas stays LTR. A target in its middle has room on the Arabic inline-end (left).
+  await page.getByTestId("node-mobile-1").click();
+  await expect(page.getByTestId("tutorial-coach")).toHaveAttribute("data-target", "grow-chip-mobile-1");
+  await expect
+    .poll(async () => {
+      const tip = await page.getByTestId("tutorial-tip").boundingBox();
+      const target = await page.getByTestId("grow-chip-mobile-1").boundingBox();
+      return !!tip && !!target && tip.x + tip.width < target.x;
+    })
+    .toBe(true);
+  await finishSolution(page);
+  await expectNothingSaved(page);
+});
+
+test("finish offers a copy only on request, with Open returning to the saved diagram", async ({ page }) => {
+  await openTutorial(page, "mobile-api");
+  await page.getByTestId("tutorial-start").click();
+  await skipAll(page);
+  await expectNothingSaved(page);
+  await page.getByTestId("tutorial-save-copy").click();
+  await expect(page.getByTestId("tutorial-open-copy")).toBeVisible();
+  const entries = await savedEntries(page);
+  expect(entries).toHaveLength(1);
+  await page.getByTestId("tutorial-open-copy").click();
+  await expect(page.getByTestId("example-picker")).toHaveAttribute("data-diagram-slug", entries[0].slug);
+  await expect(page.getByTestId("node-service-1")).toContainText("Orders API");
+});
+
+test("empty canvas, tutorial title in Ctrl+K and shortcuts footer enter tutorials", async ({ page }) => {
+  await page.goto("./?view=canvas");
+  await expect(page.getByTestId("start-tutorial")).toBeVisible({ timeout: pageLoadTimeout() });
+  await page.getByTestId("start-tutorial").click();
+  await expect(page.getByTestId("tutorial-start")).toBeVisible();
+  await page.getByTestId("tutorial-not-now").click();
+  await expect(page.getByTestId("start-tutorial")).toBeVisible();
+  await page.keyboard.press("ControlOrMeta+k");
+  await page.getByTestId("command-input").fill("Tutorial: A mobile app");
+  await page.getByTestId("command-item-tutorial:mobile-api").click();
+  await expect(page.getByTestId("tutorial-start")).toBeVisible();
+  await page.getByTestId("tutorial-not-now").click();
+  await page.getByTestId("start-blank").click();
+  await expect(page.getByTestId("start-card")).toHaveCount(0);
+  await expect(page.getByTestId("palette-search")).toBeFocused();
+  await page.getByTestId("canvas-wrap").focus();
+  await page.keyboard.press("?");
+  await page.getByTestId("shortcuts-tutorials").click();
+  await expect(page.getByTestId("tutorials-view")).toBeVisible();
+});
+
+test("Lab runtime preview loads an example and its simulation, keeps app chrome and offers the next lesson", async ({
+  page,
+}, testInfo) => {
+  await openTutorial(page, "lab-tutorial-runtime");
+  await expect(page.getByTestId("topbar")).toBeVisible();
+  await expect(page.getByTestId("example-picker")).toContainText("Practice with a saved simulation");
+  await expect(page.getByTestId("node-payments")).toBeVisible();
+  await page.getByTestId("tutorial-start").click();
+  await expect(strip(page)).toHaveAttribute("data-phase", "finished");
+  await expectNothingSaved(page);
+  await page.screenshot({ path: testInfo.outputPath("tutorial-app-chrome.png") });
+  await page.getByTestId("tutorial-restart").click();
+  await expect(strip(page)).toHaveAttribute("data-phase", "finished");
+  await expectNothingSaved(page);
+  await page.getByTestId("tutorial-next").click();
+  await expect(page.getByTestId("tutorial-title")).toHaveText("Try the next practice diagram");
+  await page.getByTestId("tutorial-start").click();
+  await skipAll(page);
+  await expect(page.getByTestId("tutorial-next")).toHaveCount(0);
+  await page.getByTestId("tutorial-done-exit").click();
+  await expect(page.getByTestId("canvas-view")).toBeVisible();
+  await expect(page.getByTestId("tutorial-app")).toHaveCount(0);
+});
+
+test("File Save as in app chrome explicitly saves the sandbox copy", async ({ page }) => {
+  await openTutorial(page, "lab-tutorial-runtime");
+  await page.getByTestId("tutorial-start").click();
+  await expect(strip(page)).toHaveAttribute("data-phase", "finished");
+  await expectNothingSaved(page);
+  await page.getByTestId("file-button").click();
+  await page.getByTestId("export-save-as").click();
+  await expect(page.getByTestId("tutorial-open-copy")).toBeVisible();
+  const entries = await savedEntries(page);
+  expect(entries).toHaveLength(1);
+  expect(entries[0].title).toBe("Practice with a saved simulation");
+  await expect(page.getByTestId("tutorial-app")).toBeVisible();
+});
+
+test("app chrome Present hides teaching chrome and returns to the same tutorial", async ({ page }) => {
+  await openTutorial(page, "lab-tutorial-runtime");
+  await page.getByTestId("tutorial-start").click();
+  await expect(strip(page)).toHaveAttribute("data-phase", "finished");
+  await page.getByTestId("present-toggle").click();
+  await expect(page.getByTestId("tutorial-bar")).toHaveCount(0);
+  await expect(page.getByTestId("tutorial-step")).toHaveCount(0);
+  await expect(page.getByTestId("tutorial-coach")).toHaveCount(0);
+  await page.getByTestId("present-exit").click();
+  await expect(strip(page)).toHaveAttribute("data-phase", "finished");
+  await expect(page.getByTestId("topbar")).toBeVisible();
+  await expectNothingSaved(page);
+});
+
+test("app chrome save shortcuts and File Your diagrams share the sandbox's copy behavior", async ({ page }) => {
+  await openTutorial(page, "lab-tutorial-runtime");
+  await page.getByTestId("tutorial-start").click();
+  await page.keyboard.press("ControlOrMeta+Shift+s");
+  await expect(page.getByTestId("tutorial-open-copy")).toBeVisible();
+  await page.getByTestId("file-button").click();
+  await page.getByTestId("file-library").click();
+  await expect(page.getByTestId("library-dialog")).toBeVisible();
+  await expect(page.getByTestId("library-dialog")).toContainText("Practice with a saved simulation");
+});
+
+test("example start waits for loading and recovers from a failed download", async ({ page }) => {
+  let release = () => {};
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  let attempts = 0;
+  await page.route(/\/assets\/retry-storm-[^/]+\.js$/, async (route) => {
+    attempts++;
+    if (attempts === 1) {
+      await held;
+      await route.abort();
+    } else await route.continue();
+  });
+  await page.goto("./?tutorial=lab-tutorial-runtime");
+  await expect(page.getByTestId("view-loading")).toBeVisible({ timeout: pageLoadTimeout() });
+  await expect(page.getByTestId("tutorial-start")).toHaveCount(0);
+  release();
+  await expect(page.getByTestId("tutorial-load-retry")).toBeVisible();
+  await page.getByTestId("tutorial-load-retry").click();
+  await expect(page.getByTestId("tutorial-start")).toBeVisible({ timeout: pageLoadTimeout() });
+  await expect(page.getByTestId("node-payments")).toBeVisible();
+});
 
 test("Tutorials is a view of its own: a card starts the tutorial, Enter starts it, Exit comes back", async ({
   page,

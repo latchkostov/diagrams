@@ -10,6 +10,21 @@
 // stays.
 
 const en = {
+  "tutorials.loadFailed": "Couldn’t load the practice diagram. Try again.",
+  "tutorials.runtime.title": "Practice with a saved simulation",
+  "tutorials.runtime.summary": "Try a saved simulation on a practice copy of an example.",
+  "tutorials.runtime.runningTitle": "Go live",
+  "tutorials.runtime.runningGoal": "Watch the saved simulation start in Live.",
+  "tutorials.runtime.finish": "The example stays unchanged while you practice.",
+  "tutorials.runtime.nextTitle": "Try the next practice diagram",
+  "tutorials.startCard": "New here? Take the 3-minute tutorial",
+  "tutorials.shortcuts": "Learn with tutorials",
+  "tutorials.command": "Tutorial: {title}",
+  "tutorials.next": "Next tutorial",
+  "tutorials.saveCopy": "Save a copy to Your diagrams",
+  "tutorials.saved": "Saved a copy to Your diagrams",
+  "tutorials.openCopy": "Open",
+  "tutorials.saveFailed": "Couldn’t save a copy. Free some browser storage and try again.",
   "route.shapedLinesReset":
     "{count, plural, one {# shaped line went back to automatic} other {# shaped lines went back to automatic}}",
   "workspaceInspector.replicaSummary": "{replicas, plural, one {# replica} other {# replicas}} × {slots} slots",

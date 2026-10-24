@@ -50,7 +50,9 @@ export interface SourceInput {
   /** View ▸ Language…, so Ctrl+K finds it too (absent in a copy built for one language). */
   language?(): void;
   /** The Tutorials view, where there is one. */
-  tutorials?(): void;
+  openTutorials?(): void;
+  tutorials?: readonly { id: string; title: string }[];
+  startTutorial?(id: string): void;
 }
 
 const EMPTY: Selection = { nodeIds: [], edgeIds: [], groupIds: [] };
@@ -266,15 +268,25 @@ export function collectCommands(input: SourceInput): Command[] {
       keywords: `${t("collab.paletteKeywords")} collaborate room edit together share`,
       run: input.editTogether,
     });
-  if (input.tutorials)
+  if (input.openTutorials)
     out.push({
       id: "view:tutorials",
       group: "actions",
       label: t("tutorials.section"),
       icon: "checklist",
       keywords: `${t("tutorials.paletteKeywords")} tutorial learn help guide lesson`,
-      run: input.tutorials,
+      run: input.openTutorials,
     });
+  if (input.startTutorial)
+    for (const tutorial of input.tutorials ?? [])
+      out.push({
+        id: `tutorial:${tutorial.id}`,
+        group: "actions",
+        icon: "checklist",
+        label: t("tutorials.command", { title: tutorial.title }),
+        keywords: "tutorial learn help guide lesson",
+        run: () => input.startTutorial?.(tutorial.id),
+      });
   if (input.language)
     out.push({
       id: "view:language",

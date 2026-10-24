@@ -166,6 +166,7 @@ export function useLiveSessionBridge({
     liveMutationGuard(() => slow.session.active).hint(),
     controller.getState,
     controller.subscribe,
+    slow.session,
   );
 }
 

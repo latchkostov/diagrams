@@ -47,6 +47,8 @@ export interface LiveHost {
 }
 
 export interface SessionHost {
+  /** Published slow-motion machine state; observers never infer it from DOM or extra flags. */
+  slowmo?: Pick<import("../live/slowmo/session").SlowMotion, "getState" | "subscribe">;
   /** Replays a saved simulation in the running session. */
   run(simulationId: string): void;
   disabledHint?: string;
@@ -139,10 +141,11 @@ export function useLiveSessionHost(
   disabledHint?: string,
   getState?: () => LiveState,
   subscribe?: (listener: () => void) => () => void,
+  slowmo?: SessionHost["slowmo"],
 ) {
   useEffect(() => {
     if (!enabled) return;
-    const off = publish("session", { run, disabledHint, ...(getState ? { state: getState, subscribe } : {}) });
+    const off = publish("session", { run, disabledHint, slowmo, ...(getState ? { state: getState, subscribe } : {}) });
     return off;
-  }, [run, enabled, disabledHint, getState, subscribe]);
+  }, [run, enabled, disabledHint, getState, subscribe, slowmo]);
 }

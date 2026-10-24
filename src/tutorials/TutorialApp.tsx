@@ -1,13 +1,33 @@
-import { Suspense, useEffect, useState, useSyncExternalStore } from "react";
+import { Suspense, use, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { LazyCanvasView as CanvasView } from "../canvas/loadCanvasView";
-import { TUTORIAL_SLUG } from "../lib/diagramIO";
+import {
+  createLibraryDiagram,
+  deleteLibraryDiagram,
+  duplicateLibraryDiagram,
+  renameLibraryDiagram,
+  newDraft,
+  getDiagramIdentity,
+  TUTORIAL_SLUG,
+} from "../lib/diagramIO";
 import { showDiagram } from "../lib/urlState";
 import { Icon } from "../components/Icon";
 import { Dialog } from "../interop/ui/Dialog";
+import { loadingDialog } from "../interop/ui/lazyDialogs";
 import { CommandPalette } from "../palette/CommandPalette";
 import { t, useLocale } from "../i18n";
 import { tRich } from "../i18n/rich";
-import { findTutorial, trackLabel } from "./catalog";
+import { trackLabel, tutorials } from "./catalog";
+import { lazyComponent, loadOnce } from "../lib/lazyLoad";
+import { nextTutorial } from "./progress";
+import { createTutorialStart } from "./start";
+import { TopBar } from "../components/TopBar";
+import { useInterop, useInteropCanvasActions } from "../interop/useInterop";
+import type { CanvasHandle } from "../canvas/CanvasView";
+import type { DiagramFile } from "../model/types";
+import { paletteHost } from "../palette/host";
+import { toast } from "../interop/ui/toast";
+import { useLibrary } from "../lib/useLibrary";
+import { tutorialMetadata } from "./metadata";
 import { Coachmark } from "./Coachmark";
 import { inStep, type RunnerEvent } from "./machine";
 import { createTutorialRunner, type RunnerSnapshot } from "./runner";
@@ -35,17 +55,133 @@ const NO_DIAGRAMS: never[] = [];
  */
 export function TutorialApp({ id }: { id: string }) {
   useLocale();
-  const tutorial = findTutorial(id);
+  const catalog =
+    (import.meta.env.DEV || import.meta.env.VITE_E2E === "1") && id.startsWith("lab-tutorial-")
+      ? use(loadRuntimeFixtures())
+      : tutorials;
+  const tutorial = catalog.find((x) => x.id === id);
   if (!tutorial) return <Unknown id={id} />;
-  return <Running key={tutorial.id} tutorial={tutorial} />;
+  return (
+    <Suspense
+      fallback={
+        <div className="view-loading" data-testid="view-loading" role="status">
+          {t("tutorials.loading")}
+        </div>
+      }
+    >
+      <Prepared key={tutorial.id} tutorial={tutorial} catalog={catalog} />
+    </Suspense>
+  );
 }
 
-function Running({ tutorial }: { tutorial: Tutorial }) {
+const LibraryDialog = lazyComponent(
+  () => import("../components/LibraryDialog").then((m) => m.LibraryDialog),
+  loadingDialog(() => t("topbar.yourDiagrams")),
+);
+const loadRuntimeFixtures = loadOnce(() =>
+  import("../lab/tutorialRuntimeFixture").then((m) => m.tutorialRuntimeFixtures),
+);
+function Prepared({ tutorial, catalog }: { tutorial: Tutorial; catalog: readonly Tutorial[] }) {
+  const [loader] = useState(() => createTutorialStart(tutorial));
+  const state = useSyncExternalStore(loader.subscribe, loader.getSnapshot);
+  useEffect(() => loader.connect(), [loader]);
+  if (state.value === "ready" && state.diagram)
+    return <Running tutorial={tutorial} initial={state.diagram} catalog={catalog} />;
+  return (
+    <div className="view-loading tutorial-loading" data-testid="view-loading" role="status">
+      <p>{state.value === "failed" ? t("tutorials.loadFailed") : t("tutorials.loading")}</p>
+      {state.value === "failed" && (
+        <button className="btn btn-primary" data-testid="tutorial-load-retry" onClick={loader.retry}>
+          {t("common.retry")}
+        </button>
+      )}
+      <button className="btn" data-testid="tutorial-exit" onClick={tutorialRoute.close}>
+        {t("tutorials.exit")}
+      </button>
+    </div>
+  );
+}
+
+function Running({
+  tutorial,
+  initial,
+  catalog,
+}: {
+  tutorial: Tutorial;
+  initial: DiagramFile;
+  catalog: readonly Tutorial[];
+}) {
   const [runner] = useState(() => {
     startFresh();
-    return createTutorialRunner(tutorial, { close: () => tutorialRoute.close() });
+    return createTutorialRunner(tutorial, {
+      close: () => tutorialRoute.close(),
+      initial,
+      documentId: getDiagramIdentity(TUTORIAL_SLUG),
+    });
   });
-  const [start] = useState(tutorial.start);
+  const [start] = useState(() => structuredClone(initial));
+  const [presenting, setPresenting] = useState(false);
+  const canvas = useRef<CanvasHandle | null>(null);
+  const library = useLibrary();
+  const [libraryOpen, setLibraryOpen] = useState(false);
+  const [libraryError, setLibraryError] = useState<string | null>(null);
+  const newDiagram = () => {
+    newDraft();
+    window.location.assign("?view=canvas");
+  };
+  const libraryAction = (action: string, operation: () => void) => {
+    setLibraryError(null);
+    try {
+      operation();
+    } catch (error) {
+      const message = t("library.failed", {
+        action,
+        error: error instanceof Error ? error.message : t("library.storageFull"),
+      });
+      setLibraryError(message);
+      toast.error(message);
+    }
+  };
+  const openCopy = (slug: string) => {
+    window.location.assign(`?view=canvas&example=${encodeURIComponent(slug)}`);
+  };
+  const saveCopy = () => {
+    const diagram = paletteHost.get().canvas?.editor.getDiagram();
+    if (!diagram) return;
+    try {
+      const slug = createLibraryDiagram(diagram);
+      toast.success(t("tutorials.saved"), {
+        action: { label: t("tutorials.openCopy"), run: () => openCopy(slug), testId: "tutorial-open-copy" },
+      });
+    } catch {
+      toast.error(t("tutorials.saveFailed"));
+    }
+  };
+  const interop = useInterop({
+    view: "canvas",
+    slug: TUTORIAL_SLUG,
+    canvas,
+    openDiagram: (diagram) => {
+      const slug = createLibraryDiagram(diagram);
+      openCopy(slug);
+      return slug;
+    },
+    openShared: (diagram) => paletteHost.get().canvas?.editor.applyDiagram(diagram),
+    isPublicExample: () => false,
+  });
+  // File Save / Save as explicitly keeps a library copy. No tutorial edit auto-saves.
+  const files = { ...interop, tutorial: true as const, save: async () => saveCopy(), saveAs: async () => saveCopy() };
+  useEffect(() => {
+    const save = (event: KeyboardEvent) => {
+      if (!(event.ctrlKey || event.metaKey) || event.altKey || event.key.toLowerCase() !== "s") return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      void files.save();
+    };
+    window.addEventListener("keydown", save, true);
+    return () => window.removeEventListener("keydown", save, true);
+  });
+  const canvasRef = useInteropCanvasActions(canvas, files);
   useEffect(() => runner.connect(), [runner]);
   useEffect(() => {
     if (!(import.meta.env.DEV || import.meta.env.VITE_E2E === "1")) return;
@@ -63,44 +199,114 @@ function Running({ tutorial }: { tutorial: Tutorial }) {
   const spot = !!step && state.value !== "completing" && (state.highlights || state.value === "hinting");
 
   return (
-    <div className="app tutorial-app" data-testid="tutorial-app" data-tutorial={tutorial.id}>
-      <header className="topbar tutorial-bar" data-testid="tutorial-bar">
-        <span className="tutorial-chip">{t("tutorials.tutorial")}</span>
-        <span className="tutorial-name" data-testid="tutorial-title">
-          {tutorial.title()}
-        </span>
-        <Progress tutorial={tutorial} snap={snap} />
-        <div className="topbar-spacer" />
-        <label className="tutorial-switch" title={t("tutorials.highlightsTitle")}>
-          <input
-            type="checkbox"
-            checked={state.highlights}
-            onChange={(e) => runner.send({ type: "highlights", on: e.target.checked })}
-            data-testid="tutorial-highlights"
-          />
-          {t("tutorials.highlights")}
-        </label>
-        {state.value !== "intro" && (
-          <button className="btn" onClick={() => runner.send({ type: "restart" })} data-testid="tutorial-restart">
-            <Icon name="reset" size={14} /> {t("tutorials.restart")}
+    <div
+      className={`app tutorial-app${tutorial.chrome === "app" && !presenting ? " tutorial-app-chrome" : ""}${presenting ? " is-presenting" : ""}`}
+      data-testid="tutorial-app"
+      data-tutorial={tutorial.id}
+    >
+      {tutorial.chrome === "app" && !presenting && (
+        <TopBar
+          view="canvas"
+          onView={(view) => window.location.assign(`?view=${view}`)}
+          exampleOptions={[{ slug: TUTORIAL_SLUG, title: tutorial.title(), group: "yours" }]}
+          example={TUTORIAL_SLUG}
+          onExample={noop}
+          onBrowseExamples={() => window.location.assign("?view=canvas")}
+          interop={files}
+          onPresent={() => setPresenting(true)}
+          onNewDiagram={newDiagram}
+          onLibrary={() => setLibraryOpen(true)}
+          libraryCount={library.entries.length}
+        />
+      )}
+      {!presenting && (
+        <header className="topbar tutorial-bar" data-testid="tutorial-bar">
+          <span className="tutorial-chip">{t("tutorials.tutorial")}</span>
+          <span className="tutorial-name" data-testid="tutorial-title">
+            {tutorial.title()}
+          </span>
+          <Progress tutorial={tutorial} snap={snap} />
+          <div className="topbar-spacer" />
+          <label className="tutorial-switch" title={t("tutorials.highlightsTitle")}>
+            <input
+              type="checkbox"
+              checked={state.highlights}
+              onChange={(e) => runner.send({ type: "highlights", on: e.target.checked })}
+              data-testid="tutorial-highlights"
+            />
+            {t("tutorials.highlights")}
+          </label>
+          {state.value !== "intro" && (
+            <button className="btn" onClick={() => runner.send({ type: "restart" })} data-testid="tutorial-restart">
+              <Icon name="reset" size={14} /> {t("tutorials.restart")}
+            </button>
+          )}
+          <button className="btn" onClick={() => runner.send({ type: "exit" })} data-testid="tutorial-exit">
+            <Icon name="close" size={14} /> {t("tutorials.exit")}
           </button>
-        )}
-        <button className="btn" onClick={() => runner.send({ type: "exit" })} data-testid="tutorial-exit">
-          <Icon name="close" size={14} /> {t("tutorials.exit")}
-        </button>
-      </header>
-      <Strip tutorial={tutorial} snap={snap} send={runner.send} />
+        </header>
+      )}
+      {!presenting && (
+        <Strip tutorial={tutorial} snap={snap} send={runner.send} saveCopy={saveCopy} catalog={catalog} />
+      )}
       <div className="app-body">
         <div className="app-main">
           <Suspense fallback={<div className="view-loading" data-testid="view-loading" />}>
-            <CanvasView slug={TUTORIAL_SLUG} initial={start} presenting={false} onExitPresent={noop} />
+            <CanvasView
+              ref={canvasRef}
+              slug={TUTORIAL_SLUG}
+              initial={start}
+              presenting={presenting}
+              onExitPresent={() => setPresenting(false)}
+            />
           </Suspense>
         </div>
       </div>
       {state.value === "intro" && <Intro tutorial={tutorial} snap={snap} send={runner.send} />}
-      {spot && <Coachmark targets={step.targets} subjects={snap.subjects} selected={snap.selected} />}
+      {spot && !presenting && <Coachmark targets={step.targets} subjects={snap.subjects} selected={snap.selected} />}
       {/* Ctrl+K works here as on any canvas: actions, nodes, stencils. There are no other diagrams to open. */}
-      <CommandPalette view="canvas" diagrams={NO_DIAGRAMS} currentSlug={TUTORIAL_SLUG} onOpenDiagram={noop} />
+      <CommandPalette
+        view="canvas"
+        diagrams={NO_DIAGRAMS}
+        currentSlug={TUTORIAL_SLUG}
+        onOpenDiagram={noop}
+        onPresent={tutorial.chrome === "app" && !presenting ? () => setPresenting(true) : undefined}
+        tutorials={tutorialMetadata.map((x) => ({ id: x.id, title: x.title() }))}
+        onOpenTutorial={tutorialRoute.open}
+      />
+      {interop.layer}
+      {libraryOpen && (
+        <LibraryDialog
+          entries={library.entries}
+          current={TUTORIAL_SLUG}
+          error={libraryError}
+          onClose={() => setLibraryOpen(false)}
+          onOpen={openCopy}
+          onNew={newDiagram}
+          onRename={(slug, title) => libraryAction("rename", () => renameLibraryDiagram(slug, title))}
+          onDuplicate={(slug) => {
+            libraryAction("duplicate", () => {
+              duplicateLibraryDiagram(slug);
+            });
+          }}
+          onDelete={(slug) => {
+            libraryAction("delete", () => {
+              const undo = deleteLibraryDiagram(slug);
+              toast.info(t("library.deleted", { title: library.entries.find((e) => e.slug === slug)?.title ?? "" }), {
+                action: {
+                  label: t("shortcuts.undo"),
+                  run: () => {
+                    libraryAction("restore", () => {
+                      if (!undo()) throw new Error(t("library.restoreFull"));
+                    });
+                  },
+                  testId: "tutorial-undo-delete",
+                },
+              });
+            });
+          }}
+        />
+      )}
       <div className="sr-only" role="status" aria-live="polite" data-testid="tutorial-announce">
         {snap.announcement}
       </div>
@@ -193,11 +399,24 @@ function Progress({ tutorial, snap }: { tutorial: Tutorial; snap: RunnerSnapshot
  * The step strip: the instruction first, in bold; under it, smaller, the hint once asked for, or what was just done.
  * Three lines high whatever it says, so the canvas never jumps.
  */
-function Strip({ tutorial, snap, send }: { tutorial: Tutorial; snap: RunnerSnapshot; send: (e: RunnerEvent) => void }) {
+function Strip({
+  tutorial,
+  snap,
+  send,
+  saveCopy,
+  catalog,
+}: {
+  tutorial: Tutorial;
+  snap: RunnerSnapshot;
+  send: (e: RunnerEvent) => void;
+  saveCopy(): void;
+  catalog: readonly Tutorial[];
+}) {
   const { state } = snap;
   const phase = state.value;
   const step = inStep(state) ? tutorial.steps[state.index] : undefined;
   const last = state.last !== null ? tutorial.steps[state.last] : undefined;
+  const next = phase === "finished" ? nextTutorial(tutorial, catalog) : undefined;
   return (
     <section
       className="tutorial-strip"
@@ -276,6 +495,18 @@ function Strip({ tutorial, snap, send }: { tutorial: Tutorial; snap: RunnerSnaps
             </p>
           </div>
           <div className="tutorial-actions">
+            {next && (
+              <button
+                className="btn btn-primary"
+                data-testid="tutorial-next"
+                onClick={() => tutorialRoute.open(next.id, true)}
+              >
+                {t("tutorials.next")}
+              </button>
+            )}
+            <button className="btn" data-testid="tutorial-save-copy" onClick={saveCopy}>
+              {t("tutorials.saveCopy")}
+            </button>
             {tutorial.finish.example && (
               <a
                 className="btn"
@@ -285,7 +516,11 @@ function Strip({ tutorial, snap, send }: { tutorial: Tutorial; snap: RunnerSnaps
                 {tutorial.finish.example.label()}
               </a>
             )}
-            <button className="btn btn-primary" onClick={() => send({ type: "exit" })} data-testid="tutorial-done-exit">
+            <button
+              className={`btn${next ? "" : " btn-primary"}`}
+              onClick={() => send({ type: "exit" })}
+              data-testid="tutorial-done-exit"
+            >
               {t("tutorials.done")}
             </button>
           </div>

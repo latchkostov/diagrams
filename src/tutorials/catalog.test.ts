@@ -5,6 +5,7 @@ import { stencils } from "../stencils/registry";
 import { stencilRole } from "../stencils/roles";
 import { tutorials } from "./catalog";
 import { tutorialIds } from "./catalog/ids";
+import { tutorialMetadata } from "./metadata";
 import type { Check, Demo, TutorialStep, UiStep } from "./types";
 
 /**
@@ -21,7 +22,13 @@ const source = (() => {
       const path = join(dir, name);
       if (path.replaceAll("\\", "/").includes("src/examples/private")) continue;
       if (statSync(path).isDirectory()) walk(path);
-      else if (/\.tsx?$/.test(name) && !/\.test\.tsx?$/.test(name) && !path.includes(join("src", "tutorials")))
+      // Tutorial declarations aren't evidence of a rendered control, including the Lab's runtime data.
+      else if (
+        /\.tsx?$/.test(name) &&
+        !/\.test\.tsx?$/.test(name) &&
+        !path.includes(join("src", "tutorials")) &&
+        !path.endsWith(join("lab", "tutorialRuntimeFixture.ts"))
+      )
         out.push(readFileSync(path, "utf8"));
     }
   };
@@ -46,21 +53,37 @@ function knownTestId(id: string): boolean {
 }
 
 const subjectsIn = (check: Check): string[] =>
-  check.kind === "node" || check.kind === "label" || check.kind === "processed"
-    ? [check.subject]
-    : check.kind === "edge"
-      ? [check.from, check.to]
-      : check.kind === "all"
-        ? check.checks.flatMap(subjectsIn)
-        : [];
+  check.kind === "prop" || check.kind === "fault"
+    ? check.edge
+      ? [...check.edge]
+      : [check.subject]
+    : check.kind === "member"
+      ? [check.subject, check.boundary]
+      : check.kind === "metric"
+        ? [check.subject, ...(check.edge ?? [])]
+        : check.kind === "node" || check.kind === "label" || check.kind === "processed"
+          ? [check.subject]
+          : check.kind === "edge" || check.kind === "relation"
+            ? [check.from, check.to]
+            : check.kind === "all"
+              ? check.checks.flatMap(subjectsIn)
+              : [];
 const demoSubjects = (d: Demo): string[] =>
   d.kind === "add"
     ? [d.subject, ...(d.after ? [d.after] : [])]
-    : d.kind === "connect"
-      ? [d.from, d.to]
-      : d.kind === "rename"
-        ? [d.subject]
-        : [];
+    : d.kind === "prop" || d.kind === "fault"
+      ? d.edge
+        ? [...d.edge]
+        : [d.subject]
+      : d.kind === "group"
+        ? [...d.subjects, d.boundary]
+        : d.kind === "select"
+          ? [...d.subjects]
+          : d.kind === "connect" || d.kind === "relation"
+            ? [d.from, d.to]
+            : d.kind === "rename"
+              ? [d.subject]
+              : [];
 const testIdsOf = (s: UiStep): string[] =>
   "click" in s
     ? [s.click]
@@ -80,6 +103,7 @@ describe("tutorial catalog", () => {
   it("has unique ids and a version, listed for the generated e2e", () => {
     const ids = tutorials.map((t) => t.id);
     expect(ids).toEqual([...tutorialIds]);
+    expect(tutorialMetadata.map((x) => x.id)).toEqual(ids);
     expect(new Set(ids).size).toBe(ids.length);
     for (const t of tutorials) {
       expect(t.id).toMatch(/^[a-z0-9-]+$/);
@@ -94,7 +118,12 @@ describe("tutorial catalog", () => {
       const subjects = new Set(Object.keys(tutorial.subjects));
 
       it("says everything in words from the catalog", () => {
-        for (const text of [tutorial.title(), tutorial.summary(), tutorial.finish.text(), tutorial.start().title])
+        for (const text of [
+          tutorial.title(),
+          tutorial.summary(),
+          tutorial.finish.text(),
+          ...(typeof tutorial.start === "function" ? [tutorial.start().title] : []),
+        ])
           expect(text.trim()).not.toBe("");
         for (const step of tutorial.steps) {
           for (const w of words(step)) expect(w!().trim()).not.toBe("");
@@ -108,7 +137,7 @@ describe("tutorial catalog", () => {
         const known = stencilIds;
         for (const spec of Object.values(tutorial.subjects)) {
           for (const id of spec.stencils ?? []) expect(known, id).toContain(id);
-          if (!spec.stencils) expect(spec.role).toBeDefined();
+          if (!spec.stencils && !spec.boundary) expect(spec.role).toBeDefined();
         }
         for (const step of tutorial.steps) {
           const used = [
@@ -143,9 +172,58 @@ describe("tutorial catalog", () => {
       it("can be done for you, or is a moment the runner waits for", () => {
         for (const step of tutorial.steps) {
           const moment = step.sticky || step.demo.length === 0;
-          if (moment) expect(step.check.kind === "processed" || step.check.kind === "live", step.id).toBe(true);
+          if (moment)
+            expect(
+              [
+                "processed",
+                "live",
+                "metric",
+                "simulation",
+                "expectation",
+                "fault",
+                "trace",
+                "slowmo",
+                "note",
+                "mode",
+                "all",
+              ],
+              step.id,
+            ).toContain(step.check.kind);
+          if (!step.demo.length) expect(step.sticky, `${step.id}: moments are explicitly sticky`).toBe(true);
+          if (containsLabel(step.check)) expect(step.settle, step.id).toBe("naming");
           expect(step.solution.length, `${step.id} has a solution path for its e2e`).toBeGreaterThan(0);
         }
       });
+
+      it("starts only from public examples and simulations they contain", () => {
+        if (typeof tutorial.start === "function") return;
+        // Read the public index as text: importing it in Node would evaluate Vite's dev-only glob.
+        const index = readFileSync("src/examples/index.ts", "utf8");
+        const slug = tutorial.start.example;
+        expect([...index.matchAll(/slug: "([a-z0-9-]+)"/g)].map((m) => m[1])).toContain(slug);
+        expect(slug).toMatch(/^[a-z0-9-]+$/);
+        const file = JSON.parse(readFileSync(join("src/examples", `${slug}.json`), "utf8")) as {
+          simulations?: { id: string }[];
+        };
+        const ids = file.simulations?.map((s) => s.id) ?? [];
+        if (tutorial.start.simulation) expect(ids).toContain(tutorial.start.simulation);
+        for (const step of tutorial.steps)
+          for (const id of simulationIds(step.check)) expect(ids, step.id).toContain(id);
+        for (const step of tutorial.steps)
+          for (const demo of step.demo) if (demo.kind === "runSimulation") expect(ids, step.id).toContain(demo.id);
+      });
     });
 });
+
+function containsLabel(check: Check): boolean {
+  return check.kind === "label" || (check.kind === "all" && check.checks.some(containsLabel));
+}
+function simulationIds(check: Check): string[] {
+  return check.kind === "simulation"
+    ? [check.id]
+    : check.kind === "expectation"
+      ? [check.simulation]
+      : check.kind === "all"
+        ? check.checks.flatMap(simulationIds)
+        : [];
+}
