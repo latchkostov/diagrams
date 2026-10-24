@@ -21,7 +21,8 @@ compare every file and total with an unsharded run at the exact same tested revi
 Istanbul shard merging preserves complete counter identities, including distinct ICU branches sharing
 a remapped start location, and requires all three parts. Explicit co-host, deferred-proof, inactive
 connection, verification-throttle and queued-frame tests cover paths that otherwise depended on
-incidental callback ordering.
+incidental callback ordering. Concurrent roster revocation exercises both real signing-key orders,
+and proof acknowledgements explicitly cover duplicate and stopped-connection states.
 
 An owned flake ledger and `scripts/ci/known-flakes.mjs <run-id>` classify structured failed tests.
 Unknown failures, missing reports and infrastructure failures fail closed. ZIP and sampling timeout

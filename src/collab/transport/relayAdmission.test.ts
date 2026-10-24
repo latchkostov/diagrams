@@ -46,6 +46,45 @@ function setUp(epochs: number[] = [2], pad = 0) {
 }
 
 describe("a page's admission on a relay that enforces knock-to-join", () => {
+  it("a local proof rejection sends no invalid proof and a new connection can prove again", async () => {
+    const t = setUp();
+    let unavailable = true;
+    t.admission.prove = async () => {
+      if (unavailable) throw new Error("proof unavailable");
+      return { key: "current", sig: "current" };
+    };
+    t.c.start("first", "0000000000000001");
+    await t.flush();
+    expect(t.of("prove")).toEqual([]);
+    t.c.stop();
+    unavailable = false;
+    t.c.start("second", "0000000000000002");
+    await t.flush();
+    expect(t.of("prove")).toMatchObject([{ key: "current", sig: "current" }]);
+    t.c.stop();
+    expect(t.clock.pending).toBe(0);
+  });
+
+  it("ignores proof acknowledgements while stopped and after one has already been accepted", async () => {
+    const t = setUp();
+    t.c.onProofAck(false);
+    t.c.onProofAck(true);
+    expect(t.sent).toEqual([]);
+    t.c.start("challenge", "0000000000000001");
+    await t.flush();
+    t.c.onProofAck(true);
+    const pending = t.clock.pending;
+    t.c.onProofAck(false);
+    t.c.onProofAck(true);
+    expect(t.clock.pending).toBe(pending);
+    t.c.stop();
+    const sent = [...t.sent];
+    t.c.onProofAck(false);
+    t.c.onProofAck(true);
+    expect(t.clock.pending).toBe(0);
+    expect(t.sent).toEqual(sent);
+  });
+
   it("ignores chain changes before a connection starts and after it stops", async () => {
     const t = setUp();
     t.c.changed();
