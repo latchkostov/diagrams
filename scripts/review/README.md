@@ -4,9 +4,9 @@
 pnpm review --brief /path/to/brief.md --pr 123
 pnpm review --pr 123                # next delta round for that PR, including on detached HEAD
 pnpm review --branch feature/name   # explicit state identity without a PR
-pnpm review --since <reviewed-sha>  # explicit first-parent starting point
+pnpm review --pr 123 --since <reviewed-sha> # explicit first-parent starting point for that PR
 ANGLES="correctness security" pnpm review --brief brief.md
-pnpm review --allow-round-4         # explicit owner-approved exception to the cap
+pnpm review --pr 123 --allow-round-4 # explicit owner-approved exception for that PR
 pnpm review --pr 123 --full         # all seven lenses on the whole PR, no state changes
 pnpm review --audit                 # explicit repository-wide audit, no state changes
 pnpm review --pr 123 --reset-state  # restart at round one, all lenses
@@ -21,8 +21,14 @@ to subsequent rounds; supplying fresh context replaces the saved context. Failur
 or fetch a description stop before reviewers start. `CODEX_MODEL` and `CODEX_EFFORT` retain their
 existing overrides.
 
-Round one reviews `base=$(git merge-base <PR baseRefOid or origin/master> HEAD)`, using `base...HEAD`. Subsequent
-rounds default to `--since <last reviewed SHA>`. Delta patches are collected from first-parent,
+Keep `--pr <number>` on every PR continuation. For branch-only reviews, use
+`pnpm review --branch feature/name --since <reviewed-sha>` or
+`pnpm review --branch feature/name --allow-round-4` instead.
+
+Round one reviews `base=$(git merge-base <PR baseRefOid or origin/master> HEAD)`, using `base...HEAD`.
+PR reviews fetch a missing `baseRefOid` from origin before computing the merge base and stop with an
+actionable error if it remains unavailable. Subsequent rounds default to `--since <last reviewed SHA>`.
+Delta patches are collected from first-parent,
 non-merge commits only, plus each merge's diff against its first parent restricted to files touched
 by the PR's own non-merge commits. This retains conflict resolutions without reviewing master-only
 files or commits. Changed-line numbers are relocated through subsequent commits before triage.
@@ -40,7 +46,7 @@ evidence. Different wording can remain separate; the raw evidence supports human
 model session is needed. Out-of-scope findings are recorded as excluded in `triage.json`.
 
 PR state lives at `.reviews/state/pr-<number>.json`, independent of branch smoke runs or checkout mode.
-Without `--pr`, state lives at `.reviews/state/<branch>.json` (branch slashes form subdirectories), including round,
+Without `--pr`, state lives at `.reviews/state/branch-<branch>.json` (branch slashes form subdirectories), including round,
 last reviewed SHA, open P1 IDs, issue evidence, intent and report path. P0 blockers are also carried
 in that list. An incomplete/malformed lens or missing assessment never advances state. Do not delete
 state to bypass the cap. `--reset-state` explicitly restarts a review with no previous assessments;

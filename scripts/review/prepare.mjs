@@ -43,12 +43,28 @@ if (pr && options.branch && options.branch !== pr.headRefName)
 const branch = pr?.headRefName ?? options.branch ?? git(root, "branch", "--show-current").trim();
 if (!branch && !options.audit) throw new Error("Detached HEAD: supply --pr <number> or --branch <name>");
 if (branch) git(root, "check-ref-format", "--branch", branch);
-const stateFile = path.join(".reviews", "state", options.pr ? `pr-${options.pr}.json` : `${branch}.json`);
+const stateFile = path.join(".reviews", "state", options.pr ? `pr-${options.pr}.json` : `branch-${branch}.json`);
 const standalone = options.full || options.audit;
 const savedState = branch ? readState(stateFile) : null;
 const expectedState = standalone ? null : savedState;
 const state = options.resetState ? null : expectedState;
 const plan = roundPlan(state, { ...options, angles: process.env.ANGLES });
+if (pr && !options.audit) {
+  const baseCommit = `${pr.baseRefOid}^{commit}`;
+  try {
+    git(root, "cat-file", "-e", baseCommit);
+  } catch {
+    try {
+      git(root, "fetch", "origin", pr.baseRefOid);
+      git(root, "cat-file", "-e", baseCommit);
+    } catch (cause) {
+      throw new Error(
+        `PR #${options.pr} base commit ${pr.baseRefOid} is unavailable locally and could not be fetched from origin. Fetch the PR base and retry.`,
+        { cause },
+      );
+    }
+  }
+}
 const scope = reviewScope(root, {
   ...options,
   baseRef: pr?.baseRefOid,

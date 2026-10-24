@@ -254,7 +254,7 @@ it("prepares intent and assessments and commits state only after valid reports",
   expect(prompt).toContain("Do not include master-only files.");
   writeFileSync(join(out, "correctness.json"), JSON.stringify(lens("correctness", []).report));
   execFileSync(process.execPath, [resolve("scripts/review/merge.mjs"), out], { cwd: root });
-  const saved = JSON.parse(readFileSync(join(root, ".reviews/state/feature.json"), "utf8"));
+  const saved = JSON.parse(readFileSync(join(root, ".reviews/state/branch-feature.json"), "utf8"));
   expect(saved).toMatchObject({ round: 1, lastReviewedSha: git(root, "rev-parse", "HEAD").trim(), openP1Ids: [] });
   const next = join(root, ".reviews", "second");
   execFileSync(process.execPath, [resolve("scripts/review/prepare.mjs"), next], {
@@ -265,7 +265,16 @@ it("prepares intent and assessments and commits state only after valid reports",
   expect(() =>
     execFileSync(process.execPath, [resolve("scripts/review/merge.mjs"), next], { cwd: root, stdio: "pipe" }),
   ).toThrow();
-  expect(JSON.parse(readFileSync(join(root, ".reviews/state/feature.json"), "utf8"))).toEqual(saved);
+  expect(JSON.parse(readFileSync(join(root, ".reviews/state/branch-feature.json"), "utf8"))).toEqual(saved);
+});
+
+it("keeps PR identity in the documented continuation commands", () => {
+  const readme = readFileSync(resolve("scripts/review/README.md"), "utf8");
+  const examples = readme.split("```sh")[1].split("```")[0];
+  for (const flag of ["--since", "--allow-round-4"]) {
+    const command = examples.split("\n").find((line) => line.includes(flag));
+    expect(command).toContain("--pr 123");
+  }
 });
 
 describe("review CLI in a detached checkout", () => {
@@ -287,11 +296,14 @@ describe("review CLI in a detached checkout", () => {
     // Deliberately stale local master: the PR resolver must supply the authoritative base.
     git(checkout, "update-ref", "refs/remotes/origin/master", `${reviewed}^`);
     resolver = join(checkout, "resolve-pr.mjs");
+    resolvePr();
+  });
+  function resolvePr(base = masterOnly) {
     writeFileSync(
       resolver,
-      `import process from 'node:process';\nprocess.stdout.write(JSON.stringify({headRefName: 'feature', baseRefOid: '${masterOnly}', title: 'PR ' + process.argv[2], body: 'Keep the PR scoped.'}));\n`,
+      `import process from 'node:process';\nprocess.stdout.write(JSON.stringify({headRefName: 'feature', baseRefOid: '${base}', title: 'PR ' + process.argv[2], body: 'Keep the PR scoped.'}));\n`,
     );
-  });
+  }
   afterEach(() => {
     if (checkout) rmSync(checkout, { recursive: true, force: true });
   });
@@ -340,7 +352,7 @@ describe("review CLI in a detached checkout", () => {
     return { file, saved };
   }
   it("resolves --pr on detached HEAD, ignores branch smoke state, and starts with all seven lenses", () => {
-    seed("feature");
+    seed("branch-feature");
     const { out, prepared } = prepare("detached", ["--pr", "123"]);
     expect(prepared).toMatchObject({ round: 1, branch: "feature", state: null, expectedState: null, angles: ANGLES });
     expect(prepared.stateFile).toBe(join(".reviews", "state", "pr-123.json"));
@@ -357,9 +369,61 @@ describe("review CLI in a detached checkout", () => {
   it("uses --branch on detached HEAD and explains how to resolve an unnamed review", () => {
     const { prepared } = prepare("explicit-branch", ["--branch", "explicit/feature"]);
     expect(prepared.branch).toBe("explicit/feature");
-    expect(prepared.stateFile).toBe(join(".reviews", "state", "explicit", "feature.json"));
+    expect(prepared.stateFile).toBe(join(".reviews", "state", "branch-explicit", "feature.json"));
     expect(() => prepare("unnamed", [])).toThrow("supply --pr <number> or --branch <name>");
     expect(() => prepare("mismatch", ["--pr", "123", "--branch", "other"])).toThrow("must match");
+  });
+  it("fetches a PR base that advanced only on the remote before computing scope", () => {
+    const remote = join(checkout, "remote.git");
+    git(checkout, "clone", "--quiet", "--bare", root, remote);
+    git(checkout, "remote", "set-url", "origin", remote);
+    const base = git(
+      remote,
+      "-c",
+      "user.name=Review fixture",
+      "-c",
+      "user.email=fixture@example.test",
+      "-c",
+      "commit.gpgsign=false",
+      "commit-tree",
+      `${masterOnly}^{tree}`,
+      "-p",
+      masterOnly,
+      "-m",
+      "remote base advances",
+    ).trim();
+    git(remote, "update-ref", "refs/heads/master", base);
+    resolvePr(base);
+    expect(() => git(checkout, "cat-file", "-e", `${base}^{commit}`)).toThrow();
+    const { prepared } = prepare("remote-base", ["--pr", "123"]);
+    expect(git(checkout, "cat-file", "-t", base).trim()).toBe("commit");
+    expect(prepared.scope.base).toBe(masterOnly);
+    expect(prepared.scope.files).toEqual(["feature.txt", "shared.txt"]);
+    expect(prepared.scope.patch).not.toContain("master-only.txt");
+  });
+  it("explains an unavailable PR base without producing a review plan or state", () => {
+    const base = "0".repeat(40);
+    resolvePr(base);
+    expect(() => prepare("missing-base", ["--pr", "123"])).toThrow(
+      `PR #123 base commit ${base} is unavailable locally and could not be fetched from origin. Fetch the PR base and retry.`,
+    );
+    expect(existsSync(join(checkout, ".reviews", "missing-base"))).toBe(false);
+    expect(existsSync(join(checkout, ".reviews", "state", "pr-123.json"))).toBe(false);
+  });
+  it("isolates a completed branch named pr-123 from PR 123's first round", () => {
+    git(checkout, "switch", "-c", "pr-123");
+    const smoke = prepare("branch-smoke", []);
+    merge(smoke.out, smoke.prepared);
+    const smokeFile = join(checkout, smoke.prepared.stateFile);
+    const savedSmoke = readFileSync(smokeFile, "utf8");
+    const first = prepare("pr-first", ["--pr", "123"]);
+    expect(first.prepared).toMatchObject({ round: 1, state: null, expectedState: null, angles: ANGLES });
+    expect(first.prepared.scope.files).toEqual(["feature.txt", "shared.txt"]);
+    expect(first.prepared.stateFile).not.toBe(smoke.prepared.stateFile);
+    merge(first.out, first.prepared);
+    expect(readFileSync(smokeFile, "utf8")).toBe(savedSmoke);
+    expect(prepare("branch-next", []).prepared.round).toBe(2);
+    expect(prepare("pr-next", ["--pr", "123"]).prepared.round).toBe(2);
   });
   it("scopes --full to the whole PR, selects all lenses, and neither creates nor advances state", () => {
     seed("pr-123");
