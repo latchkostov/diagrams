@@ -16,6 +16,8 @@ import { t as tr } from "../../i18n";
 import type { RenameTarget } from "../DiagramContext";
 import type { DiagramMeta } from "../convert";
 import type { CanvasMenus } from "../menus/useCanvasMenus";
+import type { InteractionController } from "../interaction/controller";
+import { draggedGroupIds } from "../useSmartGuides";
 import {
   GROUP_PREFIX,
   isAnnotationNode,
@@ -51,7 +53,7 @@ export function useDragPlacement(
   editor: EditorApi,
   dragStarted: () => void,
   hideTip: () => void,
-  menus: CanvasMenus,
+  menus: CanvasMenus & Pick<InteractionController, "beginGesture" | "endGesture" | "gesture">,
 ) {
   // ---------------------------------------------------------------- Alt-drag duplicates (D9), smart guides (D6)
   /** While an Alt-drag runs: original flow id → its copy. The drag moves the copies; the originals stay. */
@@ -295,6 +297,24 @@ export function useDragPlacement(
         });
         if (made.size) altCopies.current = made;
       }
+      const groups = draggedGroupIds(dragged, store.getState().nodes);
+      const moving = new Set(dragged.map((n) => n.id));
+      const origins = new Map(
+        store
+          .getState()
+          .nodes.filter((n) => moving.has(n.id) || (n.data.group && groups.has(n.data.group)))
+          .map((n) => [altCopies.current?.get(n.id) ?? n.id, { ...n.position }]),
+      );
+      menus.beginGesture(
+        "node.drag",
+        { kind: "node.drag", origins },
+        {
+          via: "mouse",
+          commit: (p) => {
+            if (p.kind === "node.drag") editor.carryRoutes(p.origins);
+          },
+        },
+      );
       guides.start(e, dragged, altCopies.current);
       if (editGestures) watchMembership(dragged, altCopies.current);
     },
@@ -317,11 +337,12 @@ export function useDragPlacement(
       // Members a dragged boundary carries stay in it; every other dropped node settles where it landed.
       const draggedGroups = dragged.filter(isGroupNode);
       const ids = droppedNodes(dragged, copies);
+      const seq = menus.gesture?.kind === "node.drag" ? menus.gesture.seq : undefined;
       // Once the drop has rendered: a copy dropped onto something moves to the nearest free place (nothing
       // overlaps by default), then the dropped nodes settle into the boundaries around them, which grow to hold
       // a member poking out (D12), in the drop's undo step. A member that left its boundary says so.
       requestAnimationFrame(() => {
-        endGesture();
+        if (seq !== undefined) menus.endGesture(seq, "drop");
         if (copies) {
           const made = [...copies.values()];
           editor.keepClear({
@@ -329,6 +350,7 @@ export function useDragPlacement(
             groupIds: made.filter((id) => id.startsWith(GROUP_PREFIX)).map((id) => id.slice(GROUP_PREFIX.length)),
           });
         }
+        endGesture();
         if (!ids.length && !draggedGroups.length) return;
         if (ids.length) {
           const left = editor.settleMembership(ids);
@@ -340,7 +362,7 @@ export function useDragPlacement(
         }
       });
     },
-    [editor, guides, editGestures, sayLeft, droppedNodes, endGesture],
+    [editor, guides, editGestures, sayLeft, droppedNodes, endGesture, menus],
   );
   return [
     guideLayer,

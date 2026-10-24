@@ -183,6 +183,8 @@ export interface EditorApi {
   duplicateInPlace(sel: Partial<Selection>): Map<string, string>;
   /** Moves the selection (with its boundaries' members) to the nearest place clear of other things. */
   keepClear(sel: Partial<Selection>): void;
+  /** Saves a node drag's carried bends in the open history gesture. */
+  carryRoutes(origins: ReadonlyMap<string, XY>): void;
   align(nodeIds: string[], mode: AlignMode): void;
   distribute(nodeIds: string[], axis: Axis): void;
   /**

@@ -1,11 +1,65 @@
 import { describe, expect, it } from "vitest";
 import { align, boundaryAround, boundingBox, distribute, type Box } from "./arrange";
+import { editorHarness } from "../test/editorHarness";
+
+it("align carries lines whose ends share the same translation", () => {
+  const h = editorHarness({
+    format: "diagrams/v1",
+    title: "Align",
+    nodes: [
+      { id: "a", stencil: "service.node", label: "A", x: 0, y: 200 },
+      { id: "b", stencil: "service.node", label: "B", x: 600, y: 200 },
+      { id: "c", stencil: "service.node", label: "C", x: 1200, y: 0 },
+    ],
+    edges: [
+      {
+        id: "ab",
+        from: "a",
+        to: "b",
+        waypoints: [
+          { x: 300, y: 150 },
+          { x: 500, y: 150 },
+        ],
+      },
+    ],
+  });
+  h.api.align(["a", "b", "c"], "top");
+  expect(h.edges()[0].data!.waypoints).toEqual([
+    { x: 300, y: -50 },
+    { x: 500, y: -50 },
+  ]);
+});
 
 const boxes: Box[] = [
   { id: "a", x: 0, y: 0, width: 100, height: 40 },
   { id: "b", x: 200, y: 50, width: 50, height: 20 },
   { id: "c", x: 120, y: 200, width: 80, height: 60 },
 ];
+
+it.each(["align", "distribute"] as const)("%s keeps bends absolute when ends move differently", (command) => {
+  const h = editorHarness({
+    format: "diagrams/v1",
+    title: "Arrange",
+    nodes: boxes.map((b) => ({ id: b.id, stencil: "service.node", label: b.id, x: b.x * 4, y: b.y })),
+    edges: [
+      {
+        id: "ab",
+        from: "a",
+        to: "b",
+        waypoints: [
+          { x: 350, y: -100 },
+          { x: 600, y: -100 },
+        ],
+      },
+    ],
+  });
+  const edge = h.edges()[0];
+  const before = h.nodes();
+  if (command === "align") h.api.align(["a", "b", "c"], "top");
+  else h.api.distribute(["a", "b", "c"], "h");
+  expect(h.nodes()).not.toEqual(before);
+  expect(h.edges()[0]).toBe(edge);
+});
 
 describe("arrange", () => {
   it("bounding box", () => {

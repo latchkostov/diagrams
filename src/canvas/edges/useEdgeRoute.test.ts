@@ -7,6 +7,59 @@ import { selectRoutes } from "./useEdgeRoute";
 import { segmentHitsRect } from "../geometry/rect";
 import { annotationToFlow, nodeToFlow } from "../convert";
 import { Router } from "../geometry/router";
+import { loadShapedRoutes } from "../geometry/shapedRuntime";
+import type { Gesture } from "../interaction/types";
+
+it("previews common node deltas without writing bends, invalidates on gesture end, and keeps unrelated routes stable", async () => {
+  await loadShapedRoutes();
+  const internal = (id: string, x: number, y: number): InternalNode<FlowNode> => {
+    const n = nodeToFlow({ id, stencil: "service.go", label: id, x, y });
+    return {
+      ...n,
+      measured: { width: 220, height: 72 },
+      internals: { positionAbsolute: n.position, z: 0, userNode: n },
+    };
+  };
+  const lookup = new Map([
+    ["a", internal("a", 0, 0)],
+    ["b", internal("b", 800, 240)],
+    ["c", internal("c", 0, 2000)],
+    ["d", internal("d", 800, 2240)],
+  ]);
+  const bends = [
+    { x: 400, y: 36 },
+    { x: 400, y: 276 },
+  ];
+  const edges: DiagramFlowEdge[] = [
+    { id: "ab", source: "a", target: "b", data: { kind: "sync", waypoints: bends } },
+    {
+      id: "cd",
+      source: "c",
+      target: "d",
+      data: { kind: "sync", waypoints: bends.map((p) => ({ x: p.x, y: p.y + 2000 })) },
+    },
+  ];
+  const state = () => ({ nodeLookup: lookup, edges }) as ReactFlowState<FlowNode, DiagramFlowEdge>;
+  const opts = { style: "smoothstep", direction: "LR" } as const;
+  const before = selectRoutes(state(), opts);
+  const origins = new Map([...lookup].slice(0, 2).map(([id, n]) => [id, n.position]));
+  const carry: Gesture = { kind: "node.drag", seq: 1, via: "mouse", preview: { kind: "node.drag", origins } };
+  for (const id of ["a", "b"])
+    lookup.set(id, internal(id, lookup.get(id)!.position.x + 50, lookup.get(id)!.position.y + 80));
+  const s = state();
+  const during = selectRoutes(s, opts, undefined, carry);
+  expect(during.get("ab")!.points).toEqual(before.get("ab")!.points.map((p) => ({ x: p.x + 50, y: p.y + 80 })));
+  expect(during.get("cd")).toBe(before.get("cd"));
+  expect(edges[0].data!.waypoints).toBe(bends);
+  expect(selectRoutes(s, opts, undefined, null).get("ab")!.path).not.toBe(during.get("ab")!.path);
+  // A new gesture has distinct origins even when the store itself hasn't changed.
+  const next: Gesture = {
+    ...carry,
+    seq: 2,
+    preview: { kind: "node.drag", origins: new Map([...lookup].map(([id, n]) => [id, n.position])) },
+  };
+  expect(selectRoutes(s, opts, undefined, next).get("ab")!.path).not.toBe(during.get("ab")!.path);
+});
 
 it("changing a measured annotation outline invalidates attachments in the store cache", () => {
   const internal = (n: FlowNode): InternalNode<FlowNode> => ({

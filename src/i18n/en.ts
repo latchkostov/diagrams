@@ -10,6 +10,8 @@
 // stays.
 
 const en = {
+  "chrome.shapedLinesReset":
+    "{count, plural, one {# shaped line went back to automatic} other {# shaped lines went back to automatic}}",
   "workspaceInspector.replicaSummary": "{replicas, plural, one {# replica} other {# replicas}} × {slots} slots",
   "workspaceInspector.rateSummary": "{rate} msg/s",
   "workspaceInspector.valueSummary": "{label}: {value}",

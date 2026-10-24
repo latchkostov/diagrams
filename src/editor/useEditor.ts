@@ -96,6 +96,7 @@ import {
 } from "../canvas/membership";
 import { memberBoxes as membershipBoxes } from "../canvas/memberBoxes";
 import { tidyLayout } from "./tidy";
+import { carryWaypoints, resetMovedWaypoints } from "./routeCarry";
 import { choiceOf } from "./relationActions";
 import { dependencyVisibility } from "../canvas/dependencyVisibility";
 import {
@@ -472,8 +473,37 @@ export function createEditor(
     );
   };
 
-  const movePositions = (pos: Positions) => {
+  const moveRoutes = (moved: ReadonlyMap<string, XY>, reset = false) => {
+    const edges = currentEdges();
+    const next = reset ? resetMovedWaypoints(edges, new Set(moved.keys())) : carryWaypoints(edges, moved);
+    if (next === edges) return;
+    setEdges(next);
+    if (reset) {
+      const count = edges.reduce((n, e, i) => n + (e !== next[i] ? 1 : 0), 0);
+      notify(t("chrome.shapedLinesReset", { count }), {
+        action: {
+          get label() {
+            return t("ai.undo");
+          },
+          run: () => api.undo(),
+          testId: "route-reset-undo",
+          undoes: true,
+        },
+      });
+    }
+  };
+  const positionDeltas = (pos: ReadonlyMap<string, XY>) => {
+    const moved = new Map<string, XY>();
+    for (const n of currentNodes()) {
+      const p = pos.get(n.id);
+      if (p && (p.x !== n.position.x || p.y !== n.position.y))
+        moved.set(n.id, { x: p.x - n.position.x, y: p.y - n.position.y });
+    }
+    return moved;
+  };
+  const movePositions = (pos: Positions, reset = false) => {
     if (!pos.size) return;
+    moveRoutes(positionDeltas(pos), reset);
     deps().setNodes((ns) =>
       ns.map((n) => {
         const p = pos.get(n.id);
@@ -1399,6 +1429,14 @@ export function createEditor(
       const p = makePayload(diagram(), sel.nodeIds ?? [], sel.groupIds ?? []);
       return (p && insert(p, { x: 0, y: 0 })) ?? new Map<string, string>();
     },
+    carryRoutes: (origins) => {
+      const moved = new Map<string, XY>();
+      for (const n of currentNodes()) {
+        const p = origins.get(n.id);
+        if (p) moved.set(n.id, { x: n.position.x - p.x, y: n.position.y - p.y });
+      }
+      moveRoutes(moved);
+    },
     keepClear: (sel) => {
       const ids = flowIdsOf(sel);
       const b = boundsOf(
@@ -1411,6 +1449,7 @@ export function createEditor(
       const others = obstacles(ids);
       const { x: dx, y: dy } = snappedClear(b, clearOffset(b, others), others);
       if (!dx && !dy) return;
+      moveRoutes(new Map([...ids].map((id) => [id, { x: dx, y: dy }])));
       deps().setNodes((cur) =>
         cur.map((n) => (ids.has(n.id) ? { ...n, position: { x: n.position.x + dx, y: n.position.y + dy } } : n)),
       );
@@ -1469,6 +1508,7 @@ export function createEditor(
       }
       // The positions and the boundaries' growth together, as planned: one undo step.
       hint(`tidy:${Date.now()}`);
+      moveRoutes(positionDeltas(pos), true);
       deps().setNodes((cur) =>
         cur.map((n) => {
           if (isGroup(n)) {
@@ -1744,6 +1784,7 @@ export function createEditor(
       const { flowIds } = expandSelection({ groupIds: selGroups, nodeIds: selNodes }, ns);
       if (!flowIds.size) return;
       hint("nudge");
+      moveRoutes(new Map([...flowIds].map((id) => [id, { x: dx, y: dy }])));
       deps().setNodes((cur) =>
         cur.map((n) => (flowIds.has(n.id) ? { ...n, position: { x: n.position.x + dx, y: n.position.y + dy } } : n)),
       );
@@ -1877,7 +1918,7 @@ export function createEditor(
       const run = () => {
         const d = diagram();
         const pos = layeredLayout({ nodes: d.nodes, edges: d.edges, direction: d.direction });
-        movePositions(pos);
+        movePositions(pos, true);
         const moved = currentNodes();
         const refits = planBoundaryRefits(
           moved.filter(isGroup).map((n) => ({ ...box(n), id: n.data.groupId, group: n.data.group })),
