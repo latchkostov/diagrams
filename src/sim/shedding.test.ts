@@ -10,6 +10,8 @@ import { resourceLesson } from "../model/autoscaling";
 import { propsProblem } from "../model/simProps";
 import type { DiagramFile } from "../model/types";
 import type { QueuePolicy } from "./types";
+import type { QueuePriority } from "./types";
+import { parseNative } from "../interop/native";
 
 function diagram(queue: QueuePolicy = { limit: 3 }, sync = false): DiagramFile {
   return {
@@ -81,6 +83,96 @@ it("priority service is FIFO/LIFO within classes; eviction picks newest/oldest o
   expect(q.evict({ id: 5 }, true)?.id).toBe(1);
   expect(q.shift()?.id).toBe(2);
   expect(q.pop()?.id).toBe(4);
+});
+
+it.each(["toString", "__proto__", "constructor", "unknown", "", null, 0, {}])(
+  "untrusted priority %j is rejected on import and safely treated as normal in playback",
+  (priority) => {
+    const d = diagram({ limit: 1 });
+    d.edges[0].props!.priority = priority;
+    const imported = parseNative(JSON.stringify(d));
+    expect(imported.ok).toBe(false);
+    if (!imported.ok) expect(imported.error).toContain("priority");
+    // Internal callers can still bypass native validation: runtime lookup must fail safely too.
+    const q = new ShedQueue<{ id: number; priority?: QueuePriority }>();
+    q.push({ id: 1, priority: priority as QueuePriority });
+    expect(q.evict({ id: 2, priority: "sheddable" }, true)).toBeUndefined();
+    expect(q.evict({ id: 3, priority: "critical" }, false)?.id).toBe(1);
+    const e = engine(d);
+    e.inject("source", 2);
+    e.step(100);
+    expect(e.snapshot().nodes.worker).toMatchObject({ queueDepth: 1, shed: 1 });
+    e.setNodeStatus("worker", "up");
+    e.step(1000);
+    expect(e.snapshot().nodes.worker.processed).toBe(1);
+  },
+);
+
+it.each(["critical", "normal", "sheddable"])("accepts the allowed priority %s on import", (priority) => {
+  const d = diagram();
+  d.edges[0].props!.priority = priority;
+  expect(parseNative(JSON.stringify(d)).ok).toBe(true);
+});
+
+it.each(["reject-new", "drop-oldest"] as const)(
+  "lower-priority arrivals preserve higher-priority waiters (%s)",
+  (whenFull) => {
+    const d = diagram({ limit: 2, whenFull });
+    d.edges[0].props!.priority = "critical";
+    d.nodes.push({ ...d.nodes[0], id: "low" });
+    d.edges.push({ id: "low-input", from: "low", to: "worker", props: { travelMs: 10, priority: "sheddable" } });
+    const e = engine(d);
+    e.inject("source", 2);
+    e.step(100);
+    const waiters = e
+      .snapshot()
+      .events.filter((v) => v.nodeId === "worker" && v.kind === "deliver")
+      .map((v) => v.messageId);
+    e.inject("low", 1);
+    e.step(100);
+    const arrival = e
+      .snapshot()
+      .events.find((v) => v.nodeId === "worker" && v.kind === "deliver" && !waiters.includes(v.messageId))!.messageId;
+    expect(
+      e
+        .snapshot()
+        .events.filter((v) => v.kind === "reject")
+        .map((v) => v.messageId),
+    ).toEqual([arrival]);
+    e.setNodeStatus("worker", "up");
+    e.step(1000);
+    expect(
+      e
+        .snapshot()
+        .events.filter((v) => v.nodeId === "worker" && v.kind === "process")
+        .map((v) => v.messageId),
+    ).toEqual(waiters);
+  },
+);
+
+it("reject-new preserves equal-priority waiters", () => {
+  const e = engine(diagram({ limit: 2, whenFull: "reject-new" }));
+  e.inject("source", 3);
+  e.step(100);
+  const arrivals = e
+    .snapshot()
+    .events.filter((v) => v.nodeId === "worker" && v.kind === "deliver")
+    .map((v) => v.messageId);
+  expect(arrivals).toHaveLength(3);
+  expect(
+    e
+      .snapshot()
+      .events.filter((v) => v.kind === "reject")
+      .map((v) => v.messageId),
+  ).toEqual([arrivals[2]]);
+  e.setNodeStatus("worker", "up");
+  e.step(1000);
+  expect(
+    e
+      .snapshot()
+      .events.filter((v) => v.nodeId === "worker" && v.kind === "process")
+      .map((v) => v.messageId),
+  ).toEqual(arrivals.slice(0, 2));
 });
 it.each([2, 10])("queue grants split at scale %s, exactly at the real limit, and replay checkpoints", (scale) => {
   expect(queueGrant(0, 3, scale, true)).toBe(Math.min(scale, 3));

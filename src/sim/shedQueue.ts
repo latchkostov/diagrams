@@ -40,7 +40,7 @@ export class ShedQueue<T extends { priority?: QueuePriority; queueProtected?: bo
     else this.queues[this.rank(item)].push(item);
   }
   private rank(item: T): number {
-    return { critical: 0, normal: 1, sheddable: 2 }[item.priority ?? "normal"] ?? 1;
+    return item.priority === "critical" ? 0 : item.priority === "sheddable" ? 2 : 1;
   }
   evict(arrival: T, oldest: boolean, take = true): T | undefined {
     const rank = this.lowest();

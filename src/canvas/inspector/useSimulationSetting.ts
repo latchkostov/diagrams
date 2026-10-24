@@ -1,20 +1,23 @@
-import { useSyncExternalStore } from "react";
+import { useMemo, useSyncExternalStore } from "react";
 import { planningHost } from "../../live/planningHost";
 import type { EditorApi } from "../../editor/types";
 
 const noSubscribe = () => () => {};
 const noState = () => null;
-/** The queue and priority controls edit the same setup overlay the running simulation sees. */
+/** Queue edits use the running setup; priority belongs to the base connection, not simulation overrides. */
 export function useSimulationSetting(editor: EditorApi, kind: "node" | "edge", id: string, key: "queue" | "priority") {
   const live = useSyncExternalStore(planningHost.subscribe, planningHost.get);
   const state = useSyncExternalStore(live?.controller.subscribe ?? noSubscribe, live?.controller.getState ?? noState);
   const diagram = editor.getDiagram();
   const base = (kind === "node" ? editor.getNode(id) : editor.getEdge(id))?.props?.[key];
-  const override = kind === "node" ? state?.running?.setup?.props?.[id] : state?.running?.setup?.edges?.[id];
+  const override = kind === "node" ? state?.running?.setup?.props?.[id] : undefined;
   const saved = diagram.simulations?.find((s) => s.id === state?.simulation?.id);
-  const editable =
-    !live?.slowmo.active &&
-    !(state?.simulation && (!saved || JSON.stringify(state.simulation) !== JSON.stringify(saved)));
+  const simulation = state?.simulation;
+  const draft = useMemo(
+    () => !!simulation && (!saved || JSON.stringify(simulation) !== JSON.stringify(saved)),
+    [simulation, saved],
+  );
+  const editable = !live?.slowmo.active && !draft;
   return {
     value: override && key in override ? override[key as keyof typeof override] : base,
     base,
@@ -22,13 +25,12 @@ export function useSimulationSetting(editor: EditorApi, kind: "node" | "edge", i
     editable,
     set(value: unknown) {
       if (!editable) return;
-      if (saved) {
-        const part = kind === "node" ? "props" : "edges";
+      if (saved && kind === "node") {
         const next = {
           ...saved,
           setup: {
             ...saved.setup,
-            [part]: { ...saved.setup?.[part], [id]: { ...saved.setup?.[part]?.[id], [key]: value } },
+            props: { ...saved.setup?.props, [id]: { ...saved.setup?.props?.[id], [key]: value } },
           },
         };
         editor.updateMeta({ simulations: diagram.simulations!.map((s) => (s.id === saved.id ? next : s)) });

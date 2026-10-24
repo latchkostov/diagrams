@@ -76,21 +76,25 @@ test("shedding shows a cumulative chip and reachable hover explanation with the 
   expectNoErrors(consoleErrors);
 });
 
-test("incoming connection priority persists through the existing inspector dropdown", async ({
-  page,
-  consoleErrors,
-}) => {
-  await open(page);
-  await waitForCameraIdle(page);
-  await page.getByTestId("edge-call").dblclick();
-  await page.getByTestId("inspector-section-edge-simulation").click();
-  await page.getByTestId("inspector-section-queue-priority").click();
-  await page.getByTestId("inspector-field-priority").click();
-  await page.getByTestId("context-menu-item-critical").click();
-  await expect
-    .poll(async () => (await savedDiagram(page)).edges.find((e) => e.id === "call")?.props?.priority)
-    .toBe("critical");
-  await page.getByTestId("undo-button").click();
-  await expect(page.getByTestId("inspector-field-priority")).toContainText("Normal");
-  expectNoErrors(consoleErrors);
-});
+for (const simulation of [false, true]) {
+  test(`incoming connection priority preserves saved simulations (selected=${simulation})`, async ({
+    page,
+    consoleErrors,
+  }) => {
+    await open(page, simulation);
+    const savedSimulations = (await savedDiagram(page)).simulations;
+    await waitForCameraIdle(page);
+    await page.getByTestId("edge-call").dblclick();
+    await page.getByTestId("inspector-section-edge-simulation").click();
+    await page.getByTestId("inspector-section-queue-priority").click();
+    await page.getByTestId("inspector-field-priority").click();
+    await page.getByTestId("context-menu-item-critical").click();
+    await expect
+      .poll(async () => (await savedDiagram(page)).edges.find((e) => e.id === "call")?.props?.priority)
+      .toBe("critical");
+    expect((await savedDiagram(page)).simulations).toEqual(savedSimulations);
+    await page.getByTestId("undo-button").click();
+    await expect(page.getByTestId("inspector-field-priority")).toContainText("Normal");
+    expectNoErrors(consoleErrors);
+  });
+}

@@ -200,3 +200,22 @@ it("historical shedding is a cumulative fact, never a current rejection verdict"
   expect(summary.facts.find((f) => f.key === "shed")?.label).toContain("since restart");
   expect(summary.facts.find((f) => f.key === "queueLimit")?.value).toBe("2 of 3 queued");
 });
+
+it("keeps secondary problem explanations ahead of cumulative shedding facts", () => {
+  const summary = nodeSummary(
+    node({
+      threads: { working: 1, waiting: 0, slots: 1, queued: 2, waitingOn: [] },
+      failed: 3,
+      backlog: 2,
+      rejected: 12,
+      shed: 12,
+      queueDepth: 2,
+      queueLimit: 3,
+    }),
+    [],
+  );
+  expect(summary.problems[0].key).toBe("threads");
+  expect(summary.facts.slice(0, 2).map((f) => f.key)).toEqual(["failed", "waiting"]);
+  expect(summary.facts.map((f) => f.key)).toContain("shed");
+  expect(summary.facts.map((f) => f.key)).toContain("queueLimit");
+});
