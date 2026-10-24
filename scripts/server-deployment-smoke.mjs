@@ -11,6 +11,9 @@ import { runnerImport } from "vite";
 const { withSmokeBrowser } = (
   await runnerImport(path.resolve("scripts/self-host-browser.ts"), { configFile: false, logLevel: "error" })
 ).module;
+const { startupChurn } = (
+  await runnerImport(path.resolve("scripts/smoke-startup.ts"), { configFile: false, logLevel: "error" })
+).module;
 
 const { fetch, AbortSignal } = globalThis;
 // A hang backstop for app boot, not a startup performance budget.
@@ -135,7 +138,7 @@ async function exerciseBrowserRooms(origin, base) {
       await expect(receiver.getByTestId("node-gateway")).toContainText(label);
     }
     expect(errors).toEqual([]);
-  });
+  }, startupChurn);
 }
 
 /** Deployment variants forward collaboration at root and subpaths. */

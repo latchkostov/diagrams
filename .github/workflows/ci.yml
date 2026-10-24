@@ -320,9 +320,6 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/toolchain
-      - uses: ./.github/actions/chromium-cache
-      - name: Install system dependencies for container smoke test
-        run: pnpm exec playwright install-deps chromium
       - name: Static image smoke
         run: pnpm self-host:smoke --static-only
       - name: Collaboration server image smoke (read-only, headers, browsers, logs and size)

@@ -2,7 +2,8 @@ import { expect, it } from "vitest";
 import { checkRun, classifyRun, failedTests } from "../../scripts/ci/known-flakes.mjs";
 import { withRunErrors } from "../../scripts/ci/vitest-json.mjs";
 import ledger from "../../tests/flakes.json";
-import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import ts from "typescript";
 
 const test = { spec: "src/example.test.ts", title: "regression" };
 const jobs = [
@@ -20,6 +21,45 @@ const report = {
   ],
 };
 const reports = [{ job: jobs[0].name, report }];
+
+it("matches every browser ledger title to an actual test declaration in its spec", () => {
+  for (const entry of ledger.filter((entry) => entry.spec.startsWith("tests/e2e/"))) {
+    const ast = ts.createSourceFile(entry.spec, readFileSync(entry.spec, "utf8"), ts.ScriptTarget.Latest, true);
+    const titles: string[] = [];
+    const constants = new Map<string, string>();
+    const visit = (node: ts.Node) => {
+      if (
+        ts.isVariableDeclaration(node) &&
+        ts.isIdentifier(node.name) &&
+        node.initializer &&
+        ts.isStringLiteral(node.initializer)
+      )
+        constants.set(node.name.text, node.initializer.text);
+      if (ts.isCallExpression(node) && ["test", "performanceTest"].includes(node.expression.getText(ast))) {
+        const title = node.arguments[0];
+        if (title && ts.isStringLiteral(title)) titles.push(title.text);
+        if (title && ts.isIdentifier(title) && constants.has(title.text)) titles.push(constants.get(title.text)!);
+        // Expand only literal alternatives, preserving exact Unicode and punctuation.
+        if (title && ts.isTemplateExpression(title) && title.templateSpans.length === 1) {
+          const span = title.templateSpans[0];
+          const expression = span.expression;
+          const values =
+            expression.getText(ast) === "theme"
+              ? ["light", "dark"]
+              : ts.isConditionalExpression(expression) &&
+                  ts.isStringLiteral(expression.whenTrue) &&
+                  ts.isStringLiteral(expression.whenFalse)
+                ? [expression.whenTrue.text, expression.whenFalse.text]
+                : [];
+          for (const value of values) titles.push(title.head.text + value + span.literal.text);
+        }
+      }
+      ts.forEachChild(node, visit);
+    };
+    visit(ast);
+    expect(titles, entry.id).toContain(entry.title);
+  }
+});
 
 it("recognizes exact failed test identities across Vitest and Playwright reports", () => {
   expect(failedTests(report)).toEqual({ failed: [{ ...test, messages: [] }], unknown: [] });
