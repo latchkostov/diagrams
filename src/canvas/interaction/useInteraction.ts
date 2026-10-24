@@ -1,23 +1,15 @@
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useState,
-  useSyncExternalStore,
-  type RefObject,
-} from "react";
+import { useEffect, useLayoutEffect, useMemo, useState, useSyncExternalStore, type RefObject } from "react";
 import type { useStoreApi } from "@xyflow/react";
 import type { DiagramFlowEdge, FlowNode } from "../types";
 import { createInteractionController, type InteractionCamera, type InteractionController } from "./controller";
 import { createDomPort, domScheduler, type DomCanvas } from "./domPort";
 import { interactionJournal } from "./journal";
 import { dependencyVisibility } from "../dependencyVisibility";
+import { useInteraction } from "./context";
+export { InteractionContext, useInteraction } from "./context";
 import { isDependency } from "../../model/relations";
 
 /** The canvas's interaction controller, for what renders inside the canvas (the Inspector, its name fields). */
-export const InteractionContext = createContext<InteractionController | null>(null);
 
 type Store = ReturnType<typeof useStoreApi<FlowNode, DiagramFlowEdge>>;
 
@@ -136,8 +128,6 @@ function useInteractionLifecycle<P>(controller: InteractionController<P>) {
   // Every commit: a move waiting for it runs, and a target waiting for its panel is tried again.
   useLayoutEffect(() => controller.rendered());
 }
-
-export const useInteraction = () => useContext(InteractionContext);
 
 /**
  * The canvas's controller, or (outside a canvas: the Lab's Inspector) one of its own, so the Inspector's fields

@@ -1,3 +1,4 @@
+import { capacityView, computeFix } from "./capacityView";
 import { describe, expect, it } from "vitest";
 import { DIAGRAM_FORMAT, type DiagramFile, type Simulation } from "../model/types";
 import kafka from "../examples/kafka-order-pipeline.json";
@@ -7,8 +8,6 @@ import legacyIot from "../test/fixtures/legacy-iot-telemetry.json";
 import {
   applyPreset,
   CAPACITY_STOPS,
-  capacityView,
-  computeFix,
   effectiveSimulation,
   emptyInputs,
   entryCandidates,

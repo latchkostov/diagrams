@@ -21,15 +21,15 @@ import type { LiveController } from "./controller";
 const LiveSession = defineLazySurface({
   id: "live.session",
   load: () => import("./LiveSession").then((m) => m.LiveSession),
-  placeholder: { size: {}, testId: "live.session-loading" },
+  placeholder: {},
   focus: {},
   export: "await",
   retryToast: true,
 });
 const EditCapacity = defineLazySurface({
   id: "live.edit-capacity",
-  load: () => import("./LiveSession").then((m) => m.EditCapacity),
-  placeholder: { size: {}, testId: "live.edit-capacity-loading" },
+  load: () => import("./session/EditCapacity").then((m) => m.EditCapacity),
+  placeholder: {},
   focus: {},
   export: "skip",
   retryToast: true,

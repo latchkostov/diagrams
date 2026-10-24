@@ -1,3 +1,4 @@
+import { capacityView } from "../capacityView";
 import { ViewportPortal, useStore } from "@xyflow/react";
 import { useCallback, useMemo } from "react";
 import type { EditorApi } from "../../editor/types";
@@ -8,7 +9,7 @@ import type { DiagramFile } from "../../model/types";
 import { CapacityLayer } from "../CapacityLayer";
 import { BottleneckCallout } from "../lazyBottleneckCallout";
 import { addConsumer } from "../addConsumer";
-import { capacityView, emptyInputs, freePlaySimulation, type CapacityFix } from "../capacityModel";
+import { emptyInputs, freePlaySimulation, type CapacityFix } from "../capacityModel";
 
 import { sayConsumerAdded } from "./useLiveFixes";
 /** Edit mode's capacity heat map: the diagram's own rates and sizes, with the bottleneck callout. */

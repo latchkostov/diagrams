@@ -1,3 +1,4 @@
+import { capacityView } from "../../../src/live/capacityView";
 // Capacity analysis and planning (docs/SIMULATION.md "Capacity analysis without playback", planning P1/P2): what
 // the heat map, the bottleneck callout, the Inputs panel, the inspector's explanations and capability rows, and the
 // p2 upgrade produce for each diagram, in edit mode (free play's configured traffic) and with each saved
@@ -17,7 +18,6 @@ import { compileTopology } from "../../../src/sim/topology";
 import { sizingFix, redundancyFix, planningSimulation, FIX_ABOVE } from "../../../src/sim/capacityPlanning";
 import {
   applyPreset,
-  capacityView,
   effectiveSimulation,
   emptyInputs,
   freePlaySimulation,

@@ -182,6 +182,8 @@ export default defineConfig({
     __ENGINE_VERSION__: JSON.stringify(engineVersion(fileURLToPath(new URL(".", import.meta.url)))),
     // Test-only engine oracles (EngineOptions.sameArrivals) run under Vitest and fold out of every shipped build.
     __TEST_ORACLES__: JSON.stringify(!!process.env.VITEST),
+    // Source names only serve Node-side generated surface tests, not the browser's runtime policies.
+    __LAZY_SURFACE_METADATA__: JSON.stringify(!!process.env.VITEST),
   },
   build: {
     // Icons are many small SVGs; serving them as cached files keeps them out of the main JS chunk.

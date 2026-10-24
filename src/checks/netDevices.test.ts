@@ -1,3 +1,4 @@
+import { capacityView } from "../live/capacityView";
 import { describe, expect, it, vi } from "vitest";
 import * as planning from "../sim/capacityPlanning";
 import { applyOps } from "../ai";
@@ -7,7 +8,7 @@ import { edgeSimPropsSchema, propsProblem, simPropsPatchSchema } from "../model/
 import type { DiagramEdge, DiagramFile, DiagramNode } from "../model/types";
 import { collectEvidence } from "./evidence";
 import { runChecks } from "./run";
-import { capacityView, emptyInputs, freePlaySaveProps, freePlaySimulation } from "../live/capacityModel";
+import { emptyInputs, freePlaySaveProps, freePlaySimulation } from "../live/capacityModel";
 import { isDenyRule } from "../stencils/netDevices";
 
 // Checks on network devices (docs/research/network-infrastructure.md, "Checks"): a device is a box you run, so the

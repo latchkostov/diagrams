@@ -1,3 +1,4 @@
+import { capacityView } from "../live/capacityView";
 import { sharedConcurrencyKey } from "./admissionPolicy";
 import { describe, expect, it, vi } from "vitest";
 import { createEngine } from "./engine";
@@ -21,7 +22,7 @@ import { admissionCapacities } from "./admissionPlanning";
 import { upgradePlanning } from "../planning/migration";
 import * as topology from "./topology";
 import { countingReads } from "../test/complexity";
-import { capacityView, freePlaySaveProps } from "../live/capacityModel";
+import { freePlaySaveProps } from "../live/capacityModel";
 
 const q = (amount = 10, extra: Partial<Quota> = {}): Quota => ({
   id: "rate",

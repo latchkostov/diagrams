@@ -11,7 +11,7 @@ import { lazySurfaces, registerLazySurface, retryLazySurfaces, type LazySurfaceI
 import { LOAD_FAILED, type LazyComponent, type Placeholder } from "./lazyLoad";
 import { notify, toast } from "../interop/ui/toast";
 import { t } from "../i18n";
-import { useInteraction } from "../canvas/interaction/useInteraction";
+import { useInteraction } from "../canvas/interaction/context";
 
 export type SurfaceState = { value: "idle" | "loading" | "loaded" | "failed" | "retrying" };
 type Event = { type: "load" | "resolve" | "reject" | "retry" };
@@ -30,7 +30,7 @@ export const lazySurfaceMachine = defineMachine<SurfaceState, Event>({
 interface Options<P> {
   id: LazySurfaceId;
   load(): Promise<ComponentType<P>>;
-  placeholder: { size: CSSProperties; testId: string; render?: Placeholder<P> };
+  placeholder: { size?: CSSProperties; testId?: string; render?: Placeholder<P> };
   focus: { field?: string; restoreTo?: string; panel?: string };
   export: "await" | "skip";
   retryToast: true;
@@ -38,6 +38,7 @@ interface Options<P> {
 export type LazySurface<P> = LazyComponent<P> & {
   ensureLoaded(): Promise<ComponentType<P>>;
   getSnapshot(): SurfaceState;
+  subscribe(listener: () => void): () => void;
 };
 
 /** One shared request and recovery path, outside the downloaded component. Preload failures stay silent. */
@@ -135,12 +136,17 @@ export function defineLazySurface<P extends object>(options: Options<P>): LazySu
     const status = { failed: state !== first && state.value === "failed", retry };
     if (options.placeholder.render) return options.placeholder.render(props, status);
     return (
-      <span data-testid={options.placeholder.testId} style={options.placeholder.size} aria-busy={!status.failed} />
+      <span
+        data-testid={options.placeholder.testId ?? `${options.id}-loading`}
+        style={options.placeholder.size}
+        aria-busy={!status.failed}
+      />
     );
   }
   Surface.preload = () => void ensureLoaded().catch(() => {});
   Surface.ensureLoaded = ensureLoaded;
   Surface.getSnapshot = getSnapshot;
+  Surface.subscribe = subscribe;
   registerLazySurface({
     id: options.id,
     active: () => clients.size > 0,

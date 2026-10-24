@@ -301,6 +301,49 @@ describe("production bundle split", () => {
     expect(loading.map((c) => c.name).sort()).toEqual(["CanvasView", "canvas-shared"]);
   });
 
+  it("defers optional canvas surfaces and capacity analysis until requested", () => {
+    const canvasFeatures: [string, RegExp][] = [
+      ["room presence", /[/\\]src[/\\]canvas[/\\]PresenceLayer\.tsx$/],
+      ["editing tooltips", /[/\\]src[/\\]canvas[/\\]NodeTooltip\.tsx$/],
+      ["check markers", /[/\\]src[/\\]canvas[/\\]checks[/\\]ChecksMarkers\.tsx$/],
+    ];
+    const liveFeatures: [string, RegExp][] = [
+      [
+        "capacity analysis",
+        /[/\\]src[/\\](?:live[/\\]capacityView|sim[/\\](?:capacity|capacityPlanning|waitingPlan|admissionPlanning|resourcePlanning))\.ts$/,
+      ],
+      ["Live overflow items", /[/\\]src[/\\]live[/\\]LiveMoreItems\.tsx$/],
+      ["edit-mode capacity", /[/\\]src[/\\]live[/\\]session[/\\]EditCapacity\.tsx$/],
+    ];
+    for (const build of [plain(), rooms]) {
+      expect(found(bundled(closure([canvasChunk(build)], build)), canvasFeatures)).toEqual([]);
+      const live = build.chunks.find((chunk) => chunk.name === "LiveSession")!;
+      expect(found(bundled(closure([live], build)), liveFeatures)).toEqual([]);
+      expect(found(bundled(build.chunks), [...canvasFeatures, ...liveFeatures])).toEqual(
+        [...canvasFeatures, ...liveFeatures].map(([name]) => name),
+      );
+    }
+  });
+
+  it("keeps searchable menu and naming container code in the canvas first view", () => {
+    for (const build of [plain(), rooms]) {
+      const menuModules = bundled(build.chunks).filter((id) =>
+        /[/\\]src[/\\](?:components[/\\](?:ContextMenu|MenuList)|canvas[/\\]inspector[/\\]NodePanel)\.tsx$/.test(id),
+      );
+      expect(menuModules.length).toBeGreaterThan(0);
+      const canvasModules = bundled(closure([canvasChunk(build)], build));
+      expect(menuModules.filter((id) => !canvasModules.includes(id))).toEqual([]);
+    }
+  });
+
+  it("ships surface policies without Node test-driver module paths", () => {
+    const canvas = [...closure([canvasChunk()])].map((chunk) => chunk.code).join("\n");
+    expect(canvas).toContain("inspector.identity");
+    expect(canvas).toContain("live.capacity-analysis");
+    expect(canvas).not.toContain("canvas/inspector/NodeIdentity");
+    expect(canvas).not.toContain("canvas/CanvasReadouts");
+  });
+
   it("loads the Markdown parser with its view, without the editor or its keys", () => {
     const view = chunks.find((c) =>
       Object.keys(c.modules).some((id) => /[/\\]markdown[/\\]MarkdownView\.tsx$/.test(id)),

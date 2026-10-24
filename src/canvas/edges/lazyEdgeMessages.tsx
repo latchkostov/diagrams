@@ -4,7 +4,7 @@ import { defineLazySurface } from "../../lib/lazySurface";
 export const EdgeMessages = defineLazySurface({
   id: "edge.reader",
   load: () => import("./EdgeMessages").then((m) => m.EdgeMessages),
-  placeholder: { size: {}, testId: "edge.reader-loading" },
+  placeholder: {},
   focus: {},
   export: "skip",
   retryToast: true,
