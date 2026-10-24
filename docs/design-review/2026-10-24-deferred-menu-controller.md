@@ -17,3 +17,7 @@ Rejected another queue local to ContextMenu or MenuList: it cannot reliably tran
 Enter. Kept the cancellable shell eager, the existing menu ordering and selection policies, and every
 bundle budget. Deferred the node container only with held-container and held-identity comparisons.
 This is a loading change, so no new showcase example or parity golden is needed.
+
+The naming callback retains its identity across history snapshots. A focused regression test checks
+that changing history state cannot invalidate every node through the canvas context. The CI render-count
+gates retain their original limits; browser comparisons run in the dedicated Actions workflow.

@@ -7,6 +7,47 @@ import type { EditorApi } from "../../editor/types";
 import type { useHistory } from "../../editor/useHistory";
 import type { useRevealSelection } from "../camera";
 
+it("keeps canvas rename callbacks stable across history state snapshots", async () => {
+  const editor = {} as EditorApi;
+  const finish = vi.fn();
+  const openInspector = vi.fn();
+  const setEditing = vi.fn();
+  const setNaming = vi.fn();
+  const rename = { current: vi.fn() };
+  const controller = { placing: vi.fn(), dispatch: vi.fn() };
+  const reveal = vi.fn() as ReturnType<typeof useRevealSelection>["revealSelection"];
+  const callbacks: ReturnType<typeof useCanvasNaming>[0][] = [];
+  function Harness() {
+    // useHistory returns a fresh snapshot with stable methods after each document edit.
+    const history = { end: finish } as unknown as ReturnType<typeof useHistory>;
+    const [renameIn] = useCanvasNaming(
+      true,
+      editor,
+      openInspector,
+      setEditing,
+      setNaming,
+      rename,
+      history,
+      controller,
+      reveal,
+    );
+    useLayoutEffect(() => {
+      callbacks.push(renameIn);
+    });
+    return null;
+  }
+  const host = document.createElement("div");
+  const root = createRoot(host);
+  try {
+    await act(() => root.render(<Harness />));
+    await act(() => root.render(<Harness />));
+    expect(callbacks).toHaveLength(2);
+    expect(callbacks[1]).toBe(callbacks[0]);
+  } finally {
+    await act(() => root.unmount());
+  }
+});
+
 it("persists placement's name before the camera finishes revealing its new node", async () => {
   const authoredName = "Na";
   const updateNode = vi.fn();

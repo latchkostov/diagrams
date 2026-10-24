@@ -22,6 +22,7 @@ export function useCanvasNaming(
   controller: Placing & Pick<InteractionController, "dispatch">,
   revealSelection: ReturnType<typeof useRevealSelection>["revealSelection"],
 ) {
+  const endCreation = history.end;
   /**
    * Names a node, connection or boundary in the inspector (the owner's decision, 2026-10-13: no renaming in
    * place): it's selected alone, the inspector opens, and its Label takes focus with all of it selected, so
@@ -47,7 +48,7 @@ export function useCanvasNaming(
           ? (typed) => {
               if (typed.text !== null) editor.updateNode(t.id, { label: typed.text }, { merge: creation });
               if (typed.done) {
-                history.end(creation);
+                endCreation(creation);
                 setNaming(null);
               }
             }
@@ -55,7 +56,7 @@ export function useCanvasNaming(
       );
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps -- state setters are stable; preserve CanvasView's original dependencies
-    [canOpenInspector, editor, openInspector, history],
+    [canOpenInspector, editor, openInspector, endCreation],
   );
   useLayoutEffect(() => {
     renameRef.current = renameIn;
@@ -66,7 +67,6 @@ export function useCanvasNaming(
    * Alt+Shift+arrow: in view, then its name in the inspector, selected (decision 3), so typing names it. Keys
    * typed meanwhile are kept for it (React Flow measures the card before showing it).
    */
-  const endCreation = history.end;
   const pickNamed = useCallback(
     (make: () => NewNode | null, fallback: string) => {
       // Hold what's typed from now until the label editor can take it.
