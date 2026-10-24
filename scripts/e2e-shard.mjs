@@ -4,9 +4,9 @@
 // a shard `fullyParallel` spreads its tests over the workers.
 //
 // Durations come from tests/e2e-timings.json: seconds of test time per spec file, measured on CI. A spec
-// file missing from it counts as an average one. Refresh it when the job summaries drift:
+// file missing from it falls back to a deterministic file-count split. Refresh when summaries drift:
 //   gh run download <run-id> -p 'e2e-durations-*' -D <dir>
-//   node scripts/e2e-shard.mjs --update <dir>/*/results.json
+//   node scripts/e2e-shard.mjs --update <dir>
 //
 // Usage:
 //   node scripts/e2e-shard.mjs <current> <total>       the shard's spec files, for `playwright test <files>`
@@ -39,7 +39,14 @@ function specFiles(root = process.cwd()) {
 
 function readTimings(root = process.cwd()) {
   if (!fs.existsSync(path.join(root, TIMINGS))) return {};
-  return JSON.parse(fs.readFileSync(path.join(root, TIMINGS), "utf8")).seconds ?? {};
+  try {
+    const seconds = JSON.parse(fs.readFileSync(path.join(root, TIMINGS), "utf8"))?.seconds;
+    return seconds && typeof seconds === "object" && !Array.isArray(seconds) ? seconds : {};
+  } catch (error) {
+    if (!(error instanceof SyntaxError)) throw error;
+    console.error("e2e-shard: invalid timing JSON; using a count split.");
+    return {};
+  }
 }
 
 /** Longest first, each to the least loaded shard (ties to the lower shard), so the result is stable. */
@@ -49,12 +56,12 @@ export function planShards(total, root = process.cwd()) {
   // Empty shards must never fall back to running the whole Playwright suite.
   if (total > files.length) throw new Error("More shards than spec files; use fewer shards");
   const timings = readTimings(root);
-  const known = files.filter((f) => timings[f] !== undefined).map((f) => timings[f]);
-  const average = known.length ? known.reduce((a, b) => a + b, 0) / known.length : 1;
-  const unknown = files.filter((f) => timings[f] === undefined);
+  const unknown = files.filter((f) => !Number.isFinite(timings[f]) || timings[f] <= 0);
   if (unknown.length)
-    console.error(`e2e-shard: no timing for ${unknown.join(", ")}; counted as ${average.toFixed(0)} s each.`);
-  const weight = (f) => timings[f] ?? average;
+    console.error(
+      `e2e-shard: missing/invalid timings for ${unknown.length} spec(s); using a count split. Refresh with --update.`,
+    );
+  const weight = (f) => (unknown.length ? 1 : timings[f]);
   const shards = Array.from({ length: total }, () => ({ files: [], seconds: 0 }));
   for (const f of [...files].sort((a, b) => weight(b) - weight(a) || a.localeCompare(b))) {
     const target = shards.reduce((min, s) => (s.seconds < min.seconds ? s : min), shards[0]);
@@ -71,15 +78,25 @@ export function shardFiles(current, total, root = process.cwd()) {
   return planShards(total, root)[current - 1].files.map((f) => path.posix.join(TEST_DIR, f));
 }
 
-function update(reports) {
-  if (!reports.length) fail("--update needs at least one Playwright JSON report.");
+export function updateTimings(reports, root = process.cwd()) {
+  if (!reports.length) throw new Error("--update needs at least one Playwright JSON report.");
+  // Accept a download directory on every shell, including PowerShell (which doesn't expand these globs).
+  reports = reports.flatMap((file) => {
+    if (!fs.statSync(file).isDirectory()) return [file];
+    return fs
+      .readdirSync(file, { recursive: true })
+      .map((name) => path.join(file, name))
+      .filter((name) => path.basename(name) === "results.json")
+      .sort();
+  });
+  if (!reports.length) throw new Error("No Playwright results.json reports found");
   // Average each test's first attempt over the reports (retries are flakes, not the expected cost).
   const runs = new Map();
   const walk = (suite, titles) => {
     for (const spec of suite.specs ?? [])
       for (const t of spec.tests) {
         const first = t.results?.[0];
-        if (!first || first.status === "skipped") continue;
+        if (!first || first.status !== "passed" || !Number.isFinite(first.duration) || first.duration < 0) continue;
         const key = [spec.file, t.projectName, ...titles, spec.title, spec.line].join("\u0000");
         const entry = runs.get(key) ?? { file: spec.file, ms: [] };
         entry.ms.push(first.duration);
@@ -88,25 +105,26 @@ function update(reports) {
     for (const child of suite.suites ?? []) walk(child, [...titles, child.title]);
   };
   for (const file of reports) for (const s of JSON.parse(fs.readFileSync(file, "utf8")).suites ?? []) walk(s, []);
+  if (!runs.size) throw new Error("No successful first attempts in the timing reports");
   const measured = {};
   for (const { file, ms } of runs.values())
     measured[file] = (measured[file] ?? 0) + ms.reduce((a, b) => a + b, 0) / ms.length / 1000;
   // Spec files the reports didn't cover keep their old timing; deleted ones drop out.
-  const old = readTimings();
+  const old = readTimings(root);
   const seconds = {};
-  for (const f of specFiles()) {
+  for (const f of specFiles(root)) {
     const s = measured[f] ?? old[f];
-    if (s !== undefined) seconds[f] = Math.round(s * 10) / 10;
+    if (Number.isFinite(s) && s >= 0) seconds[f] = Math.max(0.1, Math.round(s * 10) / 10);
   }
   const about = "Seconds of test time per e2e spec file on CI, for scripts/e2e-shard.mjs. Regenerate, don't hand-edit.";
-  fs.writeFileSync(TIMINGS, JSON.stringify({ about, seconds }, null, 2) + "\n");
+  fs.writeFileSync(path.join(root, TIMINGS), JSON.stringify({ about, seconds }, null, 2) + "\n");
   console.log(`e2e-shard: wrote ${Object.keys(seconds).length} spec timings from ${reports.length} report(s).`);
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const [a, b, ...rest] = process.argv.slice(2);
   try {
-    if (a === "--update") update([b, ...rest].filter(Boolean));
+    if (a === "--update") updateTimings([b, ...rest].filter(Boolean));
     else if (a === "--plan") {
       const total = Number(b);
       if (!Number.isInteger(total) || total < 1) fail("usage: --plan <total>");

@@ -238,12 +238,44 @@ jobs:
             tests/.output/parity-results
           retention-days: 14
 
-  e2e:
-    name: E2E ${{ matrix.shard }}/${{ strategy.job-total }}
+  e2e-build:
+    name: Build E2E variants
     needs: changes
     if: needs.changes.outputs.e2e == 'true'
     runs-on: ubuntu-26.04
-    # Some runners spend ~8 minutes on the parallel builds and browser setup before tests start; 15 left no headroom.
+    timeout-minutes: 15
+    outputs:
+      playwright-image: ${{ steps.image.outputs.playwright-image }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/toolchain
+      - name: Resolve lockfile-pinned Playwright image
+        id: image
+        run: node scripts/ci/e2e-builds.mjs image >> "$GITHUB_OUTPUT"
+      - name: Build served variants once
+        run: node scripts/ci/e2e-builds.mjs build
+      - name: Upload served variants
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-builds
+          path: |
+            tests/.output/e2e-dist
+            tests/.output/preview-dist
+            tests/.output/internal-dist
+            tests/.output/locked-dist
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 3
+
+  e2e:
+    name: E2E ${{ matrix.shard }}/${{ strategy.job-total }}
+    needs: [changes, e2e-build]
+    if: needs.changes.outputs.e2e == 'true'
+    runs-on: ubuntu-26.04
+    # The pinned image already contains Chromium and its system libraries.
+    container:
+      image: ${{ needs.e2e-build.outputs.playwright-image }}
+      options: --ipc=host
     timeout-minutes: 22
     strategy:
       fail-fast: false
@@ -251,11 +283,13 @@ jobs:
         shard: [1, 2, 3, 4, 5, 6]
     steps:
       - uses: actions/checkout@v7
-      # Setup, builds and the run, shared with the nightly workflow. Each shard runs whole spec files,
+      # Setup and the run, shared with the nightly workflow. Each shard runs whole spec files,
       # picked to even out the measured durations (scripts/e2e-shard.mjs).
       - name: Playwright shard
         uses: ./.github/actions/e2e
         with:
+          builds-artifact: e2e-builds
+          browser-setup: image
           shard: ${{ matrix.shard }}
           total: ${{ strategy.job-total }}
           blob-name: report-${{ matrix.shard }}.zip
@@ -334,7 +368,7 @@ jobs:
 
   ci:
     name: CI
-    needs: [changes, checks, parity, e2e, self-host]
+    needs: [changes, checks, parity, e2e-build, e2e, self-host]
     if: always()
     runs-on: ubuntu-26.04
     timeout-minutes: 5
@@ -346,6 +380,7 @@ jobs:
           SELF_HOST: ${{ needs.self-host.result }}
           PARITY: ${{ needs.parity.result }}
           E2E: ${{ needs.e2e.result }}
+          E2E_BUILD: ${{ needs.e2e-build.result }}
           E2E_WANTED: ${{ needs.changes.outputs.e2e }}
         run: |
           echo "changes=$CHANGES checks=$CHECKS self-host=$SELF_HOST parity=$PARITY e2e=$E2E (wanted: $E2E_WANTED)"
@@ -354,6 +389,7 @@ jobs:
           [ "$SELF_HOST" = "success" ] || { echo "::error::self-host $SELF_HOST"; exit 1; }
           [ "$PARITY" = "success" ] || { echo "::error::output parity $PARITY"; exit 1; }
           if [ "$E2E_WANTED" = "true" ]; then
+            [ "$E2E_BUILD" = "success" ] || { echo "::error::e2e builds $E2E_BUILD"; exit 1; }
             [ "$E2E" = "success" ] || { echo "::error::e2e $E2E"; exit 1; }
           else
             [ "$E2E" = "skipped" ] || [ "$E2E" = "success" ] || { echo "::error::e2e $E2E"; exit 1; }
