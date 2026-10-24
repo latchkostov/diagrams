@@ -11,8 +11,15 @@ Vitest separates parallel covered units from serial, uncovered heavy tests. Samp
 sweeps, retry-storm evidence, public-example precision checks, skill packaging and the other long
 simulation checks retain every assertion and sample. CI runs static checks, three coverage shards,
 build/size/ZIP and heavy tests independently, preserving the existing aggregate check names.
+The 2,000-document Kubernetes volume/replay check also runs in heavy, with its original fixture,
+assertions and hang backstop; its operation-count growth checks stay in unit.
+The five real-build contracts (bundle splitting, deployment, local-only, offline and stencil assets)
+move from `*.build.test.ts` to `*.build.heavy.test.ts` with identical file contents. Their startup
+chunk pins, deployment assertions and existing backstops all remain enforced in the heavy CI job.
 Native-copy probe helpers preserve coverage function identities across shards; configuration changes
 compare every file and total with an unsharded run at the exact same tested revision.
+Istanbul counters avoid V8's differing TSX branch identities. Explicit co-host, deferred-proof and
+queued-frame tests cover collaboration paths that otherwise depended on incidental callback ordering.
 
 An owned flake ledger and `scripts/ci/known-flakes.mjs <run-id>` classify structured failed tests.
 Unknown failures, missing reports and infrastructure failures fail closed. ZIP and sampling timeout

@@ -425,6 +425,10 @@ running tests again. The existing `Types, lint, unit, build` and `CI` aggregate 
 Native-copy probes use unmapped helpers per module: per-call arrow wrappers share original source
 locations, causing coverage mergers to collapse distinct functions. A heavy integration fixture compares
 real merged blobs with an unsharded run. Do not accept a percentage tolerance for that difference.
+Coverage uses Istanbul source counters because V8 remapping also produced different TSX branch totals
+for loaded and uncovered modules. Deferred collaboration paths have explicit tests instead of relying
+on incidental background callbacks to cover them. Coverage-only module queries retain the i18n wrapper's
+normal transform rules.
 Compare `coverage-summary.json` from the merge with an unsharded unit run when changing this setup.
 The on-demand **Compare merged unit coverage** workflow accepts a CI run ID, checks out that
 artifact's exact tested revision, and compares every file and total against one unsharded Ubuntu run.
@@ -464,7 +468,7 @@ What isn't needed for the first view loads on first use or on intent, through th
 export, password links, Your diagrams, the embed viewer, the live session (simulation, slow motion,
 recording), the AI panel and the Lab. Until its code arrives a dialog shows its modal frame, which Esc and
 Close cancel; a failed download says so in place, with Retry (`tests/e2e/lazy-loading.spec.ts`). The canvas
-loads as two chunks (`canvasChunks` in `vite.config.ts`). `src/lib/bundleSplit.build.test.ts` builds the
+loads as two chunks (`canvasChunks` in `vite.config.ts`). `src/lib/bundleSplit.build.heavy.test.ts` builds the
 app and fails if any of that reaches the startup JavaScript (the entry and what it preloads) or the canvas's
 first view, or if the canvas splits into more chunks. `scripts/perf/startup.mjs` measures paint, time to
 interactive and the first open of the File menu, the dialogs, Ctrl+K, quick-add, the AI panel and live view on

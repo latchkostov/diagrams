@@ -329,6 +329,65 @@ describe("relay reconnect and lifecycle", () => {
     await Promise.all(sockets.map(barrier));
     expect(accounting.size).toBe(0);
   });
+  it.each(["sender", "receiver"])("does not deliver queued frames after the %s departs", async (endpoint) => {
+    const make = () => {
+      const t = createRelayTransport({
+        url: `${origin.replace("http:", "ws:")}/collab/v1`,
+        roomId: ids[0],
+        WebSocket: browserSockets(origin, sockets),
+      });
+      transports.push(t);
+      return t;
+    };
+    const a = make(),
+      b = make();
+    await Promise.all(sockets.map(barrier));
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    onTestFinished(() => release());
+    let entered!: () => void;
+    const started = new Promise<void>((resolve) => {
+      entered = resolve;
+    });
+    const received: number[] = [];
+    b.subscribe({
+      join() {},
+      leave() {},
+      async frame(_from, bytes) {
+        received.push(bytes[0]);
+        entered();
+        await held;
+      },
+    });
+    const set = vi.spyOn(Map.prototype, "set");
+    onTestFinished(() => set.mockRestore());
+    a.send(new Uint8Array([1]));
+    await started;
+    a.send(new Uint8Array([2]));
+    await Promise.all(sockets.map(barrier));
+    const deliveries = set.mock.calls
+      .filter(([key, value]) => key === a.self && value instanceof Promise)
+      .map(([, value]) => value as Promise<void>);
+    expect(deliveries).toHaveLength(2);
+    const index = set.mock.calls.findIndex(([key, value]) => key === a.self && value === 1);
+    expect(index).toBeGreaterThanOrEqual(0);
+    const accounting = set.mock.contexts[index] as Map<string, number>;
+    const closing = endpoint === "sender" ? a : b;
+    const departed = new Promise<void>((resolve) =>
+      relay.rooms.get(ids[0])!.peers.get(closing.self)!.once("close", resolve),
+    );
+    closing.close();
+    await departed;
+    await Promise.all(sockets.map(barrier));
+    expect(b.peers()).toEqual([]);
+    release();
+    await Promise.all(deliveries);
+    expect(received).toEqual([1]);
+    expect(accounting.size).toBe(0);
+  });
+
   it("rejects invalid room IDs and credential-bearing URLs before opening a socket", () => {
     expect(() => createRelayTransport({ url: "ws://localhost/collab/v1", roomId: "bad" })).toThrow();
     expect(() => createRelayTransport({ url: "ws://localhost/collab/v1?room=secret", roomId: ids[0] })).toThrow();

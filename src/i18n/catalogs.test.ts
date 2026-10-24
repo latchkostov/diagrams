@@ -171,6 +171,13 @@ describe("the build step (scripts/i18n-plugin.ts)", () => {
     expect(rewriteCalls(`${uses}${call("msg", "db", ', "billing"')};`, none, fail)).toBeUndefined();
   });
 
+  it("recognizes the rich-text wrapper when coverage appends a module query", () => {
+    const code = `import { t } from "./index";${NL}const raw = t;`;
+    const id = "/repo/src/i18n/rich.ts?cache=1&vitest-uncovered-coverage=true";
+    expect(rewriteCalls(code, none, fail, id)).toBeUndefined();
+    expect(() => rewriteCalls(code, none, fail, id.replace("rich.ts", "other.ts"))).toThrow("only ever called");
+  });
+
   it("follows the imported binding: an alias is rewritten; a method, a string or a comment never is", () => {
     const alias = `import { t as tr, msg as m } from "../../i18n";${NL}// é… ${call("t", "file.new")}${NL}const a = ${call("tr", "file.new")}, b = ${call("m", "shortcuts.undo")};`;
     const out = rewriteCalls(alias, none, fail)!;

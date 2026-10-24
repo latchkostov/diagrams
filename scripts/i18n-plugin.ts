@@ -257,7 +257,7 @@ export function rewriteCalls(
   }
   if (!local.size) return undefined;
   // rich.ts wraps t itself; everywhere else t, msg and tRich are only ever called.
-  const valuesAllowed = /[/\\]src[/\\]i18n[/\\]rich\.ts$/.test(id);
+  const valuesAllowed = /[/\\]src[/\\]i18n[/\\]rich\.ts$/.test(id.split("?")[0]);
   const edits: { start: number; end: number; text: string }[] = [];
   const callees = new Set<Node>();
   walk(ast, (node, parent, key, shadowed) => {

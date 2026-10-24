@@ -1,3 +1,4 @@
+import { kubernetesChain } from "../../test/kubernetesChain";
 import { opGrowth } from "../../test/opCounter";
 import { patternGrowth } from "../../test/patternComplexity";
 import { presentReportLine } from "../ui/importMessages";
@@ -10,7 +11,7 @@ import { estimateCardSize } from "../../canvas/nodes/size";
 import { detectFormat, importFiles, importText, type ImportOutcome } from "../formats";
 import { sniffInfra } from "../sniff";
 import type { ImportReport } from "./graph";
-import { importKubernetes, replayOutcome } from "./pipeline";
+import { importKubernetes } from "./pipeline";
 import { HELM_TEMPLATE, MAX_RESOURCES, readKubernetes, SecretUsers } from "./kubernetes";
 import { parseServiceHost, WorkloadNames } from "./k8sHosts";
 import { containerEnv, ENV_LIMITS, expandVars, newEnvBudget, OPAQUE } from "./k8sSettings";
@@ -1040,26 +1041,6 @@ metadata:
     expect(outcome).toMatchObject({ ok: false, error: expect.stringMatching(/nested too deeply/) });
   });
 
-  /** `n` Deployments, each with its Service in one of 20 namespaces, each calling the next one by its host. */
-  const chain = (n: number) =>
-    Array.from(
-      { length: n },
-      (_, i) => `---
-apiVersion: apps/v1
-kind: Deployment
-metadata: { name: svc-${i}, namespace: ns-${i % 20} }
-spec:
-  template:
-    metadata: { labels: { app: svc-${i} } }
-    spec: { containers: [{ name: a, image: example/a, env: [{ name: NEXT_URL, value: "http://svc-${(i + 1) % n}.ns-${(i + 1) % 20}" }] }] }
----
-apiVersion: v1
-kind: Service
-metadata: { name: svc-${i}, namespace: ns-${i % 20} }
-spec: { selector: { app: svc-${i} } }
-`,
-    ).join("");
-
   it("reads documents in linear time", () => {
     // Eight times the workloads, Services and hosts take about eight times as long; matching each host or selector
     // against every workload would take sixty-four. A ratio, not a budget in ms, so a busy machine doesn't fail it.
@@ -1068,7 +1049,7 @@ spec: { selector: { app: svc-${i} } }
     parsed.cache = new Map();
     try {
       const run = (n: number) => {
-        const text = chain(n);
+        const text = kubernetesChain(n);
         readKubernetes([{ name: "big.yaml", text }]);
         return () => readKubernetes([{ name: "big.yaml", text }]);
       };
@@ -1077,27 +1058,6 @@ spec: { selector: { app: svc-${i} } }
       parsed.cache = undefined;
     }
   }, 30_000);
-
-  it("reads 2,000 documents, and refuses more", () => {
-    const docs = chain(1_000);
-    const { report } = k8s(docs);
-    // Over 300 nodes: the import draws some namespaces, and every one of them drawn is the whole set.
-    expect(report.nodes).toBeLessThanOrEqual(300);
-    const pick = report.pick!;
-    expect(pick.total).toBe(1_000);
-    const { diagram } = ok(
-      replayOutcome(
-        pick.graph,
-        pick.format,
-        pick.groups.map((g) => g.key),
-      ),
-    );
-    expect(diagram.nodes).toHaveLength(1_000);
-    expect(diagram.edges).toHaveLength(1_000);
-    expect(diagram.groups).toHaveLength(20);
-    const more = `${docs}---\napiVersion: v1\nkind: ConfigMap\nmetadata: { name: one-too-many }\n`;
-    expect(() => importKubernetes([{ name: "big.yaml", text: more }])).toThrow(/more than 2,000/);
-  });
 
   it("caps resources from Lists too", () => {
     const items = Array.from(

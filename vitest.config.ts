@@ -9,7 +9,7 @@ export default mergeConfig(
   defineConfig({
     test: {
       coverage: {
-        provider: "v8",
+        provider: "istanbul",
         include: ["src/**/*.{ts,tsx}"],
         exclude: ["src/**/*.test.*", "src/examples/**", "src/lab/**", "src/test/**"],
         reporter: ["text-summary", "html", "json", "json-summary"],

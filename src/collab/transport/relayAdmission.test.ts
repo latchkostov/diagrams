@@ -35,6 +35,7 @@ function setUp(epochs: number[] = [2], pad = 0) {
   };
   const of = (t: string) => sent.filter((m) => m.t === t);
   return {
+    admission,
     clock,
     sent,
     c,
@@ -45,6 +46,27 @@ function setUp(epochs: number[] = [2], pad = 0) {
 }
 
 describe("a page's admission on a relay that enforces knock-to-join", () => {
+  it("does not send a deferred proof after stop, an acknowledgement or a changed challenge", async () => {
+    for (const state of ["stopped", "acknowledged", "replaced"] as const) {
+      const t = setUp();
+      const proofs: ((proof: { key: string; sig: string }) => void)[] = [];
+      t.admission.prove = () => new Promise((resolve) => proofs.push(resolve));
+      t.c.start("first", "0000000000000001");
+      if (state === "stopped") t.c.stop();
+      else if (state === "acknowledged") t.c.onProofAck(true);
+      else t.c.start("second", "0000000000000002");
+      proofs[0]({ key: "old", sig: "old" });
+      await t.flush();
+      expect(t.of("prove")).toEqual([]);
+      if (state === "replaced") {
+        proofs[1]({ key: "current", sig: "current" });
+        await t.flush();
+        expect(t.of("prove")).toMatchObject([{ key: "current", sig: "current" }]);
+      }
+      t.c.stop();
+    }
+  });
+
   it("preserves acknowledged piece progress across subsequent target changes", async () => {
     const t = setUp([1], 300_000);
     t.c.start("challenge", "0000000000000001");

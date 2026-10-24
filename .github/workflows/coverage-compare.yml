@@ -49,6 +49,8 @@ jobs:
       - uses: ./.github/actions/toolchain
       - name: Unsharded reference
         run: pnpm test:coverage --maxWorkers=3 --coverage.reportsDirectory=coverage-reference
+      - name: Record reference revision
+        run: git rev-parse HEAD > coverage-reference/tested-sha.txt
       - name: Find matching CI run
         if: github.event_name == 'pull_request'
         id: ci
@@ -78,13 +80,12 @@ jobs:
         env:
           MERGED: ${{ runner.temp }}/merged-coverage/coverage-summary.json
         run: node scripts/ci/compare-coverage.mjs "$MERGED" coverage-reference/coverage-summary.json | tee -a "$GITHUB_STEP_SUMMARY"
-      - name: Record reference revision
-        run: git rev-parse HEAD > coverage-reference/tested-sha.txt
       - uses: actions/upload-artifact@v7
         if: ${{ !cancelled() }}
         with:
           name: unit-unsharded-coverage
           path: |
             coverage-reference/coverage-summary.json
+            coverage-reference/coverage-final.json
             coverage-reference/tested-sha.txt
           retention-days: 14

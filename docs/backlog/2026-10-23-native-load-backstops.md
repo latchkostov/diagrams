@@ -13,6 +13,17 @@ Investigate native teardown and download cancellation independently of capacity 
 Keep unconfirmed failures unconfirmed; an isolated passing rerun does not establish a pre-existing
 bug. Track repeated failures in `tests/flakes.json`; local contention alone does not qualify.
 
+## Kubernetes volume replay under native load
+
+The 2,000-document volume/replay case also crossed its unchanged 5-second native backstop during
+the Istanbul checks and after moving to uncovered heavy. Its test token stream and workload are
+unchanged; the reader's operation-count guard remains in unit. Only this case was replayed twice
+on clean current master `2c6a463c`: first `Tests 1 failed | 54 skipped (55)` with the same
+`Test timed out in 5000ms`, then `Tests 1 passed | 54 skipped (55)`. This confirms the native
+backstop can fail independently of this change, and does not establish an assertion regression.
+Moving it avoids covered-unit cost; it does not claim to fix load starvation. No ledger entry or
+timeout increase was added, and the #263 exclusions remain intact.
+
 ## Ledger evidence
 
 Seeded from the Follow-ups 10 queue on 2026-10-23. Counts are documented observations, not a

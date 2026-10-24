@@ -17,10 +17,16 @@ it("merges probed native-copy coverage with the same identities as an unsharded 
 export function maybe(x: string) { return x ? parse(x) : ""; }`,
     );
     writeFileSync(
+      join(run.directory, "src/view.tsx"),
+      `import React from "react";
+export const view = (items: string[]) => <span aria-hidden={items.length || undefined}>{items.map(x => x ? x : undefined)}</span>;`,
+    );
+    writeFileSync(
       join(run.directory, "tests/a.test.ts"),
       `import { it, expect } from "vitest";
 import { parse, maybe } from "../src/probe";
-it("direct", () => { expect(parse(" a ")).toBe("a"); expect(maybe("")).toBe(""); });`,
+import { view } from "../src/view";
+it("direct", () => { expect(parse(" a ")).toBe("a"); expect(maybe("")).toBe(""); expect(view(["a", ""])).toBeDefined(); });`,
     );
     writeFileSync(
       join(run.directory, "tests/b.test.ts"),
@@ -38,7 +44,7 @@ export default {
   root: ${JSON.stringify(run.directory.replaceAll("\\", "/"))},
   plugins: [operationProbes()],
   test: { include: ["tests/*.test.ts"], coverage: {
-    provider: app.test.coverage.provider, include: ["src/probe.ts"], reporter: ["json-summary"]
+    provider: app.test.coverage.provider, include: ["src/*.{ts,tsx}"], reporter: ["json-summary"]
   } }
 };`,
     );
@@ -67,6 +73,8 @@ export default {
     invoke(`--coverage.reportsDirectory=${join(run.directory, "reference")}`);
     const summary = (dir: string) =>
       JSON.parse(readFileSync(join(run.directory, dir, "coverage-summary.json"), "utf8"));
+    expect(summary("reference").total.statements.covered).toBeGreaterThan(0);
+    expect(Object.keys(summary("reference")).some((file) => file.endsWith("/src/view.tsx"))).toBe(true);
     expect(compareCoverage(summary("merged"), summary("reference"))).toEqual([]);
   } finally {
     run.dispose({ checkOwned: true });
