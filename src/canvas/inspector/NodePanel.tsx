@@ -101,10 +101,10 @@ export function NodePanel({
     intended ||
     ((router || mixer) && routingPinned);
 
-  // These sections already pause their analyses while text is being edited. Keep their
-  // elements stable too; neither the draft text nor a new document-reader closure is an input.
+  // These sections already pause their analyses while text is being edited. The editor's
+  // stable reader keeps bindings and validation on the current graph without a new closure per key.
   const planningRevision = namingActive ? undefined : (revision ?? node);
-  const planningRead = namingActive ? undefined : readDiagram;
+  const planningRead = namingActive ? editor.getDiagram : readDiagram;
   const planning = useMemo(
     () => (
       <NodePlanning

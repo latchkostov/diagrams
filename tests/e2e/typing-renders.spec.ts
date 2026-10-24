@@ -11,25 +11,76 @@ import {
   waitForStableBox,
 } from "./fixtures";
 import { typingFixture } from "../../src/lab/typingFixture";
+import { kedaFixture } from "../../src/lab/kedaFixture";
+import { cloudFixture } from "../../src/lab/cloudFixture";
 import { RENDER_HOOK } from "../bench/ui/instrument";
 import { median, typingWork } from "./typing-work";
 
-for (const field of ["label", "sublabel", "node-description"] as const) {
-  test(`typing ${field} renders only the affected parts`, async ({ page }, info) => {
+const cases = [
+  ...(["label", "sublabel", "node-description"] as const).map((field) => ({
+    field,
+    name: field,
+    diagram: typingFixture,
+    nodeId: "api",
+    binding: undefined,
+  })),
+  ...(["label", "sublabel", "node-description"] as const).map((field) => ({
+    field,
+    name: `${field} with KEDA`,
+    diagram: kedaFixture(),
+    nodeId: "worker",
+    binding: JSON.stringify(["uploads", "renders"]),
+  })),
+  ...(["ecs-alb", "aca-event"] as const).map((preset) => ({
+    field: "label",
+    name: `label with ${preset}`,
+    diagram: cloudFixture(preset),
+    nodeId: "worker",
+    binding: preset === "ecs-alb" ? "lb" : JSON.stringify(["queue", undefined]),
+  })),
+];
+
+for (const { field, name, diagram, nodeId, binding } of cases) {
+  test(`typing ${name} renders only the affected parts`, async ({ page }, info) => {
     await page.clock.install();
     await page.addInitScript(RENDER_HOOK);
     await gotoCanvas(page, "kafka-order-pipeline");
     await page.getByTestId("import-input").setInputFiles({
       name: "typing.diagram.json",
       mimeType: "application/json",
-      buffer: Buffer.from(JSON.stringify(typingFixture)),
+      buffer: Buffer.from(JSON.stringify(diagram)),
     });
-    await expect(page.getByTestId("diagram-title")).toHaveText("Typing");
-    await page.getByTestId("node-api").dblclick();
+    await expect(page.getByTestId("diagram-title")).toHaveText(diagram.title);
+    await page.getByTestId(`node-${nodeId}`).dblclick();
     const input = page.getByTestId(`inspector-field-${field}`);
     await expect(input).toBeVisible();
+    if (binding) {
+      await page.getByTestId("inspector-section-node-simulation").click();
+      await page.getByTestId("autoscaling-advanced-toggle").click();
+    }
+    const source = page.getByTestId("autoscaling-source-select");
+    const hint = page.getByTestId("autoscaling-binding-hint");
+    const readouts = binding
+      ? {
+          hint: await hint.innerText(),
+          target: await page.getByTestId("autoscaling-target").inputValue(),
+          min: await page.getByTestId("autoscaling-min").inputValue(),
+          max: await page.getByTestId("autoscaling-max").inputValue(),
+        }
+      : undefined;
+    const checkBinding = async () => {
+      if (!binding || !readouts) return;
+      await expect(source).toBeEnabled();
+      await expect(source).toHaveValue(binding);
+      await expect(hint).toHaveText(readouts.hint);
+      for (const key of ["target", "min", "max"] as const)
+        await expect(page.getByTestId(`autoscaling-${key}`)).toHaveValue(readouts[key]);
+    };
+    await checkBinding();
     // Warm lazy fields, focus and the documentation badge before counting steady-state input.
     await input.fill("An existing value wider than the card's maximum label width");
+    await expect(input).toBeFocused();
+    await checkBinding();
     await input.press(TEXT_END);
     await waitForCameraIdle(page);
     await waitForChecks(page);
@@ -45,11 +96,16 @@ for (const field of ["label", "sublabel", "node-description"] as const) {
       const sample = await page.evaluate(() => window.__benchRenders?.stop());
       if (!sample) throw new Error("React render hook was not installed");
       samples.push(sample);
+      await checkBinding();
     }
     await work.close();
     info.annotations.push({ type: "typing-renders", description: JSON.stringify({ field, samples }) });
-    expect(median(samples.map((s) => s.total)), `${field} renders per key`).toBeLessThanOrEqual(15);
-    expect(median(samples.map((s) => s.commits)), `${field} commits per key`).toBeLessThanOrEqual(2);
+    const renders = median(samples.map((s) => s.total));
+    const commits = median(samples.map((s) => s.commits));
+    expect(renders, `${name} observed renders`).toBeGreaterThan(0);
+    expect(commits, `${name} observed commits`).toBeGreaterThan(0);
+    expect(renders, `${name} renders per key`).toBeLessThanOrEqual(15);
+    expect(commits, `${name} commits per key`).toBeLessThanOrEqual(2);
     await expect(input).toHaveValue("An existing value wider than the card's maximum label widthxyz123");
     await page.clock.resume();
     await input.blur();

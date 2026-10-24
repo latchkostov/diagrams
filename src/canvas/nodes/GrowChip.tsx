@@ -5,6 +5,7 @@ import { CHIP_ORDER, freeSide, type Rect } from "./chipPlacement";
 import { sidePosition } from "../edges/routing";
 import { useDiagram } from "../DiagramContext";
 import { formatCombo } from "../../editor/shortcuts";
+import { createGrowEdgesEqual } from "./growEdges";
 
 /**
  * The "+" on a single selected node (D3): a click opens quick-add for the next node, connected downstream;
@@ -24,19 +25,8 @@ export function GrowChip({ id, x, y }: { id: string; x: number; y: number }) {
   /** The side the last placement chose: until the chip has moved there, telling React Flow would be told again. */
   const placed = useRef<Side | "corner" | undefined>(undefined);
   // Where the edges' labels are: they move when edges change (an insert, a reconnect) or reroute.
-  const edges = useStore(
-    (s) => s.edges,
-    (a, b) =>
-      a.length === b.length &&
-      a.every(
-        (e, i) =>
-          e.id === b[i].id &&
-          e.source === b[i].source &&
-          e.target === b[i].target &&
-          e.data === b[i].data &&
-          e.hidden === b[i].hidden,
-      ),
-  );
+  const [edgesEqual] = useState(createGrowEdgesEqual);
+  const edges = useStore((s) => s.edges, edgesEqual);
   useLayoutEffect(() => {
     const place = () => {
       const node = ref.current?.closest(".react-flow__node");
