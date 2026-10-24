@@ -14,6 +14,7 @@ vi.mock("./context", () => ({ useLive: () => ({ controller: { currentDiagram: wa
 vi.mock("../canvas/DiagramContext", () => ({ useDiagram: () => ({ editing: null }) }));
 vi.mock("../canvas/interaction", () => ({ useInteraction: () => null }));
 
+import { HealthWindow } from "./healthWindow";
 import { NodeBadges } from "./NodeBadges";
 
 it("never mounts call-pill consumers for idle Request snapshots", () => {
@@ -42,7 +43,8 @@ it("counts terminal losses once and excludes failed attempts that recovered", ()
     position: { x: 0, y: 0 },
   });
   try {
-    const sample = {
+    const sample: import("../sim/types").NodeSimState = {
+      id: "caller",
       role: "processor",
       status: "up",
       processed: 1,
@@ -59,10 +61,19 @@ it("counts terminal losses once and excludes failed attempts that recovered", ()
       configuration: {},
       snapshot: { nodes: { caller: sample }, edges: {} },
     } as unknown as LiveState;
+    const health = new HealthWindow();
+    health.observe(
+      { ...state.snapshot, time: 0, nodes: { caller: { ...sample, dropped: 0 } } } as Parameters<
+        HealthWindow["observe"]
+      >[0],
+      0,
+    );
+    health.observe({ ...state.snapshot, time: 1000 }, 0);
     const html = renderToStaticMarkup(<NodeBadges state={state} presenting={false} />);
-    expect(html).toContain('data-testid="node-alert-caller">7</div>');
-    sample.dropped = 0;
-    sample.deadLettered = 0;
+    expect(html).toContain('data-testid="node-alert-caller">5</div>');
+    for (let time = 2000; time <= 12000; time += 1000) health.observe({ ...state.snapshot, time }, 0);
+    expect(sample.dropped).toBe(5);
+    expect(sample.deadLettered).toBe(2);
     expect(renderToStaticMarkup(<NodeBadges state={state} presenting={false} />)).not.toContain(
       'data-testid="node-alert-caller"',
     );

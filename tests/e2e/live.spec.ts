@@ -703,10 +703,10 @@ test.describe("live view", () => {
   });
 
   test("filled live badges meet AA contrast throughout the heat gradient in both themes", async ({ page }) => {
-    // Retried failures are not losses: the red count is on the queue once its messages dead-letter (about 8 s in).
+    // The intake loses messages now; dead letters retained by the queue are not current losses.
     await gotoLab(page, "live-badge-states", { at: 10 });
     const metric = page.getByTestId("node-metric-orders");
-    const alert = page.getByTestId("node-alert-jobs");
+    const alert = page.getByTestId("node-alert-jobs-api");
     await expect(metric).toBeVisible();
     await expect(alert).toBeVisible();
     await page.getByTestId("live-play").click();

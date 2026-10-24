@@ -2,6 +2,9 @@ import { describe, expect, it } from "vitest";
 import type { NodeSimState, SimSnapshot } from "../sim/types";
 import { Decorator, EDGE_HOLD, LARGE_LIVE_ELEMENTS } from "./decorations";
 import { LiveController } from "./controller";
+import retryStorm from "../examples/retry-storm.json";
+import type { DiagramFile } from "../model/types";
+import { HealthWindow, currentHealth } from "./healthWindow";
 
 /** Just enough of an element for the decorator: attributes, a dataset, and counted attribute writes. */
 class FakeElement {
@@ -61,13 +64,108 @@ function scene(nodeCount: number, edgeCount: number) {
         }),
       ),
     } satisfies SimSnapshot;
-    decorator.apply({ snapshot, spotlight: null, still: o.still });
+    decorator.apply({ snapshot, health: snapshot, spotlight: null, still: o.still });
   };
   const state = (i: number) => edges[i].getAttribute("data-live-edge");
   return { root, nodes, edges, decorator, publish, state };
 }
 
 describe("live decorations", () => {
+  it.each(["three-quick-retries", "retry-budget"])(
+    "preserves continuous queue attention on paused seeks and checkpoint restores: %s",
+    (simulation) => {
+      const { decorator, nodes } = scene(1, 0);
+      nodes[0].dataset.id = "payments";
+      const diagram = retryStorm as DiagramFile;
+      const controller = new LiveController(diagram);
+      try {
+        controller.selectSimulation(diagram.simulations!.find((s) => s.id === simulation)!);
+        const apply = () =>
+          decorator.apply({
+            snapshot: controller.snapshot(),
+            health: controller.getState().snapshot,
+            spotlight: null,
+            still: true,
+          });
+        controller.setPlaying(true);
+        while (controller.getState().snapshot.time < 15000) {
+          if (controller.getState().run?.waiting) controller.resume();
+          controller.advance(100);
+          controller.publish();
+          apply();
+        }
+        const continuous = { ...currentHealth(controller.getState().snapshot.nodes.payments) };
+        expect(continuous.growing).toBe(true);
+        expect(nodes[0].getAttribute("data-live-rising")).toBe("1");
+        controller.setPlaying(false);
+        controller.seek(60000);
+        apply();
+        expect(nodes[0].getAttribute("data-live-rising")).toBeNull();
+        if (simulation === "retry-budget") {
+          expect(controller.getState().snapshot.nodes.payments.backlog).toBeLessThan(100);
+          expect(currentHealth(controller.getState().snapshot.edges.pay.calls)).toMatchObject({
+            failed: 0,
+            timedOut: 0,
+          });
+        }
+        // This lands exactly on a retained checkpoint, without any subsequent playback.
+        controller.seek(15000);
+        apply();
+        expect(currentHealth(controller.getState().snapshot.nodes.payments)).toEqual(continuous);
+        expect(nodes[0].getAttribute("data-live-rising")).toBe("1");
+        controller.seek(60000);
+        apply();
+        expect(nodes[0].getAttribute("data-live-rising")).toBeNull();
+        controller.restart();
+        controller.seek(15000);
+        apply();
+        expect(currentHealth(controller.getState().snapshot.nodes.payments)).toEqual(continuous);
+        expect(nodes[0].getAttribute("data-live-rising")).toBe("1");
+      } finally {
+        controller.dispose();
+      }
+    },
+  );
+  it("keeps a stable small queue neutral and only heats a queue while sustained growth continues", () => {
+    const { decorator, nodes } = scene(1, 0);
+    const health = new HealthWindow();
+    const apply = (time: number, backlog: number) => {
+      const node: NodeSimState = {
+        id: "n0",
+        role: "processor",
+        status: "up",
+        backlog,
+        lag: {},
+        inFlight: 5,
+        processed: time * 0.3,
+        throughput: 300,
+        failed: 0,
+        dropped: 0,
+        deadLettered: 0,
+      };
+      const snapshot: SimSnapshot = {
+        time,
+        nodes: { n0: node },
+        edges: {},
+        particles: [],
+        events: [],
+        inSystem: backlog + 5,
+      };
+      health.observe(snapshot, 0);
+      decorator.apply({ snapshot, health: snapshot, spotlight: null });
+    };
+    for (let time = 0; time <= 12000; time += 1000) {
+      apply(time, 5);
+      expect(nodes[0].getAttribute("data-live-heat")).toBeNull();
+      expect(nodes[0].getAttribute("data-live-rising")).toBeNull();
+    }
+    for (let time = 13000; time <= 24000; time += 1000) apply(time, (time - 12000) / 100);
+    expect(nodes[0].getAttribute("data-live-heat")).not.toBeNull();
+    expect(nodes[0].getAttribute("data-live-rising")).toBe("1");
+    for (const time of [25000, 26000, 27000, 28000]) apply(time, 120);
+    expect(nodes[0].getAttribute("data-live-heat")).toBeNull();
+    expect(nodes[0].getAttribute("data-live-rising")).toBeNull();
+  });
   it.each([
     { playing: true, still: false },
     { playing: false, still: false },
@@ -103,7 +201,13 @@ describe("live decorations", () => {
         });
         controller.setPlaying(playing);
         controller.seek(100);
-        const apply = (still = false) => decorator.apply({ snapshot: controller.snapshot(), spotlight: null, still });
+        const apply = (still = false) =>
+          decorator.apply({
+            snapshot: controller.snapshot(),
+            health: controller.getState().snapshot,
+            spotlight: null,
+            still,
+          });
         apply();
         expect(state(0)).toBe("active");
         controller.seek(1500);

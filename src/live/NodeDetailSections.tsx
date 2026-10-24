@@ -146,6 +146,7 @@ export function NodeDetailSections({
       )}
       {section === "outcomes" && (
         <>
+          <p data-testid="node-outcomes-scope">{t("health.sinceRestart")}</p>
           {outcome && (
             <p className="lv-call-outcomes" data-testid={`node-outcome-${node.id}`}>
               {outcome}
@@ -173,6 +174,12 @@ export function NodeDetailSections({
         <>
           {
             <>
+              {!outcome && (
+                <>
+                  <Row testId="node-loss-total" label={t("hover.lost")} value={formatCount(s.dropped)} />
+                  <Row testId="node-failed-total" label={t("workspaceLive.failed")} value={formatCount(s.failed)} />
+                </>
+              )}
               <Row label={doneLabel[s.role]()} value={formatCount(s.processed)} />
               <Row label={t("hover.throughput")} value={formatRate(s.throughput)} />
               {broker ? (
@@ -237,9 +244,9 @@ function HoverExplanation({ id }: { id: string }) {
   return <NodePlanning diagram={ui.controller.currentDiagram} id={id} hover />;
 }
 
-function Row({ label, value, bad }: { label: string; value: string; bad?: boolean }) {
+function Row({ label, value, bad, testId }: { label: string; value: string; bad?: boolean; testId?: string }) {
   return (
-    <div className={`lv-detail-row${bad ? " is-bad" : ""}`}>
+    <div className={`lv-detail-row${bad ? " is-bad" : ""}`} data-testid={testId}>
       <span>{label}</span>
       <b className="mono">
         <bdi dir="ltr">{value}</bdi>

@@ -155,7 +155,12 @@ export function useFrameLoop({
         lastUi = now;
         if (controller.isPlaying) controller.publish();
         // Before the frame, so an edge marked active marches in the same frame its SVG stops.
-        decorator.apply({ snapshot: snap, spotlight: spotlightRef.current, still });
+        decorator.apply({
+          snapshot: snap,
+          health: controller.getState().snapshot,
+          spotlight: spotlightRef.current,
+          still,
+        });
         renderer.tick();
       }
       renderer.frame({ snap, now, speed, focus: slow ? undefined : controller.tracedRoot, slow, march });

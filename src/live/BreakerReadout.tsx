@@ -1,3 +1,4 @@
+import { callsSucceeding } from "./healthWindow";
 import { t } from "../i18n";
 import { callFailureRate } from "./callFailureRate";
 import { isolate } from "./bidi";
@@ -21,7 +22,9 @@ export function BreakerReadout({
 }) {
   const state =
     breaker.state === "closed"
-      ? t("resilience.closedState")
+      ? callsSucceeding(calls)
+        ? t("health.callsSucceeding")
+        : t("resilience.closedState")
       : breaker.state === "open"
         ? t("resilience.openState")
         : t("resilience.testingState");
