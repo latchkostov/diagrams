@@ -24,8 +24,19 @@ const seedDiagram = {
   ],
   edges: [{ id: "api-db", from: "api", to: "db", kind: "sync" }],
 };
-async function open(page: Page, straight = false, style: "smoothstep" | "bezier" | "straight" = "smoothstep") {
-  const diagram = structuredClone(seedDiagram);
+async function open(
+  page: Page,
+  straight = false,
+  style: "smoothstep" | "bezier" | "straight" = "smoothstep",
+  waypoints?: { x: number; y: number }[],
+) {
+  const diagram = {
+    ...structuredClone(seedDiagram),
+    edges: seedDiagram.edges.map((edge) => ({
+      ...edge,
+      ...(waypoints ? { waypoints, sourceSide: "right", targetSide: "left" } : {}),
+    })),
+  };
   if (straight) diagram.nodes[0].y = diagram.nodes[1].y = 4;
   await page.addInitScript(({ key, style }) => localStorage.setItem(key, JSON.stringify({ edgeStyle: style })), {
     key: STORAGE_KEYS.settings,
@@ -47,7 +58,7 @@ async function open(page: Page, straight = false, style: "smoothstep" | "bezier"
   });
   await page.mouse.click(at.x, at.y);
   await expect(page.getByTestId("reconnect-api-db-source")).toBeVisible();
-  if (style === "smoothstep") await expect(page.getByTestId("route-segment-api-db-0")).toBeVisible();
+  if (style === "smoothstep") await expect(page.getByTestId(`route-segment-api-db-${waypoints ? 1 : 0}`)).toBeVisible();
   await waitForCameraIdle(page);
   await waitForStableViewport(page);
 }
@@ -307,6 +318,9 @@ test("three keyboard nudges separated by history commits merge into one undo ste
   await pauseClock(page);
   const original = await path(page);
   let previousAnnouncement: string | undefined;
+  const initialX = await page
+    .getByTestId("route-segment-api-db-1")
+    .evaluate((el) => new DOMMatrix(getComputedStyle(el).transform).m41);
   for (let n = 0; n < 3; n++) {
     await page.getByTestId("canvas-announce").evaluate((el) => {
       if (el.firstChild instanceof Element) el.firstChild.setAttribute("data-previous-announcement", "1");
@@ -314,7 +328,12 @@ test("three keyboard nudges separated by history commits merge into one undo ste
     await page.keyboard.press("ArrowRight");
     // Commit each nudge separately, while keeping the run inside the history merge window under load.
     await page.clock.runFor(400);
-    await custom(page);
+    const bends = await custom(page);
+    const x = (Math.floor(initialX / 10) + n + 1) * 10;
+    expect(bends).toEqual([
+      { x, y: 36 },
+      { x, y: 276 },
+    ]);
     const announcement = await page.getByTestId("canvas-announce").getAttribute("data-seq");
     expect(announcement).not.toBe(previousAnnouncement);
     previousAnnouncement = announcement ?? undefined;
@@ -348,8 +367,74 @@ test("keyboard nudging a straight line adds a jog, then merges its segments back
   await expect(page.getByTestId("canvas-announce")).toHaveText("Route reset; automatic.");
 });
 
+test("keyboard selection follows the moved leg through an endpoint escape detour", async ({ page }) => {
+  await open(page, false, "smoothstep", [
+    { x: 240, y: 36 },
+    { x: 240, y: 276 },
+  ]);
+  await focusEdge(page);
+  for (const x of [230, 220, 210]) {
+    await page.keyboard.press("ArrowLeft");
+    const bends = await custom(page);
+    expect(bends.some((p, i) => p.x === x && bends[i + 1]?.x === x)).toBe(true);
+    await expect(page.getByTestId("route-segment-api-db-3")).toHaveClass(/is-active/);
+  }
+});
+
 test.describe("touch shaping", () => {
   test.use({ hasTouch: true });
+  test("a touch on a reconnect dot beside a short stub starts reconnecting", async ({ page, context }) => {
+    await open(page, true);
+    await focusEdge(page, true);
+    await page.keyboard.press("ArrowDown");
+    await custom(page);
+    await page.keyboard.press("Shift+0");
+    await waitForCameraIdle(page);
+    await waitForStableViewport(page);
+    const origin = await page.getByTestId("reconnect-api-db-source").boundingBox();
+    if (!origin) throw new Error("Missing reconnect dot");
+    await page.mouse.move(origin.x + origin.width / 2, origin.y + origin.height / 2);
+    await page.keyboard.down("Control");
+    await page.mouse.wheel(0, process.platform === "darwin" ? -16 : -160);
+    await page.keyboard.up("Control");
+    await waitForCameraIdle(page);
+    await waitForStableViewport(page);
+    const dot = page.getByTestId("reconnect-api-db-source");
+    const source = await dot.boundingBox();
+    const target = await page.getByTestId("reconnect-api-db-target").boundingBox();
+    const pane = await page.getByTestId("canvas-wrap").boundingBox();
+    if (!source || !target || !pane) throw new Error("Missing reconnect geometry");
+    // Centre both ends in the reserved canvas space after zooming, clear of the inspector.
+    await page.mouse.move(source.x + source.width / 2, source.y + source.height / 2);
+    await page.mouse.wheel((source.x + target.x + source.width) / 2 - (pane.x + pane.width / 2), 0);
+    await waitForStableViewport(page);
+    // Check the enlarged hit area too, including its side nearest the short segment.
+    for (const end of ["source", "target"]) {
+      const hit = await page.getByTestId(`reconnect-api-db-${end}`).evaluate((el) => {
+        const r = el.getBoundingClientRect();
+        const x = r.x + r.width / 2,
+          y = r.y + r.height / 2;
+        return [0, -16, 16].map((dx) =>
+          document
+            .elementFromPoint(x + dx, y)
+            ?.closest("[data-testid]")
+            ?.getAttribute("data-testid"),
+        );
+      });
+      expect(hit).toEqual(Array(3).fill(`reconnect-api-db-${end}`));
+    }
+    const box = await dot.boundingBox();
+    if (!box) throw new Error("Missing reconnect dot");
+    const x = box.x + box.width / 2,
+      y = box.y + box.height / 2;
+    const cdp = await context.newCDPSession(page);
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x, y }] });
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x: x + 70, y: y + 70 }] });
+    await expect(page.getByTestId("reconnect-line")).toBeVisible();
+    await expect(page.getByTestId("route-preview")).toHaveCount(0);
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchCancel", touchPoints: [] });
+    await cdp.detach();
+  });
   for (const cancel of [false, true])
     test(
       cancel ? "pointercancel snaps back without history" : "touch release commits once despite implicit capture loss",

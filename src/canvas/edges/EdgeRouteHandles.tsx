@@ -175,6 +175,12 @@ export function EdgeRouteHandles({
               else y = at;
             }
           }
+          // Both controls have square bounds on screen (the reconnect target is inscribed).
+          // Keep the entire segment target outside both endpoint targets, at either pointer size.
+          const clearance = Math.min(
+            ...[points[0], points[points.length - 1]].map((p) => Math.max(Math.abs(x - p.x), Math.abs(y - p.y)) * zoom),
+          );
+          keyboardOnly ||= clearance < 24;
           return (
             <div
               key={s.k}
@@ -183,6 +189,7 @@ export function EdgeRouteHandles({
               title={t("edge.shape.drag")}
               data-testid={`route-segment-${id}-${s.k}`}
               data-keyboard-only={keyboardOnly || undefined}
+              data-coarse-keyboard-only={clearance < 44 || undefined}
               aria-hidden={keyboardOnly || undefined}
               onPointerDown={begin(s.k)}
             />

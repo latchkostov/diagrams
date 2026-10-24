@@ -52,6 +52,13 @@
   .edge-end::after {
     --hit: calc(44px / var(--rf-zoom, 1));
   }
+  .edge-seg[data-coarse-keyboard-only],
+  .edge-seg[data-coarse-keyboard-only]::after {
+    pointer-events: none;
+  }
+  .edge-seg[data-coarse-keyboard-only]:not(.is-active) {
+    visibility: hidden;
+  }
 }
 .fe.is-reshaping {
   opacity: 0.35;

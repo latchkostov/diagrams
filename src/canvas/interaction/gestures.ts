@@ -34,7 +34,10 @@ export function gestures(state: GesturesState, event: GesturesEvent): GesturesTr
       if (!event.alone || state.active || event.k < 0) return unchanged;
       return {
         ...unchanged,
-        state: { ...state, keyboardSegment: { edge: event.edge, k: event.k } },
+        state: {
+          ...state,
+          keyboardSegment: { edge: event.edge, k: event.k, ...(event.leg ? { leg: event.leg } : {}) },
+        },
       };
     }
     case "selection.committed":

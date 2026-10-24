@@ -48,6 +48,26 @@ it("keeps a short first jog from an off-grid port and a one-pixel unsnapped jog"
     expect(jog.points[2].y).toBe(snap ? 60 : 57);
   }
 });
+it("keeps nudging the same leg when disjoint horizontal legs become aligned", () => {
+  const route = [
+    { x: 0, y: 0 },
+    { x: 100, y: 0 },
+    { x: 100, y: 100 },
+    { x: 200, y: 100 },
+    { x: 200, y: 10 },
+    { x: 300, y: 10 },
+    { x: 300, y: 200 },
+    { x: 400, y: 200 },
+  ];
+  const first = nudgeSegment(route, routeSegments(route)[4], -1, false, true, [24, 24]);
+  expect(first.index).toBe(4);
+  const second = nudgeSegment(first.points, routeSegments(first.points)[first.index], -1, false, true, [24, 24]);
+  expect(second.points.slice(0, 4)).toEqual(route.slice(0, 4));
+  expect(second.points.slice(4, 6)).toEqual([
+    { x: 200, y: -10 },
+    { x: 300, y: -10 },
+  ]);
+});
 it("announces only a transition from shaped to automatic, including repeated route events", () => {
   for (const path of machinePaths(routeAnnouncementMachine, { maxDepth: 4 })) {
     const machine = createMachine(routeAnnouncementMachine);

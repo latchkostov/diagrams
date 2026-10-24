@@ -516,13 +516,14 @@ export function createInteractionController<P = unknown>(
       changed();
     },
     endGesture,
-    /** Keys on a selected line yield to menus, panning and captured gestures. Geometry stays in its lazy surface. */
-    stepSegment(edge: string, k: number): number {
+    /** Keys yield to menus, panning and gestures. Leg matching belongs to the lazy edge controls. */
+    stepSegment(edge: string, k: number, leg?: import("./types").KeyboardLeg): number {
       if (panHeld || menuState.open || gestureState.active || selectionKey !== JSON.stringify([edge])) return -1;
       gestureState = gestures(gestureState, {
         type: "segment.step",
         edge,
         k,
+        leg,
         alone: true,
       }).state;
       changed();
