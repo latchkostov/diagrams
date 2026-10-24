@@ -46,6 +46,18 @@ function setUp(epochs: number[] = [2], pad = 0) {
 }
 
 describe("a page's admission on a relay that enforces knock-to-join", () => {
+  it("ignores chain changes before a connection starts and after it stops", async () => {
+    const t = setUp();
+    t.c.changed();
+    expect(t.sent).toEqual([]);
+    t.c.start("challenge", "0000000000000001");
+    await t.flush();
+    const sent = [...t.sent];
+    t.c.stop();
+    t.c.changed();
+    expect(t.sent).toEqual(sent);
+  });
+
   it("does not send a deferred proof after stop, an acknowledgement or a changed challenge", async () => {
     for (const state of ["stopped", "acknowledged", "replaced"] as const) {
       const t = setUp();

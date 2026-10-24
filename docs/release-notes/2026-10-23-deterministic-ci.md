@@ -18,8 +18,10 @@ move from `*.build.test.ts` to `*.build.heavy.test.ts` with identical file conte
 chunk pins, deployment assertions and existing backstops all remain enforced in the heavy CI job.
 Native-copy probe helpers preserve coverage function identities across shards; configuration changes
 compare every file and total with an unsharded run at the exact same tested revision.
-Istanbul counters avoid V8's differing TSX branch identities. Explicit co-host, deferred-proof and
-queued-frame tests cover collaboration paths that otherwise depended on incidental callback ordering.
+Istanbul shard merging preserves complete counter identities, including distinct ICU branches sharing
+a remapped start location, and requires all three parts. Explicit co-host, deferred-proof, inactive
+connection, verification-throttle and queued-frame tests cover paths that otherwise depended on
+incidental callback ordering.
 
 An owned flake ledger and `scripts/ci/known-flakes.mjs <run-id>` classify structured failed tests.
 Unknown failures, missing reports and infrastructure failures fail closed. ZIP and sampling timeout

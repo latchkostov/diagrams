@@ -44,37 +44,43 @@ export default {
   root: ${JSON.stringify(run.directory.replaceAll("\\", "/"))},
   plugins: [operationProbes()],
   test: { include: ["tests/*.test.ts"], coverage: {
-    provider: app.test.coverage.provider, include: ["src/*.{ts,tsx}"], reporter: ["json-summary"]
+    provider: app.test.coverage.provider, include: ["src/*.{ts,tsx}"], reporter: ["json", "json-summary"]
   } }
 };`,
     );
-    const invoke = (...args: string[]) => {
-      const result = spawnSync(
-        process.execPath,
-        [resolve("node_modules/vitest/vitest.mjs"), "run", "--config", config, "--coverage", "--maxWorkers=1", ...args],
-        {
-          encoding: "utf8",
-          timeout: 40_000,
-          env: { ...process.env, ...run.env, VITE_CONFIG_NATIVE_IGNORE_WARNING: "true" },
-        },
-      );
+    const command = (args: string[]) => {
+      const result = spawnSync(process.execPath, args, {
+        encoding: "utf8",
+        timeout: 40_000,
+        env: { ...process.env, ...run.env, VITE_CONFIG_NATIVE_IGNORE_WARNING: "true" },
+      });
       expect(result.status, result.stdout + result.stderr).toBe(0);
     };
+    const invoke = (...args: string[]) =>
+      command([
+        resolve("node_modules/vitest/vitest.mjs"),
+        "run",
+        "--config",
+        config,
+        "--coverage",
+        "--maxWorkers=1",
+        ...args,
+      ]);
     for (const shard of [1, 2])
-      invoke(
-        `--shard=${shard}/2`,
-        "--reporter=blob",
-        `--outputFile.blob=${join(run.directory, "blobs", `${shard}.json`)}`,
-      );
-    invoke(
-      `--merge-reports=${join(run.directory, "blobs")}`,
-      `--coverage.reportsDirectory=${join(run.directory, "merged")}`,
-    );
+      invoke(`--shard=${shard}/2`, `--coverage.reportsDirectory=${join(run.directory, "parts", String(shard))}`);
+    command([
+      resolve("scripts/ci/merge-coverage.mjs"),
+      join(run.directory, "parts"),
+      join(run.directory, "merged"),
+      "2",
+    ]);
     invoke(`--coverage.reportsDirectory=${join(run.directory, "reference")}`);
     const summary = (dir: string) =>
       JSON.parse(readFileSync(join(run.directory, dir, "coverage-summary.json"), "utf8"));
     expect(summary("reference").total.statements.covered).toBeGreaterThan(0);
     expect(Object.keys(summary("reference")).some((file) => file.endsWith("/src/view.tsx"))).toBe(true);
+    const probe = Object.keys(summary("reference")).find((file) => file.endsWith("/src/probe.ts"))!;
+    expect(summary("reference")[probe].functions.total).toBe(2);
     expect(compareCoverage(summary("merged"), summary("reference"))).toEqual([]);
   } finally {
     run.dispose({ checkOwned: true });

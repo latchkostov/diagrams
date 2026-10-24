@@ -420,15 +420,18 @@ the same `.test.ts` suffix, including heavy files.
 Vitest does not repeat the entire type-check project in each shard or in the heavy lane.
 
 CI runs static checks, three unit coverage shards, build/size/ZIP and serial heavy tests independently.
-Vitest's blob reporter carries coverage in each shard; `--merge-reports --coverage` merges it without
-running tests again. The existing `Types, lint, unit, build` and `CI` aggregate names stay stable.
+Each shard uploads its Istanbul `coverage-final.json`; `scripts/ci/merge-coverage.mjs` merges the three
+maps without running tests again and emits the standard JSON, summary and HTML reports. A missing
+shard fails the merge. The existing `Types, lint, unit, build` and `CI` aggregate names stay stable.
 Native-copy probes use unmapped helpers per module: per-call arrow wrappers share original source
 locations, causing coverage mergers to collapse distinct functions. A heavy integration fixture compares
-real merged blobs with an unsharded run. Do not accept a percentage tolerance for that difference.
-Coverage uses Istanbul source counters because V8 remapping also produced different TSX branch totals
-for loaded and uncovered modules. Deferred collaboration paths have explicit tests instead of relying
-on incidental background callbacks to cover them. Coverage-only module queries retain the i18n wrapper's
-normal transform rules.
+real merged maps with an unsharded run. Do not accept a percentage tolerance for that difference.
+Default coverage merging collapses compiler-generated ICU branches that share a remapped start
+position. Our merge preserves the complete metadata, branch kind, every arm's location and duplicate
+counter multiplicity. Regression tests cover these collisions, not just a synthetic percentage sum.
+Coverage uses Istanbul source counters. Deferred collaboration paths have explicit tests instead of
+relying on incidental background callbacks to cover them. Coverage-only module queries retain the
+i18n wrapper's normal transform rules.
 Compare `coverage-summary.json` from the merge with an unsharded unit run when changing this setup.
 The on-demand **Compare merged unit coverage** workflow accepts a CI run ID, checks out that
 artifact's exact tested revision, and compares every file and total against one unsharded Ubuntu run.

@@ -4,6 +4,7 @@ on:
     paths:
       - vitest.config.ts
       - scripts/operation-probes.ts
+      - scripts/ci/*coverage*
       - .github/workflows/ci.yml
       - .github/workflows/coverage-compare.yml
   workflow_dispatch:

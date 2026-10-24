@@ -132,14 +132,13 @@ jobs:
       - name: Unit coverage
         run: >-
           pnpm test:coverage --shard=${{ matrix.shard }}/3 --maxWorkers=3
-          --reporter=default --reporter=blob --reporter=./scripts/ci/vitest-json.mjs
-          --outputFile.blob=tests/.output/unit-blobs/shard-${{ matrix.shard }}.json
+          --reporter=default --reporter=./scripts/ci/vitest-json.mjs
           --outputFile.json=tests/.output/unit-results.json
       - uses: actions/upload-artifact@v7
         if: ${{ !cancelled() }}
         with:
-          name: unit-blob-${{ matrix.shard }}
-          path: tests/.output/unit-blobs
+          name: unit-coverage-${{ matrix.shard }}
+          path: coverage/coverage-final.json
           retention-days: 7
       - uses: actions/upload-artifact@v7
         if: ${{ !cancelled() }}
@@ -158,11 +157,10 @@ jobs:
       - uses: ./.github/actions/toolchain
       - uses: actions/download-artifact@v8
         with:
-          pattern: unit-blob-*
-          path: tests/.output/unit-blobs
-          merge-multiple: true
+          pattern: unit-coverage-*
+          path: tests/.output/unit-coverages
       - name: Merge coverage
-        run: pnpm exec vitest --project unit --merge-reports=tests/.output/unit-blobs --coverage
+        run: node scripts/ci/merge-coverage.mjs tests/.output/unit-coverages coverage
       - name: Record tested revision
         run: git rev-parse HEAD > coverage/tested-sha.txt
       - uses: actions/upload-artifact@v7

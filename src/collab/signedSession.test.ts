@@ -302,6 +302,16 @@ describe("signed rooms", () => {
     expect(verify.mock.calls.length).toBeLessThanOrEqual(COLLAB_LIMITS.verifiesPerWindow);
     expect(rejected(a, "verify-throttled")).toBeGreaterThanOrEqual(50 + COLLAB_LIMITS.liveFramesPerWindow);
     expect(rejected(a, "live-throttled")).toBe(20);
+    // Presence shares the exhausted verification bucket; exercise its own early return explicitly.
+    const throttled = rejected(a, "verify-throttled");
+    evil.send(
+      await sealer.seal(
+        "presence",
+        frame(PRESENCE.state, encodePresence({ alias: "m", colour: 1, status: "active", ...binding })),
+      ),
+    );
+    await r.settle();
+    expect(rejected(a, "verify-throttled")).toBe(throttled + 1);
     // A window later, the sender's frames are checked again.
     verify.mockClear();
     r.clock.advance(COLLAB_LIMITS.senderWindowMs);

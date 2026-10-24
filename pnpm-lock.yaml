@@ -221,6 +221,12 @@ importers:
       '@vitest/coverage-istanbul':
         specifier: 5.0.4
         version: 5.0.4(vitest@5.0.4)
+      '@vitest/istanbul-lib-coverage':
+        specifier: 1.0.2
+        version: 1.0.2
+      '@vitest/istanbul-lib-report':
+        specifier: 1.0.2
+        version: 1.0.2
       eslint:
         specifier: ^10.12.0
         version: 10.12.0
