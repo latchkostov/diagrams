@@ -1,3 +1,4 @@
+import { currentHealth } from "./healthWindow";
 import type { LiveController } from "./controller";
 import { TroubleWatcher, pickTrouble, type Trouble, type TroubleMemory } from "./observedTrouble";
 import { simulationEdges } from "../sim/topology";
@@ -90,6 +91,12 @@ export class TroubleTracker {
     const expected = this.controller.expectedTimeoutLosses();
     const snapshot = {
       ...st.snapshot,
+      edges: Object.fromEntries(
+        Object.entries(st.snapshot.edges).map(([id, edge]) => [
+          id,
+          { ...edge, recentTimedOut: currentHealth(edge.calls).timedOut },
+        ]),
+      ),
       expectedTimeouts: new Set(
         Object.entries(st.running?.setup?.edges ?? {})
           .filter(([, setup]) => !!setup.caller?.deadlineMs)
@@ -106,12 +113,17 @@ export class TroubleTracker {
       snapshot,
       simulationEdges(this.controller.currentDiagram, st.running ?? undefined),
     );
-    const now = relevant.map((trouble) => {
-      if (trouble.kind !== "threads-exhausted" && trouble.kind !== "retry-storm") return trouble;
-      const key = `${trouble.key}:${JSON.stringify(trouble.action)}`;
-      if (!this.fixes.has(key)) this.request(key, trouble, st);
-      return { ...trouble, action: this.fixes.get(key) ?? { kind: "events" as const, node: trouble.node } };
-    });
+    const now = relevant
+      .filter((trouble) => {
+        const recent = currentHealth(st.snapshot.nodes[trouble.node]);
+        return trouble.kind === "dropping" ? recent.dropped > 0 : trouble.kind === "lag" ? recent.growing : true;
+      })
+      .map((trouble) => {
+        if (trouble.kind !== "threads-exhausted" && trouble.kind !== "retry-storm") return trouble;
+        const key = `${trouble.key}:${JSON.stringify(trouble.action)}`;
+        if (!this.fixes.has(key)) this.request(key, trouble, st);
+        return { ...trouble, action: this.fixes.get(key) ?? { kind: "events" as const, node: trouble.node } };
+      });
     if (now !== this.troubles) {
       this.troubles = now;
       this.picked = pickTrouble(now, this.memory, this.watcher.warm);

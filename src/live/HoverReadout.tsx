@@ -1,12 +1,17 @@
 import "../styles/readout.css";
 import { useState, type ReactNode } from "react";
+import { HEALTH_WINDOW_MS } from "./healthWindow";
 import { t } from "../i18n";
 import type { HoverSummary } from "./hoverSummary";
 
 export function HoverStatus({ summary }: { summary: HoverSummary }) {
   const problem = summary.problems[0];
   return (
-    <span className="hover-status">
+    <span
+      className="hover-status"
+      data-testid="hover-status"
+      title={t("health.window", { seconds: HEALTH_WINDOW_MS / 1000 })}
+    >
       <span aria-hidden>{problem ? (problem.severe ? "⊗" : "△") : "✓"}</span>{" "}
       {problem ? t("hover.attention") : t("hover.healthy")}
     </span>
@@ -61,12 +66,12 @@ export function SectionRows({
         ? "retries"
         : key === "breaker"
           ? "breaker"
-          : "timeouts"
+          : "outcomes"
       : key === "timeout"
         ? "latency"
         : key === "memory"
           ? "resources"
-          : key === "threads" || key === "retry"
+          : key === "threads" || key === "retry" || key === "breaker"
             ? "threads"
             : "outcomes";
   const badSections = summary.problems.filter((p) => p.severe).map((p) => sectionFor(p.key));

@@ -3,7 +3,7 @@ import { waitingFixture } from "./waitingFixture";
 import { lazySurfacesFixture } from "./lazySurfacesFixture";
 import { inspectorLayoutFixture } from "./inspectorLayoutFixture";
 import { messageTypesFixture } from "./messageTypesFixture";
-import { resilienceFixture, breakerFixture } from "./resilienceFixture";
+import { resilienceFixture, breakerFixture, healthFixture } from "./resilienceFixture";
 import { annotationShapesFixture } from "./annotationShapesFixture";
 import slowPayment from "../examples/slow-payment-provider.json";
 import { faultDrillFixture } from "./faultDrillFixture";
@@ -692,6 +692,14 @@ const liveSpeed: ControlDef = {
 const livePresent: ControlDef = { type: "boolean", key: "livepresent", label: "Presentation sizing", default: false };
 
 const livePresets: Preset[] = [
+  {
+    kind: "render",
+    id: "current-health",
+    title: t("health.labTitle"),
+    group: "Simulation",
+    description: t("health.labDescription"),
+    render: () => <LiveLabStage diagram={healthFixture()} initial={{ sim: "health", paused: true }} />,
+  },
   {
     kind: "render",
     id: "live-keyboard",

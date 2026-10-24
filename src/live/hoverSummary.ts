@@ -7,8 +7,7 @@ import { stencilRole } from "../stencils/roles";
 import type { BreakerView } from "../sim/breaker";
 import type { NodeSimState, EdgeSimState } from "../sim/types";
 import { formatCount, formatRate } from "./format";
-import { callFailureRate } from "./callFailureRate";
-import { isolate } from "./bidi";
+import { currentHealth, retryPressure, callsSucceeding } from "./healthWindow";
 import { latencyDuration } from "./latencyFormat";
 
 export interface HoverFact {
@@ -35,6 +34,7 @@ export const PROBLEM_PRIORITY = [
   "down",
   "timeout",
   "threads",
+  "breaker",
   "retry",
   "lag",
   "loss",
@@ -49,39 +49,49 @@ export const PROBLEM_PRIORITY = [
 export function nodeSummary(
   s: NodeSimState,
   calls: NonNullable<EdgeSimState["calls"]>[],
-  growing = false,
+  growing = currentHealth(s).growing,
 ): HoverSummary {
   const busy = s.threads ? s.threads.working + s.threads.waiting : 0;
   const exhausted = !!s.threads && Number.isFinite(s.threads.slots) && busy >= s.threads.slots;
-  const timeouts = calls.reduce((n, c) => n + c.timedOut, 0);
+  const recent = currentHealth(s);
+  const timeouts = calls.reduce((n, c) => n + currentHealth(c).timedOut, 0);
   const requests = calls.reduce((n, c) => n + (c.windowRequests ?? 0), 0);
   const attempts = calls.reduce((n, c) => n + (c.windowAttempts ?? 0), 0);
   const retries = calls.reduce((n, c) => n + (c.windowRetried ?? 0), 0);
   const amplification = requests > 0 ? attempts / requests : 1;
   // Dead-lettered messages were moved, not lost: the dead-letter queue keeps them for reading or redrive.
-  const lost = s.dropped;
+  const lost = recent.dropped;
   const broker = ["queue", "topic", "stream"].includes(s.role);
   const candidates: Partial<Record<(typeof PROBLEM_PRIORITY)[number], HoverProblem>> = {
     ...(s.status === "down" && { down: { key: "down", text: t("hover.downVerdict"), severe: true } }),
     ...(timeouts > 0 && {
       timeout: { key: "timeout", text: t("hover.timeoutVerdict", { count: timeouts }), severe: true },
     }),
+    ...(calls.some((c) => currentHealth(c).breaker) && {
+      breaker: { key: "breaker", text: t("health.breakerAttention") },
+    }),
     ...(exhausted && {
       threads: { key: "threads", text: t("hover.threadsVerdict", { count: formatCount(busy) }), severe: true },
     }),
-    ...(amplification >= 1.2 &&
-      retries >= 10 && {
-        retry: { key: "retry", text: t("hover.retryVerdict", { ratio: amplification.toFixed(1) }), severe: true },
+    ...(retryPressure({ windowRequests: requests, windowAttempts: attempts, windowRetried: retries }) && {
+      retry: { key: "retry", text: t("hover.retryVerdict", { ratio: amplification.toFixed(1) }), severe: true },
+    }),
+    ...(growing &&
+      !s.noConsumer && {
+        [broker ? "lag" : "waiting"]: {
+          key: broker ? "lag" : "waiting",
+          text: broker ? t("hover.lagVerdict") : t("health.queueGrowing"),
+        },
       }),
-    ...(broker && growing && !s.noConsumer && { lag: { key: "lag", text: t("hover.lagVerdict") } }),
     ...(lost > 0 && { loss: { key: "loss", text: t("hover.lossVerdict", { count: lost }), severe: true } }),
-    ...(s.failed > 0 && { failed: { key: "failed", text: t("hover.failedVerdict", { count: s.failed }) } }),
+    ...(recent.failed > 0 && { failed: { key: "failed", text: t("hover.failedVerdict", { count: recent.failed }) } }),
     ...(s.resources?.unsafe && { memory: { key: "memory", text: t("hover.memoryVerdict"), severe: true } }),
-    ...(!!s.rejected && { rejected: { key: "rejected", text: t("hover.rejectedVerdict", { count: s.rejected }) } }),
+    ...(!!recent.rejected && {
+      rejected: { key: "rejected", text: t("hover.rejectedVerdict", { count: recent.rejected }) },
+    }),
     ...(s.noConsumer && { unread: { key: "unread", text: t("hover.unreadVerdict") } }),
     ...(s.failingOver && { failover: { key: "failover", text: t("hover.failoverVerdict") } }),
     ...(s.status === "paused" && { paused: { key: "paused", text: t("hover.pausedVerdict") } }),
-    ...(s.backlog > 0 && { waiting: { key: "waiting", text: t("hover.waitingVerdict", { count: s.backlog }) } }),
   };
   const problems = PROBLEM_PRIORITY.flatMap((key) => (candidates[key] ? [candidates[key]!] : []));
   const rate = {
@@ -89,7 +99,6 @@ export function nodeSummary(
     label: broker ? t("hover.published") : t("hover.throughput"),
     value: formatRate(s.throughput),
   };
-  const loss = { key: "loss", label: t("hover.lost"), value: formatCount(lost), bad: lost > 0 };
   const queue = {
     key: "backlog",
     label: broker ? (s.noConsumer ? t("hover.kept") : t("hover.lag")) : t("hover.queue"),
@@ -102,7 +111,7 @@ export function nodeSummary(
         rate,
         queue,
         { key: "groups", label: t("hover.groupCount"), value: formatCount(Object.keys(s.lag).length) },
-        loss,
+        { key: "inFlight", label: t("hover.inFlight"), value: formatCount(s.inFlight) },
       ]
     : [
         rate,
@@ -182,9 +191,9 @@ export function edgeReadoutKind(diagram: DiagramFile, edge: DiagramEdge, topolog
   return activeCall(stencilRole(from.stencil), compiled) ? "request" : "flow";
 }
 
-const breakerState = (b: BreakerView) =>
+const breakerState = (b: BreakerView, c: EdgeSimState["calls"]) =>
   b.state === "closed"
-    ? t("resilience.closedState")
+    ? requestHealthy(c, b, false)
     : b.state === "open"
       ? t("resilience.openState")
       : t("resilience.testingState");
@@ -197,7 +206,7 @@ export function requestSummary(
   active: number,
 ): HoverSummary {
   const ratio = (c?.windowRequests ?? 0) > 0 ? (c?.windowAttempts ?? 0) / c!.windowRequests! : 1;
-  const failures = callFailureRate(c);
+  const recent = currentHealth(c);
   const problems: HoverProblem[] = [
     ...(breaker?.state === "open"
       ? [
@@ -208,7 +217,7 @@ export function requestSummary(
           },
         ]
       : []),
-    // The breaker is current runtime state: it leads cumulative timeout and retry counts.
+    // Current breaker state leads failures in the recent simulation-time window.
     ...(breaker?.state === "half-open"
       ? [
           {
@@ -217,8 +226,13 @@ export function requestSummary(
           },
         ]
       : []),
-    ...(c?.timedOut ? [{ key: "timeout", text: t("hover.timeoutVerdict", { count: c.timedOut }), severe: true }] : []),
-    ...(ratio >= 1.2 && (c?.windowRetried ?? 0) >= 10
+    ...(recent.timedOut
+      ? [{ key: "timeout", text: t("hover.timeoutVerdict", { count: recent.timedOut }), severe: true }]
+      : []),
+    ...(recent.failed > recent.timedOut
+      ? [{ key: "failed", text: t("hover.failedVerdict", { count: recent.failed - recent.timedOut }) }]
+      : []),
+    ...(c && retryPressure(c)
       ? [{ key: "retry", text: t("hover.retryVerdict", { ratio: ratio.toFixed(1) }), severe: true }]
       : []),
   ];
@@ -241,16 +255,11 @@ export function requestSummary(
     facts: [
       ...problems.slice(1).map((p) => ({ key: p.key, label: p.text, value: "", bad: p.severe })),
       { key: "held", label: blocking ? t("hover.holds") : t("hover.frees"), value: formatCount(c?.held ?? 0) },
-      {
-        key: "failureRate",
-        label: t("resilience.failureScope"),
-        value: failures.available ? isolate(`${Math.round(100 * failures.rate)}%`) : "—",
-      },
     ],
     sections: [
-      { key: "retries", label: t("hover.retries"), summary: formatCount(c?.retried ?? 0) },
-      { key: "timeouts", label: t("hover.timeouts"), summary: "" },
-      { key: "breaker", label: t("hover.breaker"), summary: breaker ? breakerState(breaker) : "—" },
+      { key: "retries", label: t("hover.retries"), summary: "" },
+      { key: "outcomes", label: t("hover.outcomes"), summary: t("health.sinceRestart") },
+      { key: "breaker", label: t("hover.breaker"), summary: breaker ? breakerState(breaker, c) : "—" },
     ],
   };
 }
@@ -269,4 +278,10 @@ export function flowSummary(kind: "flow" | "dependency", s: EdgeSimState | undef
     facts: [],
     sections: [],
   };
+}
+
+export function requestHealthy(c: EdgeSimState["calls"], breaker: BreakerView | undefined, blocking: boolean): string {
+  if (breaker?.state === "closed")
+    return callsSucceeding(c) ? t("health.callsSucceeding") : t("resilience.closedState");
+  return blocking ? t("hover.holds") : t("hover.frees");
 }

@@ -15,6 +15,7 @@ import type { Fault } from "../model/faults";
 import { resolveNodeProps } from "../sim/defaults";
 import { callFailureRate } from "./callFailureRate";
 import { isolate } from "./bidi";
+import { HEALTH_WINDOW_MS, HEALTH_SAMPLE_MS, queueGrowthThreshold } from "./healthWindow";
 import { requestResponseMs } from "../sim/timing";
 
 // What playback shows going wrong, whatever the plan says (docs/research/sim-flows-review.md, F-1, F-5, F-32): a node
@@ -22,8 +23,8 @@ import { requestResponseMs } from "../sim/timing";
 // one action each, so "Healthy" never sits over a backlog that only grows. Pure: it reads real-unit snapshots.
 
 /** How far back "rising" and "losing" look, in simulated time. */
-export const WINDOW_MS = 10_000;
-const SAMPLE_MS = 1_000;
+export const WINDOW_MS = HEALTH_WINDOW_MS;
+const SAMPLE_MS = HEALTH_SAMPLE_MS;
 
 export type TroubleKind = "down" | "retry-storm" | "dropping" | "threads-exhausted" | "lag";
 export type TroubleAction =
@@ -88,6 +89,7 @@ export interface WatchedFrame {
   edges?: Record<
     string,
     {
+      recentTimedOut?: number;
       calls?: Pick<NonNullable<import("../sim/types").EdgeSimState["calls"]>, "timedOut"> & {
         failed?: number;
       } & Partial<import("../sim/types").RetryCallCounts>;
@@ -327,7 +329,7 @@ function troubles(frame: WatchedFrame, d: Shape, samples: readonly Sample[]): Tr
   const recent = samples.at(-3) ?? oldest;
   const spanned = oldest && frame.time - oldest.time >= WINDOW_MS - SAMPLE_MS;
   // Lag must rise by more than noise: a few dots at this scale, and a fifth of what was there.
-  const threshold = (before: number) => Math.max(10, 3 * (frame.scale ?? 1), 0.2 * before);
+  const threshold = (before: number) => queueGrowthThreshold(before, frame.scale);
 
   if (d.resilience)
     for (const [edge, value] of Object.entries(frame.edges ?? {})) {
@@ -425,7 +427,10 @@ function troubles(frame: WatchedFrame, d: Shape, samples: readonly Sample[]): Tr
         const timeout = d.deadlines.get(edge) === undefined && stalled && deadlineMs !== undefined;
         const upstream = d.incomingTimeouts
           .get(id)
-          ?.find((incoming) => (frame.edges?.[incoming]?.calls?.timedOut ?? 0) > 0);
+          ?.find(
+            (incoming) =>
+              (frame.edges?.[incoming]?.recentTimedOut ?? frame.edges?.[incoming]?.calls?.timedOut ?? 0) > 0,
+          );
         const detail = d.cyclic.has(id)
           ? t("threads.deadlocked")
           : t("threads.exhaustedDetail", { count: exhausted.count, name: name(target) });
@@ -455,8 +460,14 @@ function troubles(frame: WatchedFrame, d: Shape, samples: readonly Sample[]): Tr
       const exhausted = broker && lost > outage;
       const timeoutEdge = d.outgoingCalls
         .get(id)
-        ?.find((edge) => !frame.expectedTimeouts?.has(edge) && (frame.edges?.[edge]?.calls?.timedOut ?? 0) > 0);
-      const timeoutCount = timeoutEdge ? (frame.edges?.[timeoutEdge]?.calls?.timedOut ?? 0) : 0;
+        ?.find(
+          (edge) =>
+            !frame.expectedTimeouts?.has(edge) &&
+            (frame.edges?.[edge]?.recentTimedOut ?? frame.edges?.[edge]?.calls?.timedOut ?? 0) > 0,
+        );
+      const timeoutCount = timeoutEdge
+        ? (frame.edges?.[timeoutEdge]?.recentTimedOut ?? frame.edges?.[timeoutEdge]?.calls?.timedOut ?? 0)
+        : 0;
       const timeoutMs = timeoutEdge ? d.deadlines.get(timeoutEdge) : undefined;
       out.push({
         key: `dropping:${id}`,
@@ -465,7 +476,7 @@ function troubles(frame: WatchedFrame, d: Shape, samples: readonly Sample[]): Tr
         headline:
           timeoutMs !== undefined
             ? t("trouble.timedOut", { name: name(id), count: timeoutCount, seconds: timeoutMs / 1000 })
-            : t("trouble.dropping", { name: name(id), count: formatCount(n.dropped) }),
+            : t("trouble.dropping", { name: name(id), count: formatCount(lost) }),
         announce:
           timeoutMs !== undefined
             ? t("trouble.timeoutAnnounce", { name: name(id) })

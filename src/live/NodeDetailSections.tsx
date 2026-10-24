@@ -146,6 +146,7 @@ export function NodeDetailSections({
       )}
       {section === "outcomes" && (
         <>
+          <p data-testid="node-outcomes-scope">{t("health.sinceRestart")}</p>
           {outcome && (
             <p className="lv-call-outcomes" data-testid={`node-outcome-${node.id}`}>
               {outcome}
@@ -173,6 +174,8 @@ export function NodeDetailSections({
         <>
           {
             <>
+              <Row label={t("hover.lost")} value={formatCount(s.dropped)} />
+              <Row label={t("workspaceLive.failed")} value={formatCount(s.failed)} />
               <Row label={doneLabel[s.role]()} value={formatCount(s.processed)} />
               <Row label={t("hover.throughput")} value={formatRate(s.throughput)} />
               {broker ? (

@@ -4,6 +4,7 @@
 // lives in live.css.
 
 import type { SimSnapshot } from "../sim/types";
+import { HealthWindow, currentHealth } from "./healthWindow";
 import { heatOf } from "./format";
 import { snapshotContinuity } from "./snapshotContinuity";
 
@@ -14,8 +15,6 @@ export interface DecorationInput {
   /** The simulation isn't moving (paused, a note waiting, slow motion): the marching edges stop too. */
   still?: boolean;
 }
-
-const RISE_WINDOW = 8; // samples (~1 s at 8 Hz)
 
 /**
  * Publishes an edge stays marked active after its last message: three at 8 Hz, about 0.4 s. A busy edge between two
@@ -50,7 +49,7 @@ export interface DecorationStats {
 
 export class Decorator {
   private applied = new Map<Element, string>();
-  private history = new Map<string, number[]>();
+  private health = new HealthWindow();
   /** Edge id → the publish it last carried a message in (dropped once its hold ends). */
   private lastActive = new Map<string, number>();
   private lastTime = NaN;
@@ -66,6 +65,7 @@ export class Decorator {
     // A seek in either direction or a rebuilt/replayed run starts a new presentation interval.
     const continuity = snapshotContinuity.get(snapshot);
     if (continuity !== this.continuity || snapshot.time < this.lastTime) this.lastActive.clear();
+    this.health.observe(snapshot, continuity, snapshot.scale ?? 1);
     this.continuity = continuity;
     // Holds count publishes of a moving simulation: while it stands still, every edge keeps its state.
     if (!still && snapshot.time !== this.lastTime) stats.publishes++;
@@ -82,14 +82,10 @@ export class Decorator {
       const n = snapshot.nodes[id];
       if (!n) continue;
       elements++;
-      const hist = this.history.get(id) ?? [];
-      hist.push(n.backlog);
-      if (hist.length > RISE_WINDOW) hist.shift();
-      this.history.set(id, hist);
-      // A topic nobody reads keeps what's published: a faint tint, never the rising glow of a consumer falling behind.
+      // Unread retained messages stay neutral; attention needs sustained queue growth.
       const kept = !!n.noConsumer && n.role !== "queue";
-      const rising = !kept && n.backlog > 0 && hist.length > 1 && n.backlog > hist[0];
-      const heat = n.backlog > 0 ? (kept ? 1 : Math.max(1, Math.ceil(heatOf(n.backlog) * 3))) : 0;
+      const rising = !kept && currentHealth(n).growing;
+      const heat = rising ? Math.max(1, Math.ceil(heatOf(n.backlog) * 3)) : kept && n.backlog > 0 ? 1 : 0;
       const dim = spotlight ? !spotlight.nodes.has(id) : false;
       const key = `${n.status}|${heat}|${rising}|${dim}`;
       seen.add(el);
@@ -159,7 +155,7 @@ export class Decorator {
         el.removeAttribute(a);
     }
     this.applied.clear();
-    this.history.clear();
+    this.health = new HealthWindow();
     this.lastActive.clear();
     this.lastTime = NaN;
     this.continuity = undefined;

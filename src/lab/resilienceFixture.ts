@@ -34,3 +34,32 @@ export function breakerFixture(): DiagramFile {
   d.simulations = [{ id: "breaker", title: "Breaker override", durationMs: 10000, traffic: [] }];
   return d;
 }
+
+/** Reviewed health cases: 300/s, a small steady queue, a brief slowdown and a recovered breaker. */
+export function healthFixture(): DiagramFile {
+  const d = resilienceFixture();
+  d.nodes[0].props = { ratePerSec: 300 };
+  d.nodes[1].props = { concurrency: 400, latencyMs: 5, jitter: 0 };
+  d.nodes[2].props = { concurrency: 400, latencyMs: 30, jitter: 0 };
+  d.edges[1].props = {
+    travelMs: 10,
+    caller: {
+      wait: "non-blocking",
+      deadlineMs: 100,
+      breaker: { minimumCalls: 1, failurePercent: 1, openMs: 1000, halfOpenCalls: 1 },
+    },
+  };
+  d.simulations = [
+    {
+      id: "health",
+      title: "Current health and past outcomes",
+      durationMs: 20000,
+      traffic: [{ id: "steady", node: d.nodes[0].id, shape: { kind: "constant", ratePerSec: 300, durationMs: 20000 } }],
+      timeline: [
+        { atMs: 1000, action: { do: "fault", fault: { kind: "slow", node: d.nodes[2].id, factor: 10 } } },
+        { atMs: 2000, action: { do: "fault", fault: { kind: "slow", node: d.nodes[2].id, factor: 1 } } },
+      ],
+    },
+  ];
+  return d;
+}

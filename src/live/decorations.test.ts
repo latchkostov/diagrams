@@ -68,6 +68,44 @@ function scene(nodeCount: number, edgeCount: number) {
 }
 
 describe("live decorations", () => {
+  it("keeps a stable small queue neutral and only heats a queue while sustained growth continues", () => {
+    const { decorator, nodes } = scene(1, 0);
+    const apply = (time: number, backlog: number) => {
+      const node: NodeSimState = {
+        id: "n0",
+        role: "processor",
+        status: "up",
+        backlog,
+        lag: {},
+        inFlight: 5,
+        processed: time * 0.3,
+        throughput: 300,
+        failed: 0,
+        dropped: 0,
+        deadLettered: 0,
+      };
+      const snapshot: SimSnapshot = {
+        time,
+        nodes: { n0: node },
+        edges: {},
+        particles: [],
+        events: [],
+        inSystem: backlog + 5,
+      };
+      decorator.apply({ snapshot, spotlight: null });
+    };
+    for (let time = 0; time <= 12000; time += 1000) {
+      apply(time, 5);
+      expect(nodes[0].getAttribute("data-live-heat")).toBeNull();
+      expect(nodes[0].getAttribute("data-live-rising")).toBeNull();
+    }
+    for (let time = 13000; time <= 24000; time += 1000) apply(time, (time - 12000) / 100);
+    expect(nodes[0].getAttribute("data-live-heat")).not.toBeNull();
+    expect(nodes[0].getAttribute("data-live-rising")).toBe("1");
+    for (const time of [25000, 26000, 27000, 28000]) apply(time, 120);
+    expect(nodes[0].getAttribute("data-live-heat")).toBeNull();
+    expect(nodes[0].getAttribute("data-live-rising")).toBeNull();
+  });
   it.each([
     { playing: true, still: false },
     { playing: false, still: false },
