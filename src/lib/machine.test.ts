@@ -74,6 +74,10 @@ it("requires the target variant's payload and preserves it after narrowing", () 
   expectTypeOf<{ target: "ready" }>().not.toExtend<Row>();
   expectTypeOf<{ target: "ready"; reduce: () => { value: "idle" } }>().not.toExtend<Row>();
   expectTypeOf<{ target: "ready"; reduce: () => { value: "ready" } }>().not.toExtend<Row>();
+  type OptionalVariant = { value: "idle"; script: number } | { value: "ready"; script?: string } | { value: "empty" };
+  type OptionalRow = Transition<OptionalVariant, Load, string>;
+  expectTypeOf<{ target: "ready" }>().not.toExtend<OptionalRow>();
+  expectTypeOf<{ target: "ready"; reduce: () => { value: "ready"; script: string } }>().toExtend<OptionalRow>();
   const machine = createMachine(
     defineMachine<Variant, Load, string>({
       initial: { value: "idle" },

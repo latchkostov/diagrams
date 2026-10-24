@@ -15,12 +15,14 @@ type StateAt<S extends MachineState, V extends S["value"]> = S extends unknown
     ? S
     : never
   : never;
+// Keep every source payload: a common-key Omit would hide incompatible optional target fields.
+type Payload<S> = S extends unknown ? Omit<S, "value"> : never;
 export type Transition<S extends MachineState, E, C> = {
   [V in S["value"]]: {
     target: V;
     guard?: (state: S, event: E) => boolean;
     effects?: (state: S, event: E, next: StateAt<S, V>) => readonly C[];
-  } & (Omit<S, "value"> extends Omit<StateAt<S, V>, "value">
+  } & (Payload<S> extends Payload<StateAt<S, V>>
     ? { reduce?: (state: S, event: E) => StateAt<S, V> }
     : { reduce: (state: S, event: E) => StateAt<S, V> });
 }[S["value"]];
