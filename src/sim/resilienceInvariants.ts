@@ -4,6 +4,7 @@ import type { EdgeSimState } from "./types";
 
 export interface ResilienceState {
   breakerDispatches: readonly { state: string; sent: number; probes: number; units: number }[];
+  queues?: readonly { queued: number; accounted?: number; limit?: number }[];
   time: number;
   inSystem: number;
   edges: Iterable<{
@@ -28,6 +29,11 @@ export function assertResilienceInvariants(state: ResilienceState): void {
   const check = (ok: boolean, rule: string) => {
     if (!ok) throw new Error(`${rule} @${state.time}`);
   };
+  for (const q of state.queues ?? []) {
+    check(q.accounted === undefined || Math.abs(q.queued - q.accounted) < 1e-8, "R4 queue accounting");
+    check(q.queued >= -1e-8 && q.queued <= (q.limit ?? Infinity) + 1e-8, "R4 queue limit");
+    if (!state.inSystem) check(q.queued === 0, "R6 idle queue");
+  }
   const edges = new Map([...state.edges].map((e) => [e.id, e]));
   const events = new Set(state.logical.filter((e) => e.retry).map((e) => e.id));
   let backingOff = 0;

@@ -123,6 +123,7 @@ Every setting is optional, and live view works without any. Node `props`:
 
 <!-- BEGIN GENERATED node-props -->
 
+- `queue` (object): p3-w2 processors without admission only: {limit? (1..1000000 waiting real requests), whenFull? (reject-new or drop-oldest), order? (fifo or lifo), maxWaitMs?}. Pushed arrivals only; active work and broker-fed deliveries are exempt. Refusals return 503 throttled and count as rejected and shed. Earlier revisions keep the policy dormant.
 - `resources` (object): A1 measured/assumed CPU-ms per real attempt, CPU request/limit in millicores, memory in MiB, startup/grace; optional single container name; resources.modelRevision a2 opts generic Deployments into execution independently of controller mode, while unmarked A1 behavior stays fixed; atomic replacement. Effective fleet <=10000 and authored document lifecycle budget <=100000. Requires planning revision p3-a1.
 - `autoscaling` (string or map): Node-owned HPA (a1) or KEDA 2.18 ScaledObject (a2) on p3-a1. KEDA broker bindings use node IDs plus exact groups; strict activation and separate poll/cooldown control zero, HPA owns 1-N. Kafka caps desired by partitions unless allowIdleConsumers. SQS delayed visibility and ScaledJob execution are unsupported. Per-trigger cache, fallback and rolling HPA behavior; <=16 triggers+metrics, intervals >=1000 ms. Atomic replacement; remap broker IDs on copy. Native serverless remains P3-owned. A3 (modelRevision a3) adds cloud controllers: ecs (target tracking on task CPU/memory % or ALB requests per task per minute bound to an aws.elb node with a sync flow; step scaling with CloudWatch alarm steps), aca (Container Apps HTTP requests/s rule plus KEDA event triggers; HTTP wakes zero on demand), appService (Azure Monitor rules: any out, all in, per-rule cooldowns, flapping deferral) and cloudRun (concurrency = node concurrency, 60% targets, on-demand wake, min 0). Check diagram and describe_diagram report scenario sizing (scalingPlans) from saved simulations, verified by a same-seed rerun.
 - `resumeAutoscaling` (boolean): repeatable command: true resumes HPA after an authored replicas patch enters fixed override; not retained in engine state
@@ -162,6 +163,7 @@ Edge `props`:
 
 <!-- BEGIN GENERATED edge-props -->
 
+- `priority` ("critical" | "normal" | "sheddable"): p3-w2 incoming flows: critical, normal (default), or sheddable; higher priority serves first and lower-priority waiting work is evicted first. Retries keep their connection priority.
 - `requestRouteId` (string): request routing R1: on a Request (sync) out of a source or service, the request route this call sends (planning.requestRoutes id); dormant on a router's connections
 - `requestFilter` (object): request routing R1: only addressed requests matching {methods?, path?, hosts?, headers?, query?} travel this connection (a broker binding's routing key or header match); unaddressed messages don't match
 - `endpointId` (string): Request target endpoint id inside the target API node; dangling references reject rather than fall back

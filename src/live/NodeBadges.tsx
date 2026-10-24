@@ -312,7 +312,7 @@ const NodeBadge = memo(function NodeBadge(props: BadgeProps) {
   const problems = currentHealth(s).dropped;
   // Blocked by a deny rule: on purpose, so never in the red count, and shown apart from it.
   const blocked = s.blocked ?? 0;
-  const rejected = s.rejected ?? 0;
+  const rejected = Math.max(0, (s.rejected ?? 0) - (s.shed ?? 0));
   const active = s.processed > 0 || s.inFlight > 0 || s.backlog > 0 || problems > 0 || blocked > 0 || rejected > 0;
   // One slot under the node: with the heat map on, its label (which carries the rate) replaces the
   // throughput readout; a broker keeps its lag only while something is waiting.
@@ -386,7 +386,7 @@ const NodeBadge = memo(function NodeBadge(props: BadgeProps) {
 
       {s.threads && <ThreadMeter id={node.id} threads={s.threads} noun={threadNoun} />}
 
-      {(fault || active || (cap && cap.level !== "idle") || !!s.idleReplicas || !!s.fleet) && (
+      {(fault || active || (cap && cap.level !== "idle") || !!s.idleReplicas || !!s.fleet || !!s.shed) && (
         <div className="lv-strip">
           {!!s.threads?.inFlight && (
             <span className="lv-metric" data-testid={`thread-flight-${node.id}`}>
@@ -437,6 +437,20 @@ const NodeBadge = memo(function NodeBadge(props: BadgeProps) {
             >
               <span className="lv-blocked-glyph" aria-hidden />
               <b className="mono">{formatCount(blocked)}</b> blocked
+            </span>
+          )}
+          {!!s.shed && (
+            <span
+              className="lv-metric is-failover"
+              data-testid={`node-shed-${node.id}`}
+              title={t("resilience.shedDetail", { count: s.shed })}
+            >
+              ⤓ {t("resilience.shedCount", { count: s.shed })}
+            </span>
+          )}
+          {s.queueLimit !== undefined && (s.queueDepth ?? 0) > 0 && (
+            <span className="lv-metric" data-testid={`node-queue-limit-${node.id}`}>
+              ⏳ {t("resilience.queueOf", { count: s.queueDepth ?? 0, limit: s.queueLimit })}
             </span>
           )}
           {rejected > 0 && (

@@ -9,6 +9,12 @@ export class Deque<T> {
   peek(): T | undefined {
     return this.items[this.head];
   }
+  peekBack(): T | undefined {
+    return this.length ? this.items[this.items.length - 1] : undefined;
+  }
+  pop(): T | undefined {
+    return this.length ? this.items.pop() : undefined;
+  }
   push(item: T): void {
     this.items.push(item);
   }

@@ -695,3 +695,20 @@ describe("playSimulations", () => {
     expect(terminated).toHaveBeenCalled();
   });
 });
+
+it("counts shed pushed messages with no caller as lost in drill evidence", () => {
+  const d = queued();
+  d.planning = { revision: "p3-w2" };
+  d.edges = [{ id: "push", from: "shop", to: "worker", props: { travelMs: 10 } }];
+  d.nodes = d.nodes.filter((n) => n.id !== "q");
+  d.nodes[1].props = { queue: { limit: 1 }, status: "paused", jitter: 0 };
+  d.simulations = [
+    burst("shop", 10, {
+      durationMs: 1000,
+      traffic: [{ id: "t", node: "shop", shape: { kind: "burst", count: 10, spreadMs: 0 } }],
+    }),
+  ];
+  expect(collectEvidence(d).losses).toContainEqual(
+    expect.objectContaining({ node: "worker", count: 9, what: "dropped" }),
+  );
+});

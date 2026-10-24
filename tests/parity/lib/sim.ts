@@ -4,14 +4,13 @@
 // latency statistics from the message tracer. docs/PARITY.md.
 
 import type { DiagramFile, Simulation } from "../../../src/model/types";
+import { observeEngineEvents } from "../../../src/sim/engine";
 import { LiveController } from "../../../src/live/controller";
 import type { MessageTrace, NodeSimState, SimEngine, SimEvent, SimSnapshot } from "../../../src/sim/types";
 import { sha256 } from "./hash";
 
 /** One engine tick (src/sim/engine.ts STEP): the harness reads the event log after every tick. */
 const TICK_MS = 10;
-/** The engine's event ring (EVENT_CAP): a tick with this many new events could have lost some. */
-const EVENT_CAP = 200;
 const CHECKPOINT_MS = 10_000;
 /** Free play is open-ended: it plays this long. */
 export const FREE_PLAY_MS = 60_000;
@@ -29,6 +28,10 @@ function counters(node: NodeSimState): Record<string, unknown> {
     "outageDropped",
     "blocked",
     "rejected",
+    "shed",
+    "shedLost",
+    "queueDepth",
+    "queueLimit",
     "deadLettered",
     "backlog",
     "inFlight",
@@ -54,21 +57,6 @@ function nodeCounters(snapshot: SimSnapshot, order: readonly string[]): Record<s
 }
 
 const eventKey = (e: SimEvent) => `${e.time}|${e.kind}|${e.nodeId}|${e.messageId ?? ""}|${e.text}`;
-
-/**
- * The events a tick added: the log is a ring of the latest EVENT_CAP, so the new ones are the shortest suffix `n`
- * with (previous ++ suffix).slice(-EVENT_CAP) equal to the current log.
- */
-function newEvents(previous: string[], current: string[]): string[] {
-  for (let n = 0; n <= current.length && n < EVENT_CAP; n++) {
-    const kept = previous.slice(Math.max(0, previous.length + n - EVENT_CAP));
-    if (kept.length + n !== current.length) continue;
-    let same = true;
-    for (let i = 0; i < kept.length && same; i++) same = kept[i] === current[i];
-    if (same) return current.slice(current.length - n);
-  }
-  throw new Error(`a tick logged ${EVENT_CAP} or more events: the event stream can't be recorded whole`);
-}
 
 interface Stat {
   count: number;
@@ -210,7 +198,9 @@ export function play(diagram: DiagramFile, simulation: Simulation | null): PlayR
   let bucket: string[] = [];
   let bucketSecond = 0;
   let total = 0;
-  let log: string[] = [];
+  let first = true;
+  const pendingEvents: SimEvent[] = [];
+  const stopObserving = observeEngineEvents(engine, (event) => pendingEvents.push(event));
   const flush = (upTo: number) => {
     while (bucketSecond < upTo) {
       perSecond.push(bucket.length ? sha256(bucket.join("\n")).slice(0, 12) : "-");
@@ -219,11 +209,10 @@ export function play(diagram: DiagramFile, simulation: Simulation | null): PlayR
     }
   };
   const readEvents = (snapshot: SimSnapshot) => {
-    const current = snapshot.events.map(eventKey);
-    const added = newEvents(log, current);
-    log = current;
-    for (const [i, key] of added.entries()) {
-      const event = snapshot.events[current.length - added.length + i];
+    const added = first ? snapshot.events : pendingEvents.splice(0);
+    first = false;
+    for (const event of added) {
+      const key = eventKey(event);
       flush(Math.floor(event.time / 1000));
       bucket.push(key);
       total++;
@@ -264,6 +253,7 @@ export function play(diagram: DiagramFile, simulation: Simulation | null): PlayR
   flush(Math.floor(snapshot.time / 1000) + 1);
   const state = controller.getState();
   const real = controller.realSnapshot();
+  stopObserving();
   controller.dispose();
   return {
     run: state.run
