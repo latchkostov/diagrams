@@ -8,6 +8,7 @@ import {
   waitForCameraIdle,
   waitForHistoryIdle,
   waitForAutosave,
+  waitForChecks,
 } from "./fixtures";
 import { typingWork, median } from "./typing-work";
 import { installChecksMeasurement } from "./checks-measurement";
@@ -99,6 +100,15 @@ export async function checksTyping(page: Page, info: TestInfo, measureCpu = fals
     await waitForCameraIdle(page);
     await waitForHistoryIdle(page);
     await waitForAutosave(page);
+    // History and autosave can settle before the checks debounce. Freezing that timer would
+    // strand prepare(LONG): the label already matches, so it makes no edit and flushes no run.
+    // Exercise that boundary on every run: queue a setup edit with its debounce frozen,
+    // then let the checks-state wait drain it before freezing the measurement clock.
+    await pauseClock(page);
+    await label.fill(`${LONG} setup`);
+    await label.fill(LONG);
+    await page.clock.resume();
+    await waitForChecks(page);
     await pauseClock(page);
   }
   // Operation counts use the same idle handoff and two final virtual frames in both modes. An asynchronous worker
