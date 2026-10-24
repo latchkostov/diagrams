@@ -38,21 +38,21 @@ export function changedLines(patch, previous = [], include = true) {
   return [...result].sort((a, b) => a - b);
 }
 
-export function reviewScope(root, { since, full = false } = {}) {
+export function reviewScope(root, { since, full = false, audit = false, baseRef = "origin/master" } = {}) {
   const head = sha(root, "HEAD");
-  const base = git(root, "merge-base", "origin/master", head).trim();
-  if (full)
+  const base = audit ? head : git(root, "merge-base", baseRef, head).trim();
+  if (audit)
     return {
       head,
       base,
-      mode: "full",
+      mode: "audit",
       files: git(root, "ls-files", "-z", "--", ...paths)
         .split("\0")
         .filter(Boolean),
       lines: {},
       patch: "",
     };
-  if (!since) {
+  if (full || !since) {
     const range = `${base}...${head}`;
     const files = names(root, base, head);
     const lines = Object.fromEntries(
@@ -64,7 +64,7 @@ export function reviewScope(root, { since, full = false } = {}) {
     return {
       head,
       base,
-      mode: "branch",
+      mode: full ? "full" : "branch",
       range,
       files,
       lines,

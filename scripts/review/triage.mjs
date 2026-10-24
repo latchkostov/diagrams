@@ -57,7 +57,9 @@ export function consolidate(reports, plan) {
   const findings = raw
     .filter((x) => plan.scope.files.includes(x.file))
     .map((x) => {
-      const old = previous.find((old) => old.id === x.previousId || sameIssue(old, x));
+      const old = x.previousId
+        ? previous.find((old) => old.id === x.previousId)
+        : previous.find((old) => sameIssue(old, x));
       const capped = plan.round > 1 && !old && rank[x.severity] < 2 && !plan.scope.lines[x.file]?.includes(x.line);
       return {
         ...x,
@@ -70,7 +72,7 @@ export function consolidate(reports, plan) {
   for (const finding of findings) {
     // Complete linkage avoids merging a chain of nearby but unrelated issues.
     const cluster = clusters.find((items) =>
-      items.every((x) => (x.id && x.id === finding.id) || sameIssue(x, finding)),
+      items.every((x) => (x.id && finding.id ? x.id === finding.id : sameIssue(x, finding))),
     );
     if (cluster) cluster.push(finding);
     else clusters.push([finding]);
@@ -111,12 +113,17 @@ export function renderReport(name, plan, result, reports) {
   const lines = [
     `# Review ${name}`,
     "",
+    `**Round ${plan.round} · ${plan.scope.files.length} files · ${plan.scope.mode}**`,
+    "",
+    `HEAD ${plan.scope.head}`,
+    "",
+    ...(plan.nextCommand
+      ? [`Next round${plan.capped ? " (requires owner approval)" : ""}:`, "", "```sh", plan.nextCommand, "```", ""]
+      : []),
     "## Exact files reviewed",
     "",
     ...plan.scope.files.map((file) => `- ${JSON.stringify(file)}`),
     ...(plan.scope.files.length ? [] : ["(none)"]),
-    "",
-    `Round ${plan.round} · HEAD ${plan.scope.head} · ${plan.scope.mode}`,
     "",
     `${counts} (distinct issues; ${result.rawCount} raw findings)`,
     "",

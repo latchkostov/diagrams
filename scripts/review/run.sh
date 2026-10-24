@@ -2,7 +2,8 @@
 # Scoped Codex review. Usage and round policy: scripts/review/README.md.
 #   pnpm review [--brief file] [--pr number] [--since ref] [--allow-round-4]
 #   ANGLES="correctness tests" pnpm review
-#   pnpm review --full  # standalone audit; does not advance branch state
+#   pnpm review --full  # whole PR; does not advance state
+#   pnpm review --audit # explicit repository audit; does not advance state
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 MODEL="${CODEX_MODEL:-gpt-6.1-sol}"

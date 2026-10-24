@@ -3,7 +3,7 @@ export function git(root: string, ...args: string[]): string;
 export function changedLines(patch: string, previous?: number[], include?: boolean): number[];
 export function reviewScope(
   root: string,
-  options?: { since?: string; full?: boolean },
+  options?: { since?: string; full?: boolean; audit?: boolean; baseRef?: string },
 ): Scope & {
   base: string;
   since?: string;
