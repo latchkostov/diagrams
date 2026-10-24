@@ -8,9 +8,8 @@ import { segmentHitsRect } from "../geometry/rect";
 import { annotationToFlow, nodeToFlow } from "../convert";
 import { Router } from "../geometry/router";
 import { loadShapedRoutes } from "../geometry/shapedRuntime";
-import type { Gesture } from "../interaction/types";
 
-it("previews common node deltas without writing bends, invalidates on gesture end, and keeps unrelated routes stable", async () => {
+it("keeps saved bends fixed when both nodes move and keeps unrelated routes stable", async () => {
   await loadShapedRoutes();
   const internal = (id: string, x: number, y: number): InternalNode<FlowNode> => {
     const n = nodeToFlow({ id, stencil: "service.go", label: id, x, y });
@@ -42,23 +41,20 @@ it("previews common node deltas without writing bends, invalidates on gesture en
   const state = () => ({ nodeLookup: lookup, edges }) as ReactFlowState<FlowNode, DiagramFlowEdge>;
   const opts = { style: "smoothstep", direction: "LR" } as const;
   const before = selectRoutes(state(), opts);
-  const origins = new Map([...lookup].slice(0, 2).map(([id, n]) => [id, n.position]));
-  const carry: Gesture = { kind: "node.drag", seq: 1, via: "mouse", preview: { kind: "node.drag", origins } };
   for (const id of ["a", "b"])
     lookup.set(id, internal(id, lookup.get(id)!.position.x + 50, lookup.get(id)!.position.y + 80));
   const s = state();
-  const during = selectRoutes(s, opts, undefined, carry);
-  expect(during.get("ab")!.points).toEqual(before.get("ab")!.points.map((p) => ({ x: p.x + 50, y: p.y + 80 })));
-  expect(during.get("cd")).toBe(before.get("cd"));
-  expect(edges[0].data!.waypoints).toBe(bends);
-  expect(selectRoutes(s, opts, undefined, null).get("ab")!.path).not.toBe(during.get("ab")!.path);
-  // A new gesture has distinct origins even when the store itself hasn't changed.
-  const next: Gesture = {
-    ...carry,
-    seq: 2,
-    preview: { kind: "node.drag", origins: new Map([...lookup].map(([id, n]) => [id, n.position])) },
-  };
-  expect(selectRoutes(s, opts, undefined, next).get("ab")!.path).not.toBe(during.get("ab")!.path);
+  const route = vi.spyOn(Router.prototype, "route");
+  try {
+    const during = selectRoutes(s, opts);
+    expect(route.mock.calls[0][0].edges[0].waypoints).toBe(bends);
+    expect(during.get("ab")!.points).not.toEqual(before.get("ab")!.points.map((p) => ({ x: p.x + 50, y: p.y + 80 })));
+    expect(during.get("cd")).toBe(before.get("cd"));
+    expect(edges[0].data!.waypoints).toBe(bends);
+    expect(selectRoutes(s, opts)).toBe(during);
+  } finally {
+    route.mockRestore();
+  }
 });
 
 it("changing a measured annotation outline invalidates attachments in the store cache", () => {

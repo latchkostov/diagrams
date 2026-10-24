@@ -17,7 +17,7 @@ import type { InternalNode } from "@xyflow/react";
 import type { FlowNode, DiagramFlowEdge } from "../types";
 import { nodeToFlow } from "../convert";
 
-it("dragging one node among N shaped edges prepares carry in linear operations", () => {
+it("dragging one node among N shaped edges prepares routing in linear operations", () => {
   const scene = (count: number) => {
     const nodes: InternalNode<FlowNode>[] = Array.from({ length: count * 2 }, (_, i) => {
       const n = nodeToFlow({
@@ -49,10 +49,9 @@ it("dragging one node among N shaped edges prepares carry in linear operations",
   };
   const small = scene(40),
     large = scene(40 * GROWTH_FACTOR);
-  const origins = new Map([["n0", { x: 0, y: 0 }]]);
   const opts = { style: "smoothstep", direction: "LR" } as const;
   const run = (s: ReturnType<typeof scene>) => {
-    const input = routeInputFromStore(s.nodes, s.edges, opts, origins);
+    const input = routeInputFromStore(s.nodes, s.edges, opts);
     expect(input.edges[0].waypoints).toBe(s.edges[0].data!.waypoints);
   };
   expect(

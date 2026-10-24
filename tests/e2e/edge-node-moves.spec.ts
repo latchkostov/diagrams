@@ -87,31 +87,29 @@ async function saved(page: Page) {
   return savedDiagram(page);
 }
 
-for (const cancel of ["Escape", "pointercancel", "lostpointercapture", "blur"] as const) {
-  test(`cancelling a shared-end drag via ${cancel} restores nodes and bends without history`, async ({ page }) => {
+for (const cancel of ["Escape", "blur"] as const) {
+  test(`cancelling bend carry via ${cancel} leaves bends unchanged`, async ({ page }) => {
     await open(page);
     await selectBoth(page);
     const before = await saved(page);
-    const beforePath = await path(page);
     await expect(page.getByTestId("undo-button")).toBeDisabled();
     await startDrag(page, "node-api");
-    expect(await path(page)).not.toBe(beforePath);
+    expect((await savedDiagram(page)).edges).toEqual(before.edges);
     if (cancel === "Escape") await page.keyboard.press("Escape");
-    else if (cancel === "blur") await page.evaluate(() => window.dispatchEvent(new Event("blur")));
-    else await page.getByTestId("node-api").dispatchEvent(cancel, { pointerId: 1, bubbles: true });
+    else await page.evaluate(() => window.dispatchEvent(new Event("blur")));
     await expect(page.getByTestId("canvas-wrap")).not.toHaveAttribute("data-interaction-state", "gesture");
     // React Flow can keep delivering moves and a final stop after cancellation.
     await page.mouse.move(240, 320, { steps: 3 });
     await page.mouse.up();
-    await expect.poll(() => path(page)).toBe(beforePath);
+    expect((await saved(page)).edges).toEqual(before.edges);
+    // Node dragging keeps master's behavior. Undo still restores the move in one step.
+    await page.getByTestId("undo-button").click();
     await expect.poll(async () => (await saved(page)).nodes).toEqual(before.nodes);
     expect((await saved(page)).edges).toEqual(before.edges);
-    await expect(page.getByTestId("undo-button")).toBeDisabled();
-    await expect(page.getByTestId("redo-button")).toBeDisabled();
   });
 }
 
-test("cancelling an Alt-drag removes copied nodes and bends without history", async ({ page }) => {
+test("cancelling an Alt-drag leaves original bends unchanged and Undo removes the copy", async ({ page }) => {
   await open(page);
   await selectBoth(page);
   const before = await saved(page);
@@ -123,14 +121,19 @@ test("cancelling an Alt-drag removes copied nodes and bends without history", as
   await page.mouse.move(240, 320, { steps: 3 });
   await page.mouse.up();
   await page.keyboard.up("Alt");
+  const after = await saved(page);
+  expect(must(after.edges.find((e) => e.id === "api-db")).waypoints).toEqual(bends);
+  expect(await path(page)).toBe(beforePath);
+  await page.getByTestId("undo-button").click();
   await expect(page.getByTestId("node-api-1")).toHaveCount(0);
   await expect.poll(async () => (await saved(page)).nodes).toEqual(before.nodes);
   expect((await saved(page)).edges).toEqual(before.edges);
-  expect(await path(page)).toBe(beforePath);
   await expect(page.getByTestId("undo-button")).toBeDisabled();
 });
 
-test("box-select both ends and drag carries bends live and saves one undo step", async ({ page }) => {
+test("box-select both ends keeps bends fixed during drag and carries them on drop in one undo step", async ({
+  page,
+}) => {
   await open(page);
   await selectBoth(page);
   const before = coordinates(await path(page));
@@ -139,8 +142,10 @@ test("box-select both ends and drag carries bends live and saves one undo step",
   const dx = during[0] - before[0],
     dy = during[1] - before[1];
   expect(Math.abs(dx) + Math.abs(dy)).toBeGreaterThan(0);
-  expect(during).toEqual(before.map((n, i) => n + (i % 2 ? dy : dx)));
-  // The gesture preview never writes the line's document coordinates.
+  // The middle leg stays at the saved bends; only the end legs follow the nodes.
+  expect(during).not.toEqual(before.map((n, i) => n + (i % 2 ? dy : dx)));
+  expect(await path(page)).toContain("L400,");
+  // Nothing writes the line's document coordinates before the drop.
   expect((await savedDiagram(page)).edges[0].waypoints).toEqual(bends);
   await page.mouse.up();
   const after = await saved(page);
@@ -151,6 +156,40 @@ test("box-select both ends and drag carries bends live and saves one undo step",
   expect((await saved(page)).nodes.map((n) => ({ id: n.id, x: n.x, y: n.y }))).toEqual(
     seed.nodes.map(({ id, x, y }) => ({ id, x, y })),
   );
+});
+
+test.describe("touch node moves", () => {
+  test.use({ hasTouch: true });
+  test("normal touch release completes the move and one undo restores nodes and bends", async ({ page }) => {
+    await open(page);
+    await selectBoth(page);
+    const before = await saved(page);
+    const b = await box(page, "node-api");
+    const x = b.x + b.width * 0.3,
+      y = b.y + b.height / 2;
+    const cdp = await page.context().newCDPSession(page);
+    try {
+      await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x, y }] });
+      for (let step = 1; step <= 6; step++)
+        await cdp.send("Input.dispatchTouchEvent", {
+          type: "touchMove",
+          touchPoints: [{ x: x + step * 10, y: y + (step * 40) / 6 }],
+        });
+      await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-interaction-state", "gesture");
+      await expect.poll(async () => must((await savedDiagram(page)).nodes.find((n) => n.id === "api")).x).not.toBe(0);
+      await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+    } finally {
+      await cdp.detach();
+    }
+    await expect(page.getByTestId("canvas-wrap")).not.toHaveAttribute("data-interaction-state", "gesture");
+    const after = await saved(page);
+    const a = must(after.nodes.find((n) => n.id === "api"));
+    expect(Math.abs(a.x) + Math.abs(a.y)).toBeGreaterThan(0);
+    expect(after.edges[0].waypoints).toEqual(bends.map((p) => ({ x: p.x + a.x, y: p.y + a.y })));
+    await page.getByTestId("undo-button").tap();
+    await expect.poll(async () => (await saved(page)).nodes).toEqual(before.nodes);
+    expect((await saved(page)).edges).toEqual(before.edges);
+  });
 });
 
 test("moving one end leaves bends absolute and the target leg unchanged", async ({ page }) => {
@@ -172,17 +211,12 @@ test("moving one end leaves bends absolute and the target leg unchanged", async 
 
 test("a boundary drag carries its members' shaped line in one undo", async ({ page }) => {
   await open(page, true);
-  const before = coordinates(await path(page));
   const g = await box(page, "group-label-cloud");
   await page.mouse.move(g.x + g.width / 2, g.y + g.height / 2);
   await page.mouse.down();
   await page.mouse.move(g.x + g.width / 2 + 60, g.y + g.height / 2 + 40, { steps: 6 });
   await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-interaction-state", "gesture");
-  const during = coordinates(await path(page));
-  const dx = during[0] - before[0],
-    dy = during[1] - before[1];
-  expect(Math.abs(dx) + Math.abs(dy)).toBeGreaterThan(0);
-  expect(during).toEqual(before.map((n, i) => n + (i % 2 ? dy : dx)));
+  expect((await savedDiagram(page)).edges[0].waypoints).toEqual(bends);
   await page.mouse.up();
   const after = await saved(page),
     a = must(after.nodes.find((n) => n.id === "api"));

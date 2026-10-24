@@ -1,7 +1,4 @@
 import { routeGeometry } from "../geometry/shapedRuntime";
-import { sharedDelta } from "../../editor/routeCarry";
-import { routeGestures } from "../interaction/routeGesture";
-import type { Gesture } from "../interaction/types";
 import { useSettings } from "../../harness/settings";
 import { useDiagram } from "../DiagramContext";
 import { useShowDependencies } from "../dependencyVisibility";
@@ -47,7 +44,6 @@ interface Entry {
   routes: Map<string, EdgeRoute>;
   /** Wall time of the last full routing pass (ms). */
   ms: number;
-  carrySeq?: number;
 }
 
 const entries = new WeakMap<object, Map<string, Entry>>();
@@ -116,17 +112,10 @@ export function routeInputFromStore(
   nodes: Iterable<InternalNode<FlowNode>>,
   edges: readonly DiagramFlowEdge[],
   opts: RouteOptions,
-  origins?: ReadonlyMap<string, import("../geometry/rect").Point>,
 ): RouteInput {
-  const moved = new Map<string, import("../geometry/rect").Point>();
   const routeNodes: RouteNode[] = [];
   const groups: RouteGroup[] = [];
   for (const n of nodes) {
-    const origin = origins?.get(n.id);
-    if (origin) {
-      const p = n.internals.positionAbsolute;
-      moved.set(n.id, { x: p.x - origin.x, y: p.y - origin.y });
-    }
     if (n.hidden) continue;
     // Zones and text aren't obstacles (edges may pass over them) and take no edges: leave them out.
     // Notes and shapes are solid, like nodes; shapes may also be edge ends.
@@ -159,16 +148,13 @@ export function routeInputFromStore(
       .filter((e) => !e.hidden && !(opts.hideDependencies && deps.has(e.id)))
       .map((e) => {
         const dep = deps.get(e.id);
-        const delta = e.data?.waypoints?.length && sharedDelta(e.source, e.target, moved);
         return {
           id: e.id,
           source: e.source,
           target: e.target,
           sourceSide: e.data?.sourceSide,
           targetSide: e.data?.targetSide,
-          waypoints: delta
-            ? e.data!.waypoints!.map((p) => ({ x: p.x + delta.x, y: p.y + delta.y }))
-            : e.data?.waypoints,
+          waypoints: e.data?.waypoints,
           label: dep ? dep.text : e.data?.label,
           ...(dep ? { glyph: true } : {}),
         };
@@ -181,10 +167,7 @@ export function selectRoutes(
   s: ReactFlowState<FlowNode, DiagramFlowEdge>,
   opts: RouteOptions,
   revision = geometrySnapshot(),
-  carry: Gesture | null = routeGestures.get(s.nodeLookup)?.gesture ?? null,
 ): Map<string, EdgeRoute> {
-  const origins = carry?.preview.kind === "node.drag" ? carry.preview.origins : undefined;
-  const carrySeq = origins ? carry!.seq : 0;
   const optsKey = `${opts.style}|${opts.direction}|${opts.captions ? 1 : 0}|${opts.hideDependencies ? 1 : 0}|${revision}`;
   let byOptions = entries.get(s.nodeLookup);
   if (!byOptions) {
@@ -196,17 +179,13 @@ export function selectRoutes(
     e = { router: new Router(), nodes: [], routes: new Map(), ms: 0 };
     byOptions.set(optsKey, e);
   }
-  if (e.state === s && e.optsKey === optsKey && e.carrySeq === carrySeq) return e.routes;
+  if (e.state === s && e.optsKey === optsKey) return e.routes;
   // React Flow replaces internal nodes for a name/selection change too. Only geometry affects routes;
   // edge copies with refreshed aria labels still carry the same routing data.
   const relevantNodes = [...s.nodeLookup.values()].filter(
     (n) => !n.hidden && (n.type !== "annotation" || isObstacle((n.data as AnnotationNodeData).kind)),
   );
-  let same =
-    e.optsKey === optsKey &&
-    e.carrySeq === carrySeq &&
-    sameRoutingEdges(e.edges, s.edges) &&
-    e.nodes.length === relevantNodes.length;
+  let same = e.optsKey === optsKey && sameRoutingEdges(e.edges, s.edges) && e.nodes.length === relevantNodes.length;
   if (same) {
     let i = 0;
     for (const n of relevantNodes)
@@ -218,11 +197,10 @@ export function selectRoutes(
   e.state = s;
   e.nodes = relevantNodes;
   e.edges = s.edges;
-  e.carrySeq = carrySeq;
   if (same) return e.routes;
   const t0 = performance.now();
   e.optsKey = optsKey;
-  e.routes = e.router.route(routeInputFromStore(e.nodes, s.edges, opts, origins));
+  e.routes = e.router.route(routeInputFromStore(e.nodes, s.edges, opts));
   e.ms = performance.now() - t0;
   return e.routes;
 }

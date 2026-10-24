@@ -8,7 +8,6 @@ import { dependencyVisibility } from "../dependencyVisibility";
 import { useInteraction } from "./context";
 export { InteractionContext, useInteraction } from "./context";
 import { isDependency } from "../../model/relations";
-import { routeGestures } from "./routeGesture";
 
 /** The canvas's interaction controller, for what renders inside the canvas (the Inspector, its name fields). */
 
@@ -62,13 +61,6 @@ export function useInteractionCore<P>(
       controller: createInteractionController<P>(createDomPort(canvas), domScheduler, { journal: interactionJournal }),
     };
   });
-  useLayoutEffect(() => {
-    const lookup = store.getState().nodeLookup;
-    routeGestures.set(lookup, controller);
-    return () => {
-      routeGestures.delete(lookup);
-    };
-  }, [store, controller]);
   useLayoutEffect(() => commit({ nodes, edges }), [commit, nodes, edges]);
   useInteractionLifecycle(controller);
   const state = useSyncExternalStore(controller.subscribe, controller.getSnapshot);
