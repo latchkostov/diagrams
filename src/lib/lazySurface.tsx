@@ -11,7 +11,7 @@ import { lazySurfaces, registerLazySurface, retryLazySurfaces, type LazySurfaceI
 import { LOAD_FAILED, type LazyComponent, type Placeholder } from "./lazyLoad";
 import { notify, toast } from "../interop/ui/toast";
 import { t } from "../i18n";
-import { useInteraction } from "../canvas/interaction/useInteraction";
+import { useInteraction } from "../canvas/interaction/context";
 
 export type SurfaceState = { value: "idle" | "loading" | "loaded" | "failed" | "retrying" };
 type Event = { type: "load" | "resolve" | "reject" | "retry" };
@@ -38,6 +38,7 @@ interface Options<P> {
 export type LazySurface<P> = LazyComponent<P> & {
   ensureLoaded(): Promise<ComponentType<P>>;
   getSnapshot(): SurfaceState;
+  subscribe(listener: () => void): () => void;
 };
 
 /** One shared request and recovery path, outside the downloaded component. Preload failures stay silent. */
@@ -141,6 +142,7 @@ export function defineLazySurface<P extends object>(options: Options<P>): LazySu
   Surface.preload = () => void ensureLoaded().catch(() => {});
   Surface.ensureLoaded = ensureLoaded;
   Surface.getSnapshot = getSnapshot;
+  Surface.subscribe = subscribe;
   registerLazySurface({
     id: options.id,
     active: () => clients.size > 0,

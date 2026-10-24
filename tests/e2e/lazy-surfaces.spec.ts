@@ -38,7 +38,29 @@ async function open(page: Page, id: LazySurfaceId) {
       prefix: STORAGE_KEYS.autosavePrefix,
     },
   );
-  if (id.startsWith("inspector.") || id === "edge.reader" || id === "edge.message-tip") {
+  if (id === "canvas.menu") {
+    await gotoCanvas(page, SLUG);
+    await waitForStableViewport(page);
+    await page.getByTestId("node-caller").click({ button: "right" });
+    return;
+  }
+  if (id === "canvas.grow") {
+    await gotoCanvas(page, SLUG);
+    await waitForStableViewport(page);
+    await page.getByTestId("node-caller").click();
+    return;
+  }
+  if (id === "canvas.presence") {
+    await page.addInitScript(() => {
+      window.__collabEndpoints = { trackers: [], iceServers: [] };
+    });
+    await gotoCanvas(page, SLUG);
+    await page.evaluate(() => window.dispatchEvent(new Event("diagrams:edit-together")));
+    await page.getByTestId("room-start-confirm").click();
+    await page.getByTestId("room-started-done").click();
+    return;
+  }
+  if (id.startsWith("inspector.") || id === "edge.reader" || id === "edge.message-tip" || id === "canvas.node-tips") {
     await gotoCanvas(page, SLUG);
     await waitForStableViewport(page);
     switch (id) {
@@ -46,6 +68,7 @@ async function open(page: Page, id: LazySurfaceId) {
         if ((await page.getByTestId("inspector").getAttribute("data-collapsed")) === "1")
           await page.getByTestId("inspector-toggle").click();
         return;
+      case "inspector.node":
       case "inspector.identity":
       case "inspector.simulation":
       case "inspector.properties":
@@ -62,6 +85,7 @@ async function open(page: Page, id: LazySurfaceId) {
         await page.getByTestId("canvas-wrap").focus();
         await page.keyboard.press("ControlOrMeta+a");
         return;
+      case "canvas.node-tips":
       case "edge.reader":
         return; // The intent reader mounts in every canvas host.
       case "edge.message-tip":
@@ -121,6 +145,7 @@ async function open(page: Page, id: LazySurfaceId) {
       return;
     case "live.threads":
       return;
+    case "live.capacity-analysis":
     case "live.capacity":
       await page.getByTestId("live-capacity").click();
       return;
@@ -128,6 +153,7 @@ async function open(page: Page, id: LazySurfaceId) {
       await page.getByTestId("view-button").click();
       await page.getByTestId("capacity-overlay-toggle").click();
       return;
+    case "live.more":
     case "live.events":
     case "live.simulations":
     case "live.trace":

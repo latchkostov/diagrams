@@ -28,7 +28,7 @@ const LiveSession = defineLazySurface({
 });
 const EditCapacity = defineLazySurface({
   id: "live.edit-capacity",
-  load: () => import("./LiveSession").then((m) => m.EditCapacity),
+  load: () => import("./session/EditCapacity").then((m) => m.EditCapacity),
   placeholder: { size: {}, testId: "live.edit-capacity-loading" },
   focus: {},
   export: "skip",

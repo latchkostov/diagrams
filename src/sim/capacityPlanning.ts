@@ -1,11 +1,13 @@
-import type { DiagramFile, DiagramNode, SimRole, Simulation, TrafficProfile } from "../model/types";
+import { withSizing, type SizingChange } from "./capacityInputs";
+export { sourceTraffic, withSizing, type SizingChange } from "./capacityInputs";
+import type { DiagramFile, DiagramNode, SimRole, Simulation } from "../model/types";
 import { stencilRole } from "../stencils/roles";
 import { analyzeCapacity, type NodeCapacity } from "./capacity";
 import { resolveProps } from "./defaults";
 import { allocateGroupReplicas, compileTopology } from "./topology";
 import type { NodeStatus } from "./types";
 import { resolveMultiplier } from "./units";
-import { activeUnits, deviceSpec, messagesPerSec, presetOf, sizesOf, type DeviceSize } from "../stencils/netDevices";
+import { activeUnits, deviceSpec, messagesPerSec, presetOf, sizesOf } from "../stencils/netDevices";
 
 // Capacity planning and its one-click fix, shared by live view's Show capacity (src/live/capacityModel.ts)
 // and the capacity check (src/checks/rules/capacity.ts), so the two never disagree. Pure, and free of the
@@ -24,21 +26,6 @@ const roleOf = (n: DiagramNode): SimRole => stencilRole(n.stencil);
 const planProps = (node: DiagramNode, sim: Simulation, d: DiagramFile) =>
   resolveProps(roleOf(node), node.label, { ...node.props, ...sim.setup?.props?.[node.id] }, node.stencil, d.planning);
 
-/** Every source sending steadily at `rate` (default: its own ratePerSec): free play as a simulation. */
-export function sourceTraffic(
-  d: DiagramFile,
-  rate: (node: DiagramNode) => number = (n) =>
-    resolveProps("source", n.label, n.props ?? {}, n.stencil, d.planning).ratePerSec,
-): TrafficProfile[] {
-  return d.nodes
-    .filter((n) => roleOf(n) === "source")
-    .map((n) => ({
-      id: `src-${n.id}`,
-      node: n.id,
-      shape: { kind: "constant", ratePerSec: rate(n), durationMs: 60_000 },
-    }));
-}
-
 /** Analysis copy where gateways and stores are unlimited, as they are in playback. */
 export function planningSimulation(d: DiagramFile, sim: Simulation): Simulation {
   const props = structuredClone(sim.setup?.props ?? {});
@@ -48,27 +35,6 @@ export function planningSimulation(d: DiagramFile, sim: Simulation): Simulation 
       props[n.id] = { ...props[n.id], latencyMs: 0 };
   }
   return { ...sim, setup: { ...sim.setup, props } };
-}
-
-export type SizingChange =
-  | {
-      nodeId: string;
-      key: "replicas" | "partitions";
-      /** Base values, as saved (before Capacity ×). */
-      from: number;
-      to: number;
-    }
-  /** A network device's next size; with `gbps` alongside when the old size's throughput was typed over. */
-  | { nodeId: string; key: "size"; from: DeviceSize; to: DeviceSize; model: string }
-  | { nodeId: string; key: "gbps"; from: number; to: number };
-
-/** The simulation with `changes` in its saved setup props. */
-export function withSizing(sim: Simulation, changes: readonly SizingChange[]): Simulation {
-  const next = structuredClone(sim);
-  const props = (next.setup ??= {}).props ?? {};
-  for (const c of changes) props[c.nodeId] = { ...props[c.nodeId], [c.key]: c.to };
-  next.setup.props = props;
-  return next;
 }
 
 export interface SizingOptions {

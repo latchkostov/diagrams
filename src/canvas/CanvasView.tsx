@@ -94,7 +94,14 @@ import { CanvasFitContext } from "./canvasFit";
 import { safeStorage } from "../lib/storage";
 import type { StartOptions } from "./StartCard";
 import { useAiDock } from "../ai/ui/dock";
-import { NodeTipLayer } from "./NodeTooltip";
+const NodeTipLayer = defineLazySurface({
+  id: "canvas.node-tips",
+  load: () => import("./NodeTooltip").then((m) => m.NodeTipLayer),
+  placeholder: { size: {}, testId: "canvas.node-tips-loading" },
+  focus: {},
+  export: "skip",
+  retryToast: true,
+});
 import { useNodeTipKeyboard, useNodeTooltip } from "./useNodeTooltip";
 import { notify, toast } from "../interop/ui/toast";
 import { useCanvasHost } from "../palette/canvasHost";
@@ -111,7 +118,15 @@ import { railAnchor } from "./railAnchor";
 import { checksPanel, useChecksPanel } from "./checks/checksPanel";
 import { useChecks } from "./checks/useChecks";
 import { ChecksMarkersView, SelectionFindings } from "./checks/ChecksViews";
-import { PresenceLayer } from "./PresenceLayer";
+import { defineLazySurface } from "../lib/lazySurface";
+const PresenceLayer = defineLazySurface({
+  id: "canvas.presence",
+  load: () => import("./PresenceLayer").then((m) => m.PresenceLayer),
+  placeholder: { size: {}, testId: "canvas.presence-loading" },
+  focus: {},
+  export: "skip",
+  retryToast: true,
+});
 import type { ViewerAttribution } from "../export/viewer/options";
 
 /** A room's cursor is sent at most this often (src/collab/limits.ts, cursorIntervalMs; the canvas doesn't import it). */

@@ -25,6 +25,7 @@ const TroubleCallout = defineLazySurface({
   retryToast: true,
 });
 import { CapacityPanel } from "./lazyCapacityPanel";
+import { CapacityAnalysis } from "./lazyCapacityAnalysis";
 import { ControlBar } from "./ControlBar";
 const EventLog = defineLazySurface({
   id: "live.events",
@@ -311,6 +312,7 @@ export function LiveSession({
 
   const view = (
     <LiveContext.Provider value={ui}>
+      {showCapacity && !capacityOpen && <CapacityAnalysis panel={false} onClose={closeCapacity} />}
       <ViewportPortal>
         <canvas
           key={`base-${rendererKind}`}
@@ -425,7 +427,7 @@ export function LiveSession({
         {/* While recording, the indicator (Stop, Esc) stands in for the bar. */}
         {!capturing && <ControlBar state={state} />}
       </div>
-      {capacityOpen && capacity && (
+      {capacityOpen && (
         <CapacityPanel
           key={state.simulation?.id ?? "free"}
           controller={controller}
@@ -488,5 +490,3 @@ export function LiveSession({
   );
   return local ? <InteractionContext.Provider value={interaction}>{view}</InteractionContext.Provider> : view;
 }
-
-export { EditCapacity } from "./session/EditCapacity";

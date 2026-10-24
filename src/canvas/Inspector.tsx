@@ -4,7 +4,6 @@ import { Icon } from "../components/Icon";
 import { t, useLocale } from "../i18n";
 import { kindLabel } from "../i18n/chrome";
 import { type LoadStatus } from "../lib/lazyLoad";
-import { NodePanel } from "./inspector/NodePanel";
 
 import { type InspectorProps } from "./inspector/types";
 import { SheetResizeHandle } from "./SheetResizeHandle";
@@ -24,6 +23,19 @@ function pending<P>(owner?: (props: P) => string) {
   return (props: P, status: LoadStatus): ReactNode =>
     status.failed ? <PanelUnavailable owner={owner?.(props)} /> : null;
 }
+
+const NodePanel = defineLazySurface({
+  id: "inspector.node",
+  load: () => import("./inspector/NodePanel").then((m) => m.NodePanel),
+  placeholder: {
+    size: {},
+    testId: "inspector.node-loading",
+    render: pending((p: { node: { id: string } }) => p.node.id),
+  },
+  focus: {},
+  export: "skip",
+  retryToast: true,
+});
 
 const EdgePanel = defineLazySurface({
   id: "inspector.edge-shell",

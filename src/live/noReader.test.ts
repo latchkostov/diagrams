@@ -1,6 +1,7 @@
+import { capacityView } from "./capacityView";
 import { describe, expect, it } from "vitest";
 import { DIAGRAM_FORMAT, type DiagramFile, type DiagramNode } from "../model/types";
-import { capacityView, emptyInputs, freePlaySimulation, partitionsNotes } from "./capacityModel";
+import { emptyInputs, freePlaySimulation, partitionsNotes } from "./capacityModel";
 import { heldWords } from "./format";
 import { createEngine } from "../sim/engine";
 import { stencilRole } from "../stencils/roles";

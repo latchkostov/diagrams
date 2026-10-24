@@ -301,6 +301,33 @@ describe("production bundle split", () => {
     expect(loading.map((c) => c.name).sort()).toEqual(["CanvasView", "canvas-shared"]);
   });
 
+  it("defers optional canvas surfaces and capacity analysis until requested", () => {
+    const canvasFeatures: [string, RegExp][] = [
+      ["node inspector shell", /[/\\]src[/\\]canvas[/\\]inspector[/\\]NodePanel\.tsx$/],
+      ["node inspector field metadata", /[/\\]src[/\\]canvas[/\\]inspector[/\\]simFields\.ts$/],
+      ["menu rows", /[/\\]src[/\\]components[/\\]MenuList\.tsx$/],
+      ["room presence", /[/\\]src[/\\]canvas[/\\]PresenceLayer\.tsx$/],
+      ["editing tooltips", /[/\\]src[/\\]canvas[/\\]NodeTooltip\.tsx$/],
+      ["next-node handle", /[/\\]src[/\\]canvas[/\\]nodes[/\\]GrowChip\.tsx$/],
+    ];
+    const liveFeatures: [string, RegExp][] = [
+      [
+        "capacity analysis",
+        /[/\\]src[/\\](?:live[/\\]capacityView|sim[/\\](?:capacity|capacityPlanning|waitingPlan|admissionPlanning|resourcePlanning))\.ts$/,
+      ],
+      ["Live overflow items", /[/\\]src[/\\]live[/\\]LiveMoreItems\.tsx$/],
+      ["edit-mode capacity", /[/\\]src[/\\]live[/\\]session[/\\]EditCapacity\.tsx$/],
+    ];
+    for (const build of [plain(), rooms]) {
+      expect(found(bundled(closure([canvasChunk(build)], build)), canvasFeatures)).toEqual([]);
+      const live = build.chunks.find((chunk) => chunk.name === "LiveSession")!;
+      expect(found(bundled(closure([live], build)), liveFeatures)).toEqual([]);
+      expect(found(bundled(build.chunks), [...canvasFeatures, ...liveFeatures])).toEqual(
+        [...canvasFeatures, ...liveFeatures].map(([name]) => name),
+      );
+    }
+  });
+
   it("loads the Markdown parser with its view, without the editor or its keys", () => {
     const view = chunks.find((c) =>
       Object.keys(c.modules).some((id) => /[/\\]markdown[/\\]MarkdownView\.tsx$/.test(id)),

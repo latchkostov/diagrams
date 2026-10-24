@@ -5,7 +5,8 @@ import type { DiagramFlowEdge, FlowNode } from "../../canvas/types";
 import { t, useLocale } from "../../i18n";
 import type { NodeStatus } from "../../sim/types";
 import { stencilRole } from "../../stencils/roles";
-import { capacityView, freePlaySimulation, inputsWithoutFix, withFix, type CapacityFix } from "../capacityModel";
+import { freePlaySimulation, inputsWithoutFix, withFix, type CapacityFix } from "../capacityModel";
+import { useCapacityAnalysis } from "../lazyCapacityAnalysis";
 import { capacityOverlay, useCapacityOverlay } from "../capacityOverlay";
 
 import type { CameraController } from "../../canvas/camera";
@@ -61,12 +62,10 @@ export function useCapacityInputs({
   );
   const readyReplicas = useMemo(() => Object.fromEntries(JSON.parse(fleetKey) as [string, number][]), [fleetKey]);
   // Recomputed only when the plan or an outage changes (sliders, saves, edits, chaos), never per frame.
-  const { value: capacity } = useMemo(
-    () => ({
-      locale,
-      value: showCapacity || capacityOpen ? capacityView(planDiagram, plan, runStatus, readyReplicas) : null,
-    }),
-    [showCapacity, capacityOpen, planDiagram, plan, runStatus, readyReplicas, locale],
+  const capacity = useCapacityAnalysis(
+    showCapacity || capacityOpen,
+    [planDiagram, plan, runStatus, readyReplicas],
+    locale,
   );
 
   // The panel shows the heat map for this session only; leaving live view restores the preference.

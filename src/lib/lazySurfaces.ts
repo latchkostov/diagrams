@@ -1,6 +1,11 @@
 /** Metadata stays separate from loaders: enumerating surfaces never downloads their chunks. */
 import { flushSync } from "react-dom";
 export const lazySurfaces = [
+  ["canvas.menu", "MenuList", "components/MenuList", "skip"],
+  ["canvas.presence", "PresenceLayer", "canvas/PresenceLayer", "skip"],
+  ["canvas.node-tips", "NodeTooltip", "canvas/NodeTooltip", "skip"],
+  ["canvas.grow", "GrowChip", "canvas/nodes/GrowChip", "skip"],
+  ["inspector.node", "NodePanel", "canvas/inspector/NodePanel", "skip"],
   ["inspector.edge", "EdgePanel", "canvas/inspector/EdgePanel", "skip"],
   ["inspector.identity", "NodeIdentity", "canvas/inspector/NodeIdentity", "skip"],
   ["inspector.messages", "MessageFields", "canvas/inspector/MessageFields", "skip"],
@@ -15,9 +20,11 @@ export const lazySurfaces = [
   ["inspector.multi", "MultiPanel", "canvas/inspector/MultiPanel", "skip"],
   ["live.sections", "NodeDetailSections", "live/NodeDetailSections", "skip"],
   ["live.timeline", "Timeline", "live/Timeline", "skip"],
+  ["live.more", "LiveMoreItems", "live/LiveMoreItems", "skip"],
   ["live.slow-timeline", "SlowTimeline", "live/slowmo/SlowTimeline", "skip"],
   ["live.simulations", "SimPanel", "live/SimPanel", "skip"],
   ["live.capacity", "CapacityPanel", "live/CapacityPanel", "skip"],
+  ["live.capacity-analysis", "CapacityAnalysis", "live/CapacityAnalysis", "await"],
   ["live.bottleneck", "BottleneckCallout", "live/BottleneckCallout", "skip"],
   ["live.calls", "CallPills", "live/CallPills", "await"],
   ["live.threads", "CallPills", "live/CallPills", "await"],
@@ -25,7 +32,7 @@ export const lazySurfaces = [
   ["live.edge-details", "NodeDetails", "live/NodeDetails", "skip"],
   ["live.history", "HoverHistory", "live/HoverHistory", "skip"],
   ["live.session", "LiveSession", "live/LiveSession", "await"],
-  ["live.edit-capacity", "LiveSession", "live/LiveSession", "skip"],
+  ["live.edit-capacity", "EditCapacity", "live/session/EditCapacity", "skip"],
   ["live.trouble", "TroubleCallout", "live/TroubleCallout", "skip"],
   ["live.events", "EventLog", "live/EventLog", "skip"],
   ["live.inject", "InjectDialog", "live/InjectDialog", "skip"],
