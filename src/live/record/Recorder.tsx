@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type Dispatch } from "react";
 import { createPortal } from "react-dom";
+import { ensureLazySurfacesLoaded } from "../../lib/lazySurfaces";
 import { Dialog } from "../../interop/ui/Dialog";
 import { notify } from "../../interop/ui/toast";
 import type { LiveController, LiveState } from "../controller";
@@ -198,6 +199,12 @@ export function Recorder({
           }
           if (!track || track.readyState === "ended") {
             failure();
+            return;
+          }
+          const surfaces = ensureLazySurfacesLoaded();
+          if (surfaces) await surfaces;
+          if (!valid(token)) {
+            stopStream(media);
             return;
           }
           const el = target();

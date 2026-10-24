@@ -1,8 +1,8 @@
+import { defineLazySurface } from "../lib/lazySurface";
 import { useState } from "react";
 import { t, useLocale } from "../i18n";
 import { stencilLabel } from "../i18n/stencils";
 import { getStencil } from "../stencils/registry";
-import { lazyComponent } from "../lib/lazyLoad";
 import { useLive } from "./context";
 import type { BadgeProps } from "./NodeBadges";
 import type { LiveState } from "./controller";
@@ -17,7 +17,14 @@ import { formatCount, formatRate } from "./format";
 import { callPolicy } from "../sim/callPolicy";
 import type { EdgeSimProps } from "../sim/types";
 
-const History = lazyComponent(() => import("./HoverHistory").then((m) => m.HoverHistory));
+const History = defineLazySurface({
+  id: "live.history",
+  load: () => import("./HoverHistory").then((m) => m.HoverHistory),
+  placeholder: { size: {}, testId: "live.history-loading" },
+  focus: {},
+  export: "skip",
+  retryToast: true,
+});
 
 export function NodeDetails(props: BadgeProps) {
   useLocale();

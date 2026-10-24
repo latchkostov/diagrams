@@ -1,3 +1,4 @@
+import { defineLazySurface } from "../lib/lazySurface";
 import { useCallback, useEffect, useState } from "react";
 import { useNodesInitialized, useStore } from "@xyflow/react";
 import "../styles/live.css";
@@ -6,7 +7,7 @@ import type { DiagramFile, Simulation } from "../model/types";
 import type { EditorApi } from "../editor/types";
 import { isEditableTarget } from "../editor/shortcuts";
 import { paletteHost, useLiveHost } from "../palette/host";
-import { lazyComponent, whenIdle } from "../lib/lazyLoad";
+import { whenIdle } from "../lib/lazyLoad";
 import { readLiveParams, writeLiveParams, type LiveParams } from "./urlParams";
 import { capacityOverlay, useCapacityOverlay } from "./capacityOverlay";
 import { isRecordingActive } from "./record/framing";
@@ -17,8 +18,22 @@ import type { LiveController } from "./controller";
 // simulation, renderers, panels, slow motion, recording) and the edit-mode capacity heat map are their own
 // chunk (./LiveSession), so the canvas's first view doesn't download them.
 
-const LiveSession = lazyComponent(() => import("./LiveSession").then((m) => m.LiveSession));
-const EditCapacity = lazyComponent(() => import("./LiveSession").then((m) => m.EditCapacity));
+const LiveSession = defineLazySurface({
+  id: "live.session",
+  load: () => import("./LiveSession").then((m) => m.LiveSession),
+  placeholder: { size: {}, testId: "live.session-loading" },
+  focus: {},
+  export: "await",
+  retryToast: true,
+});
+const EditCapacity = defineLazySurface({
+  id: "live.edit-capacity",
+  load: () => import("./LiveSession").then((m) => m.EditCapacity),
+  placeholder: { size: {}, testId: "live.edit-capacity-loading" },
+  focus: {},
+  export: "skip",
+  retryToast: true,
+});
 
 /** A running live session, for a page that drives it from outside (the host-supplied embed). */
 export interface LiveSessionHandle {

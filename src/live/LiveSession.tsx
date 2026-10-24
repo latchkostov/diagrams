@@ -1,3 +1,4 @@
+import { defineLazySurface } from "../lib/lazySurface";
 import { boundaryRestoreHint } from "../model/faultWords";
 import { ViewportPortal, useStoreApi } from "@xyflow/react";
 import { Suspense, lazy, useEffect, useMemo, useState } from "react";
@@ -9,27 +10,62 @@ import { useSettings } from "../harness/settings";
 import { t, useLocale } from "../i18n";
 import { planningHost } from "../planning/host";
 import { BottleneckCallout } from "./lazyBottleneckCallout";
-import { lazyComponent } from "../lib/lazyLoad";
 // A failed download's notice and Retry are part of this chunk: recovering never waits for another download.
 import { CalloutUnavailable, TroubleDownloadError } from "./TroubleDownloadError";
-const TroubleCallout = lazyComponent(
-  () => import("./TroubleCallout").then((m) => m.TroubleCallout),
-  (_, status) => <CalloutUnavailable status={status} />,
-  true,
-);
+const TroubleCallout = defineLazySurface({
+  id: "live.trouble",
+  load: () => import("./TroubleCallout").then((m) => m.TroubleCallout),
+  placeholder: {
+    size: {},
+    testId: "live.trouble-loading",
+    render: (_, status) => <CalloutUnavailable status={status} />,
+  },
+  focus: {},
+  export: "skip",
+  retryToast: true,
+});
 import { CapacityPanel } from "./lazyCapacityPanel";
 import { ControlBar } from "./ControlBar";
-const EventLog = lazyComponent(() => import("./EventLog").then((m) => m.EventLog));
+const EventLog = defineLazySurface({
+  id: "live.events",
+  load: () => import("./EventLog").then((m) => m.EventLog),
+  placeholder: { size: {}, testId: "live.events-loading" },
+  focus: {},
+  export: "skip",
+  retryToast: true,
+});
 import { InjectLoading } from "./InjectLoading";
-const InjectDialog = lazyComponent(
-  () => import("./InjectDialog").then((m) => m.InjectDialog),
-  (props, status) => <InjectLoading {...props} status={status} />,
-);
+const InjectDialog = defineLazySurface({
+  id: "live.inject",
+  load: () => import("./InjectDialog").then((m) => m.InjectDialog),
+  placeholder: {
+    size: {},
+    testId: "live.inject-loading",
+    render: (props, status) => <InjectLoading {...props} status={status} />,
+  },
+  focus: {},
+  export: "skip",
+  retryToast: true,
+});
 import { NodeBadges } from "./NodeBadges";
-const NoteCallout = lazyComponent(() => import("./NoteCallout").then((m) => m.NoteCallout));
+const NoteCallout = defineLazySurface({
+  id: "live.note",
+  load: () => import("./NoteCallout").then((m) => m.NoteCallout),
+  placeholder: { size: {}, testId: "live.note-loading" },
+  focus: {},
+  export: "await",
+  retryToast: true,
+});
 import { SimPanelFrame } from "./SimPanelFrame";
 import { SimPanel } from "./lazySimPanel";
-const TraceCard = lazyComponent(() => import("./TraceCard").then((m) => m.TraceCard));
+const TraceCard = defineLazySurface({
+  id: "live.trace",
+  load: () => import("./TraceCard").then((m) => m.TraceCard),
+  placeholder: { size: {}, testId: "live.trace-loading" },
+  focus: {},
+  export: "skip",
+  retryToast: true,
+});
 import { LiveContext, type LiveUi } from "./context";
 import { LiveIcon } from "./icons";
 import { liveMutationGuard } from "./liveActions";

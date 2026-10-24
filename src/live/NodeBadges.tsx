@@ -1,3 +1,4 @@
+import { defineLazySurface } from "../lib/lazySurface";
 import { revisionAtLeast } from "../model/revisions";
 import { profileOf } from "../stencils/profiles";
 import { ThreadMeter, CallPills } from "./lazyWaitingVisuals";
@@ -28,11 +29,23 @@ import { readoutDiagram } from "./readoutDiagram";
 import { callPolicy } from "../sim/callPolicy";
 import type { EdgeSimProps } from "../sim/types";
 
-import { lazyComponent } from "../lib/lazyLoad";
+const NodeDetails = defineLazySurface({
+  id: "live.node-details",
+  load: () => import("./NodeDetails").then((m) => m.NodeDetails),
+  placeholder: { size: {}, testId: "live.node-details-loading" },
+  focus: {},
+  export: "skip",
+  retryToast: true,
+});
 
-const NodeDetails = lazyComponent(() => import("./NodeDetails").then((m) => m.NodeDetails));
-
-const EdgeDetails = lazyComponent(() => import("./NodeDetails").then((m) => m.EdgeDetails));
+const EdgeDetails = defineLazySurface({
+  id: "live.edge-details",
+  load: () => import("./NodeDetails").then((m) => m.EdgeDetails),
+  placeholder: { size: {}, testId: "live.edge-details-loading" },
+  focus: {},
+  export: "skip",
+  retryToast: true,
+});
 
 const BROKERS: ReadonlySet<SimRole> = new Set(["topic", "queue", "stream"]);
 

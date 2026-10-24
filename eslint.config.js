@@ -244,6 +244,23 @@ export default tseslint.config(
     rules: { "no-restricted-syntax": ["error", ...CAMERA_RESTATED, ...INTERACTION_RULES, POINTER_RULE] },
   },
   {
+    files: ["src/canvas/CanvasView.tsx"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              regex: "inspector/.*(?:Fields|Panel)(?:\\.tsx)?$",
+              allowTypeImports: true,
+              message: "Inspector feature UI must load through a registered lazy surface.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     files: ["tests/e2e/**/*.ts"],
     rules: {
       "no-restricted-syntax": [

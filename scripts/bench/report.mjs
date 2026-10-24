@@ -69,6 +69,28 @@ export function summary(results) {
   );
   out.push("", "</details>", "");
 
+  const budgets = metrics.filter((m) => m.suite === "bundle" && m.gate);
+  if (budgets.length) {
+    out.push("## Bundle headroom", "");
+    const base = results.info?.["build-bundle"]?.mergeBase;
+    out.push(base ? `Delta against merge-base \`${base}\` (gzip bytes).` : "Merge-base comparison unavailable.", "");
+    out.push(
+      table(
+        ["Budget", "Merge-base B", "PR B", "Delta B", "Limit B", "Headroom B", "Status"],
+        budgets.map((m) => [
+          m.scenario,
+          m.budget?.base ?? "–",
+          m.value,
+          m.budget?.delta === undefined ? "–" : `${m.budget.delta >= 0 ? "+" : ""}${m.budget.delta}`,
+          m.gate.limit,
+          m.budget?.headroom ?? m.gate.limit - m.value,
+          !m.gate.pass ? "**FAIL**" : m.budget?.warning ? "Warning: schedule trim" : "pass",
+        ]),
+      ),
+      "",
+    );
+  }
+
   // Every suite: workload metrics pivoted by size; the rest listed.
   const suites = [...new Set(metrics.map((m) => m.suite))];
   for (const suite of suites) {

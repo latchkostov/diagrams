@@ -704,8 +704,10 @@ settled signals"), `renders/select/commits` went from 10.2 to 11.2 commits per c
 - **A gate.** Only for something that doesn't depend on the machine: `s.growth(...)` (two sizes an eighth apart, 500
   nodes or more), or `s.count(..., { limit, why })`. Prove it: inject the regression it's for, see it fail, revert, and
   note it in [Proving the gates](#proving-the-gates).
-- **A budget.** Raise one only on purpose, in the change that needs it, and say why in the commit (as
-  `scripts/bundle-budget.mjs` asks). Lower it when a refactor improves it.
+- **A budget.** Keep limits fixed. Bundle reports include each PR's delta against its merge-base and
+  remaining headroom. Below 8,192 B headroom warns without failing; only exceeding a limit fails.
+  Schedule dedicated trim PRs for warnings, rather than unrelated trims in feature PRs. See
+  [the headroom policy](QUALITY.md#lazy-surfaces-and-bundle-headroom).
 - **A workload family.** A pure function `(n) => DiagramFile` in `src/bench/workloads`, registered in `index.ts`;
   `workloads.test.ts` checks it's valid, the right size and deterministic.
 - **The baseline.** After a change that moves the numbers on purpose, run `pnpm bench` on master on a quiet machine and

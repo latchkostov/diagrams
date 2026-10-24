@@ -30,16 +30,6 @@
     "tracking": "docs/backlog/2026-10-23-native-load-backstops.md"
   },
   {
-    "id": "checks-typing-load",
-    "spec": "tests/e2e/checks-ui.spec.ts",
-    "title": "typing a label is as responsive while checks run as with them held",
-    "firstSeen": "2026-10-18",
-    "lastSeen": "2026-10-18",
-    "count": 2,
-    "owner": "latchkostov",
-    "tracking": "docs/backlog/2026-10-23-native-load-backstops.md"
-  },
-  {
     "id": "library-duplicate-toast",
     "spec": "tests/e2e/library.spec.ts",
     "title": "rename, duplicate and delete (with Undo)",

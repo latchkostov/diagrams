@@ -15,6 +15,7 @@ import { whenShapeGeometryReady } from "../canvas/shapes/readiness";
 import { whenEdgeGeometryReady } from "../canvas/edges/imageReadiness";
 import { geometrySnapshot } from "../canvas/shapes/runtime";
 import { t } from "../i18n";
+import { ensureLazySurfacesLoaded } from "../lib/lazySurfaces";
 
 export interface ImageOptions {
   /** Pixel ratio for PNG (1 or 2). */
@@ -131,6 +132,11 @@ const MAX_PIXELS = 16_000_000; // keep well under browsers' canvas limits
 export async function renderDiagramImage(kind: "png" | "svg", opts: ImageOptions = {}): Promise<Blob> {
   opts.signal?.throwIfAborted();
   opts.check?.();
+  const surfaces = ensureLazySurfacesLoaded();
+  if (surfaces) {
+    await unlessCancelled(surfaces, opts.signal);
+    flushSync(() => {});
+  }
   const viewport = findViewport();
   // A pending route is still part of the saved drawing. Wait before measuring its farthest bend.
   const routeReadiness = whenEdgeGeometryReady(viewport);

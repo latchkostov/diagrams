@@ -1,33 +1,28 @@
-import { lazyComponent, LOAD_FAILED, type LoadStatus } from "../../lib/lazyLoad";
+import { defineLazySurface } from "../../lib/lazySurface";
+import { type LoadStatus } from "../../lib/lazyLoad";
 import { t } from "../../i18n";
-import { useCallback, useEffect, type ComponentProps } from "react";
-import { useInteraction } from "../interaction/useInteraction";
+import { type ComponentProps } from "react";
 import { PanelUnavailable } from "./PanelUnavailable";
-import { notify } from "../../interop/ui/toast";
 
-const DeferredEdgePanel = lazyComponent(
-  () => import("./EdgePanel").then((m) => m.EdgePanel),
-  (props, status) => <PendingEdge owner={props.edge.id} {...status} />,
-);
+const DeferredEdgePanel = defineLazySurface({
+  id: "inspector.edge",
+  load: () => import("./EdgePanel").then((m) => m.EdgePanel),
+  placeholder: {
+    size: {},
+    testId: "inspector.edge-loading",
+    render: (props, status) => <PendingEdge owner={props.edge.id} {...status} />,
+  },
+  focus: { field: "inspector-field-label" },
+  export: "skip",
+  retryToast: true,
+});
 
 export function EdgePanel(props: ComponentProps<typeof DeferredEdgePanel>) {
   return <DeferredEdgePanel {...props} />;
 }
 
 /** Recovery ships with the shell; the interaction controller holds naming until the deferred field arrives. */
-function PendingEdge({ owner, failed, retry: load }: LoadStatus & { owner: string }) {
-  const interaction = useInteraction();
-  const retry = useCallback(() => {
-    interaction?.dispatch({ type: "panel.field", panel: "inspector", field: "inspector-field-label" });
-    load();
-  }, [interaction, load]);
-  useEffect(() => {
-    if (failed)
-      notify(LOAD_FAILED, {
-        kind: "error",
-        action: { label: t("hover.retry"), run: retry, testId: "lazy-load-retry" },
-      });
-  }, [failed, retry]);
+function PendingEdge({ owner, failed, retry }: LoadStatus & { owner: string }) {
   return (
     <div className="insp-section" data-testid="inspector-edge-loading">
       {failed ? (
