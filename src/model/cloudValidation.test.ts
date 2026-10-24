@@ -2,10 +2,11 @@ import { describe, it, expect } from "vitest";
 import { validateDiagram } from "../interop/native";
 import { applyOps } from "../ai/ops";
 import { cloudFixture } from "../lab/cloudFixture";
-import { cloudLesson, kedaLesson, type CloudConfig } from "./autoscaling";
+import { type CloudConfig } from "./autoscaling";
+import { cloudLesson, kedaLesson } from "./autoscalingLessons";
 import { checkAutoscaling } from "./autoscalingSchema";
 import { propsProblem } from "./simProps";
-import { resourceLesson } from "./autoscaling";
+import { resourceLesson } from "./autoscalingLessons";
 
 const r = resourceLesson();
 

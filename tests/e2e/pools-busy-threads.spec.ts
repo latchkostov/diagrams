@@ -1,6 +1,6 @@
 import { openInspectorLiveDetails } from "./fixtures";
 import { waitingFixture } from "../../src/lab/waitingFixture";
-import { hpaLesson, kedaLesson, resourceLesson } from "../../src/model/autoscaling";
+import { hpaLesson, kedaLesson, resourceLesson } from "../../src/model/autoscalingLessons";
 import {
   test,
   expect,

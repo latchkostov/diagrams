@@ -1,4 +1,5 @@
-import { kedaLesson, resourceLesson, type AutoscalingConfig } from "../../model/autoscaling";
+import { type AutoscalingConfig } from "../../model/autoscaling";
+import { kedaLesson, resourceLesson } from "../../model/autoscalingLessons";
 import { validateDiagram } from "../native";
 import { mulberry32 } from "../../sim/rng";
 import { formatImportMessage } from "../ui/importMessages";

@@ -1,7 +1,7 @@
 import { wholeDotTravelMs } from "../test/brokerFixtures";
 import { expect, it, vi } from "vitest";
 import { waitingFixture } from "../lab/waitingFixture";
-import { hpaLesson, resourceLesson } from "../model/autoscaling";
+import { hpaLesson, resourceLesson } from "../model/autoscalingLessons";
 import { validateDiagram } from "../interop/native";
 import type { Simulation } from "../model/types";
 import { createEngine, SOURCE_VOLUME_CAP, WorkBudgetError } from "./engine";

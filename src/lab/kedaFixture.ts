@@ -1,5 +1,5 @@
 import { autoscalingFixture } from "./autoscalingFixture";
-import { kedaLesson } from "../model/autoscaling";
+import { kedaLesson } from "../model/autoscalingLessons";
 export function kedaFixture() {
   const d = autoscalingFixture();
   d.title = "KEDA Kafka worker";

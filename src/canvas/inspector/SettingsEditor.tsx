@@ -2,15 +2,8 @@ import { useState } from "react";
 import { Icon } from "../../components/Icon";
 import type { EditorApi } from "../../editor/types";
 import { t } from "../../i18n";
-import {
-  MAX_SETTINGS_TEXT,
-  edgeSettings,
-  parseSettings,
-  parseSettingsEditor,
-  settingsSummary,
-  settingsText,
-  type ConfigSetting,
-} from "../../model/relations";
+import { edgeSettings, settingsSummary, type ConfigSetting } from "../../model/relations";
+import { MAX_SETTINGS_TEXT, parseSettings, parseSettingsEditor, settingsText } from "../../model/settingsInput";
 import type { DiagramFlowEdge } from "../types";
 import { Section } from "./fields";
 

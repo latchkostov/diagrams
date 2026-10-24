@@ -1,7 +1,7 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { expect, it } from "vitest";
-import { kedaLesson } from "../../model/autoscaling";
+import { kedaLesson } from "../../model/autoscalingLessons";
 import type { ImportPick } from "../infra/graph";
 import { ImportPickSection } from "./ImportPickSection";
 

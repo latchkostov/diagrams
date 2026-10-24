@@ -3,7 +3,7 @@ import type { DiagramFile } from "../model/types";
 import type { HpaConfig } from "../model/autoscaling";
 import { expect, it } from "vitest";
 import { autoscalingFixture } from "../lab/autoscalingFixture";
-import { resourceLesson } from "../model/autoscaling";
+import { resourceLesson } from "../model/autoscalingLessons";
 import { buildContext } from "./context";
 import { runChecks } from "./run";
 import { capacity } from "./rules/capacity";

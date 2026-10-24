@@ -8,7 +8,7 @@ import { annotationGeometryMessage, relationChangeMessage } from "./editMessages
 import { useLayoutEffect, useState, type Dispatch, type SetStateAction } from "react";
 import { createResourceValidator } from "../model/resourceValidation";
 import { createRoutingValidator, ROUTING_CONTEXT } from "../model/routingValidation";
-import { strippedTables } from "../model/routingEdits";
+import { strippedTables } from "../model/routingTopology";
 import { newPlanningProps } from "../model/planning";
 import { useReactFlow, type ReactFlowInstance } from "@xyflow/react";
 import { flushSync } from "react-dom";

@@ -1,5 +1,6 @@
 import { importHpa, importKeda, importTrigger, workloadResources } from "./k8sScaling";
-import { resourceLesson, type AutoscalingConfig, type KedaTrigger, type ScalingSummary } from "../../model/autoscaling";
+import { type AutoscalingConfig, type KedaTrigger, type ScalingSummary } from "../../model/autoscaling";
+import { resourceLesson } from "../../model/autoscalingLessons";
 import { scalingReasonCode } from "../../model/scalingReason";
 import { diagnostic, diagnosticKey, type ImportText } from "./graph";
 import { t as tr } from "../../i18n";

@@ -1,6 +1,7 @@
 import { expect, it } from "vitest";
 import { waitingFixture } from "../lab/waitingFixture";
-import { cloudLesson, hpaLesson, kedaLesson, resourceLesson, type ScalingMetric } from "../model/autoscaling";
+import { type ScalingMetric } from "../model/autoscaling";
+import { cloudLesson, hpaLesson, kedaLesson, resourceLesson } from "../model/autoscalingLessons";
 import { createResourceValidator } from "../model/resourceValidation";
 import { createEngine } from "./engine";
 import { assertLedgerInvariants } from "./resourceInvariants";

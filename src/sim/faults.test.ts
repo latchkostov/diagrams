@@ -5,7 +5,7 @@ import { createEngine } from "./engine";
 import { createSimulationRun } from "./simulation";
 import { LiveController } from "../live/controller";
 import { canCutLink, faultTimelineProblem, MAX_FAULT_WORK } from "../model/faultRuntime";
-import { resourceLesson } from "../model/autoscaling";
+import { resourceLesson } from "../model/autoscalingLessons";
 
 export const diagram: DiagramFile = {
   format: "diagrams/v1",

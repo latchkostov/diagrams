@@ -2,7 +2,7 @@ import { wholeDotTravelMs } from "../test/brokerFixtures";
 import { expect, it } from "vitest";
 import { createEngine } from "./engine";
 import { waitingFixture } from "../lab/waitingFixture";
-import { resourceLesson } from "../model/autoscaling";
+import { resourceLesson } from "../model/autoscalingLessons";
 import { cohortArrivals, constantRateRuns, expectScaleEquivalent, sameArrivals } from "../test/scaleEquivalence";
 import type { ResourceWork } from "./resourceWork";
 import {

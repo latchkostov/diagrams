@@ -1,13 +1,13 @@
 import { createEngine } from "../sim/engine";
 import { createResourceValidator } from "../model/resourceValidation";
 import { resolveNodeProps } from "../sim/defaults";
-import { hpaLesson, resourceLesson } from "../model/autoscaling";
+import { hpaLesson, resourceLesson } from "../model/autoscalingLessons";
 import { expect, it } from "vitest";
 import { kedaFixture } from "../lab/kedaFixture";
 import { parseNative, serializeNative, validateDiagram } from "../interop/native";
 import { makePayload, parsePayload, remapPayload } from "../editor/clipboard";
 import { applyOps } from "../ai/ops";
-import { kedaLesson } from "../model/autoscaling";
+import { kedaLesson } from "../model/autoscalingLessons";
 import { analyzeCapacity } from "../sim/capacity";
 import { runChecks } from "../checks/run";
 import { presentFinding } from "../checks/presentation";

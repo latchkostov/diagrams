@@ -2,7 +2,7 @@ import { expect, it, vi } from "vitest";
 import fc from "fast-check";
 import { waitingFixture } from "../lab/waitingFixture";
 import { cloudFixture } from "../lab/cloudFixture";
-import { resourceLesson } from "../model/autoscaling";
+import { resourceLesson } from "../model/autoscalingLessons";
 import { propertyRuns } from "../test/fastCheck";
 import { createEngine } from "./engine";
 import { analyzeCapacity } from "./capacity";

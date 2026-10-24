@@ -3,7 +3,7 @@ import { waitingFixture } from "../lab/waitingFixture";
 import { createEngine } from "./engine";
 import { analyzeCapacity } from "./capacity";
 import { realSnapshot } from "./units";
-import { cloudLesson, resourceLesson } from "../model/autoscaling";
+import { cloudLesson, resourceLesson } from "../model/autoscalingLessons";
 
 function allowLinkCuts(d: ReturnType<typeof waitingFixture>) {
   d.groups = [

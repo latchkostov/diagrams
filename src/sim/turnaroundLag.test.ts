@@ -1,6 +1,6 @@
 import { afterEach, expect, it, vi } from "vitest";
 import { waitingFixture } from "../lab/waitingFixture";
-import { resourceLesson } from "../model/autoscaling";
+import { resourceLesson } from "../model/autoscalingLessons";
 import { createEngine } from "./engine";
 import { SampledLedger } from "./ledger";
 import { STEP } from "./timing";

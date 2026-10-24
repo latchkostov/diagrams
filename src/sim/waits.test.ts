@@ -1,4 +1,4 @@
-import { resourceLesson } from "../model/autoscaling";
+import { resourceLesson } from "../model/autoscalingLessons";
 import { propertyRuns } from "../test/fastCheck";
 import { expect, it } from "vitest";
 import fc from "fast-check";

@@ -4,7 +4,7 @@ import type { EngineOptions } from "./types";
 import { createEngine } from "./engine";
 import { waitingPlan } from "./waitingPlan";
 import { resolveProps } from "./defaults";
-import { resourceLesson } from "../model/autoscaling";
+import { resourceLesson } from "../model/autoscalingLessons";
 
 it("never visits held work during idle ticks, even with 10,000 open calls", () => {
   const d = waitingFixture();

@@ -1,6 +1,6 @@
 import { expect, it } from "vitest";
 import { waitingFixture } from "../lab/waitingFixture";
-import { resourceLesson } from "../model/autoscaling";
+import { resourceLesson } from "../model/autoscalingLessons";
 import { kedaFixture } from "../lab/kedaFixture";
 import { createEngine } from "./engine";
 import type { SimEngine } from "./types";

@@ -2,7 +2,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import type { ReactNode } from "react";
 import { expect, it, vi } from "vitest";
 import { autoscalingFixture } from "../lab/autoscalingFixture";
-import { resourceLesson } from "../model/autoscaling";
+import { resourceLesson } from "../model/autoscalingLessons";
 import { LiveController } from "../live/controller";
 import { LiveContext, type LiveUi } from "../live/context";
 import { NodePlanning } from "./NodePlanning";

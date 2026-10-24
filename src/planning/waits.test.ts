@@ -1,5 +1,5 @@
 import { autoScale } from "../sim/scale";
-import { hpaLesson, resourceLesson } from "../model/autoscaling";
+import { hpaLesson, resourceLesson } from "../model/autoscalingLessons";
 import blockingExample from "../examples/blocking-call.json";
 import busyExample from "../examples/scale-on-busy-threads.json";
 import { planScaling } from "../sim/scalingPlanner";

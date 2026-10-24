@@ -1,7 +1,7 @@
 import { expect, it } from "vitest";
 import type { RetryPolicy } from "../model/admission";
 import type { DiagramFile } from "../model/types";
-import { resourceLesson } from "../model/autoscaling";
+import { resourceLesson } from "../model/autoscalingLessons";
 import { waitingFixture } from "../lab/waitingFixture";
 import { createEngine } from "./engine";
 import { assertResilienceInvariants } from "./resilienceInvariants";

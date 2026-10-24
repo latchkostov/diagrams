@@ -16,3 +16,12 @@ container lost post-pick naming characters in targeted tests while clean master 
 Future container deferral must cover the same pending-input ownership transition. The remaining
 PR #272 trims and bundle limits stay unchanged. Production canvas first view is 380,961 B gzip,
 leaving 2,039 B against 383,000 B: below the 8,192 B warning floor but in budget.
+
+## Trim 3 follow-up
+
+The searchable menu remains eager. A native input preserves IME, paste, selection and modified
+editing keys, but adoption also needs a proved transition across queued Enter: later input can belong
+to naming, while a no-match Enter or a submenu keeps menu ownership. Search edits after navigation
+also reset the active result. Final input state alone cannot reconstruct these intermediate ownership
+and highlight transitions. No new keyboard replay or menu deferral was landed; draft #273 stays open.
+The separate settings split keeps the existing eager naming container.

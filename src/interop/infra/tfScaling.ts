@@ -1,7 +1,4 @@
 import {
-  cloudLesson,
-  kedaLesson,
-  resourceLesson,
   type AcaController,
   type AppServiceController,
   type CloudConfig,
@@ -17,6 +14,7 @@ import {
   type MonitorOperator,
   type MonitorRule,
 } from "../../model/autoscaling";
+import { cloudLesson, kedaLesson, resourceLesson } from "../../model/autoscalingLessons";
 import { checkAutoscaling } from "../../model/autoscalingSchema";
 import { kubernetesQuantity } from "./k8sScaling";
 import { isMap, own } from "./yaml";
