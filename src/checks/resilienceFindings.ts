@@ -316,7 +316,7 @@ export function computeResilienceFindings(ctx: CheckContext): Finding[] {
       (a, b) =>
         (product.get(b.from) ?? 1) * attemptsOf(b) - (product.get(a.from) ?? 1) * attemptsOf(a) ||
         ctx.rank(a.id) - ctx.rank(b.id) ||
-        a.id.localeCompare(b.id),
+        (a.id < b.id ? -1 : a.id > b.id ? 1 : 0),
     );
   const work = { work: THREAD_FIX_WORK, messages: { remaining: THREAD_FIX_LIMITS.messages } };
   let notChecked = Math.max(0, candidates.length - 3);

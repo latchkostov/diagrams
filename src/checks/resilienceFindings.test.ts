@@ -146,6 +146,16 @@ it("probes the highest amplification first, caps at three, and reports refused o
   expect(summarize(stormOnly)).not.toContain("Nothing to check");
 });
 
+it("breaks equal probe priorities by stable ID order, independent of host language", () => {
+  const probe = noReplay(),
+    d = diagram(),
+    call = d.edges.find((e) => e.id === "pay")!;
+  d.edges = d.edges.filter((e) => e.id !== call.id);
+  for (const id of ["ä", "z", "Z"]) d.edges.push({ ...call, id });
+  findings(d);
+  expect(probe.mock.calls.map(([request]) => request.edge)).toEqual(["Z", "z", "ä"]);
+});
+
 it("bounds untrusted names and output characters, with omission counts instead of an all-clear", () => {
   noReplay();
   const d = diagram(),
