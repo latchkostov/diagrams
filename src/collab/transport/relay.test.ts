@@ -7,10 +7,11 @@ import { createLog } from "../../../services/server/src/log";
 import { FakeClock } from "../clock";
 import { deriveRoomKeys } from "../keys";
 import { seededBytes } from "../random";
+import { newIdentity } from "../signing";
 import { describeTransportConformance, roomFor } from "./conformance";
 import { createRelayTransport } from "./relay";
 import { RELAY_LIMITS, parseHello, readClientFrame, RELAY_CLOSE } from "./relayProtocol";
-import { FrameTooLargeError, type CollabTransport } from "./types";
+import { FrameTooLargeError, type CollabTransport, type RelayAdmission } from "./types";
 import { startServer } from "../../../services/server/test/harness";
 
 const relay = createRelayServer({
@@ -99,6 +100,49 @@ describeTransportConformance("WebSocket relay (real server)", (seed) => {
 });
 
 describe("relay reconnect and lifecycle", () => {
+  it("ignores a replaced admission source even when it calls its retained notification", async () => {
+    const clock = new FakeClock();
+    const t = createRelayTransport({
+      url: `${origin.replace("http:", "ws:")}/collab/v1`,
+      roomId: (await deriveRoomKeys(roomFor(551))).roomId,
+      root: (await newIdentity()).key,
+      WebSocket: browserSockets(origin, sockets),
+      clock,
+    });
+    transports.push(t);
+    await barrier(sockets.at(-1)!);
+    let changed: (() => void) | undefined;
+    const chain = vi.fn(() => undefined);
+    const proofs: (() => void)[] = [];
+    const prove = vi.fn(
+      () => new Promise<{ key: string; sig: string }>((resolve) => proofs.push(() => resolve({ key: "k", sig: "s" }))),
+    );
+    const admission: RelayAdmission = {
+      prove,
+      chain,
+      tip: () => undefined,
+      subscribe(fn) {
+        changed = fn;
+        return () => {};
+      },
+    };
+    t.authorize!(admission);
+    const stale = changed!;
+    t.authorize!({ ...admission, subscribe: () => () => {} });
+    expect(prove).toHaveBeenCalledTimes(2);
+    const queued = vi.spyOn(globalThis, "queueMicrotask");
+    onTestFinished(() => queued.mockRestore());
+    stale();
+    await Promise.resolve();
+    expect(queued).not.toHaveBeenCalled();
+    expect(chain).not.toHaveBeenCalled();
+    expect(t.connectivity?.()).toBe("connected");
+    t.close();
+    for (const finish of proofs) finish();
+    await Promise.resolve();
+    expect(clock.pending).toBe(0);
+  });
+
   it("reports server capacity separately from room capacity without automatic retries", async () => {
     const server = await startServer({ LD_MAX_ROOMS: "1" });
     const opened: WebSocket[] = [];

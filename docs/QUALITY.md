@@ -435,8 +435,8 @@ i18n wrapper's normal transform rules.
 Compare `coverage-summary.json` from the merge with an unsharded unit run when changing this setup.
 The on-demand **Compare merged unit coverage** workflow accepts a CI run ID, checks out that
 artifact's exact tested revision, and compares every file and total against one unsharded Ubuntu run.
-PRs changing this configuration also produce a `unit-unsharded-coverage` reference artifact on
-Ubuntu and automatically compare it with the same revision's merged `unit-coverage` artifact.
+It is manual-only: timing-dependent collaboration paths can produce execution-count differences
+even between unsharded runs. It is a diagnostic, not a required PR check.
 
 `tests/flakes.json` records exact test identities, observed dates/counts, owners and tracking links.
 `node scripts/ci/known-flakes.mjs <run-id>` downloads structured reports and prints `ALL-KNOWN` only

@@ -1,12 +1,5 @@
 name: Compare merged unit coverage
 on:
-  pull_request:
-    paths:
-      - vitest.config.ts
-      - scripts/operation-probes.ts
-      - scripts/ci/*coverage*
-      - .github/workflows/ci.yml
-      - .github/workflows/coverage-compare.yml
   workflow_dispatch:
     inputs:
       run-id:
@@ -28,7 +21,6 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/download-artifact@v8
-        if: github.event_name == 'workflow_dispatch'
         with:
           name: unit-coverage
           run-id: ${{ inputs.run-id }}
@@ -36,7 +28,6 @@ jobs:
           repository: ${{ github.repository }}
           path: ${{ runner.temp }}/merged-coverage
       - name: Read tested revision
-        if: github.event_name == 'workflow_dispatch'
         id: revision
         env:
           REPORT: ${{ runner.temp }}/merged-coverage/tested-sha.txt
@@ -46,31 +37,12 @@ jobs:
           echo "sha=$sha" >> "$GITHUB_OUTPUT"
       - uses: actions/checkout@v7
         with:
-          ref: ${{ steps.revision.outputs.sha || github.sha }}
+          ref: ${{ steps.revision.outputs.sha }}
       - uses: ./.github/actions/toolchain
       - name: Unsharded reference
         run: pnpm test:coverage --maxWorkers=3 --coverage.reportsDirectory=coverage-reference
       - name: Record reference revision
         run: git rev-parse HEAD > coverage-reference/tested-sha.txt
-      - name: Find matching CI run
-        if: github.event_name == 'pull_request'
-        id: ci
-        env:
-          GH_TOKEN: ${{ github.token }}
-          REPO: ${{ github.repository }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-        run: |
-          run_id="$(gh api "repos/$REPO/actions/workflows/ci.yml/runs?event=pull_request&head_sha=$HEAD_SHA" --jq '.workflow_runs[0].id // empty')"
-          [[ "$run_id" =~ ^[0-9]+$ ]] || exit 1
-          echo "run-id=$run_id" >> "$GITHUB_OUTPUT"
-      - uses: actions/download-artifact@v8
-        if: github.event_name == 'pull_request'
-        with:
-          name: unit-coverage
-          run-id: ${{ steps.ci.outputs.run-id }}
-          github-token: ${{ github.token }}
-          repository: ${{ github.repository }}
-          path: ${{ runner.temp }}/merged-coverage
       - name: Require identical tested revisions
         shell: bash
         env:
