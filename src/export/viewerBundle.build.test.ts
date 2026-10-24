@@ -23,6 +23,7 @@ describe("static platform viewer", () => {
       ],
     });
     expect(modules.some((id) => id.endsWith("/src/editor/builtinActions.ts"))).toBe(false);
+    expect(modules.some((id) => id.endsWith("/src/components/MenuList.tsx"))).toBe(false);
     for (const name of ["router", "shaped"])
       expect(
         modules.some((id) => id.endsWith(`/src/canvas/geometry/${name}.ts`)),

@@ -55,7 +55,8 @@ function harness() {
   const journal: InteractionEntry[] = [];
   const camera: (CameraEvent | { type: "placing" })[] = [];
   /** Keys held for a field that isn't there yet (the DOM port's capture), and text written into fields. */
-  const holds: { typed: TypeAhead; stopped: boolean; done: (t: TypeAhead) => void }[] = [];
+  const holds: { typed: TypeAhead; stopped: boolean; done: (t: TypeAhead) => void; onType?: (t: TypeAhead) => void }[] =
+    [];
   const written: string[] = [];
   const nodeEl = (id: string) => els.get(`node:${id}`) ?? el(`node:${id}`);
   const resolveNode = (id: string): Resolution => {
@@ -127,8 +128,8 @@ function harness() {
     connected: (h) => (h as El).connected,
     version: () => env.version,
     publish: (p) => phases.push(p),
-    holdKeys(done) {
-      const hold = { typed: { text: null } as TypeAhead, stopped: false, done };
+    holdKeys(done, text, onType) {
+      const hold = { typed: { text: text ?? null } as TypeAhead, stopped: false, done, onType };
       holds.push(hold);
       return {
         stop: () => {
@@ -150,6 +151,7 @@ function harness() {
     const next = hold && typeAheadKey(hold.typed, { key: k, ctrlKey: false, metaKey: false, altKey: false });
     if (!hold || !next) return false;
     hold.typed = next;
+    hold.onType?.(next);
     if (next.done) hold.done(next);
     return true;
   };
@@ -571,6 +573,21 @@ describe("interaction controller: pending rename (a name field whose panel is st
     expect(h.written).toEqual([]);
     expect(h.env.active).toBe(edge);
   });
+
+  it.each(["Enter", "Escape"])(
+    "%s finishes a new node's pending name at that node without opening the late field",
+    (k) => {
+      const h = harness();
+      h.env.nodes.set("new", { drawn: true });
+      h.controller.dispatch({ type: "inspector.field", seq: 1, name: "label", owner: "new", naming: () => {} });
+      expect(h.key(k)).toBe(true);
+      h.env.inspector.fields.set("label", "new");
+      h.drain();
+      expect(h.focused).toEqual(["node:new"]);
+      expect(h.written).toEqual([]);
+      expect(h.holding()).toBe(false);
+    },
+  );
 
   it("the panel's download failed (its field is gone): the rename ends and later keys reach the canvas", () => {
     const h = harness();

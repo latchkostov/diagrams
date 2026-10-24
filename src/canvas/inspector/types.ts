@@ -1,3 +1,4 @@
+import type { PendingName } from "../typeAhead";
 import { type ReactNode } from "react";
 import type { EditorApi } from "../../editor/types";
 import type { DiagramFile } from "../../model/types";
@@ -23,7 +24,7 @@ export interface InspectorProps {
    * Focus request: `inspector-field-<name>`, its text all selected (`caret: "end"`: the caret after it, for a name
    * typed before the field could take it); `seq` re-triggers for the same name.
    */
-  focus?: { name: string; seq: number; caret?: "end"; target?: string };
+  focus?: { name: string; seq: number; caret?: "end"; target?: string; text?: string; naming?: PendingName };
   /** Request consumption survives inspector unmounts (presentation). */
   takeFocus?: (seq: number) => boolean;
   /**

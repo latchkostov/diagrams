@@ -1,4 +1,4 @@
-import { NodePanel } from "./inspector/NodePanel";
+import { NodePanel } from "./inspector/lazyNodePanel";
 import { defineLazySurface } from "../lib/lazySurface";
 import { useLayoutEffect, type ReactNode } from "react";
 import { Icon } from "../components/Icon";
@@ -95,6 +95,8 @@ function InspectorSheet({ interaction, ...p }: InspectorProps & { interaction: I
       name: f.name,
       owner: f.target,
       caret: f.caret,
+      text: f.text,
+      naming: f.naming,
       claim: takeFocus ? () => takeFocus(f.seq) : undefined,
     });
   }, [p.focus, takeFocus, interaction]);

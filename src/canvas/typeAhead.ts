@@ -10,7 +10,10 @@ export interface TypeAhead {
   done?: "enter" | "escape";
 }
 
-type Key = Pick<KeyboardEvent, "key" | "ctrlKey" | "metaKey" | "altKey">;
+export type PendingName = (typed: TypeAhead) => void;
+
+export type PendingKey = Pick<KeyboardEvent, "key" | "ctrlKey" | "metaKey" | "altKey" | "shiftKey">;
+type Key = Omit<PendingKey, "shiftKey">;
 
 /** The next state for a key, or null when the key isn't for the name (it's left alone). */
 export function typeAheadKey(s: TypeAhead, e: Key, multiline = false): TypeAhead | null {
@@ -28,10 +31,35 @@ export function typeAheadKey(s: TypeAhead, e: Key, multiline = false): TypeAhead
 }
 
 /** The captures running, newest last: only the newest takes keys (a menu's search inside the palette's). */
-const captures: { state: TypeAhead }[] = [];
+const captures: ((key: PendingKey) => boolean)[] = [];
 
-/** True while keys are being held for a field that isn't focused yet (the canvas shortcuts stand aside). */
+/** True while keys are being held for a field that isn't focused yet. */
 export const typeAheadActive = () => captures.length > 0;
+
+/** The newest owner includes the name capture installed by a menu pick. */
+export function deliverPendingKey(key: PendingKey): boolean {
+  return captures.at(-1)?.(key) ?? false;
+}
+
+/** Shared path: a pending menu and a held rename cannot both consume the same key. */
+export function capturePendingInput(take: (key: PendingKey) => boolean): () => void {
+  captures.push(take);
+  const onKey = (e: KeyboardEvent) => {
+    if (e.isComposing || captures.at(-1) !== take) return;
+    const { key, ctrlKey, metaKey, altKey, shiftKey } = e;
+    if (!take({ key, ctrlKey, metaKey, altKey, shiftKey })) return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+  };
+  window.addEventListener("keydown", onKey, true);
+  let stopped = false;
+  return () => {
+    if (stopped) return;
+    stopped = true;
+    window.removeEventListener("keydown", onKey, true);
+    captures.splice(captures.indexOf(take), 1);
+  };
+}
 
 /**
  * Starts holding keys typed anywhere (capture phase, before the canvas sees them): for a new node's name
@@ -42,28 +70,22 @@ export const typeAheadActive = () => captures.length > 0;
 export function captureTypeAhead(
   multiline: () => boolean = () => false,
   onDone?: (typed: TypeAhead) => void,
+  text?: string,
+  onType?: PendingName,
 ): { stop: () => TypeAhead } {
-  const me = { state: { text: null } as TypeAhead };
-  captures.push(me);
-  const onKey = (e: KeyboardEvent) => {
-    if (captures[captures.length - 1] !== me || e.isComposing) return;
-    const next = typeAheadKey(me.state, e, multiline());
-    if (!next) return;
-    me.state = next;
-    e.preventDefault();
-    e.stopImmediatePropagation();
+  let state: TypeAhead = { text: text ?? null };
+  const stop = capturePendingInput((key) => {
+    const next = typeAheadKey(state, key, multiline());
+    if (!next) return false;
+    state = next;
+    onType?.(next);
     if (next.done) onDone?.(next);
-  };
-  window.addEventListener("keydown", onKey, true);
-  let stopped = false;
+    return true;
+  });
   return {
     stop: () => {
-      if (!stopped) {
-        stopped = true;
-        window.removeEventListener("keydown", onKey, true);
-        captures.splice(captures.indexOf(me), 1);
-      }
-      return me.state;
+      stop();
+      return state;
     },
   };
 }

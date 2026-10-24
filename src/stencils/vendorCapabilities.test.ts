@@ -34,6 +34,7 @@ vi.mock("react", async (original) => ({
 }));
 vi.mock("../i18n", async (original) => ({ ...(await original<typeof import("../i18n")>()), useLocale: () => "en" }));
 vi.mock("../planning/lazy", () => import("../planning/ui"));
+vi.mock("../canvas/inspector/lazyNodePanel", () => import("../canvas/inspector/NodePanel"));
 
 const variants = Object.entries(VENDOR_PARENTS);
 const table: RouteTable = {

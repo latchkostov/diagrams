@@ -29,6 +29,8 @@ const TRANSLATED = [
   "src/editor/useEditor.ts",
   "src/editor/editMessages.ts",
   "src/components/ContextMenu.tsx",
+  "src/components/MenuList.tsx",
+  "src/components/LoadingMenu.tsx",
   "src/canvas/CanvasView.tsx",
   "src/canvas/Inspector.tsx",
   // Modules split out of CanvasView and Inspector keep the translation guard.
