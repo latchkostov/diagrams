@@ -17,3 +17,8 @@ The moved settings preserve their ordering, translations, disclosure state and p
 Routing intents remain subscribed in the downloaded settings, reading the current intent on arrival.
 Settings are editing chrome, so their registered export policy is skip. No diagram, simulation,
 planning, layout or exported output change is intended.
+
+The settings boundary preserves the previous typing work: identity-only edits reuse the paused settings
+element, while stencil, modeled properties, planning, focus or language changes still reach the settings.
+No render-count assertion is relaxed. The existing typing spec checks names, subtitles, documentation,
+KEDA and cloud settings, bindings, and one-step Undo/Redo.

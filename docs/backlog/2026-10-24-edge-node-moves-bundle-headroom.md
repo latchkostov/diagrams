@@ -7,7 +7,7 @@ floor. Schedule a separate trim PR for optional editor operations; keep the curr
 
 ## Trim 3 resolution and remaining work
 
-Scheduled trim 3 restores canvas first view to 374,094 / 383,000 B gzip (8,906 B headroom).
-Startup improves to 171,134 / 177,000 B (5,866 B headroom). Additional Live download is
-126,976 / 135,000 B (8,024 B headroom). The canvas follow-up is resolved; retain this entry for
+Scheduled trim 3 restores canvas first view to 374,175 / 383,000 B gzip (8,825 B headroom).
+Startup improves to 171,126 / 177,000 B (5,874 B headroom). Additional Live download is
+126,979 / 135,000 B (8,021 B headroom). The canvas follow-up is resolved; retain this entry for
 startup and Live headroom. Limits and output goldens are unchanged.

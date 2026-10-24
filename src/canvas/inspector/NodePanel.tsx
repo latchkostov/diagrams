@@ -49,6 +49,31 @@ export function NodePanel({
   );
   const [picker, setPicker] = useState<{ x: number; y: number } | null>(null);
 
+  // The paused settings keep the same reader and revision during identity edits. Memoize
+  // the element too, so the lazy boundary adds no work to each naming keystroke.
+  const nodeId = node.id;
+  const stencilId = node.data.stencil;
+  const nodeProps = node.data.props;
+  const settingsRevision = namingActive ? undefined : (revision ?? node);
+  const settingsRead = namingActive ? editor.getDiagram : readDiagram;
+  const settings = useMemo(
+    () => (
+      <NodeSettings
+        nodeId={nodeId}
+        stencilId={stencilId}
+        nodeProps={nodeProps}
+        editor={editor}
+        revision={settingsRevision}
+        counts={counts}
+        readDiagram={settingsRead}
+        meta={meta}
+        focus={focus}
+        namingActive={namingActive}
+      />
+    ),
+    [nodeId, stencilId, nodeProps, editor, settingsRevision, counts, settingsRead, meta, focus, namingActive],
+  );
+
   return (
     <>
       {findings}
@@ -65,16 +90,7 @@ export function NodePanel({
         onDescriptionBlur={onDescriptionBlur}
       />
 
-      <NodeSettings
-        node={node}
-        editor={editor}
-        revision={revision}
-        counts={counts}
-        readDiagram={readDiagram}
-        meta={meta}
-        focus={focus}
-        namingActive={namingActive}
-      />
+      {settings}
 
       {picker && (
         <ContextMenu
