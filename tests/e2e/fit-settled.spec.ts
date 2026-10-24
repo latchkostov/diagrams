@@ -27,6 +27,9 @@ test("a viewport chosen before initial measurements cancels the bootstrap fit", 
   await page.addInitScript(holdResizeObservers, true);
   await page.goto("./?view=canvas&example=aws-serverless-orders");
   await expect(page.getByTestId("diagram-title")).toBeVisible();
+  const canvas = page.getByTestId("canvas-wrap");
+  await expect(canvas).toHaveAttribute("data-fit-pending", "true");
+  await canvas.focus();
   await page.clock.install();
   await pauseClock(page);
   await page.keyboard.press("Shift+Digit0");
@@ -43,8 +46,9 @@ test("a viewport chosen before initial measurements cancels the bootstrap fit", 
   const chosen = (await readCanvas(page)).viewport;
   expect(chosen).toContain("scale(1)");
   await page.evaluate(() => window.dispatchEvent(new Event("release-resize-observers")));
-  await page.clock.runFor(1000);
   await page.clock.resume();
+  await expect(canvas).toHaveAttribute("data-fit-pending", "false");
+  await expect(canvas).toHaveAttribute("data-camera-state", "idle");
   expect((await settledCanvas(page)).viewport).toBe(chosen);
 });
 

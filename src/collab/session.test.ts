@@ -133,6 +133,10 @@ it("connectivity notifications start and cancel failure deadlines without Retry"
   });
   const changed = vi.fn();
   session.onChange(changed);
+  const initial = session.diagnostics();
+  expect(session.diagnostics()).toBe(initial);
+  expect(Object.isFrozen(initial)).toBe(true);
+  expect(Object.isFrozen(initial.rejected)).toBe(true);
   const notify = (next: Connectivity) => {
     state = next;
     handlers!.connectivity?.();
@@ -278,15 +282,21 @@ it("bounds a never-connecting transport, retries discovery and keeps edits", asy
   const changed = vi.fn();
   session.onChange(changed);
   session.doc.apply([{ op: "meta", set: { title: "Keep my local edits" } }]);
+  const initial = session.diagnostics();
   const proof = await session.doc.syncProof();
   clock.advance(CONNECTION_WAIT_MS - 1);
   expect(session.connectionFailed).toBe(false);
   clock.advance(1);
   expect(session.connectionFailed).toBe(true);
   expect(changed).toHaveBeenCalled();
+  const failed = session.diagnostics();
+  expect(failed.connectionFailed).toBe(true);
+  expect(failed).not.toBe(initial);
   session.retryConnection();
   expect(retry).toHaveBeenCalledTimes(1);
   expect(session.connectionFailed).toBe(false);
+  expect(session.diagnostics().connectionFailed).toBe(false);
+  expect(failed.connectionFailed).toBe(true);
   expect(await session.doc.syncProof()).toEqual(proof);
   clock.advance(CONNECTION_WAIT_MS);
   expect(session.connectionFailed).toBe(true);
@@ -298,6 +308,9 @@ it("bounds a never-connecting transport, retries discovery and keeps edits", asy
 
 it("bounds authenticated proof floods before computing sync fingerprints", async () => {
   const { a, net, settle } = await room3();
+  const before = a.session.diagnostics();
+  const published: ReturnType<CollabSession["diagnostics"]>[] = [];
+  onTestFinished(a.session.onChange(() => published.push(a.session.diagnostics())));
   const evil = await rogue(net);
   onTestFinished(() => evil.transport.close());
   await settle();
@@ -307,6 +320,8 @@ it("bounds authenticated proof floods before computing sync fingerprints", async
     await evil.send("doc", frame(i % 2 ? DOC.syncProof : DOC.syncAck, new Uint8Array(32)));
   await settle();
   expect(a.session.stats.rejected["proof-throttled"] ?? 0).toBeGreaterThan(0);
+  expect(published.some((snapshot) => (snapshot.rejected["proof-throttled"] ?? 0) > 0)).toBe(true);
+  expect(before.rejected["proof-throttled"]).toBeUndefined();
   expect(proof.mock.calls.length).toBeLessThanOrEqual(COLLAB_LIMITS.syncProofsPerWindow);
 });
 
@@ -318,6 +333,8 @@ for (const retry of [false, true])
         net = new MemoryNetwork();
       const transport = { ...net.connect(), connectivity: () => "trackers-unreachable" as const };
       const a = await openClient("a", transport, room, clock, 21, { initial: canaryDiagram() });
+      const published: ReturnType<CollabSession["diagnostics"]>[] = [];
+      onTestFinished(a.session.onChange(() => published.push(a.session.diagnostics())));
       onTestFinished(async () => {
         await a.session.leave();
         a.session.doc.destroy();
@@ -339,6 +356,13 @@ for (const retry of [false, true])
       expect(b.diagram?.title).toBe("Edits while disconnected");
       expect(await b.session.doc.syncProof()).toEqual(await a.session.doc.syncProof());
       expect([a.session.roomStatus, b.session.roomStatus]).toEqual(["synced", "synced"]);
+      expect(published.at(-1)).toMatchObject({
+        connectionFailed: false,
+        connectivity: "connected",
+        peers: 1,
+        roomStatus: "synced",
+      });
+      if (retry) expect(published.some((snapshot) => snapshot.connectionFailed)).toBe(true);
       clock.advance(CONNECTION_WAIT_MS + 1);
       await settle();
       expect([a.session.connectionFailed, b.session.connectionFailed]).toEqual([false, false]);

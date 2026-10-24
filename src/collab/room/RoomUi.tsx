@@ -69,12 +69,10 @@ function useRoom(room: RoomLifecycle) {
 }
 
 /** Re-renders on the session's changes (peers, connectivity, the document arriving). */
-function useSessionState(session: CollabSession) {
+function useSessionState(session: CollabSession | undefined) {
   return useSyncExternalStore(
-    (fn) => session.onChange(fn),
-    // With knock-to-join, who's in the room (proved members) changes on its own (a re-key, a hello): counted too.
-    () =>
-      `${session.transport.peers().length}:${session.peerCount}:${session.peers().length}:${session.connectivity}:${session.connectionFailed}:${session.hasDocument}:${session.noAnswer}`,
+    (fn) => session?.onChange(fn) ?? (() => {}),
+    () => session?.diagnostics(),
   );
 }
 
@@ -1073,19 +1071,8 @@ export function RoomConnecting({ room }: { room: RoomLifecycle }) {
   useLocale();
   const snap = useRoom(room);
   const session = snap.open?.session;
-  const connectivity = useSyncExternalStore(
-    (fn) => (session ? session.onChange(fn) : () => {}),
-    () => session?.connectivity,
-  );
-  // Knock-to-join: at the door (the session says when it's let in).
-  const knocking = useSyncExternalStore(
-    (fn) => (session ? session.onChange(fn) : () => {}),
-    () => !!session?.knocking,
-  );
-  const waiting = useSyncExternalStore(
-    (fn) => (session ? session.onChange(fn) : () => {}),
-    () => session?.waiting,
-  );
+  const diagnostics = useSessionState(session);
+  const { connectivity, knocking, waiting } = diagnostics ?? {};
   const region = useRef<HTMLDivElement>(null);
   // Joining removes the dialog and the canvas together: focus that fell to the page lands here instead (W1).
   useEffect(() => {
@@ -1102,7 +1089,7 @@ export function RoomConnecting({ room }: { room: RoomLifecycle }) {
       // Why it's still waiting, for diagnostics (the hint below says it): nobody yet, checking who's here, or the
       // diagram on its way; and what this page refused so far, by reason.
       data-waiting={waiting ?? "none"}
-      data-diagnostics={session ? JSON.stringify(session.diagnostics()) : "{}"}
+      data-diagnostics={JSON.stringify(diagnostics ?? {})}
       role="status"
     >
       {/* Knock-to-join: at the door until the host or a co-host lets this person in. */}

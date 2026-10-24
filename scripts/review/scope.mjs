@@ -11,6 +11,11 @@ const names = (root, from, to) =>
     .split("\0")
     .filter(Boolean);
 
+/** Whole-PR file context without calculating patches or changed-line context. */
+export function reviewFiles(root, { base, head }) {
+  return names(root, base, head);
+}
+
 /** Relocate previously changed lines across a patch, then mark its new hunks when in scope. */
 export function changedLines(patch, previous = [], include = true) {
   const hunks = [...patch.matchAll(/^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@/gm)].map((m) => ({

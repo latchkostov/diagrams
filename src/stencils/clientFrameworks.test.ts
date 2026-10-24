@@ -9,7 +9,7 @@ import { inferKind } from "./edgeKind";
 import { inferRelation, reinferRelations } from "./relations";
 import { stencilExportShape } from "./exportShape";
 import { iconSource } from "../gallery/stencilInfo";
-import { searchStencils, STENCIL_ALIASES } from "../lib/stencilSearch";
+import { searchStencils } from "../lib/stencilSearch";
 import { clientSections } from "../lib/categories";
 import { familyOf } from "../lib/vendorFamilies";
 import { findStencils } from "../ai/stencils";
@@ -32,6 +32,20 @@ const frameworks = [
   ["swiftui", "SwiftUI (iOS)", "mobile"],
   ["compose", "Jetpack Compose (Android)", "mobile"],
 ] as const;
+
+// Published search terms are a contract independent of the implementation's alias table.
+const advertisedAliases: Record<string, string[]> = {
+  react: ["reactjs", "react.js", "jsx", "spa", "frontend"],
+  vue: ["vuejs", "vue.js", "spa", "frontend"],
+  angular: ["angularjs", "spa", "frontend"],
+  svelte: ["sveltekit", "spa", "frontend"],
+  nextjs: ["next", "next.js", "react", "ssr", "frontend"],
+  nuxt: ["nuxtjs", "nuxt.js", "vue", "ssr", "frontend"],
+  "react-native": ["reactnative", "ios", "android", "app", "phone"],
+  flutter: ["dart", "ios", "android", "app", "phone"],
+  swiftui: ["swift", "swift ui", "ios", "iphone", "app", "phone"],
+  compose: ["jetpack", "kotlin", "android", "app", "phone"],
+};
 
 function diagram(stencil: string): DiagramFile {
   return {
@@ -71,7 +85,7 @@ describe.each(frameworks)("%s client stencil", (id, label, parentId) => {
   });
 
   it("finds the brand and every alias in the panel and agent searches", () => {
-    for (const query of [label, ...STENCIL_ALIASES[stencilId]]) {
+    for (const query of [label, ...advertisedAliases[id]]) {
       expect(
         searchStencils(catalog, query).map((s) => s.id),
         query,

@@ -285,6 +285,7 @@ export class CollabSession {
   connectivity: Connectivity = "waiting";
   /** A joiner's attempt found no one: no document and no failure for COLLAB_LIMITS.noAnswerMs (reset by Retry). */
   noAnswer = false;
+  private diagnosticSnapshot?: ReturnType<CollabSession["diagnostics"]>;
   private noAnswerWait?: () => void;
   /** A goodbye sealed ahead of time, so a page going away can send it at once (sealing is asynchronous). */
   private bye?: Uint8Array;
@@ -684,25 +685,46 @@ export class CollabSession {
    * One snapshot of this session's state for diagnostics (the wait and the chip carry it as data attributes, and e2e
    * builds expose it): why it waits, its epoch, who's here, and what it refused, by reason.
    */
-  diagnostics(): {
+  diagnostics = (): Readonly<{
     waiting: string;
     knocking: boolean;
     epoch: number;
     peers: number;
     held: number;
     behind: number;
-    rejected: Partial<Record<RejectReason, number>>;
-  } {
-    return {
+    rejected: Readonly<Partial<Record<RejectReason, number>>>;
+    status: SessionStatus;
+    connectivity: Connectivity;
+    connectionFailed: boolean;
+    hasDocument: boolean;
+    noAnswer: boolean;
+    transportPeers: number;
+    present: number;
+    presenceRevision: number;
+    roomStatus: RoomStatus;
+  }> => {
+    const next = {
       waiting: this.waiting ?? "none",
       knocking: this.knocking,
       epoch: this.keys.epoch,
       peers: this.peerCount,
       held: this.held.size,
       behind: this.behind.size,
-      rejected: { ...this.stats.rejected },
+      rejected: Object.freeze({ ...this.stats.rejected }),
+      status: this.status,
+      connectivity: this.connectivity,
+      connectionFailed: this.connectionFailed,
+      hasDocument: this.hasDocument,
+      noAnswer: this.noAnswer,
+      transportPeers: this.transport.peers().length,
+      present: this.peers().length,
+      presenceRevision: this.presenceRevision,
+      roomStatus: this.roomStatus,
     };
-  }
+    if (!this.diagnosticSnapshot || JSON.stringify(next) !== JSON.stringify(this.diagnosticSnapshot))
+      this.diagnosticSnapshot = Object.freeze(next);
+    return this.diagnosticSnapshot;
+  };
 
   /** Whether this session has a document yet (a joiner has none until a peer answers). */
   get hasDocument(): boolean {
@@ -1011,11 +1033,13 @@ export class CollabSession {
   }
 
   private emit(): void {
+    this.diagnostics();
     for (const fn of this.listeners) fn();
   }
 
   private reject(reason: RejectReason): void {
     this.stats.rejected[reason] = (this.stats.rejected[reason] ?? 0) + 1;
+    this.emit();
   }
 
   /** Whether a full sync request this session sent `peer` is still to be answered (and recent: it may have been lost). */

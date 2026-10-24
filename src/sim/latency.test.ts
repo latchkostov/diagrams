@@ -3,6 +3,7 @@ import type { DiagramFile, SimRole } from "../model/types";
 import { createEngine } from "./engine";
 import {
   createLatencyRecorder,
+  createLatencyBudget,
   shareLatencyRecorder,
   recordLatency,
   latencyMetrics,
@@ -112,6 +113,29 @@ describe("bounded async latency", () => {
     expect(totals).toHaveLength(200);
     expect(totals.every((n) => n.samples === 64)).toBe(true);
     expect(totals.some((n) => n.typesLimited)).toBe(true);
+  });
+
+  it("keeps recording an allocated type after another recorder exhausts the shared budget", () => {
+    const budget = createLatencyBudget();
+    const kept = createLatencyRecorder();
+    recordLatency(kept, "Order", 0, 10, 3, budget);
+    const before = latencyMetrics(kept);
+    for (let i = 1; i < LATENCY_TYPE_HISTOGRAMS; i++)
+      recordLatency(createLatencyRecorder(), `Other${i}`, 0, 20, 0, budget);
+    const refused = createLatencyRecorder();
+    recordLatency(refused, "New", 0, 30, 0, budget);
+    expect(budget.remaining).toBe(0);
+    expect(latencyMetrics(refused)).toMatchObject({ samples: 1, byType: {}, typesLimited: true });
+    recordLatency(kept, "Order", 20, 980, 7, budget);
+    recordLatency(kept, "Order", 20, 980, 7, budget);
+    const after = latencyMetrics(kept);
+    expect(after.byType.Order).toMatchObject({ samples: 3, waitMs: 40, workMs: 1970, travelMs: 17 });
+    expect(after.byType.Order.p50).toBe(1000);
+    expect(after.byType.Order.p95).toBe(1000);
+    expect(after.byType.Order.p99).toBe(1000);
+    expect(after.samples).toBe(3);
+    expect(before.byType.Order).toMatchObject({ samples: 1, p50: 10, p95: 10, p99: 10 });
+    expect(budget.remaining).toBe(0);
   });
 
   it("restores the run-wide budget and identical readouts on seek and replay after fallback", () => {

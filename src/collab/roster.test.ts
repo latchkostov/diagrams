@@ -9,6 +9,7 @@ import {
   parseEntry,
   signEntry,
   SignedRoster,
+  VerifiedRosterEntry,
   type RosterEntry,
   type RosterOp,
 } from "./roster";
@@ -44,6 +45,34 @@ async function on(
 }
 
 describe("the signed roster", () => {
+  it("keeps verified authority opaque and frozen, including across an in-flight verification", async () => {
+    const [host, guest] = await people(2);
+    const r = roster(host);
+    const entry = await signEntry(host, ROOM, 0, { n: 1, op: "admit", who: guest.key, deps: [] });
+    const verifying = VerifiedRosterEntry.verify(entry, ROOM, 0);
+    entry.who = host.key;
+    (entry.deps as string[]).push("unchecked");
+    const verified = (await verifying)!;
+    expect(verified.entry.who).toBe(guest.key);
+    expect(verified.entry.deps).toEqual([]);
+    expect(Object.isFrozen(verified)).toBe(true);
+    expect(Object.isFrozen(verified.entry)).toBe(true);
+    expect(Object.isFrozen(verified.entry.deps)).toBe(true);
+    expect(() => Object.assign(verified.entry, { who: host.key })).toThrow(TypeError);
+    expect(() => Object.assign(verified, { roomId: "other" })).toThrow(TypeError);
+    expect(() => (verified.entry.deps as string[]).push("unchecked")).toThrow(TypeError);
+    const forged = { entry: verified.entry, roomId: ROOM, scope: 0 };
+    // @ts-expect-error Unchecked structural objects must not carry verification authority.
+    expect(r.addVerified([forged])).toMatchObject({ added: 0, refused: 1 });
+    expect(r.addVerified([Object.create(VerifiedRosterEntry.prototype) as VerifiedRosterEntry])).toMatchObject({
+      added: 0,
+      refused: 1,
+    });
+    expect(r.addVerified([verified])).toMatchObject({ added: 1, refused: 0 });
+    expect(r.state().editors.has(guest.key)).toBe(true);
+    expect(roster(host, 1).addVerified([verified])).toMatchObject({ added: 0, refused: 1 });
+    expect(new SignedRoster(host.key, "other", 0).addVerified([verified])).toMatchObject({ added: 0, refused: 1 });
+  });
   it("starts with the link's host key: the host edits, hosts and drives", async () => {
     const [host, wren] = await people(2);
     const s = roster(host).state();

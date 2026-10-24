@@ -54,6 +54,7 @@ async function join(opts: {
   rounds?: number;
   /** Seen while it waited: the joiner's reasons. */
   waits?: string[];
+  snapshots?: ReturnType<CollabSession["diagnostics"]>[];
   /**
    * A knock-to-join room (v3): the joiner knocks, and the host lets them in once the knock is here and `admitAfter`
    * rounds have passed; with `rekey`, the host removes someone else straight after.
@@ -115,6 +116,10 @@ async function join(opts: {
     },
   });
   clients.push(joiner);
+  if (opts.snapshots) {
+    opts.snapshots.push(joiner.session.diagnostics());
+    onTestFinished(joiner.session.onChange(() => opts.snapshots!.push(joiner.session.diagnostics())));
+  }
   onTestFinished(() => joiner.session.leave());
   let admitted = !opts.knock;
   const converged = () => joiner.session.hasDocument && joiner.projection() === host.projection();
@@ -222,12 +227,17 @@ describe("a joiner always gets the document from a reachable host", () => {
   it("says why it waits: checking who's here while the host's binding is missing, then nothing once it has the diagram", async () => {
     let lost = 0;
     const waits: string[] = [];
+    const snapshots: ReturnType<CollabSession["diagnostics"]>[] = [];
     const joined = await join({
       seed: 10,
       hostFilter: (to) => (bytes, peer) =>
         !(bytes[3] === PRESENCE && (peer === to || peer === undefined) && lost++ < 3),
       waits,
+      snapshots,
     });
+    expect(snapshots.some((snapshot) => snapshot.waiting === "verifying" && !snapshot.hasDocument)).toBe(true);
+    expect(snapshots.at(-1)).toMatchObject({ waiting: "none", hasDocument: true, present: 1 });
+    expect(snapshots.every((snapshot) => Object.isFrozen(snapshot) && Object.isFrozen(snapshot.rejected))).toBe(true);
     expect(waits).toContain("verifying");
     expect(joined.joiner.session.waiting).toBeUndefined();
   });

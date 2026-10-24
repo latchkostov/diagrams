@@ -3,7 +3,7 @@ import path from "node:path";
 import process from "node:process";
 import console from "node:console";
 import { execFileSync } from "node:child_process";
-import { git, reviewScope } from "./scope.mjs";
+import { git, reviewFiles, reviewScope } from "./scope.mjs";
 import { roundPlan } from "./rounds.mjs";
 import { readState } from "./state.mjs";
 
@@ -72,7 +72,7 @@ const scope = reviewScope(root, {
   baseRef: pr?.baseRefOid,
   since: options.since ?? state?.lastReviewedSha,
 });
-const prScope = { files: (scope.mode === "delta" ? reviewScope(root, { baseRef: pr?.baseRefOid }) : scope).files };
+const prScope = { files: scope.mode === "delta" ? reviewFiles(root, scope) : scope.files };
 const context = [];
 const savedContext = savedState?.context;
 if (!options.brief && !options.refreshIntent && savedContext) context.push(savedContext);

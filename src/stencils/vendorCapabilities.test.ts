@@ -26,6 +26,107 @@ import { vendorParityFixture } from "../lab/vendorParityFixture";
 import { createEngine } from "../sim/engine";
 import { analyzeCapacity } from "../sim/capacity";
 import { safeStorage } from "../lib/storage";
+import { resolveNodeProps } from "../sim/defaults";
+import type { DiagramFile, SimRole } from "../model/types";
+import type { FamilyId } from "./profiles";
+
+// Independent published families and lesson defaults: never derive these from VENDOR_PARENTS or profiles.
+const advertised: [string[], FamilyId, SimRole, number, number, boolean][] = [
+  [["fastly", "akamai", "aws.cloudfront", "bunny.cdn", "gcp.cloud-cdn"], "edge", "gateway", 60, Infinity, false],
+  [
+    ["cloudflare.waf", "aws.waf", "akamai.app-api-protector", "imperva.waf", "sucuri.waf"],
+    "device",
+    "gateway",
+    60,
+    Infinity,
+    false,
+  ],
+  [
+    ["cloudflare.dns", "godaddy.dns", "hostinger.dns", "ionos.dns", "gcp.cloud-dns"],
+    "dns",
+    "gateway",
+    60,
+    Infinity,
+    true,
+  ],
+  [["gcp.apigee", "apisix"], "api-gateway", "gateway", 60, Infinity, false],
+  [["activemq.queue"], "queue", "queue", 0, Infinity, true],
+  [["redpanda.topic"], "log", "stream", 0, Infinity, true],
+  [["sqlite", "mariadb", "oracle.database", "influxdb", "timescaledb"], "sql", "store", 40, Infinity, true],
+  [["couchbase"], "nosql", "store", 40, Infinity, true],
+  [["memcached", "valkey"], "cache", "store", 40, Infinity, true],
+  [["opensearch", "solr", "milvus", "qdrant", "weaviate"], "search", "store", 40, Infinity, true],
+  [["cloudflare.r2", "backblaze.b2", "wasabi"], "object", "store", 40, Infinity, true],
+  [["dynatrace", "elastic.apm", "grafana.tempo"], "telemetry", "sink", 0, Infinity, true],
+  [
+    ["aws.cognito", "firebase.auth", "clerk", "launchdarkly", "unleash", "statsig"],
+    "dependency",
+    "none",
+    0,
+    Infinity,
+    true,
+  ],
+  [
+    ["square", "braintree", "aws.ses", "mailgun", "postmark", "onesignal", "firebase.fcm"],
+    "external-api",
+    "sink",
+    250,
+    Infinity,
+    true,
+  ],
+  [["gitlab.ci", "jenkins", "circleci"], "scheduler", "source", 0, Infinity, true],
+  [["fastly.compute"], "serverless", "processor", 250, 4, true],
+  [["google.gemini", "aws.bedrock", "mistral.api"], "model-api", "processor", 250, 4, true],
+];
+
+it.each(advertised)(
+  "pins independent defaults and authored preservation for %s",
+  (ids, family, role, latencyMs, concurrency, holdsThread) => {
+    for (const id of ids) {
+      const d: DiagramFile = {
+        format: "diagrams/v2",
+        title: "Vendor defaults",
+        planning: { revision: "p3-w2" },
+        nodes: [{ id: "work", stencil: id, label: "Authored", x: 40, y: 80 }],
+        edges: [],
+      };
+      expect(profileOf(id)?.family, id).toBe(family);
+      expect(stencilRole(id), id).toBe(role);
+      expect(holdsThreadByDefault(id), id).toBe(holdsThread);
+      expect(resolveNodeProps(d, d.nodes[0]), id).toMatchObject({
+        ratePerSec: 2,
+        latencyMs,
+        concurrency,
+        replicas: 1,
+        jitter: 0.2,
+        failureRate: 0,
+      });
+      const authored = {
+        ...d.nodes[0],
+        props: {
+          ratePerSec: 37,
+          latencyMs: 83,
+          concurrency: 7,
+          replicas: 3,
+          jitter: 0,
+          failureRate: 0.25,
+          routeTable: table,
+        },
+      };
+      expect(changeNodeStencil({ ...authored, stencil: "generic.service" }, id), id).toEqual(authored);
+      expect(resolveNodeProps({ ...d, nodes: [authored] }, authored), id).toMatchObject({
+        ratePerSec: 37,
+        replicas: 3,
+        jitter: 0,
+        failureRate: 0.25,
+      });
+    }
+  },
+);
+
+it("covers every advertised vendor independently", () => {
+  expect(advertised.flatMap(([ids]) => ids).sort()).toEqual(variants.map(([id]) => id).sort());
+});
 
 // Static inspector rendering reads the current external stores and the actual lazy-loaded field components.
 vi.mock("react", async (original) => ({

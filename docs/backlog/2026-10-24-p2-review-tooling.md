@@ -1,18 +1,20 @@
 ## P2 triage: Review tooling (2026-10-24)
 
-Checked against `origin/master` at `7b6e905130a9`. DONE 12 / STALE 0 / OPEN 2 (deduplicated actionable findings).
+Checked against `origin/master` at `7b6e905130a9`. DONE 14 / STALE 0 / OPEN 0 (deduplicated actionable findings).
 
 Source: the local `queued-p2-fu10.archive.md`, preserved byte-for-byte on 2026-10-24. OPEN entries retain queue review labels; closed entries name the fixing PR. Locations are current-master entry points, not the old review line numbers. DONE means code and/or the specifically requested regression exists with merged-PR evidence; OPEN includes unproven historical failures. A later green run alone does not close a failure.
 
 Each numbered batch below is an independent PR candidate of at most ten items, ordered by user impact. Keep regression assertions and current bundle limits; verify each eventual regression by temporarily reverting its fix. Refactors must preserve output parity; intentional behavior changes need reviewed golden diffs. Owner decisions remain in [the separate decision list](2026-10-24-owner-decisions.md).
 
-## Batch 1: Review tooling (2 OPEN)
+## Batch 1: Review tooling (2 DONE)
 
-1. **RT-01 — OPEN: Explicit issue identity must override fuzzy matching.** `scripts/review/triage.mjs:62`. Queue: #266/#270.
+1. **RT-01 — DONE: Explicit issue identity must override fuzzy matching.** `scripts/review/triage.mjs:62`. Queue: #266/#270.
    Unknown previousId is reset to null before matching, so it can inherit an unrelated old identity by title/location. Preserve supplied-unknown versus absent identity and test both cases beside an outstanding P1.
+   This PR (`fix/p2-tests-ci-2`): Supplied unknown identity stays distinct from an absent identity, cannot fuzzy-match or cluster into an outstanding P1, and receives a separate stable fingerprint. Tests use real generated issue IDs and cover absent/null/known/unknown IDs and cross-lens consolidation. Reverting the fix fails.
 
-2. **RT-02 — OPEN: Collect whole-PR filenames without rebuilding full scope.** `scripts/review/prepare.mjs:75`. Queue: #270.
+2. **RT-02 — DONE: Collect whole-PR filenames without rebuilding full scope.** `scripts/review/prepare.mjs:75`. Queue: #270.
    Delta review recomputes full reviewScope to obtain names, repeating patch/context work. Add a filenames-only helper and assert one delta patch calculation plus one name-only diff.
+   This PR (`fix/p2-tests-ci-2`): reviewFiles reuses the resolved base/head for a name-only diff; delta preparation never recomputes the full scope. A real CLI Git trace requires one delta patch calculation and one whole-PR name-only diff. Reverting prepare fails.
 
 ## Closed or superseded findings
 

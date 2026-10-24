@@ -152,10 +152,43 @@ describe("deterministic consolidation", () => {
     expect(result.warnings).toEqual([
       "correctness: unknown or resolved previous issue R-resolved; treating finding as new.",
     ]);
-    expect(result.issues[0]).toMatchObject({ severity: "P2", previousId: null });
+    expect(result.issues[0]).toMatchObject({ severity: "P2", previousId: "R-resolved" });
     expect(result.issues[0].id).not.toBe("R-resolved");
     expect(result.resolutions[0]).toMatchObject({ id: old.id, status: "fixed" });
     expect(renderReport("fixture", second, result, reports)).toContain("unknown or resolved previous issue R-resolved");
+  });
+  it.each([undefined, null, "R-unknown", "R-active"])(
+    "respects explicit identity %s beside an outstanding identical P1",
+    (previousId) => {
+      const old = consolidate([lens("correctness")], plan).issues[0];
+      const suppliedId = previousId === "R-active" ? old.id : previousId;
+      const result = consolidate(
+        [
+          lens(
+            "correctness",
+            [finding({ previousId: suppliedId })],
+            [{ id: old.id, status: "open", detail: "Still open." }],
+          ),
+        ],
+        { ...plan, round: 2, state: { round: 1, lastReviewedSha: "old", openP1Ids: [old.id], openP1s: [old] } },
+      );
+      expect(result.issues).toHaveLength(previousId === "R-unknown" ? 2 : 1);
+      expect(result.issues.find((issue) => issue.previousId === "R-unknown")?.id).not.toBe(old.id);
+      expect(result.resolutions).toMatchObject([{ id: old.id, status: "open" }]);
+    },
+  );
+  it("does not cluster an unknown explicit identity back into a known issue from another lens", () => {
+    const old = consolidate([lens("correctness")], plan).issues[0];
+    const assessments = [{ id: old.id, status: "open", detail: "Still outstanding." }];
+    const result = consolidate(
+      [
+        lens("correctness", [finding({ previousId: "R-unknown" })], assessments),
+        lens("tests", [finding({ previousId: old.id })], assessments),
+      ],
+      { ...plan, round: 2, state: { round: 1, lastReviewedSha: "old", openP1Ids: [old.id], openP1s: [old] } },
+    );
+    expect(result.issues).toHaveLength(2);
+    expect(new Set(result.issues.map((issue) => issue.id)).size).toBe(2);
   });
   it("caps new P1s on unchanged lines in delta rounds, but leaves changed-line P1s", () => {
     const result = consolidate([lens("correctness", [finding(), finding({ line: 40 })])], { ...plan, round: 2 });
@@ -341,7 +374,12 @@ describe("review CLI in a detached checkout", () => {
     const out = join(checkout, ".reviews", name);
     execFileSync(process.execPath, [prepareScript, out, ...args], {
       cwd: checkout,
-      env: { ...process.env, ANGLES: angles, REVIEW_PR_RESOLVER: resolver },
+      env: {
+        ...process.env,
+        ANGLES: angles,
+        REVIEW_PR_RESOLVER: resolver,
+        GIT_TRACE: join(checkout, "git-trace.log").replaceAll("\\", "/"),
+      },
       stdio: "pipe",
     });
     return { out, prepared: JSON.parse(readFileSync(join(out, "plan.json"), "utf8")) as Prepared };
@@ -418,9 +456,18 @@ describe("review CLI in a detached checkout", () => {
     const { file, saved } = seed("pr-123", true);
     const merged = git(checkout, "rev-parse", "HEAD^").trim();
     writeFileSync(file, JSON.stringify({ ...saved, lastReviewedSha: merged }));
+    writeFileSync(join(checkout, "git-trace.log"), "");
     const { out, prepared } = prepare("delta-scope", ["--pr", "123"]);
     expect(prepared.scope).toMatchObject({ mode: "delta", since: merged, files: ["feature.txt"] });
     expect(prepared.prScope?.files).toEqual(["feature.txt", "shared.txt"]);
+    const commands = readFileSync(join(checkout, "git-trace.log"), "utf8").split("\n");
+    const patches = commands.filter((line) => line.includes("built-in: git diff --no-ext-diff"));
+    expect(patches).toHaveLength(1);
+    expect(patches[0]).toContain("--unified=0");
+    const namesOnly = commands.filter((line) =>
+      line.includes(`--name-only -z ${prepared.scope.base} ${prepared.scope.head}`),
+    );
+    expect(namesOnly).toHaveLength(1);
     const prompt = readFileSync(join(out, "prompt.md"), "utf8");
     expect(prompt).toContain(`only the fix delta since ${merged}, not the whole PR`);
     expect(prompt).toContain('Whole PR files (context only): ["feature.txt","shared.txt"]');

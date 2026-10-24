@@ -351,7 +351,9 @@ test.describe("renaming in the inspector", () => {
     const r = must(await page.getByTestId("canvas-wrap").boundingBox(), "the canvas");
     await page.mouse.dblclick(r.x + 120, r.y + r.height - 120);
     await expect(page.getByTestId("quick-add")).toBeVisible();
+    await expect(page.getByTestId("quick-add-search")).toBeFocused();
     await page.keyboard.type("redis cache");
+    await expect(page.getByTestId("quick-add-search")).toHaveValue("redis cache");
     await page.keyboard.press("Enter");
     await page.keyboard.type("Hot keys", { delay: 0 });
     const label = page.getByTestId("inspector-field-label");

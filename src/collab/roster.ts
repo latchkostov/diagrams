@@ -77,7 +77,7 @@ export interface RosterEntry {
   /** An ask entry's setting. */
   ask?: boolean;
   /** The entries its signer had seen (the heads of its roster): signatures, sorted. */
-  deps: string[];
+  deps: readonly string[];
   /** Ed25519 over the room id, the epoch and the fields above (base64url, canonical, 86 characters). */
   sig: string;
 }
@@ -178,15 +178,25 @@ export type Scope = number | string;
 
 /** A signature checked for one room and scope; authority still depends on its causal past. */
 export class VerifiedRosterEntry {
+  readonly #verified = true;
   private constructor(
-    readonly entry: RosterEntry,
+    readonly entry: Readonly<RosterEntry>,
     readonly roomId: string,
     readonly scope: Scope,
-  ) {}
+  ) {
+    Object.freeze(this);
+  }
+
+  static isVerified(value: unknown): value is VerifiedRosterEntry {
+    return typeof value === "object" && value !== null && #verified in value && value.#verified;
+  }
 
   static async verify(entry: RosterEntry, roomId: string, scope: Scope): Promise<VerifiedRosterEntry | undefined> {
-    if (!(await verify(entry.by, base64UrlToBytes(entry.sig), entryBytes(roomId, scope, entry)))) return undefined;
-    return new VerifiedRosterEntry(entry, roomId, scope);
+    const parsed = parseEntry(entry);
+    if (!parsed) return undefined;
+    const frozen = Object.freeze({ ...parsed, deps: Object.freeze([...parsed.deps]) });
+    if (!(await verify(frozen.by, base64UrlToBytes(frozen.sig), entryBytes(roomId, scope, frozen)))) return undefined;
+    return new VerifiedRosterEntry(frozen, roomId, scope);
   }
 }
 
@@ -546,11 +556,12 @@ export class SignedRoster {
         result.throttled++;
         continue;
       }
-      if (!(await VerifiedRosterEntry.verify(e, this.roomId, this.epoch))) {
+      const verified = await VerifiedRosterEntry.verify(e, this.roomId, this.epoch);
+      if (!verified) {
         result.refused++;
         continue;
       }
-      this.accept(e, result);
+      this.accept(verified.entry, result);
     }
     result.waiting = [...seen].filter((sig) => this.pending.has(sig)).length;
     if (result.changed) for (const l of this.listeners) l();
@@ -561,7 +572,12 @@ export class SignedRoster {
   addVerified(list: readonly VerifiedRosterEntry[]): AddResult {
     const result: AddResult = { added: 0, refused: 0, throttled: 0, waiting: 0, changed: false };
     const seen = new Set<string>();
-    for (const verified of [...list].sort((a, b) => order(a.entry, b.entry))) {
+    const checked = list.filter((value) => {
+      if (VerifiedRosterEntry.isVerified(value)) return true;
+      result.refused++;
+      return false;
+    });
+    for (const verified of checked.sort((a, b) => order(a.entry, b.entry))) {
       const e = verified.entry;
       if (verified.roomId !== this.roomId || verified.scope !== this.epoch) {
         result.refused++;
