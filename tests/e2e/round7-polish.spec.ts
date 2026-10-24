@@ -1,4 +1,4 @@
-import { pauseClock, test, expect, gotoCanvas, expectNoErrors, gotoLive } from "./fixtures";
+import { pauseClock, waitForCameraIdle, test, expect, gotoCanvas, expectNoErrors, gotoLive } from "./fixtures";
 import type { Page } from "@playwright/test";
 
 // Round 7 of the UX review (docs/DESIGN-REVIEW.md): Esc on a clicked node, toasts inside the canvas
@@ -84,15 +84,17 @@ test("below 1680px the AI panel folds the stencils to their rail; opening them b
 });
 
 test("live view with a trace refits when the AI panel opens: every node stays in the pane", async ({ page }) => {
-  await page.clock.install();
   await page.setViewportSize({ width: 1280, height: 800 });
   await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1`);
   await page.getByTestId("live-more").click();
   await page.getByTestId("live-trace-message").click();
   await page.getByTestId("live-more-menu").getByText("Next message", { exact: true }).click();
   await expect(page.getByTestId("trace-card")).toBeVisible();
+  await waitForCameraIdle(page);
   await expect.poll(() => allNodesInPane(page)).toBe(true);
   await openAiPanel(page);
+  await expect(page.getByTestId("ai-panel")).toBeVisible();
+  await waitForCameraIdle(page);
   await expect.poll(() => allNodesInPane(page), { timeout: 5000 }).toBe(true);
 });
 

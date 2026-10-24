@@ -91,7 +91,6 @@ for (const presenting of [false, true]) {
     page,
     consoleErrors,
   }) => {
-    await page.clock.install();
     await gotoLive(page, `./?view=canvas&example=${KAFKA}&sim=payments-outage&speed=8`);
     const play = page.getByTestId("live-play");
     await expect(play).toHaveAttribute("data-state", "waiting");
