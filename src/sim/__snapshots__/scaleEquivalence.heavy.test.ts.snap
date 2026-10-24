@@ -169,9 +169,9 @@ exports[`slow one-slot callee without a pool at scale 10 > pins every node outco
       "output": "timedOut=0, late=0",
     },
     "nodes": {
-      "caller": "processed=570, failed=0, rejected=0, dropped=0",
-      "partner": "processed=570, failed=0, rejected=0, dropped=0",
-      "result": "processed=570, failed=0, rejected=0, dropped=0",
+      "caller": "processed=670, failed=0, rejected=0, dropped=0",
+      "partner": "processed=670, failed=0, rejected=0, dropped=0",
+      "result": "processed=670, failed=0, rejected=0, dropped=0",
       "source": "processed=2000, failed=0, rejected=0, dropped=0",
     },
   },
