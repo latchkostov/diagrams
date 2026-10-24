@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, expectTypeOf, it } from "vitest";
 import { bytesToBase64Url, base64UrlToBytes } from "../interop/codec";
 import {
   fold,
@@ -12,6 +12,7 @@ import {
   VerifiedRosterEntry,
   type RosterEntry,
   type RosterOp,
+  type RosterState,
 } from "./roster";
 import { newIdentity, type Identity } from "./signing";
 import { seededRandom } from "./random";
@@ -45,6 +46,48 @@ async function on(
 }
 
 describe("the signed roster", () => {
+  it("preserves readonly entry types through roster readers", () => {
+    expectTypeOf<ReturnType<SignedRoster["log"]>>().toEqualTypeOf<Readonly<RosterEntry>[]>();
+    expectTypeOf<ReturnType<SignedRoster["entry"]>>().toEqualTypeOf<Readonly<RosterEntry> | undefined>();
+    expectTypeOf<ReturnType<SignedRoster["named"]>>().toEqualTypeOf<Readonly<RosterEntry> | undefined>();
+    expectTypeOf<ReturnType<SignedRoster["joinsOf"]>>().toEqualTypeOf<Readonly<RosterEntry>[]>();
+    expectTypeOf<ReturnType<SignedRoster["removals"]>>().toEqualTypeOf<Readonly<RosterEntry>[]>();
+    expectTypeOf<RosterState["removal"]>().toEqualTypeOf<Readonly<RosterEntry> | undefined>();
+  });
+
+  it("does not grant verification authority to reflective construction", async () => {
+    const [host, guest] = await people(2);
+    const entry = await signEntry(guest, ROOM, 0, { n: 1, op: "admit", who: guest.key, deps: [] });
+    entry.by = host.key;
+    expect(() => Reflect.construct(VerifiedRosterEntry, [entry, ROOM, 0])).toThrow(TypeError);
+    expect(() => Reflect.construct(VerifiedRosterEntry, [entry, ROOM, 0, Symbol("verified")])).toThrow(TypeError);
+    expect(await VerifiedRosterEntry.verify(entry, ROOM, 0)).toBeUndefined();
+    expect(roster(host).state().editors.has(guest.key)).toBe(false);
+  });
+
+  it("add retains immutable verified entries", async () => {
+    const [host, guest] = await people(2);
+    const r = roster(host);
+    const first = (await r.append(host, "policy", { viewOnly: true }))!;
+    const deps = [first.sig];
+    const entry = await signEntry(host, ROOM, 0, { n: 2, op: "cohost", who: guest.key, deps });
+    const adding = r.add([entry]);
+    entry.who = host.key;
+    (entry.deps as string[]).push("unchecked");
+    expect(await adding).toMatchObject({ added: 1, refused: 0 });
+    const stored = r.log().find((e) => e.sig === entry.sig)!;
+    expect(stored.who).toBe(guest.key);
+    expect(stored.deps).toEqual(deps);
+    expect(Object.isFrozen(stored)).toBe(true);
+    expect(Object.isFrozen(stored.deps)).toBe(true);
+    expect(() => Object.assign(stored, { who: host.key })).toThrow(TypeError);
+    expect(() => (stored.deps as string[]).push("unchecked")).toThrow(TypeError);
+    expect(r.entry(entry.sig)).toBe(stored);
+    expect(r.named(entry.sig)).toBe(stored);
+    expect(r.state().cohosts).toEqual([guest.key]);
+    expect(r.may(guest.key, "admit")).toBe(true);
+  });
+
   it("keeps verified authority opaque and frozen, including across an in-flight verification", async () => {
     const [host, guest] = await people(2);
     const r = roster(host);

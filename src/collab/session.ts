@@ -53,7 +53,7 @@ import type { CollabTransport, Connectivity, PeerId } from "./transport/types";
 import { RoomRecovery } from "./recovery";
 import type { RecoveryStore } from "./recoveryStore";
 import { base64UrlToBytes, bytesToBase64Url, bytesToText, textToBytes } from "../interop/codec";
-import type { RosterEntry, RosterOp } from "./roster";
+import type { StoredRosterEntry, RosterOp } from "./roster";
 import { SignedRoom } from "./signedRoom";
 import { sign, type Agreement, type Identity } from "./signing";
 import { relayProofBytes } from "./transport/relayProtocol";
@@ -286,6 +286,7 @@ export class CollabSession {
   /** A joiner's attempt found no one: no document and no failure for COLLAB_LIMITS.noAnswerMs (reset by Retry). */
   noAnswer = false;
   private diagnosticSnapshot?: ReturnType<CollabSession["diagnostics"]>;
+  private diagnosticDirty = true;
   private noAnswerWait?: () => void;
   /** A goodbye sealed ahead of time, so a page going away can send it at once (sealing is asynchronous). */
   private bye?: Uint8Array;
@@ -703,6 +704,7 @@ export class CollabSession {
     presenceRevision: number;
     roomStatus: RoomStatus;
   }> => {
+    if (!this.diagnosticDirty && this.diagnosticSnapshot) return this.diagnosticSnapshot;
     const next = {
       waiting: this.waiting ?? "none",
       knocking: this.knocking,
@@ -723,6 +725,7 @@ export class CollabSession {
     };
     if (!this.diagnosticSnapshot || JSON.stringify(next) !== JSON.stringify(this.diagnosticSnapshot))
       this.diagnosticSnapshot = Object.freeze(next);
+    this.diagnosticDirty = false;
     return this.diagnosticSnapshot;
   };
 
@@ -1033,13 +1036,25 @@ export class CollabSession {
   }
 
   private emit(): void {
+    this.diagnosticDirty = true;
     this.diagnostics();
     for (const fn of this.listeners) fn();
   }
 
   private reject(reason: RejectReason): void {
-    this.stats.rejected[reason] = (this.stats.rejected[reason] ?? 0) + 1;
-    this.emit();
+    this.rejectCounts({ [reason]: 1 });
+  }
+
+  /** One message can refuse many items; publish their counts together, without per-item session work. */
+  private rejectCounts(counts: Partial<Record<RejectReason, number>>): void {
+    let changed = false;
+    for (const reason of Object.keys(counts) as RejectReason[]) {
+      const count = counts[reason] ?? 0;
+      if (!count) continue;
+      this.stats.rejected[reason] = (this.stats.rejected[reason] ?? 0) + count;
+      changed = true;
+    }
+    if (changed) this.emit();
   }
 
   /** Whether a full sync request this session sent `peer` is still to be answered (and recent: it may have been lost). */
@@ -1373,10 +1388,10 @@ export class CollabSession {
   }
 
   /** The removals that closed each epoch on this session's path (each the next start's `prev`). */
-  private closingRemovals(): RosterEntry[] {
+  private closingRemovals(): StoredRosterEntry[] {
     const chain = this.signed?.knock?.chain;
     const path = this.path();
-    const out: RosterEntry[] = [];
+    const out: StoredRosterEntry[] = [];
     for (let i = 0; i + 1 < path.length; i++) {
       const removal = chain?.rosterOf(path[i])?.named(path[i + 1].prev!);
       if (removal) out.push(removal);
@@ -2170,8 +2185,7 @@ export class CollabSession {
           return;
         }
         const added = await room.addEntries(body.e, () => this.verifies.take(opened.sender, 1));
-        for (let i = 0; i < (added?.refused ?? 0); i++) this.reject("roster-refused");
-        for (let i = 0; i < (added?.throttled ?? 0); i++) this.reject("verify-throttled");
+        this.rejectCounts({ "roster-refused": added?.refused, "verify-throttled": added?.throttled });
         // A removal that may now be the epoch's first, or a new current epoch: followed.
         if (room.knock) this.decideOnChain();
         return;

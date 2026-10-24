@@ -1,4 +1,5 @@
 import { describe, expect, it, onTestFinished, vi } from "vitest";
+import { ops } from "../test/opCounter";
 import * as Y from "yjs";
 import { textToBytes } from "../interop/codec";
 import { FakeClock } from "./clock";
@@ -19,6 +20,32 @@ import { MemoryNetwork } from "./transport/memory";
 import type { CollabTransport, Connectivity, TransportHandlers } from "./transport/types";
 
 const room = roomFor(1);
+
+it("reads unchanged diagnostics without presence scans or serialization", async () => {
+  const net = new MemoryNetwork();
+  const clock = new FakeClock();
+  const session = await CollabSession.open({ room: roomFor(909), clock, privacy: {}, transport: net.connect() });
+  onTestFinished(async () => {
+    await session.leave();
+    session.doc.destroy();
+  });
+  await session.idle();
+  const initial = session.diagnostics();
+  const list = vi.spyOn(session.presence, "list");
+  onTestFinished(() => list.mockRestore());
+  const work = ops(() => {
+    for (let i = 0; i < 256; i++) expect(session.diagnostics()).toBe(initial);
+  });
+  expect(work).toBeGreaterThan(0);
+  expect(work).toBeLessThanOrEqual(256 * 2);
+  expect(list).not.toHaveBeenCalled();
+  session.doc.hydrate(canaryDiagram());
+  const changed = session.diagnostics();
+  expect(changed).not.toBe(initial);
+  expect(changed.hasDocument).toBe(true);
+  expect(changed.waiting).toBe("none");
+  expect(session.diagnostics()).toBe(changed);
+});
 
 it("leaving drops an already queued incoming frame and a late sealed-frame callback", async () => {
   const net = new MemoryNetwork();

@@ -82,6 +82,9 @@ export interface RosterEntry {
   sig: string;
 }
 
+/** A verified entry retained by a roster; drafts remain mutable until checked. */
+export type StoredRosterEntry = Readonly<RosterEntry>;
+
 export interface RosterState {
   host: string;
   /** Co-hosts, the earliest made first. */
@@ -98,7 +101,7 @@ export interface RosterState {
   /** People knock and wait to be let in (on for new rooms). */
   ask: boolean;
   /** The removal that closes this epoch: the first counting one in the roster's order. */
-  removal?: RosterEntry;
+  removal?: StoredRosterEntry;
 }
 
 /** A room's roles before any entry: its host alone (with its key-agreement key, in a room with knock-to-join). */
@@ -176,14 +179,19 @@ const entryBytes = (roomId: string, scope: Scope, e: Omit<RosterEntry, "sig">) =
 /** An entry's scope: its epoch (P4), or its epoch's start (`<epoch>:<start signature>`, knock-to-join). */
 export type Scope = number | string;
 
+// TypeScript's private constructor is erased: reflective calls must not mint verification authority either.
+const VERIFIED_ENTRY = Symbol("verified roster entry");
+
 /** A signature checked for one room and scope; authority still depends on its causal past. */
 export class VerifiedRosterEntry {
   readonly #verified = true;
   private constructor(
-    readonly entry: Readonly<RosterEntry>,
+    readonly entry: StoredRosterEntry,
     readonly roomId: string,
     readonly scope: Scope,
+    token: typeof VERIFIED_ENTRY,
   ) {
+    if (token !== VERIFIED_ENTRY) throw new TypeError("Roster entries require signature verification");
     Object.freeze(this);
   }
 
@@ -196,7 +204,7 @@ export class VerifiedRosterEntry {
     if (!parsed) return undefined;
     const frozen = Object.freeze({ ...parsed, deps: Object.freeze([...parsed.deps]) });
     if (!(await verify(frozen.by, base64UrlToBytes(frozen.sig), entryBytes(roomId, scope, frozen)))) return undefined;
-    return new VerifiedRosterEntry(frozen, roomId, scope);
+    return new VerifiedRosterEntry(frozen, roomId, scope, VERIFIED_ENTRY);
   }
 }
 
@@ -244,7 +252,7 @@ export function parseEntry(v: unknown): RosterEntry | undefined {
 }
 
 const compare = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
-const order = (a: RosterEntry, b: RosterEntry) => a.n - b.n || compare(a.by, b.by) || compare(a.sig, b.sig);
+const order = (a: StoredRosterEntry, b: StoredRosterEntry) => a.n - b.n || compare(a.by, b.by) || compare(a.sig, b.sig);
 
 /** Whether `by` may make an entry of `op` in state `s`: the host hands the room on; the host and co-hosts the rest. */
 function authorised(s: RosterState, by: string, op: RosterOp): boolean {
@@ -258,7 +266,7 @@ function authorised(s: RosterState, by: string, op: RosterOp): boolean {
  * The roles that `entries` (each one that counts) give, from the room's host key: editors from every grant, the rest
  * folded in order, each change applied only if its signer still had the authority at its place.
  */
-export function fold(start: string | RosterState, entries: readonly RosterEntry[]): RosterState {
+export function fold(start: string | RosterState, entries: readonly StoredRosterEntry[]): RosterState {
   const base = typeof start === "string" ? rootState(start) : start;
   let host = base.host;
   let cohosts: string[] = [...base.cohosts];
@@ -268,7 +276,7 @@ export function fold(start: string | RosterState, entries: readonly RosterEntry[
   const members = new Set(base.members);
   const xs = new Map(base.xs);
   let ask = base.ask;
-  let removal: RosterEntry | undefined;
+  let removal: StoredRosterEntry | undefined;
   for (const e of [...entries].sort(order)) {
     const who = e.who ?? "";
     if (e.op === "admit" || e.op === "cohost" || e.op === "host") editors.add(who);
@@ -326,13 +334,13 @@ export interface AddResult {
 /** One room's roster: its entries that count (bounded), the roles they give, and new ones made by this member. */
 export class SignedRoster {
   /** Entries that count, by signature. */
-  private readonly entries = new Map<string, RosterEntry>();
+  private readonly entries = new Map<string, StoredRosterEntry>();
   /** Forked entries: verified, their past here, but another entry by their signer holds their slot. */
-  private readonly forks = new Map<string, RosterEntry>();
+  private readonly forks = new Map<string, StoredRosterEntry>();
   /** Each signer's slots (`<key>:<seq>`), and the entry holding it. */
   private readonly slots = new Map<string, string>();
   /** Verified entries whose past isn't all here yet, oldest first. */
-  private readonly pending = new Map<string, RosterEntry>();
+  private readonly pending = new Map<string, StoredRosterEntry>();
   private cached?: RosterState;
   private readonly listeners = new Set<() => void>();
 
@@ -355,7 +363,7 @@ export class SignedRoster {
   readonly knock: boolean;
 
   /** The entries, forks included, in their order (a past before what follows it: to keep, or to send a peer). */
-  log(): RosterEntry[] {
+  log(): StoredRosterEntry[] {
     return [...this.entries.values(), ...this.forks.values()].sort(order);
   }
 
@@ -388,7 +396,7 @@ export class SignedRoster {
   }
 
   /** One of this roster's entries that counts, by signature. */
-  entry(sig: string): RosterEntry | undefined {
+  entry(sig: string): StoredRosterEntry | undefined {
     return this.entries.get(sig);
   }
 
@@ -396,17 +404,17 @@ export class SignedRoster {
    * One of this roster's entries by signature, whether it counts now or lost its slot to a fork since (it was checked
    * against its causal past either way): what an epoch's start names stays named, whatever arrives later.
    */
-  named(sig: string): RosterEntry | undefined {
+  named(sig: string): StoredRosterEntry | undefined {
     return this.entries.get(sig) ?? this.forks.get(sig);
   }
 
   /** The joins that count in this roster letting `key` in. */
-  joinsOf(key: string): RosterEntry[] {
+  joinsOf(key: string): StoredRosterEntry[] {
     return [...this.entries.values()].filter((e) => e.op === "join" && e.who === key);
   }
 
   /** The removals that count in this roster (each could close the epoch on some branch). */
-  removals(): RosterEntry[] {
+  removals(): StoredRosterEntry[] {
     return [...this.entries.values()].filter((e) => e.op === "remove").sort(order);
   }
 
@@ -431,9 +439,9 @@ export class SignedRoster {
    * An entry's causal past: every entry its deps name, transitively, as its signer saw them (one that has since lost
    * its slot to a fork included: a fork arriving later never changes what an entry already had authority for).
    */
-  private past(e: RosterEntry): RosterEntry[] {
+  private past(e: StoredRosterEntry): StoredRosterEntry[] {
     const seen = new Set<string>();
-    const out: RosterEntry[] = [];
+    const out: StoredRosterEntry[] = [];
     const stack = [...e.deps];
     while (stack.length) {
       const sig = stack.pop()!;
@@ -461,7 +469,7 @@ export class SignedRoster {
    * that sorts first), "refused" (it doesn't count, or there's no room), or "replace" (it sorts before its slot's
    * holder: the roster is placed again).
    */
-  private place(e: RosterEntry): "added" | "fork" | "refused" | "replace" {
+  private place(e: StoredRosterEntry): "added" | "fork" | "refused" | "replace" {
     let top = 0;
     for (const d of e.deps) top = Math.max(top, (this.entries.get(d) ?? this.forks.get(d))!.n);
     if (e.n !== top + 1) return "refused";
@@ -494,7 +502,7 @@ export class SignedRoster {
   }
 
   /** Places the roster again from scratch, in order, with `extra`: what having had them all along would give. */
-  private replace(extra: RosterEntry): void {
+  private replace(extra: StoredRosterEntry): void {
     const all = [...this.entries.values(), ...this.forks.values(), extra].sort(order);
     this.entries.clear();
     this.forks.clear();
@@ -517,7 +525,7 @@ export class SignedRoster {
     }
   }
 
-  private settle(e: RosterEntry, result: AddResult): void {
+  private settle(e: StoredRosterEntry, result: AddResult): void {
     const placed = this.place(e);
     if (placed === "replace") {
       const had = this.entries.size;
@@ -592,7 +600,7 @@ export class SignedRoster {
     return result;
   }
 
-  private accept(e: RosterEntry, result: AddResult): void {
+  private accept(e: StoredRosterEntry, result: AddResult): void {
     if (e.deps.every((d) => this.known(d))) {
       this.settle(e, result);
       if (this.pending.size) this.drainReady(result);
