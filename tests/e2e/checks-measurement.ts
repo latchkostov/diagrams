@@ -6,6 +6,7 @@ export function installChecksMeasurement() {
     held: false,
     restoring: false,
     nativeChecks: 0,
+    workerFailures: 0,
     cacheHits: 0,
     queued: [] as { worker: Worker; data: CheckResponse }[],
     release() {
@@ -24,7 +25,9 @@ export function installChecksMeasurement() {
       super(url, options);
       this.checks = options?.name === "checks";
       if (!this.checks) return;
+      this.addEventListener("error", () => state.workerFailures++);
       this.addEventListener("message", (event: MessageEvent<CheckResponse>) => {
+        if ("error" in event.data) state.workerFailures++;
         // Errors must reach the real main-thread fallback inside the measurement.
         if (state.held && !("error" in event.data)) {
           event.stopImmediatePropagation();
