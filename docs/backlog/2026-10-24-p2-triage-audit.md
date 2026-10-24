@@ -39,3 +39,9 @@ Other backlog fragments are retained when they carry independent bugs, seeded co
 ## Process notes retained in the local queue index
 
 No stash: use signed WIP commits in this worktree. Historical cross-worktree stash-recovery paths remain only in the local archive. Do not operate on another worktree. Native environment/toolchain observations require current evidence before changing dependencies. Old canvas-byte merge-order estimates are superseded; use current measured headroom with unchanged budgets. The parked searchable-menu draft remains quarantined until its native-input/controller ownership design is sound. No code fix, owner decision, golden update or release was made by this documentation task.
+
+## Verification evidence
+
+The single full gate had two browser failures; both affected specs passed two targeted clean-master
+repetitions. They remain unconfirmed full-run observations, recorded separately in
+[the verification follow-up](2026-10-24-triage-gate-browser-observations.md), outside the queue counts.
