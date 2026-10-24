@@ -2,7 +2,8 @@ import { createCpuPartBudget, type CpuPartBudget } from "./resourceWork";
 import type { SampledWork } from "./sampledResources";
 import type { ComputeResources, HpaController, ScalingMetric } from "../model/autoscaling";
 import type { CloudState } from "./cloudScalers";
-import { replicaRange, unmeasured } from "../model/autoscaling";
+import { unmeasured } from "../model/autoscaling";
+import { replicaRange } from "../model/resourceRuntime";
 import { mulberry32 } from "./rng";
 
 export interface ScalingDecision {

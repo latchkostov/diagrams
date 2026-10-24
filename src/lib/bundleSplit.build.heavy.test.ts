@@ -14,6 +14,9 @@ import { productionBuild } from "../test/productionBuild";
 
 /** Never in the startup JavaScript. */
 const NOT_AT_STARTUP: [string, RegExp][] = [
+  ["route presentation and authoring", /[/\\]src[/\\]model[/\\]routingAppearance\.ts$/],
+  ["resource playback arithmetic", /[/\\]src[/\\]model[/\\]resourceRuntime\.ts$/],
+  ["AI authoring simulation schemas", /[/\\]src[/\\]model[/\\]aiSimProps\.ts$/],
   ["node settings container", /[/\\]src[/\\]canvas[/\\]inspector[/\\]NodeSettings\.tsx$/],
   ["autoscaling authoring presets", /[/\\]src[/\\]model[/\\]autoscalingLessons\.ts$/],
   ["settings paste and editing codecs", /[/\\]src[/\\]model[/\\]settingsInput\.ts$/],

@@ -1,11 +1,9 @@
 import type { Quota } from "../model/admission";
 import type { PlanningModel } from "../model/types";
 import {
-  addressText,
   checkRouteMatch,
   checkRouteTable,
   checkTrafficMix,
-  routeLook,
   routingEnabled,
   type HttpMethod,
   type PathMatchKind,
@@ -14,6 +12,7 @@ import {
   type RouteTable,
   type TrafficMix,
 } from "../model/requestRouting";
+import { addressText, routeLook } from "../model/routingAppearance";
 
 /**
  * Request routing's compiled forms, shared by playback (engine.ts) and configured analysis (capacity.ts): one

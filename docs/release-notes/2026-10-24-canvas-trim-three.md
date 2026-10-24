@@ -1,15 +1,15 @@
 ## Canvas first view trim 3
 
-Canvas first view drops from 380,960 to 374,175 gzip bytes, leaving 8,825 bytes against the
+Canvas first view drops from 381,961 to 374,490 gzip bytes, leaving 8,510 bytes against the
 unchanged 383,000-byte budget. The shipped bundle benchmark and a module composition visualizer
 were used to inspect the eager graph.
 
 | Gzip bytes               |  Before |   After | After headroom |
 | ------------------------ | ------: | ------: | -------------: |
-| Entry                    | 107,633 | 107,641 |         15,859 |
-| Startup                  | 173,158 | 171,126 |          5,874 |
-| Canvas first view        | 380,960 | 374,175 |          8,825 |
-| Additional Live download | 126,369 | 126,979 |          8,021 |
+| Entry                    | 107,691 | 107,694 |         15,806 |
+| Startup                  | 173,216 | 170,388 |          6,612 |
+| Canvas first view        | 381,961 | 374,490 |          8,510 |
+| Additional Live download | 126,416 | 127,666 |          7,334 |
 
 Node settings now load through the registered `inspector.node-settings` surface. Naming and the
 searchable menu stay eager. Routing, simulation, planning and custom-property settings move to
@@ -28,3 +28,8 @@ Startup and additional Live download remain below the warning floor; their fixed
 The settings element retains a stable identity while naming is paused. It receives only the node id,
 stencil and modeled props, plus the existing paused revision and reader, so label and description
 keystrokes do not rerender the lazy boundary or its settings. The existing typing-render limits stay fixed.
+
+The comparison uses the refreshed merge base `fcb2e15b` (tutorial runtime #285). After that rebase,
+playback resource arithmetic moves to `resourceRuntime.ts`, AI-only schema assembly to `aiSimProps.ts`,
+and route colours, labels and mix scaling to `routingAppearance.ts`. File-validation schemas and saved
+values are unchanged. These helpers load through their existing feature paths; no new UI surface is added.

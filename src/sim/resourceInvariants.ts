@@ -1,4 +1,4 @@
-import { replicaRange } from "../model/autoscaling";
+import { replicaRange } from "../model/resourceRuntime";
 import type { AutoscalingConfig, ComputeResources } from "../model/autoscaling";
 import { MAX_CPU_PARTS, ownsCpu, type CpuPartBudget } from "./resourceWork";
 import type { Fleet } from "./autoscaling";

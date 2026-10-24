@@ -1,5 +1,5 @@
 import { revisionAtLeast } from "../model/revisions";
-import { replicaRange } from "../model/autoscaling";
+import { replicaRange } from "../model/resourceRuntime";
 import {
   createContext,
   memo,

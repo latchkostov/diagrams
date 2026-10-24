@@ -1,4 +1,5 @@
-import { routeLook, type RequestRoute, type RouteMarker } from "../model/requestRouting";
+import { type RequestRoute, type RouteMarker } from "../model/requestRouting";
+import { routeLook } from "../model/routingAppearance";
 
 /** A request route's swatch and marker: never colour alone (the marker and the words beside it say it too). */
 export function RouteSwatch({ route, size = 12 }: { route: Pick<RequestRoute, "id" | "appearance">; size?: number }) {

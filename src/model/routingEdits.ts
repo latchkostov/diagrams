@@ -1,7 +1,5 @@
 import type { DiagramFile } from "./types";
 import {
-  addressText,
-  nextAppearance,
   type HttpMethod,
   type PathMatch,
   type RequestAddress,
@@ -12,6 +10,7 @@ import {
   type RouteTable,
   type TrafficMix,
 } from "./requestRouting";
+import { addressText, nextAppearance } from "./routingAppearance";
 import { withRouting } from "./routingTopology";
 export { withRouting, outgoingFlows, firstTable, strippedTables, withRouteTable } from "./routingTopology";
 

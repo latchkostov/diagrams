@@ -34,7 +34,8 @@ import {
   replicaPage,
   type Fleet,
 } from "./autoscaling";
-import { controllerSyncMs, replicaRange, type ExecutableController } from "../model/autoscaling";
+import { type ExecutableController } from "../model/autoscaling";
+import { controllerSyncMs, replicaRange } from "../model/resourceRuntime";
 import { evaluateCloud, onDemand, resetCloud, shiftCloud, type CloudReads } from "./cloudScalers";
 import { triggerFits } from "../model/kedaBindings";
 import { evaluateKeda, resetKeda, type BrokerMetric, type ScalerTrigger } from "./keda";

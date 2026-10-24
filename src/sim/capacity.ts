@@ -5,7 +5,7 @@ import { simulationEdges } from "./topology";
 import { replyCpuMs } from "./callPolicy";
 import { resolvedTiming } from "./timing";
 import { resourcePlan, type ResourcePlan } from "./resourcePlanning";
-import { replicaRange, resourceCapacity } from "../model/autoscaling";
+import { replicaRange, resourceCapacity } from "../model/resourceRuntime";
 import { englishAssignmentLabel, recordAssignment, type ConsumerAssignment, type BrokerSpec } from "../model/brokers";
 import type { DiagramFile, DiagramNode, SimRole, Simulation } from "../model/types";
 import { stencilRole } from "../stencils/roles";

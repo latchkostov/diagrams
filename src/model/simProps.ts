@@ -33,11 +33,11 @@ export function unsupportedPreset(props: unknown): boolean {
 
 const rate = { type: "number", minimum: 0, maximum: SIM_LIMITS.ratePerSec };
 const quantity = { type: "number", minimum: 0, maximum: SIM_LIMITS.count };
-const cardinality = { type: "integer", minimum: 1, maximum: SIM_LIMITS.count };
+export const cardinality = { type: "integer", minimum: 1, maximum: SIM_LIMITS.count };
 const time = { type: "number", minimum: 0, maximum: SIM_LIMITS.timeMs };
 const fraction = { type: "number", minimum: 0, maximum: 1 };
 // Field coverage is checked against the engine interfaces by TypeScript.
-const nodeProperties = {
+export const nodeProperties = {
   resources: resourcesSchema,
   autoscaling: autoscalingSchema,
   resumeAutoscaling: { type: "boolean" },
@@ -71,7 +71,7 @@ const nodeProperties = {
   trafficMix: trafficMixSchema,
   routeTable: routeTableSchema,
 } satisfies Record<keyof NodeSimProps, JsonSchema>;
-const edgeProperties = {
+export const edgeProperties = {
   requestRouteId: { type: "string", minLength: 1, maxLength: 200 },
   requestFilter: routeMatchSchema,
   endpointId: { type: "string", minLength: 1, maxLength: 200 },
@@ -120,35 +120,6 @@ export function invalidPlanningDelay(props: unknown): boolean {
     return true;
   }
 }
-// Native files preserve engine settings such as zero concurrency. AI suggestions use positive
-// integer counts, retaining the existing input constraints without duplicating property definitions.
-const aiProperties = {
-  ...nodeProperties,
-  concurrency: cardinality,
-  replicas: cardinality,
-  maxDeliveryCount: cardinality,
-  partitions: cardinality,
-};
-export const aiNodePropsSchema: JsonSchema = { ...nodeSimPropsSchema, properties: aiProperties };
-/** update targets either nodes or connections; null deletes any known setting. */
-export const simPropsPatchSchema: JsonSchema = {
-  type: "object",
-  additionalProperties: true,
-  properties: Object.fromEntries(
-    Object.entries({ ...edgeProperties, ...aiProperties }).map(([key, schema]) => [
-      key,
-      "anyOf" in schema
-        ? { anyOf: [...(schema.anyOf as JsonSchema[]), { type: "null" }] }
-        : "oneOf" in schema
-          ? { anyOf: [schema, { type: "null" }] }
-          : {
-              ...schema,
-              type: [schema.type, "null"],
-              ...("enum" in schema ? { enum: [...(schema.enum as unknown[]), null] } : {}),
-            },
-    ]),
-  ),
-};
 const number = (n: number) => n.toLocaleString("en-US");
 
 /**

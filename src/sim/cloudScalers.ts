@@ -13,7 +13,7 @@ import type {
   MonitorOperator,
   MonitorRule,
 } from "../model/autoscaling";
-import { replicaRange } from "../model/autoscaling";
+import { replicaRange } from "../model/resourceRuntime";
 import { evaluateHpa, metricValue, metricWindow, type Fleet, type ScalingDecision } from "./autoscaling";
 import { evaluateKeda, resetKeda, type BrokerMetric, type KedaLike, type ScalerTrigger } from "./keda";
 

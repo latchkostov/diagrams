@@ -1,5 +1,6 @@
 import type { DiagramFile } from "../model/types";
-import { addressText, routeLook, type RequestRoute, type RouteLook, type RouteTable } from "../model/requestRouting";
+import { type RequestRoute, type RouteTable } from "../model/requestRouting";
+import { addressText, routeLook, type RouteLook } from "../model/routingAppearance";
 import { t } from "../i18n/core";
 
 /**

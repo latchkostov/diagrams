@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import { createEngine } from "./engine";
 import { createFleet } from "./autoscaling";
 import { evaluateKeda, resetKeda, triggerValue } from "./keda";
-import { replicaRange } from "../model/autoscaling";
+import { replicaRange } from "../model/resourceRuntime";
 import { kedaLesson, resourceLesson } from "../model/autoscalingLessons";
 import { kedaFixture } from "../lab/kedaFixture";
 import example from "../examples/autoscaling-basics.json";

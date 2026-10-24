@@ -22,3 +22,7 @@ The settings boundary preserves the previous typing work: identity-only edits re
 element, while stencil, modeled properties, planning, focus or language changes still reach the settings.
 No render-count assertion is relaxed. The existing typing spec checks names, subtitles, documentation,
 KEDA and cloud settings, bindings, and one-step Undo/Redo.
+
+The tutorial-runtime rebase preserves its ship gate. Further model boundaries defer resource playback,
+AI schema assembly and route presentation without changing any helper body or UI control. Native
+validation keeps the same schema objects, while optional AI schemas share those exact objects.
