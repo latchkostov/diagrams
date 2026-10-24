@@ -178,6 +178,8 @@ export interface FocusMove {
   ifGone?: ElementHandle;
   /** A text field: select all of it, or put the caret at its end. */
   select?: "all" | "end";
+  /** Text already captured by placement, before this pending field took ownership. */
+  text?: string;
   /** Again a frame later, unless input came first or focus is already there (a closing menu took it back). */
   again?: boolean;
   /** This is that second attempt: it doesn't count as pending, and input stands it down. */
@@ -254,6 +256,7 @@ export type FocusEvent =
       name: string;
       owner?: string;
       caret?: "end";
+      text?: string;
       claim?: () => boolean;
     }
   /** A processor rule was removed, or its incoming type changed (rows are keyed by it): continue at `target`. */

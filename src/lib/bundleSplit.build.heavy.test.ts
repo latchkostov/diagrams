@@ -14,6 +14,7 @@ import { productionBuild } from "../test/productionBuild";
 
 /** Never in the startup JavaScript. */
 const NOT_AT_STARTUP: [string, RegExp][] = [
+  ["searchable menu rows and picking", /[/\\]src[/\\]components[/\\](?:MenuList\.tsx|replayMenuKey\.ts)$/],
   ["saved-route authoring schema", /[/\\]src[/\\]model[/\\]edgeRouteSchema\.ts$/],
   ["saved-route image readiness", /[/\\]src[/\\]canvas[/\\]edges[/\\]imageReadiness\.ts$/],
   ["selection route reset", /[/\\]src[/\\]palette[/\\]routeActions\.ts$/],
@@ -26,6 +27,7 @@ const NOT_AT_STARTUP: [string, RegExp][] = [
   ["edge reconnect handles", /[/\\]src[/\\]canvas[/\\]edges[/\\]EdgeEnds\.tsx$/],
   ["edge inspector", /[/\\]src[/\\]canvas[/\\]inspector[/\\]EdgePanel\.tsx$/],
   ["edge inspector loading and recovery", /[/\\]src[/\\]canvas[/\\]inspector[/\\]lazyEdgePanel\.tsx$/],
+  ["node naming and stencil picker container", /[/\\]src[/\\]canvas[/\\]inspector[/\\]NodePanel\.tsx$/],
   ["node inspector identity fields", /[/\\]src[/\\]canvas[/\\]inspector[/\\]NodeIdentity\.tsx$/],
   ["connection dot resolver", /[/\\]src[/\\]canvas[/\\]interaction[/\\]connectTarget\.ts$/],
   ["dependency and deny details", /[/\\]src[/\\]canvas[/\\]edges[/\\]SettingsCard\.tsx$/],
@@ -325,12 +327,12 @@ describe("production bundle split", () => {
     }
   });
 
-  it("keeps searchable menu and naming container code in the canvas first view", () => {
+  it("keeps the cancellable menu shell in the canvas first view", () => {
     for (const build of [plain(), rooms]) {
       const menuModules = bundled(build.chunks).filter((id) =>
-        /[/\\]src[/\\](?:components[/\\](?:ContextMenu|MenuList)|canvas[/\\]inspector[/\\]NodePanel)\.tsx$/.test(id),
+        /[/\\]src[/\\]components[/\\]ContextMenu\.tsx$/.test(id),
       );
-      expect(menuModules.length).toBeGreaterThan(0);
+      expect(menuModules).toHaveLength(1);
       const canvasModules = bundled(closure([canvasChunk(build)], build));
       expect(menuModules.filter((id) => !canvasModules.includes(id))).toEqual([]);
     }

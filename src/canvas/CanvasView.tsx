@@ -314,7 +314,7 @@ function CanvasInner({
   }, []);
   const [editing, setEditing] = useState<InlineEdit | null>(null);
   const [inspectorFocus, setInspectorFocus] = useState<
-    { name: string; seq: number; caret?: "end"; target?: string } | undefined
+    { name: string; seq: number; caret?: "end"; target?: string; text?: string } | undefined
   >();
   const inspectorFocusDone = useRef(0);
   const takeInspectorFocus = useCallback((seq: number) => {
@@ -325,12 +325,12 @@ function CanvasInner({
   }, []);
   const [inspectorRequest, requestInspector] = useState(0);
   const openInspector = useCallback(
-    (field?: string, caret?: "end", target?: string) => {
+    (field?: string, caret?: "end", target?: string, text?: string) => {
       requestInspector((revision) => revision + 1);
       liveHandle.current?.session?.closePanel();
       setPref("inspector", true);
       setOpenedByHand((o) => ({ ...o, inspector: true }));
-      if (field) setInspectorFocus((f) => ({ name: field, seq: (f?.seq ?? 0) + 1, caret, target }));
+      if (field) setInspectorFocus((f) => ({ name: field, seq: (f?.seq ?? 0) + 1, caret, target, text }));
     },
     [setPref],
   );

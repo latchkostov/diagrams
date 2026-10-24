@@ -39,6 +39,14 @@ async function open(page: Page, id: LazySurfaceId) {
     },
   );
 
+  if (id === "canvas.menu") {
+    await gotoCanvas(page, SLUG);
+    await waitForStableViewport(page);
+    await page.getByTestId("node-caller").click();
+    await page.getByTestId("canvas-wrap").focus();
+    await page.keyboard.press("Alt+ArrowRight");
+    return;
+  }
   if (id === "canvas.check-markers") {
     await gotoCanvas(page, SLUG);
     await page.getByTestId("canvas-wrap").focus();
@@ -65,6 +73,7 @@ async function open(page: Page, id: LazySurfaceId) {
         if ((await page.getByTestId("inspector").getAttribute("data-collapsed")) === "1")
           await page.getByTestId("inspector-toggle").click();
         return;
+      case "inspector.node":
       case "inspector.identity":
       case "inspector.simulation":
       case "inspector.properties":

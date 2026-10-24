@@ -1,5 +1,5 @@
 import type { CameraEvent } from "../camera";
-import type { TypeAhead } from "../typeAhead";
+import type { PendingKey, TypeAhead } from "../typeAhead";
 import { describe, focusPolicy, initialFocus, pendingMove } from "./focusPolicy";
 import { liveKeys } from "./liveKeys";
 import { gestures, initialGestures } from "./gestures";
@@ -43,6 +43,13 @@ export type Resolution =
   | { state: "gone" };
 
 /** The DOM, as the controller sees it. Only the port calls focus(). */
+export interface PendingMenuInput {
+  readonly active: boolean;
+  capture(ownsFocus: () => boolean, acceptsKey?: () => boolean, escape?: () => void): () => void;
+  ready(deliver: (key: PendingKey) => void, focus: () => void): void;
+  cancel(): void;
+}
+
 export interface InteractionPort {
   /** What has focus now (null: nothing, or the page's body). */
   active(): ElementHandle | null;
@@ -59,7 +66,8 @@ export interface InteractionPort {
    * Holds keys typed anywhere, before the canvas's shortcuts see them (typeAhead.ts), for a name field that can't
    * take them yet; `done` hears the Enter or Esc that ended the typing. Absent: nothing is held.
    */
-  holdKeys?(done: (typed: TypeAhead) => void): { stop(): TypeAhead };
+  holdInput?(take: (key: PendingKey) => boolean): () => void;
+  holdKeys?(done: (typed: TypeAhead) => void, text?: string): { stop(): TypeAhead };
   /** Writes text typed ahead into the text field that has just taken focus, as typing there would; caret after it. */
   type?(el: ElementHandle, text: string): void;
   /** Focus on `el` has left the canvas's keyboard: it's outside the canvas, or a text field. */
@@ -269,7 +277,7 @@ export function createInteractionController<P = unknown>(
       }
       // Esc or Enter before anything was typed: the rename is over before its field came.
       decide({ type: "inspector.abandoned" });
-    });
+    }, move.text);
     if (options.journal) journal({ event: "rename.hold", command: describe(move) });
   }
 
@@ -554,6 +562,63 @@ export function createInteractionController<P = unknown>(
     subscribe(listener: () => void) {
       listeners.add(listener);
       return () => void listeners.delete(listener);
+    },
+    /** Ordered surface input. A pick can transfer the next key to a name capture. */
+    menuInput(): PendingMenuInput {
+      let ownsFocus = () => true;
+      let active = true;
+      let stop: (() => void) | undefined;
+      let keys: PendingKey[] = [];
+      let generation = 0;
+      const cancel = () => {
+        active = false;
+        generation++;
+        stop?.();
+        stop = undefined;
+        keys = [];
+      };
+      return {
+        get active() {
+          return active && ownsFocus();
+        },
+        capture(owns, acceptsKey = () => true, escape) {
+          ownsFocus = owns;
+          active = true;
+          stop = port.holdInput?.((key) => {
+            if (!active || !ownsFocus()) {
+              cancel();
+              return false;
+            }
+            if (!acceptsKey()) return false;
+            if (key.key === "Escape" && !keys.length && escape) {
+              cancel();
+              escape();
+              return true;
+            }
+            keys.push(key);
+            return true;
+          });
+          return cancel;
+        },
+        ready(deliver, focusMenu) {
+          const at = generation;
+          scheduler.microtask(() => {
+            if (!active || at !== generation) return;
+            if (!ownsFocus()) return cancel();
+            // Retire before replay. Enter installs the same pending-name capture as held
+            // renames; following keys are delivered to that new owner, exactly once.
+            focusMenu();
+            const held = keys;
+            keys = [];
+            active = false;
+            stop?.();
+            stop = undefined;
+            if (options.journal) journal({ event: "menu.input.handed", command: String(held.length) });
+            for (const key of held) deliver(key);
+          });
+        },
+        cancel,
+      };
     },
     /** Opens a menu (or a dialog) over the canvas, replacing any that's open; returns its seq. */
     openMenu(

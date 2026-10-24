@@ -14,7 +14,7 @@ import type { useRevealSelection } from "../camera";
 export function useCanvasNaming(
   canOpenInspector: boolean,
   editor: EditorApi,
-  openInspector: (field?: string, caret?: "end", target?: string) => void,
+  openInspector: (field?: string, caret?: "end", target?: string, text?: string) => void,
   setEditing: Dispatch<SetStateAction<InlineEdit | null>>,
   setNaming: Dispatch<SetStateAction<{ node: string; edge: string } | null>>,
   renameRef: RefObject<(t: RenameTarget) => void>,
@@ -41,6 +41,7 @@ export function useCanvasNaming(
         t.kind === "node" && t.field === "sublabel" ? "sublabel" : "label",
         typed ? "end" : undefined,
         t.kind === "group" ? GROUP_PREFIX + t.id : t.id,
+        typed ? t.text : undefined,
       );
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps -- state setters are stable; preserve CanvasView's original dependencies
@@ -69,14 +70,13 @@ export function useCanvasNaming(
         () => {
           const typed = typing.stop();
           const isAnn = annotation;
-          if (typed.done === "escape" && !isAnn) return endCreation(made.merge);
           if (typed.done) {
             if (typed.text !== null) {
               if (isAnn) editor.updateAnnotation(made.id, { text: typed.text }, { merge: made.merge });
               else editor.updateNode(made.id, { label: typed.text.trim() || fallback }, { merge: made.merge });
             }
             endCreation(made.merge);
-            if (isAnn) controller.dispatch({ type: "naming.done", flowId: made.id });
+            controller.dispatch({ type: "naming.done", flowId: made.id });
             return;
           }
           // In this same task: a key arriving before the field has focus would reach the canvas instead.
