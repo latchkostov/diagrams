@@ -3488,6 +3488,7 @@ const en = {
   "resilienceChecks.idempotencyMessage": "A timed-out request may have succeeded; repeating it can charge twice.",
   "resilienceChecks.layersTitle": "Retries multiply across {layers, plural, one {# layer} other {# layers}}.",
   "resilienceChecks.layersMessage": "{path}: up to {amplification}× the load on {callee}.",
+  "resilienceChecks.layersCappedMessage": "{path}: at least {amplification}× the load on {callee}.",
   "resilienceChecks.breakerTitle": "No circuit breaker on the call to {callee}.",
   "resilienceChecks.breakerMessage": "If {callee} keeps failing, every caller keeps trying it.",
   "resilienceChecks.queueTitle": "{callee} queues without limit.",

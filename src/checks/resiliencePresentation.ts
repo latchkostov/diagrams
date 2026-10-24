@@ -82,7 +82,9 @@ export function presentResilienceFinding(f: Finding): Finding {
       break;
     case "retry-layers":
       title = t("resilienceChecks.layersTitle", { layers: r.layers ?? 0 });
-      message = t("resilienceChecks.layersMessage", { ...v, path: r.path ?? "" });
+      message = r.amplificationAtLeast
+        ? t("resilienceChecks.layersCappedMessage", { ...v, path: r.path ?? "" })
+        : t("resilienceChecks.layersMessage", { ...v, path: r.path ?? "" });
       break;
     case "call-breaker":
       title = t("resilienceChecks.breakerTitle", v);

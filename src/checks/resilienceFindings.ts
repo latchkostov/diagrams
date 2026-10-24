@@ -252,6 +252,8 @@ export function computeResilienceFindings(ctx: CheckContext): Finding[] {
   const incoming = new Map<string, number>(),
     out = new Map<string, DiagramEdge[]>(),
     product = new Map<string, number>(),
+    layers = new Map<string, number>(),
+    capped = new Set<string>(),
     parent = new Map<string, DiagramEdge>();
   for (const n of ctx.diagram.nodes) incoming.set(n.id, 0);
   for (const e of calls) {
@@ -263,10 +265,14 @@ export function computeResilienceFindings(ctx: CheckContext): Finding[] {
   const ready = [...incoming].filter(([, n]) => !n).map(([id]) => id);
   for (let head = 0; head < ready.length; head++)
     for (const e of out.get(ready[head]) ?? []) {
-      const next = Math.min(1e12, (product.get(e.from) ?? 1) * attemptsOf(e));
-      if (next > (product.get(e.to) ?? 1)) {
+      const raw = (product.get(e.from) ?? 1) * attemptsOf(e),
+        next = Math.min(1e12, raw),
+        overflow = capped.has(e.from) || raw > 1e12;
+      if (next > (product.get(e.to) ?? 1) || (next === 1e12 && overflow && !capped.has(e.to))) {
         product.set(e.to, next);
         parent.set(e.to, e);
+        layers.set(e.to, (layers.get(e.from) ?? 0) + Number(attemptsOf(e) > 1));
+        if (overflow) capped.add(e.to);
       }
       incoming.set(e.to, incoming.get(e.to)! - 1);
       if (!incoming.get(e.to)) ready.push(e.to);
@@ -284,17 +290,19 @@ export function computeResilienceFindings(ctx: CheckContext): Finding[] {
     const outer = chain.find((c) => attemptsOf(c) > 1)!,
       last = chain.at(-1)!;
     const retried = chain.filter((c) => attemptsOf(c) > 1),
-      path = chain
-        .slice(0, 6)
-        .map((c) => name(c.from))
-        .concat(name(id))
-        .join(" → ");
+      path =
+        (e ? "… → " : "") +
+        chain
+          .slice(0, 6)
+          .map((c) => name(c.from))
+          .concat(name(id))
+          .join(" → ");
     emit(
       make(
         "retry-layers",
         last,
-        `Retries multiply across ${retried.length} layers.`,
-        `${path}: up to ${value}× the load on ${name(id)}.`,
+        `Retries multiply across ${layers.get(id)!} layers.`,
+        `${path}: ${capped.has(id) ? "at least" : "up to"} ${value}× the load on ${name(id)}.`,
         e
           ? undefined
           : fix(
@@ -306,7 +314,12 @@ export function computeResilienceFindings(ctx: CheckContext): Finding[] {
               undefined,
               name(outer.from),
             ),
-        { layers: retried.length, amplification: value, path },
+        {
+          layers: layers.get(id)!,
+          amplification: value,
+          ...(capped.has(id) ? { amplificationAtLeast: true as const } : {}),
+          path,
+        },
       ),
     );
   }

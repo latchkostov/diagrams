@@ -8,7 +8,7 @@ probe alternatives or scaling are offered. Static idempotency alternatives remai
 
 Health uses the shared current ten-second window. Skipped/refused probes are counted in
 `notChecked.retryStorm`; omitted findings and incomplete probes never read as clean. Names and emitted
-characters are bounded. Static checks share one compiled topology and one capacity analysis.
+characters are bounded. Deep chains retain their actual layer count and mark capped amplification as a lower bound. Static checks share one compiled topology and one capacity analysis.
 
 `describe_diagram` exposes Request resilience and processor queue policies, including steady/worst
 amplification and wait ceilings. `check_diagram` carries the same descriptors, edits and replay proof.
@@ -40,7 +40,7 @@ skill and i18n parity producers (Checks also owns its evidence and words produce
 - Four `node/skill` records: current/frozen public-schema fingerprints gain the two expectation
   fields; current/frozen file fingerprints gain the generated metric spec; the current skill file
   fingerprint also records the authored default-model and resilience guidance.
-- One `node/i18n/catalogs.json` record: 49 English keys, area fingerprints and fallback counts.
+- One `node/i18n/catalogs.json` record: 50 English keys, area fingerprints and fallback counts.
 
 The complete path inventory follows, grouped by producer. Each path has the reason for its group above.
 

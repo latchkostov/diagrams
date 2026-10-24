@@ -118,6 +118,32 @@ it("uses configured capacity and deadline headroom for shedding, and never inven
   expect(findings(d).find((f) => f.rule === "queue-limit")?.fix).toBeUndefined();
 });
 
+it("keeps the actual layer count and marks capped amplification as a lower bound on deep chains", () => {
+  noReplay();
+  const d = diagram();
+  d.nodes = Array.from({ length: 201 }, (_, i) => ({
+    id: `n${i}`,
+    stencil: i ? "generic.service" : "client.user",
+    label: `Service ${i}`,
+    x: i * 200,
+    y: 0,
+    props: { ratePerSec: 0, jitter: 0 },
+  }));
+  d.edges = Array.from({ length: 200 }, (_, i) => ({
+    id: `e${i}`,
+    from: `n${i}`,
+    to: `n${i + 1}`,
+    kind: "sync",
+    props: { caller: { retry: { ...RECOMMENDED_RETRY, maxAttempts: 2 } } },
+  }));
+  const f = findings(d).find((f) => f.rule === "retry-layers")!;
+  expect(f.resilienceFinding).toMatchObject({ layers: 200, amplification: 1e12, amplificationAtLeast: true });
+  expect(f.message).toContain("at least");
+  expect(presentFinding(f).message).toContain("at least");
+  expect(f.fix).toBeUndefined();
+  expect(JSON.stringify(f).length).toBeLessThan(10000);
+});
+
 it("compiles one static topology across all resilience rules and configured capacity", () => {
   noReplay();
   const compile = vi.spyOn(topology, "compileTopology");

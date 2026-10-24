@@ -62,6 +62,7 @@ export interface Finding {
     callee: string;
     attempts: number;
     amplification: number;
+    amplificationAtLeast?: true;
     method?: string;
     layers?: number;
     path?: string;
