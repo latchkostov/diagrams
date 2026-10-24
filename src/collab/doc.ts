@@ -42,6 +42,11 @@ type DeleteSet = Parameters<typeof Y.iterateDeletedStructs>[1];
 type DeleteItem = DeleteSet["clients"] extends Map<number, (infer I)[]> ? I : never;
 type StackItemLike = { insertions: DeleteSet; deletions: DeleteSet };
 
+// Each incoming struct can add at most four missing-client entries (its own clock,
+// origin, right origin and parent). Reserve two numeric words per entry before Yjs
+// applies it. Unlike encoded pending structs, these entries do not deduplicate.
+const DEPENDENCY_BYTES_PER_STRUCT = 4 * 16;
+
 export type Projection =
   | { status: "ok"; diagram: DiagramFile; warnings: string[]; hidden: string[] }
   | {
@@ -105,10 +110,12 @@ export class CollabDoc {
   private lastMerge: string | undefined;
   private listeners = new Set<() => void>();
   /**
-   * An upper bound on the encoded state: its exact size when last measured (at `measuredAt`, a revision), plus
+   * An upper bound on the retained state: its measured size (at `measuredAt`, a revision), plus
    * every change since. Measured again only when the bound nears the limit and the document has changed since.
    */
   private roomBytes = 0;
+  /** Missing-dependency bookkeeping is absent from Yjs encodings. Reclaim only once pending structs drain. */
+  private pendingDependencyBytes = 0;
   private revision = 0;
   private measuredAt = -1;
   /** Conservative retained-state contributions, keyed by authenticated transport sender (not Yjs client id). */
@@ -121,7 +128,7 @@ export class CollabDoc {
 
   private measureRoom(): void {
     if (this.measuredAt !== this.revision) {
-      this.roomBytes = Y.encodeStateAsUpdate(this.ydoc).length;
+      this.roomBytes = Y.encodeStateAsUpdate(this.ydoc).length + this.pendingDependencyBytes;
       this.measuredAt = this.revision;
       this.stats.roomMeasurements++;
     }
@@ -243,6 +250,11 @@ export class CollabDoc {
     return this.applyChecked(update, inspectCheckpoint(update), "checkpoint");
   }
 
+  /** A new transport epoch retires sender slots, while all retained-state charges stay with the document. */
+  restartSenders(): void {
+    this.peerBytes.clear();
+  }
+
   private applyChecked(
     update: Uint8Array,
     check: GuardResult,
@@ -254,13 +266,15 @@ export class CollabDoc {
     }
     try {
       let contribution = this.peerBytes.get(sender) ?? 0;
+      let dependencyBytes = check.structs * DEPENDENCY_BYTES_PER_STRUCT;
+      let bytes = update.length + dependencyBytes;
       let problem: RemoteProblem | undefined;
       if (!this.peerBytes.has(sender) && this.peerBytes.size >= COLLAB_LIMITS.maxSenders) problem = "too-many-peers";
       // Leave headroom beyond the local soft budget for concurrent edits and a full sync reply. The
       // hard budgets are one message's worth per sender and two in total, including pending Yjs state.
       if (
-        contribution + update.length > COLLAB_LIMITS.maxMessageBytes ||
-        this.roomBytes + update.length > 2 * COLLAB_LIMITS.maxMessageBytes
+        contribution + bytes > COLLAB_LIMITS.maxMessageBytes ||
+        this.roomBytes + bytes > 2 * COLLAB_LIMITS.maxMessageBytes
       ) {
         this.measureRoom();
         // The entire retained document also bounds any sender's retained contribution. This reclaims
@@ -268,16 +282,19 @@ export class CollabDoc {
         contribution = Math.min(contribution, this.roomBytes);
         // Repeated sync replies carry already-integrated structs. Charge and apply only what is missing.
         update = Y.diffUpdate(update, this.stateVector());
-        if (contribution + update.length > COLLAB_LIMITS.maxMessageBytes) problem = "peer-full";
-        else if (this.roomBytes + update.length > 2 * COLLAB_LIMITS.maxMessageBytes) problem = "room-full";
+        dependencyBytes = Y.decodeUpdate(update).structs.length * DEPENDENCY_BYTES_PER_STRUCT;
+        bytes = update.length + dependencyBytes;
+        if (contribution + bytes > COLLAB_LIMITS.maxMessageBytes) problem = "peer-full";
+        else if (this.roomBytes + bytes > 2 * COLLAB_LIMITS.maxMessageBytes) problem = "room-full";
       }
       if (problem) {
         this.stats.remoteRefused++;
         return { ok: false, problem };
       }
       Y.applyUpdate(this.ydoc, update, REMOTE);
-      this.roomBytes += update.length;
-      this.peerBytes.set(sender, contribution + update.length);
+      this.pendingDependencyBytes = this.ydoc.store.pendingStructs ? this.pendingDependencyBytes + dependencyBytes : 0;
+      this.roomBytes += bytes;
+      this.peerBytes.set(sender, contribution + bytes);
     } catch {
       this.stats.remoteRefused++;
       return { ok: false, problem: "apply-failed" };

@@ -1716,6 +1716,7 @@ export class CollabSession {
       this.sealer = new Sealer(keys, sender);
       this.sealer.sign = room.signFrame;
       this.opener = new Opener(keys, sender);
+      this.doc.restartSenders();
       room.rekey(keys, start);
       this.memberPeers.clear();
       this.provedKeys.clear();

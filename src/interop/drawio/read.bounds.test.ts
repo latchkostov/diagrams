@@ -1,10 +1,18 @@
 import { afterEach, expect, it, vi } from "vitest";
 import { opGrowth, ops } from "../../test/opCounter";
 import { LIMITS } from "../native";
+import { importText } from "../formats";
 import { parseXml } from "../xml";
 import { drawioPageToDiagram, htmlToLines } from "./read";
 
 afterEach(() => vi.restoreAllMocks());
+
+it("does not rescan an unterminated tag suffix", () => {
+  const input = "<".repeat(8000);
+  const search = vi.spyOn(String.prototype, "indexOf");
+  expect(htmlToLines(input, true)).toEqual([input]);
+  expect(search.mock.calls.filter(([delimiter]) => delimiter === ">")).toHaveLength(1);
+});
 
 it("scans unfinished HTML tags linearly without invoking an unanchored tag regex", () => {
   const small = "<".repeat(1000);
@@ -35,19 +43,32 @@ it("keeps normal HTML, block breaks, entities and plain-text imports unchanged",
   expect(htmlToLines("incomplete <tag", true)).toEqual(["incomplete <tag"]);
 });
 
+function pageXml(nodes: number) {
+  return `<mxGraphModel><root><mxCell id="0"/><mxCell id="1" parent="0"/>${Array.from(
+    { length: nodes },
+    (_, i) =>
+      `<mxCell id="n${i}" value="Service" vertex="1" parent="1" style="shape=cloud;"><mxGeometry x="${i * 100}" y="0" width="80" height="40"/></mxCell>`,
+  ).join("")}</root></mxGraphModel>`;
+}
+
 function page(nodes: number) {
   return {
     id: "p",
     name: "Page-1",
-    model: parseXml(
-      `<mxGraphModel><root><mxCell id="0"/><mxCell id="1" parent="0"/>${Array.from(
-        { length: nodes },
-        (_, i) =>
-          `<mxCell id="n${i}" value="Service" vertex="1" parent="1" style="shape=cloud;"><mxGeometry x="${i * 100}" y="0" width="80" height="40"/></mxCell>`,
-      ).join("")}</root></mxGraphModel>`,
-    ),
+    model: parseXml(pageXml(nodes)),
   };
 }
+
+it("returns an announced error outcome when selecting an oversized draw.io page", async () => {
+  const outcome = await importText(
+    `<mxfile><diagram name="Small">${pageXml(1)}</diagram><diagram name="Large">${pageXml(LIMITS.maxNodes + 1)}</diagram></mxfile>`,
+    "services.drawio",
+  );
+  expect(outcome.ok).toBe("pages");
+  if (outcome.ok !== "pages") throw new Error("Expected a page picker");
+  expect(outcome.pick(1)).toEqual({ ok: false, error: "This page exceeds the node budget." });
+  expect(outcome.pick(0).ok).toBe(true);
+});
 
 it("rejects oversized foreign pages before pairwise scaling", () => {
   const small = page(LIMITS.maxNodes + 1);

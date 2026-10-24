@@ -20,6 +20,7 @@ import { memoryTabRoom } from "./tabRoom";
 import { parseRoster } from "./roomRoster";
 import { serializeNative } from "../../interop/native";
 import { CONNECTION_WAIT_MS } from "../session";
+import { COLLAB_LIMITS } from "../limits";
 
 it.each(["server-unreachable", "room-full", "server-full"] as const)(
   "surfaces relay failure %s and retains the local copy",
@@ -1212,8 +1213,18 @@ describe("knock-to-join rooms (P5)", () => {
     }
     const cSlug = c.room.getSnapshot().open!.slug!;
     const cKey = keyOf(c);
+    // Fill the epoch's sender slots with no-op sync replies. Rekey keeps this document,
+    // but the next epoch must admit fresh authenticated transport identities.
+    const doc = session(a).doc;
+    for (let i = 0; i < COLLAB_LIMITS.maxSenders; i++) doc.applyRemote(new Uint8Array([0, 0]), `old-epoch-${i}`);
+    expect(doc.applyRemote(new Uint8Array([0, 0]), "one-too-many")).toEqual({
+      ok: false,
+      problem: "too-many-peers",
+    });
     expect(await session(a).remove(cKey)).toBe(true);
     await settle(net, a, b, c);
+    expect(session(a).doc).toBe(doc);
+    expect(doc.applyRemote(new Uint8Array([0, 0]), "new-epoch-editor")).toEqual({ ok: true });
     expect(c.room.getSnapshot()).toMatchObject({ notice: { kind: "removed" } });
     expect(c.room.getSnapshot().open).toBeUndefined();
     expect(c.library.read(cSlug)).toBeDefined();
