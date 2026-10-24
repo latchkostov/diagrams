@@ -61,6 +61,17 @@ export function assertLedgerInvariants({ ledger, nodes, edges, time }: LedgerInv
     check(clocks.has(reservation.owner), "unknown owner");
     check(reservation.room >= Math.min(1, reservation.represented), "reserved without room");
     check(reservation.weight <= reservation.room && reservation.weight <= reservation.cap, "reservation exceeds gate");
+    if (reservation.unscaledWaitMs !== undefined)
+      check(
+        reservation.scope === "thread" &&
+          Number.isFinite(reservation.unscaledWaitMs) &&
+          reservation.unscaledWaitMs >= 0 &&
+          reservation.unscaledWaitMs <=
+            reservation.heldMs +
+              Math.max(0, clocks.get(reservation.owner)! - (reservation.segmentActive ?? reservation.startActive)) +
+              1e-9,
+        "paced queue credit exceeds active thread residence",
+      );
     if (reservation.scope === "request")
       requests.set(reservation.owner, (requests.get(reservation.owner) ?? 0) + reservation.weight);
     if (reservation.scope === "thread") {
