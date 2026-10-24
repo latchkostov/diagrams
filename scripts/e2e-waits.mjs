@@ -17,6 +17,12 @@ export function timeoutReferences(source, file = "test.ts") {
         : undefined;
     if (property && (ts.isIdentifier(property) || ts.isStringLiteral(property)) && property.text === "waitForTimeout")
       lines.push(ast.getLineAndCharacterOfPosition(node.getStart(ast)).line + 1);
+    if (
+      (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === "waitForTimeout") ||
+      (ts.isBindingElement(node) &&
+        (node.propertyName ?? node.name).getText(ast).replaceAll(/["']/g, "") === "waitForTimeout")
+    )
+      lines.push(ast.getLineAndCharacterOfPosition(node.getStart(ast)).line + 1);
     ts.forEachChild(node, visit);
   };
   visit(ast);

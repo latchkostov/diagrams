@@ -18,7 +18,7 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "check": "tsc --noEmit && eslint . && vitest run && playwright test",
-    "lint": "node scripts/e2e-waits.mjs && eslint .",
+    "lint": "node --test scripts/e2e-waits.test.mjs && node scripts/e2e-waits.mjs && eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test:coverage": "vitest run --project unit --coverage",

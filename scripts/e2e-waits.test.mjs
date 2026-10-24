@@ -11,6 +11,8 @@ test("rejects direct, optional, bracket and aliased timeout references", () => {
     "await guest?.waitForTimeout(500)",
     'await page["waitForTimeout"](500)',
     "const wait = page.waitForTimeout.bind(page)",
+    "await waitForTimeout(500)",
+    "const { waitForTimeout: wait } = page",
   ])
     assert.deepEqual(timeoutReferences(source), [1]);
   assert.deepEqual(timeoutReferences('// page.waitForTimeout(500)\nconst text = "waitForTimeout"'), []);
