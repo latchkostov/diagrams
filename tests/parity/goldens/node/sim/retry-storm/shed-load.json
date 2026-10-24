@@ -1,0 +1,277 @@
+{
+  "run": {
+    "time": 60000,
+    "totalMs": 60000,
+    "done": true,
+    "scale": 1,
+    "multipliers": { "traffic": 1, "capacity": 1 },
+    "expectations": [
+      { "id": "goodput", "label": "Shop goodput â‰¥ 270/s at the end", "status": "pass", "value": 299.99999999999716 },
+      { "id": "backlog", "label": "Payments backlog < 100 at the end", "status": "pass", "value": 0 },
+      { "id": "amplification", "label": "Checkout attempts per request < 1.5 at the end", "status": "pass", "value": 1 }
+    ],
+    "markers": [
+      { "atMs": 0, "kind": "traffic", "label": "checkouts" },
+      { "atMs": 1000, "kind": "fault", "label": "Fail: Payments" },
+      { "atMs": 1200, "kind": "note", "label": "Watch the Payments queue and its shed count. At 3 s, Payments slows for five seconds: its bounded queue refuses excess work with 503 instead of building abandoned work." },
+      { "atMs": 2000, "kind": "fault", "label": "Fail: Payments" },
+      { "atMs": 3000, "kind": "fault", "label": "Slow down: Payments" },
+      { "atMs": 3500, "kind": "note", "label": "Payments refuses excess work with 503. The queue stays bounded instead of building abandoned work." },
+      { "atMs": 8000, "kind": "fault", "label": "Slow down: Payments" },
+      { "atMs": 9000, "kind": "note", "label": "Payments is fast again. Fresh requests can succeed because stale work is shed." },
+      { "atMs": 15000, "kind": "note", "label": "Load shedding keeps the queue bounded. Callers receive fast 503 refusals while capacity is unavailable." },
+      { "atMs": 60000, "kind": "traffic", "label": "checkouts ends" }
+    ]
+  },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 0,
+      "nodes": {
+        "shop": { "replicas": [1, 1, 0] },
+        "checkout": { "replicas": [4, 4, 0] },
+        "payments": { "queueLimit": 60, "replicas": [4, 4, 0] },
+        "orders": { "noConsumer": true, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 10000,
+      "inSystem": 1539,
+      "nodes": {
+        "shop": { "processed": 1443, "failed": 1521, "dropped": 1521, "throughput": 253.7247021288005, "replicas": [1, 1, 0] },
+        "checkout": { "processed": 1443, "failed": 1521, "dropped": 1521, "backlog": 3, "inFlight": 6, "throughput": 253.7247021288005, "replicas": [4, 4, 0] },
+        "payments": {
+          "processed": 2073,
+          "failed": 30,
+          "dropped": 30,
+          "rejected": 3981,
+          "shed": 3981,
+          "queueLimit": 60,
+          "inFlight": 24,
+          "throughput": 280.596125392313,
+          "rejectionReasons": { "shed: queue full": 3231, "shed: waited too long": 750 },
+          "replicas": [4, 4, 0]
+        },
+        "orders": { "processed": 1413, "backlog": 1413, "throughput": 248.85788656746234, "noConsumer": true, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 20000,
+      "inSystem": 4539,
+      "nodes": {
+        "shop": { "processed": 4443, "failed": 1521, "dropped": 1521, "throughput": 299.99789910472674, "replicas": [1, 1, 0] },
+        "checkout": { "processed": 4443, "failed": 1521, "dropped": 1521, "backlog": 3, "inFlight": 6, "throughput": 299.99789910472674, "replicas": [4, 4, 0] },
+        "payments": {
+          "processed": 5073,
+          "failed": 30,
+          "dropped": 30,
+          "rejected": 3981,
+          "shed": 3981,
+          "queueLimit": 60,
+          "inFlight": 24,
+          "throughput": 299.9991190654556,
+          "rejectionReasons": { "shed: queue full": 3231, "shed: waited too long": 750 },
+          "replicas": [4, 4, 0]
+        },
+        "orders": { "processed": 4413, "backlog": 4413, "throughput": 299.99767815164216, "noConsumer": true, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 30000,
+      "inSystem": 7539,
+      "nodes": {
+        "shop": { "processed": 7443, "failed": 1521, "dropped": 1521, "throughput": 299.99999990461953, "replicas": [1, 1, 0] },
+        "checkout": { "processed": 7443, "failed": 1521, "dropped": 1521, "backlog": 3, "inFlight": 6, "throughput": 299.99999990461953, "replicas": [4, 4, 0] },
+        "payments": {
+          "processed": 8073,
+          "failed": 30,
+          "dropped": 30,
+          "rejected": 3981,
+          "shed": 3981,
+          "queueLimit": 60,
+          "inFlight": 24,
+          "throughput": 299.9999999600056,
+          "rejectionReasons": { "shed: queue full": 3231, "shed: waited too long": 750 },
+          "replicas": [4, 4, 0]
+        },
+        "orders": { "processed": 7413, "backlog": 7413, "throughput": 299.99999989458837, "noConsumer": true, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 40000,
+      "inSystem": 10539,
+      "nodes": {
+        "shop": { "processed": 10443, "failed": 1521, "dropped": 1521, "throughput": 299.99999999999545, "replicas": [1, 1, 0] },
+        "checkout": { "processed": 10443, "failed": 1521, "dropped": 1521, "backlog": 3, "inFlight": 6, "throughput": 299.99999999999545, "replicas": [4, 4, 0] },
+        "payments": {
+          "processed": 11073,
+          "failed": 30,
+          "dropped": 30,
+          "rejected": 3981,
+          "shed": 3981,
+          "queueLimit": 60,
+          "inFlight": 24,
+          "throughput": 299.99999999999716,
+          "rejectionReasons": { "shed: queue full": 3231, "shed: waited too long": 750 },
+          "replicas": [4, 4, 0]
+        },
+        "orders": { "processed": 10413, "backlog": 10413, "throughput": 299.9999999999949, "noConsumer": true, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 50000,
+      "inSystem": 13539,
+      "nodes": {
+        "shop": { "processed": 13443, "failed": 1521, "dropped": 1521, "throughput": 299.99999999999716, "replicas": [1, 1, 0] },
+        "checkout": { "processed": 13443, "failed": 1521, "dropped": 1521, "backlog": 3, "inFlight": 6, "throughput": 299.99999999999716, "replicas": [4, 4, 0] },
+        "payments": {
+          "processed": 14073,
+          "failed": 30,
+          "dropped": 30,
+          "rejected": 3981,
+          "shed": 3981,
+          "queueLimit": 60,
+          "inFlight": 24,
+          "throughput": 299.99999999999716,
+          "rejectionReasons": { "shed: queue full": 3231, "shed: waited too long": 750 },
+          "replicas": [4, 4, 0]
+        },
+        "orders": { "processed": 13413, "backlog": 13413, "throughput": 299.99999999999716, "noConsumer": true, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 60000,
+      "inSystem": 16539,
+      "nodes": {
+        "shop": { "processed": 16443, "failed": 1521, "dropped": 1521, "throughput": 299.99999999999716, "replicas": [1, 1, 0] },
+        "checkout": { "processed": 16443, "failed": 1521, "dropped": 1521, "backlog": 3, "inFlight": 6, "throughput": 299.99999999999716, "replicas": [4, 4, 0] },
+        "payments": {
+          "processed": 17073,
+          "failed": 30,
+          "dropped": 30,
+          "rejected": 3981,
+          "shed": 3981,
+          "queueLimit": 60,
+          "inFlight": 24,
+          "throughput": 299.99999999999716,
+          "rejectionReasons": { "shed: queue full": 3231, "shed: waited too long": 750 },
+          "replicas": [4, 4, 0]
+        },
+        "orders": { "processed": 16413, "backlog": 16413, "throughput": 299.99999999999716, "noConsumer": true, "replicas": [1, 1, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 60000,
+    "inSystem": 16539,
+    "real": {
+      "shop": { "processed": 16443, "failed": 1521, "dropped": 1521, "throughput": 299.99999999999716, "replicas": [1, 1, 0] },
+      "checkout": { "processed": 16443, "failed": 1521, "dropped": 1521, "backlog": 3, "inFlight": 6, "throughput": 299.99999999999716, "replicas": [4, 4, 0] },
+      "payments": {
+        "processed": 17073,
+        "failed": 30,
+        "dropped": 30,
+        "rejected": 3981,
+        "shed": 3981,
+        "queueLimit": 60,
+        "inFlight": 24,
+        "throughput": 299.99999999999716,
+        "rejectionReasons": { "shed: queue full": 3231, "shed: waited too long": 750 },
+        "replicas": [4, 4, 0]
+      },
+      "orders": { "processed": 16413, "backlog": 16413, "throughput": 299.99999999999716, "noConsumer": true, "replicas": [1, 1, 0] }
+    },
+    "edges": { "checkouts": 17997, "pay": 21108, "orders-flow": 16413 }
+  },
+  "events": {
+    "total": 153129,
+    "byKind": { "inject": 18000, "deliver": 55518, "process": 66372, "fail": 3072, "drop": 3072, "retry": 3114, "reject": 3981 },
+    "byNode": {
+      "shop": { "inject": 18000, "process": 16443, "fail": 1521, "drop": 1521 },
+      "checkout": { "deliver": 17997, "process": 16443, "retry": 3114, "fail": 1521, "drop": 1521 },
+      "payments": { "deliver": 21108, "process": 17073, "fail": 30, "drop": 30, "reject": 3981 },
+      "orders": { "deliver": 16413, "process": 16413 }
+    },
+    "perSecond": [
+      "7ec1038133ee",
+      "61ae3d65c51a",
+      "92fdfbcf4f9a",
+      "016b99547c4d",
+      "11bbab766af7",
+      "29a8cd1b8deb",
+      "a97391758846",
+      "954aaff02b0a",
+      "737e991ecc5b",
+      "978c7bdfa7e7",
+      "c8f677b71351",
+      "a3d15665794a",
+      "dfa034ae6d49",
+      "19fd2b579162",
+      "d46011559ee0",
+      "a156a5ff1984",
+      "8aab991eecf2",
+      "2ae52ddd1011",
+      "dfca0354de29",
+      "022536bfc16c",
+      "d3778099e45d",
+      "49af162ddc57",
+      "6755f4f5dc5d",
+      "bc32ede4bc16",
+      "ff3829d9388a",
+      "123396c0bc4e",
+      "ac05edd35057",
+      "c472bb0438b8",
+      "3e73dd7cdf80",
+      "a089aaff9f1d",
+      "b2d2623121ce",
+      "95283a8a8754",
+      "c23c5d003397",
+      "77a29aee5831",
+      "d76de65d5fad",
+      "e7ab07dc1fc8",
+      "c319b4f8d8c6",
+      "e82cf25785be",
+      "a203e45bcd08",
+      "7079b6f41ff5",
+      "1c18690b04ad",
+      "ad85d8d05a3b",
+      "4f4965cfd07c",
+      "92e87398a616",
+      "fb711e2552ec",
+      "50b34c03db3b",
+      "e6f210492550",
+      "b44709d93f34",
+      "35ca57daad71",
+      "24cc8ad65ea4",
+      "1b911ccd3a17",
+      "a2b4172a9643",
+      "05714e4390c1",
+      "9bd6e6fe648b",
+      "0fff8ad5c8ed",
+      "9bbc9b81fef1",
+      "fe34e178f85a",
+      "4936e999ad0d",
+      "36f6182830c4",
+      "03ec01cdef58",
+      "5aaac191c9dd"
+    ]
+  },
+  "notes": [
+    { "atMs": 1200, "text": "Watch the Payments queue and its shed count. At 3 s, Payments slows for five seconds: its bounded queue refuses excess work with 503 instead of building abandoned work.", "focus": ["payments", "checkout"] },
+    { "atMs": 3500, "text": "Payments refuses excess work with 503. The queue stays bounded instead of building abandoned work.", "focus": ["payments", "checkout"] },
+    { "atMs": 9000, "text": "Payments is fast again. Fresh requests can succeed because stale work is shed.", "focus": ["payments", "checkout"] },
+    { "atMs": 15000, "text": "Load shedding keeps the queue bounded. Callers receive fast 503 refusals while capacity is unavailable.", "focus": ["payments", "checkout"] }
+  ],
+  "latency": {
+    "journeys": { "done": 17560, "retried": 1213, "deadLettered": 0, "dropped": 1213, "blocked": 0, "partial": 0, "truncated": 0, "rejected": 1186 },
+    "endToEndMs": { "count": 17560, "min": 50, "mean": 221.54726651480638, "p50": 220, "p90": 220, "max": 900 },
+    "waitMs": {
+      "checkout": { "count": 35120, "min": 0, "mean": 53.16799544419134, "p50": 30, "p90": 100, "max": 850 },
+      "payments": { "count": 16630, "min": 0, "mean": 0.24353577871316898, "p50": 0, "p90": 0, "max": 190 }
+    },
+    "processMs": {
+      "checkout": { "count": 16374, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 },
+      "payments": { "count": 16600, "min": 80, "mean": 84.3566265060241, "p50": 80, "p90": 80, "max": 400 }
+    }
+  }
+}

@@ -10,6 +10,7 @@ import {
   unsupportedPreset,
   invalidPlanningDelay,
   invalidEndpointReference,
+  edgeSimPropsSchema,
 } from "../model/simProps";
 
 // The simulation settings' bounds, for the editors that share this chunk (the inspector, the Inputs panel).
@@ -392,6 +393,14 @@ export function validateDiagram(data: unknown): NativeResult {
     if (invalidPlanningDelay(out.props))
       return { ok: false, error: t("planning.delayInvalid", { id: e.id, limit: SIM_LIMITS.timeMs }) };
     if (invalidEndpointReference(out.props)) return { ok: false, error: t("admission.endpointInvalid", { id: e.id }) };
+    const priority = (out.props as Record<string, unknown> | undefined)?.priority;
+    if (priority !== undefined) {
+      try {
+        checkJsonSchema({ priority }, edgeSimPropsSchema);
+      } catch (error) {
+        return { ok: false, error: error instanceof Error ? error.message : String(error) };
+      }
+    }
     const caller = (out.props as Record<string, unknown> | undefined)?.caller;
     if (caller !== undefined) {
       try {

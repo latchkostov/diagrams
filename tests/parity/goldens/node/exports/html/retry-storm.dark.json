@@ -1,5 +1,5 @@
 {
-  "file": { "sha256": "fc27af42a073d582b8644b1577da56e445f556f71cfb640f5efd9106b335d8c2", "bytes": 14765 },
+  "file": { "sha256": "4e1cfc9574e27089dc52ff33671b52e34a68bd1c29794f48127d1dd54345c63f", "bytes": 14653 },
   "payload": {
     "version": 1,
     "diagram": {
@@ -60,29 +60,12 @@
       ],
       "simulations": [
         {
-          "id": "circuit-breaker",
-          "title": "A circuit breaker",
+          "id": "shed-load",
+          "title": "Shed load at Payments",
           "seed": 7,
           "scale": 1,
           "durationMs": 60000,
-          "setup": {
-            "edges": {
-              "pay": {
-                "caller": {
-                  "retry": {
-                    "maxAttempts": 3,
-                    "backoffMs": 100,
-                    "strategy": "exponential",
-                    "retryOn": ["throttled", "transient", "timeout"],
-                    "maxBackoffMs": 1000,
-                    "jitter": 1,
-                    "budget": { "percent": 20, "minPerSec": 10 }
-                  },
-                  "breaker": {}
-                }
-              }
-            }
-          },
+          "setup": { "props": { "payments": { "queue": { "limit": 60, "order": "lifo", "maxWaitMs": 200 } } } },
           "traffic": [
             {
               "id": "checkouts",
@@ -97,19 +80,19 @@
             { "atMs": 8000, "action": { "do": "fault", "fault": { "kind": "slow", "node": "payments", "factor": 1 } } },
             {
               "atMs": 1200,
-              "action": { "do": "note", "text": "Watch the Payments connection and queue. At 3 s, Payments slows for five seconds: the breaker pauses failing calls, then tests recovery. Watch for Closed and calls succeeding.", "focus": ["payments", "checkout"] }
+              "action": { "do": "note", "text": "Watch the Payments queue and its shed count. At 3 s, Payments slows for five seconds: its bounded queue refuses excess work with 503 instead of building abandoned work.", "focus": ["payments", "checkout"] }
             },
             {
               "atMs": 3500,
-              "action": { "do": "note", "text": "The slowdown pushes calls past their timeout. Once failures fill the window, the breaker opens and fails fast.", "focus": ["payments", "checkout"] }
+              "action": { "do": "note", "text": "Payments refuses excess work with 503. The queue stays bounded instead of building abandoned work.", "focus": ["payments", "checkout"] }
             },
             {
               "atMs": 9000,
-              "action": { "do": "note", "text": "Payments is fast again. The open breaker gives its queue room to drain before testing five calls.", "focus": ["payments", "checkout"] }
+              "action": { "do": "note", "text": "Payments is fast again. Fresh requests can succeed because stale work is shed.", "focus": ["payments", "checkout"] }
             },
             {
               "atMs": 15000,
-              "action": { "do": "note", "text": "The breaker tests a few calls after each pause. If they still fail, it opens again so the queue can keep draining.", "focus": ["payments", "checkout"] }
+              "action": { "do": "note", "text": "Load shedding keeps the queue bounded. Callers receive fast 503 refusals while capacity is unavailable.", "focus": ["payments", "checkout"] }
             }
           ],
           "expectations": [
@@ -138,7 +121,7 @@
               "when": "end"
             }
           ],
-          "description": "A circuit breaker fails fast while Payments drains abandoned work, then tests recovery with five calls."
+          "description": "Payments keeps at most 60 waiting requests, serves newest first and sheds work waiting over 200 ms. Fast 503 refusals bound abandoned work during the slowdown; goodput returns after it clears."
         }
       ]
     },

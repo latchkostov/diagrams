@@ -1,3 +1,4 @@
+import { EdgePriorityField } from "./PriorityField";
 import { defineLazySurface } from "../../lib/lazySurface";
 import "../../styles/inspector-layout.css";
 import { isFanOut, relationDropdownItems } from "./edgeChoices";
@@ -229,10 +230,13 @@ export function EdgePanel({ edge, editor, nodeLabel, meta, readDiagram }: Inspec
       </Section>
       <EdgeLiveDetails key={edge.id} id={edge.id} />
       {relation === "config" && <SettingsEditor key={edge.id} edge={edge} editor={editor} />}
-      {(fanOut || requestWait) && (
+      {(fanOut || requestWait || (flow && revisionAtLeast(meta.planning?.revision, "p3-w2"))) && (
         <Disclosure id="edge-simulation" title={t("inspector.simulation")} summary={callSummary}>
           {requestWait && (
             <CallWaitFields editor={editor} edgeId={edge.id} caller={props.caller} stencil={sourceStencil ?? ""} />
+          )}
+          {flow && revisionAtLeast(meta.planning?.revision, "p3-w2") && (
+            <EdgePriorityField editor={editor} edgeId={edge.id} />
           )}
           {fanOut && (
             <SimInput

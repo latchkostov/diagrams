@@ -36,7 +36,38 @@ export const applyThreadFix: ApplyThreadFix = ({ editor, controller, interaction
   if (action.kind === "resilience") {
     const effective = effectiveCallerPolicy(editor, action.edge);
     if (!effective?.editable) return;
-    effective.set(action.caller);
+    if (action.queue) {
+      const diagram = editor.getDiagram();
+      const state = controller.getState();
+      const saved = diagram.simulations?.find((s) => s.id === state.simulation?.id);
+      if (saved) {
+        const next = {
+          ...saved,
+          setup: {
+            ...saved.setup,
+            edges: {
+              ...saved.setup?.edges,
+              [action.edge]: { ...saved.setup?.edges?.[action.edge], caller: action.caller },
+            },
+            props: {
+              ...saved.setup?.props,
+              [action.queue.node]: { ...saved.setup?.props?.[action.queue.node], queue: action.queue.policy },
+            },
+          },
+        };
+        editor.updateMeta({ simulations: diagram.simulations!.map((s) => (s.id === saved.id ? next : s)) });
+        controller.setBase(next);
+      } else
+        editor.applyDiagram({
+          ...diagram,
+          edges: diagram.edges.map((e) =>
+            e.id === action.edge ? { ...e, props: { ...e.props, caller: action.caller } } : e,
+          ),
+          nodes: diagram.nodes.map((n) =>
+            n.id === action.queue!.node ? { ...n, props: { ...n.props, queue: action.queue!.policy } } : n,
+          ),
+        });
+    } else effective.set(action.caller);
     sayThreadFix(undo, label, effective.simulation);
   } else if (action.kind === "free-thread") {
     const effective = effectiveCallerPolicy(editor, action.edge);

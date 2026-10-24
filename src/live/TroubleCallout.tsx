@@ -128,6 +128,8 @@ function resilienceFixLabel(step: import("./resilienceFixPlan").ResilienceStep):
       return t("resilience.fixBudget");
     case "breaker":
       return t("resilience.addBreaker");
+    case "shedding":
+      return t("resilience.fixShedding");
     case "attempts":
       return t("resilience.fixAttempts");
   }
@@ -141,6 +143,8 @@ function resilienceFixDetail(step: import("./resilienceFixPlan").ResilienceStep)
       return t("resilience.fixBudgetDetail");
     case "breaker":
       return t("resilience.fixBreakerDetail");
+    case "shedding":
+      return t("resilience.fixSheddingDetail");
     case "attempts":
       return t("resilience.fixAttemptsDetail");
   }

@@ -1,3 +1,4 @@
+import { NodeQueueFields } from "./QueueFields";
 import "../../styles/inspector-layout.css";
 import { resolveProps } from "../../sim/defaults";
 import { admissionFieldBindings, admissionFieldLabel } from "../../planning/admissionFieldBindings";
@@ -209,6 +210,9 @@ export function NodeSimulation({
       ) : (
         <p className="insp-note">{t("inspector.thisStencilIsDecorativeAndDoesnTTakePart")}</p>
       )}
+      {role === "processor" &&
+        !resolveProps(role, "", props, stencil, meta.planning).admission &&
+        revisionAtLeast(meta.planning?.revision, "p3-w2") && <NodeQueueFields editor={editor} nodeId={nodeId} />}
       {!routed && routing}
       {!router && props.routeTable !== undefined && (
         <InertNote

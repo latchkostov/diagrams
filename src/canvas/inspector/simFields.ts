@@ -155,6 +155,7 @@ export const EDGE_KEYS = new Set([
   "share",
   "settings",
   "caller",
+  "priority",
   "requestFilter",
 ]);
 

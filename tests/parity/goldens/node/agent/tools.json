@@ -33,6 +33,16 @@
             "type": "object",
             "additionalProperties": true,
             "properties": {
+              "queue": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "limit": { "type": "integer", "minimum": 1, "maximum": 1000000 },
+                  "whenFull": { "type": "string", "enum": ["reject-new", "drop-oldest"] },
+                  "order": { "type": "string", "enum": ["fifo", "lifo"] },
+                  "maxWaitMs": { "type": "number", "minimum": 0, "maximum": 600000 }
+                }
+              },
               "resources": {
                 "type": "object",
                 "additionalProperties": false,
@@ -1299,6 +1309,7 @@
             "type": "object",
             "additionalProperties": true,
             "properties": {
+              "priority": { "type": ["string", "null"], "enum": ["critical", "normal", "sheddable", null] },
               "requestRouteId": { "type": ["string", "null"], "minLength": 1, "maxLength": 200 },
               "requestFilter": {
                 "type": ["object", "null"],
@@ -1467,6 +1478,16 @@
               },
               "filter": { "type": ["array", "null"], "items": { "type": "string" } },
               "deny": { "type": ["boolean", "null"] },
+              "queue": {
+                "type": ["object", "null"],
+                "additionalProperties": false,
+                "properties": {
+                  "limit": { "type": "integer", "minimum": 1, "maximum": 1000000 },
+                  "whenFull": { "type": "string", "enum": ["reject-new", "drop-oldest"] },
+                  "order": { "type": "string", "enum": ["fifo", "lifo"] },
+                  "maxWaitMs": { "type": "number", "minimum": 0, "maximum": 600000 }
+                }
+              },
               "resources": {
                 "type": ["object", "null"],
                 "additionalProperties": false,
@@ -2754,6 +2775,16 @@
             "type": "object",
             "additionalProperties": true,
             "properties": {
+              "queue": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "limit": { "type": "integer", "minimum": 1, "maximum": 1000000 },
+                  "whenFull": { "type": "string", "enum": ["reject-new", "drop-oldest"] },
+                  "order": { "type": "string", "enum": ["fifo", "lifo"] },
+                  "maxWaitMs": { "type": "number", "minimum": 0, "maximum": 600000 }
+                }
+              },
               "resources": {
                 "type": "object",
                 "additionalProperties": false,
@@ -4020,6 +4051,7 @@
             "type": "object",
             "additionalProperties": true,
             "properties": {
+              "priority": { "type": ["string", "null"], "enum": ["critical", "normal", "sheddable", null] },
               "requestRouteId": { "type": ["string", "null"], "minLength": 1, "maxLength": 200 },
               "requestFilter": {
                 "type": ["object", "null"],
@@ -4188,6 +4220,16 @@
               },
               "filter": { "type": ["array", "null"], "items": { "type": "string" } },
               "deny": { "type": ["boolean", "null"] },
+              "queue": {
+                "type": ["object", "null"],
+                "additionalProperties": false,
+                "properties": {
+                  "limit": { "type": "integer", "minimum": 1, "maximum": 1000000 },
+                  "whenFull": { "type": "string", "enum": ["reject-new", "drop-oldest"] },
+                  "order": { "type": "string", "enum": ["fifo", "lifo"] },
+                  "maxWaitMs": { "type": "number", "minimum": 0, "maximum": 600000 }
+                }
+              },
               "resources": {
                 "type": ["object", "null"],
                 "additionalProperties": false,
@@ -5471,6 +5513,16 @@
             "type": "object",
             "additionalProperties": true,
             "properties": {
+              "queue": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "limit": { "type": "integer", "minimum": 1, "maximum": 1000000 },
+                  "whenFull": { "type": "string", "enum": ["reject-new", "drop-oldest"] },
+                  "order": { "type": "string", "enum": ["fifo", "lifo"] },
+                  "maxWaitMs": { "type": "number", "minimum": 0, "maximum": 600000 }
+                }
+              },
               "resources": {
                 "type": "object",
                 "additionalProperties": false,
@@ -6737,6 +6789,7 @@
             "type": "object",
             "additionalProperties": true,
             "properties": {
+              "priority": { "type": ["string", "null"], "enum": ["critical", "normal", "sheddable", null] },
               "requestRouteId": { "type": ["string", "null"], "minLength": 1, "maxLength": 200 },
               "requestFilter": {
                 "type": ["object", "null"],
@@ -6905,6 +6958,16 @@
               },
               "filter": { "type": ["array", "null"], "items": { "type": "string" } },
               "deny": { "type": ["boolean", "null"] },
+              "queue": {
+                "type": ["object", "null"],
+                "additionalProperties": false,
+                "properties": {
+                  "limit": { "type": "integer", "minimum": 1, "maximum": 1000000 },
+                  "whenFull": { "type": "string", "enum": ["reject-new", "drop-oldest"] },
+                  "order": { "type": "string", "enum": ["fifo", "lifo"] },
+                  "maxWaitMs": { "type": "number", "minimum": 0, "maximum": 600000 }
+                }
+              },
               "resources": {
                 "type": ["object", "null"],
                 "additionalProperties": false,
@@ -8359,6 +8422,16 @@
             "type": "object",
             "additionalProperties": true,
             "properties": {
+              "queue": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "limit": { "type": "integer", "minimum": 1, "maximum": 1000000 },
+                  "whenFull": { "type": "string", "enum": ["reject-new", "drop-oldest"] },
+                  "order": { "type": "string", "enum": ["fifo", "lifo"] },
+                  "maxWaitMs": { "type": "number", "minimum": 0, "maximum": 600000 }
+                }
+              },
               "resources": {
                 "type": "object",
                 "additionalProperties": false,
@@ -9625,6 +9698,7 @@
             "type": "object",
             "additionalProperties": true,
             "properties": {
+              "priority": { "type": ["string", "null"], "enum": ["critical", "normal", "sheddable", null] },
               "requestRouteId": { "type": ["string", "null"], "minLength": 1, "maxLength": 200 },
               "requestFilter": {
                 "type": ["object", "null"],
@@ -9793,6 +9867,16 @@
               },
               "filter": { "type": ["array", "null"], "items": { "type": "string" } },
               "deny": { "type": ["boolean", "null"] },
+              "queue": {
+                "type": ["object", "null"],
+                "additionalProperties": false,
+                "properties": {
+                  "limit": { "type": "integer", "minimum": 1, "maximum": 1000000 },
+                  "whenFull": { "type": "string", "enum": ["reject-new", "drop-oldest"] },
+                  "order": { "type": "string", "enum": ["fifo", "lifo"] },
+                  "maxWaitMs": { "type": "number", "minimum": 0, "maximum": 600000 }
+                }
+              },
               "resources": {
                 "type": ["object", "null"],
                 "additionalProperties": false,
@@ -11192,6 +11276,16 @@
             "type": "object",
             "additionalProperties": true,
             "properties": {
+              "queue": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "limit": { "type": "integer", "minimum": 1, "maximum": 1000000 },
+                  "whenFull": { "type": "string", "enum": ["reject-new", "drop-oldest"] },
+                  "order": { "type": "string", "enum": ["fifo", "lifo"] },
+                  "maxWaitMs": { "type": "number", "minimum": 0, "maximum": 600000 }
+                }
+              },
               "resources": {
                 "type": "object",
                 "additionalProperties": false,
@@ -12458,6 +12552,7 @@
             "type": "object",
             "additionalProperties": true,
             "properties": {
+              "priority": { "type": ["string", "null"], "enum": ["critical", "normal", "sheddable", null] },
               "requestRouteId": { "type": ["string", "null"], "minLength": 1, "maxLength": 200 },
               "requestFilter": {
                 "type": ["object", "null"],
@@ -12626,6 +12721,16 @@
               },
               "filter": { "type": ["array", "null"], "items": { "type": "string" } },
               "deny": { "type": ["boolean", "null"] },
+              "queue": {
+                "type": ["object", "null"],
+                "additionalProperties": false,
+                "properties": {
+                  "limit": { "type": "integer", "minimum": 1, "maximum": 1000000 },
+                  "whenFull": { "type": "string", "enum": ["reject-new", "drop-oldest"] },
+                  "order": { "type": "string", "enum": ["fifo", "lifo"] },
+                  "maxWaitMs": { "type": "number", "minimum": 0, "maximum": 600000 }
+                }
+              },
               "resources": {
                 "type": ["object", "null"],
                 "additionalProperties": false,
@@ -13908,6 +14013,16 @@
             "type": "object",
             "additionalProperties": true,
             "properties": {
+              "queue": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "limit": { "type": "integer", "minimum": 1, "maximum": 1000000 },
+                  "whenFull": { "type": "string", "enum": ["reject-new", "drop-oldest"] },
+                  "order": { "type": "string", "enum": ["fifo", "lifo"] },
+                  "maxWaitMs": { "type": "number", "minimum": 0, "maximum": 600000 }
+                }
+              },
               "resources": {
                 "type": "object",
                 "additionalProperties": false,
@@ -15174,6 +15289,7 @@
             "type": "object",
             "additionalProperties": true,
             "properties": {
+              "priority": { "type": ["string", "null"], "enum": ["critical", "normal", "sheddable", null] },
               "requestRouteId": { "type": ["string", "null"], "minLength": 1, "maxLength": 200 },
               "requestFilter": {
                 "type": ["object", "null"],
@@ -15342,6 +15458,16 @@
               },
               "filter": { "type": ["array", "null"], "items": { "type": "string" } },
               "deny": { "type": ["boolean", "null"] },
+              "queue": {
+                "type": ["object", "null"],
+                "additionalProperties": false,
+                "properties": {
+                  "limit": { "type": "integer", "minimum": 1, "maximum": 1000000 },
+                  "whenFull": { "type": "string", "enum": ["reject-new", "drop-oldest"] },
+                  "order": { "type": "string", "enum": ["fifo", "lifo"] },
+                  "maxWaitMs": { "type": "number", "minimum": 0, "maximum": 600000 }
+                }
+              },
               "resources": {
                 "type": ["object", "null"],
                 "additionalProperties": false,
@@ -16620,6 +16746,16 @@
             "type": "object",
             "additionalProperties": true,
             "properties": {
+              "queue": {
+                "type": "object",
+                "additionalProperties": false,
+                "properties": {
+                  "limit": { "type": "integer", "minimum": 1, "maximum": 1000000 },
+                  "whenFull": { "type": "string", "enum": ["reject-new", "drop-oldest"] },
+                  "order": { "type": "string", "enum": ["fifo", "lifo"] },
+                  "maxWaitMs": { "type": "number", "minimum": 0, "maximum": 600000 }
+                }
+              },
               "resources": {
                 "type": "object",
                 "additionalProperties": false,
@@ -17886,6 +18022,7 @@
             "type": "object",
             "additionalProperties": true,
             "properties": {
+              "priority": { "type": ["string", "null"], "enum": ["critical", "normal", "sheddable", null] },
               "requestRouteId": { "type": ["string", "null"], "minLength": 1, "maxLength": 200 },
               "requestFilter": {
                 "type": ["object", "null"],
@@ -18054,6 +18191,16 @@
               },
               "filter": { "type": ["array", "null"], "items": { "type": "string" } },
               "deny": { "type": ["boolean", "null"] },
+              "queue": {
+                "type": ["object", "null"],
+                "additionalProperties": false,
+                "properties": {
+                  "limit": { "type": "integer", "minimum": 1, "maximum": 1000000 },
+                  "whenFull": { "type": "string", "enum": ["reject-new", "drop-oldest"] },
+                  "order": { "type": "string", "enum": ["fifo", "lifo"] },
+                  "maxWaitMs": { "type": "number", "minimum": 0, "maximum": 600000 }
+                }
+              },
               "resources": {
                 "type": ["object", "null"],
                 "additionalProperties": false,

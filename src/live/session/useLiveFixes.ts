@@ -3,15 +3,13 @@ import { faultTrouble } from "../faultTrouble";
 import { boundaryOutage } from "../../model/faultRuntime";
 import { t } from "../../i18n";
 import { effectiveCallerPolicy } from "../../editor/callerPolicy";
-import { useStore } from "@xyflow/react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { EditorApi } from "../../editor/types";
 import { notify } from "../../interop/ui/toast";
 import { addConsumer, addDeadLetterQueue } from "../addConsumer";
 import { capacitySaveCandidate, capacitySaveError } from "../capacityPersistence";
 import type { Trouble, TroubleAction } from "../observedTrouble";
 import { troubleLeads } from "../troubleLeads";
-import { writeLiveParams } from "../urlParams";
 import { useObservedTrouble } from "../useObservedTrouble";
 
 import type { Dispatch, SetStateAction } from "react";
@@ -21,45 +19,9 @@ import type { CapacityInputs } from "./useCapacityInputs";
 import type { LiveCommands } from "./useLiveCommands";
 import type { LiveSessionState } from "./useLiveSessionState";
 import type { TraceSpotlight } from "./useTraceSpotlight";
-import { useFollowing } from "../watchBridge";
-import { LiveSync } from "./liveSync";
 import { useInteraction } from "../../canvas/interaction";
 import type { ApplyThreadFix } from "../threadFixes";
-export function useLiveDiagramChanges({
-  session,
-  editor,
-  privateDiagram,
-}: Pick<SessionProps, "editor" | "privateDiagram"> & { session: LiveSessionState }) {
-  const { controller, getDiagram, flash, draftRef, simulations, state, draft } = session;
-  // ---------------------------------------------------------------- diagram edits while live
-
-  const nodes = useStore((s) => s.nodes);
-  const edges = useStore((s) => s.edges);
-  // The document's changes into the run, through one boundary that waits while this person follows someone's
-  // shared run (the host's ops bring them, on their ticks) and reconciles once following ends.
-  const following = useFollowing();
-  const sync = useMemo(() => new LiveSync(controller, () => flash(t("liveSession.restarted"))), [controller, flash]);
-  useEffect(() => sync.setFollowing(following), [sync, following]);
-  useEffect(() => {
-    if (!editor) return;
-    const timer = window.setTimeout(() => sync.diagram(getDiagram), 200);
-    return () => window.clearTimeout(timer);
-  }, [nodes, edges, editor, sync, getDiagram]);
-
-  // A saved simulation edited elsewhere (undo, the panel's Save) replays with the new definition; removed, free play.
-  useEffect(() => {
-    sync.simulations(simulations, () => draftRef.current?.id);
-    // Session-owned refs and setters are stable; preserve the original dependencies.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [simulations, sync]);
-
-  // Mirror the live state into the URL (canvas only) so the address is a shareable live link. A private diagram
-  // can't be shared as one, and its simulation ids can carry its words: only `live=1` goes in its address.
-  const simId = state.simulation && state.simulation.id !== draft?.id ? state.simulation.id : null;
-  useEffect(() => {
-    if (editor) writeLiveParams(true, privateDiagram ? null : simId);
-  }, [editor, simId, privateDiagram]);
-}
+export { useLiveDiagramChanges } from "./useLiveDiagramChanges";
 
 export function useLiveFixes({
   session,

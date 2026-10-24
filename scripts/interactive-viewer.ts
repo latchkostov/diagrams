@@ -64,6 +64,10 @@ const FORBIDDEN: [string, RegExp][] = [
   ["the checks markers", /[/\\]src[/\\]canvas[/\\]checks[/\\]ChecksMarkers\.tsx$/],
   // Message-type analysis serves the inspector, Checks and the app's edge reader; a file carries none of them.
   ["the message-type analysis", /[/\\]src[/\\](model[/\\]messageTypes|canvas[/\\]edges[/\\]carriedTypes)\.ts$/],
+  ["shedding inspector fields", /[/\\]src[/\\]canvas[/\\]inspector[/\\](QueueFields|PriorityField)\.tsx$/],
+  ["fix-ladder authoring", /[/\\]src[/\\]live[/\\](threadFixes|resilienceFixPlan)\.ts$/],
+  // The dependency-free sandbox identifier is shared with diagram IO; tutorial UI is dev/e2e only.
+  ["tutorial UI", /[/\\]src[/\\]tutorials[/\\](?!sandbox\.ts$)/],
 ];
 
 /**
@@ -200,6 +204,22 @@ export const EDITOR_ONLY: { name: string; path: string; stub: (root: string) => 
     name: "editor-only callout fixes",
     path: "/src/live/useObservedTrouble.ts",
     stub: () => "export const useObservedTrouble = () => ({ trouble: undefined, dismiss() {}, shown() {} });",
+  },
+  {
+    name: "the fix callout",
+    path: "/src/live/TroubleCallout.tsx",
+    stub: () => "export const TroubleCallout = () => null;",
+  },
+  {
+    name: "live fix authoring",
+    path: "/src/live/session/useLiveFixes.ts",
+    stub: (root) =>
+      [
+        `export { useLiveDiagramChanges } from ${JSON.stringify(normalizePath(resolve(root, "src/live/session/useLiveDiagramChanges.ts")))};`,
+        "const none = () => {};",
+        "const fixes = { addReader: none, runTroubleAction: none, troubleOnScreen: undefined, troubleDownloadFailed: false, retryTroubleDownload: none, troubleAnnouncement: { current: null }, troubleActionHere: () => false, troubleShown: none, dismissTrouble: none, saveInputs: none };",
+        "export const useLiveFixes = () => fixes; export const sayConsumerAdded = none;",
+      ].join("\n"),
   },
   {
     name: "the checks count, card and markers",

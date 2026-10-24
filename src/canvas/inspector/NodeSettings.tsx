@@ -1,4 +1,6 @@
 import { useMemo, useState, useSyncExternalStore } from "react";
+import { revisionAtLeast } from "../../model/revisions";
+import { managedKind } from "../../model/admissionPresets";
 import { defineLazySurface } from "../../lib/lazySurface";
 import { routingIntent } from "../../editor/routingIntent";
 import { t, useLocale } from "../../i18n";
@@ -47,7 +49,18 @@ export function NodeSettings({
   const [routingPinned, setRoutingPinned] = useState(false);
   const device = role === "gateway" ? deviceSpec(stencilId) : undefined;
   // What Custom properties leaves out: only the settings a control here shows.
-  const hidden = !device ? SIM_KEYS : device.kind === "adc" ? ADC_KEYS : DEVICE_KEYS;
+  const baseHidden = !device ? SIM_KEYS : device.kind === "adc" ? ADC_KEYS : DEVICE_KEYS;
+  const hidden = useMemo(
+    () =>
+      role === "processor" &&
+      revisionAtLeast(meta.planning?.revision, "p3-w2") &&
+      !managedKind(stencilId) &&
+      props.api === undefined &&
+      props.endpoints === undefined
+        ? new Set([...baseHidden, "queue"])
+        : baseHidden,
+    [role, meta.planning, props, stencilId, baseHidden],
+  );
   // Request routing: a router's table and a source's mix get their own section once added (simple by default:
   // until then only an Add button inside Simulation).
   const router = routeTableCapable(stencilId, role);

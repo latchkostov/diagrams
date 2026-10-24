@@ -39,6 +39,8 @@ const METRICS = METRIC_FIELDS;
 
 /** One line per simulation property. A new property fails generation until it's described here. */
 const NODE_PROP_NOTES: Record<string, string> = {
+  queue:
+    "p3-w2 processors without admission only: {limit? (1..1000000 waiting real requests), whenFull? (reject-new or drop-oldest), order? (fifo or lifo), maxWaitMs?}. Pushed arrivals only; active work and broker-fed deliveries are exempt. Refusals return 503 throttled and count as rejected and shed. Earlier revisions keep the policy dormant.",
   api: "P3 admission: typed token buckets, concurrent calls, scoped account sharing, duration/errors and per-request token/cost sizes. Unknown budgets stay unknown. Every applicable bucket is charged atomically in real units.",
   endpoints:
     "P3 admission enforcement for optional endpoint records (id, method, path, behaviour). Endpoint budgets add to node/account budgets; authoring UI is deferred to P6.",
@@ -87,6 +89,8 @@ const NODE_PROP_NOTES: Record<string, string> = {
     'request routing R1, HTTP routers only (kong, azure.api-management, aws.api-gateway, nginx, envoy, traefik, haproxy, istio, aws.elb, azure.app-gateway, load-balancer, azure.front-door, cloudflare, generic.cdn, generic.adc, f5.bigip, netscaler.adc, gcp.cloud-load-balancing): {rules: [{id, label?, match: {methods?, path?: {kind: "exact"|"prefix"|"template", value}, hosts?, headers?, query?}, targets: [{edgeId, weight}], quotas?}], default?: {targets, quotas?}}. First match wins in order; Default only when no rule matches; no Default refuses 404 (route-not-found). A matched rule never falls through: no eligible target (filters, zero weights) refuses 404 (route-no-eligible-target). Weights (integers 0-10000) pick one connection per request with a seeded draw; a down target keeps its share. Targets are ordinary outgoing flows (connection ids, or batch keys in edit_diagram). quotas are requests-unit token buckets (429 when exhausted); a sharedGroup must match planning.sharedQuotas. Unaddressed Requests use Default only; unaddressed async messages keep round-robin. Bounds: 256 rules, 16 targets, 16 header/query entries. Atomic replacement.',
 };
 const EDGE_PROP_NOTES: Record<string, string> = {
+  priority:
+    "p3-w2 incoming flows: critical, normal (default), or sheddable; higher priority serves first and lower-priority waiting work is evicted first. Retries keep their connection priority.",
   endpointId: "Request target endpoint id inside the target API node; dangling references reject rather than fall back",
   caller:
     "p3-w1: wait, deadlineMs per attempt, replyMs and poolConnections; p3-w2 executes retry: maxAttempts (includes first, capped at 10), backoffMs, strategy, maxBackoffMs, jitter 0..1, retryOn, idempotent, budget {percent, minPerSec?}. A blocking caller holds its thread through backoff. Budget: ten-second whole-dot allowance max(minPerSec*10, percent/100*requests); absent minPerSec defaults to 10. Earlier revisions keep saved retries dormant.",

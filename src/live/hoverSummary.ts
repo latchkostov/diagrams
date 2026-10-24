@@ -41,6 +41,7 @@ export const PROBLEM_PRIORITY = [
   "failed",
   "memory",
   "rejected",
+  "shed",
   "unread",
   "failover",
   "paused",
@@ -86,8 +87,12 @@ export function nodeSummary(
     ...(lost > 0 && { loss: { key: "loss", text: t("hover.lossVerdict", { count: lost }), severe: true } }),
     ...(recent.failed > 0 && { failed: { key: "failed", text: t("hover.failedVerdict", { count: recent.failed }) } }),
     ...(s.resources?.unsafe && { memory: { key: "memory", text: t("hover.memoryVerdict"), severe: true } }),
-    ...(!!recent.rejected && {
-      rejected: { key: "rejected", text: t("hover.rejectedVerdict", { count: recent.rejected }) },
+    // Queue shedding increments rejected too; report each refusal once, in the same health window.
+    ...(recent.rejected > recent.shed && {
+      rejected: { key: "rejected", text: t("hover.rejectedVerdict", { count: recent.rejected - recent.shed }) },
+    }),
+    ...(recent.shed > 0 && {
+      shed: { key: "shed", text: t("resilience.shedCount", { count: recent.shed }) },
     }),
     ...(s.noConsumer && { unread: { key: "unread", text: t("hover.unreadVerdict") } }),
     ...(s.failingOver && { failover: { key: "failover", text: t("hover.failoverVerdict") } }),
@@ -131,6 +136,15 @@ export function nodeSummary(
       ];
   const facts: HoverFact[] = [
     ...problems.slice(1).map((p) => ({ key: p.key, label: p.text, value: "", bad: p.severe })),
+    ...(s.queueLimit !== undefined
+      ? [
+          {
+            key: "queueLimit",
+            label: t("hover.queue"),
+            value: t("resilience.queueOf", { count: s.queueDepth ?? 0, limit: s.queueLimit }),
+          },
+        ]
+      : []),
     ...(s.deadLettered > 0
       ? [{ key: "deadLettered", label: t("hover.deadLettered"), value: formatCount(s.deadLettered) }]
       : []),

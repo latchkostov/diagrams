@@ -4,6 +4,14 @@
 
 import type { DiagramFile, Expectation, SimRole } from "../model/types";
 
+export type QueuePriority = "critical" | "normal" | "sheddable";
+export interface QueuePolicy {
+  limit?: number;
+  whenFull?: "reject-new" | "drop-oldest";
+  order?: "fifo" | "lifo";
+  maxWaitMs?: number;
+}
+
 export type NodeStatus = "up" | "paused" | "down";
 
 /** Emitted at the loss, using the engine's resolved overlays and the actual incoming connection. */
@@ -87,6 +95,13 @@ export interface NodeSimState {
   /** Messages a deny rule on one of this node's outgoing connections stopped. On purpose: not a loss. */
   blocked?: number;
   /** Admission refusals (including throttling), separate from processing failures and losses. */
+  /** Cumulative queue refusals; current attention belongs to the shared Live health window. */
+  shed?: number;
+  /** Shed pushed messages with no waiting caller; counted as lost by drill reports. */
+  shedLost?: number;
+  /** Pushed work waiting under the queue policy, excluding broker work and continuations. */
+  queueDepth?: number;
+  queueLimit?: number;
   rejected?: number;
   rejectionReasons?: Record<string, number>;
   /** A router's refusals by request route id ("" for requests without an address). */
@@ -210,6 +225,7 @@ export interface RouteCounts {
 
 /** Per-node tunables. Read from DiagramNode.props on load; can be changed live via setNodeProps. */
 export interface NodeSimProps {
+  queue?: QueuePolicy;
   resources?: import("../model/autoscaling").ComputeResources;
   autoscaling?: import("../model/autoscaling").AutoscalingConfig;
   /** An authored replicas patch suspends HPA until this is explicitly true. */
@@ -274,6 +290,7 @@ export interface NodeSimProps {
 
 /** Per-edge tunables from DiagramEdge.props. */
 export interface EdgeSimProps {
+  priority?: QueuePriority;
   endpointId?: string;
   caller?: {
     wait?: "blocking" | "non-blocking";

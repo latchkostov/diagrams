@@ -11,7 +11,7 @@ const SIMULATIONS: Record<string, number> = {
   // Catalogue-only showcase: Free play demonstrates the brands without adding a saved scenario.
   "../examples/vendor-edge-storefront.json": 0,
   "../examples/slow-payment-provider.json": 5,
-  "../examples/retry-storm.json": 4,
+  "../examples/retry-storm.json": 5,
   "../examples/scale-on-busy-threads.json": 3,
   "../examples/where-the-time-goes.json": 3,
   "../examples/aws-serverless-orders.json": 3,
