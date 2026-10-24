@@ -31,6 +31,7 @@ export type TroubleAction =
       kind: "resilience";
       edge: string;
       step: import("./resilienceFixPlan").ResilienceStep;
+      queue?: { node: string; policy: import("../sim/types").QueuePolicy };
       caller: NonNullable<EdgeSimProps["caller"]>;
     }
   | {

@@ -67,6 +67,14 @@ export function NodeDetailSections({
     <div className="hover-rail-body" data-testid={`node-sections-${node.id}`}>
       {section === "threads" && (
         <>
+          {s.shed !== undefined && (
+            <p data-testid={`node-shed-detail-${node.id}`}>{t("resilience.shedDetail", { count: s.shed })}</p>
+          )}
+          {s.queueLimit !== undefined && (
+            <p data-testid={`node-queue-detail-${node.id}`}>
+              {t("resilience.queueOf", { count: s.queueDepth ?? 0, limit: s.queueLimit })}
+            </p>
+          )}
           {s.threads && (
             <div className="lv-thread-detail" data-testid={`thread-detail-${node.id}`}>
               <b>
@@ -146,6 +154,9 @@ export function NodeDetailSections({
       )}
       {section === "outcomes" && (
         <>
+          {!!s.shed && (
+            <p data-testid={`node-shed-detail-${node.id}`}>{t("resilience.shedDetail", { count: s.shed })}</p>
+          )}
           {outcome && (
             <p className="lv-call-outcomes" data-testid={`node-outcome-${node.id}`}>
               {outcome}

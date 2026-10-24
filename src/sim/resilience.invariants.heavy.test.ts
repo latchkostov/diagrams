@@ -129,7 +129,7 @@ it("drains surviving nested retries using their finite work bound", () => {
   recover(e, tiers, diagram, 3);
 });
 
-it("R1–R3, R5, R6 survive sampled branches, budgets, pools, failures, outage and checkpoint replay", () => {
+it("R1–R6 survive sampled branches, budgets, pools, failures, outage and checkpoint replay", () => {
   fc.assert(
     fc.property(arbResilienceDiagram, ({ diagram, scale }) => {
       const tiers = diagram.nodes.filter((n) => n.id.startsWith("tier")).map((n) => n.id);

@@ -157,7 +157,7 @@ export function runEndResult(state: LiveState, diagram: DiagramFile): string | u
     (loss, node) => {
       const sample = state.snapshot.nodes[node.id];
       // Match expectations and Checks' dropped evidence. Dead-letter transfers are retained traffic.
-      const count = sample?.dropped ?? 0;
+      const count = (sample?.dropped ?? 0) + (sample?.shedLost ?? 0);
       return count > loss.count ? { count, label: node.label || t("fault.unnamedTarget") } : loss;
     },
     { count: 0, label: "" },

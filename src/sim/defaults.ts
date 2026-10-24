@@ -1,3 +1,5 @@
+import { queueSchema } from "../model/simProps";
+import { checkJsonSchema } from "../model/jsonSchema";
 import { revisionAtLeast } from "../model/revisions";
 import { autoscalingProblem, checkAutoscaling } from "../model/autoscalingSchema";
 import type { ComputeResources, AutoscalingConfig } from "../model/autoscaling";
@@ -62,6 +64,7 @@ export interface ResolvedDevice {
 export type ResolvedProps = Required<
   Omit<
     NodeSimProps,
+    | "queue"
     | "resources"
     | "autoscaling"
     | "resumeAutoscaling"
@@ -81,6 +84,7 @@ export type ResolvedProps = Required<
   >
 > &
   Pick<NodeSimProps, "emits"> & {
+    queue?: NodeSimProps["queue"];
     resources?: ComputeResources;
     autoscaling?: AutoscalingConfig;
     autoscalingProblem?: string;
@@ -201,6 +205,9 @@ export function resolveProps(
         : "Native managed allocation owns scaling; HPA requires a service workload."
       : undefined;
   return {
+    ...(role === "processor" && !managed && revisionAtLeast(planning?.revision, "p3-w2") && validQueue(props.queue)
+      ? { queue: props.queue }
+      : {}),
     autoscalingProblem: problem,
     ...(a1
       ? {
@@ -325,4 +332,14 @@ function resolveDevice(
     // Zero Gbps carries nothing; the ceiling is real messages per second.
     perUnit: messagesPerSec(gbps, messageKB),
   };
+}
+
+function validQueue(value: unknown): value is NonNullable<NodeSimProps["queue"]> {
+  if (value === undefined) return false;
+  try {
+    checkJsonSchema(value, queueSchema, "queue");
+    return true;
+  } catch {
+    return false;
+  }
 }

@@ -77,7 +77,9 @@ export function nodeSummary(
     ...(lost > 0 && { loss: { key: "loss", text: t("hover.lossVerdict", { count: lost }), severe: true } }),
     ...(s.failed > 0 && { failed: { key: "failed", text: t("hover.failedVerdict", { count: s.failed }) } }),
     ...(s.resources?.unsafe && { memory: { key: "memory", text: t("hover.memoryVerdict"), severe: true } }),
-    ...(!!s.rejected && { rejected: { key: "rejected", text: t("hover.rejectedVerdict", { count: s.rejected }) } }),
+    ...((s.rejected ?? 0) > (s.shed ?? 0) && {
+      rejected: { key: "rejected", text: t("hover.rejectedVerdict", { count: (s.rejected ?? 0) - (s.shed ?? 0) }) },
+    }),
     ...(s.noConsumer && { unread: { key: "unread", text: t("hover.unreadVerdict") } }),
     ...(s.failingOver && { failover: { key: "failover", text: t("hover.failoverVerdict") } }),
     ...(s.status === "paused" && { paused: { key: "paused", text: t("hover.pausedVerdict") } }),
@@ -121,6 +123,16 @@ export function nodeSummary(
           : queue,
       ];
   const facts: HoverFact[] = [
+    ...(s.shed ? [{ key: "shed", label: t("resilience.shedDetail", { count: s.shed }), value: "" }] : []),
+    ...(s.queueLimit !== undefined
+      ? [
+          {
+            key: "queueLimit",
+            label: t("hover.queue"),
+            value: t("resilience.queueOf", { count: s.queueDepth ?? 0, limit: s.queueLimit }),
+          },
+        ]
+      : []),
     ...problems.slice(1).map((p) => ({ key: p.key, label: p.text, value: "", bad: p.severe })),
     ...(s.deadLettered > 0
       ? [{ key: "deadLettered", label: t("hover.deadLettered"), value: formatCount(s.deadLettered) }]

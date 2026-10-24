@@ -172,3 +172,10 @@ it("keeps the hero verdict out of attention facts and cumulative timeouts out of
   expect(e.facts.some((f) => f.label === e.problems[0].text)).toBe(false);
   expect(e.facts.some((f) => f.key === "timeouts")).toBe(false);
 });
+
+it("historical shedding is a cumulative fact, never a current rejection verdict", () => {
+  const summary = nodeSummary(node({ rejected: 12, shed: 12, queueDepth: 2, queueLimit: 3 }), []);
+  expect(summary.problems).toEqual([]);
+  expect(summary.facts.find((f) => f.key === "shed")?.label).toContain("since restart");
+  expect(summary.facts.find((f) => f.key === "queueLimit")?.value).toBe("2 of 3 queued");
+});

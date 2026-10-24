@@ -34,3 +34,25 @@ export function breakerFixture(): DiagramFile {
   d.simulations = [{ id: "breaker", title: "Breaker override", durationMs: 10000, traffic: [] }];
   return d;
 }
+
+/** Bounded queue and fast refusals in the first second; no external system is modeled. */
+export function sheddingFixture(): DiagramFile {
+  const d = resilienceFixture();
+  d.nodes[2].props = {
+    concurrency: 1,
+    replicas: 1,
+    latencyMs: 200,
+    jitter: 0,
+    queue: { limit: 3, order: "lifo", maxWaitMs: 50 },
+  };
+  d.simulations = [
+    {
+      id: "shedding",
+      title: "Queue override",
+      durationMs: 10000,
+      traffic: [],
+      setup: { props: { partner: { queue: { limit: 2, order: "lifo", maxWaitMs: 50 } } } },
+    },
+  ];
+  return d;
+}

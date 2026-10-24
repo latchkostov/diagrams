@@ -1,3 +1,5 @@
+import { revisionAtLeast } from "../../model/revisions";
+import { resolveProps } from "../../sim/defaults";
 import { defineLazySurface } from "../../lib/lazySurface";
 import { useCallback, useMemo, useState, useSyncExternalStore, type FocusEvent } from "react";
 import { ContextMenu } from "../../components/ContextMenu";
@@ -75,7 +77,16 @@ export function NodePanel({
   const [routingPinned, setRoutingPinned] = useState(false);
   const device = role === "gateway" ? deviceSpec(node.data.stencil) : undefined;
   // What Custom properties leaves out: only the settings a control here shows.
-  const hidden = !device ? SIM_KEYS : device.kind === "adc" ? ADC_KEYS : DEVICE_KEYS;
+  const baseHidden = !device ? SIM_KEYS : device.kind === "adc" ? ADC_KEYS : DEVICE_KEYS;
+  const hidden = useMemo(
+    () =>
+      role === "processor" &&
+      revisionAtLeast(meta.planning?.revision, "p3-w2") &&
+      !resolveProps(role, "", props, node.data.stencil, meta.planning).admission
+        ? new Set([...baseHidden, "queue"])
+        : baseHidden,
+    [role, meta.planning, props, node.data.stencil, baseHidden],
+  );
   // Request routing: a router's table and a source's mix get their own section once added (simple by default:
   // until then only an Add button inside Simulation).
   const router = routeTableCapable(node.data.stencil, role);

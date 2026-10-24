@@ -178,3 +178,19 @@ it("budget recovery never infers request losses from multiple upstream sources o
     c.dispose();
   }
 });
+
+it("reports unanswered shed messages as lost without adding them to processing drops", () => {
+  const d: DiagramFile = {
+    format: "diagrams/v2",
+    title: "Shed messages",
+    nodes: [{ id: "worker", stencil: "generic.service", label: "Worker", x: 0, y: 0 }],
+    edges: [],
+  };
+  const state = {
+    run: { done: true, expectations: [] },
+    configuration: {},
+    snapshot: { nodes: { worker: { dropped: 0, shedLost: 9 } }, edges: {} },
+  } as unknown as import("./controller").LiveState;
+  expect(runEndResult(state, d)).toContain("9");
+  expect(runEndResult(state, d)).toBe("Lost 9 messages at Worker");
+});

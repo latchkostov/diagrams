@@ -608,3 +608,10 @@ export function releaseAdmission(state: AdmissionState, lease?: AdmissionLease) 
       }
     }
 }
+
+/** Queue residency is a concurrency limit, in real requests, through the same allocator. */
+export function queueGrant(queued: number, limit: number, represented: number, split: boolean): number {
+  const room = limit - queued;
+  if (split) return throttleSplit(represented, room)?.admitted ?? 0;
+  return allocate(emptyAdmission(), new Map([["queue", room]]), { represented }) === null ? 0 : represented;
+}
