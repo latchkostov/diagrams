@@ -14,7 +14,7 @@ output, reproduces the same timeout families in focused runs of the affected spe
 
 These tests retain their assertions and original timeout. Investigate their behavior under
 concurrent local verification separately; no simulation code changes with the cancellation fix.
-The earlier [timeout investigation](2026-10-23-local-simulation-test-timeouts.md) records the
+The earlier [timeout investigation](2026-10-23-native-load-backstops.md) records the
 same fixture families and their earlier master probes.
 
 The two focused master runs reported `Tests 12 failed | 170 passed (182)` and

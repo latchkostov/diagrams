@@ -1,7 +1,8 @@
+import { opGrowth } from "../test/opCounter";
 import { describe, expect, it } from "vitest";
 import { applyOps } from "../ai";
 import type { DiagramFile } from "../model/types";
-import { growth, GROWTH_FACTOR, LINEAR_LIMIT } from "../test/complexity";
+import { GROWTH_FACTOR, LINEAR_LIMIT } from "../test/complexity";
 import { agentReport, OUTPUT_BUDGET } from "./report";
 import { runChecks } from "./run";
 
@@ -87,7 +88,7 @@ describe("agentReport", () => {
     const small = many(375);
     const result = many(375 * GROWTH_FACTOR);
     expect(
-      growth(
+      opGrowth(
         () => agentReport(small),
         () => agentReport(result),
       ),

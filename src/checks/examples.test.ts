@@ -1,219 +1,11 @@
+import { opGrowth } from "../test/opCounter";
 import { describe, expect, it } from "vitest";
-import { applyOps } from "../ai";
 import type { DiagramFile } from "../model/types";
-import { growth, GROWTH_FACTOR, LINEAR_LIMIT } from "../test/complexity";
+import { GROWTH_FACTOR, LINEAR_LIMIT } from "../test/complexity";
 import { RULES as ALL_RULES, runChecks } from "./run";
 import { buildContext } from "./context";
-import { collectEvidence } from "./evidence";
-import { withEvidence } from "./evidenceMerge";
-import { upgradePlanning, upgradeAutoscaling } from "../planning/migration";
 
 const RULE_BY_ID = new Map(ALL_RULES.map((r) => [r.id, r]));
-
-// The regression snapshot over the public examples (top level only). Each finding here
-// was judged in docs/research/architecture-checks.md ("Batch 1: precision gate", "Batch 3: precision gate",
-// "Batch 4: precision gate"); a change to this list is a change to those tables. The batch 3 rules (sync-chain,
-// shared-database, entry-gateway, single-point) raise nothing on them, by the gate's tightening; of batch 4's,
-// secret-identity raises one (notification-fanout) and schema-registry none.
-
-const examples = import.meta.glob<DiagramFile>("../examples/*.json", { eager: true, import: "default" });
-const bySlug = Object.fromEntries(
-  Object.entries(examples).map(([path, d]) => [path.replace(/^.*\/|\.json$/g, ""), d] as const),
-);
-
-const EXPECTED: Record<string, string[]> = {
-  "vendor-edge-storefront": [],
-  "retry-storm": ["warning no-reader:orders"],
-  "scale-on-busy-threads": [
-    "warning blocked-threads:caller",
-    "warning scaling-blind:caller",
-    "suggestion call-timeout:call",
-  ],
-  "slow-payment-provider": ["suggestion call-timeout:pay"],
-  "blocking-call": ["warning blocked-threads:caller", "warning scaling-blind:caller", "suggestion call-timeout:call"],
-  "where-the-time-goes": [],
-  "zone-outage-drill": [],
-  "recommendations-feature-store": [],
-  "video-on-demand-pipeline": [],
-  "observability-pipeline": [],
-  "hybrid-enterprise-network": [],
-  // The KEDA pipeline sleeps at zero in free play (no rate), so nothing is offered to it until a story sends work.
-  "autoscaling-basics": [],
-  "aks-app-config-key-vault": [],
-  "aws-serverless-orders": [],
-  "branch-to-datacentre": [],
-  "azure-service-bus-integration": [],
-  "cdc-analytics": [],
-  "cqrs-event-sourcing": [],
-  "event-driven-data-platform": [],
-  "gcp-streaming-analytics": [],
-  "kafka-order-pipeline": [],
-  "nightly-batch-elt": [],
-  "notification-fanout": [],
-  "outbox-saga-checkout": ["suggestion no-reader:payments-dlq"],
-  "rag-assistant": [],
-  "webhook-ingestion": [],
-  "partitions-vs-subscriptions": ["warning capacity:log-readers"],
-  "shared-api-quotas": ["warning capacity:answer"],
-  "serverless-burst-buffer": ["warning capacity:direct", "suggestion dead-letter:queue"],
-  "measured-order-capacity": ["suggestion dead-letter:queue"],
-  "contoso-dmz": [],
-  "shared-worker-pool": ["warning capacity:worker"],
-  "cloud-run-timetable-api": ["warning capacity:worker"],
-  // Carrier events reach their service through the route table at 30/s, over its 20/s: on purpose.
-  "api-route-table": ["warning capacity:events"],
-  // The large showcases: realistic designs that pass every check.
-  "black-friday-commerce": [],
-  "cell-based-bookings": [],
-  "payments-ledger": [],
-  "delivery-dispatch": [],
-  "ev-charging-network": [],
-};
-
-// Every finding a public example ignores, with the reason the file gives: an ignore explains a finding, it
-// never hides one silently.
-const IGNORED: Record<string, string[]> = {
-  "azure-service-bus-integration": [
-    "no-reader:dlq: Poison PostInvoice commands are replayed by hand, by an operator, once the cause is fixed",
-  ],
-};
-
-describe("checks on the public examples", () => {
-  it("covers every public example", () => {
-    expect(Object.keys(bySlug).sort()).toEqual(Object.keys(EXPECTED).sort());
-  });
-
-  it.each(Object.keys(EXPECTED))("%s", (slug) => {
-    const d = bySlug[slug];
-    const result = runChecks(d);
-    expect(result.findings.map((f) => `${f.severity} ${f.id}`)).toEqual(EXPECTED[slug]);
-    const reasons = new Map((d.checks?.ignore ?? []).map((i) => [`${i.rule}:${i.target}`, i.reason]));
-    expect(result.ignored.map((f) => `${f.id}: ${reasons.get(f.id)}`)).toEqual(IGNORED[slug] ?? []);
-    // Every fix with ops applies through the ops core and clears its finding.
-    for (const f of result.findings.filter((f) => f.fix?.ops)) {
-      const applied = applyOps(d, f.fix!.ops!);
-      expect(applied.errors, f.id).toEqual([]);
-      if (f.rule === "dead-letter") {
-        // The route goes to the queue the fix adds, never to an existing node.
-        const route = applied.diagram.edges.find((e) => e.from === f.target && e.props?.dlq === true);
-        expect(
-          d.nodes.some((n) => n.id === route?.to),
-          f.id,
-        ).toBe(false);
-      }
-      if (f.scalingPlan?.kind === "busyThreads" || f.fix?.planLabel?.kind === "busyThreads") {
-        // Sustained capacity credits the busy-thread fleet up to its maximum.
-        const remaining = runChecks(applied.diagram).findings;
-        expect(remaining.map((g) => g.id)).toEqual(
-          slug === "blocking-call" ? ["capacity:caller", "call-timeout:call"] : ["call-timeout:call"],
-        );
-        if (slug === "blocking-call") {
-          // Its slow 15 s controller still needs warm replicas for the saved run's startup backlog.
-          expect(remaining[0]).toMatchObject({ severity: "suggestion", scalingPlan: { kind: "min", to: 6 } });
-        }
-      } else {
-        expect(
-          runChecks(applied.diagram).findings.map((g) => g.id),
-          f.id,
-        ).not.toContain(f.id);
-      }
-    }
-  });
-});
-it("P3 precision gate adds no findings to the same materialized P2 public examples", () => {
-  for (const d of Object.values(bySlug)) {
-    if (d.planning?.revision === "p3") continue; // These examples already require managed admission.
-    // So do the large p3-a1 showcases with managed APIs and functions; the other p3-a1 examples are still compared.
-    if (d.planning?.revision === "p3-a1" && d.nodes.some((n) => n.props?.preset === "managed-measured")) continue;
-    const p2 = upgradePlanning(d);
-    p2.planning = { revision: "p2" };
-    const p3 = upgradePlanning(p2);
-    expect(runChecks(p3).findings.map((f) => [f.id, f.severity])).toEqual(
-      runChecks(p2).findings.map((f) => [f.id, f.severity]),
-    );
-  }
-});
-
-/**
- * Run simulations on the same examples (docs/research/architecture-checks.md, "Batch 5: as built"): every saved
- * simulation plays to its end, inside the minute, and none loses a message where a finding or `dropped` would say so.
- * What they lose, they lose on purpose (their own expectations count on it), so it's planned, never a finding. A
- * change here is a change to that table.
- */
-const PLANNED: Record<string, string[]> = {
-  "retry-storm": [
-    "21 dropped payments in Three quick retries (fails)",
-    "30 dropped payments in Jittered backoff (fails)",
-    "30 dropped payments in A retry budget (fails)",
-    "30 dropped payments in A circuit breaker (fails)",
-  ],
-  "slow-payment-provider": [
-    "1059 dropped shop in No timeouts (expected)",
-    "1059 dropped gateway in No timeouts (expected)",
-    "1687 dropped shop in A 600 ms timeout (expected)",
-    "1687 dropped gateway in A 600 ms timeout (expected)",
-    "1687 dropped checkout in A 600 ms timeout (expected)",
-    "1156 dropped shop in Threads freed while waiting for the pool (expected)",
-    "1156 dropped gateway in Threads freed while waiting for the pool (expected)",
-    "1326 dropped shop in Threads held while waiting for the pool (expected)",
-    "1326 dropped gateway in Threads held while waiting for the pool (expected)",
-    "1359 dropped shop in Three retries hold threads (expected)",
-    "1359 dropped gateway in Three retries hold threads (expected)",
-    "791 dropped checkout in Three retries hold threads (expected)",
-  ],
-  // The canary keeps its 10% of quotes while it's down: an outage the table doesn't hide (on purpose).
-  "api-route-table": ["15 dropped pricing-canary in The pricing canary goes down (down)"],
-  // Poison invoices quarantines its 30 commands for an operator to replay (the file's ignore says why no reader).
-  "azure-service-bus-integration": ["30 unread dlq in Poison invoices (expected)"],
-  // The canary's failed rankings are the story; the router's weight change ends them.
-  "recommendations-feature-store": ["10 dropped ranker-v8 in The canary misbehaves (fails)"],
-  // The fibre cut loses only the requests already on the wire; new sessions go over LTE.
-  "hybrid-enterprise-network": ["2 dropped hub in Drill: the Leicester fibre is cut (down)"],
-  // A dark region drops what was already on its way there; a bad canary build fails requests in its own cell only.
-  "cell-based-bookings": [
-    "20 dropped east-alb in us-east-1 goes dark (down)",
-    "245 dropped east-c1-api in A bad deploy stays in one cell (fails)",
-  ],
-};
-
-describe("simulation evidence on the public examples", () => {
-  it.each(Object.keys(EXPECTED))("%s", (slug) => {
-    const d = bySlug[slug];
-    // Semantic completeness must not depend on coverage/CPU contention. Deadline tests inject a moving clock.
-    const ev = collectEvidence(d, { now: () => 0 });
-    expect(ev.played.map((p) => p.id)).toEqual((d.simulations ?? []).map((s) => s.id));
-    expect(ev.played.filter((p) => p.capped)).toEqual([]);
-    expect(ev.unplayed).toEqual([]);
-    expect(ev.tooBig).toEqual([]);
-    const shown = withEvidence(runChecks(d), ev, d.checks);
-    // No count on any finding, and no `dropped`: the same findings as the checks' own.
-    if (slug === "retry-storm") {
-      expect(shown.result.findings.map((f) => f.id)).toEqual(["no-reader:orders", "dropped:shop", "dropped:checkout"]);
-      for (const finding of shown.result.findings) {
-        expect(finding.evidence).toHaveLength(4);
-        expect(finding.evidence!.every((e) => e.count > 0)).toBe(true);
-      }
-      expect(shown.result.findings.map((f) => f.evidence!.at(-1))).toEqual([
-        { simulation: "A circuit breaker", what: "unread", count: 14123 },
-        { simulation: "A circuit breaker", what: "dropped", count: 3808 },
-        { simulation: "A circuit breaker", what: "dropped", count: 3808 },
-      ]);
-      expect(shown.counted).toBe(3);
-    } else if (slug === "zone-outage-drill") {
-      expect(shown.result.findings.map((f) => f.id)).toEqual(["dropped:api-b"]);
-      expect(shown.result.findings[0].evidence).toEqual([
-        { simulation: "Zone outage: no health checks", what: "dropped", count: 26 },
-      ]);
-      expect(shown.counted).toBe(1);
-    } else {
-      expect(shown.result).toEqual(runChecks(d));
-      expect(shown.counted).toBe(0);
-    }
-    expect(shown.planned.map((p) => `${p.count} ${p.what} ${p.node} in ${p.simulation} (${p.why})`)).toEqual(
-      PLANNED[slug] ?? [],
-    );
-  });
-});
 
 describe("performance", () => {
   /**
@@ -243,7 +35,7 @@ describe("performance", () => {
     const large = pipelines(false, 13 * GROWTH_FACTOR);
     expect(runChecks(large).findings.length).toBeGreaterThan(0);
     expect(
-      growth(
+      opGrowth(
         () => runChecks(small),
         () => runChecks(large),
       ),
@@ -257,7 +49,7 @@ describe("performance", () => {
     const large = pipelines(true, 13 * GROWTH_FACTOR);
     expect(runChecks(large, { rules }).findings.filter((f) => f.rule === "sync-cycle")).toHaveLength(104);
     expect(
-      growth(
+      opGrowth(
         () => runChecks(small, { rules }),
         () => runChecks(large, { rules }),
       ),
@@ -303,7 +95,7 @@ describe("performance", () => {
       const large = make(count);
       expect(runChecks(large, { rules }).findings.map((f) => f.id)).toEqual([`sync-cycle:${large.nodes[0].id}`]);
       expect(
-        growth(
+        opGrowth(
           () => runChecks(small, { rules }),
           () => runChecks(large, { rules }),
         ),
@@ -361,17 +153,6 @@ describe("batch 3 rules scale linearly", () => {
     }
     return { format: "diagrams/v1", title: "Big", nodes, edges, groups };
   }
-  /** The fastest of a few runs (after a warm-up): the ratio guards complexity, not a busy machine. */
-  const fastest = (run: () => unknown) => {
-    run();
-    let best = Infinity;
-    for (let i = 0; i < 7; i++) {
-      const start = performance.now();
-      run();
-      best = Math.min(best, performance.now() - start);
-    }
-    return best;
-  };
 
   it("eight times the diagram (about 190 to 1,500 nodes) takes about eight times as long, never sixty-four", () => {
     const small = pipelines(13);
@@ -389,7 +170,10 @@ describe("batch 3 rules scale linearly", () => {
       "entry-gateway": 100,
       "single-point": 100,
     });
-    const ratio = fastest(() => runChecks(big, { rules: RULES })) / fastest(() => runChecks(small, { rules: RULES }));
+    const ratio = opGrowth(
+      () => runChecks(small, { rules: RULES }),
+      () => runChecks(big, { rules: RULES }),
+    );
     // Linear is about 8; quadratic would be about 64. The margin is for timer noise (CI with coverage).
     expect(ratio).toBeLessThan(24);
   });
@@ -434,8 +218,10 @@ describe("batch 3 rules scale linearly", () => {
       const small = build(188);
       const big = build(1_504);
       expect(runChecks(big, { rules: [rule] }).findings, rule).toHaveLength(1);
-      const ratio =
-        fastest(() => runChecks(big, { rules: [rule] })) / fastest(() => runChecks(small, { rules: [rule] }));
+      const ratio = opGrowth(
+        () => runChecks(small, { rules: [rule] }),
+        () => runChecks(big, { rules: [rule] }),
+      );
       expect(ratio, rule).toBeLessThan(24);
     }
   });
@@ -490,17 +276,6 @@ describe("batch 4 rules scale linearly", () => {
     }
     return { format: "diagrams/v1", title: "Big", nodes, edges };
   }
-  /** The fastest of a few runs (after a warm-up): the ratio guards complexity, not a busy machine. */
-  const fastest = (run: () => unknown) => {
-    run();
-    let best = Infinity;
-    for (let i = 0; i < 7; i++) {
-      const start = performance.now();
-      run();
-      best = Math.min(best, performance.now() - start);
-    }
-    return best;
-  };
   /** The rules alone, on a context built beforehand: the shared context is linear and would hide a rule's cost. */
   const detect = (d: DiagramFile, rules: readonly (typeof RULES)[number][]) => {
     const ctx = buildContext(d);
@@ -517,7 +292,7 @@ describe("batch 4 rules scale linearly", () => {
     expect(findings[0].elements).toHaveLength(700);
     expect(findings[0].fix).toBeUndefined();
     expect(findings[1].title).toBe("200 services read secrets without an identity");
-    const ratio = fastest(detect(big, RULES)) / fastest(detect(small, RULES));
+    const ratio = opGrowth(detect(small, RULES), detect(big, RULES));
     // Linear is about 8; quadratic would be about 64. The margin is for timer noise (CI with coverage).
     expect(ratio).toBeLessThan(24);
   });
@@ -602,15 +377,4 @@ describe("batch 4 rules scale linearly", () => {
     };
     expect(work(195 * GROWTH_FACTOR) / work(195), rule).toBeLessThan(LINEAR_LIMIT);
   });
-});
-
-it("A1 precision gate preserves findings and severities on all 17 public examples", () => {
-  for (const d of Object.values(bySlug)) {
-    if (d.planning?.revision === "p3-a1") continue; // Already opted in: never downgrade an executing scaler.
-    const p3 = upgradePlanning(d),
-      a1 = upgradeAutoscaling(p3);
-    expect(runChecks(a1).findings.map((f) => [f.id, f.severity])).toEqual(
-      runChecks(p3).findings.map((f) => [f.id, f.severity]),
-    );
-  }
 });

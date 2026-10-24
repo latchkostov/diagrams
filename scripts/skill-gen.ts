@@ -2,7 +2,7 @@
 // public/llms.txt and public/schema/: the stencil catalog, the file format, the app's own validator and
 // layout code, and the Interactive HTML export's injection. The export's viewer template and icons are refreshed
 // only on release (`pnpm skill:release`, see scripts/skill-viewer.ts).
-// scripts/gen-schemas.mjs writes them (`pnpm schemas`); src/ai/skill/skill.test.ts fails when they're stale.
+// scripts/gen-schemas.mjs writes them (`pnpm schemas`); src/ai/skill/skill.heavy.test.ts fails when they're stale.
 //
 // Privacy: the only diagrams read here are the public examples, the *.json files directly in
 // src/examples/. Never recurse: src/examples/private/ holds local-only diagrams that must not ship.

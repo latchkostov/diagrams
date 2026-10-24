@@ -1,7 +1,8 @@
+import { opGrowth } from "../test/opCounter";
 import { describe, expect, it } from "vitest";
 import { fitAxis, scaleAcross, tidyLayout, TIDY_GAP, type TidyBox } from "./tidy";
 import { spreadOverlaps } from "./arrange";
-import { growth, GROWTH_FACTOR, LINEAR_LIMIT, QUADRATIC_LIMIT } from "../test/complexity";
+import { GROWTH_FACTOR, LINEAR_LIMIT, QUADRATIC_LIMIT } from "../test/complexity";
 
 const card = (id: string, x: number, y: number, label?: string): TidyBox => ({
   id,
@@ -148,20 +149,18 @@ describe("tidyLayout", () => {
     // times that, since the search stops at the first box that clashes and at its budget. Testing every box at
     // every one of the 6,560 spots costs hundreds of times more. A comparison in the same run, not a budget in ms.
     expect(
-      growth(
+      opGrowth(
         () => tidyLayout({ nodes, edges }),
         () => tidyLayout({ nodes, edges, others }),
-        { samples: 3 },
       ),
     ).toBeLessThan(LINEAR_LIMIT);
     // And eight times the selection and the obstacles: about 8 times the work at most.
     const small = scene(25);
     const large = scene(25 * GROWTH_FACTOR);
     expect(
-      growth(
+      opGrowth(
         () => tidyLayout(small),
         () => tidyLayout(large),
-        { samples: 3 },
       ),
     ).toBeLessThan(LINEAR_LIMIT);
   });
@@ -210,9 +209,10 @@ describe("align and distribute never stack nodes", () => {
     const small = line(125);
     const large = line(125 * GROWTH_FACTOR);
     expect(
-      growth(
+      opGrowth(
         () => spreadOverlaps(small.row, small.aligned, "h"),
         () => spreadOverlaps(large.row, large.aligned, "h"),
+        QUADRATIC_LIMIT,
       ),
     ).toBeLessThan(QUADRATIC_LIMIT);
     const { row, aligned } = large;

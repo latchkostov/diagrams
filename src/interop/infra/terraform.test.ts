@@ -1,3 +1,5 @@
+import { opGrowth } from "../../test/opCounter";
+import { patternGrowth } from "../../test/patternComplexity";
 import { presentReportLine } from "../ui/importMessages";
 import { formatImportMessage } from "../ui/importMessages";
 import { readFileSync } from "node:fs";
@@ -12,7 +14,7 @@ import { importTerraform, replayOutcome } from "./pipeline";
 import { MAX_RESOURCES, readTerraform, TERRAFORM_BINARY, TERRAFORM_RAW_STATE, TERRAFORM_SOURCE } from "./terraform";
 import { collectRefs, configPath, parseRef, TF_LIMITS, withoutAncestors, type RefBudget } from "./tfRefs";
 import { notDrawnReason, stencilOf } from "./tfTypes";
-import { countingReads, growth, GROWTH_FACTOR, LINEAR_LIMIT } from "../../test/complexity";
+import { countingReads, GROWTH_FACTOR, LINEAR_LIMIT } from "../../test/complexity";
 import { runChecks } from "../../checks/run";
 
 // Terraform plan and state JSON (`terraform show -json`) against the self-written fixtures
@@ -1113,7 +1115,7 @@ describe("Terraform import: hostile input", () => {
           stencilOf(evil);
         };
       };
-      expect(growth(run(times / GROWTH_FACTOR), run(times), { samples: 3 }), unit).toBeLessThan(LINEAR_LIMIT);
+      expect(patternGrowth(run(times / GROWTH_FACTOR), run(times)), unit).toBeLessThan(LINEAR_LIMIT);
     }
   });
 
@@ -1412,10 +1414,9 @@ describe("Terraform import: review findings", () => {
     const large = plan(250 * GROWTH_FACTOR);
     // Once per role and secret: 8x the policies and users is about 8x the work, never 64x.
     expect(
-      growth(
+      opGrowth(
         () => readTerraform([{ name: "grants.json", text: small }]),
         () => readTerraform([{ name: "grants.json", text: large }]),
-        { samples: 3 },
       ),
     ).toBeLessThan(LINEAR_LIMIT);
     const g = readTerraform([{ name: "grants.json", text: large }]);

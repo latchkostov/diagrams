@@ -1,10 +1,11 @@
+import { opGrowth } from "../test/opCounter";
 import { describe, expect, it, vi } from "vitest";
 import type { DiagramFile } from "../model/types";
 import { createEngine } from "../sim/engine";
 import { realSnapshot } from "../sim/units";
 import { TroubleWatcher, pickTrouble, troubleLeads, type Trouble, type WatchedFrame } from "./observedTrouble";
 import { waitingFixture } from "../lab/waitingFixture";
-import { GROWTH_FACTOR, LINEAR_LIMIT, growth } from "../test/complexity";
+import { GROWTH_FACTOR, LINEAR_LIMIT } from "../test/complexity";
 import * as admission from "../model/admissionSchema";
 import * as defaults from "../sim/defaults";
 import { simulationEdges } from "../sim/topology";
@@ -419,7 +420,7 @@ describe("status and classification", () => {
       for (; time <= 12_000; time += 1_000) watcher.observe({ time, nodes }, d);
       return () => watcher.observe({ time: (time += 1_000), nodes }, d);
     };
-    expect(growth(build(300), build(300 * GROWTH_FACTOR))).toBeLessThan(LINEAR_LIMIT);
+    expect(opGrowth(build(300), build(300 * GROWTH_FACTOR))).toBeLessThan(LINEAR_LIMIT);
   });
 });
 
@@ -509,7 +510,7 @@ describe("second review", () => {
       watcher.observe({ time, nodes }, d);
       return () => watcher.observe({ time: (time += 1_000), nodes }, d);
     };
-    expect(growth(build(150), build(150 * GROWTH_FACTOR))).toBeLessThan(LINEAR_LIMIT);
+    expect(opGrowth(build(150), build(150 * GROWTH_FACTOR))).toBeLessThan(LINEAR_LIMIT);
   });
 });
 

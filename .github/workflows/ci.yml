@@ -93,23 +93,124 @@ jobs:
             echo "e2e=true" >> "$GITHUB_OUTPUT"
           fi
 
-  # Runs on every event (docs-only and already-tested trees included) and beside the e2e matrix.
+  # Keep the former check name as an aggregate, so existing merge tooling stays compatible.
   checks:
     name: Types, lint, unit, build
+    needs: [static, coverage, build, heavy]
+    if: always()
     runs-on: ubuntu-26.04
-    # Unit tests with coverage take 7–13 minutes on hosted runners; 15 left no headroom.
-    timeout-minutes: 25
+    timeout-minutes: 5
+    steps:
+      - name: Require every lane
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          for result in $RESULTS; do [ "$result" = success ] || exit 1; done
+
+  static:
+    name: Types, lint, format
+    runs-on: ubuntu-26.04
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/toolchain
       - run: pnpm typecheck
       - run: pnpm lint
       - run: pnpm format:check
-      - run: pnpm test:coverage
-      # `pnpm build` fails if a dev-only test hook or a private example ships (vite.config.ts guards).
+
+  unit:
+    name: Unit coverage ${{ matrix.shard }}/3
+    runs-on: ubuntu-26.04
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/toolchain
+      - name: Unit coverage
+        run: >-
+          pnpm test:coverage --shard=${{ matrix.shard }}/3 --maxWorkers=3
+          --reporter=default --reporter=blob --reporter=json
+          --outputFile.blob=tests/.output/unit-blobs/shard-${{ matrix.shard }}.json
+          --outputFile.json=tests/.output/unit-results.json
+      - uses: actions/upload-artifact@v7
+        if: ${{ !cancelled() }}
+        with:
+          name: unit-blob-${{ matrix.shard }}
+          path: tests/.output/unit-blobs
+          retention-days: 7
+      - uses: actions/upload-artifact@v7
+        if: ${{ !cancelled() }}
+        with:
+          name: unit-results-${{ matrix.shard }}
+          path: tests/.output/unit-results.json
+          retention-days: 14
+
+  coverage:
+    name: Merged unit coverage
+    needs: unit
+    runs-on: ubuntu-26.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/toolchain
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: unit-blob-*
+          path: tests/.output/unit-blobs
+          merge-multiple: true
+      - name: Merge coverage
+        run: pnpm exec vitest --project unit --merge-reports=tests/.output/unit-blobs --coverage
+      - name: Record tested revision
+        run: git rev-parse HEAD > coverage/tested-sha.txt
+      - uses: actions/upload-artifact@v7
+        with:
+          name: unit-coverage
+          path: coverage
+          retention-days: 14
+
+  build:
+    name: Build, size, skill ZIP
+    runs-on: ubuntu-26.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/toolchain
       - run: pnpm build
       - name: Entry chunk size budget
         run: pnpm size
+      - name: Skill ZIP
+        run: >-
+          pnpm exec vitest run --project heavy src/ai/skill/skill.heavy.test.ts
+          --testNamePattern='zips the skill folder' --reporter=default --reporter=json
+          --outputFile=tests/.output/skill-results.json
+      - uses: actions/upload-artifact@v7
+        if: ${{ !cancelled() }}
+        with:
+          name: skill-results
+          path: tests/.output/skill-results.json
+          retention-days: 14
+
+  heavy:
+    name: Heavy tests
+    runs-on: ubuntu-26.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/toolchain
+      # ZIP determinism belongs to the build lane. Every other heavy assertion runs here, serially.
+      - name: Heavy tests
+        run: >-
+          pnpm test:heavy --testNamePattern='^(?!.*zips the skill folder)'
+          --reporter=default --reporter=json --outputFile=tests/.output/heavy-results.json
+      - uses: actions/upload-artifact@v7
+        if: ${{ !cancelled() }}
+        with:
+          name: heavy-results
+          path: tests/.output/heavy-results.json
+          retention-days: 14
 
   # Output parity (docs/PARITY.md): everything the app produces from a diagram (simulations, checks, exports,
   # imports, agent tools, layout, languages, and on a production build the canvas, images and Interactive HTML)

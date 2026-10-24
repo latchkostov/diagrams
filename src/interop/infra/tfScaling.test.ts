@@ -1,10 +1,11 @@
+import { opGrowth } from "../../test/opCounter";
 import { readFileSync } from "node:fs";
 import { describe, expect, it, vi } from "vitest";
 import type { AutoscalingConfig, ComputeResources } from "../../model/autoscaling";
 import { scalingReasonCode } from "../../model/scalingReason";
 import type { DiagramFile } from "../../model/types";
 import { createEngine } from "../../sim/engine";
-import { countingReads, growth, GROWTH_FACTOR, LINEAR_LIMIT } from "../../test/complexity";
+import { countingReads, GROWTH_FACTOR, LINEAR_LIMIT } from "../../test/complexity";
 import { validateDiagram } from "../native";
 import { formatImportMessage } from "../ui/importMessages";
 import type { ImportReport } from "./graph";
@@ -1087,7 +1088,7 @@ describe("Terraform scaling: units and parsers", () => {
   });
 });
 
-// ------------------------------------------------ hostile input: counted reads, depth, growth
+// ------------------------------------------------ hostile input: counted reads, depth
 describe("Terraform scaling: hostile input", () => {
   const huge = () => countingReads(Array.from({ length: 100_000 }, () => ({ custom_rule_type: "azure-servicebus" })));
 
@@ -1250,7 +1251,7 @@ describe("Terraform scaling: hostile input", () => {
         expect(g.components.filter((c) => (c.props?.autoscaling as AutoscalingConfig)?.mode === "on")).toHaveLength(n);
         return () => readTerraform([{ name: "big.json", text }]);
       };
-      expect(growth(run(150), run(150 * GROWTH_FACTOR), { samples: 3 })).toBeLessThan(LINEAR_LIMIT);
+      expect(opGrowth(run(150), run(150 * GROWTH_FACTOR))).toBeLessThan(LINEAR_LIMIT);
     } finally {
       spy.mockRestore();
     }

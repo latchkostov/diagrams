@@ -198,6 +198,7 @@ export function plan(config, changed = [], root) {
           ...(config.command === "quick" && !targeted ? { related: changed } : {}),
         },
       ]);
+    if (config.command !== "quick") groups.push([step("heavy", ["test:heavy", "--allowOnly=false"])]);
   }
   if (wanted.has("build") || wanted.has("size")) groups.push([step("build", ["build"])]);
   if (wanted.has("size")) groups.push([step("size", ["size"])]);

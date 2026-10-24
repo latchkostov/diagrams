@@ -1,3 +1,5 @@
+import { opGrowth } from "../../test/opCounter";
+import { patternGrowth } from "../../test/patternComplexity";
 import { presentReportLine } from "../ui/importMessages";
 import { formatImportMessage } from "../ui/importMessages";
 import { readdirSync, readFileSync } from "node:fs";
@@ -14,7 +16,7 @@ import { parseServiceHost, WorkloadNames } from "./k8sHosts";
 import { containerEnv, ENV_LIMITS, expandVars, newEnvBudget, OPAQUE } from "./k8sSettings";
 import { MAX_VALUE } from "./settings";
 import { TOO_MANY_ALIASES } from "./yaml";
-import { growth, GROWTH_FACTOR, LINEAR_LIMIT } from "../../test/complexity";
+import { GROWTH_FACTOR, LINEAR_LIMIT } from "../../test/complexity";
 import { runChecks } from "../../checks/run";
 
 // Kubernetes import against the self-written fixture set (tests/fixtures/imports/k8s), as
@@ -552,7 +554,7 @@ ${deployment("orders-app", "example/orders", "", "shop").replace(
     const { index, found } = run(8_000)();
     expect(found).toBe(0);
     expect(index.get(`ns-${7_999 % 40}`, "own-7999")).toEqual(["w7999"]);
-    expect(growth(run(1_000), run(1_000 * GROWTH_FACTOR))).toBeLessThan(LINEAR_LIMIT);
+    expect(opGrowth(run(1_000), run(1_000 * GROWTH_FACTOR))).toBeLessThan(LINEAR_LIMIT);
   });
 
   it("never reads the Secret's values", () => {
@@ -1015,7 +1017,7 @@ metadata:
         const text = manifest(head + unit.repeat(n));
         return () => importKubernetes([{ name: "evil.yaml", text }]);
       };
-      expect(growth(run(times / GROWTH_FACTOR), run(times), { samples: 3 }), head + unit).toBeLessThan(LINEAR_LIMIT);
+      expect(patternGrowth(run(times / GROWTH_FACTOR), run(times)), head + unit).toBeLessThan(LINEAR_LIMIT);
     }
   });
 
@@ -1067,9 +1069,10 @@ spec: { selector: { app: svc-${i} } }
     try {
       const run = (n: number) => {
         const text = chain(n);
+        readKubernetes([{ name: "big.yaml", text }]);
         return () => readKubernetes([{ name: "big.yaml", text }]);
       };
-      expect(growth(run(16), run(16 * GROWTH_FACTOR), { samples: 3 })).toBeLessThan(LINEAR_LIMIT);
+      expect(opGrowth(run(16), run(16 * GROWTH_FACTOR), 9, ["src/interop/infra/kubernetes.ts"])).toBeLessThan(9);
     } finally {
       parsed.cache = undefined;
     }
@@ -1256,7 +1259,7 @@ stringData: { DB_HOST: db-b-from-secret }
         const text = container(length);
         return () => importKubernetes([{ name: "chain.yaml", text }]);
       };
-      expect(growth(run(5), run(5 * GROWTH_FACTOR), { samples: 3 })).toBeLessThan(LINEAR_LIMIT);
+      expect(opGrowth(run(5), run(5 * GROWTH_FACTOR))).toBeLessThan(LINEAR_LIMIT);
     });
 
     it("budgets ConfigMap settings across workloads, and says so", () => {
@@ -1338,7 +1341,7 @@ stringData: { DB_HOST: db-b-from-secret }
           return found;
         };
       };
-      expect(growth(resolveAll(1_000), resolveAll(1_000 * GROWTH_FACTOR))).toBeLessThan(LINEAR_LIMIT);
+      expect(opGrowth(resolveAll(1_000), resolveAll(1_000 * GROWTH_FACTOR))).toBeLessThan(LINEAR_LIMIT);
     });
   });
 

@@ -1,3 +1,4 @@
+import { opGrowth } from "../test/opCounter";
 import { describe, expect, it, vi } from "vitest";
 import { GROWTH_FACTOR, LINEAR_LIMIT } from "../test/complexity";
 import type { DiagramFile } from "../model/types";
@@ -244,22 +245,18 @@ describe("ids unique across elements on load", () => {
       });
     const small = build(2_000),
       big = build(16_000);
+    // Measure first so a quadratic repair fails on counted work before the large correctness check.
+    expect(
+      opGrowth(
+        () => validateDiagram(small),
+        () => validateDiagram(big),
+      ),
+    ).toBeLessThan(24);
     const r = validateDiagram(big);
     const ids = r.ok ? allIds(r.diagram) : [];
     expect(new Set(ids).size).toBe(201 + 16_000);
     expect(r.ok && r.diagram.edges[1].id).toBe("e-202");
-    const fastest = (input: unknown) => {
-      let best = Infinity;
-      for (let i = 0; i < 5; i++) {
-        const start = performance.now();
-        validateDiagram(input);
-        best = Math.min(best, performance.now() - start);
-      }
-      return best;
-    };
-    fastest(small);
     // 8 times the input: about 8 times the work when linear, 64 times when quadratic.
-    expect(fastest(big) / fastest(small)).toBeLessThan(24);
   });
 });
 

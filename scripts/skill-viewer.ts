@@ -1,7 +1,7 @@
 // The agent skill's offline Interactive HTML export (skills/livediagrams/scripts/export-html.mjs) runs on three
 // files in scripts/lib/:
 //   - inject.mjs: the app's injection (src/export/inject.ts) as plain JavaScript. Small and stable, so
-//     `pnpm schemas` keeps it current and src/ai/skill/skill.test.ts fails when it's stale.
+//     `pnpm schemas` keeps it current and src/ai/skill/skill.heavy.test.ts fails when it's stale.
 //   - viewer-template.html: the viewer (scripts/interactive-viewer.ts), one 1.2 MB minified page.
 //   - icons.json: the SVG text of every icon the catalog uses.
 // The template and the icons change with any canvas, live or export change, so they're refreshed only on

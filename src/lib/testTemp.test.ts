@@ -117,7 +117,8 @@ it("collects a fully filtered-out skill suite without creating a fixture that sk
     [
       resolve("node_modules/vitest/vitest.mjs"),
       "run",
-      "src/ai/skill/skill.test.ts",
+      "src/ai/skill/skill.heavy.test.ts",
+      "--project=heavy",
       "-t",
       "^no-tests-match-this-filter$",
       "--maxWorkers=1",

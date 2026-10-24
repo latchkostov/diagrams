@@ -375,12 +375,17 @@ Seed and path remain in the job's failure log; no retry or custom reporter hides
 No test asserts a budget in milliseconds: a busy machine or CI with coverage fails it, and a retry hides it. What
 a timing test guards decides its form:
 
-- **Complexity** (it must stay linear): compare two sizes in the same run, never a clock. The small input is an
-  eighth of the large (`GROWTH_FACTOR`), and the ratio must stay under 24 (`LINEAR_LIMIT`: linear is about 8,
-  quadratic 64), or 192 (`QUADRATIC_LIMIT`) for work that is quadratic by design. `growth()` in
-  `src/test/complexity.ts` warms up, repeats calls too short to time, interleaves the sizes and takes the fastest
-  of several runs. `GROWTH_LOG=1` (with `--silent=false`) prints each ratio. When the library's own time (YAML or
-  JSON parsing) would hide ours, parse once and time the rest (`kubernetes.test.ts`, `terraform.test.ts`).
+- **Complexity** (it must stay linear): compare operation counts for two sizes, never a clock.
+  `opGrowth()` in `src/test/opCounter.ts` runs each size once. Vitest injects probes into actual loop
+  bodies and function/callback entries, and counts native copying, serialization and trimming work.
+  Production builds never load the probe plugin. The small input remains an eighth of the large
+  (`GROWTH_FACTOR`); use a limit of 9 for strict linear work, 24 (`LINEAR_LIMIT`) for n-log-n/mixed
+  work, or 192 (`QUADRATIC_LIMIT`) for work quadratic by design. A counter stops a runaway regression
+  once it exceeds the smaller input's work times that limit. `OP_LOG=1` prints counts and ratios.
+  Prime parser caches outside the measurement and scope counters to the reader when unrelated
+  parsing could hide a scan. Check every family with a deliberate superlinear implementation.
+  Native regex internals cannot be counted by JavaScript probes: `patternGrowth()` additionally
+  runs their original timing guards only through `scripts/ci/patterns.mjs` in Benchmarks, without coverage.
 - **Better still, count the work**: reads (`countingReads()`, a Proxy), calls (`vi.spyOn`), searches, rebuilds.
   Counts don't depend on the machine, and they see a regression a ratio can't (an index rebuilt per lookup is
   linear in the diagram too).
@@ -402,6 +407,33 @@ menu), not for time. A page opened in live view (`live=1`, `sim=`) waits for its
 session's code loads on first use, after the canvas's, and takes seconds on a busy dev server (nightly #78).
 Measuring performance itself (workloads to 5,000 nodes, timings as trends, gates for ratios, counts and bundle sizes, a
 committed baseline and the ranked hotspots) is the benchmark suite's job: `pnpm bench`, `pnpm bench:gates`, docs/BENCHMARKS.md.
+
+### Unit and heavy projects
+
+`vitest.config.ts` defines `unit` (parallel) and `heavy` (`*.heavy.test.ts`, one worker and no file
+parallelism). `pnpm test` runs both; `pnpm test:coverage` selects unit only, and `pnpm test:heavy`
+runs heavy without coverage. Keep all sampling counts, assertions and existing hang backstops when
+relocating slow specs. The full local gate runs these lanes sequentially and combines their counts.
+Quick related-test selection still includes changed heavy files. Nightly's property discovery sees
+the same `.test.ts` suffix, including heavy files.
+`pnpm typecheck` checks test/config types once in the static lane through `tsconfig.node.json`;
+Vitest does not repeat the entire type-check project in each shard or in the heavy lane.
+
+CI runs static checks, three unit coverage shards, build/size/ZIP and serial heavy tests independently.
+Vitest's blob reporter carries coverage in each shard; `--merge-reports --coverage` merges it without
+running tests again. The existing `Types, lint, unit, build` and `CI` aggregate names stay stable.
+Compare `coverage-summary.json` from the merge with an unsharded unit run when changing this setup.
+The on-demand **Compare merged unit coverage** workflow accepts a CI run ID, checks out that
+artifact's exact tested revision, and compares every file and total against one unsharded Ubuntu run.
+PRs changing this configuration also produce a `unit-unsharded-coverage` reference artifact on
+Ubuntu; compare it with the same revision's merged `unit-coverage` artifact.
+
+`tests/flakes.json` records exact test identities, observed dates/counts, owners and tracking links.
+`node scripts/ci/known-flakes.mjs <run-id>` downloads structured reports and prints `ALL-KNOWN` only
+when every red job is explained by matching tests (plus their derived aggregate failures). It prints
+`UNKNOWN: ...` and exits nonzero for unknown tests, absent/incomplete reports, cancellation or failed
+setup/build/upload steps. Unit timeout signatures do not match assertion failures. The command does
+not merge, retry, quarantine or modify the ledger. Keep observations honest and remove fixed entries.
 
 The benchmark harness's off-pane regression uses one geometry-derived middle drag to move a card
 fully beyond the pane, then exercises the app's Fit action. Reusing an 80-frame benchmark pan for

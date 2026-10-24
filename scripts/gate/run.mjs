@@ -115,9 +115,9 @@ async function executeSteps(root, config, changed, directory, extraEnv, execute)
           stepEnv.PLAYWRIGHT_JSON_OUTPUT_NAME = resolve(stepDir, "results.json");
           stepEnv.PLAYWRIGHT_HTML_OUTPUT_DIR = resolve(stepDir, "report");
         }
-        if (step.name === "unit")
+        if (step.name === "unit" || step.name === "heavy")
           args.push(
-            `--maxWorkers=${workers}`,
+            `--maxWorkers=${step.name === "heavy" ? 1 : workers}`,
             "--reporter=default",
             "--reporter=json",
             `--outputFile=${join(stepDir, "results.json")}`,
@@ -141,7 +141,7 @@ async function executeSteps(root, config, changed, directory, extraEnv, execute)
             ok &&= counts.failed === 0 && counts.flaky === 0 && counts.errors === 0;
             for (const [project, c] of Object.entries(counts.projects))
               console.log(`  ${project}: ${JSON.stringify(c)}`);
-          } else if (step.name === "unit") {
+          } else if (step.name === "unit" || step.name === "heavy") {
             const report = JSON.parse(readFileSync(join(stepDir, "results.json"), "utf8"));
             counts = { passed: report.numPassedTests, failed: report.numFailedTests, skipped: report.numPendingTests };
             ok &&= report.success && (config.command === "quick" || counts.passed > 0) && counts.failed === 0;
@@ -192,7 +192,16 @@ export function printSummary(sha, summary) {
   for (const row of summary.rows)
     console.log(`${row.name.padEnd(25)} ${row.seconds.toFixed(1).padStart(7)}  ${row.ok ? "PASS" : "FAIL"}`);
   console.log(`Wall time: ${(summary.totalSeconds ?? summary.seconds).toFixed(1)}s`);
-  const units = summary.rows.find((r) => r.name === "unit")?.counts;
+  const unitRows = summary.rows.filter((r) => r.name === "unit" || r.name === "heavy");
+  const units = unitRows.length
+    ? unitRows.reduce(
+        (sum, row) => {
+          for (const key of Object.keys(sum)) sum[key] += row.counts?.[key] ?? 0;
+          return sum;
+        },
+        { passed: 0, failed: 0, skipped: 0 },
+      )
+    : undefined;
   const parity = summary.rows.find((r) => r.name === "parity")?.counts;
   const totals = { passed: 0, failed: 0, flaky: 0, skipped: 0 };
   for (const report of summary.reports) for (const key of Object.keys(totals)) totals[key] += report[key];

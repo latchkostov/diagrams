@@ -100,7 +100,7 @@ export const EDITOR_ONLY: { name: string; path: string; stub: (root: string) => 
       )};`,
   },
   // Carried types on hovered and focused flow edges: the app shows them; a file stays within the skill's download
-  // budget (src/ai/skill/skill.test.ts) without the message-type analysis they need.
+  // budget (src/ai/skill/skill.heavy.test.ts) without the message-type analysis they need.
   {
     name: "the carried-types reader",
     path: "/src/canvas/edges/EdgeMessages.tsx",

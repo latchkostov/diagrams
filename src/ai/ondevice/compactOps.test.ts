@@ -1,9 +1,10 @@
+import { patternGrowth } from "../../test/patternComplexity";
 import { describe, expect, it } from "vitest";
 import type { DiagramFile } from "../../model/types";
 import kafka from "../../examples/kafka-order-pipeline.json";
 import { applyOps } from "../index";
 import { toOps } from "./compactOps";
-import { countingReads, growth, GROWTH_FACTOR, LINEAR_LIMIT } from "../../test/complexity";
+import { countingReads, GROWTH_FACTOR, LINEAR_LIMIT } from "../../test/complexity";
 
 const KAFKA = kafka as unknown as DiagramFile;
 const EMPTY: DiagramFile = { format: "diagrams/v1", title: "t", nodes: [], edges: [] };
@@ -1131,7 +1132,7 @@ describe("round 4 review: negation, exact duplicates, requested responses, robus
           toOps(reply(add), { diagram: EMPTY, request });
       };
     };
-    expect(growth(run(2_500), run(2_500 * GROWTH_FACTOR), { samples: 3 })).toBeLessThan(LINEAR_LIMIT);
+    expect(patternGrowth(run(2_500), run(2_500 * GROWTH_FACTOR))).toBeLessThan(LINEAR_LIMIT);
   });
 });
 

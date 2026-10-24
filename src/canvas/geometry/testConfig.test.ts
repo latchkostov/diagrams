@@ -12,9 +12,9 @@ it("keeps Node test roots out of the browser compilation and typechecks them sep
   expect(app.fileNames.filter((p) => /\.test\.tsx?$/.test(p))).toEqual([]);
   expect(tests.options.types).toContain("node");
   expect(tests.fileNames.some((p) => p.endsWith("/src/styles/tokens.test.ts"))).toBe(true);
-  const vite = readFileSync("vite.config.ts", "utf8");
-  expect(vite).toMatch(/typecheck:\s*\{\s*enabled:\s*true/);
-  expect(vite).toContain('tsconfig: "tsconfig.node.json"');
+  const scripts = (JSON.parse(readFileSync("package.json", "utf8")) as { scripts: Record<string, string> }).scripts;
+  expect(scripts.typecheck).toContain("tsc --noEmit -p tsconfig.node.json");
+  expect(tests.fileNames.some((p) => p.endsWith("/vitest.config.ts"))).toBe(true);
 });
 
 it("limits development layout audits to public fixtures instead of picker enumeration", () => {

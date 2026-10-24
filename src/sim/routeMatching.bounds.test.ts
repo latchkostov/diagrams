@@ -1,3 +1,4 @@
+import { opGrowth } from "../test/opCounter";
 import { describe, expect, it } from "vitest";
 import { createEngine } from "./engine";
 import { analyzeCapacity } from "./capacity";
@@ -5,7 +6,7 @@ import type { DiagramFile } from "../model/types";
 import type { RouteTable } from "../model/requestRouting";
 import { routingFixture } from "../lab/routingFixture";
 import { chooseAction, compileRoutes, compileTable, routingCounters } from "./routeMatching";
-import { growth, GROWTH_FACTOR, LINEAR_LIMIT } from "../test/complexity";
+import { GROWTH_FACTOR, LINEAR_LIMIT } from "../test/complexity";
 import { createRoutingValidator, routingValidations, validateRouting } from "../model/routingValidation";
 
 /** A table of `rules` exact-path rules that never match "/search", then a prefix rule that does. */
@@ -68,8 +69,8 @@ describe("request routing bounds", () => {
     const decide = (table: typeof small, m: number) => () => {
       for (let i = 0; i < m; i++) chooseAction(table, route, true);
     };
-    expect(growth(decide(small, 200), decide(large, 200))).toBeLessThan(LINEAR_LIMIT);
-    expect(growth(decide(small, 200), decide(small, 200 * GROWTH_FACTOR))).toBeLessThan(LINEAR_LIMIT);
+    expect(opGrowth(decide(small, 200), decide(large, 200))).toBeLessThan(LINEAR_LIMIT);
+    expect(opGrowth(decide(small, 200), decide(small, 200 * GROWTH_FACTOR))).toBeLessThan(LINEAR_LIMIT);
   });
 
   it("compiles and validates configuration linearly in its size", () => {
@@ -77,13 +78,13 @@ describe("request routing bounds", () => {
     const small = sized(30),
       large = sized(30 * GROWTH_FACTOR);
     expect(
-      growth(
+      opGrowth(
         () => compileTable(small.nodes[1].props!.routeTable),
         () => compileTable(large.nodes[1].props!.routeTable),
       ),
     ).toBeLessThan(LINEAR_LIMIT);
     expect(
-      growth(
+      opGrowth(
         () => validateRouting(small),
         () => validateRouting(large),
       ),

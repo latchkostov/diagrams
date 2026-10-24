@@ -50,9 +50,9 @@ if (!files.length) {
       .split(/\r?\n/)
       .filter(Boolean),
     "src/sim/waits.review.test.ts",
-    "src/sim/waits.sampling.test.ts",
-    "src/sim/scaleEquivalence.test.ts",
-    "src/sim/resilience.invariants.test.ts",
+    "src/sim/waits.sampling.heavy.test.ts",
+    "src/sim/scaleEquivalence.heavy.test.ts",
+    "src/sim/resilience.invariants.heavy.test.ts",
   );
 }
 const used = new Set(seeds);

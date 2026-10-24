@@ -32,5 +32,5 @@ Investigate entry readiness and capture state with Inputs open if CI repeats
 the failure. Preserve the exact state assertion, zero retries and existing
 backstops. Earlier observations are recorded in
 [the Inputs-entry follow-up](2026-10-19-slowmo-inputs-entry.md) and
-[deadline verification](2026-10-20-deadline-gate-browser-followups.md).
+[deadline verification](2026-10-23-native-load-backstops.md).
 No causal fix, assertion relaxation or timeout increase is claimed here.
