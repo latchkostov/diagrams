@@ -1,4 +1,4 @@
-import { NodePanel } from "./inspector/lazyNodePanel";
+import { NodePanel } from "./inspector/NodePanel";
 import { defineLazySurface } from "../lib/lazySurface";
 import { useLayoutEffect, type ReactNode } from "react";
 import { Icon } from "../components/Icon";

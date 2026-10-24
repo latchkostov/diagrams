@@ -176,9 +176,9 @@ test("quick-add leaves another control's Enter available", async ({ page }) => {
   expect(await savedDiagram(page)).toEqual(before);
 });
 
-test("typing before the node panel arrives preserves the first character", async ({ page }) => {
+test("typing before the node identity fields arrive preserves the first character", async ({ page }) => {
   await seed(page);
-  const panel = await hold(page, "NodePanel", "src/canvas/inspector/NodePanel.tsx");
+  const panel = await hold(page, "NodeIdentity", "src/canvas/inspector/NodeIdentity.tsx");
   try {
     await gotoCanvas(page, "blocking-call");
     await waitForStableViewport(page);

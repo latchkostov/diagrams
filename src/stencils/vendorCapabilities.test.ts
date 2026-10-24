@@ -1,7 +1,6 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { beforeAll, describe, expect, it, vi } from "vitest";
-import { NodePanel } from "../canvas/inspector/lazyNodePanel";
+import { describe, expect, it, vi } from "vitest";
 import { VENDOR_PARENTS } from "./vendorParents";
 import { catalog } from "./catalog";
 import { profileOf, resolvePreset } from "./profiles";
@@ -37,10 +36,6 @@ vi.mock("../i18n", async (original) => ({ ...(await original<typeof import("../i
 vi.mock("../planning/lazy", () => import("../planning/ui"));
 
 const variants = Object.entries(VENDOR_PARENTS);
-// SSR runs no effects: render the actual downloaded panel for the same capability assertions.
-beforeAll(async () => {
-  await NodePanel.ensureLoaded();
-});
 const table: RouteTable = {
   rules: [
     {

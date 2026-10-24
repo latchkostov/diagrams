@@ -11,5 +11,8 @@ Compare eager and held-download behavior, including failed download, Retry, canc
 another control and inspector fields arriving later. Input must be consumed exactly once and remain
 ordered across the ownership transition.
 
-The quarantine leaves all other PR #272 trims and bundle limits unchanged. Production canvas first
-view is 375,916 B gzip, leaving 7,084 B against 383,000 B: below the 8,192 B warning floor but in budget.
+The quarantine also restores master's eager naming container and lazy identity fields: the deferred
+container lost post-pick naming characters in targeted tests while clean master passed twice.
+Future container deferral must cover the same pending-input ownership transition. The remaining
+PR #272 trims and bundle limits stay unchanged. Production canvas first view is 380,961 B gzip,
+leaving 2,039 B against 383,000 B: below the 8,192 B warning floor but in budget.

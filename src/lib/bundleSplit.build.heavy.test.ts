@@ -303,8 +303,6 @@ describe("production bundle split", () => {
 
   it("defers optional canvas surfaces and capacity analysis until requested", () => {
     const canvasFeatures: [string, RegExp][] = [
-      ["node inspector shell", /[/\\]src[/\\]canvas[/\\]inspector[/\\]NodePanel\.tsx$/],
-      ["node inspector field metadata", /[/\\]src[/\\]canvas[/\\]inspector[/\\]simFields\.ts$/],
       ["room presence", /[/\\]src[/\\]canvas[/\\]PresenceLayer\.tsx$/],
       ["editing tooltips", /[/\\]src[/\\]canvas[/\\]NodeTooltip\.tsx$/],
       ["check markers", /[/\\]src[/\\]canvas[/\\]checks[/\\]ChecksMarkers\.tsx$/],
@@ -327,10 +325,10 @@ describe("production bundle split", () => {
     }
   });
 
-  it("keeps all searchable menu code in the canvas first view", () => {
+  it("keeps searchable menu and naming container code in the canvas first view", () => {
     for (const build of [plain(), rooms]) {
       const menuModules = bundled(build.chunks).filter((id) =>
-        /[/\\]src[/\\]components[/\\](?:ContextMenu|MenuList)\.tsx$/.test(id),
+        /[/\\]src[/\\](?:components[/\\](?:ContextMenu|MenuList)|canvas[/\\]inspector[/\\]NodePanel)\.tsx$/.test(id),
       );
       expect(menuModules.length).toBeGreaterThan(0);
       const canvasModules = bundled(closure([canvasChunk(build)], build));
@@ -340,9 +338,9 @@ describe("production bundle split", () => {
 
   it("ships surface policies without Node test-driver module paths", () => {
     const canvas = [...closure([canvasChunk()])].map((chunk) => chunk.code).join("\n");
-    expect(canvas).toContain("inspector.node");
+    expect(canvas).toContain("inspector.identity");
     expect(canvas).toContain("live.capacity-analysis");
-    expect(canvas).not.toContain("canvas/inspector/NodePanel");
+    expect(canvas).not.toContain("canvas/inspector/NodeIdentity");
     expect(canvas).not.toContain("canvas/CanvasReadouts");
   });
 

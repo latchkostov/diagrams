@@ -1,6 +1,5 @@
 import { renderToStaticMarkup } from "react-dom/server";
-import { afterEach, beforeAll, expect, it, vi } from "vitest";
-import { NodePanel } from "./inspector/lazyNodePanel";
+import { afterEach, expect, it, vi } from "vitest";
 import { catalogs } from "virtual:i18n/catalogs";
 import { state, t, type Catalog } from "../i18n";
 import en from "../i18n/en";
@@ -8,9 +7,7 @@ import { Inspector, type InspectorProps } from "./Inspector";
 import type { EditorApi } from "../editor/types";
 
 // Resolve the browser-only download so the server render still checks the actual translated fields.
-beforeAll(async () => {
-  await NodePanel.ensureLoaded();
-});
+vi.mock("./inspector/lazyNodeIdentity", () => import("./inspector/NodeIdentity"));
 
 vi.mock("react", async (original) => ({
   ...(await original<typeof import("react")>()),

@@ -21,7 +21,7 @@ import { customCount } from "./propertyValues";
 import { ADC_KEYS, DEVICE_KEYS, SIM_KEYS } from "./simFields";
 import { type InspectorProps } from "./types";
 import { useNameFields } from "./useNameFields";
-import { NodeIdentity } from "./NodeIdentity";
+import { NodeIdentity } from "./lazyNodeIdentity";
 
 // Simulation settings are needed only after selection. Identity and naming load independently of these settings;
 // the shared lazy loader supplies the failure toast and Retry outside this chunk.
