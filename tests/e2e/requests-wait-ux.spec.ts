@@ -43,8 +43,11 @@ test("call fields take the first keyboard pass while planning downloads, with st
     const section = page.getByTestId("inspector-section-edge-simulation");
     await section.focus();
     await section.press("Enter");
+    // This case holds planning, while the independently loaded Request fields must be ready for its first Tab.
+    await expect(page.getByTestId("inspector-field-wait")).toBeVisible();
+    await expect(section).toBeFocused();
     await page.keyboard.press("Tab");
-    await expect(page.getByTestId("inspector-field-wait")).toBeFocused();
+    await expect(page.getByTestId("inspector-field-wait-blocking")).toBeFocused();
     await page.keyboard.press("Tab");
     await expect(page.getByTestId("inspector-field-deadlineMs")).toBeFocused();
     await page.keyboard.press("Tab");
@@ -52,6 +55,10 @@ test("call fields take the first keyboard pass while planning downloads, with st
     await expect(pool).toBeFocused();
     await expect(page.getByTestId("inspector-hint-poolConnections")).toBeVisible();
     await expect.poll(() => requested).toBe(true);
+    // The roomier Inspector needs scrolling to reach Appearance & routing. Put that click target in view before
+    // measuring, so navigation scroll is separate from the exact planner-arrival position check below.
+    await page.getByTestId("inspector-section-edge-advanced").scrollIntoViewIfNeeded();
+    await expect(pool).toBeFocused();
     const before = await pool.boundingBox();
     expect(before).not.toBeNull();
     expect(await pool.evaluate((el) => getComputedStyle(el).borderStyle)).toBe("solid");

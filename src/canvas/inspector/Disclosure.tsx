@@ -1,4 +1,5 @@
 import { useId, useState, type ReactNode } from "react";
+import { formatCount } from "../../live/format";
 import { Icon } from "../../components/Icon";
 import { safeStorage } from "../../lib/storage";
 
@@ -22,6 +23,7 @@ export function Disclosure({
   count,
   children,
   reveal,
+  summary,
 }: {
   id: string;
   title: string;
@@ -31,18 +33,16 @@ export function Disclosure({
   children: ReactNode;
   /** An explicit field-focus request opens its section before the first focus pass. */
   reveal?: number;
+  summary?: string;
 }) {
+  // The open description and collapsed summary never coexist.
   const descriptionId = useId();
   const [open, setOpen] = useState(() => reveal !== undefined || readOpen()[id] === true);
   const [revealed, setRevealed] = useState(reveal);
   if (reveal !== undefined && reveal !== revealed) {
     setRevealed(reveal);
-    if (!open) setOpen(true);
+    setOpen(true);
   }
-  const toggle = () => {
-    setOpen(!open);
-    safeStorage.setItem(OPEN_KEY, JSON.stringify({ ...readOpen(), [id]: !open }));
-  };
   return (
     <section className={`insp-section insp-disclosure${open ? " is-open" : ""}`}>
       <h3>
@@ -50,32 +50,47 @@ export function Disclosure({
           type="button"
           className="insp-disclosure-head"
           aria-expanded={open}
-          aria-describedby={open && description ? descriptionId : undefined}
-          onClick={toggle}
+          aria-describedby={(open ? description : summary) ? descriptionId : undefined}
+          onClick={() => {
+            setOpen(!open);
+            safeStorage.setItem(OPEN_KEY, JSON.stringify({ ...readOpen(), [id]: !open }));
+          }}
           data-testid={`inspector-section-${id}`}
         >
+          <span className="insp-disclosure-title">{title}</span>
+          {!!count && (
+            <span className="insp-count" title={String(count)}>
+              {formatCount(count)}
+            </span>
+          )}
+          {aside}
+          {!open && summary && (
+            <span id={descriptionId} className="insp-summary" aria-hidden data-testid={`inspector-summary-${id}`}>
+              {summary}
+            </span>
+          )}
           <Icon name="chevron-right" size={12} />
-          {title}
-          {!!count && <span className="insp-count">{count}</span>}
         </button>
-        {aside}
       </h3>
-      {open &&
-        (description ? (
-          <div
-            className="insp-request-content"
-            role="group"
-            data-testid={`inspector-content-${id}`}
-            aria-describedby={descriptionId}
-          >
-            <p id={descriptionId} className="insp-note">
-              {description}
-            </p>
-            {children}
-          </div>
-        ) : (
-          children
-        ))}
+      {open && (
+        <div className="insp-section-body" data-testid={`inspector-body-${id}`}>
+          {description ? (
+            <div
+              className="insp-section-body"
+              role="group"
+              data-testid={`inspector-content-${id}`}
+              aria-describedby={descriptionId}
+            >
+              <p id={descriptionId} className="insp-note">
+                {description}
+              </p>
+              {children}
+            </div>
+          ) : (
+            children
+          )}
+        </div>
+      )}
     </section>
   );
 }

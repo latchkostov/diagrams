@@ -1,3 +1,4 @@
+import "../../styles/inspector-layout.css";
 import { useLayoutEffect, type CSSProperties } from "react";
 import { DOCUMENTATION_LIMITS } from "../../model/documentation";
 import { t } from "../../i18n";
@@ -9,6 +10,7 @@ import type { getStencil } from "../../stencils/registry";
 import { useInteraction } from "../interaction/useInteraction";
 import type { DiagramFlowNode } from "../types";
 import { Section, CopyId, Field } from "./fields";
+import { PairedFields } from "./Layout";
 import type { InspectorProps } from "./types";
 import type { useNameFields } from "./useNameFields";
 
@@ -110,23 +112,25 @@ export function NodeIdentity({
           testId="inspector-field-node-description"
         />
       </Field>
-      <Field label={t("inspector.boundary")}>
-        <select
-          className="insp-input"
-          value={node.data.group ?? ""}
-          onChange={(e) => editor.updateNode(node.id, { group: e.target.value || undefined })}
-          name="group"
-          data-testid="inspector-field-group"
-        >
-          <option value="">{t("inspector.none")}</option>
-          {groups.map((g) => (
-            <option key={g.id} value={g.data.groupId}>
-              {g.data.label}
-            </option>
-          ))}
-        </select>
-      </Field>
-      <CopyId id={node.id} />
+      <PairedFields testId="inspector-placement">
+        <Field label={t("inspector.boundary")}>
+          <select
+            className="insp-input"
+            value={node.data.group ?? ""}
+            onChange={(e) => editor.updateNode(node.id, { group: e.target.value || undefined })}
+            name="group"
+            data-testid="inspector-field-group"
+          >
+            <option value="">{t("inspector.none")}</option>
+            {groups.map((g) => (
+              <option key={g.id} value={g.data.groupId}>
+                {g.data.label}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <CopyId id={node.id} />
+      </PairedFields>
     </Section>
   );
 }

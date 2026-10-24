@@ -34,3 +34,35 @@ it("edge typing reads broker vocabulary from metadata without serializing the gr
   }
   expect(getDiagram).toHaveBeenCalledTimes(0);
 });
+
+it("collapsed Request summaries render without reading the whole graph", () => {
+  const getDiagram = vi.fn(() => {
+    throw new Error("whole graph read for a collapsed summary");
+  });
+  const edge = {
+    id: "call",
+    source: "caller",
+    target: "api",
+    data: {
+      kind: "sync" as const,
+      props: {
+        caller: { wait: "non-blocking", deadlineMs: 300, retry: { maxAttempts: 3 } },
+      },
+    },
+  };
+  const props = {
+    editor: { getDiagram, getNode: () => ({ stencil: "generic.service" }) } as unknown as EditorApi,
+    meta: { format: "diagrams/v2", planning: { revision: "p3-w2" }, title: "Test" },
+    selectedNodes: [],
+    selectedGroups: [],
+    selectedEdges: [edge],
+    groups: [],
+    nodeLabel: (id: string) => id,
+    counts: { nodes: 2, edges: 1, groups: 0 },
+    collapsed: false,
+    onToggle: () => {},
+  } as InspectorProps;
+  const html = renderToStaticMarkup(<EdgePanel {...props} edge={edge} />);
+  expect(html).toContain("Frees the thread · 300 ms timeout · 3 attempts");
+  expect(getDiagram).toHaveBeenCalledTimes(0);
+});

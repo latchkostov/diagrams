@@ -276,7 +276,8 @@ test("node Live is docked, opens the verdict section, and updates without resett
   await waitForStableViewport(page);
   await page.getByTestId("node-caller").dblclick();
   const area = page.getByTestId("planning-live-details");
-  await expect(area.getByTestId("planning-live-details-toggle")).toHaveText(/Live$/);
+  await expect(area.getByTestId("inspector-live-title")).toHaveText("Live");
+  await expect(area.getByTestId("planning-live-details-toggle")).toHaveAccessibleName("Live Healthy");
   await expect(area.getByTestId("inspector-live-waiting")).toHaveText("Waiting for the first second of traffic");
   await expect(area.getByTestId("hover-vitals")).toHaveCount(0);
   await page.getByTestId("live-play").click();

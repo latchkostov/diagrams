@@ -2,7 +2,8 @@ import { RequestGroup } from "./RequestGroup";
 import type { ReactNode } from "react";
 import { Dropdown } from "../../components/Dropdown";
 import { Disclosure } from "./Disclosure";
-import { Field } from "./fields";
+import { Field, Segmented } from "./fields";
+import { Fieldset, PairedFields } from "./Layout";
 import { SimInput } from "./SimulationFields";
 import { t } from "../../i18n";
 import type { RetryPolicy } from "../../model/admission";
@@ -70,7 +71,7 @@ export function RetryFields({
               </label>
 
               {retry.budget && (
-                <>
+                <PairedFields>
                   <SimInput
                     name="retry-budget-percent"
                     field={{
@@ -101,7 +102,7 @@ export function RetryFields({
                       update({ budget: { ...retry.budget!, minPerSec: typeof v === "number" ? v : undefined } })
                     }
                   />
-                </>
+                </PairedFields>
               )}
             </Disclosure>
           </>
@@ -113,75 +114,96 @@ export function RetryFields({
             id="retry-details"
             title={t("resilience.retryTiming")}
             description={t("resilience.retryTimingHint")}
+            summary={t("workspaceInspector.retrySummary", {
+              backoff: retry.backoffMs,
+              growth: retry.strategy === "fixed" ? t("resilience.fixed") : t("resilience.exponential"),
+            })}
           >
             {origin}
-            <SimInput
-              name="retry-backoff"
-              field={{
-                label: t("resilience.backoff"),
-                kind: "number",
-                placeholder: "",
-                hint: "",
-                min: 0,
-                max: 600000,
-                unit: "ms",
-              }}
-              value={retry.backoffMs}
-              onChange={(v) => update({ backoffMs: typeof v === "number" ? v : 0 })}
-            />
-            <Field label={t("resilience.growth")}>
-              <Dropdown
-                testId="inspector-field-retry-growth"
-                value={retry.strategy}
-                items={[
-                  { value: "fixed", label: t("resilience.fixed") },
-                  { value: "exponential", label: t("resilience.exponential") },
-                ]}
-                onChange={(v) => update({ strategy: v as RetryPolicy["strategy"] })}
+            <PairedFields testId="inspector-retry-pairs">
+              <SimInput
+                name="retry-backoff"
+                field={{
+                  label: t("resilience.backoff"),
+                  kind: "number",
+                  placeholder: "",
+                  hint: "",
+                  min: 0,
+                  max: 600000,
+                  unit: "ms",
+                }}
+                value={retry.backoffMs}
+                onChange={(v) => update({ backoffMs: typeof v === "number" ? v : 0 })}
               />
-            </Field>
-            <SimInput
-              name="retry-maxBackoff"
-              field={{
-                label: t("resilience.maxBackoff"),
-                kind: "number",
-                placeholder: "",
-                hint: "",
-                min: 0,
-                max: 600000,
-                unit: "ms",
-              }}
-              value={retry.maxBackoffMs}
-              onChange={(v) => update({ maxBackoffMs: typeof v === "number" ? v : undefined })}
-            />
-            <Field label={t("resilience.jitter")} hint={t("resilience.jitterHint")}>
-              <Dropdown
-                testId="inspector-field-retry-jitter"
-                value={String(retry.jitter ?? 0)}
-                items={[
-                  { value: "0", label: t("resilience.jitterNone") },
-                  { value: "0.5", label: t("resilience.jitterEqual") },
-                  { value: "1", label: t("resilience.jitterFull") },
-                  ...(![0, 0.5, 1].includes(retry.jitter ?? 0)
-                    ? [
-                        {
-                          value: String(retry.jitter),
-                          label: t("resilience.customJitter", { percent: Math.round(retry.jitter! * 100) }),
-                        },
-                      ]
-                    : []),
-                ]}
-                onChange={(v) => update({ jitter: Number(v) })}
+              <Field group label={t("resilience.growth")} testId="inspector-unit-retry-growth">
+                <Segmented
+                  testId="inspector-field-retry-growth"
+                  label={t("resilience.growth")}
+                  value={retry.strategy}
+                  options={[
+                    { value: "fixed", label: t("resilience.fixed") },
+                    { value: "exponential", label: t("resilience.exponential") },
+                  ]}
+                  onChange={(v) => update({ strategy: v as RetryPolicy["strategy"] })}
+                />
+              </Field>
+              <SimInput
+                name="retry-maxBackoff"
+                field={{
+                  label: t("resilience.maxBackoff"),
+                  kind: "number",
+                  placeholder: "",
+                  hint: "",
+                  min: 0,
+                  max: 600000,
+                  unit: "ms",
+                }}
+                value={retry.maxBackoffMs}
+                onChange={(v) => update({ maxBackoffMs: typeof v === "number" ? v : undefined })}
               />
-            </Field>
+              <Field group label={t("resilience.jitter")} hint={t("resilience.jitterHint")}>
+                <Segmented
+                  testId="inspector-field-retry-jitter"
+                  label={t("resilience.jitter")}
+                  value={String(retry.jitter ?? 0)}
+                  options={[
+                    { value: "0", label: t("resilience.jitterNone") },
+                    { value: "0.5", label: t("resilience.jitterEqual") },
+                    { value: "1", label: t("resilience.jitterFull") },
+                    ...(![0, 0.5, 1].includes(retry.jitter ?? 0)
+                      ? [
+                          {
+                            value: String(retry.jitter),
+                            label: t("resilience.customJitter", { percent: Math.round(retry.jitter! * 100) }),
+                          },
+                        ]
+                      : []),
+                  ]}
+                  onChange={(v) => update({ jitter: Number(v) })}
+                />
+              </Field>
+            </PairedFields>
           </Disclosure>
           <Disclosure
             id="retry-safety"
             title={t("resilience.retrySafety")}
             description={t("resilience.retrySafetyHint")}
+            summary={t("workspaceInspector.valueSummary", {
+              label: t("resilience.retryOn"),
+              value: retry.retryOn
+                .map(
+                  (value) =>
+                    ({
+                      throttled: t("resilience.throttled"),
+                      transient: t("resilience.transient"),
+                      timeout: t("resilience.timeout"),
+                    })[value],
+                )
+                .join(" · "),
+            })}
           >
             {origin}
-            <Field label={t("resilience.retryOn")} group>
+            <Fieldset legend={t("resilience.retryOn")}>
               {(
                 [
                   { value: "throttled", label: t("resilience.throttled") },
@@ -205,7 +227,7 @@ export function RetryFields({
                   {label}
                 </label>
               ))}
-            </Field>
+            </Fieldset>
             <Field label={t("resilience.idempotent")}>
               <Dropdown
                 testId="inspector-field-retry-idempotent"

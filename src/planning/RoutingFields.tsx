@@ -1,3 +1,4 @@
+import { ReadoutDisclosure } from "../live/ReadoutDisclosure";
 import { revisionAtLeast } from "../model/revisions";
 import {
   useEffect,
@@ -235,8 +236,7 @@ function AddressEditor({
           {problem}
         </small>
       )}
-      <details data-testid={`${testId}-advanced`}>
-        <summary>{t("ai.advanced")}</summary>
+      <ReadoutDisclosure testId={`${testId}-advanced`} title={t("ai.advanced")}>
         <label className="insp-field">
           <span className="insp-label">{t("routing.host")}</span>
           <input
@@ -277,7 +277,7 @@ function AddressEditor({
             onChange={(e) => commit({ query: e.currentTarget.value })}
           />
         </label>
-      </details>
+      </ReadoutDisclosure>
     </div>
   );
 }
@@ -535,8 +535,7 @@ function MatchEditor({
           {problem}
         </small>
       )}
-      <details data-testid={`${testId}-advanced`}>
-        <summary>{t("routing.matchMore")}</summary>
+      <ReadoutDisclosure testId={`${testId}-advanced`} title={t("routing.matchMore")}>
         <label className="insp-field">
           <span className="insp-label">{t("routing.hosts")}</span>
           <input
@@ -611,7 +610,7 @@ function MatchEditor({
             }}
           />
         </label>
-      </details>
+      </ReadoutDisclosure>
     </div>
   );
 }
@@ -886,14 +885,13 @@ export function RouteTableFields({
                   testId={`routes-rule-${rule.id}-targets`}
                   onChange={(a) => save(updateRule(table, rule.id, { targets: a.targets }), `targets:${rule.id}`)}
                 />
-                <details>
-                  <summary>{t("routing.rateLimitFold")}</summary>
+                <ReadoutDisclosure testId={`routes-rule-${rule.id}-quota`} title={t("routing.rateLimitFold")}>
                   <RateLimitField
                     action={rule}
                     testId={`routes-rule-${rule.id}-rate`}
                     onChange={(a) => save(updateRule(table, rule.id, { quotas: a.quotas }), `rate:${rule.id}`)}
                   />
-                </details>
+                </ReadoutDisclosure>
                 <div className="route-actions">
                   <button
                     type="button"

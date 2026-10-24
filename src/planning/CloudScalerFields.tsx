@@ -1,3 +1,5 @@
+import { PairedFields } from "../canvas/inspector/Layout";
+import { ReadoutDisclosure } from "../live/ReadoutDisclosure";
 import { useMemo, type ReactNode, type Ref } from "react";
 import type { CloudController, MonitorRule } from "../model/autoscaling";
 import { brokerChoices, loadBalancerChoices } from "../model/kedaBindings";
@@ -320,24 +322,26 @@ export function CloudScalerFields({
   return (
     <>
       {target}
-      <NumberField
-        name="min"
-        label={t("autoscaling.minCount", { unit })}
-        value={c.minReplicas}
-        min={c.kind === "appService" ? 1 : 0}
-        max={c.maxReplicas}
-        integer
-        change={(v) => v !== undefined && patch((n) => void (n.minReplicas = v), "min")}
-      />
-      <NumberField
-        name="max"
-        label={t("autoscaling.maxCount", { unit })}
-        value={c.maxReplicas}
-        min={Math.max(1, c.minReplicas)}
-        max={10_000}
-        integer
-        change={(v) => v !== undefined && patch((n) => void (n.maxReplicas = v), "max")}
-      />
+      <PairedFields>
+        <NumberField
+          name="min"
+          label={t("autoscaling.minCount", { unit })}
+          value={c.minReplicas}
+          min={c.kind === "appService" ? 1 : 0}
+          max={c.maxReplicas}
+          integer
+          change={(v) => v !== undefined && patch((n) => void (n.minReplicas = v), "min")}
+        />
+        <NumberField
+          name="max"
+          label={t("autoscaling.maxCount", { unit })}
+          value={c.maxReplicas}
+          min={Math.max(1, c.minReplicas)}
+          max={10_000}
+          integer
+          change={(v) => v !== undefined && patch((n) => void (n.maxReplicas = v), "max")}
+        />
+      </PairedFields>
       <p className="insp-note" data-testid="autoscaling-approximate">
         {t("autoscaling.approximate", { platform })}
       </p>
@@ -354,8 +358,19 @@ export function CloudScalerFields({
           })}
         </p>
       )}
-      <details data-testid="autoscaling-advanced">
-        <summary data-testid="autoscaling-advanced-toggle">{t("ai.advanced")}</summary>
+      <ReadoutDisclosure
+        testId="autoscaling-advanced"
+        toggleId="autoscaling-advanced-toggle"
+        title={t("ai.advanced")}
+        summary={t("workspaceInspector.resourcesSummary", {
+          cpu:
+            (props.resources as import("../model/autoscaling").ComputeResources | undefined)?.cpuRequestMilli ??
+            t("admission.unknownShort"),
+          memory:
+            (props.resources as import("../model/autoscaling").ComputeResources | undefined)?.memoryRequestMiB ??
+            t("admission.unknownShort"),
+        })}
+      >
         {alb && (
           <label className="insp-field">
             <span className="insp-label">{t("autoscaling.loadBalancer")}</span>
@@ -426,11 +441,14 @@ export function CloudScalerFields({
         <a data-testid="autoscaling-source" href={DOCS[c.kind]} target="_blank" rel="noreferrer">
           {t("autoscaling.docs", { platform })}
         </a>
-      </details>
-      <details>
-        <summary data-testid="autoscaling-workload-toggle">{t("autoscaling.workload")}</summary>
+      </ReadoutDisclosure>
+      <ReadoutDisclosure
+        testId="autoscaling-workload"
+        toggleId="autoscaling-workload-toggle"
+        title={t("autoscaling.workload")}
+      >
         {children}
-      </details>
+      </ReadoutDisclosure>
     </>
   );
 }

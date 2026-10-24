@@ -1,3 +1,4 @@
+import { t } from "../i18n";
 import type { NodeSimProps } from "../sim/types";
 import type { ResolvedProps } from "../sim/defaults";
 import { managedKind, localRateQuota } from "../model/admissionPresets";
@@ -58,3 +59,13 @@ export function admissionFieldBindings(stencil: string, props: Record<string, un
     ),
   ];
 }
+
+/** Display labels shared by admission fields and their collapsed Inspector summary. */
+export const admissionFieldLabel = (name: ReturnType<typeof admissionFieldBindings>[number]["name"]) =>
+  ({
+    allocation: t("admission.allocation"),
+    rate: t("admission.rate"),
+    concurrency: t("admission.concurrency"),
+    latency: t("admission.latency"),
+    errors: t("admission.errors"),
+  })[name];

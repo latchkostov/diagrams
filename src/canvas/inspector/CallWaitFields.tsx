@@ -3,8 +3,7 @@ import { revisionAtLeast } from "../../model/revisions";
 import { RetryFields } from "./RetryFields";
 import { BreakerFields } from "./BreakerFields";
 import { Disclosure } from "./Disclosure";
-import { Dropdown } from "../../components/Dropdown";
-import { Field } from "./fields";
+import { Field, Segmented } from "./fields";
 import { SimInput } from "./SimulationFields";
 import { SIM_LIMITS } from "../../model/simLimits";
 import { t } from "../../i18n";
@@ -34,6 +33,7 @@ export function CallWaitFields({
   const effective = effectiveCallerPolicy(editor, edgeId, live);
   if (!effective?.editable) return null;
   const { caller, policy, set, override, diagramCaller } = effective;
+  const advanced = revisionAtLeast(editor.getDiagram().planning?.revision, "p3-w2");
   const origin = (key: keyof NonNullable<typeof caller>) => {
     if (!override || !Object.hasOwn(override, key)) return null;
     const base = diagramCaller?.[key];
@@ -63,21 +63,21 @@ export function CallWaitFields({
   };
   return (
     <>
-      <Field label={t("threads.whileWaiting")}>
-        <Dropdown
+      <Field group label={t("threads.whileWaiting")} testId="inspector-unit-wait">
+        <Segmented
           value={policy.blocking ? "blocking" : "non-blocking"}
-          items={[
+          options={[
             { value: "blocking", label: t("threads.holds") },
             { value: "non-blocking", label: t("threads.frees") },
           ]}
           onChange={(wait) => set({ wait: wait as "blocking" | "non-blocking" })}
           testId="inspector-field-wait"
-          aria-label={t("threads.whileWaiting")}
+          label={t("threads.whileWaiting")}
         />
+        <p className="insp-note" data-testid="inspector-hint-wait">
+          {t("threads.waitHint")}
+        </p>
       </Field>
-      <p className="insp-note" data-testid="inspector-hint-wait">
-        {t("threads.waitHint")}
-      </p>
       {origin("wait")}
       <RequestGroup
         name="waiting-limits"
@@ -105,9 +105,22 @@ export function CallWaitFields({
               set({ deadlineMs: v as number | undefined });
           }}
         />
-        <CallAdvanced enabled={revisionAtLeast(editor.getDiagram().planning?.revision, "p3-w2")}>
+        <CallAdvanced
+          enabled={advanced}
+          summary={
+            !policy.blocking && stencilRole(stencil) === "processor"
+              ? t("workspaceInspector.poolSummary", {
+                  pool: policy.pool ?? t("threads.uncapped"),
+                  duration: policy.replyMs,
+                })
+              : t("workspaceInspector.valueSummary", {
+                  label: t("threads.pool"),
+                  value: String(policy.pool ?? t("threads.uncapped")),
+                })
+          }
+        >
           <SimInput
-            visibleHint
+            visibleHint={!advanced}
             name="poolConnections"
             field={{
               label: t("threads.pool"),
@@ -141,7 +154,7 @@ export function CallWaitFields({
           {origin("replyMs")}
         </CallAdvanced>
       </RequestGroup>
-      {revisionAtLeast(editor.getDiagram().planning?.revision, "p3-w2") && (
+      {advanced && (
         <RetryFields
           retry={caller.retry}
           origin={origin("retry")}
@@ -154,16 +167,29 @@ export function CallWaitFields({
           set={(retry) => set({ retry })}
         />
       )}
-      {revisionAtLeast(editor.getDiagram().planning?.revision, "p3-w2") && (
+      {advanced && (
         <BreakerFields breaker={caller.breaker} origin={origin("breaker")} set={(breaker) => set({ breaker })} />
       )}
     </>
   );
 }
 
-function CallAdvanced({ enabled, children }: { enabled: boolean; children: import("react").ReactNode }) {
+function CallAdvanced({
+  enabled,
+  summary,
+  children,
+}: {
+  enabled: boolean;
+  summary: string;
+  children: import("react").ReactNode;
+}) {
   return enabled ? (
-    <Disclosure id="call-advanced" title={t("resilience.poolDetails")} description={t("threads.poolHint")}>
+    <Disclosure
+      id="call-advanced"
+      title={t("resilience.poolDetails")}
+      description={t("threads.poolHint")}
+      summary={summary}
+    >
       {children}
     </Disclosure>
   ) : (

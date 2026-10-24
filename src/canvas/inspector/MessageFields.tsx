@@ -5,6 +5,7 @@ import { useLayoutEffect, useRef, useState } from "react";
 import type { DiagramFile } from "../../model/types";
 import type { EditorApi } from "../../editor/types";
 import { Field } from "./fields";
+import { Subgroup } from "./Layout";
 import { useInteractionOrLocal } from "../interaction";
 import { bulkStep } from "./editTransactions";
 
@@ -193,14 +194,13 @@ export function NodeMessages({
       {visible.map((i) => {
         const [input, output] = rows[i];
         return (
-          <div
-            className="message-type-rule"
+          <Subgroup
             key={input}
             ref={(element) => {
               if (element) ruleControls.current.set(input, element);
               else ruleControls.current.delete(input);
             }}
-            data-testid={`inspector-emits-row-${i}`}
+            testId={`inspector-emits-row-${i}`}
           >
             <TypePicker
               name={`receives-${i}`}
@@ -235,7 +235,7 @@ export function NodeMessages({
             >
               {t("messageTypes.remove")}
             </button>
-          </div>
+          </Subgroup>
         );
       })}
       {remaining > 0 && (

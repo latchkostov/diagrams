@@ -1,3 +1,4 @@
+import "../../styles/inspector-layout.css";
 import { useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import { useInteractionOrLocal } from "../interaction";
 import { ColorPickerModal } from "../../components/ColorPickerModal";

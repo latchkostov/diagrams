@@ -1,3 +1,5 @@
+import { ReadoutFacts } from "../live/ReadoutFacts";
+import { ReadoutDisclosure } from "../live/ReadoutDisclosure";
 import { ThreadCeiling } from "../live/ThreadCeiling";
 import { ResourceEstimate } from "./ResourceDetails";
 import { assignmentLabel } from "../stencils/brokerVocabulary";
@@ -131,39 +133,84 @@ export function ExplanationView({
       data-fix-id={x.fixId}
     >
       <small>{t("planning.configured")}</small>
-      <p data-testid="planning-arithmetic">
-        {x.status !== "up"
-          ? t("planning.unavailable", { name, status: x.status, offered: rate(x.offered) })
-          : x.reason === "no-reader"
-            ? x.role !== "queue"
-              ? t("planning.noReader", { name, rate: rate(x.offered) })
-              : t("planning.noQueueReader", { name, rate: rate(x.offered) })
-            : x.resources
-              ? t("admission.summary", { name, capacity: rate(x.capacity), offered: rate(x.offered) })
-              : x.managed
-                ? Number.isFinite(x.capacity)
-                  ? t("admission.summary", { name, capacity: rate(x.capacity), offered: rate(x.offered) })
-                  : t("admission.unknown")
-                : !Number.isFinite(x.capacity)
-                  ? t("planning.instant", { name, offered: rate(x.offered) })
-                  : Number.isFinite(x.slots)
-                    ? t("planning.summary", {
-                        name,
-                        capacity: rate(x.capacity),
-                        offered: rate(x.offered),
-                        replicas: x.activeReplicas,
-                        slots: x.slots,
-                        seconds: formatProcessingSeconds(x.seconds),
-                      })
-                    : t("planning.deviceSummary", { name, capacity: rate(x.capacity), offered: rate(x.offered) })}
-      </p>
+      <div data-testid="planning-arithmetic">
+        <p>
+          {x.status !== "up"
+            ? t("planning.unavailable", { name, status: x.status, offered: rate(x.offered) })
+            : x.reason === "no-reader"
+              ? x.role !== "queue"
+                ? t("planning.noReader", { name, rate: rate(x.offered) })
+                : t("planning.noQueueReader", { name, rate: rate(x.offered) })
+              : x.resources
+                ? t("admission.summary", { name, capacity: rate(x.capacity), offered: rate(x.offered) })
+                : x.managed
+                  ? Number.isFinite(x.capacity)
+                    ? t("admission.summary", { name, capacity: rate(x.capacity), offered: rate(x.offered) })
+                    : t("admission.unknown")
+                  : !Number.isFinite(x.capacity)
+                    ? t("planning.instant", { name, offered: rate(x.offered) })
+                    : Number.isFinite(x.slots)
+                      ? hover
+                        ? t("planning.summary", {
+                            name,
+                            capacity: rate(x.capacity),
+                            offered: rate(x.offered),
+                            replicas: x.activeReplicas,
+                            slots: x.slots,
+                            seconds: formatProcessingSeconds(x.seconds),
+                          })
+                        : t("workspaceInspector.throughputSummary", {
+                            name,
+                            capacity: rate(x.capacity),
+                            offered: rate(x.offered),
+                          })
+                      : t("planning.deviceSummary", { name, capacity: rate(x.capacity), offered: rate(x.offered) })}
+        </p>
+        {!hover && x.status === "up" && x.reason !== "no-reader" && (
+          <ReadoutFacts
+            rows={[
+              ...(!x.managed && !x.resources
+                ? ([
+                    [t("inspector.replicas"), formatNumber(x.activeReplicas)],
+                    ...(Number.isFinite(x.slots)
+                      ? ([[t("workspaceInspector.slots"), formatNumber(x.slots)]] as const)
+                      : []),
+                    [t("workspaceInspector.serviceTime"), `${formatNumber(x.seconds * 1000)} ms`],
+                  ] as const)
+                : []),
+              [
+                t("workspaceInspector.capacity"),
+                <>
+                  {Number.isFinite(x.capacity)
+                    ? rate(x.capacity)
+                    : x.managed
+                      ? t("admission.unknownShort")
+                      : t("planning.unlimited")}
+                  {!x.managed && !x.resources && Number.isFinite(x.slots) && Number.isFinite(x.capacity) && (
+                    <small data-testid="planning-capacity-formula">
+                      <bdi>
+                        {t("workspaceInspector.formula", {
+                          replicas: x.activeReplicas,
+                          slots: x.slots,
+                          seconds: formatProcessingSeconds(x.seconds),
+                        })}
+                      </bdi>
+                    </small>
+                  )}
+                </>,
+                "capacity",
+              ],
+              [t("workspaceInspector.receives"), rate(x.offered)],
+            ]}
+          />
+        )}
+      </div>
       {hover ? (
         details
       ) : (
-        <details className="planning-more" data-testid="planning-more">
-          <summary data-testid="planning-more-toggle">{t("planning.more")}</summary>
+        <ReadoutDisclosure title={t("planning.more")} testId="planning-more">
           {details}
-        </details>
+        </ReadoutDisclosure>
       )}
       {x.observed && (
         <p data-testid="planning-observed">

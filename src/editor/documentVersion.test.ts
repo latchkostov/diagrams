@@ -3,6 +3,9 @@ import type { ReactFlowInstance } from "@xyflow/react";
 import { toFlow } from "../canvas/convert";
 import type { DiagramFlowEdge, FlowNode } from "../canvas/types";
 import { createEditor, type EditorDeps } from "./useEditor";
+import { LiveController } from "../live/controller";
+import { breakerFixture } from "../lab/resilienceFixture";
+import { effectiveCallerPolicy } from "./callerPolicy";
 import { roomSnapshotKey, snapshotKey } from "./historySelection";
 
 it("versions every document edit, including external replacements and undo, with constant-time reads", () => {
@@ -96,4 +99,53 @@ it("versions remote room projections and reversions without counting selection o
     expect(after.revision).toBeGreaterThan(before.revision);
   }
   expect(editor.api.getDocumentVersion()).not.toBe(initial);
+});
+
+it("saved caller edits stay editable before React commits the document metadata", () => {
+  const diagram = breakerFixture();
+  const flow = toFlow(diagram);
+  const rf = { getNodes: () => flow.nodes, getEdges: () => flow.edges } as unknown as ReactFlowInstance<
+    FlowNode,
+    DiagramFlowEdge
+  >;
+  const editor = createEditor(rf, {
+    meta: flow.meta,
+    setMeta: vi.fn(),
+    history: { hint: vi.fn() },
+    nodeSize: { width: 220, height: 72 },
+  } as unknown as EditorDeps).api;
+  const controller = new LiveController(diagram, { replayDelayMs: 0 });
+  controller.selectSimulation(diagram.simulations![0]);
+  const live = { controller, slowmo: { active: false } };
+  const editable: boolean[] = [];
+  const stop = controller.subscribe(() => editable.push(effectiveCallerPolicy(editor, "call", live)!.editable));
+  try {
+    effectiveCallerPolicy(editor, "call", live)!.set({ breaker: null });
+    expect(editor.getDiagram().simulations![0].setup?.edges?.call.caller?.breaker).toBeNull();
+    expect(editable.length).toBeGreaterThan(0);
+    expect(editable.every(Boolean)).toBe(true);
+  } finally {
+    stop();
+    controller.dispose();
+  }
+});
+
+it("metadata patches preserve other React updates already queued before the editor render", () => {
+  const flow = toFlow(breakerFixture());
+  let pending = { ...flow.meta, title: "Remote title" };
+  const rf = { getNodes: () => flow.nodes, getEdges: () => flow.edges } as unknown as ReactFlowInstance<
+    FlowNode,
+    DiagramFlowEdge
+  >;
+  const editor = createEditor(rf, {
+    meta: flow.meta,
+    setMeta: (update: Parameters<EditorDeps["setMeta"]>[0]) => {
+      pending = typeof update === "function" ? update(pending) : update;
+    },
+    history: { hint: vi.fn() },
+  } as unknown as EditorDeps).api;
+  editor.updateMeta({ description: "New description" });
+  expect(editor.getDiagram().description).toBe("New description");
+  expect(pending.title).toBe("Remote title");
+  expect(pending.description).toBe("New description");
 });

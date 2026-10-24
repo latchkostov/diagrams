@@ -1,3 +1,4 @@
+import "../../styles/inspector-layout.css";
 import { lazyComponent } from "../../lib/lazyLoad";
 import { isFanOut, relationDropdownItems } from "./edgeChoices";
 import { Dropdown } from "../../components/Dropdown";
@@ -27,6 +28,9 @@ import { inferRelation } from "../../stencils/relations";
 import { revisionAtLeast } from "../../model/revisions";
 import { routingEnabled } from "../../model/requestRouting";
 import { MessageFields } from "./lazyMessageFields";
+import { callPolicy } from "../../sim/callPolicy";
+import type { EdgeSimProps } from "../../sim/types";
+import { useCallerOverride } from "./useCallerOverride";
 
 const EdgeAdvanced = lazyComponent(() => import("./EdgeAdvanced").then((m) => m.EdgeAdvanced));
 /**
@@ -46,6 +50,8 @@ const CallWaitFields = lazyComponent(
 
 export function EdgePanel({ edge, editor, nodeLabel, meta, readDiagram }: InspectorProps & { edge: DiagramFlowEdge }) {
   const interaction = useInteraction();
+  const override = useCallerOverride(edge.id);
+
   // A deferred panel commits after the Inspector frame: retry the name field parked on its download.
   useLayoutEffect(() => interaction?.rendered());
   const naming = useNameFields(editor, "edge", edge.id, edge.id);
@@ -66,6 +72,24 @@ export function EdgePanel({ edge, editor, nodeLabel, meta, readDiagram }: Inspec
   const grouped = flow && fields.group && props.dlq !== true;
   const deadLetters = flow && fields.dlq;
   const requestWait = flow && data.kind === "sync" && revisionAtLeast(meta.planning?.revision, "p3-w1");
+  const caller = { ...(props.caller as EdgeSimProps["caller"]), ...override };
+  const policy = callPolicy(sourceStencil ?? "", caller);
+  const callSummary = requestWait
+    ? t("workspaceInspector.requestSummary", {
+        wait: policy.blocking ? t("threads.holds") : t("threads.frees"),
+        timeout:
+          policy.deadlineMs === undefined
+            ? t("threads.noTimeout")
+            : t("workspaceInspector.timeoutSummary", { duration: policy.deadlineMs }),
+        retry:
+          caller.retry && caller.retry.maxAttempts > 1
+            ? t("resilience.attempts", { count: caller.retry.maxAttempts })
+            : t("resilience.off"),
+      })
+    : t("workspaceInspector.valueSummary", {
+        label: t("inspector.shareOfMessages"),
+        value: `${typeof props.share === "number" ? Math.round(props.share * 1000) / 10 : 100}%`,
+      });
   // On intent: by the time the Simulation section opens, its fields are usually here.
   useEffect(() => {
     if (requestWait) CallWaitFields.preload();
@@ -192,7 +216,7 @@ export function EdgePanel({ edge, editor, nodeLabel, meta, readDiagram }: Inspec
       <EdgeLiveDetails key={edge.id} id={edge.id} />
       {relation === "config" && <SettingsEditor key={edge.id} edge={edge} editor={editor} />}
       {(fanOut || requestWait) && (
-        <Disclosure id="edge-simulation" title={t("inspector.simulation")}>
+        <Disclosure id="edge-simulation" title={t("inspector.simulation")} summary={callSummary}>
           {requestWait && (
             <CallWaitFields editor={editor} edgeId={edge.id} caller={props.caller} stencil={sourceStencil ?? ""} />
           )}

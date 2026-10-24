@@ -1,5 +1,5 @@
-import "./RequestGroup.css";
 import { useId, type ReactNode } from "react";
+import { Subgroup } from "./Layout";
 
 /** Group descriptions remain visible and are announced when its controls are reached. */
 export function RequestGroup({
@@ -17,10 +17,9 @@ export function RequestGroup({
 }) {
   const id = useId();
   return (
-    <div
-      className="insp-request-group"
+    <Subgroup
       role="group"
-      data-testid={`inspector-group-${name}`}
+      testId={`inspector-group-${name}`}
       aria-labelledby={`${id}-name`}
       aria-describedby={`${id}-hint`}
     >
@@ -30,6 +29,6 @@ export function RequestGroup({
         {description}
       </p>
       {children}
-    </div>
+    </Subgroup>
   );
 }

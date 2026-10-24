@@ -42,46 +42,48 @@ export function SettingsEditor({ edge, editor }: { edge: DiagramFlowEdge; editor
       title={t("inspector.settings")}
       aside={summary ? <span className="insp-count">{summary}</span> : undefined}
     >
-      <textarea
-        className="insp-input mono insp-settings"
-        rows={Math.min(8, Math.max(3, settings.length + 1))}
-        value={draft}
-        // eslint-disable-next-line local/no-literal-ui-text -- example configuration keys retain their bytes
-        placeholder={"Orders:PageSize\n!ConnectionStrings:Orders"}
-        onChange={(e) => {
-          setError(undefined);
-          setDraft(e.target.value);
-          save(parseSettingsEditor(e.target.value), `inspector:edge:${edge.id}:settings`);
-        }}
-        maxLength={MAX_SETTINGS_TEXT}
-        onPaste={(e) => {
-          e.preventDefault();
-          try {
-            const imported = settingsText(parseSettings(e.clipboardData.getData("text/plain")));
-            const field = e.currentTarget;
-            const nextText = draft.slice(0, field.selectionStart) + imported + draft.slice(field.selectionEnd);
-            if (nextText.length > MAX_SETTINGS_TEXT) throw new Error(t("inspector.settingsPasteIsTooLarge"));
-            const next = parseSettingsEditor(nextText);
+      <div className="insp-field">
+        <textarea
+          className="insp-input mono insp-settings"
+          rows={Math.min(8, Math.max(3, settings.length + 1))}
+          value={draft}
+          // eslint-disable-next-line local/no-literal-ui-text -- example configuration keys retain their bytes
+          placeholder={"Orders:PageSize\n!ConnectionStrings:Orders"}
+          onChange={(e) => {
             setError(undefined);
-            setDraft(settingsText(next));
-            save(next, `inspector:edge:${edge.id}:settings`);
-          } catch (err) {
-            setError(err instanceof Error ? err.message : t("inspector.couldNotImportSettings"));
-          }
-        }}
-        aria-invalid={!!error}
-        aria-describedby={error ? "settings-paste-error" : undefined}
-        spellCheck={false}
-        aria-label={t("inspector.settingsReadOverThisEdgeOnePerLineMarks")}
-        name="settings"
-        data-testid="inspector-field-settings"
-      />
-      {error && (
-        <p role="alert" id="settings-paste-error" data-testid="inspector-settings-error" className="insp-note">
-          {error}
-        </p>
-      )}
-      <p className="insp-note">{t("inspector.oneKeyPerLineMarksASecretAKey")}</p>
+            setDraft(e.target.value);
+            save(parseSettingsEditor(e.target.value), `inspector:edge:${edge.id}:settings`);
+          }}
+          maxLength={MAX_SETTINGS_TEXT}
+          onPaste={(e) => {
+            e.preventDefault();
+            try {
+              const imported = settingsText(parseSettings(e.clipboardData.getData("text/plain")));
+              const field = e.currentTarget;
+              const nextText = draft.slice(0, field.selectionStart) + imported + draft.slice(field.selectionEnd);
+              if (nextText.length > MAX_SETTINGS_TEXT) throw new Error(t("inspector.settingsPasteIsTooLarge"));
+              const next = parseSettingsEditor(nextText);
+              setError(undefined);
+              setDraft(settingsText(next));
+              save(next, `inspector:edge:${edge.id}:settings`);
+            } catch (err) {
+              setError(err instanceof Error ? err.message : t("inspector.couldNotImportSettings"));
+            }
+          }}
+          aria-invalid={!!error}
+          aria-describedby={error ? "settings-paste-error" : undefined}
+          spellCheck={false}
+          aria-label={t("inspector.settingsReadOverThisEdgeOnePerLineMarks")}
+          name="settings"
+          data-testid="inspector-field-settings"
+        />
+        {error && (
+          <p role="alert" id="settings-paste-error" data-testid="inspector-settings-error" className="insp-note">
+            {error}
+          </p>
+        )}
+        <p className="insp-note">{t("inspector.oneKeyPerLineMarksASecretAKey")}</p>
+      </div>
       {settings.length > 0 && (
         <ul className="insp-settings-list" data-testid="inspector-settings-list">
           {settings.map((s, i) => (

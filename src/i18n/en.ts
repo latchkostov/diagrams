@@ -10,6 +10,32 @@
 // stays.
 
 const en = {
+  "workspaceInspector.replicaSummary": "{replicas, plural, one {# replica} other {# replicas}} × {slots} slots",
+  "workspaceInspector.rateSummary": "{rate} msg/s",
+  "workspaceInspector.valueSummary": "{label}: {value}",
+  "workspaceInspector.requestSummary": "{wait} · {timeout} · {retry}",
+  "workspaceInspector.timeoutSummary": "{duration} ms timeout",
+  "workspaceInspector.sidesSummary": "{from} → {to}",
+  "workspaceInspector.advancedSummary": "{from} → {to} · {duration} ms travel",
+  "workspaceInspector.retrySummary": "{backoff} ms backoff · {growth}",
+  "workspaceInspector.breakerSummary": "{percent}% failures · {duration} ms open",
+  "workspaceInspector.poolSummary": "Pool: {pool} · Reply handling: {duration} ms",
+  "workspaceInspector.rangeSummary": "{min}–{max} replicas",
+  "workspaceInspector.resourcesSummary": "CPU request: {cpu} m · Memory request: {memory} MiB",
+  "workspaceInspector.capacityAssumption": "Configured capacity before partitions and quotas.",
+  "workspaceInspector.serviceTime": "Service time",
+  "workspaceInspector.slots": "Slots",
+  "workspaceInspector.capacity": "Capacity",
+  "workspaceInspector.receives": "Receives",
+  "workspaceInspector.formula":
+    "({replicas, plural, one {# replica} other {# replicas}} × {slots} slots ÷ {seconds} s)",
+  "workspaceInspector.calls": "Calls <target>{name}</target>",
+  "workspaceInspector.publishes": "Publishes to <target>{name}</target>",
+  "workspaceInspector.consumes": "Consumes <target>{name}</target>",
+  "workspaceInspector.throughputSummary": "{name} handles ~{capacity} and receives {offered}.",
+  "workspaceInspector.initialCapacity": "Initial capacity",
+  "workspaceInspector.maximumCapacity": "Maximum capacity",
+
   "examples.messageTypes": "Message types",
   "messageTypes.messages": "Messages",
   "messageTypes.passAll": "Pass all message types",

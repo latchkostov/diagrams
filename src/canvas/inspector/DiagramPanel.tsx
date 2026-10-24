@@ -1,3 +1,4 @@
+import "../../styles/inspector-layout.css";
 import { DOCUMENTATION_LIMITS } from "../../model/documentation";
 import { useLayoutEffect, useState, type CSSProperties } from "react";
 import { useInteractionOrLocal } from "../interaction";

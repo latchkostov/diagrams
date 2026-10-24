@@ -1,3 +1,4 @@
+import "../styles/readout.css";
 import { useState, type ReactNode } from "react";
 import { t } from "../i18n";
 import type { HoverSummary } from "./hoverSummary";
@@ -91,6 +92,7 @@ export function SectionRows({
         <section key={s.key} className={`hover-rail is-${s.key}${badSections.includes(s.key) ? " is-bad" : ""}`}>
           <button
             data-testid={`${docked ? "inspector-live" : "hover"}-section-${s.key}`}
+            className="readout-row"
             data-hover-row=""
             tabIndex={pinned ? 0 : -1}
             aria-expanded={pinned && open === s.key}

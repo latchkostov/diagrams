@@ -1,3 +1,4 @@
+import "../../styles/inspector-layout.css";
 import { revisionAtLeast } from "../../model/revisions";
 import { Icon, type IconName } from "../../components/Icon";
 import { type AlignMode } from "../../editor/arrange";

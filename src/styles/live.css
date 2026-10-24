@@ -2894,21 +2894,11 @@ details[open] > summary .lv-disclosure-chevron {
   border-top: 1px solid var(--line);
 }
 .hover-rail > button {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  width: 100%;
   height: 25px;
-  min-width: 0;
   padding: 4px 12px;
-  border: 0;
-  background: transparent;
-  color: var(--text);
-  text-align: start;
-  cursor: pointer;
-  font: inherit;
   font-size: 11px;
 }
+
 .hover-rail > button > span:first-child {
   color: var(--accent);
 }
@@ -3025,25 +3015,6 @@ details[open] > summary .lv-disclosure-chevron {
 }
 .inspector-live .hover-rail-body {
   margin: 0 0 8px;
-}
-.inspector-live-outcomes {
-  margin: 0;
-}
-.inspector-live-outcomes > div {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: baseline;
-  gap: 12px;
-  padding-block: 3px;
-}
-.inspector-live-outcomes dt {
-  color: var(--text-3);
-}
-.inspector-live-outcomes dd {
-  margin: 0;
-  color: var(--text);
-  font-weight: 650;
-  text-align: end;
 }
 .lv-spark.is-docked {
   margin-block: 0;

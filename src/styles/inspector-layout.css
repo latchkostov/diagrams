@@ -1,0 +1,742 @@
+@import "./readout.css";
+
+/* Inspector layout and scoped typography. Control boxes stay in canvas/inspector.css. */
+.inspector {
+  --insp-padding: 16px;
+  --insp-field-gap: 16px;
+  --insp-label-gap: 4px;
+  --insp-hint-gap: 6px;
+  --insp-section-height: 36px;
+  --insp-section-bottom: 20px;
+  --insp-label-size: 12px;
+  --insp-title-size: 13px;
+  container: inspector / inline-size;
+}
+.inspector .insp-body {
+  padding-block-end: 0;
+}
+.inspector .insp-section {
+  min-inline-size: 0;
+  gap: var(--insp-field-gap);
+  padding: 4px var(--insp-padding) var(--insp-section-bottom);
+}
+.inspector .insp-section > h3 {
+  min-block-size: var(--insp-section-height);
+  margin-block: -4px -12px;
+  gap: 8px;
+  font-size: var(--insp-title-size);
+  font-weight: 650;
+  color: var(--text);
+}
+.insp-section-body,
+.insp-subgroup,
+.inspector .autoscaling-controls,
+.inspector .message-fields,
+.inspector [data-testid="admission-controls"],
+.inspector [data-testid="bulk-admission-controls"] {
+  display: flex;
+  flex-direction: column;
+  min-inline-size: 0;
+  gap: var(--insp-field-gap);
+}
+.insp-section-body:empty {
+  display: none;
+}
+.inspector .insp-section:not(:has(> h3)) {
+  padding-block-start: var(--insp-padding);
+}
+.inspector .insp-field {
+  gap: var(--insp-label-gap);
+  max-inline-size: 640px;
+}
+.inspector .insp-label,
+.inspector .insp-fieldset > legend {
+  font-size: var(--insp-label-size);
+  font-weight: 550;
+  color: var(--text-2);
+}
+.inspector .insp-note {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.45;
+  max-inline-size: 100%;
+  overflow-wrap: anywhere;
+  color: var(--text-3);
+}
+.inspector .insp-field > .insp-note {
+  margin-block-start: calc(var(--insp-hint-gap) - var(--insp-label-gap));
+}
+.insp-paired,
+.inspector .insp-row2 {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--insp-field-gap);
+  min-inline-size: 0;
+}
+.insp-paired > * {
+  min-inline-size: 0;
+}
+@container inspector (min-width: 320px) {
+  .insp-paired,
+  .inspector .insp-row2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+.insp-fieldset {
+  min-inline-size: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.insp-fieldset > legend {
+  padding: 0;
+  margin-block-end: var(--insp-label-gap);
+}
+.insp-fieldset .insp-paired {
+  row-gap: 8px;
+}
+.inspector .insp-disclosure {
+  gap: 0;
+  padding: 0;
+}
+.inspector .insp-disclosure > h3 {
+  display: block;
+  min-inline-size: 0;
+  margin: 0;
+}
+.inspector .insp-disclosure-head {
+  display: flex;
+  inline-size: 100%;
+  min-block-size: var(--insp-section-height);
+  gap: 8px;
+  margin: 0;
+  padding: 4px var(--insp-padding);
+  text-align: start;
+}
+.insp-disclosure-title {
+  flex: 1;
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+}
+.inspector .insp-disclosure > h3 > .insp-disclosure-head > svg {
+  flex: none;
+  transition: none;
+  transform: rotate(0deg);
+}
+.inspector .insp-disclosure.is-open > h3 > .insp-disclosure-head > svg {
+  transform: rotate(90deg);
+}
+[dir="rtl"] .inspector .insp-disclosure > h3 > .insp-disclosure-head > svg {
+  transform: rotate(180deg);
+}
+.inspector .insp-disclosure > .insp-section-body {
+  padding: 4px var(--insp-padding) var(--insp-section-bottom);
+}
+.insp-summary {
+  margin: 0;
+  padding: 0 var(--insp-padding) 12px;
+  color: var(--text-3);
+  font-size: 12px;
+  line-height: 1.45;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.insp-subgroup,
+.inspector .insp-section .insp-disclosure,
+.inspector .insp-section .readout-disclosure {
+  border: 0;
+  border-inline-start: 2px solid var(--line);
+  padding-inline-start: 12px;
+}
+.inspector .insp-section .insp-disclosure > h3 > .insp-disclosure-head,
+.inspector .insp-section .insp-disclosure > .insp-section-body,
+.inspector .insp-section .insp-disclosure > .insp-summary {
+  padding-inline: 0;
+}
+.inspector .insp-section .insp-disclosure > h3,
+.insp-subgroup > h4 {
+  font-size: 12px;
+  font-weight: 650;
+  margin: 0;
+  color: var(--text);
+}
+/* Already nested: a second disclosure stays aligned, without another rule or indent. */
+.inspector
+  .insp-section
+  :is(.insp-subgroup, .insp-disclosure, .readout-disclosure)
+  :is(.insp-subgroup, .insp-disclosure, .readout-disclosure) {
+  border-inline-start: 0;
+  padding-inline-start: 0;
+}
+.insp-disclosure-head:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+.inspector .readout-disclosure > .readout-disclosure-body {
+  gap: var(--insp-field-gap);
+  padding-block: 4px 12px;
+}
+.inspector .planning-explanation {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.inspector .planning-explanation p {
+  margin-block: 0;
+}
+.inspector .inspector-live-outcomes {
+  font-variant-numeric: tabular-nums;
+}
+.inspector-live-outcomes dd > small {
+  display: block;
+  font-weight: 400;
+  font-size: 12px;
+  line-height: 1.45;
+}
+.inspector .planning-connection {
+  padding-block: 10px;
+}
+.planning-connection-heading {
+  color: var(--text-3);
+}
+.planning-connection-heading strong {
+  color: var(--text);
+  font-weight: 600;
+}
+.inspector details > summary {
+  overflow-wrap: anywhere;
+}
+.inspector .insp-role {
+  flex: none;
+  color: var(--text-2);
+}
+
+/* Routing forms use the same field rhythm; their table rows keep their existing density. */
+.inspector :is(.route-details, .route-definition, .route-new) {
+  gap: var(--insp-field-gap);
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+}
+.inspector :is(.route-address, .route-match) {
+  display: flex;
+  flex-direction: column;
+  gap: var(--insp-field-gap);
+  min-inline-size: 0;
+}
+
+.inspector .insp-paired > .insp-id {
+  align-self: end;
+}
+
+[dir="rtl"] .inspector .insp-disclosure.is-open > h3 > .insp-disclosure-head > svg {
+  transform: rotate(90deg);
+}
+.inspector .inspector-live-outcomes > div {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+}
+.inspector .inspector-live-outcomes dd {
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+}
+.inspector .insp-size {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--insp-field-gap);
+}
+.inspector .insp-size .insp-input {
+  width: 100%;
+}
+@container inspector (min-width: 320px) {
+  .inspector .insp-size {
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  }
+}
+@container inspector (max-width: 319px) {
+  .inspector .insp-size > span {
+    display: none;
+  }
+}
+.inspector .inspector-live-heading > button {
+  inline-size: 100%;
+  text-align: start;
+}
+.inspector .inspector-live-heading > button > svg {
+  flex: none;
+}
+[dir="rtl"] .inspector .inspector-live-heading > button > svg {
+  transform: rotate(180deg);
+}
+.inspector .inspector-live-heading > button[aria-expanded="true"] > svg {
+  transform: rotate(90deg);
+}
+.inspector .inspector-live > .insp-summary {
+  padding-inline: 0;
+}
+
+/* Option H (hybrid): C's Ledger for editable sections, A's headline treatment for read-only blocks,
+   D's Segmented choices and UI-font numbers. Built from Option C: "Ledger". A property grid: labels sit in a start-side gutter, controls and
+   hints in one value column, and section headers are tinted bands that stay pinned while
+   you scroll their section. The bold move: the strict two-column ledger with pinned bands. */
+.inspector {
+  --c-label: 36%;
+  --c-gutter: 12px;
+  --c-col: calc(var(--c-label) + var(--c-gutter));
+  --c-row: 10px;
+  --h-band: color-mix(in oklab, var(--text) 3.5%, var(--surface));
+}
+[data-theme="dark"] .inspector {
+  --h-band: color-mix(in oklab, var(--text) 6%, var(--surface));
+}
+
+/* ---------- Bands: pinned, tinted section headers ---------- */
+.inspector .insp-body > .insp-section {
+  gap: var(--c-row);
+  padding: 0 16px 18px;
+  border-block-end: 0;
+}
+.inspector .insp-body > .insp-section:first-child:not(:has(> h3)) {
+  padding-block-start: 14px;
+}
+.inspector .insp-body > .insp-section > h3 {
+  position: sticky;
+  inset-block-start: 0;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  min-block-size: 36px;
+  margin: 0 -16px 6px;
+  padding: 0 16px;
+  border-block: 1px solid var(--line);
+  background: var(--h-band);
+  font-size: 12.5px;
+  font-weight: 650;
+  color: var(--text);
+}
+.inspector .insp-body > .insp-section.insp-disclosure {
+  padding: 0;
+  gap: 0;
+}
+.inspector .insp-body > .insp-disclosure > h3 {
+  margin: 0;
+  padding: 0;
+}
+.inspector .insp-body > .insp-disclosure > h3 > .insp-disclosure-head {
+  min-block-size: 36px;
+  padding: 0 16px;
+}
+.inspector .insp-body > .insp-disclosure > .insp-section-body {
+  gap: var(--c-row);
+  padding: 12px 16px 18px;
+}
+.inspector .insp-body > .insp-section + .insp-section > h3 {
+  border-block-start: 0;
+}
+.inspector .insp-body > .inspector-live > h3 {
+  margin-block-end: 6px;
+}
+
+/* ---------- Groups inside a section: flat, a hairline and a gutter heading ---------- */
+.inspector .insp-subgroup,
+.inspector .insp-section .insp-disclosure,
+.inspector .insp-section .readout-disclosure,
+.inspector .message-fields {
+  gap: var(--c-row);
+  padding: 0;
+  border: 0;
+}
+.inspector .insp-body .insp-section-body > :is(.insp-subgroup, .insp-disclosure, .message-fields),
+.inspector .insp-body .insp-subgroup > .insp-disclosure {
+  margin-block-start: 4px;
+  padding-block-start: 12px;
+  border-block-start: 1px solid var(--line);
+}
+.inspector .insp-body .insp-section-body > :is(.insp-subgroup, .message-fields):first-child {
+  margin-block-start: 0;
+  padding-block-start: 0;
+  border: 0;
+}
+.inspector .insp-subgroup > h4,
+.inspector .message-fields > h4,
+.inspector .insp-section .insp-disclosure > h3 {
+  min-block-size: 0;
+  margin: 0;
+  font-size: 12.5px;
+  font-weight: 650;
+  color: var(--text);
+}
+.inspector .insp-section .insp-disclosure > h3 > .insp-disclosure-head {
+  min-block-size: 22px;
+  padding: 0;
+}
+.inspector .insp-section .insp-disclosure > .insp-section-body {
+  gap: var(--c-row);
+  padding: 8px 0 0;
+}
+.inspector .insp-label,
+.inspector .insp-fieldset > legend {
+  font-size: 12px;
+  font-weight: 550;
+  color: var(--text-2);
+}
+.inspector .insp-note {
+  font-size: 11.5px;
+  line-height: 1.45;
+}
+.inspector .insp-link[data-testid="inspector-emits-add"] {
+  justify-self: start;
+  align-self: flex-start;
+  padding-inline: 0;
+}
+
+/* ---------- The ledger (wide enough panels only; below 330px everything stacks) ---------- */
+@container inspector (min-width: 330px) {
+  .inspector :is(label.insp-field, div.insp-field:not(:has(.md-editor))) {
+    display: grid;
+    grid-template-columns: var(--c-label) minmax(0, 1fr);
+    column-gap: var(--c-gutter);
+    row-gap: 4px;
+    align-items: center;
+    max-inline-size: none;
+  }
+  .inspector .insp-field > .insp-label {
+    grid-column: 1;
+    align-self: start;
+    padding-block-start: 6px;
+    line-height: 1.3;
+  }
+  .inspector .insp-field > :not(.insp-label) {
+    grid-column: 2;
+  }
+  .inspector .insp-field > .insp-note {
+    margin: 0;
+  }
+  /* Pairs become ledger rows. */
+  .inspector .insp-paired,
+  .inspector .insp-row2 {
+    grid-template-columns: minmax(0, 1fr) !important;
+    row-gap: var(--c-row);
+  }
+  .inspector .insp-paired > .insp-id {
+    justify-self: start;
+    margin-inline-start: var(--c-col);
+  }
+  /* A group heading sits in the gutter, its description beside it. */
+  .inspector :is(.insp-subgroup, .message-fields) {
+    display: grid;
+    grid-template-columns: var(--c-label) minmax(0, 1fr);
+    column-gap: var(--c-gutter);
+  }
+  .inspector :is(.insp-subgroup, .message-fields) > * {
+    grid-column: 1 / -1;
+  }
+  .inspector :is(.insp-subgroup, .message-fields) > h4 {
+    grid-column: 1;
+    align-self: start;
+  }
+  .inspector :is(.insp-subgroup, .message-fields) > h4 + .insp-note {
+    grid-column: 2;
+  }
+  .inspector :is(.insp-subgroup, .message-fields) > .insp-link {
+    grid-column: 2;
+  }
+  .inspector .insp-subgroup > .insp-note:not(h4 + .insp-note),
+  .inspector .insp-section-body > .insp-note {
+    margin-inline-start: var(--c-col);
+  }
+  /* Checkbox sets: legend in the gutter, choices in the value column. */
+  .inspector .insp-fieldset {
+    display: flow-root;
+  }
+  .inspector .insp-fieldset > legend {
+    float: inline-start;
+    inline-size: var(--c-label);
+    margin: 0;
+    padding-block-start: 1px;
+  }
+  .inspector .insp-fieldset > .insp-paired {
+    margin-inline-start: var(--c-col);
+    row-gap: 6px;
+  }
+  .inspector .insp-section-body > .insp-check {
+    margin-inline-start: var(--c-col);
+  }
+
+  .inspector .planning-connection-heading {
+    display: grid;
+    grid-template-columns: var(--c-label) minmax(0, 1fr);
+    column-gap: var(--c-gutter);
+    font-size: 12px;
+  }
+  .inspector .planning-connection-heading strong {
+    font-size: 13px;
+  }
+}
+
+/* ---------- Read-only prose ---------- */
+.inspector .planning-explanation {
+  gap: 8px;
+}
+.inspector .planning-explanation > small {
+  font-size: 11.5px;
+}
+.inspector [data-testid="planning-arithmetic"] > p {
+  margin-block: 0 4px;
+  font-size: 12.5px;
+  color: var(--text);
+}
+.inspector .planning-explanation > .readout-disclosure {
+  margin-block-start: 6px;
+  border-block-start: 1px solid var(--line);
+}
+.inspector .planning-explanation > .readout-disclosure > summary {
+  min-block-size: 32px;
+  font-size: 12.5px;
+}
+.inspector .planning-explanation > .readout-disclosure > .readout-disclosure-body {
+  gap: 6px;
+  padding: 0 0 4px;
+  font-size: 12px;
+  color: var(--text-2);
+}
+.inspector .planning-explanation > .readout-disclosure > .readout-disclosure-body p {
+  margin: 0 !important;
+}
+.inspector .insp-body > [data-testid="planning-connections"] {
+  gap: 0;
+}
+.inspector [data-testid="planning-pool"] {
+  margin-block-end: 6px;
+}
+.inspector .planning-connection {
+  padding-block: 7px;
+  border-block-start: 1px solid color-mix(in oklab, var(--line) 70%, transparent);
+}
+.inspector .insp-body .insp-section .insp-disclosure {
+  gap: 0;
+}
+.inspector .insp-section .insp-disclosure > .insp-section-body {
+  padding-block-start: 4px;
+}
+
+/* ======================= H additions ======================= */
+
+/* Collapsed summaries belong to the disclosure button, before its chevron. */
+.inspector .insp-disclosure-head > .insp-summary {
+  flex: 0 1 auto;
+  min-inline-size: 0;
+  max-inline-size: 52%;
+  margin-inline-start: auto;
+  padding: 0;
+  font-size: 11.5px;
+  font-weight: 400;
+  text-align: end;
+}
+.inspector .insp-disclosure:not(.is-open) > h3 .insp-disclosure-title {
+  flex: 1 1 auto;
+}
+
+/* 2. Numbers in fields use the UI face with tabular figures (box appearance unchanged). */
+.inspector .insp-body input.insp-input.mono,
+.inspector .insp-unit {
+  font-family: var(--font-ui);
+  font-variant-numeric: tabular-nums;
+}
+.inspector .insp-body input.insp-input.mono {
+  font-size: 13px;
+}
+
+/* 3. Two- and three-way choices: the app's Segmented control, full width of the value column. */
+.inspector .insp-field > .segmented.insp-seg {
+  display: flex;
+  inline-size: 100%;
+  min-inline-size: 0;
+  justify-self: stretch;
+  box-sizing: border-box;
+}
+.inspector .insp-field > .segmented.insp-seg > button {
+  display: block;
+  flex: 1 1 auto;
+  text-align: center;
+  min-inline-size: 0;
+  height: auto;
+  min-block-size: 26px;
+  padding: 4px 6px;
+  font-size: 11px;
+  line-height: 1.2;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+.inspector .insp-field > .segmented.insp-seg > button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+/* 5. Read-only: A's headline figure, then the working. Full width, outside the ledger columns. */
+.inspector [data-testid="planning-arithmetic"] {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.inspector [data-testid="planning-arithmetic"] > p {
+  margin: 0;
+  font-size: 12.5px;
+  color: var(--text-2);
+}
+.inspector .planning-explanation .inspector-live-outcomes {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px 10px;
+}
+.inspector .planning-explanation .inspector-live-outcomes > div {
+  display: flex;
+  flex-direction: column-reverse;
+  justify-content: flex-end;
+  gap: 1px;
+  padding: 0;
+  min-inline-size: 0;
+}
+.inspector .planning-explanation .inspector-live-outcomes dt {
+  font-size: 11.5px;
+  color: var(--text-3);
+}
+.inspector .planning-explanation .inspector-live-outcomes dd {
+  font-family: var(--font-ui);
+  font-size: 14px;
+  font-weight: 600;
+  text-align: start;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: normal;
+}
+.inspector .planning-explanation .inspector-live-outcomes > div[data-key="capacity"] {
+  order: -1;
+  grid-column: 1 / -1;
+  flex-direction: column;
+  gap: 0;
+  padding-block-end: 12px;
+  border-block-end: 1px solid var(--line);
+}
+.inspector .planning-explanation .inspector-live-outcomes > div[data-key="capacity"] dt {
+  font-size: 12px;
+  color: var(--text-2);
+}
+.inspector .planning-explanation .inspector-live-outcomes > div[data-key="capacity"] dd {
+  font-size: 26px;
+  font-weight: 620;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+.inspector [data-testid="planning-capacity-formula"] {
+  display: block;
+  margin-block-start: 2px;
+  font-size: 11.5px !important;
+  font-weight: 400;
+  letter-spacing: 0;
+  line-height: 1.4;
+  color: var(--text-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+@container inspector (max-width: 329px) {
+  .inspector .planning-explanation .inspector-live-outcomes {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .inspector [data-testid="planning-capacity-formula"] {
+    white-space: normal;
+  }
+}
+.inspector .planning-explanation > .readout-disclosure {
+  margin-block-start: 2px;
+  border: 0;
+}
+.inspector .planning-explanation > .readout-disclosure > summary {
+  justify-content: flex-start;
+  min-block-size: 28px;
+  font-size: 12.5px;
+  color: var(--accent);
+}
+.inspector .planning-explanation > .readout-disclosure > .readout-disclosure-body {
+  line-height: 1.5;
+}
+.inspector .planning-explanation > .readout-disclosure > .readout-disclosure-body b {
+  color: var(--text);
+}
+
+/* Connections: the pool sentence is the lede; rows keep the ledger columns. */
+.inspector .insp-body [data-testid="planning-pool"] {
+  margin-block-end: 6px;
+  font-size: 12.5px;
+  color: var(--text-2);
+}
+
+/* Autoscaling estimate (read-only, inside Simulation): lede-sized, no hero (no single headline number). */
+.inspector [data-testid="autoscaling-estimate"] {
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text-2);
+}
+
+/* 6. Live keeps its own card; only its heading becomes a band like the others. */
+.inspector .insp-body > .inspector-live > h3.inspector-live-heading {
+  min-block-size: 36px;
+}
+
+/* 7. Readout disclosures inside a section (Advanced, Workload, More): one row style, summary on the row. */
+.inspector .insp-section-body .readout-disclosure,
+.inspector .autoscaling-controls > .readout-disclosure {
+  border-block-start: 1px solid var(--line);
+}
+.inspector .autoscaling-controls > .readout-disclosure > summary {
+  min-block-size: 34px;
+  font-size: 12.5px;
+  font-weight: 650;
+}
+.inspector .readout-disclosure > summary > .readout-summary {
+  flex: 0 1 auto;
+  min-inline-size: 0;
+  max-inline-size: 60%;
+  margin: 0;
+  margin-inline-start: auto;
+  font-size: 11.5px;
+  font-weight: 400;
+  color: var(--text-3);
+}
+.inspector .readout-disclosure[open] > summary > .readout-summary {
+  display: none;
+}
+.inspector .readout-disclosure > summary > svg {
+  order: 3;
+}
+@container inspector (min-width: 330px) {
+  .inspector .autoscaling-controls > .insp-note {
+    margin-inline-start: var(--c-col);
+  }
+}
+
+/* 8. Autoscaling estimate inside More: a sub-block with its own lede and a 3-up stat row, no hero. */
+.inspector .planning-estimate {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-block: 4px;
+  padding-block: 10px;
+  border-block: 1px solid var(--line);
+}
+.inspector .planning-estimate > p {
+  margin: 0 !important;
+}
+.inspector .planning-estimate > p:first-child {
+  color: var(--text);
+  font-weight: 550;
+}
+.inspector .planning-explanation .planning-estimate .inspector-live-outcomes {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+/* 9. Pinned bands must never cover a focused field or a scroll-into-view target. */
+.inspector .insp-body {
+  scroll-padding-block-start: 44px;
+}

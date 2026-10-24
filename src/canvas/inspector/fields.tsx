@@ -2,6 +2,7 @@ import { useEffect, useState, type KeyboardEvent, type ReactNode } from "react";
 import { Icon } from "../../components/Icon";
 import { t } from "../../i18n";
 import { ANNOTATION_LIMITS } from "../../model/annotations";
+import { sideLabel } from "./sideLabel";
 import type { Side } from "../../model/types";
 
 const SIDES: Side[] = ["top", "right", "bottom", "left"];
@@ -112,7 +113,7 @@ export function Section({ title, aside, children }: { title?: string; aside?: Re
           {aside}
         </h3>
       )}
-      {children}
+      <div className="insp-section-body">{children}</div>
     </section>
   );
 }
@@ -123,15 +124,17 @@ export function Field({
   hint,
   group,
   children,
+  testId,
 }: {
   label: string;
   hint?: string;
   group?: boolean;
   children: ReactNode;
+  testId?: string;
 }) {
   const Tag = group ? "div" : "label";
   return (
-    <Tag className="insp-field" title={hint}>
+    <Tag className="insp-field" title={hint} data-testid={testId}>
       <span className="insp-label">{label}</span>
       {children}
     </Tag>
@@ -159,6 +162,9 @@ export function Segmented<T extends string>({
     0,
     options.findIndex((o) => o.value === value),
   );
+  const select = (next: T) => {
+    if (next !== value) onChange(next);
+  };
   const move = (e: KeyboardEvent<HTMLButtonElement>, index: number) => {
     const last = options.length - 1;
     const next =
@@ -177,7 +183,7 @@ export function Segmented<T extends string>({
               : -1;
     if (next < 0) return;
     e.preventDefault();
-    onChange(options[next].value);
+    select(options[next].value);
     const group = e.currentTarget.parentElement;
     group?.querySelectorAll<HTMLButtonElement>('[role="radio"]')[next]?.focus();
   };
@@ -192,7 +198,7 @@ export function Segmented<T extends string>({
           tabIndex={i === current ? 0 : -1}
           className={value === o.value ? "is-on" : ""}
           title={o.hint}
-          onClick={() => onChange(o.value)}
+          onClick={() => select(o.value)}
           onKeyDown={(e) => move(e, i)}
           data-testid={`${testId}-${o.value}`}
         >
@@ -223,14 +229,7 @@ export function SideSelect({
       <option value="">{t("inspector.auto")}</option>
       {SIDES.map((s) => (
         <option key={s} value={s}>
-          {
-            {
-              top: t("inspector.sideTop"),
-              bottom: t("inspector.sideBottom"),
-              left: t("inspector.sideLeft"),
-              right: t("inspector.sideRight"),
-            }[s]
-          }
+          {sideLabel(s)}
         </option>
       ))}
     </select>
