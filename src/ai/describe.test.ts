@@ -2,6 +2,20 @@ import { describe, expect, it, vi } from "vitest";
 import type { DiagramFile } from "../model/types";
 import { DESCRIBE_TYPE_CHARS, describeDiagram } from "./describe";
 import { messageTypesFixture } from "../lab/messageTypesFixture";
+import shaped from "../../tests/parity/corpus/hand-shaped-lines.diagram.json";
+
+it("describes fixed and partial sides and shaped routes, preserving geometry in JSON", () => {
+  const d = structuredClone(shaped) as DiagramFile;
+  delete d.edges[0].targetSide;
+  const text = describeDiagram(d);
+  expect(text).toContain("sides=bottom->auto shaped(2 bends)");
+  expect(text).toContain("sides=right->top shaped(4 bends)");
+  expect(text).toMatch(/"jog"[^\n]* shaped\(2 bends\)/);
+  expect(text).not.toMatch(/"jog"[^\n]* sides=/);
+  expect(JSON.parse(describeDiagram(d, { format: "json" })).edges[0]).toMatchObject(d.edges[0]);
+  d.edges = [{ id: "auto", from: "api", to: "db" }];
+  expect(describeDiagram(d)).not.toMatch(/sides=|shaped\(/);
+});
 
 it("reports arriving and carried message types in text and JSON", () => {
   const d = messageTypesFixture();

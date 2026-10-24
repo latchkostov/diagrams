@@ -6,6 +6,22 @@ import { diagramToMermaid } from "./write";
 import { getStencil } from "../../stencils/registry";
 import { MERMAID_SHAPES } from "./shapes";
 import { parse as parseYaml } from "yaml";
+import shaped from "../../../tests/parity/corpus/hand-shaped-lines.diagram.json";
+
+it("drops sides and shaped routes without changing Mermaid output or metadata", () => {
+  const d = shaped as DiagramFile;
+  const auto = { ...d, edges: d.edges.map(({ sourceSide: _s, targetSide: _t, waypoints: _w, ...edge }) => edge) };
+  for (const metadata of [true, false]) {
+    const text = diagramToMermaid(d, { metadata });
+    expect(text).toBe(diagramToMermaid(auto, { metadata }));
+    const back = parseMermaid(text).diagram;
+    for (const edge of back.edges) {
+      expect(edge.waypoints).toBeUndefined();
+      expect(edge.sourceSide).toBeUndefined();
+      expect(edge.targetSide).toBeUndefined();
+    }
+  }
+});
 
 describe("annotation shape syntax", () => {
   it.each([

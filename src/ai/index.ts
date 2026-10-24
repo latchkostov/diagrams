@@ -1,5 +1,5 @@
 // Pure TypeScript contract shared by the editor, tool adapters and Node consumers.
-import type { DiagramFile, DiagramGroup, EdgeRelation, MetricField } from "../model/types";
+import type { DiagramFile, DiagramGroup, EdgeRelation, MetricField, Side } from "../model/types";
 import type { RelationChange } from "../stencils/relations";
 
 export type Ref = string;
@@ -15,6 +15,8 @@ export type DiagramOp =
       kind?: "async" | "sync";
       /** Absent: infer from the stencils, as in the editor. An explicit flow carries traffic. */
       relation?: EdgeRelation;
+      fromSide?: Side;
+      toSide?: Side;
       key?: string;
     }
   | {
@@ -27,6 +29,9 @@ export type DiagramOp =
       props?: NodeProps;
       members?: Ref[];
       tone?: DiagramGroup["tone"];
+      fromSide?: Side | null;
+      toSide?: Side | null;
+      route?: "auto";
     }
   | { op: "remove"; targets: Ref[] }
   | { op: "insert_between"; from: Ref; to: Ref; kind: string; label: string; sublabel?: string; key?: string }

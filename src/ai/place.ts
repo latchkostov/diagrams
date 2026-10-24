@@ -125,7 +125,12 @@ export function placeNew(
       boxes.push({ ...n, ...size });
     }
   }
-  const next = { ...diagram, nodes, groups: diagram.groups?.map((g) => ({ ...g })) };
+  const next = {
+    ...diagram,
+    nodes,
+    ...(full ? { edges: diagram.edges.map(({ waypoints: _waypoints, ...edge }) => edge) } : {}),
+    groups: diagram.groups?.map((g) => ({ ...g })),
+  };
   const nextGroups = new Map(next.groups?.map((g) => [g.id, g]));
   const sized = nodes.map((n) => ({ ...n, ...estimateCardSize(n.label, n.sublabel) }));
   const sizedById = new Map(sized.map((n) => [n.id, n]));

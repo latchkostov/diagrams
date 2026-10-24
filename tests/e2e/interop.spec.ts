@@ -208,6 +208,34 @@ test.describe("interop", () => {
     await expect(page.getByTestId("node-sqs")).toBeVisible();
   });
 
+  test("draw.io export and re-import keeps hand-shaped routes and sides", async ({ page }, info) => {
+    await gotoCanvas(page, publicExamples[0].slug);
+    const fixture = join(process.cwd(), "tests/parity/corpus/hand-shaped-lines.diagram.json");
+    const shaped = JSON.parse(readFileSync(fixture, "utf8")) as {
+      title: string;
+      edges: { id: string; sourceSide?: string; targetSide?: string }[];
+    };
+    await page.getByTestId("import-input").setInputFiles(fixture);
+    await expect(page.getByTestId("diagram-title")).toHaveText(shaped.title);
+    for (const edge of shaped.edges)
+      await expect(page.getByTestId(`edge-${edge.id}`)).toHaveAttribute("data-route", "custom");
+    const [download] = await Promise.all([page.waitForEvent("download"), moreFormats(page, "export-drawio")]);
+    const file = info.outputPath("shaped.drawio");
+    await download.saveAs(file);
+    expect(readFileSync(file, "utf8")).toContain('<Array as="points">');
+    // Switch away first, so every following assertion observes the re-imported file.
+    await importNative(page);
+    await expect(page.getByTestId("edge-api-db")).toHaveCount(0);
+    await page.getByTestId("import-input").setInputFiles(file);
+    await expect(page.getByTestId("diagram-title")).toHaveText(shaped.title);
+    for (const edge of shaped.edges) {
+      const line = page.getByTestId(`edge-${edge.id}`);
+      await expect(line).toHaveAttribute("data-route", "custom");
+      if (edge.sourceSide) await expect(line).toHaveAttribute("data-source-side", edge.sourceSide);
+      if (edge.targetSide) await expect(line).toHaveAttribute("data-target-side", edge.targetSide);
+    }
+  });
+
   test("pasting Mermaid text imports a laid-out diagram", async ({ page, consoleErrors }) => {
     await gotoCanvas(page, publicExamples[0].slug);
     await openFile(page);

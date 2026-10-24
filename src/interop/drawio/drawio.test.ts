@@ -13,6 +13,8 @@ import { resourceLesson } from "../../model/autoscaling";
 import { createEngine } from "../../sim/engine";
 import azureOrders from "./fixtures/azure-orders.drawio?raw";
 import twoPages from "./fixtures/two-pages-compressed.drawio?raw";
+import shaped from "../../../tests/parity/corpus/hand-shaped-lines.diagram.json";
+import { ROUTE_LIMITS } from "../../model/edgeRoute";
 
 // Public examples only (the glob does not descend into ./private).
 const examples = import.meta.glob<DiagramFile>("../../examples/*.json", { eager: true, import: "default" });
@@ -21,6 +23,50 @@ async function importFirst(xml: string) {
   const doc = await readDrawio(xml);
   return drawioPageToDiagram(doc.pages[0]);
 }
+
+it("round-trips our hand-shaped routes and fixed sides 1:1, including negative and fractional points", async () => {
+  const d = structuredClone(shaped) as DiagramFile;
+  d.edges[0].waypoints![0] = { x: -123.125, y: 220.75 };
+  const xml = diagramToDrawio(d);
+  expect(xml).toContain('<Array as="points">');
+  expect(xml).toContain('<mxPoint x="-123.125" y="220.75" />');
+  const { diagram, warnings } = await importFirst(xml);
+  expect(warnings).toEqual([]);
+  expect(
+    diagram.edges.map(({ id, sourceSide, targetSide, waypoints }) => ({ id, sourceSide, targetSide, waypoints })),
+  ).toEqual(d.edges.map(({ id, sourceSide, targetSide, waypoints }) => ({ id, sourceSide, targetSide, waypoints })));
+  expect(validateDiagram(diagram).ok).toBe(true);
+});
+
+it("drops foreign draw.io routes and sides with a counted report", async () => {
+  const xml = diagramToDrawio(shaped as DiagramFile).replace(/ dg_[\w]+="[^"]*"/g, "");
+  const { diagram, warnings } = await importFirst(xml);
+  expect(diagram.edges).toHaveLength(shaped.edges.length);
+  for (const edge of diagram.edges) {
+    expect(edge.waypoints).toBeUndefined();
+    expect(edge.sourceSide).toBeUndefined();
+    expect(edge.targetSide).toBeUndefined();
+  }
+  expect(warnings).toContain("4 connectors' hand-drawn routes were left to automatic routing.");
+});
+
+it.each(["NaN", "Infinity", "1000001", "12px", ""])("drops invalid draw.io waypoint coordinate %s", async (x) => {
+  const xml = diagramToDrawio(shaped as DiagramFile).replace('x="110" y="220"', `x="${x}" y="220"`);
+  const { diagram, warnings } = await importFirst(xml);
+  expect(diagram.edges[0].waypoints).toBeUndefined();
+  expect(warnings).toContain('Ignored waypoints: "api-db"');
+});
+
+it("accepts the shared draw.io waypoint and coordinate limits", async () => {
+  const d = structuredClone(shaped) as DiagramFile;
+  d.edges[0].waypoints = Array.from({ length: ROUTE_LIMITS.maxPoints }, (_, i) => ({
+    x: i % 2 ? ROUTE_LIMITS.maxCoordinate : -ROUTE_LIMITS.maxCoordinate,
+    y: i,
+  }));
+  const { diagram, warnings } = await importFirst(diagramToDrawio(d));
+  expect(warnings).toEqual([]);
+  expect(diagram.edges[0].waypoints).toEqual(d.edges[0].waypoints);
+});
 
 it("round-trips non-blocking calls, reply handling, caps and saved simulation overrides", async () => {
   const d = waitingFixture();
