@@ -30,7 +30,16 @@ test("a viewport chosen before initial measurements cancels the bootstrap fit", 
   await page.clock.install();
   await pauseClock(page);
   await page.keyboard.press("Shift+Digit0");
-  await page.clock.runFor(400);
+  // Observe the completed command, including a transition that starts between clock frames.
+  await expect
+    .poll(
+      async () => {
+        await page.clock.runFor(16);
+        return (await readCanvas(page)).viewport;
+      },
+      { intervals: [0] },
+    )
+    .toContain("scale(1)");
   const chosen = (await readCanvas(page)).viewport;
   expect(chosen).toContain("scale(1)");
   await page.evaluate(() => window.dispatchEvent(new Event("release-resize-observers")));
