@@ -309,7 +309,7 @@
           { "atMs": 8000, "action": { "do": "fault", "fault": { "kind": "slow", "node": "payments", "factor": 1 } } },
           {
             "atMs": 1200,
-            "action": { "do": "note", "pause": true, "text": "Watch Checkout's attempts per request and the Payments queue. At 3 s, Payments slows for five seconds: quick retries pile up. Repeating a POST can run it twice.", "focus": ["payments", "checkout"] }
+            "action": { "do": "note", "text": "Watch Checkout's attempts per request and the Payments queue. At 3 s, Payments slows for five seconds: quick retries pile up. Repeating a POST can run it twice.", "focus": ["payments", "checkout"] }
           },
           {
             "atMs": 3500,
@@ -381,7 +381,7 @@
           { "atMs": 8000, "action": { "do": "fault", "fault": { "kind": "slow", "node": "payments", "factor": 1 } } },
           {
             "atMs": 1200,
-            "action": { "do": "note", "pause": true, "text": "Watch Checkout's attempts per request and the Payments queue. At 3 s, Payments slows for five seconds: jitter spreads retries, but does the queue drain? Repeating a POST can run it twice.", "focus": ["payments", "checkout"] }
+            "action": { "do": "note", "text": "Watch Checkout's attempts per request and the Payments queue. At 3 s, Payments slows for five seconds: jitter spreads retries, but does the queue drain? Repeating a POST can run it twice.", "focus": ["payments", "checkout"] }
           },
           {
             "atMs": 3500,
@@ -461,7 +461,7 @@
           { "atMs": 8000, "action": { "do": "fault", "fault": { "kind": "slow", "node": "payments", "factor": 1 } } },
           {
             "atMs": 1200,
-            "action": { "do": "note", "pause": true, "text": "Watch Checkout's attempts per request and Shop's goodput. At 3 s, Payments slows for five seconds: the retry budget caps extra calls. Watch its queue drain and goodput recover later in this 60-second run. Repeating a POST can run it twice.", "focus": ["payments", "checkout"] }
+            "action": { "do": "note", "text": "Watch Checkout's attempts per request and Shop's goodput. At 3 s, Payments slows for five seconds: the retry budget caps extra calls. Watch its queue drain and goodput recover later in this 60-second run. Repeating a POST can run it twice.", "focus": ["payments", "checkout"] }
           },
           {
             "atMs": 3500,
@@ -542,7 +542,7 @@
           { "atMs": 8000, "action": { "do": "fault", "fault": { "kind": "slow", "node": "payments", "factor": 1 } } },
           {
             "atMs": 1200,
-            "action": { "do": "note", "pause": true, "text": "Watch the Payments connection and queue. At 3 s, Payments slows for five seconds: the breaker pauses failing calls, then tests recovery. Watch for Closed and calls succeeding.", "focus": ["payments", "checkout"] }
+            "action": { "do": "note", "text": "Watch the Payments connection and queue. At 3 s, Payments slows for five seconds: the breaker pauses failing calls, then tests recovery. Watch for Closed and calls succeeding.", "focus": ["payments", "checkout"] }
           },
           {
             "atMs": 3500,

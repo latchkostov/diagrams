@@ -67,7 +67,11 @@ export function badgeStatesDiagram(): DiagramFile {
     seed: 7,
     setup: {
       status: { "down-svc": "down", "paused-svc": "paused" },
-      props: { "slow-svc": { latencyMs: 2500, concurrency: 1 }, worker: { failureRate: 0.45 } },
+      props: {
+        "slow-svc": { latencyMs: 2500, concurrency: 1 },
+        worker: { failureRate: 0.45 },
+        "jobs-api": { failureRate: 0.2 },
+      },
     },
     traffic: [
       {
