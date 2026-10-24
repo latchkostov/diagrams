@@ -114,12 +114,21 @@ for (const simulation of ["three-quick-retries", "jittered-backoff", "retry-budg
     await pauseClock(page);
     await page.getByTestId("live-play").click();
     await page.clock.runFor(1500);
+    const note = page.getByTestId("live-note");
+    const clock = page.getByTestId("live-clock");
+    await expect(page.getByTestId("live-note-text")).toBeVisible();
     await expect(page.getByTestId("live-note-text")).toHaveText(/^Watch /);
-    await expect(page.getByTestId("live-note")).toContainText("At 3 s");
-    await expect(page.getByTestId("live-note-continue")).toBeVisible();
-    const guidanceTime = await page.getByTestId("live-clock").innerText();
+    await expect(note).toContainText("At 3 s");
+    const guidanceTime = Number(await clock.getAttribute("data-ms"));
+    expect(guidanceTime).toBeGreaterThan(0);
+    expect(guidanceTime).toBeLessThanOrEqual(2000);
+    await expect(note).not.toHaveAttribute("data-waiting", "1");
+    await expect(page.getByTestId("live-note-continue")).toHaveCount(0);
+    await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "playing");
     await page.clock.runFor(3000);
-    await expect(page.getByTestId("live-clock")).toHaveText(guidanceTime);
-    await expect(page.getByTestId("live-clock")).toHaveAttribute("title", "of 1:00");
+    await expect.poll(async () => Number(await clock.getAttribute("data-ms"))).toBeGreaterThan(guidanceTime);
+    await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "playing");
+    await expect(note).not.toHaveAttribute("data-waiting", "1");
+    await expect(clock).toHaveAttribute("title", "of 1:00");
   });
 }
