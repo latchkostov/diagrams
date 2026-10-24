@@ -1,6 +1,8 @@
 import type { Simulation } from "../model/types";
 import { stencilRole } from "../stencils/roles";
-import { resolveNodeProps } from "../sim/defaults";
+import { analyzeCapacity } from "../sim/capacity";
+import { waitingPlan } from "../sim/waitingPlan";
+import { requestResponseMs } from "../sim/timing";
 import type { EdgeSimProps, QueuePolicy } from "../sim/types";
 import { advanceHeadless, createHeadlessRun, startWork, type VerificationContext } from "../sim/headless";
 import { simulationEdges } from "../sim/topology";
@@ -104,7 +106,11 @@ export function confirmedResilienceFix({
   const sim = { ...base, durationMs: horizon };
   if (startWork(d, sim) > THREAD_FIX_LIMITS.startWork) return;
   const messages = { remaining: THREAD_FIX_LIMITS.messages };
+  const replayCost = threadFixWork(d.nodes.length, d.edges.length, horizon);
+  let replayWork = THREAD_FIX_WORK;
   const measure = (candidate: Simulation): RecoveryEvidence | undefined => {
+    if (replayCost > replayWork) return;
+    replayWork -= replayCost;
     const run = createHeadlessRun(d, candidate, messages, context);
     const points: RecoveryPoint[] = [],
       history: { time: number; processed: number; backlog: number }[] = [{ time: 0, processed: 0, backlog: 0 }];
@@ -154,10 +160,22 @@ export function confirmedResilienceFix({
     const before = measure(sim);
     if (!before) return;
     const target = effective.nodes.find((n) => n.id === connection.to);
-    const props = target && resolveNodeProps(d, target);
+    const analysis = target && stencilRole(target.stencil) === "processor" ? analyzeCapacity(d, base) : undefined;
+    const props = analysis?.resolved[connection.to];
+    const wait = analysis && waitingPlan(effective, analysis.resolved).nodes.get(connection.to);
     const policy =
-      props && !props.admission
-        ? recommendedQueue(caller.deadlineMs ?? undefined, props.latencyMs, props.replicas * props.concurrency)
+      props && analysis && !props.admission
+        ? recommendedQueue(
+            caller.deadlineMs ?? undefined,
+            requestResponseMs(
+              props,
+              wait,
+              typeof connection.props?.endpointId === "string" ? connection.props.endpointId : undefined,
+              Number(connection.props?.networkDelayMs ?? 0),
+            ),
+            analysis.nodes[connection.to].activeReplicas * props.concurrency,
+            analysis.nodes[connection.to].capacity,
+          )
         : undefined;
     for (const candidate of resilienceLadder(
       caller,

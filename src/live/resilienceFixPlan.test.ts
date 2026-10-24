@@ -1,8 +1,9 @@
-import { expect, it } from "vitest";
+import { expect, it, vi } from "vitest";
 import storm from "../examples/retry-storm.json";
 import type { DiagramFile } from "../model/types";
 import { resilienceLadder, recovers, confirmedResilienceFix, type RecoveryEvidence } from "./resilienceFixPlan";
 import { RECOMMENDED_RETRY, recommendedQueue } from "../sim/resiliencePresets";
+import * as headless from "../sim/headless";
 import { THREAD_FIX_LIMITS } from "./threadFixPlan";
 import { TroubleWatcher } from "./observedTrouble";
 import { createSimulationRun } from "../sim/simulation";
@@ -177,4 +178,24 @@ it("offers shedding only when its cumulative replay is the first recovery that p
     step: "shedding",
     queue: { node: "payments", policy: { order: "lifo", maxWaitMs: 200 } },
   });
+});
+
+it("the sixth replay cannot exceed the shared deterministic work bound", () => {
+  const c = context();
+  c.origin.diagram.nodes.push({ ...c.origin.diagram.nodes[0], id: "unused" });
+  c.origin.diagram.nodes[0].props!.ratePerSec = 0;
+  c.origin.simulation.traffic[0].shape = { kind: "constant", ratePerSec: 0, durationMs: 60000 };
+  const replay = vi.spyOn(headless, "createHeadlessRun");
+  try {
+    expect(confirmedResilienceFix({ context: c, edge: "pay", time: 15000 })).toBeUndefined();
+    expect(replay).toHaveBeenCalledTimes(5);
+  } finally {
+    replay.mockRestore();
+  }
+});
+
+it("queue presets subtract round-trip residence and size by actual capacity", () => {
+  // 80 ms local work + 40 ms network, with 400/s effective capacity.
+  expect(recommendedQueue(300, 120, 32, 400)).toEqual({ limit: 40, order: "lifo", maxWaitMs: 100 });
+  expect(recommendedQueue(100, 120, 32, 400)).toBeUndefined();
 });

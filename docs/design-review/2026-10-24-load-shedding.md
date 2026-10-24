@@ -13,4 +13,6 @@ to the shared health window, not cumulative counters.
 
 Additional toolbar controls, permanent health warnings from historical sheds, retry-first eviction
 and a menu of unproven fixes were rejected. The callout retains one replay-confirmed action.
-Browser layout and accessibility verification are pending at this WIP checkpoint.
+The production browser regression covers the 1024 px queue ledger, saved-simulation overrides,
+undo, the reachable cumulative Calls explanation and the connection priority dropdown. Its result
+and screenshot review are recorded in the PR verification report.
