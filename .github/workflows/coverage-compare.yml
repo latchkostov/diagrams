@@ -49,8 +49,31 @@ jobs:
       - uses: ./.github/actions/toolchain
       - name: Unsharded reference
         run: pnpm test:coverage --maxWorkers=3 --coverage.reportsDirectory=coverage-reference
+      - name: Find matching CI run
+        if: github.event_name == 'pull_request'
+        id: ci
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          run_id="$(gh api "repos/$REPO/actions/workflows/ci.yml/runs?event=pull_request&head_sha=$HEAD_SHA" --jq '.workflow_runs[0].id // empty')"
+          [[ "$run_id" =~ ^[0-9]+$ ]] || exit 1
+          echo "run-id=$run_id" >> "$GITHUB_OUTPUT"
+      - uses: actions/download-artifact@v8
+        if: github.event_name == 'pull_request'
+        with:
+          name: unit-coverage
+          run-id: ${{ steps.ci.outputs.run-id }}
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          path: ${{ runner.temp }}/merged-coverage
+      - name: Require identical tested revisions
+        shell: bash
+        env:
+          REVISION: ${{ runner.temp }}/merged-coverage/tested-sha.txt
+        run: test "$(cat "$REVISION")" = "$(git rev-parse HEAD)"
       - name: Compare every file and total
-        if: github.event_name == 'workflow_dispatch'
         shell: bash
         env:
           MERGED: ${{ runner.temp }}/merged-coverage/coverage-summary.json
@@ -64,6 +87,4 @@ jobs:
           path: |
             coverage-reference/coverage-summary.json
             coverage-reference/tested-sha.txt
-            ${{ runner.temp }}/merged-coverage/coverage-summary.json
-            ${{ runner.temp }}/merged-coverage/tested-sha.txt
           retention-days: 14

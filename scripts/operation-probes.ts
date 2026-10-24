@@ -34,6 +34,8 @@ export function operationProbes(): Plugin {
         file.endsWith(".tsx") ? ts.ScriptKind.TSX : ts.ScriptKind.TS,
       );
       const out = new MagicString(code);
+      let copies = false;
+      let trims = false;
       const body = (node: ts.Statement) => {
         if (ts.isBlock(node)) out.appendRight(node.getStart(tree) + 1, hit);
         else {
@@ -71,10 +73,8 @@ export function operationProbes(): Plugin {
               node.expression.expression.text === "JSON" &&
               node.expression.name.text === "stringify"))
         ) {
-          out.appendRight(
-            node.getStart(tree),
-            `((__ldResult)=>(globalThis.__ldOpCounter?.add(__ldResult?.length ?? 0,${JSON.stringify(source)}),__ldResult))(`,
-          );
+          copies = true;
+          out.appendRight(node.getStart(tree), "__ldOpCopy(");
           out.appendLeft(node.end, ")");
         }
         // A bounded slice before trim must stay bounded: function/loop counts cannot see native string scans.
@@ -87,21 +87,25 @@ export function operationProbes(): Plugin {
           !node.expression.questionDotToken &&
           (node.flags & ts.NodeFlags.OptionalChain) === 0
         ) {
+          trims = true;
           const receiver = node.expression.expression;
-          out.appendRight(
-            receiver.getStart(tree),
-            "((__ldText)=>(globalThis.__ldOpCounter?.add(__ldText.length," +
-              JSON.stringify(source) +
-              "),__ldText." +
-              node.expression.name.text +
-              "()))(",
-          );
+          out.appendRight(receiver.getStart(tree), "__ldOpTrim(");
           out.remove(receiver.end, node.end);
-          out.appendLeft(node.end, ")");
+          out.prependLeft(node.end, `,${JSON.stringify(node.expression.name.text)})`);
         }
         ts.forEachChild(node, visit);
       };
       visit(tree);
+      // Per-call arrow wrappers share source locations after remapping, so coverage mergers collapse
+      // distinct functions. One unmapped helper per module preserves the original function identities.
+      if (copies)
+        out.prepend(
+          `function __ldOpCopy(v){globalThis.__ldOpCounter?.add(v?.length ?? 0,${JSON.stringify(source)});return v;}\n`,
+        );
+      if (trims)
+        out.prepend(
+          `function __ldOpTrim(v,m){globalThis.__ldOpCounter?.add(v.length,${JSON.stringify(source)});return v[m]();}\n`,
+        );
       return { code: out.toString(), map: out.generateMap({ source: file, includeContent: true, hires: true }) };
     },
   };

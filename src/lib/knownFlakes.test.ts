@@ -1,5 +1,6 @@
 import { expect, it } from "vitest";
 import { classifyRun, failedTests } from "../../scripts/ci/known-flakes.mjs";
+import { withRunErrors } from "../../scripts/ci/vitest-json.mjs";
 import ledger from "../../tests/flakes.json";
 import { existsSync } from "node:fs";
 
@@ -107,6 +108,20 @@ it("only ignores the aggregate CI failure when another failed job explains it", 
     ),
   ).toEqual([]);
   expect(classifyRun([{ name: "CI", conclusion: "failure" }], [], [test])).not.toEqual([]);
+});
+
+it("keeps runner and hook errors visible alongside a known failing assertion", () => {
+  const diagnostic = withRunErrors(
+    report,
+    [{ name: "Unhandled Rejection", message: "unknown runner defect" }],
+    "failed",
+  );
+  expect(classifyRun(jobs, [{ job: jobs[0].name, report: diagnostic }], [test])).not.toEqual([]);
+  expect(
+    failedTests({ ...report, testResults: [{ ...report.testResults[0], message: "afterAll failed" }] }).unknown,
+  ).not.toEqual([]);
+  expect(failedTests(withRunErrors(report, [], "interrupted")).unknown).not.toEqual([]);
+  expect(failedTests({ ...report, snapshot: { failure: true } }).unknown).not.toEqual([]);
 });
 
 it("does not mistake a real assertion regression for a timeout in the same ledger test", () => {

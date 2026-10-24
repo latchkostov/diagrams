@@ -132,7 +132,7 @@ jobs:
       - name: Unit coverage
         run: >-
           pnpm test:coverage --shard=${{ matrix.shard }}/3 --maxWorkers=3
-          --reporter=default --reporter=blob --reporter=json
+          --reporter=default --reporter=blob --reporter=./scripts/ci/vitest-json.mjs
           --outputFile.blob=tests/.output/unit-blobs/shard-${{ matrix.shard }}.json
           --outputFile.json=tests/.output/unit-results.json
       - uses: actions/upload-artifact@v7
@@ -184,7 +184,7 @@ jobs:
       - name: Skill ZIP
         run: >-
           pnpm exec vitest run --project heavy src/ai/skill/skill.heavy.test.ts
-          --testNamePattern='zips the skill folder' --reporter=default --reporter=json
+          --testNamePattern='zips the skill folder' --reporter=default --reporter=./scripts/ci/vitest-json.mjs
           --outputFile=tests/.output/skill-results.json
       - uses: actions/upload-artifact@v7
         if: ${{ !cancelled() }}
@@ -204,7 +204,7 @@ jobs:
       - name: Heavy tests
         run: >-
           pnpm test:heavy --testNamePattern='^(?!.*zips the skill folder)'
-          --reporter=default --reporter=json --outputFile=tests/.output/heavy-results.json
+          --reporter=default --reporter=./scripts/ci/vitest-json.mjs --outputFile=tests/.output/heavy-results.json
       - uses: actions/upload-artifact@v7
         if: ${{ !cancelled() }}
         with:

@@ -22,10 +22,16 @@ export function failedTests(report) {
             title: test.title,
             message: test.failureMessages?.join("\n") ?? "",
           });
-      if (suite.status === "failed" && !assertions.some((test) => test.status === "failed"))
+      if (suite.message || (suite.status === "failed" && !assertions.some((test) => test.status === "failed")))
         unknown.push(`suite/setup failure: ${normalize(suite.name)}`);
     }
-    if (report.numFailedTests > failed.length || report.numRuntimeErrorTestSuites > 0 || report.unhandledErrors?.length)
+    if (
+      report.numFailedTests > failed.length ||
+      report.numRuntimeErrorTestSuites > 0 ||
+      report.unhandledErrors?.length ||
+      report.interrupted ||
+      report.snapshot?.failure
+    )
       unknown.push("unit runner failure or incomplete report");
   } else if (report.suites && report.stats) {
     const visit = (suite) => {

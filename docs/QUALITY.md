@@ -422,11 +422,14 @@ Vitest does not repeat the entire type-check project in each shard or in the hea
 CI runs static checks, three unit coverage shards, build/size/ZIP and serial heavy tests independently.
 Vitest's blob reporter carries coverage in each shard; `--merge-reports --coverage` merges it without
 running tests again. The existing `Types, lint, unit, build` and `CI` aggregate names stay stable.
+Native-copy probes use unmapped helpers per module: per-call arrow wrappers share original source
+locations, causing coverage mergers to collapse distinct functions. A heavy integration fixture compares
+real merged blobs with an unsharded run. Do not accept a percentage tolerance for that difference.
 Compare `coverage-summary.json` from the merge with an unsharded unit run when changing this setup.
 The on-demand **Compare merged unit coverage** workflow accepts a CI run ID, checks out that
 artifact's exact tested revision, and compares every file and total against one unsharded Ubuntu run.
 PRs changing this configuration also produce a `unit-unsharded-coverage` reference artifact on
-Ubuntu; compare it with the same revision's merged `unit-coverage` artifact.
+Ubuntu and automatically compare it with the same revision's merged `unit-coverage` artifact.
 
 `tests/flakes.json` records exact test identities, observed dates/counts, owners and tracking links.
 `node scripts/ci/known-flakes.mjs <run-id>` downloads structured reports and prints `ALL-KNOWN` only
