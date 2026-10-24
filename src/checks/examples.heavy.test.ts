@@ -18,7 +18,12 @@ const bySlug = Object.fromEntries(
 
 const EXPECTED: Record<string, string[]> = {
   "vendor-edge-storefront": [],
-  "retry-storm": ["warning no-reader:orders"],
+  "retry-storm": [
+    "warning no-reader:orders",
+    "warning retry-backoff:pay",
+    "warning retry-idempotency:pay",
+    "warning retry-storm:pay",
+  ],
   "scale-on-busy-threads": [
     "warning blocked-threads:caller",
     "warning scaling-blind:caller",
@@ -178,12 +183,21 @@ describe("simulation evidence on the public examples", () => {
     const shown = withEvidence(runChecks(d), ev, d.checks);
     // No count on any finding, and no `dropped`: the same findings as the checks' own.
     if (slug === "retry-storm") {
-      expect(shown.result.findings.map((f) => f.id)).toEqual(["no-reader:orders", "dropped:shop", "dropped:checkout"]);
-      for (const finding of shown.result.findings) {
+      expect(shown.result.findings.map((f) => f.id)).toEqual([
+        "no-reader:orders",
+        "retry-backoff:pay",
+        "retry-idempotency:pay",
+        "retry-storm:pay",
+        "dropped:shop",
+        "dropped:checkout",
+      ]);
+      const withCounts = shown.result.findings.filter((f) => f.evidence?.length);
+      expect(withCounts.map((f) => f.id)).toEqual(["no-reader:orders", "dropped:shop", "dropped:checkout"]);
+      for (const finding of withCounts) {
         expect(finding.evidence).toHaveLength(5);
         expect(finding.evidence!.every((e) => e.count > 0)).toBe(true);
       }
-      expect(shown.result.findings.map((f) => f.evidence!.at(-1))).toEqual([
+      expect(withCounts.map((f) => f.evidence!.at(-1))).toEqual([
         { simulation: "Shed load at Payments", what: "unread", count: 16413 },
         { simulation: "Shed load at Payments", what: "dropped", count: 1521 },
         { simulation: "Shed load at Payments", what: "dropped", count: 1521 },
