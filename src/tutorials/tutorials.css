@@ -4,13 +4,6 @@
   grid-template-rows: var(--topbar-h) auto 1fr;
 }
 
-/* Above the coach mark's dimming, so the words stay readable while it points at the canvas. */
-.tutorial-bar,
-.tutorial-strip {
-  position: relative;
-  z-index: 275;
-}
-
 .tutorial-chip {
   padding: 3px 8px;
   border-radius: 999px;
@@ -156,7 +149,8 @@
   position: fixed;
   inset: 0;
   pointer-events: none;
-  z-index: 260;
+  /* Above the canvas's menus (200), so a ringed menu item shows through the dim; below dialogs (they hide it). */
+  z-index: 205;
 }
 
 .tutorial-spot {
@@ -201,7 +195,7 @@
 
 .tutorial-tip {
   position: fixed;
-  z-index: 270;
+  z-index: 206;
   width: max-content;
   padding: 7px 10px;
   border-radius: 8px;

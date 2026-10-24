@@ -19,6 +19,8 @@ interface Placed {
   tip: string;
   dim: boolean;
   rect: { x: number; y: number; width: number; height: number };
+  /** Where the step strip ends: the dim stays below it, so the words stay readable and dialogs cover both. */
+  top: number;
 }
 
 const PAD = 6;
@@ -26,6 +28,9 @@ const TIP_W = 220;
 const GAP = 14;
 
 function locate({ targets, subjects, selected }: Props): Placed | null {
+  // A dialog over everything (Ctrl+K, Share) owns the screen: point at nothing under it.
+  const modal = document.querySelector('[aria-modal="true"]');
+  const top = document.querySelector('[data-testid="tutorial-step"]')?.getBoundingClientRect().bottom ?? 0;
   for (const target of targets) {
     if (target.selected) {
       const id = subjects[target.selected];
@@ -34,7 +39,7 @@ function locate({ targets, subjects, selected }: Props): Placed | null {
     const testId = fillTestId(target.testId, subjects);
     if (!testId) continue;
     const el = document.querySelector<HTMLElement>(`[data-testid="${CSS.escape(testId)}"]`);
-    if (!el || !el.checkVisibility()) continue;
+    if (!el || !el.checkVisibility() || (modal && !modal.contains(el))) continue;
     const r = el.getBoundingClientRect();
     if (r.width < 1 || r.height < 1 || r.bottom < 0 || r.right < 0) continue;
     if (r.top > window.innerHeight || r.left > window.innerWidth) continue;
@@ -43,6 +48,7 @@ function locate({ targets, subjects, selected }: Props): Placed | null {
       tip: target.tip(),
       dim: target.dim !== false,
       rect: { x: r.left, y: r.top, width: r.width, height: r.height },
+      top,
     };
   }
   return null;
@@ -54,6 +60,7 @@ const same = (a: Placed | null, b: Placed | null) =>
     !!b &&
     a.testId === b.testId &&
     a.tip === b.tip &&
+    Math.round(a.top) === Math.round(b.top) &&
     Math.round(a.rect.x) === Math.round(b.rect.x) &&
     Math.round(a.rect.y) === Math.round(b.rect.y) &&
     Math.round(a.rect.width) === Math.round(b.rect.width) &&
@@ -112,7 +119,13 @@ export function Coachmark(props: Props) {
         ? { left: rect.x + rect.width + PAD + GAP, top: Math.max(8, rect.y + rect.height / 2 - 17) }
         : { right: window.innerWidth - rect.x + PAD + GAP, top: Math.max(8, rect.y + rect.height / 2 - 17) };
   return (
-    <div className="tutorial-coach" aria-hidden="true" data-testid="tutorial-coach" data-target={placed.testId}>
+    <div
+      className="tutorial-coach"
+      aria-hidden="true"
+      data-testid="tutorial-coach"
+      data-target={placed.testId}
+      style={{ clipPath: `inset(${Math.round(placed.top)}px 0 0 0)` }}
+    >
       <div
         className={`tutorial-spot${placed.dim ? " is-dimming" : ""}`}
         data-testid="tutorial-spot"
