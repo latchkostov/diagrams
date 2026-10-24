@@ -17,6 +17,10 @@ existing shaped lines still follow the viewer's chosen corner style.
 
 ## Golden inventory
 
-No diagram, route, layout, render, image or HTML goldens changed. No new selection golden was needed.
-The required new English strings cause the catalog i18n parity hashes to differ; the existing golden
-has been retained pending the owner's answer about the brief's no-existing-golden-changes constraint.
+- Updated `node/i18n/catalogs.json`: the new English shaping hints and shortcut strings change catalog
+  message counts, English fallback counts and the affected area hashes. This is the approved exception
+  for added English strings.
+- Added `browser/selection/corpus-hand-shaped-lines.json`: pins the selected shaped line's drawing,
+  selection, segment-handle positions, resize cursors and hint text. Selecting the line preserves its paths.
+
+Every other golden is unchanged.

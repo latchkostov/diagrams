@@ -2,6 +2,38 @@ import { test, expect } from "./fixtures";
 import { canvasSelection, command, openExample, readCanvas, restoreOpening, settledCanvas, tidyAll } from "./canvas";
 import { waitForStableBox } from "../../e2e/fixtures";
 import { holdResizeObservers } from "./holdReadiness";
+import { expectGolden } from "../lib/golden";
+
+test("selected shaped line exposes segment handles without changing its drawing", async ({ page }) => {
+  const opened = await openExample(page, "corpus-hand-shaped-lines");
+  const at = await page.getByTestId("edge-api-db").evaluate((edge) => {
+    const line = edge.children[1] as SVGPathElement;
+    const point = line.getPointAtLength(line.getTotalLength() / 4);
+    const matrix = line.getScreenCTM();
+    if (!matrix) throw new Error("Missing edge transform");
+    const screen = new DOMPoint(point.x, point.y).matrixTransform(matrix);
+    return { x: screen.x, y: screen.y };
+  });
+  await page.mouse.click(at.x, at.y);
+  await expect(page.getByTestId("route-segment-api-db-0")).toBeVisible();
+  const drawing = await settledCanvas(page);
+  const selection = await canvasSelection(page);
+  expect(selection).toEqual({ nodes: [], edges: ["api-db"] });
+  expect(drawing.edges).toEqual(opened.edges);
+  const handles = await page.getByTestId(/^route-segment-/).evaluateAll((elements) =>
+    elements.map((element) => {
+      const handle = element as HTMLElement;
+      const style = getComputedStyle(handle);
+      return {
+        id: handle.dataset.testid,
+        transform: handle.style.transform,
+        cursor: style.cursor,
+        title: handle.title,
+      };
+    }),
+  );
+  expectGolden("selection/corpus-hand-shaped-lines.json", { drawing, selection, handles });
+});
 
 test("Tidy waits for the Inspector pane opened by Select all", async ({ page }) => {
   await page.addInitScript(holdResizeObservers, false);

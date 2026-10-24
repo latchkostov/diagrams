@@ -1,0 +1,28 @@
+{
+  "drawing": {
+    "viewport": "translate(170.549px, 290.403px) scale(0.7173)",
+    "nodes": {
+      "api": { "kind": "node", "box": "translate(0px, 0px) 220×72", "text": "Orders API Node.js Service" },
+      "db": { "kind": "node", "box": "translate(650px, 0px) 220×72", "text": "Orders DB PostgreSQL" },
+      "worker": { "kind": "node", "box": "translate(650px, 320px) 220×72", "text": "Receipt worker Go Service" },
+      "shape": { "kind": "annotation", "box": "translate(1100px, 320px) 140×100", "text": "Archive" }
+    },
+    "edges": {
+      "api-db": "M110,72 L110,210 Q110,220 120,220 L750,220 Q760,220 760,210 L760,72",
+      "jog": "M220,43 L350,43 Q360,43 360,53 L360,346 Q360,356 370,356 L650,356",
+      "detour": "M220,29 L228,29 Q236,29 236,21 L236,-6 Q236,-16 226,-16 L-170,-16 Q-180,-16 -180,-26 L-180,-190 Q-180,-200 -170,-200 L390,-200 Q400,-200 400,-190 L400,-170 Q400,-160 410,-160 L750,-160 Q760,-160 760,-150 L760,0",
+      "shape-end": "M760,392 L760,570 Q760,580 770,580 L1160,580 Q1170,580 1170,570 L1170,419.3"
+    },
+    "labels": {
+      "api-db": { "style": "transform: translate(-50%, -50%) translate(435px, 220px); --fe-w: 53px; --fe-h: 19px;", "text": "writes" },
+      "jog": { "style": "transform: translate(-50%, -50%) translate(360px, 199.5px); --fe-w: 65px; --fe-h: 19px;", "text": "receipts" },
+      "detour": { "style": "transform: translate(-50%, -50%) translate(110px, -200px); --fe-w: 47px; --fe-h: 19px;", "text": "audit" }
+    }
+  },
+  "selection": { "nodes": [], "edges": ["api-db"] },
+  "handles": [
+    { "id": "route-segment-api-db-0", "transform": "translate(110px, 146px)", "cursor": "col-resize", "title": "Drag to shape this line (Ctrl/⌘: no snapping)" },
+    { "id": "route-segment-api-db-1", "transform": "translate(249.491px, 220px)", "cursor": "row-resize", "title": "Drag to shape this line (Ctrl/⌘: no snapping)" },
+    { "id": "route-segment-api-db-2", "transform": "translate(760px, 146px)", "cursor": "col-resize", "title": "Drag to shape this line (Ctrl/⌘: no snapping)" }
+  ]
+}
