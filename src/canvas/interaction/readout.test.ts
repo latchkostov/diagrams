@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { initialReadout, readout, readoutTab } from "./readout";
+import { initialReadout, readout, readoutTab, readoutMachine } from "./readout";
+import { machinePaths } from "../../lib/machine";
+
+it("keeps ownership invariants over representative machine paths", () => {
+  for (const { state } of machinePaths(readoutMachine, { maxDepth: 4 })) {
+    expect(state.value === "closed").toBe(state.open === null);
+    if (state.open) expect(state.value === "pinned").toBe(state.open.pinned);
+    if (state.focused) expect(state.open).toMatchObject(state.focused);
+  }
+});
 
 describe("Live readout ownership", () => {
   const node = { kind: "node" as const, id: "service" };

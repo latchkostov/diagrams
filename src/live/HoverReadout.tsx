@@ -3,6 +3,8 @@ import { useState, type ReactNode } from "react";
 import { HEALTH_WINDOW_MS } from "./healthWindow";
 import { t } from "../i18n";
 import type { HoverSummary } from "./hoverSummary";
+import { cardSections } from "./hoverSections";
+import { verdictSection } from "./verdictSection";
 
 export function HoverStatus({ summary }: { summary: HoverSummary }) {
   const problem = summary.problems[0];
@@ -60,39 +62,26 @@ export function SectionRows({
   toggle(key: string): void;
   render(section: string): ReactNode;
 }) {
-  const sectionFor = (key: string): string =>
-    kind === "edge"
-      ? key === "retry"
-        ? "retries"
-        : key === "breaker"
-          ? "breaker"
-          : "outcomes"
-      : key === "timeout"
-        ? "latency"
-        : key === "memory"
-          ? "resources"
-          : key === "threads" || key === "retry" || key === "breaker"
-            ? "threads"
-            : "outcomes";
+  const allSections = docked ? summary.sections : cardSections(summary, kind);
+  const sectionFor = (key: string) => {
+    // Broker hover cards put their reader breakdown in Outcomes; the inspector has a separate Readers row.
+    const preferred = verdictSection(key, kind);
+    return preferred === "readers" && !allSections.some((s) => s.key === "readers") ? "outcomes" : preferred;
+  };
   const badSections = summary.problems.filter((p) => p.severe).map((p) => sectionFor(p.key));
   const [order] = useState(() => {
     const priority = summary.problems.map((p) => sectionFor(p.key));
     const rank = (key: string) => (priority.includes(key) ? priority.indexOf(key) : priority.length);
-    return summary.sections.map((s) => s.key).sort((a, b) => rank(a) - rank(b));
+    return allSections.map((s) => s.key).sort((a, b) => rank(a) - rank(b));
   });
-  let sections = docked
+  const sections = docked
     ? summary.sections
-    : [...summary.sections].sort((a, b) => order.indexOf(a.key) - order.indexOf(b.key));
-  if (!docked && pinned && kind === "node")
-    sections = [
-      ...sections,
-      { key: "outcomes", label: t("hover.outcomes"), summary: "" },
-      { key: "planning", label: t("hover.planning"), summary: "" },
-    ]
-      .filter((s, i, all) => all.findIndex((a) => a.key === s.key) === i)
-      .map((s) => (s.key === "planning" ? { ...s, label: t("hover.planning") } : s));
+    : allSections
+        .filter((s) => pinned || summary.sections.some((compact) => compact.key === s.key))
+        .sort((a, b) => order.indexOf(a.key) - order.indexOf(b.key))
+        .map((s) => (pinned && s.key === "planning" ? { ...s, label: t("hover.planning") } : s));
   return (
-    <div className="hover-sections">
+    <div className="hover-sections" data-testid={docked ? "inspector-live-sections" : "hover-sections"}>
       {sections.map((s) => (
         <section key={s.key} className={`hover-rail is-${s.key}${badSections.includes(s.key) ? " is-bad" : ""}`}>
           <button

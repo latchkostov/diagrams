@@ -20,7 +20,11 @@ export interface ReadoutLayer {
   get(): ReadoutState["open"];
   subscribe(listener: () => void): () => void;
   point(target: ReadoutTarget | null): void;
+  recordFocus(target: ReadoutTarget | null): void;
   pin(target: ReadoutTarget): void;
+  visible(target: ReadoutTarget): boolean;
+  readable(target: ReadoutTarget): boolean;
+  reconcile(eligible: (target: ReadoutTarget) => boolean): void;
   close(reason: MenuCloseReason): void;
   dismiss(): void;
   enter(target: ReadoutTarget): boolean;
@@ -77,6 +81,7 @@ const holds = (target: ReadoutTarget) => {
  */
 export function createReadoutLayer(host: ReadoutHost, dom = { stop: readoutStop, shown, holds }): ReadoutLayer {
   let state: ReadoutState = initialReadout();
+  let eligible = (_target: ReadoutTarget) => true;
   const listeners = new Set<() => void>();
   /** Applies a readout event; only a different open card notifies subscribers. */
   const read = (event: ReadoutEvent | null) => {
@@ -93,10 +98,19 @@ export function createReadoutLayer(host: ReadoutHost, dom = { stop: readoutStop,
     },
     /** The pointer or keyboard focus names an item (null: nothing) for an unpinned readout. */
     point(target: ReadoutTarget | null) {
-      if (!host.menu) read({ type: "point", target });
+      // Keyboard ownership lasts until focus leaves the card, independently of pinning.
+      if (!host.menu && !(state.open && dom.holds(state.open)))
+        read({ type: "point", target: target && eligible(target) ? target : null });
     },
+    recordFocus: (target) => read({ type: "focus", target }),
     pin(target: ReadoutTarget) {
-      if (!host.menu) read({ type: "pin", target });
+      if (!host.menu && eligible(target)) read({ type: "pin", target });
+    },
+    visible: (target) => eligible(target) && dom.shown(target),
+    readable: (target) => eligible(target),
+    reconcile(next) {
+      eligible = next;
+      if (state.open && !eligible(state.open)) this.close("remote");
     },
     /**
      * Esc dismisses it until something else is pointed at; anything else closes it outright. A card that held keyboard
@@ -105,7 +119,7 @@ export function createReadoutLayer(host: ReadoutHost, dom = { stop: readoutStop,
      */
     close(reason: MenuCloseReason) {
       const target = state.open;
-      const hadFocus = !!target && dom.holds(target);
+      const hadFocus = !!target && (!!state.focused || dom.holds(target));
       read(reason === "escape" ? { type: "close" } : null);
       if (target) host.dispatch({ type: "readout.closed", target, hadFocus, reason });
     },
@@ -122,7 +136,7 @@ export function createReadoutLayer(host: ReadoutHost, dom = { stop: readoutStop,
      * else focus stays on the node. Only while Live shows readouts (one is open).
      */
     retrace(target: ReadoutTarget) {
-      if (!state.open || host.menu) return;
+      if (!state.open || host.menu || !eligible(target)) return;
       read({ type: "release" });
       read({ type: "point", target });
       host.dispatch({ type: "readout.entered", target, opening: true });

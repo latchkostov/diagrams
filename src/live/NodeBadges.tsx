@@ -81,7 +81,7 @@ export function NodeBadges({
   // No breakdown while a card is edited inline: the editor hangs where the breakdown would show, and
   // focus in the editor would otherwise count as hovering its node.
   const { editing } = useDiagram();
-  const pointed = useHoveredNode();
+  const pointed = useHoveredNode(nodes, state);
   const hovered = !editing && pointed?.kind === "node" ? pointed.id : null;
   // Badges live in flow space; counter-scale them when zoomed out so they stay readable.
   const zoom = useStore((s) => s.transform[2]);
@@ -187,12 +187,14 @@ export function NodeBadges({
 
 /**
  * The diagram node under the pointer, or the focused one (the badge layer itself ignores the pointer).
- * Whichever moved last wins: a node focused after its label edit doesn't hide the one hovered next.
+ * A focused readout keeps its owner; otherwise whichever moved last wins. Focusing a node after its label edit
+ * doesn't hide the one hovered next.
  */
 const noInteraction = () => () => {};
-function useHoveredNode() {
+function useHoveredNode(nodes: FlowNode[], state: LiveState) {
   const interaction = useInteraction();
   const domNode = useStore((s) => s.domNode);
+  const edges = useStore((s) => s.edges);
   // Live's readout layer (src/canvas/interaction/readoutLayer.ts), attached to the canvas's controller while shown.
   const [readouts] = useState(() => (interaction ? createReadoutLayer(interaction) : null));
   useLayoutEffect(
@@ -205,6 +207,18 @@ function useHoveredNode() {
     () => readouts?.get() ?? null,
     () => null,
   );
+  useLayoutEffect(() => {
+    const readableNodes = new Set(
+      nodes
+        .filter((n) => {
+          const s = state.snapshot.nodes[n.id];
+          return n.type === "diagram" && s && s.role !== "none";
+        })
+        .map((n) => n.id),
+    );
+    const readableEdges = new Set(edges.map((e) => e.id));
+    readouts?.reconcile((target) => (target.kind === "node" ? readableNodes : readableEdges).has(target.id));
+  }, [readouts, nodes, edges, state.snapshot.nodes]);
   useEffect(() => {
     if (!domNode || !readouts) return;
     const itemAt = (el: Element | null) => {
@@ -245,7 +259,12 @@ function useHoveredNode() {
       }
       readouts.point(target ?? itemAt(document.activeElement));
     };
-    const focus = (e: FocusEvent) => readouts.point(itemAt(e.target instanceof Element ? e.target : null));
+    const focus = (e: FocusEvent) => {
+      const el = e.target instanceof Element ? e.target : null;
+      const target = itemAt(el);
+      readouts.recordFocus(el?.closest("[data-live-readout]") ? target : null);
+      readouts.point(target);
+    };
     const down = (e: PointerEvent) => {
       const el = e.target instanceof Element ? e.target : null;
       if (!el?.closest("[data-live-readout]")) readouts.close("outside");

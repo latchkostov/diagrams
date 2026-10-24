@@ -436,6 +436,21 @@ describe("focusPolicy: the rules, row by row", () => {
     });
   });
 
+  it("recovers focused readouts to the canvas when their target is removed, leaving unrelated focus alone", () => {
+    for (const kind of ["node", "edge"] as const) {
+      const event = {
+        type: "readout.closed" as const,
+        reason: "remote" as const,
+        target: { kind, id: "removed", pinned: true },
+      };
+      expect(focusPolicy(state(), { ...event, hadFocus: true }).command).toMatchObject({
+        target: { kind: "canvas" },
+        when: "now",
+      });
+      expect(focusPolicy(state(), { ...event, hadFocus: false }).command).toEqual({ type: "keep" });
+    }
+  });
+
   it("W1 W2 the joiner's wait and then the room's canvas take only focus that was lost", () => {
     const wait = focusPolicy(state(), { type: "room.waiting", region: node }).command as FocusMove;
     expect(wait).toMatchObject({ target: { kind: "element", handle: node }, when: "now", onlyIfLost: true });
