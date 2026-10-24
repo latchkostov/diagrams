@@ -62,6 +62,7 @@ it("shares a held request, preserves focus, and reports one failure across multi
     first.reject(new Error("offline"));
   });
   const failure = toast.current;
+  expect(host.querySelector('[data-testid="pending"]')?.getAttribute("aria-busy")).toBe("false");
   expect(failure?.action?.testId).toBe("lazy-load-retry");
   await act(() => root.render(<Surface />));
   expect(toast.current?.id).toBe(failure?.id);

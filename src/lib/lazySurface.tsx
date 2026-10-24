@@ -134,7 +134,9 @@ export function defineLazySurface<P extends object>(options: Options<P>): LazySu
     }
     const status = { failed: state !== first && state.value === "failed", retry };
     if (options.placeholder.render) return options.placeholder.render(props, status);
-    return <span data-testid={options.placeholder.testId} style={options.placeholder.size} aria-busy="true" />;
+    return (
+      <span data-testid={options.placeholder.testId} style={options.placeholder.size} aria-busy={!status.failed} />
+    );
   }
   Surface.preload = () => void ensureLoaded().catch(() => {});
   Surface.ensureLoaded = ensureLoaded;
