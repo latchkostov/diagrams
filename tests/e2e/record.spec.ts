@@ -1,5 +1,5 @@
-import type { Page } from "@playwright/test";
 import { test, expect, expectNoErrors, gotoLive, pauseClock } from "./fixtures";
+import type { Page } from "@playwright/test";
 import { recordFor } from "./recording-clock";
 
 // Record video: the live view's "⋯ › Record video…" and canvas right-click. Real share prompts can't
@@ -151,7 +151,7 @@ test.describe("record video", () => {
     await expect.poll(() => rec(page, "framing")).toBeTruthy();
     await page.keyboard.press("Escape");
     await page.evaluate(() => (window as never as { __rec: { resolveFrame: () => void } }).__rec.resolveFrame());
-    await page.waitForTimeout(100);
+    await expect.poll(() => rec(page, "framedTo")).toBe("canvas-wrap");
     expect(await rec(page, "created")).toBe(0);
     expect(await rec(page, "stopped")).toBeGreaterThan(0);
     await expect(page.getByTestId("record-countdown")).toHaveCount(0);

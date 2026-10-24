@@ -43,6 +43,12 @@ type LatestDocument = DocumentState & { slug: string; revision: string };
 type FlushSave = (override?: DiagramFile) => boolean | undefined;
 type SetModified = Dispatch<SetStateAction<boolean>>;
 
+declare global {
+  interface Window {
+    __documentProbe?: () => { saved: boolean };
+  }
+}
+
 const normalize = (d: DiagramFile) => {
   const f = toFlow(d);
   return JSON.stringify(fromFlow(f.meta, f.nodes, f.edges));
@@ -106,6 +112,17 @@ export function useDocumentSave({
   });
   const copiedExample = useRef<{ slug: string; identity: string } | null>(null);
   const exampleCopyFailed = useRef(false);
+  useLayoutEffect(() => {
+    if (import.meta.env.VITE_E2E !== "1") return;
+    const probe = () => {
+      const { meta, nodes, edges } = latest.current;
+      return { saved: JSON.stringify(fromFlow(meta, nodes, edges)) === lastSaved.current };
+    };
+    window.__documentProbe = probe;
+    return () => {
+      if (window.__documentProbe === probe) delete window.__documentProbe;
+    };
+  }, []);
   /** Returns whether the diagram differs from its original, or undefined when there was nothing to write. */
   const flushSave = useCallback(
     (override?: DiagramFile): boolean | undefined => {

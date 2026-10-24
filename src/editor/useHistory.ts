@@ -42,6 +42,12 @@ export interface HistoryApi {
 /** Quiet time after the last change before it becomes an undo step. */
 const DEBOUNCE_MS = 350;
 
+declare global {
+  interface Window {
+    __historyProbe?: () => { pending: boolean };
+  }
+}
+
 const clean = (s: CanvasSnapshot): CanvasSnapshot =>
   s.nodes.some((n) => n.dragging || n.resizing)
     ? {
@@ -89,6 +95,16 @@ export function useHistory(
   const timer = useRef<number | undefined>(undefined);
   /** An uncommitted change exists (so Undo is available before the debounce fires). */
   const pending = stateKey !== present(history).key;
+
+  // Read-only completion signal for browser tests; never bundled into the public app.
+  useLayoutEffect(() => {
+    if (import.meta.env.VITE_E2E !== "1") return;
+    const probe = () => ({ pending: ctl.key(latest.current) !== present(ctl.history).key });
+    window.__historyProbe = probe;
+    return () => {
+      if (window.__historyProbe === probe) delete window.__historyProbe;
+    };
+  }, [ctl]);
 
   const flush = useCallback(() => {
     window.clearTimeout(timer.current);

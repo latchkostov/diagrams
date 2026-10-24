@@ -1,5 +1,6 @@
-import type { Locator, Page } from "@playwright/test";
 import {
+  waitForHistoryIdle,
+  waitForCameraIdle,
   test,
   expect,
   gotoCanvas,
@@ -8,10 +9,10 @@ import {
   waitForSelectionSettled,
   viewportTransform,
   pauseClock,
-  waitForCameraIdle,
   cameraJournalMark,
   cameraMoves,
 } from "./fixtures";
+import type { Locator, Page } from "@playwright/test";
 
 // Drawing basics (docs/research/drawing-ux.md, batch 1): navigation (D4), selection gestures (D5),
 // drop to create (D1), hittable handles and connect feedback (D2), copies that never overlap (D9) and
@@ -350,7 +351,7 @@ test.describe("drawing basics", () => {
     expect(b.x + b.width).toBeLessThanOrEqual(wrap.x + wrap.width);
     await expect(page.getByTestId("edge-e-1")).toBeAttached();
     // One step: undo takes the node and its edge away together.
-    await page.waitForTimeout(500);
+    await waitForHistoryIdle(page);
     await page.getByTestId("undo-button").click();
     await expect(node).toHaveCount(0);
     await expect(page.getByTestId("edge-e-1")).toHaveCount(0);
@@ -502,7 +503,7 @@ test.describe("drawing basics", () => {
     await page.mouse.move(orders.x, orders.y);
     await page.keyboard.press(`${MOD}+v`);
     await expect(page.getByTestId("node-inventory-3")).toBeVisible();
-    await page.waitForTimeout(100);
+    await waitForCameraIdle(page);
     await expectNoNodeOverlaps(page);
   });
 
@@ -550,7 +551,7 @@ test.describe("drawing basics", () => {
     await page.keyboard.up("Alt");
     await expect(page.getByTestId("node-payments-1")).toBeVisible();
     // The original stayed where it was (relative to its neighbour: the view may pan to show the copy).
-    await page.waitForTimeout(400);
+    await waitForCameraIdle(page);
     const pay1 = await box(page.getByTestId("node-payments"));
     const inv1 = await box(page.getByTestId("node-inventory"));
     expect((pay1.x - inv1.x) / pay1.width).toBeCloseTo((pay.x - inv.x) / pay.width, 1);
@@ -562,7 +563,7 @@ test.describe("drawing basics", () => {
       .toBe(false);
     await expectNoNodeOverlaps(page);
     // One undo step takes the copy away.
-    await page.waitForTimeout(500);
+    await waitForHistoryIdle(page);
     await page.getByTestId("undo-button").click();
     await expect(page.getByTestId("node-payments-1")).toHaveCount(0);
   });
@@ -639,7 +640,7 @@ test("an embed lets the wheel scroll the host page", async ({ page, baseURL }) =
     frame
       .getByTestId("canvas-wrap")
       .evaluate((w) => w.querySelector<HTMLElement>(".react-flow__viewport")?.style.transform);
-  await page.waitForTimeout(600);
+  await waitForCameraIdle(frame);
   const t0 = await transform();
   const ifr = await box(page.getByTestId("host-embed"));
   await page.mouse.move(ifr.x + ifr.width / 2, ifr.y + ifr.height / 2);

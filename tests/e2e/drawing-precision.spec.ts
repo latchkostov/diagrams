@@ -1,7 +1,6 @@
-import { TEXT_END } from "./fixtures";
-import { readFileSync } from "node:fs";
-import type { Locator, Page } from "@playwright/test";
 import {
+  waitForGuides,
+  TEXT_END,
   test,
   expect,
   gotoCanvas,
@@ -11,6 +10,8 @@ import {
   pauseClock,
   STORAGE_KEYS,
 } from "./fixtures";
+import { readFileSync } from "node:fs";
+import type { Locator, Page } from "@playwright/test";
 
 // Drawing precision (docs/research/drawing-ux.md, batch 2): smart guides, equal spacing and grid-true
 // nudges (D6), and one set of text-editing rules with type-ahead and a preloaded palette (D7).
@@ -105,10 +106,9 @@ async function dragBy(page: Page, testId: string, dx: number, dy: number, free =
   for (const t of [0.9, 0.95, 0.98, 1]) {
     const p = at(t);
     await page.mouse.move(p.x, p.y);
-    await page.waitForTimeout(40);
   }
   // Rest: the guides catch up with a pointer that has stopped.
-  await page.waitForTimeout(200);
+  await waitForGuides(page);
 }
 
 async function release(page: Page, free = false) {

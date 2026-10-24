@@ -1,8 +1,19 @@
+import {
+  animationFrames,
+  test,
+  expect,
+  expectNoErrors,
+  gotoLive,
+  pauseClock,
+  cameraJournal,
+  cameraJournalMark,
+  viewportTransform,
+  waitForCameraIdle,
+  interactionJournalMark,
+  liveKeyLevels,
+} from "./fixtures";
 import AxeBuilder from "@axe-core/playwright";
 import type { Page } from "@playwright/test";
-import { test, expect, expectNoErrors, gotoLive, pauseClock } from "./fixtures";
-import { cameraJournal, cameraJournalMark, viewportTransform, waitForCameraIdle } from "./fixtures";
-import { interactionJournalMark, liveKeyLevels } from "./fixtures";
 
 // Slow motion: one message's recorded journey, replayed node by node while live stays frozen; and
 // calmer drawing below 1×. Selectors are data-testid only (axe takes [data-testid] CSS).
@@ -235,7 +246,8 @@ test.describe("slow motion", () => {
     await page.keyboard.press("ArrowLeft");
     await expect.poll(at).toBeLessThan(later);
     // Still paused after stepping.
-    await page.waitForTimeout(400);
+    await expect(canvas(page)).toHaveAttribute("data-slowmo-machine", "paused");
+    await animationFrames(page, 20);
     expect(await play(page).getAttribute("data-playing")).toBe("0");
 
     // The card highlights the hop being told; clicking another hop tells the story from there.
@@ -264,14 +276,16 @@ test.describe("slow motion", () => {
     await expect.poll(async () => Number(await data(page, "particles")), { timeout: 10_000 }).toBeGreaterThan(20);
     await play(page).click();
     await expect(play(page)).toHaveAttribute("data-state", "paused");
-    await page.waitForTimeout(300);
+    await waitForCameraIdle(page);
+    await animationFrames(page);
     const time = await data(page, "sim-time");
     const sum = await data(page, "particle-sum");
     await waitForCameraIdle(page);
     const mark = await cameraJournalMark(page);
     await openNodeMenu(page, "payments", "sim.slowmo-from");
     await expect(play(page)).toHaveAttribute("data-state", "slowmo");
-    await page.waitForTimeout(1500);
+    await expect(canvas(page)).toHaveAttribute("data-slowmo-machine", "playing");
+    await expect.poll(async () => Number(await data(page, "slowmo-progress"))).toBeGreaterThan(0);
     const keys = await interactionJournalMark(page);
     await page.keyboard.press("Escape");
     await expect(play(page)).toHaveAttribute("data-state", "paused");
@@ -283,7 +297,8 @@ test.describe("slow motion", () => {
     expect(commands.indexOf("slowmoPlan")).toBeGreaterThanOrEqual(0);
     expect(commands.at(-1)).toBe("restore");
     await expect(canvas(page)).not.toHaveAttribute("data-slowmo", /.*/);
-    await page.waitForTimeout(300);
+    await waitForCameraIdle(page);
+    await animationFrames(page);
     expect(await data(page, "sim-time")).toBe(time);
     expect(await data(page, "particle-sum")).toBe(sum);
     // The trace stays on: live at real speed shows the same message.
@@ -294,9 +309,11 @@ test.describe("slow motion", () => {
     await expect(play(page)).toHaveAttribute("data-state", "playing");
     await page.getByTestId("trace-slowmo").click();
     await expect(play(page)).toHaveAttribute("data-state", "slowmo");
-    await page.waitForTimeout(300);
+    await waitForCameraIdle(page);
+    await animationFrames(page);
     const frozen = Number(await data(page, "sim-time"));
-    await page.waitForTimeout(800);
+    const replayAt = Number(await data(page, "slowmo-progress"));
+    await expect.poll(async () => Number(await data(page, "slowmo-progress"))).toBeGreaterThan(replayAt);
     expect(Number(await data(page, "sim-time"))).toBe(frozen);
     await page.getByTestId("trace-card-close").click();
     await expect(play(page)).toHaveAttribute("data-state", "playing");
@@ -411,11 +428,15 @@ test.describe("slow motion", () => {
         }),
       );
     // After the one fit (a jump under reduced motion), the view never changes.
-    await page.waitForTimeout(600);
+    await waitForCameraIdle(page);
     const fitted = await where();
     for (let i = 0; i < 12; i++) {
+      const before = Number(await page.getByTestId("slowmo-timeline-input").inputValue());
       await page.keyboard.press("ArrowRight");
-      await page.waitForTimeout(150);
+      await expect
+        .poll(async () => Number(await page.getByTestId("slowmo-timeline-input").inputValue()))
+        .toBeGreaterThan(before);
+      await waitForCameraIdle(page);
       expect(await where()).toEqual(fitted);
     }
     expect(Number(await page.getByTestId("slowmo-timeline-input").inputValue())).toBeGreaterThan(300);

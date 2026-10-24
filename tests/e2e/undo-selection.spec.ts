@@ -1,6 +1,7 @@
-import { savedDiagram } from "./fixtures";
-import type { Page } from "@playwright/test";
 import {
+  waitForHistoryIdle,
+  pauseClock,
+  savedDiagram,
   test,
   expect,
   gotoCanvas,
@@ -12,6 +13,7 @@ import {
   interactionLog,
   waitForInteractionIdle,
 } from "./fixtures";
+import type { Page } from "@playwright/test";
 import { callTool, installFakeModelContext, must, nodeCount, openAdvanced, toolNames } from "./ai-helpers";
 
 // Undo and the selection (docs/UX-PRINCIPLES.md): Undo selects what the undone step changed, as it was
@@ -128,7 +130,7 @@ async function selectNodes(page: Page, ids: string[]) {
 /** Edits with the same tag this close together join one undo step (src/editor/history.ts). */
 const MERGE_WINDOW_MS = 1500;
 /** Lets the history record the last edit as its own step (it settles after 350 ms). */
-const settleStep = (page: Page) => page.waitForTimeout(500);
+const settleStep = waitForHistoryIdle;
 
 test.describe("undo and the selection", () => {
   test.beforeEach(async ({ page }) => seed(page));
@@ -344,13 +346,17 @@ test.describe("undo and the selection", () => {
   }) => {
     // Nudge Orders API three times, then Tab on to Payment worker: focus and selection there.
     await page.getByTestId("node-api").click();
+    await page.clock.install();
     const xs = [40];
     for (let i = 0; i < 3; i++) {
       await page.keyboard.press("Shift+ArrowRight");
       const d = await savedWhen(page, (s) => node(s, "api").x > xs[i]);
       xs.push(node(d, "api").x);
       // Nudges a moment apart join one step: these are three.
-      await page.waitForTimeout(MERGE_WINDOW_MS + 200);
+      await waitForHistoryIdle(page);
+      await pauseClock(page);
+      await page.clock.fastForward(MERGE_WINDOW_MS + 1);
+      await page.clock.resume();
     }
     await page.keyboard.press("Tab");
     await expect.poll(() => focusedNode(page)).toBe("worker");

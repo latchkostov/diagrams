@@ -1,7 +1,9 @@
-import { TEXT_END, TEXT_START } from "./fixtures";
-import { readFileSync } from "node:fs";
-import type { Locator, Page } from "@playwright/test";
 import {
+  waitForChecks,
+  waitForHistoryIdle,
+  waitForAutosave,
+  TEXT_END,
+  TEXT_START,
   test,
   performanceTest,
   expect,
@@ -12,6 +14,8 @@ import {
   waitForStableViewport,
   fitDiagram,
 } from "./fixtures";
+import { readFileSync } from "node:fs";
+import type { Locator, Page } from "@playwright/test";
 import { checksTyping } from "./checks-typing";
 
 // Architecture checks in the editor: the count under the title, the Checks card (from the count, the canvas
@@ -46,7 +50,7 @@ test.describe("the count under the title", () => {
     await gotoCanvas(page, CLEAN);
     await expect(page.getByTestId("node-api")).toBeVisible();
     // Checks have run (after the first idle) and found nothing: no "0 issues", no card.
-    await page.waitForTimeout(2500);
+    await waitForChecks(page);
     await expect(page.getByTestId("checks-count")).toHaveCount(0);
     await expect(card(page)).toHaveCount(0);
     expectNoErrors(consoleErrors);
@@ -56,7 +60,7 @@ test.describe("the count under the title", () => {
   test("suggestions alone show nothing; live view and presenting show no count", async ({ page }) => {
     await gotoCanvas(page, "outbox-saga-checkout");
     await expect(page.getByTestId("node-payments-dlq")).toBeVisible();
-    await page.waitForTimeout(2500);
+    await waitForChecks(page);
     await expect(page.getByTestId("checks-count")).toHaveCount(0);
 
     await openMissingDlq(page);
@@ -191,7 +195,7 @@ test("Ignore keeps its reason through reload, export and import, and Show again 
   // Saved with the diagram: a reload keeps it.
   await page.reload();
   await expect(page.getByTestId("node-posting-sub")).toBeVisible();
-  await page.waitForTimeout(2500);
+  await waitForChecks(page);
   await expect(page.getByTestId("checks-count")).toHaveCount(0);
 
   // Exported in the file, and imported back.
@@ -269,7 +273,9 @@ test("a fix clicked twice adds one dead-letter queue", async ({ page }) => {
   const before = await nodes.count();
   await page.getByTestId(`check-fix-${WARNING}`).dblclick();
   await expect.poll(() => nodes.count()).toBe(before + 1);
-  await page.waitForTimeout(1500);
+  await waitForChecks(page);
+  await waitForHistoryIdle(page);
+  await waitForAutosave(page);
   expect(await nodes.count()).toBe(before + 1);
 });
 

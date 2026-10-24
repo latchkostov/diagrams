@@ -1,8 +1,3 @@
-import { readFileSync } from "node:fs";
-import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
-import type { AddressInfo } from "node:net";
-import { join } from "node:path";
-import type { Frame, Page, Request } from "@playwright/test";
 import {
   test as base,
   expect,
@@ -14,6 +9,11 @@ import {
   waitForCameraIdle,
   waitForInteractionIdle,
 } from "./fixtures";
+import { readFileSync } from "node:fs";
+import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
+import type { AddressInfo } from "node:net";
+import { join } from "node:path";
+import type { Frame, Page, Request } from "@playwright/test";
 import { textFieldsFixture } from "../../src/lab/textFieldsFixture";
 
 // Host-supplied embeds (docs/EMBEDDING.md): a page on another origin loads the <live-diagram> web component from
@@ -198,6 +198,28 @@ async function embedFrame(page: Page): Promise<Frame> {
   return frame;
 }
 
+/** A postMessage fence: the receiving window processed the earlier messages before this sentinel. */
+async function installMessageFence(page: Page, testId = "live-diagram-frame") {
+  const handle = await page.getByTestId(testId).elementHandle();
+  const frame = await handle?.contentFrame();
+  if (!frame) throw new Error("No viewer frame");
+  await frame.evaluate(() => {
+    document.documentElement.dataset.messagesDrained = "false";
+    window.addEventListener("message", (e) => {
+      if (e.data === "e2e:messages-drained") document.documentElement.dataset.messagesDrained = "true";
+    });
+  });
+  return async () => {
+    await page
+      .getByTestId(testId)
+      .evaluate((el) => (el as HTMLIFrameElement).contentWindow?.postMessage("e2e:messages-drained", "*"));
+    await expect.poll(() => frame.evaluate(() => document.documentElement.dataset.messagesDrained)).toBe("true");
+    await frame.evaluate(() => {
+      document.documentElement.dataset.messagesDrained = "false";
+    });
+  };
+}
+
 test.describe("host-supplied embeds", () => {
   test.beforeEach(({ baseURL }) => {
     test.skip(!baseURL, "needs the app server");
@@ -355,6 +377,7 @@ test.describe("host-supplied embeds", () => {
     });
     await expect.poll(() => lastEvent(page, "playstate")).toEqual({ playing: true, speed: 1 });
 
+    const drainMessages = await installMessageFence(page);
     // Another window of the host's own origin (a sibling frame, /sibling.html) is not the parent: its pause and
     // load are ignored. Its script posts to the viewer itself, so the messages' source is the sibling.
     await page.evaluate(() => {
@@ -366,7 +389,7 @@ test.describe("host-supplied embeds", () => {
     await expect
       .poll(() => page.evaluate(() => (window.__raw ?? []).some((m) => m.data === "sibling-posted")))
       .toBe(true);
-    await page.waitForTimeout(800);
+    await drainMessages();
     await expect(view.getByTestId("live-play")).toHaveAttribute("data-state", "playing");
     await expect(view.getByTestId("diagram-title")).toHaveText(`Acme ledger ${SECRET}`);
 
@@ -384,7 +407,7 @@ test.describe("host-supplied embeds", () => {
       },
       [PROTOCOL],
     );
-    await page.waitForTimeout(500);
+    await drainMessages();
     expect((await events(page, "error")).length).toBe(before);
     await expect(view.getByTestId("live-play")).toHaveAttribute("data-state", "playing");
 
@@ -438,6 +461,7 @@ test.describe("host-supplied embeds", () => {
     await page.goto(`${FOREIGN}/`);
     const view = page.getByTestId("foreign-frame").contentFrame();
     await expect(view.getByTestId("host-embed-waiting")).toBeVisible({ timeout: pageLoadTimeout() });
+    const drainMessages = await installMessageFence(page, "foreign-frame");
     await page.evaluate(
       ([protocol]) => {
         const target = document.querySelector<HTMLIFrameElement>('[data-testid="foreign-frame"]')?.contentWindow;
@@ -449,7 +473,7 @@ test.describe("host-supplied embeds", () => {
       },
       [PROTOCOL],
     );
-    await page.waitForTimeout(1000);
+    await drainMessages();
     await expect(view.getByTestId("host-embed-waiting")).toBeVisible();
     expect(await page.evaluate(() => window.__raw ?? [])).toEqual([]);
   });
@@ -618,6 +642,7 @@ test.describe("host-supplied embeds: timing and requests", () => {
     consoleErrors,
   }) => {
     test.slow();
+    await page.clock.install();
     await emptyHost(page, servers, baseURL ?? "");
     // Two loads before the viewer is ready (a fresh element: one before it's even in the page, one while its
     // frame is still loading): the first is superseded, the second shown.
@@ -644,7 +669,9 @@ test.describe("host-supplied embeds: timing and requests", () => {
     await expect(view(page).getByTestId("diagram-title")).toHaveText("B");
 
     // A burst past the load limit (5 at once, then one every 2 s): every promise settles.
-    await page.waitForTimeout(2500);
+    await pauseClock(page);
+    await page.clock.runFor(2500);
+    await page.clock.resume();
     const burst = await loadVia(
       page,
       Array.from({ length: 8 }, (_, i) => titled(`Burst ${i + 1}`)),

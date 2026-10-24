@@ -1,10 +1,7 @@
-import { TEXT_END } from "./fixtures";
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
-import { annotationShapesFixture } from "../../src/lab/annotationShapesFixture";
-import { pickSides } from "../../src/canvas/edges/routing";
-import type { Locator, Page } from "@playwright/test";
 import {
+  waitForHistoryIdle,
+  waitForCameraIdle,
+  TEXT_END,
   test,
   expect,
   gotoCanvas,
@@ -15,11 +12,15 @@ import {
   waitForSelectionSettled,
   savedDiagram,
   emptyCanvasPoint,
-  waitForCameraIdle,
   waitForStableViewport,
   pauseClock,
   fitDiagram,
 } from "./fixtures";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { annotationShapesFixture } from "../../src/lab/annotationShapesFixture";
+import { pickSides } from "../../src/canvas/edges/routing";
+import type { Locator, Page } from "@playwright/test";
 
 // Annotations: free text, sticky notes, zones and shapes. Documentation only, never simulated.
 // Selectors are data-testid only.
@@ -1099,7 +1100,7 @@ test.describe("annotations", () => {
     await page.getByTestId("palette-annotate-note").click();
     await typeAndCommit(page, "Resize me");
     // Let the new note settle into its own undo step (history commits after a quiet moment).
-    await page.waitForTimeout(500);
+    await waitForHistoryIdle(page);
     const note = annotation(page, "note-1");
     await note.click();
     const b0 = await box(note);
@@ -1113,7 +1114,7 @@ test.describe("annotations", () => {
     const b1 = await box(note);
     expect(b1.width).toBeGreaterThan(b0.width + 40);
     expect(b1.height).toBeGreaterThan(b0.height + 20);
-    await page.waitForTimeout(500);
+    await waitForHistoryIdle(page);
 
     // Undo the resize, then redo it.
     await page.keyboard.press(`${MOD}+z`);
@@ -1126,11 +1127,11 @@ test.describe("annotations", () => {
     await page.keyboard.press(`${MOD}+c`);
     await page.keyboard.press(`${MOD}+v`);
     await expect(page.getByTestId("annotation-text-note-2")).toHaveText("Resize me");
-    await page.waitForTimeout(500);
+    await waitForHistoryIdle(page);
     // Delete it, undo brings it back.
     await page.keyboard.press("Delete");
     await expect(annotation(page, "note-2")).toHaveCount(0);
-    await page.waitForTimeout(500);
+    await waitForHistoryIdle(page);
     await page.keyboard.press(`${MOD}+z`);
     await expect(annotation(page, "note-2")).toBeVisible();
     // Undo the whole note away.
@@ -1189,7 +1190,7 @@ test.describe("annotations", () => {
     await seed(page, annotatedKafka);
     await gotoCanvas(page, SLUG);
     await expect(annotation(page, "legacy")).toBeVisible();
-    await page.waitForTimeout(400);
+    await waitForCameraIdle(page);
     const problems = await page.evaluate(() => {
       const rect = (el: Element) => el.getBoundingClientRect();
       const solid = [...document.querySelectorAll('[data-testid^="annotation-"][data-obstacle="1"]')];
@@ -1235,9 +1236,11 @@ test.describe("annotations", () => {
     await expect(page.getByTestId("live-toggle")).toHaveAttribute("aria-pressed", "true");
     await expect.poll(opacity).toBe(1);
     await expect(annotation(page, "box")).toBeVisible();
+    await page.clock.install();
+    await pauseClock(page);
     // Traffic leaves the storefront, but its only edge ends on a shape: nothing is ever drawn.
     for (let i = 0; i < 8; i++) {
-      await page.waitForTimeout(250);
+      await page.clock.runFor(250);
       expect(Number((await page.getByTestId("live-canvas").getAttribute("data-particles")) ?? 0)).toBe(0);
     }
     // T adds nothing while live.

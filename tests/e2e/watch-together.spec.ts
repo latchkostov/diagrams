@@ -1,5 +1,13 @@
+import {
+  pauseClock,
+  test,
+  expect,
+  expectNoErrors,
+  pageLoadTimeout,
+  viewportTransform,
+  waitForStableViewport,
+} from "./fixtures";
 import type { BrowserContext, Page } from "@playwright/test";
-import { test, expect, expectNoErrors, pageLoadTimeout, viewportTransform, waitForStableViewport } from "./fixtures";
 import { emulateTracker } from "./collab-tracker";
 
 // Watch together (shared Live design, P2) between two browsers in one room, with real WebRTC between them and the
@@ -267,6 +275,7 @@ test.describe("Watch together", () => {
       const guest = await twoInARoom(page, context, other);
       await hostPlays(page);
       await guestWatches(guest, "toast");
+      await guest.clock.install();
       // The host's page stops answering for twelve seconds (no beacons, no ops).
       void page.evaluate(() => {
         const end = Date.now() + 12_000;
@@ -277,8 +286,10 @@ test.describe("Watch together", () => {
       await expect(chip(guest)).toHaveAttribute("data-watch", "host-dropped", { timeout: 10_000 });
       await expect(chip(guest)).toContainText("connection dropped");
       const held = (await run(guest)).tick;
-      await guest.waitForTimeout(1000);
+      await pauseClock(guest);
+      await guest.clock.runFor(1000);
       expect((await run(guest)).tick).toBe(held);
+      await guest.clock.resume();
       await expect(chip(page)).toHaveAttribute("data-watch", "host");
       // The host is back: the guest goes on following.
       await expect(chip(guest)).toHaveAttribute("data-watch", "following", { timeout: 15_000 });
@@ -310,7 +321,16 @@ test.describe("Watch together", () => {
       await expect.poll(async () => (await viewOf(page)).zoom).not.toBeCloseTo(hostBefore.zoom, 2);
       await waitForStableViewport(page);
       const host = await viewOf(page);
-      await guest.waitForTimeout(800);
+      await expect
+        .poll(() =>
+          guest.evaluate(
+            () =>
+              (
+                window as unknown as { __watch?: { getState(): { driver?: { view?: { zoom: number } } } } }
+              ).__watch?.getState().driver?.view?.zoom,
+          ),
+        )
+        .toBeCloseTo(host.zoom, 2);
       expect(await viewportTransform(guest)).toBe(before);
       // Opt in: the guest's view takes the host's zoom and centre.
       await chip(guest).click();

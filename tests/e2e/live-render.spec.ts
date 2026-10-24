@@ -1,6 +1,15 @@
+import {
+  animationFrames,
+  waitForCameraIdle,
+  test,
+  expect,
+  expectNoErrors,
+  gotoLive,
+  livePaint,
+  pauseClock,
+  waitForStableViewport,
+} from "./fixtures";
 import type { Page } from "@playwright/test";
-import { test, expect, expectNoErrors, gotoLive, livePaint, pauseClock } from "./fixtures";
-import { waitForStableViewport } from "./fixtures";
 
 // The live view draws its particles, the overlay above the edge label pills, the marching edges and
 // the Live dot's breath in a worker, on OffscreenCanvas (src/live/liveRenderer.ts); where that isn't
@@ -96,7 +105,7 @@ for (const renderer of ["worker", "main"] as const) {
         )
         .toBe(true);
       const ants = await pixels(page, "march");
-      await page.waitForTimeout(700);
+      await animationFrames(page, 20);
       expect(await count(page, "frames")).toBe(still);
       expect(await pixels(page, "march")).toEqual(ants);
       expectNoErrors(consoleErrors);
@@ -126,7 +135,7 @@ for (const renderer of ["worker", "main"] as const) {
       consoleErrors,
     }) => {
       await goLive(page, renderer, "&traffic=0&speed=0.5");
-      await page.waitForTimeout(1200);
+      await waitForCameraIdle(page);
       await openNodeMenu(page, "shopper", "sim.trace-next");
       // Pause before sending, so the label stays put: the message waits at the start of its first hop,
       // labelled. (Pausing once a label showed raced that hop: Storefront → Commerce gateway is 200 ms of
@@ -188,7 +197,9 @@ for (const renderer of ["worker", "main"] as const) {
       await goLive(page, renderer);
       await expect.poll(() => count(page, "particles"), { timeout: 10_000 }).toBeGreaterThan(40);
       await page.getByTestId("live-play").click();
-      await page.waitForTimeout(500);
+      await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "paused");
+      await waitForCameraIdle(page);
+      await livePaint(page, "base");
       // A dot's opaque core, found on the particle layer, clear of node cards.
       const at = await page.evaluate(async () => {
         const el = document.querySelector('[data-testid="live-canvas"]');

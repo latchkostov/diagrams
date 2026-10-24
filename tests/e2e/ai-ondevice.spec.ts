@@ -1,6 +1,5 @@
-import { currentDiagram, openExample } from "./fixtures";
+import { currentDiagram, openExample, test, expect, gotoCanvas, expectNoErrors } from "./fixtures";
 import type { Page } from "@playwright/test";
-import { test, expect, gotoCanvas, expectNoErrors } from "./fixtures";
 import {
   SLUG,
   fakeModel,
@@ -276,7 +275,7 @@ test.describe("a request in flight", () => {
     await page.getByTestId("ai-ondevice-stop").click();
     await expect(page.getByTestId("ai-ondevice-send")).toBeVisible();
     await releaseModel(page, "create");
-    await page.waitForTimeout(300);
+    await expect.poll(async () => (await fakeModel(page)).destroyed).toBe(1);
     const lm = await fakeModel(page);
     expect(lm.prompts).toEqual([]);
     await expect(page.getByTestId("ai-turn-0")).toHaveCount(0);

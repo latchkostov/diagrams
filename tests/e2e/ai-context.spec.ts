@@ -1,5 +1,5 @@
+import { waitForLiveSession, test, expect, gotoCanvas, expectNoErrors, fitDiagram } from "./fixtures";
 import type { Page } from "@playwright/test";
-import { test, expect, gotoCanvas, expectNoErrors, fitDiagram } from "./fixtures";
 import { MOD, SLUG, must, openAdvanced, openAiPanel } from "./ai-helpers";
 
 // The AI panel on every diagram screen: the idle state that says how to use AI here, Copy for AI for a
@@ -146,7 +146,7 @@ test("Explain is copy-only, and in live view it carries the running numbers", as
 
   await goLive(page);
   await page.getByTestId("ai-intent-explain").click();
-  await page.waitForTimeout(600);
+  await waitForLiveSession(page);
   await page.getByTestId("ai-copy-prompt").click();
   prompt = await clipboard(page);
   expect(prompt).toMatch(/Live view, (playing|paused)/);

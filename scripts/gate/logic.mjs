@@ -47,7 +47,8 @@ export function options(argv) {
       const value = Number(args.shift());
       if (!Number.isFinite(value) || value <= 0) throw new Error("--max-wait must be a positive number");
       result.maxWait = value;
-    } else if (["--ports", "--workers", "--repeat"].includes(arg)) result[arg.slice(2)] = positive(args.shift(), arg);
+    } else if (arg === "--repeat-each") result.repeatEach = positive(args.shift(), arg);
+    else if (["--ports", "--workers", "--repeat"].includes(arg)) result[arg.slice(2)] = positive(args.shift(), arg);
     else if (arg === "--shard") {
       const value = args.shift() ?? "";
       if (!/^[1-9]\d*\/[1-9]\d*$/.test(value)) throw new Error("--shard requires i/n (one-based)");
@@ -214,9 +215,21 @@ export function plan(config, changed = [], root) {
     groups.push(["e2e", "preview", ...selfHost].map((name) => ({ name: `${name}-build`, ...e2eBuild(name) })));
     for (let i = 1; i <= config.repeat; i++)
       groups.push([
-        step(`e2e-${i}`, ["exec", "playwright", "test", ...specs, "--retries=0", "--forbid-only"], {
-          E2E_SELF_HOST: selfHost.join(","),
-        }),
+        step(
+          `e2e-${i}`,
+          [
+            "exec",
+            "playwright",
+            "test",
+            ...specs,
+            "--retries=0",
+            "--forbid-only",
+            ...(config.repeatEach ? [`--repeat-each=${config.repeatEach}`] : []),
+          ],
+          {
+            E2E_SELF_HOST: selfHost.join(","),
+          },
+        ),
       ]);
   }
   return groups;

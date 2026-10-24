@@ -1,4 +1,4 @@
-import { test, expect, gotoCanvas, expectNoErrors } from "./fixtures";
+import { pauseClock, waitForCameraIdle, test, expect, gotoCanvas, expectNoErrors } from "./fixtures";
 import {
   SLUG,
   callTool,
@@ -172,13 +172,17 @@ test.describe("an agent's changes in the AI panel", () => {
     const before = must(await payments.boundingBox(), "payments zoomed");
     expect(before.width).toBeGreaterThan(b.width);
 
+    await page.clock.install();
+    await pauseClock(page);
     await callTool(page, "edit_diagram", {
       ops: [{ op: "update", target: "shopper", props: { sublabel: "Web and mobile" } }],
       layout: "none",
     });
     await expect(page.getByTestId("ai-rail-badge")).toHaveText("1");
-    // Past the highlight and any reveal it could have asked for.
-    await page.waitForTimeout(600);
+    // Advance the delayed reveal check; camera readiness covers any resulting move.
+    await page.clock.runFor(600);
+    await page.clock.resume();
+    await waitForCameraIdle(page);
     await settle(page);
     expect(await payments.boundingBox()).toEqual(before);
   });

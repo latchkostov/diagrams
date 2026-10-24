@@ -1,9 +1,18 @@
-import { TEXT_END } from "./fixtures";
+import {
+  waitForAutosave,
+  TEXT_END,
+  test,
+  expect,
+  gotoCanvas,
+  gotoLab,
+  expectNoErrors,
+  gotoLive,
+  interactionJournalMark,
+  interactionLog,
+} from "./fixtures";
 import AxeBuilder from "@axe-core/playwright";
 import type { Locator, Page } from "@playwright/test";
-import { test, expect, gotoCanvas, gotoLab, expectNoErrors, gotoLive } from "./fixtures";
 import { RELATION_GLYPHS } from "../../src/components/relationGlyphs";
-import { interactionJournalMark, interactionLog } from "./fixtures";
 
 /**
  * Relationships (docs/research/diagram-semantics.md): dependencies are dotted, carry a glyph and no
@@ -541,7 +550,7 @@ test("settings paste stores names only and rejects oversized or nested JSON with
     await expect(page.getByTestId("inspector-settings-error")).toBeVisible();
     await expect(field).toHaveValue("Password\nConnectionStrings:Orders\nToken");
   }
-  await page.waitForTimeout(800);
+  await waitForAutosave(page);
   const persisted = await page.evaluate(() => Object.values(localStorage).join("\n"));
   for (const secret of [password, connection, token]) expect(persisted).not.toContain(secret);
   expectNoErrors(consoleErrors);
