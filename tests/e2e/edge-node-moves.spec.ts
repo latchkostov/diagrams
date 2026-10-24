@@ -87,6 +87,49 @@ async function saved(page: Page) {
   return savedDiagram(page);
 }
 
+for (const cancel of ["Escape", "pointercancel", "lostpointercapture", "blur"] as const) {
+  test(`cancelling a shared-end drag via ${cancel} restores nodes and bends without history`, async ({ page }) => {
+    await open(page);
+    await selectBoth(page);
+    const before = await saved(page);
+    const beforePath = await path(page);
+    await expect(page.getByTestId("undo-button")).toBeDisabled();
+    await startDrag(page, "node-api");
+    expect(await path(page)).not.toBe(beforePath);
+    if (cancel === "Escape") await page.keyboard.press("Escape");
+    else if (cancel === "blur") await page.evaluate(() => window.dispatchEvent(new Event("blur")));
+    else await page.getByTestId("node-api").dispatchEvent(cancel, { pointerId: 1, bubbles: true });
+    await expect(page.getByTestId("canvas-wrap")).not.toHaveAttribute("data-interaction-state", "gesture");
+    // React Flow can keep delivering moves and a final stop after cancellation.
+    await page.mouse.move(240, 320, { steps: 3 });
+    await page.mouse.up();
+    await expect.poll(() => path(page)).toBe(beforePath);
+    await expect.poll(async () => (await saved(page)).nodes).toEqual(before.nodes);
+    expect((await saved(page)).edges).toEqual(before.edges);
+    await expect(page.getByTestId("undo-button")).toBeDisabled();
+    await expect(page.getByTestId("redo-button")).toBeDisabled();
+  });
+}
+
+test("cancelling an Alt-drag removes copied nodes and bends without history", async ({ page }) => {
+  await open(page);
+  await selectBoth(page);
+  const before = await saved(page);
+  const beforePath = await path(page);
+  await page.keyboard.down("Alt");
+  await startDrag(page, "node-api");
+  await expect(page.getByTestId("node-api-1")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await page.mouse.move(240, 320, { steps: 3 });
+  await page.mouse.up();
+  await page.keyboard.up("Alt");
+  await expect(page.getByTestId("node-api-1")).toHaveCount(0);
+  await expect.poll(async () => (await saved(page)).nodes).toEqual(before.nodes);
+  expect((await saved(page)).edges).toEqual(before.edges);
+  expect(await path(page)).toBe(beforePath);
+  await expect(page.getByTestId("undo-button")).toBeDisabled();
+});
+
 test("box-select both ends and drag carries bends live and saves one undo step", async ({ page }) => {
   await open(page);
   await selectBoth(page);

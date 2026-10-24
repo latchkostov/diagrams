@@ -89,13 +89,10 @@ export const EDITOR_ONLY: { name: string; path: string; stub: (root: string) => 
     name: "node-drag placement",
     path: "/src/canvas/placement/useDragPlacement.ts",
     // Measurements still reach the controlled canvas; read-only nodes cannot start a drag.
-    stub: () =>
-      [
-        "const none = () => {};",
-        "export const useDragPlacement = (store, _prefs, _edit, nodes, edges, _begin, _end, _rename, _style, _meta, _variant, _screen, _wrapper, _editor, _drag, _tip, menus) => {",
-        'const change = apply => changes => { const next = store.getState().userSelectionActive ? changes.filter(c => c.type !== "select") : changes; if (next.some(c => c.type === "select")) menus.selecting("click"); if (next.length) apply(next); };',
-        "return [{ current: null }, change(nodes), change(edges), none, none, none, () => ({ at: none, clear: none, lit: () => null })]; };",
-      ].join("\n"),
+    stub: (root) =>
+      `export { readOnlyDragPlacement as useDragPlacement } from ${JSON.stringify(
+        normalizePath(resolve(root, "src/canvas/placement/readOnlyDragPlacement.ts")),
+      )};`,
   },
   // Read-only canvases never open editing menus or quick-add. In particular, saved-route
   // rendering must not carry the actions that author and reset those routes.

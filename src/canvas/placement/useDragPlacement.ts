@@ -35,6 +35,7 @@ import { dependencyVisibility } from "../dependencyVisibility";
 import { insertLine } from "../landing";
 import { memberBoxes } from "../memberBoxes";
 import { previewMembership, type GroupRect, type MemberBox } from "../membership";
+import { selectionChanges } from "./changeForwarding";
 
 export function useDragPlacement(
   store: ReturnType<typeof useStoreApi<FlowNode, DiagramFlowEdge>>,
@@ -58,6 +59,9 @@ export function useDragPlacement(
   // ---------------------------------------------------------------- Alt-drag duplicates (D9), smart guides (D6)
   /** While an Alt-drag runs: original flow id → its copy. The drag moves the copies; the originals stay. */
   const altCopies = useRef<Map<string, string> | null>(null);
+  // The controller owns cancellation. Keep its token until React Flow's next drag starts so late
+  // moves/stops from a cancelled gesture cannot write positions back over the restored origins.
+  const ownedDrag = useRef<{ seq: number; moving: Set<string>; stop: () => void } | null>(null);
   /** The guides' overlay: one layer over the flow, drawn only during a drag. */
   const guideLayer = useRef<SVGSVGElement>(null);
   const guides = useSmartGuides({
@@ -74,10 +78,10 @@ export function useDragPlacement(
         // Boundary adoption also runs in this frame; close only after both have rendered.
         requestAnimationFrame(endGesture);
       }
-      let next = changes;
-      if (store.getState().userSelectionActive) next = next.filter((c) => c.type !== "select");
-      // React Flow's own selection: a click (or its Enter on a focused node).
-      if (next.some((c) => c.type === "select")) menus.selecting("click");
+      let next = selectionChanges(store, menus, changes);
+      const owned = ownedDrag.current;
+      if (owned && menus.gesture?.seq !== owned.seq)
+        next = next.filter((c) => !(c.type === "position" && c.dragging !== undefined && owned.moving.has(c.id)));
       const copies = altCopies.current;
       if (copies)
         next = next.map((c) => (c.type === "position" && copies.has(c.id) ? { ...c, id: copies.get(c.id)! } : c));
@@ -89,8 +93,7 @@ export function useDragPlacement(
   );
   const handleEdgesChange = useCallback(
     (changes: EdgeChange<DiagramFlowEdge>[]) => {
-      const next = store.getState().userSelectionActive ? changes.filter((c) => c.type !== "select") : changes;
-      if (next.some((c) => c.type === "select")) menus.selecting("click");
+      const next = selectionChanges(store, menus, changes);
       if (next.length) onEdgesChange(next);
     },
     [store, onEdgesChange, menus],
@@ -104,9 +107,8 @@ export function useDragPlacement(
 
   // One lifecycle for every drag: a node, a selection (by a node or by its frame) and an Alt-drag. React
   // Flow calls onNodeDragStart / onNodeDragStop for all of them, the selection frame included (it calls
-  // onSelectionDragStart as well, which is why that one isn't registered). `dragActive` makes a second
-  // start or stop for the same gesture a no-op, so copies are made exactly once.
-  const dragActive = useRef(false);
+  // onSelectionDragStart as well, which is why that one isn't registered). The controller's token
+  // makes a second start or stop for the same gesture a no-op, so copies are made exactly once.
   /**
    * Insert on drop (D8): a single node with no edges, held over an edge for a moment, lights the edge up;
    * dropped there (without Ctrl/Cmd) it goes in between: A→B becomes A→N→B, in the drag's undo step.
@@ -278,12 +280,13 @@ export function useDragPlacement(
   );
   const onNodeDragStart: OnNodeDrag<FlowNode> = useCallback(
     (e, _node, dragged) => {
-      if (dragActive.current) return;
+      if (ownedDrag.current && menus.gesture?.seq === ownedDrag.current.seq) return;
+      ownedDrag.current?.stop();
       beginGesture();
-      dragActive.current = true;
       dragStarted();
       menus.closeMenu("gesture");
       hideTip();
+      const originals = store.getState().nodes;
       const only = dragged.length === 1 ? dragged[0] : undefined;
       if (editGestures && !e.altKey && only?.type === "diagram") {
         const linked = store.getState().edges.some((x) => x.source === only.id || x.target === only.id);
@@ -299,37 +302,98 @@ export function useDragPlacement(
       }
       const groups = draggedGroupIds(dragged, store.getState().nodes);
       const moving = new Set(dragged.map((n) => n.id));
+      for (const n of originals) if (n.data.group && groups.has(n.data.group)) moving.add(n.id);
       const origins = new Map(
         store
           .getState()
           .nodes.filter((n) => moving.has(n.id) || (n.data.group && groups.has(n.data.group)))
           .map((n) => [altCopies.current?.get(n.id) ?? n.id, { ...n.position }]),
       );
-      menus.beginGesture(
+      const copies = altCopies.current;
+      const clean = () => {
+        guides.stop();
+        insertWatch.current?.stop();
+        insertWatch.current = null;
+        membershipWatch.current?.stop();
+        membershipWatch.current = null;
+        altCopies.current = null;
+        ownedDrag.current?.stop();
+      };
+      const seq = menus.beginGesture(
         "node.drag",
         { kind: "node.drag", origins },
         {
           via: "mouse",
           commit: (p) => {
             if (p.kind === "node.drag") editor.carryRoutes(p.origins);
+            clean();
+          },
+          cancel: () => {
+            clean();
+            const made = new Set(copies?.values());
+            // Bypass drag remapping and snapping when restoring, including carried boundary members.
+            onNodesChange([
+              ...originals
+                .filter((n) => moving.has(n.id) || origins.has(n.id))
+                .map((n): NodeChange<FlowNode> => ({
+                  id: n.id,
+                  type: "position",
+                  position: n.position,
+                  dragging: false,
+                })),
+              ...[...made].map((id): NodeChange<FlowNode> => ({ id, type: "remove" })),
+              ...originals.map((n): NodeChange<FlowNode> => ({ id: n.id, type: "select", selected: !!n.selected })),
+            ]);
+            if (made.size)
+              onEdgesChange(
+                store
+                  .getState()
+                  .edges.filter((edge) => made.has(edge.source) || made.has(edge.target))
+                  .map((edge) => ({ id: edge.id, type: "remove" })),
+              );
+            endGesture();
           },
         },
       );
+      const cancel = () => menus.endGesture(seq, "cancel");
+      window.addEventListener("pointercancel", cancel, true);
+      window.addEventListener("lostpointercapture", cancel, true);
+      ownedDrag.current = {
+        seq,
+        moving,
+        stop: () => {
+          window.removeEventListener("pointercancel", cancel, true);
+          window.removeEventListener("lostpointercapture", cancel, true);
+        },
+      };
       guides.start(e, dragged, altCopies.current);
       if (editGestures) watchMembership(dragged, altCopies.current);
     },
-    [hideTip, editGestures, editor, guides, store, watchInsert, watchMembership, dragStarted, beginGesture, menus],
+    [
+      hideTip,
+      editGestures,
+      editor,
+      guides,
+      store,
+      watchInsert,
+      watchMembership,
+      dragStarted,
+      beginGesture,
+      endGesture,
+      menus,
+      onNodesChange,
+      onEdgesChange,
+    ],
   );
   const onNodeDragStop: OnNodeDrag<FlowNode> = useCallback(
     (e, _node, dragged) => {
-      if (!dragActive.current) return;
-      dragActive.current = false;
+      const owned = ownedDrag.current;
+      if (!owned || menus.gesture?.seq !== owned.seq) return;
       guides.stop();
       const watch = insertWatch.current;
       insertWatch.current = null;
       const into = watch?.hover.lit();
       watch?.stop();
-      if (watch && into && !(e.ctrlKey || e.metaKey)) editor.insertIntoEdge(into, watch.node);
       membershipWatch.current?.stop();
       membershipWatch.current = null;
       const copies = altCopies.current;
@@ -337,12 +401,15 @@ export function useDragPlacement(
       // Members a dragged boundary carries stay in it; every other dropped node settles where it landed.
       const draggedGroups = dragged.filter(isGroupNode);
       const ids = droppedNodes(dragged, copies);
-      const seq = menus.gesture?.kind === "node.drag" ? menus.gesture.seq : undefined;
+      const seq = owned.seq;
       // Once the drop has rendered: a copy dropped onto something moves to the nearest free place (nothing
       // overlaps by default), then the dropped nodes settle into the boundaries around them, which grow to hold
       // a member poking out (D12), in the drop's undo step. A member that left its boundary says so.
       requestAnimationFrame(() => {
-        if (seq !== undefined) menus.endGesture(seq, "drop");
+        if (menus.gesture?.seq !== seq) return;
+        if (watch && into && !(e.ctrlKey || e.metaKey)) editor.insertIntoEdge(into, watch.node);
+        menus.endGesture(seq, "drop");
+        ownedDrag.current = null;
         if (copies) {
           const made = [...copies.values()];
           editor.keepClear({
