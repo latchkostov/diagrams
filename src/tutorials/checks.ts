@@ -14,15 +14,33 @@ export interface SandboxView {
 const fits = (spec: SubjectSpec, stencil: string) =>
   spec.stencils ? spec.stencils.includes(stencil) : !!spec.role && stencilRole(stencil) === spec.role;
 
-/** Each subject's node id, when the sandbox has one: the first node, in diagram order, that fits. */
-export function resolveSubjects(tutorial: Tutorial, diagram: DiagramFile): Record<string, string | undefined> {
-  return Object.fromEntries(
-    Object.entries(tutorial.subjects).map(([name, spec]) => [
-      name,
-      diagram.nodes.find((n) => fits(spec, n.stencil))?.id,
-    ]),
-  );
+/** Distinct subjects keep their existing matching nodes, then claim unbound matches in diagram order. */
+export function resolveSubjects(
+  tutorial: Tutorial,
+  diagram: DiagramFile,
+  previous: Record<string, string | undefined> = {},
+): Record<string, string | undefined> {
+  const subjects: Record<string, string | undefined> = {};
+  const used = new Set<string>();
+  for (const [name, spec] of Object.entries(tutorial.subjects)) {
+    const node = diagram.nodes.find((n) => n.id === previous[name] && fits(spec, n.stencil));
+    if (node && !used.has(node.id)) {
+      subjects[name] = node.id;
+      used.add(node.id);
+    }
+  }
+  for (const [name, spec] of Object.entries(tutorial.subjects)) {
+    if (subjects[name]) continue;
+    const node = diagram.nodes.find((n) => !used.has(n.id) && fits(spec, n.stencil));
+    subjects[name] = node?.id;
+    if (node) used.add(node.id);
+  }
+  return subjects;
 }
+
+/** Subjects whose naming completion matters to this check. */
+export const namingSubjects = (check: Check): string[] =>
+  check.kind === "label" ? [check.subject] : check.kind === "all" ? check.checks.flatMap(namingSubjects) : [];
 
 const same = (a: string, b: string) => a.trim().toLocaleLowerCase() === b.trim().toLocaleLowerCase();
 
@@ -77,8 +95,11 @@ export function holds(check: Check, view: SandboxView, subjects: Record<string, 
 }
 
 /** Every step's check against one view of the sandbox. */
-export function observeSteps(tutorial: Tutorial, view: SandboxView): boolean[] {
-  const subjects = resolveSubjects(tutorial, view.diagram);
+export function observeSteps(
+  tutorial: Tutorial,
+  view: SandboxView,
+  subjects = resolveSubjects(tutorial, view.diagram),
+): boolean[] {
   return tutorial.steps.map((step) => holds(step.check, view, subjects));
 }
 

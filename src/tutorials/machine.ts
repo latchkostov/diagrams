@@ -33,10 +33,12 @@ export interface RunnerState {
   highlights: boolean;
   /** Saved progress: the step this tutorial was left at, or 0. */
   resumeAt: number;
+  stepIds: readonly string[];
 }
 export type RunnerEvent =
   /** fix: a near miss's one-click fix ("Use Orders API"): the step's own demo, as Skip does it. */
-  | { type: "start" | "resume" | "showMe" | "skip" | "fix" | "restart" | "exit" }
+  | { type: "start" | "resume" | "showMe" | "fix" | "restart" | "exit" }
+  | { type: "skip"; stepId: string }
   | { type: "observe"; met: readonly boolean[]; settled: readonly boolean[] }
   | { type: "highlights"; on: boolean };
 export type RunnerCommand =
@@ -56,10 +58,11 @@ export const inStep = (s: RunnerState) => (STEP_STATES as readonly string[]).inc
 
 export function runnerInitial(
   sticky: readonly boolean[],
-  opts: { highlights: boolean; resumeAt: number },
+  opts: { highlights: boolean; resumeAt: number; stepIds?: readonly string[] },
 ): RunnerState {
   const none = sticky.map(() => false);
   return {
+    stepIds: opts.stepIds ?? sticky.map((_, i) => String(i)),
     value: "intro",
     index: 0,
     observed: none,
@@ -167,7 +170,11 @@ const highlights = (target: RunnerPhase): Row =>
   }) as Row;
 const stepRows = (state: "active" | "hinting" | "completing") => ({
   observe,
-  skip,
+  skip: skip.map((row) => ({
+    ...row,
+    guard: (s: RunnerState, e: RunnerEvent) =>
+      e.type === "skip" && e.stepId === s.stepIds[s.index] && (!row.guard || row.guard(s, e)),
+  })),
   fix: skip.slice(0, 3),
   restart,
   highlights: highlights(state),
@@ -185,7 +192,7 @@ export const runnerMachine = defineMachine<RunnerState, RunnerEvent, RunnerComma
     { type: "observe", met: [true, true], settled: [true, true] },
     { type: "observe", met: [false, false], settled: [true, true] },
     { type: "showMe" },
-    { type: "skip" },
+    { type: "skip", stepId: "0" },
     { type: "fix" },
     { type: "restart" },
     { type: "highlights", on: false },

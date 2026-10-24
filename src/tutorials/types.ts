@@ -14,7 +14,7 @@ export type Words = () => string;
 
 export type TrackId = "basics" | "blocks" | "simulation" | "waiting" | "resilience" | "studies";
 
-/** How a subject is found: the first node (in diagram order) with one of these stencils, else of this role. */
+/** How a subject is found: an unbound node (in diagram order) with one of these stencils, else of this role. */
 export interface SubjectSpec {
   stencils?: readonly string[];
   role?: SimRole;

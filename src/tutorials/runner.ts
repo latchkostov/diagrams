@@ -1,9 +1,9 @@
 import { createMachine } from "../lib/machine";
 import { t } from "../i18n";
-import { readTutorials, savedProgress, writeTutorials } from "./progress";
+import { readTutorials, savedProgress, saveProgress, writeTutorials } from "./progress";
 import { paletteHost } from "../palette/host";
 import type { EditorApi } from "../editor/types";
-import { nearMiss, observeSteps, resolveSubjects } from "./checks";
+import { holds, nearMiss, namingSubjects, observeSteps, resolveSubjects } from "./checks";
 import {
   inStep,
   runnerInitial,
@@ -13,6 +13,7 @@ import {
   type RunnerState,
 } from "./machine";
 import { canvasInteraction } from "../canvas/interaction/canvasInteraction";
+import { liveDiagramReader } from "../live/diagramReader";
 import type { Demo, Tutorial } from "./types";
 
 /**
@@ -39,9 +40,14 @@ export function createTutorialRunner(tutorial: Tutorial, ports: { close(): void;
   const host = ports.host ?? paletteHost;
   const saved = savedProgress(tutorial);
   const sticky = tutorial.steps.map((s) => !!s.sticky || s.demo.length === 0);
+  const dynamic = (check: Tutorial["steps"][number]["check"]): boolean =>
+    check.kind === "live" || check.kind === "processed" || (check.kind === "all" && check.checks.some(dynamic));
+  const dynamicChecks = tutorial.steps.map((s) => dynamic(s.check));
+  const naming = tutorial.steps.map((s) => namingSubjects(s.check));
   const machine = createMachine({
     ...runnerMachine,
     initial: runnerInitial(sticky, {
+      stepIds: tutorial.steps.map((s) => s.id),
       highlights: readTutorials().highlights ?? true,
       resumeAt: saved && !saved.completed ? saved.step : 0,
     }),
@@ -58,12 +64,35 @@ export function createTutorialRunner(tutorial: Tutorial, ports: { close(): void;
   const changed = new Set<() => void>();
 
   const editor = (): EditorApi | undefined => host.get().canvas?.editor;
-  const view = () => {
+  let cachedEditor: EditorApi | undefined;
+  let readDiagram: ReturnType<typeof liveDiagramReader>;
+  let document: ReturnType<EditorApi["getDiagram"]> | undefined;
+  let subjects: Record<string, string | undefined> = {};
+  const demoBindings = new Map<string, string>();
+  let documentChecks: boolean[] = [];
+  function view() {
     const h = host.get();
-    const diagram = h.canvas!.editor.getDiagram();
+    const ed = h.canvas!.editor;
+    if (ed !== cachedEditor) {
+      cachedEditor = ed;
+      readDiagram = liveDiagramReader(ed);
+    }
+    const diagram = readDiagram();
+    if (diagram !== document) {
+      document = diagram;
+      const bindings = { ...subjects };
+      // Editor writes can land after the demo returns its id. Keep that declaration until the document reports it.
+      for (const [name, id] of demoBindings) {
+        if (!diagram.nodes.some((node) => node.id === id)) continue;
+        for (const other of Object.keys(bindings)) if (bindings[other] === id) bindings[other] = undefined;
+        bindings[name] = id;
+      }
+      subjects = resolveSubjects(tutorial, diagram, bindings);
+      documentChecks = observeSteps(tutorial, { diagram, live: false, processed: () => 0 }, subjects);
+    }
     const nodes = h.session?.state?.().snapshot.nodes;
     return { diagram, live: !!h.canvas!.live, processed: (id: string) => nodes?.[id]?.processed ?? 0 };
-  };
+  }
 
   function send(event: RunnerEvent) {
     const { state: next, commands } = machine.send(event);
@@ -87,14 +116,19 @@ export function createTutorialRunner(tutorial: Tutorial, ports: { close(): void;
     const h = host.get();
     if (!h.canvas) return changed.forEach((f) => f());
     const v = view();
-    const subjects = resolveSubjects(tutorial, v.diagram);
     // The editor's mode (src/canvas/interaction/mode.ts): the selection, and whether the learner is mid-naming.
     const mode = canvasInteraction.get()?.mode;
     const selected = mode?.selection ?? [];
     if (JSON.stringify(subjects) !== JSON.stringify(snapshot.subjects) || selected.join() !== snapshot.selected.join())
       publish({ subjects, selected });
-    const met = observeSteps(tutorial, v);
-    const settled = tutorial.steps.map((s) => !(s.settle === "naming" && mode?.value === "naming"));
+    const met = tutorial.steps.map((s, i) => (dynamicChecks[i] ? holds(s.check, v, subjects) : documentChecks[i]));
+    const settled = tutorial.steps.map(
+      (s, i) =>
+        s.settle !== "naming" ||
+        (met[i] && state.observed[i] && state.settled[i]) ||
+        mode?.value !== "naming" ||
+        !naming[i].some((name) => subjects[name] === mode.target),
+    );
     if (met.some((m, i) => m !== state.observed[i]) || settled.some((m, i) => m !== state.settled[i]))
       send({ type: "observe", met, settled });
     // Judged only once naming is over: a name is never "wrong" half typed.
@@ -124,14 +158,20 @@ export function createTutorialRunner(tutorial: Tutorial, ports: { close(): void;
     const h = host.get();
     const ed = editor();
     if (!ed) return;
-    const subjects = resolveSubjects(tutorial, ed.getDiagram());
+    view();
     switch (demo.kind) {
       case "add": {
         const after = demo.after ? subjects[demo.after] : undefined;
-        if (after) ed.createConnected({ from: after, stencil: demo.stencil });
+        let id: string | undefined;
+        if (after) id = ed.createConnected({ from: after, stencil: demo.stencil })?.id;
         else {
           ed.clearSelection();
-          h.canvas?.addStencil(demo.stencil);
+          id = h.canvas?.addStencil(demo.stencil);
+        }
+        if (id) {
+          demoBindings.set(demo.subject, id);
+          document = undefined;
+          observe();
         }
         return;
       }
@@ -180,30 +220,23 @@ export function createTutorialRunner(tutorial: Tutorial, ports: { close(): void;
         return;
       case "reset": {
         generation++;
+        subjects = {};
+        demoBindings.clear();
+        document = undefined;
         const h = host.get();
         if (h.canvas?.live) h.live?.toggle();
         h.canvas?.editor.applyDiagram(tutorial.start());
         return;
       }
       case "reveal":
+        publish({ announcement: tutorial.steps[command.step].hint?.() ?? announce(command.step) });
         reveal(command.step);
         return;
       case "announce":
         publish({ announcement: announce(command.step) });
         return;
       case "save":
-        writeTutorials((s) => ({
-          ...s,
-          progress: {
-            ...s.progress,
-            [tutorial.id]: {
-              version: tutorial.version,
-              step: command.step,
-              // Finishing once counts for good; starting again doesn't take it away.
-              completed: command.completed || !!s.progress?.[tutorial.id]?.completed,
-            },
-          },
-        }));
+        saveProgress(tutorial, command.step, command.completed);
         return;
       case "prefs":
         writeTutorials((s) => ({ ...s, highlights: command.highlights }));

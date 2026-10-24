@@ -25,3 +25,19 @@ export function savedProgress(t: Pick<Tutorial, "id" | "version">) {
   const p = readTutorials().progress?.[t.id];
   return p && p.version === t.version ? p : undefined;
 }
+
+/** Completion survives a restart only while the tutorial's meaning (version) is unchanged. */
+export function saveProgress(tutorial: Pick<Tutorial, "id" | "version">, step: number, completed: boolean) {
+  writeTutorials((s) => ({
+    ...s,
+    progress: {
+      ...s.progress,
+      [tutorial.id]: {
+        version: tutorial.version,
+        step,
+        completed:
+          completed || (s.progress?.[tutorial.id]?.version === tutorial.version && !!s.progress[tutorial.id].completed),
+      },
+    },
+  }));
+}

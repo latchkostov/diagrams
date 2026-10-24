@@ -232,7 +232,7 @@ function Strip({ tutorial, snap, send }: { tutorial: Tutorial; snap: RunnerSnaps
                 <Icon name="check" size={13} /> {step.done?.() ?? ""} {t("tutorials.finishUp")}
               </p>
             ) : phase === "hinting" && step.hint ? (
-              <p className="tutorial-aside" data-testid="tutorial-hint">
+              <p className="tutorial-aside" id="tutorial-hint" data-testid="tutorial-hint">
                 {step.hint()}
               </p>
             ) : (
@@ -243,15 +243,23 @@ function Strip({ tutorial, snap, send }: { tutorial: Tutorial; snap: RunnerSnaps
               )
             )}
           </div>
-          <div className="tutorial-actions">
-            {phase === "active" && (
-              <button className="btn" onClick={() => send({ type: "showMe" })} data-testid="tutorial-show-me">
+          <div className="tutorial-actions" key={step.id}>
+            {(phase === "active" || phase === "hinting") && (
+              <button
+                className="btn"
+                onClick={() => send({ type: "showMe" })}
+                data-testid="tutorial-show-me"
+                aria-expanded={phase === "hinting"}
+                aria-controls={phase === "hinting" && step.hint ? "tutorial-hint" : undefined}
+              >
                 {t("tutorials.showMe")}
               </button>
             )}
             <button
               className="btn btn-ghost"
-              onClick={() => send({ type: "skip" })}
+              onClick={(e) => {
+                if (e.detail < 2) send({ type: "skip", stepId: step.id });
+              }}
               title={t("tutorials.skipTitle")}
               data-testid="tutorial-skip"
             >

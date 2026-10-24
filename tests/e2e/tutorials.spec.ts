@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { test, expect, expectNoErrors, gotoCanvas, pageLoadTimeout } from "./fixtures";
+import { test, expect, expectNoErrors, gotoCanvas, pageLoadTimeout, fitDiagram } from "./fixtures";
 import { tutorialIds } from "../../src/tutorials/catalog/ids";
 import type { ResolvedUiStep } from "../../src/tutorials/solution";
 
@@ -196,4 +196,119 @@ test("an unknown tutorial says so and offers the way out", async ({ page }) => {
   await expect(strip(page)).toHaveAttribute("data-phase", "unknown", { timeout: pageLoadTimeout() });
   await page.getByTestId("tutorial-exit").click();
   await expect(page.getByTestId("canvas-view")).toBeVisible({ timeout: pageLoadTimeout() });
+});
+
+async function skipToName(page: Page) {
+  await openTutorial(page, "mobile-api");
+  await page.getByTestId("tutorial-start").click();
+  await page.getByTestId("tutorial-skip").click();
+  await expect(strip(page)).toHaveAttribute("data-step", "add-api");
+  await page.getByTestId("tutorial-skip").click();
+  await expect(strip(page)).toHaveAttribute("data-step", "name-api");
+}
+
+test("completed naming stays settled during unrelated edits, and a changed API name reopens it", async ({ page }) => {
+  await skipToName(page);
+  await page.getByTestId("inspector-field-label").fill("Orders API");
+  await page.keyboard.press("Enter");
+  await expect(strip(page)).toHaveAttribute("data-step", "go-live");
+  await fitDiagram(page);
+  await page.getByTestId("node-mobile-1").dblclick();
+  await expect(strip(page)).toHaveAttribute("data-step", "go-live");
+  await page.getByTestId("inspector-field-label").fill("Shop app");
+  await expect(strip(page)).toHaveAttribute("data-step", "go-live");
+  await page.keyboard.press("Enter");
+  await fitDiagram(page);
+  await page.getByTestId("node-service-1").dblclick();
+  await expect(strip(page)).toHaveAttribute("data-step", "go-live");
+  await page.keyboard.press("Tab");
+  await page.getByTestId("inspector-field-sublabel").fill("HTTP endpoint");
+  await expect(strip(page)).toHaveAttribute("data-step", "go-live");
+  await page.getByTestId("canvas-wrap").focus();
+  await page.keyboard.press("ArrowRight");
+  await expect(strip(page)).toHaveAttribute("data-step", "go-live");
+  await page.getByTestId("inspector-field-label").fill("Order API");
+  await expect(strip(page)).toHaveAttribute("data-step", "name-api");
+  await page.getByTestId("inspector-field-label").fill("Orders API");
+  await expect(strip(page)).toHaveAttribute("data-state", "completing");
+  await page.keyboard.press("Enter");
+  await expect(strip(page)).toHaveAttribute("data-step", "go-live");
+});
+
+test("a Skip click that finishes naming cannot act on Go live", async ({ page }) => {
+  await skipToName(page);
+  await page.getByTestId("inspector-field-label").fill("Orders API");
+  await expect(strip(page)).toHaveAttribute("data-state", "completing");
+  // Keep the actual element across focus departure: a replacement is a different step's button.
+  await page.getByTestId("tutorial-skip").evaluate((button: HTMLButtonElement) => {
+    button.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+    button.focus();
+    button.click();
+    button.click();
+  });
+  await expect(strip(page)).toHaveAttribute("data-step", "go-live");
+  await expect(page.getByTestId("live-toggle")).toHaveAttribute("aria-pressed", "false");
+});
+
+test("double-clicking Skip performs only the rendered step", async ({ page }) => {
+  await openTutorial(page, "mobile-api");
+  await page.getByTestId("tutorial-start").click();
+  await page.getByTestId("tutorial-skip").dblclick();
+  await expect(strip(page)).toHaveAttribute("data-step", "add-api");
+  await expect(page.getByTestId("node-mobile-1")).toBeVisible();
+  await expect(page.getByTestId("node-service-1")).toHaveCount(0);
+});
+
+test("Continue reconstructs saved progress; Start over begins with an empty sandbox", async ({ page }) => {
+  await skipToName(page);
+  await page.getByTestId("tutorial-exit").click();
+  await page.goto("./?view=tutorials");
+  await expect(page.getByTestId("tutorial-open-mobile-api")).toHaveText("Continue", { timeout: pageLoadTimeout() });
+  await page.getByTestId("tutorial-open-mobile-api").click();
+  await expect(page.getByTestId("tutorial-start")).toContainText("Continue");
+  await page.getByTestId("tutorial-start").click();
+  await expect(strip(page)).toHaveAttribute("data-step", "name-api");
+  await expect(page.getByTestId("node-mobile-1")).toBeVisible();
+  await expect(page.getByTestId("node-service-1")).toBeVisible();
+  await expect
+    .poll(() => page.evaluate(() => window.__tutorial?.snapshot().state.observed.slice(0, 3)))
+    .toEqual([true, true, true]);
+  await page.getByTestId("tutorial-exit").click();
+  await page.getByTestId("tutorial-open-mobile-api").click();
+  await page.getByTestId("tutorial-start-over").click();
+  await expect(strip(page)).toHaveAttribute("data-step", "add-app");
+  await expect(page.getByTestId("node-mobile-1")).toHaveCount(0);
+  await expect(page.getByTestId("node-service-1")).toHaveCount(0);
+});
+
+test("Show me keeps keyboard focus and announces its expanded hint", async ({ page }) => {
+  await openTutorial(page, "mobile-api");
+  await page.getByTestId("tutorial-start").click();
+  await page.getByTestId("tutorial-show-me").focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByTestId("tutorial-show-me")).toBeFocused();
+  await expect(page.getByTestId("tutorial-show-me")).toHaveAttribute("aria-expanded", "true");
+  await expect(page.getByTestId("tutorial-hint")).toBeVisible();
+  await expect(page.getByTestId("tutorial-announce")).toHaveText(await page.getByTestId("tutorial-hint").innerText());
+});
+
+test("clicking Go live finishes a matching rename without restoring label focus", async ({ page }) => {
+  await skipToName(page);
+  await page.getByTestId("inspector-field-label").fill("Orders API");
+  await expect(strip(page)).toHaveAttribute("data-state", "completing");
+  await page.getByTestId("live-toggle").click();
+  await expect(strip(page)).toHaveAttribute("data-step", "watch");
+  await expect
+    .poll(() => page.evaluate(() => document.activeElement?.getAttribute("data-testid")))
+    .not.toBe("inspector-field-label");
+  await page.getByTestId("live-toggle").click();
+  await expect(strip(page)).toHaveAttribute("data-step", "go-live");
+  await expect
+    .poll(() => page.evaluate(() => document.activeElement?.getAttribute("data-testid")))
+    .not.toBe("inspector-field-label");
+  await page.getByTestId("live-toggle").click();
+  await expect(strip(page)).toHaveAttribute("data-step", "watch");
+  await expect
+    .poll(() => page.evaluate(() => document.activeElement?.getAttribute("data-testid")))
+    .not.toBe("inspector-field-label");
 });

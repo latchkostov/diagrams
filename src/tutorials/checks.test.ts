@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { DiagramFile } from "../model/types";
-import { holds, nearMiss } from "./checks";
+import { holds, nearMiss, resolveSubjects } from "./checks";
+import { mobileApi } from "./catalog/mobileApi";
 import type { Check } from "./types";
 
 const diagram = (label: string): DiagramFile => ({
@@ -30,4 +31,20 @@ describe("expectText (a label check) and its near miss", () => {
     expect(nearMiss(check, view("x"), {})).toBeNull();
     expect(nearMiss({ kind: "live" }, view("Order API"), subjects)).toBeNull();
   });
+});
+
+it("binds overlapping subjects to distinct nodes and keeps their identities as diagram order changes", () => {
+  const tutorial = {
+    ...mobileApi,
+    subjects: { first: { stencils: ["generic.service"] }, second: { role: "processor" as const } },
+  };
+  const one = diagram("Service");
+  expect(resolveSubjects(tutorial, one)).toEqual({ first: "service-1", second: undefined });
+  const two = { ...one, nodes: [...one.nodes, { ...one.nodes[0], id: "service-2" }] };
+  const bindings = resolveSubjects(tutorial, two);
+  expect(bindings).toEqual({ first: "service-1", second: "service-2" });
+  expect(resolveSubjects(tutorial, { ...two, nodes: [...two.nodes].reverse() }, bindings)).toEqual(bindings);
+  expect(
+    holds({ kind: "edge", from: "first", to: "second" }, { diagram: two, live: false, processed: () => 0 }, bindings),
+  ).toBe(false);
 });

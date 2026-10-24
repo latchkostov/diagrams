@@ -16,6 +16,18 @@ function play(events: RunnerEvent[], resumeAt = 0) {
 }
 
 describe("tutorial step runner", () => {
+  it("rejects a skip rendered for an earlier step, including a fast repeat", () => {
+    const m = createMachine(def());
+    m.send({ type: "start" });
+    expect(m.send({ type: "skip", stepId: "0" }).commands).toEqual([{ type: "demo", steps: [0] }]);
+    m.send(observe([true, false, false]));
+    const stale = m.send({ type: "skip", stepId: "0" });
+    expect(m.journal.at(-1)?.accepted).toBe(false);
+    expect(stale.commands).toEqual([]);
+    expect(stale.state.index).toBe(1);
+    expect(m.send({ type: "skip", stepId: "1" }).commands).toEqual([{ type: "demo", steps: [1] }]);
+  });
+
   it("starts in the intro, and Start goes to the first step not done", () => {
     expect(play([]).state.value).toBe("intro");
     const { state, commands } = play([observe([true, false, false]), { type: "start" }]);
@@ -66,10 +78,10 @@ describe("tutorial step runner", () => {
   });
 
   it("Skip asks for a demo on a step that has one, and latches a moment", () => {
-    const demo = play([{ type: "start" }, { type: "skip" }]);
+    const demo = play([{ type: "start" }, { type: "skip", stepId: "0" }]);
     expect(demo.state).toMatchObject({ value: "active", index: 0 });
     expect(demo.commands).toContainEqual({ type: "demo", steps: [0] });
-    const moment = play([{ type: "start" }, observe([true, true, false]), { type: "skip" }]);
+    const moment = play([{ type: "start" }, observe([true, true, false]), { type: "skip", stepId: "2" }]);
     expect(moment.state.value).toBe("finished");
     expect(moment.state.latched[2]).toBe(true);
   });
