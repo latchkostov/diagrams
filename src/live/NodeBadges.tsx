@@ -207,18 +207,15 @@ function useHoveredNode(nodes: FlowNode[], state: LiveState) {
     () => readouts?.get() ?? null,
     () => null,
   );
+  const readableNodes = useMemo(() => new Set(nodes.filter((n) => n.type === "diagram").map((n) => n.id)), [nodes]);
+  const readableEdges = useMemo(() => new Set(edges.map((e) => e.id)), [edges]);
   useLayoutEffect(() => {
-    const readableNodes = new Set(
-      nodes
-        .filter((n) => {
-          const s = state.snapshot.nodes[n.id];
-          return n.type === "diagram" && s && s.role !== "none";
-        })
-        .map((n) => n.id),
-    );
-    const readableEdges = new Set(edges.map((e) => e.id));
-    readouts?.reconcile((target) => (target.kind === "node" ? readableNodes : readableEdges).has(target.id));
-  }, [readouts, nodes, edges, state.snapshot.nodes]);
+    readouts?.reconcile((target) => {
+      if (target.kind === "edge") return readableEdges.has(target.id);
+      const snapshot = state.snapshot.nodes[target.id];
+      return readableNodes.has(target.id) && !!snapshot && snapshot.role !== "none";
+    });
+  }, [readouts, readableNodes, readableEdges, state.snapshot.nodes]);
   useEffect(() => {
     if (!domNode || !readouts) return;
     const itemAt = (el: Element | null) => {

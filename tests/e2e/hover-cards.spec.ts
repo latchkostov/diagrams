@@ -1,6 +1,7 @@
 import { breakerFixture } from "../../src/lab/resilienceFixture";
 import type { Locator } from "@playwright/test";
 import { pathToFileURL } from "node:url";
+import { deflateRawSync } from "node:zlib";
 import {
   test,
   expect,
@@ -692,6 +693,31 @@ test("an inert node and an annotation never own a hidden readout", async ({ page
 });
 
 for (const kind of ["node", "edge"] as const)
+  test(`removing a focused ${kind} readout target recovers canvas focus`, async ({ page, consoleErrors }) => {
+    await gotoLive(page, "./?view=canvas&example=blocking-call&live=1&paused=1");
+    const id = kind === "node" ? "caller" : "call";
+    const item = page.getByTestId(`${kind}-${id}`);
+    await item.click({ force: true });
+    const card = page.getByTestId(`${kind}-detail-${id}`);
+    await card.click();
+    await card
+      .getByTestId(/^hover-section-/)
+      .first()
+      .focus();
+    await expect(card).toHaveAttribute("data-pinned", "true");
+    // Deliver a model edit through the selected item's deletion handler without moving focus out of the card.
+    await item.dispatchEvent("keydown", { key: "Delete", code: "Delete", bubbles: true });
+    await expect(item).toHaveCount(0);
+    await expect(card).toHaveCount(0);
+    await expect(page.getByTestId("canvas-wrap")).toBeFocused();
+    await page.keyboard.press("ControlOrMeta+z");
+    await expect(item).toHaveCount(1);
+    await item.hover({ force: true });
+    await expect(card).toHaveAttribute("data-pinned", "false");
+    expectNoErrors(consoleErrors);
+  });
+
+for (const kind of ["node", "edge"] as const)
   test(`deleting a pinned ${kind} closes its readout and Undo restores an unpinned target`, async ({
     page,
     consoleErrors,
@@ -761,8 +787,18 @@ test("a pinned card follows moving anchor geometry without panning", async ({ pa
 
 for (const surface of ["embed", "export"])
   test(`readout Tab traversal works forward and backward in the ${surface} viewer`, async ({ page, consoleErrors }) => {
-    if (surface === "embed") await gotoLive(page, "./?embed=1&example=blocking-call&live=1&paused=1");
-    else {
+    // Serialize the last node first: native Tab must not re-enter it at either reading-order boundary.
+    const diagram = breakerFixture();
+    diagram.nodes = diagram.nodes.filter((node) => node.id === "caller" || node.id === "partner").reverse();
+    diagram.edges = diagram.edges.filter((edge) => edge.id === "call");
+    await page.addInitScript(({ key, diagram }) => localStorage.setItem(key, JSON.stringify(diagram)), {
+      key: STORAGE_KEYS.autosavePrefix + "blocking-call",
+      diagram,
+    });
+    if (surface === "embed") {
+      const payload = deflateRawSync(JSON.stringify(diagram)).toString("base64url");
+      await gotoLive(page, `./?embed=1&live=1&paused=1#d=${payload}`);
+    } else {
       await gotoCanvas(page, "blocking-call");
       const template = waitForHtmlTemplate(page);
       await page.getByTestId("file-button").click();
@@ -788,6 +824,15 @@ for (const surface of ["embed", "export"])
     await expect(card).toBeFocused();
     await page.keyboard.press("Shift+Tab");
     await expect.poll(() => focusedStop(page)).toBe("node-caller");
+    await page.getByTestId("node-caller").evaluate((el) => el.parentElement?.focus());
+    await page.keyboard.press("Shift+Tab");
+    await expect.poll(() => focusedStop(page)).not.toMatch(/^node-/);
+    await page.getByTestId("node-partner").evaluate((el) => el.parentElement?.focus());
+    await page.keyboard.press("Tab");
+    await expect(page.getByTestId("node-detail-partner")).toBeFocused();
+    await page.keyboard.press("Tab");
+    await expect(page.getByTestId("live-toggle")).toBeFocused();
+    await expect(page.getByTestId("node-detail-partner")).toHaveCount(0);
     expectNoErrors(consoleErrors);
   });
 
