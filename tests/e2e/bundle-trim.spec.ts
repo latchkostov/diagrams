@@ -158,7 +158,10 @@ for (const name of [undefined, "Cache audit"])
     expect(after.nodes).toHaveLength(before.nodes.length + 1);
     const added = after.nodes.find((node) => !before.nodes.some((old) => old.id === node.id));
     expect(added).toBeDefined();
-    if (name) expect(added?.label).toBe(name);
+    if (name)
+      await expect
+        .poll(async () => (await savedDiagram(page)).nodes.find((node) => node.id === added?.id)?.label)
+        .toBe(name);
   });
 
 test("quick-add leaves another control's Enter available", async ({ page }) => {

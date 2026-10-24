@@ -1,5 +1,5 @@
 import type { CameraEvent } from "../camera";
-import type { PendingKey, TypeAhead } from "../typeAhead";
+import type { PendingKey, PendingName, TypeAhead } from "../typeAhead";
 import { describe, focusPolicy, initialFocus, pendingMove } from "./focusPolicy";
 import { liveKeys } from "./liveKeys";
 import { gestures, initialGestures } from "./gestures";
@@ -67,7 +67,7 @@ export interface InteractionPort {
    * take them yet; `done` hears the Enter or Esc that ended the typing. Absent: nothing is held.
    */
   holdInput?(take: (key: PendingKey) => boolean): () => void;
-  holdKeys?(done: (typed: TypeAhead) => void, text?: string): { stop(): TypeAhead };
+  holdKeys?(done: (typed: TypeAhead) => void, text?: string, onType?: PendingName): { stop(): TypeAhead };
   /** Writes text typed ahead into the text field that has just taken focus, as typing there would; caret after it. */
   type?(el: ElementHandle, text: string): void;
   /** Focus on `el` has left the canvas's keyboard: it's outside the canvas, or a text field. */
@@ -266,18 +266,26 @@ export function createInteractionController<P = unknown>(
     dropRename("superseded");
     const next: NonNullable<typeof rename> = { move, keys: null, typed: { text: null } };
     rename = next;
-    next.keys = port.holdKeys((typed) => {
-      if (rename !== next) return;
-      next.keys?.stop();
-      next.keys = null;
-      next.typed = typed;
-      if (typed.text !== null) {
-        if (options.journal) journal({ event: `rename.typed:${typed.done}`, command: "keep" });
-        return;
-      }
-      // Esc or Enter before anything was typed: the rename is over before its field came.
-      decide({ type: "inspector.abandoned" });
-    }, move.text);
+    next.keys = port.holdKeys(
+      (typed) => {
+        if (rename !== next) return;
+        next.keys?.stop();
+        next.keys = null;
+        next.typed = typed;
+        if (move.naming && move.target.kind === "field" && move.target.owner) {
+          decide({ type: "naming.done", flowId: move.target.owner });
+          return;
+        }
+        if (typed.text !== null) {
+          if (options.journal) journal({ event: `rename.typed:${typed.done}`, command: "keep" });
+          return;
+        }
+        // An ordinary held rename with no typing cancels in place (I6).
+        decide({ type: "inspector.abandoned" });
+      },
+      move.text,
+      move.naming,
+    );
     if (options.journal) journal({ event: "rename.hold", command: describe(move) });
   }
 

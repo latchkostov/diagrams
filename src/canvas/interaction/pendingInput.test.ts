@@ -96,8 +96,20 @@ it("continues placement's typed prefix while the inspector's field is still down
     microtask: (run) => run(),
   });
   cleanups.push(controller.connect());
-  controller.dispatch({ type: "inspector.field", seq: 1, name: "label", owner: "n", caret: "end", text: "C" });
+  let saved = "C";
+  controller.dispatch({
+    type: "inspector.field",
+    seq: 1,
+    name: "label",
+    owner: "n",
+    caret: "end",
+    text: "C",
+    naming: (typed) => {
+      if (typed.text !== null) saved = typed.text;
+    },
+  });
   window.dispatchEvent(new KeyboardEvent("keydown", { key: "a", cancelable: true }));
+  expect(saved).toBe("Ca"); // Durable before the name field arrives, as each mounted-field edit is.
   const input = document.createElement("input");
   input.dataset.testid = "inspector-field-label";
   input.dataset.nameField = "n";

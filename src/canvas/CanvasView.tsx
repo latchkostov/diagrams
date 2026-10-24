@@ -1,3 +1,4 @@
+import type { PendingName } from "./typeAhead";
 import { ConnectionRadius } from "./interaction/ConnectionRadius";
 import { EdgeMessages } from "./edges/lazyEdgeMessages";
 import { gestureTargetRemoved } from "./interaction/gestures";
@@ -314,7 +315,7 @@ function CanvasInner({
   }, []);
   const [editing, setEditing] = useState<InlineEdit | null>(null);
   const [inspectorFocus, setInspectorFocus] = useState<
-    { name: string; seq: number; caret?: "end"; target?: string; text?: string } | undefined
+    { name: string; seq: number; caret?: "end"; target?: string; text?: string; naming?: PendingName } | undefined
   >();
   const inspectorFocusDone = useRef(0);
   const takeInspectorFocus = useCallback((seq: number) => {
@@ -325,12 +326,12 @@ function CanvasInner({
   }, []);
   const [inspectorRequest, requestInspector] = useState(0);
   const openInspector = useCallback(
-    (field?: string, caret?: "end", target?: string, text?: string) => {
+    (field?: string, caret?: "end", target?: string, text?: string, naming?: PendingName) => {
       requestInspector((revision) => revision + 1);
       liveHandle.current?.session?.closePanel();
       setPref("inspector", true);
       setOpenedByHand((o) => ({ ...o, inspector: true }));
-      if (field) setInspectorFocus((f) => ({ name: field, seq: (f?.seq ?? 0) + 1, caret, target, text }));
+      if (field) setInspectorFocus((f) => ({ name: field, seq: (f?.seq ?? 0) + 1, caret, target, text, naming }));
     },
     [setPref],
   );

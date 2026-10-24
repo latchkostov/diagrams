@@ -4,6 +4,7 @@
  * Elements (a menu's invoker, the Checks card's opener) travel as opaque handles: the pure policy never looks
  * inside one, and the controller's port checks one is still in the document before focus goes to it.
  */
+import type { PendingName } from "../typeAhead";
 import type { Side } from "../../model/types";
 import type { Point } from "../geometry/rect";
 import type { EdgeEnd } from "../../editor/edgeEdits";
@@ -180,6 +181,8 @@ export interface FocusMove {
   select?: "all" | "end";
   /** Text already captured by placement, before this pending field took ownership. */
   text?: string;
+  /** A newly created item finishes naming at the item, even before its field arrives. */
+  naming?: PendingName;
   /** Again a frame later, unless input came first or focus is already there (a closing menu took it back). */
   again?: boolean;
   /** This is that second attempt: it doesn't count as pending, and input stands it down. */
@@ -257,6 +260,7 @@ export type FocusEvent =
       owner?: string;
       caret?: "end";
       text?: string;
+      naming?: PendingName;
       claim?: () => boolean;
     }
   /** A processor rule was removed, or its incoming type changed (rows are keyed by it): continue at `target`. */

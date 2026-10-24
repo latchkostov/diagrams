@@ -8,6 +8,7 @@ import type { EditorApi } from "../editor/types";
 
 // Resolve the browser-only download so the server render still checks the actual translated fields.
 vi.mock("./inspector/lazyNodeIdentity", () => import("./inspector/NodeIdentity"));
+vi.mock("./inspector/lazyNodePanel", () => import("./inspector/NodePanel"));
 
 vi.mock("react", async (original) => ({
   ...(await original<typeof import("react")>()),

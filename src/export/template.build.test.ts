@@ -62,6 +62,8 @@ describe("interactive viewer template", () => {
   it("leaves the editing-only panels out (stubs in their place)", () => {
     const real = (path: string) => modules.some((id) => id.endsWith(path));
     expect(EDITOR_ONLY.filter((p) => real(p.path)).map((p) => p.name)).toEqual([]);
+    expect(real("/src/components/MenuList.tsx")).toBe(false);
+    expect(real("/src/components/replayMenuKey.ts")).toBe(false);
     expect(real("/src/live/LoadingSimPanel.tsx")).toBe(false);
     expect(real("/src/planning/LiveDetails.tsx")).toBe(false);
     expect(real("/src/planning/EdgeLiveDetails.tsx")).toBe(false);

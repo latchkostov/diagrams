@@ -1,3 +1,4 @@
+import { NodePanel } from "./inspector/lazyNodePanel";
 import { defineLazySurface } from "../lib/lazySurface";
 import { useLayoutEffect, type ReactNode } from "react";
 import { Icon } from "../components/Icon";
@@ -24,14 +25,6 @@ function pending<P>(owner?: (props: P) => string) {
     status.failed ? <PanelUnavailable owner={owner?.(props)} /> : null;
 }
 
-const NodePanel = defineLazySurface({
-  id: "inspector.node",
-  load: () => import("./inspector/NodePanel").then((m) => m.NodePanel),
-  placeholder: { render: pending((p: { node: { id: string } }) => p.node.id) },
-  focus: {},
-  export: "skip",
-  retryToast: true,
-});
 const EdgePanel = defineLazySurface({
   id: "inspector.edge-shell",
   load: () => import("./inspector/lazyEdgePanel").then((m) => m.EdgePanel),
@@ -103,6 +96,7 @@ function InspectorSheet({ interaction, ...p }: InspectorProps & { interaction: I
       owner: f.target,
       caret: f.caret,
       text: f.text,
+      naming: f.naming,
       claim: takeFocus ? () => takeFocus(f.seq) : undefined,
     });
   }, [p.focus, takeFocus, interaction]);

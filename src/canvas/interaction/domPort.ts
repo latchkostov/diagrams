@@ -144,7 +144,7 @@ export function createDomPort(canvas: DomCanvas): InteractionPort {
     },
     connected: (handle) => (handle as Node).isConnected,
     holdInput: capturePendingInput,
-    holdKeys: (done, text) => captureTypeAhead(() => false, done, text),
+    holdKeys: (done, text, onType) => captureTypeAhead(() => false, done, text, onType),
     elsewhere(handle) {
       const el = handle as Element;
       return (

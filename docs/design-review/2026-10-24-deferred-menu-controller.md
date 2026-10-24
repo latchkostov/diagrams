@@ -8,7 +8,10 @@ the existing Retry action inside the menu, so recovery can preserve its queued i
 The interaction controller owns the pending queue. Each key commits before the next key is delivered;
 Enter can replace menu search with the existing pending-name capture. The adapter consults that newest
 owner for every key, including after the picked menu unmounts. Inspector requests carry any placement
-text already entered, preserving it when the node container or identity fields arrive later.
+text already entered, preserving it when the node container or identity fields arrive later. A new
+node's placement capture and pending field save edits into its creation transaction immediately; Enter or Escape finishes
+at that node. Ordinary held renames retain their existing cancellation policy. Read-only exports
+omit the editing menu because their canvas hides those controls and rejects editor context menus.
 
 Rejected another queue local to ContextMenu or MenuList: it cannot reliably transfer ownership after
 Enter. Kept the cancellable shell eager, the existing menu ordering and selection policies, and every

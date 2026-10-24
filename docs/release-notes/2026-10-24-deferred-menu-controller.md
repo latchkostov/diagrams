@@ -7,10 +7,12 @@ the pending menu without taking that control's Enter. Failed downloads offer Ret
 
 The node inspector's naming and stencil-picker container also loads on selection. Placement passes
 its captured text to the inspector's pending rename, so a delayed field cannot overwrite the first
-characters. Held-download browser tests compare these paths with an already loaded menu, including
+characters. Pending new-node names save each edit immediately, as mounted name fields do, and
+Enter or Escape returns focus to the new node without waiting for its inspector. Read-only exports
+exclude editing menus, retaining the existing skill ZIP limit. Held-download browser tests compare these paths with an already loaded menu, including
 navigation, later edits, naming, cancellation and independently delayed inspector fields.
 
-Canvas first view decreases from 380,961 to 374,379 gzip bytes, restoring 8,621 bytes of headroom
-against the unchanged 383,000-byte budget. Entry is 107,953 bytes, startup is 173,474 bytes, and the
-additional Live download is 126,252 bytes. Startup remains below its warning floor and needs a separate
+Canvas first view decreases from 380,961 to 374,560 gzip bytes, restoring 8,440 bytes of headroom
+against the unchanged 383,000-byte budget. Entry is 107,972 bytes, startup is 173,493 bytes, and the
+additional Live download is 126,263 bytes. Startup remains below its warning floor and needs a separate
 trim. No parity goldens change; diagram, simulation, planning, layout and export output stay unchanged.

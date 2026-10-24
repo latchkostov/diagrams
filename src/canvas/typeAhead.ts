@@ -10,6 +10,8 @@ export interface TypeAhead {
   done?: "enter" | "escape";
 }
 
+export type PendingName = (typed: TypeAhead) => void;
+
 export type PendingKey = Pick<KeyboardEvent, "key" | "ctrlKey" | "metaKey" | "altKey" | "shiftKey">;
 type Key = Omit<PendingKey, "shiftKey">;
 
@@ -69,12 +71,14 @@ export function captureTypeAhead(
   multiline: () => boolean = () => false,
   onDone?: (typed: TypeAhead) => void,
   text?: string,
+  onType?: PendingName,
 ): { stop: () => TypeAhead } {
   let state: TypeAhead = { text: text ?? null };
   const stop = capturePendingInput((key) => {
     const next = typeAheadKey(state, key, multiline());
     if (!next) return false;
     state = next;
+    onType?.(next);
     if (next.done) onDone?.(next);
     return true;
   });
