@@ -46,6 +46,7 @@ export interface DiagramUi {
   /** Editing only: a selected edge's end dropped on another node moves there. */
   reconnect?: (edgeId: string, end: EdgeEnd, nodeId: string, side?: Side) => boolean;
   reshape?: EditorApi["updateEdge"];
+  announce?: (text: string) => void;
   /** Editing only: a boundary resized by hand adopts the nodes now inside it and releases those outside (D12). */
   boundaryResized?: (groupId: string) => void;
 }

@@ -35,13 +35,15 @@ export interface Gesture {
 export interface GesturesState {
   active: Gesture | null;
   seq: number;
+  /** Index in the current segment list; -1 explicitly leaves the edge without an active segment. */
   keyboardSegment?: { edge: string; k: number };
 }
 export type GesturesEvent =
   | { type: "gesture.start"; kind: GestureKind; preview: GesturePreview; via: Gesture["via"] }
   | { type: "gesture.move"; seq: number; preview: GesturePreview }
   | { type: "gesture.end"; seq: number; reason: GestureEndReason }
-  | { type: "segment.step"; edge: string; delta: 1 | -1; count: number; alone: boolean }
+  | { type: "segment.step"; edge: string; k: number; alone: boolean }
+  | { type: "segment.reset"; edge: string }
   | { type: "selection.committed"; alone?: string };
 export interface GesturesTransition {
   state: GesturesState;

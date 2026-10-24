@@ -11,6 +11,12 @@ const key = (k: string, mods: Partial<KeyLike> = {}): KeyLike => ({
 });
 
 describe("shortcuts", () => {
+  it("bare brackets shape segments while Ctrl+Alt brackets still navigate edges", () => {
+    expect(shortcutFor(key("]"))).toBe("segment-next");
+    expect(shortcutFor(key("["))).toBe("segment-prev");
+    expect(shortcutFor(key("]", { ctrlKey: true, altKey: true }))).toBe("select-edge-out");
+    expect(shortcutFor(key("[", { ctrlKey: true, altKey: true }))).toBe("select-edge-in");
+  });
   it("Mod matches Ctrl or Cmd", () => {
     expect(matches(key("z", { ctrlKey: true }), "Mod+Z")).toBe(true);
     expect(matches(key("z", { metaKey: true }), "Mod+Z")).toBe(true);
@@ -61,7 +67,7 @@ describe("shortcuts", () => {
     expect(shortcutFor({ ...key("[", { ctrlKey: true, altKey: true }), code: "BracketLeft" })).toBe("select-edge-in");
     // A layout where Ctrl+Alt on that key prints something else.
     expect(shortcutFor({ ...key("+", { ctrlKey: true, altKey: true }), code: "BracketRight" })).toBe("select-edge-out");
-    expect(shortcutFor({ ...key("]"), code: "BracketRight" })).toBeNull();
+    expect(shortcutFor({ ...key("]"), code: "BracketRight" })).toBe("segment-next");
   });
 
   it("formats per platform", () => {

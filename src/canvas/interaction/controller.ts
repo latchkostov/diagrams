@@ -117,6 +117,7 @@ export function createInteractionController<P = unknown>(
 ) {
   let menuState: MenusState<P> = initialMenus<P>();
   let gestureState = initialGestures();
+  let segmentRoute: { edge: string; signature: string; expected?: string } | null = null;
   let panHeld = false;
   let gestureHow: (GestureHandlers & { owner: unknown }) | null = null;
   /** Live's hover cards, while Live attaches them (readoutLayer.ts): their own store, apart from the snapshot. */
@@ -516,16 +517,39 @@ export function createInteractionController<P = unknown>(
       changed();
     },
     endGesture,
-    stepSegment(edge: string, delta: 1 | -1, count: number): number {
+    /** Keys yield to menus, panning and gestures. Segment geometry belongs to the current route. */
+    stepSegment(edge: string, k: number): number {
+      if (panHeld || menuState.open || gestureState.active || selectionKey !== JSON.stringify([edge])) return -1;
       gestureState = gestures(gestureState, {
         type: "segment.step",
         edge,
-        delta,
-        count,
-        alone: selectionKey === JSON.stringify([edge]),
+        k,
+        alone: true,
       }).state;
       changed();
       return gestureState.keyboardSegment?.k ?? 0;
+    },
+    /** Survives lazy edge-control remounts; stores route fingerprints, never selected-leg geometry. */
+    observeSegmentRoute(edge: string, signature: string): boolean {
+      const before = segmentRoute;
+      segmentRoute = { edge, signature };
+      if (!before || before.edge !== edge || before.signature === signature) {
+        if (before?.edge === edge) segmentRoute.expected = before.expected;
+        return false;
+      }
+      if (before.expected === signature || gestureState.keyboardSegment?.k === -1) return false;
+      if (selectionKey !== JSON.stringify([edge])) return false;
+      gestureState = gestures(gestureState, { type: "segment.reset", edge }).state;
+      changed();
+      return true;
+    },
+    expectSegmentRoute(edge: string, signature: string) {
+      if (segmentRoute?.edge === edge) segmentRoute.expected = signature;
+    },
+    resetSegment(edge: string) {
+      if (selectionKey !== JSON.stringify([edge])) return;
+      gestureState = gestures(gestureState, { type: "segment.reset", edge }).state;
+      changed();
     },
     /** Live attaches its readout layer while it shows hover cards; returns the detach. */
     attachReadouts(layer: ReadoutLayer) {
@@ -627,6 +651,7 @@ export function createInteractionController<P = unknown>(
      */
     selectionCommitted(key: string, empty: boolean) {
       const segment = gestureState.keyboardSegment;
+      if (segmentRoute && key !== JSON.stringify([segmentRoute.edge])) segmentRoute = null;
       gestureState = gestures(gestureState, {
         type: "selection.committed",
         alone: segment && key === JSON.stringify([segment.edge]) ? segment.edge : undefined,

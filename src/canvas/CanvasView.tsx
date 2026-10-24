@@ -891,6 +891,7 @@ function CanvasInner({
       grow: editGestures ? growFromChip : undefined,
       reconnect: editGestures ? editor.reconnectEdge : undefined,
       reshape: editGestures ? editor.updateEdge : undefined,
+      announce: (text) => setAnnouncement((a) => ({ text, seq: a.seq + 1 })),
       boundaryResized: editGestures ? boundaryResized : undefined,
     }),
     [
@@ -1468,7 +1469,7 @@ function CanvasInner({
               data-testid="canvas-announce"
               data-seq={announcement.seq}
             >
-              {announcement.text}
+              <span key={announcement.seq}>{announcement.text}</span>
             </div>
           )}
           {tips}

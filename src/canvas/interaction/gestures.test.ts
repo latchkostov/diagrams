@@ -36,13 +36,19 @@ describe("gestures: G1–G7 and K1–K2", () => {
     expect(gestures(empty, { type: "gesture.end", seq: 1, reason: "drop" }).state).toBe(empty);
   });
   it("K1 wraps the sole edge's segment; K2 retains it only for that selection", () => {
-    const step = { type: "segment.step", edge: "a-b", count: 3, delta: 1, alone: true } as const;
+    const step = { type: "segment.step", edge: "a-b", k: 0, alone: true } as const;
     const first = gestures(initialGestures(), step).state;
     expect(first.keyboardSegment).toEqual({ edge: "a-b", k: 0 });
-    expect(gestures(first, { ...step, delta: -1 }).state.keyboardSegment?.k).toBe(2);
+    expect(gestures(first, { ...step, k: 2 }).state.keyboardSegment?.k).toBe(2);
     expect(gestures(first, { ...step, alone: false }).state).toBe(first);
     expect(gestures(first, { type: "selection.committed", alone: "a-b" }).state).toBe(first);
     expect(gestures(first, { type: "selection.committed" }).state.keyboardSegment).toBeUndefined();
+  });
+  it("a route reset clears only the active segment, including during pointer shaping", () => {
+    const active = gestures(start().state, { type: "segment.reset", edge: "a-b" }).state;
+    expect(active.keyboardSegment).toEqual({ edge: "a-b", k: -1 });
+    expect(active.active).not.toBeNull();
+    expect(gestures(active, { type: "selection.committed", alone: "a-b" }).state).toBe(active);
   });
   it("remote deletion checks a gesture's edge, origin nodes and hovered node", () => {
     expect(gestureTargetRemoved(preview, new Set(), new Set())).toBe(true);

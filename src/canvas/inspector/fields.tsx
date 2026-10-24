@@ -183,7 +183,9 @@ export function Segmented<T extends string>({
               : -1;
     if (next < 0) return;
     e.preventDefault();
-    select(options[next].value);
+    // A move expresses fresh intent even while the controlled value awaits its previous update.
+    if (next !== index) onChange(options[next].value);
+    else select(options[next].value);
     const group = e.currentTarget.parentElement;
     group?.querySelectorAll<HTMLButtonElement>('[role="radio"]')[next]?.focus();
   };

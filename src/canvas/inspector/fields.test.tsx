@@ -45,3 +45,40 @@ it("selected segments ignore clicks and Home/End without losing keyboard focus",
     vi.unstubAllGlobals();
   }
 });
+
+it("keyboard moves retain the latest intent while controlled props await commit", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  const container = document.createElement("div");
+  document.body.append(container);
+  const root = createRoot(container);
+  const onChange = vi.fn();
+  try {
+    await act(() =>
+      root.render(
+        <Segmented
+          value="blocking"
+          options={[
+            { value: "blocking", label: t("threads.holds") },
+            { value: "non-blocking", label: t("threads.frees") },
+          ]}
+          onChange={onChange}
+          testId="wait"
+          label={t("threads.whileWaiting")}
+        />,
+      ),
+    );
+    const holds = container.querySelector<HTMLButtonElement>('[data-testid="wait-blocking"]')!;
+    const frees = container.querySelector<HTMLButtonElement>('[data-testid="wait-non-blocking"]')!;
+    holds.focus();
+    await act(() => holds.dispatchEvent(new KeyboardEvent("keydown", { key: "End", bubbles: true })));
+    expect(document.activeElement).toBe(frees);
+    // Keep the controlled prop unchanged to represent an owner whose first update is still pending.
+    await act(() => frees.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowLeft", bubbles: true })));
+    expect(onChange.mock.calls).toEqual([["non-blocking"], ["blocking"]]);
+    expect(document.activeElement).toBe(holds);
+  } finally {
+    await act(() => root.unmount());
+    container.remove();
+    vi.unstubAllGlobals();
+  }
+});

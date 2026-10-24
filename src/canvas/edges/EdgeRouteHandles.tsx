@@ -10,6 +10,7 @@ import { t, useLocale } from "../../i18n";
 import { EdgeEnds } from "./EdgeEnds";
 import { useRoutingOptions } from "./useEdgeRoute";
 import { hasSingleEdgeSelection } from "./singleEdgeSelection";
+import { useSegmentKeyboard } from "./useSegmentKeyboard";
 import { dragSegment, freezeRoute, normalizeWaypoints, portStub, routeSegments, snapSegment } from "./segments";
 import "./routeHandles.css";
 
@@ -35,6 +36,26 @@ export function EdgeRouteHandles({
   const store = useStoreApi<FlowNode, DiagramFlowEdge>();
   const zoom = useStore((s) => s.transform[2]);
   const alone = useStore(hasSingleEdgeSelection);
+  const points = route.points;
+  // Display samples (including collinear Bezier samples) are never editable route vertices.
+  const segments = route.custom || style === "smoothstep" ? routeSegments(points) : [];
+  const stubs = (): [number, number] => {
+    const rectOf = (nodeId: string) => {
+      const node = store.getState().nodeLookup.get(nodeId);
+      return (
+        node && {
+          ...node.internals.positionAbsolute,
+          width: node.measured.width ?? node.width ?? 0,
+          height: node.measured.height ?? node.height ?? 0,
+        }
+      );
+    };
+    return [
+      portStub(points[0], route.sourceSide, rectOf(source)),
+      portStub(points[points.length - 1], route.targetSide, rectOf(target)),
+    ];
+  };
+  const keyboardSegment = useSegmentKeyboard(id, route, segments, alone, stubs, () => store.getState().snapToGrid);
   const panHeld = useSyncExternalStore(interaction?.subscribe ?? noSubscribe, () => interaction?.panHeld ?? false);
   const active = useSyncExternalStore(interaction?.subscribe ?? noSubscribe, () => {
     const p = interaction?.gesture?.preview;
@@ -58,29 +79,13 @@ export function EdgeRouteHandles({
         end={route.points[route.points.length - 1]}
       />
     );
-  const points = route.points;
-  // Display samples (including collinear Bezier samples) are never editable route vertices.
-  const segments = route.custom || style === "smoothstep" ? routeSegments(points) : [];
   const begin = (k: number) => (event: PointerEvent) => {
     if (interaction?.panHeld) return;
     const segment = segments.find((s) => s.k === k);
     if (!segment) return;
     // Freeze the displayed route once. No routing or document mutation happens during the gesture.
     const frozen = [points[0], ...freezeRoute(points), points[points.length - 1]];
-    const rectOf = (nodeId: string) => {
-      const node = store.getState().nodeLookup.get(nodeId);
-      return (
-        node && {
-          ...node.internals.positionAbsolute,
-          width: node.measured.width ?? node.width ?? 0,
-          height: node.measured.height ?? node.height ?? 0,
-        }
-      );
-    };
-    const stubs: [number, number] = [
-      portStub(points[0], route.sourceSide, rectOf(source)),
-      portStub(points[points.length - 1], route.targetSide, rectOf(target)),
-    ];
+    const portStubs = stubs();
     const origin = flow.screenToFlowPosition({ x: event.clientX, y: event.clientY }, { snapToGrid: false });
     const cross = segment.axis === "h" ? "y" : "x";
     const along = segment.axis === "h" ? "x" : "y";
@@ -118,7 +123,7 @@ export function EdgeRouteHandles({
           kind: "edge.segment",
           edge: id,
           segment: k,
-          waypoints: dragSegment(frozen, k, snapped.value, stubs),
+          waypoints: dragSegment(frozen, k, snapped.value, portStubs),
           guide: snapped.guide,
         };
       },
@@ -143,7 +148,9 @@ export function EdgeRouteHandles({
       <EdgeEnds id={id} source={source} target={target} start={points[0]} end={points[points.length - 1]} />
       <ViewportPortal>
         {segments.map((s) => {
-          if (Math.hypot(s.b.x - s.a.x, s.b.y - s.a.y) * zoom < 28) return null;
+          const current = s.k === keyboardSegment;
+          let keyboardOnly = Math.hypot(s.b.x - s.a.x, s.b.y - s.a.y) * zoom < 28;
+          if (!current && keyboardOnly) return null;
           let x = (s.a.x + s.b.x) / 2,
             y = (s.a.y + s.b.y) / 2;
           const label = route.label;
@@ -160,19 +167,30 @@ export function EdgeRouteHandles({
               const hi = Math.max(horizontal ? s.a.x : s.a.y, horizontal ? s.b.x : s.b.y);
               const left = Math.max(0, centre - size - lo),
                 right = Math.max(0, hi - centre - size);
-              if (Math.max(left, right) * zoom < 28) return null;
+              const cramped = Math.max(left, right) * zoom < 28;
+              if (!current && cramped) return null;
+              keyboardOnly ||= cramped;
               const at = left >= right ? lo + left / 2 : hi - right / 2;
               if (horizontal) x = at;
               else y = at;
             }
           }
+          // Both controls have square bounds on screen (the reconnect target is inscribed).
+          // Keep the entire segment target outside both endpoint targets, at either pointer size.
+          const clearance = Math.min(
+            ...[points[0], points[points.length - 1]].map((p) => Math.max(Math.abs(x - p.x), Math.abs(y - p.y)) * zoom),
+          );
+          keyboardOnly ||= clearance < 24;
           return (
             <div
               key={s.k}
-              className={`edge-seg edge-seg-${s.axis} nodrag${panHeld ? "" : " nopan"}`}
+              className={`edge-seg edge-seg-${s.axis} nodrag${panHeld ? "" : " nopan"}${current ? " is-active" : ""}`}
               style={{ transform: `translate(${x}px, ${y}px)` }}
               title={t("edge.shape.drag")}
               data-testid={`route-segment-${id}-${s.k}`}
+              data-keyboard-only={keyboardOnly || undefined}
+              data-coarse-keyboard-only={clearance < 44 || undefined}
+              aria-hidden={keyboardOnly || undefined}
               onPointerDown={begin(s.k)}
             />
           );
