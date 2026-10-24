@@ -43,6 +43,7 @@ export function EdgeEnds({
   if (!reconnect) return null;
 
   const begin = (which: EdgeEnd) => (e: ReactPointerEvent) => {
+    if (interaction?.panHeld) return;
     const wrap = e.currentTarget.closest(".canvas-wrap");
     const fixed = which === "source" ? target : source;
     const moving = which === "source" ? source : target;

@@ -446,6 +446,13 @@ One word per idea, everywhere (menus, inspector, File menu, live bar, docs):
   the dialog, with **Suggest a better translation**. Translating never touches the diagram (labels, notes, titles),
   product names or files. Right-to-left languages mirror the chrome, never the diagram.
 
+A single selected line shows segment handles in editing view. Dragging one shapes the line by hand:
+inner segments move across themselves; end segments add a jog while keeping the port stub straight.
+The first drag freezes the automatic line as drawn. A dashed preview follows the pointer; the document
+changes only on drop, in one undo step. Snapping aligns ports, the line's other segments, nearby node
+edges and centres, then the grid; Ctrl/⌘ drags freely. Lining up neighbours removes bends. **Route ▸
+Reset route** returns to automatic routing. Handles and previews stay out of Live, presentation and exports.
+
 ## Mouse and trackpad
 
 The shortcuts sheet's Mouse rows (`src/components/ShortcutsDialog.tsx`) say these in short; keep the two
@@ -465,6 +472,9 @@ in step:
 | Drag from a dot                      | Connect: each dot fixes its end's side; body drops are automatic; empty canvas adds a node |
 | Click a selected node's +            | Quick-add the next node there, connected (drag it: connect)                                |
 | Drag a selected edge's end           | Attach to a dot (also on the same node), or another node's body; elsewhere snaps back      |
+| Drag a selected line                 | Move that segment; from an end or straight line it adds a jog (Ctrl/⌘: no snapping)        |
+| Line a segment up with its neighbour | Removes those bends                                                                        |
+| Route ▸ Reset route                  | Back to automatic routing                                                                  |
 | Hold a node on an edge               | Lights the edge up; drop to insert the node in between (Ctrl/⌘: don't)                     |
 | Drag a node                          | Lines up with nearby edges, centres and equal gaps, else the grid                          |
 | Ctrl / ⌘ while dragging              | Move freely: no guides, no grid                                                            |

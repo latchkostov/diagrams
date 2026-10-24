@@ -14,6 +14,8 @@ import { productionBuild } from "../test/productionBuild";
 
 /** Never in the startup JavaScript. */
 const NOT_AT_STARTUP: [string, RegExp][] = [
+  ["selected-edge pointer adapter", /[/\\]src[/\\]canvas[/\\]interaction[/\\]usePointerGesture\.ts$/],
+  ["pointer route shaping", /[/\\]src[/\\]canvas[/\\]edges[/\\](?:EdgeRouteHandles\.tsx|segments\.ts)$/],
   ["saved-route authoring schema", /[/\\]src[/\\]model[/\\]edgeRouteSchema\.ts$/],
   ["saved-route image readiness", /[/\\]src[/\\]canvas[/\\]edges[/\\]imageReadiness\.ts$/],
   ["selection route reset", /[/\\]src[/\\]palette[/\\]routeActions\.ts$/],

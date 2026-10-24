@@ -808,7 +808,7 @@ function CanvasInner({
     interaction,
   );
 
-  const spaceHeld = usePanKeys(wrapper, editGestures);
+  const spaceHeld = usePanKeys(wrapper, editGestures, interaction);
 
   const [onPaneContextMenu, onNodeContextMenu, openEdgeMenu, onEdgeContextMenu, onSelectionContextMenu] =
     useCanvasContextMenus(
@@ -890,6 +890,7 @@ function CanvasInner({
       settleText: editGestures ? settleText : undefined,
       grow: editGestures ? growFromChip : undefined,
       reconnect: editGestures ? editor.reconnectEdge : undefined,
+      reshape: editGestures ? editor.updateEdge : undefined,
       boundaryResized: editGestures ? boundaryResized : undefined,
     }),
     [

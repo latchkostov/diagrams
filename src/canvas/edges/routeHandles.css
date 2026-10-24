@@ -1,0 +1,53 @@
+.edge-seg {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: calc(24px / var(--rf-zoom, 1));
+  height: calc(24px / var(--rf-zoom, 1));
+  margin: calc(-12px / var(--rf-zoom, 1));
+  pointer-events: all;
+  z-index: 5;
+  cursor: row-resize;
+}
+.edge-seg-v {
+  cursor: col-resize;
+}
+.edge-seg::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  translate: -50% -50%;
+  width: calc(14px / var(--rf-zoom, 1));
+  height: calc(5px / var(--rf-zoom, 1));
+  border: calc(1px / var(--rf-zoom, 1)) solid var(--accent);
+  border-radius: calc(3px / var(--rf-zoom, 1));
+  background: var(--surface);
+  box-shadow: 0 0 0 calc(3px / var(--rf-zoom, 1)) color-mix(in oklab, var(--accent) 22%, transparent);
+}
+.edge-seg-v::after {
+  rotate: 90deg;
+}
+.edge-seg:hover::after {
+  background: var(--accent);
+}
+.fe.is-reshaping {
+  opacity: 0.35;
+}
+.edge-route-preview {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 1px;
+  height: 1px;
+  overflow: visible;
+  pointer-events: none;
+  z-index: 6;
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: calc(1.6px / var(--rf-zoom, 1));
+  stroke-dasharray: calc(5px / var(--rf-zoom, 1)) calc(4px / var(--rf-zoom, 1));
+}
+.edge-route-preview line {
+  stroke-width: calc(1px / var(--rf-zoom, 1));
+}

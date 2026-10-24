@@ -118,7 +118,7 @@ mostly about diagram-as-code.
 - **Dropping a shape onto an edge splits it** (draw.io). → D8.
 - **"Mixed" in a shared inspector** (Figma, tldraw). → D11.
 
-**What the leaders do that we won't** (see "Not doing"): manual waypoints, draggable edge labels, a style
+**What the leaders do that we won't** (see "Not doing"): draggable edge labels, a style
 clipboard, lock, and tool-mode toolbars. Those tools need them because they have no router, no semantic
 styles and no stencils.
 
@@ -457,7 +457,7 @@ and **[Vocabulary]** mark anything that alters what people already know.
   - Dragging a single node (or dropping a stencil from the rail) over an edge highlights the edge after
     300 ms of hovering. Dropping then splits it: A→N and N→B. The first keeps the original edge's id, label
     and relationship; the second copies the relationship. Ctrl/Cmd held while dropping skips it.
-  - No manual waypoints (see "Not doing"). "Route from side" stays in the menu and inspector for the rare
+  - Selected lines can be shaped by dragging their segments (owner decision, 2026-10-22). "Route from side" stays in the menu and inspector for the rare
     edge that needs it.
 - **Default:** end handles only on a selected edge; the split only after a deliberate hover.
 - **Effort:** M. **Risk:** medium: the split must not fire on a drag that only passes over an edge (the
@@ -614,9 +614,6 @@ mixed selection.
 - **Hover arrows on every node** (draw.io's four blue arrows). They add four targets to every hover, they
   overlap neighbours and edges in a dense diagram, and they'd be the busiest thing on the canvas. One "+"
   on the selected node (D3) and drop-on-empty (D1) do the same job.
-- **Manual waypoints and freehand edge bending.** The router keeps edges off nodes and labels off each
-  other. Waypoints would fight it, go stale whenever a node moves, and need a "reset route" control.
-  Pinned sides (Route from side) remain for the rare case.
 - **Dragging edge labels by hand.** Same reason: label placement is automatic and overlap-free. If a label
   needs to move, the edge's route should change, not the label.
 - **Format painter and copy/paste style.** Our styling is semantic (stencil, relationship, colour of a
@@ -705,3 +702,13 @@ decided them with the recommendations below, in line with `docs/UX-PRINCIPLES.md
   [flowcharts](https://whimsical.com/learn/get-started/flowcharts).
 - **Eraser:** [quickstart](https://docs.eraser.io/quickstart.md),
   [draggable edits](https://docs.eraser.io/draggable-edits-beta.md).
+
+## Decision: shape lines by pointer (2026-10-22)
+
+The owner explicitly requested moving lines by hand. This reverses the earlier decision against manual
+waypoints. Selected lines now expose orthogonal segment handles; an end drag adds a jog, alignment
+merges bends, and Route ▸ Reset route returns to automatic. Labels remain automatically placed.
+Hand-shaped routes are fixed inputs: automatic routes step aside rather than fighting them. End legs
+rejoin moved ports. The approved roadmap's node-move stage will carry bends when both ends move
+and reset moved routes during Auto-layout/Tidy, with Undo; that adaptation is a separate PR.
+Pointer preview is controller-owned and writes once on drop. No new toolbar or drawing mode is needed.

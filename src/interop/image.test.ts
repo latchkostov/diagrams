@@ -50,3 +50,27 @@ it("inserts an ordinary export header before yielding", async () => {
     vi.unstubAllGlobals();
   }
 });
+
+it("filters segment handles and the dashed shaping preview from images", async () => {
+  const { imageNodeFilter } = await import("./image");
+  class Element {
+    classList: { contains(value: string): boolean };
+    constructor(cls: string) {
+      this.classList = { contains: (value) => value === cls };
+    }
+  }
+  class Html extends Element {}
+  class Svg extends Element {}
+  vi.stubGlobal("HTMLElement", Html);
+  vi.stubGlobal("SVGElement", Svg);
+  try {
+    expect(imageNodeFilter(new Html("edge-seg") as unknown as Node)).toBe(false);
+    const preview = new Svg("edge-route-preview");
+    expect(preview).toBeInstanceOf(SVGElement);
+    expect(preview).not.toBeInstanceOf(HTMLElement);
+    expect(imageNodeFilter(preview as unknown as Node)).toBe(false);
+    expect(imageNodeFilter(new Svg("fe-path") as unknown as Node)).toBe(true);
+  } finally {
+    vi.unstubAllGlobals();
+  }
+});

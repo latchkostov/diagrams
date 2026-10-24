@@ -40,6 +40,12 @@ async function open(page: Page, id: LazySurfaceId) {
     },
   );
 
+  if (id === "edge.shaping") {
+    await gotoCanvas(page, SLUG);
+    await waitForStableViewport(page);
+    await page.getByTestId("edge-call").click();
+    return;
+  }
   if (id === "canvas.check-markers") {
     await gotoCanvas(page, SLUG);
     await page.getByTestId("canvas-wrap").focus();
