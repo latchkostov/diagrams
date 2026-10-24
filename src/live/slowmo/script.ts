@@ -13,8 +13,6 @@ import { routeWords } from "../../trace/routeWords";
 
 import { PACING } from "./pacing";
 export { PACING };
-// The painter rides in the script's chunk: nothing has a frame for it to draw before the script arrives.
-export { SlowPainter } from "./painter";
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
 
@@ -1166,4 +1164,22 @@ export function stepStop(script: SlowScript, t: number, dir: 1 | -1): number {
   // Just past a hop's start, ← goes to the one before it (like a media player's previous track).
   for (let i = stops.length - 1; i >= 0; i--) if (stops[i] < t - 250) return stops[i];
   return 0;
+}
+
+/** Nodes to reveal between hops, including the next targets before their dots leave. */
+export function followTargets(script: SlowScript, t: number, frame: SlowFrame, diagram: DiagramLike) {
+  const next = new Set(frame.frontier);
+  const focus = new Set<string>();
+  const edges = new Map(diagram.edges.map((e) => [e.id, e]));
+  for (const b of script.beats) {
+    if (b.node && b.start <= t && t < b.start + b.duration) focus.add(b.node);
+    if (b.edge && b.kind !== "reply" && b.start > t && b.start <= t + 1200) {
+      const e = edges.get(b.edge);
+      if (e) {
+        next.add(b.reverse ? e.from : e.to);
+        focus.add(b.reverse ? e.from : e.to);
+      }
+    }
+  }
+  return { next, focus };
 }

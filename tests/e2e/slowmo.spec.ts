@@ -40,6 +40,7 @@ async function watchFromStorefront(page: Page, query = "") {
   // Let traffic build up so there's a busy background to freeze.
   await expect.poll(async () => Number(await data(page, "particles")), { timeout: 10_000 }).toBeGreaterThan(40);
   await openNodeMenu(page, "shopper", "sim.slowmo-from");
+  await expect(canvas(page)).toHaveAttribute("data-slowmo-machine", "playing");
   await expect(play(page)).toHaveAttribute("data-state", "slowmo");
   await expect(canvas(page)).toHaveAttribute("data-slowmo", "playing");
 }

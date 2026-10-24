@@ -19,6 +19,24 @@ Every feature batch goes through the same gates before the next one starts:
 Standards: strict TypeScript, ESLint (typescript-eslint strict, react-hooks, jsx-a11y), Prettier,
 `data-testid` selectors, deterministic tests, coverage reported in CI (`pnpm test:coverage`).
 
+## Lifecycles with modes
+
+Lifecycles with modes go through a machine (src/lib/machine.ts or an existing controller), never effects + flags.
+
+Define named states and typed events with `defineMachine`, then put guarded transitions in `on`.
+Reducers return state; `effects` return command data. A controller sends events synchronously through
+`createMachine().send(event)` and executes the returned commands through its ports. React subscribes
+to snapshots and pairs connection/cleanup in a small adapter hook. Keep saved external resources
+(a viewport, a sandbox, cancellation handles) in the controller rather than React flags.
+
+Supply representative event payloads in a test definition's `events` and use
+`machinePaths(def, { maxDepth: 4 })` to check reachable states and invariants. Include rejected guards,
+late completions and cancellation interleavings in focused tests: representative paths are not an
+exhaustive exploration of arbitrary payloads. Use the bounded cause journal and explicit readiness
+state for browser tests. `describeMachine(def)` returns a Mermaid statechart in development only;
+cause recording is also limited to development and E2E builds. Slow motion is the first helper pilot
+(`src/live/slowmo/machine.ts`); the camera and interaction controllers remain valid existing machines.
+
 ## Toolchain
 
 | Tool               | Pin                                                                                                           |
