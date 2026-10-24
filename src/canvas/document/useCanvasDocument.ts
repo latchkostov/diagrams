@@ -113,7 +113,7 @@ export function useDocumentSave({
   const copiedExample = useRef<{ slug: string; identity: string } | null>(null);
   const exampleCopyFailed = useRef(false);
   useLayoutEffect(() => {
-    if (import.meta.env.VITE_E2E !== "1") return;
+    if (!(import.meta.env.DEV || import.meta.env.VITE_E2E === "1")) return;
     const probe = () => {
       const { meta, nodes, edges } = latest.current;
       return { saved: JSON.stringify(fromFlow(meta, nodes, edges)) === lastSaved.current };

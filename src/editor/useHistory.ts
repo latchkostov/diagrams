@@ -98,7 +98,7 @@ export function useHistory(
 
   // Read-only completion signal for browser tests; never bundled into the public app.
   useLayoutEffect(() => {
-    if (import.meta.env.VITE_E2E !== "1") return;
+    if (!(import.meta.env.DEV || import.meta.env.VITE_E2E === "1")) return;
     const probe = () => ({ pending: ctl.key(latest.current) !== present(ctl.history).key });
     window.__historyProbe = probe;
     return () => {
