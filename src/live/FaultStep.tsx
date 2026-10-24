@@ -1,3 +1,4 @@
+import { ValidationSelect } from "./validationFields";
 import { t, useLocale } from "../i18n";
 import { faultTarget, type Fault } from "../model/faults";
 import type { DiagramFile } from "../model/types";
@@ -29,7 +30,7 @@ export function FaultStep({
     <div className="lv-step-body">
       <label>
         <span>{t("fault.kind")}</span>
-        <select
+        <ValidationSelect
           value={fault.kind}
           aria-label={t("fault.kind")}
           data-testid={`${testId}-fault-kind`}
@@ -47,11 +48,11 @@ export function FaultStep({
           <option value="fail" disabled={!faultTargets(diagram, "fail").length}>
             {t("fault.fail")}
           </option>
-        </select>
+        </ValidationSelect>
       </label>
       <label>
         <span>{t("fault.target")}</span>
-        <select
+        <ValidationSelect
           value={target}
           aria-label={t("fault.target")}
           data-testid={`${testId}-fault-target`}
@@ -71,11 +72,11 @@ export function FaultStep({
               {n.label || n.id}
             </option>
           ))}
-        </select>
+        </ValidationSelect>
       </label>
       <label>
         <span>{t("fault.magnitude")}</span>
-        <select
+        <ValidationSelect
           value={value}
           aria-label={t("fault.magnitude")}
           data-testid={`${testId}-fault-value`}
@@ -114,7 +115,7 @@ export function FaultStep({
               </option>
             ))
           )}
-        </select>
+        </ValidationSelect>
       </label>
     </div>
   );

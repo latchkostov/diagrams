@@ -5,6 +5,114 @@ import { t } from "../i18n";
 // so a renamed node silently breaks a simulation; the authoring panel surfaces it instead.
 
 import type { DiagramFile, Simulation } from "../model/types";
+import { LIMITS } from "../interop/native";
+import { faultTargets } from "./faults";
+import { SIM_LIMITS } from "../model/simLimits";
+
+export interface SimFieldError {
+  field: string;
+  text: string;
+}
+
+/** Authoring diagnostics name the visible control and its units; import validation stays structural. */
+export function simulationFieldErrors(sim: Simulation, diagram: DiagramFile): SimFieldError[] {
+  const errors: SimFieldError[] = [];
+  const add = (field: string, text: string) => errors.push({ field, text });
+  const range = (field: string, label: string, value: number | undefined, max: number, integer = false) => {
+    if (
+      value !== undefined &&
+      (!Number.isFinite(value) || value < 0 || value > max || (integer && !Number.isSafeInteger(value)))
+    )
+      add(
+        field,
+        integer
+          ? t("workspaceValidation.integerRange", { field: label, max })
+          : t("workspaceValidation.range", { field: label, max }),
+      );
+  };
+  const time = (field: string, label: string, value?: number) =>
+    range(field, label, value === undefined ? undefined : value / 1000, LIMITS.maxSimulationMs / 1000);
+  const target = (field: string, label: string, valid: boolean) => {
+    if (!valid) add(field, t("workspaceValidation.target", { field: label }));
+  };
+  const nodes = new Set(diagram.nodes.map((n) => n.id));
+  if (!sim.title.trim()) add("sim-panel-title", t("workspaceValidation.title"));
+  if (!sim.id) add("sim-panel-id", t("workspaceValidation.id"));
+  if (sim.seed !== undefined && !Number.isFinite(sim.seed))
+    add("sim-panel-seed", t("workspaceValidation.number", { field: "Seed" }));
+  time("sim-panel-duration", "Stop after (s)", sim.durationMs);
+  sim.traffic.forEach((p, i) => {
+    const id = `sim-panel-traffic-${i}`;
+    const label = `Traffic ${i + 1}`;
+    target(`${id}-node`, `${label}: Starts at`, nodes.has(p.node));
+    const s = p.shape;
+    if (s.kind === "burst") {
+      range(`${id}-count`, `${label}: Messages`, s.count, LIMITS.maxMessageCount, true);
+      time(`${id}-at`, `${label}: At (s)`, s.atMs);
+      time(`${id}-spread`, `${label}: Over (s)`, s.spreadMs);
+    } else {
+      time(`${id}-from`, `${label}: From (s)`, "fromMs" in s ? s.fromMs : undefined);
+      time(
+        `${id}-duration`,
+        `${label}: ${s.kind === "spike" ? "Total" : "For"} (s)`,
+        "durationMs" in s ? s.durationMs : undefined,
+      );
+      if (s.kind === "constant") range(`${id}-rate`, `${label}: Rate (/s)`, s.ratePerSec, LIMITS.maxRatePerSec);
+      if (s.kind === "spike") {
+        range(`${id}-base`, `${label}: Base (/s)`, s.baseRate, LIMITS.maxRatePerSec);
+        range(`${id}-peak`, `${label}: Peak (/s)`, s.peakRate, LIMITS.maxRatePerSec);
+        time(`${id}-at`, `${label}: Peak at (s)`, s.atMs);
+        time(`${id}-peak-for`, `${label}: Peak for (s)`, s.peakMs);
+      }
+      if (s.kind === "ramp") {
+        range(`${id}-start-rate`, `${label}: Start rate (/s)`, s.startRate, LIMITS.maxRatePerSec);
+        s.stages.forEach((stage, j) => {
+          time(`${id}-stage-${j}-duration`, `${label}: Stage ${j + 1} seconds`, stage.durationMs);
+          range(
+            `${id}-stage-${j}-rate`,
+            `${label}: Stage ${j + 1} target rate (/s)`,
+            stage.targetRate,
+            LIMITS.maxRatePerSec,
+          );
+        });
+      }
+    }
+  });
+  sim.timeline?.forEach((step, i) => {
+    const id = `sim-panel-step-${i}`;
+    const label = `Timeline ${i + 1}`;
+    time(`${id}-time`, `${label}: Time (s)`, step.atMs);
+    const a = step.action;
+    if (a.do === "fault")
+      target(
+        `${id}-fault-target`,
+        `${label}: Target`,
+        faultTargets(diagram, a.fault.kind).some((n) => n.id === faultTarget(a.fault)),
+      );
+    else if (a.do !== "note") target(`${id}-node`, `${label}: Target node`, nodes.has(a.node));
+    if (a.do === "inject") range(`${id}-count`, `${label}: Messages`, a.count, LIMITS.maxMessageCount, true);
+    if (a.do === "props") {
+      const bounds: Record<string, number> = {
+        latencyMs: SIM_LIMITS.timeMs,
+        ratePerSec: SIM_LIMITS.ratePerSec,
+        failureRate: 1,
+        concurrency: SIM_LIMITS.count,
+        partitions: SIM_LIMITS.count,
+        maxDeliveryCount: SIM_LIMITS.count,
+      };
+      const key = Object.keys(a.props)[0];
+      if (key in bounds) range(`${id}-value`, `${label}: ${key}`, Number(a.props[key]), bounds[key]);
+    }
+  });
+  sim.expectations?.forEach((e, i) => {
+    const id = `sim-panel-expectation-${i}`;
+    if ("node" in e.metric) target(`${id}-node`, `Expectation ${i + 1}: Metric node`, nodes.has(e.metric.node));
+    if (!Number.isFinite(e.value))
+      add(`${id}-value`, t("workspaceValidation.number", { field: `Expectation ${i + 1}: Value` }));
+    if (e.when === "at") time(`${id}-at`, `Expectation ${i + 1}: At (s)`, e.atMs);
+  });
+  return errors;
+}
 
 export interface SimWarning {
   /** Where to show it in the panel: "traffic:<id>", "timeline:<index>", "expectation:<id>", "simulation". */

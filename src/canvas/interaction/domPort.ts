@@ -43,6 +43,7 @@ const nodeSelector = (id: string) => `.react-flow__node[data-id="${CSS.escape(id
 const edgeSelector = (id: string) => `.react-flow__edge[data-id="${CSS.escape(id)}"]`;
 
 /** Panels whose fields scroll into view as they take focus. */
+const EDITABLE = 'input, textarea, select, [contenteditable]:not([contenteditable="false"])';
 const SCROLLS = '[data-testid="inspector"], [data-testid="palette-search"], [data-testid="capacity-panel"]';
 
 /** React Flow keeps a node it hasn't measured yet hidden, and a hidden element can't take focus. */
@@ -81,7 +82,7 @@ export function createDomPort(canvas: DomCanvas): InteractionPort {
       }
       case "selection": {
         // The first selected node in Tab's order, else the first selected connection; else nothing (the fallback).
-        const first = (canvas.order ? canvas.order(target.nodes) : [...target.nodes])[0];
+        const first = (canvas.order?.(target.nodes) ?? target.nodes)[0];
         if (first) return node(first);
         const e = target.edges[0];
         return e ? edge(e) : { state: "gone" };
@@ -91,13 +92,15 @@ export function createDomPort(canvas: DomCanvas): InteractionPort {
         return el.isConnected ? { state: "ready", el } : { state: "gone" };
       }
       case "field": {
+        // A cold field can remain parked after its owner was deleted by a peer.
+        if (target.owner && canvas.hasNode?.(target.owner) === false && canvas.hasEdge?.(target.owner) === false)
+          return { state: "gone" };
         // A request made while the Inspector is folded (or still shows the previous item) waits for it.
         const inspector = document.querySelector('[data-testid="inspector"]');
         if (!inspector || inspector.getAttribute("data-collapsed") === "1") return { state: "parked" };
         // The panel's code failed to download (Inspector.tsx): its fields won't come until Retry.
         const failed = inspector.querySelector("[data-panel-unavailable]")?.getAttribute("data-panel-unavailable");
-        if (failed !== undefined && failed !== null && (!target.owner || failed === target.owner))
-          return { state: "gone" };
+        if (failed != null && (!target.owner || failed === target.owner)) return { state: "gone" };
         const el = inspector.querySelector(
           target.name === "autoscaling-target"
             ? '[data-testid="autoscaling-target"]'
@@ -143,20 +146,17 @@ export function createDomPort(canvas: DomCanvas): InteractionPort {
       return document.activeElement === el;
     },
     connected: (handle) => (handle as Node).isConnected,
-    holdKeys: (done) => captureTypeAhead(() => false, done),
+    holdKeys: (done) => captureTypeAhead(() => false, done, true),
     elsewhere(handle) {
       const el = handle as Element;
-      return (
-        !canvas.root()?.contains(el) ||
-        el.matches('input, textarea, select, [contenteditable]:not([contenteditable="false"])')
-      );
+      return !canvas.root()?.contains(el) || el.matches(EDITABLE);
     },
     field(handle) {
       const el = handle as Element;
       // A name field says whose name it is (useNameFields); any other text field of the Inspector is a field.
       const named = el.getAttribute?.("data-name-field");
       if (named) return { target: named };
-      if (!el.matches?.('input, textarea, select, [contenteditable]:not([contenteditable="false"])')) return null;
+      if (!el.matches?.(EDITABLE)) return null;
       if (!el.closest('[data-testid="inspector"]')) return null;
       return { field: (el.getAttribute("data-testid") ?? "").replace(/^inspector-field-/, "") };
     },
