@@ -66,6 +66,47 @@ test("pending quick-add retains search through one keyboard Retry and lets Escap
   }
 });
 
+for (const editAfterArrow of [false, true])
+  test(`searchable menu replays buffered navigation${editAfterArrow ? " and later edits" : ""} as a loaded menu`, async ({
+    browser,
+  }) => {
+    const picks: string[] = [];
+    for (const cold of [false, true]) {
+      const page = await browser.newPage();
+      const menu = cold ? await hold(page, "MenuList", "src/components/MenuList.tsx") : undefined;
+      try {
+        await seed(page);
+        await gotoCanvas(page, "blocking-call");
+        await waitForStableViewport(page);
+        await page.getByTestId("node-caller").click();
+        await page.getByTestId("canvas-wrap").focus();
+        const before = await savedDiagram(page);
+        await page.keyboard.press("Alt+ArrowRight");
+        if (menu) {
+          await expect.poll(menu.requested).toBe(true);
+          await expect(page.getByTestId("quick-add")).toBeFocused();
+        } else await expect(page.getByTestId("quick-add-search")).toBeFocused();
+        await page.keyboard.type(editAfterArrow ? "ca" : "cache");
+        await page.keyboard.press("ArrowDown");
+        if (editAfterArrow) {
+          await page.keyboard.type("che");
+          await page.keyboard.press("ArrowDown");
+        }
+        await page.keyboard.press("Enter");
+        menu?.release();
+        await expect(page.getByTestId("quick-add")).toHaveCount(0);
+        await expect.poll(async () => (await savedDiagram(page)).nodes.length).toBe(before.nodes.length + 1);
+        const added = (await savedDiagram(page)).nodes.find((node) => !before.nodes.some((old) => old.id === node.id));
+        if (!added) throw new Error("Quick-add did not create a node");
+        picks.push(added.stencil);
+      } finally {
+        menu?.release();
+        await page.close();
+      }
+    }
+    expect(picks[1]).toBe(picks[0]);
+  });
+
 for (const failed of [false, true])
   test(`Live overflow owns Escape while its rows are ${failed ? "failed" : "held"}`, async ({ page }) => {
     await seed(page);
@@ -90,11 +131,14 @@ for (const failed of [false, true])
 test("capacity analysis keeps its original opener after focus enters the held shell", async ({ page }) => {
   await seed(page);
   const analysis = await hold(page, "CapacityAnalysis", "src/live/CapacityAnalysis.tsx");
+  const panel = await hold(page, "CapacityPanel", "src/live/CapacityPanel.tsx");
   try {
     await gotoLive(page, "./?view=canvas&example=blocking-call&live=1&paused=1");
     await page.getByTestId("live-capacity").click();
     await expect.poll(analysis.requested).toBe(true);
+    await expect.poll(panel.requested).toBe(true);
     await page.getByTestId("capacity-close").focus();
+    panel.release();
     analysis.release();
     await expect(page.getByTestId("capacity-traffic-mult")).toBeVisible();
     await page.getByTestId("capacity-close").focus();
@@ -104,6 +148,7 @@ test("capacity analysis keeps its original opener after focus enters the held sh
     await expect(page.getByTestId("live-controls")).toBeVisible();
   } finally {
     analysis.release();
+    panel.release();
   }
 });
 

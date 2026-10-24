@@ -227,7 +227,14 @@ for (const [id, name, source, policy] of lazySurfaces) {
         expect(downloaded).toBe(false);
         await expect(page.getByTestId("image-export-cancel")).toBeFocused();
         release();
-        expect((await download).suggestedFilename()).toMatch(/\.svg$/);
+        const file = await download;
+        expect(file.suggestedFilename()).toMatch(/\.svg$/);
+        if (id === "live.capacity-analysis") {
+          const svg = readFileSync(await file.path(), "utf8");
+          expect(svg).toMatch(/data-testid="capacity-ring-caller"[^>]*data-level="ok"/);
+          expect(svg).toMatch(/data-testid="capacity-label-caller"[^>]*data-level="ok"/);
+          expect(svg).toContain("100/s of 20k/s");
+        }
         await expect(page.getByTestId("image-export-cancel")).toHaveCount(0);
       } finally {
         release();

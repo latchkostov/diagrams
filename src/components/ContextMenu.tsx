@@ -85,6 +85,7 @@ export function ContextMenu({
   }, [onClose, items]);
   // A searchable menu (quick-add) keeps what's typed before its search can take focus: it starts the search.
   const typing = useRef<{ stop: () => TypeAhead } | null>(null);
+  const navigation = useRef<KeyboardEvent[]>([]);
   useLayoutEffect(() => {
     if (!searchable) return;
     const t = captureTypeAhead(
@@ -101,12 +102,22 @@ export function ContextMenu({
           }
         }
       },
-      (event) =>
-        !(
+      (event) => {
+        if (
           event.target instanceof Element &&
           (event.target.closest("button") ||
             (event.target.closest("input,textarea,select,[contenteditable]") && !layer.current?.contains(event.target)))
-        ),
+        )
+          return false;
+        // Once navigation starts, retain every following key in order, including edits and Enter.
+        if (navigation.current.length && event.key !== "Tab" && event.key !== "Escape") {
+          navigation.current.push(event);
+          event.preventDefault();
+          event.stopImmediatePropagation();
+          return false;
+        }
+        return true;
+      },
     );
     typing.current = t;
     return () => void t.stop();
@@ -116,7 +127,6 @@ export function ContextMenu({
     typing.current = null;
     return t;
   }, []);
-  const navigation = useRef<KeyboardEvent[]>([]);
   const takeNavigation = useCallback(() => navigation.current.splice(0), []);
   // The same anchor while the menu stays put: the list places itself whenever its anchor changes, so a new one on
   // every render moved a searchable menu that typing had shortened (from under the pointer: nightly #78).

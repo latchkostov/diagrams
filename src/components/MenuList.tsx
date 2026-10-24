@@ -17,7 +17,7 @@ import { formatCombo } from "../editor/shortcuts";
 import { getStencil } from "../stencils/registry";
 import { Icon } from "./Icon";
 import { StencilIcon } from "./StencilIcon";
-import { type TypeAhead } from "../canvas/typeAhead";
+import { typeAheadKey, type TypeAhead } from "../canvas/typeAhead";
 import { flushSync } from "react-dom";
 
 import type { Anchor } from "./ContextMenu";
@@ -141,6 +141,17 @@ export function MenuList(p: ListProps) {
       const text = t?.text;
       if (text) flushSync(() => setQ(text));
       input.current?.focus({ preventScroll: true });
+      let query = text ?? "";
+      for (const event of takeNavigation?.() ?? []) {
+        if (!input.current) break;
+        const edit = typeAheadKey({ text: query }, event);
+        if (edit && !edit.done) {
+          query = edit.text ?? "";
+          flushSync(() => setQ(query));
+        } else {
+          flushSync(() => document.activeElement?.dispatchEvent(new KeyboardEvent("keydown", event)));
+        }
+      }
     });
     return () => {
       cancelled = true;

@@ -2,7 +2,7 @@ import { LoadingCapacity } from "./LoadingCapacity";
 import { CapacityAnalysis } from "./lazyCapacityAnalysis";
 import type { CapacityView } from "./capacityModel";
 import { defineLazySurface } from "../lib/lazySurface";
-import { useState, type ComponentProps } from "react";
+import { useEffect, useState, type ComponentProps } from "react";
 import { domActive } from "../canvas/interaction";
 
 const LazyCapacityPanel = defineLazySurface({
@@ -20,6 +20,7 @@ export function CapacityPanel(
   props: Omit<ComponentProps<typeof LazyCapacityPanel>, "view"> & { view: CapacityView | null },
 ) {
   const [opener] = useState(domActive);
+  useEffect(() => LazyCapacityPanel.preload(), []);
   return props.view ? (
     <LazyCapacityPanel {...props} view={props.view} opener={opener} />
   ) : (
