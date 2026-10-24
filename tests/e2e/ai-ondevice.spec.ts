@@ -272,10 +272,13 @@ test.describe("a request in flight", () => {
     const before = await nodeCount(page);
     await ask(page, "Add a dead-letter queue after Inventory service");
     await expect(page.getByTestId("ai-ondevice-status")).toHaveText("Thinking…");
+    await expect.poll(async () => (await fakeModel(page)).creates).toBe(1);
     await page.getByTestId("ai-ondevice-stop").click();
     await expect(page.getByTestId("ai-ondevice-send")).toBeVisible();
     await releaseModel(page, "create");
-    await expect.poll(async () => (await fakeModel(page)).destroyed).toBe(1);
+    // The primed session is cached for reuse even after cancellation. Its creation, not its
+    // destruction, is the late completion that must never dispatch a prompt or make a turn.
+    await expect.poll(async () => (await fakeModel(page)).sessions).toBe(1);
     const lm = await fakeModel(page);
     expect(lm.prompts).toEqual([]);
     await expect(page.getByTestId("ai-turn-0")).toHaveCount(0);
