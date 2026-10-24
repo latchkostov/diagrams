@@ -20,3 +20,12 @@ No parity goldens were re-recorded. The existing Vitest snapshot
 slow-callee row: caller, partner and result processed counts each rise from 570 to 670.
 Its baseline, source count, failures, rejections, drops, timeouts and late replies stay
 unchanged. The former expected I1 failure is now an ordinary passing regression.
+
+## Sweep verification
+
+The requested Node 24, CI=true sweep completed all 40 multiplier-5 seeds and all
+four multiplier-20 seeds: 43 passed, one failed. The sole failure, resilience seed
+`538282733`, reproduces identically twice on clean master at `e82d178b`: 11 messages
+remain after the recovery bound in a finite-pool scenario. Its exact replay and
+the complete sweep inventory are recorded in the
+[backlog fragment](../backlog/2026-10-24-finite-pool-resilience-recovery.md).
