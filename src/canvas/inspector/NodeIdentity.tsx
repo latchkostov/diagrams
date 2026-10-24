@@ -1,7 +1,7 @@
 import "../../styles/inspector-layout.css";
-import { useLayoutEffect, type CSSProperties } from "react";
+import { useLayoutEffect, useMemo, type CSSProperties } from "react";
 import { DOCUMENTATION_LIMITS } from "../../model/documentation";
-import { t } from "../../i18n";
+import { t, useLocale } from "../../i18n";
 import { stencilLabel, vendorLabel } from "../../i18n/stencils";
 import { Icon } from "../../components/Icon";
 import { StencilIcon } from "../../components/StencilIcon";
@@ -19,6 +19,8 @@ type NodeIdentityProps = Pick<InspectorProps, "editor" | "groups" | "connection"
   stencil: ReturnType<typeof getStencil>;
   naming: ReturnType<typeof useNameFields>;
   nameKeys: ReturnType<typeof useNameFields>["keys"];
+  onDescriptionFocus: () => void;
+  onDescriptionBlur: () => void;
   setPicker: (anchor: { x: number; y: number }) => void;
 };
 
@@ -31,11 +33,14 @@ export function NodeIdentity({
   naming,
   nameKeys,
   setPicker,
+  onDescriptionFocus,
+  onDescriptionBlur,
 }: NodeIdentityProps) {
+  const locale = useLocale();
   const interaction = useInteraction();
   useLayoutEffect(() => interaction?.rendered());
-  return (
-    <Section>
+  const stencilField = useMemo(
+    () => (
       <Field label={t("inspector.stencil")} group>
         <button
           className="insp-stencil"
@@ -61,6 +66,12 @@ export function NodeIdentity({
           <Icon name="chevron-down" size={14} />
         </button>
       </Field>
+    ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- The active locale invalidates translated text.
+    [stencil, setPicker, locale],
+  );
+  const labelField = useMemo(
+    () => (
       <Field label={t("inspector.label")}>
         <input
           className="insp-input"
@@ -71,6 +82,12 @@ export function NodeIdentity({
           data-testid="inspector-field-label"
         />
       </Field>
+    ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- The active locale invalidates translated text.
+    [node.data.label, node.id, editor, naming, nameKeys, locale],
+  );
+  const subtitleField = useMemo(
+    () => (
       <Field label={t("inspector.subtitle")}>
         <input
           className="insp-input mono"
@@ -82,19 +99,12 @@ export function NodeIdentity({
           data-testid="inspector-field-sublabel"
         />
       </Field>
-      {connection && (
-        <Field label={t("inspector.connection")}>
-          <input
-            className="insp-input"
-            value={connection.label}
-            placeholder={t("inspector.eGReserveStock")}
-            onChange={(e) => editor.updateEdge(connection.id, { label: e.target.value || undefined }, naming.merge())}
-            {...nameKeys}
-            name="connection"
-            data-testid="inspector-field-connection"
-          />
-        </Field>
-      )}
+    ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- The active locale invalidates translated text.
+    [node.data.sublabel, node.id, editor, naming, nameKeys, stencil, locale],
+  );
+  const descriptionField = useMemo(
+    () => (
       <Field label={t("inspector.description")} group>
         <MarkdownEditor
           value={node.data.description ?? ""}
@@ -106,12 +116,20 @@ export function NodeIdentity({
               { merge: `inspector:node:${node.id}:description` },
             )
           }
+          onFocus={onDescriptionFocus}
+          onBlur={onDescriptionBlur}
           maxLength={DOCUMENTATION_LIMITS.maxLength}
           name="node-description"
           ariaLabel={t("inspector.description")}
           testId="inspector-field-node-description"
         />
       </Field>
+    ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- The active locale invalidates translated text.
+    [node.data.description, node.id, editor, onDescriptionFocus, onDescriptionBlur, locale],
+  );
+  const placementField = useMemo(
+    () => (
       <PairedFields testId="inspector-placement">
         <Field label={t("inspector.boundary")}>
           <select
@@ -131,6 +149,30 @@ export function NodeIdentity({
         </Field>
         <CopyId id={node.id} />
       </PairedFields>
+    ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- The active locale invalidates translated text.
+    [node.data.group, node.id, editor, groups, locale],
+  );
+  return (
+    <Section>
+      {stencilField}
+      {labelField}
+      {subtitleField}
+      {connection && (
+        <Field label={t("inspector.connection")}>
+          <input
+            className="insp-input"
+            value={connection.label}
+            placeholder={t("inspector.eGReserveStock")}
+            onChange={(e) => editor.updateEdge(connection.id, { label: e.target.value || undefined }, naming.merge())}
+            {...nameKeys}
+            name="connection"
+            data-testid="inspector-field-connection"
+          />
+        </Field>
+      )}
+      {descriptionField}
+      {placementField}
     </Section>
   );
 }

@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, type FocusEvent, type KeyboardEvent } from "react";
+import { useCallback, useLayoutEffect, useMemo, useRef, type FocusEvent, type KeyboardEvent } from "react";
 import type { EditorApi } from "../../editor/types";
 import { useInteraction } from "../interaction/useInteraction";
 
@@ -32,31 +32,34 @@ export function useNameFields(
     },
     [editor, onDone],
   );
-  const done = () => {
+  const done = useCallback(() => {
     if (tag.current) editor.doneNaming(tag.current);
     tag.current = undefined;
     onDone?.();
-  };
-  const keys = {
-    "data-name-field": flowId,
-    onFocus: (e: FocusEvent<HTMLInputElement>) => {
-      field.current = e.currentTarget;
-      tag.current ??= editor.beginNaming(kind, id);
-    },
-    onKeyDown: (e: KeyboardEvent<HTMLInputElement>) => {
-      if ((e.key !== "Enter" && e.key !== "Escape") || e.nativeEvent.isComposing) return;
-      e.preventDefault();
-      e.stopPropagation();
-      const field = e.currentTarget;
-      field.setSelectionRange(field.value.length, field.value.length);
-      // Focus goes back to the named item on the canvas (focus policy, row N1).
-      interaction?.dispatch({ type: "naming.done", flowId });
-      done();
-    },
-    onBlur: () =>
-      requestAnimationFrame(() => {
-        if (document.activeElement?.getAttribute("data-name-field") !== flowId) done();
-      }),
-  };
-  return { keys, merge: () => ({ merge: tag.current }) };
+  }, [editor, onDone]);
+  const keys = useMemo(
+    () => ({
+      "data-name-field": flowId,
+      onFocus: (e: FocusEvent<HTMLInputElement>) => {
+        field.current = e.currentTarget;
+        tag.current ??= editor.beginNaming(kind, id);
+      },
+      onKeyDown: (e: KeyboardEvent<HTMLInputElement>) => {
+        if ((e.key !== "Enter" && e.key !== "Escape") || e.nativeEvent.isComposing) return;
+        e.preventDefault();
+        e.stopPropagation();
+        const field = e.currentTarget;
+        field.setSelectionRange(field.value.length, field.value.length);
+        // Focus goes back to the named item on the canvas (focus policy, row N1).
+        interaction?.dispatch({ type: "naming.done", flowId });
+        done();
+      },
+      onBlur: () =>
+        requestAnimationFrame(() => {
+          if (document.activeElement?.getAttribute("data-name-field") !== flowId) done();
+        }),
+    }),
+    [flowId, editor, kind, id, interaction, done],
+  );
+  return useMemo(() => ({ keys, merge: () => ({ merge: tag.current }) }), [keys]);
 }

@@ -144,6 +144,8 @@ it.each(["undo", "redo", "replacement", "edit"] as const)(
     api.autoLayout();
     expect(api.canUndo()).toBe(true);
     expect(api.canRedo()).toBe(false);
+    expect(api.canUndo(false)).toBe(true); // Pending layout remains cancellable without history.
+    expect(api.canRedo(true)).toBe(false);
     if (command === "undo") api.undo();
     if (command === "redo") api.redo();
     if (command === "replacement") api.applyDiagram({ ...measuredHierarchyFixture, title: "Replacement" });
@@ -158,5 +160,7 @@ it.each(["undo", "redo", "replacement", "edit"] as const)(
     expect(replace).toHaveBeenCalledTimes(command === "replacement" ? 1 : 0);
     expect(api.canUndo()).toBe(true);
     expect(api.canRedo()).toBe(true);
+    expect(api.canUndo(false)).toBe(false); // The current render can precede updateDeps.
+    expect(api.canRedo(false)).toBe(false);
   },
 );

@@ -1,10 +1,10 @@
 import "../../styles/inspector-layout.css";
 import { resolveProps } from "../../sim/defaults";
 import { admissionFieldBindings, admissionFieldLabel } from "../../planning/admissionFieldBindings";
-import { ADMISSION_PRESETS } from "../../model/admissionPresets";
+import { ADMISSION_PRESETS, managedKind } from "../../model/admissionPresets";
 import { revisionAtLeast } from "../../model/revisions";
 import { type ReactNode, type CSSProperties, useEffect, useId, useRef, useState } from "react";
-import { t } from "../../i18n";
+import { t, useLocale } from "../../i18n";
 import { galleryRoleMeta as simRoleMeta } from "../../i18n/galleryRoles";
 import { brokerSpec, isClusterWrapper } from "../../model/brokers";
 import { AdmissionFields, AutoscalingFields } from "../../planning/lazy";
@@ -26,7 +26,6 @@ import {
 } from "../../stencils/netDevices";
 import { getStencil } from "../../stencils/registry";
 import { inertNodeProps, nodeSimFields } from "../simFieldRules";
-import { type DiagramFlowNode } from "../types";
 import { InertNote, Field } from "./fields";
 import { Disclosure } from "./Disclosure";
 import { formatInert } from "./inertValues";
@@ -39,15 +38,9 @@ import { MessageFields } from "./lazyMessageFields";
 import { PairedFields } from "./Layout";
 
 type NodeSimulationProps = Pick<InspectorProps, "editor" | "meta" | "readDiagram"> & {
-  node: DiagramFlowNode;
+  nodeId: string;
+  stencil: string;
   props: Record<string, unknown>;
-  role: ReturnType<typeof getStencil>["simRole"];
-  broker: ReturnType<typeof brokerSpec>;
-  assignment?: string;
-  simFields: ReturnType<typeof nodeSimFields>;
-  managed: boolean;
-  device: ReturnType<typeof deviceSpec>;
-  merge: (field: string) => { merge: string };
   routed: boolean;
   routing: ReactNode;
   reveal?: number;
@@ -57,18 +50,12 @@ type NodeSimulationProps = Pick<InspectorProps, "editor" | "meta" | "readDiagram
 };
 
 export function NodeSimulation({
-  node,
+  nodeId,
+  stencil,
   editor,
   meta,
   readDiagram,
   props,
-  role,
-  broker,
-  assignment,
-  simFields,
-  managed,
-  device,
-  merge,
   routed,
   routing,
   router,
@@ -76,12 +63,20 @@ export function NodeSimulation({
   reveal,
   paused,
 }: NodeSimulationProps) {
+  useLocale();
+  const role = getStencil(stencil).simRole;
+  const broker = brokerSpec(stencil, role, meta.planning);
+  const assignment = assignmentLabel(broker);
+  const simFields = nodeSimFields(role, stencil, meta.planning, props);
+  const managed = revisionAtLeast(meta.planning?.revision, "p3") && !!managedKind(stencil);
+  const device = role === "gateway" ? deviceSpec(stencil) : undefined;
+  const merge = (field: string) => ({ merge: `inspector:node:${nodeId}:${field}` });
   const firstField = simFields.find((key) => SIM_FIELDS[key]);
   const autoscaling = props.autoscaling as NodeSimProps["autoscaling"];
-  const admission = managed ? resolveProps(role, "", props, node.data.stencil, { revision: "p3" }) : undefined;
+  const admission = managed ? resolveProps(role, "", props, stencil, { revision: "p3" }) : undefined;
   const admissionField = admission
     ? admissionFieldBindings(
-        node.data.stencil,
+        stencil,
         { ...props, scaling: props.scaling ?? ADMISSION_PRESETS[admission.profile.preset ?? ""]?.scaling ?? "fixed" },
         admission,
       )[0]
@@ -105,9 +100,7 @@ export function NodeSimulation({
               })
             : role === "source"
               ? t("workspaceInspector.rateSummary", {
-                  rate: formatNumber(
-                    resolveProps(role, node.data.label, props, node.data.stencil, meta.planning).ratePerSec,
-                  ),
+                  rate: formatNumber(resolveProps(role, "", props, stencil, meta.planning).ratePerSec),
                 })
               : simFields.includes("replicas") && simFields.includes("concurrency")
                 ? t("workspaceInspector.replicaSummary", {
@@ -147,7 +140,7 @@ export function NodeSimulation({
       {(role === "source" || role === "processor") && (
         <MessageFields
           readDiagram={readDiagram}
-          nodeId={node.id}
+          nodeId={nodeId}
           editor={editor}
           source={role === "source"}
           paused={paused}
@@ -160,25 +153,25 @@ export function NodeSimulation({
       )}
       {managed ? (
         <AdmissionFields
-          stencil={node.data.stencil}
+          stencil={stencil}
           props={props}
-          set={(patch, key) => editor.setNodeProps(node.id, patch, key ? merge(key) : undefined)}
+          set={(patch, key) => editor.setNodeProps(nodeId, patch, key ? merge(key) : undefined)}
         />
       ) : device ? (
         <DeviceFields
           spec={device}
           props={props}
-          set={(patch, key) => editor.setNodeProps(node.id, patch, key ? merge(key) : undefined)}
+          set={(patch, key) => editor.setNodeProps(nodeId, patch, key ? merge(key) : undefined)}
         />
       ) : simFields.length ? (
         <AutoscalingWorkload
           readDiagram={readDiagram}
-          nodeId={node.id}
-          stencil={node.data.stencil}
+          nodeId={nodeId}
+          stencil={stencil}
           enabled={revisionAtLeast(meta.planning?.revision, "p3-a1") && role === "processor"}
           supportsBusyThreads={revisionAtLeast(meta.planning?.revision, "p3-w1")}
           props={props}
-          set={(patch, key) => editor.setNodeProps(node.id, patch, key ? merge(key) : undefined)}
+          set={(patch, key) => editor.setNodeProps(nodeId, patch, key ? merge(key) : undefined)}
         >
           <PairedFields testId="inspector-simulation-pairs">
             {simFields
@@ -200,12 +193,12 @@ export function NodeSimulation({
                         : SIM_FIELDS[k]!
                   }
                   value={props[k]}
-                  onChange={(v) => editor.setNodeProps(node.id, { [k]: v }, merge(k))}
+                  onChange={(v) => editor.setNodeProps(nodeId, { [k]: v }, merge(k))}
                 />
               ))}
           </PairedFields>
         </AutoscalingWorkload>
-      ) : isClusterWrapper(node.data.stencil) ? (
+      ) : isClusterWrapper(stencil) ? (
         <p className="insp-note" data-testid="broker-wrapper">
           {t("broker.wrapper")}
         </p>
@@ -221,14 +214,14 @@ export function NodeSimulation({
         <InertNote
           name="routeTable"
           text={t("routing.dormantTable")}
-          onRemove={() => editor.setNodeProps(node.id, { routeTable: undefined })}
+          onRemove={() => editor.setNodeProps(nodeId, { routeTable: undefined })}
         />
       )}
       {!mixer && props.trafficMix !== undefined && (
         <InertNote
           name="trafficMix"
           text={t("routing.dormantMix")}
-          onRemove={() => editor.setNodeProps(node.id, { trafficMix: undefined })}
+          onRemove={() => editor.setNodeProps(nodeId, { trafficMix: undefined })}
         />
       )}
       {(managed ? [] : inertNodeProps(role, props)).map(({ key, why }) => (
@@ -240,7 +233,7 @@ export function NodeSimulation({
             value: formatInert(props[key], SIM_FIELDS[key]?.unit),
             why,
           })}
-          onRemove={() => editor.setNodeProps(node.id, { [key]: undefined })}
+          onRemove={() => editor.setNodeProps(nodeId, { [key]: undefined })}
         />
       ))}
     </Disclosure>

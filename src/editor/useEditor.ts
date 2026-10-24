@@ -1832,8 +1832,8 @@ export function createEditor(
       cancelLayout();
       deps().history.redo();
     },
-    canUndo: () => !!waitingLayout || deps().history.canUndo,
-    canRedo: () => !waitingLayout && deps().history.canRedo,
+    canUndo: (historyAvailable = deps().history.canUndo) => !!waitingLayout || historyAvailable,
+    canRedo: (historyAvailable = deps().history.canRedo) => !waitingLayout && historyAvailable,
 
     fitView: () => deps().fit(),
     zoomTo100: () => deps().zoom100?.(),

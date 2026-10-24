@@ -31,6 +31,7 @@ import { layersFixture, headerOverflowFixture } from "./layersFixture";
 import { simReviewFixture, simReviewTrafficFixture } from "./simReviewFixture";
 import { exportFixture } from "./exportFixture";
 import { textFieldsFixture } from "./textFieldsFixture";
+import { typingFixture } from "./typingFixture";
 import { InspectorFocusLab } from "./InspectorFocusLab";
 import { TroubleCallout } from "../live/TroubleCallout";
 import "../styles/capacity.css";
@@ -582,6 +583,13 @@ const playgroundPresets: Preset[] = [
     title: "Inspector focus before selection",
     group: "Playground",
     render: () => <InspectorFocusLab />,
+  },
+  {
+    kind: "diagram",
+    id: "typing",
+    title: "Typing and card growth",
+    group: "Playground",
+    diagram: () => typingFixture,
   },
   {
     kind: "render",

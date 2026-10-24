@@ -1,4 +1,5 @@
 import { lazyComponent } from "../lib/lazyLoad";
+import { memo } from "react";
 import { TRAFFIC_PATH } from "./glyphPaths";
 import { RELATION_GLYPHS } from "./relationGlyphs";
 
@@ -92,7 +93,7 @@ const ExtendedShapeIcon = lazyComponent(() => import("./ShapeIcon").then((m) => 
 
 const glyph24: Readonly<Record<string, string>> = RELATION_GLYPHS;
 
-export function Icon({ name, size = 16 }: { name: IconName; size?: number }) {
+export const Icon = memo(function Icon({ name, size = 16 }: { name: IconName; size?: number }) {
   const big = glyph24[name];
   const path = big ?? (paths as Readonly<Record<string, string>>)[name];
   return (
@@ -110,4 +111,4 @@ export function Icon({ name, size = 16 }: { name: IconName; size?: number }) {
       {path ? <path d={path} /> : <ExtendedShapeIcon name={name} />}
     </svg>
   );
-}
+});

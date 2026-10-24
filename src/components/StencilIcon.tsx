@@ -1,9 +1,10 @@
+import { memo } from "react";
 import { FALLBACK_STENCIL } from "../stencils/registry";
 import { iconUrl } from "../stencils/iconUrls";
 import type { Stencil } from "../model/types";
 
 /** Renders a stencil's SVG icon, falling back to the generic box, then to an inline glyph. */
-export function StencilIcon({ stencil, size = 24 }: { stencil: Stencil; size?: number }) {
+export const StencilIcon = memo(function StencilIcon({ stencil, size = 24 }: { stencil: Stencil; size?: number }) {
   const src = iconUrl(stencil.icon) ?? iconUrl(FALLBACK_STENCIL.icon);
   if (!src) {
     return (
@@ -22,4 +23,4 @@ export function StencilIcon({ stencil, size = 24 }: { stencil: Stencil; size?: n
     );
   }
   return <img src={src} width={size} height={size} alt="" draggable={false} className="stencil-icon" />;
-}
+});
