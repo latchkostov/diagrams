@@ -3,8 +3,6 @@ const LiveMoreItems = defineLazySurface({
   id: "live.more",
   load: () => import("./LiveMoreItems").then((m) => m.LiveMoreItems),
   placeholder: {
-    size: {},
-    testId: "live.more-loading",
     render: (_, status) => (
       <div className="lv-more-menu" role="menu" data-testid="live-more-menu" aria-busy={!status.failed}>
         {status.failed ? t("fileDialog.loadFailed") : t("common.loading")}

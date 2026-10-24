@@ -13,8 +13,6 @@ export const CapacityAnalysis = defineLazySurface({
       return m.CapacityAnalysis;
     }),
   placeholder: {
-    size: {},
-    testId: "live.capacity-analysis-loading",
     render: (props: { panel: boolean; onClose(): void; opener?: ElementHandle | null }, status) =>
       props.panel ? <LoadingCapacity onClose={props.onClose} opener={props.opener} {...status} /> : null,
   },

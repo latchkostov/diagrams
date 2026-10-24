@@ -16,8 +16,6 @@ const TroubleCallout = defineLazySurface({
   id: "live.trouble",
   load: () => import("./TroubleCallout").then((m) => m.TroubleCallout),
   placeholder: {
-    size: {},
-    testId: "live.trouble-loading",
     render: (_, status) => <CalloutUnavailable status={status} />,
   },
   focus: {},
@@ -30,7 +28,7 @@ import { ControlBar } from "./ControlBar";
 const EventLog = defineLazySurface({
   id: "live.events",
   load: () => import("./EventLog").then((m) => m.EventLog),
-  placeholder: { size: {}, testId: "live.events-loading" },
+  placeholder: {},
   focus: {},
   export: "skip",
   retryToast: true,
@@ -40,8 +38,6 @@ const InjectDialog = defineLazySurface({
   id: "live.inject",
   load: () => import("./InjectDialog").then((m) => m.InjectDialog),
   placeholder: {
-    size: {},
-    testId: "live.inject-loading",
     render: (props, status) => <InjectLoading {...props} status={status} />,
   },
   focus: {},
@@ -52,7 +48,7 @@ import { NodeBadges } from "./NodeBadges";
 const NoteCallout = defineLazySurface({
   id: "live.note",
   load: () => import("./NoteCallout").then((m) => m.NoteCallout),
-  placeholder: { size: {}, testId: "live.note-loading" },
+  placeholder: {},
   focus: {},
   export: "await",
   retryToast: true,
@@ -62,7 +58,7 @@ import { SimPanel } from "./lazySimPanel";
 const TraceCard = defineLazySurface({
   id: "live.trace",
   load: () => import("./TraceCard").then((m) => m.TraceCard),
-  placeholder: { size: {}, testId: "live.trace-loading" },
+  placeholder: {},
   focus: {},
   export: "skip",
   retryToast: true,

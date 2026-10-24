@@ -11,15 +11,7 @@ import { SIDES, sidePosition } from "../edges/routing";
 import type { DiagramFlowNode } from "../types";
 import { useShowDependencies } from "../dependencyVisibility";
 import { DependencyPips } from "./DependencyPips";
-import { defineLazySurface } from "../../lib/lazySurface";
-const GrowChip = defineLazySurface({
-  id: "canvas.grow",
-  load: () => import("./GrowChip").then((m) => m.GrowChip),
-  placeholder: { size: {}, testId: "canvas.grow-loading" },
-  focus: {},
-  export: "skip",
-  retryToast: true,
-});
+import { GrowChip } from "./GrowChip";
 import { useConnectPort } from "../interaction/useConnectPort";
 
 /**

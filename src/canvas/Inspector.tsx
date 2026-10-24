@@ -1,3 +1,4 @@
+import { NodePanel } from "./inspector/lazyNodePanel";
 import { defineLazySurface } from "../lib/lazySurface";
 import { useLayoutEffect, type ReactNode } from "react";
 import { Icon } from "../components/Icon";
@@ -24,25 +25,10 @@ function pending<P>(owner?: (props: P) => string) {
     status.failed ? <PanelUnavailable owner={owner?.(props)} /> : null;
 }
 
-const NodePanel = defineLazySurface({
-  id: "inspector.node",
-  load: () => import("./inspector/NodePanel").then((m) => m.NodePanel),
-  placeholder: {
-    size: {},
-    testId: "inspector.node-loading",
-    render: pending((p: { node: { id: string } }) => p.node.id),
-  },
-  focus: {},
-  export: "skip",
-  retryToast: true,
-});
-
 const EdgePanel = defineLazySurface({
   id: "inspector.edge-shell",
   load: () => import("./inspector/lazyEdgePanel").then((m) => m.EdgePanel),
   placeholder: {
-    size: {},
-    testId: "inspector.edge-shell-loading",
     render: pending((p: { edge: { id: string } }) => p.edge.id),
   },
   focus: {},
@@ -53,8 +39,6 @@ const GroupPanel = defineLazySurface({
   id: "inspector.group",
   load: () => import("./inspector/GroupPanel").then((m) => m.GroupPanel),
   placeholder: {
-    size: {},
-    testId: "inspector.group-loading",
     render: pending((p: { group: { id: string } }) => p.group.id),
   },
   focus: {},
@@ -64,7 +48,7 @@ const GroupPanel = defineLazySurface({
 const AnnotationPanel = defineLazySurface({
   id: "inspector.annotation",
   load: () => import("./inspector/AnnotationPanel").then((m) => m.AnnotationPanel),
-  placeholder: { size: {}, testId: "inspector.annotation-loading", render: pending() },
+  placeholder: { render: pending() },
   focus: {},
   export: "skip",
   retryToast: true,
@@ -72,7 +56,7 @@ const AnnotationPanel = defineLazySurface({
 const DiagramPanel = defineLazySurface({
   id: "inspector.diagram",
   load: () => import("./inspector/DiagramPanel").then((m) => m.DiagramPanel),
-  placeholder: { size: {}, testId: "inspector.diagram-loading", render: pending() },
+  placeholder: { render: pending() },
   focus: {},
   export: "skip",
   retryToast: true,
@@ -80,7 +64,7 @@ const DiagramPanel = defineLazySurface({
 const MultiPanel = defineLazySurface({
   id: "inspector.multi",
   load: () => import("./inspector/MultiPanel").then((m) => m.MultiPanel),
-  placeholder: { size: {}, testId: "inspector.multi-loading", render: pending() },
+  placeholder: { render: pending() },
   focus: {},
   export: "skip",
   retryToast: true,

@@ -28,6 +28,23 @@ const deferred = <T,>() => {
   return { promise, resolve, reject };
 };
 
+it("derives a stable placeholder id without redundant empty sizing metadata", async () => {
+  const { defineLazySurface } = await import("./lazySurface");
+  const pending = deferred<() => React.ReactNode>();
+  const Surface = defineLazySurface({
+    id: "live.timeline",
+    load: () => pending.promise,
+    placeholder: {},
+    focus: {},
+    export: "skip",
+    retryToast: true,
+  });
+  await act(() => root.render(<Surface />));
+  const marker = host.querySelector('[data-testid="live.timeline-loading"]');
+  expect(marker?.getAttribute("aria-busy")).toBe("true");
+  expect(marker?.hasAttribute("style")).toBe(false);
+});
+
 it("shares a held request, preserves focus, and reports one failure across multiple consumers", async () => {
   const { defineLazySurface } = await import("./lazySurface");
   const { toast } = await import("../interop/ui/toast");
@@ -85,7 +102,7 @@ it("keeps preload failure silent, retries on demand and does not remount after a
   const Surface = defineLazySurface({
     id: "live.timeline",
     load,
-    placeholder: { size: {}, testId: "pending" },
+    placeholder: { testId: "pending" },
     focus: {},
     export: "skip",
     retryToast: true,
@@ -111,7 +128,7 @@ it("reopening after a dismissed failure toast starts a fresh shared attempt", as
   const Surface = defineLazySurface({
     id: "live.timeline",
     load,
-    placeholder: { size: {}, testId: "pending" },
+    placeholder: { testId: "pending" },
     focus: {},
     export: "skip",
     retryToast: true,
@@ -145,7 +162,7 @@ it("the surviving toast retries every active consumer of a shared failed chunk",
   const Calls = defineLazySurface({
     id: "live.calls",
     load: shared,
-    placeholder: { size: {}, testId: "calls" },
+    placeholder: { testId: "calls" },
     focus: {},
     export: "await",
     retryToast: true,
@@ -153,7 +170,7 @@ it("the surviving toast retries every active consumer of a shared failed chunk",
   const Threads = defineLazySurface({
     id: "live.threads",
     load: shared,
-    placeholder: { size: {}, testId: "threads" },
+    placeholder: { testId: "threads" },
     focus: {},
     export: "await",
     retryToast: true,
@@ -184,7 +201,7 @@ it("Retry dispatches focus through the declared panel root", async () => {
       .fn()
       .mockRejectedValueOnce(new Error("offline"))
       .mockResolvedValue(() => <b />),
-    placeholder: { size: {}, testId: "pending" },
+    placeholder: { testId: "pending" },
     focus: { panel: "live-controls", restoreTo: "live-play" },
     export: "skip",
     retryToast: true,

@@ -96,8 +96,8 @@ import type { StartOptions } from "./StartCard";
 import { useAiDock } from "../ai/ui/dock";
 const NodeTipLayer = defineLazySurface({
   id: "canvas.node-tips",
-  load: () => import("./NodeTooltip").then((m) => m.NodeTipLayer),
-  placeholder: { size: {}, testId: "canvas.node-tips-loading" },
+  load: () => import("./CanvasReadouts").then((m) => m.NodeTipLayer),
+  placeholder: {},
   focus: {},
   export: "skip",
   retryToast: true,
@@ -121,8 +121,8 @@ import { ChecksMarkersView, SelectionFindings } from "./checks/ChecksViews";
 import { defineLazySurface } from "../lib/lazySurface";
 const PresenceLayer = defineLazySurface({
   id: "canvas.presence",
-  load: () => import("./PresenceLayer").then((m) => m.PresenceLayer),
-  placeholder: { size: {}, testId: "canvas.presence-loading" },
+  load: () => import("./CanvasReadouts").then((m) => m.PresenceLayer),
+  placeholder: {},
   focus: {},
   export: "skip",
   retryToast: true,

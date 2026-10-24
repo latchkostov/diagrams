@@ -38,18 +38,22 @@ async function open(page: Page, id: LazySurfaceId) {
       prefix: STORAGE_KEYS.autosavePrefix,
     },
   );
+
+  if (id === "canvas.check-markers") {
+    await gotoCanvas(page, SLUG);
+    await page.getByTestId("canvas-wrap").focus();
+    await page.keyboard.press("ControlOrMeta+k");
+    await page.getByTestId("command-input").fill("Check diagram");
+    await page.getByTestId("command-item-action:canvas.check-diagram").click();
+    return;
+  }
   if (id === "canvas.menu") {
     await gotoCanvas(page, SLUG);
     await waitForStableViewport(page);
     await page.getByTestId("node-caller").click({ button: "right" });
     return;
   }
-  if (id === "canvas.grow") {
-    await gotoCanvas(page, SLUG);
-    await waitForStableViewport(page);
-    await page.getByTestId("node-caller").click();
-    return;
-  }
+
   if (id === "canvas.presence") {
     await page.addInitScript(() => {
       window.__collabEndpoints = { trackers: [], iceServers: [] };

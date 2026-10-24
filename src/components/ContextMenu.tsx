@@ -4,8 +4,6 @@ const MenuList = defineLazySurface({
   id: "canvas.menu",
   load: () => import("./MenuList").then((m) => m.MenuList),
   placeholder: {
-    size: {},
-    testId: "canvas.menu-loading",
     render: (props, status) => <LoadingMenu {...props} status={status} />,
   },
   focus: {},
@@ -17,6 +15,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, type RefObjec
 import { createPortal } from "react-dom";
 import type { MenuNode } from "../editor/actions";
 import { captureTypeAhead, type TypeAhead } from "../canvas/typeAhead";
+import { search, selectable } from "./menuSearch";
 
 // App context menu: keyboard navigable (arrows, Home/End, Enter, Esc, ←/→ for submenus),
 // optional search-as-you-type, edge-aware placement. Submenus render as siblings in a fixed
@@ -79,9 +78,11 @@ export function ContextMenu({
   const layer = useRef<HTMLDivElement>(null);
   const invoker = useRef(returnFocus && document.activeElement instanceof HTMLElement ? document.activeElement : null);
   const closeRef = useRef(onClose);
+  const itemsRef = useRef(items);
   useLayoutEffect(() => {
     closeRef.current = onClose;
-  }, [onClose]);
+    itemsRef.current = items;
+  }, [onClose, items]);
   // A searchable menu (quick-add) keeps what's typed before its search can take focus: it starts the search.
   const typing = useRef<{ stop: () => TypeAhead } | null>(null);
   useLayoutEffect(() => {
@@ -90,8 +91,22 @@ export function ContextMenu({
       () => false,
       (typed) => {
         if (typed.done === "escape") closeRef.current("escape");
+        else if (typed.done === "enter") {
+          const best = (typed.text ? search(itemsRef.current, typed.text) : itemsRef.current).find(selectable);
+          if (best && !best.children) {
+            typing.current?.stop();
+            typing.current = null;
+            closeRef.current("pick");
+            best.run?.();
+          }
+        }
       },
-      (event) => !(event.target instanceof Element && event.target.closest("button,input,textarea,select")),
+      (event) =>
+        !(
+          event.target instanceof Element &&
+          (event.target.closest("button") ||
+            (event.target.closest("input,textarea,select,[contenteditable]") && !layer.current?.contains(event.target)))
+        ),
     );
     typing.current = t;
     return () => void t.stop();

@@ -115,3 +115,48 @@ test("Live overflow keeps its trace fold across dismissal", async ({ page }) => 
   await page.getByTestId("live-more").click();
   await expect(page.getByTestId("live-trace-message")).toHaveAttribute("aria-expanded", "true");
 });
+
+test("quick-add Enter commits before held rows arrive, and the next Escape finishes naming", async ({ page }) => {
+  await seed(page);
+  const menu = await hold(page, "MenuList", "src/components/MenuList.tsx");
+  try {
+    await gotoCanvas(page, "blocking-call");
+    await waitForStableViewport(page);
+    await page.getByTestId("node-caller").click();
+    await page.getByTestId("canvas-wrap").focus();
+    const before = await savedDiagram(page);
+    await page.keyboard.press("Alt+ArrowRight");
+    await expect.poll(menu.requested).toBe(true);
+    await page.keyboard.type("redis cache");
+    await page.keyboard.press("Enter");
+    await page.keyboard.press("Escape");
+    await expect(page.getByTestId("quick-add")).toHaveCount(0);
+    await expect.poll(async () => (await savedDiagram(page)).edges.length).toBe(before.edges.length + 1);
+    const after = await savedDiagram(page);
+    expect(after.nodes).toHaveLength(before.nodes.length + 1);
+    expect(after.nodes.some((node) => node.stencil === "redis.cache")).toBe(true);
+  } finally {
+    menu.release();
+  }
+});
+
+test("a held quick-add leaves another control's Enter available", async ({ page }) => {
+  await seed(page);
+  const menu = await hold(page, "MenuList", "src/components/MenuList.tsx");
+  try {
+    await gotoCanvas(page, "blocking-call");
+    await waitForStableViewport(page);
+    await page.getByTestId("node-caller").click();
+    await page.getByTestId("canvas-wrap").focus();
+    const before = await savedDiagram(page);
+    await page.keyboard.press("Alt+ArrowRight");
+    await expect.poll(menu.requested).toBe(true);
+    await page.keyboard.type("redis");
+    await page.getByTestId("file-button").focus();
+    await page.keyboard.press("Enter");
+    await expect(page.getByTestId("file-more-formats")).toBeVisible();
+    expect(await savedDiagram(page)).toEqual(before);
+  } finally {
+    menu.release();
+  }
+});

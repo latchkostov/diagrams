@@ -3,7 +3,15 @@ import { Icon } from "../../components/Icon";
 import { lazyComponent } from "../../lib/lazyLoad";
 import type { RowHost } from "../../checks/ui/FindingRow";
 import { checksPanel } from "./checksPanel";
-import { ChecksMarkers } from "./ChecksMarkers";
+import { defineLazySurface } from "../../lib/lazySurface";
+const ChecksMarkers = defineLazySurface({
+  id: "canvas.check-markers",
+  load: () => import("./ChecksMarkers").then((m) => m.ChecksMarkers),
+  placeholder: {},
+  focus: {},
+  export: "skip",
+  retryToast: true,
+});
 import { useChecksState, useHotFinding, type ChecksStore } from "./useChecks";
 
 // What shows the checks on the canvas, each subscribed to the canvas's ChecksStore on its own, so a new result or

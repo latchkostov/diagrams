@@ -9,8 +9,6 @@ const LazyCapacityPanel = defineLazySurface({
   id: "live.capacity",
   load: () => import("./CapacityPanel").then((m) => m.CapacityPanel),
   placeholder: {
-    size: {},
-    testId: "live.capacity-loading",
     render: (props, status) => <LoadingCapacity onClose={props.onClose} opener={props.opener} {...status} />,
   },
   focus: {},

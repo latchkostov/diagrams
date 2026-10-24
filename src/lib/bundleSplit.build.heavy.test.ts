@@ -308,7 +308,7 @@ describe("production bundle split", () => {
       ["menu rows", /[/\\]src[/\\]components[/\\]MenuList\.tsx$/],
       ["room presence", /[/\\]src[/\\]canvas[/\\]PresenceLayer\.tsx$/],
       ["editing tooltips", /[/\\]src[/\\]canvas[/\\]NodeTooltip\.tsx$/],
-      ["next-node handle", /[/\\]src[/\\]canvas[/\\]nodes[/\\]GrowChip\.tsx$/],
+      ["check markers", /[/\\]src[/\\]canvas[/\\]checks[/\\]ChecksMarkers\.tsx$/],
     ];
     const liveFeatures: [string, RegExp][] = [
       [
@@ -326,6 +326,14 @@ describe("production bundle split", () => {
         [...canvasFeatures, ...liveFeatures].map(([name]) => name),
       );
     }
+  });
+
+  it("ships surface policies without Node test-driver module paths", () => {
+    const canvas = [...closure([canvasChunk()])].map((chunk) => chunk.code).join("\n");
+    expect(canvas).toContain("inspector.node");
+    expect(canvas).toContain("live.capacity-analysis");
+    expect(canvas).not.toContain("canvas/inspector/NodePanel");
+    expect(canvas).not.toContain("canvas/CanvasReadouts");
   });
 
   it("loads the Markdown parser with its view, without the editor or its keys", () => {
