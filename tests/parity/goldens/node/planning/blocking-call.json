@@ -1,5 +1,5 @@
 {
-  "autoScale": { "freePlay": 10, "blocking": 10, "free-thread": 16 },
+  "autoScale": { "freePlay": 10, "blocking": 10, "free-thread": 20 },
   "brokerAssignments": {
     "brokers": {
       "applications": { "partitioned": false, "assignment": "subscriptions", "group": "subscription", "ingestUnit": "messages/s", "producerSizeUnit": "kB" },

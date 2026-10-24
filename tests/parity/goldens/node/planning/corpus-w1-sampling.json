@@ -1,5 +1,5 @@
 {
-  "autoScale": { "freePlay": 1, "blocking": 10, "sampled": 10 },
+  "autoScale": { "freePlay": 1, "blocking": 100, "sampled": 100 },
   "brokerAssignments": { "brokers": {}, "consumers": {} },
   "edit": {
     "configured": true,

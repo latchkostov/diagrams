@@ -88,12 +88,12 @@ it("uses the called endpoint's duration in the hold-time ceiling", () => {
   expect(analyzeCapacity(d).nodes.caller.waits?.threadHoldMs).toBe(510);
 });
 
-it("keeps four sampled dots in the actual initial caller pool, including an HPA fleet", () => {
+it("keeps the entry-rate budget with an HPA caller, independently of the model revision", () => {
   const d = waitingFixture();
   d.nodes[0].props = { ratePerSec: 4000 };
   d.nodes[1].props = { ...d.nodes[1].props, replicas: 8, resources: resourceLesson(), autoscaling: hpaLesson() };
   const sim = { id: "auto", title: "Auto", traffic: [] };
-  expect(autoScale(sim, d)).toBe(1);
+  expect(autoScale(sim, d)).toBe(100);
   d.planning!.revision = "p3-a1";
-  expect(autoScale(sim, d)).toBeGreaterThan(1);
+  expect(autoScale(sim, d)).toBe(100);
 });

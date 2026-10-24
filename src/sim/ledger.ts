@@ -61,6 +61,9 @@ export interface Reservation<Group = unknown> extends ResourceWork {
   /** Earliest admissible turnover: the exact turnover of a narrower pool lease this
    * blocking thread waited on. Only a partial-weight thread retains a release. */
   notBefore?: number;
+  /** Downstream cohort queueing already paced by its local reservation turnover;
+   * this part of heldMs elapses once, rather than represented/weight times. */
+  unscaledWaitMs?: number;
   /** Explicit delivery-group ownership survives logical acknowledgement. */
   group?: Group;
   retiredActive?: number;
@@ -165,7 +168,9 @@ export class SampledLedger {
           reservation.heldMs * (reservation.represented / reservation.weight - 1) -
           ((reservation.segmentActive ?? reservation.startActive) - reservation.startActive)
         : reservation.startActive +
-          ((reservation.heldMs + admissionLagMs) * reservation.represented) / reservation.weight -
+          ((reservation.heldMs + admissionLagMs - (reservation.unscaledWaitMs ?? 0)) * reservation.represented) /
+            reservation.weight +
+          (reservation.unscaledWaitMs ?? 0) -
           admissionLagMs;
     // The floor bounds when this capacity becomes admissible (releaseAt + lag),
     // so the owner's own admission lag is not added on top of it again.

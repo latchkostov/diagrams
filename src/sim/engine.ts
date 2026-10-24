@@ -388,6 +388,8 @@ interface Call extends LogicalCall {
 }
 interface Logical {
   outcome?: ClassifiedOutcome;
+  /** Queueing behind a sampled processor's already-paced reservations. */
+  pacedQueue?: { ms: number; weight: number };
   backoffMs?: number;
   retry?: boolean;
   callAttempt?: number;
@@ -1717,6 +1719,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     }
     if (waits() && work.via?.sync && work.message.returnCall !== undefined) {
       const edge = work.via;
+      const child = ledger.get(work.localThread);
       const start = Math.max(time, work.message.visualAt ?? time);
       if (!cut(edge))
         scheduleLogical({
@@ -1732,6 +1735,13 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           timeoutOrigin: work.timeoutOrigin,
           visualAt: start + Math.max(STEP, edge.travelMs),
           represented: work.message.represented,
+          pacedQueue:
+            edge.policy?.blocking && !Number.isFinite(edge.policy.pool) && child
+              ? {
+                  ms: Math.max(0, child.startActive - (work.admissibleActive ?? child.startActive)),
+                  weight: child.weight,
+                }
+              : undefined,
         });
       const visible = drawn < maxParticles;
       const trip: Trip = {
@@ -2563,6 +2573,17 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           if (maybeRetry(call, edge!, event)) continue;
           call.work.failureCode = event.code;
           call.work.timeoutOrigin = event.timeout ? edge!.id : event.timeoutOrigin;
+        }
+        const thread = ledger.get(call.work.thread);
+        if (!event.timeout && event.pacedQueue && thread && event.pacedQueue.weight < thread.weight) {
+          // A narrower processor queues behind earlier cohorts' stretched holds. That elapsed
+          // queue time has already been paced; stretching it again can leave the callee idle.
+          // Parallel branches share the wait, so credit its maximum, never their sum. Bound it
+          // by the caller's active wait (a paused caller does not accrue reservation time).
+          thread.unscaledWaitMs = Math.max(
+            thread.unscaledWaitMs ?? 0,
+            Math.min(event.pacedQueue.ms, call.node.activeMs - (thread.segmentActive ?? thread.startActive)),
+          );
         }
         call.outstanding.delete(edge!.id);
         if (event.ok && edge!.retry) retryCount(edge!, "succeeded", branchSized(call, edge!));

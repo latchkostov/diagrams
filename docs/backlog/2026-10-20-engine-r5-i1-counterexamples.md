@@ -83,7 +83,10 @@ All are in `src/sim/scaleEquivalence.test.ts` with the unchanged I1 bound and ex
   next wave no longer finishes a tick late each cycle. Scale 1.1: 569.8 versus 570 (previously
   664.4); 1.5: 570.0 (664.5). Whole-dot scales keep 498 to 500.
 - Lambda joining ordinary and fleet replies: resolved in PR 2; ordinary I1 guards pass at scales 2 and 4.
-- Slow 1-slot callee (30 ms), caller 4 slots, no pool or CPU, scale 10: 662 versus 570.
+- Slow 1-slot callee (30 ms), caller 4 slots, no pool or CPU, scale 10: resolved in #282's
+  accuracy fix. Already-paced downstream queueing elapses once in the caller reservation;
+  completions improve from 570 to 670 against 662 at scale one (I1 allowance 33.24).
+  An unrelated 500 requests/s source selects scale 10 and has its own passing I1 regression.
 
 The deadline cohorts live in `deadlineScale.invariants.test.ts`: scale 2 pins 1,779 versus 510
 completions/late replies and remains an expected failure. Scale 10 pins 356 versus 330 and passes

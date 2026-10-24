@@ -16,6 +16,8 @@ import { arbWaitDiagram } from "../test/waitScenarios";
 import { realSnapshot } from "./units";
 import { resourceLesson } from "../model/autoscaling";
 import type { SimSnapshot } from "./types";
+import { autoScale } from "./scale";
+import { STEP } from "./timing";
 
 function zeroWorkCall() {
   const diagram = waitingFixture();
@@ -143,6 +145,45 @@ function slowCallee() {
   return diagram;
 }
 
+it("I1 regression: a narrower processor preserves turnover at the automatic budget scale", () => {
+  const diagram = slowCallee();
+  diagram.nodes.push({
+    id: "unrelated",
+    stencil: "client.user",
+    label: "Other traffic",
+    x: 0,
+    y: 500,
+    props: { ratePerSec: 0 },
+  });
+  const scale = autoScale(
+    {
+      id: "budget",
+      title: "Budget",
+      traffic: [
+        { id: "main", node: "source", shape: { kind: "constant", ratePerSec: 100, durationMs: 20_000 } },
+        { id: "other", node: "unrelated", shape: { kind: "constant", ratePerSec: 500, durationMs: 20_000 } },
+      ],
+    },
+    diagram,
+  );
+  expect(scale).toBe(10);
+  const other = cohortArrivals(scale, 500);
+  const run = (weight: number, arrivals: number[], unrelated: number[]) =>
+    drive(diagram, weight, arrivals, 7, {
+      script: (engine, time) => {
+        const count = unrelated[time / STEP];
+        if (count) engine.inject("unrelated", count);
+      },
+    });
+  const cohorts = cohortArrivals(scale);
+  const baseline = run(1, sameArrivals(cohorts, scale), sameArrivals(other, scale));
+  const sampled = run(scale, cohorts, other);
+  expect(realSnapshot(baseline).nodes.caller.processed).toBe(662);
+  expectScaleEquivalent(baseline, sampled, 1);
+  expect(realSnapshot(sampled).nodes.caller.processed).toBe(670);
+  expect(realSnapshot(sampled).nodes.unrelated.processed).toBe(10_000);
+});
+
 // Same arrivals: guard every required caller completion/rejection row at its best value so far
 // (master 61957d3; CPU-with-pool and fragmentation rows ratcheted in sampling PR 5; CPU without a pool
 // and CPU-bound standalone at 1.01 in sampling PR 6; CPU-bound standalone at 2 and 10, legacy worker at 10 and
@@ -259,8 +300,14 @@ for (const [fixture, rows] of Object.entries(accuracyMaster)) {
 // two or three (docs/backlog/2026-10-22-sampling-managed-admission-bursts.md).
 const gaps = [
   { name: "managed request admission", fixture: managedCall, scale: 2.5, baseline: 599, dots: 159.6, processed: 399 },
-  { name: "slow one-slot callee without a pool", fixture: slowCallee, scale: 10, baseline: 662, dots: 57 },
 ];
+const slowCalleePin = {
+  name: "slow one-slot callee without a pool",
+  fixture: slowCallee,
+  scale: 10,
+  baseline: 662,
+  dots: 67,
+};
 // Preserve the historical serviceCredit snapshot: only W1 moves onto ledger pacing.
 const legacyPin = {
   name: "legacy queue-worker serviceCredit",
@@ -293,7 +340,7 @@ const managedPin = {
   dots: 655.445544554,
   processed: 661.99999999954,
 };
-const closed = [fragmentationPin, cpuTailPin, managedPin];
+const closed = [fragmentationPin, cpuTailPin, managedPin, slowCalleePin];
 for (const gap of [legacyPin, ...closed, ...gaps]) {
   describe(`${gap.name} at scale ${gap.scale}`, () => {
     let runs: ReturnType<typeof constantRateRuns>;
