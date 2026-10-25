@@ -53,21 +53,25 @@ function knownTestId(id: string): boolean {
 }
 
 const subjectsIn = (check: Check): string[] =>
-  check.kind === "prop" || check.kind === "fault"
-    ? check.edge
-      ? [...check.edge]
-      : [check.subject]
-    : check.kind === "member"
-      ? [check.subject, check.boundary]
-      : check.kind === "metric"
-        ? [check.subject, ...(check.edge ?? [])]
-        : check.kind === "node" || check.kind === "label" || check.kind === "processed"
-          ? [check.subject]
-          : check.kind === "edge" || check.kind === "relation"
-            ? [check.from, check.to]
-            : check.kind === "all"
-              ? check.checks.flatMap(subjectsIn)
-              : [];
+  check.kind === "mode"
+    ? check.subject
+      ? [check.subject]
+      : []
+    : check.kind === "prop" || check.kind === "fault"
+      ? check.edge
+        ? [...check.edge]
+        : [check.subject]
+      : check.kind === "member"
+        ? [check.subject, check.boundary]
+        : check.kind === "metric"
+          ? [check.subject, ...(check.edge ?? [])]
+          : check.kind === "node" || check.kind === "label" || check.kind === "processed" || check.kind === "field"
+            ? [check.subject]
+            : check.kind === "edge" || check.kind === "relation"
+              ? [check.from, check.to]
+              : check.kind === "all"
+                ? check.checks.flatMap(subjectsIn)
+                : [];
 const demoSubjects = (d: Demo): string[] =>
   d.kind === "add"
     ? [d.subject, ...(d.after ? [d.after] : [])]
@@ -81,21 +85,31 @@ const demoSubjects = (d: Demo): string[] =>
           ? [...d.subjects]
           : d.kind === "connect" || d.kind === "relation"
             ? [d.from, d.to]
-            : d.kind === "rename"
-              ? [d.subject]
-              : [];
+            : d.kind === "insert"
+              ? [...d.edge, d.subject]
+              : d.kind === "reconnect"
+                ? [...d.edge, d.to]
+                : d.kind === "field" || d.kind === "name" || d.kind === "rename"
+                  ? [d.subject]
+                  : [];
 const testIdsOf = (s: UiStep): string[] =>
   "click" in s
     ? [s.click]
-    : "dblclick" in s
-      ? [s.dblclick]
-      : "hover" in s
-        ? [s.hover]
-        : "fill" in s
-          ? [s.fill]
-          : "drag" in s
-            ? [s.drag, s.to]
-            : [];
+    : "rightclick" in s
+      ? [s.rightclick]
+      : "select" in s
+        ? [s.select]
+        : "pane" in s
+          ? ["canvas-pane"]
+          : "dblclick" in s
+            ? [s.dblclick]
+            : "hover" in s
+              ? [s.hover]
+              : "fill" in s
+                ? [s.fill]
+                : "drag" in s
+                  ? [s.drag, s.to]
+                  : [];
 const templates = (testId: string) => [...testId.matchAll(/\{(\w+)\}/g)].map((m) => m[1]);
 const words = (step: TutorialStep) => [step.title, step.goal, step.hint, step.done].filter((w) => !!w);
 
@@ -137,7 +151,8 @@ describe("tutorial catalog", () => {
         const known = stencilIds;
         for (const spec of Object.values(tutorial.subjects)) {
           for (const id of spec.stencils ?? []) expect(known, id).toContain(id);
-          if (!spec.stencils && !spec.boundary) expect(spec.role).toBeDefined();
+          if (spec.edge) for (const name of spec.edge) expect(subjects).toContain(name);
+          if (!spec.stencils && !spec.boundary && !spec.edge) expect(spec.role).toBeDefined();
         }
         for (const step of tutorial.steps) {
           const used = [
@@ -171,7 +186,8 @@ describe("tutorial catalog", () => {
 
       it("can be done for you, or is a moment the runner waits for", () => {
         for (const step of tutorial.steps) {
-          const moment = step.sticky || step.demo.length === 0;
+          // Sticky edits record a gesture whose result a later step deliberately replaces.
+          const moment = step.demo.length === 0;
           if (moment)
             expect(
               [

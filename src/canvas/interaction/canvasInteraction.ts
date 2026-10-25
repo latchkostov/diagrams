@@ -9,6 +9,8 @@ export interface CanvasInteraction {
   readonly mode: EditorModeState;
   subscribeMode(listener: (mode: EditorModeState, previous: EditorModeState) => void): () => void;
   setGuide(guide: { quickAdd?: string } | null): void;
+  /** Finish a reconstructed name through the controller's mode and focus policy. */
+  dispatch(event: { type: "naming.done"; flowId: string }): void;
 }
 
 let current: CanvasInteraction | null = null;
