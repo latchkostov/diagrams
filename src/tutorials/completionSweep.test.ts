@@ -32,6 +32,10 @@ import { boundaries } from "./catalog/boundaries";
 import { partitions } from "./catalog/partitions";
 import { outbox } from "./catalog/outbox";
 import { webhooks } from "./catalog/webhooks";
+import { retryStorm } from "./catalog/retryStorm";
+import { backoffBudget } from "./catalog/backoffBudget";
+import { circuitBreaker } from "./catalog/circuitBreaker";
+import { rateLimit } from "./catalog/rateLimit";
 import { dependencies2 } from "./catalog/dependencies2";
 import { dependencyVisibility } from "../canvas/dependencyVisibility";
 import { authorADrill } from "./catalog/authorADrill";
@@ -1245,6 +1249,67 @@ describe("completion regressions", () => {
     for (let t = 0; t < ms; t += 250) s.live!.advance(250);
     s.live!.publish();
   };
+
+  it("retry-storm: reading the caller leads to failed attempts and the saved failed backlog expectation", async () => {
+    const s = sandbox(retryStorm);
+    s.runner.send({ type: "start" });
+    expect(retryStorm.steps[state(s).index].id).toBe("watch-waiting");
+    s.hover({ kind: "node", id: s.subject("caller") });
+    expect(retryStorm.steps[state(s).index].id).toBe("watch-failed");
+    play(s, 2000);
+    expect(s.live!.getState().snapshot.nodes[s.subject("callee")].failed).toBeGreaterThan(0);
+    expect(retryStorm.steps[state(s).index].id).toBe("expect-backlog");
+    play(s, 58000);
+    expect(state(s).value).toBe("finished");
+    expect(s.live!.getState().run!.expectations).toContainEqual(
+      expect.objectContaining({ id: "backlog", status: "fail" }),
+    );
+  });
+
+  it("backoff-budget: jitter fails the backlog expectation but the same seeded budget run recovers", async () => {
+    const s = sandbox(backoffBudget);
+    await reach(s, backoffBudget, 3);
+    const edge = s.diagram.edges.find((e) => e.from === s.subject("caller") && e.to === s.subject("callee"))!;
+    expect(edge.props).toMatchObject({ caller: { retry: { backoffMs: 100, budget: { percent: 20 } } } });
+    const seed = s.live!.getState().running!.seed;
+    play(s, 60000);
+    expect(backoffBudget.steps[state(s).index].id).toBe("run-budget");
+    expect(s.live!.getState().run!.expectations).toContainEqual(
+      expect.objectContaining({ id: "backlog", status: "fail" }),
+    );
+    await skip(s, backoffBudget);
+    expect(s.live!.getState().running!.seed).toBe(seed);
+    expect(backoffBudget.steps[state(s).index].id).toBe("compare");
+    play(s, 60000);
+    expect(state(s).value).toBe("finished");
+    for (const id of ["backlog", "goodput"])
+      expect(s.live!.getState().run!.expectations).toContainEqual(expect.objectContaining({ id, status: "pass" }));
+  });
+
+  it("circuit-breaker: initial Closed never completes recovery; real playback opens, tests and closes", async () => {
+    const s = sandbox(circuitBreaker);
+    await reach(s, circuitBreaker, 2);
+    expect(state(s).latched[4]).toBe(false);
+    const seen = new Set<string>();
+    for (let frame = 0; frame < 240 && state(s).value !== "finished"; frame++) {
+      play(s, 250);
+      const edge = s.diagram.edges.find((e) => e.from === s.subject("caller") && e.to === s.subject("callee"))!;
+      const reading = s.live!.getState().snapshot.edges[edge.id]?.breaker?.state;
+      if (reading) seen.add(reading);
+    }
+    expect(seen).toEqual(new Set(["closed", "open", "half-open"]));
+    expect(state(s).value).toBe("finished");
+    expect(state(s).latched.slice(2)).toEqual([true, true, true]);
+  });
+
+  it("rate-limit's quarantined inline portion refuses excess requests before the API", async () => {
+    const s = sandbox(rateLimit);
+    await reach(s, rateLimit, 1);
+    play(s, 10000);
+    expect(s.live!.getState().snapshot.nodes[s.subject("limiter")].rejected).toBeGreaterThanOrEqual(10);
+    expect(s.live!.getState().snapshot.nodes[s.subject("api")].processed).toBeGreaterThan(0);
+    expect(state(s).value).toBe("finished");
+  });
 
   it("webhooks: Skip continues the paused note and watching completes expect-parked", async () => {
     const s = sandbox(webhooks);
