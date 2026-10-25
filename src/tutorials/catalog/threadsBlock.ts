@@ -1,10 +1,10 @@
 import { msg } from "../../i18n";
 import type { Tutorial } from "../types";
-import { moment, patchStep, runStep } from "./waitingSteps";
+import { liveStep, moment, patchStep, runStep } from "./waitingSteps";
 
 export const threadsBlock: Tutorial = {
   id: "threads-block",
-  version: 1,
+  version: 2,
   track: "waiting",
   level: 2,
   minutes: 4,
@@ -58,6 +58,13 @@ export const threadsBlock: Tutorial = {
         done: msg("tutorials.threadsBlock.freeDone"),
       },
     ),
+    liveStep("live-run-free-thread", {
+      kind: "prop",
+      edge: ["caller", "partner"],
+      prop: ["caller", "wait"],
+      op: "=",
+      value: "non-blocking",
+    }),
     runStep(
       "run-free-thread",
       "free-thread",
@@ -66,7 +73,7 @@ export const threadsBlock: Tutorial = {
         goal: msg("tutorials.threadsBlock.rerunGoal"),
         done: msg("tutorials.threadsBlock.rerunDone"),
       },
-      true,
+      false,
     ),
     moment(
       "no-threads-waiting",

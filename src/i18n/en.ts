@@ -3992,7 +3992,10 @@ const en = {
   "tutorials.whereTimeGoes.p95Done": "p95 describes the slower end of the sampled requests, rather than the average.",
   "tutorials.whereTimeGoes.compareTitle": "Compare waiting and working",
   "tutorials.whereTimeGoes.compareGoal":
-    "Keep Billing’s readout open after it is restored. Compare Waiting with Working as the queue clears.",
+    "Keep Billing’s readout open after it is restored. Watch the backlog clear before examining its latency breakdown.",
+  "tutorials.whereTimeGoes.breakdownTitle": "Read the Latency breakdown",
+  "tutorials.whereTimeGoes.breakdownGoal":
+    "Hover Billing and click Latency to expand it. Compare Waiting with Working, then click Done when you have finished reading.",
   "tutorials.whereTimeGoes.compareDone":
     "Restored work is fast again, but requests still spend more time waiting in the backlog.",
   "tutorials.threadsBlock.title": "A blocking call holds threads",
@@ -4011,7 +4014,7 @@ const en = {
   "tutorials.threadsBlock.freeDone":
     "Frees the thread changes how the caller waits without changing the Request into a Message.",
   "tutorials.threadsBlock.rerunTitle": "Run Free the thread while waiting",
-  "tutorials.threadsBlock.rerunGoal": "Go Live, then pick Free the thread while waiting in Simulations.",
+  "tutorials.threadsBlock.rerunGoal": "Pick Free the thread while waiting in Simulations.",
   "tutorials.threadsBlock.rerunDone": "The same seeded comparison runs with off-thread waiting.",
   "tutorials.threadsBlock.resultTitle": "Watch work without waiting threads",
   "tutorials.threadsBlock.resultGoal":
@@ -4031,8 +4034,7 @@ const en = {
   "tutorials.timeoutsPools.timeoutDone":
     "A 600 ms timeout releases the caller’s wait even if the provider replies later.",
   "tutorials.timeoutsPools.timeoutRunTitle": "Run A 600 ms timeout",
-  "tutorials.timeoutsPools.timeoutRunGoal":
-    "Go Live, then pick A 600 ms timeout in Simulations and watch payments fail fast.",
+  "tutorials.timeoutsPools.timeoutRunGoal": "Pick A 600 ms timeout in Simulations and watch payments fail fast.",
   "tutorials.timeoutsPools.timeoutRunDone":
     "A bounded wait trades slow payment success for prompt failure and room for other work.",
   "tutorials.timeoutsPools.poolTitle": "Set Connection pool to 40",
@@ -4041,7 +4043,7 @@ const en = {
   "tutorials.timeoutsPools.poolDone":
     "The pool caps connections to this provider independently of Checkout’s thread count.",
   "tutorials.timeoutsPools.poolRunTitle": "Run the pool comparison",
-  "tutorials.timeoutsPools.poolRunGoal": "Go Live, then pick Threads freed while waiting for the pool in Simulations.",
+  "tutorials.timeoutsPools.poolRunGoal": "Pick Threads freed while waiting for the pool in Simulations.",
   "tutorials.timeoutsPools.poolRunDone":
     "This run frees threads while waiting for forty connections, so order-status work can continue.",
   "tutorials.autoscaling.title": "Scale on busy threads",

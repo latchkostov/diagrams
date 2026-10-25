@@ -71,17 +71,64 @@ describe("waiting lessons against their seeded runs", () => {
     });
   });
 
+  it("keeps the Latency breakdown as an acknowledged reading step", () => {
+    const reading = whereTimeGoes.steps.at(-1)!;
+    expect(reading.id).toBe("read-breakdown");
+    expect(reading.check).toEqual({ kind: "acknowledge" });
+    expect(reading.goal()).toContain("click Latency");
+    expect(reading.solution).toEqual([
+      { hover: "node-{billing}" },
+      { click: "hover-section-latency" },
+      { click: "tutorial-skip" },
+    ]);
+  });
+
   it("blocking holds threads, while the free-thread result excludes a fresh empty run", () => {
     run(threadsBlock, "blocking", (c, diagram) => {
       play(c, 2000);
-      expect(met(threadsBlock, "threads-waiting", c, diagram)).toBe(true);
+      expect(met(threadsBlock, "threads-waiting", c, diagram)).toBe(false);
+      expect(met(threadsBlock, "threads-waiting", c, diagram, "caller")).toBe(true);
       expect(c.getState().snapshot.nodes.caller.threads!.waiting).toBeGreaterThanOrEqual(1 / 0.7);
     });
     run(threadsBlock, "free-thread", (c, diagram) => {
       expect(met(threadsBlock, "no-threads-waiting", c, diagram)).toBe(false);
       play(c, 2000);
       expect(c.getState().snapshot.nodes.caller.processed).toBeGreaterThanOrEqual(400 / 0.7);
-      expect(met(threadsBlock, "no-threads-waiting", c, diagram)).toBe(true);
+      expect(met(threadsBlock, "no-threads-waiting", c, diagram)).toBe(false);
+      expect(met(threadsBlock, "no-threads-waiting", c, diagram, "caller")).toBe(true);
+    });
+  });
+
+  it("rejects zero completions after the free-thread time threshold", () => {
+    run(threadsBlock, "free-thread", (c, diagram) => {
+      play(c, 2000);
+      const session = c.getState();
+      const subjects = resolveSubjects(threadsBlock, diagram);
+      const caller = session.snapshot.nodes[subjects.caller!];
+      expect(session.run!.time).toBeGreaterThanOrEqual(2000);
+      const empty = {
+        ...session,
+        snapshot: {
+          ...session.snapshot,
+          nodes: {
+            ...session.snapshot.nodes,
+            [subjects.caller!]: { ...caller, processed: 0, threads: { ...caller.threads!, waiting: 0 } },
+          },
+        },
+      };
+      expect(
+        holds(
+          threadsBlock.steps.find((step) => step.id === "no-threads-waiting")!.check,
+          {
+            diagram,
+            live: true,
+            session: empty,
+            processed: () => 0,
+            readout: { kind: "node", id: subjects.caller! },
+          },
+          subjects,
+        ),
+      ).toBe(false);
     });
   });
 
@@ -89,7 +136,8 @@ describe("waiting lessons against their seeded runs", () => {
     run(autoscaling, "busy-threads", (c, diagram) => {
       expect(met(autoscaling, "replicas-grow", c, diagram)).toBe(false);
       play(c, 9000);
-      expect(met(autoscaling, "replicas-grow", c, diagram)).toBe(true);
+      expect(met(autoscaling, "replicas-grow", c, diagram)).toBe(false);
+      expect(met(autoscaling, "replicas-grow", c, diagram, "caller")).toBe(true);
     });
   });
 
@@ -172,7 +220,8 @@ describe("waiting lessons against their seeded runs", () => {
       lesson.steps.forEach((step, index) => {
         if (!step.demo.some((demo) => demo.kind === "patch" && demo.edge)) return;
         expect(step.solution[0]).toEqual({ click: "live-toggle" });
-        expect(lesson.steps[index + 1].solution[0]).toEqual({ click: "live-toggle" });
+        expect(lesson.steps[index + 1].check).toEqual({ kind: "all", checks: [step.check, { kind: "live" }] });
+        expect(lesson.steps[index + 2].solution[0]).toHaveProperty("select", "live-sim-picker");
       });
     // The p3-w2 payment example puts Connection pool behind its own disclosure.
     expect(initial(timeoutsPools).planning?.revision).toBe("p3-w2");
@@ -181,9 +230,9 @@ describe("waiting lessons against their seeded runs", () => {
     });
   });
 
-  it("registers six version-one lessons and keeps both owner decisions quarantined", () => {
+  it("registers six lessons and keeps both owner decisions quarantined", () => {
     for (const lesson of [whereTimeGoes, threadsBlock, timeoutsPools, backlogLag, autoscaling, scaleToZero]) {
-      expect(lesson.version).toBe(1);
+      expect(lesson.version).toBe([whereTimeGoes, threadsBlock, timeoutsPools, autoscaling].includes(lesson) ? 2 : 1);
       expect(tutorialEntries).toContainEqual({ id: lesson.id, ...(lesson.quarantined ? { quarantined: true } : {}) });
       const diagram = initial(lesson);
       for (const step of lesson.steps)

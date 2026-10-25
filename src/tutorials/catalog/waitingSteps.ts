@@ -1,6 +1,24 @@
+import { msg } from "../../i18n";
 import type { Check, PropPatch, PropertyTarget, TutorialStep, UiStep, Words } from "../types";
 
 type Copy = { title: Words; goal: Words; done: Words };
+
+/**
+ * Manual edits, Skip and Continue share one rerun path. Latch after this edit so leaving Live for a later edit
+ * cannot reopen an earlier entry, and an earlier run cannot satisfy a future entry before its property is set.
+ */
+export function liveStep(id: string, after: Check): TutorialStep {
+  return {
+    id,
+    title: msg("tutorials.mobileApi.liveTitle"),
+    goal: msg("tutorials.mobileApi.liveGoal"),
+    check: { kind: "all", checks: [after, { kind: "live" }] },
+    sticky: true,
+    targets: [{ testId: "live-toggle", tip: msg("tutorials.mobileApi.liveTip") }],
+    demo: [{ kind: "live" }],
+    solution: [{ click: "live-toggle" }],
+  };
+}
 
 /** Saved runs latch: the next comparison deliberately replaces this run. */
 export function runStep(id: string, simulation: string, copy: Copy, enterLive = false, watch?: Check): TutorialStep {
@@ -24,7 +42,7 @@ export function moment(id: string, subject: string, check: Check, copy: Copy): T
   return {
     id,
     ...copy,
-    check,
+    check: { kind: "all", checks: [{ kind: "readout", subject }, check] },
     sticky: true,
     targets: [{ testId: `node-{${subject}}`, tip: copy.goal, dim: false }],
     demo: [],

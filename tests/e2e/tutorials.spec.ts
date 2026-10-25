@@ -258,6 +258,80 @@ for (const entry of ["Skip", "resume"] as const)
     expectNoErrors(consoleErrors);
   });
 
+for (const entry of ["Skip", "Continue"] as const)
+  test(`threads-block: ${entry} past the edit keeps Live ready for the rerun`, async ({ page, consoleErrors }) => {
+    if (entry === "Continue")
+      await page.addInitScript(() =>
+        localStorage.setItem(
+          "diagrams.tutorials.v1",
+          JSON.stringify({
+            progress: { "threads-block": { version: 2, step: 3, completed: false } },
+          }),
+        ),
+      );
+    await openTutorial(page, "threads-block");
+    await page.getByTestId("tutorial-start").click();
+    if (entry === "Skip") {
+      for (const id of ["run-blocking", "threads-waiting", "free-thread"]) {
+        await expect(strip(page)).toHaveAttribute("data-step", id);
+        await page.getByTestId("tutorial-skip").click();
+      }
+    }
+    await expect(strip(page)).toHaveAttribute("data-step", "run-free-thread");
+    const solution = await page.evaluate(() => window.__tutorial?.solution() ?? []);
+    expect(solution).toEqual([{ select: "live-sim-picker", value: "free-thread" }]);
+    for (const action of solution) await play(page, action);
+    await expect(page.getByTestId("live-sim-picker")).toHaveValue("free-thread");
+    await expect(strip(page)).toHaveAttribute("data-step", "no-threads-waiting");
+    await finishSolution(page);
+    expectNoErrors(consoleErrors);
+  });
+
+test("threads-block: watch steps wait for their readout even after the run has met its metrics", async ({ page }) => {
+  test.slow();
+  await openTutorial(page, "threads-block");
+  await page.getByTestId("tutorial-start").click();
+  for (const action of await page.evaluate(() => window.__tutorial?.solution() ?? [])) await play(page, action);
+  await page.getByTestId("tutorial-step").hover();
+  await expect
+    .poll(async () => Number(await page.getByTestId("live-canvas").getAttribute("data-sim-time")))
+    .toBeGreaterThanOrEqual(2000);
+  await expect(strip(page)).toHaveAttribute("data-step", "threads-waiting");
+  await page.getByTestId("node-caller").hover();
+  await expect(strip(page)).toHaveAttribute("data-step", "free-thread");
+  await page.getByTestId("tutorial-skip").click();
+  await expect(strip(page)).toHaveAttribute("data-step", "run-free-thread");
+  for (const action of await page.evaluate(() => window.__tutorial?.solution() ?? [])) await play(page, action);
+  await page.getByTestId("tutorial-step").hover();
+  await expect
+    .poll(async () => Number(await page.getByTestId("live-canvas").getAttribute("data-sim-time")))
+    .toBeGreaterThanOrEqual(2000);
+  await expect(strip(page)).toHaveAttribute("data-step", "no-threads-waiting");
+  await page.getByTestId("node-caller").hover();
+  await expect(strip(page)).toHaveAttribute("data-phase", "finished");
+});
+
+test("where-time-goes: Latency can be expanded and read before Done finishes", async ({ page }) => {
+  await page.addInitScript(() =>
+    localStorage.setItem(
+      "diagrams.tutorials.v1",
+      JSON.stringify({
+        progress: { "where-time-goes": { version: 2, step: 3, completed: false } },
+      }),
+    ),
+  );
+  await openTutorial(page, "where-time-goes");
+  await page.getByTestId("tutorial-start").click();
+  await expect(strip(page)).toHaveAttribute("data-step", "read-breakdown");
+  const solution = await page.evaluate(() => window.__tutorial?.solution() ?? []);
+  for (const action of solution.slice(0, -1)) await play(page, action);
+  await expect(page.getByTestId("hover-section-latency")).toHaveAttribute("aria-expanded", "true");
+  await expect(page.getByTestId("node-latency-breakdown-billing")).toBeVisible();
+  await expect(strip(page)).toHaveAttribute("data-step", "read-breakdown");
+  await play(page, solution[solution.length - 1]);
+  await expect(strip(page)).toHaveAttribute("data-phase", "finished");
+});
+
 for (const { id, quarantined } of tutorialEntries)
   test(`${id}: its solution plays through the real UI`, async ({ page, consoleErrors }) => {
     test.fixme(!!quarantined, quarantineReason);

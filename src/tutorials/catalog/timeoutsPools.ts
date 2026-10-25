@@ -1,10 +1,10 @@
 import { msg } from "../../i18n";
 import type { Tutorial } from "../types";
-import { patchStep, runStep } from "./waitingSteps";
+import { liveStep, patchStep, runStep } from "./waitingSteps";
 
 export const timeoutsPools: Tutorial = {
   id: "timeouts-pools",
-  version: 1,
+  version: 2,
   track: "waiting",
   level: 2,
   minutes: 5,
@@ -54,6 +54,13 @@ export const timeoutsPools: Tutorial = {
         done: msg("tutorials.timeoutsPools.timeoutDone"),
       },
     ),
+    liveStep("live-run-timeout-600", {
+      kind: "prop",
+      edge: ["checkout", "payment"],
+      prop: ["caller", "deadlineMs"],
+      op: "=",
+      value: 600,
+    }),
     runStep(
       "run-timeout-600",
       "timeout-600",
@@ -62,7 +69,7 @@ export const timeoutsPools: Tutorial = {
         goal: msg("tutorials.timeoutsPools.timeoutRunGoal"),
         done: msg("tutorials.timeoutsPools.timeoutRunDone"),
       },
-      true,
+      false,
       {
         kind: "all",
         checks: [
@@ -93,6 +100,13 @@ export const timeoutsPools: Tutorial = {
         done: msg("tutorials.timeoutsPools.poolDone"),
       },
     ),
+    liveStep("live-run-pool-40", {
+      kind: "prop",
+      edge: ["checkout", "payment"],
+      prop: ["caller", "poolConnections"],
+      op: "=",
+      value: 40,
+    }),
     runStep(
       "run-pool-40",
       "pool-40",
@@ -101,7 +115,7 @@ export const timeoutsPools: Tutorial = {
         goal: msg("tutorials.timeoutsPools.poolRunGoal"),
         done: msg("tutorials.timeoutsPools.poolRunDone"),
       },
-      true,
+      false,
       { kind: "simulation", id: "pool-40", atLeastMs: 5000 },
     ),
   ],

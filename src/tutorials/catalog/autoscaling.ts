@@ -4,7 +4,7 @@ import { moment, patchStep, runStep } from "./waitingSteps";
 
 export const autoscaling: Tutorial = {
   id: "autoscaling",
-  version: 1,
+  version: 2,
   track: "waiting",
   level: 3,
   minutes: 5,
