@@ -18,6 +18,7 @@ import type { Demo, Tutorial } from "./types";
 import type { DiagramFile } from "../model/types";
 import { actionRegistry, type MenuNode } from "../editor/actions";
 import type { SandboxView } from "./checks";
+import { simulationProjection } from "../sim/simulationContent";
 
 /**
  * The runner: one tutorial's machine (./machine.ts) wired to the sandbox canvas. It observes the canvas through the
@@ -59,6 +60,7 @@ export function createTutorialRunner(
     ...runnerMachine,
     initial: runnerInitial(sticky, {
       stepIds: tutorial.steps.map((s) => s.id),
+      demos: tutorial.steps.map((s) => s.demo.length > 0),
       highlights: readTutorials().highlights ?? true,
       resumeAt: saved && !saved.completed ? saved.step : 0,
     }),
@@ -84,6 +86,9 @@ export function createTutorialRunner(
   let subjects: Record<string, string | undefined> = {};
   const demoBindings = new Map<string, string>();
   let documentChecks: boolean[] = [];
+  let topology: string | undefined;
+  let pendingRun: { session: ReturnType<Host["get"]>["session"]; generation: number } | undefined;
+  let previousRun: typeof pendingRun;
   function view(): SandboxView {
     const h = host.get();
     const ed = h.canvas!.editor;
@@ -92,7 +97,20 @@ export function createTutorialRunner(
       readDiagram = liveDiagramReader(ed);
     }
     const diagram = readDiagram();
+    const currentSession = h.session?.state?.();
     if (diagram !== document) {
+      const nextTopology = JSON.stringify(simulationProjection(diagram, true));
+      // The editor can publish before Live rebuilds. Its previous counters cannot prove traffic in the new flow.
+      if (
+        topology !== undefined &&
+        topology !== nextTopology &&
+        h.canvas!.live &&
+        currentSession &&
+        previousRun?.session === h.session &&
+        previousRun.generation === currentSession.generation
+      )
+        pendingRun = { session: h.session, generation: currentSession.generation };
+      topology = nextTopology;
       document = diagram;
       const bindings = { ...subjects };
       // Editor writes can land after the demo returns its id. Keep that declaration until the document reports it.
@@ -105,11 +123,17 @@ export function createTutorialRunner(
       subjects = resolveSubjects(tutorial, diagram, bindings);
       documentChecks = observeSteps(tutorial, { diagram, live: false, processed: () => 0 }, subjects);
     }
-    const session = h.session?.state?.();
+    const session =
+      pendingRun?.session === h.session && pendingRun?.generation === currentSession?.generation
+        ? undefined
+        : currentSession;
+    if (session) pendingRun = undefined;
+    previousRun = currentSession ? { session: h.session, generation: currentSession.generation } : undefined;
     return {
       diagram,
       live: !!h.canvas!.live,
-      session,
+      session: currentSession,
+      trafficReady: !!session,
       mode: canvasInteraction.get()?.mode,
       slowmo: h.session?.slowmo?.getState(),
       processed: (id: string) => session?.snapshot.nodes[id]?.processed ?? 0,
@@ -184,6 +208,32 @@ export function createTutorialRunner(
     const edge = (pair: readonly [string, string]) =>
       ed.getDiagram().edges.find((e) => e.from === subjects[pair[0]] && e.to === subjects[pair[1]]);
     switch (demo.kind) {
+      case "name": {
+        const id = subjects[demo.subject];
+        if (id) ed.startEditing({ kind: "node", id });
+        return;
+      }
+      case "field": {
+        const id = subjects[demo.subject];
+        if (id) ed.updateNode(id, { [demo.field]: demo.value() });
+        return;
+      }
+      case "reconnect": {
+        const id = edge(demo.edge)?.id;
+        const to = subjects[demo.to];
+        if (id && to) ed.reconnectEdge(id, "target", to);
+        return;
+      }
+      case "insert": {
+        const id = edge(demo.edge)?.id;
+        const made = id ? ed.insertNode(id, demo.stencil) : null;
+        if (made) {
+          demoBindings.set(demo.subject, made.id);
+          document = undefined;
+          observe();
+        }
+        return;
+      }
       case "prop": {
         const id = demo.edge ? edge(demo.edge)?.id : subjects[demo.subject];
         if (id) {
@@ -289,7 +339,7 @@ export function createTutorialRunner(
       case "connect": {
         const from = subjects[demo.from];
         const to = subjects[demo.to];
-        if (from && to) ed.connect(from, to);
+        if (from && to) ed.connect(from, to, { sourceSide: demo.sourceSide, targetSide: demo.targetSide });
         return;
       }
       case "rename": {
@@ -342,6 +392,9 @@ export function createTutorialRunner(
         subjects = {};
         demoBindings.clear();
         document = undefined;
+        topology = undefined;
+        pendingRun = undefined;
+        previousRun = undefined;
         const h = host.get();
         const ed = editor();
         if (!ed) return;

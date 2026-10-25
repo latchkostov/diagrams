@@ -9,6 +9,8 @@ import {
   fitDiagram,
   pauseClock,
   waitForCameraIdle,
+  waitForSelectionSettled,
+  emptyCanvasPoint,
 } from "./fixtures";
 import { tutorialIds } from "../../src/tutorials/catalog/ids";
 import type { ResolvedUiStep } from "../../src/tutorials/solution";
@@ -25,12 +27,37 @@ async function openTutorial(page: Page, id: string) {
 }
 
 async function play(page: Page, step: ResolvedUiStep) {
-  if ("click" in step) await page.getByTestId(step.click).click();
-  else if ("dblclick" in step) await page.getByTestId(step.dblclick).dblclick();
+  if ("click" in step) {
+    if (step.click.startsWith("edge-") && !step.click.startsWith("edge-label-")) {
+      await waitForCameraIdle(page);
+      // A bent line's group bounds can have empty canvas at their centre. Hit its visible path instead.
+      const point = await page.getByTestId(step.click).evaluate((group) => {
+        const path = Array.from(group.children).find(
+          (child): child is SVGPathElement => child instanceof SVGPathElement,
+        );
+        const matrix = path?.getScreenCTM();
+        if (!path || !matrix) throw new Error("Expected a rendered edge path");
+        const p = path.getPointAtLength(path.getTotalLength() / 2);
+        const screen = new DOMPoint(p.x, p.y).matrixTransform(matrix);
+        return { x: screen.x, y: screen.y };
+      });
+      await page.mouse.click(point.x, point.y);
+    } else await page.getByTestId(step.click).click();
+  } else if ("rightclick" in step) await page.getByTestId(step.rightclick).click({ button: "right" });
+  else if ("select" in step) await page.getByTestId(step.select).selectOption(step.value);
+  else if ("pane" in step) {
+    const position = await emptyCanvasPoint(page);
+    await page.getByTestId("canvas-wrap").dblclick({ position });
+  } else if ("dblclick" in step) await page.getByTestId(step.dblclick).dblclick();
   else if ("hover" in step) await page.getByTestId(step.hover).hover();
   else if ("fill" in step) await page.getByTestId(step.fill).fill(step.text);
-  else if ("drag" in step) await page.getByTestId(step.drag).dragTo(page.getByTestId(step.to));
-  else await page.keyboard.press(step.press);
+  else if ("type" in step) await page.keyboard.insertText(step.type);
+  else if ("drag" in step) {
+    // Seed diagrams start with nothing selected, so their Inspector should stay collapsed.
+    if (await page.evaluate(() => !!window.__tutorial?.snapshot().selected.length)) await waitForSelectionSettled(page);
+    await fitDiagram(page);
+    await page.getByTestId(step.drag).dragTo(page.getByTestId(step.to));
+  } else await page.keyboard.press(step.press);
 }
 
 const strip = (page: Page) => page.getByTestId("tutorial-step");
@@ -539,6 +566,8 @@ for (const policy of ["marked", "default"] as const)
       mimeType: "application/json",
       buffer: Buffer.from(JSON.stringify({ ...importedDiagram, ...(policy === "marked" ? { private: true } : {}) })),
     });
+    // Import crosses the lazy app/canvas surfaces. Observe the destination before checking tutorial teardown.
+    await expect(page.getByTestId("node-imported-api")).toBeVisible({ timeout: pageLoadTimeout() });
     await expect(page.getByTestId("tutorial-app")).toHaveCount(0);
     await expect(page.getByTestId("diagram-title")).toHaveText(importedDiagram.title);
     await expect(page.getByTestId("private-badge")).toBeVisible();

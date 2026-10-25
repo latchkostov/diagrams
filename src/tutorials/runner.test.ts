@@ -11,6 +11,8 @@ import { savedProgress, saveProgress } from "./progress";
 import type { Tutorial } from "./types";
 import type { Demo } from "./types";
 import { actionRegistry } from "../editor/actions";
+import { LiveController } from "../live/controller";
+import { requestVsMessage } from "./catalog/requestVsMessage";
 
 const cleanup: (() => void)[] = [];
 beforeEach(() => {
@@ -274,6 +276,27 @@ it("announces Show me's hint through the runner's status and leaves focus to the
 });
 
 it.each<{ demo: Demo; method: keyof EditorApi; args: unknown[] }>([
+  { demo: { kind: "name", subject: "api" }, method: "startEditing", args: [{ kind: "node", id: "api" }] },
+  {
+    demo: { kind: "field", subject: "api", field: "sublabel", value: () => "Node.js" },
+    method: "updateNode",
+    args: ["api", { sublabel: "Node.js" }],
+  },
+  {
+    demo: { kind: "insert", edge: ["app", "api"], subject: "gw", stencil: "aws.api-gateway" },
+    method: "insertNode",
+    args: ["edge", "aws.api-gateway"],
+  },
+  {
+    demo: { kind: "reconnect", edge: ["app", "api"], to: "api" },
+    method: "reconnectEdge",
+    args: ["edge", "target", "api"],
+  },
+  {
+    demo: { kind: "connect", from: "app", to: "api", targetSide: "top", sourceSide: "right" },
+    method: "connect",
+    args: ["app", "api", { targetSide: "top", sourceSide: "right" }],
+  },
   {
     demo: { kind: "prop", subject: "api", props: { concurrency: 12 } },
     method: "setNodeProps",
@@ -372,6 +395,52 @@ it("rechecks mode checks when the editor mode changes, without a diagram edit", 
   const s = sandbox(tutorial);
   s.runner.send({ type: "start" });
   s.mode({ value: "menu" });
+  expect(s.runner.getSnapshot().state.value).toBe("finished");
+});
+
+it("waits for the rebuilt run before latching traffic after an edge-kind edit", () => {
+  const tutorial: Tutorial = {
+    ...requestVsMessage,
+    steps: requestVsMessage.steps.filter((step) => step.id === "flip" || step.id === "watch-api"),
+  };
+  const s = sandbox(tutorial, named());
+  const before = new LiveController(named()).getState();
+  before.snapshot.nodes.api.processed = 50;
+  let session = before;
+  s.hostState.session.state = () => session;
+  s.hostState.canvas.live = true;
+  s.publish();
+  s.runner.send({ type: "start" });
+  s.edit({ ...named(), edges: [{ ...named().edges[0], kind: "async" }] });
+  expect(s.runner.getSnapshot().state).toMatchObject({ value: "active", index: 1 });
+  s.tick();
+  expect(s.runner.getSnapshot().state.value).toBe("active");
+  session = {
+    ...before,
+    generation: before.generation + 1,
+    snapshot: {
+      ...before.snapshot,
+      nodes: { ...before.snapshot.nodes, api: { ...before.snapshot.nodes.api, processed: 0 } },
+    },
+  };
+  s.tick();
+  expect(s.runner.getSnapshot().state.value).toBe("active");
+  session.snapshot.nodes.api.processed = 10;
+  s.tick();
+  expect(s.runner.getSnapshot().state.value).toBe("finished");
+});
+
+it("accepts new-run traffic when Live has already rebuilt before the edited document publishes", () => {
+  const tutorial: Tutorial = { ...requestVsMessage, steps: [requestVsMessage.steps[4]] };
+  const s = sandbox(tutorial, named());
+  let session = new LiveController(named()).getState();
+  s.hostState.session.state = () => session;
+  s.hostState.canvas.live = true;
+  s.publish();
+  s.runner.send({ type: "start" });
+  session = { ...session, generation: session.generation + 1 };
+  session.snapshot.nodes.api.processed = 10;
+  s.edit({ ...named(), edges: [{ ...named().edges[0], kind: "async" }] });
   expect(s.runner.getSnapshot().state.value).toBe("finished");
 });
 

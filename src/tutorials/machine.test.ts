@@ -16,6 +16,25 @@ function play(events: RunnerEvent[], resumeAt = 0) {
 }
 
 describe("tutorial step runner", () => {
+  it("Skip performs a sticky edit's demo before remembering its completion", () => {
+    const m = createMachine({
+      ...runnerMachine,
+      initial: runnerInitial([true, true], {
+        highlights: true,
+        resumeAt: 0,
+        demos: [true, false],
+      }),
+    });
+    m.send({ type: "start" });
+    expect(m.send({ type: "skip", stepId: "0" }).commands).toEqual([{ type: "demo", steps: [0] }]);
+    expect(m.state.latched).toEqual([false, false]);
+    m.send(observe([true, false]));
+    expect(m.state.index).toBe(1);
+    m.send(observe([false, false]));
+    expect(m.state.index).toBe(1);
+    m.send({ type: "skip", stepId: "1" });
+    expect(m.state.value).toBe("finished");
+  });
   it("rejects a skip rendered for an earlier step, including a fast repeat", () => {
     const m = createMachine(def());
     m.send({ type: "start" });
@@ -134,8 +153,18 @@ describe("tutorial step runner", () => {
     }
   });
 
-  it("keeps its invariants on every representative path", () => {
-    const paths = machinePaths(runnerMachine, { maxDepth: 4 });
+  it.each([false, true])("keeps its invariants on every representative path (sticky demo: %s)", (stickyDemo) => {
+    const definition = stickyDemo
+      ? {
+          ...runnerMachine,
+          initial: runnerInitial([false, true], {
+            highlights: true,
+            resumeAt: 0,
+            demos: [true, true],
+          }),
+        }
+      : runnerMachine;
+    const paths = machinePaths(definition, { maxDepth: 4 });
     expect(new Set(paths.map((p) => p.state.value))).toEqual(
       new Set(["intro", "active", "hinting", "completing", "finished", "closed"]),
     );
