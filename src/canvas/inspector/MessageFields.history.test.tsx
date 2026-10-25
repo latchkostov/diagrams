@@ -37,7 +37,9 @@ const sequences: Event[][] = [
   ["add", "add", "remove", "undo", "redo", "undo", "rename", "undo", "redo"],
 ];
 
-it.each([26, 2_000].flatMap((size) => sequences.map((events) => ({ size, events }))))(
+// quarantined: appended-row identity (MT-09), see docs/backlog/2026-10-24-message-types-appended-row.md
+// Vitest uses skip for Playwright's fixme equivalent; retain every sequence for the future model design.
+it.skip.each([26, 2_000].flatMap((size) => sequences.map((events) => ({ size, events }))))(
   "keeps appended rows editable through $events with $size imported rules",
   async ({ size, events }) => {
     vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);

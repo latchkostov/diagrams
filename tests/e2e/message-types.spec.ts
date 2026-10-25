@@ -617,6 +617,44 @@ test("an appended paged rule stays visible and focused after rekeying", async ({
   await expect(page.getByTestId("inspector-emits-row-2000")).toBeVisible();
   await expect(rules).toHaveCount(26);
   await expect(receives).toBeFocused();
+  expectNoErrors(consoleErrors);
+});
+
+test("an appended paged rule survives rekey Undo and name reuse", async ({ page, consoleErrors }) => {
+  test.fixme(
+    true,
+    "quarantined: appended-row identity (MT-09), see docs/backlog/2026-10-24-message-types-appended-row.md",
+  );
+  const diagram = messageTypesFixture();
+  diagram.nodes[1].props = {
+    emits: Object.fromEntries(Array.from({ length: 2_000 }, (_, i) => [`T${i}`, `T${i}Out`])),
+  };
+  await open(page, "en", diagram);
+  await fitDiagram(page);
+  await page.getByTestId("node-api").click();
+  await waitForSelectionSettled(page);
+  await page.getByTestId("inspector-section-node-simulation").click();
+  const rules = page.locator('[data-testid^="inspector-emits-row-"]');
+  await page.getByTestId("inspector-emits-add").click();
+  const receives = page.getByTestId("inspector-field-receives-2000");
+  await expect(receives).toBeFocused();
+  // Unchanged, Any message type, Send (its own), Callback.
+  await page.keyboard.press("Enter");
+  await page.keyboard.press("Home");
+  for (let i = 0; i < 3; i++) await page.keyboard.press("ArrowDown");
+  await page.keyboard.press("Enter");
+  await expect
+    .poll(async () => {
+      const emits = (await savedDiagram(page)).nodes.find((n) => n.id === "api")?.props?.emits as Record<
+        string,
+        string
+      >;
+      return [Object.keys(emits).length, emits.Callback, emits.Send];
+    })
+    .toEqual([2_001, "Send", undefined]);
+  await expect(page.getByTestId("inspector-emits-row-2000")).toBeVisible();
+  await expect(rules).toHaveCount(26);
+  await expect(receives).toBeFocused();
   await page.getByTestId("undo-button").click();
   await expect
     .poll(

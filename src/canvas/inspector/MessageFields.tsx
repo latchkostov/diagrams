@@ -131,10 +131,8 @@ export function NodeMessages({
   const rekeyed = useRef<string | undefined>(undefined);
   // Imported maps can hold thousands of rules: render a page at a time.
   const [shownRules, setShownRules] = useState(RULE_PAGE);
-  // Rules added here render after the current page (the page itself never grows to reach them).
-  // History restores immutable emits objects. Associate appended rows with each saved snapshot, so reusing
-  // an old name in a different row cannot steal its identity. Weak keys expire with discarded history.
-  const [added] = useState(() => new WeakMap<object, ReadonlySet<string>>());
+  // A rule added here renders after the current page (the page itself never grows to reach it).
+  const [added, setAdded] = useState<string>();
   useLayoutEffect(() => {
     const input = rekeyed.current;
     const target = input === undefined ? null : ruleControls.current.get(input)?.querySelector("button");
@@ -160,20 +158,15 @@ export function NodeMessages({
       : emits && typeof emits === "object" && !Array.isArray(emits)
         ? Object.entries(emits).filter((entry): entry is [string, string] => typeof entry[1] === "string")
         : [];
-  const addedInputs = (emits && typeof emits === "object" ? added.get(emits) : undefined) ?? new Set<string>();
-  const save = (next: [string, string][], appended: ReadonlySet<string> = addedInputs) => {
-    const nextEmits =
-      next.length === 1 && next[0][0] === "*" ? next[0][1] : next.length ? Object.fromEntries(next) : undefined;
-    if (nextEmits && typeof nextEmits === "object")
-      added.set(nextEmits, new Set(next.map(([key]) => key).filter((key) => appended.has(key))));
+  const save = (next: [string, string][]) =>
     editor.setNodeProps(
       nodeId,
       {
-        emits: nextEmits,
+        emits:
+          next.length === 1 && next[0][0] === "*" ? next[0][1] : next.length ? Object.fromEntries(next) : undefined,
       },
       bulkStep("message-emits"),
     );
-  };
   const remove = (input: string) => {
     const next = rows.filter(([key]) => key !== input);
     save(next);
@@ -195,7 +188,8 @@ export function NodeMessages({
   const unassigned = incoming.filter((type) => !assigned.has(type));
   const vocabulary = [...new Set([...arriving, ...types.known])];
   const page = Math.min(shownRules, rows.length);
-  const visible = rows.flatMap(([key], i) => (i < page || addedInputs.has(key) ? [i] : []));
+  const addedAt = added === undefined ? -1 : rows.findIndex(([key]) => key === added);
+  const visible = [...Array(page).keys(), ...(addedAt >= page ? [addedAt] : [])];
   const remaining = rows.length - visible.length;
   // Message is the simulation default type, diagram data rather than translated UI copy.
   const defaultType = node.label || "Message";
@@ -234,10 +228,9 @@ export function NodeMessages({
               onChange={(value) => {
                 if (!value[0] || assigned.has(value[0])) return;
                 rekeyed.current = value[0];
-                save(
-                  rows.map((row, j) => (j === i ? [value[0], output] : row)),
-                  new Set([...addedInputs].map((key) => (key === input ? value[0] : key))),
-                );
+                // A rule appended after the page keeps its place under its new incoming type.
+                if (input === added) setAdded(value[0]);
+                save(rows.map((row, j) => (j === i ? [value[0], output] : row)));
               }}
             />
             <TypePicker
@@ -286,10 +279,8 @@ export function NodeMessages({
           const input = arriving.find((type) => !assigned.has(type)) ?? "*";
           // The Add button may disable itself: continue at the new rule once it is committed (policy row I5).
           rekeyed.current = input;
-          save(
-            [...rows, [input, input === "*" ? (arriving[0] ?? "Message") : input]],
-            new Set([...addedInputs, input]),
-          );
+          setAdded(input);
+          save([...rows, [input, input === "*" ? (arriving[0] ?? "Message") : input]]);
         }}
       >
         {t("messageTypes.addRule")}
