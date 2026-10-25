@@ -1,0 +1,153 @@
+{
+  "trace": { "rootId": 1, "type": "Partner client", "origin": "partner", "startedAt": 0, "done": true, "partial": false, "truncated": false, "steps": 12, "endedAt": 410 },
+  "steps": [
+    { "t": 0, "kind": "emit", "id": 1, "type": "Partner client", "node": "partner" },
+    { "t": 0, "kind": "done", "id": 1, "type": "Partner client", "node": "partner" },
+    { "t": 0, "kind": "send", "id": 1, "type": "Partner client", "node": "partner", "edge": "partner-limiter", "via": "message", "until": 200 },
+    { "t": 200, "kind": "arrive", "id": 1, "type": "Partner client", "node": "limiter", "edge": "partner-limiter" },
+    { "t": 200, "kind": "send", "id": 1, "type": "Partner client", "node": "limiter", "edge": "partner-limiter", "via": "reply", "until": 400 },
+    { "t": 200, "kind": "done", "id": 1, "type": "Partner client", "node": "limiter" },
+    { "t": 200, "kind": "send", "id": 1, "type": "Partner client", "node": "limiter", "edge": "limiter-api", "via": "message", "until": 400 },
+    { "t": 400, "kind": "arrive", "id": 1, "type": "Partner client", "node": "api", "edge": "limiter-api" },
+    { "t": 400, "kind": "start", "id": 1, "type": "Partner client", "node": "api" },
+    { "t": 410, "kind": "send", "id": 1, "type": "Partner client", "node": "api", "edge": "limiter-api", "via": "reply", "until": 610 },
+    { "t": 410, "kind": "done", "id": 1, "type": "Partner client", "node": "api" },
+    { "t": 410, "kind": "end", "id": 1, "type": "Partner client", "node": "api", "reason": "consumed" }
+  ],
+  "journey": {
+    "rootId": 1,
+    "type": "Partner client",
+    "origin": "partner",
+    "startedAt": 0,
+    "totalMs": 410,
+    "done": true,
+    "partial": false,
+    "truncated": false,
+    "rows": [
+      { "key": "0", "kind": "origin", "t": 0, "id": 1, "type": "Partner client", "node": "partner", "copy": false },
+      { "key": "3", "kind": "hop", "t": 200, "id": 1, "type": "Partner client", "node": "limiter", "from": "partner", "edge": "partner-limiter", "sync": true, "latencyMs": 200, "waitMs": 0, "travelMs": 200, "renamed": false, "copy": false },
+      { "key": "7", "kind": "hop", "t": 400, "id": 1, "type": "Partner client", "node": "api", "from": "limiter", "edge": "limiter-api", "sync": true, "latencyMs": 200, "waitMs": 0, "travelMs": 200, "renamed": false, "copy": false }
+    ],
+    "visits": [
+      { "id": 1, "node": "partner", "at": 0, "done": 0, "left": 0 },
+      { "id": 1, "node": "limiter", "at": 200, "done": 200, "left": 200 },
+      { "id": 1, "node": "api", "at": 400, "start": 400, "done": 410 }
+    ],
+    "ids": [1],
+    "copies": 0,
+    "retries": 0,
+    "failures": 0,
+    "deadLettered": 0,
+    "dropped": 0,
+    "blocked": 0,
+    "kept": [],
+    "nodes": ["partner", "limiter", "api"],
+    "edges": ["partner-limiter", "limiter-api"],
+    "rowOf": { "0": "0", "3": "3", "7": "7" }
+  },
+  "sequence": {
+    "title": "Partner client #1",
+    "summary": "410 ms end to end",
+    "participants": [
+      { "id": "partner", "label": "Partner client" },
+      { "id": "limiter", "label": "Rate limiter" },
+      { "id": "api", "label": "Catalog API" }
+    ],
+    "items": [
+      { "kind": "arrow", "t": 0, "until": 200, "from": "partner", "to": "limiter", "style": "sync", "label": "Partner client", "id": 1, "type": "Partner client" },
+      { "kind": "arrow", "t": 200, "until": 400, "from": "limiter", "to": "partner", "style": "reply", "label": "reply", "id": 1, "type": "Partner client" },
+      { "kind": "arrow", "t": 200, "until": 400, "from": "limiter", "to": "api", "style": "sync", "label": "Partner client", "id": 1, "type": "Partner client" },
+      { "kind": "arrow", "t": 410, "until": 610, "from": "api", "to": "limiter", "style": "reply", "label": "reply", "id": 1, "type": "Partner client" }
+    ],
+    "totalMs": 410,
+    "done": true,
+    "partial": false,
+    "truncated": false
+  },
+  "mermaidPlain": "---\ntitle: \"Partner client #1 · 410 ms end to end\"\n---\nsequenceDiagram\n  participant partner as Partner client\n  participant limiter as Rate limiter\n  participant api as Catalog API\n  partner->>limiter: Partner client (+0.00 s)\n  limiter-->>partner: reply (+0.20 s)\n  limiter->>api: Partner client (+0.20 s)\n  api-->>limiter: reply (+0.41 s)\n",
+  "svg": {
+    "light": { "sha256": "59d9da355ad9626c19f8364905e63306da4ae16c69786bd8f97790391f07687d", "bytes": 5696, "width": 532, "height": 362, "headerHeight": 142 },
+    "dark": { "sha256": "3f28d2c34a74444cc08b63743e035fa094de2dde2e94730e07c95f692284b1b2", "bytes": 5695, "width": 532, "height": 362, "headerHeight": 142 }
+  },
+  "slowMotion": {
+    "rootId": 1,
+    "type": "Partner client",
+    "origin": "partner",
+    "beats": [
+      {
+        "kind": "establish",
+        "msg": 1,
+        "type": "Partner client",
+        "node": "partner",
+        "anchor": { "edge": "partner-limiter", "end": 0 },
+        "start": 0,
+        "duration": 800,
+        "realFrom": 0,
+        "realTo": 0,
+        "caption": "Partner client sends Partner client",
+        "rowKey": "0",
+        "i": 0,
+        "color": "#e09a26",
+        "tone": "plain"
+      },
+      { "kind": "travel", "msg": 1, "type": "Partner client", "edge": "partner-limiter", "reverse": false, "start": 800, "duration": 1000, "realFrom": 0, "realTo": 200, "caption": "Partner client", "tone": "plain", "i": 1, "color": "#e09a26", "rowKey": "3" },
+      {
+        "kind": "process",
+        "msg": 1,
+        "type": "Partner client",
+        "node": "limiter",
+        "anchor": { "edge": "partner-limiter", "end": 1 },
+        "start": 1800,
+        "duration": 600,
+        "realFrom": 200,
+        "realTo": 200,
+        "caption": "Rate limiter · processing",
+        "i": 2,
+        "color": "#e09a26",
+        "tone": "plain",
+        "short": "processing"
+      },
+      { "kind": "reply", "msg": 1, "type": "Partner client", "edge": "partner-limiter", "reverse": true, "start": 2400, "duration": 600, "realFrom": 200, "realTo": 400, "i": 3, "color": "#e09a26", "tone": "plain" },
+      { "kind": "travel", "msg": 1, "type": "Partner client", "edge": "limiter-api", "reverse": false, "start": 2400, "duration": 1000, "realFrom": 200, "realTo": 400, "caption": "Partner client", "tone": "plain", "i": 4, "color": "#e09a26", "rowKey": "7" },
+      {
+        "kind": "process",
+        "msg": 1,
+        "type": "Partner client",
+        "node": "api",
+        "anchor": { "edge": "limiter-api", "end": 1 },
+        "start": 3400,
+        "duration": 656.7939019774532,
+        "realFrom": 400,
+        "realTo": 410,
+        "caption": "Catalog API · processing · 10 ms",
+        "i": 5,
+        "color": "#e09a26",
+        "tone": "plain",
+        "short": "processing · 10 ms"
+      },
+      { "kind": "reply", "msg": 1, "type": "Partner client", "edge": "limiter-api", "reverse": true, "start": 4056.793901977453, "duration": 600, "realFrom": 410, "realTo": 610, "i": 6, "color": "#e09a26", "tone": "plain" },
+      { "kind": "end", "msg": 1, "type": "Partner client", "node": "api", "start": 4456.793901977453, "duration": 1200, "realFrom": 410, "realTo": 410, "caption": "Done · 410 ms", "tone": "done", "i": 7, "color": "#e09a26" }
+    ],
+    "duration": 5656.793901977453,
+    "realTotal": 410,
+    "stops": [0, 800, 2400, 4457],
+    "nodes": ["partner", "limiter", "api"],
+    "edges": ["partner-limiter", "limiter-api"],
+    "hiddenCopies": 0,
+    "unfinished": false,
+    "summary": "Done · 410 ms",
+    "reduced": false,
+    "rowStart": { "0": 0, "3": 800, "7": 2400 }
+  },
+  "slowMotionReduced": {
+    "duration": 9000,
+    "beats": [
+      ["establish", 0, 1500],
+      ["travel", 1500, 1500],
+      ["process", 3000, 1500],
+      ["travel", 4500, 1500],
+      ["process", 6000, 1500],
+      ["end", 7500, 1500]
+    ]
+  }
+}

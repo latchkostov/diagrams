@@ -1,0 +1,10 @@
+{
+  "viewport": "translate(40px, 379.22px) scale(1.2439)",
+  "nodes": {
+    "partner": { "kind": "node", "box": "translate(0px, 0px) 220×72", "text": "Partner client User" },
+    "limiter": { "kind": "node", "box": "translate(300px, 0px) 220×72", "text": "Rate limiter Rate Limiter" },
+    "api": { "kind": "node", "box": "translate(600px, 0px) 220×72", "text": "Catalog API Service" }
+  },
+  "edges": { "partner-limiter": "M220,36 L300,36", "limiter-api": "M520,36 L600,36" },
+  "labels": {}
+}

@@ -1,0 +1,31 @@
+{
+  "ran": [
+    "dead-letter",
+    "no-reader",
+    "sync-cycle",
+    "message-loop",
+    "sync-chain",
+    "shared-database",
+    "entry-gateway",
+    "capacity",
+    "blocked-threads",
+    "scaling-blind",
+    "call-timeout",
+    "retry-backoff",
+    "retry-budget",
+    "retry-idempotency",
+    "retry-layers",
+    "call-breaker",
+    "queue-limit",
+    "retry-storm",
+    "single-point",
+    "secret-identity",
+    "schema-registry"
+  ],
+  "off": [],
+  "findings": [
+    { "id": "capacity:limiter", "rule": "capacity", "severity": "warning", "target": "limiter", "elements": ["limiter"] }
+  ],
+  "ignored": [],
+  "fixes": {}
+}

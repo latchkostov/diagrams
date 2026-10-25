@@ -1,0 +1,73 @@
+{
+  "layout": {
+    "status": 0,
+    "stdout": "<tmp>/laid.json: placed 3 nodes.\n",
+    "nodes": { "partner": [40, 40], "limiter": [400, 40], "api": [760, 40] },
+    "groups": {}
+  },
+  "shareLink": {
+    "status": 0,
+    "prefix": "https://www.livediagrams.dev/#d=",
+    "decoded": { "sha256": "1bd07d8655da70e305fc33f5a5298934e2c8189938b9a455db846302ea79836a", "bytes": 911 },
+    "sameAsFile": true,
+    "warned": false
+  },
+  "exportHtml": {
+    "status": 0,
+    "stdout": "<tmp>/export.html (<size>)\nPrivate: it works offline and makes no network requests, and only people who have the file can open it. Share it where your team already controls access.\n",
+    "stderr": "",
+    "payload": {
+      "version": 1,
+      "diagram": {
+        "format": "diagrams/v2",
+        "title": "An inline request rate limit",
+        "description": "A fictional partner sends 20 requests/s through a 10 requests/s token bucket. Go Live to see rejections within seconds, then double-click the limiter and change Rate limit in Simulation.",
+        "planning": { "revision": "p3" },
+        "nodes": [
+          {
+            "id": "partner",
+            "stencil": "client.user",
+            "label": "Partner client",
+            "x": 0,
+            "y": 0,
+            "props": { "ratePerSec": 20 }
+          },
+          {
+            "id": "limiter",
+            "stencil": "generic.rate-limiter",
+            "label": "Rate limiter",
+            "x": 300,
+            "y": 0,
+            "props": {
+              "latencyMs": 0,
+              "jitter": 0,
+              "api": {
+                "quotas": [
+                  { "id": "local-rate", "unit": "requests", "amount": 10, "windowMs": 1000, "algorithm": "token-bucket", "burst": 10 }
+                ]
+              }
+            }
+          },
+          {
+            "id": "api",
+            "stencil": "generic.service",
+            "label": "Catalog API",
+            "x": 600,
+            "y": 0,
+            "props": { "latencyMs": 10, "jitter": 0 }
+          }
+        ],
+        "edges": [
+          { "id": "partner-limiter", "from": "partner", "to": "limiter", "kind": "sync" },
+          { "id": "limiter-api", "from": "limiter", "to": "api", "kind": "sync" }
+        ]
+      },
+      "icons": {
+        "client-user": { "sha256": "dffa37eace31e4c87ed5e2b0f49618146f847912a7b23f4d30271aeed9508da0", "bytes": 418 },
+        "generic-rate-limiter": { "sha256": "6622811a3ad16c0caa46d1592d3144da878bb3266101850e7a1c0ec83f57ae17", "bytes": 379 },
+        "generic-service": { "sha256": "3fe5e72fd8c35eb0ef93e590677e2e7ffb6b3d31449533176a4e82fe9b6d0add", "bytes": 579 }
+      },
+      "options": { "theme": "dark", "startSimulation": null, "exportedOn": "2026-01-01" }
+    }
+  }
+}

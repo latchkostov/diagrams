@@ -1947,5 +1947,6 @@
   "staticSkill.back": "← Kembali ke Live Diagrams",
   "staticSkill.copy": "Salin",
   "staticSkill.copied": "Disalin",
-  "staticSkill.selectCopy": "Pilih dan salin"
+  "staticSkill.selectCopy": "Pilih dan salin",
+  "gallery.inlineRateLimitSummary": "Trafik mitra melewati kuota permintaan yang dapat diedit"
 }

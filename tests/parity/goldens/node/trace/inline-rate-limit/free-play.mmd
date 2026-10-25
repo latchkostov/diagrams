@@ -1,0 +1,11 @@
+---
+title: "Partner client #1 · 410 ms end to end"
+---
+sequenceDiagram
+  participant partner as Partner client
+  participant limiter as Rate limiter
+  participant api as Catalog API
+  partner->>limiter: Partner client (+0.00 s)
+  limiter-->>partner: reply (+0.20 s)
+  limiter->>api: Partner client (+0.20 s)
+  api-->>limiter: reply (+0.41 s)

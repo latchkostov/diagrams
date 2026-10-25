@@ -63,6 +63,10 @@ async function exportHeldSvg(page: Page, id: LazySurfaceId) {
     await page.getByTestId("export-image").click();
     await page.getByTestId("image-options-toggle").click();
     await page.getByTestId("image-format-svg").click();
+    await expect(page.getByTestId("image-format-svg")).toHaveAttribute(
+      "title",
+      "Recordings capture Live narration; SVG exports don't include it.",
+    );
     const download = page.waitForEvent("download").then((file) => {
       downloaded = true;
       return file;
@@ -81,12 +85,12 @@ async function exportHeldSvg(page: Page, id: LazySurfaceId) {
   }
 }
 
-// LL-04: the awaited narration currently lives outside the exported viewport. Keep the product
-// regression visible without changing rendering in this tests-only lane.
-test.fixme("live.note: exported SVG includes awaited narration", async ({ page }) => {
+// LL-04 owner decision: narration belongs to recordings, outside the SVG viewport.
+test("live.note: exported SVG excludes awaited narration", async ({ page }) => {
   const svg = await exportHeldSvg(page, "live.note");
-  expect(svg).toContain('data-testid="live-note-text"');
-  expect(svg).toContain("Follow a request through the decision service.");
+  await expect(page.getByTestId("live-note-text")).toHaveText("Follow a request through the decision service.");
+  expect(svg).not.toContain('data-testid="live-note-text"');
+  expect(svg).not.toContain("Follow a request through the decision service.");
 });
 
 for (const [id, name, source, policy] of lazySurfaces) {

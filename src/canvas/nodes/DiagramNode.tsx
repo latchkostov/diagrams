@@ -37,7 +37,7 @@ function soleSelectedNode(s: ReactFlowState): string | null {
 const never = () => false;
 
 /**
- * React Flow wrapper: handles around whichever body variant is selected. A double-click names it in the inspector.
+ * React Flow wrapper: handles around the body variant. Double-click opens the mode machine's Properties intent.
  * One handle per side, all `source` type: the canvas runs in loose connection mode, so a drag
  * can start or end on any side. Edges pick their sides from geometry (see edges/routing.ts).
  */
@@ -51,7 +51,7 @@ function DiagramNodeImpl({
 }: NodeProps<DiagramFlowNode>) {
   useLocale();
   const { nodeVariant } = useSettings();
-  const { rename, openDoc, grow, presenting } = useDiagram();
+  const { nodeDoubleClick, openDoc, grow, presenting } = useDiagram();
   const connectPort = useConnectPort(id);
   const single = useStore(selected && grow ? (s: ReactFlowState) => soleSelectedNode(s) === id : never);
   const stencil = getStencil(data.stencil);
@@ -84,7 +84,7 @@ function DiagramNodeImpl({
       data-testid={`node-${id}`}
       onDoubleClick={(e) => {
         e.stopPropagation();
-        rename?.({ kind: "node", id });
+        nodeDoubleClick?.(id);
       }}
       style={{ "--accent": stencil.accent } as CSSProperties}
     >

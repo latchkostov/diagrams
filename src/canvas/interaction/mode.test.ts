@@ -1,11 +1,35 @@
 import { describe, expect, it } from "vitest";
-import { machinePaths } from "../../lib/machine";
+import { machinePaths, machineStep } from "../../lib/machine";
 import { createInteractionController, type InteractionPort } from "./controller";
 import { editorModeMachine, editorModeStep, initialEditorMode, type EditorModeEvent } from "./mode";
 
 const play = (events: EditorModeEvent[]) => events.reduce(editorModeStep, initialEditorMode);
 
 describe("editor mode", () => {
+  it.each(["off", "playing", "paused"] as const)("node double-click decides Properties from Live region %s", (live) => {
+    const state = { ...initialEditorMode, live };
+    const result = machineStep(editorModeMachine, state, { type: "node.doubleClicked", target: "n1" });
+    expect(result.state).toMatchObject({
+      value: live === "off" ? "naming" : "editing",
+      target: live === "off" ? "n1" : null,
+    });
+    expect(result.commands).toEqual([
+      { type: "node.properties", target: "n1", ...(live === "off" ? { field: "label" } : {}) },
+    ]);
+    const port: InteractionPort = {
+      active: () => null,
+      resolve: () => ({ state: "gone" }),
+      focus: () => false,
+      connected: () => true,
+      publish: () => {},
+    };
+    const controller = createInteractionController(port, { frame: () => () => {}, microtask: (run) => run() });
+    controller.live(live);
+    const opened: (string | undefined)[] = [];
+    controller.nodeDoubleClick("n1", (field) => opened.push(field));
+    expect(opened).toEqual([live === "off" ? "label" : undefined]);
+    expect(controller.mode).toMatchObject(result.state);
+  });
   it("enters naming before the field downloads and finishes when pending input ends", () => {
     const pending = play([{ type: "naming.requested", target: "e" }]);
     expect(pending).toMatchObject({ value: "naming", target: "e" });

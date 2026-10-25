@@ -1947,5 +1947,6 @@
   "staticSkill.back": "← Tilbage til Live Diagrams",
   "staticSkill.copy": "Kopiér",
   "staticSkill.copied": "Kopieret",
-  "staticSkill.selectCopy": "Vælg og kopiér"
+  "staticSkill.selectCopy": "Vælg og kopiér",
+  "gallery.inlineRateLimitSummary": "En partners trafik møder en redigerbar anmodningskvote"
 }

@@ -1947,5 +1947,6 @@
   "staticSkill.back": "← Takaisin Live Diagramsiin",
   "staticSkill.copy": "Kopioi",
   "staticSkill.copied": "Kopioitu",
-  "staticSkill.selectCopy": "Valitse ja kopioi"
+  "staticSkill.selectCopy": "Valitse ja kopioi",
+  "gallery.inlineRateLimitSummary": "Kumppanin liikenne kohtaa muokattavan pyyntökiintiön"
 }

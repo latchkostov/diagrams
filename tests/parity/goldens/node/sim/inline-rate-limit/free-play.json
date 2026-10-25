@@ -1,0 +1,199 @@
+{
+  "run": { "time": 60000, "scale": 1, "traffic": true },
+  "checkpoints": [
+    {
+      "atMs": 0,
+      "inSystem": 0,
+      "nodes": {
+        "partner": { "replicas": [1, 1, 0] },
+        "limiter": { "replicas": [1, 1, 0] },
+        "api": { "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 10000,
+      "inSystem": 6,
+      "nodes": {
+        "partner": { "processed": 200, "throughput": 20.40106029531822, "replicas": [1, 1, 0] },
+        "limiter": {
+          "processed": 107,
+          "rejected": 89,
+          "throughput": 9.946316312184791,
+          "rejectionReasons": { "local-rate: requests": 89 },
+          "replicas": [1, 1, 0]
+        },
+        "api": { "processed": 105, "throughput": 10.046344368445974, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 20000,
+      "inSystem": 6,
+      "nodes": {
+        "partner": { "processed": 400, "throughput": 20.40198650202273, "replicas": [1, 1, 0] },
+        "limiter": {
+          "processed": 207,
+          "rejected": 189,
+          "throughput": 9.946021570512213,
+          "rejectionReasons": { "local-rate: requests": 189 },
+          "replicas": [1, 1, 0]
+        },
+        "api": { "processed": 205, "throughput": 10.04598075211116, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 30000,
+      "inSystem": 6,
+      "nodes": {
+        "partner": { "processed": 600, "throughput": 20.401986544072436, "replicas": [1, 1, 0] },
+        "limiter": {
+          "processed": 307,
+          "rejected": 289,
+          "throughput": 9.94602155713096,
+          "rejectionReasons": { "local-rate: requests": 289 },
+          "replicas": [1, 1, 0]
+        },
+        "api": { "processed": 305, "throughput": 10.045980735602997, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 40000,
+      "inSystem": 6,
+      "nodes": {
+        "partner": { "processed": 800, "throughput": 20.401986544074276, "replicas": [1, 1, 0] },
+        "limiter": {
+          "processed": 407,
+          "rejected": 389,
+          "throughput": 9.94602155713037,
+          "rejectionReasons": { "local-rate: requests": 389 },
+          "replicas": [1, 1, 0]
+        },
+        "api": { "processed": 405, "throughput": 10.045980735602267, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 50000,
+      "inSystem": 6,
+      "nodes": {
+        "partner": { "processed": 1000, "throughput": 20.401986544074276, "replicas": [1, 1, 0] },
+        "limiter": {
+          "processed": 507,
+          "rejected": 489,
+          "throughput": 9.94602155713037,
+          "rejectionReasons": { "local-rate: requests": 489 },
+          "replicas": [1, 1, 0]
+        },
+        "api": { "processed": 505, "throughput": 10.045980735602267, "replicas": [1, 1, 0] }
+      }
+    },
+    {
+      "atMs": 60000,
+      "inSystem": 6,
+      "nodes": {
+        "partner": { "processed": 1200, "throughput": 20.401986544074276, "replicas": [1, 1, 0] },
+        "limiter": {
+          "processed": 607,
+          "rejected": 589,
+          "throughput": 9.94602155713037,
+          "rejectionReasons": { "local-rate: requests": 589 },
+          "replicas": [1, 1, 0]
+        },
+        "api": { "processed": 605, "throughput": 10.045980735602267, "replicas": [1, 1, 0] }
+      }
+    }
+  ],
+  "final": {
+    "atMs": 60000,
+    "inSystem": 6,
+    "real": {
+      "partner": { "processed": 1200, "throughput": 20.401986544074276, "replicas": [1, 1, 0] },
+      "limiter": {
+        "processed": 607,
+        "rejected": 589,
+        "throughput": 9.94602155713037,
+        "rejectionReasons": { "local-rate: requests": 589 },
+        "replicas": [1, 1, 0]
+      },
+      "api": { "processed": 605, "throughput": 10.045980735602267, "replicas": [1, 1, 0] }
+    },
+    "edges": { "partner-limiter": 1196, "limiter-api": 605 }
+  },
+  "events": {
+    "total": 4802,
+    "byKind": { "process": 2412, "deliver": 1801, "reject": 589 },
+    "byNode": {
+      "partner": { "process": 1200 },
+      "limiter": { "deliver": 1196, "process": 607, "reject": 589 },
+      "api": { "deliver": 605, "process": 605 }
+    },
+    "perSecond": [
+      "4c2336ad406d",
+      "5cf7ae4c326d",
+      "0ebb6dea3ea7",
+      "bbc47acb830e",
+      "1cae1be65657",
+      "d220cf838502",
+      "3e9ce0ce36d3",
+      "ea403c9deb30",
+      "d3c64dbd3a22",
+      "f1469341e130",
+      "4fb0c4781a3a",
+      "cd9646ed066d",
+      "03ca4df65f0d",
+      "c70face4eeee",
+      "513eca2467c4",
+      "d7197255ea85",
+      "e4650e36ada7",
+      "9df7a80b51fb",
+      "812469221192",
+      "0ec16e822851",
+      "d393ffafb5e3",
+      "bb684bb2bc78",
+      "572c18dbd29d",
+      "f8c1db3a95d1",
+      "f3b5d365cf91",
+      "a16f011b2785",
+      "204cf6b7e2a6",
+      "d4936857f21f",
+      "f83fb8448cf9",
+      "4ea9e4b700eb",
+      "cab5fa756824",
+      "6a257ec6f1c0",
+      "8a2ac7ebd1f6",
+      "26a9f2e4bcfe",
+      "bac3064f4e01",
+      "e279ff5e0db7",
+      "5c51cef12368",
+      "ee4f91bfdf9b",
+      "9668300f2a60",
+      "03aef54aeccd",
+      "7f23d0cb016d",
+      "cd328446ee69",
+      "0c7d0bbe6a35",
+      "ce31d9297e4a",
+      "ca6619226276",
+      "c06e62acfc66",
+      "fb405a2e26d2",
+      "65f939f54de6",
+      "5339fa2f0a06",
+      "b656177019fa",
+      "58623351af68",
+      "664cc1b59339",
+      "09d4e3db9dde",
+      "909bb3e862ed",
+      "085984862094",
+      "b46b57db76a7",
+      "2427dfd07e10",
+      "f4ea147e96c7",
+      "dfb74036790d",
+      "91c135f6c8ea",
+      "00f2e6190e05"
+    ]
+  },
+  "notes": [],
+  "latency": {
+    "journeys": { "done": 1194, "retried": 0, "deadLettered": 0, "dropped": 0, "blocked": 0, "partial": 0, "truncated": 0, "rejected": 589 },
+    "endToEndMs": { "count": 1194, "min": 200, "mean": 306.4070351758794, "p50": 410, "p90": 410, "max": 410 },
+    "waitMs": { "api": { "count": 605, "min": 0, "mean": 0, "p50": 0, "p90": 0, "max": 0 } },
+    "processMs": { "api": { "count": 605, "min": 10, "mean": 10, "p50": 10, "p90": 10, "max": 10 } }
+  }
+}

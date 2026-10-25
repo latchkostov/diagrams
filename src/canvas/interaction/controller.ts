@@ -6,7 +6,14 @@ import { gestures, initialGestures } from "./gestures";
 import type { Gesture, GestureKind, GesturePreview, GestureEndReason } from "./types";
 import type { ReadoutLayer } from "./readoutLayer";
 import { cameraMenuKind, initialMenus, menus } from "./menus";
-import { editorModeStep, initialEditorMode, type EditorModeEvent, type EditorModeState } from "./mode";
+import { machineStep } from "../../lib/machine";
+import {
+  editorModeMachine,
+  editorModeStep,
+  initialEditorMode,
+  type EditorModeEvent,
+  type EditorModeState,
+} from "./mode";
 import type {
   ElementHandle,
   FocusCommand,
@@ -688,6 +695,14 @@ export function createInteractionController<P = unknown>(
       if (gestureState.active) next.dispatch({ type: "gesture", on: true });
     },
     /** An event for the focus policy; `then` hears whether the move it caused put focus somewhere. */
+    nodeDoubleClick(target: string, open: (field?: "label") => void) {
+      abandonRename("press");
+      const result = machineStep(editorModeMachine, mode, { type: "node.doubleClicked", target });
+      const previous = mode;
+      mode = result.state;
+      if (mode !== previous) for (const listener of modeListeners) listener(mode, previous);
+      for (const command of result.commands) open(command.field);
+    },
     dispatch(event: FocusEvent, then?: Done) {
       if (event.type === "naming.done") toMode({ type: "naming.done" });
       if (event.type === "selection.changed") {

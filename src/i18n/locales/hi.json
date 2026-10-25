@@ -1947,5 +1947,6 @@
   "staticSkill.back": "← Live Diagrams पर वापस जाएँ",
   "staticSkill.copy": "कॉपी करें",
   "staticSkill.copied": "कॉपी हो गया",
-  "staticSkill.selectCopy": "चुनें और कॉपी करें"
+  "staticSkill.selectCopy": "चुनें और कॉपी करें",
+  "gallery.inlineRateLimitSummary": "पार्टनर का ट्रैफ़िक संपादन योग्य अनुरोध कोटा से होकर गुज़रता है"
 }

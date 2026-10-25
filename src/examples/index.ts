@@ -191,6 +191,11 @@ const publicExamples: PublicExample[] = (
       summary: "Shared model tokens and payment rate limits",
     },
     {
+      slug: "inline-rate-limit",
+      theme: "data",
+      summary: msg("gallery.inlineRateLimitSummary"),
+    },
+    {
       slug: "vendor-edge-storefront",
       theme: "cloud",
       summary: "Fastly, Cloudflare WAF, R2, Cognito and Square",

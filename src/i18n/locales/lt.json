@@ -1947,5 +1947,6 @@
   "staticSkill.back": "← Grįžti į Live Diagrams",
   "staticSkill.copy": "Kopijuoti",
   "staticSkill.copied": "Nukopijuota",
-  "staticSkill.selectCopy": "Pažymėti ir kopijuoti"
+  "staticSkill.selectCopy": "Pažymėti ir kopijuoti",
+  "gallery.inlineRateLimitSummary": "Partnerio srautas susiduria su redaguojama užklausų kvota"
 }

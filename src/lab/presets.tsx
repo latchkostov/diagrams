@@ -1,4 +1,5 @@
 import handShapedLines from "../../tests/parity/corpus/hand-shaped-lines.diagram.json";
+import inlineRateLimit from "../examples/inline-rate-limit.json";
 import { waitingFixture } from "./waitingFixture";
 import { lazySurfacesFixture } from "./lazySurfacesFixture";
 import { inspectorLayoutFixture } from "./inspectorLayoutFixture";
@@ -598,6 +599,13 @@ const playgroundPresets: Preset[] = [
     title: "Typing and card growth",
     group: "Playground",
     diagram: () => typingFixture,
+  },
+  {
+    kind: "diagram",
+    id: "inline-rate-limit",
+    title: "Inline rate-limit Inspector",
+    group: "Playground",
+    diagram: () => inlineRateLimit as DiagramFile,
   },
   {
     kind: "render",

@@ -325,6 +325,7 @@ function CanvasInner({
     { name: string; seq: number; caret?: "end"; target?: string } | undefined
   >();
   const inspectorFocusDone = useRef(0);
+  const inspectorFocusSeq = useRef(0);
   const takeInspectorFocus = useCallback((seq: number) => {
     if (inspectorFocusDone.current === seq) return false;
     inspectorFocusDone.current = seq;
@@ -338,7 +339,8 @@ function CanvasInner({
       liveHandle.current?.session?.closePanel();
       setPref("inspector", true);
       setOpenedByHand((o) => ({ ...o, inspector: true }));
-      if (field) setInspectorFocus((f) => ({ name: field, seq: (f?.seq ?? 0) + 1, caret, target }));
+      if (field) setInspectorFocus({ name: field, seq: ++inspectorFocusSeq.current, caret, target });
+      else setInspectorFocus(undefined);
     },
     [setPref],
   );
@@ -890,6 +892,15 @@ function CanvasInner({
       setEditing: editGestures ? setEditing : () => {},
       annotationCommands: editGestures ? editor : undefined,
       rename: canOpenInspector ? renameIn : undefined,
+      nodeDoubleClick: canOpenInspector
+        ? (nodeId) =>
+            interaction.nodeDoubleClick(nodeId, (field) => {
+              setEditing(null);
+              setNaming(null);
+              editor.select({ nodeIds: [nodeId] });
+              openInspector(field, undefined, nodeId);
+            })
+        : undefined,
       openDoc: canOpenInspector
         ? (nodeId: string) => {
             setEditing(null);
@@ -918,6 +929,7 @@ function CanvasInner({
       growFromChip,
       editor,
       renameIn,
+      interaction,
       openInspector,
       boundaryResized,
     ],

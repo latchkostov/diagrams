@@ -1,0 +1,117 @@
+{
+  "text": {
+    "isError": false,
+    "output": "Diagram \"An inline request rate limit\" · direction LR · 3 nodes, 2 connections, 0 boundaries, 0 simulations\ndescription: \"A fictional partner sends 20 requests/s through a 10 requests/s token bucket. Go Live to see rejections within seconds, then double-click the limiter and change Rate limit in Simulation.\"\nnodes:\n  \"partner\" \"client.user\" (\"User\") \"Partner client\" props={\"ratePerSec\":20} arrivingTypes=[] capabilities=[{\"kind\":\"calls\",\"edge\":\"partner-limiter\",\"peer\":\"limiter\"}] explanation=undefined\n  \"limiter\" \"generic.rate-limiter\" (\"Rate Limiter\") \"Rate limiter\" props={\"latencyMs\":0,\"jitter\":0,\"api\":{\"quotas\":[{\"id\":\"local-rate\",\"unit\":\"requests\",\"amount\":10,\"windowMs\":1000,\"algorithm\":\"token-bucket\",\"burst\":10}]}} arrivingTypes=[\"Partner client\"] capabilities=[{\"kind\":\"calls\",\"edge\":\"limiter-api\",\"peer\":\"api\"}] explanation={\"managed\":\"api\",\"id\":\"limiter\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"capacity\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":10,\"offered\":20,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0,\"utilization\":2,\"growth\":10,\"contributors\":[{\"edge\":\"partner-limiter\",\"node\":\"partner\",\"label\":\"Partner client\",\"rate\":20}],\"target\":0.5,\"changes\":null,\"converged\":true}\n  \"api\" \"generic.service\" (\"Service\") \"Catalog API\" props={\"latencyMs\":10,\"jitter\":0} arrivingTypes=[\"Partner client\"] capabilities=[] explanation={\"id\":\"api\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":400,\"offered\":20,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0.01,\"utilization\":0.05,\"growth\":0,\"contributors\":[{\"edge\":\"limiter-api\",\"node\":\"limiter\",\"label\":\"Rate limiter\",\"rate\":20}],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\nconnections:\n  \"partner-limiter\" \"partner\" -> \"limiter\" sync carriedTypes=[\"Partner client\"]\n  \"limiter-api\" \"limiter\" -> \"api\" sync carriedTypes=[\"Partner client\"]"
+  },
+  "json": {
+    "isError": false,
+    "output": {
+      "title": "An inline request rate limit",
+      "description": "A fictional partner sends 20 requests/s through a 10 requests/s token bucket. Go Live to see rejections within seconds, then double-click the limiter and change Rate limit in Simulation.",
+      "direction": "LR",
+      "planning": { "revision": "p3" },
+      "nodes": [
+        {
+          "id": "partner",
+          "stencil": "client.user",
+          "label": "Partner client",
+          "x": 0,
+          "y": 0,
+          "props": { "ratePerSec": 20 },
+          "arrivingTypes": [],
+          "capabilities": [{ "kind": "calls", "edge": "partner-limiter", "peer": "limiter" }]
+        },
+        {
+          "id": "limiter",
+          "stencil": "generic.rate-limiter",
+          "label": "Rate limiter",
+          "x": 300,
+          "y": 0,
+          "props": {
+            "latencyMs": 0,
+            "jitter": 0,
+            "api": {
+              "quotas": [
+                { "id": "local-rate", "unit": "requests", "amount": 10, "windowMs": 1000, "algorithm": "token-bucket", "burst": 10 }
+              ]
+            }
+          },
+          "arrivingTypes": ["Partner client"],
+          "capabilities": [{ "kind": "calls", "edge": "limiter-api", "peer": "api" }],
+          "explanation": {
+            "managed": "api",
+            "id": "limiter",
+            "role": "processor",
+            "status": "up",
+            "reason": "capacity",
+            "evidence": "configured",
+            "unit": "req/s",
+            "capacity": 10,
+            "offered": 20,
+            "replicas": 1,
+            "baseReplicas": 1,
+            "omittedContributors": 0,
+            "activeReplicas": 1,
+            "assignments": [],
+            "slots": 4,
+            "seconds": 0,
+            "utilization": 2,
+            "growth": 10,
+            "contributors": [{ "edge": "partner-limiter", "node": "partner", "label": "Partner client", "rate": 20 }],
+            "target": 0.5,
+            "changes": null,
+            "converged": true
+          }
+        },
+        {
+          "id": "api",
+          "stencil": "generic.service",
+          "label": "Catalog API",
+          "x": 600,
+          "y": 0,
+          "props": { "latencyMs": 10, "jitter": 0 },
+          "arrivingTypes": ["Partner client"],
+          "capabilities": [],
+          "explanation": {
+            "id": "api",
+            "role": "processor",
+            "status": "up",
+            "reason": "throughput",
+            "evidence": "configured",
+            "unit": "req/s",
+            "capacity": 400,
+            "offered": 20,
+            "replicas": 1,
+            "baseReplicas": 1,
+            "omittedContributors": 0,
+            "activeReplicas": 1,
+            "assignments": [],
+            "slots": 4,
+            "seconds": 0.01,
+            "utilization": 0.05,
+            "growth": 0,
+            "contributors": [{ "edge": "limiter-api", "node": "limiter", "label": "Rate limiter", "rate": 20 }],
+            "target": 0.5,
+            "minimumReplicas": 1,
+            "targetReplicas": 1,
+            "changes": null,
+            "converged": true
+          }
+        }
+      ],
+      "edges": [
+        { "id": "partner-limiter", "from": "partner", "to": "limiter", "kind": "sync", "carriedTypes": ["Partner client"] },
+        { "id": "limiter-api", "from": "limiter", "to": "api", "kind": "sync", "carriedTypes": ["Partner client"] }
+      ],
+      "messageTypesComplete": true,
+      "groups": [],
+      "annotations": [],
+      "simulations": [],
+      "truncated": false
+    }
+  },
+  "focus": {
+    "isError": false,
+    "output": "Diagram \"An inline request rate limit\" · direction LR · 2 nodes, 1 connections, 0 boundaries, 0 simulations\ndescription: \"A fictional partner sends 20 requests/s through a 10 requests/s token bucket. Go Live to see rejections within seconds, then double-click the limiter and change Rate limit in Simulation.\"\nnodes:\n  \"partner\" \"client.user\" (\"User\") \"Partner client\" props={\"ratePerSec\":20} arrivingTypes=[] capabilities=[{\"kind\":\"calls\",\"edge\":\"partner-limiter\",\"peer\":\"limiter\"}] explanation=undefined\n  \"limiter\" \"generic.rate-limiter\" (\"Rate Limiter\") \"Rate limiter\" props={\"latencyMs\":0,\"jitter\":0,\"api\":{\"quotas\":[{\"id\":\"local-rate\",\"unit\":\"requests\",\"amount\":10,\"windowMs\":1000,\"algorithm\":\"token-bucket\",\"burst\":10}]}} arrivingTypes=[\"Partner client\"] capabilities=[{\"kind\":\"calls\",\"edge\":\"limiter-api\",\"peer\":\"api\"}] explanation={\"managed\":\"api\",\"id\":\"limiter\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"capacity\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":10,\"offered\":20,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":4,\"seconds\":0,\"utilization\":2,\"growth\":10,\"contributors\":[{\"edge\":\"partner-limiter\",\"node\":\"partner\",\"label\":\"Partner client\",\"rate\":20}],\"target\":0.5,\"changes\":null,\"converged\":true}\nconnections:\n  \"partner-limiter\" \"partner\" -> \"limiter\" sync carriedTypes=[\"Partner client\"]"
+  }
+}

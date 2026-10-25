@@ -1947,5 +1947,6 @@
   "staticSkill.back": "← Späť na Live Diagrams",
   "staticSkill.copy": "Kopírovať",
   "staticSkill.copied": "Skopírované",
-  "staticSkill.selectCopy": "Vybrať a kopírovať"
+  "staticSkill.selectCopy": "Vybrať a kopírovať",
+  "gallery.inlineRateLimitSummary": "Prevádzka partnera narazí na upraviteľnú kvótu požiadaviek"
 }

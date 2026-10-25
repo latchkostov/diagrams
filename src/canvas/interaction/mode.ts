@@ -13,7 +13,7 @@ import type { CanvasSurfaceKind } from "./types";
  *   editing  ── field.focused (another field) ──▶ field(name)     ── field.left ──▶ editing
  *
  * Live is a region of its own beside these (`live`: off, playing or paused): a menu opens in Live too, and a node is
- * named in Live's property sheet. The selection and the open annotation editor ride along as data, each commit. Nothing here moves focus or opens anything: the
+ * explicitly named in Live's property sheet; a node double-click opens Properties without naming. The selection and the open annotation editor ride along as data, each commit. Nothing here moves focus or opens anything: the
  * controller feeds it from the events it already decides (menus, gestures, focusin/focusout, naming.done) and from
  * Live's session (useLiveSessionState.ts), and the canvas behaves exactly as before.
  */
@@ -41,6 +41,7 @@ export type EditorModeEvent =
   | { type: "field.focused"; target?: string; field?: string }
   /** The name field was requested but cannot take focus yet. */
   | { type: "naming.requested"; target: string }
+  | { type: "node.doubleClicked"; target: string }
   /** Focus left the fields for the canvas, a button or nothing. */
   | { type: "field.left" }
   /** Enter or Esc in a name field (the focus policy's row N1 hears it too). */
@@ -79,7 +80,8 @@ const focused = (s: EditorModeState, e: EditorModeEvent): EditorModeState =>
 const settled = (s: EditorModeState): EditorModeState => ({ ...s, value: "editing", target: null, field: null });
 const isMenu = (e: EditorModeEvent) => e.type === "menu.opened" && e.kind !== "quickAdd" && e.kind !== "connected";
 
-type Row = Transition<EditorModeState, EditorModeEvent, never>;
+export type EditorModeCommand = { type: "node.properties"; target: string; field?: "label" };
+type Row = Transition<EditorModeState, EditorModeEvent, EditorModeCommand>;
 const named = (_s: EditorModeState, e: EditorModeEvent) => e.type === "field.focused" && !!e.target;
 const resumes = (value: "naming" | "field") => (s: EditorModeState) => s.resume?.value === value;
 /** The rows several modes share: a menu opening, a field taking focus, a menu or a gesture going back. */
@@ -99,7 +101,7 @@ const returns: Row[] = [
 const gestures: Row = { target: "gesture", reduce: into("gesture") };
 const finished: Row = { target: "editing", reduce: settled };
 
-export const editorModeMachine = defineMachine<EditorModeState, EditorModeEvent>({
+export const editorModeMachine = defineMachine<EditorModeState, EditorModeEvent, EditorModeCommand>({
   initial: initialEditorMode,
   states: ["editing", "menu", "quickAdd", "gesture", "naming", "field"],
   events: [
@@ -113,8 +115,24 @@ export const editorModeMachine = defineMachine<EditorModeState, EditorModeEvent>
     { type: "field.left" },
     { type: "naming.done" },
     { type: "naming.requested", target: "n1" },
+    { type: "node.doubleClicked", target: "n1" },
   ],
   on: {
+    "*": {
+      "node.doubleClicked": [
+        {
+          target: "editing",
+          guard: (s) => s.live !== "off",
+          reduce: (s) => ({ ...settled(s), resume: null }),
+          effects: (_s, e) => [{ type: "node.properties", target: e.target }],
+        },
+        {
+          target: "naming",
+          reduce: (s, e) => ({ ...s, value: "naming", target: e.target, field: null, resume: null }),
+          effects: (_s, e) => [{ type: "node.properties", target: e.target, field: "label" }],
+        },
+      ],
+    },
     editing: {
       "menu.opened": opens,
       "gesture.started": gestures,
