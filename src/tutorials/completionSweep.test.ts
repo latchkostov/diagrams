@@ -374,6 +374,8 @@ function sandbox(tutorial: Tutorial, { lateAdds = false, lateConnects = false, l
       edgeIds?: string[];
     }) => select([...nodeIds, ...groupIds.map((g) => GROUP_PREFIX + g), ...edgeIds]),
     applyDiagram: (next: DiagramFile) => write(structuredClone(next)),
+    deleteElements: ({ edgeIds = [] }: { edgeIds?: string[] }) =>
+      write({ ...diagram, edges: diagram.edges.filter((e) => !edgeIds.includes(e.id)) }),
     addStencil(stencil: string) {
       const node = newNode(stencil);
       commit(() => ({ ...diagram, nodes: [...diagram.nodes, node] }));
@@ -1411,6 +1413,40 @@ describe("completion regressions", () => {
         );
       },
     );
+
+  it.each(["upstream", "downstream", "both"] as const)(
+    "insert-on-edge: Skip preserves existing connection data (%s)",
+    async (halves) => {
+      const s = sandbox(insertOnEdge);
+      s.runner.send({ type: "start" });
+      const gateway = s.editor.addStencil("aws.api-gateway");
+      const pairs = [
+        ["app", gateway],
+        [gateway, "api"],
+      ];
+      const existing = pairs
+        .filter((_, index) => halves === "both" || index === (halves === "upstream" ? 0 : 1))
+        .map(([from, to], index) => {
+          const id = s.editor.connect(from, to);
+          s.editor.updateEdge(id, {
+            label: `Learner connection ${index}`,
+            kind: index === 0 ? "sync" : "async",
+            relation: "flow",
+            relationOrigin: "explicit",
+            sourceSide: "bottom",
+            targetSide: "top",
+            props: { latencyMs: 37 + index, timeoutMs: 1234 + index },
+          });
+          return structuredClone(s.diagram.edges.find((e) => e.id === id)!);
+        });
+      await skip(s, insertOnEdge);
+      expect(state(s)).toMatchObject({ index: 1 });
+      expect(s.diagram.edges.map((e) => [e.from, e.to])).toEqual(expect.arrayContaining(pairs));
+      expect(s.diagram.edges).toHaveLength(2);
+      expect(s.diagram.edges.some((e) => e.from === "app" && e.to === "api")).toBe(false);
+      for (const edge of existing) expect(s.diagram.edges.find((e) => e.id === edge.id)).toEqual(edge);
+    },
+  );
 
   it("boundaries: Group repair preserves existing members and places missing ones without overlap in one edit", async () => {
     const s = sandbox(boundaries);

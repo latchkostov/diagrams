@@ -405,8 +405,7 @@ export function createTutorialRunner(
           const downstream = edge([demo.subject, demo.edge[1]]);
           if (id) {
             // Keep the learner's existing half (and its properties); reuse the original for the missing half.
-            if (upstream && downstream)
-              ed.applyDiagram({ ...ed.getDiagram(), edges: ed.getDiagram().edges.filter((e) => e.id !== id) });
+            if (upstream && downstream) ed.deleteElements({ edgeIds: [id] });
             else if (upstream) ed.reconnectEdge(id, "source", existing);
             else if (downstream) ed.reconnectEdge(id, "target", existing);
             else ed.insertIntoEdge(id, existing);

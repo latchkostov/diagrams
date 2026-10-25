@@ -18,6 +18,8 @@ import { requestVsMessage } from "./catalog/requestVsMessage";
 import { propertySheet } from "./catalog/propertySheet";
 import { planningHost } from "../live/planningHost";
 import type { LiveUi } from "../live/context";
+import { editorHarness } from "../test/editorHarness";
+import { insertOnEdge } from "./catalog/insertOnEdge";
 
 const cleanup: (() => void)[] = [];
 beforeEach(() => {
@@ -879,6 +881,40 @@ it("reopens adding from Ctrl+K when the topic is undone before Go to", () => {
   expect(s.runner.getSnapshot().state.index).toBe(1);
   s.edit(named());
   expect(s.runner.getSnapshot().state).toMatchObject({ index: 0, value: "active" });
+});
+
+it("insert-on-edge: Skip removes only the bypass and keeps the gateway selected in the real editor", async () => {
+  const s = sandbox(insertOnEdge);
+  s.runner.send({ type: "start" });
+  const h = editorHarness({
+    ...s.getDiagram(),
+    nodes: [...s.getDiagram().nodes, { id: "gateway", stencil: "aws.api-gateway", label: "Gateway", x: 270, y: 0 }],
+    edges: [
+      ...s.getDiagram().edges,
+      { id: "upstream", from: "app", to: "gateway", kind: "sync" },
+      { id: "downstream", from: "gateway", to: "api", kind: "sync" },
+    ],
+  });
+  // Document replacement uses the real editor's toFlow result, including its selection reset.
+  h.deps.history.replace = vi.fn((flow) => {
+    h.setNodes(flow.nodes);
+    h.deps.setEdges(flow.edges);
+    h.commit();
+  });
+  h.deps.setEditing = vi.fn();
+  h.api.select({ nodeIds: ["gateway"] });
+  s.hostState.canvas.editor = h.api;
+  s.publish();
+  const nodes = h.nodes();
+  s.runner.send({ type: "skip", stepId: "insert" });
+  await Promise.resolve();
+  h.commit();
+  s.publish();
+  await vi.waitFor(() => expect(s.runner.getSnapshot().state).toMatchObject({ index: 1, value: "active" }));
+  expect(h.api.getDiagram().edges.map((e) => e.id)).toEqual(["upstream", "downstream"]);
+  expect(h.api.getSelection()).toEqual({ nodeIds: ["gateway"], groupIds: [], edgeIds: [] });
+  expect(h.nodes()).toEqual(nodes);
+  expect(h.deps.history.replace).not.toHaveBeenCalled();
 });
 
 it("aligns only the learner's selection when Skip has no explicit subjects", async () => {
