@@ -1,3 +1,4 @@
+import { chunk, holdChunk } from "./chunk";
 import { readFileSync, writeFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 import type { Download, FrameLocator, Page } from "@playwright/test";
@@ -615,4 +616,21 @@ test.describe("Interactive HTML with a password", () => {
     expect(viewer.errors).toEqual([]);
     await viewer.page.close();
   });
+});
+
+test("Interactive HTML downloads while discovery is held and excludes start chrome", async ({ page }) => {
+  const held = await holdChunk(page, chunk("ExampleDetails", "src/examples/ExampleDetails.tsx"));
+  try {
+    await page.goto("./");
+    await expect.poll(held.requested).toBe(true);
+    await page.getByTestId("start-example-rag-assistant").click();
+    await expect(page.getByTestId("diagram-title")).toHaveText("RAG support assistant");
+    await openHtmlExport(page);
+    const file = await download(page);
+    expect(file.html).not.toContain('data-testid="start-card"');
+    expect(file.html).not.toContain("ExampleDetails-");
+    expect(file.html).toContain("RAG support assistant");
+  } finally {
+    held.release();
+  }
 });

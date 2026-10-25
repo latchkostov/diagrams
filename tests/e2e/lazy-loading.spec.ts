@@ -1,3 +1,4 @@
+import { holdChunk, releaseAndEvaluate } from "./chunk";
 import { chunk } from "./chunk";
 import type { Page } from "@playwright/test";
 import { test, expect, gotoCanvas, gotoLive, expectNoErrors, waitForStableViewport } from "./fixtures";
@@ -450,3 +451,75 @@ test("an oversized import still reports a failed message download", async ({ pag
   // The request abort is deliberate; a pageerror would still expose an unhandled import rejection.
   expectNoErrors(consoleErrors.filter((error) => error !== "console.error: Failed to load resource: net::ERR_FAILED"));
 });
+
+test("failed discovery shares one Retry, preserves query and can Close, Esc and reopen", async ({ page }) => {
+  const held = await holdChunk(page, chunk("ExampleDetails", "src/examples/ExampleDetails.tsx"));
+  try {
+    await gotoCanvas(page, "kafka-order-pipeline");
+    await page.getByTestId("example-picker").click();
+    await page.getByTestId("picker-browse-examples").click();
+    await expect.poll(held.requested).toBe(true);
+    await page.getByTestId("examples-search").fill("kafka order");
+    held.fail = true;
+    held.release();
+    await expect(page.getByTestId("lazy-load-retry")).toHaveCount(1);
+    await page.getByTestId("lazy-load-retry").focus();
+    await expect(page.getByTestId("lazy-load-retry")).toBeFocused();
+    await page.keyboard.press("Enter");
+    await expect
+      .poll(() => page.evaluate(() => window.__lazySurfaces?.states()["examples.discovery"]?.state))
+      .toBe("failed");
+    await expect(page.getByTestId("examples-search")).toBeFocused();
+    await expect(page.getByTestId("examples-search")).toHaveValue("kafka order");
+    await expect(page.getByTestId("lazy-load-retry")).toHaveCount(1);
+    await page.keyboard.press("Escape");
+    await expect(page.getByTestId("example-picker")).toBeFocused();
+    await page.getByTestId("example-picker").click();
+    await page.getByTestId("picker-browse-examples").click();
+    await page.getByTestId("examples-search").fill("kafka order");
+    await expect(page.getByTestId("lazy-load-retry")).toHaveCount(1);
+    held.fail = false;
+    held.release();
+    await page.getByTestId("lazy-load-retry").click();
+    await expect(page.getByTestId("example-thumb-kafka-order-pipeline")).toBeVisible();
+    await expect(page.getByTestId("examples-search")).toHaveValue("kafka order");
+    await expect(page.getByTestId("examples-search")).toBeFocused();
+    await page.getByTestId("examples-dialog-close").click();
+    await expect(page.getByTestId("example-picker")).toBeFocused();
+    await page.getByTestId("example-picker").click();
+    await page.getByTestId("picker-browse-examples").click();
+    await page.keyboard.press("Escape");
+    await expect(page.getByTestId("example-picker")).toBeFocused();
+  } finally {
+    held.release();
+  }
+});
+
+for (const surface of ["TutorialApp", "TutorialsView"]) {
+  test(`${surface} cancellation before release keeps preview navigation and focus`, async ({ page }) => {
+    const pattern = chunk(surface, `src/tutorials/${surface}.tsx`);
+    const held = await holdChunk(page, pattern);
+    try {
+      await page.goto("./");
+      await expect(page.getByTestId("start-tutorial")).toBeVisible();
+      if (surface === "TutorialApp") {
+        await page.getByTestId("start-tutorial").click();
+        await expect(page.getByTestId("tutorial-exit")).toBeVisible();
+        await page.getByTestId("tutorial-exit").click();
+      } else {
+        await page.getByTestId("view-tutorials").click();
+        await expect(page.getByTestId("tutorials-view-loading")).toBeVisible();
+        await page.getByTestId("view-canvas").click();
+      }
+      await expect.poll(held.requested).toBe(true);
+      await expect(page.getByTestId("start-card")).toBeVisible();
+      await page.getByTestId("example-picker").focus();
+      await releaseAndEvaluate(page, pattern, held.release);
+      await expect(page.getByTestId("example-picker")).toBeFocused();
+      await expect(page.getByTestId("tutorial-start")).toHaveCount(0);
+      await expect(page.getByTestId("start-card")).toBeVisible();
+    } finally {
+      held.release();
+    }
+  });
+}

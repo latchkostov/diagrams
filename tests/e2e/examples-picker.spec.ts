@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import { chunk, holdChunk, releaseAndEvaluate } from "./chunk";
+import { waitForStableViewport, viewportTransform } from "./fixtures";
 import AxeBuilder from "@axe-core/playwright";
 import { settledCanvas } from "../parity/browser/canvas";
 import { openAdvanced } from "./ai-helpers";
@@ -783,7 +786,7 @@ test("gallery horizontal arrows follow the visual order in Arabic", async ({ pag
   await page.addInitScript(() => localStorage.setItem("diagrams.locale", "ar"));
   await page.goto("./");
   await page.getByTestId("start-all-examples").click();
-  await expect.poll(() => page.evaluate(() => document.documentElement.dir)).toBe("rtl");
+  await expect.poll(() => page.evaluate(() => getComputedStyle(document.documentElement).direction)).toBe("rtl");
   await page.getByTestId(`example-open-${SLUG}`).focus();
   await page.keyboard.press("ArrowLeft");
   await expect(page.getByTestId(`example-run-${SLUG}`)).toBeFocused();
@@ -949,4 +952,83 @@ test("the start card features the Black Friday platform among its examples", asy
   await page.goto("./");
   await expect(page.getByTestId("start-example-black-friday-commerce")).toBeVisible();
   await expect(page.getByTestId("start-example-aws-serverless-orders")).toHaveCount(0);
+});
+
+for (const locale of ["en", "ar"]) {
+  test(`held discovery preserves gallery query, arrows and trigger focus in ${locale}`, async ({ page }) => {
+    await page.addInitScript((locale) => localStorage.setItem("diagrams.locale", locale), locale);
+    const pattern = chunk("ExampleDetails", "src/examples/ExampleDetails.tsx");
+    const held = await holdChunk(page, pattern);
+    try {
+      await gotoCanvas(page, "kafka-order-pipeline");
+      await page.getByTestId("example-picker").click();
+      await page.getByTestId("picker-browse-examples").click();
+      await expect.poll(held.requested).toBe(true);
+      const search = page.getByTestId("examples-search");
+      await search.fill("kafka order");
+      expect(await page.evaluate(() => getComputedStyle(document.documentElement).direction)).toBe(
+        locale === "ar" ? "rtl" : "ltr",
+      );
+      await page.keyboard.press("Tab");
+      await page.keyboard.press("Shift+Tab");
+      await expect(search).toBeFocused();
+      await releaseAndEvaluate(page, pattern, held.release);
+      await expect(search).toHaveValue("kafka order");
+      await expect(search).toBeFocused();
+      const open = page.getByTestId("example-open-kafka-order-pipeline");
+      await open.focus();
+      await page.keyboard.press("ArrowDown");
+      await expect(page.getByTestId("example-run-kafka-order-pipeline")).toBeFocused();
+      await page.keyboard.press("ArrowUp");
+      await expect(open).toBeFocused();
+      await page.keyboard.press("Escape");
+      await expect(page.getByTestId("example-picker")).toBeFocused();
+    } finally {
+      held.release();
+    }
+  });
+}
+
+test("held discovery allows eager picker/start activation and late completion leaves the diagram alone", async ({
+  page,
+}) => {
+  await page.addInitScript(
+    (diagram) => localStorage.setItem("diagrams.autosave.v1:rag-assistant", JSON.stringify(diagram)),
+    JSON.parse(readFileSync("src/examples/rag-assistant.json", "utf8")),
+  );
+  const pattern = chunk("ExampleDetails", "src/examples/ExampleDetails.tsx");
+  const held = await holdChunk(page, pattern);
+  try {
+    await gotoCanvas(page, "kafka-order-pipeline");
+    await page.getByTestId("example-picker").click();
+    await page.getByTestId("picker-browse-examples").click();
+    await expect.poll(held.requested).toBe(true);
+    await page.keyboard.press("Escape");
+    await page.getByTestId("example-picker").click();
+    await page.keyboard.press("End");
+    await page.keyboard.press("ArrowUp");
+    await expect(page.getByTestId("picker-new")).toBeFocused();
+    await page.keyboard.press("Enter");
+    await page.getByTestId("start-example-rag-assistant").focus();
+    await page.keyboard.press("Enter");
+    await expect(page.getByTestId("diagram-title")).toHaveText("RAG support assistant");
+    await waitForStableViewport(page);
+    const example = publicExamples.find((example) => example.slug === "rag-assistant");
+    if (!example) throw new Error("Missing public RAG example");
+    const nodeId = example.nodeIds[0];
+    await page.getByTestId(`node-${nodeId}`).click();
+    await waitForSelectionSettled(page);
+    await expect(page.getByTestId(`grow-chip-${nodeId}`)).toBeVisible();
+    await page.getByTestId("example-picker").focus();
+    const before = await savedDiagram(page);
+    const viewport = await viewportTransform(page);
+    await releaseAndEvaluate(page, pattern, held.release);
+    await expect(page.getByTestId("examples-dialog")).toHaveCount(0);
+    await expect(page.getByTestId("example-picker")).toBeFocused();
+    expect(await savedDiagram(page)).toEqual(before);
+    expect(await viewportTransform(page)).toEqual(viewport);
+    await expect(page.getByTestId(`grow-chip-${nodeId}`)).toBeVisible();
+  } finally {
+    held.release();
+  }
 });

@@ -1,5 +1,6 @@
 import { Icon } from "../components/Icon";
 import { DiagramThumbnail } from "../components/DiagramThumbnail";
+import { ExampleDiscovery } from "../examples/discovery";
 import type { Thumb } from "../lib/thumbnail";
 import type { ThemeSection } from "../examples/themes";
 import { t, useLocale } from "../i18n";
@@ -11,7 +12,7 @@ export interface StartExample {
   title: string;
   description?: string;
   /** A tiny rendering of the diagram (the same renderer as Your diagrams). */
-  thumb: Thumb;
+  thumb?: Thumb;
   /** Shown before "All examples" is opened. */
   featured?: boolean;
 }
@@ -62,6 +63,7 @@ export function StartCard({ start, onBlank }: { start: StartOptions; onBlank: ()
       title={ex.title}
       detail={ex.description}
       thumb={ex.thumb}
+      slug={ex.slug}
       onClick={() => start.onOpen(ex.slug)}
     />
   );
@@ -145,12 +147,23 @@ export function StartCard({ start, onBlank }: { start: StartOptions; onBlank: ()
   );
 }
 
-function StartRow(p: { testId: string; title: string; detail?: string; thumb: Thumb; onClick: () => void }) {
+function StartRow(p: {
+  testId: string;
+  title: string;
+  detail?: string;
+  thumb?: Thumb;
+  slug?: string;
+  onClick: () => void;
+}) {
   return (
     <li>
       <button className="start-example" onClick={p.onClick} data-testid={p.testId}>
         <span className="start-thumb">
-          <DiagramThumbnail thumb={p.thumb} testId={`${p.testId}-thumb`} />
+          {p.thumb ? (
+            <DiagramThumbnail thumb={p.thumb} testId={`${p.testId}-thumb`} />
+          ) : p.slug ? (
+            <ExampleDiscovery slug={p.slug} testId={`${p.testId}-thumb`} />
+          ) : null}
         </span>
         <span className="start-example-text">
           <strong>{p.title}</strong>

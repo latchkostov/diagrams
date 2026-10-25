@@ -1,3 +1,4 @@
+import { chunk, holdChunk } from "./chunk";
 import { currentDiagram } from "./fixtures";
 import { openExample } from "./fixtures";
 import { readFileSync, statSync } from "node:fs";
@@ -766,5 +767,35 @@ for (const deferred of [false, true]) {
     await page.keyboard.press("ControlOrMeta+s");
     await expect.poll(() => page.evaluate(() => window.__fs.writes.length)).toBe(3);
     expect(await page.evaluate(() => window.__fs.writes[2].name)).toBe("saved-2.json");
+  });
+}
+
+for (const format of ["json", "svg", "png"] as const) {
+  test(`${format} downloads while example discovery is held`, async ({ page }) => {
+    const held = await holdChunk(page, chunk("ExampleDetails", "src/examples/ExampleDetails.tsx"));
+    try {
+      await page.goto("./");
+      await expect.poll(held.requested).toBe(true);
+      await page.getByTestId("start-example-rag-assistant").click();
+      await expect(page.getByTestId("diagram-title")).toHaveText("RAG support assistant");
+      const downloading = page.waitForEvent("download");
+      await page.getByTestId("file-button").click();
+      await page.getByTestId("file-more-formats").click();
+      if (format === "json") await page.getByTestId("export-json").click();
+      else {
+        await page.getByTestId("export-image").click();
+        await page.getByTestId("image-options-toggle").click();
+        await page.getByTestId(`image-format-${format}`).click();
+        await page.getByTestId("image-export").click();
+      }
+      const file = await downloading;
+      expect(file.suggestedFilename()).toMatch(new RegExp(`\\.${format}$`));
+      const bytes = readFileSync(await file.path());
+      expect(bytes.length).toBeGreaterThan(0);
+      if (format !== "png") expect(bytes.toString()).not.toContain('data-testid="start-card"');
+      expect(await page.evaluate(() => window.__lazySurfaces?.states()["examples.discovery"]?.state)).toBe("loading");
+    } finally {
+      held.release();
+    }
   });
 }
