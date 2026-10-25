@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { DiagramFile } from "../model/types";
 import { fillTestId, holds, nearMiss, resolveSubjects, edgeTargets } from "./checks";
 import { mobileApi } from "./catalog/mobileApi";
+import { backlogLag } from "./catalog/backlogLag";
 import type { Check, PropPath } from "./types";
 
 const diagram = (label: string): DiagramFile => ({
@@ -84,4 +85,20 @@ it("resolves edge subjects after their nodes and retains edge identity across a 
   expect(bindings).toEqual({ app: "client", api: "service-1", link: "call" });
   expect(resolveSubjects(tutorial, { ...d, edges: [{ ...d.edges[0], to: "other" }] }, bindings).link).toBe("call");
   expect(resolveSubjects(tutorial, { ...d, edges: [] }, bindings).link).toBeUndefined();
+});
+
+it("binds a downstream subject only to a flow consumer, including after its old consumer disconnects", () => {
+  if (typeof backlogLag.start !== "function") throw new Error("Expected inline sandbox");
+  const d = backlogLag.start();
+  const service = diagram("Service").nodes[0];
+  d.nodes.push(service, { ...service, id: "consumer" });
+  d.edges.push({ id: "reads", from: "queue", to: "consumer", kind: "async" });
+  const bindings = resolveSubjects(backlogLag, d);
+  expect(bindings.worker).toBe("consumer");
+  d.edges.push({ id: "config", from: "queue", to: service.id, kind: "sync", relation: "config" });
+  expect(resolveSubjects(backlogLag, d, bindings).worker).toBe("consumer");
+  d.edges = d.edges.filter((e) => e.id !== "reads");
+  expect(resolveSubjects(backlogLag, d, bindings).worker).toBeUndefined();
+  d.edges.push({ id: "new-reader", from: "queue", to: service.id, kind: "async" });
+  expect(resolveSubjects(backlogLag, d, bindings).worker).toBe(service.id);
 });

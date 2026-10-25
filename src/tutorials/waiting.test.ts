@@ -159,8 +159,8 @@ describe("waiting lessons against their seeded runs", () => {
         seen = watcher.observe(c.getState().snapshot, diagram);
         if (sample === 79) expect(c.getState().snapshot.nodes.queue.backlog).toBeGreaterThanOrEqual(50 / 0.7);
       }
-      // Decision 8 needs more than a test id: this queue already has a reader, so the action is Inputs.
-      expect(seen.find((trouble) => trouble.kind === "lag")?.action).toEqual({ kind: "inputs" });
+      // With no reader, the real Trouble action is the tutorial's Add a consumer target.
+      expect(seen.find((trouble) => trouble.kind === "lag")?.action).toEqual({ kind: "add-consumer", node: "queue" });
     });
   });
 
@@ -232,9 +232,7 @@ describe("waiting lessons against their seeded runs", () => {
 
   it("registers six lessons and releases the decided cold-start lesson", () => {
     for (const lesson of [whereTimeGoes, threadsBlock, timeoutsPools, backlogLag, autoscaling, scaleToZero]) {
-      expect(lesson.version).toBe(
-        [whereTimeGoes, threadsBlock, timeoutsPools, autoscaling, scaleToZero].includes(lesson) ? 2 : 1,
-      );
+      expect(lesson.version).toBe(2);
       expect(tutorialEntries).toContainEqual({ id: lesson.id, ...(lesson.quarantined ? { quarantined: true } : {}) });
       const diagram = initial(lesson);
       for (const step of lesson.steps)
@@ -242,7 +240,7 @@ describe("waiting lessons against their seeded runs", () => {
           if (demo.kind === "runSimulation")
             expect(diagram.simulations?.find((sim) => sim.id === demo.id)?.seed).toBeGreaterThan(0);
     }
-    expect(backlogLag.quarantined).toBe(true);
+    expect(backlogLag.quarantined).toBeUndefined();
     expect(scaleToZero.quarantined).toBeUndefined();
     expect(JSON.stringify(scaleToZero.steps)).toContain("fleet.starting");
   });
