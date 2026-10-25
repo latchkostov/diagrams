@@ -20,7 +20,7 @@ export const circuitBreaker: Tutorial = {
       title: msg("tutorials.circuitBreaker.enableTitle"),
       goal: msg("tutorials.circuitBreaker.enableGoal"),
       done: msg("tutorials.circuitBreaker.enableDone"),
-      check: { kind: "prop", edge: ["caller", "callee"], prop: ["caller", "breaker"], op: "=", value: {} },
+      check: { kind: "prop", edge: ["caller", "callee"], prop: ["caller", "breaker"], op: "truthy" },
       targets: [
         { testId: "inspector-field-breaker-on", tip: msg("tutorials.circuitBreaker.enableGoal") },
         { testId: "inspector-section-edge-simulation", tip: msg("tutorials.circuitBreaker.enableGoal") },

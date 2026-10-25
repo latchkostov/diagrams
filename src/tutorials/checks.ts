@@ -172,6 +172,7 @@ export function holds(check: Check, view: SandboxView, subjects: Record<string, 
           ? edge(check.edge)?.[check.prop]
           : readPath(target?.props, typeof check.prop === "string" ? [check.prop] : check.prop);
       if (check.measure === "length") return Array.isArray(actual) && compare(actual.length, check.op, check.value);
+      if (check.op === "truthy") return !!actual;
       return compare(actual, check.op, check.value);
     }
     case "compare": {
