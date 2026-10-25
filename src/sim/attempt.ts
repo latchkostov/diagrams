@@ -48,6 +48,8 @@ export interface LogicalBranch {
   expiresAt: number;
   deadlineEvent?: number;
   pool?: number;
+  /** Downstream partial deliveries, independent of the caller's single outcome. */
+  cohortId?: number;
 }
 
 export function settleOnce(

@@ -20,6 +20,17 @@ export interface LedgerInvariantState {
     calls?: { inFlight: number };
     poolUsed: number;
     poolLeases: ReadonlyMap<number, number>;
+    cohorts?: ReadonlyMap<
+      number,
+      {
+        call: { branches: ReadonlyMap<string, { cohortId?: number }> };
+        represented?: number;
+        remaining: number;
+        outstanding: number;
+        expiresAt?: number;
+        inFlight: ReadonlySet<number>;
+      }
+    >;
     poolPending: readonly {
       message?: { width?: number };
       call?: { held?: boolean; work: { thread?: number; message?: { width?: number } } };
@@ -132,6 +143,21 @@ export function assertLedgerInvariants({ ledger, nodes, edges, time }: LedgerInv
       const thread =
         call?.held && call.work.thread !== undefined ? ledger.reservations.get(call.work.thread) : undefined;
       check(!thread || width <= thread.weight + 1e-9, "branch is wider than its caller thread");
+    }
+    for (const [id, cohort] of edge.cohorts ?? []) {
+      check(
+        id === cohort.call.branches.get(edge.id)?.cohortId && cohort.expiresAt! > time,
+        "expired or misindexed pool cohort",
+      );
+      check(cohort.remaining >= 0 && cohort.remaining <= cohort.outstanding + 1e-8, "invalid unsent cohort weight");
+      check(cohort.outstanding <= cohort.represented! + 1e-8, "cohort settles more than its size");
+      let sentWeight = 0;
+      for (const leaseId of cohort.inFlight) {
+        const lease = ledger.reservations.get(leaseId);
+        check(lease?.scope === "pool" && lease.edge === edge.id, "orphan cohort pool lease");
+        sentWeight += lease!.represented;
+      }
+      check(sentWeight <= cohort.represented! - cohort.remaining + 1e-8, "cohort sends undispatched weight");
     }
     for (const id of edge.poolLeases.values())
       check(ledger.reservations.get(id)?.edge === edge.id, "pool points to missing reservation");

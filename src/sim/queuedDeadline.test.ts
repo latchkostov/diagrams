@@ -47,11 +47,10 @@ it("pins scale-10 queued deadline completions, deliveries and late replies", () 
     processed: snapshot.nodes.partner.processed,
     delivered: snapshot.edges.call.delivered,
     late: snapshot.edges.call.calls!.late,
-  }).toEqual({ processed: 10, delivered: 10, late: 10 });
+  }).toEqual({ processed: 1, delivered: 1, late: 1 });
 });
 
-// Sampling accuracy: docs/backlog/2026-10-20-deadline-queued-cohorts.md
-it.fails("I1 known gap: pool=1 with a 100 ms deadline at scale 10 equals scale 1", () => {
+it("pool=1 with a 100 ms deadline at scale 10 equals scale 1", () => {
   const metrics = (snapshot: ReturnType<typeof run>["snapshot"]) => ({
     processed: snapshot.nodes.partner.processed,
     delivered: snapshot.edges.call.delivered,

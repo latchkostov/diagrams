@@ -54,26 +54,24 @@ function compare(scale: number) {
   }
 }
 
-it("I1 queued deadline cohorts preserve outcomes at scale 10 (coincidental pass)", () => {
+it("I1 queued deadline cohorts preserve outcomes at scale 10", () => {
   compare(10);
 });
 
 it("pins scale-10 same-arrivals deadline outcomes", () => {
   expect(runs.get(10)).toEqual({
     baseline: { processed: 356, late: 356, failed: 3580 },
-    sampled: { processed: 330, late: 330, failed: 3580 },
+    sampled: { processed: 356, late: 356, failed: 3580 },
   });
 });
 
 it("pins scale-2 same-arrivals deadline outcomes", () => {
   expect(runs.get(2)).toEqual({
     baseline: { processed: 1779, late: 1779, failed: 3584 },
-    // Sampling 8a (settlement before arrivals): 508, one dot from 510 (the rule: away only past one dot).
-    sampled: { processed: 508, late: 508, failed: 3584 },
+    sampled: { processed: 1779, late: 1779, failed: 3584 },
   });
 });
 
-// Sampling accuracy: docs/backlog/2026-10-20-deadline-queued-cohorts.md
-it.fails("I1 known gap: queued deadline cohorts preserve outcomes at scale 2", () => {
+it("queued deadline cohorts preserve outcomes at scale 2", () => {
   compare(2);
 });

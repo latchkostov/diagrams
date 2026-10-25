@@ -1,0 +1,24 @@
+## Pooled deadlines at sampled scales
+
+A connection pool with a deadline now dispatches partial cohorts, retaining unsent members in FIFO order until their shared deadline. Only dispatched work can finish downstream or reply late. A successful first wave keeps one caller outcome while its remaining edge work continues independently; checkpoints preserve that remaining work and its deadline. Existing local thread waves remain represented without changing source arrival instants.
+
+The original exact comparisons are ordinary passing tests, with no relaxed invariant thresholds:
+
+| Pin                                                                           | Before at sampled scale | After              | Same-arrivals scale 1 |
+| ----------------------------------------------------------------------------- | ----------------------- | ------------------ | --------------------- |
+| `deadlines.test`, N=10: processed / timed out / late / delivered / dispatched | 10 / 10 / 0 / 10 / 1    | 3 / 18 / 1 / 3 / 3 | 3 / 18 / 1 / 3 / 3    |
+| `queuedDeadline`, N=10: processed / delivered / late                          | 10 / 10 / 10            | 1 / 1 / 1          | 1 / 1 / 1             |
+| `deadlineScale`, N=2: processed / late / caller failed                        | 508 / 508 / 3584        | 1779 / 1779 / 3584 | 1779 / 1779 / 3584    |
+| `deadlineScale`, N=10: processed / late / caller failed                       | 330 / 330 / 3580        | 356 / 356 / 3580   | 356 / 356 / 3580      |
+
+The continuous scale-one reference remains 2964 / 2964 / 3584; the comparison uses identical arrival instants, as approved. Disabling cohort creation makes all three exact regression files fail again (seven failing tests).
+
+## Resource and outcome rules
+
+A deadline ends the dispatched pool leases and cancels the unsent tail; dispatched work can still return late. Ordinary failures retain the established aggregate residence where the grant holds a whole request. The caller's outcome and breaker decision remain attached to the first wave. Later orphan expiry counts unfinished work on the edge and never rewrites a settled caller or breaker. Edge timeout totals can consequently exceed caller failures at sampled scales.
+
+Regressions cover orphan replay and cleanup, exact expiry, blocking and non-blocking pools, nested unpooled calls, fractional breaker recovery, and cohort/lease ownership. Throttle and broker implementation, source arrival scheduling, debt quantization and early-release policies are unchanged.
+
+## Output parity
+
+No Node-tier golden changes: all 3020 goldens remain byte-for-byte unchanged, including every scale-one golden. There are no moved goldens requiring direction exceptions or re-recording. Existing public deadline examples continue to demonstrate the corrected behavior; this fix adds no authoring feature or control.

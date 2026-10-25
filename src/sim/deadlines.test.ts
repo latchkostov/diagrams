@@ -125,11 +125,10 @@ it("queued calls that time out are never sent at scale 1", () => {
 });
 
 it("pins scale-10 queued deadline outcomes before exact-equality comparison", () => {
-  expect(queuedDeadlineRuns[1]).toEqual({ processed: 10, timedOut: 10, late: 0, delivered: 10, dispatched: 1 });
+  expect(queuedDeadlineRuns[1]).toEqual({ processed: 3, timedOut: 18, late: 1, delivered: 3, dispatched: 3 });
 });
 
-// Sampling accuracy: docs/backlog/2026-10-20-deadline-queued-cohorts.md
-it.fails("I1 known gap: queued deadline calls at scale 10 equal scale 1", () => {
+it("queued deadline calls at scale 10 equal scale 1", () => {
   // Only the accuracy assertion can satisfy this expected failure.
   expect(queuedDeadlineRuns[1]).toEqual(queuedDeadlineRuns[0]);
 });

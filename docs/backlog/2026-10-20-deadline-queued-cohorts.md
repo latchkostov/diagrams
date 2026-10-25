@@ -1,10 +1,5 @@
-## Pooled deadlines at sampled scales
+## Resolved: pooled deadlines at sampled scales
 
-Calls with both a connection pool and a deadline can substantially understate downstream
-completions and late replies at scale > 1. The I1 fixture in
-`src/sim/deadlineScale.invariants.test.ts` records **2,964 vs 330** for both counts at scales 1 and 10.
-Scale 1 is correct: queued calls that time out are never sent.
+Resolved by sampling 8b. The queued burst pins now equal scale one exactly: the 600 ms pool sends three requests, times out eighteen and records one late reply; the 100 ms pool sends one request and records one late reply. The same-arrivals scale-two fixture now processes 1779 requests and scale ten processes 356, matching their scale-one references. No accuracy bound was loosened.
 
-The full fix follows the [queued-cohort design](C:/Users/latch/bin/codex-tasks/rtw3-queued-cohort-design.md);
-this gap is fixed by the sampling-accuracy PR. Its regressions are pinned with accuracy-specific `it.fails`
-assertions; #197 keeps the existing engine behavior without partial-cohort changes.
+See [the release fragment](../release-notes/2026-10-25-sampling-deadline-cohorts.md) for the before/after table, resource semantics and parity result. Continuous source timing remains distinct from the same-arrivals comparison.
