@@ -32,3 +32,9 @@ A successful first wave still completes the caller's whole dot. The mixed reply/
 ## Exact held-gauge drain
 
 Nested partial waves can create very small blocking-call charges. The held gauge now keeps those charges until their matching release and becomes exactly zero when its last blocking branch ends. This closes the R6 idle-holds counterexample from seed 1946752105 without changing an invariant threshold, request scheduling, pool residence or retry policy. The regression fails when the former rounding update is restored.
+
+## Precise partial admission and completion
+
+Queued partial callers use the same available-room calculation as their thread reservations. This prevents a pause/shrink sequence from admitting a caller whose reservation would fail at a floating-point boundary. The existing capacity allowance is unchanged; the reduced counterexample and checkpoint replay are ordinary passing tests.
+
+A positive unsent tail stays queued even below the reporting precision. Successful cohort completion follows empty unsent and in-flight ownership, preserving each live partial wave until its reply or deadline. A lossless process-event test covers a tail of `5e-10` requests, which rounded counters alone cannot distinguish.

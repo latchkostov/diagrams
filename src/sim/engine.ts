@@ -666,6 +666,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       : node.fleet && scale === 1 && !node.sampledExecution
         ? node.fleet.active
         : threadOccupancy(node) * scale;
+  const executionRoom = (node: Node): number =>
+    execution.usesLedger(node) ? execution.threadRoom(node) : slots(node) - executionOccupancy(node);
   const memoryRequests = (node: Node) => (callerReservations(node) ? node.requestWeight : residentRequests(node));
 
   const execution = createExecutionReservations<Group, Node>({
@@ -2184,7 +2186,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         next.message.represented = cohort.remaining;
         message.poolLease = reservation.id;
         cohort.inFlight.add(reservation.id);
-        if (cohort.remaining <= 1e-9) {
+        if (cohort.remaining === 0) {
           popDue(edge.poolPending, edge.poolPendingIndices);
           gone(edge.from, next.message, "end", "consumed");
         }
@@ -2713,7 +2715,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         lease.represented = represented;
       }
     }
-    if (cohort.outstanding <= 1e-9 || !event.ok) closePoolCohort(edge, event.cohortId);
+    // Empty ownership ends the cohort without discarding a positive partial wave.
+    if ((!cohort.remaining && !cohort.inFlight.size) || !event.ok) closePoolCohort(edge, event.cohortId);
     if (orphan) {
       if (expired) edge.calls.late += dotsOf(event);
       else if (!event.ok) edge.calls.failed += dotsOf(event);
@@ -3114,7 +3117,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       node.status === "up" &&
       !node.pending.length &&
       !node.resume.length &&
-      slots(node) - executionOccupancy(node) + 1e-9 >= Math.min(1, sizeOf(work.message))
+      executionRoom(node) + 1e-9 >= Math.min(1, sizeOf(work.message))
     ) {
       enqueue(node, work);
       admitPending(node);
@@ -3863,7 +3866,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           node.status !== "down" &&
           !(node.fleet || execution.usesLedger(node)
             ? waits()
-              ? slots(node) - executionOccupancy(node) + 1e-9 >= Math.min(1, execution.cohort(next))
+              ? executionRoom(node) + 1e-9 >= Math.min(1, execution.cohort(next))
               : executionOccupancy(node) < slots(node)
             : threadOccupancy(node) < slots(node))
         )

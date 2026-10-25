@@ -13,3 +13,7 @@ Keep the current chrome and authoring flow. Reject source staggering, looser acc
 ## Held-gauge precision
 
 A drained caller shows exactly zero held branches. Live fractional charges remain represented until their owners finish. This changes no controls or authoring flow.
+
+## Partial admission
+
+A queued caller waits for room that its reservation can actually acquire. Positive partial waves keep their lifecycle even below displayed counter precision. The fix retains the existing controls and capacity policy.

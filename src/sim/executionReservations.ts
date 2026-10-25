@@ -72,6 +72,8 @@ export function createExecutionReservations<
   type Work = ExecutionWork<Group>;
   const { ledger, callerReservations, slots, resourceWork, scheduleThreadGrace } = context;
   const usesLedger = (node: Node) => context.waits() && node.role === "processor";
+  /** Use the reservation's subtraction order, including at fractional rounding boundaries. */
+  const threadRoom = (node: Node) => slots(node) - node.threadWeight.work - node.threadWeight.wait;
   /** Real requests this work executes for: its message's represented size, fixed once its
    * thread, admission or CPU is sized. A live scale edit never resizes that cohort. */
   const cohort = (work: Work): number =>
@@ -129,7 +131,7 @@ export function createExecutionReservations<
         node,
         work,
         cohort(work),
-        slots(node) - node.threadWeight.work - node.threadWeight.wait,
+        threadRoom(node),
         Math.min(retained?.weight ?? Infinity, work.message?.width ?? Infinity),
       );
       if (!thread) return false;
@@ -142,7 +144,7 @@ export function createExecutionReservations<
     // Admission can precede execution while paused. A live scale edit must not
     // resize that already-charged transaction when it enters the ledger.
     const represented = cohort(work);
-    const room = slots(node) - node.threadWeight.work - node.threadWeight.wait;
+    const room = threadRoom(node);
     let cap = Math.min(
       lease?.weight ?? Infinity,
       request?.weight ?? recovery?.request.weight ?? Infinity,
@@ -224,7 +226,7 @@ export function createExecutionReservations<
     }
     releaseThread(tail);
     const request = ledger.get<Group>(work.requestLease)!;
-    const room = slots(node) - node.threadWeight.work - node.threadWeight.wait;
+    const room = threadRoom(node);
     const leases = reacquire(context.admission(), {
       node: node.id,
       policy: node.props.admission,
@@ -409,6 +411,7 @@ export function createExecutionReservations<
       return node.activeMs - (thread ? (thread.segmentActive ?? thread.startActive) - thread.startActive : 0);
     },
     usesLedger,
+    threadRoom,
     cohort,
     reacquireCapacity,
     startResources,

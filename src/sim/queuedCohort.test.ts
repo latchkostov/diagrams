@@ -1,7 +1,7 @@
 import type { EdgeSimProps } from "./types";
 import { expect, it } from "vitest";
 import { waitingFixture } from "../lab/waitingFixture";
-import { createEngine } from "./engine";
+import { createEngine, observeEngineEvents } from "./engine";
 import { assertLedgerInvariants, assertOutcomeInvariants, type LedgerInvariantState } from "./resourceInvariants";
 import { realSnapshot } from "./units";
 
@@ -13,6 +13,28 @@ function fixture(deadlineMs = 600) {
   };
   return diagram;
 }
+
+it("preserves a positive pooled tail smaller than the rounding allowance", () => {
+  const d = fixture();
+  d.nodes[2].stencil = "generic.service";
+  d.nodes[2].props = { concurrency: 1, latencyMs: 20, jitter: 0 };
+  const scale = 1 + 5e-10;
+  const e = createEngine({ scale, maxParticles: 0, verifyLedger: assertLedgerInvariants });
+  let processed = 0;
+  const stop = observeEngineEvents(e, (event) => {
+    if (event.kind === "process" && event.nodeId === "partner") processed++;
+  });
+  e.load(d);
+  e.inject("source", 1);
+  e.step(1000);
+  stop();
+  expect(processed).toBe(2);
+  const real = realSnapshot(e.snapshot());
+  expect(real.nodes.partner.processed).toBe(scale);
+  expect(real.edges.call.delivered).toBe(scale);
+  expect(real.edges.call.calls).toMatchObject({ timedOut: 0, late: 0, inFlight: 0 });
+  expect(e.snapshot().inSystem).toBe(0);
+});
 
 it("an OK first wave keeps the cohort's queue place and restores orphan replies and expiry", () => {
   let state!: LedgerInvariantState;
