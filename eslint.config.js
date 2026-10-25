@@ -17,6 +17,8 @@ const TRANSLATED = [
   "integrations/confluence-forge/src/{view,configure,attachments,dom,preview}.ts",
   "src/static/*.ts",
   "src/components/ExamplesDialog.tsx",
+  "src/examples/GalleryDetails.tsx",
+  "src/examples/discovery.tsx",
   "src/components/ColorPickerModal.tsx",
   "src/collab/room/RoomUi.tsx",
   "src/i18n/stencils.ts",

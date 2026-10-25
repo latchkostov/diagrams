@@ -31,11 +31,11 @@ async function installSyntheticRegistry(page: Page, diagram = localOnlyFixture) 
     route.fulfill({
       contentType: "text/javascript",
       body: `import publicDiagram from "/src/examples/kafka-order-pipeline.json?import";
-    import { exampleMetadata } from "/src/examples/metadata.ts";
+    import { exampleIdentity } from "/src/examples/identity.ts";
     import { diagramThumb } from "/src/lib/thumbnail.ts";
     const localDiagram = ${JSON.stringify(diagram)};
       export const examples = [
-        { ...exampleMetadata["kafka-order-pipeline"], slug: "${SLUG}", diagram: publicDiagram },
+        { ...exampleIdentity["kafka-order-pipeline"], slug: "${SLUG}", diagram: publicDiagram },
         { slug: "synthetic-local", localOnly: true, title: localDiagram.title, thumb: diagramThumb(localDiagram), simulation: localDiagram.simulations?.[0]?.id, diagram: localDiagram }
       ];
       export const exampleSummary = (example) =>
@@ -65,6 +65,7 @@ test("gallery runs a local-only example without writing its simulation id to his
   });
   await page.getByTestId("example-picker").click();
   await page.getByTestId("picker-browse-examples").click();
+  await expect(page.getByTestId(`example-card-${SLUG}`)).toContainText("Kafka order pipeline");
   await page.getByTestId("examples-search").fill("synthetic-local");
   await page.getByTestId("example-run-synthetic-local").click();
   await expect(page.getByTestId("live-sim-picker")).toHaveValue("synthetic-local-run");
