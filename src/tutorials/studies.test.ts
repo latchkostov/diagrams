@@ -104,14 +104,52 @@ describe("design studies", () => {
     });
   }
 
-  it("publishes all three studies in discovery and direct links after owner decision 7", () => {
+  it("keeps Checkout and Dispatch published while quarantining Payments", () => {
     expect(findTutorial("study-checkout")).toBe(studyCheckout);
-    expect(findTutorial("study-payments")).toBe(studyPayments);
+    expect(studyPayments.quarantined).toBe(true);
+    expect(findTutorial("study-payments")).toBeUndefined();
+    expect(tutorials).not.toContain(studyPayments);
+    expect(tutorialMetadata.some((entry) => entry.id === studyPayments.id)).toBe(false);
+    expect(tutorialEntries.find((entry) => entry.id === studyPayments.id)).toEqual({
+      id: studyPayments.id,
+      quarantined: true,
+    });
     expect(studyDispatch.quarantined).toBeUndefined();
     expect(findTutorial("study-dispatch")).toBe(studyDispatch);
     expect(tutorials).toContain(studyDispatch);
     expect(tutorialMetadata.some((entry) => entry.id === studyDispatch.id)).toBe(true);
     expect(tutorialEntries.find((entry) => entry.id === studyDispatch.id)).toEqual({ id: studyDispatch.id });
+  });
+
+  it.each([true, false])("Dispatch partition fix requires processed traffic (connected: %s)", (connected) => {
+    if (typeof studyDispatch.start !== "function") throw new Error("Expected inline diagram");
+    const diagram = studyDispatch.start();
+    diagram.nodes.find((node) => node.id === "dispatcher")!.props!.replicas = 4;
+    diagram.nodes.find((node) => node.id === "pings")!.props!.partitions = 4;
+    if (!connected) diagram.edges = diagram.edges.filter((edge) => edge.id !== "couriers-pings");
+    const simulation = diagram.simulations!.find((run) => run.id === "more-partitions")!;
+    const live = new LiveController(diagram);
+    try {
+      expect(live.selectSimulation(simulation)).toBe("selected");
+      live.setPlaying(true);
+      let completed = false;
+      for (let tick = 0; tick < 48; tick++) {
+        live.advance(250);
+        live.publish();
+        completed ||= observeSteps(studyDispatch, {
+          diagram,
+          live: true,
+          session: live.getState(),
+          processed: () => 0,
+        })[1];
+      }
+      expect(live.getState().run!.expectations).toContainEqual(
+        expect.objectContaining({ id: "bounded", status: "pass" }),
+      );
+      expect(completed, "an empty topic cannot prove the partition fix works").toBe(connected);
+    } finally {
+      live.dispose();
+    }
   });
 
   it("Dispatch judges each run by its own saved expectation and requires partitions ≥ consumers", () => {

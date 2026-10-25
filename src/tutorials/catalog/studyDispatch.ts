@@ -133,6 +133,7 @@ export const studyDispatch: Tutorial = {
           { kind: "prop", subject: "dispatcher", prop: "replicas", op: ">=", value: 4 },
           { kind: "simulation", id: "more-partitions", atLeastMs: 4000 },
           { kind: "expectation", simulation: "more-partitions", label: msg("tutorials.studyDispatch.bounded") },
+          { kind: "metric", subject: "dispatcher", field: "processed", op: ">=", value: 10 },
         ],
       },
       targets: [{ testId: "node-{topic}", tip: msg("tutorials.studyDispatch.fixHint") }],

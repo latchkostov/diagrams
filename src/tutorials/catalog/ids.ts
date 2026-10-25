@@ -49,5 +49,5 @@ export const tutorialEntries: readonly Pick<TutorialMetadata, "id" | "quarantine
   { id: "health-checks" },
   { id: "study-checkout" },
   { id: "study-dispatch" },
-  { id: "study-payments" },
+  { id: "study-payments", quarantined: true },
 ];

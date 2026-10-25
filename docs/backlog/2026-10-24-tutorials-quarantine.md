@@ -96,3 +96,55 @@ yet played.
 
 **Fix:** Retain a reading step with Continue and an explicit Done acknowledgment, following read-happy-path.
 Verify that reaching the paused compensation note alone does not finish the tutorial.
+
+## Tutorials quarantine - PR #331
+
+The Payments design study (`study-payments`) is quarantined after both fix rounds were used. Cards,
+search, next-lesson suggestions and deep links exclude it; saved progress remains on the device.
+Its retained completion-sweep and browser cases skip automatically with this fragment as their reason.
+Checkout and Dispatch remain published. The runner is unchanged.
+
+Restoring Payments requires regression coverage for both Live-inspector edits and Skip with saved-run
+caller overrides in R-2a2fc9e8be, followed by the restored completion sweep and browser cases passing.
+The payment retry-safety coverage below remains a follow-up.
+
+## [P1/high] R-2a2fc9e8be: Honor saved-run caller overrides in brownout completion
+
+`src/tutorials/catalog/studyPayments.ts`, `survive-psp-brownout` · lenses: correctness
+
+Start PSP brownout before configuring its Request, then set Timeout to 250 ms and enable the breaker
+through the Live inspector. CallWaitFields uses effectiveCallerPolicy, which writes these changes
+into the saved simulation's setup.edges overrides. Completion reads only the base edge, so the
+milestone stays active even when the breaker opens. Skip also patches only the base edge: a saved
+breaker:null override continues to disable it, preventing Skip from completing.
+
+**Suggested fix:** Make completion and the reference demo account for effective saved-run caller
+settings. Add regressions using the Live inspector's effectiveCallerPolicy write path, including
+an explicitly disabled breaker. This quarantine does not attempt that fix.
+
+## [P2/high] R-9298f6e8c5: Require processed traffic before accepting the partition fix
+
+`src/tutorials/catalog/studyDispatch.ts`, `fix-partition-ceiling` · lenses: architecture
+
+After completing Dinner rush, remove Courier pings → Location topic, set replicas and partitions to
+four, and run More partitions. The topic backlog stays zero, so its saved expectation passes at four
+seconds even though Dispatcher processes nothing.
+
+**Suggested fix:** Require a Dispatcher processed-count threshold in the final milestone while
+retaining the partitions comparison and saved expectation. Cover a disconnected input path.
+
+**Resolved in this quarantine round:** The milestone now requires at least ten processed messages,
+matching Dinner rush. A regression runs both connected and disconnected inputs: both pass the saved
+backlog expectation, but only actual processing can complete the milestone. Dispatch stays published.
+
+## [P2/high] R-1ca28a02d7: Test that an outbox alone cannot complete Never double-charge
+
+`src/tutorials/studies.test.ts`, `never-double-charge` · lenses: tests
+
+The unfinished-diagram assertion runs before the outbox exists, while completion paths also enable
+idempotency. Removing the milestone's retry.idempotent requirement therefore escapes these tests
+and would allow completion with unsafe PSP retries.
+
+**Suggested fix:** Add “never-double-charge requires idempotent PSP retries”: create both required
+outbox Message connections, leave retry.idempotent false, and assert the milestone remains incomplete;
+then set it true and assert completion.
