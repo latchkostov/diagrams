@@ -3,6 +3,7 @@ import { waitingFixture } from "./waitingFixture";
 import { lazySurfacesFixture } from "./lazySurfacesFixture";
 import { inspectorLayoutFixture } from "./inspectorLayoutFixture";
 import { messageTypesFixture } from "./messageTypesFixture";
+import { MessageReadersLab } from "./MessageReadersLab";
 import { resilienceFixture, breakerFixture, sheddingFixture, healthFixture } from "./resilienceFixture";
 import { annotationShapesFixture } from "./annotationShapesFixture";
 import slowPayment from "../examples/slow-payment-provider.json";
@@ -299,6 +300,14 @@ const stress = (nodes: number): Preset => ({
 });
 
 const diagramPresets: Preset[] = [
+  {
+    kind: "render",
+    id: "message-readers",
+    title: "Message readers: two canvases",
+    group: "Diagrams",
+    description: "Independent carried-type readers with overlapping edge IDs.",
+    render: () => <MessageReadersLab />,
+  },
   {
     kind: "render",
     id: "live-message-types",

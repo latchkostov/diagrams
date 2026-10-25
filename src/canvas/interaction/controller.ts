@@ -125,6 +125,7 @@ export function createInteractionController<P = unknown>(
   let gestureHow: (GestureHandlers & { owner: unknown }) | null = null;
   /** Live's hover cards, while Live attaches them (readoutLayer.ts): their own store, apart from the snapshot. */
   let readouts: ReadoutLayer | null = null;
+  const escapes: (() => boolean)[] = [];
   let camera = options.camera;
   let focus: FocusState = initialFocus();
   /** The camera's view of the open menu (it hears of a change of kind only, as before). */
@@ -574,6 +575,17 @@ export function createInteractionController<P = unknown>(
       if (selectionKey !== JSON.stringify([edge])) return;
       gestureState = gestures(gestureState, { type: "segment.reset", edge }).state;
       changed();
+    },
+    /** Transient surfaces own Escape before selection. The newest eligible surface consumes one press. */
+    attachEscape(close: () => boolean) {
+      escapes.push(close);
+      return () => {
+        const index = escapes.lastIndexOf(close);
+        if (index >= 0) escapes.splice(index, 1);
+      };
+    },
+    escape() {
+      return [...escapes].reverse().some((close) => close());
     },
     /** Live attaches its readout layer while it shows hover cards; returns the detach. */
     attachReadouts(layer: ReadoutLayer) {

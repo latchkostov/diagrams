@@ -118,10 +118,12 @@ export function ChecksCard(p: ChecksCardProps) {
   const suggestions = r?.findings.filter((f) => f.severity === "suggestion") ?? [];
   const group = (title: string, list: Finding[], id: string) =>
     list.length > 0 && (
-      <div className="checks-group" role="list" aria-label={title} data-testid={`checks-group-${id}`}>
-        {list.slice(0, shown).map((f) => (
-          <FindingRow key={f.id} finding={f} host={p} state={p.state} />
-        ))}
+      <div className="checks-group">
+        <div role="list" aria-label={title} data-testid={`checks-group-${id}`}>
+          {list.slice(0, shown).map((f) => (
+            <FindingRow key={f.id} finding={f} host={p} state={p.state} />
+          ))}
+        </div>
         {list.length > shown && (
           <button
             type="button"
@@ -310,18 +312,18 @@ export function InspectorFindings({
   );
   useFallbackOnUnmount(self);
   return (
-    <div
-      ref={self}
-      className="insp-findings"
-      role="list"
-      aria-label="Checks"
-      data-testid="inspector-findings"
-      data-stale={state.stale}
-      data-check-scope
-    >
-      {findings.map((f) => (
-        <FindingRow key={f.id} finding={f} host={host} state={state} compact testPrefix="inspector-check" />
-      ))}
+    <div ref={self} className="insp-findings" data-check-scope>
+      <div
+        className="insp-findings-list"
+        role="list"
+        aria-label="Checks"
+        data-testid="inspector-findings"
+        data-stale={state.stale}
+      >
+        {findings.map((f) => (
+          <FindingRow key={f.id} finding={f} host={host} state={state} compact testPrefix="inspector-check" />
+        ))}
+      </div>
       <button type="button" className="link-btn" data-testid="inspector-open-checks" onClick={host.open}>
         All checks
       </button>
