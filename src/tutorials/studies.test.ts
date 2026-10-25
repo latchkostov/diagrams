@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import { createMachine, machinePaths } from "../lib/machine";
 import { validateDiagram } from "../interop/native";
 import { LiveController } from "../live/controller";
-import { allTutorials, findTutorial } from "./catalog";
+import { allTutorials, findTutorial, tutorials } from "./catalog";
+import { tutorialEntries } from "./catalog/ids";
+import { tutorialMetadata } from "./metadata";
 import { studyCheckout } from "./catalog/studyCheckout";
 import { studyDispatch } from "./catalog/studyDispatch";
 import { studyPayments } from "./catalog/studyPayments";
@@ -73,11 +75,43 @@ describe("design studies", () => {
     });
   }
 
-  it("offers checkout and payments while dispatch awaits owner decision 7", () => {
+  it("publishes all three studies in discovery and direct links after owner decision 7", () => {
     expect(findTutorial("study-checkout")).toBe(studyCheckout);
     expect(findTutorial("study-payments")).toBe(studyPayments);
-    expect(studyDispatch.quarantined).toBe(true);
-    expect(findTutorial("study-dispatch")).toBeUndefined();
+    expect(studyDispatch.quarantined).toBeUndefined();
+    expect(findTutorial("study-dispatch")).toBe(studyDispatch);
+    expect(tutorials).toContain(studyDispatch);
+    expect(tutorialMetadata.some((entry) => entry.id === studyDispatch.id)).toBe(true);
+    expect(tutorialEntries.find((entry) => entry.id === studyDispatch.id)).toEqual({ id: studyDispatch.id });
+  });
+
+  it("Dispatch judges each run by its own saved expectation and requires partitions ≥ consumers", () => {
+    if (typeof studyDispatch.start !== "function") throw new Error("Expected inline diagram");
+    for (const [index, id] of ["dinner-rush", "more-partitions"].entries())
+      for (const passingExpectation of [true, false]) {
+        const diagram = studyDispatch.start();
+        diagram.nodes.find((node) => node.id === "dispatcher")!.props!.replicas = 4;
+        diagram.nodes.find((node) => node.id === "pings")!.props!.partitions = 4;
+        const simulation = diagram.simulations!.find((run) => run.id === id)!;
+        if (!passingExpectation) simulation.expectations![0].value = -1;
+        const live = new LiveController(diagram);
+        try {
+          expect(live.selectSimulation(simulation)).toBe("selected");
+          live.setPlaying(true);
+          for (let tick = 0; tick < 16; tick++) live.advance(250);
+          live.publish();
+          const view = { diagram, live: true, session: live.getState(), processed: () => 0 };
+          const met = observeSteps(studyDispatch, view);
+          expect(met[index], `${id}: own expectation ${passingExpectation}`).toBe(passingExpectation);
+          expect(met[1 - index], "another run's result cannot complete this milestone").toBe(false);
+          if (index === 1 && passingExpectation) {
+            diagram.nodes.find((node) => node.id === "pings")!.props!.partitions = 3;
+            expect(observeSteps(studyDispatch, view)[index], "unassigned consumers cannot satisfy the fix").toBe(false);
+          }
+        } finally {
+          live.dispose();
+        }
+      }
   });
 
   it("shows study targets only while hinting across the runner's reachable paths", () => {

@@ -21,7 +21,6 @@ it("hides quarantined lessons from cards, search, suggestions and deep links whi
     "dependencies-2",
     "backlog-lag",
     "rate-limit",
-    "study-dispatch",
   ]);
   const progress = Object.fromEntries(quarantined.map((t) => [t.id, { version: t.version, step: 1, completed: true }]));
   writeTutorials(() => ({ progress }));

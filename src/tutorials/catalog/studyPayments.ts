@@ -107,6 +107,8 @@ export const studyPayments: Tutorial = {
       demo: [
         { kind: "add", subject: "outbox", stencil: "kafka.topic", after: "payments" },
         { kind: "add", subject: "consumer", stencil: "service.java", after: "outbox" },
+        { kind: "relation", from: "payments", to: "outbox", relation: "flow", edgeKind: "async" },
+        { kind: "relation", from: "outbox", to: "consumer", relation: "flow", edgeKind: "async" },
         {
           kind: "patch",
           edge: ["payments", "psp"],
@@ -148,7 +150,7 @@ export const studyPayments: Tutorial = {
           edge: ["payments", "psp"],
           patches: [
             { op: "set", path: ["caller", "deadlineMs"], value: 250 },
-            { op: "setIfMissing", path: ["caller", "breaker"], value: {} },
+            { op: "set", path: ["caller", "breaker"], value: {} },
           ],
         },
         { kind: "runSimulation", id: "psp-brownout" },
@@ -182,6 +184,7 @@ export const studyPayments: Tutorial = {
       targets: [{ testId: "node-{outbox}", tip: msg("tutorials.studyPayments.poisonHint") }],
       demo: [
         { kind: "add", subject: "dlq", stencil: "aws.sqs", after: "outbox" },
+        { kind: "relation", from: "outbox", to: "dlq", relation: "flow", edgeKind: "async" },
         { kind: "patch", edge: ["outbox", "dlq"], patches: [{ op: "set", path: ["dlq"], value: true }] },
         { kind: "patch", subject: "consumer", patches: [{ op: "set", path: ["failureRate"], value: 1 }] },
         { kind: "runSimulation", id: "poison-disputes" },
@@ -189,7 +192,9 @@ export const studyPayments: Tutorial = {
       solution: [
         { click: "live-toggle" },
         ...studyAdd("outbox", msg("tutorials.studyPayments.searchQueue")),
-        { press: "Control+Alt+[" },
+        { click: "node-{outbox}" },
+        { press: "Control+Alt+]" },
+        { press: "Control+Alt+]" },
         { click: "inspector-field-dlq" },
         { click: "fit-view-button" },
         { dblclick: "node-{consumer}" },

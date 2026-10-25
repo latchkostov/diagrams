@@ -148,8 +148,12 @@ export const studyCheckout: Tutorial = {
       },
       targets: [{ testId: "node-{checkout}", tip: msg("tutorials.studyCheckout.ordersHint") }],
       demo: [
+        { kind: "connect", from: "checkout", to: "orders" },
+        { kind: "relation", from: "checkout", to: "orders", relation: "flow", edgeKind: "sync" },
         { kind: "add", subject: "topic", stencil: "kafka.topic", after: "checkout" },
         { kind: "add", subject: "consumer", stencil: "service.java", after: "topic" },
+        { kind: "relation", from: "checkout", to: "topic", relation: "flow", edgeKind: "async" },
+        { kind: "relation", from: "topic", to: "consumer", relation: "flow", edgeKind: "async" },
       ],
       solution: [
         { click: "live-toggle" },

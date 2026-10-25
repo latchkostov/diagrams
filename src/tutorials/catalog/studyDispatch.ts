@@ -5,8 +5,6 @@ import { studyRun } from "./studyShared";
 export const studyDispatch: Tutorial = {
   id: "study-dispatch",
   version: 1,
-  // owner decision pending: 7 (study-dispatch cross-run baseline). See docs/backlog/2026-10-25-design-studies.md.
-  quarantined: true,
   track: "studies",
   level: 3,
   minutes: 20,
@@ -115,7 +113,7 @@ export const studyDispatch: Tutorial = {
         { select: "live-sim-picker", value: "dinner-rush" },
       ],
     },
-    // Milestone "find-partition-ceiling" needs the owner's two-run comparison decision (item 7).
+    // Owner decision 7 (2026-10-25): compare partitions with consumers and judge each run's own expectations.
     {
       id: "fix-partition-ceiling",
       title: msg("tutorials.studyDispatch.fixTitle"),
@@ -144,6 +142,7 @@ export const studyDispatch: Tutorial = {
         { kind: "runSimulation", id: "more-partitions" },
       ],
       solution: [
+        { dblclick: "node-{dispatcher}" },
         { fill: "inspector-field-replicas", text: "4" },
         { press: "Enter" },
         { dblclick: "node-{topic}" },

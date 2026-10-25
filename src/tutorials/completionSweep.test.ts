@@ -43,6 +43,8 @@ import { backoffBudget } from "./catalog/backoffBudget";
 import { circuitBreaker } from "./catalog/circuitBreaker";
 import { rateLimit } from "./catalog/rateLimit";
 import { dependencies2 } from "./catalog/dependencies2";
+import { studyCheckout } from "./catalog/studyCheckout";
+import { studyPayments } from "./catalog/studyPayments";
 import { dependencyVisibility } from "../canvas/dependencyVisibility";
 import { authorADrill } from "./catalog/authorADrill";
 import { faults } from "./catalog/faults";
@@ -979,6 +981,84 @@ describe("every tutorial's completion contract", () => {
 });
 
 describe("completion regressions", () => {
+  for (const tutorial of [studyCheckout, studyPayments])
+    for (const [i, step] of tutorial.steps.entries()) {
+      const relations = (check: Check): Extract<Check, { kind: "relation" }>[] =>
+        check.kind === "all" ? check.checks.flatMap(relations) : check.kind === "relation" ? [check] : [];
+      for (const required of relations(step.check))
+        for (const perturbation of ["learner changed kind", "learner removed a required relationship"] as const)
+          it(`${tutorial.id}: ${step.id} Skip recovers after ${perturbation} (${required.from} → ${required.to})`, async () => {
+            const s = sandbox(tutorial);
+            expect(await reach(s, tutorial, i)).toBe(true);
+            // Build the learner's partial outbox in one document write, so a correct intermediate graph cannot
+            // advance the milestone before its mistaken relationship lands.
+            const diagram = structuredClone(s.diagram);
+            const subjects = { ...s.runner.getSnapshot().subjects };
+            for (const demo of step.demo) {
+              if (demo.kind !== "add") continue;
+              const id = subjects[demo.subject] ?? `learner-${demo.subject}`;
+              if (!subjects[demo.subject]) {
+                diagram.nodes.push({ id, stencil: demo.stencil, label: "Learner", x: 0, y: 500 });
+                subjects[demo.subject] = id;
+              }
+              const from = demo.after && subjects[demo.after];
+              if (from && !diagram.edges.some((edge) => edge.from === from && edge.to === id))
+                diagram.edges.push({ id: `learner-${from}-${id}`, from, to: id, kind: "async" });
+            }
+            const from = subjects[required.from]!,
+              to = subjects[required.to]!;
+            const original = diagram.edges.find((edge) => edge.from === from && edge.to === to)!;
+            expect(original).toBeDefined();
+            original.props = { ...original.props, latencyMs: 17 };
+            if (perturbation === "learner changed kind")
+              original.kind = required.edgeKind === "sync" ? "async" : "sync";
+            else diagram.edges = diagram.edges.filter((edge) => edge !== original);
+            s.editor.applyDiagram(diagram);
+            expect(state(s)).toMatchObject({ index: i, value: "active" });
+            await skip(s, tutorial);
+            const repaired = s.diagram.edges.filter((edge) => edge.from === from && edge.to === to);
+            expect(repaired).toHaveLength(1);
+            expect(repaired[0].kind).toBe(required.edgeKind);
+            expect(repaired[0].relation ?? "flow").toBe(required.relation);
+            if (perturbation === "learner changed kind") {
+              expect(repaired[0].id).toBe(original.id);
+              expect(repaired[0].props?.latencyMs).toBe(17);
+            }
+            expect(s.diagram.nodes).toHaveLength(diagram.nodes.length);
+          });
+    }
+
+  it("keep-orders Skip restores the Orders DB Request", async () => {
+    const s = sandbox(studyCheckout);
+    const i = studyCheckout.steps.findIndex((step) => step.id === "keep-orders");
+    expect(await reach(s, studyCheckout, i)).toBe(true);
+    s.editor.updateEdge("checkout-orders", { kind: "async" });
+    await skip(s, studyCheckout);
+    expect(s.diagram.edges.find((edge) => edge.id === "checkout-orders")?.kind).toBe("sync");
+    expect(beyond(s, i)).toBe(true);
+  });
+
+  it("survive-psp-brownout Skip recovers after learner disabled breaker", async () => {
+    const s = sandbox(studyPayments);
+    const i = studyPayments.steps.findIndex((step) => step.id === "survive-psp-brownout");
+    expect(await reach(s, studyPayments, i)).toBe(true);
+    // The inspector's On then Off writes an explicit null, rather than removing the property.
+    s.learn({
+      kind: "patch",
+      edge: ["payments", "psp"],
+      patches: [{ op: "set", path: ["caller", "breaker"], value: {} }],
+    });
+    s.learn({
+      kind: "patch",
+      edge: ["payments", "psp"],
+      patches: [{ op: "set", path: ["caller", "breaker"], value: null }],
+    });
+    await skip(s, studyPayments);
+    expect(s.diagram.edges.find((edge) => edge.id === "payments-psp")?.props?.caller).toMatchObject({ breaker: {} });
+    expect(s.live!.getState().snapshot.edges["payments-psp"].breaker?.state).toBe("open");
+    expect(beyond(s, i)).toBe(true);
+  });
+
   for (const tutorial of [threadsBlock, timeoutsPools])
     for (const [i, step] of tutorial.steps.entries()) {
       if (!step.demo.some((d) => d.kind === "patch" && d.edge)) continue;
