@@ -108,6 +108,24 @@ describe("interactive viewer template", () => {
       ).toBe(false);
   });
 
+  it("keeps planning readouts without the lazy barrel's routing and autoscaling editors", () => {
+    for (const path of ["/src/planning/RoutingFields.tsx", "/src/planning/AutoscalingFields.tsx"])
+      expect(
+        modules.some((id) => id.endsWith(path)),
+        path,
+      ).toBe(false);
+    for (const path of [
+      "/src/planning/NodePlanning.tsx",
+      "/src/sim/autoscaling.ts",
+      "/src/model/requestRouting.ts",
+      "/src/styles/inspector-layout.css",
+    ])
+      expect(
+        modules.some((id) => id.endsWith(path)),
+        path,
+      ).toBe(true);
+  });
+
   it("plays shedding without its inspector, fix authoring or tutorial UI", () => {
     for (const path of [
       "/src/canvas/inspector/QueueFields.tsx",

@@ -130,6 +130,26 @@ export const EDITOR_ONLY: { name: string; path: string; stub: (root: string) => 
     stub: () => "export const builtinActions = () => []; export const quickAddMenu = () => [];",
   },
   { name: "the inspector", path: "/src/canvas/Inspector.tsx", stub: () => "export const Inspector = () => null;" },
+  // NodePlanning's hover readout loads planning/ui through the shared lazy barrel. That barrel also exports
+  // these inspector-only editors: in a single-file viewer their dynamic imports would retain the editors too.
+  {
+    name: "the routing editor",
+    path: "/src/planning/RoutingFields.tsx",
+    stub: () =>
+      [
+        "export const RouteTableFields = () => null;",
+        "export const TrafficMixFields = () => null;",
+        "export const EdgeRouteFields = () => null;",
+        "export const RequestRoutesSection = () => null;",
+      ].join("\n"),
+  },
+  {
+    name: "the autoscaling editor",
+    path: "/src/planning/AutoscalingFields.tsx",
+    // Layout's stylesheet also has shared planning-readout rules. Preserve its side effect and cascade position.
+    stub: (root) =>
+      `import ${JSON.stringify(normalizePath(resolve(root, "src/styles/inspector-layout.css")))}; export const AutoscalingFields = () => null;`,
+  },
   {
     name: "the docked node Live readout",
     path: "/src/planning/LiveDetails.tsx",
