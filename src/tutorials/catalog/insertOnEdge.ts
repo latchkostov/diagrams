@@ -4,7 +4,6 @@ import type { Tutorial } from "../types";
 export const insertOnEdge: Tutorial = {
   id: "insert-on-edge",
   version: 1,
-  quarantined: true,
   track: "basics",
   level: 1,
   minutes: 2,
@@ -36,6 +35,7 @@ export const insertOnEdge: Tutorial = {
         checks: [
           { kind: "edge", from: "app", to: "gw" },
           { kind: "edge", from: "gw", to: "api" },
+          { kind: "relation", from: "app", to: "api", absent: true },
         ],
       },
       targets: [

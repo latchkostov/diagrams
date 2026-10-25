@@ -170,7 +170,7 @@ export function holds(check: Check, view: SandboxView, subjects: Record<string, 
     case "aligned": {
       const nodes = check.subjects
         ? check.subjects.map(node)
-        : (view.mode?.selection ?? []).map((id) => view.diagram.nodes.find((n) => n.id === id));
+        : view.diagram.nodes.filter((n) => view.mode?.selection.includes(n.id));
       return (
         nodes.length >= (check.atLeast ?? 2) && nodes.every((n) => !!n && n[check.axis] === nodes[0]?.[check.axis])
       );

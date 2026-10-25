@@ -1,4 +1,5 @@
 /* eslint-disable local/no-literal-ui-text -- Labels these fake edits write are test input, not UI copy. */
+import { visibilityFixtures } from "./visibility.fixture";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -686,6 +687,8 @@ function sandbox(tutorial: Tutorial, { lateAdds = false, lateConnects = false, l
           return editor.updateNode(id(demo.subject), { group: id(demo.boundary) });
         case "align":
           return editor.align(demo.subjects ? demo.subjects.map(id) : editor.getSelection().nodeIds);
+        case "dependencies":
+          return dependencyVisibility.set(demo.visible);
         case "present":
           app.presenting = demo.on;
           return runner.appChanged({ ...app });
@@ -1000,7 +1003,7 @@ describe("membership selector fixture", () => {
 });
 
 describe("every tutorial's completion contract", () => {
-  for (const tutorial of [...tutorials, ...tutorialFixtures])
+  for (const tutorial of [...tutorials, ...tutorialFixtures, ...visibilityFixtures])
     describe(tutorial.id, () => {
       const lessonIt = itFor(tutorial);
       tutorial.steps.forEach((step, i) => {
@@ -1374,23 +1377,38 @@ describe("completion regressions", () => {
     expect(new Set(s.diagram.nodes.slice(1).map((n) => n.y)).size).toBe(1);
   });
 
-  for (const original of ["present", "deleted", "partly inserted"] as const)
+  for (const original of [
+    "present",
+    "deleted",
+    "partly inserted",
+    "connected upstream",
+    "connected downstream",
+    "both connected",
+  ] as const)
     itFor(insertOnEdge)(
       `insert-on-edge: Skip reuses a separately added gateway with original connection ${original}`,
       async () => {
         const s = sandbox(insertOnEdge);
         s.runner.send({ type: "start" });
-        const gateway = s.editor.addStencil("aws.api-gateway");
+        const gateway =
+          original === "connected upstream"
+            ? s.editor.createConnected({ from: "app", stencil: "aws.api-gateway" }).id
+            : s.editor.addStencil("aws.api-gateway");
         if (original === "deleted") s.editor.applyDiagram({ ...s.diagram, edges: [] });
         if (original === "partly inserted") s.editor.reconnectEdge("call", "target", gateway);
+        if (original === "both connected") s.editor.connect("app", gateway);
+        if (original === "connected downstream" || original === "both connected") s.editor.connect(gateway, "api");
         await skip(s, insertOnEdge);
         expect(state(s)).toMatchObject({ index: 1 });
         expect(s.subject("gw")).toBe(gateway);
         expect(s.diagram.nodes.filter((n) => n.stencil === "aws.api-gateway")).toHaveLength(1);
-        expect(s.diagram.edges.map((e) => [e.from, e.to])).toEqual([
+        const chain = [
           ["app", gateway],
           [gateway, "api"],
-        ]);
+        ];
+        expect(s.diagram.edges.map((e) => [e.from, e.to])).toEqual(
+          original === "connected upstream" ? [...chain].reverse() : chain,
+        );
       },
     );
 
@@ -1443,6 +1461,32 @@ describe("completion regressions", () => {
     expect(await h.api.moveIntoBoundary(["a", "b", "c"], "box")).toBe(true);
     expect(h.nodes()).toBe(repaired);
     expect(h.deps.history.hint).toHaveBeenCalledTimes(1);
+  });
+
+  for (const path of ["Skip", "Continue"] as const)
+    it(`dependencies-2: ${path} shows hidden Dependencies before adding a setting`, async () => {
+      const previous = dependencyVisibility.get();
+      cleanup.push(() => dependencyVisibility.set(previous));
+      dependencyVisibility.set(false);
+      if (path === "Continue") saveProgress(dependencies2, 1, false);
+      const s = sandbox(dependencies2);
+      s.runner.send({ type: path === "Continue" ? "resume" : "start" });
+      if (path === "Skip") await skip(s, dependencies2);
+      await vi.waitFor(() => expect(state(s)).toMatchObject({ index: 1, value: "active" }));
+      expect(dependencyVisibility.get()).toBe(true);
+    });
+
+  it("arrange: Align counts selected services without counting their selected edge", async () => {
+    const s = sandbox(arrange);
+    s.runner.send({ type: "start" });
+    const ids = s.diagram.nodes.slice(1).map((n) => n.id);
+    const edge = s.editor.connect(ids[0], ids[1]);
+    s.toMode({ type: "selection", ids: [...ids, edge] });
+    expect(state(s)).toMatchObject({ index: 1, value: "active" });
+    s.editor.align(ids);
+    expect(state(s)).toMatchObject({ index: 2, value: "active" });
+    expect(s.mode.selection).toEqual([...ids, edge]);
+    expect(s.diagram.nodes[0].y).toBe(60);
   });
 
   itFor(dependencies2)("dependencies-2 shows hidden Dependencies before targeting Config", () => {

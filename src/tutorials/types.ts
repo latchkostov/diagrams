@@ -238,6 +238,8 @@ export type Demo =
       /** Keep a sufficient learner selection; otherwise select these subjects before aligning. */
       selection?: { atLeast: number; fallback: readonly string[] };
     }
+  /** Set the remembered Dependencies visibility, including during resume reconstruction. */
+  | { kind: "dependencies"; visible: boolean }
   | { kind: "present"; on: boolean }
   | { kind: "live" };
 

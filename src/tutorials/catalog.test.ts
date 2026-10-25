@@ -1,3 +1,4 @@
+import { visibilityFixtures } from "./visibility.fixture";
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
@@ -264,7 +265,7 @@ describe("tutorial catalog", () => {
   });
 
   // The runner's fixture lessons (src/test/tutorialFixtures.ts) meet the same rules as the catalog's.
-  for (const tutorial of [...tutorials, ...tutorialFixtures])
+  for (const tutorial of [...tutorials, ...tutorialFixtures, ...visibilityFixtures])
     describe(tutorial.id, () => {
       const subjects = new Set(Object.keys(tutorial.subjects));
 

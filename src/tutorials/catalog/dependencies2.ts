@@ -7,8 +7,6 @@ const lockTarget = `inspector-setting-lock-key-${setting}`;
 export const dependencies2: Tutorial = {
   id: "dependencies-2",
   version: 2,
-  // quarantined: see docs/backlog/2026-10-24-tutorials-quarantine.md
-  quarantined: true,
   track: "blocks",
   level: 2,
   minutes: 2,
@@ -23,7 +21,7 @@ export const dependencies2: Tutorial = {
       goal: msg("tutorials.dependencies2.showGoal"),
       check: { kind: "dependencies", visible: true },
       targets: [{ testId: "canvas-pane", tip: msg("tutorials.dependencies2.showGoal") }],
-      demo: [],
+      demo: [{ kind: "dependencies", visible: true }],
       solution: [
         { rightclick: "canvas-pane" },
         { hover: "context-menu-item-canvas.view-options" },

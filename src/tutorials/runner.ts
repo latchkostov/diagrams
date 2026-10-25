@@ -373,6 +373,9 @@ export function createTutorialRunner(
         ed.align(ids, demo.mode);
         return;
       }
+      case "dependencies":
+        dependencyVisibility.set(demo.visible);
+        return;
       case "present":
         ports.present?.(demo.on);
         return;
@@ -398,11 +401,18 @@ export function createTutorialRunner(
         if (existing) {
           const from = subjects[demo.edge[0]],
             to = subjects[demo.edge[1]];
-          if (edge([demo.edge[0], demo.subject]) && edge([demo.subject, demo.edge[1]])) return;
-          if (id) ed.insertIntoEdge(id, existing);
-          else {
-            if (from) ed.connect(from, existing);
-            if (to) ed.connect(existing, to);
+          const upstream = edge([demo.edge[0], demo.subject]);
+          const downstream = edge([demo.subject, demo.edge[1]]);
+          if (id) {
+            // Keep the learner's existing half (and its properties); reuse the original for the missing half.
+            if (upstream && downstream)
+              ed.applyDiagram({ ...ed.getDiagram(), edges: ed.getDiagram().edges.filter((e) => e.id !== id) });
+            else if (upstream) ed.reconnectEdge(id, "source", existing);
+            else if (downstream) ed.reconnectEdge(id, "target", existing);
+            else ed.insertIntoEdge(id, existing);
+          } else {
+            if (from && !upstream) ed.connect(from, existing);
+            if (to && !downstream) ed.connect(existing, to);
           }
           return;
         }

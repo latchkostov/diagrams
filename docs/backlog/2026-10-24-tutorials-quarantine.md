@@ -1,27 +1,8 @@
 ## Tutorials quarantine - PR #299
 
-Arrange and Insert on an edge are quarantined after both fix rounds were used. They are unavailable through cards,
-search, next-lesson suggestions and deep links. Saved progress stays on the device and is ignored while quarantined.
-The retained completion-sweep and browser cases are skipped with this fragment as their reason.
-
-Un-quarantining requires regression tests for **both P1s below** and the completion sweep passing, including the
-restored cases. The P2s remain follow-ups; this quarantine does not attempt any of these fixes.
-
-## [P1/high] R-3665ee21fd: Ignore selected edges when checking node alignment
-
-`src/tutorials/checks.ts:145` · lenses: accessibility
-
-In Arrange, connect two seed services before drawing the instructed selection box. The box automatically selects edges between selected nodes. Align middles correctly aligns the services, but this check maps the selected edge ID to undefined and therefore never passes. The learner remains on Align despite performing the requested action.
-
-**Fix:** Filter the committed selection to diagram nodes before applying the minimum count and coordinate comparison. Cover a selection containing four or more services and an edge.
-
-## [P1/high] R-dc523babb0: Avoid duplicating an existing gateway connection on Skip
-
-`src/tutorials/runner.ts:283` · lenses: correctness
-
-In insert-on-edge, select the app, add an API Gateway through Ctrl+K, then click Skip. Adding after the selected app creates app→gateway while retaining app→API. This branch splits app→API through the existing gateway; splitFlowEdge preserves every other edge, producing two app→gateway connections plus gateway→API. The tutorial advances with an incorrect diagram that can also be saved or simulated.
-
-**Fix:** Handle partially connected gateways explicitly: preserve or consolidate the existing half when replacing the original edge, producing exactly app→gateway→API. Add a regression covering a gateway added after a selected app.
+Arrange and Insert on an edge were restored on 2026-10-25 after fixing R-3665ee21fd and
+R-dc523babb0. Regressions cover mixed node/edge alignment and Skip with either gateway connection half
+already present, including a gateway added after the selected app. The P2 follow-ups below remain separate.
 
 ## [P2/high] R-cf6cdf20ea: Normalize boundary subjects before comparing selections
 
@@ -65,25 +46,10 @@ This regression claims Skip commits the note, but leaves its editor untouched an
 
 ## Tutorials quarantine - PR #303
 
-Dependencies, part 2 (`dependencies-2`) is quarantined after both build-05 fix rounds were used. Cards, search,
-next-lesson suggestions and deep links exclude it; saved progress remains on the device. Its retained completion-sweep
-and browser cases skip automatically through the quarantine flag with this fragment as their reason. Webhooks,
-Fan-out, Partitions and Outbox remain available.
-
-Restoring this lesson requires regressions for both Skip and resume reconstruction in R-720a9a5048 and the restored
-completion-sweep and browser cases passing. R-7afb59dfff remains a separate Outbox follow-up.
-
-## [P1/high] R-720a9a5048: Show Dependencies when skipping or reconstructing this prerequisite
-
-`src/tutorials/catalog/dependencies2.ts:24` · lenses: correctness
-
-With Dependencies hidden, start `dependencies-2` and press Skip on show-dependencies. The lesson advances to
-add-setting without revealing the Config connection: the empty demo latches completion, but the connection remains
-hidden and unselectable. Resuming saved progress past that prerequisite also leaves the connection hidden if the
-app-wide Dependencies preference was subsequently turned off, so the next instruction cannot be followed.
-
-**Fix:** Provide an idempotent visibility demo that sets Dependencies on during Skip and resume reconstruction.
-Cover both paths with the visibility preference initially off.
+Dependencies, part 2 (`dependencies-2`) was restored on 2026-10-25. R-720a9a5048 is resolved:
+Skip and Continue set Dependencies visible before the setting step, with regressions starting from the
+hidden preference. Its setting-lock regression remains enabled. The Outbox follow-up below was already
+resolved by its acknowledgment step and is covered by retained completion-sweep and browser cases.
 
 ## [P2/high] R-7afb59dfff: Keep the compensation reading step active until acknowledged
 

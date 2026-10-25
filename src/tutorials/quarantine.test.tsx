@@ -16,9 +16,6 @@ it("hides quarantined lessons from cards, search, suggestions and deep links whi
   });
   const quarantined = allTutorials.filter((t) => t.quarantined);
   expect(quarantined.map((t) => t.id)).toEqual([
-    "insert-on-edge",
-    "arrange",
-    "dependencies-2",
     "study-checkout",
     "study-dispatch",
     "study-payments",
