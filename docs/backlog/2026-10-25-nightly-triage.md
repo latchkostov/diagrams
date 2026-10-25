@@ -132,6 +132,34 @@ Linux runner and native platform outcomes.
 `pnpm parity`: **3,151 goldens, 0 changed, 0 added, 0 missing, 0 stale**; 1,858 Node tests and
 108 Linux browser tests passed. No golden was re-recorded.
 
+## Branch dispatch: resource timeout removed, engine counterexample exposed
+
+[Nightly 40176769849](https://github.com/latchkostov/diagrams/actions/runs/40176769849) was dispatched
+on implementation commit `0c1dacb1ee529bc24b5deef5b596f1986922b7aa`. All 16 resource jobs completed
+within the unchanged ten-minute limit (none cancelled): **15 passed, 1 failed**. The failed
+[partition 7/16](https://github.com/latchkostov/diagrams/actions/runs/40176769849/job/121119023909)
+ran for 3 minutes 55 seconds including setup and reports an assertion, not a timeout:
+
+- Test: `src/sim/autoscaling.invariants.heavy.test.ts` — `A1 seeded ownership invariants > seed 3575`.
+- Seed **3575**, scale **10**: `worker @7230: CPU backoff lost paused time`.
+- The complete minimized diagram/events are in that job's failure log. Its sequence bursts traffic,
+  takes the worker down, removes the API quota, changes failure/backoff settings, enables HPA,
+  then takes it up, paused and down.
+- Replay: `A1_FUZZ_SEED=3575`, filter `A1 seeded ownership invariants.*seed 3575` in the file above.
+  This generator uses `A1_FUZZ_SEED`, not fast-check's `FC_SEED`/`FC_PATH`.
+
+Confirmed on an unchanged archive of `origin/master` at
+`5a7986fbbd7ca4a1883a6932a2ec44ebbc018517`, extracted beneath this workspace's ignored output directory,
+using the frozen dependencies, one Vitest worker and **two targeted executions**. Each has **0 passed,
+1 failed**, with exactly `Seed 3575, scale 10: worker @7230: CPU backoff lost paused time`.
+No full clean-master suite was run. The archive's source stays unchanged; dependencies and replay
+reports are local ignored artifacts. This is a **pre-existing engine regression for lane B**;
+no invariant is weakened and no engine fix belongs in this PR.
+
+The Windows report-only slow-motion diagnostic also failed again. Other Nightly jobs and PR CI
+were still running/queued at this observation; this is not a claim that the complete dispatch passed.
+The PR carries the latest remote status. This follow-up commit changes documentation only.
+
 ## Per-job inventory
 
 ## [2026-10-21 — 39544921411](https://github.com/latchkostov/diagrams/actions/runs/39544921411)
