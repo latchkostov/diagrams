@@ -758,7 +758,7 @@ function OpenChip({
         ]
       : []),
     { type: "separator" },
-    ...(state === "failed" && hasRoomServices()
+    ...(state === "failed"
       ? [{ type: "item" as const, testId: "room-retry", title: t("common.retry"), onSelect: retry }]
       : []),
     ...(elsewhere ? [{ type: "item" as const, testId: "room-show", title: t("collab.show"), onSelect: onShow }] : []),

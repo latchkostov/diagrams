@@ -755,7 +755,7 @@ test("a build with no trackers says so plainly, to the one who starts a room and
     expect((await download).suggestedFilename()).toBe("room-copy.diagram.json");
     await chip(page).click();
     await expect(page.getByTestId("room-menu")).toBeVisible();
-    await expect(page.getByTestId("room-retry")).toHaveCount(0);
+    await expect(page.getByTestId("room-retry")).toBeEnabled();
     await page.keyboard.press("Escape");
     await expectAxeClean(page, "room-alert");
     // A joiner of the same copy: told before joining, and again once the wait is over.
