@@ -29,6 +29,10 @@ import { arrange } from "./catalog/arrange";
 import { sharePresent } from "./catalog/sharePresent";
 import { insertOnEdge } from "./catalog/insertOnEdge";
 import { boundaries } from "./catalog/boundaries";
+import { partitions } from "./catalog/partitions";
+import { outbox } from "./catalog/outbox";
+import { dependencies2 } from "./catalog/dependencies2";
+import { dependencyVisibility } from "../canvas/dependencyVisibility";
 import { stencils } from "../stencils/registry";
 import { editorHarness } from "../test/editorHarness";
 import { overlaps } from "../canvas/placement";
@@ -1013,6 +1017,45 @@ describe("completion regressions", () => {
     expect(await h.api.moveIntoBoundary(["a", "b", "c"], "box")).toBe(true);
     expect(h.nodes()).toBe(repaired);
     expect(h.deps.history.hint).toHaveBeenCalledTimes(1);
+  });
+
+  it("dependencies-2 shows hidden Dependencies before targeting Config", () => {
+    const previous = dependencyVisibility.get();
+    cleanup.push(() => dependencyVisibility.set(previous));
+    dependencyVisibility.set(false);
+    const s = sandbox(dependencies2);
+    s.runner.send({ type: "start" });
+    expect(dependencies2.steps[state(s).index].id).toBe("show-dependencies");
+    dependencyVisibility.set(true);
+    expect(dependencies2.steps[state(s).index].id).toBe("add-setting");
+  });
+
+  it("partitions retains read-idle until acknowledged", async () => {
+    const s = sandbox(partitions);
+    s.live!.advance(250);
+    s.live!.publish();
+    expect(s.live!.getState().snapshot.nodes[s.subject("consumers")].idleReplicas).toBeGreaterThan(0);
+    s.runner.send({ type: "start" });
+    expect(state(s)).toMatchObject({ index: 0, value: "active" });
+    s.live!.advance(250);
+    s.live!.publish();
+    expect(state(s)).toMatchObject({ index: 0, value: "active" });
+    await skip(s, partitions);
+    expect(state(s)).toMatchObject({ index: 1, value: "active" });
+  });
+
+  it("outbox preserves the reading instruction through Continue and can Skip it", async () => {
+    const s = sandbox(outbox);
+    await reach(s, outbox, 1);
+    s.learn({ kind: "runSimulation", id: "happy-path" });
+    s.live!.advance(250);
+    s.live!.publish();
+    expect(s.live!.getState().run?.waiting).toBe(true);
+    expect(outbox.steps[state(s).index].id).toBe("read-happy-path");
+    s.live!.resume();
+    expect(outbox.steps[state(s).index].id).toBe("read-happy-path");
+    await skip(s, outbox);
+    expect(outbox.steps[state(s).index].id).toBe("watch-compensation");
   });
 
   it("keeps each annotation instruction current until its editor closes, then Skip from there closes it", async () => {

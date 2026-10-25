@@ -2504,7 +2504,8 @@ const en = {
   "tutorials.partitions.title": "Partitions limit consumers",
   "tutorials.partitions.summary": "Read idle consumers, set six partitions and rerun the comparison.",
   "tutorials.partitions.idleTitle": "Read idle consumers",
-  "tutorials.partitions.idleGoal": "Hover over the Kafka consumers and read how many replicas are idle.",
+  "tutorials.partitions.idleGoal":
+    "Hover over the Kafka consumers and read how many replicas are idle. Press Done when you have read it.",
   "tutorials.partitions.idleDone": "A consumer group can use at most one replica per partition.",
   "tutorials.partitions.editTitle": "Set six partitions",
   "tutorials.partitions.editGoal":
@@ -2521,8 +2522,9 @@ const en = {
   "tutorials.outbox.traceGoal": "Press Live, open Live ⋯, pick Trace a message, then Next message.",
   "tutorials.outbox.traceDone": "Trace a message follows one Message through its journey.",
   "tutorials.outbox.happyTitle": "Run the happy path",
-  "tutorials.outbox.happyGoal":
-    "Pick “Twenty checkouts, happy path” in the simulation picker. Read the note and press Continue.",
+  "tutorials.outbox.happyGoal": "Pick “Twenty checkouts, happy path” in the simulation picker.",
+  "tutorials.outbox.readTitle": "Read the happy path",
+  "tutorials.outbox.readGoal": "Read the paused note, press Continue, then press Done to move on.",
   "tutorials.outbox.happyDone": "The saved happy path shows the same checkout with repeatable traffic.",
   "tutorials.outbox.declineTitle": "Watch compensation",
   "tutorials.outbox.declineGoal":
@@ -2532,6 +2534,8 @@ const en = {
   "tutorials.dependencies2.title": "Document a secret setting",
   "tutorials.dependencies2.summary": "Add a setting to a Config dependency and mark it secret.",
   "tutorials.dependencies2.setting": "Notifications:Token",
+  "tutorials.dependencies2.showTitle": "Show Dependencies",
+  "tutorials.dependencies2.showGoal": "Right-click the canvas, open Show and turn on Dependencies.",
   "tutorials.dependencies2.addTitle": "Add a setting",
   "tutorials.dependencies2.addGoal":
     "Click the API's Config connection. In Settings, add Notifications:Token on a new line.",

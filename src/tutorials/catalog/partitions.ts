@@ -3,7 +3,7 @@ import type { Tutorial } from "../types";
 
 export const partitions: Tutorial = {
   id: "partitions",
-  version: 1,
+  version: 2,
   track: "blocks",
   level: 2,
   minutes: 3,
@@ -17,11 +17,11 @@ export const partitions: Tutorial = {
       title: msg("tutorials.partitions.idleTitle"),
       goal: msg("tutorials.partitions.idleGoal"),
       done: msg("tutorials.partitions.idleDone"),
-      check: { kind: "metric", subject: "consumers", field: "idleReplicas", op: ">=", value: 1 },
+      check: { kind: "acknowledge" },
       sticky: true,
       targets: [{ testId: "node-{consumers}", tip: msg("tutorials.partitions.idleGoal"), dim: false }],
       demo: [],
-      solution: [{ hover: "node-{consumers}" }],
+      solution: [{ hover: "node-{consumers}" }, { click: "tutorial-skip" }],
     },
     {
       id: "six-partitions",

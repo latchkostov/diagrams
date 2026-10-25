@@ -160,6 +160,69 @@ async function savedEntries(page: Page): Promise<{ slug: string; title: string }
   );
 }
 
+test("dependencies-2: hidden Dependencies can be shown before adding a setting", async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem("diagrams.showDependencies.v1", "0"));
+  await openTutorial(page, "dependencies-2");
+  await page.getByTestId("tutorial-start").click();
+  await expect(strip(page)).toHaveAttribute("data-step", "show-dependencies");
+  const solution = await page.evaluate(() => window.__tutorial?.solution() ?? []);
+  for (const action of solution) await play(page, action);
+  await expect(strip(page)).toHaveAttribute("data-step", "add-setting");
+  const edge = await page.evaluate(() => window.__tutorial?.snapshot().edges["api->config"]);
+  await expect(page.getByTestId("edge-label-" + edge)).toBeVisible();
+});
+
+test("dependencies-2: the lock target follows the setting inserted before existing rows", async ({ page }) => {
+  await openTutorial(page, "dependencies-2");
+  await page.getByTestId("tutorial-start").click();
+  await expect(strip(page)).toHaveAttribute("data-step", "add-setting");
+  const edge = await page.evaluate(() => window.__tutorial?.snapshot().edges["api->config"]);
+  await page.getByTestId("edge-label-" + edge).click();
+  const field = page.getByTestId("inspector-field-settings");
+  const original = await field.inputValue();
+  await field.fill("Notifications:Token\n" + original);
+  await expect(strip(page)).toHaveAttribute("data-step", "mark-secret");
+  await expect(page.getByTestId("inspector-setting-lock-0")).toHaveAttribute("aria-pressed", "false");
+  const solution = await page.evaluate(() => window.__tutorial?.solution() ?? []);
+  for (const action of solution) await play(page, action);
+  await expect(strip(page)).toHaveAttribute("data-phase", "finished");
+  await expect(page.getByTestId("inspector-setting-lock-0")).toHaveAttribute("aria-pressed", "true");
+  await expect(field).toHaveValue("!Notifications:Token\n" + original);
+});
+
+test("partitions: Start preserves the idle-consumer lesson", async ({ page }) => {
+  await openTutorial(page, "partitions");
+  await expect
+    .poll(async () => Number(await page.getByTestId("live-canvas").getAttribute("data-sim-time")))
+    .toBeGreaterThan(0);
+  await page.getByTestId("tutorial-start").click();
+  await expect(strip(page)).toHaveAttribute("data-step", "read-idle");
+  const consumers = await page.evaluate(() => window.__tutorial?.snapshot().subjects.consumers);
+  await page.getByTestId("node-" + consumers).hover();
+  await expect(strip(page)).toHaveAttribute("data-step", "read-idle");
+  await page.getByTestId("tutorial-skip").click();
+  await expect(strip(page)).toHaveAttribute("data-step", "six-partitions");
+});
+
+test("outbox: happy-path waits for narration Continue", async ({ page }) => {
+  await openTutorial(page, "outbox");
+  await page.getByTestId("tutorial-start").click();
+  await page.getByTestId("tutorial-skip").click();
+  await expect(strip(page)).toHaveAttribute("data-step", "run-happy-path");
+  const select = await page.evaluate(() => window.__tutorial?.solution() ?? []);
+  expect(select).toHaveLength(1);
+  await play(page, select[0]);
+  await expect(page.getByTestId("live-note-continue")).toBeVisible();
+  await expect(strip(page)).toHaveAttribute("data-step", "read-happy-path");
+  const read = await page.evaluate(() => window.__tutorial?.solution() ?? []);
+  expect(read).toHaveLength(2);
+  await play(page, read[0]);
+  await expect(page.getByTestId("live-note-continue")).toHaveCount(0);
+  await expect(strip(page)).toHaveAttribute("data-step", "read-happy-path");
+  await play(page, read[1]);
+  await expect(strip(page)).toHaveAttribute("data-step", "watch-compensation");
+});
+
 for (const { id, quarantined } of tutorialEntries)
   test(`${id}: its solution plays through the real UI`, async ({ page, consoleErrors }) => {
     test.fixme(!!quarantined, quarantineReason);
@@ -168,6 +231,9 @@ for (const { id, quarantined } of tutorialEntries)
     await page.getByTestId("tutorial-start").click();
     await expect(strip(page)).toHaveAttribute("data-phase", "step");
     const seen = await finishSolution(page);
+    if (id === "partitions") expect(seen).toEqual(["read-idle", "six-partitions", "rerun"]);
+    if (id === "outbox")
+      expect(seen).toEqual(["trace-message", "run-happy-path", "read-happy-path", "watch-compensation"]);
     if (id === "command-palette") expect(seen).toEqual(["add", "goto"]);
     if (id === "share-present") expect(seen).toEqual(["present", "leave", "share"]);
     await expect(page.getByTestId("tutorial-progress")).toBeVisible();

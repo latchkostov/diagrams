@@ -1,10 +1,12 @@
 import { msg } from "../../i18n";
 import type { Tutorial } from "../types";
 
-const setting = msg("tutorials.dependencies2.setting");
+// Example configuration keys retain their bytes across languages.
+const setting = "Notifications:Token";
+const lockTarget = `inspector-setting-lock-key-${setting}`;
 export const dependencies2: Tutorial = {
   id: "dependencies-2",
-  version: 1,
+  version: 2,
   track: "blocks",
   level: 2,
   minutes: 2,
@@ -14,11 +16,31 @@ export const dependencies2: Tutorial = {
   subjects: { api: { stencils: ["service.dotnet"] }, config: { stencils: ["azure.app-config"] } },
   steps: [
     {
+      id: "show-dependencies",
+      title: msg("tutorials.dependencies2.showTitle"),
+      goal: msg("tutorials.dependencies2.showGoal"),
+      check: { kind: "dependencies", visible: true },
+      targets: [{ testId: "canvas-pane", tip: msg("tutorials.dependencies2.showGoal") }],
+      demo: [],
+      solution: [
+        { rightclick: "canvas-pane" },
+        { hover: "context-menu-item-canvas.view-options" },
+        { click: "context-menu-item-view:dependencies" },
+      ],
+      sticky: true,
+    },
+    {
       id: "add-setting",
       title: msg("tutorials.dependencies2.addTitle"),
       goal: msg("tutorials.dependencies2.addGoal"),
       done: msg("tutorials.dependencies2.addDone"),
-      check: { kind: "prop", edge: ["api", "config"], prop: ["settings"], measure: "length", op: ">=", value: 5 },
+      check: {
+        kind: "prop",
+        edge: ["api", "config"],
+        prop: ["settings", { where: { key: setting } }, "key"],
+        op: "=",
+        value: setting,
+      },
       targets: [
         { testId: "inspector-field-settings", tip: msg("tutorials.dependencies2.addGoal") },
         { testId: "edge-label-{api->config}", tip: msg("tutorials.dependencies2.addGoal") },
@@ -43,16 +65,22 @@ export const dependencies2: Tutorial = {
       title: msg("tutorials.dependencies2.secretTitle"),
       goal: msg("tutorials.dependencies2.secretGoal"),
       done: msg("tutorials.dependencies2.secretDone"),
-      check: { kind: "prop", edge: ["api", "config"], prop: ["settings", 4, "secret"], op: "=", value: true },
-      targets: [{ testId: "inspector-setting-lock-4", tip: msg("tutorials.dependencies2.secretGoal") }],
+      check: {
+        kind: "prop",
+        edge: ["api", "config"],
+        prop: ["settings", { where: { key: setting } }, "secret"],
+        op: "=",
+        value: true,
+      },
+      targets: [{ testId: lockTarget, tip: msg("tutorials.dependencies2.secretGoal") }],
       demo: [
         {
           kind: "patch",
           edge: ["api", "config"],
-          patches: [{ op: "set", path: ["settings", 4, "secret"], value: true }],
+          patches: [{ op: "set", path: ["settings", { where: { key: setting } }, "secret"], value: true }],
         },
       ],
-      solution: [{ click: "inspector-setting-lock-4" }],
+      solution: [{ click: lockTarget }],
     },
   ],
   finish: { text: msg("tutorials.dependencies2.finish") },

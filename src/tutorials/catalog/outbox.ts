@@ -3,7 +3,7 @@ import type { Tutorial } from "../types";
 
 export const outbox: Tutorial = {
   id: "outbox",
-  version: 1,
+  version: 2,
   track: "blocks",
   level: 2,
   minutes: 3,
@@ -41,7 +41,18 @@ export const outbox: Tutorial = {
       sticky: true,
       targets: [{ testId: "live-sim-picker", tip: msg("tutorials.outbox.happyGoal") }],
       demo: [{ kind: "runSimulation", id: "happy-path" }],
-      solution: [{ select: "live-sim-picker", value: "happy-path" }, { click: "live-note-continue" }],
+      solution: [{ select: "live-sim-picker", value: "happy-path" }],
+    },
+    {
+      id: "read-happy-path",
+      title: msg("tutorials.outbox.readTitle"),
+      goal: msg("tutorials.outbox.readGoal"),
+      done: msg("tutorials.outbox.happyDone"),
+      check: { kind: "acknowledge" },
+      sticky: true,
+      targets: [{ testId: "live-note-continue", tip: msg("tutorials.outbox.readGoal"), dim: false }],
+      demo: [],
+      solution: [{ click: "live-note-continue" }, { click: "tutorial-skip" }],
     },
     {
       id: "watch-compensation",

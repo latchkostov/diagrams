@@ -48,8 +48,15 @@ function completedDiagram(tutorial: typeof apiGateway): DiagramFile {
 }
 
 describe("building-block lessons", () => {
-  it("registers all five building blocks, in their track", () => {
-    expect(tutorials.filter((t) => t.track === "blocks").map((t) => t.id)).toEqual(blocks.map((t) => t.id));
+  it("registers both batches of building blocks, in their track", () => {
+    expect(tutorials.filter((t) => t.track === "blocks").map((t) => t.id)).toEqual([
+      ...blocks.map((t) => t.id),
+      "webhooks",
+      "fanout",
+      "partitions",
+      "outbox",
+      "dependencies-2",
+    ]);
   });
 
   for (const tutorial of blocks)
