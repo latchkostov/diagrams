@@ -165,3 +165,25 @@ it("a failed pool wave preserves its charged occupancy across a live scale edit 
   e.step(3000);
   expect(e.snapshot()).toEqual(expected);
 });
+
+it("records the first wave's breaker result before waking the next pooled cohort", () => {
+  const d = fixture(1000);
+  d.planning!.revision = "p3-w2";
+  d.nodes[2].stencil = "generic.service";
+  d.nodes[2].props = { concurrency: 100, latencyMs: 20, jitter: 0, failureRate: 1 };
+  const caller = d.edges[1].props!.caller as NonNullable<EdgeSimProps["caller"]>;
+  caller.poolConnections = 5;
+  caller.breaker = { minimumCalls: 1, openMs: 0, halfOpenCalls: 10 };
+  const e = createEngine({ scale: 10, maxParticles: 0, verifyLedger: assertLedgerInvariants });
+  e.load(d);
+  e.inject("source", 3);
+  e.step(60);
+  expect(e.snapshot().edges.call.breaker?.state).toBe("half-open");
+  e.setNodeProps("partner", { failureRate: 0 });
+  e.step(2000);
+  const real = realSnapshot(e.snapshot());
+  expect(real.edges.call.calls!.shortCircuited).toBe(0);
+  expect(real.nodes.caller).toMatchObject({ processed: 20, failed: 10 });
+  expect(real.edges.call.delivered).toBe(25);
+  expect(e.snapshot().inSystem).toBe(0);
+});

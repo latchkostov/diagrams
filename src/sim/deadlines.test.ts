@@ -115,7 +115,7 @@ function queuedDeadlineRun(scale: number) {
 
 let queuedDeadlineRuns: ReturnType<typeof queuedDeadlineRun>[];
 beforeAll(() => {
-  // Keep simulation, replay and cleanup checks outside it.fails: a crash must fail the suite.
+  // Run simulation, replay and cleanup once before checking the exact outcomes.
   queuedDeadlineRuns = [1, 10].map(queuedDeadlineRun);
 });
 
@@ -129,7 +129,7 @@ it("pins scale-10 queued deadline outcomes before exact-equality comparison", ()
 });
 
 it("queued deadline calls at scale 10 equal scale 1", () => {
-  // Only the accuracy assertion can satisfy this expected failure.
+  // Preserve exact equality, including sent weight and late replies.
   expect(queuedDeadlineRuns[1]).toEqual(queuedDeadlineRuns[0]);
 });
 

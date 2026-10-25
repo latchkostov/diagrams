@@ -21,7 +21,7 @@ function run(scale: number) {
 
 let runs: ReturnType<typeof run>[];
 beforeAll(() => {
-  // A simulation crash must fail the suite, rather than satisfy it.fails.
+  // Compute both scales before checking their exact outcomes.
   runs = [1, 10].map(run);
 });
 

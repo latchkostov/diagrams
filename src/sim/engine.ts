@@ -2423,19 +2423,18 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         // already sent can still finish late; there is no undispatched pool tail.
         lease.heldMs = expiredAt - lease.startedAt!;
         ledger.release(lease);
-      } else retirePoolLease(edge, cohort.call.id, lease, time - lease.startedAt!);
+      } else retirePool(edge, cohort.call.id, time - lease.startedAt!, lease);
     }
     cohort.inFlight.clear();
   }
 
-  function retirePool(edge: Edge, callId: number, holdMs: number): void {
-    const lease = ledger.get(edge.poolLeases.get(callId));
+  function retirePool(
+    edge: Edge,
+    callId: number,
+    holdMs: number,
+    lease = ledger.get(edge.poolLeases.get(callId)),
+  ): void {
     if (!lease) return;
-    retirePoolLease(edge, callId, lease, holdMs);
-    edge.poolLeases.delete(callId);
-  }
-
-  function retirePoolLease(edge: Edge, callId: number, lease: Reservation, holdMs: number): void {
     if (TEST_ORACLES && opts.ledgerHold === "none") ledger.release(lease);
     else ledger.retire(lease, holdMs, edge.from.activeMs);
     // A pool narrower than the blocking caller's thread turns the cohort over in more
@@ -2445,6 +2444,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     const thread = edge.policy?.blocking ? ledger.get(calls.get(callId)?.work.thread) : undefined;
     if (thread && lease.turnoverAt !== undefined && lease.weight < thread.weight - 1e-9)
       thread.notBefore = Math.max(thread.notBefore ?? -Infinity, lease.turnoverAt);
+    edge.poolLeases.delete(callId);
   }
 
   function cancelPending(edge: Edge, callId: number): void {
@@ -2675,6 +2675,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     if (event.timeout) {
       if (!cohort) return true;
       const orphan = branch!.state === "replied";
+      event.represented = cohort.outstanding;
       const remaining = cohort.outstanding / scale;
       closePoolCohort(edge, event.cohortId, event.end);
       if (orphan) {
@@ -2702,7 +2703,6 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         lease.units = ((lease.units ?? 1) * represented) / lease.represented;
         lease.represented = represented;
       }
-      retirePoolLease(edge, cohort.call.id, lease, event.end - lease.startedAt!);
     }
     if (cohort.outstanding <= 1e-9 || !event.ok) closePoolCohort(edge, event.cohortId);
     if (orphan) {
@@ -2742,7 +2742,6 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           if (call && !call.attempt.outcome) retryCall(call, edge!);
           continue;
         }
-        if (event.cohortId !== undefined && drainPoolCohort(edge!, event)) continue;
         // A late reply belongs to its old attempt, never to the current pool
         // lease or deadline. Attempt identity is separate from broker delivery.
         if (edge?.retry && call && event.callAttempt !== call.branches.get(edge.id)!.attempt) {
@@ -2753,7 +2752,12 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           edge.calls.late += dotsOf(event);
           continue;
         }
-        if (event.timeout && (!call || call.attempt.outcome || !call.outstanding.has(edge!.id))) continue;
+        if (
+          event.timeout &&
+          event.cohortId === undefined &&
+          (!call || call.attempt.outcome || !call.outstanding.has(edge!.id))
+        )
+          continue;
         if (
           !event.timeout &&
           call &&
@@ -2773,13 +2777,22 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
             edge,
             event.ok ? "success" : event.timeout ? "deadline" : (event.outcome?.kind ?? "error"),
           );
+        // Cohorts use the same ordering as ordinary replies: classify the
+        // breaker result, settle the wave, then retire capacity and wake FIFO.
+        const handled = event.cohortId !== undefined && drainPoolCohort(edge!, event);
         if (edge) {
-          const lease = ledger.get(edge.poolLeases.get(event.call));
+          const lease = ledger.get(event.poolLease ?? edge.poolLeases.get(event.call));
           if (lease)
-            retirePool(edge, event.call, event.timeout ? edge.policy!.deadlineMs! : event.end - lease.startedAt!);
+            retirePool(
+              edge,
+              event.call,
+              event.timeout ? edge.policy!.deadlineMs! : event.end - lease.startedAt!,
+              lease,
+            );
           ledger.releaseDue(edge.from.id, edge.from.activeMs);
           dispatchCalls(edge);
         }
+        if (handled) continue;
         if (!call || call.attempt.outcome || !call.outstanding.has(edge!.id)) {
           edge!.calls.late += dotsOf(event);
           continue;

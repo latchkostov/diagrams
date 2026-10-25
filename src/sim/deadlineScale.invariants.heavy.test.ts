@@ -25,7 +25,7 @@ function fixture() {
 let continuous: ReturnType<typeof metrics>;
 const runs = new Map<number, { baseline: ReturnType<typeof metrics>; sampled: ReturnType<typeof metrics> }>();
 beforeAll(() => {
-  // A simulation crash must fail the suite, rather than satisfy it.fails.
+  // Compute both scales before checking their exact outcomes.
   const diagram = fixture();
   diagram.nodes[0].props = { ratePerSec: 120 };
   const engine = createEngine({ seed: 1, maxParticles: 0 });
