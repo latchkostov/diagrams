@@ -56,6 +56,8 @@ const en = {
   "examples.messageTypes": "Message types",
   "messageTypes.messages": "Messages",
   "messageTypes.search": "Search message types",
+  "messageTypes.searchCarried": "Search carried message types",
+  "messageTypes.searchOnlyPass": "Search Only pass message types",
   "messageTypes.passAll": "Pass all message types",
   "messageTypes.carries": "Carries",
   "messageTypes.onlyPass": "Only pass",

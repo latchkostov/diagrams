@@ -794,6 +794,8 @@ test("Carries search reveals omitted names while broad matches stay bounded", as
   ];
   await open(page, "en", diagram);
   const search = page.getByTestId("inspector-carries-search");
+  await expect(search).toHaveAccessibleName("Search carried message types");
+  await expect(page.getByTestId("inspector-filter-search")).toHaveAccessibleName("Search Only pass message types");
   const chips = page.getByTestId("inspector-carries-type");
   await expect(chips).toHaveCount(100);
   await search.focus();
@@ -928,4 +930,33 @@ test("two canvases with overlapping edge IDs keep hover titles and focused cards
   await expect(west.getByTestId("edge-messages-send")).toHaveCount(0);
   await expect(west.getByTestId("edge-label-send")).toHaveAttribute("title", /Message types: West, WestCallback/);
   await expect(east.getByTestId("edge-label-send")).toHaveAttribute("title", /Message types: East, EastCallback/);
+});
+
+test("overlapping edge IDs keep SVG titles local", async ({ page }) => {
+  await gotoLab(page, "message-readers");
+  const west = page.getByTestId("message-reader-West");
+  const east = page.getByTestId("message-reader-East");
+  const westLine = west.getByTestId("edge-send");
+  const eastLine = east.getByTestId("edge-send");
+  const titles = (line: typeof westLine) =>
+    line.evaluate((element) =>
+      [...element.children].filter((child) => child.localName === "title").map((child) => child.textContent),
+    );
+  const westBase = await titles(westLine);
+  const eastBase = await titles(eastLine);
+  await west.getByTestId("edge-label-send").hover();
+  await expect.poll(() => titles(westLine)).toEqual([...westBase, "Message types: West, WestCallback"]);
+  await expect.poll(() => titles(eastLine)).toEqual(eastBase);
+  // Retain West's hover while East takes keyboard focus: both readers must own their own SVG title.
+  await eastLine.evaluate((element) => element.parentElement?.focus());
+  await expect.poll(() => titles(eastLine)).toEqual([...eastBase, "Message types: East, EastCallback"]);
+  await expect.poll(() => titles(westLine)).toEqual([...westBase, "Message types: West, WestCallback"]);
+  await page.mouse.move(0, 0);
+  await expect.poll(() => titles(westLine)).toEqual(westBase);
+  await expect.poll(() => titles(eastLine)).toEqual([...eastBase, "Message types: East, EastCallback"]);
+  await eastLine.evaluate((element) => (element.parentElement as SVGElement | null)?.blur());
+  await expect.poll(() => titles(eastLine)).toEqual(eastBase);
+  await expect(west.getByTestId("edge-label-send")).not.toHaveAttribute("title", /Message types:/);
+  await expect(east.getByTestId("edge-label-send")).not.toHaveAttribute("title", /Message types:/);
+  await expect(east.getByTestId("edge-messages-send")).toHaveCount(0);
 });

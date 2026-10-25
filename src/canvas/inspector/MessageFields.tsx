@@ -45,7 +45,7 @@ export function EdgeMessages({
         {carries.length > MAX_CHOICES && (
           <input
             className="insp-input"
-            aria-label={t("messageTypes.search")}
+            aria-label={t("messageTypes.searchCarried")}
             placeholder={t("messageTypes.search")}
             data-testid="inspector-carries-search"
             value={search}
@@ -131,10 +131,10 @@ export function NodeMessages({
   const rekeyed = useRef<string | undefined>(undefined);
   // Imported maps can hold thousands of rules: render a page at a time.
   const [shownRules, setShownRules] = useState(RULE_PAGE);
-  // A rule added here renders after the current page (the page itself never grows to reach it).
-  // History restores immutable emits objects. Associate the appended row with each saved snapshot, so reusing
+  // Rules added here render after the current page (the page itself never grows to reach them).
+  // History restores immutable emits objects. Associate appended rows with each saved snapshot, so reusing
   // an old name in a different row cannot steal its identity. Weak keys expire with discarded history.
-  const [added, setAdded] = useState<WeakMap<object, string>>();
+  const [added] = useState(() => new WeakMap<object, ReadonlySet<string>>());
   useLayoutEffect(() => {
     const input = rekeyed.current;
     const target = input === undefined ? null : ruleControls.current.get(input)?.querySelector("button");
@@ -160,12 +160,12 @@ export function NodeMessages({
       : emits && typeof emits === "object" && !Array.isArray(emits)
         ? Object.entries(emits).filter((entry): entry is [string, string] => typeof entry[1] === "string")
         : [];
-  const addedInput = emits && typeof emits === "object" ? added?.get(emits) : undefined;
-  const save = (next: [string, string][], appended = addedInput, snapshots = added) => {
+  const addedInputs = (emits && typeof emits === "object" ? added.get(emits) : undefined) ?? new Set<string>();
+  const save = (next: [string, string][], appended: ReadonlySet<string> = addedInputs) => {
     const nextEmits =
       next.length === 1 && next[0][0] === "*" ? next[0][1] : next.length ? Object.fromEntries(next) : undefined;
-    if (nextEmits && typeof nextEmits === "object" && appended && next.some(([key]) => key === appended))
-      snapshots?.set(nextEmits, appended);
+    if (nextEmits && typeof nextEmits === "object")
+      added.set(nextEmits, new Set(next.map(([key]) => key).filter((key) => appended.has(key))));
     editor.setNodeProps(
       nodeId,
       {
@@ -195,8 +195,7 @@ export function NodeMessages({
   const unassigned = incoming.filter((type) => !assigned.has(type));
   const vocabulary = [...new Set([...arriving, ...types.known])];
   const page = Math.min(shownRules, rows.length);
-  const addedAt = addedInput === undefined ? -1 : rows.findIndex(([key]) => key === addedInput);
-  const visible = [...Array(page).keys(), ...(addedAt >= page ? [addedAt] : [])];
+  const visible = rows.flatMap(([key], i) => (i < page || addedInputs.has(key) ? [i] : []));
   const remaining = rows.length - visible.length;
   // Message is the simulation default type, diagram data rather than translated UI copy.
   const defaultType = node.label || "Message";
@@ -237,7 +236,7 @@ export function NodeMessages({
                 rekeyed.current = value[0];
                 save(
                   rows.map((row, j) => (j === i ? [value[0], output] : row)),
-                  i === addedAt ? value[0] : addedInput,
+                  new Set([...addedInputs].map((key) => (key === input ? value[0] : key))),
                 );
               }}
             />
@@ -287,9 +286,10 @@ export function NodeMessages({
           const input = arriving.find((type) => !assigned.has(type)) ?? "*";
           // The Add button may disable itself: continue at the new rule once it is committed (policy row I5).
           rekeyed.current = input;
-          const snapshots = new WeakMap<object, string>();
-          setAdded(snapshots);
-          save([...rows, [input, input === "*" ? (arriving[0] ?? "Message") : input]], input, snapshots);
+          save(
+            [...rows, [input, input === "*" ? (arriving[0] ?? "Message") : input]],
+            new Set([...addedInputs, input]),
+          );
         }}
       >
         {t("messageTypes.addRule")}

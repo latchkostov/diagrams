@@ -100,7 +100,7 @@ export function TypePicker({
         {multiple && all.length > MAX_CHOICES && (
           <input
             className="insp-input"
-            aria-label={t("messageTypes.search")}
+            aria-label={t("messageTypes.searchOnlyPass")}
             placeholder={t("messageTypes.search")}
             value={search}
             onChange={(event) => setSearch(event.target.value)}
