@@ -2,8 +2,21 @@ import { msg } from "../../i18n";
 import type { TrackId, Tutorial, Words } from "../types";
 import { mobileApi } from "./mobileApi";
 
+import { quickAdd } from "./quickAdd";
+import { dotsAndSides } from "./dotsAndSides";
+import { insertOnEdge } from "./insertOnEdge";
+import { propertySheet } from "./propertySheet";
+import { requestVsMessage } from "./requestVsMessage";
+
 /** Every tutorial, in the order the list shows them within a track. */
-export const tutorials: readonly Tutorial[] = [mobileApi];
+export const tutorials: readonly Tutorial[] = [
+  mobileApi,
+  quickAdd,
+  dotsAndSides,
+  insertOnEdge,
+  propertySheet,
+  requestVsMessage,
+];
 
 export const tracks: readonly { id: TrackId; label: Words }[] = [
   { id: "basics", label: msg("tutorials.trackBasics") },

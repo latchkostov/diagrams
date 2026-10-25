@@ -46,6 +46,12 @@ function run(start: FocusState, events: readonly FocusEvent[]) {
 describe("focusPolicy: the rules, row by row", () => {
   it.each<[string, FocusState, FocusEvent[], string[]]>([
     [
+      "I7 picker navigation focuses its mounted control now",
+      state(),
+      [{ type: "inspector.control", target: opener }],
+      ["focus:element@now"],
+    ],
+    [
       "I4 removing a processor rule focuses its surviving control after the commit",
       state(),
       [{ type: "inspector.rule", target: opener }],

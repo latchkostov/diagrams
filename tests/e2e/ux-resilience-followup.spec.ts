@@ -8,8 +8,10 @@ import {
   gotoLab,
   pauseClock,
   waitForStableViewport,
+  waitForHistoryIdle,
   STORAGE_KEYS,
   openLiveNodeDetails,
+  savedDiagram,
 } from "./fixtures";
 
 test("circuit breaker search advertises the shared comparison", async ({ page }) => {
@@ -66,6 +68,51 @@ test("Request groups expose plain associated explanations and preserve collapsed
   ).toHaveText("Auto → Auto · 10 ms travel");
 });
 
+test("reselecting enabled resilience controls preserves tuning and the Undo step", async ({ page }) => {
+  // Distinct flushed edits stay separate even inside the history merge window.
+  await page.clock.setFixedTime(new Date("2026-10-24T12:00:00Z"));
+  const d = breakerFixture();
+  const original = d.edges[1].props?.caller as import("../../src/sim/types").EdgeSimProps["caller"];
+  if (!original?.retry || !original.breaker) throw new Error("Fixture needs retries and a breaker");
+  await page.addInitScript(({ key, d }) => localStorage.setItem(key, JSON.stringify(d)), {
+    key: STORAGE_KEYS.autosavePrefix + "blocking-call",
+    d,
+  });
+  await gotoCanvas(page, "blocking-call");
+  await waitForStableViewport(page);
+  await page.getByTestId("edge-call").dblclick();
+  await page.getByTestId("inspector-section-edge-simulation").click();
+  await page.getByTestId("inspector-section-retry-details").click();
+  await page.getByTestId("inspector-field-retry-backoff").fill("321");
+  // Force the debounce boundary CI can cross between these distinct edits.
+  await waitForHistoryIdle(page);
+  await page.getByTestId("inspector-section-breaker-details").click();
+  await page.getByTestId("inspector-field-breaker-openMs").fill("2345");
+  await waitForHistoryIdle(page);
+  const caller = async () => (await savedDiagram(page)).edges.find((edge) => edge.id === "call")?.props?.caller;
+  const tuned = {
+    ...original,
+    retry: { ...original.retry, backoffMs: 321 },
+    breaker: { ...original.breaker, openMs: 2345 },
+  };
+  await expect.poll(caller).toEqual(tuned);
+  await page.getByTestId("inspector-field-breaker-on").click();
+  await page.getByTestId("inspector-field-breaker-on").press("End");
+  await page.getByTestId("inspector-field-retries").click();
+  await page.getByTestId("context-menu-item-3").click();
+  await expect(page.getByTestId("inspector-field-breaker-openMs")).toHaveValue("2345");
+  await expect(page.getByTestId("inspector-field-retry-backoff")).toHaveValue("321");
+  await expect.poll(caller).toEqual(tuned);
+  await page.getByTestId("undo-button").click();
+  await expect.poll(caller).toEqual({ ...original, retry: tuned.retry });
+  await page.getByTestId("undo-button").click();
+  await expect.poll(caller).toEqual(original);
+  await page.getByTestId("redo-button").click();
+  await expect.poll(caller).toEqual({ ...original, retry: tuned.retry });
+  await page.getByTestId("redo-button").click();
+  await expect.poll(caller).toEqual(tuned);
+});
+
 test("timeline events form one roving keyboard stop and retain pointer access", async ({ page }) => {
   await page.addInitScript(({ key, d }) => localStorage.setItem(key, JSON.stringify(d)), {
     key: STORAGE_KEYS.autosavePrefix + "kafka-order-pipeline",
@@ -76,17 +123,25 @@ test("timeline events form one roving keyboard stop and retain pointer access", 
   const tabs = () => markers.evaluateAll((els) => els.filter((el) => (el as HTMLElement).tabIndex === 0).length);
   expect(await tabs()).toBe(1);
   const scrubber = page.getByTestId("live-timeline-input");
+  const clock = page.getByTestId("live-clock");
   await page.getByTestId("live-marker-0").focus();
   await page.keyboard.press("ArrowRight");
   await expect(page.getByTestId("live-marker-1")).toBeFocused();
+  await expect(page.getByTestId("live-marker-1")).toHaveAttribute("data-at", "4000");
+  await expect(clock).toHaveAttribute("data-ms", "4010");
   await page.keyboard.press("ArrowRight");
   await expect(page.getByTestId("live-marker-2")).toBeFocused();
   await expect(page.getByTestId("live-marker-2")).toHaveAttribute("aria-current", "step");
+  await expect(page.getByTestId("live-marker-2")).toHaveAttribute("data-at", "4000");
+  await expect(clock).toHaveAttribute("data-ms", "4010");
   await expect(page.getByTestId("live-marker-2")).toHaveAccessibleName(/Payments/);
   await expect(page.getByTestId("live-note")).toContainText("Payments is offline");
   expect(await tabs()).toBe(1);
   await page.keyboard.press("Home");
   await expect(page.getByTestId("live-marker-0")).toBeFocused();
+  await expect(page.getByTestId("live-marker-0")).toHaveAttribute("data-at", "0");
+  await expect(clock).toHaveAttribute("data-ms", "10");
+  await expect(page.getByTestId("node-badge-payments")).toHaveAttribute("data-status", "up");
   await page.getByTestId("live-marker-2").click();
   await expect(page.getByTestId("node-badge-payments")).toHaveAttribute("data-status", "down");
   // One stop for events, followed by a native slider for arbitrary times, including past the last event.
@@ -95,16 +150,22 @@ test("timeline events form one roving keyboard stop and retain pointer access", 
   await expect(scrubber).toBeFocused();
   await page.keyboard.press("Home");
   await expect(scrubber).toHaveValue("0");
+  await expect(clock).toHaveAttribute("data-ms", "0");
   await page.keyboard.press("ArrowRight");
   await expect(scrubber).toHaveValue("1");
+  await expect(clock).toHaveAttribute("data-ms", "20");
   await page.keyboard.press("PageUp");
   await expect(scrubber).toHaveValue("101");
+  await expect(clock).toHaveAttribute("data-ms", "2220");
   await page.keyboard.press("PageDown");
   await expect(scrubber).toHaveValue("1");
+  await expect(clock).toHaveAttribute("data-ms", "20");
   await page.keyboard.press("End");
   await expect(scrubber).toHaveValue("1000");
+  await expect(clock).toHaveAttribute("data-ms", "22000");
   await page.keyboard.press("ArrowLeft");
   await expect(scrubber).toHaveValue("999");
+  await expect(clock).toHaveAttribute("data-ms", "21980");
   await expect(scrubber).toHaveAttribute("aria-valuetext", "22.0s");
 });
 

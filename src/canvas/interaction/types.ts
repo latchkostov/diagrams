@@ -260,6 +260,8 @@ export type FocusEvent =
     }
   /** A processor rule was removed, or its incoming type changed (rows are keyed by it): continue at `target`. */
   | { type: "inspector.rule"; target: ElementHandle }
+  /** A picker's keyboard navigation or newly mounted draft takes its own control now. */
+  | { type: "inspector.control"; target: ElementHandle }
   /** Esc (or Enter before anything was typed) while a pending rename held the keys: its field request ends. */
   | { type: "inspector.abandoned" }
   /** The Inspector opened or folded, by its own control (`panel`) or with the selection. */

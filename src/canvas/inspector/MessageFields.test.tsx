@@ -54,6 +54,8 @@ it("caps the chips a filter lists and says how many more exist", () => {
   expect(count(carries, "inspector-carries-type")).toBe(100);
   expect(carries).toContain("+202 more");
   expect(carries).not.toContain("Type299");
+  expect(html).toContain('aria-label="Search carried message types"');
+  expect(html).toContain('aria-label="Search Only pass message types"');
 });
 
 it("keeps every selected filter type listed and pressed past the choice limit", () => {

@@ -53,7 +53,7 @@ export function nodeSummary(
   growing = currentHealth(s).growing,
 ): HoverSummary {
   const busy = s.threads ? s.threads.working + s.threads.waiting : 0;
-  const exhausted = !!s.threads && Number.isFinite(s.threads.slots) && busy >= s.threads.slots;
+  const exhausted = !!s.threads && busy > 0 && Number.isFinite(s.threads.slots) && busy >= s.threads.slots;
   const recent = currentHealth(s);
   const timeouts = calls.reduce((n, c) => n + currentHealth(c).timedOut, 0);
   const requests = calls.reduce((n, c) => n + (c.windowRequests ?? 0), 0);

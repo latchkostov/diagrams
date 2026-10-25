@@ -350,6 +350,36 @@ node scripts/e2e-shard.mjs --plan 6   # each shard's files and projected seconds
 Keep single tests short: a shard can't finish before its longest test. Split a long sweep into parts
 (`lab.spec.ts` and `layout.spec.ts` take every Nth preset or fixture per test) rather than raising its timeout.
 
+### CI flake evidence
+
+`scripts/ci/flake-report.mjs` uses authenticated `gh` read operations to inspect the latest 60 **CI**
+workflow runs across all branches, including every earlier rerun attempt. It reads failed and cancelled
+shard logs, deduplicates repeated reporter/Actions annotations, and groups failures by project, spec and
+full title (not unstable source line numbers). Failures emitted before cancellation still count.
+
+```sh
+node scripts/ci/flake-report.mjs --cache tests/.output/flake-snapshot --output docs/backlog/YYYY-MM-DD-ci-flake-report.md
+node scripts/ci/flake-report.mjs --cache tests/.output/flake-snapshot --offline --output docs/backlog/YYYY-MM-DD-ci-flake-report.md
+```
+
+Choose a **fresh cache directory** for a new measurement. Cached runs/jobs are a frozen snapshot, including
+their collected in-progress states; offline rendering uses its `snapshot.json` and makes no network calls.
+The report has deterministic ordering and formatting, contains no local paths or collection-clock timestamp,
+and links every failed attempt. `--repo owner/repository` selects another repository; `--budget-minutes 22`
+sets the current CI shard job timeout for comparison (update it if the workflow's timeout changes).
+
+A later successful shard with the same name and identical SHA confirms a passing rerun, including across
+workflow runs. This is shard-level evidence: the report does not claim an individual test was fixed or that
+an unconfirmed failure is persistent. Missing/expired logs and failed jobs without a test ID are explicit
+coverage gaps, never silently classified as flakes. This diagnostic report does not authorize merges;
+the known-flake classifier still requires structured test reports.
+
+Wall times include each completed shard's setup and uploads, exclude queue time and interrupted jobs,
+and show mean/max against the budget. The latest complete successful shard set also gets a same-run
+comparison: historical means can hide drift after infrastructure changes. If a shard exceeds 125% of
+that run's mean, refresh the existing duration map from **that one run's** six `e2e-durations-*` artifacts
+using the updater above. Review the projected plan, then measure actual CI wall time after pushing.
+
 A newer push to the same branch cancels the running workflow. `CI=true` selects three Playwright
 workers, `E2E_TARGET=build` and longer Vitest hang backstops. Playwright defaults to zero retries
 locally and in PR CI, as in the full gate and Nightly. Fix a failure instead of relying on a retry.

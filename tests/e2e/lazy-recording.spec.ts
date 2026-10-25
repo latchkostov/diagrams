@@ -1,4 +1,4 @@
-import { test, expect, waitForCameraIdle } from "./fixtures";
+import { test, expect, waitForCameraIdle, pauseClock } from "./fixtures";
 import { openSurface, surfaceContract } from "./lazy-surface-helpers";
 import { chunk, holdChunk } from "./chunk";
 import { installCaptureReady } from "./capture-ready";
@@ -6,6 +6,8 @@ import { installCaptureReady } from "./capture-ready";
 declare global {
   interface Window {
     __heldSurfaceCapture: MediaStream;
+    __heldSurfaceRecorder: MediaRecorder;
+    __heldSurfaceEncodedChunks: number;
   }
 }
 
@@ -14,6 +16,17 @@ test.use({ channel: "chromium", launchOptions: { args: ["--auto-accept-this-tab-
 test("recording waits before countdown and captures the released narration", async ({ page }) => {
   await page.addInitScript(installCaptureReady);
   await page.addInitScript(() => {
+    const NativeRecorder = MediaRecorder;
+    window.MediaRecorder = class extends NativeRecorder {
+      constructor(stream: MediaStream, options?: MediaRecorderOptions) {
+        super(stream, options);
+        window.__heldSurfaceRecorder = this;
+        window.__heldSurfaceEncodedChunks = 0;
+        this.addEventListener("dataavailable", (event) => {
+          if (event.data.size) window.__heldSurfaceEncodedChunks++;
+        });
+      }
+    };
     const capture = navigator.mediaDevices.getDisplayMedia.bind(navigator.mediaDevices);
     navigator.mediaDevices.getDisplayMedia = async (options) => {
       const stream = await capture(options);
@@ -24,6 +37,7 @@ test("recording waits before countdown and captures the released narration", asy
   const [id, name, source] = surfaceContract("live.note");
   const held = await holdChunk(page, chunk(name, `src/${source}.tsx`));
   try {
+    await page.clock.install();
     await openSurface(page, id);
     await expect.poll(held.requested).toBe(true);
     await page.getByTestId("live-more").click();
@@ -39,10 +53,41 @@ test("recording waits before countdown and captures the released narration", asy
     await page.addStyleTag({
       content: '[data-testid="live-note-text"] { background: rgb(216,35,194); padding: 16px; }',
     });
+    await pauseClock(page);
     held.release();
-    await expect(page.getByTestId("live-note-text")).toHaveText("Follow a request through the decision service.");
+    await expect
+      .poll(
+        async () => {
+          await page.clock.runFor(16);
+          return (await page.getByTestId("live-note-text").allTextContents()).join("");
+        },
+        { intervals: [0] },
+      )
+      .toBe("Follow a request through the decision service.");
     await expect(page.getByTestId("record-countdown")).toBeVisible();
+    for (const count of ["3", "2", "1"]) {
+      await expect
+        .poll(() =>
+          page.getByTestId("record-countdown").evaluate((el) => el.firstElementChild?.getAttribute("data-count")),
+        )
+        .toBe(count);
+      await page.clock.runFor(1000);
+    }
     await expect(page.getByTestId("record-indicator")).toBeVisible();
+    // The indicator precedes the encoder's start by two frames. Captured tab frames can
+    // already contain the narration during that gap; stopping then cancels the take.
+    await expect
+      .poll(
+        async () => {
+          await page.clock.runFor(16);
+          return page.evaluate(() => window.__heldSurfaceRecorder.state);
+        },
+        { intervals: [0] },
+      )
+      .toBe("recording");
+    // Subscribe at construction so a busy worker cannot miss the first nonempty chunk.
+    await expect.poll(() => page.evaluate(() => window.__heldSurfaceEncodedChunks)).toBeGreaterThan(0);
+    await page.clock.runFor(1000);
     await waitForCameraIdle(page);
     const sample = await page.getByTestId("live-note-text").boundingBox();
     const pane = await page.getByTestId("canvas-wrap").boundingBox();
@@ -78,6 +123,7 @@ test("recording waits before countdown and captures the released narration", asy
       { sample, pane },
     );
     await page.getByTestId("record-stop").click();
+    await page.clock.resume();
     await expect(page.getByTestId("record-review")).toBeVisible();
     await expect
       .poll(() => page.getByTestId("record-preview").evaluate((video: HTMLVideoElement) => video.videoWidth))

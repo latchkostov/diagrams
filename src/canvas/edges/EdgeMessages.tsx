@@ -1,5 +1,5 @@
 import { defineLazySurface } from "../../lib/lazySurface";
-import { EdgeLabelRenderer } from "@xyflow/react";
+import { EdgeLabelRenderer, useStore } from "@xyflow/react";
 import { useEffect, useLayoutEffect, useState } from "react";
 import type { DiagramFile } from "../../model/types";
 import { pointAlong } from "../geometry/path";
@@ -19,8 +19,9 @@ const MessageTip = defineLazySurface({
 type Meta = Pick<DiagramFile, "simulations" | "planning">;
 
 /** A flow edge's id from its line (the React Flow wrapper or anything in it) or its text label; else undefined. */
-function flowEdgeAt(target: EventTarget | null): string | undefined {
+function flowEdgeAt(root: HTMLElement, target: EventTarget | null): string | undefined {
   if (!(target instanceof Element)) return undefined;
+  if (target.closest(".react-flow") !== root) return undefined;
   const label = target.closest<HTMLElement>(".fe-label[data-edge]");
   if (label) return label.dataset.dependency ? undefined : label.dataset.edge;
   const wrapper = target.closest(".react-flow__edge");
@@ -31,9 +32,9 @@ function flowEdgeAt(target: EventTarget | null): string | undefined {
 }
 
 /** The flow edge whose own wrapper holds focus (any focus: the reader tells keyboard focus apart). */
-const focusedEdge = () => {
+const focusedEdge = (root: HTMLElement) => {
   const el = document.activeElement;
-  return el?.matches(".react-flow__edge") ? flowEdgeAt(el) : undefined;
+  return el?.matches(".react-flow__edge") ? flowEdgeAt(root, el) : undefined;
 };
 
 /**
@@ -42,55 +43,71 @@ const focusedEdge = () => {
  * reader shows the types in the line's and label's titles, and in a readable card while it has keyboard focus.
  */
 export function EdgeMessages({ meta }: { meta: Meta }) {
+  const root = useStore((state) => state.domNode);
   const [hovered, setHovered] = useState<string>();
   const [focused, setFocused] = useState<string>();
   useEffect(() => {
+    if (!root) return;
     let timer: ReturnType<typeof setTimeout> | undefined;
     const hover = (id: string | undefined) => {
       clearTimeout(timer);
       if (id) setHovered(id);
       else timer = setTimeout(() => setHovered(undefined), 150);
     };
-    const over = (e: PointerEvent) => hover(flowEdgeAt(e.target));
+    const over = (e: PointerEvent) => hover(flowEdgeAt(root, e.target));
     // Leaving the window: no pointerover follows.
     const out = (e: PointerEvent) => {
-      if (!e.relatedTarget) hover(undefined);
+      if (!(e.relatedTarget instanceof Node) || !root.contains(e.relatedTarget)) hover(undefined);
     };
-    const focus = () => setFocused(focusedEdge());
+    const focus = () => setFocused(focusedEdge(root));
     // Whatever the pointer and focus were on while this loaded counts too.
-    const under = document.querySelectorAll(":hover");
-    hover(flowEdgeAt(under[under.length - 1] ?? null));
+    const under = root.querySelectorAll(":hover");
+    hover(flowEdgeAt(root, under[under.length - 1] ?? null));
     focus();
-    document.addEventListener("pointerover", over);
-    document.addEventListener("pointerout", out);
-    document.addEventListener("focusin", focus);
-    document.addEventListener("focusout", focus);
+    root.addEventListener("pointerover", over);
+    root.addEventListener("pointerout", out);
+    root.addEventListener("focusin", focus);
+    root.addEventListener("focusout", focus);
     return () => {
       clearTimeout(timer);
-      document.removeEventListener("pointerover", over);
-      document.removeEventListener("pointerout", out);
-      document.removeEventListener("focusin", focus);
-      document.removeEventListener("focusout", focus);
+      root.removeEventListener("pointerover", over);
+      root.removeEventListener("pointerout", out);
+      root.removeEventListener("focusin", focus);
+      root.removeEventListener("focusout", focus);
     };
-  }, []);
+  }, [root]);
   return [...new Set([hovered, focused])].map(
-    (id) => id && <EdgeReader key={id} id={id} meta={meta} hovered={id === hovered} focused={id === focused} />,
+    (id) =>
+      id &&
+      root && <EdgeReader key={id} root={root} id={id} meta={meta} hovered={id === hovered} focused={id === focused} />,
   );
 }
 
-function EdgeReader({ id, meta, hovered, focused }: { id: string; meta: Meta; hovered: boolean; focused: boolean }) {
+function EdgeReader({
+  root,
+  id,
+  meta,
+  hovered,
+  focused,
+}: {
+  root: HTMLElement;
+  id: string;
+  meta: Meta;
+  hovered: boolean;
+  focused: boolean;
+}) {
   const route = useEdgeRoute(id, useRoutingOptions());
   const [tip, setTip] = useState<string>();
   // The titles FlowEdge renders stay its own: the types are added to them while read, and taken off after, unless
   // FlowEdge has rendered a new title meanwhile. Rerun as the route changes (a zoom can change the label's mode).
   useLayoutEffect(() => {
     if (!tip) return;
-    const label = document.querySelector<HTMLElement>(`.fe-label[data-edge="${CSS.escape(id)}"]`);
+    const label = root.querySelector<HTMLElement>(`.fe-label[data-edge="${CSS.escape(id)}"]`);
     const base = label?.getAttribute("title");
     const text = [base, tip].filter(Boolean).join("\n");
     label?.setAttribute("title", text);
     // The line's own <title> (a deny rule's) wins; otherwise one is added for the types.
-    const line = document.querySelector(`.react-flow__edge[data-id="${CSS.escape(id)}"] > g.fe`);
+    const line = root.querySelector(`.react-flow__edge[data-id="${CSS.escape(id)}"] > g.fe`);
     const title =
       line && !line.querySelector(":scope > title") ? document.createElementNS(line.namespaceURI, "title") : null;
     if (title) {
@@ -103,7 +120,7 @@ function EdgeReader({ id, meta, hovered, focused }: { id: string; meta: Meta; ho
       if (base == null) label.removeAttribute("title");
       else label.setAttribute("title", base);
     };
-  }, [id, tip, route]);
+  }, [root, id, tip, route]);
   if (!route) return null;
   const mid = route.label ?? pointAlong(route.points, 0.5).point;
   return (

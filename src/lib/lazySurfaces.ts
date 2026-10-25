@@ -55,6 +55,57 @@ export interface SurfaceRuntime {
   getState(): string;
 }
 
+export interface SurfaceOwner {
+  /** Vite preserves this object across evaluations of the same module. */
+  data: object;
+  dispose(cleanup: () => void): void;
+}
+interface Registry {
+  runtimes: Map<LazySurfaceId, SurfaceRuntime>;
+  owners: Map<LazySurfaceId, SurfaceOwner>;
+  retired: Set<SurfaceRuntime>;
+  disposed: WeakSet<SurfaceOwner>;
+}
+const hotRegistry: Registry | undefined = import.meta.env?.DEV
+  ? (import.meta.hot?.data?.lazySurfaces ?? {
+      runtimes: new Map(),
+      owners: new Map(),
+      retired: new Set(),
+      disposed: new WeakSet(),
+    })
+  : undefined;
+if (import.meta.env?.DEV && import.meta.hot?.data) import.meta.hot.data.lazySurfaces = hotRegistry;
+const runtimes: Map<LazySurfaceId, SurfaceRuntime> = hotRegistry?.runtimes ?? new Map();
+let pendingOutputs = 0;
+let currentOwner: SurfaceOwner | undefined;
+
+/** Scoped to synchronous module declarations; nested definitions restore their caller's ownership. */
+export function withLazySurfaceOwner<T>(owner: SurfaceOwner, define: () => T): T {
+  const previous = currentOwner;
+  currentOwner = owner;
+  try {
+    return define();
+  } finally {
+    currentOwner = previous;
+  }
+}
+
+function pruneDisposed() {
+  if (!hotRegistry) return;
+  for (const surface of hotRegistry.retired) if (!surface.active()) hotRegistry.retired.delete(surface);
+  for (const [id, owner] of hotRegistry.owners)
+    if (hotRegistry.disposed.has(owner) && !runtimes.get(id)?.active()) {
+      runtimes.delete(id);
+      hotRegistry.owners.delete(id);
+    }
+}
+
+function registeredSurfaces(): Iterable<SurfaceRuntime> {
+  if (!hotRegistry) return runtimes.values();
+  pruneDisposed();
+  return [...runtimes.values(), ...hotRegistry.retired];
+}
+
 declare global {
   interface Window {
     __lazySurfaces?: {
@@ -74,17 +125,35 @@ if (typeof window !== "undefined" && import.meta.env.VITE_E2E === "1") {
     pendingOutputs: () => pendingOutputs,
   };
 }
-const runtimes = new Map<LazySurfaceId, SurfaceRuntime>();
-let pendingOutputs = 0;
-
 export function registerLazySurface(surface: SurfaceRuntime) {
+  if (import.meta.env?.DEV && currentOwner && hotRegistry) {
+    pruneDisposed();
+    const owner = currentOwner;
+    const previous = runtimes.get(surface.id);
+    const previousOwner = hotRegistry.owners.get(surface.id);
+    if (previous && (!previousOwner || previousOwner.data !== owner.data || previousOwner === owner))
+      throw new Error(`Duplicate lazy surface: ${surface.id}`);
+    // Mounted old consumers still participate in readiness until React replaces/unmounts them.
+    if (previous?.active()) hotRegistry.retired.add(previous);
+    runtimes.set(surface.id, surface);
+    hotRegistry.owners.set(surface.id, owner);
+    owner.dispose(() => {
+      hotRegistry.disposed.add(owner);
+      if (runtimes.get(surface.id) === surface && !surface.active()) {
+        runtimes.delete(surface.id);
+        hotRegistry.owners.delete(surface.id);
+      }
+      if (!surface.active()) hotRegistry.retired.delete(surface);
+    });
+    return;
+  }
   if (runtimes.has(surface.id)) throw new Error(`Duplicate lazy surface: ${surface.id}`);
   runtimes.set(surface.id, surface);
 }
 
 /** Several visible surfaces can share a failed chunk; the surviving toast recovers all of them. */
 export function retryLazySurfaces() {
-  for (const runtime of runtimes.values())
+  for (const runtime of import.meta.env?.DEV ? registeredSurfaces() : runtimes.values())
     if (runtime.active() && runtime.getState() === "failed") void runtime.ensureLoaded().catch(() => {});
 }
 
@@ -97,6 +166,13 @@ export function ensureLazySurfacesLoaded(): Promise<void> | undefined {
 }
 
 function pendingSurfaces() {
+  if (import.meta.env?.DEV)
+    return [...registeredSurfaces()].filter(
+      (runtime) =>
+        lazySurfaces.find(([id]) => id === runtime.id)?.[3] === "await" &&
+        runtime.active() &&
+        runtime.getState() !== "loaded",
+    );
   return lazySurfaces.flatMap(([id, , , policy]) => {
     const runtime = runtimes.get(id);
     return policy === "await" && runtime?.active() && runtime.getState() !== "loaded" ? [runtime] : [];

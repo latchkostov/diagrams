@@ -18,6 +18,7 @@ import type { Demo, Tutorial } from "./types";
 import type { DiagramFile } from "../model/types";
 import { actionRegistry, type MenuNode } from "../editor/actions";
 import type { SandboxView } from "./checks";
+import { simulationProjection } from "../sim/simulationContent";
 
 /**
  * The runner: one tutorial's machine (./machine.ts) wired to the sandbox canvas. It observes the canvas through the
@@ -59,6 +60,7 @@ export function createTutorialRunner(
     ...runnerMachine,
     initial: runnerInitial(sticky, {
       stepIds: tutorial.steps.map((s) => s.id),
+      demos: tutorial.steps.map((s) => s.demo.length > 0),
       highlights: readTutorials().highlights ?? true,
       resumeAt: saved && !saved.completed ? saved.step : 0,
     }),
@@ -84,6 +86,7 @@ export function createTutorialRunner(
   let subjects: Record<string, string | undefined> = {};
   const demoBindings = new Map<string, string>();
   let documentChecks: boolean[] = [];
+  let topology: string | undefined;
   function view(): SandboxView {
     const h = host.get();
     const ed = h.canvas!.editor;
@@ -92,7 +95,9 @@ export function createTutorialRunner(
       readDiagram = liveDiagramReader(ed);
     }
     const diagram = readDiagram();
+    const currentSession = h.session?.state?.();
     if (diagram !== document) {
+      topology = JSON.stringify(simulationProjection(diagram, true));
       document = diagram;
       const bindings = { ...subjects };
       // Editor writes can land after the demo returns its id. Keep that declaration until the document reports it.
@@ -105,11 +110,13 @@ export function createTutorialRunner(
       subjects = resolveSubjects(tutorial, diagram, bindings);
       documentChecks = observeSteps(tutorial, { diagram, live: false, processed: () => 0 }, subjects);
     }
-    const session = h.session?.state?.();
+    // Counters prove traffic only in the editor's flow. Undo can restore that basis without a rebuild.
+    const session = currentSession?.diagramBasis === topology ? currentSession : undefined;
     return {
       diagram,
       live: !!h.canvas!.live,
-      session,
+      session: currentSession,
+      trafficReady: !!session,
       mode: canvasInteraction.get()?.mode,
       slowmo: h.session?.slowmo?.getState(),
       processed: (id: string) => session?.snapshot.nodes[id]?.processed ?? 0,
@@ -184,6 +191,32 @@ export function createTutorialRunner(
     const edge = (pair: readonly [string, string]) =>
       ed.getDiagram().edges.find((e) => e.from === subjects[pair[0]] && e.to === subjects[pair[1]]);
     switch (demo.kind) {
+      case "name": {
+        const id = subjects[demo.subject];
+        if (id) ed.startEditing({ kind: "node", id });
+        return;
+      }
+      case "field": {
+        const id = subjects[demo.subject];
+        if (id) ed.updateNode(id, { [demo.field]: demo.value() });
+        return;
+      }
+      case "reconnect": {
+        const id = edge(demo.edge)?.id;
+        const to = subjects[demo.to];
+        if (id && to) ed.reconnectEdge(id, "target", to);
+        return;
+      }
+      case "insert": {
+        const id = edge(demo.edge)?.id;
+        const made = id ? ed.insertNode(id, demo.stencil) : null;
+        if (made) {
+          demoBindings.set(demo.subject, made.id);
+          document = undefined;
+          observe();
+        }
+        return;
+      }
       case "prop": {
         const id = demo.edge ? edge(demo.edge)?.id : subjects[demo.subject];
         if (id) {
@@ -289,7 +322,7 @@ export function createTutorialRunner(
       case "connect": {
         const from = subjects[demo.from];
         const to = subjects[demo.to];
-        if (from && to) ed.connect(from, to);
+        if (from && to) ed.connect(from, to, { sourceSide: demo.sourceSide, targetSide: demo.targetSide });
         return;
       }
       case "rename": {
@@ -306,14 +339,13 @@ export function createTutorialRunner(
     }
   }
 
-  async function demos(steps: readonly number[]) {
+  async function demos(steps: readonly number[], purpose: "interactive" | "reconstruct") {
     const run = generation;
     // Skip pressed before the sandbox canvas is up (its code still downloading): do it once it is.
     if (!(await until(() => !!editor(), run))) return;
     for (const i of steps) {
       if (run !== generation) return;
-      if (state.observed[i]) continue;
-      for (const d of tutorial.steps[i].demo) {
+      for (const d of state.observed[i] ? [] : tutorial.steps[i].demo) {
         // Live publishes before its lazy session registers actions. Retry on session/registry changes.
         if (d.kind === "fault") {
           if (!(await until(() => perform(d) !== false, run))) return;
@@ -321,7 +353,15 @@ export function createTutorialRunner(
       }
       // The next step's demo may need this one's node: wait for the canvas to report it.
       if (tutorial.steps[i].demo.length && !(await until(() => state.observed[i], run))) return;
+      if (purpose === "reconstruct" && tutorial.steps[i].settle === "naming") {
+        const interaction = canvasInteraction.get();
+        const mode = interaction?.mode;
+        if (mode?.value === "naming" && naming[i].some((name) => subjects[name] === mode.target))
+          interaction?.dispatch({ type: "naming.done", flowId: mode.target! });
+        if (!(await until(() => state.settled[i], run))) return;
+      }
     }
+    if (purpose === "reconstruct" && run === generation) send({ type: "reconstructed" });
   }
 
   function reveal(step: number) {
@@ -335,13 +375,17 @@ export function createTutorialRunner(
   function run(command: RunnerCommand) {
     switch (command.type) {
       case "demo":
-        void demos(command.steps);
+        void demos(command.steps, "interactive");
+        return;
+      case "reconstruct":
+        void demos(command.steps, "reconstruct");
         return;
       case "reset": {
         generation++;
         subjects = {};
         demoBindings.clear();
         document = undefined;
+        topology = undefined;
         const h = host.get();
         const ed = editor();
         if (!ed) return;

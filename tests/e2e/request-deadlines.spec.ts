@@ -1,5 +1,7 @@
 import { openLiveNodeDetails } from "./fixtures";
 import { waitingFixture } from "../../src/lab/waitingFixture";
+import type { Page } from "@playwright/test";
+import { chunk, holdChunk } from "./chunk";
 import {
   test,
   expect,
@@ -9,7 +11,44 @@ import {
   savedDiagram,
   STORAGE_KEYS,
   waitForStableViewport,
+  waitForInteractionIdle,
 } from "./fixtures";
+
+async function openCallSettings(page: Page) {
+  await page.getByTestId("edge-call").dblclick();
+  // Rename parks focus until the edge panel commits. Finish that work before opening another section.
+  await expect(page.getByTestId("inspector-field-label")).toBeFocused();
+  await waitForInteractionIdle(page);
+  await page.getByTestId("inspector-section-edge-simulation").click();
+  await expect
+    .poll(() => page.evaluate(() => window.__lazySurfaces?.states()["inspector.call"]))
+    .toEqual({ state: "loaded", active: true });
+}
+
+test("timeout setup waits for the call settings chunk to be ready", async ({ page }) => {
+  const held = await holdChunk(page, chunk("CallWaitFields", "src/canvas/inspector/CallWaitFields.tsx"));
+  await page.addInitScript(({ key, d }) => localStorage.setItem(key, JSON.stringify(d)), {
+    key: STORAGE_KEYS.autosavePrefix + "blocking-call",
+    d: waitingFixture(),
+  });
+  await gotoCanvas(page, "blocking-call");
+  await waitForStableViewport(page);
+  let ready = false;
+  const opening = openCallSettings(page).then(() => {
+    ready = true;
+  });
+  try {
+    await expect
+      .poll(() => page.evaluate(() => window.__lazySurfaces?.states()["inspector.call"]))
+      .toEqual({ state: "loading", active: true });
+    await expect(page.getByTestId("call-fields-loading")).toBeVisible();
+    expect(ready).toBe(false);
+  } finally {
+    held.release();
+    await opening;
+  }
+  await expect(page.getByTestId("inspector-field-deadlineMs")).toBeVisible();
+});
 
 test("Timeout validates whole milliseconds, bounds and clearing, and is undoable", async ({ page }) => {
   await page.clock.install();
@@ -20,8 +59,7 @@ test("Timeout validates whole milliseconds, bounds and clearing, and is undoable
   });
   await gotoCanvas(page, "blocking-call");
   await waitForStableViewport(page);
-  await page.getByTestId("edge-call").dblclick();
-  await page.getByTestId("inspector-section-edge-simulation").click();
+  await openCallSettings(page);
   const field = page.getByTestId("inspector-field-deadlineMs");
   await expect(field).toBeVisible();
   await field.fill("600");
@@ -56,8 +94,7 @@ for (const draft of ["1.5", "-"]) {
     });
     await gotoCanvas(page, "blocking-call");
     await waitForStableViewport(page);
-    await page.getByTestId("edge-call").dblclick();
-    await page.getByTestId("inspector-section-edge-simulation").click();
+    await openCallSettings(page);
     const field = page.getByTestId("inspector-field-deadlineMs");
     if (draft === "-") {
       await field.selectText();
@@ -90,8 +127,7 @@ test("an external timeout update replaces invalid feedback with the restored val
   });
   await gotoCanvas(page, "blocking-call");
   await waitForStableViewport(page);
-  await page.getByTestId("edge-call").dblclick();
-  await page.getByTestId("inspector-section-edge-simulation").click();
+  await openCallSettings(page);
   const field = page.getByTestId("inspector-field-deadlineMs");
   await field.fill("700");
   await page.clock.runFor(400);

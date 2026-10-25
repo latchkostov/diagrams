@@ -110,5 +110,27 @@
     "count": 1,
     "owner": "latchkostov",
     "tracking": "docs/backlog/2026-10-24-colour-picker-light-background.md"
+  },
+  {
+    "id": "room-chip-retry-host-state",
+    "spec": "tests/e2e/collab-room.spec.ts",
+    "title": "a room dialog gives focus back to what opened it; Retry hands it to the room's status",
+    "firstSeen": "2026-10-24",
+    "lastSeen": "2026-10-24",
+    "count": 2,
+    "owner": "latchkostov",
+    "tracking": "docs/backlog/2026-10-24-ci-flake-tail.md",
+    "failurePattern": "waiting for getByTestId\\('room-retry'\\)"
+  },
+  {
+    "id": "room-chip-retry-joiner-state",
+    "spec": "tests/e2e/collab-room.spec.ts",
+    "title": "a joiner retrying from the chip keeps the keyboard on its wait; the alert stays below the bar, on the diagram only",
+    "firstSeen": "2026-10-24",
+    "lastSeen": "2026-10-24",
+    "count": 2,
+    "owner": "latchkostov",
+    "tracking": "docs/backlog/2026-10-24-ci-flake-tail.md",
+    "failurePattern": "waiting for getByTestId\\('room-retry'\\)"
   }
 ]

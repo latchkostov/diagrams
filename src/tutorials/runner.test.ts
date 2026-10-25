@@ -3,7 +3,7 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import type { EditorApi } from "../editor/types";
 import type { DiagramFile, DiagramNode } from "../model/types";
 import { canvasInteraction } from "../canvas/interaction/canvasInteraction";
-import { initialEditorMode, type EditorModeState } from "../canvas/interaction/mode";
+import { editorModeStep, initialEditorMode, type EditorModeState } from "../canvas/interaction/mode";
 import type { paletteHost, SessionHost } from "../palette/host";
 import { mobileApi } from "./catalog/mobileApi";
 import { createTutorialRunner } from "./runner";
@@ -11,6 +11,9 @@ import { savedProgress, saveProgress } from "./progress";
 import type { Tutorial } from "./types";
 import type { Demo } from "./types";
 import { actionRegistry } from "../editor/actions";
+import { LiveController, structuralKey } from "../live/controller";
+import { requestVsMessage } from "./catalog/requestVsMessage";
+import { propertySheet } from "./catalog/propertySheet";
 
 const cleanup: (() => void)[] = [];
 beforeEach(() => {
@@ -39,6 +42,10 @@ function sandbox(
   const modes = new Set<() => void>();
   const sessions = new Set<() => void>();
   const notify = () => changes.forEach((f) => f());
+  const setMode = (next: EditorModeState) => {
+    mode = next;
+    modes.forEach((f) => f());
+  };
   const edit = (next: DiagramFile) => {
     diagram = next;
     version = { ...version, revision: version.revision + 1 };
@@ -56,6 +63,8 @@ function sandbox(
     getDiagram,
     getDocumentVersion: () => version,
     clearSelection: () => {},
+    startEditing: ({ id }: { id: string }) =>
+      setMode(editorModeStep(mode, { type: "field.focused", target: id, field: "label" })),
     applyDiagram: edit,
     updateNode: (id: string, patch: Partial<DiagramNode>) =>
       edit({ ...diagram, nodes: diagram.nodes.map((n) => (n.id === id ? { ...n, ...patch } : n)) }),
@@ -97,6 +106,7 @@ function sandbox(
         return mode;
       },
       setGuide: () => {},
+      dispatch: (event: { type: "naming.done"; flowId: string }) => setMode(editorModeStep(mode, event)),
       subscribeMode: (f) => {
         const listener = () => f(mode, mode);
         modes.add(listener);
@@ -217,6 +227,26 @@ it("Continue replays persisted progress through the real runner and Start over r
   expect(s.editor.getDiagram().nodes).toEqual([]);
 });
 
+it.each([2, 3])(
+  "property-sheet Continue restores Subtitle and Description without repeating Name (step %s)",
+  async (step) => {
+    saveProgress(propertySheet, step, false);
+    const s = sandbox(propertySheet);
+    const writes = vi.spyOn(localStorage, "setItem");
+    s.runner.send({ type: "resume" });
+    await vi.waitFor(() => {
+      expect(s.runner.getSnapshot().state).toMatchObject({ index: step, value: "active" });
+      expect(s.runner.getSnapshot().state.latched[0]).toBe(true);
+      expect(s.runner.getSnapshot().state.observed.slice(1, step)).toEqual(Array(step - 1).fill(true));
+      expect(s.runner.getSnapshot().state.settled[1]).toBe(true);
+    });
+    expect(savedProgress(propertySheet)).toMatchObject({ step, completed: false });
+    for (const [, value] of writes.mock.calls) {
+      expect(JSON.parse(value).progress[propertySheet.id].step).toBeGreaterThanOrEqual(step);
+    }
+  },
+);
+
 it("demo additions bind their declared subjects even when selectors overlap", async () => {
   const tutorial: Tutorial = {
     ...mobileApi,
@@ -274,6 +304,27 @@ it("announces Show me's hint through the runner's status and leaves focus to the
 });
 
 it.each<{ demo: Demo; method: keyof EditorApi; args: unknown[] }>([
+  { demo: { kind: "name", subject: "api" }, method: "startEditing", args: [{ kind: "node", id: "api" }] },
+  {
+    demo: { kind: "field", subject: "api", field: "sublabel", value: () => "Node.js" },
+    method: "updateNode",
+    args: ["api", { sublabel: "Node.js" }],
+  },
+  {
+    demo: { kind: "insert", edge: ["app", "api"], subject: "gw", stencil: "aws.api-gateway" },
+    method: "insertNode",
+    args: ["edge", "aws.api-gateway"],
+  },
+  {
+    demo: { kind: "reconnect", edge: ["app", "api"], to: "api" },
+    method: "reconnectEdge",
+    args: ["edge", "target", "api"],
+  },
+  {
+    demo: { kind: "connect", from: "app", to: "api", targetSide: "top", sourceSide: "right" },
+    method: "connect",
+    args: ["app", "api", { targetSide: "top", sourceSide: "right" }],
+  },
   {
     demo: { kind: "prop", subject: "api", props: { concurrency: 12 } },
     method: "setNodeProps",
@@ -372,6 +423,85 @@ it("rechecks mode checks when the editor mode changes, without a diagram edit", 
   const s = sandbox(tutorial);
   s.runner.send({ type: "start" });
   s.mode({ value: "menu" });
+  expect(s.runner.getSnapshot().state.value).toBe("finished");
+});
+
+it("waits for the rebuilt run before latching traffic after an edge-kind edit", () => {
+  const tutorial: Tutorial = {
+    ...requestVsMessage,
+    steps: requestVsMessage.steps.filter((step) => step.id === "flip" || step.id === "watch-api"),
+  };
+  const s = sandbox(tutorial, named());
+  const before = new LiveController(named()).getState();
+  before.snapshot.nodes.api.processed = 50;
+  let session = before;
+  s.hostState.session.state = () => session;
+  s.hostState.canvas.live = true;
+  s.publish();
+  s.runner.send({ type: "start" });
+  s.edit({ ...named(), edges: [{ ...named().edges[0], kind: "async" }] });
+  expect(s.runner.getSnapshot().state).toMatchObject({ value: "active", index: 1 });
+  s.tick();
+  expect(s.runner.getSnapshot().state.value).toBe("active");
+  session = {
+    ...before,
+    generation: before.generation + 1,
+    diagramBasis: structuralKey(s.editor.getDiagram()),
+    snapshot: {
+      ...before.snapshot,
+      nodes: { ...before.snapshot.nodes, api: { ...before.snapshot.nodes.api, processed: 0 } },
+    },
+  };
+  s.tick();
+  expect(s.runner.getSnapshot().state.value).toBe("active");
+  session.snapshot.nodes.api.processed = 10;
+  s.tick();
+  expect(s.runner.getSnapshot().state.value).toBe("finished");
+});
+
+it("completes watch after pause, rename, undo before diagram sync, and resume without a generation change", () => {
+  const tutorial: Tutorial = { ...mobileApi, steps: [mobileApi.steps[5]] };
+  const initial = named();
+  initial.nodes[0].props = { ratePerSec: 20 };
+  const s = sandbox(tutorial, initial);
+  const controller = new LiveController(initial, {
+    roleOf: (stencil) => (stencil === "client.mobile" ? "source" : "processor"),
+  });
+  cleanup.push(() => controller.dispose());
+  controller.setTraffic(true);
+  cleanup.push(controller.subscribe(s.tick));
+  s.hostState.session.state = () => controller.getState();
+  s.hostState.canvas.live = true;
+  s.publish();
+  s.runner.send({ type: "start" });
+  controller.setPlaying(false);
+  const generation = controller.getState().generation;
+  s.editor.updateNode("app", { label: "Changed app" });
+  s.edit(initial); // Undo before the debounced update reaches Live.
+  expect(controller.updateDiagram(s.editor.getDiagram())).toBe("none");
+  controller.setPlaying(true);
+  controller.advance(2000);
+  controller.publish();
+  expect(controller.getState().snapshot.nodes.api.processed).toBeGreaterThanOrEqual(10);
+  expect(controller.getState().generation).toBe(generation);
+  expect(s.runner.getSnapshot().state.value).toBe("finished");
+});
+
+it("accepts new-run traffic when Live has already rebuilt before the edited document publishes", () => {
+  const tutorial: Tutorial = { ...requestVsMessage, steps: [requestVsMessage.steps[4]] };
+  const s = sandbox(tutorial, named());
+  let session = new LiveController(named()).getState();
+  s.hostState.session.state = () => session;
+  s.hostState.canvas.live = true;
+  s.publish();
+  s.runner.send({ type: "start" });
+  session = {
+    ...session,
+    generation: session.generation + 1,
+    diagramBasis: structuralKey({ ...named(), edges: [{ ...named().edges[0], kind: "async" }] }),
+  };
+  session.snapshot.nodes.api.processed = 10;
+  s.edit({ ...named(), edges: [{ ...named().edges[0], kind: "async" }] });
   expect(s.runner.getSnapshot().state.value).toBe("finished");
 });
 
