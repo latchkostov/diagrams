@@ -598,8 +598,8 @@ src/sim/autoscaling.invariants.test.ts`. `A1_FUZZ_NIGHTLY=1` expands to 5,000 se
 Keep new bookkeeping transitions in this generator as well as adding focused regressions.
 
 The Nightly job runs **5,000 A1 plus 5,000 A3 seeds**, not 5,000 total. A3 was added after the
-225.84-second A1-only run on 2026-10-16. Four independent jobs partition both generators by
-`RESOURCE_FUZZ_SHARD=i/4`, retaining the ten-minute backstop and every seed, internal step,
+225.84-second A1-only run on 2026-10-16. Sixteen independent jobs partition both generators by
+`RESOURCE_FUZZ_SHARD=i/16`, retaining the ten-minute backstop and every seed, internal step,
 refusal/replay check and minimized reproduction. Ordinary unit runs remain unsharded. Explicit
 `A1_FUZZ_SEED` / `A3_FUZZ_SEED` replay overrides sharding. `fuzzSeeds.test.ts` checks complete,
 disjoint coverage, including the pinned historical seeds. This divides the added test work;
