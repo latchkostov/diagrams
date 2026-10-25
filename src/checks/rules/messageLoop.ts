@@ -66,6 +66,7 @@ export const messageLoop: CheckRule = {
     if (!types.complete)
       findings.push({
         id: "message-loop:incomplete",
+        scope: "diagram",
         target: "",
         rule: "message-loop",
         severity: "warning",

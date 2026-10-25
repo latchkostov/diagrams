@@ -59,6 +59,24 @@ function routedFixture(): Pick<DiagramFile, "format" | "planning" | "nodes" | "e
 }
 
 describe("message-loop", () => {
+  it("keeps diagram diagnostics visible even when an element ignore has the same id suffix", () => {
+    const d = messageTypesFixture();
+    d.nodes.push({ id: "incomplete", stencil: "service.go", label: "Unrelated", x: 0, y: 0 });
+    d.simulations = [
+      savedRun({
+        timeline: [{ atMs: 0, action: { do: "props", node: "api", props: { emits: "Prepared" } } }],
+      }),
+    ];
+    d.checks = { ignore: [{ rule: "message-loop", target: "incomplete" }] };
+    const result = check(d);
+    expect(result.findings.find((f) => f.id === "message-loop:incomplete")).toMatchObject({
+      scope: "diagram",
+      target: "",
+      elements: [],
+    });
+    expect(result.ignored).toEqual([]);
+  });
+
   it("budgets each emitted element once when typed loop states revisit it", () => {
     const ctx = buildContext(messageTypesFixture());
     const types = ctx.messageTypes();

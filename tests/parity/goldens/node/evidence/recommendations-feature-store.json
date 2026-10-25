@@ -25,7 +25,7 @@
   ],
   "counted": 0,
   "findings": [
-    { "id": "message-loop:incomplete", "rule": "message-loop", "severity": "warning", "target": "", "elements": [] }
+    { "id": "message-loop:incomplete", "rule": "message-loop", "severity": "warning", "scope": "diagram", "target": "", "elements": [] }
   ],
   "agentReport": {
     "findings": [

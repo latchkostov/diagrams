@@ -1043,3 +1043,56 @@ test("genuinely empty carried and upstream populations retain their flow guidanc
   await expect(page.getByTestId("inspector-carries-search")).toHaveCount(0);
   await expect(page.getByTestId("inspector-filter-search")).toHaveCount(0);
 });
+
+test("no-match searches preserve nonempty saved filters", async ({ page }) => {
+  const diagram = messageTypesFixture();
+  diagram.nodes[0].props = { messageType: "Type0", ratePerSec: 2 };
+  diagram.edges = diagram.edges.slice(0, 2);
+  diagram.edges[1].props = { filter: ["Type*"] };
+  diagram.simulations = [
+    {
+      id: "types",
+      title: "Vocabulary",
+      traffic: Array.from({ length: 250 }, (_, i) => ({
+        id: `t${i}`,
+        node: "client",
+        messageType: `Type${i}`,
+        shape: { kind: "burst" as const, count: 1 },
+      })),
+    },
+  ];
+  await open(page, "en", diagram);
+  const before = await savedDiagram(page);
+  expect(before.edges.find((edge) => edge.id === "send")?.props?.filter).toEqual(["Type*"]);
+  const carried = page.getByTestId("inspector-carries-type");
+  await expect(carried).toHaveCount(100);
+  await expect(page.getByTestId("inspector-carries-more")).toContainText("150");
+  const selected = page.getByTestId("inspector-filter-option-0");
+  await expect(selected).toHaveText("Type*");
+  await expect(selected).toHaveAttribute("aria-pressed", "true");
+  const carries = page.getByTestId("inspector-carries-search");
+  const onlyPass = page.getByTestId("inspector-filter-search");
+  const status = page.getByTestId("inspector-filter-search-status");
+  await expect(status).toHaveAttribute("role", "status");
+  await expect(status).toHaveAttribute("aria-live", "polite");
+  await expect(status).toHaveText("251 matching types");
+  const originalStatus = await status.elementHandle();
+  for (const search of [carries, onlyPass]) {
+    await search.fill("AbsentType");
+    await expect(search).toBeFocused();
+    await expect(
+      page.getByTestId(search === carries ? "inspector-carries-empty" : "inspector-filter-empty"),
+    ).toHaveText("No matches");
+    await expect.poll(() => savedDiagram(page)).toEqual(before);
+  }
+  await expect(status).toHaveText("No matches");
+  await carries.fill("");
+  await onlyPass.fill("");
+  await expect(status).toHaveText("251 matching types");
+  expect(await status.evaluate((element, original) => element === original, originalStatus)).toBe(true);
+  await expect(selected).toHaveText("Type*");
+  await expect(selected).toHaveAttribute("aria-pressed", "true");
+  await expect(carried).toHaveCount(100);
+  await expect(page.getByTestId("inspector-carries-more")).toContainText("150");
+  await expect.poll(() => savedDiagram(page)).toEqual(before);
+});

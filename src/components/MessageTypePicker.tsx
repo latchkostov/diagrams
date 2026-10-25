@@ -98,14 +98,27 @@ export function TypePicker({
     <div ref={root} className="message-type-picker">
       <Field label={label} group>
         {multiple && all.length > MAX_CHOICES && (
-          <input
-            className="insp-input"
-            aria-label={t("messageTypes.searchOnlyPass")}
-            placeholder={t("messageTypes.search")}
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            data-testid={`inspector-${name}-search`}
-          />
+          <>
+            <input
+              className="insp-input"
+              aria-label={t("messageTypes.searchOnlyPass")}
+              placeholder={t("messageTypes.search")}
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              data-testid={`inspector-${name}-search`}
+            />
+            <small
+              className="sr-only"
+              role="status"
+              aria-live="polite"
+              aria-atomic="true"
+              data-testid={`inspector-${name}-search-status`}
+            >
+              {options.length
+                ? t("messageTypes.searchResults", { count: options.length + hidden })
+                : t("menu.noMatches")}
+            </small>
+          </>
         )}
         {multiple ? (
           <div

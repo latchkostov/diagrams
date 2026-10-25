@@ -13,8 +13,11 @@ import {
   expectNoErrors,
   waitForStableViewport,
   fitDiagram,
+  STORAGE_KEYS,
+  savedDiagram,
 } from "./fixtures";
 import { readFileSync } from "node:fs";
+import type { DiagramFile } from "../../src/model/types";
 import type { Locator, Page } from "@playwright/test";
 import { checksTyping } from "./checks-typing";
 
@@ -56,8 +59,15 @@ test.describe("the count under the title", () => {
     expectNoErrors(consoleErrors);
   });
 
-  // Suggestions only (no-reader:payments-dlq, src/checks/examples.test.ts): the count stays away.
+  // Without saved forwarding timelines, only no-reader:payments-dlq remains: the count stays away.
   test("suggestions alone show nothing; live view and presenting show no count", async ({ page }) => {
+    const outbox = JSON.parse(
+      readFileSync(new URL("../../src/examples/outbox-saga-checkout.json", import.meta.url), "utf8"),
+    ) as DiagramFile;
+    await page.addInitScript(({ key, diagram }) => localStorage.setItem(key, JSON.stringify(diagram)), {
+      key: STORAGE_KEYS.autosavePrefix + "outbox-saga-checkout",
+      diagram: { ...outbox, simulations: [] },
+    });
     await gotoCanvas(page, "outbox-saga-checkout");
     await expect(page.getByTestId("node-payments-dlq")).toBeVisible();
     await waitForChecks(page);
@@ -71,6 +81,45 @@ test.describe("the count under the title", () => {
     await page.getByTestId("live-toggle").click();
     await expect(page.getByTestId("checks-count")).toBeVisible();
   });
+});
+
+test("diagram diagnostics keep guidance and valid element ignores through reload", async ({ page, consoleErrors }) => {
+  const diagnostic = "message-loop:incomplete";
+  const suggestion = "no-reader:payments-dlq";
+  await gotoCanvas(page, "outbox-saga-checkout");
+  await expect(page.getByTestId("checks-count")).toHaveText("1 warning");
+  await openFromCount(page);
+  await expect(row(page, diagnostic)).toContainText("Timeline forwarding edits cannot be analyzed completely.");
+  await expect(page.getByTestId(`check-select-${diagnostic}`)).toHaveCount(0);
+  await page.getByTestId(`check-why-toggle-${diagnostic}`).focus();
+  await page.getByTestId(`check-why-toggle-${diagnostic}`).press("Enter");
+  await expect(page.getByTestId(`check-why-${diagnostic}`)).toHaveAttribute("open", "");
+  await expect(page.getByTestId(`check-why-text-${diagnostic}`)).toBeVisible();
+  await expect(page.getByTestId(`check-why-text-${diagnostic}`)).toHaveText(
+    "Review message paths before and after timeline forwarding edits manually.",
+  );
+  await page.getByTestId(`check-more-${diagnostic}`).click();
+  await expect(page.getByTestId(`check-ignore-${diagnostic}`)).toHaveCount(0);
+  await page.getByTestId(`check-about-${diagnostic}`).click();
+  await expect(page.getByTestId(`check-about-text-${diagnostic}`)).toBeVisible();
+
+  // A real element ignore still works, while the diagram warning stays visible.
+  await page.getByTestId(`check-more-${suggestion}`).click();
+  await page.getByTestId(`check-ignore-${suggestion}`).click();
+  await page.getByTestId(`check-ignore-confirm-${suggestion}`).click();
+  await expect(row(page, suggestion)).toHaveCount(0);
+  await expect(row(page, diagnostic)).toBeVisible();
+  await waitForAutosave(page);
+  const checks = { ignore: [{ rule: "no-reader", target: "payments-dlq" }] };
+  await expect.poll(async () => (await savedDiagram(page)).checks).toEqual(checks);
+  await page.reload();
+  await expect(page.getByTestId("checks-count")).toHaveText("1 warning");
+  await openFromCount(page);
+  await expect(row(page, diagnostic)).toBeVisible();
+  await expect(page.getByTestId(`check-select-${diagnostic}`)).toHaveCount(0);
+  await expect(page.getByTestId("checks-ignored-toggle")).toHaveText("1 ignored");
+  expect((await savedDiagram(page)).checks).toEqual(checks);
+  expectNoErrors(consoleErrors);
 });
 
 test.describe("the Checks card", () => {
