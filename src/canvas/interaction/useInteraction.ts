@@ -108,19 +108,22 @@ export function useSelectionEvents<P>(
 }
 
 /** Input, commits and the lifetime of a controller (the canvas's, or the Lab Inspector's own). */
-function useInteractionLifecycle<P>(controller: InteractionController<P>) {
-  useEffect(() => controller.connect(), [controller]);
+export function useInteractionLifecycle<P>(controller: InteractionController<P> | null) {
+  useEffect(() => controller?.connect(), [controller]);
   useEffect(() => {
+    if (!controller) return;
     // Capture input before anything handles it: a move's second attempt stands down (a press also ends a held rename).
     const press = () => controller.input("press");
     const key = (event: KeyboardEvent) => {
       controller.input("key");
       const gesture = controller.gesture;
-      if (event.key !== "Escape" || !gesture) return;
-      if (document.querySelector('[role="dialog"]')) return;
+      if (event.key !== "Escape" || event.defaultPrevented || event.isComposing) return;
+      if (document.querySelector('[role="dialog"], [role="menu"]')) return;
+      // Transient cards precede canvas shortcuts, including in read-only viewers.
+      if (!gesture && !controller.escape()) return;
       event.preventDefault();
       event.stopImmediatePropagation();
-      controller.endGesture(gesture.seq, "escape");
+      if (gesture) controller.endGesture(gesture.seq, "escape");
     };
     const blur = () => {
       if (controller.gesture) controller.endGesture(controller.gesture.seq, "blur");
@@ -146,7 +149,7 @@ function useInteractionLifecycle<P>(controller: InteractionController<P>) {
     };
   }, [controller]);
   // Every commit: a move waiting for it runs, and a target waiting for its panel is tried again.
-  useLayoutEffect(() => controller.rendered());
+  useLayoutEffect(() => controller?.rendered());
 }
 
 /**
@@ -161,26 +164,6 @@ export function useInteractionOrLocal(): { controller: InteractionController; lo
       : createInteractionController(createDomPort({ root: () => null }), domScheduler, { journal: interactionJournal }),
   );
   const controller = shared ?? own!;
-  useLocalLifecycle(own);
+  useInteractionLifecycle(own);
   return { controller, local: !shared };
-}
-
-function useLocalLifecycle(own: InteractionController | null) {
-  useEffect(() => own?.connect(), [own]);
-  useEffect(() => {
-    if (!own) return;
-    const key = () => own.input("key");
-    const press = () => own.input("press");
-    const focusin = (event: FocusEvent) => {
-      if (event.target instanceof Element) own.focusArrived(event.target);
-    };
-    window.addEventListener("keydown", key, true);
-    window.addEventListener("pointerdown", press, true);
-    window.addEventListener("focusin", focusin, true);
-    return () => {
-      window.removeEventListener("keydown", key, true);
-      window.removeEventListener("pointerdown", press, true);
-      window.removeEventListener("focusin", focusin, true);
-    };
-  }, [own]);
 }

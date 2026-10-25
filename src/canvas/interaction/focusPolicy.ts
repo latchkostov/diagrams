@@ -34,6 +34,7 @@ import type { FocusCommand, FocusDecision, FocusEvent, FocusMove, FocusState, Fo
  * | I5  | inspector.rule                      | its incoming type changed       | focus the same control of its new row after the commit |
  * | I6  | inspector.abandoned (Esc in a       | a field request is pending      | keep; nothing pending (its held keys are dropped;      |
  * |     | pending rename)                     |                                 | focus stays on the canvas)                             |
+ * | I7  | inspector.control                   | picker keyboard navigation      | focus that mounted control now                        |
  * | D1  | dialog.closed(checks)               |                                 | focus its opener now (else the canvas)                 |
  * | D2  | dialog.closed(livePanel)            |                                 | focus its opener now (else the Live bar's opener)      |
  * | D3  | dialog.closed(inject)               |                                 | focus its opener now (else the node it injects at)     |
@@ -165,6 +166,7 @@ export function focusPolicy(state: FocusState, event: FocusEvent): FocusDecision
       return state.pending?.target.kind === "field" ? keep({ pending: null }) : keep();
     case "dialog.opened":
       return move({ target: { kind: "element", handle: event.first }, when: "now", select: "all" });
+    case "inspector.control":
     case "inspector.rule":
     case "node.details":
     case "dialog.tab":

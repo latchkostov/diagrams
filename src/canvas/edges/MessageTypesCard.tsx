@@ -1,10 +1,14 @@
-import { useEffect } from "react";
-import { useTooltip } from "../../components/useTooltip";
+import { useEffect, useState, useSyncExternalStore } from "react";
+import { useInteractionOrLocal } from "../interaction";
+import { createMessageCard } from "../interaction/messageCard";
 import { useReadableScale } from "../useReadableScale";
 
 /** Loaded with carried types, only while their edge has keyboard focus. */
 export function MessageTypesCard({ id, text, x, y }: { id: string; text: string; x: number; y: number }) {
-  const { open } = useTooltip(true);
+  const { controller } = useInteractionOrLocal();
+  const [card] = useState(createMessageCard);
+  const open = useSyncExternalStore(card.subscribe, card.getSnapshot);
+  useEffect(() => controller.attachEscape(card.escape), [controller, card]);
   const scale = useReadableScale();
   const tipId = `edge-messages-${id}`;
   useEffect(() => {
@@ -21,7 +25,7 @@ export function MessageTypesCard({ id, text, x, y }: { id: string; text: string;
   if (!open) return null;
   return (
     <div
-      className="fe-card nodrag nopan"
+      className="fe-card fe-message-card nodrag nopan"
       role="tooltip"
       id={tipId}
       data-testid={tipId}

@@ -1,4 +1,5 @@
-import { MAX_CHOICES, TypePicker } from "../../components/MessageTypePicker";
+import { TypePicker } from "../../components/MessageTypePicker";
+import { MAX_CHOICES, selectMessageChoices } from "../../components/messageChoices";
 import { t } from "../../i18n";
 import { useMessageTypes } from "./useMessageTypes";
 import { useLayoutEffect, useRef, useState } from "react";
@@ -22,6 +23,7 @@ export function EdgeMessages({
 }) {
   const diagram = readDiagram?.() ?? editor.getDiagram();
   const { types, updating } = useMessageTypes(diagram, paused);
+  const [search, setSearch] = useState("");
   if (!types)
     return (
       <p className="insp-note" role="status">
@@ -31,13 +33,28 @@ export function EdgeMessages({
   const props = diagram.edges.find((edge) => edge.id === edgeId)?.props ?? {};
   const filter = Array.isArray(props.filter) ? props.filter.filter((v): v is string => typeof v === "string") : [];
   const carries = [...(types.carried.get(edgeId) ?? [])];
+  const { options, matchingUnselectedOverflow: hidden } = selectMessageChoices(
+    carries,
+    [],
+    carries.length > MAX_CHOICES ? search : "",
+  );
   return (
     <div className="message-fields" data-testid="inspector-messages">
       <h4>{t("messageTypes.messages")}</h4>
       <Field label={t("messageTypes.carries")} group>
+        {carries.length > MAX_CHOICES && (
+          <input
+            className="insp-input"
+            aria-label={t("messageTypes.searchCarried")}
+            placeholder={t("messageTypes.search")}
+            data-testid="inspector-carries-search"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+          />
+        )}
         <div className="message-type-chips" aria-live="polite" data-testid="inspector-carries">
-          {carries.length ? (
-            carries.slice(0, MAX_CHOICES).map((type) => (
+          {options.length ? (
+            options.map((type) => (
               <span className="message-type-chip" key={type} data-testid="inspector-carries-type">
                 {type}
               </span>
@@ -45,9 +62,9 @@ export function EdgeMessages({
           ) : (
             <small className="insp-note">{t("messageTypes.noMessages")}</small>
           )}
-          {carries.length > MAX_CHOICES && (
+          {hidden > 0 && (
             <small className="insp-note" data-testid="inspector-carries-more">
-              +{t("importReport.more", { count: carries.length - MAX_CHOICES })}
+              +{t("importReport.more", { count: hidden })}
             </small>
           )}
         </div>
