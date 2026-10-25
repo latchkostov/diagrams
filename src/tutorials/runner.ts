@@ -3,11 +3,23 @@ import { t } from "../i18n";
 import { readTutorials, savedProgress, saveProgress, writeTutorials } from "./progress";
 import { paletteHost } from "../palette/host";
 import type { EditorApi } from "../editor/types";
-import { holds, nearMiss, namingSubjects, observeSteps, resolveSubjects } from "./checks";
+import {
+  baselineKey,
+  edgeTargets,
+  holds,
+  metricValue,
+  nearMiss,
+  namingSubjects,
+  observeSteps,
+  resolveSubjects,
+  sinceValues,
+} from "./checks";
+import { patchProps } from "./paths";
 import {
   inStep,
   runnerInitial,
   runnerMachine,
+  type Baseline,
   type RunnerCommand,
   type RunnerEvent,
   type RunnerState,
@@ -39,6 +51,21 @@ export interface RunnerSnapshot {
   announcement: string;
   /** The current step's expectText near miss, once the learner has finished naming: what's expected, what they typed. */
   nearMiss: { expected: string; typed: string } | null;
+  /** The connection between two subjects, by "from->to" (checks.ts, edgeTargets): what an edge test id names. */
+  edges: Readonly<Record<string, string>>;
+}
+
+/**
+ * A Live action's row as the palette builds it, with the same availability guards: undefined until Live's lazy session
+ * has registered it, or while it's disabled. A demo pressing it retries on the next registry or session change.
+ */
+function liveRow(id: string, items: readonly MenuNode[]): (() => void) | undefined {
+  for (const item of items) {
+    if (item.type !== "item" || item.disabled) continue;
+    if (item.id === id) return item.run;
+    const nested = item.children && liveRow(id, item.children);
+    if (nested) return nested;
+  }
 }
 
 type Host = Pick<typeof paletteHost, "get" | "subscribe"> &
@@ -57,6 +84,7 @@ export function createTutorialRunner(
       "live",
       "processed",
       "metric",
+      "compare",
       "simulation",
       "expectation",
       "fault",
@@ -73,6 +101,7 @@ export function createTutorialRunner(
     (check.kind === "all" && check.checks.some(dynamic));
   const dynamicChecks = tutorial.steps.map((s) => dynamic(s.check));
   const naming = tutorial.steps.map((s) => namingSubjects(s.check));
+  const since = tutorial.steps.map((s) => sinceValues(s.check));
   const machine = createMachine({
     ...runnerMachine,
     initial: runnerInitial(sticky, {
@@ -84,7 +113,7 @@ export function createTutorialRunner(
     }),
   });
   let state: RunnerState = machine.state;
-  let snapshot: RunnerSnapshot = { state, subjects: {}, selected: [], announcement: "", nearMiss: null };
+  let snapshot: RunnerSnapshot = { state, subjects: {}, selected: [], announcement: "", nearMiss: null, edges: {} };
   const listeners = new Set<() => void>();
   const publish = (patch: Partial<RunnerSnapshot>) => {
     snapshot = { ...snapshot, ...patch };
@@ -146,13 +175,31 @@ export function createTutorialRunner(
 
   function send(event: RunnerEvent) {
     const { state: next, commands } = machine.send(event);
-    if (next !== state) {
+    const changed = next !== state;
+    if (changed) {
       const step = inStep(state) ? state.index : -1;
       state = next;
       publish({ state });
       if ((inStep(state) ? state.index : -1) !== step) guide();
     }
     for (const c of commands) run(c);
+    // Entered, or Skip emptied it: what the step counts starts here, once its commands (Restart's reset) have run.
+    if (changed && inStep(state) && since[state.index].length && host.get().canvas && editor()) capture(view());
+  }
+
+  /**
+   * The current step's sinceStep baseline: each reading as soon as Live shows it once the step is current (never
+   * earlier), kept in the machine's state. Nothing to send when it has them all, or Live doesn't show them yet.
+   */
+  function capture(v: SandboxView) {
+    if (!inStep(state) || !since[state.index].length || !v.session) return;
+    const values: Record<string, readonly [number, number]> = {};
+    for (const expr of since[state.index]) {
+      const key = baselineKey(expr);
+      const now = state.baseline[key] ? undefined : metricValue(expr, v, subjects);
+      if (now !== undefined) values[key] = [now, v.session.generation];
+    }
+    if (Object.keys(values).length) send({ type: "baseline", step: state.index, values: values as Baseline });
   }
 
   /** The current step's guide for the canvas (quick-add opens searched for its pick); data, never a focus move. */
@@ -185,9 +232,20 @@ export function createTutorialRunner(
     // The editor's mode (src/canvas/interaction/mode.ts): the selection, and whether the learner is mid-naming.
     const mode = canvasInteraction.get()?.mode;
     const selected = mode?.selection ?? [];
-    if (JSON.stringify(subjects) !== JSON.stringify(snapshot.subjects) || selected.join() !== snapshot.selected.join())
-      publish({ subjects, selected });
-    const met = tutorial.steps.map((s, i) => (dynamicChecks[i] ? holds(s.check, v, subjects) : documentChecks[i]));
+    const edges = edgeTargets(v.diagram, subjects);
+    if (
+      JSON.stringify(subjects) !== JSON.stringify(snapshot.subjects) ||
+      selected.join() !== snapshot.selected.join() ||
+      JSON.stringify(edges) !== JSON.stringify(snapshot.edges)
+    )
+      publish({ subjects, selected, edges });
+    capture(v);
+    const current = inStep(state) ? state.index : -1;
+    const met = tutorial.steps.map((s, i) =>
+      dynamicChecks[i]
+        ? holds(s.check, i === current ? { ...v, baseline: state.baseline } : v, subjects)
+        : documentChecks[i],
+    );
     const settled = tutorial.steps.map((s, i) => {
       if (!s.settle || (met[i] && state.observed[i] && state.settled[i])) return true;
       if (typeof s.settle === "object")
@@ -198,8 +256,8 @@ export function createTutorialRunner(
     if (met.some((m, i) => m !== state.observed[i]) || settled.some((m, i) => m !== state.settled[i]))
       send({ type: "observe", met, settled });
     // Judged only once naming is over: a name is never "wrong" half typed.
-    const current = inStep(state) ? tutorial.steps[state.index] : undefined;
-    const miss = current && mode?.value !== "naming" ? nearMiss(current.check, v, subjects) : null;
+    const step = inStep(state) ? tutorial.steps[state.index] : undefined;
+    const miss = step && mode?.value !== "naming" ? nearMiss(step.check, v, subjects) : null;
     if (JSON.stringify(miss) !== JSON.stringify(snapshot.nearMiss)) publish({ nearMiss: miss });
     changed.forEach((f) => f());
   }
@@ -223,7 +281,8 @@ export function createTutorialRunner(
   function perform(demo: Demo) {
     const h = host.get();
     const ed = editor();
-    if (!ed) return;
+    // No editor for a moment (the canvas republishing as Live mounts): not done, so a retried control tries again.
+    if (!ed) return false;
     view();
     const edge = (pair: readonly [string, string]) =>
       ed.getDiagram().edges.find((e) => e.from === subjects[pair[0]] && e.to === subjects[pair[1]]);
@@ -303,6 +362,16 @@ export function createTutorialRunner(
         }
         return;
       }
+      case "patch": {
+        const item = demo.edge ? edge(demo.edge) : ed.getDiagram().nodes.find((n) => n.id === subjects[demo.subject]);
+        // Only what's missing, as one edit; nothing at all when the learner's props already have it.
+        const changed = item && patchProps(item.props, demo.patches);
+        if (item && changed) {
+          if (demo.edge) ed.setEdgeProps(item.id, changed);
+          else ed.setNodeProps(item.id, changed);
+        }
+        return;
+      }
       case "relation": {
         const id = edge([demo.from, demo.to])?.id;
         if (id) ed.updateEdge(id, { relation: demo.relation, ...(demo.edgeKind ? { kind: demo.edgeKind } : {}) });
@@ -354,15 +423,6 @@ export function createTutorialRunner(
                 : demo.fault === "slow"
                   ? "sim.slow:5"
                   : "sim.failure:0.5";
-        // The palette builds these same registry rows, with the same Live availability guards.
-        const find = (items: MenuNode[]): (() => void) | undefined => {
-          for (const item of items) {
-            if (item.type !== "item" || item.disabled) continue;
-            if (item.id === action) return item.run;
-            const nested = item.children && find(item.children);
-            if (nested) return nested;
-          }
-        };
         const current = view();
         const active = holds(
           { kind: "fault", ...(demo.edge ? { edge: demo.edge } : { subject: demo.subject }), fault: demo.fault },
@@ -370,13 +430,34 @@ export function createTutorialRunner(
           subjects,
         );
         if (active === !demo.restore) return true;
-        const apply = find(
+        const apply = liveRow(
+          action,
           actionRegistry.build({
             editor: ed,
             mode: "live",
             surface: "palette",
             target,
             ...(demo.edge ? { edgeId: id } : group ? { groupId: id } : { nodeId: id }),
+            selection: ed.getSelection(),
+          }),
+        );
+        if (!apply) return false;
+        apply();
+        return true;
+      }
+      case "traffic":
+      case "trace": {
+        const session = h.session?.state?.();
+        if (!h.canvas?.live || !session) return false;
+        // Already so (the learner's own toggle, or a trace under way): nothing to press.
+        if (demo.kind === "traffic" ? session.traffic === demo.on : !!session.trace) return true;
+        const apply = liveRow(
+          demo.kind === "traffic" ? "sim.traffic" : "sim.trace-message:next",
+          actionRegistry.build({
+            editor: ed,
+            mode: "live",
+            surface: "palette",
+            target: "canvas",
             selection: ed.getSelection(),
           }),
         );
@@ -457,10 +538,24 @@ export function createTutorialRunner(
       if (run !== generation) return;
       if (!state.observed[i]) {
         for (const d of tutorial.steps[i].demo) {
+          const made =
+            d.kind === "add" || d.kind === "insert" ? d.subject : d.kind === "group" ? d.boundary : undefined;
+          const bound = made && demoBindings.get(made);
           // Live publishes before its lazy session registers actions. Retry on session/registry changes.
-          if (d.kind === "fault") {
+          if (d.kind === "fault" || d.kind === "traffic" || d.kind === "trace") {
             if (!(await until(() => perform(d) !== false, run))) return;
           } else perform(d);
+          // A queued launch can publish free play before its saved run: the step's next control (traffic, a trace)
+          // waits for that run, so it's pressed in the run the check reads.
+          if (
+            d.kind === "runSimulation" &&
+            !(await until(() => !!editor() && holds({ kind: "simulation", id: d.id }, view(), subjects), run))
+          )
+            return;
+          // The editor commits a node it made after its call returns: the step's next edit (name it, connect it)
+          // waits until the document reports it, rather than finding no subject and doing nothing.
+          const id = made && demoBindings.get(made);
+          if (id && id !== bound && !(await until(() => subjects[made] === id, run))) return;
         }
         // The next step's demo may need this one's node: wait for the canvas to report it.
         if (tutorial.steps[i].demo.length && !(await until(() => state.observed[i], run))) return;
