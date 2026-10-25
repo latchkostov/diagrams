@@ -1,12 +1,31 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { DiagramAnnotation } from "../model/types";
 import { ActionRegistry, builtinSections, type ActionContext, type MenuNode } from "./actions";
 import type { EditorApi } from "./types";
 
+// Keep the real logger: incomplete fixtures must fail instead of hiding broken menu predicates.
+beforeEach(() => {
+  vi.spyOn(console, "error");
+});
+afterEach(() => {
+  try {
+    expect(console.error).not.toHaveBeenCalled();
+  } finally {
+    vi.restoreAllMocks();
+  }
+});
+
 const ctx = (target: ActionContext["target"]): ActionContext => ({
   target,
   selection: { nodeIds: [], edgeIds: [], groupIds: [] },
-  editor: {} as EditorApi,
+  editor: {
+    getDiagram: () => ({ format: "diagrams/v1", title: "Test", nodes: [], edges: [] }),
+    getEdge: () => undefined,
+    hasClipboard: () => false,
+    canUndo: () => false,
+    canRedo: () => false,
+    prefs: { snap: true, grid: true, minimap: false, inspector: true },
+  } as unknown as EditorApi,
 });
 const ids = (items: MenuNode[]) =>
   items.map((i) => (i.type === "item" ? i.id : i.type === "header" ? `[${i.label}]` : "---"));
@@ -186,7 +205,7 @@ describe("Run simulations on the canvas right-click and in Ctrl+K", () => {
       edges: [],
       simulations: [{ id: "s", title: "Rush" }] as unknown[],
     };
-    const editor = { getDiagram: () => diagram } as unknown as EditorApi;
+    const editor = { ...ctx("canvas").editor, getDiagram: () => diagram } as unknown as EditorApi;
     const menu = (surface?: "menu" | "palette", mode?: "edit" | "live") =>
       r.build({ ...ctx("canvas"), editor, surface, mode }).flatMap((i) => (i.type === "item" ? [i] : []));
     const item = (id: string, surface?: "menu" | "palette", mode?: "edit" | "live") =>
