@@ -9,7 +9,7 @@ export function nudgeFixedRoutes(
 ) {
   return nudgeRoutes(routes, obstacles, {
     ...options,
-    clusters: indexedClusters,
+    index: trackCandidates,
     canMove: fixedNudgeGuard(routes, options.fixed),
   });
 }
@@ -32,9 +32,30 @@ function segment(a: Point, b: Point): Segment {
 const overlap = (a: Segment, b: Segment) =>
   a.vertical === b.vertical && Math.abs(a.c - b.c) < 0.5 ? Math.max(0, Math.min(a.hi, b.hi) - Math.max(a.lo, b.lo)) : 0;
 
+interface IntervalNode<T> {
+  segment: T;
+  high: number;
+  left?: IntervalNode<T>;
+  right?: IntervalNode<T>;
+}
+
+/** A balanced tree retains a separate maximum end for every subtree, not every prefix. */
+function intervalTree<T extends Segment>(sorted: T[], lo = 0, hi = sorted.length): IntervalNode<T> | undefined {
+  if (lo === hi) return;
+  const mid = (lo + hi) >>> 1;
+  const left = intervalTree(sorted, lo, mid);
+  const right = intervalTree(sorted, mid + 1, hi);
+  return {
+    segment: sorted[mid],
+    high: Math.max(sorted[mid].hi, left?.high ?? -Infinity, right?.high ?? -Infinity),
+    left,
+    right,
+  };
+}
+
 /** Track and interval bounds stay selective when a segment is too long for a spatial grid. */
 class TrackIndex<T extends Segment> {
-  private tracks: { c: number; segments: T[]; ends: number[] }[];
+  private tracks: { c: number; root: IntervalNode<T> | undefined }[];
   constructor(segments: T[]) {
     const groups = new Map<number, T[]>();
     for (const s of segments) {
@@ -46,8 +67,7 @@ class TrackIndex<T extends Segment> {
       .sort(([a], [b]) => a - b)
       .map(([c, list]) => {
         list.sort((a, b) => a.lo - b.lo);
-        let high = -Infinity;
-        return { c, segments: list, ends: list.map((s) => (high = Math.max(high, s.hi))) };
+        return { c, root: intervalTree(list) };
       });
   }
   near(s: Segment, tolerance: number): T[] {
@@ -60,51 +80,22 @@ class TrackIndex<T extends Segment> {
       if (list[mid].c < s.c - tolerance) lo = mid + 1;
       else hi = mid;
     }
-    for (let i = lo; i < list.length && list[i].c <= s.c + tolerance; i++) {
-      const track = list[i];
-      let from = 0,
-        to = track.ends.length;
-      while (from < to) {
-        const mid = (from + to) >>> 1;
-        if (track.ends[mid] <= s.lo + 2) from = mid + 1;
-        else to = mid;
-      }
-      for (let j = from; j < track.segments.length && track.segments[j].lo < s.hi - 2; j++) {
-        const candidate = track.segments[j];
-        if (Math.min(s.hi, candidate.hi) - Math.max(s.lo, candidate.lo) > 2) hits.push(candidate);
-      }
-    }
+    const visit = (node: IntervalNode<T> | undefined) => {
+      if (!node || node.high <= s.lo + 2) return;
+      visit(node.left);
+      const candidate = node.segment;
+      if (candidate.lo >= s.hi - 2) return;
+      if (Math.min(s.hi, candidate.hi) - Math.max(s.lo, candidate.lo) > 2) hits.push(candidate);
+      visit(node.right);
+    };
+    for (let i = lo; i < list.length && list[i].c <= s.c + tolerance; i++) visit(list[i].root);
     return hits;
   }
 }
 
-function indexedClusters(segs: Seg[], tolerance: number): Seg[][] {
-  const sorted = segs.sort((a, b) => a.c - b.c);
-  const ids = new Map(sorted.map((s, i) => [s, i]));
-  const index = new TrackIndex(sorted);
-  const parent = sorted.map((_, i) => i);
-  const find = (i: number): number => {
-    while (parent[i] !== i) {
-      parent[i] = parent[parent[i]];
-      i = parent[i];
-    }
-    return i;
-  };
-  for (let i = 0; i < sorted.length; i++) {
-    const a = sorted[i];
-    if (a.fixed) continue;
-    for (const b of index.near(a, tolerance)) {
-      const j = ids.get(b)!;
-      if ((!b.fixed && j <= i) || a.edge === b.edge || Math.abs(a.c - b.c) >= tolerance) continue;
-      parent[find(i)] = find(j);
-    }
-  }
-  const groups = new Map<number, Seg[]>();
-  sorted.forEach((s, i) => {
-    const root = find(i);
-    (groups.get(root) ?? groups.set(root, []).get(root)!).push(s);
-  });
-  return [...groups.values()].filter((g) => g.some((s) => s.edge !== g[0].edge));
+export function trackCandidates(segments: Seg[]) {
+  const index = new TrackIndex(segments.map((s, item) => ({ ...s, item })));
+  return index.near.bind(index);
 }
 
 /** Fixed segments indexed by track. Binary track queries do not scan distant or very long saved segments. */
