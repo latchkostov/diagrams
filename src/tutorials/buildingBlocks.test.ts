@@ -48,13 +48,18 @@ function completedDiagram(tutorial: typeof apiGateway): DiagramFile {
 }
 
 describe("building-block lessons", () => {
-  it("registers both batches of building blocks, in their track", () => {
+  it("registers both batches of building blocks, including Config settings, in order", () => {
     expect(tutorials.filter((t) => t.track === "blocks").map((t) => t.id)).toEqual([
-      ...blocks.map((t) => t.id),
+      "api-gateway",
+      "kafka-topic",
+      "queue-workers",
+      "load-balancer",
+      "cache-aside",
       "webhooks",
       "fanout",
       "partitions",
       "outbox",
+      "dependencies-2",
     ]);
   });
 

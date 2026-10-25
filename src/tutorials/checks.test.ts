@@ -1,3 +1,4 @@
+import { initialEditorMode } from "../canvas/interaction/mode";
 import { describe, expect, it } from "vitest";
 import type { DiagramFile } from "../model/types";
 import { fillTestId, holds, nearMiss, resolveSubjects, edgeTargets } from "./checks";
@@ -141,4 +142,24 @@ it("binds a downstream subject only to a flow consumer, including after its old 
   expect(resolveSubjects(backlogLag, d, bindings).worker).toBeUndefined();
   d.edges.push({ id: "new-reader", from: "queue", to: service.id, kind: "async" });
   expect(resolveSubjects(backlogLag, d, bindings).worker).toBe(service.id);
+});
+
+it("alignment ignores selected edges before checking the minimum node count", () => {
+  const d: DiagramFile = {
+    ...diagram(""),
+    nodes: Array.from({ length: 4 }, (_, i) => ({
+      id: `n${i}`,
+      stencil: "generic.service",
+      label: "",
+      x: i * 200,
+      y: 50,
+    })),
+    edges: [{ id: "edge", from: "n0", to: "n1", kind: "sync" }],
+  };
+  const check: Check = { kind: "aligned", axis: "y", atLeast: 4 };
+  const selection = d.nodes.map((n) => n.id).concat("edge");
+  const v = { diagram: d, live: false, processed: () => 0, mode: { ...initialEditorMode, selection } };
+  expect(holds(check, v, {})).toBe(true);
+  expect(holds(check, { ...v, mode: { ...v.mode, selection: selection.slice(1) } }, {})).toBe(false);
+  expect(holds(check, { ...v, diagram: { ...d, nodes: d.nodes.map((n, i) => ({ ...n, y: i })) } }, {})).toBe(false);
 });

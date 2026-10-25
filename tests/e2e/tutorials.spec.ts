@@ -301,6 +301,30 @@ test("dependencies-2: hidden Dependencies can be shown before adding a setting",
   await expect(page.getByTestId("edge-label-" + edge)).toBeVisible();
 });
 
+for (const path of ["Skip", "Continue"] as const)
+  test(`dependencies-2: ${path} reveals hidden Dependencies`, async ({ page, consoleErrors }) => {
+    await page.addInitScript(() => localStorage.setItem("diagrams.showDependencies.v1", "0"));
+    await openTutorial(page, "dependencies-2");
+    await page.getByTestId("tutorial-start").click();
+    await expect(strip(page)).toHaveAttribute("data-step", "show-dependencies");
+    if (path === "Skip") await page.getByTestId("tutorial-skip").click();
+    else {
+      for (const action of await page.evaluate(() => window.__tutorial?.solution() ?? [])) await play(page, action);
+      await expect(strip(page)).toHaveAttribute("data-step", "add-setting");
+      await page.evaluate(() => localStorage.setItem("diagrams.showDependencies.v1", "0"));
+      await page.reload();
+      await expect(page.getByTestId("tutorial-start")).toBeVisible({ timeout: pageLoadTimeout() });
+      await page.getByTestId("tutorial-start").click();
+    }
+    await expect(strip(page)).toHaveAttribute("data-step", "add-setting");
+    await expect(strip(page)).toHaveAttribute("data-state", "active");
+    const edge = await page.evaluate(() => window.__tutorial?.snapshot().edges["api->config"]);
+    await expect(page.getByTestId("edge-label-" + edge)).toBeVisible();
+    await page.getByTestId("edge-label-" + edge).click();
+    await expect(page.getByTestId("inspector-field-settings")).toBeVisible();
+    expectNoErrors(consoleErrors);
+  });
+
 test("dependencies-2: the lock target follows the setting inserted before existing rows", async ({ page }) => {
   test.fixme(!!tutorialEntries.find((t) => t.id === "dependencies-2")?.quarantined, quarantineReason);
   await openTutorial(page, "dependencies-2");
@@ -589,12 +613,30 @@ test("annotate keeps each instruction current until the annotation's editor clos
   expectNoErrors(consoleErrors);
 });
 
+test("arrange: Align middles accepts a box containing services and their connection", async ({
+  page,
+  consoleErrors,
+}) => {
+  await openTutorial(page, "arrange");
+  await page.getByTestId("tutorial-start").click();
+  await fitDiagram(page);
+  await waitForCameraIdle(page);
+  await page.getByTestId("node-seed-0").hover();
+  await page.getByTestId("handle-seed-0-right").dragTo(page.getByTestId("handle-seed-1-left"));
+  await expect(page.getByTestId(/^edge-(?!label-)/)).toHaveCount(1);
+  for (const action of await page.evaluate(() => window.__tutorial?.solution() ?? [])) await play(page, action);
+  await expect(strip(page)).toHaveAttribute("data-step", "align");
+  expect(await page.evaluate(() => window.__tutorial?.snapshot().selected.length)).toBe(6);
+  for (const action of await page.evaluate(() => window.__tutorial?.solution() ?? [])) await play(page, action);
+  await expect(strip(page)).toHaveAttribute("data-step", "tidy");
+  expectNoErrors(consoleErrors);
+});
+
 for (const finish of ["Align middles", "Skip"] as const)
   test(`arrange: Show me keeps the box selection, then ${finish} finishes Align middles`, async ({
     page,
     consoleErrors,
   }) => {
-    test.fixme(true, quarantineReason);
     await openTutorial(page, "arrange");
     await page.getByTestId("tutorial-start").click();
     await playUntil(page, 1);
@@ -612,7 +654,6 @@ for (const finish of ["Align middles", "Skip"] as const)
   });
 
 test("arrange: Skip recovers after selection is cleared", async ({ page, consoleErrors }) => {
-  test.fixme(true, quarantineReason);
   await openTutorial(page, "arrange");
   await page.getByTestId("tutorial-start").click();
   await playUntil(page, 1);
@@ -631,22 +672,29 @@ test("arrange: Skip recovers after selection is cleared", async ({ page, console
   expectNoErrors(consoleErrors);
 });
 
-test("insert-on-edge: Skip inserts a separately added gateway without a duplicate", async ({ page, consoleErrors }) => {
-  test.fixme(true, quarantineReason);
-  await openTutorial(page, "insert-on-edge");
-  await page.getByTestId("tutorial-start").click();
-  await page.keyboard.press("ControlOrMeta+k");
-  await page.getByTestId("command-input").fill("API Gateway");
-  await page.getByTestId("command-item-stencil:aws.api-gateway").click();
-  await expect.poll(() => page.evaluate(() => window.__tutorial?.snapshot().subjects.gw)).toBeTruthy();
-  const gateway = await page.evaluate(() => window.__tutorial?.snapshot().subjects.gw);
-  await page.getByTestId("tutorial-skip").click();
-  await expect(strip(page)).toHaveAttribute("data-step", "name");
-  await expect(page.getByTestId(/^node-/)).toHaveCount(3);
-  expect(await page.evaluate(() => window.__tutorial?.snapshot().subjects.gw)).toBe(gateway);
-  await expect(page.getByTestId(/^edge-(?!label-)/)).toHaveCount(2);
-  expectNoErrors(consoleErrors);
-});
+for (const selectedApp of [false, true])
+  test(`insert-on-edge: Skip reuses a gateway added ${selectedApp ? "after the selected app" : "separately"} without a duplicate`, async ({
+    page,
+    consoleErrors,
+  }) => {
+    await openTutorial(page, "insert-on-edge");
+    await page.getByTestId("tutorial-start").click();
+    if (selectedApp) {
+      await page.getByTestId("node-app").click();
+      await waitForSelectionSettled(page);
+    }
+    await page.keyboard.press("ControlOrMeta+k");
+    await page.getByTestId("command-input").fill("API Gateway");
+    await page.getByTestId("command-item-stencil:aws.api-gateway").click();
+    await expect.poll(() => page.evaluate(() => window.__tutorial?.snapshot().subjects.gw)).toBeTruthy();
+    const gateway = await page.evaluate(() => window.__tutorial?.snapshot().subjects.gw);
+    await page.getByTestId("tutorial-skip").click();
+    await expect(strip(page)).toHaveAttribute("data-step", "name");
+    await expect(page.getByTestId(/^node-/)).toHaveCount(3);
+    expect(await page.evaluate(() => window.__tutorial?.snapshot().subjects.gw)).toBe(gateway);
+    await expect(page.getByTestId(/^edge-(?!label-)/)).toHaveCount(2);
+    expectNoErrors(consoleErrors);
+  });
 
 test("command-palette: Skip after adding the topic selects Service 1 without a second topic", async ({
   page,

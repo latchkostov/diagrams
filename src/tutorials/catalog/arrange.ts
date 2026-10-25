@@ -3,7 +3,6 @@ import type { Tutorial } from "../types";
 export const arrange: Tutorial = {
   id: "arrange",
   version: 1,
-  quarantined: true,
   track: "basics",
   level: 2,
   minutes: 3,
