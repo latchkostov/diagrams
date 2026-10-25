@@ -16,7 +16,7 @@ import { buildPayload } from "../export/inject";
 import { planningInput } from "../planning/workBudget";
 import { LiveController } from "../live/controller";
 import { opGrowth, ops } from "../test/opCounter";
-import { GROWTH_FACTOR, LINEAR_LIMIT } from "../test/complexity";
+import { countingReads, GROWTH_FACTOR, LINEAR_LIMIT } from "../test/complexity";
 
 const ids = (emits: unknown) => messageRules(emits).map((rule) => rule.id);
 
@@ -183,6 +183,37 @@ describe("message rule identity", () => {
     );
   });
 
+  it.each([0, 1, 2])("preserves surviving runtime IDs when duplicate-ID sibling %s is removed", (removed) => {
+    const previous = {
+      emits: [
+        { id: "duplicate", receives: "A", sends: "B" },
+        { id: "duplicate", receives: "C", sends: "D" },
+        { id: "duplicate", receives: "E", sends: "F" },
+      ],
+    };
+    const survivors = messageRules(previous.emits).filter((_, i) => i !== removed);
+    const edited = editMessageProps({ emits: survivors }, previous);
+    expect(messageRules(edited.emits)).toEqual(survivors);
+    expect(ids(JSON.parse(JSON.stringify(edited.emits)))).toEqual(survivors.map((rule) => rule.id));
+    // The edit boundary only materializes a surviving row if its authored ID would now resolve differently.
+    if (removed !== 0) expect((edited.emits as MessageRule[])[0]).toBe(previous.emits[0]);
+  });
+
+  it("preserves collision suffix identities when an ID-less sibling is removed", () => {
+    const previous = {
+      emits: [
+        { receives: "A", sends: "B" },
+        { receives: "A", sends: "C" },
+        { receives: "X", sends: "Y" },
+      ],
+    };
+    const survivor = messageRules(previous.emits)[1];
+    const unrelated = messageRules(previous.emits)[2];
+    const edited = editMessageProps({ emits: [survivor, unrelated] }, previous);
+    expect(messageRules(edited.emits)).toEqual([survivor, unrelated]);
+    expect((edited.emits as MessageRule[])[1]).toBe(previous.emits[2]);
+  });
+
   it("keeps the engine's sanitized rule lookup independent of authored props", () => {
     const diagram = messageTypesFixture();
     const emits = { Send: "Original", invalid: 7 };
@@ -208,6 +239,81 @@ describe("message rule identity", () => {
     map.nodes[1].props = { emits: emitsMapping(rules) };
     expect(planningInput(withIds)).toEqual(planningInput(map));
   });
+
+  it.each(["Sent", { Send: "Sent", "*": "Other" }])(
+    "rule arrays preserve simulation playback and seek: %j",
+    (legacy) => {
+      const diagram = messageTypesFixture();
+      diagram.nodes[1].props = { emits: legacy };
+      const withIds = messageTypesFixture();
+      withIds.nodes[1].props = {
+        emits: messageRules(legacy).map((rule, i) => ({ ...rule, id: `explicit-${i}` })),
+      };
+      const playback = (input: typeof diagram) => {
+        const controller = new LiveController(input, { seed: 7, maxParticles: 0 });
+        try {
+          controller.selectSimulation({
+            id: "rules",
+            title: "Rules",
+            durationMs: 3000,
+            traffic: [
+              {
+                id: "send",
+                node: "client",
+                messageType: "Send",
+                shape: { kind: "constant", ratePerSec: 4, durationMs: 2000 },
+              },
+            ],
+          });
+          const snapshots = [];
+          for (let i = 0; i < 6; i++) {
+            controller.step(500);
+            snapshots.push(controller.snapshot());
+          }
+          expect(snapshots.at(-1)!.nodes.api.processed).toBeGreaterThan(0);
+          expect(snapshots.at(-1)!.nodes.sender.processed).toBeGreaterThan(0);
+          controller.seek(1000);
+          expect(controller.snapshot()).toEqual(snapshots[1]);
+          return snapshots;
+        } finally {
+          controller.dispose();
+        }
+      };
+      expect(playback(withIds)).toEqual(playback(diagram));
+    },
+  );
+
+  it.each(["diagram", "setup", "inputs", "configuration"] as const)(
+    "bounds authored rule arrays before materializing %s behavioral mappings",
+    (location) => {
+      const controller = new LiveController(messageTypesFixture());
+      try {
+        for (const emits of [
+          Array.from({ length: 10_000 }, () => ({ receives: "A", sends: "B" })),
+          Array.from({ length: 1_000 }, () => ({ receives: "A", sends: "B".repeat(1000) })),
+        ]) {
+          const diagram = messageTypesFixture();
+          const counted = countingReads(emits);
+          const props = { api: { emits: counted.items } };
+          const state = controller.getState();
+          const configured =
+            location === "diagram"
+              ? state
+              : location === "setup"
+                ? { ...state, running: { id: "run", title: "Run", traffic: [], setup: { props } } }
+                : location === "inputs"
+                  ? { ...state, inputs: { ...state.inputs, props } }
+                  : { ...state, configuration: props };
+          if (location === "diagram") diagram.nodes[1].props = props.api;
+          expect(planningInput(diagram, configured)).toBeUndefined();
+          // Count mapping work directly: rejecting an oversized list must never build its full lookup table.
+          expect(counted.reads()).toBeLessThan(emits.length / 8);
+        }
+      } finally {
+        controller.dispose();
+      }
+    },
+  );
 
   it("allocates collision suffixes in linear time for repeated ID-less incoming types (R-a7f416f1a9)", () => {
     const base = ids([{ receives: "A", sends: "B" }])[0];

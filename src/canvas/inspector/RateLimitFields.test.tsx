@@ -60,6 +60,50 @@ it("editing or clearing the inline quota preserves all other budgets and API set
     resolveProps("processor", "", props, "generic.rate-limiter", { revision: "p3" }),
   );
   expect(field.value).toBe(10);
-  expect(field.patch(20).api).toEqual({ ...api, quotas: [tokenQuota, sharedQuota, localRateQuota(20)] });
+  expect(field.patch(20).api).toEqual({ ...api, quotas: [localRateQuota(20), tokenQuota, sharedQuota] });
   expect(field.patch(undefined).api).toEqual({ ...api, quotas: [tokenQuota, sharedQuota] });
+});
+
+const rateBinding = (api: ApiBehaviour) => {
+  const props = { api };
+  return admissionFieldBindings(
+    "generic.rate-limiter",
+    props,
+    resolveProps("processor", "", props, "generic.rate-limiter", { revision: "p3" }),
+  )[0];
+};
+
+it("keeps editing the same first local quota through renders, preserving its unrelated sibling", () => {
+  let api: ApiBehaviour = { quotas: [localRateQuota(10), { ...localRateQuota(50), id: "local-rate-2" }] };
+  const unrelated = api.quotas![1];
+  for (const amount of [20, 30, 40]) {
+    const field = rateBinding(api);
+    api = field.patch(amount).api!;
+    expect(rateBinding(api).value).toBe(amount);
+    expect(api.quotas).toEqual([localRateQuota(amount), unrelated]);
+    expect(api.quotas![1]).toBe(unrelated);
+  }
+});
+
+it("refuses a 33rd quota, explains the limit accessibly, and still edits or clears an existing local rate", () => {
+  const quotas = Array.from({ length: 32 }, (_, i) => ({ ...localRateQuota(100), id: `other-${i}` }));
+  const api = { quotas, maxInFlight: 7 };
+  const field = rateBinding(api);
+  expect(field.disabled).toBe(true);
+  expect(field.patch(20).api).toEqual(api);
+  expect(() => checkApi(field.patch(20).api)).not.toThrow();
+  const html = renderToStaticMarkup(<RateLimitFields props={{ api }} set={() => {}} />);
+  expect(html).toContain('disabled=""');
+  expect(html).toContain("Remove a quota before adding a local rate limit.");
+  const hintId = html.match(/<p id="([^"]+)" class="insp-note"/)?.[1];
+  expect(hintId).toBeTruthy();
+  expect(html).toContain(`aria-describedby="${hintId}"`);
+  const available = rateBinding({ quotas: quotas.slice(1) });
+  expect(available.disabled).toBe(false);
+  expect(available.patch(20).api?.quotas).toHaveLength(32);
+  const full = rateBinding(available.patch(20).api!);
+  expect(full.disabled).toBe(false);
+  expect(full.patch(30).api?.quotas).toHaveLength(32);
+  expect(rateBinding(full.patch(30).api!).value).toBe(30);
+  expect(full.patch(undefined).api?.quotas).toEqual(quotas.slice(1));
 });

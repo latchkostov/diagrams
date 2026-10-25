@@ -113,6 +113,7 @@ export function editMessageProps(
         while (used.has(id) || at.has(id));
       used.add(id);
     }
+    ids[i] = id;
     const j = at.get(id);
     if (j !== undefined && same(before.rules[j], rule)) return before.authored[j];
     const { id: _id, ...content } = rule;
@@ -124,5 +125,17 @@ export function editMessageProps(
   // Removing or reordering untouched legacy rules keeps the legacy map.
   if (!Array.isArray(previous.emits) && emits.every((rule) => authored.has(rule)))
     return { ...props, emits: Object.fromEntries(emits.map((rule) => [rule.receives, rule.sends])) };
-  return { ...props, emits };
+  // Removing an explicit-ID owner or collision sibling can change an untouched row's derived ID.
+  // Materialize only the surviving identities that would otherwise change.
+  const derived = messageRules(emits);
+  const owner = (rule: MessageRule) => rule.id ?? `rule-${hash(rule.receives)}`;
+  const changedOwners = new Set(emits.filter((_, i) => derived[i].id !== ids[i]).map(owner));
+  return {
+    ...props,
+    emits: emits.map((rule, i) =>
+      derived[i].id !== ids[i] || (changedOwners.has(owner(rule)) && rule.id !== ids[i])
+        ? { ...rule, id: ids[i] }
+        : rule,
+    ),
+  };
 }

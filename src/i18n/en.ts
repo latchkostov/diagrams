@@ -1065,6 +1065,7 @@ const en = {
   "collab.selfHostGuide": "Self-hosting guide",
   "inspector.rateLimit": "Rate limit",
   "inspector.rateLimitHint": "Requests per second. Clear to remove the local quota.",
+  "admission.quotaLimit": "This API already has 32 quotas. Remove a quota before adding a local rate limit.",
   "gallery.inlineRateLimitSummary": "A partner's traffic meets an editable request quota",
   "export.html": "Interactive HTML…",
   "export.mermaidFile": "Mermaid file",
