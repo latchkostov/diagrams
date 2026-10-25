@@ -64,7 +64,10 @@ export const backoffBudget: Tutorial = {
         {
           kind: "patch",
           edge: ["caller", "callee"],
-          patches: [{ op: "set", path: ["caller", "retry", "budget"], value: { percent: 20, minPerSec: 10 } }],
+          patches: [
+            { op: "set", path: ["caller", "retry", "budget", "percent"], value: 20 },
+            { op: "setIfMissing", path: ["caller", "retry", "budget", "minPerSec"], value: 10 },
+          ],
         },
       ],
       solution: [{ click: "inspector-section-retry-budget-details" }, { click: "inspector-field-retry-budget" }],

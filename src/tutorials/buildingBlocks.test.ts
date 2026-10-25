@@ -107,7 +107,8 @@ describe("counter comparisons", () => {
   const engine = createEngine({ seed: 1 });
   engine.load(diagram);
   const snapshot = engine.snapshot();
-  const check: Check = {
+  const check = queueWorkers.steps.find((step) => step.id === "watch")!.check;
+  const comparison: Check = {
     kind: "compare",
     left: { sum: "processed", nodes: ["first", "second"] },
     op: "=",
@@ -123,9 +124,11 @@ describe("counter comparisons", () => {
     diagram,
     live: true,
     sessionId: 1,
-    processed: () => 0,
+    processed: (id) => (id === subjects.first ? first : id === subjects.second ? second : 0),
     session: {
       generation: 0,
+      running: diagram.simulations![0],
+      run: { time: 0 },
       snapshot: {
         ...snapshot,
         nodes: {
@@ -145,6 +148,11 @@ describe("counter comparisons", () => {
     expect(holds(check, { ...view(5, 7, 12), live: false }, subjects)).toBe(false);
     expect(holds(check, view(5, 7, 12), { ...subjects, first: undefined })).toBe(false);
     expect(holds(check, { ...view(5, 7, 12), session: undefined }, subjects)).toBe(false);
+    // Equal sums alone cannot prove both workers processed their share (including corrupted negative counters).
+    expect(holds(check, view(-5, 17, 12), subjects)).toBe(false);
+    expect(holds(check, view(17, -5, 12), subjects)).toBe(false);
+    expect(holds(check, view(0, 12, 12), subjects)).toBe(false);
+    expect(holds(check, view(12, 0, 12), subjects)).toBe(false);
   });
   it("compares two counters strictly, including equal and missing metrics", () => {
     const less: Check = {
@@ -156,7 +164,7 @@ describe("counter comparisons", () => {
     expect(holds(less, view(5, 7, 12), subjects)).toBe(true);
     expect(holds(less, view(7, 7, 14), subjects)).toBe(false);
     expect(holds(less, view(8, 7, 15), subjects)).toBe(false);
-    expect(holds(check, view(5, 7, 12), { ...subjects, queue: undefined })).toBe(false);
+    expect(holds(comparison, view(5, 7, 12), { ...subjects, queue: undefined })).toBe(false);
   });
   it("a relative processed check cannot use traffic from before the step", () => {
     const relative = loadBalancer.steps.at(-1)!.check;

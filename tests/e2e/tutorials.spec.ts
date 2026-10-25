@@ -88,8 +88,16 @@ async function play(page: Page, step: ResolvedUiStep) {
     await page.getByTestId("canvas-wrap").dblclick({ position });
   } else if ("dblclick" in step) await page.getByTestId(step.dblclick).dblclick();
   else if ("hover" in step) await page.getByTestId(step.hover).hover();
-  else if ("fill" in step) await page.getByTestId(step.fill).fill(step.text);
-  else if ("into" in step) {
+  else if ("fill" in step) {
+    if (step.fill === "inspector-field-label") {
+      // Quick-add can render the new field before its queued reveal and naming focus arrive. Filling it early
+      // lets that later focus reopen naming after Enter, leaving the runner in completing (CI: add-users).
+      await waitForCameraIdle(page);
+      await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-interaction-state", "idle");
+      await expect(page.getByTestId(step.fill)).toBeFocused();
+    }
+    await page.getByTestId(step.fill).fill(step.text);
+  } else if ("into" in step) {
     // Typed at the caret the solution's clicks and keys put there: appended, never replacing the field.
     await expect(page.getByTestId(step.into)).toBeFocused();
     await page.keyboard.insertText(step.type);
@@ -281,6 +289,13 @@ test("outbox: happy-path waits for narration Continue", async ({ page }) => {
   await expect(strip(page)).toHaveAttribute("data-step", "read-happy-path");
   await play(page, read[1]);
   await expect(strip(page)).toHaveAttribute("data-step", "watch-compensation");
+  await page.getByTestId("live-sim-picker").selectOption("declines");
+  await expect
+    .poll(async () => Number(await page.getByTestId("live-canvas").getAttribute("data-sim-time")))
+    .toBeGreaterThanOrEqual(2500);
+  await expect(strip(page)).toHaveAttribute("data-step", "watch-compensation");
+  await page.getByTestId("tutorial-skip").click();
+  await expect(strip(page)).toHaveAttribute("data-phase", "finished");
 });
 
 for (const entry of ["Skip", "resume"] as const)

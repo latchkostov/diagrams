@@ -20,7 +20,7 @@ import type { SlowState } from "../live/slowmo/session";
 import { withSavedSimulation } from "./simulations";
 import { actionRegistry, type MenuNode } from "../editor/actions";
 import { stencilRole } from "../stencils/roles";
-import type { AnnotationKind, DiagramEdge, DiagramFile, DiagramNode, Side } from "../model/types";
+import type { AnnotationKind, DiagramEdge, DiagramFile, DiagramNode, Expectation, Side } from "../model/types";
 import type { paletteHost } from "../palette/host";
 import { allTutorials as tutorials } from "./catalog";
 import { commandPalette } from "./catalog/commandPalette";
@@ -1085,6 +1085,13 @@ describe("completion regressions", () => {
     expect(outbox.steps[state(s).index].id).toBe("read-happy-path");
     await skip(s, outbox);
     expect(outbox.steps[state(s).index].id).toBe("watch-compensation");
+    s.learn({ kind: "runSimulation", id: "declines" });
+    for (let frame = 0; frame < 40; frame++) s.live!.advance(250);
+    s.live!.publish();
+    expect(s.live!.getState().run!.time).toBeGreaterThanOrEqual(2500);
+    expect(state(s)).toMatchObject({ index: 3, value: "active" });
+    await skip(s, outbox);
+    expect(state(s).value).toBe("finished");
   });
 
   it("keeps each annotation instruction current until its editor closes, then Skip from there closes it", async () => {
@@ -1285,6 +1292,42 @@ describe("completion regressions", () => {
     for (const id of ["backlog", "goodput"])
       expect(s.live!.getState().run!.expectations).toContainEqual(expect.objectContaining({ id, status: "pass" }));
   });
+
+  it.each([0, 37, undefined])(
+    "backoff-budget: Skip repairs percent and preserves a customized floor (%s)",
+    async (minPerSec) => {
+      const s = sandbox(backoffBudget);
+      await reach(s, backoffBudget, 1);
+      const edge = s.diagram.edges.find((e) => e.from === s.subject("caller") && e.to === s.subject("callee"))!;
+      s.editor.setEdgeProps(edge.id, {
+        caller: {
+          retry: {
+            backoffMs: 100,
+            maxAttempts: 7,
+            budget: { percent: 60, ...(minPerSec === undefined ? {} : { minPerSec }) },
+          },
+        },
+      });
+      await skip(s, backoffBudget);
+      expect(s.diagram.edges.find((e) => e.id === edge.id)!.props).toMatchObject({
+        caller: { retry: { backoffMs: 100, maxAttempts: 7, budget: { percent: 20, minPerSec: minPerSec ?? 10 } } },
+      });
+      expect(state(s).index).toBe(2);
+    },
+  );
+
+  it.each([{}, { failurePercent: 25, minimumCalls: 8, openMs: 9000 }])(
+    "circuit-breaker: accepts enabled configuration %j without overwriting it",
+    (breaker) => {
+      const s = sandbox(circuitBreaker);
+      s.runner.send({ type: "start" });
+      expect(state(s).index).toBe(0);
+      const edge = s.diagram.edges.find((e) => e.from === s.subject("caller") && e.to === s.subject("callee"))!;
+      s.editor.setEdgeProps(edge.id, { caller: { breaker } });
+      expect(state(s)).toMatchObject({ index: 1, value: "active" });
+      expect(s.diagram.edges.find((e) => e.id === edge.id)!.props).toMatchObject({ caller: { breaker } });
+    },
+  );
 
   it("circuit-breaker: initial Closed never completes recovery; real playback opens, tests and closes", async () => {
     const s = sandbox(circuitBreaker);
@@ -1530,19 +1573,37 @@ describe("completion regressions", () => {
   });
 
   it("saveSimulation keeps the learner's own simulation and adds only the Drill step it lacks", async () => {
-    const s = sandbox(savedSimulationsFixture);
-    await reach(s, savedSimulationsFixture, 4);
+    const expectation: Expectation = {
+      id: "served",
+      label: "Served",
+      metric: { node: "api", field: "processed" },
+      op: ">=",
+      value: 5,
+      when: "end",
+    };
+    const missing: Expectation = { ...expectation, id: "more", value: 10 };
+    const tutorial: Tutorial = {
+      ...savedSimulationsFixture,
+      steps: savedSimulationsFixture.steps.map((step) => ({
+        ...step,
+        demo: step.demo.map((demo) =>
+          demo.kind === "saveSimulation" ? { ...demo, expectations: [expectation, missing] } : demo,
+        ),
+      })),
+    };
+    const s = sandbox(tutorial);
+    await reach(s, tutorial, 4);
     const own = {
       id: "simulation",
       title: "Mine",
       seed: 9,
       traffic: [],
       timeline: [{ atMs: 0, action: { do: "note" as const, text: "Mine" } }],
-      expectations: [],
+      expectations: [{ ...expectation, label: "My threshold", value: 99 }],
     };
     s.editor.updateMeta({ simulations: [...(s.diagram.simulations ?? []), own] });
     const version = s.version;
-    await skip(s, savedSimulationsFixture);
+    await skip(s, tutorial);
     expect(s.version, "one edit").toBe(version + 1);
     const saved = s.diagram.simulations!.filter((sim) => sim.id === "simulation");
     expect(saved).toHaveLength(1);
@@ -1554,6 +1615,10 @@ describe("completion regressions", () => {
         action: expect.objectContaining({ do: "fault", drill: "slow-dependency" }),
       }),
     ]);
+    expect(saved[0].expectations).toEqual([own.expectations[0], missing]);
+    const demo = tutorial.steps[4].demo[0];
+    if (demo.kind !== "saveSimulation") throw new Error("Expected a save demo");
+    expect(withSavedSimulation(s.diagram, demo), "repeating the save is a no-op").toBeNull();
   });
 
   it("slow motion's journey played to the end completes its step by itself", async () => {

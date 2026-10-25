@@ -42,7 +42,10 @@ export type PathSegment = string | number | { where: Readonly<Record<string, Pat
 export type PropPath = readonly [string, ...PathSegment[]];
 /** `measure: "length"` compares the length of the list at the path (missing, or not a list: the check fails). */
 type PropComparison =
-  { op: Comparison; value: unknown; measure?: never } | { measure: "length"; op: Comparison; value: number };
+  | { op: Comparison; value: unknown; measure?: never }
+  | { measure: "length"; op: Comparison; value: number }
+  /** Whether an optional configuration is enabled, including customized objects. */
+  | { op: "truthy"; value?: never; measure?: never };
 
 /**
  * An edit-preserving prop edit for a demo: idempotent, and it writes only what's missing, so the learner's other values
