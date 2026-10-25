@@ -482,10 +482,12 @@ export function createEditor(
   const moveRoutes = (moved: ReadonlyMap<string, XY>, reset = false) => {
     const edges = currentEdges();
     const next = reset ? resetMovedWaypoints(edges, new Set(moved.keys())) : carryWaypoints(edges, moved);
-    if (next === edges) return;
+    if (next === edges) return 0;
     setEdges(next);
-    if (reset) {
-      const count = edges.reduce((n, e, i) => n + (e !== next[i] ? 1 : 0), 0);
+    return reset ? edges.reduce((n, e, i) => n + (e !== next[i] ? 1 : 0), 0) : 0;
+  };
+  const sayResetRoutes = (count: number) => {
+    if (count) {
       notify(t("route.shapedLinesReset", { count }), {
         action: {
           get label() {
@@ -527,7 +529,7 @@ export function createEditor(
     return nodes.filter((n) => selected.has(n.id)).map(box);
   };
   const movePositions = (pos: Positions, reset = false) => {
-    if (!pos.size) return;
+    if (!pos.size) return 0;
     const allNodes = currentNodes();
     const groupDeltas = new Map<string, XY>();
     for (const n of allNodes) {
@@ -563,13 +565,14 @@ export function createEditor(
         }
       }
     }
-    moveRoutes(positionDeltas(finalPos), reset);
+    const resetCount = moveRoutes(positionDeltas(finalPos), reset);
     deps().setNodes((ns) =>
       ns.map((n) => {
         const p = finalPos.get(n.id);
         return p && (p.x !== n.position.x || p.y !== n.position.y) ? { ...n, position: p } : n;
       }),
     );
+    return resetCount;
   };
 
   /** Inserts a payload moved by `offset`, selected. Returns old flow id → new flow id (null: refused). */
@@ -1567,7 +1570,7 @@ export function createEditor(
       }
       // The positions and the boundaries' growth together, as planned: one undo step.
       hint(`tidy:${Date.now()}`);
-      moveRoutes(positionDeltas(pos), true);
+      const resetCount = moveRoutes(positionDeltas(pos), true);
       deps().setNodes((cur) =>
         cur.map((n) => {
           if (isGroup(n)) {
@@ -1578,6 +1581,7 @@ export function createEditor(
           return at && (at.x !== n.position.x || at.y !== n.position.y) ? { ...n, position: at } : n;
         }),
       );
+      sayResetRoutes(resetCount);
       return true;
     },
     settleMembership: (ids) => {
@@ -1936,7 +1940,7 @@ export function createEditor(
       const run = () => {
         const d = diagram();
         const pos = layeredLayout({ nodes: d.nodes, edges: d.edges, direction: d.direction });
-        movePositions(pos, true);
+        const resetCount = movePositions(pos, true);
         const moved = currentNodes();
         const refits = planBoundaryRefits(
           moved.filter(isGroup).map((n) => ({ ...box(n), id: n.data.groupId, group: n.data.group })),
@@ -1953,6 +1957,7 @@ export function createEditor(
             }),
           );
         }
+        sayResetRoutes(resetCount);
         deps().fit();
       };
       cancelLayout();

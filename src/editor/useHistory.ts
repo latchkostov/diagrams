@@ -2,6 +2,8 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { type DiagramMeta } from "../canvas/convert";
 import type { DiagramFlowEdge, FlowNode } from "../canvas/types";
 import { canRedo, canUndo, present } from "./history";
+import { flushSync } from "react-dom";
+import { toast } from "../interop/ui/toast";
 import { HistoryController } from "./historyController";
 import { selectionOf, snapshotDiagram, withSelection, type FlowSelection } from "./historySelection";
 import type { EditorRoom } from "./room";
@@ -118,6 +120,25 @@ export function useHistory(
     return true;
   }, [ctl, room]);
 
+  useLayoutEffect(() => {
+    const current = () => {
+      const h = ctl.history;
+      if (!(ctl.collaborative ? room?.canUndo : canUndo(h))) return undefined;
+      const entry = present(h);
+      return ctl.key(latest.current) === entry.key ? ctl.undoEntryId() : undefined;
+    };
+    return toast.bindHistory({
+      capture: () => {
+        // Toasts can follow a queued mutation in the same event. Record that edit before
+        // binding to its unique entry ID (never its reusable merge tag or stack index).
+        flushSync(() => {});
+        flush();
+        return current();
+      },
+      current,
+    });
+  }, [ctl, flush, room]);
+
   useLayoutEffect(
     () =>
       room?.connect({
@@ -150,6 +171,7 @@ export function useHistory(
       mergeKey.current = undefined;
       room?.flushRemote();
     }
+    toast.invalidateUndo();
   }, [ctl, state, stateKey, history, room, privacy]);
 
   useEffect(() => {

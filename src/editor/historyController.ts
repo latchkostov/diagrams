@@ -31,6 +31,15 @@ export class HistoryController {
   private roomCoalescingBroken = false;
   private readonly keyOf: (state: CanvasSnapshot) => string;
   private roomBaseline?: { snapshot: CanvasSnapshot; at: number; selection: FlowSelection };
+  private readonly entryIds = new WeakMap<object, object>();
+
+  /** Opaque identity of this exact history entry, independent of tags and system copy names. */
+  undoEntryId(): object {
+    const entry = present(this.history);
+    let id = this.entryIds.get(entry);
+    if (!id) this.entryIds.set(entry, (id = {}));
+    return id;
+  }
 
   constructor(
     state: CanvasSnapshot,
@@ -172,7 +181,10 @@ export class HistoryController {
       entries: this.history.entries.map((entry) => {
         if (entry.value.meta.title !== from) return entry;
         const value = { ...entry.value, meta: { ...entry.value.meta, title: to } };
-        return { ...entry, value, key: this.key(value) };
+        const renamed = { ...entry, value, key: this.key(value) };
+        const id = this.entryIds.get(entry);
+        if (id) this.entryIds.set(renamed, id);
+        return renamed;
       }),
     };
   }

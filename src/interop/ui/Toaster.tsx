@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { Glyph } from "./glyphs";
 import { subscribe, toast, type ToastKind } from "./toast";
 import { avoidedBars, toastBottom } from "./toastStack";
+import { t as tr } from "../../i18n";
 
 const ICON: Record<ToastKind, Parameters<typeof Glyph>[0]["name"]> = {
   info: "info",
@@ -119,11 +120,15 @@ export function Toaster() {
         <button
           ref={action}
           className="ix-toast-action"
+          aria-disabled={t.undoUnavailable || undefined}
+          aria-describedby={t.undoUnavailable ? `toast-undo-unavailable-${t.id}` : undefined}
+          title={t.undoUnavailable ? tr("toast.undoUnavailable") : undefined}
           onFocus={(e) => {
             const from = e.relatedTarget;
             if (from instanceof HTMLElement && !e.currentTarget.parentElement?.contains(from)) cameFrom.current = from;
           }}
           onClick={() => {
+            if (!toast.canRunAction(t.id)) return;
             const back = cameFrom.current;
             cameFrom.current = null;
             t.action!.run();
@@ -138,6 +143,11 @@ export function Toaster() {
         >
           {t.action.label}
         </button>
+      )}
+      {t.undoUnavailable && (
+        <span className="sr-only" id={`toast-undo-unavailable-${t.id}`} data-testid="toast-undo-unavailable">
+          {tr("toast.undoUnavailable")}
+        </span>
       )}
       {!t.blocking && (
         <button

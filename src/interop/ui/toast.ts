@@ -16,8 +16,7 @@ export interface ToastAction {
   /** Takes the keyboard focus when it shows (a long task's Cancel), and gives it back when the toast goes. */
   focus?: boolean;
   /**
-   * The action is the editor's Undo for the change the toast reports. Such a toast goes as soon as anything else
-   * undoes or redoes (Ctrl+Z, the canvas's Undo): its button would then reverse a different change.
+   * Bind to the current editor history entry. Later edits invalidate this action, including while retained.
    */
   undoes?: boolean;
 }
@@ -27,6 +26,8 @@ export interface ToastState {
   kind: ToastKind;
   text: string;
   action?: ToastAction;
+  undoEntryId?: object;
+  undoUnavailable?: boolean;
   /** ms; 0 = sticky until replaced or dismissed. */
   duration: number;
   /** A busy task's share done (0 to 1), once it reports one. */
@@ -45,6 +46,7 @@ const blocking: ToastState[] = [];
 let seq = 0;
 const listeners = new Set<() => void>();
 let live = new Map<number, ToastState>();
+let undoHistory: { capture(): object | undefined; current(): object | undefined } | undefined;
 const emit = () => listeners.forEach((l) => l());
 
 interface ToastOptions {
@@ -64,12 +66,25 @@ function publish() {
 }
 
 function show(kind: ToastKind, text: string, opts: ToastOptions = {}): number {
+  const history = undoHistory;
+  const undoEntryId = opts.action?.undoes ? history?.capture() : undefined;
   const duration = opts.duration ?? (kind === "busy" ? 0 : kind === "error" ? 8000 : opts.action ? 6000 : 3500);
   const next = {
     id: ++seq,
     kind,
     text,
-    action: opts.action,
+    action: opts.action?.undoes
+      ? {
+          ...opts.action,
+          run: () => {
+            if (undoEntryId && history?.current() === undoEntryId && live.get(next.id)?.undoUnavailable === false)
+              opts.action!.run();
+            else toast.invalidateUndo();
+          },
+        }
+      : opts.action,
+    undoEntryId,
+    undoUnavailable: opts.action?.undoes ? !undoEntryId : false,
     duration,
     blocking: opts.blocking,
     onDismiss: opts.onDismiss,
@@ -83,6 +98,31 @@ function show(kind: ToastKind, text: string, opts: ToastOptions = {}): number {
 }
 
 export const toast = {
+  /** The mounted canvas owns history; capture flushes pending edits before binding an Undo. */
+  bindHistory(history: NonNullable<typeof undoHistory>) {
+    undoHistory = history;
+    return () => {
+      if (undoHistory !== history) return;
+      undoHistory = undefined;
+      toast.invalidateUndo();
+    };
+  },
+  /** Keep an engaged notification in place, but never keep an obsolete Undo alive. */
+  invalidateUndo() {
+    const invalidate = (t: ToastState | null): ToastState | null =>
+      t?.action?.undoes && !t.undoUnavailable && t.undoEntryId !== undoHistory?.current()
+        ? { ...t, undoUnavailable: true }
+        : t;
+    held = invalidate(held);
+    deferred = invalidate(deferred);
+    for (let i = 0; i < blocking.length; i++) blocking[i] = invalidate(blocking[i])!;
+    publish();
+  },
+  canRunAction(id: number) {
+    toast.invalidateUndo();
+    const t = live.get(id);
+    return !!t?.action && !t.undoUnavailable;
+  },
   info: (text: string, opts?: { action?: ToastAction; duration?: number }) => show("info", text, opts),
   success: (text: string, opts?: { action?: ToastAction; duration?: number }) => show("success", text, opts),
   error: (text: string, opts?: { action?: ToastAction; duration?: number }) => show("error", text, opts),

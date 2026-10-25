@@ -1,5 +1,11 @@
 ## Toast actions move between hit testing and pointer dispatch
 
+Resolved by PR #340: engaged toasts retain their placement and resource ownership; history Undo
+actions bind to unique entry IDs and become inert when stale. The unchanged routing and recording
+assertions pass, and the toast interaction regressions pass all 30 Linux repetitions under CPU load.
+Press-only retention and pointer/focus release also have deliberate DOM-handler mutation checks.
+The recording regression now drives each take to its own encoder-start count with the paused clock.
+
 Lane C stopped on both browser candidates because their CI traces show a product race. Keep the
 assertions in `routing.spec.ts` and `record.spec.ts`; do not hide the race with forced clicks,
 dispatchEvent, retries, longer timeouts or a guessed settling delay.

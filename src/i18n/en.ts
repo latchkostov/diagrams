@@ -16,7 +16,6 @@ const en = {
   "workbench.runChartAlt": "{name}: {rateLabel} {rate}; {queueLabel} {queue}; {window}",
   "workbench.expectations": "Expectations {passed, number} of {total, number}",
   "examples.runHistory": "Run history",
-
   "workbench.liveEditGoal": "In {live}, open {properties} before changing settings. {goal}",
   "workbench.editProperties": "Edit properties",
   "workbench.nodeDetails": "{name} details",
@@ -38,7 +37,8 @@ const en = {
   "tutorials.saveFailed": "Couldn’t save a copy. Free some browser storage and try again.",
   "route.shapedLinesReset":
     "{count, plural, one {# shaped line went back to automatic} other {# shaped lines went back to automatic}}",
-  "workspaceInspector.replicaSummary": "{replicas, plural, one {# replica} other {# replicas}} × {slots} slots",
+  "workspaceInspector.replicaSummary":
+    "{replicas, plural, one {# replica} other {# replicas}} × {slots} slots",
   "workspaceInspector.rateSummary": "{rate} msg/s",
   "workspaceInspector.valueSummary": "{label}: {value}",
   "workspaceInspector.requestSummary": "{wait} · {timeout} · {retry}",
@@ -90,7 +90,8 @@ const en = {
   "messageTypes.removeRule": "Remove this message type rule",
   "messageTypes.addRule": "Add a rule",
   "messageTypes.incomplete": "This diagram has too many message paths to list completely.",
-  "messageTypes.timelineIncomplete": "Review message paths before and after timeline forwarding edits manually.",
+  "messageTypes.timelineIncomplete":
+    "Review message paths before and after timeline forwarding edits manually.",
   "messageTypes.hover": "Message types: {types}",
   "messageLoop.name": "Messages loop back",
   "messageLoop.about":
@@ -119,7 +120,8 @@ const en = {
   "viewerForge.options": "Options",
   "viewerForge.whenPlay": "When readers press Play",
   "viewerForge.savedSimulation": "Saved simulation",
-  "viewerForge.noSimulations": "This file has no saved simulations. Save one in Live Diagrams to use it here.",
+  "viewerForge.noSimulations":
+    "This file has no saved simulations. Save one in Live Diagrams to use it here.",
   "viewerForge.missingSimulationLabel": "Missing simulation",
   "viewerForge.size": "Size",
   "viewerForge.autoSize": "Auto",
@@ -132,10 +134,12 @@ const en = {
   "viewerForge.summary": "{play} · {size}",
   "viewerForge.invalidFile":
     "This file is not a valid Live Diagrams file. Save a diagram using File ▸ Save diagram file and choose it again.",
-  "viewerForge.attachmentMissing": "The diagram attachment is no longer on this page. Ask a page editor to restore it.",
+  "viewerForge.attachmentMissing":
+    "The diagram attachment is no longer on this page. Ask a page editor to restore it.",
   "viewerForge.play": "Play diagram",
   "viewerForge.loading": "Loading the page attachment…",
-  "viewerForge.waitForFile": "Wait for the current file to finish loading or saving, then choose your file again.",
+  "viewerForge.waitForFile":
+    "Wait for the current file to finish loading or saving, then choose your file again.",
   "viewerForge.configure": "Edit this macro to choose a .diagram.json attachment on this page.",
   "viewerForge.pageRequired": "Publish this page first, then insert Live Diagram and choose an attachment.",
   "viewerForge.downloadError":
@@ -176,14 +180,17 @@ const en = {
   "viewerForge.saveError": "Confluence could not save the macro settings. Try again.",
   "viewerForge.partialSaveError":
     "The attachment was saved, but Confluence could not save the macro settings. Try again. Cancel keeps the uploaded version; restore the previous version in this page's attachment history if needed.",
-  "viewerForge.invalidFilename": "Choose a .diagram.json file. Older .livediagram.json files are also accepted.",
+  "viewerForge.invalidFilename":
+    "Choose a .diagram.json file. Older .livediagram.json files are also accepted.",
   "node.openDocumentation": "Open documentation",
   "latency.heading": "Async latency",
   "latency.p50": "p50 {duration}",
   "latency.p95": "p95 {duration}",
   "latency.p99": "p99 {duration}",
-  "latency.sampling": "from {count, plural, one {# sampled message} other {# sampled messages}} · since restart",
-  "latency.typesLimited": "Recording limit reached: additional message types are included in the aggregate only.",
+  "latency.sampling":
+    "from {count, plural, one {# sampled message} other {# sampled messages}} · since restart",
+  "latency.typesLimited":
+    "Recording limit reached: additional message types are included in the aggregate only.",
   "latency.breakdown": "Waiting {wait} · work {work} · travel {travel}",
   "latency.scope":
     "Successful async arrivals at this node. Approximate percentiles exclude travel; travel is animation. Shares use the same sampled paths.",
@@ -211,7 +218,8 @@ const en = {
   "liveSession.savedSimulation": "Saved “{name}” to this diagram.",
   "liveSession.clearHighlight": "Clear highlight",
   "liveSession.waitingSlowMotion": "Waiting for the next message: slow motion starts when it comes…",
-  "liveSession.waitingSlowMotionAt": "Waiting for the next message at {name}: slow motion starts when it comes…",
+  "liveSession.waitingSlowMotionAt":
+    "Waiting for the next message at {name}: slow motion starts when it comes…",
   "inspector.resizePreview": "Resizable inspector: longer route paths",
   "inspector.flow": "Flow",
   "inspector.dependency": "Dependency",
@@ -301,10 +309,12 @@ const en = {
   "inspector.settings": "Settings",
   "inspector.settingsPasteIsTooLarge": "Settings paste is too large.",
   "inspector.couldNotImportSettings": "Could not import settings.",
-  "inspector.settingsReadOverThisEdgeOnePerLineMarks": "Settings read over this edge, one per line; ! marks a secret",
+  "inspector.settingsReadOverThisEdgeOnePerLineMarks":
+    "Settings read over this edge, one per line; ! marks a secret",
   "inspector.oneKeyPerLineMarksASecretAKey":
     "One key per line; ! marks a secret (a Key Vault reference). Pasting appsettings.json works too.",
-  "inspector.secretAKeyVaultReferenceClickForAPlain": "Secret (a Key Vault reference): click for a plain value",
+  "inspector.secretAKeyVaultReferenceClickForAPlain":
+    "Secret (a Key Vault reference): click for a plain value",
   "inspector.plainValueClickToMarkSecret": "Plain value: click to mark secret",
   "inspector.colour": "Colour",
   "inspector.size": "Size",
@@ -359,7 +369,8 @@ const en = {
   "inspector.units": "Units",
   "inspector.boxesInThePairOneCarriesTrafficTheOther":
     "Boxes in the pair: one carries traffic, the other takes over when it fails",
-  "inspector.boxesSharingTheTrafficTheirThroughputAddsUp": "Boxes sharing the traffic: their throughput adds up",
+  "inspector.boxesSharingTheTrafficTheirThroughputAddsUp":
+    "Boxes sharing the traffic: their throughput adds up",
   "inspector.timeThroughTheDevicePerMessage": "Time through the device, per message",
   "inspector.healthChecks": "Health checks",
   "inspector.targetsThatAreDownGetNoTraffic": "Targets that are down get no traffic",
@@ -391,7 +402,8 @@ const en = {
   "inspector.bulkStencil":
     "Stencil: {stencil}. {count, plural, one {Change the stencil of # node} other {Change the stencil of # nodes}}",
   "inspector.bulkBoundary": "{count, plural, one {Boundary of # node} other {Boundary of # nodes}}",
-  "inspector.bulkRelationship": "{count, plural, one {Relationship of # edge} other {Relationship of # edges}}",
+  "inspector.bulkRelationship":
+    "{count, plural, one {Relationship of # edge} other {Relationship of # edges}}",
   "inspector.bulkLabel": "{count, plural, one {Label of # edge} other {Label of # edges}}",
   "inspector.copyIdValue": "Copy id {id}",
   "inspector.throughputHint": "Per unit, with its usual inspection on. Default: the {model} datasheet figure",
@@ -412,7 +424,8 @@ const en = {
     "Drag to resize. Arrow keys resize; Shift takes larger steps. Home/End: minimum/maximum. Enter or double-click: reset.",
   "format.byteSize": "{size} {unit}",
   "format.importList": "{before} and {last}",
-  "cloud.dropboxFileMissing": "That Dropbox file no longer exists, or it was moved out of the Diagrams folder.",
+  "cloud.dropboxFileMissing":
+    "That Dropbox file no longer exists, or it was moved out of the Diagrams folder.",
   "fileToast.providerSaveFailed": "Couldn't save to {provider}. {error}",
   "fileToast.providerOpenFailed": "Couldn't open from {provider}. {error}",
   "fileToast.imageFailed": "Couldn't export the {format}. {error}",
@@ -497,7 +510,8 @@ const en = {
   "fileDialog.dropToOpen": "Drop to open",
   "fileDialog.dropHint": "Opens as your diagram. Examples are never overwritten.",
   "importDetail.value0DoesntHoldADockercomposeFile": "{value0} doesn't hold a docker-compose file.",
-  "importDetail.itHasNoServicesToDraw": "It has no services to draw (docker-compose files list them under services:).",
+  "importDetail.itHasNoServicesToDraw":
+    "It has no services to draw (docker-compose files list them under services:).",
   "importDetail.volume": "volume",
   "importDetail.notAServiceDefinition": "not a service definition",
   "importDetail.theresNothingToDrawEveryService":
@@ -513,7 +527,8 @@ const en = {
     "{value0} is the dead-letter route of {value1} ({value2} sends its failures there)",
   "importDetail.value0SendsToValue1WhichInputs":
     "{value0} sends to {value1}: which input's failures go there couldn't be told, so it's drawn as an ordinary message",
-  "importDetail.value0IsAQueueValue1Sends": "{value0} is a queue; {value1} sends to it through the exchange “{value2}”",
+  "importDetail.value0IsAQueueValue1Sends":
+    "{value0} is a queue; {value1} sends to it through the exchange “{value2}”",
   "importDetail.value0HasNoProducerInThese": "{value0} has no producer in these files",
   "importDetail.schemaRegistryAddedMessagesOnValue0":
     "Schema Registry added: messages on {value0} use Avro or Protobuf",
@@ -526,7 +541,8 @@ const en = {
   "importDetail.aValue0WithNoName": "a {value0} with no name",
   "importDetail.theseFilesHoldMoreThanValue0More":
     "These files hold more than {value0, plural, one {# resources} other {# resources}}; one import reads at most that many.",
-  "importDetail.theresNothingToDrawNoKubernetes": "There's nothing to draw: no Kubernetes resources were found.",
+  "importDetail.theresNothingToDrawNoKubernetes":
+    "There's nothing to draw: no Kubernetes resources were found.",
   "importDetail.foldedIntoItsOwner": "folded into its owner",
   "importDetail.shownThroughItsTopics": "shown through its topics",
   "importDetail.value0AServiceWithValue1In":
@@ -541,8 +557,10 @@ const en = {
     "{value0} scales from {value1, number} to {value2, plural, one {# replicas} other {# replicas}} (HorizontalPodAutoscaler)",
   "importDetail.settingsPastTheFirstValue0Number":
     "Settings past the first {value0, number} weren't read for connections (ConfigMaps shared by many workloads count each time)",
-  "importDetail.itsACLsArentDrawnNoWorkload": "its ACLs aren't drawn: no workload in these files uses its Secret",
-  "importDetail.value0KafkaUserMayValue1value2NotDrawn": "{value0} (KafkaUser) may {value1}{value2}: not drawn",
+  "importDetail.itsACLsArentDrawnNoWorkload":
+    "its ACLs aren't drawn: no workload in these files uses its Secret",
+  "importDetail.value0KafkaUserMayValue1value2NotDrawn":
+    "{value0} (KafkaUser) may {value1}{value2}: not drawn",
   "importDetail.shownAsItsWorkloadsFlows": "shown as its workloads' flows",
   "importDetail.noWorkloadUsesIt": "no workload uses it",
   "importDetail.notAComponent": "not a component",
@@ -554,10 +572,13 @@ const en = {
   "importDetail.value0IsntTerraformJSON": "{value0} isn't Terraform JSON.",
   "importDetail.value0IsTerraformJSONFormatValue1":
     "{value0} is Terraform JSON format {value1}; only format 1 is read.",
-  "importDetail.connectionsFromSubscriptionsMappingsAndGrants": "Connections from subscriptions, mappings and grants",
-  "importDetail.modulesNestedMoreThanValue0Deep": "modules nested more than {value0, number} deep aren't read",
+  "importDetail.connectionsFromSubscriptionsMappingsAndGrants":
+    "Connections from subscriptions, mappings and grants",
+  "importDetail.modulesNestedMoreThanValue0Deep":
+    "modules nested more than {value0, number} deep aren't read",
   "importDetail.noTypeOrName": "no type or name",
-  "importDetail.theresNothingToDrawNoTerraform": "There's nothing to draw: no Terraform resources were found.",
+  "importDetail.theresNothingToDrawNoTerraform":
+    "There's nothing to draw: no Terraform resources were found.",
   "importDetail.dataSource": "data source",
   "importDetail.anEmailSMSOrAppSubscription": "an email, SMS or app subscription",
   "importDetail.destroyedByThisPlan": "destroyed by this plan",
@@ -601,21 +622,24 @@ const en = {
   "library.duplicateTitle": "Duplicate {title}",
   "library.deleteTitle": "Delete {title}",
   "fileType.native": "Live Diagrams file",
-  "fileType.open": "Live Diagrams, draw.io, Mermaid, docker-compose, Kubernetes, AsyncAPI and Terraform JSON files",
+  "fileType.open":
+    "Live Diagrams, draw.io, Mermaid, docker-compose, Kubernetes, AsyncAPI and Terraform JSON files",
   "fileType.drawioDiagram": "draw.io diagram",
   "fileType.mermaidFlowchart": "Mermaid flowchart",
   "fileType.dockercomposeFile": "docker-compose file",
   "fileType.asyncAPIDocument": "AsyncAPI document",
   "fileType.kubernetesManifests": "Kubernetes manifests",
   "fileType.terraformPlanOrState": "Terraform plan or state",
-  "password.useAtLeastCountPluralOneCharacter": "Use at least {count, plural, one {# character} other {# characters}}.",
+  "password.useAtLeastCountPluralOneCharacter":
+    "Use at least {count, plural, one {# character} other {# characters}}.",
   "exportToast.drawio":
     "Exported a .drawio file. {private, select, yes {This diagram is private: keep it where your team controls access.} other {Open it at app.diagrams.net or in draw.io Desktop.}}",
   "exportToast.mermaid":
     "Mermaid flowchart copied. {private, select, yes {This diagram is private: keep it where your team controls access.} other {Paste it into GitHub, Notion, Obsidian or mermaid.live.}}",
   "htmlExport.exported":
     "Exported “{name}” ({size}). {locked, select, yes {Only people with the password can open it. Send the password separately.} other {Anyone who has it can open it.}}",
-  "library.keptInThisBrowserSaveOrExport": "Kept in this browser. Save or export a diagram to keep a copy elsewhere.",
+  "library.keptInThisBrowserSaveOrExport":
+    "Kept in this browser. Save or export a diagram to keep a copy elsewhere.",
   "library.browsersGiveEachSiteAbout10MB": "Browsers give each site about 10 MB for everything it keeps.",
   "library.noDiagramsYetStartANewOne":
     "No diagrams yet. Start a new one, or open a file from draw.io, Mermaid or Live Diagrams.",
@@ -632,7 +656,8 @@ const en = {
   "fileToast.exportingImage": "Exporting {format}…",
   "collab.connectionFailed": "Could not connect to this room. Check your connection or try again.",
   "collab.fileFallback": "You can send a diagram file instead. Your edits stay on this page.",
-  "collab.invalidLink": "This room link is damaged or incomplete. Ask for the link again, or open a new room.",
+  "collab.invalidLink":
+    "This room link is damaged or incomplete. Ask for the link again, or open a new room.",
   "collab.newRoom": "Open a new room",
   "collab.notSaved": "Not saved on this device · keep this page open",
   "fileToast.exportedValue0": "Exported {value0}.",
@@ -698,7 +723,8 @@ const en = {
   "cloud.labelSigninIsntSetUpForThisMore":
     "{label} sign-in isn't set up for this address (the redirect URI isn't registered).",
   "cloud.labelSigninExpiredPleaseTryAgain": "{label} sign-in expired. Please try again.",
-  "cloud.labelSigninIsBusyRightNowStatus": "{label} sign-in is busy right now ({status}). Try again in a moment.",
+  "cloud.labelSigninIsBusyRightNowStatus":
+    "{label} sign-in is busy right now ({status}). Try again in a moment.",
   "cloud.couldntReachLabelToActionCheckYour":
     "{action, select, read_the_file_details {Couldn't reach {label} to read the file details. Check your connection.} download_the_file {Couldn't reach {label} to download the file. Check your connection.} save_the_file {Couldn't reach {label} to save the file. Check your connection.} update_the_file {Couldn't reach {label} to update the file. Check your connection.} list_your_diagrams {Couldn't reach {label} to list your diagrams. Check your connection.} read_the_file {Couldn't reach {label} to read the file. Check your connection.} other {Couldn't reach {label} to complete the file operation. Check your connection.}}",
   "cloud.oneDriveRefusedToActionLiveDiagramsCan":
@@ -741,7 +767,8 @@ const en = {
   "embedDialog.inTheLink": "In the link",
   "fileDialog.play": "Play “{title}”",
   "fileDialog.detected": "Detected: {format}",
-  "fileDialog.pagesSubtitle": "“{name}” has {count, plural, one {# pages} other {# pages}}. Which one should open?",
+  "fileDialog.pagesSubtitle":
+    "“{name}” has {count, plural, one {# pages} other {# pages}}. Which one should open?",
   "fileDialog.options": "Options",
   "imageDialog.summary":
     "{kind, select, svg {SVG, scalable} other {PNG, {scale}× resolution{transparent, select, yes {, transparent background} other {}}}}{withTitle, select, yes {} other {, without the title}}",
@@ -772,7 +799,8 @@ const en = {
     "Required scaling sources and consumer-group routes are included automatically, even outside the selected boundaries.",
   "importDetail.scalingSourceOmitted":
     "Scaling was not imported: its broker or consumer-group route is missing. Include them and import again, or choose a supported preset.",
-  "importReport.boundariesDrawn": "Boundaries ({drawn, number} of {total, plural, one {# drawn} other {# drawn}})",
+  "importReport.boundariesDrawn":
+    "Boundaries ({drawn, number} of {total, plural, one {# drawn} other {# drawn}})",
   "importReport.pickLede":
     "It has {count, plural, one {# nodes} other {# nodes}}, more than a diagram reads well, so only some boundaries are drawn. The ones with the most flows come first; tick others to draw them as a new diagram.",
   "importReport.groupCounts":
@@ -780,7 +808,8 @@ const en = {
   "importReport.drawThese": "Draw these ({count, plural, one {# node} other {# nodes}})",
   "importReport.overLimit":
     "{count, plural, one {# nodes ticked} other {# nodes ticked}}, over the {limit} an import draws: untick some.",
-  "importReport.alreadyDrawn": "{count, plural, one {# nodes ticked} other {# nodes ticked}}: these are drawn.",
+  "importReport.alreadyDrawn":
+    "{count, plural, one {# nodes ticked} other {# nodes ticked}}: these are drawn.",
   "importReport.ticked": "{count, plural, one {# nodes ticked} other {# nodes ticked}}.",
   "importReport.stencilFor": "{stencil} for {name}",
   "importReport.anotherStencil": "Another stencil for {name}",
@@ -817,20 +846,25 @@ const en = {
   "fileDialog.import": "Import",
   "fileDialog.diagramText": "Diagram text",
   "fileDialog.openAShareLink": "Open a share link",
-  "fileDialog.itOpensInItsOwnSharedSlot": "It opens in its own “Shared” slot, so your diagrams stay as they are.",
+  "fileDialog.itOpensInItsOwnSharedSlot":
+    "It opens in its own “Shared” slot, so your diagrams stay as they are.",
   "fileDialog.chooseAPage": "Choose a page",
   "fileDialog.exportImage": "Export image",
-  "fileDialog.theWholeDiagramAtFullSizeWhatever": "The whole diagram at full size, whatever part of it is on screen.",
+  "fileDialog.theWholeDiagramAtFullSizeWhatever":
+    "The whole diagram at full size, whatever part of it is on screen.",
   "fileDialog.format": "Format",
   "fileDialog.title": "Title",
   "fileDialog.diagramTitleAndDescription": "Diagram title and description",
   "fileDialog.resolution": "Resolution",
   "fileDialog.background": "Background",
   "fileDialog.transparent": "Transparent",
-  "fileDialog.shareLinkCopiedAnyoneWithTheLink": "Share link copied. Anyone with the link can open the diagram.",
-  "fileDialog.couldntCopyAutomaticallySelectTheLinkAnd": "Couldn't copy automatically. Select the link and copy it.",
+  "fileDialog.shareLinkCopiedAnyoneWithTheLink":
+    "Share link copied. Anyone with the link can open the diagram.",
+  "fileDialog.couldntCopyAutomaticallySelectTheLinkAnd":
+    "Couldn't copy automatically. Select the link and copy it.",
   "fileDialog.embedCodeCopied": "Embed code copied.",
-  "fileDialog.couldntCopyAutomaticallySelectTheCodeAnd": "Couldn't copy automatically. Select the code and copy it.",
+  "fileDialog.couldntCopyAutomaticallySelectTheCodeAnd":
+    "Couldn't copy automatically. Select the code and copy it.",
   "fileDialog.theBrowserDidntAllowReadingTheClipboard":
     "The browser didn't allow reading the clipboard. Paste with Ctrl+V instead.",
   "fileDialog.unrecognisedFormat": "Unrecognised format",
@@ -839,12 +873,14 @@ const en = {
   "passwordLink.theDiagramIsEncryptedInThisBrowser":
     "The diagram is encrypted in this browser before it goes into the link.",
   "passwordLink.copyAgain": "Copy again",
-  "passwordLink.thisLinkIsLongSomeChatApps": "This link is long. Some chat apps and email clients cut long links off.",
+  "passwordLink.thisLinkIsLongSomeChatApps":
+    "This link is long. Some chat apps and email clients cut long links off.",
   "passwordLink.thisDiagramIsPasswordprotected": "This diagram is password-protected",
   "passwordLink.enterThePasswordYouWereGivenIts":
     "Enter the password you were given. It's checked in this browser; nothing is sent anywhere.",
   "passwordLink.password": "Password",
-  "passwordLink.linkWithPasswordCopiedSendThePassword": "Link with password copied. Send the password separately.",
+  "passwordLink.linkWithPasswordCopiedSendThePassword":
+    "Link with password copied. Send the password separately.",
   "passwordLink.encrypting": "Encrypting…",
   "passwordLink.unlocking": "Unlocking…",
   "password.show": "Show",
@@ -900,7 +936,8 @@ const en = {
     "Planning documents require diagrams/v2. Remove planning to retain legacy playback, or export with a current reader.",
   "planning.unsupportedPreset":
     "Node “{id}” uses an unsupported preset revision. Reload Live Diagrams; no defaults were substituted.",
-  "planning.delayInvalid": "Connection “{id}” needs a finite nonnegative networkDelayMs up to {limit, number}.",
+  "planning.delayInvalid":
+    "Connection “{id}” needs a finite nonnegative networkDelayMs up to {limit, number}.",
   "planning.connections": "Connections",
   "planning.consumes": "Consumes {name}",
   "planning.publishes": "Publishes to {name}",
@@ -936,7 +973,8 @@ const en = {
   "planning.configured": "Configured estimate · editable assumptions",
   "planning.summary":
     "{name} handles ~{capacity} ({replicas, plural, one {# replica} other {# replicas}} × {slots, number} slots ÷ {seconds} s) and receives {offered}.",
-  "planning.deviceSummary": "{name} handles ~{capacity} at its configured device size and receives {offered}.",
+  "planning.deviceSummary":
+    "{name} handles ~{capacity} at its configured device size and receives {offered}.",
   "planning.instant": "{name} has no finite processing limit in this model and receives {offered}.",
   "planning.contributor": "{name}: {rate}",
   "planning.via": "{name} through {via}: {rate}",
@@ -971,7 +1009,8 @@ const en = {
   "planning.unsettled": "Feedback demand did not settle. These estimates cannot support a capacity fix.",
   "planning.requestRate": "{rate} req/s",
   "planning.model": "Planning model",
-  "planning.legacy": "Legacy playback. Upgrade explicitly to pin today's defaults; opening a file never upgrades it.",
+  "planning.legacy":
+    "Legacy playback. Upgrade explicitly to pin today's defaults; opening a file never upgrades it.",
   "planning.current":
     "Planning revision p1. Lesson values are assumptions; store slots and physical delay are metadata until their model ships.",
   "planning.preview": "Preview model upgrade",
@@ -981,14 +1020,16 @@ const en = {
   "planning.unlimited": "no modeled limit",
   "planning.upgrade": "Upgrade and pin defaults",
   "planning.legacyPreview": "Preview legacy export",
-  "planning.losses": "Legacy export removes: {fields}. Pinned numeric values remain; P1 playback is preserved.",
+  "planning.losses":
+    "Legacy export removes: {fields}. Pinned numeric values remain; P1 playback is preserved.",
   "planning.downloadLegacy": "Download legacy file",
   "planning.loading": "Loading throughput explanation…",
   "planning.loadFailed": "The explanation could not be downloaded.",
   "planning.retry": "Retry",
   "live.sourceRateLimit":
     "Continuous traffic needs a higher sampling scale for these source rates. Open Inputs and increase Messages per dot, or lower the source rates.",
-  "live.sourceVolumeLimit": "Continuous traffic reached its 200,000 sampled-message budget. Restart to continue.",
+  "live.sourceVolumeLimit":
+    "Continuous traffic reached its 200,000 sampled-message budget. Restart to continue.",
   "common.close": "Close",
   "common.cancel": "Cancel",
   "common.retry": "Retry",
@@ -1118,7 +1159,8 @@ const en = {
   "share.password": "Link with password…",
   "share.passwordDesc": "Only people with the password can open it.",
   "share.editTogether": "Edit together…",
-  "share.editTogetherDesc": "Anyone with the link can ask to join; you let them in. Leaving doesn't close the room.",
+  "share.editTogetherDesc":
+    "Anyone with the link can ask to join; you let them in. Leaving doesn't close the room.",
   "share.privateOffRooms": "Links, rooms and public embeds are off for a private diagram.",
   "share.privateOff": "Links and public embeds are off for a private diagram.",
   "share.makeNotPrivate": "Make it not private…",
@@ -1129,7 +1171,8 @@ const en = {
   "share.embedPublic": "Embed on a public page…",
   "share.embedPublicDesc": "<b>Public:</b> anyone who can see the page can open it.",
   "privateDialog.title": "Private diagram",
-  "privateDialog.subtitle": "It stays on this device. To share it, export Interactive HTML or the diagram file.",
+  "privateDialog.subtitle":
+    "It stays on this device. To share it, export Interactive HTML or the diagram file.",
   "privateDialog.more": "How privacy works",
   "privateDialog.turnOff": "Make not private",
   "privateDialog.keep": "Keep private",
@@ -1220,7 +1263,8 @@ const en = {
   "shortcuts.mouse.doubleCanvas": "Double-click canvas",
   "shortcuts.mouse.doubleCanvas.does": "Quick-add a stencil at the cursor",
   "shortcuts.mouse.doubleRename": "Double-click a node, edge or boundary",
-  "shortcuts.mouse.doubleProperties.does": "Rename in the inspector, name selected; nodes in Live open Properties",
+  "shortcuts.mouse.doubleProperties.does":
+    "Rename in the inspector, name selected; nodes in Live open Properties",
   "shortcuts.mouse.doubleText": "Double-click a text, note or zone",
   "shortcuts.mouse.doubleText.does": "Edit its text in place",
   "shortcuts.mouse.doubleNode": "Double-click node / edge",
@@ -1246,7 +1290,8 @@ const en = {
   "edge.shape.horizontal": "Segment {index} of {count}, horizontal. Up and down move it.",
   "edge.shape.useHorizontal": "Use ← → to move a vertical segment.",
   "edge.shape.useVertical": "Use ↑ ↓ to move a horizontal segment.",
-  "edge.shape.moved": "Moved {direction, select, right {right} left {left} up {up} other {down}} {distance} px.",
+  "edge.shape.moved":
+    "Moved {direction, select, right {right} left {left} up {up} other {down}} {distance} px.",
   "edge.shape.selectionReset": "Segment selection reset",
   "edge.shape.reset": "Route reset; automatic.",
   "shortcuts.segmentPrev": "Previous segment of the selected line",
@@ -1306,7 +1351,8 @@ const en = {
   "ai.pasteTheReply": "Paste the reply",
   "ai.apply": " Apply",
   "ai.thisStencilChoiceIsStaleItsNode": "This stencil choice is stale: its node changed since.",
-  "ai.somethingChangedSinceThisTurnUseRevert": "Something changed since this turn. Use Revert to here instead.",
+  "ai.somethingChangedSinceThisTurnUseRevert":
+    "Something changed since this turn. Use Revert to here instead.",
   "ai.conversationCleared": "Conversation cleared.",
   "ai.undo": "Undo",
   "ai.aI": "AI",
@@ -1342,7 +1388,8 @@ const en = {
   "ai.copyFixUpPrompt": "Copy fix-up prompt",
   "ai.yourAICorrectsItsReplyPasteIt": "Your AI corrects its reply; paste it back below.",
   "ai.tryTheOnDeviceModel": "Try the on-device model",
-  "ai.chromeSBuiltInModelOnThis": "Chrome's built-in model, on this device: a request box at the panel's foot.",
+  "ai.chromeSBuiltInModelOnThis":
+    "Chrome's built-in model, on this device: a request box at the panel's foot.",
   "ai.waysToUseAIHere": "Ways to use AI here",
   "ai.yourBrowserSAIAssistant": "Your browser's AI assistant",
   "ai.copyExampleRequest": "Copy example request",
@@ -1379,7 +1426,8 @@ const en = {
   "ai.didnTCatchThatStillListening": "Didn't catch that. Still listening…",
   "ai.theSpeechServiceCouldnTBeReached":
     "The speech service couldn't be reached. Check your connection, or type instead.",
-  "ai.dictationDoesnTSupportYourBrowserS": "Dictation doesn't support your browser's language yet. Type instead.",
+  "ai.dictationDoesnTSupportYourBrowserS":
+    "Dictation doesn't support your browser's language yet. Type instead.",
   "ai.dictationStoppedUnexpectedlyTryAgain": "Dictation stopped unexpectedly. Try again.",
   "ai.dictationIsOffHereThisBrowserWould":
     "Dictation is off here: this browser would send your voice to its speech service, and this diagram is private.",
@@ -1405,7 +1453,8 @@ const en = {
   "ai.privateOff": "AI is off for this private diagram",
   "ai.emptyType":
     "Type a change below, or ask an AI agent. Each change appears here, and you can undo or revert any of them.",
-  "ai.emptyAgent": "Ask an AI agent to change it. Each change appears here, and you can undo or revert any of them.",
+  "ai.emptyAgent":
+    "Ask an AI agent to change it. Each change appears here, and you can undo or revert any of them.",
   "ai.emptyDevice":
     "Type a change below: Chrome's built-in model makes it on this device, and each change appears here, with Undo. AI agents and copied prompts are turned off here.",
   "ai.emptyDeviceOff":
@@ -1428,7 +1477,8 @@ const en = {
   "ai.localToolsOff": "The page's tools are off for this local-only diagram.",
   "ai.publishedTools":
     "This page publishes {count, plural, one {{count} tools} other {{count} tools}} for AI agents in this browser (WebMCP).",
-  "ai.agentRequestHint": "Your browser's assistant must support WebMCP to use them. Type your request there, not here.",
+  "ai.agentRequestHint":
+    "Your browser's assistant must support WebMCP to use them. Type your request there, not here.",
   "ai.noWebMCP": "No WebMCP in this browser. Agents that drive pages can read <link>llms.txt</link>.",
   "ai.listeningLocal": "Listening on this device…",
   "ai.listeningService": "Listening…",
@@ -1708,7 +1758,8 @@ const en = {
   "chrome.azureServicesAndMicrosoftProducts": "Azure services and Microsoft products",
   "chrome.amazonWebServices": "Amazon Web Services",
   "chrome.googleCloudServices": "Google Cloud services",
-  "chrome.kafkaPulsarRabbitMQNATSCDCAndStreamProcessors": "Kafka, Pulsar, RabbitMQ, NATS, CDC and stream processors",
+  "chrome.kafkaPulsarRabbitMQNATSCDCAndStreamProcessors":
+    "Kafka, Pulsar, RabbitMQ, NATS, CDC and stream processors",
   "chrome.databasesRuntimesOrchestrationAndToolingYouCanSelfHost":
     "Databases, runtimes, orchestration and tooling you can self-host",
   "chrome.hostedPlatformsDataObservabilityIdentityPaymentsMessagingAndAIAPIs":
@@ -1731,7 +1782,8 @@ const en = {
   "chrome.snapping": "Snapping",
   "chrome.minimap": "Minimap",
   "chrome.inspector": "Inspector",
-  "chrome.deleteValueItemsOtherValueItems": "Delete {count, plural, one {{count} items} other {{count} items}}",
+  "chrome.deleteValueItemsOtherValueItems":
+    "Delete {count, plural, one {{count} items} other {{count} items}}",
   "chrome.delete": "Delete",
   "chrome.editText": "Edit text",
   "chrome.request": "Request",
@@ -1842,8 +1894,10 @@ const en = {
   "chrome.movedTheTextOffANode": "Moved the text off a node.",
   "chrome.movedTheTextOffAnEdge": "Moved the text off an edge.",
   "chrome.theBoundary": "the boundary",
-  "chrome.addedValueOtherValueNodesToValue": "Added {count, plural, one {1 node} other {{count} nodes}} to {name}",
-  "chrome.tookValueOtherValueNodesOutOfValue": "Took {count, plural, one {1 node} other {{count} nodes}} out of {name}",
+  "chrome.addedValueOtherValueNodesToValue":
+    "Added {count, plural, one {1 node} other {{count} nodes}} to {name}",
+  "chrome.tookValueOtherValueNodesOutOfValue":
+    "Took {count, plural, one {1 node} other {{count} nodes}} out of {name}",
   "chrome.addedValueOtherValueNodesToValueAndTookValue":
     "Added {count, plural, one {1 node} other {{count} nodes}} to {name} and took {released, plural, one {{released}} other {{released}}} out",
   "chrome.fitViewValue": "Fit view ({combo})",
@@ -1906,14 +1960,16 @@ const en = {
     "Receives a message, does its work, then forwards the result to every outgoing connection.",
   "gallery.passesRequestsThroughToWhateverSitsBehindItWithoutHolding":
     "Passes requests through to whatever sits behind it, without holding on to them.",
-  "gallery.persistsWhatArrivesMessagesEndTheirJourneyHere": "Persists what arrives. Messages end their journey here.",
+  "gallery.persistsWhatArrivesMessagesEndTheirJourneyHere":
+    "Persists what arrives. Messages end their journey here.",
   "gallery.aTerminalConsumerMessagesEndHereWithoutBeingStoredLike":
     "A terminal consumer. Messages end here without being stored, like email delivery or monitoring.",
   "gallery.decorativeItIsnTPartOfTheMessageFlowSo":
     "Decorative. It isn't part of the message flow, so the simulation passes over it.",
   "gallery.microsoftIconTermsUseInArchitectureDiagramsUnaltered":
     "Microsoft icon terms: use in architecture diagrams, unaltered",
-  "gallery.aWSIconTermsUseInArchitectureDiagramsUnaltered": "AWS icon terms: use in architecture diagrams, unaltered",
+  "gallery.aWSIconTermsUseInArchitectureDiagramsUnaltered":
+    "AWS icon terms: use in architecture diagrams, unaltered",
   "gallery.apache20OrCCBY40": "Apache-2.0 or CC BY 4.0",
   "gallery.cCBY40AttributionRequired": "CC BY 4.0, attribution required",
   "gallery.cC0ArtworkTheLogoIsItsOwnerSTrademark": "CC0 artwork; the logo is its owner's trademark",
@@ -1951,7 +2007,8 @@ const en = {
   "broker.groupHint": "Same name: competing readers.",
   "broker.fanout": "One copy per named route.",
   "broker.current": "p2",
-  "broker.upgradePreview": "p2: broker allocation may change. Compare below; Undo restores the previous model.",
+  "broker.upgradePreview":
+    "p2: broker allocation may change. Compare below; Undo restores the previous model.",
   "broker.exportLoss": "Legacy export changes broker allocation.",
   "broker.wrapper": "Infrastructure. Model traffic on a topic.",
   "broker.named": "{kind}: {name}",
@@ -1967,18 +2024,22 @@ const en = {
   "stencil.kafkaClusterName": "Kafka Cluster",
   "stencil.kafkaClusterDescription": "A set of Kafka brokers hosting topics and partitions.",
   "stencil.subtitleCluster": "cluster",
-  "stencil.kafkaConnectDescription": "Source/sink connectors streaming data between Kafka and external systems.",
+  "stencil.kafkaConnectDescription":
+    "Source/sink connectors streaming data between Kafka and external systems.",
   "stencil.subtitleConnector": "connector",
   "stencil.kafkaSchemaRegistryName": "Schema Registry",
   "stencil.kafkaSchemaRegistryDescription": "Central store of Avro/Protobuf/JSON schemas for Kafka topics.",
   "stencil.subtitleSchemas": "schemas",
-  "stencil.kafkaKsqldbDescription": "Streaming SQL engine for filtering, joining and aggregating Kafka topics.",
+  "stencil.kafkaKsqldbDescription":
+    "Streaming SQL engine for filtering, joining and aggregating Kafka topics.",
   "stencil.subtitleStreamProcessor": "stream processor",
   "stencil.azureServiceBusQueueName": "Service Bus Queue",
-  "stencil.azureServiceBusQueueDescription": "Durable point-to-point queue with sessions, DLQ and competing consumers.",
+  "stencil.azureServiceBusQueueDescription":
+    "Durable point-to-point queue with sessions, DLQ and competing consumers.",
   "stencil.subtitleQueue": "queue",
   "stencil.azureServiceBusTopicName": "Service Bus Topic",
-  "stencil.azureServiceBusTopicDescription": "Pub/sub topic; each subscription receives its own copy of every message.",
+  "stencil.azureServiceBusTopicDescription":
+    "Pub/sub topic; each subscription receives its own copy of every message.",
   "stencil.azureEventHubsDescription": "Partitioned big-data event streaming service (Kafka-compatible).",
   "stencil.subtitleEventHub": "event hub",
   "stencil.azureEventGridDescription": "Serverless event routing with push delivery and filtering.",
@@ -1996,7 +2057,8 @@ const en = {
   "stencil.subtitleStream": "stream",
   "stencil.gcpPubsubDescription": "Global managed pub/sub messaging.",
   "stencil.natsSubjectName": "NATS Subject",
-  "stencil.natsSubjectDescription": "Lightweight subject-based pub/sub (optionally persisted with JetStream).",
+  "stencil.natsSubjectDescription":
+    "Lightweight subject-based pub/sub (optionally persisted with JetStream).",
   "stencil.subtitleSubject": "subject",
   "stencil.redisStreamName": "Redis Stream",
   "stencil.redisStreamDescription": "Append-only log with consumer groups inside Redis.",
@@ -2008,7 +2070,8 @@ const en = {
   "stencil.subtitleStreamApp": "stream app",
   "stencil.debeziumDescription": "Change data capture: turns database row changes into an event stream.",
   "stencil.pulsarTopicName": "Pulsar Topic",
-  "stencil.pulsarTopicDescription": "Multi-tenant pub/sub with tiered storage and shared or exclusive subscriptions.",
+  "stencil.pulsarTopicDescription":
+    "Multi-tenant pub/sub with tiered storage and shared or exclusive subscriptions.",
   "stencil.mqttBrokerName": "MQTT Broker",
   "stencil.mqttBrokerDescription":
     "Lightweight pub/sub for devices (Mosquitto, EMQX, HiveMQ); every subscriber to a topic gets a copy.",
@@ -2047,18 +2110,21 @@ const en = {
   "stencil.servicePythonDescription": "Microservice built with Python (FastAPI, Django, ...).",
   "stencil.serviceGoName": "Go Service",
   "stencil.serviceGoDescription": "Microservice written in Go.",
-  "stencil.flinkDescription": "Stateful stream and batch processing with event-time windows and exactly-once state.",
+  "stencil.flinkDescription":
+    "Stateful stream and batch processing with event-time windows and exactly-once state.",
   "stencil.subtitleStreamJob": "stream job",
   "stencil.gcpDataflowDescription": "Managed Apache Beam pipelines for streaming and batch data.",
   "stencil.subtitlePipeline": "pipeline",
-  "stencil.temporalDescription": "Durable workflow engine: code-defined workflows that survive crashes and retries.",
+  "stencil.temporalDescription":
+    "Durable workflow engine: code-defined workflows that survive crashes and retries.",
   "stencil.camundaDescription": "BPMN process orchestration across services, people and systems.",
   "stencil.subtitleProcess": "process",
   "stencil.airflowDescription": "Schedules and runs data pipelines defined as Python DAGs.",
   "stencil.gcpCloudRunDescription": "Serverless containers that scale to zero on Google Cloud.",
   "stencil.gcpCloudFunctionsDescription": "Event-driven serverless functions on Google Cloud.",
   "stencil.gcpGkeDescription": "Google Kubernetes Engine: managed Kubernetes clusters.",
-  "stencil.azureStaticWebAppsDescription": "Global static front-end hosting with an integrated serverless API.",
+  "stencil.azureStaticWebAppsDescription":
+    "Global static front-end hosting with an integrated serverless API.",
   "stencil.subtitleWebApp": "web app",
   "stencil.vercelDescription": "Front-end cloud: deploys web apps with edge and serverless functions.",
   "stencil.netlifyDescription": "Hosts web front ends with serverless and edge functions.",
@@ -2110,7 +2176,8 @@ const en = {
   "stencil.subtitleVectorIndex": "vector index",
   "stencil.azureDataFactoryDescription": "Managed ETL/ELT pipelines that move and transform data.",
   "stencil.azureSynapseDescription": "Analytics service combining a SQL data warehouse with Spark.",
-  "stencil.microsoftFabricDescription": "SaaS analytics platform with OneLake, warehousing and real-time intelligence.",
+  "stencil.microsoftFabricDescription":
+    "SaaS analytics platform with OneLake, warehousing and real-time intelligence.",
   "stencil.azureApiManagementDescription": "API gateway with policies, auth, quotas and a developer portal.",
   "stencil.subtitleGateway": "gateway",
   "stencil.azureFrontDoorDescription": "Global edge load balancer, CDN and WAF.",
@@ -2146,7 +2213,8 @@ const en = {
   "stencil.subtitleEdgeRouter": "edge router",
   "stencil.juniperMxDescription": "Universal routing platform for the data-centre and service-provider edge.",
   "stencil.genericSwitchName": "Switch",
-  "stencil.genericSwitchDescription": "Connects hosts on a network: access, core, or a data centre's leaf and spine.",
+  "stencil.genericSwitchDescription":
+    "Connects hosts on a network: access, core, or a data centre's leaf and spine.",
   "stencil.subtitleSwitch": "switch",
   "stencil.ciscoCatalystDescription": "Campus access and core switches (Catalyst 9200, 9300, 9500).",
   "stencil.subtitleCampusSwitch": "campus switch",
@@ -2163,18 +2231,23 @@ const en = {
   "stencil.genericNgfwDescription":
     "A firewall appliance in your rack: allows or denies each connection, inspects what it allows.",
   "stencil.subtitleAppliance": "appliance",
-  "stencil.paloaltoNgfwDescription": "PA-Series next-generation firewalls (PA-440 branch to PA-5440 data centre).",
-  "stencil.fortinetFortigateDescription": "Next-generation firewalls with SD-WAN built in (FortiGate 70G to 3700F).",
+  "stencil.paloaltoNgfwDescription":
+    "PA-Series next-generation firewalls (PA-440 branch to PA-5440 data centre).",
+  "stencil.fortinetFortigateDescription":
+    "Next-generation firewalls with SD-WAN built in (FortiGate 70G to 3700F).",
   "stencil.ciscoSecureFirewallDescription":
     "Firepower Threat Defense and ASA firewalls (Secure Firewall 1200, 3100 and 4200 series).",
-  "stencil.checkpointQuantumDescription": "Quantum Force security gateways (3920 branch to 19100 data centre).",
+  "stencil.checkpointQuantumDescription":
+    "Quantum Force security gateways (3920 branch to 19100 data centre).",
   "stencil.subtitleSecurityGateway": "security gateway",
   "stencil.juniperSrxDescription": "SRX firewalls and secure routers (SRX345 branch to SRX4600 data centre).",
   "stencil.subtitleFirewall": "firewall",
   "stencil.genericAdcDescription":
     "Application delivery controller: a hardware or virtual load balancer that health-checks its targets.",
-  "stencil.f5BigipDescription": "BIG-IP Local Traffic Manager on rSeries (r2600 to r10900), VELOS or virtual editions.",
-  "stencil.netscalerAdcDescription": "NetScaler (formerly Citrix ADC) on MPX, SDX or VPX (MPX 9210 to 17000Z).",
+  "stencil.f5BigipDescription":
+    "BIG-IP Local Traffic Manager on rSeries (r2600 to r10900), VELOS or virtual editions.",
+  "stencil.netscalerAdcDescription":
+    "NetScaler (formerly Citrix ADC) on MPX, SDX or VPX (MPX 9210 to 17000Z).",
   "stencil.grafanaDescription": "Dashboards and alerting over metrics, logs and traces.",
   "stencil.subtitleDashboards": "dashboards",
   "stencil.prometheusDescription": "Pull-based metrics collection and time-series database.",
@@ -2183,7 +2256,8 @@ const en = {
   "stencil.azureAppInsightsDescription": "APM and telemetry for apps, part of Azure Monitor.",
   "stencil.subtitleTelemetry": "telemetry",
   "stencil.opentelemetryName": "OpenTelemetry Collector",
-  "stencil.opentelemetryDescription": "Vendor-neutral pipeline that receives, processes and exports telemetry.",
+  "stencil.opentelemetryDescription":
+    "Vendor-neutral pipeline that receives, processes and exports telemetry.",
   "stencil.subtitleCollector": "collector",
   "stencil.splunkDescription": "Log search, SIEM and observability.",
   "stencil.subtitleLogs": "logs",
@@ -2194,7 +2268,8 @@ const en = {
   "stencil.newRelicDescription": "Hosted observability: APM, logs, infrastructure and browser monitoring.",
   "stencil.sentryDescription": "Error tracking and performance monitoring for apps.",
   "stencil.subtitleErrors": "errors",
-  "stencil.awsCloudwatchDescription": "AWS logs, metrics, alarms and dashboards; where Lambda writes by default.",
+  "stencil.awsCloudwatchDescription":
+    "AWS logs, metrics, alarms and dashboards; where Lambda writes by default.",
   "stencil.subtitleLogsMetrics": "logs · metrics",
   "stencil.azureKeyVaultDescription": "Managed secrets, keys and certificates.",
   "stencil.entraIdDescription": "Identity provider (formerly Azure AD): OAuth/OIDC tokens.",
@@ -2203,12 +2278,14 @@ const en = {
   "stencil.oktaDescription": "Cloud identity provider for SSO, MFA and user lifecycle.",
   "stencil.auth0Description": "Customer identity platform for login, social sign-in and tokens.",
   "stencil.keycloakDescription": "Open-source identity and access management (OIDC, SAML).",
-  "stencil.azureAppConfigDescription": "Central settings and feature flags; an entry can reference a Key Vault secret.",
+  "stencil.azureAppConfigDescription":
+    "Central settings and feature flags; an entry can reference a Key Vault secret.",
   "stencil.subtitleConfigStore": "config store",
   "stencil.azureManagedIdentityDescription":
     "An Entra identity for a workload, with no stored credentials (also AKS workload identity).",
   "stencil.subtitleWorkloadIdentity": "workload identity",
-  "stencil.awsSecretsManagerDescription": "Stores and rotates secrets such as database credentials and API keys.",
+  "stencil.awsSecretsManagerDescription":
+    "Stores and rotates secrets such as database credentials and API keys.",
   "stencil.subtitleSecrets": "secrets",
   "stencil.awsParameterStoreDescription":
     "Systems Manager parameters; /aws/reference/secretsmanager/ paths pass through to Secrets Manager.",
@@ -2219,7 +2296,8 @@ const en = {
     "A Google Cloud identity a workload runs as (GKE Workload Identity), granted IAM roles.",
   "stencil.subtitleServiceAccount": "service account",
   "stencil.gcpSecretManagerDescription": "Google Cloud's store for API keys, passwords and certificates.",
-  "stencil.k8sConfigmapDescription": "Non-secret settings mounted into pods as files or environment variables.",
+  "stencil.k8sConfigmapDescription":
+    "Non-secret settings mounted into pods as files or environment variables.",
   "stencil.k8sSecretName": "Kubernetes Secret",
   "stencil.k8sSecretDescription": "Secret values mounted into pods; often synced from a vault.",
   "stencil.subtitleSecret": "secret",
@@ -2238,14 +2316,17 @@ const en = {
   "stencil.clientIotDescription": "Sensor or edge device emitting telemetry.",
   "stencil.subtitleDevice": "device",
   "stencil.clientTeamName": "Team",
-  "stencil.clientTeamDescription": "A group of users, such as operators, support staff or a customer segment.",
+  "stencil.clientTeamDescription":
+    "A group of users, such as operators, support staff or a customer segment.",
   "stencil.subtitleUsers": "users",
   "stencil.genericExternalApiName": "External API",
   "stencil.genericExternalApiDescription": "A third-party HTTP API your system calls.",
-  "stencil.iterableDescription": "Customer engagement API for events, user profiles and cross-channel campaigns.",
+  "stencil.iterableDescription":
+    "Customer engagement API for events, user profiles and cross-channel campaigns.",
   "stencil.subtitleEngagementAPI": "engagement API",
   "stencil.brazeDescription": "Customer engagement API for user updates, events and messaging campaigns.",
-  "stencil.segmentDescription": "Customer data API collecting events and routing them to connected destinations.",
+  "stencil.segmentDescription":
+    "Customer data API collecting events and routing them to connected destinations.",
   "stencil.subtitleCustomerDataAPI": "customer data API",
   "stencil.shopifyDescription": "Commerce API for store products, orders and customer data.",
   "stencil.subtitleCommerceAPI": "commerce API",
@@ -2307,7 +2388,8 @@ const en = {
   "stencil.genericSearchIndexName": "Search Index",
   "stencil.genericSearchIndexDescription": "Full-text index for search queries.",
   "stencil.genericVectorDbName": "Vector DB",
-  "stencil.genericVectorDbDescription": "Stores embeddings for similarity search (pgvector, Weaviate, Qdrant).",
+  "stencil.genericVectorDbDescription":
+    "Stores embeddings for similarity search (pgvector, Weaviate, Qdrant).",
   "stencil.subtitleVectors": "vectors",
   "stencil.genericMlModelName": "ML Model",
   "stencil.genericMlModelDescription": "A trained model served for inference.",
@@ -2321,9 +2403,11 @@ const en = {
   "stencil.genericSecretStoreDescription": "Any secrets manager or vault.",
   "stencil.genericIdentityProviderName": "Identity Provider",
   "stencil.genericIdentityProviderDescription": "Issues OAuth 2.0 / OIDC tokens to users and workloads.",
-  "stencil.dbtDescription": "SQL transformations that build tested models (staging, marts) inside the warehouse.",
+  "stencil.dbtDescription":
+    "SQL transformations that build tested models (staging, marts) inside the warehouse.",
   "stencil.subtitleModels": "models",
-  "stencil.airbyteDescription": "Open-source ELT connectors that copy SaaS and database tables into a warehouse.",
+  "stencil.airbyteDescription":
+    "Open-source ELT connectors that copy SaaS and database tables into a warehouse.",
   "stencil.snowflakeSnowpipeDescription":
     "Loads rows into Snowflake tables continuously, e.g. from the Snowflake Kafka connector.",
   "stencil.subtitleLoader": "loader",
@@ -2334,7 +2418,8 @@ const en = {
   "stencil.gcpCloudStorageDescription": "Object storage buckets on Google Cloud.",
   "stencil.lookerDescription": "BI dashboards and a semantic model.",
   "stencil.tableauDescription": "BI dashboards and visual analytics.",
-  "stencil.awsRoute53Description": "DNS with health checks and latency, weighted or failover routing across regions.",
+  "stencil.awsRoute53Description":
+    "DNS with health checks and latency, weighted or failover routing across regions.",
   "stencil.azureTrafficManagerDescription": "DNS-based global traffic routing with endpoint health checks.",
   "stencil.subtitleGlobalRouting": "global routing",
   "stencil.gcpCloudLoadBalancingDescription": "Global anycast load balancer in front of regional backends.",
@@ -2344,13 +2429,16 @@ const en = {
     "Append-only log of domain events per aggregate; projections subscribe and catch up.",
   "stencil.subtitleEventStore": "event store",
   "stencil.genericProjectionName": "Projection",
-  "stencil.genericProjectionDescription": "Builds a read model from events. Rebuild it any time by replaying the log.",
+  "stencil.genericProjectionDescription":
+    "Builds a read model from events. Rebuild it any time by replaying the log.",
   "stencil.subtitleProjection": "projection",
   "stencil.genericSagaName": "Saga Orchestrator",
-  "stencil.genericSagaDescription": "Coordinates a multi-step transaction and runs compensating steps when one fails.",
+  "stencil.genericSagaDescription":
+    "Coordinates a multi-step transaction and runs compensating steps when one fails.",
   "stencil.subtitleSaga": "saga",
   "stencil.genericRateLimiterName": "Rate Limiter",
-  "stencil.genericRateLimiterDescription": "Caps throughput (token bucket); work over the limit waits its turn.",
+  "stencil.genericRateLimiterDescription":
+    "Caps throughput (token bucket); work over the limit waits its turn.",
   "stencil.subtitleRateLimit": "rate limit",
   "stencil.vendorGeneric": "Generic",
   "stencil.vendorClient": "Client",
@@ -2472,8 +2560,10 @@ const en = {
   "tutorials.mobileApi.addApiTipPick": "Press Enter, or click Service",
   "tutorials.mobileApi.addApiTipPlus": "Click + to add what comes next",
   "tutorials.mobileApi.addApiTipNode": "Click your Mobile App to select it",
-  "tutorials.mobileApi.addApiHint": "The + shows only on a selected node. Alt+→ does the same from the keyboard.",
-  "tutorials.mobileApi.addApiDone": "A service is anything that handles requests: an API, a backend, a worker.",
+  "tutorials.mobileApi.addApiHint":
+    "The + shows only on a selected node. Alt+→ does the same from the keyboard.",
+  "tutorials.mobileApi.addApiDone":
+    "A service is anything that handles requests: an API, a backend, a worker.",
   "tutorials.mobileApi.connectTitle": "Connect them",
   "tutorials.mobileApi.connectGoal": "Drag from the dot on the Mobile App's right side onto the service.",
   "tutorials.mobileApi.connectTip": "Drag from this dot onto the service",
@@ -2506,15 +2596,18 @@ const en = {
   "tutorials.webhooks.title": "Webhooks survive an outage",
   "tutorials.webhooks.summary": "Run an outage, follow its narration and read an expectation.",
   "tutorials.webhooks.runTitle": "Run the outage simulation",
-  "tutorials.webhooks.runGoal": "Press Live, then pick “Database outage, then replay” in the simulation picker.",
+  "tutorials.webhooks.runGoal":
+    "Press Live, then pick “Database outage, then replay” in the simulation picker.",
   "tutorials.webhooks.runDone": "A saved simulation replays the same traffic and faults with its saved seed.",
   "tutorials.webhooks.noteTitle": "Read the paused note",
   "tutorials.webhooks.noteGoal": "Wait for the narration to pause, read the note, then press Continue.",
   "tutorials.webhooks.noteDone": "A paused note gives you time to read before the simulation carries on.",
   "tutorials.webhooks.expectTitle": "Watch an expectation pass",
-  "tutorials.webhooks.expectGoal": "Watch the “Webhooks are parked, not dropped” expectation chip turn green.",
+  "tutorials.webhooks.expectGoal":
+    "Watch the “Webhooks are parked, not dropped” expectation chip turn green.",
   "tutorials.webhooks.expectDone": "Expectation chips check the outcome of a simulation as it runs.",
-  "tutorials.webhooks.finish": "You ran a saved outage, continued its narration and saw its expectation pass.",
+  "tutorials.webhooks.finish":
+    "You ran a saved outage, continued its narration and saw its expectation pass.",
   "tutorials.fanout.title": "Filter a notification channel",
   "tutorials.fanout.summary": "Watch an SMS outage, then choose which Message reaches its queue.",
   "tutorials.fanout.runTitle": "Run the SMS outage",
@@ -2537,11 +2630,13 @@ const en = {
   "tutorials.partitions.editTitle": "Set six partitions",
   "tutorials.partitions.editGoal":
     "Double-click the Kafka topic, open Simulation, set Partitions to 6, then press Enter.",
-  "tutorials.partitions.editDone": "More partitions let more replicas in the same consumer group work at once.",
+  "tutorials.partitions.editDone":
+    "More partitions let more replicas in the same consumer group work at once.",
   "tutorials.partitions.rerunTitle": "Rerun with more partitions",
   "tutorials.partitions.rerunGoal":
     "Pick “Give every reader a partition” in the simulation picker and read its narration.",
-  "tutorials.partitions.rerunDone": "A saved simulation applies its own setup: this one uses eight partitions.",
+  "tutorials.partitions.rerunDone":
+    "A saved simulation applies its own setup: this one uses eight partitions.",
   "tutorials.partitions.finish": "You changed one partition count and reran the comparison.",
   "tutorials.outbox.title": "Trace an outbox and saga",
   "tutorials.outbox.summary": "Trace a checkout Message, then watch the declined-payment simulation.",
@@ -2556,7 +2651,8 @@ const en = {
   "tutorials.outbox.declineTitle": "Watch compensation",
   "tutorials.outbox.declineGoal":
     "Pick “Declines and flaky payments” in the simulation picker, then read its paused note.",
-  "tutorials.outbox.declineDone": "A simulation's narration shows where a saga compensates for a declined payment.",
+  "tutorials.outbox.declineDone":
+    "A simulation's narration shows where a saga compensates for a declined payment.",
   "tutorials.outbox.finish": "You followed a Message and found the compensation point in a saved simulation.",
   "tutorials.dependencies2.title": "Document a secret setting",
   "tutorials.dependencies2.summary": "Add a setting to a Config dependency and mark it secret.",
@@ -2564,17 +2660,21 @@ const en = {
   "tutorials.dependencies2.showTitle": "Show Dependencies",
   "tutorials.dependencies2.showGoal": "Right-click the canvas, open Show and turn on Dependencies.",
   "tutorials.dependencies2.addTitle": "Add a setting",
-  "tutorials.dependencies2.addGoal": "Click the API's Config connection. In Settings, add {setting} on a new line.",
+  "tutorials.dependencies2.addGoal":
+    "Click the API's Config connection. In Settings, add {setting} on a new line.",
   "tutorials.dependencies2.addDone": "Settings document the keys a service reads over its Config dependency.",
   "tutorials.dependencies2.secretTitle": "Mark the setting secret",
   "tutorials.dependencies2.secretGoal": "Click the unlocked icon beside {setting} to mark it secret.",
-  "tutorials.dependencies2.secretDone": "A locked setting documents a secret reference without storing its value.",
-  "tutorials.dependencies2.finish": "You added a setting and marked its secret reference on the Config connection.",
+  "tutorials.dependencies2.secretDone":
+    "A locked setting documents a secret reference without storing its value.",
+  "tutorials.dependencies2.finish":
+    "You added a setting and marked its secret reference on the Config connection.",
   "routing.tableHeading": "Route table",
   "routing.mixHeading": "Traffic mix",
   "routing.dormantTable":
     "A route table is kept in the file, but this stencil doesn't route HTTP requests, so it doesn't change the run.",
-  "routing.dormantMix": "A traffic mix is kept in the file, but only a source sends one, so it doesn't change the run.",
+  "routing.dormantMix":
+    "A traffic mix is kept in the file, but only a source sends one, so it doesn't change the run.",
   "routing.markerCircle": "circle",
   "routing.markerSquare": "square",
   "routing.markerDiamond": "diamond",
@@ -2639,7 +2739,8 @@ const en = {
   "routing.undo": "Undo",
   "routing.noConnections": "Connect this node to a service first: rules send requests over its connections.",
   "routing.addMix": "Add traffic mix…",
-  "routing.addMixHint": "A traffic mix sends several request routes from this source, each with its share or rate.",
+  "routing.addMixHint":
+    "A traffic mix sends several request routes from this source, each with its share or rate.",
   "routing.mixMode": "Mix by",
   "routing.shares": "Share",
   "routing.rates": "Rate",
@@ -2681,7 +2782,8 @@ const en = {
   "routing.splitShare": "{share, number, percent} split",
   "routing.notFound": "no route: rejected 404",
   "routing.noTarget": "no eligible connection: rejected 404",
-  "routing.tableNotCopied": "The copy of {routers} has no route table: not all of its connections were copied.",
+  "routing.tableNotCopied":
+    "The copy of {routers} has no route table: not all of its connections were copied.",
   "routing.matchMore": "Host, headers and query",
   "routing.rateLimitFold": "Rate limit",
   "routing.ruleNamed": "rule {n, number} ({name})",
@@ -2700,7 +2802,8 @@ const en = {
   "examples.themeSystems": "Full systems",
   "autoscaling.cpuBudget":
     "Too much simultaneous CPU work. New messages are waiting. Reduce traffic or restart with smaller fleets or less startup jitter.",
-  "autoscaling.budget": "Resource lifecycle budget exceeded: {limit, number}. Reduce configured fleets or Capacity ×.",
+  "autoscaling.budget":
+    "Resource lifecycle budget exceeded: {limit, number}. Reduce configured fleets or Capacity ×.",
   "autoscaling.bindingInvalid":
     "This edit would break a scaling source. Change or disable the affected node or saved-simulation policy first.",
   "autoscaling.bindingRequired":
@@ -2772,7 +2875,8 @@ const en = {
   "autoscaling.rows": "Per-replica resources",
   "autoscaling.estimated": "Sampled per-replica values are estimates.",
   "autoscaling.page": "Page {page, number}",
-  "autoscaling.state": "{state, select, ready {Ready} starting {Starting} draining {Draining} other {Unknown}}",
+  "autoscaling.state":
+    "{state, select, ready {Ready} starting {Starting} draining {Draining} other {Unknown}}",
   "autoscaling.chart": "Replica count over simulation time: ready (solid), desired (dashed).",
   "autoscaling.upgrade": "Preview resources and HPA model",
   "autoscaling.model": "p3-a1 · resources and HPA",
@@ -2780,10 +2884,12 @@ const en = {
     "Preserves current workloads and saved actions. Resource costs are added only when you choose a lesson.",
   "autoscaling.checkTitle": "{name}: resource planning",
   "autoscaling.checkMemory": "Configured peak memory exceeds the limit. OOM/restart is not simulated.",
-  "autoscaling.checkInvalid": "HPA needs valid resource requests and a compatible workload. Review Advanced settings.",
+  "autoscaling.checkInvalid":
+    "HPA needs valid resource requests and a compatible workload. Review Advanced settings.",
   "autoscaling.checkMax":
     "HPA needs {needed, number} at target; maximum {max, number}. Startup and partition limits still apply.",
-  "autoscaling.checkWhy": "Configured resource assumptions; this is a steady-state estimate, not a burst guarantee.",
+  "autoscaling.checkWhy":
+    "Configured resource assumptions; this is a steady-state estimate, not a burst guarantee.",
   "autoscaling.whyLabel": "Why",
   "autoscaling.badge": "Ready: {ready, number} → Desired: {desired, number}",
   "autoscaling.modelRequired": "Resources and HPA require the p3-a1 model. Preview the model upgrade first.",
@@ -2840,7 +2946,8 @@ const en = {
     "{working, number} working · {count, number} waiting on {name} · {queued, number} waiting for a connection (pool of {pool, number})",
   "threads.poolFreeDetail":
     "{working, number} working · {count, number} calls to {name} in flight · {queued, number} queued for a connection (pool of {pool, number}); no thread held",
-  "threads.gatewayOutcome": "{count, number} failed: {name} gave up after {seconds, number} s (504 passed to caller)",
+  "threads.gatewayOutcome":
+    "{count, number} failed: {name} gave up after {seconds, number} s (504 passed to caller)",
   "trouble.timedOut": "{name} gave up on {count, number} requests after {seconds, number} s (504)",
   "trouble.timeoutAnnounce": "{name} is timing out requests (504)",
   "trouble.down": "{name} is down",
@@ -2870,7 +2977,8 @@ const en = {
   "trouble.dismiss": "Dismiss",
   "autoscaling.cpuName": "CPU",
   "autoscaling.hpaName": "Kubernetes HPA",
-  "autoscaling.range": "Replica range · Initial: {initial, number} · Minimum: {min, number} · Maximum: {max, number}",
+  "autoscaling.range":
+    "Replica range · Initial: {initial, number} · Minimum: {min, number} · Maximum: {max, number}",
   "autoscaling.cloudPreset":
     "{platform} · {variant, select, cpu {CPU target} alb {ALB requests} step {Step scaling} http {HTTP requests} event {Event rule} rules {Scale rules} other {Concurrency}}",
   "autoscaling.cloudReason":
@@ -2957,7 +3065,8 @@ const en = {
   "staticSkill.imageLabel": "Image",
   "staticSkill.image": "{label}: it tells you how to export one from the app.",
   "staticSkill.linkLabel": "Share link",
-  "staticSkill.link": "{label}: anyone who has the link can open the diagram, so private diagrams never get one.",
+  "staticSkill.link":
+    "{label}: anyone who has the link can open the diagram, so private diagrams never get one.",
   "staticSkill.claudeCommands":
     "Coming soon: this skill will also be in Claude's plugin directory once approved. Run these two commands in Claude Code:",
   "staticSkill.claudeApps": "Claude apps (claude.ai, desktop)",
@@ -2978,12 +3087,14 @@ const en = {
   "staticSkill.copied": "Copied",
   "staticSkill.selectCopy": "Select and copy",
   "collab.startTitle": "Edit together",
-  "collab.startLead": "People with the link knock, and you or a co-host let them in to see and edit this diagram.",
+  "collab.startLead":
+    "People with the link knock, and you or a co-host let them in to see and edit this diagram.",
   "collab.ipServer":
     "This site's collaboration server ({host}) sees your IP address and when you're in a room, never the diagram or the link.",
   "collab.joinIpServer":
     "This site's collaboration server ({host}) will see your IP address and when you're in a room, never the diagram or the link.",
-  "collab.serverUnreachable": "Could not reach the collaboration server. Try again or ask whoever runs this copy.",
+  "collab.serverUnreachable":
+    "Could not reach the collaboration server. Try again or ask whoever runs this copy.",
   "collab.roomFull": "This room is full.",
   "collab.serverFull": "The collaboration server is at capacity. Try again later.",
   "collab.ipPeers": "Everyone in the room can see your IP address.",
@@ -2993,7 +3104,8 @@ const en = {
   "collab.yourName": "Your name in the room",
   "collab.services": "Services: {list}",
   "collab.noServers": "This copy of {app} has no collaboration servers set up.",
-  "workspaceRoom.noDocumentCopy": "Ask the room's host to send a diagram file. No diagram has arrived on this page.",
+  "workspaceRoom.noDocumentCopy":
+    "Ask the room's host to send a diagram file. No diagram has arrived on this page.",
   "workspaceValidation.range": "{field}: enter a number from 0 to {max, number}.",
   "workspaceValidation.integerRange": "{field}: enter a whole number from 0 to {max, number}.",
   "workspaceValidation.target": "{field}: choose an existing target in this diagram.",
@@ -3014,7 +3126,8 @@ const en = {
   "collab.chipHostDropped": "{alias}'s connection dropped. Waiting…",
   "collab.watchingOwn": "You're watching on your own now.",
   "collab.cantFollow": "This browser can't follow exactly, so you're watching on your own.",
-  "collab.versionDiffers": "{alias} is on a different version of Live Diagrams. Reload both pages to watch together.",
+  "collab.versionDiffers":
+    "{alias} is on a different version of Live Diagrams. Reload both pages to watch together.",
   "collab.askToDrive": "Ask to drive",
   "collab.askedToDrive": "Asked to drive…",
   "collab.showToRoom": "Show my Live to the room…",
@@ -3050,7 +3163,8 @@ const en = {
   "collab.admitNamed": "Admit {alias}",
   "collab.denyNamed": "Deny {alias}",
   "collab.removalLimit": "This room has reached its removal limit. Start a new room to remove anyone else.",
-  "collab.removeFailed": "{alias} wasn't removed: the room changed meanwhile. They're still in the room; try again.",
+  "collab.removeFailed":
+    "{alias} wasn't removed: the room changed meanwhile. They're still in the room; try again.",
   "collab.removePerson": "Remove from room",
   "collab.askBeforeJoin": "Ask before people join",
   "collab.deniedNotice": "The host didn't let you in to this room.",
@@ -3108,14 +3222,17 @@ const en = {
   "collab.you": "You — {alias}",
   "collab.peer": "{alias} (unverified) · {status, select, active {active} idle {idle} other {away}}",
   "collab.iceFailed": "Your network or theirs blocks direct connections.",
-  "collab.noAnswer": "No one else is in this room right now. They may have left, or their network may be blocking it.",
+  "collab.noAnswer":
+    "No one else is in this room right now. They may have left, or their network may be blocking it.",
   "collab.palette": "Edit together…",
   "collab.paletteKeywords": "collaborate room edit together live peers invite",
   "collab.leave": "Leave room",
   "collab.connectingTitle": "Connecting to the room…",
-  "collab.connectingHint": "Waiting for someone in the room to send the diagram. Your own diagrams aren't changed.",
+  "collab.connectingHint":
+    "Waiting for someone in the room to send the diagram. Your own diagrams aren't changed.",
   "collab.leftNotice": "You left the room. Your copy is in Your diagrams.",
-  "collab.leftPrivateNotice": "You left the room because this diagram is now private. Your copy stays on this device.",
+  "collab.leftPrivateNotice":
+    "You left the room because this diagram is now private. Your copy stays on this device.",
   "collab.openFailed": "Could not open the room. Try the link again.",
   "collab.unsavedTitle": "Your copy couldn't be saved",
   "collab.unsavedBody":
@@ -3136,8 +3253,10 @@ const en = {
   "collab.saveRoomData": "Save room data",
   "collab.targetRemoved": "The element you were editing was removed by a peer.",
   "collab.controlRemoved": "A peer changed the properties you were editing. Focus returned to the canvas.",
-  "collab.refusedKey": "Your last change was undone: a field name is too long for a room. Shorten it and try again.",
-  "collab.refusedText": "Your last change was undone: its text is too long for a room. Shorten it or save a file copy.",
+  "collab.refusedKey":
+    "Your last change was undone: a field name is too long for a room. Shorten it and try again.",
+  "collab.refusedText":
+    "Your last change was undone: its text is too long for a room. Shorten it or save a file copy.",
   "collab.refusedDepth":
     "Your last change was undone: a value is nested too deeply for a room. Simplify it or save a file copy.",
   "collab.refusedSize":
@@ -3222,12 +3341,14 @@ const en = {
   "fault.magnitude": "Magnitude",
   "fault.invalidTarget": "Fault target “{target}” is missing or cannot take this fault.",
   "examples.faultDrills": "Fault drills",
-  "fault.chooseTarget": "Fault target “{target}” is unavailable. Choose an available target or remove this step.",
+  "fault.chooseTarget":
+    "Fault target “{target}” is unavailable. Choose an available target or remove this step.",
   "fault.unavailablePresets":
     "Some fault presets are unavailable. Add a boundary for Zone outage, connect nodes in different boundaries for Region connectivity, or add a node for Slow dependency and Error spike.",
   "fault.slowCommand": "Fault › Slow down › {factor}×",
   "fault.failCommand": "Fault › Fail › {rate}%",
-  "fault.workBudget": "Fault timeline affects too many nodes. Remove repeated outages or use smaller boundaries.",
+  "fault.workBudget":
+    "Fault timeline affects too many nodes. Remove repeated outages or use smaller boundaries.",
   "fault.repairTarget": "Choose an available fault target, or remove the fault step.",
   "threads.sampling":
     "One held dot holds that many threads. Dot weight is reduced to fit whole dots in caller pools; Auto keeps at least four where possible.",
@@ -3247,9 +3368,11 @@ const en = {
   "resilience.critical": "Critical",
   "resilience.normal": "Normal",
   "resilience.sheddable": "Sheddable",
-  "resilience.priorityHint": "Higher priority runs first. When full, lower-priority waiting requests are shed first.",
+  "resilience.priorityHint":
+    "Higher priority runs first. When full, lower-priority waiting requests are shed first.",
   "resilience.shedCount": "{count, plural, one {# shed} other {# shed}}",
-  "resilience.shedDetail": "Shed {count, number} since restart · refused with 503 (queue full or waited too long)",
+  "resilience.shedDetail":
+    "Shed {count, number} since restart · refused with 503 (queue full or waited too long)",
   "resilience.queueOf": "{count, number} of {limit, number} queued",
   "resilience.fixShedding": "Limit the callee’s queue",
   "resilience.fixSheddingDetail":
@@ -3263,7 +3386,8 @@ const en = {
   "resilience.retryTiming": "Retry timing",
   "resilience.retryTimingHint": "Wait between attempts and spread them out to avoid retrying together.",
   "resilience.retrySafety": "Retry safety & failure types",
-  "resilience.retrySafetyHint": "Retry only failures the caller can handle and requests that are safe to repeat.",
+  "resilience.retrySafetyHint":
+    "Retry only failures the caller can handle and requests that are safe to repeat.",
   "resilience.extraCallsCapped":
     "Extra calls limited to {percent}% or {minimum, number} retries/s, whichever is greater, over 10 seconds",
   "resilience.poolDetails": "Pool & reply handling",
@@ -3274,7 +3398,8 @@ const en = {
   "resilience.openState": "Open · failing fast",
   "resilience.testingState": "Testing · checking recovery",
   "resilience.failureScope": "Settled attempts failed since restart",
-  "resilience.runBudgetRecovered": "{name} recovered: successful requests returned to {rate} and the queue drained.",
+  "resilience.runBudgetRecovered":
+    "{name} recovered: successful requests returned to {rate} and the queue drained.",
   "resilience.timelineJump": "Jump to {time}: {label}",
   "resilience.simulationTime": "Simulation time",
   "hover.recentThroughput": "Recent throughput",
@@ -3283,7 +3408,8 @@ const en = {
   "resilience.upgrade": "Preview retries model",
   "resilience.upgradeHint":
     "Saved retry policies now run. Each attempt has its own timeout; blocking calls hold their thread through backoff. Undo restores the previous model.",
-  "resilience.upgradeCall": "{from} → {to}: {attempts, plural, one {# attempt} other {# attempts}} (a saved policy)",
+  "resilience.upgradeCall":
+    "{from} → {to}: {attempts, plural, one {# attempt} other {# attempts}} (a saved policy)",
   "resilience.upgradeSimulationCall":
     "{simulation}: {from} → {to}, {attempts, plural, one {# attempt} other {# attempts}} (a saved policy)",
   "resilience.upgradeNone": "Calls that will now retry: none.",
@@ -3293,14 +3419,16 @@ const en = {
   "resilience.closed": "Closed",
   "resilience.open": "Open",
   "resilience.testing": "Testing",
-  "resilience.breakerSummary": "Breaker: {state} · {percent} of {count, number} settled attempts failed since restart",
+  "resilience.breakerSummary":
+    "Breaker: {state} · {percent} of {count, number} settled attempts failed since restart",
   "resilience.breakerSummaryUnavailable": "Breaker: {state} · settled failure rate —",
   "resilience.breakerTitleUnavailable": "{from} → {to}: settled failure rate —",
   "resilience.breaker": "Circuit breaker",
   "resilience.on": "On",
   "resilience.addBreaker": "Add a circuit breaker",
   "resilience.removeBreaker": "Remove the circuit breaker",
-  "resilience.breakerHint": "Fails calls fast while the callee keeps failing, then lets a few through to test it.",
+  "resilience.breakerHint":
+    "Fails calls fast while the callee keeps failing, then lets a few through to test it.",
   "resilience.breakerDetails": "Breaker details",
   "resilience.breakerDefaults":
     "Shared across replicas. Resilience4j defaults shortened for short runs: 50% failures over 10 s, at least 20 calls, open 5 s, then 5 test calls.",
@@ -3309,7 +3437,8 @@ const en = {
   "resilience.minimumCalls": "Minimum calls",
   "resilience.slowCallMs": "Slow call threshold",
   "resilience.slowPercent": "Opens at slow calls",
-  "resilience.troubleUnavailable": "Live issue detection couldn't be downloaded. Check your connection and retry.",
+  "resilience.troubleUnavailable":
+    "Live issue detection couldn't be downloaded. Check your connection and retry.",
   "resilience.fixJitterDetail": "Sets 100 ms exponential backoff, capped at 2 s, with full jitter.",
   "resilience.fixDescription": "{reason} {changes}",
   "resilience.fixBudgetDetail": "Sets a 20% retry budget, at least 10 retries/s, plus jittered backoff.",
@@ -3336,7 +3465,8 @@ const en = {
   "resilience.retries": "Retries",
   "resilience.off": "Off",
   "resilience.attempts": "{count, plural, one {# attempt} other {# attempts}}",
-  "resilience.retriesHint": "Each attempt has its own timeout. Retries add load when the callee is already struggling.",
+  "resilience.retriesHint":
+    "Each attempt has its own timeout. Retries add load when the callee is already struggling.",
   "resilience.details": "Retry details",
   "resilience.advanced": "Advanced",
   "resilience.backoff": "Wait before retrying",
@@ -3349,7 +3479,8 @@ const en = {
   "resilience.jitterEqual": "Equal",
   "resilience.jitterFull": "Full",
   "resilience.customJitter": "Custom ({percent}%)",
-  "resilience.jitterHint": "Full jitter waits a random time up to the backoff, so callers don't retry in step.",
+  "resilience.jitterHint":
+    "Full jitter waits a random time up to the backoff, so callers don't retry in step.",
   "resilience.retryOn": "Retry on",
   "resilience.throttled": "Throttled (429)",
   "resilience.transient": "Transient (5xx)",
@@ -3372,7 +3503,8 @@ const en = {
   "workspaceLive.working": "Working",
   "workspaceLive.callsTo": "Calls to {name}",
   "workspaceLive.failing": "Failing",
-  "workspaceLive.retryPolicy": "{attempts, plural, one {# attempt} other {# attempts}} · {backoff} backoff · {budget}",
+  "workspaceLive.retryPolicy":
+    "{attempts, plural, one {# attempt} other {# attempts}} · {backoff} backoff · {budget}",
   "resilience.calls": "Calls",
   "resilience.retriedMetric": "Retry attempts",
   "resilience.amplificationMetric": "Attempts per request",
@@ -3382,7 +3514,8 @@ const en = {
   "resilience.policy":
     "{percent} of settled attempts failed since restart · {attempts, plural, one {# attempt} other {# attempts}} · wait {backoff} · {budget}",
   "resilience.budgetSummary": "{percent}% budget",
-  "resilience.ambiguous": "{count, plural, one {# retry may have run twice} other {# retries may have run twice}}",
+  "resilience.ambiguous":
+    "{count, plural, one {# retry may have run twice} other {# retries may have run twice}}",
   "resilience.latencyBreakdown":
     "Time goes to: waiting on calls {calls} · backing off {backoff} · queued {queued} · work {work} · travel {travel}",
   "resilience.retryBeat": "↻ attempt {attempt} of {max} · after {backoff} ms backoff ({reason})",
@@ -3400,7 +3533,8 @@ const en = {
   "threads.freeAction": "Free the thread while waiting",
   "threads.timeout": "Timeout",
   "threads.noTimeout": "No timeout",
-  "threads.timeoutHint": "How long this call waits for a reply. A timeout fails the caller; downstream work continues.",
+  "threads.timeoutHint":
+    "How long this call waits for a reply. A timeout fails the caller; downstream work continues.",
   "threads.addTimeout": "Add a timeout",
   "threads.pillTimeout": "✕ {count, number} timed out",
   "threads.timeoutCount": "Timed out: {count, number}",
@@ -3411,7 +3545,8 @@ const en = {
   "waitChecks.blockedAbout":
     "At the diagram's rates, waiting on calls dominates thread hold time and exhausts the pool. Uses the live callout's same-seed verified fix.",
   "waitChecks.blindName": "CPU scaling misses waiting threads",
-  "waitChecks.blindAbout": "A same-seed scenario rerun confirms a busy-thread scaling policy for a waiting caller.",
+  "waitChecks.blindAbout":
+    "A same-seed scenario rerun confirms a busy-thread scaling policy for a waiting caller.",
   "waitChecks.timeoutName": "Call has no timeout",
   "waitChecks.timeoutAbout":
     "A request to an outside API or model API has no deadline. Suggests the timeout the live callout uses, within the caller's thread budget.",
@@ -3425,12 +3560,14 @@ const en = {
     "{known, select, true {At full load it uses {cpu, number}% CPU against a {target, number}% target while the backlog grows.} other {CPU stays below its target while the backlog grows.}} A same-seed rerun confirmed scaling on busy threads.",
   "waitChecks.timeout":
     "{blocking, select, true {If it stalls, every thread waits.} other {If it stalls, the call stays in flight indefinitely.}}",
-  "waitChecks.why": "Waiting calls retain resources. A timeout bounds waiting; it does not cancel downstream work.",
+  "waitChecks.why":
+    "Waiting calls retain resources. A timeout bounds waiting; it does not cancel downstream work.",
   "waitChecks.timeoutFix": "Add a {ms, number} ms timeout",
   "waitChecks.replicasFix": "Add replicas ({count, number}; fixed fleet)",
   "threads.timedOutMetric": "timed out",
   "threads.deadlocked": "Deadlocked: every thread waits on a loop. A timeout breaks the wait.",
-  "examples.paymentTimeoutSummary": "A slow provider: compare timeouts and pools while order status keeps working",
+  "examples.paymentTimeoutSummary":
+    "A slow provider: compare timeouts and pools while order status keeps working",
   "threads.holdAction": "Hold a thread while waiting",
   "threads.simulation": "Simulation",
   "threads.callAdvanced": "Call settings · Advanced",
@@ -3441,7 +3578,8 @@ const en = {
   "examples.busySummary": "Compare CPU scaling, busy-thread scaling and freeing threads",
   "examples.poolSummary": "Forty payment connections: protect order-status work by freeing threads",
   "threads.replyHandling": "Reply handling time",
-  "threads.replyHint": "A reply takes a thread again, ahead of new work, and uses 10% of the work's CPU cost.",
+  "threads.replyHint":
+    "A reply takes a thread again, ahead of new work, and uses 10% of the work's CPU cost.",
   "threads.inFlight":
     "{count, plural, one {# call in flight, no thread held} other {# calls in flight, no thread held}}",
   "threads.pillHeld": "⌛ {count, number} held",
@@ -3454,7 +3592,8 @@ const en = {
   "threads.executions": "Executions",
   "threads.noun": "{kind, select, execution {executions} other {threads}}",
   "threads.busy": "{busy, number} of {slots, number} {noun} busy",
-  "threads.waiting": "{working, number} working · {count, plural, one {# waiting} other {# waiting}} on {name}",
+  "threads.waiting":
+    "{working, number} working · {count, plural, one {# waiting} other {# waiting}} on {name}",
   "threads.noneWaiting": "{count, plural, one {# working · none waiting} other {# working · none waiting}}",
   "threads.ceilingLabel": "Ceiling",
   "threads.ceiling":
@@ -3558,7 +3697,8 @@ const en = {
   "hover.readers": "{count, plural, one {# consumer group} other {# consumer groups}}",
   "hover.replicas": "Replicas",
   "hover.parallel": "Parallel per replica",
-  "hover.unread": "Nobody reads this yet: it keeps every message. Lag is per consumer group, and it has none.",
+  "hover.unread":
+    "Nobody reads this yet: it keeps every message. Lag is per consumer group, and it has none.",
   "hover.breakerNone": "No circuit breaker on this connection.",
   "hover.breakerOpenVerdict":
     "Breaker open: calls fail fast with 503 for {seconds, plural, one {# more second} other {# more seconds}}.",
@@ -3583,9 +3723,11 @@ const en = {
   "tutorials.quickAdd.summary": "Use quick-add and Alt+arrow to build a connected flow.",
   "tutorials.quickAdd.diagramTitle": "Quick-add practice",
   "tutorials.quickAdd.apiName": "Web API",
-  "tutorials.quickAdd.finish": "Double-click adds at a spot; Alt+arrow grows a flow and Alt+Shift+arrow copies.",
+  "tutorials.quickAdd.finish":
+    "Double-click adds at a spot; Alt+arrow grows a flow and Alt+Shift+arrow copies.",
   "tutorials.quickAdd.addAppTitle": "Add a browser",
-  "tutorials.quickAdd.addAppGoal": "Double-click empty canvas, type “{query}” in quick-add, then press Enter.",
+  "tutorials.quickAdd.addAppGoal":
+    "Double-click empty canvas, type “{query}” in quick-add, then press Enter.",
   "tutorials.quickAdd.addAppDone": "Quick-add puts recent stencils first.",
   "tutorials.quickAdd.growTitle": "Grow the flow",
   "tutorials.quickAdd.growGoal": "Select the browser, press Alt+→, pick Service, then press Enter.",
@@ -3610,10 +3752,13 @@ const en = {
     "A dot fixes the starting side; a body drop picks the other side automatically.",
   "tutorials.dotsAndSides.sideTitle": "Fix the top side",
   "tutorials.dotsAndSides.sideGoal": "Drag the browser’s right dot onto Service A’s top dot.",
-  "tutorials.dotsAndSides.sideDone": "Dropping on a dot fixes that end’s side without adding another connection.",
+  "tutorials.dotsAndSides.sideDone":
+    "Dropping on a dot fixes that end’s side without adding another connection.",
   "tutorials.dotsAndSides.reconnectTitle": "Reconnect the end",
-  "tutorials.dotsAndSides.reconnectGoal": "Select the connection, then drag its round target end onto Service B.",
-  "tutorials.dotsAndSides.reconnectDone": "Reconnect keeps the connection’s label, relationship and settings.",
+  "tutorials.dotsAndSides.reconnectGoal":
+    "Select the connection, then drag its round target end onto Service B.",
+  "tutorials.dotsAndSides.reconnectDone":
+    "Reconnect keeps the connection’s label, relationship and settings.",
   "tutorials.insertOnEdge.title": "Put a gateway between them",
   "tutorials.insertOnEdge.summary": "Insert an API gateway into an existing Request.",
   "tutorials.insertOnEdge.diagramTitle": "Gateway practice",
@@ -3621,11 +3766,13 @@ const en = {
   "tutorials.insertOnEdge.apiName": "Service",
   "tutorials.insertOnEdge.gatewayName": "API Gateway",
   "tutorials.insertOnEdge.edgeLabel": "Request",
-  "tutorials.insertOnEdge.finish": "Insert node puts a gateway in the flow while preserving the connection’s meaning.",
+  "tutorials.insertOnEdge.finish":
+    "Insert node puts a gateway in the flow while preserving the connection’s meaning.",
   "tutorials.insertOnEdge.insertTitle": "Insert a gateway",
   "tutorials.insertOnEdge.insertGoal":
     "Right-click the Request connection, open Insert node ▸, type “{query}”, pick Amazon API Gateway, then press Enter.",
-  "tutorials.insertOnEdge.insertDone": "Insert splits the connection around the new node and keeps its relationship.",
+  "tutorials.insertOnEdge.insertDone":
+    "Insert splits the connection around the new node and keeps its relationship.",
   "tutorials.insertOnEdge.nameTitle": "Name the gateway",
   "tutorials.insertOnEdge.nameGoal": "In Label, type “{name}”, then press Enter.",
   "tutorials.insertOnEdge.nameDone": "The inserted node and its name share one undo step.",
@@ -3649,7 +3796,8 @@ const en = {
   "tutorials.propertySheet.subtitleDone": "Subtitle adds a second line without changing the stencil.",
   "tutorials.propertySheet.descriptionTitle": "Describe the service",
   "tutorials.propertySheet.descriptionGoal": "In Description, write what Payments does.",
-  "tutorials.propertySheet.descriptionDone": "Description keeps longer notes with the node and supports Markdown.",
+  "tutorials.propertySheet.descriptionDone":
+    "Description keeps longer notes with the node and supports Markdown.",
   "tutorials.requestVsMessage.title": "Make the call a Message",
   "tutorials.requestVsMessage.summary": "Draw a Message, then change a Request and watch traffic continue.",
   "tutorials.requestVsMessage.diagramTitle": "Request and Message practice",
@@ -3665,18 +3813,22 @@ const en = {
   "tutorials.requestVsMessage.connectGoal": "Drag Orders API’s right dot onto Orders Topic.",
   "tutorials.requestVsMessage.connectDone": "A connection into a topic starts as a Message.",
   "tutorials.requestVsMessage.liveTitle": "Go live",
-  "tutorials.requestVsMessage.liveGoal": "Click Go live, then choose Steady orders in the Simulations picker.",
+  "tutorials.requestVsMessage.liveGoal":
+    "Click Go live, then choose Steady orders in the Simulations picker.",
   "tutorials.requestVsMessage.liveDone": "The saved simulation replays the same seeded traffic.",
   "tutorials.requestVsMessage.watchTitle": "Watch the topic",
   "tutorials.requestVsMessage.watchGoal": "Hover Orders Topic and watch at least 10 messages arrive.",
   "tutorials.requestVsMessage.flipTitle": "Make the call a Message",
-  "tutorials.requestVsMessage.flipGoal": "Right-click the Request connection, open Relationship ▸, then pick Message.",
+  "tutorials.requestVsMessage.flipGoal":
+    "Right-click the Request connection, open Relationship ▸, then pick Message.",
   "tutorials.requestVsMessage.flipDone": "A Request holds the caller while it waits; a Message does not.",
   "tutorials.requestVsMessage.watchApiTitle": "Watch the API",
-  "tutorials.requestVsMessage.watchApiGoal": "Hover Orders API: messages keep arriving after the relationship changes.",
+  "tutorials.requestVsMessage.watchApiGoal":
+    "Hover Orders API: messages keep arriving after the relationship changes.",
   "tutorials.boundaries.title": "Group services in a boundary",
   "tutorials.boundaries.summary": "Select services, add a boundary, and bring another service inside.",
-  "tutorials.boundaries.finish": "Boundaries give services membership; Fit to contents keeps the box close to them.",
+  "tutorials.boundaries.finish":
+    "Boundaries give services membership; Fit to contents keeps the box close to them.",
   "tutorials.boundaries.diagramTitle": "Drawing practice",
   "tutorials.boundaries.service1": "Service 1",
   "tutorials.boundaries.service2": "Service 2",
@@ -3704,7 +3856,8 @@ const en = {
   "tutorials.boundaries.fitDone": "Fit to contents trims unused space around the members.",
   "tutorials.annotate.title": "Titles, notes and zones",
   "tutorials.annotate.summary": "Document a diagram with annotations that never carry traffic.",
-  "tutorials.annotate.finish": "Annotations explain your diagram. A zone is not a boundary: nodes never belong to it.",
+  "tutorials.annotate.finish":
+    "Annotations explain your diagram. A zone is not a boundary: nodes never belong to it.",
   "tutorials.annotate.diagramTitle": "Drawing practice",
   "tutorials.annotate.titleTitle": "Add a title",
   "tutorials.annotate.titleGoal": "{annotate} → {tool}. Type your text, then press {escape}.",
@@ -3760,7 +3913,8 @@ const en = {
   "tutorials.commandPalette.service1": "Service 1",
   "tutorials.commandPalette.service2": "Service 2",
   "tutorials.commandPalette.addTitle": "Add from Ctrl+K",
-  "tutorials.commandPalette.addGoal": "Press Ctrl+K, search for {query}, pick {command}, then click {anchor}.",
+  "tutorials.commandPalette.addGoal":
+    "Press Ctrl+K, search for {query}, pick {command}, then click {anchor}.",
   "tutorials.commandPalette.addTip": "Press Ctrl+K, search for {query}, pick {command}, then click {anchor}.",
   "tutorials.commandPalette.addDone": "Ctrl+K finds stencils as well as actions.",
   "tutorials.commandPalette.gotoTitle": "Go to a node",
@@ -3779,7 +3933,8 @@ const en = {
     "Click Present to hide editing controls. Press Escape when you are ready to return.",
   "tutorials.sharePresent.presentTip":
     "Click Present to hide editing controls. Press Escape when you are ready to return.",
-  "tutorials.sharePresent.presentDone": "Present hides editing controls so the diagram reads clearly in a meeting.",
+  "tutorials.sharePresent.presentDone":
+    "Present hides editing controls so the diagram reads clearly in a meeting.",
   "tutorials.sharePresent.leaveTitle": "Return to editing",
   "tutorials.sharePresent.leaveGoal": "Press Escape to leave Present and return to this tutorial.",
   "tutorials.sharePresent.leaveTip": "Press Escape to leave Present and return to this tutorial.",
@@ -3789,7 +3944,8 @@ const en = {
     "Open File and choose Share. Interactive HTML is the safest first row: a file you control, with an optional password.",
   "tutorials.sharePresent.shareTip":
     "Open File and choose Share. Interactive HTML is the safest first row: a file you control, with an optional password.",
-  "tutorials.sharePresent.shareDone": "Share offers Interactive HTML first; opening Share saves and sends nothing.",
+  "tutorials.sharePresent.shareDone":
+    "Share offers Interactive HTML first; opening Share saves and sends nothing.",
   "resilienceChecks.why":
     "Retries add load when a dependency is struggling. Bound repeated work and keep it safe to repeat.",
   "resilienceChecks.shortCircuitedMetric": "Calls failed fast by the breaker",
@@ -3802,7 +3958,8 @@ const en = {
     "If {callee} slows down, {attempts} attempts per request multiply its load by {attempts}.",
   "resilienceChecks.idempotencyTitle": "Retries to {callee} may repeat a {method}.",
   "resilienceChecks.sideEffect": "side effect",
-  "resilienceChecks.idempotencyMessage": "A timed-out request may have succeeded; repeating it can charge twice.",
+  "resilienceChecks.idempotencyMessage":
+    "A timed-out request may have succeeded; repeating it can charge twice.",
   "resilienceChecks.layersTitle": "Retries multiply across {layers, plural, one {# layer} other {# layers}}.",
   "resilienceChecks.layersMessage": "{path}: up to {amplification}× the load on {callee}.",
   "resilienceChecks.layersCappedMessage": "{path}: at least {amplification}× the load on {callee}.",
@@ -3859,7 +4016,8 @@ const en = {
     "Probes up to three retried Requests at configured rates: slow the callee fivefold at 5 s, clear at 10 s, replay to 30 s. Offers only the first cumulative fix proven to recover.",
   // Building blocks: tutorial batch 04.
   "tutorials.apiGateway.title": "Route a mobile app through a gateway",
-  "tutorials.apiGateway.summary": "Build one entry point for Orders and Users, then watch traffic reach both.",
+  "tutorials.apiGateway.summary":
+    "Build one entry point for Orders and Users, then watch traffic reach both.",
   "tutorials.apiGateway.runName": "Gateway traffic",
   "tutorials.apiGateway.ordersName": "Orders",
   "tutorials.apiGateway.usersName": "Users",
@@ -3899,7 +4057,8 @@ const en = {
   "tutorials.kafkaTopic.addTopicDone":
     "The app sends requests to Order service, which publishes messages to the topic.",
   "tutorials.kafkaTopic.billingTitle": "Add Billing",
-  "tutorials.kafkaTopic.billingGoal": "Select the topic, click its +, pick Service, name it {name} and press Enter.",
+  "tutorials.kafkaTopic.billingGoal":
+    "Select the topic, click its +, pick Service, name it {name} and press Enter.",
   "tutorials.kafkaTopic.billingDone": "The first consumer has its own consumer group by default.",
   "tutorials.kafkaTopic.emailTitle": "Add Email",
   "tutorials.kafkaTopic.emailGoal":
@@ -3911,12 +4070,14 @@ const en = {
   "tutorials.kafkaTopic.liveDone": "The saved simulation keeps the same seed on every run.",
   "tutorials.kafkaTopic.watchTitle": "Watch both groups",
   "tutorials.kafkaTopic.watchGoal": "Watch until Billing and Email have each processed at least 10 messages.",
-  "tutorials.kafkaTopic.watchDone": "Every consumer group gets every message; workers within one group share its copy.",
+  "tutorials.kafkaTopic.watchDone":
+    "Every consumer group gets every message; workers within one group share its copy.",
   "tutorials.kafkaTopic.finish":
     "Billing and Email each received the stream because they belong to different consumer groups.",
   "tutorials.kafkaTopic.example": "Open the Kafka order pipeline",
   "tutorials.queueWorkers.title": "A queue shares the work",
-  "tutorials.queueWorkers.summary": "Add a second worker to an SQS queue and see each message go to one worker.",
+  "tutorials.queueWorkers.summary":
+    "Add a second worker to an SQS queue and see each message go to one worker.",
   "tutorials.queueWorkers.runName": "Queue traffic",
   "tutorials.queueWorkers.producerName": "Job producer",
   "tutorials.queueWorkers.queueName": "Jobs",
@@ -3949,7 +4110,8 @@ const en = {
     "On API → Redis, set Simulation ▸ Share of messages to 80%; on API → PostgreSQL, set it to 20%.",
   "tutorials.cacheAside.shareHint":
     "Select Redis, then press Ctrl+Alt+[ to select its incoming connection. Open Simulation in the inspector. Repeat from PostgreSQL for its connection.",
-  "tutorials.cacheAside.shareDone": "Shares are independent, so set both: 80% to Redis and 20% to PostgreSQL.",
+  "tutorials.cacheAside.shareDone":
+    "Shares are independent, so set both: 80% to Redis and 20% to PostgreSQL.",
   "tutorials.cacheAside.liveTitle": "Go Live",
   "tutorials.cacheAside.liveGoal":
     "Click Live, choose Cache traffic in Simulations, then turn on Continuous traffic under More (⋯).",
@@ -3962,7 +4124,8 @@ const en = {
   "tutorials.cacheAside.finish":
     "Redis handled more requests than PostgreSQL. This is a share-based sketch of an 80% hit ratio, not a simulation of cache lookups or misses.",
   "tutorials.loadBalancer.title": "Three replicas behind a load balancer",
-  "tutorials.loadBalancer.summary": "Give a service three replicas, reduce it to two and watch it keep working.",
+  "tutorials.loadBalancer.summary":
+    "Give a service three replicas, reduce it to two and watch it keep working.",
   "tutorials.loadBalancer.runName": "Replica traffic",
   "tutorials.loadBalancer.appName": "Shop app",
   "tutorials.loadBalancer.lbName": "Load balancer",
@@ -3970,18 +4133,22 @@ const en = {
   "tutorials.loadBalancer.replicasTitle": "Set three replicas",
   "tutorials.loadBalancer.replicasGoal":
     "Select Order service, open Simulation in the inspector and set Replicas to 3.",
-  "tutorials.loadBalancer.replicasDone": "One service node can represent three replicas behind a load balancer.",
+  "tutorials.loadBalancer.replicasDone":
+    "One service node can represent three replicas behind a load balancer.",
   "tutorials.loadBalancer.liveTitle": "Go Live",
   "tutorials.loadBalancer.liveGoal":
     "Click Live, choose Replica traffic in Simulations, then turn on Continuous traffic under More (⋯).",
   "tutorials.loadBalancer.liveDone": "The load balancer sends requests to the replicated service.",
   "tutorials.loadBalancer.faultTitle": "Remove one replica",
-  "tutorials.loadBalancer.faultGoal": "Double-click Order service and lower Replicas to 2 in its Simulation section.",
+  "tutorials.loadBalancer.faultGoal":
+    "Double-click Order service and lower Replicas to 2 in its Simulation section.",
   "tutorials.loadBalancer.faultDone":
     "Take down stops the whole node; lowering Replicas stands in for losing one instance.",
   "tutorials.loadBalancer.watchTitle": "Watch it keep working",
-  "tutorials.loadBalancer.watchGoal": "Watch Order service process at least 10 more requests with two replicas.",
-  "tutorials.loadBalancer.watchDone": "The remaining replicas continue processing requests after capacity is reduced.",
+  "tutorials.loadBalancer.watchGoal":
+    "Watch Order service process at least 10 more requests with two replicas.",
+  "tutorials.loadBalancer.watchDone":
+    "The remaining replicas continue processing requests after capacity is reduced.",
   "tutorials.loadBalancer.finish":
     "The service processed more requests with two replicas. Replicas share one node here; lowering their count models a capacity loss, not a per-replica Fault.",
   "tutorials.apiGateway.addHint":
@@ -3993,7 +4160,8 @@ const en = {
   "tutorials.cacheAside.addHint":
     "If the + is outside the canvas, click Fit view (Shift+1), then click the selected node’s +.",
   "tutorials.whereTimeGoes.title": "Where the time goes",
-  "tutorials.whereTimeGoes.summary": "Read Billing latency and compare time spent waiting with time spent working.",
+  "tutorials.whereTimeGoes.summary":
+    "Read Billing latency and compare time spent waiting with time spent working.",
   "tutorials.whereTimeGoes.finish":
     "Latency includes waiting, work and travel. A fast operation can still sit in a long queue.",
   "tutorials.whereTimeGoes.runTitle": "Run Slow Billing drill",
@@ -4002,7 +4170,8 @@ const en = {
     "The drill slows Billing, then restores it so you can compare its latency windows.",
   "tutorials.whereTimeGoes.p95Title": "Read Billing p95",
   "tutorials.whereTimeGoes.p95Goal": "Hover Billing and watch p95 rise above 1,050 ms during the slowdown.",
-  "tutorials.whereTimeGoes.p95Done": "p95 describes the slower end of the sampled requests, rather than the average.",
+  "tutorials.whereTimeGoes.p95Done":
+    "p95 describes the slower end of the sampled requests, rather than the average.",
   "tutorials.whereTimeGoes.compareTitle": "Compare waiting and working",
   "tutorials.whereTimeGoes.compareGoal":
     "Keep Billing’s readout open after it is restored. Watch the backlog clear before examining its latency breakdown.",
@@ -4017,7 +4186,8 @@ const en = {
     "Freeing a thread while waiting leaves room for other work; the Request still waits for its reply.",
   "tutorials.threadsBlock.runTitle": "Run the blocking call",
   "tutorials.threadsBlock.runGoal": "Go Live, then pick Threads held: CPU says all is well in Simulations.",
-  "tutorials.threadsBlock.runDone": "The caller holds threads while the partner replies, even when CPU use is low.",
+  "tutorials.threadsBlock.runDone":
+    "The caller holds threads while the partner replies, even when CPU use is low.",
   "tutorials.threadsBlock.waitTitle": "Watch waiting threads",
   "tutorials.threadsBlock.waitGoal": "Hover Decision service and watch its waiting threads rise above zero.",
   "tutorials.threadsBlock.waitDone": "A waiting thread cannot start another piece of work.",
@@ -4032,7 +4202,8 @@ const en = {
   "tutorials.threadsBlock.resultTitle": "Watch work without waiting threads",
   "tutorials.threadsBlock.resultGoal":
     "Hover Decision service. Watch completions rise while waiting threads stay at zero.",
-  "tutorials.threadsBlock.resultDone": "Requests complete while waiting calls leave the caller’s threads free.",
+  "tutorials.threadsBlock.resultDone":
+    "Requests complete while waiting calls leave the caller’s threads free.",
   "tutorials.timeoutsPools.title": "Timeouts and connection pools",
   "tutorials.timeoutsPools.summary": "Limit how long a slow provider holds a call, then cap its connections.",
   "tutorials.timeoutsPools.finish":
@@ -4040,14 +4211,16 @@ const en = {
   "tutorials.timeoutsPools.runTitle": "Run No timeouts",
   "tutorials.timeoutsPools.runGoal":
     "Go Live, then pick No timeouts in Simulations. Watch Checkout fill with waiting calls.",
-  "tutorials.timeoutsPools.runDone": "A slow payment provider can hold Checkout’s threads and delay unrelated work.",
+  "tutorials.timeoutsPools.runDone":
+    "A slow payment provider can hold Checkout’s threads and delay unrelated work.",
   "tutorials.timeoutsPools.timeoutTitle": "Set Timeout to 600 ms",
   "tutorials.timeoutsPools.timeoutGoal":
     "Click Live to return to editing. Double-click the Request from Checkout to Payment provider. In Simulation, set Timeout to 600 ms.",
   "tutorials.timeoutsPools.timeoutDone":
     "A 600 ms timeout releases the caller’s wait even if the provider replies later.",
   "tutorials.timeoutsPools.timeoutRunTitle": "Run A 600 ms timeout",
-  "tutorials.timeoutsPools.timeoutRunGoal": "Pick A 600 ms timeout in Simulations and watch payments fail fast.",
+  "tutorials.timeoutsPools.timeoutRunGoal":
+    "Pick A 600 ms timeout in Simulations and watch payments fail fast.",
   "tutorials.timeoutsPools.timeoutRunDone":
     "A bounded wait trades slow payment success for prompt failure and room for other work.",
   "tutorials.timeoutsPools.poolTitle": "Set Connection pool to 40",
@@ -4065,22 +4238,26 @@ const en = {
     "A scaling signal should reflect the resource that limits the work; CPU can miss waiting threads.",
   "tutorials.autoscaling.runTitle": "Run the busy-thread comparison",
   "tutorials.autoscaling.runGoal": "Go Live, then pick Scale on busy threads in Simulations.",
-  "tutorials.autoscaling.runDone": "This run scales on busy threads, including threads held by waiting calls.",
+  "tutorials.autoscaling.runDone":
+    "This run scales on busy threads, including threads held by waiting calls.",
   "tutorials.autoscaling.scaleTitle": "Choose Busy threads",
   "tutorials.autoscaling.scaleGoal":
     "Double-click Decision service. Open Simulation, then Advanced, and set Metric to Busy threads (modelled custom metric).",
-  "tutorials.autoscaling.scaleDone": "The diagram now scales on busy threads as well as the saved comparison run.",
+  "tutorials.autoscaling.scaleDone":
+    "The diagram now scales on busy threads as well as the saved comparison run.",
   "tutorials.autoscaling.growTitle": "Watch replicas grow",
   "tutorials.autoscaling.growGoal": "Hover Decision service and watch replicas rise above the initial four.",
   "tutorials.autoscaling.growDone": "Waiting threads create demand for more replicas even when CPU is quiet.",
   "tutorials.scaleToZero.title": "Scale to zero",
   "tutorials.scaleToZero.summary": "Compare a quiet timetable API with the morning rush.",
-  "tutorials.scaleToZero.finish": "An idle API can have zero replicas; new demand must wait for capacity to start.",
+  "tutorials.scaleToZero.finish":
+    "An idle API can have zero replicas; new demand must wait for capacity to start.",
   "tutorials.scaleToZero.runTitle": "Run Quiet Sunday",
   "tutorials.scaleToZero.runGoal": "Go Live, then pick A quiet Sunday in Simulations.",
   "tutorials.scaleToZero.runDone": "The quiet run starts without a running instance.",
   "tutorials.scaleToZero.zeroTitle": "Read zero replicas",
-  "tutorials.scaleToZero.zeroGoal": "Hover the timetable API and read its zero replicas before traffic arrives.",
+  "tutorials.scaleToZero.zeroGoal":
+    "Hover the timetable API and read its zero replicas before traffic arrives.",
   "tutorials.scaleToZero.zeroDone": "Zero replicas means no instance is ready to serve the next request.",
   "tutorials.scaleToZero.rushTitle": "Run Morning rush",
   "tutorials.scaleToZero.rushGoal": "Pick Overnight, then the morning rush in Simulations.",
@@ -4096,33 +4273,40 @@ const en = {
   "tutorials.backlogLag.runName": "Queue practice",
   "tutorials.backlogLag.liveTitle": "Start continuous traffic",
   "tutorials.backlogLag.liveGoal": "Go Live, pick Queue practice, then turn on Continuous traffic in More.",
-  "tutorials.backlogLag.liveDone": "The saved seed makes the producer repeatable; the queue has no reader yet.",
+  "tutorials.backlogLag.liveDone":
+    "The saved seed makes the producer repeatable; the queue has no reader yet.",
   "tutorials.backlogLag.backlogTitle": "Watch backlog reach 50",
   "tutorials.backlogLag.backlogGoal": "Hover Jobs and watch its backlog reach at least 50 messages.",
   "tutorials.backlogLag.backlogDone": "Backlog grows while the queue has no consumer.",
   "tutorials.ratesAndInputs.clientName": "Client",
   "tutorials.ratesAndInputs.serviceName": "Service",
   "tutorials.ratesAndInputs.runName": "Practice traffic",
-  "tutorials.ratesAndInputs.rateGoal": "Select Client, open Simulation in Properties and set Rate to 6. Press Enter.",
+  "tutorials.ratesAndInputs.rateGoal":
+    "Select Client, open Simulation in Properties and set Rate to 6. Press Enter.",
   "tutorials.ratesAndInputs.rateTitle": "Set the Rate",
   "tutorials.ratesAndInputs.rateDone": "Rate is the number of requests the client sends each second.",
   "tutorials.ratesAndInputs.liveTitle": "Run practice traffic",
-  "tutorials.ratesAndInputs.liveGoal": "Click Live, then pick Practice traffic to send six requests per second.",
+  "tutorials.ratesAndInputs.liveGoal":
+    "Click Live, then pick Practice traffic to send six requests per second.",
   "tutorials.ratesAndInputs.liveDone": "A saved seed makes the client’s traffic repeatable.",
   "tutorials.ratesAndInputs.inputsGoal": "Click Inputs in the Live bar.",
   "tutorials.ratesAndInputs.inputsTitle": "Open Inputs",
   "tutorials.ratesAndInputs.inputsDone":
     "Inputs lets you try traffic and capacity changes without editing the diagram.",
-  "tutorials.ratesAndInputs.trafficGoal": "Set Traffic × to 3 in Inputs. Use the slider’s arrow keys for each choice.",
+  "tutorials.ratesAndInputs.trafficGoal":
+    "Set Traffic × to 3 in Inputs. Use the slider’s arrow keys for each choice.",
   "tutorials.ratesAndInputs.trafficTitle": "Multiply the traffic",
-  "tutorials.ratesAndInputs.trafficDone": "Traffic × 3 multiplies the client’s six requests per second to eighteen.",
+  "tutorials.ratesAndInputs.trafficDone":
+    "Traffic × 3 multiplies the client’s six requests per second to eighteen.",
   "tutorials.ratesAndInputs.watchGoal": "Hover Service and watch it process at least 30 requests.",
   "tutorials.ratesAndInputs.watchTitle": "Watch processed requests",
   "tutorials.ratesAndInputs.watchDone": "Processed counts work completed by the service.",
   "tutorials.ratesAndInputs.title": "Rates and Inputs",
   "tutorials.ratesAndInputs.summary": "Set a source rate, multiply traffic and watch the service work.",
-  "tutorials.ratesAndInputs.finish": "Source Rate edits the diagram; Inputs tries a multiplier for the current run.",
-  "tutorials.readANode.liveGoal": "Click Live, then pick Black Friday: 2,000 orders/s in the Simulations picker.",
+  "tutorials.ratesAndInputs.finish":
+    "Source Rate edits the diagram; Inputs tries a multiplier for the current run.",
+  "tutorials.readANode.liveGoal":
+    "Click Live, then pick Black Friday: 2,000 orders/s in the Simulations picker.",
   "tutorials.readANode.liveTitle": "Run the saved simulation",
   "tutorials.readANode.liveDone": "A saved simulation gives this run repeatable traffic and a seed.",
   "tutorials.readANode.readoutGoal": "Hover Order service to open its Live readings.",
@@ -4143,7 +4327,8 @@ const en = {
   "tutorials.capacity.backlogGoal": "Hover Payment jobs and watch a backlog form.",
   "tutorials.capacity.backlogTitle": "See the backlog",
   "tutorials.capacity.backlogDone": "Work queues when traffic exceeds the payment worker’s capacity.",
-  "tutorials.capacity.fixGoal": "Read the bottleneck callout that appears automatically, then click Apply fix.",
+  "tutorials.capacity.fixGoal":
+    "Read the bottleneck callout that appears automatically, then click Apply fix.",
   "tutorials.capacity.fixTitle": "Apply the fix",
   "tutorials.capacity.fixDone": "Apply fix adds the capacity suggested by the bottleneck calculation.",
   "tutorials.capacity.drainGoal": "Hover Payment jobs and watch its backlog drain to zero.",
@@ -4152,7 +4337,8 @@ const en = {
   "tutorials.capacity.title": "Capacity",
   "tutorials.capacity.summary": "Find a bottleneck, apply its suggested fix and watch the queue drain.",
   "tutorials.capacity.finish": "Compare traffic with capacity, then verify the effect of a fix in Live.",
-  "tutorials.traceSlowmo.liveGoal": "Click Live, then pick Black Friday: 2,000 orders/s in the Simulations picker.",
+  "tutorials.traceSlowmo.liveGoal":
+    "Click Live, then pick Black Friday: 2,000 orders/s in the Simulations picker.",
   "tutorials.traceSlowmo.liveTitle": "Run the saved simulation",
   "tutorials.traceSlowmo.liveDone": "A saved simulation gives this run repeatable traffic and a seed.",
   "tutorials.traceSlowmo.slowmoGoal": "Right-click Storefront and pick Watch one message in slow motion.",
@@ -4180,7 +4366,8 @@ const en = {
     "An expectation reports met or failed; either result tells you what the run proved.",
   "tutorials.savedSimulations.title": "Saved simulations",
   "tutorials.savedSimulations.summary": "Run a saved simulation, continue a note and read its expectations.",
-  "tutorials.savedSimulations.finish": "Saved simulations combine repeatable traffic, narration and expectations.",
+  "tutorials.savedSimulations.finish":
+    "Saved simulations combine repeatable traffic, narration and expectations.",
   "tutorials.faults.liveGoal": "Click Live, then pick Zone outage: health checks in the Simulations picker.",
   "tutorials.faults.liveTitle": "Run the saved simulation",
   "tutorials.faults.liveDone": "A saved simulation gives this run repeatable traffic and a seed.",
@@ -4197,12 +4384,14 @@ const en = {
   "tutorials.authorADrill.serviceName": "Service",
   "tutorials.authorADrill.dbName": "Database",
   "tutorials.authorADrill.runName": "Practice traffic",
-  "tutorials.authorADrill.liveGoal": "Click Live, pick Practice traffic, then turn on Continuous traffic in More.",
+  "tutorials.authorADrill.liveGoal":
+    "Click Live, pick Practice traffic, then turn on Continuous traffic in More.",
   "tutorials.authorADrill.liveTitle": "Run practice traffic",
   "tutorials.authorADrill.liveDone": "A saved seed makes this practice run repeatable.",
   "tutorials.authorADrill.openGoal": "Open More in the Live bar, then click Simulations….",
   "tutorials.authorADrill.openTitle": "Open Simulations",
-  "tutorials.authorADrill.openDone": "Simulations stores scripted runs with traffic, faults and expectations.",
+  "tutorials.authorADrill.openDone":
+    "Simulations stores scripted runs with traffic, faults and expectations.",
   "tutorials.authorADrill.drillName": "Practice Drill",
   "tutorials.authorADrill.saveGoal":
     "Click All simulations, then New simulation. Open Timeline and pick Slow dependency in Add step. Click Save.",
@@ -4230,9 +4419,11 @@ const en = {
   "tutorials.retryStorm.failedDone":
     "Failed counts attempts at the callee, so retrying can count the same request again.",
   "tutorials.retryStorm.expectTitle": "Read the backlog expectation",
-  "tutorials.retryStorm.expectGoal": "Watch the backlog expectation at the end. Pick 8× in Speed to play faster.",
+  "tutorials.retryStorm.expectGoal":
+    "Watch the backlog expectation at the end. Pick 8× in Speed to play faster.",
   "tutorials.retryStorm.expectDone": "The backlog expectation fails even after the slowdown has cleared.",
-  "tutorials.retryStorm.finish": "Quick retries can keep a service overloaded after the original problem has gone.",
+  "tutorials.retryStorm.finish":
+    "Quick retries can keep a service overloaded after the original problem has gone.",
   "tutorials.backoffBudget.title": "Backoff and a retry budget",
   "tutorials.backoffBudget.summary": "Compare jitter alone with a cap on extra attempts.",
   "tutorials.backoffBudget.backoffTitle": "Wait before retrying",
@@ -4241,7 +4432,8 @@ const en = {
   "tutorials.backoffBudget.backoffDone": "Backoff spaces attempts instead of sending them all at once.",
   "tutorials.backoffBudget.budgetTitle": "Cap extra attempts",
   "tutorials.backoffBudget.budgetGoal": "Open Retry budget and turn Retry budget on at 20%.",
-  "tutorials.backoffBudget.budgetDone": "A retry budget caps extra calls rather than retrying every failed request.",
+  "tutorials.backoffBudget.budgetDone":
+    "A retry budget caps extra calls rather than retrying every failed request.",
   "tutorials.backoffBudget.jitterTitle": "Run jittered backoff",
   "tutorials.backoffBudget.jitterGoal": "Go Live and pick Jittered backoff in Simulations.",
   "tutorials.backoffBudget.jitterDone":
@@ -4249,10 +4441,12 @@ const en = {
   "tutorials.backoffBudget.jitterExpectTitle": "See what jitter leaves behind",
   "tutorials.backoffBudget.jitterExpectGoal":
     "Watch the backlog expectation at the end. Pick 8× in Speed to play faster.",
-  "tutorials.backoffBudget.jitterExpectDone": "Jitter spreads retries, but the backlog expectation still fails.",
+  "tutorials.backoffBudget.jitterExpectDone":
+    "Jitter spreads retries, but the backlog expectation still fails.",
   "tutorials.backoffBudget.runBudgetTitle": "Run the retry budget",
   "tutorials.backoffBudget.runBudgetGoal": "Pick A retry budget in Simulations.",
-  "tutorials.backoffBudget.runBudgetDone": "This run uses the same seed and slowdown with a 20% retry budget.",
+  "tutorials.backoffBudget.runBudgetDone":
+    "This run uses the same seed and slowdown with a 20% retry budget.",
   "tutorials.backoffBudget.compareTitle": "Compare the expectations",
   "tutorials.backoffBudget.compareGoal":
     "Watch the backlog and goodput expectations at the end. Pick 8× in Speed to play faster.",
@@ -4268,7 +4462,8 @@ const en = {
   "tutorials.circuitBreaker.enableDone": "The breaker belongs to the caller’s connection to its dependency.",
   "tutorials.circuitBreaker.runTitle": "Run the breaker simulation",
   "tutorials.circuitBreaker.runGoal": "Go Live and pick A circuit breaker in Simulations.",
-  "tutorials.circuitBreaker.runDone": "The saved run slows Payments, then restores it with the same seed each time.",
+  "tutorials.circuitBreaker.runDone":
+    "The saved run slows Payments, then restores it with the same seed each time.",
   "tutorials.circuitBreaker.openTitle": "Watch the breaker open",
   "tutorials.circuitBreaker.openGoal": "Hover the Payments connection and watch for Open.",
   "tutorials.circuitBreaker.openDone": "An open breaker fails calls fast so abandoned work can drain.",
@@ -4278,12 +4473,15 @@ const en = {
     "Testing admits a few calls before deciding whether the callee has recovered.",
   "tutorials.circuitBreaker.closedTitle": "Watch it close again",
   "tutorials.circuitBreaker.closedGoal": "Watch for Closed after recovery. Pick 8× in Speed to play faster.",
-  "tutorials.circuitBreaker.closedDone": "Successful test calls close the breaker and ordinary traffic resumes.",
+  "tutorials.circuitBreaker.closedDone":
+    "Successful test calls close the breaker and ordinary traffic resumes.",
   "tutorials.circuitBreaker.finish":
     "A breaker gives a struggling dependency room to recover, then tests it before reopening traffic.",
   "tutorials.rateLimit.quotaTitle": "Set a 10-per-second quota",
-  "tutorials.rateLimit.quotaGoal": "Double-click Rate Limiter, open Simulation and set Rate limit to 10 requests/s.",
-  "tutorials.rateLimit.quotaDone": "The quota now admits 10 requests per second from the 20-per-second partner.",
+  "tutorials.rateLimit.quotaGoal":
+    "Double-click Rate Limiter, open Simulation and set Rate limit to 10 requests/s.",
+  "tutorials.rateLimit.quotaDone":
+    "The quota now admits 10 requests per second from the 20-per-second partner.",
   "tutorials.backlogLag.addTitle": "Add a consumer",
   "tutorials.backlogLag.addGoal": "Wait for the Trouble callout, then click Add a consumer.",
   "tutorials.backlogLag.addDone":
@@ -4294,7 +4492,8 @@ const en = {
   "tutorials.backlogLag.progressDone":
     "The new run proves the consumer keeps up; its counters start again after the topology change.",
   "tutorials.sharedApiQuotas.title": "Shared API quotas",
-  "tutorials.sharedApiQuotas.summary": "Compare a shared token budget with an independent payment rate limit.",
+  "tutorials.sharedApiQuotas.summary":
+    "Compare a shared token budget with an independent payment rate limit.",
   "tutorials.sharedApiQuotas.runTitle": "Run the launch burst",
   "tutorials.sharedApiQuotas.runGoal": "Go Live and pick Assistant launch burst in Simulations.",
   "tutorials.sharedApiQuotas.runDone": "Two model endpoints spend the same fictional project budget.",
@@ -4309,13 +4508,15 @@ const en = {
   "tutorials.sharedApiQuotas.smallGoal": "Pick A small batch fits in Simulations.",
   "tutorials.sharedApiQuotas.smallDone": "Four questions and three payments fit their respective budgets.",
   "tutorials.sharedApiQuotas.servedTitle": "Watch the batch finish",
-  "tutorials.sharedApiQuotas.servedGoal": "Hover Answer model and wait for Processed to reach 4 with Rejected at zero.",
+  "tutorials.sharedApiQuotas.servedGoal":
+    "Hover Answer model and wait for Processed to reach 4 with Rejected at zero.",
   "tutorials.sharedApiQuotas.servedDone":
     "The smaller batch completes within both the shared token and local request budgets.",
   "tutorials.sharedApiQuotas.finish":
     "Shared quotas count work across endpoints; independent APIs keep their own budgets.",
   "tutorials.rateLimit.title": "A rate limit",
-  "tutorials.rateLimit.summary": "Send 20 requests per second through a 10-per-second quota and watch refusals.",
+  "tutorials.rateLimit.summary":
+    "Send 20 requests per second through a 10-per-second quota and watch refusals.",
   "tutorials.rateLimit.partnerName": "Partner client",
   "tutorials.rateLimit.limiterName": "Rate Limiter",
   "tutorials.rateLimit.apiName": "API",
@@ -4328,9 +4529,11 @@ const en = {
   "tutorials.rateLimit.rejectedGoal": "Hover Rate Limiter and watch Rejected reach at least 10.",
   "tutorials.rateLimit.rejectedDone":
     "Requests over the available quota receive 429 replies instead of reaching the API.",
-  "tutorials.rateLimit.finish": "A rate quota refuses excess requests before they consume the API’s capacity.",
+  "tutorials.rateLimit.finish":
+    "A rate quota refuses excess requests before they consume the API’s capacity.",
   "tutorials.healthChecks.title": "Health checks",
-  "tutorials.healthChecks.summary": "Compare a zone outage with and without health checks at the load balancer.",
+  "tutorials.healthChecks.summary":
+    "Compare a zone outage with and without health checks at the load balancer.",
   "tutorials.healthChecks.withoutTitle": "Run without health checks",
   "tutorials.healthChecks.withoutGoal": "Click Live, then pick Zone outage: no health checks in Simulations.",
   "tutorials.healthChecks.withoutDone": "This seeded Drill keeps both zones in rotation when one goes down.",
@@ -4339,7 +4542,8 @@ const en = {
   "tutorials.healthChecks.lossDone":
     "Without health checks, the load balancer keeps sending requests into the down zone.",
   "tutorials.healthChecks.withTitle": "Run with health checks",
-  "tutorials.healthChecks.withGoal": "Pick Zone outage: health checks in Simulations to replay the same outage.",
+  "tutorials.healthChecks.withGoal":
+    "Pick Zone outage: health checks in Simulations to replay the same outage.",
   "tutorials.healthChecks.withDone": "The same seed and traffic isolate the effect of health checks.",
   "tutorials.healthChecks.protectionTitle": "Watch the surviving zone serve",
   "tutorials.healthChecks.protectionGoal":
@@ -4350,10 +4554,12 @@ const en = {
     "Health checks keep new requests away from a down target; the surviving targets still need enough capacity.",
   "tutorials.healthChecks.example": "Explore the zone outage Drill",
   "tutorials.deadLetters.title": "Dead letters",
-  "tutorials.deadLetters.summary": "Watch poison messages reach a dead-letter queue and set their delivery limit.",
+  "tutorials.deadLetters.summary":
+    "Watch poison messages reach a dead-letter queue and set their delivery limit.",
   "tutorials.deadLetters.runTitle": "Run poison messages",
   "tutorials.deadLetters.runGoal": "Click Live, then pick Poison invoices in Simulations.",
-  "tutorials.deadLetters.runDone": "This seeded run makes every ledger attempt fail so commands need redelivery.",
+  "tutorials.deadLetters.runDone":
+    "This seeded run makes every ledger attempt fail so commands need redelivery.",
   "tutorials.deadLetters.watchTitle": "Watch dead letters accumulate",
   "tutorials.deadLetters.watchGoal": "Hover invoice.commands and watch Dead-lettered reach at least one.",
   "tutorials.deadLetters.watchDone":
@@ -4366,7 +4572,8 @@ const en = {
   "tutorials.deadLetters.finish":
     "Dead letters retain poison messages for investigation after their delivery limit is exhausted.",
   "tutorials.scaleToZero.coldTitle": "Watch an instance start",
-  "tutorials.scaleToZero.coldGoal": "Hover the timetable API as demand arrives and watch Starting rise above zero.",
+  "tutorials.scaleToZero.coldGoal":
+    "Hover the timetable API as demand arrives and watch Starting rise above zero.",
   "tutorials.scaleToZero.coldDone":
     "Starting instances are the cold-start signal here: new demand waits for them to become ready.",
   "tutorials.deadLetters.replayTitle": "Plan a replay",
@@ -4383,17 +4590,20 @@ const en = {
   "tutorials.loadShedding.liveTitle": "Start the practice run",
   "tutorials.loadShedding.liveGoal":
     "Click Live, then pick Traffic spike in Simulations. Traffic waits for your injection.",
-  "tutorials.loadShedding.liveDone": "The saved seed makes this practice run repeatable, with no automatic traffic.",
+  "tutorials.loadShedding.liveDone":
+    "The saved seed makes this practice run repeatable, with no automatic traffic.",
   "tutorials.loadShedding.capTitle": "Bound the waiting queue",
   "tutorials.loadShedding.capGoal":
     "Leave Live. Double-click API, open Simulation, then Advanced · queue. Set Queue limit to 10 and press Tab.",
-  "tutorials.loadShedding.capDone": "The API now keeps at most 10 waiting requests and refuses new ones when full.",
+  "tutorials.loadShedding.capDone":
+    "The API now keeps at most 10 waiting requests and refuses new ones when full.",
   "tutorials.loadShedding.boundedTitle": "Repeat the spike",
   "tutorials.loadShedding.boundedGoal":
     "Go Live, pick Traffic spike, then right-click Client and pick Inject, then 100 again. Hover API to watch Shed rise while its waiting queue stays at most 10.",
   "tutorials.loadShedding.boundedDone": "Excess requests are refused while the waiting queue stays bounded.",
   "tutorials.loadShedding.title": "Load shedding",
-  "tutorials.loadShedding.summary": "Inject a spike, bound the API queue and watch excess requests get refused.",
+  "tutorials.loadShedding.summary":
+    "Inject a spike, bound the API queue and watch excess requests get refused.",
   "tutorials.loadShedding.clientName": "Client",
   "tutorials.loadShedding.apiName": "API",
   "tutorials.loadShedding.dbName": "Slow database",
@@ -4404,11 +4614,13 @@ const en = {
   "tutorials.loadShedding.backlogTitle": "Watch the backlog grow",
   "tutorials.loadShedding.backlogGoal":
     "Hover API and watch its backlog grow while requests wait for the slow database.",
-  "tutorials.loadShedding.backlogDone": "A slow dependency holds work in flight while new arrivals queue behind it.",
+  "tutorials.loadShedding.backlogDone":
+    "A slow dependency holds work in flight while new arrivals queue behind it.",
   "tutorials.loadShedding.finish":
     "A bounded queue refuses excess requests so a traffic spike cannot grow waiting work without limit.",
   "tutorials.studyCheckout.title": "Design study: checkout at tenfold traffic",
-  "tutorials.studyCheckout.summary": "Keep orders durable through a rush while respecting a payment partner’s quota.",
+  "tutorials.studyCheckout.summary":
+    "Keep orders durable through a rush while respecting a payment partner’s quota.",
   "tutorials.studyCheckout.storefront": "Storefront",
   "tutorials.studyCheckout.checkout": "Checkout",
   "tutorials.studyCheckout.payments": "Payments partner",
@@ -4459,7 +4671,8 @@ const en = {
   "tutorials.studyDispatch.fixTitle": "Fix the partition ceiling",
   "tutorials.studyDispatch.fixGoal":
     "Use at least four Dispatcher replicas, give Location topic at least as many partitions, and pass Backlog bounded in More partitions.",
-  "tutorials.studyDispatch.fixHint": "An unassigned consumer adds no capacity; change the topic as well as the fleet.",
+  "tutorials.studyDispatch.fixHint":
+    "An unassigned consumer adds no capacity; change the topic as well as the fleet.",
   "tutorials.studyDispatch.fixDone": "Partitions bound useful consumer parallelism within a consumer group.",
   "tutorials.studyDispatch.finish":
     "Compare the partition and scaling choices with the reference design; what happens when a fleet grows beyond its topic?",
@@ -4517,7 +4730,8 @@ const en = {
     "Email allows 4 requests/s, SMS 2 and push 6. Run Provider limits and deliver through every channel with Rejected at 0.",
   "tutorials.studyFanout.limitsHint":
     "On each sender-to-provider Request, open Simulation ▸ Advanced and set Connection pool to 1. The providers take 250, 500 and 200 ms per request.",
-  "tutorials.studyFanout.limitsDone": "A separate connection pool paces each provider without raising its quota.",
+  "tutorials.studyFanout.limitsDone":
+    "A separate connection pool paces each provider without raising its quota.",
   "tutorials.studyFanout.queuesTitle": "Give each channel its own dead-letter path",
   "tutorials.studyFanout.queuesGoal":
     "Insert a queue before each sender, make its incoming connection a Message, and add a separate dead-letter queue with Max deliveries set to 2 on the main queue.",
@@ -4589,7 +4803,8 @@ const en = {
     "Run Bad cell deploy. Bookings must fail requests in its cell while every service in the neighbouring cell keeps processing with Failed at 0.",
   "tutorials.studyCells.deployHint":
     "The seeded Fault makes Bookings fail at 1 s. Compare both cells' counters after 5 s; zero failures only count when the neighbour also processes traffic.",
-  "tutorials.studyCells.deployDone": "Independent cells contain a bad build's failures to the cell that received it.",
+  "tutorials.studyCells.deployDone":
+    "Independent cells contain a bad build's failures to the cell that received it.",
   "tutorials.studyCells.evacuateTitle": "Evacuate a region",
   "tutorials.studyCells.evacuateGoal":
     "Add a Load Balancer after Global routing, then a Go Service in its own boundary. Run Evacuate East and keep bookings flowing in the new region without failures or drops.",
@@ -4620,5 +4835,6 @@ const en = {
   "workbench.sheetHalf": "Half height",
   "workbench.sheetFull": "Full height",
   "workbench.speed": "Speed",
+  "toast.undoUnavailable": "Undo unavailable: the diagram changed.",
 } as const;
 export default en;

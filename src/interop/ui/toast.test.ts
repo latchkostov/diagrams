@@ -1,5 +1,31 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { notify, toast } from "./toast";
+import { HistoryController } from "../../editor/historyController";
+import { canUndo, present } from "../../editor/history";
+import { toFlow } from "../../canvas/convert";
+
+function editorHistory() {
+  const snapshot = (title: string) => toFlow({ format: "diagrams/v1", title, nodes: [], edges: [] });
+  const history = new HistoryController(snapshot("Initial"), 0);
+  const current = () => (canUndo(history.history) ? history.undoEntryId() : undefined);
+  const unbind = toast.bindHistory({ capture: current, current });
+  return {
+    history,
+    unbind,
+    edit: (title: string) =>
+      history.replace(
+        present(history.history).value,
+        undefined,
+        snapshot(title),
+        "same-tag",
+        { nodes: [], edges: [] },
+        0,
+      ),
+    undo: () => history.step("undo", { nodes: [], edges: [] }),
+    redo: () => history.step("redo", { nodes: [], edges: [] }),
+    title: () => present(history.history).value.meta.title,
+  };
+}
 
 afterEach(() => {
   toast.release();
@@ -72,6 +98,76 @@ describe("an engaged toast keeps its action", () => {
       toast.dismiss(task);
       expect(toast.current?.id).toBe(next);
       expect(toast.engaged).toBe(false);
+    });
+  }
+});
+
+describe("history-bound Undo", () => {
+  it("keeps the same entry ID when autosave assigns a copy name", () => {
+    const h = editorHistory();
+    try {
+      h.edit("A");
+      const id = toast.info("Applied A", { action: { label: "Undo", run: h.undo, undoes: true } });
+      h.history.renameTitle("A", "A copy");
+      toast.invalidateUndo();
+      expect(toast.canRunAction(id)).toBe(true);
+      toast.current!.action!.run();
+      expect(h.title()).toBe("Initial");
+    } finally {
+      h.unbind();
+    }
+  });
+  for (const contact of ["pointer", "focus"] as const) {
+    it(`cannot undo B from retained A during ${contact}, even before invalidation renders`, () => {
+      const h = editorHistory();
+      try {
+        h.edit("A");
+        const id = toast.success("Applied A", { action: { label: "Undo", run: h.undo, undoes: true } });
+        const action = toast.current!.action!;
+        const entryId = toast.current!.undoEntryId;
+        toast.contact(contact, true);
+        h.edit("B");
+        toast.success("Applied B", { action: { label: "Undo", run: h.undo, undoes: true } });
+        expect(toast.current?.id).toBe(id);
+        action.run();
+        expect(h.title()).toBe("B");
+        expect(toast.current).toMatchObject({ id, undoEntryId: entryId, undoUnavailable: true });
+        expect(toast.canRunAction(id)).toBe(false);
+        toast.contact(contact, false);
+        expect(toast.current?.text).toBe("Applied B");
+        toast.current!.action!.run();
+        expect(h.title()).toBe("A");
+      } finally {
+        h.unbind();
+      }
+    });
+  }
+
+  for (const movement of ["undo", "redo", "branch", "edit"] as const) {
+    it(`invalidates after external ${movement} without reviving the old action`, () => {
+      const h = editorHistory();
+      try {
+        h.edit("A");
+        const id = toast.info("Applied A", { action: { label: "Undo", run: h.undo, undoes: true } });
+        const action = toast.current!.action!;
+        toast.contact("focus", true);
+        if (movement === "edit") h.edit("B");
+        else {
+          h.undo();
+          if (movement === "branch") h.edit("A");
+          else if (movement === "redo") {
+            toast.invalidateUndo();
+            h.redo();
+          }
+        }
+        const before = h.title();
+        toast.invalidateUndo();
+        action.run();
+        expect(h.title()).toBe(before);
+        expect(toast.canRunAction(id)).toBe(false);
+      } finally {
+        h.unbind();
+      }
     });
   }
 });
