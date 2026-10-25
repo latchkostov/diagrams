@@ -135,6 +135,7 @@ export function createInteractionController<P = unknown>(
   /** Live's hover cards, while Live attaches them (readoutLayer.ts): their own store, apart from the snapshot. */
   let readouts: ReadoutLayer | null = null;
   const escapes: (() => boolean)[] = [];
+  const pendingOwners: ((event: KeyboardEvent) => boolean)[] = [];
   let camera = options.camera;
   let focus: FocusState = initialFocus();
   /** The camera's view of the open menu (it hears of a change of kind only, as before). */
@@ -593,6 +594,21 @@ export function createInteractionController<P = unknown>(
       changed();
     },
     /** Transient surfaces own Escape before selection. The newest eligible surface consumes one press. */
+    pendingOwner(take: (event: KeyboardEvent) => boolean) {
+      pendingOwners.push(take);
+      return () => {
+        const index = pendingOwners.indexOf(take);
+        if (index >= 0) pendingOwners.splice(index, 1);
+      };
+    },
+    /** Called at each capture boundary, including before canvas naming and nudging. */
+    captureKey(event: KeyboardEvent) {
+      if (event.defaultPrevented || event.isComposing) return false;
+      if (![...pendingOwners].reverse().some((take) => take(event))) return false;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      return true;
+    },
     attachEscape(close: () => boolean) {
       escapes.push(close);
       return () => {

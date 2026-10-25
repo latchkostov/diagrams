@@ -18,12 +18,16 @@ describe("trace runtime handoff", () => {
       const checkpoint = c.getState().snapshot;
       let blocked = true;
       const before = { x: 12, y: 34, zoom: 0.8 };
+      const release = vi.fn();
+      const reserve = vi.fn(() => release);
       const facade = createTraceFacade(
         c,
         () => before,
         () => blocked,
+        reserve,
       );
       facade.slow.start({ kind: "next", node: "caller" });
+      expect(reserve).toHaveBeenCalledTimes(1);
       expect(c.isHeld).toBe(true);
       expect(c.isPlaying).toBe(false);
       c.advance(2000);
@@ -57,8 +61,10 @@ describe("trace runtime handoff", () => {
       blocked = false;
       facade.slow.frame(0, 1);
       expect(start).toHaveBeenCalledExactlyOnceWith({ kind: "next", node: "caller" }, before);
+      expect(release).not.toHaveBeenCalled();
       expect(c.getState().snapshot.time).toBe(checkpoint.time);
       facade.slow.end();
+      expect(release).toHaveBeenCalledTimes(1);
       expect(c.isHeld).toBe(false);
       expect(c.isPlaying).toBe(playing);
       c.dispose();

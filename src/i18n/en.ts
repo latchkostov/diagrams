@@ -10,6 +10,7 @@
 // stays.
 
 const en = {
+  "record.waitingForReplay": "Slow motion is waiting for a message. Send one, then record again.",
   "tutorials.loadFailed": "Couldn’t load the practice diagram. Try again.",
   "tutorials.runtime.title": "Practice with a saved simulation",
   "tutorials.runtime.summary": "Try a saved simulation on a practice copy of an example.",

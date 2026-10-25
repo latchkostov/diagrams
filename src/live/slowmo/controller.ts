@@ -46,6 +46,7 @@ const KEY_OWNERS = '[role="menu"], [role="dialog"], [data-testid="sim-panel"], [
 const SELECTED = ".react-flow__node.selected, .react-flow__edge.selected";
 
 export interface SlowMotionView {
+  captureKey?(event: KeyboardEvent): boolean;
   session: SlowMotionApi;
   state: SlowState;
   /** Start slow motion (saves the view to come back to). */
@@ -252,49 +253,49 @@ export function createSlowMotionView(opts: SlowMotionOptions) {
 
   // Keys: Space plays / pauses, ← → step hop by hop, Esc goes back to live. Menus, dialogs, panels,
   // text fields and a recording keep theirs; a selection is cleared before Esc leaves.
+  const onKey = (e: KeyboardEvent) => {
+    const status = session.getState().status;
+    if (status === "off" || e.ctrlKey || e.metaKey || e.altKey || e.defaultPrevented) return;
+    if (typeAheadActive()) return;
+    const t = e.target;
+    // Text fields keep their keys; a slider (the replay's timeline) doesn't, so Esc still leaves.
+    const slider = t instanceof HTMLInputElement && t.type === "range";
+    if ((isEditableTarget(t) && !(slider && e.key === "Escape")) || document.querySelector(KEY_OWNERS)) return;
+    if (e.key === "Escape") {
+      if (isRecordingActive() || document.querySelector(SELECTED)) return;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      session.escape();
+      return;
+    }
+    const nativeControl = t instanceof Element && t.closest('button, select, input, a, [role="separator"]');
+    if ((e.key === "Enter" || e.key === " ") && nativeControl) return;
+    if (["Enter", " ", "ArrowLeft", "ArrowRight"].includes(e.key) && status !== "on") {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      return;
+    }
+    if (e.key === "Enter") {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      return;
+    }
+    if (status !== "on") return;
+    const inControl = t instanceof Element && !!t.closest('select, input, a, [role="separator"]');
+    if (
+      (e.key === " " || e.code === "Space") &&
+      !(t instanceof Element && t.closest('button, select, a, [role="separator"]'))
+    ) {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      if (!e.repeat) session.toggle();
+    } else if ((e.key === "ArrowRight" || e.key === "ArrowLeft") && !inControl) {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      session.step(e.key === "ArrowRight" ? 1 : -1);
+    }
+  };
   connecting.push(() => {
-    const onKey = (e: KeyboardEvent) => {
-      const status = session.getState().status;
-      if (status === "off" || e.ctrlKey || e.metaKey || e.altKey || e.defaultPrevented) return;
-      if (typeAheadActive()) return;
-      const t = e.target;
-      // Text fields keep their keys; a slider (the replay's timeline) doesn't, so Esc still leaves.
-      const slider = t instanceof HTMLInputElement && t.type === "range";
-      if ((isEditableTarget(t) && !(slider && e.key === "Escape")) || document.querySelector(KEY_OWNERS)) return;
-      if (e.key === "Escape") {
-        if (isRecordingActive() || document.querySelector(SELECTED)) return;
-        e.preventDefault();
-        e.stopImmediatePropagation();
-        session.escape();
-        return;
-      }
-      const nativeControl = t instanceof Element && t.closest('button, select, input, a, [role="separator"]');
-      if ((e.key === "Enter" || e.key === " ") && nativeControl) return;
-      if (["Enter", " ", "ArrowLeft", "ArrowRight"].includes(e.key) && status !== "on") {
-        e.preventDefault();
-        e.stopImmediatePropagation();
-        return;
-      }
-      if (e.key === "Enter") {
-        e.preventDefault();
-        e.stopImmediatePropagation();
-        return;
-      }
-      if (status !== "on") return;
-      const inControl = t instanceof Element && !!t.closest('select, input, a, [role="separator"]');
-      if (
-        (e.key === " " || e.code === "Space") &&
-        !(t instanceof Element && t.closest('button, select, a, [role="separator"]'))
-      ) {
-        e.preventDefault();
-        e.stopImmediatePropagation();
-        if (!e.repeat) session.toggle();
-      } else if ((e.key === "ArrowRight" || e.key === "ArrowLeft") && !inControl) {
-        e.preventDefault();
-        e.stopImmediatePropagation();
-        session.step(e.key === "ArrowRight" ? 1 : -1);
-      }
-    };
     window.addEventListener("keydown", onKey, true);
     return () => window.removeEventListener("keydown", onKey, true);
   });
@@ -347,6 +348,10 @@ export function createSlowMotionView(opts: SlowMotionOptions) {
   };
 
   return {
+    captureKey(e: KeyboardEvent) {
+      onKey(e);
+      return e.defaultPrevented;
+    },
     session,
     start,
     end,

@@ -118,6 +118,7 @@ export function useInteractionLifecycle<P>(controller: InteractionController<P> 
     const press = () => controller.input("press");
     const key = (event: KeyboardEvent) => {
       controller.input("key");
+      if (controller.captureKey(event)) return;
       if (event.key !== "Escape" || event.defaultPrevented || event.isComposing) return;
       const overlay = document.querySelector('[role="dialog"]')
         ? "dialog"

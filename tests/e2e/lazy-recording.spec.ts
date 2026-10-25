@@ -31,6 +31,41 @@ test("held runtime: recording waits for the pending replay, then starts its exac
   }
 });
 
+for (const heldRuntime of [false, true]) {
+  test(`recording requires a replay script like eager behaviour: held=${heldRuntime}`, async ({ page }) => {
+    const held = await holdTraceRuntime(page, "&traffic=0");
+    try {
+      if (!heldRuntime) {
+        await replayNode(page);
+        held.release();
+        await expect(page.getByTestId("trace-waiting")).toBeVisible();
+        await page.getByTestId("trace-card-close").click();
+        // With eager code an armed replay has no record-this-replay option.
+        await page.getByTestId("node-shopper").click({ button: "right" });
+        await page.getByTestId("context-menu-item-sim.slowmo-from").click();
+        await expect(page.getByTestId("trace-waiting")).toBeVisible();
+      } else await replayNode(page);
+      await page.getByTestId("live-more").click();
+      await page.getByTestId("live-record").click();
+      if (!heldRuntime) {
+        await expect(page.getByTestId("record-opt-slowmo")).toHaveCount(0);
+        return;
+      }
+      await expect(page.getByTestId("record-opt-slowmo")).toBeChecked();
+      await page.getByTestId("record-start").click();
+      await expect.poll(() => page.evaluate(() => window.__lazySurfaces?.pendingOutputs())).toBeGreaterThan(0);
+      held.release();
+      await expect(page.getByTestId("record-error")).toContainText("waiting for a message");
+      await expect(page.getByTestId("record-countdown")).toHaveCount(0);
+      await expect(page.getByTestId("record-indicator")).toHaveCount(0);
+      await expect(page.getByTestId("record-start")).toBeEnabled();
+      await expect(page.getByTestId("trace-waiting")).toBeVisible();
+    } finally {
+      held.release();
+    }
+  });
+}
+
 declare global {
   interface Window {
     __heldSurfaceCapture: MediaStream;

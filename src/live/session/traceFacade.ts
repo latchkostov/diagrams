@@ -5,6 +5,7 @@ import type { LiveController } from "../controller";
 import type { SlowMotionApi, SlowMotionView } from "../slowmo/controller";
 import type { SlowSource, SlowState } from "../slowmo/session";
 import type { View } from "../slowmo/camera";
+import type { useSlowTraceCard } from "../slowmo/traceCard";
 import { traceRuntimeMachine, type RuntimeEvent } from "./traceRuntimeMachine";
 
 const off: SlowState = {
@@ -23,20 +24,33 @@ const off: SlowState = {
 const waiting: SlowState = { ...off, status: "capturing", loading: true };
 export interface TraceService {
   slow: SlowMotionView;
+  card?: ReturnType<typeof useSlowTraceCard>;
   journey(trace: MessageTrace, diagram: DiagramFile): NonNullable<SlowMotionView["path"]>;
 }
 
 /** The shell owns requests, holds and subscriptions even before there is a runtime. A failed
  * download keeps the checkpoint held for Retry or Escape. Modal ownership queues handoff. */
-export function createTraceFacade(controller: LiveController, view: () => View, blocked: () => boolean) {
+export function createTraceFacade(
+  controller: LiveController,
+  view: () => View,
+  blocked: () => boolean,
+  reserve?: (end: () => void, loaded: (event: KeyboardEvent) => boolean) => (() => void) | undefined,
+) {
   const machine = createMachine(traceRuntimeMachine);
   const listeners = new Set<() => void>();
   let service: TraceService | null = null;
   let unsubscribe: (() => void) | undefined;
+  let releaseKeys: (() => void) | undefined;
+  let attachment = 0;
+  let handingOff = false;
   let wasPlaying = false;
   let before: View | undefined;
   let snapshot = { state: off, service } as { state: SlowState; service: TraceService | null };
   const emit = () => {
+    if (!handingOff && !machine.state.source && service?.slow.session.getState().status === "off") {
+      releaseKeys?.();
+      releaseKeys = undefined;
+    }
     snapshot = { state: machine.state.source ? waiting : (service?.slow.session.getState() ?? off), service };
     listeners.forEach((fn) => fn());
   };
@@ -45,14 +59,27 @@ export function createTraceFacade(controller: LiveController, view: () => View, 
     const { commands } = machine.send(event);
     for (const command of commands) {
       if (command === "preserve") {
+        releaseKeys?.();
+        releaseKeys = reserve?.(end, (event) => service?.slow.captureKey?.(event) ?? false);
         wasPlaying = controller.isPlaying;
         before = view();
         controller.setPlaying(false);
         controller.hold(true);
       } else {
+        if (command === "release") {
+          releaseKeys?.();
+          releaseKeys = undefined;
+        }
         controller.hold(false);
         controller.setPlaying(wasPlaying);
-        if (command === "handoff") service!.slow.start(source!, before);
+        if (command === "handoff") {
+          handingOff = true;
+          try {
+            service!.slow.start(source!, before);
+          } finally {
+            handingOff = false;
+          }
+        }
         before = undefined;
       }
     }
@@ -62,6 +89,8 @@ export function createTraceFacade(controller: LiveController, view: () => View, 
     if (service && machine.state.source && !blocked()) send({ type: "ready" });
   };
   const end = () => {
+    releaseKeys?.();
+    releaseKeys = undefined;
     send({ type: "cancel" });
     service?.slow.end();
   };
@@ -140,9 +169,15 @@ export function createTraceFacade(controller: LiveController, view: () => View, 
       }
       service = next;
       emit();
-      drain();
+      // Strict Mode detaches and disposes the first setup. Only the surviving attachment
+      // may consume the shell's request and its original checkpoint.
+      const token = ++attachment;
+      queueMicrotask(() => {
+        if (attachment === token && service === next) drain();
+      });
     },
     detach() {
+      attachment++;
       unsubscribe?.();
       service = null;
       emit();
@@ -151,6 +186,9 @@ export function createTraceFacade(controller: LiveController, view: () => View, 
       send({ type: "failure" });
     },
     dispose() {
+      releaseKeys?.();
+      releaseKeys = undefined;
+      attachment++;
       send({ type: "dispose" });
       unsubscribe?.();
       service = null;

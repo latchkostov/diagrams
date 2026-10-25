@@ -17,6 +17,74 @@ import type { Page } from "@playwright/test";
 import { holdTraceRuntime, replayNode } from "./held-trace-runtime";
 import { holdChunk } from "./chunk";
 
+for (const heldRuntime of [false, true]) {
+  for (const panel of ["capacity", "sim"] as const) {
+    test(`replay panel Escape matches eager behaviour: ${panel}, held=${heldRuntime}`, async ({ page }) => {
+      const held = await holdTraceRuntime(page);
+      try {
+        if (!heldRuntime) {
+          await replayNode(page);
+          held.release();
+          await expect(page.getByTestId("slowmo-chip")).toBeVisible();
+          await page.getByTestId("trace-card-close").click();
+        }
+        if (panel === "capacity") await page.getByTestId("live-capacity").click();
+        else {
+          await page.getByTestId("live-more").click();
+          await page.getByTestId("live-edit-sims").click();
+        }
+        await expect(page.getByTestId(`${panel}-panel`)).toBeVisible();
+        if (heldRuntime) await replayNode(page);
+        else {
+          await waitForCameraIdle(page);
+          await page.getByTestId("node-shopper").click({ button: "right" });
+          await page.getByTestId("context-menu-item-sim.slowmo-from").click();
+          await expect(page.getByTestId("slowmo-chip")).toBeVisible();
+        }
+        await page.getByTestId(panel === "capacity" ? "capacity-close" : "sim-panel-close").focus();
+        await page.keyboard.press("Escape");
+        await expect(page.getByTestId(`${panel}-panel`)).toHaveCount(0);
+        if (heldRuntime) {
+          await expect(page.getByTestId("slowmo-loading")).toBeVisible();
+          held.release();
+        }
+        await expect(page.getByTestId("slowmo-chip")).toBeVisible();
+      } finally {
+        held.release();
+      }
+    });
+  }
+  test(`replay keys on selected focused node match eager behaviour: held=${heldRuntime}`, async ({ page }) => {
+    const held = await holdTraceRuntime(page, "&paused=1");
+    try {
+      await replayNode(page);
+      if (!heldRuntime) {
+        held.release();
+        await expect(page.getByTestId("slowmo-chip")).toBeVisible();
+      }
+      await waitForCameraIdle(page);
+      await page.getByTestId("node-shopper").click();
+      await page.getByTestId("rf__node-shopper").focus();
+      await expect(page.getByTestId("rf__node-shopper")).toBeFocused();
+      const position = await page.getByTestId("node-shopper").evaluate((el) => el.parentElement?.style.transform);
+      for (const key of ["Enter", "ArrowRight", "ArrowLeft", "Space"]) {
+        await page.keyboard.press(key);
+        await expect(page.getByTestId("rf__node-shopper")).toBeFocused();
+        expect(await page.getByTestId("node-shopper").evaluate((el) => el.parentElement?.style.transform)).toBe(
+          position,
+        );
+      }
+      if (heldRuntime) {
+        await expect(page.getByTestId("slowmo-loading")).toBeVisible();
+        held.release();
+      }
+      await expect(page.getByTestId("slowmo-chip")).toBeVisible();
+    } finally {
+      held.release();
+    }
+  });
+}
+
 for (const renderer of ["worker", "main"] as const) {
   for (const paused of [false, true]) {
     for (const reduced of [false, true]) {
@@ -95,8 +163,8 @@ test("held runtime: Escape, exit/re-entry and late completion cannot retake the 
 });
 
 test("held runtime: pending palette owns Escape before its dialog mounts", async ({ page }) => {
-  const held = await holdTraceRuntime(page);
   const palette = await holdChunk(page, /\/assets\/PaletteDialog-[\w-]+\.js/);
+  const held = await holdTraceRuntime(page);
   try {
     await replayNode(page);
     await page.getByTestId("canvas-wrap").focus();

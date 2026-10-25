@@ -9,12 +9,21 @@ import { suggestedMessageType } from "../storm";
 import { roomUnderCard } from "../traceCardLayout";
 
 import type { CameraController } from "../../canvas/camera";
+import type { InteractionController } from "../../canvas/interaction";
 import { useReducedMotion } from "../../lib/useReducedMotion";
 import type { LiveSessionState } from "./useLiveSessionState";
 
 const DEAD_LETTER_WAIT = "trace:deadLetterWait";
 
-export function useTraceSpotlight({ session, camera }: { session: LiveSessionState; camera: CameraController }) {
+export function useTraceSpotlight({
+  session,
+  camera,
+  interaction,
+}: {
+  session: LiveSessionState;
+  camera: CameraController;
+  interaction: InteractionController;
+}) {
   const { state, controller, trace, panel } = session;
   // ---------------------------------------------------------------- spotlight (notes, trace)
 
@@ -24,7 +33,7 @@ export function useTraceSpotlight({ session, camera }: { session: LiveSessionSta
   const focusKey = JSON.stringify(note?.focus ?? []);
   const noteFocus = useMemo(() => JSON.parse(focusKey) as string[], [focusKey]);
   // A traced message lights the path it has taken so far (or the node it's awaited at).
-  const runtime = useTraceRuntime(session);
+  const runtime = useTraceRuntime(session, interaction);
   const { slowRef } = runtime;
   const tracedNow = state.trace?.current;
   const awaitedAt = state.trace?.pending?.next === "message" ? state.trace.pending.node : undefined;

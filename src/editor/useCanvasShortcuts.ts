@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useRef } from "react";
 import { makePayload, parsePayload } from "./clipboard";
 import { isEditableTarget, shortcutFor } from "./shortcuts";
 import { typeAheadActive } from "../canvas/typeAhead";
+import { useInteraction } from "../canvas/interaction/context";
 import type { EditorApi } from "./types";
 import type { Toward } from "../canvas/placement";
 
@@ -78,6 +79,7 @@ export function useCanvasShortcuts(
     keepFocus?: (from: HTMLElement | null) => void;
   },
 ) {
+  const interaction = useInteraction();
   const optsRef = useRef(opts);
   useLayoutEffect(() => {
     optsRef.current = opts;
@@ -87,6 +89,7 @@ export function useCanvasShortcuts(
     let pasteFallback: number | undefined;
 
     const onKeyDown = (e: KeyboardEvent) => {
+      if (interaction?.captureKey(e)) return;
       if (e.defaultPrevented || e.isComposing) return;
       if (isEditableTarget(e.target) || inOverlay(e.target)) return;
       // Keys typed for a new node's name before its editor opens (T must not add a text).
@@ -295,5 +298,5 @@ export function useCanvasShortcuts(
       window.removeEventListener("copy", onCopy);
       window.removeEventListener("paste", onPaste);
     };
-  }, [editor]);
+  }, [editor, interaction]);
 }

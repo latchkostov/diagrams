@@ -10,13 +10,17 @@ import {
   liveKeyLevels,
   waitForStableViewport,
   pauseClock,
+  animationFrames,
+  cameraJournal,
+  cameraJournalMark,
+  viewportTransform,
 } from "./fixtures";
 import { readFileSync } from "node:fs";
 import type { Locator, Page } from "@playwright/test";
 import type { DiagramFile } from "../../src/model/types";
 import { createSimulationRun } from "../../src/sim/simulation";
 import { pseudoText } from "../../src/i18n/pseudo";
-import { holdTraceRuntime, traceNext, TRACE_RUNTIME } from "./held-trace-runtime";
+import { holdTraceRuntime, replayNode, traceNext, TRACE_RUNTIME } from "./held-trace-runtime";
 import { holdChunk } from "./chunk";
 
 test("held runtime: Free play, badges, node/edge hover and keyboard pins remain interactive", async ({ page }) => {
@@ -40,7 +44,10 @@ test("held runtime: Free play, badges, node/edge hover and keyboard pins remain 
     ]) {
       const item = page.getByTestId(itemId);
       const card = page.getByTestId(cardId);
-      await item.hover({ force: true });
+      await waitForCameraIdle(page);
+      // At this zoom the node's connection handles cover the short line. Its label
+      // is the exposed pointer target; keyboard focus still belongs to the SVG edge.
+      await (itemId.startsWith("edge-") ? page.getByTestId("edge-label-shopper-to-gateway") : item).hover();
       await expect(card).toHaveAttribute("data-pinned", "false");
       if (itemId.startsWith("node-")) await item.evaluate((el) => el.parentElement?.focus());
       else await item.evaluate((el) => el.closest<HTMLElement>("[tabindex]")?.focus());
@@ -60,24 +67,67 @@ test("held runtime: Free play, badges, node/edge hover and keyboard pins remain 
   }
 });
 
-test("held runtime: normal timeline seek and simulation switch retire the pending trace", async ({ page }) => {
+test("held runtime: simulation switch retires a held replay after late completion", async ({ page }) => {
   const held = await holdTraceRuntime(page, "&sim=black-friday&paused=1");
   try {
-    await traceNext(page);
-    await expect.poll(held.requested).toBe(true);
     await page.getByTestId("live-timeline-input").fill("250");
     await page.getByTestId("live-play").focus();
     const sought = await page.getByTestId("live-clock").getAttribute("data-ms");
     expect(Number(sought)).toBeGreaterThan(0);
-    await page.getByTestId("live-sim-picker").selectOption("");
+    await page.getByTestId("live-more").click();
+    await page.getByTestId("live-edit-sims").click();
+    await page.getByTestId("sim-panel-back").click();
+    await replayNode(page);
+    await page.getByTestId("sim-panel-edit-payments-outage").click();
+    await waitForCameraIdle(page);
+    const before = await viewportTransform(page);
+    const mark = await cameraJournalMark(page);
     held.release();
+    await expect
+      .poll(() => page.evaluate(() => window.__lazySurfaces?.states()["live.trace-runtime"]?.state))
+      .toBe("loaded");
+    await animationFrames(page, 20);
+    await waitForCameraIdle(page);
     await expect(page.getByTestId("trace-card")).toHaveCount(0);
     await expect(page.getByTestId("slowmo-chip")).toHaveCount(0);
-    await expect(page.getByTestId("live-sim-picker")).toHaveValue("");
+    await expect(page.getByTestId("live-sim-picker")).toHaveValue("payments-outage");
+    expect(await viewportTransform(page)).toBe(before);
+    expect((await cameraJournal(page, mark)).filter((entry) => /slowmo/i.test(entry.command))).toEqual([]);
   } finally {
     held.release();
   }
 });
+
+for (const heldRuntime of [false, true]) {
+  test(`replay focus matches eager behaviour: held=${heldRuntime}`, async ({ page }) => {
+    const held = await holdTraceRuntime(page, "&traffic=0&speed=4");
+    try {
+      await traceNext(page);
+      await page.getByTestId("trace-send-one").click();
+      await expect(page.getByTestId("trace-card")).toHaveAttribute("data-state", "done");
+      if (!heldRuntime) {
+        held.release();
+        await expect
+          .poll(() => page.evaluate(() => window.__lazySurfaces?.states()["live.trace-runtime"]?.state))
+          .toBe("loaded");
+      }
+      await page.getByTestId("trace-slowmo").focus();
+      const button = await page.getByTestId("trace-slowmo").elementHandle();
+      await page.keyboard.press("Enter");
+      if (heldRuntime) {
+        await expect(page.getByTestId("slowmo-loading")).toBeVisible();
+        held.release();
+      }
+      await expect(page.getByTestId("trace-slowmo")).toHaveAttribute("data-state", "playing");
+      await expect(page.getByTestId("trace-slowmo")).toBeFocused();
+      expect(await button?.evaluate((el) => el.isConnected)).toBe(true);
+      await page.keyboard.press("Enter");
+      await expect(page.getByTestId("trace-slowmo")).toHaveAttribute("data-state", "paused");
+    } finally {
+      held.release();
+    }
+  });
+}
 
 for (const choice of ["next", "slowest", "deadletter"] as const) {
   test(`held runtime: trace ${choice} preserves its requested message`, async ({ page }) => {

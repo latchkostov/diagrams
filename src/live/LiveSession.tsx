@@ -69,6 +69,7 @@ import { useLiveKeyboard } from "./session/useLiveKeyboard";
 import { useLivePanelLayout, useLiveSessionBridge, useLiveSessionState } from "./session/useLiveSessionState";
 import { useTraceActions, useTraceSpotlight } from "./session/useTraceSpotlight";
 import { TraceRuntime } from "./session/useTraceRuntime";
+import { useReplayTrace } from "./session/useReplayTrace";
 import { SlowCaption } from "./slowmo/SlowBar";
 // Loaded on first use: the sequence generator, its SVG renderer and Mermaid writer.
 const SequenceDialog = lazy(() => import("./SequenceDialog").then((m) => ({ default: m.SequenceDialog })));
@@ -135,7 +136,7 @@ export function LiveSession({
 
   useLiveDiagramChanges({ session, editor, privateDiagram });
 
-  const spotlight = useTraceSpotlight({ session, camera });
+  const spotlight = useTraceSpotlight({ session, camera, interaction });
   const { slowRef, spotlightRef, reducedMotion } = spotlight;
 
   useLivePanelLayout(session);
@@ -174,10 +175,9 @@ export function LiveSession({
   }, []);
 
   const slow = spotlight.runtime.slow;
-  const slowMotionTrace = () => {
-    const trace = controller.getState().trace;
-    slow.start(trace?.rootId !== undefined ? { kind: "root", rootId: trace.rootId } : { kind: "followed" });
-  };
+  const slowMotionTrace = useReplayTrace(controller, slow);
+  const slowCard = spotlight.runtime.card;
+  const cardTrace = slowCard?.trace ?? state.trace;
   const motion = { slow, slowMotionTrace };
   useLiveSessionBridge({ session, onSession, commands, editor, alwaysOn, slow });
   const watched = useMemo(
@@ -389,23 +389,22 @@ export function LiveSession({
             reducedMotion={reducedMotion}
             panelOpen={panel.open}
             capturing={capturing}
-            cardRoom={cardRoom}
-            onSequence={setSequence}
           />
         )}
-        {slow.state.status !== "on" && state.trace && !capturing && (
+        {cardTrace && !capturing && (
           <TraceCard
-            trace={state.trace}
+            trace={cardTrace}
             diagram={controller.currentDiagram}
-            now={state.snapshot.time}
+            now={slowCard?.trace.current?.endedAt ?? state.snapshot.time}
             onClose={() => {
               slow.end();
               controller.endTrace();
             }}
-            onSequence={() => state.trace?.current && setSequence(state.trace.current)}
+            onSequence={() => cardTrace.current && setSequence(cardTrace.current)}
             onSendOne={sendOne}
             room={cardRoom}
-            onSlowMotion={state.trace.current ? slowMotionTrace : undefined}
+            slowmo={slowCard?.card}
+            onSlowMotion={state.trace?.current ? slowMotionTrace : undefined}
             waitingText={
               slow.state.status === "armed"
                 ? slow.state.armedAt

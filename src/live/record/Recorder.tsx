@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore, type Dispatch } from "react";
 import { createPortal } from "react-dom";
+import { t } from "../../i18n";
 import { ensureLazySurfacesLoaded } from "../../lib/lazySurfaces";
 import { Dialog } from "../../interop/ui/Dialog";
 import { notify } from "../../interop/ui/toast";
@@ -205,6 +206,10 @@ export function Recorder({
           if (surfaces) await surfaces;
           if (!valid(token)) {
             stopStream(media);
+            return;
+          }
+          if (opts.slowmo && !slowmo?.getState().script) {
+            fail(token, t("record.waitingForReplay"));
             return;
           }
           const el = target();
