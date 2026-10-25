@@ -117,10 +117,11 @@ const startOf = (tutorial: Tutorial): DiagramFile =>
 
 /**
  * lateAdds: a new node lands in the document after the editor call that made it returns, as the editor's commits do.
+ * lateConnects: a repaired connection also commits after connect returns, including when its nodes already exist.
  * lazyLive: going live shows free play first; Live's actions arrive a task later, as the lazy session's chunk mounts
  * them, and a queued saved run a task after that (the session's own effect activates it).
  */
-function sandbox(tutorial: Tutorial, { lateAdds = false, lazyLive = false } = {}) {
+function sandbox(tutorial: Tutorial, { lateAdds = false, lateConnects = false, lazyLive = false } = {}) {
   let diagram = startOf(tutorial);
   let version = 0;
   let mode: EditorModeState = { ...initialEditorMode, annotating: null };
@@ -393,7 +394,9 @@ function sandbox(tutorial: Tutorial, { lateAdds = false, lazyLive = false } = {}
         return existing.id;
       }
       const edge = { ...newEdge(from, to), ...sides };
-      write({ ...diagram, edges: [...diagram.edges, edge] });
+      const publish = () => write({ ...diagram, edges: [...diagram.edges, edge] });
+      if (lateConnects) queueMicrotask(publish);
+      else publish();
       return edge.id;
     },
     updateNode: (id: string, patch: Partial<DiagramNode>) =>
@@ -688,6 +691,13 @@ function sandbox(tutorial: Tutorial, { lateAdds = false, lazyLive = false } = {}
         case "fault": {
           const target = demo.edge ? edge(demo.edge).id : id(demo.subject);
           const group = isGroup(target);
+          // An uncut link offers Cut, not Restore: a restore demo has nothing for the learner to do.
+          if (
+            demo.restore &&
+            demo.fault === "cut" &&
+            !controller!.getState().snapshot.faults?.some((fault) => fault.kind === "link" && fault.edge === target)
+          )
+            return;
           // As the Fault menu offers them: Take down and Cut toggle (their Restore is the same row).
           const action =
             demo.fault === "cut"
@@ -981,6 +991,33 @@ describe("every tutorial's completion contract", () => {
 });
 
 describe("completion regressions", () => {
+  it.each([false, true])(
+    "dead-letter-disputes Skip waits for a repaired DLQ connection (editing: %s)",
+    async (editing) => {
+      const s = sandbox(studyPayments, { lateAdds: true, lateConnects: true, lazyLive: true });
+      const i = studyPayments.steps.findIndex((step) => step.id === "dead-letter-disputes");
+      expect(await reach(s, studyPayments, i)).toBe(true);
+      if (editing) s.hostState.live.toggle();
+      const diagram = structuredClone(s.diagram);
+      diagram.nodes.push({ id: "learner-dlq", stencil: "aws.sqs", label: "My recovery queue", x: 900, y: 500 });
+      s.editor.applyDiagram(diagram);
+      expect(s.subject("dlq")).toBe("learner-dlq");
+      const from = s.subject("outbox");
+      expect(s.diagram.edges.some((edge) => edge.from === from && edge.to === "learner-dlq")).toBe(false);
+      await skip(s, studyPayments);
+      const repaired = s.diagram.edges.filter((edge) => edge.from === from && edge.to === "learner-dlq");
+      expect(repaired).toHaveLength(1);
+      expect(repaired[0]).toMatchObject({ kind: "async", relation: "flow", props: { dlq: true } });
+      expect(s.diagram.nodes).toEqual(
+        diagram.nodes.map((node) =>
+          node.id === s.subject("consumer") ? { ...node, props: { ...node.props, failureRate: 1 } } : node,
+        ),
+      );
+      expect(s.live!.getState().snapshot.nodes["learner-dlq"].processed).toBeGreaterThanOrEqual(1);
+      expect(beyond(s, i)).toBe(true);
+    },
+  );
+
   for (const tutorial of [studyCheckout, studyPayments])
     for (const [i, step] of tutorial.steps.entries()) {
       const relations = (check: Check): Extract<Check, { kind: "relation" }>[] =>

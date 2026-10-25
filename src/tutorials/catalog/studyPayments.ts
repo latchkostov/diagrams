@@ -184,6 +184,9 @@ export const studyPayments: Tutorial = {
       targets: [{ testId: "node-{outbox}", tip: msg("tutorials.studyPayments.poisonHint") }],
       demo: [
         { kind: "add", subject: "dlq", stencil: "aws.sqs", after: "outbox" },
+        { kind: "live" },
+        // Restore waits for the edge's subject, including a reused queue's deferred connection.
+        { kind: "fault", edge: ["outbox", "dlq"], fault: "cut", restore: true },
         { kind: "relation", from: "outbox", to: "dlq", relation: "flow", edgeKind: "async" },
         { kind: "patch", edge: ["outbox", "dlq"], patches: [{ op: "set", path: ["dlq"], value: true }] },
         { kind: "patch", subject: "consumer", patches: [{ op: "set", path: ["failureRate"], value: 1 }] },

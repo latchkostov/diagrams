@@ -13,6 +13,35 @@ import { runnerInitial, runnerMachine, targetsShown } from "./machine";
 import { solutionNow } from "./solution";
 
 describe("design studies", () => {
+  it.each([1, 2])("Dispatch dinner rush requires a working fleet (%i replicas)", (replicas) => {
+    if (typeof studyDispatch.start !== "function") throw new Error("Expected inline diagram");
+    const diagram = studyDispatch.start();
+    if (replicas !== 1) diagram.nodes.find((node) => node.id === "dispatcher")!.props!.replicas = replicas;
+    const simulation = diagram.simulations!.find((run) => run.id === "dinner-rush")!;
+    const live = new LiveController(diagram);
+    try {
+      expect(live.selectSimulation(simulation)).toBe("selected");
+      live.setPlaying(true);
+      let completed = false;
+      for (let tick = 0; tick < 48; tick++) {
+        live.advance(250);
+        live.publish();
+        completed ||= observeSteps(studyDispatch, {
+          diagram,
+          live: true,
+          session: live.getState(),
+          processed: () => 0,
+        })[0];
+      }
+      expect(completed, "the untouched starting fleet must never latch the milestone").toBe(replicas === 2);
+      expect(live.getState().run!.expectations).toContainEqual(
+        expect.objectContaining({ id: "bounded", status: replicas === 2 ? "pass" : "fail" }),
+      );
+    } finally {
+      live.dispose();
+    }
+  });
+
   it("checkout reference fleet passes the seeded rush", () => {
     if (typeof studyCheckout.start !== "function") throw new Error("Expected inline diagram");
     const diagram = studyCheckout.start();

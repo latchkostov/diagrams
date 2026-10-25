@@ -55,7 +55,7 @@ export const studyDispatch: Tutorial = {
             label: t("tutorials.studyDispatch.bounded"),
             metric: { node: "pings", field: "backlog" },
             op: "<=",
-            value: 24,
+            value: 8,
             when: "at",
             atMs: 4000,
           },
