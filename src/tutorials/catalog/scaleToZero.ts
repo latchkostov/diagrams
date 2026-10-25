@@ -1,4 +1,6 @@
 import { msg } from "../../i18n";
+import timetable from "../../examples/cloud-run-timetable-api.json";
+import type { DiagramFile } from "../../model/types";
 import type { Tutorial } from "../types";
 import { moment, runStep } from "./waitingSteps";
 
@@ -10,7 +12,14 @@ export const scaleToZero: Tutorial = {
   minutes: 4,
   title: msg("tutorials.scaleToZero.title"),
   summary: msg("tutorials.scaleToZero.summary"),
-  start: { example: "cloud-run-timetable-api" },
+  start: () => {
+    const diagram = structuredClone(timetable) as DiagramFile;
+    // Hold the real cold-start readout while the learner reads or switches tabs.
+    const rush = diagram.simulations!.find((simulation) => simulation.id === "morning-rush")!;
+    const coldStart = rush.timeline!.find((step) => step.atMs === 6000)!;
+    if (coldStart.action.do === "note") coldStart.action.pause = true;
+    return diagram;
+  },
   subjects: { worker: { stencils: ["gcp.cloud-run"] } },
   steps: [
     runStep(

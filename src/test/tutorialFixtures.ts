@@ -500,7 +500,12 @@ export const savedSimulationsFixture: Tutorial = {
 
 /** rates-and-inputs, capacity and read-a-node's shapes: Live's panels and views, a fix, a hover card, an injection. */
 export const livePanelsFixture: Tutorial = {
-  ...base("fixture-live-panels", callChain("Live panels")),
+  ...base("fixture-live-panels", () => {
+    const diagram = callChain("Live panels")();
+    // Real capacity analysis must offer a replica increase, including before Traffic × changes.
+    diagram.nodes.find((node) => node.id === "api")!.props = { concurrency: 1, latencyMs: 500, jitter: 0 };
+    return diagram;
+  }),
   subjects: chainSubjects,
   steps: [
     goLive,

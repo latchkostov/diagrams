@@ -35,6 +35,7 @@ import { outbox } from "./catalog/outbox";
 import { threadsBlock } from "./catalog/threadsBlock";
 import { timeoutsPools } from "./catalog/timeoutsPools";
 import { autoscaling } from "./catalog/autoscaling";
+import { scaleToZero } from "./catalog/scaleToZero";
 import { webhooks } from "./catalog/webhooks";
 import { retryStorm } from "./catalog/retryStorm";
 import { backoffBudget } from "./catalog/backoffBudget";
@@ -1035,6 +1036,18 @@ describe("completion regressions", () => {
     s.live!.publish();
     expect(state(s)).toMatchObject({ index: 2, value: "active" });
     s.hover({ kind: "node", id: s.subject("caller") });
+    expect(state(s).value).toBe("finished");
+  });
+
+  it("scale-to-zero: a late readout still observes the cold start", async () => {
+    const s = sandbox(scaleToZero);
+    const coldStart = scaleToZero.steps.findIndex((step) => step.id === "cold-start");
+    await reach(s, scaleToZero, coldStart);
+    // The learner reads the instructions away from the node for longer than the entire saved run.
+    for (let frame = 0; frame < 700; frame++) play(s, 100);
+    expect(state(s)).toMatchObject({ index: coldStart, value: "active" });
+    expect(s.live!.getState().snapshot.nodes[s.subject("worker")].fleet!.starting).toBeGreaterThanOrEqual(1);
+    s.hover({ kind: "node", id: s.subject("worker") });
     expect(state(s).value).toBe("finished");
   });
 
