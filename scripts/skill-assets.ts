@@ -145,20 +145,35 @@ export function skillAssetsPlugin(viewerTemplate?: () => Promise<string>): Plugi
       // Cached between requests, and dropped on any change in the project (a skill file, an icon, or the viewer's
       // sources, which also rebuild its template). Ordinary skill files never wait for the viewer.
       let folder: SkillFile[] | undefined;
-      let withViewer: Promise<{ files: SkillFile[]; zip: Buffer }> | undefined;
+      let withViewer: Promise<SkillFile[]> | undefined;
+      let zip: Promise<Buffer> | undefined;
       server.watcher.on("all", () => {
         folder = undefined;
         withViewer = undefined;
+        zip = undefined;
       });
       const released = new Set<string>(Object.values(RELEASED).map((name) => `/skill/${name}`));
-      const viewerFiles = () =>
-        (withViewer ??= current().then(
-          async (files) => ({ files, zip: await zipSkill(files) }),
-          (error: unknown) => {
-            withViewer = undefined;
-            throw error;
-          },
-        ));
+      const viewerFiles = () => {
+        if (!withViewer) {
+          const pending = current();
+          withViewer = pending;
+          void pending.catch(() => {
+            if (withViewer === pending) withViewer = undefined;
+          });
+        }
+        return withViewer;
+      };
+      // Only an explicit ZIP download pays for compression; viewer/file requests share just the fresh files.
+      const skillZip = () => {
+        if (!zip) {
+          const pending = viewerFiles().then((files) => zipSkill(files));
+          zip = pending;
+          void pending.catch(() => {
+            if (zip === pending) zip = undefined;
+          });
+        }
+        return zip;
+      };
       const send = (res: ServerResponse, url: string, body: Buffer) => {
         res.setHeader("Content-Type", TYPES[path.extname(url)] ?? "text/plain; charset=utf-8");
         res.end(body);
@@ -174,9 +189,10 @@ export function skillAssetsPlugin(viewerTemplate?: () => Promise<string>): Plugi
           req.url = "/skill/index.html";
           return next();
         }
-        if (url === `/${SKILL_ZIP}` || released.has(url))
-          return void viewerFiles().then(({ files, zip }) => {
-            const body = url === `/${SKILL_ZIP}` ? zip : files.find((f) => `/skill/${f.name}` === url)?.data;
+        if (url === `/${SKILL_ZIP}`) return void skillZip().then((body) => send(res, url, body), next);
+        if (released.has(url))
+          return void viewerFiles().then((files) => {
+            const body = files.find((f) => `/skill/${f.name}` === url)?.data;
             return body ? send(res, url, body) : next();
           }, next);
         if (!url.startsWith("/skill/")) return next();
