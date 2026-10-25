@@ -11,22 +11,28 @@ declare global {
   }
 }
 
+// Observe at construction: the indicator precedes the real encoder's start,
+// and an event subscription installed afterwards can miss its first data chunk.
+function observeRecording() {
+  const NativeRecorder = MediaRecorder;
+  window.MediaRecorder = class extends NativeRecorder {
+    constructor(stream: MediaStream, options?: MediaRecorderOptions) {
+      super(stream, options);
+      window.__heldSurfaceRecorder = this;
+      window.__heldSurfaceEncodedChunks = 0;
+      this.addEventListener("dataavailable", (event) => {
+        if (event.data.size) window.__heldSurfaceEncodedChunks++;
+      });
+    }
+  };
+}
+
 test.use({ channel: "chromium", launchOptions: { args: ["--auto-accept-this-tab-capture"] } });
 
 test("recording waits before countdown and captures the released narration", async ({ page }) => {
   await page.addInitScript(installCaptureReady);
+  await page.addInitScript(observeRecording);
   await page.addInitScript(() => {
-    const NativeRecorder = MediaRecorder;
-    window.MediaRecorder = class extends NativeRecorder {
-      constructor(stream: MediaStream, options?: MediaRecorderOptions) {
-        super(stream, options);
-        window.__heldSurfaceRecorder = this;
-        window.__heldSurfaceEncodedChunks = 0;
-        this.addEventListener("dataavailable", (event) => {
-          if (event.data.size) window.__heldSurfaceEncodedChunks++;
-        });
-      }
-    };
     const capture = navigator.mediaDevices.getDisplayMedia.bind(navigator.mediaDevices);
     navigator.mediaDevices.getDisplayMedia = async (options) => {
       const stream = await capture(options);
@@ -164,6 +170,8 @@ test("recording waits before countdown and captures the released narration", asy
 });
 
 test("Live and recording start while discovery remains held", async ({ page }) => {
+  await page.addInitScript(observeRecording);
+  await page.clock.install();
   const held = await holdChunk(page, chunk("ExampleDetails", "src/examples/ExampleDetails.tsx"));
   try {
     await page.goto("./");
@@ -174,11 +182,34 @@ test("Live and recording start while discovery remains held", async ({ page }) =
     await expect(page.getByTestId("live-controls")).toBeVisible();
     await page.getByTestId("live-more").click();
     await page.getByTestId("live-record").click();
+    await pauseClock(page);
     await page.getByTestId("record-start").click();
+    await expect(page.getByTestId("record-countdown")).toBeVisible();
+    for (const count of ["3", "2", "1"]) {
+      await expect
+        .poll(() =>
+          page.getByTestId("record-countdown").evaluate((el) => el.firstElementChild?.getAttribute("data-count")),
+        )
+        .toBe(count);
+      await page.clock.runFor(1000);
+    }
     await expect(page.getByTestId("record-indicator")).toBeVisible();
     expect(await page.evaluate(() => window.__lazySurfaces?.states()["examples.discovery"]?.state)).toBe("loading");
     await expect(page.getByTestId("start-card")).toHaveCount(0);
+    // Keep the clock paused at the indicator so Stop cannot accidentally outrun
+    // the encoder's two-frame startup. Require actual encoded data before saving.
+    await expect
+      .poll(
+        async () => {
+          await page.clock.runFor(16);
+          return page.evaluate(() => window.__heldSurfaceRecorder.state);
+        },
+        { intervals: [0] },
+      )
+      .toBe("recording");
+    await expect.poll(() => page.evaluate(() => window.__heldSurfaceEncodedChunks)).toBeGreaterThan(0);
     await page.getByTestId("record-stop").click();
+    await page.clock.resume();
     await expect(page.getByTestId("record-download")).toBeVisible();
     await page.getByTestId("record-discard").click();
   } finally {
