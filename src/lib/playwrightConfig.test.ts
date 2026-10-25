@@ -34,6 +34,8 @@ it.each([
   expect(config.projects?.map((project) => project.name)).toEqual(mode.projects);
   const servers = Array.isArray(config.webServer) ? config.webServer : [];
   expect(servers.map((server) => Number(new URL(server.url!).port))).toEqual(mode.servers);
+  for (const server of servers.filter((server) => server.command.startsWith("pnpm dev ")))
+    expect(server.env?.VITE_E2E).toBe("1");
   if (mode.target === "build" && mode.only) {
     expect(servers[0].command).toContain("node scripts/e2e-build.mjs e2e");
     expect(servers[0].command).toContain("vite preview");

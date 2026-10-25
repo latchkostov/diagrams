@@ -207,20 +207,23 @@ jobs:
           retention-days: 14
 
   resource-invariants:
-    name: A1 + A3 resource invariants (5000 seeds each) ${{ matrix.shard }}/4
+    name: A1 + A3 resource invariants (5000 seeds each) ${{ matrix.shard }}/${{ matrix.total }}
     runs-on: ubuntu-26.04
     timeout-minutes: 10
     strategy:
       fail-fast: false
       matrix:
-        shard: [1, 2, 3, 4]
+        # Four serial seed partitions exceed the 10-minute runner limit. Keep every seed and
+        # the same timeout, distributing the work across smaller independent partitions.
+        shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
+        total: [16]
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/toolchain
       - run: pnpm exec vitest run src/sim/autoscaling.invariants.heavy.test.ts
         env:
           A1_FUZZ_NIGHTLY: "1"
-          RESOURCE_FUZZ_SHARD: ${{ matrix.shard }}/4
+          RESOURCE_FUZZ_SHARD: ${{ matrix.shard }}/${{ matrix.total }}
 
   e2e:
     name: ${{ matrix.label }} ${{ matrix.shard }}/${{ matrix.total }}
