@@ -540,7 +540,6 @@ function MainApp() {
           slug: e.slug,
           title: e.title,
           description: exampleSummary(e),
-          thumb: e.thumb,
           featured: e.featured,
         })),
       })),

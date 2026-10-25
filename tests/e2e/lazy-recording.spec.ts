@@ -162,3 +162,26 @@ test("recording waits before countdown and captures the released narration", asy
     held.release();
   }
 });
+
+test("Live and recording start while discovery remains held", async ({ page }) => {
+  const held = await holdChunk(page, chunk("ExampleDetails", "src/examples/ExampleDetails.tsx"));
+  try {
+    await page.goto("./");
+    await expect.poll(held.requested).toBe(true);
+    await page.getByTestId("start-example-rag-assistant").click();
+    await expect(page.getByTestId("diagram-title")).toHaveText("RAG support assistant");
+    await page.getByTestId("live-toggle").click();
+    await expect(page.getByTestId("live-controls")).toBeVisible();
+    await page.getByTestId("live-more").click();
+    await page.getByTestId("live-record").click();
+    await page.getByTestId("record-start").click();
+    await expect(page.getByTestId("record-indicator")).toBeVisible();
+    expect(await page.evaluate(() => window.__lazySurfaces?.states()["examples.discovery"]?.state)).toBe("loading");
+    await expect(page.getByTestId("start-card")).toHaveCount(0);
+    await page.getByTestId("record-stop").click();
+    await expect(page.getByTestId("record-download")).toBeVisible();
+    await page.getByTestId("record-discard").click();
+  } finally {
+    held.release();
+  }
+});

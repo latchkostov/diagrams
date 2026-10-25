@@ -1,6 +1,7 @@
 import { test, expect, gotoLab, labPresetIds, expectNoErrors, publicExamples, waitForStableBox } from "./fixtures";
 import { holdResizeObservers } from "../parity/browser/holdReadiness";
 import { measuredHierarchyFixture } from "../../src/lab/nestedBoundariesFixture";
+import { readFileSync } from "node:fs";
 
 /** Waits until a preset has fully rendered: diagram stages report a render time; sim stages show a readout. */
 async function waitForPreset(page: import("@playwright/test").Page) {
@@ -16,6 +17,19 @@ async function waitForPreset(page: import("@playwright/test").Page) {
 const PRESET_PARTS = 8;
 
 test.describe("lab", () => {
+  test("every public example retains its description and description search", async ({ page }) => {
+    await gotoLab(page, "nodes-states");
+    for (const { slug } of publicExamples) {
+      const { description } = JSON.parse(readFileSync(`src/examples/${slug}.json`, "utf8"));
+      expect(description, slug).toBeTruthy();
+      await expect(page.getByTestId(`lab-preset-link-example-${slug}`)).toHaveAttribute("title", description);
+    }
+    await page.getByTestId("lab-search").fill("ratings");
+    await page.getByTestId("lab-preset-link-example-rag-assistant").click();
+    await expect(page.getByTestId("lab-preset-title")).toHaveText("RAG support assistant");
+    await expect(page.getByTestId("lab-preset-description")).toContainText("ratings");
+  });
+
   test("empty boundaries wait for their descendants before reporting a rendered stage", async ({ page }) => {
     await page.addInitScript(holdResizeObservers, true);
     await gotoLab(page, "measured-hierarchy");
