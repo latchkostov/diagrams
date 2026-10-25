@@ -1,7 +1,6 @@
 {
-  "summary": "1 warning, 1 suggestion.",
+  "summary": "0 warnings, 1 suggestion.",
   "findings": {
-    "message-loop:incomplete": { "title": "Message type propagation incomplete", "message": "Timeline forwarding edits cannot be analyzed completely.", "rationale": "Review message paths before and after timeline forwarding edits manually." },
     "no-reader:payments-dlq": {
       "title": "Dead letters pile up in payments.commands.dlq",
       "message": "Nothing in the diagram reads or alerts on payments.commands.dlq: failed messages stay there until someone looks.",
@@ -11,7 +10,6 @@
   },
   "agentReport": {
     "findings": [
-      { "id": "message-loop:incomplete", "rule": "message-loop", "severity": "warning", "title": "Message type propagation incomplete", "message": "Timeline forwarding edits cannot be analyzed completely.", "targets": [] },
       {
         "id": "no-reader:payments-dlq",
         "rule": "no-reader",
@@ -22,12 +20,7 @@
         "fix": { "label": "Add a reader…", "needsChoice": "Pick what reads payments.commands.dlq, then add it and connect payments-dlq to it." }
       }
     ],
-    "summary": "1 warning, 1 suggestion."
+    "summary": "0 warnings, 1 suggestion."
   },
-  "agentReportWarnings": {
-    "findings": [
-      { "id": "message-loop:incomplete", "rule": "message-loop", "severity": "warning", "title": "Message type propagation incomplete", "message": "Timeline forwarding edits cannot be analyzed completely.", "targets": [] }
-    ],
-    "summary": "1 warning, 1 suggestion."
-  }
+  "agentReportWarnings": { "findings": [], "summary": "0 warnings, 1 suggestion." }
 }

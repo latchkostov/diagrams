@@ -23,9 +23,7 @@
     "schema-registry"
   ],
   "off": [],
-  "findings": [
-    { "id": "message-loop:incomplete", "rule": "message-loop", "severity": "warning", "scope": "diagram", "target": "", "elements": [] }
-  ],
+  "findings": [],
   "ignored": [],
   "fixes": {}
 }

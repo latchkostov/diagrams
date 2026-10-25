@@ -57,6 +57,8 @@ export interface MessageTypes {
 
 export type MessageTypeIncompleteReason = "work-budget" | "timeline-forwarding";
 
+// Public examples currently need at most 4,128 units (over 48x headroom); messageTypes.public.test.ts
+// keeps a minimum 4x margin. Exhaustion must still report incomplete, never a clean partial answer.
 export const MESSAGE_TYPE_WORK_LIMIT = 200_000;
 export interface MessageTypeBudget {
   remaining: number;

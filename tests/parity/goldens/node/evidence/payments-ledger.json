@@ -11,14 +11,6 @@
   },
   "planned": [],
   "counted": 0,
-  "findings": [
-    { "id": "message-loop:incomplete", "rule": "message-loop", "severity": "warning", "scope": "diagram", "target": "", "elements": [] }
-  ],
-  "agentReport": {
-    "findings": [
-      { "id": "message-loop:incomplete", "rule": "message-loop", "severity": "warning", "title": "Message type propagation incomplete", "message": "Timeline forwarding edits cannot be analyzed completely.", "targets": [] }
-    ],
-    "summary": "1 warning, 0 suggestions.",
-    "simulations": "Played 2 saved simulations (at most 60 s each)."
-  }
+  "findings": [],
+  "agentReport": { "findings": [], "summary": "Nothing to check. 21 checks ran.", "simulations": "Played 2 saved simulations (at most 60 s each)." }
 }

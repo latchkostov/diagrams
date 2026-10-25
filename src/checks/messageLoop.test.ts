@@ -10,6 +10,8 @@ import { buildContext } from "./context";
 import { createEngine } from "../sim/engine";
 import * as topology from "../sim/topology";
 import type { DiagramFile, Simulation } from "../model/types";
+import { opGrowth } from "../test/opCounter";
+import { GROWTH_FACTOR, LINEAR_LIMIT } from "../test/complexity";
 
 const check = (d = messageTypesFixture()) => runChecks(d, { rules: ["message-loop"] });
 const manual = (d: DiagramFile, filter: string[]) => {
@@ -59,6 +61,60 @@ function routedFixture(): Pick<DiagramFile, "format" | "planning" | "nodes" | "e
 }
 
 describe("message-loop", () => {
+  it("proves no loop on acyclic processor paths without claiming complete timeline type propagation", () => {
+    const d = messageTypesFixture();
+    d.edges.pop();
+    d.simulations = [
+      savedRun({
+        timeline: [{ atMs: 0, action: { do: "props", node: "api", props: { emits: "Prepared" } } }],
+      }),
+    ];
+    expect(messageTypesAt(d).incompleteReasons).toEqual(["timeline-forwarding"]);
+    expect(check(d).findings).toEqual([]);
+    // A dependency back to API cannot carry messages.
+    d.edges.push({ id: "dependency", from: "sender", to: "api", relation: "depends" });
+    expect(check(d).findings).toEqual([]);
+  });
+
+  it.each([{ deny: true }, { share: 0 }, { filter: ["Never"] }, { dlq: true }])(
+    "keeps timeline uncertainty on processor cycles even with gated links: %j",
+    (props) => {
+      const d = messageTypesFixture();
+      d.edges[2].props = props;
+      d.simulations = [
+        savedRun({
+          timeline: [{ atMs: 0, action: { do: "props", node: "api", props: { emits: "Prepared" } } }],
+        }),
+      ];
+      expect(check(d).findings).toContainEqual(
+        expect.objectContaining({
+          id: "message-loop:incomplete",
+          scope: "diagram",
+          target: "",
+          elements: [],
+        }),
+      );
+    },
+  );
+
+  it("proves acyclic timeline paths with linear operation growth", () => {
+    const fixture = (count: number) => {
+      const d = messageTypesFixture();
+      d.edges.pop();
+      for (let i = 0; i < count; i++) {
+        d.nodes.push({ id: `p${i}`, stencil: "service.go", label: "Processor", x: 0, y: 0 });
+        d.edges.push({ id: `e${i}`, from: i ? `p${i - 1}` : "sender", to: `p${i}` });
+      }
+      d.simulations = [
+        savedRun({
+          timeline: [{ atMs: 0, action: { do: "props", node: "api", props: { emits: "Prepared" } } }],
+        }),
+      ];
+      return () => expect(check(d).findings).toEqual([]);
+    };
+    expect(opGrowth(fixture(64), fixture(64 * GROWTH_FACTOR))).toBeLessThan(LINEAR_LIMIT);
+  });
+
   it("keeps diagram diagnostics visible even when an element ignore has the same id suffix", () => {
     const d = messageTypesFixture();
     d.nodes.push({ id: "incomplete", stencil: "service.go", label: "Unrelated", x: 0, y: 0 });

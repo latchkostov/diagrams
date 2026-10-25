@@ -59,15 +59,8 @@ test.describe("the count under the title", () => {
     expectNoErrors(consoleErrors);
   });
 
-  // Without saved forwarding timelines, only no-reader:payments-dlq remains: the count stays away.
+  // Its acyclic processor paths remain provably loop-free through saved forwarding edits.
   test("suggestions alone show nothing; live view and presenting show no count", async ({ page }) => {
-    const outbox = JSON.parse(
-      readFileSync(new URL("../../src/examples/outbox-saga-checkout.json", import.meta.url), "utf8"),
-    ) as DiagramFile;
-    await page.addInitScript(({ key, diagram }) => localStorage.setItem(key, JSON.stringify(diagram)), {
-      key: STORAGE_KEYS.autosavePrefix + "outbox-saga-checkout",
-      diagram: { ...outbox, simulations: [] },
-    });
     await gotoCanvas(page, "outbox-saga-checkout");
     await expect(page.getByTestId("node-payments-dlq")).toBeVisible();
     await waitForChecks(page);
@@ -86,6 +79,24 @@ test.describe("the count under the title", () => {
 test("diagram diagnostics keep guidance and valid element ignores through reload", async ({ page, consoleErrors }) => {
   const diagnostic = "message-loop:incomplete";
   const suggestion = "no-reader:payments-dlq";
+  const diagram = JSON.parse(
+    readFileSync(new URL("../../src/examples/outbox-saga-checkout.json", import.meta.url), "utf8"),
+  ) as DiagramFile;
+  // An acyclic showcase is provably loop-free despite its timeline edits. Give this diagnostic fixture
+  // a possible processor cycle; zero share avoids circulating traffic or adding a capacity warning.
+  diagram.edges.push({
+    id: "possible-loop",
+    from: "payment-svc",
+    to: "payment-svc",
+    kind: "async",
+    props: { share: 0 },
+  });
+  await page.addInitScript(
+    ({ key, diagram }) => {
+      if (!localStorage.getItem(key)) localStorage.setItem(key, JSON.stringify(diagram));
+    },
+    { key: STORAGE_KEYS.autosavePrefix + "outbox-saga-checkout", diagram },
+  );
   await gotoCanvas(page, "outbox-saga-checkout");
   await expect(page.getByTestId("checks-count")).toHaveText("1 warning");
   await openFromCount(page);

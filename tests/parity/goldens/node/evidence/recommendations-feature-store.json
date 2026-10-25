@@ -24,14 +24,6 @@
     { "node": "ranker-v8", "simulation": "The canary misbehaves", "what": "dropped", "count": 10, "why": "fails" }
   ],
   "counted": 0,
-  "findings": [
-    { "id": "message-loop:incomplete", "rule": "message-loop", "severity": "warning", "scope": "diagram", "target": "", "elements": [] }
-  ],
-  "agentReport": {
-    "findings": [
-      { "id": "message-loop:incomplete", "rule": "message-loop", "severity": "warning", "title": "Message type propagation incomplete", "message": "Timeline forwarding edits cannot be analyzed completely.", "targets": [] }
-    ],
-    "summary": "1 warning, 0 suggestions.",
-    "simulations": "Played 4 saved simulations (at most 60 s each). On purpose, not findings: 10 dropped at ranker-v8 in “The canary misbehaves”."
-  }
+  "findings": [],
+  "agentReport": { "findings": [], "summary": "Nothing to check. 21 checks ran.", "simulations": "Played 4 saved simulations (at most 60 s each). On purpose, not findings: 10 dropped at ranker-v8 in “The canary misbehaves”." }
 }

@@ -598,6 +598,52 @@ it("bounds unique route/type seed expansion with the shared work budget at two s
   expect(small).toBeGreaterThan(0);
   expect(large).toBeLessThanOrEqual(small * 2);
 });
+it("bounds unique seed expansion at the production budget and keeps its warning diagram-scoped", () => {
+  const count = Math.ceil(MESSAGE_TYPE_WORK_LIMIT / 16);
+  const d = mixFixture(16);
+  const measure = (size: number) => {
+    const inputs = Array.from({ length: size }, (_, i) => ({ node: "source", type: `T${i}` }));
+    return () => {
+      const budget = messageTypeBudget();
+      const result = messageTypesAt(d, inputs, budget);
+      expect(result.incompleteReasons).toEqual(["work-budget"]);
+      expect(budget.remaining).toBeLessThanOrEqual(0);
+      expect(result.known.size).toBeLessThan(size);
+    };
+  };
+  const small = ops(measure(count), Infinity, ["src/model/messageTypes.ts"]);
+  const large = ops(measure(count * GROWTH_FACTOR), small * 2, ["src/model/messageTypes.ts"]);
+  expect(small).toBeGreaterThan(0);
+  expect(large).toBeLessThanOrEqual(small * 2);
+  if (process.env.OP_LOG) console.info(`production-budget seed ops: ${small} -> ${large}`);
+
+  d.nodes.push(node("incomplete"));
+  d.checks = { ignore: [{ rule: "message-loop", target: "incomplete" }] };
+  d.simulations = [
+    {
+      id: "oversized",
+      title: "Oversized traffic vocabulary",
+      traffic: Array.from({ length: count }, (_, i) => ({
+        id: `t${i}`,
+        node: "source",
+        messageType: `T${i}`,
+        shape: { kind: "burst", count: 1 },
+      })),
+    },
+  ];
+  const checks = runChecks(d, { rules: ["message-loop"] });
+  expect(checks.findings).toEqual([
+    expect.objectContaining({
+      id: "message-loop:incomplete",
+      scope: "diagram",
+      target: "",
+      elements: [],
+      severity: "warning",
+      message: "The message path budget was reached.",
+    }),
+  ]);
+  expect(checks.ignored).toEqual([]);
+});
 it("retains every incomplete reason when timeline edits and work exhaustion coexist", () => {
   const d = mixFixture(8);
   d.simulations = [
