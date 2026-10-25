@@ -194,7 +194,8 @@ const noInteraction = () => () => {};
 function useHoveredNode(nodes: FlowNode[], state: LiveState) {
   const interaction = useInteraction();
   const domNode = useStore((s) => s.domNode);
-  const edges = useStore((s) => s.edges);
+  // Without a canvas interaction layer there are no readout owners to reconcile.
+  const edges = useStore((s) => (interaction ? s.edges : null));
   // Live's readout layer (src/canvas/interaction/readoutLayer.ts), attached to the canvas's controller while shown.
   const [readouts] = useState(() => (interaction ? createReadoutLayer(interaction) : null));
   useLayoutEffect(
@@ -208,7 +209,7 @@ function useHoveredNode(nodes: FlowNode[], state: LiveState) {
     () => null,
   );
   const readableNodes = useMemo(() => new Set(nodes.filter((n) => n.type === "diagram").map((n) => n.id)), [nodes]);
-  const readableEdges = useMemo(() => new Set(edges.map((e) => e.id)), [edges]);
+  const readableEdges = useMemo(() => new Set(edges?.map((e) => e.id)), [edges]);
   useLayoutEffect(() => {
     readouts?.reconcile((target) => {
       if (target.kind === "edge") return readableEdges.has(target.id);
