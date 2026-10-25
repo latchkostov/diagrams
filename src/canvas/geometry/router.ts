@@ -232,19 +232,7 @@ export class Router {
       const t = targetPort.attachment;
       if (e.waypoints?.length) {
         this.raw.delete(e.id);
-        if (routeGeometry)
-          polylines.set(
-            e.id,
-            routeGeometry.shapedRoute(
-              sourcePort,
-              sd.sourceSide,
-              targetPort,
-              sd.targetSide,
-              e.waypoints,
-              rects.get(e.source)!,
-              rects.get(e.target)!,
-            ),
-          );
+        if (routeGeometry) polylines.set(e.id, routeGeometry.routeFor(e, sourcePort, targetPort, sd, rects));
         okMap.set(e.id, true);
         fixed.add(e.id);
         continue;
@@ -294,7 +282,8 @@ export class Router {
     for (const id of this.raw.keys()) if (!seen.has(id)) this.raw.delete(id);
 
     // ---- nudging (orthogonal only)
-    const final = style === "smoothstep" ? nudgeRoutes(polylines, obstacles, { fixed }) : polylines;
+    const final =
+      style === "smoothstep" ? (routeGeometry?.nudgeRoutes ?? nudgeRoutes)(polylines, obstacles, { fixed }) : polylines;
 
     // ---- labels
     const labels = placeLabels(
