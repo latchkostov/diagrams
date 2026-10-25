@@ -42,7 +42,9 @@ const source = (() => {
     }
   };
   walk("src");
-  return out.join("\n");
+  // Readout rows share a template with two literal prefixes (hover and docked inspector).
+  // Expand those alternatives so each still needs the real template suffix and a known section key.
+  return out.join("\n").replace(/\$\{\w+ \? "([^"]+)" : "([^"]+)"\}([^`\n]*)/g, "$1$3\n$2$3");
 })();
 
 const stencilIds = new Set(stencils.map((s) => s.id));
@@ -209,6 +211,8 @@ describe("authoring evidence", () => {
     expect(readFileSync("src/test/tutorialFixtures.ts", "utf8")).toContain('"fixture-study"');
     expect(knownTestId("fixture-study")).toBe(false);
     expect(knownTestId("live-toggle")).toBe(true);
+    expect(knownTestId("hover-section-latency")).toBe(true);
+    expect(knownTestId("hover-section-nonexistent-section")).toBe(false);
   });
 });
 
