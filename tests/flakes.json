@@ -114,7 +114,7 @@
   {
     "id": "room-chip-retry-host-state",
     "spec": "tests/e2e/collab-room.spec.ts",
-    "title": "a room dialog gives focus back to what opened it; Retry hands it to the room's status",
+    "title": "a room dialog restores focus; an unconfigured room chip explains setup without Retry",
     "firstSeen": "2026-10-24",
     "lastSeen": "2026-10-24",
     "count": 2,

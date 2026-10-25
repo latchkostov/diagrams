@@ -188,6 +188,7 @@ test("live inspector naming preserves edits to the active saved simulation", asy
   await expect(page.getByTestId("sim-panel-dirty")).toBeVisible();
   await waitForStableViewport(page);
   await page.getByTestId("node-shopper").dblclick();
+  await page.keyboard.press("F2");
   await expect(page.getByTestId("inspector-field-label")).toBeFocused();
   await page.keyboard.press("Enter");
   await page.getByTestId("live-more").click();
@@ -546,6 +547,11 @@ test.describe("renaming in the inspector", () => {
       await page.getByTestId(c.id).dblclick({ position: c.position });
       const label = page.getByTestId("inspector-field-label");
       await expect(page.getByTestId("inspector")).not.toHaveAttribute("data-collapsed", "1");
+      if (c.id === "node-a") {
+        await expect(label).not.toBeFocused();
+        await expect.poll(() => selected(label)).toBe("");
+        await page.keyboard.press("F2");
+      }
       await expect(label).toBeFocused();
       await expect.poll(() => selected(label)).toBe(c.name);
       await page.keyboard.type("Live name");
@@ -568,6 +574,7 @@ test.describe("renaming in the inspector", () => {
       // A single click on a live connection can trace a passing message. Establish the selection
       // through its property sheet, then finish naming before testing the canvas shortcuts.
       await page.getByTestId(c.id).dblclick();
+      if (c.id === "node-a") await page.keyboard.press("F2");
       await expect(label).toBeFocused();
       await page.keyboard.press("Enter");
       await expect.poll(() => canvasFocused(page)).toBe(true);
@@ -604,6 +611,13 @@ test.describe("renaming in the inspector", () => {
     const r = must(await page.getByTestId("canvas-wrap").boundingBox(), "the canvas");
     await page.mouse.dblclick(r.x + 120, r.y + r.height - 120);
     await expect(page.getByTestId("quick-add")).toBeVisible();
+    await page.getByTestId("quick-add-search").fill("redis cache");
+    await page.keyboard.press("Enter");
+    const label = page.getByTestId("inspector-field-label");
+    await expect(label).toBeFocused();
+    await expect.poll(() => selected(label)).toBe(await label.inputValue());
+    await page.keyboard.type("Live cache");
+    await expect(label).toHaveValue("Live cache");
     await expect(page.getByTestId("smart-guides")).toHaveCount(0);
   });
 
@@ -620,6 +634,7 @@ test.describe("renaming in the inspector", () => {
       await expect(page.getByTestId("inspector")).toHaveAttribute("data-collapsed", "1");
       await waitForStableViewport(page);
       await page.getByTestId("node-a").dblclick();
+      await page.keyboard.press("F2");
       const label = page.getByTestId("inspector-field-label");
       await expect(sidePanel).toHaveCount(0);
       await expect(label).toBeFocused();
@@ -638,6 +653,7 @@ test.describe("renaming in the inspector", () => {
     await expect(page.getByTestId("sim-panel-dirty")).toBeVisible();
     await waitForStableViewport(page);
     await page.getByTestId("node-a").dblclick();
+    await page.keyboard.press("F2");
     await expect(page.getByTestId("inspector-field-label")).toBeFocused();
     await expect(page.getByTestId("sim-panel")).toHaveCount(0);
     await page.keyboard.press("Enter");

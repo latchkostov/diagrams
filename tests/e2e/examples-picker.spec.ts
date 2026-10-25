@@ -177,6 +177,7 @@ const BY_THEME: Record<string, string[]> = {
     "gcp-streaming-analytics",
     "rag-assistant",
     "shared-api-quotas",
+    "inline-rate-limit",
   ],
   cloud: [
     "vendor-edge-storefront",
@@ -248,8 +249,9 @@ test("start card opens the gallery; feature filter and Run it start a saved simu
   await page.goto("./");
   await page.getByTestId("start-all-examples").click();
   await page.getByTestId("examples-feature").selectOption("rateLimits");
-  await expect(page.getByTestId(/^example-card-/)).toHaveCount(8);
+  await expect(page.getByTestId(/^example-card-/)).toHaveCount(9);
   await expect(page.getByTestId("example-card-shared-api-quotas")).toBeVisible();
+  await expect(page.getByTestId("example-card-inline-rate-limit")).toBeVisible();
   await expect(page.getByTestId("example-card-notification-fanout")).toBeVisible();
   await page.getByTestId("example-run-notification-fanout").click();
   await expect(page.getByTestId("live-controls")).toBeVisible({ timeout: pageLoadTimeout() });
