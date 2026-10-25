@@ -263,7 +263,7 @@ export function LabView({ onOpen }: Props) {
               {preset.group} <span>/</span> <code>{preset.id}</code>
             </div>
             <h1 data-testid="lab-preset-title">{preset.title}</h1>
-            {preset.description && <p>{preset.description}</p>}
+            {preset.description && <p data-testid="lab-preset-description">{preset.description}</p>}
           </div>
           <div className="lab-stage-actions">
             {preset.kind !== "render" && (

@@ -1,10 +1,14 @@
 import type { DiagramFile } from "../model/types";
 import { diagramThumb } from "../lib/thumbnail";
 import type { ExampleTheme } from "./themes";
-import { exampleMetadata, type ExampleMetadata } from "./metadata";
+import type { ExampleMetadata } from "./metadata";
+import { exampleIdentity } from "./identity";
 import { msg } from "../i18n";
 
-interface ExampleInfo extends ExampleMetadata {
+interface ExampleInfo extends Partial<ExampleMetadata> {
+  title: string;
+  /** First saved simulation, usable before discovery loads. */
+  simulation?: string;
   slug: string;
   /** Picker and start-card group. Local-only diagrams have none. */
   theme?: ExampleTheme;
@@ -255,8 +259,7 @@ const publicExamples: PublicExample[] = (
     },
   ] as const
 ).map((example) => {
-  const info: ExampleInfo = { ...example, ...exampleMetadata[example.slug] };
-  return { ...info, shows: info.shows?.filter((tag) => !info.omitShows?.includes(tag)) };
+  return { ...example, ...exampleIdentity[example.slug] };
 });
 
 export const examples: Example[] = [...privateExamples, ...publicExamples];
