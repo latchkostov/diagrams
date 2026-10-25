@@ -4362,5 +4362,100 @@ const en = {
   "tutorials.loadShedding.backlogDone": "A slow dependency holds work in flight while new arrivals queue behind it.",
   "tutorials.loadShedding.finish":
     "A bounded queue refuses excess requests so a traffic spike cannot grow waiting work without limit.",
+  "tutorials.studyCheckout.title": "Design study: checkout at tenfold traffic",
+  "tutorials.studyCheckout.summary": "Keep orders durable through a rush while respecting a payment partner’s quota.",
+  "tutorials.studyCheckout.storefront": "Storefront",
+  "tutorials.studyCheckout.checkout": "Checkout",
+  "tutorials.studyCheckout.payments": "Payments partner",
+  "tutorials.studyCheckout.orders": "Orders DB",
+  "tutorials.studyCheckout.tenfoldRun": "Traffic × 10",
+  "tutorials.studyCheckout.quotaRun": "Partner quota",
+  "tutorials.studyCheckout.noDrops": "No checkout drops",
+  "tutorials.studyCheckout.rushTitle": "Survive tenfold traffic",
+  "tutorials.studyCheckout.rushGoal":
+    "Make Checkout pass No checkout drops in the Traffic × 10 simulation, with at least 20 requests processed.",
+  "tutorials.studyCheckout.rushHint":
+    "Compare Checkout’s work and waiting time with its available slots; Simulation in Properties lets you change its fleet.",
+  "tutorials.studyCheckout.rushDone":
+    "Enough capacity keeps the rush from overflowing Checkout’s waiting queue; this run allows 100 partner requests per second.",
+  "tutorials.studyCheckout.ordersTitle": "Keep orders durable",
+  "tutorials.studyCheckout.ordersGoal":
+    "Keep Checkout’s Request to Orders DB and add a Message to a Kafka topic with a Java Service consumer for order events.",
+  "tutorials.studyCheckout.ordersHint":
+    "Separate committing an order from delivering its event; quick-add can extend the event path.",
+  "tutorials.studyCheckout.ordersDone":
+    "The database and event path sketch an outbox; the real service must commit the order and outbox row in one transaction.",
+  "tutorials.studyCheckout.searchTopic": "Kafka topic",
+  "tutorials.studyCheckout.searchConsumer": "Java Service",
+  "tutorials.studyCheckout.quotaTitle": "Respect the partner’s quota",
+  "tutorials.studyCheckout.quotaGoal":
+    "Run Partner quota: Payments partner must process at least 10 requests with at most 1 rejected after four simulated seconds.",
+  "tutorials.studyCheckout.quotaHint":
+    "The partner allows 10 requests per second and takes 200 ms to reply; inspect the Request’s Connection pool under Simulation.",
+  "tutorials.studyCheckout.quotaDone":
+    "A bounded connection pool paces partner calls; extra work waits upstream and still needs a capacity plan.",
+  "tutorials.studyCheckout.finish":
+    "Compare your capacity, outbox and partner protection with the reference design. Which queues absorb the rush, and which calls still wait?",
+  "tutorials.studyCheckout.reference": "Open the reference design",
+  "tutorials.studyDispatch.title": "Design study: dinner-rush dispatch",
+  "tutorials.studyDispatch.summary":
+    "Bound courier-ping backlog and explore the partition ceiling on dispatch consumers.",
+  "tutorials.studyDispatch.couriers": "Courier pings",
+  "tutorials.studyDispatch.pings": "Location topic",
+  "tutorials.studyDispatch.dispatcher": "Dispatcher",
+  "tutorials.studyDispatch.rushRun": "Dinner rush",
+  "tutorials.studyDispatch.partitionsRun": "More partitions",
+  "tutorials.studyDispatch.bounded": "Backlog bounded",
+  "tutorials.studyDispatch.rushTitle": "Handle the dinner rush",
+  "tutorials.studyDispatch.rushGoal":
+    "Pass Backlog bounded in Dinner rush while Dispatcher processes at least 10 pings.",
+  "tutorials.studyDispatch.rushHint":
+    "A replica can only work on partitions assigned to it; compare the topic’s partitions with the fleet in Simulation properties.",
+  "tutorials.studyDispatch.rushDone":
+    "More active consumers can keep incoming pings from accumulating behind the topic.",
+  "tutorials.studyDispatch.fixTitle": "Fix the partition ceiling",
+  "tutorials.studyDispatch.fixGoal":
+    "Use at least four Dispatcher replicas, give Location topic at least as many partitions, and pass Backlog bounded in More partitions.",
+  "tutorials.studyDispatch.fixHint": "An unassigned consumer adds no capacity; change the topic as well as the fleet.",
+  "tutorials.studyDispatch.fixDone": "Partitions bound useful consumer parallelism within a consumer group.",
+  "tutorials.studyDispatch.finish":
+    "Compare the partition and scaling choices with the reference design; what happens when a fleet grows beyond its topic?",
+  "tutorials.studyDispatch.reference": "Open the reference design",
+  "tutorials.studyPayments.title": "Design study: safe payments",
+  "tutorials.studyPayments.summary":
+    "Model an outbox, safe retries, a PSP brownout and a dead-letter path for poison disputes.",
+  "tutorials.studyPayments.checkout": "Checkout",
+  "tutorials.studyPayments.payments": "Payments",
+  "tutorials.studyPayments.psp": "PSP",
+  "tutorials.studyPayments.brownoutRun": "PSP brownout",
+  "tutorials.studyPayments.poisonRun": "Poison disputes",
+  "tutorials.studyPayments.disputeType": "DisputeOpened",
+  "tutorials.studyPayments.safeTitle": "Never double-charge",
+  "tutorials.studyPayments.safeGoal":
+    "Add a Kafka topic and Java Service consumer after Payments for its outbox, and set Idempotent to Yes on the PSP Request.",
+  "tutorials.studyPayments.safeHint":
+    "A durable event path and safe retry semantics solve different problems; inspect Retry safety on the PSP Request.",
+  "tutorials.studyPayments.safeDone":
+    "Idempotent declares safe retries in this model; production consumers must deduplicate, and the outbox must share the payment transaction.",
+  "tutorials.studyPayments.searchTopic": "Kafka topic",
+  "tutorials.studyPayments.searchConsumer": "Java Service",
+  "tutorials.studyPayments.searchQueue": "SQS",
+  "tutorials.studyPayments.brownoutTitle": "Survive a PSP brownout",
+  "tutorials.studyPayments.brownoutGoal":
+    "Give the PSP Request a positive Timeout of at most 250 ms and a Circuit breaker, then watch it open in PSP brownout.",
+  "tutorials.studyPayments.brownoutHint":
+    "Slow replies occupy callers; a timeout bounds each wait and a breaker stops repeated calls during the brownout.",
+  "tutorials.studyPayments.brownoutDone":
+    "Timeouts end long waits and an open breaker fails fast while the PSP recovers.",
+  "tutorials.studyPayments.poisonTitle": "Dead-letter poison disputes",
+  "tutorials.studyPayments.poisonGoal":
+    "Add an SQS dead-letter path from the topic, set the Java Service’s Failure rate to 1, and run Poison disputes until a dead-lettered dispute reaches the queue.",
+  "tutorials.studyPayments.poisonHint":
+    "A second ordinary consumer receives every event; mark the topic-to-queue connection as Dead-letter path instead.",
+  "tutorials.studyPayments.poisonDone":
+    "After the delivery limit, the broker parks poison disputes on its dead-letter path for investigation.",
+  "tutorials.studyPayments.finish":
+    "Compare your outbox, idempotency contract, breaker and poison-message path with the reference design. How would you reconcile an uncertain PSP reply?",
+  "tutorials.studyPayments.reference": "Open the reference design",
 } as const;
 export default en;

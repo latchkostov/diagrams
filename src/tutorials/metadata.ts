@@ -49,6 +49,9 @@ export const tutorialMetadata: readonly TutorialMetadata[] =
           { id: "load-shedding", title: msg("tutorials.loadShedding.title") },
           { id: "dead-letters", title: msg("tutorials.deadLetters.title") },
           { id: "health-checks", title: msg("tutorials.healthChecks.title") },
+          { id: "study-checkout", title: msg("tutorials.studyCheckout.title") },
+          { id: "study-dispatch", title: msg("tutorials.studyDispatch.title") },
+          { id: "study-payments", title: msg("tutorials.studyPayments.title") },
         ] as const
       ).filter((t) => !tutorialEntries.find((entry) => entry.id === t.id)?.quarantined)
     : [];
