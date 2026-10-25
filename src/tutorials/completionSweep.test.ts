@@ -59,6 +59,7 @@ import { editorHarness } from "../test/editorHarness";
 import { overlaps } from "../canvas/placement";
 import { groupOf } from "../canvas/membership";
 import { inStep } from "./machine";
+import { observeSteps } from "./checks";
 import { savedProgress, saveProgress } from "./progress";
 import { createTutorialRunner } from "./runner";
 import type { Check, Demo, Tutorial, TutorialStep } from "./types";
@@ -843,6 +844,97 @@ describe("design study evidence", () => {
     }
   };
 
+  for (const tutorial of [studyFanout, studyRag, studyCells])
+    it(`${tutorial.id}: the starting diagram fails every milestone throughout every saved run`, async () => {
+      const s = sandbox(tutorial);
+      await reach(s, tutorial, 0);
+      for (const simulation of s.diagram.simulations!) {
+        s.learn({ kind: "runSimulation", id: simulation.id });
+        for (let tick = 0; tick < 48; tick++) {
+          play(s, 250);
+          expect(state(s).observed).not.toContain(true);
+          expect(state(s).latched).not.toContain(true);
+        }
+      }
+    });
+
+  it.each([
+    ["email", "service.python", "generic.queue"],
+    ["sms", "service.java", "aws.sqs"],
+    ["push", "service.go", "azure.service-bus.queue"],
+  ])("fan-out accepts DLQ-first construction: %s", async (channel, workerStencil, stencil) => {
+    const s = sandbox(studyFanout);
+    await reach(s, studyFanout, 1);
+    const dlq = s.editor.addStencil(stencil);
+    const queue = s.editor.addStencil(stencil);
+    expect(s.runner.getSnapshot().subjects[`${channel}Queue`]).toBeUndefined();
+    expect(s.runner.getSnapshot().subjects[`${channel}Dlq`]).toBeUndefined();
+    const diagram = structuredClone(s.diagram);
+    const worker = diagram.nodes.find((node) => node.stencil === workerStencil)!.id;
+    diagram.edges = diagram.edges.filter((edge) => !(edge.from === s.subject("events") && edge.to === worker));
+    diagram.nodes.find((node) => node.id === queue)!.props = { maxDeliveryCount: 2 };
+    diagram.edges.push(
+      { id: "learner-in", from: s.subject("events"), to: queue, kind: "async" },
+      { id: "learner-out", from: queue, to: worker, kind: "async" },
+      { id: "learner-dlq", from: queue, to: dlq, kind: "async", props: { dlq: true } },
+    );
+    s.editor.applyDiagram(diagram);
+    expect(s.subject(`${channel}Queue`)).toBe(queue);
+    expect(s.subject(`${channel}Dlq`)).toBe(dlq);
+    // Build the other channels through learner edits; never Skip the queues milestone.
+    for (const demo of studyFanout.steps[1].demo)
+      if (
+        !("subject" in demo && demo.subject === `${channel}Queue`) &&
+        !(demo.kind === "add" && demo.subject === `${channel}Dlq`)
+      )
+        s.learn(demo);
+    expect(beyond(s, 1)).toBe(true);
+    expect(s.subject(`${channel}Queue`)).toBe(queue);
+    expect(s.subject(`${channel}Dlq`)).toBe(dlq);
+  });
+
+  it("RAG budget rejects an asynchronous model call", async () => {
+    const edge = "answer";
+    const s = sandbox(studyRag);
+    await reach(s, studyRag, 0);
+    s.editor.updateEdge(edge, { kind: "async" });
+    s.learn({ kind: "runSimulation", id: "questions" });
+    play(s, 6000);
+    const nodes = s.live!.getState().snapshot.nodes;
+    expect(nodes[s.subject("questions")].latency!.p95).toBeLessThanOrEqual(2000);
+    expect(nodes[s.subject("llm")].processed).toBeGreaterThanOrEqual(8);
+    expect(state(s)).toMatchObject({ index: 0, value: "active" });
+    expect(state(s).latched[0]).toBe(false);
+    await skip(s, studyRag);
+    expect(s.diagram.edges.find((e) => e.id === edge)).toMatchObject({ kind: "sync", relation: "flow" });
+    expect(beyond(s, 0)).toBe(true);
+  });
+
+  it.each(["failed", "dropped"] as const)(
+    "cells evacuation rejects backup %s despite completed traffic",
+    async (unsafe) => {
+      const s = sandbox(studyCells);
+      await reach(s, studyCells, 2);
+      for (const demo of studyCells.steps[2].demo) if (demo.kind !== "runSimulation") s.learn(demo);
+      s.learn({ kind: "runSimulation", id: "evacuate-region" });
+      play(s, 6000);
+      const session = structuredClone(s.live!.getState());
+      const backup = session.snapshot.nodes[s.subject("backup")];
+      expect(backup.processed).toBeGreaterThanOrEqual(10);
+      expect(backup.failed).toBe(0);
+      expect(backup.dropped).toBe(0);
+      const view = { diagram: s.diagram, live: true, session, processed: () => 0 };
+      const subjects = s.runner.getSnapshot().subjects;
+      expect(observeSteps(studyCells, view, subjects)[2]).toBe(true);
+      // Isolate the safety predicates: engine processing failures also count as drops.
+      // A snapshot with only one unsafe counter proves each guard independently.
+      backup[unsafe] = 1;
+      expect(observeSteps(studyCells, view, subjects)[2]).toBe(false);
+      backup[unsafe] = 0;
+      expect(observeSteps(studyCells, view, subjects)[2]).toBe(true);
+    },
+  );
+
   it.each([
     ["booking", "neighbour"],
     ["neighbour", "booking"],
@@ -1200,7 +1292,7 @@ describe("completion regressions", () => {
     },
   );
 
-  for (const tutorial of [studyCheckout, studyPayments])
+  for (const tutorial of [studyCheckout, studyPayments, studyRag])
     for (const [i, step] of tutorial.steps.entries()) {
       const relations = (check: Check): Extract<Check, { kind: "relation" }>[] =>
         check.kind === "all" ? check.checks.flatMap(relations) : check.kind === "relation" ? [check] : [];

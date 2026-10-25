@@ -22,8 +22,6 @@ it("hides quarantined lessons from cards, search, suggestions and deep links whi
     "study-checkout",
     "study-dispatch",
     "study-payments",
-    "study-fanout",
-    "study-rag",
   ]);
   const progress = Object.fromEntries(quarantined.map((t) => [t.id, { version: t.version, step: 1, completed: true }]));
   writeTutorials(() => ({ progress }));

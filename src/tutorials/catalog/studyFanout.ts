@@ -50,8 +50,6 @@ const queueSolution = (worker: string, search: Words): UiStep[] => [
 
 export const studyFanout: Tutorial = {
   id: "study-fanout",
-  // quarantined: see docs/backlog/2026-10-24-tutorials-quarantine.md
-  quarantined: true,
   version: 1,
   track: "studies",
   level: 3,
@@ -203,12 +201,12 @@ export const studyFanout: Tutorial = {
     email: { stencils: ["generic.email"] },
     sms: { stencils: ["generic.sms"] },
     push: { stencils: ["generic.push"] },
-    emailQueue: { stencils: ["generic.queue"] },
-    smsQueue: { stencils: ["aws.sqs"] },
-    pushQueue: { stencils: ["azure.service-bus.queue"] },
-    emailDlq: { stencils: ["generic.queue"] },
-    smsDlq: { stencils: ["aws.sqs"] },
-    pushDlq: { stencils: ["azure.service-bus.queue"] },
+    emailQueue: { stencils: ["generic.queue"], downstreamOf: "events" },
+    smsQueue: { stencils: ["aws.sqs"], downstreamOf: "events" },
+    pushQueue: { stencils: ["azure.service-bus.queue"], downstreamOf: "events" },
+    emailDlq: { stencils: ["generic.queue"], downstreamOf: "emailQueue" },
+    smsDlq: { stencils: ["aws.sqs"], downstreamOf: "smsQueue" },
+    pushDlq: { stencils: ["azure.service-bus.queue"], downstreamOf: "pushQueue" },
   },
   steps: [
     {
