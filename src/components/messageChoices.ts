@@ -14,8 +14,11 @@ function normalize(types: readonly string[]) {
   return entries;
 }
 function population(choices: readonly string[], value: readonly string[]) {
-  const entries = new Map([...normalize(choices), ...normalize(value)]);
-  return { entries, all: [...entries.keys()], selected: new Set(value) };
+  return {
+    all: [...new Set([...choices, ...value])],
+    selected: new Set(value),
+    entries: undefined as Map<string, string> | undefined,
+  };
 }
 
 export function selectMessageChoices(
@@ -28,13 +31,16 @@ export function selectMessageChoices(
   if (!byValue) populations.set(choices, (byValue = new WeakMap()));
   let indexed = byValue.get(value);
   if (!indexed) byValue.set(value, (indexed = population(choices, value)));
-  const { entries, all, selected } = indexed;
-  const query = all.length > limit ? search.toLocaleLowerCase() : "";
+  const { all, selected } = indexed;
+  const query = search && all.length > limit ? search.toLocaleLowerCase() : "";
+  // Single-select and empty-query pickers need only authored names, even when their arrays are fresh.
+  const entries = query ? (indexed.entries ??= new Map([...normalize(choices), ...normalize(value)])) : undefined;
   const buckets = () => ({ exact: [] as string[], partial: [] as string[], count: 0 });
   const chosen = buckets();
   const offered = buckets();
-  for (const [type, normalizedType] of entries) {
-    if (query && !normalizedType.includes(query)) continue;
+  for (const type of all) {
+    const normalizedType = entries?.get(type);
+    if (query && !normalizedType!.includes(query)) continue;
     const bucket = selected.has(type) ? chosen : offered;
     bucket.count++;
     const matches = query && normalizedType === query ? bucket.exact : bucket.partial;
@@ -46,8 +52,8 @@ export function selectMessageChoices(
   // Only bounded candidates are ranked; an empty query preserves authored order without ranking.
   const options = query
     ? [
-        ...candidates.filter((type) => entries.get(type) === query),
-        ...candidates.filter((type) => entries.get(type) !== query),
+        ...candidates.filter((type) => entries!.get(type) === query),
+        ...candidates.filter((type) => entries!.get(type) !== query),
       ]
     : candidates;
   return {

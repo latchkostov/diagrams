@@ -46,13 +46,48 @@ it("deduplicates names and ignores a stale search after the search control disap
 it("reuses normalized vocabularies across broad queries and unrelated draft renders", () => {
   const choices = Array.from({ length: 30_000 }, (_, i) => `Type${i}`);
   const selected = choices.slice(0, 150);
-  selectMessageChoices(choices, selected);
+  selectMessageChoices(choices, selected, "Type");
   const normalize = vi.spyOn(String.prototype, "toLocaleLowerCase");
   try {
     for (const query of ["Type", "Type2", "Type", "absent"]) selectMessageChoices(choices, selected, query);
     expect(normalize).toHaveBeenCalledTimes(4); // Only the queries, never the 30,000 names again.
     selectMessageChoices(choices, ["New selection"], "Type");
     expect(normalize).toHaveBeenCalledTimes(6); // A changed selection normalizes only its new name and query.
+  } finally {
+    normalize.mockRestore();
+  }
+});
+it("never normalizes names in empty searches across fresh node-picker arrays", () => {
+  for (const count of [3750, 3750 * GROWTH_FACTOR]) {
+    const choices = Array.from({ length: count }, (_, i) => `Type${i}`);
+    const normalize = vi.spyOn(String.prototype, "toLocaleLowerCase");
+    try {
+      for (let render = 0; render < 8; render++) {
+        const result = selectMessageChoices([...choices], [choices[0]]);
+        expect(result.options[0]).toBe(choices[0]);
+        expect(result.options).toEqual(choices.slice(0, MAX_CHOICES + 1));
+      }
+      expect(normalize).not.toHaveBeenCalled();
+    } finally {
+      normalize.mockRestore();
+    }
+  }
+});
+it("defers normalization until the first nonempty searchable query", () => {
+  const choices = Array.from({ length: 250 }, (_, i) => `Type${i}`);
+  const normalize = vi.spyOn(String.prototype, "toLocaleLowerCase");
+  try {
+    selectMessageChoices(choices);
+    expect(normalize).not.toHaveBeenCalled();
+    normalize.mockClear();
+    expect(selectMessageChoices(choices, undefined, "Type249").options).toEqual(["Type249"]);
+    expect(normalize).toHaveBeenCalledTimes(choices.length + 1);
+    normalize.mockClear();
+    selectMessageChoices(choices, undefined, "Type24");
+    expect(normalize).toHaveBeenCalledTimes(1);
+    normalize.mockClear();
+    selectMessageChoices(["Only"], ["Only"], "stale");
+    expect(normalize).not.toHaveBeenCalled();
   } finally {
     normalize.mockRestore();
   }
@@ -100,7 +135,7 @@ it("returns zero matching choices without changing either population", () => {
 it("scans broad searches linearly using cached normalized entries", () => {
   const search = (count: number) => {
     const choices = Array.from({ length: count }, (_, i) => `Type${i}`);
-    selectMessageChoices(choices);
+    selectMessageChoices(choices, undefined, "Type");
     return () => selectMessageChoices(choices, undefined, "Type");
   };
   expect(opGrowth(search(3750), search(3750 * GROWTH_FACTOR), 9, ["src/components/messageChoices.ts"])).toBeLessThan(9);

@@ -71,7 +71,7 @@ export function GalleryDetails({ catalog, query, feature, onOpen, onTutorials }:
                 aria-labelledby={`example-title-${ex.slug}`}
               >
                 <div className="example-card-thumb">
-                  <DiagramThumbnail thumb={ex.thumb!} testId={`example-thumb-${ex.slug}`} />
+                  <DiagramThumbnail thumb={ex.thumb} testId={`example-thumb-${ex.slug}`} />
                 </div>
                 <div className="example-card-body">
                   <h4 id={`example-title-${ex.slug}`}>{ex.title}</h4>

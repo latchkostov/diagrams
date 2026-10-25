@@ -1,12 +1,12 @@
 import { useRef, useState } from "react";
 import { TopBar } from "../components/TopBar";
 import { ExamplesDialog } from "../components/ExamplesDialog";
-import { examples, type Example } from "../examples";
+import { examples, type ExampleIdentity } from "../examples";
 import { diagramThumb } from "../lib/thumbnail";
 import { useInterop } from "../interop/useInterop";
 import type { CanvasHandle } from "../canvas/CanvasView";
 
-const local: Example = {
+const local: ExampleIdentity = {
   slug: "synthetic-local",
   title: "Synthetic local scenario",
   localOnly: true,
