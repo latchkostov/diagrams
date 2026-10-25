@@ -4,6 +4,7 @@ import { fillTestId, holds, nearMiss, resolveSubjects, edgeTargets } from "./che
 import { mobileApi } from "./catalog/mobileApi";
 import { backlogLag } from "./catalog/backlogLag";
 import type { Check, PropPath } from "./types";
+import { membershipFixture } from "../test/tutorialFixtures";
 
 const diagram = (label: string): DiagramFile => ({
   format: "diagrams/v1",
@@ -85,6 +86,45 @@ it("resolves edge subjects after their nodes and retains edge identity across a 
   expect(bindings).toEqual({ app: "client", api: "service-1", link: "call" });
   expect(resolveSubjects(tutorial, { ...d, edges: [{ ...d.edges[0], to: "other" }] }, bindings).link).toBe("call");
   expect(resolveSubjects(tutorial, { ...d, edges: [] }, bindings).link).toBeUndefined();
+});
+
+it("requires every selected member and rebinds boundaries after membership changes", () => {
+  if (typeof membershipFixture.start !== "function") throw new Error("Expected inline sandbox");
+  const d = membershipFixture.start();
+  d.groups = [
+    { id: "old", label: "", x: 200, y: -80, width: 600, height: 300 },
+    { id: "new", label: "", x: 200, y: 400, width: 600, height: 300 },
+  ];
+  const one = d.nodes.find((n) => n.id === "one")!;
+  const two = d.nodes.find((n) => n.id === "two")!;
+  one.group = "old";
+  let bindings = resolveSubjects(membershipFixture, d);
+  expect(bindings.firstCell).toBeUndefined();
+  two.group = "new";
+  expect(resolveSubjects(membershipFixture, d, bindings).firstCell).toBeUndefined();
+  two.group = "old";
+  bindings = resolveSubjects(membershipFixture, d, bindings);
+  expect(bindings.firstCell).toBe("old");
+  one.group = "new";
+  expect(resolveSubjects(membershipFixture, d, bindings).firstCell).toBeUndefined();
+  two.group = "new";
+  bindings = resolveSubjects(membershipFixture, d, bindings);
+  expect(bindings.firstCell).toBe("new");
+  d.nodes = d.nodes.filter((n) => n.id !== "two");
+  expect(resolveSubjects(membershipFixture, d, bindings).firstCell).toBeUndefined();
+});
+
+it("retains order-based boundary bindings for existing lessons", () => {
+  const tutorial = {
+    ...mobileApi,
+    subjects: { first: { boundary: true as const }, second: { boundary: true as const } },
+  };
+  const d = diagram("");
+  d.groups = ["a", "b"].map((id) => ({ id, label: "", x: 0, y: 0, width: 300, height: 200 }));
+  const bindings = resolveSubjects(tutorial, d);
+  expect(bindings).toEqual({ first: "a", second: "b" });
+  d.groups.reverse();
+  expect(resolveSubjects(tutorial, d, bindings)).toEqual(bindings);
 });
 
 it("binds a downstream subject only to a flow consumer, including after its old consumer disconnects", () => {

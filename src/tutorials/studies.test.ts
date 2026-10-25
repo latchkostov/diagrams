@@ -16,6 +16,26 @@ import { runnerInitial, runnerMachine, targetsShown } from "./machine";
 import { solutionNow } from "./solution";
 
 describe("design studies", () => {
+  it.each([
+    ["booking", "neighbour"],
+    ["neighbour", "booking"],
+  ])("cells bind boundaries by membership when %s is grouped before %s", (first, second) => {
+    if (typeof studyCells.start !== "function") throw new Error("Expected inline diagram");
+    const diagram = studyCells.start();
+    diagram.nodes.push({ id: "java", stencil: "service.java", label: "", x: 950, y: 250 });
+    diagram.edges.push({ id: "java-request", from: "east", to: "java", kind: "sync" });
+    let subjects = resolveSubjects(studyCells, diagram);
+    for (const [index, name] of [first, second].entries()) {
+      const id = `boundary-${index}`;
+      diagram.groups = [...(diagram.groups ?? []), { id, label: "", x: 900, y: index * 500, width: 400, height: 300 }];
+      diagram.nodes.find((node) => node.id === subjects[name])!.group = id;
+      subjects = resolveSubjects(studyCells, diagram, subjects);
+      expect(subjects[name === "booking" ? "cellA" : "cellB"]).toBe(id);
+      if (index === 0) expect(subjects[name === "booking" ? "cellB" : "cellA"]).toBeUndefined();
+    }
+    expect(observeSteps(studyCells, { diagram, live: false, processed: () => 0 }, subjects)[0]).toBe(true);
+  });
+
   it.each([1, 2])("Dispatch dinner rush requires a working fleet (%i replicas)", (replicas) => {
     if (typeof studyDispatch.start !== "function") throw new Error("Expected inline diagram");
     const diagram = studyDispatch.start();

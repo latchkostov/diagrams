@@ -72,11 +72,11 @@ export const studyCells: Tutorial = {
     east: { stencils: ["aws.elb"] },
     booking: { stencils: ["generic.service"] },
     neighbour: { stencils: ["service.java"] },
-    cellA: { boundary: true },
-    cellB: { boundary: true },
+    cellA: { boundary: { members: ["booking"] } },
+    cellB: { boundary: { members: ["neighbour"] } },
     west: { stencils: ["load-balancer"] },
     backup: { stencils: ["service.go"] },
-    cellC: { boundary: true },
+    cellC: { boundary: { members: ["backup"] } },
   },
   steps: [
     {

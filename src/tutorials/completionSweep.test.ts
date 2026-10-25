@@ -68,6 +68,7 @@ import {
   liveControlsFixture,
   livePanelsFixture,
   metricsFixture,
+  membershipFixture,
   pathsFixture,
   savedSimulationsFixture,
   slowMotionFixture,
@@ -842,15 +843,49 @@ describe("design study evidence", () => {
     }
   };
 
-  it("fan-out cannot pass while any provider rejects requests", async () => {
-    const s = sandbox(studyFanout);
-    await reach(s, studyFanout, 0);
-    s.learn({ kind: "runSimulation", id: "provider-limits" });
+  it.each([
+    ["booking", "neighbour"],
+    ["neighbour", "booking"],
+  ])("cells complete splitting and isolation with %s grouped before %s", async (first, second) => {
+    const s = sandbox(studyCells);
+    await reach(s, studyCells, 0);
+    s.learn({ kind: "add", subject: "neighbour", stencil: "service.java", after: "east" });
+    for (const name of [first, second]) {
+      s.editor.groupNodes([s.subject(name)]);
+      s.toMode({ type: "field.left" });
+    }
+    expect(state(s)).toMatchObject({ index: 1, value: "active" });
+    expect(s.subject("cellA")).toBe(s.diagram.nodes.find((node) => node.id === s.subject("booking"))!.group);
+    expect(s.subject("cellB")).toBe(s.diagram.nodes.find((node) => node.id === s.subject("neighbour"))!.group);
+    s.learn({ kind: "runSimulation", id: "bad-deploy" });
     play(s, 6000);
-    expect(state(s)).toMatchObject({ index: 0, value: "active" });
-    expect(s.live!.getState().snapshot.nodes[s.subject("sms")].rejected).toBeGreaterThan(0);
-    await skip(s, studyFanout);
+    expect(beyond(s, 1)).toBe(true);
+    const nodes = s.live!.getState().snapshot.nodes;
+    expect(nodes[s.subject("booking")].failed).toBeGreaterThan(0);
+    expect(nodes[s.subject("neighbour")].failed).toBe(0);
+    expect(nodes[s.subject("neighbour")].processed).toBeGreaterThanOrEqual(5);
   });
+
+  it.each(["email", "sms", "push"])(
+    "each provider independently blocks completion on rejection: %s",
+    async (provider) => {
+      const s = sandbox(studyFanout);
+      await reach(s, studyFanout, 0);
+      for (const demo of studyFanout.steps[0].demo)
+        if (demo.kind === "patch" && demo.edge?.[1] !== provider) s.learn(demo);
+      s.learn({ kind: "runSimulation", id: "provider-limits" });
+      play(s, 6000);
+      expect(s.live!.getState().run!.time).toBeGreaterThan(5000);
+      for (const name of ["email", "sms", "push"]) {
+        const metrics = s.live!.getState().snapshot.nodes[s.subject(name)];
+        expect(metrics.processed).toBeGreaterThanOrEqual(3);
+        if (name === provider) expect(metrics.rejected).toBeGreaterThan(0);
+        else expect(metrics.rejected).toBe(0);
+      }
+      expect(state(s)).toMatchObject({ index: 0, value: "active" });
+      await skip(s, studyFanout);
+    },
+  );
 
   it("RAG cannot pass with the initial slow model, then measures completed answers after the fix", async () => {
     const s = sandbox(studyRag);
@@ -887,6 +922,81 @@ describe("design study evidence", () => {
     expect(nodes[s.subject("neighbour")].processed).toBeGreaterThanOrEqual(5);
     expect(nodes[s.subject("neighbour")].failed).toBe(0);
   });
+
+  it.each([
+    "containment rejects an idle neighbour",
+    "containment rejects neighbouring failures",
+    "containment requires deployed-cell failures",
+  ])("%s", async (missing) => {
+    const s = sandbox(studyCells);
+    await reach(s, studyCells, 1);
+    if (missing !== "containment rejects neighbouring failures") {
+      s.learn({
+        kind: "patch",
+        edge: ["east", missing === "containment rejects an idle neighbour" ? "neighbour" : "booking"],
+        patches: [{ op: "set", path: ["filter"], value: ["Unused"] }],
+      });
+    } else {
+      s.editor.updateMeta({
+        simulations: s.diagram.simulations!.map((simulation) =>
+          simulation.id !== "bad-deploy"
+            ? simulation
+            : {
+                ...simulation,
+                timeline: [
+                  {
+                    atMs: 1000,
+                    action: {
+                      do: "fault",
+                      fault: {
+                        kind: "fail",
+                        node: s.subject("neighbour"),
+                        rate: 0.5,
+                      },
+                    },
+                  },
+                  ...(simulation.timeline ?? []),
+                ],
+              },
+        ),
+      });
+    }
+    s.learn({ kind: "runSimulation", id: "bad-deploy" });
+    play(s, 6000);
+    expect(s.live!.getState().run!.time).toBeGreaterThan(5000);
+    const nodes = s.live!.getState().snapshot.nodes;
+    const booking = nodes[s.subject("booking")];
+    const neighbour = nodes[s.subject("neighbour")];
+    if (missing === "containment requires deployed-cell failures") expect(booking.failed).toBe(0);
+    else expect(booking.failed).toBeGreaterThan(0);
+    if (missing === "containment rejects neighbouring failures") expect(neighbour.failed).toBeGreaterThan(0);
+    else expect(neighbour.failed).toBe(0);
+    if (missing === "containment rejects an idle neighbour") expect(neighbour.processed).toBe(0);
+    else expect(neighbour.processed).toBeGreaterThanOrEqual(5);
+    expect(state(s)).toMatchObject({ index: 1, value: "active" });
+    expect(state(s).latched[1]).toBe(false);
+  });
+});
+
+describe("membership selector fixture", () => {
+  it.each([false, true])("completes with reversed creation order: %s", async (reverse) => {
+    const s = sandbox(membershipFixture);
+    await reach(s, membershipFixture, 0);
+    const groups = [["one", "two"], ["three"]];
+    if (reverse) groups.reverse();
+    // An unrelated boundary must never take either subject, even when created first.
+    s.editor.groupNodes([s.editor.addStencil("generic.database")]);
+    s.toMode({ type: "field.left" });
+    for (const members of groups) {
+      s.editor.groupNodes(members.map((name) => s.subject(name)));
+      s.toMode({ type: "field.left" });
+    }
+    expect(state(s)).toMatchObject({ index: 1, value: "active" });
+    expect(s.subject("firstCell")).toBe(s.diagram.nodes.find((n) => n.id === s.subject("one"))!.group);
+    expect(s.subject("secondCell")).toBe(s.diagram.nodes.find((n) => n.id === s.subject("three"))!.group);
+    await skip(s, membershipFixture);
+    expect(state(s).value).toBe("finished");
+  });
 });
 
 describe("every tutorial's completion contract", () => {
@@ -894,7 +1004,14 @@ describe("every tutorial's completion contract", () => {
     describe(tutorial.id, () => {
       const lessonIt = itFor(tutorial);
       tutorial.steps.forEach((step, i) => {
-        for (const perturbation of ["clear selection", "single node", "extra subject-type node"] as const)
+        for (const perturbation of [
+          "clear selection",
+          "single node",
+          "extra subject-type node",
+          ...(Object.values(tutorial.subjects).some((spec) => typeof spec.boundary === "object")
+            ? ["unrelated boundary"]
+            : []),
+        ])
           lessonIt(`${step.id}: (e) Skip recovers after ${perturbation} without duplicate subjects`, async () => {
             const s = sandbox(tutorial);
             if (!(await reach(s, tutorial, i))) return expectPassedOver(s, i);
@@ -903,6 +1020,10 @@ describe("every tutorial's completion contract", () => {
               // Empty lessons get a real node too, rather than silently repeating deselection.
               const id = s.diagram.nodes[0]?.id ?? s.editor.addStencil("generic.service");
               s.editor.select({ nodeIds: [id] });
+            } else if (perturbation === "unrelated boundary") {
+              const id = s.editor.addStencil("generic.database");
+              s.editor.groupNodes([id]);
+              s.toMode({ type: "field.left" });
             } else {
               const checkSubjects = (c: Check): string[] =>
                 c.kind === "all"

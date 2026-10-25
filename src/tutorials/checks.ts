@@ -64,6 +64,7 @@ export function resolveSubjects(
       flowEdges(diagram.edges).some((e) => e.from === subjects[spec.downstreamOf!] && e.to === node.id));
   for (const [name, spec] of Object.entries(tutorial.subjects)) {
     if (spec.edge) continue;
+    if (typeof spec.boundary === "object") continue;
     if (spec.boundary) {
       const group = diagram.groups?.find((g) => g.id === previous[name] && !used.has(g.id));
       if (group) {
@@ -80,6 +81,7 @@ export function resolveSubjects(
   }
   for (const [name, spec] of Object.entries(tutorial.subjects)) {
     if (spec.edge) continue;
+    if (typeof spec.boundary === "object") continue;
     if (subjects[name]) continue;
     if (spec.boundary) {
       const group = diagram.groups?.find((g) => !used.has(g.id));
@@ -90,6 +92,17 @@ export function resolveSubjects(
     const node = diagram.nodes.find((n) => !used.has(n.id) && matches(spec, n));
     subjects[name] = node?.id;
     if (node) used.add(node.id);
+  }
+  // Membership selectors run after both node passes, regardless of declaration or boundary creation order.
+  // Recheck membership on every observation: moving a service must not retain a stale cell binding.
+  for (const [name, spec] of Object.entries(tutorial.subjects)) {
+    if (typeof spec.boundary !== "object") continue;
+    const members = spec.boundary.members.map((member) => diagram.nodes.find((n) => n.id === subjects[member]));
+    const group = diagram.groups?.find(
+      (g) => !used.has(g.id) && members.length > 0 && members.every((node) => node?.group === g.id),
+    );
+    subjects[name] = group?.id;
+    if (group) used.add(group.id);
   }
   for (const [name, spec] of Object.entries(tutorial.subjects)) {
     if (!spec.edge) continue;

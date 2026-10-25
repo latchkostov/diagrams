@@ -106,9 +106,9 @@ export const studyRag: Tutorial = {
     {
       id: "cache-repeated-questions",
       title: msg("tutorials.studyRag.cacheTitle"),
-      goal: msg("tutorials.studyRag.cacheGoal"),
-      hint: msg("tutorials.studyRag.cacheHint"),
-      done: msg("tutorials.studyRag.cacheDone"),
+      goal: msg("tutorials.studyRag.samplingGoal"),
+      hint: msg("tutorials.studyRag.samplingHint"),
+      done: msg("tutorials.studyRag.samplingDone"),
       check: {
         kind: "all",
         checks: [
@@ -118,7 +118,7 @@ export const studyRag: Tutorial = {
           { kind: "prop", edge: ["embeddings", "llm"], prop: "share", op: "=", value: 0.2 },
         ],
       },
-      targets: [{ testId: "node-{embeddings}", tip: msg("tutorials.studyRag.cacheHint") }],
+      targets: [{ testId: "node-{embeddings}", tip: msg("tutorials.studyRag.samplingHint") }],
       demo: [
         { kind: "add", subject: "cache", stencil: "redis.cache", after: "embeddings" },
         { kind: "relation", from: "embeddings", to: "cache", relation: "flow", edgeKind: "sync" },
@@ -146,9 +146,9 @@ export const studyRag: Tutorial = {
     {
       id: "survive-reindex",
       title: msg("tutorials.studyRag.reindexTitle"),
-      goal: msg("tutorials.studyRag.reindexGoal"),
-      hint: msg("tutorials.studyRag.reindexHint"),
-      done: msg("tutorials.studyRag.reindexDone"),
+      goal: msg("tutorials.studyRag.sampledReindexGoal"),
+      hint: msg("tutorials.studyRag.sampledReindexHint"),
+      done: msg("tutorials.studyRag.sampledReindexDone"),
       sticky: true,
       check: {
         kind: "all",
@@ -166,7 +166,7 @@ export const studyRag: Tutorial = {
           { kind: "compare", left: { sum: "failed", nodes: ["embeddings", "index", "llm"] }, op: "=", right: 0 },
         ],
       },
-      targets: [{ testId: "node-{index}", tip: msg("tutorials.studyRag.reindexHint") }],
+      targets: [{ testId: "node-{index}", tip: msg("tutorials.studyRag.sampledReindexHint") }],
       demo: [
         { kind: "patch", subject: "index", patches: [{ op: "set", path: ["latencyMs"], value: 50 }] },
         { kind: "runSimulation", id: "reindex" },
@@ -181,7 +181,7 @@ export const studyRag: Tutorial = {
     },
   ],
   finish: {
-    text: msg("tutorials.studyRag.finish"),
+    text: msg("tutorials.studyRag.sampledFinish"),
     example: { slug: "rag-assistant", label: msg("tutorials.studyRag.reference") },
   },
 };

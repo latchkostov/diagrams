@@ -4551,21 +4551,21 @@ const en = {
   "tutorials.studyRag.budgetDone":
     "The waiting caller's p95 measures the whole downstream answer path, not just its own processing time.",
   "tutorials.studyRag.cacheTitle": "Cache repeated questions",
-  "tutorials.studyRag.cacheGoal":
-    "Add a Redis cache after RAG service and embeddings. Set Share to 80% on its cache Request and 20% on both its vector-search and answer-model Requests.",
-  "tutorials.studyRag.cacheHint":
-    "Use quick-add to pick Redis. Edit Share under Simulation on all three outgoing Requests; the split represents cache hits and misses.",
-  "tutorials.studyRag.cacheDone":
-    "Share models an assumed cache hit rate; only misses visit vector search and the answer model.",
+  "tutorials.studyRag.samplingGoal":
+    "Add a Redis cache after RAG service and embeddings. Set Share to 80% on its cache Request and 20% on both its vector-search and answer-model Requests. Each Request is sampled independently.",
+  "tutorials.studyRag.samplingHint":
+    "Use quick-add to pick Redis. Edit Share under Simulation on all three outgoing Requests. A question can reach any combination of destinations, including none.",
+  "tutorials.studyRag.samplingDone":
+    "Share independently samples each outgoing Request. These percentages approximate reduced downstream traffic; they do not connect cache misses to retrieval and model calls.",
   "tutorials.studyRag.reindexTitle": "Survive the reindex",
-  "tutorials.studyRag.reindexGoal":
-    "Run Reindex under load: vector search becomes 5× slower. Keep p95 within 2,000 ms, serve cache hits and model answers, and finish without failures.",
-  "tutorials.studyRag.reindexHint":
-    "Set Vector search ▸ Simulation ▸ Latency to 50 ms to reserve reindex headroom. The seeded run keeps the 5× Fault active, including for cache misses.",
-  "tutorials.studyRag.reindexDone":
-    "Caching reduces model traffic, while search headroom keeps the miss path inside the latency budget during reindexing.",
-  "tutorials.studyRag.finish":
-    "Compare the reference's retrieval and ingestion paths. This study assumes an 80% hit rate; how would you measure that rate and answer quality in a real system?",
+  "tutorials.studyRag.sampledReindexGoal":
+    "Run Reindex under load: vector search becomes 5× slower. Keep p95 within 2,000 ms, complete cache and model Requests, and finish without failures.",
+  "tutorials.studyRag.sampledReindexHint":
+    "Set Vector search ▸ Simulation ▸ Latency to 50 ms to reserve reindex headroom. The seeded run keeps the 5× Fault active on independently sampled search Requests.",
+  "tutorials.studyRag.sampledReindexDone":
+    "Search headroom keeps the sampled workload within its latency budget during reindexing. Its p95 measures independently sampled Requests, not correlated cache hit and miss paths or answer quality.",
+  "tutorials.studyRag.sampledFinish":
+    "Compare the reference's retrieval and ingestion paths. How would you model correlated cache hits and misses, then measure hit rate, answer latency and quality in a real system?",
   "tutorials.studyRag.reference": "Open the RAG reference",
   "tutorials.studyCells.title": "Design study: bookings in cells",
   "tutorials.studyCells.summary":
