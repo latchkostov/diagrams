@@ -64,8 +64,6 @@ export function useCanvasShortcuts(
     canRenameEnter?: () => boolean;
     /** A Live readout owns Esc before the canvas clears selection; the session applies its key policy. */
     canEscape?: () => boolean;
-    /** Controller-owned transient cards precede selection Escape. */
-    takeEscape?: () => boolean;
     /** Alt+arrow from `from`: quick-add the next node that way; with Shift, a connected copy (D3). */
     onGrow?: (from: string, toward: Toward, clone: boolean) => void;
     /**
@@ -222,11 +220,6 @@ export function useCanvasShortcuts(
           break;
         }
         case "escape": {
-          if (optsRef.current.takeEscape?.()) {
-            handled();
-            e.stopImmediatePropagation();
-            return;
-          }
           if (optsRef.current.canEscape?.() === false) return;
           // Don't stop propagation: the app also uses Esc to leave presentation mode.
           optsRef.current.onEscape();

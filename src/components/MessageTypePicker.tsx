@@ -6,8 +6,7 @@ import { acceptsType } from "../sim/topology";
 import { useInteractionOrLocal } from "../canvas/interaction";
 import { machineStep } from "../lib/machine";
 import { messagePickerMode } from "./messagePickerMode";
-/** At most this many choices render in one picker. */
-export const MAX_CHOICES = 100;
+import { MAX_CHOICES, selectMessageChoices } from "./messageChoices";
 
 /** Native buttons keep chips reachable with Tab, Space and Enter; arrows walk the choices too. */
 export function TypePicker({
@@ -58,18 +57,9 @@ export function TypePicker({
   };
   // Rendering is bounded: imported vocabularies and filters can be large. Past the limit, at most MAX_CHOICES selected
   // types render first and at most MAX_CHOICES unselected ones follow. Search reaches every selected type.
-  const all = [...new Set([...choices, ...value])];
-  const selected = new Set(value);
-  const query = multiple && all.length > MAX_CHOICES ? search.toLocaleLowerCase() : "";
-  const matches = (type: string) => type.toLocaleLowerCase().includes(query);
-  const matching = query ? all.filter(matches) : all;
-  const pinned = [...selected].filter(matches).slice(0, MAX_CHOICES);
-  const moreSelected = selected.size - pinned.length;
-  const options =
-    all.length > MAX_CHOICES
-      ? [...pinned, ...matching.filter((type) => !selected.has(type)).slice(0, MAX_CHOICES)]
-      : matching;
-  const hidden = Math.max(0, matching.length - options.length - moreSelected);
+  const bounded = selectMessageChoices(choices, value, multiple ? search : "");
+  const { all, selected, options, hiddenSelectionCount: moreSelected } = bounded;
+  const hidden = bounded.matchingSelectedOverflow + bounded.matchingUnselectedOverflow;
   const offered = new Set(choices);
   // Deselecting a chip can remove it (nothing upstream sends it, or past the limit), focus included: continue at a
   // neighbour.

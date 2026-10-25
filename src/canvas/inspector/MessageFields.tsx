@@ -1,4 +1,5 @@
-import { MAX_CHOICES, TypePicker } from "../../components/MessageTypePicker";
+import { TypePicker } from "../../components/MessageTypePicker";
+import { MAX_CHOICES, selectMessageChoices } from "../../components/messageChoices";
 import { t } from "../../i18n";
 import { useMessageTypes } from "./useMessageTypes";
 import { useLayoutEffect, useRef, useState } from "react";
@@ -32,10 +33,11 @@ export function EdgeMessages({
   const props = diagram.edges.find((edge) => edge.id === edgeId)?.props ?? {};
   const filter = Array.isArray(props.filter) ? props.filter.filter((v): v is string => typeof v === "string") : [];
   const carries = [...(types.carried.get(edgeId) ?? [])];
-  const matching =
-    carries.length > MAX_CHOICES && search
-      ? carries.filter((type) => type.toLocaleLowerCase().includes(search.toLocaleLowerCase()))
-      : carries;
+  const { options, matchingUnselectedOverflow: hidden } = selectMessageChoices(
+    carries,
+    [],
+    carries.length > MAX_CHOICES ? search : "",
+  );
   return (
     <div className="message-fields" data-testid="inspector-messages">
       <h4>{t("messageTypes.messages")}</h4>
@@ -51,8 +53,8 @@ export function EdgeMessages({
           />
         )}
         <div className="message-type-chips" aria-live="polite" data-testid="inspector-carries">
-          {matching.length ? (
-            matching.slice(0, MAX_CHOICES).map((type) => (
+          {options.length ? (
+            options.map((type) => (
               <span className="message-type-chip" key={type} data-testid="inspector-carries-type">
                 {type}
               </span>
@@ -60,9 +62,9 @@ export function EdgeMessages({
           ) : (
             <small className="insp-note">{t("messageTypes.noMessages")}</small>
           )}
-          {matching.length > MAX_CHOICES && (
+          {hidden > 0 && (
             <small className="insp-note" data-testid="inspector-carries-more">
-              +{t("importReport.more", { count: matching.length - MAX_CHOICES })}
+              +{t("importReport.more", { count: hidden })}
             </small>
           )}
         </div>
@@ -130,8 +132,9 @@ export function NodeMessages({
   // Imported maps can hold thousands of rules: render a page at a time.
   const [shownRules, setShownRules] = useState(RULE_PAGE);
   // A rule added here renders after the current page (the page itself never grows to reach it).
-  // Incoming types are editable identity. Retain the appended row's names across rekey Undo, newest first.
-  const [added, setAdded] = useState<string[]>([]);
+  // History restores immutable emits objects. Associate the appended row with each saved snapshot, so reusing
+  // an old name in a different row cannot steal its identity. Weak keys expire with discarded history.
+  const [added, setAdded] = useState<WeakMap<object, string>>();
   useLayoutEffect(() => {
     const input = rekeyed.current;
     const target = input === undefined ? null : ruleControls.current.get(input)?.querySelector("button");
@@ -157,15 +160,20 @@ export function NodeMessages({
       : emits && typeof emits === "object" && !Array.isArray(emits)
         ? Object.entries(emits).filter((entry): entry is [string, string] => typeof entry[1] === "string")
         : [];
-  const save = (next: [string, string][]) =>
+  const addedInput = emits && typeof emits === "object" ? added?.get(emits) : undefined;
+  const save = (next: [string, string][], appended = addedInput, snapshots = added) => {
+    const nextEmits =
+      next.length === 1 && next[0][0] === "*" ? next[0][1] : next.length ? Object.fromEntries(next) : undefined;
+    if (nextEmits && typeof nextEmits === "object" && appended && next.some(([key]) => key === appended))
+      snapshots?.set(nextEmits, appended);
     editor.setNodeProps(
       nodeId,
       {
-        emits:
-          next.length === 1 && next[0][0] === "*" ? next[0][1] : next.length ? Object.fromEntries(next) : undefined,
+        emits: nextEmits,
       },
       bulkStep("message-emits"),
     );
+  };
   const remove = (input: string) => {
     const next = rows.filter(([key]) => key !== input);
     save(next);
@@ -187,7 +195,6 @@ export function NodeMessages({
   const unassigned = incoming.filter((type) => !assigned.has(type));
   const vocabulary = [...new Set([...arriving, ...types.known])];
   const page = Math.min(shownRules, rows.length);
-  const addedInput = added.find((type) => assigned.has(type));
   const addedAt = addedInput === undefined ? -1 : rows.findIndex(([key]) => key === addedInput);
   const visible = [...Array(page).keys(), ...(addedAt >= page ? [addedAt] : [])];
   const remaining = rows.length - visible.length;
@@ -228,8 +235,10 @@ export function NodeMessages({
               onChange={(value) => {
                 if (!value[0] || assigned.has(value[0])) return;
                 rekeyed.current = value[0];
-                if (i === addedAt) setAdded([value[0], ...added.filter((type) => type !== value[0])]);
-                save(rows.map((row, j) => (j === i ? [value[0], output] : row)));
+                save(
+                  rows.map((row, j) => (j === i ? [value[0], output] : row)),
+                  i === addedAt ? value[0] : addedInput,
+                );
               }}
             />
             <TypePicker
@@ -278,8 +287,9 @@ export function NodeMessages({
           const input = arriving.find((type) => !assigned.has(type)) ?? "*";
           // The Add button may disable itself: continue at the new rule once it is committed (policy row I5).
           rekeyed.current = input;
-          setAdded([input]);
-          save([...rows, [input, input === "*" ? (arriving[0] ?? "Message") : input]]);
+          const snapshots = new WeakMap<object, string>();
+          setAdded(snapshots);
+          save([...rows, [input, input === "*" ? (arriving[0] ?? "Message") : input]], input, snapshots);
         }}
       >
         {t("messageTypes.addRule")}

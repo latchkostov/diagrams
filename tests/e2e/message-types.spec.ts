@@ -1,4 +1,5 @@
 import { messageTypesFixture } from "../../src/lab/messageTypesFixture";
+import { encodeShare } from "../../src/interop/share";
 import {
   test,
   expect,
@@ -630,6 +631,27 @@ test("an appended paged rule stays visible and focused after rekeying", async ({
   await expect(page.getByTestId("inspector-field-receives-2000-menu")).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(receives).toBeFocused();
+  // Callback is now available again. Reusing it on another row must not claim the appended row's identity.
+  await page.getByTestId("inspector-field-receives-0").click();
+  await expect(page.getByTestId("context-menu-item-1")).toHaveText("Callback");
+  await page.getByTestId("context-menu-item-1").click();
+  await expect
+    .poll(async () => {
+      const emits = (await savedDiagram(page)).nodes.find((n) => n.id === "api")?.props?.emits as Record<
+        string,
+        string
+      >;
+      return [emits.Callback, emits.Send, emits.T0];
+    })
+    .toEqual(["T0Out", "Send", undefined]);
+  await expect(page.getByTestId("inspector-emits-row-2000")).toBeVisible();
+  await expect(rules).toHaveCount(26);
+  await page.getByTestId("inspector-emits-more").focus();
+  await page.keyboard.press("Shift+Tab");
+  await expect(page.getByTestId("inspector-emits-remove-2000")).toBeFocused();
+  await page.keyboard.press("Shift+Tab");
+  await page.keyboard.press("Shift+Tab");
+  await expect(receives).toBeFocused();
   await page.getByTestId("inspector-emits-remove-0").click();
   await expect(page.getByTestId("inspector-emits-row-1999")).toBeVisible();
   await expect(rules).toHaveCount(26);
@@ -789,6 +811,59 @@ test("Carries search reveals omitted names while broad matches stay bounded", as
   await expect(search).toHaveCount(0);
 });
 
+test("exact message-type searches precede substring matches in Carries and selected filters", async ({ page }) => {
+  const diagram = messageTypesFixture();
+  const names = [...Array.from({ length: 100 }, (_, i) => `A${i}`), "A"];
+  diagram.edges = diagram.edges.slice(0, 2);
+  diagram.edges[1].props = { filter: names };
+  diagram.simulations = [
+    {
+      id: "types",
+      title: "Vocabulary",
+      traffic: names.map((messageType, i) => ({
+        id: `t${i}`,
+        node: "client",
+        messageType,
+        shape: { kind: "burst" as const, count: 1 },
+      })),
+    },
+  ];
+  await open(page, "en", diagram);
+  await page.getByTestId("inspector-carries-search").fill("A");
+  await expect(page.getByTestId("inspector-carries-type").first()).toHaveText("A");
+  const search = page.getByTestId("inspector-filter-search");
+  await search.fill("A");
+  const exact = page.getByTestId("inspector-filter-option-0");
+  await expect(exact).toHaveText("A");
+  await search.press("Tab");
+  await expect(exact).toBeFocused();
+  await page.keyboard.press("Space");
+  await expect.poll(async () => (await savedDiagram(page)).edges[1].props?.filter).toEqual(names.slice(0, 100));
+});
+
+test("matching filter overflow is announced independently of nonmatching selections", async ({ page }) => {
+  const diagram = messageTypesFixture();
+  diagram.edges = diagram.edges.slice(0, 2);
+  diagram.edges[1].props = { filter: Array.from({ length: 150 }, (_, i) => `Other${i}`) };
+  diagram.simulations = [
+    {
+      id: "types",
+      title: "Vocabulary",
+      traffic: Array.from({ length: 250 }, (_, i) => ({
+        id: `t${i}`,
+        node: "client",
+        messageType: `Match${i}`,
+        shape: { kind: "burst" as const, count: 1 },
+      })),
+    },
+  ];
+  await open(page, "en", diagram);
+  await page.getByTestId("inspector-filter-search").fill("Match");
+  await expect(page.getByTestId(/^inspector-filter-option-/)).toHaveCount(100);
+  await expect(page.getByTestId("inspector-filter-more-selected")).toHaveText("+150 selected");
+  await expect(page.getByTestId("inspector-filter-more")).toContainText("+150 more");
+});
+
 test("focused message cards wrap long tokens in a short viewport", async ({ page }) => {
   const diagram = messageTypesFixture();
   diagram.nodes[0].props = { messageType: "X".repeat(200) };
@@ -825,6 +900,20 @@ test("focused message cards take Escape before canvas selection", async ({ page 
   await expect.poll(() => edge.evaluate((el) => document.activeElement === el.parentElement)).toBe(true);
   await page.keyboard.press("Escape");
   await expect(page.getByTestId("inspector-messages")).toHaveCount(0);
+});
+
+test("a focused message card in a read-only embed dismisses on Escape and keeps edge focus", async ({ page }) => {
+  const payload = await encodeShare(messageTypesFixture());
+  await page.goto(`./?embed=1#d=${payload}`);
+  await expect(page.getByTestId("node-api")).toBeVisible();
+  await page.mouse.move(0, 0);
+  const edge = page.getByTestId("edge-send");
+  await edge.evaluate((el) => el.parentElement?.focus());
+  const card = page.getByTestId("edge-messages-send");
+  await expect(card).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(card).toHaveCount(0);
+  await expect.poll(() => edge.evaluate((el) => document.activeElement === el.parentElement)).toBe(true);
 });
 
 test("two canvases with overlapping edge IDs keep hover titles and focused cards local", async ({ page }) => {
