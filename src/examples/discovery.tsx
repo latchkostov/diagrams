@@ -19,7 +19,12 @@ export const ExampleDiscovery = defineLazySurface<ExampleDetailsProps>({
     render: (props, status) =>
       props.kind === "gallery" ? (
         <p role="status" data-testid="examples-loading" aria-busy={!status.failed}>
-          {t("common.loading")}
+          {status.failed ? t("ai.loadFailed") : t("common.loading")}
+          {status.failed && (
+            <button className="btn" data-testid="examples-retry" onClick={status.retry}>
+              {t("common.retry")}
+            </button>
+          )}
         </p>
       ) : null,
   },

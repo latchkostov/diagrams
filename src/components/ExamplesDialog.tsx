@@ -28,8 +28,9 @@ export function ExamplesDialog({
     ExampleDiscovery.getSnapshot,
   );
   useLayoutEffect(() => {
-    // Retry dismisses its toast button. Only this still-mounted shell may restore the lost focus.
-    if (state.value === "loaded" && document.activeElement === document.body) search.current?.focus();
+    // Retry removes its button. Only this still-mounted shell may restore the lost focus.
+    if ((state.value === "retrying" || state.value === "loaded") && document.activeElement === document.body)
+      search.current?.focus();
   }, [state]);
   return (
     <Dialog

@@ -452,7 +452,7 @@ test("an oversized import still reports a failed message download", async ({ pag
   expectNoErrors(consoleErrors.filter((error) => error !== "console.error: Failed to load resource: net::ERR_FAILED"));
 });
 
-test("failed discovery shares one Retry, preserves query and can Close, Esc and reopen", async ({ page }) => {
+test("failed discovery Retry is reachable by Tab and preserves filters through recovery", async ({ page }) => {
   const held = await holdChunk(page, chunk("ExampleDetails", "src/examples/ExampleDetails.tsx"));
   try {
     await gotoCanvas(page, "kafka-order-pipeline");
@@ -460,27 +460,38 @@ test("failed discovery shares one Retry, preserves query and can Close, Esc and 
     await page.getByTestId("picker-browse-examples").click();
     await expect.poll(held.requested).toBe(true);
     await page.getByTestId("examples-search").fill("kafka order");
+    await page.keyboard.press("Tab");
+    await expect(page.getByTestId("examples-feature")).toBeFocused();
+    await page.getByTestId("examples-feature").selectOption("partitions");
     held.fail = true;
     held.release();
     await expect(page.getByTestId("lazy-load-retry")).toHaveCount(1);
-    await page.getByTestId("lazy-load-retry").focus();
-    await expect(page.getByTestId("lazy-load-retry")).toBeFocused();
+    const retry = page.getByTestId("examples-dialog").getByTestId("examples-retry");
+    await expect(retry).toBeVisible();
+    // selectOption leaves focus on the feature control; Retry is the next stop in the modal.
+    await page.keyboard.press("Tab");
+    await expect(retry).toBeFocused();
     await page.keyboard.press("Enter");
     await expect
       .poll(() => page.evaluate(() => window.__lazySurfaces?.states()["examples.discovery"]?.state))
       .toBe("failed");
     await expect(page.getByTestId("examples-search")).toBeFocused();
     await expect(page.getByTestId("examples-search")).toHaveValue("kafka order");
-    await expect(page.getByTestId("lazy-load-retry")).toHaveCount(1);
+    await expect(page.getByTestId("examples-feature")).toHaveValue("partitions");
+    held.fail = false;
+    await page.keyboard.press("Tab");
+    await page.keyboard.press("Tab");
+    await expect(retry).toBeFocused();
+    await page.keyboard.press("Enter");
+    await expect(page.getByTestId("example-thumb-kafka-order-pipeline")).toBeVisible();
+    await expect(page.getByTestId("examples-search")).toHaveValue("kafka order");
+    await expect(page.getByTestId("examples-feature")).toHaveValue("partitions");
+    await expect(page.getByTestId("examples-search")).toBeFocused();
     await page.keyboard.press("Escape");
     await expect(page.getByTestId("example-picker")).toBeFocused();
     await page.getByTestId("example-picker").click();
     await page.getByTestId("picker-browse-examples").click();
     await page.getByTestId("examples-search").fill("kafka order");
-    await expect(page.getByTestId("lazy-load-retry")).toHaveCount(1);
-    held.fail = false;
-    held.release();
-    await page.getByTestId("lazy-load-retry").click();
     await expect(page.getByTestId("example-thumb-kafka-order-pipeline")).toBeVisible();
     await expect(page.getByTestId("examples-search")).toHaveValue("kafka order");
     await expect(page.getByTestId("examples-search")).toBeFocused();
@@ -490,6 +501,25 @@ test("failed discovery shares one Retry, preserves query and can Close, Esc and 
     await page.getByTestId("picker-browse-examples").click();
     await page.keyboard.press("Escape");
     await expect(page.getByTestId("example-picker")).toBeFocused();
+  } finally {
+    held.release();
+  }
+});
+
+test("failed start-card discovery keeps the shared toast Retry", async ({ page }) => {
+  const held = await holdChunk(page, chunk("ExampleDetails", "src/examples/ExampleDetails.tsx"));
+  try {
+    await page.goto("./");
+    await expect.poll(held.requested).toBe(true);
+    held.fail = true;
+    held.release();
+    const retry = page.getByTestId("lazy-load-retry");
+    await expect(retry).toHaveCount(1);
+    await expect(page.getByTestId("examples-dialog")).toHaveCount(0);
+    held.fail = false;
+    await retry.click();
+    await expect(page.getByTestId("start-example-rag-assistant-thumb")).toBeVisible();
+    await expect(page.getByTestId("start-card")).toBeVisible();
   } finally {
     held.release();
   }

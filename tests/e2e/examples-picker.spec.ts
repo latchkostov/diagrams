@@ -221,6 +221,7 @@ test("picker contains your work and a separate gallery entry; gallery filters an
   await page.getByTestId("picker-browse-examples").click();
   await expect(page.getByTestId("examples-search")).toBeFocused();
   expect(diagrams).toEqual([]);
+  await expect(publicExampleCards(page)).toHaveCount(publicExamples.length);
   for (const [theme, slugs] of Object.entries(BY_THEME)) {
     const cards = page.getByTestId(`examples-theme-${theme}`).getByTestId(/^example-card-/);
     expect(
@@ -229,7 +230,6 @@ test("picker contains your work and a separate gallery entry; gallery filters an
       ),
     ).toEqual(slugs);
   }
-  await expect(publicExampleCards(page)).toHaveCount(publicExamples.length);
   await page.getByTestId("examples-search").fill("no such system");
   await expect(page.getByTestId("examples-empty")).toBeVisible();
   await page.getByTestId("examples-search").fill("kafka order");
@@ -752,6 +752,7 @@ for (const theme of ["light", "dark"] as const)
       await page.getByTestId("start-all-examples").click();
       const dialog = page.getByTestId("examples-dialog");
       await expect(dialog).toBeVisible();
+      await expect(publicExampleCards(page)).toHaveCount(publicExamples.length);
       const rect = await dialog.boundingBox();
       expect(rect).toBeTruthy();
       if (!rect) throw new Error("No dialog");

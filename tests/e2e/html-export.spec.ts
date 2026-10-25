@@ -618,18 +618,27 @@ test.describe("Interactive HTML with a password", () => {
   });
 });
 
-test("Interactive HTML downloads while discovery is held and excludes start chrome", async ({ page }) => {
+test("Interactive HTML downloads with mounted, held discovery and excludes start chrome", async ({ page }) => {
   const held = await holdChunk(page, chunk("ExampleDetails", "src/examples/ExampleDetails.tsx"));
   try {
     await page.goto("./");
     await expect.poll(held.requested).toBe(true);
-    await page.getByTestId("start-example-rag-assistant").click();
-    await expect(page.getByTestId("diagram-title")).toHaveText("RAG support assistant");
+    await expect(page.getByTestId("start-card")).toBeVisible();
+    await expect
+      .poll(() => page.evaluate(() => window.__lazySurfaces?.states()["examples.discovery"]))
+      .toEqual({ state: "loading", active: true });
     await openHtmlExport(page);
     const file = await download(page);
     expect(file.html).not.toContain('data-testid="start-card"');
     expect(file.html).not.toContain("ExampleDetails-");
-    expect(file.html).toContain("RAG support assistant");
+    const payload = JSON.parse(filePayloadText(file.html));
+    expect(payload.diagram.nodes).toEqual([]);
+    await expect(page.getByTestId("start-card")).toBeVisible();
+    expect(await file.download.failure()).toBeNull();
+    expect(await page.evaluate(() => window.__lazySurfaces?.states()["examples.discovery"])).toEqual({
+      state: "loading",
+      active: true,
+    });
   } finally {
     held.release();
   }
