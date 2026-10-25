@@ -4,6 +4,13 @@ import { timeoutsPools } from "./timeoutsPools";
 import { backlogLag } from "./backlogLag";
 import { autoscaling } from "./autoscaling";
 import { scaleToZero } from "./scaleToZero";
+import { ratesAndInputs } from "./ratesAndInputs";
+import { readANode } from "./readANode";
+import { capacity } from "./capacity";
+import { traceSlowmo } from "./traceSlowmo";
+import { savedSimulations } from "./savedSimulations";
+import { faults } from "./faults";
+import { authorADrill } from "./authorADrill";
 import { msg } from "../../i18n";
 import type { TrackId, Tutorial, Words } from "../types";
 import { apiGateway } from "./apiGateway";
@@ -60,6 +67,13 @@ export const allTutorials: readonly Tutorial[] = [
   backlogLag,
   autoscaling,
   scaleToZero,
+  ratesAndInputs,
+  readANode,
+  capacity,
+  traceSlowmo,
+  savedSimulations,
+  faults,
+  authorADrill,
 ];
 
 /** Available lessons only: discovery, deep links and progress totals share this catalog. */

@@ -33,4 +33,11 @@ export const tutorialEntries: readonly Pick<TutorialMetadata, "id" | "quarantine
   { id: "backlog-lag", quarantined: true },
   { id: "autoscaling" },
   { id: "scale-to-zero", quarantined: true },
+  { id: "rates-and-inputs" },
+  { id: "read-a-node" },
+  { id: "capacity", quarantined: true },
+  { id: "trace-slowmo", quarantined: true },
+  { id: "saved-simulations", quarantined: true },
+  { id: "faults" },
+  { id: "author-a-drill" },
 ];

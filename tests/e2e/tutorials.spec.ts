@@ -160,6 +160,64 @@ async function savedEntries(page: Page): Promise<{ slug: string; title: string }
   );
 }
 
+for (const entry of ["Skip Save", "Continue at Run"] as const)
+  test(`author-a-drill: ${entry} then manual Run plays the saved Drill`, async ({ page, consoleErrors }) => {
+    if (entry === "Continue at Run")
+      await page.addInitScript(() =>
+        localStorage.setItem(
+          "diagrams.tutorials.v1",
+          JSON.stringify({ progress: { "author-a-drill": { version: 1, step: 3, completed: false } } }),
+        ),
+      );
+    await openTutorial(page, "author-a-drill");
+    await page.getByTestId("tutorial-start").click();
+    if (entry === "Skip Save") {
+      for (const current of ["live", "open"]) {
+        await expect(strip(page)).toHaveAttribute("data-step", current);
+        const solution = await page.evaluate(() => window.__tutorial?.solution() ?? []);
+        for (const action of solution) await play(page, action);
+        await expect(strip(page)).not.toHaveAttribute("data-step", current);
+      }
+      await expect(strip(page)).toHaveAttribute("data-step", "save");
+      // The panel still holds Practice traffic's local draft after Skip saves a separate Drill.
+      await page.getByTestId("tutorial-skip").click();
+    }
+    await expect(strip(page)).toHaveAttribute("data-step", "run");
+    const solution = await page.evaluate(() => window.__tutorial?.solution() ?? []);
+    for (const action of solution) await play(page, action);
+    await expect(strip(page)).toHaveAttribute("data-phase", "finished");
+    await expect(page.getByTestId("live-sim-picker")).toHaveValue("simulation");
+    await expectNothingSaved(page);
+    expectNoErrors(consoleErrors);
+  });
+
+for (const finish of ["menu", "Skip"] as const)
+  test(`faults: Restore completes with an additional slowdown (${finish})`, async ({ page, consoleErrors }) => {
+    await openTutorial(page, "faults");
+    await page.getByTestId("tutorial-start").click();
+    const live = await page.evaluate(() => window.__tutorial?.solution() ?? []);
+    for (const action of live) await play(page, action);
+    await expect(strip(page)).toHaveAttribute("data-step", "down");
+    const api = await page.evaluate(() => window.__tutorial?.snapshot().subjects.api);
+    expect(api).toBeTruthy();
+    await play(page, { rightclick: "node-" + api });
+    await page.getByTestId("context-menu-item-sim.fault").click();
+    await page.getByTestId("context-menu-item-sim.slow").click();
+    await page.getByTestId("context-menu-item-sim.slow:5").click();
+    await expect(page.getByTestId("node-fault-" + api)).toContainText("5");
+    const down = await page.evaluate(() => window.__tutorial?.solution() ?? []);
+    for (const action of down) await play(page, action);
+    await expect(strip(page)).toHaveAttribute("data-step", "restore");
+    if (finish === "Skip") await page.getByTestId("tutorial-skip").click();
+    else {
+      const restore = await page.evaluate(() => window.__tutorial?.solution() ?? []);
+      for (const action of restore) await play(page, action);
+    }
+    await expect(strip(page)).toHaveAttribute("data-phase", "finished");
+    await expect(page.getByTestId("node-fault-" + api)).toContainText("5");
+    expectNoErrors(consoleErrors);
+  });
+
 test("dependencies-2: hidden Dependencies can be shown before adding a setting", async ({ page }) => {
   test.fixme(!!tutorialEntries.find((t) => t.id === "dependencies-2")?.quarantined, quarantineReason);
   await page.addInitScript(() => localStorage.setItem("diagrams.showDependencies.v1", "0"));
