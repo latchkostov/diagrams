@@ -34,6 +34,7 @@ import { outbox } from "./catalog/outbox";
 import { webhooks } from "./catalog/webhooks";
 import { dependencies2 } from "./catalog/dependencies2";
 import { dependencyVisibility } from "../canvas/dependencyVisibility";
+import { authorADrill } from "./catalog/authorADrill";
 import { stencils } from "../stencils/registry";
 import { editorHarness } from "../test/editorHarness";
 import { overlaps } from "../canvas/placement";
@@ -705,6 +706,18 @@ function sandbox(tutorial: Tutorial, { lateAdds = false, lazyLive = false } = {}
   };
 }
 type Sandbox = ReturnType<typeof sandbox>;
+
+it("author-a-drill: Skip can run after the learner saved their Drill under another id", async () => {
+  const s = sandbox(authorADrill);
+  const run = authorADrill.steps.findIndex((step) => step.id === "run");
+  expect(await reach(s, authorADrill, run)).toBe(true);
+  s.editor.updateMeta({
+    simulations: s.diagram.simulations?.map((sim) => (sim.id === "simulation" ? { ...sim, id: "learner-drill" } : sim)),
+  });
+  await skip(s, authorADrill);
+  expect(state(s).value).toBe("finished");
+  expect(s.diagram.simulations?.some((sim) => sim.id === "learner-drill")).toBe(true);
+});
 
 const state = (s: Sandbox) => s.runner.getSnapshot().state;
 const beyond = (s: Sandbox, i: number) => state(s).value === "finished" || (inStep(state(s)) && state(s).index > i);

@@ -1,0 +1,96 @@
+import { msg, t } from "../../i18n";
+import type { Tutorial } from "../types";
+import { liveStep, practiceRun } from "./buildingBlocks";
+
+export const ratesAndInputs: Tutorial = {
+  id: "rates-and-inputs",
+  version: 1,
+  track: "simulation",
+  level: 1,
+  minutes: 3,
+  title: msg("tutorials.ratesAndInputs.title"),
+  summary: msg("tutorials.ratesAndInputs.summary"),
+  start: () => ({
+    format: "diagrams/v1",
+    title: t("tutorials.ratesAndInputs.title"),
+    nodes: [
+      {
+        id: "client",
+        stencil: "client.mobile",
+        label: t("tutorials.ratesAndInputs.clientName"),
+        x: 0,
+        y: 0,
+        props: { ratePerSec: 2 },
+      },
+      { id: "service", stencil: "generic.service", label: t("tutorials.ratesAndInputs.serviceName"), x: 280, y: 0 },
+    ],
+    edges: [{ id: "request", from: "client", to: "service", kind: "sync" }],
+    simulations: [practiceRun(msg("tutorials.ratesAndInputs.runName"))],
+  }),
+  subjects: { client: { stencils: ["client.mobile"] }, service: { stencils: ["generic.service"] } },
+  steps: [
+    {
+      id: "rate",
+      title: msg("tutorials.ratesAndInputs.rateTitle"),
+      goal: msg("tutorials.ratesAndInputs.rateGoal"),
+      done: msg("tutorials.ratesAndInputs.rateDone"),
+      check: { kind: "prop", subject: "client", prop: "ratePerSec", op: "=", value: 6 },
+      targets: [
+        { testId: "inspector-field-ratePerSec", tip: msg("tutorials.ratesAndInputs.rateGoal") },
+        { testId: "node-{client}", tip: msg("tutorials.ratesAndInputs.rateGoal") },
+      ],
+      demo: [{ kind: "patch", subject: "client", patches: [{ op: "set", path: ["ratePerSec"], value: 6 }] }],
+      solution: [
+        { click: "node-{client}" },
+        { click: "inspector-section-node-simulation" },
+        { fill: "inspector-field-ratePerSec", text: "6" },
+        { press: "Enter" },
+      ],
+    },
+    liveStep(
+      msg("tutorials.ratesAndInputs.liveTitle"),
+      msg("tutorials.ratesAndInputs.liveGoal"),
+      msg("tutorials.ratesAndInputs.liveDone"),
+    ),
+    {
+      id: "inputs",
+      title: msg("tutorials.ratesAndInputs.inputsTitle"),
+      goal: msg("tutorials.ratesAndInputs.inputsGoal"),
+      done: msg("tutorials.ratesAndInputs.inputsDone"),
+      check: { kind: "liveView", view: "inputs", open: true },
+      targets: [{ testId: "live-capacity", tip: msg("tutorials.ratesAndInputs.inputsGoal") }],
+      demo: [{ kind: "openView", view: "inputs" }],
+      solution: [{ click: "live-capacity" }],
+    },
+    {
+      id: "traffic",
+      title: msg("tutorials.ratesAndInputs.trafficTitle"),
+      goal: msg("tutorials.ratesAndInputs.trafficGoal"),
+      done: msg("tutorials.ratesAndInputs.trafficDone"),
+      check: { kind: "inputs", input: "traffic", op: "=", value: 3 },
+      targets: [{ testId: "capacity-traffic-mult", tip: msg("tutorials.ratesAndInputs.trafficGoal") }],
+      demo: [{ kind: "inputs", input: "traffic", value: 3 }],
+      solution: [
+        { click: "capacity-traffic-mult" },
+        { press: "End" },
+        { press: "ArrowLeft" },
+        { press: "ArrowLeft" },
+        { press: "ArrowLeft" },
+        { press: "ArrowLeft" },
+        { press: "ArrowLeft" },
+      ],
+    },
+    {
+      id: "watch",
+      title: msg("tutorials.ratesAndInputs.watchTitle"),
+      goal: msg("tutorials.ratesAndInputs.watchGoal"),
+      done: msg("tutorials.ratesAndInputs.watchDone"),
+      check: { kind: "processed", subject: "service", atLeast: 30 },
+      sticky: true,
+      targets: [{ testId: "node-{service}", tip: msg("tutorials.ratesAndInputs.watchGoal"), dim: false }],
+      demo: [],
+      solution: [{ hover: "node-{service}" }],
+    },
+  ],
+  finish: { text: msg("tutorials.ratesAndInputs.finish") },
+};
