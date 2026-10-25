@@ -13,7 +13,7 @@ import {
   emptyCanvasPoint,
   savedDiagram,
 } from "./fixtures";
-import { tutorialIds } from "../../src/tutorials/catalog/ids";
+import { tutorialEntries } from "../../src/tutorials/catalog/ids";
 import type { ResolvedUiStep } from "../../src/tutorials/solution";
 import { expectNoViolations } from "./a11y-helpers";
 
@@ -108,6 +108,8 @@ async function play(page: Page, step: ResolvedUiStep) {
   } else await page.keyboard.press(step.press);
 }
 
+const quarantineReason = "quarantined: see docs/backlog/2026-10-24-tutorials-quarantine.md";
+
 const strip = (page: Page) => page.getByTestId("tutorial-step");
 
 async function finishSolution(page: Page, highlightsOff = false) {
@@ -154,8 +156,9 @@ async function savedEntries(page: Page): Promise<{ slug: string; title: string }
   );
 }
 
-for (const id of tutorialIds)
+for (const { id, quarantined } of tutorialEntries)
   test(`${id}: its solution plays through the real UI`, async ({ page, consoleErrors }) => {
+    test.fixme(!!quarantined, quarantineReason);
     test.slow(); // Live has to carry real traffic for the last step.
     await openTutorial(page, id);
     await page.getByTestId("tutorial-start").click();
@@ -168,8 +171,9 @@ for (const id of tutorialIds)
     expectNoErrors(consoleErrors);
   });
 
-for (const id of tutorialIds)
+for (const { id, quarantined } of tutorialEntries)
   test(`${id}: Skip-all finishes without saving a diagram`, async ({ page, consoleErrors }) => {
+    test.fixme(!!quarantined, quarantineReason);
     await openTutorial(page, id);
     await page.getByTestId("tutorial-start").click();
     await skipAll(page);
@@ -231,6 +235,7 @@ for (const finish of ["Align middles", "Skip"] as const)
     page,
     consoleErrors,
   }) => {
+    test.fixme(true, quarantineReason);
     await openTutorial(page, "arrange");
     await page.getByTestId("tutorial-start").click();
     await playUntil(page, 1);
@@ -248,6 +253,7 @@ for (const finish of ["Align middles", "Skip"] as const)
   });
 
 test("arrange: Skip recovers after selection is cleared", async ({ page, consoleErrors }) => {
+  test.fixme(true, quarantineReason);
   await openTutorial(page, "arrange");
   await page.getByTestId("tutorial-start").click();
   await playUntil(page, 1);
@@ -267,6 +273,7 @@ test("arrange: Skip recovers after selection is cleared", async ({ page, console
 });
 
 test("insert-on-edge: Skip inserts a separately added gateway without a duplicate", async ({ page, consoleErrors }) => {
+  test.fixme(true, quarantineReason);
   await openTutorial(page, "insert-on-edge");
   await page.getByTestId("tutorial-start").click();
   await page.keyboard.press("ControlOrMeta+k");

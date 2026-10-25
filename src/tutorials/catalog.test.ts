@@ -3,8 +3,8 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { stencils } from "../stencils/registry";
 import { stencilRole } from "../stencils/roles";
-import { tutorials } from "./catalog";
-import { tutorialIds } from "./catalog/ids";
+import { allTutorials as tutorials } from "./catalog";
+import { tutorialEntries } from "./catalog/ids";
 import { tutorialMetadata } from "./metadata";
 import type { Check, Demo, TutorialStep, UiStep } from "./types";
 
@@ -129,8 +129,11 @@ const words = (step: TutorialStep) =>
 describe("tutorial catalog", () => {
   it("has unique ids and a version, listed for the generated e2e", () => {
     const ids = tutorials.map((t) => t.id);
-    expect(ids).toEqual([...tutorialIds]);
-    expect(tutorialMetadata.map((x) => x.id)).toEqual(ids);
+    expect(ids).toEqual(tutorialEntries.map((t) => t.id));
+    expect(tutorialMetadata.map((x) => x.id)).toEqual(tutorials.filter((t) => !t.quarantined).map((t) => t.id));
+    expect(tutorialEntries).toEqual(
+      tutorials.map(({ id, quarantined }) => ({ id, ...(quarantined ? { quarantined } : {}) })),
+    );
     expect(new Set(ids).size).toBe(ids.length);
     for (const t of tutorials) {
       expect(t.id).toMatch(/^[a-z0-9-]+$/);

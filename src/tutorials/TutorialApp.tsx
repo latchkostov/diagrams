@@ -59,7 +59,7 @@ export function TutorialApp({ id }: { id: string }) {
     (import.meta.env.DEV || import.meta.env.VITE_E2E === "1") && id.startsWith("lab-tutorial-")
       ? use(loadRuntimeFixtures())
       : tutorials;
-  const tutorial = catalog.find((x) => x.id === id);
+  const tutorial = catalog.find((x) => x.id === id && !x.quarantined);
   if (!tutorial) return <Unknown id={id} />;
   return (
     <Suspense

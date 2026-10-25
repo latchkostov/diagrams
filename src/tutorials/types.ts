@@ -156,14 +156,19 @@ export interface TutorialStep {
   solution: readonly UiStep[];
 }
 
-export interface Tutorial {
+export interface TutorialMetadata {
   id: string;
+  title: Words;
+  /** Unavailable to learners while regressions are tracked; saved progress is retained. */
+  quarantined?: true;
+}
+
+export interface Tutorial extends TutorialMetadata {
   /** Bumped when steps change meaning: saved progress for another version starts over. */
   version: number;
   track: TrackId;
   level: 1 | 2 | 3;
   minutes: number;
-  title: Words;
   summary: Words;
   /** The sandbox's first diagram. A function: its title is translated when it opens. */
   start: (() => DiagramFile) | { example: string; simulation?: string };

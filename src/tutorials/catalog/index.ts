@@ -15,7 +15,7 @@ import { commandPalette } from "./commandPalette";
 import { sharePresent } from "./sharePresent";
 
 /** Every tutorial, in the order the list shows them within a track. */
-export const tutorials: readonly Tutorial[] = [
+export const allTutorials: readonly Tutorial[] = [
   mobileApi,
   quickAdd,
   dotsAndSides,
@@ -29,6 +29,9 @@ export const tutorials: readonly Tutorial[] = [
   commandPalette,
   sharePresent,
 ];
+
+/** Available lessons only: discovery, deep links and progress totals share this catalog. */
+export const tutorials = allTutorials.filter((t) => !t.quarantined);
 
 export const tracks: readonly { id: TrackId; label: Words }[] = [
   { id: "basics", label: msg("tutorials.trackBasics") },

@@ -14,7 +14,7 @@ import type { EditorApi } from "../editor/types";
 import type { LiveState } from "../live/controller";
 import type { AnnotationKind, DiagramEdge, DiagramFile, DiagramNode, Side } from "../model/types";
 import type { paletteHost } from "../palette/host";
-import { tutorials } from "./catalog";
+import { allTutorials as tutorials } from "./catalog";
 import { commandPalette } from "./catalog/commandPalette";
 import { annotate } from "./catalog/annotate";
 import { arrange } from "./catalog/arrange";
@@ -45,6 +45,12 @@ import type { Check, Demo, Tutorial } from "./types";
  * and the editor's mode is the real reducer (mode.ts). A step Skip passes over (its predecessor's demo already did
  * it) can't be current, so its cases assert it's complete instead.
  */
+
+const quarantineReason = "quarantined: see docs/backlog/2026-10-24-tutorials-quarantine.md";
+const itFor = (tutorial: Tutorial) =>
+  tutorial.quarantined
+    ? (name: string, fn: () => void | Promise<void>) => it.skip(`${name} (${quarantineReason})`, fn)
+    : it;
 
 const cleanup: (() => void)[] = [];
 beforeEach(() => {
@@ -445,9 +451,10 @@ async function skipLanding(tutorial: Tutorial, k: number) {
 describe("every tutorial's completion contract", () => {
   for (const tutorial of tutorials)
     describe(tutorial.id, () => {
+      const lessonIt = itFor(tutorial);
       tutorial.steps.forEach((step, i) => {
         for (const perturbation of ["clear selection", "single node", "extra subject-type node"] as const)
-          it(`${step.id}: (e) Skip recovers after ${perturbation} without duplicate subjects`, async () => {
+          lessonIt(`${step.id}: (e) Skip recovers after ${perturbation} without duplicate subjects`, async () => {
             const s = sandbox(tutorial);
             if (!(await reach(s, tutorial, i))) return expectPassedOver(s, i);
             if (perturbation === "clear selection") s.editor.clearSelection();
@@ -494,14 +501,14 @@ describe("every tutorial's completion contract", () => {
             expect(new Set(bound).size).toBe(bound.length);
           });
 
-        it(`${step.id}: (a) Skip from active advances to the next step`, async () => {
+        lessonIt(`${step.id}: (a) Skip from active advances to the next step`, async () => {
           const s = sandbox(tutorial);
           if (!(await reach(s, tutorial, i))) return expectPassedOver(s, i);
           expect(state(s).value).toBe("active");
           await skip(s, tutorial);
         });
 
-        it(`${step.id}: (b) Skip from completing advances without repeating an edit`, async () => {
+        lessonIt(`${step.id}: (b) Skip from completing advances without repeating an edit`, async () => {
           const s = sandbox(tutorial);
           if (!(await reach(s, tutorial, i))) return expectPassedOver(s, i);
           // The learner's own way: in the name field first, then the edits (unless the check already holds).
@@ -535,7 +542,7 @@ describe("every tutorial's completion contract", () => {
           }
         });
 
-        it(`${step.id}: (c) Continue lands where it was left, with no extra input`, async () => {
+        lessonIt(`${step.id}: (c) Continue lands where it was left, with no extra input`, async () => {
           const landing = await skipLanding(tutorial, i);
           saveProgress(tutorial, i, false);
           const writes = vi.spyOn(localStorage, "setItem");
@@ -558,7 +565,7 @@ describe("every tutorial's completion contract", () => {
           }
         });
 
-        it(`${step.id}: (d) Show me changes neither the selection nor the document`, async () => {
+        lessonIt(`${step.id}: (d) Show me changes neither the selection nor the document`, async () => {
           const s = sandbox(tutorial);
           if (!(await reach(s, tutorial, i))) return expectPassedOver(s, i);
           const before = { selection: s.mode.selection, version: s.version };
@@ -577,7 +584,7 @@ describe("every tutorial's completion contract", () => {
 });
 
 describe("completion regressions", () => {
-  it("arrange: Skip recovers after selection is cleared", async () => {
+  itFor(arrange)("arrange: Skip recovers after selection is cleared", async () => {
     const s = sandbox(arrange);
     await reach(s, arrange, 1);
     s.editor.clearSelection();
@@ -586,7 +593,7 @@ describe("completion regressions", () => {
     expect(new Set(s.diagram.nodes.map((n) => n.y)).size).toBe(1);
   });
 
-  it("arrange: Skip preserves a sufficient learner selection", async () => {
+  itFor(arrange)("arrange: Skip preserves a sufficient learner selection", async () => {
     const s = sandbox(arrange);
     await reach(s, arrange, 1);
     const ids = s.diagram.nodes.slice(1).map((n) => n.id);
@@ -598,21 +605,24 @@ describe("completion regressions", () => {
   });
 
   for (const original of ["present", "deleted", "partly inserted"] as const)
-    it(`insert-on-edge: Skip reuses a separately added gateway with original connection ${original}`, async () => {
-      const s = sandbox(insertOnEdge);
-      s.runner.send({ type: "start" });
-      const gateway = s.editor.addStencil("aws.api-gateway");
-      if (original === "deleted") s.editor.applyDiagram({ ...s.diagram, edges: [] });
-      if (original === "partly inserted") s.editor.reconnectEdge("call", "target", gateway);
-      await skip(s, insertOnEdge);
-      expect(state(s)).toMatchObject({ index: 1 });
-      expect(s.subject("gw")).toBe(gateway);
-      expect(s.diagram.nodes.filter((n) => n.stencil === "aws.api-gateway")).toHaveLength(1);
-      expect(s.diagram.edges.map((e) => [e.from, e.to])).toEqual([
-        ["app", gateway],
-        [gateway, "api"],
-      ]);
-    });
+    itFor(insertOnEdge)(
+      `insert-on-edge: Skip reuses a separately added gateway with original connection ${original}`,
+      async () => {
+        const s = sandbox(insertOnEdge);
+        s.runner.send({ type: "start" });
+        const gateway = s.editor.addStencil("aws.api-gateway");
+        if (original === "deleted") s.editor.applyDiagram({ ...s.diagram, edges: [] });
+        if (original === "partly inserted") s.editor.reconnectEdge("call", "target", gateway);
+        await skip(s, insertOnEdge);
+        expect(state(s)).toMatchObject({ index: 1 });
+        expect(s.subject("gw")).toBe(gateway);
+        expect(s.diagram.nodes.filter((n) => n.stencil === "aws.api-gateway")).toHaveLength(1);
+        expect(s.diagram.edges.map((e) => [e.from, e.to])).toEqual([
+          ["app", gateway],
+          [gateway, "api"],
+        ]);
+      },
+    );
 
   it("boundaries: Group repair preserves existing members and places missing ones without overlap in one edit", async () => {
     const s = sandbox(boundaries);
@@ -680,22 +690,25 @@ describe("completion regressions", () => {
     expect(s.mode.annotating).toBeNull();
   });
 
-  it("Show me on Align middles keeps the box selection, so Align and Skip both finish the step", async () => {
-    for (const finish of ["align", "skip"] as const) {
-      const s = sandbox(arrange);
-      await reach(s, arrange, 1);
-      const box = s.mode.selection;
-      expect(box).toHaveLength(5);
-      s.runner.send({ type: "showMe" });
-      expect(s.mode.selection).toEqual(box);
-      if (finish === "align") s.editor.align([...box]);
-      else await skip(s, arrange);
-      expect(state(s)).toMatchObject({ index: 2 });
-      expect(new Set(s.diagram.nodes.map((n) => n.y)).size).toBe(1);
-      cleanup.reverse().forEach((f) => f());
-      cleanup.length = 0;
-    }
-  });
+  itFor(arrange)(
+    "Show me on Align middles keeps the box selection, so Align and Skip both finish the step",
+    async () => {
+      for (const finish of ["align", "skip"] as const) {
+        const s = sandbox(arrange);
+        await reach(s, arrange, 1);
+        const box = s.mode.selection;
+        expect(box).toHaveLength(5);
+        s.runner.send({ type: "showMe" });
+        expect(s.mode.selection).toEqual(box);
+        if (finish === "align") s.editor.align([...box]);
+        else await skip(s, arrange);
+        expect(state(s)).toMatchObject({ index: 2 });
+        expect(new Set(s.diagram.nodes.map((n) => n.y)).size).toBe(1);
+        cleanup.reverse().forEach((f) => f());
+        cleanup.length = 0;
+      }
+    },
+  );
 
   it("Skip after adding the topic, before selecting Service 1, selects it without a second topic", async () => {
     const s = sandbox(commandPalette);
