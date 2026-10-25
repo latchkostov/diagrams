@@ -1,0 +1,101 @@
+{
+  "diagram": {
+    "format": "diagrams/v2",
+    "planning": {
+      "revision": "p3-w2"
+    },
+    "title": "Requests that wait",
+    "nodes": [
+      {
+        "id": "source",
+        "stencil": "generic.queue",
+        "label": "Applications",
+        "x": 0,
+        "y": 180,
+        "props": {}
+      },
+      {
+        "id": "tier0",
+        "stencil": "aws.lambda",
+        "label": "Decision service",
+        "x": 330,
+        "y": 180,
+        "props": {
+          "jitter": 0,
+          "maxConcurrency": 8,
+          "failureRate": 0.5
+        }
+      },
+      {
+        "id": "tier1",
+        "stencil": "generic.service",
+        "label": "Decision service",
+        "x": 660,
+        "y": 180,
+        "props": {
+          "jitter": 0,
+          "failureRate": 0.5
+        }
+      },
+      {
+        "id": "side",
+        "stencil": "generic.external-api",
+        "label": "Partner scoring API",
+        "x": 660,
+        "y": 180,
+        "props": {
+          "api": {
+            "latencyMs": 0
+          },
+          "jitter": 0
+        }
+      },
+      {
+        "id": "cpu-target",
+        "stencil": "generic.service",
+        "label": "CPU worker",
+        "x": 660,
+        "y": 600,
+        "props": {
+          "latencyMs": 0
+        }
+      }
+    ],
+    "edges": [
+      {
+        "id": "input",
+        "from": "source",
+        "to": "tier0",
+        "props": {}
+      },
+      {
+        "id": "call0",
+        "from": "tier0",
+        "to": "tier1",
+        "kind": "sync",
+        "props": {}
+      },
+      {
+        "id": "side0",
+        "from": "tier0",
+        "to": "side",
+        "kind": "sync",
+        "props": {
+          "caller": {
+            "wait": "non-blocking",
+            "replyMs": 0
+          }
+        }
+      },
+      {
+        "id": "cpu-call",
+        "from": "tier0",
+        "to": "cpu-target",
+        "kind": "sync",
+        "props": {}
+      }
+    ]
+  },
+  "scale": 1.5,
+  "count": 4
+}
