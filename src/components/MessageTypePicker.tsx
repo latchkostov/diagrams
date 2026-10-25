@@ -133,7 +133,11 @@ export function TypePicker({
                 type="button"
                 className="message-type-chip"
                 aria-pressed={selected.has(type)}
-                data-testid={`inspector-${name}-option-${i}`}
+                data-testid={
+                  (import.meta.env.DEV || import.meta.env.VITE_E2E === "1") && name === "filter"
+                    ? `inspector-filter-option-${i}`
+                    : `inspector-${name}-option-${i}`
+                }
                 onClick={() => {
                   if (selected.has(type)) removedChip.current = { type, index: i };
                   onChange(selected.has(type) ? value.filter((v) => v !== type) : [...value, type]);

@@ -6,6 +6,11 @@ import { queueWorkers } from "./queueWorkers";
 import { loadBalancer } from "./loadBalancer";
 import { cacheAside } from "./cacheAside";
 import { mobileApi } from "./mobileApi";
+import { webhooks } from "./webhooks";
+import { fanout } from "./fanout";
+import { partitions } from "./partitions";
+import { outbox } from "./outbox";
+import { dependencies2 } from "./dependencies2";
 
 import { quickAdd } from "./quickAdd";
 import { dotsAndSides } from "./dotsAndSides";
@@ -38,6 +43,11 @@ export const allTutorials: readonly Tutorial[] = [
   queueWorkers,
   loadBalancer,
   cacheAside,
+  webhooks,
+  fanout,
+  partitions,
+  outbox,
+  dependencies2,
 ];
 
 /** Available lessons only: discovery, deep links and progress totals share this catalog. */
