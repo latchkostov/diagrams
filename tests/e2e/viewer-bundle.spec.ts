@@ -114,6 +114,35 @@ for (const viewer of ["bundle", "skill", "Interactive HTML"] as const) {
     await expect(preview).toBeVisible();
     await expect(preview).toHaveAttribute("src", /^blob:/);
     await expect.poll(() => preview.evaluate((video: HTMLVideoElement) => video.readyState)).toBeGreaterThanOrEqual(1);
+    // Metadata alone also loads when playback is broken. Observe decoded frames
+    // from the actual recording, independent of the simulation's fake clock.
+    await preview.evaluate(async (video: HTMLVideoElement) => {
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d", { willReadFrequently: true });
+      if (!ctx) throw new Error("Missing recorded replay pixel context");
+      let firstFrame: { pixels: Uint8ClampedArray; time: number } | undefined;
+      const frame: VideoFrameRequestCallback = (_now, metadata) => {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        ctx.drawImage(video, 0, 0);
+        const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+        const previous = firstFrame;
+        if (!previous) {
+          firstFrame = { pixels, time: metadata.mediaTime };
+        } else if (metadata.mediaTime > previous.time && pixels.some((value, i) => value !== previous.pixels[i])) {
+          video.dataset.replayFrameChanged = "true";
+          return;
+        }
+        video.requestVideoFrameCallback(frame);
+      };
+      video.currentTime = 0;
+      video.requestVideoFrameCallback(frame);
+      await video.play();
+    });
+    await expect.poll(() => preview.evaluate((video: HTMLVideoElement) => video.currentTime)).toBeGreaterThan(0);
+    await expect(preview).toHaveAttribute("data-replay-frame-changed", "true");
+    await expect.poll(() => preview.evaluate((video: HTMLVideoElement) => video.ended)).toBe(true);
+    expect(await preview.evaluate((video: HTMLVideoElement) => video.paused)).toBe(true);
     expect(errors).toEqual([]);
   });
 }
