@@ -205,6 +205,7 @@ function harness() {
   };
   return {
     controller,
+    port,
     env,
     el,
     nodeEl,
@@ -511,6 +512,27 @@ describe("interaction controller: Inspector fields", () => {
 
 describe("interaction controller: pending rename (a name field whose panel is still downloading)", () => {
   const typeAll = (h: ReturnType<typeof harness>, keys: string[]) => keys.map((k) => h.key(k));
+
+  it("a pending modal owns Escape before pending naming and transient cards", () => {
+    const h = harness();
+    const card = vi.fn(() => true);
+    h.controller.attachEscape(card);
+    h.env.edges.add("e");
+    h.env.active = h.el("edge:e");
+    h.controller.dispatch({ type: "inspector.field", seq: 1, name: "label", owner: "e" });
+    h.port.dismissPendingModal = vi.fn().mockReturnValueOnce(true).mockReturnValue(false);
+    const pending = h.controller.state.pending;
+    expect(h.controller.escape()).toBe(true);
+    expect(h.port.dismissPendingModal).toHaveBeenCalledOnce();
+    expect(h.holding()).toBe(true);
+    expect(h.controller.state.pending).toBe(pending);
+    expect(h.controller.mode).toMatchObject({ value: "naming", target: "e" });
+    expect(card).not.toHaveBeenCalled();
+    expect(h.controller.escape()).toBe(true);
+    expect(h.holding()).toBe(false);
+    expect(h.controller.mode.value).toBe("editing");
+    expect(card).not.toHaveBeenCalled();
+  });
 
   it.each([false, true])("Escape defers to dialogs and menus, then naming, then cards (typed: %s)", (typed) => {
     const h = harness();

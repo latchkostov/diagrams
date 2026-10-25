@@ -1,10 +1,61 @@
 // @vitest-environment happy-dom
-import { afterEach, expect, it } from "vitest";
-import { captureTypeAhead, typeAheadActive } from "./typeAhead";
+import { afterEach, expect, it, vi } from "vitest";
+import { captureModalTypeAhead, captureTypeAhead, dismissPendingTypeAheadModal, typeAheadActive } from "./typeAhead";
 import { createDomPort } from "./interaction/domPort";
 import { createInteractionController } from "./interaction/controller";
 
 afterEach(() => document.body.replaceChildren());
+
+it("a pending modal capture precedes naming even when the controller's listener was installed first", () => {
+  const controller = createInteractionController(createDomPort({ root: () => null, hasEdge: () => true }), {
+    frame: () => () => {},
+    microtask: (run) => run(),
+  });
+  const disconnect = controller.connect();
+  const escape = (event: KeyboardEvent) => {
+    if (event.key === "Escape" && controller.escape()) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+    }
+  };
+  window.addEventListener("keydown", escape, true);
+  controller.dispatch({ type: "inspector.field", seq: 1, name: "label", owner: "e" });
+  const close = vi.fn();
+  const modal = captureModalTypeAhead(close);
+  try {
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", cancelable: true }));
+    expect(close).toHaveBeenCalledOnce();
+    expect(modal.stop()).toEqual({ text: null, done: "escape" });
+    expect(controller.mode).toMatchObject({ value: "naming", target: "e" });
+    expect(typeAheadActive()).toBe(true);
+    expect(dismissPendingTypeAheadModal()).toBe(false);
+  } finally {
+    modal.stop();
+    disconnect();
+    window.removeEventListener("keydown", escape, true);
+  }
+});
+
+it("pending modal ownership follows the capture stack and is released on stop or Escape outside a canvas", () => {
+  const close = vi.fn();
+  const modal = captureModalTypeAhead(close);
+  const menu = captureTypeAhead();
+  try {
+    expect(dismissPendingTypeAheadModal()).toBe(false);
+    menu.stop();
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", cancelable: true }));
+    expect(close).toHaveBeenCalledOnce();
+    expect(dismissPendingTypeAheadModal()).toBe(false);
+    expect(typeAheadActive()).toBe(false);
+  } finally {
+    menu.stop();
+    modal.stop();
+  }
+  const stopped = captureModalTypeAhead(close);
+  stopped.stop();
+  expect(dismissPendingTypeAheadModal()).toBe(false);
+  expect(close).toHaveBeenCalledOnce();
+});
 
 function paste(text: string, target: EventTarget = window) {
   const event = new Event("paste", { bubbles: true, cancelable: true });

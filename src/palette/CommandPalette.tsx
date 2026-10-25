@@ -10,7 +10,7 @@ import {
   type ReactNode,
 } from "react";
 import { matches, shortcutKeys } from "../editor/shortcuts";
-import { captureTypeAhead, type TypeAhead } from "../canvas/typeAhead";
+import { captureModalTypeAhead, type TypeAhead } from "../canvas/typeAhead";
 import type { PaletteDialogProps } from "./PaletteDialog";
 import type { DiagramOption } from "./sources";
 
@@ -70,7 +70,7 @@ export function CommandPalette(props: CommandPaletteProps) {
       e.stopPropagation();
       if (isOpen) return setOpen(null);
       typing.current?.stop();
-      typing.current = captureTypeAhead();
+      typing.current = captureModalTypeAhead(() => setOpen(null));
       setOpen({ Dialog: loaded ?? PaletteDialogLazy });
     };
     window.addEventListener("keydown", onKey, true);
@@ -83,6 +83,8 @@ export function CommandPalette(props: CommandPaletteProps) {
     typing.current?.stop();
     typing.current = null;
   }, [isOpen]);
+
+  useEffect(() => () => void typing.current?.stop(), []);
 
   // Warm the chunk on the first pointer move or Ctrl/Cmd press, else once the app is idle.
   useEffect(() => {

@@ -61,6 +61,8 @@ export interface InteractionPort {
    * take them yet; `done` hears the Enter or Esc that ended the typing. Absent: nothing is held.
    */
   holdKeys?(done: (typed: TypeAhead) => void): { stop(): TypeAhead };
+  /** Dismiss the newest pending modal input owner before its dialog has mounted. */
+  dismissPendingModal?(): boolean;
   /** Writes text typed ahead into the text field that has just taken focus, as typing there would; caret after it. */
   type?(el: ElementHandle, text: string): void;
   /** Focus on `el` has left the canvas's keyboard: it's outside the canvas, or a text field. */
@@ -594,6 +596,7 @@ export function createInteractionController<P = unknown>(
     /** Modal DOM owners handle their own key; naming precedes transient cards, even before its field mounts. */
     escape(overlay?: "dialog" | "menu") {
       if (overlay || menuState.open) return false;
+      if (port.dismissPendingModal?.()) return true;
       if (gestureState.active) {
         endGesture(gestureState.active.seq, "escape");
         return true;
