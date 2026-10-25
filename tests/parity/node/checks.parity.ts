@@ -19,6 +19,7 @@ function neutral(f: Finding) {
     id: f.id,
     rule: f.rule,
     severity: f.severity,
+    ...(f.scope ? { scope: f.scope } : {}),
     target: f.target,
     elements: f.elements,
     ...(f.brokerRationale ? { brokerRationale: f.brokerRationale } : {}),

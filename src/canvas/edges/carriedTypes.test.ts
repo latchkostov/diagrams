@@ -64,12 +64,6 @@ it("shares forwarding-only invalidation between both caches", () => {
   expect(result).not.toBe(first);
   expect(cachedMessageTypesAt(emitted)).toBe(result);
   expect(result.carried.get("send")).toEqual(new Set(["Changed"]));
-  // A source label still names its implicit type. Explicit types make that label display-only.
-  const renamed = {
-    ...d,
-    nodes: d.nodes.map((n) => (n.id === "client" ? { ...n, label: "New source", props: undefined } : n)),
-  };
-  expect(cachedMessageTypesAt(renamed).carried.get("in")).toContain("New source");
   const explicit = { ...d, nodes: d.nodes.map((n) => ({ ...n, props: { ...n.props, messageType: "Explicit" } })) };
   const typed = cachedMessageTypesAt(explicit);
   expect(cachedMessageTypesAt({ ...explicit, nodes: explicit.nodes.map((n) => ({ ...n, label: "New" })) })).toBe(typed);
@@ -215,4 +209,26 @@ it("recomputes after a subtitle edit that changes the effective dead-letter rout
   expect(fresh(edited)).not.toEqual(fresh(d));
   expect(carriedTypes(editedFlow.nodes, editedFlow.edges).carried.get("to-second")).toEqual(fresh(edited));
   expect(cachedMessageTypesAt(edited).carried.get("to-second")).toEqual(fresh(edited));
+});
+
+it("invalidates both caches for a source-label-only edit with an implicit type", () => {
+  const d = messageTypesFixture();
+  d.nodes[0].props = undefined;
+  const flow = toFlow(d);
+  const first = carriedTypes(flow.nodes, flow.edges);
+  expect(first.carried.get("in")).toEqual(new Set(["Client"]));
+  expect(cachedMessageTypesAt(d)).toBe(first);
+  const unrelated = { ...d, nodes: d.nodes.map((n) => (n.id === "api" ? { ...n, label: "Display only" } : n)) };
+  const unchanged = toFlow(unrelated);
+  expect(carriedTypes(unchanged.nodes, unchanged.edges)).toBe(first);
+  expect(cachedMessageTypesAt(unrelated)).toBe(first);
+  const renamed = {
+    ...unrelated,
+    nodes: unrelated.nodes.map((n) => (n.id === "client" ? { ...n, label: "New source" } : n)),
+  };
+  const next = toFlow(renamed);
+  const result = carriedTypes(next.nodes, next.edges);
+  expect(result).not.toBe(first);
+  expect(result.carried.get("in")).toEqual(new Set(["New source"]));
+  expect(cachedMessageTypesAt(renamed)).toBe(result);
 });

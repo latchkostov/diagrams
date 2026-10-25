@@ -3,6 +3,7 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { ChecksCard, InspectorFindings } from "./ChecksCard";
+import { FindingRow } from "./FindingRow";
 import type { RowHost } from "./FindingRow";
 import type { Finding } from "../types";
 
@@ -36,6 +37,29 @@ afterEach(async () => {
   await act(() => root.unmount());
   container.remove();
   vi.unstubAllGlobals();
+});
+
+// quarantined: diagram-scope diagnostics, see docs/backlog/2026-10-25-diagram-scope-findings.md
+it.skip("keeps diagram diagnostics and guidance reachable without element actions", async () => {
+  const diagnostic: Finding = {
+    ...finding("message-loop:incomplete"),
+    rule: "message-loop",
+    scope: "diagram",
+    target: "",
+    elements: [],
+    title: "Message type propagation incomplete",
+    message: "Timeline forwarding edits cannot be analyzed completely.",
+    rationale: "Review message paths before and after timeline forwarding edits manually.",
+  };
+  await act(() => root.render(<FindingRow finding={diagnostic} host={host} state={state} />));
+  expect(byTestId("check-row-message-loop:incomplete").textContent).toContain(diagnostic.message);
+  expect(byTestId("check-select-message-loop:incomplete")).toBeNull();
+  expect(byTestId("check-why-message-loop:incomplete").textContent).toContain(diagnostic.rationale);
+  await act(() => byTestId("check-more-message-loop:incomplete").click());
+  expect(byTestId("check-ignore-message-loop:incomplete")).toBeNull();
+  expect(byTestId("check-turn-off-message-loop:incomplete")).not.toBeNull();
+  await act(() => byTestId("check-about-message-loop:incomplete").click());
+  expect(byTestId("check-about-text-message-loop:incomplete").textContent).toContain("Messages loop back");
 });
 
 it("keeps All checks outside the findings list and returns its focus when findings unmount", async () => {

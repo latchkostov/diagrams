@@ -115,6 +115,10 @@
   box-shadow: var(--focus-ring);
 }
 
+div.check-row-head {
+  cursor: default;
+}
+
 .check-sev {
   display: inline-flex;
   align-items: center;
