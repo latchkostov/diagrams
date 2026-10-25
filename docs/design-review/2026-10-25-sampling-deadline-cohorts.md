@@ -17,3 +17,7 @@ A drained caller shows exactly zero held branches. Live fractional charges remai
 ## Partial admission
 
 A queued caller waits for room that its reservation can actually acquire. Positive partial waves keep their lifecycle even below displayed counter precision. The fix retains the existing controls and capacity policy.
+
+## Tiny CPU progress
+
+Every positive partial wave continues to consume its reserved CPU until it can finish. This removes a stuck-live state without changing controls, displayed precision, or completion tolerances.

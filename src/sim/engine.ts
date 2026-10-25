@@ -4039,7 +4039,9 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         )
       : 0;
     const available = firstWaveBudget + backlogBefore;
-    if (logicalBefore !== undefined && available <= 1e-8) return;
+    // Match the budget's completion test. An unfinished tiny wave still needs
+    // its positive per-tick charge, however small that charge is.
+    if (logicalBefore !== undefined && (logicalBefore + backlogBefore <= 1e-8 || available <= 0)) return;
     const fraction = logicalBefore === undefined || !before ? 1 : Math.min(1, available / before);
     if (work.cpuParts) {
       for (const p of work.cpuParts)

@@ -38,3 +38,7 @@ Nested partial waves can create very small blocking-call charges. The held gauge
 Queued partial callers use the same available-room calculation as their thread reservations. This prevents a pause/shrink sequence from admitting a caller whose reservation would fail at a floating-point boundary. The existing capacity allowance is unchanged; the reduced counterexample and checkpoint replay are ordinary passing tests.
 
 A positive unsent tail stays queued even below the reporting precision. Successful cohort completion follows empty unsent and in-flight ownership, preserving each live partial wave until its reply or deadline. A lossless process-event test covers a tail of `5e-10` requests, which rounded counters alone cannot distinguish.
+
+## Tiny CPU waves finish
+
+A positive partial wave spends its available CPU each tick even when that per-tick amount is below the existing completion tolerance. Previously such a wave could remain active forever when its total CPU exceeded that tolerance. The reduced pooled-tail regression checks both downstream completions, additional executed CPU, and a fully drained system; restoring the former charging cutoff makes it fail. No CPU completion threshold or reservation policy changed.

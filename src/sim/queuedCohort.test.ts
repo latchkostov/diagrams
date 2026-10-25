@@ -1,8 +1,14 @@
 import type { EdgeSimProps } from "./types";
 import { expect, it } from "vitest";
 import { waitingFixture } from "../lab/waitingFixture";
+import { resourceLesson } from "../model/autoscalingLessons";
 import { createEngine, observeEngineEvents } from "./engine";
-import { assertLedgerInvariants, assertOutcomeInvariants, type LedgerInvariantState } from "./resourceInvariants";
+import {
+  assertLedgerInvariants,
+  assertOutcomeInvariants,
+  assertResourceInvariants,
+  type LedgerInvariantState,
+} from "./resourceInvariants";
 import { realSnapshot } from "./units";
 
 function fixture(deadlineMs = 600) {
@@ -34,6 +40,55 @@ it("preserves a positive pooled tail smaller than the rounding allowance", () =>
   expect(real.edges.call.delivered).toBe(scale);
   expect(real.edges.call.calls).toMatchObject({ timedOut: 0, late: 0, inFlight: 0 });
   expect(e.snapshot().inSystem).toBe(0);
+});
+
+it("charges each tiny pooled CPU wave until its logical work can finish", () => {
+  const d = fixture();
+  d.nodes[2].stencil = "generic.service";
+  d.nodes[2].props = {
+    concurrency: 1,
+    latencyMs: 0,
+    jitter: 0,
+    resources: { ...resourceLesson(), cpuMsPerMessage: 40, startup: { delayMs: 0, jitterFraction: 0 } },
+  };
+  const e = createEngine({ scale: 1 + 5e-10, maxParticles: 0, verifyLedger: assertLedgerInvariants });
+  let processed = 0;
+  const stop = observeEngineEvents(e, (event) => {
+    if (event.kind === "process" && event.nodeId === "partner") processed++;
+  });
+  e.load(d);
+  e.inject("source", 1);
+  e.step(1000);
+  stop();
+  expect(processed).toBe(2);
+  expect(e.snapshot().nodes.partner.resources!.executedCpuMs).toBeGreaterThan(40);
+  expect(e.metrics().inSystem).toBe(0);
+});
+
+it("tiny completed CPU waves do not spend another wave's budget", () => {
+  const d = fixture();
+  d.nodes[2].stencil = "generic.service";
+  d.nodes[2].props = {
+    concurrency: 3,
+    latencyMs: 0,
+    jitter: 0,
+    resources: { ...resourceLesson(), cpuMsPerMessage: 40, startup: { delayMs: 0, jitterFraction: 0 } },
+  };
+  const options = {
+    scale: 1,
+    maxParticles: 0,
+    injectRepresented: 5e-15,
+    verifyLedger: assertLedgerInvariants,
+    verifyResources: assertResourceInvariants,
+  };
+  const e = createEngine(options);
+  e.load(d);
+  e.inject("partner", 2);
+  options.injectRepresented = 1;
+  e.inject("partner", 1);
+  e.step(1000);
+  expect(e.metrics().inSystem).toBe(0);
+  expect(Number.isFinite(e.snapshot().nodes.partner.resources!.executedCpuMs)).toBe(true);
 });
 
 it("an OK first wave keeps the cohort's queue place and restores orphan replies and expiry", () => {
