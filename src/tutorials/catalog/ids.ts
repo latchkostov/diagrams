@@ -17,4 +17,9 @@ export const tutorialEntries: readonly Pick<TutorialMetadata, "id" | "quarantine
   { id: "arrange", quarantined: true },
   { id: "command-palette" },
   { id: "share-present" },
+  { id: "api-gateway" },
+  { id: "kafka-topic" },
+  { id: "queue-workers" },
+  { id: "load-balancer" },
+  { id: "cache-aside" },
 ];

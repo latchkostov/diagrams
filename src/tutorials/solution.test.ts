@@ -1,3 +1,4 @@
+/* eslint-disable local/no-literal-ui-text -- Solution text in these fixtures is test input, not UI copy. */
 import { expect, it } from "vitest";
 import { mobileApi } from "./catalog/mobileApi";
 import { runnerInitial } from "./machine";
@@ -25,6 +26,7 @@ it("resolves subjects in modified clicks, context clicks and selection boxes", (
     selected: [],
     announcement: "",
     nearMiss: null,
+    edges: {},
   };
   expect(solutionNow(tutorial, snap)).toEqual([
     { modClick: "node-two", modifiers: ["Shift"] },
@@ -56,6 +58,7 @@ it("resolves contextual clicks, canvas gestures, translated typing and modified 
     selected: [],
     announcement: "",
     nearMiss: null,
+    edges: {},
   };
   expect(solutionNow(tutorial, snap)).toEqual([
     { pane: "dblclick" },
@@ -66,4 +69,38 @@ it("resolves contextual clicks, canvas gestures, translated typing and modified 
   ]);
   expect(() => solutionNow(tutorial, { ...snap, subjects: {} })).toThrow("isn't in the sandbox");
   expect(solutionNow(tutorial, { ...snap, state: { ...snap.state, value: "finished" } })).toEqual([]);
+});
+
+it("resolves a connection between subjects and text typed at a focused field's caret", () => {
+  const tutorial: Tutorial = {
+    ...mobileApi,
+    steps: [
+      {
+        ...mobileApi.steps[0],
+        solution: [
+          { click: "edge-label-{app->api}" },
+          { press: "ControlOrMeta+End" },
+          { type: "inspector-field-settings", text: () => "Token" },
+          { type: "inspector-field-settings", text: "Literal" },
+        ],
+      },
+    ],
+  };
+  const snap: RunnerSnapshot = {
+    state: { ...runnerInitial([false], { highlights: true, resumeAt: 0 }), value: "active" },
+    subjects: { app: "one", api: "two" },
+    selected: [],
+    announcement: "",
+    nearMiss: null,
+    // Its id in the sandbox, whatever an example saved it as.
+    edges: { "app->api": "unrelated-id" },
+  };
+  expect(solutionNow(tutorial, snap)).toEqual([
+    { click: "edge-label-unrelated-id" },
+    { press: "ControlOrMeta+End" },
+    { type: "Token", into: "inspector-field-settings" },
+    { type: "Literal", into: "inspector-field-settings" },
+  ]);
+  // Not connected (yet, or the other way round): the step can't be played.
+  expect(() => solutionNow(tutorial, { ...snap, edges: { "api->app": "x" } })).toThrow("isn't in the sandbox");
 });

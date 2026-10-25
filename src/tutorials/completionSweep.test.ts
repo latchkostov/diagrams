@@ -11,7 +11,9 @@ import {
 } from "../canvas/interaction/mode";
 import { GROUP_PREFIX } from "../canvas/types";
 import type { EditorApi } from "../editor/types";
-import type { LiveState } from "../live/controller";
+import { LiveController } from "../live/controller";
+import { liveActions } from "../live/liveActions";
+import { actionRegistry } from "../editor/actions";
 import type { AnnotationKind, DiagramEdge, DiagramFile, DiagramNode, Side } from "../model/types";
 import type { paletteHost } from "../palette/host";
 import { allTutorials as tutorials } from "./catalog";
@@ -29,6 +31,14 @@ import { inStep } from "./machine";
 import { savedProgress, saveProgress } from "./progress";
 import { createTutorialRunner } from "./runner";
 import type { Check, Demo, Tutorial } from "./types";
+import { patchProps } from "./paths";
+import {
+  addNameFixture,
+  liveControlsFixture,
+  metricsFixture,
+  pathsFixture,
+  tutorialFixtures,
+} from "../test/tutorialFixtures";
 
 /**
  * The runner's completion contract, swept over every step of every tutorial in the catalog (src/tutorials/catalog):
@@ -42,8 +52,10 @@ import type { Check, Demo, Tutorial } from "./types";
  *
  * The sandbox below stands in for the canvas with the editor's real semantics where a step depends on them: a new
  * node is selected, connect is idempotent, an annotation opens its editor (committed with the render, then focused),
- * and the editor's mode is the real reducer (mode.ts). A step Skip passes over (its predecessor's demo already did
- * it) can't be current, so its cases assert it's complete instead.
+ * and the editor's mode is the real reducer (mode.ts). Live is the real controller (src/live/controller.ts) over the
+ * sandbox's document, so metric checks read real replicas and counters; its time moves only when a case advances it.
+ * A step Skip passes over (its predecessor's demo already did it) can't be current, so its cases assert it's complete
+ * instead. The runner's fixture lessons (src/test/tutorialFixtures.ts) go through the same cases as the catalog.
  */
 
 const quarantineReason = "quarantined: see docs/backlog/2026-10-24-tutorials-quarantine.md";
@@ -75,7 +87,12 @@ const startOf = (tutorial: Tutorial): DiagramFile =>
       : (JSON.parse(readFileSync(join("src/examples", `${tutorial.start.example}.json`), "utf8")) as DiagramFile),
   );
 
-function sandbox(tutorial: Tutorial) {
+/**
+ * lateAdds: a new node lands in the document after the editor call that made it returns, as the editor's commits do.
+ * lazyLive: going live shows free play first; Live's actions arrive a task later, as the lazy session's chunk mounts
+ * them, and a queued saved run a task after that (the session's own effect activates it).
+ */
+function sandbox(tutorial: Tutorial, { lateAdds = false, lazyLive = false } = {}) {
   let diagram = startOf(tutorial);
   let version = 0;
   let mode: EditorModeState = { ...initialEditorMode, annotating: null };
@@ -95,7 +112,95 @@ function sandbox(tutorial: Tutorial) {
     diagram = next;
     version++;
     notify();
+    // Live takes the edit after the canvas republishes it: props patched in, a topology change rebuilt.
+    controller?.updateDiagram(diagram);
   };
+  /** A node-adding write: now, or once the editor's call has returned. */
+  const commit = (make: () => DiagramFile) => (lateAdds ? queueMicrotask(() => write(make())) : write(make()));
+  let controller: LiveController | undefined;
+  let offController: (() => void) | undefined;
+  let offActions: (() => void) | undefined;
+  /** Live's own actions over this run, as its session registers them: Skip's controls press these rows. */
+  const actionsOf = (c: LiveController) =>
+    liveActions({
+      controller: c,
+      slowMotionActive: () => false,
+      openInject: () => {},
+      startStorm: () => {},
+      showEvents: () => {},
+      trace: () => {},
+      tracing: () => null,
+      traceNext: (nodeId) => c.traceNext(nodeId),
+      traceSlowest: () => {},
+      traceDeadLettered: () => {},
+      slowMotion: () => {},
+      slowMotionTrace: () => {},
+      canReplayTrace: () => false,
+      endTrace: () => c.endTrace(),
+      tracingMessage: () => c.getState().trace !== null,
+      saveTweaks: () => {},
+      messageType: () => "",
+      openRecord: () => {},
+    });
+  const goLive = (simulation?: string) => {
+    hostState.canvas.live = true;
+    const mounting = !controller;
+    if (!controller) {
+      controller = new LiveController(diagram);
+      offController = controller.subscribe(() => sessions.forEach((f) => f()));
+    }
+    const c = controller;
+    const publishLive = () => {
+      notify();
+      sessions.forEach((f) => f());
+    };
+    // As Live's session does (useLiveSessionState, useLiveCommands): it mounts in free play with Continuous traffic,
+    // playing; a saved run starts with its own traffic only (Continuous traffic off), playing.
+    const mount = () => {
+      if (controller !== c || !mounting) return;
+      c.setTraffic(true);
+      c.setPlaying(true);
+      offActions = actionRegistry.register(actionsOf(c));
+    };
+    const run = () => {
+      if (controller !== c || !simulation) return;
+      c.selectSimulation(diagram.simulations?.find((sim) => sim.id === simulation) ?? null);
+      c.setTraffic(false);
+      c.setPlaying(true);
+    };
+    if (!lazyLive) {
+      mount();
+      run();
+      return publishLive();
+    }
+    // The canvas republishes as the live view takes over: for a moment there's no editor to act through.
+    const editorApi = hostState.canvas.editor;
+    if (mounting) hostState.canvas.editor = undefined as unknown as EditorApi;
+    publishLive();
+    const later = (f: () => void) => setTimeout(f, 0);
+    later(() => {
+      hostState.canvas.editor = editorApi;
+      publishLive();
+      later(() => {
+        mount();
+        publishLive();
+        later(() => {
+          run();
+          publishLive();
+        });
+      });
+    });
+  };
+  const leaveLive = () => {
+    hostState.canvas.live = false;
+    offActions?.();
+    offActions = undefined;
+    offController?.();
+    controller?.dispose();
+    controller = undefined;
+    notify();
+  };
+  cleanup.push(() => leaveLive());
   const isGroup = (id: string) => !!diagram.groups?.some((g) => g.id === id);
   const newNode = (stencil: string): DiagramNode => ({
     id: `made-${++made}`,
@@ -134,14 +239,14 @@ function sandbox(tutorial: Tutorial) {
     applyDiagram: (next: DiagramFile) => write(structuredClone(next)),
     addStencil(stencil: string) {
       const node = newNode(stencil);
-      write({ ...diagram, nodes: [...diagram.nodes, node] });
+      commit(() => ({ ...diagram, nodes: [...diagram.nodes, node] }));
       select([node.id]);
       return node.id;
     },
     createConnected({ from, stencil }: { from: string; stencil: string }) {
       const node = newNode(stencil);
       const edge = newEdge(from, node.id);
-      write({ ...diagram, nodes: [...diagram.nodes, node], edges: [...diagram.edges, edge] });
+      commit(() => ({ ...diagram, nodes: [...diagram.nodes, node], edges: [...diagram.edges, edge] }));
       select([node.id]);
       return { id: node.id, edge: edge.id, merge: "add" };
     },
@@ -244,7 +349,6 @@ function sandbox(tutorial: Tutorial) {
     startEditing: ({ kind, id }: { kind: string; id: string }) =>
       toMode({ type: "field.focused", target: kind === "group" ? GROUP_PREFIX + id : id }),
   };
-  let session: LiveState | undefined;
   const hostState = {
     canvas: {
       editor: editor as unknown as EditorApi,
@@ -256,18 +360,12 @@ function sandbox(tutorial: Tutorial) {
       revealNode: vi.fn(),
     },
     live: {
-      goLive: () => {
-        hostState.canvas.live = true;
-        notify();
-      },
-      toggle: () => {
-        hostState.canvas.live = !hostState.canvas.live;
-        notify();
-      },
+      goLive: () => goLive(),
+      toggle: () => (hostState.canvas.live ? leaveLive() : goLive()),
     },
     session: {
       run: () => {},
-      state: () => session,
+      state: () => controller?.getState(),
       subscribe: (f: () => void) => {
         sessions.add(f);
         return () => void sessions.delete(f);
@@ -283,15 +381,7 @@ function sandbox(tutorial: Tutorial) {
       return () => void docs.delete(f);
     },
     runSimulation: (id: string) => {
-      hostState.canvas.live = true;
-      session = {
-        running: { id },
-        run: { time: 0, expectations: [] },
-        snapshot: { nodes: {}, edges: {} },
-        generation: 1,
-      } as unknown as LiveState;
-      notify();
-      sessions.forEach((f) => f());
+      goLive(id);
       return true;
     },
     cancelRun: () => {},
@@ -343,6 +433,10 @@ function sandbox(tutorial: Tutorial) {
     toMode,
     subject,
     app,
+    /** The sandbox's Live run, while it's live. */
+    get live() {
+      return controller;
+    },
     /** The learner's own edit for a demo, through the UI's editor calls (not the runner's). */
     learn(demo: Demo) {
       const id = (name: string) => subject(name);
@@ -374,6 +468,12 @@ function sandbox(tutorial: Tutorial) {
           return demo.edge
             ? editor.setEdgeProps(edge(demo.edge).id, demo.props)
             : editor.setNodeProps(id(demo.subject), demo.props);
+        case "patch": {
+          // The learner's own edit to the same effect, through the inspector's prop writes.
+          const target = demo.edge ? edge(demo.edge) : diagram.nodes.find((n) => n.id === id(demo.subject))!;
+          const changed = patchProps(target.props, demo.patches) ?? {};
+          return demo.edge ? editor.setEdgeProps(target.id, changed) : editor.setNodeProps(target.id, changed);
+        }
         case "relation":
           return patchEdge(edge([demo.from, demo.to]).id, {
             relation: demo.relation,
@@ -395,7 +495,11 @@ function sandbox(tutorial: Tutorial) {
           app.presenting = demo.on;
           return runner.appChanged({ ...app });
         case "live":
-          return hostState.live.goLive();
+          return goLive();
+        case "traffic":
+          return controller!.setTraffic(demo.on);
+        case "trace":
+          return controller!.traceNext();
         case "fault":
           throw new Error("No catalog lesson injects faults yet: model the fault here before adding one.");
       }
@@ -407,13 +511,26 @@ type Sandbox = ReturnType<typeof sandbox>;
 const state = (s: Sandbox) => s.runner.getSnapshot().state;
 const beyond = (s: Sandbox, i: number) => state(s).value === "finished" || (inStep(state(s)) && state(s).index > i);
 
+/** A check that needs the run to have played for a while: Live's time has to move for it. */
+const needsRunTime = (check: Check): boolean =>
+  check.kind === "all" ? check.checks.some(needsRunTime) : check.kind === "simulation" && !!check.atLeastMs;
+
 async function skip(s: Sandbox, tutorial: Tutorial) {
   const before = state(s);
-  s.runner.send({ type: "skip", stepId: tutorial.steps[before.index].id });
-  await vi.waitFor(() => expect(beyond(s, before.index), `Skip on ${tutorial.steps[before.index].id}`).toBe(true), {
-    timeout: 2000,
-    interval: 1,
-  });
+  const step = tutorial.steps[before.index];
+  s.runner.send({ type: "skip", stepId: step.id });
+  await vi.waitFor(
+    () => {
+      // Live keeps playing while Skip's edits land, as on the canvas; only a step that needs run time sees it move,
+      // so no other step's moment passes early.
+      if (needsRunTime(step.check) && s.live?.getState().playing) {
+        s.live.advance(250);
+        s.live.publish();
+      }
+      expect(beyond(s, before.index), `Skip on ${step.id}`).toBe(true);
+    },
+    { timeout: 2000, interval: 1 },
+  );
 }
 
 /** Start, then Skip until step i is current or passed over. Returns whether i is current. */
@@ -449,7 +566,7 @@ async function skipLanding(tutorial: Tutorial, k: number) {
 }
 
 describe("every tutorial's completion contract", () => {
-  for (const tutorial of tutorials)
+  for (const tutorial of [...tutorials, ...tutorialFixtures])
     describe(tutorial.id, () => {
       const lessonIt = itFor(tutorial);
       tutorial.steps.forEach((step, i) => {
@@ -511,19 +628,33 @@ describe("every tutorial's completion contract", () => {
         lessonIt(`${step.id}: (b) Skip from completing advances without repeating an edit`, async () => {
           const s = sandbox(tutorial);
           if (!(await reach(s, tutorial, i))) return expectPassedOver(s, i);
-          // The learner's own way: in the name field first, then the edits (unless the check already holds).
+          // The learner's own way: in the name field first, then the edits (unless the check already holds). A subject
+          // the step adds has no name field until it exists: adding it opens it (quick-add names what it makes).
           const learning = state(s).value === "active";
-          if (learning && step.settle === "naming")
-            for (const name of [step.check, ...(step.check.kind === "all" ? step.check.checks : [])].flatMap((c) =>
-              c.kind === "label" ? [c.subject] : [],
-            )) {
-              const id = s.subject(name);
-              s.toMode({
-                type: "field.focused",
-                target: tutorial.subjects[name]?.boundary ? GROUP_PREFIX + id : id,
-              });
+          const names =
+            step.settle === "naming"
+              ? [step.check, ...(step.check.kind === "all" ? step.check.checks : [])].flatMap((c) =>
+                  c.kind === "label" ? [c.subject] : [],
+                )
+              : [];
+          const openName = (name: string) => {
+            const id = s.runner.getSnapshot().subjects[name];
+            if (id)
+              s.toMode({ type: "field.focused", target: tutorial.subjects[name]?.boundary ? GROUP_PREFIX + id : id });
+          };
+          if (learning) names.forEach(openName);
+          if (learning)
+            for (const demo of step.demo) {
+              s.learn(demo);
+              if ((demo.kind === "add" || demo.kind === "insert") && names.includes(demo.subject))
+                openName(demo.subject);
             }
-          if (learning) for (const demo of step.demo) s.learn(demo);
+          // A run the check wants to have played for a while: the learner watches it play.
+          if (learning && needsRunTime(step.check))
+            for (let frame = 0; frame < 400 && !beyond(s, i) && s.live?.getState().playing; frame++) {
+              s.live.advance(250);
+              s.live.publish();
+            }
           if (typing(s, step.check))
             expect(state(s), "never judged while its text is still being typed").toMatchObject({
               index: i,
@@ -549,11 +680,17 @@ describe("every tutorial's completion contract", () => {
           const s = sandbox(tutorial);
           expect(state(s).resumeAt).toBe(i);
           s.runner.send({ type: i > 0 ? "resume" : "start" });
+          // Live plays on while Continue replays a step that needs run time, as on the canvas.
+          const replaysRunTime = tutorial.steps.slice(0, i).some((st) => needsRunTime(st.check));
           await vi.waitFor(
-            () =>
-              landing === tutorial.steps.length
-                ? expect(state(s).value).toBe("finished")
-                : expect(state(s)).toMatchObject({ index: landing, value: "active" }),
+            () => {
+              if (replaysRunTime && state(s).value === "reconstructing" && s.live?.getState().playing) {
+                s.live.advance(250);
+                s.live.publish();
+              }
+              if (landing === tutorial.steps.length) expect(state(s).value).toBe("finished");
+              else expect(state(s)).toMatchObject({ index: landing, value: "active" });
+            },
             { timeout: 2000, interval: 1 },
           );
           if (landing < tutorial.steps.length) expect(savedProgress(tutorial)).toMatchObject({ step: landing });
@@ -732,5 +869,178 @@ describe("completion regressions", () => {
     s.runner.send({ type: "resume" });
     await vi.waitFor(() => expect(state(s)).toMatchObject({ index: 2, value: "active" }), { interval: 1 });
     expect(savedProgress(sharePresent)).toMatchObject({ step: 2 });
+  });
+
+  it("Skip presses Live's trace once its lazy session has registered the action", async () => {
+    const s = sandbox(liveControlsFixture, { lazyLive: true });
+    s.runner.send({ type: "start" });
+    const traceNext = vi.spyOn(LiveController.prototype, "traceNext");
+    await skip(s, liveControlsFixture);
+    expect(traceNext).toHaveBeenCalledOnce();
+    expect(state(s)).toMatchObject({ index: 1, value: "active" });
+  });
+
+  it("Skip turns Continuous traffic on in the queued saved run, never in the free play before it", async () => {
+    const s = sandbox(liveControlsFixture, { lazyLive: true });
+    await reach(s, liveControlsFixture, 1);
+    // Which run each press lands in, as it's pressed.
+    const pressedIn: [string | undefined, boolean][] = [];
+    const setTraffic = LiveController.prototype.setTraffic;
+    vi.spyOn(LiveController.prototype, "setTraffic").mockImplementation(function (this: LiveController, on) {
+      pressedIn.push([this.getState().running?.id, on]);
+      setTraffic.call(this, on);
+    });
+    // Leave Live, so Skip's launch is queued behind free play again.
+    s.hostState.live.toggle();
+    await skip(s, liveControlsFixture);
+    // The session's own: free play with traffic, then the saved run without it; then Skip's, in that run.
+    expect(pressedIn).toEqual([
+      [undefined, true],
+      ["flow", false],
+      ["flow", true],
+    ]);
+    expect(s.live!.getState()).toMatchObject({ traffic: true, running: { id: "flow" } });
+  });
+
+  it("Skip after the learner's own free-play traffic still leaves the saved run with Continuous traffic on", async () => {
+    const s = sandbox(liveControlsFixture);
+    await reach(s, liveControlsFixture, 1);
+    s.live!.setTraffic(true);
+    expect(state(s)).toMatchObject({ index: 1, value: "active" });
+    await skip(s, liveControlsFixture);
+    expect(s.live!.getState()).toMatchObject({ traffic: true, running: { id: "flow" } });
+  });
+
+  it("an edge test id names the connection's id in the sandbox, as it is now", async () => {
+    const s = sandbox(liveControlsFixture);
+    await reach(s, liveControlsFixture, 2);
+    expect(s.runner.getSnapshot().edges["api->config"]).toBe("saved-elsewhere");
+    s.editor.applyDiagram({ ...s.diagram, edges: s.diagram.edges.filter((e) => e.id !== "saved-elsewhere") });
+    expect(s.runner.getSnapshot().edges["api->config"]).toBeUndefined();
+    const id = s.editor.connect(s.subject("api"), s.subject("config"));
+    expect(s.runner.getSnapshot().edges["api->config"]).toBe(id);
+    expect(s.runner.getSnapshot().edges["config->api"]).toBeUndefined();
+  });
+
+  it("patch demos keep the learner's own settings and write only what's missing, once", async () => {
+    const s = sandbox(pathsFixture);
+    s.runner.send({ type: "start" });
+    const edge = () => s.diagram.edges[0];
+    const own = [{ key: "Host", secret: true }, { key: "Port" }, { key: "User" }, { key: "Pool" }];
+    s.editor.setEdgeProps(edge().id, { settings: own, timeoutMs: 900 });
+    await skip(s, pathsFixture);
+    await skip(s, pathsFixture);
+    const version = s.version;
+    await skip(s, pathsFixture);
+    expect(state(s).value).toBe("finished");
+    expect(s.version, "one edit for the missing retries, none for what's there").toBe(version + 1);
+    expect(edge().props).toEqual({ timeoutMs: 900, settings: [...own, { key: "Token", secret: true }] });
+    expect(s.diagram.nodes[0].props).toEqual({ retry: { attempts: 3 } });
+  });
+
+  it("Skip adds and names a node the editor commits only after its call returns", async () => {
+    const s = sandbox(addNameFixture, { lateAdds: true });
+    s.runner.send({ type: "start" });
+    await skip(s, addNameFixture);
+    expect(state(s)).toMatchObject({ index: 1, value: "active" });
+    await skip(s, addNameFixture);
+    expect(state(s).value).toBe("finished");
+    expect(s.diagram.nodes.filter((n) => n.stencil === "generic.service").map((n) => n.label)).toEqual([
+      "Orders",
+      "Users",
+    ]);
+    expect(s.diagram.edges.map((e) => [e.from, e.to])).toEqual([
+      ["gw", s.subject("orders")],
+      ["gw", s.subject("users")],
+    ]);
+  });
+
+  /** Live's time, in frames, published once: as the canvas's animation loop drives it. */
+  const play = (s: Sandbox, ms: number) => {
+    for (let t = 0; t < ms; t += 250) s.live!.advance(250);
+    s.live!.publish();
+  };
+  const sinceKey = JSON.stringify({ node: "first", metric: "processed" });
+
+  it("metric expressions read the real run: sums and comparisons hold by themselves, sinceStep from its start", async () => {
+    const s = sandbox(metricsFixture);
+    expect(await reach(s, metricsFixture, 2)).toBe(true);
+    expect(s.live!.getState().snapshot.nodes[s.subject("first")].replicas).toBe(2);
+    s.live!.setTraffic(true);
+    s.live!.setPlaying(true);
+    // Enough traffic that `since` would hold at once if it counted from the run's start.
+    play(s, 6000);
+    expect(state(s)).toMatchObject({ index: 3, value: "active" });
+    const [base, generation] = state(s).baseline[sinceKey];
+    expect(generation).toBe(s.live!.getState().generation);
+    expect(base).toBe(s.live!.getState().snapshot.nodes[s.subject("first")].processed);
+    expect(base).toBeGreaterThanOrEqual(5);
+    let processed = base;
+    while (state(s).index === 3) {
+      expect(processed - base, "sinceStep counted traffic from before its step").toBeLessThan(5);
+      play(s, 250);
+      processed = s.live!.getState().snapshot.nodes[s.subject("first")].processed;
+    }
+    expect(processed - base).toBeGreaterThanOrEqual(5);
+    // Fewer waiting in the queue than it has delivered: `lower` holds as soon as it's current.
+    expect(state(s).value).toBe("finished");
+  });
+
+  it("a sinceStep baseline is read at Continue's handover, kept through observations, and emptied by Skip", async () => {
+    saveProgress(metricsFixture, 3, false);
+    const s = sandbox(metricsFixture);
+    const seen: string[] = [];
+    s.runner.subscribe(() => {
+      const st = state(s);
+      if (Object.keys(st.baseline).length) seen.push(`${st.value}:${st.index}`);
+    });
+    s.runner.send({ type: "resume" });
+    await vi.waitFor(() => expect(state(s)).toMatchObject({ index: 3, value: "active" }), { interval: 1 });
+    expect(
+      seen.every((at) => at === "active:3"),
+      "a baseline only ever belongs to the current step",
+    ).toBe(true);
+    const captured = state(s).baseline[sinceKey];
+    expect(captured).toEqual([0, s.live!.getState().generation]);
+    s.live!.setTraffic(true);
+    s.live!.setPlaying(true);
+    play(s, 250);
+    expect(state(s).baseline[sinceKey]).toBe(captured);
+    await skip(s, metricsFixture);
+    expect(state(s).baseline).toEqual({});
+  });
+
+  it("a sinceStep delta counts a restarted run from zero, while the step stays current", async () => {
+    const s = sandbox(metricsFixture);
+    await reach(s, metricsFixture, 2);
+    s.live!.setTraffic(true);
+    s.live!.setPlaying(true);
+    play(s, 6000);
+    expect(state(s)).toMatchObject({ index: 3, value: "active" });
+    const [base, generation] = state(s).baseline[sinceKey];
+    const entries = s.runner.journal().filter((c) => c.to.index === 3 && c.from.index !== 3).length;
+    // Live's Restart: the same diagram, a new run whose counters start again, all of it after the step began.
+    s.live!.restart();
+    expect(s.live!.getState().generation).toBeGreaterThan(generation);
+    const first = () => s.live!.getState().snapshot.nodes[s.subject("first")].processed;
+    for (let frame = 0; frame < 200 && state(s).index === 3; frame++) play(s, 250);
+    expect(state(s).index === 3, "the restarted run's own traffic completes it").toBe(false);
+    expect(s.runner.journal().filter((c) => c.to.index === 3 && c.from.index !== 3).length).toBe(entries);
+    expect(first()).toBeGreaterThanOrEqual(5);
+    expect(first(), "not judged against the old run's baseline").toBeLessThan(base + 5);
+  });
+
+  it("an edit that unsettles an earlier Live step re-enters a sinceStep step with a fresh baseline", async () => {
+    const s = sandbox(metricsFixture);
+    await reach(s, metricsFixture, 2);
+    s.live!.setTraffic(true);
+    s.live!.setPlaying(true);
+    play(s, 6000);
+    const [base] = state(s).baseline[sinceKey];
+    // A topology edit: until the rebuilt run shows it, the replicas Live shows aren't this diagram's.
+    s.editor.connect(s.subject("app"), s.subject("first"));
+    expect(state(s)).toMatchObject({ index: 3, value: "active" });
+    expect(state(s).baseline[sinceKey][0]).toBeLessThan(base);
+    expect(state(s).baseline[sinceKey][1]).toBe(s.live!.getState().generation);
   });
 });

@@ -24,6 +24,10 @@ describe("static platform viewer", () => {
     });
     expect(modules.some((id) => id.endsWith("/src/editor/builtinActions.ts"))).toBe(false);
     for (const path of [
+      "/src/canvas/placement/useQuickAddPlacement.ts",
+      "/src/canvas/ConnectedQuickAddMenu.tsx",
+      "/src/canvas/LandingOutline.tsx",
+      "/src/canvas/selection/useBoxSelection.ts",
       "/src/canvas/inspector/QueueFields.tsx",
       "/src/canvas/inspector/PriorityField.tsx",
       "/src/live/session/useLiveFixes.ts",

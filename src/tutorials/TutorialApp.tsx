@@ -269,7 +269,9 @@ function Running({
         </div>
       </div>
       {state.value === "intro" && <Intro tutorial={tutorial} snap={snap} send={runner.send} />}
-      {spot && !presenting && <Coachmark targets={step.targets} subjects={snap.subjects} selected={snap.selected} />}
+      {spot && !presenting && (
+        <Coachmark targets={step.targets} subjects={snap.subjects} edges={snap.edges} selected={snap.selected} />
+      )}
       {/* Ctrl+K works here as on any canvas: actions, nodes, stencils. There are no other diagrams to open. */}
       <CommandPalette
         view="canvas"

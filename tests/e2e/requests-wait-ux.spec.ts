@@ -31,7 +31,7 @@ test("call fields take the first keyboard pass while planning downloads, with st
     release = resolve;
   });
   let requested = false;
-  await page.route(/\/(?:assets\/ui-[\w-]+\.js|src\/planning\/ui\.tsx)(?:\?.*)?$/, async (route) => {
+  await page.route(/\/(?:assets\/ui-[\w-]+\.js|src\/planning\/ui\.ts)(?:\?.*)?$/, async (route) => {
     requested = true;
     await held;
     await route.continue();

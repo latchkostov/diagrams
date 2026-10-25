@@ -123,6 +123,29 @@ describe("tutorial step runner", () => {
     expect(moment.state.latched[2]).toBe(true);
   });
 
+  it("performs a sticky milestone's demo before latching it", () => {
+    const definition = {
+      ...runnerMachine,
+      initial: runnerInitial([true, true], {
+        highlights: true,
+        resumeAt: 0,
+        demos: [true, false],
+      }),
+    };
+    const m = createMachine(definition);
+    m.send({ type: "start" });
+    expect(m.send({ type: "skip", stepId: "0" }).commands).toEqual([{ type: "demo", steps: [0] }]);
+    expect(m.state.latched).toEqual([false, false]);
+    m.send(observe([true, false]));
+    m.send(observe([false, false]));
+    expect(m.state.index).toBe(1);
+    expect(m.send({ type: "skip", stepId: "1" }).state.value).toBe("finished");
+    for (const { state } of machinePaths(definition, { maxDepth: 4 })) {
+      if (inStep(state)) expect(state.index).toBe(firstOpen(state));
+      state.latched.forEach((on, i) => on && expect(state.sticky[i]).toBe(true));
+    }
+  });
+
   it("a near miss's fix is the step's own demo, and a moment has none", () => {
     expect(play([{ type: "start" }, { type: "fix" }]).commands).toContainEqual({ type: "demo", steps: [0] });
     const m = createMachine(def());
@@ -166,6 +189,55 @@ describe("tutorial step runner", () => {
       const before = m.state;
       expect(m.send({ type: "reconstructed" })).toEqual({ state: before, commands: [] });
     }
+  });
+
+  it("keeps a sinceStep baseline for the current step only: the first reading wins, and entering empties it", () => {
+    const reading = (step: number, value: number): RunnerEvent => ({
+      type: "baseline",
+      step,
+      values: { processed: [value, 1] },
+    });
+    const m = createMachine(def());
+    expect(m.send(reading(0, 1)).state.baseline).toEqual({});
+    m.send({ type: "start" });
+    expect(m.send(reading(1, 5)).state.baseline).toEqual({});
+    m.send(reading(0, 3));
+    expect(m.send(reading(0, 9)).state.baseline).toEqual({ processed: [3, 1] });
+    // Staying on the step keeps it: Show me, a fact about another step, completing.
+    m.send({ type: "showMe" });
+    m.send(observe([false, true, false]));
+    expect(m.send(observe([true, false, false], [false, true, true])).state).toMatchObject({
+      value: "completing",
+      baseline: { processed: [3, 1] },
+    });
+    // Moving on empties it, and so does coming back (Undo): what it counts starts again from there.
+    expect(m.send(observe([true, false, false])).state).toMatchObject({ index: 1, baseline: {} });
+    m.send(reading(1, 4));
+    expect(m.send(observe([false, false, false])).state).toMatchObject({ index: 0, baseline: {} });
+  });
+
+  it("Skip and Restart empty the baseline, and Continue reads it only after its handover", () => {
+    const reading = (step: number): RunnerEvent => ({ type: "baseline", step, values: { processed: [7, 2] } });
+    const m = createMachine(def());
+    m.send({ type: "start" });
+    m.send(reading(0));
+    // A step with a demo: Skip counts again from here, while its edit lands.
+    expect(m.send({ type: "skip", stepId: "0" }).state).toMatchObject({ index: 0, baseline: {} });
+    m.send(observe([true, true, false]));
+    m.send(reading(2));
+    // A moment: Skip latches it and forgets what it counted.
+    expect(m.send({ type: "skip", stepId: "2" }).state).toMatchObject({ value: "finished", baseline: {} });
+    expect(m.send(reading(2)).state.baseline).toEqual({});
+    m.send({ type: "restart" });
+    m.send(reading(0));
+    expect(m.send({ type: "restart" }).state).toMatchObject({ index: 0, baseline: {} });
+
+    const resumed = createMachine(def(2));
+    resumed.send({ type: "resume" });
+    expect(resumed.send(reading(2)).state).toMatchObject({ value: "reconstructing", baseline: {} });
+    resumed.send(observe([true, true, false]));
+    expect(resumed.send({ type: "reconstructed" }).state).toMatchObject({ value: "active", index: 2, baseline: {} });
+    expect(resumed.send(reading(2)).state.baseline).toEqual({ processed: [7, 2] });
   });
 
   it("rejects an observation of the wrong length (another tutorial's checks)", () => {
@@ -212,6 +284,8 @@ describe("tutorial step runner", () => {
         expect(state.observed[state.index]).toBe(state.value === "completing");
       }
       if (state.value === "finished") expect(firstOpen(state)).toBe(state.observed.length);
+      // A baseline belongs to the current step: none in the intro, during reconstruction, once finished or closed.
+      if (!inStep(state)) expect(state.baseline).toEqual({});
       state.latched.forEach((on, i) => on && expect(state.sticky[i]).toBe(true));
       if (state.value === "closed")
         for (const event of runnerMachine.events) expect(machineStep(runnerMachine, state, event).accepted).toBe(false);

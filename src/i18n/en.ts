@@ -3769,5 +3769,147 @@ const en = {
   "resilienceChecks.stormName": "A slowdown could become a retry storm",
   "resilienceChecks.stormAbout":
     "Probes up to three retried Requests at configured rates: slow the callee fivefold at 5 s, clear at 10 s, replay to 30 s. Offers only the first cumulative fix proven to recover.",
+
+  // Building blocks: tutorial batch 04.
+  "tutorials.apiGateway.title": "Route a mobile app through a gateway",
+  "tutorials.apiGateway.summary": "Build one entry point for Orders and Users, then watch traffic reach both.",
+  "tutorials.apiGateway.runName": "Gateway traffic",
+  "tutorials.apiGateway.searchApp": "mobile",
+  "tutorials.apiGateway.searchGateway": "kong gateway",
+  "tutorials.apiGateway.searchService": "service",
+  "tutorials.apiGateway.ordersName": "Orders",
+  "tutorials.apiGateway.usersName": "Users",
+  "tutorials.apiGateway.addAppTitle": "Add the mobile app",
+  "tutorials.apiGateway.addAppGoal": "Search the stencil rail for mobile, then pick Mobile App.",
+  "tutorials.apiGateway.addAppDone": "A mobile app is a source of requests in Live.",
+  "tutorials.apiGateway.addGwTitle": "Add a gateway",
+  "tutorials.apiGateway.addGwGoal": "Select the app, click its +, then pick Kong Gateway and press Enter.",
+  "tutorials.apiGateway.addGwDone": "The gateway is the app’s single entry point.",
+  "tutorials.apiGateway.addOrdersTitle": "Add Orders",
+  "tutorials.apiGateway.addOrdersGoal":
+    "Select the gateway, click its +, pick Service, name it Orders and press Enter.",
+  "tutorials.apiGateway.addOrdersDone": "Orders is connected behind the gateway.",
+  "tutorials.apiGateway.addUsersTitle": "Add Users",
+  "tutorials.apiGateway.addUsersGoal":
+    "Select the gateway again, click its +, pick Service, name it Users and press Enter.",
+  "tutorials.apiGateway.addUsersDone": "Both services share the gateway as their entry point.",
+  "tutorials.apiGateway.liveTitle": "Go Live",
+  "tutorials.apiGateway.liveGoal":
+    "Click Live, choose Gateway traffic in Simulations, then turn on Continuous traffic under More (⋯).",
+  "tutorials.apiGateway.liveDone": "The saved simulation uses a fixed seed and the app’s traffic rate.",
+  "tutorials.apiGateway.watchTitle": "Watch both services",
+  "tutorials.apiGateway.watchGoal": "Watch until Orders and Users have each processed at least 5 requests.",
+  "tutorials.apiGateway.watchDone": "The gateway distributes requests across the two services.",
+  "tutorials.apiGateway.finish":
+    "You built a gateway with two services. Here it distributes requests; the route-table example shows how an address chooses a service.",
+  "tutorials.apiGateway.example": "Open the API route-table example",
+  "tutorials.kafkaTopic.title": "Every consumer group gets every message",
+  "tutorials.kafkaTopic.summary": "Connect two consumers to a Kafka topic and watch both receive the stream.",
+  "tutorials.kafkaTopic.runName": "Topic traffic",
+  "tutorials.kafkaTopic.appName": "Shop app",
+  "tutorials.kafkaTopic.producerName": "Order service",
+  "tutorials.kafkaTopic.billingName": "Billing",
+  "tutorials.kafkaTopic.emailName": "Email",
+  "tutorials.kafkaTopic.searchTopic": "kafka topic",
+  "tutorials.kafkaTopic.searchService": "service",
+  "tutorials.kafkaTopic.addTopicTitle": "Add a Kafka topic",
+  "tutorials.kafkaTopic.addTopicGoal": "Select Order service, click its +, pick Kafka Topic and press Enter.",
+  "tutorials.kafkaTopic.addTopicDone":
+    "The app sends requests to Order service, which publishes messages to the topic.",
+  "tutorials.kafkaTopic.billingTitle": "Add Billing",
+  "tutorials.kafkaTopic.billingGoal": "Select the topic, click its +, pick Service, name it Billing and press Enter.",
+  "tutorials.kafkaTopic.billingDone": "The first consumer has its own consumer group by default.",
+  "tutorials.kafkaTopic.emailTitle": "Add Email",
+  "tutorials.kafkaTopic.emailGoal": "Select the topic again, click its +, pick Service, name it Email and press Enter.",
+  "tutorials.kafkaTopic.emailDone": "Email has a separate consumer group, so it gets its own copy.",
+  "tutorials.kafkaTopic.liveTitle": "Go Live",
+  "tutorials.kafkaTopic.liveGoal":
+    "Click Live, choose Topic traffic in Simulations, then turn on Continuous traffic under More (⋯).",
+  "tutorials.kafkaTopic.liveDone": "The saved simulation keeps the same seed on every run.",
+  "tutorials.kafkaTopic.watchTitle": "Watch both groups",
+  "tutorials.kafkaTopic.watchGoal": "Watch until Billing and Email have each processed at least 10 messages.",
+  "tutorials.kafkaTopic.watchDone": "Every consumer group gets every message; workers within one group share its copy.",
+  "tutorials.kafkaTopic.finish":
+    "Billing and Email each received the stream because they belong to different consumer groups.",
+  "tutorials.kafkaTopic.example": "Open the Kafka order pipeline",
+  "tutorials.queueWorkers.title": "A queue shares the work",
+  "tutorials.queueWorkers.summary": "Add a second worker to an SQS queue and see each message go to one worker.",
+  "tutorials.queueWorkers.runName": "Queue traffic",
+  "tutorials.queueWorkers.producerName": "Job producer",
+  "tutorials.queueWorkers.queueName": "Jobs",
+  "tutorials.queueWorkers.workerName": "First worker",
+  "tutorials.queueWorkers.searchService": "service",
+  "tutorials.queueWorkers.addWorkerTitle": "Add a second worker",
+  "tutorials.queueWorkers.addWorkerGoal": "Select Jobs, click its +, pick Service and press Enter.",
+  "tutorials.queueWorkers.addWorkerDone": "Both workers now compete for messages from the same queue.",
+  "tutorials.queueWorkers.liveTitle": "Go Live",
+  "tutorials.queueWorkers.liveGoal":
+    "Click Live, choose Queue traffic in Simulations, then turn on Continuous traffic under More (⋯).",
+  "tutorials.queueWorkers.liveDone": "Jobs sends each message to one of its workers.",
+  "tutorials.queueWorkers.watchTitle": "Count the shared work",
+  "tutorials.queueWorkers.watchGoal":
+    "Watch until each worker has processed at least 5 messages and their total matches the queue’s deliveries.",
+  "tutorials.queueWorkers.watchDone":
+    "Each message goes to one worker: the workers’ processed counts add up to the queue’s deliveries.",
+  "tutorials.queueWorkers.finish":
+    "A queue shares work. Adding a worker divides the stream instead of copying it to both workers.",
+  "tutorials.cacheAside.title": "A cache in front of a database",
+  "tutorials.cacheAside.summary": "Use message shares to stand in for an 80% cache hit ratio.",
+  "tutorials.cacheAside.runName": "Cache traffic",
+  "tutorials.cacheAside.appName": "Shop app",
+  "tutorials.cacheAside.apiName": "API",
+  "tutorials.cacheAside.dbName": "PostgreSQL",
+  "tutorials.cacheAside.searchRedis": "redis cache",
+  "tutorials.cacheAside.addRedisTitle": "Add Redis",
+  "tutorials.cacheAside.addRedisGoal": "Select API, click its +, pick Redis Cache and press Enter.",
+  "tutorials.cacheAside.addRedisDone": "The API now has a connection to Redis as well as PostgreSQL.",
+  "tutorials.cacheAside.shareTitle": "Set the message shares",
+  "tutorials.cacheAside.shareGoal":
+    "On API → Redis, set Simulation ▸ Share of messages to 80%; on API → PostgreSQL, set it to 20%.",
+  "tutorials.cacheAside.shareHint":
+    "Select Redis, then press Ctrl+Alt+[ to select its incoming connection. Open Simulation in the inspector. Repeat from PostgreSQL for its connection.",
+  "tutorials.cacheAside.shareDone": "Shares are independent, so set both: 80% to Redis and 20% to PostgreSQL.",
+  "tutorials.cacheAside.liveTitle": "Go Live",
+  "tutorials.cacheAside.liveGoal":
+    "Click Live, choose Cache traffic in Simulations, then turn on Continuous traffic under More (⋯).",
+  "tutorials.cacheAside.liveDone": "The fixed seed makes the message-share comparison repeatable.",
+  "tutorials.cacheAside.watchTitle": "Compare the stores",
+  "tutorials.cacheAside.watchGoal":
+    "Watch until Redis has processed at least 10 requests and PostgreSQL has processed fewer than Redis.",
+  "tutorials.cacheAside.watchDone":
+    "The cache is not simulated as hits and misses; the message shares stand in for the hit ratio.",
+  "tutorials.cacheAside.finish":
+    "Redis handled more requests than PostgreSQL. This is a share-based sketch of an 80% hit ratio, not a simulation of cache lookups or misses.",
+  "tutorials.loadBalancer.title": "Three replicas behind a load balancer",
+  "tutorials.loadBalancer.summary": "Give a service three replicas, reduce it to two and watch it keep working.",
+  "tutorials.loadBalancer.runName": "Replica traffic",
+  "tutorials.loadBalancer.appName": "Shop app",
+  "tutorials.loadBalancer.lbName": "Load balancer",
+  "tutorials.loadBalancer.serviceName": "Order service",
+  "tutorials.loadBalancer.replicasTitle": "Set three replicas",
+  "tutorials.loadBalancer.replicasGoal":
+    "Select Order service, open Simulation in the inspector and set Replicas to 3.",
+  "tutorials.loadBalancer.replicasDone": "One service node can represent three replicas behind a load balancer.",
+  "tutorials.loadBalancer.liveTitle": "Go Live",
+  "tutorials.loadBalancer.liveGoal":
+    "Click Live, choose Replica traffic in Simulations, then turn on Continuous traffic under More (⋯).",
+  "tutorials.loadBalancer.liveDone": "The load balancer sends requests to the replicated service.",
+  "tutorials.loadBalancer.faultTitle": "Remove one replica",
+  "tutorials.loadBalancer.faultGoal": "Double-click Order service and lower Replicas to 2 in its Simulation section.",
+  "tutorials.loadBalancer.faultDone":
+    "Take down stops the whole node; lowering Replicas stands in for losing one instance.",
+  "tutorials.loadBalancer.watchTitle": "Watch it keep working",
+  "tutorials.loadBalancer.watchGoal": "Watch Order service process at least 10 more requests with two replicas.",
+  "tutorials.loadBalancer.watchDone": "The remaining replicas continue processing requests after capacity is reduced.",
+  "tutorials.loadBalancer.finish":
+    "The service processed more requests with two replicas. Replicas share one node here; lowering their count models a capacity loss, not a per-replica Fault.",
+  "tutorials.apiGateway.addHint":
+    "If the + is outside the canvas, click Fit view (Shift+1), then click the selected node’s +.",
+  "tutorials.kafkaTopic.addHint":
+    "If the + is outside the canvas, click Fit view (Shift+1), then click the selected node’s +.",
+  "tutorials.queueWorkers.addHint":
+    "If the + is outside the canvas, click Fit view (Shift+1), then click the selected node’s +.",
+  "tutorials.cacheAside.addHint":
+    "If the + is outside the canvas, click Fit view (Shift+1), then click the selected node’s +.",
 } as const;
 export default en;

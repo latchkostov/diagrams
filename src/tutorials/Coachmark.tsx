@@ -11,6 +11,8 @@ import type { Target } from "./types";
 interface Props {
   targets: readonly Target[];
   subjects: Record<string, string | undefined>;
+  /** Connections between subjects, for edge test ids (RunnerSnapshot.edges). */
+  edges?: Readonly<Record<string, string>>;
   selected: readonly string[];
 }
 
@@ -27,7 +29,7 @@ const PAD = 6;
 const TIP_W = 220;
 const GAP = 14;
 
-function locate({ targets, subjects, selected }: Props): Placed | null {
+function locate({ targets, subjects, edges, selected }: Props): Placed | null {
   // A dialog over everything (Ctrl+K, Share) owns the screen: point at nothing under it.
   const modal = document.querySelector('[aria-modal="true"]');
   const top = document.querySelector('[data-testid="tutorial-step"]')?.getBoundingClientRect().bottom ?? 0;
@@ -36,7 +38,7 @@ function locate({ targets, subjects, selected }: Props): Placed | null {
       const id = subjects[target.selected];
       if (!id || selected.length !== 1 || selected[0] !== id) continue;
     }
-    const testId = fillTestId(target.testId, subjects);
+    const testId = fillTestId(target.testId, subjects, edges);
     if (!testId) continue;
     const el = document.querySelector<HTMLElement>(`[data-testid="${CSS.escape(testId)}"]`);
     if (!el || !el.checkVisibility() || (modal && !modal.contains(el))) continue;
@@ -68,12 +70,12 @@ const same = (a: Placed | null, b: Placed | null) =>
 
 export function Coachmark(props: Props) {
   const [placed, setPlaced] = useState<Placed | null>(null);
-  const { targets, subjects, selected } = props;
+  const { targets, subjects, edges, selected } = props;
   useLayoutEffect(() => {
     let frame = 0;
     const measure = () => {
       frame = 0;
-      const next = locate({ targets, subjects, selected });
+      const next = locate({ targets, subjects, edges, selected });
       setPlaced((current) => (same(current, next) ? current : next));
     };
     const schedule = () => {
@@ -98,7 +100,7 @@ export function Coachmark(props: Props) {
       window.removeEventListener("resize", schedule);
       window.removeEventListener("scroll", schedule, true);
     };
-  }, [targets, subjects, selected]);
+  }, [targets, subjects, edges, selected]);
 
   if (!placed) return null;
   const { rect } = placed;
