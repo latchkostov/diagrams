@@ -508,10 +508,47 @@ export function createEditor(
   };
   const movePositions = (pos: Positions, reset = false) => {
     if (!pos.size) return;
-    moveRoutes(positionDeltas(pos), reset);
+    const allNodes = currentNodes();
+    const groupDeltas = new Map<string, XY>();
+    for (const n of allNodes) {
+      if (isGroup(n)) {
+        const p = pos.get(n.id) ?? pos.get(n.data.groupId);
+        if (p && (p.x !== n.position.x || p.y !== n.position.y)) {
+          groupDeltas.set(n.data.groupId, { x: p.x - n.position.x, y: p.y - n.position.y });
+        }
+      }
+    }
+    const finalPos = new Map(pos);
+    for (const [id, p] of pos) {
+      if (!id.startsWith(GROUP_PREFIX)) {
+        const g = allNodes.find((n) => isGroup(n) && n.data.groupId === id);
+        if (g) finalPos.set(g.id, p);
+      }
+    }
+    if (groupDeltas.size) {
+      const groupMap = new Map(allNodes.filter(isGroup).map((g) => [g.data.groupId, g.data.group]));
+      const findMovedGroupDelta = (groupId?: string): XY | undefined => {
+        let cur = groupId;
+        while (cur) {
+          const delta = groupDeltas.get(cur);
+          if (delta) return delta;
+          cur = groupMap.get(cur);
+        }
+        return undefined;
+      };
+      for (const n of allNodes) {
+        if (!finalPos.has(n.id) && n.data.group) {
+          const delta = findMovedGroupDelta(n.data.group);
+          if (delta) {
+            finalPos.set(n.id, { x: n.position.x + delta.x, y: n.position.y + delta.y });
+          }
+        }
+      }
+    }
+    moveRoutes(positionDeltas(finalPos), reset);
     deps().setNodes((ns) =>
       ns.map((n) => {
-        const p = pos.get(n.id);
+        const p = finalPos.get(n.id);
         return p && (p.x !== n.position.x || p.y !== n.position.y) ? { ...n, position: p } : n;
       }),
     );
@@ -735,6 +772,7 @@ export function createEditor(
     if ("textSize" in patch) data.textSize = patch.textSize;
     if ("group" in patch) data.group = patch.group || undefined;
     if ("shape" in patch && data.kind === "shape") data.shape = patch.shape;
+    if ("borderRadius" in patch) data.borderRadius = patch.borderRadius;
     const kind = patch.kind ?? data.kind;
     data.kind = kind;
     if (kind !== "shape") data.shape = undefined;
@@ -1164,6 +1202,7 @@ export function createEditor(
               label: patch.label ?? n.data.label,
               tone: "tone" in patch ? (patch.tone ?? "neutral") : n.data.tone,
               group: "group" in patch ? patch.group || undefined : n.data.group,
+              borderRadius: "borderRadius" in patch ? patch.borderRadius : n.data.borderRadius,
             },
           };
         });
@@ -1468,7 +1507,7 @@ export function createEditor(
       const set = new Set(ids);
       const boxes = rf
         .getNodes()
-        .filter((n) => set.has(n.id) && isPlaced(n))
+        .filter((n) => set.has(n.id) || (isGroup(n) && set.has(n.data.groupId)))
         .map(box);
       // Lined up, never stacked: things that would land on each other step apart across the line.
       const across = mode === "left" || mode === "center" || mode === "right" ? "v" : "h";
@@ -1478,7 +1517,7 @@ export function createEditor(
       const set = new Set(ids);
       const boxes = rf
         .getNodes()
-        .filter((n) => set.has(n.id) && isPlaced(n))
+        .filter((n) => set.has(n.id) || (isGroup(n) && set.has(n.data.groupId)))
         .map(box);
       movePositions(spreadOverlaps(boxes, distribute(boxes, axis), axis));
     },
@@ -1657,6 +1696,7 @@ export function createEditor(
         height: Math.round(h),
         color,
         group: parentGroup,
+        borderRadius: groupNode.data.borderRadius,
       });
       deps().setNodes((cur): FlowNode[] => [
         { ...zoneNode, selected: true },
@@ -1711,6 +1751,7 @@ export function createEditor(
         y: Math.round(zoneNode.position.y),
         width: Math.round(zw),
         height: Math.round(zh),
+        borderRadius: zoneNode.data.borderRadius,
       });
       const adoptedGroupIds = new Set(adoption.adoptedGroupIds);
       const adoptedElementIds = new Set(adoption.adoptedElementIds);

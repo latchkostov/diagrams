@@ -184,6 +184,29 @@ describe("Zones and Boundaries conversion and grouping", () => {
     expect(grp.data.tone).toBe("#123456");
   });
 
+  it("preserves borderRadius when converting between boundary and zone", () => {
+    const diagram: DiagramFile = {
+      format: "diagrams/v1",
+      title: "Test",
+      groups: [{ id: "grp1", label: "Boundary", x: 50, y: 50, width: 300, height: 200, borderRadius: 28 }],
+      nodes: [],
+      edges: [],
+    };
+
+    const { api, commit, getNodes } = setup(diagram);
+    const zoneId = api.convertGroupToZone("grp1");
+    commit();
+
+    const zone = getNodes().find((n) => n.id === zoneId) as AnnotationFlowNode;
+    expect(zone.data.borderRadius).toBe(28);
+
+    const boundaryId = api.convertZoneToBoundary(zoneId!);
+    commit();
+
+    const grp = getNodes().find((n) => n.id === `group:${boundaryId}`) as GroupFlowNode;
+    expect(grp.data.borderRadius).toBe(28);
+  });
+
   it("supports grouping shapes and notes with groupNodes", () => {
     const diagram: DiagramFile = {
       format: "diagrams/v1",

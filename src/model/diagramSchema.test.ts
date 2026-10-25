@@ -75,6 +75,7 @@ const group: Required<DiagramGroup> = {
   width: 800,
   height: 400,
   group: "region",
+  borderRadius: 20,
 };
 const annotation: Required<DiagramAnnotation> = {
   id: "shape",
@@ -88,6 +89,7 @@ const annotation: Required<DiagramAnnotation> = {
   color: "purple",
   textSize: "l",
   group: "cloud",
+  borderRadius: 18,
 };
 const traffic: Required<TrafficProfile> = {
   id: "t1",

@@ -259,6 +259,9 @@
     display: none;
   }
 }
+.inspector .slider-control {
+  gap: var(--insp-field-gap);
+}
 .inspector .inspector-live-heading > button {
   inline-size: 100%;
   text-align: start;

@@ -156,6 +156,8 @@ export function quickAddMenu(
 }
 
 const nodeCount = (ctx: ActionContext) => ctx.selection.nodeIds.length;
+const arrangeCount = (ctx: ActionContext) => ctx.selection.nodeIds.length + ctx.selection.groupIds.length;
+const arrangeIds = (ctx: ActionContext) => [...ctx.selection.nodeIds, ...ctx.selection.groupIds];
 /** Tidy up lays out nodes (not annotations): it needs three of them. */
 const tidyCount = (ctx: ActionContext) => {
   const ids = new Set(ctx.selection.nodeIds);
@@ -1098,7 +1100,7 @@ export function builtinActions(): Action[] {
       },
       icon: "align-left",
       order: 10,
-      enabled: (ctx) => nodeCount(ctx) > 1,
+      enabled: (ctx) => arrangeCount(ctx) > 1,
       children: (ctx) =>
         ALIGN.flatMap((a, i): MenuNode[] => [
           ...(i === 3 ? [{ type: "separator" } as const] : []),
@@ -1107,7 +1109,7 @@ export function builtinActions(): Action[] {
             id: `align:${a.mode}`,
             label: a.label,
             icon: a.icon,
-            run: () => ctx.editor.align(ctx.selection.nodeIds, a.mode),
+            run: () => ctx.editor.align(arrangeIds(ctx), a.mode),
           },
         ]),
     },
@@ -1128,8 +1130,8 @@ export function builtinActions(): Action[] {
             return t("menu.horizontally");
           },
           icon: "distribute-h",
-          disabled: nodeCount(ctx) < 3,
-          run: () => ctx.editor.distribute(ctx.selection.nodeIds, "h"),
+          disabled: arrangeCount(ctx) < 3,
+          run: () => ctx.editor.distribute(arrangeIds(ctx), "h"),
         },
         {
           type: "item",
@@ -1138,8 +1140,8 @@ export function builtinActions(): Action[] {
             return t("menu.vertically");
           },
           icon: "distribute-v",
-          disabled: nodeCount(ctx) < 3,
-          run: () => ctx.editor.distribute(ctx.selection.nodeIds, "v"),
+          disabled: arrangeCount(ctx) < 3,
+          run: () => ctx.editor.distribute(arrangeIds(ctx), "v"),
         },
       ],
     },

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, type RefObject } from "react";
 import type { NodeChange, ReactFlowState } from "@xyflow/react";
 import { guideIndex, snapMove, type Box, type GuideIndex, type SnapResult } from "./guides";
-import type { AnnotationFlowNode, DiagramFlowEdge, FlowNode, GroupFlowNode } from "./types";
+import type { DiagramFlowEdge, FlowNode, GroupFlowNode } from "./types";
 import { expandGroupIds } from "../model/groupHierarchy";
 
 /** Adapt the flow's boundary IDs once, then traverse the indexed hierarchy. */
@@ -56,9 +56,6 @@ interface Session {
   timer: number | undefined;
   stop: () => void;
 }
-
-const isBackdrop = (n: FlowNode) =>
-  n.type === "boundary" || (n.type === "annotation" && (n as AnnotationFlowNode).data.kind === "zone");
 
 /** The changes that put every moving node (and boundary member) at its start plus `delta`. */
 function changesFor(g: Session, delta: XY, dragging: boolean): NodeChange<FlowNode>[] {
@@ -237,14 +234,14 @@ export function useSmartGuides({
           }
         }
       }
-      // Candidates: what's in view, not moving, and not a backdrop (boundaries and zones). An Alt-drag's
+      // Candidates: what's in view and not moving. An Alt-drag's
       // originals stay put, so its copies line up with them.
       const view = { x: -tx / k, y: -ty / k, width: s.width / k, height: s.height / k };
       const boxes: Box[] = [];
       if (snap && guides)
         for (const n of s.nodeLookup.values()) {
           const u = n.internals.userNode;
-          if (n.hidden || isBackdrop(u) || startPos.has(n.id) || followers.has(n.id)) continue;
+          if (n.hidden || startPos.has(n.id) || followers.has(n.id)) continue;
           if (!copies && originals.has(n.id)) continue;
           if ((u.type === "diagram" || u.type === "annotation") && u.data.group && groups.has(u.data.group)) continue;
           const w = n.measured?.width ?? n.width ?? 0;

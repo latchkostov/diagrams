@@ -104,4 +104,33 @@ describe("arrange", () => {
       height: 184,
     });
   });
+
+  it("aligning boundaries moves member nodes along with them", () => {
+    const h = editorHarness({
+      format: "diagrams/v1",
+      title: "Align Boundaries",
+      groups: [
+        { id: "g1", label: "G1", x: 100, y: 100, width: 300, height: 200 },
+        { id: "g2", label: "G2", x: 600, y: 400, width: 300, height: 200 },
+      ],
+      nodes: [
+        { id: "n1", stencil: "service.node", label: "N1", x: 150, y: 150, group: "g1" },
+        { id: "n2", stencil: "service.node", label: "N2", x: 650, y: 450, group: "g2" },
+      ],
+      edges: [],
+    });
+
+    h.api.align(["group:g1", "group:g2"], "top");
+
+    const nodes = h.nodes();
+    const g1 = nodes.find((n) => n.id === "group:g1");
+    const g2 = nodes.find((n) => n.id === "group:g2");
+    const n1 = nodes.find((n) => n.id === "n1");
+    const n2 = nodes.find((n) => n.id === "n2");
+
+    expect(g1?.position.y).toBe(100);
+    expect(g2?.position.y).toBe(100);
+    expect(n1?.position.y).toBe(150);
+    expect(n2?.position.y).toBe(150);
+  });
 });

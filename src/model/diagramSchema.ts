@@ -215,6 +215,7 @@ function diagramSchema(a1 = false) {
           width: { type: "number", minimum: 0 },
           height: { type: "number", minimum: 0 },
           group: { type: "string", description: "Id of the outer boundary it sits in." },
+          borderRadius: { type: "number", minimum: 0, maximum: 100 },
         } satisfies Fields<DiagramGroup>,
       },
       Annotation: {
@@ -236,6 +237,7 @@ function diagramSchema(a1 = false) {
           },
           textSize: { type: "string", enum: ["s", "m", "l", "xl"] },
           group: { type: "string", description: "Id of the boundary it sits in." },
+          borderRadius: { type: "number", minimum: 0, maximum: 100 },
         } satisfies Fields<DiagramAnnotation>,
       },
       Simulation: {

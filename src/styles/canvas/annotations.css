@@ -165,7 +165,7 @@
 
 /* ---- zone: a dashed, rounded region with a quiet label (a boundary has a solid edge and a chip) */
 .ann-zone {
-  border-radius: 18px;
+  border-radius: var(--ann-radius, 18px);
   border: 1.5px dashed color-mix(in oklab, var(--ann) 50%, transparent);
   background: color-mix(in oklab, var(--ann) 5%, transparent);
 }
@@ -199,6 +199,15 @@
   text-overflow: ellipsis;
   pointer-events: all;
   cursor: move;
+}
+
+.ann-zone-label.is-empty {
+  width: calc(100% - 28px);
+  min-height: 22px;
+}
+
+.ann-zone.is-selected .ann-zone-label.is-empty {
+  background: color-mix(in oklab, var(--ann) 6%, transparent);
 }
 
 .ann-zone-label:hover {

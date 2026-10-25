@@ -90,8 +90,8 @@ export function MultiPanel(p: InspectorProps) {
     ...selectedAnnotations.map((a) => a.id),
     ...selectedGroups.map((g) => g.data.groupId),
   ];
-  // Align and distribute arrange nodes and annotations alike; Tidy up lays out nodes (and their edges).
-  const ids = [...nodeIds, ...selectedAnnotations.map((n) => n.id)];
+  // Align and distribute arrange nodes, annotations and boundaries alike; Tidy up lays out nodes (and their edges).
+  const ids = [...nodeIds, ...selectedAnnotations.map((n) => n.id), ...selectedGroups.map((g) => g.id)];
   return (
     <>
       <Section>

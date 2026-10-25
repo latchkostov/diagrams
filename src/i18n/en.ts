@@ -299,6 +299,7 @@ const en = {
   "inspector.size": "Size",
   "inspector.width": "Width",
   "inspector.height": "Height",
+  "inspector.borderRadius": "Border radius",
   "inspector.fitToContents": "Fit to contents",
   "inspector.convertToZone": "Convert to zone",
   "inspector.removeBoundary": "Remove boundary",

@@ -1,0 +1,31 @@
+.slider-control {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+}
+
+.slider-range {
+  flex: 1;
+  min-width: 0;
+  accent-color: var(--accent);
+  cursor: pointer;
+  height: 20px;
+}
+
+.slider-input {
+  width: 58px;
+  flex: none;
+  text-align: center;
+  padding: 4px 6px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 12px;
+}
+
+.slider-input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+}
