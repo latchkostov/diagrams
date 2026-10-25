@@ -28,3 +28,7 @@ No Node-tier golden changes: all 3020 goldens remain byte-for-byte unchanged, in
 ## Known mixed-deadline limit
 
 A successful first wave still completes the caller's whole dot. The mixed reply/deadline I1 limitation identified by the approved design remains: in twenty isolated bursts of twenty requests, scale one records 40 caller successes / 360 failures, while scale ten records 200 / 200. Both runs agree exactly on 60 downstream completions, 360 edge timeouts and 20 late replies. An exact pin and an accuracy-only expected failure record this limitation for stage 9; no comparison bound was changed. See [the backlog note](../backlog/2026-10-25-sampling-mixed-deadlines.md).
+
+## Exact held-gauge drain
+
+Nested partial waves can create very small blocking-call charges. The held gauge now keeps those charges until their matching release and becomes exactly zero when its last blocking branch ends. This closes the R6 idle-holds counterexample from seed 1946752105 without changing an invariant threshold, request scheduling, pool residence or retry policy. The regression fails when the former rounding update is restored.

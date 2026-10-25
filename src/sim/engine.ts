@@ -437,6 +437,7 @@ interface Edge {
   breaker?: { policy: BreakerPolicy; state: BreakerState };
   policy?: CallPolicy;
   poolUsed: number;
+  heldBranches: number;
   cohorts: Map<number, PoolCohort>;
   poolPending: { id: number; end: number; call: Call; message: Message; admissibleActive: number }[];
   poolPendingIndices: Map<number, number>;
@@ -1972,6 +1973,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     if (call.held) threadPhase(node, ledger.get<Group>(work.thread), "wait");
     for (const edge of requests) {
       if (call.held && edge.policy?.blocking) {
+        edge.heldBranches++;
         edge.calls.held += call.heldDots ??= dotsOf(message);
         node.waitingOn.set(
           edge.id,
@@ -2477,8 +2479,15 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
 
   function releaseCallEdge(call: Call, edge: Edge): void {
     if (!call.held || !edge.policy?.blocking) return;
+    // Only the last owner makes this gauge zero. Tiny live partials must not
+    // be rounded away before their matching subtraction arrives.
+    if (--edge.heldBranches === 0) {
+      edge.calls.held = 0;
+      call.node.waitingOn.delete(edge.id);
+      return;
+    }
     const message = call.work.message;
-    edge.calls.held = settled(edge.calls.held - (call.heldDots ?? 1));
+    edge.calls.held -= call.heldDots ?? 1;
     const count =
       (call.node.waitingOn.get(edge.id) ?? 0) - (ledger.get<Group>(call.work.thread)?.weight ?? sizeOf(message));
     if (count) call.node.waitingOn.set(edge.id, count);
@@ -4621,6 +4630,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     assignReplicas(new Set(nodes.keys()));
     for (const edge of edges) {
       edge.calls = { inFlight: 0, held: 0, timedOut: 0, failed: 0, late: 0, ...(edge.retry ? emptyRetryCounts() : {}) };
+      edge.heldBranches = 0;
       if (edge.breaker) edge.breaker.state = createBreaker();
       if (edge.retry) {
         edge.retry.window = createRetryWindow();
@@ -4972,6 +4982,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           active: 0,
           networkDelayMs: 0,
           poolUsed: 0,
+          heldBranches: 0,
           cohorts: new Map(),
           poolPending: [],
           poolPendingIndices: new Map(),
