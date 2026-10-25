@@ -1,0 +1,10 @@
+2026-10-25T00:00:00.0000000Z [1/2] [chromium] › tests/e2e/cancellation.spec.ts:5:1 › actual failure
+2026-10-25T00:00:00.0000000Z [2/2] [chromium] › tests/e2e/cancellation.spec.ts:9:1 › interrupted by failure limit
+2026-10-25T00:00:00.0000000Z   1) [chromium] › tests/e2e/cancellation.spec.ts:5:1 › actual failure ───────────
+2026-10-25T00:00:00.0000000Z     Error: expect(received).toBe(expected) // Object.is equality
+2026-10-25T00:00:00.0000000Z   2) [chromium] › tests/e2e/cancellation.spec.ts:9:1 › interrupted by failure limit
+2026-10-25T00:00:00.0000000Z     Test was interrupted.
+2026-10-25T00:00:00.0000000Z   1 failed
+2026-10-25T00:00:00.0000000Z     [chromium] › tests/e2e/cancellation.spec.ts:5:1 › actual failure ────────────
+2026-10-25T00:00:00.0000000Z   1 interrupted
+2026-10-25T00:00:00.0000000Z     [chromium] › tests/e2e/cancellation.spec.ts:9:1 › interrupted by failure limit

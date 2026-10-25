@@ -13,20 +13,40 @@ const shardName = /^E2E (\d+)\/(\d+)$/;
 
 export function failedTests(log) {
   const tests = new Map();
+  let current;
+  let summary;
+  const finish = () => {
+    if (current && !current.excluded) {
+      const { id, project, file, title } = current;
+      tests.set(id, { id, project, file, title });
+    }
+    current = undefined;
+  };
   // Actions repeats failures in annotations, the detailed error and the final list.
   for (const line of stripVTControlCharacters(log).split(/\r?\n/)) {
     const message = line
       .replace(/^\d{4}-\d{2}-\d{2}T\S+Z\s*/, "")
       .replace(/^##\[(?:error|notice)\]\s*/, "")
       .trim();
+    const status = message.match(/^\d+ (failed|interrupted|cancelled|canceled|flaky|passed|skipped|did not run)\b/);
+    if (status) {
+      finish();
+      summary = status[1];
+      continue;
+    }
+    // Interrupted tests have the same detailed header as failures, even without a final summary.
+    if (current && /^Test was (?:interrupted|cancelled|canceled)\.$/.test(message)) current.excluded = true;
     // A line reporter's [i/n] progress is not a failure, including in cancelled jobs.
     const match = message.match(/^(?:\d+\)\s*)?\[([^\]]+)\] › (tests\/e2e\/\S+?):\d+:\d+ › (.+?)\s*$/);
     if (!match) continue;
+    finish();
+    if (/^\d+\)/.test(message)) summary = undefined;
     const [, project, file, rawTitle] = match;
     const title = rawTitle.replace(/\s+─+$/, "");
     const id = `[${project}] ${file} › ${title}`;
-    tests.set(id, { id, project, file, title });
+    current = { id, project, file, title, excluded: summary !== undefined && summary !== "failed" };
   }
+  finish();
   return [...tests.values()].sort((a, b) => order(a.id, b.id));
 }
 
@@ -71,10 +91,15 @@ export function renderReport(snapshot) {
   const measured = times.filter((t) => t.seconds.length);
   const mean = measured.reduce((sum, t) => sum + t.mean, 0) / measured.length;
   const latest = runs
-    .map((run) => ({
-      run,
-      shards: jobs.filter((j) => j.runId === run.databaseId && j.attempt === run.attempt && shardName.test(j.name)),
-    }))
+    .flatMap((run) =>
+      Array.from({ length: run.attempt }, (_, i) => ({
+        run,
+        attempt: run.attempt - i,
+        shards: jobs.filter(
+          (j) => j.runId === run.databaseId && j.attempt === run.attempt - i && shardName.test(j.name),
+        ),
+      })),
+    )
     .find(
       ({ shards }) =>
         shards.length > 0 &&
@@ -94,7 +119,7 @@ export function renderReport(snapshot) {
     "",
     `Repository: ${snapshot.repo}. Workflow: CI. Runs: ${runs.length}, all branches, newest first. Snapshot ends at ${runs[0].createdAt} (run ${runs[0].databaseId}).`,
     "",
-    "Counts are distinct failing test/job attempts, deduplicating repeated Actions log annotations. Test IDs use project, spec and full title; source line numbers are deliberately excluded. Earlier attempts of rerun workflows are included, as are failures logged before a job was cancelled. A later successful shard on the identical SHA is passing-rerun evidence; it is not evidence that the cause was fixed. No later passing shard means **unconfirmed**, not a persistent failure. Cancelled/in-progress jobs are excluded from wall-time samples. Infrastructure failures without a test ID are listed separately.",
+    "Counts are distinct failing test/job attempts, deduplicating repeated Actions log annotations. Test IDs use project, spec and full title; source line numbers are deliberately excluded. Earlier attempts of rerun workflows are included, as are failures logged before a job was cancelled. Interrupted/cancelled tests do not count as failures. A later successful shard on the identical SHA is passing-rerun evidence; it is not evidence that the cause was fixed. No later passing shard means **unconfirmed**, not a persistent failure. Cancelled/in-progress jobs are excluded from wall-time samples. Infrastructure failures without a test ID are listed separately.",
     "",
     "| Test ID | Failures | Distinct branches | Passed same SHA (failures confirmed) | Shards | Evidence (run/attempt) |",
     "| --- | ---: | --- | ---: | --- | --- |",
@@ -124,7 +149,7 @@ export function renderReport(snapshot) {
     "## Latest complete successful shard set",
     "",
     latest
-      ? `Run ${latest.run.databaseId}, SHA ${latest.run.headSha}. This same-run comparison avoids averaging different infrastructure revisions.`
+      ? `Run ${latest.run.databaseId}, attempt ${latest.attempt}, SHA ${latest.run.headSha}. This same-attempt comparison avoids averaging different infrastructure revisions or mixing partial reruns.`
       : "No complete successful shard set in this snapshot.",
     "",
     "| Shard | Seconds | Budget used | Relative to mean |",
