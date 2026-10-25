@@ -16,6 +16,11 @@ import { defineMachine, type Transition } from "../lib/machine";
  * moment between: the check holds, the strip says so, and the step waits for the learner to finish, never for a timer.
  */
 export type RunnerPhase = "intro" | "reconstructing" | "active" | "hinting" | "completing" | "finished" | "closed";
+/**
+ * The current step's `sinceStep` readings, by expression (checks.ts, baselineKey): the value and the Live run's
+ * generation it was read in. Read once the step is current, each as soon as Live shows it; never for another step.
+ */
+export type Baseline = Readonly<Record<string, readonly [value: number, generation: number]>>;
 export interface RunnerState {
   value: RunnerPhase;
   /** The current step (intro: where Start begins; finished: the last). */
@@ -36,12 +41,19 @@ export interface RunnerState {
   /** Saved progress: the step this tutorial was left at, or 0. */
   resumeAt: number;
   stepIds: readonly string[];
+  /**
+   * Entering a step (Start, moving on or back, Continue's handover) empties it; so do Skip and Restart. Kept in the
+   * state rather than beside it, so the runner reconnecting or rebuilding its subjects never loses or re-reads it.
+   */
+  baseline: Baseline;
 }
 export type RunnerEvent =
   /** fix: a near miss's one-click fix ("Use Orders API"): the step's own demo, as Skip does it. */
   | { type: "start" | "resume" | "reconstructed" | "showMe" | "fix" | "restart" | "exit" }
   | { type: "skip"; stepId: string }
   | { type: "observe"; met: readonly boolean[]; settled: readonly boolean[] }
+  /** Readings for the current step's baseline; only those it doesn't have yet are kept. */
+  | { type: "baseline"; step: number; values: Baseline }
   | { type: "highlights"; on: boolean };
 export type RunnerCommand =
   /** Do these steps for the learner, in order, each once its predecessors' changes have landed. */
@@ -77,6 +89,7 @@ export function runnerInitial(
     last: null,
     highlights: opts.highlights,
     resumeAt: Math.max(0, Math.min(opts.resumeAt, sticky.length - 1)),
+    baseline: {},
   };
 }
 
@@ -93,12 +106,13 @@ const latchSeen = (s: RunnerState, met: readonly boolean[]) => s.latched.map((on
 function position(s: RunnerState, facts: Facts): RunnerState {
   const index = firstOpen(facts);
   const n = s.observed.length;
-  if (index === n) return { ...s, ...facts, value: "finished", index: n - 1, last: n - 1 };
+  if (index === n) return { ...s, ...facts, value: "finished", index: n - 1, last: n - 1, baseline: {} };
   const moved = index !== s.index || !inStep(s);
   return {
     ...s,
     ...facts,
     index,
+    baseline: moved ? {} : s.baseline,
     value: facts.observed[index] ? "completing" : !moved && s.value === "hinting" ? "hinting" : "active",
     last: index > s.index ? index - 1 : moved && index < s.index ? null : s.last,
   };
@@ -137,36 +151,45 @@ const goTo = (
 const observe = goTo(observed, fits, moves);
 const latchCurrent = (s: RunnerState) =>
   position(s, { observed: s.observed, settled: s.settled, latched: s.latched.map((on, i) => on || i === s.index) });
+/** Skip forgets the step's baseline: what it counts starts again from here, as when the step is entered. */
+const unbase = (s: RunnerState): RunnerState => ({ ...s, baseline: {} });
 const skip: Row[] = [
   // A step with a demo is done for you, then passes like any other.
   {
     target: "active",
     guard: (s) => s.demos[s.index] && s.value === "active",
+    reduce: unbase,
     effects: (s) => [{ type: "demo", steps: [s.index] }],
   },
   {
     target: "hinting",
     guard: (s) => s.demos[s.index] && s.value === "hinting",
+    reduce: unbase,
     effects: (s) => [{ type: "demo", steps: [s.index] }],
   },
   {
     target: "completing",
     guard: (s) => s.demos[s.index] && s.value === "completing",
+    reduce: unbase,
     effects: (s) => [{ type: "demo", steps: [s.index] }],
   },
   // A moment (traffic seen) has nothing to do: it's latched.
-  ...goTo(latchCurrent, () => true, moves),
+  ...goTo(
+    (s) => latchCurrent(unbase(s)),
+    () => true,
+    moves,
+  ),
 ];
 const restart: Row = {
   target: "active",
   // The sandbox goes back to its start: nothing is known to hold until the next observation says so.
   reduce: (s) => {
     const none = s.sticky.map(() => false);
-    return { ...s, index: 0, observed: none, settled: none, latched: none, last: null, resumeAt: 0 };
+    return { ...s, index: 0, observed: none, settled: none, latched: none, last: null, resumeAt: 0, baseline: {} };
   },
   effects: () => [{ type: "reset" }, { type: "announce", step: 0 }, { type: "save", step: 0, completed: false }],
 };
-const exit: Row = { target: "closed", effects: () => [{ type: "close" }] };
+const exit: Row = { target: "closed", reduce: unbase, effects: () => [{ type: "close" }] };
 const highlights = (target: RunnerPhase): Row =>
   ({
     target,
@@ -181,6 +204,13 @@ const stepRows = (state: "active" | "hinting" | "completing") => ({
       e.type === "skip" && e.stepId === s.stepIds[s.index] && (!row.guard || row.guard(s, e)),
   })),
   fix: skip.slice(0, 3),
+  baseline: {
+    target: state,
+    guard: (s: RunnerState, e: RunnerEvent) => e.type === "baseline" && e.step === s.index,
+    // The first reading of each wins: the step's start, not the latest tick.
+    reduce: (s: RunnerState, e: RunnerEvent) =>
+      e.type === "baseline" ? { ...s, baseline: { ...e.values, ...s.baseline } } : s,
+  },
   restart,
   highlights: highlights(state),
   exit,
@@ -197,6 +227,8 @@ export const runnerMachine = defineMachine<RunnerState, RunnerEvent, RunnerComma
     { type: "observe", met: [true, false], settled: [false, true] },
     { type: "observe", met: [true, true], settled: [true, true] },
     { type: "observe", met: [false, false], settled: [true, true] },
+    { type: "baseline", step: 0, values: { reading: [3, 1] } },
+    { type: "baseline", step: 1, values: { reading: [5, 1] } },
     { type: "showMe" },
     { type: "skip", stepId: "0" },
     { type: "fix" },
@@ -226,6 +258,7 @@ export const runnerMachine = defineMachine<RunnerState, RunnerEvent, RunnerComma
           ...s,
           latched: s.latched.map((on, i) => on || (s.sticky[i] && i < s.resumeAt)),
           index: s.resumeAt,
+          baseline: {},
         }),
         effects: (s) => [
           { type: "reconstruct", steps: Array.from({ length: s.resumeAt }, (_, i) => i) },

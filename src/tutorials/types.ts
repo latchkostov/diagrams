@@ -1,5 +1,5 @@
 import type { AnnotationKind, DiagramFile, EdgeRelation, Side, SimRole } from "../model/types";
-import type { NodeSimState } from "../sim/types";
+import type { EdgeSimState, NodeSimState } from "../sim/types";
 import type { EditorModeValue } from "../canvas/interaction/mode";
 
 /**
@@ -29,6 +29,59 @@ export type Comparison = "=" | ">=" | "<=";
 export type PropertyTarget = { subject: string; edge?: never } | { edge: readonly [string, string]; subject?: never };
 export type FaultKind = "down" | "slow" | "fail" | "cut";
 
+/** A value a path matches or a patch writes: JSON, or a catalog message (a setting key in the learner's language). */
+export type PathLiteral = string | number | boolean | null | Words;
+export type PatchValue = PathLiteral | readonly PatchValue[] | { readonly [key: string]: PatchValue };
+/**
+ * One step into props: an own object key, a whole-number array index, or `where`: the first array item whose fields
+ * equal these. Never the prototype: `constructor`, `__proto__` or an array's `length` aren't keys (the lint says so).
+ */
+export type PathSegment = string | number | { where: Readonly<Record<string, PathLiteral>> };
+/** A path into a node's or edge's props (src/tutorials/paths.ts), from a top-level key: `["settings", 4, "secret"]`. */
+export type PropPath = readonly [string, ...PathSegment[]];
+/** `measure: "length"` compares the length of the list at the path (missing, or not a list: the check fails). */
+type PropComparison =
+  { op: Comparison; value: unknown; measure?: never } | { measure: "length"; op: Comparison; value: number };
+
+/**
+ * An edit-preserving prop edit for a demo: idempotent, and it writes only what's missing, so the learner's other values
+ * stay theirs (a fifth setting is appended; the four they have are kept as they are).
+ */
+export type PropPatch =
+  /** This value at the path, creating missing object keys; a missing list item or a non-object on the way skips it. */
+  | { op: "set"; path: PropPath; value: PatchValue }
+  /** Like set, only while nothing is at the path. */
+  | { op: "setIfMissing"; path: PropPath; value: PatchValue }
+  /** The list at the path (made if missing) has an item matching `match`; else `{ ...match, ...with }` is appended. */
+  | {
+      op: "ensureItem";
+      path: PropPath;
+      match: Readonly<Record<string, PathLiteral>>;
+      with?: Readonly<Record<string, PatchValue>>;
+    };
+
+type NumericKeys<T> = { [K in keyof T]-?: NonNullable<T[K]> extends number ? K : never }[keyof T];
+/** A node's Live number: any numeric field of its metrics, a latency percentile or its threads waiting. */
+export type NodeMetric = NumericKeys<NodeSimState> | "latency.p95" | "threads.waiting";
+export type EdgeMetric = NumericKeys<EdgeSimState>;
+/** Every node a subject spec would fit (stencils, else role), bound or not: "every worker". */
+export type NodeMatch = Pick<SubjectSpec, "stencils" | "role">;
+/** A Live number, read from the session's real-unit snapshot. A missing reading (or an empty set) fails the check. */
+export type MetricValue =
+  | { node: string; metric: NodeMetric }
+  | { edge: readonly [string, string]; metric: EdgeMetric }
+  | { sum: NodeMetric; nodes: readonly string[] }
+  | { sum: NodeMetric; every: NodeMatch }
+  | { sum: EdgeMetric; edges: readonly (readonly [string, string])[] }
+  /** Every flow out of this subject. */
+  | { sum: EdgeMetric; from: string };
+/**
+ * `sinceStep`: counted since this step became current. Its baseline is read on entry and kept in the runner's state
+ * (RunnerState.baseline); a rebuilt run (a new generation) counts from zero. Only sticky steps may use it.
+ */
+export type MetricExpr = MetricValue | { sinceStep: MetricValue };
+export type MetricComparison = Comparison | "<" | ">";
+
 /** What makes a step done. Plain data, so tests and the authoring lint can read it. */
 export type Check =
   | { kind: "node"; subject: string }
@@ -43,7 +96,10 @@ export type Check =
   /** Live counters (real messages) since the run started. */
   | { kind: "processed"; subject: string; atLeast: number }
   | { kind: "field"; subject: string; field: "sublabel" | "description"; is?: Words }
-  | ({ kind: "prop"; prop: string; op: Comparison; value: unknown } & PropertyTarget)
+  /** A top-level prop, or a path into props (`["settings", 4, "secret"]`); `measure: "length"` for a list's length. */
+  | ({ kind: "prop"; prop: string | PropPath } & PropComparison & PropertyTarget)
+  /** Two Live numbers, or one and a constant: sums over subjects, a delta since the step began. */
+  | { kind: "compare"; left: MetricExpr; op: MetricComparison; right: MetricExpr | number }
   // edgeKind / annotation / fault distinguish the payload from the check's discriminant.
   | { kind: "relation"; from: string; to: string; relation?: EdgeRelation; edgeKind?: "sync" | "async"; absent?: true }
   | { kind: "member"; subject: string; boundary: string }
@@ -82,6 +138,8 @@ export type Demo =
   | { kind: "name"; subject: string }
   | { kind: "rename"; subject: string; label: Words }
   | ({ kind: "prop"; props: Record<string, unknown> } & PropertyTarget)
+  /** Edit-preserving prop edits, applied together as one edit, or none when nothing is missing. */
+  | ({ kind: "patch"; patches: readonly PropPatch[] } & PropertyTarget)
   | { kind: "relation"; from: string; to: string; relation: EdgeRelation; edgeKind?: "sync" | "async" }
   | { kind: "group"; subjects: readonly string[]; boundary: string }
   | { kind: "annotate"; annotation: AnnotationKind }

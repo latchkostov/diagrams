@@ -6,7 +6,9 @@ import { stencilRole } from "../stencils/roles";
 import { allTutorials as tutorials } from "./catalog";
 import { tutorialEntries } from "./catalog/ids";
 import { tutorialMetadata } from "./metadata";
-import type { Check, Demo, TutorialStep, UiStep } from "./types";
+import type { Check, Demo, MetricExpr, PathSegment, PropPath, TutorialStep, UiStep } from "./types";
+import { UNSAFE_KEYS } from "./paths";
+import { tutorialFixtures } from "../test/tutorialFixtures";
 
 /**
  * The authoring lint: every tutorial is checked against the app it teaches, so a renamed test id, a missing message
@@ -52,32 +54,51 @@ function knownTestId(id: string): boolean {
   return false;
 }
 
+/** The subjects a Live number reads. */
+const metricSubjects = (e: MetricExpr | number): string[] =>
+  typeof e === "number"
+    ? []
+    : "sinceStep" in e
+      ? metricSubjects(e.sinceStep)
+      : "node" in e
+        ? [e.node]
+        : "edge" in e
+          ? [...e.edge]
+          : "nodes" in e
+            ? [...e.nodes]
+            : "edges" in e
+              ? e.edges.flat()
+              : "from" in e
+                ? [e.from]
+                : [];
 const subjectsIn = (check: Check): string[] =>
-  check.kind === "selection" || check.kind === "aligned"
-    ? [...(check.subjects ?? [])]
-    : check.kind === "mode"
-      ? check.subject
-        ? [check.subject]
-        : []
-      : check.kind === "prop" || check.kind === "fault"
-        ? check.edge
-          ? [...check.edge]
-          : [check.subject]
-        : check.kind === "member"
-          ? [check.subject, check.boundary]
-          : check.kind === "metric"
-            ? [check.subject, ...(check.edge ?? [])]
-            : check.kind === "node" || check.kind === "label" || check.kind === "processed" || check.kind === "field"
-              ? [check.subject]
-              : check.kind === "edge" || check.kind === "relation"
-                ? [check.from, check.to]
-                : check.kind === "all"
-                  ? check.checks.flatMap(subjectsIn)
-                  : [];
+  check.kind === "compare"
+    ? [...metricSubjects(check.left), ...metricSubjects(check.right)]
+    : check.kind === "selection" || check.kind === "aligned"
+      ? [...(check.subjects ?? [])]
+      : check.kind === "mode"
+        ? check.subject
+          ? [check.subject]
+          : []
+        : check.kind === "prop" || check.kind === "fault"
+          ? check.edge
+            ? [...check.edge]
+            : [check.subject]
+          : check.kind === "member"
+            ? [check.subject, check.boundary]
+            : check.kind === "metric"
+              ? [check.subject, ...(check.edge ?? [])]
+              : check.kind === "node" || check.kind === "label" || check.kind === "processed" || check.kind === "field"
+                ? [check.subject]
+                : check.kind === "edge" || check.kind === "relation"
+                  ? [check.from, check.to]
+                  : check.kind === "all"
+                    ? check.checks.flatMap(subjectsIn)
+                    : [];
 const demoSubjects = (d: Demo): string[] =>
   d.kind === "add"
     ? [d.subject, ...(d.after ? [d.after] : [])]
-    : d.kind === "prop" || d.kind === "fault"
+    : d.kind === "prop" || d.kind === "fault" || d.kind === "patch"
       ? d.edge
         ? [...d.edge]
         : [d.subject]
@@ -126,6 +147,27 @@ const words = (step: TutorialStep) =>
     (w) => !!w,
   );
 
+const checksIn = (check: Check): Check[] => (check.kind === "all" ? check.checks.flatMap(checksIn) : [check]);
+/** What's wrong with a path, if anything: a typo'd index or a prototype key reads nothing, silently. */
+function pathProblem(path: PropPath): string | undefined {
+  const keyProblem = (key: string) =>
+    !key ? "an empty key" : UNSAFE_KEYS.has(key) ? `the prototype key ${key}` : undefined;
+  const segment = (part: PathSegment, i: number): string | undefined =>
+    typeof part === "string"
+      ? keyProblem(part)
+      : typeof part === "number"
+        ? Number.isInteger(part) && part >= 0
+          ? i === 0
+            ? "an index before a key"
+            : undefined
+          : `the index ${part}`
+        : Object.keys(part.where).length
+          ? Object.keys(part.where).map(keyProblem).find(Boolean)
+          : "an empty where";
+  return path.map(segment).find(Boolean);
+}
+const sinceIn = (e: MetricExpr | number) => typeof e === "object" && "sinceStep" in e;
+
 describe("tutorial catalog", () => {
   it("has unique ids and a version, listed for the generated e2e", () => {
     const ids = tutorials.map((t) => t.id);
@@ -143,7 +185,8 @@ describe("tutorial catalog", () => {
     }
   });
 
-  for (const tutorial of tutorials)
+  // The runner's fixture lessons (src/test/tutorialFixtures.ts) meet the same rules as the catalog's.
+  for (const tutorial of [...tutorials, ...tutorialFixtures])
     describe(tutorial.id, () => {
       const subjects = new Set(Object.keys(tutorial.subjects));
 
@@ -211,6 +254,7 @@ describe("tutorial catalog", () => {
                 "processed",
                 "live",
                 "metric",
+                "compare",
                 "simulation",
                 "expectation",
                 "fault",
@@ -239,6 +283,48 @@ describe("tutorial catalog", () => {
               `${step.id}: Skip selects for the settlement`,
             ).not.toContain("select");
           expect(step.solution.length, `${step.id} has a solution path for its e2e`).toBeGreaterThan(0);
+        }
+      });
+
+      it("writes prop paths, patches and Live numbers that can hold", () => {
+        for (const step of tutorial.steps) {
+          for (const check of checksIn(step.check)) {
+            if (check.kind === "prop") {
+              if (typeof check.prop === "string") {
+                // "settings.4.secret" is a key with dots in it, never a path: write ["settings", 4, "secret"].
+                expect(check.prop, `${step.id}: a dotted prop`).not.toContain(".");
+                expect(UNSAFE_KEYS.has(check.prop), `${step.id}: ${check.prop}`).toBe(false);
+              } else expect(pathProblem(check.prop), `${step.id}: ${JSON.stringify(check.prop)}`).toBeUndefined();
+              if (check.measure === "length")
+                expect(Number.isInteger(check.value) && check.value >= 0, `${step.id}: a length`).toBe(true);
+            }
+            if (check.kind === "compare") {
+              // A delta since the step began has no baseline once another step is current: it must latch.
+              if (sinceIn(check.left) || sinceIn(check.right))
+                expect(step.sticky, `${step.id}: sinceStep needs a sticky step`).toBe(true);
+              if (typeof check.right === "number") expect(Number.isFinite(check.right), step.id).toBe(true);
+              for (const e of [check.left, check.right]) {
+                const value = typeof e === "object" && "sinceStep" in e ? e.sinceStep : e;
+                if (typeof value !== "object" || !("every" in value)) continue;
+                expect(!!value.every.stencils?.length || !!value.every.role, `${step.id}: every needs a spec`).toBe(
+                  true,
+                );
+                for (const id of value.every.stencils ?? []) expect(stencilIds, id).toContain(id);
+              }
+            }
+          }
+          for (const demo of step.demo) {
+            if (demo.kind !== "patch") continue;
+            expect(demo.patches.length, `${step.id}: a patch with nothing in it`).toBeGreaterThan(0);
+            for (const patch of demo.patches) {
+              expect(pathProblem(patch.path), `${step.id}: ${JSON.stringify(patch.path)}`).toBeUndefined();
+              if (patch.op === "ensureItem") {
+                expect(Object.keys(patch.match).length, `${step.id}: ensureItem matches nothing`).toBeGreaterThan(0);
+                for (const key of [...Object.keys(patch.match), ...Object.keys(patch.with ?? {})])
+                  expect(UNSAFE_KEYS.has(key), `${step.id}: ${key}`).toBe(false);
+              } else expect(patch.value, `${step.id}: ${patch.op} writes nothing`).not.toBeUndefined();
+            }
+          }
         }
       });
 
