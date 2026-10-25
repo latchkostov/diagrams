@@ -72,6 +72,7 @@ export const authorADrill: Tutorial = {
         },
       ],
       solution: [
+        { click: "sim-panel-back" },
         { click: "sim-panel-new" },
         { click: "sim-panel-section-timeline" },
         { select: "sim-panel-add-step", value: "slow-dependency" },

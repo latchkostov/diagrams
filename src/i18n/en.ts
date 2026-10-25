@@ -4084,7 +4084,7 @@ const en = {
   "tutorials.authorADrill.openDone": "Simulations stores scripted runs with traffic, faults and expectations.",
   "tutorials.authorADrill.drillName": "Practice Drill",
   "tutorials.authorADrill.saveGoal":
-    "Click New simulation, open Timeline and pick Slow dependency in Add step. Click Save.",
+    "Click All simulations, then New simulation. Open Timeline and pick Slow dependency in Add step. Click Save.",
   "tutorials.authorADrill.saveTitle": "Save a fault step",
   "tutorials.authorADrill.saveDone": "A Drill is a saved simulation with a fault step.",
   "tutorials.authorADrill.runGoal": "Click Run in the simulation editor.",
