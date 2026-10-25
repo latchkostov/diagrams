@@ -1,4 +1,7 @@
 import { defineLazySurface } from "../lib/lazySurface";
+import { inHoverBridge } from "./hoverBridge";
+import { useReadoutFocus } from "./useReadoutFocus";
+import { DetailsLoading } from "./DetailsLoading";
 import { revisionAtLeast } from "../model/revisions";
 import { profileOf } from "../stencils/profiles";
 import { ThreadMeter, CallPills } from "./lazyWaitingVisuals";
@@ -33,7 +36,17 @@ import type { EdgeSimProps } from "../sim/types";
 const NodeDetails = defineLazySurface({
   id: "live.node-details",
   load: () => import("./NodeDetails").then((m) => m.NodeDetails),
-  placeholder: { size: {}, testId: "live.node-details-loading" },
+  placeholder: {
+    render: (props, { failed }) => (
+      <DetailsLoading
+        kind="node"
+        id={props.node.id}
+        pinned={props.pinned}
+        focusClaim={props.focusClaim}
+        failed={failed}
+      />
+    ),
+  },
   focus: {},
   export: "skip",
   retryToast: true,
@@ -42,7 +55,11 @@ const NodeDetails = defineLazySurface({
 const EdgeDetails = defineLazySurface({
   id: "live.edge-details",
   load: () => import("./NodeDetails").then((m) => m.EdgeDetails),
-  placeholder: { size: {}, testId: "live.edge-details-loading" },
+  placeholder: {
+    render: (props, { failed }) => (
+      <DetailsLoading kind="edge" id={props.id} pinned={props.pinned} focusClaim={props.focusClaim} failed={failed} />
+    ),
+  },
   focus: {},
   export: "skip",
   retryToast: true,
@@ -82,6 +99,7 @@ export function NodeBadges({
   // focus in the editor would otherwise count as hovering its node.
   const { editing } = useDiagram();
   const pointed = useHoveredNode(nodes, state);
+  const focusClaim = useReadoutFocus(pointed);
   const hovered = !editing && pointed?.kind === "node" ? pointed.id : null;
   // Badges live in flow space; counter-scale them when zoomed out so they stay readable.
   const zoom = useStore((s) => s.transform[2]);
@@ -141,6 +159,7 @@ export function NodeBadges({
           state={state}
           id={pointed.id}
           pinned={pointed.pinned}
+          focusClaim={focusClaim}
         />
       )}
       {activeCalls.length > 0 && <CallPills calls={activeCalls} readoutScale={inv} presenting={presenting} />}
@@ -167,6 +186,7 @@ export function NodeBadges({
             peak={peak}
             hovered={hovered === n.id}
             pinned={pointed?.pinned ?? false}
+            focusClaim={hovered === n.id ? focusClaim : undefined}
             cap={capacity?.nodes[n.id]}
             assignment={assignments.consumers.get(n.id)?.spec}
             brokerSpec={assignments.brokers.get(n.id)}
@@ -237,24 +257,8 @@ function useHoveredNode(nodes: FlowNode[], state: LiveState) {
     };
     const point = (e: PointerEvent) => {
       const target = itemAt(e.target instanceof Element ? e.target : null);
-      if (!target) {
-        const open = readouts.get();
-        const card = document.querySelector<HTMLElement>("[data-live-readout]");
-        const anchor =
-          open && domNode.querySelector<HTMLElement>(`[data-testid="${open.kind}-${CSS.escape(open.id)}"]`);
-        // A geometric bridge makes the card clickable without a timer or a hover race.
-        if (card && anchor) {
-          const a = anchor.getBoundingClientRect(),
-            b = card.getBoundingClientRect();
-          if (
-            e.clientX >= Math.min(a.left, b.left) &&
-            e.clientX <= Math.max(a.right, b.right) &&
-            e.clientY >= Math.min(a.top, b.top) &&
-            e.clientY <= Math.max(a.bottom, b.bottom)
-          )
-            return;
-        }
-      }
+      // A geometric bridge makes the card clickable without a timer or a hover race.
+      if (!target && inHoverBridge(readouts, domNode, e.clientX, e.clientY)) return;
       readouts.point(target ?? itemAt(document.activeElement));
     };
     const focus = (e: FocusEvent) => {
@@ -294,6 +298,7 @@ function groupNames(d: DiagramFile, nodeId: string, topology: ReturnType<typeof 
 }
 
 export interface BadgeProps {
+  focusClaim?: () => boolean;
   configuration: LiveState["configuration"];
   diagram: DiagramFile;
   fault: string;

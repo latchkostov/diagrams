@@ -8,8 +8,15 @@ Each numbered batch below is an independent PR candidate of at most ten items, o
 
 ## Batch 1: Loader ownership and HMR (1 OPEN, 1 DONE)
 
-1. **LL-01 — OPEN: Give cold node details a keyboard focus handoff.** `src/live/NodeBadges.tsx:33`. Queue: #189.
+1. **LL-01 — DONE: Give cold node details a keyboard focus handoff.** `src/live/NodeBadges.tsx:33`. Queue: #189.
    The shared loader provides recovery but does not itself prove the original cold keyboard-entry contract. Hold node details, enter by keyboard and transfer logical focus only while the request still owns it.
+
+   Implemented on `fix/p2-performance-pointer-1`. A shell-owned loading stop supports
+   Tab and Enter while the node-details chunk is held. Its focus claim is tied to the readout
+   request and yields permanently to another focus owner; loaded cards use the interaction focus
+   policy. `lazy-node-details.spec.ts` covers handoff and cancellation by focus, menu, Escape and
+   advancing to the next node. Removing shell focus, handoff, ownership or its final Tab stop
+   fails the corresponding browser regression.
 
 2. **LL-02 — OPEN: Make surface registrations survive HMR.** `src/lib/lazySurfaces.ts:77`. Queue: #271.
    Module-owned registrations replace their previous hot evaluation, preserve mounted consumers in output readiness, and dispose inactive registrations. Genuine duplicates still throw. Registry and dev-transform regressions cover replacement before/during an export; the generated hold-the-chunk browser contracts remain unchanged. Implemented on `fix/p2-tooling-followups` (merge pending).
