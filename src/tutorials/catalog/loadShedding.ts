@@ -1,13 +1,9 @@
 import { msg, t } from "../../i18n";
 import type { Tutorial } from "../types";
 
-// owner decision pending: 5. Build 09, load-shedding (earlier owner decision 10)
-// The explicit shedding setting and spike interaction remain undecided. Author the seeded overload first;
-// do not choose the max-in-flight fallback or a replacement Inject interaction on the owner's behalf.
 export const loadShedding: Tutorial = {
   id: "load-shedding",
-  quarantined: true,
-  version: 1,
+  version: 2,
   track: "resilience",
   level: 3,
   minutes: 4,
@@ -15,7 +11,7 @@ export const loadShedding: Tutorial = {
   summary: msg("tutorials.loadShedding.summary"),
   start: () => ({
     format: "diagrams/v2",
-    planning: { revision: "p3-w1" },
+    planning: { revision: "p3-w2" },
     title: t("tutorials.loadShedding.title"),
     nodes: [
       {
@@ -53,8 +49,8 @@ export const loadShedding: Tutorial = {
         title: t("tutorials.loadShedding.spikeName"),
         seed: 20261025,
         scale: 1,
-        durationMs: 10_000,
-        traffic: [{ id: "spike", node: "client", shape: { kind: "burst", count: 100, spreadMs: 1000 } }],
+        durationMs: 600_000,
+        traffic: [],
         timeline: [],
         expectations: [],
       },
@@ -67,17 +63,33 @@ export const loadShedding: Tutorial = {
   },
   steps: [
     {
+      id: "live",
+      title: msg("tutorials.loadShedding.liveTitle"),
+      goal: msg("tutorials.loadShedding.liveGoal"),
+      done: msg("tutorials.loadShedding.liveDone"),
+      check: { kind: "simulation", id: "spike" },
+      sticky: true,
+      targets: [
+        { testId: "live-sim-picker", tip: msg("tutorials.loadShedding.liveGoal") },
+        { testId: "live-toggle", tip: msg("tutorials.loadShedding.liveGoal") },
+      ],
+      demo: [{ kind: "runSimulation", id: "spike" }],
+      solution: [{ click: "live-toggle" }, { select: "live-sim-picker", value: "spike" }],
+    },
+    {
       id: "run-spike",
       title: msg("tutorials.loadShedding.spikeTitle"),
       goal: msg("tutorials.loadShedding.spikeGoal"),
       done: msg("tutorials.loadShedding.spikeDone"),
-      check: { kind: "simulation", id: "spike" },
-      targets: [
-        { testId: "live-sim-picker", tip: msg("tutorials.loadShedding.spikeGoal") },
-        { testId: "live-toggle", tip: msg("tutorials.loadShedding.spikeGoal") },
+      check: { kind: "compare", left: { edge: ["client", "api"], metric: "delivered" }, op: ">=", right: 100 },
+      sticky: true,
+      targets: [{ testId: "node-{client}", tip: msg("tutorials.loadShedding.spikeGoal"), dim: false }],
+      demo: [{ kind: "inject", subject: "client", count: 100 }],
+      solution: [
+        { rightclick: "node-{client}" },
+        { click: "context-menu-item-sim.inject" },
+        { click: "context-menu-item-sim.inject:100" },
       ],
-      demo: [{ kind: "runSimulation", id: "spike" }],
-      solution: [{ click: "live-toggle" }, { select: "live-sim-picker", value: "spike" }],
     },
     {
       id: "watch-backlog",
@@ -88,6 +100,7 @@ export const loadShedding: Tutorial = {
         kind: "all",
         checks: [
           { kind: "simulation", id: "spike" },
+          { kind: "readout", subject: "api" },
           { kind: "compare", left: { node: "api", metric: "backlog" }, op: ">=", right: 24 },
         ],
       },
@@ -95,6 +108,54 @@ export const loadShedding: Tutorial = {
       targets: [{ testId: "node-{api}", tip: msg("tutorials.loadShedding.backlogGoal"), dim: false }],
       demo: [],
       solution: [{ hover: "node-{api}" }],
+    },
+    {
+      id: "cap-queue",
+      title: msg("tutorials.loadShedding.capTitle"),
+      goal: msg("tutorials.loadShedding.capGoal"),
+      done: msg("tutorials.loadShedding.capDone"),
+      check: { kind: "prop", subject: "api", prop: ["queue", "limit"], op: "=", value: 10 },
+      targets: [
+        { testId: "inspector-field-queue-limit", tip: msg("tutorials.loadShedding.capGoal"), selected: "api" },
+        { testId: "node-{api}", tip: msg("tutorials.loadShedding.capGoal") },
+      ],
+      demo: [{ kind: "patch", subject: "api", patches: [{ op: "set", path: ["queue", "limit"], value: 10 }] }],
+      solution: [
+        { click: "live-toggle" },
+        { dblclick: "node-{api}" },
+        { click: "inspector-section-node-simulation" },
+        { click: "inspector-section-queue-details" },
+        { fill: "inspector-field-queue-limit", text: "10" },
+        { press: "Tab" },
+      ],
+    },
+    {
+      id: "bounded-spike",
+      title: msg("tutorials.loadShedding.boundedTitle"),
+      goal: msg("tutorials.loadShedding.boundedGoal"),
+      done: msg("tutorials.loadShedding.boundedDone"),
+      check: {
+        kind: "all",
+        checks: [
+          { kind: "simulation", id: "spike" },
+          { kind: "compare", left: { sinceStep: { node: "api", metric: "shed" } }, op: ">=", right: 24 },
+          { kind: "compare", left: { node: "api", metric: "backlog" }, op: "<=", right: 10 },
+        ],
+      },
+      sticky: true,
+      targets: [{ testId: "node-{client}", tip: msg("tutorials.loadShedding.boundedGoal"), dim: false }],
+      demo: [
+        { kind: "runSimulation", id: "spike" },
+        { kind: "inject", subject: "client", count: 100 },
+      ],
+      solution: [
+        { click: "live-toggle" },
+        { select: "live-sim-picker", value: "spike" },
+        { rightclick: "node-{client}" },
+        { click: "context-menu-item-sim.inject" },
+        { click: "context-menu-item-sim.inject:100" },
+        { hover: "node-{api}" },
+      ],
     },
   ],
   finish: { text: msg("tutorials.loadShedding.finish") },

@@ -384,6 +384,22 @@ test("threads-block: watch steps wait for their readout even after the run has m
   await expect(strip(page)).toHaveAttribute("data-phase", "finished");
 });
 
+test("scale-to-zero: the cold-start note holds the readout for a late learner", async ({ page, consoleErrors }) => {
+  await openTutorial(page, "scale-to-zero");
+  await page.getByTestId("tutorial-start").click();
+  for (const id of ["run-quiet-sunday", "replicas-zero", "run-morning-rush"]) {
+    await expect(strip(page)).toHaveAttribute("data-step", id);
+    for (const action of await page.evaluate(() => window.__tutorial?.solution() ?? [])) await play(page, action);
+  }
+  await page.getByTestId("tutorial-step").hover();
+  await expect(page.getByTestId("live-note-continue")).toBeVisible();
+  await expect(strip(page)).toHaveAttribute("data-step", "cold-start");
+  await expect(page.getByTestId("live-canvas")).toHaveAttribute("data-sim-time", "6000");
+  await page.getByTestId("node-worker").hover();
+  await expect(strip(page)).toHaveAttribute("data-phase", "finished");
+  expectNoErrors(consoleErrors);
+});
+
 test("where-time-goes: Latency can be expanded and read before Done finishes", async ({ page }) => {
   await page.addInitScript(() =>
     localStorage.setItem(
@@ -413,6 +429,13 @@ for (const { id, quarantined } of tutorialEntries)
     await page.getByTestId("tutorial-start").click();
     await expect(strip(page)).toHaveAttribute("data-phase", "step");
     const seen = await finishSolution(page);
+    if (id === "capacity") expect(seen).toContain("overlay");
+    if (id === "trace-slowmo") expect(seen).toContain("finished");
+    if (id === "saved-simulations") expect(seen).toEqual(["live", "waiting", "continue", "expectation"]);
+    if (id === "scale-to-zero") expect(seen).toContain("cold-start");
+    if (id === "load-shedding")
+      expect(seen).toEqual(["live", "run-spike", "watch-backlog", "cap-queue", "bounded-spike"]);
+    if (id === "dead-letters") expect(seen).toContain("replay");
     if (id === "partitions") expect(seen).toEqual(["read-idle", "six-partitions", "rerun"]);
     if (id === "outbox")
       expect(seen).toEqual(["trace-message", "run-happy-path", "read-happy-path", "watch-compensation"]);

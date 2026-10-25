@@ -1,12 +1,9 @@
 import { msg } from "../../i18n";
 import type { Tutorial } from "../types";
 
-// owner decision pending: 6. Build 09, dead-letters replay
-// There is no app action that re-sends a dead letter. Leave replay unauthored until the owner decides.
 export const deadLetters: Tutorial = {
   id: "dead-letters",
-  quarantined: true,
-  version: 1,
+  version: 2,
   track: "resilience",
   level: 2,
   minutes: 4,
@@ -68,6 +65,17 @@ export const deadLetters: Tutorial = {
         { fill: "inspector-field-maxDeliveryCount", text: "3" },
         { press: "Tab" },
       ],
+    },
+    {
+      id: "replay",
+      title: msg("tutorials.deadLetters.replayTitle"),
+      goal: msg("tutorials.deadLetters.replayGoal"),
+      done: msg("tutorials.deadLetters.replayDone"),
+      check: { kind: "acknowledge" },
+      sticky: true,
+      targets: [{ testId: "node-{commands}", tip: msg("tutorials.deadLetters.replayGoal"), dim: false }],
+      demo: [],
+      solution: [{ hover: "node-{commands}" }, { click: "tutorial-skip" }],
     },
   ],
   finish: { text: msg("tutorials.deadLetters.finish") },

@@ -1,7 +1,6 @@
 import { msg } from "../../i18n";
 import type { Tutorial } from "../types";
 
-// owner decision pending: Sequence diagram "open" step (trace-slowmo)
 export const traceSlowmo: Tutorial = {
   id: "trace-slowmo",
   version: 1,
@@ -53,5 +52,4 @@ export const traceSlowmo: Tutorial = {
     },
   ],
   finish: { text: msg("tutorials.traceSlowmo.finish") },
-  quarantined: true,
 };

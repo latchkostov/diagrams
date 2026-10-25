@@ -14,12 +14,13 @@ import type { EditorApi } from "../editor/types";
 import { LiveController, type LiveState } from "../live/controller";
 import { liveActions } from "../live/liveActions";
 import { planningHost } from "../live/planningHost";
+import { capacityView } from "../live/capacityView";
+import { freePlaySimulation, withFix } from "../live/capacityModel";
 import { capacityOverlay } from "../live/capacityOverlay";
 import type { LiveUi } from "../live/context";
 import type { SlowState } from "../live/slowmo/session";
 import { withSavedSimulation } from "./simulations";
 import { actionRegistry, type MenuNode } from "../editor/actions";
-import { stencilRole } from "../stencils/roles";
 import type { AnnotationKind, DiagramEdge, DiagramFile, DiagramNode, Expectation, Side } from "../model/types";
 import type { paletteHost } from "../palette/host";
 import { allTutorials as tutorials } from "./catalog";
@@ -34,6 +35,7 @@ import { outbox } from "./catalog/outbox";
 import { threadsBlock } from "./catalog/threadsBlock";
 import { timeoutsPools } from "./catalog/timeoutsPools";
 import { autoscaling } from "./catalog/autoscaling";
+import { scaleToZero } from "./catalog/scaleToZero";
 import { webhooks } from "./catalog/webhooks";
 import { retryStorm } from "./catalog/retryStorm";
 import { backoffBudget } from "./catalog/backoffBudget";
@@ -199,13 +201,12 @@ function sandbox(tutorial: Tutorial, { lateAdds = false, lazyLive = false } = {}
       setSlow({ ...slowState, t, playing: t < SLOW_SCRIPT.duration });
     },
   };
-  /**
-   * The bottleneck's "Apply fix" (useLiveContextMenu's palette row), once the capacity overlay shows a bottleneck:
-   * in free play its fix is a prop edit, here one more replica on the first processor.
-   */
+  /** The same capacity calculation and saved-run fix as the real Apply fix control. */
   const capacityFix = () => {
-    const target = diagram.nodes.find((n) => stencilRole(n.stencil) === "processor");
-    return capacityOverlay.get() && target ? target : undefined;
+    const c = controller;
+    if (!c || !capacityOverlay.get()) return undefined;
+    const state = c.getState();
+    return capacityView(diagram, state.running ?? freePlaySimulation(diagram, state.inputs)).fix ?? undefined;
   };
   /** Live's own actions over this run, as its session registers them: Skip's controls press these rows. */
   const actionsOf = (c: LiveController) =>
@@ -259,8 +260,18 @@ function sandbox(tutorial: Tutorial, { lateAdds = false, lazyLive = false } = {}
           label: "Apply fix",
           when: () => !!capacityFix(),
           run: () => {
-            const target = capacityFix();
-            if (target) editor.setNodeProps(target.id, { replicas: Number(target.props?.replicas ?? 1) + 1 });
+            const fix = capacityFix();
+            if (!fix) return;
+            const base = c.getState().simulation;
+            if (base) {
+              const next = withFix(base, fix);
+              editor.updateMeta({
+                simulations: (diagram.simulations ?? []).map((sim) => (sim.id === next.id ? next : sim)),
+              });
+              c.setBase(next);
+            } else {
+              for (const change of fix.changes) editor.setNodeProps(change.nodeId, { [change.key]: change.to });
+            }
           },
         },
       ]);
@@ -789,21 +800,20 @@ function typing(s: Sandbox, check: Check): boolean {
 
 /** Where Skip lands from the start once it reaches step k: what Continue from k must land on too. */
 async function skipLanding(tutorial: Tutorial, k: number) {
+  const stored = localStorage.getItem("diagrams.tutorials.v1");
   const s = sandbox(tutorial);
   await reach(s, tutorial, k);
   const landed = state(s).value === "finished" ? tutorial.steps.length : state(s).index;
   cleanup.reverse().forEach((f) => f());
   cleanup.length = 0;
+  // This independent probe may finish the lesson; its completion must not become the resume case's saved input.
+  if (stored === null) localStorage.removeItem("diagrams.tutorials.v1");
+  else localStorage.setItem("diagrams.tutorials.v1", stored);
   return landed;
 }
 
 describe("every tutorial's completion contract", () => {
-  // Withheld for owner decisions, not completion regressions: exercise these drafts as if released,
-  // including their saved progress (which the real catalog correctly hides while quarantined).
-  const completionTutorials = tutorials.map((tutorial) =>
-    ["load-shedding", "dead-letters"].includes(tutorial.id) ? { ...tutorial, quarantined: undefined } : tutorial,
-  );
-  for (const tutorial of [...completionTutorials, ...tutorialFixtures])
+  for (const tutorial of [...tutorials, ...tutorialFixtures])
     describe(tutorial.id, () => {
       const lessonIt = itFor(tutorial);
       tutorial.steps.forEach((step, i) => {
@@ -1026,6 +1036,18 @@ describe("completion regressions", () => {
     s.live!.publish();
     expect(state(s)).toMatchObject({ index: 2, value: "active" });
     s.hover({ kind: "node", id: s.subject("caller") });
+    expect(state(s).value).toBe("finished");
+  });
+
+  it("scale-to-zero: a late readout still observes the cold start", async () => {
+    const s = sandbox(scaleToZero);
+    const coldStart = scaleToZero.steps.findIndex((step) => step.id === "cold-start");
+    await reach(s, scaleToZero, coldStart);
+    // The learner reads the instructions away from the node for longer than the entire saved run.
+    for (let frame = 0; frame < 700; frame++) play(s, 100);
+    expect(state(s)).toMatchObject({ index: coldStart, value: "active" });
+    expect(s.live!.getState().snapshot.nodes[s.subject("worker")].fleet!.starting).toBeGreaterThanOrEqual(1);
+    s.hover({ kind: "node", id: s.subject("worker") });
     expect(state(s).value).toBe("finished");
   });
 
