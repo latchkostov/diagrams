@@ -263,8 +263,8 @@ export interface EditorApi {
   creating(id: string): string | undefined;
   /** Opens one undo step for the name fields; a new node keeps its creation step. */
   beginNaming(kind: "node" | "edge" | "group", id: string): string;
-  /** Enter, Esc or focus away completes that naming step. */
-  doneNaming(tag: string): void;
+  /** Enter, Esc or focus away completes naming. `committed`: React's document update already rendered. */
+  doneNaming(tag: string, committed?: boolean): void;
   /** Opens the inspector, optionally focusing `inspector-field-<focusField>`. */
   openInspector(focusField?: string): void;
   showShortcuts(): void;

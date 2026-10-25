@@ -26,8 +26,8 @@ export interface HistoryApi {
    * its editor are one undo step under `tag`, however long the naming takes, unless another edit comes between.
    */
   begin(tag: string): void;
-  /** The editor committed (Enter, Esc, a click away): records what it wrote under `tag`, then closes it. */
-  end(tag: string): void;
+  /** Records the edit under `tag`, then closes it. `committed`: the caller already flushed React's update. */
+  end(tag: string, committed?: boolean): void;
   /** The open creation transaction's tag, if any (an editor opened on that node joins it). */
   open(): string | undefined;
   /** Flush the actual current snapshot, commit a replacement, then apply it once. */
@@ -197,14 +197,16 @@ export function useHistory(
     [hint, ctl],
   );
   const end = useCallback(
-    (tag: string) => {
+    (tag: string, committed = false) => {
       // After the editor's own update has rendered (it's applied in the same event), so its name is recorded
       // inside the transaction rather than after it closes.
-      window.setTimeout(() => {
+      const finish = () => {
         if (ctl.openTransaction !== tag) return;
         if (timer.current !== undefined || ctl.key(latest.current) !== present(ctl.history).key) flush();
         ctl.end(tag);
-      }, 0);
+      };
+      if (committed) finish();
+      else window.setTimeout(finish, 0);
     },
     [ctl, flush],
   );

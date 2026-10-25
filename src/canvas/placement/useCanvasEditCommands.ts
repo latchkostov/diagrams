@@ -14,12 +14,12 @@ import type { useRevealSelection } from "../camera";
 export function useCanvasNaming(
   canOpenInspector: boolean,
   editor: EditorApi,
-  openInspector: (field?: string, caret?: "end", target?: string) => void,
+  openInspector: (field?: string, caret?: "end", target?: string, initialName?: string) => void,
   setEditing: Dispatch<SetStateAction<InlineEdit | null>>,
   setNaming: Dispatch<SetStateAction<{ node: string; edge: string } | null>>,
   renameRef: RefObject<(t: RenameTarget) => void>,
   history: ReturnType<typeof useHistory>,
-  controller: Placing & Pick<InteractionController, "dispatch">,
+  controller: Placing & Pick<InteractionController, "beginNaming" | "finishNaming">,
   revealSelection: ReturnType<typeof useRevealSelection>["revealSelection"],
 ) {
   /**
@@ -41,6 +41,7 @@ export function useCanvasNaming(
         t.kind === "node" && t.field === "sublabel" ? "sublabel" : "label",
         typed ? "end" : undefined,
         t.kind === "group" ? GROUP_PREFIX + t.id : t.id,
+        typed ? t.text : undefined,
       );
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps -- state setters are stable; preserve CanvasView's original dependencies
@@ -58,32 +59,35 @@ export function useCanvasNaming(
   const endCreation = history.end;
   const pickNamed = useCallback(
     (make: () => NewNode | null, fallback: string) => {
-      // Hold what's typed from now until the label editor can take it.
-      let annotation = false;
-      // Enter/Esc ends naming even before measurement. Keep the buffered result for the reveal callback,
-      // but release keyboard ownership now so the next canvas shortcut can act on the new selection.
-      const typing = captureTypeAhead(
-        () => annotation,
-        () => void typing.stop(),
-      );
       controller.placing();
       const made = make();
-      if (!made) return void typing.stop();
-      annotation = made.annotation ?? !!editor.getAnnotation(made.id);
+      if (!made) return;
+      const annotation = made.annotation ?? !!editor.getAnnotation(made.id);
+      // Hold what's typed from now until the label editor can take it.
+      const typing = captureTypeAhead(
+        () => annotation,
+        (typed) =>
+          controller.finishNaming(
+            made.id,
+            () => {
+              // Flush every captured key into the document and history before the next shortcut can run.
+              flushSync(() => {
+                if (typed.text === null || (typed.done === "escape" && !annotation)) return;
+                if (annotation) editor.updateAnnotation(made.id, { text: typed.text }, { merge: made.merge });
+                else editor.updateNode(made.id, { label: typed.text.trim() || fallback }, { merge: made.merge });
+              });
+              endCreation(made.merge, true);
+            },
+            () => void typing.stop(),
+          ),
+      );
+      const cancelNaming = controller.beginNaming(made.id);
       revealSelection(
         () => {
           const typed = typing.stop();
           const isAnn = annotation;
-          if (typed.done === "escape" && !isAnn) return endCreation(made.merge);
-          if (typed.done) {
-            if (typed.text !== null) {
-              if (isAnn) editor.updateAnnotation(made.id, { text: typed.text }, { merge: made.merge });
-              else editor.updateNode(made.id, { label: typed.text.trim() || fallback }, { merge: made.merge });
-            }
-            endCreation(made.merge);
-            if (isAnn) controller.dispatch({ type: "naming.done", flowId: made.id });
-            return;
-          }
+          // Enter/Esc already committed and ended naming synchronously. A late reveal must never replay it.
+          if (typed.done) return;
           // In this same task: a key arriving before the field has focus would reach the canvas instead.
           flushSync(() =>
             editor.startEditing({
@@ -96,7 +100,10 @@ export function useCanvasNaming(
         },
         90,
         "placement",
-        () => void typing.stop(),
+        () => {
+          typing.stop();
+          cancelNaming();
+        },
       );
     },
     [editor, revealSelection, endCreation, controller],

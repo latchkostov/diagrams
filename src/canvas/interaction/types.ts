@@ -196,6 +196,10 @@ export interface FocusMove {
   revealed?: boolean;
   /** Runs when the target is found and about to take focus; false drops the move (another reader consumed it). */
   claim?: () => boolean;
+  /** Commit a pending name directly when Enter arrives before its field can mount. */
+  acceptName?: (text: string | null) => void;
+  /** Text already captured before measurement handed naming to the pending Inspector. */
+  initialName?: string;
 }
 
 export type FocusCommand =
@@ -257,6 +261,8 @@ export type FocusEvent =
       owner?: string;
       caret?: "end";
       claim?: () => boolean;
+      acceptName?: (text: string | null) => void;
+      initialName?: string;
     }
   /** A processor rule was removed, or its incoming type changed (rows are keyed by it): continue at `target`. */
   | { type: "inspector.rule"; target: ElementHandle }

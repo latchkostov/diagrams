@@ -39,7 +39,7 @@ export type EditorModeEvent =
   | { type: "gesture.ended" }
   /** Focus arrived on a text field: a name field (`target`, its item) or another one (`field`). */
   | { type: "field.focused"; target?: string; field?: string }
-  /** The name field was requested but cannot take focus yet. */
+  /** Naming began before measurement or the name field could take focus. */
   | { type: "naming.requested"; target: string }
   | { type: "node.doubleClicked"; target: string }
   /** Focus left the fields for the canvas, a button or nothing. */

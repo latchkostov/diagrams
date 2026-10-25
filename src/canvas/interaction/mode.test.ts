@@ -6,6 +6,40 @@ import { editorModeMachine, editorModeStep, initialEditorMode, type EditorModeEv
 const play = (events: EditorModeEvent[]) => events.reduce(editorModeStep, initialEditorMode);
 
 describe("editor mode", () => {
+  it("placement commits its buffered name and releases keys before publishing completion, without a frame", () => {
+    const frame = () => {
+      throw new Error("Naming completion must not wait for a frame");
+    };
+    const controller = createInteractionController(
+      {
+        active: () => null,
+        resolve: () => ({ state: "gone" }),
+        focus: () => false,
+        connected: () => true,
+        publish: () => {},
+      },
+      { frame, microtask: (run) => run() },
+    );
+    controller.openMenu("connected", null);
+    controller.beginNaming("new-api");
+    expect(controller.mode).toMatchObject({ value: "naming", target: "new-api", resume: null });
+    const order: string[] = [];
+    controller.subscribeMode((mode) => {
+      expect(mode.value).toBe("editing");
+      expect(order).toEqual(["commit:Orders API", "release"]);
+      order.push("done");
+    });
+    controller.finishNaming(
+      "new-api",
+      () => order.push("commit:Orders API"),
+      () => order.push("release"),
+    );
+    expect(order).toEqual(["commit:Orders API", "release", "done"]);
+    controller.closeMenu("pick");
+    controller.rendered();
+    expect(controller.mode).toMatchObject({ value: "editing", target: null, resume: null });
+  });
+
   it.each(["off", "playing", "paused"] as const)("node double-click decides Properties from Live region %s", (live) => {
     const state = { ...initialEditorMode, live };
     const result = machineStep(editorModeMachine, state, { type: "node.doubleClicked", target: "n1" });

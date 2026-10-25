@@ -1,6 +1,7 @@
 import { NodePanel } from "./inspector/NodePanel";
 import { defineLazySurface } from "../lib/lazySurface";
 import { useLayoutEffect, useMemo, type ReactNode } from "react";
+import { flushSync } from "react-dom";
 import { Icon } from "../components/Icon";
 import { t, useLocale } from "../i18n";
 import { kindLabel } from "../i18n/chrome";
@@ -9,6 +10,7 @@ import { type LoadStatus } from "../lib/lazyLoad";
 import { type InspectorProps } from "./inspector/types";
 import { SheetResizeHandle } from "./SheetResizeHandle";
 import { InteractionContext, useInteractionOrLocal } from "./interaction";
+import { GROUP_PREFIX } from "./types";
 
 import { PanelUnavailable } from "./inspector/PanelUnavailable";
 export { PanelUnavailable } from "./inspector/PanelUnavailable";
@@ -83,6 +85,8 @@ export function Inspector(p: InspectorProps) {
   // while folded waits for the inspector to open, one made before React Flow's selection arrives waits for the
   // field of the item it names, and folding and opening again later never repeats it (focus policy, row I1).
   const takeFocus = p.takeFocus;
+  const editor = p.editor;
+  const onNamed = p.onNamed;
   useLayoutEffect(() => {
     const f = p.focus;
     if (!f) return;
@@ -93,8 +97,28 @@ export function Inspector(p: InspectorProps) {
       owner: f.target,
       caret: f.caret,
       claim: takeFocus ? () => takeFocus(f.seq) : undefined,
+      initialName: f.initialName,
+      acceptName:
+        f.target && (f.name === "label" || f.name === "sublabel")
+          ? (text) => {
+              const owner = f.target!;
+              const kind = owner.startsWith(GROUP_PREFIX) ? "group" : editor.getNode(owner) ? "node" : "edge";
+              const id = kind === "group" ? owner.slice(GROUP_PREFIX.length) : owner;
+              let tag!: string;
+              flushSync(() => {
+                tag = editor.beginNaming(kind, id);
+                if (text === null) return;
+                const merge = { merge: tag };
+                if (kind === "node") editor.updateNode(id, { [f.name]: text }, merge);
+                else if (kind === "group") editor.updateGroup(id, { label: text }, merge);
+                else editor.updateEdge(id, { label: text }, merge);
+              });
+              editor.doneNaming(tag, true);
+              onNamed?.();
+            }
+          : undefined,
     });
-  }, [p.focus, takeFocus, interaction]);
+  }, [p.focus, takeFocus, interaction, editor, onNamed]);
   // Every commit of the sheet: a field waiting for its panel (or for the inspector to open) may be there now.
   useLayoutEffect(() => interaction.rendered());
 

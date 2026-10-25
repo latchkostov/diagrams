@@ -23,7 +23,7 @@ export interface InspectorProps {
    * Focus request: `inspector-field-<name>`, its text all selected (`caret: "end"`: the caret after it, for a name
    * typed before the field could take it); `seq` re-triggers for the same name.
    */
-  focus?: { name: string; seq: number; caret?: "end"; target?: string };
+  focus?: { name: string; seq: number; caret?: "end"; target?: string; initialName?: string };
   /** Request consumption survives inspector unmounts (presentation). */
   takeFocus?: (seq: number) => boolean;
   /**

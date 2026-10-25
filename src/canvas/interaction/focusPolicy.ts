@@ -157,6 +157,8 @@ export function focusPolicy(state: FocusState, event: FocusEvent): FocusDecision
           select: event.caret === "end" ? "end" : "all",
           again: true,
           claim: event.claim,
+          ...(event.acceptName ? { acceptName: event.acceptName } : {}),
+          ...(event.initialName !== undefined ? { initialName: event.initialName } : {}),
         },
         { fieldSeq: event.seq },
       );

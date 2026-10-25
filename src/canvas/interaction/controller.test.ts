@@ -131,8 +131,8 @@ function harness() {
     connected: (h) => (h as El).connected,
     version: () => env.version,
     publish: (p) => phases.push(p),
-    holdKeys(done) {
-      const hold = { typed: { text: null } as TypeAhead, stopped: false, done };
+    holdKeys(done, initial) {
+      const hold = { typed: initial ?? ({ text: null } as TypeAhead), stopped: false, done };
       holds.push(hold);
       return {
         stop: () => {
@@ -599,6 +599,46 @@ describe("interaction controller: pending rename (a name field whose panel is st
     expect(controller.escape()).toBe(true);
     expect(card).toHaveBeenCalledOnce();
   });
+
+  it.each([false, true])(
+    "commits pending input before releasing keys, including a field mounting during commit (%s)",
+    (mounts) => {
+      const h = harness();
+      h.env.nodes.set("a", { drawn: true });
+      let name = "default";
+      const acceptName = vi.fn((text: string | null) => {
+        expect(h.holding()).toBe(true);
+        expect(h.controller.mode).toMatchObject({ value: "naming", target: "a" });
+        name = text!;
+        if (mounts) {
+          h.env.inspector.fields.set("label", "a");
+          h.commit();
+        }
+      });
+      h.controller.dispatch({
+        type: "inspector.field",
+        seq: 1,
+        name: "label",
+        owner: "a",
+        acceptName,
+        initialName: "Orders ",
+      });
+      typeAll(h, [..."ingress API"]);
+      expect(h.key("Enter")).toBe(true);
+      expect(name).toBe("Orders ingress API");
+      expect(acceptName).toHaveBeenCalledExactlyOnceWith("Orders ingress API");
+      expect(h.holding()).toBe(false);
+      expect(h.controller.mode.value).toBe("editing");
+      // The next action and a late field cannot discard or replay the committed buffer.
+      h.controller.openMenu("connected", "next");
+      h.env.inspector.fields.set("label", "a");
+      h.commit();
+      h.drain();
+      expect(name).toBe("Orders ingress API");
+      expect(h.written).toEqual([]);
+      expect(acceptName).toHaveBeenCalledOnce();
+    },
+  );
 
   it("holds the keys typed meanwhile, away from the canvas, and hands them to the field once it takes focus", () => {
     const h = harness();

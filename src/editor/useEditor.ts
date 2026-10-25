@@ -1873,8 +1873,9 @@ export function createEditor(
       deps().history.begin(tag);
       return tag;
     },
-    doneNaming: (tag) => {
-      deps().history.end(tag);
+    doneNaming: (tag, committed) => {
+      if (committed) deps().history.end(tag, true);
+      else deps().history.end(tag);
       deps().flushSave?.(fromFlow(latest.meta, currentNodes(), currentEdges()));
     },
     openInspector: (field) => deps().openInspector(field),

@@ -8,12 +8,136 @@ import {
   pauseClock,
   savedDiagram,
   STORAGE_KEYS,
+  interactionJournal,
 } from "./fixtures";
 import rateLimitExample from "../../src/examples/inline-rate-limit.json" with { type: "json" };
 import type { DiagramFile } from "../../src/model/types";
 
 // Live uses the same property sheet as editing, without inline name editors.
 const KAFKA = "kafka-order-pipeline";
+
+declare global {
+  interface Window {
+    __namingMeasurements: { hold(): void; release(): void };
+  }
+}
+
+for (const held of [false, true]) {
+  test(`rapid naming saves every key before the next quick-add shortcut (held measurement: ${held})`, async ({
+    page,
+    consoleErrors,
+  }) => {
+    await page.addInitScript(() => {
+      let held = false;
+      const pending: (() => void)[] = [];
+      const NativeObserver = window.ResizeObserver;
+      window.ResizeObserver = class extends NativeObserver {
+        constructor(callback: ResizeObserverCallback) {
+          super((entries, observer) => {
+            const deliver = () => callback(entries, observer);
+            if (held) pending.push(deliver);
+            else deliver();
+          });
+        }
+      };
+      window.__namingMeasurements = {
+        hold: () => void (held = true),
+        release: () => {
+          held = false;
+          for (const deliver of pending.splice(0)) deliver();
+        },
+      };
+    });
+    await page.clock.install();
+    await gotoCanvas(page, KAFKA);
+    await waitForStableViewport(page);
+    await page.getByTestId("node-order-events").click();
+    await page.keyboard.press("Alt+ArrowRight");
+    const search = page.getByTestId("quick-add-search");
+    await search.fill("Load Balancer");
+    if (held) {
+      await page.evaluate(() => window.__namingMeasurements.hold());
+      await pauseClock(page);
+    }
+    await page.keyboard.press("Enter");
+    await page.keyboard.type("Orders ingress API");
+    await page.keyboard.press("Enter");
+    await page.keyboard.press("Alt+ArrowRight");
+    // Both assertions precede frame/measurement delivery: neither completion nor the next shortcut may wait.
+    await expect(search).toBeVisible();
+    await expect(page.getByTestId("node-load-balancer-1")).toContainText("Orders ingress API");
+    await page.evaluate(() => window.__namingMeasurements.release());
+    if (held) await page.clock.runFor(500);
+    await expect
+      .poll(async () => (await savedDiagram(page)).nodes.find((node) => node.id === "load-balancer-1")?.label)
+      .toBe("Orders ingress API");
+    await expect(search).toBeFocused();
+    expectNoErrors(consoleErrors);
+  });
+}
+
+test("pending inspector naming saves every key before the next quick-add shortcut", async ({ page, consoleErrors }) => {
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => (release = resolve));
+  await page.route(/\/assets\/NodeIdentity-[^/]+\.js$/, async (route) => {
+    await held;
+    await route.continue();
+  });
+  try {
+    await page.clock.install();
+    await gotoCanvas(page, KAFKA);
+    await waitForStableViewport(page);
+    await page.getByTestId("node-order-events").click();
+    await page.keyboard.press("Alt+ArrowRight");
+    const search = page.getByTestId("quick-add-search");
+    await search.fill("Load Balancer");
+    await pauseClock(page);
+    await page.keyboard.press("Enter");
+    await page.keyboard.type("Orders ");
+    await page.clock.runFor(100); // Hand the prefix from placement to the still-pending Inspector.
+    await expect
+      .poll(async () => (await interactionJournal(page)).some((entry) => entry.event === "rename.hold"))
+      .toBe(true);
+    await page.keyboard.type("ingress API");
+    await page.keyboard.press("Enter");
+    await page.keyboard.press("Alt+ArrowRight");
+    await expect(search).toBeVisible();
+    await expect(page.getByTestId("node-load-balancer-1")).toContainText("Orders ingress API");
+    await page.clock.runFor(500); // Deliver autosave while the Inspector's code is still held.
+    await expect
+      .poll(async () => (await savedDiagram(page)).nodes.find((node) => node.id === "load-balancer-1")?.label)
+      .toBe("Orders ingress API");
+    release();
+    await expect(page.getByTestId("inspector-field-label")).toHaveValue("Orders ingress API");
+    await expect(search).toBeFocused();
+    expectNoErrors(consoleErrors);
+  } finally {
+    release();
+  }
+});
+
+test("buffered Enter then Undo before reveal preserves the full name on Redo", async ({ page, consoleErrors }) => {
+  await page.clock.install();
+  await gotoCanvas(page, KAFKA);
+  await waitForStableViewport(page);
+  await page.getByTestId("node-order-events").click();
+  await page.keyboard.press("Alt+ArrowRight");
+  await page.getByTestId("quick-add-search").fill("Load Balancer");
+  await pauseClock(page);
+  await page.keyboard.press("Enter");
+  await page.keyboard.type("Orders ingress API");
+  await page.keyboard.press("Enter");
+  await page.keyboard.press("ControlOrMeta+z");
+  await expect(page.getByTestId("node-load-balancer-1")).toHaveCount(0);
+  await page.clock.runFor(100); // Deliver the obsolete reveal after Undo.
+  await page.keyboard.press("ControlOrMeta+Shift+z");
+  await page.clock.runFor(500); // Deliver Redo's frame and the autosave debounce.
+  await expect(page.getByTestId("node-load-balancer-1")).toContainText("Orders ingress API");
+  expect((await savedDiagram(page)).nodes.find((node) => node.id === "load-balancer-1")?.label).toBe(
+    "Orders ingress API",
+  );
+  expectNoErrors(consoleErrors);
+});
 
 test("Enter before a new node is measured releases the next quick-add shortcut", async ({ page, consoleErrors }) => {
   await page.clock.install();

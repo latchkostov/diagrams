@@ -67,7 +67,7 @@ export interface InteractionPort {
    * Holds keys typed anywhere, before the canvas's shortcuts see them (typeAhead.ts), for a name field that can't
    * take them yet; `done` hears the Enter or Esc that ended the typing. Absent: nothing is held.
    */
-  holdKeys?(done: (typed: TypeAhead) => void): { stop(): TypeAhead };
+  holdKeys?(done: (typed: TypeAhead) => void, initial?: TypeAhead): { stop(): TypeAhead };
   /** Dismiss the newest pending modal input owner before its dialog has mounted. */
   dismissPendingModal?(): boolean;
   /** Writes text typed ahead into the text field that has just taken focus, as typing there would; caret after it. */
@@ -177,8 +177,9 @@ export function createInteractionController<P = unknown>(
   /**
    * A pending rename: a name field was asked for (a request with an owner: F2, a double-click, Rename) but isn't there
    * yet (its panel's code is still downloading). Keys typed meanwhile are held for it, out of the canvas shortcuts'
-   * reach (T would add a text, Backspace delete the connection), and handed over once it takes focus. Enter ends the
-   * typing (`keys` null): the text waits for the field, and focus goes back to the item after it's written; Esc after
+   * reach (T would add a text, Backspace delete the connection), and handed over once it takes focus. With the
+   * Inspector's acceptName capability, Enter commits the document before releasing capture, even if the field
+   * is still downloading. Ports without it retain the buffer for the field. Esc after
    * typing does the same (both finish and save, as in the field), Esc or Enter before any typing cancels. A press, focus
    * moving out of the canvas, a newer move, or the field resolving as gone (its panel's download failed) ends both the
    * hold and its field request.
@@ -288,13 +289,39 @@ export function createInteractionController<P = unknown>(
     const next: NonNullable<typeof rename> = { move, keys: null, typed: { text: null } };
     rename = next;
     toMode({ type: "naming.requested", target: move.target.owner });
-    next.keys = port.holdKeys((typed) => finishRename(next, typed));
+    next.keys = port.holdKeys(
+      (typed) => finishRename(next, typed),
+      move.initialName === undefined ? undefined : { text: move.initialName },
+    );
     if ((import.meta.env.DEV || import.meta.env.VITE_E2E === "1") && options.journal)
       journal({ event: "rename.hold", command: describe(move) });
   }
 
+  /** Commit before either shortcuts or mode subscribers can observe completion. */
+  function finishNaming(flowId: string, commit: () => void, release: () => void) {
+    commit();
+    release();
+    toMode({ type: "naming.done" });
+    decide({ type: "naming.done", flowId });
+  }
+
   function finishRename(next: NonNullable<typeof rename>, typed: TypeAhead) {
     if (rename !== next) return;
+    const target = next.move.target;
+    if (next.move.acceptName && target.kind === "field" && target.owner) {
+      const keys = next.keys;
+      // A synchronous document commit can render the field. It must not replay this accepted buffer.
+      next.keys = null;
+      next.typed = { text: null };
+      return finishNaming(
+        target.owner,
+        () => next.move.acceptName!(typed.text),
+        () => {
+          keys?.stop();
+          if (rename === next) rename = null;
+        },
+      );
+    }
     next.keys?.stop();
     next.keys = null;
     next.typed = typed;
@@ -711,6 +738,15 @@ export function createInteractionController<P = unknown>(
       }
       decide(event, then);
     },
+    /** Placement owns naming before measurement or an Inspector field can arrive. */
+    beginNaming(target: string) {
+      toMode({ type: "naming.requested", target });
+      return () => {
+        if (mode.value === "naming" && mode.target === target) toMode({ type: "naming.done" });
+      };
+    },
+    /** Accept the buffered document edit before releasing its keys or announcing that naming is done. */
+    finishNaming,
     /**
      * The cause of the selection change the next commit brings, declared where it's known: a click or React Flow's
      * own selection, the box, a placement (which the camera hears of too). Keyboard navigation, history steps and the

@@ -146,7 +146,7 @@ export function createDomPort(canvas: DomCanvas): InteractionPort {
       return document.activeElement === el;
     },
     connected: (handle) => (handle as Node).isConnected,
-    holdKeys: (done) => captureTypeAhead(() => false, done, true, "controller"),
+    holdKeys: (done, initial) => captureTypeAhead(() => false, done, true, "controller", undefined, initial),
     dismissPendingModal: dismissPendingTypeAheadModal,
     elsewhere(handle) {
       const el = handle as Element;

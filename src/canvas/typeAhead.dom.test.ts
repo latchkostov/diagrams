@@ -6,6 +6,18 @@ import { createInteractionController } from "./interaction/controller";
 
 afterEach(() => document.body.replaceChildren());
 
+it("a pending field continues an earlier capture's prefix, including Backspace, before Enter", () => {
+  const accepted = vi.fn();
+  const hold = captureTypeAhead(() => false, accepted, false, "capture", undefined, { text: "Orders X" });
+  try {
+    for (const key of ["Backspace", ..."ingress API", "Enter"])
+      window.dispatchEvent(new KeyboardEvent("keydown", { key, cancelable: true }));
+    expect(accepted).toHaveBeenCalledExactlyOnceWith({ text: "Orders ingress API", done: "enter" });
+  } finally {
+    hold.stop();
+  }
+});
+
 it("a pending modal capture precedes naming even when the controller's listener was installed first", () => {
   const controller = createInteractionController(createDomPort({ root: () => null, hasEdge: () => true }), {
     frame: () => () => {},

@@ -60,9 +60,10 @@ export function captureTypeAhead(
   // Pending Inspector names route Escape through the interaction controller's modal precedence.
   escape: "capture" | "controller" = "capture",
   closeModal?: () => void,
+  initial: TypeAhead = { text: null },
 ): { stop: () => TypeAhead } {
   const me = {
-    state: { text: null } as TypeAhead,
+    state: initial,
     closeModal: closeModal
       ? () => {
           me.state = { ...me.state, done: "escape" };
