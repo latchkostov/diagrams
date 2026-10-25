@@ -29,6 +29,11 @@ import { arrange } from "./catalog/arrange";
 import { sharePresent } from "./catalog/sharePresent";
 import { insertOnEdge } from "./catalog/insertOnEdge";
 import { boundaries } from "./catalog/boundaries";
+import { partitions } from "./catalog/partitions";
+import { outbox } from "./catalog/outbox";
+import { webhooks } from "./catalog/webhooks";
+import { dependencies2 } from "./catalog/dependencies2";
+import { dependencyVisibility } from "../canvas/dependencyVisibility";
 import { stencils } from "../stencils/registry";
 import { editorHarness } from "../test/editorHarness";
 import { overlaps } from "../canvas/placement";
@@ -1015,6 +1020,45 @@ describe("completion regressions", () => {
     expect(h.deps.history.hint).toHaveBeenCalledTimes(1);
   });
 
+  itFor(dependencies2)("dependencies-2 shows hidden Dependencies before targeting Config", () => {
+    const previous = dependencyVisibility.get();
+    cleanup.push(() => dependencyVisibility.set(previous));
+    dependencyVisibility.set(false);
+    const s = sandbox(dependencies2);
+    s.runner.send({ type: "start" });
+    expect(dependencies2.steps[state(s).index].id).toBe("show-dependencies");
+    dependencyVisibility.set(true);
+    expect(dependencies2.steps[state(s).index].id).toBe("add-setting");
+  });
+
+  it("partitions retains read-idle until acknowledged", async () => {
+    const s = sandbox(partitions);
+    s.live!.advance(250);
+    s.live!.publish();
+    expect(s.live!.getState().snapshot.nodes[s.subject("consumers")].idleReplicas).toBeGreaterThan(0);
+    s.runner.send({ type: "start" });
+    expect(state(s)).toMatchObject({ index: 0, value: "active" });
+    s.live!.advance(250);
+    s.live!.publish();
+    expect(state(s)).toMatchObject({ index: 0, value: "active" });
+    await skip(s, partitions);
+    expect(state(s)).toMatchObject({ index: 1, value: "active" });
+  });
+
+  it("outbox preserves the reading instruction through Continue and can Skip it", async () => {
+    const s = sandbox(outbox);
+    await reach(s, outbox, 1);
+    s.learn({ kind: "runSimulation", id: "happy-path" });
+    s.live!.advance(250);
+    s.live!.publish();
+    expect(s.live!.getState().run?.waiting).toBe(true);
+    expect(outbox.steps[state(s).index].id).toBe("read-happy-path");
+    s.live!.resume();
+    expect(outbox.steps[state(s).index].id).toBe("read-happy-path");
+    await skip(s, outbox);
+    expect(outbox.steps[state(s).index].id).toBe("watch-compensation");
+  });
+
   it("keeps each annotation instruction current until its editor closes, then Skip from there closes it", async () => {
     const s = sandbox(annotate);
     s.runner.send({ type: "start" });
@@ -1163,6 +1207,40 @@ describe("completion regressions", () => {
     for (let t = 0; t < ms; t += 250) s.live!.advance(250);
     s.live!.publish();
   };
+
+  it("webhooks: Skip continues the paused note and watching completes expect-parked", async () => {
+    const s = sandbox(webhooks);
+    expect(await reach(s, webhooks, 1)).toBe(true);
+    play(s, 6500);
+    expect(s.live!.getState().run).toMatchObject({ time: 6500, waiting: true });
+    await skip(s, webhooks);
+    expect(state(s)).toMatchObject({ index: 2, value: "active" });
+    expect(s.live!.getState().run).toMatchObject({ waiting: false });
+    play(s, 3000);
+    expect(s.live!.getState().run!.expectations).toContainEqual(
+      expect.objectContaining({ id: "parked", status: "pass" }),
+    );
+    expect(state(s).value).toBe("finished");
+  });
+
+  it("webhooks: resume at expect-parked continues the note before watching completes", async () => {
+    saveProgress(webhooks, 2, false);
+    const s = sandbox(webhooks);
+    s.runner.send({ type: "resume" });
+    for (let frame = 0; frame < 400 && state(s).value === "reconstructing"; frame++) {
+      if (s.live?.getState().playing) play(s, 250);
+      await Promise.resolve();
+    }
+    expect(state(s)).toMatchObject({ index: 2, value: "active" });
+    expect(s.live!.getState().run).toMatchObject({ waiting: false });
+    expect(s.live!.getState().run!.time).toBeGreaterThanOrEqual(6500);
+    play(s, 3000);
+    expect(s.live!.getState().run!.expectations).toContainEqual(
+      expect.objectContaining({ id: "parked", status: "pass" }),
+    );
+    expect(state(s).value).toBe("finished");
+  });
+
   const sinceKey = JSON.stringify({ node: "first", metric: "processed" });
 
   it("metric expressions read the real run: sums and comparisons hold by themselves, sinceStep from its start", async () => {

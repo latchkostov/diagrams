@@ -81,27 +81,29 @@ export function SettingsEditor({ edge, editor }: { edge: DiagramFlowEdge; editor
         <ul className="insp-settings-list" data-testid="inspector-settings-list">
           {settings.map((s, i) => (
             <li key={s.key}>
-              <button
-                type="button"
-                className={`icon-btn insp-mini insp-lock${s.secret ? " is-on" : ""}`}
-                aria-pressed={!!s.secret}
-                aria-label={t("inspector.secretKey", { key: s.key })}
-                title={
-                  s.secret
-                    ? t("inspector.secretAKeyVaultReferenceClickForAPlain")
-                    : t("inspector.plainValueClickToMarkSecret")
-                }
-                onClick={() => {
-                  const next = settings.map((x, j) =>
-                    j === i ? (x.secret ? { key: x.key } : { key: x.key, secret: true }) : x,
-                  );
-                  setDraft(settingsText(next));
-                  save(next);
-                }}
-                data-testid={`inspector-setting-lock-${i}`}
-              >
-                <Icon name={s.secret ? "lock" : "lock-open"} size={12} />
-              </button>
+              <span data-testid={`inspector-setting-lock-key-${s.key}`}>
+                <button
+                  type="button"
+                  className={`icon-btn insp-mini insp-lock${s.secret ? " is-on" : ""}`}
+                  aria-pressed={!!s.secret}
+                  aria-label={t("inspector.secretKey", { key: s.key })}
+                  title={
+                    s.secret
+                      ? t("inspector.secretAKeyVaultReferenceClickForAPlain")
+                      : t("inspector.plainValueClickToMarkSecret")
+                  }
+                  onClick={() => {
+                    const next = settings.map((x, j) =>
+                      j === i ? (x.secret ? { key: x.key } : { key: x.key, secret: true }) : x,
+                    );
+                    setDraft(settingsText(next));
+                    save(next);
+                  }}
+                  data-testid={`inspector-setting-lock-${i}`}
+                >
+                  <Icon name={s.secret ? "lock" : "lock-open"} size={12} />
+                </button>
+              </span>
               <span className="mono">{s.key}</span>
             </li>
           ))}

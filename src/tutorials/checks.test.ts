@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import type { DiagramFile } from "../model/types";
-import { holds, nearMiss, resolveSubjects } from "./checks";
+import { fillTestId, holds, nearMiss, resolveSubjects, edgeTargets } from "./checks";
 import { mobileApi } from "./catalog/mobileApi";
-import type { Check } from "./types";
+import type { Check, PropPath } from "./types";
 
 const diagram = (label: string): DiagramFile => ({
   format: "diagrams/v1",
@@ -13,6 +13,30 @@ const diagram = (label: string): DiagramFile => ({
 const check: Check = { kind: "label", subject: "api", is: () => "Orders API" };
 const subjects = { api: "service-1" };
 const view = (label: string) => ({ diagram: diagram(label), live: false, processed: () => 0 });
+
+it("resolves edge targets by endpoint subjects even when the saved edge has an unrelated id", () => {
+  const d = { ...diagram("API"), edges: [{ id: "arbitrary", from: "service-1", to: "store", kind: "async" as const }] };
+  const bindings = { api: "service-1", config: "store", missing: undefined };
+  const targets = edgeTargets(d, bindings);
+  expect(fillTestId("edge-label-{api->config}", bindings, targets)).toBe("edge-label-arbitrary");
+  expect(fillTestId("edge-label-{config->api}", bindings, targets)).toBeNull();
+  expect(fillTestId("node-{missing}", bindings, targets)).toBeNull();
+  expect(fillTestId("node-{api}", bindings, targets)).toBe("node-service-1");
+});
+
+it("checks settings length and a setting's secret flag without accepting missing or inherited paths", () => {
+  const v = view("API");
+  v.diagram.nodes[0].props = { settings: [{ key: "Token", secret: true }] };
+  expect(
+    holds({ kind: "prop", subject: "api", prop: ["settings"], measure: "length", op: ">=", value: 1 }, v, subjects),
+  ).toBe(true);
+  expect(
+    holds({ kind: "prop", subject: "api", prop: ["settings", 0, "secret"], op: "=", value: true }, v, subjects),
+  ).toBe(true);
+  for (const prop of [["settings", 1, "secret"], ["missing"], ["settings", "constructor"]] satisfies PropPath[]) {
+    expect(holds({ kind: "prop", subject: "api", prop, op: ">=", value: 1 }, v, subjects)).toBe(false);
+  }
+});
 
 describe("expectText (a label check) and its near miss", () => {
   it("matches ignoring case and outer spaces", () => {

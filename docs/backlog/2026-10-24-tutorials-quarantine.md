@@ -62,3 +62,37 @@ The new annotation settlement falls through to tutorials.finishUp, which says to
 This regression claims Skip commits the note, but leaves its editor untouched and checks only advancement, editor closure and annotation count. Because the tutorial check also counts annotations, discarding a typed draft could pass both this test and generated solution playback.
 
 **Fix:** Add “annotate: Skip commits typed note text”: fill a distinctive draft before Skip, then assert the rendered note retains that text, exactly one note exists, and the tutorial advances to zone.
+
+## Tutorials quarantine - PR #303
+
+Dependencies, part 2 (`dependencies-2`) is quarantined after both build-05 fix rounds were used. Cards, search,
+next-lesson suggestions and deep links exclude it; saved progress remains on the device. Its retained completion-sweep
+and browser cases skip automatically through the quarantine flag with this fragment as their reason. Webhooks,
+Fan-out, Partitions and Outbox remain available.
+
+Restoring this lesson requires regressions for both Skip and resume reconstruction in R-720a9a5048 and the restored
+completion-sweep and browser cases passing. R-7afb59dfff remains a separate Outbox follow-up.
+
+## [P1/high] R-720a9a5048: Show Dependencies when skipping or reconstructing this prerequisite
+
+`src/tutorials/catalog/dependencies2.ts:24` · lenses: correctness
+
+With Dependencies hidden, start `dependencies-2` and press Skip on show-dependencies. The lesson advances to
+add-setting without revealing the Config connection: the empty demo latches completion, but the connection remains
+hidden and unselectable. Resuming saved progress past that prerequisite also leaves the connection hidden if the
+app-wide Dependencies preference was subsequently turned off, so the next instruction cannot be followed.
+
+**Fix:** Provide an idempotent visibility demo that sets Dependencies on during Skip and resume reconstruction.
+Cover both paths with the visibility preference initially off.
+
+## [P2/high] R-7afb59dfff: Keep the compensation reading step active until acknowledged
+
+`src/tutorials/catalog/outbox.ts:62` · lenses: accessibility
+
+In Outbox, select “Declines and flaky payments”. At simulation time 2500 ms the compensation narration pauses
+playback, but the tutorial finishes at the same point. Finished and Next immediately replace the instruction to read
+the note, and screen readers receive completion before the learner can read or continue it. Compensation has not
+yet played.
+
+**Fix:** Retain a reading step with Continue and an explicit Done acknowledgment, following read-happy-path.
+Verify that reaching the paused compensation note alone does not finish the tutorial.

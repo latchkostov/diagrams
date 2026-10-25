@@ -22,4 +22,9 @@ export const tutorialEntries: readonly Pick<TutorialMetadata, "id" | "quarantine
   { id: "queue-workers" },
   { id: "load-balancer" },
   { id: "cache-aside" },
+  { id: "webhooks" },
+  { id: "fanout" },
+  { id: "partitions" },
+  { id: "outbox" },
+  { id: "dependencies-2", quarantined: true },
 ];
