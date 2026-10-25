@@ -293,7 +293,41 @@ export const liveControlsFixture: Tutorial = {
   ],
 };
 
+/** Saved runs that must have played for a while, as webhooks, outbox and partitions start and rerun theirs. */
+export const runTimeFixture: Tutorial = {
+  ...base("fixture-run-time", () => ({
+    format: "diagrams/v1",
+    title: "Run time",
+    nodes: [
+      { id: "app", stencil: "client.mobile", label: "App", x: 0, y: 0, props: { ratePerSec: 4 } },
+      { id: "api", stencil: "generic.service", label: "API", x: 240, y: 0 },
+    ],
+    edges: [{ id: "app-api", from: "app", to: "api", kind: "sync" }],
+    simulations: [
+      { id: "first-run", title: "First", seed: 1, scale: 1, durationMs: 600_000, traffic: [] },
+      { id: "second-run", title: "Second", seed: 2, scale: 1, durationMs: 600_000, traffic: [] },
+    ],
+  })),
+  subjects: { app: { stencils: ["client.mobile"] }, api: { stencils: ["generic.service"] } },
+  steps: [
+    step("run", {
+      check: { kind: "simulation", id: "first-run", atLeastMs: 1500 },
+      sticky: true,
+      targets: [{ testId: "live-sim-picker", tip: words("Run") }],
+      demo: [{ kind: "runSimulation", id: "first-run" }],
+      solution: [{ click: "live-toggle" }, { select: "live-sim-picker", value: "first-run" }],
+    }),
+    step("rerun", {
+      check: { kind: "simulation", id: "second-run", atLeastMs: 1000 },
+      targets: [{ testId: "live-sim-picker", tip: words("Rerun") }],
+      demo: [{ kind: "runSimulation", id: "second-run" }],
+      solution: [{ select: "live-sim-picker", value: "second-run" }],
+    }),
+  ],
+};
+
 export const tutorialFixtures: readonly Tutorial[] = [
+  runTimeFixture,
   pathsFixture,
   metricsFixture,
   addNameFixture,

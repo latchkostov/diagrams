@@ -154,12 +154,19 @@ function sandbox(tutorial: Tutorial, { lateAdds = false, lazyLive = false } = {}
       notify();
       sessions.forEach((f) => f());
     };
+    // As Live's session does (useLiveSessionState, useLiveCommands): it mounts in free play with Continuous traffic,
+    // playing; a saved run starts with its own traffic only (Continuous traffic off), playing.
     const mount = () => {
-      if (controller === c && mounting) offActions = actionRegistry.register(actionsOf(c));
+      if (controller !== c || !mounting) return;
+      c.setTraffic(true);
+      c.setPlaying(true);
+      offActions = actionRegistry.register(actionsOf(c));
     };
     const run = () => {
-      if (controller === c && simulation)
-        c.selectSimulation(diagram.simulations?.find((sim) => sim.id === simulation) ?? null);
+      if (controller !== c || !simulation) return;
+      c.selectSimulation(diagram.simulations?.find((sim) => sim.id === simulation) ?? null);
+      c.setTraffic(false);
+      c.setPlaying(true);
     };
     if (!lazyLive) {
       mount();
@@ -496,13 +503,26 @@ type Sandbox = ReturnType<typeof sandbox>;
 const state = (s: Sandbox) => s.runner.getSnapshot().state;
 const beyond = (s: Sandbox, i: number) => state(s).value === "finished" || (inStep(state(s)) && state(s).index > i);
 
+/** A check that needs the run to have played for a while: Live's time has to move for it. */
+const needsRunTime = (check: Check): boolean =>
+  check.kind === "all" ? check.checks.some(needsRunTime) : check.kind === "simulation" && !!check.atLeastMs;
+
 async function skip(s: Sandbox, tutorial: Tutorial) {
   const before = state(s);
-  s.runner.send({ type: "skip", stepId: tutorial.steps[before.index].id });
-  await vi.waitFor(() => expect(beyond(s, before.index), `Skip on ${tutorial.steps[before.index].id}`).toBe(true), {
-    timeout: 2000,
-    interval: 1,
-  });
+  const step = tutorial.steps[before.index];
+  s.runner.send({ type: "skip", stepId: step.id });
+  await vi.waitFor(
+    () => {
+      // Live keeps playing while Skip's edits land, as on the canvas; only a step that needs run time sees it move,
+      // so no other step's moment passes early.
+      if (needsRunTime(step.check) && s.live?.getState().playing) {
+        s.live.advance(250);
+        s.live.publish();
+      }
+      expect(beyond(s, before.index), `Skip on ${step.id}`).toBe(true);
+    },
+    { timeout: 2000, interval: 1 },
+  );
 }
 
 /** Start, then Skip until step i is current or passed over. Returns whether i is current. */
@@ -621,6 +641,12 @@ describe("every tutorial's completion contract", () => {
               if ((demo.kind === "add" || demo.kind === "insert") && names.includes(demo.subject))
                 openName(demo.subject);
             }
+          // A run the check wants to have played for a while: the learner watches it play.
+          if (learning && needsRunTime(step.check))
+            for (let frame = 0; frame < 400 && !beyond(s, i) && s.live?.getState().playing; frame++) {
+              s.live.advance(250);
+              s.live.publish();
+            }
           if (typing(s, step.check))
             expect(state(s), "never judged while its text is still being typed").toMatchObject({
               index: i,
@@ -646,11 +672,17 @@ describe("every tutorial's completion contract", () => {
           const s = sandbox(tutorial);
           expect(state(s).resumeAt).toBe(i);
           s.runner.send({ type: i > 0 ? "resume" : "start" });
+          // Live plays on while Continue replays a step that needs run time, as on the canvas.
+          const replaysRunTime = tutorial.steps.slice(0, i).some((st) => needsRunTime(st.check));
           await vi.waitFor(
-            () =>
-              landing === tutorial.steps.length
-                ? expect(state(s).value).toBe("finished")
-                : expect(state(s)).toMatchObject({ index: landing, value: "active" }),
+            () => {
+              if (replaysRunTime && state(s).value === "reconstructing" && s.live?.getState().playing) {
+                s.live.advance(250);
+                s.live.publish();
+              }
+              if (landing === tutorial.steps.length) expect(state(s).value).toBe("finished");
+              else expect(state(s)).toMatchObject({ index: landing, value: "active" });
+            },
             { timeout: 2000, interval: 1 },
           );
           if (landing < tutorial.steps.length) expect(savedProgress(tutorial)).toMatchObject({ step: landing });
@@ -844,20 +876,25 @@ describe("completion regressions", () => {
     const s = sandbox(liveControlsFixture, { lazyLive: true });
     await reach(s, liveControlsFixture, 1);
     // Which run each press lands in, as it's pressed.
-    const pressedIn: (string | undefined)[] = [];
+    const pressedIn: [string | undefined, boolean][] = [];
     const setTraffic = LiveController.prototype.setTraffic;
     vi.spyOn(LiveController.prototype, "setTraffic").mockImplementation(function (this: LiveController, on) {
-      pressedIn.push(this.getState().running?.id);
+      pressedIn.push([this.getState().running?.id, on]);
       setTraffic.call(this, on);
     });
     // Leave Live, so Skip's launch is queued behind free play again.
     s.hostState.live.toggle();
     await skip(s, liveControlsFixture);
-    expect(pressedIn).toEqual(["flow"]);
+    // The session's own: free play with traffic, then the saved run without it; then Skip's, in that run.
+    expect(pressedIn).toEqual([
+      [undefined, true],
+      ["flow", false],
+      ["flow", true],
+    ]);
     expect(s.live!.getState()).toMatchObject({ traffic: true, running: { id: "flow" } });
   });
 
-  it("Skip keeps the learner's own Continuous traffic on, rather than toggling it off", async () => {
+  it("Skip after the learner's own free-play traffic still leaves the saved run with Continuous traffic on", async () => {
     const s = sandbox(liveControlsFixture);
     await reach(s, liveControlsFixture, 1);
     s.live!.setTraffic(true);
