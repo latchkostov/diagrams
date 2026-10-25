@@ -7,6 +7,57 @@ import type { EditorApi } from "../../editor/types";
 import { createMessageCard } from "./messageCard";
 import { createInteractionController } from "./controller";
 import { useInteractionLifecycle } from "./useInteraction";
+import { createDomPort } from "./domPort";
+import { typeAheadActive } from "../typeAhead";
+
+it.each(["before", "after"])("pending naming owns Escape with its capture attached %s the lifecycle", async (order) => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  const controller = createInteractionController(createDomPort({ root: () => null, hasEdge: () => true }), {
+    frame: () => () => {},
+    microtask: (run) => run(),
+  });
+  const card = createMessageCard();
+  const detach = controller.attachEscape(card.escape);
+  const request = () => controller.dispatch({ type: "inspector.field", seq: 1, name: "label", owner: "e" });
+  function Canvas() {
+    useInteractionLifecycle(controller);
+    return null;
+  }
+  const host = document.createElement("div");
+  document.body.append(host);
+  const root = createRoot(host);
+  const key = (key: string) => {
+    const event = new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true });
+    document.body.dispatchEvent(event);
+    return event.defaultPrevented;
+  };
+  try {
+    if (order === "before") request();
+    await act(() => root.render(<Canvas />));
+    if (order === "after") request();
+    expect(key("T")).toBe(true);
+    for (const role of ["dialog", "menu"]) {
+      const overlay = document.createElement("div");
+      overlay.setAttribute("role", role);
+      host.append(overlay);
+      expect(key("Escape")).toBe(false);
+      expect(typeAheadActive()).toBe(true);
+      expect(card.getSnapshot()).toBe(true);
+      overlay.remove();
+    }
+    expect(key("Escape")).toBe(true);
+    expect(typeAheadActive()).toBe(false);
+    expect(controller.mode.value).toBe("editing");
+    expect(card.getSnapshot()).toBe(true);
+    expect(key("Escape")).toBe(true);
+    expect(card.getSnapshot()).toBe(false);
+  } finally {
+    await act(() => root.unmount());
+    host.remove();
+    detach();
+    vi.unstubAllGlobals();
+  }
+});
 
 it("dispatches viewer card Escape through the controller after dialogs and menus", async () => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);

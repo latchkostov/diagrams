@@ -146,7 +146,7 @@ export function createDomPort(canvas: DomCanvas): InteractionPort {
       return document.activeElement === el;
     },
     connected: (handle) => (handle as Node).isConnected,
-    holdKeys: (done) => captureTypeAhead(() => false, done, true),
+    holdKeys: (done) => captureTypeAhead(() => false, done, true, "controller"),
     elsewhere(handle) {
       const el = handle as Element;
       return !canvas.root()?.contains(el) || el.matches(EDITABLE);

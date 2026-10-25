@@ -44,6 +44,8 @@ export function captureTypeAhead(
   onDone?: (typed: TypeAhead) => void,
   // A rename yields to other fields; a palette may have been opened from one and still owns its pending input.
   respectEditable = false,
+  // Pending Inspector names route Escape through the interaction controller's modal precedence.
+  escape: "capture" | "controller" = "capture",
 ): { stop: () => TypeAhead } {
   const me = { state: { text: null } as TypeAhead };
   captures.push(me);
@@ -63,6 +65,7 @@ export function captureTypeAhead(
       next = { text: (me.state.text ?? "") + (multiline() ? text : text.replace(/[\r\n]+/g, " ")) };
     } else {
       const key = event as KeyboardEvent;
+      if (key.key === "Escape" && escape === "controller") return;
       next = key.isComposing ? null : typeAheadKey(me.state, key, multiline());
     }
     if (!next) return;

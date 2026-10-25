@@ -6,6 +6,12 @@ import { editorModeMachine, editorModeStep, initialEditorMode, type EditorModeEv
 const play = (events: EditorModeEvent[]) => events.reduce(editorModeStep, initialEditorMode);
 
 describe("editor mode", () => {
+  it("enters naming before the field downloads and finishes when pending input ends", () => {
+    const pending = play([{ type: "naming.requested", target: "e" }]);
+    expect(pending).toMatchObject({ value: "naming", target: "e" });
+    expect(editorModeStep(pending, { type: "naming.done" })).toMatchObject({ value: "editing", target: null });
+  });
+
   it("opens and closes menus, back to where they began", () => {
     expect(play([{ type: "menu.opened", kind: "context" }]).value).toBe("menu");
     expect(play([{ type: "menu.opened", kind: "quickAdd" }]).value).toBe("quickAdd");

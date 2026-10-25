@@ -75,7 +75,11 @@ function harness() {
             ? { state: "ready", el: els.get(`edge:${target.id}`) ?? el(`edge:${target.id}`) }
             : { state: "gone" };
         case "item":
-          return env.nodes.get(target.id)?.drawn ? { state: "ready", el: nodeEl(target.id) } : { state: "gone" };
+          return env.nodes.get(target.id)?.drawn
+            ? { state: "ready", el: nodeEl(target.id) }
+            : env.edges.has(target.id)
+              ? { state: "ready", el: els.get(`edge:${target.id}`) ?? el(`edge:${target.id}`) }
+              : { state: "gone" };
         case "canvas":
           return canvas.connected ? { state: "ready", el: canvas } : { state: "gone" };
         case "selection": {
@@ -507,6 +511,72 @@ describe("interaction controller: Inspector fields", () => {
 
 describe("interaction controller: pending rename (a name field whose panel is still downloading)", () => {
   const typeAll = (h: ReturnType<typeof harness>, keys: string[]) => keys.map((k) => h.key(k));
+
+  it.each([false, true])("Escape defers to dialogs and menus, then naming, then cards (typed: %s)", (typed) => {
+    const h = harness();
+    const card = vi.fn(() => true);
+    h.controller.attachEscape(card);
+    h.env.edges.add("e");
+    h.env.active = h.el("edge:e");
+    h.controller.dispatch({ type: "inspector.field", seq: 1, name: "label", owner: "e" });
+    expect(h.controller.mode).toMatchObject({ value: "naming", target: "e" });
+    // Canvas focus noise cannot demote a pending name to editing.
+    h.controller.focusArrived(h.env.active);
+    h.controller.focusLeft();
+    if (typed) typeAll(h, ["N", "e", "w"]);
+    for (const overlay of ["dialog", "menu"] as const) {
+      expect(h.controller.escape(overlay)).toBe(false);
+      expect(h.holding()).toBe(true);
+      expect(card).not.toHaveBeenCalled();
+    }
+    expect(h.controller.escape()).toBe(true);
+    expect(h.holding()).toBe(false);
+    expect(card).not.toHaveBeenCalled();
+    expect(h.controller.mode.value).toBe("editing");
+    h.env.inspector.fields.set("label", "e");
+    h.commit();
+    h.drain();
+    expect(h.written).toEqual(typed ? ["field:label:New"] : []);
+    expect(h.focused).toEqual(typed ? ["field:label", "edge:e"] : []);
+    expect(h.controller.mode.value).toBe("editing");
+    expect(h.controller.escape()).toBe(true);
+    expect(card).toHaveBeenCalledOnce();
+  });
+
+  it("an open controller menu precedes cards", () => {
+    const h = harness();
+    const card = vi.fn(() => true);
+    h.controller.attachEscape(card);
+    h.controller.openMenu("context", "menu");
+    expect(h.controller.escape()).toBe(false);
+    expect(card).not.toHaveBeenCalled();
+    h.controller.closeMenu("escape");
+    expect(h.controller.escape()).toBe(true);
+    expect(card).toHaveBeenCalledOnce();
+  });
+
+  it("a mounted name field keeps Escape for its own commit before transient cards", () => {
+    const label = {};
+    const controller = createInteractionController(
+      {
+        active: () => label,
+        resolve: () => ({ state: "gone" }),
+        focus: () => false,
+        connected: () => true,
+        publish: () => {},
+        field: () => ({ target: "e" }),
+      },
+      { frame: () => () => {}, microtask: (run) => run() },
+    );
+    const card = vi.fn(() => true);
+    controller.attachEscape(card);
+    controller.focusArrived(label);
+    expect(controller.escape()).toBe(false);
+    expect(card).not.toHaveBeenCalled();
+    controller.dispatch({ type: "naming.done", flowId: "e" });
+    expect(controller.escape()).toBe(true);
+    expect(card).toHaveBeenCalledOnce();
+  });
 
   it("holds the keys typed meanwhile, away from the canvas, and hands them to the field once it takes focus", () => {
     const h = harness();

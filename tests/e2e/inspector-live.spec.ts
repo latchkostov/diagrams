@@ -1,4 +1,5 @@
 import AxeBuilder from "@axe-core/playwright";
+import blockingCall from "../../src/examples/blocking-call.json" with { type: "json" };
 import { breakerFixture, resilienceFixture } from "../../src/lab/resilienceFixture";
 import {
   test,
@@ -11,6 +12,7 @@ import {
   STORAGE_KEYS,
   expectNoErrors,
   savedDiagram,
+  interactionJournal,
 } from "./fixtures";
 
 for (const panel of ["EdgePanel", "lazyEdgePanel", "NodeIdentity"] as const) {
@@ -34,6 +36,7 @@ for (const panel of ["EdgePanel", "lazyEdgePanel", "NodeIdentity"] as const) {
       await waitForStableViewport(page);
       await page.getByTestId(panel === "NodeIdentity" ? "node-caller" : "edge-call").dblclick({ force: true });
       await expect.poll(() => requested).toBe(true);
+      await expect.poll(async () => (await interactionJournal(page)).some((e) => e.event === "rename.hold")).toBe(true);
       await page.keyboard.type("test label");
       if (finish !== "typing") await page.keyboard.press(finish);
       release();
@@ -45,6 +48,50 @@ for (const panel of ["EdgePanel", "lazyEdgePanel", "NodeIdentity"] as const) {
         await page.keyboard.type(" extended");
         await expect(label).toHaveValue("test label extended");
       } else await expect(label).not.toBeFocused();
+      await expect(page.getByTestId("live-play")).toHaveCount(0);
+      await expect(page.getByTestId(/^annotation-text-/)).toHaveCount(0);
+    });
+  }
+}
+
+for (const panel of ["EdgePanel", "lazyEdgePanel"] as const) {
+  for (const typed of [false, true]) {
+    test(`held connection ${panel} Escape reaches pending naming before the message tooltip (typed: ${typed})`, async ({
+      page,
+    }) => {
+      let requested = false;
+      let release = () => {};
+      const held = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      await page.route(new RegExp(`/assets/${panel}-[\\w-]+\\.js(?:\\?.*)?$`), async (route) => {
+        requested = true;
+        await held;
+        await route.continue();
+      });
+      await page.goto("./?view=canvas&example=blocking-call");
+      await expect(page.getByTestId("canvas-view")).toBeVisible();
+      await waitForStableViewport(page);
+      const original = blockingCall.edges.find((edge) => edge.id === "call")?.label ?? "";
+      await page.mouse.move(0, 0);
+      await page.getByTestId("edge-call").evaluate((edge) => edge.parentElement?.focus());
+      const tooltip = page.getByTestId("edge-messages-call");
+      await expect(tooltip).toBeVisible();
+      await page.keyboard.press("Enter");
+      await page.keyboard.press("F2");
+      await expect.poll(() => requested).toBe(true);
+      await expect.poll(async () => (await interactionJournal(page)).some((e) => e.event === "rename.hold")).toBe(true);
+      if (typed) await page.keyboard.type("test label");
+      await expect(tooltip).toBeVisible();
+      await page.keyboard.press("Escape");
+      const finished = typed ? "rename.typed:escape" : "inspector.abandoned";
+      await expect.poll(async () => (await interactionJournal(page)).some((e) => e.event === finished)).toBe(true);
+      await expect(tooltip).toBeVisible();
+      release();
+      const label = page.getByTestId("inspector-field-label");
+      await expect(label).toHaveValue(typed ? "test label" : original);
+      await expect(page.getByTestId("inspector-edge-loading")).toHaveCount(0);
+      await expect(label).not.toBeFocused();
       await expect(page.getByTestId("live-play")).toHaveCount(0);
       await expect(page.getByTestId(/^annotation-text-/)).toHaveCount(0);
     });
