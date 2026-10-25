@@ -43,7 +43,7 @@ export const webhooks: Tutorial = {
         { testId: "live-note-continue", tip: msg("tutorials.webhooks.noteGoal"), dim: false },
         { testId: "live-note", tip: msg("tutorials.webhooks.noteGoal"), dim: false },
       ],
-      demo: [],
+      demo: [{ kind: "continueNote", simulation: "outage-replay", atLeastMs: 6500 }],
       solution: [{ click: "live-note-continue" }],
     },
     {

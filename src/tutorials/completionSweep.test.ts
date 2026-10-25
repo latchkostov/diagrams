@@ -31,6 +31,7 @@ import { insertOnEdge } from "./catalog/insertOnEdge";
 import { boundaries } from "./catalog/boundaries";
 import { partitions } from "./catalog/partitions";
 import { outbox } from "./catalog/outbox";
+import { webhooks } from "./catalog/webhooks";
 import { dependencies2 } from "./catalog/dependencies2";
 import { dependencyVisibility } from "../canvas/dependencyVisibility";
 import { stencils } from "../stencils/registry";
@@ -1206,6 +1207,40 @@ describe("completion regressions", () => {
     for (let t = 0; t < ms; t += 250) s.live!.advance(250);
     s.live!.publish();
   };
+
+  it("webhooks: Skip continues the paused note and watching completes expect-parked", async () => {
+    const s = sandbox(webhooks);
+    expect(await reach(s, webhooks, 1)).toBe(true);
+    play(s, 6500);
+    expect(s.live!.getState().run).toMatchObject({ time: 6500, waiting: true });
+    await skip(s, webhooks);
+    expect(state(s)).toMatchObject({ index: 2, value: "active" });
+    expect(s.live!.getState().run).toMatchObject({ waiting: false });
+    play(s, 3000);
+    expect(s.live!.getState().run!.expectations).toContainEqual(
+      expect.objectContaining({ id: "parked", status: "pass" }),
+    );
+    expect(state(s).value).toBe("finished");
+  });
+
+  it("webhooks: resume at expect-parked continues the note before watching completes", async () => {
+    saveProgress(webhooks, 2, false);
+    const s = sandbox(webhooks);
+    s.runner.send({ type: "resume" });
+    for (let frame = 0; frame < 400 && state(s).value === "reconstructing"; frame++) {
+      if (s.live?.getState().playing) play(s, 250);
+      await Promise.resolve();
+    }
+    expect(state(s)).toMatchObject({ index: 2, value: "active" });
+    expect(s.live!.getState().run).toMatchObject({ waiting: false });
+    expect(s.live!.getState().run!.time).toBeGreaterThanOrEqual(6500);
+    play(s, 3000);
+    expect(s.live!.getState().run!.expectations).toContainEqual(
+      expect.objectContaining({ id: "parked", status: "pass" }),
+    );
+    expect(state(s).value).toBe("finished");
+  });
+
   const sinceKey = JSON.stringify({ node: "first", metric: "processed" });
 
   it("metric expressions read the real run: sums and comparisons hold by themselves, sinceStep from its start", async () => {

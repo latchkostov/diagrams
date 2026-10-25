@@ -223,6 +223,39 @@ test("outbox: happy-path waits for narration Continue", async ({ page }) => {
   await expect(strip(page)).toHaveAttribute("data-step", "watch-compensation");
 });
 
+for (const entry of ["Skip", "resume"] as const)
+  test(`webhooks: ${entry} continues the paused note so watching finishes expect-parked`, async ({
+    page,
+    consoleErrors,
+  }) => {
+    test.slow(); // The saved run reaches its narration and expectation through normal playback.
+    if (entry === "resume")
+      await page.addInitScript(() =>
+        localStorage.setItem(
+          "diagrams.tutorials.v1",
+          JSON.stringify({ progress: { webhooks: { version: 1, step: 2, completed: false } } }),
+        ),
+      );
+    await openTutorial(page, "webhooks");
+    await page.getByTestId("tutorial-start").click();
+    if (entry === "Skip") {
+      await page.getByTestId("tutorial-skip").click();
+      await expect(strip(page)).toHaveAttribute("data-step", "continue-note");
+      await expect(page.getByTestId("live-note-continue")).toBeVisible({ timeout: 20_000 });
+      await expect(strip(page)).toHaveAttribute("data-step", "continue-note");
+      await page.getByTestId("tutorial-skip").click();
+    }
+    await expect(strip(page)).toHaveAttribute("data-step", "expect-parked", { timeout: 20_000 });
+    await expect(page.getByTestId("live-note-continue")).toHaveCount(0);
+    await expect
+      .poll(async () => Number(await page.getByTestId("live-canvas").getAttribute("data-sim-time")))
+      .toBeGreaterThanOrEqual(6500);
+    // No Skip or Continue here: the learner only watches the saved expectation resolve.
+    await expect(strip(page)).toHaveAttribute("data-phase", "finished", { timeout: 20_000 });
+    await expectNothingSaved(page);
+    expectNoErrors(consoleErrors);
+  });
+
 for (const { id, quarantined } of tutorialEntries)
   test(`${id}: its solution plays through the real UI`, async ({ page, consoleErrors }) => {
     test.fixme(!!quarantined, quarantineReason);
