@@ -1,7 +1,6 @@
 import { msg } from "../../i18n";
 import type { Tutorial } from "../types";
 
-// owner decision pending: Bottleneck callout "open" step
 export const capacity: Tutorial = {
   id: "capacity",
   version: 1,
@@ -80,5 +79,4 @@ export const capacity: Tutorial = {
     },
   ],
   finish: { text: msg("tutorials.capacity.finish") },
-  quarantined: true,
 };

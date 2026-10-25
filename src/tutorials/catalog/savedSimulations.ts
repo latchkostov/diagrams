@@ -1,16 +1,102 @@
-import { msg } from "../../i18n";
-import type { Tutorial } from "../types";
+import { msg, t } from "../../i18n";
+import type { DiagramFile } from "../../model/types";
+import { withSavedSimulation } from "../simulations";
+import type { Demo, Tutorial } from "../types";
 
-// owner decision pending: retry narration pause
 export const savedSimulations: Tutorial = {
   id: "saved-simulations",
-  version: 1,
+  version: 2,
   track: "simulation",
   level: 1,
   minutes: 3,
   title: msg("tutorials.savedSimulations.title"),
   summary: msg("tutorials.savedSimulations.summary"),
-  start: { example: "retry-storm", simulation: "three-quick-retries" },
+  start: () => {
+    const saveSimulation: Extract<Demo, { kind: "saveSimulation" }> = {
+      kind: "saveSimulation",
+      id: "three-quick-retries",
+      title: msg("tutorials.savedSimulations.runName"),
+      expectations: [
+        {
+          id: "goodput",
+          label: t("tutorials.savedSimulations.expectationLabel"),
+          metric: { node: "client", field: "goodput" },
+          op: ">=",
+          value: 1,
+          when: "end",
+        },
+      ],
+    };
+
+    const diagram: DiagramFile = {
+      format: "diagrams/v2",
+      planning: { revision: "p3-w2" },
+      title: t("tutorials.savedSimulations.title"),
+      nodes: [
+        {
+          id: "client",
+          stencil: "client.mobile",
+          label: t("tutorials.loadShedding.clientName"),
+          x: 0,
+          y: 0,
+          props: { ratePerSec: 0 },
+        },
+        {
+          id: "checkout",
+          stencil: "generic.service",
+          label: t("tutorials.savedSimulations.checkoutName"),
+          x: 300,
+          y: 0,
+          props: { latencyMs: 20, jitter: 0 },
+        },
+        {
+          id: "payments",
+          stencil: "postgres",
+          label: t("tutorials.savedSimulations.paymentsName"),
+          x: 600,
+          y: 0,
+          props: { latencyMs: 40, jitter: 0 },
+        },
+      ],
+      edges: [
+        { id: "request", from: "client", to: "checkout", kind: "sync", props: { travelMs: 10 } },
+        {
+          id: "pay",
+          from: "checkout",
+          to: "payments",
+          kind: "sync",
+          props: {
+            travelMs: 10,
+            caller: { retry: { maxAttempts: 3, backoffMs: 100, strategy: "fixed", retryOn: ["transient", "timeout"] } },
+          },
+        },
+      ],
+      simulations: [
+        {
+          id: saveSimulation.id,
+          title: saveSimulation.title(),
+          seed: 7,
+          scale: 1,
+          durationMs: 6000,
+          traffic: [{ id: "orders", node: "client", shape: { kind: "constant", ratePerSec: 10, durationMs: 4000 } }],
+          timeline: [
+            { atMs: 1000, action: { do: "fault", fault: { kind: "fail", node: "payments", rate: 0.5 } } },
+            {
+              atMs: 1200,
+              action: {
+                do: "note",
+                text: t("tutorials.savedSimulations.pauseNote"),
+                focus: ["checkout", "payments"],
+                pause: true,
+              },
+            },
+            { atMs: 2000, action: { do: "fault", fault: { kind: "fail", node: "payments", rate: 0 } } },
+          ],
+        },
+      ],
+    };
+    return { ...diagram, simulations: withSavedSimulation(diagram, saveSimulation)! };
+  },
   subjects: { checkout: { stencils: ["generic.service"] } },
   steps: [
     {
@@ -68,5 +154,4 @@ export const savedSimulations: Tutorial = {
     },
   ],
   finish: { text: msg("tutorials.savedSimulations.finish") },
-  quarantined: true,
 };

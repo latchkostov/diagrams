@@ -230,9 +230,11 @@ describe("waiting lessons against their seeded runs", () => {
     });
   });
 
-  it("registers six lessons and keeps both owner decisions quarantined", () => {
+  it("registers six lessons and releases the decided cold-start lesson", () => {
     for (const lesson of [whereTimeGoes, threadsBlock, timeoutsPools, backlogLag, autoscaling, scaleToZero]) {
-      expect(lesson.version).toBe([whereTimeGoes, threadsBlock, timeoutsPools, autoscaling].includes(lesson) ? 2 : 1);
+      expect(lesson.version).toBe(
+        [whereTimeGoes, threadsBlock, timeoutsPools, autoscaling, scaleToZero].includes(lesson) ? 2 : 1,
+      );
       expect(tutorialEntries).toContainEqual({ id: lesson.id, ...(lesson.quarantined ? { quarantined: true } : {}) });
       const diagram = initial(lesson);
       for (const step of lesson.steps)
@@ -241,8 +243,7 @@ describe("waiting lessons against their seeded runs", () => {
             expect(diagram.simulations?.find((sim) => sim.id === demo.id)?.seed).toBeGreaterThan(0);
     }
     expect(backlogLag.quarantined).toBe(true);
-    expect(scaleToZero.quarantined).toBe(true);
-    // A transient starting replica is not an approved definition of a cold start.
-    expect(JSON.stringify(scaleToZero.steps)).not.toContain("fleet.starting");
+    expect(scaleToZero.quarantined).toBeUndefined();
+    expect(JSON.stringify(scaleToZero.steps)).toContain("fleet.starting");
   });
 });

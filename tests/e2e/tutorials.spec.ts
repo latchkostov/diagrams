@@ -413,6 +413,13 @@ for (const { id, quarantined } of tutorialEntries)
     await page.getByTestId("tutorial-start").click();
     await expect(strip(page)).toHaveAttribute("data-phase", "step");
     const seen = await finishSolution(page);
+    if (id === "capacity") expect(seen).toContain("overlay");
+    if (id === "trace-slowmo") expect(seen).toContain("finished");
+    if (id === "saved-simulations") expect(seen).toEqual(["live", "waiting", "continue", "expectation"]);
+    if (id === "scale-to-zero") expect(seen).toContain("cold-start");
+    if (id === "load-shedding")
+      expect(seen).toEqual(["live", "run-spike", "watch-backlog", "cap-queue", "bounded-spike"]);
+    if (id === "dead-letters") expect(seen).toContain("replay");
     if (id === "partitions") expect(seen).toEqual(["read-idle", "six-partitions", "rerun"]);
     if (id === "outbox")
       expect(seen).toEqual(["trace-message", "run-happy-path", "read-happy-path", "watch-compensation"]);

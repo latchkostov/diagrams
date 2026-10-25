@@ -4,12 +4,10 @@ import { moment, runStep } from "./waitingSteps";
 
 export const scaleToZero: Tutorial = {
   id: "scale-to-zero",
-  version: 1,
+  version: 2,
   track: "waiting",
   level: 3,
   minutes: 4,
-  // owner decision pending: 3 (Build 07, cold start). No cold-start counter exists; do not substitute fleet.starting.
-  quarantined: true,
   title: msg("tutorials.scaleToZero.title"),
   summary: msg("tutorials.scaleToZero.summary"),
   start: { example: "cloud-run-timetable-api" },
@@ -47,7 +45,22 @@ export const scaleToZero: Tutorial = {
       goal: msg("tutorials.scaleToZero.rushGoal"),
       done: msg("tutorials.scaleToZero.rushDone"),
     }),
-    // The final cold-start moment is blocked on owner decision 3.
+    moment(
+      "cold-start",
+      "worker",
+      {
+        kind: "all",
+        checks: [
+          { kind: "simulation", id: "morning-rush" },
+          { kind: "compare", left: { node: "worker", metric: "fleet.starting" }, op: ">=", right: 1 },
+        ],
+      },
+      {
+        title: msg("tutorials.scaleToZero.coldTitle"),
+        goal: msg("tutorials.scaleToZero.coldGoal"),
+        done: msg("tutorials.scaleToZero.coldDone"),
+      },
+    ),
   ],
   finish: { text: msg("tutorials.scaleToZero.finish") },
 };

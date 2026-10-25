@@ -32,7 +32,12 @@ function run(tutorial: Tutorial, id: string) {
       controller.publish();
     }
   };
-  const met = (id: string) => holds(tutorial.steps.find((s) => s.id === id)!.check, view(), subjects);
+  const met = (id: string, subject?: string) =>
+    holds(
+      tutorial.steps.find((s) => s.id === id)!.check,
+      { ...view(), readout: subject ? { kind: "node", id: subjects[subject]! } : null },
+      subjects,
+    );
   return { diagram, controller, subjects, view, advance, met };
 }
 
@@ -82,7 +87,9 @@ describe("resilience lessons use real seeded readings", () => {
   it("the seeded spike builds an API backlog behind the slow dependency", () => {
     const s = run(loadShedding, "spike");
     expect(s.met("watch-backlog")).toBe(false);
+    s.controller.inject(s.subjects.client!, 100, { spreadMs: 1500 });
     s.advance(8);
-    expect(s.met("watch-backlog")).toBe(true);
+    expect(s.met("watch-backlog")).toBe(false);
+    expect(s.met("watch-backlog", "api")).toBe(true);
   });
 });

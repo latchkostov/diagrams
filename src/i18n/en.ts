@@ -4126,7 +4126,7 @@ const en = {
   "tutorials.capacity.backlogGoal": "Hover Payment jobs and watch a backlog form.",
   "tutorials.capacity.backlogTitle": "See the backlog",
   "tutorials.capacity.backlogDone": "Work queues when traffic exceeds the payment worker’s capacity.",
-  "tutorials.capacity.fixGoal": "Click Apply fix in the bottleneck callout.",
+  "tutorials.capacity.fixGoal": "Read the bottleneck callout that appears automatically, then click Apply fix.",
   "tutorials.capacity.fixTitle": "Apply the fix",
   "tutorials.capacity.fixDone": "Apply fix adds the capacity suggested by the bottleneck calculation.",
   "tutorials.capacity.drainGoal": "Hover Payment jobs and watch its backlog drain to zero.",
@@ -4147,7 +4147,7 @@ const en = {
   "tutorials.traceSlowmo.title": "Trace in slow motion",
   "tutorials.traceSlowmo.summary": "Follow one message from a node through its complete journey.",
   "tutorials.traceSlowmo.finish": "Slow motion makes a single message’s journey visible, one hop at a time.",
-  "tutorials.savedSimulations.liveGoal": "Click Live, then pick Three quick retries in the Simulations picker.",
+  "tutorials.savedSimulations.liveGoal": "Click Live, then pick Narrated retries in the Simulations picker.",
   "tutorials.savedSimulations.liveTitle": "Run the saved simulation",
   "tutorials.savedSimulations.liveDone": "A saved simulation gives this run repeatable traffic and a seed.",
   "tutorials.savedSimulations.waitingGoal": "Read the narration note when the simulation pauses.",
@@ -4315,19 +4315,47 @@ const en = {
     "Max deliveries limits attempts before a poison message is moved to the dead-letter queue.",
   "tutorials.deadLetters.finish":
     "Dead letters retain poison messages for investigation after their delivery limit is exhausted.",
+  "tutorials.scaleToZero.coldTitle": "Watch an instance start",
+  "tutorials.scaleToZero.coldGoal": "Hover the timetable API as demand arrives and watch Starting rise above zero.",
+  "tutorials.scaleToZero.coldDone":
+    "Starting instances are the cold-start signal here: new demand waits for them to become ready.",
+  "tutorials.deadLetters.replayTitle": "Plan a replay",
+  "tutorials.deadLetters.replayGoal":
+    "Investigate the poison message and fix its cause before replaying it in a real system. This editor has no dead-letter replay action. Click Done to continue.",
+  "tutorials.deadLetters.replayDone":
+    "A replay is an explicit recovery decision after investigating and fixing the cause.",
+  "tutorials.savedSimulations.runName": "Narrated retries",
+  "tutorials.savedSimulations.checkoutName": "Checkout",
+  "tutorials.savedSimulations.paymentsName": "Payments",
+  "tutorials.savedSimulations.expectationLabel": "Client goodput at the end",
+  "tutorials.savedSimulations.pauseNote":
+    "Payments is failing some calls. Watch Checkout retry, then Continue to let Payments recover and evaluate goodput.",
+  "tutorials.loadShedding.liveTitle": "Start the practice run",
+  "tutorials.loadShedding.liveGoal":
+    "Click Live, then pick Traffic spike in Simulations. Traffic waits for your injection.",
+  "tutorials.loadShedding.liveDone": "The saved seed makes this practice run repeatable, with no automatic traffic.",
+  "tutorials.loadShedding.capTitle": "Bound the waiting queue",
+  "tutorials.loadShedding.capGoal":
+    "Leave Live. Double-click API, open Simulation, then Advanced · queue. Set Queue limit to 10 and press Tab.",
+  "tutorials.loadShedding.capDone": "The API now keeps at most 10 waiting requests and refuses new ones when full.",
+  "tutorials.loadShedding.boundedTitle": "Repeat the spike",
+  "tutorials.loadShedding.boundedGoal":
+    "Go Live, pick Traffic spike, then right-click Client and pick Inject, then 100 again. Hover API to watch Shed rise while its waiting queue stays at most 10.",
+  "tutorials.loadShedding.boundedDone": "Excess requests are refused while the waiting queue stays bounded.",
   "tutorials.loadShedding.title": "Load shedding",
-  "tutorials.loadShedding.summary": "Watch a traffic spike queue up behind an API waiting on a slow database.",
+  "tutorials.loadShedding.summary": "Inject a spike, bound the API queue and watch excess requests get refused.",
   "tutorials.loadShedding.clientName": "Client",
   "tutorials.loadShedding.apiName": "API",
   "tutorials.loadShedding.dbName": "Slow database",
   "tutorials.loadShedding.spikeName": "Traffic spike",
   "tutorials.loadShedding.spikeTitle": "Run a traffic spike",
-  "tutorials.loadShedding.spikeGoal": "Click Live, then pick Traffic spike in Simulations.",
-  "tutorials.loadShedding.spikeDone": "A saved seed makes the same burst arrive on every run.",
+  "tutorials.loadShedding.spikeGoal": "Right-click Client, open Inject and pick 100.",
+  "tutorials.loadShedding.spikeDone": "Inject sends 100 requests while the slow database keeps the API busy.",
   "tutorials.loadShedding.backlogTitle": "Watch the backlog grow",
   "tutorials.loadShedding.backlogGoal":
     "Hover API and watch its backlog grow while requests wait for the slow database.",
   "tutorials.loadShedding.backlogDone": "A slow dependency holds work in flight while new arrivals queue behind it.",
-  "tutorials.loadShedding.finish": "A traffic spike can build a backlog when a slow dependency holds the API busy.",
+  "tutorials.loadShedding.finish":
+    "A bounded queue refuses excess requests so a traffic spike cannot grow waiting work without limit.",
 } as const;
 export default en;
