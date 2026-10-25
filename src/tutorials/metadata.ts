@@ -42,6 +42,10 @@ export const tutorialMetadata: readonly TutorialMetadata[] =
           { id: "saved-simulations", title: msg("tutorials.savedSimulations.title") },
           { id: "faults", title: msg("tutorials.faults.title") },
           { id: "author-a-drill", title: msg("tutorials.authorADrill.title") },
+          { id: "retry-storm", title: msg("tutorials.retryStorm.title") },
+          { id: "backoff-budget", title: msg("tutorials.backoffBudget.title") },
+          { id: "circuit-breaker", title: msg("tutorials.circuitBreaker.title") },
+          { id: "rate-limit", title: msg("tutorials.rateLimit.title") },
         ] as const
       ).filter((t) => !tutorialEntries.find((entry) => entry.id === t.id)?.quarantined)
     : [];

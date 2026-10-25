@@ -24,6 +24,10 @@ import { fanout } from "./fanout";
 import { partitions } from "./partitions";
 import { outbox } from "./outbox";
 import { dependencies2 } from "./dependencies2";
+import { retryStorm } from "./retryStorm";
+import { backoffBudget } from "./backoffBudget";
+import { circuitBreaker } from "./circuitBreaker";
+import { rateLimit } from "./rateLimit";
 
 import { quickAdd } from "./quickAdd";
 import { dotsAndSides } from "./dotsAndSides";
@@ -74,6 +78,10 @@ export const allTutorials: readonly Tutorial[] = [
   savedSimulations,
   faults,
   authorADrill,
+  retryStorm,
+  backoffBudget,
+  circuitBreaker,
+  rateLimit,
 ];
 
 /** Available lessons only: discovery, deep links and progress totals share this catalog. */

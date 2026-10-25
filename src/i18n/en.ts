@@ -52,7 +52,6 @@ const en = {
   "workspaceInspector.throughputSummary": "{name} handles ~{capacity} and receives {offered}.",
   "workspaceInspector.initialCapacity": "Initial capacity",
   "workspaceInspector.maximumCapacity": "Maximum capacity",
-
   "examples.messageTypes": "Message types",
   "messageTypes.messages": "Messages",
   "messageTypes.search": "Search message types",
@@ -3837,7 +3836,6 @@ const en = {
   "resilienceChecks.stormName": "A slowdown could become a retry storm",
   "resilienceChecks.stormAbout":
     "Probes up to three retried Requests at configured rates: slow the callee fivefold at 5 s, clear at 10 s, replay to 30 s. Offers only the first cumulative fix proven to recover.",
-
   // Building blocks: tutorial batch 04.
   "tutorials.apiGateway.title": "Route a mobile app through a gateway",
   "tutorials.apiGateway.summary": "Build one entry point for Orders and Users, then watch traffic reach both.",
@@ -4200,5 +4198,86 @@ const en = {
   "tutorials.authorADrill.title": "Author a Drill",
   "tutorials.authorADrill.summary": "Save a simulation with a fault step, then run it.",
   "tutorials.authorADrill.finish": "Save fault steps as a Drill so you can replay the same experiment.",
+  "tutorials.retryStorm.title": "A retry storm",
+  "tutorials.retryStorm.summary": "See how three quick attempts keep a healthy service overloaded.",
+  "tutorials.retryStorm.runTitle": "Run three quick retries",
+  "tutorials.retryStorm.runGoal": "Watch Three quick retries in the Simulations picker.",
+  "tutorials.retryStorm.runDone": "This saved run repeats the same slowdown with the same seed.",
+  "tutorials.retryStorm.waitTitle": "Watch work waiting",
+  "tutorials.retryStorm.waitGoal":
+    "Hover Checkout and notice that a Request waits for a reply, even with non-blocking calls.",
+  "tutorials.retryStorm.waitDone":
+    "Non-blocking calls free Checkout’s threads while it waits; a timeout still leaves the callee’s work running.",
+  "tutorials.retryStorm.failedTitle": "Watch failed attempts",
+  "tutorials.retryStorm.failedGoal": "Hover Payments and watch Failed rise during the brief Fault.",
+  "tutorials.retryStorm.failedDone":
+    "Failed counts attempts at the callee, so retrying can count the same request again.",
+  "tutorials.retryStorm.expectTitle": "Read the backlog expectation",
+  "tutorials.retryStorm.expectGoal": "Watch the backlog expectation at the end. Pick 8× in Speed to play faster.",
+  "tutorials.retryStorm.expectDone": "The backlog expectation fails even after the slowdown has cleared.",
+  "tutorials.retryStorm.finish": "Quick retries can keep a service overloaded after the original problem has gone.",
+  "tutorials.backoffBudget.title": "Backoff and a retry budget",
+  "tutorials.backoffBudget.summary": "Compare jitter alone with a cap on extra attempts.",
+  "tutorials.backoffBudget.backoffTitle": "Wait before retrying",
+  "tutorials.backoffBudget.backoffGoal":
+    "Select the Payments connection, open Simulation and Retry timing, and set Wait before retrying to 100 ms.",
+  "tutorials.backoffBudget.backoffDone": "Backoff spaces attempts instead of sending them all at once.",
+  "tutorials.backoffBudget.budgetTitle": "Cap extra attempts",
+  "tutorials.backoffBudget.budgetGoal": "Open Retry budget and turn Retry budget on at 20%.",
+  "tutorials.backoffBudget.budgetDone": "A retry budget caps extra calls rather than retrying every failed request.",
+  "tutorials.backoffBudget.jitterTitle": "Run jittered backoff",
+  "tutorials.backoffBudget.jitterGoal": "Go Live and pick Jittered backoff in Simulations.",
+  "tutorials.backoffBudget.jitterDone":
+    "This run supplies exponential backoff and full jitter, without a retry budget.",
+  "tutorials.backoffBudget.jitterExpectTitle": "See what jitter leaves behind",
+  "tutorials.backoffBudget.jitterExpectGoal":
+    "Watch the backlog expectation at the end. Pick 8× in Speed to play faster.",
+  "tutorials.backoffBudget.jitterExpectDone": "Jitter spreads retries, but the backlog expectation still fails.",
+  "tutorials.backoffBudget.runBudgetTitle": "Run the retry budget",
+  "tutorials.backoffBudget.runBudgetGoal": "Pick A retry budget in Simulations.",
+  "tutorials.backoffBudget.runBudgetDone": "This run uses the same seed and slowdown with a 20% retry budget.",
+  "tutorials.backoffBudget.compareTitle": "Compare the expectations",
+  "tutorials.backoffBudget.compareGoal":
+    "Watch the backlog and goodput expectations at the end. Pick 8× in Speed to play faster.",
+  "tutorials.backoffBudget.compareDone":
+    "With the budget, the queue drains and goodput recovers: both expectations pass.",
+  "tutorials.backoffBudget.finish":
+    "Backoff spreads attempts; a retry budget limits how many extra attempts can compete with new work.",
+  "tutorials.circuitBreaker.title": "A circuit breaker",
+  "tutorials.circuitBreaker.summary": "Stop failing calls, test recovery, and let traffic through again.",
+  "tutorials.circuitBreaker.enableTitle": "Turn the breaker on",
+  "tutorials.circuitBreaker.enableGoal":
+    "Select the Payments connection, open Simulation, and pick On for Circuit breaker.",
+  "tutorials.circuitBreaker.enableDone": "The breaker belongs to the caller’s connection to its dependency.",
+  "tutorials.circuitBreaker.runTitle": "Run the breaker simulation",
+  "tutorials.circuitBreaker.runGoal": "Go Live and pick A circuit breaker in Simulations.",
+  "tutorials.circuitBreaker.runDone": "The saved run slows Payments, then restores it with the same seed each time.",
+  "tutorials.circuitBreaker.openTitle": "Watch the breaker open",
+  "tutorials.circuitBreaker.openGoal": "Hover the Payments connection and watch for Open.",
+  "tutorials.circuitBreaker.openDone": "An open breaker fails calls fast so abandoned work can drain.",
+  "tutorials.circuitBreaker.testingTitle": "Watch it test recovery",
+  "tutorials.circuitBreaker.testingGoal": "Keep watching the Payments connection for Testing.",
+  "tutorials.circuitBreaker.testingDone":
+    "Testing admits a few calls before deciding whether the callee has recovered.",
+  "tutorials.circuitBreaker.closedTitle": "Watch it close again",
+  "tutorials.circuitBreaker.closedGoal": "Watch for Closed after recovery. Pick 8× in Speed to play faster.",
+  "tutorials.circuitBreaker.closedDone": "Successful test calls close the breaker and ordinary traffic resumes.",
+  "tutorials.circuitBreaker.finish":
+    "A breaker gives a struggling dependency room to recover, then tests it before reopening traffic.",
+  "tutorials.rateLimit.title": "A rate limit",
+  "tutorials.rateLimit.summary": "Send 20 requests per second through a 10-per-second quota and watch refusals.",
+  "tutorials.rateLimit.partnerName": "Partner client",
+  "tutorials.rateLimit.limiterName": "Rate Limiter",
+  "tutorials.rateLimit.apiName": "API",
+  "tutorials.rateLimit.runName": "Partner traffic",
+  "tutorials.rateLimit.runTitle": "Send partner traffic",
+  "tutorials.rateLimit.runGoal": "Go Live and pick Partner traffic in Simulations.",
+  "tutorials.rateLimit.runDone":
+    "The saved run sends 20 requests per second into a limiter with a 10-per-second quota.",
+  "tutorials.rateLimit.rejectedTitle": "Watch requests refused",
+  "tutorials.rateLimit.rejectedGoal": "Hover Rate Limiter and watch Rejected reach at least 10.",
+  "tutorials.rateLimit.rejectedDone":
+    "Requests over the available quota receive 429 replies instead of reaching the API.",
+  "tutorials.rateLimit.finish": "A rate quota refuses excess requests before they consume the API’s capacity.",
 } as const;
 export default en;

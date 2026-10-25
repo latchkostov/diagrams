@@ -1,0 +1,108 @@
+import { msg } from "../../i18n";
+import type { Tutorial } from "../types";
+
+export const circuitBreaker: Tutorial = {
+  id: "circuit-breaker",
+  version: 1,
+  track: "resilience",
+  level: 2,
+  minutes: 4,
+  title: msg("tutorials.circuitBreaker.title"),
+  summary: msg("tutorials.circuitBreaker.summary"),
+  start: { example: "retry-storm" },
+  subjects: {
+    caller: { stencils: ["generic.service"] },
+    callee: { stencils: ["generic.service"] },
+  },
+  steps: [
+    {
+      id: "enable",
+      title: msg("tutorials.circuitBreaker.enableTitle"),
+      goal: msg("tutorials.circuitBreaker.enableGoal"),
+      done: msg("tutorials.circuitBreaker.enableDone"),
+      check: { kind: "prop", edge: ["caller", "callee"], prop: ["caller", "breaker"], op: "=", value: {} },
+      targets: [
+        { testId: "inspector-field-breaker-on", tip: msg("tutorials.circuitBreaker.enableGoal") },
+        { testId: "inspector-section-edge-simulation", tip: msg("tutorials.circuitBreaker.enableGoal") },
+        { testId: "node-{callee}", tip: msg("tutorials.circuitBreaker.enableGoal") },
+      ],
+      demo: [
+        { kind: "patch", edge: ["caller", "callee"], patches: [{ op: "set", path: ["caller", "breaker"], value: {} }] },
+      ],
+      solution: [
+        { click: "node-{callee}" },
+        { press: "Control+Alt+[" },
+        { click: "inspector-section-edge-simulation" },
+        { click: "inspector-field-breaker-on" },
+      ],
+    },
+    {
+      id: "run",
+      title: msg("tutorials.circuitBreaker.runTitle"),
+      goal: msg("tutorials.circuitBreaker.runGoal"),
+      done: msg("tutorials.circuitBreaker.runDone"),
+      check: { kind: "simulation", id: "circuit-breaker" },
+      sticky: true,
+      targets: [
+        { testId: "live-sim-picker", tip: msg("tutorials.circuitBreaker.runGoal") },
+        { testId: "live-toggle", tip: msg("tutorials.circuitBreaker.runGoal") },
+      ],
+      demo: [{ kind: "runSimulation", id: "circuit-breaker" }],
+      solution: [{ click: "live-toggle" }, { select: "live-sim-picker", value: "circuit-breaker" }],
+    },
+    {
+      id: "open",
+      title: msg("tutorials.circuitBreaker.openTitle"),
+      goal: msg("tutorials.circuitBreaker.openGoal"),
+      done: msg("tutorials.circuitBreaker.openDone"),
+      check: {
+        kind: "metric",
+        subject: "caller",
+        edge: ["caller", "callee"],
+        field: "breaker",
+        op: "=",
+        value: "open",
+      },
+      sticky: true,
+      targets: [{ testId: "edge-{caller->callee}", tip: msg("tutorials.circuitBreaker.openGoal"), dim: false }],
+      demo: [],
+      solution: [{ hover: "edge-{caller->callee}" }],
+    },
+    {
+      id: "testing",
+      title: msg("tutorials.circuitBreaker.testingTitle"),
+      goal: msg("tutorials.circuitBreaker.testingGoal"),
+      done: msg("tutorials.circuitBreaker.testingDone"),
+      check: {
+        kind: "metric",
+        subject: "caller",
+        edge: ["caller", "callee"],
+        field: "breaker",
+        op: "=",
+        value: "half-open",
+      },
+      sticky: true,
+      targets: [{ testId: "edge-{caller->callee}", tip: msg("tutorials.circuitBreaker.testingGoal"), dim: false }],
+      demo: [],
+      solution: [{ hover: "edge-{caller->callee}" }],
+    },
+    {
+      id: "closed",
+      title: msg("tutorials.circuitBreaker.closedTitle"),
+      goal: msg("tutorials.circuitBreaker.closedGoal"),
+      done: msg("tutorials.circuitBreaker.closedDone"),
+      check: {
+        kind: "all",
+        checks: [
+          { kind: "simulation", id: "circuit-breaker", atLeastMs: 15000 },
+          { kind: "metric", subject: "caller", edge: ["caller", "callee"], field: "breaker", op: "=", value: "closed" },
+        ],
+      },
+      sticky: true,
+      targets: [{ testId: "edge-{caller->callee}", tip: msg("tutorials.circuitBreaker.closedGoal"), dim: false }],
+      demo: [],
+      solution: [{ select: "live-speed", value: "8" }, { hover: "edge-{caller->callee}" }],
+    },
+  ],
+  finish: { text: msg("tutorials.circuitBreaker.finish") },
+};
