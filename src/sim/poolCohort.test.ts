@@ -177,16 +177,31 @@ it("oracle rejects an unsent cohort without a queued template", () => {
 // R-21c7562a21, quarantined (docs/backlog/2026-10-25-cohort-shedding-timeouts.md). Ten connections send
 // all ten members to a paused callee whose queue holds one; it sheds nine, which fail on the edge. Only the
 // retained member should time out, as at scale 1: 1 timeout, 10 failures.
-function shedAtDeadline(scale: number, shedCohorts = false) {
+function shedAtDeadline(scale: number, options: { shedCohorts?: boolean; live?: "add" | "add, then remove" } = {}) {
   const d = waitingFixture();
   d.planning!.revision = "p3-w2";
   d.nodes[1].props = { concurrency: 100, latencyMs: 10, jitter: 0 };
   d.nodes[2].stencil = "generic.service";
-  d.nodes[2].props = { concurrency: 1, latencyMs: 10, jitter: 0, queue: { limit: 1 }, status: "paused" };
-  d.edges[1].props = { caller: { wait: "non-blocking", poolConnections: 10, deadlineMs: 1000 } };
-  const e = createEngine({ scale, maxParticles: 0, shedCohorts, verifyLedger: assertLedgerInvariants });
+  d.nodes[2].props = { concurrency: 1, latencyMs: 10, jitter: 0, status: "paused" };
+  if (!options.live) d.nodes[2].props.queue = { limit: 1 };
+  d.edges[1].props = { travelMs: 200, caller: { wait: "non-blocking", poolConnections: 10, deadlineMs: 1000 } };
+  const e = createEngine({
+    scale,
+    maxParticles: 0,
+    shedCohorts: options.shedCohorts,
+    verifyLedger: assertLedgerInvariants,
+  });
   e.load(d);
   e.inject("source", 10 / scale);
+  if (options.live) {
+    // The cohort opened without a queue and its wave is still travelling when the callee gains one.
+    e.step(100);
+    e.setNodeProps("partner", { queue: { limit: 1 } });
+    if (options.live === "add, then remove") {
+      e.step(400);
+      e.setNodeProps("partner", { queue: undefined });
+    }
+  }
   e.step(3000);
   const real = realSnapshot(e.snapshot());
   return { calls: real.edges.call.calls, delivered: real.edges.call.delivered, shed: real.nodes.partner.shed };
@@ -201,15 +216,44 @@ it.each([1, 10])("a pooled call to a shedding queue keeps whole-dot deadline acc
   expect(shedAtDeadline(scale)).toEqual(shedReference);
 });
 
-it("the quarantined shed cohort path currently counts shed members again at expiry", () => {
-  expect(shedAtDeadline(10, true)).toEqual({
-    ...shedReference,
-    calls: { ...shedReference.calls, timedOut: 10, failed: 19 },
-  });
+// R-8e6e356e3c: the guard only applies when a cohort opens. A bound cohort's expiry settles its caller at
+// no more than its branch size, which the shed narrowed, so it matches the guarded scale-1 numbers.
+it.each(["add", "add, then remove"] as const)(
+  "a queue enabled mid-flight sheds a bound cohort's wave without counting it again at expiry: %s",
+  (live) => {
+    expect(shedAtDeadline(1, { live })).toEqual(shedReference);
+    expect(shedAtDeadline(10, { live })).toEqual(shedReference);
+  },
+);
+
+it("a cohort's partially shed members leave its timeout accounting", () => {
+  expect(shedAtDeadline(10, { shedCohorts: true })).toEqual(shedReference);
 });
 
-it.fails("R-21c7562a21: a cohort's partially shed members leave its timeout accounting", () => {
-  expect(shedAtDeadline(10, true)).toEqual(shedReference);
+// The remaining quarantined gap: after an OK first wave, a shed wave's members never count as edge
+// failures. At scale 1 (18 shed, 18 failed) and on the guarded path (9 and 9) every shed member fails.
+function orphanShed() {
+  const d = waitingFixture();
+  d.planning!.revision = "p3-w2";
+  d.nodes[1].props = { concurrency: 100, latencyMs: 10, jitter: 0 };
+  d.nodes[2].stencil = "generic.service";
+  d.nodes[2].props = { concurrency: 1, latencyMs: 50, jitter: 0, queue: { limit: 1 } };
+  d.edges[1].props = { caller: { wait: "non-blocking", poolConnections: 5, deadlineMs: 2000 } };
+  const e = createEngine({ scale: 10, maxParticles: 0, shedCohorts: true, verifyLedger: assertLedgerInvariants });
+  e.load(d);
+  e.inject("source", 2);
+  e.step(4000);
+  const real = realSnapshot(e.snapshot());
+  expect(e.snapshot().inSystem).toBe(0);
+  return { failed: real.edges.call.calls!.failed, shed: real.nodes.partner.shed };
+}
+
+it("the quarantined orphan shed path currently counts no edge failure for its shed members", () => {
+  expect(orphanShed()).toEqual({ failed: 0, shed: 8 });
+});
+
+it.fails("R-21c7562a21: an orphan's partially shed members fail on the edge", () => {
+  expect(orphanShed()).toEqual({ failed: 8, shed: 8 });
 });
 
 it("a burst grants only available connections; a full pool never grants zero-weight work", () => {

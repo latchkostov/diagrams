@@ -2443,11 +2443,15 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           }
           break;
         }
-        case "decide":
+        case "decide": {
           decides = true;
-          // The caller keeps its one logical outcome at its branch's size.
-          event!.represented = effect[1] ?? branchSized(cohort.call, edge).represented;
+          // The caller keeps its one logical outcome at its branch's size. An expiry never settles more than
+          // that: a queue enabled mid-flight sheds part of a wave, narrowing the branch as the legacy path does
+          // after splitShed counted the shed part (docs/backlog/2026-10-25-cohort-shedding-timeouts.md).
+          const sized = branchSized(cohort.call, edge).represented;
+          event!.represented = effect[1] === undefined ? sized : Math.min(effect[1], sized ?? Infinity);
           break;
+        }
         default:
           edge.calls[effect[0]] += effect[1] / scale;
       }
