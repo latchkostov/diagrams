@@ -77,6 +77,30 @@ const FORBIDDEN: [string, RegExp][] = [
  * ("missing export"), and the module itself coming back fails it too (FORBIDDEN, below).
  */
 export const EDITOR_ONLY: { name: string; path: string; stub: (root: string) => string }[] = [
+  // Quick-add is guarded by readOnly; the connected menu can only be opened by those editing gestures.
+  {
+    name: "quick-add placement",
+    path: "/src/canvas/placement/useQuickAddPlacement.ts",
+    stub: () =>
+      "const none = () => {}; export const useQuickAddPlacement = () => [none, none, none]; export const paneQuickAdd = () => none;",
+  },
+  {
+    name: "the connected quick-add menu",
+    path: "/src/canvas/ConnectedQuickAddMenu.tsx",
+    stub: () => "export const ConnectedQuickAddMenu = () => null;",
+  },
+  {
+    name: "the placement outline",
+    path: "/src/canvas/LandingOutline.tsx",
+    stub: () => "export const LandingOutline = () => null;",
+  },
+  // Read-only canvases never enable editGestures or React Flow's selection box.
+  {
+    name: "box selection",
+    path: "/src/canvas/selection/useBoxSelection.ts",
+    stub: () =>
+      'import { useRef } from "react"; export const useBoxSelection = () => ({ contain: useRef(false), boxBase: useRef(null) });',
+  },
   // A viewer displays saved bends, but never carries or resets them by moving nodes.
   {
     name: "node-move route editing",
