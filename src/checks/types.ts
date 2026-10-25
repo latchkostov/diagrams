@@ -12,6 +12,7 @@ export type { CheckRuleId } from "../model/checks";
 export type CheckSeverity = "warning" | "suggestion";
 
 export interface CheckFix {
+  resilienceLabel?: { kind: string; value?: number; name?: string };
   messageLabel?: { kind: "filter" | "rename"; types: string[] };
   planLabel?: NonNullable<Finding["scalingPlan"]>;
   requestLabel?: { kind: "free" | "scale" | "timeout" | "replicas"; value?: number };
@@ -31,6 +32,7 @@ export interface CheckFix {
 }
 
 export interface CheckFixOption {
+  resilienceLabel?: CheckFix["resilienceLabel"];
   messageLabel?: CheckFix["messageLabel"];
   requestLabel?: CheckFix["requestLabel"];
   /** Partition changes this option makes too (a consumer's sizing), named in its translated words. */
@@ -45,6 +47,33 @@ export interface CheckFixOption {
 }
 
 export interface Finding {
+  /** Internal count marker, moved to CheckResult.notChecked by runChecks. */
+  unchecked?: number;
+  resilienceFinding?: {
+    kind:
+      | "retry-backoff"
+      | "retry-budget"
+      | "retry-idempotency"
+      | "retry-layers"
+      | "call-breaker"
+      | "queue-limit"
+      | "retry-storm";
+    caller: string;
+    callee: string;
+    attempts: number;
+    amplification: number;
+    amplificationAtLeast?: true;
+    method?: string;
+    layers?: number;
+    path?: string;
+    budgetPercent?: number;
+    deadlineMs?: number;
+    queueLimit?: number;
+    maxWaitMs?: number;
+    recoveredAfterMs?: number;
+    probe?: { slowdown: number; startMs: number; clearMs: number; horizonMs: number; recovered: boolean };
+    replay?: { step: string; recoveredAfterMs: number; beforeIntegral: number; afterIntegral: number };
+  };
   /** Bounded display names, never authored values for edit operations. */
   messageLoop?: { type: string; node: string };
   /**
@@ -150,6 +179,7 @@ export interface CheckRule {
 }
 
 export interface CheckResult {
+  notChecked?: { retryStorm: number };
   /** Shown: warnings first, then suggestions; within each, rule order, then reading order. */
   findings: Finding[];
   /** Found, but a person ignored them in this diagram (`checks.ignore`). */

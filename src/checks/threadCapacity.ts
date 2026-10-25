@@ -34,7 +34,7 @@ export function threadCapacity(ctx: CheckContext) {
     }),
   );
   const analysis = Object.keys(readyReplicas).length
-    ? analyzeCapacity(ctx.diagram, ctx.planning(), { readyReplicas })
+    ? analyzeCapacity(ctx.diagram, ctx.planning(), { readyReplicas, topology: ctx.topology })
     : initial;
   cache.set(ctx, analysis);
   return analysis;

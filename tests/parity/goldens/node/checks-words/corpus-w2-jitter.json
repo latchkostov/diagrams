@@ -1,6 +1,96 @@
 {
-  "summary": "Nothing to check. 14 checks ran.",
-  "findings": {},
-  "agentReport": { "findings": [], "summary": "Nothing to check. 14 checks ran." },
-  "agentReportWarnings": { "findings": [], "summary": "Nothing to check. 14 checks ran." }
+  "summary": "1 warning, 1 suggestion.",
+  "findings": {
+    "retry-budget:call": {
+      "title": "No retry budget on the call to Partner scoring API.",
+      "message": "If Partner scoring API slows down, 3 attempts per request multiply its load by 3.",
+      "rationale": "Retries add load when a dependency is struggling. Bound repeated work and keep it safe to repeat.",
+      "fix": { "label": "Add a 20% retry budget" }
+    },
+    "call-breaker:call": {
+      "title": "No circuit breaker on the call to Partner scoring API.",
+      "message": "If Partner scoring API keeps failing, every caller keeps trying it.",
+      "rationale": "Retries add load when a dependency is struggling. Bound repeated work and keep it safe to repeat.",
+      "fix": { "label": "Add a circuit breaker (50% over 10 s, open 5 s)" }
+    }
+  },
+  "agentReport": {
+    "findings": [
+      {
+        "id": "retry-budget:call",
+        "resilienceFinding": { "kind": "retry-budget", "caller": "Decision service", "callee": "Partner scoring API", "attempts": 3, "amplification": 3, "budgetPercent": 20 },
+        "rule": "retry-budget",
+        "severity": "warning",
+        "title": "No retry budget on the call to Partner scoring API.",
+        "message": "If Partner scoring API slows down, 3 attempts per request multiply its load by 3.",
+        "targets": ["call", "caller", "partner"],
+        "fix": {
+          "label": "Add a 20% retry budget",
+          "ops": [
+            {
+              "op": "update",
+              "target": "call",
+              "props": {
+                "caller": {
+                  "wait": "blocking",
+                  "deadlineMs": 200,
+                  "retry": {
+                    "maxAttempts": 3,
+                    "backoffMs": 100,
+                    "strategy": "exponential",
+                    "retryOn": ["timeout", "transient", "throttled"],
+                    "maxBackoffMs": 250,
+                    "jitter": 1,
+                    "budget": { "percent": 20, "minPerSec": 10 }
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    ],
+    "summary": "1 warning, 1 suggestion.",
+    "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding.",
+    "more": "1 more finding omitted; call check_diagram with rules to see them."
+  },
+  "agentReportWarnings": {
+    "findings": [
+      {
+        "id": "retry-budget:call",
+        "resilienceFinding": { "kind": "retry-budget", "caller": "Decision service", "callee": "Partner scoring API", "attempts": 3, "amplification": 3, "budgetPercent": 20 },
+        "rule": "retry-budget",
+        "severity": "warning",
+        "title": "No retry budget on the call to Partner scoring API.",
+        "message": "If Partner scoring API slows down, 3 attempts per request multiply its load by 3.",
+        "targets": ["call", "caller", "partner"],
+        "fix": {
+          "label": "Add a 20% retry budget",
+          "ops": [
+            {
+              "op": "update",
+              "target": "call",
+              "props": {
+                "caller": {
+                  "wait": "blocking",
+                  "deadlineMs": 200,
+                  "retry": {
+                    "maxAttempts": 3,
+                    "backoffMs": 100,
+                    "strategy": "exponential",
+                    "retryOn": ["timeout", "transient", "throttled"],
+                    "maxBackoffMs": 250,
+                    "jitter": 1,
+                    "budget": { "percent": 20, "minPerSec": 10 }
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    ],
+    "summary": "1 warning, 1 suggestion.",
+    "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding."
+  }
 }

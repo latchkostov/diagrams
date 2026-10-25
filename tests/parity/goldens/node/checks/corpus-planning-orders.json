@@ -11,6 +11,13 @@
     "blocked-threads",
     "scaling-blind",
     "call-timeout",
+    "retry-backoff",
+    "retry-budget",
+    "retry-idempotency",
+    "retry-layers",
+    "call-breaker",
+    "queue-limit",
+    "retry-storm",
     "single-point",
     "secret-identity",
     "schema-registry"

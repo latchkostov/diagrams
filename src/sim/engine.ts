@@ -4621,6 +4621,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         return roundDots(node.outgoing.reduce((sum, edge) => sum + edge.calls.timedOut, 0));
       if (metric.field === "retried")
         return roundDots(node.outgoing.reduce((sum, edge) => sum + (edge.calls.retried ?? 0), 0));
+      if (metric.field === "shortCircuited")
+        return roundDots(node.outgoing.reduce((sum, edge) => sum + (edge.calls.shortCircuited ?? 0), 0));
       if (metric.field === "amplification") {
         let requests = 0,
           attempts = 0;

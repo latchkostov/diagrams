@@ -1,7 +1,7 @@
 {
   "text": {
     "isError": false,
-    "output": "Diagram \"Retry pool-deadline\" · direction LR · 4 nodes, 3 connections, 0 boundaries, 1 simulations\nnodes:\n  \"source\" \"client.user\" (\"User\") \"Applications\" props={\"ratePerSec\":0} arrivingTypes=[] capabilities=[] explanation=undefined\n  \"caller\" \"generic.service\" (\"Service\") \"Decision service\" props={\"replicas\":1,\"concurrency\":100,\"latencyMs\":10,\"jitter\":0} arrivingTypes=[\"Applications\",\"ApplicationSubmitted\"] capabilities=[{\"kind\":\"calls\",\"edge\":\"call\",\"peer\":\"partner\"}] explanation={\"waits\":{\"workMs\":10,\"callMs\":10,\"threadHoldMs\":20,\"memoryResidenceMs\":520,\"replyMs\":10,\"replies\":1,\"poolCeiling\":3.3333333333333335,\"slots\":100,\"ceiling\":5000},\"id\":\"caller\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":3.3333333333333335,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":100,\"seconds\":0.02,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true} requestsWait={\"threads\":100,\"holdMs\":20,\"ceilingPerSec\":5000}\n  \"partner\" \"generic.service\" (\"Service\") \"Partner scoring API\" props={\"concurrency\":100,\"latencyMs\":500,\"jitter\":0,\"failureRate\":0} arrivingTypes=[\"Applications\",\"ApplicationSubmitted\"] capabilities=[] explanation={\"id\":\"partner\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":200,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":100,\"seconds\":0.5,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true}\n  \"result\" \"generic.database\" (\"Database\") \"Case store\" props={\"latencyMs\":0} arrivingTypes=[\"Applications\",\"ApplicationSubmitted\"] capabilities=[] explanation=undefined\nconnections:\n  \"input\" \"source\" -> \"caller\" async carriedTypes=[\"Applications\",\"ApplicationSubmitted\"]\n  \"call\" \"caller\" -> \"partner\" sync carriedTypes=[\"Applications\",\"ApplicationSubmitted\"]\n  \"output\" \"caller\" -> \"result\" async carriedTypes=[\"Applications\",\"ApplicationSubmitted\"]\nsimulation \"blocking\" \"Blocking\": {\"kind\":\"burst\",\"count\":12,\"spreadMs\":100} from \"source\"; timeline=[]; expectations=[]"
+    "output": "Diagram \"Retry pool-deadline\" · direction LR · 4 nodes, 3 connections, 0 boundaries, 1 simulations\nnodes:\n  \"source\" \"client.user\" (\"User\") \"Applications\" props={\"ratePerSec\":0} arrivingTypes=[] capabilities=[] explanation=undefined\n  \"caller\" \"generic.service\" (\"Service\") \"Decision service\" props={\"replicas\":1,\"concurrency\":100,\"latencyMs\":10,\"jitter\":0} arrivingTypes=[\"Applications\",\"ApplicationSubmitted\"] capabilities=[{\"kind\":\"calls\",\"edge\":\"call\",\"peer\":\"partner\"}] explanation={\"waits\":{\"workMs\":10,\"callMs\":10,\"threadHoldMs\":20,\"memoryResidenceMs\":520,\"replyMs\":10,\"replies\":1,\"poolCeiling\":3.3333333333333335,\"slots\":100,\"ceiling\":5000},\"id\":\"caller\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":3.3333333333333335,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":100,\"seconds\":0.02,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true} requestsWait={\"threads\":100,\"holdMs\":20,\"ceilingPerSec\":5000} queue={\"limit\":null,\"order\":\"fifo\",\"whenFull\":\"reject-new\",\"maxWaitMs\":null,\"waitCeilingMs\":null}\n  \"partner\" \"generic.service\" (\"Service\") \"Partner scoring API\" props={\"concurrency\":100,\"latencyMs\":500,\"jitter\":0,\"failureRate\":0} arrivingTypes=[\"Applications\",\"ApplicationSubmitted\"] capabilities=[] explanation={\"id\":\"partner\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"req/s\",\"capacity\":200,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":100,\"seconds\":0.5,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true} queue={\"limit\":null,\"order\":\"fifo\",\"whenFull\":\"reject-new\",\"maxWaitMs\":null,\"waitCeilingMs\":null}\n  \"result\" \"generic.database\" (\"Database\") \"Case store\" props={\"latencyMs\":0} arrivingTypes=[\"Applications\",\"ApplicationSubmitted\"] capabilities=[] explanation=undefined\nconnections:\n  \"input\" \"source\" -> \"caller\" async carriedTypes=[\"Applications\",\"ApplicationSubmitted\"]\n  \"call\" \"caller\" -> \"partner\" sync carriedTypes=[\"Applications\",\"ApplicationSubmitted\"] resilience={\"attempts\":3,\"backoff\":{\"baseMs\":100,\"growth\":1,\"capMs\":2000,\"jitter\":0},\"retryOn\":[\"timeout\",\"transient\",\"throttled\"],\"idempotent\":\"unknown\",\"budget\":null,\"breaker\":null,\"priority\":\"normal\",\"amplification\":{\"steady\":3,\"worst\":3}}\n  \"output\" \"caller\" -> \"result\" async carriedTypes=[\"Applications\",\"ApplicationSubmitted\"]\nsimulation \"blocking\" \"Blocking\": {\"kind\":\"burst\",\"count\":12,\"spreadMs\":100} from \"source\"; timeline=[]; expectations=[]"
   },
   "json": {
     "isError": false,
@@ -55,7 +55,8 @@
             "changes": null,
             "converged": true
           },
-          "requestsWait": { "threads": 100, "holdMs": 20, "ceilingPerSec": 5000 }
+          "requestsWait": { "threads": 100, "holdMs": 20, "ceilingPerSec": 5000 },
+          "queue": { "limit": null, "order": "fifo", "whenFull": "reject-new", "maxWaitMs": null, "waitCeilingMs": null }
         },
         {
           "id": "partner",
@@ -90,7 +91,8 @@
             "targetReplicas": 1,
             "changes": null,
             "converged": true
-          }
+          },
+          "queue": { "limit": null, "order": "fifo", "whenFull": "reject-new", "maxWaitMs": null, "waitCeilingMs": null }
         },
         {
           "id": "result",
@@ -125,7 +127,17 @@
               "poolConnections": 1
             }
           },
-          "carriedTypes": ["Applications", "ApplicationSubmitted"]
+          "carriedTypes": ["Applications", "ApplicationSubmitted"],
+          "resilience": {
+            "attempts": 3,
+            "backoff": { "baseMs": 100, "growth": 1, "capMs": 2000, "jitter": 0 },
+            "retryOn": ["timeout", "transient", "throttled"],
+            "idempotent": "unknown",
+            "budget": null,
+            "breaker": null,
+            "priority": "normal",
+            "amplification": { "steady": 3, "worst": 3 }
+          }
         },
         {
           "id": "output",
@@ -161,6 +173,6 @@
   },
   "focus": {
     "isError": false,
-    "output": "Diagram \"Retry pool-deadline\" · direction LR · 2 nodes, 1 connections, 0 boundaries, 1 simulations\nnodes:\n  \"source\" \"client.user\" (\"User\") \"Applications\" props={\"ratePerSec\":0} arrivingTypes=[] capabilities=[] explanation=undefined\n  \"caller\" \"generic.service\" (\"Service\") \"Decision service\" props={\"replicas\":1,\"concurrency\":100,\"latencyMs\":10,\"jitter\":0} arrivingTypes=[\"Applications\",\"ApplicationSubmitted\"] capabilities=[{\"kind\":\"calls\",\"edge\":\"call\",\"peer\":\"partner\"}] explanation={\"waits\":{\"workMs\":10,\"callMs\":10,\"threadHoldMs\":20,\"memoryResidenceMs\":520,\"replyMs\":10,\"replies\":1,\"poolCeiling\":3.3333333333333335,\"slots\":100,\"ceiling\":5000},\"id\":\"caller\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":3.3333333333333335,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":100,\"seconds\":0.02,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true} requestsWait={\"threads\":100,\"holdMs\":20,\"ceilingPerSec\":5000}\nconnections:\n  \"input\" \"source\" -> \"caller\" async carriedTypes=[\"Applications\",\"ApplicationSubmitted\"]\nsimulation \"blocking\" \"Blocking\": {\"kind\":\"burst\",\"count\":12,\"spreadMs\":100} from \"source\"; timeline=[]; expectations=[]"
+    "output": "Diagram \"Retry pool-deadline\" · direction LR · 2 nodes, 1 connections, 0 boundaries, 1 simulations\nnodes:\n  \"source\" \"client.user\" (\"User\") \"Applications\" props={\"ratePerSec\":0} arrivingTypes=[] capabilities=[] explanation=undefined\n  \"caller\" \"generic.service\" (\"Service\") \"Decision service\" props={\"replicas\":1,\"concurrency\":100,\"latencyMs\":10,\"jitter\":0} arrivingTypes=[\"Applications\",\"ApplicationSubmitted\"] capabilities=[{\"kind\":\"calls\",\"edge\":\"call\",\"peer\":\"partner\"}] explanation={\"waits\":{\"workMs\":10,\"callMs\":10,\"threadHoldMs\":20,\"memoryResidenceMs\":520,\"replyMs\":10,\"replies\":1,\"poolCeiling\":3.3333333333333335,\"slots\":100,\"ceiling\":5000},\"id\":\"caller\",\"role\":\"processor\",\"status\":\"up\",\"reason\":\"throughput\",\"evidence\":\"configured\",\"unit\":\"msg/s\",\"capacity\":3.3333333333333335,\"offered\":0,\"replicas\":1,\"baseReplicas\":1,\"omittedContributors\":0,\"activeReplicas\":1,\"assignments\":[],\"slots\":100,\"seconds\":0.02,\"utilization\":0,\"growth\":0,\"contributors\":[],\"target\":0.5,\"minimumReplicas\":1,\"targetReplicas\":1,\"changes\":null,\"converged\":true} requestsWait={\"threads\":100,\"holdMs\":20,\"ceilingPerSec\":5000} queue={\"limit\":null,\"order\":\"fifo\",\"whenFull\":\"reject-new\",\"maxWaitMs\":null,\"waitCeilingMs\":null}\nconnections:\n  \"input\" \"source\" -> \"caller\" async carriedTypes=[\"Applications\",\"ApplicationSubmitted\"]\nsimulation \"blocking\" \"Blocking\": {\"kind\":\"burst\",\"count\":12,\"spreadMs\":100} from \"source\"; timeline=[]; expectations=[]"
   }
 }

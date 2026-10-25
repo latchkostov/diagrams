@@ -1,9 +1,9 @@
 {
-  "all": { "isError": false, "output": { "findings": [], "summary": "Nothing to check. 14 checks ran." } },
-  "warnings": { "isError": false, "output": { "findings": [], "summary": "Nothing to check. 14 checks ran." } },
+  "all": { "isError": false, "output": { "findings": [], "summary": "Nothing to check. 21 checks ran." } },
+  "warnings": { "isError": false, "output": { "findings": [], "summary": "Nothing to check. 21 checks ran." } },
   "oneRule": { "isError": false, "output": { "findings": [], "summary": "Nothing to check. 2 checks ran." } },
   "simulations": {
     "isError": false,
-    "output": { "findings": [], "summary": "Nothing to check. 14 checks ran.", "simulations": "Played 2 saved simulations (at most 60 s each). On purpose, not findings: 20 dropped at east-alb in “us-east-1 goes dark”; 245 dropped at east-c1-api in “A bad deploy stays in one cell”." }
+    "output": { "findings": [], "summary": "Nothing to check. 21 checks ran.", "simulations": "Played 2 saved simulations (at most 60 s each). On purpose, not findings: 20 dropped at east-alb in “us-east-1 goes dark”; 245 dropped at east-c1-api in “A bad deploy stays in one cell”." }
   }
 }

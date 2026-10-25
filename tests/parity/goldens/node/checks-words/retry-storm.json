@@ -1,11 +1,33 @@
 {
-  "summary": "1 warning, 0 suggestions.",
+  "summary": "4 warnings, 0 suggestions.",
   "findings": {
     "no-reader:orders": {
       "title": "Nobody reads Orders",
       "message": "Checkout publishes to Orders, but nothing consumes it: it keeps every message, unread.",
       "rationale": "No readers. Add a reader.",
       "fix": { "label": "Add a consumer…", "choice": "Pick what reads Orders, then add it and connect orders to it." }
+    },
+    "retry-backoff:pay": {
+      "title": "Retries to Payments need jittered backoff.",
+      "message": "Checkout retries in step with every other caller: waves of retries reach Payments together.",
+      "rationale": "Retries add load when a dependency is struggling. Bound repeated work and keep it safe to repeat.",
+      "fix": { "label": "Use jittered backoff (100 ms ×2, up to 2 s, full jitter)" }
+    },
+    "retry-idempotency:pay": {
+      "title": "Retries to Payments may repeat a POST.",
+      "message": "A timed-out request may have succeeded; repeating it can charge twice.",
+      "rationale": "Retries add load when a dependency is struggling. Bound repeated work and keep it safe to repeat.",
+      "fix": {
+        "label": "Retry only throttled responses",
+        "options": [{ "label": "It's idempotent (it has an idempotency key)", "short": "It's idempotent" }]
+      }
+    },
+    "retry-storm:pay": {
+      "title": "A slowdown at Payments would become a retry storm.",
+      "message": "In a 5 s slowdown (×5), retries keep Payments overloaded at least 20 s after it recovers. Uses jittered backoff, a 20% retry budget, a circuit breaker and a deadline-based queue limit. The replayed change recovers in 6 s; successful work after clearing rises from 0 to 4905.",
+      "rationale": "Retries add load when a dependency is struggling. Bound repeated work and keep it safe to repeat.",
+      "fix": { "label": "Apply proven recovery policy" },
+      "shownMessage": "In a 5 s slowdown (×5), retries keep Payments overloaded at least 20 s after it recovers. Uses jittered backoff, a 20% retry budget, a circuit breaker and a deadline-based queue limit. The replayed change recovers in 6 s; successful work after clearing rises from 0 to 4,905."
     }
   },
   "agentReport": {
@@ -18,9 +40,36 @@
         "message": "Checkout publishes to Orders, but nothing consumes it: it keeps every message, unread.",
         "targets": ["orders", "checkout"],
         "fix": { "label": "Add a consumer…", "needsChoice": "Pick what reads Orders, then add it and connect orders to it." }
+      },
+      {
+        "id": "retry-backoff:pay",
+        "resilienceFinding": { "kind": "retry-backoff", "caller": "Checkout", "callee": "Payments", "attempts": 3, "amplification": 3 },
+        "rule": "retry-backoff",
+        "severity": "warning",
+        "title": "Retries to Payments need jittered backoff.",
+        "message": "Checkout retries in step with every other caller: waves of retries reach Payments together.",
+        "targets": ["pay", "checkout", "payments"],
+        "fix": {
+          "label": "Use jittered backoff (100 ms ×2, up to 2 s, full jitter)",
+          "ops": [
+            {
+              "op": "update",
+              "target": "pay",
+              "props": {
+                "caller": {
+                  "wait": "non-blocking",
+                  "deadlineMs": 300,
+                  "retry": { "maxAttempts": 3, "backoffMs": 100, "strategy": "exponential", "retryOn": ["throttled", "transient", "timeout"], "maxBackoffMs": 2000, "jitter": 1 }
+                }
+              }
+            }
+          ]
+        }
       }
     ],
-    "summary": "1 warning, 0 suggestions."
+    "summary": "4 warnings, 0 suggestions.",
+    "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding. fix.others are other ways to make the same change: if the person prefers one, send its ops instead.",
+    "more": "2 more findings omitted; call check_diagram with rules to see them."
   },
   "agentReportWarnings": {
     "findings": [
@@ -32,8 +81,35 @@
         "message": "Checkout publishes to Orders, but nothing consumes it: it keeps every message, unread.",
         "targets": ["orders", "checkout"],
         "fix": { "label": "Add a consumer…", "needsChoice": "Pick what reads Orders, then add it and connect orders to it." }
+      },
+      {
+        "id": "retry-backoff:pay",
+        "resilienceFinding": { "kind": "retry-backoff", "caller": "Checkout", "callee": "Payments", "attempts": 3, "amplification": 3 },
+        "rule": "retry-backoff",
+        "severity": "warning",
+        "title": "Retries to Payments need jittered backoff.",
+        "message": "Checkout retries in step with every other caller: waves of retries reach Payments together.",
+        "targets": ["pay", "checkout", "payments"],
+        "fix": {
+          "label": "Use jittered backoff (100 ms ×2, up to 2 s, full jitter)",
+          "ops": [
+            {
+              "op": "update",
+              "target": "pay",
+              "props": {
+                "caller": {
+                  "wait": "non-blocking",
+                  "deadlineMs": 300,
+                  "retry": { "maxAttempts": 3, "backoffMs": 100, "strategy": "exponential", "retryOn": ["throttled", "transient", "timeout"], "maxBackoffMs": 2000, "jitter": 1 }
+                }
+              }
+            }
+          ]
+        }
       }
     ],
-    "summary": "1 warning, 0 suggestions."
+    "summary": "4 warnings, 0 suggestions.",
+    "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding. fix.others are other ways to make the same change: if the person prefers one, send its ops instead.",
+    "more": "2 more findings omitted; call check_diagram with rules to see them."
   }
 }

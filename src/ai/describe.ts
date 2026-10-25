@@ -12,6 +12,7 @@ import { compileTopology } from "../sim/topology";
 import { scenarioPlans } from "../sim/scalingPlanner";
 import { planMessage } from "../checks/scalingFindings";
 import { messageTypesAt } from "../model/messageTypes";
+import { describeResilience } from "./resilience";
 
 const quote = (s: string) => JSON.stringify(s);
 const round = (n: number) => Math.round(n * 1000) / 1000;
@@ -52,6 +53,7 @@ export function describeDiagram(diagram: DiagramFile, options: DescribeOptions =
   const types = messageTypesAt(d);
   const connections = resolveCapabilities(d, topology);
   const analysis = d.nodes.length <= 200 && d.edges.length <= 500 ? analyzeCapacity(d) : undefined;
+  const resilience = describeResilience(d, topology, analysis);
   const resolved = (id: string) => (analysis ? explainNode(d, id, { analysis, topology, fixes: false }) : undefined);
   const threads = (id: string) => {
     const w = analysis?.nodes[id]?.waits;
@@ -105,8 +107,13 @@ export function describeDiagram(diagram: DiagramFile, options: DescribeOptions =
         capabilities: connections[n.id] ?? [],
         explanation: resolved(n.id),
         ...(threads(n.id) ? { requestsWait: threads(n.id) } : {}),
+        ...(resilience.processor(n.id) ? { queue: resilience.processor(n.id) } : {}),
       })),
-      edges: take(edges).map((edge) => ({ ...edge, ...typeFields("carriedTypes", types.carried.get(edge.id)) })),
+      edges: take(edges).map((edge) => ({
+        ...edge,
+        ...typeFields("carriedTypes", types.carried.get(edge.id)),
+        ...(resilience.connection(edge) ? { resilience: resilience.connection(edge) } : {}),
+      })),
       messageTypesComplete: types.complete,
       groups: take(groups),
       annotations: take(notes),
@@ -130,10 +137,12 @@ export function describeDiagram(diagram: DiagramFile, options: DescribeOptions =
   if (!types.complete) lines.push("Message type propagation incomplete: work budget reached.");
   lines.push("nodes:");
   const shownNodes = nodes.slice(0, Math.max(0, limit - lines.length - 1));
-  for (const n of shownNodes)
+  for (const n of shownNodes) {
     lines.push(
       `  ${quote(n.id)} ${quote(n.stencil)} (${quote(catalog.find((s) => s.id === n.stencil)?.label ?? "Unknown")}) ${quote(n.label)}${n.sublabel !== undefined ? ` / ${quote(n.sublabel)}` : ""}${n.props ? ` props=${JSON.stringify(n.props)}` : ""}${n.group ? ` in ${quote(n.group)}` : ""}${typeText("arrivingTypes", types.arriving.get(n.id))} capabilities=${JSON.stringify(connections[n.id] ?? [])}${analysis ? ` explanation=${JSON.stringify(resolved(n.id))}` : ""}${threads(n.id) ? ` requestsWait=${JSON.stringify(threads(n.id))}` : ""}`,
     );
+    if (resilience.processor(n.id)) lines[lines.length - 1] += ` queue=${JSON.stringify(resilience.processor(n.id))}`;
+  }
   // Past the limit a line is only counted: omitted connections, routes and simulations are never built.
   let skipped = 0;
   const add = (line: () => string) => {
@@ -145,7 +154,7 @@ export function describeDiagram(diagram: DiagramFile, options: DescribeOptions =
     add(
       () =>
         // A dependency says so: it carries no messages, whatever its kind.
-        `  ${quote(e.id)} ${quote(e.from)} -> ${quote(e.to)} ${isDependency(e) ? `${relationOf(e)} dependency` : (e.kind ?? "async")}${e.label !== undefined ? ` ${quote(e.label)}` : ""}${routing(e.props)}${typeText("carriedTypes", types.carried.get(e.id))}${e.sourceSide || e.targetSide ? ` sides=${e.sourceSide ?? "auto"}->${e.targetSide ?? "auto"}` : ""}${e.waypoints?.length ? ` shaped(${e.waypoints.length} bends)` : ""}`,
+        `  ${quote(e.id)} ${quote(e.from)} -> ${quote(e.to)} ${isDependency(e) ? `${relationOf(e)} dependency` : (e.kind ?? "async")}${e.label !== undefined ? ` ${quote(e.label)}` : ""}${routing(e.props)}${typeText("carriedTypes", types.carried.get(e.id))}${e.sourceSide || e.targetSide ? ` sides=${e.sourceSide ?? "auto"}->${e.targetSide ?? "auto"}` : ""}${e.waypoints?.length ? ` shaped(${e.waypoints.length} bends)` : ""}${resilience.connection(e) ? ` resilience=${JSON.stringify(resilience.connection(e))}` : ""}`,
     );
   // Request routing: the definitions (bounded, the rest counted) and the configured demand per route at each node.
   const routes = d.planning?.requestRoutes;

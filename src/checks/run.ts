@@ -16,6 +16,8 @@ import { schemaRegistry } from "./rules/schemaRegistry";
 import { dropped } from "./rules/dropped";
 import { blockedThreads, scalingBlind, callTimeout, provideRequestFindings } from "./requestFindings";
 import type { CheckContext } from "./context";
+import { resilienceRules } from "./resilienceFindings";
+import { requestFindings } from "./requestFindings";
 
 /**
  * Every rule, in CHECK_RULES order (the order findings list them). `dropped` is raised only by Run simulations
@@ -33,6 +35,7 @@ export const RULES: readonly CheckRule[] = [
   blockedThreads,
   scalingBlind,
   callTimeout,
+  ...resilienceRules(requestFindings),
   singlePoint,
   secretIdentity,
   schemaRegistry,
@@ -72,7 +75,8 @@ export function runChecks(diagram: DiagramFile, opts: RunOptions = {}): CheckRes
   const detected = RULES.filter((r) => ran.includes(r.id)).flatMap((r) => r.detect(ctx));
   // A bounded rule's count of what it couldn't list: reported beside the findings, never as one.
   const omitted = detected.flatMap((f) => (f.omitted ? [{ rule: f.rule, count: f.omitted }] : []));
-  const all = omitted.length ? detected.filter((f) => !f.omitted) : detected;
+  const retryStorm = detected.reduce((n, f) => n + (f.unchecked ?? 0), 0);
+  const all = detected.filter((f) => !f.omitted && !f.unchecked);
   const ignores = new Set((diagram.checks?.ignore ?? []).map((i) => `${i.rule}:${i.target}`));
   all.sort(findingOrder(ctx.rank));
   return {
@@ -81,6 +85,7 @@ export function runChecks(diagram: DiagramFile, opts: RunOptions = {}): CheckRes
     off: CHECK_RULES.filter((id) => off.includes(id)),
     ran,
     ...(omitted.length ? { omitted } : {}),
+    ...(retryStorm ? { notChecked: { retryStorm } } : {}),
   };
 }
 
@@ -91,7 +96,7 @@ export function runChecks(diagram: DiagramFile, opts: RunOptions = {}): CheckRes
 export function onlyRules(result: CheckResult, rules?: readonly CheckRuleId[]): CheckResult {
   if (!rules) return result;
   const wanted = (f: { rule: CheckRuleId }) => rules.includes(f.rule);
-  const { omitted, ...rest } = result;
+  const { omitted, notChecked, ...rest } = result;
   const kept = omitted?.filter(wanted) ?? [];
   return {
     ...rest,
@@ -99,6 +104,7 @@ export function onlyRules(result: CheckResult, rules?: readonly CheckRuleId[]): 
     ignored: result.ignored.filter(wanted),
     ran: result.ran.filter((id) => rules.includes(id)),
     ...(kept.length ? { omitted: kept } : {}),
+    ...(notChecked && rules.includes("retry-storm") ? { notChecked } : {}),
   };
 }
 
@@ -125,6 +131,7 @@ export function askedWithEvidence(full: CheckResult, asked: CheckResult, rules?:
  * the waiting checks when they run). Rules turned off stay off, so the finding comes out as the full check had it.
  */
 export function recheckRules(rule: CheckRuleId): CheckRuleId[] {
+  if (rule === "retry-budget" || rule === "call-breaker") return [rule, "retry-storm"];
   return rule === "capacity" ? ["capacity", ...WAIT_RULES] : [rule];
 }
 
@@ -148,12 +155,15 @@ export function summarize(result: CheckResult): string {
   const warnings = result.findings.filter((f) => f.severity === "warning").length;
   const suggestions = result.findings.length - warnings;
   const extra = [
+    ...(result.notChecked?.retryStorm
+      ? [`${result.notChecked.retryStorm} retried calls not checked for retry storms`]
+      : []),
     ...(result.omitted ?? []).map((o) => `${o.count} more ${o.rule} finding${o.count === 1 ? "" : "s"} not listed`),
     result.ignored.length ? `${result.ignored.length} ignored` : "",
     result.off.length ? `${plural(result.off.length, "check")} off` : "",
   ].filter(Boolean);
   const head =
-    result.findings.length || result.omitted?.length
+    result.findings.length || result.omitted?.length || result.notChecked?.retryStorm
       ? `${plural(warnings, "warning")}, ${plural(suggestions, "suggestion")}`
       : `Nothing to check. ${plural(result.ran.length, "check")} ran`;
   return `${[head, ...extra].join("; ")}.`;

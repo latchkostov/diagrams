@@ -10,6 +10,13 @@
   { "id": "blocked-threads", "name": "Runs out of threads", "about": "At the diagram's rates, waiting on calls dominates thread hold time and exhausts the pool. Uses the live callout's same-seed verified fix.", "onDemand": false },
   { "id": "scaling-blind", "name": "CPU scaling misses waiting threads", "about": "A same-seed scenario rerun confirms a busy-thread scaling policy for a waiting caller.", "onDemand": false },
   { "id": "call-timeout", "name": "Call has no timeout", "about": "A request to an outside API or model API has no deadline. Suggests the timeout the live callout uses, within the caller's thread budget.", "onDemand": false },
+  { "id": "retry-backoff", "name": "Retries need jittered backoff", "about": "Retries without backoff or jitter arrive in waves. Checks active Requests on p3-w2.", "onDemand": false },
+  { "id": "retry-budget", "name": "Retries need a budget", "about": "A retry budget limits added load when a dependency fails. Checks active Requests on p3-w2.", "onDemand": false },
+  { "id": "retry-idempotency", "name": "Retries may repeat a side effect", "about": "A timed-out request may have succeeded. Checks explicit idempotency and the request route method.", "onDemand": false },
+  { "id": "retry-layers", "name": "Retries multiply across layers", "about": "Attempts multiply down a Request chain. Warns above ten attempts at the innermost dependency.", "onDemand": false },
+  { "id": "call-breaker", "name": "Failing dependencies need a circuit breaker", "about": "A breaker fails calls fast while a dependency keeps failing. Checks retried external, model and failure-prone calls.", "onDemand": false },
+  { "id": "queue-limit", "name": "Queues can outlive the caller", "about": "At configured rates an overloaded processor can queue work past its caller's deadline. Suggests a wait and queue limit.", "onDemand": false },
+  { "id": "retry-storm", "name": "A slowdown could become a retry storm", "about": "Probes up to three retried Requests at configured rates: slow the callee fivefold at 5 s, clear at 10 s, replay to 30 s. Offers only the first cumulative fix proven to recover.", "onDemand": false },
   {
     "id": "single-point",
     "name": "Every request goes through one replica",
