@@ -9,6 +9,7 @@ import type { CanvasSurfaceKind } from "./types";
  *   editing  ── menu.opened ──▶ menu | quickAdd     (closing goes back to editing, or to the field it came from)
  *   editing  ── gesture.started ──▶ gesture          (a drag: connect, an edge end, a bend)
  *   editing  ── field.focused (a name field) ──▶ naming(target)   ── naming.done | field.left ──▶ editing
+ *   editing  ── naming.requested ──▶ naming(target)  (the field is still downloading)
  *   editing  ── field.focused (another field) ──▶ field(name)     ── field.left ──▶ editing
  *
  * Live is a region of its own beside these (`live`: off, playing or paused): a menu opens in Live too, and a node is
@@ -19,7 +20,7 @@ import type { CanvasSurfaceKind } from "./types";
 export type EditorModeValue = "editing" | "menu" | "quickAdd" | "gesture" | "naming" | "field";
 export interface EditorModeState {
   value: EditorModeValue;
-  /** naming: the item whose name field has focus (its flow id). */
+  /** naming: the item being named, including while its field is downloading (its flow id). */
   target: string | null;
   /** field: the Inspector field (its test id without "inspector-field-"). */
   field: string | null;
@@ -38,6 +39,8 @@ export type EditorModeEvent =
   | { type: "gesture.ended" }
   /** Focus arrived on a text field: a name field (`target`, its item) or another one (`field`). */
   | { type: "field.focused"; target?: string; field?: string }
+  /** The name field was requested but cannot take focus yet. */
+  | { type: "naming.requested"; target: string }
   /** Focus left the fields for the canvas, a button or nothing. */
   | { type: "field.left" }
   /** Enter or Esc in a name field (the focus policy's row N1 hears it too). */
@@ -70,7 +73,7 @@ const into = (value: "menu" | "quickAdd" | "gesture") => (s: EditorModeState) =>
   resume: s.resume ?? here(s),
 });
 const focused = (s: EditorModeState, e: EditorModeEvent): EditorModeState =>
-  e.type === "field.focused" && e.target
+  (e.type === "field.focused" || e.type === "naming.requested") && e.target
     ? { ...s, value: "naming", target: e.target, field: null }
     : { ...s, value: "field", target: null, field: e.type === "field.focused" ? (e.field ?? null) : null };
 const settled = (s: EditorModeState): EditorModeState => ({ ...s, value: "editing", target: null, field: null });
@@ -109,15 +112,22 @@ export const editorModeMachine = defineMachine<EditorModeState, EditorModeEvent>
     { type: "field.focused", field: "rate" },
     { type: "field.left" },
     { type: "naming.done" },
+    { type: "naming.requested", target: "n1" },
   ],
   on: {
-    editing: { "menu.opened": opens, "gesture.started": gestures, "field.focused": fields },
+    editing: {
+      "menu.opened": opens,
+      "gesture.started": gestures,
+      "field.focused": fields,
+      "naming.requested": { target: "naming", reduce: focused },
+    },
     menu: { "menu.opened": opens, "menu.closed": returns },
     // Quick-add's pick opens the new node's name: its focus can arrive before the menu has gone.
     quickAdd: {
       "menu.opened": opens,
       "menu.closed": returns,
       "field.focused": { target: "naming", guard: named, reduce: (s, e) => ({ ...focused(s, e), resume: null }) },
+      "naming.requested": { target: "naming", reduce: (s, e) => ({ ...focused(s, e), resume: null }) },
     },
     // A menu opened mid-gesture ends it: back to where the gesture began.
     gesture: {
@@ -131,10 +141,17 @@ export const editorModeMachine = defineMachine<EditorModeState, EditorModeEvent>
       "naming.done": finished,
       "field.left": finished,
       "field.focused": fields,
+      "naming.requested": { target: "naming", reduce: focused },
       "menu.opened": opens,
       "gesture.started": gestures,
     },
-    field: { "field.left": finished, "field.focused": fields, "menu.opened": opens, "gesture.started": gestures },
+    field: {
+      "field.left": finished,
+      "field.focused": fields,
+      "naming.requested": { target: "naming", reduce: focused },
+      "menu.opened": opens,
+      "gesture.started": gestures,
+    },
   },
 });
 

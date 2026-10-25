@@ -28,7 +28,20 @@ export function typeAheadKey(s: TypeAhead, e: Key, multiline = false): TypeAhead
 }
 
 /** The captures running, newest last: only the newest takes keys (a menu's search inside the palette's). */
-const captures: { state: TypeAhead }[] = [];
+const captures: { state: TypeAhead; closeModal?: () => void }[] = [];
+
+/** A modal owns Escape as soon as its input capture starts, including while its chunk is pending. */
+export function dismissPendingTypeAheadModal(): boolean {
+  const close = captures.at(-1)?.closeModal;
+  if (!close) return false;
+  close();
+  return true;
+}
+
+/** Starts modal ownership before any dialog DOM exists; stopping the capture releases that ownership. */
+export function captureModalTypeAhead(close: () => void): { stop: () => TypeAhead } {
+  return captureTypeAhead(undefined, undefined, false, "capture", close);
+}
 
 /** True while keys are being held for a field that isn't focused yet (the canvas shortcuts stand aside). */
 export const typeAheadActive = () => captures.length > 0;
@@ -44,8 +57,20 @@ export function captureTypeAhead(
   onDone?: (typed: TypeAhead) => void,
   // A rename yields to other fields; a palette may have been opened from one and still owns its pending input.
   respectEditable = false,
+  // Pending Inspector names route Escape through the interaction controller's modal precedence.
+  escape: "capture" | "controller" = "capture",
+  closeModal?: () => void,
 ): { stop: () => TypeAhead } {
-  const me = { state: { text: null } as TypeAhead };
+  const me = {
+    state: { text: null } as TypeAhead,
+    closeModal: closeModal
+      ? () => {
+          me.state = { ...me.state, done: "escape" };
+          stop();
+          closeModal();
+        }
+      : undefined,
+  };
   captures.push(me);
   const onInput = (event: Event) => {
     if (
@@ -63,24 +88,25 @@ export function captureTypeAhead(
       next = { text: (me.state.text ?? "") + (multiline() ? text : text.replace(/[\r\n]+/g, " ")) };
     } else {
       const key = event as KeyboardEvent;
+      if (key.key === "Escape" && escape === "controller") return;
       next = key.isComposing ? null : typeAheadKey(me.state, key, multiline());
     }
     if (!next) return;
     me.state = next;
     event.preventDefault();
     event.stopImmediatePropagation();
+    if (next.done === "escape" && me.closeModal) me.closeModal();
     if (next.done) onDone?.(next);
   };
   const events = ["keydown", "paste"];
   for (const type of events) window.addEventListener(type, onInput, true);
-  return {
-    stop: () => {
-      const index = captures.indexOf(me);
-      if (index >= 0) {
-        for (const type of events) window.removeEventListener(type, onInput, true);
-        captures.splice(index, 1);
-      }
-      return me.state;
-    },
+  const stop = () => {
+    const index = captures.indexOf(me);
+    if (index >= 0) {
+      for (const type of events) window.removeEventListener(type, onInput, true);
+      captures.splice(index, 1);
+    }
+    return me.state;
   };
+  return { stop };
 }

@@ -61,6 +61,8 @@ export interface InteractionPort {
    * take them yet; `done` hears the Enter or Esc that ended the typing. Absent: nothing is held.
    */
   holdKeys?(done: (typed: TypeAhead) => void): { stop(): TypeAhead };
+  /** Dismiss the newest pending modal input owner before its dialog has mounted. */
+  dismissPendingModal?(): boolean;
   /** Writes text typed ahead into the text field that has just taken focus, as typing there would; caret after it. */
   type?(el: ElementHandle, text: string): void;
   /** Focus on `el` has left the canvas's keyboard: it's outside the canvas, or a text field. */
@@ -278,21 +280,25 @@ export function createInteractionController<P = unknown>(
     dropRename("superseded");
     const next: NonNullable<typeof rename> = { move, keys: null, typed: { text: null } };
     rename = next;
-    next.keys = port.holdKeys((typed) => {
-      if (rename !== next) return;
-      next.keys?.stop();
-      next.keys = null;
-      next.typed = typed;
-      if (typed.text !== null) {
-        if ((import.meta.env.DEV || import.meta.env.VITE_E2E === "1") && options.journal)
-          journal({ event: `rename.typed:${typed.done}`, command: "keep" });
-        return;
-      }
-      // Esc or Enter before anything was typed: the rename is over before its field came.
-      decide({ type: "inspector.abandoned" });
-    });
+    toMode({ type: "naming.requested", target: move.target.owner });
+    next.keys = port.holdKeys((typed) => finishRename(next, typed));
     if ((import.meta.env.DEV || import.meta.env.VITE_E2E === "1") && options.journal)
       journal({ event: "rename.hold", command: describe(move) });
+  }
+
+  function finishRename(next: NonNullable<typeof rename>, typed: TypeAhead) {
+    if (rename !== next) return;
+    next.keys?.stop();
+    next.keys = null;
+    next.typed = typed;
+    toMode({ type: "naming.done" });
+    if (typed.text !== null) {
+      if ((import.meta.env.DEV || import.meta.env.VITE_E2E === "1") && options.journal)
+        journal({ event: `rename.typed:${typed.done}`, command: "keep" });
+      return;
+    }
+    // Esc or Enter before anything was typed: the rename is over before its field came.
+    decide({ type: "inspector.abandoned" });
   }
 
   /** Ends the pending rename, returning what it held. */
@@ -306,6 +312,7 @@ export function createInteractionController<P = unknown>(
   function dropRename(why: "superseded" | "press" | "focus" | "unmount") {
     if (!rename) return;
     endRename();
+    toMode({ type: "naming.done" });
     if ((import.meta.env.DEV || import.meta.env.VITE_E2E === "1") && options.journal)
       journal({ event: `rename.dropped:${why}`, command: "keep" });
   }
@@ -412,8 +419,10 @@ export function createInteractionController<P = unknown>(
         settle("focused");
         decide({ type: "focus.ran" });
         // Enter or Esc typed ahead: the name is done, as either does in the field (row N1).
-        if (typed?.done && move.target.kind === "field" && move.target.owner)
+        if (typed?.done && move.target.kind === "field" && move.target.owner) {
+          toMode({ type: "naming.done" });
           decide({ type: "naming.done", flowId: move.target.owner });
+        }
         return;
       }
     }
@@ -584,7 +593,20 @@ export function createInteractionController<P = unknown>(
         if (index >= 0) escapes.splice(index, 1);
       };
     },
-    escape() {
+    /** Modal DOM owners handle their own key; naming precedes transient cards, even before its field mounts. */
+    escape(overlay?: "dialog" | "menu") {
+      if (overlay || menuState.open) return false;
+      if (port.dismissPendingModal?.()) return true;
+      if (gestureState.active) {
+        endGesture(gestureState.active.seq, "escape");
+        return true;
+      }
+      if (mode.value === "naming") {
+        if (!rename?.keys) return false; // A mounted name field handles its own Escape.
+        const typed = rename.keys.stop();
+        finishRename(rename, { ...typed, done: "escape" });
+        return true;
+      }
       return [...escapes].reverse().some((close) => close());
     },
     /** Live attaches its readout layer while it shows hover cards; returns the detach. */
@@ -746,12 +768,14 @@ export function createInteractionController<P = unknown>(
     focusArrived(el: ElementHandle) {
       if (rename && !running && port.elsewhere?.(el)) abandonRename("focus");
       const field = port.field?.(el);
+      if (rename?.keys && !field) return;
       toMode(field ? { type: "field.focused", ...field } : { type: "field.left" });
     },
     /** An annotation's editor opens (or closes: null), told before its document edit so no reader sees one alone. */
     annotating: (id: string | null) => toMode({ type: "annotating", id }),
     /** Focus left for nothing (focusout with no next element): no field is being edited. */
     focusLeft() {
+      if (rename?.keys) return;
       toMode({ type: "field.left" });
     },
     /** Live's session: off, playing or paused (useLiveSessionState.ts tells it). */

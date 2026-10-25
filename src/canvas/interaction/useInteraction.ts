@@ -118,14 +118,15 @@ export function useInteractionLifecycle<P>(controller: InteractionController<P> 
     const press = () => controller.input("press");
     const key = (event: KeyboardEvent) => {
       controller.input("key");
-      const gesture = controller.gesture;
       if (event.key !== "Escape" || event.defaultPrevented || event.isComposing) return;
-      if (document.querySelector('[role="dialog"], [role="menu"]')) return;
-      // Transient cards precede canvas shortcuts, including in read-only viewers.
-      if (!gesture && !controller.escape()) return;
+      const overlay = document.querySelector('[role="dialog"]')
+        ? "dialog"
+        : document.querySelector('[role="menu"]')
+          ? "menu"
+          : undefined;
+      if (!controller.escape(overlay)) return;
       event.preventDefault();
       event.stopImmediatePropagation();
-      if (gesture) controller.endGesture(gesture.seq, "escape");
     };
     const blur = () => {
       if (controller.gesture) controller.endGesture(controller.gesture.seq, "blur");

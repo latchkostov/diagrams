@@ -1,4 +1,5 @@
 import AxeBuilder from "@axe-core/playwright";
+import blockingCall from "../../src/examples/blocking-call.json" with { type: "json" };
 import { breakerFixture, resilienceFixture } from "../../src/lab/resilienceFixture";
 import {
   test,
@@ -11,7 +12,11 @@ import {
   STORAGE_KEYS,
   expectNoErrors,
   savedDiagram,
+  interactionJournal,
 } from "./fixtures";
+
+const inspectorChunk = (panel: string) =>
+  new RegExp(`/\\b(?:assets/${panel}-[\\w-]+\\.js|src/canvas/inspector/${panel}\\.tsx)(?:\\?.*)?$`);
 
 for (const panel of ["EdgePanel", "lazyEdgePanel", "NodeIdentity"] as const) {
   for (const finish of ["typing", "Enter", "Escape"] as const) {
@@ -21,19 +26,17 @@ for (const panel of ["EdgePanel", "lazyEdgePanel", "NodeIdentity"] as const) {
       const held = new Promise<void>((resolve) => {
         release = resolve;
       });
-      await page.route(
-        new RegExp(`/\\b(?:assets/${panel}-[\\w-]+\\.js|src/canvas/inspector/${panel}\\.tsx)(?:\\?.*)?$`),
-        async (route) => {
-          requested = true;
-          await held;
-          await route.continue();
-        },
-      );
+      await page.route(inspectorChunk(panel), async (route) => {
+        requested = true;
+        await held;
+        await route.continue();
+      });
       await page.goto("./?view=canvas&example=blocking-call");
       await expect(page.getByTestId("canvas-view")).toBeVisible();
       await waitForStableViewport(page);
       await page.getByTestId(panel === "NodeIdentity" ? "node-caller" : "edge-call").dblclick({ force: true });
       await expect.poll(() => requested).toBe(true);
+      await expect.poll(async () => (await interactionJournal(page)).some((e) => e.event === "rename.hold")).toBe(true);
       await page.keyboard.type("test label");
       if (finish !== "typing") await page.keyboard.press(finish);
       release();
@@ -50,6 +53,99 @@ for (const panel of ["EdgePanel", "lazyEdgePanel", "NodeIdentity"] as const) {
     });
   }
 }
+
+for (const panel of ["EdgePanel", "lazyEdgePanel"] as const) {
+  for (const typed of [false, true]) {
+    test(`held connection ${panel} Escape reaches pending naming before the message tooltip (typed: ${typed})`, async ({
+      page,
+    }) => {
+      let requested = false;
+      let release = () => {};
+      const held = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      await page.route(inspectorChunk(panel), async (route) => {
+        requested = true;
+        await held;
+        await route.continue();
+      });
+      await page.goto("./?view=canvas&example=blocking-call");
+      await expect(page.getByTestId("canvas-view")).toBeVisible();
+      await waitForStableViewport(page);
+      const original = blockingCall.edges.find((edge) => edge.id === "call")?.label ?? "";
+      await page.mouse.move(0, 0);
+      await page.getByTestId("edge-call").evaluate((edge) => edge.parentElement?.focus());
+      const tooltip = page.getByTestId("edge-messages-call");
+      await expect(tooltip).toBeVisible();
+      await page.keyboard.press("Enter");
+      await page.keyboard.press("F2");
+      await expect.poll(() => requested).toBe(true);
+      await expect.poll(async () => (await interactionJournal(page)).some((e) => e.event === "rename.hold")).toBe(true);
+      if (typed) await page.keyboard.type("test label");
+      await expect(tooltip).toBeVisible();
+      await page.keyboard.press("Escape");
+      const finished = typed ? "rename.typed:escape" : "inspector.abandoned";
+      await expect.poll(async () => (await interactionJournal(page)).some((e) => e.event === finished)).toBe(true);
+      await expect(tooltip).toBeVisible();
+      release();
+      const label = page.getByTestId("inspector-field-label");
+      await expect(label).toHaveValue(typed ? "test label" : original);
+      await expect(page.getByTestId("inspector-edge-loading")).toHaveCount(0);
+      await expect(label).not.toBeFocused();
+      await expect(page.getByTestId("live-play")).toHaveCount(0);
+      await expect(page.getByTestId(/^annotation-text-/)).toHaveCount(0);
+    });
+  }
+}
+
+test("Escape dismisses the pending palette before pending Inspector naming", async ({ page }) => {
+  const requested = new Set<string>();
+  const arrived = new Set<string>();
+  let release = () => {};
+  const held = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const chunks = {
+    inspector: inspectorChunk("lazyEdgePanel"),
+    palette: /\/(?:assets\/PaletteDialog-[\w-]+\.js|src\/palette\/PaletteDialog\.tsx)(?:\?.*)?$/,
+  };
+  for (const [name, pattern] of Object.entries(chunks)) {
+    page.on("requestfinished", (request) => {
+      if (pattern.test(request.url())) arrived.add(name);
+    });
+    await page.route(pattern, async (route) => {
+      requested.add(name);
+      await held;
+      await route.continue();
+    });
+  }
+  try {
+    await page.goto("./?view=canvas&example=blocking-call");
+    await expect(page.getByTestId("canvas-view")).toBeVisible();
+    await waitForStableViewport(page);
+    await page.mouse.move(0, 0);
+    await page.getByTestId("edge-call").evaluate((edge) => edge.parentElement?.focus());
+    await page.keyboard.press("Enter");
+    await page.keyboard.press("F2");
+    await expect.poll(() => requested.has("inspector")).toBe(true);
+    await expect.poll(async () => (await interactionJournal(page)).some((e) => e.event === "rename.hold")).toBe(true);
+    await page.keyboard.press("ControlOrMeta+k");
+    await expect.poll(() => requested.has("palette")).toBe(true);
+    await page.keyboard.press("Escape");
+    // Escape belongs to the pending modal: F2's naming request survives and takes focus on arrival.
+    expect((await interactionJournal(page)).some((e) => e.event === "inspector.abandoned")).toBe(false);
+    release();
+    await expect.poll(() => arrived.size).toBe(2);
+    const label = page.getByTestId("inspector-field-label");
+    await expect(label).toBeFocused();
+    await expect(page.getByTestId("command-palette")).toHaveCount(0);
+    await page.keyboard.type("still naming");
+    await expect(label).toHaveValue("still naming");
+    await expect(page.getByTestId("command-palette")).toHaveCount(0);
+  } finally {
+    release();
+  }
+});
 
 test("connection Properties Retry retains keyboard focus without a rename request", async ({ page }) => {
   let fail = true;

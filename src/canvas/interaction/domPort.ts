@@ -1,6 +1,6 @@
 import type { InteractionPort, InteractionScheduler, Resolution } from "./controller";
 import type { ElementHandle, FocusTarget, InteractionPhase } from "./types";
-import { captureTypeAhead } from "../typeAhead";
+import { captureTypeAhead, dismissPendingTypeAheadModal } from "../typeAhead";
 
 /** Marks the Live bar's control that opens its side panels, so a panel's Esc has somewhere to give focus back. */
 export const PANEL_OPENER_ATTR = "data-live-panel-opener";
@@ -146,7 +146,8 @@ export function createDomPort(canvas: DomCanvas): InteractionPort {
       return document.activeElement === el;
     },
     connected: (handle) => (handle as Node).isConnected,
-    holdKeys: (done) => captureTypeAhead(() => false, done, true),
+    holdKeys: (done) => captureTypeAhead(() => false, done, true, "controller"),
+    dismissPendingModal: dismissPendingTypeAheadModal,
     elsewhere(handle) {
       const el = handle as Element;
       return !canvas.root()?.contains(el) || el.matches(EDITABLE);
