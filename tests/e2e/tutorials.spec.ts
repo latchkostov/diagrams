@@ -429,6 +429,10 @@ for (const { id, quarantined } of tutorialEntries)
     await page.getByTestId("tutorial-start").click();
     await expect(strip(page)).toHaveAttribute("data-phase", "step");
     const seen = await finishSolution(page);
+    if (id === "rate-limit") expect(seen).toEqual(["quota-10", "run", "rejected"]);
+    if (id === "backlog-lag") expect(seen).toEqual(["live", "backlog-50", "add-consumer", "consumer-progress"]);
+    if (id === "shared-api-quotas")
+      expect(seen).toEqual(["launch-burst", "shared-refusals", "local-refusals", "within-budget", "served"]);
     if (id === "capacity") expect(seen).toContain("overlay");
     if (id === "trace-slowmo") expect(seen).toContain("finished");
     if (id === "saved-simulations") expect(seen).toEqual(["live", "waiting", "continue", "expectation"]);

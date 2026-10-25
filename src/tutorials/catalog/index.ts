@@ -34,6 +34,7 @@ import { rateLimit } from "./rateLimit";
 import { studyCheckout } from "./studyCheckout";
 import { studyDispatch } from "./studyDispatch";
 import { studyPayments } from "./studyPayments";
+import { sharedApiQuotas } from "./sharedApiQuotas";
 
 import { quickAdd } from "./quickAdd";
 import { dotsAndSides } from "./dotsAndSides";
@@ -88,6 +89,7 @@ export const allTutorials: readonly Tutorial[] = [
   backoffBudget,
   circuitBreaker,
   rateLimit,
+  sharedApiQuotas,
   loadShedding,
   deadLetters,
   healthChecks,

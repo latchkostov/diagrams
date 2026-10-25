@@ -42,6 +42,8 @@ import { retryStorm } from "./catalog/retryStorm";
 import { backoffBudget } from "./catalog/backoffBudget";
 import { circuitBreaker } from "./catalog/circuitBreaker";
 import { rateLimit } from "./catalog/rateLimit";
+import { sharedApiQuotas } from "./catalog/sharedApiQuotas";
+import { backlogLag } from "./catalog/backlogLag";
 import { dependencies2 } from "./catalog/dependencies2";
 import { studyCheckout } from "./catalog/studyCheckout";
 import { studyPayments } from "./catalog/studyPayments";
@@ -1560,9 +1562,29 @@ describe("completion regressions", () => {
     expect(state(s).latched.slice(2)).toEqual([true, true, true]);
   });
 
-  it("rate-limit's quarantined inline portion refuses excess requests before the API", async () => {
+  it("shared-api-quotas: reaching the comparison actually selects the smaller batch", async () => {
+    const s = sandbox(sharedApiQuotas);
+    await reach(s, sharedApiQuotas, 4);
+    expect(sharedApiQuotas.steps[state(s).index].id).toBe("served");
+    expect(s.live!.getState().running!.id).toBe("within-budget");
+  });
+
+  it("backlog-lag: the connected consumer keeps up in the rebuilt run", async () => {
+    const s = sandbox(backlogLag);
+    await reach(s, backlogLag, 3);
+    expect(backlogLag.steps[state(s).index].id).toBe("consumer-progress");
+    expect(s.live!.getState().snapshot.nodes[s.subject("worker")].processed).toBe(0);
+    s.hover({ kind: "node", id: s.subject("worker") });
+    expect(state(s).value).toBe("active");
+    play(s, 10000);
+    expect(state(s).value).toBe("finished");
+    expect(s.live!.getState().snapshot.nodes[s.subject("worker")].processed).toBeGreaterThanOrEqual(50);
+    expect(s.live!.getState().snapshot.nodes[s.subject("queue")].backlog).toBeLessThanOrEqual(10);
+  });
+
+  it("rate-limit's edited inline quota refuses excess requests before the API", async () => {
     const s = sandbox(rateLimit);
-    await reach(s, rateLimit, 1);
+    await reach(s, rateLimit, 2);
     play(s, 10000);
     expect(s.live!.getState().snapshot.nodes[s.subject("limiter")].rejected).toBeGreaterThanOrEqual(10);
     expect(s.live!.getState().snapshot.nodes[s.subject("api")].processed).toBeGreaterThan(0);
