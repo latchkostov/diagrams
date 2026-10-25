@@ -11,6 +11,38 @@ const orthogonal = (p: Point[]) => {
   for (let i = 1; i < p.length; i++) expect(p[i].x === p[i - 1].x || p[i].y === p[i - 1].y).toBe(true);
 };
 describe("hand-shaped routes", () => {
+  it("interprets endpoint-relative and absolute bends identically after reversal", () => {
+    for (const sourceSide of sides)
+      for (const targetSide of sides) {
+        for (const w of [
+          [
+            { x: 350, y: 20 },
+            { x: 350, y: 350 },
+          ],
+          [
+            { x: 350, y: 20 },
+            { x: 450, y: 200 },
+            { x: 500, y: 350 },
+          ],
+          [
+            { x: 350, y: 20 },
+            { x: 350, y: 350 },
+            { x: 350, y: 20 },
+          ],
+          [
+            { x: 350, y: 20 },
+            { x: 450, y: 200 },
+            { x: 350, y: 20 },
+          ],
+        ]) {
+          const sp = routedPort(s, sourceSide),
+            tp = routedPort(t, targetSide);
+          const forward = shapedRoute(sp, sourceSide, tp, targetSide, w, s, t);
+          const backward = shapedRoute(tp, targetSide, sp, sourceSide, w.slice().reverse(), t, s);
+          expect(backward).toEqual(forward.slice().reverse());
+        }
+      }
+  });
   it("orthogonalizes alternating diagonals and drops duplicate input without mutating it", () => {
     const w = [
       { x: 0, y: 0 },

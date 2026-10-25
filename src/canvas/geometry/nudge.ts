@@ -3,10 +3,10 @@
 // pinned to their ports; interior segments slide perpendicular to themselves, stretching their
 // neighbours. Order within a track is chosen so that segments turn off without crossing each other.
 
-import { inflate, segmentHitsRect, type Point, type Rect } from "./rect";
+import { inflate, segmentHitsRect, union, type Point, type Rect } from "./rect";
 import { RectIndex, SpatialGrid } from "./spatial";
 
-interface Seg {
+export interface Seg {
   edge: string;
   k: number;
   vertical: boolean;
@@ -26,6 +26,10 @@ export interface NudgeOptions {
   separation?: number;
   /** Every segment of these hand-shaped edges stays put. */
   fixed?: ReadonlySet<string>;
+  /** Lazy saved-route geometry can reject newly occupied fixed tracks. */
+  canMove?: (before: Point[], segment: number, after: Point[]) => boolean;
+  /** Saved geometry supplies a track index that also handles very long segments. */
+  clusters?: (segments: Seg[], tolerance: number) => Seg[][];
   /** Segments closer than this count as sharing a track. */
   tolerance?: number;
 }
@@ -33,27 +37,27 @@ export interface NudgeOptions {
 function segmentsOf(edge: string, pts: Point[], vertical: boolean, fixed = false): Seg[] {
   const out: Seg[] = [];
   const n = pts.length - 1;
-  const along = (p: Point) => (vertical ? p.y : p.x);
-  const perp = (p: Point) => (vertical ? p.x : p.y);
+  const along = vertical ? "y" : "x";
+  const perp = vertical ? "x" : "y";
   const turn = (endIdx: number, nbrIdx: number) => {
     if (nbrIdx < 0 || nbrIdx > n) return 0;
-    const d = perp(pts[nbrIdx]) - perp(pts[endIdx]);
+    const d = pts[nbrIdx][perp] - pts[endIdx][perp];
     return Math.abs(d) < 0.5 ? 0 : Math.sign(d);
   };
   for (let k = 0; k < n; k++) {
     const a = pts[k],
       b = pts[k + 1];
-    if (!(Math.abs(perp(a) - perp(b)) < 0.5 && Math.abs(along(a) - along(b)) >= 0.5)) continue;
-    const loIsA = along(a) <= along(b);
+    if (!(Math.abs(a[perp] - b[perp]) < 0.5 && Math.abs(a[along] - b[along]) >= 0.5)) continue;
+    const loIsA = a[along] <= b[along];
     const turnA = turn(k, k - 1);
     const turnB = turn(k + 1, k + 2);
     out.push({
       edge,
       k,
       vertical,
-      c: perp(a),
-      lo: Math.min(along(a), along(b)),
-      hi: Math.max(along(a), along(b)),
+      c: a[perp],
+      lo: Math.min(a[along], b[along]),
+      hi: Math.max(a[along], b[along]),
       pinned: fixed || k === 0 || k === n - 1,
       fixed,
       loTurn: loIsA ? turnA : turnB,
@@ -63,21 +67,17 @@ function segmentsOf(edge: string, pts: Point[], vertical: boolean, fixed = false
   return out;
 }
 
+const turnVote = (a: number, b: number, aTurn: number, bTurn: number) =>
+  a > b + 1 ? aTurn : b > a + 1 ? -bTurn : (aTurn - bTurn) / 2;
+
 /** Positive when `a` should sit on the larger-coordinate side of `b`. */
 function compare(a: Seg, b: Seg): number {
-  let vote = 0;
-  if (a.lo > b.lo + 1) vote += a.loTurn;
-  else if (b.lo > a.lo + 1) vote -= b.loTurn;
-  else vote += (a.loTurn - b.loTurn) / 2;
-  if (a.hi < b.hi - 1) vote += a.hiTurn;
-  else if (b.hi < a.hi - 1) vote -= b.hiTurn;
-  else vote += (a.hiTurn - b.hiTurn) / 2;
-  return vote;
+  return turnVote(a.lo, b.lo, a.loTurn, b.loTurn) + turnVote(-a.hi, -b.hi, a.hiTurn, b.hiTurn);
 }
 
 function order(list: Seg[]): Seg[] {
   // Insertion sort: the comparator isn't guaranteed transitive, and bundles are small.
-  const out = [...list].sort((a, b) => a.c - b.c || (a.edge < b.edge ? -1 : a.edge > b.edge ? 1 : a.k - b.k));
+  const out = list.sort((a, b) => a.c - b.c || (a.edge < b.edge ? -1 : a.edge > b.edge ? 1 : a.k - b.k));
   for (let i = 1; i < out.length; i++) {
     let j = i;
     while (j > 0 && !(out[j - 1].fixed && out[j].fixed) && compare(out[j - 1], out[j]) > 0) {
@@ -88,14 +88,18 @@ function order(list: Seg[]): Seg[] {
   return out;
 }
 
-function segmentBox(s: Seg): Rect {
+function segmentBox(s: Pick<Seg, "vertical" | "c" | "lo" | "hi">, reach = 0, pad = 0): Rect {
+  const perp = s.c - reach,
+    along = s.lo - pad,
+    thickness = 2 * reach,
+    span = s.hi - s.lo + 2 * pad;
   return s.vertical
-    ? { x: s.c, y: s.lo, width: 0, height: s.hi - s.lo }
-    : { x: s.lo, y: s.c, width: s.hi - s.lo, height: 0 };
+    ? { x: perp, y: along, width: thickness, height: span }
+    : { x: along, y: perp, width: span, height: thickness };
 }
 
 function clusters(segs: Seg[], tol: number): Seg[][] {
-  const sorted = [...segs].sort((a, b) => a.c - b.c);
+  const sorted = segs.sort((a, b) => a.c - b.c);
   const parent = sorted.map((_, i) => i);
   const find = (i: number): number => {
     while (parent[i] !== i) {
@@ -122,7 +126,7 @@ function clusters(segs: Seg[], tol: number): Seg[][] {
     const r = find(i);
     (groups.get(r) ?? groups.set(r, []).get(r)!).push(s);
   });
-  return [...groups.values()].filter((g) => g.length > 1 && new Set(g.map((s) => s.edge)).size > 1);
+  return [...groups.values()].filter((g) => g.some((s) => s.edge !== g[0].edge));
 }
 
 /**
@@ -130,61 +134,39 @@ function clusters(segs: Seg[], tol: number): Seg[][] {
  * (a drag frame nudges every route again). `near` returns a superset of the rects that box touches, never fewer: what
  * the index can't hold (non-finite or negative sizes) is always returned, so callers keep their exact tests.
  */
-class Obstacles {
-  private index: RectIndex;
-  constructor(readonly all: readonly Rect[]) {
-    this.index = new RectIndex(all);
-  }
-  near(box: Rect): Rect[] {
-    return this.index.near(box).map((i) => this.all[i]);
-  }
-}
+type Obstacles = RectIndex & Pick<NudgeOptions, "canMove">;
 
 /** Slack added to every query box: far beyond float error, so an exact test's hit is always among the candidates. */
 const QUERY_SLACK = 4;
 
-function aroundPoints(pts: readonly Point[], pad: number): Rect {
-  let x1 = Infinity,
-    y1 = Infinity,
-    x2 = -Infinity,
-    y2 = -Infinity;
-  for (const p of pts) {
-    x1 = Math.min(x1, p.x);
-    y1 = Math.min(y1, p.y);
-    x2 = Math.max(x2, p.x);
-    y2 = Math.max(y2, p.y);
-  }
-  return { x: x1 - pad, y: y1 - pad, width: x2 - x1 + 2 * pad, height: y2 - y1 + 2 * pad };
-}
-
-/** Moves segment k of `pts` to perpendicular coordinate `to`, clamped so neighbours keep their direction. */
+/** Moves a free interior segment k; both callers exclude pinned first/last segments. */
 function moveSegment(pts: Point[], k: number, vertical: boolean, to: number, obstacles: Obstacles): void {
   const key = vertical ? "x" : "y";
   const from = pts[k][key];
   let target = to;
-  const n = pts.length - 1;
   // Neighbour k-1 runs pts[k-1] -> pts[k]; neighbour k+1 runs pts[k+1] -> pts[k+2].
   const limit = (fixed: Point, isStub: boolean) => {
     const min = isStub ? 12 : 3;
     const dir = Math.sign(from - fixed[key]);
-    if (dir === 0) return;
+    if (!dir) return;
     // Keep (target - fixed) * dir >= min.
     const bound = fixed[key] + dir * min;
-    if (dir > 0 && target < bound) target = bound;
-    if (dir < 0 && target > bound) target = bound;
+    target = dir > 0 ? Math.max(target, bound) : Math.min(target, bound);
   };
-  if (k - 1 >= 0) limit(pts[k - 1], k - 1 === 0);
-  if (k + 2 <= n) limit(pts[k + 2], k + 1 === n - 1);
+  limit(pts[k - 1], k === 1);
+  limit(pts[k + 2], k + 3 === pts.length);
   if (Math.abs(target - from) < 0.25) return;
   const a = { ...pts[k], [key]: target };
   const b = { ...pts[k + 1], [key]: target };
   // Don't push a line into a node. The stubs start on their node's border, so test the interior.
-  const moved = [...(k > 0 ? [pts[k - 1]] : []), a, b, ...(k + 2 <= n ? [pts[k + 2]] : [])];
-  for (const r of obstacles.near(aroundPoints(moved, 2 + QUERY_SLACK))) {
+  const moved = [pts[k - 1], a, b, pts[k + 2]];
+  if (obstacles.canMove?.(pts, k, moved) === false) return;
+  for (const i of obstacles.near(inflate(union(moved.map((p) => ({ ...p, width: 0, height: 0 })))!, 2 + QUERY_SLACK))) {
+    const r = obstacles.rects[i];
     if (
       segmentHitsRect(a, b, inflate(r, 2)) ||
-      (k > 0 && segmentHitsRect(pts[k - 1], a, r, 1)) ||
-      (k + 2 <= n && segmentHitsRect(b, pts[k + 2], r, 1))
+      segmentHitsRect(pts[k - 1], a, r, 1) ||
+      segmentHitsRect(b, pts[k + 2], r, 1)
     )
       return;
   }
@@ -203,38 +185,36 @@ export function nudgeRoutes(
 ): Map<string, Point[]> {
   const sep = opts.separation ?? 11;
   const tol = opts.tolerance ?? sep * 0.75;
-  const obstacles = new Obstacles(obstacleRects);
-  const out = new Map<string, Point[]>();
-  let movable = false;
-  for (const [id, pts] of routes) {
-    out.set(
-      id,
-      pts.map((p) => ({ ...p })),
-    );
-    movable ||= !opts.fixed?.has(id);
-  }
-  if (!movable) return out;
+  const out = new Map([...routes].map(([id, pts]) => [id, pts.map((p) => ({ ...p }))]));
+  if ([...routes.keys()].every((id) => opts.fixed?.has(id))) return out;
+  const obstacles: Obstacles = new RectIndex(obstacleRects);
+  obstacles.canMove = opts.canMove;
 
   const spread = () => {
     for (const vertical of [true, false]) {
       const segs: Seg[] = [];
       for (const [id, pts] of out) segs.push(...segmentsOf(id, pts, vertical, opts.fixed?.has(id)));
-      for (const group of clusters(segs, tol)) {
+      for (const group of (opts.clusters ?? clusters)(segs, tol)) {
         const ordered = order(group);
         const n = ordered.length;
-        const mean = ordered.reduce((s, g) => s + g.c, 0) / n;
+        let sum = 0,
+          lo = Infinity,
+          hi = -Infinity;
+        for (const g of ordered) {
+          sum += g.c;
+          lo = Math.min(lo, g.lo);
+          hi = Math.max(hi, g.hi);
+        }
+        const mean = sum / n;
         // Room on each side of the track over the bundle's span, so the spread never reaches a node.
-        const lo = ordered.reduce((lo, g) => Math.min(lo, g.lo), Infinity);
-        const hi = ordered.reduce((hi, g) => Math.max(hi, g.hi), -Infinity);
         let below = Infinity,
           above = Infinity;
         // Only the room within `reach` of the track can narrow the step below `sep` (room = reach - 6 gives exactly
         // sep), so the obstacles beyond it are left unread: whatever they are, the step is the same.
         const reach = (sep * (n - 1)) / 2 + 6 + QUERY_SLACK;
-        const window: Rect = vertical
-          ? { x: mean - reach, y: lo - QUERY_SLACK, width: 2 * reach, height: hi - lo + 2 * QUERY_SLACK }
-          : { x: lo - QUERY_SLACK, y: mean - reach, width: hi - lo + 2 * QUERY_SLACK, height: 2 * reach };
-        for (const r of obstacles.near(window)) {
+        const window = segmentBox({ vertical, c: mean, lo, hi }, reach, QUERY_SLACK);
+        for (const i of obstacles.near(window)) {
+          const r = obstacles.rects[i];
           const rLo = vertical ? r.y : r.x;
           const rHi = vertical ? r.y + r.height : r.x + r.width;
           if (rHi <= lo + 1 || rLo >= hi - 1) continue;
@@ -245,12 +225,12 @@ export function nudgeRoutes(
         }
         const room = Math.min(below, above) - 6;
         const step = n > 1 ? Math.max(4, Math.min(sep, (2 * room) / (n - 1))) : sep;
-        const slots = ordered.map((_, i) => mean + (i - (n - 1) / 2) * step);
+        const slot = (i: number) => mean + (i - (n - 1) / 2) * step;
         const pinnedIdx = ordered.findIndex((g) => g.pinned);
-        const shift = pinnedIdx >= 0 ? ordered[pinnedIdx].c - slots[pinnedIdx] : 0;
+        const shift = pinnedIdx >= 0 ? ordered[pinnedIdx].c - slot(pinnedIdx) : 0;
         ordered.forEach((g, i) => {
           if (g.pinned) return;
-          moveSegment(out.get(g.edge)!, g.k, vertical, slots[i] + shift, obstacles);
+          moveSegment(out.get(g.edge)!, g.k, vertical, slot(i) + shift, obstacles);
         });
       }
     }
@@ -281,11 +261,10 @@ function resolvePinnedOverlaps(
     segs.forEach((s, i) => index.insert(segmentBox(s), i));
     for (let i = 0; i < segs.length; i++)
       // Keep the original pair order: bend swaps depend on earlier successful swaps.
-      for (const j of index
+      for (const { item: j } of index
         .query(inflate(segmentBox(segs[i]), tol))
-        .map((e) => e.item)
-        .filter((j) => j > i)
-        .sort((a, b) => a - b)) {
+        .filter(({ item }) => item > i)
+        .sort((a, b) => a.item - b.item)) {
         const a = segs[i],
           b = segs[j];
         if (a.edge === b.edge || Math.abs(a.c - b.c) >= tol || Math.min(a.hi, b.hi) - Math.max(a.lo, b.lo) <= 2)
@@ -294,15 +273,13 @@ function resolvePinnedOverlaps(
           pb = out.get(b.edge)!;
         const na = a.k === 0 ? 1 : a.k - 1;
         const nb = b.k === 0 ? 1 : b.k - 1;
-        const lastA = pa.length - 2,
-          lastB = pb.length - 2;
         // The neighbours must be free interior segments.
-        if (na <= 0 || na >= lastA || nb <= 0 || nb >= lastB) continue;
+        if (na <= 0 || na >= pa.length - 2 || nb <= 0 || nb >= pb.length - 2) continue;
         const key = vertical ? "y" : "x";
         const ca = pa[na][key],
           cb = pb[nb][key];
-        const beforeA = pa.map((p) => ({ ...p })),
-          beforeB = pb.map((p) => ({ ...p }));
+        const beforeA = pa.slice(),
+          beforeB = pb.slice();
         moveSegment(pa, na, !vertical, cb, obstacles);
         moveSegment(pb, nb, !vertical, ca, obstacles);
         const sa = segmentsOf(a.edge, pa, vertical).find((s) => s.k === a.k);

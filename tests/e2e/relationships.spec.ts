@@ -9,7 +9,10 @@ import {
   gotoLive,
   interactionJournalMark,
   interactionLog,
+  savedDiagram,
+  STORAGE_KEYS,
 } from "./fixtures";
+import { routingFixture } from "../../src/lab/routingFixture";
 import AxeBuilder from "@axe-core/playwright";
 import type { Locator, Page } from "@playwright/test";
 import { RELATION_GLYPHS } from "../../src/components/relationGlyphs";
@@ -22,6 +25,33 @@ import { RELATION_GLYPHS } from "../../src/components/relationGlyphs";
 const SLUG = "aks-app-config-key-vault";
 const WCAG = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"];
 const menuItem = (page: Page, id: string) => page.getByTestId(`context-menu-item-${id}`);
+
+test("configured vendor route tables survive inspector stencil changes and Undo", async ({ page }) => {
+  const diagram = routingFixture();
+  const original = diagram.nodes.find((n) => n.id === "kong");
+  if (!original) throw new Error("The routing fixture must contain Kong");
+  await page.addInitScript(({ key, diagram }) => localStorage.setItem(key, JSON.stringify(diagram)), {
+    key: STORAGE_KEYS.autosavePrefix + "kafka-order-pipeline",
+    diagram,
+  });
+  await gotoCanvas(page, "kafka-order-pipeline");
+  await page.getByTestId("node-kong").click();
+  await page.getByTestId("inspector-field-stencil").click();
+  await page.getByTestId("stencil-picker-search").fill("apisix");
+  await page.getByTestId("context-menu-item-pick-stencil:apisix").click();
+  const node = async () => {
+    const current = (await savedDiagram(page)).nodes.find((n) => n.id === "kong");
+    if (!current) throw new Error("The configured routing node must survive the stencil change");
+    return current;
+  };
+  await expect.poll(async () => (await node()).stencil).toBe("apisix");
+  expect((await node()).props).toEqual(original.props);
+  expect((await savedDiagram(page)).edges).toEqual(diagram.edges);
+  await page.getByTestId("undo-button").click();
+  await expect.poll(async () => (await node()).stencil).toBe("kong");
+  expect((await node()).props).toEqual(original.props);
+  expect((await savedDiagram(page)).edges).toEqual(diagram.edges);
+});
 
 async function box(locator: Locator) {
   const b = await locator.boundingBox();
