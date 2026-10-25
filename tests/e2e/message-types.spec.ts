@@ -1,3 +1,4 @@
+import { emitsMapping } from "../../src/model/emitsMapping";
 import { messageTypesFixture } from "../../src/lab/messageTypesFixture";
 import { encodeShare } from "../../src/interop/share";
 import {
@@ -242,7 +243,7 @@ test("Send as and source Sends pick existing types; processor Emits edits and re
   await page.getByTestId("inspector-sends-0-new").fill("Processed");
   await page.getByTestId("inspector-sends-0-new").press("Enter");
   await expect
-    .poll(async () => (await savedDiagram(page)).nodes.find((n) => n.id === "api")?.props?.emits)
+    .poll(async () => emitsMapping((await savedDiagram(page)).nodes.find((n) => n.id === "api")?.props?.emits))
     .toEqual({ Callback: "Processed" });
   await page.getByTestId("inspector-emits-remove-0").click();
   await expect(page.getByTestId("inspector-emits-row-0")).toHaveCount(0);
@@ -277,7 +278,7 @@ test("changing a rule's incoming type keeps keyboard focus on that rule", async 
   await waitForSelectionSettled(page);
   await page.getByTestId("inspector-section-node-simulation").click();
   const receives = page.getByTestId("inspector-field-receives-0");
-  const saved = async () => (await savedDiagram(page)).nodes.find((n) => n.id === "api")?.props?.emits;
+  const saved = async () => emitsMapping((await savedDiagram(page)).nodes.find((n) => n.id === "api")?.props?.emits);
   // From the menu: Unchanged, Any type, Send.
   await receives.focus();
   await page.keyboard.press("Enter");
@@ -607,7 +608,7 @@ test("an appended paged rule stays visible and focused after rekeying", async ({
   await page.keyboard.press("Enter");
   await expect
     .poll(async () => {
-      const emits = (await savedDiagram(page)).nodes.find((n) => n.id === "api")?.props?.emits as Record<
+      const emits = emitsMapping((await savedDiagram(page)).nodes.find((n) => n.id === "api")?.props?.emits) as Record<
         string,
         string
       >;
@@ -621,10 +622,6 @@ test("an appended paged rule stays visible and focused after rekeying", async ({
 });
 
 test("an appended paged rule survives rekey Undo and name reuse", async ({ page, consoleErrors }) => {
-  test.fixme(
-    true,
-    "quarantined: appended-row identity (MT-09), see docs/backlog/2026-10-24-message-types-appended-row.md",
-  );
   const diagram = messageTypesFixture();
   diagram.nodes[1].props = {
     emits: Object.fromEntries(Array.from({ length: 2_000 }, (_, i) => [`T${i}`, `T${i}Out`])),
@@ -645,7 +642,7 @@ test("an appended paged rule survives rekey Undo and name reuse", async ({ page,
   await page.keyboard.press("Enter");
   await expect
     .poll(async () => {
-      const emits = (await savedDiagram(page)).nodes.find((n) => n.id === "api")?.props?.emits as Record<
+      const emits = emitsMapping((await savedDiagram(page)).nodes.find((n) => n.id === "api")?.props?.emits) as Record<
         string,
         string
       >;
@@ -659,7 +656,12 @@ test("an appended paged rule survives rekey Undo and name reuse", async ({ page,
   await expect
     .poll(
       async () =>
-        ((await savedDiagram(page)).nodes.find((n) => n.id === "api")?.props?.emits as Record<string, string>).Send,
+        (
+          emitsMapping((await savedDiagram(page)).nodes.find((n) => n.id === "api")?.props?.emits) as Record<
+            string,
+            string
+          >
+        ).Send,
     )
     .toBe("Send");
   await expect(page.getByTestId("inspector-emits-row-2000")).toBeVisible();
@@ -675,7 +677,7 @@ test("an appended paged rule survives rekey Undo and name reuse", async ({ page,
   await page.getByTestId("context-menu-item-1").click();
   await expect
     .poll(async () => {
-      const emits = (await savedDiagram(page)).nodes.find((n) => n.id === "api")?.props?.emits as Record<
+      const emits = emitsMapping((await savedDiagram(page)).nodes.find((n) => n.id === "api")?.props?.emits) as Record<
         string,
         string
       >;
@@ -774,15 +776,16 @@ test("several processors edit Emits as text, saved once the map parses", async (
   await waitForSelectionSettled(page);
   await page.getByTestId("inspector-section-multi-simulation").click();
   const emits = page.getByTestId("inspector-field-emits");
-  const saved = async () =>
+  const raw = async () =>
     (await savedDiagram(page)).nodes.filter((n) => n.id === "api" || n.id === "sender").map((n) => n.props?.emits);
+  const saved = async () => (await raw()).map(emitsMapping);
   const original = [{ Send: "OriginalAPI" }, { Callback: "OriginalSender" }];
-  // Both incomplete syntax and parsed-but-invalid JSON must preserve distinct saved maps.
+  // Both incomplete syntax and parsed-but-invalid JSON must preserve distinct saved maps, exactly as authored.
   for (const draft of ["Send → Order, Callback", '{"Send":', '{"Send": 4}']) {
     await emits.fill(draft);
     await expect(emits).toHaveValue(draft);
     await page.clock.runFor(400);
-    await expect.poll(saved).toEqual(original);
+    await expect.poll(raw).toEqual(original);
   }
   await emits.fill("Send → Order, Callback → Done");
   const map = { Send: "Order", Callback: "Done" };
@@ -790,7 +793,57 @@ test("several processors edit Emits as text, saved once the map parses", async (
   await emits.blur();
   await expect(emits).toHaveValue("Send → Order, Callback → Done");
   await page.getByTestId("undo-button").click();
-  await expect.poll(saved).toEqual(original);
+  await expect.poll(raw).toEqual(original);
+  expectNoErrors(consoleErrors);
+});
+
+test("bulk rule edits preserve per-node identities through Undo/Redo", async ({ page, consoleErrors }) => {
+  await page.clock.install();
+  const diagram = messageTypesFixture();
+  const seeded = {
+    api: [
+      { id: "api-send", receives: "Send", sends: "A1" },
+      { id: "api-callback", receives: "Callback", sends: "A2" },
+    ],
+    sender: [{ id: "sender-send", receives: "Send", sends: "S1" }],
+  };
+  diagram.nodes[1].props = { emits: seeded.api };
+  diagram.nodes[2].props = { emits: seeded.sender };
+  await open(page, "en", diagram);
+  await fitDiagram(page);
+  await page.getByTestId("node-api").click();
+  await waitForSelectionSettled(page);
+  await fitDiagram(page);
+  await page.getByTestId("node-sender").click({ modifiers: ["ControlOrMeta"] });
+  await waitForSelectionSettled(page);
+  await page.getByTestId("inspector-section-multi-simulation").click();
+  const raw = async () => {
+    const nodes = (await savedDiagram(page)).nodes;
+    return { api: nodes[1].props?.emits, sender: nodes[2].props?.emits };
+  };
+  await page.getByTestId("inspector-field-emits").fill("Send → Order, Callback → Done, Extra → More");
+  await page.clock.runFor(400);
+  const fresh = { id: expect.stringMatching(/^rule-[0-9a-z]+$/) };
+  await expect.poll(raw).toEqual({
+    api: [
+      { id: "api-send", receives: "Send", sends: "Order" },
+      { id: "api-callback", receives: "Callback", sends: "Done" },
+      { ...fresh, receives: "Extra", sends: "More" },
+    ],
+    sender: [
+      { id: "sender-send", receives: "Send", sends: "Order" },
+      { ...fresh, receives: "Callback", sends: "Done" },
+      { ...fresh, receives: "Extra", sends: "More" },
+    ],
+  });
+  const edited = (await raw()) as Record<string, { id: string }[]>;
+  const added = [edited.api[2].id, edited.sender[1].id, edited.sender[2].id];
+  expect(new Set(added).size).toBe(3);
+  await page.getByTestId("inspector-field-emits").blur();
+  await page.getByTestId("undo-button").click();
+  await expect.poll(raw).toEqual(seeded);
+  await page.getByTestId("redo-button").click();
+  await expect.poll(raw).toEqual(edited);
   expectNoErrors(consoleErrors);
 });
 

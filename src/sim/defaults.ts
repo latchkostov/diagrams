@@ -1,3 +1,4 @@
+import { emitsMapping } from "../model/emitsMapping";
 import { queueSchema } from "../model/simProps";
 import { checkJsonSchema } from "../model/jsonSchema";
 import { revisionAtLeast } from "../model/revisions";
@@ -282,14 +283,7 @@ export function resolveProps(
     failureRate: number("failureRate", 0, 0, 1),
     maxDeliveryCount: Math.floor(number("maxDeliveryCount", 3, 1)),
     partitions: Math.floor(number("partitions", 3, 1)),
-    emits:
-      typeof props.emits === "string"
-        ? props.emits
-        : props.emits && typeof props.emits === "object" && !Array.isArray(props.emits)
-          ? Object.fromEntries(
-              Object.entries(props.emits).filter((entry): entry is [string, string] => typeof entry[1] === "string"),
-            )
-          : undefined,
+    emits: emitsMapping(props.emits),
     messageType: typeof props.messageType === "string" ? props.messageType : label || "Message",
     healthChecks:
       typeof props.healthChecks === "boolean" ? props.healthChecks : role === "gateway" && device?.kind === "adc",

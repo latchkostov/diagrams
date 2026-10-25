@@ -3,6 +3,7 @@
 // from requestAnimationFrame and renders frame() each frame. Semantics: docs/SIMULATION.md.
 
 import type { DiagramFile, Expectation, SimRole } from "../model/types";
+import type { Emits } from "../model/emitsMapping";
 
 export type QueuePriority = "critical" | "normal" | "sheddable";
 export interface QueuePolicy {
@@ -267,7 +268,7 @@ export interface NodeSimProps {
   messageType?: string;
   /** Processors: the message type sent downstream. A string renames every message; a map renames by
    *  incoming type ("*" = fallback). Default: unchanged. E.g. { "MemberJoined": "WelcomeEmailRequested" }. */
-  emits?: string | Record<string, string>;
+  emits?: Emits;
   // Network devices (src/stencils/netDevices.ts): gateways with a throughput ceiling. Their stencil's size preset
   // supplies the defaults; any gateway with an explicit `gbps` gets the ceiling too.
   /** Network devices: the size preset (branch, campus or data centre) the defaults come from. */

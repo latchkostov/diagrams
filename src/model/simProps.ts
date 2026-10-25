@@ -72,7 +72,24 @@ export const nodeProperties = {
   maxDeliveryCount: quantity,
   partitions: quantity,
   messageType: { type: "string" },
-  emits: { anyOf: [{ type: "string" }, { type: "object", additionalProperties: { type: "string" } }] },
+  emits: {
+    anyOf: [
+      { type: "string" },
+      { type: "object", additionalProperties: { type: "string" } },
+      {
+        type: "array",
+        items: {
+          type: "object",
+          required: ["receives", "sends"],
+          properties: {
+            id: { type: "string", minLength: 1, maxLength: 200 },
+            receives: { type: "string" },
+            sends: { type: "string" },
+          },
+        },
+      },
+    ],
+  },
   size: { type: "string", enum: ["branch", "campus", "datacentre"] },
   gbps: { type: "number", minimum: 0, maximum: 1_000_000 },
   messageKB: { type: "number", minimum: 0.01, maximum: 1_000_000 },

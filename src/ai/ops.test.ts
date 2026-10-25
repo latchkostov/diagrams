@@ -6,6 +6,7 @@ import { LIMITS, validateDiagram } from "../interop/native";
 import { overlaps } from "../canvas/placement";
 import { estimateCardSize } from "../canvas/nodes/size";
 import { STENCIL_RELATIONS } from "../stencils/relations";
+import { editMessageProps, messageRules } from "../model/messageRules";
 
 const empty = (): DiagramFile => ({ format: "diagrams/v1", title: "Test", nodes: [], edges: [] });
 const graph = () =>
@@ -23,6 +24,77 @@ const run = (d: DiagramFile, ops: DiagramOp[]) => {
 };
 
 describe("applyOps", () => {
+  it("keeps an explicit rename ID when another rule could inherit it", () => {
+    const diagram = graph();
+    const target = diagram.nodes[0].id;
+    diagram.nodes[0].props = { emits: [{ id: "r", receives: "A", sends: "X" }] };
+    const result = run(diagram, [
+      {
+        op: "update",
+        target,
+        props: {
+          emits: [
+            { receives: "A", sends: "X" },
+            { id: "r", receives: "B", sends: "Y" },
+          ],
+        },
+      },
+    ]).diagram;
+    const rules = messageRules(result.nodes[0].props?.emits);
+    expect(rules[1]).toEqual({ id: "r", receives: "B", sends: "Y" });
+    expect(rules[0].id).not.toBe("r");
+  });
+  it("assigns fresh IDs to authored rules and preserves existing IDs and explicit renames", () => {
+    const diagram = graph();
+    const target = diagram.nodes[0].id;
+    diagram.nodes[0].props = { emits: { Send: "Sent" } };
+    const ops: DiagramOp[] = [{ op: "update", target, props: { emits: { Send: "Changed", New: "Output" } } }];
+    const first = run(diagram, ops).diagram;
+    const second = run(diagram, ops).diagram;
+    const rules = messageRules(first.nodes[0].props?.emits);
+    expect(rules[0].id).toBe(messageRules({ Send: "Sent" })[0].id);
+    expect(first.nodes[0].props?.emits).toEqual([
+      { id: rules[0].id, receives: "Send", sends: "Changed" },
+      { id: rules[1].id, receives: "New", sends: "Output" },
+    ]);
+    expect(rules[1].id).not.toBe(messageRules(second.nodes[0].props?.emits)[1].id);
+    const renamed = [{ ...rules[1], receives: "Renamed" }];
+    expect(run(first, [{ op: "update", target, props: { emits: renamed } }]).diagram.nodes[0].props?.emits).toEqual(
+      renamed,
+    );
+    expect(
+      run(first, [{ op: "update", target, props: { emits: null } }]).diagram.nodes[0].props?.emits,
+    ).toBeUndefined();
+  });
+  it("leaves legacy rules in their authored form when an unrelated node changes", () => {
+    const diagram = graph();
+    diagram.nodes[0].props = { emits: { Send: "Sent" } };
+    expect(run(diagram, [{ op: "update", target: diagram.nodes[1].id, label: diagram.nodes[1].label }]).summary).toBe(
+      "no changes",
+    );
+    const changed = run(diagram, [{ op: "update", target: diagram.nodes[1].id, label: "Database" }]);
+    expect(changed.summary).toBe("1 changed");
+    expect(changed.diagram.nodes[0].props?.emits).toEqual({ Send: "Sent" });
+    // Runtime identities are checked separately: derived, deterministic and unchanged.
+    expect(messageRules(changed.diagram.nodes[0].props?.emits)).toEqual(messageRules(diagram.nodes[0].props.emits));
+    expect(diagram.nodes[0].props?.emits).toEqual({ Send: "Sent" });
+  });
+  it("preserves runtime rule identities through proposal validation after a rule is removed (R-3f4bf4b104)", () => {
+    const diagram = graph();
+    diagram.nodes[0].props = { emits: { A: "B", C: "D" } };
+    // Remove A the way the inspector does, then let an agent rename another node.
+    const props = diagram.nodes[0].props;
+    const rows = messageRules(props.emits);
+    diagram.nodes[0].props = editMessageProps({ emits: rows.filter((rule) => rule.receives !== "A") }, props);
+    const before = messageRules(diagram.nodes[0].props.emits);
+    expect(before.map((rule) => rule.id)).toEqual([rows[1].id]);
+    const result = run(diagram, [{ op: "update", target: diagram.nodes[1].id, label: "Database" }]);
+    expect(result.summary).toBe("1 changed");
+    expect(result.diagram.nodes[0]).toEqual(diagram.nodes[0]);
+    expect(messageRules(result.diagram.nodes[0].props?.emits).map((rule) => rule.id)).toEqual([rows[1].id]);
+    const validated = validateDiagram(result.diagram);
+    expect(validated.ok && messageRules(validated.diagram.nodes[0].props?.emits)[0].id).toBe(rows[1].id);
+  });
   it("full agent layout resets bends while preserving fixed sides and the original input", () => {
     const d = graph();
     Object.assign(d.edges[0], { sourceSide: "bottom", targetSide: "top", waypoints: [{ x: 100, y: 200 }] });

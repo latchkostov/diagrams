@@ -1,4 +1,5 @@
 import type { DiagramEdge, DiagramFile, DiagramNode, SimRole, Simulation } from "./types";
+import { emitsMapping } from "./emitsMapping";
 import {
   compileTopology,
   forwardingShare,
@@ -281,7 +282,7 @@ function propagateTypes(
   for (const node of diagram.nodes) {
     if (roles.get(node.id) === "source") remember(ownType(node));
     remember(node.props?.messageType);
-    const emits = node.props?.emits;
+    const emits = emitsMapping(node.props?.emits);
     if (emits && typeof emits === "object" && !Array.isArray(emits)) {
       for (const [input, output] of Object.entries(emits)) {
         if (input !== "*") remember(input);
@@ -477,7 +478,7 @@ function propagateTypes(
   for (let at = 0; at < queue.length && complete; at++) {
     const item = queue[at];
     const role = roles.get(item.node)!;
-    const type = outputType(role, nodes.get(item.node)?.props?.emits, item.type);
+    const type = outputType(role, emitsMapping(nodes.get(item.node)?.props?.emits), item.type);
     remember(type);
     const typeId = table.ids.get(type);
     if (typeId === undefined) break;

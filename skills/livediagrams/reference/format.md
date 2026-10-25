@@ -147,7 +147,7 @@ Every setting is optional, and live view works without any. Node `props`:
 - `maxDeliveryCount` (number 0..10000): on a broker: attempts before a message is dead-lettered (default 3)
 - `partitions` (number 0..10000): p2 partitioned logs only: instance assignments per group (Kinesis: shards); ignored by subscription/binding fan-out; legacy and p1 retain role-based limits
 - `messageType` (string): what a source sends, e.g. "OrderPlaced"
-- `emits` (string or map): a processor renames what it sends: "PaymentCompleted", or a map {"OrderPlaced": "PaymentRequested", "*": "Audited"}
+- `emits` (string or map): a processor renames what it sends: "PaymentCompleted", a map {"OrderPlaced": "PaymentRequested", "*": "Audited"}, or rules [{id?, receives, sends}]
 - `size` ("branch" | "campus" | "datacentre"): network devices (routers, switches, firewalls, ADCs): "branch", "campus" or "datacentre", whose datasheet throughput and latency are the defaults
 - `gbps` (number 0..1000000): network devices: throughput per unit in Gbps (default: the size preset's); any gateway given gbps gets this ceiling
 - `messageKB` (number 0.01..1000000): average payload in kB: devices convert throughput with it (default 64); brokers retain producer-size metadata only, without a default or ingest ceiling

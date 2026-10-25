@@ -1,4 +1,5 @@
 import type { DiagramFile } from "../model/types";
+import { emitsMapping } from "../model/emitsMapping";
 import type { LiveState } from "../live/controller";
 import { stencilRole } from "../stencils/roles";
 import { edgeSemanticSignature, isDependency } from "../model/relations";
@@ -22,7 +23,14 @@ export function planningInput(d: DiagramFile, state?: LiveState | null): unknown
   const nodes = new Map(d.nodes.map((node) => [node.id, node]));
   const config = [
     d.planning,
-    d.nodes.map((n) => [n.id, n.stencil, n.label, n.sublabel, n.props]),
+    // Rule IDs are identity metadata: budget and plan the behavioral mapping only.
+    d.nodes.map((n) => [
+      n.id,
+      n.stencil,
+      n.label,
+      n.sublabel,
+      Array.isArray(n.props?.emits) ? { ...n.props, emits: emitsMapping(n.props.emits) } : n.props,
+    ]),
     d.edges.map(edgeSemanticSignature),
     state?.running && [state.running.traffic, state.running.multipliers, state.running.setup],
     state?.inputs,
@@ -49,7 +57,7 @@ export function planningInput(d: DiagramFile, state?: LiveState | null): unknown
   if (!visit(config)) return undefined;
   const collect = (props: Record<string, unknown> | undefined, label?: string) => {
     if (label) types.add(label);
-    for (const value of [props?.messageType, props?.emits]) {
+    for (const value of [props?.messageType, emitsMapping(props?.emits)]) {
       if (typeof value === "string") types.add(value);
       else if (value && typeof value === "object")
         for (const name of Object.values(value)) if (typeof name === "string") types.add(name);

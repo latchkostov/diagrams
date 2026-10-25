@@ -1,34 +1,18 @@
-## MT-09 — OPEN: Appended-row identity (PR #300 quarantine)
+## MT-09 — DONE: Appended-row identity
 
-PR #300 exhausted its two fix rounds. Review R-57aeaf8f34 in
-`.reviews/20261024-213946-18231/REPORT.md` identifies lost appended-row identity across
-collaboration-room projections and room Undo/Redo. The inspector retains origin/master's
-appended-row tracking behavior; the WeakMap/snapshot registry is removed. This is a quarantine,
-not a completed identity fix.
+Owner-approved on 2026-10-25. Each message rule has an internal ID. An ID-less rule's ID is derived in
+memory from its incoming type and is never saved. Creating or editing a rule writes an explicit ID, and
+explicit IDs round-trip verbatim ([design](../design-review/2026-10-25-rule-identity.md)). The inspector
+keys its mounted controls, and the visibility of every appended row, by those IDs. This holds across
+rename, Undo and Redo.
 
-Any future design must pass these counterexamples with the inspector still open, bounded paging,
-and appended rows visible and keyboard-editable:
+All 12 formerly skipped parameterized history cases and the quarantined browser regression
+are enabled. Another 12 mounted-inspector cases use the real collaboration room adapter,
+including peer moves/renames and room Undo/Redo, with 26 and 2,000 imported rules.
+They cover rename → Undo → name reuse, Add A → Add B → Undo B → Redo B,
+and restored appended controls remaining visible and editable without expanding the page.
 
-- **(a) Rename, Undo, name reuse:** with more than 25 rules, append Send, rename it to Callback,
-  Undo, then rename an earlier rule to Callback. The earlier row must not steal the appended row's
-  identity; the restored Send row must remain visible and editable.
-- **(b) Multiple appends and history:** Add A → Add B → Undo B → Redo B. Each restored appended
-  row must retain its own visibility and editing controls, including A while B is undone.
-- **(c) Edit together:** append beyond 25 rows, then have a peer move or rename the processor.
-  Room projection deep-copies `props.emits` through `projectRecord`/`readValue`; room Undo/Redo
-  also supplies projected objects. The appended rows must survive both peer edits and room history.
-  Future regression coverage must exercise the room adapter rather than only local snapshots.
-
-Object identity fails on projected copies; names fail on rename, Undo and name reuse. A stable
-rule id in the model is likely needed. That changes the data model and requires an owner decision
-before implementation, including persistence and collaboration/history semantics.
-
-The 12 parameterized cases in `MessageFields.history.test.tsx` remain as skipped Vitest tests
-(Vitest's equivalent of fixme). The e2e test “an appended paged rule survives rekey Undo and name reuse”
-uses `test.fixme`. Their reason is
-`quarantined: appended-row identity (MT-09), see docs/backlog/2026-10-24-message-types-appended-row.md`.
-The original master e2e “an appended paged rule stays visible and focused after rekeying” remains
-running unchanged. No tests were deleted.
+See [the implementation and verification](../release-notes/2026-10-25-stable-message-rule-ids.md).
 
 ## DONE: Search misses versus empty flow (R-8dbd895066)
 
@@ -52,4 +36,4 @@ Add “unmatched message searches preserve traffic and report no matching types�
 empty states and unchanged saved filters/traffic, then clear each query and verify bounded choices
 return. Also distinguish truly empty carried/upstream populations. Mutation-check the regressions.
 
-The three search findings are completed in [batch 2](../release-notes/2026-10-25-p2-message-types-batch-2.md), with bounded cached normalization and mutation-checked unit/browser regressions. MT-09 remains OPEN; its appended-row implementation and quarantined regressions are unchanged.
+The three search findings are completed in [batch 2](../release-notes/2026-10-25-p2-message-types-batch-2.md), with bounded cached normalization and mutation-checked unit/browser regressions. MT-09 is completed separately above.

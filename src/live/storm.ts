@@ -2,6 +2,7 @@
 // small id / message-type helpers the authoring panel shares.
 
 import { flowEdges } from "../model/relations";
+import { emitsMapping } from "../model/emitsMapping";
 import type { DiagramFile, DiagramNode, Simulation, TrafficProfile, TrafficShape } from "../model/types";
 
 /** The message type a storm uses when nothing better is known (the story from docs/SIMULATIONS.md). */
@@ -49,7 +50,7 @@ export function knownMessageTypes(diagram: DiagramFile): string[] {
   };
   for (const n of diagram.nodes) {
     add(n.props?.messageType);
-    const emits = n.props?.emits;
+    const emits = emitsMapping(n.props?.emits);
     if (typeof emits === "string") add(emits);
     else if (emits && typeof emits === "object") {
       for (const [k, v] of Object.entries(emits)) {

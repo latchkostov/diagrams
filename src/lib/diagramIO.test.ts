@@ -3,6 +3,7 @@ import type { DiagramFile } from "../model/types";
 import type { SaveTarget } from "./diagramIO";
 import type { FileHandle } from "../interop/files";
 import { writeHandle } from "../interop/files";
+import { editMessageProps, messageRules } from "../model/messageRules";
 
 // Downloads are observed, not performed (Node has no document).
 vi.mock("../interop/files", async (importOriginal) => ({
@@ -64,6 +65,22 @@ beforeEach(async () => {
 });
 
 describe("diagramIO storage goes through the shared validator", () => {
+  it("autosaves derived rules in their authored form and persists only a changed rule's identity", () => {
+    const input = structuredClone(good);
+    input.nodes[0].props = { emits: { A: "B", C: "D" } };
+    const loaded = structuredClone(input);
+    expect(io.writeAutosave(io.LEGACY_SLUG, loaded)).toBe(true);
+    expect(io.getAutosave(io.LEGACY_SLUG)).toEqual(input);
+    expect(storage.getItem("diagrams.autosave.v1:imported")).not.toContain("rule-");
+    const props = loaded.nodes[0].props!;
+    const rows = messageRules(props.emits);
+    loaded.nodes[0].props = editMessageProps({ emits: [{ ...rows[0], sends: "Edited" }, rows[1]] }, props);
+    expect(io.writeAutosave(io.LEGACY_SLUG, loaded)).toBe(true);
+    expect(io.getAutosave(io.LEGACY_SLUG)?.nodes[0].props?.emits).toEqual([
+      { id: rows[0].id, receives: "A", sends: "Edited" },
+      { receives: "C", sends: "D" },
+    ]);
+  });
   it.each(["legacy", "library"])("loads oversized %s originals and autosaves losslessly", (kind) => {
     const legacy = {
       ...good,
