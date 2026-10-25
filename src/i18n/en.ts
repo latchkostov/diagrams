@@ -4279,5 +4279,55 @@ const en = {
   "tutorials.rateLimit.rejectedDone":
     "Requests over the available quota receive 429 replies instead of reaching the API.",
   "tutorials.rateLimit.finish": "A rate quota refuses excess requests before they consume the API’s capacity.",
+  "tutorials.healthChecks.title": "Health checks",
+  "tutorials.healthChecks.summary": "Compare a zone outage with and without health checks at the load balancer.",
+  "tutorials.healthChecks.withoutTitle": "Run without health checks",
+  "tutorials.healthChecks.withoutGoal": "Click Live, then pick Zone outage: no health checks in Simulations.",
+  "tutorials.healthChecks.withoutDone": "This seeded Drill keeps both zones in rotation when one goes down.",
+  "tutorials.healthChecks.lossTitle": "Watch requests get dropped",
+  "tutorials.healthChecks.lossGoal": "Hover Checkout API b and watch Dropped rise after its zone goes down.",
+  "tutorials.healthChecks.lossDone":
+    "Without health checks, the load balancer keeps sending requests into the down zone.",
+  "tutorials.healthChecks.withTitle": "Run with health checks",
+  "tutorials.healthChecks.withGoal": "Pick Zone outage: health checks in Simulations to replay the same outage.",
+  "tutorials.healthChecks.withDone": "The same seed and traffic isolate the effect of health checks.",
+  "tutorials.healthChecks.protectionTitle": "Watch the surviving zone serve",
+  "tutorials.healthChecks.protectionGoal":
+    "Hover Entry load balancer and watch the run finish: zone a keeps serving with at most one dropped request.",
+  "tutorials.healthChecks.protectionDone":
+    "Health checks avoid the down zone while the surviving zone carries the traffic.",
+  "tutorials.healthChecks.finish":
+    "Health checks keep new requests away from a down target; the surviving targets still need enough capacity.",
+  "tutorials.healthChecks.example": "Explore the zone outage Drill",
+  "tutorials.deadLetters.title": "Dead letters",
+  "tutorials.deadLetters.summary": "Watch poison messages reach a dead-letter queue and set their delivery limit.",
+  "tutorials.deadLetters.runTitle": "Run poison messages",
+  "tutorials.deadLetters.runGoal": "Click Live, then pick Poison invoices in Simulations.",
+  "tutorials.deadLetters.runDone": "This seeded run makes every ledger attempt fail so commands need redelivery.",
+  "tutorials.deadLetters.watchTitle": "Watch dead letters accumulate",
+  "tutorials.deadLetters.watchGoal": "Hover invoice.commands and watch Dead-lettered reach at least one.",
+  "tutorials.deadLetters.watchDone":
+    "A command that exhausts its deliveries goes to the dead-letter queue instead of retrying forever.",
+  "tutorials.deadLetters.maxTitle": "Set Max deliveries",
+  "tutorials.deadLetters.maxGoal":
+    "Double-click invoice.commands, open Simulation in Properties, set Max deliveries to 3, then press Tab.",
+  "tutorials.deadLetters.maxDone":
+    "Max deliveries limits attempts before a poison message is moved to the dead-letter queue.",
+  "tutorials.deadLetters.finish":
+    "Dead letters retain poison messages for investigation after their delivery limit is exhausted.",
+  "tutorials.loadShedding.title": "Load shedding",
+  "tutorials.loadShedding.summary": "Watch a traffic spike queue up behind an API waiting on a slow database.",
+  "tutorials.loadShedding.clientName": "Client",
+  "tutorials.loadShedding.apiName": "API",
+  "tutorials.loadShedding.dbName": "Slow database",
+  "tutorials.loadShedding.spikeName": "Traffic spike",
+  "tutorials.loadShedding.spikeTitle": "Run a traffic spike",
+  "tutorials.loadShedding.spikeGoal": "Click Live, then pick Traffic spike in Simulations.",
+  "tutorials.loadShedding.spikeDone": "A saved seed makes the same burst arrive on every run.",
+  "tutorials.loadShedding.backlogTitle": "Watch the backlog grow",
+  "tutorials.loadShedding.backlogGoal":
+    "Hover API and watch its backlog grow while requests wait for the slow database.",
+  "tutorials.loadShedding.backlogDone": "A slow dependency holds work in flight while new arrivals queue behind it.",
+  "tutorials.loadShedding.finish": "A traffic spike can build a backlog when a slow dependency holds the API busy.",
 } as const;
 export default en;
