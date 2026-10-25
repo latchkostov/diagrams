@@ -173,15 +173,23 @@ function sandbox(tutorial: Tutorial, { lateAdds = false, lazyLive = false } = {}
       run();
       return publishLive();
     }
+    // The canvas republishes as the live view takes over: for a moment there's no editor to act through.
+    const editorApi = hostState.canvas.editor;
+    if (mounting) hostState.canvas.editor = undefined as unknown as EditorApi;
     publishLive();
-    setTimeout(() => {
-      mount();
+    const later = (f: () => void) => setTimeout(f, 0);
+    later(() => {
+      hostState.canvas.editor = editorApi;
       publishLive();
-      setTimeout(() => {
-        run();
+      later(() => {
+        mount();
         publishLive();
-      }, 0);
-    }, 0);
+        later(() => {
+          run();
+          publishLive();
+        });
+      });
+    });
   };
   const leaveLive = () => {
     hostState.canvas.live = false;

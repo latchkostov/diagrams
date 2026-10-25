@@ -281,7 +281,8 @@ export function createTutorialRunner(
   function perform(demo: Demo) {
     const h = host.get();
     const ed = editor();
-    if (!ed) return;
+    // No editor for a moment (the canvas republishing as Live mounts): not done, so a retried control tries again.
+    if (!ed) return false;
     view();
     const edge = (pair: readonly [string, string]) =>
       ed.getDiagram().edges.find((e) => e.from === subjects[pair[0]] && e.to === subjects[pair[1]]);
