@@ -3979,5 +3979,109 @@ const en = {
     "If the + is outside the canvas, click Fit view (Shift+1), then click the selected node’s +.",
   "tutorials.cacheAside.addHint":
     "If the + is outside the canvas, click Fit view (Shift+1), then click the selected node’s +.",
+  "tutorials.whereTimeGoes.title": "Where the time goes",
+  "tutorials.whereTimeGoes.summary": "Read Billing latency and compare time spent waiting with time spent working.",
+  "tutorials.whereTimeGoes.finish":
+    "Latency includes waiting, work and travel. A fast operation can still sit in a long queue.",
+  "tutorials.whereTimeGoes.runTitle": "Run Slow Billing drill",
+  "tutorials.whereTimeGoes.runGoal": "Go Live, then pick Slow Billing drill in Simulations.",
+  "tutorials.whereTimeGoes.runDone":
+    "The drill slows Billing, then restores it so you can compare its latency windows.",
+  "tutorials.whereTimeGoes.p95Title": "Read Billing p95",
+  "tutorials.whereTimeGoes.p95Goal": "Hover Billing and watch p95 rise above 1,050 ms during the slowdown.",
+  "tutorials.whereTimeGoes.p95Done": "p95 describes the slower end of the sampled requests, rather than the average.",
+  "tutorials.whereTimeGoes.compareTitle": "Compare waiting and working",
+  "tutorials.whereTimeGoes.compareGoal":
+    "Keep Billing’s readout open after it is restored. Compare Waiting with Working as the queue clears.",
+  "tutorials.whereTimeGoes.compareDone":
+    "Restored work is fast again, but requests still spend more time waiting in the backlog.",
+  "tutorials.threadsBlock.title": "A blocking call holds threads",
+  "tutorials.threadsBlock.summary": "Free the caller’s thread while a Request waits for its reply.",
+  "tutorials.threadsBlock.finish":
+    "Freeing a thread while waiting leaves room for other work; the Request still waits for its reply.",
+  "tutorials.threadsBlock.runTitle": "Run the blocking call",
+  "tutorials.threadsBlock.runGoal": "Go Live, then pick Threads held: CPU says all is well in Simulations.",
+  "tutorials.threadsBlock.runDone": "The caller holds threads while the partner replies, even when CPU use is low.",
+  "tutorials.threadsBlock.waitTitle": "Watch waiting threads",
+  "tutorials.threadsBlock.waitGoal": "Hover Decision service and watch its waiting threads rise above zero.",
+  "tutorials.threadsBlock.waitDone": "A waiting thread cannot start another piece of work.",
+  "tutorials.threadsBlock.freeTitle": "Free the thread",
+  "tutorials.threadsBlock.freeGoal":
+    "Click Live to return to editing. Right-click the Request to Partner scoring API. Pick Simulation, then Free the thread while waiting.",
+  "tutorials.threadsBlock.freeDone":
+    "Frees the thread changes how the caller waits without changing the Request into a Message.",
+  "tutorials.threadsBlock.rerunTitle": "Run Free the thread while waiting",
+  "tutorials.threadsBlock.rerunGoal": "Go Live, then pick Free the thread while waiting in Simulations.",
+  "tutorials.threadsBlock.rerunDone": "The same seeded comparison runs with off-thread waiting.",
+  "tutorials.threadsBlock.resultTitle": "Watch work without waiting threads",
+  "tutorials.threadsBlock.resultGoal":
+    "Hover Decision service. Watch completions rise while waiting threads stay at zero.",
+  "tutorials.threadsBlock.resultDone": "Requests complete while waiting calls leave the caller’s threads free.",
+  "tutorials.timeoutsPools.title": "Timeouts and connection pools",
+  "tutorials.timeoutsPools.summary": "Limit how long a slow provider holds a call, then cap its connections.",
+  "tutorials.timeoutsPools.finish":
+    "A timeout bounds a call’s wait. A connection pool bounds simultaneous calls to a dependency.",
+  "tutorials.timeoutsPools.runTitle": "Run No timeouts",
+  "tutorials.timeoutsPools.runGoal":
+    "Go Live, then pick No timeouts in Simulations. Watch Checkout fill with waiting calls.",
+  "tutorials.timeoutsPools.runDone": "A slow payment provider can hold Checkout’s threads and delay unrelated work.",
+  "tutorials.timeoutsPools.timeoutTitle": "Set Timeout to 600 ms",
+  "tutorials.timeoutsPools.timeoutGoal":
+    "Click Live to return to editing. Double-click the Request from Checkout to Payment provider. In Simulation, set Timeout to 600 ms.",
+  "tutorials.timeoutsPools.timeoutDone":
+    "A 600 ms timeout releases the caller’s wait even if the provider replies later.",
+  "tutorials.timeoutsPools.timeoutRunTitle": "Run A 600 ms timeout",
+  "tutorials.timeoutsPools.timeoutRunGoal":
+    "Go Live, then pick A 600 ms timeout in Simulations and watch payments fail fast.",
+  "tutorials.timeoutsPools.timeoutRunDone":
+    "A bounded wait trades slow payment success for prompt failure and room for other work.",
+  "tutorials.timeoutsPools.poolTitle": "Set Connection pool to 40",
+  "tutorials.timeoutsPools.poolGoal":
+    "Click Live to return to editing. In the Request’s Simulation settings, open Pool & reply handling and set Connection pool to 40.",
+  "tutorials.timeoutsPools.poolDone":
+    "The pool caps connections to this provider independently of Checkout’s thread count.",
+  "tutorials.timeoutsPools.poolRunTitle": "Run the pool comparison",
+  "tutorials.timeoutsPools.poolRunGoal": "Go Live, then pick Threads freed while waiting for the pool in Simulations.",
+  "tutorials.timeoutsPools.poolRunDone":
+    "This run frees threads while waiting for forty connections, so order-status work can continue.",
+  "tutorials.autoscaling.title": "Scale on busy threads",
+  "tutorials.autoscaling.summary": "Use a busy-thread signal when waiting calls keep CPU use low.",
+  "tutorials.autoscaling.finish":
+    "A scaling signal should reflect the resource that limits the work; CPU can miss waiting threads.",
+  "tutorials.autoscaling.runTitle": "Run the busy-thread comparison",
+  "tutorials.autoscaling.runGoal": "Go Live, then pick Scale on busy threads in Simulations.",
+  "tutorials.autoscaling.runDone": "This run scales on busy threads, including threads held by waiting calls.",
+  "tutorials.autoscaling.scaleTitle": "Choose Busy threads",
+  "tutorials.autoscaling.scaleGoal":
+    "Double-click Decision service. Open Simulation, then Advanced, and set Metric to Busy threads (modelled custom metric).",
+  "tutorials.autoscaling.scaleDone": "The diagram now scales on busy threads as well as the saved comparison run.",
+  "tutorials.autoscaling.growTitle": "Watch replicas grow",
+  "tutorials.autoscaling.growGoal": "Hover Decision service and watch replicas rise above the initial four.",
+  "tutorials.autoscaling.growDone": "Waiting threads create demand for more replicas even when CPU is quiet.",
+  "tutorials.scaleToZero.title": "Scale to zero",
+  "tutorials.scaleToZero.summary": "Compare a quiet timetable API with the morning rush.",
+  "tutorials.scaleToZero.finish": "An idle API can have zero replicas; new demand must wait for capacity to start.",
+  "tutorials.scaleToZero.runTitle": "Run Quiet Sunday",
+  "tutorials.scaleToZero.runGoal": "Go Live, then pick A quiet Sunday in Simulations.",
+  "tutorials.scaleToZero.runDone": "The quiet run starts without a running instance.",
+  "tutorials.scaleToZero.zeroTitle": "Read zero replicas",
+  "tutorials.scaleToZero.zeroGoal": "Hover the timetable API and read its zero replicas before traffic arrives.",
+  "tutorials.scaleToZero.zeroDone": "Zero replicas means no instance is ready to serve the next request.",
+  "tutorials.scaleToZero.rushTitle": "Run Morning rush",
+  "tutorials.scaleToZero.rushGoal": "Pick Overnight, then the morning rush in Simulations.",
+  "tutorials.scaleToZero.rushDone": "The rush introduces demand after the API has been idle.",
+  "tutorials.backlogLag.title": "Backlog and lag",
+  "tutorials.backlogLag.summary": "Watch a slow worker fall behind, then add a consumer from the Trouble callout.",
+  "tutorials.backlogLag.finish": "A backlog shrinks when consumers complete work faster than the producer adds it.",
+  "tutorials.backlogLag.producer": "Job producer",
+  "tutorials.backlogLag.queue": "Jobs",
+  "tutorials.backlogLag.worker": "Slow worker",
+  "tutorials.backlogLag.runName": "Queue practice",
+  "tutorials.backlogLag.liveTitle": "Start continuous traffic",
+  "tutorials.backlogLag.liveGoal": "Go Live, pick Queue practice, then turn on Continuous traffic in More.",
+  "tutorials.backlogLag.liveDone": "The saved seed makes the producer and slow worker repeatable.",
+  "tutorials.backlogLag.backlogTitle": "Watch backlog reach 50",
+  "tutorials.backlogLag.backlogGoal": "Hover Jobs and watch its backlog reach at least 50 messages.",
+  "tutorials.backlogLag.backlogDone": "Backlog grows when messages arrive faster than the worker completes them.",
 } as const;
 export default en;

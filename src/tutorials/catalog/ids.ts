@@ -27,4 +27,10 @@ export const tutorialEntries: readonly Pick<TutorialMetadata, "id" | "quarantine
   { id: "partitions" },
   { id: "outbox" },
   { id: "dependencies-2", quarantined: true },
+  { id: "where-time-goes" },
+  { id: "threads-block" },
+  { id: "timeouts-pools" },
+  { id: "backlog-lag", quarantined: true },
+  { id: "autoscaling" },
+  { id: "scale-to-zero", quarantined: true },
 ];

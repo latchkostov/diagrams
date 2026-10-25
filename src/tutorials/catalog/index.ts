@@ -1,3 +1,9 @@
+import { whereTimeGoes } from "./whereTimeGoes";
+import { threadsBlock } from "./threadsBlock";
+import { timeoutsPools } from "./timeoutsPools";
+import { backlogLag } from "./backlogLag";
+import { autoscaling } from "./autoscaling";
+import { scaleToZero } from "./scaleToZero";
 import { msg } from "../../i18n";
 import type { TrackId, Tutorial, Words } from "../types";
 import { apiGateway } from "./apiGateway";
@@ -48,6 +54,12 @@ export const allTutorials: readonly Tutorial[] = [
   partitions,
   outbox,
   dependencies2,
+  whereTimeGoes,
+  threadsBlock,
+  timeoutsPools,
+  backlogLag,
+  autoscaling,
+  scaleToZero,
 ];
 
 /** Available lessons only: discovery, deep links and progress totals share this catalog. */
