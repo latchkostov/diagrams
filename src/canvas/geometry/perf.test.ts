@@ -283,6 +283,18 @@ it("retains spatial pruning when long automatic segments are nudged beside saved
       const out = geometry.nudgeRoutes(routes, [{ x: -1000, y: -1000, width: 20, height: 20 }], { fixed });
       expect(out.size).toBe(routes.size);
       for (const id of fixed) expect(out.get(id)).toEqual(routes.get(id));
+      for (let i = 0; i < count; i++) {
+        const a = out.get(`auto-${i}-0`)!;
+        const b = out.get(`auto-${i}-20`)!;
+        expect(a[1].x).not.toBe(b[1].x);
+        for (const offset of [0, 20]) {
+          const id = `auto-${i}-${offset}`;
+          const points = out.get(id)!;
+          expect(points[0]).toEqual(routes.get(id)![0]);
+          expect(points.at(-1)).toEqual(routes.get(id)!.at(-1));
+          expect(points[1].x).toBe(points[2].x);
+        }
+      }
     };
   };
   opGrowth(scene(64), scene(64 * GROWTH_FACTOR), LINEAR_LIMIT);
