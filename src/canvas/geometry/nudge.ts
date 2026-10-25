@@ -4,7 +4,8 @@
 // neighbours. Order within a track is chosen so that segments turn off without crossing each other.
 
 import { inflate, segmentHitsRect, union, type Point, type Rect } from "./rect";
-import { RectIndex, SpatialGrid } from "./spatial";
+import { RectIndex } from "./spatial";
+import { clusterSegments, segmentBox, segmentIndex, type CandidateIndex } from "./nudgeClusters";
 
 export interface Seg {
   edge: string;
@@ -29,7 +30,7 @@ export interface NudgeOptions {
   /** Lazy saved-route geometry can reject newly occupied fixed tracks. */
   canMove?: (before: Point[], segment: number, after: Point[]) => boolean;
   /** Saved geometry supplies a track index that also handles very long segments. */
-  clusters?: (segments: Seg[], tolerance: number) => Seg[][];
+  index?: CandidateIndex;
   /** Segments closer than this count as sharing a track. */
   tolerance?: number;
 }
@@ -86,47 +87,6 @@ function order(list: Seg[]): Seg[] {
     }
   }
   return out;
-}
-
-function segmentBox(s: Pick<Seg, "vertical" | "c" | "lo" | "hi">, reach = 0, pad = 0): Rect {
-  const perp = s.c - reach,
-    along = s.lo - pad,
-    thickness = 2 * reach,
-    span = s.hi - s.lo + 2 * pad;
-  return s.vertical
-    ? { x: perp, y: along, width: thickness, height: span }
-    : { x: along, y: perp, width: span, height: thickness };
-}
-
-function clusters(segs: Seg[], tol: number): Seg[][] {
-  const sorted = segs.sort((a, b) => a.c - b.c);
-  const parent = sorted.map((_, i) => i);
-  const find = (i: number): number => {
-    while (parent[i] !== i) {
-      parent[i] = parent[parent[i]];
-      i = parent[i];
-    }
-    return i;
-  };
-  // Query only mutable routes. Fixed segments constrain their neighbours but never need
-  // comparisons against each other, including thousands of disjoint saved segments in one lane.
-  const index = new SpatialGrid<number>();
-  sorted.forEach((s, i) => index.insert(segmentBox(s), i));
-  for (let i = 0; i < sorted.length; i++) {
-    const a = sorted[i];
-    if (a.fixed) continue;
-    for (const { item: j } of index.query(inflate(segmentBox(a), tol))) {
-      const b = sorted[j];
-      if ((!b.fixed && j <= i) || a.edge === b.edge || Math.abs(a.c - b.c) >= tol) continue;
-      if (Math.min(a.hi, b.hi) - Math.max(a.lo, b.lo) > 2) parent[find(i)] = find(j);
-    }
-  }
-  const groups = new Map<number, Seg[]>();
-  sorted.forEach((s, i) => {
-    const r = find(i);
-    (groups.get(r) ?? groups.set(r, []).get(r)!).push(s);
-  });
-  return [...groups.values()].filter((g) => g.some((s) => s.edge !== g[0].edge));
 }
 
 /**
@@ -194,7 +154,7 @@ export function nudgeRoutes(
     for (const vertical of [true, false]) {
       const segs: Seg[] = [];
       for (const [id, pts] of out) segs.push(...segmentsOf(id, pts, vertical, opts.fixed?.has(id)));
-      for (const group of (opts.clusters ?? clusters)(segs, tol)) {
+      for (const group of clusterSegments(segs, tol, opts.index)) {
         const ordered = order(group);
         const n = ordered.length;
         let sum = 0,
@@ -257,12 +217,11 @@ function resolvePinnedOverlaps(
     const segs: Seg[] = [];
     for (const [id, pts] of out)
       if (!fixed?.has(id)) segs.push(...segmentsOf(id, pts, vertical).filter((s) => s.pinned));
-    const index = new SpatialGrid<number>();
-    segs.forEach((s, i) => index.insert(segmentBox(s), i));
+    const index = segmentIndex(segs);
     for (let i = 0; i < segs.length; i++)
       // Keep the original pair order: bend swaps depend on earlier successful swaps.
       for (const { item: j } of index
-        .query(inflate(segmentBox(segs[i]), tol))
+        .query(segmentBox(segs[i], tol, tol))
         .filter(({ item }) => item > i)
         .sort((a, b) => a.item - b.item)) {
         const a = segs[i],
