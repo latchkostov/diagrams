@@ -10,6 +10,7 @@ export const capacity: Tutorial = {
   minutes: 3,
   title: msg("tutorials.capacity.title"),
   summary: msg("tutorials.capacity.summary"),
+  chrome: "app",
   start: { example: "measured-order-capacity", simulation: "triple" },
   subjects: { worker: { stencils: ["service.java"] }, queue: { stencils: ["generic.queue"] } },
   steps: [
@@ -32,7 +33,10 @@ export const capacity: Tutorial = {
       goal: msg("tutorials.capacity.overlayGoal"),
       done: msg("tutorials.capacity.overlayDone"),
       check: { kind: "liveView", view: "capacity", open: true },
-      targets: [{ testId: "capacity-overlay-toggle", tip: msg("tutorials.capacity.overlayGoal") }],
+      targets: [
+        { testId: "capacity-overlay-toggle", tip: msg("tutorials.capacity.overlayGoal") },
+        { testId: "view-button", tip: msg("tutorials.capacity.overlayGoal") },
+      ],
       demo: [{ kind: "openView", view: "capacity" }],
       solution: [{ click: "view-button" }, { click: "capacity-overlay-toggle" }],
     },

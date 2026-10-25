@@ -1,6 +1,6 @@
 import { msg, t } from "../../i18n";
 import type { Tutorial } from "../types";
-import { liveStep, practiceRun } from "./buildingBlocks";
+import { practiceRun } from "./buildingBlocks";
 
 export const ratesAndInputs: Tutorial = {
   id: "rates-and-inputs",
@@ -22,10 +22,23 @@ export const ratesAndInputs: Tutorial = {
         y: 0,
         props: { ratePerSec: 2 },
       },
-      { id: "service", stencil: "generic.service", label: t("tutorials.ratesAndInputs.serviceName"), x: 280, y: 0 },
+      {
+        id: "service",
+        stencil: "generic.service",
+        label: t("tutorials.ratesAndInputs.serviceName"),
+        x: 280,
+        y: 0,
+        // Keep capacity above eighteen requests/s so the multiplier shows in Processed.
+        props: { latencyMs: 100 },
+      },
     ],
     edges: [{ id: "request", from: "client", to: "service", kind: "sync" }],
-    simulations: [practiceRun(msg("tutorials.ratesAndInputs.runName"))],
+    simulations: [
+      {
+        ...practiceRun(msg("tutorials.ratesAndInputs.runName")),
+        traffic: [{ id: "requests", node: "client", shape: { kind: "constant", ratePerSec: 6, durationMs: 600_000 } }],
+      },
+    ],
   }),
   subjects: { client: { stencils: ["client.mobile"] }, service: { stencils: ["generic.service"] } },
   steps: [
@@ -47,11 +60,19 @@ export const ratesAndInputs: Tutorial = {
         { press: "Enter" },
       ],
     },
-    liveStep(
-      msg("tutorials.ratesAndInputs.liveTitle"),
-      msg("tutorials.ratesAndInputs.liveGoal"),
-      msg("tutorials.ratesAndInputs.liveDone"),
-    ),
+    {
+      id: "live",
+      title: msg("tutorials.ratesAndInputs.liveTitle"),
+      goal: msg("tutorials.ratesAndInputs.liveGoal"),
+      done: msg("tutorials.ratesAndInputs.liveDone"),
+      check: { kind: "simulation", id: "tutorial-flow", traffic: false },
+      targets: [
+        { testId: "live-sim-picker", tip: msg("tutorials.ratesAndInputs.liveGoal") },
+        { testId: "live-toggle", tip: msg("tutorials.ratesAndInputs.liveGoal") },
+      ],
+      demo: [{ kind: "runSimulation", id: "tutorial-flow" }],
+      solution: [{ click: "live-toggle" }, { select: "live-sim-picker", value: "tutorial-flow" }],
+    },
     {
       id: "inputs",
       title: msg("tutorials.ratesAndInputs.inputsTitle"),

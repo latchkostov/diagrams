@@ -3986,7 +3986,7 @@ const en = {
   "tutorials.ratesAndInputs.rateTitle": "Set the Rate",
   "tutorials.ratesAndInputs.rateDone": "Rate is the number of requests the client sends each second.",
   "tutorials.ratesAndInputs.liveTitle": "Run practice traffic",
-  "tutorials.ratesAndInputs.liveGoal": "Click Live, pick Practice traffic, then turn on Continuous traffic in More.",
+  "tutorials.ratesAndInputs.liveGoal": "Click Live, then pick Practice traffic to send six requests per second.",
   "tutorials.ratesAndInputs.liveDone": "A saved seed makes the client’s traffic repeatable.",
   "tutorials.ratesAndInputs.inputsGoal": "Click Inputs in the Live bar.",
   "tutorials.ratesAndInputs.inputsTitle": "Open Inputs",
