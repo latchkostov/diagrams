@@ -17,10 +17,11 @@ import { defineMachine, type Transition } from "../lib/machine";
  */
 export type RunnerPhase = "intro" | "reconstructing" | "active" | "hinting" | "completing" | "finished" | "closed";
 /**
- * The current step's `sinceStep` readings, by expression (checks.ts, baselineKey): the value and the Live run's
- * generation it was read in. Read once the step is current, each as soon as Live shows it; never for another step.
+ * The current step's `sinceStep` readings, by expression (checks.ts, baselineKey): the value, the Live run's
+ * generation and the Live session it was read in (a remounted session numbers its runs from 1 again). Read once the
+ * step is current, each as soon as Live shows it; never for another step.
  */
-export type Baseline = Readonly<Record<string, readonly [value: number, generation: number]>>;
+export type Baseline = Readonly<Record<string, readonly [value: number, generation: number, session: number]>>;
 export interface RunnerState {
   value: RunnerPhase;
   /** The current step (intro: where Start begins; finished: the last). */
@@ -71,6 +72,14 @@ export type RunnerCommand =
 
 const STEP_STATES = ["active", "hinting", "completing"] as const;
 export const inStep = (s: RunnerState) => (STEP_STATES as readonly string[]).includes(s.value);
+
+/**
+ * Whether the coach mark points: while a step is being done (once its check holds, completing, there's nothing left to
+ * point at), with Highlights on or after Show me. A design study's milestones point only after Show me (hinting): the
+ * learner works out how first.
+ */
+export const targetsShown = (s: RunnerState, study: boolean) =>
+  inStep(s) && s.value !== "completing" && (s.value === "hinting" || (!study && s.highlights));
 
 export function runnerInitial(
   sticky: readonly boolean[],
@@ -227,8 +236,8 @@ export const runnerMachine = defineMachine<RunnerState, RunnerEvent, RunnerComma
     { type: "observe", met: [true, false], settled: [false, true] },
     { type: "observe", met: [true, true], settled: [true, true] },
     { type: "observe", met: [false, false], settled: [true, true] },
-    { type: "baseline", step: 0, values: { reading: [3, 1] } },
-    { type: "baseline", step: 1, values: { reading: [5, 1] } },
+    { type: "baseline", step: 0, values: { reading: [3, 1, 1] } },
+    { type: "baseline", step: 1, values: { reading: [5, 1, 1] } },
     { type: "showMe" },
     { type: "skip", stepId: "0" },
     { type: "fix" },

@@ -11,9 +11,11 @@ import type {
   MetricExpr,
   MetricValue,
   NodeMetric,
+  LiveView,
   SubjectSpec,
   Tutorial,
 } from "./types";
+import { matchesSimulation } from "./simulations";
 import type { Baseline } from "./machine";
 import { equal, readPath } from "./paths";
 import type { LiveState } from "../live/controller";
@@ -26,10 +28,17 @@ export interface SandboxView {
   live: boolean;
   processed(nodeId: string): number;
   session?: LiveState;
+  /** Which Live session this is (a remounted session numbers its runs from 1 again). */
+  sessionId?: number;
   /** False between an editor topology change and Live's rebuilt run. Other session state remains observable. */
   trafficReady?: boolean;
   mode?: EditorModeState;
-  slowmo?: Pick<SlowState, "status">;
+  slowmo?: Pick<SlowState, "status"> &
+    Partial<Pick<SlowState, "playing" | "t">> & { script?: { duration: number } | null };
+  /** Live's panels and views, as Live publishes them (planningHost, capacityOverlay). */
+  views?: Partial<Record<LiveView, boolean>>;
+  /** The Live hover card open now, if any (the canvas's readout layer). */
+  readout?: { kind: "node" | "edge"; id: string } | null;
   dependencies?: boolean;
   presenting?: boolean;
   sharing?: boolean;
@@ -198,36 +207,56 @@ export function holds(check: Check, view: SandboxView, subjects: Record<string, 
       const id = subjects[check.subject];
       const metrics = id ? view.session.snapshot.nodes[id] : undefined;
       const actual =
-        check.field === "latency.p95"
-          ? metrics?.latency?.p95
-          : check.field === "threads.waiting"
-            ? metrics?.threads?.waiting
-            : check.field === "breaker"
-              ? check.edge
-                ? view.session.snapshot.edges[edge(check.edge)?.id ?? ""]?.breaker?.state
-                : view.diagram.edges
-                    .filter((e) => e.from === id)
-                    .map((e) => view.session!.snapshot.edges[e.id]?.breaker?.state)
-                    .find((s) => s === check.value)
-              : metrics?.[check.field];
+        check.field === "breaker"
+          ? check.edge
+            ? view.session.snapshot.edges[edge(check.edge)?.id ?? ""]?.breaker?.state
+            : view.diagram.edges
+                .filter((e) => e.from === id)
+                .map((e) => view.session!.snapshot.edges[e.id]?.breaker?.state)
+                .find((s) => s === check.value)
+          : reading(metrics, check.field);
       return compare(actual, check.op, check.value);
     }
-    case "simulation":
+    case "simulation": {
+      const session = view.session;
       return (
         view.live &&
-        !view.session?.needsRestart &&
-        view.session?.running?.id === check.id &&
-        (check.traffic === undefined || view.session.traffic === check.traffic) &&
-        !!view.session.run &&
-        view.session.run.time >= (check.atLeastMs ?? 0)
+        !!session &&
+        !session.needsRestart &&
+        (check.saved ? matchesSimulation(session.running, check.saved) : session.running?.id === check.id) &&
+        (check.traffic === undefined || session.traffic === check.traffic) &&
+        !!session.run &&
+        session.run.time >= (check.atLeastMs ?? 0)
       );
+    }
+    case "savedSimulation":
+      return !!view.diagram.simulations?.some((sim) => matchesSimulation(sim, check.match));
+    case "liveView":
+      return !!view.views?.[check.view] === check.open;
+    case "readout": {
+      const open = view.live ? view.readout : null;
+      if (!open) return false;
+      if (check.edge) return open.kind === "edge" && open.id === edge(check.edge)?.id;
+      if (check.subject) return open.kind === "node" && open.id === subjects[check.subject];
+      return true;
+    }
+    case "inputs": {
+      if (!view.live || !view.session) return false;
+      const value = view.session.inputs[check.input] ?? 1;
+      return order(value, check.op, check.value);
+    }
     case "expectation": {
       const label = typeof check.label === "function" ? check.label() : check.label;
+      const outcome = check.outcome ?? "pass";
       return (
         view.live &&
         !view.session?.needsRestart &&
         view.session?.running?.id === check.simulation &&
-        !!view.session.run?.expectations.some((e) => (e.id === label || e.label === label) && e.status === "pass")
+        !!view.session.run?.expectations.some(
+          (e) =>
+            (e.id === label || e.label === label) &&
+            (outcome === "either" ? e.status !== "pending" : e.status === outcome),
+        )
       );
     }
     case "fault": {
@@ -244,12 +273,19 @@ export function holds(check: Check, view: SandboxView, subjects: Record<string, 
               (!check.fault || check.fault === f.kind) &&
               (f.kind === "slow" ? f.factor > 1 : f.rate > 0),
       );
-      return ((!check.fault || check.fault === "down") && down) || !!matches;
+      const active = ((!check.fault || check.fault === "down") && down) || !!matches;
+      return check.absent ? !active : active;
     }
     case "trace":
       return view.live && !!view.session?.trace;
-    case "slowmo":
-      return view.live && (view.slowmo?.status === "on" || view.slowmo?.status === "capturing");
+    case "slowmo": {
+      const slow = view.slowmo;
+      if (!view.live || !slow) return false;
+      // Finished: the machine's `finished`, which publishes as a stopped replay at the end of its script.
+      if (check.finished)
+        return slow.status === "on" && !!slow.script && !slow.playing && (slow.t ?? 0) >= slow.script.duration;
+      return slow.status === "on" || slow.status === "capturing";
+    }
     case "note":
       return view.live && !!view.session?.run && view.session.run.waiting === check.waiting;
     case "mode":
@@ -302,12 +338,16 @@ const order = (left: number, op: MetricComparison, right: number) =>
           : left < right;
 
 type SimNode = NonNullable<SandboxView["session"]>["snapshot"]["nodes"][string];
-const reading = (metrics: SimNode | undefined, field: NodeMetric): unknown =>
-  field === "latency.p95"
-    ? metrics?.latency?.p95
-    : field === "threads.waiting"
-      ? metrics?.threads?.waiting
-      : metrics?.[field];
+/** A node's reading: a field, or one inside its latency, threads or fleet ("latency.p95"). */
+const reading = (metrics: SimNode | undefined, field: NodeMetric | keyof SimNode): unknown => {
+  const [group, key] = field.split(".") as [keyof SimNode, string | undefined];
+  const value: unknown = metrics?.[group];
+  return key === undefined
+    ? value
+    : value && typeof value === "object"
+      ? (value as Record<string, unknown>)[key]
+      : undefined;
+};
 const finite = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : undefined);
 /** A sum is known only when every term is: an empty set, or one node without the reading, isn't zero. */
 const total = (terms: readonly (number | undefined)[]) =>
@@ -322,6 +362,17 @@ export function metricValue(
   view: SandboxView,
   subjects: Record<string, string | undefined>,
 ): number | undefined {
+  if ("prop" in expr) {
+    // The diagram's own number: no run needed.
+    const target = expr.edge
+      ? (() => {
+          const from = subjects[expr.edge[0]],
+            to = subjects[expr.edge[1]];
+          return from && to ? view.diagram.edges.find((e) => e.from === from && e.to === to) : undefined;
+        })()
+      : view.diagram.nodes.find((n) => n.id === subjects[expr.subject]);
+    return finite(readPath(target?.props, typeof expr.prop === "string" ? [expr.prop] : expr.prop));
+  }
   const session = view.session;
   if (!view.live || !session || view.trafficReady === false) return undefined;
   const node = (id: string | undefined, field: NodeMetric) =>
@@ -336,8 +387,15 @@ export function metricValue(
   if ("metric" in expr)
     return "node" in expr ? node(subjects[expr.node], expr.metric) : edge(between(expr.edge), expr.metric);
   if ("nodes" in expr) return total(expr.nodes.map((name) => node(subjects[name], expr.sum)));
-  if ("every" in expr)
-    return total(view.diagram.nodes.filter((n) => fits(expr.every, n.stencil)).map((n) => node(n.id, expr.sum)));
+  if ("every" in expr) {
+    const boundary = expr.every.within === undefined ? undefined : subjects[expr.every.within];
+    if (expr.every.within !== undefined && !boundary) return undefined;
+    return total(
+      view.diagram.nodes
+        .filter((n) => fits(expr.every, n.stencil) && (boundary === undefined || n.group === boundary))
+        .map((n) => node(n.id, expr.sum)),
+    );
+  }
   if ("edges" in expr) return total(expr.edges.map((pair) => edge(between(pair), expr.sum)));
   const from = subjects[expr.from];
   return from
@@ -360,13 +418,22 @@ export const sinceValues = (check: Check): MetricValue[] =>
       ? [check.left, check.right].flatMap((e) => (typeof e === "object" && "sinceStep" in e ? [e.sinceStep] : []))
       : [];
 
+/** The check with each comparison counted since its step began taken as met: a replayed step's history (Continue). */
+export const withoutSince = (check: Check): Check =>
+  check.kind === "all"
+    ? { ...check, checks: check.checks.map(withoutSince) }
+    : check.kind === "compare" && sinceValues(check).length
+      ? { kind: "all", checks: [] }
+      : check;
+
 /** A delta since the step began. A rebuilt run (another generation) counts from zero: all of it came after. */
 function expressionValue(expr: MetricExpr, view: SandboxView, subjects: Record<string, string | undefined>) {
   if (!("sinceStep" in expr)) return metricValue(expr, view, subjects);
   const now = metricValue(expr.sinceStep, view, subjects);
   const base = view.baseline?.[baselineKey(expr.sinceStep)];
   if (now === undefined || !base) return undefined;
-  return view.session!.generation === base[1] ? now - base[0] : now;
+  // Same session and run: the change since then. Another run, or a remounted session: all of it came after.
+  return view.session!.generation === base[1] && view.sessionId === base[2] ? now - base[0] : now;
 }
 
 /** Every step's check against one view of the sandbox. */

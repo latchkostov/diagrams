@@ -1,6 +1,7 @@
-import type { AnnotationKind, DiagramFile, EdgeRelation, Side, SimRole } from "../model/types";
+import type { AnnotationKind, DiagramFile, EdgeRelation, Expectation, Side, SimRole } from "../model/types";
 import type { EdgeSimState, NodeSimState } from "../sim/types";
 import type { EditorModeValue } from "../canvas/interaction/mode";
+import type { DrillPreset } from "../model/faults";
 
 /**
  * The tutorial format: typed data, no code. A tutorial is a starting diagram plus steps; each step says what to do
@@ -61,11 +62,21 @@ export type PropPatch =
     };
 
 type NumericKeys<T> = { [K in keyof T]-?: NonNullable<T[K]> extends number ? K : never }[keyof T];
-/** A node's Live number: any numeric field of its metrics, a latency percentile or its threads waiting. */
-export type NodeMetric = NumericKeys<NodeSimState> | "latency.p95" | "threads.waiting";
+/**
+ * A node's Live number: any numeric field of its metrics; its latency (percentiles, and the time spent waiting or
+ * working); its threads; its fleet (replicas desired, ready, still starting: a cold start).
+ */
+export type NodeMetric =
+  | NumericKeys<NodeSimState>
+  | `latency.${"p50" | "p95" | "p99" | "waitMs" | "workMs"}`
+  | `threads.${"working" | "waiting" | "queued"}`
+  | `fleet.${"desired" | "ready" | "starting" | "draining"}`;
 export type EdgeMetric = NumericKeys<EdgeSimState>;
-/** Every node a subject spec would fit (stencils, else role), bound or not: "every worker". */
-export type NodeMatch = Pick<SubjectSpec, "stencils" | "role">;
+/**
+ * Every node a subject spec would fit (stencils, else role), bound or not: "every worker". within: only those in this
+ * boundary subject ("every service in cell A").
+ */
+export type NodeMatch = Pick<SubjectSpec, "stencils" | "role"> & { within?: string };
 /** A Live number, read from the session's real-unit snapshot. A missing reading (or an empty set) fails the check. */
 export type MetricValue =
   | { node: string; metric: NodeMetric }
@@ -74,13 +85,26 @@ export type MetricValue =
   | { sum: NodeMetric; every: NodeMatch }
   | { sum: EdgeMetric; edges: readonly (readonly [string, string])[] }
   /** Every flow out of this subject. */
-  | { sum: EdgeMetric; from: string };
+  | { sum: EdgeMetric; from: string }
+  /** A number the diagram says (a topic's partitions, a service's replicas): read from props, Live or not. */
+  | ({ prop: string | PropPath } & PropertyTarget);
 /**
  * `sinceStep`: counted since this step became current. Its baseline is read on entry and kept in the runner's state
  * (RunnerState.baseline); a rebuilt run (a new generation) counts from zero. Only sticky steps may use it.
  */
 export type MetricExpr = MetricValue | { sinceStep: MetricValue };
 export type MetricComparison = Comparison | "<" | ">";
+
+/** A saved simulation by what it is: its id, a Drill step (one fault preset, or any), at least this many expectations. */
+export interface SimulationMatch {
+  id?: string;
+  drill?: DrillPreset | "any";
+  expectations?: number;
+}
+/** A Live panel or view, as Live publishes it (src/live/planningHost.ts, src/live/capacityOverlay.ts). */
+export type LiveView = "inputs" | "events" | "simulations" | "capacity";
+/** Live's what-if inputs (the Inputs panel): Traffic ×, Capacity ×, Scale. */
+export type LiveInput = "traffic" | "capacity" | "scale";
 
 /** What makes a step done. Plain data, so tests and the authoring lint can read it. */
 export type Check =
@@ -107,17 +131,36 @@ export type Check =
   | {
       kind: "metric";
       subject: string;
-      field: keyof NodeSimState | "latency.p95" | "threads.waiting" | "breaker";
+      field: NodeMetric | keyof NodeSimState | "breaker";
       op: Comparison;
       value: number | string | boolean;
       edge?: readonly [string, string];
     }
-  /** traffic: Continuous traffic is on (true) or off (false) in that run, as Live's control shows it. */
-  | { kind: "simulation"; id: string; atLeastMs?: number; traffic?: boolean }
-  /** A saved expectation id is stable across languages; Words also matches a chip's displayed label. */
-  | { kind: "expectation"; simulation: string; label: string | Words }
-  | ({ kind: "fault"; fault?: FaultKind } & PropertyTarget)
-  | { kind: "trace" | "slowmo" }
+  /**
+   * A saved simulation is running: this one (id), or one the learner authored that matches (saved). traffic:
+   * Continuous traffic is on (true) or off (false) in that run, as Live's control shows it.
+   */
+  | ({ kind: "simulation"; atLeastMs?: number; traffic?: boolean } & (
+      { id: string; saved?: never } | { saved: SimulationMatch; id?: never }
+    ))
+  /** The diagram has a saved simulation like this (authored in Simulations…), running or not. */
+  | { kind: "savedSimulation"; match: SimulationMatch }
+  /**
+   * A saved expectation id is stable across languages; Words also matches a chip's displayed label. outcome: what the
+   * chip must say, "pass" by default; "either" once it's decided, met or failed.
+   */
+  | { kind: "expectation"; simulation: string; label: string | Words; outcome?: "pass" | "fail" | "either" }
+  /** A Fault is active on the subject; absent: none is (Restore cleared it), while Live runs. */
+  | ({ kind: "fault"; fault?: FaultKind; absent?: true } & PropertyTarget)
+  | { kind: "trace" }
+  /** Slow motion is on; finished: its message's journey has played to the end (the machine's `finished`). */
+  | { kind: "slowmo"; finished?: true }
+  /** A Live panel or view is open (or closed), as Live publishes it. */
+  | { kind: "liveView"; view: LiveView; open: boolean }
+  /** A Live hover card is open: on this subject or connection, or on anything. */
+  | ({ kind: "readout" } & (PropertyTarget | { subject?: never; edge?: never }))
+  /** Live's what-if input (Inputs panel): Traffic × 3 is `{ input: "traffic", op: "=", value: 3 }`; unset is 1. */
+  | { kind: "inputs"; input: LiveInput; op: MetricComparison; value: number }
   | { kind: "note"; waiting: boolean }
   | { kind: "mode"; value: EditorModeValue; subject?: string }
   | { kind: "selection"; subjects?: readonly string[]; atLeast?: number; exact?: boolean }
@@ -149,6 +192,36 @@ export type Demo =
   | { kind: "traffic"; on: boolean }
   /** Follow the next message, through Live's own "Trace a message › Next message". */
   | { kind: "trace" }
+  /**
+   * Watch one message in slow motion, through Live's own action: from this subject ("Watch one message in slow motion"
+   * on its menu), or the next anywhere ("Trace a message › Next message, in slow motion").
+   */
+  | { kind: "slowmo"; subject?: string }
+  /** Send messages into a subject, through Live's own "Inject › 1 / 10 / 100". */
+  | { kind: "inject"; subject: string; count: 1 | 10 | 100 }
+  /** The bottleneck's suggested fix, through Live's own "Apply fix" (the registry's "sim.capacity-fix"). */
+  | { kind: "applyFix" }
+  /** Set one of Live's what-if inputs, as the Inputs panel does. */
+  | { kind: "inputs"; input: LiveInput; value: number }
+  /**
+   * Continue a paused narration note, as its Continue button does: once that saved run has played to atLeastMs,
+   * continuing any note that pauses it on the way, so the run reaches the note the step is about.
+   */
+  | { kind: "continueNote"; simulation: string; atLeastMs?: number }
+  /** Open a Live panel or view, as its control does. */
+  | { kind: "openView"; view: LiveView }
+  /**
+   * Save a simulation, as Simulations… does: a Drill step per fault preset (on the diagram's own targets, as the
+   * preset picks them) and these expectations. Edit-preserving: a saved simulation with this id keeps what it has
+   * and gets only what's missing.
+   */
+  | {
+      kind: "saveSimulation";
+      id: string;
+      title: Words;
+      drills?: readonly { preset: DrillPreset; atMs: number }[];
+      expectations?: readonly Expectation[];
+    }
   | ({ kind: "fault"; fault: FaultKind; restore?: boolean } & PropertyTarget)
   | { kind: "select"; subjects: readonly string[] }
   | { kind: "member"; subject: string; boundary: string }
@@ -243,6 +316,11 @@ export interface Tutorial extends TutorialMetadata {
   start: (() => DiagramFile) | { example: string; simulation?: string };
   /** Share, Present and File lessons keep the app's real controls above the tutorial bar. */
   chrome?: "app";
+  /**
+   * A design study: its steps are milestones, so the strip states the outcome and the coach mark points only once
+   * "Show me" is pressed (targetsShown in ./machine.ts). Skip applies the reference change.
+   */
+  study?: true;
   subjects: Readonly<Record<string, SubjectSpec>>;
   steps: readonly TutorialStep[];
   finish: { text: Words; example?: { slug: string; label: Words } };

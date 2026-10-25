@@ -11,9 +11,15 @@ import {
 } from "../canvas/interaction/mode";
 import { GROUP_PREFIX } from "../canvas/types";
 import type { EditorApi } from "../editor/types";
-import { LiveController } from "../live/controller";
+import { LiveController, type LiveState } from "../live/controller";
 import { liveActions } from "../live/liveActions";
-import { actionRegistry } from "../editor/actions";
+import { planningHost } from "../live/planningHost";
+import { capacityOverlay } from "../live/capacityOverlay";
+import type { LiveUi } from "../live/context";
+import type { SlowState } from "../live/slowmo/session";
+import { withSavedSimulation } from "./simulations";
+import { actionRegistry, type MenuNode } from "../editor/actions";
+import { stencilRole } from "../stencils/roles";
 import type { AnnotationKind, DiagramEdge, DiagramFile, DiagramNode, Side } from "../model/types";
 import type { paletteHost } from "../palette/host";
 import { allTutorials as tutorials } from "./catalog";
@@ -30,13 +36,16 @@ import { groupOf } from "../canvas/membership";
 import { inStep } from "./machine";
 import { savedProgress, saveProgress } from "./progress";
 import { createTutorialRunner } from "./runner";
-import type { Check, Demo, Tutorial } from "./types";
+import type { Check, Demo, Tutorial, TutorialStep } from "./types";
 import { patchProps } from "./paths";
 import {
   addNameFixture,
   liveControlsFixture,
+  livePanelsFixture,
   metricsFixture,
   pathsFixture,
+  savedSimulationsFixture,
+  slowMotionFixture,
   tutorialFixtures,
 } from "../test/tutorialFixtures";
 
@@ -120,11 +129,75 @@ function sandbox(tutorial: Tutorial, { lateAdds = false, lazyLive = false } = {}
   let controller: LiveController | undefined;
   let offController: (() => void) | undefined;
   let offActions: (() => void) | undefined;
+  let offUi: (() => void) | undefined;
+  /** Live's panels, as the session holds them; published with its controller (planningHost), as LiveSession does. */
+  const panels = { capacityOpen: false, panelOpen: false, events: { open: false, nodeId: null as string | null } };
+  /** Live's panels publish as LiveSession renders: after the call that changed them, never inside it. */
+  const renderUi = () => queueMicrotask(publishUi);
+  const publishUi = () => {
+    const c = controller;
+    if (!c) return;
+    offUi?.();
+    offUi = planningHost.publish({
+      controller: c,
+      ...panels,
+      events: { ...panels.events },
+      openCapacity: (open = true) => {
+        panels.capacityOpen = open;
+        if (open) capacityOverlay.showForSession();
+        renderUi();
+      },
+      showEvents: (nodeId: string | null, open = true) => {
+        panels.events = { open, nodeId };
+        renderUi();
+      },
+      openPanel: () => {
+        panels.panelOpen = true;
+        renderUi();
+      },
+    } as unknown as LiveUi);
+  };
+  /** Slow motion, as its session publishes it: started by Live's actions, played to the end of its script. */
+  const slowListeners = new Set<() => void>();
+  const SLOW_SCRIPT = { duration: 1200 };
+  let slowState: Pick<SlowState, "status" | "playing" | "t"> & { script: { duration: number } | null } = {
+    status: "off",
+    playing: false,
+    t: 0,
+    script: null,
+  };
+  const setSlow = (next: typeof slowState) => {
+    slowState = next;
+    slowListeners.forEach((f) => f());
+  };
+  const slow = {
+    getState: () => slowState,
+    subscribe: (f: () => void) => {
+      slowListeners.add(f);
+      return () => void slowListeners.delete(f);
+    },
+    end: () => setSlow({ status: "off", playing: false, t: 0, script: null }),
+    start: () => setSlow({ status: "on", playing: true, t: 0, script: SLOW_SCRIPT }),
+    /** Its replay plays on: at the end of the script it stops there (the machine's `finished`). */
+    play(ms: number) {
+      if (slowState.status !== "on" || !slowState.playing) return;
+      const t = Math.min(SLOW_SCRIPT.duration, slowState.t + ms);
+      setSlow({ ...slowState, t, playing: t < SLOW_SCRIPT.duration });
+    },
+  };
+  /**
+   * The bottleneck's "Apply fix" (useLiveContextMenu's palette row), once the capacity overlay shows a bottleneck:
+   * in free play its fix is a prop edit, here one more replica on the first processor.
+   */
+  const capacityFix = () => {
+    const target = diagram.nodes.find((n) => stencilRole(n.stencil) === "processor");
+    return capacityOverlay.get() && target ? target : undefined;
+  };
   /** Live's own actions over this run, as its session registers them: Skip's controls press these rows. */
   const actionsOf = (c: LiveController) =>
     liveActions({
       controller: c,
-      slowMotionActive: () => false,
+      slowMotionActive: () => slowState.status !== "off",
       openInject: () => {},
       startStorm: () => {},
       showEvents: () => {},
@@ -133,7 +206,7 @@ function sandbox(tutorial: Tutorial, { lateAdds = false, lazyLive = false } = {}
       traceNext: (nodeId) => c.traceNext(nodeId),
       traceSlowest: () => {},
       traceDeadLettered: () => {},
-      slowMotion: () => {},
+      slowMotion: () => slow.start(),
       slowMotionTrace: () => {},
       canReplayTrace: () => false,
       endTrace: () => c.endTrace(),
@@ -160,7 +233,24 @@ function sandbox(tutorial: Tutorial, { lateAdds = false, lazyLive = false } = {}
       if (controller !== c || !mounting) return;
       c.setTraffic(true);
       c.setPlaying(true);
-      offActions = actionRegistry.register(actionsOf(c));
+      hostState.session.state = c.getState;
+      offActions = actionRegistry.register([
+        ...actionsOf(c),
+        {
+          id: "sim.capacity-fix",
+          section: "simulation",
+          targets: ["canvas"],
+          modes: ["live"],
+          paletteOnly: true,
+          label: "Apply fix",
+          when: () => !!capacityFix(),
+          run: () => {
+            const target = capacityFix();
+            if (target) editor.setNodeProps(target.id, { replicas: Number(target.props?.replicas ?? 1) + 1 });
+          },
+        },
+      ]);
+      publishUi();
     };
     const run = () => {
       if (controller !== c || !simulation) return;
@@ -193,6 +283,13 @@ function sandbox(tutorial: Tutorial, { lateAdds = false, lazyLive = false } = {}
   };
   const leaveLive = () => {
     hostState.canvas.live = false;
+    slow.end();
+    offUi?.();
+    offUi = undefined;
+    panels.capacityOpen = panels.panelOpen = false;
+    panels.events = { open: false, nodeId: null };
+    capacityOverlay.endSession();
+    hostState.session.state = () => undefined;
     offActions?.();
     offActions = undefined;
     offController?.();
@@ -200,7 +297,11 @@ function sandbox(tutorial: Tutorial, { lateAdds = false, lazyLive = false } = {}
     controller = undefined;
     notify();
   };
-  cleanup.push(() => leaveLive());
+  cleanup.push(() => {
+    leaveLive();
+    // Module stores outlive a sandbox: the next lesson starts as a fresh app would.
+    capacityOverlay.set(false);
+  });
   const isGroup = (id: string) => !!diagram.groups?.some((g) => g.id === id);
   const newNode = (stencil: string): DiagramNode => ({
     id: `made-${++made}`,
@@ -269,6 +370,7 @@ function sandbox(tutorial: Tutorial, { lateAdds = false, lazyLive = false } = {}
     updateGroup: (id: string, patch: { label?: string }) =>
       write({ ...diagram, groups: diagram.groups?.map((g) => (g.id === id ? { ...g, ...patch } : g)) }),
     updateEdge: patchEdge,
+    updateMeta: (patch: Partial<DiagramFile>) => write({ ...diagram, ...patch }),
     setEdgeProps: (id: string, props: Record<string, unknown>) =>
       patchEdge(id, { props: { ...diagram.edges.find((e) => e.id === id)?.props, ...props } }),
     setNodeProps: (id: string, props: Record<string, unknown>) =>
@@ -349,6 +451,20 @@ function sandbox(tutorial: Tutorial, { lateAdds = false, lazyLive = false } = {}
     startEditing: ({ kind, id }: { kind: string; id: string }) =>
       toMode({ type: "field.focused", target: kind === "group" ? GROUP_PREFIX + id : id }),
   };
+  let readout: { kind: "node" | "edge"; id: string; pinned: boolean } | null = null;
+  const readoutListeners = new Set<() => void>();
+  const readouts = {
+    get: () => readout,
+    subscribe: (f: () => void) => {
+      readoutListeners.add(f);
+      return () => void readoutListeners.delete(f);
+    },
+  };
+  /** The pointer over an item in Live, opening its hover card (or off everything). */
+  const hover = (target: { kind: "node" | "edge"; id: string } | null) => {
+    readout = target && { ...target, pinned: false };
+    readoutListeners.forEach((f) => f());
+  };
   const hostState = {
     canvas: {
       editor: editor as unknown as EditorApi,
@@ -365,7 +481,9 @@ function sandbox(tutorial: Tutorial, { lateAdds = false, lazyLive = false } = {}
     },
     session: {
       run: () => {},
-      state: () => controller?.getState(),
+      // Each session publishes its own controller's reader (useLiveSessionState): a remount is another session.
+      state: (() => undefined) as () => LiveState | undefined,
+      slowmo: slow,
       subscribe: (f: () => void) => {
         sessions.add(f);
         return () => void sessions.delete(f);
@@ -403,6 +521,10 @@ function sandbox(tutorial: Tutorial, { lateAdds = false, lazyLive = false } = {}
         modes.add(f);
         return () => void modes.delete(f);
       },
+      // Live's hover cards: attached while Live shows them, as NodeBadges attaches its readout layer.
+      get readouts() {
+        return hostState.canvas.live ? readouts : null;
+      },
     }),
   );
   const app = { presenting: false, sharing: false };
@@ -417,6 +539,34 @@ function sandbox(tutorial: Tutorial, { lateAdds = false, lazyLive = false } = {}
   });
   cleanup.push(runner.connect());
   const subject = (name: string) => runner.getSnapshot().subjects[name]!;
+  /** A Live registry row, as a menu offers it now (its availability guards included); throws if it isn't offered. */
+  function pressRow(id: string, targetId?: string, kind: "node" | "edge" | "group" = "node") {
+    const find = (items: MenuNode[]): (() => void) | undefined => {
+      for (const item of items) {
+        if (item.type !== "item" || item.disabled) continue;
+        if (item.id === id) return item.run;
+        const nested = item.children && find(item.children);
+        if (nested) return nested;
+      }
+    };
+    const run = find(
+      actionRegistry.build({
+        editor: editor as unknown as EditorApi,
+        mode: "live",
+        surface: "palette",
+        selection: editor.getSelection(),
+        ...(targetId === undefined
+          ? { target: "canvas" as const }
+          : kind === "edge"
+            ? { target: "edge" as const, edgeId: targetId }
+            : kind === "group"
+              ? { target: "group" as const, groupId: targetId }
+              : { target: "node" as const, nodeId: targetId }),
+      }),
+    );
+    if (!run) throw new Error(`Live doesn't offer ${id} now`);
+    run();
+  }
   return {
     runner,
     editor,
@@ -437,6 +587,10 @@ function sandbox(tutorial: Tutorial, { lateAdds = false, lazyLive = false } = {}
     get live() {
       return controller;
     },
+    slow,
+    hover,
+    /** Live's own registry row, pressed as the learner presses it in a menu. */
+    press: (id: string, nodeId?: string) => pressRow(id, nodeId),
     /** The learner's own edit for a demo, through the UI's editor calls (not the runner's). */
     learn(demo: Demo) {
       const id = (name: string) => subject(name);
@@ -500,8 +654,47 @@ function sandbox(tutorial: Tutorial, { lateAdds = false, lazyLive = false } = {}
           return controller!.setTraffic(demo.on);
         case "trace":
           return controller!.traceNext();
-        case "fault":
-          throw new Error("No catalog lesson injects faults yet: model the fault here before adding one.");
+        case "fault": {
+          const target = demo.edge ? edge(demo.edge).id : id(demo.subject);
+          const group = isGroup(target);
+          // As the Fault menu offers them: Take down and Cut toggle (their Restore is the same row).
+          const action =
+            demo.fault === "cut"
+              ? "sim.cut-link"
+              : demo.fault === "down"
+                ? group
+                  ? "sim.boundary-down"
+                  : "sim.kill"
+                : demo.restore
+                  ? "sim.clear-faults"
+                  : demo.fault === "slow"
+                    ? "sim.slow:5"
+                    : "sim.failure:0.5";
+          return pressRow(action, target, demo.edge ? "edge" : group ? "group" : "node");
+        }
+        case "slowmo":
+          return demo.subject ? pressRow("sim.slowmo-from", id(demo.subject)) : slow.start();
+        case "inject":
+          return pressRow(`sim.inject:${demo.count}`, id(demo.subject));
+        case "applyFix":
+          return pressRow("sim.capacity-fix");
+        case "inputs":
+          return controller!.setInputs({ ...controller!.getState().inputs, [demo.input]: demo.value });
+        case "openView": {
+          const ui = planningHost.get()!;
+          if (demo.view === "capacity") return capacityOverlay.set(true);
+          if (demo.view === "inputs") return ui.openCapacity(true);
+          if (demo.view === "events") return ui.showEvents(null, true);
+          return ui.openPanel();
+        }
+        case "saveSimulation": {
+          const simulations = withSavedSimulation(diagram, demo);
+          return simulations && editor.updateMeta({ simulations });
+        }
+        case "continueNote":
+          // The learner reads the note, then presses its Continue.
+          if (controller?.getState().run?.waiting) controller.resume();
+          return;
       }
     },
   };
@@ -512,8 +705,11 @@ const state = (s: Sandbox) => s.runner.getSnapshot().state;
 const beyond = (s: Sandbox, i: number) => state(s).value === "finished" || (inStep(state(s)) && state(s).index > i);
 
 /** A check that needs the run to have played for a while: Live's time has to move for it. */
-const needsRunTime = (check: Check): boolean =>
-  check.kind === "all" ? check.checks.some(needsRunTime) : check.kind === "simulation" && !!check.atLeastMs;
+const checkNeedsTime = (check: Check): boolean =>
+  check.kind === "all" ? check.checks.some(checkNeedsTime) : check.kind === "simulation" && !!check.atLeastMs;
+/** A step whose check needs run time, or whose injected messages need it to arrive. */
+const needsRunTime = (step: TutorialStep): boolean =>
+  checkNeedsTime(step.check) || step.demo.some((d) => d.kind === "inject");
 
 async function skip(s: Sandbox, tutorial: Tutorial) {
   const before = state(s);
@@ -523,7 +719,7 @@ async function skip(s: Sandbox, tutorial: Tutorial) {
     () => {
       // Live keeps playing while Skip's edits land, as on the canvas; only a step that needs run time sees it move,
       // so no other step's moment passes early.
-      if (needsRunTime(step.check) && s.live?.getState().playing) {
+      if (needsRunTime(step) && s.live?.getState().playing) {
         s.live.advance(250);
         s.live.publish();
       }
@@ -649,9 +845,14 @@ describe("every tutorial's completion contract", () => {
               if ((demo.kind === "add" || demo.kind === "insert") && names.includes(demo.subject))
                 openName(demo.subject);
             }
-          // A run the check wants to have played for a while: the learner watches it play.
-          if (learning && needsRunTime(step.check))
+          // Live's panels publish when LiveSession renders, just after the click that opened them.
+          if (learning) await new Promise<void>((done) => queueMicrotask(done));
+          // A run the check wants to have played for a while: the learner watches it play, pressing Continue on each note
+          // the step is about.
+          const continues = step.demo.some((d) => d.kind === "continueNote");
+          if (learning && needsRunTime(step))
             for (let frame = 0; frame < 400 && !beyond(s, i) && s.live?.getState().playing; frame++) {
+              if (continues && s.live.getState().run?.waiting) s.live.resume();
               s.live.advance(250);
               s.live.publish();
             }
@@ -681,7 +882,7 @@ describe("every tutorial's completion contract", () => {
           expect(state(s).resumeAt).toBe(i);
           s.runner.send({ type: i > 0 ? "resume" : "start" });
           // Live plays on while Continue replays a step that needs run time, as on the canvas.
-          const replaysRunTime = tutorial.steps.slice(0, i).some((st) => needsRunTime(st.check));
+          const replaysRunTime = tutorial.steps.slice(0, i).some((st) => needsRunTime(st));
           await vi.waitFor(
             () => {
               if (replaysRunTime && state(s).value === "reconstructing" && s.live?.getState().playing) {
@@ -712,7 +913,9 @@ describe("every tutorial's completion contract", () => {
           expect(s.version).toBe(before.version);
           expect(s.hostState.canvas.focusNode).not.toHaveBeenCalled();
           const node = step.targets.find((t) => t.testId.startsWith("node-{"));
-          if (node && s.runner.getSnapshot().subjects[node.testId.slice(6, -1)])
+          // Slow motion owns the camera while it's on: Show me points without moving it.
+          if (s.slow.getState().status !== "off") expect(s.hostState.canvas.revealNode).not.toHaveBeenCalled();
+          else if (node && s.runner.getSnapshot().subjects[node.testId.slice(6, -1)])
             expect(s.hostState.canvas.revealNode).toHaveBeenCalledOnce();
           await skip(s, tutorial);
         });
@@ -976,11 +1179,13 @@ describe("completion regressions", () => {
     expect(base).toBe(s.live!.getState().snapshot.nodes[s.subject("first")].processed);
     expect(base).toBeGreaterThanOrEqual(5);
     let processed = base;
-    while (state(s).index === 3) {
+    // Bounded: traffic that stops flowing fails here, rather than hanging the worker.
+    for (let frame = 0; frame < 400 && state(s).index === 3; frame++) {
       expect(processed - base, "sinceStep counted traffic from before its step").toBeLessThan(5);
       play(s, 250);
       processed = s.live!.getState().snapshot.nodes[s.subject("first")].processed;
     }
+    expect(state(s).index, "the step advanced on its own traffic").not.toBe(3);
     expect(processed - base).toBeGreaterThanOrEqual(5);
     // Fewer waiting in the queue than it has delivered: `lower` holds as soon as it's current.
     expect(state(s).value).toBe("finished");
@@ -1001,7 +1206,7 @@ describe("completion regressions", () => {
       "a baseline only ever belongs to the current step",
     ).toBe(true);
     const captured = state(s).baseline[sinceKey];
-    expect(captured).toEqual([0, s.live!.getState().generation]);
+    expect(captured).toEqual([0, s.live!.getState().generation, expect.any(Number)]);
     s.live!.setTraffic(true);
     s.live!.setPlaying(true);
     play(s, 250);
@@ -1042,5 +1247,150 @@ describe("completion regressions", () => {
     expect(state(s)).toMatchObject({ index: 3, value: "active" });
     expect(state(s).baseline[sinceKey][0]).toBeLessThan(base);
     expect(state(s).baseline[sinceKey][1]).toBe(s.live!.getState().generation);
+  });
+  it("Continue replays a sinceStep step that has a demo: what it counted is history, the rest must hold", async () => {
+    const tutorial: Tutorial = {
+      ...metricsFixture,
+      steps: [
+        { ...metricsFixture.steps[0], sticky: true },
+        {
+          ...metricsFixture.steps[3],
+          id: "slowed",
+          check: {
+            kind: "all",
+            checks: [
+              { kind: "fault", subject: "first", fault: "slow" },
+              { kind: "compare", left: { sinceStep: { node: "first", metric: "processed" } }, op: ">=", right: 5 },
+            ],
+          },
+          demo: [{ kind: "fault", subject: "first", fault: "slow" }],
+        },
+        {
+          ...metricsFixture.steps[3],
+          id: "restored",
+          check: { kind: "fault", subject: "first", absent: true },
+          sticky: undefined,
+          demo: [{ kind: "fault", subject: "first", fault: "slow", restore: true }],
+        },
+      ],
+    };
+    saveProgress(tutorial, 2, false);
+    const s = sandbox(tutorial);
+    s.runner.send({ type: "resume" });
+    await vi.waitFor(() => expect(state(s)).toMatchObject({ index: 2, value: "active" }), { interval: 1 });
+    // Replayed: the Fault is on again, and nothing waited for ten more messages.
+    expect(s.live!.getState().snapshot.faults).toContainEqual(expect.objectContaining({ kind: "slow" }));
+  });
+
+  it("a sinceStep step counts a remounted Live session from zero, though its runs number from 1 again", async () => {
+    const tutorial: Tutorial = {
+      ...metricsFixture,
+      steps: [
+        {
+          ...metricsFixture.steps[0],
+          id: "warm",
+          check: { kind: "compare", left: { node: "first", metric: "processed" }, op: ">=", right: 20 },
+          sticky: true,
+          demo: [{ kind: "live" }],
+        },
+        {
+          ...metricsFixture.steps[3],
+          check: { kind: "compare", left: { sinceStep: { node: "first", metric: "processed" } }, op: ">=", right: 40 },
+        },
+      ],
+    };
+    const s = sandbox(tutorial);
+    s.runner.send({ type: "start" });
+    s.hostState.live.goLive();
+    for (let frame = 0; frame < 200 && state(s).index === 0; frame++) play(s, 250);
+    expect(state(s)).toMatchObject({ index: 1, value: "active" });
+    const [base, generation, session] = state(s).baseline[sinceKey];
+    expect(base).toBeGreaterThanOrEqual(20);
+    // Leave Live and come back: another session, whose first run is generation `generation` again.
+    s.hostState.live.toggle();
+    s.hostState.live.toggle();
+    expect(s.live!.getState().generation).toBe(generation);
+    expect(state(s).baseline[sinceKey]).toEqual([base, generation, session]);
+    const first = () => s.live!.getState().snapshot.nodes[s.subject("first")].processed;
+    for (let frame = 0; frame < 400 && state(s).value !== "finished"; frame++) play(s, 250);
+    expect(state(s).value, "the new session's own traffic completes it").toBe("finished");
+    expect(first(), "counted from zero, not from the old session's baseline").toBeLessThan(base + 40);
+  });
+
+  it("Skip continues each note on the way to the one its step is about", async () => {
+    const s = sandbox(savedSimulationsFixture);
+    await reach(s, savedSimulationsFixture, 1);
+    expect(s.live!.getState().run).toMatchObject({ waiting: true });
+    await skip(s, savedSimulationsFixture);
+    expect(state(s).index).toBeGreaterThan(1);
+    expect(s.live!.getState().run!.time).toBeGreaterThanOrEqual(1500);
+    expect(s.live!.getState().run!.waiting).toBe(false);
+  });
+
+  it("Continue replays a continued note: the run is past it when the learner lands", async () => {
+    saveProgress(savedSimulationsFixture, 2, false);
+    const s = sandbox(savedSimulationsFixture);
+    s.runner.send({ type: "resume" });
+    for (let frame = 0; frame < 400 && state(s).value === "reconstructing"; frame++) {
+      if (s.live?.getState().playing) play(s, 250);
+      await Promise.resolve();
+    }
+    expect(state(s)).toMatchObject({ index: 2, value: "active" });
+    expect(s.live!.getState().run).toMatchObject({ waiting: false });
+    expect(s.live!.getState().run!.time).toBeGreaterThanOrEqual(1500);
+  });
+
+  it("an expectation either way completes its step once Live decides it, here failed", async () => {
+    const s = sandbox(savedSimulationsFixture);
+    await reach(s, savedSimulationsFixture, 2);
+    for (let frame = 0; frame < 100 && state(s).index === 2; frame++) play(s, 250);
+    expect(s.live!.getState().run!.expectations[0].status).toBe("fail");
+    expect(state(s).index).toBe(3);
+  });
+
+  it("saveSimulation keeps the learner's own simulation and adds only the Drill step it lacks", async () => {
+    const s = sandbox(savedSimulationsFixture);
+    await reach(s, savedSimulationsFixture, 4);
+    const own = {
+      id: "simulation",
+      title: "Mine",
+      seed: 9,
+      traffic: [],
+      timeline: [{ atMs: 0, action: { do: "note" as const, text: "Mine" } }],
+      expectations: [],
+    };
+    s.editor.updateMeta({ simulations: [...(s.diagram.simulations ?? []), own] });
+    const version = s.version;
+    await skip(s, savedSimulationsFixture);
+    expect(s.version, "one edit").toBe(version + 1);
+    const saved = s.diagram.simulations!.filter((sim) => sim.id === "simulation");
+    expect(saved).toHaveLength(1);
+    expect(saved[0]).toMatchObject({ title: "Mine", seed: 9 });
+    expect(saved[0].timeline).toEqual([
+      own.timeline[0],
+      expect.objectContaining({
+        atMs: 1000,
+        action: expect.objectContaining({ do: "fault", drill: "slow-dependency" }),
+      }),
+    ]);
+  });
+
+  it("slow motion's journey played to the end completes its step by itself", async () => {
+    const s = sandbox(slowMotionFixture);
+    expect(await reach(s, slowMotionFixture, 2)).toBe(true);
+    s.slow.play(600);
+    expect(state(s).index).toBe(2);
+    s.slow.play(600);
+    expect(state(s).value).toBe("finished");
+  });
+
+  it("a hover card on the subject completes its step, and on another item it doesn't", async () => {
+    const s = sandbox(livePanelsFixture);
+    const hover = livePanelsFixture.steps.findIndex((st) => st.id === "hover");
+    expect(await reach(s, livePanelsFixture, hover)).toBe(true);
+    s.hover({ kind: "node", id: s.subject("db") });
+    expect(state(s).index).toBe(hover);
+    s.hover({ kind: "node", id: s.subject("api") });
+    expect(state(s).index).toBe(hover + 1);
   });
 });

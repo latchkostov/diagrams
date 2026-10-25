@@ -16,6 +16,20 @@ import { tutorialFixtures } from "../test/tutorialFixtures";
  * (tests/e2e/tutorials.spec.ts) then plays each one through the real UI.
  */
 
+/**
+ * Whether a source file counts as evidence that the app renders a control: never tests, and never tutorial
+ * declarations (the catalog, the Lab's runtime lessons, the runner's fixture lessons), which only name controls.
+ */
+const isEvidence = (path: string) => {
+  const at = path.replaceAll("\\", "/");
+  return (
+    /\.tsx?$/.test(at) &&
+    !/\.test\.tsx?$/.test(at) &&
+    (!at.includes("src/tutorials/") || at.endsWith("tutorials/TutorialApp.tsx")) &&
+    !at.endsWith("lab/tutorialRuntimeFixture.ts") &&
+    !at.endsWith("test/tutorialFixtures.ts")
+  );
+};
 /** Every test id the app's source can render, as literal text or template prefixes (never the private examples). */
 const source = (() => {
   const out: string[] = [];
@@ -24,14 +38,7 @@ const source = (() => {
       const path = join(dir, name);
       if (path.replaceAll("\\", "/").includes("src/examples/private")) continue;
       if (statSync(path).isDirectory()) walk(path);
-      // Tutorial declarations aren't evidence of a rendered control, including the Lab's runtime data.
-      else if (
-        /\.tsx?$/.test(name) &&
-        !/\.test\.tsx?$/.test(name) &&
-        (!path.includes(join("src", "tutorials")) || path.endsWith(join("tutorials", "TutorialApp.tsx"))) &&
-        !path.endsWith(join("lab", "tutorialRuntimeFixture.ts"))
-      )
-        out.push(readFileSync(path, "utf8"));
+      else if (isEvidence(path)) out.push(readFileSync(path, "utf8"));
     }
   };
   walk("src");
@@ -60,65 +67,84 @@ const metricSubjects = (e: MetricExpr | number): string[] =>
     ? []
     : "sinceStep" in e
       ? metricSubjects(e.sinceStep)
-      : "node" in e
-        ? [e.node]
-        : "edge" in e
-          ? [...e.edge]
-          : "nodes" in e
-            ? [...e.nodes]
-            : "edges" in e
-              ? e.edges.flat()
-              : "from" in e
-                ? [e.from]
-                : [];
+      : "every" in e
+        ? e.every.within
+          ? [e.every.within]
+          : []
+        : "prop" in e
+          ? e.edge
+            ? [...e.edge]
+            : [e.subject]
+          : "node" in e
+            ? [e.node]
+            : "edge" in e
+              ? [...e.edge]
+              : "nodes" in e
+                ? [...e.nodes]
+                : "edges" in e
+                  ? e.edges.flat()
+                  : "from" in e
+                    ? [e.from]
+                    : [];
 const subjectsIn = (check: Check): string[] =>
   check.kind === "compare"
     ? [...metricSubjects(check.left), ...metricSubjects(check.right)]
-    : check.kind === "selection" || check.kind === "aligned"
-      ? [...(check.subjects ?? [])]
-      : check.kind === "mode"
-        ? check.subject
+    : check.kind === "readout"
+      ? check.edge
+        ? [...check.edge]
+        : check.subject
           ? [check.subject]
           : []
-        : check.kind === "prop" || check.kind === "fault"
-          ? check.edge
-            ? [...check.edge]
-            : [check.subject]
-          : check.kind === "member"
-            ? [check.subject, check.boundary]
-            : check.kind === "metric"
-              ? [check.subject, ...(check.edge ?? [])]
-              : check.kind === "node" || check.kind === "label" || check.kind === "processed" || check.kind === "field"
-                ? [check.subject]
-                : check.kind === "edge" || check.kind === "relation"
-                  ? [check.from, check.to]
-                  : check.kind === "all"
-                    ? check.checks.flatMap(subjectsIn)
-                    : [];
-const demoSubjects = (d: Demo): string[] =>
-  d.kind === "add"
-    ? [d.subject, ...(d.after ? [d.after] : [])]
-    : d.kind === "prop" || d.kind === "fault" || d.kind === "patch"
-      ? d.edge
-        ? [...d.edge]
-        : [d.subject]
-      : d.kind === "member"
-        ? [d.subject, d.boundary]
-        : d.kind === "align"
-          ? [...(d.subjects ?? [])]
-          : d.kind === "group"
-            ? [...d.subjects, d.boundary]
-            : d.kind === "select"
-              ? [...d.subjects]
-              : d.kind === "connect" || d.kind === "relation"
-                ? [d.from, d.to]
-                : d.kind === "insert"
-                  ? [...d.edge, d.subject]
-                  : d.kind === "reconnect"
-                    ? [...d.edge, d.to]
-                    : d.kind === "field" || d.kind === "name" || d.kind === "rename"
-                      ? [d.subject]
+      : check.kind === "selection" || check.kind === "aligned"
+        ? [...(check.subjects ?? [])]
+        : check.kind === "mode"
+          ? check.subject
+            ? [check.subject]
+            : []
+          : check.kind === "prop" || check.kind === "fault"
+            ? check.edge
+              ? [...check.edge]
+              : [check.subject]
+            : check.kind === "member"
+              ? [check.subject, check.boundary]
+              : check.kind === "metric"
+                ? [check.subject, ...(check.edge ?? [])]
+                : check.kind === "node" ||
+                    check.kind === "label" ||
+                    check.kind === "processed" ||
+                    check.kind === "field"
+                  ? [check.subject]
+                  : check.kind === "edge" || check.kind === "relation"
+                    ? [check.from, check.to]
+                    : check.kind === "all"
+                      ? check.checks.flatMap(subjectsIn)
                       : [];
+const demoSubjects = (d: Demo): string[] =>
+  (d.kind === "slowmo" || d.kind === "inject") && d.subject
+    ? [d.subject]
+    : d.kind === "add"
+      ? [d.subject, ...(d.after ? [d.after] : [])]
+      : d.kind === "prop" || d.kind === "fault" || d.kind === "patch"
+        ? d.edge
+          ? [...d.edge]
+          : [d.subject]
+        : d.kind === "member"
+          ? [d.subject, d.boundary]
+          : d.kind === "align"
+            ? [...(d.subjects ?? [])]
+            : d.kind === "group"
+              ? [...d.subjects, d.boundary]
+              : d.kind === "select"
+                ? [...d.subjects]
+                : d.kind === "connect" || d.kind === "relation"
+                  ? [d.from, d.to]
+                  : d.kind === "insert"
+                    ? [...d.edge, d.subject]
+                    : d.kind === "reconnect"
+                      ? [...d.edge, d.to]
+                      : d.kind === "field" || d.kind === "name" || d.kind === "rename"
+                        ? [d.subject]
+                        : [];
 const testIdsOf = (s: UiStep): string[] =>
   "modClick" in s
     ? [s.modClick]
@@ -171,6 +197,20 @@ function pathProblem(path: PropPath): string | undefined {
   return path.map(segment).find(Boolean);
 }
 const sinceIn = (e: MetricExpr | number) => typeof e === "object" && "sinceStep" in e;
+
+describe("authoring evidence", () => {
+  it("rejects selectors declared only in tutorial data, the runner's fixtures included", () => {
+    expect(isEvidence("src/test/tutorialFixtures.ts")).toBe(false);
+    expect(isEvidence("src/lab/tutorialRuntimeFixture.ts")).toBe(false);
+    expect(isEvidence("src/tutorials/catalog/mobileApi.ts")).toBe(false);
+    expect(isEvidence("src/tutorials/TutorialApp.tsx")).toBe(true);
+    expect(isEvidence("src/live/ControlBar.tsx")).toBe(true);
+    // An id only a fixture names: its declaration isn't a control.
+    expect(readFileSync("src/test/tutorialFixtures.ts", "utf8")).toContain('"fixture-study"');
+    expect(knownTestId("fixture-study")).toBe(false);
+    expect(knownTestId("live-toggle")).toBe(true);
+  });
+});
 
 describe("tutorial catalog", () => {
   it("has unique ids and a version, listed for the generated e2e", () => {
@@ -271,6 +311,9 @@ describe("tutorial catalog", () => {
                 "presenting",
                 "sharing",
                 "acknowledge",
+                "readout",
+                "liveView",
+                "inputs",
                 "selection",
                 "aligned",
               ],
@@ -330,7 +373,49 @@ describe("tutorial catalog", () => {
                 checks.some((c) => c.kind === "trace"),
                 `${step.id}: a trace demo's step checks the trace`,
               ).toBe(true);
+            if (demo.kind === "slowmo")
+              expect(
+                checks.some((c) => c.kind === "slowmo"),
+                `${step.id}: a slow-motion demo's step checks slow motion`,
+              ).toBe(true);
+            if (demo.kind === "openView")
+              expect(
+                checks.some((c) => c.kind === "liveView" && c.view === demo.view && c.open),
+                `${step.id}: opening ${demo.view} is checked as open`,
+              ).toBe(true);
+            if (demo.kind === "inputs")
+              expect(
+                checks.some((c) => c.kind === "inputs" && c.input === demo.input),
+                `${step.id}: setting ${demo.input} is checked`,
+              ).toBe(true);
+            // Skip continues the note the step is about: the step checks it was continued, at that run's time.
+            if (demo.kind === "continueNote")
+              expect(
+                checks.some((c) => c.kind === "note" && !c.waiting) &&
+                  checks.some((c) => c.kind === "simulation" && c.id === demo.simulation),
+                `${step.id}: a continued note is checked as continued, in its run`,
+              ).toBe(true);
+            if (demo.kind === "saveSimulation") {
+              expect(demo.id, step.id).toMatch(/^[a-z0-9-]+$/);
+              expect(
+                checks.some((c) => c.kind === "savedSimulation" || (c.kind === "simulation" && !!c.saved)),
+                `${step.id}: an authored simulation is checked by what it is`,
+              ).toBe(true);
+            }
           }
+          // Restore clears a Fault an earlier step made: that step latches, or clearing it would undo it.
+          for (const check of checks)
+            if (check.kind === "fault" && check.absent) {
+              const target = JSON.stringify(check.edge ?? check.subject);
+              const earlier = tutorial.steps
+                .slice(0, tutorial.steps.indexOf(step))
+                .find((s) =>
+                  checksIn(s.check).some(
+                    (c) => c.kind === "fault" && !c.absent && JSON.stringify(c.edge ?? c.subject) === target,
+                  ),
+                );
+              expect(earlier?.sticky, `${step.id}: the Fault it clears is set by a sticky step first`).toBe(true);
+            }
           for (const demo of step.demo) {
             if (demo.kind !== "patch") continue;
             expect(demo.patches.length, `${step.id}: a patch with nothing in it`).toBeGreaterThan(0);
@@ -343,6 +428,21 @@ describe("tutorial catalog", () => {
               } else expect(patch.value, `${step.id}: ${patch.op} writes nothing`).not.toBeUndefined();
             }
           }
+        }
+      });
+
+      it("runs only simulations its start has, or that an earlier step saves", () => {
+        if (typeof tutorial.start !== "function") return;
+        const known = new Set((tutorial.start().simulations ?? []).map((sim) => sim.id));
+        for (const step of tutorial.steps) {
+          for (const demo of step.demo) {
+            if (demo.kind === "runSimulation" || demo.kind === "continueNote") {
+              const id = demo.kind === "runSimulation" ? demo.id : demo.simulation;
+              expect(known, `${step.id}: ${id}`).toContain(id);
+            }
+            if (demo.kind === "saveSimulation") known.add(demo.id);
+          }
+          for (const id of simulationIds(step.check)) expect(known, `${step.id}: ${id}`).toContain(id);
         }
       });
 
@@ -370,8 +470,11 @@ function containsLabel(check: Check): boolean {
   return check.kind === "label" || (check.kind === "all" && check.checks.some(containsLabel));
 }
 function simulationIds(check: Check): string[] {
+  // A simulation the learner authors (saved) isn't in the start's; the demo that saves it says its id.
   return check.kind === "simulation"
-    ? [check.id]
+    ? check.id
+      ? [check.id]
+      : []
     : check.kind === "expectation"
       ? [check.simulation]
       : check.kind === "all"

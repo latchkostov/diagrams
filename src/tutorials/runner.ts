@@ -13,6 +13,7 @@ import {
   observeSteps,
   resolveSubjects,
   sinceValues,
+  withoutSince,
 } from "./checks";
 import { patchProps } from "./paths";
 import {
@@ -34,6 +35,9 @@ import type { EditorModeState } from "../canvas/interaction/mode";
 import { dependencyVisibility } from "../canvas/dependencyVisibility";
 import { GROUP_PREFIX } from "../canvas/types";
 import { simulationProjection } from "../sim/simulationContent";
+import { planningHost } from "../live/planningHost";
+import { capacityOverlay } from "../live/capacityOverlay";
+import { withSavedSimulation } from "./simulations";
 
 /**
  * The runner: one tutorial's machine (./machine.ts) wired to the sandbox canvas. It observes the canvas through the
@@ -54,6 +58,19 @@ export interface RunnerSnapshot {
   /** The connection between two subjects, by "from->to" (checks.ts, edgeTargets): what an edge test id names. */
   edges: Readonly<Record<string, string>>;
 }
+
+/** Demos pressing Live's controls: they wait (retrying on each change) until Live's lazy session offers them. */
+const live = new Set<Demo["kind"]>([
+  "fault",
+  "traffic",
+  "trace",
+  "slowmo",
+  "inject",
+  "applyFix",
+  "inputs",
+  "openView",
+  "continueNote",
+]);
 
 /**
  * A Live action's row as the palette builds it, with the same availability guards: undefined until Live's lazy session
@@ -85,6 +102,9 @@ export function createTutorialRunner(
       "processed",
       "metric",
       "compare",
+      "liveView",
+      "readout",
+      "inputs",
       "simulation",
       "expectation",
       "fault",
@@ -102,6 +122,7 @@ export function createTutorialRunner(
   const dynamicChecks = tutorial.steps.map((s) => dynamic(s.check));
   const naming = tutorial.steps.map((s) => namingSubjects(s.check));
   const since = tutorial.steps.map((s) => sinceValues(s.check));
+  const historical = tutorial.steps.map((s) => withoutSince(s.check));
   const machine = createMachine({
     ...runnerMachine,
     initial: runnerInitial(sticky, {
@@ -160,18 +181,36 @@ export function createTutorialRunner(
     }
     // Counters prove traffic only in the editor's flow. Undo can restore that basis without a rebuild.
     const session = currentSession?.diagramBasis === topology ? currentSession : undefined;
+    const ui = planningHost.get();
     return {
       diagram,
       live: !!h.canvas!.live,
       session: currentSession,
+      sessionId: sessionId(h.session?.state),
       trafficReady: !!session,
       mode: canvasInteraction.get()?.mode,
       slowmo: h.session?.slowmo?.getState(),
       dependencies: dependencyVisibility.get(),
+      views: {
+        inputs: !!ui?.capacityOpen,
+        events: !!ui?.events.open,
+        simulations: !!ui?.panelOpen,
+        capacity: capacityOverlay.get(),
+      },
+      readout: canvasInteraction.get()?.readouts?.get() ?? null,
       ...app,
       processed: (id: string) => session?.snapshot.nodes[id]?.processed ?? 0,
     };
   }
+
+  /** Each Live session in turn, by its controller's state reader: a remounted session's generations start again. */
+  const sessions = new WeakMap<object, number>();
+  let sessionCount = 0;
+  const sessionId = (reader: object | undefined) => {
+    if (!reader) return undefined;
+    if (!sessions.has(reader)) sessions.set(reader, ++sessionCount);
+    return sessions.get(reader);
+  };
 
   function send(event: RunnerEvent) {
     const { state: next, commands } = machine.send(event);
@@ -192,12 +231,12 @@ export function createTutorialRunner(
    * earlier), kept in the machine's state. Nothing to send when it has them all, or Live doesn't show them yet.
    */
   function capture(v: SandboxView) {
-    if (!inStep(state) || !since[state.index].length || !v.session) return;
-    const values: Record<string, readonly [number, number]> = {};
+    if (!inStep(state) || !since[state.index].length || !v.session || v.sessionId === undefined) return;
+    const values: Record<string, readonly [number, number, number]> = {};
     for (const expr of since[state.index]) {
       const key = baselineKey(expr);
       const now = state.baseline[key] ? undefined : metricValue(expr, v, subjects);
-      if (now !== undefined) values[key] = [now, v.session.generation];
+      if (now !== undefined) values[key] = [now, v.session.generation, v.sessionId];
     }
     if (Object.keys(values).length) send({ type: "baseline", step: state.index, values: values as Baseline });
   }
@@ -225,7 +264,19 @@ export function createTutorialRunner(
     mode?.annotating ??
     (mode?.value === "naming" && document?.annotations?.some((a) => a.id === mode.target) ? mode.target : undefined);
 
+  /** Live's hover cards attach to the canvas once Live shows them: follow whichever layer is attached now. */
+  let readoutLayer: unknown = null;
+  let offReadouts: (() => void) | undefined;
+  function watchReadouts() {
+    const layer = canvasInteraction.get()?.readouts ?? null;
+    if (layer === readoutLayer) return;
+    offReadouts?.();
+    readoutLayer = layer;
+    offReadouts = layer?.subscribe(observe);
+  }
+
   function observe() {
+    watchReadouts();
     const h = host.get();
     if (!h.canvas || !editor()) return changed.forEach((f) => f());
     const v = view();
@@ -265,14 +316,26 @@ export function createTutorialRunner(
   /** Resolves once `ok()` holds, checked after each change the canvas reports; never if the run is replaced. */
   const until = (ok: () => boolean, run: number) =>
     new Promise<boolean>((resolve) => {
+      let busy = false,
+        again = false,
+        done = false;
+      const settle = (result: boolean) => {
+        done = true;
+        changed.delete(check);
+        resolve(result);
+      };
+      // A control pressed in ok() can notify at once (a store Live publishes synchronously): that change is judged
+      // once the press returns, never by re-entering it.
       const check = () => {
-        if (run !== generation) {
-          changed.delete(check);
-          resolve(false);
-        } else if (ok()) {
-          changed.delete(check);
-          resolve(true);
-        }
+        if (done) return;
+        if (busy) return void (again = true);
+        busy = true;
+        do {
+          again = false;
+          if (run !== generation) settle(false);
+          else if (ok()) settle(true);
+        } while (again && !done);
+        busy = false;
       };
       changed.add(check);
       check();
@@ -446,24 +509,74 @@ export function createTutorialRunner(
         return true;
       }
       case "traffic":
-      case "trace": {
+      case "trace":
+      case "slowmo":
+      case "inject":
+      case "applyFix": {
         const session = h.session?.state?.();
         if (!h.canvas?.live || !session) return false;
-        // Already so (the learner's own toggle, or a trace under way): nothing to press.
-        if (demo.kind === "traffic" ? session.traffic === demo.on : !!session.trace) return true;
+        // Already so (the learner's own toggle, a trace or slow motion under way): nothing to press.
+        if (demo.kind === "traffic" && session.traffic === demo.on) return true;
+        if (demo.kind === "trace" && session.trace) return true;
+        if (demo.kind === "slowmo" && (h.session?.slowmo?.getState().status ?? "off") !== "off") return true;
+        const node = "subject" in demo && demo.subject ? subjects[demo.subject] : undefined;
+        if ("subject" in demo && demo.subject && !node) return false;
+        const action =
+          demo.kind === "traffic"
+            ? "sim.traffic"
+            : demo.kind === "trace"
+              ? "sim.trace-message:next"
+              : demo.kind === "slowmo"
+                ? node
+                  ? "sim.slowmo-from"
+                  : "sim.trace-message:slowmo"
+                : demo.kind === "inject"
+                  ? `sim.inject:${demo.count}`
+                  : "sim.capacity-fix";
         const apply = liveRow(
-          demo.kind === "traffic" ? "sim.traffic" : "sim.trace-message:next",
+          action,
           actionRegistry.build({
             editor: ed,
             mode: "live",
             surface: "palette",
-            target: "canvas",
             selection: ed.getSelection(),
+            ...(node ? { target: "node" as const, nodeId: node } : { target: "canvas" as const }),
           }),
         );
         if (!apply) return false;
         apply();
         return true;
+      }
+      case "inputs": {
+        const ui = planningHost.get();
+        if (!h.canvas?.live || !ui) return false;
+        const inputs = ui.controller.getState().inputs;
+        if ((inputs[demo.input] ?? 1) !== demo.value) ui.controller.setInputs({ ...inputs, [demo.input]: demo.value });
+        return true;
+      }
+      case "continueNote": {
+        const ui = planningHost.get();
+        const session = h.session?.state?.();
+        if (!h.canvas?.live || !ui || !session || session.running?.id !== demo.simulation || !session.run) return false;
+        const due = session.run.time >= (demo.atLeastMs ?? 0);
+        // A note pausing the run before then holds it there: continue it, and wait for the run to get on.
+        if (session.run.waiting) ui.controller.resume();
+        return due;
+      }
+      case "openView": {
+        if (demo.view === "capacity") return void capacityOverlay.set(true);
+        const ui = planningHost.get();
+        if (!h.canvas?.live || !ui) return false;
+        if (demo.view === "inputs") ui.openCapacity(true);
+        else if (demo.view === "events") ui.showEvents(ui.events.nodeId, true);
+        else if (!ui.panelOpen) ui.openPanel();
+        return true;
+      }
+      case "saveSimulation": {
+        // Only what's missing: a simulation the learner saved under this id keeps its own steps and checks.
+        const simulations = withSavedSimulation(ed.getDiagram(), demo);
+        if (simulations) ed.updateMeta({ simulations });
+        return;
       }
       case "add": {
         const after = demo.after ? subjects[demo.after] : undefined;
@@ -542,7 +655,7 @@ export function createTutorialRunner(
             d.kind === "add" || d.kind === "insert" ? d.subject : d.kind === "group" ? d.boundary : undefined;
           const bound = made && demoBindings.get(made);
           // Live publishes before its lazy session registers actions. Retry on session/registry changes.
-          if (d.kind === "fault" || d.kind === "traffic" || d.kind === "trace") {
+          if (live.has(d.kind)) {
             if (!(await until(() => perform(d) !== false, run))) return;
           } else perform(d);
           // A queued launch can publish free play before its saved run: the step's next control (traffic, a trace)
@@ -557,8 +670,11 @@ export function createTutorialRunner(
           const id = made && demoBindings.get(made);
           if (id && id !== bound && !(await until(() => subjects[made] === id, run))) return;
         }
-        // The next step's demo may need this one's node: wait for the canvas to report it.
-        if (tutorial.steps[i].demo.length && !(await until(() => state.observed[i], run))) return;
+        // The next step's demo may need this one's node: wait for the canvas to report it. Replaying a step that
+        // counted since it began (Continue), what it counted is history: the rest of its check is what must hold.
+        const replayed = purpose === "reconstruct" && since[i].length > 0;
+        const done = () => state.observed[i] || (replayed && !!editor() && holds(historical[i], view(), subjects));
+        if (tutorial.steps[i].demo.length && !(await until(done, run))) return;
       }
       if (!(await settle(i, run))) return;
     }
@@ -567,6 +683,9 @@ export function createTutorialRunner(
 
   /** Show me: the target node into view through the canvas camera only. The selection and focus stay the learner's. */
   function reveal(step: number) {
+    // Slow motion owns the camera while it plays: Show me never moves it then.
+    const slow = host.get().session?.slowmo?.getState().status;
+    if (slow && slow !== "off") return;
     const target = tutorial.steps[step]?.targets.find((t) => t.testId.startsWith("node-{"));
     const name = target?.testId.slice(6, -1);
     const id = name ? snapshot.subjects[name] : undefined;
@@ -682,12 +801,17 @@ export function createTutorialRunner(
     const offCanvas = canvasInteraction.subscribe(sync);
     const offActions = actionRegistry.subscribe(observe);
     const offDependencies = dependencyVisibility.subscribe(observe);
+    const offPlanning = planningHost.subscribe(observe);
+    const offOverlay = capacityOverlay.subscribe(observe);
     sync();
     return () => {
       offHost();
       offCanvas();
       offActions();
       offDependencies();
+      offPlanning();
+      offOverlay();
+      offReadouts?.();
       offSession?.();
       offSlow?.();
       generation++;

@@ -51,4 +51,43 @@ export const tutorialRuntimeFixtures: readonly Tutorial[] = [
     ],
     finish: { text: msg("tutorials.runtime.finish") },
   },
+  {
+    // Typed-at-caret playback, in the browser: a setting appended after the example's own, which stay as they are.
+    id: "lab-tutorial-typed",
+    version: 1,
+    track: "blocks",
+    level: 1,
+    minutes: 1,
+    title: msg("tutorials.runtime.nextTitle"),
+    summary: msg("tutorials.runtime.summary"),
+    start: { example: "aks-app-config-key-vault" },
+    subjects: { api: { stencils: ["service.dotnet"] }, config: { stencils: ["azure.app-config"] } },
+    steps: [
+      {
+        id: "add-setting",
+        title: msg("tutorials.runtime.runningTitle"),
+        goal: msg("tutorials.runtime.runningGoal"),
+        check: { kind: "prop", edge: ["api", "config"], prop: ["settings"], measure: "length", op: ">=", value: 5 },
+        targets: [
+          { testId: "inspector-field-settings", tip: msg("tutorials.runtime.runningGoal") },
+          { testId: "edge-label-{api->config}", tip: msg("tutorials.runtime.runningGoal") },
+        ],
+        demo: [
+          {
+            kind: "patch",
+            edge: ["api", "config"],
+            patches: [{ op: "ensureItem", path: ["settings"], match: { key: "Lab:Token" } }],
+          },
+        ],
+        solution: [
+          { click: "edge-label-{api->config}" },
+          { click: "inspector-field-settings" },
+          { press: "ControlOrMeta+End" },
+          { press: "Enter" },
+          { type: "inspector-field-settings", text: "Lab:Token" },
+        ],
+      },
+    ],
+    finish: { text: msg("tutorials.runtime.finish") },
+  },
 ];
