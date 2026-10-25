@@ -1947,5 +1947,6 @@
   "staticSkill.back": "← Nazad na Live Diagrams",
   "staticSkill.copy": "Kopiraj",
   "staticSkill.copied": "Kopirano",
-  "staticSkill.selectCopy": "Izaberi i kopiraj"
+  "staticSkill.selectCopy": "Izaberi i kopiraj",
+  "gallery.inlineRateLimitSummary": "Saobraćaj partnera nailazi na kvotu zahteva koja može da se menja"
 }

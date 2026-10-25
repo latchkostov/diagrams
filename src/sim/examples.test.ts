@@ -10,6 +10,8 @@ const examples = import.meta.glob<DiagramFile>("../examples/*.json", { eager: tr
 const SIMULATIONS: Record<string, number> = {
   // Catalogue-only showcase: Free play demonstrates the brands without adding a saved scenario.
   "../examples/vendor-edge-storefront.json": 0,
+  // The inline limiter teaches live quota editing in Free play.
+  "../examples/inline-rate-limit.json": 0,
   "../examples/slow-payment-provider.json": 5,
   "../examples/retry-storm.json": 5,
   "../examples/scale-on-busy-threads.json": 3,

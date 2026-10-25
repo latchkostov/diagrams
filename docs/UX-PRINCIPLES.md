@@ -458,29 +458,29 @@ Reset route** returns to automatic routing. Handles and previews stay out of Liv
 The shortcuts sheet's Mouse rows (`src/components/ShortcutsDialog.tsx`) say these in short; keep the two
 in step:
 
-| Gesture                              | Does                                                                                       |
-| ------------------------------------ | ------------------------------------------------------------------------------------------ |
-| Right-click                          | Context menu for the canvas, a node, an edge or a boundary                                 |
-| Double-click canvas                  | Quick-add a stencil at the cursor, its name open to type                                   |
-| Double-click node / edge / boundary  | Rename it in the inspector: its Label focused, all selected                                |
-| Double-click text / note / zone      | Edit its text in place, all selected                                                       |
-| Drag on the canvas                   | Selection box (Ctrl/⌘: only inside; Shift: adds). Live, presenting, embeds: pan            |
-| Shift / Ctrl / ⌘ + click             | Add to or take out of the selection                                                        |
-| Scroll, two-finger swipe             | Pan (Shift + scroll: sideways). In an embed the wheel scrolls the page                     |
-| Ctrl / ⌘ + scroll, pinch             | Zoom at the pointer                                                                        |
-| Space + drag, middle-drag            | Pan, even starting on a node                                                               |
-| Drag from a dot                      | Connect: each dot fixes its end's side; body drops are automatic; empty canvas adds a node |
-| Click a selected node's +            | Quick-add the next node there, connected (drag it: connect)                                |
-| Drag a selected edge's end           | Attach to a dot (also on the same node), or another node's body; elsewhere snaps back      |
-| Drag a selected line                 | Move that segment; from an end or straight line it adds a jog (Ctrl/⌘: no snapping)        |
-| Line a segment up with its neighbour | Removes those bends                                                                        |
-| Route ▸ Reset route                  | Back to automatic routing                                                                  |
-| Hold a node on an edge               | Lights the edge up; drop to insert the node in between (Ctrl/⌘: don't)                     |
-| Drag a node                          | Lines up with nearby edges, centres and equal gaps, else the grid                          |
-| Ctrl / ⌘ while dragging              | Move freely: no guides, no grid                                                            |
-| Alt + drag                           | Duplicate what you drag                                                                    |
-| Drag a node across a boundary's edge | Joins it (its outline lights up) or leaves it (dashed)                                     |
-| Drag a boundary's corner             | Resize; it takes in the nodes now inside it and lets go of the rest                        |
+| Gesture                              | Does                                                                                                |
+| ------------------------------------ | --------------------------------------------------------------------------------------------------- |
+| Right-click                          | Context menu for the canvas, a node, an edge or a boundary                                          |
+| Double-click canvas                  | Quick-add a stencil at the cursor, its name open to type                                            |
+| Double-click node / edge / boundary  | Rename in the inspector, Label selected; a node in Live opens Properties without selecting its name |
+| Double-click text / note / zone      | Edit its text in place, all selected                                                                |
+| Drag on the canvas                   | Selection box (Ctrl/⌘: only inside; Shift: adds). Live, presenting, embeds: pan                     |
+| Shift / Ctrl / ⌘ + click             | Add to or take out of the selection                                                                 |
+| Scroll, two-finger swipe             | Pan (Shift + scroll: sideways). In an embed the wheel scrolls the page                              |
+| Ctrl / ⌘ + scroll, pinch             | Zoom at the pointer                                                                                 |
+| Space + drag, middle-drag            | Pan, even starting on a node                                                                        |
+| Drag from a dot                      | Connect: each dot fixes its end's side; body drops are automatic; empty canvas adds a node          |
+| Click a selected node's +            | Quick-add the next node there, connected (drag it: connect)                                         |
+| Drag a selected edge's end           | Attach to a dot (also on the same node), or another node's body; elsewhere snaps back               |
+| Drag a selected line                 | Move that segment; from an end or straight line it adds a jog (Ctrl/⌘: no snapping)                 |
+| Line a segment up with its neighbour | Removes those bends                                                                                 |
+| Route ▸ Reset route                  | Back to automatic routing                                                                           |
+| Hold a node on an edge               | Lights the edge up; drop to insert the node in between (Ctrl/⌘: don't)                              |
+| Drag a node                          | Lines up with nearby edges, centres and equal gaps, else the grid                                   |
+| Ctrl / ⌘ while dragging              | Move freely: no guides, no grid                                                                     |
+| Alt + drag                           | Duplicate what you drag                                                                             |
+| Drag a node across a boundary's edge | Joins it (its outline lights up) or leaves it (dashed)                                              |
+| Drag a boundary's corner             | Resize; it takes in the nodes now inside it and lets go of the rest                                 |
 
 ## Process
 

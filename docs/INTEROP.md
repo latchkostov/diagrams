@@ -484,6 +484,12 @@ and the entry grows by about 240 B (the key-order-independent sniff, the format 
   on a public page…** is **In the link**, or **Example by name** too for a pristine public example. A Private or
   local-only diagram (and a copy without share links) gets only the first: nothing of the diagram goes in the code.
 
+### Live narration in exports
+
+Recordings capture Live narration, including notes and Continue prompts. SVG exports show the
+diagram and its on-canvas Live readouts; they leave out narration. Use **Record video…** to keep
+the narrated walkthrough.
+
 ### Interactive HTML (`src/export/`, `scripts/interactive-viewer.ts`)
 
 For diagrams that mustn't be on a public URL (a company's systems, a Private diagram): **File ▸ Export as ▸

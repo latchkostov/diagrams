@@ -1947,5 +1947,6 @@
   "staticSkill.back": "← Quay lại Live Diagrams",
   "staticSkill.copy": "Sao chép",
   "staticSkill.copied": "Đã sao chép",
-  "staticSkill.selectCopy": "Chọn và sao chép"
+  "staticSkill.selectCopy": "Chọn và sao chép",
+  "gallery.inlineRateLimitSummary": "Lưu lượng của đối tác gặp hạn ngạch yêu cầu có thể chỉnh sửa"
 }

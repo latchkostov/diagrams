@@ -16,8 +16,12 @@ export function admissionFieldBindings(stencil: string, props: Record<string, un
     step = 1,
   ) => ({ name, value, patch, max, step });
   const rate = api.quotas?.find(
-    (quota) => quota.id === "local-rate" && quota.unit === "requests" && !quota.sharedGroup,
+    (quota) => /^local-rate(?:-\d+)?$/.test(quota.id) && quota.unit === "requests" && !quota.sharedGroup,
   );
+  // A file may already use the conventional ID for a different unit or shared scope.
+  const quotaIds = new Set(api.quotas?.map((quota) => quota.id));
+  let rateId = rate?.id ?? "local-rate";
+  for (let suffix = 2; !rate && quotaIds.has(rateId); suffix++) rateId = `local-rate-${suffix}`;
   return [
     serverless
       ? field("allocation", resolved.admission?.slots, (value) => ({ maxConcurrency: value }), 10000)
@@ -27,8 +31,8 @@ export function admissionFieldBindings(stencil: string, props: Record<string, un
           (value) =>
             patchApi({
               quotas: [
-                ...(api.quotas ?? []).filter((quota) => quota.id !== "local-rate"),
-                ...(value !== undefined && value > 0 ? [localRateQuota(value)] : []),
+                ...(api.quotas ?? []).filter((quota) => quota !== rate),
+                ...(value !== undefined && value > 0 ? [{ ...localRateQuota(value), id: rateId }] : []),
               ],
             }),
           10000000,

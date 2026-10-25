@@ -1947,5 +1947,6 @@
   "staticSkill.back": "← Tagasi Live Diagramsi",
   "staticSkill.copy": "Kopeeri",
   "staticSkill.copied": "Kopeeritud",
-  "staticSkill.selectCopy": "Vali ja kopeeri"
+  "staticSkill.selectCopy": "Vali ja kopeeri",
+  "gallery.inlineRateLimitSummary": "Partneri liiklus kohtub muudetava päringukvoodiga"
 }

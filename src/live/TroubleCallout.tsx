@@ -104,7 +104,8 @@ export function TroubleCallout({ trouble, onAction, onDismiss, onShown, floating
           disabled={!!disabledHint}
           title={disabledHint}
         >
-          {action.icon && <LiveIcon name={action.icon} size={13} />} {label}
+          {action.icon && <LiveIcon name={action.icon} size={13} />}{" "}
+          {trouble.action.kind === "add-consumer" ? <span data-testid="trouble-add-consumer">{label}</span> : label}
         </button>
       )}
       <button

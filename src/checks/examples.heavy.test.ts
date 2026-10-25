@@ -62,6 +62,8 @@ const EXPECTED: Record<string, string[]> = {
   "cloud-run-timetable-api": ["warning capacity:worker"],
   // Carrier events reach their service through the route table at 30/s, over its 20/s: on purpose.
   "api-route-table": ["warning capacity:events"],
+  // The lesson intentionally offers 20 requests/s to a 10 requests/s local quota.
+  "inline-rate-limit": ["warning capacity:limiter"],
   // The large showcases: realistic designs that pass every check.
   "black-friday-commerce": [],
   "cell-based-bookings": [],
@@ -219,13 +221,19 @@ describe("simulation evidence on the public examples", () => {
   });
 });
 
-it("A1 precision gate preserves findings and severities on all 17 public examples", () => {
-  for (const d of Object.values(bySlug)) {
+it("A1 precision gate preserves findings and severities except explicit materialization findings", () => {
+  for (const [slug, d] of Object.entries(bySlug)) {
     if (d.planning?.revision === "p3-a1") continue; // Already opted in: never downgrade an executing scaler.
     const p3 = upgradePlanning(d),
       a1 = upgradeAutoscaling(p3);
-    expect(runChecks(a1).findings.map((f) => [f.id, f.severity])).toEqual(
-      runChecks(p3).findings.map((f) => [f.id, f.severity]),
-    );
+    if (slug === "inline-rate-limit") {
+      expect(p3.nodes.find((node) => node.id === "api")?.props?.replicas).toBeUndefined();
+      expect(a1.nodes.find((node) => node.id === "api")?.props?.replicas).toBe(1);
+    }
+    expect(runChecks(a1).findings.map((f) => [f.id, f.severity])).toEqual([
+      ...runChecks(p3).findings.map((f) => [f.id, f.severity]),
+      // A1 materializes the example's implicit single API replica; the sole request path now has explicit evidence.
+      ...(slug === "inline-rate-limit" ? [["single-point:api", "suggestion"]] : []),
+    ]);
   }
 });

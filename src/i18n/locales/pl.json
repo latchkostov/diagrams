@@ -1947,5 +1947,6 @@
   "staticSkill.back": "← Powrót do Live Diagrams",
   "staticSkill.copy": "Kopiuj",
   "staticSkill.copied": "Skopiowano",
-  "staticSkill.selectCopy": "Zaznacz i skopiuj"
+  "staticSkill.selectCopy": "Zaznacz i skopiuj",
+  "gallery.inlineRateLimitSummary": "Ruch partnera napotyka edytowalny limit żądań"
 }

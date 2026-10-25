@@ -1947,5 +1947,6 @@
   "staticSkill.back": "← Назад към Live Diagrams",
   "staticSkill.copy": "Копирай",
   "staticSkill.copied": "Копирано",
-  "staticSkill.selectCopy": "Избери и копирай"
+  "staticSkill.selectCopy": "Избери и копирай",
+  "gallery.inlineRateLimitSummary": "Трафикът на партньор среща редактируема квота за заявки"
 }

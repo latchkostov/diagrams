@@ -1,0 +1,17 @@
+{
+  "warnings": [],
+  "diagram": {
+    "format": "diagrams/v1",
+    "title": "An inline request rate limit",
+    "direction": "LR",
+    "nodes": [
+      { "id": "partner", "stencil": "client.partner", "label": "Partner client", "x": 40, "y": 40 },
+      { "id": "limiter", "stencil": "generic.rate-limiter", "label": "Rate limiter", "x": 400, "y": 40 },
+      { "id": "api", "stencil": "generic.service", "label": "Catalog API", "x": 760, "y": 40 }
+    ],
+    "edges": [
+      { "id": "e1-partner-limiter", "from": "partner", "to": "limiter", "kind": "sync" },
+      { "id": "e2-limiter-api", "from": "limiter", "to": "api", "kind": "sync" }
+    ]
+  }
+}

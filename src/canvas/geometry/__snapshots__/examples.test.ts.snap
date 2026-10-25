@@ -8438,6 +8438,37 @@ exports[`public examples route cleanly (estimated card sizes) > hybrid-enterpris
 ]
 `;
 
+exports[`public examples route cleanly (estimated card sizes) > inline-rate-limit.json 1`] = `
+[
+  {
+    "id": "partner-limiter",
+    "points": [
+      {
+        "x": 220,
+        "y": 36,
+      },
+      {
+        "x": 300,
+        "y": 36,
+      },
+    ],
+  },
+  {
+    "id": "limiter-api",
+    "points": [
+      {
+        "x": 520,
+        "y": 36,
+      },
+      {
+        "x": 600,
+        "y": 36,
+      },
+    ],
+  },
+]
+`;
+
 exports[`public examples route cleanly (estimated card sizes) > kafka-order-pipeline.json 1`] = `
 [
   {

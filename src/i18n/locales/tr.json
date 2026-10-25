@@ -1947,5 +1947,6 @@
   "staticSkill.back": "← Live Diagrams'a dön",
   "staticSkill.copy": "Kopyala",
   "staticSkill.copied": "Kopyalandı",
-  "staticSkill.selectCopy": "Seç ve kopyala"
+  "staticSkill.selectCopy": "Seç ve kopyala",
+  "gallery.inlineRateLimitSummary": "Bir iş ortağının trafiği düzenlenebilir bir istek kotasıyla karşılaşır"
 }

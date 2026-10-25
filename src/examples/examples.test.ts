@@ -17,6 +17,16 @@ const files = import.meta.glob<DiagramFile>("./*.json", { eager: true, import: "
 const publicExamples = examples.filter((e) => !e.localOnly);
 
 describe("example metadata and loading", () => {
+  it("the inline rate-limit showcase rejects excess requests within ten seconds", () => {
+    const diagram = files["./inline-rate-limit.json"];
+    expect(exampleMetadata["inline-rate-limit"].shows).toContain("rateLimits");
+    const engine = createEngine({ seed: 20261025 });
+    engine.load(diagram);
+    engine.setTraffic(true);
+    for (let i = 0; i < 1000; i++) engine.step(10);
+    expect(engine.snapshot().nodes.limiter.rejected).toBeGreaterThan(10);
+    expect(engine.snapshot().nodes.api.processed).toBeGreaterThan(0);
+  });
   it("typed webhook callbacks arrive within ten seconds and stop at the receiver", () => {
     const d = files["./webhook-ingestion.json"];
     expect(exampleMetadata["webhook-ingestion"].shows).toContain("messageTypes");

@@ -53,7 +53,7 @@ const LABELS: Record<ShortcutId, () => string> = {
 const MOUSE: [gesture: () => string, does: () => string][] = [
   [msg("shortcuts.mouse.rightClick"), msg("shortcuts.mouse.rightClick.does")],
   [msg("shortcuts.mouse.doubleCanvas"), msg("shortcuts.mouse.doubleCanvas.does")],
-  [msg("shortcuts.mouse.doubleRename"), msg("shortcuts.mouse.doubleRename.does")],
+  [msg("shortcuts.mouse.doubleRename"), msg("shortcuts.mouse.doubleProperties.does")],
   [msg("shortcuts.mouse.doubleText"), msg("shortcuts.mouse.doubleText.does")],
   [msg("shortcuts.mouse.drag"), () => t("shortcuts.mouse.drag.does", { shift: legacyKeyHint("Shift") })],
   [() => t("shortcuts.mouse.modDrag", { ctrl: legacyKeyHint("Ctrl") }), msg("shortcuts.mouse.modDrag.does")],

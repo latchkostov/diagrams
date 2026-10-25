@@ -1947,5 +1947,6 @@
   "staticSkill.back": "← Terug naar Live Diagrams",
   "staticSkill.copy": "Kopiëren",
   "staticSkill.copied": "Gekopieerd",
-  "staticSkill.selectCopy": "Selecteren en kopiëren"
+  "staticSkill.selectCopy": "Selecteren en kopiëren",
+  "gallery.inlineRateLimitSummary": "Het verkeer van een partner stuit op een bewerkbaar aanvraagquotum"
 }

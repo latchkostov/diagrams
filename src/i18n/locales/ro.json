@@ -1947,5 +1947,6 @@
   "staticSkill.back": "← Înapoi la Live Diagrams",
   "staticSkill.copy": "Copiați",
   "staticSkill.copied": "Copiat",
-  "staticSkill.selectCopy": "Selectați și copiați"
+  "staticSkill.selectCopy": "Selectați și copiați",
+  "gallery.inlineRateLimitSummary": "Traficul unui partener întâlnește o cotă de cereri editabilă"
 }

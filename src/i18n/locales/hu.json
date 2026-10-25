@@ -1947,5 +1947,6 @@
   "staticSkill.back": "← Vissza a Live Diagrams oldalra",
   "staticSkill.copy": "Másolás",
   "staticSkill.copied": "Másolva",
-  "staticSkill.selectCopy": "Kijelölés és másolás"
+  "staticSkill.selectCopy": "Kijelölés és másolás",
+  "gallery.inlineRateLimitSummary": "Egy partner forgalma szerkeszthető kéréskvótába ütközik"
 }

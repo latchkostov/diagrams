@@ -1947,5 +1947,6 @@
   "staticSkill.back": "← Atpakaļ uz Live Diagrams",
   "staticSkill.copy": "Kopēt",
   "staticSkill.copied": "Nokopēts",
-  "staticSkill.selectCopy": "Atlasīt un kopēt"
+  "staticSkill.selectCopy": "Atlasīt un kopēt",
+  "gallery.inlineRateLimitSummary": "Partnera datplūsma sastopas ar rediģējamu pieprasījumu kvotu"
 }

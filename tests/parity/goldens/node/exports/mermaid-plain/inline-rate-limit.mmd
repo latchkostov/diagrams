@@ -1,0 +1,9 @@
+---
+title: An inline request rate limit
+---
+flowchart LR
+  partner(["Partner client"])
+  limiter["Rate limiter"]
+  api["Catalog API"]
+  partner --> limiter
+  limiter --> api

@@ -298,6 +298,7 @@ test("Escape dismisses an unpinned card before clearing the selected node", asyn
   const node = page.getByTestId("node-caller"),
     card = page.getByTestId("node-detail-caller");
   await node.dblclick();
+  await page.keyboard.press("F2");
   await expect(page.getByTestId("inspector-field-label")).toBeFocused();
   await page.keyboard.press("Enter");
   await node.hover();
@@ -558,6 +559,7 @@ test("Enter pins the hovered card instead of pressing the focused Live button", 
 test("Enter completes inspector editing while another card is hovered", async ({ page, consoleErrors }) => {
   await gotoLive(page, "./?view=canvas&example=blocking-call&live=1&paused=1");
   await page.getByTestId("node-caller").dblclick();
+  await page.keyboard.press("F2");
   const name = page.getByTestId("inspector-field-label");
   await expect(name).toBeFocused();
   await page.getByTestId("node-applications").hover();
