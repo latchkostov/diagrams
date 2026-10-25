@@ -3,6 +3,7 @@ import { stencilRole } from "../stencils/roles";
 import { getStencil } from "../stencils/registry";
 import { stencilLabel } from "../i18n/stencils";
 import { t } from "../i18n";
+import { flowEdges } from "../model/relations";
 import { toneLabel } from "../canvas/groupTones";
 import type {
   Check,
@@ -57,6 +58,10 @@ export function resolveSubjects(
 ): Record<string, string | undefined> {
   const subjects: Record<string, string | undefined> = {};
   const used = new Set<string>();
+  const matches = (spec: SubjectSpec, node: DiagramFile["nodes"][number]) =>
+    fits(spec, node.stencil) &&
+    (!spec.downstreamOf ||
+      flowEdges(diagram.edges).some((e) => e.from === subjects[spec.downstreamOf!] && e.to === node.id));
   for (const [name, spec] of Object.entries(tutorial.subjects)) {
     if (spec.edge) continue;
     if (spec.boundary) {
@@ -67,7 +72,7 @@ export function resolveSubjects(
       }
       continue;
     }
-    const node = diagram.nodes.find((n) => n.id === previous[name] && fits(spec, n.stencil));
+    const node = diagram.nodes.find((n) => n.id === previous[name] && matches(spec, n));
     if (node && !used.has(node.id)) {
       subjects[name] = node.id;
       used.add(node.id);
@@ -82,7 +87,7 @@ export function resolveSubjects(
       if (group) used.add(group.id);
       continue;
     }
-    const node = diagram.nodes.find((n) => !used.has(n.id) && fits(spec, n.stencil));
+    const node = diagram.nodes.find((n) => !used.has(n.id) && matches(spec, n));
     subjects[name] = node?.id;
     if (node) used.add(node.id);
   }

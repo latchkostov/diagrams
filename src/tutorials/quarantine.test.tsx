@@ -19,8 +19,6 @@ it("hides quarantined lessons from cards, search, suggestions and deep links whi
     "insert-on-edge",
     "arrange",
     "dependencies-2",
-    "backlog-lag",
-    "rate-limit",
     "study-checkout",
     "study-dispatch",
     "study-payments",

@@ -1,11 +1,10 @@
 import { msg, t } from "../../i18n";
 import type { Tutorial } from "../types";
+import { moment } from "./waitingSteps";
 
 export const rateLimit: Tutorial = {
   id: "rate-limit",
-  version: 1,
-  // owner decision pending: 4 (rate-limit part 2). See docs/backlog/2026-10-25-resilience-tutorials.md.
-  quarantined: true,
+  version: 2,
   track: "resilience",
   level: 2,
   minutes: 4,
@@ -33,9 +32,7 @@ export const rateLimit: Tutorial = {
         props: {
           latencyMs: 0,
           api: {
-            quotas: [
-              { id: "local-rate", unit: "requests", amount: 10, windowMs: 1000, algorithm: "token-bucket", burst: 10 },
-            ],
+            quotas: [{ id: "local-rate", unit: "requests", amount: 30, windowMs: 1000, algorithm: "token-bucket" }],
           },
         },
       },
@@ -69,7 +66,36 @@ export const rateLimit: Tutorial = {
     api: { stencils: ["generic.service"] },
   },
   steps: [
-    // The 10/s quota is seeded until this stencil exposes a Rate limit inspector control.
+    {
+      id: "quota-10",
+      title: msg("tutorials.rateLimit.quotaTitle"),
+      goal: msg("tutorials.rateLimit.quotaGoal"),
+      done: msg("tutorials.rateLimit.quotaDone"),
+      check: {
+        kind: "prop",
+        subject: "limiter",
+        prop: ["api", "quotas", { where: { id: "local-rate" } }, "amount"],
+        op: "=",
+        value: 10,
+      },
+      targets: [
+        { testId: "inspector-field-rate-limit", tip: msg("tutorials.rateLimit.quotaGoal") },
+        { testId: "node-{limiter}", tip: msg("tutorials.rateLimit.quotaGoal") },
+      ],
+      demo: [
+        {
+          kind: "patch",
+          subject: "limiter",
+          patches: [{ op: "set", path: ["api", "quotas", { where: { id: "local-rate" } }, "amount"], value: 10 }],
+        },
+      ],
+      solution: [
+        { dblclick: "node-{limiter}" },
+        { click: "inspector-section-node-simulation" },
+        { fill: "inspector-field-rate-limit", text: "10" },
+        { press: "Enter" },
+      ],
+    },
     {
       id: "run",
       title: msg("tutorials.rateLimit.runTitle"),
@@ -84,17 +110,16 @@ export const rateLimit: Tutorial = {
       demo: [{ kind: "runSimulation", id: "partner-traffic" }],
       solution: [{ click: "live-toggle" }, { select: "live-sim-picker", value: "partner-traffic" }],
     },
-    {
-      id: "rejected",
-      title: msg("tutorials.rateLimit.rejectedTitle"),
-      goal: msg("tutorials.rateLimit.rejectedGoal"),
-      done: msg("tutorials.rateLimit.rejectedDone"),
-      check: { kind: "metric", subject: "limiter", field: "rejected", op: ">=", value: 10 },
-      sticky: true,
-      targets: [{ testId: "node-{limiter}", tip: msg("tutorials.rateLimit.rejectedGoal"), dim: false }],
-      demo: [],
-      solution: [{ hover: "node-{limiter}" }],
-    },
+    moment(
+      "rejected",
+      "limiter",
+      { kind: "metric", subject: "limiter", field: "rejected", op: ">=", value: 10 },
+      {
+        title: msg("tutorials.rateLimit.rejectedTitle"),
+        goal: msg("tutorials.rateLimit.rejectedGoal"),
+        done: msg("tutorials.rateLimit.rejectedDone"),
+      },
+    ),
   ],
   finish: { text: msg("tutorials.rateLimit.finish") },
 };
