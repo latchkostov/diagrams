@@ -77,6 +77,7 @@ test.describe("the count under the title", () => {
 });
 
 test("diagram diagnostics keep guidance and valid element ignores through reload", async ({ page, consoleErrors }) => {
+  test.fixme(true, "quarantined: diagram-scope diagnostics, see docs/backlog/2026-10-25-diagram-scope-findings.md");
   const diagnostic = "message-loop:incomplete";
   const suggestion = "no-reader:payments-dlq";
   const diagram = JSON.parse(

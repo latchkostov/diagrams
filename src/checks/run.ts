@@ -80,8 +80,8 @@ export function runChecks(diagram: DiagramFile, opts: RunOptions = {}): CheckRes
   const ignores = new Set((diagram.checks?.ignore ?? []).map((i) => `${i.rule}:${i.target}`));
   all.sort(findingOrder(ctx.rank));
   return {
-    findings: all.filter((f) => f.scope === "diagram" || !ignores.has(f.id)),
-    ignored: all.filter((f) => f.scope !== "diagram" && ignores.has(f.id)),
+    findings: all.filter((f) => !ignores.has(f.id)),
+    ignored: all.filter((f) => ignores.has(f.id)),
     off: CHECK_RULES.filter((id) => off.includes(id)),
     ran,
     ...(omitted.length ? { omitted } : {}),

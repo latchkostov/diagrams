@@ -89,6 +89,9 @@ export const messageLoop: CheckRule = {
     const timelineOnly = types.incompleteReasons?.length === 1 && types.incompleteReasons[0] === "timeline-forwarding";
     if (!types.complete && (!timelineOnly || mayHaveProcessorCycle(ctx)))
       findings.push({
+        // Quarantined until diagram-scope finding identities cannot collide with element IDs.
+        // See docs/backlog/2026-10-25-diagram-scope-findings.md. Keep master's non-clean omitted result.
+        omitted: 1,
         id: "message-loop:incomplete",
         scope: "diagram",
         target: "",
