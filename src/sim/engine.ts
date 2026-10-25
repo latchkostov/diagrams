@@ -532,6 +532,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   // Thread releases precede local work; a pool wake keeps the established
   // post-reply dispatch phase so a callee cannot start one tick early.
   let earlyPoolWakes: Set<Edge> | undefined;
+  /** Admissions must not mutate a working array while its tick pass compacts it. */
+  let advancingWork: Node | undefined;
   let releasingEarly = false;
   const ledger = new SampledLedger((reservation) => {
     if (reservation.keys) releaseAdmission(admission, { ...reservation, keys: reservation.keys });
@@ -3559,7 +3561,9 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   }
   function admitPending(node: Node): void {
     node.admissionDirty = true;
-    if (node.admitting) return;
+    // A thread-tail release can call back here from finish(). Let the normal
+    // post-work admission phase handle it after working has been compacted.
+    if (node.admitting || advancingWork === node) return;
     node.admitting = true;
     try {
       do {
@@ -4032,63 +4036,68 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           for (const budget of cpuBudgets!.values()) budget.count = budget.first!;
         }
         let keep = 0;
-        for (const work of node.working) {
-          if (node.status === "up" && callerReservations(node) && !ledger.get(work.thread)) {
-            work.slotted = false;
-            endResources(node, work);
-            work.admissibleActive = node.activeMs;
-            wakeDelivery(work);
-            admit(node, work);
-            continue;
-          }
-          if (work.retryAdmissionAt !== undefined && time >= work.retryAdmissionAt && node.status === "up") {
-            work.retryAdmissionAt = undefined;
-            work.waitRemaining = 0;
-            work.workedAt = time;
-            work.retained = false;
-            work.remaining = latency(node);
-            if (!reserveAdmission(node, work)) {
-              endResources(node, work);
+        advancingWork = node;
+        try {
+          for (const work of node.working) {
+            if (node.status === "up" && callerReservations(node) && !ledger.get(work.thread)) {
               work.slotted = false;
+              endResources(node, work);
+              work.admissibleActive = node.activeMs;
+              wakeDelivery(work);
+              admit(node, work);
               continue;
             }
-          }
-          work.remaining -= waits() ? Math.max(0, time - Math.max(work.workedAt ?? time, time - STEP)) : STEP;
-          let worked = Math.max(0, time - Math.max(work.workedAt ?? time, time - STEP));
-          if (work.waitRemaining) {
-            const waiting = Math.min(worked, work.waitRemaining);
-            work.waitRemaining -= waiting;
-            worked -= waiting;
-          }
-          if (waits() && !work.attempt && !work.waitRemaining) attempt(node, work);
-          work.message.workMs += worked;
-          work.workedAt = time;
-          if (f && r && node.status === "up" && ((work.cpuBackoffUntil ?? 0) <= time || (work.cpuBacklog ?? 0) > 0)) {
-            spendCpu(node, work, cpuBudgets);
-          }
-          const graceExpired = f && executionGraceDeadline(node, work) <= time;
-          if (graceExpired) {
-            work.retained = false;
-            work.slotted = false;
-            cancelCpu(work);
-            endResources(node, work);
-            settleWork(node, work, ended(node), false);
-          } else if (
-            (work.remaining <= 0 &&
-              (node.status === "down" || (work.logicalCpuRemaining ?? work.cpuRemaining ?? 0) <= 1e-8)) ||
-            (node.status === "down" && !work.retained)
-          ) {
-            work.retained = false;
-            finish(node, work);
-            if (work.retained) node.working[keep++] = work;
-            else if (work.waitingCall === undefined) {
-              work.slotted = false;
-              endResources(node, work);
+            if (work.retryAdmissionAt !== undefined && time >= work.retryAdmissionAt && node.status === "up") {
+              work.retryAdmissionAt = undefined;
+              work.waitRemaining = 0;
+              work.workedAt = time;
+              work.retained = false;
+              work.remaining = latency(node);
+              if (!reserveAdmission(node, work)) {
+                endResources(node, work);
+                work.slotted = false;
+                continue;
+              }
             }
-          } else node.working[keep++] = work;
+            work.remaining -= waits() ? Math.max(0, time - Math.max(work.workedAt ?? time, time - STEP)) : STEP;
+            let worked = Math.max(0, time - Math.max(work.workedAt ?? time, time - STEP));
+            if (work.waitRemaining) {
+              const waiting = Math.min(worked, work.waitRemaining);
+              work.waitRemaining -= waiting;
+              worked -= waiting;
+            }
+            if (waits() && !work.attempt && !work.waitRemaining) attempt(node, work);
+            work.message.workMs += worked;
+            work.workedAt = time;
+            if (f && r && node.status === "up" && ((work.cpuBackoffUntil ?? 0) <= time || (work.cpuBacklog ?? 0) > 0)) {
+              spendCpu(node, work, cpuBudgets);
+            }
+            const graceExpired = f && executionGraceDeadline(node, work) <= time;
+            if (graceExpired) {
+              work.retained = false;
+              work.slotted = false;
+              cancelCpu(work);
+              endResources(node, work);
+              settleWork(node, work, ended(node), false);
+            } else if (
+              (work.remaining <= 0 &&
+                (node.status === "down" || (work.logicalCpuRemaining ?? work.cpuRemaining ?? 0) <= 1e-8)) ||
+              (node.status === "down" && !work.retained)
+            ) {
+              work.retained = false;
+              finish(node, work);
+              if (work.retained) node.working[keep++] = work;
+              else if (work.waitingCall === undefined) {
+                work.slotted = false;
+                endResources(node, work);
+              }
+            } else node.working[keep++] = work;
+          }
+          node.working.length = keep;
+          recountWorking(node);
+        } finally {
+          advancingWork = undefined;
         }
-        node.working.length = keep;
-        recountWorking(node);
         // Yielding tails, including fractional tails that formed in this tick's loop.
         const tailsAfter =
           cpuBudgets && node.cpuTail.size
