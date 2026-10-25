@@ -68,7 +68,8 @@ describe("building-block lessons", () => {
           diagram: d,
           live: true,
           processed: (id) => snapshot.nodes[id]?.processed ?? 0,
-          baseline: Object.fromEntries(sinceValues(watch.check).map((expr) => [baselineKey(expr), [0, 0] as const])),
+          sessionId: 1,
+          baseline: Object.fromEntries(sinceValues(watch.check).map((expr) => [baselineKey(expr), [0, 0, 1] as const])),
           session: { generation: 0, snapshot, running: d.simulations![0], run: { time: snapshot.time } } as LiveState,
         };
         reached = holds(watch.check, view, subjects);
@@ -115,6 +116,7 @@ describe("counter comparisons", () => {
   const view = (first: number, second: number, delivered: number): SandboxView => ({
     diagram,
     live: true,
+    sessionId: 1,
     processed: () => 0,
     session: {
       generation: 0,
@@ -155,7 +157,7 @@ describe("counter comparisons", () => {
     const key = baselineKey({ node: "service", metric: "processed" });
     const bindings = { service: subjects.first };
     expect(holds(relative, view(109, 0, 0), bindings)).toBe(false);
-    expect(holds(relative, { ...view(109, 0, 0), baseline: { [key]: [100, 0] } }, bindings)).toBe(false);
-    expect(holds(relative, { ...view(110, 0, 0), baseline: { [key]: [100, 0] } }, bindings)).toBe(true);
+    expect(holds(relative, { ...view(109, 0, 0), baseline: { [key]: [100, 0, 1] } }, bindings)).toBe(false);
+    expect(holds(relative, { ...view(110, 0, 0), baseline: { [key]: [100, 0, 1] } }, bindings)).toBe(true);
   });
 });
