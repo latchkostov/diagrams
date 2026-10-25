@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { DiagramFile, SimRole } from "../model/types";
-import { createEngine } from "./engine";
+import { createEngine, observeEngineEvents, randomDraws } from "./engine";
+import type { SimEvent } from "./types";
 
 const diagram: DiagramFile = {
   format: "diagrams/v1",
@@ -27,6 +28,42 @@ const makeEngine = () => {
 };
 
 describe("engine checkpoints", () => {
+  it("replays accounting roots, event-ring order, lineage and RNG at every suffix step", () => {
+    const engine = makeEngine();
+    engine.tracer.request({ next: "message" });
+    engine.inject("source", 150, { spreadMs: 600 });
+    engine.setTraffic(true);
+    engine.step(413);
+    const checkpoint = engine.checkpoint();
+    const observed: SimEvent[] = [];
+    const stop = observeEngineEvents(engine, (event) => observed.push(event));
+    const suffix = () => {
+      observed.length = 0;
+      return [17, 250, 900, 1500].map((duration, index) => {
+        if (index === 1) engine.setScale(2);
+        if (index === 2) engine.setNodeProps("worker", { concurrency: 3 });
+        engine.step(duration);
+        return structuredClone({
+          snapshot: engine.snapshot(),
+          frame: engine.frame(),
+          events: observed,
+          metrics: engine.metrics(),
+          configuration: engine.configuration(),
+          trace: engine.tracer.current(),
+          draws: randomDraws(engine),
+        });
+      });
+    };
+    const expected = suffix();
+    expect(expected.at(-1)!.events.length).toBeGreaterThan(200);
+    expect(expected.at(-1)!.draws).toBeGreaterThan(expected[0].draws);
+    for (let replay = 0; replay < 2; replay++) {
+      engine.restore(checkpoint);
+      expect(suffix()).toEqual(expected);
+    }
+    stop();
+  });
+
   it("restores queued work, trips, batches, RNG, props, counters and fractional time repeatedly", () => {
     const engine = makeEngine();
     engine.setTraffic(true);

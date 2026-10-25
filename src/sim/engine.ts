@@ -1,4 +1,25 @@
-import { createExecutionReservations, type ExecutionWork } from "./executionReservations";
+import { createAccounting } from "./engine/accounting";
+import {
+  isBroker,
+  liveWork,
+  nodeWork,
+  queuedWork,
+  resourceWork,
+  type Message,
+  type Group,
+  type Delivery,
+  type Work,
+  type RouteDecision,
+  type Node,
+  type Call,
+  type Logical,
+  type Edge,
+  type Trip,
+  type EchoExpiry,
+  type Injection,
+  type DeliveryPart,
+} from "./engine/model";
+import { createExecutionReservations } from "./executionReservations";
 import { revisionAtLeast } from "../model/revisions";
 import { faultProblem, type Fault } from "../model/faults";
 import { faultTopology, faultActive, faultKey } from "../model/faultRuntime";
@@ -6,7 +27,6 @@ import {
   shiftWorkDeadlines,
   createCpuPartBudget,
   type ResourceWork,
-  type CpuTail,
   deliveryGroup,
   ownsCpu,
   cancelCpu,
@@ -29,7 +49,6 @@ import {
   integrateResources,
   evaluateHpa,
   commitScalingChange,
-  resourceReadout,
   fleetReadout,
   replicaPage,
   type Fleet,
@@ -39,26 +58,19 @@ import { controllerSyncMs, replicaRange } from "../model/resourceRuntime";
 import { evaluateCloud, onDemand, resetCloud, shiftCloud, type CloudReads } from "./cloudScalers";
 import { triggerFits } from "../model/kedaBindings";
 import { evaluateKeda, resetKeda, type BrokerMetric, type ScalerTrigger } from "./keda";
-import type { DiagramFile, SimRole } from "../model/types";
+import type { DiagramFile } from "../model/types";
 import { stencilRole } from "../stencils/roles";
 import { messageColor } from "./colors";
 import { hasServiceTime, resolveProps, type ResolvedProps } from "./defaults";
 import { activeUnits } from "../stencils/netDevices";
 import { pushDue, popDue, removeDue } from "./dueHeap";
 import { SampledLedger, type Reservation } from "./ledger";
-import { raceReply, settleOnce, type Attempt, type LogicalBranch, type LogicalCall } from "./attempt";
+import { raceReply, settleOnce, type Attempt, type LogicalBranch } from "./attempt";
 import { ShedQueue } from "./shedQueue";
 import { queueGrant } from "./admission";
 import { Deque } from "./deque";
-import { createLineage, type Family } from "./lineage";
-import {
-  createLatencyBudget,
-  createLatencyRecorder,
-  shareLatencyRecorder,
-  recordLatency,
-  latencyMetrics,
-  type LatencyRecorder,
-} from "./latency";
+import { createLineage } from "./lineage";
+import { createLatencyBudget, createLatencyRecorder, shareLatencyRecorder, recordLatency } from "./latency";
 import { mulberry32 } from "./rng";
 import {
   forwardingShare,
@@ -70,16 +82,7 @@ import {
   deadLetterRoutes,
   type CompiledTopology,
 } from "./topology";
-import {
-  resolveScale,
-  resolveMultiplier,
-  representedOf,
-  unitsOf,
-  roundDots,
-  roundCounts,
-  roundCalls,
-  roundRoute,
-} from "./units";
+import { resolveScale, resolveMultiplier, representedOf, unitsOf, roundDots } from "./units";
 import {
   attemptAdmission,
   admissionSlots,
@@ -99,10 +102,8 @@ import {
   nextByDeficit,
   pickWeighted,
   streamSeed,
-  type CompiledMatch,
   type CompiledMix,
   type CompiledRoute,
-  type CompiledTable,
 } from "./routeMatching";
 import { routeTableCapable } from "../model/requestRouting";
 import {
@@ -116,7 +117,7 @@ import {
 } from "./admission";
 import { QUOTA_UNITS } from "../model/admission";
 import { occupancyFraction } from "./ledger";
-import { callPolicy, replyCpuMs, type CallPolicy } from "./callPolicy";
+import { callPolicy, replyCpuMs } from "./callPolicy";
 import {
   retryDisposition,
   backoffDelay,
@@ -124,42 +125,27 @@ import {
   createRetryWindow,
   recordRetryWindow,
   retryWindow,
-  type RetryWindow,
   type RetryDisposition,
   type ClassifiedOutcome,
   type OutcomeKind,
 } from "./retryPolicy";
 import { retryBudgetPermits } from "./admission";
-import type { RetryPolicy, BreakerPolicy } from "../model/admission";
 import { createBreaker, breakerPermits, breakerRecord, breakerView, type BreakerState } from "./breaker";
 import { STEP } from "./timing";
-
 import type {
   RouteCounts,
   EngineOptions,
   EngineCheckpoint,
   NodeSimProps,
-  NodeSimState,
   NodeStatus,
-  Particle,
   ParticleKind,
   SimEngine,
   SimEvent,
-  SimEventKind,
-  SimFrame,
-  SimSnapshot,
   TraceStep,
-  TraceStepKind,
 } from "./types";
 
 /** A refusal by a token bucket ("orders-limit: requests"): a 429, not a 404 or a concurrency cap. */
 const quotaReason = (reason: string) => QUOTA_UNITS.some((unit) => reason.endsWith(`: ${unit}`));
-/**
- * 1 - Math.exp(-STEP / 1000) as V8 computes it, written out: Math.exp may differ in the last bit between JS
- * engines, and throughput (which expectations read) is built on this (shared Live, docs/PARITY.md).
- */
-const EWMA_ALPHA = 0.009950166250831893;
-const EVENT_CAP = 200;
 /** A headless run created more messages than its shared budget (EngineOptions.messageBudget). */
 export class WorkBudgetError extends Error {}
 
@@ -169,317 +155,6 @@ const TEST_ORACLES = typeof __TEST_ORACLES__ === "boolean" && __TEST_ORACLES__;
 
 export const SOURCE_RATE_CAP = 10_000;
 export const SOURCE_VOLUME_CAP = 200_000;
-
-interface Message {
-  /**
-   * Real requests this message carries when it is a partial dot: part of a dot split at one instant
-   * (admitted and refused, kept and shed, retried apart). Undefined is a whole dot, `scale` requests.
-   * The one represented size (units.ts): representedOf(m) sizes admission, threads, pools and CPU,
-   * cohort(work) is that size fixed once capacity or CPU is sized (a live scale edit never resizes
-   * it), and every counter adds unitsOf(m) dots. Copies, branches and replies inherit it.
-   */
-  represented?: number;
-  /**
-   * Completion credit for one request route, when a half-open breaker narrowed this message to its test calls:
-   * that route's journey still finishes once at the whole cohort's size (the refused part ends off it). Any other
-   * route counts the message's own size; readdressing clears it (creditRoute, addressed).
-   */
-  routeCohort?: { route: string; represented?: number };
-  /** Real requests of this cohort that can occupy capacity at once downstream: the
-   * narrowest held caller thread or finite-pool grant on its path (undefined: no limit).
-   * Width never increases along a path. It is never a size: it only caps the weight
-   * granted to the cohort (weight <= width, weight <= represented), which then runs in
-   * represented/weight waves. */
-  width?: number;
-  callMs?: number;
-  backoffMs?: number;
-  callAttempt?: number;
-  returnCall?: number;
-  callDepth?: number;
-  visualAt?: number;
-  workMs: number;
-  travelMs: number;
-  /** A branch that crossed a Request is outside async completion's scope. */
-  requested?: true;
-  id: number;
-  type: string;
-  color: string;
-  attempts: number;
-  /** Shared by the root message and all its fan-out copies. */
-  family: Family;
-  /** Request routing: the address this message carries (immutable, shared by copies and retries). */
-  request?: CompiledRoute;
-}
-interface Group {
-  offThread: number;
-  offByNode: Map<string, number>;
-  name: string;
-  edges: Edge[];
-  pending: Deque<Message>;
-  /** Dots queued in pending (unitsOf): a partial dot counts its share. */
-  pendingUnits: number;
-  /** Dots delivered and not yet acknowledged (unitsOf); offThread, activeByNode and offByNode likewise. */
-  active: number;
-  cursor: number;
-  allocations: Map<string, number>;
-  drainOwners: Map<string, number>;
-  activeByNode: Record<string, number>;
-  /** Deliveries that arrived and hold one of the group's slots at each consumer (waiting or in work). */
-  heldByNode: Map<string, number>;
-  /** Per consumer: deliveries that arrived while all of the group's slots there were held, in arrival order. */
-  staged: Map<string, Deque<Work>>;
-  /** Per consumer: the longest travel time of the group's routes to it (deny rules aside), for its pipeline. */
-  travelTo: Map<string, number>;
-  members: string[];
-  limit: number;
-}
-interface Delivery {
-  /** Dots this delivery holds in its group's counters: the delivered (possibly partial) dot. */
-  units: number;
-  offThread?: boolean;
-  broker: Node;
-  group: Group;
-  edge: Edge;
-  original: Message;
-}
-interface Work extends ExecutionWork<Group> {
-  priority?: import("./types").QueuePriority;
-  queueProtected?: boolean;
-  queueSize?: number;
-  queuedAt?: number;
-  /** Dots this work added to its node's pending, continuation or staged units when it last queued there (set on entry). */
-  queuedUnits?: number;
-  /** A join's continuation is a fresh attempt. It carries the join's settled cause explicitly and replies
-   * with it, unless the continuation itself is ended first (an outage or a termination). */
-  continuation?: { ok: boolean; cpuMs: number; cause: OutcomeKind };
-  /** Pre-w2 reply code (and w2 without retry policies), as it always propagated. Never a classification. */
-  failureCode?: number;
-  timeoutOrigin?: string;
-  attempt?: Attempt<Message>;
-  residentWeight?: number;
-  /** Owns its preceding thread while awaiting the ordinary continuation phase. */
-  resumeAtAdmission?: boolean;
-  waitingCall?: number;
-  outputs?: Edge[];
-  outputMessage?: Message;
-  workedAt?: number;
-  /** In-place backoff advances only with the attempt's clock, including pause/resume. */
-  waitRemaining?: number;
-  errorRate?: number;
-  message: Message;
-  via?: Edge;
-  delivery?: Delivery;
-  remaining: number;
-  retained?: boolean;
-  injected?: boolean;
-  /** Holds one of its delivery group's slots at the node (see admit). */
-  held?: boolean;
-  /** In the node's working set: it has one of the node's slots (an in-place retry keeps it). */
-  slotted?: boolean;
-  /** A router's table chose this connection on arrival; the work forwards there. */
-  route?: RouteDecision;
-}
-interface RouteDecision {
-  edge: Edge;
-  /** The matched rule id, or "" for Default. */
-  rule: string;
-  weight: number;
-  /** The action's quota requirements, charged with the router's own admission. */
-  quotas: QuotaRequirement[];
-}
-interface Node {
-  activeMs: number;
-  /** Last tick-loop admission phase completed by this node. */
-  admittedAt?: number;
-  latency?: LatencyRecorder;
-  fleet?: Fleet;
-  id: string;
-  label: string;
-  stencil: string;
-  role: SimRole;
-  status: NodeStatus;
-  baseStatus: NodeStatus;
-  faultRate?: number;
-  slowFactor?: number;
-  outages: Set<string>;
-  scriptedFailure?: boolean;
-  rawProps: Record<string, unknown>;
-  props: ResolvedProps;
-  replicas: number;
-  activeReplicas: number;
-  outgoing: Edge[];
-  dlq?: Edge;
-  groups: Group[];
-  pending: Deque<Work> | ShedQueue<Work>;
-  resume: Deque<Work>;
-  takeovers: Work[];
-  frees: boolean;
-  /** How many deliveries are staged here (in their groups' `staged` queues), for the backlog. */
-  staged: number;
-  working: Work[];
-  calls: Map<number, Call>;
-  /** R2's minimum independent reservation for sampled non-blocking local work. */
-  threadTails: Map<number, Reservation<Group>>;
-  threadWeight: Record<"work" | "wait", number>;
-  threadCount: Record<"work" | "wait", number>;
-  admitting: boolean;
-  admissionDirty: boolean;
-  residentWeight: number;
-  residentCount: number;
-  requestWeight: number;
-  requestCount: number;
-  heldCalls: number;
-  offThreadCalls: number;
-  freeFlight: number;
-  heldBrokerCalls: number;
-  waitingOn: Map<string, number>;
-  waits: boolean;
-  callTarget: boolean;
-  cpuTail: Set<CpuTail<Group>>;
-  sampledExecution: boolean;
-  cpuTick?: import("./resourceInvariants").CpuTick;
-  incoming: number;
-  /** Dots (unitsOf) of incoming, pending and staged: a broker's prefetch window counts real requests. */
-  incomingUnits: number;
-  pendingUnits: number;
-  stagedUnits: number;
-  queueUnits: number;
-  /** Dots (unitsOf) of `working`, kept with it so occupancy reads stay constant-time. */
-  workingUnits: number;
-  /** Dots (unitsOf) of continuations queued in `resume`. */
-  resumeUnits: number;
-  cursor: number;
-  processed: number;
-  failed: number;
-  deadLettered: number;
-  dropped: number;
-  outageDropped: number;
-  timeoutLosses: Map<string, number>;
-  /** Stopped by a deny rule on an outgoing connection (on purpose, so never `dropped`). */
-  blocked: number;
-  shedLost: number;
-  shed: number;
-  rejected: number;
-  rejectionReasons: Record<string, number>;
-  throughput: number;
-  completedThisStep: number;
-  trafficCredit: number;
-  serviceCredit: number;
-  /** An active-standby pair failing over holds its traffic until this time. */
-  holdUntil: number;
-  /** Request routing: a router's compiled table (absent: today's routing). */
-  table?: CompiledTable;
-  /** A source's compiled traffic mix (absent: unaddressed messages, as today). */
-  mix?: CompiledMix;
-  /** Per mix row: continuous traffic credit in sampled messages, and the weighted-deficit credit for fixed counts. */
-  mixCredit: number[];
-  mixDeficit: number[];
-  /** One selection stream per table action (rule id, "" for Default), seeded lazily from the run seed. */
-  streams: Map<string, number>;
-  /** Refusals by request route id ("" for requests without an address). */
-  routeRejections: Record<string, number>;
-  /** Each table action's quota requirements, by stream key. */
-  quotas: Map<string, QuotaRequirement[]>;
-  /** A router's ordinary outgoing connections by id, for its table's targets. */
-  targets: Map<string, Edge>;
-}
-interface Call extends LogicalCall {
-  attempt: Attempt<Message>;
-  replyMs?: number;
-  replies?: number;
-  id: number;
-  node: Node;
-  work: Work;
-  outstanding: Set<string>;
-  held: boolean;
-  /** Dots each held blocking branch added to its edge's held gauge, released as charged across scale edits. */
-  heldDots?: number;
-  brokerHeld?: boolean;
-}
-interface Logical {
-  outcome?: ClassifiedOutcome;
-  backoffMs?: number;
-  retry?: boolean;
-  callAttempt?: number;
-  /** The settling message's represented size, for weighted call counters. */
-  represented?: number;
-  timeoutOrigin?: string;
-  timeout?: boolean;
-  code?: number;
-  id: number;
-  end: number;
-  edge?: Edge;
-  message?: Message;
-  call?: number;
-  ok?: boolean;
-  grace?: number;
-  thread?: number;
-  visualAt?: number;
-}
-interface Edge {
-  priority?: import("./types").QueuePriority;
-  breaker?: { policy: BreakerPolicy; state: BreakerState };
-  policy?: CallPolicy;
-  poolUsed: number;
-  poolPending: { id: number; end: number; call: Call; message: Message; admissibleActive: number }[];
-  poolPendingIndices: Map<number, number>;
-  poolLeases: Map<number, number>;
-  networkDelayMs: number;
-  calls: NonNullable<import("./types").EdgeSimState["calls"]>;
-  retry?: { policy: RetryPolicy; stream?: number; window: RetryWindow };
-  cut?: boolean;
-  endpointId?: string;
-  id: string;
-  from: Node;
-  to: Node;
-  sync: boolean;
-  dlq: boolean;
-  travelMs: number;
-  share?: number;
-  filter?: string[];
-  emits?: string;
-  deny: boolean;
-  groupName: string;
-  delivered: number;
-  active: number;
-  /** A Request out of a caller with an explicit address: copies leaving here carry it. */
-  requestRoute?: CompiledRoute;
-  /** Only addressed requests matching this travel the connection. */
-  requestFilter?: CompiledMatch;
-}
-interface Trip {
-  id: number;
-  edge: Edge;
-  message: Message;
-  kind: ParticleKind;
-  start: number;
-  end: number;
-  drawn: boolean;
-  delivery?: Delivery;
-  /** A reply refusing the request: 404 (no route) or 429 (a route quota). */
-  code?: number;
-  echo?: boolean;
-}
-interface EchoExpiry {
-  id: number;
-  end: number;
-  counts: Map<Edge, number>;
-}
-interface Injection {
-  node: Node;
-  type: string;
-  route?: CompiledRoute;
-  start: number;
-  interval: number;
-  index: number;
-  count: number;
-  due: number;
-  order: number;
-}
-
-function isBroker(node: Node): boolean {
-  return node.role === "queue" || node.role === "topic" || node.role === "stream";
-}
 
 // Runner seed configuration for reused native engines, without widening the public contract.
 const eventObservers = new WeakMap<SimEngine, (event: SimEvent) => void>();
@@ -723,7 +398,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
             node: trip.kind === "reply" || trip.kind === "retry" ? trip.edge.to.id : trip.edge.from.id,
           };
       for (const node of nodes.values()) {
-        for (const work of liveWork(node)) if (test(work.message)) return { message: work.message, node: node.id };
+        for (const work of liveWork(node, groupsByConsumer))
+          if (test(work.message)) return { message: work.message, node: node.id };
         for (const group of node.groups) {
           const queued = group.pending.find(test);
           if (queued) return { message: queued, node: node.id };
@@ -735,6 +411,90 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   // Min-heap contains one entry per spread batch, not one per future message.
   const injections: Injection[] = [];
   const before = (a: Injection, b: Injection) => a.due < b.due || (a.due === b.due && a.order < b.order);
+
+  /** Headless planning's shared message budget: refuses the message before it is allocated. */
+  function spend(): void {
+    const budget = opts.messageBudget;
+    if (budget && --budget.remaining < 0) throw new WorkBudgetError("The run created more messages than its budget");
+  }
+
+  const accounting = createAccounting(
+    {
+      get time() {
+        return time;
+      },
+      get scale() {
+        return scale;
+      },
+      get latencyBudget() {
+        return latencyBudget;
+      },
+      get sinceFault() {
+        return sinceFault;
+      },
+      get inSystem() {
+        return inSystem;
+      },
+      set inSystem(value) {
+        inSystem = value;
+      },
+      get nextMessage() {
+        return nextMessage;
+      },
+      set nextMessage(value) {
+        nextMessage = value;
+      },
+      get eventHead() {
+        return eventHead;
+      },
+      set eventHead(value) {
+        eventHead = value;
+      },
+      get routeCounts() {
+        return routeCounts;
+      },
+      get routes() {
+        return routes;
+      },
+      get faults() {
+        return faults;
+      },
+      get drawnTrips() {
+        return drawnTrips;
+      },
+    },
+    { nodes, edges, events },
+    lineage,
+    opts,
+    {
+      spend,
+      observeEvent: (event) => {
+        if (TEST_ORACLES) eventObservers.get(engine)?.(event);
+      },
+      dotsOf,
+      threadOccupancy,
+      queueBacklog,
+      slots,
+      held,
+      memoryRequests,
+      waits,
+      readFrame: () => engine.frame(),
+    },
+  );
+  const {
+    log,
+    processed,
+    step,
+    gone,
+    countRoute,
+    addressed,
+    creditRoute,
+    copy,
+    fanOut,
+    drop,
+    block,
+    finishTickMetrics,
+  } = accounting;
 
   function schedule(item: Injection): void {
     let index = injections.length;
@@ -763,173 +523,6 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       injections[index] = last;
     }
     return first;
-  }
-
-  function log(kind: SimEventKind, node: Node, message?: Message, detail = ""): void {
-    const event: SimEvent = {
-      time,
-      kind,
-      nodeId: node.id,
-      ...(message ? { messageId: message.id } : {}),
-      text: `${node.label} ${kind}${message ? ` ${message.type} #${message.id}` : ""}${detail ? ` (${detail})` : ""}`,
-    };
-    if (TEST_ORACLES) eventObservers.get(engine)?.(event);
-    if (events.length < EVENT_CAP) events.push(event);
-    else {
-      events[eventHead] = event;
-      eventHead = (eventHead + 1) % EVENT_CAP;
-    }
-  }
-
-  function processed(node: Node, message: Message): void {
-    const units = dotsOf(message);
-    node.processed += units;
-    node.completedThisStep += units;
-    log("process", node, message);
-    if (message.family.trace) step(message, "done", node.id);
-    // Each node reports the root-to-here path on successful handling, including terminal arrivals.
-    // This also lets an intermediate worker explain its queue without composing hop percentiles.
-    if (
-      !message.requested &&
-      (node.role === "processor" || node.role === "gateway" || node.role === "store" || node.role === "sink")
-    ) {
-      const elapsed = time - message.family.bornAt;
-      const work = Math.min(message.workMs, Math.max(0, elapsed - message.travelMs));
-      recordLatency(
-        (node.latency ??= createLatencyRecorder()),
-        message.type,
-        Math.max(0, elapsed - message.travelMs - work),
-        work,
-        message.travelMs,
-        latencyBudget,
-        message.callMs,
-        message.backoffMs,
-        dotsOf(message),
-      );
-    }
-  }
-
-  /** Records a lineage step for a message whose family is being traced (callers check first). */
-  function step(message: Message, kind: TraceStepKind, node: string, extra?: Partial<TraceStep>): void {
-    lineage.record(message.family, {
-      t: time,
-      kind,
-      id: message.id,
-      type: message.type,
-      node,
-      ...extra,
-      ...(message.request ? { route: message.request.id } : {}),
-    });
-  }
-
-  /** A message's journey ends at `node`: consumed ("end") or lost ("drop"). */
-  function gone(
-    node: Node,
-    message: Message,
-    kind: "end" | "drop" | "block" | "reject",
-    reason: string,
-    extra?: Partial<TraceStep>,
-  ): void {
-    inSystem--;
-    message.family.alive--;
-    // A journey finishes its route once, however many copies fan out and end.
-    if (kind === "end" && message.request) {
-      const done = (message.family.routesDone ??= []);
-      if (!done.includes(message.request.id)) {
-        done.push(message.request.id);
-        const credit = message.routeCohort?.route === message.request.id ? message.routeCohort : message;
-        countRoute(message.request).completed += dotsOf(credit);
-      }
-    }
-    if (message.family.trace) {
-      step(message, kind, node.id, { reason, ...extra });
-      lineage.settle(message.family);
-    }
-  }
-
-  function countRoute(route: CompiledRoute): RouteCounts {
-    let counts = routeCounts.get(route.id);
-    if (!counts) routeCounts.set(route.id, (counts = { sent: 0, rejected: 0, completed: 0 }));
-    return counts;
-  }
-
-  /** The same message (or copy) with another address: a caller's explicit request route. Counts the call. */
-  function addressed(message: Message, route: CompiledRoute | undefined): Message {
-    if (message.request?.id === route?.id) return message;
-    if (route) countRoute(route).sent += dotsOf(message);
-    // Completion credit belongs to the route it was granted on, never to a new address.
-    return { ...message, request: route, routeCohort: undefined };
-  }
-
-  /** Before a half-open breaker narrows it, the message keeps completing its current route at the cohort's size. */
-  function creditRoute(message: Message, cohort: { represented?: number }): void {
-    if (!message.request) message.routeCohort = undefined;
-    else if (message.routeCohort?.route !== message.request.id)
-      message.routeCohort = { route: message.request.id, represented: cohort.represented };
-  }
-
-  /** Headless planning's shared message budget: refuses the message before it is allocated. */
-  function spend(): void {
-    const budget = opts.messageBudget;
-    if (budget && --budget.remaining < 0) throw new WorkBudgetError("The run created more messages than its budget");
-  }
-
-  /** A fan-out copy with its own id, in the same family (its parent keeps the original id). */
-  function copy(node: Node, message: Message): Message {
-    spend();
-    const next = { ...message, id: nextMessage++, attempts: 0 };
-    inSystem++;
-    message.family.alive++;
-    if (message.family.trace) step(next, "copy", node.id, { parent: message.id });
-    return next;
-  }
-
-  /** One message per route: the first route keeps the message, the others get new copies. */
-  function fanOut(node: Node, message: Message, routes: number): Message[] {
-    const out = [{ ...message, attempts: 0 }];
-    for (let i = 1; i < routes; i++) out.push(copy(node, message));
-    return out;
-  }
-
-  function drop(node: Node, message: Message, reason: string, via?: Edge, timeoutOrigin?: string): void {
-    const units = dotsOf(message);
-    if (timeoutOrigin) node.timeoutLosses.set(timeoutOrigin, (node.timeoutLosses.get(timeoutOrigin) ?? 0) + units);
-    node.dropped += units;
-    if (reason === "node down") node.outageDropped += units;
-    if (opts.onLoss) {
-      const boundary = node.outages.values().next().value;
-      const fault =
-        reason === "link cut" && via
-          ? { kind: "link" as const, edge: via.id, cut: true }
-          : reason === "node down" && boundary
-            ? { kind: "boundary" as const, boundary, down: true }
-            : reason === "processing failed" && node.faultRate !== undefined
-              ? { kind: "fail" as const, node: node.id, rate: node.faultRate as 0.1 | 0.5 }
-              : undefined;
-      opts.onLoss({
-        node: node.id,
-        connection: via?.id,
-        reason,
-        fault,
-        dots: units,
-        intentional:
-          reason === "link cut" || reason === "node down"
-            ? "down"
-            : reason === "processing failed" && (node.faultRate !== undefined || node.scriptedFailure)
-              ? "fails"
-              : undefined,
-      });
-    }
-    log("drop", node, message, reason);
-    gone(node, message, "drop", reason);
-  }
-
-  /** A deny rule on `edge` stops the message at its source: blocked on purpose, not lost. */
-  function block(message: Message, edge: Edge, extra?: Partial<TraceStep>): void {
-    const node = edge.from;
-    node.blocked += dotsOf(message);
-    log("block", node, message, `deny rule to ${edge.to.label}`);
-    gone(node, message, "block", "deny rule", extra);
   }
 
   /**
@@ -1014,7 +607,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         for (const c of f.starts) c.at += duration;
         for (const c of f.sampledDrains) c.at += duration;
         for (const busy of f.busy.values()) if (busy.drainAt !== undefined) busy.drainAt += duration;
-        for (const work of nodeWork(node)) shiftWorkDeadlines(work, duration);
+        for (const work of nodeWork(node, groupsByConsumer)) shiftWorkDeadlines(work, duration);
         f.pausedAt = undefined;
         if (f.keda) {
           f.keda.createdAt += duration;
@@ -1061,7 +654,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
 
   /** Owner shutdown invalidates every logical reference alongside ledger ownership. */
   function shutdownOwner(node: Node): void {
-    execution.shutdown(node, liveWork(node));
+    execution.shutdown(node, liveWork(node, groupsByConsumer));
     // A continuation that lost request admission must rejoin the admission
     // queue. It cannot block resumed work that still owns request capacity and
     // needs to finish before that capacity can be reacquired.
@@ -1103,19 +696,6 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   function latency(node: Node): number {
     if (!node.props.latencyMs) return 0;
     return node.props.latencyMs * (1 + (node.props.jitter ? (random() * 2 - 1) * node.props.jitter : 0));
-  }
-
-  function topWaiting(node: Node): [string, number][] {
-    const top: [string, number][] = [];
-    for (const entry of node.waitingOn) {
-      let i = 0;
-      while (i < top.length && top[i][1] >= entry[1]) i++;
-      if (i < 3) {
-        top.splice(i, 0, entry);
-        if (top.length > 3) top.pop();
-      }
-    }
-    return top;
   }
 
   function slots(node: Node): number {
@@ -1476,7 +1056,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       }
       if ("resources" in patch || "autoscaling" in patch) {
         if (!node.props.resources) {
-          execution.disableResources(node, nodeWork(node));
+          execution.disableResources(node, nodeWork(node, groupsByConsumer));
         } else if (!node.fleet || time === 0) {
           initializeFleet(node);
           initialized.add(node);
@@ -2144,16 +1724,6 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   ): void {
     edge.calls[field] = (edge.calls[field] ?? 0) + dotsOf(message);
     recordRetryWindow(edge.retry!.window, time, field, sizeOf(message));
-  }
-
-  function retryWindowView(edge: Edge) {
-    const w = retryWindow(edge.retry!.window, time);
-    return {
-      windowRequests: w.requests / scale,
-      windowAttempts: w.attempts / scale,
-      windowRetried: w.retried / scale,
-      windowSucceeded: w.succeeded / scale,
-    };
   }
 
   function cancelRetry(call: Call, edge: Edge): void {
@@ -3340,12 +2910,6 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     );
   }
 
-  interface DeliveryPart {
-    index: number;
-    edge: Edge;
-    part: number;
-  }
-
   /**
    * Where the dot at the front of `group` goes now: parts by connection, in real requests. Routes take turns from the
    * group's cursor, as at scale 1, and the cursor moves past the last that took a part.
@@ -3449,30 +3013,6 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     }
   }
 
-  /** Every location that can own a live message, including exclusive continuations. */
-  function* liveWork(node: Node): IterableIterator<Work> {
-    const seen = new Set<Work>();
-    for (const collection of [node.working, node.takeovers, queuedWork(node)])
-      for (const work of collection)
-        if (!seen.has(work)) {
-          seen.add(work);
-          yield work;
-        }
-    for (const { work } of node.calls.values())
-      if (!seen.has(work)) {
-        seen.add(work);
-        yield work;
-      }
-  }
-
-  function* nodeWork(node: Node): IterableIterator<ResourceWork> {
-    yield* new Set([...resourceWork(node), ...queuedWork(node)]);
-  }
-  function* queuedWork(node: Node): IterableIterator<Work> {
-    yield* node.resume;
-    yield* node.pending;
-    for (const group of groupsByConsumer.get(node.id) ?? []) yield* group.staged.get(node.id) ?? [];
-  }
   function initializeFleet(node: Node): void {
     if (!node.props.resources) {
       node.fleet = undefined;
@@ -3524,19 +3064,6 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         callerReservations(node) ? node.threadWeight.work + node.threadWeight.wait : residentRequests(node),
       broker: (t) => readBrokerMetric(t),
     };
-  }
-  function resourceWork(node: Node): CpuTail<Group>[] {
-    return node.heldCalls || node.threadTails.size || node.takeovers.length || node.cpuTail.size
-      ? [
-          ...new Set<CpuTail<Group>>([
-            ...node.working,
-            ...node.takeovers,
-            ...[...node.calls.values()].filter((c) => c.held).map((c) => c.work),
-            ...node.threadTails.values(),
-            ...node.cpuTail,
-          ]),
-        ]
-      : node.working;
   }
   /** Every execution owner uses the same physical termination clock. */
   function executionGraceDeadline(node: Node, work: ResourceWork): number {
@@ -4208,8 +3735,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     for (const node of nodes.values()) {
       if (isBroker(node)) pull(node);
       ledger.expireCredits(node.id, node.activeMs);
-      node.throughput += EWMA_ALPHA * ((node.completedThisStep * 1000) / STEP - node.throughput);
-      node.completedThisStep = 0;
+      finishTickMetrics(node);
     }
     if (TEST_ORACLES && opts.verifyResources) {
       const arriving = new Map<Node, Message[]>();
@@ -4223,9 +3749,9 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           ...node,
           executionLedger: execution.usesLedger(node),
           working: resourceWork(node),
-          pending: queuedWork(node),
+          pending: queuedWork(node, groupsByConsumer),
           queue: node.pending,
-          workQueues: { working: node.working, pending: queuedWork(node), takeovers: node.takeovers },
+          workQueues: { working: node.working, pending: queuedWork(node, groupsByConsumer), takeovers: node.takeovers },
           arriving: arriving.get(node) ?? [],
         })),
         time,
@@ -4240,7 +3766,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           leases: [
             ...ledger.state.reservations.values(),
             ...[...nodes.values()].flatMap((node) =>
-              [...liveWork(node)].flatMap((work) =>
+              [...liveWork(node, groupsByConsumer)].flatMap((work) =>
                 [work.lease, work.threadLease].filter((lease): lease is AdmissionLease => !!lease),
               ),
             ),
@@ -4854,97 +4380,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       accumulator = Math.max(0, accumulator - steps * STEP);
       for (let i = 0; i < steps; i++) tick();
     },
-    frame() {
-      const particles: Particle[] = [];
-      for (const trip of drawnTrips.values())
-        if (trip.start <= time)
-          particles.push({
-            id: trip.id,
-            edgeId: trip.edge.id,
-            messageId: trip.message.id,
-            rootId: trip.message.family.root,
-            kind: trip.kind,
-            ...((trip.message.callAttempt ?? 1) > 1 && trip.kind === "message"
-              ? { callAttempt: trip.message.callAttempt }
-              : {}),
-            progress: Math.min(1, Math.max(0, (time - trip.start) / (trip.end - trip.start))),
-            type: trip.message.type,
-            color: trip.message.request?.color ?? trip.message.color,
-            ...(trip.message.request ? { route: trip.message.request.id, marker: trip.message.request.marker } : {}),
-            ...(trip.code ? { code: trip.code } : {}),
-          });
-      const nodeStates: Record<string, NodeSimState> = Object.create(null);
-      for (const node of nodes.values()) {
-        const lag: Record<string, number> = Object.create(null);
-        const backlog = queueBacklog(node);
-        for (const group of node.groups) lag[group.name] = roundDots(group.pendingUnits);
-        if (node.role === "queue" && !node.groups.length) lag.queue = backlog;
-        nodeStates[node.id] = {
-          ...(node.latency
-            ? { latency: sinceFault ? { ...latencyMetrics(node.latency), sinceFault } : latencyMetrics(node.latency) }
-            : {}),
-          id: node.id,
-          role: node.role,
-          status: node.status,
-          backlog,
-          lag,
-          inFlight: threadOccupancy(node),
-          ...(node.waits && node.role === "processor"
-            ? {
-                threads: {
-                  slots: slots(node) / scale,
-                  working: node.threadWeight.work / scale,
-                  waiting: node.threadWeight.wait / scale,
-                  waitingOn: topWaiting(node).map(([id, weight]) => [id, weight / scale]),
-                  queued: backlog,
-                  ...(node.freeFlight > 0 ? { inFlight: node.freeFlight } : {}),
-                },
-              }
-            : {}),
-          processed: roundDots(node.processed),
-          failed: roundDots(node.failed),
-          deadLettered: roundDots(node.deadLettered),
-          dropped: roundDots(node.dropped),
-          ...(node.outageDropped ? { outageDropped: roundDots(node.outageDropped) } : {}),
-          ...(node.blocked ? { blocked: roundDots(node.blocked) } : {}),
-          ...(node.props.queue || node.shed
-            ? {
-                shed: roundDots(node.shed),
-                queueDepth: roundDots(node.queueUnits / scale),
-                ...(node.shedLost ? { shedLost: roundDots(node.shedLost) } : {}),
-                ...(node.props.queue?.limit === undefined ? {} : { queueLimit: node.props.queue.limit }),
-              }
-            : {}),
-          ...(node.props.admission || node.table || node.props.queue || node.shed
-            ? { rejected: roundDots(node.rejected), rejectionReasons: roundCounts(node.rejectionReasons) }
-            : {}),
-          ...(node.table ? { routeRejections: roundCounts(node.routeRejections) } : {}),
-          ...(held(node) ? { failingOver: true } : {}),
-          throughput: node.throughput,
-          ...(node.fleet && node.props.resources
-            ? {
-                fleet: fleetReadout(node.fleet),
-                resources: resourceReadout(node.fleet, node.props.resources, memoryRequests(node), time, scale),
-              }
-            : {}),
-          replicas: node.replicas,
-          activeReplicas: node.activeReplicas,
-          idleReplicas: node.replicas - node.activeReplicas,
-          ...(isBroker(node) && !node.groups.length ? { noConsumer: true as const } : {}),
-        };
-      }
-      const frame: SimFrame = { time, particles, nodes: nodeStates, inSystem, scale };
-      if (faults.size) frame.faults = structuredClone([...faults.values()]);
-      if (routes) {
-        const counts: Record<string, RouteCounts> = Object.create(null);
-        for (const id of routes.keys()) {
-          const c = routeCounts.get(id);
-          counts[id] = c ? roundRoute(c) : { sent: 0, rejected: 0, completed: 0 };
-        }
-        frame.routes = counts;
-      }
-      return frame;
-    },
+    frame: accounting.frame,
     timeoutLosses(expected) {
       return Object.fromEntries(
         [...nodes].map(([id, node]) => [
@@ -4962,23 +4398,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       const { min, max } = replicaRange(a.controller, capacityMultiplier);
       return { min, max, multiplier: capacityMultiplier };
     },
-    snapshot(): SimSnapshot {
-      const frame = engine.frame();
-      const edgeStates: SimSnapshot["edges"] = Object.create(null);
-      for (const edge of edges)
-        edgeStates[edge.id] = {
-          id: edge.id,
-          delivered: roundDots(edge.delivered),
-          active: edge.active,
-          ...(edge.breaker ? { breaker: breakerView(edge.breaker.state, edge.breaker.policy, time) } : {}),
-          ...(waits() && edge.sync
-            ? { calls: roundCalls({ ...edge.calls, ...(edge.retry ? retryWindowView(edge) : {}) }) }
-            : {}),
-        };
-      const recent: SimEvent[] = [];
-      for (let i = 0; i < events.length; i++) recent.push({ ...events[(eventHead + i) % events.length] });
-      return { ...frame, edges: edgeStates, events: recent };
-    },
+    snapshot: accounting.snapshot,
     inject(nodeId, count, options = {}): void {
       const node = nodes.get(nodeId);
       if (!node || !Number.isFinite(count) || count < 1) return;
