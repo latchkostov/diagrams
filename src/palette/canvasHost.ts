@@ -74,6 +74,7 @@ export function useCanvasHost(
       documentId,
       openPicker,
       focusPlaced: (id) => focus?.(id, true),
+      revealNode: (id) => boxOf(id) && goTo?.(id),
       focusNode(id) {
         const box = boxOf(id);
         editor.select({ nodeIds: [id] });

@@ -7,6 +7,12 @@ import { dotsAndSides } from "./dotsAndSides";
 import { insertOnEdge } from "./insertOnEdge";
 import { propertySheet } from "./propertySheet";
 import { requestVsMessage } from "./requestVsMessage";
+import { boundaries } from "./boundaries";
+import { annotate } from "./annotate";
+import { dependencies } from "./dependencies";
+import { arrange } from "./arrange";
+import { commandPalette } from "./commandPalette";
+import { sharePresent } from "./sharePresent";
 
 /** Every tutorial, in the order the list shows them within a track. */
 export const tutorials: readonly Tutorial[] = [
@@ -16,6 +22,12 @@ export const tutorials: readonly Tutorial[] = [
   insertOnEdge,
   propertySheet,
   requestVsMessage,
+  boundaries,
+  annotate,
+  dependencies,
+  arrange,
+  commandPalette,
+  sharePresent,
 ];
 
 export const tracks: readonly { id: TrackId; label: Words }[] = [

@@ -9,4 +9,10 @@ export const tutorialIds = [
   "insert-on-edge",
   "property-sheet",
   "request-vs-message",
+  "boundaries",
+  "annotate",
+  "dependencies",
+  "arrange",
+  "command-palette",
+  "share-present",
 ] as const;

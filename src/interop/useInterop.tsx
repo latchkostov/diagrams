@@ -1216,6 +1216,8 @@ export function useInterop({
     </>
   );
 
+  // Tutorial checks observe the actual dialog state while tutorials are gated to dev/E2E.
+  if (import.meta.env.DEV || import.meta.env.VITE_E2E === "1") return { ...api, layer, dialogKind: dialog?.kind };
   return { ...api, layer };
 }
 

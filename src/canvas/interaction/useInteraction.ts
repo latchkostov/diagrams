@@ -94,6 +94,8 @@ export function useSelectionEvents<P>(
   controller: InteractionController<P>,
   nodes: FlowNode[],
   edges: DiagramFlowEdge[],
+  /** The annotation whose text editor is open: the editor's mode hears it with the same commit. */
+  annotating: string | null = null,
 ) {
   const { key, empty } = useMemo(() => {
     const ids = [
@@ -102,7 +104,7 @@ export function useSelectionEvents<P>(
     ];
     return { key: JSON.stringify(ids), empty: ids.length === 0 };
   }, [nodes, edges]);
-  useLayoutEffect(() => controller.selectionCommitted(key, empty));
+  useLayoutEffect(() => controller.selectionCommitted(key, empty, annotating));
   /** The same selection, as a key (a room's presence reuses it). */
   return key;
 }

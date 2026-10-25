@@ -19,6 +19,9 @@ export interface SandboxView {
   trafficReady?: boolean;
   mode?: EditorModeState;
   slowmo?: Pick<SlowState, "status">;
+  dependencies?: boolean;
+  presenting?: boolean;
+  sharing?: boolean;
 }
 
 const fits = (spec: SubjectSpec, stencil: string) =>
@@ -128,6 +131,30 @@ export function holds(check: Check, view: SandboxView, subjects: Record<string, 
       ? equal(actual, value)
       : typeof actual === "number" && typeof value === "number" && (op === ">=" ? actual >= value : actual <= value));
   switch (check.kind) {
+    case "selection": {
+      const selected = view.mode?.selection ?? [];
+      return (
+        selected.length >= (check.atLeast ?? check.subjects?.length ?? 1) &&
+        (!check.exact || selected.length === check.subjects?.length) &&
+        (check.subjects?.every((s) => !!subjects[s] && selected.includes(subjects[s]!)) ?? true)
+      );
+    }
+    case "aligned": {
+      const nodes = check.subjects
+        ? check.subjects.map(node)
+        : (view.mode?.selection ?? []).map((id) => view.diagram.nodes.find((n) => n.id === id));
+      return (
+        nodes.length >= (check.atLeast ?? 2) && nodes.every((n) => !!n && n[check.axis] === nodes[0]?.[check.axis])
+      );
+    }
+    case "dependencies":
+      return view.dependencies === check.visible;
+    case "presenting":
+      return view.presenting === check.on;
+    case "sharing":
+      return view.sharing === true;
+    case "acknowledge":
+      return false;
     case "prop": {
       const target = check.edge ? edge(check.edge) : node(check.subject);
       const actual =

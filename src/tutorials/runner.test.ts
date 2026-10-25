@@ -11,6 +11,8 @@ import { savedProgress, saveProgress } from "./progress";
 import type { Tutorial } from "./types";
 import type { Demo } from "./types";
 import { actionRegistry } from "../editor/actions";
+import { dependencyVisibility } from "../canvas/dependencyVisibility";
+import { commandPalette } from "./catalog/commandPalette";
 import { LiveController, structuralKey } from "../live/controller";
 import { requestVsMessage } from "./catalog/requestVsMessage";
 import { propertySheet } from "./catalog/propertySheet";
@@ -326,6 +328,11 @@ it.each<{ demo: Demo; method: keyof EditorApi; args: unknown[] }>([
     args: ["app", "api", { targetSide: "top", sourceSide: "right" }],
   },
   {
+    demo: { kind: "align", subjects: ["app", "api"], mode: "middle" },
+    method: "align",
+    args: [["app", "api"], "middle"],
+  },
+  {
     demo: { kind: "prop", subject: "api", props: { concurrency: 12 } },
     method: "setNodeProps",
     args: ["api", { concurrency: 12 }],
@@ -424,6 +431,235 @@ it("rechecks mode checks when the editor mode changes, without a diagram edit", 
   s.runner.send({ type: "start" });
   s.mode({ value: "menu" });
   expect(s.runner.getSnapshot().state.value).toBe("finished");
+});
+
+it("rechecks selection and alignment when only the selection changes", () => {
+  const tutorial: Tutorial = {
+    ...mobileApi,
+    steps: [
+      {
+        ...mobileApi.steps[0],
+        check: {
+          kind: "all",
+          checks: [
+            { kind: "selection", subjects: ["app", "api"] },
+            { kind: "aligned", axis: "y" },
+          ],
+        },
+        demo: [],
+      },
+    ],
+  };
+  const s = sandbox(tutorial, named());
+  s.runner.send({ type: "start" });
+  s.mode({ selection: ["app", "api"] });
+  expect(s.runner.getSnapshot().state.value).toBe("finished");
+});
+
+it("observes remembered dependency visibility and disconnects its subscription", () => {
+  const original = dependencyVisibility.get();
+  dependencyVisibility.set(true);
+  const unsubscribe = vi.fn();
+  const subscribe = vi.spyOn(dependencyVisibility, "subscribe");
+  const tutorial: Tutorial = {
+    ...mobileApi,
+    steps: [{ ...mobileApi.steps[0], check: { kind: "dependencies", visible: false }, sticky: true, demo: [] }],
+  };
+  const s = sandbox(tutorial);
+  s.runner.send({ type: "start" });
+  dependencyVisibility.set(false);
+  expect(s.runner.getSnapshot().state.value).toBe("finished");
+  expect(subscribe).toHaveBeenCalledOnce();
+  // A disconnected runner must not react to later preference changes.
+  cleanup.reverse().forEach((fn) => fn());
+  cleanup.length = 0;
+  s.runner.subscribe(unsubscribe);
+  dependencyVisibility.set(true);
+  expect(unsubscribe).not.toHaveBeenCalled();
+  dependencyVisibility.set(original);
+});
+
+it("disconnect removes the dependency visibility listener", () => {
+  const { host } = sandbox();
+  const subscribe = dependencyVisibility.subscribe;
+  const listeners: (() => void)[] = [];
+  const disposer = vi.fn();
+  vi.spyOn(dependencyVisibility, "subscribe").mockImplementation((listener) => {
+    listeners.push(listener);
+    disposer.mockImplementation(subscribe(listener));
+    return disposer;
+  });
+  const disconnect = createTutorialRunner(mobileApi, { close: vi.fn(), host }).connect();
+  expect(listeners).toHaveLength(1);
+  expect(disposer).not.toHaveBeenCalled();
+  disconnect();
+  expect(disposer).toHaveBeenCalledOnce();
+});
+
+it("waits for a boundary's flow id to finish naming", () => {
+  const tutorial: Tutorial = {
+    ...mobileApi,
+    subjects: { box: { boundary: true } },
+    steps: [
+      {
+        ...mobileApi.steps[0],
+        check: { kind: "label", subject: "box", is: () => "Checkout" },
+        settle: "naming",
+        demo: [{ kind: "rename", subject: "box", label: () => "Checkout" }],
+      },
+    ],
+  };
+  const s = sandbox(tutorial, {
+    ...named(),
+    groups: [{ id: "box", label: "Boundary", x: 0, y: 0, width: 400, height: 200 }],
+  });
+  s.mode({ value: "naming", target: "group:box" });
+  s.edit({ ...s.editor.getDiagram(), groups: [{ id: "box", label: "Checkout", x: 0, y: 0, width: 400, height: 200 }] });
+  s.runner.send({ type: "start" });
+  expect(s.runner.getSnapshot().state.value).toBe("completing");
+  s.mode({ value: "editing", target: null });
+  expect(s.runner.getSnapshot().state.value).toBe("finished");
+});
+
+it("adds a member through the editor and sends Present demos to the app owner", async () => {
+  const tutorial: Tutorial = {
+    ...mobileApi,
+    subjects: { ...mobileApi.subjects, box: { boundary: true } },
+    steps: [
+      {
+        ...mobileApi.steps[0],
+        check: { kind: "member", subject: "api", boundary: "box" },
+        demo: [{ kind: "member", subject: "api", boundary: "box" }],
+      },
+    ],
+  };
+  const s = sandbox(tutorial, {
+    ...named(),
+    groups: [{ id: "box", label: "Checkout", x: 0, y: 0, width: 400, height: 200 }],
+  });
+  const moveIntoBoundary = vi.fn();
+  s.hostState.canvas.editor = { ...s.hostState.canvas.editor, moveIntoBoundary };
+  s.runner.send({ type: "start" });
+  s.runner.send({ type: "skip", stepId: tutorial.steps[0].id });
+  await Promise.resolve();
+  expect(moveIntoBoundary).toHaveBeenCalledExactlyOnceWith(["api"], "box");
+  const present = vi.fn();
+  const runner = createTutorialRunner(
+    {
+      ...tutorial,
+      steps: [{ ...tutorial.steps[0], check: { kind: "presenting", on: true }, demo: [{ kind: "present", on: true }] }],
+    },
+    { close: vi.fn(), host: s.host, present },
+  );
+  cleanup.push(runner.connect());
+  runner.send({ type: "start" });
+  runner.send({ type: "skip", stepId: tutorial.steps[0].id });
+  await Promise.resolve();
+  expect(present).toHaveBeenCalledExactlyOnceWith(true);
+  runner.appChanged({ presenting: true, sharing: false });
+  expect(runner.getSnapshot().state.value).toBe("finished");
+});
+
+it("latches Present, waits for Escape, then observes the real Share dialog", () => {
+  const tutorial: Tutorial = {
+    ...mobileApi,
+    steps: [
+      { ...mobileApi.steps[0], id: "present", check: { kind: "presenting", on: true }, sticky: true, demo: [] },
+      {
+        ...mobileApi.steps[0],
+        id: "leave",
+        check: { kind: "presenting", on: false },
+        demo: [{ kind: "present", on: false }],
+      },
+      { ...mobileApi.steps[0], id: "share", check: { kind: "sharing" }, sticky: true, demo: [] },
+    ],
+  };
+  const s = sandbox(tutorial);
+  s.runner.send({ type: "start" });
+  expect(s.runner.getSnapshot().state.index).toBe(0);
+  s.runner.appChanged({ presenting: true, sharing: false });
+  expect(s.runner.getSnapshot().state.index).toBe(1);
+  s.runner.appChanged({ presenting: false, sharing: false });
+  expect(s.runner.getSnapshot().state.index).toBe(2);
+  s.runner.appChanged({ presenting: false, sharing: true });
+  expect(s.runner.getSnapshot().state.value).toBe("finished");
+});
+
+it("keeps adding from Ctrl+K complete when Go to selects the topic", () => {
+  const initial = {
+    ...named(),
+    nodes: [...named().nodes, { id: "topic", stencil: "kafka.topic", label: "Kafka Topic", x: 500, y: 0 }],
+  };
+  const s = sandbox(commandPalette, named());
+  s.runner.send({ type: "start" });
+  s.mode({ selection: ["topic"] });
+  s.edit(initial);
+  expect(s.runner.getSnapshot().state.index).toBe(0);
+  s.mode({ selection: ["api"] });
+  expect(s.runner.getSnapshot().state).toMatchObject({ index: 1, value: "active" });
+  s.mode({ selection: ["topic"] });
+  expect(s.runner.getSnapshot().state.value).toBe("finished");
+});
+
+it("reopens adding from Ctrl+K when the topic is undone before Go to", () => {
+  const s = sandbox(commandPalette, named());
+  s.runner.send({ type: "start" });
+  s.mode({ selection: ["topic"] });
+  s.edit({
+    ...named(),
+    nodes: [...named().nodes, { id: "topic", stencil: "kafka.topic", label: "Kafka Topic", x: 500, y: 0 }],
+  });
+  s.mode({ selection: ["api"] });
+  expect(s.runner.getSnapshot().state.index).toBe(1);
+  s.edit(named());
+  expect(s.runner.getSnapshot().state).toMatchObject({ index: 0, value: "active" });
+});
+
+it("aligns only the learner's selection when Skip has no explicit subjects", async () => {
+  const tutorial: Tutorial = {
+    ...mobileApi,
+    steps: [
+      { ...mobileApi.steps[0], check: { kind: "mode", value: "quickAdd" }, demo: [{ kind: "align", mode: "middle" }] },
+    ],
+  };
+  const s = sandbox(tutorial, named());
+  const align = vi.fn();
+  s.hostState.canvas.editor = {
+    ...s.hostState.canvas.editor,
+    align,
+    getSelection: () => ({ nodeIds: ["api"], edgeIds: [], groupIds: [] }),
+  };
+  s.runner.send({ type: "start" });
+  s.runner.send({ type: "skip", stepId: tutorial.steps[0].id });
+  await Promise.resolve();
+  expect(align).toHaveBeenCalledExactlyOnceWith(["api"], "middle");
+});
+
+it("aligns fallback ids before React Flow publishes the restored selection", async () => {
+  const tutorial: Tutorial = {
+    ...mobileApi,
+    steps: [
+      {
+        ...mobileApi.steps[0],
+        check: { kind: "aligned", axis: "y", atLeast: 2 },
+        demo: [{ kind: "align", mode: "middle", selection: { atLeast: 2, fallback: ["app", "api"] } }],
+      },
+    ],
+  };
+  const s = sandbox(tutorial, named());
+  const align = vi.fn(),
+    select = vi.fn();
+  s.hostState.canvas.editor = {
+    ...s.hostState.canvas.editor,
+    align,
+    select,
+    getSelection: () => ({ nodeIds: [], edgeIds: [], groupIds: [] }),
+  };
+  s.runner.send({ type: "start" });
+  s.runner.send({ type: "skip", stepId: tutorial.steps[0].id });
+  await Promise.resolve();
+  expect(select).toHaveBeenCalledExactlyOnceWith({ nodeIds: ["app", "api"], groupIds: [], edgeIds: [] });
+  expect(align).toHaveBeenCalledExactlyOnceWith(["app", "api"], "middle");
 });
 
 it("waits for the rebuilt run before latching traffic after an edge-kind edit", () => {

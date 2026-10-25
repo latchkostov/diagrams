@@ -205,6 +205,8 @@ export interface EditorApi {
   adoptAfterResize(groupId: string): { adopted: string[]; released: string[] };
   /** Wraps nodes, annotations, and boundaries in a new boundary and starts renaming it. Returns the group id. */
   groupNodes(ids: string[], tone?: GroupTone): string | null;
+  /** Place missing members in free space in a boundary, preserving existing members; one undo step. */
+  moveIntoBoundary(nodeIds: readonly string[], groupId: string): Promise<boolean>;
   ungroup(groupId: string): void;
   deleteGroupWithContents(groupId: string): void;
   fitGroupToContents(groupId: string): void;

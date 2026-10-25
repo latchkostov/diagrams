@@ -51,6 +51,7 @@ import {
   overlaps,
   placeCopy,
   placeFree,
+  findClearTranslation,
   placeToward,
   FLOW_GAP,
   isDownstream,
@@ -84,16 +85,7 @@ import { nudgeOnGrid } from "../canvas/guides";
 import { validateDiagram } from "../interop/native";
 import type { AnnotationColor, DiagramAnnotation, DiagramFile, GroupTone } from "../model/types";
 import { isHexColor } from "../model/colors";
-import {
-  centre,
-  contains,
-  membershipAfterResize,
-  planKeep,
-  settleMembership,
-  type GroupRect,
-  type MemberBox,
-  type Rect,
-} from "../canvas/membership";
+import { membershipAfterResize, planKeep, settleMembership, type MemberBox, type Rect } from "../canvas/membership";
 import { memberBoxes as membershipBoxes } from "../canvas/memberBoxes";
 import { tidyLayout } from "./tidy";
 import { carryWaypoints, resetMovedWaypoints } from "./routeCarry";
@@ -104,6 +96,7 @@ import {
   expandGroupIds,
   selectionSubtreeIds,
   planBoundaryDrop,
+  parentBoundary,
   type GroupBox,
   type HierarchyElementBox,
 } from "../model/groupHierarchy";
@@ -236,6 +229,16 @@ function withGroup(n: FlowNode, group: string | undefined): FlowNode {
   if (isAnnotation(n)) return { ...n, data: { ...n.data, group } };
   if (isGroup(n)) return { ...n, data: { ...n.data, group } };
   return n;
+}
+
+/** Conversions replace the focused item; return focus after its replacement renders. */
+function focusFlowNode(id: string) {
+  if (typeof document !== "undefined" && typeof requestAnimationFrame !== "undefined")
+    requestAnimationFrame(() => {
+      document
+        .querySelector<HTMLElement>(`.react-flow__node[data-id="${CSS.escape(id)}"]`)
+        ?.focus({ preventScroll: true });
+    });
 }
 
 export function createEditor(
@@ -648,13 +651,14 @@ export function createEditor(
   });
 
   /** Boundaries as rects (their own size first: a resize sets it before React Flow measures it). */
-  const groupRects = (ns: readonly FlowNode[]): GroupRect[] =>
+  const groupRects = (ns: readonly FlowNode[]): GroupBox[] =>
     ns.filter(isGroup).map((n) => ({
       id: n.data.groupId,
       x: n.position.x,
       y: n.position.y,
       width: n.width ?? n.measured?.width ?? 0,
       height: n.height ?? n.measured?.height ?? 0,
+      group: n.data.group,
     }));
   const memberBoxes = (ns: readonly FlowNode[]): MemberBox[] => membershipBoxes(ns, latest.nodeSize);
   /**
@@ -908,10 +912,7 @@ export function createEditor(
       const ns = rf.getNodes();
       return {
         nodeIds: ns.filter((n) => isPlaced(n) && n.selected).map((n) => n.id),
-        groupIds: ns
-          .filter(isGroup)
-          .filter((n) => n.selected)
-          .map((n) => n.data.groupId),
+        groupIds: ns.filter((n): n is GroupFlowNode => isGroup(n) && !!n.selected).map((n) => n.data.groupId),
         edgeIds: rf
           .getEdges()
           .filter((e) => e.selected)
@@ -1014,9 +1015,11 @@ export function createEditor(
         }),
         selected: true,
       };
-      if (!insertAnnotation(node, (cur) => cur.map((e) => (e.selected ? { ...e, selected: false } : e)))) return null;
+      // Its editor opens first: the editor's mode says so before anyone can read the new annotation.
       if (kind !== "shape") deps().setEditing({ kind: "annotation", id });
-      return id;
+      if (insertAnnotation(node, (cur) => cur.map((e) => (e.selected ? { ...e, selected: false } : e)))) return id;
+      if (kind !== "shape") deps().setEditing(null);
+      return null;
     },
     updateAnnotation: (id, patch, opts) => {
       hint(opts?.merge);
@@ -1531,8 +1534,7 @@ export function createEditor(
     },
     settleBoundaryMembership: (ids) => {
       const ns = rf.getNodes();
-      const groups = ns.filter(isGroup).map((n) => ({ ...box(n), id: n.data.groupId, group: n.data.group }));
-      const plan = planBoundaryDrop(new Set(ids), groups);
+      const plan = planBoundaryDrop(new Set(ids), groupRects(ns));
       deps().setNodes((cur) =>
         cur.map((n) => (isGroup(n) && plan.has(n.data.groupId) ? withGroup(n, plan.get(n.data.groupId)) : n)),
       );
@@ -1544,6 +1546,24 @@ export function createEditor(
       deps().setNodes((cur) => cur.map((n) => (r.group.has(n.id) ? withGroup(n, r.group.get(n.id)) : n)));
       return { adopted: r.adopted, released: r.released };
     },
+    moveIntoBoundary: async (ids, groupId) => {
+      const { placeBoundaryMembers } = await import("./boundaryPlacement");
+      return placeBoundaryMembers(currentNodes(), ids, groupId, {
+        groups: groupRects,
+        members: memberBoxes,
+        box,
+        obstacles,
+        fit: planKeep,
+        search: findClearTranslation,
+        withGroup,
+        commit: (ns, positions) =>
+          commitNodes(
+            () => ns,
+            (es) => carryWaypoints(es, positionDeltas(positions)),
+            {},
+          ),
+      });
+    },
     groupNodes: (ids, tone = "neutral") => {
       const set = new Set(ids);
       const isSelected = (n: FlowNode) =>
@@ -1554,42 +1574,19 @@ export function createEditor(
       const id = allocateId("boundary", takenIds());
       const label = tone in toneLabel ? toneLabel[tone as GroupTone] : t("chrome.untitledBoundary");
       const bounds = boundaryAround(nodes.map(box));
-      const existingGroups: GroupBox[] = ns.filter(isGroup).map((g) => ({
-        id: g.data.groupId,
-        x: g.position.x,
-        y: g.position.y,
-        width: g.width ?? g.measured?.width ?? 0,
-        height: g.height ?? g.measured?.height ?? 0,
-        group: g.data.group,
-      }));
-      const selectedGroupIds = new Set(nodes.filter(isGroup).map((g) => (g as GroupFlowNode).data.groupId));
+      const existingGroups = groupRects(ns);
+      const selectedGroupIds = new Set(nodes.filter(isGroup).map((g) => g.data.groupId));
       const allSelectedAndDescendants = selectionSubtreeIds(selectedGroupIds, existingGroups);
-      const bArea = bounds.width * bounds.height;
-      const bc = centre(bounds);
-      const candidateParents = existingGroups.filter(
-        (g) => !allSelectedAndDescendants.has(g.id) && g.width * g.height > bArea,
+      const outerGroup = parentBoundary(
+        bounds,
+        existingGroups.filter((g) => !allSelectedAndDescendants.has(g.id)),
       );
-      let best: GroupBox | undefined;
-      for (const g of candidateParents) {
-        if (contains({ x: g.x, y: g.y, width: g.width, height: g.height }, bc.x, bc.y)) {
-          if (!best || g.width * g.height < best.width * best.height) {
-            best = g;
-          }
-        }
-      }
-      const outerGroup = best?.id;
       const group = groupToFlow({ id, label, tone, group: outerGroup, ...bounds });
       deps().setNodes((cur): FlowNode[] => [
         { ...group, selected: true },
         ...cur.map((n): FlowNode => {
-          let next = n;
-          if (isGroup(n) && selectedGroupIds.has(n.data.groupId)) {
-            if (!n.data.group || !allSelectedAndDescendants.has(n.data.group)) {
-              next = withGroup(n, id);
-            }
-          } else if (isSelected(n) && (!n.data.group || !allSelectedAndDescendants.has(n.data.group))) {
-            next = withGroup(n, id);
-          }
+          const next =
+            isSelected(n) && (!n.data.group || !allSelectedAndDescendants.has(n.data.group)) ? withGroup(n, id) : n;
           return next.selected ? { ...next, selected: false } : next;
         }),
       ]);
@@ -1665,13 +1662,7 @@ export function createEditor(
             return next.selected ? { ...next, selected: false } : next;
           }),
       ]);
-      if (typeof document !== "undefined" && typeof requestAnimationFrame !== "undefined") {
-        requestAnimationFrame(() => {
-          document
-            .querySelector<HTMLElement>(`.react-flow__node[data-id="${CSS.escape(id)}"]`)
-            ?.focus({ preventScroll: true });
-        });
-      }
+      focusFlowNode(id);
       return id;
     },
     convertZoneToBoundary: (zoneId, opts) => {
@@ -1690,24 +1681,8 @@ export function createEditor(
         width: zw,
         height: zh,
       };
-      const existingGroups: GroupBox[] = ns.filter(isGroup).map((g) => ({
-        id: g.data.groupId,
-        x: g.position.x,
-        y: g.position.y,
-        width: g.width ?? g.measured?.width ?? 0,
-        height: g.height ?? g.measured?.height ?? 0,
-        group: g.data.group,
-      }));
-      const elements: HierarchyElementBox[] = ns
-        .filter((n) => n.id !== zoneId && !isGroup(n))
-        .map((n) => ({
-          id: n.id,
-          x: n.position.x,
-          y: n.position.y,
-          width: n.measured?.width ?? n.width ?? 0,
-          height: n.measured?.height ?? n.height ?? 0,
-          group: n.data.group,
-        }));
+      const existingGroups = groupRects(ns);
+      const elements: HierarchyElementBox[] = membershipBoxes(ns).filter((n) => n.id !== zoneId);
       const adoption = planBoundaryAdoption({
         bounds: zoneBox,
         existingGroups,
@@ -1720,15 +1695,8 @@ export function createEditor(
         yellow: "aws",
         green: "gcp",
         purple: "k8s",
-        neutral: "neutral",
-        white: "neutral",
-        red: "neutral",
       };
-      const tone = isHexColor(zoneColor)
-        ? zoneColor
-        : zoneColor && colorToTone[zoneColor]
-          ? colorToTone[zoneColor]
-          : "neutral";
+      const tone = isHexColor(zoneColor) ? zoneColor : (colorToTone[zoneColor ?? ""] ?? "neutral");
       const groupNode = groupToFlow({
         id,
         label: zoneNode.data.text || t("chrome.untitledBoundary"),
@@ -1746,22 +1714,12 @@ export function createEditor(
         ...cur
           .filter((n) => n.id !== zoneId)
           .map((n): FlowNode => {
-            let next: FlowNode = n;
-            if (isGroup(n) && adoptedGroupIds.has(n.data.groupId)) {
-              next = withGroup(n, id);
-            } else if (adoptedElementIds.has(n.id)) {
-              next = withGroup(n, id);
-            }
+            const next =
+              (isGroup(n) && adoptedGroupIds.has(n.data.groupId)) || adoptedElementIds.has(n.id) ? withGroup(n, id) : n;
             return next.selected ? { ...next, selected: false } : next;
           }),
       ]);
-      if (typeof document !== "undefined" && typeof requestAnimationFrame !== "undefined") {
-        requestAnimationFrame(() => {
-          document
-            .querySelector<HTMLElement>(`.react-flow__node[data-id="${CSS.escape(GROUP_PREFIX + id)}"]`)
-            ?.focus({ preventScroll: true });
-        });
-      }
+      focusFlowNode(GROUP_PREFIX + id);
       return id;
     },
     bringToFront: (ids) => {

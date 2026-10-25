@@ -31,6 +31,16 @@ export interface BoundaryAdoptionPlan {
   adoptedElementIds: string[];
 }
 
+const area = (r: Rect) => r.width * r.height;
+const around = (parent: Rect, child: Rect) => contains(parent, child.x + child.width / 2, child.y + child.height / 2);
+/** The smallest larger boundary around this box's centre. Equal areas keep diagram order. */
+export function parentBoundary(bounds: Rect, candidates: readonly GroupBox[]): string | undefined {
+  return candidates.reduce<GroupBox | undefined>(
+    (best, g) => (area(g) > area(bounds) && around(g, bounds) && (!best || area(g) < area(best)) ? g : best),
+    undefined,
+  )?.id;
+}
+
 /** Expands several roots with one indexed traversal, regardless of input order. */
 export function expandGroupIds(
   rootIds: Iterable<string>,
@@ -74,18 +84,11 @@ export function planBoundaryDrop(
 ): Map<string, string | undefined> {
   const subtrees = selectionSubtreeIds(selectedGroupIds, groups);
   const candidates = groups.filter((g) => !subtrees.has(g.id));
-  const result = new Map<string, string | undefined>();
-  for (const g of groups) {
-    if (!selectedGroupIds.has(g.id) || (g.group && subtrees.has(g.group))) continue;
-    let best: GroupBox | undefined;
-    for (const parent of candidates) {
-      if (parent.width * parent.height <= g.width * g.height) continue;
-      if (!contains(parent, g.x + g.width / 2, g.y + g.height / 2)) continue;
-      if (!best || parent.width * parent.height < best.width * best.height) best = parent;
-    }
-    result.set(g.id, best?.id);
-  }
-  return result;
+  return new Map(
+    groups
+      .filter((g) => selectedGroupIds.has(g.id) && (!g.group || !subtrees.has(g.group)))
+      .map((g) => [g.id, parentBoundary(g, candidates)]),
+  );
 }
 
 /** Recursively computes all ancestor group IDs of `groupId`. */
@@ -189,60 +192,32 @@ export function eligibleParentGroupIds(
  */
 export function planBoundaryAdoption(params: PlanBoundaryAdoptionParams): BoundaryAdoptionPlan {
   const { bounds, existingGroups, elements, requestedParentId } = params;
-  const bw = bounds.width;
-  const bh = bounds.height;
-  const bArea = bw * bh;
-  const bc = { x: bounds.x + bw / 2, y: bounds.y + bh / 2 };
+  const bArea = area(bounds);
 
   // 1. Determine all enclosed groups (strictly smaller in area and center is inside bounds).
-  const enclosedGroupIds = new Set<string>();
-  for (const g of existingGroups) {
-    const gc = { x: g.x + g.width / 2, y: g.y + g.height / 2 };
-    if (g.width * g.height < bArea && contains(bounds, gc.x, gc.y)) {
-      enclosedGroupIds.add(g.id);
-    }
-  }
+  const enclosed = existingGroups.filter((g) => area(g) < bArea && around(bounds, g));
+  const enclosedGroupIds = new Set(enclosed.map((g) => g.id));
 
   // 2. All descendants of enclosed groups are also part of the enclosed subtree.
   const allEnclosedSubtreeGroupIds = expandGroupIds(enclosedGroupIds, existingGroups);
 
   // Preserve existing nesting: adopt only roots of the enclosed subtrees.
-  const adoptedGroupIds = existingGroups
-    .filter((g) => enclosedGroupIds.has(g.id) && (!g.group || !allEnclosedSubtreeGroupIds.has(g.group)))
-    .map((g) => g.id);
+  const adoptedGroupIds = enclosed.filter((g) => !g.group || !allEnclosedSubtreeGroupIds.has(g.group)).map((g) => g.id);
 
   // 4. Candidate parent groups: Must exclude all enclosed groups and their descendants.
-  const parentCandidates = existingGroups.filter(
-    (g) => !allEnclosedSubtreeGroupIds.has(g.id) && g.width * g.height > bArea,
-  );
+  const parentCandidates = existingGroups.filter((g) => !allEnclosedSubtreeGroupIds.has(g.id) && area(g) > bArea);
 
-  let outerGroupId: string | undefined;
-  if (requestedParentId && parentCandidates.some((g) => g.id === requestedParentId)) {
-    outerGroupId = requestedParentId;
-  } else {
-    // Pick the smallest candidate containing the center of bounds.
-    let best: GroupBox | undefined;
-    for (const g of parentCandidates) {
-      if (contains({ x: g.x, y: g.y, width: g.width, height: g.height }, bc.x, bc.y)) {
-        if (!best || g.width * g.height < best.width * best.height) {
-          best = g;
-        }
-      }
-    }
-    outerGroupId = best?.id;
-  }
+  const outerGroupId =
+    requestedParentId && parentCandidates.some((g) => g.id === requestedParentId)
+      ? requestedParentId
+      : parentBoundary(bounds, parentCandidates);
 
   // 5. Adopted elements (nodes and annotations):
   // Must be geometrically inside bounds, not the converted element itself, and NOT already
   // a member of any enclosed group.
-  const adoptedElementIds: string[] = [];
-  for (const el of elements) {
-    if (el.group && allEnclosedSubtreeGroupIds.has(el.group)) continue;
-    const ec = { x: el.x + el.width / 2, y: el.y + el.height / 2 };
-    if (contains(bounds, ec.x, ec.y)) {
-      adoptedElementIds.push(el.id);
-    }
-  }
+  const adoptedElementIds = elements
+    .filter((el) => (!el.group || !allEnclosedSubtreeGroupIds.has(el.group)) && around(bounds, el))
+    .map((el) => el.id);
 
   return {
     outerGroupId,

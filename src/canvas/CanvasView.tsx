@@ -550,7 +550,9 @@ function CanvasInner({
     prefs,
     setPref,
     setEditing: (target) => {
-      if (!readOnly && !live && !presenting) setEditing(target);
+      if (readOnly || live || presenting) return;
+      interaction.annotating(target?.id ?? null);
+      setEditing(target);
     },
     rename: (t) => rename.current(t),
     openInspector,
@@ -962,7 +964,7 @@ function CanvasInner({
     live,
     presenting,
   });
-  const selectionKey = useSelectionEvents(interaction, nodes, edges);
+  const selectionKey = useSelectionEvents(interaction, nodes, edges, editing?.id ?? null);
   // In a room, the others see what this person selects (outlines in their colour; never their own selection).
   const presence = room?.presence;
   useEffect(() => presence?.setSelection(JSON.parse(selectionKey) as string[]), [presence, selectionKey]);

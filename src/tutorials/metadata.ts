@@ -10,5 +10,11 @@ export const tutorialMetadata =
         { id: "insert-on-edge", title: msg("tutorials.insertOnEdge.title") },
         { id: "property-sheet", title: msg("tutorials.propertySheet.title") },
         { id: "request-vs-message", title: msg("tutorials.requestVsMessage.title") },
+        { id: "boundaries", title: msg("tutorials.boundaries.title") },
+        { id: "annotate", title: msg("tutorials.annotate.title") },
+        { id: "dependencies", title: msg("tutorials.dependencies.title") },
+        { id: "arrange", title: msg("tutorials.arrange.title") },
+        { id: "command-palette", title: msg("tutorials.commandPalette.title") },
+        { id: "share-present", title: msg("tutorials.sharePresent.title") },
       ] as const)
     : [];

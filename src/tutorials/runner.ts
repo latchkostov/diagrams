@@ -18,6 +18,9 @@ import type { Demo, Tutorial } from "./types";
 import type { DiagramFile } from "../model/types";
 import { actionRegistry, type MenuNode } from "../editor/actions";
 import type { SandboxView } from "./checks";
+import type { EditorModeState } from "../canvas/interaction/mode";
+import { dependencyVisibility } from "../canvas/dependencyVisibility";
+import { GROUP_PREFIX } from "../canvas/types";
 import { simulationProjection } from "../sim/simulationContent";
 
 /**
@@ -43,16 +46,30 @@ type Host = Pick<typeof paletteHost, "get" | "subscribe"> &
 
 export function createTutorialRunner(
   tutorial: Tutorial,
-  ports: { close(): void; host?: Host; initial?: DiagramFile; documentId?: string },
+  ports: { close(): void; host?: Host; initial?: DiagramFile; documentId?: string; present?(on: boolean): void },
 ) {
   const host = ports.host ?? paletteHost;
   const initial = ports.initial ?? (typeof tutorial.start === "function" ? tutorial.start() : undefined);
   const saved = savedProgress(tutorial);
   const sticky = tutorial.steps.map((s) => !!s.sticky || s.demo.length === 0);
   const dynamic = (check: Tutorial["steps"][number]["check"]): boolean =>
-    ["live", "processed", "metric", "simulation", "expectation", "fault", "trace", "slowmo", "note", "mode"].includes(
-      check.kind,
-    ) ||
+    [
+      "live",
+      "processed",
+      "metric",
+      "simulation",
+      "expectation",
+      "fault",
+      "trace",
+      "slowmo",
+      "note",
+      "mode",
+      "selection",
+      "aligned",
+      "dependencies",
+      "presenting",
+      "sharing",
+    ].includes(check.kind) ||
     (check.kind === "all" && check.checks.some(dynamic));
   const dynamicChecks = tutorial.steps.map((s) => dynamic(s.check));
   const naming = tutorial.steps.map((s) => namingSubjects(s.check));
@@ -60,7 +77,8 @@ export function createTutorialRunner(
     ...runnerMachine,
     initial: runnerInitial(sticky, {
       stepIds: tutorial.steps.map((s) => s.id),
-      demos: tutorial.steps.map((s) => s.demo.length > 0),
+      // A settlement has its own action too (finish naming, close the annotation editor, select).
+      demos: tutorial.steps.map((s) => s.demo.length > 0 || !!s.settle),
       highlights: readTutorials().highlights ?? true,
       resumeAt: saved && !saved.completed ? saved.step : 0,
     }),
@@ -75,6 +93,7 @@ export function createTutorialRunner(
   /** Bumped by Restart and Exit: a demo still running stops there. */
   let generation = 0;
   const changed = new Set<() => void>();
+  let app = { presenting: false, sharing: false };
 
   const editor = (): EditorApi | undefined => {
     const canvas = host.get().canvas;
@@ -119,6 +138,8 @@ export function createTutorialRunner(
       trafficReady: !!session,
       mode: canvasInteraction.get()?.mode,
       slowmo: h.session?.slowmo?.getState(),
+      dependencies: dependencyVisibility.get(),
+      ...app,
       processed: (id: string) => session?.snapshot.nodes[id]?.processed ?? 0,
     };
   }
@@ -141,6 +162,22 @@ export function createTutorialRunner(
     canvasInteraction.get()?.setGuide(quickAdd ? { quickAdd } : null);
   }
 
+  /** The flow id of step i's subject the learner is naming right now, if any. */
+  const namingNow = (i: number, mode: EditorModeState | undefined) =>
+    mode?.value === "naming"
+      ? naming[i]
+          .map((name) => (tutorial.subjects[name]?.boundary ? GROUP_PREFIX + subjects[name] : subjects[name]))
+          .find((id) => id === mode.target)
+      : undefined;
+
+  /**
+   * The annotation whose editor is open: as committed, or already focused (its field's layout effect runs before the
+   * canvas reports the commit, so either says so first).
+   */
+  const annotating = (mode: EditorModeState | undefined) =>
+    mode?.annotating ??
+    (mode?.value === "naming" && document?.annotations?.some((a) => a.id === mode.target) ? mode.target : undefined);
+
   function observe() {
     const h = host.get();
     if (!h.canvas || !editor()) return changed.forEach((f) => f());
@@ -151,13 +188,13 @@ export function createTutorialRunner(
     if (JSON.stringify(subjects) !== JSON.stringify(snapshot.subjects) || selected.join() !== snapshot.selected.join())
       publish({ subjects, selected });
     const met = tutorial.steps.map((s, i) => (dynamicChecks[i] ? holds(s.check, v, subjects) : documentChecks[i]));
-    const settled = tutorial.steps.map(
-      (s, i) =>
-        s.settle !== "naming" ||
-        (met[i] && state.observed[i] && state.settled[i]) ||
-        mode?.value !== "naming" ||
-        !naming[i].some((name) => subjects[name] === mode.target),
-    );
+    const settled = tutorial.steps.map((s, i) => {
+      if (!s.settle || (met[i] && state.observed[i] && state.settled[i])) return true;
+      if (typeof s.settle === "object")
+        return holds({ kind: "selection", subjects: s.settle.subjects, exact: true }, v, subjects);
+      if (s.settle === "annotation") return !annotating(mode);
+      return !namingNow(i, mode);
+    });
     if (met.some((m, i) => m !== state.observed[i]) || settled.some((m, i) => m !== state.settled[i]))
       send({ type: "observe", met, settled });
     // Judged only once naming is over: a name is never "wrong" half typed.
@@ -191,6 +228,35 @@ export function createTutorialRunner(
     const edge = (pair: readonly [string, string]) =>
       ed.getDiagram().edges.find((e) => e.from === subjects[pair[0]] && e.to === subjects[pair[1]]);
     switch (demo.kind) {
+      case "member": {
+        const id = subjects[demo.subject],
+          boundary = subjects[demo.boundary];
+        if (id && boundary) ed.moveIntoBoundary([id], boundary);
+        return;
+      }
+      case "align": {
+        const selection = !demo.subjects || demo.selection ? ed.getSelection() : undefined;
+        let ids = demo.subjects
+          ? demo.subjects.map((s) => subjects[s]).filter((id): id is string => !!id)
+          : (selection?.nodeIds ?? []);
+        if (
+          demo.selection &&
+          selection &&
+          (selection.nodeIds.length < demo.selection.atLeast ||
+            selection.groupIds.length ||
+            selection.edgeIds.length ||
+            selection.nodeIds.some((id) => !document?.nodes.some((n) => n.id === id)))
+        ) {
+          ids = demo.selection.fallback.map((s) => subjects[s]).filter((id): id is string => !!id);
+          ed.select({ nodeIds: ids, groupIds: [], edgeIds: [] });
+        }
+        // React Flow publishes the selection later; align the declared ids in this same command.
+        ed.align(ids, demo.mode);
+        return;
+      }
+      case "present":
+        ports.present?.(demo.on);
+        return;
       case "name": {
         const id = subjects[demo.subject];
         if (id) ed.startEditing({ kind: "node", id });
@@ -208,7 +274,19 @@ export function createTutorialRunner(
         return;
       }
       case "insert": {
+        const existing = subjects[demo.subject];
         const id = edge(demo.edge)?.id;
+        if (existing) {
+          const from = subjects[demo.edge[0]],
+            to = subjects[demo.edge[1]];
+          if (edge([demo.edge[0], demo.subject]) && edge([demo.subject, demo.edge[1]])) return;
+          if (id) ed.insertIntoEdge(id, existing);
+          else {
+            if (from) ed.connect(from, existing);
+            if (to) ed.connect(existing, to);
+          }
+          return;
+        }
         const made = id ? ed.insertNode(id, demo.stencil) : null;
         if (made) {
           demoBindings.set(demo.subject, made.id);
@@ -233,6 +311,8 @@ export function createTutorialRunner(
       case "group": {
         const ids = demo.subjects.map((s) => subjects[s]);
         if (ids.some((id) => !id)) return;
+        // The boundary is there already: bring in only the members it's missing.
+        if (subjects[demo.boundary]) return ed.moveIntoBoundary(ids as string[], subjects[demo.boundary]!);
         const id = ed.groupNodes(ids as string[]);
         if (id) {
           demoBindings.set(demo.boundary, id);
@@ -306,6 +386,9 @@ export function createTutorialRunner(
       }
       case "add": {
         const after = demo.after ? subjects[demo.after] : undefined;
+        const made = subjects[demo.subject];
+        // Added already (the learner's own): only what's missing, its connection from `after`.
+        if (made) return void (after && ed.connect(after, made));
         let id: string | undefined;
         if (after) id = ed.createConnected({ from: after, stencil: demo.stencil })?.id;
         else {
@@ -339,37 +422,60 @@ export function createTutorialRunner(
     }
   }
 
+  /**
+   * A settlement's own action, as the learner finishes: Enter in the name field or Esc in the annotation editor (both
+   * through the controller's mode and focus policy, once that editor has focus), or the selection. Resolves once the
+   * step has settled; nothing to do when it already has.
+   */
+  async function settle(i: number, run: number): Promise<boolean> {
+    const s = tutorial.steps[i].settle;
+    if (!s || state.settled[i]) return true;
+    if (typeof s === "object") perform({ kind: "select", subjects: s.subjects });
+    else {
+      const open = () => {
+        const mode = canvasInteraction.get()?.mode;
+        const id = s === "annotation" ? annotating(mode) : namingNow(i, mode);
+        return id && mode?.value === "naming" && mode.target === id ? id : undefined;
+      };
+      if (!(await until(() => state.settled[i] || !!open(), run))) return false;
+      const id = open();
+      if (id && !state.settled[i]) canvasInteraction.get()?.dispatch({ type: "naming.done", flowId: id });
+    }
+    return until(() => state.settled[i], run);
+  }
+
+  /**
+   * Done for you (Skip, a near miss's fix, Continue's replay) through one completion contract: a step is complete when
+   * its check holds and it has settled. Each part runs only while it's missing: the demo's edits while the check
+   * doesn't hold, then the settlement's action. So Skip from `completing` never repeats an edit (no second topic).
+   */
   async function demos(steps: readonly number[], purpose: "interactive" | "reconstruct") {
     const run = generation;
     // Skip pressed before the sandbox canvas is up (its code still downloading): do it once it is.
     if (!(await until(() => !!editor(), run))) return;
     for (const i of steps) {
       if (run !== generation) return;
-      for (const d of state.observed[i] ? [] : tutorial.steps[i].demo) {
-        // Live publishes before its lazy session registers actions. Retry on session/registry changes.
-        if (d.kind === "fault") {
-          if (!(await until(() => perform(d) !== false, run))) return;
-        } else perform(d);
+      if (!state.observed[i]) {
+        for (const d of tutorial.steps[i].demo) {
+          // Live publishes before its lazy session registers actions. Retry on session/registry changes.
+          if (d.kind === "fault") {
+            if (!(await until(() => perform(d) !== false, run))) return;
+          } else perform(d);
+        }
+        // The next step's demo may need this one's node: wait for the canvas to report it.
+        if (tutorial.steps[i].demo.length && !(await until(() => state.observed[i], run))) return;
       }
-      // The next step's demo may need this one's node: wait for the canvas to report it.
-      if (tutorial.steps[i].demo.length && !(await until(() => state.observed[i], run))) return;
-      if (purpose === "reconstruct" && tutorial.steps[i].settle === "naming") {
-        const interaction = canvasInteraction.get();
-        const mode = interaction?.mode;
-        if (mode?.value === "naming" && naming[i].some((name) => subjects[name] === mode.target))
-          interaction?.dispatch({ type: "naming.done", flowId: mode.target! });
-        if (!(await until(() => state.settled[i], run))) return;
-      }
+      if (!(await settle(i, run))) return;
     }
     if (purpose === "reconstruct" && run === generation) send({ type: "reconstructed" });
   }
 
+  /** Show me: the target node into view through the canvas camera only. The selection and focus stay the learner's. */
   function reveal(step: number) {
     const target = tutorial.steps[step]?.targets.find((t) => t.testId.startsWith("node-{"));
     const name = target?.testId.slice(6, -1);
     const id = name ? snapshot.subjects[name] : undefined;
-    // Through the canvas's own path (Ctrl+K's "go to"): the camera and the focus policy decide the rest.
-    if (id) host.get().canvas?.focusNode(id);
+    if (id) host.get().canvas?.revealNode?.(id);
   }
 
   function run(command: RunnerCommand) {
@@ -480,11 +586,13 @@ export function createTutorialRunner(
     const offHost = host.subscribe(sync);
     const offCanvas = canvasInteraction.subscribe(sync);
     const offActions = actionRegistry.subscribe(observe);
+    const offDependencies = dependencyVisibility.subscribe(observe);
     sync();
     return () => {
       offHost();
       offCanvas();
       offActions();
+      offDependencies();
       offSession?.();
       offSlow?.();
       generation++;
@@ -503,6 +611,10 @@ export function createTutorialRunner(
     },
     connect,
     send,
+    appChanged(next: typeof app) {
+      app = next;
+      observe();
+    },
     /** Test seam: the cause journal (development and e2e builds). */
     journal: () => machine.journal,
   };
