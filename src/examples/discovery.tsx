@@ -1,10 +1,10 @@
 import { defineLazySurface } from "../lib/lazySurface";
-import type { Example } from "./index";
+import type { ExampleIdentity } from "./index";
 import { t } from "../i18n";
 
 export interface DiscoveryGalleryProps {
   kind: "gallery";
-  catalog: readonly Example[];
+  catalog: readonly ExampleIdentity[];
   query: string;
   feature: string;
   onOpen: (slug: string, simulation?: string) => void;

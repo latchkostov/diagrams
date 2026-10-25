@@ -38,18 +38,22 @@ and that ignoring the actual loop leaves the diagram warning visible, including 
   bounded extractor and operation-count proofs enabled. Until the warning returns safely,
   retain master's omitted count and non-clean summary for exhausted or uncertain cyclic analysis.
 
-## Other OPEN P2s
+## Resolved P2 follow-ups
 
-- **R-e3f0226959: Defer vocabulary normalization until a nonempty search.** Empty-query and
-  single-select pickers eagerly lowercase names; fresh node-picker arrays miss the identity cache
-  on unrelated renders. Normalize lazily or share stable vocabulary indexes. Add fresh-array
-  empty-query coverage proving names are never lowercased. Related earlier findings:
+- **R-e3f0226959: Resolved — defer vocabulary normalization until a nonempty search.** Empty-query
+  and single-select pickers no longer lowercase names. Fresh-array call-count coverage proves zero
+  normalization across repeated renders; first-search and subsequent-search counts prove lazy reuse.
+  Related earlier findings:
   R-a151abeabd / R-97a9c27cda in the [round 1 follow-ups](2026-10-25-message-types-batch-2-review.md).
-- **R-6cd9846e80: Assert route-specific results in seed-deduplication tests.** The aggregate
-  unfiltered `out` edge cannot distinguish expanding every positive route from only the first;
-  the saved-run cache test uses only zero-rate routes. Add distinct request-filtered destinations,
-  assert all positive-rate deliveries and no zero-rate deliveries, then repeat through saved runs
-  sharing the cached positive mix. Related earlier finding: R-00d6efe51e in the same follow-ups.
+- **R-6cd9846e80: Resolved — assert route-specific results in seed-deduplication tests.** Added
+  distinct request-filtered destinations for two positive routes and one zero-rate route, with repeated
+  seeds and saved runs sharing the positive mix. Every saved run uses a distinct type so free play cannot
+  mask a cache regression. Existing operation-growth assertions remain active. Related earlier finding:
+  R-00d6efe51e in the same follow-ups.
+
+**R-479c52c8c2: Resolved — retain gated-cycle fallback coverage.** Four active cases now assert the
+typed incomplete reason, omitted count and non-clean summary independently of the visible diagnostic.
+The visible-warning tests below remain quarantined.
 
 ## Retained quarantined tests
 

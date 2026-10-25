@@ -5,7 +5,7 @@ import type { ExampleMetadata } from "./metadata";
 import { exampleIdentity } from "./identity";
 import { msg } from "../i18n";
 
-interface ExampleInfo extends Partial<ExampleMetadata> {
+interface ExampleInfo {
   title: string;
   /** First saved simulation, usable before discovery loads. */
   simulation?: string;
@@ -25,17 +25,20 @@ interface PublicExample extends ExampleInfo {
   diagram?: never;
 }
 
-interface LocalExample extends ExampleInfo {
+interface LocalExample extends ExampleInfo, ExampleMetadata {
   /** Local-only examples are never eligible for AI tools or prompts. */
   localOnly: true;
   /** Retained eagerly in dev so privacy fingerprints work before opening an example. */
   diagram: DiagramFile;
 }
 
-export type Example = PublicExample | LocalExample;
+export type ExampleIdentity = PublicExample | LocalExample;
+/** Discovery has loaded the thumbnail, description and feature tags. */
+export type EnrichedExample = ExampleIdentity & ExampleMetadata;
 
-export const exampleSummary = (example: Example) =>
-  (typeof example.summary === "function" ? example.summary() : example.summary) ?? example.description;
+export const exampleSummary = (example: ExampleIdentity | EnrichedExample) =>
+  (typeof example.summary === "function" ? example.summary() : example.summary) ??
+  ("description" in example ? example.description : undefined);
 
 // Work diagrams stay dev-only and eager so privacy checks work even before they are opened.
 const privateExamples: LocalExample[] = import.meta.env.DEV
@@ -262,7 +265,7 @@ const publicExamples: PublicExample[] = (
   return { ...example, ...exampleIdentity[example.slug] };
 });
 
-export const examples: Example[] = [...privateExamples, ...publicExamples];
+export const examples: ExampleIdentity[] = [...privateExamples, ...publicExamples];
 
 // The glob is deliberately shallow: public chunks never include local-only diagrams.
 const loaders = import.meta.glob<DiagramFile>("./*.json", { import: "default" });

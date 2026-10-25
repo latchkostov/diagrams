@@ -104,6 +104,24 @@ describe("message-loop", () => {
     expect(check(d).findings).toEqual([]);
   });
 
+  it.each([{ deny: true }, { share: 0 }, { filter: ["Never"] }, { dlq: true }])(
+    "retains the non-clean fallback on gated processor cycles: %j",
+    (props) => {
+      const d = messageTypesFixture();
+      d.edges[2].props = props;
+      d.simulations = [
+        savedRun({
+          timeline: [{ atMs: 0, action: { do: "props", node: "api", props: { emits: "Prepared" } } }],
+        }),
+      ];
+      expect(messageTypesAt(d).incompleteReasons).toEqual(["timeline-forwarding"]);
+      const result = check(d);
+      expect(result.findings).toEqual([]);
+      expect(result.omitted).toEqual([{ rule: "message-loop", count: 1 }]);
+      expect(summarize(result)).not.toContain("Nothing to check");
+    },
+  );
+
   // quarantined: diagram-scope diagnostics, see docs/backlog/2026-10-25-diagram-scope-findings.md
   it.skip.each([{ deny: true }, { share: 0 }, { filter: ["Never"] }, { dlq: true }])(
     "keeps timeline uncertainty on processor cycles even with gated links: %j",

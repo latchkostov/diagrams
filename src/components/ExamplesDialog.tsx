@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
-import { examples, type Example } from "../examples";
+import { examples, type ExampleIdentity } from "../examples";
 import { exampleFeatures } from "../examples/features";
 import { ExampleDiscovery } from "../examples/discovery";
 import { Dialog } from "../interop/ui/Dialog";
@@ -12,7 +12,7 @@ export function ExamplesDialog({
   onTutorials,
   catalog = examples,
 }: {
-  catalog?: readonly Example[];
+  catalog?: readonly ExampleIdentity[];
   onClose: () => void;
   onOpen: (slug: string, simulation?: string) => void;
   /** The Tutorials view, where there is one: a link above the examples. */

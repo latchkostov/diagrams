@@ -562,6 +562,56 @@ it("caches immutable traffic mixes across saved runs with linear operation growt
   };
   expect(opGrowth(fixture(8), fixture(8 * GROWTH_FACTOR), 9)).toBeLessThan(9);
 });
+function filteredMixFixture(): DiagramFile {
+  const d = mixFixture(3);
+  d.nodes[0].props!.trafficMix = {
+    mode: "rates",
+    entries: [
+      { routeId: "r0", ratePerSec: 1 },
+      { routeId: "r1", ratePerSec: 1 },
+      { routeId: "r2", ratePerSec: 0 },
+    ],
+  };
+  for (let i = 0; i < 3; i++) {
+    d.nodes.push(node(`sink${i}`, "generic.email"));
+    d.edges.push({
+      id: `route${i}`,
+      from: "source",
+      to: `sink${i}`,
+      props: { requestFilter: { path: { kind: "exact", value: `/r${i}` } } },
+    });
+  }
+  return d;
+}
+it.each([8, 8 * GROWTH_FACTOR])("expands every positive route after deduplicating %i repeated seeds", (count) => {
+  const d = filteredMixFixture();
+  const inputs = Array.from({ length: count }, () => ({ node: "source", type: "Injected" }));
+  const result = messageTypesAt(d, inputs);
+  expect(result.complete).toBe(true);
+  for (const i of [0, 1]) {
+    expect(result.carried.get(`route${i}`)).toEqual(new Set(["Injected"]));
+    expect(result.arriving.get(`sink${i}`)).toEqual(new Set(["Injected"]));
+  }
+  expect(result.carried.get("route2")).toEqual(new Set());
+  expect(result.arriving.get("sink2")).toEqual(new Set());
+});
+it.each([8, 8 * GROWTH_FACTOR])("preserves every positive route across %i saved runs sharing a cached mix", (count) => {
+  const d = filteredMixFixture();
+  d.simulations = Array.from({ length: count }, (_, i) => ({
+    id: `s${i}`,
+    title: "Injected",
+    traffic: [{ id: "t", node: "source", messageType: `Saved${i}`, shape: { kind: "burst", count: 1 } }],
+  }));
+  const result = messageTypesAt(d);
+  expect(result.complete).toBe(true);
+  const expected = new Set(["T", ...d.simulations.map((_, i) => `Saved${i}`)]);
+  for (const i of [0, 1]) {
+    expect(result.carried.get(`route${i}`)).toEqual(expected);
+    expect(result.arriving.get(`sink${i}`)).toEqual(expected);
+  }
+  expect(result.carried.get("route2")).toEqual(new Set());
+  expect(result.arriving.get("sink2")).toEqual(new Set());
+});
 it.each([128, 128 * GROWTH_FACTOR])("refuses an oversized %i-row mix before compiling it", (count) => {
   const d = mixFixture(count);
   const compile = vi.spyOn(routing, "compileMix");

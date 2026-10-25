@@ -1,16 +1,16 @@
 import { msg } from "../i18n";
-import { exampleSummary, type Example } from "./index";
+import { exampleSummary, type EnrichedExample } from "./index";
 import { groupByTheme, type ExampleTheme } from "./themes";
 
 import { exampleFeatures } from "./features";
 export { exampleFeatures } from "./features";
 
 /** Full gallery copy is downloaded with the gallery, outside startup. */
-export const gallerySummary = (example: Example) =>
+export const gallerySummary = (example: EnrichedExample) =>
   example.slug === "retry-storm" ? msg("examples.retryStormGallerySummary")() : exampleSummary(example);
 
 /** Every search word must match; labels are resolved in the current language. */
-export function filterExamples(items: readonly Example[], query: string, feature = "") {
+export function filterExamples(items: readonly EnrichedExample[], query: string, feature = "") {
   const words = query.trim().toLocaleLowerCase().split(/\s+/).filter(Boolean);
   return groupByTheme(
     items.filter((e) => {
