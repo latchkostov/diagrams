@@ -59,7 +59,7 @@ export function TutorialApp({ id }: { id: string }) {
     (import.meta.env.DEV || import.meta.env.VITE_E2E === "1") && id.startsWith("lab-tutorial-")
       ? use(loadRuntimeFixtures())
       : tutorials;
-  const tutorial = catalog.find((x) => x.id === id);
+  const tutorial = catalog.find((x) => x.id === id && !x.quarantined);
   if (!tutorial) return <Unknown id={id} />;
   return (
     <Suspense
@@ -111,16 +111,25 @@ function Running({
   initial: DiagramFile;
   catalog: readonly Tutorial[];
 }) {
+  const [presenting, setPresenting] = useState(false);
+  useEffect(() => {
+    if (!presenting) return;
+    const key = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setPresenting(false);
+    };
+    window.addEventListener("keydown", key);
+    return () => window.removeEventListener("keydown", key);
+  }, [presenting]);
   const [runner] = useState(() => {
     startFresh();
     return createTutorialRunner(tutorial, {
       close: () => tutorialRoute.close(),
       initial,
       documentId: getDiagramIdentity(TUTORIAL_SLUG),
+      present: setPresenting,
     });
   });
   const [start] = useState(() => structuredClone(initial));
-  const [presenting, setPresenting] = useState(false);
   const canvas = useRef<CanvasHandle | null>(null);
   const library = useLibrary();
   const [libraryOpen, setLibraryOpen] = useState(false);
@@ -164,6 +173,8 @@ function Running({
     openShared,
     isPublicExample: () => false,
   });
+  const sharing = "dialogKind" in interop && interop.dialogKind === "chooser";
+  useEffect(() => runner.appChanged({ presenting, sharing }), [runner, presenting, sharing]);
   // File Save / Save as explicitly keeps a library copy. No tutorial edit auto-saves.
   const files = { ...interop, tutorial: true as const, save: async () => saveCopy(), saveAs: async () => saveCopy() };
   useEffect(() => {
@@ -241,9 +252,9 @@ function Running({
           </button>
         </header>
       )}
-      {!presenting && (
+      <div hidden={presenting}>
         <Strip tutorial={tutorial} snap={snap} send={runner.send} saveCopy={saveCopy} catalog={catalog} />
-      )}
+      </div>
       <div className="app-body">
         <div className="app-main">
           <Suspense fallback={<div className="view-loading" data-testid="view-loading" />}>
@@ -445,7 +456,8 @@ function Strip({
               </p>
             ) : phase === "completing" ? (
               <p className="tutorial-done" data-testid="tutorial-completing">
-                <Icon name="check" size={13} /> {step.done?.() ?? ""} {t("tutorials.finishUp")}
+                <Icon name="check" size={13} /> {step.done?.() ?? ""}{" "}
+                {typeof step.settle === "object" ? step.settle.tip() : t("tutorials.finishUp")}
               </p>
             ) : phase === "hinting" && step.hint ? (
               <p className="tutorial-aside" id="tutorial-hint" data-testid="tutorial-hint">
@@ -476,10 +488,10 @@ function Strip({
               onClick={(e) => {
                 if (e.detail < 2) send({ type: "skip", stepId: step.id });
               }}
-              title={t("tutorials.skipTitle")}
+              title={step.check.kind === "acknowledge" ? t("tutorials.done") : t("tutorials.skipTitle")}
               data-testid="tutorial-skip"
             >
-              {t("tutorials.skip")}
+              {step.check.kind === "acknowledge" ? t("tutorials.done") : t("tutorials.skip")}
             </button>
           </div>
         </>

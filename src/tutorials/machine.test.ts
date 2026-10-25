@@ -16,6 +16,24 @@ function play(events: RunnerEvent[], resumeAt = 0) {
 }
 
 describe("tutorial step runner", () => {
+  it("performs a sticky step's demo on Skip and latches only when it holds", () => {
+    const definition = {
+      ...runnerMachine,
+      initial: runnerInitial([true, true], { highlights: true, resumeAt: 0, demos: [true, false] }),
+    };
+    const m = createMachine(definition);
+    m.send({ type: "start" });
+    expect(m.send({ type: "skip", stepId: "0" }).commands).toEqual([{ type: "demo", steps: [0] }]);
+    expect(m.state.latched).toEqual([false, false]);
+    m.send({ type: "observe", met: [true, false], settled: [true, true] });
+    expect(m.state.index).toBe(1);
+    expect(m.state.latched).toEqual([true, false]);
+    m.send({ type: "skip", stepId: "1" });
+    expect(m.state.value).toBe("finished");
+    for (const path of machinePaths(definition, { maxDepth: 4 })) {
+      expect(path.state.latched.every((on, i) => !on || path.state.sticky[i])).toBe(true);
+    }
+  });
   it("Skip performs a sticky edit's demo before remembering its completion", () => {
     const m = createMachine({
       ...runnerMachine,

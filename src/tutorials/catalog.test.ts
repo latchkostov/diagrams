@@ -3,8 +3,8 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { stencils } from "../stencils/registry";
 import { stencilRole } from "../stencils/roles";
-import { tutorials } from "./catalog";
-import { tutorialIds } from "./catalog/ids";
+import { allTutorials as tutorials } from "./catalog";
+import { tutorialEntries } from "./catalog/ids";
 import { tutorialMetadata } from "./metadata";
 import type { Check, Demo, TutorialStep, UiStep } from "./types";
 
@@ -26,7 +26,7 @@ const source = (() => {
       else if (
         /\.tsx?$/.test(name) &&
         !/\.test\.tsx?$/.test(name) &&
-        !path.includes(join("src", "tutorials")) &&
+        (!path.includes(join("src", "tutorials")) || path.endsWith(join("tutorials", "TutorialApp.tsx"))) &&
         !path.endsWith(join("lab", "tutorialRuntimeFixture.ts"))
       )
         out.push(readFileSync(path, "utf8"));
@@ -53,25 +53,27 @@ function knownTestId(id: string): boolean {
 }
 
 const subjectsIn = (check: Check): string[] =>
-  check.kind === "mode"
-    ? check.subject
-      ? [check.subject]
-      : []
-    : check.kind === "prop" || check.kind === "fault"
-      ? check.edge
-        ? [...check.edge]
-        : [check.subject]
-      : check.kind === "member"
-        ? [check.subject, check.boundary]
-        : check.kind === "metric"
-          ? [check.subject, ...(check.edge ?? [])]
-          : check.kind === "node" || check.kind === "label" || check.kind === "processed" || check.kind === "field"
-            ? [check.subject]
-            : check.kind === "edge" || check.kind === "relation"
-              ? [check.from, check.to]
-              : check.kind === "all"
-                ? check.checks.flatMap(subjectsIn)
-                : [];
+  check.kind === "selection" || check.kind === "aligned"
+    ? [...(check.subjects ?? [])]
+    : check.kind === "mode"
+      ? check.subject
+        ? [check.subject]
+        : []
+      : check.kind === "prop" || check.kind === "fault"
+        ? check.edge
+          ? [...check.edge]
+          : [check.subject]
+        : check.kind === "member"
+          ? [check.subject, check.boundary]
+          : check.kind === "metric"
+            ? [check.subject, ...(check.edge ?? [])]
+            : check.kind === "node" || check.kind === "label" || check.kind === "processed" || check.kind === "field"
+              ? [check.subject]
+              : check.kind === "edge" || check.kind === "relation"
+                ? [check.from, check.to]
+                : check.kind === "all"
+                  ? check.checks.flatMap(subjectsIn)
+                  : [];
 const demoSubjects = (d: Demo): string[] =>
   d.kind === "add"
     ? [d.subject, ...(d.after ? [d.after] : [])]
@@ -79,45 +81,59 @@ const demoSubjects = (d: Demo): string[] =>
       ? d.edge
         ? [...d.edge]
         : [d.subject]
-      : d.kind === "group"
-        ? [...d.subjects, d.boundary]
-        : d.kind === "select"
-          ? [...d.subjects]
-          : d.kind === "connect" || d.kind === "relation"
-            ? [d.from, d.to]
-            : d.kind === "insert"
-              ? [...d.edge, d.subject]
-              : d.kind === "reconnect"
-                ? [...d.edge, d.to]
-                : d.kind === "field" || d.kind === "name" || d.kind === "rename"
-                  ? [d.subject]
-                  : [];
+      : d.kind === "member"
+        ? [d.subject, d.boundary]
+        : d.kind === "align"
+          ? [...(d.subjects ?? [])]
+          : d.kind === "group"
+            ? [...d.subjects, d.boundary]
+            : d.kind === "select"
+              ? [...d.subjects]
+              : d.kind === "connect" || d.kind === "relation"
+                ? [d.from, d.to]
+                : d.kind === "insert"
+                  ? [...d.edge, d.subject]
+                  : d.kind === "reconnect"
+                    ? [...d.edge, d.to]
+                    : d.kind === "field" || d.kind === "name" || d.kind === "rename"
+                      ? [d.subject]
+                      : [];
 const testIdsOf = (s: UiStep): string[] =>
-  "click" in s
-    ? [s.click]
+  "modClick" in s
+    ? [s.modClick]
     : "rightclick" in s
       ? [s.rightclick]
-      : "select" in s
-        ? [s.select]
-        : "pane" in s
-          ? ["canvas-pane"]
-          : "dblclick" in s
-            ? [s.dblclick]
-            : "hover" in s
-              ? [s.hover]
-              : "fill" in s
-                ? [s.fill]
-                : "drag" in s
-                  ? [s.drag, s.to]
-                  : [];
+      : "boxSelect" in s
+        ? [s.boxSelect, ...s.around]
+        : "select" in s
+          ? [s.select]
+          : "pane" in s
+            ? ["canvas-pane"]
+            : "click" in s
+              ? [s.click]
+              : "dblclick" in s
+                ? [s.dblclick]
+                : "hover" in s
+                  ? [s.hover]
+                  : "fill" in s
+                    ? [s.fill]
+                    : "drag" in s
+                      ? [s.drag, s.to]
+                      : [];
 const templates = (testId: string) => [...testId.matchAll(/\{(\w+)\}/g)].map((m) => m[1]);
-const words = (step: TutorialStep) => [step.title, step.goal, step.hint, step.done].filter((w) => !!w);
+const words = (step: TutorialStep) =>
+  [step.title, step.goal, step.hint, step.done, ...(typeof step.settle === "object" ? [step.settle.tip] : [])].filter(
+    (w) => !!w,
+  );
 
 describe("tutorial catalog", () => {
   it("has unique ids and a version, listed for the generated e2e", () => {
     const ids = tutorials.map((t) => t.id);
-    expect(ids).toEqual([...tutorialIds]);
-    expect(tutorialMetadata.map((x) => x.id)).toEqual(ids);
+    expect(ids).toEqual(tutorialEntries.map((t) => t.id));
+    expect(tutorialMetadata.map((x) => x.id)).toEqual(tutorials.filter((t) => !t.quarantined).map((t) => t.id));
+    expect(tutorialEntries).toEqual(
+      tutorials.map(({ id, quarantined }) => ({ id, ...(quarantined ? { quarantined } : {}) })),
+    );
     expect(new Set(ids).size).toBe(ids.length);
     for (const t of tutorials) {
       expect(t.id).toMatch(/^[a-z0-9-]+$/);
@@ -158,6 +174,7 @@ describe("tutorial catalog", () => {
           const used = [
             ...subjectsIn(step.check),
             ...step.demo.flatMap(demoSubjects),
+            ...(typeof step.settle === "object" ? step.settle.subjects : []),
             ...step.targets.flatMap((t) => [...templates(t.testId), ...(t.selected ? [t.selected] : [])]),
             ...step.solution.flatMap(testIdsOf).flatMap(templates),
           ];
@@ -202,11 +219,25 @@ describe("tutorial catalog", () => {
                 "note",
                 "mode",
                 "all",
+                "dependencies",
+                "presenting",
+                "sharing",
+                "acknowledge",
+                "selection",
+                "aligned",
               ],
               step.id,
             ).toContain(step.check.kind);
           if (!step.demo.length) expect(step.sticky, `${step.id}: moments are explicitly sticky`).toBe(true);
           if (containsLabel(step.check)) expect(step.settle, step.id).toBe("naming");
+          // An annotation's text is typed in its editor: the step waits for it to close, as a name waits for Enter.
+          if (step.check.kind === "annotation") expect(step.settle, step.id).toBe("annotation");
+          // A demo lists edits only: the settlement's own action is the runner's (completionSweep.test.ts).
+          if (typeof step.settle === "object")
+            expect(
+              step.demo.map((d) => d.kind),
+              `${step.id}: Skip selects for the settlement`,
+            ).not.toContain("select");
           expect(step.solution.length, `${step.id} has a solution path for its e2e`).toBeGreaterThan(0);
         }
       });

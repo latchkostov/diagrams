@@ -53,6 +53,33 @@ describe("editor mode", () => {
     expect(editorModeStep(s, { type: "live", state: "off" }).live).toBe("off");
   });
 
+  it("carries the open annotation editor as committed, beside the mode, and the controller sets it before the selection", () => {
+    const s = play([
+      { type: "annotating", id: "t1" },
+      { type: "field.focused", target: "t1" },
+    ]);
+    expect(s).toMatchObject({ value: "naming", target: "t1", annotating: "t1" });
+    expect(editorModeStep(s, { type: "annotating", id: "t1" })).toBe(s);
+    const closed = editorModeStep(editorModeStep(s, { type: "field.left" }), { type: "annotating", id: null });
+    expect(closed).toMatchObject({ value: "editing", annotating: null });
+    expect(editorModeStep(initialEditorMode, { type: "annotating", id: null })).toBe(initialEditorMode);
+    const port = {
+      active: () => null,
+      resolve: () => ({ state: "gone" }),
+      focus: () => false,
+      connected: () => true,
+      publish: () => {},
+    } as unknown as InteractionPort;
+    const controller = createInteractionController(port, { frame: () => () => {}, microtask: (run) => run() });
+    const seen: { annotating?: string | null; selection: readonly string[] }[] = [];
+    controller.subscribeMode((mode) => seen.push({ annotating: mode.annotating, selection: mode.selection }));
+    controller.selectionCommitted(JSON.stringify(["t1"]), false, "t1");
+    expect(seen).toEqual([
+      { annotating: "t1", selection: [] },
+      { annotating: "t1", selection: ["t1"] },
+    ]);
+  });
+
   it("returns a gesture to its mode, and ignores what doesn't apply", () => {
     const s = play([{ type: "gesture.started" }]);
     expect(s.value).toBe("gesture");

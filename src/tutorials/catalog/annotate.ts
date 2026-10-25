@@ -1,0 +1,57 @@
+import { msg, t } from "../../i18n";
+import type { Tutorial } from "../types";
+export const annotate: Tutorial = {
+  id: "annotate",
+  version: 1,
+  track: "basics",
+  level: 1,
+  minutes: 3,
+  title: msg("tutorials.annotate.title"),
+  summary: msg("tutorials.annotate.summary"),
+  start: () => ({ format: "diagrams/v1", title: t("tutorials.annotate.diagramTitle"), nodes: [], edges: [] }),
+  subjects: {},
+  steps: [
+    {
+      id: "title",
+      title: msg("tutorials.annotate.titleTitle"),
+      goal: msg("tutorials.annotate.titleGoal"),
+      done: msg("tutorials.annotate.titleDone"),
+      check: { kind: "annotation", annotation: "text" },
+      settle: "annotation",
+      targets: [{ testId: "palette-annotate-text", tip: msg("tutorials.annotate.titleTip") }],
+      demo: [{ kind: "annotate", annotation: "text" }],
+      solution: [
+        { click: "palette-annotate-text" },
+        { fill: "annotation-editor", text: msg("tutorials.annotate.titleText") },
+        { press: "Escape" },
+      ],
+    },
+    {
+      id: "note",
+      title: msg("tutorials.annotate.noteTitle"),
+      goal: msg("tutorials.annotate.noteGoal"),
+      done: msg("tutorials.annotate.noteDone"),
+      check: { kind: "annotation", annotation: "note" },
+      settle: "annotation",
+      targets: [{ testId: "palette-annotate-note", tip: msg("tutorials.annotate.noteTip") }],
+      demo: [{ kind: "annotate", annotation: "note" }],
+      solution: [
+        { click: "palette-annotate-note" },
+        { fill: "annotation-editor", text: msg("tutorials.annotate.noteText") },
+        { press: "Escape" },
+      ],
+    },
+    {
+      id: "zone",
+      title: msg("tutorials.annotate.zoneTitle"),
+      goal: msg("tutorials.annotate.zoneGoal"),
+      done: msg("tutorials.annotate.zoneDone"),
+      check: { kind: "annotation", annotation: "zone" },
+      settle: "annotation",
+      targets: [{ testId: "palette-annotate-zone", tip: msg("tutorials.annotate.zoneTip") }],
+      demo: [{ kind: "annotate", annotation: "zone" }],
+      solution: [{ click: "palette-annotate-zone" }, { press: "Escape" }],
+    },
+  ],
+  finish: { text: msg("tutorials.annotate.finish") },
+};

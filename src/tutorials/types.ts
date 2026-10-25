@@ -63,6 +63,13 @@ export type Check =
   | { kind: "trace" | "slowmo" }
   | { kind: "note"; waiting: boolean }
   | { kind: "mode"; value: EditorModeValue; subject?: string }
+  | { kind: "selection"; subjects?: readonly string[]; atLeast?: number; exact?: boolean }
+  | { kind: "aligned"; subjects?: readonly string[]; axis: "x" | "y"; atLeast?: number }
+  | { kind: "dependencies"; visible: boolean }
+  | { kind: "presenting"; on: boolean }
+  | { kind: "sharing" }
+  /** A lesson acknowledged with Done after trying its control. */
+  | { kind: "acknowledge" }
   | { kind: "all"; checks: readonly Check[] };
 
 /** Done for you ("Skip step"), through the editor API: one undo step each, as if the learner did it. */
@@ -81,12 +88,23 @@ export type Demo =
   | { kind: "runSimulation"; id: string }
   | ({ kind: "fault"; fault: FaultKind; restore?: boolean } & PropertyTarget)
   | { kind: "select"; subjects: readonly string[] }
+  | { kind: "member"; subject: string; boundary: string }
+  | {
+      kind: "align";
+      subjects?: readonly string[];
+      mode: "middle";
+      /** Keep a sufficient learner selection; otherwise select these subjects before aligning. */
+      selection?: { atLeast: number; fallback: readonly string[] };
+    }
+  | { kind: "present"; on: boolean }
   | { kind: "live" };
 
 /** One action of the solution path, by test id only. The generated e2e plays these through the real UI. */
 export type UiStep =
   | { click: string }
+  | { modClick: string; modifiers: readonly ("Shift" | "Control" | "Meta" | "Alt")[] }
   | { rightclick: string }
+  | { boxSelect: string; around: readonly string[] }
   | { select: string; value: string }
   | { pane: "dblclick" }
   | { dblclick: string }
@@ -123,8 +141,14 @@ export interface TutorialStep {
   /**
    * "naming": the step is done when its check holds and the learner has finished naming (Enter, Esc or leaving the
    * field), as the editor's mode says; until then it's `completing`. A name is never judged half typed.
+   * "annotation": likewise, until the annotation's text editor has closed (its edit committed), as the mode says.
+   * selection: wait for this selection, then keep it settled while the check holds (Undo can still reopen it).
+   *
+   * Skip completes a step through the same contract: the demo's edits while the check doesn't hold, then this
+   * settlement's own action (finish naming, close the annotation editor, select the subjects). Each part runs only while
+   * it's missing, so Skip from `completing` never repeats an edit. A demo lists edits only, never settlement.
    */
-  settle?: "naming";
+  settle?: "naming" | "annotation" | { kind: "selection"; subjects: readonly string[]; tip: Words };
   /** What the canvas is guided to while this step is current: quick-add opens searched for this (its pick). */
   guide?: { quickAdd?: Words };
   targets: readonly Target[];
@@ -132,14 +156,19 @@ export interface TutorialStep {
   solution: readonly UiStep[];
 }
 
-export interface Tutorial {
+export interface TutorialMetadata {
   id: string;
+  title: Words;
+  /** Unavailable to learners while regressions are tracked; saved progress is retained. */
+  quarantined?: true;
+}
+
+export interface Tutorial extends TutorialMetadata {
   /** Bumped when steps change meaning: saved progress for another version starts over. */
   version: number;
   track: TrackId;
   level: 1 | 2 | 3;
   minutes: number;
-  title: Words;
   summary: Words;
   /** The sandbox's first diagram. A function: its title is translated when it opens. */
   start: (() => DiagramFile) | { example: string; simulation?: string };

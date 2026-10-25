@@ -1,20 +1,11 @@
 import { fillTestId } from "./checks";
 import type { RunnerSnapshot } from "./runner";
-import type { Tutorial } from "./types";
+import type { Tutorial, UiStep } from "./types";
 import { inStep } from "./machine";
 
 /** A solution step with its subjects and words filled in: what the generated e2e plays. */
 export type ResolvedUiStep =
-  | { click: string }
-  | { rightclick: string }
-  | { select: string; value: string }
-  | { pane: "dblclick" }
-  | { dblclick: string }
-  | { hover: string }
-  | { fill: string; text: string }
-  | { press: string }
-  | { type: string }
-  | { drag: string; to: string };
+  Exclude<UiStep, { fill: string } | { type: unknown }> | { fill: string; text: string } | { type: string };
 
 const fill = (testId: string, subjects: RunnerSnapshot["subjects"]) => {
   const id = fillTestId(testId, subjects);
@@ -28,7 +19,10 @@ export function solutionNow(tutorial: Tutorial, snap: RunnerSnapshot): ResolvedU
   const { subjects } = snap;
   return tutorial.steps[snap.state.index].solution.map((s): ResolvedUiStep => {
     if ("click" in s) return { click: fill(s.click, subjects) };
+    if ("modClick" in s) return { modClick: fill(s.modClick, subjects), modifiers: s.modifiers };
     if ("rightclick" in s) return { rightclick: fill(s.rightclick, subjects) };
+    if ("boxSelect" in s)
+      return { boxSelect: fill(s.boxSelect, subjects), around: s.around.map((id) => fill(id, subjects)) };
     if ("pane" in s) return s;
     if ("select" in s) return { select: fill(s.select, subjects), value: s.value };
     if ("dblclick" in s) return { dblclick: fill(s.dblclick, subjects) };

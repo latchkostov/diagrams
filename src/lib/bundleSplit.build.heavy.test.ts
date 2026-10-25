@@ -14,6 +14,7 @@ import { productionBuild } from "../test/productionBuild";
 
 /** Never in the startup JavaScript. */
 const NOT_AT_STARTUP: [string, RegExp][] = [
+  ["tutorial titles and catalog", /[/\\]src[/\\]tutorials[/\\](?:metadata\.ts$|catalog[/\\])/],
   [
     "example discovery details",
     /[/\\]src[/\\]examples[/\\](?:metadata\.ts|details\.ts|ExampleDetails\.tsx|GalleryDetails\.tsx)$/,

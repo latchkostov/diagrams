@@ -15,11 +15,14 @@ const AnnotationFormatting = lazyComponent(() => import("./AnnotationFormatting"
  * Reports how far the text overflows.
  */
 export function AnnotationEditor({
+  id,
   value,
   kind,
   caret,
   onDone,
 }: {
+  /** The annotation: its editor reports as its name field to the editor's mode (Esc or Enter is naming.done). */
+  id: string;
   value: string;
   kind: AnnotationKind;
   caret?: "end";
@@ -65,6 +68,7 @@ export function AnnotationEditor({
         name="annotation-text"
         spellCheck
         data-markdown-input={supportsMarkdown ? "" : undefined}
+        data-name-field={id}
         data-testid="annotation-editor"
       />
       {supportsMarkdown && <AnnotationFormatting textarea={ref} onChange={setV} />}

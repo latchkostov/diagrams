@@ -21,14 +21,17 @@ export const writeTutorials = (edit: (s: StoredTutorials) => StoredTutorials) =>
   void safeStorage.setItem(STORE, JSON.stringify(edit(readTutorials())));
 
 /** Completed, or the step to continue from; progress saved for another version of the tutorial doesn't count. */
-export function savedProgress(t: Pick<Tutorial, "id" | "version">) {
+export function savedProgress(t: Pick<Tutorial, "id" | "version" | "quarantined">) {
+  if (t.quarantined) return undefined;
   const p = readTutorials().progress?.[t.id];
   return p && p.version === t.version ? p : undefined;
 }
 
 /** First unfinished lesson in this track, in catalog order. */
 export function nextTutorial(current: Tutorial, catalog: readonly Tutorial[]): Tutorial | undefined {
-  return catalog.find((t) => t.id !== current.id && t.track === current.track && !savedProgress(t)?.completed);
+  return catalog.find(
+    (t) => !t.quarantined && t.id !== current.id && t.track === current.track && !savedProgress(t)?.completed,
+  );
 }
 
 /** Completion survives a restart only while the tutorial's meaning (version) is unchanged. */

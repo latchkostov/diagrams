@@ -159,6 +159,7 @@ function AnnotationNodeImpl({
   const supportsMarkdown = kind === "note" || kind === "text";
   const text = isEditing ? (
     <AnnotationEditor
+      id={id}
       value={editing.text ?? data.text}
       caret={editing.text !== undefined ? "end" : undefined}
       kind={kind}

@@ -69,6 +69,48 @@ describe("runtime check kinds", () => {
       expect(met(check, { ...view(), mode: { ...initialEditorMode, value: "naming", target } })).toBe(target === "b");
     expect(holds(check, { ...view(), mode: { ...initialEditorMode, value: "naming", target: null } }, {})).toBe(false);
   });
+  it("checks committed selections by subject, count and exact membership", () => {
+    const v = view();
+    expect(met({ kind: "selection", subjects: ["app"] }, v)).toBe(false);
+    expect(met({ kind: "selection", subjects: [], exact: true }, v)).toBe(true);
+    v.mode = { ...initialEditorMode, selection: ["a", "b"] };
+    expect(met({ kind: "selection", subjects: ["app"] }, v)).toBe(true);
+    expect(met({ kind: "selection", subjects: ["app"], exact: true }, v)).toBe(false);
+    expect(met({ kind: "selection", subjects: ["app", "api"], exact: true }, v)).toBe(true);
+    expect(met({ kind: "selection", subjects: ["missing"] }, v)).toBe(false);
+    expect(met({ kind: "selection", atLeast: 3 }, v)).toBe(false);
+    expect(met({ kind: "selection", atLeast: 2 }, v)).toBe(true);
+  });
+  it("compares actual coordinates of at least two existing nodes, including the selection", () => {
+    const v = view();
+    expect(met({ kind: "aligned", subjects: ["app", "api"], axis: "y" }, v)).toBe(true);
+    expect(met({ kind: "aligned", subjects: ["app", "api"], axis: "x" }, v)).toBe(false);
+    expect(met({ kind: "aligned", subjects: ["app", "missing"], axis: "y" }, v)).toBe(false);
+    expect(met({ kind: "aligned", subjects: ["app"], axis: "y" }, v)).toBe(false);
+    expect(met({ kind: "aligned", subjects: [], axis: "y" }, v)).toBe(false);
+    v.mode = { ...initialEditorMode, selection: ["a", "b"] };
+    expect(met({ kind: "aligned", axis: "y" }, v)).toBe(true);
+    expect(met({ kind: "aligned", axis: "y", atLeast: 4 }, v)).toBe(false);
+    v.diagram = { ...diagram, nodes: [diagram.nodes[0], { ...diagram.nodes[1], y: 51 }] };
+    expect(met({ kind: "aligned", axis: "y" }, v)).toBe(false);
+  });
+  it("requires explicit published app and dependency state, and leaves acknowledgements to the learner", () => {
+    const v = view();
+    for (const check of [
+      { kind: "presenting", on: false },
+      { kind: "presenting", on: true },
+      { kind: "sharing" },
+      { kind: "dependencies", visible: false },
+    ] as const)
+      expect(met(check, v)).toBe(false);
+    expect(met({ kind: "presenting", on: true }, { ...v, presenting: true })).toBe(true);
+    expect(met({ kind: "presenting", on: false }, { ...v, presenting: false })).toBe(true);
+    expect(met({ kind: "sharing" }, { ...v, sharing: true })).toBe(true);
+    expect(met({ kind: "sharing" }, { ...v, sharing: false })).toBe(false);
+    expect(met({ kind: "dependencies", visible: false }, { ...v, dependencies: false })).toBe(true);
+    expect(met({ kind: "dependencies", visible: true }, { ...v, dependencies: true })).toBe(true);
+    expect(met({ kind: "acknowledge" }, v)).toBe(false);
+  });
   it("compares node and edge props, without coercing or accepting missing values", () => {
     for (const op of ["=", ">=", "<="] as const) {
       expect(met({ kind: "prop", subject: "app", prop: "rate", op, value: 12 })).toBe(true);

@@ -687,7 +687,9 @@ export function createInteractionController<P = unknown>(
      * selection.changed event with its cause, for the focus policy (unless its source decided already) and for the
      * camera (a new, non-empty selection); every cause lasts one commit.
      */
-    selectionCommitted(key: string, empty: boolean) {
+    selectionCommitted(key: string, empty: boolean, annotating: string | null = null) {
+      // Before the selection: a reader hearing the new annotation selected already knows its editor is open.
+      toMode({ type: "annotating", id: annotating });
       const segment = gestureState.keyboardSegment;
       if (segmentRoute && key !== JSON.stringify([segmentRoute.edge])) segmentRoute = null;
       gestureState = gestures(gestureState, {
@@ -746,6 +748,8 @@ export function createInteractionController<P = unknown>(
       const field = port.field?.(el);
       toMode(field ? { type: "field.focused", ...field } : { type: "field.left" });
     },
+    /** An annotation's editor opens (or closes: null), told before its document edit so no reader sees one alone. */
+    annotating: (id: string | null) => toMode({ type: "annotating", id }),
     /** Focus left for nothing (focusout with no next element): no field is being edited. */
     focusLeft() {
       toMode({ type: "field.left" });
