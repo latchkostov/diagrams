@@ -35,6 +35,7 @@ import { webhooks } from "./catalog/webhooks";
 import { dependencies2 } from "./catalog/dependencies2";
 import { dependencyVisibility } from "../canvas/dependencyVisibility";
 import { authorADrill } from "./catalog/authorADrill";
+import { faults } from "./catalog/faults";
 import { stencils } from "../stencils/registry";
 import { editorHarness } from "../test/editorHarness";
 import { overlaps } from "../canvas/placement";
@@ -719,6 +720,16 @@ it("author-a-drill: Skip can run after the learner saved their Drill under anoth
   expect(s.diagram.simulations?.some((sim) => sim.id === "learner-drill")).toBe(true);
 });
 
+it("author-a-drill: closing the editor at Run keeps progress until the saved Drill is picked", async () => {
+  const s = sandbox(authorADrill);
+  const run = authorADrill.steps.findIndex((step) => step.id === "run");
+  expect(await reach(s, authorADrill, run)).toBe(true);
+  cleanup.push(planningHost.publish({ ...planningHost.get()!, panelOpen: false }));
+  expect(state(s)).toMatchObject({ index: run, value: "active" });
+  s.live!.selectSimulation(s.diagram.simulations!.find((sim) => sim.id === "simulation")!);
+  expect(state(s).value).toBe("finished");
+});
+
 const state = (s: Sandbox) => s.runner.getSnapshot().state;
 const beyond = (s: Sandbox, i: number) => state(s).value === "finished" || (inStep(state(s)) && state(s).index > i);
 
@@ -1129,6 +1140,20 @@ describe("completion regressions", () => {
     s.runner.send({ type: "resume" });
     await vi.waitFor(() => expect(state(s)).toMatchObject({ index: 2, value: "active" }), { interval: 1 });
     expect(savedProgress(sharePresent)).toMatchObject({ step: 2 });
+  });
+
+  it.each(["menu", "Skip"] as const)("faults: Restore completes with an additional slowdown (%s)", async (finish) => {
+    const s = sandbox(faults);
+    expect(await reach(s, faults, 1)).toBe(true);
+    const api = s.subject("api");
+    s.press("sim.slow:5", api);
+    s.press("sim.kill", api);
+    expect(state(s)).toMatchObject({ index: 2, value: "active" });
+    if (finish === "menu") s.press("sim.kill", api);
+    else await skip(s, faults);
+    expect(state(s).value).toBe("finished");
+    expect(s.live!.getState().snapshot.nodes[api].status).toBe("up");
+    expect(s.live!.getState().snapshot.faults).toContainEqual({ kind: "slow", node: api, factor: 5 });
   });
 
   it("Skip presses Live's trace once its lazy session has registered the action", async () => {

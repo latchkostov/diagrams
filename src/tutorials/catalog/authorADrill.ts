@@ -52,6 +52,8 @@ export const authorADrill: Tutorial = {
       goal: msg("tutorials.authorADrill.openGoal"),
       done: msg("tutorials.authorADrill.openDone"),
       check: { kind: "liveView", view: "simulations", open: true },
+      // Opening the editor is a moment: Run closes it before choosing the saved Drill.
+      sticky: true,
       targets: [{ testId: "live-edit-sims", tip: msg("tutorials.authorADrill.openGoal") }],
       demo: [{ kind: "openView", view: "simulations" }],
       solution: [{ click: "live-more" }, { click: "live-edit-sims" }],
@@ -85,7 +87,10 @@ export const authorADrill: Tutorial = {
       goal: msg("tutorials.authorADrill.runGoal"),
       done: msg("tutorials.authorADrill.runDone"),
       check: { kind: "simulation", saved: { drill: "slow-dependency" } },
-      targets: [{ testId: "sim-panel-run", tip: msg("tutorials.authorADrill.runGoal") }],
+      targets: [
+        { testId: "sim-panel-close", tip: msg("tutorials.authorADrill.runGoal") },
+        { testId: "live-sim-picker", tip: msg("tutorials.authorADrill.runGoal") },
+      ],
       demo: [
         // A learner may have saved a different id. Skip keeps it and ensures a runnable reference Drill.
         {
@@ -96,7 +101,7 @@ export const authorADrill: Tutorial = {
         },
         { kind: "runSimulation", id: "simulation" },
       ],
-      solution: [{ click: "sim-panel-run" }],
+      solution: [{ click: "sim-panel-close" }, { select: "live-sim-picker", value: "simulation" }],
     },
   ],
   finish: { text: msg("tutorials.authorADrill.finish") },

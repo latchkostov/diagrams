@@ -48,7 +48,7 @@ export const faults: Tutorial = {
       title: msg("tutorials.faults.restoreTitle"),
       goal: msg("tutorials.faults.restoreGoal"),
       done: msg("tutorials.faults.restoreDone"),
-      check: { kind: "fault", subject: "api", absent: true },
+      check: { kind: "fault", subject: "api", fault: "down", absent: true },
       targets: [
         { testId: "context-menu-item-sim.kill", tip: msg("tutorials.faults.restoreGoal") },
         { testId: "node-{api}", tip: msg("tutorials.faults.restoreGoal") },

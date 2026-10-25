@@ -4087,9 +4087,10 @@ const en = {
     "Click All simulations, then New simulation. Open Timeline and pick Slow dependency in Add step. Click Save.",
   "tutorials.authorADrill.saveTitle": "Save a fault step",
   "tutorials.authorADrill.saveDone": "A Drill is a saved simulation with a fault step.",
-  "tutorials.authorADrill.runGoal": "Click Run in the simulation editor.",
+  "tutorials.authorADrill.runGoal":
+    "Close the simulation editor, then select your saved Drill in the Simulations picker in the Live bar.",
   "tutorials.authorADrill.runTitle": "Run your Drill",
-  "tutorials.authorADrill.runDone": "Run plays the saved fault step against this diagram.",
+  "tutorials.authorADrill.runDone": "Selecting your saved Drill plays its fault step against this diagram.",
   "tutorials.authorADrill.title": "Author a Drill",
   "tutorials.authorADrill.summary": "Save a simulation with a fault step, then run it.",
   "tutorials.authorADrill.finish": "Save fault steps as a Drill so you can replay the same experiment.",
