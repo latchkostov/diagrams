@@ -50,11 +50,18 @@ function identify(emits: unknown): Identified {
   const owns = authored.map(
     (rule) => !!rule.id && typeof rule.id === "string" && !used.has(rule.id) && !!used.add(rule.id),
   );
+  // Each base resumes at its next free suffix: an ID probed once is never probed again, so repeated incoming
+  // types in untrusted input cost linear work in total.
+  const next = new Map<string, number>();
   const rules = authored.map((rule, i) => {
     if (owns[i]) return rule as IdentifiedMessageRule;
     const base = `rule-${hash(rule.receives)}`;
     let id = base;
-    for (let n = 2; used.has(id); n++) id = `${base}-${n}`;
+    if (used.has(id)) {
+      let n = next.get(base) ?? 2;
+      while (used.has((id = `${base}-${n}`))) n++;
+      next.set(base, n + 1);
+    }
     used.add(id);
     return { ...rule, id };
   });

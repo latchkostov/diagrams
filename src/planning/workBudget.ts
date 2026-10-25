@@ -14,6 +14,14 @@ export const MAX_PLANNING_WORK = 2_000_000;
 const MAX_ITEMS = 4096;
 const MAX_TEXT = 64_000;
 
+// Rule IDs are identity metadata: wherever props live (diagram, live configuration, inputs, saved setup),
+// budget and plan the behavioral mapping only. Untouched props keep their object.
+type Props = Record<string, unknown> | undefined;
+const behavioral = (props: Props): Props =>
+  Array.isArray(props?.emits) ? { ...props, emits: emitsMapping(props.emits) } : props;
+const byNode = (props?: Record<string, Props>) =>
+  props && Object.fromEntries(Object.entries(props).map(([id, p]) => [id, behavioral(p)]));
+
 /**
  * The input a plan of `d` (with the live `state`) is computed from, when it is within the input and work ceilings;
  * undefined when it isn't. Cheap and bounded: it stops reading at the caps. The one source of the limits.
@@ -21,20 +29,18 @@ const MAX_TEXT = 64_000;
 export function planningInput(d: DiagramFile, state?: LiveState | null): unknown[] | undefined {
   if (d.nodes.length > 256 || d.edges.length > 512) return undefined;
   const nodes = new Map(d.nodes.map((node) => [node.id, node]));
+  const setup = state?.running?.setup;
   const config = [
     d.planning,
-    // Rule IDs are identity metadata: budget and plan the behavioral mapping only.
-    d.nodes.map((n) => [
-      n.id,
-      n.stencil,
-      n.label,
-      n.sublabel,
-      Array.isArray(n.props?.emits) ? { ...n.props, emits: emitsMapping(n.props.emits) } : n.props,
-    ]),
+    d.nodes.map((n) => [n.id, n.stencil, n.label, n.sublabel, behavioral(n.props)]),
     d.edges.map(edgeSemanticSignature),
-    state?.running && [state.running.traffic, state.running.multipliers, state.running.setup],
-    state?.inputs,
-    state?.configuration,
+    state?.running && [
+      state.running.traffic,
+      state.running.multipliers,
+      setup && { ...setup, props: byNode(setup.props) },
+    ],
+    state?.inputs && { ...state.inputs, props: byNode(state.inputs.props) },
+    byNode(state?.configuration),
   ];
   // Bound strings, nested property maps and type cardinality too. Stop reading at the cap.
   let items = 0,

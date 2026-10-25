@@ -43,7 +43,7 @@ ZIP from carrying the identity code.
 | Agent operations                        | `add_node`/`update` props pass through `editMessageProps`, so the agent follows the inspector's rules.                                                                                                                    |
 | Repeated normalization                  | None at boundaries. Reads are memoized per list reference; an unchanged edit returns the previous list.                                                                                                                   |
 | External provenance                     | There is no runtime field to forge. File and room data can carry only `id`: the schema allows a string of 1–200 characters, and anything else is an ordinary validation error. Other fields round-trip as unknown fields. |
-| Planning budget                         | `planningInput` budgets and plans `emitsMapping`, never IDs. Legacy inputs are byte-identical.                                                                                                                            |
+| Planning budget                         | `planningInput` budgets and plans `emitsMapping` wherever props live: diagram nodes, live configuration, inputs and the running setup. IDs are never counted, and legacy inputs are byte-identical.                       |
 | Export, share link, autosave, snapshots | These serialize the document as-is, so only explicit IDs appear. Each serializer is back to master's code.                                                                                                                |
 
 ### Rejected
@@ -56,7 +56,7 @@ ZIP from carrying the identity code.
 
 ### Limits
 
-Derived IDs are stable for the life of a list's content. If two ID-less rules hash alike, which in practice
+Suffixes are allocated with a counter per base, so a list of N rules costs O(N) total, even with untrusted lists that repeat one incoming type (op-count regression). Derived IDs are stable for the life of a list's content. If two ID-less rules hash alike, which in practice
 only happens with an ID-less array that repeats an incoming type, the later rule's suffix depends on order.
 Deleting the earlier rule renumbers it. Explicit IDs never move.
 

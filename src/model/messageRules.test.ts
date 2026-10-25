@@ -14,6 +14,9 @@ import { diagramToDrawio } from "../interop/drawio/write";
 import { diagramToMermaid } from "../interop/mermaid/write";
 import { buildPayload } from "../export/inject";
 import { planningInput } from "../planning/workBudget";
+import { LiveController } from "../live/controller";
+import { opGrowth, ops } from "../test/opCounter";
+import { GROWTH_FACTOR, LINEAR_LIMIT } from "../test/complexity";
 
 const ids = (emits: unknown) => messageRules(emits).map((rule) => rule.id);
 
@@ -204,6 +207,58 @@ describe("message rule identity", () => {
     const map = messageTypesFixture();
     map.nodes[1].props = { emits: emitsMapping(rules) };
     expect(planningInput(withIds)).toEqual(planningInput(map));
+  });
+
+  it("allocates collision suffixes in linear time for repeated ID-less incoming types (R-a7f416f1a9)", () => {
+    const base = ids([{ receives: "A", sends: "B" }])[0];
+    // Identical incoming types, plus explicit IDs squatting on the suffixes the derived ones would take.
+    const repeated = (n: number) => () =>
+      messageRules([
+        ...Array.from({ length: n }, (_, i) => ({ id: `${base}-${2 * i + 2}`, receives: "Z", sends: "Y" })),
+        ...Array.from({ length: n }, () => ({ receives: "A", sends: "B" })),
+      ]);
+    const size = 1_000;
+    const growth = opGrowth(repeated(size), repeated(size * GROWTH_FACTOR), LINEAR_LIMIT);
+    expect(growth).toBeLessThanOrEqual(LINEAR_LIMIT);
+    expect(ops(repeated(size * GROWTH_FACTOR))).toBeLessThan(40 * size * GROWTH_FACTOR);
+    const runtime = messageRules([
+      { id: `${base}-2`, receives: "Z", sends: "Y" },
+      ...Array.from({ length: 3 }, () => ({ receives: "A", sends: "B" })),
+    ]).map((rule) => rule.id);
+    expect(runtime).toEqual([`${base}-2`, base, `${base}-3`, `${base}-4`]);
+    // Editing such a list stays linear too.
+    const edit = (n: number) => {
+      const emits = Array.from({ length: n }, () => ({ receives: "A", sends: "B" }));
+      const rows = messageRules(emits);
+      return () => editMessageProps({ emits: [...rows, { receives: "A", sends: "C" }] }, { emits });
+    };
+    expect(opGrowth(edit(size), edit(size * GROWTH_FACTOR), LINEAR_LIMIT)).toBeLessThanOrEqual(LINEAR_LIMIT);
+  });
+
+  it("budgets live configuration and saved setup on the behavioral mapping too (R-850af6b396)", () => {
+    const mapping = Object.fromEntries(Array.from({ length: 1_100 }, (_, i) => [`T${i}`, "Out"]));
+    const legacy = messageTypesFixture();
+    legacy.nodes[1].props = { emits: mapping };
+    const edited = messageTypesFixture();
+    const rows = messageRules(mapping);
+    edited.nodes[1].props = editMessageProps(
+      { emits: [{ ...rows[0], sends: "Other" }, ...rows.slice(1)] },
+      { emits: mapping },
+    );
+    expect(Array.isArray(edited.nodes[1].props.emits)).toBe(true);
+    for (const diagram of [legacy, edited]) {
+      const controller = new LiveController(diagram);
+      try {
+        const state = controller.getState();
+        expect(Object.keys(state.configuration)).toContain("api");
+        expect(planningInput(diagram, state)).toBeDefined();
+        const setup = { props: { api: { emits: edited.nodes[1].props.emits } } };
+        const running = { id: "s", title: "Run", traffic: [], setup };
+        expect(planningInput(diagram, { ...state, running })).toBeDefined();
+      } finally {
+        controller.dispose();
+      }
+    }
   });
 
   it("budgets planning on the behavioral mapping, excluding identity metadata", () => {
