@@ -87,8 +87,15 @@ export function useHistory(
   const applyRef = useRef(apply);
   const onStepRef = useRef(onStep);
   const stateKey = useMemo(() => ctl.key(state), [ctl, state]);
+  const latestKey = useRef({ snapshot: state, key: stateKey });
+  const currentKey = useCallback(() => {
+    if (latestKey.current.snapshot !== latest.current)
+      latestKey.current = { snapshot: latest.current, key: ctl.key(latest.current) };
+    return latestKey.current.key;
+  }, [ctl]);
   useLayoutEffect(() => {
     latest.current = state;
+    latestKey.current = { snapshot: state, key: stateKey };
     privacyRef.current = privacy;
     applyRef.current = apply;
     onStepRef.current = onStep;
@@ -125,7 +132,7 @@ export function useHistory(
       const h = ctl.history;
       if (!(ctl.collaborative ? room?.canUndo : canUndo(h))) return undefined;
       const entry = present(h);
-      return ctl.key(latest.current) === entry.key ? ctl.undoEntryId() : undefined;
+      return currentKey() === entry.key ? ctl.undoEntryId() : undefined;
     };
     return toast.bindHistory({
       capture: () => {
@@ -137,7 +144,7 @@ export function useHistory(
       },
       current,
     });
-  }, [ctl, flush, room]);
+  }, [ctl, flush, room, currentKey]);
 
   useLayoutEffect(
     () =>

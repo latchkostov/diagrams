@@ -60,7 +60,7 @@ function publish() {
   const next = new Map([...blocking, deferred, held].filter((t): t is ToastState => t !== null).map((t) => [t.id, t]));
   const removed = [...live.values()].filter((t) => !next.has(t.id));
   live = next;
-  current = held ?? blocking.at(-1) ?? deferred;
+  current = blocking.at(-1) ?? held ?? deferred;
   for (const t of removed) t.onDismiss?.();
   emit();
 }
@@ -109,10 +109,9 @@ export const toast = {
   },
   /** Keep an engaged notification in place, but never keep an obsolete Undo alive. */
   invalidateUndo() {
+    const entryId = undoHistory?.current();
     const invalidate = (t: ToastState | null): ToastState | null =>
-      t?.action?.undoes && !t.undoUnavailable && t.undoEntryId !== undoHistory?.current()
-        ? { ...t, undoUnavailable: true }
-        : t;
+      t?.action?.undoes && !t.undoUnavailable && t.undoEntryId !== entryId ? { ...t, undoUnavailable: true } : t;
     held = invalidate(held);
     deferred = invalidate(deferred);
     for (let i = 0; i < blocking.length; i++) blocking[i] = invalidate(blocking[i])!;
@@ -157,9 +156,12 @@ export const toast = {
     if (deferred?.action?.undoes) toast.dismiss(deferred.id);
   },
   /** Toaster's synchronous input boundary; no timer may move or replace an engaged action. */
-  contact(contactType: ToastContact, active: boolean) {
+  contact(contactType: ToastContact, active: boolean, id = current?.id) {
+    // A sticky task owns its controls independently of ordinary toast engagement.
+    if (id === current?.id && current?.blocking) return;
+    if (id !== current?.id && (active || id !== held?.id)) return;
     contact.send({ type: "contact", contact: contactType, active });
-    held = contact.state.value === "engaged" ? current : null;
+    held = contact.state.value === "engaged" ? (held ?? current) : null;
     publish();
   },
   release() {
@@ -172,6 +174,9 @@ export const toast = {
   },
   get current() {
     return current;
+  },
+  get retained() {
+    return held?.id !== current?.id ? held : null;
   },
 };
 

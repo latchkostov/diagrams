@@ -195,7 +195,7 @@
   left: 50%;
   /* Lifted above the canvas's bottom bars by the Toaster (toastStack.ts). */
   bottom: 24px;
-  z-index: 300;
+  z-index: 240;
   transform: translateX(-50%);
   display: flex;
   align-items: center;
@@ -210,6 +210,16 @@
   line-height: 1.35;
   box-shadow: var(--shadow-3);
   animation: ix-toast-in var(--dur-2) var(--ease-out);
+}
+
+/* Retain geometry without intercepting modal controls or their keyboard focus. */
+.ix-toast[data-suspended],
+body:has([aria-modal="true"]) .ix-toast:not([data-blocking]) {
+  visibility: hidden;
+}
+
+.ix-toast[data-blocking] {
+  z-index: 300;
 }
 
 @keyframes ix-toast-in {

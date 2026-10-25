@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { Glyph } from "./glyphs";
-import { subscribe, toast, type ToastKind } from "./toast";
+import { subscribe, toast, type ToastKind, type ToastState } from "./toast";
 import { avoidedBars, toastBottom } from "./toastStack";
 import { t as tr } from "../../i18n";
 
@@ -15,15 +15,9 @@ const ICON: Record<ToastKind, Parameters<typeof Glyph>[0]["name"]> = {
 export function Toaster() {
   const t = useSyncExternalStore(subscribe, () => toast.current);
   const engaged = useSyncExternalStore(subscribe, () => toast.engaged);
+  const retained = useSyncExternalStore(subscribe, () => toast.retained);
   useEffect(() => {
-    if (!t || !t.duration || engaged) return;
-    const id = setTimeout(() => {
-      if (!toast.engaged) toast.dismiss(t.id);
-    }, t.duration);
-    return () => clearTimeout(id);
-  }, [t, engaged]);
-  useEffect(() => {
-    const endPress = () => toast.contact("press", false);
+    const endPress = () => toast.contact("press", false, toast.retained?.id ?? toast.current?.id);
     window.addEventListener("pointerup", endPress);
     window.addEventListener("pointercancel", endPress);
     window.addEventListener("blur", endPress);
@@ -34,6 +28,21 @@ export function Toaster() {
       toast.release();
     };
   }, []);
+  return [retained, t]
+    .filter((value): value is ToastState => value !== null)
+    .map((value) => (
+      <ToastView key={value.id} t={value} suspended={value !== t} engaged={!value.blocking && engaged} />
+    ));
+}
+
+function ToastView({ t, suspended, engaged }: { t: ToastState; suspended: boolean; engaged: boolean }) {
+  useEffect(() => {
+    if (!t.duration || engaged || suspended) return;
+    const id = setTimeout(() => {
+      if (!toast.engaged) toast.dismiss(t.id);
+    }, t.duration);
+    return () => clearTimeout(id);
+  }, [t, engaged, suspended]);
   // An action that asks for the focus (a long task's Cancel) takes it from wherever it was, and gives it back.
   const action = useRef<HTMLButtonElement>(null);
   const focusAction = !!t?.action?.focus;
@@ -59,7 +68,8 @@ export function Toaster() {
     if (!t) return;
     const place = () => {
       const node = el.current;
-      if (!node || toast.engaged) return;
+      if (!node || suspended || (!t.blocking && (toast.engaged || document.querySelector('[aria-modal="true"]'))))
+        return;
       // Centred on the canvas pane, not the window: with side panels open the window's centre is near
       // the pane's edge, and the toast reached over the AI panel and the minimap.
       const area = document.querySelector<HTMLElement>("[data-toast-area]")?.getBoundingClientRect();
@@ -76,7 +86,7 @@ export function Toaster() {
       clearInterval(id);
       window.removeEventListener("resize", place);
     };
-  }, [t]);
+  }, [t, suspended]);
   if (!t) return null;
   return createPortal(
     <div
@@ -88,13 +98,16 @@ export function Toaster() {
       data-testid="toast"
       data-kind={t.kind}
       data-toast
+      data-blocking={t.blocking || undefined}
+      data-suspended={suspended || undefined}
+      inert={suspended}
       data-editor-overlay
-      onPointerEnter={() => toast.contact("pointer", true)}
-      onPointerLeave={() => toast.contact("pointer", false)}
-      onPointerDownCapture={() => toast.contact("press", true)}
-      onFocusCapture={() => toast.contact("focus", true)}
+      onPointerEnter={() => toast.contact("pointer", true, t.id)}
+      onPointerLeave={() => toast.contact("pointer", false, t.id)}
+      onPointerDownCapture={() => toast.contact("press", true, t.id)}
+      onFocusCapture={() => toast.contact("focus", true, t.id)}
       onBlurCapture={(e) => {
-        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) toast.contact("focus", false);
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) toast.contact("focus", false, t.id);
       }}
     >
       {(t.kind !== "busy" || t.progress === undefined) && (

@@ -16,7 +16,7 @@ import { ImportRetryLab } from "./ImportRetryLab";
 import { LiveKeyboardLab } from "./LiveKeyboardLab";
 import { CallPillUpdatesLab } from "./CallPillUpdatesLab";
 import { SlowTraceLocaleLab } from "./SlowTraceLocaleLab";
-import { measuredHierarchyFixture, nestedBoundariesFixture } from "./nestedBoundariesFixture";
+import { measuredHierarchyFixture, mixedBoundaryDragFixture, nestedBoundariesFixture } from "./nestedBoundariesFixture";
 import { captionContrastFixture } from "./captionContrastFixture";
 import { GalleryCatalogLab } from "./GalleryCatalogLab";
 import { autoscalingFixture } from "./autoscalingFixture";
@@ -393,6 +393,14 @@ const diagramPresets: Preset[] = [
     group: "Diagrams",
     description: "A child-first hierarchy with a node and note: move or wrap the selection, then follow it with Tab.",
     diagram: () => structuredClone(nestedBoundariesFixture),
+  },
+  {
+    kind: "diagram",
+    id: "mixed-boundary-drop",
+    title: "Mixed boundary drop",
+    group: "Diagrams",
+    description: "Drag Sibling and Child out of Parent together, then undo their complete drop.",
+    diagram: () => structuredClone(mixedBoundaryDragFixture),
   },
   {
     kind: "diagram",

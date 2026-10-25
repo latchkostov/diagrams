@@ -173,6 +173,36 @@ describe("history-bound Undo", () => {
 });
 
 describe("a task's Cancel owns its toast", () => {
+  it("preempts a retained notification without changing it or transferring its engagement", () => {
+    const first = toast.info("Undo", { action: { label: "Undo", run() {} } });
+    toast.contact("focus", true);
+    const retained = toast.current;
+    const task = toast.busy("Exporting", { blocking: true });
+    expect(toast.current?.id).toBe(task);
+    expect(toast.retained).toBe(retained);
+    toast.contact("focus", true, task);
+    toast.progress(task, 0.5);
+    expect(toast.current).toMatchObject({ id: task, progress: 0.5 });
+    expect(toast.retained).toBe(retained);
+    toast.dismiss(task);
+    expect(toast.current?.id).toBe(first);
+    expect(toast.retained).toBeNull();
+  });
+
+  it("resolves history identity once even when held and deferred are the same Undo", () => {
+    const entry = {};
+    const current = vi.fn(() => entry);
+    const unbind = toast.bindHistory({ capture: () => entry, current });
+    try {
+      toast.info("Undo", { action: { label: "Undo", run() {}, undoes: true } });
+      toast.contact("focus", true);
+      toast.invalidateUndo();
+      expect(current).toHaveBeenCalledTimes(1);
+    } finally {
+      unbind();
+    }
+  });
+
   it("keeps Cancel and progress visible until its owner finishes, then shows the latest notification", () => {
     const task = toast.busy("Exporting", { blocking: true });
     toast.info("Earlier notification");
