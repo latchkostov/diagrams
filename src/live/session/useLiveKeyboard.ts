@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { isEditableTarget } from "../../editor/shortcuts";
 import { inCanvas } from "../../editor/useCanvasShortcuts";
-import type { InteractionController, LiveKey } from "../../canvas/interaction";
+import type { InteractionController, LiveKey, ReadoutLayer } from "../../canvas/interaction";
 import { isRecordingActive } from "../record/framing";
 
 import type { SessionProps } from "../LiveSession";
@@ -26,6 +26,9 @@ const ownTooltipOpen = (t: Element) =>
 const POINTED = ".react-flow__node-diagram, .react-flow__edge, [data-call-edge], [data-live-readout]";
 /** A selection is cleared before Esc backs out of a trace or live view. */
 const SELECTED = ".react-flow__node.selected, .react-flow__edge.selected";
+/** Basic keyboard adapters need only state and actions; the full layer also checks placement and eligibility. */
+type KeyboardReadouts = Pick<ReadoutLayer, "get" | "pin" | "close"> &
+  Partial<Pick<ReadoutLayer, "visible" | "readable">>;
 
 export function useLiveKeyboard({
   session,
@@ -39,7 +42,7 @@ export function useLiveKeyboard({
   session: LiveSessionState;
   spotlight: TraceSpotlight;
   /** The canvas's interaction controller: it decides which level takes the key (liveKeys.ts) and journals it. */
-  interaction: Pick<InteractionController, "liveKey" | "readouts">;
+  interaction: Pick<InteractionController, "liveKey"> & { readonly readouts: KeyboardReadouts | null };
 }) {
   const { controller, traceRef, setTrace } = session;
   const { slowRef } = spotlight;
@@ -71,7 +74,7 @@ export function useLiveKeyboard({
       const t = e.target;
       const readouts = interaction.readouts;
       const reading = readouts?.get();
-      const visible = !!reading && !!readouts?.visible(reading);
+      const visible = !!reading && readouts?.visible?.(reading) !== false;
       const item =
         t instanceof Element
           ? t.closest<HTMLElement>(".react-flow__node-diagram[data-id], .react-flow__edge[data-id]")
@@ -120,7 +123,7 @@ export function useLiveKeyboard({
           hovered ||
           (!!itemTarget &&
             t === item &&
-            !!readouts?.readable(itemTarget) &&
+            readouts?.readable?.(itemTarget) !== false &&
             !(canName && item!.classList.contains("selected"))),
         owner: !!document.querySelector(ESC_OWNERS) || (key === "escape" && t instanceof Element && ownTooltipOpen(t)),
         selection,
