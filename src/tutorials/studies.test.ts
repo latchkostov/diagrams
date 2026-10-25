@@ -8,7 +8,10 @@ import { tutorialMetadata } from "./metadata";
 import { studyCheckout } from "./catalog/studyCheckout";
 import { studyDispatch } from "./catalog/studyDispatch";
 import { studyPayments } from "./catalog/studyPayments";
-import { observeSteps, resolveSubjects } from "./checks";
+import { studyFanout } from "./catalog/studyFanout";
+import { studyRag } from "./catalog/studyRag";
+import { studyCells } from "./catalog/studyCells";
+import { edgeTargets, observeSteps, resolveSubjects } from "./checks";
 import { runnerInitial, runnerMachine, targetsShown } from "./machine";
 import { solutionNow } from "./solution";
 
@@ -61,10 +64,11 @@ describe("design studies", () => {
       live.dispose();
     }
   });
-  for (const tutorial of [studyCheckout, studyDispatch, studyPayments]) {
+  for (const tutorial of [studyCheckout, studyDispatch, studyPayments, studyFanout, studyRag, studyCells]) {
     it(`${tutorial.id} resolves every milestone's whole solution before its edits begin`, () => {
       if (typeof tutorial.start !== "function") throw new Error("Expected an inline practice diagram");
-      const subjects = resolveSubjects(tutorial, tutorial.start());
+      const initial = tutorial.start();
+      const subjects = resolveSubjects(tutorial, initial);
       tutorial.steps.forEach((step, index) => {
         const snapshot = {
           state: {
@@ -79,7 +83,7 @@ describe("design studies", () => {
           selected: [],
           announcement: "",
           nearMiss: null,
-          edges: {},
+          edges: edgeTargets(initial, subjects),
         };
         expect(() => solutionNow(tutorial, snapshot)).not.toThrow();
         // Only predecessors have made their nodes when this milestone's path is requested.

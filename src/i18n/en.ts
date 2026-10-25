@@ -4492,5 +4492,115 @@ const en = {
   "tutorials.studyPayments.finish":
     "Compare your outbox, idempotency contract, breaker and poison-message path with the reference design. How would you reconcile an uncertain PSP reply?",
   "tutorials.studyPayments.reference": "Open the reference design",
+  "tutorials.studyFanout.title": "Design study: notification fan-out",
+  "tutorials.studyFanout.summary":
+    "Deliver one event through email, SMS and push while respecting three provider limits.",
+  "tutorials.studyFanout.source": "Notification events",
+  "tutorials.studyFanout.events": "Notification router",
+  "tutorials.studyFanout.emailSender": "Email sender",
+  "tutorials.studyFanout.smsSender": "SMS sender",
+  "tutorials.studyFanout.pushSender": "Push sender",
+  "tutorials.studyFanout.email": "Email provider",
+  "tutorials.studyFanout.sms": "SMS provider",
+  "tutorials.studyFanout.push": "Push provider",
+  "tutorials.studyFanout.searchQueue": "Queue",
+  "tutorials.studyFanout.searchSqs": "SQS",
+  "tutorials.studyFanout.searchBusQueue": "Service Bus Queue",
+  "tutorials.studyFanout.limitsRun": "Provider limits",
+  "tutorials.studyFanout.outageRun": "SMS outage",
+  "tutorials.studyFanout.emailDuringOutage": "Email delivers while SMS is down",
+  "tutorials.studyFanout.pushDuringOutage": "Push delivers while SMS is down",
+  "tutorials.studyFanout.limitsTitle": "Respect all three provider limits",
+  "tutorials.studyFanout.limitsGoal":
+    "Email allows 4 requests/s, SMS 2 and push 6. Run Provider limits and deliver through every channel with Rejected at 0.",
+  "tutorials.studyFanout.limitsHint":
+    "On each sender-to-provider Request, open Simulation ▸ Advanced and set Connection pool to 1. The providers take 250, 500 and 200 ms per request.",
+  "tutorials.studyFanout.limitsDone": "A separate connection pool paces each provider without raising its quota.",
+  "tutorials.studyFanout.queuesTitle": "Give each channel its own dead-letter path",
+  "tutorials.studyFanout.queuesGoal":
+    "Insert a queue before each sender, make its incoming connection a Message, and add a separate dead-letter queue with Max deliveries set to 2 on the main queue.",
+  "tutorials.studyFanout.queuesHint":
+    "Use Insert node on each router-to-sender Request: pick Queue, SQS and Service Bus Queue. Add another of each after its queue and mark that connection Dead-letter path.",
+  "tutorials.studyFanout.queuesDone":
+    "Separate queues isolate waiting work, and a dead-letter path preserves messages that exhaust delivery attempts.",
+  "tutorials.studyFanout.outageTitle": "Survive the SMS outage",
+  "tutorials.studyFanout.outageGoal":
+    "Run SMS outage. Email and push must keep delivering, failed SMS messages must reach their DLQ, and SMS must deliver again after recovery.",
+  "tutorials.studyFanout.outageHint":
+    "SMS goes down at 1 s and returns at 4 s. Watch its queue and DLQ while the other channels carry on; all provider Rejected counts must stay at 0.",
+  "tutorials.studyFanout.outageDone":
+    "One provider's outage stays in its channel; exhausted messages remain available for investigation.",
+  "tutorials.studyFanout.finish":
+    "Compare your queues, connection pools and dead-letter paths with the reference. How would you investigate and replay the parked SMS messages?",
+  "tutorials.studyFanout.reference": "Open the notification reference",
+  "tutorials.studyRag.title": "Design study: a RAG latency budget",
+  "tutorials.studyRag.summary":
+    "Answer within a 2-second p95 budget, cache repeated questions and keep answering during reindexing.",
+  "tutorials.studyRag.questions": "Questions",
+  "tutorials.studyRag.embeddings": "RAG service and embeddings",
+  "tutorials.studyRag.index": "Vector search",
+  "tutorials.studyRag.llm": "Answer model",
+  "tutorials.studyRag.questionsRun": "Repeated questions",
+  "tutorials.studyRag.reindexRun": "Reindex under load",
+  "tutorials.studyRag.searchCache": "redis cache",
+  "tutorials.studyRag.budgetTitle": "Answer within 2 seconds p95",
+  "tutorials.studyRag.budgetGoal":
+    "Run Repeated questions and bring Questions' p95 within 2,000 ms while the answer model completes requests.",
+  "tutorials.studyRag.budgetHint":
+    "Open Answer model ▸ Simulation and set Latency to 1,000 ms. Questions' p95 includes the embeddings, vector search and model Requests it waits for.",
+  "tutorials.studyRag.budgetDone":
+    "The waiting caller's p95 measures the whole downstream answer path, not just its own processing time.",
+  "tutorials.studyRag.cacheTitle": "Cache repeated questions",
+  "tutorials.studyRag.cacheGoal":
+    "Add a Redis cache after RAG service and embeddings. Set Share to 80% on its cache Request and 20% on both its vector-search and answer-model Requests.",
+  "tutorials.studyRag.cacheHint":
+    "Use quick-add to pick Redis. Edit Share under Simulation on all three outgoing Requests; the split represents cache hits and misses.",
+  "tutorials.studyRag.cacheDone":
+    "Share models an assumed cache hit rate; only misses visit vector search and the answer model.",
+  "tutorials.studyRag.reindexTitle": "Survive the reindex",
+  "tutorials.studyRag.reindexGoal":
+    "Run Reindex under load: vector search becomes 5× slower. Keep p95 within 2,000 ms, serve cache hits and model answers, and finish without failures.",
+  "tutorials.studyRag.reindexHint":
+    "Set Vector search ▸ Simulation ▸ Latency to 50 ms to reserve reindex headroom. The seeded run keeps the 5× Fault active, including for cache misses.",
+  "tutorials.studyRag.reindexDone":
+    "Caching reduces model traffic, while search headroom keeps the miss path inside the latency budget during reindexing.",
+  "tutorials.studyRag.finish":
+    "Compare the reference's retrieval and ingestion paths. This study assumes an 80% hit rate; how would you measure that rate and answer quality in a real system?",
+  "tutorials.studyRag.reference": "Open the RAG reference",
+  "tutorials.studyCells.title": "Design study: bookings in cells",
+  "tutorials.studyCells.summary":
+    "Split one large booking service into cells, contain a bad deploy and evacuate a region.",
+  "tutorials.studyCells.travellers": "Travellers",
+  "tutorials.studyCells.global": "Global routing",
+  "tutorials.studyCells.east": "East region entry",
+  "tutorials.studyCells.booking": "Bookings",
+  "tutorials.studyCells.deployRun": "Bad cell deploy",
+  "tutorials.studyCells.evacuateRun": "Evacuate East",
+  "tutorials.studyCells.searchNeighbour": "Java Service",
+  "tutorials.studyCells.searchBalancer": "Load Balancer",
+  "tutorials.studyCells.searchBackup": "Go Service",
+  "tutorials.studyCells.splitTitle": "Split the service into cells",
+  "tutorials.studyCells.splitGoal":
+    "Add a Java Service after East region entry. Put Bookings and the Java Service in separate boundaries so each cell has its own service.",
+  "tutorials.studyCells.splitHint":
+    "Pick Java Service in quick-add. Select each service separately and use Add boundary (Ctrl/⌘+G). Keep both Requests from the regional entry.",
+  "tutorials.studyCells.splitDone":
+    "Each cell owns its service; regional routing distributes requests without making one cell call another.",
+  "tutorials.studyCells.deployTitle": "Contain a bad deploy",
+  "tutorials.studyCells.deployGoal":
+    "Run Bad cell deploy. Bookings must fail requests in its cell while every service in the neighbouring cell keeps processing with Failed at 0.",
+  "tutorials.studyCells.deployHint":
+    "The seeded Fault makes Bookings fail at 1 s. Compare both cells' counters after 5 s; zero failures only count when the neighbour also processes traffic.",
+  "tutorials.studyCells.deployDone": "Independent cells contain a bad build's failures to the cell that received it.",
+  "tutorials.studyCells.evacuateTitle": "Evacuate a region",
+  "tutorials.studyCells.evacuateGoal":
+    "Add a Load Balancer after Global routing, then a Go Service in its own boundary. Run Evacuate East and keep bookings flowing in the new region without failures or drops.",
+  "tutorials.studyCells.evacuateHint":
+    "Pick Load Balancer, then Go Service in quick-add. Add a boundary around the Go Service. Global routing's health checks avoid East region entry when it goes down at 1 s.",
+  "tutorials.studyCells.evacuateDone":
+    "A healthy second region with spare capacity takes bookings when the first region's entry goes down.",
+  "tutorials.studyCells.finish":
+    "Compare the reference's regional entries and complete cells. What storage, replication and capacity would each of your simplified cells need before a real evacuation?",
+  "tutorials.studyCells.reference": "Open the cell-based bookings reference",
 } as const;
 export default en;

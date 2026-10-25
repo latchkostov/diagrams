@@ -48,6 +48,9 @@ import { backlogLag } from "./catalog/backlogLag";
 import { dependencies2 } from "./catalog/dependencies2";
 import { studyCheckout } from "./catalog/studyCheckout";
 import { studyPayments } from "./catalog/studyPayments";
+import { studyFanout } from "./catalog/studyFanout";
+import { studyRag } from "./catalog/studyRag";
+import { studyCells } from "./catalog/studyCells";
 import { dependencyVisibility } from "../canvas/dependencyVisibility";
 import { authorADrill } from "./catalog/authorADrill";
 import { faults } from "./catalog/faults";
@@ -830,6 +833,61 @@ async function skipLanding(tutorial: Tutorial, k: number) {
   else localStorage.setItem("diagrams.tutorials.v1", stored);
   return landed;
 }
+
+describe("design study evidence", () => {
+  const play = (s: Sandbox, ms: number) => {
+    for (let elapsed = 0; elapsed < ms; elapsed += 250) {
+      s.live!.advance(250);
+      s.live!.publish();
+    }
+  };
+
+  it("fan-out cannot pass while any provider rejects requests", async () => {
+    const s = sandbox(studyFanout);
+    await reach(s, studyFanout, 0);
+    s.learn({ kind: "runSimulation", id: "provider-limits" });
+    play(s, 6000);
+    expect(state(s)).toMatchObject({ index: 0, value: "active" });
+    expect(s.live!.getState().snapshot.nodes[s.subject("sms")].rejected).toBeGreaterThan(0);
+    await skip(s, studyFanout);
+  });
+
+  it("RAG cannot pass with the initial slow model, then measures completed answers after the fix", async () => {
+    const s = sandbox(studyRag);
+    await reach(s, studyRag, 0);
+    s.learn({ kind: "runSimulation", id: "questions" });
+    play(s, 6000);
+    expect(state(s)).toMatchObject({ index: 0, value: "active" });
+    expect(s.live!.getState().snapshot.nodes[s.subject("questions")].latency!.p95).toBeGreaterThan(2000);
+    for (const demo of studyRag.steps[0].demo) s.learn(demo);
+    play(s, 6000);
+    expect(s.live!.getState().snapshot.nodes[s.subject("questions")].latency!.p95).toBeLessThanOrEqual(2000);
+    expect(beyond(s, 0)).toBe(true);
+  });
+
+  it("fan-out has recovery evidence by six simulated seconds, including deliveries during the outage", async () => {
+    const s = sandbox(studyFanout);
+    await reach(s, studyFanout, 2);
+    s.learn({ kind: "runSimulation", id: "sms-outage" });
+    play(s, 6000);
+    expect(state(s).value).toBe("finished");
+    expect(s.live!.getState().run!.expectations.map((e) => e.status)).toEqual(["pass", "pass"]);
+  });
+
+  it("cell isolation requires both real failures in the deployed cell and successful neighbouring traffic", async () => {
+    const s = sandbox(studyCells);
+    await reach(s, studyCells, 1);
+    s.learn({ kind: "runSimulation", id: "bad-deploy" });
+    // Neither zero failures before the deploy nor an idle neighbour establishes containment.
+    expect(state(s)).toMatchObject({ index: 1, value: "active" });
+    play(s, 6000);
+    expect(beyond(s, 1)).toBe(true);
+    const nodes = s.live!.getState().snapshot.nodes;
+    expect(nodes[s.subject("booking")].failed).toBeGreaterThan(0);
+    expect(nodes[s.subject("neighbour")].processed).toBeGreaterThanOrEqual(5);
+    expect(nodes[s.subject("neighbour")].failed).toBe(0);
+  });
+});
 
 describe("every tutorial's completion contract", () => {
   for (const tutorial of [...tutorials, ...tutorialFixtures])
