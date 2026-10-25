@@ -63,7 +63,7 @@ it.each([false, true])("reselection preserves every tuned caller field without a
   }
 });
 
-it("caller tuning stays one Undo step even when history flushes between fields", () => {
+it.each(["none", "first", "both"])("caller history coalesces only explicit matching tags (%s)", (tagged) => {
   const diagram = breakerFixture();
   const original = structuredClone(diagram.edges[1].props!.caller as EdgeSimProps["caller"]);
   let history = createHistory(JSON.stringify(original), original);
@@ -78,10 +78,19 @@ it("caller tuning stays one Undo step even when history flushes between fields",
       history = commit(history, { key: JSON.stringify(next), value: next, mergeKey: options?.merge, at: 1 });
     }),
   };
-  effectiveCallerPolicy(editor, "call", null)!.set({ retry: { ...original!.retry!, backoffMs: 321 } });
-  effectiveCallerPolicy(editor, "call", null)!.set({ breaker: { ...original!.breaker, openMs: 2345 } });
+  effectiveCallerPolicy(editor, "call", null)!.set(
+    { retry: { ...original!.retry!, backoffMs: 321 } },
+    tagged !== "none" ? { merge: "inspector:edge:call:retry-backoff" } : undefined,
+  );
+  const retryTuned = structuredClone(diagram.edges[1].props!.caller as EdgeSimProps["caller"]);
+  effectiveCallerPolicy(editor, "call", null)!.set(
+    { breaker: { ...original!.breaker, openMs: 2345 } },
+    tagged === "both" ? { merge: "inspector:edge:call:retry-backoff" } : undefined,
+  );
   const tuned = structuredClone(diagram.edges[1].props!.caller as EdgeSimProps["caller"]);
-  expect(present(undo(history)).value).toEqual(original);
+  expect(history.index).toBe(tagged === "both" ? 1 : 2);
+  expect(present(undo(history)).value).toEqual(tagged === "both" ? original : retryTuned);
+  if (tagged !== "both") expect(present(undo(undo(history))).value).toEqual(original);
   expect(present(redo(undo(history))).value).toEqual(tuned);
   // Separately flushed timeout edits retain their existing, independent Undo steps.
   effectiveCallerPolicy(editor, "call", null)!.set({ deadlineMs: 789 });
@@ -132,8 +141,10 @@ it.each([true, false])("edits a saved override once and withholds an unsaved ove
   expect(effective.policy.blocking).toBe(true);
   expect(effective.caller.replyMs).toBe(30);
   expect(effective.editable).toBe(saved);
-  effective.set({ wait: "non-blocking" });
+  const options = { merge: "inspector:edge:call:wait" };
+  effective.set({ wait: "non-blocking" }, options);
   expect(updateMeta).toHaveBeenCalledTimes(saved ? 1 : 0);
+  if (saved) expect(updateMeta.mock.calls[0][1]).toBe(options);
   expect(editor.setEdgeProps).not.toHaveBeenCalled();
   expect(controller.getState().running?.setup?.edges?.call.caller?.wait).toBe(saved ? "non-blocking" : "blocking");
   expect(diagram.edges[1].props?.caller).toEqual({ wait: "non-blocking", replyMs: 30 });

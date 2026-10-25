@@ -1,4 +1,4 @@
-import type { EditorApi } from "./types";
+import type { EditOptions, EditorApi } from "./types";
 import type { EdgeSimProps } from "../sim/types";
 import type { LiveUi } from "../live/context";
 import { planningHost } from "../live/planningHost";
@@ -30,7 +30,8 @@ export function effectiveCallerPolicy(
     simulation: saved?.title,
     policy: callPolicy(editor.getNode(edge.from)?.stencil ?? "", caller),
     editable,
-    set(patch: EdgeSimProps["caller"]) {
+    // A caller may opt into merging split writes; ordinary edits keep their own Undo steps.
+    set(patch: EdgeSimProps["caller"], options?: EditOptions) {
       if (!editable) return;
       const normalized = Object.fromEntries(
         Object.entries({
@@ -40,10 +41,6 @@ export function effectiveCallerPolicy(
           ...(Object.hasOwn(patch ?? {}, "breaker") && patch?.breaker === undefined ? { breaker: null } : {}),
         }).filter(([, v]) => v !== undefined),
       );
-      const options =
-        Object.hasOwn(patch ?? {}, "retry") || Object.hasOwn(patch ?? {}, "breaker")
-          ? { merge: `inspector:edge:${edgeId}:caller` }
-          : undefined;
       if (saved) {
         // Reselecting an existing value must not write or disturb the pending Undo step.
         if (JSON.stringify(normalized) === JSON.stringify(override?.caller ?? {})) return;

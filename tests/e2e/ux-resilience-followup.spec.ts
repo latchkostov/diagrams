@@ -69,7 +69,7 @@ test("Request groups expose plain associated explanations and preserve collapsed
 });
 
 test("reselecting enabled resilience controls preserves tuning and the Undo step", async ({ page }) => {
-  // Caller fields share a history tag. Keep their edit timestamps together independently of runner load.
+  // Distinct flushed edits stay separate even inside the history merge window.
   await page.clock.setFixedTime(new Date("2026-10-24T12:00:00Z"));
   const d = breakerFixture();
   const original = d.edges[1].props?.caller as import("../../src/sim/types").EdgeSimProps["caller"];
@@ -84,10 +84,11 @@ test("reselecting enabled resilience controls preserves tuning and the Undo step
   await page.getByTestId("inspector-section-edge-simulation").click();
   await page.getByTestId("inspector-section-retry-details").click();
   await page.getByTestId("inspector-field-retry-backoff").fill("321");
-  // Force the debounce boundary CI can cross between edits; both fields must still coalesce.
+  // Force the debounce boundary CI can cross between these distinct edits.
   await waitForHistoryIdle(page);
   await page.getByTestId("inspector-section-breaker-details").click();
   await page.getByTestId("inspector-field-breaker-openMs").fill("2345");
+  await waitForHistoryIdle(page);
   const caller = async () => (await savedDiagram(page)).edges.find((edge) => edge.id === "call")?.props?.caller;
   const tuned = {
     ...original,
@@ -103,7 +104,11 @@ test("reselecting enabled resilience controls preserves tuning and the Undo step
   await expect(page.getByTestId("inspector-field-retry-backoff")).toHaveValue("321");
   await expect.poll(caller).toEqual(tuned);
   await page.getByTestId("undo-button").click();
+  await expect.poll(caller).toEqual({ ...original, retry: tuned.retry });
+  await page.getByTestId("undo-button").click();
   await expect.poll(caller).toEqual(original);
+  await page.getByTestId("redo-button").click();
+  await expect.poll(caller).toEqual({ ...original, retry: tuned.retry });
   await page.getByTestId("redo-button").click();
   await expect.poll(caller).toEqual(tuned);
 });
