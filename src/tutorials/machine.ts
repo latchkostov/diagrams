@@ -15,7 +15,7 @@ import { defineMachine, type Transition } from "../lib/machine";
  * connects) is passed over, and leaving Live while watching traffic goes back to "Go live". `completing` is the
  * moment between: the check holds, the strip says so, and the step waits for the learner to finish, never for a timer.
  */
-export type RunnerPhase = "intro" | "active" | "hinting" | "completing" | "finished" | "closed";
+export type RunnerPhase = "intro" | "reconstructing" | "active" | "hinting" | "completing" | "finished" | "closed";
 export interface RunnerState {
   value: RunnerPhase;
   /** The current step (intro: where Start begins; finished: the last). */
@@ -28,6 +28,8 @@ export interface RunnerState {
   latched: readonly boolean[];
   /** From the definition: which steps latch. */
   sticky: readonly boolean[];
+  /** Which steps have an edit to perform on Skip, independently of whether their completion is sticky. */
+  demos: readonly boolean[];
   /** The step done most recently, for its "done" words. */
   last: number | null;
   highlights: boolean;
@@ -37,13 +39,15 @@ export interface RunnerState {
 }
 export type RunnerEvent =
   /** fix: a near miss's one-click fix ("Use Orders API"): the step's own demo, as Skip does it. */
-  | { type: "start" | "resume" | "showMe" | "fix" | "restart" | "exit" }
+  | { type: "start" | "resume" | "reconstructed" | "showMe" | "fix" | "restart" | "exit" }
   | { type: "skip"; stepId: string }
   | { type: "observe"; met: readonly boolean[]; settled: readonly boolean[] }
   | { type: "highlights"; on: boolean };
 export type RunnerCommand =
   /** Do these steps for the learner, in order, each once its predecessors' changes have landed. */
   | { type: "demo"; steps: readonly number[] }
+  /** Restore saved predecessors, settling their naming before handing control to the learner. */
+  | { type: "reconstruct"; steps: readonly number[] }
   /** Put the starting diagram back and leave Live. */
   | { type: "reset" }
   /** Bring the current step's target into view (through the canvas's own camera and focus paths). */
@@ -58,7 +62,7 @@ export const inStep = (s: RunnerState) => (STEP_STATES as readonly string[]).inc
 
 export function runnerInitial(
   sticky: readonly boolean[],
-  opts: { highlights: boolean; resumeAt: number; stepIds?: readonly string[] },
+  opts: { highlights: boolean; resumeAt: number; stepIds?: readonly string[]; demos?: readonly boolean[] },
 ): RunnerState {
   const none = sticky.map(() => false);
   return {
@@ -69,6 +73,7 @@ export function runnerInitial(
     settled: none,
     latched: none,
     sticky,
+    demos: opts.demos ?? sticky.map((on) => !on),
     last: null,
     highlights: opts.highlights,
     resumeAt: Math.max(0, Math.min(opts.resumeAt, sticky.length - 1)),
@@ -136,17 +141,17 @@ const skip: Row[] = [
   // A step with a demo is done for you, then passes like any other.
   {
     target: "active",
-    guard: (s) => !s.sticky[s.index] && s.value === "active",
+    guard: (s) => s.demos[s.index] && s.value === "active",
     effects: (s) => [{ type: "demo", steps: [s.index] }],
   },
   {
     target: "hinting",
-    guard: (s) => !s.sticky[s.index] && s.value === "hinting",
+    guard: (s) => s.demos[s.index] && s.value === "hinting",
     effects: (s) => [{ type: "demo", steps: [s.index] }],
   },
   {
     target: "completing",
-    guard: (s) => !s.sticky[s.index] && s.value === "completing",
+    guard: (s) => s.demos[s.index] && s.value === "completing",
     effects: (s) => [{ type: "demo", steps: [s.index] }],
   },
   // A moment (traffic seen) has nothing to do: it's latched.
@@ -183,10 +188,11 @@ const stepRows = (state: "active" | "hinting" | "completing") => ({
 
 export const runnerMachine = defineMachine<RunnerState, RunnerEvent, RunnerCommand>({
   initial: runnerInitial([false, true], { highlights: true, resumeAt: 0 }),
-  states: ["intro", "active", "hinting", "completing", "finished", "closed"],
+  states: ["intro", "reconstructing", "active", "hinting", "completing", "finished", "closed"],
   events: [
     { type: "start" },
     { type: "resume" },
+    { type: "reconstructed" },
     { type: "observe", met: [true, false], settled: [true, true] },
     { type: "observe", met: [true, false], settled: [false, true] },
     { type: "observe", met: [true, true], settled: [true, true] },
@@ -214,7 +220,7 @@ export const runnerMachine = defineMachine<RunnerState, RunnerEvent, RunnerComma
       ),
       // Continue: the earlier steps are done for you (the sandbox isn't kept between visits), then on from there.
       resume: {
-        target: "active",
+        target: "reconstructing",
         guard: (s) => s.resumeAt > 0,
         reduce: (s) => ({
           ...s,
@@ -222,11 +228,28 @@ export const runnerMachine = defineMachine<RunnerState, RunnerEvent, RunnerComma
           index: s.resumeAt,
         }),
         effects: (s) => [
-          { type: "demo", steps: Array.from({ length: s.resumeAt }, (_, i) => i) },
+          { type: "reconstruct", steps: Array.from({ length: s.resumeAt }, (_, i) => i) },
           { type: "announce", step: s.resumeAt },
         ],
       },
       highlights: highlights("intro"),
+      exit,
+    },
+    reconstructing: {
+      // Keep observations current without persisting temporary replay positions.
+      observe: {
+        target: "reconstructing",
+        guard: fits,
+        reduce: (s, e) =>
+          e.type === "observe" ? { ...s, observed: e.met, settled: e.settled, latched: latchSeen(s, e.met) } : s,
+      },
+      reconstructed: goTo(
+        (s) => position(s, s),
+        () => true,
+        () => true,
+      ),
+      restart,
+      highlights: highlights("reconstructing"),
       exit,
     },
     active: {

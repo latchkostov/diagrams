@@ -108,6 +108,7 @@ export function relationMenu(ctx: ActionContext): MenuNode[] {
 /** Replaces the old "Make sync / Make async" row; the edge menu keeps its length. */
 export const relationshipAction: Action = {
   id: "edge.relationship",
+  modes: ["edit", "live"],
   section: "edge",
   targets: ["edge", "selection"],
   get label() {

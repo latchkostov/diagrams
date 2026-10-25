@@ -97,6 +97,8 @@ export interface LiveState {
   configuration: Record<string, Record<string, unknown>>;
   /** Bumps whenever the engine is rebuilt (restart, new simulation, structural edit). */
   generation: number;
+  /** Structural diagram basis applied to the session, including edits that need no rebuild. */
+  diagramBasis: string;
   /** The message trace: what's followed (its journey so far) or what's awaited. Null when not tracing. */
   trace: LiveTrace | null;
 }
@@ -692,6 +694,7 @@ export class LiveController {
       tweaks: this.tweaks,
       configuration,
       generation: this.generation,
+      diagramBasis: this.structKey,
       trace: this.readTrace(),
     };
     for (const l of this.listeners) l();

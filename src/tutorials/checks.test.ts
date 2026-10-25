@@ -48,3 +48,16 @@ it("binds overlapping subjects to distinct nodes and keeps their identities as d
     holds({ kind: "edge", from: "first", to: "second" }, { diagram: two, live: false, processed: () => 0 }, bindings),
   ).toBe(false);
 });
+
+it("resolves edge subjects after their nodes and retains edge identity across a reconnect", () => {
+  const tutorial = { ...mobileApi, subjects: { link: { edge: ["app", "api"] as const }, ...mobileApi.subjects } };
+  const d: DiagramFile = {
+    ...diagram("Service"),
+    nodes: [{ id: "client", stencil: "client.mobile", label: "", x: 0, y: 0 }, ...diagram("Service").nodes],
+    edges: [{ id: "call", from: "client", to: "service-1", kind: "sync" }],
+  };
+  const bindings = resolveSubjects(tutorial, d);
+  expect(bindings).toEqual({ app: "client", api: "service-1", link: "call" });
+  expect(resolveSubjects(tutorial, { ...d, edges: [{ ...d.edges[0], to: "other" }] }, bindings).link).toBe("call");
+  expect(resolveSubjects(tutorial, { ...d, edges: [] }, bindings).link).toBeUndefined();
+});

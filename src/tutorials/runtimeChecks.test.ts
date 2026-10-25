@@ -34,6 +34,41 @@ function view(): SandboxView {
 const met = (check: Check, v = view()) => holds(check, v, subjects);
 
 describe("runtime check kinds", () => {
+  it("checks explicit edge sides rather than similarly named simulation props", () => {
+    const check: Check = { kind: "prop", edge: ["app", "api"], prop: "targetSide", op: "=", value: "top" };
+    const v = view();
+    v.diagram = { ...diagram, edges: [{ ...diagram.edges[0], props: { targetSide: "top" } }] };
+    expect(met(check, v)).toBe(false);
+    v.diagram.edges[0].targetSide = "top";
+    expect(met(check, v)).toBe(true);
+  });
+  it("checks node subtitles and nonempty descriptions, without reading simulation props", () => {
+    const v = view();
+    const subtitle: Check = { kind: "field", subject: "api", field: "sublabel", is: () => "Node.js" };
+    const description: Check = { kind: "field", subject: "api", field: "description" };
+    expect(met(subtitle, v)).toBe(false);
+    expect(met(description, v)).toBe(false);
+    v.diagram = {
+      ...diagram,
+      nodes: [diagram.nodes[0], { ...diagram.nodes[1], sublabel: " node.JS ", description: "   " }],
+    };
+    expect(met(subtitle, v)).toBe(true);
+    expect(met(description, v)).toBe(false);
+    v.diagram.nodes[1].description = "Accepts payments";
+    expect(met(description, v)).toBe(true);
+  });
+  it("requires both a new connection and absence of the old one after reconnecting", () => {
+    const check: Check = { kind: "relation", from: "app", to: "api", absent: true };
+    expect(met(check)).toBe(false);
+    expect(met(check, { ...view(), diagram: { ...diagram, edges: [] } })).toBe(true);
+    expect(holds(check, view(), {})).toBe(false);
+  });
+  it("checks whose naming mode is open, rather than accepting any name field", () => {
+    const check: Check = { kind: "mode", value: "naming", subject: "api" };
+    for (const target of [null, "a", "b"])
+      expect(met(check, { ...view(), mode: { ...initialEditorMode, value: "naming", target } })).toBe(target === "b");
+    expect(holds(check, { ...view(), mode: { ...initialEditorMode, value: "naming", target: null } }, {})).toBe(false);
+  });
   it("compares node and edge props, without coercing or accepting missing values", () => {
     for (const op of ["=", ">=", "<="] as const) {
       expect(met({ kind: "prop", subject: "app", prop: "rate", op, value: 12 })).toBe(true);
