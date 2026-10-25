@@ -19,6 +19,8 @@ it("hides quarantined lessons from cards, search, suggestions and deep links whi
     "insert-on-edge",
     "arrange",
     "dependencies-2",
+    "backlog-lag",
+    "scale-to-zero",
     "capacity",
     "trace-slowmo",
     "saved-simulations",

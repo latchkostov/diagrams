@@ -1,3 +1,9 @@
+import { whereTimeGoes } from "./whereTimeGoes";
+import { threadsBlock } from "./threadsBlock";
+import { timeoutsPools } from "./timeoutsPools";
+import { backlogLag } from "./backlogLag";
+import { autoscaling } from "./autoscaling";
+import { scaleToZero } from "./scaleToZero";
 import { ratesAndInputs } from "./ratesAndInputs";
 import { readANode } from "./readANode";
 import { capacity } from "./capacity";
@@ -62,6 +68,12 @@ export const allTutorials: readonly Tutorial[] = [
   partitions,
   outbox,
   dependencies2,
+  whereTimeGoes,
+  threadsBlock,
+  timeoutsPools,
+  backlogLag,
+  autoscaling,
+  scaleToZero,
   ratesAndInputs,
   readANode,
   capacity,
