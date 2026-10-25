@@ -1,18 +1,18 @@
 ## P2 triage: Lazy loading (2026-10-24)
 
-Checked against `origin/master` at `7b6e905130a9`. DONE 17 / STALE 0 / OPEN 2 (deduplicated actionable findings).
+Checked against `origin/master` at `7b6e905130a9`. DONE 18 / STALE 0 / OPEN 1 (deduplicated actionable findings).
 
 Source: the local `queued-p2-fu10.archive.md`, preserved byte-for-byte on 2026-10-24. OPEN entries retain queue review labels; closed entries name the fixing PR. Locations are current-master entry points, not the old review line numbers. DONE means code and/or the specifically requested regression exists with merged-PR evidence; OPEN includes unproven historical failures. A later green run alone does not close a failure.
 
 Each numbered batch below is an independent PR candidate of at most ten items, ordered by user impact. Keep regression assertions and current bundle limits; verify each eventual regression by temporarily reverting its fix. Refactors must preserve output parity; intentional behavior changes need reviewed golden diffs. Owner decisions remain in [the separate decision list](2026-10-24-owner-decisions.md).
 
-## Batch 1: Loader ownership and HMR (2 OPEN)
+## Batch 1: Loader ownership and HMR (1 OPEN, 1 DONE)
 
 1. **LL-01 — OPEN: Give cold node details a keyboard focus handoff.** `src/live/NodeBadges.tsx:33`. Queue: #189.
    The shared loader provides recovery but does not itself prove the original cold keyboard-entry contract. Hold node details, enter by keyboard and transfer logical focus only while the request still owns it.
 
 2. **LL-02 — OPEN: Make surface registrations survive HMR.** `src/lib/lazySurfaces.ts:77`. Queue: #271.
-   The registry throws for duplicate IDs and has no replacement/disposal contract. Replace registrations by module ownership during HMR and test hot replacement without losing active readiness.
+   Module-owned registrations replace their previous hot evaluation, preserve mounted consumers in output readiness, and dispose inactive registrations. Genuine duplicates still throw. Registry and dev-transform regressions cover replacement before/during an export; the generated hold-the-chunk browser contracts remain unchanged. Implemented on `fix/p2-tooling-followups` (merge pending).
 
 ## Batch 2: Output, retry and late-load regressions (5 DONE)
 
