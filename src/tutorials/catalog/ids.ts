@@ -27,4 +27,11 @@ export const tutorialEntries: readonly Pick<TutorialMetadata, "id" | "quarantine
   { id: "partitions" },
   { id: "outbox" },
   { id: "dependencies-2", quarantined: true },
+  { id: "rates-and-inputs" },
+  { id: "read-a-node" },
+  { id: "capacity", quarantined: true },
+  { id: "trace-slowmo", quarantined: true },
+  { id: "saved-simulations", quarantined: true },
+  { id: "faults" },
+  { id: "author-a-drill" },
 ];
