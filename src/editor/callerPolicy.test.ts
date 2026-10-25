@@ -1,11 +1,112 @@
 import { expect, it, vi } from "vitest";
 import { waitingFixture } from "../lab/waitingFixture";
+import { breakerFixture } from "../lab/resilienceFixture";
 import { LiveController } from "../live/controller";
 import { effectiveCallerPolicy } from "./callerPolicy";
 import type { EditorApi } from "./types";
 import { LiveSync } from "../live/session/liveSync";
 import { checkJsonSchema } from "../model/jsonSchema";
 import { callerSchema } from "../model/admissionSchema";
+import type { EdgeSimProps } from "../sim/types";
+import { commit, createHistory, present, redo, undo } from "./history";
+import { recommendedRetry } from "../sim/resiliencePresets";
+
+it.each([false, true])("reselection preserves every tuned caller field without a write (saved=%s)", (saved) => {
+  const diagram = waitingFixture();
+  const caller = {
+    wait: "non-blocking",
+    poolConnections: 7,
+    replyMs: 43,
+    deadlineMs: 789,
+    retry: {
+      maxAttempts: 5,
+      backoffMs: 321,
+      strategy: "fixed",
+      maxBackoffMs: 4567,
+      jitter: 0.5,
+      retryOn: ["timeout", "transient"],
+      idempotent: true,
+      budget: { percent: 37, minPerSec: 3 },
+    } satisfies Required<import("../model/admission").RetryPolicy>,
+    breaker: {
+      failurePercent: 42,
+      slowCallMs: 678,
+      slowPercent: 54,
+      windowMs: 3000,
+      minimumCalls: 11,
+      openMs: 2345,
+      halfOpenCalls: 7,
+    } satisfies Required<import("../model/admission").BreakerPolicy>,
+  } satisfies EdgeSimProps["caller"];
+  diagram.edges[1].props = { caller: saved ? { deadlineMs: 100 } : caller };
+  diagram.simulations = [{ id: "run", title: "Tuned", traffic: [], setup: { edges: { call: { caller } } } }];
+  const controller = new LiveController(diagram);
+  if (saved) controller.selectSimulation(diagram.simulations[0]);
+  const editor = {
+    getDiagram: () => diagram,
+    getEdge: (id: string) => diagram.edges.find((e) => e.id === id),
+    getNode: (id: string) => diagram.nodes.find((n) => n.id === id),
+    updateMeta: vi.fn(),
+    setEdgeProps: vi.fn(),
+  };
+  const live = saved ? { controller, slowmo: { active: false } } : null;
+  try {
+    // Exercise the setter's normalization boundary with fresh objects, as controlled fields do.
+    for (const [key, value] of Object.entries(caller)) {
+      effectiveCallerPolicy(editor, "call", live)!.set({ [key]: structuredClone(value) });
+      expect(effectiveCallerPolicy(editor, "call", live)!.caller).toEqual(caller);
+    }
+    expect(editor.setEdgeProps).not.toHaveBeenCalled();
+    expect(editor.updateMeta).not.toHaveBeenCalled();
+  } finally {
+    controller.dispose();
+  }
+});
+
+it("caller tuning stays one Undo step even when history flushes between fields", () => {
+  const diagram = breakerFixture();
+  const original = structuredClone(diagram.edges[1].props!.caller as EdgeSimProps["caller"]);
+  let history = createHistory(JSON.stringify(original), original);
+  const editor = {
+    getDiagram: () => diagram,
+    getEdge: (id: string) => diagram.edges.find((e) => e.id === id),
+    getNode: (id: string) => diagram.nodes.find((n) => n.id === id),
+    updateMeta: vi.fn(),
+    setEdgeProps: vi.fn<EditorApi["setEdgeProps"]>((id, patch, options) => {
+      Object.assign(diagram.edges.find((e) => e.id === id)!.props!, patch);
+      const next = structuredClone(patch.caller as EdgeSimProps["caller"]);
+      history = commit(history, { key: JSON.stringify(next), value: next, mergeKey: options?.merge, at: 1 });
+    }),
+  };
+  effectiveCallerPolicy(editor, "call", null)!.set({ retry: { ...original!.retry!, backoffMs: 321 } });
+  effectiveCallerPolicy(editor, "call", null)!.set({ breaker: { ...original!.breaker, openMs: 2345 } });
+  const tuned = structuredClone(diagram.edges[1].props!.caller as EdgeSimProps["caller"]);
+  expect(present(undo(history)).value).toEqual(original);
+  expect(present(redo(undo(history))).value).toEqual(tuned);
+  // Separately flushed timeout edits retain their existing, independent Undo steps.
+  effectiveCallerPolicy(editor, "call", null)!.set({ deadlineMs: 789 });
+  effectiveCallerPolicy(editor, "call", null)!.set({ deadlineMs: 890 });
+  expect(present(undo(history)).value).toEqual({ ...tuned, deadlineMs: 789 });
+});
+
+it.each([undefined, {}])("new resilience policies still receive their defaults (caller=%j)", (caller) => {
+  const diagram = waitingFixture();
+  diagram.edges[1].props = { caller };
+  const editor = {
+    getDiagram: () => diagram,
+    getEdge: (id: string) => diagram.edges.find((e) => e.id === id),
+    getNode: (id: string) => diagram.nodes.find((n) => n.id === id),
+    updateMeta: vi.fn(),
+    setEdgeProps: vi.fn<EditorApi["setEdgeProps"]>((id, patch) => {
+      Object.assign(diagram.edges.find((e) => e.id === id)!.props!, patch);
+    }),
+  };
+  const retry = recommendedRetry("GET");
+  effectiveCallerPolicy(editor, "call", null)!.set({ retry });
+  effectiveCallerPolicy(editor, "call", null)!.set({ breaker: {} });
+  expect(editor.setEdgeProps).toHaveBeenCalledTimes(2);
+  expect(effectiveCallerPolicy(editor, "call", null)!.caller).toEqual({ retry, breaker: {} });
+});
 
 it.each([true, false])("edits a saved override once and withholds an unsaved override (saved=%s)", (saved) => {
   const diagram = waitingFixture();

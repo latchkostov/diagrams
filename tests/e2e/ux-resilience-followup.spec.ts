@@ -8,6 +8,7 @@ import {
   gotoLab,
   pauseClock,
   waitForStableViewport,
+  waitForHistoryIdle,
   STORAGE_KEYS,
   openLiveNodeDetails,
   savedDiagram,
@@ -83,6 +84,8 @@ test("reselecting enabled resilience controls preserves tuning and the Undo step
   await page.getByTestId("inspector-section-edge-simulation").click();
   await page.getByTestId("inspector-section-retry-details").click();
   await page.getByTestId("inspector-field-retry-backoff").fill("321");
+  // Force the debounce boundary CI can cross between edits; both fields must still coalesce.
+  await waitForHistoryIdle(page);
   await page.getByTestId("inspector-section-breaker-details").click();
   await page.getByTestId("inspector-field-breaker-openMs").fill("2345");
   const caller = async () => (await savedDiagram(page)).edges.find((edge) => edge.id === "call")?.props?.caller;

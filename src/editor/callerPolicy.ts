@@ -40,7 +40,13 @@ export function effectiveCallerPolicy(
           ...(Object.hasOwn(patch ?? {}, "breaker") && patch?.breaker === undefined ? { breaker: null } : {}),
         }).filter(([, v]) => v !== undefined),
       );
+      const options =
+        Object.hasOwn(patch ?? {}, "retry") || Object.hasOwn(patch ?? {}, "breaker")
+          ? { merge: `inspector:edge:${edgeId}:caller` }
+          : undefined;
       if (saved) {
+        // Reselecting an existing value must not write or disturb the pending Undo step.
+        if (JSON.stringify(normalized) === JSON.stringify(override?.caller ?? {})) return;
         const next = {
           ...saved,
           setup: {
@@ -51,9 +57,16 @@ export function effectiveCallerPolicy(
             },
           },
         };
-        editor.updateMeta({ simulations: editor.getDiagram().simulations!.map((s) => (s.id === saved.id ? next : s)) });
+        editor.updateMeta(
+          { simulations: editor.getDiagram().simulations!.map((s) => (s.id === saved.id ? next : s)) },
+          options,
+        );
         live?.controller.setBase(next);
-      } else editor.setEdgeProps(edgeId, { caller: { ...caller, ...patch } });
+      } else {
+        const next = { ...caller, ...patch };
+        if (JSON.stringify(next) === JSON.stringify(caller)) return;
+        editor.setEdgeProps(edgeId, { caller: next }, options);
+      }
     },
   };
 }
