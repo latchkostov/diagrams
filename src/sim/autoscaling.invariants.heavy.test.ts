@@ -461,3 +461,55 @@ describe("A3 nightly reproductions", () => {
     expect(replay(r.diagram, r.seed, r.scale, r.events)).toBeUndefined();
   });
 });
+
+// Eight events: deleting any one no longer reproduces Nightly seed 3575.
+it("A1 regression (seed 3575): CPU backoff preserves pause time across HPA and shutdown", () => {
+  const diagram = autoscalingFixture();
+  Object.assign(diagram.nodes[0], {
+    stencil: "kafka.topic",
+    props: { partitions: 1, maxDeliveryCount: 4 },
+  });
+  diagram.edges[0].kind = "async";
+  diagram.nodes[1].props = {
+    replicas: 4,
+    concurrency: 1,
+    latencyMs: 500,
+    jitter: 0,
+    resources: {
+      ...resourceLesson(),
+      cpuMsPerMessage: 100,
+      baselineMemoryMiB: 0,
+      memoryMiBPerMessage: 1,
+      cpuLimitMilli: 1000,
+      startup: { delayMs: 0, jitterFraction: 0.5 },
+      terminationGraceMs: 50,
+    },
+    autoscaling: { mode: "off" },
+    failureRate: 0.5,
+    retry: "inplace",
+    retryBackoffMs: 0,
+    api: {
+      quotas: [{ id: "requests", unit: "requests", amount: 20, windowMs: 1000, burst: 1, algorithm: "token-bucket" }],
+    },
+  };
+  const hpa = hpaLesson();
+  Object.assign(hpa.controller, { minReplicas: 1, maxReplicas: 3, initialReplicas: 2 });
+  hpa.controller.settings.syncMs = 1000;
+  Object.assign(hpa.controller.settings.metrics[0], { windowMs: 1000, metricDelayMs: 1000 });
+  hpa.controller.settings.down = {
+    stabilizationMs: 0,
+    selectPolicy: "Max",
+    policies: [{ type: "Percent", value: 100, periodMs: 1000 }],
+  };
+  const events: Action[] = [
+    { do: "burst", count: 1, ms: 10 },
+    { do: "status", status: "down", ms: 100 },
+    { do: "props", props: {}, unset: ["api"], ms: 100 },
+    { do: "props", props: { failureRate: 0, retryBackoffMs: 5000 }, ms: 300 },
+    { do: "props", props: { autoscaling: hpa }, ms: 10 },
+    { do: "status", status: "up", ms: 100 },
+    { do: "status", status: "paused", ms: 300 },
+    { do: "status", status: "down", ms: 30 },
+  ];
+  expect(replay(diagram, 3575, 10, events)).toBeUndefined();
+});

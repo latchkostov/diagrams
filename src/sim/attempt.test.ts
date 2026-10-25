@@ -512,6 +512,75 @@ function continuationFixture(mode: "mixed" | "non-blocking", replyMs = 0) {
   return d;
 }
 
+it.each([
+  { seed: 56784600, cpuMs: 51 },
+  { seed: 1965200503, cpuMs: 33 },
+])("I7 Nightly regression (seed $seed): scale-10 calls settle independently of holds", ({ cpuMs }) => {
+  for (const failing of [false, true]) {
+    const diagram = continuationFixture("mixed");
+    Object.assign(diagram.nodes[1].props!.resources!, { cpuMsPerMessage: cpuMs });
+    if (cpuMs === 33) {
+      // October 22's actual reduced log has two non-blocking calls, including
+      // a zero-CPU resource leaf; October 21 has a blocking call and a side call.
+      const callee = diagram.nodes.find((n) => n.id === "callee")!;
+      diagram.nodes.push({
+        ...callee,
+        id: "cpu-target",
+        props: {
+          ...callee.props,
+          resources: { ...resourceLesson(), cpuMsPerMessage: 0, startup: { delayMs: 0, jitterFraction: 0 } },
+        },
+      });
+      Object.assign(diagram.edges[1].props!.caller!, { wait: "non-blocking" });
+      Object.assign(diagram.edges[2], {
+        to: "cpu-target",
+        props: { travelMs: 10, networkDelayMs: 10, caller: { poolConnections: 1, wait: "non-blocking", replyMs: 0 } },
+      });
+    }
+    if (failing) diagram.nodes.find((n) => n.id === "callee")!.props!.failureRate = 1;
+    const probe = (ledgerHold?: EngineOptions["ledgerHold"]) => {
+      let holds = 0;
+      const trace: unknown[] = [];
+      const seen = new Set<number>();
+      const e = createEngine({
+        seed: 19,
+        scale: 10,
+        ledgerHold,
+        maxParticles: 0,
+        verifyResources: assertResourceInvariants,
+        verifyLedger(s) {
+          assertLedgerInvariants(s);
+          holds = s.ledger.reservations.size;
+        },
+        verifyOutcomes(s) {
+          assertOutcomeInvariants(s);
+          for (const a of s.attempts)
+            if (a.outcome && !seen.has(a.id)) {
+              seen.add(a.id);
+              trace.push({ id: a.id, node: a.node, outcome: a.outcome });
+            }
+        },
+      });
+      e.load(diagram);
+      return { e, trace, holds: () => holds };
+    };
+    const probes = [probe(), probe("none")];
+    for (let i = 0; i < 3; i++) {
+      for (const p of probes) p.e.inject("caller", 1);
+      let idle = false;
+      for (let tick = 0; tick < 3000 && !idle; tick++) {
+        for (const p of probes) p.e.step(10);
+        idle = probes.every(
+          (p) => !p.e.metrics().inSystem && !p.holds() && Object.values(p.e.snapshot().nodes).every((n) => !n.inFlight),
+        );
+      }
+      expect(idle).toBe(true);
+      expect(probes[0].trace.length).toBeGreaterThan(0);
+      expect(probes[0].trace).toEqual(probes[1].trace);
+    }
+  }
+});
+
 it.each(["mixed", "non-blocking"] as const)(
   "I7 regression (seed 1235471473): a %s continuation's CPU does not depend on taking over its retained thread",
   (mode) => {
