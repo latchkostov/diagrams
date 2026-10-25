@@ -4,13 +4,10 @@ import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } fr
 import { defineLazySurface } from "../../lib/lazySurface";
 import type { InteractionController } from "../../canvas/interaction";
 import { typeAheadActive } from "../../canvas/typeAhead";
-import { isEditableTarget } from "../../editor/shortcuts";
-import { isRecordingActive } from "../record/framing";
+import { replayKey } from "../replayKeys";
 import { createTraceFacade } from "./traceFacade";
 import type { TraceRuntimeProps } from "../slowmo/TraceRuntime";
 import type { LiveSessionState } from "./useLiveSessionState";
-import type { DiagramFile } from "../../model/types";
-import type { MessageTrace } from "../../sim/types";
 
 export const TraceRuntime = defineLazySurface<TraceRuntimeProps>({
   id: "live.trace-runtime",
@@ -48,27 +45,10 @@ export function useTraceRuntime({ controller, state }: LiveSessionState, interac
       (end, loaded) =>
         interaction.pendingOwner((e) => {
           if (loaded(e)) return true;
-          if (e.ctrlKey || e.metaKey || e.altKey || typeAheadActive()) return false;
-          if (
-            isEditableTarget(e.target) ||
-            document.querySelector(
-              '[role="menu"], [role="dialog"], [data-testid="capacity-panel"], [data-testid="sim-panel"]',
-            )
-          )
-            return false;
-          if (!["Escape", " ", "Enter", "ArrowLeft", "ArrowRight"].includes(e.key)) return false;
-          if (
-            e.key === "Escape" &&
-            (isRecordingActive() || document.querySelector(".react-flow__node.selected, .react-flow__edge.selected"))
-          )
-            return false;
-          if (
-            e.key !== "Escape" &&
-            e.target instanceof Element &&
-            e.target.closest('button, select, a, [role="separator"]')
-          )
-            return false;
-          if (e.key === "Escape") end();
+          if (!facade.pending) return false;
+          const command = replayKey(e, "capturing");
+          if (!command) return false;
+          if (command === "escape") end();
           return true;
         }),
     ),
@@ -103,6 +83,7 @@ export function useTraceRuntime({ controller, state }: LiveSessionState, interac
     active: !!state.trace || facade.pending || !!snapshot.service,
     path: snapshot.service?.slow.path ?? null,
     card: snapshot.service?.card,
-    journey: (trace: MessageTrace, diagram: DiagramFile) => snapshot.service?.journey(trace, diagram) ?? null,
+    journeyReady: !!snapshot.service,
+    journey: facade.journey,
   };
 }

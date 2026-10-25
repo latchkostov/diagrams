@@ -156,6 +156,11 @@ export function createTraceFacade(
     },
     slow,
     getSnapshot: () => snapshot,
+    journey(trace: MessageTrace, diagram: DiagramFile) {
+      return service
+        ? { status: "ready" as const, path: service.journey(trace, diagram) }
+        : { status: "loading" as const };
+    },
     get pending() {
       return !!machine.state.source;
     },

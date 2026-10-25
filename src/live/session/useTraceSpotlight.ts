@@ -38,15 +38,19 @@ export function useTraceSpotlight({
   const tracedNow = state.trace?.current;
   const awaitedAt = state.trace?.pending?.next === "message" ? state.trace.pending.node : undefined;
   const tracedDiagram = controller.currentDiagram;
+  const { journey, journeyReady } = runtime;
   const tracedPath = useMemo(() => {
-    if (tracedNow) return runtime.journey(tracedNow, tracedDiagram);
-    return awaitedAt ? { nodes: new Set([awaitedAt]), edges: new Set<string>() } : null;
-  }, [tracedNow, awaitedAt, tracedDiagram, runtime]);
+    if (tracedNow) return journeyReady ? journey(tracedNow, tracedDiagram) : { status: "loading" as const };
+    return awaitedAt
+      ? { status: "ready" as const, path: { nodes: new Set([awaitedAt]), edges: new Set<string>() } }
+      : null;
+  }, [tracedNow, awaitedAt, tracedDiagram, journey, journeyReady]);
   const slowPath = runtime.path;
   const spotlight = (() => {
     const d = controller.currentDiagram;
     if (slowPath) return { ...slowPath, kind: "trace" as const };
-    if (tracedPath) return { ...tracedPath, kind: "trace" as const };
+    if (tracedPath?.status === "loading") return null;
+    if (tracedPath) return { ...tracedPath.path, kind: "trace" as const };
     if (trace) {
       const r = downstreamOfEdge(d.edges, trace);
       return { nodes: r.nodes, edges: r.edges, kind: "trace" as const };

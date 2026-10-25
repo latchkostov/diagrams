@@ -22,6 +22,128 @@ import { createSimulationRun } from "../../src/sim/simulation";
 import { pseudoText } from "../../src/i18n/pseudo";
 import { holdTraceRuntime, replayNode, traceNext, TRACE_RUNTIME } from "./held-trace-runtime";
 import { holdChunk } from "./chunk";
+import { installFakeModelContext, openAiPanel } from "./ai-helpers";
+
+test("held runtime round 2: loading journey suppresses the previous edge highlight", async ({ page }) => {
+  const held = await holdTraceRuntime(page, "&traffic=0&speed=4");
+  const dim = () => page.getByTestId("node-shopper").evaluate((el) => el.parentElement?.getAttribute("data-live-dim"));
+  try {
+    await page.getByTestId("edge-label-payments-to-payment-db").click({ button: "right" });
+    await page.getByTestId("context-menu-item-sim.trace").click();
+    await expect.poll(dim).toBe("1");
+    await traceNext(page);
+    await page.getByTestId("trace-send-one").click();
+    await expect(page.getByTestId("trace-card")).toHaveAttribute("data-root", /\d+/);
+    await expect.poll(held.requested).toBe(true);
+    await expect(page.getByTestId("live-trace")).toBeVisible();
+    await expect(page.getByTestId("live-notice")).toContainText("Loading");
+    // The waiting-at-node spotlight can still be painted when the trace card commits.
+    // Observe the next decorator publication before checking the journey's precedence.
+    const frames = await page.getByTestId("live-canvas").getAttribute("data-frames");
+    await expect.poll(() => page.getByTestId("live-canvas").getAttribute("data-frames")).not.toBe(frames);
+    await expect.poll(dim).toBeNull();
+    const root = await page.getByTestId("trace-card").getAttribute("data-root");
+    if (root === null) throw new Error("Missing requested trace root");
+    held.release();
+    await expect
+      .poll(() => page.evaluate(() => window.__lazySurfaces?.states()["live.trace-runtime"]?.state))
+      .toBe("loaded");
+    await expect(page.getByTestId("trace-card")).toHaveAttribute("data-root", root);
+    await expect.poll(dim).toBeNull();
+    await expect
+      .poll(() => page.getByTestId("node-metrics").evaluate((el) => el.parentElement?.getAttribute("data-live-dim")))
+      .toBe("1");
+  } finally {
+    held.release();
+  }
+});
+
+test("held runtime round 2: native disclosure keeps Enter before and after replay handoff", async ({ page }) => {
+  await installFakeModelContext(page);
+  const held = await holdTraceRuntime(page);
+  try {
+    await replayNode(page);
+    await openAiPanel(page);
+    const disclosure = page.getByTestId("ai-tools-toggle");
+    await disclosure.focus();
+    await page.keyboard.press("Enter");
+    await expect(page.getByTestId("ai-tools")).toHaveAttribute("open");
+    await page.keyboard.press("Enter");
+    await expect(page.getByTestId("ai-tools")).not.toHaveAttribute("open");
+    held.release();
+    await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "slowmo");
+    await disclosure.focus();
+    await page.keyboard.press("Enter");
+    await expect(page.getByTestId("ai-tools")).toHaveAttribute("open");
+    await page.keyboard.press("Enter");
+    await expect(page.getByTestId("ai-tools")).not.toHaveAttribute("open");
+    await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "slowmo");
+  } finally {
+    held.release();
+  }
+});
+
+test("held runtime round 2: armed replay gives Space and Enter back to Live", async ({ page }) => {
+  const held = await holdTraceRuntime(page, "&traffic=0");
+  try {
+    await replayNode(page);
+    await page.getByTestId("canvas-wrap").focus();
+    await page.keyboard.press("Space");
+    await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "paused");
+    await expect(page.getByTestId("live-play")).toBeDisabled();
+    held.release();
+    await expect(page.getByTestId("trace-waiting")).toContainText("slow motion starts when it comes");
+    await expect(page.getByTestId("live-canvas")).toHaveAttribute("data-slowmo-machine", "armed");
+    await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "playing");
+    await page.getByTestId("canvas-wrap").focus();
+    await page.keyboard.press("Space");
+    await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "paused");
+    await page.keyboard.press("Space");
+    await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "playing");
+    await page.getByTestId("node-shopper").evaluate((el) => el.parentElement?.focus());
+    await page.keyboard.press("Enter");
+    await expect(page.getByTestId("node-detail-shopper")).toHaveAttribute("data-pinned", "true");
+    await page.getByTestId("canvas-wrap").focus();
+    await page.keyboard.press("Escape");
+    await expect(page.getByTestId("live-canvas")).toHaveAttribute("data-slowmo-machine", "cancelled");
+    await expect(page.getByTestId("trace-waiting")).not.toContainText("slow motion starts when it comes");
+    await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "playing");
+  } finally {
+    held.release();
+  }
+});
+
+test("held runtime round 2: normal timeline seeks while a normal trace downloads", async ({ page }) => {
+  const held = await holdTraceRuntime(page, "&sim=black-friday&paused=1");
+  try {
+    await traceNext(page);
+    await expect.poll(held.requested).toBe(true);
+    await expect
+      .poll(() => page.evaluate(() => window.__lazySurfaces?.states()["live.trace-runtime"]))
+      .toEqual({ state: "loading", active: true });
+    await expect(page.getByTestId("live-notice")).toContainText("Loading");
+    await page.getByTestId("live-timeline-input").fill("500");
+    await page.getByTestId("live-play").focus();
+    await expect(page.getByTestId("live-timeline-input")).toHaveValue("500");
+    const time = await page.getByTestId("live-clock").getAttribute("data-ms");
+    if (time === null) throw new Error("Missing requested simulation time");
+    expect(Number(time)).toBe(10_000);
+    await expect(page.getByTestId("trace-card")).toHaveAttribute("data-root", /\d+/);
+    const root = await page.getByTestId("trace-card").getAttribute("data-root");
+    if (root === null) throw new Error("Missing requested trace root");
+    held.release();
+    await expect
+      .poll(() => page.evaluate(() => window.__lazySurfaces?.states()["live.trace-runtime"]?.state))
+      .toBe("loaded");
+    await expect(page.getByTestId("live-clock")).toHaveAttribute("data-ms", time);
+    await expect(page.getByTestId("live-timeline-input")).toHaveValue("500");
+    await expect(page.getByTestId("trace-card")).toHaveAttribute("data-root", root);
+    await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "paused");
+    await expect(page.getByTestId("slowmo-chip")).toHaveCount(0);
+  } finally {
+    held.release();
+  }
+});
 
 test("held runtime: Free play, badges, node/edge hover and keyboard pins remain interactive", async ({ page }) => {
   const held = await holdTraceRuntime(page);

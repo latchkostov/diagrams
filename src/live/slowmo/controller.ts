@@ -7,14 +7,12 @@
 import type { useStoreApi } from "@xyflow/react";
 import type { CameraController } from "../../canvas/camera";
 import type { DiagramFlowEdge, FlowNode } from "../../canvas/types";
-import { typeAheadActive } from "../../canvas/typeAhead";
-import { isEditableTarget } from "../../editor/shortcuts";
 import type { SimSnapshot } from "../../sim/types";
 import { buildJourney } from "../../trace/journey";
 import type { LiveController } from "../controller";
 import { LIVE_BAR_SPACE } from "../layout";
 import { TRACE_CARD_FOOTPRINT, TRACE_CARD_TOP } from "../traceCardLayout";
-import { isRecordingActive } from "../record/framing";
+import { replayKey } from "../replayKeys";
 import type { CameraPlan, FlowBox, Insets, View } from "./camera";
 import { waitingOverlay, type PaintedLabel, type SlowOverlay } from "./overlay";
 import { loadSlowScript, slowPainter, slowScript } from "./scriptChunk";
@@ -40,10 +38,6 @@ export type SlowMotionApi = Pick<
 >;
 
 type Store = ReturnType<typeof useStoreApi<FlowNode, DiagramFlowEdge>>;
-
-/** Things that own the keys before slow motion does (menus, dialogs, side panels). */
-const KEY_OWNERS = '[role="menu"], [role="dialog"], [data-testid="sim-panel"], [data-testid="capacity-panel"]';
-const SELECTED = ".react-flow__node.selected, .react-flow__edge.selected";
 
 export interface SlowMotionView {
   captureKey?(event: KeyboardEvent): boolean;
@@ -254,46 +248,13 @@ export function createSlowMotionView(opts: SlowMotionOptions) {
   // Keys: Space plays / pauses, ← → step hop by hop, Esc goes back to live. Menus, dialogs, panels,
   // text fields and a recording keep theirs; a selection is cleared before Esc leaves.
   const onKey = (e: KeyboardEvent) => {
-    const status = session.getState().status;
-    if (status === "off" || e.ctrlKey || e.metaKey || e.altKey || e.defaultPrevented) return;
-    if (typeAheadActive()) return;
-    const t = e.target;
-    // Text fields keep their keys; a slider (the replay's timeline) doesn't, so Esc still leaves.
-    const slider = t instanceof HTMLInputElement && t.type === "range";
-    if ((isEditableTarget(t) && !(slider && e.key === "Escape")) || document.querySelector(KEY_OWNERS)) return;
-    if (e.key === "Escape") {
-      if (isRecordingActive() || document.querySelector(SELECTED)) return;
-      e.preventDefault();
-      e.stopImmediatePropagation();
-      session.escape();
-      return;
-    }
-    const nativeControl = t instanceof Element && t.closest('button, select, input, a, [role="separator"]');
-    if ((e.key === "Enter" || e.key === " ") && nativeControl) return;
-    if (["Enter", " ", "ArrowLeft", "ArrowRight"].includes(e.key) && status !== "on") {
-      e.preventDefault();
-      e.stopImmediatePropagation();
-      return;
-    }
-    if (e.key === "Enter") {
-      e.preventDefault();
-      e.stopImmediatePropagation();
-      return;
-    }
-    if (status !== "on") return;
-    const inControl = t instanceof Element && !!t.closest('select, input, a, [role="separator"]');
-    if (
-      (e.key === " " || e.code === "Space") &&
-      !(t instanceof Element && t.closest('button, select, a, [role="separator"]'))
-    ) {
-      e.preventDefault();
-      e.stopImmediatePropagation();
-      if (!e.repeat) session.toggle();
-    } else if ((e.key === "ArrowRight" || e.key === "ArrowLeft") && !inControl) {
-      e.preventDefault();
-      e.stopImmediatePropagation();
-      session.step(e.key === "ArrowRight" ? 1 : -1);
-    }
+    const command = replayKey(e, session.getState().status);
+    if (!command) return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    if (command === "escape") session.escape();
+    else if (command === "toggle" && !e.repeat) session.toggle();
+    else if (command === "forward" || command === "back") session.step(command === "forward" ? 1 : -1);
   };
   connecting.push(() => {
     window.addEventListener("keydown", onKey, true);
