@@ -1215,8 +1215,13 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     node.incomingUnits = --node.incoming ? node.incomingUnits - dotsOf(message) : 0;
   }
 
+  /** Cohort members keep their cohort's ownership, so a queue enabled while that cohort is open never sheds them. */
   const queueEligible = (work: Work) =>
-    !work.delivery && !work.continuation && work.workedAt === undefined && !work.recoveryCapacity;
+    !work.delivery &&
+    !work.continuation &&
+    work.workedAt === undefined &&
+    !work.recoveryCapacity &&
+    (work.message.cohortId === undefined || (TEST_ORACLES && !!opts.shedCohorts));
 
   function enqueue(node: Node, work: Work): void {
     work.queueProtected = !queueEligible(work);
@@ -2398,9 +2403,10 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     const branch = call.branches.get(edge.id)!;
     const represented = sizeOf(message);
     if (!(represented > 1) || !Number.isFinite(edge.policy?.pool) || !Number.isFinite(branch.expiresAt)) return;
-    // Quarantined: a shedding callee queue narrows a branch without settling its cohort's members, so such
-    // calls keep the pre-cohort whole-dot path. docs/backlog/2026-10-25-cohort-shedding-timeouts.md
-    if (edge.to.props.queue && !(TEST_ORACLES && opts.shedCohorts)) return;
+    // Quarantine (docs/backlog/2026-10-25-cohort-shedding-timeouts.md): while any queue policy exists, calls
+    // keep the pre-cohort whole-dot path. Members of cohorts already open are exempt from it (queueEligible).
+    if (TEST_ORACLES && opts.noCohorts) return;
+    for (const n of nodes.values()) if (n.props.queue && !(TEST_ORACLES && opts.shedCohorts)) return;
     message.cohortId = branch.cohortId = message.id;
     // Freeze size across live scale edits, including the template that retains its FIFO position.
     message.represented = represented;
@@ -2443,15 +2449,11 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           }
           break;
         }
-        case "decide": {
+        case "decide":
           decides = true;
-          // The caller keeps its one logical outcome at its branch's size. An expiry never settles more than
-          // that: a queue enabled mid-flight sheds part of a wave, narrowing the branch as the legacy path does
-          // after splitShed counted the shed part (docs/backlog/2026-10-25-cohort-shedding-timeouts.md).
-          const sized = branchSized(cohort.call, edge).represented;
-          event!.represented = effect[1] === undefined ? sized : Math.min(effect[1], sized ?? Infinity);
+          // The caller keeps its one logical outcome at its branch's size.
+          event!.represented = effect[1] ?? branchSized(cohort.call, edge).represented;
           break;
-        }
         default:
           edge.calls[effect[0]] += effect[1] / scale;
       }
@@ -3374,13 +3376,13 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       return;
     }
     if (node.status === "paused") {
-      if (node.props.queue && !work.delivery) admitPushed(node, work);
+      if (node.props.queue && queueEligible(work)) admitPushed(node, work);
       else admit(node, work);
       return;
     }
     if (node.role === "source" || node.role === "sink" || node.role === "none") {
       finish(node, work);
-    } else if (node.props.queue && !work.delivery) admitPushed(node, work);
+    } else if (node.props.queue && queueEligible(work)) admitPushed(node, work);
     else admit(node, work);
   }
 

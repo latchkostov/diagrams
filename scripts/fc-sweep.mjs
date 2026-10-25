@@ -53,6 +53,7 @@ if (!files.length) {
     "src/sim/waits.sampling.heavy.test.ts",
     "src/sim/scaleEquivalence.heavy.test.ts",
     "src/sim/resilience.invariants.heavy.test.ts",
+    "src/sim/cohortShedding.invariants.heavy.test.ts",
   );
 }
 const used = new Set(seeds);

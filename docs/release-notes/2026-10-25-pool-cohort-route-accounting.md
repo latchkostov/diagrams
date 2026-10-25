@@ -20,3 +20,9 @@ Two lifecycle errors are fixed:
 - **Wave failure keeps orphan work.** After a successful first wave, a later failed wave counts only its own members as failed. The remaining members stay queued under the shared deadline and are still delivered: with the second of ten waves failing, ten are delivered, nine succeed downstream and one call fails on the edge, instead of two delivered and eight lost.
 
 An orphan's breaker refusal now fails only its unsent members; waves already sent keep settling. A template whose deadline passes before its expiry is processed leaves the queue, but its cohort keeps it until expiry settles its members. The ledger oracle checks each in-flight wave against its pool lease and that unsent members always keep their template. Both new regressions fail on the previous head.
+
+## Pool cohorts and shedding queues (PR #316, quarantine)
+
+Pooled-deadline cohorts don't yet reconcile members that a queue sheds from part of a wave. Until a cohort `shed` transition lands, no cohort opens while any queue policy exists, whether from load or from a live edit: such calls keep the pre-8b path, and runs with a queue from the start match it exactly. If a queue is enabled while cohorts are open, those cohorts' members are exempt from it, like broker deliveries and continuations. They finish under the tested cohort rules, counted exactly once each. This replaces the earlier per-callee guard and expiry clamp.
+
+A fast-check property covers random pooled-deadline diagrams with live queue and pause toggles at scales 1 and 10. It checks conservation, no lost or double-counted members, and that runs with a queue from load equal the cohort-free path. Three `it.fails` tests with the cohort path forced pin the shed-inside-cohort gaps for the future fix. See [the backlog entry](../backlog/2026-10-25-cohort-shedding-timeouts.md).

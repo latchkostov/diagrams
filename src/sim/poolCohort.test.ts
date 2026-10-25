@@ -174,17 +174,22 @@ it("oracle rejects an unsent cohort without a queued template", () => {
     .toThrow("unsent cohort members left the dispatch queue");
 });
 
-// R-21c7562a21, quarantined (docs/backlog/2026-10-25-cohort-shedding-timeouts.md). Ten connections send
-// all ten members to a paused callee whose queue holds one; it sheds nine, which fail on the edge. Only the
-// retained member should time out, as at scale 1: 1 timeout, 10 failures.
-function shedAtDeadline(scale: number, options: { shedCohorts?: boolean; live?: "add" | "add, then remove" } = {}) {
+// Shedding quarantine (docs/backlog/2026-10-25-cohort-shedding-timeouts.md). Ten callers' worth of one dot
+// call a paused callee through `pool` connections under a 1000 ms deadline. The callee's queue holds one.
+function shedRun(
+  scale: number,
+  options: { pool?: number; live?: "add" | "add, then remove"; shedCohorts?: boolean } = {},
+) {
   const d = waitingFixture();
   d.planning!.revision = "p3-w2";
   d.nodes[1].props = { concurrency: 100, latencyMs: 10, jitter: 0 };
   d.nodes[2].stencil = "generic.service";
   d.nodes[2].props = { concurrency: 1, latencyMs: 10, jitter: 0, status: "paused" };
   if (!options.live) d.nodes[2].props.queue = { limit: 1 };
-  d.edges[1].props = { travelMs: 200, caller: { wait: "non-blocking", poolConnections: 10, deadlineMs: 1000 } };
+  d.edges[1].props = {
+    travelMs: 200,
+    caller: { wait: "non-blocking", poolConnections: options.pool ?? 10, deadlineMs: 1000 },
+  };
   const e = createEngine({
     scale,
     maxParticles: 0,
@@ -194,7 +199,7 @@ function shedAtDeadline(scale: number, options: { shedCohorts?: boolean; live?: 
   e.load(d);
   e.inject("source", 10 / scale);
   if (options.live) {
-    // The cohort opened without a queue and its wave is still travelling when the callee gains one.
+    // The cohort opened without a queue; its first wave is still travelling when the callee gains one.
     e.step(100);
     e.setNodeProps("partner", { queue: { limit: 1 } });
     if (options.live === "add, then remove") {
@@ -203,35 +208,61 @@ function shedAtDeadline(scale: number, options: { shedCohorts?: boolean; live?: 
     }
   }
   e.step(3000);
+  e.setNodeStatus("partner", "up");
+  e.step(3000);
+  expect(e.snapshot().inSystem).toBe(0);
   const real = realSnapshot(e.snapshot());
-  return { calls: real.edges.call.calls, delivered: real.edges.call.delivered, shed: real.nodes.partner.shed };
+  const { timedOut, failed, late } = real.edges.call.calls!;
+  return { timedOut, failed, late, delivered: real.edges.call.delivered, shed: real.nodes.partner.shed ?? 0 };
 }
-const shedReference = {
-  calls: { inFlight: 0, held: 0, timedOut: 1, failed: 10, late: 0 },
-  delivered: 10,
-  shed: 9,
-};
+/** Scale 1: nine shed (failures), one retained member times out and replies late. */
+const shedReference = { timedOut: 1, failed: 10, late: 1, delivered: 10, shed: 9 };
 
-it.each([1, 10])("a pooled call to a shedding queue keeps whole-dot deadline accounting at scale %d", (scale) => {
-  expect(shedAtDeadline(scale)).toEqual(shedReference);
+it.each([1, 10])("a queue policy from the start opens no cohort and matches scale 1: scale %d", (scale) => {
+  expect(shedRun(scale)).toEqual(shedReference);
 });
 
-// R-8e6e356e3c: the guard only applies when a cohort opens. A bound cohort's expiry settles its caller at
-// no more than its branch size, which the shed narrowed, so it matches the guarded scale-1 numbers.
-it.each(["add", "add, then remove"] as const)(
-  "a queue enabled mid-flight sheds a bound cohort's wave without counting it again at expiry: %s",
-  (live) => {
-    expect(shedAtDeadline(1, { live })).toEqual(shedReference);
-    expect(shedAtDeadline(10, { live })).toEqual(shedReference);
+// R-8e6e356e3c: a queue enabled while a cohort is open never sheds that cohort's members. Each member is
+// still counted exactly once: never-sent and unreplied members time out, and the sent ones reply late.
+it.each([
+  { pool: 10, live: "add", expected: { timedOut: 10, failed: 10, late: 10, delivered: 10, shed: 0 } },
+  { pool: 10, live: "add, then remove", expected: { timedOut: 10, failed: 10, late: 10, delivered: 10, shed: 0 } },
+  { pool: 5, live: "add", expected: { timedOut: 10, failed: 10, late: 5, delivered: 5, shed: 0 } },
+  { pool: 5, live: "add, then remove", expected: { timedOut: 10, failed: 10, late: 5, delivered: 5, shed: 0 } },
+] as const)(
+  "a queue enabled mid-flight never sheds an open cohort's members: pool $pool, $live",
+  ({ pool, live, expected }) => {
+    expect(shedRun(10, { pool, live })).toEqual(expected);
+    // The same edit at scale 1, for reference: the queue sheds the members that arrive after it.
+    expect(shedRun(1, { pool, live })).toEqual(shedReference);
   },
 );
 
-it("a cohort's partially shed members leave its timeout accounting", () => {
-  expect(shedAtDeadline(10, { shedCohorts: true })).toEqual(shedReference);
+// Forced shed-inside-cohort gaps, kept as targets for the future `shed` transition.
+it.each([
+  { pool: 10, live: undefined, now: { timedOut: 10, failed: 19, late: 1, delivered: 10, shed: 9 } },
+  { pool: 5, live: "add", now: { timedOut: 10, failed: 14, late: 1, delivered: 5, shed: 4 } },
+] as const)("the forced shed cohort path currently counts shed members again: pool $pool", ({ pool, live, now }) => {
+  expect(shedRun(10, { pool, live, shedCohorts: true })).toEqual(now);
 });
 
-// The remaining quarantined gap: after an OK first wave, a shed wave's members never count as edge
-// failures. At scale 1 (18 shed, 18 failed) and on the guarded path (9 and 9) every shed member fails.
+it.fails("R-21c7562a21: a cohort's partially shed members leave its timeout accounting", () => {
+  expect(shedRun(10, { shedCohorts: true })).toEqual(shedReference);
+});
+
+// Five members are sent and four of them shed; the five unsent and the one retained member time out.
+it.fails("R-8e6e356e3c: a partially shed cohort keeps its unsent members' timeouts", () => {
+  expect(shedRun(10, { pool: 5, live: "add", shedCohorts: true })).toEqual({
+    timedOut: 6,
+    failed: 10,
+    late: 1,
+    delivered: 5,
+    shed: 4,
+  });
+});
+
+// After an OK first wave, a shed wave's members never count as edge failures. At scale 1 (18 shed, 18
+// failed) and on the opt-out path (9 and 9) every shed member fails.
 function orphanShed() {
   const d = waitingFixture();
   d.planning!.revision = "p3-w2";
@@ -248,7 +279,7 @@ function orphanShed() {
   return { failed: real.edges.call.calls!.failed, shed: real.nodes.partner.shed };
 }
 
-it("the quarantined orphan shed path currently counts no edge failure for its shed members", () => {
+it("the forced orphan shed path currently counts no edge failure for its shed members", () => {
   expect(orphanShed()).toEqual({ failed: 0, shed: 8 });
 });
 
