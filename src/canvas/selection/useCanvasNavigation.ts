@@ -72,7 +72,7 @@ export function useCanvasNavigation({
   nodes,
   edges,
   labels,
-  readOnly,
+  tabNavigation,
   direction,
   nodeVariant,
   controller,
@@ -92,7 +92,7 @@ export function useCanvasNavigation({
   nodes: FlowNode[];
   edges: DiagramFlowEdge[];
   labels: ReadonlyMap<string, string>;
-  readOnly: boolean;
+  tabNavigation: boolean;
   direction: "LR" | "TB";
   nodeVariant: NodeVariantId;
   controller: CameraController;
@@ -161,16 +161,16 @@ export function useCanvasNavigation({
     [navBox, direction],
   );
   const rovingId = useMemo(() => {
-    if (readOnly) return undefined;
+    if (!tabNavigation) return undefined;
     if (focusId && nodes.some((n) => n.id === focusId && !n.hidden)) return focusId;
     // The first thing Tab would meet, a boundary included: a diagram of boundaries only is still reachable.
     return navOrder(nodes.filter((n) => !n.hidden))[0];
-  }, [readOnly, focusId, nodes, navOrder]);
+  }, [tabNavigation, focusId, nodes, navOrder]);
   // Accessible names follow renames (React Flow names focusable nodes / edges from ariaLabel).
   // Only one node is in the page's Tab order (see above).
   const ariaNodes = useMemo(
-    () => (readOnly ? withNodeAria(nodes) : withRovingFocus(withNodeAria(nodes), rovingId)),
-    [nodes, readOnly, rovingId],
+    () => (tabNavigation ? withRovingFocus(withNodeAria(nodes), rovingId) : withNodeAria(nodes)),
+    [nodes, tabNavigation, rovingId],
   );
   /** What the live region says (seq: the same words again are read again). */
 

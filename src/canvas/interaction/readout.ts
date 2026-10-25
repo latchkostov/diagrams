@@ -1,11 +1,16 @@
+import { defineMachine, machineStep } from "../../lib/machine";
+
 /** Live readouts are independent of selection and particle tracing. */
 export interface ReadoutTarget {
   kind: "node" | "edge";
   id: string;
 }
 export interface ReadoutState {
+  value: "closed" | "summary" | "pinned";
   open: (ReadoutTarget & { pinned: boolean }) | null;
   dismissed: ReadoutTarget | null;
+  /** Focus ownership survives the DOM commit that removes a target. */
+  focused: ReadoutTarget | null;
 }
 /**
  * `point`: the pointer or keyboard focus names an item (or nothing). `pin`: a click or Enter keeps it. `close`: Esc
@@ -15,20 +20,82 @@ export interface ReadoutState {
 export type ReadoutEvent =
   | { type: "point"; target: ReadoutTarget | null }
   | { type: "pin"; target: ReadoutTarget }
+  | { type: "focus"; target: ReadoutTarget | null }
   | { type: "close" }
   | { type: "release" };
-export const initialReadout = (): ReadoutState => ({ open: null, dismissed: null });
+export const initialReadout = (): ReadoutState => ({ value: "closed", open: null, dismissed: null, focused: null });
 const same = (a: ReadoutTarget | null, b: ReadoutTarget | null) => a?.kind === b?.kind && a?.id === b?.id;
+const node: ReadoutTarget = { kind: "node", id: "node" };
+const edge: ReadoutTarget = { kind: "edge", id: "edge" };
+const canPoint = (s: ReadoutState, target: ReadoutTarget | null) =>
+  !s.open?.pinned &&
+  !s.focused &&
+  !(s.dismissed && same(target, s.dismissed)) &&
+  !(same(target, s.open) && !s.dismissed);
+const focusRow = (value: ReadoutState["value"]) => ({
+  target: value,
+  reduce: (s: ReadoutState, e: ReadoutEvent): ReadoutState => ({
+    ...s,
+    focused: e.type === "focus" && same(e.target, s.open) ? e.target : null,
+  }),
+});
+
+/** Ownership stays in the controller's synchronous machine, never in React effect flags. */
+export const readoutMachine = defineMachine<ReadoutState, ReadoutEvent>({
+  initial: initialReadout(),
+  states: ["closed", "summary", "pinned"],
+  events: [
+    { type: "point", target: node },
+    { type: "point", target: edge },
+    { type: "point", target: null },
+    { type: "pin", target: node },
+    { type: "focus", target: node },
+    { type: "focus", target: null },
+    { type: "close" },
+    { type: "release" },
+  ],
+  on: {
+    closed: { focus: focusRow("closed") },
+    summary: { focus: focusRow("summary") },
+    pinned: { focus: focusRow("pinned") },
+    "*": {
+      point: [
+        {
+          target: "summary",
+          guard: (s, e) => !!e.target && canPoint(s, e.target),
+          reduce: (_s, e) => ({
+            value: "summary",
+            open: { ...e.target!, pinned: false },
+            dismissed: null,
+            focused: null,
+          }),
+        },
+        { target: "closed", guard: (s, e) => !e.target && canPoint(s, null), reduce: () => initialReadout() },
+      ],
+      pin: {
+        target: "pinned",
+        reduce: (s, e) => ({
+          value: "pinned",
+          open: { ...e.target, pinned: true },
+          dismissed: null,
+          focused: same(e.target, s.open) ? s.focused : null,
+        }),
+      },
+      close: {
+        target: "closed",
+        reduce: (s) => ({ value: "closed", open: null, dismissed: s.open ?? s.dismissed, focused: null }),
+      },
+      release: {
+        target: "summary",
+        guard: (s) => !!s.open?.pinned,
+        reduce: (s) => ({ value: "summary", open: { ...s.open!, pinned: false }, dismissed: null, focused: null }),
+      },
+    },
+  },
+});
 
 export function readout(state: ReadoutState, event: ReadoutEvent): ReadoutState {
-  if (event.type === "close") return { open: null, dismissed: state.open ?? state.dismissed };
-  if (event.type === "pin") return { open: { ...event.target, pinned: true }, dismissed: null };
-  if (event.type === "release")
-    return state.open?.pinned ? { open: { ...state.open, pinned: false }, dismissed: null } : state;
-  if (state.open?.pinned) return state;
-  if (state.dismissed && same(event.target, state.dismissed)) return state;
-  if (same(event.target, state.open) && !state.dismissed) return state;
-  return { open: event.target ? { ...event.target, pinned: false } : null, dismissed: null };
+  return machineStep(readoutMachine, state, event).state;
 }
 
 /** Where keyboard focus sits in a readout card, as the DOM port reads it (domPort.ts, readoutStop). */

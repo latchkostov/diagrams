@@ -1,47 +1,59 @@
 ## P2 triage: Hover and Live cards (2026-10-24)
 
-Checked against `origin/master` at `7b6e905130a9`. DONE 13 / STALE 1 / OPEN 16 (deduplicated actionable findings).
+Checked against `origin/master` at `7b6e905130a9`. DONE 23 / STALE 1 / OPEN 6 (deduplicated actionable findings).
 
 Source: the local `queued-p2-fu10.archive.md`, preserved byte-for-byte on 2026-10-24. OPEN entries retain queue review labels; closed entries name the fixing PR. Locations are current-master entry points, not the old review line numbers. DONE means code and/or the specifically requested regression exists with merged-PR evidence; OPEN includes unproven historical failures. A later green run alone does not close a failure.
 
 Each numbered batch below is an independent PR candidate of at most ten items, ordered by user impact. Keep regression assertions and current bundle limits; verify each eventual regression by temporarily reverting its fix. Refactors must preserve output parity; intentional behavior changes need reviewed golden diffs. Owner decisions remain in [the separate decision list](2026-10-24-owner-decisions.md).
 
-## Batch 1: Readout ownership and keyboard traversal (6 OPEN)
+Lane A implementation on `fix/p2-hover-live` closes ten entries below with code and regression evidence; the closed table's merged-PR evidence remains historical. HLC-06 retains its explicit owner-decision dependency, and batch 3 stays OPEN under the bounded batch scope.
 
-1. **HLC-01 — OPEN: Require an actually visible card before intercepting Enter.** `src/live/session/useLiveKeyboard.ts:85`. Queue: #247 final.
+## Batch 1: Readout ownership and keyboard traversal (DONE)
+
+1. **HLC-01 — DONE: Require an actually visible card before intercepting Enter.** `src/live/session/useLiveKeyboard.ts:85`. Queue: #247 final.
    The keyboard path checks a logical readout even when placement hides its card. Ask the shared readout visibility policy before consuming Enter and test a no-room summary beside a focused control.
+   Resolution (lane A): The hover override now asks the shared placed-card visibility policy before taking Enter from an unrelated focused control. Regression: no-room summary beside Play; deliberate focused-item pinning remains available.
 
-2. **HLC-02 — OPEN: Close pinned readouts when their target disappears.** `src/live/NodeBadges.tsx:83`. Queue: #248/#252 r5.
+2. **HLC-02 — DONE: Close pinned readouts when their target disappears.** `src/live/NodeBadges.tsx:83`. Queue: #248/#252 r5.
    Pinned ownership is not reconciled when a node/edge is removed. Reconcile against live document IDs, close via the controller and test deletion and undo for both target kinds.
+   Resolution (lane A): Ownership is reconciled against current canvas document IDs (including paused Live), closes through the controller, and never restores a pin on Undo. Node/edge deletion-and-Undo browser regressions and focus-policy regressions cover removal after a focused card unmounts.
 
-3. **HLC-03 — OPEN: Keep a focused summary mounted while the pointer moves.** `src/live/NodeBadges.tsx:83`. Queue: #248/#252 r5.
+3. **HLC-03 — DONE: Keep a focused summary mounted while the pointer moves.** `src/live/NodeBadges.tsx:83`. Queue: #248/#252 r5.
    Pointer events can replace the logical target even while its summary holds focus. Make focused ownership explicit and test moving onto another item before Tab/Escape.
+   Resolution (lane A): The readout machine records focused ownership independently of pinning. Pointer changes preserve that summary until keyboard traversal or Escape; both paths have browser regressions.
 
-4. **HLC-04 — OPEN: Keep readout Tab navigation available in read-only viewers.** `src/canvas/selection/useCanvasNavigation.ts:267`. Queue: #248/#252 r5.
+4. **HLC-04 — DONE: Keep readout Tab navigation available in read-only viewers.** `src/canvas/selection/useCanvasNavigation.ts:267`. Queue: #248/#252 r5.
    The editing navigation hook's early guards can exclude the readout path. Route readout traversal before edit-only checks and cover embed and exported viewer forward/backward Tab.
+   Resolution (lane A): Tab navigation runs before edit-only shortcut guards, using the existing interaction controller. Browser regressions traverse forward/backward in both an embed and an exported HTML viewer.
 
-5. **HLC-07 — OPEN: Exclude nodes with no readout from pinning.** `src/live/NodeBadges.tsx:140`. Queue: #248/#252 r5.
+5. **HLC-07 — DONE: Exclude nodes with no readout from pinning.** `src/live/NodeBadges.tsx:140`. Queue: #248/#252 r5.
    A focusable annotation or unsupported item should not create a hidden logical readout that consumes keys. Check shared readable-target eligibility before opening/pinning and cover inert targets.
+   Resolution (lane A): One readable-target predicate guards pointing, pinning and reverse traversal. Regressions cover annotations, no-simulation stencils and removed IDs; no phantom owner takes Enter/Escape.
 
-6. **HLC-26 — OPEN: Malformed UTF-16 edge IDs.** `src/live/hoverSummary.test.ts:5`. Queue: #250.
+6. **HLC-26 — DONE: Malformed UTF-16 edge IDs.** `src/live/hoverSummary.test.ts:5`. Queue: #250.
    The hover policy should not throw while deriving selectors/readout keys. Exercise lone surrogates through the real edge-card dispatch and choose safe ID handling without changing serialized IDs.
+   Resolution (lane A): No longer applies to current code: HoverCard already uses opaque React useId IDs (PR #255). Added a real edge-card dispatch regression with lone UTF-16 surrogates, preserving the serialized ID; restoring URI encoding deliberately fails it.
 
-## Batch 2: Section models and placement (5 OPEN)
+## Batch 2: Section models and placement (1 OPEN)
 
-1. **HLC-05 — OPEN: Build all sections before ranking the pinned verdict.** `src/live/HoverCard.tsx:34`. Queue: #248/#252 r5.
+1. **HLC-05 — DONE: Build all sections before ranking the pinned verdict.** `src/live/HoverCard.tsx:34`. Queue: #248/#252 r5.
    Summary and pinned section availability can disagree. Build a complete section model first, rank once, and test problems exposed only in expanded details.
+   Resolution (lane A): The complete pinned section model is assembled before ranking. A down-node regression proves expanded-only Outcomes ranks before compact sections while the compact card retains its three rows.
 
 2. **HLC-06 — OPEN: Do not call an idle zero-replica worker thread-exhausted.** `src/live/hoverSummary.ts:55`. Queue: #248/#252 r5.
-   The comparison busy >= slots classifies 0 >= 0 as exhausted. After the owner health-semantics decision, distinguish an idle scaled-to-zero worker from actual demand without capacity; cover idle, waking and saturated cases without deciding incident policy in this triage.
+   Still OPEN in lane A: the explicit owner-decision dependency remains unresolved; no health/incident policy was selected here. The comparison busy >= slots classifies 0 >= 0 as exhausted. After the owner health-semantics decision, distinguish an idle scaled-to-zero worker from actual demand without capacity; cover idle, waking and saturated cases without deciding incident policy in this triage.
 
-3. **HLC-08 — OPEN: Resolve default sections against those actually available.** `src/live/verdictSection.ts:1`. Queue: #260 r2.
+3. **HLC-08 — DONE: Resolve default sections against those actually available.** `src/live/verdictSection.ts:1`. Queue: #260 r2.
    A verdict may point to a missing section. Intersect the preferred key with the complete section list and select a valid fallback; test nodes and nonwaiting connections.
+   Resolution (lane A): The preferred default is resolved against available sections, with a valid fallback or no section. Node and nonwaiting-connection regressions cover availability; a disappearing Readers section also leaves a fallback that collapses on its first click.
 
-4. **HLC-09 — OPEN: Reposition the card when its anchor moves.** `src/live/HoverCard.tsx:93`. Queue: #248/#252 r5.
+4. **HLC-09 — DONE: Reposition the card when its anchor moves.** `src/live/HoverCard.tsx:93`. Queue: #248/#252 r5.
    The placement effect watches viewport transform and card/root size, but moving the node inside the same viewport need not trigger it. Observe anchor position/revision and test live geometry changes without panning.
+   Resolution (lane A): The placement adapter observes node transforms and connection path geometry as well as viewport/card sizes. A browser regression moves an anchor without panning and proves its pinned card follows while keeping focus.
 
-5. **HLC-11 — OPEN: Assert visible summary sections inside the clipping container.** `tests/e2e/hover-cards.spec.ts:567`. Queue: #247 final/#255 r3.
+5. **HLC-11 — DONE: Assert visible summary sections inside the clipping container.** `tests/e2e/hover-cards.spec.ts:567`. Queue: #247 final/#255 r3.
    No scrollbar does not prove text is visible. Assert each required section's box stays inside the actual clip region; keep real edge targeting and test a deliberately clipped section.
+   Resolution (lane A): Each required summary section is checked against the actual clipping container. A deliberate clipped-section regression proves the check rejects hidden text even when the outer card has no scrollbar.
 
 ## Batch 3: Live controls and independent value assertions (5 OPEN)
 
