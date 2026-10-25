@@ -179,50 +179,58 @@ export function AdmissionInput({
   const [draft, setDraft] = useState<string | null>(null);
   const [invalid, setInvalid] = useState(false);
   const feedbackId = useId();
+  const hintId = useId();
   const min = name === "rate" ? 0.000001 : 0;
   return (
-    <label className="insp-field" title={hint}>
-      <span className="insp-label">{label}</span>
-      <input
-        className="insp-input mono"
-        type="number"
-        min={min}
-        max={max}
-        step={name === "rate" ? "any" : step}
-        value={draft ?? value ?? ""}
-        placeholder={mixed ? t("admission.mixed") : t("admission.unknownShort")}
-        data-testid={testId ?? `admission-${name}`}
-        aria-invalid={invalid && draft !== null}
-        aria-describedby={invalid ? feedbackId : undefined}
-        onFocus={() => {
-          setInvalid(false);
-          setDraft(value === undefined ? "" : String(value));
-        }}
-        onBlur={() => setDraft(null)}
-        onChange={(event) => {
-          const raw = event.currentTarget.value;
-          setDraft(raw);
-          setInvalid(!event.currentTarget.validity.valid);
-          if (event.currentTarget.validity.badInput) return;
-          if (raw === "") change(undefined);
-          else if (event.currentTarget.validity.valid) change(event.currentTarget.valueAsNumber);
-        }}
-      />
-      {invalid && (
-        <small id={feedbackId} className="insp-note" role="status" data-testid={`admission-limit-${name}`}>
-          {t("admission.invalidNumber", {
-            min: formatNumber(min, { maximumFractionDigits: 6 }),
-            max: formatNumber(max),
-            step: name === "rate" ? "" : t("admission.step", { step: formatNumber(step) }),
-            value: mixed
-              ? t("admission.mixed")
-              : value === undefined
-                ? t("admission.unknownShort")
-                : formatNumber(value),
-          })}
-        </small>
+    <>
+      <label className="insp-field">
+        <span className="insp-label">{label}</span>
+        <input
+          className="insp-input mono"
+          type="number"
+          min={min}
+          max={max}
+          step={name === "rate" ? "any" : step}
+          value={draft ?? value ?? ""}
+          placeholder={mixed ? t("admission.mixed") : t("admission.unknownShort")}
+          data-testid={testId ?? `admission-${name}`}
+          aria-invalid={invalid && draft !== null}
+          aria-describedby={[hint && hintId, invalid && feedbackId].filter(Boolean).join(" ") || undefined}
+          onFocus={() => {
+            setInvalid(false);
+            setDraft(value === undefined ? "" : String(value));
+          }}
+          onBlur={() => setDraft(null)}
+          onChange={(event) => {
+            const raw = event.currentTarget.value;
+            setDraft(raw);
+            setInvalid(!event.currentTarget.validity.valid);
+            if (event.currentTarget.validity.badInput) return;
+            if (raw === "") change(undefined);
+            else if (event.currentTarget.validity.valid) change(event.currentTarget.valueAsNumber);
+          }}
+        />
+        {invalid && (
+          <small id={feedbackId} className="insp-note" role="status" data-testid={`admission-limit-${name}`}>
+            {t("admission.invalidNumber", {
+              min: formatNumber(min, { maximumFractionDigits: 6 }),
+              max: formatNumber(max),
+              step: name === "rate" ? "" : t("admission.step", { step: formatNumber(step) }),
+              value: mixed
+                ? t("admission.mixed")
+                : value === undefined
+                  ? t("admission.unknownShort")
+                  : formatNumber(value),
+            })}
+          </small>
+        )}
+      </label>
+      {hint && (
+        <p id={hintId} className="insp-note">
+          {hint}
+        </p>
       )}
-    </label>
+    </>
   );
 }
 

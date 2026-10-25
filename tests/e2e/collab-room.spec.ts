@@ -1106,12 +1106,15 @@ test("a peer's selection and cursor show in their colour and name; the view and 
 
 test("a joiner retrying from the chip keeps the keyboard on its wait; the alert stays below the bar, on the diagram only", async ({
   browser,
+  context,
   page,
 }) => {
   test.slow();
-  // No tracker for either side: nothing connects.
+  // Configured but unreachable trackers keep Retry relevant; neither side can connect.
   const other = await browser.newContext({ viewport: { width: 390, height: 844 } });
   try {
+    await deadTracker(context);
+    await deadTracker(other);
     await page.clock.install();
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("./?view=canvas&example=kafka-order-pipeline");

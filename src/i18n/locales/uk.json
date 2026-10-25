@@ -1947,5 +1947,6 @@
   "staticSkill.back": "← Назад до Live Diagrams",
   "staticSkill.copy": "Копіювати",
   "staticSkill.copied": "Скопійовано",
-  "staticSkill.selectCopy": "Виділити й скопіювати"
+  "staticSkill.selectCopy": "Виділити й скопіювати",
+  "gallery.inlineRateLimitSummary": "Трафік партнера обмежується редагованою квотою запитів"
 }

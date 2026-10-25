@@ -1947,5 +1947,6 @@
   "staticSkill.back": "← Live Diagrams に戻る",
   "staticSkill.copy": "コピー",
   "staticSkill.copied": "コピーしました",
-  "staticSkill.selectCopy": "選択してコピー"
+  "staticSkill.selectCopy": "選択してコピー",
+  "gallery.inlineRateLimitSummary": "パートナーのトラフィックに編集可能なリクエスト割り当てを適用"
 }

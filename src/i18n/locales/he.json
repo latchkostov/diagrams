@@ -1947,5 +1947,6 @@
   "staticSkill.back": "→ חזרה אל Live Diagrams",
   "staticSkill.copy": "העתקה",
   "staticSkill.copied": "הועתק",
-  "staticSkill.selectCopy": "בחירה והעתקה"
+  "staticSkill.selectCopy": "בחירה והעתקה",
+  "gallery.inlineRateLimitSummary": "תעבורה של שותף נתקלת במכסת בקשות שניתנת לעריכה"
 }

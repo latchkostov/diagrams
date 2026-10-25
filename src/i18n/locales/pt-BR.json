@@ -1947,5 +1947,6 @@
   "staticSkill.back": "← Voltar ao Live Diagrams",
   "staticSkill.copy": "Copiar",
   "staticSkill.copied": "Copiado",
-  "staticSkill.selectCopy": "Selecionar e copiar"
+  "staticSkill.selectCopy": "Selecionar e copiar",
+  "gallery.inlineRateLimitSummary": "O tráfego de um parceiro encontra uma cota de solicitações editável"
 }

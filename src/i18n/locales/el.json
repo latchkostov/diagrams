@@ -1947,5 +1947,6 @@
   "staticSkill.back": "← Επιστροφή στο Live Diagrams",
   "staticSkill.copy": "Αντιγραφή",
   "staticSkill.copied": "Αντιγράφηκε",
-  "staticSkill.selectCopy": "Επιλογή και αντιγραφή"
+  "staticSkill.selectCopy": "Επιλογή και αντιγραφή",
+  "gallery.inlineRateLimitSummary": "Η κίνηση ενός συνεργάτη συναντά ένα επεξεργάσιμο όριο αιτημάτων"
 }

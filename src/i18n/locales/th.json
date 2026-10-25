@@ -1947,5 +1947,6 @@
   "staticSkill.back": "← กลับไปยัง Live Diagrams",
   "staticSkill.copy": "คัดลอก",
   "staticSkill.copied": "คัดลอกแล้ว",
-  "staticSkill.selectCopy": "เลือกและคัดลอก"
+  "staticSkill.selectCopy": "เลือกและคัดลอก",
+  "gallery.inlineRateLimitSummary": "ทราฟฟิกของพาร์ทเนอร์พบกับโควตาคำขอที่แก้ไขได้"
 }

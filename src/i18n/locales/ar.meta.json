@@ -2025,6 +2025,7 @@
     "staticSkill.copy": "658f3664",
     "staticSkill.copied": "8dc21305",
     "staticSkill.selectCopy": "d4deeedd",
-    "examples.paymentTimeoutSummary": "4c50b7d5"
+    "examples.paymentTimeoutSummary": "4c50b7d5",
+    "gallery.inlineRateLimitSummary": "d7ec8c11"
   }
 }
