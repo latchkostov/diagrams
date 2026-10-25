@@ -3,6 +3,8 @@ import type { DiagramFile } from "../model/types";
 import { diagramThumb } from "../lib/thumbnail";
 import { examples, getLoadedExample, loadExample } from "./index";
 import { exampleMetadata } from "./metadata";
+import { exampleIdentity } from "./identity";
+import { withExampleDetails } from "./details";
 import { labMetadata } from "./labMetadata";
 import { validateDiagram } from "../interop/native";
 import { createEngine } from "../sim/engine";
@@ -56,13 +58,22 @@ describe("example metadata and loading", () => {
       .sort();
     expect(publicExamples.map((e) => e.slug).sort()).toEqual(slugs);
     expect(Object.keys(exampleMetadata).sort()).toEqual(slugs);
+    expect(Object.keys(exampleIdentity).sort()).toEqual(slugs);
     expect(Object.keys(labMetadata).sort()).toEqual(slugs);
     for (const example of publicExamples) {
       const d = files[`./${example.slug}.json`];
       expect(example).not.toHaveProperty("diagram");
       expect(example.title).toBe(d.title);
-      expect(example.description).toBe(d.description);
-      expect(example.thumb).toEqual(diagramThumb(d));
+      expect(example).not.toHaveProperty("description");
+      expect(example).not.toHaveProperty("thumb");
+      expect(example).not.toHaveProperty("shows");
+      expect(exampleIdentity[example.slug]).toEqual({
+        title: d.title,
+        ...(d.simulations?.[0] ? { simulation: d.simulations[0].id } : {}),
+      });
+      const rich = withExampleDetails([example])[0];
+      expect(rich.description).toBe(d.description);
+      expect(rich.thumb).toEqual(diagramThumb(d));
       expect(example.theme).toBeTruthy();
       expect(example.summary).toBeTruthy();
       expect(labMetadata[example.slug]).toEqual(

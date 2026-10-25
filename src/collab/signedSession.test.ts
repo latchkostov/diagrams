@@ -148,6 +148,59 @@ describe("signed rooms", () => {
     expect(published.at(-1)).toBe(session.diagnostics());
   });
 
+  it("publishes an empty held queue's expiry while its last frame is still being verified", async () => {
+    const r = await signedRoom(54);
+    const session = r.clients[0].session;
+    const peer = r.net.connect();
+    onTestFinished(() => peer.close());
+    await r.settle();
+    const keys = await deriveRoomKeys(r.link);
+    const signer = new SignedRoom(keys, r.host.key, await newIdentity());
+    const sealer = new Sealer(keys, seededBytes(542)(16));
+    sealer.sign = signer.signFrame;
+    peer.send(await sealer.seal("doc", frame(DOC.syncRequest, new Uint8Array([0]))));
+    await r.settle();
+    expect(session.diagnostics()).toMatchObject({ held: 1, behind: 0 });
+
+    let entered!: () => void;
+    const verifying = new Promise<void>((resolve) => (entered = resolve));
+    let release!: () => void;
+    const pending = new Promise<void>((resolve) => (release = resolve));
+    const room = session.signed!;
+    // Make the binding available to this drain without scheduling another concurrent drain.
+    const keyOf = room.keyOf.bind(room);
+    vi.spyOn(room, "keyOf").mockImplementation((sender) => (sender === sealer.senderHex ? signer.key : keyOf(sender)));
+    const verify = room.verifyFrame.bind(room);
+    vi.spyOn(room, "verifyFrame").mockImplementation(async (...args) => {
+      if (args[2][0] === DOC.syncRequest) {
+        entered();
+        await pending;
+      }
+      return verify(...args);
+    });
+    const internals = session as unknown as {
+      held: Map<string, { raw: unknown[]; blocked: unknown[] }>;
+      drain(sender: string): Promise<void>;
+    };
+    const draining = internals.drain(sealer.senderHex);
+    try {
+      await verifying;
+      expect(internals.held.get(sealer.senderHex)).toMatchObject({ raw: [], blocked: [] });
+      const published: ReturnType<typeof session.diagnostics>[] = [];
+      onTestFinished(session.onChange(() => published.push(session.diagnostics())));
+      r.clock.advance(COLLAB_LIMITS.heldMs);
+      // No settle or verification completion may be needed to notify subscribers.
+      const expired = session.diagnostics();
+      expect(expired).toMatchObject({ held: 0, behind: 0 });
+      expect(expired.rejected["held-dropped"]).toBeUndefined();
+      expect(published.at(-1)).toBe(expired);
+    } finally {
+      release();
+      await draining;
+    }
+    expect(session.diagnostics()).toMatchObject({ held: 0, behind: 0 });
+  });
+
   it("publishes dropped held senders before any subsequent traffic", async () => {
     const r = await signedRoom(52, { viewOnly: true });
     const [host] = r.clients;

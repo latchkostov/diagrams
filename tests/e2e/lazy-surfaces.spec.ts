@@ -137,15 +137,17 @@ for (const [id, name, source, policy] of lazySurfaces) {
       // Tutorials view has the top bar but no diagram open.
       const tutorial = id === "tutorial.app";
       const focus = page.getByTestId(
-        id === "live.inject"
-          ? "inject-loading-close"
-          : id === "live.simulations"
-            ? "sim-panel-close"
-            : tutorial
-              ? "tutorial-exit"
-              : id === "tutorial.list"
-                ? "view-canvas"
-                : "example-picker",
+        id === "examples.discovery"
+          ? "examples-search"
+          : id === "live.inject"
+            ? "inject-loading-close"
+            : id === "live.simulations"
+              ? "sim-panel-close"
+              : tutorial
+                ? "tutorial-exit"
+                : id === "tutorial.list"
+                  ? "view-canvas"
+                  : "example-picker",
       );
       await focus.focus();
       await expect(focus).toBeFocused();

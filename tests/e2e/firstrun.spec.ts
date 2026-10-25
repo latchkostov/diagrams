@@ -1,3 +1,5 @@
+import { chunk, holdChunk, releaseAndEvaluate } from "./chunk";
+import { waitForStableViewport } from "./fixtures";
 import { currentDiagram } from "./fixtures";
 import { readFileSync } from "node:fs";
 import type { Page } from "@playwright/test";
@@ -283,4 +285,82 @@ test.describe("first run", () => {
     await expect(tip).toHaveCount(0);
     expect(await describedBy()).not.toContain(tipId);
   });
+});
+
+for (const locale of ["en", "ar"]) {
+  test(`held discovery keeps start row geometry, keyboard and focus in ${locale}`, async ({ page }) => {
+    await page.addInitScript((locale) => localStorage.setItem("diagrams.locale", locale), locale);
+    const pattern = chunk("ExampleDetails", "src/examples/ExampleDetails.tsx");
+    const held = await holdChunk(page, pattern);
+    try {
+      await page.goto("./");
+      await expect.poll(held.requested).toBe(true);
+      const row = page.getByTestId("start-example-black-friday-commerce");
+      await expect(row).toBeVisible();
+      expect(await page.evaluate(() => getComputedStyle(document.documentElement).direction)).toBe(
+        locale === "ar" ? "rtl" : "ltr",
+      );
+      await expect(page.getByTestId("start-example-black-friday-commerce-thumb")).toHaveCount(0);
+      expect(await row.evaluate((el) => getComputedStyle(el).cursor)).toBe("pointer");
+      await waitForStableViewport(page);
+      await page.evaluate(() => document.fonts.ready);
+      await page
+        .getByTestId("start-card")
+        .evaluate((el) => Promise.all(el.getAnimations().map((animation) => animation.finished)));
+      const box = await row.boundingBox();
+      await row.focus();
+      await page.keyboard.press("Tab");
+      await page.keyboard.press("Shift+Tab");
+      await expect(row).toBeFocused();
+      await releaseAndEvaluate(page, pattern, held.release);
+      await expect(page.getByTestId("start-example-black-friday-commerce-thumb")).toBeVisible();
+      expect(await row.boundingBox()).toEqual(box);
+      await expect(row).toBeFocused();
+      await page.keyboard.press("Enter");
+      await expect(page.getByTestId("diagram-title")).toHaveText("Black Friday commerce platform");
+    } finally {
+      held.release();
+    }
+  });
+}
+
+test("held discovery does not reopen a dismissed start card or steal placement focus", async ({ page }) => {
+  const pattern = chunk("ExampleDetails", "src/examples/ExampleDetails.tsx");
+  const held = await holdChunk(page, pattern);
+  try {
+    await page.goto("./");
+    await expect.poll(held.requested).toBe(true);
+    await page.getByTestId("start-blank").click();
+    await expect(page.getByTestId("palette-search")).toBeFocused();
+    await releaseAndEvaluate(page, pattern, held.release);
+    await expect(page.getByTestId("start-card")).toHaveCount(0);
+    await expect(page.getByTestId("palette-search")).toBeFocused();
+  } finally {
+    held.release();
+  }
+});
+
+test("start Open and recent diagrams work while discovery is held", async ({ page }) => {
+  await page.addInitScript(() =>
+    Object.defineProperty(window, "showOpenFilePicker", { configurable: true, value: undefined }),
+  );
+  const held = await holdChunk(page, chunk("ExampleDetails", "src/examples/ExampleDetails.tsx"));
+  try {
+    await page.goto("./");
+    await expect.poll(held.requested).toBe(true);
+    const chooser = page.waitForEvent("filechooser");
+    await page.getByTestId("start-open").click();
+    await (
+      await chooser
+    ).setFiles({ name: "flow.diagram.json", mimeType: "application/json", buffer: Buffer.from(WORK) });
+    await expect(page.getByTestId("node-api")).toBeVisible();
+    await page.getByTestId("file-button").click();
+    await page.getByTestId("file-new").click();
+    await expect(page.getByTestId("start-card")).toBeVisible();
+    const recent = page.getByTestId(/^start-recent-my-[^-]+$/).first();
+    await recent.click();
+    await expect(page.getByTestId("node-api")).toBeVisible();
+  } finally {
+    held.release();
+  }
 });

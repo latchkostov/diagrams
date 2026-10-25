@@ -1,3 +1,4 @@
+import { chunk, holdChunk } from "./chunk";
 import { readFileSync, writeFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 import type { Download, FrameLocator, Page } from "@playwright/test";
@@ -615,4 +616,30 @@ test.describe("Interactive HTML with a password", () => {
     expect(viewer.errors).toEqual([]);
     await viewer.page.close();
   });
+});
+
+test("Interactive HTML downloads with mounted, held discovery and excludes start chrome", async ({ page }) => {
+  const held = await holdChunk(page, chunk("ExampleDetails", "src/examples/ExampleDetails.tsx"));
+  try {
+    await page.goto("./");
+    await expect.poll(held.requested).toBe(true);
+    await expect(page.getByTestId("start-card")).toBeVisible();
+    await expect
+      .poll(() => page.evaluate(() => window.__lazySurfaces?.states()["examples.discovery"]))
+      .toEqual({ state: "loading", active: true });
+    await openHtmlExport(page);
+    const file = await download(page);
+    expect(file.html).not.toContain('data-testid="start-card"');
+    expect(file.html).not.toContain("ExampleDetails-");
+    const payload = JSON.parse(filePayloadText(file.html));
+    expect(payload.diagram.nodes).toEqual([]);
+    await expect(page.getByTestId("start-card")).toBeVisible();
+    expect(await file.download.failure()).toBeNull();
+    expect(await page.evaluate(() => window.__lazySurfaces?.states()["examples.discovery"])).toEqual({
+      state: "loading",
+      active: true,
+    });
+  } finally {
+    held.release();
+  }
 });

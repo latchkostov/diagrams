@@ -1,0 +1,91 @@
+{
+  "repo": "owner/repo",
+  "runs": [
+    {
+      "databaseId": 90,
+      "headBranch": "recent",
+      "headSha": "recent",
+      "conclusion": "success",
+      "attempt": 3,
+      "createdAt": "2026-10-25T00:00:00Z",
+      "status": "completed"
+    },
+    {
+      "databaseId": 80,
+      "headBranch": "older",
+      "headSha": "older",
+      "conclusion": "success",
+      "attempt": 1,
+      "createdAt": "2026-10-24T00:00:00Z",
+      "status": "completed"
+    }
+  ],
+  "jobs": [
+    {
+      "id": 901,
+      "runId": 90,
+      "attempt": 1,
+      "name": "E2E 1/2",
+      "conclusion": "success",
+      "started_at": "2026-10-25T00:00:00Z",
+      "completed_at": "2026-10-25T00:00:10Z"
+    },
+    {
+      "id": 902,
+      "runId": 90,
+      "attempt": 1,
+      "name": "E2E 2/2",
+      "conclusion": "success",
+      "started_at": "2026-10-25T00:00:00Z",
+      "completed_at": "2026-10-25T00:00:20Z"
+    },
+    {
+      "id": 903,
+      "runId": 90,
+      "attempt": 2,
+      "name": "E2E 1/2",
+      "conclusion": "success",
+      "started_at": "2026-10-25T01:00:00Z",
+      "completed_at": "2026-10-25T01:00:30Z"
+    },
+    {
+      "id": 904,
+      "runId": 90,
+      "attempt": 2,
+      "name": "E2E 2/2",
+      "conclusion": "success",
+      "started_at": "2026-10-25T01:00:00Z",
+      "completed_at": "2026-10-25T01:00:50Z"
+    },
+    {
+      "id": 905,
+      "runId": 90,
+      "attempt": 3,
+      "name": "E2E 1/2",
+      "conclusion": "success",
+      "started_at": "2026-10-25T02:00:00Z",
+      "completed_at": "2026-10-25T02:01:10Z"
+    },
+    {
+      "id": 801,
+      "runId": 80,
+      "attempt": 1,
+      "name": "E2E 1/2",
+      "conclusion": "success",
+      "started_at": "2026-10-24T00:00:00Z",
+      "completed_at": "2026-10-24T00:00:20Z"
+    },
+    {
+      "id": 802,
+      "runId": 80,
+      "attempt": 1,
+      "name": "E2E 2/2",
+      "conclusion": "success",
+      "started_at": "2026-10-24T00:00:00Z",
+      "completed_at": "2026-10-24T00:00:30Z"
+    }
+  ],
+  "logs": {},
+  "budgetSeconds": 60,
+  "unavailable": []
+}

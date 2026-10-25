@@ -13,7 +13,8 @@ export function exampleMetadataPlugin(): Plugin {
     transform(_code, id) {
       const normalized = id.replaceAll("\\", "/");
       const lab = normalized.endsWith("/src/examples/labMetadata.ts");
-      if (!lab && !normalized.endsWith("/src/examples/metadata.ts")) return;
+      const identity = normalized.endsWith("/src/examples/identity.ts");
+      if (!lab && !identity && !normalized.endsWith("/src/examples/metadata.ts")) return;
       const dir = dirname(id);
       const metadata = Object.fromEntries(
         readdirSync(dir)
@@ -45,7 +46,14 @@ export function exampleMetadataPlugin(): Plugin {
           }),
       );
       if (lab) return `export const labMetadata = ${JSON.stringify(metadata)};`;
-      // A compact row format keeps this registry within the startup budget.
+      if (identity)
+        return `export const exampleIdentity = Object.fromEntries(${JSON.stringify(
+          Object.entries(metadata).map(([slug, value]) => {
+            const { title, simulation } = value as { title: string; simulation?: string };
+            return [slug, title, simulation];
+          }),
+        )}.map(([slug,title,simulation]) => [slug,{title,...(simulation === null ? {} : {simulation})}]));`;
+      // Keep the optional rich download compact too; startup uses identity only.
       // Reconstruct the same public objects once, without changing thumbnail data.
       // diagramThumb rounds coordinates to tenths; integer packing is lossless.
       const accents: string[] = [];
@@ -63,16 +71,13 @@ export function exampleMetadataPlugin(): Plugin {
           }),
         );
       const rows = Object.entries(metadata).map(([slug, value]) => {
-        const { title, description, thumb, shows, simulation } = value as {
-          title: string;
+        const { description, thumb, shows } = value as {
           description?: string;
           thumb: ReturnType<typeof diagramThumb>;
           shows: string[];
-          simulation?: string;
         };
         return [
           slug,
-          title,
           description,
           thumb.w,
           thumb.h,
@@ -80,10 +85,9 @@ export function exampleMetadataPlugin(): Plugin {
           packPoints(thumb.groups),
           thumb.edges,
           shows,
-          simulation,
         ];
       });
-      return `const accents = ${JSON.stringify(accents)}; export const exampleMetadata = Object.fromEntries(${JSON.stringify(rows)}.map(([slug,title,description,w,h,nodes,groups,edges,shows,simulation]) => [slug,{title,...(description === null ? {} : {description}),thumb:{w,h,nodes:nodes.map(p=>p.map((v,i)=>i<4?v/10:accents[v])),groups:groups.map(p=>p.map(v=>v/10)),edges},shows,...(simulation === null ? {} : {simulation})}]));`;
+      return `const accents = ${JSON.stringify(accents)}; export const exampleMetadata = Object.fromEntries(${JSON.stringify(rows)}.map(([slug,description,w,h,nodes,groups,edges,shows]) => [slug,{...(description === null ? {} : {description}),thumb:{w,h,nodes:nodes.map(p=>p.map((v,i)=>i<4?v/10:accents[v])),groups:groups.map(p=>p.map(v=>v/10)),edges},shows}]));`;
     },
   };
 }

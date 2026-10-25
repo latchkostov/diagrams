@@ -1,3 +1,4 @@
+import { chunk, holdChunk } from "./chunk";
 import { currentDiagram } from "./fixtures";
 import { openExample } from "./fixtures";
 import { readFileSync, statSync } from "node:fs";
@@ -768,3 +769,69 @@ for (const deferred of [false, true]) {
     expect(await page.evaluate(() => window.__fs.writes[2].name)).toBe("saved-2.json");
   });
 }
+
+for (const format of ["json", "svg", "png"] as const) {
+  test(`${format} downloads while example discovery is held`, async ({ page }) => {
+    const held = await holdChunk(page, chunk("ExampleDetails", "src/examples/ExampleDetails.tsx"));
+    try {
+      await page.goto("./");
+      await expect.poll(held.requested).toBe(true);
+      await page.getByTestId("start-example-rag-assistant").click();
+      await expect(page.getByTestId("diagram-title")).toHaveText("RAG support assistant");
+      const downloading = page.waitForEvent("download");
+      await page.getByTestId("file-button").click();
+      await page.getByTestId("file-more-formats").click();
+      if (format === "json") await page.getByTestId("export-json").click();
+      else {
+        await page.getByTestId("export-image").click();
+        await page.getByTestId("image-options-toggle").click();
+        await page.getByTestId(`image-format-${format}`).click();
+        await page.getByTestId("image-export").click();
+      }
+      const file = await downloading;
+      expect(file.suggestedFilename()).toMatch(new RegExp(`\\.${format}$`));
+      const bytes = readFileSync(await file.path());
+      expect(bytes.length).toBeGreaterThan(0);
+      if (format !== "png") expect(bytes.toString()).not.toContain('data-testid="start-card"');
+      expect(await page.evaluate(() => window.__lazySurfaces?.states()["examples.discovery"]?.state)).toBe("loading");
+    } finally {
+      held.release();
+    }
+  });
+}
+
+test("SVG downloads with mounted, held gallery discovery and excludes discovery chrome", async ({ page }) => {
+  const held = await holdChunk(page, chunk("ExampleDetails", "src/examples/ExampleDetails.tsx"));
+  try {
+    await gotoCanvas(page, "rag-assistant");
+    // Open the export dialog first, then mount the gallery concurrently. Dispatching its entry
+    // actions intentionally bypasses the modal pointer trap to exercise export readiness itself.
+    await page.getByTestId("file-button").click();
+    await page.getByTestId("file-more-formats").click();
+    await page.getByTestId("export-image").click();
+    await page.getByTestId("image-options-toggle").click();
+    await page.getByTestId("image-format-svg").click();
+    await page.getByTestId("example-picker").dispatchEvent("click");
+    await page.getByTestId("picker-browse-examples").dispatchEvent("click");
+    await expect.poll(held.requested).toBe(true);
+    await expect(page.getByTestId("examples-loading")).toBeVisible();
+    await expect
+      .poll(() => page.evaluate(() => window.__lazySurfaces?.states()["examples.discovery"]))
+      .toEqual({ state: "loading", active: true });
+    const downloading = page.waitForEvent("download");
+    await page.getByTestId("image-export").dispatchEvent("click");
+    const file = await downloading;
+    const svg = readFileSync(await file.path(), "utf8");
+    expect(await file.failure()).toBeNull();
+    expect(svg).toContain("RAG support assistant");
+    for (const chrome of ["examples-dialog", "examples-loading", "examples-search", "start-card", "ExampleDetails-"])
+      expect(svg).not.toContain(chrome);
+    await expect(page.getByTestId("examples-loading")).toBeVisible();
+    expect(await page.evaluate(() => window.__lazySurfaces?.states()["examples.discovery"])).toEqual({
+      state: "loading",
+      active: true,
+    });
+  } finally {
+    held.release();
+  }
+});

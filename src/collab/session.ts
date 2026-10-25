@@ -2093,6 +2093,7 @@ export class CollabSession {
     if (!updates && !extra) {
       const last = q?.raw.at(-1) ?? q?.blocked.at(-1);
       if (last) this.drop(sender, last.from, q!.raw.length + q!.blocked.length);
+      else if (q) this.emit();
       return;
     }
     for (let i = 0; i < (q ? q.raw.length + q.blocked.length : 0) + extra; i++) this.reject("unauthorised");

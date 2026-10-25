@@ -15,6 +15,11 @@ import { productionBuild } from "../test/productionBuild";
 /** Never in the startup JavaScript. */
 const NOT_AT_STARTUP: [string, RegExp][] = [
   ["tutorial titles and catalog", /[/\\]src[/\\]tutorials[/\\](?:metadata\.ts$|catalog[/\\])/],
+  [
+    "example discovery details",
+    /[/\\]src[/\\]examples[/\\](?:metadata\.ts|details\.ts|ExampleDetails\.tsx|GalleryDetails\.tsx)$/,
+  ],
+  ["production tutorial metadata", /[/\\]src[/\\]tutorials[/\\]metadata\.ts$/],
   ["route presentation and authoring", /[/\\]src[/\\]model[/\\]routingAppearance\.ts$/],
   ["resource playback arithmetic", /[/\\]src[/\\]model[/\\]resourceRuntime\.ts$/],
   ["AI authoring simulation schemas", /[/\\]src[/\\]model[/\\]aiSimProps\.ts$/],
@@ -269,6 +274,7 @@ describe("production bundle split", () => {
 
   it("keeps code that isn't needed for the first view out of the startup JavaScript", () => {
     expect(found(bundled(startup()), NOT_AT_STARTUP)).toEqual([]);
+    expect(plain().chunks.some((chunk) => chunk.code.includes("A mobile app talks to an API"))).toBe(false);
   });
 
   it("serves every stencil glyph as a separate, byte-preserved cached asset", () => {
