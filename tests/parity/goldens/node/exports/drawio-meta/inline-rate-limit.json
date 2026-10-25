@@ -1,0 +1,55 @@
+{
+  "withIcons": {
+    "sha256": "4ba9a795eb50d38abf489a19495988f7844d555ef83a826fa636ee892c7fe0e1",
+    "bytes": 4313,
+    "inlined": { "client.user": "client-user c8aa1007847a06e5", "generic.rate-limiter": "generic-rate-limiter 7f75f8aa59c5823e", "generic.service": "generic-service 6ec0da29f56c9e80" }
+  },
+  "readBack": [
+    {
+      "warnings": [],
+      "diagram": {
+        "format": "diagrams/v1",
+        "title": "An inline request rate limit",
+        "description": "A fictional partner sends 20 requests/s through a 10 requests/s token bucket. Go Live to see rejections within seconds, then double-click the limiter and change Rate limit in Simulation.",
+        "nodes": [
+          {
+            "id": "partner",
+            "stencil": "client.user",
+            "label": "Partner client",
+            "x": 0,
+            "y": 0,
+            "props": { "ratePerSec": 20 }
+          },
+          {
+            "id": "limiter",
+            "stencil": "generic.rate-limiter",
+            "label": "Rate limiter",
+            "x": 300,
+            "y": 0,
+            "props": {
+              "latencyMs": 0,
+              "jitter": 0,
+              "api": {
+                "quotas": [
+                  { "id": "local-rate", "unit": "requests", "amount": 10, "windowMs": 1000, "algorithm": "token-bucket", "burst": 10 }
+                ]
+              }
+            }
+          },
+          {
+            "id": "api",
+            "stencil": "generic.service",
+            "label": "Catalog API",
+            "x": 600,
+            "y": 0,
+            "props": { "latencyMs": 10, "jitter": 0 }
+          }
+        ],
+        "edges": [
+          { "id": "partner-limiter", "from": "partner", "to": "limiter", "kind": "sync" },
+          { "id": "limiter-api", "from": "limiter", "to": "api", "kind": "sync" }
+        ]
+      }
+    }
+  ]
+}

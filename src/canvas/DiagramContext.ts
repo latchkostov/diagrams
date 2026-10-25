@@ -33,8 +33,10 @@ export interface DiagramUi {
   editing: InlineEdit | null;
   setEditing: (target: InlineEdit | null) => void;
   annotationCommands?: Pick<EditorApi, "updateAnnotation" | "creating" | "doneNaming">;
-  /** Edit or live (not presenting or read-only): a double-click names a node, connection or boundary in the inspector. */
+  /** Rename commands and edge/boundary double-clicks select the name in the Inspector. */
   rename?: (target: RenameTarget) => void;
+  /** Live opens Properties; editing opens the selected name, through the interaction mode machine. */
+  nodeDoubleClick?: (nodeId: string) => void;
   /** Opens the inspector for a node's documentation when its corner badge is clicked. */
   openDoc?: (nodeId: string) => void;
   /** Opens the edge context menu (edge labels live outside the edge's SVG group). */

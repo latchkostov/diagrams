@@ -976,6 +976,8 @@ export function ImageDialog({
                 className={kind === k ? "is-on" : ""}
                 onClick={() => setKind(k)}
                 data-testid={`image-format-${k}`}
+                title={k === "svg" ? t("export.narrationHint") : undefined}
+                aria-description={k === "svg" ? t("export.narrationHint") : undefined}
               >
                 {k.toUpperCase()}
               </button>

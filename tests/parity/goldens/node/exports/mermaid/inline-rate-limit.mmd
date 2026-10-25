@@ -1,0 +1,10 @@
+---
+title: An inline request rate limit
+---
+flowchart LR
+  partner(["Partner client"])
+  limiter["Rate limiter"]
+  api["Catalog API"]
+  partner --> limiter
+  limiter --> api
+%% diagrams:{"v":1,"description":"A fictional partner sends 20 requests/s through a 10 requests/s token bucket. Go Live to see rejections within seconds, then double-click the limiter and change Rate limit in Simulation.","nodes":{"partner":["partner","client.user"],"limiter":["limiter","generic.rate-limiter"],"api":["api","generic.service"]},"edges":["partner-limiter","limiter-api"],"relations":{}}

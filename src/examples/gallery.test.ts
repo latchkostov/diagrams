@@ -69,6 +69,7 @@ describe("example gallery", () => {
       "video-on-demand-pipeline",
       "observability-pipeline",
       "shared-api-quotas",
+      "inline-rate-limit",
       "notification-fanout",
     ]);
     expect(filterExamples(publicItems, "Kafka", "networkDevices")).toEqual([]);
@@ -124,6 +125,7 @@ describe("example gallery", () => {
       "partitions-vs-subscriptions": ["partitions"],
       "shared-worker-pool": ["partitions"],
       "shared-api-quotas": ["rateLimits"],
+      "inline-rate-limit": ["rateLimits"],
       "serverless-burst-buffer": [],
       "measured-order-capacity": [],
       "contoso-dmz": ["networkDevices"],

@@ -37,6 +37,7 @@ import { formatNumber } from "../../i18n/number";
 import { type DiagramFile } from "../../model/types";
 import { MessageFields } from "./lazyMessageFields";
 import { PairedFields } from "./Layout";
+import { RateLimitFields } from "./RateLimitFields";
 
 type NodeSimulationProps = Pick<InspectorProps, "editor" | "meta" | "readDiagram"> & {
   nodeId: string;
@@ -70,11 +71,12 @@ export function NodeSimulation({
   const assignment = assignmentLabel(broker);
   const simFields = nodeSimFields(role, stencil, meta.planning, props);
   const managed = revisionAtLeast(meta.planning?.revision, "p3") && !!managedKind(stencil);
+  const inlineLimiter = revisionAtLeast(meta.planning?.revision, "p3") && stencil === "generic.rate-limiter";
   const device = role === "gateway" ? deviceSpec(stencil) : undefined;
   const merge = (field: string) => ({ merge: `inspector:node:${nodeId}:${field}` });
   const firstField = simFields.find((key) => SIM_FIELDS[key]);
   const autoscaling = props.autoscaling as NodeSimProps["autoscaling"];
-  const admission = managed ? resolveProps(role, "", props, stencil, { revision: "p3" }) : undefined;
+  const admission = managed || inlineLimiter ? resolveProps(role, "", props, stencil, { revision: "p3" }) : undefined;
   const admissionField = admission
     ? admissionFieldBindings(
         stencil,
@@ -90,7 +92,7 @@ export function NodeSimulation({
       summary={
         admissionField
           ? t("workspaceInspector.valueSummary", {
-              label: admissionFieldLabel(admissionField.name),
+              label: inlineLimiter ? t("inspector.rateLimit") : admissionFieldLabel(admissionField.name),
               value:
                 admissionField.value === undefined ? t("admission.unknownShort") : formatNumber(admissionField.value),
             })
@@ -151,6 +153,12 @@ export function NodeSimulation({
         <p className="insp-note" data-testid="broker-fanout">
           {assignmentLabel(broker)} · {t("broker.fanout")}
         </p>
+      )}
+      {inlineLimiter && (
+        <RateLimitFields
+          props={props}
+          set={(patch, key) => editor.setNodeProps(nodeId, patch, key ? merge(key) : undefined)}
+        />
       )}
       {managed ? (
         <AdmissionFields

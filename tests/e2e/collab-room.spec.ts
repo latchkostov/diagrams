@@ -588,7 +588,7 @@ test("joining hands the keyboard to the wait, then to the room's canvas, through
   }
 });
 
-test("a room dialog gives focus back to what opened it; Retry hands it to the room's status", async ({
+test("a room dialog restores focus; an unconfigured room chip explains setup without Retry", async ({
   page,
   consoleErrors,
 }) => {
@@ -609,8 +609,15 @@ test("a room dialog gives focus back to what opened it; Retry hands it to the ro
   await pauseClock(page);
   await page.clock.runFor(COLLAB_LIMITS.connectionWaitMs);
   await expect(chip(page)).toHaveAttribute("data-state", "failed");
-  await roomAction(page, "room-retry");
-  await expect(chip(page)).not.toHaveAttribute("data-state", "failed");
+  await chip(page).click();
+  await expect(page.getByTestId("room-menu")).toBeVisible();
+  await expect(page.getByTestId("room-retry")).toHaveCount(0);
+  await expect(page.getByTestId("room-chip-no-servers")).toContainText("has no collaboration servers set up.");
+  await expect(page.getByTestId("room-self-host-docs")).toHaveAttribute(
+    "href",
+    "https://github.com/latchkostov/diagrams/blob/master/docs/SELF-HOSTING.md",
+  );
+  await page.keyboard.press("Escape");
   await expect(chip(page)).toBeFocused();
   expectNoErrors(consoleErrors);
 });
@@ -755,7 +762,13 @@ test("a build with no trackers says so plainly, to the one who starts a room and
     expect((await download).suggestedFilename()).toBe("room-copy.diagram.json");
     await chip(page).click();
     await expect(page.getByTestId("room-menu")).toBeVisible();
-    await expect(page.getByTestId("room-retry")).toBeEnabled();
+    await expect(page.getByTestId("room-retry")).toHaveCount(0);
+    await expect(page.getByTestId("room-chip-no-servers")).toContainText(NO_SERVERS);
+    await expect(page.getByTestId("room-self-host-docs")).toHaveText("Self-hosting guide");
+    await expect(page.getByTestId("room-self-host-docs")).toHaveAttribute(
+      "href",
+      "https://github.com/latchkostov/diagrams/blob/master/docs/SELF-HOSTING.md",
+    );
     await page.keyboard.press("Escape");
     await expectAxeClean(page, "room-alert");
     // A joiner of the same copy: told before joining, and again once the wait is over.

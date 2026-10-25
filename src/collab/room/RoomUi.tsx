@@ -758,7 +758,29 @@ function OpenChip({
         ]
       : []),
     { type: "separator" },
-    ...(state === "failed"
+    ...(state === "failed" && !hasRoomServices()
+      ? [
+          {
+            type: "note" as const,
+            text: (
+              <span data-testid="room-chip-no-servers">
+                {noServers()}{" "}
+                <a
+                  data-testid="room-self-host-docs"
+                  data-menu-focus
+                  role="menuitem"
+                  href="https://github.com/latchkostov/diagrams/blob/master/docs/SELF-HOSTING.md"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  {t("collab.selfHostGuide")}
+                </a>
+              </span>
+            ),
+          },
+        ]
+      : []),
+    ...(state === "failed" && hasRoomServices()
       ? [{ type: "item" as const, testId: "room-retry", title: t("common.retry"), onSelect: retry }]
       : []),
     ...(elsewhere ? [{ type: "item" as const, testId: "room-show", title: t("collab.show"), onSelect: onShow }] : []),

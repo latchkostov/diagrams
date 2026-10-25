@@ -155,7 +155,7 @@ export function AdmissionFields({
   );
 }
 
-function AdmissionInput({
+export function AdmissionInput({
   name,
   label,
   value,
@@ -163,6 +163,8 @@ function AdmissionInput({
   max,
   step,
   mixed = false,
+  testId,
+  hint,
 }: {
   name: string;
   label: string;
@@ -171,13 +173,15 @@ function AdmissionInput({
   max: number;
   step: number;
   mixed?: boolean;
+  testId?: string;
+  hint?: string;
 }) {
   const [draft, setDraft] = useState<string | null>(null);
   const [invalid, setInvalid] = useState(false);
   const feedbackId = useId();
   const min = name === "rate" ? 0.000001 : 0;
   return (
-    <label className="insp-field">
+    <label className="insp-field" title={hint}>
       <span className="insp-label">{label}</span>
       <input
         className="insp-input mono"
@@ -187,7 +191,7 @@ function AdmissionInput({
         step={name === "rate" ? "any" : step}
         value={draft ?? value ?? ""}
         placeholder={mixed ? t("admission.mixed") : t("admission.unknownShort")}
-        data-testid={`admission-${name}`}
+        data-testid={testId ?? `admission-${name}`}
         aria-invalid={invalid && draft !== null}
         aria-describedby={invalid ? feedbackId : undefined}
         onFocus={() => {

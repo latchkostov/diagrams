@@ -6,6 +6,7 @@ The requested second part moves from an inline Partner client → Rate Limiter �
 quarantined in both catalog registrations until that decision is made; no split is assumed.
 
 The inline portion includes seeded 20/s traffic, a 10/s quota and the rejected ≥ 10 moment.
-The quota is configured in the starting diagram: `generic.rate-limiter` has no Rate limit
-inspector control (`managedKind` excludes it). The requested learner edit needs an app control
-before this lesson can be released. No runner, simulation or app control changes are included.
+The quota is configured in the starting diagram. The owner-decisions app batch adds the
+`generic.rate-limiter` Inspector's Rate limit control (`inspector-field-rate-limit`), removing
+that app prerequisite. The lesson's split and learner-edit choreography remain in the tutorial
+lane; this entry does not release its quarantined registration.
