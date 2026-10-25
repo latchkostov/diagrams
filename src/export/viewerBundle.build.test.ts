@@ -34,13 +34,22 @@ describe("static platform viewer", () => {
       "/src/live/TroubleCallout.tsx",
       "/src/live/threadFixes.ts",
       "/src/live/resilienceFixPlan.ts",
+      "/src/planning/RoutingFields.tsx",
+      "/src/planning/AutoscalingFields.tsx",
     ])
       expect(
         modules.some((id) => id.endsWith(path)),
         path,
       ).toBe(false);
     expect(modules.filter((id) => /\/src\/tutorials\/(?!sandbox\.ts$)/.test(id))).toEqual([]);
-    for (const path of ["/src/sim/shedQueue.ts", "/src/live/session/useLiveDiagramChanges.ts"])
+    for (const path of [
+      "/src/sim/shedQueue.ts",
+      "/src/live/session/useLiveDiagramChanges.ts",
+      "/src/planning/NodePlanning.tsx",
+      "/src/sim/autoscaling.ts",
+      "/src/model/requestRouting.ts",
+      "/src/styles/inspector-layout.css",
+    ])
       expect(
         modules.some((id) => id.endsWith(path)),
         path,
