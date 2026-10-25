@@ -476,7 +476,7 @@ describe("runner forms for builds 06 to 12", () => {
         { ...diagram.nodes[1], props: { replicas: 6 } },
       ],
     };
-    const off = { ...view(), diagram: d, live: false };
+    const off = { ...view(), diagram: d, live: false, session: undefined };
     const ceiling: Check = {
       kind: "compare",
       left: { prop: "partitions", subject: "app" },
@@ -504,6 +504,10 @@ describe("runner forms for builds 06 to 12", () => {
     expect(met({ kind: "liveView", view: "inputs", open: true }, v)).toBe(true);
     expect(met({ kind: "liveView", view: "capacity", open: false }, v)).toBe(true);
     expect(met({ kind: "liveView", view: "events", open: true }, v)).toBe(false);
+    expect(met({ kind: "liveView", view: "simulations", open: true }, v)).toBe(false);
+    const simulations = { ...v, views: { inputs: false, simulations: true } };
+    expect(met({ kind: "liveView", view: "simulations", open: true }, simulations)).toBe(true);
+    expect(met({ kind: "liveView", view: "inputs", open: true }, simulations)).toBe(false);
     expect(met({ kind: "readout", subject: "api" }, v)).toBe(true);
     expect(met({ kind: "readout", subject: "app" }, v)).toBe(false);
     expect(met({ kind: "readout" }, v)).toBe(true);

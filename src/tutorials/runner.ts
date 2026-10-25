@@ -317,7 +317,6 @@ export function createTutorialRunner(
   const until = (ok: () => boolean, run: number) =>
     new Promise<boolean>((resolve) => {
       let busy = false,
-        again = false,
         done = false;
       const settle = (result: boolean) => {
         done = true;
@@ -325,16 +324,14 @@ export function createTutorialRunner(
         resolve(result);
       };
       // A control pressed in ok() can notify at once (a store Live publishes synchronously): that change is judged
-      // once the press returns, never by re-entering it.
+      // by the action's postcondition, never by retrying the press synchronously. A refused Continue may publish
+      // without changing state; only a later, external change should try that control again.
       const check = () => {
         if (done) return;
-        if (busy) return void (again = true);
+        if (busy) return;
         busy = true;
-        do {
-          again = false;
-          if (run !== generation) settle(false);
-          else if (ok()) settle(true);
-        } while (again && !done);
+        if (run !== generation) settle(false);
+        else if (ok()) settle(true);
         busy = false;
       };
       changed.add(check);
@@ -558,10 +555,15 @@ export function createTutorialRunner(
         const ui = planningHost.get();
         const session = h.session?.state?.();
         if (!h.canvas?.live || !ui || !session || session.running?.id !== demo.simulation || !session.run) return false;
-        const due = session.run.time >= (demo.atLeastMs ?? 0);
         // A note pausing the run before then holds it there: continue it, and wait for the run to get on.
         if (session.run.waiting) ui.controller.resume();
-        return due;
+        const after = h.session?.state?.();
+        return (
+          after?.running?.id === demo.simulation &&
+          !!after.run &&
+          after.run.time >= (demo.atLeastMs ?? 0) &&
+          !after.run.waiting
+        );
       }
       case "openView": {
         if (demo.view === "capacity") return void capacityOverlay.set(true);

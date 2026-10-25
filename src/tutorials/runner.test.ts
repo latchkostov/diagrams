@@ -16,6 +16,8 @@ import { commandPalette } from "./catalog/commandPalette";
 import { LiveController, structuralKey } from "../live/controller";
 import { requestVsMessage } from "./catalog/requestVsMessage";
 import { propertySheet } from "./catalog/propertySheet";
+import { planningHost } from "../live/planningHost";
+import type { LiveUi } from "../live/context";
 
 const cleanup: (() => void)[] = [];
 beforeEach(() => {
@@ -151,6 +153,87 @@ const named = (): DiagramFile => ({
     { id: "api", stencil: "generic.service", label: "Orders API", x: 200, y: 0 },
   ],
   edges: [{ id: "edge", from: "app", to: "api", kind: "sync" }],
+});
+
+it.each([0, 1500])("Continue waits for external state after a refused note at %s", async (time) => {
+  const tutorial: Tutorial = {
+    ...mobileApi,
+    steps: [
+      {
+        ...mobileApi.steps[0],
+        check: { kind: "field", subject: "api", field: "sublabel", is: () => "Continued" },
+        demo: [
+          { kind: "continueNote", simulation: "story", atLeastMs: 1500 },
+          { kind: "field", subject: "api", field: "sublabel", value: () => "Continued" },
+        ],
+      },
+    ],
+  };
+  const s = sandbox(tutorial, named());
+  s.hostState.canvas.live = true;
+  let waiting = true,
+    allowed = false,
+    calls = 0,
+    now = time;
+  s.hostState.session.state = () =>
+    ({ running: { id: "story" }, run: { time: now, waiting }, snapshot: { nodes: {} } }) as ReturnType<
+      NonNullable<SessionHost["state"]>
+    >;
+  const resume = vi.fn(() => {
+    calls++;
+    // Bounded even against the broken synchronous retry loop, so the regression fails without hanging Vitest.
+    if (allowed || calls === 3) waiting = false;
+    s.tick();
+  });
+  cleanup.push(
+    planningHost.publish({ controller: { resume }, events: { open: false, nodeId: null } } as unknown as LiveUi),
+  );
+  const update = vi.spyOn(s.editor, "updateNode");
+  s.runner.send({ type: "start" });
+  s.runner.send({ type: "skip", stepId: tutorial.steps[0].id });
+  await Promise.resolve();
+  expect(resume).toHaveBeenCalledOnce();
+  expect(update).not.toHaveBeenCalled();
+  expect(s.runner.getSnapshot().state.value).toBe("active");
+  allowed = true;
+  now = 1500;
+  s.tick();
+  await vi.waitFor(() => expect(s.runner.getSnapshot().state.value).toBe("finished"));
+  expect(resume).toHaveBeenCalledTimes(2);
+  expect(update).toHaveBeenCalledExactlyOnceWith("api", { sublabel: "Continued" });
+});
+
+it.each(["inputs", "simulations"] as const)("opens %s independently of the other panel", async (view) => {
+  const tutorial: Tutorial = {
+    ...mobileApi,
+    steps: [
+      { ...mobileApi.steps[0], check: { kind: "liveView", view, open: true }, demo: [{ kind: "openView", view }] },
+    ],
+  };
+  const s = sandbox(tutorial, named());
+  s.hostState.canvas.live = true;
+  const openCapacity = vi.fn(),
+    openPanel = vi.fn();
+  const publish = (open: boolean) =>
+    cleanup.push(
+      planningHost.publish({
+        capacityOpen: view === "inputs" ? open : !open,
+        panelOpen: view === "simulations" ? open : !open,
+        events: { open: false, nodeId: null },
+        openCapacity,
+        openPanel,
+      } as unknown as LiveUi),
+    );
+  publish(false);
+  s.runner.send({ type: "start" });
+  expect(s.runner.getSnapshot().state.value).toBe("active");
+  s.runner.send({ type: "skip", stepId: tutorial.steps[0].id });
+  await Promise.resolve();
+  expect(view === "inputs" ? openCapacity : openPanel).toHaveBeenCalledOnce();
+  expect(view === "inputs" ? openPanel : openCapacity).not.toHaveBeenCalled();
+  expect(s.runner.getSnapshot().state.value).toBe("active");
+  publish(true);
+  expect(s.runner.getSnapshot().state.value).toBe("finished");
 });
 
 it("replaying an add-and-name demo fixes a near miss on the same connected node", async () => {
