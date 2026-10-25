@@ -1,5 +1,6 @@
 import AxeBuilder from "@axe-core/playwright";
 import type { Page } from "@playwright/test";
+import { releaseAndEvaluate } from "./chunk";
 import { faultDrillFixture } from "../../src/lab/faultDrillFixture";
 import {
   test,
@@ -59,9 +60,10 @@ for (const cancel of ["close", "escape"] as const) {
       else await page.keyboard.press("Escape");
       await expect(page.getByTestId("sim-panel-loading")).toHaveCount(0);
       if (cancel === "escape") await expect(page.getByTestId("live-more")).toBeFocused();
-      const downloaded = page.waitForResponse((response) => editor.test(response.url()));
-      release();
-      await (await downloaded).finished();
+      await releaseAndEvaluate(page, editor, release);
+      await expect
+        .poll(() => page.evaluate(() => window.__lazySurfaces?.states()["live.simulations"]))
+        .toEqual({ state: "loaded", active: false });
       await expect(page.getByTestId("sim-panel")).toHaveCount(0);
       await expect(page.getByTestId("live-controls")).toBeVisible();
       await page.getByTestId("live-more").click();

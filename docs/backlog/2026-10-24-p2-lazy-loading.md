@@ -1,6 +1,6 @@
 ## P2 triage: Lazy loading (2026-10-24)
 
-Checked against `origin/master` at `7b6e905130a9`. DONE 12 / STALE 0 / OPEN 7 (deduplicated actionable findings).
+Checked against `origin/master` at `7b6e905130a9`. DONE 17 / STALE 0 / OPEN 2 (deduplicated actionable findings).
 
 Source: the local `queued-p2-fu10.archive.md`, preserved byte-for-byte on 2026-10-24. OPEN entries retain queue review labels; closed entries name the fixing PR. Locations are current-master entry points, not the old review line numbers. DONE means code and/or the specifically requested regression exists with merged-PR evidence; OPEN includes unproven historical failures. A later green run alone does not close a failure.
 
@@ -14,22 +14,33 @@ Each numbered batch below is an independent PR candidate of at most ten items, o
 2. **LL-02 — OPEN: Make surface registrations survive HMR.** `src/lib/lazySurfaces.ts:77`. Queue: #271.
    The registry throws for duplicate IDs and has no replacement/disposal contract. Replace registrations by module ownership during HMR and test hot replacement without losing active readiness.
 
-## Batch 2: Output, retry and late-load regressions (5 OPEN)
+## Batch 2: Output, retry and late-load regressions (5 DONE)
 
-1. **LL-03 — OPEN: Cover recording while an output chunk is held.** `tests/e2e/lazy-surfaces.spec.ts:239`. Queue: #271.
-   Generated contracts cover image export; add a real recording/countdown case held at an active output surface, then release and verify the captured surface.
+Batch 2 test work is complete on `fix/p2-lazy-loading-tests` (merge pending). LL-04's newly
+exposed product gap remains tracked separately; DONE here refers to the requested test contract.
 
-2. **LL-04 — OPEN: Assert awaited surface content in exported SVG.** `tests/e2e/lazy-surfaces.spec.ts:239`. Queue: #271.
-   Only live.capacity-analysis checks distinctive SVG contents; the other output-bearing cases check the filename/readiness. Assert each remaining surface appears after release and prove bypassing readiness fails.
+1. **LL-03 — DONE: Cover recording while an output chunk is held.** `tests/e2e/lazy-recording.spec.ts`. Queue: #271.
+   Real tab capture waits before countdown while narration is held, then verifies the released
+   surface in captured pixels and the encoded recording. Readiness-bypass and wrong-stream mutations fail.
 
-3. **LL-05 — OPEN: Establish focus before the held download fails.** `tests/e2e/lazy-live-fixes.spec.ts:73`. Queue: #264.
-   Without an explicit focused owner, the recovery assertion may pass vacuously. Focus the opener, hold the request, fail it, and assert Retry and return focus.
+2. **LL-04 — DONE: Assert awaited surface content in exported SVG.** `tests/e2e/lazy-surfaces.spec.ts`. Queue: #271.
+   Generated output contracts check call pills, thread meters and nested session content in the
+   SVG, retaining the existing capacity checks. Readiness/content mutations fail. Narration is
+   missing from the product's SVG: its failing content assertion is retained as `test.fixme`,
+   with the enabled readiness case preserved. See [the product follow-up](2026-10-24-awaited-narration-svg.md).
 
-4. **LL-06 — OPEN: Await module evaluation before late-load cancellation assertions.** `tests/e2e/lazy-live-fixes.spec.ts:346`. Queue: #173 bundle-fix / #264.
-   SimPanel and the held readout/timeline tests await response completion before absence assertions; that can precede execution. Add evaluation/render barriers for each surface, then prove cancelled UI stays closed. The separate slow-motion script regression already does this.
+3. **LL-05 — DONE: Establish focus before the held download fails.** `tests/e2e/lazy-live-fixes.spec.ts`. Queue: #264.
+   The scrubber request stays held until Play is explicitly focused, then fails; Retry restores
+   the scrubber, expectations and Play focus. Failure-focus and Retry-handoff mutations fail.
 
-5. **LL-19 — OPEN: Retry must restore Advanced controls, not just the always-visible fields.** `tests/e2e/inspector-live.spec.ts:164`. Queue: #260 r2.
-   After Retry the test only asserts Live waiting and the label. Assert a specific deferred Advanced control renders and accepts an edit; mutation-check a Retry that only dismisses the error.
+4. **LL-06 — DONE: Await module evaluation before late-load cancellation assertions.** `tests/e2e/chunk.ts`, `tests/e2e/fault-drills.spec.ts`, `tests/e2e/lazy-live-fixes.spec.ts`. Queue: #173 bundle-fix / #264.
+   SimPanel, slow-motion readout and simulation timeline await import evaluation and render
+   frames, assert loaded/inactive registration, then assert cancelled UI stays closed. Removing
+   cancellation ownership cleanup fails all four cases, including both SimPanel close paths.
+
+5. **LL-19 — DONE: Retry must restore Advanced controls, not just the always-visible fields.** `tests/e2e/inspector-live.spec.ts`. Queue: #260 r2.
+   Retry must render Appearance & routing, expose From side and persist an edit to the saved
+   edge. Dismissing the error without retrying and dropping the edit handler both fail.
 
 ## Closed or superseded findings
 
@@ -50,4 +61,8 @@ Each numbered batch below is an independent PR candidate of at most ten items, o
 
 ## Scope and verification
 
-This is a documentation triage, not an implementation or a new reproduction run. Before taking a batch, recheck its OPEN entries against the then-current master, run the named regression family, and retain any reduced fixture or trace. Tests/CI batches may take separate runner investigations; stop at the bounded evidence step rather than weakening assertions. No application code or output golden changes belong to this triage.
+The original entry was a documentation triage. Batch 2 now adds the requested browser contracts,
+with the newly reproduced narration SVG gap retained separately. Before taking remaining OPEN
+entries, recheck them against current master and run the named regression family. Tests/CI batches
+stop at bounded evidence rather than weakening assertions. No application code or output golden
+changes belong to this tests-only batch.

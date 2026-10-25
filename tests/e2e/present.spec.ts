@@ -279,12 +279,21 @@ test.describe("presenting full screen", () => {
     await expect.poll(() => clipped(page)).not.toEqual([]);
     await page.keyboard.press("f");
     await expect.poll(() => fullscreen(page)).toBe(true);
+    // Fullscreen state and an unclipped intermediate animation frame can precede the refit's completion.
+    await expect
+      .poll(async () => (await cameraMoves(page, mark)).filter((m) => m === "fit:fullscreen"))
+      .toEqual(["fit:fullscreen"]);
+    await waitForCameraIdle(page);
     await expect.poll(() => clipped(page)).toEqual([]);
 
     await squeeze("50%");
     await expect.poll(() => clipped(page)).not.toEqual([]);
     await page.keyboard.press("f");
     await expect.poll(() => fullscreen(page)).toBe(false);
+    await expect
+      .poll(async () => (await cameraMoves(page, mark)).filter((m) => m === "fit:fullscreen"))
+      .toEqual(["fit:fullscreen", "fit:fullscreen"]);
+    await waitForCameraIdle(page);
     await expect.poll(() => clipped(page)).toEqual([]);
     // Each change refit the fitted presentation (panePolicy F2).
     const refits = (await cameraMoves(page, mark)).filter((m) => m === "fit:fullscreen");
