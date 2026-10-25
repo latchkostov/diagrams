@@ -8,7 +8,21 @@ type FocusEvent =
   | { type: "focus"; at: ReadoutFocusAt }
   | { type: "claim"; at: ReadoutFocusAt; pinned: boolean; eligible: boolean };
 
-/** Each transfer must acquire the readout before it can hand focus to its replacement. */
+/**
+ * Each transfer must acquire the readout before it can hand focus to its replacement.
+ * Full transition table (every unmatched guard is a no-op; * emits the focus command):
+ *
+ * State       | open pinned at readout | other open | focus readout | focus opener | focus vacant | focus other | claim eligible pinned at opener | claim eligible at vacant | other claim
+ * unclaimed   | held                   | unclaimed  | held          | unclaimed    | cancelled    | cancelled   | transferred*                    | unclaimed                | unclaimed
+ * held        | held                   | held       | held          | cancelled    | held         | cancelled   | held                            | transferred*             | held
+ * cancelled   | cancelled              | cancelled  | held          | cancelled    | cancelled    | cancelled   | cancelled                       | cancelled                | cancelled
+ * transferred | transferred            | transferred | held          | cancelled    | transferred  | cancelled   | transferred                     | transferred              | transferred
+ *
+ * focus(readout) records entry into this request's target, including explicit re-entry after
+ * cancellation. A claim still checks that the target is current, eligible and unobstructed.
+ * Vacant is replacement fallout, never explicit re-entry; completion at the opener cannot
+ * revive a cancelled claim. A new target/pinning request starts a fresh machine.
+ */
 export const readoutFocusMachine = defineMachine<FocusState, FocusEvent, "focus">({
   initial: { value: "unclaimed" },
   states: ["unclaimed", "held", "cancelled", "transferred"],
@@ -42,6 +56,9 @@ export const readoutFocusMachine = defineMachine<FocusState, FocusEvent, "focus"
         guard: (_s, e) => e.eligible && e.at === "vacant",
         effects: () => ["focus"],
       },
+    },
+    cancelled: {
+      focus: { target: "held", guard: (_s, e) => e.at === "readout" },
     },
     transferred: {
       focus: [
