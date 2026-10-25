@@ -288,9 +288,13 @@ describe("tutorial catalog", () => {
       it("names only subjects it defines, and only stencils that exist", () => {
         expect(boundaryProblem(tutorial.subjects)).toBeUndefined();
         const known = stencilIds;
-        for (const spec of Object.values(tutorial.subjects)) {
+        const names = Object.keys(tutorial.subjects);
+        for (const [i, spec] of Object.values(tutorial.subjects).entries()) {
           for (const id of spec.stencils ?? []) expect(known, id).toContain(id);
           if (spec.edge) for (const name of spec.edge) expect(subjects).toContain(name);
+          // Topology selectors read subjects already resolved: those declared earlier.
+          for (const name of [...(spec.downstreamOf ? [spec.downstreamOf] : []), ...(spec.between ?? [])])
+            expect(names.slice(0, i), `${names[i]}: ${name}`).toContain(name);
           if (!spec.stencils && !spec.boundary && !spec.edge) expect(spec.role).toBeDefined();
         }
         for (const step of tutorial.steps) {
@@ -453,8 +457,23 @@ describe("tutorial catalog", () => {
               expect(earlier?.sticky, `${step.id}: the Fault it clears is set by a sticky step first`).toBe(true);
             }
           for (const demo of step.demo) {
-            if (demo.kind !== "patch") continue;
+            if (demo.kind !== "patch" && demo.kind !== "patchRun") continue;
             expect(demo.patches.length, `${step.id}: a patch with nothing in it`).toBeGreaterThan(0);
+            // A run can override only a connection's caller fields, a node's props and its own multipliers.
+            if (demo.kind === "patchRun")
+              expect(
+                demo.patches.every((patch) => patch.path[0] === "multipliers" && typeof patch.path[1] === "string"),
+                `${step.id}: a run patch edits the run's multipliers`,
+              ).toBe(true);
+            else if (demo.runs && demo.edge)
+              expect(
+                demo.patches.every((patch) => patch.path[0] === "caller" && typeof patch.path[1] === "string"),
+                `${step.id}: a connection's run repair edits caller fields`,
+              ).toBe(true);
+            if (demo.runs)
+              expect(new Set(demo.runs.map((run) => JSON.stringify(run))).size, `${step.id}: a run named twice`).toBe(
+                demo.runs.length,
+              );
             for (const patch of demo.patches) {
               expect(pathProblem(patch.path), `${step.id}: ${JSON.stringify(patch.path)}`).toBeUndefined();
               if (patch.op === "ensureItem") {
@@ -472,9 +491,19 @@ describe("tutorial catalog", () => {
         const known = new Set((tutorial.start().simulations ?? []).map((sim) => sim.id));
         for (const step of tutorial.steps) {
           for (const demo of step.demo) {
-            if (demo.kind === "runSimulation" || demo.kind === "continueNote") {
-              const id = demo.kind === "runSimulation" ? demo.id : demo.simulation;
-              expect(known, `${step.id}: ${id}`).toContain(id);
+            if (
+              demo.kind === "runSimulation" ||
+              demo.kind === "continueNote" ||
+              demo.kind === "patch" ||
+              demo.kind === "patchRun"
+            ) {
+              const ids =
+                demo.kind === "runSimulation"
+                  ? [demo.id]
+                  : demo.kind === "continueNote"
+                    ? [demo.simulation]
+                    : (demo.runs ?? []).filter((run): run is string => typeof run === "string");
+              for (const id of ids) expect(known, `${step.id}: ${id}`).toContain(id);
             }
             if (demo.kind === "saveSimulation") known.add(demo.id);
           }

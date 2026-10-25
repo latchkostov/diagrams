@@ -15,13 +15,8 @@ it("hides quarantined lessons from cards, search, suggestions and deep links whi
     setItem: (key: string, value: string) => storage.set(key, value),
   });
   const quarantined = allTutorials.filter((t) => t.quarantined);
-  expect(quarantined.map((t) => t.id)).toEqual([
-    "study-checkout",
-    "study-dispatch",
-    "study-payments",
-    "study-fanout",
-    "study-rag",
-  ]);
+  // None is quarantined now (the design studies returned with the repair API); the mechanism stays for the next one.
+  expect(quarantined.map((t) => t.id)).toEqual([]);
   const progress = Object.fromEntries(quarantined.map((t) => [t.id, { version: t.version, step: 1, completed: true }]));
   writeTutorials(() => ({ progress }));
   const cards = renderToStaticMarkup(<TutorialsView />);

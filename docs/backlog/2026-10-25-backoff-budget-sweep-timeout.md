@@ -18,3 +18,9 @@ The targeted `pnpm test src/tutorials --maxWorkers=2` run after restoring Fan-ou
 reported 2,238 passed, 164 skipped and this same single timeout. Cells' negative coverage remains
 active and passes. The clean-master reproduction above already establishes the timeout as pre-existing;
 this quarantine round does not change its assertions, workload or timeout.
+
+## Load-dependent sweep timeouts - PR #346 repair API pass
+
+A full `src/tutorials src/live src/editor` run on a busy shared machine timed out four `src/live` cases and,
+in another run, `backoff-budget: jitter…`, `retry-storm: reading the caller…`, `no-threads-waiting (b)` and
+`pool-40 (c)`. Every one passed when rerun alone. None was changed by this PR.

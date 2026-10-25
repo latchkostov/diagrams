@@ -37,6 +37,14 @@ const poolSolution = (provider: string, first: boolean): UiStep[] => [
   { fill: "inspector-field-poolConnections", text: "1" },
   { press: "Enter" },
 ];
+/** Each provider's pool of one connection, in the diagram and in every run that would override it. */
+const poolRepairs = (runs: readonly [string, ...string[]]): Demo[] =>
+  channels.map<Demo>(({ worker, provider }) => ({
+    kind: "patch",
+    edge: [worker, provider],
+    runs,
+    patches: [{ op: "set", path: ["caller", "poolConnections"], value: 1 }],
+  }));
 const queueSolution = (worker: string, search: Words): UiStep[] => [
   { rightclick: `edge-label-{events->${worker}}` },
   { click: "context-menu-item-edge.relationship" },
@@ -50,8 +58,6 @@ const queueSolution = (worker: string, search: Words): UiStep[] => [
 
 export const studyFanout: Tutorial = {
   id: "study-fanout",
-  // quarantined: see docs/backlog/2026-10-24-tutorials-quarantine.md (runner repair API pass)
-  quarantined: true,
   version: 1,
   track: "studies",
   level: 3,
@@ -203,9 +209,10 @@ export const studyFanout: Tutorial = {
     email: { stencils: ["generic.email"] },
     sms: { stencils: ["generic.sms"] },
     push: { stencils: ["generic.push"] },
-    emailQueue: { stencils: ["generic.queue"], upstreamOf: "emailSender" },
-    smsQueue: { stencils: ["aws.sqs"], upstreamOf: "smsSender" },
-    pushQueue: { stencils: ["azure.service-bus.queue"], upstreamOf: "pushSender" },
+    // A channel's main queue sits on its router → sender flow; its DLQ only hangs off the queue (same stencil).
+    emailQueue: { stencils: ["generic.queue"], between: ["events", "emailSender"] },
+    smsQueue: { stencils: ["aws.sqs"], between: ["events", "smsSender"] },
+    pushQueue: { stencils: ["azure.service-bus.queue"], between: ["events", "pushSender"] },
     emailDlq: { stencils: ["generic.queue"], downstreamOf: "emailQueue" },
     smsDlq: { stencils: ["aws.sqs"], downstreamOf: "smsQueue" },
     pushDlq: { stencils: ["azure.service-bus.queue"], downstreamOf: "pushQueue" },
@@ -229,15 +236,7 @@ export const studyFanout: Tutorial = {
         ],
       },
       targets: [{ testId: "node-{sms}", tip: msg("tutorials.studyFanout.limitsHint") }],
-      demo: [
-        ...channels.map<Demo>(({ worker, provider }) => ({
-          kind: "patch",
-          edge: [worker, provider],
-          simulations: ["provider-limits", "sms-outage"],
-          patches: [{ op: "set", path: ["caller", "poolConnections"], value: 1 }],
-        })),
-        { kind: "runSimulation", id: "provider-limits" },
-      ],
+      demo: [...poolRepairs(["provider-limits", "sms-outage"]), { kind: "runSimulation", id: "provider-limits" }],
       solution: [
         ...channels.flatMap(({ provider }, i) => poolSolution(provider, i === 0)),
         { click: "live-toggle" },
@@ -308,7 +307,8 @@ export const studyFanout: Tutorial = {
         ],
       },
       targets: [{ testId: "node-{smsQueue}", tip: msg("tutorials.studyFanout.outageHint"), dim: false }],
-      demo: [{ kind: "runSimulation", id: "sms-outage" }],
+      // The outage also judges each provider's quota: a pool the learner widened in this run since is put back first.
+      demo: [...poolRepairs(["sms-outage"]), { kind: "runSimulation", id: "sms-outage" }],
       solution: [{ click: "live-toggle" }, { select: "live-sim-picker", value: "sms-outage" }],
     },
   ],

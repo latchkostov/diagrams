@@ -25,7 +25,15 @@ import type { SlowState } from "../live/slowmo/session";
 import { withSavedSimulation } from "./simulations";
 import { actionRegistry, type MenuNode } from "../editor/actions";
 import { inferKind } from "../stencils/edgeKind";
-import type { AnnotationKind, DiagramEdge, DiagramFile, DiagramNode, Expectation, Side } from "../model/types";
+import type {
+  AnnotationKind,
+  DiagramEdge,
+  DiagramFile,
+  DiagramNode,
+  Expectation,
+  Side,
+  Simulation,
+} from "../model/types";
 import type { paletteHost } from "../palette/host";
 import { allTutorials as tutorials } from "./catalog";
 import { commandPalette } from "./catalog/commandPalette";
@@ -49,6 +57,7 @@ import { sharedApiQuotas } from "./catalog/sharedApiQuotas";
 import { backlogLag } from "./catalog/backlogLag";
 import { dependencies2 } from "./catalog/dependencies2";
 import { studyCheckout } from "./catalog/studyCheckout";
+import { studyDispatch } from "./catalog/studyDispatch";
 import { studyPayments } from "./catalog/studyPayments";
 import { studyFanout } from "./catalog/studyFanout";
 import { studyRag } from "./catalog/studyRag";
@@ -61,11 +70,16 @@ import { editorHarness } from "../test/editorHarness";
 import { overlaps } from "../canvas/placement";
 import { groupOf } from "../canvas/membership";
 import { inStep } from "./machine";
-import { observeSteps } from "./checks";
+import { observeSteps, resolveSubjects } from "./checks";
 import { savedProgress, saveProgress } from "./progress";
 import { createTutorialRunner } from "./runner";
-import type { Check, Demo, Tutorial, TutorialStep } from "./types";
+import type { Check, Demo, PatchValue, PropPatch, Tutorial, TutorialStep } from "./types";
 import { patchProps } from "./paths";
+import { repairedRun, type RepairTarget } from "./repair";
+import { resolve } from "./paths";
+import { simulationEdges } from "../sim/topology";
+import { LiveSync } from "../live/session/liveSync";
+import { capacitySaveCandidate, capacitySaveError } from "../live/capacityPersistence";
 import {
   addNameFixture,
   liveControlsFixture,
@@ -99,11 +113,7 @@ import {
 const quarantineReason = "quarantined: see docs/backlog/2026-10-24-tutorials-quarantine.md";
 const itFor = (tutorial: Tutorial) =>
   tutorial.quarantined
-    ? (name: string, fn: () => void | Promise<void>) =>
-        it.skip(
-          `${name} (${quarantineReason}${["study-fanout", "study-rag"].includes(tutorial.id) ? " (runner repair API pass)" : ""})`,
-          fn,
-        )
+    ? (name: string, fn: () => void | Promise<void>) => it.skip(`${name} (${quarantineReason})`, fn)
     : it;
 
 const cleanup: (() => void)[] = [];
@@ -152,11 +162,15 @@ function sandbox(tutorial: Tutorial, { lateAdds = false, lateConnects = false, l
   const select = (ids: readonly string[]) => toMode({ type: "selection", ids });
   /** A document write, and the canvas republishing it. */
   const write = (next: DiagramFile) => {
+    const simulationsBefore = diagram.simulations;
     diagram = next;
     version++;
     notify();
     // Live takes the edit after the canvas republishes it: props patched in, a topology change rebuilt.
     controller?.updateDiagram(diagram);
+    // Saved simulations reach the session as LiveSession re-renders: its list, then LiveSync's replay of the selected
+    // run (useLiveDiagramChanges), never inside the write.
+    if (controller && diagram.simulations !== simulationsBefore) renderUi();
   };
   /** A node-adding write: now, or once the editor's call has returned. */
   const commit = (make: () => DiagramFile) => (lateAdds ? queueMicrotask(() => write(make())) : write(make()));
@@ -166,14 +180,61 @@ function sandbox(tutorial: Tutorial, { lateAdds = false, lateConnects = false, l
   let offUi: (() => void) | undefined;
   /** Live's panels, as the session holds them; published with its controller (planningHost), as LiveSession does. */
   const panels = { capacityOpen: false, panelOpen: false, events: { open: false, nodeId: null as string | null } };
+  /**
+   * The session's unsaved draft (useLiveSessionState's draftRef/draft) and the commands over it, as useLiveCommands
+   * has them on master: Run keeps a working copy a draft unless it equals the saved one; Save writes the document and
+   * ends a draft of that id; selecting a run prefers the draft of that id. Nothing else writes the session.
+   */
+  let draft: Simulation | null = null;
+  let liveSync: LiveSync | undefined;
+  const session = {
+    get draft() {
+      return draft;
+    },
+    selectSimulation(id: string | null) {
+      const c = controller!;
+      const sim = id ? (draft?.id === id ? draft : diagram.simulations?.find((s) => s.id === id)) : null;
+      c.selectSimulation(sim ?? null);
+      if (sim) c.setTraffic(false);
+      c.setPlaying(true);
+    },
+    runDraft(sim: Simulation) {
+      const c = controller!;
+      if (c.selectSimulation(sim) === "rejected") return;
+      const saved = (diagram.simulations ?? []).some(
+        (s) => s.id === sim.id && JSON.stringify(s) === JSON.stringify(sim),
+      );
+      draft = saved ? null : sim;
+      c.setTraffic(false);
+      c.setPlaying(true);
+      renderUi();
+    },
+    saveSimulation(sim: Simulation) {
+      const list = [...(diagram.simulations ?? [])];
+      const i = list.findIndex((s) => s.id === sim.id);
+      if (i >= 0) list[i] = sim;
+      else list.push(sim);
+      if (capacitySaveError({ ...diagram, simulations: list })) return false;
+      editor.updateMeta({ simulations: list });
+      if (draft?.id === sim.id) draft = null;
+      renderUi();
+      return true;
+    },
+  };
   /** Live's panels publish as LiveSession renders: after the call that changed them, never inside it. */
   const renderUi = () => queueMicrotask(publishUi);
   const publishUi = () => {
     const c = controller;
     if (!c) return;
+    liveSync ??= new LiveSync(c);
+    liveSync.simulations(diagram.simulations ?? [], () => draft?.id);
     offUi?.();
     offUi = planningHost.publish({
       controller: c,
+      simulations: diagram.simulations ?? [],
+      draft,
+      saveSimulation: session.saveSimulation,
+      runDraft: session.runDraft,
       ...panels,
       events: { ...panels.events },
       openCapacity: (open = true) => {
@@ -297,9 +358,7 @@ function sandbox(tutorial: Tutorial, { lateAdds = false, lateConnects = false, l
     };
     const run = () => {
       if (controller !== c || !simulation) return;
-      c.selectSimulation(diagram.simulations?.find((sim) => sim.id === simulation) ?? null);
-      c.setTraffic(false);
-      c.setPlaying(true);
+      session.selectSimulation(simulation);
     };
     if (!lazyLive) {
       mount();
@@ -338,6 +397,9 @@ function sandbox(tutorial: Tutorial, { lateAdds = false, lateConnects = false, l
     offController?.();
     controller?.dispose();
     controller = undefined;
+    // The session's draft goes with it, as LiveSession unmounts.
+    draft = null;
+    liveSync = undefined;
     notify();
   };
   cleanup.push(() => {
@@ -639,6 +701,16 @@ function sandbox(tutorial: Tutorial, { lateAdds = false, lateConnects = false, l
     get live() {
       return controller;
     },
+    /** Live's session commands (Run, Save, selection) and its unsaved draft. */
+    session,
+    /** The Inputs panel's Save to simulation (useLiveFixes.saveInputs on master), for the selected run. */
+    saveInputs() {
+      const c = controller!;
+      const candidate = capacitySaveCandidate(diagram, c.getState().simulation, c.getState().inputs);
+      c.flush();
+      if (candidate.saved && session.saveSimulation(candidate.saved))
+        c.commitInputs(candidate.saved, candidate.diagram);
+    },
     slow,
     hover,
     /** Live's own registry row, pressed as the learner presses it in a menu. */
@@ -675,10 +747,17 @@ function sandbox(tutorial: Tutorial, { lateAdds = false, lateConnects = false, l
             ? editor.setEdgeProps(edge(demo.edge).id, demo.props)
             : editor.setNodeProps(id(demo.subject), demo.props);
         case "patch": {
-          // The learner's own edit to the same effect, through the inspector's prop writes.
+          // The learner's own edit to the same effect, through the inspector's prop writes (the diagram's own props).
           const target = demo.edge ? edge(demo.edge) : diagram.nodes.find((n) => n.id === id(demo.subject))!;
           const changed = patchProps(target.props, demo.patches) ?? {};
           return demo.edge ? editor.setEdgeProps(target.id, changed) : editor.setNodeProps(target.id, changed);
+        }
+        case "patchRun": {
+          // As the Inputs panel's Save to simulation would leave it: the run's own multipliers, in the document.
+          const simulations = diagram.simulations?.map((sim) =>
+            demo.runs.includes(sim.id) ? repairedRun(diagram, sim, { run: true }, demo.patches) : sim,
+          );
+          return simulations?.some((sim, i) => sim !== diagram.simulations![i]) && editor.updateMeta({ simulations });
         }
         case "relation":
           return patchEdge(edge([demo.from, demo.to]).id, {
@@ -930,6 +1009,34 @@ describe("design study evidence", () => {
     expect(state(s)).toMatchObject({ index: 2, value: "active" });
   });
 
+  it.each([
+    ["email", "generic.queue"],
+    ["sms", "aws.sqs"],
+    ["push", "azure.service-bus.queue"],
+  ])(
+    "fan-out: Skip recovers after learner removed a channel queue's sender connection (%s)",
+    async (channel, stencil) => {
+      const s = sandbox(studyFanout);
+      await reach(s, studyFanout, 1);
+      const sender = s.subject(`${channel}Sender`);
+      s.learn({ kind: "insert", edge: ["events", `${channel}Sender`], subject: `${channel}Queue`, stencil });
+      const queue = s.subject(`${channel}Queue`);
+      s.editor.applyDiagram({
+        ...s.diagram,
+        edges: s.diagram.edges.filter((edge) => !(edge.from === queue && edge.to === sender)),
+      });
+      // Still on the router's flow: the queue keeps its binding (never mistaken for a DLQ, nor replaced).
+      expect(s.subject(`${channel}Queue`)).toBe(queue);
+      const nodes = s.diagram.nodes.length;
+      await skip(s, studyFanout);
+      expect(s.subject(`${channel}Queue`)).toBe(queue);
+      expect(s.diagram.edges.filter((edge) => edge.from === queue && edge.to === sender)).toHaveLength(1);
+      expect(s.diagram.edges.filter((edge) => edge.from === s.subject("events") && edge.to === queue)).toHaveLength(1);
+      expect(s.diagram.nodes).toHaveLength(nodes + 5); // The other two queues, and all three DLQs.
+      expect(state(s)).toMatchObject({ index: 2, value: "active" });
+    },
+  );
+
   it.each(["ask", "retrieve", "answer"])(
     "RAG budget rejects timed-out answers on %s despite low latency and completed model work",
     async (edge) => {
@@ -947,7 +1054,7 @@ describe("design study evidence", () => {
     },
   );
 
-  for (const tutorial of [studyFanout, studyRag, studyCells])
+  for (const tutorial of [studyCheckout, studyDispatch, studyPayments, studyFanout, studyRag, studyCells])
     it(`${tutorial.id}: the starting diagram fails every milestone throughout every saved run`, async () => {
       const s = sandbox(tutorial);
       await reach(s, tutorial, 0);
@@ -1194,8 +1301,127 @@ describe("membership selector fixture", () => {
   });
 });
 
+/** The opt-in property form must observe Live edits even without a metric or simulation check alongside it. */
+const savedCallerFixture: Tutorial = {
+  ...studyPayments,
+  id: "fixture-saved-caller",
+  steps: [
+    {
+      ...studyPayments.steps[1],
+      id: "effective-deadline",
+      sticky: false,
+      check: {
+        kind: "prop",
+        edge: ["payments", "psp"],
+        prop: ["caller", "deadlineMs"],
+        effective: true,
+        op: "=",
+        value: 250,
+      },
+    },
+  ],
+};
+
+it("effective property fixture observes inspector edits without a document property change", async () => {
+  const s = sandbox(savedCallerFixture);
+  await reach(s, savedCallerFixture, 0);
+  s.learn({ kind: "runSimulation", id: "psp-brownout" });
+  expect(state(s)).toMatchObject({ value: "active", index: 0 });
+  effectiveCallerPolicy(s.editor, "payments-psp", { controller: s.live!, slowmo: { active: false } })!.set({
+    deadlineMs: 250,
+  });
+  await vi.waitFor(() => expect(state(s).value).toBe("finished"));
+  expect(s.diagram.edges.find((e) => e.id === "payments-psp")!.props!.caller).not.toHaveProperty("deadlineMs");
+});
+
+/** A step's run repairs (src/tutorials/repair.ts): its patch demos that name runs, and its run-setting patches. */
+type RunRepair = Extract<Demo, { kind: "patch" | "patchRun" }>;
+const runRepairs = (step: TutorialStep): RunRepair[] =>
+  step.demo.filter((d): d is RunRepair => d.kind === "patchRun" || (d.kind === "patch" && !!d.runs?.length));
+/** The saved run a step's repairs name first: the one its perturbations override. */
+const repairedRunId = (step: TutorialStep) =>
+  runRepairs(step)
+    .flatMap((d) => d.runs ?? [])
+    .find((run): run is string => typeof run === "string");
+const coversRun = (demo: RunRepair, id: string, selected: string | undefined) =>
+  (demo.runs ?? []).some((run) => (typeof run === "string" ? run === id : run.selected && selected === id));
+
+/** The opposite of what a repair writes: a value its milestone rejects. */
+function contrary(patch: PropPatch): PropPatch {
+  const key = String(patch.path.at(-1));
+  if (patch.op === "atLeast") return { op: "set", path: patch.path, value: patch.value / 8 };
+  const value = patch.op === "set" ? resolve(patch.value) : undefined;
+  const bad =
+    typeof value === "boolean"
+      ? !value
+      : typeof value === "number"
+        ? key === "deadlineMs" || key === "latencyMs"
+          ? value * 4
+          : key === "failureRate"
+            ? 0
+            : key === "poolConnections"
+              ? 10
+              : key === "capacity"
+                ? 2
+                : 1
+        : null;
+  return { op: "set", path: patch.path, value: bad as PatchValue };
+}
+
+/** The repair's target in this sandbox: a node or connection by its subjects, or the run itself. */
+function repairTarget(s: Sandbox, demo: RunRepair): RepairTarget {
+  if (demo.kind === "patchRun") return { run: true };
+  if (demo.subject) return { node: s.subject(demo.subject) };
+  const [from, to] = demo.edge!.map((name) => s.subject(name));
+  return { edge: s.diagram.edges.find((e) => e.from === from && e.to === to)!.id };
+}
+
+/** `sim` overriding each repaired key with its contrary value, as a learner's own run-only edits would. */
+function spoiled(
+  diagram: DiagramFile,
+  sim: Simulation,
+  target: RepairTarget,
+  patches: readonly PropPatch[],
+): Simulation {
+  const bad = patches.map(contrary);
+  if ("run" in target) {
+    const multipliers = patchProps({}, bad)?.multipliers as Simulation["multipliers"];
+    return { ...sim, multipliers: { traffic: sim.multipliers?.traffic ?? 1, ...multipliers } } as Simulation;
+  }
+  if ("node" in target) {
+    const own = sim.setup?.props?.[target.node];
+    const node = diagram.nodes.find((n) => n.id === target.node)!;
+    const changed = patchProps({ ...node.props, ...own }, bad) ?? {};
+    return {
+      ...sim,
+      setup: { ...sim.setup, props: { ...sim.setup?.props, [target.node]: { ...own, ...changed } } },
+    } as Simulation;
+  }
+  const props = simulationEdges(diagram, sim).edges.find((e) => e.id === target.edge)!.props;
+  const caller = (patchProps(props, bad)?.caller ?? {}) as Record<string, unknown>;
+  const before = (props?.caller ?? {}) as Record<string, unknown>;
+  const override = sim.setup?.edges?.[target.edge];
+  const delta = Object.fromEntries(
+    Object.entries(caller).filter(([k, v]) => JSON.stringify(v) !== JSON.stringify(before[k])),
+  );
+  return {
+    ...sim,
+    setup: {
+      ...sim.setup,
+      edges: { ...sim.setup?.edges, [target.edge]: { ...override, caller: { ...override?.caller, ...delta } } },
+    },
+  } as Simulation;
+}
+
+/** Nothing the step repairs is still overridden in this copy of a run. */
+function expectRepaired(s: Sandbox, step: TutorialStep, sim: Simulation, selected?: string) {
+  for (const demo of runRepairs(step))
+    if (coversRun(demo, sim.id, selected))
+      expect(repairedRun(s.diagram, sim, repairTarget(s, demo), demo.patches), `${sim.id} still overrides`).toBe(sim);
+}
+
 describe("every tutorial's completion contract", () => {
-  for (const tutorial of [...tutorials, ...tutorialFixtures, ...visibilityFixtures])
+  for (const tutorial of [...tutorials, ...tutorialFixtures, ...visibilityFixtures, savedCallerFixture])
     describe(tutorial.id, () => {
       const lessonIt = itFor(tutorial);
       tutorial.steps.forEach((step, i) => {
@@ -1203,9 +1429,13 @@ describe("every tutorial's completion contract", () => {
           "clear selection",
           "single node",
           "extra subject-type node",
-          ...(step.demo.some((demo) => demo.kind === "patch" && demo.simulations)
-            ? ["saved-run override changed"]
+          ...(runRepairs(step).some((d) => d.kind === "patchRun" || d.subject) && repairedRunId(step)
+            ? ["learner edited saved Inputs"]
             : []),
+          ...(runRepairs(step).some((d) => d.kind === "patch" && d.edge) && repairedRunId(step)
+            ? ["saved override changed"]
+            : []),
+          ...(repairedRunId(step) ? ["learner has an unsaved draft of the target simulation"] : []),
           ...(tutorial.id === "study-fanout" && step.demo.some((demo) => demo.kind === "insert")
             ? ["learner disconnected a channel queue"]
             : []),
@@ -1216,7 +1446,54 @@ describe("every tutorial's completion contract", () => {
           lessonIt(`${step.id}: (e) Skip recovers after ${perturbation} without duplicate subjects`, async () => {
             const s = sandbox(tutorial);
             if (!(await reach(s, tutorial, i))) return expectPassedOver(s, i);
-            if (perturbation === "clear selection") s.editor.clearSelection();
+            const run = repairedRunId(step);
+            const savedBefore = run ? s.diagram.simulations?.find((sim) => sim.id === run) : undefined;
+            if (perturbation === "learner edited saved Inputs") {
+              // Through the Inputs panel: its what-ifs on the selected run, then Save to simulation.
+              s.learn({ kind: "runSimulation", id: run! });
+              const live = s.live!;
+              for (const demo of runRepairs(step)) {
+                if (demo.kind === "patch" && demo.edge) continue;
+                const target = repairTarget(s, demo);
+                const bad = spoiled(s.diagram, savedBefore!, target, demo.patches);
+                const inputs = live.getState().inputs;
+                if ("run" in target) live.setInputs({ ...inputs, capacity: bad.multipliers!.capacity });
+                else if ("node" in target)
+                  live.setInputs({
+                    ...inputs,
+                    props: {
+                      ...inputs.props,
+                      [target.node]: { ...inputs.props[target.node], ...bad.setup!.props![target.node] },
+                    },
+                  });
+              }
+              s.saveInputs();
+              await new Promise<void>((done) => queueMicrotask(done));
+            } else if (perturbation === "saved override changed") {
+              // Through the Live inspector, which writes the selected saved run's own caller settings.
+              s.learn({ kind: "runSimulation", id: run! });
+              for (const demo of runRepairs(step)) {
+                if (demo.kind !== "patch" || !demo.edge) continue;
+                const target = repairTarget(s, demo) as { edge: string };
+                const sim = s.diagram.simulations!.find((x) => x.id === run)!;
+                const caller = spoiled(s.diagram, sim, target, demo.patches).setup!.edges![target.edge].caller;
+                effectiveCallerPolicy(s.editor as unknown as EditorApi, target.edge, {
+                  controller: s.live!,
+                  slowmo: { active: false },
+                })!.set(caller);
+              }
+              await new Promise<void>((done) => queueMicrotask(done));
+            } else if (perturbation === "learner has an unsaved draft of the target simulation") {
+              // Simulations… › edit the run (its title, its seed) with run-only settings overriding every repaired
+              // key, then Run without Save.
+              s.hostState.live.goLive();
+              let draft: Simulation = { ...savedBefore!, title: "Learner draft", seed: 4242 };
+              for (const demo of runRepairs(step))
+                if (coversRun(demo, run!, run)) draft = spoiled(s.diagram, draft, repairTarget(s, demo), demo.patches);
+              s.session.runDraft(draft);
+              expect(s.session.draft).toBe(draft);
+              await new Promise<void>((done) => queueMicrotask(done));
+            } else if (perturbation === "clear selection") s.editor.clearSelection();
             else if (perturbation === "single node") {
               // Empty lessons get a real node too, rather than silently repeating deselection.
               const id = s.diagram.nodes[0]?.id ?? s.editor.addStencil("generic.service");
@@ -1270,6 +1547,19 @@ describe("every tutorial's completion contract", () => {
             );
             if (!beyond(s, i)) await skip(s, tutorial);
             expect(beyond(s, i)).toBe(true);
+            if (perturbation === "learner has an unsaved draft of the target simulation") {
+              // Repaired in the draft, which stays the learner's: their edits kept, the saved run untouched.
+              const copy = s.session.draft ?? s.live!.getState().simulation!;
+              expect(copy).toMatchObject({ id: run, title: "Learner draft", seed: 4242 });
+              expectRepaired(s, step, copy, run);
+              expect(s.diagram.simulations!.find((sim) => sim.id === run)).toEqual(savedBefore);
+            } else if (perturbation === "learner edited saved Inputs" || perturbation === "saved override changed")
+              expectRepaired(
+                s,
+                step,
+                s.diagram.simulations!.find((sim) => sim.id === run)!,
+                run,
+              );
             expect(s.diagram.nodes).toHaveLength(before + missing.size);
             for (const [name, id] of Object.entries(bindings))
               if (id && !tutorial.subjects[name].edge) expect(s.subject(name)).toBe(id);
@@ -1337,6 +1627,58 @@ describe("every tutorial's completion contract", () => {
           }
         });
 
+        if (repairedRunId(step))
+          lessonIt(`${step.id}: (f) Skip repairs saved runs after a reload in between`, async () => {
+            // The learner's run-only edits are in the document, so they outlive a reload; the session (its draft,
+            // its Inputs) doesn't. Continue rebuilds the earlier milestones over those saved runs, then Skip repairs.
+            const run = repairedRunId(step)!;
+            const spoiledStart = startOf(tutorial);
+            const subjects = resolveSubjects(tutorial, spoiledStart);
+            const named = (d: RunRepair): Partial<Record<"node" | "edge", string | undefined>> | { run: true } =>
+              d.kind === "patchRun"
+                ? { run: true }
+                : d.subject
+                  ? { node: subjects[d.subject] }
+                  : {
+                      edge: spoiledStart.edges.find(
+                        (e) => e.from === subjects[d.edge![0]] && e.to === subjects[d.edge![1]],
+                      )?.id,
+                    };
+            spoiledStart.simulations = spoiledStart.simulations?.map((sim) => {
+              if (sim.id !== run) return sim;
+              let next = sim;
+              for (const demo of runRepairs(step)) {
+                const target = named(demo);
+                // A subject this step adds isn't in the start: nothing of it to override yet.
+                if (Object.values(target).some((id) => id === undefined)) continue;
+                next = spoiled(spoiledStart, next, target as RepairTarget, demo.patches);
+              }
+              return next;
+            });
+            const reloaded: Tutorial = { ...tutorial, start: () => structuredClone(spoiledStart) };
+            if (i > 0) saveProgress(reloaded, i, false);
+            const s = sandbox(reloaded);
+            s.runner.send({ type: i > 0 ? "resume" : "start" });
+            await vi.waitFor(
+              () => {
+                if (state(s).value === "reconstructing" && s.live?.getState().playing) {
+                  s.live.advance(250);
+                  s.live.publish();
+                }
+                expect(state(s).value).not.toBe("reconstructing");
+              },
+              { timeout: 2000, interval: 1 },
+            );
+            if (inStep(state(s)) && state(s).index === i) await skip(s, tutorial);
+            expect(beyond(s, i)).toBe(true);
+            expectRepaired(
+              s,
+              step,
+              s.diagram.simulations!.find((sim) => sim.id === run)!,
+              run,
+            );
+          });
+
         lessonIt(`${step.id}: (c) Continue lands where it was left, with no extra input`, async () => {
           const landing = await skipLanding(tutorial, i);
           saveProgress(tutorial, i, false);
@@ -1387,6 +1729,264 @@ describe("every tutorial's completion contract", () => {
 });
 
 describe("completion regressions", () => {
+  it.each([
+    { replicas: 4, partitions: 3 },
+    { replicas: 2, partitions: 2 },
+  ])(
+    "partition Skip repairs saved Inputs ($replicas replicas, $partitions partitions)",
+    async ({ replicas, partitions }) => {
+      const s = sandbox(studyDispatch);
+      expect(await reach(s, studyDispatch, 1)).toBe(true);
+      s.editor.updateMeta({
+        simulations: s.diagram.simulations!.map((sim) =>
+          sim.id === "more-partitions"
+            ? {
+                ...sim,
+                setup: {
+                  ...sim.setup,
+                  props: { dispatcher: { replicas, latencyMs: 73 }, pings: { partitions, retentionMs: 12345 } },
+                },
+              }
+            : sim,
+        ),
+      });
+      s.learn({ kind: "runSimulation", id: "more-partitions" });
+      await skip(s, studyDispatch);
+      expect(state(s).value).toBe("finished");
+      expect(s.diagram.simulations!.find((sim) => sim.id === "more-partitions")!.setup!.props).toEqual({
+        dispatcher: { replicas: 4, latencyMs: 73 },
+        pings: { partitions: 4, retentionMs: 12345 },
+      });
+      expect(s.live!.getState().configuration.pings.partitions).toBe(4);
+      expect(s.live!.getState().snapshot.nodes.dispatcher.replicas).toBe(4);
+    },
+  );
+
+  it.each(["new draft", "edited saved draft"])(
+    "never-double-charge Skip repairs an unsaved %s in place, keeping it the learner's draft",
+    async (kind) => {
+      const s = sandbox(studyPayments);
+      await reach(s, studyPayments, 0);
+      s.hostState.live.goLive();
+      const savedBefore = structuredClone(s.diagram.simulations!);
+      const retry = {
+        maxAttempts: 5,
+        backoffMs: 123,
+        strategy: "fixed" as const,
+        retryOn: ["timeout" as const],
+        idempotent: false,
+      };
+      const draft: Simulation = {
+        ...s.diagram.simulations![0],
+        id: kind === "new draft" ? "learner-draft" : "psp-brownout",
+        title: "My unsaved run",
+        seed: 73,
+        timeline: [{ atMs: 500, action: { do: "note", text: "Mine", focus: [] } }],
+        setup: {
+          props: { payments: { latencyMs: 37 } },
+          edges: { "payments-psp": { caller: { replyMs: 17, retry } } },
+        },
+      };
+      // Simulations… › Run without Save.
+      s.session.runDraft(draft);
+      expect(s.session.draft).toBe(draft);
+      await skip(s, studyPayments);
+      expect(beyond(s, 0)).toBe(true);
+      const repaired = {
+        ...draft,
+        setup: {
+          ...draft.setup,
+          edges: { "payments-psp": { caller: { replyMs: 17, retry: { ...retry, idempotent: true } } } },
+        },
+      };
+      // Only the repaired key changed; the learner's title, seed, timeline and other run-only settings stay theirs.
+      expect(s.session.draft).toEqual(repaired);
+      expect(s.live!.getState().simulation).toEqual(repaired);
+      // Saved runs are not where the learner's draft is: they stay as they were (the diagram's retry is repaired).
+      expect(s.diagram.simulations).toEqual(savedBefore);
+      expect(s.diagram.edges.find((e) => e.id === "payments-psp")!.props!.caller).toMatchObject({
+        retry: { idempotent: true },
+      });
+      // Reselecting the run prefers its draft, as the session does: still repaired, still unsaved.
+      s.session.selectSimulation("poison-disputes");
+      s.session.selectSimulation(draft.id);
+      expect(s.live!.getState().simulation).toEqual(repaired);
+    },
+  );
+
+  it("brownout Skip with an edited draft of the run repairs that draft, not the saved run", async () => {
+    const s = sandbox(studyPayments);
+    expect(await reach(s, studyPayments, 1)).toBe(true);
+    s.learn({ kind: "runSimulation", id: "psp-brownout" });
+    // The inspector on the saved run first (its own deadline), then Simulations… edits and runs it unsaved.
+    effectiveCallerPolicy(s.editor, "payments-psp", { controller: s.live!, slowmo: { active: false } })!.set({
+      deadlineMs: 1000,
+      replyMs: 17,
+    });
+    await new Promise<void>((done) => queueMicrotask(done));
+    const saved = structuredClone(s.diagram.simulations!.find((sim) => sim.id === "psp-brownout")!);
+    const draft: Simulation = {
+      ...saved,
+      title: "My edited brownout",
+      traffic: saved.traffic.map((t) => ({ ...t, shape: { ...t.shape, ratePerSec: 25 } }) as typeof t),
+    };
+    s.session.runDraft(draft);
+    await skip(s, studyPayments);
+    expect(beyond(s, 1)).toBe(true);
+    const caller = { ...saved.setup!.edges!["payments-psp"].caller, deadlineMs: 250 };
+    expect(s.session.draft).toEqual({ ...draft, setup: { ...draft.setup, edges: { "payments-psp": { caller } } } });
+    expect(s.diagram.simulations!.find((sim) => sim.id === "psp-brownout")).toEqual(saved);
+    // Run again and reselection both play the repaired draft: its 250 ms deadline, the diagram's breaker.
+    s.live!.restart();
+    for (const id of ["poison-disputes", "psp-brownout"]) s.session.selectSimulation(id);
+    expect(
+      effectiveCallerPolicy(s.editor, "payments-psp", { controller: s.live!, slowmo: { active: false } })!.caller,
+    ).toMatchObject({
+      deadlineMs: 250,
+      breaker: {},
+      replyMs: 17,
+    });
+    expect(s.live!.getState().simulation!.title).toBe("My edited brownout");
+  });
+
+  it("brownout Skip leaves the saved run's caller settings unpinned", async () => {
+    const s = sandbox(studyPayments);
+    expect(await reach(s, studyPayments, 1)).toBe(true);
+    await skip(s, studyPayments);
+    // Nothing overrode the deadline or breaker: they're the diagram's, and the run inherits every caller field.
+    const saved = s.diagram.simulations!.find((sim) => sim.id === "psp-brownout")!;
+    expect(saved.setup?.edges?.["payments-psp"]).toBeUndefined();
+    expect(s.diagram.edges.find((edge) => edge.id === "payments-psp")!.props!.caller).toMatchObject({
+      deadlineMs: 250,
+      breaker: {},
+    });
+    const retry = {
+      maxAttempts: 7,
+      backoffMs: 333,
+      strategy: "fixed" as const,
+      retryOn: ["timeout" as const],
+      idempotent: true,
+    };
+    const caller = s.diagram.edges.find((edge) => edge.id === "payments-psp")!.props!.caller as object;
+    s.editor.setEdgeProps("payments-psp", { caller: { ...caller, retry } });
+    s.live!.selectSimulation(saved);
+    expect(
+      effectiveCallerPolicy(s.editor, "payments-psp", { controller: s.live!, slowmo: { active: false } })!.caller.retry,
+    ).toEqual(retry);
+  });
+
+  it("brownout Skip merges only the repaired fields into a saved run's sparse caller override", async () => {
+    const s = sandbox(studyPayments);
+    expect(await reach(s, studyPayments, 1)).toBe(true);
+    s.learn({ kind: "runSimulation", id: "psp-brownout" });
+    const policy = () =>
+      effectiveCallerPolicy(s.editor, "payments-psp", { controller: s.live!, slowmo: { active: false } })!;
+    policy().set({ deadlineMs: 1000, replyMs: 17 });
+    await skip(s, studyPayments);
+    // The deadline it overrode is repaired; replyMs stays; the breaker and retries keep inheriting.
+    expect(
+      s.diagram.simulations!.find((sim) => sim.id === "psp-brownout")!.setup!.edges!["payments-psp"].caller,
+    ).toEqual({
+      deadlineMs: 250,
+      replyMs: 17,
+    });
+  });
+
+  it("dispatch Skip merges node repairs into saved Inputs, keeping unrelated saved props", async () => {
+    const s = sandbox(studyDispatch);
+    expect(await reach(s, studyDispatch, 0)).toBe(true);
+    s.editor.updateMeta({
+      simulations: s.diagram.simulations!.map((sim) =>
+        sim.id === "dinner-rush"
+          ? { ...sim, setup: { props: { dispatcher: { replicas: 1, latencyMs: 40, concurrency: 7 } } } }
+          : sim,
+      ),
+    });
+    await skip(s, studyDispatch);
+    expect(s.diagram.simulations!.find((sim) => sim.id === "dinner-rush")!.setup!.props).toEqual({
+      dispatcher: { replicas: 2, latencyMs: 40, concurrency: 7 },
+    });
+  });
+
+  it("partition Skip normalizes a saved capacity multiplier that scales consumers past the partitions", async () => {
+    const s = sandbox(studyDispatch);
+    expect(await reach(s, studyDispatch, 1)).toBe(true);
+    s.learn({ kind: "runSimulation", id: "more-partitions" });
+    // Inputs & capacity › Capacity ×2, Save to simulation (the reference sizes stay as the diagram has them).
+    s.live!.setInputs({ ...s.live!.getState().inputs, capacity: 2, traffic: 1.5 });
+    s.saveInputs();
+    await new Promise<void>((done) => queueMicrotask(done));
+    expect(s.diagram.simulations!.find((sim) => sim.id === "more-partitions")!.multipliers).toEqual({
+      traffic: 1.5,
+      capacity: 2,
+    });
+    await skip(s, studyDispatch);
+    expect(state(s).value).toBe("finished");
+    // Only the capacity multiplier is normalized: the learner's traffic multiplier stays.
+    expect(s.diagram.simulations!.find((sim) => sim.id === "more-partitions")!.multipliers).toEqual({
+      traffic: 1.5,
+      capacity: 1,
+    });
+    expect(s.live!.getState().snapshot.nodes.dispatcher.replicas).toBe(4);
+  });
+
+  it.each(["ask", "retrieve", "answer"])(
+    "RAG budget Skip raises a short %s deadline in the diagram and the saved run",
+    async (edge) => {
+      const s = sandbox(studyRag);
+      await reach(s, studyRag, 0);
+      s.editor.setEdgeProps(edge, { caller: { deadlineMs: 250 } });
+      s.learn({ kind: "runSimulation", id: "questions" });
+      effectiveCallerPolicy(s.editor, edge, { controller: s.live!, slowmo: { active: false } })!.set({
+        deadlineMs: 300,
+      });
+      await new Promise<void>((done) => queueMicrotask(done));
+      await skip(s, studyRag);
+      expect(beyond(s, 0)).toBe(true);
+      expect(s.diagram.edges.find((e) => e.id === edge)!.props!.caller).toEqual({ deadlineMs: 2000 });
+      expect(s.diagram.simulations!.find((sim) => sim.id === "questions")!.setup!.edges![edge].caller).toEqual({
+        deadlineMs: 2000,
+      });
+      // A longer deadline, or none, was never the problem: those other Requests are left alone.
+      for (const other of ["ask", "retrieve", "answer"].filter((id) => id !== edge))
+        expect(s.diagram.edges.find((e) => e.id === other)!.props?.caller).toBeUndefined();
+    },
+  );
+
+  it("never-double-charge Skip repairs the selected run's unsafe retries", async () => {
+    const s = sandbox(studyPayments);
+    await reach(s, studyPayments, 0);
+    s.learn({ kind: "runSimulation", id: "psp-brownout" });
+    const policy = effectiveCallerPolicy(s.editor, "payments-psp", { controller: s.live!, slowmo: { active: false } })!;
+    policy.set({ retry: { ...policy.caller.retry!, idempotent: false } });
+    await skip(s, studyPayments);
+    expect(beyond(s, 0)).toBe(true);
+    expect(s.diagram.simulations![0].setup!.edges!["payments-psp"].caller.retry!.idempotent).toBe(true);
+  });
+
+  it.each([
+    { tutorial: studyCheckout, milestone: "respect-partner-quota", run: "partner-quota", edgeId: "checkout-payments" },
+    { tutorial: studyPayments, milestone: "survive-psp-brownout", run: "psp-brownout", edgeId: "payments-psp" },
+  ])("$tutorial.id Skip repairs saved-run caller overrides", async ({ tutorial, milestone, run, edgeId }) => {
+    const s = sandbox(tutorial);
+    const i = tutorial.steps.findIndex((step) => step.id === milestone);
+    expect(await reach(s, tutorial, i)).toBe(true);
+    s.learn({ kind: "runSimulation", id: run });
+    const policy = () => effectiveCallerPolicy(s.editor, edgeId, { controller: s.live!, slowmo: { active: false } })!;
+    if (tutorial === studyCheckout) policy().set({ poolConnections: 10, replyMs: 17 });
+    else {
+      policy().set({ breaker: {}, replyMs: 17 });
+      policy().set({ breaker: undefined, deadlineMs: 1000 });
+      expect(policy().caller.breaker).toBeNull();
+    }
+    await skip(s, tutorial);
+    const caller = s.diagram.simulations!.find((sim) => sim.id === run)!.setup!.edges![edgeId].caller;
+    expect(caller).toMatchObject(
+      tutorial === studyCheckout ? { poolConnections: 1, replyMs: 17 } : { deadlineMs: 250, breaker: {}, replyMs: 17 },
+    );
+    expect(beyond(s, i)).toBe(true);
+  });
+
   it.each([false, true])(
     "dead-letter-disputes Skip waits for a repaired DLQ connection (editing: %s)",
     async (editing) => {
@@ -1487,7 +2087,7 @@ describe("completion regressions", () => {
       patches: [{ op: "set", path: ["caller", "breaker"], value: null }],
     });
     await skip(s, studyPayments);
-    expect(s.diagram.edges.find((edge) => edge.id === "payments-psp")?.props?.caller).toMatchObject({ breaker: {} });
+    expect(s.diagram.edges.find((edge) => edge.id === "payments-psp")!.props!.caller).toMatchObject({ breaker: {} });
     expect(s.live!.getState().snapshot.edges["payments-psp"].breaker?.state).toBe("open");
     expect(beyond(s, i)).toBe(true);
   });

@@ -4,8 +4,6 @@ import { studyRun } from "./studyShared";
 
 export const studyDispatch: Tutorial = {
   id: "study-dispatch",
-  // quarantined: see docs/backlog/2026-10-24-tutorials-quarantine.md
-  quarantined: true,
   version: 1,
   track: "studies",
   level: 3,
@@ -103,7 +101,12 @@ export const studyDispatch: Tutorial = {
       },
       targets: [{ testId: "node-{dispatcher}", tip: msg("tutorials.studyDispatch.rushHint") }],
       demo: [
-        { kind: "prop", subject: "dispatcher", props: { replicas: 2 } },
+        {
+          kind: "patch",
+          subject: "dispatcher",
+          runs: ["dinner-rush"],
+          patches: [{ op: "set", path: ["replicas"], value: 2 }],
+        },
         { kind: "runSimulation", id: "dinner-rush" },
       ],
       solution: [
@@ -128,11 +131,11 @@ export const studyDispatch: Tutorial = {
         checks: [
           {
             kind: "compare",
-            left: { subject: "topic", prop: "partitions" },
+            left: { subject: "topic", prop: "partitions", effective: true },
             op: ">=",
-            right: { subject: "dispatcher", prop: "replicas" },
+            right: { subject: "dispatcher", prop: "replicas", effective: true },
           },
-          { kind: "prop", subject: "dispatcher", prop: "replicas", op: ">=", value: 4 },
+          { kind: "prop", effective: true, subject: "dispatcher", prop: "replicas", op: ">=", value: 4 },
           { kind: "simulation", id: "more-partitions", atLeastMs: 4000 },
           { kind: "expectation", simulation: "more-partitions", label: msg("tutorials.studyDispatch.bounded") },
           { kind: "metric", subject: "dispatcher", field: "processed", op: ">=", value: 10 },
@@ -140,8 +143,24 @@ export const studyDispatch: Tutorial = {
       },
       targets: [{ testId: "node-{topic}", tip: msg("tutorials.studyDispatch.fixHint") }],
       demo: [
-        { kind: "prop", subject: "dispatcher", props: { replicas: 4 } },
-        { kind: "prop", subject: "topic", props: { partitions: 4 } },
+        {
+          kind: "patch",
+          subject: "dispatcher",
+          runs: ["more-partitions"],
+          patches: [{ op: "set", path: ["replicas"], value: 4 }],
+        },
+        {
+          kind: "patch",
+          subject: "topic",
+          runs: ["more-partitions"],
+          patches: [{ op: "set", path: ["partitions"], value: 4 }],
+        },
+        // The reference sizes are the fleet: a saved capacity multiplier would scale consumers past the partitions.
+        {
+          kind: "patchRun",
+          runs: ["more-partitions"],
+          patches: [{ op: "set", path: ["multipliers", "capacity"], value: 1 }],
+        },
         { kind: "runSimulation", id: "more-partitions" },
       ],
       solution: [

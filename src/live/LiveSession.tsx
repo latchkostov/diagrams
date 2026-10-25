@@ -1,7 +1,7 @@
 import { defineLazySurface } from "../lib/lazySurface";
 import { boundaryRestoreHint } from "../model/faultWords";
 import { ViewportPortal, useStoreApi } from "@xyflow/react";
-import { Suspense, lazy, useEffect, useMemo, useState } from "react";
+import { Suspense, lazy, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useCameraController } from "../canvas/camera";
 import { InteractionContext, useInteractionOrLocal } from "../canvas/interaction";
 import type { DiagramFlowEdge, FlowNode } from "../canvas/types";
@@ -82,6 +82,7 @@ const SequenceDialog = lazy(() => import("./SequenceDialog").then((m) => ({ defa
 type RecorderView = typeof import("./record/Recorder").Recorder;
 
 import type { LiveSessionHandle, LiveViewProps } from "./LiveView";
+import type { Simulation } from "../model/types";
 
 // The live session: the simulation, its renderers and panels, slow motion and recording. It loads when live
 // view first turns on (or earlier, once the canvas is idle; see LiveView), never with the first view.
@@ -163,6 +164,12 @@ export function LiveSession({
 
   const commands = useLiveCommands({ session, editor, onSaveDiagram, spotlight, setCapacityError });
   const { selectSimulation, showSimulation, runDraft, saveSimulation, deleteSimulation, showEvents } = commands;
+  // Save follows the document's save callback; the copy offered outside the panel keeps one identity.
+  const latestSave = useRef(saveSimulation);
+  useLayoutEffect(() => {
+    latestSave.current = saveSimulation;
+  }, [saveSimulation]);
+  const saveFromOutside = useCallback((sim: Simulation) => latestSave.current(sim), []);
 
   const { rec, dispatchRec, capturing } = useLiveRecordingState();
   const [Recorder, setRecorder] = useState<RecorderView | null>(null);
@@ -253,6 +260,8 @@ export function LiveSession({
       simulations,
       draft,
       selectSimulation,
+      saveSimulation: editor ? saveFromOutside : undefined,
+      runDraft: editor ? runDraft : undefined,
       openPanel: (sim) => {
         // The live bar passes the active run; restore its working copy unless another run was chosen.
         const kept = suspendedPanelRef.current;
@@ -291,6 +300,8 @@ export function LiveSession({
       simulations,
       draft,
       selectSimulation,
+      saveFromOutside,
+      runDraft,
       panel.open,
       capacityOpen,
       openCapacity,

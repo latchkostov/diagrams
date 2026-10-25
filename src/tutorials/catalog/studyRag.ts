@@ -1,11 +1,27 @@
 import { msg, t } from "../../i18n";
-import type { Tutorial } from "../types";
+import type { Demo, Tutorial } from "../types";
 import { studyAdd, studyRun } from "./studyShared";
+
+/**
+ * A caller deadline under the answer budget times out answers the model would still give: Skip raises each Request's
+ * own deadline (in the diagram, and the run's override of it) to the budget. No deadline, or a longer one, stays.
+ */
+const answerDeadlines = (run: string): Demo[] =>
+  (
+    [
+      ["questions", "embeddings"],
+      ["embeddings", "index"],
+      ["embeddings", "llm"],
+    ] as const
+  ).map<Demo>((edge) => ({
+    kind: "patch",
+    edge,
+    runs: [run],
+    patches: [{ op: "atLeast", path: ["caller", "deadlineMs"], value: 2000 }],
+  }));
 
 export const studyRag: Tutorial = {
   id: "study-rag",
-  // quarantined: see docs/backlog/2026-10-24-tutorials-quarantine.md (runner repair API pass)
-  quarantined: true,
   version: 1,
   track: "studies",
   level: 3,
@@ -108,7 +124,13 @@ export const studyRag: Tutorial = {
         { kind: "relation", from: "embeddings", to: "index", relation: "flow", edgeKind: "sync" },
         { kind: "connect", from: "embeddings", to: "llm" },
         { kind: "relation", from: "embeddings", to: "llm", relation: "flow", edgeKind: "sync" },
-        { kind: "patch", subject: "llm", patches: [{ op: "set", path: ["latencyMs"], value: 1000 }] },
+        ...answerDeadlines("questions"),
+        {
+          kind: "patch",
+          subject: "llm",
+          runs: ["questions"],
+          patches: [{ op: "set", path: ["latencyMs"], value: 1000 }],
+        },
         { kind: "runSimulation", id: "questions" },
       ],
       solution: [
@@ -185,7 +207,13 @@ export const studyRag: Tutorial = {
       },
       targets: [{ testId: "node-{index}", tip: msg("tutorials.studyRag.sampledReindexHint") }],
       demo: [
-        { kind: "patch", subject: "index", patches: [{ op: "set", path: ["latencyMs"], value: 50 }] },
+        ...answerDeadlines("reindex"),
+        {
+          kind: "patch",
+          subject: "index",
+          runs: ["reindex"],
+          patches: [{ op: "set", path: ["latencyMs"], value: 50 }],
+        },
         { kind: "runSimulation", id: "reindex" },
       ],
       solution: [

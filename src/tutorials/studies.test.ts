@@ -13,9 +13,153 @@ import { studyRag } from "./catalog/studyRag";
 import { studyCells } from "./catalog/studyCells";
 import { edgeTargets, observeSteps, resolveSubjects } from "./checks";
 import { runnerInitial, runnerMachine, targetsShown } from "./machine";
+import type { Tutorial } from "./types";
+import { editorHarness } from "../test/editorHarness";
+import { effectiveCallerPolicy } from "../editor/callerPolicy";
+import { capacitySaveCandidate } from "../live/capacityPersistence";
 import { solutionNow } from "./solution";
 
 describe("design studies", () => {
+  const initial = (tutorial: Tutorial) => {
+    if (typeof tutorial.start !== "function") throw new Error("Expected inline diagram");
+    return tutorial.start();
+  };
+  const play = (live: LiveController, sample: () => void = () => {}) => {
+    for (let tick = 0; tick < 48; tick++) {
+      live.advance(250);
+      live.publish();
+      sample();
+    }
+  };
+
+  it.each([studyCheckout, studyPayments, studyDispatch])(
+    "$id starting diagram fails every milestone in every run",
+    (tutorial) => {
+      for (const simulation of initial(tutorial).simulations!) {
+        const diagram = initial(tutorial);
+        const live = new LiveController(diagram);
+        try {
+          live.selectSimulation(simulation);
+          live.setPlaying(true);
+          play(live, () => {
+            expect(
+              observeSteps(tutorial, { diagram, live: true, session: live.getState(), processed: () => 0 }),
+              JSON.stringify({
+                id: simulation.id,
+                time: live.getState().run?.time,
+                checkout: live.getState().snapshot.nodes.checkout,
+              }),
+            ).not.toContain(true);
+          });
+        } finally {
+          live.dispose();
+        }
+      }
+    },
+  );
+
+  it.each([10, 1])("partner quota rejects unpaced calls (pool: %s)", (poolConnections) => {
+    const diagram = initial(studyCheckout);
+    diagram.nodes.find((n) => n.id === "checkout")!.props!.replicas = 20;
+    if (poolConnections)
+      diagram.edges.find((e) => e.id === "checkout-payments")!.props = { caller: { poolConnections } };
+    const live = new LiveController(diagram);
+    try {
+      live.selectSimulation(diagram.simulations!.find((s) => s.id === "partner-quota")!);
+      live.setPlaying(true);
+      let completed = false;
+      play(live, () => {
+        const session = live.getState();
+        const met = observeSteps(studyCheckout, { diagram, live: true, session, processed: () => 0 })[2];
+        completed ||= met;
+        if (poolConnections !== 1 && session.run!.time >= 4000) {
+          expect(session.snapshot.nodes.payments.processed).toBeGreaterThanOrEqual(10);
+          expect(session.snapshot.nodes.payments.rejected).toBeGreaterThan(1);
+          expect(met).toBe(false);
+        }
+      });
+      expect(completed).toBe(poolConnections === 1);
+    } finally {
+      live.dispose();
+    }
+  });
+
+  it("never-double-charge requires idempotent PSP retries", () => {
+    const diagram = initial(studyPayments);
+    diagram.nodes.push(
+      { id: "outbox", stencil: "kafka.topic", label: "", x: 900, y: 0 },
+      { id: "consumer", stencil: "service.java", label: "", x: 1200, y: 0 },
+    );
+    diagram.edges.push(
+      { id: "outbox-write", from: "payments", to: "outbox", kind: "async" },
+      { id: "outbox-read", from: "outbox", to: "consumer", kind: "async" },
+    );
+    const h = editorHarness(diagram);
+    const met = () => observeSteps(studyPayments, { diagram: h.api.getDiagram(), live: false, processed: () => 0 })[0];
+    expect(met()).toBe(false);
+    const policy = effectiveCallerPolicy(h.api, "payments-psp", null)!;
+    policy.set({ retry: { ...policy.caller.retry!, idempotent: true } });
+    expect(met()).toBe(true);
+  });
+
+  it("brownout completion honors the Live inspector's saved-run caller overrides", () => {
+    const h = editorHarness(initial(studyPayments));
+    h.deps.setMeta = () => {};
+    const live = new LiveController(h.api.getDiagram(), { replayDelayMs: 0 });
+    try {
+      live.selectSimulation(h.api.getDiagram().simulations![0]);
+      const policy = () =>
+        effectiveCallerPolicy(h.api, "payments-psp", { controller: live, slowmo: { active: false } })!;
+      policy().set({ deadlineMs: 250, breaker: undefined, replyMs: 17 });
+      expect(policy().caller.breaker).toBeNull();
+      policy().set({ breaker: {} });
+      expect(h.api.getEdge("payments-psp")!.props!.caller).not.toHaveProperty("deadlineMs");
+      live.setPlaying(true);
+      let completed = false;
+      play(live, () => {
+        completed ||= observeSteps(studyPayments, {
+          diagram: h.api.getDiagram(),
+          live: true,
+          session: live.getState(),
+          processed: () => 0,
+        })[1];
+      });
+      expect(completed).toBe(true);
+    } finally {
+      live.dispose();
+    }
+  });
+
+  it.each([false, true])("Dispatch accepts Inputs edits and capacity multipliers (saved: %s)", (save) => {
+    let diagram = initial(studyDispatch);
+    diagram.nodes.find((n) => n.id === "dispatcher")!.props!.replicas = 2;
+    const live = new LiveController(diagram);
+    try {
+      live.selectSimulation(diagram.simulations![1]);
+      live.setInputs({
+        ...live.getState().inputs,
+        props: { dispatcher: { replicas: 2 }, pings: { partitions: 4 } },
+        capacity: 2,
+      });
+      if (save) {
+        const candidate = capacitySaveCandidate(diagram, live.getState().simulation, live.getState().inputs);
+        diagram = candidate.diagram;
+        live.commitInputs(candidate.saved, diagram);
+        live.restart();
+      }
+      live.setPlaying(true);
+      play(live);
+      const view = () => ({ diagram, live: true, session: live.getState(), processed: () => 0 });
+      expect(diagram.nodes.find((n) => n.id === "dispatcher")!.props!.replicas).toBe(2);
+      expect(observeSteps(studyDispatch, view())[1]).toBe(true);
+      live.setInputs({ ...live.getState().inputs, props: { pings: { partitions: 3 } } });
+      expect(observeSteps(studyDispatch, view())[1]).toBe(false);
+      expect(observeSteps(studyDispatch, { ...view(), trafficReady: false })[1]).toBe(false);
+    } finally {
+      live.dispose();
+    }
+  });
+
   it.each([
     ["booking", "neighbour"],
     ["neighbour", "booking"],
@@ -128,26 +272,16 @@ describe("design studies", () => {
     });
   }
 
-  it("quarantines the remaining design studies while retaining their milestone coverage", () => {
-    for (const study of [studyCheckout, studyDispatch, studyPayments, studyFanout, studyRag]) {
-      expect(study.quarantined).toBe(true);
-      expect(findTutorial(study.id)).toBeUndefined();
-      expect(tutorials).not.toContain(study);
-      expect(tutorialMetadata.some((entry) => entry.id === study.id)).toBe(false);
-      expect(tutorialEntries.find((entry) => entry.id === study.id)).toEqual({
-        id: study.id,
-        quarantined: true,
-      });
-    }
-  });
-
-  it.each([studyCells])("publishes $id with its generated browser cases", (study) => {
-    expect(study.quarantined).toBeUndefined();
-    expect(findTutorial(study.id)).toBe(study);
-    expect(tutorials).toContain(study);
-    expect(tutorialMetadata.some((entry) => entry.id === study.id)).toBe(true);
-    expect(tutorialEntries.find((entry) => entry.id === study.id)).toEqual({ id: study.id });
-  });
+  it.each([studyCheckout, studyDispatch, studyPayments, studyFanout, studyRag, studyCells])(
+    "publishes $id with its generated browser cases",
+    (study) => {
+      expect(study.quarantined).toBeUndefined();
+      expect(findTutorial(study.id)).toBe(study);
+      expect(tutorials).toContain(study);
+      expect(tutorialMetadata.some((entry) => entry.id === study.id)).toBe(true);
+      expect(tutorialEntries.find((entry) => entry.id === study.id)).toEqual({ id: study.id });
+    },
+  );
 
   it.each([true, false])("Dispatch partition fix requires processed traffic (connected: %s)", (connected) => {
     if (typeof studyDispatch.start !== "function") throw new Error("Expected inline diagram");
@@ -201,6 +335,8 @@ describe("design studies", () => {
           expect(met[1 - index], "another run's result cannot complete this milestone").toBe(false);
           if (index === 1 && passingExpectation) {
             diagram.nodes.find((node) => node.id === "pings")!.props!.partitions = 3;
+            live.updateDiagram(diagram);
+            view.session = live.getState();
             expect(observeSteps(studyDispatch, view)[index], "unassigned consumers cannot satisfy the fix").toBe(false);
           }
         } finally {

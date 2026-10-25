@@ -5,8 +5,6 @@ import { studyAdd, studyRun } from "./studyShared";
 export const studyPayments: Tutorial = {
   id: "study-payments",
   version: 1,
-  // quarantined: see docs/backlog/2026-10-24-tutorials-quarantine.md
-  quarantined: true,
   track: "studies",
   level: 3,
   minutes: 25,
@@ -102,7 +100,14 @@ export const studyPayments: Tutorial = {
         checks: [
           { kind: "relation", from: "payments", to: "outbox", relation: "flow", edgeKind: "async" },
           { kind: "relation", from: "outbox", to: "consumer", relation: "flow", edgeKind: "async" },
-          { kind: "prop", edge: ["payments", "psp"], prop: ["caller", "retry", "idempotent"], op: "=", value: true },
+          {
+            kind: "prop",
+            effective: true,
+            edge: ["payments", "psp"],
+            prop: ["caller", "retry", "idempotent"],
+            op: "=",
+            value: true,
+          },
         ],
       },
       targets: [{ testId: "node-{payments}", tip: msg("tutorials.studyPayments.safeHint") }],
@@ -114,6 +119,8 @@ export const studyPayments: Tutorial = {
         {
           kind: "patch",
           edge: ["payments", "psp"],
+          // Checked in whichever run is selected: no saved run may keep unsafe retries of its own.
+          runs: [{ selected: true }, "psp-brownout", "poison-disputes"],
           patches: [{ op: "set", path: ["caller", "retry", "idempotent"], value: true }],
         },
       ],
@@ -139,8 +146,22 @@ export const studyPayments: Tutorial = {
       check: {
         kind: "all",
         checks: [
-          { kind: "prop", edge: ["payments", "psp"], prop: ["caller", "deadlineMs"], op: ">=", value: 1 },
-          { kind: "prop", edge: ["payments", "psp"], prop: ["caller", "deadlineMs"], op: "<=", value: 250 },
+          {
+            kind: "prop",
+            effective: true,
+            edge: ["payments", "psp"],
+            prop: ["caller", "deadlineMs"],
+            op: ">=",
+            value: 1,
+          },
+          {
+            kind: "prop",
+            effective: true,
+            edge: ["payments", "psp"],
+            prop: ["caller", "deadlineMs"],
+            op: "<=",
+            value: 250,
+          },
           { kind: "simulation", id: "psp-brownout", atLeastMs: 3000 },
           { kind: "metric", subject: "payments", edge: ["payments", "psp"], field: "breaker", op: "=", value: "open" },
         ],
@@ -150,6 +171,7 @@ export const studyPayments: Tutorial = {
         {
           kind: "patch",
           edge: ["payments", "psp"],
+          runs: ["psp-brownout"],
           patches: [
             { op: "set", path: ["caller", "deadlineMs"], value: 250 },
             { op: "set", path: ["caller", "breaker"], value: {} },
@@ -177,7 +199,7 @@ export const studyPayments: Tutorial = {
         kind: "all",
         checks: [
           { kind: "relation", from: "outbox", to: "dlq", relation: "flow", edgeKind: "async" },
-          { kind: "prop", edge: ["outbox", "dlq"], prop: "dlq", op: "=", value: true },
+          { kind: "prop", effective: true, edge: ["outbox", "dlq"], prop: "dlq", op: "=", value: true },
           { kind: "simulation", id: "poison-disputes", atLeastMs: 4000 },
           { kind: "metric", subject: "outbox", field: "deadLettered", op: ">=", value: 1 },
           { kind: "metric", subject: "dlq", field: "processed", op: ">=", value: 1 },
@@ -191,7 +213,12 @@ export const studyPayments: Tutorial = {
         { kind: "fault", edge: ["outbox", "dlq"], fault: "cut", restore: true },
         { kind: "relation", from: "outbox", to: "dlq", relation: "flow", edgeKind: "async" },
         { kind: "patch", edge: ["outbox", "dlq"], patches: [{ op: "set", path: ["dlq"], value: true }] },
-        { kind: "patch", subject: "consumer", patches: [{ op: "set", path: ["failureRate"], value: 1 }] },
+        {
+          kind: "patch",
+          subject: "consumer",
+          runs: ["poison-disputes"],
+          patches: [{ op: "set", path: ["failureRate"], value: 1 }],
+        },
         { kind: "runSimulation", id: "poison-disputes" },
       ],
       solution: [

@@ -19,6 +19,7 @@ import type {
 import { matchesSimulation } from "./simulations";
 import type { Baseline } from "./machine";
 import { equal, readPath } from "./paths";
+import { checkProps } from "./configuration";
 import type { LiveState } from "../live/controller";
 import type { EditorModeState } from "../canvas/interaction/mode";
 import type { SlowState } from "../live/slowmo/session";
@@ -58,12 +59,13 @@ export function resolveSubjects(
 ): Record<string, string | undefined> {
   const subjects: Record<string, string | undefined> = {};
   const used = new Set<string>();
+  const flows = flowEdges(diagram.edges);
+  const from = (name: string, id: string) => flows.some((e) => e.from === subjects[name] && e.to === id);
+  const to = (id: string, name: string) => flows.some((e) => e.from === id && e.to === subjects[name]);
   const matches = (spec: SubjectSpec, node: DiagramFile["nodes"][number]) =>
     fits(spec, node.stencil) &&
-    (!spec.downstreamOf ||
-      flowEdges(diagram.edges).some((e) => e.from === subjects[spec.downstreamOf!] && e.to === node.id)) &&
-    (!spec.upstreamOf ||
-      flowEdges(diagram.edges).some((e) => e.from === node.id && e.to === subjects[spec.upstreamOf!]));
+    (!spec.downstreamOf || from(spec.downstreamOf, node.id)) &&
+    (!spec.between || from(spec.between[0], node.id) || to(node.id, spec.between[1]));
   for (const [name, spec] of Object.entries(tutorial.subjects)) {
     if (spec.edge) continue;
     if (typeof spec.boundary === "object") continue;
@@ -190,7 +192,10 @@ export function holds(check: Check, view: SandboxView, subjects: Record<string, 
       const actual =
         check.edge && (check.prop === "sourceSide" || check.prop === "targetSide")
           ? edge(check.edge)?.[check.prop]
-          : readPath(target?.props, typeof check.prop === "string" ? [check.prop] : check.prop);
+          : readPath(
+              check.effective ? checkProps(view, target, !!check.edge) : target?.props,
+              typeof check.prop === "string" ? [check.prop] : check.prop,
+            );
       if (check.measure === "length") return Array.isArray(actual) && compare(actual.length, check.op, check.value);
       if (check.op === "truthy") return !!actual;
       return compare(actual, check.op, check.value);
@@ -384,7 +389,7 @@ export function metricValue(
   subjects: Record<string, string | undefined>,
 ): number | undefined {
   if ("prop" in expr) {
-    // The diagram's own number: no run needed.
+    // Document properties by default; effective opts into the current Live configuration.
     const target = expr.edge
       ? (() => {
           const from = subjects[expr.edge[0]],
@@ -392,7 +397,12 @@ export function metricValue(
           return from && to ? view.diagram.edges.find((e) => e.from === from && e.to === to) : undefined;
         })()
       : view.diagram.nodes.find((n) => n.id === subjects[expr.subject]);
-    return finite(readPath(target?.props, typeof expr.prop === "string" ? [expr.prop] : expr.prop));
+    return finite(
+      readPath(
+        expr.effective ? checkProps(view, target, !!expr.edge) : target?.props,
+        typeof expr.prop === "string" ? [expr.prop] : expr.prop,
+      ),
+    );
   }
   const session = view.session;
   if (!view.live || !session || view.trafficReady === false) return undefined;

@@ -525,12 +525,177 @@ test("where-time-goes: Latency can be expanded and read before Done finishes", a
   await expect(strip(page)).toHaveAttribute("data-phase", "finished");
 });
 
+async function reachStudyMilestone(page: Page, id: string, milestone: string) {
+  test.fixme(!!tutorialEntries.find((tutorial) => tutorial.id === id)?.quarantined, quarantineReason);
+  await openTutorial(page, id);
+  await page.getByTestId("tutorial-start").click();
+  while ((await strip(page).getAttribute("data-step")) !== milestone) {
+    const current = await strip(page).getAttribute("data-step");
+    await page.getByTestId("tutorial-skip").click();
+    await expect(strip(page)).not.toHaveAttribute("data-step", current ?? "");
+  }
+}
+
+for (const finish of ["inspector", "Skip"] as const)
+  test(`study-payments: brownout honors saved caller overrides (${finish})`, async ({ page, consoleErrors }) => {
+    test.slow();
+    await reachStudyMilestone(page, "study-payments", "survive-psp-brownout");
+    await page.getByTestId("live-toggle").click();
+    await page.getByTestId("live-sim-picker").selectOption("psp-brownout");
+    await fitDiagram(page);
+    await page.getByTestId("node-psp").dblclick();
+    await page.getByTestId("inspector-field-label").click();
+    await page.getByTestId("inspector-field-label").press("Enter");
+    // eslint-disable-next-line no-restricted-syntax -- Connection navigation uses Ctrl+Alt on every platform (Ctrl+Option on macOS).
+    await page.keyboard.press("Control+Alt+[");
+    await expect.poll(() => page.evaluate(() => window.__tutorial?.snapshot().selected)).toEqual(["payments-psp"]);
+    await page.getByTestId("inspector-section-edge-simulation").click();
+    await page.getByTestId("inspector-field-breaker-on").click();
+    await page.getByTestId("inspector-field-breaker-off").click();
+    await expect(page.getByTestId("inspector-field-breaker-on")).not.toBeChecked();
+    if (finish === "inspector") {
+      await page.getByTestId("inspector-field-breaker-on").click();
+      await page.getByTestId("inspector-field-deadlineMs").fill("250");
+      await page.getByTestId("inspector-field-deadlineMs").press("Enter");
+      await page.getByTestId("live-restart").click();
+    } else await page.getByTestId("tutorial-skip").click();
+    await expect(strip(page)).toHaveAttribute("data-step", "dead-letter-disputes");
+    expectNoErrors(consoleErrors);
+  });
+
+test("study-checkout: Skip repairs the saved Partner quota pool", async ({ page, consoleErrors }) => {
+  test.slow();
+  await reachStudyMilestone(page, "study-checkout", "respect-partner-quota");
+  if (!(await page.getByTestId("live-sim-picker").isVisible())) await page.getByTestId("live-toggle").click();
+  await page.getByTestId("live-sim-picker").selectOption("partner-quota");
+  await fitDiagram(page);
+  await page.getByTestId("node-payments").dblclick();
+  await page.getByTestId("inspector-field-label").click();
+  await page.getByTestId("inspector-field-label").press("Enter");
+  // eslint-disable-next-line no-restricted-syntax -- Connection navigation uses Ctrl+Alt on every platform (Ctrl+Option on macOS).
+  await page.keyboard.press("Control+Alt+[");
+  await expect.poll(() => page.evaluate(() => window.__tutorial?.snapshot().selected)).toEqual(["checkout-payments"]);
+  await page.getByTestId("inspector-section-edge-simulation").click();
+  await page.getByTestId("inspector-section-call-advanced").click();
+  await page.getByTestId("inspector-field-poolConnections").fill("10");
+  await page.getByTestId("inspector-field-poolConnections").press("Enter");
+  await page.getByTestId("tutorial-skip").click();
+  await expect(strip(page)).toHaveAttribute("data-phase", "finished");
+  await expect(page.getByTestId("inspector-field-poolConnections")).toHaveValue("1");
+  expectNoErrors(consoleErrors);
+});
+
+test("study-dispatch: saved Inputs complete the partition fix", async ({ page, consoleErrors }) => {
+  test.slow();
+  await reachStudyMilestone(page, "study-dispatch", "fix-partition-ceiling");
+  await page.getByTestId("live-sim-picker").selectOption("more-partitions");
+  await page.getByTestId("live-capacity").click();
+  await page.getByTestId("capacity-replicas-dispatcher").fill("4");
+  await page.getByTestId("capacity-replicas-dispatcher").press("Enter");
+  await page.getByTestId("capacity-partitions-pings").fill("4");
+  await page.getByTestId("capacity-partitions-pings").press("Enter");
+  await page.getByTestId("capacity-save").click();
+  await page.getByTestId("live-restart").click();
+  await expect(strip(page)).toHaveAttribute("data-phase", "finished");
+  expectNoErrors(consoleErrors);
+});
+
+for (const { replicas, partitions } of [
+  { replicas: 4, partitions: 3 },
+  { replicas: 2, partitions: 2 },
+])
+  test(`study-dispatch: Skip repairs saved Inputs (${replicas} replicas, ${partitions} partitions)`, async ({
+    page,
+    consoleErrors,
+  }) => {
+    test.slow();
+    await reachStudyMilestone(page, "study-dispatch", "fix-partition-ceiling");
+    await page.getByTestId("live-sim-picker").selectOption("more-partitions");
+    await page.getByTestId("live-capacity").click();
+    // Save a distinct baseline first: 2/2 initially matches the diagram and is not a dirty input.
+    await page.getByTestId("capacity-replicas-dispatcher").fill("3");
+    await page.getByTestId("capacity-replicas-dispatcher").press("Enter");
+    await page.getByTestId("capacity-partitions-pings").fill("3");
+    await page.getByTestId("capacity-partitions-pings").press("Enter");
+    await page.getByTestId("capacity-save").click();
+    await page.getByTestId("capacity-replicas-dispatcher").fill(String(replicas));
+    await page.getByTestId("capacity-replicas-dispatcher").press("Enter");
+    await page.getByTestId("capacity-partitions-pings").fill(String(partitions));
+    await page.getByTestId("capacity-partitions-pings").press("Enter");
+    await page.getByTestId("capacity-save").click();
+    await expect(strip(page)).toHaveAttribute("data-step", "fix-partition-ceiling");
+    await page.getByTestId("tutorial-skip").click();
+    await expect(strip(page)).toHaveAttribute("data-phase", "finished");
+    await expect(page.getByTestId("capacity-replicas-dispatcher")).toHaveValue("4");
+    await expect(page.getByTestId("capacity-partitions-pings")).toHaveValue("4");
+    expectNoErrors(consoleErrors);
+  });
+
+test("study-payments: Skip repairs a new simulation run in place, leaving it the learner's unsaved draft", async ({
+  page,
+  consoleErrors,
+}) => {
+  test.slow();
+  await reachStudyMilestone(page, "study-payments", "never-double-charge");
+  await page.getByTestId("live-toggle").click();
+  await page.getByTestId("live-more").click();
+  await page.getByTestId("live-edit-sims").click();
+  await page.getByTestId("sim-panel-new").click();
+  await page.getByTestId("sim-panel-title").fill("My unsaved payment run");
+  await page.getByTestId("sim-panel-run").click();
+  const id = await page.getByTestId("live-sim-picker").inputValue();
+  await page.getByTestId("tutorial-skip").click();
+  await expect(strip(page)).toHaveAttribute("data-step", "survive-psp-brownout");
+  // Skip saved nothing for the learner: the panel still holds their unsaved draft, title and all.
+  await expect(page.getByTestId("sim-panel-title")).toHaveValue("My unsaved payment run");
+  await expect(page.getByTestId("sim-panel-dirty")).toBeVisible();
+  await expect(page.getByTestId("live-sim-picker")).toHaveValue(id);
+  // Run again, then reselecting the draft, still run with safe retries.
+  await page.getByTestId("sim-panel-run").click();
+  await page.getByTestId("live-sim-picker").selectOption("poison-disputes");
+  await page.getByTestId("live-sim-picker").selectOption(id);
+  await expect.poll(() => page.evaluate(() => window.__tutorial?.snapshot().state.observed[0])).toBe(true);
+  expectNoErrors(consoleErrors);
+});
+
+test("study-payments: Skip at the brownout keeps an edited running draft, through Run again, reselection and Continue", async ({
+  page,
+  consoleErrors,
+}) => {
+  test.slow();
+  await reachStudyMilestone(page, "study-payments", "survive-psp-brownout");
+  if (!(await page.getByTestId("live-sim-picker").isVisible())) await page.getByTestId("live-toggle").click();
+  await page.getByTestId("live-sim-picker").selectOption("psp-brownout");
+  await page.getByTestId("live-more").click();
+  await page.getByTestId("live-edit-sims").click();
+  // Edited at this milestone itself, then Run without Save.
+  await page.getByTestId("sim-panel-title").fill("My edited brownout");
+  await page.getByTestId("sim-panel-run").click();
+  await page.getByTestId("tutorial-skip").click();
+  await expect(strip(page)).toHaveAttribute("data-step", "dead-letter-disputes");
+  await expect(page.getByTestId("sim-panel-title")).toHaveValue("My edited brownout");
+  await expect(page.getByTestId("sim-panel-dirty")).toBeVisible();
+  await expect(page.getByTestId("live-sim-picker")).toHaveValue("psp-brownout");
+  // Run again and reselection play the repaired brownout: its 250 ms deadline opens the breaker again.
+  const brownout = () => page.evaluate(() => window.__tutorial?.snapshot().state.observed[1]);
+  await page.getByTestId("sim-panel-run").click();
+  await page.getByTestId("live-sim-picker").selectOption("poison-disputes");
+  await expect.poll(brownout).toBe(false);
+  await page.getByTestId("live-sim-picker").selectOption("psp-brownout");
+  await expect.poll(brownout, { timeout: 15_000 }).toBe(true);
+  // The learner's own Save keeps their edit; Continue after a reload lands where they left.
+  await page.getByTestId("sim-panel-save").click();
+  await expect(page.getByTestId("sim-panel-dirty")).toBeHidden();
+  await page.reload();
+  await expect(page.getByTestId("tutorial-start")).toContainText("Continue", { timeout: pageLoadTimeout() });
+  await page.getByTestId("tutorial-start").click();
+  await expect(strip(page)).toHaveAttribute("data-step", "dead-letter-disputes");
+  expectNoErrors(consoleErrors);
+});
+
 for (const { id, quarantined } of tutorialEntries)
   test(`${id}: its solution plays through the real UI`, async ({ page, consoleErrors }) => {
-    test.fixme(
-      !!quarantined,
-      `${quarantineReason}${["study-fanout", "study-rag"].includes(id) ? " (runner repair API pass)" : ""}`,
-    );
+    test.fixme(!!quarantined, quarantineReason);
     test.slow(); // Live has to carry real traffic for the last step.
     await openTutorial(page, id);
     await page.getByTestId("tutorial-start").click();
@@ -559,10 +724,7 @@ for (const { id, quarantined } of tutorialEntries)
 
 for (const { id, quarantined } of tutorialEntries)
   test(`${id}: Skip-all finishes without saving a diagram`, async ({ page, consoleErrors }) => {
-    test.fixme(
-      !!quarantined,
-      `${quarantineReason}${["study-fanout", "study-rag"].includes(id) ? " (runner repair API pass)" : ""}`,
-    );
+    test.fixme(!!quarantined, quarantineReason);
     await openTutorial(page, id);
     await page.getByTestId("tutorial-start").click();
     await skipAll(page);

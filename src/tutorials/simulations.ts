@@ -30,6 +30,17 @@ export function withSavedSimulation(
 ): Simulation[] | null {
   const saved = diagram.simulations ?? [];
   const own = saved.find((sim) => sim.id === demo.id);
+  const next = authoredSimulation(diagram, own, demo);
+  if (!next) return null;
+  return own ? saved.map((sim) => (sim === own ? next : sim)) : [...saved, next];
+}
+
+/** `own` (the learner's copy of the demo's simulation, if any) with what the demo authors and it lacks; null: nothing. */
+export function authoredSimulation(
+  diagram: DiagramFile,
+  own: Simulation | undefined,
+  demo: Extract<Demo, { kind: "saveSimulation" }>,
+): Simulation | null {
   const drills = (demo.drills ?? []).filter(
     (d) => !own?.timeline?.some((step) => step.action.do === "fault" && step.action.drill === d.preset),
   );
@@ -43,7 +54,7 @@ export function withSavedSimulation(
     timeline: [],
     expectations: [],
   };
-  const next: Simulation = {
+  return {
     ...base,
     timeline: [
       ...(base.timeline ?? []),
@@ -54,5 +65,4 @@ export function withSavedSimulation(
     ],
     expectations: [...(base.expectations ?? []), ...expectations],
   };
-  return own ? saved.map((sim) => (sim === own ? next : sim)) : [...saved, next];
 }
