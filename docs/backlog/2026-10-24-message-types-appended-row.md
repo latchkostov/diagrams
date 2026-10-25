@@ -30,14 +30,14 @@ uses `test.fixme`. Their reason is
 The original master e2e “an appended paged rule stays visible and focused after rekeying” remains
 running unchanged. No tests were deleted.
 
-## OPEN: Search misses versus empty flow (R-8dbd895066)
+## DONE: Search misses versus empty flow (R-8dbd895066)
 
 On a nonempty link carrying more than 100 types, a Carries search with zero matches currently says
 “No messages pass with these settings”; Only pass similarly claims no types reach the link.
 Show a search-specific “No matches” state and reserve empty-flow messages for genuinely empty
 carried/upstream populations. Searching must preserve the diagram's traffic and saved filters.
 
-## OPEN: Avoid re-normalizing the full vocabulary (R-d6eccbe57e)
+## DONE: Avoid re-normalizing the full vocabulary (R-d6eccbe57e)
 
 A broad query over a supported 30,000-entry filter repeatedly lowercases and ranks the full
 vocabulary and allocates uncapped intermediate match arrays, including during unrelated draft
@@ -45,9 +45,11 @@ edits. Cache normalized entries and collect bounded exact/substring buckets in o
 counting overflow. Skip ranking for an empty query; preserve exact-first results and existing caps.
 Use operation counts to bind the intended work reduction.
 
-## OPEN: Cover no-match searches (R-c565903d9b)
+## DONE: Cover no-match searches (R-c565903d9b)
 
 Add “unmatched message searches preserve traffic and report no matching types” using the existing
 250-type fixture. Search both Carries and Only pass for an absent name, assert search-specific
 empty states and unchanged saved filters/traffic, then clear each query and verify bounded choices
 return. Also distinguish truly empty carried/upstream populations. Mutation-check the regressions.
+
+The three search findings are completed in [batch 2](../release-notes/2026-10-25-p2-message-types-batch-2.md), with bounded cached normalization and mutation-checked unit/browser regressions. MT-09 remains OPEN; its appended-row implementation and quarantined regressions are unchanged.

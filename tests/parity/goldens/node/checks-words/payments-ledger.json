@@ -1,6 +1,18 @@
 {
-  "summary": "0 warnings, 0 suggestions; 1 more message-loop finding not listed.",
-  "findings": {},
-  "agentReport": { "findings": [], "summary": "0 warnings, 0 suggestions; 1 more message-loop finding not listed." },
-  "agentReportWarnings": { "findings": [], "summary": "0 warnings, 0 suggestions; 1 more message-loop finding not listed." }
+  "summary": "1 warning, 0 suggestions.",
+  "findings": {
+    "message-loop:incomplete": { "title": "Message type propagation incomplete", "message": "Timeline forwarding edits cannot be analyzed completely.", "rationale": "Review message paths before and after timeline forwarding edits manually." }
+  },
+  "agentReport": {
+    "findings": [
+      { "id": "message-loop:incomplete", "rule": "message-loop", "severity": "warning", "title": "Message type propagation incomplete", "message": "Timeline forwarding edits cannot be analyzed completely.", "targets": [] }
+    ],
+    "summary": "1 warning, 0 suggestions."
+  },
+  "agentReportWarnings": {
+    "findings": [
+      { "id": "message-loop:incomplete", "rule": "message-loop", "severity": "warning", "title": "Message type propagation incomplete", "message": "Timeline forwarding edits cannot be analyzed completely.", "targets": [] }
+    ],
+    "summary": "1 warning, 0 suggestions."
+  }
 }

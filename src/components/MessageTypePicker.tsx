@@ -142,7 +142,11 @@ export function TypePicker({
                 {type}
               </button>
             ))}
-            {!options.length && <small className="insp-note">{t("messageTypes.noUpstream")}</small>}
+            {!options.length && (
+              <small className="insp-note" data-testid={`inspector-${name}-empty`}>
+                {all.length ? t("menu.noMatches") : t("messageTypes.noUpstream")}
+              </small>
+            )}
             {moreSelected > 0 && (
               <>
                 <small className="insp-note" data-testid={`inspector-${name}-more-selected`}>

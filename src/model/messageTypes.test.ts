@@ -6,6 +6,8 @@ import { acceptsType } from "../sim/topology";
 import { VENDOR_PARENTS } from "../stencils/vendorParents";
 import { compileTypeFilter, typeFilterAccepts } from "./typeFilter";
 import fc from "fast-check";
+import { opGrowth, ops } from "../test/opCounter";
+import * as routing from "../sim/routeMatching";
 import { createEngine } from "../sim/engine";
 import { createSimulationRun } from "../sim/simulation";
 import { runChecks, summarize } from "../checks/run";
@@ -43,7 +45,13 @@ describe("messageTypesAt", () => {
     expect(run.engine.snapshot().nodes.sender.processed).toBeGreaterThan(1);
     expect(messageTypesAt(d).complete).toBe(false);
     const checks = runChecks(d, { rules: ["message-loop"] });
-    expect(checks.omitted).toEqual([{ rule: "message-loop", count: 1 }]);
+    expect(messageTypesAt(d).incompleteReasons).toEqual(["timeline-forwarding"]);
+    expect(checks.findings).toHaveLength(1);
+    expect(checks.findings[0]).toMatchObject({
+      id: "message-loop:incomplete",
+      message: "Timeline forwarding edits cannot be analyzed completely.",
+      rationale: "Review message paths before and after timeline forwarding edits manually.",
+    });
     expect(summarize(checks)).not.toContain("Nothing to check");
     expect(checks.findings.every((finding) => !finding.fix)).toBe(true);
   });
@@ -88,6 +96,7 @@ describe("messageTypesAt", () => {
     ];
     const types = messageTypesAt(d);
     expect(types.complete).toBe(true);
+    expect(types.incompleteReasons).toBeUndefined();
     expect(types.carried.get("send")).toContain("Other");
   });
 
@@ -338,7 +347,9 @@ describe("messageTypesAt", () => {
   it("uses label defaults and own-property-safe emits mappings", () => {
     const d = typedCallback();
     d.nodes[0].props = undefined;
-    d.nodes[1].props = { emits: { "*": "constructor" } };
+    d.nodes[1].props = {
+      emits: Object.assign(Object.create({ Client: "Inherited", "*": "Inherited wildcard" }), { "*": "constructor" }),
+    };
     d.edges[2].props = undefined;
     const result = messageTypesAt(d);
     expect(result.known.has("Client")).toBe(true);
@@ -493,6 +504,166 @@ describe("messageTypesAt", () => {
       edges: Array.from({ length: count }, (_, i) => ({ id: String(i), from: String(i), to: "hub" })),
     };
     d.edges.push(...Array.from({ length: count }, (_, i) => ({ id: `out-${i}`, from: "hub", to: "hub" })));
-    expect(messageTypesAt(d).complete).toBe(false);
+    const types = messageTypesAt(d);
+    expect(types.complete).toBe(false);
+    expect(types.incompleteReasons).toEqual(["work-budget"]);
+    const checks = runChecks(d, { rules: ["message-loop"] });
+    expect(checks.findings.find((finding) => finding.id === "message-loop:incomplete")).toMatchObject({
+      severity: "warning",
+      message: "The message path budget was reached.",
+      rationale: "Check a smaller diagram to enumerate every message path.",
+    });
+    expect(summarize(checks)).not.toContain("Nothing to check");
   });
+});
+
+function mixFixture(count: number, rate = 1): DiagramFile {
+  return {
+    format: "diagrams/v2",
+    title: "Mix seeds",
+    planning: {
+      revision: "p3-a1",
+      requestRoutes: Array.from({ length: count }, (_, i) => ({
+        id: `r${i}`,
+        address: { method: "POST", path: `/r${i}` },
+      })),
+    },
+    nodes: [
+      node("source", "client.browser", {
+        messageType: "T",
+        trafficMix: {
+          mode: "rates",
+          entries: Array.from({ length: count }, (_, i) => ({ routeId: `r${i}`, ratePerSec: rate })),
+        },
+      }),
+      node("sink", "generic.email"),
+    ],
+    edges: [{ id: "out", from: "source", to: "sink" }],
+  };
+}
+it("expands repeated traffic-mix seeds once per type with linear operation growth", () => {
+  const fixture = (count: number) => {
+    const d = mixFixture(count);
+    const inputs = Array.from({ length: count }, () => ({ node: "source", type: "Injected" }));
+    return () => {
+      const result = messageTypesAt(d, inputs);
+      expect(result.complete).toBe(true);
+      expect(result.carried.get("out")).toEqual(new Set(["Injected"]));
+    };
+  };
+  expect(opGrowth(fixture(8), fixture(8 * GROWTH_FACTOR), 9)).toBeLessThan(9);
+});
+it("caches immutable traffic mixes across saved runs with linear operation growth", () => {
+  const fixture = (count: number) => {
+    const d = mixFixture(count, 0);
+    d.simulations = Array.from({ length: count }, (_, i) => ({
+      id: `s${i}`,
+      title: "Injected",
+      traffic: [{ id: "t", node: "source", messageType: "T", shape: { kind: "burst", count: 1 } }],
+    }));
+    return () => {
+      const result = messageTypesAt(d);
+      expect(result.complete).toBe(true);
+      expect(result.carried.get("out")).toEqual(new Set(["T"]));
+    };
+  };
+  expect(opGrowth(fixture(8), fixture(8 * GROWTH_FACTOR), 9)).toBeLessThan(9);
+});
+it.each([128, 128 * GROWTH_FACTOR])("refuses an oversized %i-row mix before compiling it", (count) => {
+  const d = mixFixture(count);
+  const compile = vi.spyOn(routing, "compileMix");
+  try {
+    const result = messageTypesAt(d, undefined, messageTypeBudget(64));
+    expect(result.incompleteReasons).toEqual(["work-budget"]);
+    expect(compile).not.toHaveBeenCalled();
+    expect(result.carried.get("out")).toEqual(new Set());
+  } finally {
+    compile.mockRestore();
+  }
+});
+it("bounds unique route/type seed expansion with the shared work budget at two sizes", () => {
+  const measure = (count: number) => {
+    const d = mixFixture(16);
+    const inputs = Array.from({ length: count }, (_, i) => ({ node: "source", type: `T${i}` }));
+    return () => {
+      const budget = messageTypeBudget(256);
+      const result = messageTypesAt(d, inputs, budget);
+      expect(result.complete).toBe(false);
+      expect(result.incompleteReasons).toEqual(["work-budget"]);
+      expect(result.known.size).toBeLessThan(16);
+    };
+  };
+  const small = ops(measure(128), Infinity, ["src/model/messageTypes.ts"]);
+  const large = ops(measure(128 * GROWTH_FACTOR), small * 2, ["src/model/messageTypes.ts"]);
+  expect(small).toBeGreaterThan(0);
+  expect(large).toBeLessThanOrEqual(small * 2);
+});
+it("retains every incomplete reason when timeline edits and work exhaustion coexist", () => {
+  const d = mixFixture(8);
+  d.simulations = [
+    {
+      id: "s",
+      title: "Edited",
+      traffic: [],
+      timeline: [{ atMs: 0, action: { do: "props", node: "source", props: { emits: "Other" } } }],
+    },
+  ];
+  d.simulations.push({
+    id: "later",
+    title: "Later",
+    traffic: Array.from({ length: 50 }, (_, i) => ({
+      id: `t${i}`,
+      node: "source",
+      messageType: `Other${i}`,
+      shape: { kind: "burst", count: 1 },
+    })),
+  });
+  const result = messageTypesAt(d, undefined, messageTypeBudget(160));
+  expect(result.complete).toBe(false);
+  expect(result.incompleteReasons).toEqual(expect.arrayContaining(["timeline-forwarding", "work-budget"]));
+});
+
+it("reports the work-budget reason even when an empty analysis starts exactly at zero", () => {
+  const result = messageTypesAt(
+    { format: "diagrams/v1", title: "Empty", nodes: [], edges: [] },
+    undefined,
+    messageTypeBudget(0),
+  );
+  expect(result.complete).toBe(false);
+  expect(result.incompleteReasons).toEqual(["work-budget"]);
+});
+
+it("keeps saved setup mix replacements independent of the cached free-play mix", () => {
+  const d = mixFixture(2);
+  d.nodes[0].props!.trafficMix = {
+    mode: "rates",
+    entries: [
+      { routeId: "r0", ratePerSec: 1 },
+      { routeId: "r1", ratePerSec: 0 },
+    ],
+  };
+  d.edges[0].props = { requestFilter: { path: { kind: "exact", value: "/r1" } } };
+  d.simulations = [
+    {
+      id: "changed",
+      title: "Changed mix",
+      setup: {
+        props: {
+          source: {
+            trafficMix: {
+              mode: "rates",
+              entries: [
+                { routeId: "r0", ratePerSec: 0 },
+                { routeId: "r1", ratePerSec: 1 },
+              ],
+            },
+          },
+        },
+      },
+      traffic: [{ id: "t", node: "source", messageType: "Changed", shape: { kind: "burst", count: 1 } }],
+    },
+  ];
+  const result = messageTypesAt(d);
+  expect(result.complete).toBe(true);
+  expect(result.carried.get("out")).toEqual(new Set(["Changed"]));
 });

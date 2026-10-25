@@ -51,7 +51,11 @@ export interface MessageTypes {
   loops: MessageLoop[];
   /** False when the work budget is exhausted or timeline forwarding edits cannot be analyzed safely. */
   complete: boolean;
+  /** Every cause is retained when saved runs are combined. */
+  incompleteReasons?: MessageTypeIncompleteReason[];
 }
+
+export type MessageTypeIncompleteReason = "work-budget" | "timeline-forwarding";
 
 export const MESSAGE_TYPE_WORK_LIMIT = 200_000;
 export interface MessageTypeBudget {
@@ -100,6 +104,13 @@ interface MessageScenario {
   diagram: DiagramFile;
   sources?: { node: string; type: string }[];
   incomplete?: boolean;
+}
+
+/** Scoped to one analysis: nested routing values are immutable across configured runs. */
+class SeedCache {
+  routes = new Map<DiagramFile["planning"], ReturnType<typeof compileRoutes>>();
+  routeIds = new Map<ReturnType<typeof compileRoutes>, Map<CompiledRoute, number>>();
+  mixes = new Map<unknown, Map<ReturnType<typeof compileRoutes>, readonly CompiledRoute[] | undefined>>();
 }
 
 const processor = (role: SimRole) => role === "processor" || role === "none";
@@ -165,17 +176,18 @@ export function messageTypesAt(
   // Configured runs keep stencils, labels and forwarding edges: node props and caller overrides do not change
   // compileTopology's routes. Propagation still reads each run's patched node props independently below.
   const topology = options.topology ?? compileTopology(diagram);
+  const seeds = new SeedCache();
   if (sources || !diagram.simulations?.length)
-    return propagateTypes(diagram, sources, budget, table, topology, options.graphs);
+    return propagateTypes(diagram, sources, budget, table, topology, seeds, options.graphs);
   const analyses: MessageTypes[] = [];
   for (const scenario of messageTypeScenarios(diagram, budget)) {
     if (budget.remaining <= 0) break;
-    const analysis = propagateTypes(scenario.diagram, scenario.sources, budget, table, topology, options.graphs);
-    analysis.complete &&= !scenario.incomplete;
+    const analysis = propagateTypes(scenario.diagram, scenario.sources, budget, table, topology, seeds, options.graphs);
+    if (scenario.incomplete) markIncomplete(analysis, "timeline-forwarding");
     analyses.push(analysis);
   }
   const result = analyses[0];
-  if (!result) return propagateTypes({ ...diagram, simulations: undefined }, [], budget, table, topology);
+  if (!result) return propagateTypes({ ...diagram, simulations: undefined }, [], budget, table, topology, seeds);
   for (const analysis of analyses.slice(1)) {
     for (const field of ["arriving", "upstream", "carried"] as const)
       for (const [id, types] of analysis[field]) {
@@ -184,9 +196,9 @@ export function messageTypesAt(
       }
     for (const type of analysis.known) (result.known as Set<string>).add(type);
     result.loops.push(...analysis.loops);
-    result.complete &&= analysis.complete;
+    for (const reason of analysis.incompleteReasons ?? []) markIncomplete(result, reason);
   }
-  result.complete &&= budget.remaining > 0;
+  if (budget.remaining <= 0) markIncomplete(result, "work-budget");
   // The same typed component may be reachable in several saved runs.
   const seen = new Set<string>();
   const ids = new Map<string, number>();
@@ -206,6 +218,12 @@ export function messageTypesAt(
   return result;
 }
 
+function markIncomplete(result: MessageTypes, reason: MessageTypeIncompleteReason) {
+  result.complete = false;
+  result.incompleteReasons ??= [];
+  if (!result.incompleteReasons.includes(reason)) result.incompleteReasons.push(reason);
+}
+
 /** Predicates a request filter or rule evaluates: what matching it costs. */
 const matchCost = (match: CompiledMatch | undefined) =>
   1 +
@@ -221,6 +239,7 @@ function propagateTypes(
   budget: MessageTypeBudget,
   table: TypeTable,
   topology: CompiledTopology,
+  seedCache: SeedCache,
   graphs?: TypeGraph[],
 ): MessageTypes {
   const arriving = new Map(diagram.nodes.map((n) => [n.id, new Set<string>()]));
@@ -242,7 +261,7 @@ function propagateTypes(
   // Every step below that grows with authored input (names, patterns, rules, states, transitions) spends here.
   const spend = (amount = 1) => {
     budget.remaining -= amount;
-    if (budget.remaining < 0) complete = false;
+    if (budget.remaining <= 0) complete = false;
     return complete;
   };
   spend(diagram.nodes.length + diagram.edges.length);
@@ -299,7 +318,8 @@ function propagateTypes(
     checks.set(typeId, accepted);
     return accepted;
   };
-  const routes = compileRoutes(diagram.planning);
+  if (!seedCache.routes.has(diagram.planning)) seedCache.routes.set(diagram.planning, compileRoutes(diagram.planning));
+  const routes = seedCache.routes.get(diagram.planning);
   const tables = new Map<string, CompiledTable | undefined>();
   const tableCost = new Map<string, number>();
   for (const node of diagram.nodes) {
@@ -312,7 +332,11 @@ function propagateTypes(
     tables.set(node.id, compiled);
     tableCost.set(node.id, cost);
   }
-  const routeIds = new Map([...(routes?.values() ?? [])].map((route, i) => [route, i + 1]));
+  let routeIds = seedCache.routeIds.get(routes);
+  if (!routeIds) {
+    routeIds = new Map([...(routes?.values() ?? [])].map((route, i) => [route, i + 1]));
+    seedCache.routeIds.set(routes, routeIds);
+  }
   const filters = new Map(
     diagram.edges.map((edge) => {
       const filter = routes ? compileFilter(edge.props?.requestFilter) : undefined;
@@ -412,20 +436,42 @@ function propagateTypes(
     }
     return state;
   };
+  const seeded = new Map<string, Set<string>>();
   const seed = (node: string, type: string, explicit = false) => {
-    if (!nodes.has(node)) return;
-    const mix = roles.get(node) === "source" ? compileMix(nodes.get(node)?.props?.trafficMix, routes) : undefined;
-    const addressed = mix ? mix.routes.filter((_, i) => mix.proportions[i] > 0) : [];
+    if (!spend() || !nodes.has(node)) return;
+    let types = seeded.get(node);
+    if (types?.has(type)) return;
+    if (!types) seeded.set(node, (types = new Set()));
+    types.add(type);
+    const raw = roles.get(node) === "source" ? nodes.get(node)?.props?.trafficMix : undefined;
+    let cached = seedCache.mixes.get(raw);
+    if (!cached?.has(routes)) {
+      // Refuse before compileMix validates or allocates an authored mix. Cached immutable mixes are charged once.
+      const entries = raw && typeof raw === "object" && "entries" in raw ? raw.entries : undefined;
+      if (!spend(1 + (Array.isArray(entries) ? entries.length : 0))) return;
+      const mix = compileMix(raw, routes);
+      if (!cached) seedCache.mixes.set(raw, (cached = new Map()));
+      cached.set(
+        routes,
+        mix?.routes.filter((_, i) => mix.proportions[i] > 0),
+      );
+    }
+    const addressed = cached!.get(routes);
     // An explicit input (a saved burst, a timeline injection) picks a positive-share route, or goes unaddressed when
     // there is none, as playback's injectedRoute does. Free play's own traffic follows the mix alone.
-    const routesOut = !mix || (explicit && !addressed.length) ? [undefined] : addressed;
+    const routesOut = !addressed || (explicit && !addressed.length) ? [undefined] : addressed;
     for (const route of routesOut) {
+      if (!spend()) break;
       const state = arrive(node, type, route, false, true);
       if (state) graph?.seeds.push(state.index);
     }
   };
-  if (sources) for (const input of sources) seed(input.node, input.type, true);
-  else for (const node of diagram.nodes) if (roles.get(node.id) === "source") seed(node.id, ownType(node));
+  if (sources) {
+    for (const input of sources) {
+      if (!complete) break;
+      seed(input.node, input.type, true);
+    }
+  } else for (const node of diagram.nodes) if (roles.get(node.id) === "source") seed(node.id, ownType(node));
   for (let at = 0; at < queue.length && complete; at++) {
     const item = queue[at];
     const role = roles.get(item.node)!;
@@ -499,7 +545,15 @@ function propagateTypes(
     loops.push({ node: first.node, type: first.type, steps: inside.map((s) => s.step) });
   }
   graphs?.push(graph!);
-  return { arriving, upstream, carried, known, loops, complete };
+  return {
+    arriving,
+    upstream,
+    carried,
+    known,
+    loops,
+    complete,
+    ...(!complete ? { incompleteReasons: ["work-budget" as const] } : {}),
+  };
 }
 
 /** A node patch as setNodePropsBatch applies it: an undefined value removes the property; the rest replace. */

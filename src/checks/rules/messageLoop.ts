@@ -65,15 +65,23 @@ export const messageLoop: CheckRule = {
     if (omitted) findings.push(omission("message-loop", omitted));
     if (!types.complete)
       findings.push({
-        omitted: 1,
         id: "message-loop:incomplete",
         target: "",
         rule: "message-loop",
         severity: "warning",
         elements: [],
         title: "Message type propagation incomplete",
-        message: "The message path budget was reached.",
-        rationale: "Check a smaller diagram to enumerate every message path.",
+        message: types.incompleteReasons?.includes("timeline-forwarding")
+          ? "Timeline forwarding edits cannot be analyzed completely."
+          : "The message path budget was reached.",
+        rationale: [
+          ...(types.incompleteReasons?.includes("timeline-forwarding")
+            ? ["Review message paths before and after timeline forwarding edits manually."]
+            : []),
+          ...(!types.incompleteReasons?.length || types.incompleteReasons.includes("work-budget")
+            ? ["Check a smaller diagram to enumerate every message path."]
+            : []),
+        ].join(" "),
       });
     return findings;
   },

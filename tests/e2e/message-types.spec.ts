@@ -998,3 +998,48 @@ test("overlapping edge IDs keep SVG titles local", async ({ page }) => {
   await expect(east.getByTestId("edge-label-send")).not.toHaveAttribute("title", /Message types:/);
   await expect(east.getByTestId("edge-messages-send")).toHaveCount(0);
 });
+
+test("unmatched message searches preserve traffic and report no matching types", async ({ page }) => {
+  const diagram = messageTypesFixture();
+  diagram.edges = diagram.edges.slice(0, 2);
+  diagram.simulations = [
+    {
+      id: "types",
+      title: "Vocabulary",
+      traffic: Array.from({ length: 250 }, (_, i) => ({
+        id: `t${i}`,
+        node: "client",
+        messageType: `Type${i}`,
+        shape: { kind: "burst" as const, count: 1 },
+      })),
+    },
+  ];
+  await open(page, "en", diagram);
+  const before = await savedDiagram(page);
+  const carries = page.getByTestId("inspector-carries-search");
+  const onlyPass = page.getByTestId("inspector-filter-search");
+  for (const search of [carries, onlyPass]) {
+    await search.fill("AbsentType");
+    const carried = search === carries;
+    await expect(page.getByTestId(carried ? "inspector-carries-empty" : "inspector-filter-empty")).toHaveText(
+      "No matches",
+    );
+    await expect(page.getByTestId(carried ? "inspector-carries-type" : /^inspector-filter-option-/)).toHaveCount(0);
+    await expect.poll(() => savedDiagram(page)).toEqual(before);
+    await search.fill("");
+    await expect(page.getByTestId(carried ? "inspector-carries-type" : /^inspector-filter-option-/)).toHaveCount(100);
+    await expect(page.getByTestId(carried ? "inspector-carries-empty" : "inspector-filter-empty")).toHaveCount(0);
+  }
+  await expect.poll(() => savedDiagram(page)).toEqual(before);
+});
+
+test("genuinely empty carried and upstream populations retain their flow guidance", async ({ page }) => {
+  const diagram = messageTypesFixture();
+  diagram.nodes[0].stencil = "generic.email";
+  diagram.edges = diagram.edges.slice(0, 2);
+  await open(page, "en", diagram);
+  await expect(page.getByTestId("inspector-carries-empty")).toHaveText("No messages pass with these settings.");
+  await expect(page.getByTestId("inspector-filter-empty")).toHaveText("No message types reach this link yet.");
+  await expect(page.getByTestId("inspector-carries-search")).toHaveCount(0);
+  await expect(page.getByTestId("inspector-filter-search")).toHaveCount(0);
+});

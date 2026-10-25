@@ -12,6 +12,7 @@
   "planned": [],
   "counted": 0,
   "findings": [
+    { "id": "message-loop:incomplete", "rule": "message-loop", "severity": "warning", "target": "", "elements": [] },
     {
       "id": "no-reader:payments-dlq",
       "rule": "no-reader",
@@ -23,6 +24,7 @@
   ],
   "agentReport": {
     "findings": [
+      { "id": "message-loop:incomplete", "rule": "message-loop", "severity": "warning", "title": "Message type propagation incomplete", "message": "Timeline forwarding edits cannot be analyzed completely.", "targets": [] },
       {
         "id": "no-reader:payments-dlq",
         "rule": "no-reader",
@@ -33,7 +35,7 @@
         "fix": { "label": "Add a reader…", "needsChoice": "Pick what reads payments.commands.dlq, then add it and connect payments-dlq to it." }
       }
     ],
-    "summary": "0 warnings, 1 suggestion; 1 more message-loop finding not listed.",
+    "summary": "1 warning, 1 suggestion.",
     "simulations": "Played 2 saved simulations (at most 60 s each)."
   }
 }

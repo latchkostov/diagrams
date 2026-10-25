@@ -79,6 +79,7 @@ const en = {
   "messageTypes.removeRule": "Remove this message type rule",
   "messageTypes.addRule": "Add a rule",
   "messageTypes.incomplete": "This diagram has too many message paths to list completely.",
+  "messageTypes.timelineIncomplete": "Review message paths before and after timeline forwarding edits manually.",
   "messageTypes.hover": "Message types: {types}",
   "messageLoop.name": "Messages loop back",
   "messageLoop.about":
