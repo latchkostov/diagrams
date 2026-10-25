@@ -92,6 +92,7 @@ export function withLazySurfaceOwner<T>(owner: SurfaceOwner, define: () => T): T
 
 function pruneDisposed() {
   if (!hotRegistry) return;
+  for (const surface of hotRegistry.retired) if (!surface.active()) hotRegistry.retired.delete(surface);
   for (const [id, owner] of hotRegistry.owners)
     if (hotRegistry.disposed.has(owner) && !runtimes.get(id)?.active()) {
       runtimes.delete(id);
@@ -102,7 +103,6 @@ function pruneDisposed() {
 function registeredSurfaces(): Iterable<SurfaceRuntime> {
   if (!hotRegistry) return runtimes.values();
   pruneDisposed();
-  for (const surface of hotRegistry.retired) if (!surface.active()) hotRegistry.retired.delete(surface);
   return [...runtimes.values(), ...hotRegistry.retired];
 }
 
