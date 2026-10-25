@@ -1,4 +1,5 @@
 import type { EditorModeState } from "./mode";
+import type { ReadoutLayer } from "./readoutLayer";
 
 /**
  * The canvas on screen's editor mode, for readers outside the canvas (a tutorial's step runner): its state, its
@@ -11,6 +12,8 @@ export interface CanvasInteraction {
   setGuide(guide: { quickAdd?: string } | null): void;
   /** Finish a name or an annotation's text for the learner (Skip, Continue) through the controller's mode and focus policy. */
   dispatch(event: { type: "naming.done"; flowId: string }): void;
+  /** Live's hover cards, while Live has attached them (the controller's readout layer): read, never driven. */
+  readonly readouts?: Pick<ReadoutLayer, "get" | "subscribe"> | null;
 }
 
 let current: CanvasInteraction | null = null;

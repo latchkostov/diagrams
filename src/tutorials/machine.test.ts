@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createMachine, machinePaths, machineStep } from "../lib/machine";
-import { firstOpen, inStep, runnerInitial, runnerMachine, type RunnerEvent } from "./machine";
+import { firstOpen, inStep, runnerInitial, runnerMachine, targetsShown, type RunnerEvent } from "./machine";
 
 /** Three steps: two states of the diagram, then a sticky moment (traffic seen). */
 const def = (resumeAt = 0, highlights = true) => ({
@@ -195,20 +195,20 @@ describe("tutorial step runner", () => {
     const reading = (step: number, value: number): RunnerEvent => ({
       type: "baseline",
       step,
-      values: { processed: [value, 1] },
+      values: { processed: [value, 1, 1] },
     });
     const m = createMachine(def());
     expect(m.send(reading(0, 1)).state.baseline).toEqual({});
     m.send({ type: "start" });
     expect(m.send(reading(1, 5)).state.baseline).toEqual({});
     m.send(reading(0, 3));
-    expect(m.send(reading(0, 9)).state.baseline).toEqual({ processed: [3, 1] });
+    expect(m.send(reading(0, 9)).state.baseline).toEqual({ processed: [3, 1, 1] });
     // Staying on the step keeps it: Show me, a fact about another step, completing.
     m.send({ type: "showMe" });
     m.send(observe([false, true, false]));
     expect(m.send(observe([true, false, false], [false, true, true])).state).toMatchObject({
       value: "completing",
-      baseline: { processed: [3, 1] },
+      baseline: { processed: [3, 1, 1] },
     });
     // Moving on empties it, and so does coming back (Undo): what it counts starts again from there.
     expect(m.send(observe([true, false, false])).state).toMatchObject({ index: 1, baseline: {} });
@@ -217,7 +217,7 @@ describe("tutorial step runner", () => {
   });
 
   it("Skip and Restart empty the baseline, and Continue reads it only after its handover", () => {
-    const reading = (step: number): RunnerEvent => ({ type: "baseline", step, values: { processed: [7, 2] } });
+    const reading = (step: number): RunnerEvent => ({ type: "baseline", step, values: { processed: [7, 2, 1] } });
     const m = createMachine(def());
     m.send({ type: "start" });
     m.send(reading(0));
@@ -237,7 +237,7 @@ describe("tutorial step runner", () => {
     expect(resumed.send(reading(2)).state).toMatchObject({ value: "reconstructing", baseline: {} });
     resumed.send(observe([true, true, false]));
     expect(resumed.send({ type: "reconstructed" }).state).toMatchObject({ value: "active", index: 2, baseline: {} });
-    expect(resumed.send(reading(2)).state.baseline).toEqual({ processed: [7, 2] });
+    expect(resumed.send(reading(2)).state.baseline).toEqual({ processed: [7, 2, 1] });
   });
 
   it("rejects an observation of the wrong length (another tutorial's checks)", () => {
@@ -290,5 +290,25 @@ describe("tutorial step runner", () => {
       if (state.value === "closed")
         for (const event of runnerMachine.events) expect(machineStep(runnerMachine, state, event).accepted).toBe(false);
     }
+  });
+});
+
+describe("where the coach mark points", () => {
+  const at = (value: "intro" | "active" | "hinting" | "completing" | "finished", highlights = true) => ({
+    ...runnerInitial([false], { highlights, resumeAt: 0 }),
+    value,
+  });
+  it("points while a step is being done, with Highlights on or after Show me", () => {
+    expect(targetsShown(at("active"), false)).toBe(true);
+    expect(targetsShown(at("active", false), false)).toBe(false);
+    expect(targetsShown(at("hinting", false), false)).toBe(true);
+    for (const value of ["intro", "completing", "finished"] as const)
+      expect(targetsShown(at(value), false)).toBe(false);
+  });
+  it("in a design study, points only after Show me: Highlights alone never gives a milestone away", () => {
+    expect(targetsShown(at("active"), true)).toBe(false);
+    expect(targetsShown(at("hinting"), true)).toBe(true);
+    expect(targetsShown(at("hinting", false), true)).toBe(true);
+    expect(targetsShown(at("completing"), true)).toBe(false);
   });
 });

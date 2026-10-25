@@ -29,7 +29,7 @@ import { toast } from "../interop/ui/toast";
 import { useLibrary } from "../lib/useLibrary";
 import { tutorialMetadata } from "./metadata";
 import { Coachmark } from "./Coachmark";
-import { inStep, type RunnerEvent } from "./machine";
+import { inStep, targetsShown, type RunnerEvent } from "./machine";
 import { createTutorialRunner, type RunnerSnapshot } from "./runner";
 import { tutorialRoute } from "./route";
 import type { Tutorial } from "./types";
@@ -201,8 +201,7 @@ function Running({
   const snap = useSyncExternalStore(runner.subscribe, runner.getSnapshot);
   const { state } = snap;
   const step = inStep(state) ? tutorial.steps[state.index] : undefined;
-  // The ring points while a step is being done; once its check holds (completing), there's nothing left to point at.
-  const spot = !!step && state.value !== "completing" && (state.highlights || state.value === "hinting");
+  const spot = !!step && targetsShown(state, !!tutorial.study);
 
   return (
     <div

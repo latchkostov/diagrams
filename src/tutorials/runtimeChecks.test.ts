@@ -2,10 +2,10 @@
 import { describe, expect, it } from "vitest";
 import { LiveController } from "../live/controller";
 import { initialEditorMode } from "../canvas/interaction/mode";
-import type { DiagramFile } from "../model/types";
+import type { DiagramFile, Simulation } from "../model/types";
 import { holds, nearMiss, resolveSubjects, type SandboxView } from "./checks";
 import { mobileApi } from "./catalog/mobileApi";
-import type { Check, MetricComparison, MetricExpr } from "./types";
+import type { Check, MetricComparison, MetricExpr, NodeMetric } from "./types";
 
 const diagram: DiagramFile = {
   format: "diagrams/v1",
@@ -327,6 +327,7 @@ describe("Live metric expressions", () => {
       diagram: queue,
       live: true,
       trafficReady: true,
+      sessionId: 1,
       processed: () => 0,
       session: { ...state, generation, snapshot: { ...state.snapshot, nodes, edges } },
     };
@@ -414,9 +415,157 @@ describe("Live metric expressions", () => {
     const key = JSON.stringify({ node: "first", metric: "processed" });
     const v = live({ w1: 109 }, {}, 4);
     expect(is(since, v), "no baseline: another step's, or not read yet").toBe(false);
-    expect(is(since, { ...v, baseline: { [key]: [100, 4] } })).toBe(false);
-    expect(is(since, { ...live({ w1: 110 }, {}, 4), baseline: { [key]: [100, 4] } })).toBe(true);
-    expect(is(since, { ...live({ w1: 12 }, {}, 5), baseline: { [key]: [100, 4] } }), "a rebuilt run").toBe(true);
-    expect(is(since, { ...live({ w1: 9 }, {}, 5), baseline: { [key]: [0, 4] } })).toBe(false);
+    expect(is(since, { ...v, baseline: { [key]: [100, 4, 1] } })).toBe(false);
+    expect(is(since, { ...live({ w1: 110 }, {}, 4), baseline: { [key]: [100, 4, 1] } })).toBe(true);
+    expect(is(since, { ...live({ w1: 12 }, {}, 5), baseline: { [key]: [100, 4, 1] } }), "a rebuilt run").toBe(true);
+    expect(is(since, { ...live({ w1: 9 }, {}, 5), baseline: { [key]: [0, 4, 1] } })).toBe(false);
+    // A remounted session numbers its runs from 1 again: the same generation in another session counts from zero.
+    const remounted = { ...live({ w1: 12 }, {}, 4), sessionId: 2 };
+    expect(is(since, { ...remounted, baseline: { [key]: [100, 4, 1] } }), "a remounted session").toBe(true);
+  });
+});
+
+describe("runner forms for builds 06 to 12", () => {
+  const live = (patch: Partial<SandboxView> = {}): SandboxView => ({
+    ...view(),
+    trafficReady: true,
+    sessionId: 1,
+    ...patch,
+  });
+  const run = { time: 0, totalMs: 1, done: false, waiting: false, markers: [], expectations: [] };
+
+  it("reads nested readings: latency percentiles and their parts, threads, a fleet's starting replicas", () => {
+    const v = live();
+    const node = v.session!.snapshot.nodes.b;
+    v.session!.snapshot.nodes.b = {
+      ...node,
+      latency: { samples: 9, p50: 40, p95: 90, p99: 120, waitMs: 30, workMs: 10, travelMs: 0, byType: {} },
+      threads: { slots: 8, working: 3, waiting: 5, waitingOn: [], queued: 2 },
+      fleet: { desired: 3, starting: 1, ready: 2, draining: 0, history: [] },
+    } as typeof node;
+    const at = (metric: NodeMetric, value: number) =>
+      met({ kind: "compare", left: { node: "api", metric }, op: "=", right: value }, v);
+    for (const [metric, value] of [
+      ["latency.p50", 40],
+      ["latency.p99", 120],
+      ["latency.waitMs", 30],
+      ["latency.workMs", 10],
+      ["threads.working", 3],
+      ["threads.queued", 2],
+      ["fleet.starting", 1],
+      ["fleet.desired", 3],
+    ] as const)
+      expect(at(metric, value), metric).toBe(true);
+    expect(at("fleet.ready", 3)).toBe(false);
+    // Waiting outweighs working: where-time-goes compares the two.
+    const waiting: Check = {
+      kind: "compare",
+      left: { node: "api", metric: "latency.waitMs" },
+      op: ">",
+      right: { node: "api", metric: "latency.workMs" },
+    };
+    expect(met(waiting, v)).toBe(true);
+    expect(met({ kind: "metric", subject: "api", field: "threads.working", op: ">=", value: 3 }, v)).toBe(true);
+  });
+
+  it("compares numbers the diagram says, Live or not, and sums only the nodes inside a boundary", () => {
+    const d: DiagramFile = {
+      ...diagram,
+      nodes: [
+        { ...diagram.nodes[0], props: { partitions: 4 } },
+        { ...diagram.nodes[1], props: { replicas: 6 } },
+      ],
+    };
+    const off = { ...view(), diagram: d, live: false };
+    const ceiling: Check = {
+      kind: "compare",
+      left: { prop: "partitions", subject: "app" },
+      op: ">=",
+      right: { prop: "replicas", subject: "api" },
+    };
+    expect(met(ceiling, off)).toBe(false);
+    expect(met({ ...ceiling, op: "<" }, off)).toBe(true);
+    expect(met({ kind: "compare", left: { prop: ["missing"], subject: "app" }, op: "<=", right: 9 }, off)).toBe(false);
+    const v = live({ diagram: d });
+    const inBox = (role: "processor" | "source", within = "box"): Check => ({
+      kind: "compare",
+      left: { sum: "processed", every: { role, within } },
+      op: ">=",
+      right: 0,
+    });
+    // The boundary holds the client only: no processor inside it, and an empty sum isn't zero.
+    expect(met(inBox("processor"), v)).toBe(false);
+    expect(met(inBox("source"), v)).toBe(true);
+    expect(holds(inBox("source", "nowhere"), v, { ...subjects, nowhere: undefined })).toBe(false);
+  });
+
+  it("reads Live's panels, hover card and inputs as published, never the DOM", () => {
+    const v = live({ views: { inputs: true, capacity: false }, readout: { kind: "node", id: "b" } });
+    expect(met({ kind: "liveView", view: "inputs", open: true }, v)).toBe(true);
+    expect(met({ kind: "liveView", view: "capacity", open: false }, v)).toBe(true);
+    expect(met({ kind: "liveView", view: "events", open: true }, v)).toBe(false);
+    expect(met({ kind: "readout", subject: "api" }, v)).toBe(true);
+    expect(met({ kind: "readout", subject: "app" }, v)).toBe(false);
+    expect(met({ kind: "readout" }, v)).toBe(true);
+    expect(met({ kind: "readout", subject: "api" }, { ...v, live: false })).toBe(false);
+    expect(met({ kind: "inputs", input: "traffic", op: "=", value: 1 }, v)).toBe(true);
+    v.session!.inputs = { ...v.session!.inputs, traffic: 3 };
+    expect(met({ kind: "inputs", input: "traffic", op: "=", value: 3 }, v)).toBe(true);
+    expect(met({ kind: "inputs", input: "traffic", op: ">", value: 3 }, v)).toBe(false);
+  });
+
+  it("knows a Fault cleared, an expectation either way, and slow motion finished", () => {
+    const v = live();
+    const cleared: Check = { kind: "fault", subject: "api", absent: true };
+    expect(met(cleared, v)).toBe(true);
+    v.session!.snapshot.faults = [{ kind: "slow", node: "b", factor: 5 }];
+    expect(met(cleared, v)).toBe(false);
+    expect(met(cleared, { ...v, live: false })).toBe(false);
+    const chip = (status: "pending" | "pass" | "fail"): SandboxView => ({
+      ...v,
+      session: {
+        ...v.session!,
+        running: { id: "sim", title: "Sim", seed: 1, traffic: [] },
+        run: { ...run, expectations: [{ id: "ok", label: "OK", status, value: 1 }] },
+      } as SandboxView["session"],
+    });
+    const either: Check = { kind: "expectation", simulation: "sim", label: "ok", outcome: "either" };
+    expect(met(either, chip("pending"))).toBe(false);
+    expect(met(either, chip("fail"))).toBe(true);
+    expect(met(either, chip("pass"))).toBe(true);
+    expect(met({ ...either, outcome: undefined }, chip("fail"))).toBe(false);
+    expect(met({ ...either, outcome: "fail" }, chip("fail"))).toBe(true);
+    const slow = (playing: boolean, t: number): SandboxView => ({
+      ...v,
+      slowmo: { status: "on", playing, t, script: { duration: 1000 } },
+    });
+    const finished: Check = { kind: "slowmo", finished: true };
+    expect(met(finished, slow(true, 400))).toBe(false);
+    expect(met(finished, slow(false, 400)), "paused isn't finished").toBe(false);
+    expect(met(finished, slow(false, 1000))).toBe(true);
+    expect(met({ kind: "slowmo" }, slow(true, 400))).toBe(true);
+  });
+
+  it("finds an authored simulation by what it has: its id, a Drill step, its expectations", () => {
+    const drill: Simulation = {
+      id: "simulation",
+      title: "Mine",
+      seed: 1,
+      traffic: [],
+      timeline: [
+        {
+          atMs: 1000,
+          action: { do: "fault", fault: { kind: "slow", node: "b", factor: 5 }, drill: "slow-dependency" },
+        },
+      ],
+      expectations: [],
+    };
+    const v = live({ diagram: { ...diagram, simulations: [drill] } });
+    expect(met({ kind: "savedSimulation", match: { drill: "any" } }, v)).toBe(true);
+    expect(met({ kind: "savedSimulation", match: { drill: "zone-outage" } }, v)).toBe(false);
+    expect(met({ kind: "savedSimulation", match: { id: "simulation", expectations: 1 } }, v)).toBe(false);
+    const running: SandboxView = { ...v, session: { ...v.session!, running: drill, run } as SandboxView["session"] };
+    expect(met({ kind: "simulation", saved: { drill: "slow-dependency" } }, running)).toBe(true);
+    expect(met({ kind: "simulation", saved: { drill: "zone-outage" } }, running)).toBe(false);
   });
 });

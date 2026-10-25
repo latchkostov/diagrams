@@ -326,10 +326,303 @@ export const runTimeFixture: Tutorial = {
   ],
 };
 
+/** A client and the service it calls, seeded: the start most Live lessons below share. */
+const callChain =
+  (title: string, extra: Partial<DiagramFile> = {}) =>
+  (): DiagramFile => ({
+    format: "diagrams/v1",
+    title,
+    nodes: [
+      { id: "app", stencil: "client.mobile", label: "App", x: 0, y: 0, props: { ratePerSec: 4 } },
+      { id: "api", stencil: "generic.service", label: "API", x: 240, y: 0 },
+      { id: "db", stencil: "postgres", label: "DB", x: 480, y: 0 },
+    ],
+    edges: [
+      { id: "app-api", from: "app", to: "api", kind: "sync" },
+      { id: "api-db", from: "api", to: "db", kind: "sync" },
+    ],
+    ...extra,
+  });
+const chainSubjects = {
+  app: { stencils: ["client.mobile"] },
+  api: { stencils: ["generic.service"] },
+  db: { stencils: ["postgres"] },
+} as const;
+const goLive = step("live", {
+  check: { kind: "live" },
+  targets: [{ testId: "live-toggle", tip: words("Live") }],
+  demo: [{ kind: "live" }],
+  solution: [{ click: "live-toggle" }],
+});
+
+/** trace-slowmo's shape: slow motion from a node's menu, then its journey played to the end. */
+export const slowMotionFixture: Tutorial = {
+  ...base("fixture-slow-motion", callChain("Slow motion")),
+  subjects: chainSubjects,
+  steps: [
+    goLive,
+    step("watch", {
+      check: { kind: "slowmo" },
+      sticky: true,
+      targets: [
+        { testId: "context-menu-item-sim.slowmo-from", tip: words("Watch") },
+        { testId: "node-{api}", tip: words("Watch") },
+      ],
+      demo: [{ kind: "slowmo", subject: "api" }],
+      solution: [{ rightclick: "node-{api}" }, { click: "context-menu-item-sim.slowmo-from" }],
+    }),
+    step("finished", {
+      check: { kind: "slowmo", finished: true },
+      sticky: true,
+      targets: [{ testId: "node-{api}", tip: words("Finished"), dim: false }],
+      demo: [],
+      solution: [{ hover: "node-{api}" }],
+    }),
+  ],
+};
+
+/** faults' shape: take a service down, then Restore clears it. */
+export const faultsFixture: Tutorial = {
+  ...base("fixture-faults", callChain("Faults")),
+  subjects: chainSubjects,
+  steps: [
+    goLive,
+    step("down", {
+      check: { kind: "fault", subject: "api", fault: "down" },
+      sticky: true,
+      targets: [{ testId: "node-{api}", tip: words("Down") }],
+      demo: [{ kind: "fault", subject: "api", fault: "down" }],
+      solution: [{ rightclick: "node-{api}" }],
+    }),
+    step("restore", {
+      check: { kind: "fault", subject: "api", absent: true },
+      targets: [{ testId: "node-{api}", tip: words("Restore") }],
+      demo: [{ kind: "fault", subject: "api", fault: "down", restore: true }],
+      solution: [{ rightclick: "node-{api}" }],
+    }),
+  ],
+};
+
+/**
+ * saved-simulations, author-a-drill and webhooks' shapes: run a narrated simulation, continue its pausing notes, read
+ * an expectation however it turned out, then author a Drill in Simulations… and run it.
+ */
+export const savedSimulationsFixture: Tutorial = {
+  ...base(
+    "fixture-saved-simulations",
+    callChain("Saved simulations", {
+      simulations: [
+        {
+          id: "story",
+          title: "Story",
+          seed: 3,
+          durationMs: 4000,
+          traffic: [],
+          timeline: [
+            { atMs: 0, action: { do: "note", text: "It starts", pause: true } },
+            { atMs: 1500, action: { do: "note", text: "Read this", pause: true } },
+          ],
+          // No traffic: this fails by the end, and either outcome completes the step.
+          expectations: [
+            {
+              id: "served",
+              label: "Served",
+              metric: { node: "api", field: "processed" },
+              op: ">=",
+              value: 1,
+              when: "end",
+            },
+          ],
+        },
+      ],
+    }),
+  ),
+  subjects: chainSubjects,
+  steps: [
+    step("run", {
+      check: { kind: "simulation", id: "story" },
+      sticky: true,
+      targets: [{ testId: "live-sim-picker", tip: words("Run") }],
+      demo: [{ kind: "runSimulation", id: "story" }],
+      solution: [{ click: "live-toggle" }, { select: "live-sim-picker", value: "story" }],
+    }),
+    step("note", {
+      check: {
+        kind: "all",
+        checks: [
+          { kind: "simulation", id: "story", atLeastMs: 1500 },
+          { kind: "note", waiting: false },
+        ],
+      },
+      sticky: true,
+      targets: [{ testId: "live-note-continue", tip: words("Continue"), dim: false }],
+      demo: [{ kind: "continueNote", simulation: "story", atLeastMs: 1500 }],
+      solution: [{ click: "live-note-continue" }, { click: "live-note-continue" }],
+    }),
+    step("outcome", {
+      check: { kind: "expectation", simulation: "story", label: "served", outcome: "either" },
+      sticky: true,
+      targets: [{ testId: "node-{api}", tip: words("Outcome"), dim: false }],
+      demo: [],
+      solution: [{ hover: "node-{api}" }],
+    }),
+    step("open", {
+      check: { kind: "liveView", view: "simulations", open: true },
+      targets: [{ testId: "live-edit-sims", tip: words("Open") }],
+      demo: [{ kind: "openView", view: "simulations" }],
+      solution: [{ click: "live-more" }, { click: "live-edit-sims" }],
+    }),
+    step("author", {
+      check: { kind: "savedSimulation", match: { drill: "slow-dependency" } },
+      targets: [{ testId: "sim-panel-add-step", tip: words("Author") }],
+      demo: [
+        {
+          kind: "saveSimulation",
+          id: "simulation",
+          title: words("My drill"),
+          drills: [{ preset: "slow-dependency", atMs: 1000 }],
+        },
+      ],
+      solution: [
+        { click: "sim-panel-new" },
+        { select: "sim-panel-add-step", value: "slow-dependency" },
+        { click: "sim-panel-save" },
+      ],
+    }),
+    step("drill", {
+      check: { kind: "simulation", saved: { drill: "slow-dependency" } },
+      targets: [{ testId: "sim-panel-run", tip: words("Drill") }],
+      demo: [{ kind: "runSimulation", id: "simulation" }],
+      solution: [{ click: "sim-panel-run" }],
+    }),
+  ],
+};
+
+/** rates-and-inputs, capacity and read-a-node's shapes: Live's panels and views, a fix, a hover card, an injection. */
+export const livePanelsFixture: Tutorial = {
+  ...base("fixture-live-panels", callChain("Live panels")),
+  subjects: chainSubjects,
+  steps: [
+    goLive,
+    step("inputs", {
+      check: { kind: "liveView", view: "inputs", open: true },
+      targets: [{ testId: "live-capacity", tip: words("Inputs") }],
+      demo: [{ kind: "openView", view: "inputs" }],
+      solution: [{ click: "live-capacity" }],
+    }),
+    step("traffic", {
+      check: { kind: "inputs", input: "traffic", op: "=", value: 3 },
+      targets: [{ testId: "capacity-traffic-mult", tip: words("Traffic") }],
+      demo: [{ kind: "inputs", input: "traffic", value: 3 }],
+      solution: [{ click: "capacity-traffic-mult" }, { press: "ArrowRight" }],
+    }),
+    step("overlay", {
+      check: { kind: "liveView", view: "capacity", open: true },
+      targets: [{ testId: "capacity-overlay-toggle", tip: words("Capacity") }],
+      demo: [{ kind: "openView", view: "capacity" }],
+      solution: [{ click: "view-button" }, { click: "capacity-overlay-toggle" }],
+    }),
+    step("fix", {
+      check: { kind: "prop", subject: "api", prop: "replicas", op: ">=", value: 2 },
+      targets: [{ testId: "bottleneck-apply", tip: words("Fix") }],
+      demo: [{ kind: "applyFix" }],
+      solution: [{ click: "bottleneck-apply" }],
+    }),
+    step("events", {
+      check: { kind: "liveView", view: "events", open: true },
+      targets: [{ testId: "live-events-toggle", tip: words("Events") }],
+      demo: [{ kind: "openView", view: "events" }],
+      solution: [{ click: "live-more" }, { click: "live-events-toggle" }],
+    }),
+    step("hover", {
+      check: { kind: "readout", subject: "api" },
+      sticky: true,
+      targets: [{ testId: "node-{api}", tip: words("Hover"), dim: false }],
+      demo: [],
+      solution: [{ hover: "node-{api}" }],
+    }),
+    step("inject", {
+      check: { kind: "compare", left: { sinceStep: { node: "api", metric: "processed" } }, op: ">=", right: 10 },
+      sticky: true,
+      targets: [{ testId: "context-menu-item-sim.inject:10", tip: words("Inject") }],
+      demo: [{ kind: "inject", subject: "api", count: 10 }],
+      solution: [
+        { rightclick: "node-{api}" },
+        { click: "context-menu-item-sim.inject" },
+        { click: "context-menu-item-sim.inject:10" },
+      ],
+    }),
+  ],
+};
+
+/**
+ * A design study's shape: milestones that point only after Show me, a number the diagram says compared with another
+ * (partitions against consumers), and a Live sum over the services inside one boundary (a cell).
+ */
+export const studyFixture: Tutorial = {
+  ...base("fixture-study", () => ({
+    format: "diagrams/v1",
+    title: "Study",
+    groups: [{ id: "cell", label: "Cell A", x: -40, y: -60, width: 900, height: 300 }],
+    nodes: [
+      { id: "app", stencil: "client.mobile", label: "App", x: 0, y: 0, group: "cell", props: { ratePerSec: 4 } },
+      { id: "topic", stencil: "kafka.topic", label: "Pings", x: 240, y: 0, group: "cell", props: { partitions: 2 } },
+      { id: "consumer", stencil: "generic.service", label: "Dispatch", x: 480, y: 0, group: "cell" },
+      { id: "outside", stencil: "generic.service", label: "Elsewhere", x: 480, y: 400, props: { replicas: 4 } },
+    ],
+    edges: [
+      { id: "app-topic", from: "app", to: "topic", kind: "async" },
+      { id: "topic-consumer", from: "topic", to: "consumer", kind: "async" },
+    ],
+  })),
+  track: "studies",
+  level: 3,
+  minutes: 15,
+  study: true,
+  subjects: {
+    cell: { boundary: true },
+    topic: { stencils: ["kafka.topic"] },
+    consumer: { stencils: ["generic.service"] },
+    other: { stencils: ["generic.service"] },
+  },
+  steps: [
+    step("ceiling", {
+      hint: words("More partitions than readers"),
+      check: {
+        kind: "compare",
+        left: { prop: "partitions", subject: "topic" },
+        op: ">=",
+        right: { prop: "replicas", subject: "other" },
+      },
+      targets: [{ testId: "node-{topic}", tip: words("Partitions") }],
+      demo: [{ kind: "patch", subject: "topic", patches: [{ op: "set", path: ["partitions"], value: 4 }] }],
+      solution: [{ dblclick: "node-{topic}" }],
+    }),
+    step("cell", {
+      hint: words("Watch the cell"),
+      check: {
+        kind: "compare",
+        left: { sum: "processed", every: { stencils: ["generic.service"], within: "cell" } },
+        op: ">=",
+        right: 0,
+      },
+      sticky: true,
+      targets: [{ testId: "live-toggle", tip: words("Live") }],
+      demo: [{ kind: "live" }],
+      solution: [{ click: "live-toggle" }],
+    }),
+  ],
+};
+
 export const tutorialFixtures: readonly Tutorial[] = [
   runTimeFixture,
   pathsFixture,
   metricsFixture,
   addNameFixture,
   liveControlsFixture,
+  slowMotionFixture,
+  faultsFixture,
+  savedSimulationsFixture,
+  livePanelsFixture,
+  studyFixture,
 ];

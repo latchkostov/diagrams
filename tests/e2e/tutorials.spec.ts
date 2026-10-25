@@ -967,3 +967,24 @@ test("tutorial Restart ends slow motion and restarts its saved simulation", asyn
     .toBeLessThan(before);
   await expectNothingSaved(page);
 });
+
+test("typed solution preserves text around the caret", async ({ page }) => {
+  await openTutorial(page, "lab-tutorial-typed");
+  await page.getByTestId("tutorial-start").click();
+  await expect(strip(page)).toHaveAttribute("data-step", "add-setting");
+  const steps = await page.evaluate(() => window.__tutorial?.solution() ?? []);
+  const typed = steps[steps.length - 1];
+  expect(typed).toEqual({ type: "Lab:Token", into: "inspector-field-settings" });
+  await play(page, steps[0]);
+  const field = page.getByTestId("inspector-field-settings");
+  await expect(field).toBeVisible();
+  const before = await field.inputValue();
+  expect(before).toContain("Orders:PageSize");
+  // Without the field's focus, the text is refused rather than typed wherever focus is.
+  await expect(play(page, typed)).rejects.toThrow();
+  await expect(field).toHaveValue(before);
+  for (const step of steps.slice(1)) await play(page, step);
+  // Appended at the caret after the example's own settings, which stay as they were.
+  await expect(field).toHaveValue(`${before}\nLab:Token`);
+  await expect(strip(page)).toHaveAttribute("data-phase", "finished");
+});
