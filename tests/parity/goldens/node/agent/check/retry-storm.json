@@ -11,9 +11,36 @@
           "message": "Checkout publishes to Orders, but nothing consumes it: it keeps every message, unread.",
           "targets": ["orders", "checkout"],
           "fix": { "label": "Add a consumer…", "needsChoice": "Pick what reads Orders, then add it and connect orders to it." }
+        },
+        {
+          "id": "retry-backoff:pay",
+          "resilienceFinding": { "kind": "retry-backoff", "caller": "Checkout", "callee": "Payments", "attempts": 3, "amplification": 3 },
+          "rule": "retry-backoff",
+          "severity": "warning",
+          "title": "Retries to Payments need jittered backoff.",
+          "message": "Checkout retries in step with every other caller: waves of retries reach Payments together.",
+          "targets": ["pay", "checkout", "payments"],
+          "fix": {
+            "label": "Use jittered backoff (100 ms ×2, up to 2 s, full jitter)",
+            "ops": [
+              {
+                "op": "update",
+                "target": "pay",
+                "props": {
+                  "caller": {
+                    "wait": "non-blocking",
+                    "deadlineMs": 300,
+                    "retry": { "maxAttempts": 3, "backoffMs": 100, "strategy": "exponential", "retryOn": ["throttled", "transient", "timeout"], "maxBackoffMs": 2000, "jitter": 1 }
+                  }
+                }
+              }
+            ]
+          }
         }
       ],
-      "summary": "1 warning, 0 suggestions."
+      "summary": "4 warnings, 0 suggestions.",
+      "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding. fix.others are other ways to make the same change: if the person prefers one, send its ops instead.",
+      "more": "2 more findings omitted; call check_diagram with rules to see them."
     }
   },
   "warnings": {
@@ -28,9 +55,36 @@
           "message": "Checkout publishes to Orders, but nothing consumes it: it keeps every message, unread.",
           "targets": ["orders", "checkout"],
           "fix": { "label": "Add a consumer…", "needsChoice": "Pick what reads Orders, then add it and connect orders to it." }
+        },
+        {
+          "id": "retry-backoff:pay",
+          "resilienceFinding": { "kind": "retry-backoff", "caller": "Checkout", "callee": "Payments", "attempts": 3, "amplification": 3 },
+          "rule": "retry-backoff",
+          "severity": "warning",
+          "title": "Retries to Payments need jittered backoff.",
+          "message": "Checkout retries in step with every other caller: waves of retries reach Payments together.",
+          "targets": ["pay", "checkout", "payments"],
+          "fix": {
+            "label": "Use jittered backoff (100 ms ×2, up to 2 s, full jitter)",
+            "ops": [
+              {
+                "op": "update",
+                "target": "pay",
+                "props": {
+                  "caller": {
+                    "wait": "non-blocking",
+                    "deadlineMs": 300,
+                    "retry": { "maxAttempts": 3, "backoffMs": 100, "strategy": "exponential", "retryOn": ["throttled", "transient", "timeout"], "maxBackoffMs": 2000, "jitter": 1 }
+                  }
+                }
+              }
+            ]
+          }
         }
       ],
-      "summary": "1 warning, 0 suggestions."
+      "summary": "4 warnings, 0 suggestions.",
+      "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding. fix.others are other ways to make the same change: if the person prefers one, send its ops instead.",
+      "more": "2 more findings omitted; call check_diagram with rules to see them."
     }
   },
   "oneRule": { "isError": false, "output": { "findings": [], "summary": "Nothing to check. 2 checks ran." } },
@@ -51,24 +105,12 @@
             "8,193 left unread in “A retry budget”"
           ],
           "fix": { "label": "Add a consumer…", "needsChoice": "Pick what reads Orders, then add it and connect orders to it." }
-        },
-        {
-          "id": "dropped:shop",
-          "rule": "dropped",
-          "severity": "suggestion",
-          "title": "Failed messages to Shop are lost",
-          "message": "Shop fails some of what it's sent, and nothing delivers it again: there's no queue or topic in front of it to redeliver.",
-          "targets": ["shop"],
-          "evidence": [
-            "16,821 dropped in “Three quick retries”",
-            "16,775 dropped in “Jittered backoff”",
-            "9,738 dropped in “A retry budget”"
-          ]
         }
       ],
-      "summary": "1 warning, 2 suggestions.",
+      "summary": "4 warnings, 2 suggestions.",
       "simulations": "Played 5 saved simulations (at most 60 s each). On purpose, not findings: 21 dropped at payments in “Three quick retries”; 30 dropped at payments in “Jittered backoff”; 30 dropped at payments in “A retry budget”; 30 dropped at payments in “A circuit breaker”; 30 dropped at payments in “Shed load at…",
-      "more": "1 more finding omitted; call check_diagram with rules to see them."
+      "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding. fix.others are other ways to make the same change: if the person prefers one, send its ops instead.",
+      "more": "5 more findings omitted; call check_diagram with rules to see them."
     }
   }
 }

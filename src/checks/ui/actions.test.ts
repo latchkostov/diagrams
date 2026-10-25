@@ -11,6 +11,7 @@ import { planScaling } from "../../sim/scalingPlanner";
 import { registerScenarioPlanner, rememberPlans } from "../../lib/scenarioPlanner";
 import { plannerFixture } from "../../lab/plannerFixture";
 import payment from "../../examples/slow-payment-provider.json";
+import storm from "../../examples/retry-storm.json";
 import { catalogs } from "virtual:i18n/catalogs";
 import { state, type Catalog } from "../../i18n/core";
 import * as toast from "../../interop/ui/toast";
@@ -325,6 +326,28 @@ it("a timeout Check's applied feedback and Undo translate while its ops stay Eng
     expect(text).not.toContain("Add a 600 ms timeout");
     expect(options?.action?.label).not.toBe("Undo");
     expect(api.getDiagram().edges.find((e) => e.id === "pay")?.props?.caller).toMatchObject({ deadlineMs: 600 });
+  } finally {
+    notify.mockRestore();
+    state.l = "en";
+    state.c = undefined;
+  }
+});
+
+it("a resilience option's feedback names the chosen option in the current language", async () => {
+  const d = structuredClone(storm) as DiagramFile;
+  const finding = runChecks(d, { rules: ["retry-idempotency"] }).findings[0];
+  const { api } = editorFor(d),
+    notify = vi.spyOn(toast, "notify");
+  try {
+    state.l = "ar";
+    state.c = (await catalogs.ar()).default as Catalog;
+    const label = presentFinding(finding).fix!.options![0].label;
+    expect(await applyFix(api, finding, finding.fix!.options![0].label)).toBe(true);
+    expect(notify.mock.calls.at(-1)![0]).toContain(label);
+    expect(notify.mock.calls.at(-1)![1]?.action?.label).not.toBe("Undo");
+    expect(api.getDiagram().edges.find((e) => e.id === "pay")?.props?.caller).toMatchObject({
+      retry: { idempotent: true },
+    });
   } finally {
     notify.mockRestore();
     state.l = "en";

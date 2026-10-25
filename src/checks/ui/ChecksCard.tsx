@@ -7,7 +7,7 @@ import { turnOn, unignore } from "./actions";
 import { FindingRow, type RowHost, type RowState } from "./FindingRow";
 import { SimulationsBar, type SimulationsHost } from "./SimulationsBar";
 import { presentRule } from "../presentation";
-import { useLocale } from "../../i18n";
+import { t, useLocale } from "../../i18n";
 import { useFallbackOnUnmount, useSurvivingCheckFocus } from "./survivingFocus";
 
 // The Checks card (docs/research/architecture-checks.md, "Where it shows"): opened on demand, under the
@@ -172,13 +172,14 @@ export function ChecksCard(p: ChecksCardProps) {
         <p className="checks-note" data-testid="checks-running">
           Checking…
         </p>
-      ) : r.findings.length || r.omitted?.length ? (
+      ) : r.findings.length || r.omitted?.length || r.notChecked?.retryStorm ? (
         // Findings too many to list are counted here: a bounded result never reads as all clear.
         <p className="checks-note" data-testid="checks-summary">
           {[
             warnings.length ? plural(warnings.length, "warning") : "",
             suggestions.length ? plural(suggestions.length, "suggestion") : "",
             r.omitted?.length ? `${r.omitted.reduce((n, o) => n + o.count, 0)} more not listed` : "",
+            r.notChecked?.retryStorm ? t("resilienceChecks.notChecked", { count: r.notChecked.retryStorm }) : "",
           ]
             .filter(Boolean)
             .join(" · ")}

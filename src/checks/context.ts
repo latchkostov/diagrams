@@ -168,7 +168,7 @@ export function buildContext(diagram: DiagramFile): CheckContext {
     },
     isBoundary: (id) => (boundaries ??= new Set((diagram.groups ?? []).map((g) => g.id))).has(id),
     planning: plan,
-    capacity: () => (capacity ??= analyzeCapacity(diagram, plan())),
+    capacity: () => (capacity ??= analyzeCapacity(diagram, plan(), { topology })),
     plans: () => (scenario === null ? (scenario = scenarioPlans(diagram)) : scenario),
   };
 }

@@ -1,12 +1,12 @@
 {
-  "all": { "isError": false, "output": { "findings": [], "summary": "Nothing to check. 14 checks ran; 1 ignored." } },
+  "all": { "isError": false, "output": { "findings": [], "summary": "Nothing to check. 21 checks ran; 1 ignored." } },
   "warnings": {
     "isError": false,
-    "output": { "findings": [], "summary": "Nothing to check. 14 checks ran; 1 ignored." }
+    "output": { "findings": [], "summary": "Nothing to check. 21 checks ran; 1 ignored." }
   },
   "oneRule": { "isError": false, "output": { "findings": [], "summary": "Nothing to check. 2 checks ran." } },
   "simulations": {
     "isError": false,
-    "output": { "findings": [], "summary": "Nothing to check. 14 checks ran; 1 ignored.", "simulations": "Played 2 saved simulations (at most 60 s each). On purpose, not findings: 30 left unread in dlq in “Poison invoices”." }
+    "output": { "findings": [], "summary": "Nothing to check. 21 checks ran; 1 ignored.", "simulations": "Played 2 saved simulations (at most 60 s each). On purpose, not findings: 30 left unread in dlq in “Poison invoices”." }
   }
 }

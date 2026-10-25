@@ -27,6 +27,7 @@ const MAX_EVIDENCE = 3;
 const MAX_SIMULATIONS = 300;
 
 export interface AgentFinding {
+  resilienceFinding?: Finding["resilienceFinding"];
   id: string;
   rule: CheckRuleId;
   severity: CheckSeverity;
@@ -50,6 +51,7 @@ export interface AgentFixOption {
 }
 
 export interface AgentReport {
+  notChecked?: CheckResult["notChecked"];
   findings: AgentFinding[];
   summary: string;
   /** With `simulations: true`: what was played, and what was lost on purpose (never a finding). */
@@ -108,6 +110,7 @@ function bounded(f: Finding): AgentFinding {
         };
   return {
     id: clip(f.id, MAX_ID),
+    ...(f.resilienceFinding ? { resilienceFinding: f.resilienceFinding } : {}),
     rule: f.rule,
     severity: f.severity,
     title: clip(f.title, MAX_TITLE),
@@ -166,6 +169,7 @@ export function agentReport(
 ): AgentReport {
   const listed = result.findings.filter((f) => include === "all" || f.severity === "warning");
   const report: AgentReport = {
+    ...(result.notChecked ? { notChecked: result.notChecked } : {}),
     findings: [],
     summary: summarize(result),
     ...(simulations ? { simulations: playedLine(simulations.evidence, simulations.planned) } : {}),
@@ -196,6 +200,11 @@ export function agentReport(
     report.more = `${omitted} more finding${omitted === 1 ? "" : "s"} omitted; call check_diagram with rules to see them.`;
   // The bounds above make this hold; the check keeps the promise if they ever drift.
   if (size(report) > OUTPUT_BUDGET)
-    return { findings: [], summary: report.summary, more: "Findings omitted: call check_diagram with rules." };
+    return {
+      findings: [],
+      summary: report.summary,
+      ...(result.notChecked ? { notChecked: result.notChecked } : {}),
+      more: "Findings omitted: call check_diagram with rules.",
+    };
   return report;
 }

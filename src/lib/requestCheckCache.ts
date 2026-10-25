@@ -11,10 +11,16 @@ export type RequestCheckResult =
   | { status: "failed"; error: Error };
 
 /** The rules whose findings come from request checks (src/checks/requestFindings.ts). */
+const WAIT_RULES = ["blocked-threads", "scaling-blind", "call-timeout"] as const;
 export const REQUEST_RULES = [
-  "blocked-threads",
-  "scaling-blind",
-  "call-timeout",
+  ...WAIT_RULES,
+  "retry-backoff",
+  "retry-budget",
+  "retry-idempotency",
+  "retry-layers",
+  "call-breaker",
+  "queue-limit",
+  "retry-storm",
 ] as const satisfies readonly CheckRuleId[];
 
 /**
@@ -24,7 +30,8 @@ export const REQUEST_RULES = [
 export function requestChecksNeeded(d: DiagramFile, rules?: readonly string[]): boolean {
   if (!revisionAtLeast(d.planning?.revision, "p3-w1")) return false;
   const off = d.checks?.off ?? [];
-  return REQUEST_RULES.some((id) => (!rules || rules.includes(id)) && !off.includes(id));
+  const active = revisionAtLeast(d.planning?.revision, "p3-w2") ? REQUEST_RULES : WAIT_RULES;
+  return active.some((id) => (!rules || rules.includes(id)) && !off.includes(id));
 }
 
 // One complete result store for workers, local fallback, synchronous rechecks and agents.
@@ -53,7 +60,10 @@ function store(key: string, result: RequestCheckResult) {
   entries().set(key, result);
 }
 export function rememberRequestChecks(d: DiagramFile, findings: Finding[]): void {
-  store(simulationContent(d), { status: "ready", findings: findings.filter((f) => !!f.requestFinding || !!f.omitted) });
+  store(simulationContent(d), {
+    status: "ready",
+    findings: findings.filter((f) => !!f.requestFinding || !!f.resilienceFinding || !!f.omitted || !!f.unchecked),
+  });
 }
 export function rememberedRequestChecks(d: DiagramFile): Finding[] | undefined {
   const result = requestCheckResult(d);

@@ -1261,3 +1261,52 @@ Expectation metrics `threadsBusy` and `threadsWaiting` measure real threads, jus
 `timedOut` measures outgoing calls that exceeded a deadline. For example:
 `{ "node": "caller", "field": "threadsWaiting" }`, `op: "<"`, `value: 32`, `when: "always"`.
 Public lessons: A blocking call caps throughput, Scale on busy threads, and the merged A slow payment provider.
+
+## Retries, breakers and shedding
+
+Revision `p3-w2` executes `caller.retry` on Requests. `maxAttempts` includes the first attempt and execution
+caps it at ten. Each attempt gets its own deadline (including pool wait); blocking callers keep their thread
+through retry backoff. Fixed or exponential backoff has a cap and numeric jitter; full jitter spreads callers
+across the backoff interval. `retryOn` selects throttled (429/503 shed), transient (5xx) and timeout outcomes.
+An open breaker is never retried. A timeout may hide a successful side effect: `idempotent` overrides the
+request route's method inference (GET/HEAD/OPTIONS/PUT/DELETE safe; POST/PATCH unsafe; others unknown).
+
+A ten-second retry budget permits the greater of `percent` of original calls and `minPerSec` (default ten).
+The shared recommended policy is 100 ms exponential backoff, capped at 2 s, full jitter and a 20% budget.
+These are shortened teaching values based on gRPC A6, AWS standard retry mode and Finagle budgets.
+`caller.breaker: {}` uses shortened resilience4j defaults: 50% failures over 10 s, at least 20 calls,
+open for 5 s, then five half-open test calls. Failures/slow calls count according to the shared outcome
+classifier. Breakers are per connection, shared across replicas, with no fallback.
+
+Ordinary processors accept `queue: {limit?, order?, whenFull?, maxWaitMs?}`. Only waiting pushed arrivals
+compete; active work, continuations and broker deliveries are exempt. FIFO/reject-new are defaults. LIFO
+serves fresh work first; `maxWaitMs` rejects expired work lazily. Refusals return 503 throttled and count
+as rejected and shed. Connections carry critical, normal or sheddable priority. Queue advice rounds the
+caller's deadline minus response time down to the 1/2/3/4/6/8 series, then chooses at least one thread's
+worth of waiting slots at configured capacity. The existing adaptive LIFO teaching preset supplies the values.
+
+Checks run in the Checks worker and use one static topology and configured capacity analysis per context.
+Six static rules cover backoff/jitter, retry budgets, idempotency, multiplicative retry layers (>10×),
+missing breakers and unbounded deadline-bound queues. Names are clipped to 200 characters and resilience
+findings share a 1,000,000-character output budget. Omitted findings are counted, never reported as clean.
+
+`retry-storm` deliberately probes a drill at configured free-play rates: slow the callee ×5 at 5 s, clear
+at 10 s and replay to 30 s. At most three retried calls are probed, highest worst-case amplification first;
+`notChecked.retryStorm` includes skipped/refused baselines. Detection uses the shared ten-second health
+window, never cumulative failure totals. A completed baseline can report a storm without a fix.
+The shared `confirmedResilienceFix` tries cumulative jitter, budget, breaker, shedding, then two attempts.
+Only its first proven recovery becomes an action: no speculative alternatives and no scaling to feed retries.
+Recovery requires 90% of pre-fault two-second goodput, backlog no greater than pre-fault plus threads,
+amplification ≤1.5 within ten seconds, and ≥20% more successful work after clearing than the baseline.
+Refused or over-budget candidates prove nothing. The finding explains the policy and replay evidence.
+A storm replaces budget/breaker rows for the same call when those rules run together; static safety advice remains.
+
+`describe_diagram` reports Request `resilience` (attempts, backoff, retry classes, idempotency, budget,
+breaker, priority and steady/worst amplification), processor `queue` (including a wait ceiling), and
+retry-inclusive `requestsWait.holdMs`. Unknown/unbounded values are null. `check_diagram` carries
+`resilienceFinding` plus ordinary update ops and the incomplete-probe count. Agent wording is deterministic
+English; the UI translates descriptors at render time. Authoring/check code stays outside the HTML viewer.
+
+Five node expectation metrics use real units: outgoing `retried`, `shortCircuited`, `amplification`
+(attempts/requests over ten seconds; one when idle), local `shed`, and smoothed successful `goodput`/s.
+The public **A retry storm** already demonstrates all five policy comparisons within ten seconds.

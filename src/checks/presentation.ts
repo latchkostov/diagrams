@@ -6,6 +6,7 @@ import { assignmentLabel } from "../stencils/brokerVocabulary";
 import type { Finding } from "./types";
 import { planFixLabel, planSentence } from "../planning/scalingPlanText";
 import type { CheckFix, CheckRule } from "./types";
+import { presentResilienceFinding, presentResilienceRule } from "./resiliencePresentation";
 
 export function presentRule(rule: CheckRule): CheckRule {
   if (rule.id === "message-loop") return { ...rule, name: t("messageLoop.name"), about: t("messageLoop.about") };
@@ -15,7 +16,7 @@ export function presentRule(rule: CheckRule): CheckRule {
     return { ...rule, name: t("waitChecks.blindName"), about: t("waitChecks.blindAbout") };
   if (rule.id === "call-timeout")
     return { ...rule, name: t("waitChecks.timeoutName"), about: t("waitChecks.timeoutAbout") };
-  return rule;
+  return presentResilienceRule(rule);
 }
 
 function requestLabel(label: NonNullable<CheckFix["requestLabel"]>): string {
@@ -33,6 +34,7 @@ function requestLabel(label: NonNullable<CheckFix["requestLabel"]>): string {
 
 /** Localize broker descriptors at render time, keeping cached and worker findings deterministic. */
 export function presentFinding(finding: Finding): Finding {
+  if (finding.resilienceFinding) return presentResilienceFinding(finding);
   if (finding.messageLoop)
     return {
       ...finding,

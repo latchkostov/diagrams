@@ -1,16 +1,109 @@
 {
-  "all": { "isError": false, "output": { "findings": [], "summary": "Nothing to check. 14 checks ran." } },
-  "warnings": { "isError": false, "output": { "findings": [], "summary": "Nothing to check. 14 checks ran." } },
+  "all": {
+    "isError": false,
+    "output": {
+      "findings": [
+        {
+          "id": "retry-backoff:call",
+          "resilienceFinding": { "kind": "retry-backoff", "caller": "Decision service", "callee": "Partner scoring API", "attempts": 3, "amplification": 3 },
+          "rule": "retry-backoff",
+          "severity": "warning",
+          "title": "Retries to Partner scoring API need jittered backoff.",
+          "message": "Decision service retries in step with every other caller: waves of retries reach Partner scoring API together.",
+          "targets": ["call", "caller", "partner"],
+          "fix": {
+            "label": "Use jittered backoff (100 ms ×2, up to 2 s, full jitter)",
+            "ops": [
+              {
+                "op": "update",
+                "target": "call",
+                "props": {
+                  "caller": {
+                    "wait": "blocking",
+                    "deadlineMs": 200,
+                    "retry": { "maxAttempts": 3, "backoffMs": 100, "strategy": "exponential", "retryOn": ["timeout", "transient", "throttled"], "maxBackoffMs": 2000, "jitter": 1 }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "summary": "2 warnings, 1 suggestion.",
+      "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding.",
+      "more": "2 more findings omitted; call check_diagram with rules to see them."
+    }
+  },
+  "warnings": {
+    "isError": false,
+    "output": {
+      "findings": [
+        {
+          "id": "retry-backoff:call",
+          "resilienceFinding": { "kind": "retry-backoff", "caller": "Decision service", "callee": "Partner scoring API", "attempts": 3, "amplification": 3 },
+          "rule": "retry-backoff",
+          "severity": "warning",
+          "title": "Retries to Partner scoring API need jittered backoff.",
+          "message": "Decision service retries in step with every other caller: waves of retries reach Partner scoring API together.",
+          "targets": ["call", "caller", "partner"],
+          "fix": {
+            "label": "Use jittered backoff (100 ms ×2, up to 2 s, full jitter)",
+            "ops": [
+              {
+                "op": "update",
+                "target": "call",
+                "props": {
+                  "caller": {
+                    "wait": "blocking",
+                    "deadlineMs": 200,
+                    "retry": { "maxAttempts": 3, "backoffMs": 100, "strategy": "exponential", "retryOn": ["timeout", "transient", "throttled"], "maxBackoffMs": 2000, "jitter": 1 }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ],
+      "summary": "2 warnings, 1 suggestion.",
+      "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding.",
+      "more": "1 more finding omitted; call check_diagram with rules to see them."
+    }
+  },
   "oneRule": { "isError": false, "output": { "findings": [], "summary": "Nothing to check. 2 checks ran." } },
   "simulations": {
     "isError": false,
     "output": {
       "findings": [
-        { "id": "dropped:caller", "rule": "dropped", "severity": "suggestion", "title": "Failed messages to Decision service are lost", "message": "Decision service fails some of what it's sent, and nothing delivers it again: there's no queue or topic in front of it to redeliver.", "targets": ["caller"], "evidence": ["12 dropped in “Blocking”"] },
-        { "id": "dropped:partner", "rule": "dropped", "severity": "suggestion", "title": "Failed requests to Partner scoring API are lost", "message": "Partner scoring API fails some of what it's sent, and nothing delivers it again: there's no queue or topic in front of it to redeliver.", "targets": ["partner"], "evidence": ["36 dropped in “Blocking”"] }
+        {
+          "id": "retry-backoff:call",
+          "resilienceFinding": { "kind": "retry-backoff", "caller": "Decision service", "callee": "Partner scoring API", "attempts": 3, "amplification": 3 },
+          "rule": "retry-backoff",
+          "severity": "warning",
+          "title": "Retries to Partner scoring API need jittered backoff.",
+          "message": "Decision service retries in step with every other caller: waves of retries reach Partner scoring API together.",
+          "targets": ["call", "caller", "partner"],
+          "fix": {
+            "label": "Use jittered backoff (100 ms ×2, up to 2 s, full jitter)",
+            "ops": [
+              {
+                "op": "update",
+                "target": "call",
+                "props": {
+                  "caller": {
+                    "wait": "blocking",
+                    "deadlineMs": 200,
+                    "retry": { "maxAttempts": 3, "backoffMs": 100, "strategy": "exponential", "retryOn": ["timeout", "transient", "throttled"], "maxBackoffMs": 2000, "jitter": 1 }
+                  }
+                }
+              }
+            ]
+          }
+        }
       ],
-      "summary": "0 warnings, 2 suggestions.",
-      "simulations": "Played 1 saved simulation (at most 60 s each)."
+      "summary": "2 warnings, 3 suggestions.",
+      "simulations": "Played 1 saved simulation (at most 60 s each).",
+      "hint": "To fix one, send its fix.ops to edit_diagram as they are (one undo step). Only the person can ignore a finding.",
+      "more": "4 more findings omitted; call check_diagram with rules to see them."
     }
   }
 }

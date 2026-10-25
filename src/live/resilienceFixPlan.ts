@@ -12,6 +12,7 @@ import { recoveryPath, recoveryFault } from "../sim/recoveryEvidence";
 import { RECOMMENDED_RETRY, recommendedQueue } from "../sim/resiliencePresets";
 import { THREAD_FIX_LIMITS, THREAD_FIX_WORK, threadFixWork } from "./threadFixPlan";
 import type { TroubleAction } from "./observedTrouble";
+import { HealthWindow, currentHealth } from "./healthWindow";
 
 export type ResilienceStep = "jitter" | "budget" | "breaker" | "shedding" | "attempts";
 export type ResilienceFix = Extract<TroubleAction, { kind: "resilience" }>;
@@ -56,6 +57,7 @@ export interface RecoveryPoint {
   goodput: number;
   backlog: number;
   amplification: number;
+  storm?: boolean;
 }
 export interface RecoveryEvidence {
   clear: number;
@@ -86,10 +88,16 @@ export function confirmedResilienceFix({
   context,
   edge,
   time,
+  baseline,
+  proven,
+  budget,
 }: {
   context: VerificationContext;
   edge: string;
   time: number;
+  baseline?: (evidence: RecoveryEvidence) => boolean;
+  proven?: (before: RecoveryEvidence, after: RecoveryEvidence, step: ResilienceStep) => void;
+  budget?: { work: number; messages: { remaining: number } };
 }): ResilienceFix | undefined {
   const d = context.origin.diagram,
     base = context.origin.simulation;
@@ -105,12 +113,12 @@ export function confirmedResilienceFix({
   if (!path) return;
   const sim = { ...base, durationMs: horizon };
   if (startWork(d, sim) > THREAD_FIX_LIMITS.startWork) return;
-  const messages = { remaining: THREAD_FIX_LIMITS.messages };
+  const messages = budget?.messages ?? { remaining: THREAD_FIX_LIMITS.messages };
   const replayCost = threadFixWork(d.nodes.length, d.edges.length, horizon);
-  let replayWork = THREAD_FIX_WORK;
+  const work = budget ?? { work: THREAD_FIX_WORK };
   const measure = (candidate: Simulation): RecoveryEvidence | undefined => {
-    if (replayCost > replayWork) return;
-    replayWork -= replayCost;
+    if (replayCost > work.work) return;
+    work.work -= replayCost;
     const run = createHeadlessRun(d, candidate, messages, context);
     const points: RecoveryPoint[] = [],
       history: { time: number; processed: number; backlog: number }[] = [{ time: 0, processed: 0, backlog: 0 }];
@@ -120,9 +128,11 @@ export function confirmedResilienceFix({
       threads = 0,
       wasFault = false,
       integral = 0;
+    const health = new HealthWindow();
     advanceHeadless(run, horizon, () => {
       const snapshot = realSnapshot(run.engine.snapshot()),
         now = snapshot.time;
+      health.observe(snapshot, run);
       const fault = recoveryFault(snapshot, path);
       const node = snapshot.nodes[connection.to],
         processed = snapshot.edges[edge]?.calls?.succeeded ?? 0;
@@ -150,6 +160,12 @@ export function confirmedResilienceFix({
         goodput,
         backlog,
         amplification: calls?.windowRequests ? calls.windowAttempts! / calls.windowRequests : 1,
+        storm:
+          !!calls &&
+          (calls.windowRequests ?? 0) > 0 &&
+          (calls.windowAttempts ?? 0) / calls.windowRequests! >= 2 &&
+          currentHealth(calls).failed > (calls.windowAttempts ?? 0) / 2 &&
+          (currentHealth(node).growing || (clear >= 0 && currentHealth(calls).succeeded < calls.windowRequests! / 2)),
       });
       history.push({ time: now, processed, backlog });
     });
@@ -159,6 +175,7 @@ export function confirmedResilienceFix({
   try {
     const before = measure(sim);
     if (!before) return;
+    if (baseline?.(before) === false) return;
     const target = effective.nodes.find((n) => n.id === connection.to);
     const analysis = target && stencilRole(target.stencil) === "processor" ? analyzeCapacity(d, base) : undefined;
     const props = analysis?.resolved[connection.to];
@@ -192,7 +209,10 @@ export function confirmedResilienceFix({
         };
       const after = measure(next);
       if (!after) return;
-      if (recovers(before, after)) return { kind: "resilience", edge, ...candidate };
+      if (recovers(before, after)) {
+        proven?.(before, after, candidate.step);
+        return { kind: "resilience", edge, ...candidate };
+      }
     }
   } catch {
     // Refused, incomplete or over-budget reruns provide no evidence. Never fall back to an unverified edit.

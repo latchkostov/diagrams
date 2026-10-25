@@ -180,6 +180,20 @@ so increasing partitions actually activates idle instances. Poison invoices demo
 retries with backoff. Other presentations sample batches and spikes while preserving their real-count
 expectations. Edge `share` models optional branches; `retry` and `retryBackoffMs` control broker retries.
 
+## Resilience expectations
+
+On `p3-w2`, node metrics `retried` and `shortCircuited` count outgoing retry attempts and breaker
+fast failures; `shed` counts this node's refused waiting requests. `amplification` divides outgoing
+attempts by original requests over ten seconds (one when idle). `goodput` measures successful
+responses/s with throughput's smoothing. Counts/rates use real units at every sampling scale.
+For example: `metric: {node: "checkout", field: "amplification"}, op: "<", value: 1.5, when: "end"`.
+The expectation picker offers all five. **A retry storm** compares naive retries, jitter, budget,
+breaker and queue shedding; **A slow payment provider** includes blocking retry hold time.
+
+Checks' `retry-storm` probe is distinct from Run simulations: a bounded configured-rate Slow dependency
+drill, not a saved-run loss report. It offers one same-seed proven recovery policy and explains its evidence.
+Skipped/refused probes stay visible as incomplete. See [simulation semantics](SIMULATION.md#retries-breakers-and-shedding).
+
 ## Played headless: Run simulations
 
 The Checks card's **Run simulations** plays every saved simulation without going live (`src/checks/evidence.ts`, in a
