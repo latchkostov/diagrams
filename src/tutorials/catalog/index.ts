@@ -5,6 +5,9 @@ import { traceSlowmo } from "./traceSlowmo";
 import { savedSimulations } from "./savedSimulations";
 import { faults } from "./faults";
 import { authorADrill } from "./authorADrill";
+import { loadShedding } from "./loadShedding";
+import { deadLetters } from "./deadLetters";
+import { healthChecks } from "./healthChecks";
 import { msg } from "../../i18n";
 import type { TrackId, Tutorial, Words } from "../types";
 import { apiGateway } from "./apiGateway";
@@ -70,6 +73,9 @@ export const allTutorials: readonly Tutorial[] = [
   backoffBudget,
   circuitBreaker,
   rateLimit,
+  loadShedding,
+  deadLetters,
+  healthChecks,
 ];
 
 /** Available lessons only: discovery, deep links and progress totals share this catalog. */

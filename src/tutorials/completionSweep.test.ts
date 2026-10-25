@@ -795,7 +795,12 @@ async function skipLanding(tutorial: Tutorial, k: number) {
 }
 
 describe("every tutorial's completion contract", () => {
-  for (const tutorial of [...tutorials, ...tutorialFixtures])
+  // Withheld for owner decisions, not completion regressions: exercise these drafts as if released,
+  // including their saved progress (which the real catalog correctly hides while quarantined).
+  const completionTutorials = tutorials.map((tutorial) =>
+    ["load-shedding", "dead-letters"].includes(tutorial.id) ? { ...tutorial, quarantined: undefined } : tutorial,
+  );
+  for (const tutorial of [...completionTutorials, ...tutorialFixtures])
     describe(tutorial.id, () => {
       const lessonIt = itFor(tutorial);
       tutorial.steps.forEach((step, i) => {

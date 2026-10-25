@@ -38,4 +38,7 @@ export const tutorialEntries: readonly Pick<TutorialMetadata, "id" | "quarantine
   { id: "backoff-budget" },
   { id: "circuit-breaker" },
   { id: "rate-limit", quarantined: true },
+  { id: "load-shedding", quarantined: true },
+  { id: "dead-letters", quarantined: true },
+  { id: "health-checks" },
 ];
