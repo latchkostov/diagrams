@@ -52,6 +52,26 @@ for (const key of ["Tab", "Enter"]) {
   });
 }
 
+test("cold pinned details preserve opener focus after Shift+Tab", async ({ page, consoleErrors }) => {
+  const held = await holdChunk(page, DETAILS);
+  try {
+    await gotoLive(page, URL);
+    const node = page.getByTestId("node-caller");
+    await node.evaluate((el) => el.parentElement?.focus());
+    await expect.poll(held.requested).toBe(true);
+    await page.keyboard.press("Enter");
+    await expect(page.getByTestId("live.node-details-loading")).toBeFocused();
+    await page.keyboard.press("Shift+Tab");
+    await expect.poll(() => node.evaluate((el) => el.parentElement === document.activeElement)).toBe(true);
+    await releaseAndEvaluate(page, DETAILS, held.release);
+    await expect(page.getByTestId("node-detail-caller")).toBeVisible();
+    await expect.poll(() => node.evaluate((el) => el.parentElement === document.activeElement)).toBe(true);
+    expectNoErrors(consoleErrors);
+  } finally {
+    held.release();
+  }
+});
+
 for (const leave of ["focus", "menu", "escape", "next-node"] as const) {
   test(`cold node details cannot reclaim focus after ${leave}`, async ({ page, consoleErrors }) => {
     const held = await holdChunk(page, DETAILS);
