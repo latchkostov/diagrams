@@ -1,12 +1,34 @@
 import { facingSide } from "../edges/routing";
+export { fixedNudgeGuard, nudgeFixedRoutes as nudgeRoutes } from "./fixedNudge";
 import type { RouteEdge } from "./router";
 // Saved inner corners are fixed; only the end legs re-join the current ports.
 import type { Side } from "../../model/types";
 import type { RoutedPort } from "./ports";
 import { isHorizontalSide, sideNormal, simplify, type Point, type Rect } from "./rect";
 
-/** Alternate the turn after a diagonal input; never mutate the saved corners. */
+/** Interpret diagonals in a canonical traversal so reversal preserves the geometric path. */
 export function orthogonalize(points: readonly Point[]): Point[] {
+  let palindrome = true;
+  for (let i = 0; i < points.length; i++) {
+    const a = points[i],
+      b = points[points.length - 1 - i];
+    const order = a.x - b.x || a.y - b.y;
+    if (order > 0) return orthogonalize([...points].reverse()).reverse();
+    if (order < 0) {
+      palindrome = false;
+      break;
+    }
+  }
+  if (palindrome && points.length > 1) {
+    const half = orthogonalize(points.slice(0, Math.ceil(points.length / 2)));
+    return [
+      ...half,
+      ...half
+        .slice(0, -1)
+        .reverse()
+        .map((p) => ({ ...p })),
+    ];
+  }
   const out: Point[] = [];
   for (const point of points) {
     const p = { ...point };
@@ -72,6 +94,25 @@ export function shapedRoute(
       target.attachment,
     ],
     1e-9,
+  );
+}
+
+/** Keep saved-route argument assembly with its deferred geometry. */
+export function routeFor(
+  e: RouteEdge,
+  source: RoutedPort,
+  target: RoutedPort,
+  sides: { sourceSide: Side; targetSide: Side },
+  rects: ReadonlyMap<string, Rect>,
+) {
+  return shapedRoute(
+    source,
+    sides.sourceSide,
+    target,
+    sides.targetSide,
+    e.waypoints!,
+    rects.get(e.source)!,
+    rects.get(e.target)!,
   );
 }
 

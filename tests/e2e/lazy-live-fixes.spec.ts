@@ -1,4 +1,5 @@
 import type { Page } from "@playwright/test";
+import { chunk, holdChunk as gate, releaseAndEvaluate } from "./chunk";
 import {
   test,
   expect,
@@ -15,9 +16,6 @@ import {
 // here: keyboard focus, the cursor and styles, and export must hold while it downloads, after it arrives, and when
 // it fails and Retry brings it.
 
-/** A chunk's production file, or its source module on the dev server (as tests/e2e/lazy-loading.spec.ts). */
-const chunk = (name: string, source: string) =>
-  new RegExp(String.raw`/(?:assets/${name}-[A-Za-z0-9_-]+\.js|${source.replace(/\./g, "\\.")})(?:\?.*)?$`);
 const CALLOUT = chunk("TroubleCallout", "src/live/TroubleCallout.tsx");
 const SCRIPT = chunk("script", "src/live/slowmo/script.ts");
 const SLOW_READOUT = chunk("SlowTimeline", "src/live/slowmo/SlowTimeline.tsx");
@@ -39,9 +37,10 @@ test("slow-motion status and Escape work while its readout download is held", as
     expect(await focused(page)).not.toBe("BODY");
     await page.keyboard.press("Escape");
     await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "playing");
-    const downloaded = page.waitForEvent("requestfinished", (request) => SLOW_READOUT.test(request.url()));
-    readout.release();
-    await downloaded;
+    await releaseAndEvaluate(page, SLOW_READOUT, readout.release);
+    await expect
+      .poll(() => page.evaluate(() => window.__lazySurfaces?.states()["live.slow-timeline"]))
+      .toEqual({ state: "loaded", active: false });
     await expect(page.getByTestId("slowmo-timeline")).toHaveCount(0);
     expect(await focused(page)).not.toBe("BODY");
   } finally {
@@ -60,9 +59,10 @@ test("a held simulation scrubber keeps its clock, focus and Escape working", asy
     await expect(page.getByTestId("canvas-wrap")).toBeFocused();
     await page.keyboard.press("Escape");
     await expect(page.getByTestId("live-controls")).toHaveCount(0);
-    const downloaded = page.waitForEvent("requestfinished", (request) => TIMELINE.test(request.url()));
-    timeline.release();
-    await downloaded;
+    await releaseAndEvaluate(page, TIMELINE, timeline.release);
+    await expect
+      .poll(() => page.evaluate(() => window.__lazySurfaces?.states()["live.timeline"]))
+      .toEqual({ state: "loaded", active: false });
     await expect(page.getByTestId("live-timeline-input")).toHaveCount(0);
     await expect(page.getByTestId("canvas-wrap")).toBeFocused();
   } finally {
@@ -72,38 +72,28 @@ test("a held simulation scrubber keeps its clock, focus and Escape working", asy
 
 test("a failed simulation scrubber offers shared Retry without taking focus", async ({ page }) => {
   const timeline = await gate(page, TIMELINE);
-  timeline.fail = true;
-  await gotoLive(page, PAYMENT);
-  await page.getByTestId("live-play").focus();
-  await expect(page.getByTestId("lazy-load-retry")).toBeVisible();
-  await expect(page.getByTestId("live-play")).toBeFocused();
-  timeline.fail = false;
-  timeline.release();
-  await page.getByTestId("lazy-load-retry").focus();
-  await page.keyboard.press("Enter");
-  await expect(page.getByTestId("live-timeline-input")).toBeVisible();
-  await expect(page.getByTestId("live-expectations")).toBeVisible();
-  await expect(page.getByTestId("live-play")).toBeFocused();
+  try {
+    await gotoLive(page, PAYMENT);
+    await expect.poll(timeline.requested).toBe(true);
+    const owner = page.getByTestId("live-play");
+    await owner.focus();
+    await expect(owner).toBeFocused();
+    await expect(page.getByTestId("live-timeline-input")).toHaveCount(0);
+    timeline.fail = true;
+    timeline.release();
+    await expect(page.getByTestId("lazy-load-retry")).toBeVisible();
+    await expect(page.getByTestId("live-play")).toBeFocused();
+    timeline.fail = false;
+    timeline.release();
+    await page.getByTestId("lazy-load-retry").focus();
+    await page.keyboard.press("Enter");
+    await expect(page.getByTestId("live-timeline-input")).toBeVisible();
+    await expect(page.getByTestId("live-expectations")).toBeVisible();
+    await expect(page.getByTestId("live-play")).toBeFocused();
+  } finally {
+    timeline.release();
+  }
 });
-
-/** Holds every request for `pattern` until release(); `fail` aborts them while it's true. */
-async function gate(page: Page, pattern: RegExp) {
-  let held = false;
-  let release!: () => void;
-  const open = new Promise<void>((resolve) => {
-    release = resolve;
-  });
-  const control = { fail: false, requested: () => held, release };
-  await page.route(pattern, async (route) => {
-    held = true;
-    if (control.fail) return route.abort("failed");
-    await open;
-    // Failed while held: the download that was waiting fails too.
-    if (control.fail) return route.abort("failed");
-    await route.continue();
-  });
-  return control;
-}
 
 const focused = (page: Page) => page.evaluate(() => document.activeElement?.getAttribute("data-testid") ?? "BODY");
 

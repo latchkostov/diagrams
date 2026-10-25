@@ -41,7 +41,7 @@ const NOT_AT_STARTUP: [string, RegExp][] = [
   ["node inspector identity fields", /[/\\]src[/\\]canvas[/\\]inspector[/\\]NodeIdentity\.tsx$/],
   ["connection dot resolver", /[/\\]src[/\\]canvas[/\\]interaction[/\\]connectTarget\.ts$/],
   ["dependency and deny details", /[/\\]src[/\\]canvas[/\\]edges[/\\]SettingsCard\.tsx$/],
-  ["saved-route geometry", /[/\\]src[/\\]canvas[/\\]geometry[/\\]shaped\.ts$/],
+  ["saved-route geometry", /[/\\]src[/\\]canvas[/\\]geometry[/\\](?:shaped|fixedNudge)\.ts$/],
   ["extended outline geometry", /[/\\]src[/\\]canvas[/\\]shapes[/\\]extendedGeometry\.ts$/],
   ["outline attachment sampling", /[/\\]src[/\\]canvas[/\\]shapes[/\\]attachmentGeometry\.ts$/],
   ["provider and format artwork", /[/\\]src[/\\]interop[/\\]ui[/\\]BrandGlyph\.tsx$/],

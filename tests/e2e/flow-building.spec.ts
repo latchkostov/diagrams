@@ -1696,6 +1696,39 @@ test.describe("attach to a dot", () => {
 
   const DOTS = chunk("connectTarget", "src/canvas/interaction/connectTarget.ts");
 
+  for (const reason of ["Escape", "pointer cancellation"] as const)
+    test(`late dot resolver stays inert after ${reason}`, async ({ page }) => {
+      const dots = await holdChunk(page, DOTS);
+      try {
+        await open(page);
+        await drag(page, page.getByTestId("handle-api-bottom"), page.getByTestId("handle-db-top"));
+        await expect.poll(() => dots.requests).toBeGreaterThan(0);
+        await expect(page.getByTestId("rf__node-db")).toHaveClass(/is-connect-target/);
+        if (reason === "Escape") await page.keyboard.press("Escape");
+        else
+          await page
+            .getByTestId("handle-api-bottom")
+            .dispatchEvent("pointercancel", { pointerId: 1, isPrimary: true, pointerType: "mouse" });
+        await page.mouse.up();
+        await expect(page.getByTestId("canvas-wrap")).not.toHaveAttribute("data-interaction-state", "gesture");
+        const loaded = page.waitForResponse(DOTS);
+        dots.release();
+        await loaded;
+        // A fresh gesture proves that the resolver has executed, then cancellation retires that owner too.
+        await drag(page, page.getByTestId("handle-api-right"), page.getByTestId("handle-billing-left"));
+        await expect(page.getByTestId("handle-billing-left")).toHaveClass(/is-connect-port/);
+        await expect(page.getByTestId("handle-db-top")).not.toHaveClass(/is-connect-port/);
+        await expect(page.getByTestId("rf__node-db")).not.toHaveClass(/is-connect-target/);
+        await page.keyboard.press("Escape");
+        await page.mouse.up();
+        await expect(page.getByTestId("connection-line")).toHaveCount(0);
+        await expect(page.getByTestId("undo-button")).toBeDisabled();
+        expect((await saved(page))?.edges).toEqual([]);
+      } finally {
+        dots.release();
+      }
+    });
+
   test("while the dots' resolver downloads a drop attaches to the node; it takes a dot the moment it arrives", async ({
     page,
   }) => {

@@ -697,6 +697,73 @@ describe("inset outline routing", () => {
 });
 
 describe("custom routes", () => {
+  it("keeps nudge slots off every interior fixed segment, including tracks outside the cluster", () => {
+    const p = [
+      { x: 220, y: 30 },
+      { x: 300, y: 30 },
+      { x: 300, y: 300 },
+      { x: 400, y: 300 },
+    ];
+    const routes = new Map([
+      ["auto", p],
+      ["fixed", p],
+    ]);
+    for (const x of [289, 311])
+      routes.set(`wall-${x}`, [
+        { x: 100, y: -100 },
+        { x, y: -100 },
+        { x, y: 500 },
+        { x: 500, y: 500 },
+      ]);
+    const fixed = new Set(["fixed", "wall-289", "wall-311"]);
+    const out = geometry.nudgeRoutes(routes, [], { fixed });
+    for (const id of fixed) expect(out.get(id)).toEqual(routes.get(id));
+    expect(out.get("auto")![1].x).toBe(300);
+  });
+  it("applies fixed-track constraints in the diagram router", () => {
+    const points = [
+      { x: 220, y: 30 },
+      { x: 300, y: 30 },
+      { x: 300, y: 300 },
+      { x: 400, y: 300 },
+    ];
+    vi.mocked(routeOrthogonal).mockReturnValueOnce({ points, ok: true, region: card(0, 0, 1000, 1000) });
+    const result = routeDiagram({
+      geometry,
+      nodes: [
+        { id: "a", rect: card(0, -6) },
+        { id: "b", rect: card(400, 264) },
+        { id: "c", rect: card(-1000, -136) },
+        { id: "d", rect: card(1000, 464) },
+      ],
+      edges: [
+        { id: "auto", source: "a", target: "b", sourceSide: "right", targetSide: "left" },
+        {
+          id: "fixed",
+          source: "a",
+          target: "b",
+          sourceSide: "right",
+          targetSide: "left",
+          waypoints: [
+            { x: 300, y: 30 },
+            { x: 300, y: 300 },
+          ],
+        },
+        ...[289, 311].map((x) => ({
+          id: `wall-${x}`,
+          source: "c",
+          target: "d",
+          sourceSide: "right" as const,
+          targetSide: "left" as const,
+          waypoints: [
+            { x, y: -100 },
+            { x, y: 500 },
+          ],
+        })),
+      ],
+    });
+    expect(result.get("auto")!.points).toEqual(points);
+  });
   it("never searches for custom edges, faces bends, and invalidates custom identity on reset", () => {
     const router = new Router();
     const input: RouteInput = {

@@ -138,14 +138,7 @@ export function useConnectionPlacement(
       );
       wrap?.classList.add("is-connecting");
       const pt = "touches" in event ? event.touches[0] : event;
-      watchConnectionGesture(
-        menus,
-        seq,
-        preview,
-        marks.clear,
-        store,
-        pt ? { x: pt.clientX, y: pt.clientY } : undefined,
-      );
+      watchConnectionGesture(menus, seq, preview, marks.clear, store, pt);
     },
     [hideTip, wrapper, annotationKindOf, menus, readOnly, editor, live, screenToFlowPosition, pickNamed, store, flow],
   );

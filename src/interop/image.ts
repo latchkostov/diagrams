@@ -139,7 +139,7 @@ export async function renderDiagramImage(kind: "png" | "svg", opts: ImageOptions
   }
   const viewport = findViewport();
   // A pending route is still part of the saved drawing. Wait before measuring its farthest bend.
-  const routeReadiness = whenEdgeGeometryReady(viewport);
+  const routeReadiness = whenEdgeGeometryReady(viewport, opts.signal);
   if (routeReadiness) {
     await unlessCancelled(routeReadiness, opts.signal);
     flushSync(() => {});
