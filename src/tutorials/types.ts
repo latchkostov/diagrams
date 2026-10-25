@@ -1,4 +1,4 @@
-import type { AnnotationKind, DiagramFile, EdgeRelation, SimRole } from "../model/types";
+import type { AnnotationKind, DiagramFile, EdgeRelation, Side, SimRole } from "../model/types";
 import type { NodeSimState } from "../sim/types";
 import type { EditorModeValue } from "../canvas/interaction/mode";
 
@@ -18,6 +18,8 @@ export type TrackId = "basics" | "blocks" | "simulation" | "waiting" | "resilien
 
 /** How a subject is found: an unbound node (in diagram order) with one of these stencils, else of this role. */
 export interface SubjectSpec {
+  /** An edge initially found between these node subjects; keeps its identity through reconnects. */
+  edge?: readonly [string, string];
   boundary?: true;
   stencils?: readonly string[];
   role?: SimRole;
@@ -40,9 +42,10 @@ export type Check =
   | { kind: "live" }
   /** Live counters (real messages) since the run started. */
   | { kind: "processed"; subject: string; atLeast: number }
+  | { kind: "field"; subject: string; field: "sublabel" | "description"; is?: Words }
   | ({ kind: "prop"; prop: string; op: Comparison; value: unknown } & PropertyTarget)
   // edgeKind / annotation / fault distinguish the payload from the check's discriminant.
-  | { kind: "relation"; from: string; to: string; relation?: EdgeRelation; edgeKind?: "sync" | "async" }
+  | { kind: "relation"; from: string; to: string; relation?: EdgeRelation; edgeKind?: "sync" | "async"; absent?: true }
   | { kind: "member"; subject: string; boundary: string }
   | { kind: "annotation"; annotation: AnnotationKind; count?: number }
   | {
@@ -59,13 +62,17 @@ export type Check =
   | ({ kind: "fault"; fault?: FaultKind } & PropertyTarget)
   | { kind: "trace" | "slowmo" }
   | { kind: "note"; waiting: boolean }
-  | { kind: "mode"; value: EditorModeValue }
+  | { kind: "mode"; value: EditorModeValue; subject?: string }
   | { kind: "all"; checks: readonly Check[] };
 
 /** Done for you ("Skip step"), through the editor API: one undo step each, as if the learner did it. */
 export type Demo =
   | { kind: "add"; subject: string; stencil: string; after?: string }
-  | { kind: "connect"; from: string; to: string }
+  | { kind: "connect"; from: string; to: string; sourceSide?: Side; targetSide?: Side }
+  | { kind: "reconnect"; edge: readonly [string, string]; to: string }
+  | { kind: "insert"; edge: readonly [string, string]; subject: string; stencil: string }
+  | { kind: "field"; subject: string; field: "sublabel" | "description"; value: Words }
+  | { kind: "name"; subject: string }
   | { kind: "rename"; subject: string; label: Words }
   | ({ kind: "prop"; props: Record<string, unknown> } & PropertyTarget)
   | { kind: "relation"; from: string; to: string; relation: EdgeRelation; edgeKind?: "sync" | "async" }
@@ -79,10 +86,14 @@ export type Demo =
 /** One action of the solution path, by test id only. The generated e2e plays these through the real UI. */
 export type UiStep =
   | { click: string }
+  | { rightclick: string }
+  | { select: string; value: string }
+  | { pane: "dblclick" }
   | { dblclick: string }
   | { hover: string }
   | { fill: string; text: string | Words }
   | { press: string }
+  | { type: Words }
   | { drag: string; to: string };
 
 /** Where to point: the first visible match wins, so a step can say "the +, else the node". */

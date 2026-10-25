@@ -15,6 +15,8 @@ export interface SandboxView {
   live: boolean;
   processed(nodeId: string): number;
   session?: LiveState;
+  /** False between an editor topology change and Live's rebuilt run. Other session state remains observable. */
+  trafficReady?: boolean;
   mode?: EditorModeState;
   slowmo?: Pick<SlowState, "status">;
 }
@@ -31,6 +33,7 @@ export function resolveSubjects(
   const subjects: Record<string, string | undefined> = {};
   const used = new Set<string>();
   for (const [name, spec] of Object.entries(tutorial.subjects)) {
+    if (spec.edge) continue;
     if (spec.boundary) {
       const group = diagram.groups?.find((g) => g.id === previous[name] && !used.has(g.id));
       if (group) {
@@ -46,6 +49,7 @@ export function resolveSubjects(
     }
   }
   for (const [name, spec] of Object.entries(tutorial.subjects)) {
+    if (spec.edge) continue;
     if (subjects[name]) continue;
     if (spec.boundary) {
       const group = diagram.groups?.find((g) => !used.has(g.id));
@@ -56,6 +60,13 @@ export function resolveSubjects(
     const node = diagram.nodes.find((n) => !used.has(n.id) && fits(spec, n.stencil));
     subjects[name] = node?.id;
     if (node) used.add(node.id);
+  }
+  for (const [name, spec] of Object.entries(tutorial.subjects)) {
+    if (!spec.edge) continue;
+    const edge =
+      diagram.edges.find((e) => e.id === previous[name]) ??
+      diagram.edges.find((e) => e.from === subjects[spec.edge![0]] && e.to === subjects[spec.edge![1]]);
+    subjects[name] = edge?.id;
   }
   return subjects;
 }
@@ -118,8 +129,12 @@ export function holds(check: Check, view: SandboxView, subjects: Record<string, 
       : typeof actual === "number" && typeof value === "number" && (op === ">=" ? actual >= value : actual <= value));
   switch (check.kind) {
     case "prop": {
-      const props = check.edge ? edge(check.edge)?.props : node(check.subject)?.props;
-      return compare(props?.[check.prop], check.op, check.value);
+      const target = check.edge ? edge(check.edge) : node(check.subject);
+      const actual =
+        check.edge && (check.prop === "sourceSide" || check.prop === "targetSide")
+          ? edge(check.edge)?.[check.prop]
+          : target?.props?.[check.prop];
+      return compare(actual, check.op, check.value);
     }
     case "relation": {
       const from = subjects[check.from],
@@ -133,7 +148,7 @@ export function holds(check: Check, view: SandboxView, subjects: Record<string, 
             e.to === to &&
             (check.relation === undefined || (e.relation ?? "flow") === check.relation) &&
             (check.edgeKind === undefined || e.kind === check.edgeKind),
-        )
+        ) === !check.absent
       );
     }
     case "member": {
@@ -145,7 +160,7 @@ export function holds(check: Check, view: SandboxView, subjects: Record<string, 
     case "annotation":
       return (view.diagram.annotations?.filter((a) => a.kind === check.annotation).length ?? 0) >= (check.count ?? 1);
     case "metric": {
-      if (!view.live || !view.session) return false;
+      if (!view.live || !view.session || view.trafficReady === false) return false;
       const id = subjects[check.subject];
       const metrics = id ? view.session.snapshot.nodes[id] : undefined;
       const actual =
@@ -203,7 +218,14 @@ export function holds(check: Check, view: SandboxView, subjects: Record<string, 
     case "note":
       return view.live && !!view.session?.run && view.session.run.waiting === check.waiting;
     case "mode":
-      return view.mode?.value === check.value;
+      return (
+        view.mode?.value === check.value &&
+        (!check.subject || (!!subjects[check.subject] && view.mode.target === subjects[check.subject]))
+      );
+    case "field": {
+      const actual = node(check.subject)?.[check.field]?.trim();
+      return !!actual && (!check.is || same(actual, check.is()));
+    }
     case "node":
       return !!subjects[check.subject];
     case "edge": {

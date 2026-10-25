@@ -373,6 +373,18 @@ for (const theme of ["light", "dark"]) {
   for (const target of ["node-caller", "edge-call", "group-commerce"]) {
     test(`axe Inspector ${target} in ${theme}`, async ({ page }) => {
       await open(page, target, 1440, theme);
+      // Checks arrive asynchronously: scan the edge only after its findings are in the DOM.
+      if (target === "edge-call") {
+        const findings = page.getByTestId("inspector-findings");
+        await expect(findings.getByTestId(/^inspector-check-row-/).first()).toBeVisible();
+        expect(
+          await findings.evaluate((list) =>
+            [...list.children].every((child) => child.getAttribute("role") === "listitem"),
+          ),
+        ).toBe(true);
+        await expect(findings.getByTestId("inspector-open-checks")).toHaveCount(0);
+        await expect(page.getByTestId("inspector-open-checks")).toBeVisible();
+      }
       if (target !== "group-commerce") {
         await page.getByTestId(`inspector-section-${target === "edge-call" ? "edge" : "node"}-simulation`).click();
         if (target === "edge-call") await page.getByTestId("inspector-section-retry-details").click();

@@ -101,6 +101,49 @@ it("still rejects genuine unowned duplicates", async () => {
   expect(() => registerLazySurface(surface(false).runtime)).toThrow("Duplicate lazy surface: live.calls");
 });
 
+it("bounds retired registrations across many hot replacements without losing active readiness", async () => {
+  const { registerLazySurface, withLazySurfaceOwner, ensureLazySurfacesLoaded } = await import("./lazySurfaces");
+  const data = {};
+  const register = (runtime: SurfaceRuntime) => {
+    const generation = owner(data);
+    withLazySurfaceOwner(generation, () => registerLazySurface(runtime));
+    return generation;
+  };
+  const mounted = surface();
+  let generation = register(mounted.runtime);
+  let previous = mounted;
+  const inactive = [];
+  for (let i = 0; i < 100; i++) {
+    generation.unload();
+    const next = surface();
+    generation = register(next.runtime);
+    if (previous !== mounted) {
+      previous.deactivate();
+      inactive.push(vi.spyOn(previous.runtime, "active"));
+    }
+    previous = next;
+  }
+  generation.unload();
+  const current = surface();
+  register(current.runtime);
+  previous.deactivate();
+  // Another replacement must prune everything already inactive, without an export/retry query.
+  register(surface(false).runtime);
+  inactive.forEach((probe) => probe.mockClear());
+  const output = ensureLazySurfacesLoaded();
+  expect(inactive.every((probe) => probe.mock.calls.length === 0)).toBe(true);
+  expect(mounted.runtime.ensureLoaded).toHaveBeenCalledOnce();
+  expect(current.runtime.ensureLoaded).toHaveBeenCalledOnce();
+  let ready = false;
+  void output?.then(() => (ready = true));
+  mounted.release();
+  await Promise.resolve();
+  expect(ready).toBe(false);
+  current.release();
+  await output;
+  expect(ready).toBe(true);
+});
+
 it("releases a disposed module's registration once its last active consumer unmounts", async () => {
   const { registerLazySurface, withLazySurfaceOwner, ensureLazySurfacesLoaded } = await import("./lazySurfaces");
   const first = owner();
