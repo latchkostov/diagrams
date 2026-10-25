@@ -31,6 +31,9 @@ import { insertOnEdge } from "./catalog/insertOnEdge";
 import { boundaries } from "./catalog/boundaries";
 import { partitions } from "./catalog/partitions";
 import { outbox } from "./catalog/outbox";
+import { threadsBlock } from "./catalog/threadsBlock";
+import { timeoutsPools } from "./catalog/timeoutsPools";
+import { autoscaling } from "./catalog/autoscaling";
 import { webhooks } from "./catalog/webhooks";
 import { retryStorm } from "./catalog/retryStorm";
 import { backoffBudget } from "./catalog/backoffBudget";
@@ -957,6 +960,70 @@ describe("every tutorial's completion contract", () => {
 });
 
 describe("completion regressions", () => {
+  for (const tutorial of [threadsBlock, timeoutsPools])
+    for (const [i, step] of tutorial.steps.entries()) {
+      if (!step.demo.some((d) => d.kind === "patch" && d.edge)) continue;
+      for (const entry of ["Skip", "Continue"] as const)
+        it(`${tutorial.id}: ${entry} past ${step.id} leaves its rerun ready without toggling Live off`, async () => {
+          if (entry === "Continue") saveProgress(tutorial, i + 1, false);
+          const s = sandbox(tutorial);
+          if (entry === "Skip") {
+            await reach(s, tutorial, i);
+            await skip(s, tutorial);
+          } else {
+            s.runner.send({ type: "resume" });
+            await vi.waitFor(
+              () => {
+                if (state(s).value === "reconstructing" && s.live?.getState().playing) {
+                  s.live.advance(250);
+                  s.live.publish();
+                }
+                expect(state(s).value).toBe("active");
+              },
+              { timeout: 2000, interval: 1 },
+            );
+          }
+          expect(s.hostState.canvas.live).toBe(true);
+          expect(state(s).index).toBe(i + 2);
+          expect(tutorial.steps[state(s).index].solution[0]).toHaveProperty("select", "live-sim-picker");
+          const rerun = tutorial.steps[state(s).index].demo[0];
+          expect(rerun.kind).toBe("runSimulation");
+          await s.learn(rerun);
+          expect(s.live!.getState().running?.id).toBe(rerun.kind === "runSimulation" ? rerun.id : "");
+        });
+    }
+
+  it("timeouts-pools: leaving Live for the second edit keeps earlier entry complete and the next entry pending", async () => {
+    const s = sandbox(timeoutsPools);
+    const pool = timeoutsPools.steps.findIndex((step) => step.id === "pool-40");
+    await reach(s, timeoutsPools, pool);
+    s.hostState.live.toggle();
+    expect(state(s)).toMatchObject({ index: pool, value: "active" });
+    await s.learn(timeoutsPools.steps[pool].demo[0]);
+    expect(state(s)).toMatchObject({ index: pool + 1, value: "active" });
+    expect(s.hostState.canvas.live).toBe(false);
+    expect(timeoutsPools.steps[pool + 1].solution).toEqual([{ click: "live-toggle" }]);
+    s.hostState.live.toggle();
+    expect(state(s)).toMatchObject({ index: pool + 2, value: "active" });
+  });
+
+  it("autoscaling cannot latch replicas-grow behind the setting step with its readout closed", async () => {
+    const s = sandbox(autoscaling);
+    await reach(s, autoscaling, 1);
+    for (let t = 0; t < 9000; t += 10) s.live!.advance(10);
+    s.live!.publish();
+    expect(s.live!.getState().snapshot.nodes[s.subject("caller")].replicas).toBeGreaterThan(4);
+    expect(state(s).latched[2]).toBe(false);
+    await s.learn(autoscaling.steps[1].demo[0]);
+    expect(state(s)).toMatchObject({ index: 2, value: "active" });
+    // Changing the scaling policy rebuilds the run. It must still wait for a readout once the fleet grows again.
+    for (let t = 0; t < 9000; t += 10) s.live!.advance(10);
+    s.live!.publish();
+    expect(state(s)).toMatchObject({ index: 2, value: "active" });
+    s.hover({ kind: "node", id: s.subject("caller") });
+    expect(state(s).value).toBe("finished");
+  });
+
   itFor(arrange)("arrange: Skip recovers after selection is cleared", async () => {
     const s = sandbox(arrange);
     await reach(s, arrange, 1);
