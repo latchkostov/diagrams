@@ -727,6 +727,8 @@ for (const kind of ["node", "edge"] as const)
     await expect(page.getByTestId("canvas-wrap")).toBeFocused();
     await page.keyboard.press("ControlOrMeta+z");
     await expect(item).toHaveCount(1);
+    // Undo restores the canvas before Live syncs its snapshot; only then can a node own a readout.
+    if (kind === "node") await expect(page.getByTestId(`node-badge-${id}`)).toBeVisible();
     await item.hover({ force: true });
     await expect(card).toHaveAttribute("data-pinned", "false");
     expectNoErrors(consoleErrors);
