@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { catalog } from "../stencils/catalog";
 import { flatten, MAX_RESULTS, parseQuery, rank, recencyBoost, type Command } from "./rank";
 import { stencilScore } from "./sources";
@@ -7,6 +7,17 @@ import { ActionRegistry } from "../editor/actions";
 import { annotateMenu, builtinActions } from "../editor/builtinActions";
 import type { EditorApi } from "../editor/types";
 import { collectCommands } from "./sources";
+
+beforeEach(() => {
+  vi.spyOn(console, "error");
+});
+afterEach(() => {
+  try {
+    expect(console.error).not.toHaveBeenCalled();
+  } finally {
+    vi.restoreAllMocks();
+  }
+});
 
 const action = (id: string, label: string, extra: Partial<Command> = {}): Command => ({
   id: `action:${id}`,
@@ -34,7 +45,10 @@ describe("palette ranking", () => {
       getDiagram: () => ({ nodes: [], edges: [] }),
       getAnnotation: () => ({ kind: "shape", shape: "tri" }),
       getNode: () => undefined,
-      prefs: {},
+      hasClipboard: () => false,
+      canUndo: () => false,
+      canRedo: () => false,
+      prefs: { snap: true, grid: true, minimap: false, inspector: true },
     } as unknown as EditorApi;
     const commands = collectCommands({
       registry,
