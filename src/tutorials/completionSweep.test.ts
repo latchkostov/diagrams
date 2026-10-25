@@ -21,6 +21,7 @@ import type { LiveUi } from "../live/context";
 import type { SlowState } from "../live/slowmo/session";
 import { withSavedSimulation } from "./simulations";
 import { actionRegistry, type MenuNode } from "../editor/actions";
+import { inferKind } from "../stencils/edgeKind";
 import type { AnnotationKind, DiagramEdge, DiagramFile, DiagramNode, Expectation, Side } from "../model/types";
 import type { paletteHost } from "../palette/host";
 import { allTutorials as tutorials } from "./catalog";
@@ -339,8 +340,7 @@ function sandbox(tutorial: Tutorial, { lateAdds = false, lazyLive = false } = {}
     id: `edge-${++made}`,
     from,
     to,
-    // As the editor infers it: a connection into a topic starts as a Message.
-    kind: diagram.nodes.find((n) => n.id === to)?.stencil.startsWith("kafka.") ? "async" : "sync",
+    kind: inferKind(diagram.nodes.find((n) => n.id === from)?.stencil, diagram.nodes.find((n) => n.id === to)?.stencil),
   });
   const patchEdge = (id: string, patch: Partial<DiagramEdge>) =>
     write({ ...diagram, edges: diagram.edges.map((e) => (e.id === id ? { ...e, ...patch } : e)) });
@@ -371,7 +371,11 @@ function sandbox(tutorial: Tutorial, { lateAdds = false, lazyLive = false } = {}
     },
     createConnected({ from, stencil }: { from: string; stencil: string }) {
       const node = newNode(stencil);
-      const edge = newEdge(from, node.id);
+      // Quick-add infers from the new stencil before its node is committed, as the real editor does.
+      const edge = {
+        ...newEdge(from, node.id),
+        kind: inferKind(diagram.nodes.find((n) => n.id === from)?.stencil, stencil),
+      };
       commit(() => ({ ...diagram, nodes: [...diagram.nodes, node], edges: [...diagram.edges, edge] }));
       select([node.id]);
       return { id: node.id, edge: edge.id, merge: "add" };

@@ -31,6 +31,9 @@ import { retryStorm } from "./retryStorm";
 import { backoffBudget } from "./backoffBudget";
 import { circuitBreaker } from "./circuitBreaker";
 import { rateLimit } from "./rateLimit";
+import { studyCheckout } from "./studyCheckout";
+import { studyDispatch } from "./studyDispatch";
+import { studyPayments } from "./studyPayments";
 
 import { quickAdd } from "./quickAdd";
 import { dotsAndSides } from "./dotsAndSides";
@@ -88,6 +91,9 @@ export const allTutorials: readonly Tutorial[] = [
   loadShedding,
   deadLetters,
   healthChecks,
+  studyCheckout,
+  studyDispatch,
+  studyPayments,
 ];
 
 /** Available lessons only: discovery, deep links and progress totals share this catalog. */
