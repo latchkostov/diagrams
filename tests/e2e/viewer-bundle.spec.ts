@@ -1,14 +1,122 @@
 import { openLiveNodeDetails } from "./fixtures";
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
-import { readFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { pathToFileURL } from "node:url";
 import { test, expect, pauseClock, E2E_TARGET, waitForStableViewport, waitForCameraIdle } from "./fixtures";
 import { recordFor } from "./recording-clock";
 import { E2E_PROFILES } from "../../scripts/e2e-profiles.mjs";
 import { textFieldsFixture } from "../../src/lab/textFieldsFixture";
 import type { ViewerAdapter } from "../../src/export/viewer/adapter";
 import latencyDiagram from "../../src/examples/where-the-time-goes.json" with { type: "json" };
+import { autoscalingFixture } from "../../src/lab/autoscalingFixture";
+import { hpaLesson } from "../../src/model/autoscalingLessons";
+import { exportHtml } from "../../src/export/inject";
+
+// Keep this independent of editor controls: the built viewers must retain the playback runtime
+// even when their routing/autoscaling authoring modules are swapped out.
+for (const viewer of ["bundle", "skill", "Interactive HTML"] as const) {
+  test(`${viewer}: busy-thread autoscaling, readouts and a recorded replay`, async ({ page }) => {
+    const diagram = autoscalingFixture();
+    diagram.planning = { revision: "p3-w1" };
+    const policy = hpaLesson();
+    Object.assign(policy.controller.settings, {
+      syncMs: 1000,
+      initialReadinessDelayMs: 0,
+      cpuInitializationPeriodMs: 0,
+      metrics: [
+        {
+          source: { kind: "pods", metric: "busyThreads" },
+          target: { kind: "averageValue", value: 1 },
+          windowMs: 1000,
+          metricDelayMs: 0,
+        },
+      ],
+    });
+    const props = diagram.nodes[1].props;
+    if (!props?.resources) throw new Error("The autoscaling fixture must include compute resources");
+    props.autoscaling = policy;
+    props.resources.startup.delayMs = 1000;
+    diagram.simulations = [
+      {
+        id: "busy",
+        title: "Busy threads",
+        durationMs: 8000,
+        traffic: [{ id: "load", node: "source", shape: { kind: "constant", ratePerSec: 80, durationMs: 8000 } }],
+      },
+    ];
+    const errors: string[] = [];
+    page.on("pageerror", (error) => errors.push(error.message));
+    await page.clock.install();
+    if (viewer === "bundle") {
+      await openViewer(page);
+      await page.evaluate((d) => window.liveDiagramsViewer.load(d), diagram);
+    } else {
+      const template =
+        viewer === "skill"
+          ? readFileSync("skills/livediagrams/scripts/lib/viewer-template.html", "utf8")
+          : readFileSync(join(E2E_PROFILES.e2e.outDir, "skill/scripts/lib/viewer-template.html"), "utf8");
+      const file = test.info().outputPath("autoscaling.html");
+      writeFileSync(
+        file,
+        exportHtml(template, {
+          diagram,
+          iconSvgs: Object.fromEntries(
+            ["client-browser", "dotnet"].map((name) => [name, readFileSync(`src/stencils/icons/${name}.svg`, "utf8")]),
+          ),
+          theme: "light",
+          startSimulation: null,
+        }),
+      );
+      await page.goto(pathToFileURL(file).href);
+    }
+    await expect(page.getByTestId("node-worker")).toBeVisible();
+    await waitForCameraIdle(page);
+    await waitForStableViewport(page);
+    await page.getByTestId("live-toggle").click();
+    await expect(page.getByTestId("live-controls")).toBeVisible();
+    await pauseClock(page);
+    await page.getByTestId("live-sim-picker").selectOption("busy");
+    await page.getByTestId("live-speed").selectOption("1");
+    const badge = page.getByTestId("node-badge-worker");
+    await expect(badge).toHaveAttribute("data-ready", "1");
+    await page.clock.runFor(1500);
+    await expect.poll(async () => Number(await badge.getAttribute("data-desired"))).toBeGreaterThan(1);
+    await expect.poll(async () => Number(await badge.getAttribute("data-starting"))).toBeGreaterThan(0);
+    await page.clock.runFor(1500);
+    await expect.poll(async () => Number(await badge.getAttribute("data-ready"))).toBeGreaterThan(1);
+    await openLiveNodeDetails(page, "worker", "resources");
+    const details = page.getByTestId("node-detail-worker");
+    const ready = Number(await badge.getAttribute("data-ready"));
+    const desired = Number(await badge.getAttribute("data-desired"));
+    const starting = Number(await badge.getAttribute("data-starting"));
+    // A subsequent controller tick can already have requested another replica. The
+    // badge then reports Starting instead of Desired; both must match the fleet.
+    const fleetText = starting ? `Ready: ${ready} · Starting: ${starting}` : `Ready: ${ready} → Desired: ${desired}`;
+    await expect(page.getByTestId("node-fleet-worker")).toHaveText(new RegExp(`^${fleetText}( · Max reached)?$`));
+    await expect(page.getByTestId("hover-section-resources")).toContainText(`${ready} ready → ${desired} desired`);
+    await expect(details).toContainText(/CPU: [1-9]\d*%/);
+    await expect(details).toContainText(/Memory: [1-9]\d* MiB/);
+    await page.getByTestId("node-worker").evaluate((el) => el.parentElement?.blur());
+    await page.getByTestId("live-more").click();
+    await page.getByTestId("live-record").click();
+    await expect(page.getByTestId("record-opt-from-start")).toBeChecked();
+    await recordFor(page, 0);
+    await expect(badge).toHaveAttribute("data-ready", "1");
+    await page.clock.runFor(3000);
+    await expect.poll(async () => Number(await badge.getAttribute("data-ready"))).toBeGreaterThan(1);
+    await page.clock.runFor(6000);
+    await expect(page.getByTestId("live-canvas")).toHaveAttribute("data-sim-time", "8000");
+    // The recorder holds the completed simulation's last frame before finalizing.
+    await page.clock.runFor(1500);
+    const preview = page.getByTestId("record-preview");
+    await expect(preview).toBeVisible();
+    await expect(preview).toHaveAttribute("src", /^blob:/);
+    await expect.poll(() => preview.evaluate((video: HTMLVideoElement) => video.readyState)).toBeGreaterThanOrEqual(1);
+    expect(errors).toEqual([]);
+  });
+}
 
 test.skip(E2E_TARGET !== "build", "the static viewer artifact is generated by the production build only");
 
