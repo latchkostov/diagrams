@@ -128,12 +128,18 @@ export function editMessageProps(
   // Removing an explicit-ID owner or collision sibling can change an untouched row's derived ID.
   // Materialize only the surviving identities that would otherwise change.
   const derived = messageRules(emits);
-  const owner = (rule: MessageRule) => rule.id ?? `rule-${hash(rule.receives)}`;
-  const changedOwners = new Set(emits.filter((_, i) => derived[i].id !== ids[i]).map(owner));
+  const base = (rule: MessageRule) => `rule-${hash(rule.receives)}`;
+  const owner = (rule: MessageRule) => rule.id ?? base(rule);
+  const changed = emits.filter((_, i) => derived[i].id !== ids[i]);
+  const changedOwners = new Set(changed.map(owner));
+  // A duplicate-ID row also occupies a fallback slot. Materializing it can free that slot for an
+  // ID-less sibling, even when the sibling initially derived its intended identity correctly.
+  const changedBases = new Set(changed.map(base));
   return {
     ...props,
     emits: emits.map((rule, i) =>
-      derived[i].id !== ids[i] || (changedOwners.has(owner(rule)) && rule.id !== ids[i])
+      derived[i].id !== ids[i] ||
+      ((changedOwners.has(owner(rule)) || changedBases.has(base(rule))) && rule.id !== ids[i])
         ? { ...rule, id: ids[i] }
         : rule,
     ),

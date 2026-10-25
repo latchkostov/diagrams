@@ -214,6 +214,24 @@ describe("message rule identity", () => {
     expect((edited.emits as MessageRule[])[1]).toBe(previous.emits[2]);
   });
 
+  it("preserves fallback identities after materializing a reordered duplicate-ID row (R-e4bfd3e926)", () => {
+    const previous = {
+      emits: [
+        { id: "x", receives: "Z", sends: "Z" },
+        { receives: "A", sends: "drop" },
+        { receives: "A", sends: "keep" },
+        { id: "x", receives: "A", sends: "move" },
+      ],
+    };
+    const rows = messageRules(previous.emits);
+    const survivors = [rows[0], rows[3], rows[2]];
+    const edited = editMessageProps({ emits: survivors }, previous);
+    expect(messageRules(edited.emits)).toEqual(survivors);
+    expect(messageRules(JSON.parse(JSON.stringify(edited.emits)))).toEqual(survivors);
+    expect((edited.emits as MessageRule[])[0]).toBe(previous.emits[0]);
+    expect(editMessageProps({ emits: [...survivors] }, edited).emits).toBe(edited.emits);
+  });
+
   it("keeps the engine's sanitized rule lookup independent of authored props", () => {
     const diagram = messageTypesFixture();
     const emits = { Send: "Original", invalid: 7 };

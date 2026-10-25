@@ -15,6 +15,30 @@ import type { DiagramFile } from "../../src/model/types";
 // Live uses the same property sheet as editing, without inline name editors.
 const KAFKA = "kafka-order-pipeline";
 
+test("Enter before a new node is measured releases the next quick-add shortcut", async ({ page, consoleErrors }) => {
+  await page.clock.install();
+  await gotoCanvas(page, KAFKA);
+  await waitForStableViewport(page);
+  await page.getByTestId("node-order-events").click();
+  await page.keyboard.press("Alt+ArrowRight");
+  const search = page.getByTestId("quick-add-search");
+  await search.fill("Load Balancer");
+  // Hold the measurement/reveal frames so Enter finishes the buffered name before its field mounts,
+  // exactly the ordering that lost Alt+Right in the cells study's CI trace.
+  await pauseClock(page);
+  await page.keyboard.press("Enter");
+  await page.keyboard.press("Enter");
+  await page.keyboard.press("Alt+ArrowRight");
+  await page.clock.runFor(100);
+  await expect(search).toBeVisible();
+  await search.fill("Go Service");
+  await page.keyboard.press("Enter");
+  await page.keyboard.press("Enter");
+  await page.clock.runFor(100);
+  await expect(page.getByTestId("node-go-1")).toHaveCount(1);
+  expectNoErrors(consoleErrors);
+});
+
 test("live: nodes, boundaries and connections open their property sheet", async ({ page, consoleErrors }) => {
   await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1&speed=4`);
   await expect(page.getByTestId("inspector")).toHaveAttribute("data-collapsed", "1");

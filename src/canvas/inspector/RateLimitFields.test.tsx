@@ -6,6 +6,7 @@ import { resolveProps } from "../../sim/defaults";
 import { localRateQuota } from "../../model/admissionPresets";
 import { checkApi } from "../../model/admissionSchema";
 import type { ApiBehaviour } from "../../model/admission";
+import { BulkAdmissionFields } from "../../planning/AdmissionFields";
 
 it("the lazy inline limiter field names its units and represents an unknown quota", () => {
   const html = renderToStaticMarkup(<RateLimitFields props={{}} set={() => {}} />);
@@ -72,6 +73,32 @@ const rateBinding = (api: ApiBehaviour) => {
     resolveProps("processor", "", props, "generic.rate-limiter", { revision: "p3" }),
   )[0];
 };
+
+it.each([false, true])(
+  "bulk rate disables when any selected API lacks quota capacity (full first: %s)",
+  (fullFirst) => {
+    const quotas = Array.from({ length: 32 }, (_, i) => ({ ...localRateQuota(100), id: `other-${i}` }));
+    const full = { id: "full", stencil: "generic.rate-limiter", props: { api: { quotas } } };
+    const available = { id: "available", stencil: "generic.rate-limiter", props: { api: { quotas: quotas.slice(1) } } };
+    const render = (nodes: (typeof full)[]) =>
+      renderToStaticMarkup(<BulkAdmissionFields nodes={nodes} set={() => {}} />);
+    const html = render(fullFirst ? [full, available] : [available, full]);
+    const input = html.match(/<input[^>]*data-testid="admission-rate"[^>]*>/)?.[0];
+    expect(input).toContain('disabled=""');
+    const hintId = input?.match(/aria-describedby="([^"]+)"/)?.[1];
+    expect(hintId).toBeTruthy();
+    expect(html).toContain(
+      `<p id="${hintId}" class="insp-note">This API already has 32 quotas. Remove a quota before adding a local rate limit.</p>`,
+    );
+    // A full API can still edit or clear its existing rate, whichever node leads the selection.
+    const withRate = { ...full, props: { api: { quotas: [localRateQuota(10), ...quotas.slice(1)] } } };
+    const editable = render(fullFirst ? [withRate, available] : [available, withRate]);
+    expect(editable.match(/<input[^>]*data-testid="admission-rate"[^>]*>/)?.[0]).not.toContain('disabled=""');
+    expect(editable).not.toContain("Remove a quota before adding a local rate limit.");
+    expect(rateBinding(withRate.props.api).patch(20).api?.quotas).toHaveLength(32);
+    expect(rateBinding(withRate.props.api).patch(undefined).api?.quotas).toEqual(quotas.slice(1));
+  },
+);
 
 it("keeps editing the same first local quota through renders, preserving its unrelated sibling", () => {
   let api: ApiBehaviour = { quotas: [localRateQuota(10), { ...localRateQuota(50), id: "local-rate-2" }] };

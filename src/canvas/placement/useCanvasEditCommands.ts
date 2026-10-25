@@ -60,7 +60,12 @@ export function useCanvasNaming(
     (make: () => NewNode | null, fallback: string) => {
       // Hold what's typed from now until the label editor can take it.
       let annotation = false;
-      const typing = captureTypeAhead(() => annotation);
+      // Enter/Esc ends naming even before measurement. Keep the buffered result for the reveal callback,
+      // but release keyboard ownership now so the next canvas shortcut can act on the new selection.
+      const typing = captureTypeAhead(
+        () => annotation,
+        () => void typing.stop(),
+      );
       controller.placing();
       const made = make();
       if (!made) return void typing.stop();
