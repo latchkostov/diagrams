@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { isEditableTarget } from "../../editor/shortcuts";
 import { inCanvas } from "../../editor/useCanvasShortcuts";
-import type { InteractionController, LiveKey } from "../../canvas/interaction";
+import type { InteractionController, LiveKey, ReadoutLayer } from "../../canvas/interaction";
 import { isRecordingActive } from "../record/framing";
 
 import type { SessionProps } from "../LiveSession";
@@ -26,6 +26,9 @@ const ownTooltipOpen = (t: Element) =>
 const POINTED = ".react-flow__node-diagram, .react-flow__edge, [data-call-edge], [data-live-readout]";
 /** A selection is cleared before Esc backs out of a trace or live view. */
 const SELECTED = ".react-flow__node.selected, .react-flow__edge.selected";
+/** Basic keyboard adapters need only state and actions; the full layer also checks placement and eligibility. */
+type KeyboardReadouts = Pick<ReadoutLayer, "get" | "pin" | "close"> &
+  Partial<Pick<ReadoutLayer, "visible" | "readable">>;
 
 export function useLiveKeyboard({
   session,
@@ -39,7 +42,7 @@ export function useLiveKeyboard({
   session: LiveSessionState;
   spotlight: TraceSpotlight;
   /** The canvas's interaction controller: it decides which level takes the key (liveKeys.ts) and journals it. */
-  interaction: Pick<InteractionController, "liveKey" | "readouts">;
+  interaction: Pick<InteractionController, "liveKey"> & { readonly readouts: KeyboardReadouts | null };
 }) {
   const { controller, traceRef, setTrace } = session;
   const { slowRef } = spotlight;
@@ -71,6 +74,7 @@ export function useLiveKeyboard({
       const t = e.target;
       const readouts = interaction.readouts;
       const reading = readouts?.get();
+      const visible = !!reading && readouts?.visible?.(reading) !== false;
       const item =
         t instanceof Element
           ? t.closest<HTMLElement>(".react-flow__node-diagram[data-id], .react-flow__edge[data-id]")
@@ -79,13 +83,17 @@ export function useLiveKeyboard({
       const card = t instanceof Element ? t.closest<HTMLElement>("[data-live-readout]") : null;
       const summary =
         key === "enter" && !!card && t === card && !!card.dataset.liveReadout && card.dataset.pinned !== "true";
+      const itemTarget = item && {
+        kind: item.classList.contains("react-flow__edge") ? ("edge" as const) : ("node" as const),
+        id: item.dataset.id!,
+      };
       // Enter pins the summary the pointer opened since the last key, rather than pressing a control on unrelated
       // chrome (the Live button). Controls inside a card or a canvas item, text fields, editors, menus and dialogs keep
       // their Enter (liveKeys R3).
       const hovered =
         key === "enter" &&
         pointerLast &&
-        !!reading &&
+        visible &&
         !reading.pinned &&
         t instanceof Element &&
         !t.closest("[data-live-readout], .react-flow__node, .react-flow__edge");
@@ -111,7 +119,12 @@ export function useLiveKeyboard({
         readout: !!reading,
         hovered,
         readoutTarget:
-          summary || hovered || (!!item && t === item && !(canName && item.classList.contains("selected"))),
+          summary ||
+          hovered ||
+          (!!itemTarget &&
+            t === item &&
+            readouts?.readable?.(itemTarget) !== false &&
+            !(canName && item!.classList.contains("selected"))),
         owner: !!document.querySelector(ESC_OWNERS) || (key === "escape" && t instanceof Element && ownTooltipOpen(t)),
         selection,
         // The canvas clears its selection when it has focus; otherwise live view clears it (no dead end).
@@ -137,7 +150,7 @@ export function useLiveKeyboard({
               ? { kind: reading!.kind, id: reading!.id }
               : summary
                 ? { kind: card!.dataset.liveReadout === "edge" ? "edge" : "node", id: card!.dataset.item! }
-                : { kind: item!.classList.contains("react-flow__edge") ? "edge" : "node", id: item!.dataset.id! },
+                : itemTarget!,
           );
           return;
         case "selection":
