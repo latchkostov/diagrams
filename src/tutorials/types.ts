@@ -112,7 +112,8 @@ export type Check =
       value: number | string | boolean;
       edge?: readonly [string, string];
     }
-  | { kind: "simulation"; id: string; atLeastMs?: number }
+  /** traffic: Continuous traffic is on (true) or off (false) in that run, as Live's control shows it. */
+  | { kind: "simulation"; id: string; atLeastMs?: number; traffic?: boolean }
   /** A saved expectation id is stable across languages; Words also matches a chip's displayed label. */
   | { kind: "expectation"; simulation: string; label: string | Words }
   | ({ kind: "fault"; fault?: FaultKind } & PropertyTarget)
@@ -144,6 +145,10 @@ export type Demo =
   | { kind: "group"; subjects: readonly string[]; boundary: string }
   | { kind: "annotate"; annotation: AnnotationKind }
   | { kind: "runSimulation"; id: string }
+  /** Continuous traffic on or off, through Live's own control (the registry's "sim.traffic"). */
+  | { kind: "traffic"; on: boolean }
+  /** Follow the next message, through Live's own "Trace a message › Next message". */
+  | { kind: "trace" }
   | ({ kind: "fault"; fault: FaultKind; restore?: boolean } & PropertyTarget)
   | { kind: "select"; subjects: readonly string[] }
   | { kind: "member"; subject: string; boundary: string }
@@ -157,7 +162,11 @@ export type Demo =
   | { kind: "present"; on: boolean }
   | { kind: "live" };
 
-/** One action of the solution path, by test id only. The generated e2e plays these through the real UI. */
+/**
+ * One action of the solution path, by test id only. The generated e2e plays these through the real UI. A test id can
+ * name a subject (`node-{api}`) or the connection between two (`edge-label-{api->config}`): the first edge from one
+ * to the other, whatever its saved id.
+ */
 export type UiStep =
   | { click: string }
   | { modClick: string; modifiers: readonly ("Shift" | "Control" | "Meta" | "Alt")[] }
@@ -170,6 +179,8 @@ export type UiStep =
   | { fill: string; text: string | Words }
   | { press: string }
   | { type: Words }
+  /** Type at the caret of this field, which already has focus (after a click and keys there): appended, not replaced. */
+  | { type: string; text: string | Words }
   | { drag: string; to: string };
 
 /** Where to point: the first visible match wins, so a step can say "the +, else the node". */

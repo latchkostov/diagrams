@@ -5,6 +5,7 @@ import { paletteHost } from "../palette/host";
 import type { EditorApi } from "../editor/types";
 import {
   baselineKey,
+  edgeTargets,
   holds,
   metricValue,
   nearMiss,
@@ -50,6 +51,21 @@ export interface RunnerSnapshot {
   announcement: string;
   /** The current step's expectText near miss, once the learner has finished naming: what's expected, what they typed. */
   nearMiss: { expected: string; typed: string } | null;
+  /** The connection between two subjects, by "from->to" (checks.ts, edgeTargets): what an edge test id names. */
+  edges: Readonly<Record<string, string>>;
+}
+
+/**
+ * A Live action's row as the palette builds it, with the same availability guards: undefined until Live's lazy session
+ * has registered it, or while it's disabled. A demo pressing it retries on the next registry or session change.
+ */
+function liveRow(id: string, items: readonly MenuNode[]): (() => void) | undefined {
+  for (const item of items) {
+    if (item.type !== "item" || item.disabled) continue;
+    if (item.id === id) return item.run;
+    const nested = item.children && liveRow(id, item.children);
+    if (nested) return nested;
+  }
 }
 
 type Host = Pick<typeof paletteHost, "get" | "subscribe"> &
@@ -97,7 +113,7 @@ export function createTutorialRunner(
     }),
   });
   let state: RunnerState = machine.state;
-  let snapshot: RunnerSnapshot = { state, subjects: {}, selected: [], announcement: "", nearMiss: null };
+  let snapshot: RunnerSnapshot = { state, subjects: {}, selected: [], announcement: "", nearMiss: null, edges: {} };
   const listeners = new Set<() => void>();
   const publish = (patch: Partial<RunnerSnapshot>) => {
     snapshot = { ...snapshot, ...patch };
@@ -216,8 +232,13 @@ export function createTutorialRunner(
     // The editor's mode (src/canvas/interaction/mode.ts): the selection, and whether the learner is mid-naming.
     const mode = canvasInteraction.get()?.mode;
     const selected = mode?.selection ?? [];
-    if (JSON.stringify(subjects) !== JSON.stringify(snapshot.subjects) || selected.join() !== snapshot.selected.join())
-      publish({ subjects, selected });
+    const edges = edgeTargets(v.diagram, subjects);
+    if (
+      JSON.stringify(subjects) !== JSON.stringify(snapshot.subjects) ||
+      selected.join() !== snapshot.selected.join() ||
+      JSON.stringify(edges) !== JSON.stringify(snapshot.edges)
+    )
+      publish({ subjects, selected, edges });
     capture(v);
     const current = inStep(state) ? state.index : -1;
     const met = tutorial.steps.map((s, i) =>
@@ -401,15 +422,6 @@ export function createTutorialRunner(
                 : demo.fault === "slow"
                   ? "sim.slow:5"
                   : "sim.failure:0.5";
-        // The palette builds these same registry rows, with the same Live availability guards.
-        const find = (items: MenuNode[]): (() => void) | undefined => {
-          for (const item of items) {
-            if (item.type !== "item" || item.disabled) continue;
-            if (item.id === action) return item.run;
-            const nested = item.children && find(item.children);
-            if (nested) return nested;
-          }
-        };
         const current = view();
         const active = holds(
           { kind: "fault", ...(demo.edge ? { edge: demo.edge } : { subject: demo.subject }), fault: demo.fault },
@@ -417,13 +429,34 @@ export function createTutorialRunner(
           subjects,
         );
         if (active === !demo.restore) return true;
-        const apply = find(
+        const apply = liveRow(
+          action,
           actionRegistry.build({
             editor: ed,
             mode: "live",
             surface: "palette",
             target,
             ...(demo.edge ? { edgeId: id } : group ? { groupId: id } : { nodeId: id }),
+            selection: ed.getSelection(),
+          }),
+        );
+        if (!apply) return false;
+        apply();
+        return true;
+      }
+      case "traffic":
+      case "trace": {
+        const session = h.session?.state?.();
+        if (!h.canvas?.live || !session) return false;
+        // Already so (the learner's own toggle, or a trace under way): nothing to press.
+        if (demo.kind === "traffic" ? session.traffic === demo.on : !!session.trace) return true;
+        const apply = liveRow(
+          demo.kind === "traffic" ? "sim.traffic" : "sim.trace-message:next",
+          actionRegistry.build({
+            editor: ed,
+            mode: "live",
+            surface: "palette",
+            target: "canvas",
             selection: ed.getSelection(),
           }),
         );
@@ -508,9 +541,16 @@ export function createTutorialRunner(
             d.kind === "add" || d.kind === "insert" ? d.subject : d.kind === "group" ? d.boundary : undefined;
           const bound = made && demoBindings.get(made);
           // Live publishes before its lazy session registers actions. Retry on session/registry changes.
-          if (d.kind === "fault") {
+          if (d.kind === "fault" || d.kind === "traffic" || d.kind === "trace") {
             if (!(await until(() => perform(d) !== false, run))) return;
           } else perform(d);
+          // A queued launch can publish free play before its saved run: the step's next control (traffic, a trace)
+          // waits for that run, so it's pressed in the run the check reads.
+          if (
+            d.kind === "runSimulation" &&
+            !(await until(() => !!editor() && holds({ kind: "simulation", id: d.id }, view(), subjects), run))
+          )
+            return;
           // The editor commits a node it made after its call returns: the step's next edit (name it, connect it)
           // waits until the document reports it, rather than finding no subject and doing nothing.
           const id = made && demoBindings.get(made);

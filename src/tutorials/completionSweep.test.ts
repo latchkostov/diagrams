@@ -12,6 +12,8 @@ import {
 import { GROUP_PREFIX } from "../canvas/types";
 import type { EditorApi } from "../editor/types";
 import { LiveController } from "../live/controller";
+import { liveActions } from "../live/liveActions";
+import { actionRegistry } from "../editor/actions";
 import type { AnnotationKind, DiagramEdge, DiagramFile, DiagramNode, Side } from "../model/types";
 import type { paletteHost } from "../palette/host";
 import { allTutorials as tutorials } from "./catalog";
@@ -30,7 +32,13 @@ import { savedProgress, saveProgress } from "./progress";
 import { createTutorialRunner } from "./runner";
 import type { Check, Demo, Tutorial } from "./types";
 import { patchProps } from "./paths";
-import { addNameFixture, metricsFixture, pathsFixture, tutorialFixtures } from "../test/tutorialFixtures";
+import {
+  addNameFixture,
+  liveControlsFixture,
+  metricsFixture,
+  pathsFixture,
+  tutorialFixtures,
+} from "../test/tutorialFixtures";
 
 /**
  * The runner's completion contract, swept over every step of every tutorial in the catalog (src/tutorials/catalog):
@@ -79,8 +87,12 @@ const startOf = (tutorial: Tutorial): DiagramFile =>
       : (JSON.parse(readFileSync(join("src/examples", `${tutorial.start.example}.json`), "utf8")) as DiagramFile),
   );
 
-/** lateAdds: a new node lands in the document after the editor call that made it returns, as the editor's commits do. */
-function sandbox(tutorial: Tutorial, { lateAdds = false } = {}) {
+/**
+ * lateAdds: a new node lands in the document after the editor call that made it returns, as the editor's commits do.
+ * lazyLive: going live shows free play first; Live's actions arrive a task later, as the lazy session's chunk mounts
+ * them, and a queued saved run a task after that (the session's own effect activates it).
+ */
+function sandbox(tutorial: Tutorial, { lateAdds = false, lazyLive = false } = {}) {
   let diagram = startOf(tutorial);
   let version = 0;
   let mode: EditorModeState = { ...initialEditorMode, annotating: null };
@@ -107,18 +119,67 @@ function sandbox(tutorial: Tutorial, { lateAdds = false } = {}) {
   const commit = (make: () => DiagramFile) => (lateAdds ? queueMicrotask(() => write(make())) : write(make()));
   let controller: LiveController | undefined;
   let offController: (() => void) | undefined;
+  let offActions: (() => void) | undefined;
+  /** Live's own actions over this run, as its session registers them: Skip's controls press these rows. */
+  const actionsOf = (c: LiveController) =>
+    liveActions({
+      controller: c,
+      slowMotionActive: () => false,
+      openInject: () => {},
+      startStorm: () => {},
+      showEvents: () => {},
+      trace: () => {},
+      tracing: () => null,
+      traceNext: (nodeId) => c.traceNext(nodeId),
+      traceSlowest: () => {},
+      traceDeadLettered: () => {},
+      slowMotion: () => {},
+      slowMotionTrace: () => {},
+      canReplayTrace: () => false,
+      endTrace: () => c.endTrace(),
+      tracingMessage: () => c.getState().trace !== null,
+      saveTweaks: () => {},
+      messageType: () => "",
+      openRecord: () => {},
+    });
   const goLive = (simulation?: string) => {
     hostState.canvas.live = true;
+    const mounting = !controller;
     if (!controller) {
       controller = new LiveController(diagram);
       offController = controller.subscribe(() => sessions.forEach((f) => f()));
     }
-    if (simulation) controller.selectSimulation(diagram.simulations?.find((sim) => sim.id === simulation) ?? null);
-    notify();
-    sessions.forEach((f) => f());
+    const c = controller;
+    const publishLive = () => {
+      notify();
+      sessions.forEach((f) => f());
+    };
+    const mount = () => {
+      if (controller === c && mounting) offActions = actionRegistry.register(actionsOf(c));
+    };
+    const run = () => {
+      if (controller === c && simulation)
+        c.selectSimulation(diagram.simulations?.find((sim) => sim.id === simulation) ?? null);
+    };
+    if (!lazyLive) {
+      mount();
+      run();
+      return publishLive();
+    }
+    publishLive();
+    setTimeout(() => {
+      mount();
+      publishLive();
+      setTimeout(() => {
+        run();
+        publishLive();
+      }, 0);
+    }, 0);
   };
   const leaveLive = () => {
     hostState.canvas.live = false;
+    offActions?.();
+    offActions = undefined;
     offController?.();
     controller?.dispose();
     controller = undefined;
@@ -420,6 +481,10 @@ function sandbox(tutorial: Tutorial, { lateAdds = false } = {}) {
           return runner.appChanged({ ...app });
         case "live":
           return goLive();
+        case "traffic":
+          return controller!.setTraffic(demo.on);
+        case "trace":
+          return controller!.traceNext();
         case "fault":
           throw new Error("No catalog lesson injects faults yet: model the fault here before adding one.");
       }
@@ -764,6 +829,52 @@ describe("completion regressions", () => {
     s.runner.send({ type: "resume" });
     await vi.waitFor(() => expect(state(s)).toMatchObject({ index: 2, value: "active" }), { interval: 1 });
     expect(savedProgress(sharePresent)).toMatchObject({ step: 2 });
+  });
+
+  it("Skip presses Live's trace once its lazy session has registered the action", async () => {
+    const s = sandbox(liveControlsFixture, { lazyLive: true });
+    s.runner.send({ type: "start" });
+    const traceNext = vi.spyOn(LiveController.prototype, "traceNext");
+    await skip(s, liveControlsFixture);
+    expect(traceNext).toHaveBeenCalledOnce();
+    expect(state(s)).toMatchObject({ index: 1, value: "active" });
+  });
+
+  it("Skip turns Continuous traffic on in the queued saved run, never in the free play before it", async () => {
+    const s = sandbox(liveControlsFixture, { lazyLive: true });
+    await reach(s, liveControlsFixture, 1);
+    // Which run each press lands in, as it's pressed.
+    const pressedIn: (string | undefined)[] = [];
+    const setTraffic = LiveController.prototype.setTraffic;
+    vi.spyOn(LiveController.prototype, "setTraffic").mockImplementation(function (this: LiveController, on) {
+      pressedIn.push(this.getState().running?.id);
+      setTraffic.call(this, on);
+    });
+    // Leave Live, so Skip's launch is queued behind free play again.
+    s.hostState.live.toggle();
+    await skip(s, liveControlsFixture);
+    expect(pressedIn).toEqual(["flow"]);
+    expect(s.live!.getState()).toMatchObject({ traffic: true, running: { id: "flow" } });
+  });
+
+  it("Skip keeps the learner's own Continuous traffic on, rather than toggling it off", async () => {
+    const s = sandbox(liveControlsFixture);
+    await reach(s, liveControlsFixture, 1);
+    s.live!.setTraffic(true);
+    expect(state(s)).toMatchObject({ index: 1, value: "active" });
+    await skip(s, liveControlsFixture);
+    expect(s.live!.getState()).toMatchObject({ traffic: true, running: { id: "flow" } });
+  });
+
+  it("an edge test id names the connection's id in the sandbox, as it is now", async () => {
+    const s = sandbox(liveControlsFixture);
+    await reach(s, liveControlsFixture, 2);
+    expect(s.runner.getSnapshot().edges["api->config"]).toBe("saved-elsewhere");
+    s.editor.applyDiagram({ ...s.diagram, edges: s.diagram.edges.filter((e) => e.id !== "saved-elsewhere") });
+    expect(s.runner.getSnapshot().edges["api->config"]).toBeUndefined();
+    const id = s.editor.connect(s.subject("api"), s.subject("config"));
+    expect(s.runner.getSnapshot().edges["api->config"]).toBe(id);
+    expect(s.runner.getSnapshot().edges["config->api"]).toBeUndefined();
   });
 
   it("patch demos keep the learner's own settings and write only what's missing, once", async () => {

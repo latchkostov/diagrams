@@ -45,7 +45,7 @@ const stencilIds = new Set(stencils.map((s) => s.id));
  */
 function knownTestId(id: string): boolean {
   if (!id) return true;
-  if (/^\{\w+\}/.test(id)) return knownTestId(id.replace(/^\{\w+\}/, ""));
+  if (/^\{\w+(?:->\w+)?\}/.test(id)) return knownTestId(id.replace(/^\{\w+(?:->\w+)?\}/, ""));
   if (source.includes(`"${id}"`) || source.includes(`'${id}'`) || stencilIds.has(id)) return true;
   for (let i = id.length - 1; i > 0; i--) {
     if (!"-:".includes(id[i - 1])) continue;
@@ -140,8 +140,12 @@ const testIdsOf = (s: UiStep): string[] =>
                     ? [s.fill]
                     : "drag" in s
                       ? [s.drag, s.to]
-                      : [];
-const templates = (testId: string) => [...testId.matchAll(/\{(\w+)\}/g)].map((m) => m[1]);
+                      : "type" in s && "text" in s
+                        ? [s.type]
+                        : [];
+/** The subjects a test id names: `{api}`, or both ends of `{api->config}`. */
+const templates = (testId: string) =>
+  [...testId.matchAll(/\{(\w+)(?:->(\w+))?\}/g)].flatMap((m) => (m[2] ? [m[1], m[2]] : [m[1]]));
 const words = (step: TutorialStep) =>
   [step.title, step.goal, step.hint, step.done, ...(typeof step.settle === "object" ? [step.settle.tip] : [])].filter(
     (w) => !!w,
@@ -312,6 +316,20 @@ describe("tutorial catalog", () => {
                 for (const id of value.every.stencils ?? []) expect(stencilIds, id).toContain(id);
               }
             }
+          }
+          // Live's own controls, pressed by Skip: the step checks what they change, so Skip can finish it.
+          const checks = checksIn(step.check);
+          for (const demo of step.demo) {
+            if (demo.kind === "traffic")
+              expect(
+                checks.some((c) => c.kind === "simulation" && c.traffic === demo.on),
+                `${step.id}: a traffic demo's step checks that traffic`,
+              ).toBe(true);
+            if (demo.kind === "trace")
+              expect(
+                checks.some((c) => c.kind === "trace"),
+                `${step.id}: a trace demo's step checks the trace`,
+              ).toBe(true);
           }
           for (const demo of step.demo) {
             if (demo.kind !== "patch") continue;

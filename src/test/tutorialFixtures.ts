@@ -208,4 +208,94 @@ export const addNameFixture: Tutorial = {
   steps: [addNamed("add-orders", "orders", "Orders"), addNamed("add-users", "users", "Users")],
 };
 
-export const tutorialFixtures: readonly Tutorial[] = [pathsFixture, metricsFixture, addNameFixture];
+/**
+ * Live's own controls and the inspector's typed fields, in the ports' shapes: a trace from the canvas (outbox), a saved
+ * run with Continuous traffic (build-04's Live step), a connection's settings typed at the field's end
+ * (dependencies-2), pointed at through the connection between two subjects.
+ */
+export const liveControlsFixture: Tutorial = {
+  ...base("fixture-live-controls", () => ({
+    format: "diagrams/v1",
+    title: "Live controls",
+    nodes: [
+      { id: "app", stencil: "client.mobile", label: "App", x: 0, y: 0, props: { ratePerSec: 8 } },
+      { id: "api", stencil: "generic.service", label: "API", x: 240, y: 0 },
+      { id: "config", stencil: "postgres", label: "Config", x: 480, y: 0 },
+    ],
+    edges: [
+      { id: "app-api", from: "app", to: "api", kind: "sync" },
+      { id: "saved-elsewhere", from: "api", to: "config", kind: "sync", props: { settings: [{ key: "Host" }] } },
+    ],
+    simulations: [{ id: "flow", title: "Flow", seed: 20261025, scale: 1, durationMs: 600_000, traffic: [] }],
+  })),
+  subjects: {
+    app: { stencils: ["client.mobile"] },
+    api: { stencils: ["generic.service"] },
+    config: { stencils: ["postgres"] },
+  },
+  steps: [
+    step("trace", {
+      check: { kind: "trace" },
+      sticky: true,
+      targets: [
+        { testId: "live-trace-next", tip: words("Trace") },
+        { testId: "live-more", tip: words("Trace") },
+        { testId: "live-toggle", tip: words("Trace") },
+      ],
+      demo: [{ kind: "live" }, { kind: "trace" }],
+      solution: [
+        { click: "live-toggle" },
+        { click: "live-more" },
+        { click: "live-trace-message" },
+        { click: "live-trace-next" },
+      ],
+    }),
+    step("flow", {
+      check: { kind: "simulation", id: "flow", traffic: true },
+      targets: [
+        { testId: "live-traffic", tip: words("Traffic") },
+        { testId: "live-controls", tip: words("Traffic"), dim: false },
+        { testId: "live-toggle", tip: words("Traffic") },
+      ],
+      demo: [
+        { kind: "runSimulation", id: "flow" },
+        { kind: "traffic", on: true },
+      ],
+      solution: [
+        { click: "live-toggle" },
+        { select: "live-sim-picker", value: "flow" },
+        { click: "live-more" },
+        { click: "live-traffic" },
+        { click: "live-more" },
+      ],
+    }),
+    step("setting", {
+      check: { kind: "prop", edge: ["api", "config"], prop: ["settings"], measure: "length", op: ">=", value: 2 },
+      targets: [
+        { testId: "inspector-field-settings", tip: words("Setting") },
+        { testId: "edge-label-{api->config}", tip: words("Setting") },
+      ],
+      demo: [
+        {
+          kind: "patch",
+          edge: ["api", "config"],
+          patches: [{ op: "ensureItem", path: ["settings"], match: { key: token } }],
+        },
+      ],
+      solution: [
+        { click: "edge-label-{api->config}" },
+        { click: "inspector-field-settings" },
+        { press: "ControlOrMeta+End" },
+        { press: "Enter" },
+        { type: "inspector-field-settings", text: token },
+      ],
+    }),
+  ],
+};
+
+export const tutorialFixtures: readonly Tutorial[] = [
+  pathsFixture,
+  metricsFixture,
+  addNameFixture,
+  liveControlsFixture,
+];

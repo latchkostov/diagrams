@@ -89,7 +89,11 @@ async function play(page: Page, step: ResolvedUiStep) {
   } else if ("dblclick" in step) await page.getByTestId(step.dblclick).dblclick();
   else if ("hover" in step) await page.getByTestId(step.hover).hover();
   else if ("fill" in step) await page.getByTestId(step.fill).fill(step.text);
-  else if ("type" in step) await page.keyboard.insertText(step.type);
+  else if ("into" in step) {
+    // Typed at the caret the solution's clicks and keys put there: appended, never replacing the field.
+    await expect(page.getByTestId(step.into)).toBeFocused();
+    await page.keyboard.insertText(step.type);
+  } else if ("type" in step) await page.keyboard.insertText(step.type);
   else if ("drag" in step) {
     // Seed diagrams start with nothing selected, so their Inspector should stay collapsed.
     if (await page.evaluate(() => !!window.__tutorial?.snapshot().selected.length)) await waitForSelectionSettled(page);

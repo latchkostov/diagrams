@@ -217,6 +217,7 @@ export function holds(check: Check, view: SandboxView, subjects: Record<string, 
         view.live &&
         !view.session?.needsRestart &&
         view.session?.running?.id === check.id &&
+        (check.traffic === undefined || view.session.traffic === check.traffic) &&
         !!view.session.run &&
         view.session.run.time >= (check.atLeastMs ?? 0)
       );
@@ -377,13 +378,34 @@ export function observeSteps(
   return tutorial.steps.map((step) => holds(step.check, view, subjects));
 }
 
-/** A test id with its subjects filled in, or null while one of them isn't in the sandbox yet. */
-export function fillTestId(testId: string, subjects: Record<string, string | undefined>): string | null {
+/**
+ * A test id with its subjects filled in, or null while one of them isn't in the sandbox yet. `{a->b}` is the connection
+ * from subject a to subject b, from `edges` (edgeTargets): its id in the sandbox, never an example's saved id.
+ */
+export function fillTestId(
+  testId: string,
+  subjects: Record<string, string | undefined>,
+  edges: Readonly<Record<string, string>> = {},
+): string | null {
   let missing = false;
-  const filled = testId.replace(/\{(\w+)\}/g, (_, name: string) => {
-    const id = subjects[name];
+  const filled = testId.replace(/\{(\w+)(?:->(\w+))?\}/g, (_, name: string, to?: string) => {
+    const id = to ? edges[`${name}->${to}`] : subjects[name];
     if (!id) missing = true;
     return id ?? "";
   });
   return missing ? null : filled;
+}
+
+/** Each connection between two bound subjects, by `from->to`: the first edge from one to the other. */
+export function edgeTargets(
+  diagram: DiagramFile,
+  subjects: Record<string, string | undefined>,
+): Record<string, string> {
+  const names = new Map<string, string[]>();
+  for (const [name, id] of Object.entries(subjects)) if (id) names.set(id, [...(names.get(id) ?? []), name]);
+  const edges: Record<string, string> = {};
+  for (const edge of diagram.edges)
+    for (const from of names.get(edge.from) ?? [])
+      for (const to of names.get(edge.to) ?? []) edges[`${from}->${to}`] ??= edge.id;
+  return edges;
 }
