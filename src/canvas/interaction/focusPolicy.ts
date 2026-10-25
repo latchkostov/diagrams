@@ -46,7 +46,8 @@ import type { FocusCommand, FocusDecision, FocusEvent, FocusMove, FocusState, Fo
  * | T6  | readout.entered                    | it opens with this step         | its card after the commit, else its item             |
  * | T7  | readout.left                       | Tab past the last node          | its item now (the browser's Tab goes on from there)  |
  * | T8  | readout.closed(escape)             | it held focus (pinned, or Tab)  | its item now (else the canvas)                       |
- * | T9  | readout.closed(any other)          |                                 | keep                                                 |
+ * | T9  | readout.closed(remote)             | it held focus, its item is gone | canvas now                                           |
+ * | T10 | readout.closed(any other)          |                                 | keep                                                 |
  * | E1  | escape                              | from a node or a connection     | two frames later, back on it if focus was lost         |
  * | C1  | canvas.requested (the gallery)      |                                 | focus the canvas next frame                            |
  * | C2  | presenting                          |                                 | focus the canvas now if focus was lost                 |
@@ -91,6 +92,7 @@ export function focusPolicy(state: FocusState, event: FocusEvent): FocusDecision
         ? { state, command: { type: "recover", target: canvas, when: "frame", onlyIfLost: true } }
         : keep();
     case "readout.closed":
+      if (event.reason === "remote" && event.hadFocus) return move({ target: canvas, when: "now" });
       return event.reason === "escape" && (event.target.pinned || event.hadFocus)
         ? move({ target: { kind: event.target.kind, id: event.target.id }, when: "now", fallback: canvas })
         : keep();

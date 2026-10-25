@@ -92,6 +92,13 @@ export function HoverCard({ kind, id, name, type, pinned, presenting, summary, h
     const observer = new ResizeObserver(place);
     observer.observe(domNode);
     observer.observe(card);
+    // Node movement and edge rerouting need not resize the pane or change its viewport transform.
+    const geometry = new MutationObserver(place);
+    geometry.observe(anchor.closest(".react-flow__node, .react-flow__edge") ?? anchor, {
+      attributes: true,
+      subtree: true,
+      attributeFilter: ["style", "d", "transform"],
+    });
     const controls = new MutationObserver((records) => {
       if (
         records.some(
@@ -113,6 +120,7 @@ export function HoverCard({ kind, id, name, type, pinned, presenting, summary, h
     });
     return () => {
       observer.disconnect();
+      geometry.disconnect();
       controls.disconnect();
     };
   }, [domNode, transform, kind, id, presenting, pinned]);
