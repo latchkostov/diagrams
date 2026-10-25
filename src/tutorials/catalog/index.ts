@@ -1,5 +1,10 @@
 import { msg } from "../../i18n";
 import type { TrackId, Tutorial, Words } from "../types";
+import { apiGateway } from "./apiGateway";
+import { kafkaTopic } from "./kafkaTopic";
+import { queueWorkers } from "./queueWorkers";
+import { loadBalancer } from "./loadBalancer";
+import { cacheAside } from "./cacheAside";
 import { mobileApi } from "./mobileApi";
 
 import { quickAdd } from "./quickAdd";
@@ -28,6 +33,11 @@ export const allTutorials: readonly Tutorial[] = [
   arrange,
   commandPalette,
   sharePresent,
+  apiGateway,
+  kafkaTopic,
+  queueWorkers,
+  loadBalancer,
+  cacheAside,
 ];
 
 /** Available lessons only: discovery, deep links and progress totals share this catalog. */

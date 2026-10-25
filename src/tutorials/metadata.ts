@@ -19,6 +19,11 @@ export const tutorialMetadata: readonly TutorialMetadata[] =
           { id: "arrange", title: msg("tutorials.arrange.title") },
           { id: "command-palette", title: msg("tutorials.commandPalette.title") },
           { id: "share-present", title: msg("tutorials.sharePresent.title") },
+          { id: "api-gateway", title: msg("tutorials.apiGateway.title") },
+          { id: "kafka-topic", title: msg("tutorials.kafkaTopic.title") },
+          { id: "queue-workers", title: msg("tutorials.queueWorkers.title") },
+          { id: "load-balancer", title: msg("tutorials.loadBalancer.title") },
+          { id: "cache-aside", title: msg("tutorials.cacheAside.title") },
         ] as const
       ).filter((t) => !tutorialEntries.find((entry) => entry.id === t.id)?.quarantined)
     : [];
