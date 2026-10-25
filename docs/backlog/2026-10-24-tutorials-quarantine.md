@@ -102,7 +102,7 @@ Verify that reaching the paused compensation note alone does not finish the tuto
 The Payments design study (`study-payments`) is quarantined after both fix rounds were used. Cards,
 search, next-lesson suggestions and deep links exclude it; saved progress remains on the device.
 Its retained completion-sweep and browser cases skip automatically with this fragment as their reason.
-Checkout and Dispatch remain published. The runner is unchanged.
+Dispatch remains published. Checkout is also quarantined as recorded below. The runner is unchanged.
 
 Restoring Payments requires regression coverage for both Live-inspector edits and Skip with saved-run
 caller overrides in R-2a2fc9e8be, followed by the restored completion sweep and browser cases passing.
@@ -148,3 +148,53 @@ and would allow completion with unsafe PSP retries.
 **Suggested fix:** Add “never-double-charge requires idempotent PSP retries”: create both required
 outbox Message connections, leave retry.idempotent false, and assert the milestone remains incomplete;
 then set it true and assert completion.
+
+## Checkout study quarantine - PR #331 round cap
+
+The Checkout design study (`study-checkout`) is quarantined after reaching the review round cap.
+Cards, search, next-lesson suggestions and deep links exclude it; saved progress remains on the
+device. Its retained completion-sweep and browser cases skip automatically with this fragment as
+their reason. The milestone format and Dispatch study stay published. The runner is unchanged.
+
+Restoring Checkout requires the saved-run caller override regression in R-74a53e25ad, the quota
+rejection coverage in R-e09014d38c, and the restored completion sweep and browser cases passing.
+The Payments idempotency coverage in R-d88a4b1e01 remains a restoration follow-up. This quarantine
+does not attempt any of these fixes.
+
+## [P1/high] R-74a53e25ad: Apply the quota reference to saved-run caller overrides
+
+`src/tutorials/catalog/studyCheckout.ts:184` · lenses: accessibility, architecture, correctness, types
+
+At the final milestone, start Partner quota, set Connection pool to 10 through the Live inspector,
+then press Skip. `CallWaitFields` uses `effectiveCallerPolicy`, saving the value under the simulation's
+`setup.edges` override. The demo patches only the base edge to 1. Restarting Partner quota retains
+the overriding value of 10, so partner rejections continue exceeding the milestone's limit and Skip
+never completes. This blocks recovery from an ordinary learner edit.
+
+**Suggested fix:** Replace or clear the saved simulation's `poolConnections` override as well as
+updating the base edge. Add a regression that edits through `effectiveCallerPolicy` during Partner
+quota before pressing Skip.
+
+## [P2/high] R-e09014d38c: Test that excessive partner rejections prevent completion
+
+`src/tutorials/studies.test.ts:45` · lenses: tests
+
+Checkout's dedicated simulation test covers only the successful tenfold run. Completion-sweep paths
+configure the reference connection pool before checking the quota milestone. Removing its rejected
+≤ 1 guard would leave these tests green while allowing an over-quota design to complete.
+
+**Suggested fix:** Add “partner quota rejects unpaced calls”: run `partner-quota` with sufficient
+Checkout capacity and an unrestricted pool, assert rejected > 1 and incomplete throughout the
+eligible interval, then verify `poolConnections: 1` completes with sufficient processed traffic.
+
+## [P2/high] R-d88a4b1e01: Isolate idempotency in the payment safety check
+
+`src/tutorials/studies.test.ts:97` · lenses: tests
+
+The unfinished-diagram assertion runs before either outbox connection exists. Successful demo paths
+create those connections and enable idempotency together. Removing the `retry.idempotent` requirement
+would escape coverage and let an outbox alone satisfy Never double-charge. Payments is quarantined,
+so this is a restoration coverage gap, also tracked by R-1ca28a02d7 above.
+
+**Suggested fix:** Add “never-double-charge requires idempotent PSP retries”: create both required
+Message connections, leave `retry.idempotent` false and assert incomplete; set it true and assert complete.

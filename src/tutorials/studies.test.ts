@@ -104,16 +104,17 @@ describe("design studies", () => {
     });
   }
 
-  it("keeps Checkout and Dispatch published while quarantining Payments", () => {
-    expect(findTutorial("study-checkout")).toBe(studyCheckout);
-    expect(studyPayments.quarantined).toBe(true);
-    expect(findTutorial("study-payments")).toBeUndefined();
-    expect(tutorials).not.toContain(studyPayments);
-    expect(tutorialMetadata.some((entry) => entry.id === studyPayments.id)).toBe(false);
-    expect(tutorialEntries.find((entry) => entry.id === studyPayments.id)).toEqual({
-      id: studyPayments.id,
-      quarantined: true,
-    });
+  it("keeps Dispatch published while quarantining Checkout and Payments", () => {
+    for (const study of [studyCheckout, studyPayments]) {
+      expect(study.quarantined).toBe(true);
+      expect(findTutorial(study.id)).toBeUndefined();
+      expect(tutorials).not.toContain(study);
+      expect(tutorialMetadata.some((entry) => entry.id === study.id)).toBe(false);
+      expect(tutorialEntries.find((entry) => entry.id === study.id)).toEqual({
+        id: study.id,
+        quarantined: true,
+      });
+    }
     expect(studyDispatch.quarantined).toBeUndefined();
     expect(findTutorial("study-dispatch")).toBe(studyDispatch);
     expect(tutorials).toContain(studyDispatch);
