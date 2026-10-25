@@ -11,3 +11,10 @@ inside this worktree, using the installed dependencies and two workers. Both run
 
 Investigate the seeded workload and completion path without weakening its assertions or adding
 an elapsed-time performance budget. The fan-out/RAG regressions pass independently.
+
+## Re-quarantine verification - PR #347
+
+The targeted `pnpm test src/tutorials --maxWorkers=2` run after restoring Fan-out and RAG quarantine
+reported 2,238 passed, 164 skipped and this same single timeout. Cells' negative coverage remains
+active and passes. The clean-master reproduction above already establishes the timeout as pre-existing;
+this quarantine round does not change its assertions, workload or timeout.

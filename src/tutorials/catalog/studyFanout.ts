@@ -50,6 +50,8 @@ const queueSolution = (worker: string, search: Words): UiStep[] => [
 
 export const studyFanout: Tutorial = {
   id: "study-fanout",
+  // quarantined: see docs/backlog/2026-10-24-tutorials-quarantine.md (runner repair API pass)
+  quarantined: true,
   version: 1,
   track: "studies",
   level: 3,

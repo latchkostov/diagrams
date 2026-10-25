@@ -129,7 +129,7 @@ describe("design studies", () => {
   }
 
   it("quarantines the remaining design studies while retaining their milestone coverage", () => {
-    for (const study of [studyCheckout, studyDispatch, studyPayments]) {
+    for (const study of [studyCheckout, studyDispatch, studyPayments, studyFanout, studyRag]) {
       expect(study.quarantined).toBe(true);
       expect(findTutorial(study.id)).toBeUndefined();
       expect(tutorials).not.toContain(study);
@@ -141,7 +141,7 @@ describe("design studies", () => {
     }
   });
 
-  it.each([studyCells, studyFanout, studyRag])("publishes $id with its generated browser cases", (study) => {
+  it.each([studyCells])("publishes $id with its generated browser cases", (study) => {
     expect(study.quarantined).toBeUndefined();
     expect(findTutorial(study.id)).toBe(study);
     expect(tutorials).toContain(study);

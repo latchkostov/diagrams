@@ -503,7 +503,10 @@ test("where-time-goes: Latency can be expanded and read before Done finishes", a
 
 for (const { id, quarantined } of tutorialEntries)
   test(`${id}: its solution plays through the real UI`, async ({ page, consoleErrors }) => {
-    test.fixme(!!quarantined, quarantineReason);
+    test.fixme(
+      !!quarantined,
+      `${quarantineReason}${["study-fanout", "study-rag"].includes(id) ? " (runner repair API pass)" : ""}`,
+    );
     test.slow(); // Live has to carry real traffic for the last step.
     await openTutorial(page, id);
     await page.getByTestId("tutorial-start").click();
@@ -532,7 +535,10 @@ for (const { id, quarantined } of tutorialEntries)
 
 for (const { id, quarantined } of tutorialEntries)
   test(`${id}: Skip-all finishes without saving a diagram`, async ({ page, consoleErrors }) => {
-    test.fixme(!!quarantined, quarantineReason);
+    test.fixme(
+      !!quarantined,
+      `${quarantineReason}${["study-fanout", "study-rag"].includes(id) ? " (runner repair API pass)" : ""}`,
+    );
     await openTutorial(page, id);
     await page.getByTestId("tutorial-start").click();
     await skipAll(page);

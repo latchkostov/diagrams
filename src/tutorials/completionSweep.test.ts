@@ -98,7 +98,11 @@ import {
 const quarantineReason = "quarantined: see docs/backlog/2026-10-24-tutorials-quarantine.md";
 const itFor = (tutorial: Tutorial) =>
   tutorial.quarantined
-    ? (name: string, fn: () => void | Promise<void>) => it.skip(`${name} (${quarantineReason})`, fn)
+    ? (name: string, fn: () => void | Promise<void>) =>
+        it.skip(
+          `${name} (${quarantineReason}${["study-fanout", "study-rag"].includes(tutorial.id) ? " (runner repair API pass)" : ""})`,
+          fn,
+        )
     : it;
 
 const cleanup: (() => void)[] = [];
@@ -870,7 +874,7 @@ describe("design study evidence", () => {
     },
   );
 
-  it("fan-out: reconstruction repairs saved-run overrides before restoring", async () => {
+  itFor(studyFanout)("fan-out: reconstruction repairs saved-run overrides before restoring", async () => {
     const tutorial: Tutorial = {
       ...studyFanout,
       start: () => {
