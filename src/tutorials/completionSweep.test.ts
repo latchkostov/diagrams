@@ -13,6 +13,7 @@ import { GROUP_PREFIX } from "../canvas/types";
 import type { EditorApi } from "../editor/types";
 import { LiveController, type LiveState } from "../live/controller";
 import { liveActions } from "../live/liveActions";
+import { addConsumer } from "../live/addConsumer";
 import { planningHost } from "../live/planningHost";
 import { capacityView } from "../live/capacityView";
 import { freePlaySimulation, withFix } from "../live/capacityModel";
@@ -1582,12 +1583,37 @@ describe("completion regressions", () => {
     expect(s.live!.getState().snapshot.nodes[s.subject("queue")].backlog).toBeLessThanOrEqual(10);
   });
 
+  it("backlog-lag: Add a consumer advances with an unrelated service", async () => {
+    const s = sandbox(backlogLag);
+    expect(await reach(s, backlogLag, 2)).toBe(true);
+    const unrelated = s.editor.addStencil("generic.service");
+    const consumer = addConsumer(s.editor as unknown as EditorApi, s.subject("queue"));
+    expect(consumer).not.toBeNull();
+    expect(consumer).not.toBe(unrelated);
+    expect(state(s)).toMatchObject({ index: 3, value: "active" });
+    expect(s.subject("worker")).toBe(consumer);
+    play(s, 10000);
+    s.hover({ kind: "node", id: unrelated });
+    expect(state(s)).toMatchObject({ index: 3, value: "active" });
+    s.hover({ kind: "node", id: consumer! });
+    expect(state(s).value).toBe("finished");
+    expect(s.live!.getState().snapshot.nodes[consumer!].processed).toBeGreaterThanOrEqual(50);
+  });
+
   it("rate-limit's edited inline quota refuses excess requests before the API", async () => {
     const s = sandbox(rateLimit);
     await reach(s, rateLimit, 2);
+    s.hover({ kind: "node", id: s.subject("limiter") });
+    expect(state(s)).toMatchObject({ index: 2, value: "active" });
+    s.hover(null);
     play(s, 10000);
     expect(s.live!.getState().snapshot.nodes[s.subject("limiter")].rejected).toBeGreaterThanOrEqual(10);
     expect(s.live!.getState().snapshot.nodes[s.subject("api")].processed).toBeGreaterThan(0);
+    expect(state(s)).toMatchObject({ index: 2, value: "active" });
+    expect(state(s).latched[2]).toBe(false);
+    s.hover({ kind: "node", id: s.subject("api") });
+    expect(state(s)).toMatchObject({ index: 2, value: "active" });
+    s.hover({ kind: "node", id: s.subject("limiter") });
     expect(state(s).value).toBe("finished");
   });
 

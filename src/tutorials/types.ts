@@ -24,6 +24,8 @@ export interface SubjectSpec {
   boundary?: true;
   stencils?: readonly string[];
   role?: SimRole;
+  /** Require an incoming flow from this earlier-declared node subject. */
+  downstreamOf?: string;
 }
 
 export type Comparison = "=" | ">=" | "<=";

@@ -384,6 +384,24 @@ test("threads-block: watch steps wait for their readout even after the run has m
   await expect(strip(page)).toHaveAttribute("data-phase", "finished");
 });
 
+test("rate-limit: playback waits for the limiter readout before completing", async ({ page, consoleErrors }) => {
+  await page.clock.install();
+  await openTutorial(page, "rate-limit");
+  await page.getByTestId("tutorial-start").click();
+  for (const id of ["quota-10", "run"]) {
+    await expect(strip(page)).toHaveAttribute("data-step", id);
+    for (const action of await page.evaluate(() => window.__tutorial?.solution() ?? [])) await play(page, action);
+  }
+  await page.getByTestId("live-sim-picker").hover();
+  await pauseClock(page);
+  await page.clock.runFor(10000);
+  await expect(page.getByTestId("live-canvas")).toHaveAttribute("data-sim-time", "10000");
+  await expect(strip(page)).toHaveAttribute("data-step", "rejected");
+  await page.getByTestId("node-limiter").hover();
+  await expect(strip(page)).toHaveAttribute("data-phase", "finished");
+  expectNoErrors(consoleErrors);
+});
+
 test("scale-to-zero: the cold-start note holds the readout for a late learner", async ({ page, consoleErrors }) => {
   await openTutorial(page, "scale-to-zero");
   await page.getByTestId("tutorial-start").click();

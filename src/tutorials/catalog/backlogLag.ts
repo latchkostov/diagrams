@@ -31,7 +31,7 @@ export const backlogLag: Tutorial = {
   subjects: {
     producer: { stencils: ["client.mobile"] },
     queue: { stencils: ["aws.sqs"] },
-    worker: { stencils: ["generic.service"] },
+    worker: { stencils: ["generic.service"], downstreamOf: "queue" },
   },
   steps: [
     {
