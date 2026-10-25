@@ -1,9 +1,10 @@
-import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
 import { execFileSync, spawn } from "node:child_process";
 import { changedLines, git, reviewScope } from "../../scripts/review/scope.mjs";
+import * as reviewGit from "../../scripts/review/scope.mjs";
 import { consolidate, renderReport } from "../../scripts/review/triage.mjs";
 import { ANGLES, nextState, roundPlan } from "../../scripts/review/rounds.mjs";
 import { readState, replaceState } from "../../scripts/review/state.mjs";
@@ -16,11 +17,12 @@ let reviewed: string;
 let masterOnly: string;
 beforeAll(() => {
   root = mkdtempSync(join(tmpdir(), "review-loop-"));
-  git(root, "init", "--initial-branch=master");
+  git(root, "init", "--initial-branch=master", "--template=");
   git(root, "config", "user.name", "Review fixture");
   git(root, "config", "user.email", "fixture@example.test");
   git(root, "config", "commit.gpgsign", "false");
   git(root, "config", "core.autocrlf", "false");
+  git(root, "config", "core.logAllRefUpdates", "false");
   writeFileSync(join(root, "shared.txt"), "original\nunchanged\n");
   git(root, "add", ".");
   git(root, "commit", "-m", "base");
@@ -341,6 +343,7 @@ it("keeps PR identity in the documented continuation commands", () => {
 });
 
 describe("review CLI in a detached checkout", () => {
+  let template: string;
   let checkout: string;
   let resolver: string;
   const prepareScript = resolve("scripts/review/prepare.mjs");
@@ -352,12 +355,29 @@ describe("review CLI in a detached checkout", () => {
     expectedState: State | null;
     scope: ReturnType<typeof reviewScope>;
   };
-  beforeEach(() => {
-    checkout = mkdtempSync(join(tmpdir(), "review-detached-"));
-    git(checkout, "clone", "--quiet", "--no-hardlinks", root, ".");
-    git(checkout, "checkout", "--detach", "HEAD");
+  beforeAll(() => {
+    template = mkdtempSync(join(tmpdir(), "review-template-"));
+    // Only copy the five-commit fixture built above, never the application checkout.
+    // Freeze it before tests write review state or change refs/remotes.
+    // A pack avoids copying dozens of loose object files for every test.
+    git(root, "repack", "-ad");
+    for (const file of [".git", "shared.txt", "feature.txt", "master-only.txt"])
+      cpSync(join(root, file), join(template, file), { recursive: true });
+    git(template, "checkout", "--detach", "HEAD");
+    git(template, "remote", "add", "origin", root);
     // Deliberately stale local master: the PR resolver must supply the authoritative base.
-    git(checkout, "update-ref", "refs/remotes/origin/master", `${reviewed}^`);
+    git(template, "update-ref", "refs/remotes/origin/master", `${reviewed}^`);
+  });
+  afterAll(() => {
+    if (template) rmSync(template, { recursive: true, force: true });
+  });
+  function createCheckout() {
+    const directory = mkdtempSync(join(tmpdir(), "review-detached-"));
+    cpSync(template, directory, { recursive: true });
+    return directory;
+  }
+  beforeEach(() => {
+    checkout = createCheckout();
     resolver = join(checkout, "resolve-pr.mjs");
     resolvePr();
   });
@@ -369,6 +389,24 @@ describe("review CLI in a detached checkout", () => {
   }
   afterEach(() => {
     if (checkout) rmSync(checkout, { recursive: true, force: true });
+  });
+  it("copies an isolated five-commit fixture without running Git during per-test setup", () => {
+    const commands = vi.spyOn(reviewGit, "git");
+    let copy: string | undefined;
+    try {
+      copy = createCheckout();
+      expect(commands).not.toHaveBeenCalled();
+    } finally {
+      commands.mockRestore();
+      if (copy) rmSync(copy, { recursive: true, force: true });
+    }
+    expect(git(checkout, "rev-list", "--count", "HEAD").trim()).toBe("5");
+    expect(git(checkout, "ls-files").trim().split("\n")).toEqual(["feature.txt", "master-only.txt", "shared.txt"]);
+    expect(git(checkout, "branch", "--show-current").trim()).toBe("");
+    git(checkout, "update-ref", "-d", "refs/remotes/origin/master");
+    expect(git(template, "rev-parse", "origin/master").trim()).toBe(git(root, "rev-parse", `${reviewed}^`).trim());
+    writeFileSync(join(checkout, "feature.txt"), "isolated edit\n");
+    expect(readFileSync(join(template, "feature.txt"), "utf8")).toBe("fixed feature\n");
   });
   function prepare(name: string, args: string[], angles = "correctness") {
     const out = join(checkout, ".reviews", name);
@@ -496,7 +534,8 @@ describe("review CLI in a detached checkout", () => {
   });
   it("fetches a PR base that advanced only on the remote before computing scope", () => {
     const remote = join(checkout, "remote.git");
-    git(checkout, "clone", "--quiet", "--bare", root, remote);
+    git(checkout, "init", "--bare", "--initial-branch=master", remote);
+    git(checkout, "push", "--quiet", remote, `${masterOnly}:refs/heads/master`);
     git(checkout, "remote", "set-url", "origin", remote);
     const base = git(
       remote,
