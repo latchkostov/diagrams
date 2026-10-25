@@ -95,6 +95,19 @@ describe("interactive viewer template", () => {
       ).toBe(true);
   });
 
+  it("omits quick-add and box-selection authoring from the read-only canvas", () => {
+    for (const path of [
+      "/src/canvas/placement/useQuickAddPlacement.ts",
+      "/src/canvas/ConnectedQuickAddMenu.tsx",
+      "/src/canvas/LandingOutline.tsx",
+      "/src/canvas/selection/useBoxSelection.ts",
+    ])
+      expect(
+        modules.some((id) => id.endsWith(path)),
+        path,
+      ).toBe(false);
+  });
+
   it("plays shedding without its inspector, fix authoring or tutorial UI", () => {
     for (const path of [
       "/src/canvas/inspector/QueueFields.tsx",
