@@ -5,6 +5,7 @@ import { useInteraction } from "../canvas/interaction";
 import { t } from "../i18n";
 import { calloutOffset } from "./calloutPlacement";
 import { hoverTop, hoverRoom } from "./hoverPlacement";
+import { observeProtectedControls, protectedControls } from "./protectedControls";
 import { HoverStatus, HoverVerdict, HoverVitals, SectionRows } from "./HoverReadout";
 import type { HoverFact, HoverSummary } from "./hoverSummary";
 
@@ -14,6 +15,7 @@ export interface HoverCardProps {
   name: string;
   type: string;
   pinned: boolean;
+  focusClaim?: () => boolean;
   presenting: boolean;
   summary: HoverSummary;
   healthy: string;
@@ -21,7 +23,18 @@ export interface HoverCardProps {
 }
 
 /** Screen-space frame and recovery UI stay outside deferred detail chunks. */
-export function HoverCard({ kind, id, name, type, pinned, presenting, summary, healthy, children }: HoverCardProps) {
+export function HoverCard({
+  kind,
+  id,
+  name,
+  type,
+  pinned,
+  focusClaim,
+  presenting,
+  summary,
+  healthy,
+  children,
+}: HoverCardProps) {
   const interaction = useInteraction()!;
   const ref = useRef<HTMLDivElement>(null);
   const domNode = useStore((s) => s.domNode);
@@ -39,8 +52,6 @@ export function HoverCard({ kind, id, name, type, pinned, presenting, summary, h
     if (!anchor) return;
     const wrap = domNode.closest('[data-testid="canvas-wrap"]') ?? domNode;
     // Callouts, the bar, the Inspector and a waiting narration (its Continue) stay actionable.
-    const protectedControls =
-      '[data-canvas-overlay], .lv-note[data-waiting], [data-testid="live-controls"], [data-testid="live-toggle"], [data-testid="inspector"]';
     const place = () => {
       const bounds = domNode.getBoundingClientRect();
       const overlays = document.querySelectorAll<HTMLElement>('[data-testid="live-controls"]');
@@ -99,34 +110,17 @@ export function HoverCard({ kind, id, name, type, pinned, presenting, summary, h
       subtree: true,
       attributeFilter: ["style", "d", "transform"],
     });
-    const controls = new MutationObserver((records) => {
-      if (
-        records.some(
-          (record) =>
-            (record.target instanceof Element && !!record.target.closest(protectedControls)) ||
-            [...record.addedNodes, ...record.removedNodes].some(
-              (node) =>
-                node instanceof Element && (node.matches(protectedControls) || !!node.querySelector(protectedControls)),
-            ),
-        )
-      )
-        place();
-    });
-    controls.observe(wrap, {
-      childList: true,
-      subtree: true,
-      attributes: true,
-      attributeFilter: ["style", "data-waiting"],
-    });
+    const stopControls = observeProtectedControls(wrap, place);
     return () => {
       observer.disconnect();
       geometry.disconnect();
-      controls.disconnect();
+      stopControls();
     };
   }, [domNode, transform, kind, id, presenting, pinned]);
   useLayoutEffect(() => {
-    if (pinned && ref.current) interaction.dispatch({ type: "node.details", target: ref.current });
-  }, [pinned, interaction]);
+    if (ref.current && (focusClaim ? focusClaim() : pinned))
+      interaction.dispatch({ type: "node.details", target: ref.current });
+  }, [pinned, focusClaim, interaction]);
   useLayoutEffect(() => {
     if (!domNode) return;
     const anchor = domNode.querySelector(`[data-testid="${kind}-${CSS.escape(id)}"]`)?.closest("[tabindex]");

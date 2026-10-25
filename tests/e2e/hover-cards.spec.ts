@@ -574,27 +574,33 @@ test("Enter completes inspector editing while another card is hovered", async ({
   expectNoErrors(consoleErrors);
 });
 
-test("Enter on a focused section button opens it even after the pointer moves over the card", async ({
-  page,
-  consoleErrors,
-}) => {
-  await gotoLive(page, "./?view=canvas&example=blocking-call&live=1&paused=1");
-  await page.getByTestId("node-caller").evaluate((el) => el.parentElement?.focus());
-  const card = page.getByTestId("node-detail-caller");
-  await expect(card).toHaveAttribute("data-pinned", "false");
-  await page.keyboard.press("Tab");
-  await expect(card).toBeFocused();
-  await page.keyboard.press("ArrowDown");
-  const row = card.getByTestId(/^hover-section-/).first();
-  await expect(row).toBeFocused();
-  const section = await row.getAttribute("data-testid");
-  // The pointer moves over the card after the last key: the focused button still owns Enter.
-  await row.hover();
-  await page.keyboard.press("Enter");
-  // The button ran: its section is open (activating a section also pins its card, as a click does).
-  await expect(page.getByTestId(section ?? "")).toHaveAttribute("aria-expanded", "true");
-  expectNoErrors(consoleErrors);
-});
+for (const item of ["node-caller", "edge-call"]) {
+  test(`Enter on an unpinned ${item} summary section keeps focus in its pinned card`, async ({
+    page,
+    consoleErrors,
+  }) => {
+    await gotoLive(page, "./?view=canvas&example=blocking-call&live=1&paused=1");
+    await page.getByTestId(item).evaluate((el) => el.closest<HTMLElement>("[tabindex]")?.focus());
+    const card = page.getByTestId(item.replace("-", "-detail-"));
+    await expect(card).toHaveAttribute("data-pinned", "false");
+    await page.keyboard.press("Tab");
+    await expect(card).toBeFocused();
+    await page.keyboard.press("ArrowDown");
+    const row = card.getByTestId(/^hover-section-/).first();
+    await expect(row).toBeFocused();
+    const section = await row.getAttribute("data-testid");
+    // The pointer moves over the card after the last key: the focused button still owns Enter.
+    await row.hover();
+    await page.keyboard.press("Enter");
+    // The button ran: its section is open (activating a section also pins its card, as a click does).
+    await expect(page.getByTestId(section ?? "")).toHaveAttribute("aria-expanded", "true");
+    await expect(card).toHaveAttribute("data-pinned", "true");
+    await expect(card).toBeFocused();
+    await page.keyboard.press("ArrowDown");
+    await expect(card.getByTestId(/^hover-section-/).first()).toBeFocused();
+    expectNoErrors(consoleErrors);
+  });
+}
 
 for (const slug of ["retry-storm", "webhook-ingestion"])
   test(`hover summaries never scroll at 1280×800 (${slug})`, async ({ page, consoleErrors }) => {

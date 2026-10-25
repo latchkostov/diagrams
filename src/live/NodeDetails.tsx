@@ -51,6 +51,7 @@ export function NodeDetails(props: BadgeProps) {
       name={node.data.label}
       type={stencilLabel(getStencil(node.data.stencil))}
       pinned={pinned}
+      focusClaim={props.focusClaim}
       presenting={ui.presenting}
       summary={summary}
       healthy={t("hover.healthyVerdict", { rate: formatRate(s.throughput) })}
@@ -88,6 +89,7 @@ export function EdgeDetails({
   state,
   id,
   pinned,
+  focusClaim,
 }: {
   diagram: DiagramFile;
   /** The effective diagram's compiled routes (NodeBadges compiles them once per diagram). */
@@ -95,6 +97,7 @@ export function EdgeDetails({
   state: LiveState;
   id: string;
   pinned: boolean;
+  focusClaim?: () => boolean;
 }) {
   useLocale();
   const ui = useLive();
@@ -113,6 +116,7 @@ export function EdgeDetails({
     const relation = relationOf(edge);
     return (
       <HoverCard
+        focusClaim={focusClaim}
         kind="edge"
         id={id}
         name={name}
@@ -142,6 +146,7 @@ export function EdgeDetails({
   const breaker = s?.breaker;
   return (
     <HoverCard
+      focusClaim={focusClaim}
       kind="edge"
       id={id}
       name={name}

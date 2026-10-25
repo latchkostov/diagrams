@@ -6,16 +6,23 @@ Source: the local `queued-p2-fu10.archive.md`, preserved byte-for-byte on 2026-1
 
 Each numbered batch below is an independent PR candidate of at most ten items, ordered by user impact. Keep regression assertions and current bundle limits; verify each eventual regression by temporarily reverting its fix. Refactors must preserve output parity; intentional behavior changes need reviewed golden diffs. Owner decisions remain in [the separate decision list](2026-10-24-owner-decisions.md).
 
-## Batch 1: Pointer and placement work (3 OPEN)
+## Batch 1: Pointer and placement work (3 DONE)
 
-1. **P-01 — OPEN: Skip hover bridge geometry without an unpinned readable target.** `src/live/NodeBadges.tsx:227`. Queue: #250/#248/#252.
+1. **P-01 — DONE: Skip hover bridge geometry without an unpinned readable target.** `src/live/NodeBadges.tsx:227`. Queue: #250/#248/#252.
    Every pointer move can search the document and measure pinned cards. Return before queries when no unpinned readable card is open; count selector/rectangle calls for absent, pinned and unpinned states.
 
-2. **P-02 — OPEN: Exclude timeline progress churn from placement invalidation.** `src/live/HoverCard.tsx:42`. Queue: #248/#252.
+2. **P-02 — DONE: Exclude timeline progress churn from placement invalidation.** `src/live/HoverCard.tsx:42`. Queue: #248/#252.
    A subtree observer sees frequent style changes around controls. Observe only protected-control visibility/size changes and assert no placement calls for timeline-only progress while still responding to actual resize.
 
-3. **P-14 — OPEN: Compare displayed breaker countdown buckets.** `src/live/BreakerReadout.tsx:42`. Queue: #251 r3.
+3. **P-14 — DONE: Compare displayed breaker countdown buckets.** `src/live/BreakerReadout.tsx:42`. Queue: #251 r3.
    Raw millisecond updates cause avoidable rerenders despite unchanged displayed text. Derive the display bucket in the selector and count renders across ticks and bucket boundaries.
+
+Implemented on `fix/p2-performance-pointer-1`. `hoverBridge.test.ts` counts zero
+selectors/rectangles for absent, pinned and unreadable cards, and two of each per unpinned
+pointer event. `protectedControls.test.ts` excludes timeline style/text churn while covering
+root visibility, resize, membership and cleanup. `BreakerReadout.test.tsx` counts display
+renders across unchanged ticks, second boundaries, settled totals and state transitions.
+Each regression was checked with deliberate mutations; output goldens are unchanged.
 
 ## Batch 2: Bundle and distribution build cost (2 DONE, 1 OPEN)
 
