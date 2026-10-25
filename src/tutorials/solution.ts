@@ -9,6 +9,7 @@ export type ResolvedUiStep =
   | { dblclick: string }
   | { hover: string }
   | { fill: string; text: string }
+  | { select: string; value: string }
   | { press: string }
   | { drag: string; to: string };
 
@@ -27,6 +28,7 @@ export function solutionNow(tutorial: Tutorial, snap: RunnerSnapshot): ResolvedU
     if ("dblclick" in s) return { dblclick: fill(s.dblclick, subjects) };
     if ("hover" in s) return { hover: fill(s.hover, subjects) };
     if ("fill" in s) return { fill: fill(s.fill, subjects), text: typeof s.text === "string" ? s.text : s.text() };
+    if ("select" in s) return { select: fill(s.select, subjects), value: s.value };
     if ("drag" in s) return { drag: fill(s.drag, subjects), to: fill(s.to, subjects) };
     return { press: s.press };
   });

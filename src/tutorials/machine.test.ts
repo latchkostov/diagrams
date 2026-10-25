@@ -86,6 +86,29 @@ describe("tutorial step runner", () => {
     expect(moment.state.latched[2]).toBe(true);
   });
 
+  it("performs a sticky milestone's demo before latching it", () => {
+    const definition = {
+      ...runnerMachine,
+      initial: runnerInitial([true, true], {
+        highlights: true,
+        resumeAt: 0,
+        demos: [true, false],
+      }),
+    };
+    const m = createMachine(definition);
+    m.send({ type: "start" });
+    expect(m.send({ type: "skip", stepId: "0" }).commands).toEqual([{ type: "demo", steps: [0] }]);
+    expect(m.state.latched).toEqual([false, false]);
+    m.send(observe([true, false]));
+    m.send(observe([false, false]));
+    expect(m.state.index).toBe(1);
+    expect(m.send({ type: "skip", stepId: "1" }).state.value).toBe("finished");
+    for (const { state } of machinePaths(definition, { maxDepth: 4 })) {
+      if (inStep(state)) expect(state.index).toBe(firstOpen(state));
+      state.latched.forEach((on, i) => on && expect(state.sticky[i]).toBe(true));
+    }
+  });
+
   it("a near miss's fix is the step's own demo, and a moment has none", () => {
     expect(play([{ type: "start" }, { type: "fix" }]).commands).toContainEqual({ type: "demo", steps: [0] });
     const m = createMachine(def());

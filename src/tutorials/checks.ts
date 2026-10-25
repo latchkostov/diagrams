@@ -14,6 +14,8 @@ export interface SandboxView {
   diagram: DiagramFile;
   live: boolean;
   processed(nodeId: string): number;
+  /** Counts at entry to the step, absent until that step is active. */
+  stepProcessed?: Readonly<Record<string, number>>;
   session?: LiveState;
   mode?: EditorModeState;
   slowmo?: Pick<SlowState, "status">;
@@ -168,6 +170,7 @@ export function holds(check: Check, view: SandboxView, subjects: Record<string, 
         view.live &&
         !view.session?.needsRestart &&
         view.session?.running?.id === check.id &&
+        (check.traffic === undefined || view.session.traffic === check.traffic) &&
         !!view.session.run &&
         view.session.run.time >= (check.atLeastMs ?? 0)
       );
@@ -226,7 +229,26 @@ export function holds(check: Check, view: SandboxView, subjects: Record<string, 
       return view.live;
     case "processed": {
       const id = subjects[check.subject];
-      return view.live && !!id && view.processed(id) >= check.atLeast;
+      const baseline = check.sinceStep ? view.stepProcessed?.[id ?? ""] : 0;
+      return view.live && !!id && baseline !== undefined && view.processed(id) - baseline >= check.atLeast;
+    }
+    case "counters": {
+      if (!view.live || !view.session) return false;
+      const total = (counters: typeof check.left): number | undefined => {
+        let sum = 0;
+        for (const counter of counters) {
+          const value =
+            "subject" in counter
+              ? view.session!.snapshot.nodes[subjects[counter.subject] ?? ""]?.processed
+              : view.session!.snapshot.edges[edge(counter.edge)?.id ?? ""]?.delivered;
+          if (value === undefined) return undefined;
+          sum += value;
+        }
+        return sum;
+      };
+      const left = total(check.left),
+        right = total(check.right);
+      return left !== undefined && right !== undefined && (check.op === "=" ? left === right : left < right);
     }
     case "all":
       return check.checks.every((c) => holds(c, view, subjects));

@@ -53,21 +53,23 @@ function knownTestId(id: string): boolean {
 }
 
 const subjectsIn = (check: Check): string[] =>
-  check.kind === "prop" || check.kind === "fault"
-    ? check.edge
-      ? [...check.edge]
-      : [check.subject]
-    : check.kind === "member"
-      ? [check.subject, check.boundary]
-      : check.kind === "metric"
-        ? [check.subject, ...(check.edge ?? [])]
-        : check.kind === "node" || check.kind === "label" || check.kind === "processed"
-          ? [check.subject]
-          : check.kind === "edge" || check.kind === "relation"
-            ? [check.from, check.to]
-            : check.kind === "all"
-              ? check.checks.flatMap(subjectsIn)
-              : [];
+  check.kind === "counters"
+    ? [...check.left, ...check.right].flatMap((c) => ("subject" in c ? [c.subject] : [...c.edge]))
+    : check.kind === "prop" || check.kind === "fault"
+      ? check.edge
+        ? [...check.edge]
+        : [check.subject]
+      : check.kind === "member"
+        ? [check.subject, check.boundary]
+        : check.kind === "metric"
+          ? [check.subject, ...(check.edge ?? [])]
+          : check.kind === "node" || check.kind === "label" || check.kind === "processed"
+            ? [check.subject]
+            : check.kind === "edge" || check.kind === "relation"
+              ? [check.from, check.to]
+              : check.kind === "all"
+                ? check.checks.flatMap(subjectsIn)
+                : [];
 const demoSubjects = (d: Demo): string[] =>
   d.kind === "add"
     ? [d.subject, ...(d.after ? [d.after] : [])]
@@ -93,9 +95,11 @@ const testIdsOf = (s: UiStep): string[] =>
         ? [s.hover]
         : "fill" in s
           ? [s.fill]
-          : "drag" in s
-            ? [s.drag, s.to]
-            : [];
+          : "select" in s
+            ? [s.select]
+            : "drag" in s
+              ? [s.drag, s.to]
+              : [];
 const templates = (testId: string) => [...testId.matchAll(/\{(\w+)\}/g)].map((m) => m[1]);
 const words = (step: TutorialStep) => [step.title, step.goal, step.hint, step.done].filter((w) => !!w);
 
@@ -176,6 +180,7 @@ describe("tutorial catalog", () => {
             expect(
               [
                 "processed",
+                "counters",
                 "live",
                 "metric",
                 "simulation",

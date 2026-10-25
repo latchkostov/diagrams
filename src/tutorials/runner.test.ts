@@ -112,7 +112,7 @@ function sandbox(
       return () => changes.delete(f);
     },
   };
-  const runner = createTutorialRunner(tutorial, { close: vi.fn(), host });
+  const runner = createTutorialRunner(tutorial, { close: vi.fn(), host, initial });
   cleanup.push(runner.connect());
   return {
     runner,
@@ -137,6 +137,137 @@ const named = (): DiagramFile => ({
     { id: "api", stencil: "generic.service", label: "Orders API", x: 200, y: 0 },
   ],
   edges: [{ id: "edge", from: "app", to: "api", kind: "sync" }],
+});
+
+it("replaying an add-and-name demo fixes a near miss on the same connected node", async () => {
+  const tutorial: Tutorial = {
+    ...mobileApi,
+    steps: [
+      {
+        ...mobileApi.steps[3],
+        demo: [
+          { kind: "add", subject: "api", stencil: "generic.service", after: "app" },
+          { kind: "rename", subject: "api", label: () => "Orders API" },
+        ],
+      },
+    ],
+  };
+  const initial = named();
+  initial.nodes[1].label = "Order API";
+  const s = sandbox(tutorial, initial);
+  s.runner.send({ type: "start" });
+  s.runner.send({ type: "fix" });
+  await vi.waitFor(() => expect(s.runner.getSnapshot().state.value).toBe("finished"));
+  expect(s.getDiagram().nodes).toHaveLength(2);
+  expect(s.getDiagram().edges).toHaveLength(1);
+  expect(s.getDiagram().nodes[1].label).toBe("Orders API");
+  expect(s.runner.getSnapshot().state.value).toBe("finished");
+});
+
+it("captures processed counts when the watch step opens, and recaptures after Restart", () => {
+  const tutorial: Tutorial = {
+    ...mobileApi,
+    steps: [
+      { ...mobileApi.steps[4], id: "live" },
+      { ...mobileApi.steps[5], check: { kind: "processed", subject: "api", atLeast: 10, sinceStep: true } },
+    ],
+  };
+  const s = sandbox(tutorial, named());
+  let processed = 100;
+  s.hostState.session.state = () =>
+    ({ snapshot: { nodes: { api: { processed } } } }) as unknown as ReturnType<NonNullable<SessionHost["state"]>>;
+  s.publish();
+  s.runner.send({ type: "start" });
+  s.hostState.live.goLive();
+  s.tick();
+  expect(s.runner.getSnapshot().state).toMatchObject({ index: 1, value: "active" });
+  processed = 109;
+  s.tick();
+  expect(s.runner.getSnapshot().state.value).toBe("active");
+  processed = 110;
+  s.tick();
+  expect(s.runner.getSnapshot().state.value).toBe("finished");
+  s.runner.send({ type: "restart" });
+  s.publish();
+  s.tick();
+  expect(s.runner.getSnapshot().state).toMatchObject({ index: 1, value: "active" });
+  processed = 119;
+  s.tick();
+  expect(s.runner.getSnapshot().state.value).toBe("active");
+  processed = 120;
+  s.tick();
+  expect(s.runner.getSnapshot().state.value).toBe("finished");
+});
+
+it("waits for an added node to commit before naming it in the same demo", async () => {
+  const tutorial: Tutorial = {
+    ...mobileApi,
+    steps: [
+      {
+        ...mobileApi.steps[3],
+        demo: [
+          { kind: "add", subject: "api", stencil: "generic.service", after: "app" },
+          { kind: "rename", subject: "api", label: () => "Orders API" },
+        ],
+      },
+    ],
+  };
+  const initial = named();
+  initial.nodes.pop();
+  initial.edges = [];
+  const s = sandbox(tutorial, initial, true);
+  s.runner.send({ type: "start" });
+  s.runner.send({ type: "skip", stepId: tutorial.steps[0].id });
+  await vi.waitFor(() => expect(s.runner.getSnapshot().state.value).toBe("finished"));
+  expect(s.getDiagram().nodes[1].label).toBe("Orders API");
+});
+
+it("waits for a queued saved launch before enabling its source traffic", async () => {
+  const tutorial: Tutorial = {
+    ...mobileApi,
+    steps: [
+      {
+        ...mobileApi.steps[4],
+        check: { kind: "simulation", id: "demo", traffic: true },
+        demo: [
+          { kind: "runSimulation", id: "demo" },
+          { kind: "traffic", on: true },
+        ],
+      },
+    ],
+  };
+  const s = sandbox(tutorial, named());
+  s.hostState.canvas.live = true;
+  s.hostState.canvas.editor.getSelection = () => ({ nodeIds: [], edgeIds: [], groupIds: [] });
+  let traffic = true,
+    id = "free-play";
+  s.hostState.session.state = () =>
+    ({ traffic, running: { id }, run: { time: 0 }, snapshot: { nodes: {} } }) as unknown as ReturnType<
+      NonNullable<SessionHost["state"]>
+    >;
+  s.host.runSimulation = () => {
+    queueMicrotask(() => {
+      const canvas = s.hostState.canvas;
+      s.hostState.canvas = null as unknown as typeof canvas;
+      s.publish();
+      s.hostState.canvas = canvas;
+      id = "demo";
+      s.publish();
+      traffic = false;
+      s.tick();
+    });
+    return true;
+  };
+  const run = vi.fn(() => {
+    traffic = true;
+    s.tick();
+  });
+  vi.spyOn(actionRegistry, "build").mockReturnValue([{ type: "item", id: "sim.traffic", label: "Traffic", run }]);
+  s.publish();
+  s.runner.send({ type: "start" });
+  s.runner.send({ type: "skip", stepId: tutorial.steps[0].id });
+  await vi.waitFor(() => expect(s.runner.getSnapshot().state.value).toBe("finished"));
+  expect(run).toHaveBeenCalledOnce();
 });
 
 it("keeps completed naming settled through unrelated edits and matching renames, but reopens for a changed name", () => {
@@ -362,6 +493,49 @@ it.each([
   await Promise.resolve();
   expect(run).toHaveBeenCalledOnce();
   expect(build).toHaveBeenCalledWith(expect.objectContaining({ target, mode: "live", surface: "palette" }));
+});
+
+it("replays Continuous traffic through the registry once its lazy session and action are ready", async () => {
+  const tutorial: Tutorial = {
+    ...mobileApi,
+    steps: [
+      {
+        ...mobileApi.steps[0],
+        check: { kind: "simulation", id: "demo", traffic: true },
+        demo: [{ kind: "traffic", on: true }],
+      },
+    ],
+  };
+  const s = sandbox(tutorial, named());
+  s.hostState.canvas.live = true;
+  s.hostState.canvas.editor.getSelection = () => ({ nodeIds: [], edgeIds: [], groupIds: [] });
+  const build = vi.spyOn(actionRegistry, "build").mockReturnValue([]);
+  s.runner.send({ type: "start" });
+  s.runner.send({ type: "skip", stepId: tutorial.steps[0].id });
+  const canvas = s.hostState.canvas;
+  s.hostState.canvas = null as unknown as typeof canvas;
+  await Promise.resolve();
+  expect(build).not.toHaveBeenCalled();
+  s.hostState.canvas = canvas;
+  let traffic = false;
+  s.hostState.session.state = () =>
+    ({ traffic, running: { id: "demo" }, run: { time: 0 }, snapshot: { nodes: {} } }) as unknown as ReturnType<
+      NonNullable<SessionHost["state"]>
+    >;
+  s.publish();
+  expect(s.runner.getSnapshot().state.value).toBe("active");
+  const run = vi.fn(() => {
+    traffic = true;
+    s.tick();
+  });
+  build.mockReturnValue([{ type: "item", id: "sim.traffic", label: "Traffic", disabled: true, run }]);
+  s.publish();
+  expect(run).not.toHaveBeenCalled();
+  build.mockReturnValue([{ type: "item", id: "sim.traffic", label: "Traffic", run }]);
+  s.publish();
+  await vi.waitFor(() => expect(s.runner.getSnapshot().state.value).toBe("finished"));
+  expect(run).toHaveBeenCalledOnce();
+  expect(build).toHaveBeenCalledWith(expect.objectContaining({ target: "canvas", mode: "live" }));
 });
 
 it("rechecks mode checks when the editor mode changes, without a diagram edit", () => {

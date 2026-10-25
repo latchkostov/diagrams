@@ -28,6 +28,8 @@ export interface RunnerState {
   latched: readonly boolean[];
   /** From the definition: which steps latch. */
   sticky: readonly boolean[];
+  /** Sticky milestones can still have a demo; Skip must perform it before latching them. */
+  demos: readonly boolean[];
   /** The step done most recently, for its "done" words. */
   last: number | null;
   highlights: boolean;
@@ -58,7 +60,7 @@ export const inStep = (s: RunnerState) => (STEP_STATES as readonly string[]).inc
 
 export function runnerInitial(
   sticky: readonly boolean[],
-  opts: { highlights: boolean; resumeAt: number; stepIds?: readonly string[] },
+  opts: { highlights: boolean; resumeAt: number; stepIds?: readonly string[]; demos?: readonly boolean[] },
 ): RunnerState {
   const none = sticky.map(() => false);
   return {
@@ -69,6 +71,7 @@ export function runnerInitial(
     settled: none,
     latched: none,
     sticky,
+    demos: opts.demos ?? sticky.map((s) => !s),
     last: null,
     highlights: opts.highlights,
     resumeAt: Math.max(0, Math.min(opts.resumeAt, sticky.length - 1)),
@@ -136,17 +139,17 @@ const skip: Row[] = [
   // A step with a demo is done for you, then passes like any other.
   {
     target: "active",
-    guard: (s) => !s.sticky[s.index] && s.value === "active",
+    guard: (s) => s.demos[s.index] && s.value === "active",
     effects: (s) => [{ type: "demo", steps: [s.index] }],
   },
   {
     target: "hinting",
-    guard: (s) => !s.sticky[s.index] && s.value === "hinting",
+    guard: (s) => s.demos[s.index] && s.value === "hinting",
     effects: (s) => [{ type: "demo", steps: [s.index] }],
   },
   {
     target: "completing",
-    guard: (s) => !s.sticky[s.index] && s.value === "completing",
+    guard: (s) => s.demos[s.index] && s.value === "completing",
     effects: (s) => [{ type: "demo", steps: [s.index] }],
   },
   // A moment (traffic seen) has nothing to do: it's latched.

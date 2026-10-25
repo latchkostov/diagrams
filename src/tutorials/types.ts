@@ -26,6 +26,8 @@ export interface SubjectSpec {
 export type Comparison = "=" | ">=" | "<=";
 export type PropertyTarget = { subject: string; edge?: never } | { edge: readonly [string, string]; subject?: never };
 export type FaultKind = "down" | "slow" | "fail" | "cut";
+/** Numeric counters can be added and compared without embedding executable checks in a lesson. */
+export type Counter = { subject: string; field: "processed" } | { edge: readonly [string, string]; field: "delivered" };
 
 /** What makes a step done. Plain data, so tests and the authoring lint can read it. */
 export type Check =
@@ -39,7 +41,8 @@ export type Check =
   | { kind: "label"; subject: string; is: Words }
   | { kind: "live" }
   /** Live counters (real messages) since the run started. */
-  | { kind: "processed"; subject: string; atLeast: number }
+  | { kind: "processed"; subject: string; atLeast: number; sinceStep?: true }
+  | { kind: "counters"; left: readonly Counter[]; op: "=" | "<"; right: readonly Counter[] }
   | ({ kind: "prop"; prop: string; op: Comparison; value: unknown } & PropertyTarget)
   // edgeKind / annotation / fault distinguish the payload from the check's discriminant.
   | { kind: "relation"; from: string; to: string; relation?: EdgeRelation; edgeKind?: "sync" | "async" }
@@ -53,7 +56,7 @@ export type Check =
       value: number | string | boolean;
       edge?: readonly [string, string];
     }
-  | { kind: "simulation"; id: string; atLeastMs?: number }
+  | { kind: "simulation"; id: string; atLeastMs?: number; traffic?: boolean }
   /** A saved expectation id is stable across languages; Words also matches a chip's displayed label. */
   | { kind: "expectation"; simulation: string; label: string | Words }
   | ({ kind: "fault"; fault?: FaultKind } & PropertyTarget)
@@ -72,6 +75,7 @@ export type Demo =
   | { kind: "group"; subjects: readonly string[]; boundary: string }
   | { kind: "annotate"; annotation: AnnotationKind }
   | { kind: "runSimulation"; id: string }
+  | { kind: "traffic"; on: boolean }
   | ({ kind: "fault"; fault: FaultKind; restore?: boolean } & PropertyTarget)
   | { kind: "select"; subjects: readonly string[] }
   | { kind: "live" };
@@ -82,6 +86,7 @@ export type UiStep =
   | { dblclick: string }
   | { hover: string }
   | { fill: string; text: string | Words }
+  | { select: string; value: string }
   | { press: string }
   | { drag: string; to: string };
 

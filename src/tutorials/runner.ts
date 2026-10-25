@@ -49,9 +49,19 @@ export function createTutorialRunner(
   const saved = savedProgress(tutorial);
   const sticky = tutorial.steps.map((s) => !!s.sticky || s.demo.length === 0);
   const dynamic = (check: Tutorial["steps"][number]["check"]): boolean =>
-    ["live", "processed", "metric", "simulation", "expectation", "fault", "trace", "slowmo", "note", "mode"].includes(
-      check.kind,
-    ) ||
+    [
+      "live",
+      "processed",
+      "counters",
+      "metric",
+      "simulation",
+      "expectation",
+      "fault",
+      "trace",
+      "slowmo",
+      "note",
+      "mode",
+    ].includes(check.kind) ||
     (check.kind === "all" && check.checks.some(dynamic));
   const dynamicChecks = tutorial.steps.map((s) => dynamic(s.check));
   const naming = tutorial.steps.map((s) => namingSubjects(s.check));
@@ -59,6 +69,7 @@ export function createTutorialRunner(
     ...runnerMachine,
     initial: runnerInitial(sticky, {
       stepIds: tutorial.steps.map((s) => s.id),
+      demos: tutorial.steps.map((s) => s.demo.length > 0),
       highlights: readTutorials().highlights ?? true,
       resumeAt: saved && !saved.completed ? saved.step : 0,
     }),
@@ -84,6 +95,7 @@ export function createTutorialRunner(
   let subjects: Record<string, string | undefined> = {};
   const demoBindings = new Map<string, string>();
   let documentChecks: boolean[] = [];
+  const stepBaselines = new Map<number, Record<string, number>>();
   function view(): SandboxView {
     const h = host.get();
     const ed = h.canvas!.editor;
@@ -121,6 +133,10 @@ export function createTutorialRunner(
     if (next !== state) {
       const step = inStep(state) ? state.index : -1;
       state = next;
+      if (inStep(state) && state.index !== step && editor()) {
+        const v = view();
+        stepBaselines.set(state.index, Object.fromEntries(v.diagram.nodes.map((n) => [n.id, v.processed(n.id)])));
+      }
       publish({ state });
       if ((inStep(state) ? state.index : -1) !== step) guide();
     }
@@ -143,7 +159,9 @@ export function createTutorialRunner(
     const selected = mode?.selection ?? [];
     if (JSON.stringify(subjects) !== JSON.stringify(snapshot.subjects) || selected.join() !== snapshot.selected.join())
       publish({ subjects, selected });
-    const met = tutorial.steps.map((s, i) => (dynamicChecks[i] ? holds(s.check, v, subjects) : documentChecks[i]));
+    const met = tutorial.steps.map((s, i) =>
+      dynamicChecks[i] ? holds(s.check, { ...v, stepProcessed: stepBaselines.get(i) }, subjects) : documentChecks[i],
+    );
     const settled = tutorial.steps.map(
       (s, i) =>
         s.settle !== "naming" ||
@@ -179,7 +197,7 @@ export function createTutorialRunner(
   function perform(demo: Demo) {
     const h = host.get();
     const ed = editor();
-    if (!ed) return;
+    if (!ed) return false;
     view();
     const edge = (pair: readonly [string, string]) =>
       ed.getDiagram().edges.find((e) => e.from === subjects[pair[0]] && e.to === subjects[pair[1]]);
@@ -214,6 +232,17 @@ export function createTutorialRunner(
       case "runSimulation":
         host.runSimulation?.(demo.id);
         return;
+      case "traffic": {
+        const session = h.session?.state?.();
+        if (!h.canvas?.live || !session) return false;
+        if (session.traffic === demo.on) return true;
+        const action = actionRegistry
+          .build({ editor: ed, mode: "live", surface: "palette", target: "canvas", selection: ed.getSelection() })
+          .find((item) => item.type === "item" && item.id === "sim.traffic" && !item.disabled);
+        if (!action || action.type !== "item" || !action.run) return false;
+        action.run();
+        return true;
+      }
       case "select": {
         const ids = demo.subjects.map((s) => subjects[s]).filter((id): id is string => !!id);
         const groups = new Set(ed.getDiagram().groups?.map((g) => g.id));
@@ -273,6 +302,18 @@ export function createTutorialRunner(
       }
       case "add": {
         const after = demo.after ? subjects[demo.after] : undefined;
+        // A naming near miss replays this step's demo. Keep the learner's existing node.
+        const existing = subjects[demo.subject];
+        if (existing) {
+          if (
+            after &&
+            !ed
+              .getDiagram()
+              .edges.some((e) => e.from === after && e.to === existing && (e.relation ?? "flow") === "flow")
+          )
+            ed.connect(after, existing);
+          return;
+        }
         let id: string | undefined;
         if (after) id = ed.createConnected({ from: after, stencil: demo.stencil })?.id;
         else {
@@ -315,9 +356,26 @@ export function createTutorialRunner(
       if (state.observed[i]) continue;
       for (const d of tutorial.steps[i].demo) {
         // Live publishes before its lazy session registers actions. Retry on session/registry changes.
-        if (d.kind === "fault") {
+        if (d.kind === "fault" || d.kind === "traffic") {
           if (!(await until(() => perform(d) !== false, run))) return;
         } else perform(d);
+        // Commands within one step can depend on a React commit too: add, then name that node.
+        if (
+          d.kind === "add" &&
+          !(await until(() => {
+            if (!editor()) return false;
+            view();
+            return !!subjects[d.subject];
+          }, run))
+        )
+          return;
+        // A queued launch can briefly publish Free play's traffic before selecting the saved run.
+        // Await its observation before the next command; the launch finishes its synchronous controls first.
+        if (
+          d.kind === "runSimulation" &&
+          !(await until(() => !!editor() && holds({ kind: "simulation", id: d.id }, view(), subjects), run))
+        )
+          return;
       }
       // The next step's demo may need this one's node: wait for the canvas to report it.
       if (tutorial.steps[i].demo.length && !(await until(() => state.observed[i], run))) return;
@@ -339,6 +397,7 @@ export function createTutorialRunner(
         return;
       case "reset": {
         generation++;
+        stepBaselines.clear();
         subjects = {};
         demoBindings.clear();
         document = undefined;

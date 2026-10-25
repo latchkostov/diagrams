@@ -29,6 +29,7 @@ async function play(page: Page, step: ResolvedUiStep) {
   else if ("dblclick" in step) await page.getByTestId(step.dblclick).dblclick();
   else if ("hover" in step) await page.getByTestId(step.hover).hover();
   else if ("fill" in step) await page.getByTestId(step.fill).fill(step.text);
+  else if ("select" in step) await page.getByTestId(step.select).selectOption(step.value);
   else if ("drag" in step) await page.getByTestId(step.drag).dragTo(page.getByTestId(step.to));
   else await page.keyboard.press(step.press);
 }
