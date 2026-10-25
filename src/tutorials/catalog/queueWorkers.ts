@@ -66,16 +66,16 @@ export const queueWorkers: Tutorial = {
           { kind: "processed", subject: "first", atLeast: 5 },
           { kind: "processed", subject: "second", atLeast: 5 },
           {
-            kind: "counters",
-            left: [
-              { subject: "first", field: "processed" },
-              { subject: "second", field: "processed" },
-            ],
+            kind: "compare",
+            left: { sum: "processed", nodes: ["first", "second"] },
             op: "=",
-            right: [
-              { edge: ["queue", "first"], field: "delivered" },
-              { edge: ["queue", "second"], field: "delivered" },
-            ],
+            right: {
+              sum: "delivered",
+              edges: [
+                ["queue", "first"],
+                ["queue", "second"],
+              ],
+            },
           },
         ],
       },

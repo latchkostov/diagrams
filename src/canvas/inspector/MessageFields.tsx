@@ -1,7 +1,8 @@
-import { MAX_CHOICES, TypePicker } from "../../components/MessageTypePicker";
+import { TypePicker } from "../../components/MessageTypePicker";
+import { MAX_CHOICES, selectMessageChoices } from "../../components/messageChoices";
 import { t } from "../../i18n";
 import { useMessageTypes } from "./useMessageTypes";
-import { useLayoutEffect, useRef, useState } from "react";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { DiagramFile } from "../../model/types";
 import type { EditorApi } from "../../editor/types";
 import { Field } from "./fields";
@@ -22,39 +23,64 @@ export function EdgeMessages({
 }) {
   const diagram = readDiagram?.() ?? editor.getDiagram();
   const { types, updating } = useMessageTypes(diagram, paused);
+  const [search, setSearch] = useState("");
+  const props = diagram.edges.find((edge) => edge.id === edgeId)?.props ?? {};
+  const filter = useMemo(
+    () => (Array.isArray(props.filter) ? props.filter.filter((v): v is string => typeof v === "string") : []),
+    [props.filter],
+  );
+  const carries = useMemo(() => [...(types?.carried.get(edgeId) ?? [])], [types, edgeId]);
+  const upstream = useMemo(() => [...(types?.upstream.get(edgeId) ?? [])], [types, edgeId]);
+  const known = useMemo(() => [...(types?.known ?? [])].sort(), [types]);
   if (!types)
     return (
       <p className="insp-note" role="status">
         {t("common.loading")}
       </p>
     );
-  const props = diagram.edges.find((edge) => edge.id === edgeId)?.props ?? {};
-  const filter = Array.isArray(props.filter) ? props.filter.filter((v): v is string => typeof v === "string") : [];
-  const carries = [...(types.carried.get(edgeId) ?? [])];
+  const { options, matchingUnselectedOverflow: hidden } = selectMessageChoices(
+    carries,
+    undefined,
+    carries.length > MAX_CHOICES ? search : "",
+  );
   return (
     <div className="message-fields" data-testid="inspector-messages">
       <h4>{t("messageTypes.messages")}</h4>
       <Field label={t("messageTypes.carries")} group>
+        {carries.length > MAX_CHOICES && (
+          <input
+            className="insp-input"
+            aria-label={t("messageTypes.searchCarried")}
+            placeholder={t("messageTypes.search")}
+            data-testid="inspector-carries-search"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+          />
+        )}
         <div className="message-type-chips" aria-live="polite" data-testid="inspector-carries">
-          {carries.length ? (
-            carries.slice(0, MAX_CHOICES).map((type) => (
+          {options.length ? (
+            options.map((type) => (
               <span className="message-type-chip" key={type} data-testid="inspector-carries-type">
                 {type}
               </span>
             ))
           ) : (
-            <small className="insp-note">{t("messageTypes.noMessages")}</small>
+            <small className="insp-note" data-testid="inspector-carries-empty">
+              {carries.length ? t("menu.noMatches") : t("messageTypes.noMessages")}
+            </small>
           )}
-          {carries.length > MAX_CHOICES && (
+          {hidden > 0 && (
             <small className="insp-note" data-testid="inspector-carries-more">
-              +{t("importReport.more", { count: carries.length - MAX_CHOICES })}
+              +{t("importReport.more", { count: hidden })}
             </small>
           )}
         </div>
       </Field>
       {!types.complete && (
         <p className="insp-note" role="status">
-          {t("messageTypes.incomplete")}
+          {types.incompleteReasons?.includes("timeline-forwarding") && <>{t("messageTypes.timelineIncomplete")} </>}
+          {(!types.incompleteReasons?.length || types.incompleteReasons.includes("work-budget")) &&
+            t("messageTypes.incomplete")}
         </p>
       )}
       <TypePicker
@@ -62,7 +88,7 @@ export function EdgeMessages({
         label={t("messageTypes.onlyPass")}
         multiple
         updating={updating}
-        choices={[...(types.upstream.get(edgeId) ?? [])]}
+        choices={upstream}
         value={filter}
         hint={t("messageTypes.filterHint")}
         onChange={(value) =>
@@ -82,7 +108,7 @@ export function EdgeMessages({
       <TypePicker
         name="emits"
         label={t("messageTypes.sendAs")}
-        choices={[...types.known].sort()}
+        choices={known}
         value={typeof props.emits === "string" ? [props.emits] : []}
         hint={t("messageTypes.renameHint")}
         onChange={(value) => editor.setEdgeProps(edgeId, { emits: value[0] }, bulkStep("message-rename"))}

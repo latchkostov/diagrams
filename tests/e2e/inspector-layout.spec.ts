@@ -373,6 +373,18 @@ for (const theme of ["light", "dark"]) {
   for (const target of ["node-caller", "edge-call", "group-commerce"]) {
     test(`axe Inspector ${target} in ${theme}`, async ({ page }) => {
       await open(page, target, 1440, theme);
+      // Checks arrive asynchronously: scan the edge only after its findings are in the DOM.
+      if (target === "edge-call") {
+        const findings = page.getByTestId("inspector-findings");
+        await expect(findings.getByTestId(/^inspector-check-row-/).first()).toBeVisible();
+        expect(
+          await findings.evaluate((list) =>
+            [...list.children].every((child) => child.getAttribute("role") === "listitem"),
+          ),
+        ).toBe(true);
+        await expect(findings.getByTestId("inspector-open-checks")).toHaveCount(0);
+        await expect(page.getByTestId("inspector-open-checks")).toBeVisible();
+      }
       if (target !== "group-commerce") {
         await page.getByTestId(`inspector-section-${target === "edge-call" ? "edge" : "node"}-simulation`).click();
         if (target === "edge-call") await page.getByTestId("inspector-section-retry-details").click();
@@ -433,19 +445,25 @@ test("segments keep one Tab stop and change the saved policy with arrow, Home an
   await page.getByTestId("inspector-section-edge-simulation").click();
   const frees = page.getByTestId("inspector-field-wait-non-blocking");
   const holds = page.getByTestId("inspector-field-wait-blocking");
+  const expectChoice = async (selected: Locator, other: Locator, wait: "blocking" | "non-blocking") => {
+    await expect(selected).toBeFocused();
+    await expect(selected).toHaveAttribute("aria-checked", "true");
+    await expect(other).toHaveAttribute("aria-checked", "false");
+    await expect(selected).toHaveAttribute("tabindex", "0");
+    await expect(other).toHaveAttribute("tabindex", "-1");
+    await expect
+      .poll(async () => (await savedDiagram(page)).edges.find((edge) => edge.id === "call")?.props?.caller)
+      .toMatchObject({ wait });
+  };
   await frees.focus();
   await frees.press("Home");
-  await expect(holds).toBeFocused();
-  await expect(holds).toHaveAttribute("aria-checked", "true");
-  await expect(holds).toHaveAttribute("tabindex", "0");
-  await expect(frees).toHaveAttribute("tabindex", "-1");
+  await expectChoice(holds, frees, "blocking");
   await holds.press("End");
-  await expect(frees).toBeFocused();
+  // Focus moves synchronously, before the controlled choice commits. Observe End's
+  // distinct state so the next checks cannot accidentally accept Home's old value.
+  await expectChoice(frees, holds, "non-blocking");
   await frees.press("ArrowLeft");
-  await expect(holds).toHaveAttribute("aria-checked", "true");
-  await expect
-    .poll(async () => (await savedDiagram(page)).edges.find((edge) => edge.id === "call")?.props?.caller)
-    .toMatchObject({ wait: "blocking" });
+  await expectChoice(holds, frees, "blocking");
   await holds.press("Tab");
   await expect(page.getByTestId("inspector-field-deadlineMs")).toBeFocused();
 });

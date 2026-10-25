@@ -3,6 +3,7 @@ import { waitingFixture } from "./waitingFixture";
 import { lazySurfacesFixture } from "./lazySurfacesFixture";
 import { inspectorLayoutFixture } from "./inspectorLayoutFixture";
 import { messageTypesFixture } from "./messageTypesFixture";
+import { MessageReadersLab } from "./MessageReadersLab";
 import { resilienceFixture, breakerFixture, sheddingFixture, healthFixture } from "./resilienceFixture";
 import { annotationShapesFixture } from "./annotationShapesFixture";
 import slowPayment from "../examples/slow-payment-provider.json";
@@ -45,6 +46,7 @@ import { CollabLab, CollabEditorLab } from "./CollabLab";
 
 import { DIAGRAM_FORMAT, type DiagramFile } from "../model/types";
 import { examples } from "../examples";
+import { withExampleDetails } from "../examples/details";
 import { labMetadata } from "../examples/labMetadata";
 import { exampleDiagram } from "./exampleDiagram";
 import { stencils } from "../stencils/registry";
@@ -301,6 +303,14 @@ const stress = (nodes: number): Preset => ({
 const diagramPresets: Preset[] = [
   {
     kind: "render",
+    id: "message-readers",
+    title: "Message readers: two canvases",
+    group: "Diagrams",
+    description: "Independent carried-type readers with overlapping edge IDs.",
+    render: () => <MessageReadersLab />,
+  },
+  {
+    kind: "render",
     id: "live-message-types",
     title: "Live: message types",
     group: "Simulation",
@@ -339,17 +349,15 @@ const diagramPresets: Preset[] = [
     description: "Field rhythm, short-field pairs and collapsed summaries in an invented system.",
     diagram: inspectorLayoutFixture,
   },
-  ...examples
-    .filter((e) => !localOnly.has(e.slug))
-    .map((e): Preset => ({
-      kind: "diagram",
-      id: `example-${e.slug}`,
-      title: e.title,
-      group: "Diagrams",
-      description: e.description,
-      exampleSlug: e.slug,
-      diagram: () => exampleDiagram(e.slug),
-    })),
+  ...withExampleDetails(examples.filter((e) => !localOnly.has(e.slug))).map((e): Preset => ({
+    kind: "diagram",
+    id: `example-${e.slug}`,
+    title: e.title,
+    group: "Diagrams",
+    description: e.description,
+    exampleSlug: e.slug,
+    diagram: () => exampleDiagram(e.slug),
+  })),
   stress(10),
   stress(50),
   stress(150),

@@ -1,10 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { examples } from "./index";
+import { withExampleDetails } from "./details";
 import { exampleFeatures, filterExamples } from "./gallery";
 import { exampleShows } from "../../scripts/example-shows";
 import { loadExample } from "./index";
 
-const publicItems = examples.filter((e) => !e.localOnly);
+const publicItems = withExampleDetails(examples.filter((e) => !e.localOnly));
 describe("example gallery", () => {
   it("groups in theme order and keeps input order inside each theme", () => {
     const sections = filterExamples(publicItems, "");

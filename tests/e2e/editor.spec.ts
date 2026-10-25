@@ -396,37 +396,46 @@ test.describe("editor", () => {
     await expect(button).toBeFocused();
   });
 
-  test("shortcuts modal contains Tab and Shift+Tab, closes with Escape and restores focus", async ({ page }) => {
-    await openCanvasMenu(page);
-    await menuItem(page, "canvas.properties").click();
-    const button = page.getByTestId("inspector-shortcuts");
-    await button.click();
-    const dialog = page.getByTestId("shortcuts-dialog");
-    const close = page.getByTestId("shortcuts-dialog-close");
-    const tutorials = page.getByTestId("shortcuts-tutorials");
-    const privacy = page.getByTestId("privacy-link");
-    await expect(dialog).toHaveAttribute("aria-modal", "true");
-    await expect(page.getByTestId("shortcut-select-next")).toContainText("Tab");
-    await expect(page.getByTestId("shortcut-select-prev")).toContainText(/Shift.*Tab/);
-    await expect(tutorials).toHaveAttribute("href", "?view=tutorials");
-    await page.keyboard.press("Tab");
-    await expect(close).toBeFocused();
-    await page.keyboard.press("Tab");
-    await expect(tutorials).toBeFocused();
-    await page.keyboard.press("Tab");
-    await expect(privacy).toBeFocused();
-    await page.keyboard.press("Tab");
-    await expect(close).toBeFocused();
-    await page.keyboard.press("Shift+Tab");
-    await expect(privacy).toBeFocused();
-    await page.keyboard.press("Shift+Tab");
-    await expect(tutorials).toBeFocused();
-    await page.keyboard.press("Shift+Tab");
-    await expect(close).toBeFocused();
-    await page.keyboard.press("Escape");
-    await expect(dialog).toHaveCount(0);
-    await expect(button).toBeFocused();
-  });
+  for (const platform of ["MacIntel", "Win32"]) {
+    test(`shortcuts modal contains Tab and Shift+Tab, closes with Escape and restores focus (${platform})`, async ({
+      page,
+    }) => {
+      await page.evaluate((platform) => {
+        Object.defineProperty(navigator, "platform", { configurable: true, value: platform });
+      }, platform);
+      await openCanvasMenu(page);
+      await menuItem(page, "canvas.properties").click();
+      const button = page.getByTestId("inspector-shortcuts");
+      await button.click();
+      const dialog = page.getByTestId("shortcuts-dialog");
+      const close = page.getByTestId("shortcuts-dialog-close");
+      const tutorials = page.getByTestId("shortcuts-tutorials");
+      const privacy = page.getByTestId("privacy-link");
+      await expect(dialog).toHaveAttribute("aria-modal", "true");
+      await expect(page.getByTestId("shortcut-select-next")).toContainText("Tab");
+      await expect(page.getByTestId("shortcut-select-prev")).toContainText(
+        platform === "MacIntel" ? "⇧Tab" : "Shift+Tab",
+      );
+      await expect(tutorials).toHaveAttribute("href", "?view=tutorials");
+      await page.keyboard.press("Tab");
+      await expect(close).toBeFocused();
+      await page.keyboard.press("Tab");
+      await expect(tutorials).toBeFocused();
+      await page.keyboard.press("Tab");
+      await expect(privacy).toBeFocused();
+      await page.keyboard.press("Tab");
+      await expect(close).toBeFocused();
+      await page.keyboard.press("Shift+Tab");
+      await expect(privacy).toBeFocused();
+      await page.keyboard.press("Shift+Tab");
+      await expect(tutorials).toBeFocused();
+      await page.keyboard.press("Shift+Tab");
+      await expect(close).toBeFocused();
+      await page.keyboard.press("Escape");
+      await expect(dialog).toHaveCount(0);
+      await expect(button).toBeFocused();
+    });
+  }
 });
 
 // This edit sequence owns a clock installed before navigation, independent of the

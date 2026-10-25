@@ -1,0 +1,57 @@
+import { msg, t } from "../../i18n";
+import type { Tutorial } from "../types";
+export const sharePresent: Tutorial = {
+  id: "share-present",
+  version: 1,
+  track: "basics",
+  level: 1,
+  minutes: 2,
+  title: msg("tutorials.sharePresent.title"),
+  summary: msg("tutorials.sharePresent.summary"),
+  start: () => ({
+    format: "diagrams/v1",
+    title: t("tutorials.sharePresent.diagramTitle"),
+    nodes: [
+      { id: "seed-0", stencil: "generic.service", label: t("tutorials.sharePresent.service1"), x: 0, y: 0 },
+      { id: "seed-1", stencil: "generic.service", label: t("tutorials.sharePresent.service2"), x: 320, y: 0 },
+    ],
+    edges: [],
+  }),
+  subjects: {},
+  steps: [
+    {
+      id: "present",
+      title: msg("tutorials.sharePresent.presentTitle"),
+      goal: msg("tutorials.sharePresent.presentGoal"),
+      done: msg("tutorials.sharePresent.presentDone"),
+      check: { kind: "presenting", on: true },
+      targets: [{ testId: "present-toggle", tip: msg("tutorials.sharePresent.presentTip") }],
+      demo: [],
+      solution: [{ click: "present-toggle" }],
+      sticky: true,
+    },
+    {
+      id: "leave",
+      title: msg("tutorials.sharePresent.leaveTitle"),
+      goal: msg("tutorials.sharePresent.leaveGoal"),
+      done: msg("tutorials.sharePresent.leaveDone"),
+      check: { kind: "presenting", on: false },
+      targets: [{ testId: "present-exit", tip: msg("tutorials.sharePresent.leaveTip") }],
+      demo: [{ kind: "present", on: false }],
+      solution: [{ press: "Escape" }],
+    },
+    {
+      id: "share",
+      title: msg("tutorials.sharePresent.shareTitle"),
+      goal: msg("tutorials.sharePresent.shareGoal"),
+      done: msg("tutorials.sharePresent.shareDone"),
+      check: { kind: "sharing" },
+      targets: [{ testId: "file-button", tip: msg("tutorials.sharePresent.shareTip") }],
+      demo: [],
+      solution: [{ click: "file-button" }, { click: "file-share" }],
+      sticky: true,
+    },
+  ],
+  finish: { text: msg("tutorials.sharePresent.finish") },
+  chrome: "app",
+};

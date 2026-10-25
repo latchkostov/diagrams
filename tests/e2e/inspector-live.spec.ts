@@ -96,15 +96,27 @@ test("running wait overrides agree in node Inspector and hover", async ({ page }
 test("request Inspector plots successful-request throughput", async ({ page }) => {
   const d = resilienceFixture();
   d.nodes[0].props = { ...d.nodes[0].props, ratePerSec: 0 };
-  d.nodes[1].props = { ...d.nodes[1].props, concurrency: 100 };
+  d.nodes[1].props = { ...d.nodes[1].props, concurrency: 500 };
   d.nodes[2].stencil = "generic.service";
-  d.nodes[2].props = { latencyMs: 30, jitter: 0, concurrency: 100, failureRate: 0 };
+  d.nodes[2].props = { latencyMs: 30, jitter: 0, concurrency: 500, failureRate: 1 };
+  d.edges[1].props = {
+    travelMs: 10,
+    caller: {
+      wait: "non-blocking",
+      deadlineMs: 200,
+      retry: { maxAttempts: 3, backoffMs: 10, strategy: "fixed", jitter: 0, retryOn: ["transient"] },
+    },
+  };
   d.simulations = [
     {
       id: "successful",
-      title: "Successful requests",
+      title: "Failed retries then successful requests",
       durationMs: 20000,
-      traffic: [{ id: "batch", node: "source", shape: { kind: "burst", count: 100, atMs: 5500 } }],
+      traffic: [
+        { id: "failures", node: "source", shape: { kind: "burst", count: 100, atMs: 5500 } },
+        { id: "successes", node: "source", shape: { kind: "burst", count: 100, atMs: 6500 } },
+      ],
+      timeline: [{ atMs: 6000, action: { do: "props", node: "partner", props: { failureRate: 0 } } }],
     },
   ];
   await page.addInitScript(({ key, d }) => localStorage.setItem(key, JSON.stringify(d)), {
@@ -117,14 +129,16 @@ test("request Inspector plots successful-request throughput", async ({ page }) =
   await waitForStableViewport(page);
   await page.getByTestId("edge-call").dblclick({ force: true });
   await page.getByTestId("live-play").click();
-  await page.clock.runFor(5800);
+  await page.clock.runFor(7300);
   await page.getByTestId("live-play").click();
   const area = page.getByTestId("planning-live-details");
-  // All 100 burst requests completed within this ten-second window, clear of its bucket boundaries.
+  // 100 requests exhaust three attempts; a separate 100 succeed once. All are inside the same window.
+  await expect(area.getByTestId("hover-vital-requests")).toHaveText("20/sRequests");
+  await expect(area.getByTestId("hover-vital-attempts")).toHaveText("2.0×Attempts");
   await expect(area.getByTestId("hover-vital-goodput")).toHaveText("10/sGoodput");
   await expect(area.getByTestId("hover-history-values")).toHaveText(/10\/s$/);
   await page.getByTestId("live-play").click();
-  await page.clock.runFor(6200);
+  await page.clock.runFor(4700);
   await page.getByTestId("live-play").click();
   const samples = (await area.getByTestId("hover-history-values").innerText()).match(/\d+(?:\.\d+)?\/s/g) ?? [];
   expect(samples).toHaveLength(10);

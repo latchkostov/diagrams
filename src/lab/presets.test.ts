@@ -5,6 +5,7 @@ import { diagramProblems } from "./generators";
 import { LOOK_KEYS } from "./look";
 import { PRESET_GROUPS } from "./types";
 import { loadExample } from "../examples";
+import { exampleMetadata } from "../examples/metadata";
 
 describe("lab preset registry", () => {
   it("has unique, URL-safe ids and a valid default", () => {
@@ -58,6 +59,13 @@ describe("lab preset registry", () => {
 });
 
 describe("example-backed presets open named examples", () => {
+  it("preserves every public example description in the lazy catalog", () => {
+    for (const [slug, metadata] of Object.entries(exampleMetadata)) {
+      expect(metadata.description, slug).toBeTruthy();
+      expect(getPreset(`example-${slug}`)?.description, slug).toBe(metadata.description);
+    }
+  });
+
   it("whatever order the gallery lists examples in", () => {
     // The trace presets need a long fan-out journey and a dead-lettered message; the capacity panel opens on Kafka.
     expect(defaultsOf(getPreset("trace-card-states")?.controls ?? [])).toMatchObject({

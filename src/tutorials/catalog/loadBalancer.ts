@@ -99,7 +99,7 @@ export const loadBalancer: Tutorial = {
       title: msg("tutorials.loadBalancer.watchTitle"),
       goal: msg("tutorials.loadBalancer.watchGoal"),
       done: msg("tutorials.loadBalancer.watchDone"),
-      check: { kind: "processed", subject: "service", atLeast: 10, sinceStep: true },
+      check: { kind: "compare", left: { sinceStep: { node: "service", metric: "processed" } }, op: ">=", right: 10 },
       sticky: true,
       targets: [{ testId: "node-{service}", tip: msg("tutorials.loadBalancer.watchGoal"), dim: false }],
       demo: [],

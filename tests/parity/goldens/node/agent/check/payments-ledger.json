@@ -1,15 +1,9 @@
 {
-  "all": {
-    "isError": false,
-    "output": { "findings": [], "summary": "0 warnings, 0 suggestions; 1 more message-loop finding not listed." }
-  },
-  "warnings": {
-    "isError": false,
-    "output": { "findings": [], "summary": "0 warnings, 0 suggestions; 1 more message-loop finding not listed." }
-  },
+  "all": { "isError": false, "output": { "findings": [], "summary": "Nothing to check. 21 checks ran." } },
+  "warnings": { "isError": false, "output": { "findings": [], "summary": "Nothing to check. 21 checks ran." } },
   "oneRule": { "isError": false, "output": { "findings": [], "summary": "Nothing to check. 2 checks ran." } },
   "simulations": {
     "isError": false,
-    "output": { "findings": [], "summary": "0 warnings, 0 suggestions; 1 more message-loop finding not listed.", "simulations": "Played 2 saved simulations (at most 60 s each)." }
+    "output": { "findings": [], "summary": "Nothing to check. 21 checks ran.", "simulations": "Played 2 saved simulations (at most 60 s each)." }
   }
 }

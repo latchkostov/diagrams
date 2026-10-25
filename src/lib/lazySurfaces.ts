@@ -4,6 +4,7 @@ declare const __LAZY_SURFACE_METADATA__: boolean | undefined;
 // Node-side browser test discovery imports this file directly, without Vite's compile-time flag.
 const names = typeof __LAZY_SURFACE_METADATA__ === "undefined" || __LAZY_SURFACE_METADATA__;
 export const lazySurfaces = [
+  ["examples.discovery", names ? "ExampleDetails" : "", names ? "examples/ExampleDetails" : "", "skip"],
   ["canvas.presence", names ? "CanvasReadouts" : "", names ? "canvas/CanvasReadouts" : "", "skip"],
   ["canvas.node-tips", names ? "CanvasReadouts" : "", names ? "canvas/CanvasReadouts" : "", "skip"],
   ["canvas.check-markers", names ? "ChecksMarkers" : "", names ? "canvas/checks/ChecksMarkers" : "", "skip"],
@@ -92,6 +93,7 @@ export function withLazySurfaceOwner<T>(owner: SurfaceOwner, define: () => T): T
 
 function pruneDisposed() {
   if (!hotRegistry) return;
+  for (const surface of hotRegistry.retired) if (!surface.active()) hotRegistry.retired.delete(surface);
   for (const [id, owner] of hotRegistry.owners)
     if (hotRegistry.disposed.has(owner) && !runtimes.get(id)?.active()) {
       runtimes.delete(id);
@@ -102,7 +104,6 @@ function pruneDisposed() {
 function registeredSurfaces(): Iterable<SurfaceRuntime> {
   if (!hotRegistry) return runtimes.values();
   pruneDisposed();
-  for (const surface of hotRegistry.retired) if (!surface.active()) hotRegistry.retired.delete(surface);
   return [...runtimes.values(), ...hotRegistry.retired];
 }
 

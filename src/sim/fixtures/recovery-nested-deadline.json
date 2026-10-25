@@ -1,0 +1,167 @@
+{
+  "diagram": {
+    "format": "diagrams/v2",
+    "planning": {
+      "revision": "p3-w2"
+    },
+    "title": "Requests that wait",
+    "nodes": [
+      {
+        "id": "source",
+        "stencil": "generic.queue",
+        "label": "Applications",
+        "x": 0,
+        "y": 180,
+        "props": {}
+      },
+      {
+        "id": "tier0",
+        "stencil": "aws.lambda",
+        "label": "Decision service",
+        "x": 330,
+        "y": 180,
+        "props": {
+          "jitter": 0,
+          "maxConcurrency": 2,
+          "api": {
+            "latencyMs": 0
+          }
+        }
+      },
+      {
+        "id": "tier1",
+        "stencil": "generic.service",
+        "label": "Decision service",
+        "x": 660,
+        "y": 180,
+        "props": {
+          "latencyMs": 1,
+          "jitter": 0,
+          "failureRate": 0.1
+        }
+      },
+      {
+        "id": "tier2",
+        "stencil": "aws.lambda",
+        "label": "Decision service",
+        "x": 990,
+        "y": 180,
+        "props": {
+          "jitter": 0
+        }
+      },
+      {
+        "id": "tier3",
+        "stencil": "aws.lambda",
+        "label": "Decision service",
+        "x": 1320,
+        "y": 180,
+        "props": {}
+      },
+      {
+        "id": "side",
+        "stencil": "generic.external-api",
+        "label": "Partner scoring API",
+        "x": 660,
+        "y": 180,
+        "props": {
+          "api": {
+            "latencyMs": 0
+          },
+          "jitter": 0
+        }
+      },
+      {
+        "id": "cpu-target",
+        "stencil": "generic.service",
+        "label": "CPU worker",
+        "x": 660,
+        "y": 600,
+        "props": {
+          "resources": {
+            "preset": "io-service",
+            "presetRevision": "1",
+            "cpuMsPerMessage": 0,
+            "baselineMemoryMiB": 0,
+            "memoryMiBPerMessage": 0,
+            "startup": {
+              "delayMs": 0,
+              "jitterFraction": 0
+            },
+            "terminationGraceMs": 0
+          }
+        }
+      }
+    ],
+    "edges": [
+      {
+        "id": "input",
+        "from": "source",
+        "to": "tier0",
+        "props": {}
+      },
+      {
+        "id": "call0",
+        "from": "tier0",
+        "to": "tier1",
+        "kind": "sync",
+        "props": {
+          "caller": {
+            "retry": {
+              "maxAttempts": 3,
+              "backoffMs": 0,
+              "strategy": "fixed",
+              "retryOn": ["throttled", "transient", "timeout"]
+            }
+          }
+        }
+      },
+      {
+        "id": "call1",
+        "from": "tier1",
+        "to": "tier2",
+        "kind": "sync",
+        "props": {
+          "caller": {
+            "poolConnections": 1,
+            "deadlineMs": 1,
+            "retry": {
+              "maxAttempts": 3,
+              "backoffMs": 0,
+              "strategy": "fixed",
+              "retryOn": ["throttled", "transient", "timeout"]
+            }
+          }
+        }
+      },
+      {
+        "id": "side1",
+        "from": "tier1",
+        "to": "side",
+        "kind": "sync",
+        "props": {
+          "caller": {
+            "wait": "non-blocking",
+            "replyMs": 0
+          }
+        }
+      },
+      {
+        "id": "call2",
+        "from": "tier2",
+        "to": "tier3",
+        "kind": "sync",
+        "props": {}
+      },
+      {
+        "id": "cpu-call",
+        "from": "tier0",
+        "to": "cpu-target",
+        "kind": "sync",
+        "props": {}
+      }
+    ]
+  },
+  "scale": 1.01,
+  "count": 2
+}

@@ -99,10 +99,10 @@ export const cacheAside: Tutorial = {
           { kind: "simulation", id: "tutorial-flow" },
           { kind: "processed", subject: "redis", atLeast: 10 },
           {
-            kind: "counters",
-            left: [{ subject: "db", field: "processed" }],
+            kind: "compare",
+            left: { node: "db", metric: "processed" },
             op: "<",
-            right: [{ subject: "redis", field: "processed" }],
+            right: { node: "redis", metric: "processed" },
           },
         ],
       },

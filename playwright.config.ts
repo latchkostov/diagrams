@@ -106,6 +106,8 @@ const OWN_BUILD = /(subpath|self-host|self-host-locked)\.spec\.ts/;
 
 const devWebServer = {
   command: `pnpm dev --port ${devServer.port} --strictPort --host ${LOOPBACK}`,
+  // Dev-target suites use the same probes and emulated collaboration endpoints as the E2E build.
+  env: E2E_PROFILES.e2e.env,
   url: `http://localhost:${devServer.port}`,
   reuseExistingServer: reuseServer(devServer.explicit),
   timeout: 60_000,

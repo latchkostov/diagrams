@@ -1,22 +1,47 @@
 import { msg } from "../../i18n";
 import type { TrackId, Tutorial, Words } from "../types";
-import { mobileApi } from "./mobileApi";
-
 import { apiGateway } from "./apiGateway";
 import { kafkaTopic } from "./kafkaTopic";
 import { queueWorkers } from "./queueWorkers";
-import { cacheAside } from "./cacheAside";
 import { loadBalancer } from "./loadBalancer";
+import { cacheAside } from "./cacheAside";
+import { mobileApi } from "./mobileApi";
+
+import { quickAdd } from "./quickAdd";
+import { dotsAndSides } from "./dotsAndSides";
+import { insertOnEdge } from "./insertOnEdge";
+import { propertySheet } from "./propertySheet";
+import { requestVsMessage } from "./requestVsMessage";
+import { boundaries } from "./boundaries";
+import { annotate } from "./annotate";
+import { dependencies } from "./dependencies";
+import { arrange } from "./arrange";
+import { commandPalette } from "./commandPalette";
+import { sharePresent } from "./sharePresent";
 
 /** Every tutorial, in the order the list shows them within a track. */
-export const tutorials: readonly Tutorial[] = [
+export const allTutorials: readonly Tutorial[] = [
   mobileApi,
+  quickAdd,
+  dotsAndSides,
+  insertOnEdge,
+  propertySheet,
+  requestVsMessage,
+  boundaries,
+  annotate,
+  dependencies,
+  arrange,
+  commandPalette,
+  sharePresent,
   apiGateway,
   kafkaTopic,
   queueWorkers,
   loadBalancer,
   cacheAside,
 ];
+
+/** Available lessons only: discovery, deep links and progress totals share this catalog. */
+export const tutorials = allTutorials.filter((t) => !t.quarantined);
 
 export const tracks: readonly { id: TrackId; label: Words }[] = [
   { id: "basics", label: msg("tutorials.trackBasics") },

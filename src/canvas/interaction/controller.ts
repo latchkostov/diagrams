@@ -125,6 +125,7 @@ export function createInteractionController<P = unknown>(
   let gestureHow: (GestureHandlers & { owner: unknown }) | null = null;
   /** Live's hover cards, while Live attaches them (readoutLayer.ts): their own store, apart from the snapshot. */
   let readouts: ReadoutLayer | null = null;
+  const escapes: (() => boolean)[] = [];
   let camera = options.camera;
   let focus: FocusState = initialFocus();
   /** The camera's view of the open menu (it hears of a change of kind only, as before). */
@@ -575,6 +576,17 @@ export function createInteractionController<P = unknown>(
       gestureState = gestures(gestureState, { type: "segment.reset", edge }).state;
       changed();
     },
+    /** Transient surfaces own Escape before selection. The newest eligible surface consumes one press. */
+    attachEscape(close: () => boolean) {
+      escapes.push(close);
+      return () => {
+        const index = escapes.lastIndexOf(close);
+        if (index >= 0) escapes.splice(index, 1);
+      };
+    },
+    escape() {
+      return [...escapes].reverse().some((close) => close());
+    },
     /** Live attaches its readout layer while it shows hover cards; returns the detach. */
     attachReadouts(layer: ReadoutLayer) {
       readouts = layer;
@@ -675,7 +687,9 @@ export function createInteractionController<P = unknown>(
      * selection.changed event with its cause, for the focus policy (unless its source decided already) and for the
      * camera (a new, non-empty selection); every cause lasts one commit.
      */
-    selectionCommitted(key: string, empty: boolean) {
+    selectionCommitted(key: string, empty: boolean, annotating: string | null = null) {
+      // Before the selection: a reader hearing the new annotation selected already knows its editor is open.
+      toMode({ type: "annotating", id: annotating });
       const segment = gestureState.keyboardSegment;
       if (segmentRoute && key !== JSON.stringify([segmentRoute.edge])) segmentRoute = null;
       gestureState = gestures(gestureState, {
@@ -734,6 +748,8 @@ export function createInteractionController<P = unknown>(
       const field = port.field?.(el);
       toMode(field ? { type: "field.focused", ...field } : { type: "field.left" });
     },
+    /** An annotation's editor opens (or closes: null), told before its document edit so no reader sees one alone. */
+    annotating: (id: string | null) => toMode({ type: "annotating", id }),
     /** Focus left for nothing (focusout with no next element): no field is being edited. */
     focusLeft() {
       toMode({ type: "field.left" });

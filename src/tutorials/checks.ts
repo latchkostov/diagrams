@@ -4,7 +4,18 @@ import { getStencil } from "../stencils/registry";
 import { stencilLabel } from "../i18n/stencils";
 import { t } from "../i18n";
 import { toneLabel } from "../canvas/groupTones";
-import type { Check, SubjectSpec, Tutorial } from "./types";
+import type {
+  Check,
+  EdgeMetric,
+  MetricComparison,
+  MetricExpr,
+  MetricValue,
+  NodeMetric,
+  SubjectSpec,
+  Tutorial,
+} from "./types";
+import type { Baseline } from "./machine";
+import { equal, readPath } from "./paths";
 import type { LiveState } from "../live/controller";
 import type { EditorModeState } from "../canvas/interaction/mode";
 import type { SlowState } from "../live/slowmo/session";
@@ -14,11 +25,16 @@ export interface SandboxView {
   diagram: DiagramFile;
   live: boolean;
   processed(nodeId: string): number;
-  /** Counts at entry to the step, absent until that step is active. */
-  stepProcessed?: Readonly<Record<string, number>>;
   session?: LiveState;
+  /** False between an editor topology change and Live's rebuilt run. Other session state remains observable. */
+  trafficReady?: boolean;
   mode?: EditorModeState;
   slowmo?: Pick<SlowState, "status">;
+  dependencies?: boolean;
+  presenting?: boolean;
+  sharing?: boolean;
+  /** The judged step's `sinceStep` baselines (RunnerState.baseline): only the current step has them. */
+  baseline?: Baseline;
 }
 
 const fits = (spec: SubjectSpec, stencil: string) =>
@@ -33,6 +49,7 @@ export function resolveSubjects(
   const subjects: Record<string, string | undefined> = {};
   const used = new Set<string>();
   for (const [name, spec] of Object.entries(tutorial.subjects)) {
+    if (spec.edge) continue;
     if (spec.boundary) {
       const group = diagram.groups?.find((g) => g.id === previous[name] && !used.has(g.id));
       if (group) {
@@ -48,6 +65,7 @@ export function resolveSubjects(
     }
   }
   for (const [name, spec] of Object.entries(tutorial.subjects)) {
+    if (spec.edge) continue;
     if (subjects[name]) continue;
     if (spec.boundary) {
       const group = diagram.groups?.find((g) => !used.has(g.id));
@@ -59,6 +77,13 @@ export function resolveSubjects(
     subjects[name] = node?.id;
     if (node) used.add(node.id);
   }
+  for (const [name, spec] of Object.entries(tutorial.subjects)) {
+    if (!spec.edge) continue;
+    const edge =
+      diagram.edges.find((e) => e.id === previous[name]) ??
+      diagram.edges.find((e) => e.from === subjects[spec.edge![0]] && e.to === subjects[spec.edge![1]]);
+    subjects[name] = edge?.id;
+  }
   return subjects;
 }
 
@@ -67,18 +92,6 @@ export const namingSubjects = (check: Check): string[] =>
   check.kind === "label" ? [check.subject] : check.kind === "all" ? check.checks.flatMap(namingSubjects) : [];
 
 const same = (a: string, b: string) => a.trim().toLocaleLowerCase() === b.trim().toLocaleLowerCase();
-const equal = (a: unknown, b: unknown): boolean => {
-  if (a === b) return true;
-  if (!a || !b || typeof a !== "object" || typeof b !== "object" || Array.isArray(a) !== Array.isArray(b)) return false;
-  const left = a as Record<string, unknown>,
-    right = b as Record<string, unknown>;
-  const keys = Object.keys(left);
-  return (
-    keys.length === Object.keys(right).length &&
-    keys.every((key) => Object.hasOwn(right, key) && equal(left[key], right[key]))
-  );
-};
-
 /**
  * The expectText pattern's near miss: a `label` check whose subject has been given a name of its own that isn't the
  * expected one ("Order API" for "Orders API"). Null while it matches (case and outer spaces aside), while it still has
@@ -119,9 +132,43 @@ export function holds(check: Check, view: SandboxView, subjects: Record<string, 
       ? equal(actual, value)
       : typeof actual === "number" && typeof value === "number" && (op === ">=" ? actual >= value : actual <= value));
   switch (check.kind) {
+    case "selection": {
+      const selected = view.mode?.selection ?? [];
+      return (
+        selected.length >= (check.atLeast ?? check.subjects?.length ?? 1) &&
+        (!check.exact || selected.length === check.subjects?.length) &&
+        (check.subjects?.every((s) => !!subjects[s] && selected.includes(subjects[s]!)) ?? true)
+      );
+    }
+    case "aligned": {
+      const nodes = check.subjects
+        ? check.subjects.map(node)
+        : (view.mode?.selection ?? []).map((id) => view.diagram.nodes.find((n) => n.id === id));
+      return (
+        nodes.length >= (check.atLeast ?? 2) && nodes.every((n) => !!n && n[check.axis] === nodes[0]?.[check.axis])
+      );
+    }
+    case "dependencies":
+      return view.dependencies === check.visible;
+    case "presenting":
+      return view.presenting === check.on;
+    case "sharing":
+      return view.sharing === true;
+    case "acknowledge":
+      return false;
     case "prop": {
-      const props = check.edge ? edge(check.edge)?.props : node(check.subject)?.props;
-      return compare(props?.[check.prop], check.op, check.value);
+      const target = check.edge ? edge(check.edge) : node(check.subject);
+      const actual =
+        check.edge && (check.prop === "sourceSide" || check.prop === "targetSide")
+          ? edge(check.edge)?.[check.prop]
+          : readPath(target?.props, typeof check.prop === "string" ? [check.prop] : check.prop);
+      if (check.measure === "length") return Array.isArray(actual) && compare(actual.length, check.op, check.value);
+      return compare(actual, check.op, check.value);
+    }
+    case "compare": {
+      const left = expressionValue(check.left, view, subjects);
+      const right = typeof check.right === "number" ? check.right : expressionValue(check.right, view, subjects);
+      return left !== undefined && right !== undefined && order(left, check.op, right);
     }
     case "relation": {
       const from = subjects[check.from],
@@ -135,7 +182,7 @@ export function holds(check: Check, view: SandboxView, subjects: Record<string, 
             e.to === to &&
             (check.relation === undefined || (e.relation ?? "flow") === check.relation) &&
             (check.edgeKind === undefined || e.kind === check.edgeKind),
-        )
+        ) === !check.absent
       );
     }
     case "member": {
@@ -147,7 +194,7 @@ export function holds(check: Check, view: SandboxView, subjects: Record<string, 
     case "annotation":
       return (view.diagram.annotations?.filter((a) => a.kind === check.annotation).length ?? 0) >= (check.count ?? 1);
     case "metric": {
-      if (!view.live || !view.session) return false;
+      if (!view.live || !view.session || view.trafficReady === false) return false;
       const id = subjects[check.subject];
       const metrics = id ? view.session.snapshot.nodes[id] : undefined;
       const actual =
@@ -206,7 +253,14 @@ export function holds(check: Check, view: SandboxView, subjects: Record<string, 
     case "note":
       return view.live && !!view.session?.run && view.session.run.waiting === check.waiting;
     case "mode":
-      return view.mode?.value === check.value;
+      return (
+        view.mode?.value === check.value &&
+        (!check.subject || (!!subjects[check.subject] && view.mode.target === subjects[check.subject]))
+      );
+    case "field": {
+      const actual = node(check.subject)?.[check.field]?.trim();
+      return !!actual && (!check.is || same(actual, check.is()));
+    }
     case "node":
       return !!subjects[check.subject];
     case "edge": {
@@ -229,30 +283,90 @@ export function holds(check: Check, view: SandboxView, subjects: Record<string, 
       return view.live;
     case "processed": {
       const id = subjects[check.subject];
-      const baseline = check.sinceStep ? view.stepProcessed?.[id ?? ""] : 0;
-      return view.live && !!id && baseline !== undefined && view.processed(id) - baseline >= check.atLeast;
-    }
-    case "counters": {
-      if (!view.live || !view.session) return false;
-      const total = (counters: typeof check.left): number | undefined => {
-        let sum = 0;
-        for (const counter of counters) {
-          const value =
-            "subject" in counter
-              ? view.session!.snapshot.nodes[subjects[counter.subject] ?? ""]?.processed
-              : view.session!.snapshot.edges[edge(counter.edge)?.id ?? ""]?.delivered;
-          if (value === undefined) return undefined;
-          sum += value;
-        }
-        return sum;
-      };
-      const left = total(check.left),
-        right = total(check.right);
-      return left !== undefined && right !== undefined && (check.op === "=" ? left === right : left < right);
+      return view.live && !!id && view.processed(id) >= check.atLeast;
     }
     case "all":
       return check.checks.every((c) => holds(c, view, subjects));
   }
+}
+
+const order = (left: number, op: MetricComparison, right: number) =>
+  op === "="
+    ? left === right
+    : op === ">="
+      ? left >= right
+      : op === "<="
+        ? left <= right
+        : op === ">"
+          ? left > right
+          : left < right;
+
+type SimNode = NonNullable<SandboxView["session"]>["snapshot"]["nodes"][string];
+const reading = (metrics: SimNode | undefined, field: NodeMetric): unknown =>
+  field === "latency.p95"
+    ? metrics?.latency?.p95
+    : field === "threads.waiting"
+      ? metrics?.threads?.waiting
+      : metrics?.[field];
+const finite = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? v : undefined);
+/** A sum is known only when every term is: an empty set, or one node without the reading, isn't zero. */
+const total = (terms: readonly (number | undefined)[]) =>
+  terms.length && terms.every((t) => t !== undefined) ? terms.reduce<number>((sum, t) => sum + t!, 0) : undefined;
+
+/**
+ * A Live number in real units, or undefined until the run shows this diagram (as `metric` checks wait for it): while
+ * Live is off, before its session, or between a topology edit and the rebuilt run.
+ */
+export function metricValue(
+  expr: MetricValue,
+  view: SandboxView,
+  subjects: Record<string, string | undefined>,
+): number | undefined {
+  const session = view.session;
+  if (!view.live || !session || view.trafficReady === false) return undefined;
+  const node = (id: string | undefined, field: NodeMetric) =>
+    id ? finite(reading(session.snapshot.nodes[id], field)) : undefined;
+  const edge = (id: string | undefined, field: EdgeMetric) =>
+    id ? finite(session.snapshot.edges[id]?.[field]) : undefined;
+  const between = (pair: readonly [string, string]) => {
+    const from = subjects[pair[0]],
+      to = subjects[pair[1]];
+    return from && to ? view.diagram.edges.find((e) => e.from === from && e.to === to)?.id : undefined;
+  };
+  if ("metric" in expr)
+    return "node" in expr ? node(subjects[expr.node], expr.metric) : edge(between(expr.edge), expr.metric);
+  if ("nodes" in expr) return total(expr.nodes.map((name) => node(subjects[name], expr.sum)));
+  if ("every" in expr)
+    return total(view.diagram.nodes.filter((n) => fits(expr.every, n.stencil)).map((n) => node(n.id, expr.sum)));
+  if ("edges" in expr) return total(expr.edges.map((pair) => edge(between(pair), expr.sum)));
+  const from = subjects[expr.from];
+  return from
+    ? total(
+        view.diagram.edges
+          .filter((e) => e.from === from && (e.relation ?? "flow") === "flow")
+          .map((e) => edge(e.id, expr.sum)),
+      )
+    : undefined;
+}
+
+/** A `sinceStep` baseline's key in RunnerState.baseline: the expression itself (plain data). */
+export const baselineKey = (expr: MetricValue) => JSON.stringify(expr);
+
+/** The `sinceStep` expressions a check counts from its step's start. */
+export const sinceValues = (check: Check): MetricValue[] =>
+  check.kind === "all"
+    ? check.checks.flatMap(sinceValues)
+    : check.kind === "compare"
+      ? [check.left, check.right].flatMap((e) => (typeof e === "object" && "sinceStep" in e ? [e.sinceStep] : []))
+      : [];
+
+/** A delta since the step began. A rebuilt run (another generation) counts from zero: all of it came after. */
+function expressionValue(expr: MetricExpr, view: SandboxView, subjects: Record<string, string | undefined>) {
+  if (!("sinceStep" in expr)) return metricValue(expr, view, subjects);
+  const now = metricValue(expr.sinceStep, view, subjects);
+  const base = view.baseline?.[baselineKey(expr.sinceStep)];
+  if (now === undefined || !base) return undefined;
+  return view.session!.generation === base[1] ? now - base[0] : now;
 }
 
 /** Every step's check against one view of the sandbox. */
@@ -264,13 +378,34 @@ export function observeSteps(
   return tutorial.steps.map((step) => holds(step.check, view, subjects));
 }
 
-/** A test id with its subjects filled in, or null while one of them isn't in the sandbox yet. */
-export function fillTestId(testId: string, subjects: Record<string, string | undefined>): string | null {
+/**
+ * A test id with its subjects filled in, or null while one of them isn't in the sandbox yet. `{a->b}` is the connection
+ * from subject a to subject b, from `edges` (edgeTargets): its id in the sandbox, never an example's saved id.
+ */
+export function fillTestId(
+  testId: string,
+  subjects: Record<string, string | undefined>,
+  edges: Readonly<Record<string, string>> = {},
+): string | null {
   let missing = false;
-  const filled = testId.replace(/\{(\w+)\}/g, (_, name: string) => {
-    const id = subjects[name];
+  const filled = testId.replace(/\{(\w+)(?:->(\w+))?\}/g, (_, name: string, to?: string) => {
+    const id = to ? edges[`${name}->${to}`] : subjects[name];
     if (!id) missing = true;
     return id ?? "";
   });
   return missing ? null : filled;
+}
+
+/** Each connection between two bound subjects, by `from->to`: the first edge from one to the other. */
+export function edgeTargets(
+  diagram: DiagramFile,
+  subjects: Record<string, string | undefined>,
+): Record<string, string> {
+  const names = new Map<string, string[]>();
+  for (const [name, id] of Object.entries(subjects)) if (id) names.set(id, [...(names.get(id) ?? []), name]);
+  const edges: Record<string, string> = {};
+  for (const edge of diagram.edges)
+    for (const from of names.get(edge.from) ?? [])
+      for (const to of names.get(edge.to) ?? []) edges[`${from}->${to}`] ??= edge.id;
+  return edges;
 }

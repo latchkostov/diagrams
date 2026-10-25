@@ -287,6 +287,13 @@ export class CollabSession {
   noAnswer = false;
   private diagnosticSnapshot?: ReturnType<CollabSession["diagnostics"]>;
   private diagnosticDirty = true;
+  /** Queue membership can change after an earlier document/presence notification. Never key it on time. */
+  private diagnosticQueues?: {
+    held: ReadonlyMap<string, HeldQueue>;
+    behind: ReadonlyMap<string, PeerId>;
+    version: number;
+  };
+  private queueVersion = 0;
   private noAnswerWait?: () => void;
   /** A goodbye sealed ahead of time, so a page going away can send it at once (sealing is asynchronous). */
   private bye?: Uint8Array;
@@ -616,6 +623,7 @@ export class CollabSession {
     for (const [sender, peer] of this.behind)
       if (room?.isEditor(room.keyOf(sender))) {
         this.behind.delete(sender);
+        this.queueVersion++;
         this.requestSync(peer);
       }
     this.inbox = this.inbox.then(() => this.drainAll()).catch(() => this.reject("internal"));
@@ -704,7 +712,14 @@ export class CollabSession {
     presenceRevision: number;
     roomStatus: RoomStatus;
   }> => {
-    if (!this.diagnosticDirty && this.diagnosticSnapshot) return this.diagnosticSnapshot;
+    if (
+      !this.diagnosticDirty &&
+      this.diagnosticSnapshot &&
+      this.diagnosticQueues?.held === this.held &&
+      this.diagnosticQueues.behind === this.behind &&
+      this.diagnosticQueues.version === this.queueVersion
+    )
+      return this.diagnosticSnapshot;
     const next = {
       waiting: this.waiting ?? "none",
       knocking: this.knocking,
@@ -726,6 +741,7 @@ export class CollabSession {
     if (!this.diagnosticSnapshot || JSON.stringify(next) !== JSON.stringify(this.diagnosticSnapshot))
       this.diagnosticSnapshot = Object.freeze(next);
     this.diagnosticDirty = false;
+    this.diagnosticQueues = { held: this.held, behind: this.behind, version: this.queueVersion };
     return this.diagnosticSnapshot;
   };
 
@@ -950,6 +966,7 @@ export class CollabSession {
     this.stops.push(() => {
       for (const q of this.held.values()) q.stop();
       this.held.clear();
+      this.queueVersion++;
     });
     this.stops.push(
       this.clock.every(COLLAB_LIMITS.partialTtlMs, () => {
@@ -1762,6 +1779,7 @@ export class CollabSession {
       this.committedSinceRekey = false;
       for (const q of this.held.values()) q.stop();
       this.held.clear();
+      this.queueVersion++;
       this.reassembler.clear();
       this.synced.clear();
       this.asked.clear();
@@ -1928,6 +1946,7 @@ export class CollabSession {
       // only held is applied as the binding drains it; a healthy join asks nothing more).
       if (bound === "bound" && this.behind.has(sender)) {
         this.behind.delete(sender);
+        this.queueVersion++;
         this.requestSync(from);
       }
       if (this.presence.receive(sender, opened.counter, state)) {
@@ -2035,10 +2054,12 @@ export class CollabSession {
   /** Holds a frame that doesn't count yet; past the bounds, its sender's held frames go, and the sender with them. */
   private hold(sender: string, item: Held, where: "raw" | "blocked"): void {
     let q = this.held.get(sender);
+    const added = !q;
     if (!q) {
       if (this.held.size >= COLLAB_LIMITS.maxSenders) return this.reject("unauthorised");
       q = { raw: [], blocked: [], bytes: 0, stop: this.clock.after(COLLAB_LIMITS.heldMs, () => this.giveUp(sender)) };
       this.held.set(sender, q);
+      this.queueVersion++;
     }
     if (q.bytes + item.bytes > COLLAB_LIMITS.maxHeldBytesPerSender) {
       // Past the bound: something this session couldn't check yet (unbound, or a sync reply) is dropped and asked
@@ -2048,13 +2069,15 @@ export class CollabSession {
     }
     q[where].push(item);
     q.bytes += item.bytes;
+    if (added) this.emit();
   }
 
   /** A frame dropped before it could count: never held against its sender; asked for again once it can count. */
   private drop(sender: string, from: PeerId, count = 1): void {
-    for (let i = 0; i < count; i++) this.reject("held-dropped");
     this.behind.set(sender, from);
     if (this.behind.size > COLLAB_LIMITS.maxSenders) this.behind.delete(this.behind.keys().next().value!);
+    this.queueVersion++;
+    this.rejectCounts({ "held-dropped": count });
   }
 
   /**
@@ -2065,11 +2088,12 @@ export class CollabSession {
   private giveUp(sender: string, extra = 0): void {
     const q = this.held.get(sender);
     q?.stop();
-    this.held.delete(sender);
+    if (this.held.delete(sender)) this.queueVersion++;
     const updates = q?.blocked.filter((i) => i.msg?.type === DOC.update).length ?? 0;
     if (!updates && !extra) {
       const last = q?.raw.at(-1) ?? q?.blocked.at(-1);
       if (last) this.drop(sender, last.from, q!.raw.length + q!.blocked.length);
+      else if (q) this.emit();
       return;
     }
     for (let i = 0; i < (q ? q.raw.length + q.blocked.length : 0) + extra; i++) this.reject("unauthorised");
@@ -2115,6 +2139,8 @@ export class CollabSession {
     if (this.held.get(sender) === q && !q.raw.length && !q.blocked.length) {
       q.stop();
       this.held.delete(sender);
+      this.queueVersion++;
+      this.emit();
     }
   }
 

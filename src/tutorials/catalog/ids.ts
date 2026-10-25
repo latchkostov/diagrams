@@ -2,11 +2,24 @@
  * Every tutorial's id, without its words: the generated e2e (tests/e2e/tutorials.spec.ts) lists one test per id at
  * collection time, in Node. The catalog test keeps this in step with ./index.ts.
  */
-export const tutorialIds = [
-  "mobile-api",
-  "api-gateway",
-  "kafka-topic",
-  "queue-workers",
-  "load-balancer",
-  "cache-aside",
-] as const;
+import type { TutorialMetadata } from "../types";
+
+export const tutorialEntries: readonly Pick<TutorialMetadata, "id" | "quarantined">[] = [
+  { id: "mobile-api" },
+  { id: "quick-add" },
+  { id: "dots-and-sides" },
+  { id: "insert-on-edge", quarantined: true },
+  { id: "property-sheet" },
+  { id: "request-vs-message" },
+  { id: "boundaries" },
+  { id: "annotate" },
+  { id: "dependencies" },
+  { id: "arrange", quarantined: true },
+  { id: "command-palette" },
+  { id: "share-present" },
+  { id: "api-gateway" },
+  { id: "kafka-topic" },
+  { id: "queue-workers" },
+  { id: "load-balancer" },
+  { id: "cache-aside" },
+];

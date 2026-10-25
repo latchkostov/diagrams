@@ -5,7 +5,7 @@ import { initialEditorMode } from "../canvas/interaction/mode";
 import type { DiagramFile } from "../model/types";
 import { holds, nearMiss, resolveSubjects, type SandboxView } from "./checks";
 import { mobileApi } from "./catalog/mobileApi";
-import type { Check } from "./types";
+import type { Check, MetricComparison, MetricExpr } from "./types";
 
 const diagram: DiagramFile = {
   format: "diagrams/v1",
@@ -34,6 +34,83 @@ function view(): SandboxView {
 const met = (check: Check, v = view()) => holds(check, v, subjects);
 
 describe("runtime check kinds", () => {
+  it("checks explicit edge sides rather than similarly named simulation props", () => {
+    const check: Check = { kind: "prop", edge: ["app", "api"], prop: "targetSide", op: "=", value: "top" };
+    const v = view();
+    v.diagram = { ...diagram, edges: [{ ...diagram.edges[0], props: { targetSide: "top" } }] };
+    expect(met(check, v)).toBe(false);
+    v.diagram.edges[0].targetSide = "top";
+    expect(met(check, v)).toBe(true);
+  });
+  it("checks node subtitles and nonempty descriptions, without reading simulation props", () => {
+    const v = view();
+    const subtitle: Check = { kind: "field", subject: "api", field: "sublabel", is: () => "Node.js" };
+    const description: Check = { kind: "field", subject: "api", field: "description" };
+    expect(met(subtitle, v)).toBe(false);
+    expect(met(description, v)).toBe(false);
+    v.diagram = {
+      ...diagram,
+      nodes: [diagram.nodes[0], { ...diagram.nodes[1], sublabel: " node.JS ", description: "   " }],
+    };
+    expect(met(subtitle, v)).toBe(true);
+    expect(met(description, v)).toBe(false);
+    v.diagram.nodes[1].description = "Accepts payments";
+    expect(met(description, v)).toBe(true);
+  });
+  it("requires both a new connection and absence of the old one after reconnecting", () => {
+    const check: Check = { kind: "relation", from: "app", to: "api", absent: true };
+    expect(met(check)).toBe(false);
+    expect(met(check, { ...view(), diagram: { ...diagram, edges: [] } })).toBe(true);
+    expect(holds(check, view(), {})).toBe(false);
+  });
+  it("checks whose naming mode is open, rather than accepting any name field", () => {
+    const check: Check = { kind: "mode", value: "naming", subject: "api" };
+    for (const target of [null, "a", "b"])
+      expect(met(check, { ...view(), mode: { ...initialEditorMode, value: "naming", target } })).toBe(target === "b");
+    expect(holds(check, { ...view(), mode: { ...initialEditorMode, value: "naming", target: null } }, {})).toBe(false);
+  });
+  it("checks committed selections by subject, count and exact membership", () => {
+    const v = view();
+    expect(met({ kind: "selection", subjects: ["app"] }, v)).toBe(false);
+    expect(met({ kind: "selection", subjects: [], exact: true }, v)).toBe(true);
+    v.mode = { ...initialEditorMode, selection: ["a", "b"] };
+    expect(met({ kind: "selection", subjects: ["app"] }, v)).toBe(true);
+    expect(met({ kind: "selection", subjects: ["app"], exact: true }, v)).toBe(false);
+    expect(met({ kind: "selection", subjects: ["app", "api"], exact: true }, v)).toBe(true);
+    expect(met({ kind: "selection", subjects: ["missing"] }, v)).toBe(false);
+    expect(met({ kind: "selection", atLeast: 3 }, v)).toBe(false);
+    expect(met({ kind: "selection", atLeast: 2 }, v)).toBe(true);
+  });
+  it("compares actual coordinates of at least two existing nodes, including the selection", () => {
+    const v = view();
+    expect(met({ kind: "aligned", subjects: ["app", "api"], axis: "y" }, v)).toBe(true);
+    expect(met({ kind: "aligned", subjects: ["app", "api"], axis: "x" }, v)).toBe(false);
+    expect(met({ kind: "aligned", subjects: ["app", "missing"], axis: "y" }, v)).toBe(false);
+    expect(met({ kind: "aligned", subjects: ["app"], axis: "y" }, v)).toBe(false);
+    expect(met({ kind: "aligned", subjects: [], axis: "y" }, v)).toBe(false);
+    v.mode = { ...initialEditorMode, selection: ["a", "b"] };
+    expect(met({ kind: "aligned", axis: "y" }, v)).toBe(true);
+    expect(met({ kind: "aligned", axis: "y", atLeast: 4 }, v)).toBe(false);
+    v.diagram = { ...diagram, nodes: [diagram.nodes[0], { ...diagram.nodes[1], y: 51 }] };
+    expect(met({ kind: "aligned", axis: "y" }, v)).toBe(false);
+  });
+  it("requires explicit published app and dependency state, and leaves acknowledgements to the learner", () => {
+    const v = view();
+    for (const check of [
+      { kind: "presenting", on: false },
+      { kind: "presenting", on: true },
+      { kind: "sharing" },
+      { kind: "dependencies", visible: false },
+    ] as const)
+      expect(met(check, v)).toBe(false);
+    expect(met({ kind: "presenting", on: true }, { ...v, presenting: true })).toBe(true);
+    expect(met({ kind: "presenting", on: false }, { ...v, presenting: false })).toBe(true);
+    expect(met({ kind: "sharing" }, { ...v, sharing: true })).toBe(true);
+    expect(met({ kind: "sharing" }, { ...v, sharing: false })).toBe(false);
+    expect(met({ kind: "dependencies", visible: false }, { ...v, dependencies: false })).toBe(true);
+    expect(met({ kind: "dependencies", visible: true }, { ...v, dependencies: true })).toBe(true);
+    expect(met({ kind: "acknowledge" }, v)).toBe(false);
+  });
   it("compares node and edge props, without coercing or accepting missing values", () => {
     for (const op of ["=", ">=", "<="] as const) {
       expect(met({ kind: "prop", subject: "app", prop: "rate", op, value: 12 })).toBe(true);
@@ -213,5 +290,133 @@ describe("runtime check kinds", () => {
       expect(met({ kind: "slowmo" }, { ...v, slowmo: { status } })).toBe(status === "on" || status === "capturing");
     expect(met({ kind: "mode", value: "menu" }, { ...v, mode: { ...initialEditorMode, value: "menu" } })).toBe(true);
     expect(met({ kind: "mode", value: "menu" }, v)).toBe(false);
+  });
+});
+
+describe("Live metric expressions", () => {
+  const queue: DiagramFile = {
+    format: "diagrams/v1",
+    title: "Workers",
+    nodes: [
+      { id: "app", stencil: "client.mobile", label: "App", x: 0, y: 0, props: { ratePerSec: 8 } },
+      { id: "q", stencil: "aws.sqs", label: "Queue", x: 1, y: 0 },
+      { id: "w1", stencil: "generic.service", label: "W1", x: 2, y: 0 },
+      { id: "w2", stencil: "generic.service", label: "W2", x: 2, y: 1 },
+      { id: "db", stencil: "postgres", label: "DB", x: 3, y: 0 },
+    ],
+    edges: [
+      { id: "aq", from: "app", to: "q", kind: "async" },
+      { id: "q1", from: "q", to: "w1", kind: "async" },
+      { id: "q2", from: "q", to: "w2", kind: "async" },
+      { id: "dep", from: "q", to: "db", kind: "sync", relation: "config" },
+    ],
+  };
+  const names = { app: "app", queue: "q", first: "w1", second: "w2", db: "db" };
+  /** A real session, with these counters as Live would show them. */
+  function live(processed: Record<string, number>, delivered: Record<string, number>, generation = 1): SandboxView {
+    const state = new LiveController(queue).getState();
+    const nodes = Object.fromEntries(
+      Object.entries(state.snapshot.nodes).map(([id, n]) => [id, { ...n, processed: processed[id] ?? n.processed }]),
+    );
+    const edges = Object.fromEntries(
+      Object.entries(state.snapshot.edges)
+        .filter(([id]) => id !== "dep")
+        .map(([id, e]) => [id, { ...e, delivered: delivered[id] ?? e.delivered }]),
+    );
+    return {
+      diagram: queue,
+      live: true,
+      trafficReady: true,
+      processed: () => 0,
+      session: { ...state, generation, snapshot: { ...state.snapshot, nodes, edges } },
+    };
+  }
+  const is = (check: Check, v: SandboxView, subjects: Record<string, string | undefined> = names) =>
+    holds(check, v, subjects);
+  const workersDone: Check = {
+    kind: "compare",
+    left: { sum: "processed", nodes: ["first", "second"] },
+    op: "=",
+    right: { sum: "delivered", from: "queue" },
+  };
+
+  it("sums named subjects, every node a spec fits, edges between subjects and every flow out of one", () => {
+    const v = live({ w1: 5, w2: 7, db: 2 }, { q1: 6, q2: 6 });
+    expect(is(workersDone, v)).toBe(true);
+    expect(is(workersDone, live({ w1: 5, w2: 7 }, { q1: 6, q2: 7 }))).toBe(false);
+    const every: Check = {
+      kind: "compare",
+      left: { sum: "processed", every: { stencils: ["generic.service"] } },
+      op: "=",
+      right: 12,
+    };
+    expect(is(every, v)).toBe(true);
+    expect(is({ ...every, left: { sum: "processed", every: { role: "processor" } }, op: ">=" }, v)).toBe(true);
+    const pairs: Check = {
+      kind: "compare",
+      left: {
+        sum: "delivered",
+        edges: [
+          ["queue", "first"],
+          ["queue", "second"],
+        ],
+      },
+      op: "=",
+      right: { sum: "delivered", from: "queue" },
+    };
+    // `from` sums flows only: the dependency on the database carries no messages.
+    expect(is(pairs, v)).toBe(true);
+  });
+
+  it("compares two readings strictly or not, and a reading with a constant", () => {
+    const v = live({ w1: 3, w2: 9, db: 3 }, {});
+    const db = { node: "db", metric: "processed" } as const;
+    const check = (op: MetricComparison, right: MetricExpr | number): Check => ({
+      kind: "compare",
+      left: db,
+      op,
+      right,
+    });
+    expect(is(check("<", { node: "second", metric: "processed" }), v)).toBe(true);
+    expect(is(check("<", { node: "first", metric: "processed" }), v)).toBe(false);
+    expect(is(check("<=", { node: "first", metric: "processed" }), v)).toBe(true);
+    expect(is(check(">", 2), v)).toBe(true);
+    expect(is(check(">", 3), v)).toBe(false);
+    expect(is(check("=", 3), v)).toBe(true);
+    expect(is(check(">=", 4), v)).toBe(false);
+  });
+
+  it("is never met on a missing reading: Live off, a run not showing this diagram, an unbound subject, an empty set", () => {
+    const v = live({ w1: 5, w2: 7 }, { q1: 6, q2: 6 });
+    expect(is(workersDone, { ...v, live: false })).toBe(false);
+    expect(is(workersDone, { ...v, session: undefined })).toBe(false);
+    expect(is(workersDone, { ...v, trafficReady: false })).toBe(false);
+    expect(is(workersDone, v, { ...names, second: undefined })).toBe(false);
+    expect(is(workersDone, v, { ...names, queue: undefined })).toBe(false);
+    const nobody: Check = {
+      kind: "compare",
+      left: { sum: "processed", every: { stencils: ["kafka.topic"] } },
+      op: "<=",
+      right: 0,
+    };
+    expect(is(nobody, v)).toBe(false);
+    // An optional reading a node doesn't have isn't zero either.
+    expect(is({ kind: "compare", left: { node: "app", metric: "queueLimit" }, op: "<=", right: 0 }, v)).toBe(false);
+  });
+
+  it("counts sinceStep from the step's baseline, from zero in a rebuilt run, and not at all without one", () => {
+    const since: Check = {
+      kind: "compare",
+      left: { sinceStep: { node: "first", metric: "processed" } },
+      op: ">=",
+      right: 10,
+    };
+    const key = JSON.stringify({ node: "first", metric: "processed" });
+    const v = live({ w1: 109 }, {}, 4);
+    expect(is(since, v), "no baseline: another step's, or not read yet").toBe(false);
+    expect(is(since, { ...v, baseline: { [key]: [100, 4] } })).toBe(false);
+    expect(is(since, { ...live({ w1: 110 }, {}, 4), baseline: { [key]: [100, 4] } })).toBe(true);
+    expect(is(since, { ...live({ w1: 12 }, {}, 5), baseline: { [key]: [100, 4] } }), "a rebuilt run").toBe(true);
+    expect(is(since, { ...live({ w1: 9 }, {}, 5), baseline: { [key]: [0, 4] } })).toBe(false);
   });
 });

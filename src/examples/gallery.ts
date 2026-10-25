@@ -1,28 +1,16 @@
 import { msg } from "../i18n";
-import { exampleSummary, type Example } from "./index";
+import { exampleSummary, type EnrichedExample } from "./index";
 import { groupByTheme, type ExampleTheme } from "./themes";
 
-export const exampleFeatures = [
-  { id: "vendorStencils", label: msg("examples.vendorStencils") },
-  { id: "brandedClients", label: msg("examples.brandedClients") },
-  { id: "messageTypes", label: msg("examples.messageTypes") },
-  { id: "resilience", label: msg("resilience.gallery") },
-  { id: "requestsWait", label: msg("examples.requestsWait") },
-  { id: "faultDrills", label: msg("examples.faultDrills") },
-  { id: "partitions", label: msg("examples.partitions") },
-  { id: "rateLimits", label: msg("examples.rateLimits") },
-  { id: "networkDevices", label: msg("examples.networkDevices") },
-  { id: "autoscaling", label: msg("examples.autoscaling") },
-  { id: "routing", label: msg("examples.routing") },
-  { id: "latency", label: msg("examples.latency") },
-];
+import { exampleFeatures } from "./features";
+export { exampleFeatures } from "./features";
 
 /** Full gallery copy is downloaded with the gallery, outside startup. */
-export const gallerySummary = (example: Example) =>
+export const gallerySummary = (example: EnrichedExample) =>
   example.slug === "retry-storm" ? msg("examples.retryStormGallerySummary")() : exampleSummary(example);
 
 /** Every search word must match; labels are resolved in the current language. */
-export function filterExamples(items: readonly Example[], query: string, feature = "") {
+export function filterExamples(items: readonly EnrichedExample[], query: string, feature = "") {
   const words = query.trim().toLocaleLowerCase().split(/\s+/).filter(Boolean);
   return groupByTheme(
     items.filter((e) => {

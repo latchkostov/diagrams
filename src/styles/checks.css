@@ -115,6 +115,10 @@
   box-shadow: var(--focus-ring);
 }
 
+div.check-row-head {
+  cursor: default;
+}
+
 .check-sev {
   display: inline-flex;
   align-items: center;
@@ -347,6 +351,11 @@
 .insp-findings .check-row {
   padding: 6px 4px;
   border-radius: 8px;
+}
+
+.insp-findings-list {
+  display: grid;
+  gap: 4px;
 }
 
 .insp-findings > .link-btn {

@@ -12,7 +12,7 @@ import type { CanvasSurfaceKind } from "./types";
  *   editing  ── field.focused (another field) ──▶ field(name)     ── field.left ──▶ editing
  *
  * Live is a region of its own beside these (`live`: off, playing or paused): a menu opens in Live too, and a node is
- * named in Live's property sheet. The selection rides along as data. Nothing here moves focus or opens anything: the
+ * named in Live's property sheet. The selection and the open annotation editor ride along as data, each commit. Nothing here moves focus or opens anything: the
  * controller feeds it from the events it already decides (menus, gestures, focusin/focusout, naming.done) and from
  * Live's session (useLiveSessionState.ts), and the canvas behaves exactly as before.
  */
@@ -28,6 +28,8 @@ export interface EditorModeState {
   live: "off" | "playing" | "paused";
   /** The selected flow ids, as last committed. */
   selection: readonly string[];
+  /** The annotation whose text editor is open, as last committed (its edit commits as the editor closes). */
+  annotating?: string | null;
 }
 export type EditorModeEvent =
   | { type: "menu.opened"; kind: CanvasSurfaceKind }
@@ -41,7 +43,8 @@ export type EditorModeEvent =
   /** Enter or Esc in a name field (the focus policy's row N1 hears it too). */
   | { type: "naming.done" }
   | { type: "live"; state: EditorModeState["live"] }
-  | { type: "selection"; ids: readonly string[] };
+  | { type: "selection"; ids: readonly string[] }
+  | { type: "annotating"; id: string | null };
 
 export const initialEditorMode: EditorModeState = {
   value: "editing",
@@ -143,5 +146,7 @@ export function editorModeStep(state: EditorModeState, event: EditorModeEvent): 
   if (event.type === "live") return state.live === event.state ? state : { ...state, live: event.state };
   if (event.type === "selection")
     return state.selection.join() === event.ids.join() ? state : { ...state, selection: event.ids };
+  if (event.type === "annotating")
+    return (state.annotating ?? null) === event.id ? state : { ...state, annotating: event.id };
   return machineStep(editorModeMachine, state, event).state;
 }

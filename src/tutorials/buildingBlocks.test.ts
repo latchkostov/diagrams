@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { holds, resolveSubjects } from "./checks";
+import { baselineKey, holds, resolveSubjects, sinceValues } from "./checks";
 import type { SandboxView } from "./checks";
 import type { Check } from "./types";
 import type { LiveState } from "../live/controller";
@@ -68,8 +68,8 @@ describe("building-block lessons", () => {
           diagram: d,
           live: true,
           processed: (id) => snapshot.nodes[id]?.processed ?? 0,
-          stepProcessed: Object.fromEntries(d.nodes.map((n) => [n.id, 0])),
-          session: { snapshot, running: d.simulations![0], run: { time: snapshot.time } } as LiveState,
+          baseline: Object.fromEntries(sinceValues(watch.check).map((expr) => [baselineKey(expr), [0, 0] as const])),
+          session: { generation: 0, snapshot, running: d.simulations![0], run: { time: snapshot.time } } as LiveState,
         };
         reached = holds(watch.check, view, subjects);
       }
@@ -84,6 +84,7 @@ describe("building-block lessons", () => {
         {
           state,
           subjects: {},
+          edges: {},
           selected: [],
           announcement: "",
           nearMiss: null,
@@ -100,22 +101,23 @@ describe("counter comparisons", () => {
   engine.load(diagram);
   const snapshot = engine.snapshot();
   const check: Check = {
-    kind: "counters",
-    left: [
-      { subject: "first", field: "processed" },
-      { subject: "second", field: "processed" },
-    ],
+    kind: "compare",
+    left: { sum: "processed", nodes: ["first", "second"] },
     op: "=",
-    right: [
-      { edge: ["queue", "first"], field: "delivered" },
-      { edge: ["queue", "second"], field: "delivered" },
-    ],
+    right: {
+      sum: "delivered",
+      edges: [
+        ["queue", "first"],
+        ["queue", "second"],
+      ],
+    },
   };
   const view = (first: number, second: number, delivered: number): SandboxView => ({
     diagram,
     live: true,
     processed: () => 0,
     session: {
+      generation: 0,
       snapshot: {
         ...snapshot,
         nodes: {
@@ -138,10 +140,10 @@ describe("counter comparisons", () => {
   });
   it("compares two counters strictly, including equal and missing metrics", () => {
     const less: Check = {
-      kind: "counters",
-      left: [{ subject: "first", field: "processed" }],
+      kind: "compare",
+      left: { node: "first", metric: "processed" },
       op: "<",
-      right: [{ subject: "second", field: "processed" }],
+      right: { node: "second", metric: "processed" },
     };
     expect(holds(less, view(5, 7, 12), subjects)).toBe(true);
     expect(holds(less, view(7, 7, 14), subjects)).toBe(false);
@@ -149,12 +151,11 @@ describe("counter comparisons", () => {
     expect(holds(check, view(5, 7, 12), { ...subjects, queue: undefined })).toBe(false);
   });
   it("a relative processed check cannot use traffic from before the step", () => {
-    const relative: Check = { kind: "processed", subject: "first", atLeast: 10, sinceStep: true };
-    const v = { ...view(0, 0, 0), processed: () => 109 };
-    expect(holds(relative, v, subjects)).toBe(false);
-    expect(holds(relative, { ...v, stepProcessed: { [subjects.first!]: 100 } }, subjects)).toBe(false);
-    expect(holds(relative, { ...v, processed: () => 110, stepProcessed: { [subjects.first!]: 100 } }, subjects)).toBe(
-      true,
-    );
+    const relative = loadBalancer.steps.at(-1)!.check;
+    const key = baselineKey({ node: "service", metric: "processed" });
+    const bindings = { service: subjects.first };
+    expect(holds(relative, view(109, 0, 0), bindings)).toBe(false);
+    expect(holds(relative, { ...view(109, 0, 0), baseline: { [key]: [100, 0] } }, bindings)).toBe(false);
+    expect(holds(relative, { ...view(110, 0, 0), baseline: { [key]: [100, 0] } }, bindings)).toBe(true);
   });
 });

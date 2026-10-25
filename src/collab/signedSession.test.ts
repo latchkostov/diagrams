@@ -1,4 +1,5 @@
 import { describe, expect, it, onTestFinished, vi } from "vitest";
+import { ops } from "../test/opCounter";
 import { textToBytes } from "../interop/codec";
 import { FakeClock } from "./clock";
 import { Sealer } from "./envelope";
@@ -76,6 +77,159 @@ function onlyTo(from: TestClient, to: TestClient): () => void {
 }
 
 describe("signed rooms", () => {
+  it("refreshes cached diagnostics after holding and fully draining a sender", async () => {
+    const r = await signedRoom(51, { viewOnly: true });
+    const [host] = r.clients;
+    const viewer = await r.join("viewer", 512);
+    const session = host.session;
+    const initial = session.diagnostics();
+    const published: ReturnType<typeof session.diagnostics>[] = [];
+    onTestFinished(session.onChange(() => published.push(session.diagnostics())));
+    unruly(viewer);
+    expect(viewer.edit((d) => ({ ...d, title: "Waiting for a grant" }))).toBe(true);
+    await r.settle();
+    const held = session.diagnostics();
+    expect(held).not.toBe(initial);
+    expect(held).toMatchObject({ held: 1, behind: 0 });
+    expect(published.at(-1)).toBe(held);
+    expect(title(host)).toBe(canaryDiagram().title);
+
+    // More frames from the same held sender change its queue, but not the diagnostic membership counts.
+    expect(viewer.edit((d) => ({ ...d, title: "Still waiting for a grant" }))).toBe(true);
+    await r.settle();
+    expect(session.diagnostics()).toBe(held);
+    // An unrelated element-id allocation and clock movement must not rescan or serialize diagnostics.
+    session.newId("service");
+    r.clock.advance(1);
+    const work = ops(() => {
+      for (let i = 0; i < 256; i++) expect(session.diagnostics()).toBe(held);
+    });
+    expect(work).toBeGreaterThan(0);
+    expect(work).toBeLessThanOrEqual(256 * 2);
+
+    expect(await session.appendRoster("admit", { who: viewer.session.signed!.key })).toBe(true);
+    await session.idle();
+    const drained = session.diagnostics();
+    expect(drained).toMatchObject({ held: 0, behind: 0 });
+    expect(published.at(-1)).toBe(drained);
+    expect(title(host)).toBe("Still waiting for a grant");
+  });
+
+  it("refreshes diagnostics while frames wait for a binding and immediately after they drain", async () => {
+    const r = await signedRoom(53);
+    const [host] = r.clients;
+    const session = host.session;
+    const peer = r.net.connect();
+    onTestFinished(() => peer.close());
+    await r.settle();
+    const keys = await deriveRoomKeys(r.link);
+    const identity = await newIdentity();
+    const signer = new SignedRoom(keys, r.host.key, identity);
+    const sealer = new Sealer(keys, seededBytes(532)(16));
+    sealer.sign = signer.signFrame;
+    const binding = await signer.bindMine(sealer.sender, 532);
+    const published: ReturnType<typeof session.diagnostics>[] = [];
+    onTestFinished(session.onChange(() => published.push(session.diagnostics())));
+    const initial = session.diagnostics();
+    // A sync request needs a binding but makes no document change when drained.
+    peer.send(await sealer.seal("doc", frame(DOC.syncRequest, new Uint8Array([0]))));
+    await r.settle();
+    expect(session.diagnostics()).not.toBe(initial);
+    expect(session.diagnostics()).toMatchObject({ held: 1, behind: 0 });
+    expect(published.at(-1)).toBe(session.diagnostics());
+    peer.send(
+      await sealer.seal(
+        "presence",
+        frame(PRESENCE.state, encodePresence({ alias: "Peer", colour: 1, status: "active", ...binding })),
+      ),
+    );
+    await r.settle();
+    expect(session.diagnostics()).toMatchObject({ held: 0, behind: 0 });
+    expect(published.at(-1)).toBe(session.diagnostics());
+  });
+
+  it("publishes an empty held queue's expiry while its last frame is still being verified", async () => {
+    const r = await signedRoom(54);
+    const session = r.clients[0].session;
+    const peer = r.net.connect();
+    onTestFinished(() => peer.close());
+    await r.settle();
+    const keys = await deriveRoomKeys(r.link);
+    const signer = new SignedRoom(keys, r.host.key, await newIdentity());
+    const sealer = new Sealer(keys, seededBytes(542)(16));
+    sealer.sign = signer.signFrame;
+    peer.send(await sealer.seal("doc", frame(DOC.syncRequest, new Uint8Array([0]))));
+    await r.settle();
+    expect(session.diagnostics()).toMatchObject({ held: 1, behind: 0 });
+
+    let entered!: () => void;
+    const verifying = new Promise<void>((resolve) => (entered = resolve));
+    let release!: () => void;
+    const pending = new Promise<void>((resolve) => (release = resolve));
+    const room = session.signed!;
+    // Make the binding available to this drain without scheduling another concurrent drain.
+    const keyOf = room.keyOf.bind(room);
+    vi.spyOn(room, "keyOf").mockImplementation((sender) => (sender === sealer.senderHex ? signer.key : keyOf(sender)));
+    const verify = room.verifyFrame.bind(room);
+    vi.spyOn(room, "verifyFrame").mockImplementation(async (...args) => {
+      if (args[2][0] === DOC.syncRequest) {
+        entered();
+        await pending;
+      }
+      return verify(...args);
+    });
+    const internals = session as unknown as {
+      held: Map<string, { raw: unknown[]; blocked: unknown[] }>;
+      drain(sender: string): Promise<void>;
+    };
+    const draining = internals.drain(sealer.senderHex);
+    try {
+      await verifying;
+      expect(internals.held.get(sealer.senderHex)).toMatchObject({ raw: [], blocked: [] });
+      const published: ReturnType<typeof session.diagnostics>[] = [];
+      onTestFinished(session.onChange(() => published.push(session.diagnostics())));
+      r.clock.advance(COLLAB_LIMITS.heldMs);
+      // No settle or verification completion may be needed to notify subscribers.
+      const expired = session.diagnostics();
+      expect(expired).toMatchObject({ held: 0, behind: 0 });
+      expect(expired.rejected["held-dropped"]).toBeUndefined();
+      expect(published.at(-1)).toBe(expired);
+    } finally {
+      release();
+      await draining;
+    }
+    expect(session.diagnostics()).toMatchObject({ held: 0, behind: 0 });
+  });
+
+  it("publishes dropped held senders before any subsequent traffic", async () => {
+    const r = await signedRoom(52, { viewOnly: true });
+    const [host] = r.clients;
+    const viewer = await r.join("viewer", 522);
+    const session = host.session;
+    const initial = session.diagnostics();
+    const published: ReturnType<typeof session.diagnostics>[] = [];
+    onTestFinished(session.onChange(() => published.push(session.diagnostics())));
+    (viewer.session as unknown as { sendDoc(message: Uint8Array, to?: string): void }).sendDoc(
+      frame(DOC.syncReply, Y.encodeStateAsUpdate(viewer.session.doc.ydoc)),
+      session.transport.self,
+    );
+    await r.settle();
+    const held = session.diagnostics();
+    expect(held).not.toBe(initial);
+    expect(held).toMatchObject({ held: 1, behind: 0 });
+    expect(published.at(-1)).toBe(held);
+    r.clock.advance(COLLAB_LIMITS.heldMs);
+    // No settle here: the expiry callback must publish the final queue state itself.
+    const dropped = session.diagnostics();
+    expect(dropped).toMatchObject({ held: 0, behind: 1 });
+    expect(dropped.rejected["held-dropped"]).toBe(1);
+    expect(published.at(-1)).toBe(dropped);
+    expect(await session.appendRoster("admit", { who: viewer.session.signed!.key })).toBe(true);
+    await session.idle();
+    expect(session.diagnostics()).toMatchObject({ held: 0, behind: 0 });
+    expect(published.at(-1)).toBe(session.diagnostics());
+  });
+
   it("bounds document reads and notifications for many rejected roster items", async () => {
     const r = await signedRoom(50);
     const [host] = r.clients;

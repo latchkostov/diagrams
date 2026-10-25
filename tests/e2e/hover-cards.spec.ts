@@ -48,12 +48,15 @@ test("compact card keeps its screen-space bounds across ten seconds of Live", as
   await page.getByTestId("node-caller").hover();
   await expect(card).toBeVisible();
   const boxes = [];
+  const rates = [];
   for (let second = 0; second <= 10; second++) {
     if (second) await page.clock.runFor(1000);
     boxes.push(await card.boundingBox());
+    rates.push(await card.getByTestId("hover-vital-rate").innerText());
   }
   expect(boxes[0]).toMatchObject({ width: 320, height: 332 });
   expect(boxes.every((box) => JSON.stringify(box) === JSON.stringify(boxes[0]))).toBe(true);
+  expect(new Set(rates).size).toBeGreaterThan(1);
   await expect(card).toHaveAccessibleName("Decision service · Live details");
   await expect(card.getByTestId("planning-arithmetic")).toHaveCount(0);
   await expect(page.getByTestId("hover-history")).toHaveCount(0);
@@ -130,7 +133,13 @@ test("only the pinned readout records a bounded ten-sample sparkline", async ({ 
   await openLiveNodeDetails(page, "caller", "outcomes");
   await expect(page.getByTestId("hover-history-scope")).toHaveText("Last 10 seconds while pinned");
   await expect(page.getByTestId("hover-history-chart")).toHaveAttribute("aria-label", "Recent throughput · 1 sample");
-  await page.clock.runFor(12000);
+  await page.clock.runFor(500);
+  await expect(page.getByTestId("hover-history-chart")).toHaveAttribute("aria-label", "Recent throughput · 1 sample");
+  await page.clock.runFor(1000);
+  await expect(page.getByTestId("hover-history-chart")).toHaveAttribute("aria-label", "Recent throughput · 2 samples");
+  await page.clock.runFor(1000);
+  await expect(page.getByTestId("hover-history-chart")).toHaveAttribute("aria-label", "Recent throughput · 3 samples");
+  await page.clock.runFor(9500);
   await expect(page.getByTestId("hover-history-chart")).toHaveAttribute("aria-label", "Recent throughput · 10 samples");
   // The plotted history is text too: a visible summary and every value, both describing the chart.
   const chart = page.getByTestId("hover-history-chart");
