@@ -21,6 +21,10 @@ comparison with the original engine confirms identical event timestamps, message
 IDs, kinds and text; only ordering changes. All counters, checkpoints, latency
 statistics and every other Node golden remain unchanged.
 
+The broker-parts unit pin also moves from 8,627 to 8,641 sampled retry attempts,
+closer to the unchanged same-arrivals scale-one baseline of 8,835. Its exact-value
+assertion is updated; the adjacent I1 accuracy assertion and its bound are unchanged.
+
 ## Verification
 
 The 223 targeted simulation unit/heavy tests pass. Both original resilience seeds
