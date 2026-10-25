@@ -430,6 +430,20 @@ export function createTutorialRunner(
           if (demo.edge) ed.setEdgeProps(item.id, changed);
           else ed.setNodeProps(item.id, changed);
         }
+        // TODO(#346): use the shared effective-configuration/persist helper once it lands.
+        // runSimulation below reselects the repaired saved run, so Live reads these overrides too.
+        if (item && demo.simulations) {
+          const map = demo.edge ? "edges" : "props";
+          let repaired = false;
+          const simulations = ed.getDiagram().simulations?.map((sim) => {
+            const override = sim.setup?.[map]?.[item.id];
+            const patch = demo.simulations!.includes(sim.id) && override && patchProps(override, demo.patches);
+            if (!patch) return sim;
+            repaired = true;
+            return { ...sim, setup: { ...sim.setup, [map]: { ...sim.setup?.[map], [item.id]: patch } } };
+          });
+          if (repaired) ed.updateMeta({ simulations });
+        }
         return;
       }
       case "relation": {

@@ -90,6 +90,12 @@ export const studyRag: Tutorial = {
           { kind: "simulation", id: "questions", atLeastMs: 5000 },
           { kind: "compare", left: { node: "questions", metric: "latency.p95" }, op: "<=", right: 2000 },
           { kind: "metric", subject: "llm", field: "processed", op: ">=", value: 8 },
+          {
+            kind: "compare",
+            left: { sum: "failed", nodes: ["questions", "embeddings", "index", "llm"] },
+            op: "=",
+            right: 0,
+          },
         ],
       },
       targets: [{ testId: "node-{llm}", tip: msg("tutorials.studyRag.budgetHint") }],

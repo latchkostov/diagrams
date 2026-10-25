@@ -61,7 +61,9 @@ export function resolveSubjects(
   const matches = (spec: SubjectSpec, node: DiagramFile["nodes"][number]) =>
     fits(spec, node.stencil) &&
     (!spec.downstreamOf ||
-      flowEdges(diagram.edges).some((e) => e.from === subjects[spec.downstreamOf!] && e.to === node.id));
+      flowEdges(diagram.edges).some((e) => e.from === subjects[spec.downstreamOf!] && e.to === node.id)) &&
+    (!spec.upstreamOf ||
+      flowEdges(diagram.edges).some((e) => e.from === node.id && e.to === subjects[spec.upstreamOf!]));
   for (const [name, spec] of Object.entries(tutorial.subjects)) {
     if (spec.edge) continue;
     if (typeof spec.boundary === "object") continue;

@@ -11,6 +11,7 @@ import {
 } from "../canvas/interaction/mode";
 import { GROUP_PREFIX } from "../canvas/types";
 import type { EditorApi } from "../editor/types";
+import { effectiveCallerPolicy } from "../editor/callerPolicy";
 import { LiveController, type LiveState } from "../live/controller";
 import { liveActions } from "../live/liveActions";
 import { addConsumer } from "../live/addConsumer";
@@ -357,6 +358,8 @@ function sandbox(tutorial: Tutorial, { lateAdds = false, lateConnects = false, l
     write({ ...diagram, edges: diagram.edges.map((e) => (e.id === id ? { ...e, ...patch } : e)) });
   const editor = {
     getDiagram: () => diagram,
+    getNode: (id: string) => diagram.nodes.find((node) => node.id === id),
+    getEdge: (id: string) => diagram.edges.find((edge) => edge.id === id),
     getDocumentVersion: () => version,
     getSelection: () => ({
       nodeIds: mode.selection.filter((id) => diagram.nodes.some((n) => n.id === id)),
@@ -844,6 +847,97 @@ describe("design study evidence", () => {
     }
   };
 
+  it.each(["email", "sms", "push"])(
+    "fan-out: Skip recovers after saved-run override changed (%s)",
+    async (provider) => {
+      const s = sandbox(studyFanout);
+      await reach(s, studyFanout, 0);
+      s.learn({ kind: "runSimulation", id: "provider-limits" });
+      const editor = s.editor as unknown as EditorApi;
+      // The Live inspector writes to the saved run, not the diagram's connection.
+      effectiveCallerPolicy(editor, `${provider}-provider`, {
+        controller: s.live!,
+        slowmo: { active: false },
+      })!.set({ poolConnections: 10, replyMs: 17 });
+      await skip(s, studyFanout);
+      const session = s.live!.getState();
+      expect(session.running!.setup!.edges![`${provider}-provider`].caller).toMatchObject({
+        poolConnections: 1,
+        replyMs: 17,
+      });
+      expect(session.snapshot.nodes[s.subject(provider)].rejected).toBe(0);
+      expect(state(s)).toMatchObject({ index: 1, value: "active" });
+    },
+  );
+
+  it("fan-out: reconstruction repairs saved-run overrides before restoring", async () => {
+    const tutorial: Tutorial = {
+      ...studyFanout,
+      start: () => {
+        const diagram = startOf(studyFanout);
+        for (const run of diagram.simulations!)
+          run.setup = { edges: { "sms-provider": { caller: { poolConnections: 10, replyMs: 17 } } } };
+        return diagram;
+      },
+    };
+    saveProgress(tutorial, 1, false);
+    const s = sandbox(tutorial);
+    s.runner.send({ type: "resume" });
+    for (let frame = 0; frame < 400 && state(s).value === "reconstructing"; frame++) {
+      if (s.live?.getState().playing) play(s, 250);
+      await Promise.resolve();
+    }
+    expect(state(s)).toMatchObject({ index: 1, value: "active" });
+    for (const run of s.diagram.simulations!)
+      expect(run.setup!.edges!["sms-provider"].caller).toEqual({ poolConnections: 1, replyMs: 17 });
+    await skip(s, tutorial);
+    await skip(s, tutorial);
+    expect(state(s).value).toBe("finished");
+  });
+
+  it.each([
+    ["email", "generic.queue"],
+    ["sms", "aws.sqs"],
+    ["push", "azure.service-bus.queue"],
+  ])("fan-out: Skip recovers after learner disconnected a channel queue (%s)", async (channel, stencil) => {
+    const s = sandbox(studyFanout);
+    await reach(s, studyFanout, 1);
+    const dlq = s.editor.addStencil(stencil);
+    s.learn({ kind: "insert", edge: ["events", `${channel}Sender`], subject: `${channel}Queue`, stencil });
+    const queue = s.subject(`${channel}Queue`);
+    s.editor.connect(queue, dlq);
+    s.editor.applyDiagram({
+      ...s.diagram,
+      edges: s.diagram.edges.filter((edge) => !(edge.from === s.subject("events") && edge.to === queue)),
+    });
+    const nodes = s.diagram.nodes.length;
+    const edges = s.diagram.edges.length;
+    await skip(s, studyFanout);
+    expect(s.subject(`${channel}Queue`)).toBe(queue);
+    expect(s.subject(`${channel}Dlq`)).toBe(dlq);
+    expect(s.diagram.nodes).toHaveLength(nodes + 4); // Only the other two queues and their DLQs.
+    expect(s.diagram.edges).toHaveLength(edges + 5);
+    expect(s.diagram.edges.filter((edge) => edge.from === s.subject("events") && edge.to === queue)).toHaveLength(1);
+    expect(state(s)).toMatchObject({ index: 2, value: "active" });
+  });
+
+  it.each(["ask", "retrieve", "answer"])(
+    "RAG budget rejects timed-out answers on %s despite low latency and completed model work",
+    async (edge) => {
+      const s = sandbox(studyRag);
+      await reach(s, studyRag, 0);
+      s.editor.setEdgeProps(edge, { caller: { deadlineMs: 250 } });
+      s.learn({ kind: "runSimulation", id: "questions" });
+      play(s, 6000);
+      const snapshot = s.live!.getState().snapshot;
+      expect(snapshot.nodes[s.subject("questions")].latency!.p95).toBeLessThanOrEqual(2000);
+      expect(snapshot.nodes[s.subject("llm")].processed).toBeGreaterThanOrEqual(8);
+      expect(snapshot.edges[edge].calls!.timedOut).toBeGreaterThan(0);
+      expect(state(s)).toMatchObject({ index: 0, value: "active" });
+      expect(state(s).latched[0]).toBe(false);
+    },
+  );
+
   for (const tutorial of [studyFanout, studyRag, studyCells])
     it(`${tutorial.id}: the starting diagram fails every milestone throughout every saved run`, async () => {
       const s = sandbox(tutorial);
@@ -1100,6 +1194,12 @@ describe("every tutorial's completion contract", () => {
           "clear selection",
           "single node",
           "extra subject-type node",
+          ...(step.demo.some((demo) => demo.kind === "patch" && demo.simulations)
+            ? ["saved-run override changed"]
+            : []),
+          ...(tutorial.id === "study-fanout" && step.demo.some((demo) => demo.kind === "insert")
+            ? ["learner disconnected a channel queue"]
+            : []),
           ...(Object.values(tutorial.subjects).some((spec) => typeof spec.boundary === "object")
             ? ["unrelated boundary"]
             : []),
@@ -1116,6 +1216,19 @@ describe("every tutorial's completion contract", () => {
               const id = s.editor.addStencil("generic.database");
               s.editor.groupNodes([id]);
               s.toMode({ type: "field.left" });
+            } else if (perturbation === "saved-run override changed") {
+              s.learn({ kind: "runSimulation", id: "provider-limits" });
+              effectiveCallerPolicy(s.editor as unknown as EditorApi, "sms-provider", {
+                controller: s.live!,
+                slowmo: { active: false },
+              })!.set({ poolConnections: 10 });
+            } else if (perturbation === "learner disconnected a channel queue") {
+              s.learn({ kind: "insert", edge: ["events", "smsSender"], subject: "smsQueue", stencil: "aws.sqs" });
+              const queue = s.subject("smsQueue");
+              s.editor.applyDiagram({
+                ...s.diagram,
+                edges: s.diagram.edges.filter((edge) => !(edge.from === s.subject("events") && edge.to === queue)),
+              });
             } else {
               const checkSubjects = (c: Check): string[] =>
                 c.kind === "all"

@@ -27,6 +27,8 @@ export interface SubjectSpec {
   role?: SimRole;
   /** Require an incoming flow from this earlier-declared node subject. */
   downstreamOf?: string;
+  /** Require an outgoing flow to this earlier-declared node subject. */
+  upstreamOf?: string;
 }
 
 export type Comparison = "=" | ">=" | "<=";
@@ -189,7 +191,12 @@ export type Demo =
   | { kind: "rename"; subject: string; label: Words }
   | ({ kind: "prop"; props: Record<string, unknown> } & PropertyTarget)
   /** Edit-preserving prop edits, applied together as one edit, or none when nothing is missing. */
-  | ({ kind: "patch"; patches: readonly PropPatch[] } & PropertyTarget)
+  | ({
+      kind: "patch";
+      patches: readonly PropPatch[];
+      /** Also repair existing saved-run overrides before a subsequent runSimulation restores them. */
+      simulations?: readonly string[];
+    } & PropertyTarget)
   | { kind: "relation"; from: string; to: string; relation: EdgeRelation; edgeKind?: "sync" | "async" }
   | { kind: "group"; subjects: readonly string[]; boundary: string }
   | { kind: "annotate"; annotation: AnnotationKind }
