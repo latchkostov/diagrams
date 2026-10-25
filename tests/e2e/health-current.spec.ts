@@ -9,7 +9,9 @@ import {
   STORAGE_KEYS,
   openInspectorLiveDetails,
   expectNoErrors,
+  animationFrames,
 } from "./fixtures";
+import { chunk } from "./chunk";
 
 for (const theme of ["light", "dark"] as const) {
   test(`recovered breaker is healthy with past timeouts in Outcomes, ${theme}`, async ({ page, consoleErrors }) => {
@@ -21,8 +23,27 @@ for (const theme of ["light", "dark"] as const) {
       },
       { diagram: healthFixture(), key: STORAGE_KEYS.autosavePrefix + "blocking-call", theme },
     );
+    // Keep the lazy callout one UI frame behind the breaker publication. A frozen
+    // page clock must not be mistaken for a failed download or a missing callout.
+    await page.route(chunk("TroubleCallout", "src/live/TroubleCallout.tsx"), async (route) => {
+      await expect
+        .poll(async () => (await page.getByTestId("call-pill-call").allTextContents()).join(""), { intervals: [0] })
+        .toContain("Open");
+      await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => resolve())));
+      await route.continue();
+    });
+    const detectorResponse = page.waitForResponse((response) =>
+      chunk("troubleTracker", "src/live/troubleTracker.ts").test(response.url()),
+    );
     await page.clock.install();
     await gotoLive(page, "./?view=canvas&example=blocking-call&live=1&sim=health&paused=1");
+    // The detector needs its baseline at zero, before the first timeout occurs.
+    const detector = await detectorResponse;
+    expect(await detector.finished()).toBeNull();
+    await page.evaluate(async (url) => {
+      await import(url);
+    }, detector.url());
+    await animationFrames(page);
     await pauseClock(page);
     await page.getByTestId("live-play").click();
     await expect
@@ -34,8 +55,21 @@ for (const theme of ["light", "dark"] as const) {
         { intervals: [0] },
       )
       .toContain("Open");
+    // Freeze the brief Open phase while the independently loaded surface mounts;
+    // advance UI frames without advancing the simulation past its recovery.
+    await page.getByTestId("live-play").click();
+    await expect
+      .poll(
+        async () => {
+          await page.clock.runFor(16);
+          return page.getByTestId("trouble-callout").isVisible();
+        },
+        { intervals: [0] },
+      )
+      .toBe(true);
     await expect(page.getByTestId("trouble-callout")).toBeVisible();
     await expect(page.getByTestId("trouble-announce")).not.toBeEmpty();
+    await page.getByTestId("live-play").click();
     await page.clock.runFor(15000);
     await page.getByTestId("live-play").click();
     await waitForStableViewport(page);
