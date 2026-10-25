@@ -22,7 +22,7 @@ interface StubOptions {
 async function stubCapture(page: Page, opts: StubOptions = {}) {
   await page.addInitScript((o: StubOptions) => {
     const w = window as unknown as Record<string, unknown> & { __rec: Record<string, unknown> };
-    w.__rec = { requests: 0, stopped: 0, created: 0, revoked: [] };
+    w.__rec = { requests: 0, stopped: 0, created: 0, starts: 0, revoked: [] };
     const revoke = URL.revokeObjectURL.bind(URL);
     URL.revokeObjectURL = (url) => {
       (w.__rec.revoked as string[]).push(url);
@@ -97,6 +97,7 @@ async function stubCapture(page: Page, opts: StubOptions = {}) {
       start() {
         this.state = "recording";
         w.__rec.started = true;
+        w.__rec.starts = (w.__rec.starts as number) + 1;
       }
       stop() {
         if (this.state === "inactive") return;
@@ -206,21 +207,31 @@ test.describe("record video", () => {
     await stubCapture(page);
     await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1&traffic=0`);
     await page.clock.install();
+    await pauseClock(page);
     const urls: string[] = [];
     for (let i = 0; i < 2; i++) {
       await openRecord(page);
       await page.getByTestId("record-start").click();
       await expect(page.getByTestId("record-countdown")).toBeVisible();
-      await page.clock.runFor(3500);
-      await expect.poll(() => rec(page, "started")).toBe(true);
+      // Each tick is installed after React commits the preceding count. Drive the clock until
+      // this take's encoder has actually started; elapsed fake time alone is not that boundary.
+      await expect
+        .poll(async () => {
+          await page.clock.fastForward(1000);
+          return rec(page, "starts");
+        })
+        .toBe(i + 1);
       await page.getByTestId("record-stop").click();
-      await page.clock.runFor(100);
+      await page.clock.fastForward(100);
       await expect(page.getByTestId("record-review")).toBeVisible();
       const url = await page.getByTestId("record-preview").getAttribute("src");
       if (!url) throw new Error("Expected a recording URL");
       urls.push(url);
       await page.getByTestId("record-discard").click();
     }
+    await page.getByTestId("record-discard-undo").hover();
+    await page.clock.fastForward(9000);
+    expect(await rec(page, "revoked")).toEqual([urls[0]]);
     await page.getByTestId("record-discard-undo").click();
     await page.clock.fastForward(9000);
     expect(await rec(page, "revoked")).toEqual([urls[0]]);

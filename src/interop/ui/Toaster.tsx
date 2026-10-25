@@ -13,11 +13,26 @@ const ICON: Record<ToastKind, Parameters<typeof Glyph>[0]["name"]> = {
 
 export function Toaster() {
   const t = useSyncExternalStore(subscribe, () => toast.current);
+  const engaged = useSyncExternalStore(subscribe, () => toast.engaged);
   useEffect(() => {
-    if (!t || !t.duration) return;
-    const id = setTimeout(() => toast.dismiss(t.id), t.duration);
+    if (!t || !t.duration || engaged) return;
+    const id = setTimeout(() => {
+      if (!toast.engaged) toast.dismiss(t.id);
+    }, t.duration);
     return () => clearTimeout(id);
-  }, [t]);
+  }, [t, engaged]);
+  useEffect(() => {
+    const endPress = () => toast.contact("press", false);
+    window.addEventListener("pointerup", endPress);
+    window.addEventListener("pointercancel", endPress);
+    window.addEventListener("blur", endPress);
+    return () => {
+      window.removeEventListener("pointerup", endPress);
+      window.removeEventListener("pointercancel", endPress);
+      window.removeEventListener("blur", endPress);
+      toast.release();
+    };
+  }, []);
   // An action that asks for the focus (a long task's Cancel) takes it from wherever it was, and gives it back.
   const action = useRef<HTMLButtonElement>(null);
   const focusAction = !!t?.action?.focus;
@@ -43,7 +58,7 @@ export function Toaster() {
     if (!t) return;
     const place = () => {
       const node = el.current;
-      if (!node) return;
+      if (!node || toast.engaged) return;
       // Centred on the canvas pane, not the window: with side panels open the window's centre is near
       // the pane's edge, and the toast reached over the AI panel and the minimap.
       const area = document.querySelector<HTMLElement>("[data-toast-area]")?.getBoundingClientRect();
@@ -73,6 +88,13 @@ export function Toaster() {
       data-kind={t.kind}
       data-toast
       data-editor-overlay
+      onPointerEnter={() => toast.contact("pointer", true)}
+      onPointerLeave={() => toast.contact("pointer", false)}
+      onPointerDownCapture={() => toast.contact("press", true)}
+      onFocusCapture={() => toast.contact("focus", true)}
+      onBlurCapture={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) toast.contact("focus", false);
+      }}
     >
       {(t.kind !== "busy" || t.progress === undefined) && (
         <span className="ix-toast-icon" data-testid="toast-icon">

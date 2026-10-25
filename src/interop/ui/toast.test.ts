@@ -1,8 +1,79 @@
-import { afterEach, describe, expect, it } from "vitest";
-import { toast } from "./toast";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { notify, toast } from "./toast";
 
 afterEach(() => {
+  toast.release();
   while (toast.current) toast.dismiss(toast.current.id);
+});
+
+describe("an engaged toast keeps its action", () => {
+  it("releases resources once, only when the toast is no longer retained or waiting", () => {
+    const onDismiss = vi.fn();
+    const first = notify("First", { onDismiss });
+    toast.contact("focus", true);
+    const next = toast.info("Next");
+    expect(onDismiss).not.toHaveBeenCalled();
+    toast.dismiss(first);
+    expect(onDismiss).toHaveBeenCalledTimes(1);
+    toast.dismiss(first);
+    toast.dismiss(next);
+    expect(onDismiss).toHaveBeenCalledTimes(1);
+  });
+  for (const contact of ["pointer", "focus", "press"] as const) {
+    it(`defers new arrivals during ${contact}, then publishes only the latest`, () => {
+      const first = toast.info("First");
+      toast.contact(contact, true);
+      toast.info("Second");
+      const last = toast.info("Third");
+      expect(toast.current?.id).toBe(first);
+      toast.contact(contact, false);
+      expect(toast.current?.id).toBe(last);
+    });
+  }
+
+  it("keeps a press engaged after the pointer leaves and until focus also leaves", () => {
+    const first = toast.info("First");
+    toast.contact("pointer", true);
+    toast.contact("press", true);
+    toast.contact("focus", true);
+    const next = toast.info("Next");
+    toast.contact("pointer", false);
+    toast.contact("press", false);
+    expect(toast.current?.id).toBe(first);
+    toast.contact("focus", false);
+    expect(toast.current?.id).toBe(next);
+  });
+
+  it("dismisses the acted-on toast without losing its waiting notification", () => {
+    const first = toast.info("First");
+    toast.contact("pointer", true);
+    const next = toast.info("Next");
+    toast.dismiss(first);
+    expect(toast.engaged).toBe(false);
+    expect(toast.current?.id).toBe(next);
+  });
+
+  it("invalidates an engaged Undo immediately when history changes", () => {
+    toast.info("Undo", { action: { label: "Undo", run() {}, undoes: true } });
+    toast.contact("focus", true);
+    const next = toast.info("Next");
+    toast.dismissUndo();
+    expect(toast.current?.id).toBe(next);
+    expect(toast.engaged).toBe(false);
+  });
+
+  for (const blocking of [false, true]) {
+    it(`keeps a task's progress current while engaged (blocking: ${blocking})`, () => {
+      const task = toast.busy("Exporting", { blocking });
+      toast.contact("focus", true);
+      const next = toast.info("Next");
+      toast.progress(task, 0.5);
+      expect(toast.current).toMatchObject({ id: task, progress: 0.5 });
+      toast.dismiss(task);
+      expect(toast.current?.id).toBe(next);
+      expect(toast.engaged).toBe(false);
+    });
+  }
 });
 
 describe("a task's Cancel owns its toast", () => {

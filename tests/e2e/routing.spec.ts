@@ -9,6 +9,7 @@ import {
   gotoLive,
   pauseClock,
   waitForStableViewport,
+  waitForSelectionSettled,
   expectNoErrors,
   STORAGE_KEYS,
   savedDiagram,
@@ -122,6 +123,7 @@ test("rule deletion: the toast's Undo restores the rule, and the toast leaves on
   await gotoCanvas(page, slug);
   await waitForStableViewport(page);
   await page.getByTestId("node-kong").click();
+  await waitForSelectionSettled(page);
   await page.getByTestId("routes-rule-orders").click();
   await page.getByTestId("routes-rule-orders-delete").click();
   await expect.poll(async () => (await table(page))?.rules.map((r) => r.id)).toEqual(["search"]);

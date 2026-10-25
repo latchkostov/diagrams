@@ -1,7 +1,11 @@
 // App-wide toasts. A tiny external store, so any module (not just components) can report
 // progress or errors: `toast.info("Saved")`, `toast.error("...")`, `toast.busy("Rendering…")`.
 // One visible toast at a time. A task holding page input owns its Cancel until it finishes;
-// other notifications wait behind it (latest wins, as with ordinary toasts).
+// other notifications wait behind it (latest wins, as with ordinary toasts). An engaged toast
+// likewise keeps its action until the pointer, keyboard focus and any press have left.
+
+import { createMachine } from "../../lib/machine";
+import { toastEngagement, type ToastContact } from "./toastEngagement";
 
 export type ToastKind = "info" | "success" | "error" | "busy";
 
@@ -29,29 +33,47 @@ export interface ToastState {
   progress?: number;
   /** Owns the toast until the task dismisses it; other notifications cannot hide Cancel. */
   blocking?: boolean;
+  /** Releases resources only once this notification can no longer be used. */
+  onDismiss?: () => void;
 }
 
 let current: ToastState | null = null;
 let deferred: ToastState | null = null;
+let held: ToastState | null = null;
+const contact = createMachine(toastEngagement);
 const blocking: ToastState[] = [];
 let seq = 0;
 const listeners = new Set<() => void>();
+let live = new Map<number, ToastState>();
 const emit = () => listeners.forEach((l) => l());
 
 interface ToastOptions {
   action?: ToastAction;
   duration?: number;
   blocking?: boolean;
+  onDismiss?: () => void;
 }
 
 function publish() {
-  current = blocking.at(-1) ?? deferred;
+  const next = new Map([...blocking, deferred, held].filter((t): t is ToastState => t !== null).map((t) => [t.id, t]));
+  const removed = [...live.values()].filter((t) => !next.has(t.id));
+  live = next;
+  current = held ?? blocking.at(-1) ?? deferred;
+  for (const t of removed) t.onDismiss?.();
   emit();
 }
 
 function show(kind: ToastKind, text: string, opts: ToastOptions = {}): number {
   const duration = opts.duration ?? (kind === "busy" ? 0 : kind === "error" ? 8000 : opts.action ? 6000 : 3500);
-  const next = { id: ++seq, kind, text, action: opts.action, duration, blocking: opts.blocking };
+  const next = {
+    id: ++seq,
+    kind,
+    text,
+    action: opts.action,
+    duration,
+    blocking: opts.blocking,
+    onDismiss: opts.onDismiss,
+  };
   if (opts.blocking) {
     if (!blocking.length) deferred = null;
     blocking.push(next);
@@ -69,24 +91,44 @@ export const toast = {
   /** How far busy toast `id` has got (0 to 1), including an owner behind a newer task. */
   progress(id: number, done: number) {
     const at = blocking.findIndex((t) => t.id === id);
-    const task = at >= 0 ? blocking[at] : deferred?.id === id ? deferred : null;
+    const task = at >= 0 ? blocking[at] : deferred?.id === id ? deferred : held?.id === id ? held : null;
     if (!task || task.progress === done) return;
     if (at >= 0) blocking[at] = { ...blocking[at], progress: done };
     else if (deferred?.id === id) deferred = { ...deferred, progress: done };
-    else return;
+    if (held?.id === id) held = { ...held, progress: done };
     publish();
   },
   /** Dismisses `id`, or ordinary notifications if omitted. Only a task's owner dismisses its blocking toast. */
   dismiss(id?: number) {
+    const release = held && (held.id === id || (id === undefined && !held.blocking));
+    if (release) {
+      held = null;
+      contact.send({ type: "reset" });
+    }
     const at = blocking.findIndex((t) => t.id === id);
     if (at >= 0) blocking.splice(at, 1);
     else if (id === undefined || deferred?.id === id) deferred = null;
-    else return;
+    else if (!release) return;
     publish();
   },
   /** Removes an ordinary Undo toast, visible or waiting: history just moved under it. */
   dismissUndo() {
+    if (held?.action?.undoes) toast.dismiss(held.id);
     if (deferred?.action?.undoes) toast.dismiss(deferred.id);
+  },
+  /** Toaster's synchronous input boundary; no timer may move or replace an engaged action. */
+  contact(contactType: ToastContact, active: boolean) {
+    contact.send({ type: "contact", contact: contactType, active });
+    held = contact.state.value === "engaged" ? current : null;
+    publish();
+  },
+  release() {
+    contact.send({ type: "reset" });
+    held = null;
+    publish();
+  },
+  get engaged() {
+    return contact.state.value === "engaged";
   },
   get current() {
     return current;
@@ -99,6 +141,8 @@ export interface NotifyOptions {
   action?: ToastAction;
   /** ms; default depends on kind (errors linger, busy is sticky). */
   duration?: number;
+  /** Cleanup after expiry, replacement or explicit dismissal (after an action has run). */
+  onDismiss?: () => void;
 }
 
 /**

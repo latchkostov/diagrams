@@ -22,6 +22,7 @@ import { GalleryCatalogLab } from "./GalleryCatalogLab";
 import { autoscalingFixture } from "./autoscalingFixture";
 import { routingFixture, routingOverlapFixture, routingSummaryFixture, sheetRoutingFixture } from "./routingFixture";
 import { ColourPickerLab } from "./ColourPickerLab";
+import { ToastInteractionLab } from "./ToastInteractionLab";
 import { customColoursFixture } from "./customColoursFixture";
 import { planningP3Fixture, planningP3BulkFixture } from "./planningP3Fixture";
 import { planningP2Fixture } from "./planningP2Fixture";
@@ -580,6 +581,13 @@ const playgroundPresets: Preset[] = [
     title: "Colour picker mutations",
     group: "Playground",
     render: () => <ColourPickerLab />,
+  },
+  {
+    kind: "render",
+    id: "toast-interaction",
+    title: "Toast interaction",
+    group: "Playground",
+    render: () => <ToastInteractionLab />,
   },
   {
     kind: "diagram",
