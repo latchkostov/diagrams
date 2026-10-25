@@ -124,6 +124,13 @@ export const EDITOR_ONLY: { name: string; path: string; stub: (root: string) => 
   },
   // Read-only canvases never open editing menus or quick-add. In particular, saved-route
   // rendering must not carry the actions that author and reset those routes.
+  // A read-only canvas never writes message rules, so rule identity has nothing to assign. The engine's
+  // behavioral view (src/model/emitsMapping.ts) stays.
+  {
+    name: "message-rule identity",
+    path: "/src/model/messageRules.ts",
+    stub: () => "export const editMessageProps = (props) => props;",
+  },
   {
     name: "the editing action catalog",
     path: "/src/editor/builtinActions.ts",

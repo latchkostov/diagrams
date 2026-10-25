@@ -14,6 +14,7 @@ import { placeNew } from "./place";
 import { checkBudget, checkSchema, validated } from "./validation";
 import { edit_diagramSchema } from "./schemas";
 import { diagramDiff } from "../model/diagramDiff";
+import { editMessageProps } from "../model/messageRules";
 import { simulationReferenceWarnings } from "../interop/native";
 import type { ApplyOpsOptions, ApplyOpsResult, DiagramOp, OpResult } from "./index";
 import {
@@ -153,7 +154,7 @@ export function applyOps(diagram: DiagramFile, ops: readonly DiagramOp[], opts: 
             y: 0,
             ...(op.sublabel !== undefined ? { sublabel: op.sublabel } : {}),
             ...(op.in ? { group: boundary(op.in) } : {}),
-            ...(op.props ? { props: op.props } : {}),
+            ...(op.props ? { props: editMessageProps(op.props, {}) } : {}),
           });
           routedProps(next.nodes.at(-1)!, keys);
           fresh.push(id);
@@ -215,7 +216,7 @@ export function applyOps(diagram: DiagramFile, ops: readonly DiagramOp[], opts: 
             }
             if (op.label !== undefined) n.label = op.label;
             if (op.props) {
-              n.props = mergeProps(n.props, op.props);
+              n.props = mergeProps(n.props, editMessageProps(op.props, n.props ?? {}));
               if (op.props.routeTable || op.props.trafficMix) routedProps(n, keys);
             }
             if (op.in === null) {

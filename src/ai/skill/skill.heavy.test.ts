@@ -385,6 +385,29 @@ describe("validate.mjs", () => {
     expect(r.out).toMatch(/^VALID .*: 3 nodes, 2 edges, 1 boundary/);
   });
 
+  it.each(
+    [
+      "Sent",
+      { Send: "Sent" },
+      [{ receives: "Send", sends: "Sent" }],
+      [{ id: "kept", receives: "Send", sends: "Sent" }],
+    ].map((emits) => ({ emits })),
+  )("accepts every authored rule form without repairs: %j", ({ emits }) => {
+    const diagram = { ...base, nodes: [{ ...base.nodes[0], props: { emits } }, ...base.nodes.slice(1)] };
+    const result = run("validate.mjs", write(diagram));
+    expect(result.code, result.out).toBe(0);
+  });
+
+  it.each(
+    [[{ id: 4, receives: "Send", sends: "Sent" }], [{ receives: "Send", sends: 4 }], [{ receives: "Send" }]].map(
+      (emits) => ({ emits }),
+    ),
+  )("refuses malformed message rules: %j", ({ emits }) => {
+    const diagram = { ...base, nodes: [{ ...base.nodes[0], props: { emits } }, ...base.nodes.slice(1)] };
+    const result = run("validate.mjs", write(diagram));
+    expect(result.code, result.out).toBe(1);
+  });
+
   it.each(["#abc", "#abcd", "#fff0", "#abcdef", "#abcdef00", "#11223344", "white", "blue"])(
     "accepts canvas and annotation colours without repairs or unknown-field warnings: %s",
     (color) => {

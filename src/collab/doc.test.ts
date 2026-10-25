@@ -5,6 +5,8 @@ import type { DiagramFile } from "../model/types";
 import { commandsFromDiff } from "./commands";
 import { CollabDoc } from "./doc";
 import { metaOf, recordsOf } from "./schema";
+import { editMessageProps, messageRules } from "../model/messageRules";
+import { serializeNative } from "../interop/native";
 
 export const sample = (): DiagramFile => ({
   format: "diagrams/v1",
@@ -49,6 +51,35 @@ function sync(...docs: CollabDoc[]) {
 }
 
 describe("CollabDoc projection", () => {
+  it("carries derived identity through room projection, edits and Undo without saving it", () => {
+    const input = sample();
+    input.nodes[0].props = { emits: { A: "B", C: "D" } };
+    const a = new CollabDoc();
+    const b = new CollabDoc();
+    a.hydrate(input);
+    sync(a, b);
+    const initial = messageRules(diagramOf(b).nodes[0].props!.emits);
+    expect(JSON.parse(serializeNative(diagramOf(b)))).toEqual(input);
+    edit(a, (d) => {
+      const props = d.nodes[0].props!;
+      const rows = messageRules(props.emits);
+      d.nodes[0].props = editMessageProps({ emits: [{ ...rows[0], receives: "Renamed" }, rows[1]] }, props);
+      return d;
+    });
+    sync(a, b);
+    expect(messageRules(diagramOf(b).nodes[0].props!.emits).map((rule) => rule.id)).toEqual(
+      initial.map((rule) => rule.id),
+    );
+    expect(JSON.parse(serializeNative(diagramOf(b))).nodes[0].props.emits).toEqual([
+      { id: initial[0].id, receives: "Renamed", sends: "B" },
+      { receives: "C", sends: "D" },
+    ]);
+    a.undo();
+    sync(a, b);
+    expect(JSON.parse(serializeNative(diagramOf(b)))).toEqual(input);
+    a.destroy();
+    b.destroy();
+  });
   it("round-trips a diagram through shared state unchanged", () => {
     const doc = new CollabDoc();
     doc.hydrate(sample());

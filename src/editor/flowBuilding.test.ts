@@ -534,6 +534,30 @@ describe("the next node (Alt+arrow, the +)", () => {
     expect(t.api.getNode(made.id)).toMatchObject({ label: "dedupe table", sublabel: "Cache" });
     expect(t.api.getEdge(made.edge!)).toMatchObject({ from: "hub", to: made.id, label: "SET NX" });
   });
+  it("bulk rule edits keep each node's surviving IDs and give additions fresh ones", () => {
+    const t = setup();
+    t.api.setNodesProps(["a", "hub"], (_props, id) => ({
+      emits: [
+        { id: `${id}-send`, receives: "Send", sends: "Sent" },
+        { id: `${id}-other`, receives: "Other", sends: "Kept" },
+      ],
+    }));
+    t.commit();
+    // The bulk inspector writes parsed text: a map without IDs.
+    t.api.setNodesProps(["a", "hub"], { emits: { Send: "Changed", Other: "Kept", New: "Added" } });
+    t.commit();
+    const [a, hub] = ["a", "hub"].map((id) => t.api.getNode(id)!.props!.emits as { id: string }[]);
+    for (const [id, emits] of [
+      ["a", a],
+      ["hub", hub],
+    ] as const)
+      expect(emits).toEqual([
+        { id: `${id}-send`, receives: "Send", sends: "Changed" },
+        { id: `${id}-other`, receives: "Other", sends: "Kept" },
+        { id: expect.stringMatching(/^rule-/), receives: "New", sends: "Added" },
+      ]);
+    expect(a[2].id).not.toBe(hub[2].id);
+  });
   it("retains edge and node edits, bulk edits and pasted content across lagging-store renders", () => {
     const t = setup([], BASE, true);
     t.api.updateEdge("ab", { label: "Stored", relation: "depends" });

@@ -1144,7 +1144,22 @@
               "partitions": { "type": "integer", "minimum": 1, "maximum": 10000 },
               "messageType": { "type": "string" },
               "emits": {
-                "anyOf": [{ "type": "string" }, { "type": "object", "additionalProperties": { "type": "string" } }]
+                "anyOf": [
+                  { "type": "string" },
+                  { "type": "object", "additionalProperties": { "type": "string" } },
+                  {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": ["receives", "sends"],
+                      "properties": {
+                        "id": { "type": "string", "minLength": 1, "maxLength": 200 },
+                        "receives": { "type": "string" },
+                        "sends": { "type": "string" }
+                      }
+                    }
+                  }
+                ]
               },
               "size": { "type": "string", "enum": ["branch", "campus", "datacentre"] },
               "gbps": { "type": "number", "minimum": 0, "maximum": 1000000 },
@@ -1473,6 +1488,18 @@
                 "anyOf": [
                   { "type": "string" },
                   { "type": "object", "additionalProperties": { "type": "string" } },
+                  {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": ["receives", "sends"],
+                      "properties": {
+                        "id": { "type": "string", "minLength": 1, "maxLength": 200 },
+                        "receives": { "type": "string" },
+                        "sends": { "type": "string" }
+                      }
+                    }
+                  },
                   { "type": "null" }
                 ]
               },
@@ -3886,7 +3913,22 @@
               "partitions": { "type": "integer", "minimum": 1, "maximum": 10000 },
               "messageType": { "type": "string" },
               "emits": {
-                "anyOf": [{ "type": "string" }, { "type": "object", "additionalProperties": { "type": "string" } }]
+                "anyOf": [
+                  { "type": "string" },
+                  { "type": "object", "additionalProperties": { "type": "string" } },
+                  {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": ["receives", "sends"],
+                      "properties": {
+                        "id": { "type": "string", "minLength": 1, "maxLength": 200 },
+                        "receives": { "type": "string" },
+                        "sends": { "type": "string" }
+                      }
+                    }
+                  }
+                ]
               },
               "size": { "type": "string", "enum": ["branch", "campus", "datacentre"] },
               "gbps": { "type": "number", "minimum": 0, "maximum": 1000000 },
@@ -4215,6 +4257,18 @@
                 "anyOf": [
                   { "type": "string" },
                   { "type": "object", "additionalProperties": { "type": "string" } },
+                  {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": ["receives", "sends"],
+                      "properties": {
+                        "id": { "type": "string", "minLength": 1, "maxLength": 200 },
+                        "receives": { "type": "string" },
+                        "sends": { "type": "string" }
+                      }
+                    }
+                  },
                   { "type": "null" }
                 ]
               },
@@ -6624,7 +6678,22 @@
               "partitions": { "type": "integer", "minimum": 1, "maximum": 10000 },
               "messageType": { "type": "string" },
               "emits": {
-                "anyOf": [{ "type": "string" }, { "type": "object", "additionalProperties": { "type": "string" } }]
+                "anyOf": [
+                  { "type": "string" },
+                  { "type": "object", "additionalProperties": { "type": "string" } },
+                  {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": ["receives", "sends"],
+                      "properties": {
+                        "id": { "type": "string", "minLength": 1, "maxLength": 200 },
+                        "receives": { "type": "string" },
+                        "sends": { "type": "string" }
+                      }
+                    }
+                  }
+                ]
               },
               "size": { "type": "string", "enum": ["branch", "campus", "datacentre"] },
               "gbps": { "type": "number", "minimum": 0, "maximum": 1000000 },
@@ -6953,6 +7022,18 @@
                 "anyOf": [
                   { "type": "string" },
                   { "type": "object", "additionalProperties": { "type": "string" } },
+                  {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": ["receives", "sends"],
+                      "properties": {
+                        "id": { "type": "string", "minLength": 1, "maxLength": 200 },
+                        "receives": { "type": "string" },
+                        "sends": { "type": "string" }
+                      }
+                    }
+                  },
                   { "type": "null" }
                 ]
               },
@@ -9533,7 +9614,22 @@
               "partitions": { "type": "integer", "minimum": 1, "maximum": 10000 },
               "messageType": { "type": "string" },
               "emits": {
-                "anyOf": [{ "type": "string" }, { "type": "object", "additionalProperties": { "type": "string" } }]
+                "anyOf": [
+                  { "type": "string" },
+                  { "type": "object", "additionalProperties": { "type": "string" } },
+                  {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": ["receives", "sends"],
+                      "properties": {
+                        "id": { "type": "string", "minLength": 1, "maxLength": 200 },
+                        "receives": { "type": "string" },
+                        "sends": { "type": "string" }
+                      }
+                    }
+                  }
+                ]
               },
               "size": { "type": "string", "enum": ["branch", "campus", "datacentre"] },
               "gbps": { "type": "number", "minimum": 0, "maximum": 1000000 },
@@ -9862,6 +9958,18 @@
                 "anyOf": [
                   { "type": "string" },
                   { "type": "object", "additionalProperties": { "type": "string" } },
+                  {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": ["receives", "sends"],
+                      "properties": {
+                        "id": { "type": "string", "minLength": 1, "maxLength": 200 },
+                        "receives": { "type": "string" },
+                        "sends": { "type": "string" }
+                      }
+                    }
+                  },
                   { "type": "null" }
                 ]
               },
@@ -12387,7 +12495,22 @@
               "partitions": { "type": "integer", "minimum": 1, "maximum": 10000 },
               "messageType": { "type": "string" },
               "emits": {
-                "anyOf": [{ "type": "string" }, { "type": "object", "additionalProperties": { "type": "string" } }]
+                "anyOf": [
+                  { "type": "string" },
+                  { "type": "object", "additionalProperties": { "type": "string" } },
+                  {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": ["receives", "sends"],
+                      "properties": {
+                        "id": { "type": "string", "minLength": 1, "maxLength": 200 },
+                        "receives": { "type": "string" },
+                        "sends": { "type": "string" }
+                      }
+                    }
+                  }
+                ]
               },
               "size": { "type": "string", "enum": ["branch", "campus", "datacentre"] },
               "gbps": { "type": "number", "minimum": 0, "maximum": 1000000 },
@@ -12716,6 +12839,18 @@
                 "anyOf": [
                   { "type": "string" },
                   { "type": "object", "additionalProperties": { "type": "string" } },
+                  {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": ["receives", "sends"],
+                      "properties": {
+                        "id": { "type": "string", "minLength": 1, "maxLength": 200 },
+                        "receives": { "type": "string" },
+                        "sends": { "type": "string" }
+                      }
+                    }
+                  },
                   { "type": "null" }
                 ]
               },
@@ -15124,7 +15259,22 @@
               "partitions": { "type": "integer", "minimum": 1, "maximum": 10000 },
               "messageType": { "type": "string" },
               "emits": {
-                "anyOf": [{ "type": "string" }, { "type": "object", "additionalProperties": { "type": "string" } }]
+                "anyOf": [
+                  { "type": "string" },
+                  { "type": "object", "additionalProperties": { "type": "string" } },
+                  {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": ["receives", "sends"],
+                      "properties": {
+                        "id": { "type": "string", "minLength": 1, "maxLength": 200 },
+                        "receives": { "type": "string" },
+                        "sends": { "type": "string" }
+                      }
+                    }
+                  }
+                ]
               },
               "size": { "type": "string", "enum": ["branch", "campus", "datacentre"] },
               "gbps": { "type": "number", "minimum": 0, "maximum": 1000000 },
@@ -15453,6 +15603,18 @@
                 "anyOf": [
                   { "type": "string" },
                   { "type": "object", "additionalProperties": { "type": "string" } },
+                  {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": ["receives", "sends"],
+                      "properties": {
+                        "id": { "type": "string", "minLength": 1, "maxLength": 200 },
+                        "receives": { "type": "string" },
+                        "sends": { "type": "string" }
+                      }
+                    }
+                  },
                   { "type": "null" }
                 ]
               },
@@ -17857,7 +18019,22 @@
               "partitions": { "type": "integer", "minimum": 1, "maximum": 10000 },
               "messageType": { "type": "string" },
               "emits": {
-                "anyOf": [{ "type": "string" }, { "type": "object", "additionalProperties": { "type": "string" } }]
+                "anyOf": [
+                  { "type": "string" },
+                  { "type": "object", "additionalProperties": { "type": "string" } },
+                  {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": ["receives", "sends"],
+                      "properties": {
+                        "id": { "type": "string", "minLength": 1, "maxLength": 200 },
+                        "receives": { "type": "string" },
+                        "sends": { "type": "string" }
+                      }
+                    }
+                  }
+                ]
               },
               "size": { "type": "string", "enum": ["branch", "campus", "datacentre"] },
               "gbps": { "type": "number", "minimum": 0, "maximum": 1000000 },
@@ -18186,6 +18363,18 @@
                 "anyOf": [
                   { "type": "string" },
                   { "type": "object", "additionalProperties": { "type": "string" } },
+                  {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": ["receives", "sends"],
+                      "properties": {
+                        "id": { "type": "string", "minLength": 1, "maxLength": 200 },
+                        "receives": { "type": "string" },
+                        "sends": { "type": "string" }
+                      }
+                    }
+                  },
                   { "type": "null" }
                 ]
               },

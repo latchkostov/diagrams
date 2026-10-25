@@ -1,3 +1,4 @@
+import { messageRules, newMessageRuleId, type IdentifiedMessageRule } from "../../model/messageRules";
 import { TypePicker } from "../../components/MessageTypePicker";
 import { MAX_CHOICES, selectMessageChoices } from "../../components/messageChoices";
 import { t } from "../../i18n";
@@ -135,13 +136,12 @@ export function NodeMessages({
   const { controller } = useInteractionOrLocal();
   const addButton = useRef<HTMLButtonElement>(null);
   const ruleControls = useRef(new Map<string, HTMLDivElement>());
-  // Rows are keyed by their incoming type, so a removed rule's drafts go with it. Changing that type therefore
-  // mounts a new row: once it is committed, focus continues at its "When it receives" control (policy row I5).
+  // IDs survive renames, room projections and history while keeping the same mounted controls.
   const rekeyed = useRef<string | undefined>(undefined);
   // Imported maps can hold thousands of rules: render a page at a time.
   const [shownRules, setShownRules] = useState(RULE_PAGE);
   // A rule added here renders after the current page (the page itself never grows to reach it).
-  const [added, setAdded] = useState<string>();
+  const [added, setAdded] = useState<ReadonlySet<string>>(() => new Set());
   useLayoutEffect(() => {
     const input = rekeyed.current;
     const target = input === undefined ? null : ruleControls.current.get(input)?.querySelector("button");
@@ -161,44 +161,31 @@ export function NodeMessages({
     );
   const node = diagram.nodes.find((n) => n.id === nodeId)!;
   const emits = node.props?.emits;
-  const rows: [string, string][] =
-    typeof emits === "string"
-      ? [["*", emits]]
-      : emits && typeof emits === "object" && !Array.isArray(emits)
-        ? Object.entries(emits).filter((entry): entry is [string, string] => typeof entry[1] === "string")
-        : [];
-  const save = (next: [string, string][]) =>
-    editor.setNodeProps(
-      nodeId,
-      {
-        emits:
-          next.length === 1 && next[0][0] === "*" ? next[0][1] : next.length ? Object.fromEntries(next) : undefined,
-      },
-      bulkStep("message-emits"),
-    );
-  const remove = (input: string) => {
-    const next = rows.filter(([key]) => key !== input);
+  const rows = messageRules(emits);
+  const save = (next: IdentifiedMessageRule[]) =>
+    editor.setNodeProps(nodeId, { emits: next.length ? next : undefined }, bulkStep("message-emits"));
+  const remove = (id: string) => {
+    const next = rows.filter((rule) => rule.id !== id);
     save(next);
     const neighbor =
       next[
         Math.min(
-          rows.findIndex(([key]) => key === input),
+          rows.findIndex((rule) => rule.id === id),
           next.length - 1,
         )
       ];
-    const target = neighbor && ruleControls.current.get(neighbor[0])?.querySelector<HTMLButtonElement>("button");
+    const target = neighbor && ruleControls.current.get(neighbor.id)?.querySelector<HTMLButtonElement>("button");
     const destination = target || addButton.current;
     if (destination) controller.dispatch({ type: "inspector.rule", target: destination });
   };
   const arriving = [...(types.arriving.get(nodeId) ?? [])];
   // Shared by every row, built once per render: rows never rescan each other.
-  const assigned = new Set(rows.map(([key]) => key));
+  const assigned = new Set(rows.map((rule) => rule.receives));
   const incoming = ["*", ...arriving];
   const unassigned = incoming.filter((type) => !assigned.has(type));
   const vocabulary = [...new Set([...arriving, ...types.known])];
   const page = Math.min(shownRules, rows.length);
-  const addedAt = added === undefined ? -1 : rows.findIndex(([key]) => key === added);
-  const visible = [...Array(page).keys(), ...(addedAt >= page ? [addedAt] : [])];
+  const visible = rows.flatMap((rule, index) => (index < page || added.has(rule.id) ? [index] : []));
   const remaining = rows.length - visible.length;
   // Message is the simulation default type, diagram data rather than translated UI copy.
   const defaultType = node.label || "Message";
@@ -218,13 +205,13 @@ export function NodeMessages({
       <h4>{t("inspector.emits")}</h4>
       <p className="insp-note">{t("messageTypes.emitsHint")}</p>
       {visible.map((i) => {
-        const [input, output] = rows[i];
+        const { id, receives: input, sends: output } = rows[i];
         return (
           <Subgroup
-            key={input}
+            key={id}
             ref={(element) => {
-              if (element) ruleControls.current.set(input, element);
-              else ruleControls.current.delete(input);
+              if (element) ruleControls.current.set(id, element);
+              else ruleControls.current.delete(id);
             }}
             testId={`inspector-emits-row-${i}`}
           >
@@ -236,10 +223,8 @@ export function NodeMessages({
               value={[input]}
               onChange={(value) => {
                 if (!value[0] || assigned.has(value[0])) return;
-                rekeyed.current = value[0];
-                // A rule appended after the page keeps its place under its new incoming type.
-                if (input === added) setAdded(value[0]);
-                save(rows.map((row, j) => (j === i ? [value[0], output] : row)));
+                rekeyed.current = id;
+                save(rows.map((row, j) => (j === i ? { ...row, receives: value[0] } : row)));
               }}
             />
             <TypePicker
@@ -248,8 +233,8 @@ export function NodeMessages({
               choices={vocabulary}
               value={[output]}
               onChange={(value) => {
-                if (value.length) save(rows.map((row, j) => (j === i ? [input, value[0]] : row)));
-                else remove(input);
+                if (value.length) save(rows.map((row, j) => (j === i ? { ...row, sends: value[0] } : row)));
+                else remove(id);
               }}
             />
             <button
@@ -257,7 +242,7 @@ export function NodeMessages({
               className="insp-link"
               aria-label={t("messageTypes.removeRule")}
               data-testid={`inspector-emits-remove-${i}`}
-              onClick={() => remove(input)}
+              onClick={() => remove(id)}
             >
               {t("messageTypes.remove")}
             </button>
@@ -271,7 +256,7 @@ export function NodeMessages({
           data-testid="inspector-emits-more"
           onClick={() => {
             // The button may unmount: continue at the first rule it reveals (policy row I5).
-            rekeyed.current = rows[page][0];
+            rekeyed.current = rows[page].id;
             setShownRules(page + RULE_PAGE);
           }}
         >
@@ -287,9 +272,10 @@ export function NodeMessages({
         onClick={() => {
           const input = arriving.find((type) => !assigned.has(type)) ?? "*";
           // The Add button may disable itself: continue at the new rule once it is committed (policy row I5).
-          rekeyed.current = input;
-          setAdded(input);
-          save([...rows, [input, input === "*" ? (arriving[0] ?? "Message") : input]]);
+          const id = newMessageRuleId();
+          rekeyed.current = id;
+          setAdded((previous) => new Set([...previous, id]));
+          save([...rows, { id, receives: input, sends: input === "*" ? (arriving[0] ?? "Message") : input }]);
         }}
       >
         {t("messageTypes.addRule")}

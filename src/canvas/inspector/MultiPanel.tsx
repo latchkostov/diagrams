@@ -21,6 +21,7 @@ import { Disclosure } from "./Disclosure";
 import { SIM_FIELDS, showSim, type SimField } from "./simFields";
 import { SimInput } from "./SimulationFields";
 import { parseEmits } from "../../editor/emits";
+import { emitsMapping } from "../../model/emitsMapping";
 import { relationDropdownItems } from "./edgeChoices";
 import { bulkStep } from "./editTransactions";
 import { countText, countLabel, MIXED, MIXED_VALUE, shared } from "./selectionSummary";
@@ -310,7 +311,9 @@ export function BulkNodes({ editor, selectedNodes, groups, meta }: InspectorProp
           )}
           {simKeys.map((k) => {
             const base = SIM_FIELDS[k] ?? MESSAGE_FIELDS[k]!;
-            const value = shared(selectedNodes, (n) => showSim(base.kind, n.data.props?.[k]));
+            const value = shared(selectedNodes, (n) =>
+              showSim(base.kind, k === "emits" ? emitsMapping(n.data.props?.[k]) : n.data.props?.[k]),
+            );
             const first = selectedNodes[0].data.props?.[k];
             return (
               <SimInput

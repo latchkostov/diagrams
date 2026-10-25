@@ -75,7 +75,7 @@ const NODE_PROP_NOTES: Record<string, string> = {
   partitions:
     "p2 partitioned logs only: instance assignments per group (Kinesis: shards); ignored by subscription/binding fan-out; legacy and p1 retain role-based limits",
   emits:
-    'a processor renames what it sends: "PaymentCompleted", or a map {"OrderPlaced": "PaymentRequested", "*": "Audited"}',
+    'a processor renames what it sends: "PaymentCompleted", a map {"OrderPlaced": "PaymentRequested", "*": "Audited"}, or rules [{id?, receives, sends}]',
   size: 'network devices (routers, switches, firewalls, ADCs): "branch", "campus" or "datacentre", whose datasheet throughput and latency are the defaults',
   gbps: "network devices: throughput per unit in Gbps (default: the size preset's); any gateway given gbps gets this ceiling",
   messageKB:

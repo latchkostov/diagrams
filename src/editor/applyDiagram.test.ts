@@ -6,6 +6,7 @@ import type { DiagramFile } from "../model/types";
 import { createEditor, type EditorDeps } from "./useEditor";
 import { diagramDiff } from "./diagramDiff";
 import { commit, commitReplacement, createHistory, present, redo, undo } from "./history";
+import { editMessageProps, messageRules } from "../model/messageRules";
 
 const original = (): DiagramFile => ({
   format: "diagrams/v1",
@@ -72,6 +73,40 @@ describe("immediate AI document replacement", () => {
     expect(diff.updated.ids).toEqual(["a"]);
     expect(diff.metaChanged).toBe(true);
     expect(editor.api.getDiagram()).toMatchObject(next);
+  });
+  it("keeps runtime rule identities when an unrelated proposal follows a rule removal (R-3f4bf4b104)", () => {
+    const legacy = original();
+    legacy.nodes.push({
+      id: "p",
+      stencil: "service.go",
+      label: "P",
+      x: 400,
+      y: 40,
+      props: { emits: { A: "B", C: "D" } },
+    });
+    const props = legacy.nodes[1].props!;
+    const rows = messageRules(props.emits);
+    legacy.nodes[1].props = editMessageProps({ emits: rows.filter((rule) => rule.receives !== "A") }, props);
+    let flow = toFlow(legacy);
+    const rf = { getNodes: () => flow.nodes, getEdges: () => flow.edges } as ReactFlowInstance<
+      FlowNode,
+      DiagramFlowEdge
+    >;
+    const replace = vi.fn((next: typeof flow) => {
+      flow = next;
+      editor.updateDeps(rf, { ...deps, meta: flow.meta });
+    });
+    const deps = { meta: flow.meta, history: { replace } } as unknown as EditorDeps;
+    const editor = createEditor(rf, deps);
+    const current = editor.api.getDiagram();
+    const diff = editor.api.applyDiagram({
+      ...current,
+      nodes: current.nodes.map((node) => (node.id === "a" ? { ...node, label: "Renamed" } : node)),
+    });
+    expect(diff.updated.ids).toEqual(["a"]);
+    const processor = editor.api.getNode("p")!;
+    expect(processor.props?.emits).toEqual({ C: "D" });
+    expect(messageRules(processor.props?.emits).map((rule) => rule.id)).toEqual([rows[1].id]);
   });
   it("does not write an invalid diagram", () => {
     const flow = toFlow(original()),

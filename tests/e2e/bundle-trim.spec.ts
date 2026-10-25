@@ -3,6 +3,7 @@ import { test, expect, gotoCanvas, gotoLive, waitForStableViewport, savedDiagram
 import { lazySurfacesFixture } from "../../src/lab/lazySurfacesFixture";
 import { chunk } from "./chunk";
 import { messageTypesFixture } from "../../src/lab/messageTypesFixture";
+import { messageRules } from "../../src/model/messageRules";
 
 async function seed(page: Page) {
   await page.addInitScript(({ diagram, key }) => localStorage.setItem(key, JSON.stringify(diagram)), {
@@ -230,7 +231,8 @@ test("typing before the node identity fields arrive preserves the first characte
 
 test("a plain menu keeps Home, arrows and Enter in order", async ({ page }) => {
   const diagram = messageTypesFixture();
-  diagram.nodes[1].props = { emits: { Send: "Send", Callback: "Callback" } };
+  const emits = { Send: "Send", Callback: "Callback" };
+  diagram.nodes[1].props = { emits };
   await page.addInitScript(({ diagram, key }) => localStorage.setItem(key, JSON.stringify(diagram)), {
     diagram,
     key: STORAGE_KEYS.autosavePrefix + "webhook-ingestion",
@@ -246,7 +248,11 @@ test("a plain menu keeps Home, arrows and Enter in order", async ({ page }) => {
   await page.keyboard.press("Enter");
   await expect
     .poll(async () => (await savedDiagram(page)).nodes.find((node) => node.id === "api")?.props?.emits)
-    .toEqual({ "*": "Send", Callback: "Callback" });
+    .toEqual([
+      // Only the edited rule gains an explicit ID (its derived one); the untouched rule keeps its authored form.
+      { id: messageRules(emits)[0].id, receives: "*", sends: "Send" },
+      { receives: "Callback", sends: "Callback" },
+    ]);
   await expect(receives).toBeFocused();
 });
 

@@ -1,3 +1,4 @@
+import { editMessageProps } from "../model/messageRules";
 import { DOCUMENTATION_LIMITS, validDocumentation } from "../model/documentation";
 import { revisionAtLeast } from "../model/revisions";
 import { connectionProps, connectionDefaults } from "../model/connectionDefaults";
@@ -1055,7 +1056,10 @@ export function createEditor(
                   ...n.data,
                   props: withoutUndefined({
                     ...n.data.props,
-                    ...(typeof patch === "function" ? patch(n.data.props ?? {}, n.id) : patch),
+                    ...editMessageProps(
+                      typeof patch === "function" ? patch(n.data.props ?? {}, n.id) : patch,
+                      n.data.props ?? {},
+                    ),
                   }),
                 },
               }
@@ -1083,7 +1087,8 @@ export function createEditor(
         if ("sublabel" in patch) data.sublabel = patch.sublabel || undefined;
         if ("description" in patch) data.description = patch.description || undefined;
         if ("group" in patch) data.group = patch.group || undefined;
-        if ("props" in patch) data.props = patch.props && withoutUndefined(patch.props);
+        if ("props" in patch)
+          data.props = patch.props && withoutUndefined(editMessageProps(patch.props, n.data.props ?? {}));
         const x = patch.x ?? n.position.x;
         const y = patch.y ?? n.position.y;
         const position = x === n.position.x && y === n.position.y ? n.position : { x, y };
