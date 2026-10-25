@@ -128,8 +128,8 @@ describe("design studies", () => {
     });
   }
 
-  it("quarantines all three design studies while retaining their milestone coverage", () => {
-    for (const study of [studyCheckout, studyDispatch, studyPayments]) {
+  it("quarantines five design studies while retaining their milestone coverage", () => {
+    for (const study of [studyCheckout, studyDispatch, studyPayments, studyFanout, studyRag]) {
       expect(study.quarantined).toBe(true);
       expect(findTutorial(study.id)).toBeUndefined();
       expect(tutorials).not.toContain(study);
@@ -139,6 +139,14 @@ describe("design studies", () => {
         quarantined: true,
       });
     }
+  });
+
+  it("keeps the membership-based Cells study published", () => {
+    expect(studyCells.quarantined).toBeUndefined();
+    expect(findTutorial(studyCells.id)).toBe(studyCells);
+    expect(tutorials).toContain(studyCells);
+    expect(tutorialMetadata.some((entry) => entry.id === studyCells.id)).toBe(true);
+    expect(tutorialEntries.find((entry) => entry.id === studyCells.id)).toEqual({ id: studyCells.id });
   });
 
   it.each([true, false])("Dispatch partition fix requires processed traffic (connected: %s)", (connected) => {
