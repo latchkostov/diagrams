@@ -7,8 +7,9 @@ import type { Binding, Interop } from "../useInterop";
 import { Menu, type MenuEntry } from "./Menu";
 import { Glyph } from "./glyphs";
 import { t } from "../../i18n";
+import { TUTORIALS } from "../../lib/urlState";
 
-type Api = Omit<Interop, "layer">;
+type Api = Omit<Interop, "layer"> & { tutorial?: true };
 
 /**
  * The top bar's single File menu, grouped by intent: start or bring in a diagram, save it, share
@@ -33,6 +34,7 @@ export function FileMenu({
 }) {
   const entries = (): MenuEntry[] => {
     const b = api.binding;
+    const tutorial = TUTORIALS && api.tutorial;
     const cloud = api.cloudProviders;
     const out: MenuEntry[] = [
       {
@@ -126,21 +128,29 @@ export function FileMenu({
       { type: "separator" },
       {
         type: "item",
-        testId: "file-save",
+        testId: tutorial ? "export-save-as" : "file-save",
         icon: <Glyph name="save" />,
-        title: b ? t("file.save") : api.fsSupported ? t("file.saveToDevice") : t("file.download"),
-        desc: b
-          ? b.providerId === "device"
-            ? t("file.saveDestination", { name: b.name })
-            : t("file.saveDestinationIn", { provider: b.label, name: b.name })
-          : api.fsSupported
-            ? t("file.saveDescSynced")
-            : undefined,
-        shortcut: "Mod+S",
-        onSelect: () => void api.save(),
+        title: tutorial
+          ? t("file.saveAs")
+          : b
+            ? t("file.save")
+            : api.fsSupported
+              ? t("file.saveToDevice")
+              : t("file.download"),
+        desc: tutorial
+          ? undefined
+          : b
+            ? b.providerId === "device"
+              ? t("file.saveDestination", { name: b.name })
+              : t("file.saveDestinationIn", { provider: b.label, name: b.name })
+            : api.fsSupported
+              ? t("file.saveDescSynced")
+              : undefined,
+        shortcut: tutorial ? "Mod+Shift+S" : "Mod+S",
+        onSelect: () => void (tutorial ? api.saveAs() : api.save()),
       },
     );
-    if (cloud.length) {
+    if (!tutorial && cloud.length) {
       // Every destination in one place: Save as on this device, or a new file in a provider.
       out.push({
         type: "item",
@@ -169,7 +179,7 @@ export function FileMenu({
           })),
         ],
       });
-    } else if (api.fsSupported && b) {
+    } else if (!tutorial && api.fsSupported && b) {
       // Until the diagram is bound to a file, "Save to this device…" already asks where: Save as… joins it after.
       out.push({
         type: "item",

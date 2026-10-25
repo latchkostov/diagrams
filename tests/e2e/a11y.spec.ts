@@ -1,4 +1,4 @@
-import AxeBuilder from "@axe-core/playwright";
+import { expectNoViolations } from "./a11y-helpers";
 import type { Page } from "@playwright/test";
 import {
   test,
@@ -20,21 +20,7 @@ import shapedLines from "../parity/corpus/hand-shaped-lines.diagram.json" with {
  * data-testid only; axe's include/exclude take CSS, so they use [data-testid] attribute selectors.
  */
 const KAFKA = "kafka-order-pipeline";
-const WCAG = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"];
 const MOD = "ControlOrMeta";
-const tid = (id: string) => `[data-testid="${id}"]`;
-
-async function expectNoViolations(page: Page, scope?: string) {
-  let axe = new AxeBuilder({ page }).withTags(WCAG);
-  if (scope) axe = axe.include(tid(scope));
-  const { violations } = await axe.analyze();
-  const report = violations.map(
-    (v) =>
-      `${v.id} (${v.impact}): ${v.help}\n` +
-      v.nodes.map((n) => `    ${n.target.join(" ")}\n      ${n.failureSummary?.replace(/\n/g, "\n      ")}`).join("\n"),
-  );
-  expect(report, report.join("\n")).toEqual([]);
-}
 
 /** Each view or overlay: how to reach it, and the test id to scan (the whole page when omitted). */
 const states: { name: string; open: (page: Page) => Promise<void>; scope?: string }[] = [

@@ -22,10 +22,7 @@ import type { OpenTarget } from "./lab/LabView";
 import type { DiagramFile } from "./model/types";
 import { showDiagram, useUrlState, type View } from "./lib/urlState";
 import {
-  clearShared,
-  createLibraryDiagram,
   deleteLibraryDiagram,
-  DEVICE_PROVIDER,
   DRAFT_SLUG,
   duplicateLibraryDiagram,
   getDiagramIdentity,
@@ -33,14 +30,12 @@ import {
   OPEN_LIBRARY,
   renameLibraryDiagram,
   resolveSlug,
-  type SaveTarget,
-  setShared,
   SHARED_SLUG,
   UNTITLED,
   writeAutosave,
 } from "./lib/diagramIO";
 import { useLibrary } from "./lib/useLibrary";
-import { newDiagramsPrivate } from "./lib/privacyPrefs";
+import { diagramOpenActions, openSharedDiagram } from "./lib/openDiagram";
 import { Icon } from "./components/Icon";
 import { formatAgo } from "./i18n/relativeTime";
 import { stopStorageWrites } from "./lib/storage";
@@ -59,6 +54,7 @@ import { unseen } from "./ai/ui/unseen";
 import { AI_PANEL } from "./lib/deployment";
 import { t, useLocale } from "./i18n";
 import { tutorialRoute } from "./tutorials/route";
+import { tutorialMetadata } from "./tutorials/metadata";
 import "./styles/interop.css";
 
 // Views are code-split: the gallery and canvas each pull in their own weight (React Flow lives
@@ -384,36 +380,19 @@ function MainApp() {
     return () => window.removeEventListener("keydown", onKey);
   }, [url.present, setUrl]);
 
-  /** Open, Import, Paste, the Lab and "Save a copy": a new entry in Your diagrams, never a replacement. */
-  const openDiagram = useCallback(
-    (d: DiagramFile, target?: SaveTarget, sourceSlug?: string) => {
-      // Validates and stores first; on failure the current diagram stays (and the caller reports why).
-      // "New diagrams are private" covers what comes in from this device; a cloud file keeps saving back there.
-      const fromCloud = !!target && target.providerId !== DEVICE_PROVIDER;
-      const created = createLibraryDiagram(d, target, undefined, {
-        sourceSlug,
-        private: !fromCloud && newDiagramsPrivate.get(),
-      });
-      if (slug === SHARED_SLUG) clearShared();
-      setUrl({ view: "canvas", example: created, present: false });
-      return created;
-    },
-    [setUrl, slug],
+  const { openDiagram, newDiagram: openNewDiagram } = useMemo(
+    () => diagramOpenActions(slug, (example) => setUrl({ view: "canvas", example, present: false })),
+    [slug, setUrl],
   );
+  // Keep hash-link processing attached to the same password prompt across diagram navigation.
   const openShared = useCallback(
-    (d: DiagramFile) => {
-      setShared(d);
-      setUrl({ view: "canvas", example: SHARED_SLUG, present: false });
-    },
+    (d: DiagramFile) => openSharedDiagram(d, (example) => setUrl({ view: "canvas", example, present: false })),
     [setUrl],
   );
-
-  /** File > New diagram: a blank draft. Nothing is replaced, so there's nothing to undo. */
   const newDiagram = useCallback(() => {
     canvasRef.current?.flush();
-    newDraft();
-    setUrl({ view: "canvas", example: DRAFT_SLUG, present: false });
-  }, [setUrl]);
+    openNewDiagram();
+  }, [openNewDiagram]);
 
   // Rooms: a joiner's new entry opens here; a room that ends keeps what its canvas shows.
   const shownSlug = useRef(slug);
@@ -569,6 +548,13 @@ function MainApp() {
     [locale],
   );
   const start: StartOptions = {
+    tutorial: TutorialSurface ? (
+      <p className="start-note">
+        <button className="link-btn" data-testid="start-tutorial" onClick={() => tutorialRoute.open("mobile-api")}>
+          {t("tutorials.startCard")}
+        </button>
+      </p>
+    ) : undefined,
     recent: library.entries
       .filter((e) => e.slug !== slug)
       .map((e) => ({
@@ -733,6 +719,8 @@ function MainApp() {
         onOpenDiagram={(example) => setUrl({ view: "canvas", example, present: false })}
         onPresent={url.view === "canvas" && !url.present ? () => setUrl({ present: true }) : undefined}
         onTutorials={TutorialsView ? () => goTo("tutorials") : undefined}
+        tutorials={TutorialSurface ? tutorialMetadata.map((x) => ({ id: x.id, title: x.title() })) : undefined}
+        onOpenTutorial={TutorialSurface ? tutorialRoute.open : undefined}
       />
     </div>
   );

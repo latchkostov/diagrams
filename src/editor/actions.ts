@@ -170,6 +170,12 @@ export class ActionRegistry {
   private actions = new Map<string, { action: Action; seq: number }>();
   private sections = new Map<string, MenuSection>();
   private seq = 0;
+  private listeners = new Set<() => void>();
+
+  subscribe(listener: () => void): () => void {
+    this.listeners.add(listener);
+    return () => void this.listeners.delete(listener);
+  }
 
   constructor(sections: readonly MenuSection[] = []) {
     for (const s of sections) this.sections.set(s.id, s);
@@ -182,8 +188,10 @@ export class ActionRegistry {
       this.actions.set(action.id, entry);
       return entry;
     });
+    this.listeners.forEach((listener) => listener());
     return () => {
       for (const e of added) if (this.actions.get(e.action.id) === e) this.actions.delete(e.action.id);
+      this.listeners.forEach((listener) => listener());
     };
   }
 

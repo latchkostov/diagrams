@@ -20,10 +20,20 @@ export const tutorialRoute = {
       window.removeEventListener("popstate", listener);
     };
   },
-  open(id: string): void {
+  open(id: string, replace = false): void {
     const query = new URLSearchParams(window.location.search);
     query.set(KEY, id);
-    window.history.pushState({ [OPENED]: true }, "", `${window.location.pathname}?${query}${window.location.hash}`);
+    window.history[replace ? "replaceState" : "pushState"](
+      replace ? window.history.state : { [OPENED]: true },
+      "",
+      `${window.location.pathname}?${query}${window.location.hash}`,
+    );
+    emit();
+  },
+  /** Leave for a document without dropping in-memory file handles or draft identity. */
+  openDiagram(slug: string): void {
+    const query = new URLSearchParams({ view: "canvas", example: slug });
+    window.history.pushState(null, "", `${window.location.pathname}?${query}`);
     emit();
   },
   /** Back where the tutorial was opened from; a tutorial reached by its link goes to the app instead. */

@@ -1,4 +1,6 @@
-import type { DiagramFile, SimRole } from "../model/types";
+import type { AnnotationKind, DiagramFile, EdgeRelation, SimRole } from "../model/types";
+import type { NodeSimState } from "../sim/types";
+import type { EditorModeValue } from "../canvas/interaction/mode";
 
 /**
  * The tutorial format: typed data, no code. A tutorial is a starting diagram plus steps; each step says what to do
@@ -16,9 +18,14 @@ export type TrackId = "basics" | "blocks" | "simulation" | "waiting" | "resilien
 
 /** How a subject is found: an unbound node (in diagram order) with one of these stencils, else of this role. */
 export interface SubjectSpec {
+  boundary?: true;
   stencils?: readonly string[];
   role?: SimRole;
 }
+
+export type Comparison = "=" | ">=" | "<=";
+export type PropertyTarget = { subject: string; edge?: never } | { edge: readonly [string, string]; subject?: never };
+export type FaultKind = "down" | "slow" | "fail" | "cut";
 
 /** What makes a step done. Plain data, so tests and the authoring lint can read it. */
 export type Check =
@@ -33,6 +40,26 @@ export type Check =
   | { kind: "live" }
   /** Live counters (real messages) since the run started. */
   | { kind: "processed"; subject: string; atLeast: number }
+  | ({ kind: "prop"; prop: string; op: Comparison; value: unknown } & PropertyTarget)
+  // edgeKind / annotation / fault distinguish the payload from the check's discriminant.
+  | { kind: "relation"; from: string; to: string; relation?: EdgeRelation; edgeKind?: "sync" | "async" }
+  | { kind: "member"; subject: string; boundary: string }
+  | { kind: "annotation"; annotation: AnnotationKind; count?: number }
+  | {
+      kind: "metric";
+      subject: string;
+      field: keyof NodeSimState | "latency.p95" | "threads.waiting" | "breaker";
+      op: Comparison;
+      value: number | string | boolean;
+      edge?: readonly [string, string];
+    }
+  | { kind: "simulation"; id: string; atLeastMs?: number }
+  /** A saved expectation id is stable across languages; Words also matches a chip's displayed label. */
+  | { kind: "expectation"; simulation: string; label: string | Words }
+  | ({ kind: "fault"; fault?: FaultKind } & PropertyTarget)
+  | { kind: "trace" | "slowmo" }
+  | { kind: "note"; waiting: boolean }
+  | { kind: "mode"; value: EditorModeValue }
   | { kind: "all"; checks: readonly Check[] };
 
 /** Done for you ("Skip step"), through the editor API: one undo step each, as if the learner did it. */
@@ -40,6 +67,13 @@ export type Demo =
   | { kind: "add"; subject: string; stencil: string; after?: string }
   | { kind: "connect"; from: string; to: string }
   | { kind: "rename"; subject: string; label: Words }
+  | ({ kind: "prop"; props: Record<string, unknown> } & PropertyTarget)
+  | { kind: "relation"; from: string; to: string; relation: EdgeRelation; edgeKind?: "sync" | "async" }
+  | { kind: "group"; subjects: readonly string[]; boundary: string }
+  | { kind: "annotate"; annotation: AnnotationKind }
+  | { kind: "runSimulation"; id: string }
+  | ({ kind: "fault"; fault: FaultKind; restore?: boolean } & PropertyTarget)
+  | { kind: "select"; subjects: readonly string[] }
   | { kind: "live" };
 
 /** One action of the solution path, by test id only. The generated e2e plays these through the real UI. */
@@ -97,7 +131,9 @@ export interface Tutorial {
   title: Words;
   summary: Words;
   /** The sandbox's first diagram. A function: its title is translated when it opens. */
-  start(): DiagramFile;
+  start: (() => DiagramFile) | { example: string; simulation?: string };
+  /** Share, Present and File lessons keep the app's real controls above the tutorial bar. */
+  chrome?: "app";
   subjects: Readonly<Record<string, SubjectSpec>>;
   steps: readonly TutorialStep[];
   finish: { text: Words; example?: { slug: string; label: Words } };

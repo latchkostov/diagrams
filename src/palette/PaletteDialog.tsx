@@ -70,6 +70,8 @@ export function PaletteDialog({
   onOpenDiagram,
   onPresent,
   onTutorials,
+  tutorials,
+  onOpenTutorial,
   onClose,
   typeAhead,
 }: PaletteDialogProps) {
@@ -87,7 +89,16 @@ export function PaletteDialog({
   // The context (selection, open diagram) is read when the palette opens; it follows the canvas
   // and live view as they publish themselves (Ctrl+K pressed while the canvas is still loading).
   const host = useSyncExternalStore(paletteHost.subscribe, paletteHost.get);
-  const [opened] = useState(() => ({ view, diagrams, currentSlug, onOpenDiagram, onPresent, onTutorials }));
+  const [opened] = useState(() => ({
+    view,
+    diagrams,
+    currentSlug,
+    onOpenDiagram,
+    onPresent,
+    onTutorials,
+    tutorials,
+    onOpenTutorial,
+  }));
   const commands = useMemo(
     () =>
       collectCommands({
@@ -103,7 +114,9 @@ export function PaletteDialog({
         currentSlug: opened.currentSlug,
         openDiagram: opened.onOpenDiagram,
         present: opened.onPresent,
-        tutorials: opened.onTutorials,
+        openTutorials: opened.onTutorials,
+        tutorials: opened.tutorials,
+        startTutorial: opened.onOpenTutorial,
         language: LANGUAGE_CHOICE ? openLanguageDialog : undefined,
         editTogether: ROOMS ? () => void window.dispatchEvent(new Event(EDIT_TOGETHER)) : undefined,
         sendStencilToCanvas: addToCurrentDiagram,

@@ -4,6 +4,19 @@
   grid-template-rows: var(--topbar-h) auto 1fr;
 }
 
+.tutorial-app-chrome {
+  grid-template-rows: var(--topbar-h) var(--topbar-h) auto 1fr;
+}
+
+.tutorial-loading {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 12px;
+}
+
 .tutorial-chip {
   padding: 3px 8px;
   border-radius: 999px;
@@ -134,8 +147,11 @@
 
 .tutorial-actions {
   display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   gap: 8px;
   flex: none;
+  max-inline-size: 60%;
 }
 
 .tutorial-actions a.btn {

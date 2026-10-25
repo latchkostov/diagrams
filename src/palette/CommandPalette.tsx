@@ -49,6 +49,8 @@ export interface CommandPaletteProps {
   onPresent?(): void;
   /** The Tutorials view, where there is one. */
   onTutorials?(): void;
+  tutorials?: readonly { id: string; title: string }[];
+  onOpenTutorial?(id: string): void;
 }
 
 export function CommandPalette(props: CommandPaletteProps) {

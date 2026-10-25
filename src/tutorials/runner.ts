@@ -15,6 +15,9 @@ import {
 import { canvasInteraction } from "../canvas/interaction/canvasInteraction";
 import { liveDiagramReader } from "../live/diagramReader";
 import type { Demo, Tutorial } from "./types";
+import type { DiagramFile } from "../model/types";
+import { actionRegistry, type MenuNode } from "../editor/actions";
+import type { SandboxView } from "./checks";
 
 /**
  * The runner: one tutorial's machine (./machine.ts) wired to the sandbox canvas. It observes the canvas through the
@@ -34,14 +37,22 @@ export interface RunnerSnapshot {
   nearMiss: { expected: string; typed: string } | null;
 }
 
-type Host = Pick<typeof paletteHost, "get" | "subscribe">;
+type Host = Pick<typeof paletteHost, "get" | "subscribe"> &
+  Partial<Pick<typeof paletteHost, "runSimulation" | "cancelRun">>;
 
-export function createTutorialRunner(tutorial: Tutorial, ports: { close(): void; host?: Host }) {
+export function createTutorialRunner(
+  tutorial: Tutorial,
+  ports: { close(): void; host?: Host; initial?: DiagramFile; documentId?: string },
+) {
   const host = ports.host ?? paletteHost;
+  const initial = ports.initial ?? (typeof tutorial.start === "function" ? tutorial.start() : undefined);
   const saved = savedProgress(tutorial);
   const sticky = tutorial.steps.map((s) => !!s.sticky || s.demo.length === 0);
   const dynamic = (check: Tutorial["steps"][number]["check"]): boolean =>
-    check.kind === "live" || check.kind === "processed" || (check.kind === "all" && check.checks.some(dynamic));
+    ["live", "processed", "metric", "simulation", "expectation", "fault", "trace", "slowmo", "note", "mode"].includes(
+      check.kind,
+    ) ||
+    (check.kind === "all" && check.checks.some(dynamic));
   const dynamicChecks = tutorial.steps.map((s) => dynamic(s.check));
   const naming = tutorial.steps.map((s) => namingSubjects(s.check));
   const machine = createMachine({
@@ -63,14 +74,17 @@ export function createTutorialRunner(tutorial: Tutorial, ports: { close(): void;
   let generation = 0;
   const changed = new Set<() => void>();
 
-  const editor = (): EditorApi | undefined => host.get().canvas?.editor;
+  const editor = (): EditorApi | undefined => {
+    const canvas = host.get().canvas;
+    return !ports.documentId || canvas?.documentId === ports.documentId ? canvas?.editor : undefined;
+  };
   let cachedEditor: EditorApi | undefined;
   let readDiagram: ReturnType<typeof liveDiagramReader>;
   let document: ReturnType<EditorApi["getDiagram"]> | undefined;
   let subjects: Record<string, string | undefined> = {};
   const demoBindings = new Map<string, string>();
   let documentChecks: boolean[] = [];
-  function view() {
+  function view(): SandboxView {
     const h = host.get();
     const ed = h.canvas!.editor;
     if (ed !== cachedEditor) {
@@ -83,15 +97,23 @@ export function createTutorialRunner(tutorial: Tutorial, ports: { close(): void;
       const bindings = { ...subjects };
       // Editor writes can land after the demo returns its id. Keep that declaration until the document reports it.
       for (const [name, id] of demoBindings) {
-        if (!diagram.nodes.some((node) => node.id === id)) continue;
+        if (!diagram.nodes.some((node) => node.id === id) && !diagram.groups?.some((group) => group.id === id))
+          continue;
         for (const other of Object.keys(bindings)) if (bindings[other] === id) bindings[other] = undefined;
         bindings[name] = id;
       }
       subjects = resolveSubjects(tutorial, diagram, bindings);
       documentChecks = observeSteps(tutorial, { diagram, live: false, processed: () => 0 }, subjects);
     }
-    const nodes = h.session?.state?.().snapshot.nodes;
-    return { diagram, live: !!h.canvas!.live, processed: (id: string) => nodes?.[id]?.processed ?? 0 };
+    const session = h.session?.state?.();
+    return {
+      diagram,
+      live: !!h.canvas!.live,
+      session,
+      mode: canvasInteraction.get()?.mode,
+      slowmo: h.session?.slowmo?.getState(),
+      processed: (id: string) => session?.snapshot.nodes[id]?.processed ?? 0,
+    };
   }
 
   function send(event: RunnerEvent) {
@@ -114,7 +136,7 @@ export function createTutorialRunner(tutorial: Tutorial, ports: { close(): void;
 
   function observe() {
     const h = host.get();
-    if (!h.canvas) return changed.forEach((f) => f());
+    if (!h.canvas || !editor()) return changed.forEach((f) => f());
     const v = view();
     // The editor's mode (src/canvas/interaction/mode.ts): the selection, and whether the learner is mid-naming.
     const mode = canvasInteraction.get()?.mode;
@@ -159,7 +181,96 @@ export function createTutorialRunner(tutorial: Tutorial, ports: { close(): void;
     const ed = editor();
     if (!ed) return;
     view();
+    const edge = (pair: readonly [string, string]) =>
+      ed.getDiagram().edges.find((e) => e.from === subjects[pair[0]] && e.to === subjects[pair[1]]);
     switch (demo.kind) {
+      case "prop": {
+        const id = demo.edge ? edge(demo.edge)?.id : subjects[demo.subject];
+        if (id) {
+          if (demo.edge) ed.setEdgeProps(id, demo.props);
+          else ed.setNodeProps(id, demo.props);
+        }
+        return;
+      }
+      case "relation": {
+        const id = edge([demo.from, demo.to])?.id;
+        if (id) ed.updateEdge(id, { relation: demo.relation, ...(demo.edgeKind ? { kind: demo.edgeKind } : {}) });
+        return;
+      }
+      case "group": {
+        const ids = demo.subjects.map((s) => subjects[s]);
+        if (ids.some((id) => !id)) return;
+        const id = ed.groupNodes(ids as string[]);
+        if (id) {
+          demoBindings.set(demo.boundary, id);
+          document = undefined;
+          observe();
+        }
+        return;
+      }
+      case "annotate":
+        ed.addAnnotation(demo.annotation);
+        return;
+      case "runSimulation":
+        host.runSimulation?.(demo.id);
+        return;
+      case "select": {
+        const ids = demo.subjects.map((s) => subjects[s]).filter((id): id is string => !!id);
+        const groups = new Set(ed.getDiagram().groups?.map((g) => g.id));
+        ed.select({
+          nodeIds: ids.filter((id) => !groups.has(id)),
+          groupIds: ids.filter((id) => groups.has(id)),
+          edgeIds: [],
+        });
+        return;
+      }
+      case "fault": {
+        const id = demo.edge ? edge(demo.edge)?.id : subjects[demo.subject];
+        if (!id || !h.canvas?.live || !h.session) return false;
+        const group = !!ed.getDiagram().groups?.some((g) => g.id === id);
+        const target = demo.edge ? "edge" : group ? "group" : "node";
+        const action =
+          demo.fault === "cut"
+            ? "sim.cut-link"
+            : demo.fault === "down"
+              ? group
+                ? "sim.boundary-down"
+                : "sim.kill"
+              : demo.restore
+                ? "sim.clear-faults"
+                : demo.fault === "slow"
+                  ? "sim.slow:5"
+                  : "sim.failure:0.5";
+        // The palette builds these same registry rows, with the same Live availability guards.
+        const find = (items: MenuNode[]): (() => void) | undefined => {
+          for (const item of items) {
+            if (item.type !== "item" || item.disabled) continue;
+            if (item.id === action) return item.run;
+            const nested = item.children && find(item.children);
+            if (nested) return nested;
+          }
+        };
+        const current = view();
+        const active = holds(
+          { kind: "fault", ...(demo.edge ? { edge: demo.edge } : { subject: demo.subject }), fault: demo.fault },
+          current,
+          subjects,
+        );
+        if (active === !demo.restore) return true;
+        const apply = find(
+          actionRegistry.build({
+            editor: ed,
+            mode: "live",
+            surface: "palette",
+            target,
+            ...(demo.edge ? { edgeId: id } : group ? { groupId: id } : { nodeId: id }),
+            selection: ed.getSelection(),
+          }),
+        );
+        if (!apply) return false;
+        apply();
+        return true;
+      }
       case "add": {
         const after = demo.after ? subjects[demo.after] : undefined;
         let id: string | undefined;
@@ -183,7 +294,10 @@ export function createTutorialRunner(tutorial: Tutorial, ports: { close(): void;
       }
       case "rename": {
         const id = subjects[demo.subject];
-        if (id) ed.updateNode(id, { label: demo.label() });
+        if (id) {
+          if (ed.getDiagram().groups?.some((g) => g.id === id)) ed.updateGroup(id, { label: demo.label() });
+          else ed.updateNode(id, { label: demo.label() });
+        }
         return;
       }
       case "live":
@@ -195,11 +309,16 @@ export function createTutorialRunner(tutorial: Tutorial, ports: { close(): void;
   async function demos(steps: readonly number[]) {
     const run = generation;
     // Skip pressed before the sandbox canvas is up (its code still downloading): do it once it is.
-    if (!(await until(() => !!host.get().canvas, run))) return;
+    if (!(await until(() => !!editor(), run))) return;
     for (const i of steps) {
       if (run !== generation) return;
       if (state.observed[i]) continue;
-      for (const d of tutorial.steps[i].demo) perform(d);
+      for (const d of tutorial.steps[i].demo) {
+        // Live publishes before its lazy session registers actions. Retry on session/registry changes.
+        if (d.kind === "fault") {
+          if (!(await until(() => perform(d) !== false, run))) return;
+        } else perform(d);
+      }
       // The next step's demo may need this one's node: wait for the canvas to report it.
       if (tutorial.steps[i].demo.length && !(await until(() => state.observed[i], run))) return;
     }
@@ -224,8 +343,22 @@ export function createTutorialRunner(tutorial: Tutorial, ports: { close(): void;
         demoBindings.clear();
         document = undefined;
         const h = host.get();
-        if (h.canvas?.live) h.live?.toggle();
-        h.canvas?.editor.applyDiagram(tutorial.start());
+        const ed = editor();
+        if (!ed) return;
+        const simulation = typeof tutorial.start !== "function" ? tutorial.start.simulation : undefined;
+        h.session?.slowmo?.end();
+        if (!simulation && h.canvas?.live) h.live?.toggle();
+        host.cancelRun?.();
+        if (initial) ed.applyDiagram(structuredClone(initial));
+        if (simulation) {
+          const run = generation;
+          const ready = () => !host.get().session?.disabledHint;
+          if (ready()) host.runSimulation?.(simulation);
+          else
+            void until(ready, run).then((ok) => {
+              if (ok) host.runSimulation?.(simulation);
+            });
+        }
         return;
       }
       case "reveal":
@@ -243,6 +376,8 @@ export function createTutorialRunner(tutorial: Tutorial, ports: { close(): void;
         return;
       case "close":
         generation++;
+        changed.forEach((f) => f());
+        host.cancelRun?.();
         ports.close();
         return;
     }
@@ -264,16 +399,20 @@ export function createTutorialRunner(tutorial: Tutorial, ports: { close(): void;
    * and the canvas's editor mode (its transitions). A check is evaluated when one of them changes.
    */
   function connect() {
+    let startRequested = false;
     let session: unknown;
     let offSession: (() => void) | undefined;
+    let offSlow: (() => void) | undefined;
     let interaction: unknown;
     let offMode: (() => void) | undefined;
     const sync = () => {
       const current = host.get().session;
       if (current !== session) {
         offSession?.();
+        offSlow?.();
         session = current;
         offSession = current?.subscribe?.(observe);
+        offSlow = current?.slowmo?.subscribe(observe);
       }
       const canvas = canvasInteraction.get();
       if (canvas !== interaction) {
@@ -283,14 +422,30 @@ export function createTutorialRunner(tutorial: Tutorial, ports: { close(): void;
         guide();
       }
       observe();
+      if (
+        !startRequested &&
+        typeof tutorial.start !== "function" &&
+        tutorial.start.simulation &&
+        host.get().canvas &&
+        (!ports.documentId || host.get().canvas?.documentId === ports.documentId)
+      ) {
+        startRequested = true;
+        host.runSimulation?.(tutorial.start.simulation);
+      }
     };
     const offHost = host.subscribe(sync);
     const offCanvas = canvasInteraction.subscribe(sync);
+    const offActions = actionRegistry.subscribe(observe);
     sync();
     return () => {
       offHost();
       offCanvas();
+      offActions();
       offSession?.();
+      offSlow?.();
+      generation++;
+      changed.forEach((f) => f());
+      host.cancelRun?.();
       offMode?.();
       canvasInteraction.get()?.setGuide(null);
     };

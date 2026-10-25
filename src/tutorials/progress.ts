@@ -26,6 +26,11 @@ export function savedProgress(t: Pick<Tutorial, "id" | "version">) {
   return p && p.version === t.version ? p : undefined;
 }
 
+/** First unfinished lesson in this track, in catalog order. */
+export function nextTutorial(current: Tutorial, catalog: readonly Tutorial[]): Tutorial | undefined {
+  return catalog.find((t) => t.id !== current.id && t.track === current.track && !savedProgress(t)?.completed);
+}
+
 /** Completion survives a restart only while the tutorial's meaning (version) is unchanged. */
 export function saveProgress(tutorial: Pick<Tutorial, "id" | "version">, step: number, completed: boolean) {
   writeTutorials((s) => ({
