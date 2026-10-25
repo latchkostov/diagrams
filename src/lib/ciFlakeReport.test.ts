@@ -1,5 +1,13 @@
 import { expect, it } from "vitest";
+import { readFileSync } from "node:fs";
 import { failedTests, renderReport, type Snapshot } from "../../scripts/ci/flake-report.mjs";
+import rerunSnapshot from "../../tests/fixtures/ci-flake-report/rerun-snapshot.json";
+import actionsRerun from "../../tests/fixtures/ci-flake-report/actions-rerun.json";
+
+const interruptedLog = readFileSync(
+  new URL("../../tests/fixtures/ci-flake-report/interrupted.log", import.meta.url),
+  "utf8",
+);
 
 const failure = (line = 14, decoration = "") =>
   `[chromium] › tests/e2e/example.spec.ts:${line}:1 › suite › test${decoration}`;
@@ -16,6 +24,58 @@ it("deduplicates annotations and summaries across line changes and reporter deco
       title: "suite › test",
     },
   ]);
+});
+
+it("excludes interrupted and cancelled tests while retaining failures emitted before cancellation", () => {
+  for (const status of ["interrupted", "cancelled", "canceled"]) {
+    const log = interruptedLog.replaceAll("interrupted", status);
+    expect(failedTests(log).map((test) => test.title)).toEqual(["actual failure"]);
+    expect(
+      failedTests(log.slice(log.indexOf("2026-10-25T00:00:00.0000000Z   1 failed"))).map((test) => test.title),
+    ).toEqual(["actual failure"]);
+    // A cancelled job may end before the reporter writes its final summary.
+    expect(failedTests(log.split("2026-10-25T00:00:00.0000000Z   1 failed")[0]).map((test) => test.title)).toEqual([
+      "actual failure",
+    ]);
+    const data = snapshot();
+    data.logs[11] = log;
+    const report = renderReport(data);
+    expect(report).toContain("actual failure | 1 | branch | 1/1");
+    expect(report).not.toContain(`› ${status} by failure limit |`);
+  }
+});
+
+it("retains the latest complete successful earlier attempt after a partial rerun", () => {
+  const report = renderReport(rerunSnapshot);
+  expect(report).toContain("Run 90, attempt 2, SHA recent");
+  const latest = report.split("## Latest complete successful shard set")[1].split("## Collection coverage")[0];
+  expect(latest).toContain("| E2E 1/2 | 30 | 50.0% | 75.0% |");
+  expect(latest).toContain("| E2E 2/2 | 50 | 83.3% | 125.0% |");
+  expect(latest).not.toContain("NaN");
+  // Historical means retain all completed attempts, including the partial rerun's finished shard.
+  expect(report).toContain("| E2E 1/2 | 4 | 32.5 | 70.0");
+  expect(report).toContain("| E2E 2/2 | 3 | 33.3 | 50.0");
+  expect(renderReport({ ...rerunSnapshot, jobs: [...rerunSnapshot.jobs].reverse() })).toBe(report);
+});
+
+it("preserves recorded Actions shard measurements when a later attempt has no E2E jobs", () => {
+  const data = structuredClone(actionsRerun);
+  data.runs[0].attempt++;
+  const report = renderReport(data);
+  expect(report).toContain("Run 40160789032, attempt 2, SHA 4e1327efbb926cfba2f41156ddd292c7228e3d7e");
+  expect(report).toContain("| E2E 1/6 | 2 | 959.0 | 959.0");
+  const comparison = (text: string) =>
+    text.split("## Latest complete successful shard set")[1].split("## Collection coverage")[0];
+  expect(comparison(report)).toBe(comparison(renderReport(actionsRerun)));
+  expect(comparison(report)).toContain("| E2E 1/6 | 959 |");
+  expect(comparison(report)).toContain("| E2E 4/6 | 473 |");
+});
+
+it("does not mix shard measurements across attempts to invent a complete successful set", () => {
+  const data = structuredClone(rerunSnapshot);
+  data.jobs.find((job) => job.runId === 90 && job.attempt === 2 && job.name === "E2E 2/2")!.conclusion = "failure";
+  data.jobs.find((job) => job.runId === 90 && job.attempt === 1 && job.name === "E2E 1/2")!.conclusion = "failure";
+  expect(renderReport(data)).toContain("Run 80, attempt 1, SHA older");
 });
 
 function snapshot(): Snapshot {
@@ -57,7 +117,7 @@ it("keeps failures before cancellation and recognizes later same-SHA shards acro
   const report = renderReport(data);
   expect(report).toContain("suite › test | 2 | branch | 2/2 | E2E 1/1");
   expect(report).toContain("| E2E 1/1 | 3 | 16.7 | 20.0 | 27.8% | 100.0% |");
-  expect(report).toContain("Run 3, SHA different");
+  expect(report).toContain("Run 3, attempt 1, SHA different");
   expect(renderReport(JSON.parse(JSON.stringify(data)) as Snapshot)).toBe(report);
   data.runs[1].headSha = "other";
   expect(renderReport(data)).toContain("suite › test | 2 | branch | 0/2");

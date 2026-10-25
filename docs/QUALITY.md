@@ -355,7 +355,8 @@ Keep single tests short: a shard can't finish before its longest test. Split a l
 `scripts/ci/flake-report.mjs` uses authenticated `gh` read operations to inspect the latest 60 **CI**
 workflow runs across all branches, including every earlier rerun attempt. It reads failed and cancelled
 shard logs, deduplicates repeated reporter/Actions annotations, and groups failures by project, spec and
-full title (not unstable source line numbers). Failures emitted before cancellation still count.
+full title (not unstable source line numbers). Failures emitted before cancellation still count;
+interrupted or cancelled tests do not, including when the log ends before the final summary.
 
 ```sh
 node scripts/ci/flake-report.mjs --cache tests/.output/flake-snapshot --output docs/backlog/YYYY-MM-DD-ci-flake-report.md
@@ -375,8 +376,10 @@ coverage gaps, never silently classified as flakes. This diagnostic report does 
 the known-flake classifier still requires structured test reports.
 
 Wall times include each completed shard's setup and uploads, exclude queue time and interrupted jobs,
-and show mean/max against the budget. The latest complete successful shard set also gets a same-run
-comparison: historical means can hide drift after infrastructure changes. If a shard exceeds 125% of
+and show mean/max against the budget. The latest complete successful shard set also gets a same-attempt
+comparison, searching earlier attempts when a later rerun is partial and naming the selected attempt.
+Measurements from different attempts are never combined into a complete set. Historical means can
+hide drift after infrastructure changes. If a shard exceeds 125% of
 that run's mean, refresh the existing duration map from **that one run's** six `e2e-durations-*` artifacts
 using the updater above. Review the projected plan, then measure actual CI wall time after pushing.
 
