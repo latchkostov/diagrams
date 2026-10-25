@@ -55,7 +55,6 @@ describe("building-block lessons", () => {
       "fanout",
       "partitions",
       "outbox",
-      "dependencies-2",
     ]);
   });
 

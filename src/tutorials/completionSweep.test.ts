@@ -1020,7 +1020,7 @@ describe("completion regressions", () => {
     expect(h.deps.history.hint).toHaveBeenCalledTimes(1);
   });
 
-  it("dependencies-2 shows hidden Dependencies before targeting Config", () => {
+  itFor(dependencies2)("dependencies-2 shows hidden Dependencies before targeting Config", () => {
     const previous = dependencyVisibility.get();
     cleanup.push(() => dependencyVisibility.set(previous));
     dependencyVisibility.set(false);

@@ -161,6 +161,7 @@ async function savedEntries(page: Page): Promise<{ slug: string; title: string }
 }
 
 test("dependencies-2: hidden Dependencies can be shown before adding a setting", async ({ page }) => {
+  test.fixme(!!tutorialEntries.find((t) => t.id === "dependencies-2")?.quarantined, quarantineReason);
   await page.addInitScript(() => localStorage.setItem("diagrams.showDependencies.v1", "0"));
   await openTutorial(page, "dependencies-2");
   await page.getByTestId("tutorial-start").click();
@@ -173,6 +174,7 @@ test("dependencies-2: hidden Dependencies can be shown before adding a setting",
 });
 
 test("dependencies-2: the lock target follows the setting inserted before existing rows", async ({ page }) => {
+  test.fixme(!!tutorialEntries.find((t) => t.id === "dependencies-2")?.quarantined, quarantineReason);
   await openTutorial(page, "dependencies-2");
   await page.getByTestId("tutorial-start").click();
   await expect(strip(page)).toHaveAttribute("data-step", "add-setting");

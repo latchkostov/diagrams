@@ -26,5 +26,5 @@ export const tutorialEntries: readonly Pick<TutorialMetadata, "id" | "quarantine
   { id: "fanout" },
   { id: "partitions" },
   { id: "outbox" },
-  { id: "dependencies-2" },
+  { id: "dependencies-2", quarantined: true },
 ];

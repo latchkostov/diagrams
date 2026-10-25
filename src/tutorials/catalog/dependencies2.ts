@@ -7,6 +7,8 @@ const lockTarget = `inspector-setting-lock-key-${setting}`;
 export const dependencies2: Tutorial = {
   id: "dependencies-2",
   version: 2,
+  // quarantined: see docs/backlog/2026-10-24-tutorials-quarantine.md
+  quarantined: true,
   track: "blocks",
   level: 2,
   minutes: 2,
