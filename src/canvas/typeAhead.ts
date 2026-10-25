@@ -42,26 +42,43 @@ export const typeAheadActive = () => captures.length > 0;
 export function captureTypeAhead(
   multiline: () => boolean = () => false,
   onDone?: (typed: TypeAhead) => void,
+  // A rename yields to other fields; a palette may have been opened from one and still owns its pending input.
+  respectEditable = false,
 ): { stop: () => TypeAhead } {
   const me = { state: { text: null } as TypeAhead };
   captures.push(me);
-  const onKey = (e: KeyboardEvent) => {
-    if (captures[captures.length - 1] !== me || e.isComposing) return;
-    const next = typeAheadKey(me.state, e, multiline());
+  const onInput = (event: Event) => {
+    if (
+      captures.at(-1) !== me ||
+      me.state.done ||
+      (respectEditable &&
+        event.target instanceof Element &&
+        event.target.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"])'))
+    )
+      return;
+    let next: TypeAhead | null;
+    if (event.type === "paste") {
+      const text = (event as ClipboardEvent).clipboardData?.getData("text/plain");
+      if (!text) return;
+      next = { text: (me.state.text ?? "") + (multiline() ? text : text.replace(/[\r\n]+/g, " ")) };
+    } else {
+      const key = event as KeyboardEvent;
+      next = key.isComposing ? null : typeAheadKey(me.state, key, multiline());
+    }
     if (!next) return;
     me.state = next;
-    e.preventDefault();
-    e.stopImmediatePropagation();
+    event.preventDefault();
+    event.stopImmediatePropagation();
     if (next.done) onDone?.(next);
   };
-  window.addEventListener("keydown", onKey, true);
-  let stopped = false;
+  const events = ["keydown", "paste"];
+  for (const type of events) window.addEventListener(type, onInput, true);
   return {
     stop: () => {
-      if (!stopped) {
-        stopped = true;
-        window.removeEventListener("keydown", onKey, true);
-        captures.splice(captures.indexOf(me), 1);
+      const index = captures.indexOf(me);
+      if (index >= 0) {
+        for (const type of events) window.removeEventListener(type, onInput, true);
+        captures.splice(index, 1);
       }
       return me.state;
     },

@@ -417,6 +417,7 @@ kbd {
 }
 
 .btn:disabled,
+.btn[aria-disabled="true"],
 .icon-btn:disabled {
   opacity: 0.45;
 }

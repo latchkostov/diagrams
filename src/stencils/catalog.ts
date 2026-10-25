@@ -1526,7 +1526,7 @@ const clients = group("clients", [
     ["vue", "Vue", "client-browser", "#42B883"],
     ["angular", "Angular", "angular", "#DD0031"],
     ["svelte", "Svelte", "svelte", "#FF3E00"],
-    ["nextjs", "Next.js", "nextjs", "#000000"],
+    ["nextjs", "Next.js", "nextjs", "#777777"],
     ["nuxt", "Nuxt", "nuxt", "#00DC82"],
   ]),
   [

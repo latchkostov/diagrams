@@ -586,3 +586,40 @@ for (const slug of ["retry-storm", "webhook-ingestion"])
     }
     expectNoErrors(consoleErrors);
   });
+
+test("P2 queued Tab then Shift+Tab resolves from the pending readout before frames advance", async ({ page }) => {
+  await page.clock.install();
+  await gotoLive(page, "./?view=canvas&example=blocking-call&live=1&paused=1");
+  await page.getByTestId("node-caller").evaluate((el) => el.parentElement?.focus());
+  const card = page.getByTestId("node-detail-caller");
+  await expect(card).toBeVisible();
+  await pauseClock(page);
+  await page.getByTestId("node-caller").evaluate((el) => {
+    const owner = el.parentElement;
+    if (!owner) throw new Error("Missing focus owner");
+    owner.dispatchEvent(new KeyboardEvent("keydown", { key: "Tab", bubbles: true, cancelable: true }));
+    document.activeElement?.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "Tab", shiftKey: true, bubbles: true, cancelable: true }),
+    );
+  });
+  await page.clock.runFor(100);
+  await expect.poll(() => focusedStop(page)).toBe("node-caller");
+  // Shift+Tab opens the previous readout after a commit. A second queued Shift+Tab starts there.
+  await page.clock.resume();
+  await page.keyboard.press("Tab");
+  await expect(card).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect.poll(() => focusedStop(page)).toBe("node-partner");
+  await expect(page.getByTestId("node-detail-partner")).toBeVisible();
+  await pauseClock(page);
+  await page.getByTestId("node-partner").evaluate((el) => {
+    const owner = el.parentElement;
+    if (!owner) throw new Error("Missing focus owner");
+    for (let i = 0; i < 2; i++)
+      owner.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Tab", shiftKey: true, bubbles: true, cancelable: true }),
+      );
+  });
+  await page.clock.runFor(100);
+  await expect.poll(() => focusedStop(page)).toBe("node-caller");
+});

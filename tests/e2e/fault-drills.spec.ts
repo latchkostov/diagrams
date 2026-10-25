@@ -1,3 +1,4 @@
+import AxeBuilder from "@axe-core/playwright";
 import type { Page } from "@playwright/test";
 import { faultDrillFixture } from "../../src/lab/faultDrillFixture";
 import {
@@ -325,13 +326,14 @@ for (const layout of ["ungrouped", "same-boundary"] as const) {
   });
 }
 
-for (const theme of ["light", "dark"]) {
+for (const theme of ["light", "dark"] as const) {
   test(`cut and restored Request and Message styles are distinct in ${theme}`, async ({ page }) => {
     await page.addInitScript(({ theme, key }) => localStorage.setItem(key, JSON.stringify({ theme })), {
       theme,
       key: STORAGE_KEYS.settings,
     });
     await seed(page);
+    expect(await page.evaluate(() => document.documentElement.dataset.theme)).toBe(theme);
     const style = (id: string) =>
       page.getByTestId(`edge-${id}`).evaluate((el) => {
         const path = [...el.children][1];
@@ -469,3 +471,51 @@ test("Go Live opens Free play on examples and personal diagrams, with saved dril
   await page.getByTestId("live-toggle").click();
   await expect(page.getByTestId("live-sim-picker")).toHaveValue("");
 });
+
+for (const theme of ["light", "dark"] as const)
+  test(`P2 blocking validation announces named fields and limits in ${theme}`, async ({ page }) => {
+    await page.emulateMedia({ colorScheme: theme, reducedMotion: "reduce" });
+    await seed(page);
+    await page.getByTestId("live-more").click();
+    await page.getByTestId("live-edit-sims").click();
+    await page.getByTestId("sim-panel-new").click();
+    const error = page.getByTestId("sim-panel-invalid");
+    await expect(error).toHaveAttribute("role", "status");
+    await expect(error).toHaveAttribute("aria-live", "polite");
+    await expect(error).toHaveAttribute("aria-atomic", "true");
+    await page.getByTestId("sim-panel-add-traffic").click();
+    const count = page.getByTestId("sim-panel-traffic-0-count");
+    await count.fill("100001");
+    await expect(count).toBeFocused();
+    await expect(count).toHaveAttribute("aria-invalid", "true");
+    await expect(count).toHaveAccessibleDescription("Traffic 1: Messages: enter a whole number from 0 to 100,000.");
+    await expect(page.getByTestId("sim-panel-save")).toBeDisabled();
+    await expect(page.getByTestId("sim-panel-save")).toHaveAttribute("aria-describedby", "sim-panel-invalid");
+    await expect(error).toContainText("Traffic 1: Messages");
+    await count.fill("100");
+    await expect(count).not.toHaveAttribute("aria-invalid");
+    await expect(error).toBeEmpty();
+    await expect(error).toHaveCSS("padding", "0px");
+    await expect(error).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
+    await page.getByTestId("sim-panel-section-timeline-toggle").click();
+    await page.getByTestId("sim-panel-add-step").selectOption("zone-outage");
+    const target = page.getByTestId("sim-panel-step-0-fault-target");
+    // An invalid edit remains visible and repairable, as after a referenced boundary disappears.
+    await target.evaluate((el) => {
+      const select = el as HTMLSelectElement;
+      select.add(new Option("Missing boundary", "missing"));
+      select.value = "missing";
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    await expect(target).toHaveAttribute("aria-invalid", "true");
+    await expect(target).toHaveAccessibleDescription("Timeline 1: Target: choose an existing target in this diagram.");
+    await expect(page.getByTestId("sim-panel-save")).toBeDisabled();
+    const { violations } = await new AxeBuilder({ page })
+      .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
+      .include('[data-testid="sim-panel"]')
+      .analyze();
+    expect(violations.map((v) => `${v.id}: ${v.help}`)).toEqual([]);
+    await target.selectOption("zone-b");
+    await expect(error).toBeEmpty();
+    await expect(page.getByTestId("sim-panel-save")).toBeEnabled();
+  });

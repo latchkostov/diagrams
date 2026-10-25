@@ -25,7 +25,7 @@ export interface ReadoutLayer {
   dismiss(): void;
   enter(target: ReadoutTarget): boolean;
   retrace(target: ReadoutTarget): void;
-  tab(el: Element | null, back: boolean, nav: ReadoutNav): boolean | undefined;
+  tab(el: Element | null, back: boolean, nav: ReadoutNav, pending?: ReadoutTarget): boolean | undefined;
 }
 
 /** Canvas navigation's view of its reading order, for Tab across a readout (useCanvasNavigation). */
@@ -131,8 +131,10 @@ export function createReadoutLayer(host: ReadoutHost, dom = { stop: readoutStop,
      * Tab or Shift+Tab from inside a card (readoutTab): back to its item, on past it, or the browser's Tab within it.
      * Undefined: focus isn't in a readout, so canvas navigation goes on as usual.
      */
-    tab(el: Element | null, back: boolean, nav: ReadoutNav): boolean | undefined {
-      const at = dom.stop(el);
+    tab(el: Element | null, back: boolean, nav: ReadoutNav, pending?: ReadoutTarget): boolean | undefined {
+      const at = pending
+        ? { target: pending, pinned: !!state.open?.pinned, card: true, last: !state.open?.pinned }
+        : dom.stop(el);
       if (!at) return undefined;
       const owner = at.target;
       if (!nav.has(owner)) return false;
