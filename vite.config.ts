@@ -15,6 +15,7 @@ import { i18n } from "./scripts/i18n-plugin";
 import { schemaAssets } from "./scripts/schema-assets";
 import { engineVersion } from "./scripts/engine-version";
 import { viewerBundleFixture } from "./scripts/viewer-bundle";
+import { lazySurfaceHmr } from "./scripts/lazy-surface-hmr";
 
 /**
  * `VITE_E2E=1` builds the app for the e2e suite: a production build that keeps the dev-only test hooks
@@ -168,6 +169,7 @@ export default defineConfig({
     staticPages(),
     exampleMetadataPlugin(),
     schemaAssets(),
+    ...(process.env.VITEST ? [] : [lazySurfaceHmr()]),
     react(),
     noPrivateExamples(),
     noTestHooks(),
