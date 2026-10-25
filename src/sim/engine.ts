@@ -2747,7 +2747,9 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           for (const p of work.cpuParts ?? []) p.cpu = (work.cpuRemaining * (p.last - p.first + 1)) / count;
         }
         work.retained = true;
-        if (node.props.admission) work.retryAdmissionAt = time + node.props.retryBackoffMs;
+        // A live policy removal must not leave a prior attempt's admission clock
+        // able to end this retry's newer CPU backoff early on recovery.
+        work.retryAdmissionAt = node.props.admission ? time + node.props.retryBackoffMs : undefined;
         // Retaining the pool does not retain the previous attempt's completed residence.
         if (node.status === "up") startAttempt(node, work);
       } else {
