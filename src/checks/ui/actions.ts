@@ -112,6 +112,10 @@ function save(editor: EditorApi, next: DiagramChecks, text: string) {
 }
 
 export function ignoreFinding(editor: EditorApi, finding: Finding, reason: string) {
+  if (finding.scope === "diagram" || !finding.target) {
+    notify("This finding applies to the whole diagram and can't be ignored here.", { kind: "info" });
+    return false;
+  }
   const c = checksOf(editor);
   const entry: CheckIgnore = {
     rule: finding.rule,
@@ -120,6 +124,7 @@ export function ignoreFinding(editor: EditorApi, finding: Finding, reason: strin
   };
   const ignore = [...(c.ignore ?? []).filter((i) => !(i.rule === entry.rule && i.target === entry.target)), entry];
   save(editor, { ...c, ignore }, "Ignored here. It's kept in the file.");
+  return true;
 }
 
 export function unignore(editor: EditorApi, rule: string, target: string) {

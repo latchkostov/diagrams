@@ -47,6 +47,8 @@ export interface CheckFixOption {
 }
 
 export interface Finding {
+  /** Diagram diagnostics have no element actions or per-element ignore; absent means element scope. */
+  scope?: "element" | "diagram";
   /** Internal count marker, moved to CheckResult.notChecked by runChecks. */
   unchecked?: number;
   resilienceFinding?: {
@@ -134,11 +136,11 @@ export interface Finding {
   /** Neutral rationale descriptor; rationale stays English for workers and agents. */
   brokerRationale?: "no-reader";
   brokerAssignment?: { text: string; spec: BrokerSpec; active: number; configured: number };
-  /** `${rule}:${target}`: stable across renames and moves. */
+  /** `${rule}:${target}` for element findings; diagram diagnostics use a stable rule-specific suffix. */
   id: string;
   rule: CheckRuleId;
   severity: CheckSeverity;
-  /** The element the finding is about; with the rule, what an ignore names. */
+  /** The element the finding is about; empty for diagram scope. With the rule, what an element ignore names. */
   target: string;
   /** Every node and connection involved, target first. */
   elements: string[];

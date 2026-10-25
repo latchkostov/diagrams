@@ -36,6 +36,7 @@ export function findingBudget(limit = FINDINGS_BUDGET) {
 export function omission(rule: Finding["rule"], count: number): Finding {
   return {
     id: `${rule}:*omitted`,
+    scope: "diagram",
     rule,
     severity: "suggestion",
     target: "",

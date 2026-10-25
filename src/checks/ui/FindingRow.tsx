@@ -79,6 +79,7 @@ export function FindingRow({
 }) {
   useLocale();
   const f = presentFinding(finding);
+  const diagramScope = f.scope === "diagram";
   const [panel, setPanel] = useState<"menu" | "ignore" | "about" | null>(null);
   const [reason, setReason] = useState("");
   const more = useRef<HTMLButtonElement>(null);
@@ -105,7 +106,7 @@ export function FindingRow({
   // Names only for the chips drawn, from the check's one index: a loop of 1,500 services costs five lookups.
   const chips: { id: string; name: string }[] = [];
   let unnamed = 0;
-  if (!compact)
+  if (!compact && !diagramScope)
     for (const id of f.elements) {
       if (chips.length === MAX_CHIPS) {
         unnamed++;
@@ -138,6 +139,17 @@ export function FindingRow({
     e.stopPropagation();
     closePanel();
   };
+  const head = (
+    <>
+      <span className={`check-sev is-${f.severity}`} aria-label={f.severity === "warning" ? "Warning" : "Suggestion"}>
+        {f.severity === "warning" ? <Icon name="warning" size={13} /> : <span className="check-dot" />}
+      </span>
+      <span className="check-row-text">
+        <strong>{f.title}</strong>
+        <span className="check-msg">{f.message}</span>
+      </span>
+    </>
+  );
   return (
     // Esc inside the row closes its open options first (one level); hover highlights its markers.
     // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions
@@ -152,24 +164,22 @@ export function FindingRow({
       onKeyDown={onPanelKey}
       data-panel-open={panel ? "" : undefined}
     >
-      <button
-        type="button"
-        className="check-row-head"
-        data-testid={t("select")}
-        data-check-head
-        title="Select and show what it involves"
-        onClick={() => host.reveal(f.elements)}
-        onFocus={() => host.hover?.(f.id)}
-        onBlur={() => host.hover?.(null)}
-      >
-        <span className={`check-sev is-${f.severity}`} aria-label={f.severity === "warning" ? "Warning" : "Suggestion"}>
-          {f.severity === "warning" ? <Icon name="warning" size={13} /> : <span className="check-dot" />}
-        </span>
-        <span className="check-row-text">
-          <strong>{f.title}</strong>
-          <span className="check-msg">{f.message}</span>
-        </span>
-      </button>
+      {diagramScope ? (
+        <div className="check-row-head">{head}</div>
+      ) : (
+        <button
+          type="button"
+          className="check-row-head"
+          data-testid={t("select")}
+          data-check-head
+          title="Select and show what it involves"
+          onClick={() => host.reveal(f.elements)}
+          onFocus={() => host.hover?.(f.id)}
+          onBlur={() => host.hover?.(null)}
+        >
+          {head}
+        </button>
+      )}
       {f.evidence?.length ? (
         // What the saved simulations showed here (Run simulations): one line each, the first few.
         <ul className="check-evidence" aria-label="In the simulations" data-testid={t("evidence")}>
@@ -186,8 +196,8 @@ export function FindingRow({
       ) : null}
       {!compact && (
         <details className="check-why" data-testid={t("why")}>
-          <summary>Why</summary>
-          <p>{f.rationale}</p>
+          <summary data-testid={t("why-toggle")}>Why</summary>
+          <p data-testid={t("why-text")}>{f.rationale}</p>
         </details>
       )}
       {chips.length > 0 && (
@@ -240,9 +250,9 @@ export function FindingRow({
         <button
           type="button"
           className="icon-btn check-more"
-          aria-label="More: ignore, turn off, about"
+          aria-label={diagramScope ? "More: turn off, about" : "More: ignore, turn off, about"}
           aria-expanded={panel === "menu"}
-          title="Ignore, turn off, about"
+          title={diagramScope ? "Turn off, about" : "Ignore, turn off, about"}
           data-testid={t("more")}
           ref={more}
           onClick={() => setPanel(panel === "menu" ? null : "menu")}
@@ -272,9 +282,11 @@ export function FindingRow({
       ) : null}
       {panel === "menu" && (
         <div className="check-menu" role="group" aria-label="Finding options">
-          <button type="button" data-testid={t("ignore")} onClick={() => setPanel("ignore")}>
-            Ignore here…
-          </button>
+          {!diagramScope && (
+            <button type="button" data-testid={t("ignore")} onClick={() => setPanel("ignore")}>
+              Ignore here…
+            </button>
+          )}
           <button
             type="button"
             data-testid={t("turn-off")}
@@ -290,7 +302,7 @@ export function FindingRow({
           </button>
         </div>
       )}
-      {panel === "ignore" && (
+      {panel === "ignore" && !diagramScope && (
         <div className="check-ignore">
           <input
             // The reason box opens on purpose, to type: focus it.

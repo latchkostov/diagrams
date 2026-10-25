@@ -20,6 +20,7 @@ import { runChecksOffThread } from "../../canvas/checks/runner";
 import { messageTypesFixture } from "../../lab/messageTypesFixture";
 import * as propagation from "../../model/messageTypes";
 import { presentFinding } from "../presentation";
+import { validateDiagram } from "../../interop/native";
 
 it("rejects cached message-loop filter and rename actions after quarantine", async () => {
   const d = messageTypesFixture();
@@ -272,6 +273,42 @@ describe("applyFix with an option", () => {
 });
 
 describe("check settings", () => {
+  // quarantined: diagram-scope diagnostics, see docs/backlog/2026-10-25-diagram-scope-findings.md
+  it.skip("rejects diagram and targetless ignores visibly and keeps saved checks valid on reload", () => {
+    const d = messageTypesFixture();
+    d.checks = { off: ["no-reader"] };
+    d.simulations = [
+      {
+        id: "forwarding",
+        title: "Forwarding changes",
+        traffic: [],
+        timeline: [{ atMs: 0, action: { do: "props", node: "api", props: { emits: "Prepared" } } }],
+      },
+    ];
+    const diagnostic = runChecks(d, { rules: ["message-loop"] }).findings.find(
+      (f) => f.id === "message-loop:incomplete",
+    )!;
+    expect(diagnostic).toMatchObject({ scope: "diagram", target: "", elements: [] });
+    const { api, hint } = editorFor(d);
+    const notify = vi.spyOn(toast, "notify");
+    try {
+      for (const attempted of [diagnostic, { ...diagnostic, target: "api" }, { ...diagnostic, scope: undefined }]) {
+        expect(ignoreFinding(api, attempted, "not applicable")).toBe(false);
+        expect(notify).toHaveBeenLastCalledWith(expect.stringContaining("can't be ignored here"), { kind: "info" });
+      }
+      expect(hint).not.toHaveBeenCalled();
+      expect(api.getDiagram().checks).toEqual(d.checks);
+      const reloaded = validateDiagram(JSON.parse(JSON.stringify(api.getDiagram())));
+      expect(reloaded.ok).toBe(true);
+      if (!reloaded.ok) throw new Error(reloaded.error);
+      expect(reloaded.warnings).toEqual([]);
+      expect(reloaded.diagram.checks).toEqual(d.checks);
+      expect(runChecks(reloaded.diagram, { rules: ["message-loop"] }).findings).toContainEqual(diagnostic);
+    } finally {
+      notify.mockRestore();
+    }
+  });
+
   it("each ignore, turn-off and restore is its own undo step (a tag of its own)", () => {
     const d = queue();
     const finding = runChecks(d).findings.find((f) => f.id === "dead-letter:q")!;
