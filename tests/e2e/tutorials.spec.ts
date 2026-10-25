@@ -516,6 +516,37 @@ test("Continue reconstructs saved progress; Start over begins with an empty sand
   await expect(page.getByTestId("node-service-1")).toHaveCount(0);
 });
 
+test("property-sheet Continue restores Subtitle and Description without repeating Name", async ({ page }) => {
+  for (const [index, step] of [
+    [2, "subtitle"],
+    [3, "description"],
+  ] as const) {
+    await openTutorial(page, "property-sheet");
+    await page.getByTestId(index === 2 ? "tutorial-start" : "tutorial-start-over").click();
+    await page.getByTestId("node-api").dblclick();
+    await expect(strip(page)).toHaveAttribute("data-step", "name");
+    const nameSolution = await page.evaluate(() => window.__tutorial?.solution() ?? []);
+    for (const action of nameSolution) await play(page, action);
+    await expect(strip(page)).toHaveAttribute("data-step", "subtitle");
+    if (step === "description") {
+      const subtitleSolution = await page.evaluate(() => window.__tutorial?.solution() ?? []);
+      for (const action of subtitleSolution) await play(page, action);
+    }
+    await expect(strip(page)).toHaveAttribute("data-step", step);
+    await page.getByTestId("tutorial-exit").click();
+    await openTutorial(page, "property-sheet");
+    await expect(page.getByTestId("tutorial-start")).toContainText("Continue");
+    await page.getByTestId("tutorial-start").click();
+    // No further input: replay must settle Name itself before handing over.
+    await expect(strip(page)).toHaveAttribute("data-step", step);
+    await expect(strip(page)).toHaveAttribute("data-state", "active");
+    await expect.poll(() => page.evaluate(() => window.__tutorial?.snapshot().state.settled[1])).toBe(true);
+    const progress = await page.evaluate(() => JSON.parse(localStorage.getItem("diagrams.tutorials.v1") ?? "{}"));
+    expect(progress.progress["property-sheet"]).toMatchObject({ step: index, completed: false });
+    await page.getByTestId("tutorial-exit").click();
+  }
+});
+
 test("Show me keeps keyboard focus and announces its expanded hint", async ({ page }) => {
   await openTutorial(page, "mobile-api");
   await page.getByTestId("tutorial-start").click();

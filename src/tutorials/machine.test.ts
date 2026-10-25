@@ -127,10 +127,27 @@ describe("tutorial step runner", () => {
   });
 
   it("resumes at the saved step by doing the earlier ones", () => {
-    const { state, commands } = play([{ type: "resume" }], 2);
-    expect(state).toMatchObject({ value: "active", index: 2 });
-    expect(commands[0]).toEqual({ type: "demo", steps: [0, 1] });
+    const m = createMachine(def(2));
+    const { state, commands } = m.send({ type: "resume" });
+    expect(state).toMatchObject({ value: "reconstructing", index: 2 });
+    expect(commands[0]).toEqual({ type: "reconstruct", steps: [0, 1] });
+    expect(m.send(observe([true, false, false])).commands).toEqual([]);
+    expect(m.state).toMatchObject({ value: "reconstructing", index: 2 });
+    expect(m.send(observe([true, true, false])).commands).toEqual([]);
+    const handed = m.send({ type: "reconstructed" });
+    expect(handed.state).toMatchObject({ value: "active", index: 2 });
+    expect(handed.commands).toContainEqual({ type: "save", step: 2, completed: false });
     expect(play([{ type: "resume" }]).state.value).toBe("intro");
+  });
+
+  it("ignores a late reconstruction completion after Exit or Restart", () => {
+    for (const type of ["exit", "restart"] as const) {
+      const m = createMachine(def(2));
+      m.send({ type: "resume" });
+      m.send({ type });
+      const before = m.state;
+      expect(m.send({ type: "reconstructed" })).toEqual({ state: before, commands: [] });
+    }
   });
 
   it("rejects an observation of the wrong length (another tutorial's checks)", () => {

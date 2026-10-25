@@ -87,8 +87,6 @@ export function createTutorialRunner(
   const demoBindings = new Map<string, string>();
   let documentChecks: boolean[] = [];
   let topology: string | undefined;
-  let pendingRun: { session: ReturnType<Host["get"]>["session"]; generation: number } | undefined;
-  let previousRun: typeof pendingRun;
   function view(): SandboxView {
     const h = host.get();
     const ed = h.canvas!.editor;
@@ -99,18 +97,7 @@ export function createTutorialRunner(
     const diagram = readDiagram();
     const currentSession = h.session?.state?.();
     if (diagram !== document) {
-      const nextTopology = JSON.stringify(simulationProjection(diagram, true));
-      // The editor can publish before Live rebuilds. Its previous counters cannot prove traffic in the new flow.
-      if (
-        topology !== undefined &&
-        topology !== nextTopology &&
-        h.canvas!.live &&
-        currentSession &&
-        previousRun?.session === h.session &&
-        previousRun.generation === currentSession.generation
-      )
-        pendingRun = { session: h.session, generation: currentSession.generation };
-      topology = nextTopology;
+      topology = JSON.stringify(simulationProjection(diagram, true));
       document = diagram;
       const bindings = { ...subjects };
       // Editor writes can land after the demo returns its id. Keep that declaration until the document reports it.
@@ -123,12 +110,8 @@ export function createTutorialRunner(
       subjects = resolveSubjects(tutorial, diagram, bindings);
       documentChecks = observeSteps(tutorial, { diagram, live: false, processed: () => 0 }, subjects);
     }
-    const session =
-      pendingRun?.session === h.session && pendingRun?.generation === currentSession?.generation
-        ? undefined
-        : currentSession;
-    if (session) pendingRun = undefined;
-    previousRun = currentSession ? { session: h.session, generation: currentSession.generation } : undefined;
+    // Counters prove traffic only in the editor's flow. Undo can restore that basis without a rebuild.
+    const session = currentSession?.diagramBasis === topology ? currentSession : undefined;
     return {
       diagram,
       live: !!h.canvas!.live,
@@ -356,14 +339,13 @@ export function createTutorialRunner(
     }
   }
 
-  async function demos(steps: readonly number[]) {
+  async function demos(steps: readonly number[], purpose: "interactive" | "reconstruct") {
     const run = generation;
     // Skip pressed before the sandbox canvas is up (its code still downloading): do it once it is.
     if (!(await until(() => !!editor(), run))) return;
     for (const i of steps) {
       if (run !== generation) return;
-      if (state.observed[i]) continue;
-      for (const d of tutorial.steps[i].demo) {
+      for (const d of state.observed[i] ? [] : tutorial.steps[i].demo) {
         // Live publishes before its lazy session registers actions. Retry on session/registry changes.
         if (d.kind === "fault") {
           if (!(await until(() => perform(d) !== false, run))) return;
@@ -371,7 +353,15 @@ export function createTutorialRunner(
       }
       // The next step's demo may need this one's node: wait for the canvas to report it.
       if (tutorial.steps[i].demo.length && !(await until(() => state.observed[i], run))) return;
+      if (purpose === "reconstruct" && tutorial.steps[i].settle === "naming") {
+        const interaction = canvasInteraction.get();
+        const mode = interaction?.mode;
+        if (mode?.value === "naming" && naming[i].some((name) => subjects[name] === mode.target))
+          interaction?.dispatch({ type: "naming.done", flowId: mode.target! });
+        if (!(await until(() => state.settled[i], run))) return;
+      }
     }
+    if (purpose === "reconstruct" && run === generation) send({ type: "reconstructed" });
   }
 
   function reveal(step: number) {
@@ -385,7 +375,10 @@ export function createTutorialRunner(
   function run(command: RunnerCommand) {
     switch (command.type) {
       case "demo":
-        void demos(command.steps);
+        void demos(command.steps, "interactive");
+        return;
+      case "reconstruct":
+        void demos(command.steps, "reconstruct");
         return;
       case "reset": {
         generation++;
@@ -393,8 +386,6 @@ export function createTutorialRunner(
         demoBindings.clear();
         document = undefined;
         topology = undefined;
-        pendingRun = undefined;
-        previousRun = undefined;
         const h = host.get();
         const ed = editor();
         if (!ed) return;
