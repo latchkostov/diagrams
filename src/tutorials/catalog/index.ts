@@ -35,6 +35,9 @@ import { studyCheckout } from "./studyCheckout";
 import { studyDispatch } from "./studyDispatch";
 import { studyPayments } from "./studyPayments";
 import { sharedApiQuotas } from "./sharedApiQuotas";
+import { studyFanout } from "./studyFanout";
+import { studyRag } from "./studyRag";
+import { studyCells } from "./studyCells";
 
 import { quickAdd } from "./quickAdd";
 import { dotsAndSides } from "./dotsAndSides";
@@ -96,6 +99,9 @@ export const allTutorials: readonly Tutorial[] = [
   studyCheckout,
   studyDispatch,
   studyPayments,
+  studyFanout,
+  studyRag,
+  studyCells,
 ];
 
 /** Available lessons only: discovery, deep links and progress totals share this catalog. */

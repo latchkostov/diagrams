@@ -619,6 +619,80 @@ export const studyFixture: Tutorial = {
   ],
 };
 
+/** Boundaries identified by their members, including a set of two services and selectors declared before nodes. */
+export const membershipFixture: Tutorial = {
+  ...base("fixture-membership", () => ({
+    format: "diagrams/v1",
+    title: "Membership",
+    simulations: [
+      {
+        id: "flow",
+        title: "Flow",
+        seed: 20261025,
+        scale: 1,
+        durationMs: 5000,
+        traffic: [{ id: "requests", node: "app", shape: { kind: "constant", ratePerSec: 4, durationMs: 5000 } }],
+      },
+    ],
+    nodes: [
+      { id: "app", stencil: "client.mobile", label: "App", x: 0, y: 0, props: { ratePerSec: 4 } },
+      { id: "one", stencil: "generic.service", label: "One", x: 300, y: 0 },
+      { id: "two", stencil: "service.go", label: "Two", x: 550, y: 0 },
+      { id: "three", stencil: "service.java", label: "Three", x: 300, y: 500 },
+    ],
+    edges: [
+      { id: "first", from: "app", to: "one", kind: "async" },
+      { id: "second", from: "one", to: "two", kind: "async" },
+      { id: "third", from: "app", to: "three", kind: "async" },
+    ],
+  })),
+  subjects: {
+    firstCell: { boundary: { members: ["one", "two"] } },
+    secondCell: { boundary: { members: ["three"] } },
+    one: { stencils: ["generic.service"] },
+    two: { stencils: ["service.go"] },
+    three: { stencils: ["service.java"] },
+  },
+  steps: [
+    step("split", {
+      check: {
+        kind: "all",
+        checks: [
+          { kind: "member", subject: "one", boundary: "firstCell" },
+          { kind: "member", subject: "two", boundary: "firstCell" },
+          { kind: "member", subject: "three", boundary: "secondCell" },
+        ],
+      },
+      demo: [
+        { kind: "group", subjects: ["one", "two"], boundary: "firstCell" },
+        { kind: "group", subjects: ["three"], boundary: "secondCell" },
+      ],
+    }),
+    step("traffic", {
+      check: {
+        kind: "all",
+        checks: [
+          { kind: "simulation", id: "flow", atLeastMs: 1000 },
+          {
+            kind: "compare",
+            left: { sum: "processed", every: { role: "processor", within: "firstCell" } },
+            op: ">=",
+            right: 1,
+          },
+          {
+            kind: "compare",
+            left: { sum: "processed", every: { role: "processor", within: "secondCell" } },
+            op: ">=",
+            right: 1,
+          },
+        ],
+      },
+      sticky: true,
+      demo: [{ kind: "runSimulation", id: "flow" }],
+    }),
+  ],
+};
+
 export const tutorialFixtures: readonly Tutorial[] = [
   runTimeFixture,
   pathsFixture,
@@ -630,4 +704,5 @@ export const tutorialFixtures: readonly Tutorial[] = [
   savedSimulationsFixture,
   livePanelsFixture,
   studyFixture,
+  membershipFixture,
 ];

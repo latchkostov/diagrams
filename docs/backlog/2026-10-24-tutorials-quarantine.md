@@ -251,3 +251,42 @@ remains a restoration coverage gap, also tracked by R-1ca28a02d7 and R-d88a4b1e0
 
 **Suggested fix:** Add “never-double-charge requires idempotent PSP retries”: create both required
 Message connections, assert incomplete with idempotency false, then set it true and assert complete.
+
+## Fan-out and RAG study quarantine - PR #339 round cap
+
+The Fan-out (`study-fanout`) and RAG (`study-rag`) design studies are quarantined after reaching the
+review round cap. Cards, search, next-lesson suggestions and deep links exclude them; saved progress
+remains on the device. Existing tests are retained, with generated completion-sweep and browser cases
+skipping for "quarantined: see docs/backlog/2026-10-24-tutorials-quarantine.md". The membership-based
+Cells study remains published. This round attempts neither P1 fix and leaves the runner unchanged.
+
+Restore each study only after its regression below and its restored completion-sweep and browser
+cases pass.
+
+## [P1/high] R-14ca23f114: Distinguish channel queues by topology
+
+`src/tutorials/catalog/studyFanout.ts:204` · lenses: architecture, tests
+
+**Repro:** Create a channel's DLQ before its main queue, then wire the correct router → main queue →
+sender topology with main queue → DLQ. Both queues use identical stencil selectors, so
+`resolveSubjects` binds the DLQ as the main queue and preserves that identity after wiring. The
+correct design cannot complete the milestone. Current tests create queues in the demo's order.
+
+**Suggested fix:** Use `downstreamOf` selectors to distinguish main queues from DLQs. Add a
+parameterized regression named "fan-out accepts DLQ-first construction" that creates each channel's
+DLQ first, wires the correct topology, and asserts completion without Skip.
+
+## [P1/high] R-9882472c56: Require the caller to wait for the answer model
+
+`src/tutorials/catalog/studyRag.ts:88` · lens: tests
+
+**Repro:** Change only embeddings → llm from Request to Message, leaving the original 3,000 ms model,
+then play beyond five seconds. Questions waits only for embeddings and vector search, so caller p95
+falls below 2,000 ms while background model work eventually satisfies processed ≥ 8. The first
+milestone incorrectly reports that the answer latency budget was met. The slow-model regression
+covers only the original synchronous topology.
+
+**Suggested fix:** Require synchronous flow relationships along the measured answer path and make
+Skip restore them. Add "RAG budget rejects an asynchronous model call": change only that edge to
+Message, play beyond five seconds, and assert the milestone remains pending despite low caller p95
+and completed model work.

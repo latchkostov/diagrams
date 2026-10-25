@@ -21,7 +21,8 @@ export type TrackId = "basics" | "blocks" | "simulation" | "waiting" | "resilien
 export interface SubjectSpec {
   /** An edge initially found between these node subjects; keeps its identity through reconnects. */
   edge?: readonly [string, string];
-  boundary?: true;
+  /** `true`: an unbound boundary in diagram order. `members`: the boundary holding all these node subjects. */
+  boundary?: true | { members: readonly [string, ...string[]] };
   stencils?: readonly string[];
   role?: SimRole;
   /** Require an incoming flow from this earlier-declared node subject. */

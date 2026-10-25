@@ -6,7 +6,7 @@ import { stencilRole } from "../stencils/roles";
 import { allTutorials as tutorials } from "./catalog";
 import { tutorialEntries } from "./catalog/ids";
 import { tutorialMetadata } from "./metadata";
-import type { Check, Demo, MetricExpr, PathSegment, PropPath, TutorialStep, UiStep } from "./types";
+import type { Check, Demo, MetricExpr, PathSegment, PropPath, SubjectSpec, TutorialStep, UiStep } from "./types";
 import { UNSAFE_KEYS } from "./paths";
 import { tutorialFixtures } from "../test/tutorialFixtures";
 
@@ -200,7 +200,37 @@ function pathProblem(path: PropPath): string | undefined {
 }
 const sinceIn = (e: MetricExpr | number) => typeof e === "object" && "sinceStep" in e;
 
+/** An order-based selector can claim any membership-selected boundary: the two forms cannot safely coexist. */
+function boundaryProblem(subjects: Readonly<Record<string, SubjectSpec>>): string | undefined {
+  const specs = Object.values(subjects);
+  if (specs.some((s) => s.boundary === true) && specs.some((s) => typeof s.boundary === "object"))
+    return "mixed boundary selectors";
+  for (const spec of specs) {
+    if (typeof spec.boundary !== "object") continue;
+    const members = spec.boundary.members;
+    if (!members.length || new Set(members).size !== members.length) return "empty or repeated members";
+    if (members.some((name) => !subjects[name] || subjects[name].boundary || subjects[name].edge))
+      return "membership must name node subjects";
+  }
+}
+
 describe("authoring evidence", () => {
+  it("rejects ambiguous mixed boundary selectors and invalid membership references", () => {
+    const node = { stencils: ["generic.service"] };
+    expect(boundaryProblem({ node, cell: { boundary: true } })).toBeUndefined();
+    expect(boundaryProblem({ node, cell: { boundary: { members: ["node"] } } })).toBeUndefined();
+    expect(boundaryProblem({ node, first: { boundary: true }, second: { boundary: { members: ["node"] } } })).toBe(
+      "mixed boundary selectors",
+    );
+    for (const member of ["missing", "cell", "edge"])
+      expect(
+        boundaryProblem({ node, cell: { boundary: { members: [member] } }, edge: { edge: ["node", "node"] } }),
+      ).toBe("membership must name node subjects");
+    expect(boundaryProblem({ node, cell: { boundary: { members: ["node", "node"] } } })).toBe(
+      "empty or repeated members",
+    );
+  });
+
   it("rejects selectors declared only in tutorial data, the runner's fixtures included", () => {
     expect(isEvidence("src/test/tutorialFixtures.ts")).toBe(false);
     expect(isEvidence("src/lab/tutorialRuntimeFixture.ts")).toBe(false);
@@ -255,6 +285,7 @@ describe("tutorial catalog", () => {
       });
 
       it("names only subjects it defines, and only stencils that exist", () => {
+        expect(boundaryProblem(tutorial.subjects)).toBeUndefined();
         const known = stencilIds;
         for (const spec of Object.values(tutorial.subjects)) {
           for (const id of spec.stencils ?? []) expect(known, id).toContain(id);

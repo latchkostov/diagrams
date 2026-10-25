@@ -8,11 +8,34 @@ import { tutorialMetadata } from "./metadata";
 import { studyCheckout } from "./catalog/studyCheckout";
 import { studyDispatch } from "./catalog/studyDispatch";
 import { studyPayments } from "./catalog/studyPayments";
-import { observeSteps, resolveSubjects } from "./checks";
+import { studyFanout } from "./catalog/studyFanout";
+import { studyRag } from "./catalog/studyRag";
+import { studyCells } from "./catalog/studyCells";
+import { edgeTargets, observeSteps, resolveSubjects } from "./checks";
 import { runnerInitial, runnerMachine, targetsShown } from "./machine";
 import { solutionNow } from "./solution";
 
 describe("design studies", () => {
+  it.each([
+    ["booking", "neighbour"],
+    ["neighbour", "booking"],
+  ])("cells bind boundaries by membership when %s is grouped before %s", (first, second) => {
+    if (typeof studyCells.start !== "function") throw new Error("Expected inline diagram");
+    const diagram = studyCells.start();
+    diagram.nodes.push({ id: "java", stencil: "service.java", label: "", x: 950, y: 250 });
+    diagram.edges.push({ id: "java-request", from: "east", to: "java", kind: "sync" });
+    let subjects = resolveSubjects(studyCells, diagram);
+    for (const [index, name] of [first, second].entries()) {
+      const id = `boundary-${index}`;
+      diagram.groups = [...(diagram.groups ?? []), { id, label: "", x: 900, y: index * 500, width: 400, height: 300 }];
+      diagram.nodes.find((node) => node.id === subjects[name])!.group = id;
+      subjects = resolveSubjects(studyCells, diagram, subjects);
+      expect(subjects[name === "booking" ? "cellA" : "cellB"]).toBe(id);
+      if (index === 0) expect(subjects[name === "booking" ? "cellB" : "cellA"]).toBeUndefined();
+    }
+    expect(observeSteps(studyCells, { diagram, live: false, processed: () => 0 }, subjects)[0]).toBe(true);
+  });
+
   it.each([1, 2])("Dispatch dinner rush requires a working fleet (%i replicas)", (replicas) => {
     if (typeof studyDispatch.start !== "function") throw new Error("Expected inline diagram");
     const diagram = studyDispatch.start();
@@ -61,10 +84,11 @@ describe("design studies", () => {
       live.dispose();
     }
   });
-  for (const tutorial of [studyCheckout, studyDispatch, studyPayments]) {
+  for (const tutorial of [studyCheckout, studyDispatch, studyPayments, studyFanout, studyRag, studyCells]) {
     it(`${tutorial.id} resolves every milestone's whole solution before its edits begin`, () => {
       if (typeof tutorial.start !== "function") throw new Error("Expected an inline practice diagram");
-      const subjects = resolveSubjects(tutorial, tutorial.start());
+      const initial = tutorial.start();
+      const subjects = resolveSubjects(tutorial, initial);
       tutorial.steps.forEach((step, index) => {
         const snapshot = {
           state: {
@@ -79,7 +103,7 @@ describe("design studies", () => {
           selected: [],
           announcement: "",
           nearMiss: null,
-          edges: {},
+          edges: edgeTargets(initial, subjects),
         };
         expect(() => solutionNow(tutorial, snapshot)).not.toThrow();
         // Only predecessors have made their nodes when this milestone's path is requested.
@@ -104,8 +128,8 @@ describe("design studies", () => {
     });
   }
 
-  it("quarantines all three design studies while retaining their milestone coverage", () => {
-    for (const study of [studyCheckout, studyDispatch, studyPayments]) {
+  it("quarantines five design studies while retaining their milestone coverage", () => {
+    for (const study of [studyCheckout, studyDispatch, studyPayments, studyFanout, studyRag]) {
       expect(study.quarantined).toBe(true);
       expect(findTutorial(study.id)).toBeUndefined();
       expect(tutorials).not.toContain(study);
@@ -115,6 +139,14 @@ describe("design studies", () => {
         quarantined: true,
       });
     }
+  });
+
+  it("keeps the membership-based Cells study published", () => {
+    expect(studyCells.quarantined).toBeUndefined();
+    expect(findTutorial(studyCells.id)).toBe(studyCells);
+    expect(tutorials).toContain(studyCells);
+    expect(tutorialMetadata.some((entry) => entry.id === studyCells.id)).toBe(true);
+    expect(tutorialEntries.find((entry) => entry.id === studyCells.id)).toEqual({ id: studyCells.id });
   });
 
   it.each([true, false])("Dispatch partition fix requires processed traffic (connected: %s)", (connected) => {
