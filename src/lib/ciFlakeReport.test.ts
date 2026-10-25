@@ -8,6 +8,10 @@ const interruptedLog = readFileSync(
   new URL("../../tests/fixtures/ci-flake-report/interrupted.log", import.meta.url),
   "utf8",
 );
+const repeatedInterruptedLog = readFileSync(
+  new URL("../../tests/fixtures/ci-flake-report/repeated-interrupted.log", import.meta.url),
+  "utf8",
+);
 
 const failure = (line = 14, decoration = "") =>
   `[chromium] › tests/e2e/example.spec.ts:${line}:1 › suite › test${decoration}`;
@@ -44,6 +48,25 @@ it("excludes interrupted and cancelled tests while retaining failures emitted be
     expect(report).not.toContain(`› ${status} by failure limit |`);
   }
 });
+
+it.each(["interrupted", "cancelled", "canceled"])(
+  "keeps %s status across repeated Actions annotations in either order",
+  (status) => {
+    const log = repeatedInterruptedLog.replaceAll("interrupted", status);
+    const summary = "2026-10-25T00:00:00.0000000Z   1 failed";
+    for (const section of [log, log.split(summary)[0], log.slice(log.indexOf(summary))]) {
+      expect(failedTests(section).map((test) => test.title)).toEqual(["actual failure"]);
+      const data = snapshot();
+      data.logs[11] = section;
+      const report = renderReport(data);
+      expect(report).toContain("actual failure | 1 | branch | 1/1");
+      expect(report).not.toContain(`› ${status} by failure limit |`);
+    }
+    // An annotation already counted as a candidate must be removed when interruption becomes known.
+    const throughInterruption = log.slice(0, log.indexOf("Test was") + `Test was ${status}.`.length);
+    expect(failedTests(throughInterruption).map((test) => test.title)).toEqual(["actual failure"]);
+  },
+);
 
 it("retains the latest complete successful earlier attempt after a partial rerun", () => {
   const report = renderReport(rerunSnapshot);

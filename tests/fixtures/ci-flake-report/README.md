@@ -6,6 +6,12 @@ No browser or server was needed. Paths are normalized to a generic E2E spec and 
 Actions timestamps are added; code excerpts, local paths and process warnings are omitted.
 The tests also substitute the two cancellation spellings and truncate before the final summary.
 
+`repeated-interrupted.log` replays that recorded failure/interruption with Actions error and
+notice annotations before and after its detail block and after its summary. Repeated headers
+use different line numbers and reporter decoration while keeping the same test identity.
+Tests read the full log, the details before the summary, and the summary alone, and substitute
+both cancellation spellings. The fixture is fixed; regression tests make no `gh` or network calls.
+
 `rerun-snapshot.json` is a reduced, fixed snapshot in the collector's runs/jobs API shape:
 two complete successful attempts, a later single-shard rerun, and an older workflow run.
 Its deliberately different durations identify which attempt supplies the comparison.

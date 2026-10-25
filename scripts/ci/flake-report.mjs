@@ -13,9 +13,12 @@ const shardName = /^E2E (\d+)\/(\d+)$/;
 
 export function failedTests(log) {
   const tests = new Map();
+  const excluded = new Set();
   let current;
   let summary;
   const finish = () => {
+    // Repeated annotations must not resurrect a known interrupted/non-failing test.
+    if (current?.excluded) excluded.add(current.id);
     if (current && !current.excluded) {
       const { id, project, file, title } = current;
       tests.set(id, { id, project, file, title });
@@ -47,7 +50,7 @@ export function failedTests(log) {
     current = { id, project, file, title, excluded: summary !== undefined && summary !== "failed" };
   }
   finish();
-  return [...tests.values()].sort((a, b) => order(a.id, b.id));
+  return [...tests.values()].filter((test) => !excluded.has(test.id)).sort((a, b) => order(a.id, b.id));
 }
 
 export function renderReport(snapshot) {
