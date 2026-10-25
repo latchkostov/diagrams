@@ -24,11 +24,13 @@ export interface LedgerInvariantState {
       number,
       {
         call: { branches: ReadonlyMap<string, { cohortId?: number }> };
-        represented?: number;
+        state: string;
+        template?: unknown;
+        represented: number;
         remaining: number;
         outstanding: number;
-        expiresAt?: number;
-        inFlight: ReadonlySet<number>;
+        expiresAt: number;
+        inFlight: ReadonlyMap<number, number>;
       }
     >;
     poolPending: readonly {
@@ -146,18 +148,21 @@ export function assertLedgerInvariants({ ledger, nodes, edges, time }: LedgerInv
     }
     for (const [id, cohort] of edge.cohorts ?? []) {
       check(
-        id === cohort.call.branches.get(edge.id)?.cohortId && cohort.expiresAt! > time,
-        "expired or misindexed pool cohort",
+        id === cohort.call.branches.get(edge.id)?.cohortId && cohort.expiresAt > time && cohort.state !== "closed",
+        "expired, closed or misindexed pool cohort",
       );
       check(cohort.remaining >= 0 && cohort.remaining <= cohort.outstanding + 1e-8, "invalid unsent cohort weight");
-      check(cohort.outstanding <= cohort.represented! + 1e-8, "cohort settles more than its size");
+      check(cohort.outstanding <= cohort.represented + 1e-8, "cohort settles more than its size");
+      // Unsent members stay owned, and queued, until they really settle.
+      check(!cohort.remaining || cohort.template !== undefined, "unsent cohort members lost their template");
       let sentWeight = 0;
-      for (const leaseId of cohort.inFlight) {
+      for (const [leaseId, weight] of cohort.inFlight) {
         const lease = ledger.reservations.get(leaseId);
         check(lease?.scope === "pool" && lease.edge === edge.id, "orphan cohort pool lease");
+        check(Math.abs(lease!.represented - weight) < 1e-8, "cohort wave disagrees with its pool lease");
         sentWeight += lease!.represented;
       }
-      check(sentWeight <= cohort.represented! - cohort.remaining + 1e-8, "cohort sends undispatched weight");
+      check(sentWeight <= cohort.represented - cohort.remaining + 1e-8, "cohort sends undispatched weight");
       check(Math.abs(cohort.outstanding - cohort.remaining - sentWeight) < 1e-8, "cohort outstanding weight disagrees");
     }
     for (const id of edge.poolLeases.values())

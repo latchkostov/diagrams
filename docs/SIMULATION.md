@@ -20,9 +20,9 @@ so it cannot invent extra threads, connections or shared API slots.
 **Known gaps.** Sampling is an approximation, especially with very small pools or work shorter than
 the simulation's 10 ms tick. It can substantially understate throughput for queue workers, managed
 API admission, unequal pools with fractional leftover room, and even equal one-slot services doing
-1 ms of local work. Calls that combine a connection pool with a timeout can also substantially
-understate completed requests and late replies at scale > 1; see the
-[pooled timeout follow-up](backlog/2026-10-20-deadline-queued-cohorts.md). The first four cases are tracked in the [sampling accuracy work item](backlog/2026-10-20-engine-r5-i1-counterexamples.md),
+1 ms of local work. Calls that combine a connection pool with a timeout keep one caller outcome per dot,
+so a successful first wave can complete callers whose remaining pooled work later times out; see the
+[mixed-deadline note](backlog/2026-10-25-sampling-mixed-deadlines.md). The first four cases are tracked in the [sampling accuracy work item](backlog/2026-10-20-engine-r5-i1-counterexamples.md),
 with reproductions and measured differences. Use scale 1 when small capacity boundaries matter.
 The general scale-equivalence bound below is an accuracy target, not a guarantee across all diagrams.
 
@@ -1226,6 +1226,11 @@ hold. A freed call needs a continuation (`replyMs`, default 10 ms) and retains i
 `caller.poolConnections` caps calls in flight: blocking callers wait for a connection with a thread held;
 freed callers queue without a thread. `caller.deadlineMs` includes pool wait. A queued call that times out
 is never dispatched; a dispatched call can finish downstream and return a late reply after its timeout.
+At scale > 1 a dot that waits for a finite pool under a finite deadline is a cohort (`src/sim/poolCohort.ts`):
+its members take connections in waves under one shared deadline, and its first settled wave decides the
+caller. After a successful first wave the rest settle on the edge alone: a failed wave counts only its own
+members, and unsent members stay queued until they are sent or time out. A failed first wave, or a caller
+that fails elsewhere, cancels the unsent members. Only a journey that really ends completes its route.
 
 Checks use the diagram's configured rates, not the intentional overload in saved drills. `blocked-threads`
 replaces the generic capacity warning for the caller when waits dominate, and only when it (or `scaling-blind`)

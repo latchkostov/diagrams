@@ -46,6 +46,72 @@ it.each(["success", "failure", "rejection"] as const)(
   },
 );
 
+// R-9bc44a6b93: one connection sends the first member; its failure decides the caller and cancels the
+// nine still queued. Cancelling that template must not complete their route.
+it.each(["failure", "rejection"] as const)(
+  "a partially dispatched routed cohort cancelled by its first wave completes no route: %s",
+  (outcome) => {
+    const d = waitingFixture();
+    d.planning!.requestRoutes = [{ id: "lookup", address: { method: "GET", path: "/lookup" } }];
+    d.nodes[1].props = { concurrency: 100, latencyMs: 10, jitter: 0 };
+    d.nodes[2].stencil = outcome === "rejection" ? "kong" : "generic.service";
+    d.nodes[2].props = {
+      concurrency: 100,
+      latencyMs: 10,
+      jitter: 0,
+      failureRate: outcome === "failure" ? 1 : 0,
+      ...(outcome === "rejection" ? { routeTable: { rules: [] } } : {}),
+    };
+    d.edges[1].props = {
+      travelMs: 200,
+      requestRouteId: "lookup",
+      caller: { wait: "non-blocking", poolConnections: 1, deadlineMs: 1000 },
+    };
+    const e = createEngine({ scale: 10, maxParticles: 0, traceHistory: 1, verifyLedger: assertLedgerInvariants });
+    e.load(d);
+    e.inject("source", 1);
+    e.step(3000);
+    const real = realSnapshot(e.snapshot());
+    expect(real.edges.call.delivered).toBe(1);
+    expect(real.nodes.partner.failed).toBe(outcome === "failure" ? 1 : 0);
+    expect(real.nodes.partner.rejected ?? 0).toBe(outcome === "rejection" ? 1 : 0);
+    expect(real.nodes.caller).toMatchObject({ processed: 0, failed: 10 });
+    expect(real.edges.call.calls).toMatchObject({ failed: 10, timedOut: 0, late: 0, inFlight: 0 });
+    expect(real.routes!.lookup).toEqual({ sent: 10, completed: 0, rejected: outcome === "rejection" ? 1 : 0 });
+    expect(e.snapshot().inSystem).toBe(0);
+    expect(e.tracer.recent()).toMatchObject([{ done: true }]);
+  },
+);
+
+// R-0960b75fb2: the first wave succeeds, so the caller is done; the second wave fails. Only that wave
+// fails on the edge: the eight unsent members stay queued under the shared deadline and are delivered.
+it("an orphan's failed wave keeps the rest of its cohort queued and settling", () => {
+  const d = waitingFixture();
+  d.nodes[1].props = { concurrency: 100, latencyMs: 10, jitter: 0 };
+  d.nodes[2].stencil = "generic.service";
+  d.nodes[2].props = { concurrency: 100, latencyMs: 10, jitter: 0 };
+  d.edges[1].props = { caller: { wait: "non-blocking", poolConnections: 1, deadlineMs: 5000 } };
+  const e = createEngine({ scale: 10, maxParticles: 0, verifyLedger: assertLedgerInvariants });
+  e.load(d);
+  e.inject("source", 1);
+  // One member per 20 ms: the first is processed by 40 ms, the second between 40 and 60 ms.
+  e.step(40);
+  expect(realSnapshot(e.snapshot()).nodes.partner.processed).toBe(1);
+  e.setNodeProps("partner", { failureRate: 1 });
+  e.step(20);
+  e.setNodeProps("partner", { failureRate: 0 });
+  const orphaned = realSnapshot(e.snapshot());
+  expect(orphaned.nodes.caller.processed).toBe(10);
+  expect(orphaned.nodes.partner).toMatchObject({ processed: 1, failed: 1 });
+  e.step(3000);
+  const real = realSnapshot(e.snapshot());
+  expect(real.nodes.caller).toMatchObject({ processed: 10, failed: 0 });
+  expect(real.nodes.partner).toMatchObject({ processed: 9, failed: 1 });
+  expect(real.edges.call.delivered).toBe(10);
+  expect(real.edges.call.calls).toMatchObject({ failed: 1, timedOut: 0, late: 0, inFlight: 0 });
+  expect(e.snapshot().inSystem).toBe(0);
+});
+
 it("the cohort oracle rejects lost or duplicated outstanding weight", () => {
   const state = (outstanding: number, inFlight: boolean): LedgerInvariantState => {
     const ledger = new SampledLedger();
@@ -67,11 +133,13 @@ it("the cohort oracle rejects lost or duplicated outstanding weight", () => {
               1,
               {
                 call: { branches: new Map([["call", { cohortId: 1 }]]) },
+                state: "bound",
+                template: {},
                 represented: 10,
                 remaining: 9,
                 outstanding,
                 expiresAt: 100,
-                inFlight: new Set(lease ? [lease.id] : []),
+                inFlight: new Map(lease ? [[lease.id, lease.represented]] : []),
               },
             ],
           ]),

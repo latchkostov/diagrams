@@ -47,6 +47,17 @@ import { activeUnits } from "../stencils/netDevices";
 import { pushDue, popDue, removeDue } from "./dueHeap";
 import { SampledLedger, type Reservation } from "./ledger";
 import { raceReply, settleOnce, type Attempt, type LogicalBranch, type LogicalCall } from "./attempt";
+import {
+  cancelCohort,
+  expireCohort,
+  grantCohort,
+  narrowCohort,
+  openCohort,
+  refuseCohort,
+  settleWave,
+  type PoolCohort as CohortState,
+  type PoolCohortEffect,
+} from "./poolCohort";
 import { ShedQueue } from "./shedQueue";
 import { queueGrant } from "./admission";
 import { Deque } from "./deque";
@@ -400,15 +411,9 @@ interface Call extends LogicalCall {
   heldDots?: number;
   brokerHeld?: boolean;
 }
-interface PoolCohort {
-  call: Call;
-  /** Original size is diagnostic only; before the first reply, outstanding is the whole branch. */
-  represented?: number;
-  remaining: number;
-  outstanding: number;
-  expiresAt?: number;
+/** A pooled, deadline-bound branch's partial deliveries; its lifecycle is poolCohort.ts. */
+interface PoolCohort extends CohortState<Call, Message> {
   breakerPermit?: LogicalBranch["breakerPermit"];
-  inFlight: Set<number>;
 }
 interface Logical {
   cohortId?: number;
@@ -1107,7 +1112,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       } else resumeLater(node, work);
     }
     for (const edge of node.outgoing) {
-      for (const id of edge.cohorts.keys()) closePoolCohort(edge, id);
+      for (const cohort of edge.cohorts.values()) applyCohort(edge, cohort, cancelCohort(cohort));
       edge.poolLeases.clear();
     }
   }
@@ -2071,12 +2076,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       routeCohort: undefined,
     };
     const cohort = edge.cohorts.get(branch.cohortId!);
-    if (cohort) {
-      const refused = sizeOf(message) - admitted;
-      if (TEST_ORACLES) cohort.represented! -= refused;
-      cohort.remaining -= refused;
-      cohort.outstanding -= refused;
-    }
+    if (cohort) narrowCohort(cohort, sizeOf(message) - admitted);
     message.represented = admitted;
     branch.represented = cohort?.outstanding ?? admitted;
     // A waiter for a pool connection that outlived the open interval (dispatch skipped while its caller was
@@ -2110,7 +2110,9 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       return true;
     }
     shortCircuited(edge, branch, message);
-    if (edge.poolPendingIndices.has(call.id)) cancelPending(edge, call.id);
+    const cohort = edge.cohorts.get(message.cohortId!);
+    if (cohort) applyCohort(edge, cohort, cancelCohort(cohort));
+    else if (edge.poolPendingIndices.has(call.id)) cancelPending(edge, call.id);
     else gone(edge.from, message, "end", "breaker open");
     scheduleLogical({
       id: nextLogical++,
@@ -2132,13 +2134,13 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       const next = edge.poolPending[0];
       const branch = next.call.branches.get(edge.id)!;
       const cohort = edge.cohorts.get(next.message.cohortId!);
-      const orphan = cohort && branch.state === "replied";
-      if (
-        (!orphan && (!calls.has(next.call.id) || next.call.attempt.outcome)) ||
-        raceReply(branch, time) === "timeout"
-      ) {
+      const orphan = cohort?.state === "orphan";
+      const expired = raceReply(branch, time) === "timeout";
+      if ((!orphan && (!calls.has(next.call.id) || next.call.attempt.outcome)) || expired) {
         popDue(edge.poolPending, edge.poolPendingIndices);
-        gone(edge.from, next.message, "end", "call already failed");
+        // An expired template leaves the FIFO, but its cohort owns it until the deadline settles every member.
+        if (!cohort) gone(edge.from, next.message, "end", "call already failed");
+        else if (!expired) applyCohort(edge, cohort, cancelCohort(cohort));
         continue;
       }
       if (
@@ -2150,8 +2152,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       ) {
         // Its caller already succeeded; a later breaker opening still prevents
         // the unsent tail from crossing it, without deciding that caller again.
-        edge.calls.failed += cohort.remaining / scale;
-        closePoolCohort(edge, next.message.cohortId);
+        applyCohort(edge, cohort, refuseCohort(cohort));
         continue;
       }
       if (!orphan && !permitBreaker(next.call, edge, next.message)) continue;
@@ -2184,15 +2185,9 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       let { message } = next;
       if (cohort) {
         const granted = reservation.represented;
-        message = { ...copy(edge.from, message), represented: granted, ticks };
-        cohort.remaining = Math.max(0, cohort.remaining - granted);
+        message = { ...copy(edge.from, message), represented: granted, ticks, poolLease: reservation.id };
+        applyCohort(edge, cohort, grantCohort(cohort, reservation.id, granted));
         next.message.represented = cohort.remaining;
-        message.poolLease = reservation.id;
-        cohort.inFlight.add(reservation.id);
-        if (cohort.remaining === 0) {
-          popDue(edge.poolPending, edge.poolPendingIndices);
-          releaseMessage(next.message);
-        }
       } else popDue(edge.poolPending, edge.poolPendingIndices);
       if (finite) message.width = reservation.weight;
       edge.poolUsed += reservation.weight;
@@ -2390,7 +2385,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
 
   function cancelDeadline(call: Call, edge: Edge): void {
     const branch = call.branches.get(edge.id)!;
-    if (branch.state === "replied" && edge.cohorts.has(branch.cohortId!)) return;
+    // An open cohort owns its shared deadline until it closes.
+    if (edge.cohorts.has(branch.cohortId!)) return;
     if (branch.deadlineEvent !== undefined) {
       removeDue(logical, branch.deadlineEvent, logicalIndices);
       branch.deadlineEvent = undefined;
@@ -2406,33 +2402,54 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     // Freeze size across live scale edits, including the template that retains its FIFO position.
     message.represented = represented;
     creditRoute(message, message);
-    edge.cohorts.set(message.id, {
-      call,
-      ...(TEST_ORACLES && { represented, expiresAt: branch.expiresAt }),
-      remaining: represented,
-      outstanding: represented,
-      inFlight: new Set(),
-    });
+    edge.cohorts.set(message.id, openCohort(message.id, call, message, represented, branch.expiresAt));
   }
 
-  /** Cancel unsent members first: releasing a connection can synchronously wake the queue. */
-  function closePoolCohort(edge: Edge, id: number | undefined, expiredAt?: number): void {
-    const cohort = edge.cohorts.get(id!);
-    if (!cohort) return;
-    edge.cohorts.delete(id!);
-    cancelPending(edge, cohort.call.id);
-    cancelDeadline(cohort.call, edge);
-    for (const leaseId of cohort.inFlight) {
-      const lease = ledger.get(leaseId);
-      if (!lease) continue;
-      if (expiredAt !== undefined) {
-        // At the shared deadline these waves have all ended. Downstream work
-        // already sent can still finish late; there is no undispatched pool tail.
-        lease.heldMs = expiredAt - lease.startedAt!;
-        ledger.release(lease);
-      } else retirePool(edge, cohort.call.id, time - lease.startedAt!, lease);
+  /** Applies one cohort transition's effects in order. True when `event` settles the cohort's caller. */
+  function applyCohort(edge: Edge, cohort: PoolCohort, effects: PoolCohortEffect<Message>[], event?: Logical) {
+    let decides = false;
+    for (const effect of effects) {
+      switch (effect[0]) {
+        case "template":
+          removeDue(edge.poolPending, cohort.call.id, edge.poolPendingIndices);
+          // A spent or cancelled template is not a journey: it never completes the route.
+          releaseMessage(effect[1]);
+          break;
+        case "close":
+          edge.cohorts.delete(cohort.id);
+          cancelDeadline(cohort.call, edge);
+          break;
+        case "release": {
+          const lease = ledger.get(effect[1]);
+          if (!lease) break;
+          if (effect[2] === undefined) retirePool(edge, cohort.call.id, time - lease.startedAt!, lease);
+          else {
+            // At the shared deadline these waves have all ended. Downstream work
+            // already sent can still finish late; there is no undispatched pool tail.
+            lease.heldMs = effect[2] - lease.startedAt!;
+            ledger.release(lease);
+          }
+          break;
+        }
+        case "resize": {
+          // Retain the branch's established aggregate residence when admission granted a whole request.
+          const lease = ledger.get(effect[1]);
+          if (lease && lease.weight >= 1) {
+            lease.units = ((lease.units ?? 1) * effect[2]) / lease.represented;
+            lease.represented = effect[2];
+          }
+          break;
+        }
+        case "decide":
+          decides = true;
+          // The caller keeps its one logical outcome at its branch's size.
+          event!.represented = effect[1] ?? branchSized(cohort.call, edge).represented;
+          break;
+        default:
+          edge.calls[effect[0]] += effect[1] / scale;
+      }
     }
-    cohort.inFlight.clear();
+    return decides;
   }
 
   function retirePool(
@@ -2550,7 +2567,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       const branch = call.branches.get(id)!;
       finishBreaker(call, edge, "call-limit");
       if (!a.outcome!.ok || branch.state !== "replied") {
-        closePoolCohort(edge, branch.cohortId);
+        const cohort = edge.cohorts.get(branch.cohortId!);
+        if (cohort) applyCohort(edge, cohort, cancelCohort(cohort));
         cancelPending(edge, call.id);
       }
       cancelDeadline(call, edge);
@@ -2681,55 +2699,6 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     } else releaseCall(call);
   }
 
-  /** Settle one dispatched wave before the caller's single outcome is considered.
-   * Returns true for orphan work and stale replies, which cannot settle that caller again. */
-  function drainPoolCohort(edge: Edge, event: Logical): boolean {
-    const cohort = edge.cohorts.get(event.cohortId!);
-    const branch = cohort?.call.branches.get(edge.id);
-    if (event.timeout) {
-      if (!cohort) return true;
-      const orphan = branch!.state === "replied";
-      event.represented = cohort.outstanding;
-      const remaining = cohort.outstanding / scale;
-      closePoolCohort(edge, event.cohortId, event.end);
-      if (orphan) {
-        edge.calls.timedOut += remaining;
-        edge.calls.failed += remaining;
-      }
-      return orphan;
-    }
-    if (!cohort) {
-      edge.calls.late += dotsOf(event);
-      return true;
-    }
-    const orphan = branch!.state === "replied";
-    const represented = cohort.outstanding;
-    const expired = event.end >= branch!.expiresAt;
-    if (!expired) cohort.outstanding = Math.max(0, cohort.outstanding - sizeOf(event));
-    // A release can synchronously dispatch another wave.
-    if (event.ok && !expired) branch!.state = "replied";
-    const lease = ledger.get(event.poolLease);
-    cohort.inFlight.delete(event.poolLease!);
-    if (lease) {
-      // Non-timeout failure still decides the caller's entire branch. Retain
-      // its established aggregate residence when admission granted a whole request.
-      if (!event.ok && !orphan && !expired && lease.weight >= 1) {
-        lease.units = ((lease.units ?? 1) * represented) / lease.represented;
-        lease.represented = represented;
-      }
-    }
-    // Empty ownership ends the cohort without discarding a positive partial wave.
-    if ((!cohort.remaining && !cohort.inFlight.size) || !event.ok) closePoolCohort(edge, event.cohortId);
-    if (orphan) {
-      if (expired) edge.calls.late += dotsOf(event);
-      else if (!event.ok) edge.calls.failed += dotsOf(event);
-      return true;
-    }
-    // The caller keeps its one logical outcome at its original size.
-    event.represented = branchSized(cohort.call, edge).represented;
-    return false;
-  }
-
   /** Idle work is O(1): only due arrivals, replies and drain expiries visit call records. */
   function drainLogical(): void {
     while (logical.length && logical[0].end <= time) {
@@ -2792,9 +2761,20 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
             edge,
             event.ok ? "success" : event.timeout ? "deadline" : (event.outcome?.kind ?? "error"),
           );
-        // Cohorts use the same ordering as ordinary replies: classify the
-        // breaker result, settle the wave, then retire capacity and wake FIFO.
-        const handled = event.cohortId !== undefined && drainPoolCohort(edge!, event);
+        // Cohorts use the same ordering as ordinary replies: classify the breaker result, settle the
+        // wave, then retire capacity and wake FIFO. Orphan waves and stale replies never settle a caller.
+        const cohort = edge?.cohorts.get(event.cohortId!);
+        let handled = event.cohortId !== undefined;
+        if (cohort)
+          handled = !applyCohort(
+            edge!,
+            cohort,
+            event.timeout
+              ? expireCohort(cohort, event.end)
+              : settleWave(cohort, event.poolLease!, !!event.ok, event.end),
+            event,
+          );
+        else if (handled && !event.timeout) edge!.calls.late += dotsOf(event);
         if (edge) {
           const lease = ledger.get(event.poolLease ?? edge.poolLeases.get(event.call));
           if (lease)

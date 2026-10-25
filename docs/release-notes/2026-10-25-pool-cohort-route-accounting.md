@@ -9,3 +9,14 @@ Temporarily restoring template journey completion and removing the conservation 
 ## Output parity
 
 Node parity checked all 3020 goldens: 0 changed, 0 added, 0 missing and 0 stale. No goldens were re-recorded.
+
+## Pool cohort lifecycle (PR #316, fix round 3)
+
+The pooled-deadline cohort is now an explicit state machine in `src/sim/poolCohort.ts`: bound (the caller awaits its first settled wave), orphan (the first wave replied OK; the rest settle on the edge) and closed. Grant, narrowing, reply, wave failure, expiry, cancellation and breaker refusal each update that state and return ordered effects; the engine still owns caller settlement, edge counters, the ledger and route credit. The full state × event table is in the module's header, and every cell has a direct unit test that also checks conservation (outstanding = unsent + in flight, unsent members keep their template).
+
+Two lifecycle errors are fixed:
+
+- **Cancellation completes no route.** When the first member of a partially dispatched cohort fails or is rejected, its unsent template is released without route credit, as the last dispatch already was. At scale 10 with one connection, a routed call to a failing or rejecting callee now records 0 completions instead of 10.
+- **Wave failure keeps orphan work.** After a successful first wave, a later failed wave counts only its own members as failed. The remaining members stay queued under the shared deadline and are still delivered: with the second of ten waves failing, ten are delivered, nine succeed downstream and one call fails on the edge, instead of two delivered and eight lost.
+
+An orphan's breaker refusal now fails only its unsent members; waves already sent keep settling. A template whose deadline passes before its expiry is processed leaves the queue, but its cohort keeps it until expiry settles its members. The ledger oracle checks each in-flight wave against its pool lease and that unsent members always keep their template. Both new regressions fail on the previous head.
