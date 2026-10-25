@@ -842,6 +842,13 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     });
   }
 
+  /** Release message ownership without crediting a completed journey (e.g. a spent queue template). */
+  function releaseMessage(message: Message): void {
+    inSystem--;
+    message.family.alive--;
+    if (message.family.trace) lineage.settle(message.family);
+  }
+
   /** A message's journey ends at `node`: consumed ("end") or lost ("drop"). */
   function gone(
     node: Node,
@@ -850,8 +857,6 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     reason: string,
     extra?: Partial<TraceStep>,
   ): void {
-    inSystem--;
-    message.family.alive--;
     // A journey finishes its route once, however many copies fan out and end.
     if (kind === "end" && message.request) {
       const done = (message.family.routesDone ??= []);
@@ -861,10 +866,8 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         countRoute(message.request).completed += dotsOf(credit);
       }
     }
-    if (message.family.trace) {
-      step(message, kind, node.id, { reason, ...extra });
-      lineage.settle(message.family);
-    }
+    if (message.family.trace) step(message, kind, node.id, { reason, ...extra });
+    releaseMessage(message);
   }
 
   function countRoute(route: CompiledRoute): RouteCounts {
@@ -2188,7 +2191,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         cohort.inFlight.add(reservation.id);
         if (cohort.remaining === 0) {
           popDue(edge.poolPending, edge.poolPendingIndices);
-          gone(edge.from, next.message, "end", "consumed");
+          releaseMessage(next.message);
         }
       } else popDue(edge.poolPending, edge.poolPendingIndices);
       if (finite) message.width = reservation.weight;

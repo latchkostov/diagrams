@@ -158,6 +158,7 @@ export function assertLedgerInvariants({ ledger, nodes, edges, time }: LedgerInv
         sentWeight += lease!.represented;
       }
       check(sentWeight <= cohort.represented! - cohort.remaining + 1e-8, "cohort sends undispatched weight");
+      check(Math.abs(cohort.outstanding - cohort.remaining - sentWeight) < 1e-8, "cohort outstanding weight disagrees");
     }
     for (const id of edge.poolLeases.values())
       check(ledger.reservations.get(id)?.edge === edge.id, "pool points to missing reservation");
