@@ -256,3 +256,55 @@ covers only the original synchronous topology.
 Skip restore them. Add "RAG budget rejects an asynchronous model call": change only that edge to
 Message, play beyond five seconds, and assert the milestone remains pending despite low caller p95
 and completed model work.
+
+## Fan-out and RAG re-quarantine - PR #347 runner repair API pass
+
+Fan-out (`study-fanout`) and RAG (`study-rag`) are quarantined again. Cards, search, next-lesson
+suggestions and deep links exclude them; saved progress remains on the device. Retained completion-sweep
+and browser cases skip with "quarantined: see docs/backlog/2026-10-24-tutorials-quarantine.md (runner repair API pass)".
+Cells remains published, including its negative coverage. Existing non-study tests and infrastructure
+improvements in PR #347 remain intact.
+
+Skip repairs continue to fail across saved-run, draft and session state. Restore these studies only
+after a dedicated runner repair API design pass covers all five quarantined studies, with regressions
+for the retained findings and the restored completion sweep and browser cases passing. This round
+does not attempt the repairs below.
+
+## [P1/high] R-b67074b474: Repair short caller deadlines when skipping the answer budget
+
+`src/tutorials/catalog/studyRag.ts:95` · lenses: accessibility, correctness, tests, types
+
+Set the answer-model Request's caller deadline to 250 ms, then press Skip on the first milestone.
+The failure check rejects timeouts, but Skip restores only connections, Request relationships and
+model latency to 1,000 ms. The 250 ms deadline remains, so replay times out and the lesson stays stuck
+after the run ends. Show me recommends the latency change Skip already applied. Existing timeout
+regressions demonstrate rejection without exercising Skip afterward.
+
+**Suggested fix:** Repair incompatible caller deadlines, including saved-run overrides, before
+replaying. Extend the timeout regressions to press Skip and verify advancement for each answer-path
+Request as part of the runner repair API pass.
+
+## [P2/high] R-e29dbd5f9f: Merge saved-run patches into the existing override
+
+`src/tutorials/runner.ts:443` · lenses: types
+
+`patchProps` returns only changed top-level properties, but the saved-run assignment replaces the
+entire override with that partial result. The `simulations` option supports node subjects: patching
+`latencyMs` in an override containing both `latencyMs` and `concurrency` silently deletes `concurrency`,
+violating the edit-preserving patch contract.
+
+**Suggested fix:** Store `{ ...override, ...patch }` and cover a subject patch preserving an unrelated
+saved-run property. Defer implementation to the runner repair API pass.
+
+## [P2/high] R-c23dca43a9: Merge the property delta into the saved override
+
+`src/tutorials/runner.ts:444` · lenses: architecture
+
+The saved-run assignment replaces the entire override with the top-level delta from `patchProps`.
+Repairing a node's `latencyMs` therefore deletes unrelated saved-run `concurrency`. Fan-out's edge-only
+tests mask this because their override contains only the `caller` top-level property. This overlaps
+R-e29dbd5f9f; retain both review IDs for the design pass.
+
+**Suggested fix:** Merge the delta into the existing override and add a runner fixture proving a
+one-property node repair preserves unrelated saved-run overrides. Defer implementation to the runner
+repair API pass.

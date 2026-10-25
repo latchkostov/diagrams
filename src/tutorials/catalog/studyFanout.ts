@@ -50,7 +50,7 @@ const queueSolution = (worker: string, search: Words): UiStep[] => [
 
 export const studyFanout: Tutorial = {
   id: "study-fanout",
-  // quarantined: see docs/backlog/2026-10-24-tutorials-quarantine.md
+  // quarantined: see docs/backlog/2026-10-24-tutorials-quarantine.md (runner repair API pass)
   quarantined: true,
   version: 1,
   track: "studies",
@@ -203,12 +203,12 @@ export const studyFanout: Tutorial = {
     email: { stencils: ["generic.email"] },
     sms: { stencils: ["generic.sms"] },
     push: { stencils: ["generic.push"] },
-    emailQueue: { stencils: ["generic.queue"] },
-    smsQueue: { stencils: ["aws.sqs"] },
-    pushQueue: { stencils: ["azure.service-bus.queue"] },
-    emailDlq: { stencils: ["generic.queue"] },
-    smsDlq: { stencils: ["aws.sqs"] },
-    pushDlq: { stencils: ["azure.service-bus.queue"] },
+    emailQueue: { stencils: ["generic.queue"], upstreamOf: "emailSender" },
+    smsQueue: { stencils: ["aws.sqs"], upstreamOf: "smsSender" },
+    pushQueue: { stencils: ["azure.service-bus.queue"], upstreamOf: "pushSender" },
+    emailDlq: { stencils: ["generic.queue"], downstreamOf: "emailQueue" },
+    smsDlq: { stencils: ["aws.sqs"], downstreamOf: "smsQueue" },
+    pushDlq: { stencils: ["azure.service-bus.queue"], downstreamOf: "pushQueue" },
   },
   steps: [
     {
@@ -233,6 +233,7 @@ export const studyFanout: Tutorial = {
         ...channels.map<Demo>(({ worker, provider }) => ({
           kind: "patch",
           edge: [worker, provider],
+          simulations: ["provider-limits", "sms-outage"],
           patches: [{ op: "set", path: ["caller", "poolConnections"], value: 1 }],
         })),
         { kind: "runSimulation", id: "provider-limits" },

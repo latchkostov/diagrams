@@ -4,7 +4,7 @@ import { studyAdd, studyRun } from "./studyShared";
 
 export const studyRag: Tutorial = {
   id: "study-rag",
-  // quarantined: see docs/backlog/2026-10-24-tutorials-quarantine.md
+  // quarantined: see docs/backlog/2026-10-24-tutorials-quarantine.md (runner repair API pass)
   quarantined: true,
   version: 1,
   track: "studies",
@@ -86,13 +86,28 @@ export const studyRag: Tutorial = {
       check: {
         kind: "all",
         checks: [
+          { kind: "relation", from: "questions", to: "embeddings", relation: "flow", edgeKind: "sync" },
+          { kind: "relation", from: "embeddings", to: "index", relation: "flow", edgeKind: "sync" },
+          { kind: "relation", from: "embeddings", to: "llm", relation: "flow", edgeKind: "sync" },
           { kind: "simulation", id: "questions", atLeastMs: 5000 },
           { kind: "compare", left: { node: "questions", metric: "latency.p95" }, op: "<=", right: 2000 },
           { kind: "metric", subject: "llm", field: "processed", op: ">=", value: 8 },
+          {
+            kind: "compare",
+            left: { sum: "failed", nodes: ["questions", "embeddings", "index", "llm"] },
+            op: "=",
+            right: 0,
+          },
         ],
       },
       targets: [{ testId: "node-{llm}", tip: msg("tutorials.studyRag.budgetHint") }],
       demo: [
+        { kind: "connect", from: "questions", to: "embeddings" },
+        { kind: "relation", from: "questions", to: "embeddings", relation: "flow", edgeKind: "sync" },
+        { kind: "connect", from: "embeddings", to: "index" },
+        { kind: "relation", from: "embeddings", to: "index", relation: "flow", edgeKind: "sync" },
+        { kind: "connect", from: "embeddings", to: "llm" },
+        { kind: "relation", from: "embeddings", to: "llm", relation: "flow", edgeKind: "sync" },
         { kind: "patch", subject: "llm", patches: [{ op: "set", path: ["latencyMs"], value: 1000 }] },
         { kind: "runSimulation", id: "questions" },
       ],
