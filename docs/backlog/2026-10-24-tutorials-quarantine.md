@@ -96,3 +96,158 @@ yet played.
 
 **Fix:** Retain a reading step with Continue and an explicit Done acknowledgment, following read-happy-path.
 Verify that reaching the paused compensation note alone does not finish the tutorial.
+
+## Tutorials quarantine - PR #331
+
+The Payments design study (`study-payments`) is quarantined after both fix rounds were used. Cards,
+search, next-lesson suggestions and deep links exclude it; saved progress remains on the device.
+Its retained completion-sweep and browser cases skip automatically with this fragment as their reason.
+Dispatch remains published. Checkout is also quarantined as recorded below. The runner is unchanged.
+
+Restoring Payments requires regression coverage for both Live-inspector edits and Skip with saved-run
+caller overrides in R-2a2fc9e8be, followed by the restored completion sweep and browser cases passing.
+The payment retry-safety coverage below remains a follow-up.
+
+## [P1/high] R-2a2fc9e8be: Honor saved-run caller overrides in brownout completion
+
+`src/tutorials/catalog/studyPayments.ts`, `survive-psp-brownout` · lenses: correctness
+
+Start PSP brownout before configuring its Request, then set Timeout to 250 ms and enable the breaker
+through the Live inspector. CallWaitFields uses effectiveCallerPolicy, which writes these changes
+into the saved simulation's setup.edges overrides. Completion reads only the base edge, so the
+milestone stays active even when the breaker opens. Skip also patches only the base edge: a saved
+breaker:null override continues to disable it, preventing Skip from completing.
+
+**Suggested fix:** Make completion and the reference demo account for effective saved-run caller
+settings. Add regressions using the Live inspector's effectiveCallerPolicy write path, including
+an explicitly disabled breaker. This quarantine does not attempt that fix.
+
+## [P2/high] R-9298f6e8c5: Require processed traffic before accepting the partition fix
+
+`src/tutorials/catalog/studyDispatch.ts`, `fix-partition-ceiling` · lenses: architecture
+
+After completing Dinner rush, remove Courier pings → Location topic, set replicas and partitions to
+four, and run More partitions. The topic backlog stays zero, so its saved expectation passes at four
+seconds even though Dispatcher processes nothing.
+
+**Suggested fix:** Require a Dispatcher processed-count threshold in the final milestone while
+retaining the partitions comparison and saved expectation. Cover a disconnected input path.
+
+**Resolved in this quarantine round:** The milestone now requires at least ten processed messages,
+matching Dinner rush. A regression runs both connected and disconnected inputs: both pass the saved
+backlog expectation, but only actual processing can complete the milestone. Dispatch stays published.
+
+## [P2/high] R-1ca28a02d7: Test that an outbox alone cannot complete Never double-charge
+
+`src/tutorials/studies.test.ts`, `never-double-charge` · lenses: tests
+
+The unfinished-diagram assertion runs before the outbox exists, while completion paths also enable
+idempotency. Removing the milestone's retry.idempotent requirement therefore escapes these tests
+and would allow completion with unsafe PSP retries.
+
+**Suggested fix:** Add “never-double-charge requires idempotent PSP retries”: create both required
+outbox Message connections, leave retry.idempotent false, and assert the milestone remains incomplete;
+then set it true and assert completion.
+
+## Checkout study quarantine - PR #331 round cap
+
+The Checkout design study (`study-checkout`) is quarantined after reaching the review round cap.
+Cards, search, next-lesson suggestions and deep links exclude it; saved progress remains on the
+device. Its retained completion-sweep and browser cases skip automatically with this fragment as
+their reason. The milestone format and Dispatch study stay published. The runner is unchanged.
+
+Restoring Checkout requires the saved-run caller override regression in R-74a53e25ad, the quota
+rejection coverage in R-e09014d38c, and the restored completion sweep and browser cases passing.
+The Payments idempotency coverage in R-d88a4b1e01 remains a restoration follow-up. This quarantine
+does not attempt any of these fixes.
+
+## [P1/high] R-74a53e25ad: Apply the quota reference to saved-run caller overrides
+
+`src/tutorials/catalog/studyCheckout.ts:184` · lenses: accessibility, architecture, correctness, types
+
+At the final milestone, start Partner quota, set Connection pool to 10 through the Live inspector,
+then press Skip. `CallWaitFields` uses `effectiveCallerPolicy`, saving the value under the simulation's
+`setup.edges` override. The demo patches only the base edge to 1. Restarting Partner quota retains
+the overriding value of 10, so partner rejections continue exceeding the milestone's limit and Skip
+never completes. This blocks recovery from an ordinary learner edit.
+
+**Suggested fix:** Replace or clear the saved simulation's `poolConnections` override as well as
+updating the base edge. Add a regression that edits through `effectiveCallerPolicy` during Partner
+quota before pressing Skip.
+
+## [P2/high] R-e09014d38c: Test that excessive partner rejections prevent completion
+
+`src/tutorials/studies.test.ts:45` · lenses: tests
+
+Checkout's dedicated simulation test covers only the successful tenfold run. Completion-sweep paths
+configure the reference connection pool before checking the quota milestone. Removing its rejected
+≤ 1 guard would leave these tests green while allowing an over-quota design to complete.
+
+**Suggested fix:** Add “partner quota rejects unpaced calls”: run `partner-quota` with sufficient
+Checkout capacity and an unrestricted pool, assert rejected > 1 and incomplete throughout the
+eligible interval, then verify `poolConnections: 1` completes with sufficient processed traffic.
+
+## [P2/high] R-d88a4b1e01: Isolate idempotency in the payment safety check
+
+`src/tutorials/studies.test.ts:97` · lenses: tests
+
+The unfinished-diagram assertion runs before either outbox connection exists. Successful demo paths
+create those connections and enable idempotency together. Removing the `retry.idempotent` requirement
+would escape coverage and let an outbox alone satisfy Never double-charge. Payments is quarantined,
+so this is a restoration coverage gap, also tracked by R-1ca28a02d7 above.
+
+**Suggested fix:** Add “never-double-charge requires idempotent PSP retries”: create both required
+Message connections, leave `retry.idempotent` false and assert incomplete; set it true and assert complete.
+
+## Dispatch study quarantine - PR #331 round cap
+
+Design studies (checkout, payments, dispatch) all quarantined in #331; un-quarantine together in one focused pass before build-12.
+
+Dispatch is now excluded from cards, search, next-lesson suggestions and deep links; saved progress
+remains on the device. Its completion-sweep and browser cases remain present and skip with this
+fragment as their reason. The milestone format, runner support, shared study scaffolding and active
+`studyFixture` coverage remain intact. Earlier statements that Dispatch stays published describe
+the previous rounds and are superseded by this quarantine.
+
+Restoration requires the effective-configuration regression below, the Checkout quota and Payments
+idempotency regressions, the earlier restoration criteria, and all three restored studies passing
+the completion sweep and browser tests together. This round does not attempt those fixes.
+
+## [P1/high] R-8811e3411e: Judge the partition fix using Live's effective configuration
+
+`src/tutorials/catalog/studyDispatch.ts:133` · lenses: architecture
+
+Complete Dinner rush with two replicas, select More partitions, then use Inputs & capacity to set
+Dispatcher replicas and Location topic partitions to four. Save those inputs and restart the run.
+The backlog expectation and processed threshold pass, but the milestone remains incomplete: Inputs
+writes simulation overrides, while the property checks read only `diagram.nodes[].props`, where
+Dispatcher still has two replicas. This blocks an ordinary capacity-editing workflow.
+
+**Suggested fix:** Expose Live's effective node properties through a shared check resolver and compare
+those values, including saved setup, Inputs overrides and capacity multipliers. Add a regression
+using Inputs edits. Keep Dispatch quarantined until that comparison is available.
+
+## [P2/high] R-840f8a0c06: Cover the partner quota's failing case
+
+`src/tutorials/studies.test.ts:45` · lenses: tests
+
+Checkout's dedicated simulation test checks only the successful tenfold run. Completion paths
+configure the reference connection pool before checking the quota milestone. No test establishes
+that excessive partner rejections prevent completion, so removing the `rejected <= 1` guard would
+escape coverage. This remains a restoration coverage gap, also tracked by R-e09014d38c above.
+
+**Suggested fix:** Add “partner quota rejects unpaced calls”: run `partner-quota` with sufficient
+Checkout capacity and an unrestricted pool, assert `rejected > 1` and incomplete throughout the
+eligible interval, then verify `poolConnections: 1` completes with sufficient processed traffic.
+
+## [P2/high] R-c7659c3f9e: Test idempotency independently of the outbox
+
+`src/tutorials/studies.test.ts:97` · lenses: tests
+
+The unfinished-diagram assertion runs before either outbox connection exists. Successful completion
+paths create the outbox and enable idempotency together. Removing the `retry.idempotent` requirement
+would therefore escape coverage and allow an outbox alone to satisfy Never double-charge. This
+remains a restoration coverage gap, also tracked by R-1ca28a02d7 and R-d88a4b1e01 above.
+
+**Suggested fix:** Add “never-double-charge requires idempotent PSP retries”: create both required
+Message connections, assert incomplete with idempotency false, then set it true and assert complete.
