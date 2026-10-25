@@ -22,7 +22,7 @@ import {
   type RecordState,
 } from "./recordModel";
 import { fixWebmDuration } from "./webmDuration";
-import type { SlowMotion } from "../slowmo/session";
+import type { SlowMotionApi } from "../slowmo/controller";
 
 /** After the run finishes, keep recording this long so the last messages land and "Done" shows. */
 const END_TAIL_MS = 1500;
@@ -54,7 +54,7 @@ export interface RecorderProps {
   /** Presentation mode exists here (the canvas; not the Lab). */
   canPresent: boolean;
   /** Slow motion: while it plays, the one option is to record it from the start. */
-  slowmo?: SlowMotion;
+  slowmo?: SlowMotionApi;
 }
 
 /**
@@ -84,7 +84,7 @@ export function Recorder({
   const [slowTake, setSlowTake] = useState(false);
   const noSlow = useCallback(() => () => {}, []);
   const slow = useSyncExternalStore(slowmo?.subscribe ?? noSlow, () => slowmo?.getState() ?? null);
-  const slowOn = slow?.status === "on";
+  const slowOn = slow?.status === "on" || slow?.status === "capturing";
   const startedAt = useRef(0);
   const phase = useRef(rec.phase);
   useLayoutEffect(() => {

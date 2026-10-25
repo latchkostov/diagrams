@@ -2,7 +2,7 @@ import { useState } from "react";
 import { LiveController } from "../live/controller";
 import { TraceCard } from "../live/TraceCard";
 import type { TraceFlow } from "../live/TraceLab";
-import { useSlowTraceCard } from "../live/session/useTraceSpotlight";
+import { useSlowTraceCard } from "../live/slowmo/traceCard";
 import { buildScript, frameAt, stepStop, PACING } from "../live/slowmo/script";
 import { SlowMotion } from "../live/slowmo/session";
 import type { SlowMotionView } from "../live/slowmo/useSlowMotion";

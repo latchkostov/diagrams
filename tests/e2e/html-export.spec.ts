@@ -248,6 +248,20 @@ test.describe("Interactive HTML export", () => {
     await expect(viewer.page.getByTestId("viewer-zoom-in")).toHaveAccessibleName("Zoom in");
     await expect(viewer.page.getByTestId("live-play")).toHaveAccessibleName(/Pause|Play/);
 
+    await viewer.page.getByTestId("live-sim-picker").selectOption("black-friday");
+    await viewer.page.getByTestId("live-speed").selectOption("1");
+    await viewer.page.clock.resume();
+    // The embedded runtime uses the same replay controller without the website's download shell.
+    await viewer.page.getByTestId("live-more").click();
+    await viewer.page.getByTestId("live-trace-message").click();
+    await viewer.page.getByTestId("live-trace-slowmo").click();
+    await expect(viewer.page.getByTestId("slowmo-chip")).toBeVisible();
+    await viewer.page.getByTestId("trace-slowmo").focus();
+    await viewer.page.keyboard.press("Enter");
+    await expect(viewer.page.getByTestId("trace-slowmo")).toHaveAttribute("data-state", "paused");
+    await viewer.page.getByTestId("trace-card-close").click();
+    await expect(viewer.page.getByTestId("slowmo-chip")).toHaveCount(0);
+
     // Nothing but the file itself: no fonts, no icons, no site, no favicon.
     expect(viewer.requests.filter((r) => !r.startsWith("data:"))).toEqual([url]);
     expect(await viewer.page.evaluate(() => window.__violations ?? [])).toEqual([]);

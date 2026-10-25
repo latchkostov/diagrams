@@ -118,6 +118,55 @@ it("keeps preload failure silent, retries on demand and does not remount after a
   expect(Surface.getSnapshot().value).toBe("loaded");
 });
 
+it("retires a failed surface's Retry when its last consumer leaves", async () => {
+  const { defineLazySurface } = await import("./lazySurface");
+  const { toast } = await import("../interop/ui/toast");
+  const load = vi.fn().mockRejectedValue(new Error("offline"));
+  const Surface = defineLazySurface({
+    id: "live.trace-runtime",
+    load,
+    placeholder: {},
+    focus: {},
+    export: "await",
+    retryToast: true,
+  });
+  await act(() => root.render(<Surface />));
+  expect(toast.current?.action?.testId).toBe("lazy-load-retry");
+  await act(() => root.render(null));
+  expect(toast.current).toBeNull();
+  expect(load).toHaveBeenCalledTimes(1);
+});
+
+it("awaits runtime work after module readiness and stops awaiting it on cancellation", async () => {
+  const { defineLazySurface } = await import("./lazySurface");
+  const { ensureLazySurfacesLoaded } = await import("./lazySurfaces");
+  const work = deferred<undefined>();
+  let pending = true;
+  const Surface = defineLazySurface({
+    id: "live.trace-runtime",
+    load: async () => () => null,
+    placeholder: {},
+    focus: {},
+    export: "await",
+    retryToast: true,
+    pending: () => pending,
+    ready: () => work.promise,
+  });
+  await act(() => root.render(<Surface />));
+  let ready = false;
+  const output = ensureLazySurfacesLoaded()!.then(() => {
+    ready = true;
+  });
+  await act(async () => {
+    await Promise.resolve();
+  });
+  expect(ready).toBe(false);
+  pending = false;
+  await act(() => work.resolve(undefined));
+  await output;
+  expect(ready).toBe(true);
+});
+
 it("reopening after a dismissed failure toast starts a fresh shared attempt", async () => {
   const { defineLazySurface } = await import("./lazySurface");
   const { toast } = await import("../interop/ui/toast");

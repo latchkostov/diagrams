@@ -2,6 +2,34 @@ import { test, expect, waitForCameraIdle, pauseClock } from "./fixtures";
 import { openSurface, surfaceContract } from "./lazy-surface-helpers";
 import { chunk, holdChunk } from "./chunk";
 import { installCaptureReady } from "./capture-ready";
+import { holdTraceRuntime, replayNode } from "./held-trace-runtime";
+
+test("held runtime: recording waits for the pending replay, then starts its exact first beat", async ({ page }) => {
+  const held = await holdTraceRuntime(page, "&paused=1");
+  try {
+    await replayNode(page);
+    const checkpoint = await page.getByTestId("live-canvas").getAttribute("data-sim-time");
+    if (checkpoint === null) throw new Error("Missing requested replay state");
+    await page.getByTestId("live-more").click();
+    await page.getByTestId("live-record").click();
+    await expect(page.getByTestId("record-opt-slowmo")).toBeChecked();
+    await page.getByTestId("record-start").click();
+    await expect.poll(() => page.evaluate(() => window.__lazySurfaces?.pendingOutputs())).toBeGreaterThan(0);
+    await expect(page.getByTestId("record-countdown")).toHaveCount(0);
+    await expect(page.getByTestId("record-indicator")).toHaveCount(0);
+    held.release();
+    await expect(page.getByTestId("record-countdown")).toBeVisible();
+    await expect(page.getByTestId("live-canvas")).toHaveAttribute("data-sim-time", checkpoint);
+    await expect(page.getByTestId("live-canvas")).toHaveAttribute("data-slowmo", "paused");
+    await expect(page.getByTestId("live-canvas")).toHaveAttribute("data-slowmo-progress", "0");
+    await expect(page.getByTestId("record-indicator")).toBeVisible();
+    await expect(page.getByTestId("live-canvas")).toHaveAttribute("data-slowmo", "playing");
+    await page.getByTestId("record-stop").click();
+    await expect(page.getByTestId("record-review")).toBeVisible();
+  } finally {
+    held.release();
+  }
+});
 
 declare global {
   interface Window {

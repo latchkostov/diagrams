@@ -475,6 +475,19 @@ describe("production bundle split", () => {
     }
   });
 
+  it("keeps journey and replay execution outside the Live static closure", () => {
+    const runtime: [string, RegExp][] = [
+      ["runtime adapter", /[/\\]src[/\\]live[/\\]slowmo[/\\]TraceRuntime\.tsx$/],
+      ["replay execution", /[/\\]src[/\\]live[/\\]slowmo[/\\](useSlowMotion|controller|session|machine)\.ts$/],
+      ["trace journey", /[/\\]src[/\\]trace[/\\]journey\.ts$/],
+    ];
+    for (const build of [plain(), rooms]) {
+      const live = build.chunks.find((c) => c.name === "LiveSession")!;
+      expect(found(bundled(closure([live], build)), runtime)).toEqual([]);
+      expect(found(bundled(build.chunks), runtime)).toEqual(runtime.map(([name]) => name));
+    }
+  });
+
   it("loads the trace card on demand, apart from the Live session", () => {
     const card: [string, RegExp][] = [["trace card", /[/\\]src[/\\]live[/\\]TraceCard\.tsx$/]];
     for (const build of [plain(), rooms]) {

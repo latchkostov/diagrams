@@ -23,6 +23,8 @@ describe("static platform viewer", () => {
       ],
     });
     expect(modules.some((id) => id.endsWith("/src/editor/builtinActions.ts"))).toBe(false);
+    expect(modules.some((id) => id.endsWith("/src/live/slowmo/TraceRuntime.tsx"))).toBe(true);
+    expect(modules.some((id) => id.endsWith("/src/live/session/traceFacade.ts"))).toBe(true);
     for (const path of [
       "/src/canvas/placement/useQuickAddPlacement.ts",
       "/src/canvas/ConnectedQuickAddMenu.tsx",

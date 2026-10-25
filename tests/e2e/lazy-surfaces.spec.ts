@@ -5,6 +5,36 @@ import { readFileSync } from "node:fs";
 import { chunk, holdChunk } from "./chunk";
 import { openSurface as open, surfaceContract } from "./lazy-surface-helpers";
 import { pauseClock } from "./fixtures";
+import { holdTraceRuntime, replayNode } from "./held-trace-runtime";
+
+test("held runtime: model export remains available and image export awaits the requested replay", async ({ page }) => {
+  const held = await holdTraceRuntime(page, "&paused=1");
+  try {
+    await replayNode(page);
+    const model = page.waitForEvent("download");
+    await page.getByTestId("file-button").click();
+    await page.getByTestId("file-more-formats").click();
+    await page.getByTestId("export-json").click();
+    expect((await model).suggestedFilename()).toMatch(/\.json$/);
+    await expect(page.getByTestId("slowmo-loading")).toBeVisible();
+    await page.getByTestId("file-button").click();
+    await page.getByTestId("file-more-formats").click();
+    await page.getByTestId("export-image").click();
+    let downloaded = false;
+    const image = page.waitForEvent("download").then((download) => {
+      downloaded = true;
+      return download;
+    });
+    await page.getByTestId("image-export").click();
+    await expect.poll(() => page.evaluate(() => window.__lazySurfaces?.pendingOutputs())).toBeGreaterThan(0);
+    expect(downloaded).toBe(false);
+    held.release();
+    expect((await image).suggestedFilename()).toMatch(/\.png$/);
+    await expect(page.getByTestId("live-canvas")).toHaveAttribute("data-slowmo", "playing");
+  } finally {
+    held.release();
+  }
+});
 
 test("simulation keyboard setup waits for the independently held identity and rename focus", async ({ page }) => {
   let release!: () => void;

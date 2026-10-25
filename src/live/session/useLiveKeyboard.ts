@@ -105,7 +105,7 @@ export function useLiveKeyboard({
         );
       const selection = !!document.querySelector(SELECTED);
       // Slow motion has its own keys (useSlowMotion): Space, ← →, and Esc back to live.
-      const slowing = !!slowRef.current?.session.active && (key === "escape" || e.key === " ");
+      const slowing = !!slowRef.current?.session.active && (key === "escape" || key === "enter" || e.key === " ");
       const state = controller.getState();
       const canName = !!editor && !presenting && !state.run?.waiting;
       const action = interaction.liveKey({

@@ -1,7 +1,7 @@
 import { createContext, useContext, useSyncExternalStore } from "react";
 import type { DiagramFile, Simulation } from "../model/types";
 import type { LiveController, LiveState } from "./controller";
-import type { SlowMotion } from "./slowmo/session";
+import type { SlowMotionApi } from "./slowmo/controller";
 import type { MenuItem } from "../editor/actions";
 import type { CapacityFix } from "./capacityModel";
 
@@ -33,7 +33,7 @@ export interface LiveUi {
   /** "Trace a message ▸" (live ⋯ menu): the next message anywhere, the slowest so far, or a dead letter. */
   startTrace(which: TraceChoice): void;
   /** Slow motion (one message's journey, paced): its session drives the bar while it plays. */
-  slowmo: SlowMotion;
+  slowmo: SlowMotionApi;
   /** Registry rows for controls duplicated in the live overflow menu; absent in Lab stages. */
   action(id: string): MenuItem | undefined;
 }

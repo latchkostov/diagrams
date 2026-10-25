@@ -14,6 +14,108 @@ import {
 } from "./fixtures";
 import AxeBuilder from "@axe-core/playwright";
 import type { Page } from "@playwright/test";
+import { holdTraceRuntime, replayNode } from "./held-trace-runtime";
+import { holdChunk } from "./chunk";
+
+for (const renderer of ["worker", "main"] as const) {
+  for (const paused of [false, true]) {
+    for (const reduced of [false, true]) {
+      test(`held runtime: ${renderer}, ${paused ? "paused" : "live"}, reduced=${reduced}: checkpoint, keys and camera`, async ({
+        page,
+      }) => {
+        await page.emulateMedia({ reducedMotion: reduced ? "reduce" : "no-preference" });
+        await page.clock.install();
+        const held = await holdTraceRuntime(
+          page,
+          `${renderer === "main" ? "&renderer=main" : ""}${paused ? "&paused=1" : ""}`,
+        );
+        try {
+          await expect(page.getByTestId("live-canvas")).toHaveAttribute("data-renderer", renderer);
+          await pauseClock(page);
+          const before = await viewportTransform(page);
+          await replayNode(page);
+          await page.clock.runFor(250);
+          const checkpoint = await page.getByTestId("live-canvas").getAttribute("data-sim-time");
+          if (checkpoint === null) throw new Error("Missing requested replay state");
+          await expect.poll(held.requested).toBe(true);
+          for (const key of ["Space", "Enter", "ArrowLeft", "ArrowRight"]) {
+            await page.getByTestId("canvas-wrap").focus();
+            await page.keyboard.press(key);
+          }
+          await page.clock.runFor(1000);
+          await expect(page.getByTestId("live-canvas")).toHaveAttribute("data-sim-time", checkpoint);
+          expect(await viewportTransform(page)).toBe(before);
+          held.release();
+          await page.clock.resume();
+          await expect(page.getByTestId("live-canvas")).toHaveAttribute("data-slowmo", "playing");
+          await expect(page.getByTestId("live-canvas")).toHaveAttribute("data-sim-time", checkpoint);
+          await page.getByTestId("trace-slowmo").focus();
+          await page.keyboard.press("Enter");
+          await expect(page.getByTestId("live-canvas")).toHaveAttribute("data-slowmo", "paused");
+          await page.getByTestId("trace-card-close").focus();
+          await page.keyboard.press("Enter");
+          await waitForCameraIdle(page);
+          expect(await viewportTransform(page)).toBe(before);
+          await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", paused ? "paused" : "playing");
+        } finally {
+          held.release();
+        }
+      });
+    }
+  }
+}
+
+test("held runtime: Escape, exit/re-entry and late completion cannot retake the camera", async ({ page }) => {
+  const held = await holdTraceRuntime(page, "&paused=1");
+  try {
+    await replayNode(page);
+    await page.getByTestId("canvas-wrap").focus();
+    await page.keyboard.press("Escape");
+    await expect(page.getByTestId("slowmo-loading")).toHaveCount(0);
+    await expect(page.getByTestId("live-controls")).toBeVisible();
+    await replayNode(page);
+    await page.getByTestId("live-toggle").click();
+    await expect(page.getByTestId("live-controls")).toHaveCount(0);
+    await page.getByTestId("live-toggle").click();
+    await expect(page.getByTestId("live-controls")).toBeVisible();
+    await waitForCameraIdle(page);
+    const before = await viewportTransform(page);
+    const mark = await cameraJournalMark(page);
+    held.release();
+    await expect
+      .poll(() => page.evaluate(() => window.__lazySurfaces?.states()["live.trace-runtime"]?.state))
+      .toBe("loaded");
+    await animationFrames(page, 20);
+    await expect(page.getByTestId("slowmo-chip")).toHaveCount(0);
+    expect(await viewportTransform(page)).toBe(before);
+    expect((await cameraJournal(page, mark)).filter((entry) => /slowmo/i.test(entry.command))).toEqual([]);
+  } finally {
+    held.release();
+  }
+});
+
+test("held runtime: pending palette owns Escape before its dialog mounts", async ({ page }) => {
+  const held = await holdTraceRuntime(page);
+  const palette = await holdChunk(page, /\/assets\/PaletteDialog-[\w-]+\.js/);
+  try {
+    await replayNode(page);
+    await page.getByTestId("canvas-wrap").focus();
+    await page.keyboard.press("ControlOrMeta+k");
+    await expect.poll(palette.requested).toBe(true);
+    await expect(page.getByTestId("command-input")).toHaveCount(0);
+    held.release();
+    await expect(page.getByTestId("live-canvas")).toHaveAttribute("data-trace-runtime", "queued");
+    await expect(page.getByTestId("slowmo-loading")).toBeVisible();
+    await page.keyboard.press("Escape");
+    palette.release();
+    await expect(page.getByTestId("command-input")).toHaveCount(0);
+    await expect(page.getByTestId("live-canvas")).toHaveAttribute("data-slowmo", "playing");
+    await page.getByTestId("trace-card-close").click();
+  } finally {
+    held.release();
+    palette.release();
+  }
+});
 
 // Slow motion: one message's recorded journey, replayed node by node while live stays frozen; and
 // calmer drawing below 1×. Selectors are data-testid only (axe takes [data-testid] CSS).
@@ -278,6 +380,7 @@ test.describe("slow motion", () => {
     await expect(play(page)).toHaveAttribute("data-state", "paused");
     await waitForCameraIdle(page);
     await animationFrames(page);
+    await expect(canvas(page)).toHaveAttribute("data-live-playing", "false");
     const time = await data(page, "sim-time");
     const sum = await data(page, "particle-sum");
     await waitForCameraIdle(page);
@@ -382,7 +485,8 @@ test.describe("slow motion", () => {
     await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1&traffic=0`);
     await openNodeMenu(page, "shopper", "sim.slowmo-from");
     await expect(page.getByTestId("trace-waiting")).toContainText("slow motion starts when it comes");
-    await page.getByTestId("trace-send-one").click();
+    await page.getByTestId("trace-send-one").focus();
+    await page.keyboard.press("Enter");
     await expect(play(page)).toHaveAttribute("data-state", "slowmo");
     await expect(page.getByTestId("slowmo-caption")).not.toBeEmpty();
     expectNoErrors(consoleErrors);

@@ -32,6 +32,12 @@ describe("liveKeys: the levels, row by row", () => {
     ["editor owns Esc before readout", { readout: true, editable: true }, "editor"],
     ["panel owns Esc before readout", { readout: true, owner: true }, "owner"],
     ["Enter pins an unselected wrapper", { key: "enter", readoutTarget: true }, "pin-readout"],
+    [
+      "pending replay keeps Enter from resuming live narration",
+      { key: "enter", slowMotion: true, waiting: true },
+      "slowmo",
+    ],
+    ["pending replay leaves Enter on Retry", { key: "enter", slowMotion: true, control: true }, "none"],
     ["Enter activates a node control", { key: "enter", readoutTarget: true, control: true }, "none"],
     [
       "R3 a hovered card's Enter beats unrelated chrome",
@@ -56,7 +62,7 @@ describe("liveKeys: the levels, row by row", () => {
     ["S4 Space with a note waiting: continue", { key: "space", waiting: true }, "resume"],
     ["S5 Space: play or pause", { key: "space" }, "toggle"],
     ["N1 Enter on a control: its own", { key: "enter", control: true, waiting: true }, "none"],
-    ["N2 Enter with a note waiting: continue", { key: "enter", waiting: true, slowMotion: true }, "resume"],
+    ["N2 Enter with a note waiting: continue", { key: "enter", waiting: true }, "resume"],
     ["N3 Enter otherwise: nothing", { key: "enter", trace: true }, "none"],
   ])("%s", (_name, patch, expected) => {
     expect(liveKeys(ctx(patch))).toBe(expected);

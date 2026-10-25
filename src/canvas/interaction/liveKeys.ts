@@ -30,6 +30,7 @@ import type { LiveKeyAction, LiveKeyContext } from "./types";
  * | R3  | Enter | a control on unrelated chrome, a card the pointer   | pin-readout (before the control: "Enter     |
  * |     |       | opened since the last key (`hovered`)               | pins"); a control in a card or item keeps it|
  * | R2  | Enter | focused wrapper, when naming does not own Enter     | pin-readout                                 |
+ * | N2a | Enter | slow motion is capturing or replaying                 | slowmo (never continue Live narration)       |
  * | N2  | Enter | a note waits                                        | resume                                      |
  * | N3  | Enter | otherwise                                           | none                                        |
  *
@@ -57,6 +58,7 @@ export function liveKeys(c: LiveKeyContext): LiveKeyAction {
     case "enter":
       if (c.editable || (c.control && !c.hovered)) return "none";
       if (c.owner) return "none";
+      if (c.slowMotion) return "slowmo";
       if (c.readoutTarget) return c.repeat ? "none" : "pin-readout";
       return c.waiting ? "resume" : "none";
   }

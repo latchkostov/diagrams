@@ -84,6 +84,11 @@ describe("interactive viewer template", () => {
     // The canvas and the live session themselves are there.
     expect(real("/src/canvas/CanvasView.tsx")).toBe(true);
     expect(real("/src/live/LiveSession.tsx")).toBe(true);
+    expect(real("/src/live/slowmo/TraceRuntime.tsx")).toBe(true);
+    expect(real("/src/live/slowmo/controller.ts")).toBe(true);
+    expect(real("/src/trace/journey.ts")).toBe(true);
+    expect(real("/src/live/session/traceFacade.ts")).toBe(true);
+    expect(real("/src/live/session/traceRuntimeMachine.ts")).toBe(true);
   });
 
   it("renders saved routes without the editing action catalog", () => {

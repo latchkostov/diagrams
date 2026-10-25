@@ -10,6 +10,47 @@ import {
   STORAGE_KEYS,
   expectNoErrors,
 } from "./fixtures";
+import { holdTraceRuntime, replayNode } from "./held-trace-runtime";
+
+test("held runtime: failed load keeps the checkpoint and one Retry replays the pending node", async ({ page }) => {
+  const runtime = await holdTraceRuntime(page, "&paused=1");
+  try {
+    await replayNode(page);
+    const at = await page.getByTestId("live-canvas").getAttribute("data-sim-time");
+    if (at === null) throw new Error("Missing requested replay state");
+    runtime.fail = true;
+    runtime.release();
+    await expect(page.getByTestId("lazy-load-retry")).toBeVisible();
+    await expect(page.getByTestId("slowmo-loading")).toBeVisible();
+    await expect(page.getByTestId("live-canvas")).toHaveAttribute("data-sim-time", at);
+    runtime.fail = false;
+    await page.getByTestId("lazy-load-retry").focus();
+    await page.keyboard.press("Enter");
+    await expect(page.getByTestId("live-canvas")).toHaveAttribute("data-slowmo", "playing");
+    await expect(page.getByTestId("lazy-load-retry")).toHaveCount(0);
+    await page.getByTestId("trace-card-close").click();
+    await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "paused");
+  } finally {
+    runtime.release();
+  }
+});
+
+test("held runtime: Escape after failure removes Retry and retires its replay", async ({ page }) => {
+  const runtime = await holdTraceRuntime(page, "&paused=1");
+  try {
+    await replayNode(page);
+    runtime.fail = true;
+    runtime.release();
+    await expect(page.getByTestId("lazy-load-retry")).toBeVisible();
+    await page.getByTestId("canvas-wrap").focus();
+    await page.keyboard.press("Escape");
+    await expect(page.getByTestId("slowmo-loading")).toHaveCount(0);
+    await expect(page.getByTestId("lazy-load-retry")).toHaveCount(0);
+    await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "paused");
+  } finally {
+    runtime.release();
+  }
+});
 
 // PR #236's bundle trim. A Request's wait, timeout, pool and retry fields (src/canvas/inspector/CallWaitFields.tsx)
 // are a chunk of their own, asked for when a Request's inspector opens; slow motion's painter

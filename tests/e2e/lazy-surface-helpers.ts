@@ -186,11 +186,12 @@ export async function openSurface(page: Page, id: LazySurfaceId) {
     case "live.more":
     case "live.events":
     case "live.simulations":
+    case "live.trace-runtime":
     case "live.trace":
       await page.getByTestId("live-more").click();
       if (id === "live.events") await page.getByTestId("live-events-toggle").click();
       if (id === "live.simulations") await page.getByTestId("live-edit-sims").click();
-      if (id === "live.trace") {
+      if (id === "live.trace" || id === "live.trace-runtime") {
         await page.getByTestId("live-trace-message").click();
         await page.getByTestId("live-trace-next").click();
       }

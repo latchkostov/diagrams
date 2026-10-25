@@ -7,6 +7,7 @@
 import type { useStoreApi } from "@xyflow/react";
 import type { CameraController } from "../../canvas/camera";
 import type { DiagramFlowEdge, FlowNode } from "../../canvas/types";
+import { typeAheadActive } from "../../canvas/typeAhead";
 import { isEditableTarget } from "../../editor/shortcuts";
 import type { SimSnapshot } from "../../sim/types";
 import { buildJourney } from "../../trace/journey";
@@ -21,6 +22,23 @@ import { LOAD_FAILED, whenIdle } from "../../lib/lazyLoad";
 import { notify, toast } from "../../interop/ui/toast";
 import { SlowMotion, type SlowSource, type SlowState } from "./session";
 
+export type SlowMotionApi = Pick<
+  SlowMotion,
+  | "getState"
+  | "subscribe"
+  | "active"
+  | "on"
+  | "end"
+  | "toggle"
+  | "restart"
+  | "step"
+  | "seek"
+  | "seekRow"
+  | "pause"
+  | "play"
+  | "publish"
+>;
+
 type Store = ReturnType<typeof useStoreApi<FlowNode, DiagramFlowEdge>>;
 
 /** Things that own the keys before slow motion does (menus, dialogs, side panels). */
@@ -28,10 +46,10 @@ const KEY_OWNERS = '[role="menu"], [role="dialog"], [data-testid="sim-panel"], [
 const SELECTED = ".react-flow__node.selected, .react-flow__edge.selected";
 
 export interface SlowMotionView {
-  session: SlowMotion;
+  session: SlowMotionApi;
   state: SlowState;
   /** Start slow motion (saves the view to come back to). */
-  start(source: SlowSource): void;
+  start(source: SlowSource, checkpointView?: View): void;
   /** Back to live: the view and play state from before. */
   end(): void;
   /** Called every animation frame: advances the replay and returns the painter to draw over live. */
@@ -136,12 +154,12 @@ export function createSlowMotionView(opts: SlowMotionOptions) {
     for (const el of root?.querySelectorAll("[data-slowmo-off]") ?? []) el.removeAttribute("data-slowmo-off");
   });
 
-  const start = (source: SlowSource) => {
+  const start = (source: SlowSource, checkpointView?: View) => {
     // Rebuild before saving the camera; a surviving asynchronous capture keeps this checkpoint too.
     controller.flush();
     if (session.getState().status === "off" || session.getState().status === "armed") {
       const [x, y, zoom] = store.getState().transform;
-      before ??= { x, y, zoom };
+      before ??= checkpointView ?? { x, y, zoom };
     }
     // A right-clicked node stays selected otherwise, and Esc would clear that before leaving.
     store.getState().unselectNodesAndEdges();
@@ -238,6 +256,7 @@ export function createSlowMotionView(opts: SlowMotionOptions) {
     const onKey = (e: KeyboardEvent) => {
       const status = session.getState().status;
       if (status === "off" || e.ctrlKey || e.metaKey || e.altKey || e.defaultPrevented) return;
+      if (typeAheadActive()) return;
       const t = e.target;
       // Text fields keep their keys; a slider (the replay's timeline) doesn't, so Esc still leaves.
       const slider = t instanceof HTMLInputElement && t.type === "range";
@@ -247,6 +266,18 @@ export function createSlowMotionView(opts: SlowMotionOptions) {
         e.preventDefault();
         e.stopImmediatePropagation();
         session.escape();
+        return;
+      }
+      const nativeControl = t instanceof Element && t.closest('button, select, input, a, [role="separator"]');
+      if ((e.key === "Enter" || e.key === " ") && nativeControl) return;
+      if (["Enter", " ", "ArrowLeft", "ArrowRight"].includes(e.key) && status !== "on") {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        return;
+      }
+      if (e.key === "Enter") {
+        e.preventDefault();
+        e.stopImmediatePropagation();
         return;
       }
       if (status !== "on") return;
@@ -307,12 +338,8 @@ export function createSlowMotionView(opts: SlowMotionOptions) {
     return painter;
   };
 
-  const ui = (canvas: HTMLCanvasElement, snap: SimSnapshot, labels: readonly PaintedLabel[]) => {
-    // Test hooks: the frozen clock and a checksum of the background dots, and slow motion's state.
-    canvas.dataset.simTime = String(snap.time);
-    let sum = 0;
-    for (const p of snap.particles) sum = (sum + p.id * 7 + Math.round(p.progress * 1000)) % 1_000_000_007;
-    canvas.dataset.particleSum = String(sum);
+  const ui = (canvas: HTMLCanvasElement, _snap: SimSnapshot, labels: readonly PaintedLabel[]) => {
+    // Replay test hooks; the shell publishes Live's clock and background checksum before this runtime exists.
     if (import.meta.env.DEV || import.meta.env.VITE_E2E === "1") canvas.dataset.slowmoMachine = session.machineState;
     slowScript()?.publishReplay(canvas, labels, store.getState().domNode, session, plan?.mode ?? "", () =>
       painterNow().reset(),

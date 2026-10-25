@@ -1,6 +1,7 @@
 import { waitForCameraIdle } from "./fixtures";
 import type { Page } from "@playwright/test";
 import { test, expect, expectNoErrors, gotoLive } from "./fixtures";
+import { holdTraceRuntime, replayNode } from "./held-trace-runtime";
 import { installCaptureReady } from "./capture-ready";
 
 // Record video captures the tab, so whatever the compositor shows is in the video, worker canvases
@@ -301,10 +302,20 @@ for (const renderer of ["worker", "main"] as const) {
 
     test("slow motion's captions are in the video", async ({ page, consoleErrors }) => {
       test.setTimeout(90_000);
-      await goLive(page, renderer);
-      await waitForCameraIdle(page);
-      await page.getByTestId("node-shopper").click({ button: "right" });
-      await page.getByTestId("context-menu-item-sim.slowmo-from").click();
+      const held = await holdTraceRuntime(page, renderer === "main" ? "&renderer=main" : "");
+      await page.addInitScript(installCaptureReady);
+      // Install capture observation on this already-open page too.
+      await page.evaluate(installCaptureReady);
+      await page.evaluate(() => {
+        const get = navigator.mediaDevices.getDisplayMedia.bind(navigator.mediaDevices);
+        navigator.mediaDevices.getDisplayMedia = async (options) => {
+          const stream = await get(options);
+          (window as unknown as { __captured: MediaStream }).__captured = stream;
+          return stream;
+        };
+      });
+      await replayNode(page);
+      held.release();
       await expect(canvas(page)).toHaveAttribute("data-slowmo", "playing");
       await expect
         .poll(async () => JSON.parse((await canvas(page).getAttribute("data-slowmo-captions")) ?? "[]").length, {

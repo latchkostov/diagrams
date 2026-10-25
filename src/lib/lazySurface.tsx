@@ -2,11 +2,13 @@ import {
   useEffect,
   useLayoutEffect,
   useState,
+  useRef,
   useSyncExternalStore,
   type ComponentType,
   type CSSProperties,
 } from "react";
 import { createMachine, defineMachine } from "./machine";
+import { flushSync } from "react-dom";
 import { lazySurfaces, registerLazySurface, retryLazySurfaces, type LazySurfaceId } from "./lazySurfaces";
 import { LOAD_FAILED, type LazyComponent, type Placeholder } from "./lazyLoad";
 import { notify, toast } from "../interop/ui/toast";
@@ -34,6 +36,9 @@ interface Options<P> {
   focus: { field?: string; restoreTo?: string; panel?: string };
   export: "await" | "skip";
   retryToast: true;
+  /** Runtime adapters can have output work after the module has mounted. */
+  pending?(props: P): boolean;
+  ready?(props: P): Promise<void> | undefined;
 }
 export type LazySurface<P> = LazyComponent<P> & {
   ensureLoaded(): Promise<ComponentType<P>>;
@@ -48,6 +53,8 @@ export function defineLazySurface<P extends object>(options: Options<P>): LazySu
   const machine = createMachine(lazySurfaceMachine);
   const listeners = new Set<() => void>();
   const clients = new Set<() => void>();
+  const pendingWork = new Set<() => boolean>();
+  const readiness = new Set<() => Promise<void> | undefined>();
   let component: ComponentType<P> | undefined;
   let request: Promise<ComponentType<P>> | undefined;
   let toastId: number | undefined;
@@ -95,6 +102,10 @@ export function defineLazySurface<P extends object>(options: Options<P>): LazySu
     return request;
   }
   function Surface(props: P) {
+    const latest = useRef(props);
+    useLayoutEffect(() => {
+      latest.current = props;
+    });
     const state = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
     // A prior consumer/preload's failure is not this mount's failure: its fresh attempt is pending.
     const [first] = useState(getSnapshot);
@@ -115,8 +126,18 @@ export function defineLazySurface<P extends object>(options: Options<P>): LazySu
           });
       };
       clients.add(restore);
+      const ready = () => options.ready?.(latest.current);
+      readiness.add(ready);
+      const pending = () => options.pending?.(latest.current) ?? false;
+      pendingWork.add(pending);
       return () => {
         clients.delete(restore);
+        readiness.delete(ready);
+        pendingWork.delete(pending);
+        if (!clients.size && toastId !== undefined) {
+          toast.dismiss(toastId);
+          toastId = undefined;
+        }
       };
     }, [interaction]);
     // Reopening is a fresh attempt, including after a failed preload or an expired failure toast.
@@ -150,8 +171,15 @@ export function defineLazySurface<P extends object>(options: Options<P>): LazySu
   registerLazySurface({
     id: options.id,
     active: () => clients.size > 0,
-    ensureLoaded,
-    getState: () => machine.state.value,
+    async ensureLoaded() {
+      await ensureLoaded();
+      flushSync(() => {});
+      await Promise.all([...readiness].map((ready) => ready()));
+    },
+    getState: () =>
+      machine.state.value === "loaded" && [...pendingWork].some((pending) => pending())
+        ? "loading"
+        : machine.state.value,
   });
   return Surface;
 }

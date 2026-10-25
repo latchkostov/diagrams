@@ -27,7 +27,10 @@ export function useLiveCommands({
   const { getDiagram, simsRef, draftRef, setDraft, controller, setTrace, setPanel, setEvents, flash } = session;
   const selectSimulation = useCallback(
     (id: string | null) => {
-      if (slowRef.current?.session.active) return;
+      if (slowRef.current?.session.active) {
+        if (!spotlight.runtime.facade.pending) return;
+        slowRef.current.end();
+      }
       const sim = id
         ? draftRef.current?.id === id
           ? draftRef.current

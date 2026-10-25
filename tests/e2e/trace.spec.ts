@@ -16,6 +16,120 @@ import type { Locator, Page } from "@playwright/test";
 import type { DiagramFile } from "../../src/model/types";
 import { createSimulationRun } from "../../src/sim/simulation";
 import { pseudoText } from "../../src/i18n/pseudo";
+import { holdTraceRuntime, traceNext, TRACE_RUNTIME } from "./held-trace-runtime";
+import { holdChunk } from "./chunk";
+
+test("held runtime: Free play, badges, node/edge hover and keyboard pins remain interactive", async ({ page }) => {
+  const held = await holdTraceRuntime(page);
+  try {
+    await traceNext(page);
+    await expect.poll(held.requested).toBe(true);
+    await page.getByTestId("canvas-wrap").focus();
+    await page.keyboard.press("Escape");
+    const clock = await page.getByTestId("live-canvas").getAttribute("data-sim-time");
+    await expect.poll(() => page.getByTestId("live-canvas").getAttribute("data-sim-time")).not.toBe(clock);
+    await expect(page.getByTestId("node-badge-orders")).toBeVisible();
+    await expect(page.getByTestId("trace-card")).toHaveAttribute("data-root", /\d+/);
+    await expect(page.getByTestId("live-notice")).toContainText("Loading");
+    expect(
+      await page.getByTestId("node-metrics").evaluate((el) => el.parentElement?.getAttribute("data-live-dim")),
+    ).toBeNull();
+    for (const [itemId, cardId] of [
+      ["node-shopper", "node-detail-shopper"],
+      ["edge-shopper-to-gateway", "edge-detail-shopper-to-gateway"],
+    ]) {
+      const item = page.getByTestId(itemId);
+      const card = page.getByTestId(cardId);
+      await item.hover({ force: true });
+      await expect(card).toHaveAttribute("data-pinned", "false");
+      if (itemId.startsWith("node-")) await item.evaluate((el) => el.parentElement?.focus());
+      else await item.evaluate((el) => el.closest<HTMLElement>("[tabindex]")?.focus());
+      await page.keyboard.press("Enter");
+      await expect(card).toHaveAttribute("data-pinned", "true");
+      await page.keyboard.press("Escape");
+      await expect(card).toHaveCount(0);
+    }
+    await page.getByTestId("live-play").click();
+    await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "paused");
+    held.release();
+    await expect
+      .poll(() => page.evaluate(() => window.__lazySurfaces?.states()["live.trace-runtime"]?.state))
+      .toBe("loaded");
+  } finally {
+    held.release();
+  }
+});
+
+test("held runtime: normal timeline seek and simulation switch retire the pending trace", async ({ page }) => {
+  const held = await holdTraceRuntime(page, "&sim=black-friday&paused=1");
+  try {
+    await traceNext(page);
+    await expect.poll(held.requested).toBe(true);
+    await page.getByTestId("live-timeline-input").fill("250");
+    await page.getByTestId("live-play").focus();
+    const sought = await page.getByTestId("live-clock").getAttribute("data-ms");
+    expect(Number(sought)).toBeGreaterThan(0);
+    await page.getByTestId("live-sim-picker").selectOption("");
+    held.release();
+    await expect(page.getByTestId("trace-card")).toHaveCount(0);
+    await expect(page.getByTestId("slowmo-chip")).toHaveCount(0);
+    await expect(page.getByTestId("live-sim-picker")).toHaveValue("");
+  } finally {
+    held.release();
+  }
+});
+
+for (const choice of ["next", "slowest", "deadletter"] as const) {
+  test(`held runtime: trace ${choice} preserves its requested message`, async ({ page }) => {
+    const held = await holdChunk(page, TRACE_RUNTIME);
+    try {
+      await gotoLive(page, "./?view=canvas&example=azure-service-bus-integration&live=1&sim=poison&paused=1");
+      expect(held.requested()).toBe(false);
+      await page.getByTestId("live-timeline-input").fill("500");
+      await page.getByTestId("live-play").focus();
+      await page.getByTestId("live-more").click();
+      await page.getByTestId("live-trace-message").click();
+      await page.getByTestId(`live-trace-${choice}`).click();
+      await expect.poll(held.requested).toBe(true);
+      const root = await page.getByTestId("trace-card").getAttribute("data-root");
+      const name = await page.getByTestId("trace-card").getAttribute("data-state");
+      if (name === null) throw new Error("Missing requested replay state");
+      held.release();
+      await expect
+        .poll(() => page.evaluate(() => window.__lazySurfaces?.states()["live.trace-runtime"]?.state))
+        .toBe("loaded");
+      await expect(page.getByTestId("trace-card")).toHaveAttribute("data-state", name);
+      if (root) await expect(page.getByTestId("trace-card")).toHaveAttribute("data-root", root);
+    } finally {
+      held.release();
+    }
+  });
+}
+
+for (const entry of ["card", "palette"] as const) {
+  test(`held runtime: replay from ${entry} before download retains the trace`, async ({ page }) => {
+    const held = await holdTraceRuntime(page);
+    try {
+      await traceNext(page);
+      await expect(page.getByTestId("trace-slowmo")).toBeVisible();
+      await page.getByTestId("live-play").click();
+      const root = await page.getByTestId("trace-card").getAttribute("data-root");
+      if (entry === "card") await page.getByTestId("trace-slowmo").click();
+      else {
+        await page.getByTestId("canvas-wrap").focus();
+        await page.keyboard.press("ControlOrMeta+k");
+        await page.getByTestId("command-input").fill("slow motion");
+        await page.getByTestId("command-item-action:sim.slowmo-trace").click();
+      }
+      await expect(page.getByTestId("slowmo-loading")).toBeVisible();
+      held.release();
+      await expect(page.getByTestId("live-canvas")).toHaveAttribute("data-slowmo", "playing");
+      if (root) await expect(page.getByTestId("trace-card")).toHaveAttribute("data-root", root);
+    } finally {
+      held.release();
+    }
+  });
+}
 
 // Message trace: follow one message (and its fan-out copies) hop by hop, then turn its journey into
 // a sequence diagram. Selectors are data-testid only.

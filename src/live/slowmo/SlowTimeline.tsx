@@ -1,8 +1,14 @@
 import type { CSSProperties } from "react";
-import type { SlowMotion } from "./session";
+import type { SlowMotionApi } from "./controller";
 
 /** Replay readouts load on use; play controls, screen-reader captions and Esc stay outside this chunk. */
-export function SlowTimeline({ slow, state: s }: { slow: SlowMotion; state: ReturnType<SlowMotion["getState"]> }) {
+export function SlowTimeline({
+  slow,
+  state: s,
+}: {
+  slow: SlowMotionApi;
+  state: ReturnType<SlowMotionApi["getState"]>;
+}) {
   const script = s.script;
   if (!script) return null;
   const total = Math.max(1, script.duration);

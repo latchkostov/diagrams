@@ -55,14 +55,7 @@ const NoteCallout = defineLazySurface({
 });
 import { SimPanelFrame } from "./SimPanelFrame";
 import { SimPanel } from "./lazySimPanel";
-const TraceCard = defineLazySurface({
-  id: "live.trace",
-  load: () => import("./TraceCard").then((m) => m.TraceCard),
-  placeholder: {},
-  focus: {},
-  export: "skip",
-  retryToast: true,
-});
+import { TraceCard } from "./lazyTraceCard";
 import { LiveContext, type LiveUi } from "./context";
 import { LiveIcon } from "./icons";
 import { liveMutationGuard } from "./liveActions";
@@ -74,7 +67,8 @@ import { useLiveContextMenu } from "./session/useLiveContextMenu";
 import { useLiveDiagramChanges, useLiveFixes } from "./session/useLiveFixes";
 import { useLiveKeyboard } from "./session/useLiveKeyboard";
 import { useLivePanelLayout, useLiveSessionBridge, useLiveSessionState } from "./session/useLiveSessionState";
-import { useSlowTraceCard, useTraceActions, useTraceSlowMotion, useTraceSpotlight } from "./session/useTraceSpotlight";
+import { useTraceActions, useTraceSpotlight } from "./session/useTraceSpotlight";
+import { TraceRuntime } from "./session/useTraceRuntime";
 import { SlowCaption } from "./slowmo/SlowBar";
 // Loaded on first use: the sequence generator, its SVG renderer and Mermaid writer.
 const SequenceDialog = lazy(() => import("./SequenceDialog").then((m) => ({ default: m.SequenceDialog })));
@@ -157,7 +151,12 @@ export function LiveSession({
   });
 
   const tracing = useTraceActions({ session, spotlight, presenting });
-  const { sequence, setSequence, startTrace, cardRoom, shownNotice, sendOne } = tracing;
+  const { sequence, setSequence, startTrace, cardRoom, shownNotice: traceNotice, sendOne } = tracing;
+  const shownNotice =
+    traceNotice ??
+    (spotlight.runtime.active && spotlight.runtime.loading && !spotlight.runtime.facade.pending
+      ? t("common.loading")
+      : null);
 
   const { capacityError, setCapacityError, clearCapacityError } = useCapacityError();
 
@@ -174,8 +173,12 @@ export function LiveSession({
     };
   }, []);
 
-  const motion = useTraceSlowMotion({ session, spotlight, store, camera, presenting, capturing });
-  const { slow, slowMotionTrace } = motion;
+  const slow = spotlight.runtime.slow;
+  const slowMotionTrace = () => {
+    const trace = controller.getState().trace;
+    slow.start(trace?.rootId !== undefined ? { kind: "root", rootId: trace.rootId } : { kind: "followed" });
+  };
+  const motion = { slow, slowMotionTrace };
   useLiveSessionBridge({ session, onSession, commands, editor, alwaysOn, slow });
   const watched = useMemo(
     () =>
@@ -193,7 +196,6 @@ export function LiveSession({
     [editor, alwaysOn, controller, session.getDiagram, store, camera, documentId],
   );
   useWatchBridge(watched);
-  const slowCard = useSlowTraceCard(slow);
   const recording = useLiveRecording({ session, dispatchRec, store });
   const { openRecord, recordTarget, recordTitle } = recording;
 
@@ -377,44 +379,45 @@ export function LiveSession({
             />
           )
         )}
-        {slowCard && !capturing ? (
-          <TraceCard
-            trace={slowCard.trace}
-            diagram={controller.currentDiagram}
-            now={slowCard.trace.current?.endedAt ?? state.snapshot.time}
-            onClose={slow.end}
-            onSequence={() => slowCard.trace.current && setSequence(slowCard.trace.current)}
-            room={cardRoom}
-            slowmo={slowCard.card}
+        {spotlight.runtime.active && (
+          <TraceRuntime
+            facade={spotlight.runtime.facade}
+            controller={controller}
+            store={store}
+            camera={camera}
+            presenting={presenting}
+            reducedMotion={reducedMotion}
+            panelOpen={panel.open}
+            capturing={capturing}
+            cardRoom={cardRoom}
+            onSequence={setSequence}
           />
-        ) : (
-          state.trace &&
-          !capturing && (
-            <TraceCard
-              trace={state.trace}
-              diagram={controller.currentDiagram}
-              now={state.snapshot.time}
-              onClose={() => {
-                slow.end();
-                controller.endTrace();
-              }}
-              onSequence={() => state.trace?.current && setSequence(state.trace.current)}
-              onSendOne={sendOne}
-              room={cardRoom}
-              onSlowMotion={state.trace.current ? slowMotionTrace : undefined}
-              waitingText={
-                slow.state.status === "armed"
-                  ? slow.state.armedAt
-                    ? t("liveSession.waitingSlowMotionAt", {
-                        name:
-                          controller.currentDiagram.nodes.find((n) => n.id === slow.state.armedAt)?.label ??
-                          slow.state.armedAt,
-                      })
-                    : t("liveSession.waitingSlowMotion")
-                  : undefined
-              }
-            />
-          )
+        )}
+        {slow.state.status !== "on" && state.trace && !capturing && (
+          <TraceCard
+            trace={state.trace}
+            diagram={controller.currentDiagram}
+            now={state.snapshot.time}
+            onClose={() => {
+              slow.end();
+              controller.endTrace();
+            }}
+            onSequence={() => state.trace?.current && setSequence(state.trace.current)}
+            onSendOne={sendOne}
+            room={cardRoom}
+            onSlowMotion={state.trace.current ? slowMotionTrace : undefined}
+            waitingText={
+              slow.state.status === "armed"
+                ? slow.state.armedAt
+                  ? t("liveSession.waitingSlowMotionAt", {
+                      name:
+                        controller.currentDiagram.nodes.find((n) => n.id === slow.state.armedAt)?.label ??
+                        slow.state.armedAt,
+                    })
+                  : t("liveSession.waitingSlowMotion")
+                : undefined
+            }
+          />
         )}
         <SlowCaption slow={slow.session} />
         {/* Live's narration waits with live while slow motion plays. */}

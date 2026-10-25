@@ -2,7 +2,7 @@ import { defineLazySurface } from "../../lib/lazySurface";
 import { useSyncExternalStore } from "react";
 import "../../styles/slowmo.css";
 import { LiveIcon } from "../icons";
-import type { SlowMotion } from "./session";
+import type { SlowMotionApi } from "./controller";
 const SlowTimeline = defineLazySurface({
   id: "live.slow-timeline",
   load: () => import("./SlowTimeline").then((m) => m.SlowTimeline),
@@ -17,7 +17,7 @@ const SlowTimeline = defineLazySurface({
  * the journey clock in real time, and the replay's timeline with a tick per hop (scrub to any
  * moment). It stands in for the simulation picker and its timeline, so the bar gains no control.
  */
-export function SlowBar({ slow }: { slow: SlowMotion }) {
+export function SlowBar({ slow }: { slow: SlowMotionApi }) {
   const s = useSyncExternalStore(slow.subscribe, slow.getState, slow.getState);
   const script = s.script;
   if (!script)
@@ -57,7 +57,7 @@ export function SlowBar({ slow }: { slow: SlowMotion }) {
 }
 
 /** The latest caption, for screen readers (the canvas draws it for everyone else). */
-export function SlowCaption({ slow }: { slow: SlowMotion }) {
+export function SlowCaption({ slow }: { slow: SlowMotionApi }) {
   const s = useSyncExternalStore(slow.subscribe, slow.getState, slow.getState);
   if (s.status !== "on") return null;
   return (
