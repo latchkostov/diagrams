@@ -585,6 +585,7 @@ function CanvasInner({
     enabled: !shortcutsOpen && !readOnly,
     canRename: canOpenInspector,
     canEscape: () => !interaction.readouts?.get(),
+    takeEscape: () => interaction.escape(),
     canRenameEnter: () => !liveHandle.current?.session?.controller.getState().run?.waiting,
     onEscape: () => {
       // Esc backs out one level: a menu, the selection, then simulations playing, then the Checks card.

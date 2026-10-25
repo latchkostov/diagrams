@@ -169,7 +169,13 @@ function useLocalLifecycle(own: InteractionController | null) {
   useEffect(() => own?.connect(), [own]);
   useEffect(() => {
     if (!own) return;
-    const key = () => own.input("key");
+    const key = (event: KeyboardEvent) => {
+      own.input("key");
+      if (event.key === "Escape" && !event.defaultPrevented && own.escape()) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+      }
+    };
     const press = () => own.input("press");
     const focusin = (event: FocusEvent) => {
       if (event.target instanceof Element) own.focusArrived(event.target);

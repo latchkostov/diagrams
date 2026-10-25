@@ -548,6 +548,7 @@ test("a 30,000-entry imported filter stays bounded and clears to pass-all in one
   await expect.poll(filter).toBeUndefined();
   await expect(page.getByTestId("inspector-carries")).toHaveText("SendCallback");
   await expect(page.getByTestId("inspector-filter-more-selected")).toHaveCount(0);
+  await expect(page.getByTestId("inspector-filter-option-0")).toBeFocused();
   await page.getByTestId("undo-button").click();
   await expect.poll(async () => (await filter())?.length).toBe(30_000);
   await expect(chips).toHaveCount(101);
@@ -615,6 +616,26 @@ test("an appended paged rule stays visible and focused after rekeying", async ({
   await expect(page.getByTestId("inspector-emits-row-2000")).toBeVisible();
   await expect(rules).toHaveCount(26);
   await expect(receives).toBeFocused();
+  await page.getByTestId("undo-button").click();
+  await expect
+    .poll(
+      async () =>
+        ((await savedDiagram(page)).nodes.find((n) => n.id === "api")?.props?.emits as Record<string, string>).Send,
+    )
+    .toBe("Send");
+  await expect(page.getByTestId("inspector-emits-row-2000")).toBeVisible();
+  await expect(rules).toHaveCount(26);
+  await receives.focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByTestId("inspector-field-receives-2000-menu")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(receives).toBeFocused();
+  await page.getByTestId("inspector-emits-remove-0").click();
+  await expect(page.getByTestId("inspector-emits-row-1999")).toBeVisible();
+  await expect(rules).toHaveCount(26);
+  await page.getByTestId("undo-button").click();
+  await expect(page.getByTestId("inspector-emits-row-2000")).toBeVisible();
+  await expect(rules).toHaveCount(26);
   expectNoErrors(consoleErrors);
 });
 
@@ -679,7 +700,11 @@ test("a failed flow-edge reader download offers Retry in a toast, then hovered e
 });
 
 test("several processors edit Emits as text, saved once the map parses", async ({ page, consoleErrors }) => {
-  await seed(page);
+  await page.clock.install();
+  const diagram = messageTypesFixture();
+  diagram.nodes[1].props = { emits: { Send: "OriginalAPI" } };
+  diagram.nodes[2].props = { emits: { Callback: "OriginalSender" } };
+  await open(page, "en", diagram);
   await fitDiagram(page);
   await page.getByTestId("node-api").click();
   await waitForSelectionSettled(page);
@@ -691,14 +716,127 @@ test("several processors edit Emits as text, saved once the map parses", async (
   const emits = page.getByTestId("inspector-field-emits");
   const saved = async () =>
     (await savedDiagram(page)).nodes.filter((n) => n.id === "api" || n.id === "sender").map((n) => n.props?.emits);
-  // An incomplete map keeps its draft without saving.
-  await emits.fill("Send → Order, Callback");
-  await expect(emits).toHaveValue("Send → Order, Callback");
-  await expect.poll(saved).toEqual([undefined, undefined]);
+  const original = [{ Send: "OriginalAPI" }, { Callback: "OriginalSender" }];
+  // Both incomplete syntax and parsed-but-invalid JSON must preserve distinct saved maps.
+  for (const draft of ["Send → Order, Callback", '{"Send":', '{"Send": 4}']) {
+    await emits.fill(draft);
+    await expect(emits).toHaveValue(draft);
+    await page.clock.runFor(400);
+    await expect.poll(saved).toEqual(original);
+  }
   await emits.fill("Send → Order, Callback → Done");
   const map = { Send: "Order", Callback: "Done" };
   await expect.poll(saved).toEqual([map, map]);
   await emits.blur();
   await expect(emits).toHaveValue("Send → Order, Callback → Done");
+  await page.getByTestId("undo-button").click();
+  await expect.poll(saved).toEqual(original);
   expectNoErrors(consoleErrors);
+});
+
+test("overflow filter selections are searchable and individually removable with keyboard focus", async ({ page }) => {
+  const diagram = messageTypesFixture();
+  diagram.edges[1].props = { filter: Array.from({ length: 30_000 }, (_, i) => `F${i}`) };
+  await open(page, "en", diagram);
+  const search = page.getByTestId("inspector-filter-search");
+  await search.fill("F29999");
+  const chip = page.getByTestId("inspector-filter-option-0");
+  await expect(chip).toHaveText("F29999");
+  await expect(chip).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByTestId(/^inspector-filter-option-/)).toHaveCount(1);
+  await search.press("Tab");
+  await expect(chip).toBeFocused();
+  await page.keyboard.press("Space");
+  await expect
+    .poll(async () => (await savedDiagram(page)).edges[1].props?.filter)
+    .toEqual(Array.from({ length: 29_999 }, (_, i) => `F${i}`));
+  await expect(page.getByTestId("inspector-filter-add")).toBeFocused();
+  await search.fill("");
+  await expect(page.getByTestId(/^inspector-filter-option-/)).toHaveCount(101);
+});
+
+test("Carries search reveals omitted names while broad matches stay bounded", async ({ page }) => {
+  const diagram = messageTypesFixture();
+  diagram.edges = diagram.edges.slice(0, 2);
+  diagram.simulations = [
+    {
+      id: "types",
+      title: "Vocabulary",
+      traffic: Array.from({ length: 250 }, (_, i) => ({
+        id: `t${i}`,
+        node: "client",
+        messageType: `Type${i}`,
+        shape: { kind: "burst" as const, count: 1 },
+      })),
+    },
+  ];
+  await open(page, "en", diagram);
+  const search = page.getByTestId("inspector-carries-search");
+  const chips = page.getByTestId("inspector-carries-type");
+  await expect(chips).toHaveCount(100);
+  await search.focus();
+  await page.keyboard.type("Type249");
+  await expect(chips).toHaveText(["Type249"]);
+  await search.fill("Type");
+  await expect(chips).toHaveCount(100);
+  await expect(page.getByTestId("inspector-carries-more")).toHaveText("+150 more");
+  await expect(search).toBeFocused();
+  // A narrower filter hides the search control: its old query must no longer hide the remaining type.
+  await search.fill("Type249");
+  await page.getByTestId("inspector-filter-search").fill("Type0");
+  await page.getByTestId("inspector-filter-option-0").click();
+  await expect(chips).toHaveText(["Type0"]);
+  await expect(search).toHaveCount(0);
+});
+
+test("focused message cards wrap long tokens in a short viewport", async ({ page }) => {
+  const diagram = messageTypesFixture();
+  diagram.nodes[0].props = { messageType: "X".repeat(200) };
+  diagram.edges = diagram.edges.slice(0, 2);
+  await open(page, "en", diagram);
+  await page.setViewportSize({ width: 1280, height: 500 });
+  await page.mouse.move(0, 0);
+  const edge = page.getByTestId("edge-send");
+  await edge.evaluate((el) => el.parentElement?.focus());
+  const card = page.getByTestId("edge-messages-send");
+  await expect(card).toContainText("X".repeat(200));
+  const dimensions = await card.evaluate((el) => ({
+    width: el.clientWidth,
+    scroll: el.scrollWidth,
+    height: el.clientHeight,
+    line: parseFloat(getComputedStyle(el).lineHeight),
+  }));
+  expect(dimensions.scroll).toBeLessThanOrEqual(dimensions.width);
+  expect(dimensions.height).toBeGreaterThan(dimensions.line * 2);
+  const box = await card.boundingBox();
+  expect(box?.width).toBeLessThanOrEqual(340);
+});
+
+test("focused message cards take Escape before canvas selection", async ({ page }) => {
+  await open(page);
+  await page.mouse.move(0, 0);
+  const edge = page.getByTestId("edge-send");
+  await edge.evaluate((el) => el.parentElement?.focus());
+  const card = page.getByTestId("edge-messages-send");
+  await expect(card).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(card).toHaveCount(0);
+  await expect(page.getByTestId("inspector-messages")).toBeVisible();
+  await expect.poll(() => edge.evaluate((el) => document.activeElement === el.parentElement)).toBe(true);
+  await page.keyboard.press("Escape");
+  await expect(page.getByTestId("inspector-messages")).toHaveCount(0);
+});
+
+test("two canvases with overlapping edge IDs keep hover titles and focused cards local", async ({ page }) => {
+  await gotoLab(page, "message-readers");
+  const west = page.getByTestId("message-reader-West");
+  const east = page.getByTestId("message-reader-East");
+  await west.getByTestId("edge-label-send").hover();
+  await expect(west.getByTestId("edge-label-send")).toHaveAttribute("title", /Message types: West, WestCallback/);
+  await expect(east.getByTestId("edge-label-send")).not.toHaveAttribute("title", /Message types:/);
+  await east.getByTestId("edge-send").evaluate((el) => el.parentElement?.focus());
+  await expect(east.getByTestId("edge-messages-send")).toContainText("Message types: East, EastCallback");
+  await expect(west.getByTestId("edge-messages-send")).toHaveCount(0);
+  await expect(west.getByTestId("edge-label-send")).toHaveAttribute("title", /Message types: West, WestCallback/);
+  await expect(east.getByTestId("edge-label-send")).toHaveAttribute("title", /Message types: East, EastCallback/);
 });

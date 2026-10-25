@@ -22,6 +22,7 @@ export function EdgeMessages({
 }) {
   const diagram = readDiagram?.() ?? editor.getDiagram();
   const { types, updating } = useMessageTypes(diagram, paused);
+  const [search, setSearch] = useState("");
   if (!types)
     return (
       <p className="insp-note" role="status">
@@ -31,13 +32,27 @@ export function EdgeMessages({
   const props = diagram.edges.find((edge) => edge.id === edgeId)?.props ?? {};
   const filter = Array.isArray(props.filter) ? props.filter.filter((v): v is string => typeof v === "string") : [];
   const carries = [...(types.carried.get(edgeId) ?? [])];
+  const matching =
+    carries.length > MAX_CHOICES && search
+      ? carries.filter((type) => type.toLocaleLowerCase().includes(search.toLocaleLowerCase()))
+      : carries;
   return (
     <div className="message-fields" data-testid="inspector-messages">
       <h4>{t("messageTypes.messages")}</h4>
       <Field label={t("messageTypes.carries")} group>
+        {carries.length > MAX_CHOICES && (
+          <input
+            className="insp-input"
+            aria-label={t("messageTypes.search")}
+            placeholder={t("messageTypes.search")}
+            data-testid="inspector-carries-search"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+          />
+        )}
         <div className="message-type-chips" aria-live="polite" data-testid="inspector-carries">
-          {carries.length ? (
-            carries.slice(0, MAX_CHOICES).map((type) => (
+          {matching.length ? (
+            matching.slice(0, MAX_CHOICES).map((type) => (
               <span className="message-type-chip" key={type} data-testid="inspector-carries-type">
                 {type}
               </span>
@@ -45,9 +60,9 @@ export function EdgeMessages({
           ) : (
             <small className="insp-note">{t("messageTypes.noMessages")}</small>
           )}
-          {carries.length > MAX_CHOICES && (
+          {matching.length > MAX_CHOICES && (
             <small className="insp-note" data-testid="inspector-carries-more">
-              +{t("importReport.more", { count: carries.length - MAX_CHOICES })}
+              +{t("importReport.more", { count: matching.length - MAX_CHOICES })}
             </small>
           )}
         </div>
@@ -115,7 +130,8 @@ export function NodeMessages({
   // Imported maps can hold thousands of rules: render a page at a time.
   const [shownRules, setShownRules] = useState(RULE_PAGE);
   // A rule added here renders after the current page (the page itself never grows to reach it).
-  const [added, setAdded] = useState<string>();
+  // Incoming types are editable identity. Retain the appended row's names across rekey Undo, newest first.
+  const [added, setAdded] = useState<string[]>([]);
   useLayoutEffect(() => {
     const input = rekeyed.current;
     const target = input === undefined ? null : ruleControls.current.get(input)?.querySelector("button");
@@ -171,7 +187,8 @@ export function NodeMessages({
   const unassigned = incoming.filter((type) => !assigned.has(type));
   const vocabulary = [...new Set([...arriving, ...types.known])];
   const page = Math.min(shownRules, rows.length);
-  const addedAt = added === undefined ? -1 : rows.findIndex(([key]) => key === added);
+  const addedInput = added.find((type) => assigned.has(type));
+  const addedAt = addedInput === undefined ? -1 : rows.findIndex(([key]) => key === addedInput);
   const visible = [...Array(page).keys(), ...(addedAt >= page ? [addedAt] : [])];
   const remaining = rows.length - visible.length;
   // Message is the simulation default type, diagram data rather than translated UI copy.
@@ -211,8 +228,7 @@ export function NodeMessages({
               onChange={(value) => {
                 if (!value[0] || assigned.has(value[0])) return;
                 rekeyed.current = value[0];
-                // A rule appended after the page keeps its place under its new incoming type.
-                if (input === added) setAdded(value[0]);
+                if (i === addedAt) setAdded([value[0], ...added.filter((type) => type !== value[0])]);
                 save(rows.map((row, j) => (j === i ? [value[0], output] : row)));
               }}
             />
@@ -262,7 +278,7 @@ export function NodeMessages({
           const input = arriving.find((type) => !assigned.has(type)) ?? "*";
           // The Add button may disable itself: continue at the new rule once it is committed (policy row I5).
           rekeyed.current = input;
-          setAdded(input);
+          setAdded([input]);
           save([...rows, [input, input === "*" ? (arriving[0] ?? "Message") : input]]);
         }}
       >
