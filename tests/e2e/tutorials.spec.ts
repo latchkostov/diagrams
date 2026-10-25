@@ -12,6 +12,7 @@ import {
   waitForSelectionSettled,
   emptyCanvasPoint,
   savedDiagram,
+  waitForLiveSession,
 } from "./fixtures";
 import { tutorialEntries } from "../../src/tutorials/catalog/ids";
 import type { ResolvedUiStep } from "../../src/tutorials/solution";
@@ -25,6 +26,12 @@ async function openTutorial(page: Page, id: string) {
   await page.goto(`./?tutorial=${id}`);
   await expect(page.getByTestId("tutorial-start")).toBeVisible({ timeout: pageLoadTimeout() });
   await expect(page.getByTestId("canvas-view")).toBeVisible({ timeout: pageLoadTimeout() });
+  if (id === "capacity") {
+    // This lesson seeds a saved run before Start. Let that lazy session mount before
+    // Start resets it, so its pending startup cannot race the solution's Live toggle.
+    await waitForLiveSession(page);
+    await expect(page.getByTestId("live-sim-picker")).toHaveValue("triple");
+  }
 }
 
 async function play(page: Page, step: ResolvedUiStep) {
@@ -126,18 +133,73 @@ const strip = (page: Page) => page.getByTestId("tutorial-step");
 
 async function finishSolution(page: Page, highlightsOff = false) {
   const seen: string[] = [];
-  while ((await strip(page).getAttribute("data-phase")) === "step") {
-    const current = (await strip(page).getAttribute("data-step")) ?? "";
+  for (;;) {
+    // Traffic can complete a step (or the tutorial) between separate browser reads.
+    // Read the runner and its solution in one turn, rather than pairing a stale DOM
+    // phase with the next step's solution or the finished strip's empty step id.
+    const { value, current, steps } = await page.evaluate(() => {
+      const tutorial = window.__tutorial;
+      if (!tutorial) throw new Error("The tutorial runner is missing");
+      const state = tutorial.snapshot().state;
+      return {
+        value: state.value,
+        current: state.stepIds[state.index],
+        steps: state.value === "completing" ? [] : tutorial.solution(),
+      };
+    });
+    if (value === "finished") break;
+    expect(["active", "hinting", "completing"]).toContain(value);
     expect(seen, `step ${current} came back`).not.toContain(current);
     seen.push(current);
     if (highlightsOff) await expect(page.getByTestId("tutorial-coach")).toHaveCount(0);
-    const steps = await page.evaluate(() => window.__tutorial?.solution() ?? []);
     for (const step of steps) await play(page, step);
     await expect(strip(page)).not.toHaveAttribute("data-step", current, { timeout: 20_000 });
   }
   await expect(strip(page)).toHaveAttribute("data-phase", "finished");
   return seen;
 }
+
+test("capacity: solution driver handles completion between browser reads", async ({ page }) => {
+  await page.setContent('<section data-testid="tutorial-step" data-phase="step" data-step="drain"></section>');
+  await page.getByTestId("tutorial-step").evaluate((element) => {
+    let finished = false;
+    const finish = () =>
+      queueMicrotask(() => {
+        finished = true;
+        element.setAttribute("data-phase", "finished");
+        element.setAttribute("data-step", "");
+      });
+    window.__tutorial = {
+      snapshot: () => {
+        const value = finished ? "finished" : "active";
+        finish();
+        return { state: { value, index: 0, stepIds: ["drain"] } };
+      },
+      solution: () => [],
+    } as unknown as NonNullable<Window["__tutorial"]>;
+  });
+  // Force the old driver's separate phase/step reads across the completion boundary.
+  // Playwright's injected getAttribute uses a captured native method, so intercept
+  // the browser round trip instead of patching Element.prototype in the page.
+  const getByTestId = page.getByTestId.bind(page);
+  page.getByTestId = (id) => {
+    const locator = getByTestId(id);
+    if (id === "tutorial-step") {
+      const getAttribute = locator.getAttribute.bind(locator);
+      locator.getAttribute = async (name, options) => {
+        const value = await getAttribute(name, options);
+        if (name === "data-phase" && value === "step")
+          await locator.evaluate((element) => {
+            element.setAttribute("data-phase", "finished");
+            element.setAttribute("data-step", "");
+          });
+        return value;
+      };
+    }
+    return locator;
+  };
+  expect(await finishSolution(page)).toEqual(["drain"]);
+});
 
 async function skipAll(page: Page) {
   while ((await strip(page).getAttribute("data-phase")) === "step") {
