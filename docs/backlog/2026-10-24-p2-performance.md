@@ -1,6 +1,6 @@
 ## P2 triage: Performance (2026-10-24)
 
-Checked against `origin/master` at `7b6e905130a9`. DONE 10 / STALE 0 / OPEN 7 (deduplicated actionable findings).
+Checked against `origin/master` at `7b6e905130a9`. DONE 13 / STALE 0 / OPEN 4 (deduplicated actionable findings).
 
 Source: the local `queued-p2-fu10.archive.md`, preserved byte-for-byte on 2026-10-24. OPEN entries retain queue review labels; closed entries name the fixing PR. Locations are current-master entry points, not the old review line numbers. DONE means code and/or the specifically requested regression exists with merged-PR evidence; OPEN includes unproven historical failures. A later green run alone does not close a failure.
 
@@ -17,21 +17,21 @@ Each numbered batch below is an independent PR candidate of at most ten items, o
 3. **P-14 — OPEN: Compare displayed breaker countdown buckets.** `src/live/BreakerReadout.tsx:42`. Queue: #251 r3.
    Raw millisecond updates cause avoidable rerenders despite unchanged displayed text. Derive the display bucket in the selector and count renders across ticks and bucket boundaries.
 
-## Batch 2: Bundle and distribution build cost (3 OPEN)
+## Batch 2: Bundle and distribution build cost (2 DONE, 1 OPEN)
 
-1. **P-03 — OPEN: Build the merge-base with its own lockfile dependencies.** `scripts/bench/bundle-base.mjs:23`. Queue: #271.
-   The baseline currently links HEAD's node_modules, so dependency changes contaminate base measurements. Cache an immutable install keyed by the base lockfile and test differing dependency resolutions.
+1. **P-03 — DONE: Build the merge-base with its own lockfile dependencies.** `scripts/bench/bundle-base.mjs`. Queue: #271.
+   Changed-lock baselines use a frozen install cached by the base lockfile's SHA-256, Node version, platform and architecture. Complete installs are published atomically without moving pnpm's Windows junction targets. Identical lockfiles retain the zero-install path. `src/lib/bundleBase.test.ts` resolves two real local package versions, proves the base uses its own version, and counts one install across repeated measurements. Restoring HEAD's dependency link fails that regression.
 
-2. **P-04 — OPEN: Keep expensive ZIP compression off dev request/startup paths.** `scripts/skill-assets.ts:154`. Queue: #243/#260.
-   Dev viewer requests still wait for ZIP creation and multiple synchronous DEFLATE passes. Decouple ordinary viewer/file serving from ZIP compression, measure responsiveness, and preserve deterministic production ZIP bytes and the fixed cap. The earlier 30–100 Zopfli iterations are already gone (#272).
+2. **P-04 — DONE: Keep expensive ZIP compression off dev request/startup paths.** `scripts/skill-assets.ts`. Queue: #243/#260.
+   Dev viewer files and explicit ZIP downloads now have independent caches. Viewer/file requests never start compression and complete while a ZIP is held; ZIP failures can retry. `src/lib/skillAssets.test.ts` covers serving, invalidation and retry, and fails with the old coupling restored. The isolated `scripts/bench/skill-dev.mjs` measured cold viewer requests at 6,677–7,659 ms before and 24–44 ms after; listen startup was 10.12/9.30 ms. Production compression and the 835,000 B cap are unchanged; the 831,669 B ZIP remains byte-identical. See the [release fragment](../release-notes/2026-10-24-performance-tooling.md) for method and hash.
 
 3. **P-05 — OPEN: Restore startup/canvas/Live headroom with dedicated trims.** `docs/QUALITY.md:36`. Queue: #260/#271.
    The optional-surface trim left budgets below the warning floor. Schedule one owner per surface, prefer a smaller viewer payload over more Zopfli iterations, keep limits fixed and verify held-chunk behavior.
 
-## Batch 3: Collaboration work-count assertions (1 OPEN)
+## Batch 3: Collaboration work-count assertions (1 DONE)
 
-1. **P-15 — OPEN: Assert linear work in room lifecycle/performance coverage.** `src/collab/session.test.ts:145`. Queue: #182.
-   A functional convergence assertion does not bind indexing cost. Count document/presence reads at two sizes and reject a nested scan without clock budgets.
+1. **P-15 — DONE: Assert linear work in room lifecycle/performance coverage.** `src/collab/session.test.ts`. Queue: #182.
+   Independent `opGrowth()` assertions measure document projection at 64/512 nodes (with edges) and presence reads at 8/64 peers. Work grows 836 → 5,764 (6.90×) and 25 → 247 (9.88×), within the existing 24× bound. Fixtures and invalidation are outside measurement; a real edit must reread exactly one record. Separate nested document and presence scan mutations both exceed the operation budget. No runtime change or clock budget is needed.
 
 ## Closed or superseded findings
 

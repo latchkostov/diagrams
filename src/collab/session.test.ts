@@ -1,5 +1,5 @@
 import { describe, expect, it, onTestFinished, vi } from "vitest";
-import { ops } from "../test/opCounter";
+import { opGrowth, ops } from "../test/opCounter";
 import * as Y from "yjs";
 import { textToBytes } from "../interop/codec";
 import { FakeClock } from "./clock";
@@ -20,6 +20,67 @@ import { MemoryNetwork } from "./transport/memory";
 import type { CollabTransport, Connectivity, TransportHandlers } from "./transport/types";
 
 const room = roomFor(1);
+
+it("bounds document and presence read work separately as a room grows eightfold", async () => {
+  const setup = async (nodes: number, peers: number) => {
+    const session = await CollabSession.open({
+      room: roomFor(910 + peers),
+      clock: new FakeClock(),
+      privacy: {},
+      transport: new MemoryNetwork().connect(),
+      initial: {
+        ...canaryDiagram(),
+        nodes: Array.from({ length: nodes }, (_, i) => ({
+          id: `n${i}`,
+          stencil: "generic.service",
+          label: "Service",
+          x: i * 300,
+          y: 0,
+        })),
+        edges: Array.from({ length: nodes - 1 }, (_, i) => ({ id: `e${i}`, from: `n${i}`, to: `n${i + 1}` })),
+      },
+    });
+    onTestFinished(async () => {
+      await session.leave();
+      session.doc.destroy();
+    });
+    await session.idle();
+    for (let i = 0; i < peers; i++)
+      expect(
+        session.presence.receive(`peer${i}`, 1, {
+          alias: `Peer ${peers - i}`,
+          colour: 0,
+          status: "active",
+          selection: [`n${i}`],
+        }),
+      ).toBe(true);
+    session.doc.project();
+    // Invalidate a populated list outside measurement. A cached project() alone would conceal indexing work.
+    expect(session.doc.apply([{ op: "patch", kind: "nodes", id: "n0", set: { label: "Renamed" } }])).toEqual({
+      ok: true,
+    });
+    return {
+      document() {
+        const before = session.doc.stats.recordsProjected;
+        const projection = session.doc.project();
+        expect(projection.status).toBe("ok");
+        expect(projection.diagram?.nodes).toHaveLength(nodes);
+        expect(projection.diagram?.nodes[0].label).toBe("Renamed");
+        expect(session.doc.stats.recordsProjected - before).toBe(1);
+      },
+      presence() {
+        const listed = session.peers();
+        expect(listed).toHaveLength(peers);
+        expect(new Set(listed.map((p) => p.sender)).size).toBe(peers);
+      },
+    };
+  };
+  const small = await setup(64, 8);
+  const large = await setup(512, 64);
+  // Count real loops and callback entries (including newly introduced scans), not just public method calls.
+  expect(opGrowth(small.document, large.document, 24, ["src/collab/doc.ts", "src/collab/schema.ts"])).toBeLessThan(24);
+  expect(opGrowth(small.presence, large.presence, 24, ["src/collab/presence.ts"])).toBeLessThan(24);
+});
 
 it("reads unchanged diagnostics without presence scans or serialization", async () => {
   const net = new MemoryNetwork();
