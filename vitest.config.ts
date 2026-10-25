@@ -3,6 +3,8 @@ import vite from "./vite.config";
 import { operationProbes } from "./scripts/operation-probes";
 
 const include = ["src/**/*.test.ts", "src/**/*.test.tsx", "services/server/test/**/*.test.ts"];
+// Keep the complete sampling sweep, without parallel coverage/probe overhead at Nightly's multiplier.
+const heavy = ["src/**/*.heavy.test.ts", "src/sim/waits.review.test.ts"];
 
 export default mergeConfig(
   vite,
@@ -18,13 +20,13 @@ export default mergeConfig(
         {
           extends: true,
           plugins: [operationProbes()],
-          test: { name: "unit", include, exclude: ["**/*.heavy.test.ts"] },
+          test: { name: "unit", include, exclude: heavy },
         },
         {
           extends: true,
           test: {
             name: "heavy",
-            include: ["src/**/*.heavy.test.ts"],
+            include: heavy,
             fileParallelism: false,
             maxWorkers: 1,
           },

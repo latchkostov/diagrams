@@ -1,15 +1,21 @@
 import { EventEmitter } from "node:events";
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { deflateRawSync } from "node:zlib";
+import { deflateRawSync, inflateRawSync } from "node:zlib";
 import type { Connect, ViteDevServer } from "vite";
 import { beforeEach, expect, it, vi } from "vitest";
 import { deflateAsync } from "@gfx/zopfli";
 import { readSkill, skillAssetsPlugin, SKILL_ZIP } from "../../scripts/skill-assets";
+import { zipSkillInWorker } from "../../scripts/skill-zip-worker";
+import { zipSkill } from "../../scripts/skill-assets";
 import { RELEASED } from "../../scripts/skill-viewer";
 
+vi.mock("../../scripts/skill-zip-worker", () => ({ zipSkillInWorker: vi.fn() }));
 vi.mock("@gfx/zopfli", () => ({ deflateAsync: vi.fn() }));
 beforeEach(() => {
   vi.mocked(deflateAsync).mockReset();
+  vi.mocked(zipSkillInWorker)
+    .mockReset()
+    .mockImplementation((files) => zipSkill(files));
 });
 
 function serving(template = vi.fn(async () => "fresh viewer")) {
@@ -104,4 +110,49 @@ it("retries a failed ZIP without blocking subsequent viewer requests", async () 
   await turn();
   expect(retry.end).toHaveBeenCalledOnce();
   expect(retry.next).not.toHaveBeenCalled();
+});
+
+function viewerInZip(bytes: Buffer) {
+  let offset = 0;
+  while (bytes.readUInt32LE(offset) === 0x04034b50) {
+    const size = bytes.readUInt32LE(offset + 18);
+    const nameLength = bytes.readUInt16LE(offset + 26);
+    const extraLength = bytes.readUInt16LE(offset + 28);
+    const name = bytes.subarray(offset + 30, offset + 30 + nameLength).toString();
+    const start = offset + 30 + nameLength + extraLength;
+    if (name === `livediagrams/${RELEASED.template}`)
+      return inflateRawSync(bytes.subarray(start, start + size)).toString();
+    offset = start + size;
+  }
+  throw new Error("Downloaded ZIP has no viewer");
+}
+
+it("downloads the changed viewer after invalidation, even while the old ZIP is pending", async () => {
+  vi.mocked(deflateAsync).mockImplementation(async (data) =>
+    deflateRawSync(typeof data === "string" ? data : Buffer.from(data)),
+  );
+  const template = vi.fn(async () => "viewer before edit");
+  const { request, watcher } = serving(template);
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => (release = resolve));
+  vi.mocked(zipSkillInWorker).mockImplementationOnce(async (files) => {
+    await held;
+    return zipSkill(files);
+  });
+  const old = request(`/${SKILL_ZIP}`);
+  await turn();
+  template.mockResolvedValue("viewer after edit");
+  watcher.emit("all", "change", "viewer-source");
+  const fresh = request(`/${SKILL_ZIP}`);
+  await turn();
+  expect(viewerInZip(fresh.end.mock.calls[0][0] as Buffer)).toBe("viewer after edit");
+  expect(old.end).not.toHaveBeenCalled();
+  release();
+  await turn();
+  expect(viewerInZip(old.end.mock.calls[0][0] as Buffer)).toBe("viewer before edit");
+  const cached = request(`/${SKILL_ZIP}`);
+  await turn();
+  expect(viewerInZip(cached.end.mock.calls[0][0] as Buffer)).toBe("viewer after edit");
+  expect(template).toHaveBeenCalledTimes(2);
+  expect(zipSkillInWorker).toHaveBeenCalledTimes(2);
 });
