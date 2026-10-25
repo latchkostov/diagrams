@@ -3,7 +3,7 @@ import { Icon } from "../components/Icon";
 import { t } from "../i18n";
 import type { HoverSummary } from "./hoverSummary";
 import { HoverStatus, HoverVerdict, HoverVitals, SectionRows } from "./HoverReadout";
-import { verdictSection } from "./verdictSection";
+import { availableVerdictSection, verdictSection } from "./verdictSection";
 import { SampleSparkline } from "./Sparkline";
 
 /** A selected item's pinned readout: no canvas positioning, announcements or animation. */
@@ -27,10 +27,13 @@ export function DockedLive({
   const [expanded, setExpanded] = useState(true);
   const description = useId();
   const defaultSection = () =>
-    verdictSection(
-      summary.problems[0]?.key,
-      kind,
-      broker ? summary.sections.some((s) => s.key === "readers") : undefined,
+    availableVerdictSection(
+      verdictSection(
+        summary.problems[0]?.key,
+        kind,
+        broker ? summary.sections.some((s) => s.key === "readers") : undefined,
+      ),
+      summary.sections,
     );
   const [section, setSection] = useState(() => ({
     open: defaultSection(),
@@ -43,6 +46,7 @@ export function DockedLive({
   else if (history.samples.length && history.samples.at(-1) !== value)
     setHistory({ ...history, samples: [...history.samples.slice(0, -1), value] });
   const problem = summary.problems[0];
+  const open = availableVerdictSection(section.open, summary.sections);
   return (
     <section
       className={`insp-section inspector-live${problem ? (problem.severe ? " is-bad" : " is-warning") : ""}`}
@@ -85,8 +89,8 @@ export function DockedLive({
             kind={kind}
             pinned
             docked
-            open={section.open}
-            toggle={(key) => setSection({ open: section.open === key ? null : key, chosen: true })}
+            open={open}
+            toggle={(key) => setSection({ open: open === key ? null : key, chosen: true })}
             render={children}
           />
         </>

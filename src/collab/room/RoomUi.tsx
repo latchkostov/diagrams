@@ -1050,17 +1050,19 @@ function RoomAlert({
         <button className="btn" onClick={() => saveRoomCopy(open, canvas)} data-testid="room-alert-file">
           {t("collab.saveCopy")}
         </button>
-        <button
-          className="btn btn-primary"
-          onClick={() => {
-            const chip = document.querySelector<HTMLElement>('[data-testid="room-chip"]');
-            if (chip) roomFocus.dispatch({ type: "room.status", state, retry: true, status: chip });
-            room.retry();
-          }}
-          data-testid="room-alert-retry"
-        >
-          {t("common.retry")}
-        </button>
+        {hasRoomServices() && (
+          <button
+            className="btn btn-primary"
+            onClick={() => {
+              const chip = document.querySelector<HTMLElement>('[data-testid="room-chip"]');
+              if (chip) roomFocus.dispatch({ type: "room.status", state, retry: true, status: chip });
+              room.retry();
+            }}
+            data-testid="room-alert-retry"
+          >
+            {t("common.retry")}
+          </button>
+        )}
       </div>
     </div>
   );
@@ -1142,17 +1144,20 @@ function ConnectingFailure({
           {!unanswered && session.connectivity === "ice-failed" && <> {t("collab.iceFailed")}</>}
         </p>
       )}
-      <button
-        className="btn"
-        onClick={() => {
-          if (region.current)
-            roomFocus.dispatch({ type: "room.status", state: "failed", retry: true, status: region.current });
-          room.retry();
-        }}
-        data-testid="room-connecting-retry"
-      >
-        {t("common.retry")}
-      </button>
+      {!servers && <p data-testid="room-connecting-file-hint">{t("workspaceRoom.noDocumentCopy")}</p>}
+      {servers && (
+        <button
+          className="btn"
+          onClick={() => {
+            if (region.current)
+              roomFocus.dispatch({ type: "room.status", state: "failed", retry: true, status: region.current });
+            room.retry();
+          }}
+          data-testid="room-connecting-retry"
+        >
+          {t("common.retry")}
+        </button>
+      )}
     </div>
   );
 }

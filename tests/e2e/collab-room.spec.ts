@@ -1,3 +1,4 @@
+import { chunk } from "./chunk";
 import { readFile } from "node:fs/promises";
 import AxeBuilder from "@axe-core/playwright";
 import type { BrowserContext, Page } from "@playwright/test";
@@ -555,6 +556,9 @@ test("a peer deleting the right-clicked node closes the menu (remote), the canva
     await expect(guest.getByTestId("context-menu")).toHaveCount(0);
     expect(await interactionLog(guest, focus)).toContain("menu.closed:remote -> focus:canvas@commit");
     await expect(guest.getByTestId("canvas-wrap")).toBeFocused();
+    await expect(guest.getByTestId("canvas-announce")).toHaveText(
+      "The element you were editing was removed by a peer.",
+    );
     // A peer's rename and deletion moved nothing on the guest's side.
     await rename(page, "gateway", "Renamed by the creator");
     await expect(guest.getByTestId("node-gateway")).toContainText("Renamed by the creator");
@@ -744,7 +748,15 @@ test("a build with no trackers says so plainly, to the one who starts a room and
     await expect(alert).toContainText("VITE_COLLAB_TRACKERS");
     await expect(alert).not.toContainText("Could not connect");
     await expect(chip(page)).toContainText("No collaboration servers");
+    await expect(page.getByTestId("room-alert-retry")).toHaveCount(0);
     await page.clock.resume();
+    const download = page.waitForEvent("download");
+    await page.getByTestId("room-alert-file").click();
+    expect((await download).suggestedFilename()).toBe("room-copy.diagram.json");
+    await chip(page).click();
+    await expect(page.getByTestId("room-menu")).toBeVisible();
+    await expect(page.getByTestId("room-retry")).toBeEnabled();
+    await page.keyboard.press("Escape");
     await expectAxeClean(page, "room-alert");
     // A joiner of the same copy: told before joining, and again once the wait is over.
     const guest = await other.newPage();
@@ -759,6 +771,14 @@ test("a build with no trackers says so plainly, to the one who starts a room and
     await expect(said).toHaveAttribute("data-reason", "no-trackers");
     await expect(said).toContainText(NO_SERVERS);
     await expect(said).not.toContainText("Could not connect");
+    await expect(guest.getByTestId("room-connecting-retry")).toHaveCount(0);
+    await expect(guest.getByTestId("room-alert-file")).toHaveCount(0);
+    await expect(guest.getByTestId("room-connecting-file-hint")).toHaveText(
+      "Ask the room's host to send a diagram file. No diagram has arrived on this page.",
+    );
+    await expect(guest.getByTestId("room-connecting-leave")).toBeEnabled();
+    await guest.clock.resume();
+    await expectAxeClean(guest, "room-connecting");
     expectNoErrors(consoleErrors);
   } finally {
     await other.close();
@@ -1182,6 +1202,105 @@ test("an image export leaves out others' outlines, pointers and names", async ({
     expect(svg).not.toContain(alias);
     expect(svg).not.toContain("presence-");
   } finally {
+    await other.close();
+  }
+});
+
+test("P2 pending device wipe keeps the busy control focused and visibly disabled", async ({ page }) => {
+  await page.goto("./?view=canvas&example=kafka-order-pipeline");
+  await expect(page.getByTestId("node-gateway")).toBeVisible();
+  await page.evaluate(() => {
+    const held = Promise.withResolvers<IDBDatabaseInfo[]>();
+    Object.assign(window, { __releaseWipe: () => held.resolve([]) });
+    indexedDB.databases = () => held.promise;
+  });
+  await page.getByTestId("file-button").click();
+  await page.getByTestId("file-privacy").click();
+  await page.getByTestId("privacy-clear-device").click();
+  await expect(page.getByTestId("clear-device-cancel")).toBeFocused();
+  const confirm = page.getByTestId("clear-device-confirm");
+  await confirm.focus();
+  await page.keyboard.press("Enter");
+  await expect(confirm).toHaveAttribute("aria-busy", "true");
+  await expect(confirm).toHaveAttribute("aria-disabled", "true");
+  await expect(confirm).not.toHaveAttribute("disabled");
+  await expect(confirm).toBeFocused();
+  await expect.poll(() => confirm.evaluate((el) => getComputedStyle(el).opacity)).toBe("0.45");
+  expect(await confirm.evaluate((el) => getComputedStyle(el).cursor)).toBe("not-allowed");
+  await page.keyboard.press("Enter");
+  await page.keyboard.press("Escape");
+  await expect(confirm).toBeFocused();
+  await expect(page.getByTestId("clear-device-cancel")).toHaveCount(0);
+  await expect(page.getByTestId("clear-device-dialog-close")).toHaveCount(0);
+  await page.evaluate(() => (window as unknown as { __releaseWipe(): void }).__releaseWipe());
+  await expect(page.getByTestId("clear-device-dialog")).toHaveCount(0);
+});
+
+test("P2 a peer deleting an edge announces why its menu closed", async ({ browser, context, page }) => {
+  const other = await browser.newContext();
+  try {
+    const guest = await twoInARoom(page, context, other);
+    const edgeId = await guest
+      .getByTestId(/^edge-label-/)
+      .first()
+      .getAttribute("data-testid");
+    if (!edgeId) throw new Error("Missing connection");
+    await deleteUnderMenu(
+      page,
+      guest,
+      () => guest.getByTestId(edgeId).click({ button: "right" }),
+      async () => {
+        await page.getByTestId(edgeId).click();
+        await page.keyboard.press("Delete");
+      },
+    );
+    await expect(guest.getByTestId("canvas-announce")).toHaveText(
+      "The element you were editing was removed by a peer.",
+    );
+  } finally {
+    await other.close();
+  }
+});
+
+test("P2 peer deletion keeps rename canceled after the inspector loads", async ({ browser, context, page }) => {
+  const other = await browser.newContext();
+  const held = Promise.withResolvers<undefined>();
+  let requested = false;
+  await other.route(chunk("NodeIdentity", "src/canvas/inspector/NodeIdentity.tsx"), async (route) => {
+    requested = true;
+    await held.promise;
+    await route.continue();
+  });
+  try {
+    const guest = await twoInARoom(page, context, other);
+    await waitForStableViewport(guest);
+    await guest.getByTestId("node-orders").dblclick();
+    await expect.poll(() => requested).toBe(true);
+    await guest.keyboard.type("discarded");
+    await page.bringToFront();
+    await page.getByTestId("node-orders").click();
+    await page.keyboard.press("Delete");
+    await expect(guest.getByTestId("node-orders")).toHaveCount(0);
+    await expect
+      .poll(() => interactionLog(guest))
+      .toContainEqual(expect.stringMatching(/^gone: focus:field:label@ready$/));
+    await guest.bringToFront();
+    await guest.keyboard.press("t");
+    await expect(guest.getByTestId("annotation-editor")).toBeVisible();
+    const loaded = guest.waitForResponse(chunk("NodeIdentity", "src/canvas/inspector/NodeIdentity.tsx"));
+    held.resolve(undefined);
+    const response = await loaded;
+    await response.finished();
+    await expect
+      .poll(() => guest.evaluate(() => window.__lazySurfaces?.states()["inspector.identity"]?.state))
+      .toBe("loaded");
+    await expect(guest.getByTestId("inspector")).toHaveAttribute("data-inspector-mode", "text");
+    await expect(guest.getByTestId("inspector-field-label")).toHaveCount(0);
+    await expect(guest.getByTestId("annotation-editor")).toBeFocused();
+    await guest.keyboard.type("Still editing");
+    await expect(guest.getByTestId("annotation-editor")).toHaveValue("Still editing");
+  } finally {
+    held.resolve(undefined);
     await other.close();
   }
 });

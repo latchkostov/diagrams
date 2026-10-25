@@ -204,6 +204,90 @@ it("nudges a segment reading only the obstacles near it, not every node of the d
   expect(nudgeRoutes(bundledRoutes(bundles), nodes)).toEqual(out);
 });
 
+it("indexes long saved segments with a fixed set of nearby obstacles in linear work", () => {
+  const scene = (count: number) => {
+    const routes = new Map<string, Point[]>();
+    for (let i = 0; i < count; i++)
+      routes.set(
+        `saved-${i}`,
+        Array.from({ length: 24 }, (_, k) => ({
+          x: 2000 + i * 400 + Math.floor(k / 2) * 20,
+          y: k % 4 < 2 ? -1_000_000 : 1_000_000,
+        })),
+      );
+    const fixed = new Set(routes.keys());
+    for (const [id, pts] of bundledRoutes(1)) routes.set(id, pts);
+    return () => {
+      const out = nudgeRoutes(routes, [{ x: 304, y: 100, width: 20, height: 20 }], {
+        fixed,
+        canMove: geometry.fixedNudgeGuard(routes, fixed),
+      });
+      expect(out.get("b0-0")![1].x).not.toBe(out.get("b0-1")![1].x);
+      for (const id of fixed) expect(out.get(id)).toEqual(routes.get(id));
+    };
+  };
+  opGrowth(scene(16), scene(16 * GROWTH_FACTOR), LINEAR_LIMIT);
+});
+
+it("prunes disjoint fixed segments on a shared track during repeated slot checks", () => {
+  const scene = (count: number) => {
+    const routes = new Map(
+      Array.from({ length: count }, (_, i) => [
+        `fixed-${i}`,
+        [
+          { x: 300, y: i * 2_000_000 },
+          { x: 300, y: i * 2_000_000 + 1_000_000 },
+        ],
+      ]),
+    );
+    const fixed = new Set(routes.keys());
+    const y = (count - 1) * 2_000_000 + 1_500_000;
+    routes.set("auto", [
+      { x: 280, y },
+      { x: 280, y: y + 100 },
+    ]);
+    const guard = geometry.fixedNudgeGuard(routes, fixed)!;
+    return () => {
+      for (let i = 0; i < count; i++)
+        expect(
+          guard(routes.get("auto")!, 0, [
+            { x: 300, y },
+            { x: 300, y: y + 100 },
+          ]),
+        ).toBe(true);
+    };
+  };
+  opGrowth(scene(128), scene(128 * GROWTH_FACTOR), LINEAR_LIMIT);
+});
+
+it("retains spatial pruning when long automatic segments are nudged beside saved routes", () => {
+  const scene = (count: number) => {
+    const routes = new Map<string, Point[]>();
+    for (let i = 0; i < count; i++)
+      routes.set(`fixed-${i}`, [
+        { x: 2_000_000 + i * 400, y: -100 },
+        { x: 2_000_100 + i * 400, y: -100 },
+        { x: 2_000_100 + i * 400, y: 1_000_000 },
+        { x: 2_000_200 + i * 400, y: 1_000_000 },
+      ]);
+    const fixed = new Set(routes.keys());
+    for (let i = 0; i < count; i++)
+      for (const offset of [0, 20])
+        routes.set(`auto-${i}-${offset}`, [
+          { x: i * 1000, y: offset },
+          { x: i * 1000 + 300, y: offset },
+          { x: i * 1000 + 300, y: 1_000_000 + offset },
+          { x: i * 1000 + 600, y: 1_000_000 + offset },
+        ]);
+    return () => {
+      const out = geometry.nudgeRoutes(routes, [{ x: -1000, y: -1000, width: 20, height: 20 }], { fixed });
+      expect(out.size).toBe(routes.size);
+      for (const id of fixed) expect(out.get(id)).toEqual(routes.get(id));
+    };
+  };
+  opGrowth(scene(64), scene(64 * GROWTH_FACTOR), LINEAR_LIMIT);
+});
+
 it("routes an edge reading the obstacles near it, not every node of the diagram", () => {
   // Counted, not timed. A drag frame searches again for the few edges it moves; preparing each search padded and
   // tested every node in the diagram. With the router's index, a search reads the nodes near its own area.

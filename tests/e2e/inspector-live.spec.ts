@@ -10,6 +10,7 @@ import {
   openInspectorLiveDetails,
   STORAGE_KEYS,
   expectNoErrors,
+  savedDiagram,
 } from "./fixtures";
 
 for (const panel of ["EdgePanel", "lazyEdgePanel", "NodeIdentity"] as const) {
@@ -189,6 +190,14 @@ test("deferred Advanced properties keep the connection's Live area and fields us
   await page.getByTestId("lazy-load-retry").click();
   await expect(page.getByTestId("inspector-live-waiting")).toBeVisible();
   await expect(page.getByTestId("inspector-field-label")).toHaveValue("Scoring request");
+  await page.getByTestId("inspector-section-edge-advanced").click();
+  const side = page.getByTestId("inspector-field-sourceSide");
+  await expect(side).toBeVisible();
+  await side.selectOption("bottom");
+  await expect(side).toHaveValue("bottom");
+  await expect
+    .poll(async () => (await savedDiagram(page)).edges.find((edge) => edge.id === "call")?.sourceSide)
+    .toBe("bottom");
 });
 
 test("Message connections plot observed deliveries without request semantics", async ({ page }) => {

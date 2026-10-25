@@ -1027,7 +1027,7 @@ function CanvasInner({
     nodes,
     edges,
     labels,
-    readOnly,
+    tabNavigation: !readOnly || live,
     direction,
     nodeVariant,
     controller,

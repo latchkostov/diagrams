@@ -1,39 +1,39 @@
 ## P2 triage: Accessibility and focus (2026-10-24)
 
-Checked against `origin/master` at `7b6e905130a9`. DONE 16 / STALE 0 / OPEN 9 (deduplicated actionable findings).
+Checked against `origin/master` at `7b6e905130a9`. DONE 25 / STALE 0 / OPEN 0 (deduplicated actionable findings).
 
-Source: the local `queued-p2-fu10.archive.md`, preserved byte-for-byte on 2026-10-24. OPEN entries retain queue review labels; closed entries name the fixing PR. Locations are current-master entry points, not the old review line numbers. DONE means code and/or the specifically requested regression exists with merged-PR evidence; OPEN includes unproven historical failures. A later green run alone does not close a failure.
+Source: the local `queued-p2-fu10.archive.md`, preserved byte-for-byte on 2026-10-24. OPEN entries retain queue review labels; closed entries name the fixing PR. Locations are current-master entry points, not the old review line numbers. For the historical closed findings, DONE records merged-PR evidence. Batch 1 DONE records the implementation and targeted regression evidence below; OPEN includes unproven historical failures. A later green run alone does not close a failure.
 
 Each numbered batch below is an independent PR candidate of at most ten items, ordered by user impact. Keep regression assertions and current bundle limits; verify each eventual regression by temporarily reverting its fix. Refactors must preserve output parity; intentional behavior changes need reviewed golden diffs. Owner decisions remain in [the separate decision list](2026-10-24-owner-decisions.md).
 
-## Batch 1: Accessibility and focus (9 OPEN)
+## Batch 1: Accessibility and focus (9 DONE)
 
-1. **AF-01 — OPEN: Announce blocking drill validation errors.** `src/live/SimPanel.tsx:433`. Queue: #173.
-   The invalid-draft message is a plain paragraph, so keyboard and screen-reader users can miss why Save is disabled. Add an associated live error region and test the announcement after an invalid edit.
+1. **AF-01 — DONE: Announce blocking drill validation errors.** `src/live/SimPanel.tsx:433`. Queue: #173.
+   The invalid-draft message is a plain paragraph, so keyboard and screen-reader users can miss why Save is disabled. Implemented a stable polite, atomic status region, descriptions on Save/Run and field associations. Regression: `fault-drills.spec.ts`, P2 blocking validation, in both themes.
 
-2. **AF-02 — OPEN: Explain validation with field names and limits.** `src/live/validate.ts:15`. Queue: #173.
-   Some validation still exposes generic errors. Map each invalid field to its name and accepted range, link the message to the field and cover numeric and target failures.
+2. **AF-02 — DONE: Explain validation with field names and limits.** `src/live/validate.ts:15`. Queue: #173.
+   Some validation still exposes generic errors. Authoring diagnostics now name numeric fields, displayed units and limits, and identify missing targets. Invalid controls reference their own message. Regressions: `src/live/validate.test.ts` and P2 blocking validation in `fault-drills.spec.ts`.
 
-3. **AF-03 — OPEN: Retain focus during a pending device wipe.** `src/interop/ui/dialogs.tsx:82`. Queue: #174 r5.
-   The queue asks for a held-wipe browser regression; existing dialog tests do not establish the pending handoff. Hold storage deletion, assert focus stays on the focusable busy control, and keep its disabled appearance.
+3. **AF-03 — DONE: Retain focus during a pending device wipe.** `src/interop/ui/dialogs.tsx:82`. Queue: #174 r5.
+   The queue asks for a held-wipe browser regression; existing dialog tests do not establish the pending handoff. The existing focusable `aria-disabled` control is retained, now with `aria-busy` and disabled opacity. The P2 pending device wipe browser regression holds IndexedDB enumeration, checks keyboard focus, repeated activation, styling and completion.
 
-4. **AF-04 — OPEN: Buffer paste during a cold rename.** `src/canvas/interaction/domPort.ts:146`. Queue: #255 r3.
-   Naming captures key events while fields load; clipboard insertion needs equivalent ordered ownership. Capture paste text through the controller, respect another focused field and test paste before field arrival.
+4. **AF-04 — DONE: Buffer paste during a cold rename.** `src/canvas/interaction/domPort.ts:146`. Queue: #255 r3.
+   Naming captures key events while fields load; clipboard insertion needs equivalent ordered ownership. The controller-owned type-ahead capture now orders paste with typing, replaces the selected name and respects editable targets. Regressions: `src/canvas/typeAhead.dom.test.ts` and P2 cold rename paste in `bundle-trim.spec.ts`.
 
-5. **AF-05 — OPEN: Release pending rename ownership after remote deletion.** `src/canvas/interaction/controller.ts:163`. Queue: #255 r3.
-   A deleted naming target must not keep swallowing keys. Reconcile capture with document IDs and test deletion before the inspector arrives, followed by an ordinary canvas shortcut.
+5. **AF-05 — DONE: Release pending rename ownership after remote deletion.** `src/canvas/interaction/controller.ts:163`. Queue: #255 r3.
+   A deleted naming target must not keep swallowing keys. The DOM port resolves a deleted naming owner as gone before inspecting the lazy panel. Controller reconciliation releases capture. Unit cases cover nodes, edges and boundaries; the P2 peer deletion browser case proves the next T shortcut opens an annotation before fields arrive.
 
-6. **AF-06 — OPEN: Give Next.js a visible interaction accent.** `src/stencils/catalog.ts:1529`. Queue: #246.
-   The black brand accent can disappear in dark focus and selection states. Use a contrast-safe interaction token while preserving brand artwork; verify both themes.
+6. **AF-06 — DONE: Give Next.js a visible interaction accent.** `src/stencils/catalog.ts:1529`. Queue: #246.
+   The black brand accent can disappear in dark focus and selection states. Next.js uses a neutral #777777 interaction accent; its branded SVG is unchanged. P2 Next.js browser regressions check real light/dark themes, at least 3:1 accent contrast and axe.
 
-7. **AF-18 — OPEN: Announce why peer deletion closes a menu.** `src/collab/room/RoomUi.tsx:46`. Queue: #177.
-   The controller can reconcile targets, but users need a reason for the dismissal. Publish one bounded accessible status message and test deletion of node, edge and boundary targets.
+7. **AF-18 — DONE: Announce why peer deletion closes a menu.** `src/collab/room/RoomUi.tsx:46`. Queue: #177.
+   The controller can reconcile targets, but users need a reason for the dismissal. The existing bounded canvas status announcement already applies to menus holding focus; no new notification or focus policy is needed. Node and boundary assertions are retained/strengthened and an edge regression is added. Removing the existing announcement fails all three target cases.
 
-8. **AF-19 — OPEN: No-tracker recovery must offer a useful action.** `src/collab/room/RoomUi.tsx:1046`. Queue: #190.
-   Retry cannot create missing deployment endpoints. Show file-copy/settings guidance appropriate to the current build and cover the no-document state.
+8. **AF-19 — DONE: No-tracker recovery must offer a useful action.** `src/collab/room/RoomUi.tsx:1046`. Queue: #190.
+   Retry cannot create missing deployment endpoints. No-endpoint builds omit Retry from the alert, connecting failure and chip menu. Hosts keep Save copy and deployment guidance; joiners with no document are told to ask the host for a file and can cancel. The no-trackers browser regression covers both states and axe.
 
-9. **AF-21 — OPEN: Latency Shift+Tab respects pending logical focus.** `src/canvas/selection/useCanvasNavigation.ts:192`. Queue: #178.
-   Repeated forward/backward navigation can race a scheduled focus handoff. Resolve from the pending controller target and assert queued Tab then Shift+Tab before advancing frames.
+9. **AF-21 — DONE: Latency Shift+Tab respects pending logical focus.** `src/canvas/selection/useCanvasNavigation.ts:192`. Queue: #178.
+   Repeated forward/backward navigation can race a scheduled focus handoff. Pending controller targets now include readout cards. Reverse traversal uses that logical card rather than the still-focused DOM node. Unit and fake-clock browser regressions cover queued Tab/Shift+Tab and two reverse steps before advancing frames.
 
 ## Closed or superseded findings
 
@@ -58,4 +58,4 @@ Each numbered batch below is an independent PR candidate of at most ten items, o
 
 ## Scope and verification
 
-This is a documentation triage, not an implementation or a new reproduction run. Before taking a batch, recheck its OPEN entries against the then-current master, run the named regression family, and retain any reduced fixture or trace. Tests/CI batches may take separate runner investigations; stop at the bounded evidence step rather than weakening assertions. No application code or output golden changes belong to this triage.
+The original entry was documentation triage; Batch 1 was implemented and regression-tested on 2026-10-24. Before taking a batch, recheck its OPEN entries against the then-current master, run the named regression family, and retain any reduced fixture or trace. Tests/CI batches may take separate runner investigations; stop at the bounded evidence step rather than weakening assertions. Batch 1 validation and golden changes are recorded in `docs/release-notes/2026-10-24-p2-accessibility-focus.md`.

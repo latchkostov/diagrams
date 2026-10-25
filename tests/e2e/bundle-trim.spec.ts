@@ -36,6 +36,40 @@ async function hold(page: Page, name: string, source: string) {
   };
 }
 
+for (const delayed of [false, true])
+  test(`new boundary keeps immediate naming with ${delayed ? "delayed" : "loaded"} GroupPanel`, async ({ page }) => {
+    await seed(page);
+    const panel = await hold(page, "GroupPanel", "src/canvas/inspector/GroupPanel.tsx");
+    try {
+      await gotoCanvas(page, "blocking-call");
+      await waitForStableViewport(page);
+      if (!delayed) {
+        panel.release();
+        await page.getByTestId("group-label-commerce").click();
+        await expect(page.getByTestId("inspector-field-label")).toHaveValue("Commerce");
+      }
+      await page.getByTestId("node-caller").click();
+      await page.keyboard.press("ControlOrMeta+g");
+      // Type before a cold panel can mount: these keys belong to its pending rename.
+      await page.keyboard.type("tx.audit");
+      if (delayed) {
+        await expect.poll(panel.requested).toBe(true);
+        panel.release();
+      }
+      await expect(page.getByTestId("inspector-field-label")).toBeFocused();
+      await expect(page.getByTestId("inspector-field-label")).toHaveValue("tx.audit");
+      await page.keyboard.press("Enter");
+      await expect
+        .poll(async () =>
+          (await savedDiagram(page)).groups?.filter((group) => group.id !== "commerce").map((group) => group.label),
+        )
+        .toEqual(["tx.audit"]);
+      await expect(page.getByTestId("annotation-editor")).toHaveCount(0);
+    } finally {
+      panel.release();
+    }
+  });
+
 for (const editAfterArrow of [false, true])
   test(`searchable menu navigation${editAfterArrow ? " and later edits" : ""} picks the highlighted row`, async ({
     browser,
@@ -215,3 +249,42 @@ test("a plain menu keeps Home, arrows and Enter in order", async ({ page }) => {
     .toEqual({ "*": "Send", Callback: "Callback" });
   await expect(receives).toBeFocused();
 });
+
+for (const leave of [false, true])
+  test(`P2 cold rename paste ${leave ? "respects another field" : "stays ordered with keys"}`, async ({ page }) => {
+    await seed(page);
+    const panel = await hold(page, "NodeIdentity", "src/canvas/inspector/NodeIdentity.tsx");
+    try {
+      await gotoCanvas(page, "blocking-call");
+      await waitForStableViewport(page);
+      await page.getByTestId("node-caller").dblclick();
+      await expect.poll(panel.requested).toBe(true);
+      await page.keyboard.type("Orders ");
+      await page.getByTestId("canvas-wrap").evaluate((el) => {
+        const data = new DataTransfer();
+        data.setData("text/plain", "API");
+        el.dispatchEvent(new ClipboardEvent("paste", { clipboardData: data, bubbles: true, cancelable: true }));
+      });
+      await page.keyboard.type("!");
+      if (leave) {
+        const search = page.getByTestId("palette-search");
+        await search.focus();
+        await search.fill("cache");
+        panel.release();
+        await expect(page.getByTestId("inspector-field-label")).toBeVisible();
+        await expect(search).toBeFocused();
+        await expect(page.getByTestId("inspector-field-label")).toHaveValue(
+          lazySurfacesFixture().nodes.find((n) => n.id === "caller")?.label ?? "",
+        );
+      } else {
+        panel.release();
+        await expect(page.getByTestId("inspector-field-label")).toBeFocused();
+        await expect(page.getByTestId("inspector-field-label")).toHaveValue("Orders API!");
+        await expect
+          .poll(async () => (await savedDiagram(page)).annotations)
+          .toEqual(lazySurfacesFixture().annotations);
+      }
+    } finally {
+      panel.release();
+    }
+  });

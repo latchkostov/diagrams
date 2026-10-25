@@ -283,13 +283,15 @@ export function createInteractionController<P = unknown>(
       next.keys = null;
       next.typed = typed;
       if (typed.text !== null) {
-        if (options.journal) journal({ event: `rename.typed:${typed.done}`, command: "keep" });
+        if ((import.meta.env.DEV || import.meta.env.VITE_E2E === "1") && options.journal)
+          journal({ event: `rename.typed:${typed.done}`, command: "keep" });
         return;
       }
       // Esc or Enter before anything was typed: the rename is over before its field came.
       decide({ type: "inspector.abandoned" });
     });
-    if (options.journal) journal({ event: "rename.hold", command: describe(move) });
+    if ((import.meta.env.DEV || import.meta.env.VITE_E2E === "1") && options.journal)
+      journal({ event: "rename.hold", command: describe(move) });
   }
 
   /** Ends the pending rename, returning what it held. */
@@ -303,7 +305,8 @@ export function createInteractionController<P = unknown>(
   function dropRename(why: "superseded" | "press" | "focus" | "unmount") {
     if (!rename) return;
     endRename();
-    if (options.journal) journal({ event: `rename.dropped:${why}`, command: "keep" });
+    if ((import.meta.env.DEV || import.meta.env.VITE_E2E === "1") && options.journal)
+      journal({ event: `rename.dropped:${why}`, command: "keep" });
   }
 
   /** The person left a pending rename: its held keys and its field request end together (a later commit can't revive it). */
@@ -400,7 +403,7 @@ export function createInteractionController<P = unknown>(
         // A pending rename hands over what was typed meanwhile, as if it had been typed in the field.
         const typed = rename?.move === move ? endRename() : null;
         if (typed?.text != null) port.type?.(found.el, typed.text);
-        if (typed && options.journal)
+        if ((import.meta.env.DEV || import.meta.env.VITE_E2E === "1") && typed && options.journal)
           journal({
             event: "rename.handed",
             command: typed.text === null ? "keep" : `type${typed.done ? `:${typed.done}` : ""}`,
@@ -470,7 +473,7 @@ export function createInteractionController<P = unknown>(
     gestureHow = null;
     gestureState = t.state;
     toMode({ type: "gesture.ended" });
-    if (options.journal)
+    if ((import.meta.env.DEV || import.meta.env.VITE_E2E === "1") && options.journal)
       journal({ event: `gesture.end:${t.ended.kind}:${reason}`, command: t.ended.commit ? "commit" : "cancel" });
     // Publish before callbacks: capture loss and a commit's re-entrant events see this gesture as finished.
     changed();
@@ -526,7 +529,8 @@ export function createInteractionController<P = unknown>(
       gestureState = t.state;
       gestureHow = { ...how, owner: how.capture?.() };
       toMode({ type: "gesture.started" });
-      if (options.journal) journal({ event: `gesture.start:${kind}`, command: "keep" });
+      if ((import.meta.env.DEV || import.meta.env.VITE_E2E === "1") && options.journal)
+        journal({ event: `gesture.start:${kind}`, command: "keep" });
       changed();
       return t.started!.seq;
     },
@@ -759,9 +763,9 @@ export function createInteractionController<P = unknown>(
       return running;
     },
     /** Where the pending move is going, while it waits for its frame (keyboard navigation goes on from there). */
-    pendingTarget(): { kind: "node" | "edge"; id: string } | undefined {
+    pendingTarget() {
       const t = pendingMove(focus)?.target;
-      return t && (t.kind === "node" || t.kind === "edge") ? { kind: t.kind, id: t.id } : undefined;
+      return t && (t.kind === "node" || t.kind === "edge" || t.kind === "readout") ? t : undefined;
     },
     /** Mounted: moves run. Returns the unmount (StrictMode mounts twice, so this pairs up rather than ends). */
     connect() {

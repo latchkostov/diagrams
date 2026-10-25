@@ -2894,6 +2894,13 @@ const en = {
   "collab.yourName": "Your name in the room",
   "collab.services": "Services: {list}",
   "collab.noServers": "This copy of {app} has no collaboration servers set up.",
+  "workspaceRoom.noDocumentCopy": "Ask the room's host to send a diagram file. No diagram has arrived on this page.",
+  "workspaceValidation.range": "{field}: enter a number from 0 to {max, number}.",
+  "workspaceValidation.integerRange": "{field}: enter a whole number from 0 to {max, number}.",
+  "workspaceValidation.target": "{field}: choose an existing target in this diagram.",
+  "workspaceValidation.number": "{field}: enter a finite number.",
+  "workspaceValidation.title": "Title: enter a name for this simulation.",
+  "workspaceValidation.id": "Id: enter an id for this simulation.",
   "collab.noServersHint":
     "If you run it, name them with VITE_COLLAB_TRACKERS when you build it (see the self-hosting guide).",
   "collab.chipNoServers": "No collaboration servers",

@@ -1,3 +1,6 @@
+import { SimErrors } from "./validationContext";
+import { editableProperties } from "./editableProperties";
+import { ValidationInput, ValidationSelect } from "./validationFields";
 import { useInteraction } from "../canvas/interaction";
 import { DRILL_PRESETS, type DrillPreset } from "../model/faults";
 import { faultTimelineProblem } from "../model/faultRuntime";
@@ -21,7 +24,7 @@ import type {
 import type { LiveState } from "./controller";
 import { useLive } from "./context";
 import { blankSimulation, defaultShape, knownMessageTypes, suggestedMessageType, uniqueSimId } from "./storm";
-import { simulationWarnings, type SimWarning } from "./validate";
+import { simulationWarnings, simulationFieldErrors, type SimWarning } from "./validate";
 import { Sparkline } from "./Sparkline";
 import { LiveIcon } from "./icons";
 import { formatSeconds } from "./format";
@@ -125,7 +128,6 @@ const WHENS: { value: NonNullable<Expectation["when"]>; label: string }[] = [
   { value: "eventually", label: "eventually" },
   { value: "at", label: "at time" },
 ];
-const PROP_KEYS = ["latencyMs", "concurrency", "failureRate", "partitions", "ratePerSec", "maxDeliveryCount"] as const;
 
 const sec = (ms: number | undefined) => Math.round(((ms ?? 0) / 1000) * 100) / 100;
 const ms = (s: number) => Math.max(0, Math.round((Number.isFinite(s) ? s : 0) * 1000));
@@ -147,9 +149,11 @@ export function SimPanel({ initial, state, onClose, onRun, onSave, onDelete, onO
   const dirty = !!sim && (!saved || JSON.stringify(saved) !== JSON.stringify(sim));
   const warnings = useMemo(() => (sim ? simulationWarnings(sim, diagram) : []), [sim, diagram]);
   const types = useMemo(() => knownMessageTypes(diagram), [diagram]);
+  const fieldErrors = useMemo(() => (sim ? simulationFieldErrors(sim, diagram) : []), [sim, diagram]);
+  const invalidFields = useMemo(() => new Set(fieldErrors.map((error) => error.field)), [fieldErrors]);
   const invalid = useMemo(
-    () => (sim ? (simulationProblem(sim) ?? faultTimelineProblem(diagram, sim)) : undefined),
-    [sim, diagram],
+    () => (sim ? (fieldErrors[0]?.text ?? simulationProblem(sim) ?? faultTimelineProblem(diagram, sim)) : undefined),
+    [sim, diagram, fieldErrors],
   );
 
   usePickNode(picker, () => setPicker(null));
@@ -178,322 +182,341 @@ export function SimPanel({ initial, state, onClose, onRun, onSave, onDelete, onO
   const running = state.simulation?.id === sim?.id;
 
   return (
-    <aside className="lv-panel" data-testid="sim-panel" data-editor-overlay aria-label="Simulations">
-      <header className="lv-panel-head">
-        {sim ? (
-          <button
-            className="lv-btn"
-            onClick={() => setSim(null)}
-            title="All simulations"
-            aria-label="All simulations"
-            data-testid="sim-panel-back"
-          >
-            <LiveIcon name="chevron" size={13} className="lv-rot90" />
+    <SimErrors value={invalidFields}>
+      <aside className="lv-panel" data-testid="sim-panel" data-editor-overlay aria-label="Simulations">
+        <header className="lv-panel-head">
+          {sim ? (
+            <button
+              className="lv-btn"
+              onClick={() => setSim(null)}
+              title="All simulations"
+              aria-label="All simulations"
+              data-testid="sim-panel-back"
+            >
+              <LiveIcon name="chevron" size={13} className="lv-rot90" />
+            </button>
+          ) : (
+            <LiveIcon name="storm" size={16} />
+          )}
+          <strong tabIndex={-1} data-testid="sim-panel-heading">
+            {sim ? (saved ? "Edit simulation" : "New simulation") : "Simulations"}
+          </strong>
+          {dirty && (
+            <span className="lv-dirty" data-testid="sim-panel-dirty">
+              unsaved
+            </span>
+          )}
+          <button className="lv-btn lv-panel-close" onClick={onClose} aria-label="Close" data-testid="sim-panel-close">
+            <LiveIcon name="close" size={13} />
           </button>
-        ) : (
-          <LiveIcon name="storm" size={16} />
-        )}
-        <strong tabIndex={-1} data-testid="sim-panel-heading">
-          {sim ? (saved ? "Edit simulation" : "New simulation") : "Simulations"}
-        </strong>
-        {dirty && (
-          <span className="lv-dirty" data-testid="sim-panel-dirty">
-            unsaved
-          </span>
-        )}
-        <button className="lv-btn lv-panel-close" onClick={onClose} aria-label="Close" data-testid="sim-panel-close">
-          <LiveIcon name="close" size={13} />
-        </button>
-      </header>
+        </header>
 
-      {picker && (
-        <div className="lv-picking" data-testid="sim-panel-picking">
-          <LiveIcon name="target" size={14} /> Click a node on the canvas for <b>{picker.label}</b>
-          <button className="link-btn" onClick={() => setPicker(null)}>
-            Cancel
-          </button>
-        </div>
-      )}
+        {picker && (
+          <div className="lv-picking" data-testid="sim-panel-picking">
+            <LiveIcon name="target" size={14} /> Click a node on the canvas for <b>{picker.label}</b>
+            <button className="link-btn" onClick={() => setPicker(null)}>
+              Cancel
+            </button>
+          </div>
+        )}
 
-      {!sim ? (
-        <SimList
-          onEdit={(s) => {
-            setSim(structuredClone(s));
-            onOpen?.(s);
-          }}
-          onNew={() => setSim(blankSimulation(diagram))}
-          onRun={onRun}
-          running={state.simulation?.id ?? null}
-        />
-      ) : (
-        <div className="lv-panel-body">
-          <input
-            className="lv-title-input"
-            value={sim.title}
-            placeholder="Name this simulation"
-            aria-label="Title"
-            onChange={(e) => edit((d) => void (d.title = e.target.value))}
-            data-testid="sim-panel-title"
-            name="sim-title"
+        {!sim ? (
+          <SimList
+            onEdit={(s) => {
+              setSim(structuredClone(s));
+              onOpen?.(s);
+            }}
+            onNew={() => setSim(blankSimulation(diagram))}
+            onRun={onRun}
+            running={state.simulation?.id ?? null}
           />
+        ) : (
+          <div className="lv-panel-body">
+            <ValidationInput
+              className="lv-title-input"
+              value={sim.title}
+              placeholder="Name this simulation"
+              aria-label="Title"
+              onChange={(e) => edit((d) => void (d.title = e.target.value))}
+              data-testid="sim-panel-title"
+              name="sim-title"
+            />
 
-          <Section
-            title="Traffic"
-            count={sim.traffic.length}
-            warn={warnings.some((w) => w.where.startsWith("traffic"))}
-          >
-            {sim.traffic.map((p, i) => (
-              <TrafficCard
-                key={i}
-                index={i}
-                profile={p}
-                diagram={diagram}
-                types={types}
-                warnings={warnings.filter((w) => w.where === `traffic:${p.id}`)}
-                onChange={(next) => edit((d) => void (d.traffic[i] = next))}
-                onRemove={() => edit((d) => void d.traffic.splice(i, 1))}
-                onPick={(apply) => setPicker({ label: "the traffic start", apply })}
-              />
-            ))}
-            <button
-              className="lv-add"
-              onClick={() =>
-                edit((d) => {
-                  const node = diagram.nodes[0]?.id ?? "";
-                  d.traffic.push({
-                    id: uniqueSimId(
-                      "traffic",
-                      d.traffic.map((t) => t.id),
-                    ),
-                    node,
-                    messageType: node ? suggestedMessageType(diagram, node) : undefined,
-                    shape: defaultShape("burst"),
-                  });
-                })
-              }
-              data-testid="sim-panel-add-traffic"
+            <Section
+              title="Traffic"
+              count={sim.traffic.length}
+              warn={warnings.some((w) => w.where.startsWith("traffic"))}
             >
-              <LiveIcon name="plus" size={13} /> Add traffic
-            </button>
-          </Section>
-
-          <Disclosure
-            id="timeline"
-            title="Timeline"
-            hint="Notes, outages and changes over time"
-            count={sim.timeline?.length ?? 0}
-            warn={warnings.some((w) => w.where.startsWith("timeline"))}
-          >
-            {(sim.timeline ?? []).map((step, i) => (
-              <StepRow
-                key={i}
-                index={i}
-                step={step}
-                diagram={diagram}
-                types={types}
-                warnings={warnings.filter((w) => w.where === `timeline:${i}`)}
-                onChange={(next) => edit((d) => void (d.timeline![i] = next))}
-                onRemove={() => edit((d) => void d.timeline!.splice(i, 1))}
-                onPick={(label, apply) => setPicker({ label, apply })}
-              />
-            ))}
-            <select
-              className="lv-add"
-              value=""
-              aria-label={translate("fault.addStep")}
-              onChange={(event) => {
-                const preset = event.target.value;
-                if (!preset) return;
-                if (preset !== "note" && !faultTargets(diagram, drillKind(preset as DrillPreset)).length) return;
-                edit((d) => {
-                  const last = d.timeline?.at(-1)?.atMs ?? -2000;
-                  const action: TimelineAction =
-                    preset === "note"
-                      ? { do: "note", text: "", focus: [] }
-                      : {
-                          do: "fault",
-                          fault: drillFault(preset as DrillPreset, diagram),
-                          drill: preset as DrillPreset,
-                        };
-                  (d.timeline ??= []).push({ atMs: last + 2000, action });
-                });
-              }}
-              data-testid="sim-panel-add-step"
-            >
-              <option value="">{translate("fault.addStep")}</option>
-              <option value="note">{translate("fault.note")}</option>
-              <optgroup label={translate("fault.presets")}>
-                {DRILL_PRESETS.map((preset) => (
-                  <option
-                    key={preset}
-                    value={preset}
-                    disabled={!faultTargets(diagram, drillKind(preset)).length}
-                    data-testid={`sim-panel-preset-${preset}`}
-                  >
-                    {faultTargets(diagram, drillKind(preset)).length
-                      ? drillName(preset)
-                      : translate("fault.unavailablePreset", {
-                          name: drillName(preset),
-                          reason:
-                            preset === "zone-outage"
-                              ? translate("fault.needsBoundary")
-                              : preset === "region-connectivity"
-                                ? translate("fault.needsLink")
-                                : translate("fault.needsNode"),
-                        })}
-                  </option>
-                ))}
-              </optgroup>
-            </select>
-          </Disclosure>
-
-          <Disclosure
-            id="expectations"
-            title="Expectations"
-            hint="What must hold true"
-            count={sim.expectations?.length ?? 0}
-            warn={warnings.some((w) => w.where.startsWith("expectation"))}
-          >
-            {(sim.expectations ?? []).map((e, i) => (
-              <ExpectationRow
-                key={i}
-                index={i}
-                exp={e}
-                diagram={diagram}
-                live={state.simulation?.id === sim.id ? state.run?.expectations.find((x) => x.id === e.id) : undefined}
-                warnings={warnings.filter((w) => w.where === `expectation:${e.id}`)}
-                onChange={(next) => edit((d) => void (d.expectations![i] = next))}
-                onRemove={() => edit((d) => void d.expectations!.splice(i, 1))}
-              />
-            ))}
-            <button
-              className="lv-add"
-              onClick={() =>
-                edit((d) => {
-                  const list = (d.expectations ??= []);
-                  const sink = lastNode(diagram);
-                  list.push({
-                    id: uniqueSimId(
-                      "check",
-                      list.map((x) => x.id),
-                    ),
-                    label: "Everything arrives",
-                    metric: sink ? { node: sink, field: "processed" } : { system: "inSystem" },
-                    op: sink ? ">=" : "==",
-                    value: sink ? 1 : 0,
-                    when: "end",
-                  });
-                })
-              }
-              data-testid="sim-panel-add-expectation"
-            >
-              <LiveIcon name="plus" size={13} /> Add expectation
-            </button>
-          </Disclosure>
-
-          <Disclosure id="details" title="Details" hint="Description, seed and length">
-            <Field label="Description">
-              <textarea
-                value={sim.description ?? ""}
-                rows={2}
-                placeholder="What question does this answer?"
-                onChange={(e) => edit((d) => void (d.description = e.target.value || undefined))}
-                data-testid="sim-panel-description"
-                name="sim-description"
-              />
-            </Field>
-            <div className="lv-row2">
-              <Field label="Seed">
-                <input
-                  type="number"
-                  value={sim.seed ?? ""}
-                  onChange={(e) =>
-                    edit((d) => void (d.seed = e.target.value === "" ? undefined : Math.floor(num(e.target.value))))
-                  }
-                  data-testid="sim-panel-seed"
-                  name="sim-seed"
+              {sim.traffic.map((p, i) => (
+                <TrafficCard
+                  key={i}
+                  index={i}
+                  profile={p}
+                  diagram={diagram}
+                  types={types}
+                  warnings={warnings.filter((w) => w.where === `traffic:${p.id}`)}
+                  onChange={(next) => edit((d) => void (d.traffic[i] = next))}
+                  onRemove={() => edit((d) => void d.traffic.splice(i, 1))}
+                  onPick={(apply) => setPicker({ label: "the traffic start", apply })}
                 />
-              </Field>
-              <Field label="Stop after (s)" hint="Empty: when it drains">
-                <input
-                  type="number"
-                  min={0}
-                  step={1}
-                  value={sim.durationMs === undefined ? "" : sec(sim.durationMs)}
-                  onChange={(e) =>
-                    edit((d) => void (d.durationMs = e.target.value === "" ? undefined : ms(num(e.target.value))))
-                  }
-                  data-testid="sim-panel-duration"
-                  name="sim-duration"
-                />
-              </Field>
-            </div>
-            {!saved && (
-              <Field label="Id">
-                <input
-                  className="mono"
-                  value={sim.id}
-                  onChange={(e) => edit((d) => void (d.id = e.target.value.replace(/[^a-z0-9-]/gi, "-").toLowerCase()))}
-                  data-testid="sim-panel-id"
-                  name="sim-id"
-                />
-              </Field>
-            )}
-          </Disclosure>
-
-          {invalid && (
-            <p className="lv-warnings" data-testid="sim-panel-invalid">
-              {invalid}
-            </p>
-          )}
-          {warnings.length > 0 && (
-            <ul className="lv-warnings" data-testid="sim-panel-warnings">
-              {warnings.map((w, i) => (
-                <li key={i}>
-                  <LiveIcon name="warn" size={13} /> {w.text}
-                </li>
               ))}
-            </ul>
-          )}
-        </div>
-      )}
+              <button
+                className="lv-add"
+                onClick={() =>
+                  edit((d) => {
+                    const node = diagram.nodes[0]?.id ?? "";
+                    d.traffic.push({
+                      id: uniqueSimId(
+                        "traffic",
+                        d.traffic.map((t) => t.id),
+                      ),
+                      node,
+                      messageType: node ? suggestedMessageType(diagram, node) : undefined,
+                      shape: defaultShape("burst"),
+                    });
+                  })
+                }
+                data-testid="sim-panel-add-traffic"
+              >
+                <LiveIcon name="plus" size={13} /> Add traffic
+              </button>
+            </Section>
 
-      {sim && (
-        <footer className="lv-panel-foot">
-          {saved && (
-            <button
-              className="btn lv-danger"
-              onClick={() => {
-                onDelete(sim.id);
-                setSim(null);
-              }}
-              data-testid="sim-panel-delete"
-              title="Delete this simulation (undoable)"
+            <Disclosure
+              id="timeline"
+              title="Timeline"
+              hint="Notes, outages and changes over time"
+              count={sim.timeline?.length ?? 0}
+              warn={warnings.some((w) => w.where.startsWith("timeline"))}
             >
-              <LiveIcon name="trash" size={13} />
+              {(sim.timeline ?? []).map((step, i) => (
+                <StepRow
+                  key={i}
+                  index={i}
+                  step={step}
+                  diagram={diagram}
+                  types={types}
+                  warnings={warnings.filter((w) => w.where === `timeline:${i}`)}
+                  onChange={(next) => edit((d) => void (d.timeline![i] = next))}
+                  onRemove={() => edit((d) => void d.timeline!.splice(i, 1))}
+                  onPick={(label, apply) => setPicker({ label, apply })}
+                />
+              ))}
+              <ValidationSelect
+                className="lv-add"
+                value=""
+                aria-label={translate("fault.addStep")}
+                onChange={(event) => {
+                  const preset = event.target.value;
+                  if (!preset) return;
+                  if (preset !== "note" && !faultTargets(diagram, drillKind(preset as DrillPreset)).length) return;
+                  edit((d) => {
+                    const last = d.timeline?.at(-1)?.atMs ?? -2000;
+                    const action: TimelineAction =
+                      preset === "note"
+                        ? { do: "note", text: "", focus: [] }
+                        : {
+                            do: "fault",
+                            fault: drillFault(preset as DrillPreset, diagram),
+                            drill: preset as DrillPreset,
+                          };
+                    (d.timeline ??= []).push({ atMs: last + 2000, action });
+                  });
+                }}
+                data-testid="sim-panel-add-step"
+              >
+                <option value="">{translate("fault.addStep")}</option>
+                <option value="note">{translate("fault.note")}</option>
+                <optgroup label={translate("fault.presets")}>
+                  {DRILL_PRESETS.map((preset) => (
+                    <option
+                      key={preset}
+                      value={preset}
+                      disabled={!faultTargets(diagram, drillKind(preset)).length}
+                      data-testid={`sim-panel-preset-${preset}`}
+                    >
+                      {faultTargets(diagram, drillKind(preset)).length
+                        ? drillName(preset)
+                        : translate("fault.unavailablePreset", {
+                            name: drillName(preset),
+                            reason:
+                              preset === "zone-outage"
+                                ? translate("fault.needsBoundary")
+                                : preset === "region-connectivity"
+                                  ? translate("fault.needsLink")
+                                  : translate("fault.needsNode"),
+                          })}
+                    </option>
+                  ))}
+                </optgroup>
+              </ValidationSelect>
+            </Disclosure>
+
+            <Disclosure
+              id="expectations"
+              title="Expectations"
+              hint="What must hold true"
+              count={sim.expectations?.length ?? 0}
+              warn={warnings.some((w) => w.where.startsWith("expectation"))}
+            >
+              {(sim.expectations ?? []).map((e, i) => (
+                <ExpectationRow
+                  key={i}
+                  index={i}
+                  exp={e}
+                  diagram={diagram}
+                  live={
+                    state.simulation?.id === sim.id ? state.run?.expectations.find((x) => x.id === e.id) : undefined
+                  }
+                  warnings={warnings.filter((w) => w.where === `expectation:${e.id}`)}
+                  onChange={(next) => edit((d) => void (d.expectations![i] = next))}
+                  onRemove={() => edit((d) => void d.expectations!.splice(i, 1))}
+                />
+              ))}
+              <button
+                className="lv-add"
+                onClick={() =>
+                  edit((d) => {
+                    const list = (d.expectations ??= []);
+                    const sink = lastNode(diagram);
+                    list.push({
+                      id: uniqueSimId(
+                        "check",
+                        list.map((x) => x.id),
+                      ),
+                      label: "Everything arrives",
+                      metric: sink ? { node: sink, field: "processed" } : { system: "inSystem" },
+                      op: sink ? ">=" : "==",
+                      value: sink ? 1 : 0,
+                      when: "end",
+                    });
+                  })
+                }
+                data-testid="sim-panel-add-expectation"
+              >
+                <LiveIcon name="plus" size={13} /> Add expectation
+              </button>
+            </Disclosure>
+
+            <Disclosure id="details" title="Details" hint="Description, seed and length">
+              <Field label="Description">
+                <textarea
+                  value={sim.description ?? ""}
+                  rows={2}
+                  placeholder="What question does this answer?"
+                  onChange={(e) => edit((d) => void (d.description = e.target.value || undefined))}
+                  data-testid="sim-panel-description"
+                  name="sim-description"
+                />
+              </Field>
+              <div className="lv-row2">
+                <Field label="Seed">
+                  <ValidationInput
+                    type="number"
+                    value={sim.seed ?? ""}
+                    onChange={(e) =>
+                      edit((d) => void (d.seed = e.target.value === "" ? undefined : Math.floor(num(e.target.value))))
+                    }
+                    data-testid="sim-panel-seed"
+                    name="sim-seed"
+                  />
+                </Field>
+                <Field label="Stop after (s)" hint="Empty: when it drains">
+                  <ValidationInput
+                    type="number"
+                    min={0}
+                    step={1}
+                    value={sim.durationMs === undefined ? "" : sec(sim.durationMs)}
+                    onChange={(e) =>
+                      edit((d) => void (d.durationMs = e.target.value === "" ? undefined : ms(num(e.target.value))))
+                    }
+                    data-testid="sim-panel-duration"
+                    name="sim-duration"
+                  />
+                </Field>
+              </div>
+              {!saved && (
+                <Field label="Id">
+                  <ValidationInput
+                    className="mono"
+                    value={sim.id}
+                    onChange={(e) =>
+                      edit((d) => void (d.id = e.target.value.replace(/[^a-z0-9-]/gi, "-").toLowerCase()))
+                    }
+                    data-testid="sim-panel-id"
+                    name="sim-id"
+                  />
+                </Field>
+              )}
+            </Disclosure>
+
+            <div
+              className={invalid ? "lv-warnings" : undefined}
+              id="sim-panel-invalid"
+              role="status"
+              aria-live="polite"
+              aria-atomic="true"
+              data-testid="sim-panel-invalid"
+            >
+              {fieldErrors.length
+                ? fieldErrors.map((error) => (
+                    <p key={error.field} id={`${error.field}-error`}>
+                      {error.text}
+                    </p>
+                  ))
+                : invalid}
+            </div>
+            {warnings.length > 0 && (
+              <ul className="lv-warnings" data-testid="sim-panel-warnings">
+                {warnings.map((w, i) => (
+                  <li key={i}>
+                    <LiveIcon name="warn" size={13} /> {w.text}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+
+        {sim && (
+          <footer className="lv-panel-foot">
+            {saved && (
+              <button
+                className="btn lv-danger"
+                onClick={() => {
+                  onDelete(sim.id);
+                  setSim(null);
+                }}
+                data-testid="sim-panel-delete"
+                title="Delete this simulation (undoable)"
+              >
+                <LiveIcon name="trash" size={13} />
+              </button>
+            )}
+            <span className="lv-grow" />
+            <button
+              className="btn"
+              onClick={() => onRun(sim)}
+              disabled={!!invalid}
+              aria-describedby={invalid ? "sim-panel-invalid" : undefined}
+              data-testid="sim-panel-run"
+              title={running ? "Restart this simulation" : "Play this simulation now"}
+            >
+              <LiveIcon name="play" size={11} /> {running ? "Run again" : "Run"}
             </button>
-          )}
-          <span className="lv-grow" />
-          <button
-            className="btn"
-            onClick={() => onRun(sim)}
-            disabled={!!invalid}
-            data-testid="sim-panel-run"
-            title={running ? "Restart this simulation" : "Play this simulation now"}
-          >
-            <LiveIcon name="play" size={11} /> {running ? "Run again" : "Run"}
-          </button>
-          <button
-            className="btn btn-primary"
-            onClick={() => onSave(sim)}
-            disabled={!dirty || !sim.title.trim() || !sim.id || !!invalid}
-            data-testid="sim-panel-save"
-          >
-            <LiveIcon name="save" size={13} /> Save
-          </button>
-        </footer>
-      )}
-    </aside>
+            <button
+              className="btn btn-primary"
+              onClick={() => onSave(sim)}
+              disabled={!dirty || !sim.title.trim() || !sim.id || !!invalid}
+              aria-describedby={invalid ? "sim-panel-invalid" : undefined}
+              data-testid="sim-panel-save"
+            >
+              <LiveIcon name="save" size={13} /> Save
+            </button>
+          </footer>
+        )}
+      </aside>
+    </SimErrors>
   );
 }
 
@@ -671,7 +694,7 @@ function NodeSelect({
   const missing = !!value && !diagram.nodes.some((n) => n.id === value);
   return (
     <div className="lv-node-select">
-      <select
+      <ValidationSelect
         value={value}
         aria-label={label}
         onChange={(e) => onChange(e.target.value)}
@@ -686,7 +709,7 @@ function NodeSelect({
             {n.label || n.id}
           </option>
         ))}
-      </select>
+      </ValidationSelect>
       {onPick && (
         <button
           type="button"
@@ -735,7 +758,7 @@ function NumberField({
 }) {
   return (
     <Field label={unit ? `${label} (${unit})` : label}>
-      <input
+      <ValidationInput
         type="number"
         value={value}
         step={step}
@@ -767,7 +790,7 @@ function TrafficCard({ index, profile: p, diagram, types, warnings, onChange, on
   return (
     <div className="lv-card" data-testid={t}>
       <div className="lv-card-head">
-        <input
+        <ValidationInput
           className="lv-card-title"
           value={p.label ?? ""}
           placeholder={`Traffic ${index + 1}`}
@@ -790,7 +813,7 @@ function TrafficCard({ index, profile: p, diagram, types, warnings, onChange, on
           />
         </Field>
         <Field label="Message type">
-          <input
+          <ValidationInput
             list={`${t}-types`}
             className="mono"
             value={p.messageType ?? ""}
@@ -951,7 +974,7 @@ function TrafficCard({ index, profile: p, diagram, types, warnings, onChange, on
                 {s.stages.map((st, i) => (
                   <div className="lv-stage" key={i}>
                     <span className="mono">{i + 1}</span>
-                    <input
+                    <ValidationInput
                       type="number"
                       value={sec(st.durationMs)}
                       step={0.5}
@@ -966,7 +989,7 @@ function TrafficCard({ index, profile: p, diagram, types, warnings, onChange, on
                       name={`${t}-stage-${i}-duration`}
                     />
                     <small>s to</small>
-                    <input
+                    <ValidationInput
                       type="number"
                       value={st.targetRate}
                       min={0}
@@ -1057,7 +1080,7 @@ function StepRow({ index, step, diagram, types, warnings, onChange, onRemove, on
   return (
     <div className={`lv-card lv-step is-${a.do}`} data-testid={t}>
       <div className="lv-step-head">
-        <input
+        <ValidationInput
           type="number"
           className="lv-step-time"
           step={0.5}
@@ -1069,7 +1092,7 @@ function StepRow({ index, step, diagram, types, warnings, onChange, onRemove, on
           name={`${t}-time`}
         />
         <small>s</small>
-        <select
+        <ValidationSelect
           value={a.do}
           aria-label="Action"
           onChange={(e) => switchTo(e.target.value as TimelineAction["do"])}
@@ -1082,7 +1105,7 @@ function StepRow({ index, step, diagram, types, warnings, onChange, onRemove, on
               {x.label}
             </option>
           ))}
-        </select>
+        </ValidationSelect>
         <span className="lv-grow" />
         <button className="lv-btn" onClick={onRemove} aria-label="Remove step" data-testid={`${t}-remove`}>
           <LiveIcon name="trash" size={13} />
@@ -1122,7 +1145,7 @@ function StepRow({ index, step, diagram, types, warnings, onChange, onRemove, on
                 </button>
               </span>
             ))}
-            <select
+            <ValidationSelect
               value=""
               onChange={(e) =>
                 e.target.value && setAction({ ...a, focus: [...new Set([...(a.focus ?? []), e.target.value])] })
@@ -1137,7 +1160,7 @@ function StepRow({ index, step, diagram, types, warnings, onChange, onRemove, on
                   {n.label || n.id}
                 </option>
               ))}
-            </select>
+            </ValidationSelect>
             <button
               className="lv-btn"
               onClick={() =>
@@ -1171,7 +1194,7 @@ function StepRow({ index, step, diagram, types, warnings, onChange, onRemove, on
             onPick={() => onPick("this step", (node) => setAction({ ...a, node }))}
           />
           {a.do === "status" && (
-            <select
+            <ValidationSelect
               value={a.status}
               aria-label="Status"
               onChange={(e) => setAction({ ...a, status: e.target.value as "up" | "paused" | "down" })}
@@ -1181,11 +1204,11 @@ function StepRow({ index, step, diagram, types, warnings, onChange, onRemove, on
               <option value="down">down</option>
               <option value="paused">paused</option>
               <option value="up">up</option>
-            </select>
+            </ValidationSelect>
           )}
           {a.do === "props" && (
             <div className="lv-inline">
-              <select
+              <ValidationSelect
                 value={propKey}
                 aria-label="Property"
                 onChange={(e) => {
@@ -1196,13 +1219,13 @@ function StepRow({ index, step, diagram, types, warnings, onChange, onRemove, on
                 data-testid={`${t}-prop`}
                 name={`${t}-prop`}
               >
-                {PROP_KEYS.map((k) => (
-                  <option key={k} value={k}>
-                    {k}
+                {editableProperties.map(({ key }) => (
+                  <option key={key} value={key}>
+                    {key}
                   </option>
                 ))}
-              </select>
-              <input
+              </ValidationSelect>
+              <ValidationInput
                 type="number"
                 step="any"
                 value={Number(a.props[propKey] ?? 0)}
@@ -1215,7 +1238,7 @@ function StepRow({ index, step, diagram, types, warnings, onChange, onRemove, on
           )}
           {a.do === "inject" && (
             <div className="lv-inline">
-              <input
+              <ValidationInput
                 type="number"
                 min={1}
                 value={a.count}
@@ -1224,7 +1247,7 @@ function StepRow({ index, step, diagram, types, warnings, onChange, onRemove, on
                 data-testid={`${t}-count`}
                 name={`${t}-count`}
               />
-              <input
+              <ValidationInput
                 list={`${t}-types`}
                 className="mono"
                 value={a.messageType ?? ""}
@@ -1266,7 +1289,7 @@ function ExpectationRow({ index, exp, diagram, live, warnings, onChange, onRemov
   return (
     <div className="lv-card lv-exp-row" data-testid={t}>
       <div className="lv-card-head">
-        <input
+        <ValidationInput
           className="lv-card-title"
           value={exp.label}
           placeholder="What must hold?"
@@ -1284,7 +1307,7 @@ function ExpectationRow({ index, exp, diagram, live, warnings, onChange, onRemov
         </button>
       </div>
       <div className="lv-inline">
-        <select
+        <ValidationSelect
           value={isSystem ? "__system" : m.node}
           onChange={(e) =>
             onChange({
@@ -1308,11 +1331,11 @@ function ExpectationRow({ index, exp, diagram, live, warnings, onChange, onRemov
               {n.label || n.id}
             </option>
           ))}
-        </select>
+        </ValidationSelect>
         {isSystem ? (
           <span className="lv-muted">in system</span>
         ) : (
-          <select
+          <ValidationSelect
             value={m.field}
             onChange={(e) => onChange({ ...exp, metric: { node: m.node, field: e.target.value as MetricField } })}
             data-testid={`${t}-field`}
@@ -1324,10 +1347,10 @@ function ExpectationRow({ index, exp, diagram, live, warnings, onChange, onRemov
                 {f.value === "rejected" ? translate("admission.rejectedMetric") : f.label}
               </option>
             ))}
-          </select>
+          </ValidationSelect>
         )}
         {groups.length > 1 && !isSystem && (
-          <select
+          <ValidationSelect
             value={m.group ?? ""}
             onChange={(e) => onChange({ ...exp, metric: { ...m, group: e.target.value || undefined } })}
             data-testid={`${t}-group`}
@@ -1340,11 +1363,11 @@ function ExpectationRow({ index, exp, diagram, live, warnings, onChange, onRemov
                 {g}
               </option>
             ))}
-          </select>
+          </ValidationSelect>
         )}
       </div>
       <div className="lv-inline">
-        <select
+        <ValidationSelect
           value={exp.op}
           onChange={(e) => onChange({ ...exp, op: e.target.value as Expectation["op"] })}
           data-testid={`${t}-op`}
@@ -1356,8 +1379,8 @@ function ExpectationRow({ index, exp, diagram, live, warnings, onChange, onRemov
               {o}
             </option>
           ))}
-        </select>
-        <input
+        </ValidationSelect>
+        <ValidationInput
           type="number"
           step="any"
           value={exp.value}
@@ -1366,7 +1389,7 @@ function ExpectationRow({ index, exp, diagram, live, warnings, onChange, onRemov
           name={`${t}-value`}
           aria-label="Value"
         />
-        <select
+        <ValidationSelect
           value={exp.when ?? "end"}
           onChange={(e) =>
             onChange({
@@ -1384,10 +1407,10 @@ function ExpectationRow({ index, exp, diagram, live, warnings, onChange, onRemov
               {w.label}
             </option>
           ))}
-        </select>
+        </ValidationSelect>
         {exp.when === "at" && (
           <>
-            <input
+            <ValidationInput
               type="number"
               step={0.5}
               min={0}

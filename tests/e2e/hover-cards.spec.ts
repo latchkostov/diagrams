@@ -1,4 +1,7 @@
 import { breakerFixture } from "../../src/lab/resilienceFixture";
+import type { Locator } from "@playwright/test";
+import { pathToFileURL } from "node:url";
+import { deflateRawSync } from "node:zlib";
 import {
   test,
   expect,
@@ -10,7 +13,28 @@ import {
   viewportTransform,
   STORAGE_KEYS,
   gotoCanvas,
+  waitForHtmlTemplate,
+  liveKeyLevels,
+  interactionJournalMark,
 } from "./fixtures";
+
+async function sectionsInsideClip(card: Locator) {
+  const clip = await card.getByTestId("hover-sections").boundingBox();
+  const rows = await card.getByTestId(/^hover-section-/).evaluateAll((els) =>
+    els.map((el) => {
+      const { x, y, width, height } = el.getBoundingClientRect();
+      return { x, y, width, height };
+    }),
+  );
+  return rows.map(
+    (r) =>
+      !!clip &&
+      r.x >= clip.x &&
+      r.y >= clip.y &&
+      r.x + r.width <= clip.x + clip.width &&
+      r.y + r.height <= clip.y + clip.height,
+  );
+}
 
 test("compact card keeps its screen-space bounds across ten seconds of Live", async ({ page, consoleErrors }) => {
   await page.clock.install();
@@ -583,6 +607,268 @@ for (const slug of ["retry-storm", "webhook-ingestion"])
         width: el.scrollWidth <= el.clientWidth,
       }));
       expect(fit, item).toEqual({ height: true, width: true });
+      const required = item.startsWith("node-") || item === "edge-checkouts" || item === "edge-pay" ? 3 : 0;
+      await expect(card.getByTestId(/^hover-section-/)).toHaveCount(required);
+      expect((await sectionsInsideClip(card)).every(Boolean), item).toBe(true);
     }
     expectNoErrors(consoleErrors);
   });
+
+test("the clipping assertion detects a section hidden inside a non-scrolling summary", async ({ page }) => {
+  await gotoLive(page, "./?view=canvas&example=blocking-call&live=1&paused=1");
+  await page.getByTestId("node-caller").hover();
+  const card = page.getByTestId("node-detail-caller");
+  await expect(card).toBeVisible();
+  expect(await sectionsInsideClip(card)).toEqual([true, true, true]);
+  await card.getByTestId("hover-sections").evaluate((el) => {
+    el.style.maxHeight = `${el.clientHeight / 2}px`;
+  });
+  expect((await sectionsInsideClip(card)).every(Boolean)).toBe(false);
+  expect(await card.evaluate((el) => el.scrollHeight <= el.clientHeight)).toBe(true);
+});
+
+test("a no-room summary leaves Enter to the focused Live control", async ({ page, consoleErrors }) => {
+  await gotoLive(page, "./?view=canvas&example=blocking-call&live=1&paused=1");
+  await page.getByTestId("live-play").focus();
+  await page.getByTestId("canvas-wrap").evaluate((wrap) => {
+    const obstacle = document.createElement("div");
+    obstacle.dataset.canvasOverlay = "";
+    obstacle.style.cssText = "position:absolute;inset:0;pointer-events:none";
+    wrap.append(obstacle);
+  });
+  await page.getByTestId("node-caller").hover();
+  const card = page.getByTestId("node-detail-caller");
+  await expect(card).toHaveCSS("visibility", "hidden");
+  await page.keyboard.press("Enter");
+  await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "playing");
+  await expect(card).toHaveAttribute("data-pinned", "false");
+  expectNoErrors(consoleErrors);
+});
+
+for (const key of ["Tab", "Escape"])
+  test(`a focused summary survives pointer movement before ${key}`, async ({ page, consoleErrors }) => {
+    await gotoLive(page, "./?view=canvas&example=blocking-call&live=1&paused=1");
+    await page.getByTestId("node-caller").evaluate((el) => el.parentElement?.focus());
+    const card = page.getByTestId("node-detail-caller");
+    await expect(card).toBeVisible();
+    await page.keyboard.press("Tab");
+    await expect(card).toBeFocused();
+    await page.getByTestId("node-partner").hover();
+    await expect(card).toBeFocused();
+    await expect(card).toHaveAttribute("data-pinned", "false");
+    await expect(page.getByTestId("node-detail-partner")).toHaveCount(0);
+    await page.keyboard.press(key);
+    await expect.poll(() => focusedStop(page)).toBe(key === "Tab" ? "node-partner" : "node-caller");
+    await expect(card).toHaveCount(0);
+    expectNoErrors(consoleErrors);
+  });
+
+test("an inert node and an annotation never own a hidden readout", async ({ page, consoleErrors }) => {
+  const diagram = breakerFixture();
+  diagram.nodes.push({
+    id: "inert",
+    stencil: "kafka.schema-registry",
+    label: "Documentation",
+    x: 0,
+    y: 400,
+  });
+  diagram.annotations = [{ id: "note", kind: "note", text: "Notes", x: 330, y: 400, width: 220, height: 100 }];
+  await page.addInitScript(({ key, diagram }) => localStorage.setItem(key, JSON.stringify(diagram)), {
+    key: STORAGE_KEYS.autosavePrefix + "blocking-call",
+    diagram,
+  });
+  await gotoLive(page, "./?view=canvas&example=blocking-call&live=1&paused=1");
+  for (const id of ["node-inert", "annotation-note"]) {
+    await page.getByTestId(id).evaluate((el) => el.parentElement?.focus());
+    const mark = await interactionJournalMark(page);
+    await page.keyboard.press("Enter");
+    await expect(page.getByTestId(/^(node|edge)-detail-/)).toHaveCount(0);
+    await page.keyboard.press("Escape");
+    // Enter may select the wrapper, so Escape can clear selection. Neither key belongs to a phantom card.
+    const levels = await liveKeyLevels(page, mark);
+    expect(levels).not.toContain("enter:pin-readout");
+    expect(levels).not.toContain("escape:close-readout");
+  }
+  expectNoErrors(consoleErrors);
+});
+
+for (const kind of ["node", "edge"] as const)
+  test(`removing a focused ${kind} readout target recovers canvas focus`, async ({ page, consoleErrors }) => {
+    await gotoLive(page, "./?view=canvas&example=blocking-call&live=1&paused=1");
+    const id = kind === "node" ? "caller" : "call";
+    const item = page.getByTestId(`${kind}-${id}`);
+    await item.click({ force: true });
+    const card = page.getByTestId(`${kind}-detail-${id}`);
+    await card.click();
+    await card
+      .getByTestId(/^hover-section-/)
+      .first()
+      .focus();
+    await expect(card).toHaveAttribute("data-pinned", "true");
+    // Deliver a model edit through the selected item's deletion handler without moving focus out of the card.
+    await item.dispatchEvent("keydown", { key: "Delete", code: "Delete", bubbles: true });
+    await expect(item).toHaveCount(0);
+    await expect(card).toHaveCount(0);
+    await expect(page.getByTestId("canvas-wrap")).toBeFocused();
+    await page.keyboard.press("ControlOrMeta+z");
+    await expect(item).toHaveCount(1);
+    await item.hover({ force: true });
+    await expect(card).toHaveAttribute("data-pinned", "false");
+    expectNoErrors(consoleErrors);
+  });
+
+for (const kind of ["node", "edge"] as const)
+  test(`deleting a pinned ${kind} closes its readout and Undo restores an unpinned target`, async ({
+    page,
+    consoleErrors,
+  }) => {
+    await gotoLive(page, "./?view=canvas&example=blocking-call&live=1&paused=1");
+    const id = kind === "node" ? "caller" : "call";
+    const item = page.getByTestId(`${kind}-${id}`);
+    await item.click({ force: true });
+    const card = page.getByTestId(`${kind}-detail-${id}`);
+    await expect(card).toBeVisible();
+    await card.click();
+    await expect(card).toHaveAttribute("data-pinned", "true");
+    await item.evaluate((el) => el.closest<HTMLElement>("[tabindex]")?.focus());
+    await page.keyboard.press("Delete");
+    await expect(item).toHaveCount(0);
+    await expect(card).toHaveCount(0);
+    await page.keyboard.press("ControlOrMeta+z");
+    await expect(item).toHaveCount(1);
+    await item.hover({ force: true });
+    await expect(card).toBeVisible();
+    await expect(card).toHaveAttribute("data-pinned", "false");
+    expectNoErrors(consoleErrors);
+  });
+
+test("edge-card dispatch accepts lone UTF-16 surrogates in serialized IDs", async ({ page, consoleErrors }) => {
+  const diagram = breakerFixture();
+  const id = "call\ud800-\udfff";
+  diagram.edges[1].id = id;
+  await page.addInitScript(({ key, diagram }) => localStorage.setItem(key, JSON.stringify(diagram)), {
+    key: STORAGE_KEYS.autosavePrefix + "blocking-call",
+    diagram,
+  });
+  await gotoLive(page, "./?view=canvas&example=blocking-call&live=1&paused=1");
+  // Read the original attribute directly: selectors must not normalize the serialized identifier.
+  await page.getByTestId(/^edge-/).evaluateAll((els, id) => {
+    const el = els.find((e) => e.getAttribute("data-testid") === `edge-${id}`);
+    if (!el) throw new Error("Missing original edge ID");
+    el.closest<HTMLElement>("[tabindex]")?.focus();
+  }, id);
+  const card = page.getByTestId(/^edge-detail-/);
+  await expect(card).toBeVisible();
+  expect(await card.getAttribute("data-item")).toBe(id);
+  await page.keyboard.press("Enter");
+  await expect(card).toHaveAttribute("data-pinned", "true");
+  await expect(card).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(card).toHaveCount(0);
+  expectNoErrors(consoleErrors);
+});
+
+test("a pinned card follows moving anchor geometry without panning", async ({ page }) => {
+  await gotoLive(page, "./?view=canvas&example=blocking-call&live=1&paused=1");
+  await page.getByTestId("node-caller").hover();
+  const card = page.getByTestId("node-detail-caller");
+  await card.click();
+  await expect(card).toBeFocused();
+  const before = await card.boundingBox();
+  const viewport = await viewportTransform(page);
+  await page.getByTestId("node-caller").evaluate((el) => {
+    if (!el.parentElement) throw new Error("Missing node wrapper");
+    el.parentElement.style.translate = "0px 120px";
+  });
+  await expect.poll(() => card.boundingBox()).not.toEqual(before);
+  expect(await viewportTransform(page)).toBe(viewport);
+  await expect(card).toBeFocused();
+});
+
+for (const surface of ["embed", "export"])
+  test(`readout Tab traversal works forward and backward in the ${surface} viewer`, async ({ page, consoleErrors }) => {
+    // Serialize the last node first: native Tab must not re-enter it at either reading-order boundary.
+    const diagram = breakerFixture();
+    diagram.nodes = diagram.nodes.filter((node) => node.id === "caller" || node.id === "partner").reverse();
+    diagram.edges = diagram.edges.filter((edge) => edge.id === "call");
+    await page.addInitScript(({ key, diagram }) => localStorage.setItem(key, JSON.stringify(diagram)), {
+      key: STORAGE_KEYS.autosavePrefix + "blocking-call",
+      diagram,
+    });
+    if (surface === "embed") {
+      const payload = deflateRawSync(JSON.stringify(diagram)).toString("base64url");
+      await gotoLive(page, `./?embed=1&live=1&paused=1#d=${payload}`);
+    } else {
+      await gotoCanvas(page, "blocking-call");
+      const template = waitForHtmlTemplate(page);
+      await page.getByTestId("file-button").click();
+      await page.getByTestId("file-more-formats").click();
+      await page.getByTestId("export-html").click();
+      await template;
+      const download = page.waitForEvent("download");
+      await page.getByTestId("html-export-download").click();
+      const file = await download;
+      const path = test.info().outputPath(file.suggestedFilename());
+      await file.saveAs(path);
+      await page.goto(pathToFileURL(path).href);
+      await expect(page.getByTestId("live-controls")).toBeVisible();
+    }
+    await page.getByTestId("node-caller").evaluate((el) => el.parentElement?.focus());
+    const card = page.getByTestId("node-detail-caller");
+    await expect(card).toBeVisible();
+    await page.keyboard.press("Tab");
+    await expect(card).toBeFocused();
+    await page.keyboard.press("Tab");
+    await expect.poll(() => focusedStop(page)).toBe("node-partner");
+    await page.keyboard.press("Shift+Tab");
+    await expect(card).toBeFocused();
+    await page.keyboard.press("Shift+Tab");
+    await expect.poll(() => focusedStop(page)).toBe("node-caller");
+    await page.getByTestId("node-caller").evaluate((el) => el.parentElement?.focus());
+    await page.keyboard.press("Shift+Tab");
+    await expect.poll(() => focusedStop(page)).not.toMatch(/^node-/);
+    await page.getByTestId("node-partner").evaluate((el) => el.parentElement?.focus());
+    await page.keyboard.press("Tab");
+    await expect(page.getByTestId("node-detail-partner")).toBeFocused();
+    await page.keyboard.press("Tab");
+    await expect(page.getByTestId("live-toggle")).toBeFocused();
+    await expect(page.getByTestId("node-detail-partner")).toHaveCount(0);
+    expectNoErrors(consoleErrors);
+  });
+
+test("P2 queued Tab then Shift+Tab resolves from the pending readout before frames advance", async ({ page }) => {
+  await page.clock.install();
+  await gotoLive(page, "./?view=canvas&example=blocking-call&live=1&paused=1");
+  await page.getByTestId("node-caller").evaluate((el) => el.parentElement?.focus());
+  const card = page.getByTestId("node-detail-caller");
+  await expect(card).toBeVisible();
+  await pauseClock(page);
+  await page.getByTestId("node-caller").evaluate((el) => {
+    const owner = el.parentElement;
+    if (!owner) throw new Error("Missing focus owner");
+    owner.dispatchEvent(new KeyboardEvent("keydown", { key: "Tab", bubbles: true, cancelable: true }));
+    document.activeElement?.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "Tab", shiftKey: true, bubbles: true, cancelable: true }),
+    );
+  });
+  await page.clock.runFor(100);
+  await expect.poll(() => focusedStop(page)).toBe("node-caller");
+  // Shift+Tab opens the previous readout after a commit. A second queued Shift+Tab starts there.
+  await page.clock.resume();
+  await page.keyboard.press("Tab");
+  await expect(card).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect.poll(() => focusedStop(page)).toBe("node-partner");
+  await expect(page.getByTestId("node-detail-partner")).toBeVisible();
+  await pauseClock(page);
+  await page.getByTestId("node-partner").evaluate((el) => {
+    const owner = el.parentElement;
+    if (!owner) throw new Error("Missing focus owner");
+    for (let i = 0; i < 2; i++)
+      owner.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Tab", shiftKey: true, bubbles: true, cancelable: true }),
+      );
+  });
+  await page.clock.runFor(100);
+  await expect.poll(() => focusedStop(page)).toBe("node-caller");
+});

@@ -87,20 +87,40 @@ export function useCanvasShortcuts(
     let pasteFallback: number | undefined;
 
     const onKeyDown = (e: KeyboardEvent) => {
-      if (!optsRef.current.enabled || e.defaultPrevented || e.isComposing) return;
+      if (e.defaultPrevented || e.isComposing) return;
       if (isEditableTarget(e.target) || inOverlay(e.target)) return;
       // Keys typed for a new node's name before its editor opens (T must not add a text).
       if (typeAheadActive()) return;
       const id = shortcutFor(e);
       if (!id) return;
-      if (SELECTION_SHORTCUTS.has(id) && !inCanvas(e.target)) return;
-      const sel = editor.getSelection();
-      const hasNodes = sel.nodeIds.length + sel.groupIds.length > 0;
-      const hasAny = hasNodes || sel.edgeIds.length > 0;
       const handled = () => {
         e.preventDefault();
         e.stopPropagation();
       };
+      if (id === "select-next" || id === "select-prev") {
+        if (!optsRef.current.enabled && !optsRef.current.live) return;
+        // Tab steps between nodes only from a node, an edge or the canvas; elsewhere it's the page's.
+        const nav = optsRef.current.onNavigate;
+        if (!nav || !onCanvasItem(e.target)) return;
+        // Enter an annotation's link surface before stepping to the next canvas item.
+        // This runs in window capture, before any link's own keyboard handler.
+        const node = (e.target as Element).closest<HTMLElement>(".react-flow__node");
+        const links = Array.from(node?.querySelectorAll<HTMLAnchorElement>("[data-caption-root] a[href]") ?? []);
+        const current = links.indexOf(e.target as HTMLAnchorElement);
+        const backwards = id === "select-prev";
+        const next =
+          current >= 0 ? (links[current + (backwards ? -1 : 1)] ?? (backwards ? node : null)) : !backwards && links[0];
+        if (next) {
+          handled();
+          next.focus();
+        } else if (nav(backwards ? "prev" : "next", e.target)) handled();
+        return;
+      }
+      if (!optsRef.current.enabled) return;
+      if (SELECTION_SHORTCUTS.has(id) && !inCanvas(e.target)) return;
+      const sel = editor.getSelection();
+      const hasNodes = sel.nodeIds.length + sel.groupIds.length > 0;
+      const hasAny = hasNodes || sel.edgeIds.length > 0;
       switch (id) {
         case "undo":
           handled();
@@ -162,38 +182,6 @@ export function useCanvasShortcuts(
           const from = editor.stencilAnchor();
           if (e.repeat || !from) return;
           grow(from, TOWARD[e.key], id === "clone-next");
-          break;
-        }
-        case "select-next":
-        case "select-prev": {
-          // Tab steps between nodes only from a node, an edge or the canvas; elsewhere it's the page's.
-          const nav = optsRef.current.onNavigate;
-          if (!nav || !onCanvasItem(e.target)) return;
-          // Enter an annotation's link surface before stepping to the next canvas item.
-          // This runs in window capture, before any link's own keyboard handler.
-          const target = e.target instanceof HTMLElement ? e.target : null;
-          const node = target?.closest<HTMLElement>(".react-flow__node");
-          const links = Array.from(node?.querySelectorAll<HTMLAnchorElement>("[data-caption-root] a[href]") ?? []);
-          const current = target ? links.indexOf(target as HTMLAnchorElement) : -1;
-          const backwards = id === "select-prev";
-          if (current >= 0) {
-            const next = links[current + (backwards ? -1 : 1)];
-            if (next) {
-              handled();
-              next.focus();
-              return;
-            }
-            if (backwards && node) {
-              handled();
-              node.focus();
-              return;
-            }
-          } else if (!backwards && links[0]) {
-            handled();
-            links[0].focus();
-            return;
-          }
-          if (nav(backwards ? "prev" : "next", e.target)) handled();
           break;
         }
         case "select-toward":
