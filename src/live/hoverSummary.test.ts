@@ -42,6 +42,26 @@ function observe(s: NodeSimState, calls: NonNullable<EdgeSimState["calls"]>[] = 
   );
 }
 describe("problem-first summaries", () => {
+  it.each([
+    { name: "idle at zero replicas", slots: 0, working: 0, waiting: 0, queued: 0, exhausted: false },
+    { name: "waking with queued demand", slots: 0, working: 0, waiting: 0, queued: 5, exhausted: false },
+    { name: "idle with capacity", slots: 4, working: 0, waiting: 0, queued: 0, exhausted: false },
+    { name: "working at capacity", slots: 4, working: 4, waiting: 0, queued: 0, exhausted: true },
+    { name: "waiting at capacity", slots: 4, working: 0, waiting: 4, queued: 2, exhausted: true },
+    { name: "below capacity", slots: 4, working: 1, waiting: 2, queued: 0, exhausted: false },
+  ])("uses current thread occupancy for $name", ({ slots, working, waiting, queued, exhausted }) => {
+    const summary = nodeSummary(
+      node({
+        threads: { slots, working, waiting, queued, waitingOn: [] },
+        backlog: queued,
+        // Historical work does not make an idle node busy now.
+        processed: 100,
+      }),
+      [],
+    );
+    expect(summary.problems.some((p) => p.key === "threads")).toBe(exhausted);
+    expect(summary.vitals.find((v) => v.key === "threads")?.bad).toBe(exhausted);
+  });
   it("prioritizes down, timeouts, exhausted threads and retries in that order", () => {
     const s = node({
       status: "down",

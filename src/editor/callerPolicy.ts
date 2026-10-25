@@ -1,4 +1,4 @@
-import type { EditorApi } from "./types";
+import type { EditOptions, EditorApi } from "./types";
 import type { EdgeSimProps } from "../sim/types";
 import type { LiveUi } from "../live/context";
 import { planningHost } from "../live/planningHost";
@@ -30,7 +30,8 @@ export function effectiveCallerPolicy(
     simulation: saved?.title,
     policy: callPolicy(editor.getNode(edge.from)?.stencil ?? "", caller),
     editable,
-    set(patch: EdgeSimProps["caller"]) {
+    // A caller may opt into merging split writes; ordinary edits keep their own Undo steps.
+    set(patch: EdgeSimProps["caller"], options?: EditOptions) {
       if (!editable) return;
       const normalized = Object.fromEntries(
         Object.entries({
@@ -41,6 +42,8 @@ export function effectiveCallerPolicy(
         }).filter(([, v]) => v !== undefined),
       );
       if (saved) {
+        // Reselecting an existing value must not write or disturb the pending Undo step.
+        if (JSON.stringify(normalized) === JSON.stringify(override?.caller ?? {})) return;
         const next = {
           ...saved,
           setup: {
@@ -51,9 +54,16 @@ export function effectiveCallerPolicy(
             },
           },
         };
-        editor.updateMeta({ simulations: editor.getDiagram().simulations!.map((s) => (s.id === saved.id ? next : s)) });
+        editor.updateMeta(
+          { simulations: editor.getDiagram().simulations!.map((s) => (s.id === saved.id ? next : s)) },
+          options,
+        );
         live?.controller.setBase(next);
-      } else editor.setEdgeProps(edgeId, { caller: { ...caller, ...patch } });
+      } else {
+        const next = { ...caller, ...patch };
+        if (JSON.stringify(next) === JSON.stringify(caller)) return;
+        editor.setEdgeProps(edgeId, { caller: next }, options);
+      }
     },
   };
 }
