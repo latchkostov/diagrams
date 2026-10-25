@@ -2398,6 +2398,9 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     const branch = call.branches.get(edge.id)!;
     const represented = sizeOf(message);
     if (!(represented > 1) || !Number.isFinite(edge.policy?.pool) || !Number.isFinite(branch.expiresAt)) return;
+    // Quarantined: a shedding callee queue narrows a branch without settling its cohort's members, so such
+    // calls keep the pre-cohort whole-dot path. docs/backlog/2026-10-25-cohort-shedding-timeouts.md
+    if (edge.to.props.queue && !(TEST_ORACLES && opts.shedCohorts)) return;
     message.cohortId = branch.cohortId = message.id;
     // Freeze size across live scale edits, including the template that retains its FIFO position.
     message.represented = represented;

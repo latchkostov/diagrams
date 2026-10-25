@@ -146,6 +146,8 @@ export function assertLedgerInvariants({ ledger, nodes, edges, time }: LedgerInv
         call?.held && call.work.thread !== undefined ? ledger.reservations.get(call.work.thread) : undefined;
       check(!thread || width <= thread.weight + 1e-9, "branch is wider than its caller thread");
     }
+    const queued = new Map<unknown, number>();
+    for (const { message } of edge.poolPending) queued.set(message, (queued.get(message) ?? 0) + 1);
     for (const [id, cohort] of edge.cohorts ?? []) {
       check(
         id === cohort.call.branches.get(edge.id)?.cohortId && cohort.expiresAt > time && cohort.state !== "closed",
@@ -155,6 +157,8 @@ export function assertLedgerInvariants({ ledger, nodes, edges, time }: LedgerInv
       check(cohort.outstanding <= cohort.represented + 1e-8, "cohort settles more than its size");
       // Unsent members stay owned, and queued, until they really settle.
       check(!cohort.remaining || cohort.template !== undefined, "unsent cohort members lost their template");
+      // An unexpired cohort's unsent members keep exactly one place in the dispatch queue.
+      check(!cohort.remaining || queued.get(cohort.template) === 1, "unsent cohort members left the dispatch queue");
       let sentWeight = 0;
       for (const [leaseId, weight] of cohort.inFlight) {
         const lease = ledger.reservations.get(leaseId);

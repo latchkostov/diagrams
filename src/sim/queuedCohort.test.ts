@@ -124,6 +124,33 @@ it("an OK first wave keeps the cohort's queue place and restores orphan replies 
   expect(finish()).toEqual(expected);
 });
 
+// R-d5b51a40ca: both callers arrive together with the same deadline. The older cohort keeps its queue
+// place, so it receives every connection grant before the newer cohort gets one.
+it("older pooled cohort dispatches its remaining members before a newer cohort", () => {
+  const owners = new Map<number, number>();
+  const e = createEngine({
+    scale: 10,
+    maxParticles: 0,
+    verifyLedger(s) {
+      assertLedgerInvariants(s);
+      for (const edge of s.edges)
+        for (const [id, cohort] of edge.cohorts ?? [])
+          for (const lease of cohort.inFlight.keys()) if (!owners.has(lease)) owners.set(lease, id);
+    },
+  });
+  e.load(fixture());
+  e.inject("source", 2);
+  e.step(4000);
+  const cohorts = [...new Set(owners.values())];
+  expect(owners.size).toBe(3);
+  expect(cohorts).toHaveLength(1);
+  const real = realSnapshot(e.snapshot());
+  expect(real.nodes.partner.processed).toBe(3);
+  // The older dot's first wave succeeds; the newer dot never gets a connection and times out.
+  expect(real.nodes.caller).toMatchObject({ processed: 10, failed: 10 });
+  expect(e.snapshot().inSystem).toBe(0);
+});
+
 it.each(["blocking", "non-blocking"] as const)(
   "a %s cohort frees its pool at expiry without sending its cancelled tail",
   (wait) => {

@@ -527,6 +527,8 @@ export interface EngineOptions {
   ledgerHold?: "none";
   /** Test-only partial dots: every injected message carries this many real requests (Vitest only; folded out). */
   injectRepresented?: number;
+  /** Test-only: open pool cohorts even toward a shedding queue, to pin that quarantined gap (Vitest only; folded out). */
+  shedCohorts?: boolean;
   /** Test-only I1 oracle (Vitest only; folded out of shipped builds): run at scale 1 with the arrival instants of the scale `setScale` names. Every dot a source
    *  or injection emits arrives as floor-cumulative real requests of that scale (docs/SIMULATION.md, same arrivals). */
   sameArrivals?: true;
