@@ -364,7 +364,14 @@ test("Alt-drag remaps a boundary subtree and leaves the original untouched throu
   page,
   consoleErrors,
 }) => {
-  await seed(page, nestedFixture);
+  await seed(page, {
+    ...nestedFixture,
+    groups: nestedFixture.groups?.map((group) => ({
+      ...group,
+      borderRadius: group.id === "grp-core" ? 27 : 13,
+    })),
+    annotations: nestedFixture.annotations?.map((annotation) => ({ ...annotation, borderRadius: 19 })),
+  });
   await page.getByTestId("group-label-grp-core").click();
   await waitForSelectionSettled(page);
   await fitDiagram(page);
@@ -406,12 +413,14 @@ test("Alt-drag remaps a boundary subtree and leaves the original untouched throu
     }
   };
   await expect(assertCopy).toPass();
+  const copied = await savedDiagram(page);
   for (const id of ["group-grp-core-1", "group-child-1", "node-member-1", "annotation-note-1"]) {
     await expect(page.getByTestId(id)).toHaveCount(1);
   }
   await page.getByTestId("undo-button").click();
   await expect.poll(() => savedDiagram(page)).toEqual(original);
   await page.getByTestId("redo-button").click();
+  await expect.poll(() => savedDiagram(page)).toEqual(copied);
   await expect(assertCopy).toPass();
   expectNoErrors(consoleErrors);
 });
@@ -602,6 +611,20 @@ for (const target of ["boundary", "zone"] as const)
     await input.fill("27");
     await input.press("Enter");
     await expect.poll(radius).toBe("27px");
+    for (const key of ["Enter", "Tab"]) {
+      await input.fill("");
+      await expect(input).toHaveValue("");
+      await expect.poll(radius).toBe("27px");
+      await input.press(key);
+      await expect(input).toHaveValue("27");
+      await expect.poll(radius).toBe("27px");
+      await expect
+        .poll(async () => {
+          const d = await savedDiagram(page);
+          return target === "boundary" ? d.groups?.[0].borderRadius : d.annotations?.[0].borderRadius;
+        })
+        .toBe(27);
+    }
     await waitForHistoryIdle(page);
     await page.getByTestId("undo-button").click();
     await expect.poll(radius).toBe(`${pointerValue}px`);

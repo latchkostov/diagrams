@@ -60,8 +60,23 @@ it.each(["slider", "size"] as const)("%s compares the final numeric commit with 
       await commit("20.2", blur);
     }
     expect(write.mock.calls).toEqual([[20]]);
+    // Empty drafts must be rejected away from the minimum: a clamp to 10 would be an edit here.
+    for (const blur of [false, true]) {
+      for (const draft of ["", "   "]) {
+        const starts = begin.mock.calls.length;
+        const ends = end.mock.calls.length;
+        await commit(draft, blur);
+        expect(write.mock.calls).toEqual([[20]]);
+        expect(input.value).toBe("20");
+        expect(begin).toHaveBeenCalledTimes(starts);
+        expect(end).toHaveBeenCalledTimes(ends);
+      }
+    }
+    // A valid replacement still commits after rejecting an empty draft.
+    await commit("27");
+    expect(write.mock.calls).toEqual([[20], [27]]);
     await commit("-1");
-    expect(write.mock.calls).toEqual([[20], [10]]);
+    expect(write.mock.calls).toEqual([[20], [27], [10]]);
     const starts = begin.mock.calls.length;
     const ends = end.mock.calls.length;
     for (const blur of [false, true]) {
@@ -70,7 +85,7 @@ it.each(["slider", "size"] as const)("%s compares the final numeric commit with 
       await commit("", blur);
       await commit("Infinity", blur);
     }
-    expect(write.mock.calls).toEqual([[20], [10]]);
+    expect(write.mock.calls).toEqual([[20], [27], [10]]);
     expect(begin).toHaveBeenCalledTimes(starts);
     expect(end).toHaveBeenCalledTimes(ends);
   } finally {

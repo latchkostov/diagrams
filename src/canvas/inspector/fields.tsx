@@ -55,7 +55,7 @@ export function SizeInput({
     const raw = Number(draft);
     const v = Math.max(min, Math.min(ANNOTATION_LIMITS.maxAnnotationSize, Math.round(raw)));
     setDraft(null);
-    if (Number.isFinite(raw) && v !== value) onCommit(v);
+    if (draft.trim() && Number.isFinite(raw) && v !== value) onCommit(v);
   };
   return (
     <input
