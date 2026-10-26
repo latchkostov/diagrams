@@ -17,6 +17,7 @@ import {
   waitForLiveSession,
 } from "./fixtures";
 import { tutorialEntries } from "../../src/tutorials/catalog/ids";
+import { CATCH_UP_MS } from "../../src/live/frameClock";
 import type { ResolvedUiStep } from "../../src/tutorials/solution";
 import { expectNoViolations } from "./a11y-helpers";
 
@@ -286,7 +287,9 @@ async function advanceTutorialClock(page: Page, ready: () => Promise<boolean>) {
   await expect
     .poll(
       async () => {
-        await page.clock.runFor(1000);
+        // One frame catches up all fixed simulation ticks in this batch; drawing
+        // every intervening frame only couples completion to the test machine.
+        await page.clock.fastForward(CATCH_UP_MS);
         return ready();
       },
       { intervals: [0] },
@@ -574,6 +577,9 @@ test("rate-limit: playback waits for the limiter readout before completing", asy
     for (const action of await page.evaluate(() => window.__tutorial?.solution() ?? [])) await play(page, action);
   }
   await page.getByTestId("live-sim-picker").hover();
+  await expect
+    .poll(async () => Number(await page.getByTestId("live-canvas").getAttribute("data-sim-time")))
+    .toBeGreaterThan(0);
   await pauseClock(page);
   await page.clock.runFor(10000);
   await expect(page.getByTestId("live-canvas")).toHaveAttribute("data-sim-time", "10000");

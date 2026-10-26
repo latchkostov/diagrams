@@ -191,14 +191,30 @@ export function createRepairs(authored: readonly Simulation[] = []) {
     repair(ports: RepairPorts, request: RepairRequest): RepairResult {
       const { editor } = ports;
       const diagram = editor.getDiagram();
+      let hasTarget = false;
       if ("node" in request.target) {
         const node = diagram.nodes.find((n) => n.id === (request.target as { node: string }).node);
+        hasTarget = !!node;
         const changed = node && patchProps(node.props, request.patches);
         if (node && changed) editor.setNodeProps(node.id, changed);
       } else if ("edge" in request.target) {
         const edge = diagram.edges.find((e) => e.id === (request.target as { edge: string }).edge);
+        hasTarget = !!edge;
         const changed = edge && patchProps(edge.props, request.patches);
         if (edge && changed) editor.setEdgeProps(edge.id, changed);
+      }
+      // Editor writes precede Live's render. A run inheriting these props must
+      // not launch against the previous configuration and retain its rejections.
+      if (hasTarget && ports.liveOn) {
+        const current = ports.live?.controller.currentDiagram;
+        const target = request.target;
+        const applied =
+          "node" in target
+            ? current?.nodes.find((n) => n.id === target.node)
+            : "edge" in target
+              ? current?.edges.find((e) => e.id === target.edge)
+              : undefined;
+        if (!applied || patchProps(applied.props, request.patches)) return "waiting";
       }
       return runs(ports, request);
     },

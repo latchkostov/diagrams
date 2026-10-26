@@ -449,10 +449,6 @@ export function createTutorialRunner(
       }
       case "patch": {
         const id = demo.edge ? edge(demo.edge)?.id : subjects[demo.subject];
-        if (id && !demo.edge && h.canvas?.live) {
-          ed.select({ nodeIds: [id], edgeIds: [], groupIds: [] });
-          ed.openInspector("label");
-        }
         const target: RepairTarget | undefined = id ? (demo.edge ? { edge: id } : { node: id }) : undefined;
         // Not there (yet): nothing to repair, as for any edit of a missing subject.
         if (!target) return;
@@ -673,6 +669,17 @@ export function createTutorialRunner(
       if (run !== generation) return;
       if (!state.observed[i]) {
         for (const d of tutorial.steps[i].demo) {
+          // Present once per demo, rather than again on each session acknowledgement.
+          // Re-selecting during a pending repair can publish another canvas commit.
+          if (d.kind === "patch" && !d.edge && host.get().canvas?.live) {
+            view();
+            const id = subjects[d.subject];
+            const ed = editor();
+            if (id && ed) {
+              ed.select({ nodeIds: [id], edgeIds: [], groupIds: [] });
+              ed.openInspector("label");
+            }
+          }
           const made =
             d.kind === "add" || d.kind === "insert" ? d.subject : d.kind === "group" ? d.boundary : undefined;
           const bound = made && demoBindings.get(made);

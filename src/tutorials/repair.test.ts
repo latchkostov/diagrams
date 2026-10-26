@@ -88,24 +88,57 @@ describe("repairedRun", () => {
 });
 
 describe("createRepairs", () => {
-  const ports = (d: DiagramFile, live: Partial<NonNullable<RepairPorts["live"]>> | null = null): RepairPorts => ({
-    editor: {
-      getDiagram: () => d,
-      setNodeProps: vi.fn((id, props) => {
-        d.nodes = d.nodes.map((n) => (n.id === id ? { ...n, props: { ...n.props, ...props } } : n));
-      }),
-      setEdgeProps: vi.fn(),
-      updateMeta: vi.fn((patch) => Object.assign(d, patch)),
-    },
-    live: live as RepairPorts["live"],
-    liveOn: live !== null,
-  });
+  const ports = (d: DiagramFile, live: Partial<NonNullable<RepairPorts["live"]>> | null = null): RepairPorts => {
+    if (live?.controller && !("currentDiagram" in live.controller))
+      Object.defineProperty(live.controller, "currentDiagram", { get: () => d });
+    return {
+      editor: {
+        getDiagram: () => d,
+        setNodeProps: vi.fn((id, props) => {
+          d.nodes = d.nodes.map((n) => (n.id === id ? { ...n, props: { ...n.props, ...props } } : n));
+        }),
+        setEdgeProps: vi.fn(),
+        updateMeta: vi.fn((patch) => Object.assign(d, patch)),
+      },
+      live: live as RepairPorts["live"],
+      liveOn: live !== null,
+    };
+  };
   const overridden = (sim: Simulation): Simulation => ({ ...sim, setup: { props: { api: { replicas: 1 } } } });
   const patch = {
     target: { node: "api" },
     patches: [{ op: "set", path: ["replicas"], value: 4 }],
     runs: ["run"],
   } as const;
+
+  it.each(["node", "edge"] as const)("waits for Live to apply a %s repair before replaying inherited props", (kind) => {
+    const d = diagram();
+    let applied = structuredClone(d);
+    const controller = {
+      get currentDiagram() {
+        return applied;
+      },
+      getState: () => ({ simulation: null }),
+    } as never;
+    const p = ports(d, { controller, simulations: d.simulations });
+    p.editor.setEdgeProps = vi.fn((id, props) => {
+      d.edges = d.edges.map((edge) => (edge.id === id ? { ...edge, props: { ...edge.props, ...props } } : edge));
+    });
+    const request =
+      kind === "node"
+        ? patch
+        : ({
+            target: { edge: "call" },
+            patches: [{ op: "set", path: ["caller", "retry", "idempotent"], value: true }],
+            runs: ["run"],
+          } as const);
+    const repairs = createRepairs();
+    expect(repairs.repair(p, request)).toBe("waiting");
+    expect(repairs.repair(p, request)).toBe("waiting");
+    expect(kind === "node" ? p.editor.setNodeProps : p.editor.setEdgeProps).toHaveBeenCalledOnce();
+    applied = structuredClone(d);
+    expect(repairs.repair(p, request)).toBe("done");
+  });
 
   it("repairs the diagram, then a saved run with Live off, through the document", () => {
     const d = diagram();

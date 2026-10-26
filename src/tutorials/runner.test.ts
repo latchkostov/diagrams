@@ -157,6 +157,44 @@ const named = (): DiagramFile => ({
   edges: [{ id: "edge", from: "app", to: "api", kind: "sync" }],
 });
 
+it("presents a patch target once while waiting for Live to apply its props", async () => {
+  const tutorial: Tutorial = {
+    ...mobileApi,
+    steps: [
+      {
+        ...mobileApi.steps[0],
+        check: { kind: "metric", subject: "api", field: "processed", op: ">=", value: 1 },
+        demo: [{ kind: "patch", subject: "api", patches: [{ op: "set", path: ["replicas"], value: 4 }] }],
+      },
+    ],
+  };
+  const s = sandbox(tutorial, named());
+  const controller = new LiveController(named());
+  cleanup.push(() => controller.dispose());
+  const select = vi.fn();
+  const openInspector = vi.fn();
+  const setNodeProps = vi.fn((id: string, props: DiagramNode["props"]) => s.editor.updateNode(id, { props }));
+  s.hostState.canvas.editor = { ...s.hostState.canvas.editor, select, openInspector, setNodeProps };
+  s.hostState.canvas.live = true;
+  s.hostState.session.state = controller.getState;
+  cleanup.push(
+    planningHost.publish({ controller, simulations: [], events: { open: false, nodeId: null } } as unknown as LiveUi),
+  );
+  s.publish();
+  s.runner.send({ type: "start" });
+  s.runner.send({ type: "skip", stepId: tutorial.steps[0].id });
+  await Promise.resolve();
+  s.tick();
+  s.tick();
+  expect(select).toHaveBeenCalledExactlyOnceWith({ nodeIds: ["api"], edgeIds: [], groupIds: [] });
+  expect(openInspector).toHaveBeenCalledExactlyOnceWith("label");
+  expect(setNodeProps).toHaveBeenCalledOnce();
+  controller.updateDiagram(s.editor.getDiagram());
+  s.tick();
+  await Promise.resolve();
+  expect(select).toHaveBeenCalledOnce();
+});
+
 it.each([0, 1500])("Continue waits for external state after a refused note at %s", async (time) => {
   const tutorial: Tutorial = {
     ...mobileApi,

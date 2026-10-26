@@ -1,6 +1,20 @@
 import type { Page } from "@playwright/test";
 import { test, expect, gotoCanvas, gotoLive, expectTheme, pauseClock, waitForCameraIdle } from "./fixtures";
 
+/** Finish the paused-clock move before checking its final view readout. */
+async function finishCameraClock(page: Page, duration: number) {
+  await page.clock.fastForward(duration);
+  await expect
+    .poll(
+      async () => {
+        await page.clock.fastForward(1000);
+        return page.getByTestId("canvas-wrap").getAttribute("data-camera-state");
+      },
+      { intervals: [0] },
+    )
+    .toBe("idle");
+}
+
 /** Sample the rendered PNG, including compositing and antialiasing, rather than reading token colours. */
 async function sampledContrast(
   page: Page,
@@ -196,11 +210,11 @@ for (const theme of ["light", "dark"])
       for (const size of sizes) expect(size).toBeGreaterThanOrEqual(10.5);
       await page.getByTestId("live-view-menu").click();
       await page.getByTestId("zoom-in-button").click();
-      await page.clock.runFor(400);
+      await finishCameraClock(page, 400);
       await expect(page.getByTestId("live-view-menu")).toContainText("Custom");
       await page.getByTestId("canvas-wrap").focus();
       await page.keyboard.press("Shift+Digit3");
-      await page.clock.runFor(800);
+      await finishCameraClock(page, 800);
       await expect(page.getByTestId("live-view-menu")).toContainText("Following");
     });
 

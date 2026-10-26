@@ -16,6 +16,8 @@ Frame measurements batch width resets and reads, reuse label lookups, and remeas
 
 Explicit menu navigation cancels pending hover actions, so Escape keeps a dismissed submenu closed.
 
+Tutorial Skip waits for repaired properties to reach Live before replaying a reference run. Its target opens once while the repair is acknowledged, preserving the run's clean counters and avoiding repeated canvas commits.
+
 Output parity validation is recorded in the accompanying design review. Follow retains its documented readable camera and off-frame pins. Narration tests visit distant cards through those pins, return explicitly to Follow between visits, and retain every bounds and readability assertion.
 
 ## Deliberate output changes
