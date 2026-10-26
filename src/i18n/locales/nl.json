@@ -2806,5 +2806,14 @@
   "workbench.unpin": "Bibliotheek sluiten",
   "workbench.shortcuts": "Sneltoetsen",
   "workbench.checksName": "Controles, {warnings}",
-  "workbench.warnings": "{count, plural, one {# waarschuwing} other {# waarschuwingen}}"
+  "workbench.warnings": "{count, plural, one {# waarschuwing} other {# waarschuwingen}}",
+  "workbench.readNote": "Notitie lezen",
+  "workbench.earlier": "Vorige",
+  "workbench.later": "Volgende",
+  "workbench.noteIndex": "Notitie {index} van {total}",
+  "workbench.moreTools": "Meer hulpmiddelen",
+  "workbench.sheetPeek": "Voorbeeld",
+  "workbench.sheetHalf": "Halve hoogte",
+  "workbench.sheetFull": "Volledige hoogte",
+  "workbench.speed": "Snelheid"
 }

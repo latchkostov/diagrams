@@ -1,19 +1,36 @@
 import { useSyncExternalStore } from "react";
 import { createMachine, defineMachine } from "../../lib/machine";
 export type DockTab = "properties" | "checks" | "ai";
+export type SheetSnap = "peek" | "half" | "full";
 type View = DockTab | "closed";
 interface State {
   value: View;
   last: DockTab;
   previous: View;
+  snap: SheetSnap;
 }
-type Event = { type: DockTab | "close" | "back" };
+type Event = { type: DockTab | "close" | "back" } | { type: "snap"; value: SheetSnap };
 export const dockMachine = defineMachine<State, Event>({
-  initial: { value: "closed", last: "properties", previous: "closed" },
+  initial: { value: "closed", last: "properties", previous: "closed", snap: "half" },
   states: ["closed", "properties", "checks", "ai"],
-  events: [{ type: "properties" }, { type: "checks" }, { type: "ai" }, { type: "close" }, { type: "back" }],
+  events: [
+    { type: "properties" },
+    { type: "checks" },
+    { type: "ai" },
+    { type: "close" },
+    { type: "back" },
+    { type: "snap", value: "full" },
+    { type: "snap", value: "half" },
+    { type: "snap", value: "peek" },
+  ],
   on: {
     "*": {
+      snap: [
+        { target: "closed", guard: (s) => s.value === "closed", reduce: (s, e) => ({ ...s, snap: e.value }) },
+        { target: "properties", guard: (s) => s.value === "properties", reduce: (s, e) => ({ ...s, snap: e.value }) },
+        { target: "checks", guard: (s) => s.value === "checks", reduce: (s, e) => ({ ...s, snap: e.value }) },
+        { target: "ai", guard: (s) => s.value === "ai", reduce: (s, e) => ({ ...s, snap: e.value }) },
+      ],
       properties: { target: "properties", reduce: (s) => ({ ...s, last: "properties" }) },
       ai: { target: "ai", reduce: (s) => ({ ...s, last: "ai" }) },
       checks: {
@@ -44,6 +61,9 @@ const send = (event: Event) => {
   if (before !== machine.state) listeners.forEach((l) => l());
 };
 export const workbenchDock = {
+  snap(value: SheetSnap) {
+    send({ type: "snap", value });
+  },
   get: () => machine.state,
   subscribe(l: () => void) {
     listeners.add(l);

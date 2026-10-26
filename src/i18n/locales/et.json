@@ -2791,5 +2791,14 @@
   "workbench.unpin": "Sulge teek",
   "workbench.shortcuts": "Otseteed",
   "workbench.checksName": "Kontrollid, {warnings}",
-  "workbench.warnings": "{count, plural, one {# hoiatus} other {# hoiatust}}"
+  "workbench.warnings": "{count, plural, one {# hoiatus} other {# hoiatust}}",
+  "workbench.readNote": "Loe märkust",
+  "workbench.earlier": "Varasem",
+  "workbench.later": "Hilisem",
+  "workbench.noteIndex": "Märkus {index}/{total}",
+  "workbench.moreTools": "Veel tööriistu",
+  "workbench.sheetPeek": "Eelvaade",
+  "workbench.sheetHalf": "Pool kõrgust",
+  "workbench.sheetFull": "Täiskõrgus",
+  "workbench.speed": "Kiirus"
 }

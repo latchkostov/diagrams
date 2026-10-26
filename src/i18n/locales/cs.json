@@ -2790,5 +2790,14 @@
   "workbench.unpin": "Zavřít knihovnu",
   "workbench.shortcuts": "Zkratky",
   "workbench.checksName": "Kontroly, {warnings}",
-  "workbench.warnings": "{count, plural, one {# upozornění} few {# upozornění} other {# upozornění}}"
+  "workbench.warnings": "{count, plural, one {# upozornění} few {# upozornění} other {# upozornění}}",
+  "workbench.readNote": "Přečíst poznámku",
+  "workbench.earlier": "Dřívější",
+  "workbench.later": "Pozdější",
+  "workbench.noteIndex": "Poznámka {index} z {total}",
+  "workbench.moreTools": "Další nástroje",
+  "workbench.sheetPeek": "Náhled",
+  "workbench.sheetHalf": "Poloviční výška",
+  "workbench.sheetFull": "Plná výška",
+  "workbench.speed": "Rychlost"
 }

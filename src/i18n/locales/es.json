@@ -2785,5 +2785,14 @@
   "workbench.unpin": "Cerrar biblioteca",
   "workbench.shortcuts": "Atajos",
   "workbench.checksName": "Comprobaciones, {warnings}",
-  "workbench.warnings": "{count, plural, one {# advertencia} other {# advertencias}}"
+  "workbench.warnings": "{count, plural, one {# advertencia} other {# advertencias}}",
+  "workbench.readNote": "Leer nota",
+  "workbench.earlier": "Anterior",
+  "workbench.later": "Siguiente",
+  "workbench.noteIndex": "Nota {index} de {total}",
+  "workbench.moreTools": "Más herramientas",
+  "workbench.sheetPeek": "Vista previa",
+  "workbench.sheetHalf": "Media altura",
+  "workbench.sheetFull": "Altura completa",
+  "workbench.speed": "Velocidad"
 }

@@ -180,3 +180,10 @@ it("Follow centres its subject and leaves 52 px room when the path fits, else pi
   expect(view.x + 480 * view.zoom).toBeLessThanOrEqual(1148);
   expect(followViewport(workbenchRoot, workbenchState(6000), ["a", "b"], "a")?.zoom).toBe(0.9);
 });
+it("phone Follow keeps its .92 floor and places the subject at forty percent height", () => {
+  const root = { ...workbenchRoot, clientWidth: 390, clientHeight: 548 } as HTMLElement;
+  const view = followViewport(root, workbenchState(6000), ["a", "b"], "a")!;
+  expect(view.zoom).toBe(0.92);
+  expect(view.y + 40 * view.zoom).toBeCloseTo(548 * 0.4);
+  expect(view.x + 90 * view.zoom).toBe(177);
+});

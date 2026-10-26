@@ -2796,5 +2796,14 @@
   "workbench.unpin": "Κλείσιμο βιβλιοθήκης",
   "workbench.shortcuts": "Συντομεύσεις",
   "workbench.checksName": "Έλεγχοι, {warnings}",
-  "workbench.warnings": "{count, plural, one {# προειδοποίηση} other {# προειδοποιήσεις}}"
+  "workbench.warnings": "{count, plural, one {# προειδοποίηση} other {# προειδοποιήσεις}}",
+  "workbench.readNote": "Διάβασε τη σημείωση",
+  "workbench.earlier": "Νωρίτερα",
+  "workbench.later": "Αργότερα",
+  "workbench.noteIndex": "Σημείωση {index} από {total}",
+  "workbench.moreTools": "Περισσότερα εργαλεία",
+  "workbench.sheetPeek": "Προεπισκόπηση",
+  "workbench.sheetHalf": "Μισό ύψος",
+  "workbench.sheetFull": "Πλήρες ύψος",
+  "workbench.speed": "Ταχύτητα"
 }

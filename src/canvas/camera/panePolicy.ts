@@ -94,6 +94,9 @@ export function decide(state: PolicyState, event: CameraEvent): Decision {
       });
     }
     case "selection.changed":
+      // Opening the dock must finish making room even when the selection is already readable.
+      // A selection does not replace the pane's outstanding resize with a no-camera selection intent.
+      if (state.pending?.cause === "panel" && event.zoom !== undefined && event.zoom >= 0.5) return next({});
       if (event.cause === "selection" && event.zoom !== undefined && event.zoom < 0.5 && state.mode === "edit")
         return next({ view: "focus", owner: "manual", pending: { cause: "selection", autoFocus: true } });
       if (!state.pending || !isPaneCause(state.pending.cause)) return next({});
@@ -111,6 +114,7 @@ export function decide(state: PolicyState, event: CameraEvent): Decision {
     case "input":
       return next({ zoomPriority: false, ...(event.pointer ? { keyboardFocus: false } : {}) });
     case "opening.measured":
+      if (state.mode !== "edit") return next({ view: "overview" });
       return state.viewChoice ? next({}) : next({ view: event.zoom < 0.5 ? "focus" : "overview" });
     case "view.requested":
       if (event.view === "overview")
@@ -264,8 +268,6 @@ export function decide(state: PolicyState, event: CameraEvent): Decision {
       if (!work || ((state.menu || state.gesture) && waitsForMenu(work))) return next({});
       const done = { pending: null };
       if ("autoFocus" in work && work.autoFocus) return next(done, { type: "focusSelection", automatic: true });
-      if (work.cause === "selection" && event.zoom !== undefined && event.zoom >= 0.5 && !state.keyboardFocus)
-        return next(done);
       if (!isPaneCause(work.cause)) return next(done, ...liveWork(state, work as LiveWork));
       if (work.cause === "panel" && state.slowmo)
         return next(done, { type: "slowmoPane", following: state.owner === "slowmo" });

@@ -2800,5 +2800,14 @@
   "workbench.unpin": "Закрити бібліотеку",
   "workbench.shortcuts": "Клавіші",
   "workbench.checksName": "Перевірки, {warnings}",
-  "workbench.warnings": "{count, plural, one {# попередження} few {# попередження} many {# попередження} other {# попередження}}"
+  "workbench.warnings": "{count, plural, one {# попередження} few {# попередження} many {# попередження} other {# попередження}}",
+  "workbench.readNote": "Читати нотатку",
+  "workbench.earlier": "Раніше",
+  "workbench.later": "Пізніше",
+  "workbench.noteIndex": "Нотатка {index} з {total}",
+  "workbench.moreTools": "Інші інструменти",
+  "workbench.sheetPeek": "Попередній перегляд",
+  "workbench.sheetHalf": "Половина висоти",
+  "workbench.sheetFull": "Повна висота",
+  "workbench.speed": "Швидкість"
 }

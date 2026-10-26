@@ -2794,5 +2794,14 @@
   "workbench.unpin": "關閉程式庫",
   "workbench.shortcuts": "快捷鍵",
   "workbench.checksName": "檢查, {warnings}",
-  "workbench.warnings": "{count, plural, other {# 則警告}}"
+  "workbench.warnings": "{count, plural, other {# 則警告}}",
+  "workbench.readNote": "閱讀備註",
+  "workbench.earlier": "上一則",
+  "workbench.later": "下一則",
+  "workbench.noteIndex": "備註 {index}/{total}",
+  "workbench.moreTools": "更多工具",
+  "workbench.sheetPeek": "預覽",
+  "workbench.sheetHalf": "半高",
+  "workbench.sheetFull": "全高",
+  "workbench.speed": "速度"
 }

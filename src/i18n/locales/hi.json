@@ -2789,5 +2789,14 @@
   "workbench.unpin": "लाइब्रेरी बंद करें",
   "workbench.shortcuts": "शॉर्टकट",
   "workbench.checksName": "जाँचें, {warnings}",
-  "workbench.warnings": "{count, plural, one {# चेतावनी} other {# चेतावनियाँ}}"
+  "workbench.warnings": "{count, plural, one {# चेतावनी} other {# चेतावनियाँ}}",
+  "workbench.readNote": "नोट पढ़ें",
+  "workbench.earlier": "पहले",
+  "workbench.later": "बाद में",
+  "workbench.noteIndex": "नोट {index} / {total}",
+  "workbench.moreTools": "और टूल",
+  "workbench.sheetPeek": "झलक",
+  "workbench.sheetHalf": "आधी ऊँचाई",
+  "workbench.sheetFull": "पूरी ऊँचाई",
+  "workbench.speed": "गति"
 }

@@ -1,6 +1,8 @@
 import { t } from "../i18n";
 import { runEndResult } from "./runEndResult";
-import { useLayoutEffect, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
+import { createPortal } from "react-dom";
+import { usePhone } from "../lib/usePhone";
 import { useStore } from "@xyflow/react";
 import { useInteraction } from "../canvas/interaction";
 import type { LiveState } from "./controller";
@@ -27,6 +29,9 @@ export function NoteCallout({
   subject?: string;
 }) {
   const ui = useLive();
+  const phone = usePhone();
+  const [expanded, setExpanded] = useState(false);
+  const expandRef = useRef<HTMLButtonElement>(null);
   const interaction = useInteraction();
   const result = runEndResult(state, ui.controller.currentDiagram);
   const note = result ? { text: result, focus: [], atMs: state.run!.time } : state.run?.note;
@@ -42,6 +47,23 @@ export function NoteCallout({
   const continueRef = useRef<HTMLButtonElement>(null);
   const [size, setSize] = useState({ w: 420, h: 110 });
   const noteKey = note ? `${note.atMs}:${note.text}` : "";
+  const open = expanded && phone && docked;
+  const close = () => {
+    setExpanded(false);
+    if (expandRef.current) interaction?.dispatch({ type: "dialog.tab", target: expandRef.current });
+  };
+  useEffect(() => {
+    if (!open) return;
+    const escape = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      setExpanded(false);
+      if (expandRef.current) interaction?.dispatch({ type: "dialog.tab", target: expandRef.current });
+    };
+    window.addEventListener("keydown", escape, true);
+    return () => window.removeEventListener("keydown", escape, true);
+  }, [open, interaction]);
 
   useLayoutEffect(() => {
     const el = ref.current;
@@ -121,57 +143,133 @@ export function NoteCallout({
     style = { left: Math.max(16, width / 2 - size.w / 2), top: height - BOTTOM_RESERVE + 70 - size.h };
   }
 
+  const hud = pane?.querySelector<HTMLElement>(".lv-hud");
+  const hudBox = hud?.getBoundingClientRect();
+  const holes = hudBox
+    ? [
+        ...(pane?.parentElement?.querySelectorAll<HTMLElement>(
+          '.react-flow__node-diagram:not([data-live-dim]):not([data-detail-hidden]), [data-testid^="focus-offscreen-"]',
+        ) ?? []),
+      ]
+        .map((el) => {
+          const r = el.getBoundingClientRect();
+          return `<rect x="${r.left - hudBox.left - 8}" y="${r.top - hudBox.top - 8}" width="${r.width + 16}" height="${r.height + 16}" fill="black"/>`;
+        })
+        .join("")
+    : "";
+  const mask = `url("data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="${hudBox?.width ?? 0}" height="${hudBox?.height ?? 0}"><rect width="100%" height="100%" fill="white"/>${holes}</svg>`)}")`;
+  const notes = state.simulation?.timeline?.filter((step) => step.action.do === "note") ?? [];
+  const index = notes.findIndex((n) => n.atMs === note.atMs);
   return (
-    <div
-      ref={ref}
-      key={`${note.atMs}:${note.text}`}
-      className={`lv-note${docked ? " is-docked" : ""} is-${placement}${waiting ? " is-waiting" : ""}${ui.presenting ? " is-presenting" : ""}`}
-      style={docked ? undefined : style}
-      role="status"
-      aria-live="polite"
-      data-testid="live-note"
-      data-placement={placement}
-      data-waiting={waiting ? "1" : undefined}
-      data-editor-overlay
-    >
-      {!result && (
-        <div className="lv-note-head">
-          <LiveIcon name="note" size={13} />
-          <span>{state.simulation?.title ?? "Note"}</span>
-          <span className="lv-note-time" data-testid="live-note-time">
-            {t("workbench.noteAt", { time: formatClock(note.atMs).replace("s", " s") })}
-          </span>
-        </div>
-      )}
-      <p className="lv-note-text" data-testid={result ? "live-run-result" : "live-note-text"}>
-        {note.text}
-      </p>
-      {waiting && (
-        <div className="lv-note-actions">
+    <>
+      {open &&
+        hud &&
+        createPortal(
           <button
-            ref={continueRef}
-            className="lv-note-continue"
-            onClick={() => ui.controller.resume()}
-            disabled={state.needsRestart}
-            data-testid="live-note-continue"
+            className="lv-note-scrim"
+            data-testid="live-note-scrim"
+            aria-label={t("common.close")}
+            style={{ maskImage: mask }}
+            onClick={close}
+          />,
+          hud,
+        )}
+      <div
+        ref={ref}
+        key={`${note.atMs}:${note.text}`}
+        className={`lv-note${docked ? " is-docked" : ""}${open ? " is-expanded" : ""} is-${placement}${waiting ? " is-waiting" : ""}${ui.presenting ? " is-presenting" : ""}`}
+        style={docked ? undefined : style}
+        role={open ? "dialog" : "status"}
+        aria-label={open ? state.simulation?.title : undefined}
+        aria-live="polite"
+        data-testid="live-note"
+        data-placement={placement}
+        data-waiting={waiting ? "1" : undefined}
+        data-editor-overlay
+        data-expanded={open ? "1" : "0"}
+      >
+        {!result && (
+          <div className="lv-note-head">
+            <LiveIcon name="note" size={13} />
+            <span>{state.simulation?.title ?? "Note"}</span>
+            <span className="lv-note-time" data-testid="live-note-time">
+              {t("workbench.noteAt", { time: formatClock(note.atMs).replace("s", " s") })}
+            </span>
+          </div>
+        )}
+        {open && (
+          <button
+            className="lv-note-close"
+            data-testid="live-note-close"
+            aria-label={t("common.close")}
+            onClick={close}
           >
-            Continue <LiveIcon name="play" size={10} />
+            ×
           </button>
-          <span className="lv-note-hint">
-            or press <kbd>Space</kbd>
-          </span>
-        </div>
-      )}
-      {docked && subjectNode && ui.canEdit && ui.openNodeDetails && (
-        <button
-          className="lv-note-details"
-          data-testid="live-note-details"
-          onClick={() => ui.openNodeDetails?.(subjectNode.id)}
-        >
-          {t("workbench.nodeDetails", { name: subjectNode.label || subjectNode.id })} ›
-        </button>
-      )}
-    </div>
+        )}
+        <p className="lv-note-text" data-testid={result ? "live-run-result" : "live-note-text"}>
+          {note.text}
+        </p>
+        {waiting && (
+          <div className="lv-note-actions">
+            <button
+              ref={continueRef}
+              className="lv-note-continue"
+              onClick={() => ui.controller.resume()}
+              disabled={state.needsRestart}
+              data-testid="live-note-continue"
+            >
+              Continue <LiveIcon name="play" size={10} />
+            </button>
+            <span className="lv-note-hint">
+              or press <kbd>Space</kbd>
+            </span>
+          </div>
+        )}
+        {docked && subjectNode && ui.canEdit && ui.openNodeDetails && (
+          <button
+            className="lv-note-details"
+            data-testid="live-note-details"
+            onClick={() => {
+              setExpanded(false);
+              ui.openNodeDetails?.(subjectNode.id);
+            }}
+          >
+            {t("workbench.nodeDetails", { name: subjectNode.label || subjectNode.id })} ›
+          </button>
+        )}
+        {phone && docked && !open && (
+          <button
+            ref={expandRef}
+            className="lv-note-expand"
+            data-testid="live-note-expand"
+            aria-expanded={open}
+            onClick={() => setExpanded(true)}
+          >
+            {t("workbench.readNote")}
+          </button>
+        )}
+        {open && index >= 0 && (
+          <div className="lv-note-navigation">
+            <button
+              data-testid="live-note-earlier"
+              disabled={index === 0}
+              onClick={() => ui.controller.seek(notes[index - 1].atMs)}
+            >
+              ‹ {t("workbench.earlier")}
+            </button>
+            <span>{t("workbench.noteIndex", { index: index + 1, total: notes.length })}</span>
+            <button
+              data-testid="live-note-later"
+              disabled={index === notes.length - 1}
+              onClick={() => ui.controller.seek(notes[index + 1].atMs)}
+            >
+              {t("workbench.later")} ›
+            </button>
+          </div>
+        )}
+      </div>
+    </>
   );
 }
 

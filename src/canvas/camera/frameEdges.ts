@@ -83,22 +83,22 @@ export interface FramePin {
   spotlit: boolean;
   box: Rect;
 }
-export function stackPins(pins: readonly Omit<FramePin, "box">[], inner: Rect): FramePin[] {
+export function stackPins(pins: readonly Omit<FramePin, "box">[], inner: Rect, height = 28): FramePin[] {
   const placed: FramePin[] = [];
   const clamp = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, n));
   for (const pin of pins) {
     const width = Math.min(pin.width, inner.width);
     let x = clamp(pin.crossing.x - width / 2, inner.x, inner.x + inner.width - width);
-    let y = clamp(pin.crossing.y - 14, inner.y, inner.y + inner.height - 28);
+    let y = clamp(pin.crossing.y - height / 2, inner.y, inner.y + inner.height - height);
     if (pin.side === "left") x = inner.x;
     if (pin.side === "right") x = inner.x + inner.width - width;
     if (pin.side === "top") y = inner.y;
-    if (pin.side === "bottom") y = inner.y + inner.height - 28;
+    if (pin.side === "bottom") y = inner.y + inner.height - height;
     const vertical = pin.side === "left" || pin.side === "right";
     const inward = pin.side === "top" ? 1 : pin.side === "bottom" ? -1 : y + 14 < inner.y + inner.height / 2 ? 1 : -1;
-    let box = { x, y, width, height: 28 };
+    let box = { x, y, width, height };
     for (let step = 0; step <= pins.length * 2; step++) {
-      const offset = step === 0 ? 0 : (step <= pins.length ? step : -(step - pins.length)) * 34 * inward;
+      const offset = step === 0 ? 0 : (step <= pins.length ? step : -(step - pins.length)) * (height + 6) * inward;
       const candidate = { ...box, y: y + offset };
       if (!vertical && offset * inward < 0) continue;
       if (

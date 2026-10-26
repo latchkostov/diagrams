@@ -21,6 +21,8 @@ test("P1 inspector follows live inputs at sampling scale and applies the shared 
   await page.getByTestId("capacity-close").click();
   await page.getByTestId("node-orders").click({ button: "right" });
   await page.getByTestId("context-menu-item-node.properties").click();
+  await page.getByTestId("dock-edit-properties").click();
+  await page.getByTestId("inspector-section-node-simulation").click();
   const x = page.getByTestId("inspector").getByTestId("planning-explanation-orders");
   await expect(x.getByTestId("planning-arithmetic")).toContainText("receives 6 req/s");
   await expect(x.getByTestId("planning-target")).toContainText("12 replicas at the 50% target");
@@ -36,6 +38,7 @@ test("P1 inspector follows live inputs at sampling scale and applies the shared 
   await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "slowmo");
   await page.getByTestId("node-orders").click({ button: "right" });
   await page.getByTestId("context-menu-item-node.properties").click();
+  await page.getByTestId("dock-edit-properties").click();
   await expect(x.getByTestId("planning-apply")).toBeDisabled();
   await expect(x).toContainText("Exit slow motion (Esc) first");
   // Properties focuses its label input, which keeps Escape. Collapse it and move focus
@@ -49,6 +52,7 @@ test("P1 inspector follows live inputs at sampling scale and applies the shared 
   await expect(page.getByTestId("live-play")).not.toHaveAttribute("data-state", "slowmo");
   await page.getByTestId("node-orders").click({ button: "right" });
   await page.getByTestId("context-menu-item-node.properties").click();
+  await page.getByTestId("dock-edit-properties").click();
   await expect(x.getByTestId("planning-apply")).toBeEnabled();
   expectNoErrors(consoleErrors);
 });

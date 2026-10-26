@@ -2786,5 +2786,14 @@
   "workbench.unpin": "Kitaplığı kapat",
   "workbench.shortcuts": "Kısayollar",
   "workbench.checksName": "Kontroller, {warnings}",
-  "workbench.warnings": "{count, plural, one {# uyarı} other {# uyarı}}"
+  "workbench.warnings": "{count, plural, one {# uyarı} other {# uyarı}}",
+  "workbench.readNote": "Notu oku",
+  "workbench.earlier": "Önceki",
+  "workbench.later": "Sonraki",
+  "workbench.noteIndex": "Not {index} / {total}",
+  "workbench.moreTools": "Diğer araçlar",
+  "workbench.sheetPeek": "Önizleme",
+  "workbench.sheetHalf": "Yarım yükseklik",
+  "workbench.sheetFull": "Tam yükseklik",
+  "workbench.speed": "Hız"
 }

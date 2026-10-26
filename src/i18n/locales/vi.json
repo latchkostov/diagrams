@@ -2796,5 +2796,14 @@
   "workbench.unpin": "Đóng thư viện",
   "workbench.shortcuts": "Phím tắt",
   "workbench.checksName": "Kiểm tra, {warnings}",
-  "workbench.warnings": "{count, plural, other {# cảnh báo}}"
+  "workbench.warnings": "{count, plural, other {# cảnh báo}}",
+  "workbench.readNote": "Đọc ghi chú",
+  "workbench.earlier": "Trước",
+  "workbench.later": "Sau",
+  "workbench.noteIndex": "Ghi chú {index} trên {total}",
+  "workbench.moreTools": "Công cụ khác",
+  "workbench.sheetPeek": "Xem trước",
+  "workbench.sheetHalf": "Nửa chiều cao",
+  "workbench.sheetFull": "Toàn bộ chiều cao",
+  "workbench.speed": "Tốc độ"
 }

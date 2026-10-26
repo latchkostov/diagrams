@@ -144,11 +144,16 @@ export function followViewport(
   const subjectBox = nodeRects(s, new Set([id]))[0];
   const bounds = union(nodeRects(s, ids));
   if (!subjectBox || !bounds) return null;
-  const cx = subjectBox.x + subjectBox.width / 2,
-    cy = subjectBox.y + subjectBox.height / 2;
+  const phone = (root.ownerDocument?.defaultView?.innerWidth ?? root.clientWidth) < 640;
+  const pairFits =
+    phone && bounds.width * 0.92 <= root.clientWidth - 104 && bounds.height * 0.92 <= root.clientHeight - 104;
+  const centre = pairFits ? bounds : subjectBox;
+  const cx = centre.x + centre.width / 2,
+    cy = centre.y + centre.height / 2;
   const right = 52 + (room.panel || room.card ? Math.min(440, Math.max(0, root.clientWidth - 220)) : 0);
-  const x = (52 + root.clientWidth - right) / 2,
-    y = root.clientHeight / 2;
+  const nudge = phone && !pairFits ? (cx - bounds.x > bounds.x + bounds.width - cx ? 18 : -18) : 0;
+  const x = (52 + root.clientWidth - right) / 2 + nudge,
+    y = root.clientHeight * (phone ? 0.4 : 0.5);
   const maximum = Math.min(
     (root.ownerDocument?.defaultView?.innerWidth ?? root.clientWidth) < 640 ? 1.1 : 1,
     (x - 52) / Math.max(1, cx - bounds.x),
@@ -156,7 +161,7 @@ export function followViewport(
     (y - 52) / Math.max(1, cy - bounds.y),
     (root.clientHeight - 52 - y) / Math.max(1, bounds.y + bounds.height - cy),
   );
-  const zoom = Math.max(0.9, maximum);
+  const zoom = Math.max(phone ? 0.92 : 0.9, maximum);
   return { x: x - cx * zoom, y: y - cy * zoom, zoom };
 }
 

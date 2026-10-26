@@ -2791,5 +2791,14 @@
   "workbench.unpin": "Tutup pustaka",
   "workbench.shortcuts": "Pintasan",
   "workbench.checksName": "Pemeriksaan, {warnings}",
-  "workbench.warnings": "{count, plural, other {# peringatan}}"
+  "workbench.warnings": "{count, plural, other {# peringatan}}",
+  "workbench.readNote": "Baca catatan",
+  "workbench.earlier": "Sebelumnya",
+  "workbench.later": "Berikutnya",
+  "workbench.noteIndex": "Catatan {index} dari {total}",
+  "workbench.moreTools": "Alat lainnya",
+  "workbench.sheetPeek": "Pratinjau",
+  "workbench.sheetHalf": "Setengah tinggi",
+  "workbench.sheetFull": "Tinggi penuh",
+  "workbench.speed": "Kecepatan"
 }

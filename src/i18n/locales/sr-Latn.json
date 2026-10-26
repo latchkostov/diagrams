@@ -2790,5 +2790,14 @@
   "workbench.unpin": "Zatvori biblioteku",
   "workbench.shortcuts": "Prečice",
   "workbench.checksName": "Provere, {warnings}",
-  "workbench.warnings": "{count, plural, one {# upozorenje} few {# upozorenja} other {# upozorenja}}"
+  "workbench.warnings": "{count, plural, one {# upozorenje} few {# upozorenja} other {# upozorenja}}",
+  "workbench.readNote": "Pročitaj belešku",
+  "workbench.earlier": "Ranije",
+  "workbench.later": "Kasnije",
+  "workbench.noteIndex": "Beleška {index} od {total}",
+  "workbench.moreTools": "Još alata",
+  "workbench.sheetPeek": "Pregled",
+  "workbench.sheetHalf": "Pola visine",
+  "workbench.sheetFull": "Puna visina",
+  "workbench.speed": "Brzina"
 }

@@ -14,6 +14,7 @@ const LiveMoreItems = defineLazySurface({
   retryToast: true,
 });
 import { ViewMenu } from "./ViewMenu";
+import { usePhone } from "../lib/usePhone";
 import { SimPanel } from "./lazySimPanel";
 import { t, useLocale } from "../i18n";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
@@ -35,6 +36,7 @@ import { SlowBar } from "./slowmo/SlowBar";
  */
 export function ControlBar({ state, slim = false }: { state: LiveState; slim?: boolean }) {
   useLocale();
+  const phone = usePhone();
   const ui = useLive();
   const c = ui.controller;
   const run = state.run;
@@ -96,21 +98,23 @@ export function ControlBar({ state, slim = false }: { state: LiveState; slim?: b
         <LiveIcon name="restart" size={15} />
       </button>
 
-      <label className="lv-select lv-speed" title={slowOn ? "Slow motion pace" : SPEED_HINT}>
-        <span className="sr-only">Speed</span>
-        <select
-          value={String(state.speed)}
-          onChange={(e) => c.setSpeed(Number(e.target.value))}
-          data-testid="live-speed"
-          name="live-speed"
-        >
-          {SPEEDS.map((s) => (
-            <option key={s} value={String(s)}>
-              {formatSpeed(s)}
-            </option>
-          ))}
-        </select>
-      </label>
+      {!phone && (
+        <label className="lv-select lv-speed" title={slowOn ? "Slow motion pace" : SPEED_HINT}>
+          <span className="sr-only">Speed</span>
+          <select
+            value={String(state.speed)}
+            onChange={(e) => c.setSpeed(Number(e.target.value))}
+            data-testid="live-speed"
+            name="live-speed"
+          >
+            {SPEEDS.map((s) => (
+              <option key={s} value={String(s)}>
+                {formatSpeed(s)}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
 
       {slowOn || slow.loading ? (
         <SlowBar slow={ui.slowmo} />
@@ -149,18 +153,20 @@ export function ControlBar({ state, slim = false }: { state: LiveState; slim?: b
 
           {state.simulation && run ? (
             <>
-              <span
-                className="lv-clock"
-                data-testid="live-clock"
-                data-ms={Math.round(run.time)}
-                title={`of ${formatClock(Math.max(run.totalMs, run.time))}`}
-              >
-                {formatSeconds(run.time)}
+              <span className="lv-clock-pair">
+                <span
+                  className="lv-clock"
+                  data-testid="live-clock"
+                  data-ms={Math.round(run.time)}
+                  title={`of ${formatClock(Math.max(run.totalMs, run.time))}`}
+                >
+                  {formatSeconds(run.time)}
+                </span>
+                <span className="lv-clock-total" data-testid="live-clock-total">
+                  / {formatSeconds(run.totalMs)}
+                </span>
               </span>
-              <span className="lv-clock-total" data-testid="live-clock-total">
-                / {formatSeconds(run.totalMs)}
-              </span>
-              <InFlight state={state} />
+              {!phone && <InFlight state={state} />}
               <Timeline
                 viewControl={<ViewMenu />}
                 sim={state.simulation}
@@ -185,7 +191,7 @@ export function ControlBar({ state, slim = false }: { state: LiveState; slim?: b
         </>
       )}
 
-      {!state.run && <InFlight state={state} />}
+      {!phone && !state.run && <InFlight state={state} />}
 
       {(!state.run || slowOn) && <ViewMenu />}
       <MoreMenu state={state} />
@@ -205,6 +211,8 @@ const SPEED_HINT = "Playback speed. Slower speeds draw fewer dots so each one is
 /** Same words as the right-click's "Trace a message ▸" (src/live/liveActions.ts). */
 
 function MoreMenu({ state }: { state: LiveState }) {
+  const phone = usePhone();
+  const ui = useLive();
   const [traceOpen, setTraceOpen] = useState(false);
   const button = useRef<HTMLButtonElement>(null);
   const { open, toggle, close } = useLivePopover(() => button.current);
@@ -237,7 +245,29 @@ function MoreMenu({ state }: { state: LiveState }) {
       >
         <LiveIcon name="more" size={15} />
       </button>
-      {open && <LiveMoreItems state={state} close={close} traceOpen={traceOpen} setTraceOpen={setTraceOpen} />}
+      {open && (
+        <LiveMoreItems state={state} close={close} traceOpen={traceOpen} setTraceOpen={setTraceOpen}>
+          {phone && (
+            <>
+              <InFlight state={state} />
+              <label className="lv-select" title={SPEED_HINT}>
+                <span>{t("workbench.speed")}</span>
+                <select
+                  data-testid="live-speed"
+                  value={String(state.speed)}
+                  onChange={(e) => ui.controller.setSpeed(Number(e.target.value))}
+                >
+                  {SPEEDS.map((s) => (
+                    <option key={s} value={s}>
+                      {formatSpeed(s)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </>
+          )}
+        </LiveMoreItems>
+      )}
     </div>
   );
 }

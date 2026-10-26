@@ -946,3 +946,18 @@ it("G1 holds pane work during a gesture and replays it once after ending", () =>
   expect(released.commands).toEqual([FIT("pane")]);
   expect(released.state.pending).toBeNull();
 });
+it("readable selection preserves an outstanding dock resize and reveals the covered selection", () => {
+  const opening = state({ owner: "manual", pending: { cause: "panel" } });
+  const selected = decide(opening, { type: "selection.changed", cause: "selection", zoom: 1 }).state;
+  expect(selected.pending).toEqual({ cause: "panel" });
+  expect(
+    decide(selected, settled({ selection: true, covered: true, coveredWithEdges: true, zoom: 1 })).commands,
+  ).toEqual([{ type: "reveal", cause: "panel", withEdges: true }]);
+});
+it("a dock opened by a readable selection reveals coverage without refitting or zooming", () => {
+  const opening = state({ owner: "manual", pending: { cause: "selection" } });
+  expect(decide(opening, settled({ zoom: 1, selection: true, covered: true })).commands).toEqual([
+    { type: "reveal", cause: "selection", withEdges: false },
+  ]);
+  expect(decide(opening, settled({ zoom: 1, selection: true, covered: false })).commands).toEqual([]);
+});

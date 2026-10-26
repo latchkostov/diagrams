@@ -2811,5 +2811,14 @@
   "workbench.unpin": "Könyvtár bezárása",
   "workbench.shortcuts": "Gyorsbillentyűk",
   "workbench.checksName": "Ellenőrzések, {warnings}",
-  "workbench.warnings": "{count, plural, one {# figyelmeztetés} other {# figyelmeztetés}}"
+  "workbench.warnings": "{count, plural, one {# figyelmeztetés} other {# figyelmeztetés}}",
+  "workbench.readNote": "Jegyzet olvasása",
+  "workbench.earlier": "Korábbi",
+  "workbench.later": "Későbbi",
+  "workbench.noteIndex": "{index}/{total}. jegyzet",
+  "workbench.moreTools": "További eszközök",
+  "workbench.sheetPeek": "Előnézet",
+  "workbench.sheetHalf": "Félmagasság",
+  "workbench.sheetFull": "Teljes magasság",
+  "workbench.speed": "Sebesség"
 }

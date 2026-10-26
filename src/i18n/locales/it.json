@@ -2810,5 +2810,14 @@
   "workbench.unpin": "Chiudi libreria",
   "workbench.shortcuts": "Scorciatoie",
   "workbench.checksName": "Controlli, {warnings}",
-  "workbench.warnings": "{count, plural, one {# avviso} other {# avvisi}}"
+  "workbench.warnings": "{count, plural, one {# avviso} other {# avvisi}}",
+  "workbench.readNote": "Leggi nota",
+  "workbench.earlier": "Precedente",
+  "workbench.later": "Successiva",
+  "workbench.noteIndex": "Nota {index} di {total}",
+  "workbench.moreTools": "Altri strumenti",
+  "workbench.sheetPeek": "Anteprima",
+  "workbench.sheetHalf": "Metà altezza",
+  "workbench.sheetFull": "Altezza intera",
+  "workbench.speed": "Velocità"
 }

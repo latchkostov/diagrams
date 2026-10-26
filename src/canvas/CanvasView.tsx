@@ -730,7 +730,7 @@ function CanvasInner({
     if (presenting) interaction.dispatch({ type: "presenting" });
   }, [presenting, interaction]);
 
-  useModeFit(controller, presenting, live);
+  useModeFit(controller, presenting, live, readOnly);
   const { card, cardCovers, checksTop } = useChromeOverlays(wrapper, checksOn && checksCard, !bezel || presenting);
 
   // Your own diagrams have no "original" worth going back to: the edits are the diagram (and undo
@@ -1195,7 +1195,9 @@ function CanvasInner({
     () => (
       <>
         <ZoomVar host={wrapper} />
-        <FrameDetail host={wrapper} routing={{ style: edgeStyle, direction: meta.direction ?? "LR" }} />
+        {!readOnly && !presenting && (
+          <FrameDetail host={wrapper} routing={{ style: edgeStyle, direction: meta.direction ?? "LR" }} />
+        )}
         {!readOnly && <ConnectionRadius />}
         {prefs.grid && <DotGrid />}
         {editGestures && <svg ref={guideLayer} className="smart-guides" data-testid="smart-guides" aria-hidden />}

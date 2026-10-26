@@ -2836,5 +2836,14 @@
   "workbench.unpin": "라이브러리 닫기",
   "workbench.shortcuts": "단축키",
   "workbench.checksName": "검사, {warnings}",
-  "workbench.warnings": "{count, plural, other {# 개의 경고}}"
+  "workbench.warnings": "{count, plural, other {# 개의 경고}}",
+  "workbench.readNote": "노트 읽기",
+  "workbench.earlier": "이전",
+  "workbench.later": "다음",
+  "workbench.noteIndex": "노트 {index}/{total}",
+  "workbench.moreTools": "추가 도구",
+  "workbench.sheetPeek": "미리 보기",
+  "workbench.sheetHalf": "절반 높이",
+  "workbench.sheetFull": "전체 높이",
+  "workbench.speed": "속도"
 }

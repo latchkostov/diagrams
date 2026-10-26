@@ -2934,5 +2934,14 @@
   "workbench.unpin": "إغلاق المكتبة",
   "workbench.shortcuts": "الاختصارات",
   "workbench.checksName": "عمليات التحقق، {warnings}",
-  "workbench.warnings": "{count, plural, zero {# تحذيرات} one {# تحذير} two {# تحذيرات} few {# تحذيرات} many {# تحذيرات} other {# تحذيرات}}"
+  "workbench.warnings": "{count, plural, zero {# تحذيرات} one {# تحذير} two {# تحذيرات} few {# تحذيرات} many {# تحذيرات} other {# تحذيرات}}",
+  "workbench.readNote": "قراءة الملاحظة",
+  "workbench.earlier": "السابقة",
+  "workbench.later": "التالية",
+  "workbench.noteIndex": "الملاحظة {index} من {total}",
+  "workbench.moreTools": "أدوات إضافية",
+  "workbench.sheetPeek": "لمحة",
+  "workbench.sheetHalf": "نصف الارتفاع",
+  "workbench.sheetFull": "الارتفاع الكامل",
+  "workbench.speed": "السرعة"
 }

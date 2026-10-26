@@ -87,6 +87,7 @@ export function Inspector(p: InspectorProps) {
     local ? <InteractionContext.Provider value={interaction}>{sheet}</InteractionContext.Provider> : sheet;
   const locale = useLocale();
   const dock = useWorkbenchDock();
+  const snap = dock.snap;
   const activeTab = dock.value === "closed" ? "properties" : dock.value;
   const id = useId();
   const warnings = useSyncExternalStore(
@@ -229,6 +230,7 @@ export function Inspector(p: InspectorProps) {
   return within(
     <aside
       className="inspector"
+      data-sheet-snap={snap}
       data-testid="inspector"
       aria-label={t("inspector.inspector")}
       data-inspector-mode={mode}
@@ -237,6 +239,25 @@ export function Inspector(p: InspectorProps) {
         n === 1 ? (p.selectedNodes[0] ?? p.selectedEdges[0] ?? p.selectedGroups[0] ?? annotations[0])?.id : undefined
       }
     >
+      <div className="dock-snap-controls" data-testid="dock-snap-controls">
+        {(["peek", "half", "full"] as const).map((value) => (
+          <button
+            key={value}
+            data-testid={`dock-snap-${value}`}
+            aria-pressed={snap === value}
+            aria-label={
+              value === "peek"
+                ? t("workbench.sheetPeek")
+                : value === "half"
+                  ? t("workbench.sheetHalf")
+                  : t("workbench.sheetFull")
+            }
+            onClick={() => workbenchDock.snap(value)}
+          >
+            <span aria-hidden>{value === "peek" ? "▁" : value === "half" ? "▄" : "█"}</span>
+          </button>
+        ))}
+      </div>
       {head}
       {/* Where focus goes after a finding's fix when no other finding is left to take it. */}
       <div

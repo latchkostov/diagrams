@@ -2813,5 +2813,14 @@
   "workbench.unpin": "Luk bibliotek",
   "workbench.shortcuts": "Genveje",
   "workbench.checksName": "Kontroller, {warnings}",
-  "workbench.warnings": "{count, plural, one {# advarsel} other {# advarsler}}"
+  "workbench.warnings": "{count, plural, one {# advarsel} other {# advarsler}}",
+  "workbench.readNote": "Læs note",
+  "workbench.earlier": "Tidligere",
+  "workbench.later": "Senere",
+  "workbench.noteIndex": "Note {index} af {total}",
+  "workbench.moreTools": "Flere værktøjer",
+  "workbench.sheetPeek": "Kig",
+  "workbench.sheetHalf": "Halv højde",
+  "workbench.sheetFull": "Fuld højde",
+  "workbench.speed": "Hastighed"
 }

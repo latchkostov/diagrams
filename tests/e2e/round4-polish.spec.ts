@@ -144,6 +144,8 @@ test.describe("round 4 polish", () => {
     const a = page.getByTestId("node-stock-db");
     const b = page.getByTestId("node-payment-db");
     await a.click();
+    await page.getByTestId("fit-view-button").click();
+    await waitForStableViewport(page);
     await b.click({ modifiers: ["ControlOrMeta"] });
     await openCanvasMenu(page);
     await page.getByTestId("context-menu-item-canvas.annotate").click();

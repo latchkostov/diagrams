@@ -2808,5 +2808,14 @@
   "workbench.unpin": "Bibliothek schließen",
   "workbench.shortcuts": "Tastenkürzel",
   "workbench.checksName": "Prüfungen, {warnings}",
-  "workbench.warnings": "{count, plural, one {# Warnung} other {# Warnungen}}"
+  "workbench.warnings": "{count, plural, one {# Warnung} other {# Warnungen}}",
+  "workbench.readNote": "Notiz lesen",
+  "workbench.earlier": "Früher",
+  "workbench.later": "Später",
+  "workbench.noteIndex": "Notiz {index} von {total}",
+  "workbench.moreTools": "Weitere Werkzeuge",
+  "workbench.sheetPeek": "Vorschau",
+  "workbench.sheetHalf": "Halbe Höhe",
+  "workbench.sheetFull": "Volle Höhe",
+  "workbench.speed": "Geschwindigkeit"
 }

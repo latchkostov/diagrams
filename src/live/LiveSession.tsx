@@ -1,6 +1,7 @@
 import { defineLazySurface } from "../lib/lazySurface";
 import { createPortal } from "react-dom";
 import { activateDock } from "../canvas/inspector/dockActions";
+import { workbenchDock } from "../canvas/inspector/dockState";
 import { boundaryRestoreHint } from "../model/faultWords";
 import { ViewportPortal, useStoreApi } from "@xyflow/react";
 import { Suspense, lazy, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
@@ -287,6 +288,7 @@ export function LiveSession({
       if (!editor) return;
       editor.select({ nodeIds: [id], edgeIds: [], groupIds: [] });
       activateDock("properties");
+      workbenchDock.snap("half");
     },
     [editor],
   );

@@ -2803,5 +2803,14 @@
   "workbench.unpin": "Zapri knjižnico",
   "workbench.shortcuts": "Bližnjice",
   "workbench.checksName": "Preverjanja, {warnings}",
-  "workbench.warnings": "{count, plural, one {# opozorilo} two {# opozorila} few {# opozorila} other {# opozorila}}"
+  "workbench.warnings": "{count, plural, one {# opozorilo} two {# opozorila} few {# opozorila} other {# opozorila}}",
+  "workbench.readNote": "Preberi opombo",
+  "workbench.earlier": "Prejšnja",
+  "workbench.later": "Naslednja",
+  "workbench.noteIndex": "Opomba {index} od {total}",
+  "workbench.moreTools": "Več orodij",
+  "workbench.sheetPeek": "Predogled",
+  "workbench.sheetHalf": "Polovična višina",
+  "workbench.sheetFull": "Polna višina",
+  "workbench.speed": "Hitrost"
 }

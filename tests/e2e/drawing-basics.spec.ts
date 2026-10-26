@@ -115,10 +115,18 @@ const cursorAt = (page: Page, p: { x: number; y: number }) =>
   }, p);
 
 test.describe("drawing basics", () => {
-  test.beforeEach(async ({ page }) => {
+  test.beforeEach(async ({ page }, info) => {
+    // Keep this gesture fixture in readable Overview; large diagrams now open in Focus.
+    await page.setViewportSize(
+      info.title.includes("handles have") || info.title.startsWith("Shift+2")
+        ? { width: 1440, height: 900 }
+        : { width: 2800, height: 1200 },
+    );
     await gotoCanvas(page, SLUG);
+    await page.getByTestId("fit-view-button").click();
     await expect(page.getByTestId("node-payments")).toBeVisible();
     await waitForStableViewport(page);
+    await page.getByTestId("canvas-wrap").focus();
   });
 
   test("the wheel pans (both axes); Ctrl+wheel zooms at the pointer", async ({ page, consoleErrors }) => {
@@ -389,6 +397,8 @@ test.describe("drawing basics", () => {
     // Zoom these endpoints into view so the card's centre is outside both 20 px dot snap zones.
     await page.setViewportSize({ width: 1920, height: 1080 });
     await page.getByTestId("node-shopper").click();
+    await page.getByTestId("fit-view-button").click();
+    await waitForCameraIdle(page);
     await page.getByTestId("node-schemas").click({ modifiers: ["Shift"] });
     await waitForSelectionSettled(page);
     await page.getByTestId("canvas-wrap").focus();
@@ -594,6 +604,10 @@ test.describe("drawing basics", () => {
     // An edge alone zooms to its route.
     await page.keyboard.press("Shift+Digit1");
     await waitForStableViewport(page);
+    await page.keyboard.press(`${MOD}+k`);
+    await page.getByTestId("command-input").fill("@dashboard");
+    await page.getByTestId("command-item-node:dashboard").click();
+    await waitForCameraIdle(page);
     await page.getByTestId("edge-label-dashboard-to-metrics").click();
     await page.keyboard.press("Shift+Digit2");
     await expect.poll(async () => (await view(page)).zoom).toBeGreaterThan(fitted * 1.5);

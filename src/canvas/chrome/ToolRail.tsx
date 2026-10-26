@@ -1,4 +1,5 @@
 import { useWorkbenchDock } from "../inspector/dockState";
+import { usePhone } from "../../lib/usePhone";
 import { useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { Icon, type IconName } from "../../components/Icon";
 import { t, useLocale } from "../../i18n";
@@ -15,6 +16,7 @@ const noSubscribe = () => () => {};
 const zero = () => 0;
 export function ToolRail({ view, onView }: { view: View; onView: (view: View) => void }) {
   useLocale();
+  const phone = usePhone();
   const host = useToolHost();
   const dock = useWorkbenchDock();
   const surface = useToolSurface();
@@ -129,26 +131,41 @@ export function ToolRail({ view, onView }: { view: View; onView: (view: View) =>
         !checks.available,
         t("workbench.checksName", { warnings: t("workbench.warnings", { count: warnings }) }),
       )}
-      <div className="tool-rail-sep" />
-      {item("view-gallery", t("topbar.stencils"), "grid", () => onView("gallery"), view === "gallery")}
-      {item("view-tutorials", t("tutorials.section"), "learn", () => onView("tutorials"), view === "tutorials")}
-      <div className="tool-rail-grow" />
-      {item("shortcuts-button", t("workbench.shortcuts"), "keyboard", () => host?.shortcuts(), false, undefined, !host)}
-      {AI_PANEL &&
-        item(
-          "ai-rail-open",
-          t("ai.aI"),
-          "ai",
-          () => openAiPanel(),
-          dock.value === "ai",
-          fresh > 0 && (
-            <i className="tool-rail-badge" aria-hidden data-testid="ai-rail-badge">
-              {fresh > 9 ? "9+" : fresh}
-            </i>
-          ),
-          !host,
-          railLabel(fresh),
-        )}
+      <details className="rail-overflow" open={phone ? undefined : true}>
+        <summary data-testid="rail-more" aria-label={t("workbench.moreTools")}>
+          ⋯
+        </summary>
+        <div className="rail-overflow-items">
+          <div className="tool-rail-sep" />
+          {item("view-gallery", t("topbar.stencils"), "grid", () => onView("gallery"), view === "gallery")}
+          {item("view-tutorials", t("tutorials.section"), "learn", () => onView("tutorials"), view === "tutorials")}
+          <div className="tool-rail-grow" />
+          {item(
+            "shortcuts-button",
+            t("workbench.shortcuts"),
+            "keyboard",
+            () => host?.shortcuts(),
+            false,
+            undefined,
+            !host,
+          )}
+          {AI_PANEL &&
+            item(
+              "ai-rail-open",
+              t("ai.aI"),
+              "ai",
+              () => openAiPanel(),
+              dock.value === "ai",
+              fresh > 0 && (
+                <i className="tool-rail-badge" aria-hidden data-testid="ai-rail-badge">
+                  {fresh > 9 ? "9+" : fresh}
+                </i>
+              ),
+              !host,
+              railLabel(fresh),
+            )}
+        </div>
+      </details>
     </nav>
   );
 }

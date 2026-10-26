@@ -2772,5 +2772,14 @@
   "workbench.unpin": "Закрыть библиотеку",
   "workbench.shortcuts": "Клавиши",
   "workbench.checksName": "Проверки, {warnings}",
-  "workbench.warnings": "{count, plural, one {# предупреждение} few {# предупреждения} many {# предупреждения} other {# предупреждения}}"
+  "workbench.warnings": "{count, plural, one {# предупреждение} few {# предупреждения} many {# предупреждения} other {# предупреждения}}",
+  "workbench.readNote": "Читать заметку",
+  "workbench.earlier": "Ранее",
+  "workbench.later": "Позже",
+  "workbench.noteIndex": "Заметка {index} из {total}",
+  "workbench.moreTools": "Другие инструменты",
+  "workbench.sheetPeek": "Предпросмотр",
+  "workbench.sheetHalf": "Половина высоты",
+  "workbench.sheetFull": "Полная высота",
+  "workbench.speed": "Скорость"
 }

@@ -2796,5 +2796,14 @@
   "workbench.unpin": "Sulje kirjasto",
   "workbench.shortcuts": "Pikanäppäimet",
   "workbench.checksName": "Tarkistukset, {warnings}",
-  "workbench.warnings": "{count, plural, one {# varoitus} other {# varoitusta}}"
+  "workbench.warnings": "{count, plural, one {# varoitus} other {# varoitusta}}",
+  "workbench.readNote": "Lue huomautus",
+  "workbench.earlier": "Aiempi",
+  "workbench.later": "Myöhempi",
+  "workbench.noteIndex": "Huomautus {index}/{total}",
+  "workbench.moreTools": "Lisää työkaluja",
+  "workbench.sheetPeek": "Esikatselu",
+  "workbench.sheetHalf": "Puolikorkeus",
+  "workbench.sheetFull": "Täysi korkeus",
+  "workbench.speed": "Nopeus"
 }

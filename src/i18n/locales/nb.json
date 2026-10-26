@@ -2800,5 +2800,14 @@
   "workbench.unpin": "Lukk bibliotek",
   "workbench.shortcuts": "Snarveier",
   "workbench.checksName": "Kontroller, {warnings}",
-  "workbench.warnings": "{count, plural, one {# advarsel} other {# advarsler}}"
+  "workbench.warnings": "{count, plural, one {# advarsel} other {# advarsler}}",
+  "workbench.readNote": "Les merknad",
+  "workbench.earlier": "Tidligere",
+  "workbench.later": "Senere",
+  "workbench.noteIndex": "Merknad {index} av {total}",
+  "workbench.moreTools": "Flere verktøy",
+  "workbench.sheetPeek": "Forhåndsvisning",
+  "workbench.sheetHalf": "Halv høyde",
+  "workbench.sheetFull": "Full høyde",
+  "workbench.speed": "Hastighet"
 }

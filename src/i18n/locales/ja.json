@@ -2813,5 +2813,14 @@
   "workbench.unpin": "ライブラリを閉じる",
   "workbench.shortcuts": "ショートカット",
   "workbench.checksName": "チェック, {warnings}",
-  "workbench.warnings": "{count, plural, other {# 件の警告}}"
+  "workbench.warnings": "{count, plural, other {# 件の警告}}",
+  "workbench.readNote": "ノートを読む",
+  "workbench.earlier": "前へ",
+  "workbench.later": "次へ",
+  "workbench.noteIndex": "ノート {index}/{total}",
+  "workbench.moreTools": "その他のツール",
+  "workbench.sheetPeek": "プレビュー",
+  "workbench.sheetHalf": "半分の高さ",
+  "workbench.sheetFull": "全高",
+  "workbench.speed": "速度"
 }

@@ -2797,6 +2797,15 @@
     "workbench.unpin": "99d46dc4",
     "workbench.shortcuts": "f09038a0",
     "workbench.checksName": "54f75717",
-    "workbench.warnings": "16ba1ebb"
+    "workbench.warnings": "16ba1ebb",
+    "workbench.readNote": "c70f9acf",
+    "workbench.earlier": "c50cd8bb",
+    "workbench.later": "f7f62b49",
+    "workbench.noteIndex": "48bd323c",
+    "workbench.moreTools": "06ae7b6b",
+    "workbench.sheetPeek": "15f4983e",
+    "workbench.sheetHalf": "52c0062f",
+    "workbench.sheetFull": "01a3a987",
+    "workbench.speed": "0a6b8020"
   }
 }

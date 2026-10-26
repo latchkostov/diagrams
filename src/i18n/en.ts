@@ -4611,5 +4611,14 @@ const en = {
   "workbench.shortcuts": "Shortcuts",
   "workbench.checksName": "Checks, {warnings}",
   "workbench.warnings": "{count, plural, one {# warning} other {# warnings}}",
+  "workbench.readNote": "Read note",
+  "workbench.earlier": "Earlier",
+  "workbench.later": "Later",
+  "workbench.noteIndex": "Note {index} of {total}",
+  "workbench.moreTools": "More tools",
+  "workbench.sheetPeek": "Peek",
+  "workbench.sheetHalf": "Half height",
+  "workbench.sheetFull": "Full height",
+  "workbench.speed": "Speed",
 } as const;
 export default en;

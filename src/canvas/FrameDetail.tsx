@@ -182,10 +182,16 @@ export function FrameDetail({ host, routing }: { host: RefObject<HTMLElement | n
             });
         }
       // Keep inline-end pins above the credit; stack from their own route crossing toward the centre.
-      const pins = stackPins(candidates, {
-        ...inner,
-        height: Math.max(28, inner.height - (view === "follow" ? 14 : 0)),
-      });
+      const phone = window.innerWidth < 640;
+      const pins = stackPins(
+        candidates,
+        {
+          ...inner,
+          ...(phone ? { x: 8, width: origin.width - 16 } : {}),
+          height: Math.max(28, inner.height - (view === "follow" ? 14 : 0)),
+        },
+        phone ? 44 : 28,
+      );
       blockers.push(...pins.map((pin) => pin.box));
       for (const el of root.querySelectorAll<HTMLElement | SVGElement>(".react-flow__edge[data-id]")) {
         const edge = edges.get(el.dataset.id ?? "");
@@ -212,7 +218,7 @@ export function FrameDetail({ host, routing }: { host: RefObject<HTMLElement | n
       for (const badge of root.querySelectorAll<HTMLElement>('[data-testid^="node-badge-"], [data-node-id]')) {
         const id = badge.dataset.nodeId ?? badge.dataset.testid?.slice("node-badge-".length);
         if (id && states.has(id)) {
-          setHidden(badge, states.get(id) !== "in" || far);
+          setHidden(badge, !lit.has(id) && (states.get(id) !== "in" || far));
           badge.toggleAttribute("data-detail-dim", !!lit.size && !active.has(id));
         }
       }
@@ -334,7 +340,7 @@ export function FrameDetail({ host, routing }: { host: RefObject<HTMLElement | n
               x1={pin.crossing.x}
               y1={pin.crossing.y}
               x2={pin.box.x + pin.box.width / 2}
-              y2={pin.box.y + 14}
+              y2={pin.box.y + pin.box.height / 2}
             />
           ))}
       </svg>

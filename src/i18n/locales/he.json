@@ -2785,5 +2785,14 @@
   "workbench.unpin": "סגירת הספרייה",
   "workbench.shortcuts": "קיצורים",
   "workbench.checksName": "בדיקות, {warnings}",
-  "workbench.warnings": "{count, plural, one {# אזהרה} two {# אזהרות} other {# אזהרות}}"
+  "workbench.warnings": "{count, plural, one {# אזהרה} two {# אזהרות} other {# אזהרות}}",
+  "workbench.readNote": "קריאת הערה",
+  "workbench.earlier": "קודמת",
+  "workbench.later": "הבאה",
+  "workbench.noteIndex": "הערה {index} מתוך {total}",
+  "workbench.moreTools": "כלים נוספים",
+  "workbench.sheetPeek": "הצצה",
+  "workbench.sheetHalf": "חצי גובה",
+  "workbench.sheetFull": "גובה מלא",
+  "workbench.speed": "מהירות"
 }

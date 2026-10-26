@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { t, msg } from "../i18n";
 import { useInteraction } from "../canvas/interaction";
 import { LiveIcon } from "./icons";
@@ -45,6 +45,7 @@ interface TroubleProps {
  * rising. It comes on its own, with one action, and goes when dismissed or when the trouble ends.
  */
 export function TroubleCallout({ trouble, onAction, onDismiss, onShown, floating, disabledHint }: TroubleProps) {
+  const [expanded, setExpanded] = useState(false);
   const action = TROUBLE_ACTIONS[trouble.action.kind];
   const label =
     trouble.action.kind === "restore-boundary"
@@ -76,6 +77,7 @@ export function TroubleCallout({ trouble, onAction, onDismiss, onShown, floating
       className={`cap-callout is-over${floating ? " is-floating is-status-strip" : ""}`}
       data-testid="trouble-callout"
       data-kind={trouble.kind}
+      data-expanded={expanded ? "1" : "0"}
       data-node={trouble.node}
       data-canvas-overlay={floating ? "" : undefined}
       data-editor-overlay
@@ -85,6 +87,13 @@ export function TroubleCallout({ trouble, onAction, onDismiss, onShown, floating
       }}
     >
       <span className="cap-callout-dot" aria-hidden />
+      <button
+        className="trouble-expand"
+        data-testid="trouble-expand"
+        aria-label={trouble.headline}
+        aria-expanded={expanded}
+        onClick={() => setExpanded(!expanded)}
+      />
       <div className="cap-callout-text">
         <strong data-testid="trouble-headline">{trouble.headline}</strong>
         {detail && <span data-testid="trouble-detail">{detail}</span>}

@@ -1502,6 +1502,7 @@ for (const enter of ["Enter", "Shift+Enter"]) {
 }
 
 test("annotation typing and selection survive a delayed formatting chunk", async ({ page, consoleErrors }) => {
+  await page.setViewportSize({ width: 2800, height: 1200 });
   let release = () => {};
   const gate = new Promise<void>((resolve) => (release = resolve));
   let intercepted = false;

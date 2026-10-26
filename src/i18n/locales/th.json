@@ -2778,5 +2778,14 @@
   "workbench.unpin": "ปิดคลัง",
   "workbench.shortcuts": "ทางลัด",
   "workbench.checksName": "การตรวจสอบ, {warnings}",
-  "workbench.warnings": "{count, plural, other {# คำเตือน}}"
+  "workbench.warnings": "{count, plural, other {# คำเตือน}}",
+  "workbench.readNote": "อ่านบันทึก",
+  "workbench.earlier": "ก่อนหน้า",
+  "workbench.later": "ถัดไป",
+  "workbench.noteIndex": "บันทึก {index} จาก {total}",
+  "workbench.moreTools": "เครื่องมือเพิ่มเติม",
+  "workbench.sheetPeek": "ดูคร่าว ๆ",
+  "workbench.sheetHalf": "ครึ่งความสูง",
+  "workbench.sheetFull": "เต็มความสูง",
+  "workbench.speed": "ความเร็ว"
 }

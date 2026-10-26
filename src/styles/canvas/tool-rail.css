@@ -119,3 +119,154 @@
   inset-inline-start: auto;
   inset-inline-end: 8px;
 }
+/* Phone Workbench: the rail is a footer, the dock is a sheet. */
+.topbar-overflow {
+  display: contents;
+}
+.topbar-overflow > summary,
+.rail-overflow > summary,
+.dock-snap-controls {
+  display: none;
+}
+.rail-overflow,
+.rail-overflow-items {
+  display: contents;
+}
+@media (max-width: 639px) {
+  .app-body {
+    flex-direction: column-reverse;
+  }
+  .topbar .brand {
+    display: flex;
+  }
+  .topbar .diagram-picker {
+    max-width: none;
+    flex: 1;
+  }
+  .topbar .bezel-history,
+  .topbar [data-testid="view-lab"] {
+    display: none;
+  }
+  .topbar-overflow {
+    display: block;
+  }
+  .topbar-overflow > summary {
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 44px;
+    cursor: pointer;
+    list-style: none;
+  }
+  .topbar-overflow:not([open]) > .topbar-group {
+    display: none;
+  }
+  .topbar-overflow > .topbar-group {
+    position: absolute;
+    inset-inline-end: 8px;
+    inset-block-start: 48px;
+    z-index: 20;
+    padding: 8px;
+    border-radius: 8px;
+    background: var(--bezel);
+  }
+  .topbar .label-optional {
+    display: inline;
+  }
+  .topbar .mode-switch button {
+    height: 36px;
+  }
+  .tool-rail {
+    width: 100%;
+    height: 56px;
+    flex-direction: row;
+    justify-content: space-evenly;
+    padding: 4px;
+    border-inline-end: 0;
+    border-block-start: 1px solid var(--line);
+  }
+  .tool-rail > button {
+    width: 44px;
+    min-height: 44px;
+  }
+  .rail-overflow {
+    display: block;
+  }
+  .rail-overflow > summary {
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    cursor: pointer;
+    list-style: none;
+  }
+  .rail-overflow-items {
+    position: absolute;
+    inset-block-end: 60px;
+    inset-inline-end: 8px;
+    display: flex;
+    padding: 8px;
+    gap: 4px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--panel);
+    box-shadow: var(--shadow-2);
+  }
+  .rail-overflow:not([open]) > .rail-overflow-items {
+    display: none;
+  }
+  .rail-overflow-items .tool-rail-sep,
+  .rail-overflow-items .tool-rail-grow {
+    display: none;
+  }
+  .app-body:has(.canvas-view.is-live) > .tool-rail {
+    display: none;
+  }
+  .annotate-flyout {
+    inset-block-start: auto;
+    inset-block-end: 8px;
+  }
+  .palette.is-pinned {
+    position: absolute;
+    inset-block: 8px;
+    inset-inline-start: 0;
+    z-index: 8;
+  }
+  .inspector:not(.is-collapsed) {
+    position: absolute;
+    inset-inline: 0;
+    inset-block-end: 0;
+    width: 100%;
+    height: 50%;
+    border-inline-start: 0;
+    border-block-start: 1px solid var(--control-line);
+    border-radius: 14px 14px 0 0;
+    z-index: 9;
+    box-shadow: var(--shadow-2);
+  }
+  .canvas-view.is-live .inspector:not(.is-collapsed) {
+    inset-block-end: 0;
+  }
+  .inspector[data-sheet-snap="peek"] {
+    height: 96px;
+  }
+  .inspector[data-sheet-snap="full"] {
+    height: 100%;
+  }
+  .dock-snap-controls {
+    display: flex;
+    flex: none;
+    justify-content: center;
+    gap: 12px;
+    height: 24px;
+  }
+  .dock-snap-controls button {
+    border: 0;
+    background: transparent;
+    color: var(--text-2);
+    width: 44px;
+  }
+  .dock-snap-controls button[aria-pressed="true"] {
+    color: var(--accent);
+  }
+}

@@ -1,6 +1,7 @@
 import { useSyncExternalStore, type ReactNode } from "react";
 import { paletteHost } from "../palette/host";
 import { ModeSwitch, HistoryButtons } from "./ModeSwitch";
+import { usePhone } from "../lib/usePhone";
 import { workChoices } from "../lib/diagramPicker";
 import { useSettings } from "../harness/settings";
 import { nodeVariants, type NodeVariantId } from "../harness/nodeVariants";
@@ -52,6 +53,7 @@ interface Props {
 }
 
 export function TopBar(p: Props) {
+  const phone = usePhone();
   const live = useSyncExternalStore(paletteHost.subscribe, () => !!paletteHost.get().canvas?.live);
   const ready = useSyncExternalStore(
     paletteHost.subscribe,
@@ -172,26 +174,31 @@ export function TopBar(p: Props) {
       )}
       <div className="topbar-spacer" />
 
-      <div className="topbar-group" data-testid="topbar-actions">
-        <ViewMenu edges={canvas || lab} overlays={canvas} />
-        <FileMenu
-          api={p.interop}
-          canvas={canvas}
-          onNewDiagram={p.onNewDiagram}
-          onLibrary={p.onLibrary}
-          libraryCount={p.libraryCount}
-        />
-        {canvas && (
-          <button
-            className="btn btn-primary"
-            onClick={p.onPresent}
-            data-testid="present-toggle"
-            title={t("topbar.presentTitle")}
-          >
-            <Icon name="present" size={14} /> <span className="label-optional">{t("topbar.present")}</span>
-          </button>
-        )}
-      </div>
+      <details className="topbar-overflow" open={phone ? undefined : true}>
+        <summary data-testid="topbar-more" aria-label={t("workbench.moreTools")}>
+          ⋯
+        </summary>
+        <div className="topbar-group" data-testid="topbar-actions">
+          <ViewMenu edges={canvas || lab} overlays={canvas} />
+          <FileMenu
+            api={p.interop}
+            canvas={canvas}
+            onNewDiagram={p.onNewDiagram}
+            onLibrary={p.onLibrary}
+            libraryCount={p.libraryCount}
+          />
+          {canvas && (
+            <button
+              className="btn btn-primary"
+              onClick={p.onPresent}
+              data-testid="present-toggle"
+              title={t("topbar.presentTitle")}
+            >
+              <Icon name="present" size={14} /> <span className="label-optional">{t("topbar.present")}</span>
+            </button>
+          )}
+        </div>
+      </details>
     </header>
   );
 }

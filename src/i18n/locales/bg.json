@@ -2795,5 +2795,14 @@
   "workbench.unpin": "Затвори библиотеката",
   "workbench.shortcuts": "Клавиши",
   "workbench.checksName": "Проверки, {warnings}",
-  "workbench.warnings": "{count, plural, one {# предупреждение} other {# предупреждения}}"
+  "workbench.warnings": "{count, plural, one {# предупреждение} other {# предупреждения}}",
+  "workbench.readNote": "Прочети бележката",
+  "workbench.earlier": "По-рано",
+  "workbench.later": "По-късно",
+  "workbench.noteIndex": "Бележка {index} от {total}",
+  "workbench.moreTools": "Още инструменти",
+  "workbench.sheetPeek": "Преглед",
+  "workbench.sheetHalf": "Половин височина",
+  "workbench.sheetFull": "Пълна височина",
+  "workbench.speed": "Скорост"
 }

@@ -2804,5 +2804,14 @@
   "workbench.unpin": "Stäng bibliotek",
   "workbench.shortcuts": "Genvägar",
   "workbench.checksName": "Kontroller, {warnings}",
-  "workbench.warnings": "{count, plural, one {# varning} other {# varningar}}"
+  "workbench.warnings": "{count, plural, one {# varning} other {# varningar}}",
+  "workbench.readNote": "Läs anteckning",
+  "workbench.earlier": "Tidigare",
+  "workbench.later": "Senare",
+  "workbench.noteIndex": "Anteckning {index} av {total}",
+  "workbench.moreTools": "Fler verktyg",
+  "workbench.sheetPeek": "Förhandsvisning",
+  "workbench.sheetHalf": "Halv höjd",
+  "workbench.sheetFull": "Full höjd",
+  "workbench.speed": "Hastighet"
 }

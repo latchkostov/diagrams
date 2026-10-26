@@ -2780,5 +2780,14 @@
   "workbench.unpin": "Aizvērt bibliotēku",
   "workbench.shortcuts": "Īsceļi",
   "workbench.checksName": "Pārbaudes, {warnings}",
-  "workbench.warnings": "{count, plural, zero {# brīdinājumi} one {# brīdinājums} other {# brīdinājumi}}"
+  "workbench.warnings": "{count, plural, zero {# brīdinājumi} one {# brīdinājums} other {# brīdinājumi}}",
+  "workbench.readNote": "Lasīt piezīmi",
+  "workbench.earlier": "Iepriekšējā",
+  "workbench.later": "Nākamā",
+  "workbench.noteIndex": "Piezīme {index} no {total}",
+  "workbench.moreTools": "Vairāk rīku",
+  "workbench.sheetPeek": "Priekšskatījums",
+  "workbench.sheetHalf": "Pusaugstums",
+  "workbench.sheetFull": "Pilns augstums",
+  "workbench.speed": "Ātrums"
 }

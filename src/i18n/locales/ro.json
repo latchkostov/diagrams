@@ -2814,5 +2814,14 @@
   "workbench.unpin": "Închide biblioteca",
   "workbench.shortcuts": "Scurtături",
   "workbench.checksName": "Verificări, {warnings}",
-  "workbench.warnings": "{count, plural, one {# avertisment} few {# avertismente} other {# avertismente}}"
+  "workbench.warnings": "{count, plural, one {# avertisment} few {# avertismente} other {# avertismente}}",
+  "workbench.readNote": "Citește nota",
+  "workbench.earlier": "Anterioară",
+  "workbench.later": "Următoare",
+  "workbench.noteIndex": "Nota {index} din {total}",
+  "workbench.moreTools": "Mai multe instrumente",
+  "workbench.sheetPeek": "Previzualizare",
+  "workbench.sheetHalf": "Jumătate de înălțime",
+  "workbench.sheetFull": "Înălțime completă",
+  "workbench.speed": "Viteză"
 }
