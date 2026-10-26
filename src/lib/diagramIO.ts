@@ -453,8 +453,8 @@ export const DIAGRAMS_CHANGED = "diagrams:changed";
 /** Fired on window to open the "Your diagrams" dialog (e.g. from the storage warning toast). */
 export const OPEN_LIBRARY = "diagrams:open-library";
 
-function changed() {
-  if (typeof window !== "undefined") window.dispatchEvent(new Event(DIAGRAMS_CHANGED));
+function changed(pickerChanged = true) {
+  if (typeof window !== "undefined") window.dispatchEvent(new CustomEvent(DIAGRAMS_CHANGED, { detail: pickerChanged }));
 }
 
 // useLibrary subscribes to DIAGRAMS_CHANGED. Bridge per-entry storage events in other tabs.
@@ -682,7 +682,19 @@ function touchEntry(slug: string, d: DiagramFile | undefined) {
   const next = summarize(slug, d, now, i >= 0 ? entries[i].createdAt : now, flagsOf(entries[i]));
   // A missing entry is re-listed only while its document exists (never a deleted one).
   if (i < 0 && safeStorage.getItem(slotKey(slug)!) === null) return;
-  if (writeEntry(next)) changed();
+  if (writeEntry(next)) {
+    const previous = entries[i];
+    // Content consumers still hear every save. The picker refreshes its thumbnail
+    // and timestamp when opened; neither requires re-rendering the whole editor.
+    changed(
+      !previous ||
+        previous.title !== next.title ||
+        previous.nodes !== next.nodes ||
+        previous.localOnly !== next.localOnly ||
+        previous.private !== next.private ||
+        previous.onDevice !== next.onDevice,
+    );
+  }
 }
 
 /**

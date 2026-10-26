@@ -3,7 +3,6 @@ import { useSyncExternalStore, useId, useLayoutEffect, useRef, useState, type Re
 import { Background, BackgroundVariant, ControlButton, MiniMap, useStore, type ReactFlowState } from "@xyflow/react";
 import { useCameraController } from "../camera/useCameraCore";
 import { Icon } from "../../components/Icon";
-import { HistoryButtons } from "../../components/ModeSwitch";
 import type { EditorApi } from "../../editor/types";
 import { formatCombo, shortcutKeys } from "../../editor/shortcuts";
 import { getStencil } from "../../stencils/registry";
@@ -121,7 +120,30 @@ export function CanvasControls({
     >
       {!collapsed && (
         <>
-          {history && <HistoryButtons />}
+          {history && (
+            <div className="bezel-history">
+              <button
+                type="button"
+                data-testid="undo-button"
+                disabled={!editor.canUndo()}
+                title={tr("canvas.undoValue", { combo: formatCombo(shortcutKeys("undo")) })}
+                aria-label={tr("ai.undo")}
+                onClick={editor.undo}
+              >
+                <Icon name="undo" size={16} />
+              </button>
+              <button
+                type="button"
+                data-testid="redo-button"
+                disabled={!editor.canRedo()}
+                title={tr("canvas.redoValue", { combo: formatCombo(shortcutKeys("redo")) })}
+                aria-label={tr("shortcuts.redo")}
+                onClick={editor.redo}
+              >
+                <Icon name="redo" size={16} />
+              </button>
+            </div>
+          )}
           <button
             type="button"
             data-testid="fit-view-button"

@@ -28,7 +28,10 @@ export function useLibrary(): {
     return 0;
   });
   useEffect(() => {
-    const bump = () => setVersion((v) => v + 1);
+    const bump = (event?: Event) => {
+      if (event instanceof CustomEvent && event.detail === false) return;
+      setVersion((v) => v + 1);
+    };
     const onStorage = (e: StorageEvent) => {
       if (e.key === null || WATCHED.includes(e.key)) bump();
     };

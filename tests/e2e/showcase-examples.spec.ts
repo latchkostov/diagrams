@@ -11,6 +11,7 @@ import {
   goToNode,
   openViewMenu,
   openLiveInputs,
+  flowState,
 } from "./fixtures";
 import { openAiPanel } from "./ai-helpers";
 
@@ -480,6 +481,28 @@ const boxOf = async (page: Page, testId: string) => {
 const clear = (a: { x: number; y: number; width: number; height: number }, b: typeof a) =>
   a.x + a.width <= b.x || b.x + b.width <= a.x || a.y + a.height <= b.y || b.y + b.height <= a.y;
 
+async function settleNarrationCamera(page: Page) {
+  await expect
+    .poll(
+      async () => {
+        await page.clock.runFor(32);
+        return page.getByTestId("canvas-wrap").getAttribute("data-camera-state");
+      },
+      { intervals: [0] },
+    )
+    .toBe("idle");
+  await page.clock.runFor(32);
+}
+
+async function visitNarrationPin(page: Page, id: string) {
+  const pin = page.getByTestId(`focus-offscreen-${id}`);
+  if (!(await pin.isVisible())) return false;
+  await expect(pin).toBeInViewport({ ratio: 1 });
+  await pin.click();
+  await settleNarrationCamera(page);
+  return true;
+}
+
 for (const viewport of [
   { width: 1920, height: 1080 },
   { width: 390, height: 844 },
@@ -504,10 +527,22 @@ for (const viewport of [
         // Let the narration camera finish its move.
         await page.clock.runFor(1500);
         await waitForStableViewport(page);
+        await settleNarrationCamera(page);
+        await expect(page.getByTestId("live-view-menu")).toContainText("Following");
+        expect((await flowState(page)).zoom).toBeGreaterThanOrEqual(viewport.width < 640 ? 0.92 : 0.9);
         const canvas = await boxOf(page, "canvas-wrap");
         const note = await boxOf(page, "live-note");
         const bar = await boxOf(page, "live-controls");
+        let visitedPin = false;
         for (const id of n.focus) {
+          // Follow keeps its subject readable and pins distant cards. A pin is a
+          // manual move: resume Follow before inspecting the next focus card.
+          if (visitedPin) {
+            await page.getByTestId("canvas-wrap").focus();
+            await page.keyboard.press("Shift+Digit3");
+            await settleNarrationCamera(page);
+          }
+          visitedPin = await visitNarrationPin(page, id);
           const card = await boxOf(page, `rf__node-${id}`);
           expect(card.x, id).toBeGreaterThanOrEqual(canvas.x - 0.5);
           expect(card.y, id).toBeGreaterThanOrEqual(canvas.y - 0.5);
@@ -520,6 +555,7 @@ for (const viewport of [
         }
         // Never further out than the overview. (On a phone both sit at the canvas's 15% minimum zoom: the note pans
         // to its cards; see docs/backlog/2026-10-18-phone-narration-zoom.md.)
+        await visitNarrationPin(page, n.focus[0]);
         const close = (await boxOf(page, `rf__node-${n.focus[0]}`)).width;
         expect(close).toBeGreaterThanOrEqual(overview - 0.5);
       });
