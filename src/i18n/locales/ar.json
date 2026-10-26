@@ -724,7 +724,6 @@
   "shortcuts.mouse.doubleCanvas": "نقر مزدوج على لوحة الرسم",
   "shortcuts.mouse.doubleCanvas.does": "إضافة استنسل سريعًا عند المؤشر",
   "shortcuts.mouse.doubleRename": "انقر نقرًا مزدوجًا على عقدة أو وصلة أو حدود",
-  "shortcuts.mouse.doubleRename.does": "إعادة تسمية في المفتش، الاسم المحدد",
   "shortcuts.mouse.doubleText": "انقر نقرًا مزدوجًا فوق النص أو الملاحظة أو المنطقة",
   "shortcuts.mouse.doubleText.does": "قم بتحرير النص الخاص به في مكانه",
   "shortcuts.mouse.doubleNode": "نقر مزدوج على عقدة / وصلة",
@@ -1830,7 +1829,7 @@
   "tutorials.mobileApi.nameHint": "يؤدي النقر المزدوج إلى فتح ورقة الخصائص بالاسم المحدد، وبالتالي فإن الكتابة تحل محله.",
   "tutorials.mobileApi.nameDone": "تظهر الأسماء على القماش، في تصدير وفي قراءات مباشر.",
   "tutorials.mobileApi.liveTitle": "مباشر",
-  "tutorials.mobileApi.liveGoal": "اضغط على مباشر في أعلى يمين اللوحة القماشية، أو مفتاح L، لبدء محاكاة.",
+  "tutorials.mobileApi.liveGoal": "اختر {live} في الشريط العلوي، أو اضغط {key}.",
   "tutorials.mobileApi.liveTip": "اضغط مباشر",
   "tutorials.mobileApi.liveHint": "مباشر يرسل حركة المرور من كل عميل بمعدله. يبدأ تطبيق هاتف بطلبين في الثانية.",
   "tutorials.mobileApi.liveDone": "أنت مباشر: التطبيق يرسل الطلبات.",
@@ -2915,5 +2914,6 @@
   "workbench.unpin": "إغلاق المكتبة",
   "workbench.shortcuts": "الاختصارات",
   "workbench.checksName": "عمليات التحقق، {warnings}",
-  "workbench.warnings": "{count, plural, zero {# تحذيرات} one {# تحذير} two {# تحذيرات} few {# تحذيرات} many {# تحذيرات} other {# تحذيرات}}"
+  "workbench.warnings": "{count, plural, zero {# تحذيرات} one {# تحذير} two {# تحذيرات} few {# تحذيرات} many {# تحذيرات} other {# تحذيرات}}",
+  "workbench.systemTheme": "مطابقة النظام"
 }

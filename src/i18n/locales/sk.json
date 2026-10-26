@@ -655,7 +655,6 @@
   "shortcuts.mouse.doubleCanvas": "Dvojklik na plátno",
   "shortcuts.mouse.doubleCanvas.does": "Rýchlo pridať prvok vzorkovnice pri kurzore",
   "shortcuts.mouse.doubleRename": "Dvojklik na uzol, spojenie alebo hranicu",
-  "shortcuts.mouse.doubleRename.does": "Premenovať v inšpektorovi, vybraté meno",
   "shortcuts.mouse.doubleText": "Dvakrát kliknite na text, poznámku alebo zónu",
   "shortcuts.mouse.doubleText.does": "Upravte jej text na mieste",
   "shortcuts.mouse.doubleNode": "Dvojklik na uzol / spojenie",
@@ -1760,7 +1759,7 @@
   "tutorials.mobileApi.nameHint": "Dvojitým kliknutím otvoríte hárok vlastností s vybratým názvom, takže ho nahradíte písaním.",
   "tutorials.mobileApi.nameDone": "Mená sa zobrazujú na plátne, v exportovať a v údajoch Naživo.",
   "tutorials.mobileApi.liveTitle": "naživo",
-  "tutorials.mobileApi.liveGoal": "Stlačením Naživo v pravom hornom rohu plátna alebo klávesom L spustíte simulácia.",
+  "tutorials.mobileApi.liveGoal": "Vyberte {live} v hornej lište alebo stlačte {key}.",
   "tutorials.mobileApi.liveTip": "Stlačte Naživo",
   "tutorials.mobileApi.liveHint": "Naživo odosiela návštevnosť od každého klienta svojou rýchlosťou. Mobilná aplikácia začína pri 2 požiadavkách za sekundu.",
   "tutorials.mobileApi.liveDone": "Ste naživo: aplikácia odosiela žiadosti.",
@@ -2765,5 +2764,6 @@
   "workbench.unpin": "Zavrieť knižnicu",
   "workbench.shortcuts": "Skratky",
   "workbench.checksName": "Kontroly, {warnings}",
-  "workbench.warnings": "{count, plural, one {# upozornenie} few {# upozornenia} other {# upozornenia}}"
+  "workbench.warnings": "{count, plural, one {# upozornenie} few {# upozornenia} other {# upozornenia}}",
+  "workbench.systemTheme": "Podľa systému"
 }

@@ -655,7 +655,6 @@
   "shortcuts.mouse.doubleCanvas": "캔버스 두 번 클릭",
   "shortcuts.mouse.doubleCanvas.does": "커서 위치에 스텐실 빠르게 추가",
   "shortcuts.mouse.doubleRename": "노드, 연결 또는 경계를 두 번 클릭",
-  "shortcuts.mouse.doubleRename.does": "검사기에서 이름 바꾸기, 선택한 이름",
   "shortcuts.mouse.doubleText": "텍스트, 메모 또는 영역을 두 번 클릭합니다.",
   "shortcuts.mouse.doubleText.does": "텍스트를 제자리에서 편집하세요.",
   "shortcuts.mouse.doubleNode": "노드 / 연결 두 번 클릭",
@@ -1760,7 +1759,7 @@
   "tutorials.mobileApi.nameHint": "두 번 클릭하면 선택한 이름으로 속성 시트가 열리므로 입력하면 이름이 대체됩니다.",
   "tutorials.mobileApi.nameDone": "이름은 캔버스의 내보내기 및 살다 판독값에 표시됩니다.",
   "tutorials.mobileApi.liveTitle": "라이브",
-  "tutorials.mobileApi.liveGoal": "시뮬레이션을 시작하려면 캔버스 오른쪽 상단의 살다을 누르거나 L 키를 누르세요.",
+  "tutorials.mobileApi.liveGoal": "상단 표시줄에서 {live}를 선택하거나 {key} 키를 누르세요.",
   "tutorials.mobileApi.liveTip": "살다 누르기",
   "tutorials.mobileApi.liveHint": "살다 모든 클라이언트의 트래픽을 해당 속도로 보냅니다. A 모바일 앱는 초당 2개의 요청으로 시작됩니다.",
   "tutorials.mobileApi.liveDone": "실시간입니다. 앱이 요청을 보내는 중입니다.",
@@ -2817,5 +2816,6 @@
   "workbench.unpin": "라이브러리 닫기",
   "workbench.shortcuts": "단축키",
   "workbench.checksName": "검사, {warnings}",
-  "workbench.warnings": "{count, plural, other {# 개의 경고}}"
+  "workbench.warnings": "{count, plural, other {# 개의 경고}}",
+  "workbench.systemTheme": "시스템 설정 따르기"
 }

@@ -92,7 +92,7 @@ export const mobileApi: Tutorial & { start(): DiagramFile } = {
     {
       id: "go-live",
       title: msg("tutorials.mobileApi.liveTitle"),
-      goal: msg("tutorials.mobileApi.liveGoal"),
+      goal: () => t("tutorials.mobileApi.liveGoal", { live: t("fileDialog.live"), key: "L" }),
       hint: msg("tutorials.mobileApi.liveHint"),
       done: msg("tutorials.mobileApi.liveDone"),
       check: { kind: "live" },

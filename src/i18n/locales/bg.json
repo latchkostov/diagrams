@@ -655,7 +655,6 @@
   "shortcuts.mouse.doubleCanvas": "Двойно щракване по платното",
   "shortcuts.mouse.doubleCanvas.does": "Бързо добавяне на фигура при курсора",
   "shortcuts.mouse.doubleRename": "Двойно щракване върху възел, връзка или рамка",
-  "shortcuts.mouse.doubleRename.does": "Преименуване в инспектора, избрано име",
   "shortcuts.mouse.doubleText": "Щракнете двукратно върху текст, бележка или зона",
   "shortcuts.mouse.doubleText.does": "Редактирайте текста му на място",
   "shortcuts.mouse.doubleNode": "Двойно щракване по възел / връзка",
@@ -1760,7 +1759,7 @@
   "tutorials.mobileApi.nameHint": "Двукратното щракване отваря листа със свойства с избраното име, така че въвеждането го замества.",
   "tutorials.mobileApi.nameDone": "Имената се показват на платното, в експортиране и в показанията на На живо.",
   "tutorials.mobileApi.liveTitle": "на живо",
-  "tutorials.mobileApi.liveGoal": "Натиснете На живо в горния десен ъгъл на платното или клавиша L, за да стартирате симулация.",
+  "tutorials.mobileApi.liveGoal": "Изберете {live} в горната лента или натиснете {key}.",
   "tutorials.mobileApi.liveTip": "Натиснете На живо",
   "tutorials.mobileApi.liveHint": "На живо изпраща трафик от всеки клиент с неговата скорост. Мобилно приложение започва с 2 заявки в секунда.",
   "tutorials.mobileApi.liveDone": "Вие сте на живо: приложението изпраща заявки.",
@@ -2776,5 +2775,6 @@
   "workbench.unpin": "Затвори библиотеката",
   "workbench.shortcuts": "Клавиши",
   "workbench.checksName": "Проверки, {warnings}",
-  "workbench.warnings": "{count, plural, one {# предупреждение} other {# предупреждения}}"
+  "workbench.warnings": "{count, plural, one {# предупреждение} other {# предупреждения}}",
+  "workbench.systemTheme": "Като системата"
 }

@@ -655,7 +655,6 @@
   "shortcuts.mouse.doubleCanvas": "按兩下畫布",
   "shortcuts.mouse.doubleCanvas.does": "在游標處快速新增樣板",
   "shortcuts.mouse.doubleRename": "按兩下節點、連線或邊界",
-  "shortcuts.mouse.doubleRename.does": "在檢查器中重新命名，選擇名稱",
   "shortcuts.mouse.doubleText": "雙擊文字、註釋或區域",
   "shortcuts.mouse.doubleText.does": "就地編輯其文本",
   "shortcuts.mouse.doubleNode": "按兩下節點 / 連線",
@@ -1761,7 +1760,7 @@
   "tutorials.mobileApi.nameHint": "雙擊可開啟包含所選名稱的屬性表，因此鍵入內容即可將其替換。",
   "tutorials.mobileApi.nameDone": "名稱顯示在畫布上、匯出 和 居住 的讀數。",
   "tutorials.mobileApi.liveTitle": "即時",
-  "tutorials.mobileApi.liveGoal": "按下畫布右上角的 居住 或 L 鍵，啟動 模擬。",
+  "tutorials.mobileApi.liveGoal": "在頂端列選取{live}，或按{key}鍵。",
   "tutorials.mobileApi.liveTip": "按居住",
   "tutorials.mobileApi.liveHint": "居住 以其速率從每個客戶端發送流量。 行動應用程式 從每秒 2 個請求開始。",
   "tutorials.mobileApi.liveDone": "您已上線：應用程式正在傳送請求。",
@@ -2775,5 +2774,6 @@
   "workbench.unpin": "關閉程式庫",
   "workbench.shortcuts": "快捷鍵",
   "workbench.checksName": "檢查, {warnings}",
-  "workbench.warnings": "{count, plural, other {# 則警告}}"
+  "workbench.warnings": "{count, plural, other {# 則警告}}",
+  "workbench.systemTheme": "跟隨系統"
 }

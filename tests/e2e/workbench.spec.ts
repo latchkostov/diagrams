@@ -78,3 +78,37 @@ test("a new selection waits for pointer-up before reopening the dock", async ({ 
   await page.mouse.up();
   await expect(page.getByTestId("dock-tab-properties")).toBeVisible();
 });
+
+test("the bezel switches Edit and Live and keeps history controls", async ({ page }) => {
+  await gotoCanvas(page, "retry-storm");
+  const bezel = page.getByTestId("topbar");
+  await expect(bezel.getByTestId("diagram-title")).toHaveText("A retry storm");
+  await expect(bezel.getByTestId("undo-button")).toBeDisabled();
+  await expect(bezel.getByTestId("redo-button")).toBeDisabled();
+  await expect(page.getByTestId("mode-edit")).toHaveAttribute("aria-pressed", "true");
+  await bezel.getByTestId("live-toggle").click();
+  await expect(page.getByTestId("live-controls")).toBeVisible();
+  await expect(bezel.getByTestId("live-toggle")).toHaveAttribute("aria-pressed", "true");
+  await bezel.getByTestId("mode-edit").click();
+  await expect(page.getByTestId("live-controls")).toHaveCount(0);
+  await page.getByTestId("canvas-wrap").click({ position: { x: 10, y: 10 } });
+  await page.keyboard.press("l");
+  await expect(bezel.getByTestId("live-toggle")).toHaveAttribute("aria-pressed", "true");
+});
+
+test("View offers explicit themes and Match system follows device changes without losing Pin open", async ({
+  page,
+}) => {
+  await gotoCanvas(page, "retry-storm");
+  await openLibrary(page);
+  await page.getByTestId("palette-toggle").click();
+  await page.getByTestId("view-button").click();
+  await page.getByTestId("theme-toggle").click();
+  await page.getByTestId("theme-system").click();
+  await page.emulateMedia({ colorScheme: "dark" });
+  await expect.poll(() => page.evaluate(() => document.documentElement.dataset.theme)).toBe("dark");
+  await page.emulateMedia({ colorScheme: "light" });
+  await expect.poll(() => page.evaluate(() => document.documentElement.dataset.theme)).toBe("light");
+  await page.reload();
+  await expect(page.getByTestId("palette")).toHaveAttribute("data-mode", "pinned");
+});

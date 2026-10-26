@@ -655,7 +655,6 @@
   "shortcuts.mouse.doubleCanvas": "Doppelklick auf Fläche",
   "shortcuts.mouse.doubleCanvas.does": "Schablone am Cursor schnell hinzufügen",
   "shortcuts.mouse.doubleRename": "Doppelklick auf einen Knoten, eine Verbindung oder eine Begrenzung",
-  "shortcuts.mouse.doubleRename.does": "Im Inspektor umbenennen, Name ausgewählt",
   "shortcuts.mouse.doubleText": "Doppelklicken Sie auf einen Text, eine Notiz oder eine Zone",
   "shortcuts.mouse.doubleText.does": "Bearbeiten Sie den Text direkt",
   "shortcuts.mouse.doubleNode": "Doppelklick auf Knoten / Verbindung",
@@ -1761,7 +1760,7 @@
   "tutorials.mobileApi.nameHint": "Ein Doppelklick öffnet das Eigenschaftenblatt mit dem ausgewählten Namen, sodass dieser durch Eingabe ersetzt wird.",
   "tutorials.mobileApi.nameDone": "Namen werden auf der Leinwand, in Exportieren und in den Anzeigen von Live angezeigt.",
   "tutorials.mobileApi.liveTitle": "Live",
-  "tutorials.mobileApi.liveGoal": "Drücken Sie Live oben rechts auf der Leinwand oder die L-Taste, um Simulation zu starten.",
+  "tutorials.mobileApi.liveGoal": "Wähle {live} in der oberen Leiste oder drücke {key}.",
   "tutorials.mobileApi.liveTip": "Drücken Sie Live",
   "tutorials.mobileApi.liveHint": "Live sendet Datenverkehr von jedem Client mit seiner eigenen Rate. Ein Mobile App beginnt mit 2 Anfragen pro Sekunde.",
   "tutorials.mobileApi.liveDone": "Sie sind live: Die App sendet Anfragen.",
@@ -2789,5 +2788,6 @@
   "workbench.unpin": "Bibliothek schließen",
   "workbench.shortcuts": "Tastenkürzel",
   "workbench.checksName": "Prüfungen, {warnings}",
-  "workbench.warnings": "{count, plural, one {# Warnung} other {# Warnungen}}"
+  "workbench.warnings": "{count, plural, one {# Warnung} other {# Warnungen}}",
+  "workbench.systemTheme": "Systemeinstellung"
 }

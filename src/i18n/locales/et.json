@@ -655,7 +655,6 @@
   "shortcuts.mouse.doubleCanvas": "Topeltklõps lõuendil",
   "shortcuts.mouse.doubleCanvas.does": "Lisa kursori kohale kiiresti trafarett",
   "shortcuts.mouse.doubleRename": "Topeltklõps sõlmel, ühendusel või piiril",
-  "shortcuts.mouse.doubleRename.does": "Nimeta inspektoris ümber, nimi valitud",
   "shortcuts.mouse.doubleText": "Topeltklõpsake tekstil, märkmel või tsoonil",
   "shortcuts.mouse.doubleText.does": "Muutke selle teksti oma kohale",
   "shortcuts.mouse.doubleNode": "Topeltklõps sõlmel / ühendusel",
@@ -1760,7 +1759,7 @@
   "tutorials.mobileApi.nameHint": "Topeltklõps avab valitud nimega atribuutide lehe, nii et tippimine asendab selle.",
   "tutorials.mobileApi.nameDone": "Nimed kuvatakse lõuendil eksport ja Otse näitudes.",
   "tutorials.mobileApi.liveTitle": "Live",
-  "tutorials.mobileApi.liveGoal": "Vajutage simulatsioon käivitamiseks lõuendi paremas ülanurgas klahvi Otse või klahvi L.",
+  "tutorials.mobileApi.liveGoal": "Vali ülaribal {live} või vajuta {key}.",
   "tutorials.mobileApi.liveTip": "Vajutage Otse",
   "tutorials.mobileApi.liveHint": "Otse saadab liiklust igalt kliendilt oma kiirusega. Mobiilirakendus algab 2 päringuga sekundis.",
   "tutorials.mobileApi.liveDone": "Olete otseülekandes: rakendus saadab päringuid.",
@@ -2772,5 +2771,6 @@
   "workbench.unpin": "Sulge teek",
   "workbench.shortcuts": "Otseteed",
   "workbench.checksName": "Kontrollid, {warnings}",
-  "workbench.warnings": "{count, plural, one {# hoiatus} other {# hoiatust}}"
+  "workbench.warnings": "{count, plural, one {# hoiatus} other {# hoiatust}}",
+  "workbench.systemTheme": "Järgi süsteemi"
 }

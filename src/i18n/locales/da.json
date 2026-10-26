@@ -655,7 +655,6 @@
   "shortcuts.mouse.doubleCanvas": "Dobbeltklik på lærred",
   "shortcuts.mouse.doubleCanvas.does": "Tilføj hurtigt en stencil ved markøren",
   "shortcuts.mouse.doubleRename": "Dobbeltklik på en node, forbindelse eller afgrænsning",
-  "shortcuts.mouse.doubleRename.does": "Omdøb i inspektøren, navn valgt",
   "shortcuts.mouse.doubleText": "Dobbeltklik på en tekst, note eller zone",
   "shortcuts.mouse.doubleText.does": "Rediger dens tekst på plads",
   "shortcuts.mouse.doubleNode": "Dobbeltklik på node / forbindelse",
@@ -1760,7 +1759,7 @@
   "tutorials.mobileApi.nameHint": "Dobbeltklik åbner egenskabsarket med det valgte navn, så indtastning erstatter det.",
   "tutorials.mobileApi.nameDone": "Navne vises på lærredet, i eksportere og i Levendes udlæsninger.",
   "tutorials.mobileApi.liveTitle": "live",
-  "tutorials.mobileApi.liveGoal": "Tryk på Levende øverst til højre på lærredet eller på L-tasten for at starte simulering.",
+  "tutorials.mobileApi.liveGoal": "Vælg {live} i toplinjen, eller tryk på {key}.",
   "tutorials.mobileApi.liveTip": "Tryk på Levende",
   "tutorials.mobileApi.liveHint": "Levende sender trafik fra hver klient i dens hastighed. En Mobilapp starter ved 2 anmodninger i sekundet.",
   "tutorials.mobileApi.liveDone": "Du er live: appen sender anmodninger.",
@@ -2794,5 +2793,6 @@
   "workbench.unpin": "Luk bibliotek",
   "workbench.shortcuts": "Genveje",
   "workbench.checksName": "Kontroller, {warnings}",
-  "workbench.warnings": "{count, plural, one {# advarsel} other {# advarsler}}"
+  "workbench.warnings": "{count, plural, one {# advarsel} other {# advarsler}}",
+  "workbench.systemTheme": "Følg systemet"
 }

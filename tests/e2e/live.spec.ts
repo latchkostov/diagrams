@@ -1,4 +1,6 @@
 import {
+  toggleTheme,
+  expectTheme,
   pauseClock,
   openLiveNodeDetails,
   savedDiagram,
@@ -711,9 +713,7 @@ test.describe("live view", () => {
     await expect(alert).toBeVisible();
     await page.getByTestId("live-play").click();
     for (const theme of ["light", "dark"]) {
-      await expect(page.getByTestId("theme-toggle")).toHaveAccessibleName(
-        theme === "light" ? "Switch to dark theme" : "Switch to light theme",
-      );
+      await expectTheme(page, theme);
       const contrasts = await metric.evaluate((el) => {
         const canvas = document.createElement("canvas");
         canvas.width = canvas.height = 1;
@@ -765,7 +765,7 @@ test.describe("live view", () => {
         return (Math.max(bg, fg) + 0.05) / (Math.min(bg, fg) + 0.05);
       });
       expect(alertColors).toBeGreaterThanOrEqual(4.5);
-      if (theme === "light") await page.getByTestId("theme-toggle").click();
+      if (theme === "light") await toggleTheme(page);
     }
   });
 

@@ -655,7 +655,6 @@
   "shortcuts.mouse.doubleCanvas": "双击画布",
   "shortcuts.mouse.doubleCanvas.does": "在光标处快速添加模具",
   "shortcuts.mouse.doubleRename": "双击节点、连线或边界",
-  "shortcuts.mouse.doubleRename.does": "在检查器中重命名，选择名称",
   "shortcuts.mouse.doubleText": "双击文本、注释或区域",
   "shortcuts.mouse.doubleText.does": "就地编辑其文本",
   "shortcuts.mouse.doubleNode": "双击节点 / 连线",
@@ -1761,7 +1760,7 @@
   "tutorials.mobileApi.nameHint": "双击可打开包含所选名称的属性表，因此键入内容即可将其替换。",
   "tutorials.mobileApi.nameDone": "名称显示在画布上、导出 和 居住 的读数中。",
   "tutorials.mobileApi.liveTitle": "实时",
-  "tutorials.mobileApi.liveGoal": "按画布右上角的 居住 或 L 键，启动 模拟。",
+  "tutorials.mobileApi.liveGoal": "在顶部栏选择{live}，或按{key}键。",
   "tutorials.mobileApi.liveTip": "按居住",
   "tutorials.mobileApi.liveHint": "居住 按其速率从每个客户端发送流量。 移动应用 从每秒 2 个请求开始。",
   "tutorials.mobileApi.liveDone": "您已上线：应用正在发送请求。",
@@ -2777,5 +2776,6 @@
   "workbench.unpin": "关闭库",
   "workbench.shortcuts": "快捷键",
   "workbench.checksName": "检查, {warnings}",
-  "workbench.warnings": "{count, plural, other {# 条警告}}"
+  "workbench.warnings": "{count, plural, other {# 条警告}}",
+  "workbench.systemTheme": "跟随系统"
 }

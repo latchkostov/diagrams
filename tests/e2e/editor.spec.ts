@@ -349,10 +349,12 @@ test.describe("editor", () => {
     await waitForStableViewport(page);
     const before = await settledBox(node);
     for (const id of ["inspector-field-stencil", "inspector-field-group", "theme-toggle"]) {
+      if (id === "theme-toggle") await page.getByTestId("view-button").click();
       await page.getByTestId(id).focus();
       await page.keyboard.press("ArrowRight");
       await page.keyboard.press("Delete");
       await page.keyboard.press("Escape");
+      if (id === "theme-toggle") await page.keyboard.press("Escape");
       await expect(page.getByTestId("inspector-title")).toHaveText("Node");
       await expect(node).toBeVisible();
       expect((await requiredBox(node)).x).toBe(before.x);

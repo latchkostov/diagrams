@@ -655,7 +655,6 @@
   "shortcuts.mouse.doubleCanvas": "Dupla kattintás a vásznon",
   "shortcuts.mouse.doubleCanvas.does": "Rajzsablon gyors hozzáadása a kurzornál",
   "shortcuts.mouse.doubleRename": "Dupla kattintás egy csomóponton, összekötőn vagy határon",
-  "shortcuts.mouse.doubleRename.does": "Átnevezés az ellenőrzőben, a név kiválasztva",
   "shortcuts.mouse.doubleText": "Kattintson duplán egy szövegre, jegyzetre vagy zónára",
   "shortcuts.mouse.doubleText.does": "Szerkessze a szövegét a helyén",
   "shortcuts.mouse.doubleNode": "Dupla kattintás csomóponton / összekötőn",
@@ -1761,7 +1760,7 @@
   "tutorials.mobileApi.nameHint": "Dupla kattintással megnyílik a tulajdonságlap a kiválasztott névvel, így a gépelés lecseréli.",
   "tutorials.mobileApi.nameDone": "A nevek megjelennek a vásznon, exportálás és Élő kiolvasásaiban.",
   "tutorials.mobileApi.liveTitle": "Live",
-  "tutorials.mobileApi.liveGoal": "Nyomja meg az Élő gombot a vászon jobb felső sarkában, vagy az L billentyűt az szimuláció elindításához.",
+  "tutorials.mobileApi.liveGoal": "Válaszd a felső sávban a(z) {live} lehetőséget, vagy nyomd meg a(z) {key} billentyűt.",
   "tutorials.mobileApi.liveTip": "Nyomja meg a Élő",
   "tutorials.mobileApi.liveHint": "Az Élő minden klienstől a megfelelő sebességgel küld forgalmat. Egy Mobilalkalmazás másodpercenként 2 kéréssel kezdődik.",
   "tutorials.mobileApi.liveDone": "Élőben van: az alkalmazás kéréseket küld.",
@@ -2792,5 +2791,6 @@
   "workbench.unpin": "Könyvtár bezárása",
   "workbench.shortcuts": "Gyorsbillentyűk",
   "workbench.checksName": "Ellenőrzések, {warnings}",
-  "workbench.warnings": "{count, plural, one {# figyelmeztetés} other {# figyelmeztetés}}"
+  "workbench.warnings": "{count, plural, one {# figyelmeztetés} other {# figyelmeztetés}}",
+  "workbench.systemTheme": "Rendszer követése"
 }

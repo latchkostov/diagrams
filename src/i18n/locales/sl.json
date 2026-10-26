@@ -655,7 +655,6 @@
   "shortcuts.mouse.doubleCanvas": "Dvoklik na platno",
   "shortcuts.mouse.doubleCanvas.does": "Hitro doda šablono pri kazalcu",
   "shortcuts.mouse.doubleRename": "Dvokliknite vozlišče, povezavo ali mejo",
-  "shortcuts.mouse.doubleRename.does": "Preimenuj v inšpektorju, izbrano ime",
   "shortcuts.mouse.doubleText": "Dvokliknite besedilo, opombo ali območje",
   "shortcuts.mouse.doubleText.does": "Uredite njegovo besedilo na mestu",
   "shortcuts.mouse.doubleNode": "Dvoklik na vozlišče / povezavo",
@@ -1760,7 +1759,7 @@
   "tutorials.mobileApi.nameHint": "Dvoklik odpre list z lastnostmi z izbranim imenom, tako da ga zamenja tipkanje.",
   "tutorials.mobileApi.nameDone": "Imena so prikazana na platnu, v odčitkih izvozi in V živo.",
   "tutorials.mobileApi.liveTitle": "v živo",
-  "tutorials.mobileApi.liveGoal": "Pritisnite V živo v zgornjem desnem kotu platna ali tipko L, da zaženete simulacija.",
+  "tutorials.mobileApi.liveGoal": "Izberite {live} v zgornji vrstici ali pritisnite {key}.",
   "tutorials.mobileApi.liveTip": "Pritisnite V živo",
   "tutorials.mobileApi.liveHint": "V živo pošilja promet od vsakega odjemalca po njegovi hitrosti. Mobilna aplikacija se začne pri 2 zahtevah na sekundo.",
   "tutorials.mobileApi.liveDone": "V živo ste: aplikacija pošilja zahteve.",
@@ -2784,5 +2783,6 @@
   "workbench.unpin": "Zapri knjižnico",
   "workbench.shortcuts": "Bližnjice",
   "workbench.checksName": "Preverjanja, {warnings}",
-  "workbench.warnings": "{count, plural, one {# opozorilo} two {# opozorila} few {# opozorila} other {# opozorila}}"
+  "workbench.warnings": "{count, plural, one {# opozorilo} two {# opozorila} few {# opozorila} other {# opozorila}}",
+  "workbench.systemTheme": "Po sistemu"
 }

@@ -4,6 +4,9 @@
   --font-mono: "Geist Mono Variable", ui-monospace, "Cascadia Code", "SF Mono", Menlo, monospace;
 
   /* Workbench frame. */
+  --note: #6d4fe0;
+  --tag: #e8a317;
+  --tag-line: #b77c06;
   --board: #f6f7f9;
   --bezel: #1f232b;
   --bezel-ink: #e6e9ee;
@@ -127,6 +130,8 @@
 }
 
 [data-theme="dark"] {
+  --note: #a48afb;
+  --tag-line: #e8a317;
   --board: #121419;
   --bezel: #07080a;
   --bezel-line: #1b1f27;

@@ -189,6 +189,7 @@ const CRAMPED = 1280;
 export type { CanvasHandle } from "./document/useCanvasDocument";
 
 interface Props {
+  bezel?: boolean;
   /** Lab-only room mount, with its own document identity and encrypted recovery. Stable for this canvas's life. */
   room?: EditorRoom;
   slug: string;
@@ -243,6 +244,7 @@ actionRegistry.register(builtinActions());
 
 function CanvasInner({
   slug,
+  bezel = false,
   presenting,
   onExitPresent,
   onTutorials,
@@ -677,6 +679,8 @@ function CanvasInner({
   );
   useCanvasHost(editor, {
     live,
+    canUndo: editor.canUndo(history.canUndo),
+    canRedo: editor.canRedo(history.canRedo),
     enabled: !readOnly,
     localOnly: privacy === "local-only",
     private: !!privacyFlags.private,
@@ -1168,8 +1172,6 @@ function CanvasInner({
     [namedNode],
   );
   const diagramColor = meta.color ? resolveAnnotationColor(meta.color).hex : undefined;
-  const canUndo = editor.canUndo(history.canUndo);
-  const canRedo = editor.canRedo(history.canRedo);
 
   // Document edits change the controlled graph, not its chrome. Reusing these elements also
   // lets React Flow's own memoized children bail out of parent reconciliation.
@@ -1182,15 +1184,7 @@ function CanvasInner({
         {editGestures && <svg ref={guideLayer} className="smart-guides" data-testid="smart-guides" aria-hidden />}
         {editGestures && <LandingOutline />}
         {!hideChrome && (
-          <CanvasControls
-            editor={editor}
-            canUndo={canUndo}
-            canRedo={canRedo}
-            menus={interaction}
-            menu={menu}
-            fit={fit}
-            zoomedByButton={zoomedByButton}
-          />
+          <CanvasControls editor={editor} menus={interaction} menu={menu} fit={fit} zoomedByButton={zoomedByButton} />
         )}
         {!hideChrome && prefs.minimap && contentCount > 0 && <CanvasMinimap />}
         {/* Nothing to simulate on a blank canvas: the Live toggle appears with the first node. */}
@@ -1257,13 +1251,12 @@ function CanvasInner({
       checks,
       presence,
       presenceChanged,
-      canUndo,
-      canRedo,
     ],
   );
   const overlays = useMemo(
     () => (
       <CanvasOverlays
+        bezel={bezel && !presenting}
         card={card}
         cardCovers={cardCovers}
         presenting={presenting}
@@ -1301,6 +1294,7 @@ function CanvasInner({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- Refresh translated overlay text when the locale changes.
     [
       locale,
+      bezel,
       card,
       cardCovers,
       presenting,
@@ -1370,7 +1364,7 @@ function CanvasInner({
         colorMode={theme}
         // Bottom-right, lifted above the minimap (canvas.css): never under the live bar or the hint.
         attributionPosition="bottom-right"
-        proOptions={viewer?.attribution === "hide" ? HIDE_ATTRIBUTION : undefined}
+        proOptions={bezel || viewer?.attribution === "hide" ? HIDE_ATTRIBUTION : undefined}
         minZoom={0.15}
         maxZoom={2.5}
         snapToGrid={prefs.snap}

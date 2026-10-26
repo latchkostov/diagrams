@@ -555,6 +555,8 @@ function MainApp() {
       {!presenting && (
         <TopBar
           view={url.view}
+          documentId={canvasIdentity}
+          diagramTitle={openTitle?.identity === canvasIdentity ? openTitle.title.trim() || UNTITLED : undefined}
           onView={goTo}
           exampleOptions={options}
           example={targetSlug}
@@ -606,6 +608,7 @@ function MainApp() {
                 )
               ) : (
                 <CanvasView
+                  bezel
                   // A room's canvas is its own mount: it edits through the room (src/collab/room).
                   key={roomHere ? `${canvasMount.key}:room${roomHere.mount}` : canvasMount.key}
                   room={roomHere?.editor}

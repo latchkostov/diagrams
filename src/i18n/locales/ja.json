@@ -655,7 +655,6 @@
   "shortcuts.mouse.doubleCanvas": "キャンバスをダブルクリック",
   "shortcuts.mouse.doubleCanvas.does": "カーソル位置にステンシルをクイック追加",
   "shortcuts.mouse.doubleRename": "ノード、接続、または境界をダブルクリック",
-  "shortcuts.mouse.doubleRename.does": "インスペクターで名前を変更し、名前を選択します",
   "shortcuts.mouse.doubleText": "テキスト、音符、またはゾーンをダブルクリックします",
   "shortcuts.mouse.doubleText.does": "その場でテキストを編集する",
   "shortcuts.mouse.doubleNode": "ノード / 接続をダブルクリック",
@@ -1760,7 +1759,7 @@
   "tutorials.mobileApi.nameHint": "ダブルクリックすると選択した名前でプロパティ シートが開くので、入力すると名前が置き換えられます。",
   "tutorials.mobileApi.nameDone": "名前はキャンバス、エクスポート および ライブ の読み出しに表示されます。",
   "tutorials.mobileApi.liveTitle": "ライブ",
-  "tutorials.mobileApi.liveGoal": "キャンバス右上の ライブ または L キーを押すと、シミュレーション が起動します。",
+  "tutorials.mobileApi.liveGoal": "上部バーで{live}を選ぶか、{key}キーを押します。",
   "tutorials.mobileApi.liveTip": "ライブ を押してください",
   "tutorials.mobileApi.liveHint": "ライブ は、すべてのクライアントからそのレートでトラフィックを送信します。 モバイルアプリ は 1 秒あたり 2 リクエストで開始されます。",
   "tutorials.mobileApi.liveDone": "現在ライブ中です: アプリはリクエストを送信しています。",
@@ -2794,5 +2793,6 @@
   "workbench.unpin": "ライブラリを閉じる",
   "workbench.shortcuts": "ショートカット",
   "workbench.checksName": "チェック, {warnings}",
-  "workbench.warnings": "{count, plural, other {# 件の警告}}"
+  "workbench.warnings": "{count, plural, other {# 件の警告}}",
+  "workbench.systemTheme": "システムに合わせる"
 }

@@ -15,7 +15,6 @@ export const OVERLAY_SELECTOR = [
   "[data-canvas-overlay]",
   ".react-flow__panel.react-flow__controls",
   ".react-flow__panel.react-flow__minimap",
-  '[data-testid="live-toggle"]',
   '[data-testid="live-controls"]',
   '[data-testid="present-exit"]',
 ].join(",");

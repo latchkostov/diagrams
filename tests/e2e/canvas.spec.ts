@@ -1,4 +1,4 @@
-import { openExample } from "./fixtures";
+import { toggleTheme, openExample } from "./fixtures";
 import { readFileSync } from "node:fs";
 import type { Page } from "@playwright/test";
 import { test, expect, gotoCanvas, gotoLab, publicExamples, expectNoErrors, pauseClock } from "./fixtures";
@@ -155,12 +155,12 @@ test.describe("canvas", () => {
     await gotoCanvas(page, publicExamples[0].slug);
     const theme = () => page.evaluate(() => document.documentElement.dataset.theme);
     expect(await theme()).toBe("light");
-    await page.getByTestId("theme-toggle").click();
+    await toggleTheme(page);
     expect(await theme()).toBe("dark");
     await page.reload();
     await expect(page.getByTestId("canvas-view")).toBeVisible();
     expect(await theme()).toBe("dark");
-    await page.getByTestId("theme-toggle").click();
+    await toggleTheme(page);
     expect(await theme()).toBe("light");
   });
 

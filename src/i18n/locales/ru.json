@@ -655,7 +655,6 @@
   "shortcuts.mouse.doubleCanvas": "Двойной щелчок по холсту",
   "shortcuts.mouse.doubleCanvas.does": "Быстро добавить элемент у курсора",
   "shortcuts.mouse.doubleRename": "Двойной щелчок по узлу, связи или границе",
-  "shortcuts.mouse.doubleRename.does": "Переименуйте в инспекторе, имя выбрано",
   "shortcuts.mouse.doubleText": "Дважды щелкните текст, заметку или зону.",
   "shortcuts.mouse.doubleText.does": "Отредактируйте его текст на месте",
   "shortcuts.mouse.doubleNode": "Двойной щелчок по узлу / связи",
@@ -1760,7 +1759,7 @@
   "tutorials.mobileApi.nameHint": "Двойной щелчок открывает страницу свойств с выбранным именем, поэтому ввод заменяет его.",
   "tutorials.mobileApi.nameDone": "Имена отображаются на холсте, в показаниях экспорт и Жить.",
   "tutorials.mobileApi.liveTitle": "режим реального времени",
-  "tutorials.mobileApi.liveGoal": "Нажмите Жить в правом верхнем углу холста или клавишу L, чтобы запустить симуляция.",
+  "tutorials.mobileApi.liveGoal": "Выберите {live} на верхней панели или нажмите {key}.",
   "tutorials.mobileApi.liveTip": "Нажмите Жить",
   "tutorials.mobileApi.liveHint": "Жить отправляет трафик от каждого клиента со своей скоростью. Мобильное приложение начинается со скоростью 2 запроса в секунду.",
   "tutorials.mobileApi.liveDone": "Вы в эфире: приложение отправляет запросы.",
@@ -2753,5 +2752,6 @@
   "workbench.unpin": "Закрыть библиотеку",
   "workbench.shortcuts": "Клавиши",
   "workbench.checksName": "Проверки, {warnings}",
-  "workbench.warnings": "{count, plural, one {# предупреждение} few {# предупреждения} many {# предупреждения} other {# предупреждения}}"
+  "workbench.warnings": "{count, plural, one {# предупреждение} few {# предупреждения} many {# предупреждения} other {# предупреждения}}",
+  "workbench.systemTheme": "Как в системе"
 }

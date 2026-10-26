@@ -1,4 +1,4 @@
-import { openLibrary } from "./fixtures";
+import { toggleTheme, openLibrary } from "./fixtures";
 import { readFileSync } from "node:fs";
 import { chunk, holdChunk, releaseAndEvaluate } from "./chunk";
 import { waitForStableViewport, viewportTransform } from "./fixtures";
@@ -752,7 +752,7 @@ for (const theme of ["light", "dark"] as const)
     test(`gallery fits and passes accessibility: ${theme} ${mobile ? "mobile" : "desktop"}`, async ({ page }) => {
       await page.setViewportSize(mobile ? { width: 390, height: 844 } : { width: 1280, height: 800 });
       await page.goto("./");
-      if (theme === "dark") await page.getByTestId("theme-toggle").click();
+      if (theme === "dark") await toggleTheme(page);
       await page.getByTestId("start-all-examples").click();
       const dialog = page.getByTestId("examples-dialog");
       await expect(dialog).toBeVisible();

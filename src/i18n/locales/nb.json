@@ -655,7 +655,6 @@
   "shortcuts.mouse.doubleCanvas": "Dobbeltklikk på lerretet",
   "shortcuts.mouse.doubleCanvas.does": "Legg raskt til en sjablong ved markøren",
   "shortcuts.mouse.doubleRename": "Dobbeltklikk på en node, kobling eller avgrensning",
-  "shortcuts.mouse.doubleRename.does": "Gi nytt navn i inspektøren, navn valgt",
   "shortcuts.mouse.doubleText": "Dobbeltklikk på en tekst, et notat eller en sone",
   "shortcuts.mouse.doubleText.does": "Rediger teksten på plass",
   "shortcuts.mouse.doubleNode": "Dobbeltklikk på node / kobling",
@@ -1761,7 +1760,7 @@
   "tutorials.mobileApi.nameHint": "Dobbeltklikk åpner egenskapsarket med navnet valgt, så inntasting erstatter det.",
   "tutorials.mobileApi.nameDone": "Navn vises på lerretet, i eksportere og i Bos avlesninger.",
   "tutorials.mobileApi.liveTitle": "live",
-  "tutorials.mobileApi.liveGoal": "Trykk Bo øverst til høyre på lerretet, eller L-tasten, for å starte simulering.",
+  "tutorials.mobileApi.liveGoal": "Velg {live} i topplinjen, eller trykk {key}.",
   "tutorials.mobileApi.liveTip": "Trykk Bo",
   "tutorials.mobileApi.liveHint": "Bo sender trafikk fra hver klient med sin hastighet. En Mobilapp starter med 2 forespørsler i sekundet.",
   "tutorials.mobileApi.liveDone": "Du er i live: appen sender forespørsler.",
@@ -2781,5 +2780,6 @@
   "workbench.unpin": "Lukk bibliotek",
   "workbench.shortcuts": "Snarveier",
   "workbench.checksName": "Kontroller, {warnings}",
-  "workbench.warnings": "{count, plural, one {# advarsel} other {# advarsler}}"
+  "workbench.warnings": "{count, plural, one {# advarsel} other {# advarsler}}",
+  "workbench.systemTheme": "Følg systemet"
 }

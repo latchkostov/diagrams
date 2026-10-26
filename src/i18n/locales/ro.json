@@ -655,7 +655,6 @@
   "shortcuts.mouse.doubleCanvas": "Dublu clic pe pânză",
   "shortcuts.mouse.doubleCanvas.does": "Adăugare rapidă a unui șablon la cursor",
   "shortcuts.mouse.doubleRename": "Dublu clic pe un nod, o conexiune sau o delimitare",
-  "shortcuts.mouse.doubleRename.does": "Redenumiți în inspector, numele selectat",
   "shortcuts.mouse.doubleText": "Faceți dublu clic pe un text, notă sau zonă",
   "shortcuts.mouse.doubleText.does": "Editați-i textul în loc",
   "shortcuts.mouse.doubleNode": "Dublu clic pe nod / conexiune",
@@ -1761,7 +1760,7 @@
   "tutorials.mobileApi.nameHint": "Făcând dublu clic, se deschide foaia de proprietăți cu numele selectat, așa că tastarea o înlocuiește.",
   "tutorials.mobileApi.nameDone": "Numele apar pe pânză, în exportați și în citirile lui Trăi.",
   "tutorials.mobileApi.liveTitle": "live",
-  "tutorials.mobileApi.liveGoal": "Apăsați Trăi în partea dreaptă sus a pânzei sau tasta L, pentru a porni simulare.",
+  "tutorials.mobileApi.liveGoal": "Alegeți {live} în bara de sus sau apăsați {key}.",
   "tutorials.mobileApi.liveTip": "Apăsați Trăi",
   "tutorials.mobileApi.liveHint": "Trăi trimite trafic de la fiecare client la rata sa. Un Aplicație mobilă începe la 2 solicitări pe secundă.",
   "tutorials.mobileApi.liveDone": "Sunteți în direct: aplicația trimite solicitări.",
@@ -2795,5 +2794,6 @@
   "workbench.unpin": "Închide biblioteca",
   "workbench.shortcuts": "Scurtături",
   "workbench.checksName": "Verificări, {warnings}",
-  "workbench.warnings": "{count, plural, one {# avertisment} few {# avertismente} other {# avertismente}}"
+  "workbench.warnings": "{count, plural, one {# avertisment} few {# avertismente} other {# avertismente}}",
+  "workbench.systemTheme": "Ca în sistem"
 }

@@ -655,7 +655,6 @@
   "shortcuts.mouse.doubleCanvas": "Doppio clic sulla tela",
   "shortcuts.mouse.doubleCanvas.does": "Aggiungi rapidamente uno stencil al cursore",
   "shortcuts.mouse.doubleRename": "Doppio clic su un nodo, un collegamento o un confine",
-  "shortcuts.mouse.doubleRename.does": "Rinomina nell'ispettore, nome selezionato",
   "shortcuts.mouse.doubleText": "Fare doppio clic su un testo, una nota o una zona",
   "shortcuts.mouse.doubleText.does": "Modifica il suo testo sul posto",
   "shortcuts.mouse.doubleNode": "Doppio clic su nodo / collegamento",
@@ -1761,7 +1760,7 @@
   "tutorials.mobileApi.nameHint": "Facendo doppio clic si apre la finestra delle proprietà con il nome selezionato, quindi la digitazione lo sostituisce.",
   "tutorials.mobileApi.nameDone": "I nomi vengono visualizzati sull'area di disegno, in Esporta e nelle letture di Vivere.",
   "tutorials.mobileApi.liveTitle": "live",
-  "tutorials.mobileApi.liveGoal": "Premere Vivere in alto a destra dell'area di disegno, o il tasto L, per avviare simulazione.",
+  "tutorials.mobileApi.liveGoal": "Scegli {live} nella barra superiore o premi {key}.",
   "tutorials.mobileApi.liveTip": "Premere Vivere",
   "tutorials.mobileApi.liveHint": "Vivere invia il traffico da ogni client alla sua tariffa. Un App mobile inizia con 2 richieste al secondo.",
   "tutorials.mobileApi.liveDone": "Sei live: l'app sta inviando richieste.",
@@ -2791,5 +2790,6 @@
   "workbench.unpin": "Chiudi libreria",
   "workbench.shortcuts": "Scorciatoie",
   "workbench.checksName": "Controlli, {warnings}",
-  "workbench.warnings": "{count, plural, one {# avviso} other {# avvisi}}"
+  "workbench.warnings": "{count, plural, one {# avviso} other {# avvisi}}",
+  "workbench.systemTheme": "Come il sistema"
 }

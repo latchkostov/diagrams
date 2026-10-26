@@ -1,4 +1,4 @@
-import { currentDiagram, pauseClock } from "./fixtures";
+import { toggleTheme, currentDiagram, pauseClock } from "./fixtures";
 import { readFileSync } from "node:fs";
 import { deflateRawSync } from "node:zlib";
 import type { Page } from "@playwright/test";
@@ -406,7 +406,7 @@ test.describe("this browser's storage", () => {
 
     // The late tab changes a setting (a write): it writes nothing, and starts over.
     const reloads = late.waitForEvent("domcontentloaded", { timeout: pageLoadTimeout() });
-    await late.getByTestId("theme-toggle").click();
+    await toggleTheme(late);
     await reloads;
     await expect(late.getByTestId("gallery-view")).toBeVisible({ timeout: pageLoadTimeout() });
     expect(await page.evaluate((k) => localStorage.getItem(k), entry)).not.toBeNull();

@@ -38,6 +38,7 @@ export function useChromeOverlays(wrapper: RefObject<HTMLDivElement | null>, che
 }
 
 export function CanvasOverlays({
+  bezel,
   card,
   cardCovers,
   presenting,
@@ -61,6 +62,7 @@ export function CanvasOverlays({
   hintSeen,
   dismissHint,
 }: {
+  bezel?: boolean;
   card: RefObject<HTMLDivElement | null>;
   cardCovers: boolean;
   presenting: boolean;
@@ -107,7 +109,7 @@ export function CanvasOverlays({
         }
       >
         {/* The person's own words: their direction is their own, whatever the language around them (dir="auto"). */}
-        <h1 data-testid="diagram-title" dir="auto">
+        <h1 data-testid={bezel ? "diagram-card-title" : "diagram-title"} dir="auto">
           {meta.title}
         </h1>
         {privacy && !hideChrome && <PrivateBadge kind={privacy} />}

@@ -50,7 +50,7 @@
   border-radius: 8px;
   background: var(--warning);
   color: var(--live-ink);
-  font: 700 10px/16px var(--font-ui);
+  font: 700 11px/18px var(--font-ui);
   font-style: normal;
 }
 .tool-rail-grow {
@@ -94,4 +94,13 @@
   .tool-rail-label {
     display: none;
   }
+}
+
+.rail-credit {
+  font-size: 11px;
+  color: var(--text-3);
+  text-align: center;
+  text-decoration: none;
+  line-height: 1.15;
+  overflow-wrap: normal;
 }

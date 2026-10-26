@@ -1,6 +1,6 @@
 /** These controls must remain actionable beside a hover card. */
 export const protectedControls =
-  '[data-canvas-overlay], .lv-note[data-waiting], [data-testid="live-controls"], [data-testid="live-toggle"], [data-testid="inspector"]';
+  '[data-canvas-overlay], .lv-note[data-waiting], [data-testid="live-controls"], [data-testid="inspector"]';
 
 /** Watch control roots, not their animated descendants (such as timeline progress). */
 export function observeProtectedControls(wrap: Element, place: () => void): () => void {

@@ -655,7 +655,6 @@
   "shortcuts.mouse.doubleCanvas": "Tuvale çift tık",
   "shortcuts.mouse.doubleCanvas.does": "İmleç konumuna hızlıca kalıp ekle",
   "shortcuts.mouse.doubleRename": "Düğüme, bağlantıya veya sınıra çift tıklayın",
-  "shortcuts.mouse.doubleRename.does": "Denetleyicide yeniden adlandırın, ad seçildi",
   "shortcuts.mouse.doubleText": "Bir metni, notu veya bölgeyi çift tıklayın",
   "shortcuts.mouse.doubleText.does": "Metnini yerinde düzenleyin",
   "shortcuts.mouse.doubleNode": "Düğüme / bağlantıya çift tık",
@@ -1760,7 +1759,7 @@
   "tutorials.mobileApi.nameHint": "Çift tıklama, seçilen adın bulunduğu özellik sayfasını açar, böylece yazmak onun yerini alır.",
   "tutorials.mobileApi.nameDone": "İsimler tuvalde, dışa aktar'de ve Canlı'nin okumalarında gösteriliyor.",
   "tutorials.mobileApi.liveTitle": "canlı",
-  "tutorials.mobileApi.liveGoal": "simülasyon'yi başlatmak için tuvalin sağ üst köşesindeki Canlı tuşuna veya L tuşuna basın.",
+  "tutorials.mobileApi.liveGoal": "Üst çubuktan {live} seçin veya {key} tuşuna basın.",
   "tutorials.mobileApi.liveTip": "Canlı tuşuna basın",
   "tutorials.mobileApi.liveHint": "Canlı her istemciden trafiği kendi hızında gönderir. Bir Mobil uygulama saniyede 2 istekle başlar.",
   "tutorials.mobileApi.liveDone": "Yayındasınız: uygulama istek gönderiyor.",
@@ -2767,5 +2766,6 @@
   "workbench.unpin": "Kitaplığı kapat",
   "workbench.shortcuts": "Kısayollar",
   "workbench.checksName": "Kontroller, {warnings}",
-  "workbench.warnings": "{count, plural, one {# uyarı} other {# uyarı}}"
+  "workbench.warnings": "{count, plural, one {# uyarı} other {# uyarı}}",
+  "workbench.systemTheme": "Sistemi izle"
 }

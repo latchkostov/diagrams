@@ -655,7 +655,6 @@
   "shortcuts.mouse.doubleCanvas": "Duplo clique na tela",
   "shortcuts.mouse.doubleCanvas.does": "Adicionar rapidamente um stencil no cursor",
   "shortcuts.mouse.doubleRename": "Duplo clique num nó, ligação ou limite",
-  "shortcuts.mouse.doubleRename.does": "Renomear no inspetor, nome selecionado",
   "shortcuts.mouse.doubleText": "Clique duas vezes em um texto, nota ou zona",
   "shortcuts.mouse.doubleText.does": "Edite seu texto no lugar",
   "shortcuts.mouse.doubleNode": "Duplo clique em nó / ligação",
@@ -1760,7 +1759,7 @@
   "tutorials.mobileApi.nameHint": "Clicar duas vezes abre a folha de propriedades com o nome selecionado, portanto a digitação o substitui.",
   "tutorials.mobileApi.nameDone": "Os nomes aparecem na tela, em Exportar e nas leituras de Vivo.",
   "tutorials.mobileApi.liveTitle": "em direto",
-  "tutorials.mobileApi.liveGoal": "Pressione Vivo no canto superior direito da tela, ou a tecla L, para iniciar o simulação.",
+  "tutorials.mobileApi.liveGoal": "Escolha {live} na barra superior ou prima {key}.",
   "tutorials.mobileApi.liveTip": "Pressione Vivo",
   "tutorials.mobileApi.liveHint": "Vivo envia tráfego de cada cliente de acordo com sua taxa. Um Aplicação móvel começa com 2 solicitações por segundo.",
   "tutorials.mobileApi.liveDone": "Você está ao vivo: o aplicativo está enviando solicitações.",
@@ -2770,5 +2769,6 @@
   "workbench.unpin": "Fechar biblioteca",
   "workbench.shortcuts": "Atalhos",
   "workbench.checksName": "Verificações, {warnings}",
-  "workbench.warnings": "{count, plural, one {# aviso} other {# avisos}}"
+  "workbench.warnings": "{count, plural, one {# aviso} other {# avisos}}",
+  "workbench.systemTheme": "Seguir o sistema"
 }

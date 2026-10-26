@@ -655,7 +655,6 @@
   "shortcuts.mouse.doubleCanvas": "Klik dua kali kanvas",
   "shortcuts.mouse.doubleCanvas.does": "Tambah stensil cepat di kursor",
   "shortcuts.mouse.doubleRename": "Klik dua kali pada node, koneksi, atau batas",
-  "shortcuts.mouse.doubleRename.does": "Ganti nama di inspektur, nama dipilih",
   "shortcuts.mouse.doubleText": "Klik dua kali teks, catatan, atau zona",
   "shortcuts.mouse.doubleText.does": "Edit teksnya di tempatnya",
   "shortcuts.mouse.doubleNode": "Klik dua kali node / koneksi",
@@ -1760,7 +1759,7 @@
   "tutorials.mobileApi.nameHint": "Klik dua kali akan membuka lembar properti dengan nama yang dipilih, sehingga pengetikan akan menggantikannya.",
   "tutorials.mobileApi.nameDone": "Nama ditampilkan di kanvas, di ekspor dan di Hidup pembacaan.",
   "tutorials.mobileApi.liveTitle": "Live",
-  "tutorials.mobileApi.liveGoal": "Tekan Hidup di kanan atas kanvas, atau tombol L, untuk memulai simulasi.",
+  "tutorials.mobileApi.liveGoal": "Pilih {live} di bilah atas, atau tekan {key}.",
   "tutorials.mobileApi.liveTip": "Tekan Hidup",
   "tutorials.mobileApi.liveHint": "Hidup mengirimkan lalu lintas dari setiap klien sesuai tarifnya. Aplikasi seluler dimulai pada 2 permintaan per detik.",
   "tutorials.mobileApi.liveDone": "Anda sedang siaran langsung: aplikasi mengirimkan permintaan.",
@@ -2772,5 +2771,6 @@
   "workbench.unpin": "Tutup pustaka",
   "workbench.shortcuts": "Pintasan",
   "workbench.checksName": "Pemeriksaan, {warnings}",
-  "workbench.warnings": "{count, plural, other {# peringatan}}"
+  "workbench.warnings": "{count, plural, other {# peringatan}}",
+  "workbench.systemTheme": "Ikuti sistem"
 }

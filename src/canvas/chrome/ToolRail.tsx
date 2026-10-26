@@ -150,6 +150,16 @@ export function ToolRail({ view, onView }: { view: View; onView: (view: View) =>
           !host,
           railLabel(fresh),
         )}
+      <a
+        className="rail-credit"
+        data-testid="react-flow-credit"
+        href="https://reactflow.dev"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        {/* eslint-disable-next-line local/no-literal-ui-text -- upstream product name */}
+        {"React Flow"}
+      </a>
     </nav>
   );
 }

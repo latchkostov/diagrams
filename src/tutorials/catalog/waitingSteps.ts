@@ -1,4 +1,4 @@
-import { msg } from "../../i18n";
+import { msg, t } from "../../i18n";
 import type { Check, PropPatch, PropertyTarget, TutorialStep, UiStep, Words } from "../types";
 
 type Copy = { title: Words; goal: Words; done: Words };
@@ -11,7 +11,7 @@ export function liveStep(id: string, after: Check): TutorialStep {
   return {
     id,
     title: msg("tutorials.mobileApi.liveTitle"),
-    goal: msg("tutorials.mobileApi.liveGoal"),
+    goal: () => t("tutorials.mobileApi.liveGoal", { live: t("fileDialog.live"), key: "L" }),
     check: { kind: "all", checks: [after, { kind: "live" }] },
     sticky: true,
     targets: [{ testId: "live-toggle", tip: msg("tutorials.mobileApi.liveTip") }],

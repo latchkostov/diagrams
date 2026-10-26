@@ -655,7 +655,6 @@
   "shortcuts.mouse.doubleCanvas": "Double-clic sur le canevas",
   "shortcuts.mouse.doubleCanvas.does": "Ajout rapide d’un gabarit au curseur",
   "shortcuts.mouse.doubleRename": "Double-clic sur un nœud, une connexion ou un périmètre",
-  "shortcuts.mouse.doubleRename.does": "Renommer dans l'inspecteur, nom sélectionné",
   "shortcuts.mouse.doubleText": "Double-cliquez sur un texte, une note ou une zone",
   "shortcuts.mouse.doubleText.does": "Modifier son texte sur place",
   "shortcuts.mouse.doubleNode": "Double-clic sur nœud / connexion",
@@ -1761,7 +1760,7 @@
   "tutorials.mobileApi.nameHint": "Un double-clic ouvre la feuille de propriétés avec le nom sélectionné, donc la saisie le remplace.",
   "tutorials.mobileApi.nameDone": "Les noms s'affichent sur le canevas, dans les affichages de Exporter et de En direct.",
   "tutorials.mobileApi.liveTitle": "en direct",
-  "tutorials.mobileApi.liveGoal": "Appuyez sur En direct en haut à droite du canevas, ou sur la touche L, pour démarrer le simulation.",
+  "tutorials.mobileApi.liveGoal": "Choisissez {live} dans la barre supérieure ou appuyez sur {key}.",
   "tutorials.mobileApi.liveTip": "Appuyez sur En direct",
   "tutorials.mobileApi.liveHint": "En direct envoie le trafic de chaque client à son rythme. Un Application mobile démarre à 2 requêtes par seconde.",
   "tutorials.mobileApi.liveDone": "Vous êtes en direct : l'application envoie des requêtes.",
@@ -2778,5 +2777,6 @@
   "workbench.unpin": "Fermer la bibliothèque",
   "workbench.shortcuts": "Raccourcis",
   "workbench.checksName": "Vérifications, {warnings}",
-  "workbench.warnings": "{count, plural, one {# avertissement} other {# avertissements}}"
+  "workbench.warnings": "{count, plural, one {# avertissement} other {# avertissements}}",
+  "workbench.systemTheme": "Selon le système"
 }

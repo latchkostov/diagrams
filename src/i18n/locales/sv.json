@@ -655,7 +655,6 @@
   "shortcuts.mouse.doubleCanvas": "Dubbelklick på arbetsytan",
   "shortcuts.mouse.doubleCanvas.does": "Lägg snabbt till en stencil vid markören",
   "shortcuts.mouse.doubleRename": "Dubbelklicka på en nod, koppling eller avgränsning",
-  "shortcuts.mouse.doubleRename.does": "Byt namn i inspektören, namn valt",
   "shortcuts.mouse.doubleText": "Dubbelklicka på en text, anteckning eller zon",
   "shortcuts.mouse.doubleText.does": "Redigera dess text på plats",
   "shortcuts.mouse.doubleNode": "Dubbelklick på nod / koppling",
@@ -1761,7 +1760,7 @@
   "tutorials.mobileApi.nameHint": "Dubbelklicka öppnar egenskapsbladet med det valda namnet, så att skriva ersätter det.",
   "tutorials.mobileApi.nameDone": "Namn visas på duken, i exportera och i Bos avläsningar.",
   "tutorials.mobileApi.liveTitle": "live",
-  "tutorials.mobileApi.liveGoal": "Tryck på Bo längst upp till höger på duken, eller på L-tangenten, för att starta simulering.",
+  "tutorials.mobileApi.liveGoal": "Välj {live} i det övre fältet eller tryck på {key}.",
   "tutorials.mobileApi.liveTip": "Tryck på Bo",
   "tutorials.mobileApi.liveHint": "Bo skickar trafik från varje klient i sin takt. En Mobilapp börjar med 2 förfrågningar per sekund.",
   "tutorials.mobileApi.liveDone": "Du är live: appen skickar förfrågningar.",
@@ -2785,5 +2784,6 @@
   "workbench.unpin": "Stäng bibliotek",
   "workbench.shortcuts": "Genvägar",
   "workbench.checksName": "Kontroller, {warnings}",
-  "workbench.warnings": "{count, plural, one {# varning} other {# varningar}}"
+  "workbench.warnings": "{count, plural, one {# varning} other {# varningar}}",
+  "workbench.systemTheme": "Följ systemet"
 }

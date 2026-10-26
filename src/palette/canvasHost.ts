@@ -14,6 +14,8 @@ export function useCanvasHost(
   editor: EditorApi,
   opts: {
     live: boolean;
+    canUndo?: boolean;
+    canRedo?: boolean;
     enabled: boolean;
     localOnly?: boolean;
     private?: boolean;
@@ -40,6 +42,8 @@ export function useCanvasHost(
   });
   const {
     live,
+    canUndo,
+    canRedo,
     enabled,
     localOnly,
     private: isPrivate,
@@ -67,6 +71,8 @@ export function useCanvasHost(
       editor,
       instanceId,
       live,
+      canUndo,
+      canRedo,
       localOnly,
       private: isPrivate,
       onDevice,
@@ -96,6 +102,8 @@ export function useCanvasHost(
     editor,
     instanceId,
     live,
+    canUndo,
+    canRedo,
     enabled,
     localOnly,
     isPrivate,

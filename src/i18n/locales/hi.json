@@ -655,7 +655,6 @@
   "shortcuts.mouse.doubleCanvas": "कैनवस पर डबल-क्लिक",
   "shortcuts.mouse.doubleCanvas.does": "कर्सर पर जल्दी से स्टेंसिल जोड़ें",
   "shortcuts.mouse.doubleRename": "नोड, कनेक्शन या बाउंड्री पर डबल-क्लिक करें",
-  "shortcuts.mouse.doubleRename.does": "निरीक्षक में नाम बदलें, नाम चयनित",
   "shortcuts.mouse.doubleText": "किसी टेक्स्ट, नोट या ज़ोन पर डबल-क्लिक करें",
   "shortcuts.mouse.doubleText.does": "इसके पाठ को यथास्थान संपादित करें",
   "shortcuts.mouse.doubleNode": "नोड / कनेक्शन पर डबल-क्लिक",
@@ -1761,7 +1760,7 @@
   "tutorials.mobileApi.nameHint": "डबल-क्लिक करने से चयनित नाम के साथ प्रॉपर्टी शीट खुल जाती है, इसलिए टाइपिंग इसे बदल देती है।",
   "tutorials.mobileApi.nameDone": "नाम कैनवास पर, एक्सपोर्ट और रहना के रीडआउट में दिखते हैं।",
   "tutorials.mobileApi.liveTitle": "लाइव",
-  "tutorials.mobileApi.liveGoal": "सिमुलेशन प्रारंभ करने के लिए कैनवास के शीर्ष दाईं ओर रहना, या L कुंजी दबाएँ।",
+  "tutorials.mobileApi.liveGoal": "ऊपरी बार में {live} चुनें या {key} दबाएँ।",
   "tutorials.mobileApi.liveTip": "रहना दबाएँ",
   "tutorials.mobileApi.liveHint": "रहना प्रत्येक ग्राहक से उसकी दर पर ट्रैफ़िक भेजता है। एक मोबाइल ऐप प्रति सेकंड 2 अनुरोधों पर प्रारंभ होता है।",
   "tutorials.mobileApi.liveDone": "आप लाइव हैं: ऐप अनुरोध भेज रहा है।",
@@ -2770,5 +2769,6 @@
   "workbench.unpin": "लाइब्रेरी बंद करें",
   "workbench.shortcuts": "शॉर्टकट",
   "workbench.checksName": "जाँचें, {warnings}",
-  "workbench.warnings": "{count, plural, one {# चेतावनी} other {# चेतावनियाँ}}"
+  "workbench.warnings": "{count, plural, one {# चेतावनी} other {# चेतावनियाँ}}",
+  "workbench.systemTheme": "सिस्टम के अनुसार"
 }

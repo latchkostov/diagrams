@@ -655,7 +655,6 @@
   "shortcuts.mouse.doubleCanvas": "Nhấp đúp khung vẽ",
   "shortcuts.mouse.doubleCanvas.does": "Thêm nhanh mẫu hình tại con trỏ",
   "shortcuts.mouse.doubleRename": "Nhấp đúp vào nút, kết nối hoặc ranh giới",
-  "shortcuts.mouse.doubleRename.does": "Đổi tên trong thanh tra, tên đã chọn",
   "shortcuts.mouse.doubleText": "Bấm đúp vào văn bản, ghi chú hoặc vùng",
   "shortcuts.mouse.doubleText.does": "Chỉnh sửa văn bản của nó tại chỗ",
   "shortcuts.mouse.doubleNode": "Nhấp đúp nút / kết nối",
@@ -1761,7 +1760,7 @@
   "tutorials.mobileApi.nameHint": "Bấm đúp sẽ mở trang thuộc tính với tên đã chọn, do đó việc gõ sẽ thay thế tên đó.",
   "tutorials.mobileApi.nameDone": "Tên hiển thị trên khung vẽ, trong xuất và trong phần đọc của Sống.",
   "tutorials.mobileApi.liveTitle": "trực tiếp",
-  "tutorials.mobileApi.liveGoal": "Nhấn Sống ở trên cùng bên phải của khung vẽ hoặc phím L để bắt đầu mô phỏng.",
+  "tutorials.mobileApi.liveGoal": "Chọn {live} trên thanh trên cùng hoặc nhấn {key}.",
   "tutorials.mobileApi.liveTip": "Nhấn Sống",
   "tutorials.mobileApi.liveHint": "Sống gửi lưu lượng truy cập từ mọi khách hàng theo tốc độ của nó. Ứng dụng di động bắt đầu với 2 yêu cầu một giây.",
   "tutorials.mobileApi.liveDone": "Bạn đang hoạt động: ứng dụng đang gửi yêu cầu.",
@@ -2777,5 +2776,6 @@
   "workbench.unpin": "Đóng thư viện",
   "workbench.shortcuts": "Phím tắt",
   "workbench.checksName": "Kiểm tra, {warnings}",
-  "workbench.warnings": "{count, plural, other {# cảnh báo}}"
+  "workbench.warnings": "{count, plural, other {# cảnh báo}}",
+  "workbench.systemTheme": "Theo hệ thống"
 }

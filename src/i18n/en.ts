@@ -2470,7 +2470,7 @@ const en = {
     "Double-click opens the property sheet with the name selected, so typing replaces it.",
   "tutorials.mobileApi.nameDone": "Names show on the canvas, in exports and in Live's readouts.",
   "tutorials.mobileApi.liveTitle": "Go live",
-  "tutorials.mobileApi.liveGoal": "Press Live at the top right of the canvas, or the L key, to start the simulation.",
+  "tutorials.mobileApi.liveGoal": "Choose {live} in the top bar, or press {key}.",
   "tutorials.mobileApi.liveTip": "Press Live",
   "tutorials.mobileApi.liveHint":
     "Live sends traffic from every client at its rate. A Mobile App starts at 2 requests a second.",
@@ -4581,6 +4581,7 @@ const en = {
   "tutorials.studyCells.finish":
     "Compare the reference's regional entries and complete cells. What storage, replication and capacity would each of your simplified cells need before a real evacuation?",
   "tutorials.studyCells.reference": "Open the cell-based bookings reference",
+  "workbench.systemTheme": "Match system",
   "workbench.tools": "Tools",
   "workbench.select": "Select",
   "workbench.checks": "Checks",

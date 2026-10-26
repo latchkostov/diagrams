@@ -1,7 +1,7 @@
 import { nestedBoundariesFixture as nestedFixture } from "../../src/lab/nestedBoundariesFixture";
 import { settledCanvas } from "../parity/browser/canvas";
 import { captionContrastFixture } from "../../src/lab/captionContrastFixture";
-import { gotoLab } from "./fixtures";
+import { toggleTheme, expectTheme, gotoLab } from "./fixtures";
 import { MERGE_WINDOW_MS } from "../../src/editor/history";
 import {
   test,
@@ -467,9 +467,7 @@ for (const tint of [undefined, "#ff0000", "#00ff00", "#0000ff"]) {
       })),
     });
     for (const theme of ["light", "dark"]) {
-      await expect(page.getByTestId("theme-toggle")).toHaveAccessibleName(
-        theme === "light" ? "Switch to dark theme" : "Switch to light theme",
-      );
+      await expectTheme(page, theme);
       await expect
         .poll(() =>
           page.getByTestId("canvas-wrap").evaluate((wrap) => {
@@ -506,7 +504,7 @@ for (const tint of [undefined, "#ff0000", "#00ff00", "#0000ff"]) {
       await expect(
         page.getByTestId(theme === "light" ? "annotation-text-caption-2" : "annotation-text-caption-1"),
       ).toHaveCSS("color", theme === "light" ? "rgb(0, 0, 0)" : "rgb(255, 255, 255)");
-      if (theme === "light") await page.getByTestId("theme-toggle").click();
+      if (theme === "light") await toggleTheme(page);
     }
   });
 }

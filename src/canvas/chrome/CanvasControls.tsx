@@ -64,16 +64,12 @@ export function CanvasControls({
   zoomedByButton,
   menus,
   menu,
-  canUndo,
-  canRedo,
 }: {
   editor: EditorApi;
   fit: () => void;
   zoomedByButton: () => void;
   menus: CanvasMenus;
   menu: MenuState | null;
-  canUndo: boolean;
-  canRedo: boolean;
 }) {
   const locale = useLocale();
   const bodyRef = useRef<HTMLDivElement>(null);
@@ -164,25 +160,6 @@ export function CanvasControls({
                 </svg>
               </button>
             </div>
-            <div className="rf-ctrl-sep" role="separator" data-testid="toolbar-divider-history" />
-            <ControlButton
-              onClick={editor.undo}
-              disabled={!canUndo}
-              title={tr("canvas.undoValue", { combo: formatCombo(shortcutKeys("undo")) })}
-              aria-label={tr("ai.undo")}
-              data-testid="undo-button"
-            >
-              <Icon name="undo" size={14} />
-            </ControlButton>
-            <ControlButton
-              onClick={editor.redo}
-              disabled={!canRedo}
-              title={tr("canvas.redoValue", { combo: formatCombo(shortcutKeys("redo")) })}
-              aria-label={tr("shortcuts.redo")}
-              data-testid="redo-button"
-            >
-              <Icon name="redo" size={14} />
-            </ControlButton>
             <div className="rf-ctrl-sep" role="separator" data-testid="toolbar-divider-collapse" />
           </div>
         </div>

@@ -273,6 +273,7 @@ test.describe("mobile title card", () => {
     await expect(page.getByTestId("undo-button")).toBeDisabled();
     await expect(page.getByTestId("redo-button")).toBeEnabled();
     for (const id of ["example-picker", "view-button", "file-button", "theme-toggle"]) {
+      if (id === "theme-toggle") await page.getByTestId("view-button").click();
       const control = page.getByTestId(id);
       await control.focus();
       await expect(control).toBeFocused();
@@ -283,6 +284,7 @@ test.describe("mobile title card", () => {
       // Scroll offsets round to device pixels; allow their subpixel remainder.
       expect(bounds.x, id).toBeGreaterThanOrEqual(-0.5);
       expect(bounds.x + bounds.width, id).toBeLessThanOrEqual(390.5);
+      if (id === "theme-toggle") await page.keyboard.press("Escape");
     }
   });
 });

@@ -655,7 +655,6 @@
   "shortcuts.mouse.doubleCanvas": "Doble clic en el lienzo",
   "shortcuts.mouse.doubleCanvas.does": "Agregar rápido un símbolo en el cursor",
   "shortcuts.mouse.doubleRename": "Doble clic en un nodo, conexión o límite",
-  "shortcuts.mouse.doubleRename.does": "Cambiar nombre en el inspector, nombre seleccionado",
   "shortcuts.mouse.doubleText": "Haga doble clic en un texto, nota o zona",
   "shortcuts.mouse.doubleText.does": "Edite su texto en su lugar",
   "shortcuts.mouse.doubleNode": "Doble clic en nodo / conexión",
@@ -1760,7 +1759,7 @@
   "tutorials.mobileApi.nameHint": "Al hacer doble clic se abre la hoja de propiedades con el nombre seleccionado, por lo que al escribirlo se reemplaza.",
   "tutorials.mobileApi.nameDone": "Los nombres se muestran en el lienzo, en las lecturas de Exportar y Vivir.",
   "tutorials.mobileApi.liveTitle": "en vivo",
-  "tutorials.mobileApi.liveGoal": "Presione Vivir en la parte superior derecha del lienzo, o la tecla L, para iniciar simulación.",
+  "tutorials.mobileApi.liveGoal": "Elige {live} en la barra superior o pulsa {key}.",
   "tutorials.mobileApi.liveTip": "Presione Vivir",
   "tutorials.mobileApi.liveHint": "Vivir envía tráfico de cada cliente a su velocidad. Un Aplicación móvil comienza con 2 solicitudes por segundo.",
   "tutorials.mobileApi.liveDone": "Estás en vivo: la aplicación está enviando solicitudes.",
@@ -2766,5 +2765,6 @@
   "workbench.unpin": "Cerrar biblioteca",
   "workbench.shortcuts": "Atajos",
   "workbench.checksName": "Comprobaciones, {warnings}",
-  "workbench.warnings": "{count, plural, one {# advertencia} other {# advertencias}}"
+  "workbench.warnings": "{count, plural, one {# advertencia} other {# advertencias}}",
+  "workbench.systemTheme": "Seguir el sistema"
 }

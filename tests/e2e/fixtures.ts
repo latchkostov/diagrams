@@ -10,6 +10,21 @@ import { withSlowmoDiagnostic, slowmoDiagnosticEnabled, slowmoDiagnosticTest } f
 export const TEXT_START = textBoundaryKey("start");
 export const TEXT_END = textBoundaryKey("end");
 
+/** Theme choices moved into the View menu. */
+export async function toggleTheme(page: Page) {
+  const theme = await page.evaluate(() => document.documentElement.dataset.theme);
+  await page.getByTestId("view-button").click();
+  await page.getByTestId("theme-toggle").click();
+  await page.getByTestId(theme === "dark" ? "theme-light" : "theme-dark").click();
+}
+export async function expectTheme(page: Page, theme: string) {
+  await page.getByTestId("view-button").click();
+  await page.getByTestId("theme-toggle").click();
+  await expect(page.getByTestId(`theme-${theme}`)).toHaveAttribute("aria-checked", "true");
+  await page.keyboard.press("Escape");
+  await page.keyboard.press("Escape");
+}
+
 /** The stencil library starts as a flyout; a pinned library is already open. */
 export async function openLibrary(page: Page) {
   if (!(await page.getByTestId("palette-search").isVisible())) await page.getByTestId("rail-add").click();

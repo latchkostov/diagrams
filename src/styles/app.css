@@ -1189,3 +1189,179 @@ kbd {
   position: absolute;
   inset: 0;
 }
+
+/* Workbench bezel: the canvas and its menus retain their own theme tokens. */
+.topbar {
+  position: relative;
+  height: 52px;
+  min-height: 52px;
+  flex-wrap: nowrap;
+  background: var(--bezel);
+  border-bottom: 1px solid var(--bezel-line);
+  color: var(--bezel-ink);
+  --text: var(--bezel-ink);
+  --text-2: var(--bezel-dim);
+  --text-3: var(--bezel-dim);
+  --line: var(--bezel-line);
+  --line-strong: #3a404c;
+  --surface: transparent;
+  --surface-2: rgb(255 255 255 / 6%);
+  --surface-3: rgb(255 255 255 / 10%);
+  --hover: rgb(255 255 255 / 7%);
+  --accent: #9fb4ff;
+}
+.topbar .brand > span {
+  display: none;
+}
+.topbar .logo .logo-b {
+  fill: var(--bezel-ink);
+}
+.topbar .logo .logo-dot {
+  fill: var(--bezel);
+}
+.topbar .diagram-picker {
+  border-color: transparent;
+  padding-inline: 6px 8px;
+  max-width: min(23vw, 340px);
+  min-width: 0;
+}
+.diagram-picker-title {
+  font-size: 14px;
+  font-weight: 620;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.topbar .btn,
+.topbar .icon-btn {
+  border-color: transparent;
+  background: transparent;
+  color: var(--bezel-ink);
+}
+.topbar .btn svg {
+  color: var(--bezel-dim);
+}
+.topbar .btn-primary {
+  background: rgb(255 255 255 / 10%);
+}
+.topbar .example-badge {
+  background: rgb(255 255 255 / 8%);
+  color: var(--bezel-dim);
+  border-color: transparent;
+}
+.topbar.is-live {
+  box-shadow: inset 0 -2px 0 var(--live);
+}
+.bezel-history {
+  display: inline-flex;
+  gap: 2px;
+  margin-inline-start: 4px;
+  padding-inline-start: 10px;
+  border-inline-start: 1px solid var(--bezel-line);
+}
+.bezel-history .icon-btn {
+  width: 30px;
+  height: 30px;
+  color: var(--bezel-dim);
+}
+.mode-switch {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  display: inline-flex;
+  padding: 3px;
+  gap: 2px;
+  border-radius: 10px;
+  background: rgb(255 255 255 / 7%);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 8%);
+}
+.mode-switch button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  padding: 0 14px 0 12px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: rgb(230 233 238 / 88%);
+  font-size: 13px;
+  font-weight: 620;
+  font-stretch: var(--stretch-wide);
+  letter-spacing: 0.01em;
+}
+.mode-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--live);
+  box-shadow: 0 0 0 3px rgb(61 220 132 / 16%);
+}
+.mode-switch kbd {
+  font: 600 11px/1 var(--font-ui);
+  padding: 3px 5px;
+  border-radius: 4px;
+  background: rgb(255 255 255 / 12%);
+  color: inherit;
+  border: 0;
+}
+.mode-switch button.is-on {
+  background: #fff;
+  color: #15181e;
+}
+.mode-switch .is-live.is-on {
+  background: var(--live);
+  color: var(--live-ink);
+}
+.mode-switch .is-live.is-on .mode-dot {
+  background: var(--live-ink);
+  box-shadow: 0 0 0 3px rgb(4 20 11 / 18%);
+}
+.mode-switch .is-live.is-on kbd {
+  background: rgb(4 20 11 / 12%);
+}
+.tutorial-bar .mode-switch {
+  position: static;
+  transform: none;
+  background: var(--bezel);
+}
+@media (max-width: 1099px) {
+  .topbar .mode-switch {
+    position: static;
+    transform: none;
+    flex-shrink: 0;
+  }
+  .topbar {
+    gap: 5px;
+    padding-inline: 8px;
+  }
+  .topbar .diagram-picker {
+    flex: 1;
+    max-width: 24vw;
+  }
+  .topbar .example-badge,
+  .topbar .save-status {
+    display: none;
+  }
+}
+@media (max-width: 639px) {
+  .topbar .brand,
+  .topbar .bezel-history,
+  .topbar .label-optional {
+    display: none;
+  }
+  .topbar .diagram-picker {
+    max-width: 20vw;
+  }
+  .mode-switch button {
+    padding-inline: 7px;
+    gap: 4px;
+  }
+  .mode-switch kbd {
+    display: none;
+  }
+  .topbar .topbar-group {
+    gap: 2px;
+  }
+}

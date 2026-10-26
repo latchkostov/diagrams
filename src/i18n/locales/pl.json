@@ -655,7 +655,6 @@
   "shortcuts.mouse.doubleCanvas": "Dwuklik na płótnie",
   "shortcuts.mouse.doubleCanvas.does": "Szybko dodaj wzornik przy kursorze",
   "shortcuts.mouse.doubleRename": "Kliknij dwukrotnie węzeł, połączenie lub granicę",
-  "shortcuts.mouse.doubleRename.does": "Zmień nazwę w inspektorze, wybierz nazwę",
   "shortcuts.mouse.doubleText": "Kliknij dwukrotnie tekst, notatkę lub strefę",
   "shortcuts.mouse.doubleText.does": "Edytuj jego tekst na miejscu",
   "shortcuts.mouse.doubleNode": "Dwuklik na węźle / połączeniu",
@@ -1761,7 +1760,7 @@
   "tutorials.mobileApi.nameHint": "Podwójne kliknięcie otwiera arkusz właściwości z wybraną nazwą, więc wpisanie jej zastępuje.",
   "tutorials.mobileApi.nameDone": "Imiona pojawiają się na płótnie, w odczytach eksportuj i Na żywo.",
   "tutorials.mobileApi.liveTitle": "na żywo",
-  "tutorials.mobileApi.liveGoal": "Naciśnij Na żywo w prawym górnym rogu obszaru roboczego lub klawisz L, aby uruchomić symulacja.",
+  "tutorials.mobileApi.liveGoal": "Wybierz {live} na górnym pasku lub naciśnij {key}.",
   "tutorials.mobileApi.liveTip": "Naciśnij Na żywo",
   "tutorials.mobileApi.liveHint": "Na żywo wysyła ruch od każdego klienta z jego szybkością. Aplikacja mobilna zaczyna się od 2 żądań na sekundę.",
   "tutorials.mobileApi.liveDone": "Jesteś na żywo: aplikacja wysyła żądania.",
@@ -2774,5 +2773,6 @@
   "workbench.unpin": "Zamknij bibliotekę",
   "workbench.shortcuts": "Skróty",
   "workbench.checksName": "Kontrole, {warnings}",
-  "workbench.warnings": "{count, plural, one {# ostrzeżenie} few {# ostrzeżenia} many {# ostrzeżenia} other {# ostrzeżenia}}"
+  "workbench.warnings": "{count, plural, one {# ostrzeżenie} few {# ostrzeżenia} many {# ostrzeżenia} other {# ostrzeżenia}}",
+  "workbench.systemTheme": "Zgodnie z systemem"
 }

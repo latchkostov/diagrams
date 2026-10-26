@@ -655,7 +655,6 @@
   "shortcuts.mouse.doubleCanvas": "Подвійне клацання на полотні",
   "shortcuts.mouse.doubleCanvas.does": "Швидко додати елемент біля курсора",
   "shortcuts.mouse.doubleRename": "Двічі клацніть вузол, зв’язок або межу",
-  "shortcuts.mouse.doubleRename.does": "Перейменувати в інспекторі, назва вибрана",
   "shortcuts.mouse.doubleText": "Двічі клацніть текст, примітку або зону",
   "shortcuts.mouse.doubleText.does": "Відредагуйте його текст на місці",
   "shortcuts.mouse.doubleNode": "Подвійне клацання на вузлі / зв’язку",
@@ -1761,7 +1760,7 @@
   "tutorials.mobileApi.nameHint": "Подвійне клацання відкриває аркуш властивостей із вибраним ім’ям, тому введення замінює його.",
   "tutorials.mobileApi.nameDone": "Імена відображаються на полотні, у експорт та в Жити зчитуваннях.",
   "tutorials.mobileApi.liveTitle": "режим реального часу",
-  "tutorials.mobileApi.liveGoal": "Натисніть Жити у верхньому правому куті полотна або клавішу L, щоб запустити симуляція.",
+  "tutorials.mobileApi.liveGoal": "Виберіть {live} на верхній панелі або натисніть {key}.",
   "tutorials.mobileApi.liveTip": "Натисніть Жити",
   "tutorials.mobileApi.liveHint": "Жити надсилає трафік від кожного клієнта за його швидкістю. Мобільний застосунок починається з 2 запитів на секунду.",
   "tutorials.mobileApi.liveDone": "Ви в прямому ефірі: додаток надсилає запити.",
@@ -2781,5 +2780,6 @@
   "workbench.unpin": "Закрити бібліотеку",
   "workbench.shortcuts": "Клавіші",
   "workbench.checksName": "Перевірки, {warnings}",
-  "workbench.warnings": "{count, plural, one {# попередження} few {# попередження} many {# попередження} other {# попередження}}"
+  "workbench.warnings": "{count, plural, one {# попередження} few {# попередження} many {# попередження} other {# попередження}}",
+  "workbench.systemTheme": "Як у системі"
 }

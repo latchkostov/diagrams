@@ -655,7 +655,6 @@
   "shortcuts.mouse.doubleCanvas": "Dukart spustelėti drobę",
   "shortcuts.mouse.doubleCanvas.does": "Greitai pridėti trafaretą ties žymikliu",
   "shortcuts.mouse.doubleRename": "Dukart spustelėkite mazgą, jungtį arba ribą",
-  "shortcuts.mouse.doubleRename.does": "Pervardykite inspektoriuje, vardas pasirinktas",
   "shortcuts.mouse.doubleText": "Dukart spustelėkite tekstą, pastabą ar zoną",
   "shortcuts.mouse.doubleText.does": "Redaguokite tekstą vietoje",
   "shortcuts.mouse.doubleNode": "Dukart spustelėti mazgą / jungtį",
@@ -1760,7 +1759,7 @@
   "tutorials.mobileApi.nameHint": "Dukart spustelėjus atidaromas ypatybių lapas su pasirinktu pavadinimu, todėl įvedant jis pakeičiamas.",
   "tutorials.mobileApi.nameDone": "Vardai rodomi drobėje, eksportuoti ir Tiesiogiai rodmenyse.",
   "tutorials.mobileApi.liveTitle": "Live",
-  "tutorials.mobileApi.liveGoal": "Paspauskite Tiesiogiai viršutiniame dešiniajame drobės kampe arba klavišą L, kad paleistumėte simuliacija.",
+  "tutorials.mobileApi.liveGoal": "Viršutinėje juostoje pasirinkite {live} arba paspauskite {key}.",
   "tutorials.mobileApi.liveTip": "Paspauskite Tiesiogiai",
   "tutorials.mobileApi.liveHint": "Tiesiogiai siunčia srautą iš kiekvieno kliento savo greičiu. Mobilioji programa prasideda nuo 2 užklausų per sekundę.",
   "tutorials.mobileApi.liveDone": "Esate tiesiogiai: programa siunčia užklausas.",
@@ -2757,5 +2756,6 @@
   "workbench.unpin": "Uždaryti biblioteką",
   "workbench.shortcuts": "Spartieji klavišai",
   "workbench.checksName": "Patikros, {warnings}",
-  "workbench.warnings": "{count, plural, one {# įspėjimas} few {# įspėjimai} other {# įspėjimai}}"
+  "workbench.warnings": "{count, plural, one {# įspėjimas} few {# įspėjimai} other {# įspėjimai}}",
+  "workbench.systemTheme": "Pagal sistemą"
 }

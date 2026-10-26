@@ -24,6 +24,7 @@ const themes = [themeTokens(light), themeTokens(light + css.split('[data-theme="
 it("keeps Workbench frame labels at AA in both themes", () => {
   for (const tokens of themes)
     for (const [ink, surface] of [
+      ["note", "panel"],
       ["bezel-ink", "bezel"],
       ["bezel-dim", "bezel"],
       ["rail-ink", "rail-bg"],

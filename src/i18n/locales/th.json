@@ -655,7 +655,6 @@
   "shortcuts.mouse.doubleCanvas": "ดับเบิลคลิกแคนวาส",
   "shortcuts.mouse.doubleCanvas.does": "เพิ่มสเตนซิลด่วนที่เคอร์เซอร์",
   "shortcuts.mouse.doubleRename": "ดับเบิลคลิกที่โหนด เส้นเชื่อม หรือขอบเขต",
-  "shortcuts.mouse.doubleRename.does": "เปลี่ยนชื่อในตัวตรวจสอบ เลือกชื่อแล้ว",
   "shortcuts.mouse.doubleText": "คลิกสองครั้งที่ข้อความ โน้ต หรือโซน",
   "shortcuts.mouse.doubleText.does": "แก้ไขข้อความให้เข้าที่",
   "shortcuts.mouse.doubleNode": "ดับเบิลคลิกโหนด / เส้นเชื่อม",
@@ -1760,7 +1759,7 @@
   "tutorials.mobileApi.nameHint": "ดับเบิลคลิกจะเปิดแผ่นคุณสมบัติที่มีชื่อที่เลือกไว้ ดังนั้นการพิมพ์จะเข้ามาแทนที่",
   "tutorials.mobileApi.nameDone": "ชื่อแสดงบนผืนผ้าใบ ใน ส่งออก และในการอ่านออกเสียงของ สด",
   "tutorials.mobileApi.liveTitle": "ไลฟ์",
-  "tutorials.mobileApi.liveGoal": "กด สด ที่ด้านบนขวาของผืนผ้าใบ หรือปุ่ม L เพื่อเริ่ม การจำลอง",
+  "tutorials.mobileApi.liveGoal": "เลือก {live} ในแถบด้านบน หรือกด {key}",
   "tutorials.mobileApi.liveTip": "กด สด",
   "tutorials.mobileApi.liveHint": "สด ส่งการรับส่งข้อมูลจากไคลเอนต์ทุกรายในอัตราของมัน แอปมือถือ เริ่มต้นที่ 2 คำขอต่อวินาที",
   "tutorials.mobileApi.liveDone": "คุณกำลังถ่ายทอดสด: แอปกำลังส่งคำขอ",
@@ -2759,5 +2758,6 @@
   "workbench.unpin": "ปิดคลัง",
   "workbench.shortcuts": "ทางลัด",
   "workbench.checksName": "การตรวจสอบ, {warnings}",
-  "workbench.warnings": "{count, plural, other {# คำเตือน}}"
+  "workbench.warnings": "{count, plural, other {# คำเตือน}}",
+  "workbench.systemTheme": "ตามระบบ"
 }

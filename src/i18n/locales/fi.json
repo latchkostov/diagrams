@@ -655,7 +655,6 @@
   "shortcuts.mouse.doubleCanvas": "Kaksoisnapsauta piirtoaluetta",
   "shortcuts.mouse.doubleCanvas.does": "Lisää kaavain nopeasti osoittimen kohdalle",
   "shortcuts.mouse.doubleRename": "Kaksoisnapsauta solmua, yhteyttä tai rajaa",
-  "shortcuts.mouse.doubleRename.does": "Nimeä uudelleen tarkastajassa, nimi valittu",
   "shortcuts.mouse.doubleText": "Kaksoisnapsauta tekstiä, muistiinpanoa tai vyöhykettä",
   "shortcuts.mouse.doubleText.does": "Muokkaa sen tekstiä paikalleen",
   "shortcuts.mouse.doubleNode": "Kaksoisnapsauta solmua / yhteyttä",
@@ -1761,7 +1760,7 @@
   "tutorials.mobileApi.nameHint": "Kaksoisnapsautus avaa ominaisuussivun, jossa on valittu nimi, joten kirjoittaminen korvaa sen.",
   "tutorials.mobileApi.nameDone": "Nimet näkyvät kankaalla, vie:ssa ja Elää:n lukemissa.",
   "tutorials.mobileApi.liveTitle": "Live",
-  "tutorials.mobileApi.liveGoal": "Paina Elää kankaan oikeassa yläkulmassa tai L-näppäintä aloittaaksesi simulaatio.",
+  "tutorials.mobileApi.liveGoal": "Valitse yläpalkista {live} tai paina {key}.",
   "tutorials.mobileApi.liveTip": "Paina Elää",
   "tutorials.mobileApi.liveHint": "Elää lähettää liikennettä jokaiselta asiakkaalta omalla nopeudellaan. Mobiilisovellus alkaa kahdesta pyynnöstä sekunnissa.",
   "tutorials.mobileApi.liveDone": "Olet live-tilassa: sovellus lähettää pyyntöjä.",
@@ -2777,5 +2776,6 @@
   "workbench.unpin": "Sulje kirjasto",
   "workbench.shortcuts": "Pikanäppäimet",
   "workbench.checksName": "Tarkistukset, {warnings}",
-  "workbench.warnings": "{count, plural, one {# varoitus} other {# varoitusta}}"
+  "workbench.warnings": "{count, plural, one {# varoitus} other {# varoitusta}}",
+  "workbench.systemTheme": "Seuraa järjestelmää"
 }

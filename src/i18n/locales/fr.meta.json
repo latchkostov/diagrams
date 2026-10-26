@@ -657,7 +657,6 @@
     "shortcuts.mouse.doubleCanvas": "3b4cc43f",
     "shortcuts.mouse.doubleCanvas.does": "bd28d6f9",
     "shortcuts.mouse.doubleRename": "49844e0e",
-    "shortcuts.mouse.doubleRename.does": "68c2eea4",
     "shortcuts.mouse.doubleText": "98a4780c",
     "shortcuts.mouse.doubleText.does": "42db39be",
     "shortcuts.mouse.doubleNode": "400c7c9f",
@@ -1763,7 +1762,7 @@
     "tutorials.mobileApi.nameHint": "f2200a89",
     "tutorials.mobileApi.nameDone": "b3392ed3",
     "tutorials.mobileApi.liveTitle": "b50d7463",
-    "tutorials.mobileApi.liveGoal": "7f60b8b7",
+    "tutorials.mobileApi.liveGoal": "132e23ad",
     "tutorials.mobileApi.liveTip": "45349b36",
     "tutorials.mobileApi.liveHint": "47ae6d89",
     "tutorials.mobileApi.liveDone": "d398b7e6",
@@ -2780,6 +2779,7 @@
     "workbench.unpin": "99d46dc4",
     "workbench.shortcuts": "f09038a0",
     "workbench.checksName": "54f75717",
-    "workbench.warnings": "16ba1ebb"
+    "workbench.warnings": "16ba1ebb",
+    "workbench.systemTheme": "9fa7a70b"
   }
 }

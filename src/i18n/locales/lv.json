@@ -655,7 +655,6 @@
   "shortcuts.mouse.doubleCanvas": "Dubultklikšķis uz audekla",
   "shortcuts.mouse.doubleCanvas.does": "Ātri pievienot trafaretu pie kursora",
   "shortcuts.mouse.doubleRename": "Veiciet dubultklikšķi uz mezgla, savienojuma vai robežas",
-  "shortcuts.mouse.doubleRename.does": "Pārdēvēt inspektorā, nosaukums atlasīts",
   "shortcuts.mouse.doubleText": "Veiciet dubultklikšķi uz teksta, piezīmes vai zonas",
   "shortcuts.mouse.doubleText.does": "Rediģējiet tā tekstu vietā",
   "shortcuts.mouse.doubleNode": "Dubultklikšķis uz mezgla / savienojuma",
@@ -1760,7 +1759,7 @@
   "tutorials.mobileApi.nameHint": "Veicot dubultklikšķi, tiek atvērta rekvizītu lapa ar atlasīto nosaukumu, tāpēc rakstīšana to aizstāj.",
   "tutorials.mobileApi.nameDone": "Vārdi tiek rādīti uz audekla, eksportēt un Tiešraidē rādījumos.",
   "tutorials.mobileApi.liveTitle": "Live",
-  "tutorials.mobileApi.liveGoal": "Nospiediet Tiešraidē audekla augšējā labajā stūrī vai taustiņu L, lai palaistu simulācija.",
+  "tutorials.mobileApi.liveGoal": "Augšējā joslā izvēlieties {live} vai nospiediet {key}.",
   "tutorials.mobileApi.liveTip": "Nospiediet Tiešraidē",
   "tutorials.mobileApi.liveHint": "Tiešraidē sūta datplūsmu no katra klienta atbilstoši noteiktajam ātrumam. Mobilā lietotne sākas ar 2 pieprasījumiem sekundē.",
   "tutorials.mobileApi.liveDone": "Jūs esat tiešraidē: lietotne sūta pieprasījumus.",
@@ -2761,5 +2760,6 @@
   "workbench.unpin": "Aizvērt bibliotēku",
   "workbench.shortcuts": "Īsceļi",
   "workbench.checksName": "Pārbaudes, {warnings}",
-  "workbench.warnings": "{count, plural, zero {# brīdinājumi} one {# brīdinājums} other {# brīdinājumi}}"
+  "workbench.warnings": "{count, plural, zero {# brīdinājumi} one {# brīdinājums} other {# brīdinājumi}}",
+  "workbench.systemTheme": "Atbilstoši sistēmai"
 }

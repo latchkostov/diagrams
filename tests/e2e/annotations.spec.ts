@@ -1,4 +1,4 @@
-import { openAnnotate } from "./fixtures";
+import { toggleTheme, expectTheme, openAnnotate } from "./fixtures";
 import { openLibrary } from "./fixtures";
 import {
   waitForHistoryIdle,
@@ -706,9 +706,7 @@ test.describe("annotations", () => {
     await gotoCanvas(page, SLUG);
     await expect(page.getByTestId("shape-outline")).toHaveCount(58);
     for (const theme of ["light", "dark"]) {
-      await expect(page.getByTestId("theme-toggle")).toHaveAccessibleName(
-        theme === "light" ? "Switch to dark theme" : "Switch to light theme",
-      );
+      await expectTheme(page, theme);
       await expect
         .poll(async () => {
           const contrasts = await page.getByTestId(/^annotation-solid-/).evaluateAll((els) => {
@@ -740,7 +738,7 @@ test.describe("annotations", () => {
           return contrasts.filter((c) => c.ratio < 4.5);
         })
         .toEqual([]);
-      if (theme === "light") await page.getByTestId("theme-toggle").click();
+      if (theme === "light") await toggleTheme(page);
     }
   });
   for (const control of ["top-left", "line-left"] as const) {
@@ -822,9 +820,7 @@ test.describe("annotations", () => {
     await gotoCanvas(page, SLUG);
     await page.getByTestId("live-toggle").click();
     for (const theme of ["light", "dark"]) {
-      await expect(page.getByTestId("theme-toggle")).toHaveAccessibleName(
-        theme === "light" ? "Switch to dark theme" : "Switch to light theme",
-      );
+      await expectTheme(page, theme);
       // Measured once the live view and theme transitions (opacity, colours) have settled.
       const measure = () =>
         page.getByTestId("canvas-wrap").evaluate((wrap) => {
@@ -861,7 +857,7 @@ test.describe("annotations", () => {
           return contrasts.filter((c) => c.ratio < 4.5).map((c) => `${theme}: ${c.id} at ${c.ratio.toFixed(2)}:1`);
         })
         .toEqual([]);
-      if (theme === "light") await page.getByTestId("theme-toggle").click();
+      if (theme === "light") await toggleTheme(page);
     }
   });
   test("keyboard commits restore canvas focus for F2, movement and Delete; blur keeps the next control focused", async ({

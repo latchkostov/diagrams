@@ -655,7 +655,6 @@
   "shortcuts.mouse.doubleCanvas": "Διπλό κλικ στον καμβά",
   "shortcuts.mouse.doubleCanvas.does": "Γρήγορη προσθήκη στένσιλ στη θέση του δρομέα",
   "shortcuts.mouse.doubleRename": "Διπλό κλικ σε κόμβο, σύνδεση ή όριο",
-  "shortcuts.mouse.doubleRename.does": "Μετονομασία στον επιθεωρητή, επιλεγμένο όνομα",
   "shortcuts.mouse.doubleText": "Κάντε διπλό κλικ σε κείμενο, σημείωση ή ζώνη",
   "shortcuts.mouse.doubleText.does": "Επεξεργαστείτε το κείμενό του στη θέση του",
   "shortcuts.mouse.doubleNode": "Διπλό κλικ σε κόμβο / σύνδεση",
@@ -1761,7 +1760,7 @@
   "tutorials.mobileApi.nameHint": "Με διπλό κλικ ανοίγει το φύλλο ιδιοτήτων με επιλεγμένο το όνομα, οπότε η πληκτρολόγηση το αντικαθιστά.",
   "tutorials.mobileApi.nameDone": "Τα ονόματα εμφανίζονται στον καμβά, στα Εξαγωγή και στις αναγνώσεις του Ζω.",
   "tutorials.mobileApi.liveTitle": "Live",
-  "tutorials.mobileApi.liveGoal": "Πατήστε Ζω στην επάνω δεξιά γωνία του καμβά ή το πλήκτρο L, για να ξεκινήσετε το προσομοίωση.",
+  "tutorials.mobileApi.liveGoal": "Επιλέξτε {live} στην επάνω γραμμή ή πατήστε {key}.",
   "tutorials.mobileApi.liveTip": "Πατήστε Ζω",
   "tutorials.mobileApi.liveHint": "Ο Ζω στέλνει επισκεψιμότητα από κάθε πελάτη με τον δικό του ρυθμό. Ένα Εφαρμογή κινητού ξεκινά με 2 αιτήματα το δευτερόλεπτο.",
   "tutorials.mobileApi.liveDone": "Είστε ζωντανά: η εφαρμογή στέλνει αιτήματα.",
@@ -2777,5 +2776,6 @@
   "workbench.unpin": "Κλείσιμο βιβλιοθήκης",
   "workbench.shortcuts": "Συντομεύσεις",
   "workbench.checksName": "Έλεγχοι, {warnings}",
-  "workbench.warnings": "{count, plural, one {# προειδοποίηση} other {# προειδοποιήσεις}}"
+  "workbench.warnings": "{count, plural, one {# προειδοποίηση} other {# προειδοποιήσεις}}",
+  "workbench.systemTheme": "Όπως το σύστημα"
 }
