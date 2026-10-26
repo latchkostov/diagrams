@@ -1805,7 +1805,7 @@
   "tutorials.mobileApi.summary": "ضع تطبيق الهاتف المحمول وواجهة برمجة التطبيقات (API) التي يستدعيها، واربطهما، ثم مباشر وشاهد تدفق الطلبات.",
   "tutorials.mobileApi.diagramTitle": "أول بث مباشر لي مخطط",
   "tutorials.mobileApi.addAppTitle": "إضافة تطبيق جوال",
-  "tutorials.mobileApi.addAppGoal": "ابحث عن تطبيق هاتف في استنسل على اليسار وانقر عليه. تؤدي كتابة \"{word}\" في البحث إلى العثور عليه بسرعة.",
+  "tutorials.mobileApi.addAppGoal": "انقر على «إضافة»، ثم ابحث عن «{word}» واختر تطبيق الهاتف المحمول.",
   "tutorials.mobileApi.addAppTipSearch": "اكتب \"{word}\" هنا",
   "tutorials.mobileApi.addAppTipItem": "اضغط لإضافته",
   "tutorials.mobileApi.addAppTipRail": "فتح استنسل",
@@ -2456,7 +2456,7 @@
   "tutorials.apiGateway.ordersName": "الطلبات",
   "tutorials.apiGateway.usersName": "المستخدمين",
   "tutorials.apiGateway.addAppTitle": "إضافة تطبيق الجوال",
-  "tutorials.apiGateway.addAppGoal": "ابحث في السكة استنسل عن {query}، ثم اختر تطبيق هاتف.",
+  "tutorials.apiGateway.addAppGoal": "انقر على «إضافة»، ثم ابحث عن «{query}» واختر تطبيق الهاتف المحمول.",
   "tutorials.apiGateway.addAppDone": "يعد تطبيق الهاتف المحمول مصدرًا للطلبات في مباشر.",
   "tutorials.apiGateway.addGwTitle": "أضف بوابة",
   "tutorials.apiGateway.addGwGoal": "اختر التطبيق ثم اضغط عليه + ثم اختر كونغ بوابة واضغط على Enter.",
@@ -2906,5 +2906,14 @@
   "tutorials.studyCells.evacuateTitle": "إخلاء منطقة",
   "tutorials.studyCells.evacuateDone": "منطقة ثانية صحية بها احتياطي السعة تقبل الحجوزات عند انخفاض دخول المنطقة الأولى.",
   "tutorials.studyCells.finish": "مقارنة الإدخالات الإقليمية للمرجع والخلايا الكاملة. ما هو التخزين والنسخ والسعة الذي ستحتاجه كل خلية من خلاياك المبسطة قبل الإخلاء الحقيقي؟",
-  "tutorials.studyCells.reference": "فتح مرجع الحجوزات المستندة إلى الخلية"
+  "tutorials.studyCells.reference": "فتح مرجع الحجوزات المستندة إلى الخلية",
+  "workbench.tools": "الأدوات",
+  "workbench.select": "تحديد",
+  "workbench.checks": "عمليات التحقق",
+  "workbench.common": "شائع",
+  "workbench.pin": "تثبيت مفتوحًا",
+  "workbench.unpin": "إغلاق المكتبة",
+  "workbench.shortcuts": "الاختصارات",
+  "workbench.checksName": "عمليات التحقق، {warnings}",
+  "workbench.warnings": "{count, plural, zero {# تحذيرات} one {# تحذير} two {# تحذيرات} few {# تحذيرات} many {# تحذيرات} other {# تحذيرات}}"
 }

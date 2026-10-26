@@ -62,7 +62,6 @@ export function CanvasControls({
   editor,
   fit,
   zoomedByButton,
-  onShortcuts,
   menus,
   menu,
   canUndo,
@@ -71,7 +70,6 @@ export function CanvasControls({
   editor: EditorApi;
   fit: () => void;
   zoomedByButton: () => void;
-  onShortcuts: () => void;
   menus: CanvasMenus;
   menu: MenuState | null;
   canUndo: boolean;
@@ -184,15 +182,6 @@ export function CanvasControls({
               data-testid="redo-button"
             >
               <Icon name="redo" size={14} />
-            </ControlButton>
-            <div className="rf-ctrl-sep" role="separator" data-testid="toolbar-divider-shortcuts" />
-            <ControlButton
-              onClick={onShortcuts}
-              title={tr("canvas.keyboardShortcuts")}
-              aria-label={tr("shortcuts.title")}
-              data-testid="shortcuts-button"
-            >
-              <Icon name="keyboard" size={14} />
             </ControlButton>
             <div className="rf-ctrl-sep" role="separator" data-testid="toolbar-divider-collapse" />
           </div>

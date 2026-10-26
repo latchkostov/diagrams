@@ -1,3 +1,4 @@
+import { openLibrary } from "./fixtures";
 import { readFileSync } from "node:fs";
 import { chunk, holdChunk, releaseAndEvaluate } from "./chunk";
 import { waitForStableViewport, viewportTransform } from "./fixtures";
@@ -387,8 +388,9 @@ test("copy notice stays clear of expanded stencil controls", async ({ page }) =>
   await page.getByTestId("inspector-field-label").fill("My storefront");
   const notice = page.getByTestId("example-copy-notice");
   await expect(notice).toBeVisible();
+  await openLibrary(page);
   const search = page.getByTestId("palette-search");
-  if (!(await search.isVisible())) await page.getByTestId("palette-toggle").click();
+  if (!(await search.isVisible())) await openLibrary(page);
   await expect(search).toBeVisible();
   for (const control of [search, page.getByTestId("palette-toggle")]) {
     const a = await notice.boundingBox();

@@ -1735,7 +1735,7 @@
   "tutorials.mobileApi.summary": "Umiestnite mobilnú aplikáciu a API, ktoré volá, pripojte ich, potom naživo a sledujte tok žiadostí.",
   "tutorials.mobileApi.diagramTitle": "Môj prvý live diagram",
   "tutorials.mobileApi.addAppTitle": "Pridajte mobilnú aplikáciu",
-  "tutorials.mobileApi.addAppGoal": "Nájdite Mobilná aplikácia v vzorkovnica naľavo a kliknite naň. Zadaním „{word}“ do vyhľadávania ho nájdete rýchlo.",
+  "tutorials.mobileApi.addAppGoal": "Kliknite na Pridať, vyhľadajte „{word}“ a vyberte Mobilná aplikácia.",
   "tutorials.mobileApi.addAppTipSearch": "Sem zadajte „{word}“.",
   "tutorials.mobileApi.addAppTipItem": "Kliknutím ho pridáte",
   "tutorials.mobileApi.addAppTipRail": "OTVORENÉ vzorkovnica",
@@ -2312,7 +2312,7 @@
   "tutorials.apiGateway.ordersName": "Objednávky",
   "tutorials.apiGateway.usersName": "Používatelia",
   "tutorials.apiGateway.addAppTitle": "Pridajte mobilnú aplikáciu",
-  "tutorials.apiGateway.addAppGoal": "Vyhľadajte na koľajnici vzorkovnica {query} a potom vyberte Mobilná aplikácia.",
+  "tutorials.apiGateway.addAppGoal": "Kliknite na Pridať, vyhľadajte „{query}“ a vyberte Mobilná aplikácia.",
   "tutorials.apiGateway.addAppDone": "Mobilná aplikácia je zdrojom požiadaviek v Naživo.",
   "tutorials.apiGateway.addGwTitle": "Pridať brána",
   "tutorials.apiGateway.addGwGoal": "Vyberte aplikáciu, kliknite na jej +, potom vyberte Kong brána a stlačte Enter.",
@@ -2756,5 +2756,14 @@
   "tutorials.studyCells.evacuateTitle": "Evakuujte oblasť",
   "tutorials.studyCells.evacuateDone": "Zdravý druhý región s náhradnými kapacita prijíma rezervácie, keď záznam v prvom regióne klesá.",
   "tutorials.studyCells.finish": "Porovnajte regionálne záznamy referencie a úplné bunky. Aké úložisko, replikáciu a kapacita by potrebovala každá z vašich zjednodušených buniek pred skutočnou evakuáciou?",
-  "tutorials.studyCells.reference": "OTVORENÉ odkaz na bunkové rezervácie"
+  "tutorials.studyCells.reference": "OTVORENÉ odkaz na bunkové rezervácie",
+  "workbench.tools": "Nástroje",
+  "workbench.select": "Výber",
+  "workbench.checks": "Kontroly",
+  "workbench.common": "Bežné",
+  "workbench.pin": "Pripnúť otvorené",
+  "workbench.unpin": "Zavrieť knižnicu",
+  "workbench.shortcuts": "Skratky",
+  "workbench.checksName": "Kontroly, {warnings}",
+  "workbench.warnings": "{count, plural, one {# upozornenie} few {# upozornenia} other {# upozornenia}}"
 }

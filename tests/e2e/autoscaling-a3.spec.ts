@@ -178,13 +178,15 @@ test("Cloud Run showcase: sleeps, wakes on demand, hits its maximum with scenari
 test("Checks: the scenario sizing fix raises the maximum in one undo step", async ({ page, consoleErrors }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   await gotoCanvas(page, slug);
-  await expect(page.getByTestId("checks-count")).toHaveText("1 warning", { timeout: 30_000 });
+  await expect(page.getByTestId("checks-count").getByTestId("checks-warning-text")).toHaveText("1 warning", {
+    timeout: 30_000,
+  });
   await page.getByTestId("checks-count").click();
   const fix = page.getByTestId("check-fix-capacity:worker");
   await expect(fix).toHaveText(/Raise maximum to 11/);
   await fix.click();
   await expect.poll(async () => (await policyOf(page))?.controller).toMatchObject({ maxReplicas: 11 });
-  await expect(page.getByTestId("checks-count")).toHaveCount(0);
+  await expect(page.getByTestId("checks-warning-badge")).toHaveCount(0);
   await page.getByTestId("check-fix-undo").click();
   await expect.poll(async () => (await policyOf(page))?.controller).toMatchObject({ maxReplicas: 6 });
   expectNoErrors(consoleErrors);
@@ -223,7 +225,9 @@ test("ECS ALB preset without a load balancer explains how to connect one and sav
 test("Checks and live playback show the same scenario sizing sentence", async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   await gotoCanvas(page, slug);
-  await expect(page.getByTestId("checks-count")).toHaveText("1 warning", { timeout: 30_000 });
+  await expect(page.getByTestId("checks-count").getByTestId("checks-warning-text")).toHaveText("1 warning", {
+    timeout: 30_000,
+  });
   await page.getByTestId("checks-count").click();
   const checks = (await page.getByTestId("check-select-capacity:worker").textContent()) ?? "";
   await page.clock.install();

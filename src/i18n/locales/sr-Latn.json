@@ -1736,7 +1736,7 @@
   "tutorials.mobileApi.diagramTitle": "Moj prvi uživo dijagram",
   "tutorials.mobileApi.apiName": "Orders API",
   "tutorials.mobileApi.addAppTitle": "Dodajte mobilnu aplikaciju",
-  "tutorials.mobileApi.addAppGoal": "Pronađite Mobilna aplikacija u šablon sa leve strane i kliknite na njega. Ako unesete „{word}“ u pretragu, brzo ćete ga pronaći.",
+  "tutorials.mobileApi.addAppGoal": "Kliknite Dodaj, potražite „{word}” i izaberite Mobilna aplikacija.",
   "tutorials.mobileApi.addAppTipSearch": "Otkucajte „{word}“ ovde",
   "tutorials.mobileApi.addAppTipItem": "Kliknite da biste ga dodali",
   "tutorials.mobileApi.addAppTipRail": "Otvori šablon",
@@ -2312,7 +2312,7 @@
   "tutorials.apiGateway.ordersName": "Orders",
   "tutorials.apiGateway.usersName": "Korisnici",
   "tutorials.apiGateway.addAppTitle": "Dodajte mobilnu aplikaciju",
-  "tutorials.apiGateway.addAppGoal": "Pretražite šablon šinu za {query}, a zatim izaberite Mobilna aplikacija.",
+  "tutorials.apiGateway.addAppGoal": "Kliknite Dodaj, potražite „{query}” i izaberite Mobilna aplikacija.",
   "tutorials.apiGateway.addAppDone": "Mobilna aplikacija je izvor zahteva u Uživo.",
   "tutorials.apiGateway.addGwTitle": "Dodajte mrežni prolaz",
   "tutorials.apiGateway.addGwGoal": "Izaberite aplikaciju, kliknite na njen +, a zatim izaberite Kong mrežni prolaz i pritisnite Enter.",
@@ -2762,5 +2762,14 @@
   "tutorials.studyCells.evacuateTitle": "Evakuišite region",
   "tutorials.studyCells.evacuateDone": "Zdrava druga regija sa rezervnim kapacitet uzima rezervacije kada unese prvi region.",
   "tutorials.studyCells.finish": "Uporedite regionalne unose reference i kompletne ćelije. Šta bi skladište, replikacija i kapacitet bilo potrebno svakoj od vaših pojednostavljenih ćelija pre prave evakuacije?",
-  "tutorials.studyCells.reference": "Otvori referenca za rezervacije zasnovane na ćeliji"
+  "tutorials.studyCells.reference": "Otvori referenca za rezervacije zasnovane na ćeliji",
+  "workbench.tools": "Alati",
+  "workbench.select": "Izbor",
+  "workbench.checks": "Provere",
+  "workbench.common": "Uobičajeno",
+  "workbench.pin": "Zakači otvoreno",
+  "workbench.unpin": "Zatvori biblioteku",
+  "workbench.shortcuts": "Prečice",
+  "workbench.checksName": "Provere, {warnings}",
+  "workbench.warnings": "{count, plural, one {# upozorenje} few {# upozorenja} other {# upozorenja}}"
 }

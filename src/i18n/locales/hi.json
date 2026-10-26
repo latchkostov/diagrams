@@ -1736,7 +1736,7 @@
   "tutorials.mobileApi.diagramTitle": "मेरा पहला लाइव डायग्राम",
   "tutorials.mobileApi.apiName": "ऑर्डर एपीआई",
   "tutorials.mobileApi.addAppTitle": "एक मोबाइल ऐप जोड़ें",
-  "tutorials.mobileApi.addAppGoal": "बाईं ओर स्टेंसिल में मोबाइल ऐप ढूंढें और उस पर क्लिक करें। खोज में \"{word}\" टाइप करने से यह तेजी से मिल जाता है।",
+  "tutorials.mobileApi.addAppGoal": "जोड़ें पर क्लिक करें, “{word}” खोजें और मोबाइल ऐप चुनें।",
   "tutorials.mobileApi.addAppTipSearch": "यहां \"{word}\" टाइप करें",
   "tutorials.mobileApi.addAppTipItem": "इसे जोड़ने के लिए क्लिक करें",
   "tutorials.mobileApi.addAppTipRail": "खुला स्टेंसिल",
@@ -2314,7 +2314,7 @@
   "tutorials.apiGateway.ordersName": "आदेश",
   "tutorials.apiGateway.usersName": "उपयोगकर्ता",
   "tutorials.apiGateway.addAppTitle": "मोबाइल ऐप जोड़ें",
-  "tutorials.apiGateway.addAppGoal": "{query} के लिए स्टेंसिल रेल खोजें, फिर मोबाइल ऐप चुनें।",
+  "tutorials.apiGateway.addAppGoal": "जोड़ें पर क्लिक करें, “{query}” खोजें और मोबाइल ऐप चुनें।",
   "tutorials.apiGateway.addAppDone": "एक मोबाइल ऐप रहना में अनुरोधों का एक स्रोत है।",
   "tutorials.apiGateway.addGwTitle": "एक गेटवे जोड़ें",
   "tutorials.apiGateway.addGwGoal": "ऐप चुनें, उसके + पर क्लिक करें, फिर कोंग गेटवे चुनें और Enter दबाएँ।",
@@ -2761,5 +2761,14 @@
   "tutorials.studyCells.evacuateTitle": "एक क्षेत्र खाली करें",
   "tutorials.studyCells.evacuateDone": "अतिरिक्त क्षमता के साथ एक स्वस्थ दूसरा क्षेत्र तब बुकिंग लेता है जब पहले क्षेत्र की प्रविष्टि कम हो जाती है।",
   "tutorials.studyCells.finish": "संदर्भ की क्षेत्रीय प्रविष्टियों और संपूर्ण कक्षों की तुलना करें। वास्तविक निकासी से पहले आपकी प्रत्येक सरलीकृत कोशिका को किस भंडारण, प्रतिकृति और क्षमता की आवश्यकता होगी?",
-  "tutorials.studyCells.reference": "खुला सेल-आधारित बुकिंग संदर्भ"
+  "tutorials.studyCells.reference": "खुला सेल-आधारित बुकिंग संदर्भ",
+  "workbench.tools": "उपकरण",
+  "workbench.select": "चुनें",
+  "workbench.checks": "जाँचें",
+  "workbench.common": "सामान्य",
+  "workbench.pin": "खुला पिन करें",
+  "workbench.unpin": "लाइब्रेरी बंद करें",
+  "workbench.shortcuts": "शॉर्टकट",
+  "workbench.checksName": "जाँचें, {warnings}",
+  "workbench.warnings": "{count, plural, one {# चेतावनी} other {# चेतावनियाँ}}"
 }

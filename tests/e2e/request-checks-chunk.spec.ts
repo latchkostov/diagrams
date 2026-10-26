@@ -37,7 +37,7 @@ test("a held request-check store keeps the editor usable, and the checks arrive 
     await waitForStableViewport(page);
     // The first check asks for the store; nothing shows a warning until it arrives.
     await expect.poll(() => store.requested()).toBe(true);
-    await expect(page.getByTestId("checks-count")).toHaveCount(0);
+    await expect(page.getByTestId("checks-warning-badge")).toHaveCount(0);
     // Keyboard focus: the inspector takes it and Tab moves on.
     await page.getByTestId("node-caller").dblclick();
     const label = page.getByTestId("inspector-field-label");

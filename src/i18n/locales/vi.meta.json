@@ -1738,7 +1738,7 @@
     "tutorials.mobileApi.summary": "ad48c709",
     "tutorials.mobileApi.diagramTitle": "a99a6ab4",
     "tutorials.mobileApi.addAppTitle": "98eef91c",
-    "tutorials.mobileApi.addAppGoal": "eef466dc",
+    "tutorials.mobileApi.addAppGoal": "e462e600",
     "tutorials.mobileApi.addAppTipSearch": "8fee81e6",
     "tutorials.mobileApi.addAppTipItem": "7b568e08",
     "tutorials.mobileApi.addAppTipRail": "1a233c5f",
@@ -2316,7 +2316,7 @@
     "tutorials.apiGateway.ordersName": "7872110c",
     "tutorials.apiGateway.usersName": "06b432b3",
     "tutorials.apiGateway.addAppTitle": "4f892e54",
-    "tutorials.apiGateway.addAppGoal": "b0c35768",
+    "tutorials.apiGateway.addAppGoal": "4c15b0a7",
     "tutorials.apiGateway.addAppDone": "539b7527",
     "tutorials.apiGateway.addGwTitle": "35e89f99",
     "tutorials.apiGateway.addGwGoal": "2062fe17",
@@ -2770,6 +2770,15 @@
     "tutorials.studyCells.evacuateTitle": "358ee584",
     "tutorials.studyCells.evacuateDone": "1cf5b433",
     "tutorials.studyCells.finish": "c8e6d2b9",
-    "tutorials.studyCells.reference": "e8fc7ae1"
+    "tutorials.studyCells.reference": "e8fc7ae1",
+    "workbench.tools": "950196fc",
+    "workbench.select": "3e892b4d",
+    "workbench.checks": "f522dffc",
+    "workbench.common": "936e7e94",
+    "workbench.pin": "0accb39c",
+    "workbench.unpin": "99d46dc4",
+    "workbench.shortcuts": "f09038a0",
+    "workbench.checksName": "54f75717",
+    "workbench.warnings": "16ba1ebb"
   }
 }

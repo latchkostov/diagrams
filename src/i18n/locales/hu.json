@@ -1736,7 +1736,7 @@
   "tutorials.mobileApi.diagramTitle": "Első élő adásom diagram",
   "tutorials.mobileApi.apiName": "Orders API",
   "tutorials.mobileApi.addAppTitle": "Mobilalkalmazás hozzáadása",
-  "tutorials.mobileApi.addAppGoal": "Keresse meg az Mobilalkalmazás-t a bal oldali rajzsablon-ban, és kattintson rá. A „{word}” beírása a keresésbe gyorsan megtalálja.",
+  "tutorials.mobileApi.addAppGoal": "Kattints a Hozzáadás gombra, keress rá erre: „{word}”, majd válaszd a Mobilalkalmazást.",
   "tutorials.mobileApi.addAppTipSearch": "Ide írja be: „{word}”.",
   "tutorials.mobileApi.addAppTipItem": "Kattintson a hozzáadáshoz",
   "tutorials.mobileApi.addAppTipRail": "Nyitott a rajzsablon",
@@ -2314,7 +2314,7 @@
   "tutorials.apiGateway.ordersName": "Megrendelések",
   "tutorials.apiGateway.usersName": "Felhasználók",
   "tutorials.apiGateway.addAppTitle": "Adja hozzá a mobilalkalmazást",
-  "tutorials.apiGateway.addAppGoal": "Keresse meg a rajzsablon vasútvonalat {query}ra, majd válassza az Mobilalkalmazás lehetőséget.",
+  "tutorials.apiGateway.addAppGoal": "Kattints a Hozzáadás gombra, keress rá erre: „{query}”, majd válaszd a Mobilalkalmazást.",
   "tutorials.apiGateway.addAppDone": "Egy mobilalkalmazás a kérések forrása a Élő domainben.",
   "tutorials.apiGateway.addGwTitle": "Adjon hozzá egy átjáró",
   "tutorials.apiGateway.addGwGoal": "Válassza ki az alkalmazást, kattintson a + jelére, majd válassza ki a Kong átjáró lehetőséget, és nyomja meg az Enter gombot.",
@@ -2783,5 +2783,14 @@
   "tutorials.studyCells.evacuateTitle": "Evakuáljon egy régiót",
   "tutorials.studyCells.evacuateDone": "Egy egészséges második régió tartalék kapacitás értékkel akkor fogad foglalásokat, amikor az első régió bejegyzése csökken.",
   "tutorials.studyCells.finish": "Hasonlítsa össze a hivatkozás regionális bejegyzéseit és töltse ki a cellákat. Milyen tárhelyre, replikációra és kapacitás-ra lenne szüksége az egyes egyszerűsített celláknak a valódi evakuálás előtt?",
-  "tutorials.studyCells.reference": "Nyitott a cellaalapú foglalások hivatkozása"
+  "tutorials.studyCells.reference": "Nyitott a cellaalapú foglalások hivatkozása",
+  "workbench.tools": "Eszközök",
+  "workbench.select": "Kijelölés",
+  "workbench.checks": "Ellenőrzések",
+  "workbench.common": "Gyakori",
+  "workbench.pin": "Rögzítés nyitva",
+  "workbench.unpin": "Könyvtár bezárása",
+  "workbench.shortcuts": "Gyorsbillentyűk",
+  "workbench.checksName": "Ellenőrzések, {warnings}",
+  "workbench.warnings": "{count, plural, one {# figyelmeztetés} other {# figyelmeztetés}}"
 }

@@ -1,3 +1,4 @@
+import { openLibrary } from "./fixtures";
 import { deflateRawSync } from "node:zlib";
 import type { Page } from "@playwright/test";
 import {
@@ -1197,6 +1198,7 @@ test("empty canvas, tutorial title in Ctrl+K and shortcuts footer enter tutorial
   await page.getByTestId("tutorial-not-now").click();
   await page.getByTestId("start-blank").click();
   await expect(page.getByTestId("start-card")).toHaveCount(0);
+  await openLibrary(page);
   await expect(page.getByTestId("palette-search")).toBeFocused();
   await page.getByTestId("canvas-wrap").focus();
   await page.keyboard.press("?");
@@ -1413,9 +1415,13 @@ test("Skip does every step for you, and the tutorial remembers it was completed"
 test("Undo goes back a step; Show me reveals the hint and highlights still point the way", async ({ page }) => {
   await openTutorial(page, "mobile-api");
   await page.getByTestId("tutorial-start").click();
+  await expect(page.getByTestId("tutorial-coach")).toHaveAttribute("data-target", "rail-add");
+  await page.getByTestId("rail-add").click();
   await expect(page.getByTestId("tutorial-coach")).toHaveAttribute("data-target", "palette-search");
+  await openLibrary(page);
   await page.getByTestId("palette-search").fill("mobile");
   await expect(page.getByTestId("tutorial-coach")).toHaveAttribute("data-target", "palette-item-client.mobile");
+  await openLibrary(page);
   await page.getByTestId("palette-item-client.mobile").click();
   await expect(strip(page)).toHaveAttribute("data-step", "add-api");
   await expect(page.getByTestId("tutorial-done")).toBeVisible();

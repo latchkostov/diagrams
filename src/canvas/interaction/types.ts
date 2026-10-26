@@ -214,6 +214,7 @@ export type FocusCommand =
 
 /** The Esc on the canvas, a menu closing, a selection with its cause, ...: everything the focus policy decides on. */
 export type FocusEvent =
+  | { type: "tool.focus"; cause: "library" | "select" | "escape"; target?: ElementHandle }
   | { type: "gesture.ended"; kind: GestureKind; reason: GestureEndReason; edge?: string }
   /**
    * A Live readout closed. `pinned` records pin state; `hadFocus` records keyboard focus inside the closing card. Esc gives focus back to

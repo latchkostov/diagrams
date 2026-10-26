@@ -1735,7 +1735,7 @@
   "tutorials.mobileApi.summary": "הצב אפליקציה לנייד ואת ה-API שהוא קורא, חבר אותם, ואז Live וצפה בזרימות הבקשות.",
   "tutorials.mobileApi.diagramTitle": "החיה הראשונה שלי דיאגרמה",
   "tutorials.mobileApi.addAppTitle": "הוסף אפליקציה לנייד",
-  "tutorials.mobileApi.addAppGoal": "מצא את יישומון לנייד ב-סטנסיל בצד שמאל ולחץ עליו. הקלדת \"{word}\" בחיפוש מוצאת אותו מהר.",
+  "tutorials.mobileApi.addAppGoal": "לחצו על הוספה, חפשו „{word}” ובחרו אפליקציה לנייד.",
   "tutorials.mobileApi.addAppTipSearch": "הקלד \"{word}\" כאן",
   "tutorials.mobileApi.addAppTipItem": "לחץ כדי להוסיף אותו",
   "tutorials.mobileApi.addAppTipRail": "לִפְתוֹחַ ה-סטנסיל",
@@ -2306,7 +2306,7 @@
   "tutorials.apiGateway.ordersName": "הזמנות",
   "tutorials.apiGateway.usersName": "משתמשים",
   "tutorials.apiGateway.addAppTitle": "הוסף את האפליקציה לנייד",
-  "tutorials.apiGateway.addAppGoal": "חפש במסילת סטנסיל {query}, ולאחר מכן בחר יישומון לנייד.",
+  "tutorials.apiGateway.addAppGoal": "לחצו על הוספה, חפשו „{query}” ובחרו אפליקציה לנייד.",
   "tutorials.apiGateway.addAppDone": "אפליקציה לנייד היא מקור לבקשות ב-לִחיוֹת.",
   "tutorials.apiGateway.addGwTitle": "הוסף שער",
   "tutorials.apiGateway.addGwGoal": "בחר את האפליקציה, לחץ על + שלה, ולאחר מכן בחר Kong שער והקש Enter.",
@@ -2757,5 +2757,14 @@
   "tutorials.studyCells.evacuateTitle": "פינוי אזור",
   "tutorials.studyCells.evacuateDone": "אזור שני בריא עם קיבולת פנוי לוקח הזמנות כאשר הכניסה של האזור הראשון יורדת.",
   "tutorials.studyCells.finish": "השווה את הערכים האזוריים של ההפניה ואת התאים המלאים. איזה אחסון, שכפול ו-קיבולת יצטרך כל אחד מהתאים הפשוטים שלך לפני פינוי אמיתי?",
-  "tutorials.studyCells.reference": "לִפְתוֹחַ ההפניה להזמנות מבוססות תאים"
+  "tutorials.studyCells.reference": "לִפְתוֹחַ ההפניה להזמנות מבוססות תאים",
+  "workbench.tools": "כלים",
+  "workbench.select": "בחירה",
+  "workbench.checks": "בדיקות",
+  "workbench.common": "נפוצים",
+  "workbench.pin": "הצמדה במצב פתוח",
+  "workbench.unpin": "סגירת הספרייה",
+  "workbench.shortcuts": "קיצורים",
+  "workbench.checksName": "בדיקות, {warnings}",
+  "workbench.warnings": "{count, plural, one {# אזהרה} two {# אזהרות} other {# אזהרות}}"
 }

@@ -145,7 +145,9 @@ test("Run simulations: progress, counts on the finding, an edit hides them and U
   await importExample(page, "azure-service-bus-integration", "Invoices without a DLQ", (d) => {
     d.edges = d.edges.filter((e) => e.id !== "commands-to-dlq");
   });
-  await expect(page.getByTestId("checks-count")).toHaveText("1 warning", { timeout: pageLoadTimeout() });
+  await expect(page.getByTestId("checks-count").getByTestId("checks-warning-text")).toHaveText("1 warning", {
+    timeout: pageLoadTimeout(),
+  });
   await page.getByTestId("checks-count").click();
   await expect(card(page)).toBeVisible();
   const texts = await recordStatus(page);
@@ -160,7 +162,9 @@ test("Run simulations: progress, counts on the finding, an edit hides them and U
   const evidence = page.getByTestId("check-evidence-dead-letter:commands");
   await expect(evidence).toHaveText("30 dropped in “Poison invoices”");
   // Evidence is never a warning of its own: the count under the title is the checks' own.
-  await expect(page.getByTestId("checks-count")).toHaveText("1 warning", { timeout: pageLoadTimeout() });
+  await expect(page.getByTestId("checks-count").getByTestId("checks-warning-text")).toHaveText("1 warning", {
+    timeout: pageLoadTimeout(),
+  });
   // Focus stayed on the one button, now Run again.
   await expect(page.getByTestId("checks-run-simulations")).toBeFocused();
   await expect(page.getByTestId("checks-run-simulations")).toHaveText("Run again");
@@ -200,7 +204,7 @@ test("a deliberate outage is on purpose, not a finding", async ({ page }) => {
       "On purpose: 245 dropped at Booking API, which “A bad deploy stays in one cell” makes fail.",
   );
   await expect(page.getByTestId("checks-empty")).toBeVisible();
-  await expect(page.getByTestId("checks-count")).toHaveCount(0);
+  await expect(page.getByTestId("checks-warning-badge")).toHaveCount(0);
   // Three load balancers share the name: the note's selects the one it means.
   await page.getByTestId("checks-planned-east-alb").click();
   await expect(page.getByTestId("inspector-field-sublabel")).toHaveValue("us-east-1");

@@ -1736,7 +1736,7 @@
   "tutorials.mobileApi.diagramTitle": "我的第一次直播圖表",
   "tutorials.mobileApi.apiName": "訂單 API",
   "tutorials.mobileApi.addAppTitle": "新增行動應用程式",
-  "tutorials.mobileApi.addAppGoal": "在左側的樣板中找到行動應用程式並按一下它。在搜尋中輸入「{word}」會發現速度很快。",
+  "tutorials.mobileApi.addAppGoal": "按一下「新增」，搜尋「{word}」，然後選取「行動應用程式」。",
   "tutorials.mobileApi.addAppTipSearch": "在此輸入“{word}”",
   "tutorials.mobileApi.addAppTipItem": "點擊新增",
   "tutorials.mobileApi.addAppTipRail": "打開 樣板",
@@ -2314,7 +2314,7 @@
   "tutorials.apiGateway.ordersName": "訂單",
   "tutorials.apiGateway.usersName": "用戶",
   "tutorials.apiGateway.addAppTitle": "新增行動應用程式",
-  "tutorials.apiGateway.addAppGoal": "在 樣板 軌道上搜尋{query}設備，然後選擇 行動應用程式。",
+  "tutorials.apiGateway.addAppGoal": "按一下「新增」，搜尋「{query}」，然後選取「行動應用程式」。",
   "tutorials.apiGateway.addAppDone": "行動應用程式是 居住 中的請求來源。",
   "tutorials.apiGateway.addGwTitle": "新增 閘道",
   "tutorials.apiGateway.addGwGoal": "選擇應用程序，按一下其 +，然後選擇 Kong 閘道 並按 Enter。",
@@ -2766,5 +2766,14 @@
   "tutorials.studyCells.evacuateTitle": "疏散一個地區",
   "tutorials.studyCells.evacuateDone": "當第一個區域的條目發生故障時，具有空閒 容量 的健康第二區域將接受預訂。",
   "tutorials.studyCells.finish": "比較參考文獻的區域條目和完整單元格。在真正的疏散之前，每個簡化單元需要什麼儲存、複製和 容量？",
-  "tutorials.studyCells.reference": "打開 以手機為基礎的預訂參考"
+  "tutorials.studyCells.reference": "打開 以手機為基礎的預訂參考",
+  "workbench.tools": "工具",
+  "workbench.select": "選取",
+  "workbench.checks": "檢查",
+  "workbench.common": "常用",
+  "workbench.pin": "固定開啟",
+  "workbench.unpin": "關閉程式庫",
+  "workbench.shortcuts": "快捷鍵",
+  "workbench.checksName": "檢查, {warnings}",
+  "workbench.warnings": "{count, plural, other {# 則警告}}"
 }

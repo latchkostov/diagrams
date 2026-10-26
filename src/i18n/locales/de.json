@@ -1736,7 +1736,7 @@
   "tutorials.mobileApi.summary": "Platzieren Sie eine mobile App und die von ihr aufgerufene API, verbinden Sie sie, dann Live und beobachten Sie den Anforderungsfluss.",
   "tutorials.mobileApi.diagramTitle": "Mein erstes Live Diagramm",
   "tutorials.mobileApi.addAppTitle": "Fügen Sie eine mobile App hinzu",
-  "tutorials.mobileApi.addAppGoal": "Suchen Sie Mobile App im Schablone auf der linken Seite und klicken Sie darauf. Wenn Sie „{word}“ in die Suche eingeben, finden Sie es schnell.",
+  "tutorials.mobileApi.addAppGoal": "Klicke auf Hinzufügen, suche nach „{word}“ und wähle Mobile App.",
   "tutorials.mobileApi.addAppTipSearch": "Geben Sie hier „{word}“ ein",
   "tutorials.mobileApi.addAppTipItem": "Klicken Sie, um es hinzuzufügen",
   "tutorials.mobileApi.addAppTipRail": "Öffnen der Schablone",
@@ -2312,7 +2312,7 @@
   "tutorials.apiGateway.ordersName": "Bestellungen",
   "tutorials.apiGateway.usersName": "Benutzer",
   "tutorials.apiGateway.addAppTitle": "Fügen Sie die mobile App hinzu",
-  "tutorials.apiGateway.addAppGoal": "Durchsuchen Sie die Schiene Schablone nach {query} und wählen Sie dann Mobile App aus.",
+  "tutorials.apiGateway.addAppGoal": "Klicke auf Hinzufügen, suche nach „{query}“ und wähle Mobile App.",
   "tutorials.apiGateway.addAppDone": "Eine mobile App ist eine Quelle von Anfragen in Live.",
   "tutorials.apiGateway.addGwTitle": "Gateway hinzufügen",
   "tutorials.apiGateway.addGwGoal": "Wählen Sie die App aus, klicken Sie auf das +, wählen Sie dann Kong Gateway aus und drücken Sie Eingabe.",
@@ -2780,5 +2780,14 @@
   "tutorials.studyCells.evacuateTitle": "Eine Region evakuieren",
   "tutorials.studyCells.evacuateDone": "Eine fehlerfreie zweite Region mit Ersatz-Kapazität nimmt Buchungen entgegen, wenn der Eintrag der ersten Region ausfällt.",
   "tutorials.studyCells.finish": "Vergleichen Sie die regionalen Einträge und vollständigen Zellen der Referenz. Welchen Speicher, welche Replikation und welchen Kapazität würde jede Ihrer vereinfachten Zellen vor einer echten Evakuierung benötigen?",
-  "tutorials.studyCells.reference": "Öffnen die zellenbasierte Buchungsreferenz"
+  "tutorials.studyCells.reference": "Öffnen die zellenbasierte Buchungsreferenz",
+  "workbench.tools": "Werkzeuge",
+  "workbench.select": "Auswahl",
+  "workbench.checks": "Prüfungen",
+  "workbench.common": "Häufig",
+  "workbench.pin": "Offen anheften",
+  "workbench.unpin": "Bibliothek schließen",
+  "workbench.shortcuts": "Tastenkürzel",
+  "workbench.checksName": "Prüfungen, {warnings}",
+  "workbench.warnings": "{count, plural, one {# Warnung} other {# Warnungen}}"
 }

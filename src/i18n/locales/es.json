@@ -1735,7 +1735,7 @@
   "tutorials.mobileApi.summary": "Coloque una aplicación móvil y la API a la que llama, conéctelas, luego en vivo y observe cómo fluyen las solicitudes.",
   "tutorials.mobileApi.diagramTitle": "Mi primer vivo diagrama",
   "tutorials.mobileApi.addAppTitle": "Agregar una aplicación móvil",
-  "tutorials.mobileApi.addAppGoal": "Busque Aplicación móvil en símbolo a la izquierda y haga clic en él. Al escribir \"{word}\" en la búsqueda, se encuentra rápidamente.",
+  "tutorials.mobileApi.addAppGoal": "Pulsa Añadir, busca «{word}» y elige Aplicación móvil.",
   "tutorials.mobileApi.addAppTipSearch": "Escriba “{word}” aquí",
   "tutorials.mobileApi.addAppTipItem": "Haga clic para agregarlo",
   "tutorials.mobileApi.addAppTipRail": "Abierto el símbolo",
@@ -2309,7 +2309,7 @@
   "tutorials.apiGateway.ordersName": "Órdenes",
   "tutorials.apiGateway.usersName": "Usuarios",
   "tutorials.apiGateway.addAppTitle": "Agregar la aplicación móvil",
-  "tutorials.apiGateway.addAppGoal": "Busque {query} en el carril símbolo, luego seleccione Aplicación móvil.",
+  "tutorials.apiGateway.addAppGoal": "Pulsa Añadir, busca «{query}» y elige Aplicación móvil.",
   "tutorials.apiGateway.addAppDone": "Una aplicación móvil es una fuente de solicitudes en Vivir.",
   "tutorials.apiGateway.addGwTitle": "Agregar un puerta de enlace",
   "tutorials.apiGateway.addGwGoal": "Seleccione la aplicación, haga clic en su +, luego elija Kong puerta de enlace y presione Intro.",
@@ -2757,5 +2757,14 @@
   "tutorials.studyCells.evacuateTitle": "Evacuar una región",
   "tutorials.studyCells.evacuateDone": "Una segunda región saludable con capacidad de repuesto acepta reservas cuando la entrada de la primera región disminuye.",
   "tutorials.studyCells.finish": "Comparar las entradas regionales de la referencia y completar las celdas. ¿Qué almacenamiento, replicación y capacidad necesitaría cada una de sus células simplificadas antes de una evacuación real?",
-  "tutorials.studyCells.reference": "Abierto la referencia de reservas basadas en celdas"
+  "tutorials.studyCells.reference": "Abierto la referencia de reservas basadas en celdas",
+  "workbench.tools": "Herramientas",
+  "workbench.select": "Seleccionar",
+  "workbench.checks": "Comprobaciones",
+  "workbench.common": "Comunes",
+  "workbench.pin": "Fijar abierto",
+  "workbench.unpin": "Cerrar biblioteca",
+  "workbench.shortcuts": "Atajos",
+  "workbench.checksName": "Comprobaciones, {warnings}",
+  "workbench.warnings": "{count, plural, one {# advertencia} other {# advertencias}}"
 }

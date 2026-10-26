@@ -1736,7 +1736,7 @@
   "tutorials.mobileApi.diagramTitle": "Min första live diagram",
   "tutorials.mobileApi.apiName": "Orders API",
   "tutorials.mobileApi.addAppTitle": "Lägg till en mobilapp",
-  "tutorials.mobileApi.addAppGoal": "Hitta Mobilapp i stencil till vänster och klicka på den. Att skriva \"{word}\" i sökningen hittar det snabbt.",
+  "tutorials.mobileApi.addAppGoal": "Klicka på Lägg till, sök efter ”{word}” och välj Mobilapp.",
   "tutorials.mobileApi.addAppTipSearch": "Skriv \"{word}\" här",
   "tutorials.mobileApi.addAppTipItem": "Klicka för att lägga till det",
   "tutorials.mobileApi.addAppTipRail": "Öppna stencil",
@@ -2313,7 +2313,7 @@
   "tutorials.apiGateway.ordersName": "Beställningar",
   "tutorials.apiGateway.usersName": "Användare",
   "tutorials.apiGateway.addAppTitle": "Lägg till mobilappen",
-  "tutorials.apiGateway.addAppGoal": "Sök på stencil-skenan efter {query} och välj sedan Mobilapp.",
+  "tutorials.apiGateway.addAppGoal": "Klicka på Lägg till, sök efter ”{query}” och välj Mobilapp.",
   "tutorials.apiGateway.addAppDone": "En mobilapp är en källa till förfrågningar i Bo.",
   "tutorials.apiGateway.addGwTitle": "Lägg till en gateway",
   "tutorials.apiGateway.addGwGoal": "Välj appen, klicka på dess +, välj sedan Kong gateway och tryck på Retur.",
@@ -2776,5 +2776,14 @@
   "tutorials.studyCells.evacuateTitle": "Evakuera en region",
   "tutorials.studyCells.evacuateDone": "En hälsosam andra region med reserv kapacitet tar emot bokningar när den första regionens inträde går ner.",
   "tutorials.studyCells.finish": "Jämför referensens regionala poster och kompletta celler. Vilken lagring, replikering och kapacitet skulle var och en av dina förenklade celler behöva innan en riktig evakuering?",
-  "tutorials.studyCells.reference": "Öppna den cellbaserade bokningsreferensen"
+  "tutorials.studyCells.reference": "Öppna den cellbaserade bokningsreferensen",
+  "workbench.tools": "Verktyg",
+  "workbench.select": "Markera",
+  "workbench.checks": "Kontroller",
+  "workbench.common": "Vanliga",
+  "workbench.pin": "Fäst öppen",
+  "workbench.unpin": "Stäng bibliotek",
+  "workbench.shortcuts": "Genvägar",
+  "workbench.checksName": "Kontroller, {warnings}",
+  "workbench.warnings": "{count, plural, one {# varning} other {# varningar}}"
 }

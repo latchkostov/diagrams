@@ -1,3 +1,4 @@
+import { openLibrary } from "./fixtures";
 import type { Page } from "@playwright/test";
 import { test, expect, expectNoErrors, publicExamples, waitForStableBox, pageLoadTimeout } from "./fixtures";
 
@@ -198,12 +199,19 @@ for (const failure of ["read", "write"] as const) {
       }
     }, failure);
     await page.goto(`./?view=canvas&example=${publicExamples[0].slug}`);
+    await openLibrary(page);
     await expect(page.getByTestId("palette-family")).toHaveValue("all");
+    await openLibrary(page);
     await page.getByTestId("palette-family").selectOption("aws");
+    await openLibrary(page);
     await expect(page.getByTestId("palette-item-aws.sqs")).toBeVisible();
+    await openLibrary(page);
     await page.getByTestId("palette-section-messaging").click();
+    await openLibrary(page);
     await expect(page.getByTestId("palette-section-messaging")).toHaveAttribute("aria-expanded", "false");
+    await openLibrary(page);
     await page.getByTestId("palette-search").fill("sqs");
+    await openLibrary(page);
     await page.getByTestId("palette-search").press("Enter");
     await expect(page.getByTestId("node-sqs-1")).toBeVisible();
     expectNoErrors(consoleErrors);

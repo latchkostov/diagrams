@@ -220,6 +220,17 @@ export function focusPolicy(state: FocusState, event: FocusEvent): FocusDecision
       return move({ target: canvas, when: "frame" });
     case "presenting":
       return move({ target: canvas, when: "now", onlyIfLost: true });
+    // T1: Add waits for search; Select and Escape return to their explicit keyboard home.
+    case "tool.focus":
+      return move({
+        target:
+          event.cause === "library"
+            ? { kind: "paletteSearch" }
+            : event.target
+              ? { kind: "element", handle: event.target }
+              : canvas,
+        when: event.cause === "library" ? "ready" : "now",
+      });
     case "start.blank":
       return move({ target: { kind: "paletteSearch" }, when: "frame" });
     case "dependencies.hidden":

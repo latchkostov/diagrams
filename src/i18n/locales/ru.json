@@ -1735,7 +1735,7 @@
   "tutorials.mobileApi.summary": "Разместите мобильное приложение и вызываемый им API, соедините их, затем режим реального времени и наблюдайте за потоком запросов.",
   "tutorials.mobileApi.diagramTitle": "Мой первый концерт схема",
   "tutorials.mobileApi.addAppTitle": "Добавить мобильное приложение",
-  "tutorials.mobileApi.addAppGoal": "Найдите Мобильное приложение в элемент слева и щелкните по нему. Набрав «{word}» в поиске, вы быстро найдете его.",
+  "tutorials.mobileApi.addAppGoal": "Нажмите «Добавить», найдите «{word}» и выберите «Мобильное приложение».",
   "tutorials.mobileApi.addAppTipSearch": "Введите здесь «{word}».",
   "tutorials.mobileApi.addAppTipItem": "Нажмите, чтобы добавить его",
   "tutorials.mobileApi.addAppTipRail": "Открыть элемент",
@@ -2307,7 +2307,7 @@
   "tutorials.apiGateway.ordersName": "Заказы",
   "tutorials.apiGateway.usersName": "Пользователи",
   "tutorials.apiGateway.addAppTitle": "Добавьте мобильное приложение",
-  "tutorials.apiGateway.addAppGoal": "Найдите {query} телефон на рельсе элемент, затем выберите Мобильное приложение.",
+  "tutorials.apiGateway.addAppGoal": "Нажмите «Добавить», найдите «{query}» и выберите «Мобильное приложение».",
   "tutorials.apiGateway.addAppDone": "Мобильное приложение является источником запросов в Жить.",
   "tutorials.apiGateway.addGwTitle": "Добавьте шлюз",
   "tutorials.apiGateway.addGwGoal": "Выберите приложение, нажмите на него +, затем выберите Kong шлюз и нажмите Enter.",
@@ -2744,5 +2744,14 @@
   "tutorials.studyCells.evacuateTitle": "Эвакуировать регион",
   "tutorials.studyCells.evacuateDone": "Исправный второй регион с запасным ёмкость принимает заказы, когда запись первого региона отключается.",
   "tutorials.studyCells.finish": "Сравните региональные записи ссылки и полные ячейки. Какое хранилище, репликация и ёмкость понадобятся каждой из ваших упрощенных ячеек перед настоящей эвакуацией?",
-  "tutorials.studyCells.reference": "Открыть ссылка на бронирование через ячейку"
+  "tutorials.studyCells.reference": "Открыть ссылка на бронирование через ячейку",
+  "workbench.tools": "Инструменты",
+  "workbench.select": "Выбрать",
+  "workbench.checks": "Проверки",
+  "workbench.common": "Частые",
+  "workbench.pin": "Закрепить открытой",
+  "workbench.unpin": "Закрыть библиотеку",
+  "workbench.shortcuts": "Клавиши",
+  "workbench.checksName": "Проверки, {warnings}",
+  "workbench.warnings": "{count, plural, one {# предупреждение} few {# предупреждения} many {# предупреждения} other {# предупреждения}}"
 }

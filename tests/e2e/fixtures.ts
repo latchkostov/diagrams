@@ -10,6 +10,17 @@ import { withSlowmoDiagnostic, slowmoDiagnosticEnabled, slowmoDiagnosticTest } f
 export const TEXT_START = textBoundaryKey("start");
 export const TEXT_END = textBoundaryKey("end");
 
+/** The stencil library starts as a flyout; a pinned library is already open. */
+export async function openLibrary(page: Page) {
+  if (!(await page.getByTestId("palette-search").isVisible())) await page.getByTestId("rail-add").click();
+  await expect(page.getByTestId("palette-search")).toBeVisible();
+}
+
+export async function openAnnotate(page: Page) {
+  if (!(await page.getByTestId("palette-annotate").isVisible())) await page.getByTestId("rail-annotate").click();
+  await expect(page.getByTestId("palette-annotate")).toBeVisible();
+}
+
 /**
  * Shared helpers for every e2e spec. Selectors are data-testid only (owner's rule):
  * use page.getByTestId(...) and scope with .getByTestId(...) — never classes or ids.

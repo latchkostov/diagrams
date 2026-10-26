@@ -156,6 +156,8 @@ const INTERACTION_RULES = [
  *   trouble callout's return to the canvas is row L3).
  */
 const FOCUS_LOCAL = [
+  // The tool rail's roving arrows stay within its own buttons; cross-surface moves use policy row T1.
+  "src/canvas/chrome/ToolRail.tsx",
   "src/canvas/inspector/fields.tsx",
   "src/canvas/SheetResizeHandle.tsx",
   "src/live/TraceCard.tsx",

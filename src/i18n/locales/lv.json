@@ -1735,7 +1735,7 @@
   "tutorials.mobileApi.summary": "Novietojiet mobilo lietotni un API, ko tā izsauc, savienojiet tos, pēc tam Live un skatiet pieprasījumu plūsmu.",
   "tutorials.mobileApi.diagramTitle": "Mana pirmā tiešraide diagramma",
   "tutorials.mobileApi.addAppTitle": "Pievienojiet mobilo lietotni",
-  "tutorials.mobileApi.addAppGoal": "Kreisajā pusē esošajā trafarets atrodiet Mobilā lietotne un noklikšķiniet uz tā. Meklēšanā ierakstot “{word}”, tas tiek ātri atrasts.",
+  "tutorials.mobileApi.addAppGoal": "Noklikšķiniet uz Pievienot, meklējiet “{word}” un izvēlieties Mobilo lietotni.",
   "tutorials.mobileApi.addAppTipSearch": "Šeit ierakstiet “{word}”.",
   "tutorials.mobileApi.addAppTipItem": "Noklikšķiniet, lai to pievienotu",
   "tutorials.mobileApi.addAppTipRail": "Atvērt trafarets",
@@ -2310,7 +2310,7 @@
   "tutorials.apiGateway.ordersName": "Pasūtījumi",
   "tutorials.apiGateway.usersName": "Lietotāji",
   "tutorials.apiGateway.addAppTitle": "Pievienojiet mobilo lietotni",
-  "tutorials.apiGateway.addAppGoal": "Meklējiet trafarets dzelzceļu {query}, pēc tam izvēlieties Mobilā lietotne.",
+  "tutorials.apiGateway.addAppGoal": "Noklikšķiniet uz Pievienot, meklējiet “{query}” un izvēlieties Mobilo lietotni.",
   "tutorials.apiGateway.addAppDone": "Mobilā lietotne ir pieprasījumu avots Tiešraidē.",
   "tutorials.apiGateway.addGwTitle": "Pievienojiet vārteja",
   "tutorials.apiGateway.addGwGoal": "Atlasiet lietotni, noklikšķiniet uz tās +, pēc tam izvēlieties Kong vārteja un nospiediet Enter.",
@@ -2752,5 +2752,14 @@
   "tutorials.studyCells.evacuateTitle": "Evakuējiet reģionu",
   "tutorials.studyCells.evacuateDone": "Veselīgs otrais reģions ar rezerves kapacitāte pieņem rezervācijas, kad pirmā reģiona ieraksts samazinās.",
   "tutorials.studyCells.finish": "Salīdziniet atsauces reģionālos ierakstus un aizpildiet šūnas. Kāda krātuve, replikācija un kapacitāte būtu nepieciešama katrai jūsu vienkāršotajai šūnai pirms īstas evakuācijas?",
-  "tutorials.studyCells.reference": "Atvērt šūnu rezervāciju atsauce"
+  "tutorials.studyCells.reference": "Atvērt šūnu rezervāciju atsauce",
+  "workbench.tools": "Rīki",
+  "workbench.select": "Atlasīt",
+  "workbench.checks": "Pārbaudes",
+  "workbench.common": "Biežākie",
+  "workbench.pin": "Piespraust atvērtu",
+  "workbench.unpin": "Aizvērt bibliotēku",
+  "workbench.shortcuts": "Īsceļi",
+  "workbench.checksName": "Pārbaudes, {warnings}",
+  "workbench.warnings": "{count, plural, zero {# brīdinājumi} one {# brīdinājums} other {# brīdinājumi}}"
 }

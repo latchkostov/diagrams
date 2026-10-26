@@ -1736,7 +1736,7 @@
   "tutorials.mobileApi.summary": "Đặt ứng dụng di động và API mà ứng dụng đó gọi, kết nối chúng, sau đó trực tiếp và xem luồng yêu cầu.",
   "tutorials.mobileApi.diagramTitle": "Buổi biểu diễn trực tiếp đầu tiên của tôi sơ đồ",
   "tutorials.mobileApi.addAppTitle": "Thêm ứng dụng di động",
-  "tutorials.mobileApi.addAppGoal": "Tìm Ứng dụng di động trong mẫu hình ở bên trái và nhấp vào nó. Nhập “{word}” vào tìm kiếm sẽ thấy kết quả nhanh.",
+  "tutorials.mobileApi.addAppGoal": "Nhấp Thêm, tìm “{word}” rồi chọn Ứng dụng di động.",
   "tutorials.mobileApi.addAppTipSearch": "Nhập “{word}” vào đây",
   "tutorials.mobileApi.addAppTipItem": "Bấm để thêm nó",
   "tutorials.mobileApi.addAppTipRail": "Mở mẫu hình",
@@ -2314,7 +2314,7 @@
   "tutorials.apiGateway.ordersName": "Đơn hàng",
   "tutorials.apiGateway.usersName": "Người dùng",
   "tutorials.apiGateway.addAppTitle": "Thêm ứng dụng di động",
-  "tutorials.apiGateway.addAppGoal": "Tìm kiếm đường ray mẫu hình dành cho thiết bị {query}, sau đó chọn Ứng dụng di động.",
+  "tutorials.apiGateway.addAppGoal": "Nhấp Thêm, tìm “{query}” rồi chọn Ứng dụng di động.",
   "tutorials.apiGateway.addAppDone": "Ứng dụng dành cho thiết bị di động là nguồn yêu cầu trong Sống.",
   "tutorials.apiGateway.addGwTitle": "Thêm gateway",
   "tutorials.apiGateway.addGwGoal": "Chọn ứng dụng, nhấp vào dấu + của ứng dụng đó, sau đó chọn Kong gateway và nhấn Enter.",
@@ -2768,5 +2768,14 @@
   "tutorials.studyCells.evacuateTitle": "Sơ tán một vùng",
   "tutorials.studyCells.evacuateDone": "Khu vực thứ hai khỏe mạnh với dự phòng công suất nhận đặt chỗ khi mục nhập của khu vực đầu tiên không còn.",
   "tutorials.studyCells.finish": "So sánh các mục nhập khu vực và các ô hoàn chỉnh của tham chiếu. Mỗi ô đơn giản hóa của bạn sẽ cần bộ nhớ, bản sao và công suất nào trước khi sơ tán thực sự?",
-  "tutorials.studyCells.reference": "Mở tham chiếu đăng ký dựa trên ô"
+  "tutorials.studyCells.reference": "Mở tham chiếu đăng ký dựa trên ô",
+  "workbench.tools": "Công cụ",
+  "workbench.select": "Chọn",
+  "workbench.checks": "Kiểm tra",
+  "workbench.common": "Phổ biến",
+  "workbench.pin": "Ghim mở",
+  "workbench.unpin": "Đóng thư viện",
+  "workbench.shortcuts": "Phím tắt",
+  "workbench.checksName": "Kiểm tra, {warnings}",
+  "workbench.warnings": "{count, plural, other {# cảnh báo}}"
 }

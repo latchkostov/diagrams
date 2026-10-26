@@ -1,3 +1,4 @@
+import { openLibrary } from "./fixtures";
 import { test, expect, gotoCanvas, expectNoErrors } from "./fixtures";
 
 // Canvas palette: search first, family filter, collapsible categories, recently used on top.
@@ -8,71 +9,98 @@ const SLUG = "aws-serverless-orders";
 test.describe("palette", () => {
   test.beforeEach(async ({ page }) => {
     await gotoCanvas(page, SLUG);
+    await openLibrary(page);
     await expect(page.getByTestId("palette-search")).toBeVisible();
   });
 
   test("search ranks matches (aliases included) and Enter adds the first", async ({ page, consoleErrors }) => {
+    await openLibrary(page);
     await page.getByTestId("palette-search").fill("sb");
     await expect(page.getByTestId("palette-results")).toBeVisible();
+    await openLibrary(page);
     await expect(page.getByTestId("palette-item-azure.service-bus.queue")).toBeVisible();
     await expect(page.getByTestId("palette-item-kafka.topic")).toHaveCount(0);
 
+    await openLibrary(page);
     await page.getByTestId("palette-search").fill("pg");
+    await openLibrary(page);
     await expect(page.getByTestId("palette-item-postgres")).toBeVisible();
+    await openLibrary(page);
     await page.getByTestId("palette-search").press("Enter");
     await expect(page.getByTestId("node-postgres-1")).toBeVisible();
 
+    await openLibrary(page);
     await page.getByTestId("palette-search").fill("zzz-nothing");
     await expect(page.getByTestId("palette-empty")).toBeVisible();
+    await openLibrary(page);
     await page.getByTestId("palette-search-clear").click();
+    await openLibrary(page);
     await expect(page.getByTestId("palette-section-messaging")).toBeVisible();
     expectNoErrors(consoleErrors);
   });
 
   test("family filter narrows the list and is remembered", async ({ page }) => {
+    await openLibrary(page);
     await page.getByTestId("palette-family").selectOption("aws");
+    await openLibrary(page);
     await expect(page.getByTestId("palette-item-aws.sqs")).toBeVisible();
     await expect(page.getByTestId("palette-item-azure.functions")).toHaveCount(0);
     await expect(page.getByTestId("palette-item-kafka.topic")).toHaveCount(0);
 
     // Search stays inside the family, and offers a way out.
+    await openLibrary(page);
     await page.getByTestId("palette-search").fill("service bus");
     await expect(page.getByTestId("palette-empty")).toBeVisible();
     await page.getByTestId("palette-all-families").click();
+    await openLibrary(page);
     await expect(page.getByTestId("palette-item-azure.service-bus.queue")).toBeVisible();
 
+    await openLibrary(page);
     await page.getByTestId("palette-family").selectOption("azure");
     await page.reload();
+    await openLibrary(page);
     await expect(page.getByTestId("palette-family")).toHaveValue("azure");
     // Compute starts folded on a first visit.
+    await openLibrary(page);
     await page.getByTestId("palette-section-compute").click();
+    await openLibrary(page);
     await expect(page.getByTestId("palette-item-azure.functions")).toBeVisible();
     await expect(page.getByTestId("palette-item-aws.sqs")).toHaveCount(0);
   });
 
   test("a first visit opens only the first category; categories collapse and stay collapsed", async ({ page }) => {
     // With 150+ stencils the rail starts as an overview: Messaging open, the rest folded with counts.
+    await openLibrary(page);
     await expect(page.getByTestId("palette-section-compute")).toHaveAttribute("aria-expanded", "false");
     await expect(page.getByTestId("palette-item-aws.lambda")).toHaveCount(0);
+    await openLibrary(page);
     const header = page.getByTestId("palette-section-messaging");
     await expect(header).toHaveAttribute("aria-expanded", "true");
+    await openLibrary(page);
     await expect(page.getByTestId("palette-item-kafka.topic")).toBeVisible();
     await header.click();
     await expect(header).toHaveAttribute("aria-expanded", "false");
     await expect(page.getByTestId("palette-item-kafka.topic")).toHaveCount(0);
     await page.reload();
+    await openLibrary(page);
     await expect(page.getByTestId("palette-section-messaging")).toHaveAttribute("aria-expanded", "false");
     // Search ignores folding.
+    await openLibrary(page);
     await page.getByTestId("palette-search").fill("kafka topic");
+    await openLibrary(page);
     await expect(page.getByTestId("palette-item-kafka.topic")).toBeVisible();
   });
 
   test("recently used stencils are pinned on top", async ({ page }) => {
     await expect(page.getByTestId("palette-recent")).toHaveCount(0);
+    await openLibrary(page);
     await page.getByTestId("palette-section-compute").click();
+    await openLibrary(page);
     await page.getByTestId("palette-section-data").click();
+    await openLibrary(page);
     await page.getByTestId("palette-item-aws.lambda").click();
     await expect(page.getByTestId("node-lambda-1")).toBeVisible();
+    await openLibrary(page);
     await page.getByTestId("palette-item-redis.cache").click();
 
     const recent = page.getByTestId("palette-recent");

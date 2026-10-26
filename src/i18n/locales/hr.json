@@ -1735,7 +1735,7 @@
   "tutorials.mobileApi.summary": "Postavite mobilnu aplikaciju i API koji ona poziva, povežite ih, zatim uživo i gledajte kako zahtjevi tijeku.",
   "tutorials.mobileApi.diagramTitle": "Moj prvi live dijagram",
   "tutorials.mobileApi.addAppTitle": "Dodajte mobilnu aplikaciju",
-  "tutorials.mobileApi.addAppGoal": "Pronađite Mobilna aplikacija u šablona s lijeve strane i kliknite na njega. Upisivanjem “{word}” u pretragu brzo ćete ga pronaći.",
+  "tutorials.mobileApi.addAppGoal": "Kliknite Dodaj, potražite „{word}” i odaberite Mobilna aplikacija.",
   "tutorials.mobileApi.addAppTipSearch": "Ovdje upišite “{word}”.",
   "tutorials.mobileApi.addAppTipItem": "Kliknite za dodavanje",
   "tutorials.mobileApi.addAppTipRail": "Otvoriti šablona",
@@ -2312,7 +2312,7 @@
   "tutorials.apiGateway.ordersName": "Narudžbe",
   "tutorials.apiGateway.usersName": "Korisnici",
   "tutorials.apiGateway.addAppTitle": "Dodajte mobilnu aplikaciju",
-  "tutorials.apiGateway.addAppGoal": "Pretražite šablona tračnicu za {query}, a zatim odaberite Mobilna aplikacija.",
+  "tutorials.apiGateway.addAppGoal": "Kliknite Dodaj, potražite „{query}” i odaberite Mobilna aplikacija.",
   "tutorials.apiGateway.addAppDone": "Mobilna aplikacija izvor je zahtjeva u Živjeti.",
   "tutorials.apiGateway.addGwTitle": "Dodajte pristupnik",
   "tutorials.apiGateway.addGwGoal": "Odaberite aplikaciju, kliknite njen +, zatim odaberite Kong pristupnik i pritisnite Enter.",
@@ -2778,5 +2778,14 @@
   "tutorials.studyCells.evacuateTitle": "Evakuirajte regiju",
   "tutorials.studyCells.evacuateDone": "Zdrava druga regija s rezervnim kapacitet prima rezervacije kada se ulazak prve regije smanji.",
   "tutorials.studyCells.finish": "Usporedite regionalne unose reference i potpune ćelije. Koju pohranu, replikaciju i kapacitet bi svaka vaša pojednostavljena ćelija trebala prije prave evakuacije?",
-  "tutorials.studyCells.reference": "Otvoriti referenca rezervacija putem mobitela"
+  "tutorials.studyCells.reference": "Otvoriti referenca rezervacija putem mobitela",
+  "workbench.tools": "Alati",
+  "workbench.select": "Odabir",
+  "workbench.checks": "Provjere",
+  "workbench.common": "Uobičajeno",
+  "workbench.pin": "Prikvači otvoreno",
+  "workbench.unpin": "Zatvori biblioteku",
+  "workbench.shortcuts": "Prečaci",
+  "workbench.checksName": "Provjere, {warnings}",
+  "workbench.warnings": "{count, plural, one {# upozorenje} few {# upozorenja} other {# upozorenja}}"
 }

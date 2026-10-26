@@ -2440,8 +2440,7 @@ const en = {
   "tutorials.mobileApi.diagramTitle": "My first live diagram",
   "tutorials.mobileApi.apiName": "Orders API",
   "tutorials.mobileApi.addAppTitle": "Add a mobile app",
-  "tutorials.mobileApi.addAppGoal":
-    "Find Mobile App in the stencils on the left and click it. Typing “{word}” in the search finds it fast.",
+  "tutorials.mobileApi.addAppGoal": "Click Add, then search for “{word}” and choose Mobile App.",
   "tutorials.mobileApi.addAppTipSearch": "Type “{word}” here",
   "tutorials.mobileApi.addAppTipItem": "Click to add it",
   "tutorials.mobileApi.addAppTipRail": "Open the stencils",
@@ -3846,7 +3845,7 @@ const en = {
   "tutorials.apiGateway.ordersName": "Orders",
   "tutorials.apiGateway.usersName": "Users",
   "tutorials.apiGateway.addAppTitle": "Add the mobile app",
-  "tutorials.apiGateway.addAppGoal": "Search the stencil rail for {query}, then pick Mobile App.",
+  "tutorials.apiGateway.addAppGoal": "Click Add, then search for {query} and choose Mobile App.",
   "tutorials.apiGateway.addAppDone": "A mobile app is a source of requests in Live.",
   "tutorials.apiGateway.addGwTitle": "Add a gateway",
   "tutorials.apiGateway.addGwGoal": "Select the app, click its +, then pick Kong Gateway and press Enter.",
@@ -4582,5 +4581,14 @@ const en = {
   "tutorials.studyCells.finish":
     "Compare the reference's regional entries and complete cells. What storage, replication and capacity would each of your simplified cells need before a real evacuation?",
   "tutorials.studyCells.reference": "Open the cell-based bookings reference",
+  "workbench.tools": "Tools",
+  "workbench.select": "Select",
+  "workbench.checks": "Checks",
+  "workbench.common": "Common",
+  "workbench.pin": "Pin open",
+  "workbench.unpin": "Close library",
+  "workbench.shortcuts": "Shortcuts",
+  "workbench.checksName": "Checks, {warnings}",
+  "workbench.warnings": "{count, plural, one {# warning} other {# warnings}}",
 } as const;
 export default en;

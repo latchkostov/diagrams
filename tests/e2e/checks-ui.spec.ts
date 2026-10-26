@@ -49,12 +49,12 @@ async function openFromCount(page: Page) {
 test.describe("the count under the title", () => {
   test("shows warnings only, for an example with one, and nothing for a clean one", async ({ page, consoleErrors }) => {
     await openMissingDlq(page);
-    await expect(page.getByTestId("checks-count")).toHaveText("1 warning");
+    await expect(page.getByTestId("checks-count").getByTestId("checks-warning-text")).toHaveText("1 warning");
     await gotoCanvas(page, CLEAN);
     await expect(page.getByTestId("node-api")).toBeVisible();
     // Checks have run (after the first idle) and found nothing: no "0 issues", no card.
     await waitForChecks(page);
-    await expect(page.getByTestId("checks-count")).toHaveCount(0);
+    await expect(page.getByTestId("checks-warning-badge")).toHaveCount(0);
     await expect(card(page)).toHaveCount(0);
     expectNoErrors(consoleErrors);
   });
@@ -64,13 +64,13 @@ test.describe("the count under the title", () => {
     await gotoCanvas(page, "outbox-saga-checkout");
     await expect(page.getByTestId("node-payments-dlq")).toBeVisible();
     await waitForChecks(page);
-    await expect(page.getByTestId("checks-count")).toHaveCount(0);
+    await expect(page.getByTestId("checks-warning-badge")).toHaveCount(0);
 
     await openMissingDlq(page);
     await expect(page.getByTestId("checks-count")).toBeVisible();
     await page.getByTestId("live-toggle").click();
     await expect(page.getByTestId("live-controls")).toBeVisible();
-    await expect(page.getByTestId("checks-count")).toHaveCount(0);
+    await expect(page.getByTestId("checks-warning-badge")).toHaveCount(0);
     await page.getByTestId("live-toggle").click();
     await expect(page.getByTestId("checks-count")).toBeVisible();
   });
@@ -99,7 +99,7 @@ test("diagram diagnostics keep guidance and valid element ignores through reload
     { key: STORAGE_KEYS.autosavePrefix + "outbox-saga-checkout", diagram },
   );
   await gotoCanvas(page, "outbox-saga-checkout");
-  await expect(page.getByTestId("checks-count")).toHaveText("1 warning");
+  await expect(page.getByTestId("checks-count").getByTestId("checks-warning-text")).toHaveText("1 warning");
   await openFromCount(page);
   await expect(row(page, diagnostic)).toContainText("Timeline forwarding edits cannot be analyzed completely.");
   await expect(page.getByTestId(`check-select-${diagnostic}`)).toHaveCount(0);
@@ -125,7 +125,7 @@ test("diagram diagnostics keep guidance and valid element ignores through reload
   const checks = { ignore: [{ rule: "no-reader", target: "payments-dlq" }] };
   await expect.poll(async () => (await savedDiagram(page)).checks).toEqual(checks);
   await page.reload();
-  await expect(page.getByTestId("checks-count")).toHaveText("1 warning");
+  await expect(page.getByTestId("checks-count").getByTestId("checks-warning-text")).toHaveText("1 warning");
   await openFromCount(page);
   await expect(row(page, diagnostic)).toBeVisible();
   await expect(page.getByTestId(`check-select-${diagnostic}`)).toHaveCount(0);
@@ -202,12 +202,12 @@ test.describe("the Checks card", () => {
     await expect(page.getByTestId("toast")).toContainText("Added ledger-posting DLQ");
     await expect.poll(() => nodes.count()).toBe(before + 1);
     await expect(row(page, WARNING)).toHaveCount(0);
-    await expect(page.getByTestId("checks-count")).toHaveCount(0);
+    await expect(page.getByTestId("checks-warning-badge")).toHaveCount(0);
     // One step back: the queue and its route go, and the warning returns.
     await page.getByTestId("check-fix-undo").click();
     await expect.poll(() => nodes.count()).toBe(before);
     await expect(row(page, WARNING)).toBeVisible();
-    await expect(page.getByTestId("checks-count")).toHaveText("1 warning");
+    await expect(page.getByTestId("checks-count").getByTestId("checks-warning-text")).toHaveText("1 warning");
     expectNoErrors(consoleErrors);
   });
 
@@ -230,7 +230,7 @@ test.describe("the Checks card", () => {
     await page.getByTestId(`check-turn-off-${WARNING}`).click();
     // dead-letter is off: its warning and its suggestion go; the DLQ suggestion (no-reader) stays.
     await expect(page.getByTestId("checks-summary")).toHaveText("1 suggestion");
-    await expect(page.getByTestId("checks-count")).toHaveCount(0);
+    await expect(page.getByTestId("checks-warning-badge")).toHaveCount(0);
     await page.getByTestId("checks-off-toggle").click();
     await page.getByTestId("check-turn-on-dead-letter").click();
     await expect(page.getByTestId("checks-summary")).toHaveText("1 warning · 2 suggestions");
@@ -250,14 +250,14 @@ test("Ignore keeps its reason through reload, export and import, and Show again 
   await page.getByTestId(`check-ignore-reason-${WARNING}`).fill("The platform team owns its redrive");
   await page.getByTestId(`check-ignore-confirm-${WARNING}`).click();
   await expect(row(page, WARNING)).toHaveCount(0);
-  await expect(page.getByTestId("checks-count")).toHaveCount(0);
+  await expect(page.getByTestId("checks-warning-badge")).toHaveCount(0);
   await expect(page.getByTestId("checks-ignored-toggle")).toHaveText("1 ignored");
 
   // Saved with the diagram: a reload keeps it.
   await page.reload();
   await expect(page.getByTestId("node-posting-sub")).toBeVisible();
   await waitForChecks(page);
-  await expect(page.getByTestId("checks-count")).toHaveCount(0);
+  await expect(page.getByTestId("checks-warning-badge")).toHaveCount(0);
 
   // Exported in the file, and imported back.
   await page.getByTestId("file-button").click();
@@ -278,7 +278,7 @@ test("Ignore keeps its reason through reload, export and import, and Show again 
   await expect(page.getByTestId("checks-ignored")).toContainText("The platform team owns its redrive");
   await page.getByTestId(`check-unignore-${WARNING}`).click();
   await expect(row(page, WARNING)).toBeVisible();
-  await expect(page.getByTestId("checks-count")).toHaveText("1 warning");
+  await expect(page.getByTestId("checks-count").getByTestId("checks-warning-text")).toHaveText("1 warning");
   expectNoErrors(consoleErrors);
 });
 

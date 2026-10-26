@@ -44,6 +44,20 @@ function run(start: FocusState, events: readonly FocusEvent[]) {
 }
 
 describe("focusPolicy: the rules, row by row", () => {
+  it("T1 opens the library when ready and returns Escape to its rail opener", () => {
+    expect(focusPolicy(state(), { type: "tool.focus", cause: "library" }).command).toMatchObject({
+      target: { kind: "paletteSearch" },
+      when: "ready",
+    });
+    expect(focusPolicy(state(), { type: "tool.focus", cause: "escape", target: opener }).command).toMatchObject({
+      target: { kind: "element", handle: opener },
+      when: "now",
+    });
+    expect(focusPolicy(state(), { type: "tool.focus", cause: "select" }).command).toMatchObject({
+      target: { kind: "canvas" },
+      when: "now",
+    });
+  });
   it.each<[string, FocusState, FocusEvent[], string[]]>([
     [
       "I7 picker navigation focuses its mounted control now",

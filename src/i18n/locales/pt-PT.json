@@ -1735,7 +1735,7 @@
   "tutorials.mobileApi.summary": "Coloque um aplicativo móvel e a API que ele chama, conecte-os, então em direto e observe o fluxo das solicitações.",
   "tutorials.mobileApi.diagramTitle": "Minha primeira live diagrama",
   "tutorials.mobileApi.addAppTitle": "Adicionar um aplicativo móvel",
-  "tutorials.mobileApi.addAppGoal": "Encontre Aplicação móvel em stencil à esquerda e clique nele. Digitar “{word}” na pesquisa é rápido.",
+  "tutorials.mobileApi.addAppGoal": "Clique em Adicionar, pesquise «{word}» e escolha Aplicação móvel.",
   "tutorials.mobileApi.addAppTipSearch": "Digite “{word}” aqui",
   "tutorials.mobileApi.addAppTipItem": "Clique para adicioná-lo",
   "tutorials.mobileApi.addAppTipRail": "Aberto o stencil",
@@ -2310,7 +2310,7 @@
   "tutorials.apiGateway.ordersName": "Pedidos",
   "tutorials.apiGateway.usersName": "Usuários",
   "tutorials.apiGateway.addAppTitle": "Adicione o aplicativo móvel",
-  "tutorials.apiGateway.addAppGoal": "Pesquise {query} no trilho stencil e escolha Aplicação móvel.",
+  "tutorials.apiGateway.addAppGoal": "Clique em Adicionar, pesquise «{query}» e escolha Aplicação móvel.",
   "tutorials.apiGateway.addAppDone": "Um aplicativo móvel é uma fonte de solicitações em Vivo.",
   "tutorials.apiGateway.addGwTitle": "Adicione um gateway",
   "tutorials.apiGateway.addGwGoal": "Selecione o aplicativo, clique em +, escolha Kong gateway e pressione Enter.",
@@ -2761,5 +2761,14 @@
   "tutorials.studyCells.evacuateTitle": "Evacuar uma região",
   "tutorials.studyCells.evacuateDone": "Uma segunda região saudável com capacidade sobressalente aceita reservas quando a entrada da primeira região cai.",
   "tutorials.studyCells.finish": "Compare as entradas regionais da referência e complete as células. De que armazenamento, replicação e capacidade cada uma de suas células simplificadas precisaria antes de uma evacuação real?",
-  "tutorials.studyCells.reference": "Aberto a referência de reservas baseadas em células"
+  "tutorials.studyCells.reference": "Aberto a referência de reservas baseadas em células",
+  "workbench.tools": "Ferramentas",
+  "workbench.select": "Selecionar",
+  "workbench.checks": "Verificações",
+  "workbench.common": "Comuns",
+  "workbench.pin": "Fixar aberto",
+  "workbench.unpin": "Fechar biblioteca",
+  "workbench.shortcuts": "Atalhos",
+  "workbench.checksName": "Verificações, {warnings}",
+  "workbench.warnings": "{count, plural, one {# aviso} other {# avisos}}"
 }

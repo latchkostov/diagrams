@@ -1736,7 +1736,7 @@
   "tutorials.mobileApi.summary": "Umieść aplikację mobilną i wywoływany przez nią interfejs API, połącz je, a następnie na żywo i obserwuj przepływ żądań.",
   "tutorials.mobileApi.diagramTitle": "Mój pierwszy koncert diagram",
   "tutorials.mobileApi.addAppTitle": "Dodaj aplikację mobilną",
-  "tutorials.mobileApi.addAppGoal": "Znajdź Aplikacja mobilna w wzornik po lewej stronie i kliknij go. Wpisanie „{word}” w wyszukiwarce powoduje szybkie znalezienie.",
+  "tutorials.mobileApi.addAppGoal": "Kliknij Dodaj, wyszukaj „{word}” i wybierz Aplikację mobilną.",
   "tutorials.mobileApi.addAppTipSearch": "Wpisz tutaj „{word}”.",
   "tutorials.mobileApi.addAppTipItem": "Kliknij, aby go dodać",
   "tutorials.mobileApi.addAppTipRail": "Otwarte wzornik",
@@ -2314,7 +2314,7 @@
   "tutorials.apiGateway.ordersName": "Zamówienia",
   "tutorials.apiGateway.usersName": "Użytkownicy",
   "tutorials.apiGateway.addAppTitle": "Dodaj aplikację mobilną",
-  "tutorials.apiGateway.addAppGoal": "Wyszukaj szynę wzornik pod kątem {query}, a następnie wybierz Aplikacja mobilna.",
+  "tutorials.apiGateway.addAppGoal": "Kliknij Dodaj, wyszukaj „{query}” i wybierz Aplikację mobilną.",
   "tutorials.apiGateway.addAppDone": "Aplikacja mobilna jest źródłem żądań w Na żywo.",
   "tutorials.apiGateway.addGwTitle": "Dodaj brama",
   "tutorials.apiGateway.addGwGoal": "Wybierz aplikację, kliknij jej +, następnie wybierz Kong brama i naciśnij Enter.",
@@ -2765,5 +2765,14 @@
   "tutorials.studyCells.evacuateTitle": "Ewakuuj region",
   "tutorials.studyCells.evacuateDone": "Sprawny drugi region z zapasowym pojemność przyjmuje rezerwacje, gdy wpisy w pierwszym regionie przestają działać.",
   "tutorials.studyCells.finish": "Porównaj wpisy regionalne odniesienia i uzupełnij komórki. Jakiego przechowywania, replikacji i pojemność potrzebuje każda z twoich uproszczonych komórek przed prawdziwą ewakuacją?",
-  "tutorials.studyCells.reference": "Otwarte numer rezerwacji opartej na komórkach"
+  "tutorials.studyCells.reference": "Otwarte numer rezerwacji opartej na komórkach",
+  "workbench.tools": "Narzędzia",
+  "workbench.select": "Zaznacz",
+  "workbench.checks": "Kontrole",
+  "workbench.common": "Popularne",
+  "workbench.pin": "Przypnij otwarte",
+  "workbench.unpin": "Zamknij bibliotekę",
+  "workbench.shortcuts": "Skróty",
+  "workbench.checksName": "Kontrole, {warnings}",
+  "workbench.warnings": "{count, plural, one {# ostrzeżenie} few {# ostrzeżenia} many {# ostrzeżenia} other {# ostrzeżenia}}"
 }

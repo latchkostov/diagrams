@@ -1735,7 +1735,7 @@
   "tutorials.mobileApi.summary": "Tempatkan aplikasi seluler dan API yang dipanggilnya, sambungkan, lalu Live dan lihat aliran permintaan.",
   "tutorials.mobileApi.diagramTitle": "Live pertamaku diagram",
   "tutorials.mobileApi.addAppTitle": "Tambahkan aplikasi seluler",
-  "tutorials.mobileApi.addAppGoal": "Temukan Aplikasi seluler di stensil di sebelah kiri dan klik. Mengetik “{word}” dalam pencarian akan menemukannya dengan cepat.",
+  "tutorials.mobileApi.addAppGoal": "Klik Tambah, cari “{word}”, lalu pilih Aplikasi Seluler.",
   "tutorials.mobileApi.addAppTipSearch": "Ketik “{word}” di sini",
   "tutorials.mobileApi.addAppTipItem": "Klik untuk menambahkannya",
   "tutorials.mobileApi.addAppTipRail": "Membuka yang stensil",
@@ -2311,7 +2311,7 @@
   "tutorials.apiGateway.ordersName": "Pesanan",
   "tutorials.apiGateway.usersName": "Pengguna",
   "tutorials.apiGateway.addAppTitle": "Tambahkan aplikasi seluler",
-  "tutorials.apiGateway.addAppGoal": "Telusuri rel stensil untuk {query}, lalu pilih Aplikasi seluler.",
+  "tutorials.apiGateway.addAppGoal": "Klik Tambah, cari “{query}”, lalu pilih Aplikasi Seluler.",
   "tutorials.apiGateway.addAppDone": "Aplikasi seluler adalah sumber permintaan di Hidup.",
   "tutorials.apiGateway.addGwTitle": "Tambahkan gateway",
   "tutorials.apiGateway.addGwGoal": "Pilih aplikasi, klik +, lalu pilih Kong gateway dan tekan Enter.",
@@ -2763,5 +2763,14 @@
   "tutorials.studyCells.evacuateTitle": "Evakuasi suatu wilayah",
   "tutorials.studyCells.evacuateDone": "Wilayah kedua yang sehat dengan kapasitas cadangan menerima pemesanan ketika entri wilayah pertama turun.",
   "tutorials.studyCells.finish": "Bandingkan entri regional referensi dan sel lengkap. Penyimpanan, replikasi, dan kapasitas apa yang dibutuhkan setiap sel Anda yang disederhanakan sebelum evakuasi sebenarnya?",
-  "tutorials.studyCells.reference": "Membuka referensi pemesanan berbasis sel"
+  "tutorials.studyCells.reference": "Membuka referensi pemesanan berbasis sel",
+  "workbench.tools": "Alat",
+  "workbench.select": "Pilih",
+  "workbench.checks": "Pemeriksaan",
+  "workbench.common": "Umum",
+  "workbench.pin": "Sematkan terbuka",
+  "workbench.unpin": "Tutup pustaka",
+  "workbench.shortcuts": "Pintasan",
+  "workbench.checksName": "Pemeriksaan, {warnings}",
+  "workbench.warnings": "{count, plural, other {# peringatan}}"
 }

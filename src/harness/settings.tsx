@@ -14,6 +14,7 @@ export interface Settings {
   nodeVariant: NodeVariantId;
   edgeStyle: EdgeStyle;
   theme: Theme;
+  libraryPinned?: boolean;
 }
 
 interface SettingsApi extends Settings {
@@ -37,6 +38,7 @@ export function initialSettings(): Settings {
       nodeVariant: isNodeVariantId(saved.nodeVariant) ? saved.nodeVariant : fallback.nodeVariant,
       edgeStyle: isEdgeStyle(saved.edgeStyle) ? saved.edgeStyle : fallback.edgeStyle,
       theme: saved.theme === "dark" || saved.theme === "light" ? saved.theme : fallback.theme,
+      libraryPinned: saved.libraryPinned === true,
     };
   } catch {
     return fallback;

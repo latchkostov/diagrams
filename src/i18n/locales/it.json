@@ -1736,7 +1736,7 @@
   "tutorials.mobileApi.summary": "Inserisci un'app mobile e l'API che richiama, collegale, quindi live e osserva il flusso delle richieste.",
   "tutorials.mobileApi.diagramTitle": "Il mio primo live diagramma",
   "tutorials.mobileApi.addAppTitle": "Aggiungi un'app mobile",
-  "tutorials.mobileApi.addAppGoal": "Trova App mobile in stencil a sinistra e fai clic su di esso. Digitando \"{word}\" nella ricerca si trova velocemente.",
+  "tutorials.mobileApi.addAppGoal": "Fai clic su Aggiungi, cerca “{word}” e scegli App mobile.",
   "tutorials.mobileApi.addAppTipSearch": "Digitare qui “{word}”.",
   "tutorials.mobileApi.addAppTipItem": "Clicca per aggiungerlo",
   "tutorials.mobileApi.addAppTipRail": "Aprire il stencil",
@@ -2315,7 +2315,7 @@
   "tutorials.apiGateway.ordersName": "Ordini",
   "tutorials.apiGateway.usersName": "Utenti",
   "tutorials.apiGateway.addAppTitle": "Aggiungere l'app mobile",
-  "tutorials.apiGateway.addAppGoal": "Cerca il {query} nella ferrovia stencil, quindi seleziona App mobile.",
+  "tutorials.apiGateway.addAppGoal": "Fai clic su Aggiungi, cerca “{query}” e scegli App {query}.",
   "tutorials.apiGateway.addAppDone": "Un'app mobile è un'origine di richieste in Vivere.",
   "tutorials.apiGateway.addGwTitle": "Aggiungi un gateway",
   "tutorials.apiGateway.addGwGoal": "Seleziona l'app, fai clic sul suo +, quindi seleziona Kong gateway e premi Invio.",
@@ -2782,5 +2782,14 @@
   "tutorials.studyCells.evacuateTitle": "Evacuare una regione",
   "tutorials.studyCells.evacuateDone": "Una seconda regione sana con capacità di riserva accetta prenotazioni quando le voci della prima regione diminuiscono.",
   "tutorials.studyCells.finish": "Confronta le voci regionali del riferimento e le celle complete. Di quale storage, replica e capacità avrebbe bisogno ciascuna delle vostre celle semplificate prima di una vera evacuazione?",
-  "tutorials.studyCells.reference": "Aprire il riferimento delle prenotazioni basate su cellulare"
+  "tutorials.studyCells.reference": "Aprire il riferimento delle prenotazioni basate su cellulare",
+  "workbench.tools": "Strumenti",
+  "workbench.select": "Seleziona",
+  "workbench.checks": "Controlli",
+  "workbench.common": "Comuni",
+  "workbench.pin": "Fissa aperto",
+  "workbench.unpin": "Chiudi libreria",
+  "workbench.shortcuts": "Scorciatoie",
+  "workbench.checksName": "Controlli, {warnings}",
+  "workbench.warnings": "{count, plural, one {# avviso} other {# avvisi}}"
 }

@@ -1,3 +1,4 @@
+import { openLibrary } from "./fixtures";
 import { openLiveNodeDetails } from "./fixtures";
 import { test, expect, gotoCanvas, gotoLive, expectNoErrors } from "./fixtures";
 
@@ -13,6 +14,7 @@ test.describe("network devices", () => {
     consoleErrors,
   }) => {
     await gotoCanvas(page, SLUG);
+    await openLibrary(page);
     const search = page.getByTestId("palette-search");
     await expect(search).toBeVisible();
     for (const q of ["3825", "ISR"]) {

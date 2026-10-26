@@ -1,3 +1,4 @@
+import { openLibrary } from "./fixtures";
 import { chunk, holdChunk, releaseAndEvaluate } from "./chunk";
 import { waitForStableViewport } from "./fixtures";
 import { currentDiagram } from "./fixtures";
@@ -79,7 +80,9 @@ test.describe("first run", () => {
     await page.goto("./");
     await page.getByTestId("start-blank").click();
     await expect(page.getByTestId("start-card")).toHaveCount(0);
+    await openLibrary(page);
     await expect(page.getByTestId("palette-search")).toBeFocused();
+    await openLibrary(page);
     await expect(page.getByTestId("palette-search")).toBeFocused();
     await page.keyboard.type("kafka topic");
     await page.keyboard.press("Enter");
@@ -97,6 +100,7 @@ test.describe("first run", () => {
     await page.goto("./");
     await page.getByTestId("start-blank").click();
     await page.getByTestId("canvas-view").evaluate((el) => el.setAttribute("data-test-instance", "kept"));
+    await openLibrary(page);
     await expect(page.getByTestId("palette-search")).toBeFocused();
     await page.keyboard.type("kafka topic");
     await page.keyboard.press("Enter");
@@ -112,6 +116,7 @@ test.describe("first run", () => {
   test("File > New diagram starts a blank one and keeps the previous in Your diagrams", async ({ page }) => {
     await page.goto("./");
     await page.getByTestId("start-blank").click();
+    await openLibrary(page);
     await expect(page.getByTestId("palette-search")).toBeFocused();
     await page.keyboard.type("kafka topic");
     await page.keyboard.press("Enter");
@@ -331,9 +336,11 @@ test("held discovery does not reopen a dismissed start card or steal placement f
     await page.goto("./");
     await expect.poll(held.requested).toBe(true);
     await page.getByTestId("start-blank").click();
+    await openLibrary(page);
     await expect(page.getByTestId("palette-search")).toBeFocused();
     await releaseAndEvaluate(page, pattern, held.release);
     await expect(page.getByTestId("start-card")).toHaveCount(0);
+    await openLibrary(page);
     await expect(page.getByTestId("palette-search")).toBeFocused();
   } finally {
     held.release();

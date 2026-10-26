@@ -1,3 +1,4 @@
+import { openLibrary } from "./fixtures";
 import {
   waitForHistoryIdle,
   waitForAutosave,
@@ -719,12 +720,15 @@ test.describe("the stencil rail (D13)", () => {
       };
     });
     await seed(page);
+    await openLibrary(page);
     await expect(page.getByTestId("palette-search")).toBeVisible();
   });
 
   /** Finds a stencil in the rail. */
   async function railItem(page: Page, query: string, id: string) {
+    await openLibrary(page);
     await page.getByTestId("palette-search").fill(query);
+    await openLibrary(page);
     const item = page.getByTestId(`palette-item-${id}`);
     await expect(item).toBeVisible();
     return item;
@@ -843,6 +847,7 @@ test.describe("the stencil rail (D13)", () => {
     await page.getByTestId("node-hub").click();
     await page.keyboard.press("Escape");
     await expect(page.getByTestId("palette-after")).toHaveCount(0);
+    await openLibrary(page);
     await page.getByTestId(`palette-item-redis.cache`).click();
     d = await savedWhen(page, (s) => s.nodes.length === 6);
     expect(d.edges).toHaveLength(1);
@@ -1186,6 +1191,7 @@ test("typing in another field during a cold rename stays there across commits an
     await page.keyboard.press("F2");
     await page.keyboard.type("ab");
     // Focus leaves the canvas for the stencil search (as Tab or a script would), without a press.
+    await openLibrary(page);
     const search = page.getByTestId("palette-search");
     await search.focus();
     await page.keyboard.type("redis");

@@ -22,7 +22,7 @@ async function openFixture(page: Page) {
     buffer: FIXTURE,
   });
   await expect(page.getByTestId("diagram-title")).toHaveText("Checkout shortcuts");
-  await expect(page.getByTestId("checks-count")).toHaveText("1 warning");
+  await expect(page.getByTestId("checks-count").getByTestId("checks-warning-text")).toHaveText("1 warning");
   await page.getByTestId("checks-count").click();
   await expect(card(page)).toBeVisible();
 }
@@ -37,13 +37,13 @@ test("a service using another's database: Ask the owner instead, in one undo ste
   await page.getByTestId(`check-fix-${SHARED}`).click();
   await expect(page.getByTestId("toast")).toContainText("Ask Order service instead: done");
   await expect(row(page, SHARED)).toHaveCount(0);
-  await expect(page.getByTestId("checks-count")).toHaveCount(0);
+  await expect(page.getByTestId("checks-warning-badge")).toHaveCount(0);
   // Billing now asks the order service; its flow into the database is gone.
   await expect(page.getByTestId("edge-billing-db")).toHaveCount(0);
 
   await page.getByTestId("check-fix-undo").click();
   await expect(row(page, SHARED)).toBeVisible();
-  await expect(page.getByTestId("checks-count")).toHaveText("1 warning");
+  await expect(page.getByTestId("checks-count").getByTestId("checks-warning-text")).toHaveText("1 warning");
   expectNoErrors(consoleErrors);
 });
 
@@ -109,7 +109,7 @@ async function openLedger(page: Page) {
     buffer: LEDGER,
   });
   await expect(page.getByTestId("diagram-title")).toHaveText("Payments ledger");
-  await expect(page.getByTestId("checks-count")).toHaveText("1 warning");
+  await expect(page.getByTestId("checks-count").getByTestId("checks-warning-text")).toHaveText("1 warning");
   await page.getByTestId("checks-count").click();
   await expect(card(page)).toBeVisible();
   await expect(page.getByTestId("checks-summary")).toHaveText("1 warning · 1 suggestion");
@@ -129,14 +129,14 @@ test("Avro without a schema registry: Add Schema Registry, in one undo step", as
   await expect(page.getByTestId("toast")).toContainText("Added Schema Registry");
   await expect.poll(() => nodes.count()).toBe(before + 1);
   await expect(warning).toHaveCount(0);
-  await expect(page.getByTestId("checks-count")).toHaveCount(0);
+  await expect(page.getByTestId("checks-warning-badge")).toHaveCount(0);
   // The flow is as it was: the topic still feeds the ledger writer.
   await expect(page.getByTestId("edge-payments-ledger")).toHaveCount(1);
 
   await page.getByTestId("check-fix-undo").click();
   await expect.poll(() => nodes.count()).toBe(before);
   await expect(warning).toBeVisible();
-  await expect(page.getByTestId("checks-count")).toHaveText("1 warning");
+  await expect(page.getByTestId("checks-count").getByTestId("checks-warning-text")).toHaveText("1 warning");
   expectNoErrors(consoleErrors);
 });
 

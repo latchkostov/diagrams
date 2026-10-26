@@ -39,11 +39,13 @@ export const apiGateway: Tutorial = {
       done: msg("tutorials.apiGateway.addAppDone"),
       check: { kind: "node", subject: "app" },
       targets: [
+        { testId: "rail-add", tip: msg("tutorials.mobileApi.addAppTipRail") },
         { testId: "palette-search", tip: addAppGoalWords },
         { testId: "palette-item-client.mobile", tip: addAppGoalWords },
       ],
       demo: [{ kind: "add", subject: "app", stencil: "client.mobile" }],
       solution: [
+        { click: "rail-add" },
         { fill: "palette-search", text: stencilSearch("client.mobile") },
         { click: "palette-item-client.mobile" },
       ],

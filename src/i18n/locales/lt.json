@@ -1735,7 +1735,7 @@
   "tutorials.mobileApi.summary": "Įdėkite programą mobiliesiems ir API, kuriai ji skambina, prijunkite jas, tada Live ir stebėkite užklausų srautą.",
   "tutorials.mobileApi.diagramTitle": "Mano pirmasis gyvas diagrama",
   "tutorials.mobileApi.addAppTitle": "Pridėkite programą mobiliesiems",
-  "tutorials.mobileApi.addAppGoal": "Suraskite Mobilioji programa trafaretas kairėje ir spustelėkite jį. Paieškoje įvedus „{word}“, jis greitai surandamas.",
+  "tutorials.mobileApi.addAppGoal": "Spustelėkite Pridėti, ieškokite „{word}“ ir pasirinkite Mobiliąją programėlę.",
   "tutorials.mobileApi.addAppTipSearch": "Čia įveskite „{word}“.",
   "tutorials.mobileApi.addAppTipItem": "Spustelėkite, kad pridėtumėte",
   "tutorials.mobileApi.addAppTipRail": "Atidaryti trafaretas",
@@ -2310,7 +2310,7 @@
   "tutorials.apiGateway.ordersName": "Užsakymai",
   "tutorials.apiGateway.usersName": "Vartotojai",
   "tutorials.apiGateway.addAppTitle": "Pridėkite programą mobiliesiems",
-  "tutorials.apiGateway.addAppGoal": "Ieškokite trafaretas geležinkelio {query}, tada pasirinkite Mobilioji programa.",
+  "tutorials.apiGateway.addAppGoal": "Spustelėkite Pridėti, ieškokite „{query}“ ir pasirinkite Mobiliąją programėlę.",
   "tutorials.apiGateway.addAppDone": "Programėlė mobiliesiems yra užklausų šaltinis Tiesiogiai.",
   "tutorials.apiGateway.addGwTitle": "Pridėti šliuzas",
   "tutorials.apiGateway.addGwGoal": "Pasirinkite programą, spustelėkite jos +, tada pasirinkite Kong šliuzas ir paspauskite Enter.",
@@ -2748,5 +2748,14 @@
   "tutorials.studyCells.evacuateTitle": "Evakuokite regioną",
   "tutorials.studyCells.evacuateDone": "Sveikas antrasis regionas su atsarginiu pajėgumas priima užsakymus, kai sumažėja pirmojo regiono įrašas.",
   "tutorials.studyCells.finish": "Palyginkite nuorodos regioninius įrašus ir užpildykite langelius. Kokios saugyklos, replikacijos ir pajėgumas reikėtų kiekvienai supaprastintai ląstelei prieš realią evakuaciją?",
-  "tutorials.studyCells.reference": "Atidaryti ląstelių rezervavimo nuoroda"
+  "tutorials.studyCells.reference": "Atidaryti ląstelių rezervavimo nuoroda",
+  "workbench.tools": "Įrankiai",
+  "workbench.select": "Pasirinkti",
+  "workbench.checks": "Patikros",
+  "workbench.common": "Dažniausi",
+  "workbench.pin": "Prisegti atvertą",
+  "workbench.unpin": "Uždaryti biblioteką",
+  "workbench.shortcuts": "Spartieji klavišai",
+  "workbench.checksName": "Patikros, {warnings}",
+  "workbench.warnings": "{count, plural, one {# įspėjimas} few {# įspėjimai} other {# įspėjimai}}"
 }

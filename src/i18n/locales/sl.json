@@ -1735,7 +1735,7 @@
   "tutorials.mobileApi.summary": "Namestite mobilno aplikacijo in API, ki ga kliče, ju povežite, nato v živo in opazujte, kako zahteve tečejo.",
   "tutorials.mobileApi.diagramTitle": "Moj prvi live diagram",
   "tutorials.mobileApi.addAppTitle": "Dodajte mobilno aplikacijo",
-  "tutorials.mobileApi.addAppGoal": "Poiščite Mobilna aplikacija v šablona na levi in ga kliknite. Če v iskanje vnesete »{word}«, ga hitro najdete.",
+  "tutorials.mobileApi.addAppGoal": "Kliknite Dodaj, poiščite »{word}« in izberite Mobilno aplikacijo.",
   "tutorials.mobileApi.addAppTipSearch": "Tukaj vnesite »{word}«.",
   "tutorials.mobileApi.addAppTipItem": "Kliknite, če ga želite dodati",
   "tutorials.mobileApi.addAppTipRail": "Odpri šablona",
@@ -2313,7 +2313,7 @@
   "tutorials.apiGateway.ordersName": "Naročila",
   "tutorials.apiGateway.usersName": "Uporabniki",
   "tutorials.apiGateway.addAppTitle": "Dodajte mobilno aplikacijo",
-  "tutorials.apiGateway.addAppGoal": "Poiščite šablona tirnico za {query}, nato izberite Mobilna aplikacija.",
+  "tutorials.apiGateway.addAppGoal": "Kliknite Dodaj, poiščite »{query}« in izberite Mobilno aplikacijo.",
   "tutorials.apiGateway.addAppDone": "Mobilna aplikacija je vir zahtev v V živo.",
   "tutorials.apiGateway.addGwTitle": "Dodajte prehod",
   "tutorials.apiGateway.addGwGoal": "Izberite aplikacijo, kliknite njen +, nato izberite Kong prehod in pritisnite Enter.",
@@ -2775,5 +2775,14 @@
   "tutorials.studyCells.evacuateTitle": "Evakuirajte regijo",
   "tutorials.studyCells.evacuateDone": "Zdrava druga regija z rezervnim zmogljivost sprejme rezervacije, ko se vnos prve regije zmanjša.",
   "tutorials.studyCells.finish": "Primerjajte regionalne vnose sklica in celotne celice. Kakšno shranjevanje, replikacijo in zmogljivost bi potrebovala vsaka od vaših poenostavljenih celic pred pravo evakuacijo?",
-  "tutorials.studyCells.reference": "Odpri referenca rezervacij v celici"
+  "tutorials.studyCells.reference": "Odpri referenca rezervacij v celici",
+  "workbench.tools": "Orodja",
+  "workbench.select": "Izberi",
+  "workbench.checks": "Preverjanja",
+  "workbench.common": "Pogosto",
+  "workbench.pin": "Pripni odprto",
+  "workbench.unpin": "Zapri knjižnico",
+  "workbench.shortcuts": "Bližnjice",
+  "workbench.checksName": "Preverjanja, {warnings}",
+  "workbench.warnings": "{count, plural, one {# opozorilo} two {# opozorila} few {# opozorila} other {# opozorila}}"
 }

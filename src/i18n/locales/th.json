@@ -1735,7 +1735,7 @@
   "tutorials.mobileApi.summary": "วางแอปมือถือและ API ที่เรียกใช้ เชื่อมต่อ จากนั้น ไลฟ์ และเฝ้าดูคำขอไหล",
   "tutorials.mobileApi.diagramTitle": "ไลฟ์ครั้งแรกของฉัน ไดอะแกรม",
   "tutorials.mobileApi.addAppTitle": "เพิ่มแอปมือถือ",
-  "tutorials.mobileApi.addAppGoal": "ค้นหา แอปมือถือ ใน สเตนซิล ทางด้านซ้ายแล้วคลิก การพิมพ์ “{word}” ในการค้นหาพบว่ารวดเร็ว",
+  "tutorials.mobileApi.addAppGoal": "คลิก เพิ่ม แล้วค้นหา “{word}” และเลือกแอปมือถือ",
   "tutorials.mobileApi.addAppTipSearch": "พิมพ์ “{word}” ที่นี่",
   "tutorials.mobileApi.addAppTipItem": "คลิกเพื่อเพิ่ม",
   "tutorials.mobileApi.addAppTipRail": "เปิด สเตนซิล",
@@ -2305,7 +2305,7 @@
   "tutorials.apiGateway.ordersName": "คำสั่งซื้อ",
   "tutorials.apiGateway.usersName": "ผู้ใช้",
   "tutorials.apiGateway.addAppTitle": "เพิ่มแอปมือถือ",
-  "tutorials.apiGateway.addAppGoal": "ค้นหาราง สเตนซิล สำหรับ{query} จากนั้นเลือก แอปมือถือ",
+  "tutorials.apiGateway.addAppGoal": "คลิก เพิ่ม แล้วค้นหา “{query}” และเลือกแอปมือถือ",
   "tutorials.apiGateway.addAppDone": "แอปบนอุปกรณ์เคลื่อนที่เป็นแหล่งที่มาของคำขอใน สด",
   "tutorials.apiGateway.addGwTitle": "เพิ่ม เกตเวย์",
   "tutorials.apiGateway.addGwGoal": "เลือกแอป คลิก + จากนั้นเลือก Kong เกตเวย์ แล้วกด Enter",
@@ -2750,5 +2750,14 @@
   "tutorials.studyCells.evacuateTitle": "อพยพออกจากพื้นที่",
   "tutorials.studyCells.evacuateDone": "ภูมิภาคที่สองที่ดีพร้อมสำรอง ความจุ จะทำการจองเมื่อรายการของภูมิภาคแรกลดลง",
   "tutorials.studyCells.finish": "เปรียบเทียบรายการภูมิภาคของข้อมูลอ้างอิงและเซลล์ทั้งหมด พื้นที่เก็บข้อมูล การจำลองแบบ และ ความจุ แต่ละเซลล์แบบง่ายของคุณต้องการพื้นที่เก็บข้อมูลใดก่อนการอพยพจริง",
-  "tutorials.studyCells.reference": "เปิด การอ้างอิงการจองตามเซลล์"
+  "tutorials.studyCells.reference": "เปิด การอ้างอิงการจองตามเซลล์",
+  "workbench.tools": "เครื่องมือ",
+  "workbench.select": "เลือก",
+  "workbench.checks": "การตรวจสอบ",
+  "workbench.common": "ที่ใช้บ่อย",
+  "workbench.pin": "ปักหมุดให้เปิดไว้",
+  "workbench.unpin": "ปิดคลัง",
+  "workbench.shortcuts": "ทางลัด",
+  "workbench.checksName": "การตรวจสอบ, {warnings}",
+  "workbench.warnings": "{count, plural, other {# คำเตือน}}"
 }

@@ -1,3 +1,5 @@
+import { openAnnotate } from "./fixtures";
+import { openLibrary } from "./fixtures";
 import {
   waitForHistoryIdle,
   waitForCameraIdle,
@@ -867,6 +869,7 @@ test.describe("annotations", () => {
     consoleErrors,
   }) => {
     await gotoCanvas(page, SLUG);
+    await openAnnotate(page);
     await page.getByTestId("palette-annotate-note").click();
     await typeAndCommit(page, "Keyboard note");
     const focused = () => annotation(page, "note-1").evaluate((el) => el.parentElement === document.activeElement);
@@ -899,6 +902,7 @@ test.describe("annotations", () => {
   }) => {
     await gotoCanvas(page, SLUG);
     await settle(page);
+    await openAnnotate(page);
     await page.getByTestId("palette-annotate-note").click();
     await expect(page.getByTestId("annotation-editor")).toBeFocused();
     await page.keyboard.insertText("x\n".repeat(1300));
@@ -1007,7 +1011,9 @@ test.describe("annotations", () => {
 
   test("adds from the stencil rail's Annotate group and edits in the inspector", async ({ page, consoleErrors }) => {
     await gotoCanvas(page, SLUG);
+    await openAnnotate(page);
     await expect(page.getByTestId("palette-annotate")).toBeAttached();
+    await openAnnotate(page);
     await page.getByTestId("palette-annotate-note").click();
     await typeAndCommit(page, "From the rail");
     await expect(page.getByTestId("annotation-text-note-1")).toHaveText("From the rail");
@@ -1022,14 +1028,19 @@ test.describe("annotations", () => {
     await expect.poll(async () => (await box(annotation(page, "note-1"))).width / before).toBeGreaterThan(1.5);
 
     // One Shape tile: a rectangle, whose outline the inspector changes.
+    await openAnnotate(page);
     await page.getByTestId("palette-annotate-shape").click();
     await expect(annotation(page, "shape-1")).toHaveAttribute("data-shape", "rect");
     await page.getByTestId("inspector-shape-diamond").click();
     await expect(annotation(page, "shape-1")).toHaveAttribute("data-shape", "diamond");
     // The search finds the Annotate items too, each outline by name.
+    await openLibrary(page);
     await page.getByTestId("palette-search").fill("sticky");
+    await openAnnotate(page);
     await expect(page.getByTestId("palette-annotate-note")).toBeVisible();
+    await openLibrary(page);
     await page.getByTestId("palette-search").fill("ellipse");
+    await openAnnotate(page);
     await page.getByTestId("palette-annotate-shape-ellipse").click();
     await expect(annotation(page, "shape-2")).toHaveAttribute("data-shape", "ellipse");
     expectNoErrors(consoleErrors);
@@ -1042,6 +1053,7 @@ test.describe("annotations", () => {
     await gotoCanvas(page, SLUG);
     await settle(page);
     for (const kind of ["note", "shape", "note", "text"] as const) {
+      await openAnnotate(page);
       await page.getByTestId(`palette-annotate-${kind}`).click();
       if (kind !== "shape") await page.keyboard.press("Escape");
     }
@@ -1098,6 +1110,7 @@ test.describe("annotations", () => {
 
   test("resize, undo / redo, copy / paste and delete", async ({ page, consoleErrors }) => {
     await gotoCanvas(page, SLUG);
+    await openAnnotate(page);
     await page.getByTestId("palette-annotate-note").click();
     await typeAndCommit(page, "Resize me");
     // Let the new note settle into its own undo step (history commits after a quiet moment).

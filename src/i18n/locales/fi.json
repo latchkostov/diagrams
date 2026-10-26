@@ -1736,7 +1736,7 @@
   "tutorials.mobileApi.summary": "Aseta mobiilisovellus ja sen kutsuma API, yhdistä ne, sitten Live ja katso pyyntöjen virtausta.",
   "tutorials.mobileApi.diagramTitle": "Ensimmäinen live-esitykseni kaavio",
   "tutorials.mobileApi.addAppTitle": "Lisää mobiilisovellus",
-  "tutorials.mobileApi.addAppGoal": "Etsi Mobiilisovellus vasemmalla olevasta kaavain:sta ja napsauta sitä. Kirjoittamalla \"{word}\" hakuun löytää sen nopeasti.",
+  "tutorials.mobileApi.addAppGoal": "Napsauta Lisää, etsi ”{word}” ja valitse Mobiilisovellus.",
   "tutorials.mobileApi.addAppTipSearch": "Kirjoita \"{word}\" tähän",
   "tutorials.mobileApi.addAppTipItem": "Lisää se napsauttamalla",
   "tutorials.mobileApi.addAppTipRail": "Avata kaavain",
@@ -2311,7 +2311,7 @@
   "tutorials.apiGateway.ordersName": "Tilaukset",
   "tutorials.apiGateway.usersName": "Käyttäjät",
   "tutorials.apiGateway.addAppTitle": "Lisää mobiilisovellus",
-  "tutorials.apiGateway.addAppGoal": "Hae {query} kaavain-junasta ja valitse sitten Mobiilisovellus.",
+  "tutorials.apiGateway.addAppGoal": "Napsauta Lisää, etsi ”{query}” ja valitse Mobiilisovellus.",
   "tutorials.apiGateway.addAppDone": "Mobiilisovellus on pyyntöjen lähde verkkotunnuksessa Elää.",
   "tutorials.apiGateway.addGwTitle": "Lisää yhdyskäytävä",
   "tutorials.apiGateway.addGwGoal": "Valitse sovellus, napsauta sen +, valitse Kong yhdyskäytävä ja paina Enter.",
@@ -2768,5 +2768,14 @@
   "tutorials.studyCells.evacuateTitle": "Evakuoi alue",
   "tutorials.studyCells.evacuateDone": "Terve toinen alue, jolla on ylimääräinen kapasiteetti, ottaa varauksia, kun ensimmäisen alueen merkintä laskee.",
   "tutorials.studyCells.finish": "Vertaa viitteen alueellisia merkintöjä ja täytä soluja. Mitä tallennustilaa, replikointia ja kapasiteetti kukin yksinkertaistettu solusi tarvitsee ennen todellista evakuointia?",
-  "tutorials.studyCells.reference": "Avata solupohjaisten varausten viite"
+  "tutorials.studyCells.reference": "Avata solupohjaisten varausten viite",
+  "workbench.tools": "Työkalut",
+  "workbench.select": "Valitse",
+  "workbench.checks": "Tarkistukset",
+  "workbench.common": "Yleiset",
+  "workbench.pin": "Kiinnitä auki",
+  "workbench.unpin": "Sulje kirjasto",
+  "workbench.shortcuts": "Pikanäppäimet",
+  "workbench.checksName": "Tarkistukset, {warnings}",
+  "workbench.warnings": "{count, plural, one {# varoitus} other {# varoitusta}}"
 }

@@ -82,7 +82,7 @@ import { DiagramContext, type DiagramUi, type InlineEdit, type RenameTarget } fr
 import { canvasNodeTypes } from "./nodes/nodeTypes";
 import { ANNOTATION_DND_MIME, resolveAnnotationColor, annotationTitle } from "./annotations";
 import { EdgeMarkers, FlowEdge } from "./edges/FlowEdge";
-import { Palette, STENCIL_DND_MIME } from "./Palette";
+import { Palette, AnnotateGroup, ANNOTATE, STENCIL_DND_MIME } from "./Palette";
 import { Inspector } from "./Inspector";
 import { ContextMenu } from "../components/ContextMenu";
 import { actionRegistry } from "../editor/actions";
@@ -98,7 +98,7 @@ import type { DiagramFlowEdge, FlowNode } from "./types";
 
 import { LiveView, type LiveHandle, type LiveViewProps } from "../live/LiveView";
 import { CanvasFitContext } from "./canvasFit";
-import { safeStorage } from "../lib/storage";
+import { tools, useToolSurface } from "./chrome/tools";
 import type { StartOptions } from "./StartCard";
 import { useAiDock } from "../ai/ui/dock";
 const NodeTipLayer = defineLazySurface({
@@ -180,7 +180,6 @@ const HIDE_ATTRIBUTION = { hideAttribution: true };
  * wrapper: everything handed to <ReactFlow> keeps its identity across the canvas's renders.
  */
 const SNAP_GRID: [number, number] = [10, 10];
-const PALETTE_KEY = "diagrams.paletteCollapsed.v1";
 /** Below this width the inspector waits for a selection: two open side panels leave too little canvas. */
 const ROOMY = 1680;
 const CRAMPED = 1280;
@@ -257,7 +256,9 @@ function CanvasInner({
   room,
 }: Props) {
   const locale = useLocale();
-  const { theme, nodeVariant, edgeStyle } = useSettings();
+  const settings = useSettings();
+  const { theme, nodeVariant, edgeStyle } = settings;
+  const toolSurface = useToolSurface();
   const { screenToFlowPosition, getNode, getNodes } = useReactFlow<FlowNode, DiagramFlowEdge>();
   const store = useStoreApi<FlowNode, DiagramFlowEdge>();
   const wrapper = useRef<HTMLDivElement>(null);
@@ -286,12 +287,6 @@ function CanvasInner({
   const [edges, setEdges, onEdgesChange] = useEdgesState<DiagramFlowEdge>(flow.edges);
   const [modified, setModified] = useState(loadedJson !== originalJson);
   const [bootstrapFit] = useState(() => flow.nodes.some((n) => !n.hidden));
-  const [paletteCollapsed, setPaletteCollapsed] = useState(() => {
-    const saved = safeStorage.getItem(PALETTE_KEY);
-    // Narrow windows always start with the canvas, not the stencil list.
-    return saved && window.innerWidth >= 1280 ? saved === "1" : window.innerWidth < 1400;
-  });
-  useEffect(() => void safeStorage.setItem(PALETTE_KEY, paletteCollapsed ? "1" : "0"), [paletteCollapsed]);
   const [prefs, setPref] = useEditorPrefs();
   const [sheetResize, setSheetResize] = useState(0);
   // Live mode and narrow windows fold the side panels away by default; opening one by hand wins.
@@ -955,7 +950,7 @@ function CanvasInner({
   );
   // Below ROOMY an open AI panel folds the stencils to their rail too, as live view does: at 1440 the
   // dock, the stencils and the inspector's rail left the diagram 780 px.
-  const paletteHidden = paletteCollapsed || ((live || (narrow && aiDockOpen)) && !openedByHand.palette);
+  const paletteHidden = !settings.libraryPinned && toolSurface !== "library";
   const settledEmpty = useSettledSelection({ wrapper, editGestures, controller, nothingSelected });
   const inspectorHidden =
     livePanelOpen ||
@@ -1012,9 +1007,9 @@ function CanvasInner({
   );
   // Stable, so the memoized stencil rail skips the canvas's frequent renders (drag, select, zoom).
   const togglePalette = useCallback(() => {
-    setPaletteCollapsed(!paletteHidden);
-    setOpenedByHand((o) => ({ ...o, palette: paletteHidden }));
-  }, [paletteHidden]);
+    settings.set("libraryPinned", !settings.libraryPinned);
+    tools.open("closed");
+  }, [settings]);
   const addFromPalette = useAddFromPalette(editor, live, interaction);
   const viewerDiagram = useMemo(
     () => (readOnly ? fromFlow(meta, nodes, edges) : undefined),
@@ -1031,6 +1026,67 @@ function CanvasInner({
   useEffect(() => railAnchor.set(live || hideChrome ? undefined : anchorLabel), [live, hideChrome, anchorLabel]);
   useEffect(() => () => railAnchor.set(undefined), []);
   const annotateFromPalette = useAnnotateFromPalette(editor, interaction);
+  useLayoutEffect(() => {
+    if (hideChrome) return;
+    return tools.connect({
+      live,
+      pinned: !!settings.libraryPinned,
+      checks,
+      select: () => {
+        editor.clearSelection();
+        interaction.dispatch({ type: "tool.focus", cause: "select" });
+      },
+      shortcuts: showShortcuts,
+    });
+  }, [hideChrome, live, settings.libraryPinned, checks, editor, showShortcuts]);
+  useLayoutEffect(() => {
+    if (toolSurface === "library") interaction.dispatch({ type: "tool.focus", cause: "library" });
+  }, [toolSurface, interaction]);
+  useEffect(() => {
+    if (toolSurface === "closed") return;
+    const outside = (event: PointerEvent) => {
+      const target = event.target;
+      if (
+        target instanceof Element &&
+        !target.closest(
+          '[data-testid="palette"], [data-testid="palette-annotate-flyout"], [data-testid="rail-add"], [data-testid="rail-annotate"]',
+        )
+      )
+        tools.open("closed");
+    };
+    const escape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      tools.open("closed");
+      const target = document.querySelector<HTMLElement>(
+        toolSurface === "library" ? '[data-testid="rail-add"]' : '[data-testid="rail-annotate"]',
+      );
+      interaction.dispatch({ type: "tool.focus", cause: "escape", target: target ?? undefined });
+    };
+    document.addEventListener("pointerdown", outside, true);
+    window.addEventListener("keydown", escape, true);
+    return () => {
+      document.removeEventListener("pointerdown", outside, true);
+      window.removeEventListener("keydown", escape, true);
+    };
+  }, [toolSurface, interaction]);
+  useEffect(
+    () =>
+      actionRegistry.register([
+        {
+          id: "canvas.add-stencil",
+          section: "insert",
+          targets: ["canvas"],
+          paletteOnly: true,
+          label: () => tr("command.addStencil"),
+          icon: "node-plus",
+          run: () => tools.open("library"),
+        },
+      ]),
+    [],
+  );
+
   const labels = useMemo(
     () =>
       new Map([
@@ -1101,7 +1157,6 @@ function CanvasInner({
             menu={menu}
             fit={fit}
             zoomedByButton={zoomedByButton}
-            onShortcuts={showShortcuts}
           />
         )}
         {!hideChrome && prefs.minimap && contentCount > 0 && <CanvasMinimap />}
@@ -1201,7 +1256,7 @@ function CanvasInner({
         onBlank={() => {
           setStartDismissed(true);
           // A blank canvas starts from the stencil list: open it and put the cursor in its search.
-          setPaletteCollapsed(false);
+          tools.open("library");
           setOpenedByHand((o) => ({ ...o, palette: true }));
           interaction.dispatch({ type: "start.blank" });
         }}
@@ -1368,11 +1423,24 @@ function CanvasInner({
             {!hideChrome && (
               <Palette
                 collapsed={paletteHidden}
+                mode={settings.libraryPinned ? "pinned" : "flyout"}
                 onToggle={togglePalette}
                 onAdd={addFromPalette}
                 onAnnotate={annotateFromPalette}
                 nodeVariant={nodeVariant}
               />
+            )}
+            {!hideChrome && toolSurface === "annotate" && (
+              <div className="annotate-flyout" data-testid="palette-annotate-flyout">
+                <AnnotateGroup
+                  items={ANNOTATE}
+                  className="is-flyout"
+                  onAdd={(kind, shape) => {
+                    annotateFromPalette(kind, shape);
+                    tools.open("closed");
+                  }}
+                />
+              </div>
             )}
             <div
               className={`canvas-wrap${diagramColor ? " has-diagram-color" : ""}`}
@@ -1434,7 +1502,10 @@ function CanvasInner({
               onDragLeave={(e) => {
                 if (!wrapper.current?.contains(e.relatedTarget as Node | null)) endRailDrop();
               }}
-              onDrop={onDrop}
+              onDrop={(e) => {
+                onDrop(e);
+                tools.open("closed");
+              }}
             >
               {EDGE_MARKERS}
               {!hideChrome && copyNotice && <CopyNotice text={copyNotice} />}

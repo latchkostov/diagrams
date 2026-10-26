@@ -1,3 +1,4 @@
+import { openLibrary } from "./fixtures";
 import { pauseClock, waitForCameraIdle, test, expect, gotoCanvas, expectNoErrors, gotoLive } from "./fixtures";
 import type { Page } from "@playwright/test";
 
@@ -76,10 +77,11 @@ for (const width of [1024, 1440]) {
 test("below 1680px the AI panel folds the stencils to their rail; opening them by hand wins", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await gotoCanvas(page, KAFKA);
+  await openLibrary(page);
   await expect(page.getByTestId("palette-search")).toBeVisible();
   await openAiPanel(page);
   await expect(page.getByTestId("palette-search")).toHaveCount(0);
-  await page.getByTestId("palette-toggle").click();
+  await openLibrary(page);
   await expect(page.getByTestId("palette-search")).toBeVisible();
 });
 

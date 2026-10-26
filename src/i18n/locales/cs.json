@@ -1735,7 +1735,7 @@
   "tutorials.mobileApi.summary": "Umístěte mobilní aplikaci a API, které volá, připojte je, poté živý režim a sledujte tok požadavků.",
   "tutorials.mobileApi.diagramTitle": "Můj první živý diagram",
   "tutorials.mobileApi.addAppTitle": "Přidejte mobilní aplikaci",
-  "tutorials.mobileApi.addAppGoal": "Najděte Mobilní aplikace v vzorník vlevo a klikněte na něj. Zadáním „{word}“ do vyhledávání jej najdete rychle.",
+  "tutorials.mobileApi.addAppGoal": "Klikněte na Přidat, vyhledejte „{word}“ a vyberte Mobilní aplikace.",
   "tutorials.mobileApi.addAppTipSearch": "Sem napište „{word}“.",
   "tutorials.mobileApi.addAppTipItem": "Kliknutím ji přidáte",
   "tutorials.mobileApi.addAppTipRail": "OTEVŘENO vzorník",
@@ -2311,7 +2311,7 @@
   "tutorials.apiGateway.ordersName": "Objednávky",
   "tutorials.apiGateway.usersName": "Uživatelé",
   "tutorials.apiGateway.addAppTitle": "Přidejte mobilní aplikaci",
-  "tutorials.apiGateway.addAppGoal": "Vyhledejte na kolejnici vzorník {query} a vyberte Mobilní aplikace.",
+  "tutorials.apiGateway.addAppGoal": "Klikněte na Přidat, vyhledejte „{query}“ a vyberte Mobilní aplikace.",
   "tutorials.apiGateway.addAppDone": "Mobilní aplikace je zdrojem požadavků v Žít.",
   "tutorials.apiGateway.addGwTitle": "Přidat brána",
   "tutorials.apiGateway.addGwGoal": "Vyberte aplikaci, klikněte na její +, poté vyberte Kong brána a stiskněte Enter.",
@@ -2762,5 +2762,14 @@
   "tutorials.studyCells.evacuateTitle": "Evakuujte oblast",
   "tutorials.studyCells.evacuateDone": "Zdravý druhý region s náhradním kapacita přijímá rezervace, když vstup prvního regionu klesá.",
   "tutorials.studyCells.finish": "Porovnejte regionální záznamy a úplné buňky odkazu. Jaké úložiště, replikaci a kapacita by každá z vašich zjednodušených buněk potřebovala před skutečnou evakuací?",
-  "tutorials.studyCells.reference": "OTEVŘENO odkaz na buňkové rezervace"
+  "tutorials.studyCells.reference": "OTEVŘENO odkaz na buňkové rezervace",
+  "workbench.tools": "Nástroje",
+  "workbench.select": "Výběr",
+  "workbench.checks": "Kontroly",
+  "workbench.common": "Běžné",
+  "workbench.pin": "Připnout otevřené",
+  "workbench.unpin": "Zavřít knihovnu",
+  "workbench.shortcuts": "Zkratky",
+  "workbench.checksName": "Kontroly, {warnings}",
+  "workbench.warnings": "{count, plural, one {# upozornění} few {# upozornění} other {# upozornění}}"
 }

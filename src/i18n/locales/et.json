@@ -1735,7 +1735,7 @@
   "tutorials.mobileApi.summary": "Asetage mobiilirakendus ja API, millele see helistab, ühendage need, seejärel Live ja jälgige päringute liikumist.",
   "tutorials.mobileApi.diagramTitle": "Minu esimene otseülekanne diagramm",
   "tutorials.mobileApi.addAppTitle": "Lisage mobiilirakendus",
-  "tutorials.mobileApi.addAppGoal": "Otsige üles Mobiilirakendus vasakul asuvast trafarett-st ja klõpsake seda. Kui sisestate otsingusse \"{word}\", leiate selle kiiresti.",
+  "tutorials.mobileApi.addAppGoal": "Klõpsa Lisa, otsi „{word}“ ja vali Mobiilirakendus.",
   "tutorials.mobileApi.addAppTipSearch": "Tippige siia \"{word}\".",
   "tutorials.mobileApi.addAppTipItem": "Klõpsake selle lisamiseks",
   "tutorials.mobileApi.addAppTipRail": "Avatud trafarett",
@@ -2311,7 +2311,7 @@
   "tutorials.apiGateway.ordersName": "Tellimused",
   "tutorials.apiGateway.usersName": "Kasutajad",
   "tutorials.apiGateway.addAppTitle": "Lisage mobiilirakendus",
-  "tutorials.apiGateway.addAppGoal": "Otsige {query}side jaoks trafarett rööbast, seejärel valige Mobiilirakendus.",
+  "tutorials.apiGateway.addAppGoal": "Klõpsa Lisa, otsi „{query}“ ja vali Mobiilirakendus.",
   "tutorials.apiGateway.addAppDone": "Mobiilirakendus on Otse päringute allikas.",
   "tutorials.apiGateway.addGwTitle": "Lisage lüüs",
   "tutorials.apiGateway.addGwGoal": "Valige rakendus, klõpsake selle +, seejärel valige Kong lüüs ja vajutage Enter.",
@@ -2763,5 +2763,14 @@
   "tutorials.studyCells.evacuateTitle": "Evakueerige piirkond",
   "tutorials.studyCells.evacuateDone": "Terve teine piirkond, millel on mahutavus, võtab broneeringuid vastu, kui esimese piirkonna kirje väheneb.",
   "tutorials.studyCells.finish": "Võrrelge viite piirkondlikke kirjeid ja täitke lahtrid. Millist salvestusruumi, replikatsiooni ja mahutavus vajavad teie lihtsustatud rakud enne tegelikku evakueerimist?",
-  "tutorials.studyCells.reference": "Avatud lahtripõhiste broneeringute viide"
+  "tutorials.studyCells.reference": "Avatud lahtripõhiste broneeringute viide",
+  "workbench.tools": "Tööriistad",
+  "workbench.select": "Vali",
+  "workbench.checks": "Kontrollid",
+  "workbench.common": "Levinud",
+  "workbench.pin": "Kinnita avatuna",
+  "workbench.unpin": "Sulge teek",
+  "workbench.shortcuts": "Otseteed",
+  "workbench.checksName": "Kontrollid, {warnings}",
+  "workbench.warnings": "{count, plural, one {# hoiatus} other {# hoiatust}}"
 }

@@ -1736,7 +1736,7 @@
   "tutorials.mobileApi.diagramTitle": "Min første live diagram",
   "tutorials.mobileApi.apiName": "Orders API",
   "tutorials.mobileApi.addAppTitle": "Legg til en mobilapp",
-  "tutorials.mobileApi.addAppGoal": "Finn Mobilapp i sjablong til venstre og klikk på den. Hvis du skriver \"{word}\" i søket, finner du det raskt.",
+  "tutorials.mobileApi.addAppGoal": "Klikk Legg til, søk etter «{word}» og velg Mobilapp.",
   "tutorials.mobileApi.addAppTipSearch": "Skriv \"{word}\" her",
   "tutorials.mobileApi.addAppTipItem": "Klikk for å legge den til",
   "tutorials.mobileApi.addAppTipRail": "Åpne the sjablong",
@@ -2313,7 +2313,7 @@
   "tutorials.apiGateway.ordersName": "Bestillinger",
   "tutorials.apiGateway.usersName": "Brukere",
   "tutorials.apiGateway.addAppTitle": "Legg til mobilappen",
-  "tutorials.apiGateway.addAppGoal": "Søk på sjablong-skinnen etter {query}, og velg deretter Mobilapp.",
+  "tutorials.apiGateway.addAppGoal": "Klikk Legg til, søk etter «{query}» og velg Mobilapp.",
   "tutorials.apiGateway.addAppDone": "En mobilapp er en kilde til forespørsler i Bo.",
   "tutorials.apiGateway.addGwTitle": "Legg til en gateway",
   "tutorials.apiGateway.addGwGoal": "Velg appen, klikk på +, velg Kong gateway og trykk på Enter.",
@@ -2772,5 +2772,14 @@
   "tutorials.studyCells.evacuateTitle": "Evakuer en region",
   "tutorials.studyCells.evacuateDone": "En sunn andre region med reserve kapasitet tar imot bestillinger når den første regionens oppføring går ned.",
   "tutorials.studyCells.finish": "Sammenlign referansens regionale oppføringer og fullstendige celler. Hvilken lagring, replikering og kapasitet vil hver av dine forenklede celler trenge før en reell evakuering?",
-  "tutorials.studyCells.reference": "Åpne den cellebaserte bookingreferansen"
+  "tutorials.studyCells.reference": "Åpne den cellebaserte bookingreferansen",
+  "workbench.tools": "Verktøy",
+  "workbench.select": "Velg",
+  "workbench.checks": "Kontroller",
+  "workbench.common": "Vanlige",
+  "workbench.pin": "Fest åpen",
+  "workbench.unpin": "Lukk bibliotek",
+  "workbench.shortcuts": "Snarveier",
+  "workbench.checksName": "Kontroller, {warnings}",
+  "workbench.warnings": "{count, plural, one {# advarsel} other {# advarsler}}"
 }

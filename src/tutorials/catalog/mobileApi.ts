@@ -31,10 +31,14 @@ export const mobileApi: Tutorial & { start(): DiagramFile } = {
       targets: [
         { testId: "palette-item-client.mobile", tip: msg("tutorials.mobileApi.addAppTipItem") },
         { testId: "palette-search", tip: () => t("tutorials.mobileApi.addAppTipSearch", { word: appWord() }) },
-        { testId: "palette-toggle", tip: msg("tutorials.mobileApi.addAppTipRail") },
+        { testId: "rail-add", tip: msg("tutorials.mobileApi.addAppTipRail") },
       ],
       demo: [{ kind: "add", subject: "app", stencil: "client.mobile" }],
-      solution: [{ fill: "palette-search", text: appWord }, { click: "palette-item-client.mobile" }],
+      solution: [
+        { click: "rail-add" },
+        { fill: "palette-search", text: appWord },
+        { click: "palette-item-client.mobile" },
+      ],
     },
     {
       id: "add-api",

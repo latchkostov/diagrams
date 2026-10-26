@@ -1735,7 +1735,7 @@
   "tutorials.mobileApi.summary": "Placer en mobilapp og den API, den kalder, tilslut dem, live og se, hvordan anmodningerne flyder.",
   "tutorials.mobileApi.diagramTitle": "Min første live diagram",
   "tutorials.mobileApi.addAppTitle": "Tilføj en mobilapp",
-  "tutorials.mobileApi.addAppGoal": "Find Mobilapp i stencil til venstre og klik på den. Hvis du skriver \"{word}\" i søgningen, finder du det hurtigt.",
+  "tutorials.mobileApi.addAppGoal": "Klik på Tilføj, søg efter “{word}”, og vælg Mobilapp.",
   "tutorials.mobileApi.addAppTipSearch": "Indtast \"{word}\" her",
   "tutorials.mobileApi.addAppTipItem": "Klik for at tilføje det",
   "tutorials.mobileApi.addAppTipRail": "Åben den stencil",
@@ -2313,7 +2313,7 @@
   "tutorials.apiGateway.ordersName": "Ordrer",
   "tutorials.apiGateway.usersName": "Brugere",
   "tutorials.apiGateway.addAppTitle": "Tilføj mobilappen",
-  "tutorials.apiGateway.addAppGoal": "Søg på stencil skinnen efter {query}, og vælg derefter Mobilapp.",
+  "tutorials.apiGateway.addAppGoal": "Klik på Tilføj, søg efter “{query}”, og vælg Mobilapp.",
   "tutorials.apiGateway.addAppDone": "En mobilapp er en kilde til anmodninger i Levende.",
   "tutorials.apiGateway.addGwTitle": "Tilføj en gateway",
   "tutorials.apiGateway.addGwGoal": "Vælg appen, klik på dens +, vælg derefter Kong gateway og tryk på Enter.",
@@ -2785,5 +2785,14 @@
   "tutorials.studyCells.evacuateTitle": "Evakuer en region",
   "tutorials.studyCells.evacuateDone": "En sund anden region med reserve kapacitet tager imod reservationer, når den første regions adgang går ned.",
   "tutorials.studyCells.finish": "Sammenlign referencens regionale indgange og komplette celler. Hvilken opbevaring, replikering og kapacitet ville hver af dine forenklede celler have brug for før en rigtig evakuering?",
-  "tutorials.studyCells.reference": "Åben den cellebaserede bookingreference"
+  "tutorials.studyCells.reference": "Åben den cellebaserede bookingreference",
+  "workbench.tools": "Værktøjer",
+  "workbench.select": "Vælg",
+  "workbench.checks": "Kontroller",
+  "workbench.common": "Almindelige",
+  "workbench.pin": "Fastgør åben",
+  "workbench.unpin": "Luk bibliotek",
+  "workbench.shortcuts": "Genveje",
+  "workbench.checksName": "Kontroller, {warnings}",
+  "workbench.warnings": "{count, plural, one {# advarsel} other {# advarsler}}"
 }

@@ -21,6 +21,7 @@ import { lazyComponent, loadOnce } from "../lib/lazyLoad";
 import { nextTutorial } from "./progress";
 import { createTutorialStart } from "./start";
 import { TopBar } from "../components/TopBar";
+import { ToolRail } from "../canvas/chrome/ToolRail";
 import { useInterop, useInteropCanvasActions } from "../interop/useInterop";
 import type { CanvasHandle } from "../canvas/CanvasView";
 import type { DiagramFile, Simulation } from "../model/types";
@@ -256,6 +257,7 @@ function Running({
         <Strip tutorial={tutorial} snap={snap} send={runner.send} saveCopy={saveCopy} catalog={catalog} />
       </div>
       <div className="app-body">
+        {!presenting && <ToolRail view="canvas" onView={(view) => window.location.assign(`?view=${view}`)} />}
         <div className="app-main">
           <Suspense fallback={<div className="view-loading" data-testid="view-loading" />}>
             <CanvasView

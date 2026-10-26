@@ -1736,7 +1736,7 @@
   "tutorials.mobileApi.summary": "Розмістіть мобільний додаток і API, який він викликає, підключіть їх, а потім режим реального часу і спостерігайте за потоком запитів.",
   "tutorials.mobileApi.diagramTitle": "Мій перший концерт діаграма",
   "tutorials.mobileApi.addAppTitle": "Додати мобільний додаток",
-  "tutorials.mobileApi.addAppGoal": "Знайдіть Мобільний застосунок у елемент ліворуч і натисніть на нього. Якщо ввести «{word}» у пошуковому запиті, це швидко знайдеться.",
+  "tutorials.mobileApi.addAppGoal": "Натисніть «Додати», знайдіть «{word}» і виберіть «Мобільний застосунок».",
   "tutorials.mobileApi.addAppTipSearch": "Введіть тут «{word}».",
   "tutorials.mobileApi.addAppTipItem": "Натисніть, щоб додати",
   "tutorials.mobileApi.addAppTipRail": "ВІДЧИНЕНО елемент",
@@ -2307,7 +2307,7 @@
   "tutorials.apiGateway.ordersName": "Замовлення",
   "tutorials.apiGateway.usersName": "Користувачі",
   "tutorials.apiGateway.addAppTitle": "Додати мобільний додаток",
-  "tutorials.apiGateway.addAppGoal": "Знайдіть {query}ільний телефон на рейці елемент, а потім виберіть Мобільний застосунок.",
+  "tutorials.apiGateway.addAppGoal": "Натисніть «Додати», знайдіть «{query}» і виберіть «Мобільний застосунок».",
   "tutorials.apiGateway.addAppDone": "Мобільний додаток є джерелом запитів у Жити.",
   "tutorials.apiGateway.addGwTitle": "Додати шлюз",
   "tutorials.apiGateway.addGwGoal": "Виберіть програму, натисніть її +, потім виберіть Kong шлюз і натисніть Enter.",
@@ -2772,5 +2772,14 @@
   "tutorials.studyCells.evacuateTitle": "Евакуація регіону",
   "tutorials.studyCells.evacuateDone": "Справний другий регіон із запасом ємність приймає бронювання, коли запис першого регіону падає.",
   "tutorials.studyCells.finish": "Порівняйте регіональні записи посилання та повні клітинки. Яке сховище, реплікація та ємність потрібні кожній із ваших спрощених комірок перед справжньою евакуацією?",
-  "tutorials.studyCells.reference": "ВІДЧИНЕНО посилання на бронювання через клітинку"
+  "tutorials.studyCells.reference": "ВІДЧИНЕНО посилання на бронювання через клітинку",
+  "workbench.tools": "Інструменти",
+  "workbench.select": "Вибір",
+  "workbench.checks": "Перевірки",
+  "workbench.common": "Поширені",
+  "workbench.pin": "Закріпити відкритою",
+  "workbench.unpin": "Закрити бібліотеку",
+  "workbench.shortcuts": "Клавіші",
+  "workbench.checksName": "Перевірки, {warnings}",
+  "workbench.warnings": "{count, plural, one {# попередження} few {# попередження} many {# попередження} other {# попередження}}"
 }

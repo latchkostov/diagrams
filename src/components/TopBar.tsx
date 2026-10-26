@@ -63,49 +63,16 @@ export function TopBar(p: Props) {
         <span>{BRAND_NAME}</span>
       </div>
 
-      <div className="segmented" role="tablist" aria-label={t("topbar.views")}>
+      {showLab && (
         <button
-          role="tab"
-          aria-selected={canvas}
-          className={canvas ? "is-on" : ""}
-          onClick={() => p.onView("canvas")}
-          data-testid="view-canvas"
+          className="icon-btn"
+          data-testid="view-lab"
+          onClick={() => p.onView("lab")}
+          aria-label={t("topbar.views")}
         >
-          <Icon name="canvas" size={14} /> {t("topbar.diagram")}
+          <LabGlyph />
         </button>
-        <button
-          role="tab"
-          aria-selected={p.view === "gallery"}
-          className={p.view === "gallery" ? "is-on" : ""}
-          onClick={() => p.onView("gallery")}
-          data-testid="view-gallery"
-        >
-          <Icon name="grid" size={14} /> {t("topbar.stencils")}
-        </button>
-        <button
-          role="tab"
-          aria-selected={p.view === "tutorials"}
-          className={p.view === "tutorials" ? "is-on" : ""}
-          onClick={() => p.onView("tutorials")}
-          data-testid="view-tutorials"
-        >
-          <Icon name="checklist" size={14} /> {t("tutorials.section")}
-        </button>
-        {showLab && (
-          <button
-            role="tab"
-            aria-selected={lab}
-            className={lab ? "is-on" : ""}
-            onClick={() => p.onView("lab")}
-            data-testid="view-lab"
-            // eslint-disable-next-line local/no-literal-ui-text -- the Lab is a development tool, in English
-            title="Component lab: presets of the current code"
-          >
-            {/* eslint-disable-next-line local/no-literal-ui-text -- a development tool */}
-            <LabGlyph /> Lab
-          </button>
-        )}
-      </div>
+      )}
 
       {canvas && (
         <Menu

@@ -1,3 +1,4 @@
+import { openLibrary } from "./fixtures";
 import AxeBuilder from "@axe-core/playwright";
 import { mkdirSync } from "node:fs";
 import { test, expect, gotoCanvas, gotoGallery, expectNoErrors } from "./fixtures";
@@ -12,10 +13,12 @@ const searches = [
 
 test("keyboard search adds a Vue client from the Stencils panel", async ({ page, consoleErrors }) => {
   await gotoCanvas(page, "aws-serverless-orders");
+  await openLibrary(page);
   const search = page.getByTestId("palette-search");
   await search.focus();
   await search.pressSequentially("vue");
   await expect(page.getByTestId(/^palette-item-/).first()).toHaveAttribute("data-testid", "palette-item-client.vue");
+  await openLibrary(page);
   await expect(page.getByTestId("palette-item-client.browser")).toBeVisible();
   await search.press("Enter");
   await expect(page.getByTestId("node-vue-1")).toBeVisible();
@@ -31,8 +34,11 @@ async function screenshot(page: import("@playwright/test").Page, name: string) {
 test.describe("external discovery", () => {
   test("searches Fastly in Stencils and adds the branded CDN", async ({ page, consoleErrors }) => {
     await gotoCanvas(page, "aws-serverless-orders");
+    await openLibrary(page);
     await page.getByTestId("palette-search").fill("fastly");
+    await openLibrary(page);
     await expect(page.getByTestId("palette-item-fastly")).toBeVisible();
+    await openLibrary(page);
     await page.getByTestId("palette-item-fastly").click();
     await expect(page.getByTestId("node-fastly-1")).toBeVisible();
     await expect(page.getByTestId("node-fastly-1")).toContainText("Fastly");
@@ -40,11 +46,13 @@ test.describe("external discovery", () => {
   });
   test("HTTP API selects External API by default in the rail and Ctrl+K", async ({ page }) => {
     await gotoCanvas(page, "aws-serverless-orders");
+    await openLibrary(page);
     await page.getByTestId("palette-search").fill("HTTP API");
     await expect(page.getByTestId(/^palette-item-/).first()).toHaveAttribute(
       "data-testid",
       "palette-item-generic.external-api",
     );
+    await openLibrary(page);
     await page.getByTestId("palette-search").press("Enter");
     await expect(page.getByTestId("node-external-api-1")).toBeVisible();
     await page.keyboard.press(`${MOD}+k`);
@@ -60,7 +68,9 @@ test.describe("external discovery", () => {
   for (const [query, id] of searches) {
     test(`library and Ctrl+K find ${query}`, async ({ page, consoleErrors }) => {
       await gotoCanvas(page, "aws-serverless-orders");
+      await openLibrary(page);
       await page.getByTestId("palette-search").fill(query);
+      await openLibrary(page);
       await expect(page.getByTestId(`palette-item-${id}`)).toBeVisible();
       await page.keyboard.press(`${MOD}+k`);
       await expect(page.getByTestId("command-input")).toBeFocused();
@@ -95,10 +105,11 @@ test.describe("external discovery", () => {
     test(`Clients & external folds and reopens at ${width}`, async ({ page }) => {
       await page.setViewportSize({ width, height: 800 });
       await gotoCanvas(page, "aws-serverless-orders");
-      if (!(await page.getByTestId("palette-search").isVisible())) await page.getByTestId("palette-toggle").click();
+      if (!(await page.getByTestId("palette-search").isVisible())) await openLibrary(page);
       const section = page.getByTestId("palette-section-clients");
       await expect(section).toContainText("Clients & external");
       await expect(section).toHaveAttribute("aria-expanded", "false");
+      await openLibrary(page);
       await page.getByTestId("palette-section-messaging").click();
       await section.click();
       await expect(
@@ -108,21 +119,23 @@ test.describe("external discovery", () => {
         page.getByTestId("palette-clients-external").getByTestId("palette-item-generic.external-api"),
       ).toBeVisible();
       await expect(page.getByTestId("palette-clients-external").getByTestId("palette-item-iterable")).toBeVisible();
+      await openLibrary(page);
       await page.getByTestId("palette-item-iterable").scrollIntoViewIfNeeded();
       await screenshot(page, `clients-${width}`);
       await section.click();
       await expect(page.getByTestId("palette-item-iterable")).toHaveCount(0);
       await page.reload();
       await expect(page.getByTestId("canvas-view")).toBeVisible();
-      if (!(await page.getByTestId("palette-search").isVisible())) await page.getByTestId("palette-toggle").click();
+      if (!(await page.getByTestId("palette-search").isVisible())) await openLibrary(page);
       await expect(section).toHaveAttribute("aria-expanded", "false");
       // Closed is the first-visit default; only restoring an open category proves persistence.
       await section.click();
       await expect(section).toHaveAttribute("aria-expanded", "true");
       await page.reload();
       await expect(page.getByTestId("canvas-view")).toBeVisible();
-      if (!(await page.getByTestId("palette-search").isVisible())) await page.getByTestId("palette-toggle").click();
+      if (!(await page.getByTestId("palette-search").isVisible())) await openLibrary(page);
       await expect(section).toHaveAttribute("aria-expanded", "true");
+      await openLibrary(page);
       await expect(page.getByTestId("palette-item-iterable")).toBeVisible();
     });
   }

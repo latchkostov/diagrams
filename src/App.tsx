@@ -16,6 +16,7 @@ import { examples, exampleSummary, getLoadedExample, loadExample } from "./examp
 import { currentExampleSlug } from "./examples/retired";
 import { groupByTheme, themeInfo } from "./examples/themes";
 import { TopBar, type ExampleOption } from "./components/TopBar";
+import { ToolRail } from "./canvas/chrome/ToolRail";
 import type { CanvasHandle } from "./canvas/CanvasView";
 import { LazyCanvasView as CanvasView, preloadCanvasView } from "./canvas/loadCanvasView";
 import type { OpenTarget } from "./lab/LabView";
@@ -579,6 +580,7 @@ function MainApp() {
         />
       )}
       <div className="app-body">
+        {!presenting && <ToolRail view={url.view} onView={goTo} />}
         <div className="app-main">
           <ViewBoundary
             // Remount (and clear the error) when the user navigates elsewhere.

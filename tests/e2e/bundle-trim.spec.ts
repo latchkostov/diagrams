@@ -1,3 +1,4 @@
+import { openLibrary } from "./fixtures";
 import type { Page } from "@playwright/test";
 import { test, expect, gotoCanvas, gotoLive, waitForStableViewport, savedDiagram, STORAGE_KEYS } from "./fixtures";
 import { lazySurfacesFixture } from "../../src/lab/lazySurfacesFixture";
@@ -273,6 +274,7 @@ for (const leave of [false, true])
       });
       await page.keyboard.type("!");
       if (leave) {
+        await openLibrary(page);
         const search = page.getByTestId("palette-search");
         await search.focus();
         await search.fill("cache");

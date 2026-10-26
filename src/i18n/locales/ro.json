@@ -1736,7 +1736,7 @@
   "tutorials.mobileApi.summary": "Plasați o aplicație mobilă și API-ul pe care îl apelează, conectați-le, apoi live și urmăriți fluxul cererilor.",
   "tutorials.mobileApi.diagramTitle": "Primul meu live diagramă",
   "tutorials.mobileApi.addAppTitle": "Adăugați o aplicație mobilă",
-  "tutorials.mobileApi.addAppGoal": "Găsiți Aplicație mobilă în șablon din stânga și faceți clic pe el. Tastând „{word}” în căutare, se găsește rapid.",
+  "tutorials.mobileApi.addAppGoal": "Apasă Adaugă, caută „{word}” și alege Aplicație mobilă.",
   "tutorials.mobileApi.addAppTipSearch": "Tastați „{word}” aici",
   "tutorials.mobileApi.addAppTipItem": "Faceți clic pentru a-l adăuga",
   "tutorials.mobileApi.addAppTipRail": "Deschide șablon",
@@ -2316,7 +2316,7 @@
   "tutorials.apiGateway.ordersName": "Comenzi",
   "tutorials.apiGateway.usersName": "Utilizatori",
   "tutorials.apiGateway.addAppTitle": "Adăugați aplicația mobilă",
-  "tutorials.apiGateway.addAppGoal": "Căutați pe șina șablon pentru {query}, apoi alegeți Aplicație mobilă.",
+  "tutorials.apiGateway.addAppGoal": "Apasă Adaugă, caută „{query}” și alege Aplicație mobilă.",
   "tutorials.apiGateway.addAppDone": "O aplicație mobilă este o sursă de solicitări în Trăi.",
   "tutorials.apiGateway.addGwTitle": "Adăugați un gateway",
   "tutorials.apiGateway.addGwGoal": "Selectați aplicația, faceți clic pe +, apoi alegeți Kong gateway și apăsați Enter.",
@@ -2786,5 +2786,14 @@
   "tutorials.studyCells.evacuateTitle": "Evacuați o regiune",
   "tutorials.studyCells.evacuateDone": "O a doua regiune sănătoasă cu capacitate de rezervă primește rezervări atunci când intrarea primei regiuni scade.",
   "tutorials.studyCells.finish": "Comparați intrările regionale ale referinței și completați celulele. De ce stocare, replicare și capacitate ar avea nevoie fiecare dintre celulele dumneavoastră simplificate înainte de o evacuare reală?",
-  "tutorials.studyCells.reference": "Deschide referința rezervărilor bazate pe celule"
+  "tutorials.studyCells.reference": "Deschide referința rezervărilor bazate pe celule",
+  "workbench.tools": "Instrumente",
+  "workbench.select": "Selectare",
+  "workbench.checks": "Verificări",
+  "workbench.common": "Uzuale",
+  "workbench.pin": "Fixează deschis",
+  "workbench.unpin": "Închide biblioteca",
+  "workbench.shortcuts": "Scurtături",
+  "workbench.checksName": "Verificări, {warnings}",
+  "workbench.warnings": "{count, plural, one {# avertisment} few {# avertismente} other {# avertismente}}"
 }

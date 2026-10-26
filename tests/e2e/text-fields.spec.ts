@@ -1,3 +1,4 @@
+import { openLibrary } from "./fixtures";
 import { TEXT_END, interactionJournalMark, interactionLog, waitForInteractionIdle } from "./fixtures";
 import type { Locator, Page } from "@playwright/test";
 import { textFieldsFixture } from "../../src/lab/textFieldsFixture";
@@ -810,8 +811,9 @@ test.describe("selecting text with the mouse", () => {
     await page.keyboard.press("Escape");
 
     // The stencil rail's search.
+    await openLibrary(page);
     const stencils = page.getByTestId("palette-search");
-    if (!(await stencils.isVisible())) await page.getByTestId("palette-toggle").click();
+    if (!(await stencils.isVisible())) await openLibrary(page);
     await expect(stencils).toBeVisible();
     await stencils.fill("service bus");
     await expectNativeSelection(stencils, "service", "service bus");

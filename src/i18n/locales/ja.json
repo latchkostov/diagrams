@@ -1735,7 +1735,7 @@
   "tutorials.mobileApi.summary": "モバイル アプリとそれが呼び出す API を配置し、それらを接続してから ライブ を実行し、リクエスト フローを監視します。",
   "tutorials.mobileApi.diagramTitle": "初めてのライブ ダイアグラム",
   "tutorials.mobileApi.addAppTitle": "モバイルアプリを追加する",
-  "tutorials.mobileApi.addAppGoal": "左側の ステンシル で モバイルアプリ を見つけてクリックします。検索に「{word}」と入力するとすぐに見つかります。",
+  "tutorials.mobileApi.addAppGoal": "「追加」をクリックし、「{word}」を検索して「モバイルアプリ」を選びます。",
   "tutorials.mobileApi.addAppTipSearch": "ここに「{word}」と入力します",
   "tutorials.mobileApi.addAppTipItem": "クリックして追加します",
   "tutorials.mobileApi.addAppTipRail": "開ける ステンシル",
@@ -2312,7 +2312,7 @@
   "tutorials.apiGateway.ordersName": "注文",
   "tutorials.apiGateway.usersName": "ユーザー",
   "tutorials.apiGateway.addAppTitle": "モバイル アプリを追加する",
-  "tutorials.apiGateway.addAppGoal": "{query}の ステンシル レールを検索し、モバイルアプリ を選択します。",
+  "tutorials.apiGateway.addAppGoal": "「追加」をクリックし、「{query}」を検索して「モバイルアプリ」を選びます。",
   "tutorials.apiGateway.addAppDone": "モバイル アプリは ライブ のリクエストのソースです。",
   "tutorials.apiGateway.addGwTitle": "ゲートウェイ を追加します",
   "tutorials.apiGateway.addGwGoal": "アプリを選択して + をクリックし、Kong ゲートウェイ を選択して Enter を押します。",
@@ -2785,5 +2785,14 @@
   "tutorials.studyCells.evacuateTitle": "地域からの避難",
   "tutorials.studyCells.evacuateDone": "最初のリージョンのエントリがダウンすると、予備の 容量 を持つ正常な 2 番目のリージョンが予約を受け付けます。",
   "tutorials.studyCells.finish": "参照の地域エントリと完全なセルを比較します。実際に避難する前に、単純化された各セルにはどのようなストレージ、レプリケーション、容量 が必要ですか?",
-  "tutorials.studyCells.reference": "開ける セルベースの予約参照"
+  "tutorials.studyCells.reference": "開ける セルベースの予約参照",
+  "workbench.tools": "ツール",
+  "workbench.select": "選択",
+  "workbench.checks": "チェック",
+  "workbench.common": "よく使う項目",
+  "workbench.pin": "開いたまま固定",
+  "workbench.unpin": "ライブラリを閉じる",
+  "workbench.shortcuts": "ショートカット",
+  "workbench.checksName": "チェック, {warnings}",
+  "workbench.warnings": "{count, plural, other {# 件の警告}}"
 }

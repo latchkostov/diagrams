@@ -1736,7 +1736,7 @@
   "tutorials.mobileApi.summary": "Plaats een mobiele app en de API die deze aanroept, verbind ze, live en bekijk de aanvragenstroom.",
   "tutorials.mobileApi.diagramTitle": "Mijn eerste live diagram",
   "tutorials.mobileApi.addAppTitle": "Voeg een mobiele app toe",
-  "tutorials.mobileApi.addAppGoal": "Zoek Mobiele app in de stencil aan de linkerkant en klik erop. Als u “{word}” typt in de zoekopdracht, vindt u deze snel.",
+  "tutorials.mobileApi.addAppGoal": "Klik op Toevoegen, zoek naar ‘{word}’ en kies Mobiele app.",
   "tutorials.mobileApi.addAppTipSearch": "Typ hier “{word}”.",
   "tutorials.mobileApi.addAppTipItem": "Klik om het toe te voegen",
   "tutorials.mobileApi.addAppTipRail": "Open de stencil",
@@ -2315,7 +2315,7 @@
   "tutorials.apiGateway.ordersName": "Bestellingen",
   "tutorials.apiGateway.usersName": "Gebruikers",
   "tutorials.apiGateway.addAppTitle": "Voeg de mobiele app toe",
-  "tutorials.apiGateway.addAppGoal": "Zoek in de stencil-rail naar {query} en kies vervolgens Mobiele app.",
+  "tutorials.apiGateway.addAppGoal": "Klik op Toevoegen, zoek naar ‘{query}’ en kies Mobiele app.",
   "tutorials.apiGateway.addAppDone": "Een mobiele app is een bron van verzoeken in Live.",
   "tutorials.apiGateway.addGwTitle": "Voeg een gateway toe",
   "tutorials.apiGateway.addGwGoal": "Selecteer de app, klik op de +, kies Kong gateway en druk op Enter.",
@@ -2778,5 +2778,14 @@
   "tutorials.studyCells.evacuateTitle": "Evacueer een regio",
   "tutorials.studyCells.evacuateDone": "Een gezonde tweede regio met reserve capaciteit neemt boekingen aan als de inschrijvingen van de eerste regio dalen.",
   "tutorials.studyCells.finish": "Vergelijk de regionale vermeldingen en volledige cellen van de referentie. Welke opslag, replicatie en capaciteit zou elk van uw vereenvoudigde cellen nodig hebben vóór een echte evacuatie?",
-  "tutorials.studyCells.reference": "Open de celgebaseerde boekingsreferentie"
+  "tutorials.studyCells.reference": "Open de celgebaseerde boekingsreferentie",
+  "workbench.tools": "Gereedschap",
+  "workbench.select": "Selecteren",
+  "workbench.checks": "Controles",
+  "workbench.common": "Veelgebruikt",
+  "workbench.pin": "Open vastzetten",
+  "workbench.unpin": "Bibliotheek sluiten",
+  "workbench.shortcuts": "Sneltoetsen",
+  "workbench.checksName": "Controles, {warnings}",
+  "workbench.warnings": "{count, plural, one {# waarschuwing} other {# waarschuwingen}}"
 }

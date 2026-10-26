@@ -1735,7 +1735,7 @@
   "tutorials.mobileApi.summary": "Bir mobil uygulamayı ve çağırdığı API'yi yerleştirin, bunları bağlayın, ardından canlı ve istek akışını izleyin.",
   "tutorials.mobileApi.diagramTitle": "İlk canlı yayınım diyagram",
   "tutorials.mobileApi.addAppTitle": "Mobil uygulama ekleyin",
-  "tutorials.mobileApi.addAppGoal": "Soldaki kalıp'de Mobil uygulama'yi bulun ve tıklayın. Aramaya “{word}” yazmak onu hızlı bulur.",
+  "tutorials.mobileApi.addAppGoal": "Ekle'ye tıklayın, “{word}” arayın ve Mobil Uygulama'yı seçin.",
   "tutorials.mobileApi.addAppTipSearch": "Buraya “{word}” yazın",
   "tutorials.mobileApi.addAppTipItem": "Eklemek için tıklayın",
   "tutorials.mobileApi.addAppTipRail": "Açık ve kalıp",
@@ -2311,7 +2311,7 @@
   "tutorials.apiGateway.ordersName": "Siparişler",
   "tutorials.apiGateway.usersName": "Kullanıcılar",
   "tutorials.apiGateway.addAppTitle": "Mobil uygulamayı ekleyin",
-  "tutorials.apiGateway.addAppGoal": "{query} için kalıp rayını arayın, ardından Mobil uygulama seçeneğini seçin.",
+  "tutorials.apiGateway.addAppGoal": "Ekle'ye tıklayın, “{query}” arayın ve Mobil Uygulama'yı seçin.",
   "tutorials.apiGateway.addAppDone": "Bir mobil uygulama Canlı'daki isteklerin kaynağıdır.",
   "tutorials.apiGateway.addGwTitle": "Bir Gateway ekleyin",
   "tutorials.apiGateway.addGwGoal": "Uygulamayı seçin, +'ya tıklayın, ardından Kong Gateway'yi seçin ve Enter tuşuna basın.",
@@ -2758,5 +2758,14 @@
   "tutorials.studyCells.evacuateTitle": "Bir bölgeyi tahliye edin",
   "tutorials.studyCells.evacuateDone": "Yedek kapasite'ye sahip sağlıklı bir ikinci bölge, ilk bölgenin girişi düştüğünde rezervasyon alır.",
   "tutorials.studyCells.finish": "Referansın bölgesel girişlerini ve tam hücrelerini karşılaştırın. Gerçek bir tahliyeden önce basitleştirilmiş hücrelerinizin her birinin hangi depolamaya, çoğaltmaya ve kapasite'ye ihtiyacı olur?",
-  "tutorials.studyCells.reference": "Açık hücre tabanlı rezervasyon referansı"
+  "tutorials.studyCells.reference": "Açık hücre tabanlı rezervasyon referansı",
+  "workbench.tools": "Araçlar",
+  "workbench.select": "Seç",
+  "workbench.checks": "Kontroller",
+  "workbench.common": "Yaygın",
+  "workbench.pin": "Açık sabitle",
+  "workbench.unpin": "Kitaplığı kapat",
+  "workbench.shortcuts": "Kısayollar",
+  "workbench.checksName": "Kontroller, {warnings}",
+  "workbench.warnings": "{count, plural, one {# uyarı} other {# uyarı}}"
 }

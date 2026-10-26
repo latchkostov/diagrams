@@ -5,11 +5,10 @@ import { matches } from "../../editor/shortcuts";
 import { paletteHost } from "../../palette/host";
 import { privacyOf } from "../../lib/localOnly";
 import { AI_TOOLS } from "../../lib/deployment";
-import { Icon } from "../../components/Icon";
-import { AI_PANEL_COMBO, OPEN_AI_PANEL, aiPanelTitle, buildWithAi, openAiPanel, type OpenAiPanel } from "./events";
-import { aiDock, RAIL_WIDTH, clampWidth, collapseDock, useAiDock } from "./dock";
+import { AI_PANEL_COMBO, OPEN_AI_PANEL, buildWithAi, openAiPanel, type OpenAiPanel } from "./events";
+import { aiDock, clampWidth, collapseDock, useAiDock } from "./dock";
 import { forgetLegacyAiKeys } from "./legacy";
-import { railLabel, unseen, useUnseen } from "./unseen";
+import { unseen, useUnseen } from "./unseen";
 import { lazyComponent, whenIdle } from "../../lib/lazyLoad";
 
 // The app shell's only AI code, kept small because it's in the main bundle: the dock's frame (the slim
@@ -123,7 +122,7 @@ export function AiMount({
   }, [docked]);
 
   // Toasts centre on the canvas, clear of the dock.
-  const width = docked ? (dock.open ? clampWidth(dock.width) : RAIL_WIDTH) : 0;
+  const width = docked ? (dock.open ? clampWidth(dock.width) : 0) : 0;
   useEffect(() => {
     document.documentElement.style.setProperty("--ai-dock-w", `${width}px`);
     return () => void document.documentElement.style.removeProperty("--ai-dock-w");
@@ -191,26 +190,7 @@ export function AiMount({
               <AiPanel key={panelIdentity} request={request} />
             )}
           </div>
-        ) : (
-          <aside className="ai-rail" aria-label={t("ai.aIPanel")} data-testid="ai-rail">
-            <button
-              className="ai-rail-btn"
-              onClick={() => openAiPanel()}
-              onPointerEnter={AiPanel.preload}
-              onFocus={AiPanel.preload}
-              aria-label={railLabel(fresh)}
-              title={aiPanelTitle()}
-              data-testid="ai-rail-open"
-            >
-              <Icon name="ai" size={18} />
-              {fresh > 0 && (
-                <span className="ai-rail-badge" aria-hidden="true" data-testid="ai-rail-badge">
-                  {fresh > 9 ? "9+" : fresh}
-                </span>
-              )}
-            </button>
-          </aside>
-        ))}
+        ) : null)}
       {WebMcpBridge && mcp && editorSeen && (
         <Suspense fallback={null}>
           <WebMcpBridge live={live} onNewDiagram={onNewDiagram} />

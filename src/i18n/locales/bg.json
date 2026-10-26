@@ -1735,7 +1735,7 @@
   "tutorials.mobileApi.summary": "Поставете мобилно приложение и API, което то извиква, свържете ги, след това на живо и наблюдавайте потока на заявките.",
   "tutorials.mobileApi.diagramTitle": "Моят първи лайв диаграма",
   "tutorials.mobileApi.addAppTitle": "Добавете мобилно приложение",
-  "tutorials.mobileApi.addAppGoal": "Намерете Мобилно приложение в фигура отляво и щракнете върху него. Въвеждането на „{word}“ в търсенето го намира бързо.",
+  "tutorials.mobileApi.addAppGoal": "Щракнете върху Добавяне, потърсете „{word}“ и изберете Мобилно приложение.",
   "tutorials.mobileApi.addAppTipSearch": "Въведете „{word}“ тук",
   "tutorials.mobileApi.addAppTipItem": "Кликнете, за да го добавите",
   "tutorials.mobileApi.addAppTipRail": "Отворете фигура",
@@ -2306,7 +2306,7 @@
   "tutorials.apiGateway.ordersName": "Поръчки",
   "tutorials.apiGateway.usersName": "Потребители",
   "tutorials.apiGateway.addAppTitle": "Добавете мобилното приложение",
-  "tutorials.apiGateway.addAppGoal": "Потърсете {query} телефон в релсата фигура, след което изберете Мобилно приложение.",
+  "tutorials.apiGateway.addAppGoal": "Щракнете върху Добавяне, потърсете „{query}“ и изберете Мобилно приложение.",
   "tutorials.apiGateway.addAppDone": "Мобилно приложение е източник на заявки в На живо.",
   "tutorials.apiGateway.addGwTitle": "Добавяне на шлюз",
   "tutorials.apiGateway.addGwGoal": "Изберете приложението, щракнете върху неговия +, след това изберете Kong шлюз и натиснете Enter.",
@@ -2767,5 +2767,14 @@
   "tutorials.studyCells.evacuateTitle": "Евакуиране на регион",
   "tutorials.studyCells.evacuateDone": "Здрав втори регион с резервен капацитет приема резервации, когато влизането на първия регион падне.",
   "tutorials.studyCells.finish": "Сравнете регионалните записи на препратката и пълните клетки. От какво съхранение, репликация и капацитет ще се нуждае всяка от вашите опростени клетки преди истинска евакуация?",
-  "tutorials.studyCells.reference": "Отворете справката за резервации, базирани на клетки"
+  "tutorials.studyCells.reference": "Отворете справката за резервации, базирани на клетки",
+  "workbench.tools": "Инструменти",
+  "workbench.select": "Избор",
+  "workbench.checks": "Проверки",
+  "workbench.common": "Често използвани",
+  "workbench.pin": "Закачи отворено",
+  "workbench.unpin": "Затвори библиотеката",
+  "workbench.shortcuts": "Клавиши",
+  "workbench.checksName": "Проверки, {warnings}",
+  "workbench.warnings": "{count, plural, one {# предупреждение} other {# предупреждения}}"
 }

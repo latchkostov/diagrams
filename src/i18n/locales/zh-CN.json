@@ -1736,7 +1736,7 @@
   "tutorials.mobileApi.diagramTitle": "我的第一次直播图表",
   "tutorials.mobileApi.apiName": "订单 API",
   "tutorials.mobileApi.addAppTitle": "添加移动应用程序",
-  "tutorials.mobileApi.addAppGoal": "在左侧的模具中找到移动应用并单击它。在搜索中输入“{word}”会发现速度很快。",
+  "tutorials.mobileApi.addAppGoal": "点击“添加”，搜索“{word}”，然后选择“移动应用”。",
   "tutorials.mobileApi.addAppTipSearch": "在此输入“{word}”",
   "tutorials.mobileApi.addAppTipItem": "点击添加",
   "tutorials.mobileApi.addAppTipRail": "打开 模具",
@@ -2314,7 +2314,7 @@
   "tutorials.apiGateway.ordersName": "订单",
   "tutorials.apiGateway.usersName": "用户",
   "tutorials.apiGateway.addAppTitle": "添加移动应用程序",
-  "tutorials.apiGateway.addAppGoal": "在 模具 轨道上搜索{query}设备，然后选择 移动应用。",
+  "tutorials.apiGateway.addAppGoal": "点击“添加”，搜索“{query}”，然后选择“移动应用”。",
   "tutorials.apiGateway.addAppDone": "移动应用程序是 居住 中的请求源。",
   "tutorials.apiGateway.addGwTitle": "添加 网关",
   "tutorials.apiGateway.addGwGoal": "选择应用程序，单击其 +，然后选择 Kong 网关 并按 Enter。",
@@ -2768,5 +2768,14 @@
   "tutorials.studyCells.evacuateTitle": "疏散一个地区",
   "tutorials.studyCells.evacuateDone": "当第一个区域的条目出现故障时，具有空闲 容量 的健康第二区域将接受预订。",
   "tutorials.studyCells.finish": "比较参考文献的区域条目和完整单元格。在真正的疏散之前，每个简化单元需要什么存储、复制和 容量？",
-  "tutorials.studyCells.reference": "打开 基于手机的预订参考"
+  "tutorials.studyCells.reference": "打开 基于手机的预订参考",
+  "workbench.tools": "工具",
+  "workbench.select": "选择",
+  "workbench.checks": "检查",
+  "workbench.common": "常用",
+  "workbench.pin": "固定打开",
+  "workbench.unpin": "关闭库",
+  "workbench.shortcuts": "快捷键",
+  "workbench.checksName": "检查, {warnings}",
+  "workbench.warnings": "{count, plural, other {# 条警告}}"
 }

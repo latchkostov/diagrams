@@ -65,12 +65,14 @@ function readClosed(): StencilCategory[] {
  */
 export const Palette = memo(function Palette({
   collapsed,
+  mode = "pinned",
   onToggle,
   onAdd,
   onAnnotate,
   nodeVariant = DEFAULT_NODE_VARIANT,
 }: {
   collapsed: boolean;
+  mode?: "flyout" | "pinned";
   onToggle: () => void;
   onAdd: (stencilId: string) => void;
   /** Adds a text, note, zone or shape (the Annotate group). */
@@ -122,47 +124,46 @@ export const Palette = memo(function Palette({
   // eslint-disable-next-line react-hooks/exhaustive-deps -- shared search metadata resolves the current locale
   const results = useMemo(() => (q.trim() ? searchStencils(inFamily, q) : null), [inFamily, q, locale]);
   const annotateHits = useMemo(() => (q.trim() ? matchAnnotate(q, locale) : []), [q, locale]);
+  const common = useMemo(() => {
+    const generic = stencils.filter((s) => familyOf(s) === "generic");
+    const pick = (role: Stencil["simRole"], subtitle?: string) =>
+      generic.find((s) => s.simRole === role && (!subtitle || s.defaultSublabel === subtitle));
+    return [
+      pick("processor", "service"),
+      pick("store", "database"),
+      pick("queue"),
+      pick("topic"),
+      pick("source", "user"),
+      pick("gateway"),
+      pick("store", "cache"),
+      pick("sink", "api"),
+    ].filter((s): s is Stencil => !!s);
+  }, []);
   const groups = useMemo(() => {
     const map = new Map<StencilCategory, Stencil[]>();
     for (const s of inFamily) {
+      if (family === "all" && common.includes(s)) continue;
       if (!map.has(s.category)) map.set(s.category, []);
       map.get(s.category)!.push(s);
     }
     return CATEGORY_ORDER.filter((c) => map.has(c)).map((c) => ({ category: c, items: map.get(c)! }));
-  }, [inFamily]);
+  }, [inFamily, family, common]);
   const recent = useMemo(() => recentIds.map(getStencil).filter((s) => stencils.includes(s)), [recentIds]);
 
   const toggleSection = (c: StencilCategory) =>
     setClosed((cur) => (cur.includes(c) ? cur.filter((x) => x !== c) : [...cur, c]));
 
-  if (collapsed) {
-    return (
-      <aside className="palette is-collapsed" aria-label={t("topbar.stencils")} data-testid="palette">
-        <button
-          className="icon-btn"
-          onClick={onToggle}
-          title={t("library.showStencils")}
-          aria-label={t("library.showStencils")}
-          data-testid="palette-toggle"
-        >
-          <Icon name="panel" />
-        </button>
-        {preview.node}
-        {recent.length > 0 && (
-          <div className="palette-rail-recent" aria-label={t("library.recentlyUsedStencils")}>
-            {recent.map((s) => (
-              <RecentTile key={s.id} stencil={s} {...item} />
-            ))}
-          </div>
-        )}
-      </aside>
-    );
-  }
+  if (collapsed) return null;
 
   const chosenFamily = family === "all" ? null : familyLabel[family];
 
   return (
-    <aside className="palette" aria-label={t("topbar.stencils")} data-testid="palette">
+    <aside
+      className={mode === "flyout" ? "palette is-flyout" : "palette"}
+      data-mode={mode}
+      aria-label={t("topbar.stencils")}
+      data-testid="palette"
+    >
       {preview.node}
       <div className="palette-head">
         <div className="palette-head-row">
@@ -203,11 +204,11 @@ export const Palette = memo(function Palette({
           <button
             className="icon-btn"
             onClick={onToggle}
-            title={t("library.hideStencils")}
-            aria-label={t("library.hideStencils")}
+            title={mode === "flyout" ? t("workbench.pin") : t("workbench.unpin")}
+            aria-label={mode === "flyout" ? t("workbench.pin") : t("workbench.unpin")}
             data-testid="palette-toggle"
           >
-            <Icon name="panel" />
+            <Icon name={mode === "flyout" ? "pin" : "close"} />
           </button>
         </div>
         <label className="select select-quiet palette-family" title={t("library.showStencilsFromOneFamily")}>
@@ -265,6 +266,16 @@ export const Palette = memo(function Palette({
           </section>
         ) : (
           <>
+            {family === "all" && (
+              <section data-testid="palette-common">
+                <h3 className="palette-sec-static">{t("workbench.common")}</h3>
+                <div className="palette-grid">
+                  {common.map((s) => (
+                    <PaletteItem key={s.id} stencil={s} {...item} />
+                  ))}
+                </div>
+              </section>
+            )}
             {recent.length > 0 && (
               <section className="palette-recent" data-testid="palette-recent">
                 <h3 className="palette-sec-static">{t("menu.recentlyUsed")}</h3>
@@ -318,7 +329,7 @@ export const Palette = memo(function Palette({
         )}
       </div>
       {/* Pinned under the list, so it's in view whatever is open above (searching lists matches instead). */}
-      {onAnnotate && !results && <AnnotateGroup items={ANNOTATE} onAdd={onAnnotate} className="is-pinned" />}
+
       <PaletteFoot />
     </aside>
   );
@@ -399,7 +410,7 @@ const TEXT_NOTE_ZONE: readonly AnnotateItem[] = [
 ];
 
 /** The rail's row: one tile per kind. A shape starts as a rectangle; the inspector changes its outline. */
-const ANNOTATE: readonly AnnotateItem[] = [
+export const ANNOTATE: readonly AnnotateItem[] = [
   ...TEXT_NOTE_ZONE,
   {
     kind: "shape",
@@ -442,7 +453,7 @@ function matchAnnotate(q: string, _locale: string): AnnotateItem[] {
 }
 
 /** Text, notes, zones and shapes: documentation that never takes part in the simulation. */
-function AnnotateGroup({
+export function AnnotateGroup({
   items,
   onAdd,
   className,

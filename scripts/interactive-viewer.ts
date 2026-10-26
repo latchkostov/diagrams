@@ -171,9 +171,15 @@ export const EDITOR_ONLY: { name: string; path: string; stub: (root: string) => 
     name: "the stencil rail",
     path: "/src/canvas/Palette.tsx",
     stub: (root) =>
-      `export const Palette = () => null;\nexport { STENCIL_DND_MIME } from ${JSON.stringify(
+      `export const Palette = () => null; export const AnnotateGroup = () => null; export const ANNOTATE = [];\nexport { STENCIL_DND_MIME } from ${JSON.stringify(
         resolve(root, "src/lib/canvasBridge.ts").replaceAll("\\", "/"),
       )};`,
+  },
+  {
+    name: "the editor tool rail bridge",
+    path: "/src/canvas/chrome/tools.ts",
+    stub: () =>
+      'export const useToolSurface = () => "closed"; export const tools = { open() {}, connect() { return () => {}; } };',
   },
   // Carried types on hovered and focused flow edges: the app shows them; a file stays within the skill's download
   // budget (src/ai/skill/skill.heavy.test.ts) without the message-type analysis they need.
