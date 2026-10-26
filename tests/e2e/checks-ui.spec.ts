@@ -1,3 +1,4 @@
+import { expectTheme } from "./fixtures";
 import {
   waitForChecks,
   waitForHistoryIdle,
@@ -380,3 +381,66 @@ performanceTest(
     await checksTyping(page, info);
   },
 );
+
+for (const theme of ["light", "dark"]) {
+  test(`numbered findings, aggregate counts and tags stay legible (${theme})`, async ({ page }) => {
+    await gotoCanvas(page, "retry-storm");
+    await waitForChecks(page);
+    await expectTheme(page, theme);
+    await page.getByTestId("checks-count").click();
+    const heads = page.getByTestId(/^check-select-/);
+    await expect(heads.first()).toHaveAttribute("aria-expanded", "true");
+    expect(
+      await heads.evaluateAll((els) => els.filter((el) => el.getAttribute("aria-expanded") === "true").length),
+    ).toBe(1);
+    const first = await heads.first().getAttribute("data-testid");
+    if (!first) throw new Error("Missing first finding");
+    const id = first.slice("check-select-".length);
+    await expect(page.getByTestId(`check-number-${id}`)).toHaveText("1");
+    await expect(page.getByTestId("check-marker").first()).toHaveText("1");
+    const second = heads.nth(1);
+    await second.click();
+    await expect(heads.first()).toHaveAttribute("aria-expanded", "false");
+    await expect(second).toHaveAttribute("aria-expanded", "true");
+    await expect(page.getByTestId("check-marker").first()).toHaveText("2");
+    const counts = page.getByTestId(/^check-count-/);
+    await expect(counts.first()).toBeVisible();
+    const contrasts = await page.getByTestId("check-markers").evaluate((root) => {
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+      if (!ctx) throw new Error("Missing color context");
+      const rgb = (value: string) => {
+        ctx.clearRect(0, 0, 1, 1);
+        ctx.fillStyle = value;
+        ctx.fillRect(0, 0, 1, 1);
+        return Array.from(ctx.getImageData(0, 0, 1, 1).data).slice(0, 3);
+      };
+      const lum = (channels: number[]) =>
+        channels
+          .map((v) => {
+            const c = v / 255;
+            return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+          })
+          .reduce((sum, c, i) => sum + c * [0.2126, 0.7152, 0.0722][i], 0);
+      return [...root.querySelectorAll<HTMLElement>('[data-testid="check-marker"], [data-testid^="check-count-"]')].map(
+        (button) => {
+          const ink = getComputedStyle(button);
+          const child = button.firstElementChild;
+          if (!child) throw new Error("Missing badge ground");
+          const ground = getComputedStyle(child);
+          const a = lum(rgb(ink.color)),
+            b = lum(rgb(ground.backgroundColor));
+          return { ratio: (Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05), opacity: ink.opacity };
+        },
+      );
+    });
+    for (const sample of contrasts) {
+      expect(sample.ratio).toBeGreaterThanOrEqual(4.5);
+      expect(sample.opacity).toBe("1");
+    }
+    await page.getByTestId("check-count-payments").click();
+    await expect(page.getByTestId("checks-filter")).toContainText("Payments");
+    await page.getByTestId("checks-clear-filter").click();
+    await expect(page.getByTestId("checks-filter")).toHaveCount(0);
+  });
+}

@@ -24,13 +24,13 @@
   min-width: 0;
   min-height: 0;
 }
-.live-transport-mount.is-local {
+.canvas-view > .live-transport-mount.is-local {
   position: absolute;
   inset-inline: 0;
   inset-block-end: 0;
 }
 .canvas-view:has(> .live-transport-mount:not(:empty)) {
-  padding-block-end: var(--transport-h);
+  padding-block-end: var(--transport-measured-h, var(--transport-h));
 }
 
 .canvas-wrap.has-diagram-color {

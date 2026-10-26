@@ -12,6 +12,7 @@ const ChecksMarkers = defineLazySurface({
   retryToast: true,
 });
 import { useChecksState, useHotFinding, type ChecksStore } from "./useChecks";
+import { findingOrder, selectedFinding } from "../../checks/ui/findingOrder";
 
 // What shows the checks on the canvas, each subscribed to the canvas's ChecksStore on its own, so a new result or
 // a hovered row re-renders only these, never the canvas. The card and the inspector's row are a lazy chunk.
@@ -59,12 +60,14 @@ export function ChecksCardView({
   placement?: "dock" | "floating";
 }) {
   const state = useChecksState(store);
+  const selection = useSyncExternalStore(store.selection.subscribe, store.selection.get);
   return (
     <ChecksCard
       {...host}
       applied={store.markStale}
       result={state.result}
       state={state}
+      selection={{ ...selection, select: store.selection.select, filter: store.selection.filter }}
       top={top}
       placement={placement}
       onMount={() => {
@@ -81,7 +84,25 @@ export function ChecksCardView({
 export function ChecksMarkersView({ store }: { store: ChecksStore }) {
   const { result, byElement } = useChecksState(store);
   const hot = useHotFinding(store);
-  return result ? <ChecksMarkers byElement={byElement} hot={hot} /> : null;
+  const selection = useSyncExternalStore(store.selection.subscribe, store.selection.get);
+  const ordered = findingOrder(result?.findings ?? []);
+  const selected = selectedFinding(ordered, selection.finding, selection.element);
+  return result ? (
+    <ChecksMarkers
+      byElement={byElement}
+      hot={hot}
+      selected={selected?.id ?? null}
+      numbers={new Map(ordered.map((finding, index) => [finding.id, index + 1]))}
+      onSelect={(id) => {
+        checksPanel.open();
+        store.selection.select(id);
+      }}
+      onFilter={(id) => {
+        checksPanel.open();
+        store.selection.filter(id);
+      }}
+    />
+  ) : null;
 }
 
 /** A single selected node's or connection's findings, at the top of its inspector. */

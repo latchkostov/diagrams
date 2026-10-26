@@ -506,6 +506,7 @@ test.describe("this browser's storage", () => {
     await expect(page.getByTestId("ai-turn-0")).toHaveCount(0);
     expect((await thread()).toLowerCase()).not.toContain(WORD);
     await page.getByTestId("private-clear-undo").click();
+    await page.getByTestId("dock-tab-ai").click();
     await expect(page.getByTestId("ai-turn-0")).toBeVisible();
     expect((await thread()).toLowerCase()).toContain(WORD);
     expectNoErrors(consoleErrors);

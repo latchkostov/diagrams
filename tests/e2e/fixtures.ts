@@ -18,6 +18,15 @@ export async function openDiagramProperties(page: Page) {
   await expect(page.getByTestId("inspector-field-title")).toBeVisible();
 }
 
+/** Numbered findings disclose their controls only after the row is selected. */
+export async function openCheckFinding(page: Page, id: string) {
+  const head = page.getByTestId(`check-select-${id}`).or(page.getByTestId(`check-open-${id}`));
+  await expect(head).toBeVisible();
+  if ((await head.getAttribute("aria-expanded")) === "false") await head.click();
+  await waitForCameraIdle(page);
+  await waitForChecks(page);
+}
+
 /** Theme choices moved into the View menu. */
 export async function toggleTheme(page: Page) {
   const theme = await page.evaluate(() => document.documentElement.dataset.theme);

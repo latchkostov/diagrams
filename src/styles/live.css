@@ -3670,3 +3670,8 @@ details[open] > summary .lv-disclosure-chevron {
     max-inline-size: 160px;
   }
 }
+
+/* The editing disclosure must be its own snap target after a tall run chart. */
+.canvas-view.is-live .insp-body .dock-edit-properties {
+  scroll-snap-align: end;
+}

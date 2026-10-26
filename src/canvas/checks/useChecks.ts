@@ -6,6 +6,7 @@ import { createCheckScheduler, type CheckScheduler } from "./scheduler";
 import { runChecksOffThread } from "./runner";
 import { NO_EVIDENCE, SimulationRuns, type EvidenceSink, type EvidenceView, type SimContent } from "./simulationRuns";
 import { setEditingRuns } from "./editingRuns";
+import { FindingSelection } from "./findingSelection";
 
 // The canvas's checks: re-run after edits pause, in idle time, off the main thread (runner.ts). The first
 // run waits for the canvas to settle. Diagrams over 1,500 nodes are checked only while the Checks card is
@@ -85,6 +86,7 @@ type Merge = (result: CheckResult, diagram: DiagramFile | undefined) => WithEvid
  * last one notifies nobody (unless it ends a stale spell).
  */
 export class ChecksStore implements EvidenceSink {
+  readonly selection = new FindingSelection();
   private state: ChecksState = EMPTY;
   private json = "null";
   private hot: string | null = null;
@@ -148,6 +150,8 @@ export class ChecksStore implements EvidenceSink {
         ? { ...this.evidence, planned: merged.planned, counted: merged.counted }
         : this.evidence;
     this.state = { ...summarizeResult(shown, diagram), stale: !!shown && stale, evidence };
+    const element = this.selection.get().element;
+    if (element && !this.state.byElement.has(element)) this.selection.reset();
     this.emit();
   }
 
@@ -216,8 +220,11 @@ export function useChecks(opts: {
   // Closing the card stops a run. Own this in the canvas, rather than the card's mount cleanup:
   // development StrictMode replays that cleanup when a command opens the card and starts a run together.
   useEffect(() => {
-    if (!cardOpen) sims.stop();
-  }, [cardOpen, sims]);
+    if (!cardOpen) {
+      sims.stop();
+      store.selection.reset();
+    }
+  }, [cardOpen, sims, store]);
   // Leaving editing (live view, presenting) or the canvas stops a run of the simulations. While editing, Ctrl+K and
   // the canvas right-click can run them too.
   useEffect(() => {

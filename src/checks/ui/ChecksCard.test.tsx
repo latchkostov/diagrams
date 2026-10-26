@@ -109,3 +109,36 @@ it("keeps pagination outside both check lists while Show more adds finding rows"
     expect(byTestId(`checks-more-${severity}`)).toBeNull();
   }
 });
+
+it("numbers the complete list and opens only one finding, leaving closed rows as short sentences", async () => {
+  const findings = [
+    { ...finding("first"), message: "First sentence. More detail belongs in the open row." },
+    { ...finding("second"), message: "Second sentence. Hidden explanation." },
+    finding("hint", "suggestion"),
+  ];
+  await act(() =>
+    root.render(
+      <ChecksCard
+        {...host}
+        state={state}
+        result={{ findings, ignored: [], off: [], ran: [] }}
+        top={0}
+        onClose={vi.fn()}
+        returnFocus={vi.fn()}
+      />,
+    ),
+  );
+  expect(byTestId("check-number-first").textContent).toBe("1");
+  expect(byTestId("check-number-hint").textContent).toBe("3");
+  expect(byTestId("check-select-first").getAttribute("aria-expanded")).toBe("true");
+  expect(byTestId("check-why-first")).not.toBeNull();
+  expect(byTestId("check-why-second")).toBeNull();
+  expect(byTestId("check-row-second").textContent).toContain("Second sentence.");
+  expect(byTestId("check-row-second").textContent).not.toContain("Hidden explanation.");
+  expect(byTestId("check-chips-second")).toBeNull();
+  await act(() => byTestId("check-select-second").click());
+  expect(byTestId("check-select-second").getAttribute("aria-expanded")).toBe("true");
+  expect(byTestId("check-why-first")).toBeNull();
+  expect(byTestId("check-why-second")).not.toBeNull();
+  expect(byTestId("check-row-second").textContent).toContain("Hidden explanation.");
+});

@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import type { Page } from "@playwright/test";
-import { test, expect, gotoCanvas, expectNoErrors } from "./fixtures";
+import { test, expect, gotoCanvas, expectNoErrors, openCheckFinding } from "./fixtures";
 
 // The batch 3 and 4 checks in the Checks card (docs/research/architecture-checks.md, "Batch 3"): a service using
 // another's database (a warning, fixed by asking the owner) and a client going around the gateway (a suggestion,
@@ -53,6 +53,7 @@ test("a client going around the gateway: the fix goes through it, a chip adds an
 }) => {
   await openFixture(page);
   const bypass = row(page, BYPASS);
+  await openCheckFinding(page, BYPASS);
   await expect(bypass).toHaveAttribute("data-severity", "suggestion");
   await expect(bypass).toContainText("Mobile app calls Order service directly");
   await expect(page.getByTestId(`check-fix-${BYPASS}`)).toHaveText(/Go through Commerce gateway/);
@@ -86,6 +87,7 @@ test("a client going around the gateway: the fix goes through it, a chip adds an
   await page.getByTestId("check-fix-undo").click();
   await expect.poll(() => nodes.count()).toBe(before);
   await expect(bypass).toBeVisible();
+  await openCheckFinding(page, BYPASS);
   await page.getByTestId(`check-fix-${BYPASS}`).click();
   await expect(page.getByTestId("toast")).toContainText("Go through Commerce gateway: done");
   await expect(bypass).toHaveCount(0);
@@ -146,6 +148,7 @@ test("services reading secrets without an identity: the fix gives each its own; 
 }) => {
   await openLedger(page);
   const suggestion = row(page, IDENTITY);
+  await openCheckFinding(page, IDENTITY);
   await expect(suggestion).toHaveAttribute("data-severity", "suggestion");
   await expect(suggestion).toContainText("2 services read secrets without an identity");
   await expect(page.getByTestId(`check-fix-${IDENTITY}`)).toHaveText(/Add managed identities$/);
@@ -165,6 +168,7 @@ test("services reading secrets without an identity: the fix gives each its own; 
   // Undo, then the chip: one shared identity.
   await page.getByTestId("check-fix-undo").click();
   await expect.poll(() => nodes.count()).toBe(before);
+  await openCheckFinding(page, IDENTITY);
   await page.getByTestId(`check-fix-option-0-${IDENTITY}`).click();
   await expect(page.getByTestId("toast")).toContainText("Added Managed Identity");
   await expect.poll(() => nodes.count()).toBe(before + 1);

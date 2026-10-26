@@ -1,13 +1,15 @@
+import "../../styles/checks.css";
 import { ViewportPortal, useStore, type ReactFlowState } from "@xyflow/react";
 import type { Finding } from "../../checks/types";
 import type { EdgeRoute } from "../geometry/router";
 import { pointAlong } from "../geometry/path";
 import { useAllRoutes, useRoutingOptions } from "../edges/useEdgeRoute";
+import { findingTag } from "../../checks/ui/findingOrder";
+import { presentFinding } from "../../checks/presentation";
+import { useLocale } from "../../i18n";
 
-// While the Checks card is open: a small amber triangle (warning) or blue dot (suggestion) at the top-right
-// of each node a finding names, and at the middle of each connection. In flow space, so they pan and zoom
-// with the diagram. Never in presentation, exports or recordings (the card is never open there). A marker's
-// tooltip is the finding's title; the row being hovered in the card makes its markers stand out.
+// Only the selected finding gets numbered tags. Other findings share one count badge per element.
+// Positions follow flow space; ink and hit targets hold their screen size. Checks alone mounts this layer.
 
 type State = ReactFlowState;
 
@@ -18,6 +20,8 @@ interface Mark {
   severity: Finding["severity"];
   title: string;
   hot: boolean;
+  selected?: { id: string; number: number; title: string };
+  count: number;
 }
 
 function marks(
@@ -25,6 +29,8 @@ function marks(
   routes: ReadonlyMap<string, EdgeRoute>,
   byElement: ReadonlyMap<string, Finding[]>,
   hot: string | null,
+  selected: string | null,
+  numbers: ReadonlyMap<string, number>,
 ): Mark[] {
   const box = (id: string) => {
     const n = s.nodeLookup.get(id);
@@ -34,51 +40,94 @@ function marks(
     return { x: n.internals.positionAbsolute.x, y: n.internals.positionAbsolute.y, w, h };
   };
   const out: Mark[] = [];
-  for (const [id, findings] of byElement) {
+  for (const [id, raw] of byElement) {
+    const findings = raw.map(presentFinding);
     const severity = findings.some((f) => f.severity === "warning") ? "warning" : "suggestion";
     const title = findings.map((f) => f.title).join("\n");
     const isHot = !!hot && findings.some((f) => f.id === hot);
+    const detail = findingTag(findings, selected, numbers);
     const node = box(id);
     if (node) {
       if (!node.w) continue;
-      out.push({ id, x: node.x + node.w - 4, y: node.y - 4, severity, title, hot: isHot });
+      out.push({ id, x: node.x + node.w - 4, y: node.y - 4, severity, title, hot: isHot, ...detail });
       continue;
     }
-    // A connection's marker sits on its drawn route (the shared router, as FlowEdge draws it): at its label's
-    // corner when it has one, else halfway along. Not drawn (hidden dependencies), no marker.
+    // Below the drawn midpoint, clear of the connection pill. Hidden dependencies have no marker.
     const route = routes.get(id);
     if (!route?.points.length) continue;
-    const at = route.label
-      ? { x: route.label.x + route.label.width / 2, y: route.label.y - route.label.height / 2 }
-      : pointAlong(route.points, 0.5).point;
-    out.push({ id, x: at.x, y: at.y, severity, title, hot: isHot });
+    const at = { ...pointAlong(route.points, 0.5).point };
+    at.y += (route.label?.height ?? 0) / 2 + 16 / s.transform[2];
+    out.push({ id, x: at.x, y: at.y, severity, title, hot: isHot, ...detail });
   }
   return out;
 }
 
-export function ChecksMarkers({ byElement, hot }: { byElement: ReadonlyMap<string, Finding[]>; hot: string | null }) {
-  // Re-rendered as nodes move; only mounted while the card is open.
+export function ChecksMarkers({
+  byElement,
+  hot,
+  selected,
+  numbers,
+  onSelect,
+  onFilter,
+}: {
+  byElement: ReadonlyMap<string, Finding[]>;
+  hot: string | null;
+  selected: string | null;
+  numbers: ReadonlyMap<string, number>;
+  onSelect(id: string): void;
+  onFilter(id: string): void;
+}) {
+  useLocale();
   const routes = useAllRoutes(useRoutingOptions());
-  const list = useStore((s: State) => marks(s, routes, byElement, hot), sameMarks);
+  const list = useStore((s: State) => marks(s, routes, byElement, hot, selected, numbers), sameMarks);
   return (
     <ViewportPortal>
-      <div className="check-markers" data-testid="check-markers" aria-hidden>
+      <div className="check-markers" data-testid="check-markers">
         {list.map((m) => (
-          <span
+          <div
             key={m.id}
-            className={`check-marker is-${m.severity}${m.hot ? " is-hot" : ""}`}
-            style={{ transform: `translate(${m.x}px, ${m.y}px) translate(-50%, -50%)` }}
-            title={m.title}
+            className={`check-marker-group${m.hot ? " is-hot" : ""}`}
+            style={{
+              transform: `translate(${m.x}px, ${m.y}px) scale(calc(1 / var(--rf-zoom, 1))) translate(-100%, -50%)`,
+            }}
             data-testid={`check-marker-${m.id}`}
             data-severity={m.severity}
           >
-            {m.severity === "warning" ? (
-              <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden>
-                <path d="M8 1.75 15 14H1Z" />
-                <path d="M8 6.5v3.25M8 11.6v.01" className="check-marker-ink" />
-              </svg>
-            ) : null}
-          </span>
+            {m.count > 0 && (
+              <button
+                type="button"
+                className="check-count"
+                data-testid={`check-count-${m.id}`}
+                title={m.title}
+                aria-label={`${m.count}: ${m.title}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onFilter(m.id);
+                }}
+              >
+                <span className="check-count-ink">
+                  <span aria-hidden>⚠</span> {m.selected ? "+" : ""}
+                  {m.count}
+                </span>
+              </button>
+            )}
+            {m.selected && (
+              <button
+                type="button"
+                className="check-tag"
+                data-testid="check-marker"
+                data-finding={m.selected.id}
+                title={m.selected.title}
+                aria-label={`${m.selected.number}. ${m.selected.title}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSelect(m.selected!.id);
+                }}
+              >
+                <span>{m.selected.number}</span>
+              </button>
+            )}
+          </div>
         ))}
       </div>
     </ViewportPortal>
@@ -90,7 +139,17 @@ function sameMarks(a: Mark[], b: Mark[]): boolean {
     a.length === b.length &&
     a.every((m, i) => {
       const o = b[i];
-      return m.id === o.id && m.x === o.x && m.y === o.y && m.severity === o.severity && m.hot === o.hot;
+      return (
+        m.id === o.id &&
+        m.x === o.x &&
+        m.y === o.y &&
+        m.severity === o.severity &&
+        m.hot === o.hot &&
+        m.title === o.title &&
+        m.count === o.count &&
+        m.selected?.id === o.selected?.id &&
+        m.selected?.number === o.selected?.number
+      );
     })
   );
 }
