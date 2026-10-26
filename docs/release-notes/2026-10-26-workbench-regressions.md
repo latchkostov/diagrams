@@ -8,6 +8,8 @@ Connection handles retain their measured centre when highlighted. Connection dro
 
 Existing UI tests now reach the moved View, library, dock and playback surfaces through their current controls. Render benchmarks prepare distinct, exposed targets before measurement; their budgets are unchanged. Properties avoids redundant selection commits and memoizes its stable inputs.
 
+Request settings use the current document immediately, preserving consecutive edits and Undo. Dock throughput history samples simulation seconds without drifting. An explicit Properties command opens the dock while a floating message trace remains available.
+
 Output parity validation is recorded in the accompanying design review. Follow retains its documented readable camera and off-frame pins. Narration tests visit distant cards through those pins, return explicitly to Follow between visits, and retain every bounds and readability assertion.
 
 ## Deliberate output changes

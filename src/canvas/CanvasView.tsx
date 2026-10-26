@@ -356,6 +356,9 @@ function CanvasInner({
       activateDock("properties");
       requestInspector((revision) => revision + 1);
       liveHandle.current?.session?.closePanel();
+      // A floating trace may fold Properties automatically; an explicit
+      // Properties command still opens it while that trace remains available.
+      setLivePanelOpen(false);
       setPref("inspector", true);
       setOpenedByHand((o) => ({ ...o, inspector: true }));
       if (field) setInspectorFocus({ name: field, seq: ++inspectorFocusSeq.current, caret, target, text });

@@ -44,9 +44,10 @@ export function DockedLive({
     chosen: time >= 1000,
   }));
   if (!section.chosen && time >= 1000) setSection({ open: defaultSection(), chosen: true });
-  const [history, setHistory] = useState({ at: time, samples: time >= 1000 ? [value] : ([] as number[]) });
-  if (time < history.at) setHistory({ at: time, samples: time >= 1000 ? [value] : [] });
-  else if (time - history.at >= 1000) setHistory({ at: time, samples: [...history.samples.slice(-9), value] });
+  const second = Math.floor(time / 1000);
+  const [history, setHistory] = useState({ at: second, samples: second >= 1 ? [value] : ([] as number[]) });
+  if (second < history.at) setHistory({ at: second, samples: second >= 1 ? [value] : [] });
+  else if (second > history.at) setHistory({ at: second, samples: [...history.samples.slice(-9), value] });
   else if (history.samples.length && history.samples.at(-1) !== value)
     setHistory({ ...history, samples: [...history.samples.slice(0, -1), value] });
   const problem = summary.problems[0];

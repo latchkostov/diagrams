@@ -44,6 +44,7 @@ test("P1 inspector follows live inputs at sampling scale and applies the shared 
   await page.getByTestId("node-checkout").click({ button: "right" });
   await page.getByTestId("context-menu-item-sim.slowmo-from").click();
   await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "slowmo");
+  await page.getByTestId("live-play").click();
   await page.getByTestId("node-orders").click({ button: "right" });
   await page.getByTestId("context-menu-item-node.properties").click();
   await openEditProperties(page);
@@ -55,9 +56,11 @@ test("P1 inspector follows live inputs at sampling scale and applies the shared 
   await expect(page.getByTestId("inspector")).toHaveAttribute("data-collapsed", "1");
   await page.getByTestId("node-orders").focus();
   await page.keyboard.press("Escape");
+  await expect(page.getByTestId("live-play")).toHaveAttribute("data-state", "slowmo");
   await page.getByTestId("live-play").focus();
   await page.keyboard.press("Escape");
   await expect(page.getByTestId("live-play")).not.toHaveAttribute("data-state", "slowmo");
+  await expect(page.getByTestId("live-controls")).toBeVisible();
   await page.getByTestId("node-orders").click({ button: "right" });
   await page.getByTestId("context-menu-item-node.properties").click();
   await openEditProperties(page);

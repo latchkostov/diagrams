@@ -8,6 +8,39 @@ import { nodeSummary, flowSummary, requestSummary } from "./hoverSummary";
 import { DockedLive } from "./DockedLive";
 import type { NodeSimState } from "../sim/types";
 
+it("docked history samples simulation seconds without accumulating publication delay", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  const container = document.createElement("div");
+  document.body.append(container);
+  const root = createRoot(container);
+  const summary = requestSummary(undefined, undefined, false, 0);
+  const at = async (time: number) => {
+    await act(() =>
+      root.render(
+        <DockedLive summary={summary} healthy="Healthy" time={time} value={time / 1000} kind="edge">
+          {() => null}
+        </DockedLive>,
+      ),
+    );
+  };
+  try {
+    await at(0);
+    // Each publication arrives a little later within its simulation second.
+    for (let second = 1; second <= 12; second++) await at(second * 1000 + (second % 4) * 120);
+    const samples = container.querySelector('[data-testid="hover-history-values"]')?.textContent;
+    expect(samples?.match(/\d+(?:\.\d+)?\/s/g)).toHaveLength(10);
+    await at(0);
+    await at(1000);
+    expect(
+      container.querySelector('[data-testid="hover-history-values"]')?.textContent?.match(/\d+(?:\.\d+)?\/s/g),
+    ).toHaveLength(1);
+  } finally {
+    await act(() => root.unmount());
+    container.remove();
+    vi.unstubAllGlobals();
+  }
+});
+
 const node: NodeSimState = {
   id: "worker",
   role: "processor",
