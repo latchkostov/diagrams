@@ -465,6 +465,9 @@ test("segments keep one Tab stop and change the saved policy with arrow, Home an
   await frees.press("ArrowLeft");
   await expectChoice(holds, frees, "blocking");
   await holds.press("Tab");
+  // The lesson link sits with the hint it explains, before the waiting limits.
+  await expect(page.getByTestId("inspector-tutorial-waiting")).toBeFocused();
+  await page.keyboard.press("Tab");
   await expect(page.getByTestId("inspector-field-deadlineMs")).toBeFocused();
 });
 

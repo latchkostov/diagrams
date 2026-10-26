@@ -1,3 +1,4 @@
+import { stencilSearch } from "./searchValues";
 import { msg, t } from "../../i18n";
 import type { Check, Demo, Tutorial, UiStep, Words } from "../types";
 import { studyAdd, studyRun } from "./studyShared";
@@ -9,7 +10,7 @@ const channels = [
     queue: "emailQueue",
     dlq: "emailDlq",
     stencil: "generic.queue",
-    search: msg("tutorials.studyFanout.searchQueue"),
+    search: stencilSearch("generic.queue"),
   },
   {
     worker: "smsSender",
@@ -17,7 +18,7 @@ const channels = [
     queue: "smsQueue",
     dlq: "smsDlq",
     stencil: "aws.sqs",
-    search: msg("tutorials.studyFanout.searchSqs"),
+    search: stencilSearch("aws.sqs"),
   },
   {
     worker: "pushSender",
@@ -25,7 +26,7 @@ const channels = [
     queue: "pushQueue",
     dlq: "pushDlq",
     stencil: "azure.service-bus.queue",
-    search: msg("tutorials.studyFanout.searchBusQueue"),
+    search: stencilSearch("azure.service-bus.queue"),
   },
 ] as const;
 

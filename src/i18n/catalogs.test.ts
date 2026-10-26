@@ -3,7 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import en from "./en";
-import { argsOf, parse } from "./icu";
+import { argsOf, parse, textOf } from "./icu";
 import { sourceHash, validateLocale, type LocaleGlossary, type LocaleMeta, type TermGlossary } from "./validate";
 import { catalogLocales, compileCatalog, numberedKeys, readCatalog, rewriteCalls } from "../../scripts/i18n-plugin";
 
@@ -96,6 +96,31 @@ describe("the catalogs", () => {
   });
 
   // Every catalog the build would offer, not only the launch languages: a language added later is checked the same way.
+  it.each(codes)("%s source-stamps every retained tutorial translation, including quarantined lessons", (code) => {
+    const messages = read<Record<string, string>>(`locales/${code}.json`);
+    const meta = read<LocaleMeta>(`locales/${code}.meta.json`);
+    for (const [key, source] of Object.entries(en).filter(([key]) => key.startsWith("tutorials."))) {
+      // Missing translations deliberately use English when translated instructions misname sandbox contents.
+      // The localized tutorial sweep checks the displayed names through the compiled fallback catalog.
+      if (messages[key] === undefined) continue;
+      expect(messages[key], `${code}: ${key}`).toBeTruthy();
+      expect(meta.sources?.[key], `${code}: ${key}`).toBe(sourceHash(source));
+    }
+  });
+
+  it.each(codes)("%s preserves English technical tokens in every translated message", (code) => {
+    const messages = read<Record<string, string>>(`locales/${code}.json`);
+    for (const [key, source] of Object.entries(en)) {
+      if (!messages[key]) continue;
+      for (const token of terms.technicalTokens!) {
+        // A token may touch a number or CJK text, but cannot be part of another Latin word.
+        const pattern = new RegExp(`(?<![A-Za-z])${token}(?![A-Za-z])`);
+        if (pattern.test(textOf(parse(source), "all")))
+          expect.soft(textOf(parse(messages[key]), "all"), `${code}/${key}: ${token}`).toMatch(pattern);
+      }
+    }
+  });
+
   it.each(codes)("%s: no errors, and its glossary decides every term", (code) => {
     const { errors, undecided } = check(code);
     expect(errors).toEqual([]);

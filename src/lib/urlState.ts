@@ -14,14 +14,7 @@ export interface UrlState {
  * e2e build only. A production build has no Lab at all, and `?view=lab` opens the canvas.
  */
 export const LAB = import.meta.env.DEV || import.meta.env.VITE_E2E === "1";
-/** Tutorials (src/tutorials): a view of their own, in development and e2e builds until the owner has previewed them. */
-export const TUTORIALS = import.meta.env.DEV || import.meta.env.VITE_E2E === "1";
-const VIEWS: readonly View[] = [
-  "gallery",
-  "canvas",
-  ...(LAB ? (["lab"] as const) : []),
-  ...(TUTORIALS ? (["tutorials"] as const) : []),
-];
+const VIEWS: readonly View[] = ["gallery", "canvas", "tutorials", ...(LAB ? (["lab"] as const) : [])];
 
 // The diagram is the product: a bare URL opens the canvas (the stencil library is a tab).
 const viewOf = (p: URLSearchParams): View => {

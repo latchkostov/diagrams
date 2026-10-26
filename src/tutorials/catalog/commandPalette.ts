@@ -1,5 +1,25 @@
+import { createdNodeLabel, stencilSearch } from "./searchValues";
+import { stencilLabel } from "../../i18n/stencils";
+import { getStencil } from "../../stencils/registry";
 import { msg, t } from "../../i18n";
 import type { Tutorial } from "../types";
+const topicName = createdNodeLabel("kafka.topic");
+const gotoGoalWords = () => t("tutorials.commandPalette.gotoGoal", { query: topicName() });
+const gotoTipWords = () => t("tutorials.commandPalette.gotoTip", { query: topicName() });
+
+const addGoalWords = () =>
+  t("tutorials.commandPalette.addGoal", {
+    query: stencilSearch("kafka.topic")(),
+    command: t("chrome.addValue", { name: stencilLabel(getStencil("kafka.topic")) }),
+    anchor: t("tutorials.commandPalette.service1"),
+  });
+const addTipWords = () =>
+  t("tutorials.commandPalette.addTip", {
+    query: stencilSearch("kafka.topic")(),
+    command: t("chrome.addValue", { name: stencilLabel(getStencil("kafka.topic")) }),
+    anchor: t("tutorials.commandPalette.service1"),
+  });
+
 export const commandPalette: Tutorial = {
   id: "command-palette",
   version: 1,
@@ -22,15 +42,15 @@ export const commandPalette: Tutorial = {
     {
       id: "add",
       title: msg("tutorials.commandPalette.addTitle"),
-      goal: msg("tutorials.commandPalette.addGoal"),
+      goal: addGoalWords,
       done: msg("tutorials.commandPalette.addDone"),
       check: { kind: "node", subject: "topic" },
       settle: { kind: "selection", subjects: ["anchor"], tip: msg("tutorials.commandPalette.finishAdd") },
-      targets: [{ testId: "canvas-pane", tip: msg("tutorials.commandPalette.addTip") }],
+      targets: [{ testId: "canvas-pane", tip: addTipWords }],
       demo: [{ kind: "add", subject: "topic", stencil: "kafka.topic" }],
       solution: [
         { press: "ControlOrMeta+k" },
-        { fill: "command-input", text: msg("tutorials.commandPalette.searchKafka") },
+        { fill: "command-input", text: stencilSearch("kafka.topic") },
         { click: "command-item-stencil:kafka.topic" },
         { click: "node-{anchor}" },
       ],
@@ -38,14 +58,14 @@ export const commandPalette: Tutorial = {
     {
       id: "goto",
       title: msg("tutorials.commandPalette.gotoTitle"),
-      goal: msg("tutorials.commandPalette.gotoGoal"),
+      goal: gotoGoalWords,
       done: msg("tutorials.commandPalette.gotoDone"),
       check: { kind: "selection", subjects: ["topic"], exact: true },
-      targets: [{ testId: "node-{topic}", tip: msg("tutorials.commandPalette.gotoTip") }],
+      targets: [{ testId: "node-{topic}", tip: gotoTipWords }],
       demo: [{ kind: "select", subjects: ["topic"] }],
       solution: [
         { press: "ControlOrMeta+k" },
-        { fill: "command-input", text: msg("tutorials.commandPalette.topicName") },
+        { fill: "command-input", text: topicName },
         { click: "command-item-node:{topic}" },
       ],
     },

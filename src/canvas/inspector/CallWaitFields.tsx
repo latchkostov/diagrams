@@ -13,6 +13,7 @@ import { planningHost } from "../../live/planningHost";
 import { useSyncExternalStore } from "react";
 import { stencilRole } from "../../stencils/roles";
 import { callPolicy } from "../../sim/callPolicy";
+import { tutorialRoute } from "../../tutorials/route";
 
 const noSubscribe = () => () => {};
 const noState = () => null;
@@ -77,6 +78,13 @@ export function CallWaitFields({
         <p className="insp-note" data-testid="inspector-hint-wait">
           {t("threads.waitHint")}
         </p>
+        <button
+          className="link-btn"
+          data-testid="inspector-tutorial-waiting"
+          onClick={() => tutorialRoute.open("threads-block")}
+        >
+          {t("tutorials.learnWaiting")}
+        </button>
       </Field>
       {origin("wait")}
       <RequestGroup

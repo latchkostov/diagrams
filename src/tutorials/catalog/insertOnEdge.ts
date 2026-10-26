@@ -1,5 +1,10 @@
+import { stencilSearch } from "./searchValues";
 import { msg, t } from "../../i18n";
 import type { Tutorial } from "../types";
+
+const nameGoalWords = () => t("tutorials.insertOnEdge.nameGoal", { name: msg("tutorials.insertOnEdge.gatewayName")() });
+
+const insertGoalWords = () => t("tutorials.insertOnEdge.insertGoal", { query: stencilSearch("aws.api-gateway")() });
 
 export const insertOnEdge: Tutorial = {
   id: "insert-on-edge",
@@ -28,7 +33,7 @@ export const insertOnEdge: Tutorial = {
     {
       id: "insert",
       title: msg("tutorials.insertOnEdge.insertTitle"),
-      goal: msg("tutorials.insertOnEdge.insertGoal"),
+      goal: insertGoalWords,
       done: msg("tutorials.insertOnEdge.insertDone"),
       check: {
         kind: "all",
@@ -39,26 +44,26 @@ export const insertOnEdge: Tutorial = {
         ],
       },
       targets: [
-        { testId: "context-menu-item-edge.insert-node", tip: msg("tutorials.insertOnEdge.insertGoal") },
-        { testId: "edge-label-{call}", tip: msg("tutorials.insertOnEdge.insertGoal") },
+        { testId: "context-menu-item-edge.insert-node", tip: insertGoalWords },
+        { testId: "edge-label-{call}", tip: insertGoalWords },
       ],
       demo: [{ kind: "insert", edge: ["app", "api"], subject: "gw", stencil: "aws.api-gateway" }],
       solution: [
         { rightclick: "edge-label-{call}" },
         { click: "context-menu-item-edge.insert-node" },
-        { type: msg("tutorials.insertOnEdge.searchGateway") },
+        { type: stencilSearch("aws.api-gateway") },
         { press: "Enter" },
       ],
     },
     {
       id: "name",
       title: msg("tutorials.insertOnEdge.nameTitle"),
-      goal: msg("tutorials.insertOnEdge.nameGoal"),
+      goal: nameGoalWords,
       done: msg("tutorials.insertOnEdge.nameDone"),
       check: { kind: "label", subject: "gw", is: msg("tutorials.insertOnEdge.gatewayName") },
       targets: [
-        { testId: "inspector-field-label", tip: msg("tutorials.insertOnEdge.nameGoal") },
-        { testId: "node-{gw}", tip: msg("tutorials.insertOnEdge.nameGoal") },
+        { testId: "inspector-field-label", tip: nameGoalWords },
+        { testId: "node-{gw}", tip: nameGoalWords },
       ],
       demo: [{ kind: "rename", subject: "gw", label: msg("tutorials.insertOnEdge.gatewayName") }],
       solution: [

@@ -8,6 +8,7 @@ import { SimInput } from "./SimulationFields";
 import { t } from "../../i18n";
 import type { RetryPolicy } from "../../model/admission";
 import { recommendedRetry } from "../../sim/resiliencePresets";
+import { tutorialRoute } from "../../tutorials/route";
 
 export function RetryFields({
   retry,
@@ -45,6 +46,13 @@ export function RetryFields({
             onChange={(value) => update({ maxAttempts: Number(value) })}
           />
         </Field>
+        <button
+          className="link-btn"
+          data-testid="inspector-tutorial-retries"
+          onClick={() => tutorialRoute.open("retry-storm")}
+        >
+          {t("tutorials.learnRetries")}
+        </button>
         {enabled && (
           <>
             <p className="insp-note" data-testid="retry-limit-summary">

@@ -1,5 +1,8 @@
-import { msg } from "../../i18n";
+import { msg, t } from "../../i18n";
 import type { Tutorial } from "../types";
+
+const messageType = "OrderShipped";
+const filterGoal = () => t("tutorials.fanout.filterGoal", { messageType });
 
 export const fanout: Tutorial = {
   id: "fanout",
@@ -54,15 +57,15 @@ export const fanout: Tutorial = {
     {
       id: "filter-sms",
       title: msg("tutorials.fanout.filterTitle"),
-      goal: msg("tutorials.fanout.filterGoal"),
+      goal: filterGoal,
       done: msg("tutorials.fanout.filterDone"),
-      check: { kind: "prop", edge: ["router", "smsQueue"], prop: "filter", op: "=", value: ["OrderShipped"] },
+      check: { kind: "prop", edge: ["router", "smsQueue"], prop: "filter", op: "=", value: [messageType] },
       targets: [
-        { testId: "inspector-filter-option-0", tip: msg("tutorials.fanout.filterGoal") },
-        { testId: "inspector-section-edge-messages", tip: msg("tutorials.fanout.filterGoal") },
-        { testId: "edge-label-{router->smsQueue}", tip: msg("tutorials.fanout.filterGoal") },
+        { testId: "inspector-filter-option-0", tip: filterGoal },
+        { testId: "inspector-section-edge-messages", tip: filterGoal },
+        { testId: "edge-label-{router->smsQueue}", tip: filterGoal },
       ],
-      demo: [{ kind: "prop", edge: ["router", "smsQueue"], props: { filter: ["OrderShipped"] } }],
+      demo: [{ kind: "prop", edge: ["router", "smsQueue"], props: { filter: [messageType] } }],
       solution: [
         { dblclick: "edge-label-{router->smsQueue}" },
         { click: "inspector-section-edge-messages" },

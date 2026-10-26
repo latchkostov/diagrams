@@ -4,6 +4,8 @@ import { exampleFeatures, exampleThemeLabel, filterExamples, gallerySummary } fr
 import { withExampleDetails } from "./details";
 import { t } from "../i18n";
 import type { DiscoveryGalleryProps } from "./discovery";
+import { exampleTutorials } from "./tutorials";
+import { tutorialRoute } from "../tutorials/route";
 
 export function GalleryDetails({ catalog, query, feature, onOpen, onTutorials }: DiscoveryGalleryProps) {
   const sections = filterExamples(withExampleDetails(catalog), query, feature);
@@ -80,6 +82,16 @@ export function GalleryDetails({ catalog, query, feature, onOpen, onTutorials }:
                     {ex.shows?.map((id) => (
                       <span key={id}>{exampleFeatures.find((f) => f.id === id)?.label() ?? id}</span>
                     ))}
+                    {exampleTutorials[ex.slug] && (
+                      <button
+                        className="link-btn"
+                        data-testid={`example-tutorial-${ex.slug}`}
+                        onClick={() => tutorialRoute.open(exampleTutorials[ex.slug])}
+                        aria-labelledby={`example-tutorial-label-${ex.slug} example-title-${ex.slug}`}
+                      >
+                        <span id={`example-tutorial-label-${ex.slug}`}>{t("tutorials.exampleChip")}</span>
+                      </button>
+                    )}
                   </div>
                   <div className="example-card-actions">
                     <button

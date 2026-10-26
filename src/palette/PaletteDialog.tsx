@@ -1,4 +1,5 @@
 import "./routeActions";
+import { tutorialMetadata } from "../tutorials/metadata";
 import { t, useLocale } from "../i18n";
 import { ROOMS } from "../lib/localOnly";
 import { EDIT_TOGETHER } from "../lib/roomEntry";
@@ -115,7 +116,7 @@ export function PaletteDialog({
         openDiagram: opened.onOpenDiagram,
         present: opened.onPresent,
         openTutorials: opened.onTutorials,
-        tutorials: opened.tutorials,
+        tutorials: opened.tutorials ?? tutorialMetadata.map((x) => ({ id: x.id, title: x.title() })),
         startTutorial: opened.onOpenTutorial,
         language: LANGUAGE_CHOICE ? openLanguageDialog : undefined,
         editTogether: ROOMS ? () => void window.dispatchEvent(new Event(EDIT_TOGETHER)) : undefined,

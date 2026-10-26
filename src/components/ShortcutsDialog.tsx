@@ -5,7 +5,6 @@ import { Icon } from "./Icon";
 import { AI_PANEL, AI_TOOLS } from "../lib/deployment";
 import { msg, t, useLocale } from "../i18n";
 import { legacyKeyHint } from "../editor/keyHints";
-import { TUTORIALS } from "../lib/urlState";
 
 const GROUPS: Shortcut["group"][] = ["Edit", "Clipboard", "Selection", "View", "Help"];
 
@@ -130,7 +129,7 @@ function displayKeys(s: Shortcut): string[] {
 }
 
 /** Keyboard cheat sheet, opened with `?`. */
-export function ShortcutsDialog({ onClose }: { onClose: () => void }) {
+export function ShortcutsDialog({ onClose, onTutorials }: { onClose: () => void; onTutorials?: () => void }) {
   useLocale();
   const panel = useRef<HTMLDivElement>(null);
   const backdrop = useRef<HTMLDivElement>(null);
@@ -299,10 +298,17 @@ export function ShortcutsDialog({ onClose }: { onClose: () => void }) {
           </section>
         </div>
         <footer className="dlg-foot">
-          {TUTORIALS && (
-            <a href="?view=tutorials" data-testid="shortcuts-tutorials">
+          {onTutorials && (
+            <button
+              className="link-btn"
+              data-testid="shortcuts-tutorials"
+              onClick={() => {
+                onClose();
+                onTutorials();
+              }}
+            >
               {t("tutorials.shortcuts")}
-            </a>
+            </button>
           )}{" "}
           {t("shortcuts.footer")}{" "}
           <a href="privacy.html" target="_blank" rel="noopener" data-testid="privacy-link">

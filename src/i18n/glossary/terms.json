@@ -1,5 +1,5 @@
 {
-  "$comment": "The shared term list every translation follows (docs/I18N.md). `en`: regular expressions (case-insensitive, whole words) that find the term in an English message. Each language's file (glossary/<code>.json) says how it renders each term: `use` (the form to write), `match` (stems the validator accepts in a translation, for inflected forms), `avoid` (forms that must not appear), and `keepEnglish` when developers in that language keep the English word. `doNotTranslate`: names that appear exactly as they are in every language.",
+  "$comment": "The shared term list every translation follows (docs/I18N.md). `en`: regular expressions (case-insensitive, whole words) that find the term in an English message. Each language's file (glossary/<code>.json) says how it renders each term: `use` (the form to write), `match` (stems the validator accepts in a translation, for inflected forms), `avoid` (forms that must not appear), and `keepEnglish` when developers in that language keep the English word. `doNotTranslate`: names that appear exactly as they are in every language. `technicalTokens`: exact metric and unit spellings, bounded by Latin letters rather than spaces so values like 100ms and CJK sentences are checked too.",
   "doNotTranslate": [
     "Live Diagrams",
     "Kafka",
@@ -186,5 +186,6 @@
       "en": ["firewalls?"],
       "note": "A network-security device or software that filters connections. Never a physical fire barrier or firefighting equipment. Keep branded product names intact; generic nouns and descriptions use the locale’s network terminology."
     }
-  }
+  },
+  "technicalTokens": ["p95", "p99", "ms", "RPS"]
 }

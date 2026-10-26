@@ -29,6 +29,12 @@ it("Next replaces the lesson while Exit keeps the original return destination", 
   });
   try {
     tutorialRoute.open("first");
+    tutorialRoute.open("first");
+    tutorialRoute.open("first", true);
+    expect(entries).toHaveLength(2);
+    tutorialRoute.close();
+    expect(window.location.search).toBe("?view=tutorials");
+    tutorialRoute.open("first");
     tutorialRoute.open("second", true);
     expect(entries).toHaveLength(2);
     expect(tutorialRoute.get()).toBe("second");
@@ -48,6 +54,20 @@ it("opens an explicit draft without reloading or retaining tutorial, Live or sha
   try {
     tutorialRoute.openDiagram("new");
     expect(pushState).toHaveBeenCalledExactlyOnceWith(null, "", "/tools/?view=canvas&example=new");
+  } finally {
+    vi.unstubAllGlobals();
+  }
+});
+
+it("opens app views under the current sub-path without reloading or retaining tutorial state", () => {
+  const pushState = vi.fn();
+  vi.stubGlobal("window", {
+    location: new URL("https://example.test/tools/?tutorial=lesson&live=1#d=old"),
+    history: { pushState },
+  });
+  try {
+    tutorialRoute.openView("tutorials");
+    expect(pushState).toHaveBeenCalledExactlyOnceWith(null, "", "/tools/?view=tutorials");
   } finally {
     vi.unstubAllGlobals();
   }

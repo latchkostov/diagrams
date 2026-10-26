@@ -1,9 +1,10 @@
+import { stencilSearch } from "./searchValues";
 import { msg, t } from "../../i18n";
 import type { Tutorial } from "../types";
 import type { DiagramFile } from "../../model/types";
 
 const apiName = msg("tutorials.mobileApi.apiName");
-const appWord = msg("tutorials.mobileApi.searchApp");
+const appWord = stencilSearch("client.mobile");
 
 /** The pilot: static drawing (rail, the "+", dots, naming) and a first look at Live. */
 export const mobileApi: Tutorial & { start(): DiagramFile } = {
@@ -42,7 +43,7 @@ export const mobileApi: Tutorial & { start(): DiagramFile } = {
       hint: msg("tutorials.mobileApi.addApiHint"),
       done: msg("tutorials.mobileApi.addApiDone"),
       check: { kind: "node", subject: "api" },
-      guide: { quickAdd: msg("tutorials.mobileApi.searchApi") },
+      guide: { quickAdd: stencilSearch("generic.service") },
       targets: [
         // Quick-add lists a stencil used lately under Recent, with its own id.
         { testId: "context-menu-item-quick-add:recent:generic.service", tip: msg("tutorials.mobileApi.addApiTipPick") },

@@ -4,7 +4,7 @@ import { useSettings } from "../harness/settings";
 import { nodeVariants, type NodeVariantId } from "../harness/nodeVariants";
 import { edgeStyles, type EdgeStyle } from "../harness/edgeStyles";
 import { Icon } from "./Icon";
-import { LAB, TUTORIALS, type View } from "../lib/urlState";
+import { LAB, type View } from "../lib/urlState";
 import type { Interop } from "../interop/useInterop";
 import { FileMenu, SaveStatus, SharedChip } from "../interop/ui/menus";
 import { Menu } from "../interop/ui/Menu";
@@ -82,17 +82,15 @@ export function TopBar(p: Props) {
         >
           <Icon name="grid" size={14} /> {t("topbar.stencils")}
         </button>
-        {TUTORIALS && (
-          <button
-            role="tab"
-            aria-selected={p.view === "tutorials"}
-            className={p.view === "tutorials" ? "is-on" : ""}
-            onClick={() => p.onView("tutorials")}
-            data-testid="view-tutorials"
-          >
-            <Icon name="checklist" size={14} /> {t("tutorials.section")}
-          </button>
-        )}
+        <button
+          role="tab"
+          aria-selected={p.view === "tutorials"}
+          className={p.view === "tutorials" ? "is-on" : ""}
+          onClick={() => p.onView("tutorials")}
+          data-testid="view-tutorials"
+        >
+          <Icon name="checklist" size={14} /> {t("tutorials.section")}
+        </button>
         {showLab && (
           <button
             role="tab"

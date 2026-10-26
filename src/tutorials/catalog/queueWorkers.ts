@@ -1,3 +1,4 @@
+import { stencilSearch } from "./searchValues";
 import { msg, t } from "../../i18n";
 import type { Tutorial } from "../types";
 import { connectedStep, liveStep, practiceRun } from "./buildingBlocks";
@@ -44,7 +45,7 @@ export const queueWorkers: Tutorial = {
       from: "queue",
       subject: "second",
       stencil: "generic.service",
-      search: msg("tutorials.queueWorkers.searchService"),
+      search: stencilSearch("generic.service"),
       title: msg("tutorials.queueWorkers.addWorkerTitle"),
       goal: msg("tutorials.queueWorkers.addWorkerGoal"),
       done: msg("tutorials.queueWorkers.addWorkerDone"),

@@ -109,6 +109,9 @@ test("held Request fields keep the inspector usable; once they arrive the keyboa
     await page.keyboard.press("Tab");
     await expect(page.getByTestId("inspector-field-wait-non-blocking")).toBeFocused();
     await page.keyboard.press("Tab");
+    // The lesson link sits with the hint it explains, before the waiting limits.
+    await expect(page.getByTestId("inspector-tutorial-waiting")).toBeFocused();
+    await page.keyboard.press("Tab");
     await expect(page.getByTestId("inspector-field-deadlineMs")).toBeFocused();
     await page.keyboard.press("Tab");
     // Waiting limits now keep pool/reply controls behind their own disclosure before Retries.

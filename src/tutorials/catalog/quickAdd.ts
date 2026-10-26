@@ -1,5 +1,11 @@
+import { stencilSearch } from "./searchValues";
 import { msg, t } from "../../i18n";
 import type { Tutorial } from "../types";
+
+const nameApiGoalWords = () => t("tutorials.quickAdd.nameApiGoal", { name: msg("tutorials.quickAdd.apiName")() });
+const growDbGoalWords = () => t("tutorials.quickAdd.growDbGoal", { name: msg("tutorials.quickAdd.apiName")() });
+
+const addAppGoalWords = () => t("tutorials.quickAdd.addAppGoal", { query: stencilSearch("client.browser")() });
 
 export const quickAdd: Tutorial = {
   id: "quick-add",
@@ -15,17 +21,17 @@ export const quickAdd: Tutorial = {
     {
       id: "add-app",
       title: msg("tutorials.quickAdd.addAppTitle"),
-      goal: msg("tutorials.quickAdd.addAppGoal"),
+      goal: addAppGoalWords,
       done: msg("tutorials.quickAdd.addAppDone"),
       check: { kind: "node", subject: "app" },
       targets: [
-        { testId: "quick-add-search", tip: msg("tutorials.quickAdd.addAppGoal") },
-        { testId: "canvas-pane", tip: msg("tutorials.quickAdd.addAppGoal") },
+        { testId: "quick-add-search", tip: addAppGoalWords },
+        { testId: "canvas-pane", tip: addAppGoalWords },
       ],
       demo: [{ kind: "add", subject: "app", stencil: "client.browser" }],
       solution: [
         { pane: "dblclick" },
-        { fill: "quick-add-search", text: msg("tutorials.quickAdd.searchBrowser") },
+        { fill: "quick-add-search", text: stencilSearch("client.browser") },
         { press: "Enter" },
       ],
     },
@@ -47,17 +53,17 @@ export const quickAdd: Tutorial = {
       ],
       demo: [{ kind: "add", subject: "api", stencil: "generic.service", after: "app" }],
       solution: [{ click: "node-{app}" }, { press: "Alt+ArrowRight" }, { press: "Enter" }],
-      guide: { quickAdd: msg("tutorials.quickAdd.searchService") },
+      guide: { quickAdd: stencilSearch("generic.service") },
     },
     {
       id: "name-api",
       title: msg("tutorials.quickAdd.nameApiTitle"),
-      goal: msg("tutorials.quickAdd.nameApiGoal"),
+      goal: nameApiGoalWords,
       done: msg("tutorials.quickAdd.nameApiDone"),
       check: { kind: "label", subject: "api", is: msg("tutorials.quickAdd.apiName") },
       targets: [
-        { testId: "inspector-field-label", tip: msg("tutorials.quickAdd.nameApiGoal") },
-        { testId: "node-{api}", tip: msg("tutorials.quickAdd.nameApiGoal") },
+        { testId: "inspector-field-label", tip: nameApiGoalWords },
+        { testId: "node-{api}", tip: nameApiGoalWords },
       ],
       demo: [{ kind: "rename", subject: "api", label: msg("tutorials.quickAdd.apiName") }],
       solution: [{ fill: "inspector-field-label", text: msg("tutorials.quickAdd.apiName") }, { press: "Enter" }],
@@ -66,7 +72,7 @@ export const quickAdd: Tutorial = {
     {
       id: "grow-db",
       title: msg("tutorials.quickAdd.growDbTitle"),
-      goal: msg("tutorials.quickAdd.growDbGoal"),
+      goal: growDbGoalWords,
       done: msg("tutorials.quickAdd.growDbDone"),
       check: {
         kind: "all",
@@ -76,12 +82,12 @@ export const quickAdd: Tutorial = {
         ],
       },
       targets: [
-        { testId: "quick-add-search", tip: msg("tutorials.quickAdd.growDbGoal") },
-        { testId: "node-{api}", tip: msg("tutorials.quickAdd.growDbGoal") },
+        { testId: "quick-add-search", tip: growDbGoalWords },
+        { testId: "node-{api}", tip: growDbGoalWords },
       ],
       demo: [{ kind: "add", subject: "db", stencil: "postgres", after: "api" }],
       solution: [{ click: "node-{api}" }, { press: "Alt+ArrowRight" }, { press: "Enter" }],
-      guide: { quickAdd: msg("tutorials.quickAdd.searchPostgres") },
+      guide: { quickAdd: stencilSearch("postgres") },
     },
   ],
   finish: { text: msg("tutorials.quickAdd.finish") },

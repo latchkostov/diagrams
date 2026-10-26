@@ -1,3 +1,4 @@
+import { stencilSearch } from "./searchValues";
 import { msg, t } from "../../i18n";
 import type { Tutorial } from "../types";
 import { studyAdd, studyRun } from "./studyShared";
@@ -163,8 +164,8 @@ export const studyCheckout: Tutorial = {
       ],
       solution: [
         { click: "live-toggle" },
-        ...studyAdd("checkout", msg("tutorials.studyCheckout.searchTopic")),
-        ...studyAdd(null, msg("tutorials.studyCheckout.searchConsumer")),
+        ...studyAdd("checkout", stencilSearch("kafka.topic")),
+        ...studyAdd(null, stencilSearch("service.java")),
       ],
     },
     {

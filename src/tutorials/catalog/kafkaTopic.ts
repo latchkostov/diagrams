@@ -1,6 +1,11 @@
+import { stencilSearch } from "./searchValues";
 import { msg, t } from "../../i18n";
 import type { Tutorial } from "../types";
 import { connectedStep, liveStep, practiceRun } from "./buildingBlocks";
+
+const billingGoalWords = () =>
+  t("tutorials.kafkaTopic.billingGoal", { name: msg("tutorials.kafkaTopic.billingName")() });
+const emailGoalWords = () => t("tutorials.kafkaTopic.emailGoal", { name: msg("tutorials.kafkaTopic.emailName")() });
 
 export const kafkaTopic: Tutorial = {
   id: "kafka-topic",
@@ -41,7 +46,7 @@ export const kafkaTopic: Tutorial = {
       from: "producer",
       subject: "topic",
       stencil: "kafka.topic",
-      search: msg("tutorials.kafkaTopic.searchTopic"),
+      search: stencilSearch("kafka.topic"),
       title: msg("tutorials.kafkaTopic.addTopicTitle"),
       goal: msg("tutorials.kafkaTopic.addTopicGoal"),
       done: msg("tutorials.kafkaTopic.addTopicDone"),
@@ -52,10 +57,10 @@ export const kafkaTopic: Tutorial = {
       from: "topic",
       subject: "billing",
       stencil: "generic.service",
-      search: msg("tutorials.kafkaTopic.searchService"),
+      search: stencilSearch("generic.service"),
       name: msg("tutorials.kafkaTopic.billingName"),
       title: msg("tutorials.kafkaTopic.billingTitle"),
-      goal: msg("tutorials.kafkaTopic.billingGoal"),
+      goal: billingGoalWords,
       done: msg("tutorials.kafkaTopic.billingDone"),
     }),
     connectedStep({
@@ -64,10 +69,10 @@ export const kafkaTopic: Tutorial = {
       from: "topic",
       subject: "email",
       stencil: "generic.service",
-      search: msg("tutorials.kafkaTopic.searchService"),
+      search: stencilSearch("generic.service"),
       name: msg("tutorials.kafkaTopic.emailName"),
       title: msg("tutorials.kafkaTopic.emailTitle"),
-      goal: msg("tutorials.kafkaTopic.emailGoal"),
+      goal: emailGoalWords,
       done: msg("tutorials.kafkaTopic.emailDone"),
     }),
     liveStep(

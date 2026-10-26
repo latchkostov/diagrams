@@ -18,6 +18,8 @@ import { argsOf, choicesOf, IcuError, parse, tagsOf, textOf, type Part } from ".
 
 export interface TermGlossary {
   doNotTranslate: string[];
+  /** Metric and unit spellings, even next to a number or CJK text. */
+  technicalTokens?: string[];
   terms: Record<string, { en: string[]; note?: string }>;
 }
 
@@ -186,6 +188,11 @@ export function validateLocale(opts: {
     const enAll = textOf(en, "all");
     for (const name of glossary.doNotTranslate)
       if (enAll.includes(name) && !all.includes(name)) error(key, "protected", `"${name}" must stay as it is`);
+
+    for (const token of glossary.technicalTokens ?? []) {
+      const pattern = new RegExp(`(?<![A-Za-z])${token}(?![A-Za-z])`);
+      if (pattern.test(enAll) && !pattern.test(all)) error(key, "protected", `"${token}" must stay as it is`);
+    }
 
     // The glossary.
     if (localeGlossary) {
