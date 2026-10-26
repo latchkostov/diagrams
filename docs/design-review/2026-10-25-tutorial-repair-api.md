@@ -94,8 +94,9 @@ behaviour.
 - **Payments.** Never double-charge repairs the selected run plus both saved runs, so switching runs can't
   undo it. Brownout and Poison repair their runs.
 - **Checkout.** The rush and quota milestones repair their runs.
-- **Dispatch.** Replicas and partitions repair their runs. The capacity multiplier is normalized to 1 so the
-  reference sizes are the fleet.
+- **Dispatch.** Replicas and partitions repair their runs. Both milestones normalize the run's capacity multiplier
+  to 1, so the reference sizes are the fleet: ×0.25 would leave Dinner rush one consumer (R-db40c0b5e7), ×2 would
+  outgrow the partitions.
 - **Fan-out.** The pool repair covers both runs and is repeated before the outage. Queues bind by
   `between: [router, sender]`, so removing either connection keeps the queue bound and repairable. DLQ-first
   construction still binds correctly.

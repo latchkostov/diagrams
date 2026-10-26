@@ -23,7 +23,7 @@ import { createTutorialStart } from "./start";
 import { TopBar } from "../components/TopBar";
 import { useInterop, useInteropCanvasActions } from "../interop/useInterop";
 import type { CanvasHandle } from "../canvas/CanvasView";
-import type { DiagramFile } from "../model/types";
+import type { DiagramFile, Simulation } from "../model/types";
 import { paletteHost } from "../palette/host";
 import { toast } from "../interop/ui/toast";
 import { useLibrary } from "../lib/useLibrary";
@@ -194,6 +194,7 @@ function Running({
     window.__tutorial = {
       snapshot: runner.getSnapshot,
       journal: runner.journal,
+      runs: runner.runs,
       solution: () => solutionNow(tutorial, runner.getSnapshot()),
     };
     return () => void delete window.__tutorial;
@@ -565,6 +566,8 @@ declare global {
     __tutorial?: {
       snapshot(): RunnerSnapshot;
       journal(): readonly unknown[];
+      /** The sandbox's saved runs and Live's unsaved draft. */
+      runs(): { saved: readonly Simulation[]; draft: Simulation | null };
       /** The current step's solution path, its subjects and words filled in. */
       solution(): ResolvedUiStep[];
     };

@@ -675,6 +675,58 @@ test("study-payments: Skip repairs a new simulation run in place, leaving it the
   expectNoErrors(consoleErrors);
 });
 
+test("study-payments: brownout Skip repairs overridden draft settings, leaving the saved run's own", async ({
+  page,
+  consoleErrors,
+}) => {
+  test.slow();
+  await reachStudyMilestone(page, "study-payments", "survive-psp-brownout");
+  if (!(await page.getByTestId("live-sim-picker").isVisible())) await page.getByTestId("live-toggle").click();
+  await page.getByTestId("live-sim-picker").selectOption("psp-brownout");
+  // The Live inspector on the saved run: its own deadline (too long) and its breaker turned off.
+  await fitDiagram(page);
+  await page.getByTestId("node-psp").dblclick();
+  await page.getByTestId("inspector-field-label").click();
+  await page.getByTestId("inspector-field-label").press("Enter");
+  // eslint-disable-next-line no-restricted-syntax -- Connection navigation uses Ctrl+Alt on every platform (Ctrl+Option on macOS).
+  await page.keyboard.press("Control+Alt+[");
+  await expect.poll(() => page.evaluate(() => window.__tutorial?.snapshot().selected)).toEqual(["payments-psp"]);
+  await page.getByTestId("inspector-section-edge-simulation").click();
+  await page.getByTestId("inspector-field-breaker-on").click();
+  await page.getByTestId("inspector-field-breaker-off").click();
+  await expect(page.getByTestId("inspector-field-breaker-on")).not.toBeChecked();
+  await page.getByTestId("inspector-field-deadlineMs").fill("1000");
+  await page.getByTestId("inspector-field-deadlineMs").press("Enter");
+  const savedCaller = () =>
+    page.evaluate(
+      () =>
+        window.__tutorial?.runs().saved.find((sim) => sim.id === "psp-brownout")?.setup?.edges?.["payments-psp"]
+          ?.caller,
+    );
+  await expect.poll(savedCaller).toMatchObject({ deadlineMs: 1000, breaker: null });
+  // Simulations… › edit the run, then Run without Save: a draft carrying those run-only settings.
+  await page.getByTestId("live-more").click();
+  await page.getByTestId("live-edit-sims").click();
+  await page.getByTestId("sim-panel-title").fill("My overridden brownout");
+  await page.getByTestId("sim-panel-run").click();
+  await expect.poll(() => page.evaluate(() => window.__tutorial?.runs().draft?.title)).toBe("My overridden brownout");
+  await page.getByTestId("tutorial-skip").click();
+  // Completing the brownout means the draft that plays has the 250 ms deadline and an open breaker.
+  await expect(strip(page)).toHaveAttribute("data-step", "dead-letter-disputes");
+  const draft = await page.evaluate(() => window.__tutorial?.runs().draft);
+  expect(draft?.title).toBe("My overridden brownout");
+  expect(draft?.setup?.edges?.["payments-psp"]?.caller).toMatchObject({ deadlineMs: 250, breaker: {} });
+  await expect(page.getByTestId("live-sim-picker")).toHaveValue("psp-brownout");
+  await expect(page.getByTestId("sim-panel-title")).toHaveValue("My overridden brownout");
+  await expect(page.getByTestId("sim-panel-dirty")).toBeVisible();
+  // The saved run keeps the learner's own overrides: Skip repaired their draft, not the run they saved.
+  expect(await savedCaller()).toMatchObject({ deadlineMs: 1000, breaker: null });
+  expect(
+    await page.evaluate(() => window.__tutorial?.runs().saved.find((sim) => sim.id === "psp-brownout")?.title),
+  ).not.toBe("My overridden brownout");
+  expectNoErrors(consoleErrors);
+});
+
 test("study-payments: Skip at the brownout keeps an edited running draft, through Run again, reselection and Continue", async ({
   page,
   consoleErrors,

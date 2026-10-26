@@ -107,6 +107,12 @@ export const studyDispatch: Tutorial = {
           runs: ["dinner-rush"],
           patches: [{ op: "set", path: ["replicas"], value: 2 }],
         },
+        // Two replicas are the fleet: a saved capacity multiplier would scale them (×0.25 leaves one consumer).
+        {
+          kind: "patchRun",
+          runs: ["dinner-rush"],
+          patches: [{ op: "set", path: ["multipliers", "capacity"], value: 1 }],
+        },
         { kind: "runSimulation", id: "dinner-rush" },
       ],
       solution: [

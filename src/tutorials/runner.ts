@@ -851,5 +851,7 @@ export function createTutorialRunner(
     },
     /** Test seam: the cause journal (development and e2e builds). */
     journal: () => machine.journal,
+    /** Test seam: the sandbox's saved runs and Live's unsaved draft, the copies a repair chooses between. */
+    runs: () => ({ saved: editor()?.getDiagram().simulations ?? [], draft: planningHost.get()?.draft ?? null }),
   };
 }

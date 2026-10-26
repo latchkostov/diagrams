@@ -1908,6 +1908,20 @@ describe("completion regressions", () => {
     });
   });
 
+  it("dinner-rush Skip normalizes a saved Capacity ×0.25 that leaves one consumer", async () => {
+    const s = sandbox(studyDispatch);
+    expect(await reach(s, studyDispatch, 0)).toBe(true);
+    s.learn({ kind: "runSimulation", id: "dinner-rush" });
+    // Inputs & capacity › Capacity ×0.25, Save to simulation.
+    s.live!.setInputs({ ...s.live!.getState().inputs, capacity: 0.25 });
+    s.saveInputs();
+    await new Promise<void>((done) => queueMicrotask(done));
+    expect(s.diagram.simulations!.find((sim) => sim.id === "dinner-rush")!.multipliers!.capacity).toBe(0.25);
+    await skip(s, studyDispatch);
+    expect(beyond(s, 0)).toBe(true);
+    expect(s.diagram.simulations!.find((sim) => sim.id === "dinner-rush")!.multipliers!.capacity).toBe(1);
+  });
+
   it("partition Skip normalizes a saved capacity multiplier that scales consumers past the partitions", async () => {
     const s = sandbox(studyDispatch);
     expect(await reach(s, studyDispatch, 1)).toBe(true);
