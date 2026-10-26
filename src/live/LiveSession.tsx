@@ -123,6 +123,18 @@ export function LiveSession({
   // interaction); a Lab stage without a canvas gets one of its own.
   const { controller: interaction, local } = useInteractionOrLocal();
   const locale = useLocale();
+  useLayoutEffect(() => {
+    const shell = transport?.parentElement;
+    if (!transport || !shell) return;
+    const observer = new ResizeObserver(([entry]) => {
+      shell.style.setProperty("--transport-measured-h", `${entry.borderBoxSize[0].blockSize}px`);
+    });
+    observer.observe(transport);
+    return () => {
+      observer.disconnect();
+      shell.style.removeProperty("--transport-measured-h");
+    };
+  }, [transport]);
   const store = useStoreApi<FlowNode, DiagramFlowEdge>();
   const { theme } = useSettings();
   const session = useLiveSessionState({ editor, diagram, params, simulations: simsProp });

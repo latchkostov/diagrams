@@ -2780,5 +2780,11 @@
   "workbench.nodeDetails": "{name} 詳細資料",
   "workbench.noteAt": "{time} 時的備註",
   "workbench.liveEditGoal": "在 {live} 中，變更設定前請先開啟{properties}。{goal}",
-  "workbench.editProperties": "編輯屬性"
+  "workbench.editProperties": "編輯屬性",
+  "workbench.thisRun": "本次執行",
+  "workbench.wholeRun": "整個執行",
+  "workbench.runWindow": "共 {total, number} 秒中的 0–{end, number} 秒",
+  "workbench.runChartAlt": "{name}: {rateLabel} {rate}; {queueLabel} {queue}; {window}",
+  "workbench.expectations": "預期 {passed, number}/{total, number}",
+  "examples.runHistory": "執行記錄"
 }

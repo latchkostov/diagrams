@@ -2792,5 +2792,11 @@
   "workbench.nodeDetails": "Details van {name}",
   "workbench.noteAt": "Notitie op {time}",
   "workbench.liveEditGoal": "Open in {live} eerst {properties} voordat je instellingen wijzigt. {goal}",
-  "workbench.editProperties": "Eigenschappen bewerken"
+  "workbench.editProperties": "Eigenschappen bewerken",
+  "workbench.thisRun": "Deze uitvoering",
+  "workbench.wholeRun": "Hele uitvoering",
+  "workbench.runWindow": "0–{end, number} s van {total, number} s",
+  "workbench.runChartAlt": "{name}: {rateLabel} {rate}; {queueLabel} {queue}; {window}",
+  "workbench.expectations": "Verwachtingen {passed, number} van {total, number}",
+  "examples.runHistory": "Uitvoeringsgeschiedenis"
 }

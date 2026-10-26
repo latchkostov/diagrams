@@ -753,7 +753,7 @@
     z-index: 7;
   }
 
-  .app-main .canvas-view.is-live > .canvas-wrap {
+  .app-main .canvas-view.is-live .canvas-wrap {
     z-index: 6;
   }
 
@@ -3096,6 +3096,10 @@ details[open] > summary .lv-disclosure-chevron {
   background: var(--live);
   color: var(--live-ink);
 }
+.live-transport-mount .lv-play:hover:not(:disabled) {
+  background: var(--live);
+  color: var(--live-ink);
+}
 .live-transport-mount .lv-speed select {
   block-size: 32px;
   border: 1px solid var(--control-line);
@@ -3246,6 +3250,22 @@ details[open] > summary .lv-disclosure-chevron {
   }
 }
 @media (max-width: 639px) {
+  .app-main .canvas-view.is-live .lv-panel {
+    bottom: calc(var(--transport-measured-h, 160px) + 12px);
+  }
+  .live-caption-mount {
+    position: relative;
+    z-index: 5;
+  }
+  .live-transport-mount .lv-checks-pop {
+    position: fixed;
+    inset-inline: calc(var(--frame-rail-w) + 8px) 8px;
+    bottom: calc(var(--transport-measured-h, 160px) + 12px);
+    width: auto;
+    max-width: none;
+    max-height: 50vh;
+    overflow: auto;
+  }
   .live-transport-mount .lv-bar {
     flex-wrap: wrap;
     gap: 4px;
@@ -3388,4 +3408,265 @@ details[open] > summary .lv-disclosure-chevron {
 }
 .dock-identity-name strong {
   color: var(--text);
+}
+/* Whole-run observations share the transport's time scale. */
+.run-chart {
+  padding-block: 16px;
+  scroll-snap-align: end;
+}
+.run-chart-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+}
+.run-chart-head strong {
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 650;
+}
+.run-chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  margin-block: 8px;
+  font-size: 11.5px;
+  color: var(--text-2);
+}
+.run-chart-legend > span,
+.run-chart-scales > span {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.run-chart-legend b {
+  color: var(--text);
+  font: 650 11.5px var(--font-ui);
+}
+.run-rate-swatch,
+.run-queue-swatch {
+  display: inline-block;
+  inline-size: 14px;
+  border-block-start: 2px solid var(--accent);
+}
+.run-queue-swatch {
+  border-color: var(--warning);
+  border-block-start-style: dashed;
+}
+.run-fault {
+  color: var(--status-down);
+}
+.run-note {
+  color: var(--note);
+}
+.run-chart-scales {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--text-2);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.run-chart svg {
+  display: block;
+  inline-size: 100%;
+  block-size: 182px;
+  overflow: visible;
+}
+.run-chart svg text {
+  font: 650 10.5px var(--font-ui);
+}
+.run-chart-ground {
+  fill: var(--surface-2);
+}
+.run-grid {
+  stroke: var(--line);
+  stroke-width: 1;
+}
+.run-grid.is-major {
+  stroke: var(--line-strong);
+}
+.run-rate-line {
+  stroke: var(--accent);
+  stroke-width: 2;
+  fill: none;
+}
+.run-queue-line {
+  stroke: var(--warning);
+  stroke-width: 2;
+  stroke-dasharray: 5 3;
+  fill: none;
+}
+.run-queue-area {
+  fill: var(--warning);
+  fill-opacity: 0.12;
+}
+.run-chart-playhead {
+  stroke: var(--text);
+  stroke-width: 2;
+}
+.run-chart-axis {
+  position: relative;
+  block-size: 20px;
+  color: var(--text-2);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.run-chart-axis > span {
+  position: absolute;
+  transform: translateX(-50%);
+}
+.run-chart-axis > span:first-child {
+  transform: none;
+}
+.run-scale {
+  position: relative;
+  block-size: 4px;
+  margin-block: 8px 10px;
+  background: var(--surface-3);
+}
+.run-scale > i {
+  display: block;
+  block-size: 100%;
+  background: var(--live);
+}
+.run-scale-window {
+  position: absolute;
+  inset-inline-start: 0;
+  inset-block-start: -5px;
+  block-size: 14px;
+  border: 1px solid var(--text-2);
+  border-radius: 3px;
+}
+.run-scale-playhead {
+  position: absolute;
+  inset-block-start: -6px;
+  inline-size: 3px;
+  block-size: 16px;
+  background: var(--text);
+}
+.live-transport-mount .lv-run-strip {
+  block-size: 48px;
+  position: relative;
+  margin: 0;
+}
+.lv-run-strip .lv-track {
+  position: absolute;
+  inset: 22px 0 auto;
+  block-size: 4px;
+  background: var(--surface-3);
+  border-radius: 0;
+  overflow: hidden;
+}
+.lv-run-strip .lv-fill {
+  background: var(--live);
+}
+.lv-run-strip .lv-playhead {
+  inset-block-start: 15px;
+  block-size: 18px;
+  inline-size: 3px;
+  background: var(--text);
+  border: 0;
+  border-radius: 0;
+}
+.lv-run-strip input[type="range"] {
+  position: absolute;
+  inset: 14px 0 auto;
+  block-size: 20px;
+  inline-size: 100%;
+  margin: 0;
+  z-index: 1;
+}
+.run-strip-flag {
+  position: absolute;
+  inset-block-start: -5px;
+  transform: translateX(-50%);
+  display: grid;
+  place-items: center;
+  inline-size: 24px;
+  block-size: 24px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--status-down);
+  z-index: 2;
+  font-size: 12px;
+}
+.run-strip-flag.is-note {
+  inset-block-start: auto;
+  inset-block-end: -5px;
+  color: var(--note);
+}
+.run-strip-count {
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+  border-radius: 3px;
+  block-size: 14px;
+  padding-inline: 3px;
+  font: 650 11px var(--font-ui);
+  color: white;
+  background: var(--status-down);
+}
+.run-strip-flag.is-note .run-strip-count {
+  background: var(--note);
+}
+.lv-run-strip.is-coarse .run-strip-flag {
+  inline-size: 44px;
+  block-size: 44px;
+  inset-block-start: -10px;
+}
+.lv-run-strip.is-coarse .run-strip-flag.is-note {
+  inset-block-start: auto;
+  inset-block-end: -10px;
+}
+.lv-run-strip.is-coarse .run-strip-count {
+  border: 1px solid var(--control-line);
+  background: var(--panel);
+  color: var(--text);
+  block-size: 16px;
+}
+.run-marker-list {
+  position: absolute;
+  inset-block-end: calc(100% + 8px);
+  inset-inline-start: 50%;
+  transform: translateX(-50%);
+  inline-size: min(320px, 100vw - 24px);
+  max-block-size: 260px;
+  overflow: auto;
+  padding: 6px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--panel);
+  box-shadow: var(--shadow-2);
+  z-index: 6;
+}
+.run-marker-list button {
+  display: block;
+  inline-size: 100%;
+  text-align: start;
+  padding: 8px;
+  border: 0;
+  background: none;
+  color: var(--text);
+}
+.run-marker-list button:hover {
+  background: var(--hover);
+}
+.live-transport-mount .lv-checks-more {
+  display: block;
+}
+.lv-checks-sum {
+  white-space: nowrap;
+  padding-inline: 8px;
+  min-block-size: 32px;
+  font-size: 12px;
+}
+@container live-bar (max-width: 1100px) {
+  .live-transport-mount .lv-sim select {
+    max-inline-size: 160px;
+  }
 }

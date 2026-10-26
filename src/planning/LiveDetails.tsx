@@ -1,9 +1,10 @@
 import { ResourceDetails } from "./ResourceDetails";
+import { RunChart } from "../live/RunChart";
 import { DockIdentity } from "../canvas/inspector/DockIdentity";
 import type { ReplicaRow } from "../sim/autoscaling";
 import { resolveNodeProps } from "../sim/defaults";
 import { groupLabel } from "../stencils/brokerVocabulary";
-import { memo, useEffect, useMemo, useState } from "react";
+import { memo, useEffect, useLayoutEffect, useMemo, useState } from "react";
 import type { ScalingPlan } from "../sim/scalingPlanner";
 import { planDescriptor, planSentence, reasonText } from "./scalingPlanText";
 import { scenarioPlanner } from "../lib/scenarioPlanner";
@@ -87,6 +88,9 @@ export function LiveDetails({
   state?: LiveState;
 }) {
   useLocale();
+  useLayoutEffect(() => {
+    live?.controller.runHistory.probe(s.id);
+  });
   const { diagram: effective, topology } = readoutDiagram(d, state?.running ?? undefined);
   const groups = useMemo(() => {
     const labels = new Map(d.nodes.map((n) => [n.id, n.label]));
@@ -157,6 +161,17 @@ export function LiveDetails({
     <LiveContext value={live}>
       {s.resources && s.fleet && <ScalingAnnouncement label={node.label} fleet={s.fleet} />}
       <DockedLive
+        chart={
+          <RunChart
+            history={live.controller.runHistory}
+            node={node.id}
+            name={node.label}
+            time={time}
+            total={Math.max(state.run?.totalMs ?? 12000, time)}
+            markers={state.run?.markers ?? []}
+            vitals={summary.vitals}
+          />
+        }
         identity={(control) => <DockIdentity node={node} status={control} live />}
         broker={s.role === "topic" || s.role === "queue" || s.role === "stream"}
         summary={summary}

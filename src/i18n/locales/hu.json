@@ -2797,5 +2797,11 @@
   "workbench.nodeDetails": "{name} részletei",
   "workbench.noteAt": "Megjegyzés ekkor: {time}",
   "workbench.liveEditGoal": "{live} módban a beállítások módosítása előtt nyissa meg ezt: {properties}. {goal}",
-  "workbench.editProperties": "Tulajdonságok szerkesztése"
+  "workbench.editProperties": "Tulajdonságok szerkesztése",
+  "workbench.thisRun": "Ez a futás",
+  "workbench.wholeRun": "Teljes futás",
+  "workbench.runWindow": "0–{end, number} s / {total, number} s",
+  "workbench.runChartAlt": "{name}: {rateLabel} {rate}; {queueLabel} {queue}; {window}",
+  "workbench.expectations": "Elvárások: {passed, number}/{total, number}",
+  "examples.runHistory": "Futási előzmények"
 }

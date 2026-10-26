@@ -14,4 +14,5 @@ export const exampleFeatures = [
   { id: "autoscaling", label: msg("examples.autoscaling") },
   { id: "routing", label: msg("examples.routing") },
   { id: "latency", label: msg("examples.latency") },
+  { id: "runHistory", label: msg("examples.runHistory") },
 ];

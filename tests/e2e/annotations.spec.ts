@@ -432,6 +432,7 @@ test.describe("annotations", () => {
         await annotation(page, "shape").click();
         await waitForSelectionSettled(page);
         for (const side of ["left", "right"] as const) {
+          await waitForCameraIdle(page);
           const handle = page.getByTestId(`handle-shape-${side}`);
           await expect(handle).toBeVisible();
           // Selection and camera readiness do not mean the lazy attachment
@@ -820,6 +821,8 @@ test.describe("annotations", () => {
     });
     await gotoCanvas(page, SLUG);
     await page.getByTestId("live-toggle").click();
+    await waitForLiveSession(page);
+    await waitForCameraIdle(page);
     for (const theme of ["light", "dark"]) {
       await expectTheme(page, theme);
       // Measured once the live view and theme transitions (opacity, colours) have settled.
@@ -1078,6 +1081,7 @@ test.describe("annotations", () => {
   test("T adds text at the pointer; double-click edits it, multi-line", async ({ page, consoleErrors }) => {
     await gotoCanvas(page, SLUG);
     await expect(page.getByTestId("node-payments")).toBeVisible();
+    await waitForCameraIdle(page);
     const wrap = await box(page.getByTestId("canvas-wrap"));
     // Left of centre, but clear of the diagram card (top left, 380 px wide) at any canvas width.
     const spot = await emptySpot(page, -150);
@@ -1086,6 +1090,7 @@ test.describe("annotations", () => {
     await typeAndCommit(page, "Order flow");
     const text = annotation(page, "text-1");
     await expect(page.getByTestId("annotation-text-text-1")).toHaveText("Order flow");
+    await waitForCameraIdle(page);
     // It starts where the pointer was.
     const b = await box(text);
     expect(Math.abs(b.x - (wrap.x + spot.x))).toBeLessThan(40);
@@ -1349,7 +1354,7 @@ test.describe("annotations", () => {
 
     // 5. Inspector MarkdownEditor shows Preview first when populated, switches to Edit on click, and supports Ctrl/Cmd+K
     await page.getByTestId("canvas-wrap").click({ position: await emptySpot(page) });
-    await page.getByTestId("inspector-toggle").click();
+    await openDiagramProperties(page);
     await expect(page.getByTestId("inspector-field-description-rendered")).toBeVisible();
     const descField = page.getByTestId("inspector-field-description");
     await page.getByTestId("inspector-field-description-rendered").click();

@@ -2779,5 +2779,11 @@
   "workbench.nodeDetails": "Szczegóły: {name}",
   "workbench.noteAt": "Notatka w {time}",
   "workbench.liveEditGoal": "W trybie {live} otwórz {properties} przed zmianą ustawień. {goal}",
-  "workbench.editProperties": "Edytuj właściwości"
+  "workbench.editProperties": "Edytuj właściwości",
+  "workbench.thisRun": "Ten przebieg",
+  "workbench.wholeRun": "Cały przebieg",
+  "workbench.runWindow": "0–{end, number} s z {total, number} s",
+  "workbench.runChartAlt": "{name}: {rateLabel} {rate}; {queueLabel} {queue}; {window}",
+  "workbench.expectations": "Oczekiwania {passed, number} z {total, number}",
+  "examples.runHistory": "Historia przebiegu"
 }

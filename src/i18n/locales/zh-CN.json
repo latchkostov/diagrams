@@ -2782,5 +2782,11 @@
   "workbench.nodeDetails": "{name} 详情",
   "workbench.noteAt": "{time} 时的备注",
   "workbench.liveEditGoal": "在 {live} 中，更改设置前请先打开{properties}。{goal}",
-  "workbench.editProperties": "编辑属性"
+  "workbench.editProperties": "编辑属性",
+  "workbench.thisRun": "本次运行",
+  "workbench.wholeRun": "整个运行",
+  "workbench.runWindow": "共 {total, number} 秒中的 0–{end, number} 秒",
+  "workbench.runChartAlt": "{name}: {rateLabel} {rate}; {queueLabel} {queue}; {window}",
+  "workbench.expectations": "预期 {passed, number}/{total, number}",
+  "examples.runHistory": "运行历史"
 }

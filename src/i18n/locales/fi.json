@@ -2782,5 +2782,11 @@
   "workbench.nodeDetails": "{name}: tiedot",
   "workbench.noteAt": "Huomautus kohdassa {time}",
   "workbench.liveEditGoal": "Avaa {live}-tilassa {properties} ennen asetusten muuttamista. {goal}",
-  "workbench.editProperties": "Muokkaa ominaisuuksia"
+  "workbench.editProperties": "Muokkaa ominaisuuksia",
+  "workbench.thisRun": "Tämä ajo",
+  "workbench.wholeRun": "Koko ajo",
+  "workbench.runWindow": "0–{end, number} s / {total, number} s",
+  "workbench.runChartAlt": "{name}: {rateLabel} {rate}; {queueLabel} {queue}; {window}",
+  "workbench.expectations": "Odotukset {passed, number}/{total, number}",
+  "examples.runHistory": "Ajohistoria"
 }

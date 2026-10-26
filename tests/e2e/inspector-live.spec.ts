@@ -442,7 +442,10 @@ test("node Live is docked, opens the verdict section, and updates without resett
   await expect(processed).not.toHaveText(before);
   await expect(area.getByTestId("inspector-live-section-outcomes")).toHaveAttribute("aria-expanded", "true");
   await expect(area.getByTestId("hover-history-summary")).toContainText(/Now .*low .*peak/);
-  await expect(area.getByTestId("hover-history-chart")).toHaveAccessibleName("Last 10 seconds");
+  await expect(area.getByTestId("dock-run-chart")).toBeVisible();
+  await expect(area.getByTestId("hover-history-chart")).toHaveAccessibleName(
+    /Decision service: Throughput .*; Queue .*; 0–\d+ s of \d+ s/,
+  );
   expectNoErrors(consoleErrors);
 });
 

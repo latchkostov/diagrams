@@ -2758,5 +2758,11 @@
   "workbench.nodeDetails": "Сведения: {name}",
   "workbench.noteAt": "Заметка на {time}",
   "workbench.liveEditGoal": "В режиме {live} откройте {properties} перед изменением настроек. {goal}",
-  "workbench.editProperties": "Изменить свойства"
+  "workbench.editProperties": "Изменить свойства",
+  "workbench.thisRun": "Этот запуск",
+  "workbench.wholeRun": "Весь запуск",
+  "workbench.runWindow": "0–{end, number} с из {total, number} с",
+  "workbench.runChartAlt": "{name}: {rateLabel} {rate}; {queueLabel} {queue}; {window}",
+  "workbench.expectations": "Ожидания {passed, number} из {total, number}",
+  "examples.runHistory": "История запуска"
 }

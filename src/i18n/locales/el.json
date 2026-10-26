@@ -2782,5 +2782,11 @@
   "workbench.nodeDetails": "Λεπτομέρειες {name}",
   "workbench.noteAt": "Σημείωση στα {time}",
   "workbench.liveEditGoal": "Στο {live}, ανοίξτε το {properties} πριν αλλάξετε τις ρυθμίσεις. {goal}",
-  "workbench.editProperties": "Επεξεργασία ιδιοτήτων"
+  "workbench.editProperties": "Επεξεργασία ιδιοτήτων",
+  "workbench.thisRun": "Αυτή η εκτέλεση",
+  "workbench.wholeRun": "Ολόκληρη η εκτέλεση",
+  "workbench.runWindow": "0–{end, number} δ από {total, number} δ",
+  "workbench.runChartAlt": "{name}: {rateLabel} {rate}; {queueLabel} {queue}; {window}",
+  "workbench.expectations": "Προσδοκίες {passed, number} από {total, number}",
+  "examples.runHistory": "Ιστορικό εκτέλεσης"
 }

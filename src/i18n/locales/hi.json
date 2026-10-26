@@ -2775,5 +2775,11 @@
   "workbench.nodeDetails": "{name} का विवरण",
   "workbench.noteAt": "{time} पर नोट",
   "workbench.liveEditGoal": "{live} में सेटिंग बदलने से पहले {properties} खोलें। {goal}",
-  "workbench.editProperties": "गुण संपादित करें"
+  "workbench.editProperties": "गुण संपादित करें",
+  "workbench.thisRun": "यह रन",
+  "workbench.wholeRun": "पूरा रन",
+  "workbench.runWindow": "कुल {total, number} सेकंड में से 0–{end, number} सेकंड",
+  "workbench.runChartAlt": "{name}: {rateLabel} {rate}; {queueLabel} {queue}; {window}",
+  "workbench.expectations": "अपेक्षाएँ: {total, number} में से {passed, number}",
+  "examples.runHistory": "रन का इतिहास"
 }

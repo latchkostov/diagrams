@@ -2762,5 +2762,11 @@
   "workbench.nodeDetails": "{name} informacija",
   "workbench.noteAt": "Pastaba ties {time}",
   "workbench.liveEditGoal": "Veikiant {live}, prieš keisdami nustatymus atverkite {properties}. {goal}",
-  "workbench.editProperties": "Redaguoti savybes"
+  "workbench.editProperties": "Redaguoti savybes",
+  "workbench.thisRun": "Šis vykdymas",
+  "workbench.wholeRun": "Visas vykdymas",
+  "workbench.runWindow": "0–{end, number} s iš {total, number} s",
+  "workbench.runChartAlt": "{name}: {rateLabel} {rate}; {queueLabel} {queue}; {window}",
+  "workbench.expectations": "Lūkesčiai {passed, number} iš {total, number}",
+  "examples.runHistory": "Vykdymo istorija"
 }

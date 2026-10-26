@@ -10,6 +10,13 @@
 // stays.
 
 const en = {
+  "workbench.thisRun": "This run",
+  "workbench.wholeRun": "Whole run",
+  "workbench.runWindow": "0\u2013{end, number} s of {total, number} s",
+  "workbench.runChartAlt": "{name}: {rateLabel} {rate}; {queueLabel} {queue}; {window}",
+  "workbench.expectations": "Expectations {passed, number} of {total, number}",
+  "examples.runHistory": "Run history",
+
   "workbench.liveEditGoal": "In {live}, open {properties} before changing settings. {goal}",
   "workbench.editProperties": "Edit properties",
   "workbench.nodeDetails": "{name} details",

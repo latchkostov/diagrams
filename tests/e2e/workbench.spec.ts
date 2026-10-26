@@ -1,4 +1,13 @@
-import { test, expect, gotoCanvas, openLibrary, openDiagramProperties, waitForCameraIdle } from "./fixtures";
+import {
+  pauseClock,
+  gotoLive,
+  test,
+  expect,
+  gotoCanvas,
+  openLibrary,
+  openDiagramProperties,
+  waitForCameraIdle,
+} from "./fixtures";
 
 test("the library opens from Add, closes with Escape and remembers Pin open", async ({ page }) => {
   await gotoCanvas(page, "retry-storm");
@@ -209,4 +218,38 @@ test("Live details lead the dock and rename opens the editing disclosure", async
   await expect(page.getByTestId("dock-edit-properties")).toHaveAttribute("aria-expanded", "true");
   await expect(page.getByTestId("inspector-field-label")).toBeFocused();
   await expect(page.getByTestId("inspector-field-label")).toHaveValue("Payments");
+});
+
+test("run history agrees with vitals and the transport, with flags clear of its track", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.clock.install();
+  await gotoLive(page, "./?view=canvas&example=retry-storm&sim=three-quick-retries&paused=1");
+  await pauseClock(page);
+  await page.getByTestId("node-payments").click();
+  await expect(page.getByTestId("dock-live-identity")).toBeVisible();
+  await page.getByTestId("live-play").click();
+  await page.clock.runFor(9600);
+  await page.getByTestId("live-play").click();
+  await expect(page.getByTestId("hover-history-line")).toHaveAttribute("d", /^M.*L/);
+  for (const [legend, vital] of [
+    ["rate", "rate"],
+    ["queue", "queue"],
+  ]) {
+    await expect(page.getByTestId(`run-chart-${legend}-now`)).toHaveText(
+      (await page.getByTestId(`hover-vital-value-${vital}`).textContent()) ?? "",
+    );
+  }
+  expect(await page.getByTestId("run-chart-scale").getAttribute("data-fraction")).toBe(
+    await page.getByTestId("live-timeline").getAttribute("data-fraction"),
+  );
+  const track = await page.getByTestId("run-strip-track").boundingBox();
+  if (!track) throw new Error("Missing run strip track");
+  const glyphs = page.getByTestId(/^run-strip-glyph-/);
+  for (const glyph of await glyphs.all()) {
+    const bounds = await glyph.boundingBox();
+    if (!bounds) throw new Error("Missing marker shape");
+    const lane = await glyph.evaluate((el) => el.parentElement?.getAttribute("data-lane"));
+    if (lane === "note") expect(bounds.y).toBeGreaterThanOrEqual(track.y + track.height);
+    else expect(bounds.y + bounds.height).toBeLessThanOrEqual(track.y);
+  }
 });

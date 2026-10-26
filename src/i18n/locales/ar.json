@@ -2920,5 +2920,11 @@
   "workbench.nodeDetails": "تفاصيل {name}",
   "workbench.noteAt": "ملاحظة عند {time}",
   "workbench.liveEditGoal": "في {live}، افتح {properties} قبل تغيير الإعدادات. {goal}",
-  "workbench.editProperties": "تعديل الخصائص"
+  "workbench.editProperties": "تعديل الخصائص",
+  "workbench.thisRun": "هذا التشغيل",
+  "workbench.wholeRun": "التشغيل بالكامل",
+  "workbench.runWindow": "0–{end, number} ث من {total, number} ث",
+  "workbench.runChartAlt": "{name}: {rateLabel} {rate}; {queueLabel} {queue}; {window}",
+  "workbench.expectations": "التوقعات: {passed, number} من {total, number}",
+  "examples.runHistory": "سجل التشغيل"
 }

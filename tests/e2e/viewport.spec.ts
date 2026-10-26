@@ -156,9 +156,9 @@ test.describe("the canvas never scrolls", () => {
   const scale = async (page: Page) => Number(/scale\(([\d.]+)\)/.exec(await viewportTransform(page))?.[1]);
   const wrapperScroll = (page: Page) => page.getByTestId("rf__wrapper").evaluate((w) => [w.scrollLeft, w.scrollTop]);
 
-  /** Tab into the canvas from the last control before it (the palette's Shape): the browser moves focus there. */
+  /** Tab into the canvas from the last rail control: the browser moves focus there. */
   async function tabIn(page: Page) {
-    await page.getByTestId("palette-annotate-shape").focus();
+    await page.getByTestId("ai-rail-open").focus();
     await page.keyboard.press("Tab");
   }
 

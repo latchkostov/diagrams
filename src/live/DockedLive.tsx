@@ -16,6 +16,7 @@ export function DockedLive({
   broker = false,
   children,
   identity,
+  chart,
 }: {
   summary: HoverSummary;
   healthy: string;
@@ -25,6 +26,7 @@ export function DockedLive({
   broker?: boolean;
   children(section: string): ReactNode;
   identity?(control: ReactNode): ReactNode;
+  chart?: ReactNode;
 }) {
   const [expanded, setExpanded] = useState(true);
   const description = useId();
@@ -100,7 +102,7 @@ export function DockedLive({
           ) : (
             <>
               <HoverVitals summary={summary} />
-              <SampleSparkline samples={history.samples} docked />
+              {chart ?? <SampleSparkline samples={history.samples} docked />}
             </>
           )}
           <SectionRows

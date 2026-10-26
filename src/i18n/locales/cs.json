@@ -2776,5 +2776,11 @@
   "workbench.nodeDetails": "Podrobnosti: {name}",
   "workbench.noteAt": "Poznámka v {time}",
   "workbench.liveEditGoal": "V režimu {live} před změnou nastavení otevřete {properties}. {goal}",
-  "workbench.editProperties": "Upravit vlastnosti"
+  "workbench.editProperties": "Upravit vlastnosti",
+  "workbench.thisRun": "Tento běh",
+  "workbench.wholeRun": "Celý běh",
+  "workbench.runWindow": "0–{end, number} s z {total, number} s",
+  "workbench.runChartAlt": "{name}: {rateLabel} {rate}; {queueLabel} {queue}; {window}",
+  "workbench.expectations": "Očekávání: {passed, number} z {total, number}",
+  "examples.runHistory": "Historie běhu"
 }

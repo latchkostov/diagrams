@@ -2799,5 +2799,11 @@
   "workbench.nodeDetails": "{name} の詳細",
   "workbench.noteAt": "{time} のノート",
   "workbench.liveEditGoal": "{live} では、設定を変更する前に {properties} を開きます。{goal}",
-  "workbench.editProperties": "プロパティを編集"
+  "workbench.editProperties": "プロパティを編集",
+  "workbench.thisRun": "今回の実行",
+  "workbench.wholeRun": "実行全体",
+  "workbench.runWindow": "全 {total, number} 秒のうち 0～{end, number} 秒",
+  "workbench.runChartAlt": "{name}: {rateLabel} {rate}; {queueLabel} {queue}; {window}",
+  "workbench.expectations": "期待条件 {passed, number}/{total, number}",
+  "examples.runHistory": "実行履歴"
 }

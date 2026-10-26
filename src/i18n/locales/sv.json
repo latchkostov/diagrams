@@ -2790,5 +2790,11 @@
   "workbench.nodeDetails": "Information om {name}",
   "workbench.noteAt": "Anteckning vid {time}",
   "workbench.liveEditGoal": "Öppna {properties} i {live} innan du ändrar inställningarna. {goal}",
-  "workbench.editProperties": "Redigera egenskaper"
+  "workbench.editProperties": "Redigera egenskaper",
+  "workbench.thisRun": "Denna körning",
+  "workbench.wholeRun": "Hela körningen",
+  "workbench.runWindow": "0–{end, number} s av {total, number} s",
+  "workbench.runChartAlt": "{name}: {rateLabel} {rate}; {queueLabel} {queue}; {window}",
+  "workbench.expectations": "Förväntningar {passed, number} av {total, number}",
+  "examples.runHistory": "Körningshistorik"
 }

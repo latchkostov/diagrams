@@ -1004,7 +1004,7 @@ function CanvasInner({
     aiDock,
     inspectorHidden,
     sheetResize,
-    inspectorPref: dock.value !== "closed",
+    inspectorPref: prefs.inspector,
     inspectorByHand: openedByHand.inspector,
     livePanelOpen,
     narrow,

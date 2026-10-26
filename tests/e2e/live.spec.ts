@@ -114,6 +114,9 @@ for (const presenting of [false, true]) {
       await expect(label).toBeFocused();
       await page.keyboard.press("Escape");
       await expect.poll(() => node.evaluate((el) => !!document.activeElement?.contains(el))).toBe(true);
+      // Enter's floating readout is available after closing the selected node's dock.
+      await page.getByTestId("inspector-toggle").click();
+      await node.evaluate((el) => el.parentElement?.focus());
     } else await expect(label).toHaveCount(0);
     await expect(play).toHaveAttribute("data-state", "waiting");
     await page.keyboard.press("Enter");
@@ -125,7 +128,8 @@ for (const presenting of [false, true]) {
     await page.getByTestId("live-note-continue").click();
     await expect(play).toHaveAttribute("data-state", "playing");
     if (presenting) await expect(label).toHaveCount(0);
-    else await expect(label).not.toBeFocused();
+    else
+      await expect.poll(() => label.evaluateAll((els) => els.some((el) => el === document.activeElement))).toBe(false);
     expectNoErrors(consoleErrors);
   });
 }

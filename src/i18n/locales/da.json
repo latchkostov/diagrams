@@ -2799,5 +2799,11 @@
   "workbench.nodeDetails": "Detaljer om {name}",
   "workbench.noteAt": "Note ved {time}",
   "workbench.liveEditGoal": "I {live} skal du åbne {properties}, før du ændrer indstillinger. {goal}",
-  "workbench.editProperties": "Rediger egenskaber"
+  "workbench.editProperties": "Rediger egenskaber",
+  "workbench.thisRun": "Denne kørsel",
+  "workbench.wholeRun": "Hele kørslen",
+  "workbench.runWindow": "0–{end, number} s af {total, number} s",
+  "workbench.runChartAlt": "{name}: {rateLabel} {rate}; {queueLabel} {queue}; {window}",
+  "workbench.expectations": "Forventninger {passed, number} af {total, number}",
+  "examples.runHistory": "Kørselshistorik"
 }

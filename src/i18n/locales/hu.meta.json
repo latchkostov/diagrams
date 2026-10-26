@@ -2799,6 +2799,12 @@
     "workbench.nodeDetails": "d40b945a",
     "workbench.noteAt": "1e1c7b01",
     "workbench.liveEditGoal": "36990d75",
-    "workbench.editProperties": "9c7d489a"
+    "workbench.editProperties": "9c7d489a",
+    "workbench.thisRun": "0b498154",
+    "workbench.wholeRun": "77ea0d19",
+    "workbench.runWindow": "1be172f2",
+    "workbench.runChartAlt": "86a13100",
+    "workbench.expectations": "7c9fa8d1",
+    "examples.runHistory": "4eaf85b6"
   }
 }

@@ -2794,5 +2794,11 @@
   "workbench.nodeDetails": "Details zu {name}",
   "workbench.noteAt": "Notiz bei {time}",
   "workbench.liveEditGoal": "Öffne in {live} zuerst {properties}, bevor du Einstellungen änderst. {goal}",
-  "workbench.editProperties": "Eigenschaften bearbeiten"
+  "workbench.editProperties": "Eigenschaften bearbeiten",
+  "workbench.thisRun": "Dieser Lauf",
+  "workbench.wholeRun": "Gesamter Lauf",
+  "workbench.runWindow": "0–{end, number} s von {total, number} s",
+  "workbench.runChartAlt": "{name}: {rateLabel} {rate}; {queueLabel} {queue}; {window}",
+  "workbench.expectations": "Erwartungen {passed, number} von {total, number}",
+  "examples.runHistory": "Laufverlauf"
 }

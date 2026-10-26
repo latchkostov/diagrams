@@ -26,7 +26,10 @@ export function SheetResizeHandle({ onResize }: { onResize?: () => void }) {
       host.clientWidth -
       Array.from(host.children).reduce(
         (sum, child) =>
-          sum + (child === sheet || child.classList.contains("canvas-wrap") ? 0 : child.getBoundingClientRect().width),
+          sum +
+          (child === sheet || child.classList.contains("canvas-wrap") || child.classList.contains("canvas-column")
+            ? 0
+            : child.getBoundingClientRect().width),
         0,
       );
     const paint = (width: number | null) => {

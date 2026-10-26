@@ -2777,5 +2777,11 @@
   "workbench.nodeDetails": "{name}: üksikasjad",
   "workbench.noteAt": "Märkus ajal {time}",
   "workbench.liveEditGoal": "Režiimis {live} ava enne seadete muutmist {properties}. {goal}",
-  "workbench.editProperties": "Muuda omadusi"
+  "workbench.editProperties": "Muuda omadusi",
+  "workbench.thisRun": "See käitus",
+  "workbench.wholeRun": "Kogu käitus",
+  "workbench.runWindow": "0–{end, number} s / {total, number} s",
+  "workbench.runChartAlt": "{name}: {rateLabel} {rate}; {queueLabel} {queue}; {window}",
+  "workbench.expectations": "Ootused {passed, number}/{total, number}",
+  "examples.runHistory": "Käituse ajalugu"
 }

@@ -113,6 +113,9 @@ export function NodeBadges({
       ? null
       : candidate;
   const focusClaim = useReadoutFocus(pointed);
+  useLayoutEffect(() => {
+    if (candidate?.kind === "node") ui.controller.runHistory.probe(candidate.id);
+  });
   const hovered = !editing && pointed?.kind === "node" ? pointed.id : null;
   // Badges live in flow space; counter-scale them when zoomed out so they stay readable.
   const zoom = useStore((s) => s.transform[2]);

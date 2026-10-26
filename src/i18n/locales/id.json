@@ -2777,5 +2777,11 @@
   "workbench.nodeDetails": "Detail {name}",
   "workbench.noteAt": "Catatan pada {time}",
   "workbench.liveEditGoal": "Di {live}, buka {properties} sebelum mengubah pengaturan. {goal}",
-  "workbench.editProperties": "Edit properti"
+  "workbench.editProperties": "Edit properti",
+  "workbench.thisRun": "Proses ini",
+  "workbench.wholeRun": "Seluruh proses",
+  "workbench.runWindow": "0–{end, number} dtk dari {total, number} dtk",
+  "workbench.runChartAlt": "{name}: {rateLabel} {rate}; {queueLabel} {queue}; {window}",
+  "workbench.expectations": "Ekspektasi {passed, number} dari {total, number}",
+  "examples.runHistory": "Riwayat proses"
 }

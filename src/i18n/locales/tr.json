@@ -2772,5 +2772,11 @@
   "workbench.nodeDetails": "{name} ayrıntıları",
   "workbench.noteAt": "{time} anındaki not",
   "workbench.liveEditGoal": "{live} modunda ayarları değiştirmeden önce {properties} bölümünü açın. {goal}",
-  "workbench.editProperties": "Özellikleri düzenle"
+  "workbench.editProperties": "Özellikleri düzenle",
+  "workbench.thisRun": "Bu çalıştırma",
+  "workbench.wholeRun": "Tüm çalıştırma",
+  "workbench.runWindow": "{total, number} sn içinde 0–{end, number} sn",
+  "workbench.runChartAlt": "{name}: {rateLabel} {rate}; {queueLabel} {queue}; {window}",
+  "workbench.expectations": "Beklentiler {passed, number}/{total, number}",
+  "examples.runHistory": "Çalıştırma geçmişi"
 }

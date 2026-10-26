@@ -2789,5 +2789,11 @@
   "workbench.nodeDetails": "Podrobnosti: {name}",
   "workbench.noteAt": "Opomba ob {time}",
   "workbench.liveEditGoal": "V načinu {live} pred spreminjanjem nastavitev odprite {properties}. {goal}",
-  "workbench.editProperties": "Uredi lastnosti"
+  "workbench.editProperties": "Uredi lastnosti",
+  "workbench.thisRun": "Ta zagon",
+  "workbench.wholeRun": "Celoten zagon",
+  "workbench.runWindow": "0–{end, number} s od {total, number} s",
+  "workbench.runChartAlt": "{name}: {rateLabel} {rate}; {queueLabel} {queue}; {window}",
+  "workbench.expectations": "Pričakovanja {passed, number} od {total, number}",
+  "examples.runHistory": "Zgodovina zagona"
 }

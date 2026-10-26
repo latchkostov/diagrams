@@ -29,7 +29,9 @@ for (const platform of ["MacIntel", "Win32"]) {
       });
     }, platform);
     await gotoCanvas(page, "kafka-order-pipeline");
+    await page.getByTestId("rail-add").click();
     await expect(page.getByTestId("palette")).toContainText(platform === "MacIntel" ? "⌘K" : "Ctrl+K");
+    await page.keyboard.press("Escape");
     await waitForStableViewport(page);
     const pane = await page.getByTestId("canvas-wrap").boundingBox();
     if (!pane) throw new Error("No canvas");

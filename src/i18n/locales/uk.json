@@ -2786,5 +2786,11 @@
   "workbench.nodeDetails": "Відомості: {name}",
   "workbench.noteAt": "Примітка на {time}",
   "workbench.liveEditGoal": "У режимі {live} відкрийте {properties} перед зміною налаштувань. {goal}",
-  "workbench.editProperties": "Редагувати властивості"
+  "workbench.editProperties": "Редагувати властивості",
+  "workbench.thisRun": "Цей запуск",
+  "workbench.wholeRun": "Увесь запуск",
+  "workbench.runWindow": "0–{end, number} с із {total, number} с",
+  "workbench.runChartAlt": "{name}: {rateLabel} {rate}; {queueLabel} {queue}; {window}",
+  "workbench.expectations": "Очікування {passed, number} із {total, number}",
+  "examples.runHistory": "Історія запуску"
 }

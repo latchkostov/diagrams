@@ -2800,5 +2800,11 @@
   "workbench.nodeDetails": "Detalii despre {name}",
   "workbench.noteAt": "Notă la {time}",
   "workbench.liveEditGoal": "În {live}, deschide {properties} înainte de a modifica setările. {goal}",
-  "workbench.editProperties": "Editează proprietățile"
+  "workbench.editProperties": "Editează proprietățile",
+  "workbench.thisRun": "Această rulare",
+  "workbench.wholeRun": "Întreaga rulare",
+  "workbench.runWindow": "0–{end, number} s din {total, number} s",
+  "workbench.runChartAlt": "{name}: {rateLabel} {rate}; {queueLabel} {queue}; {window}",
+  "workbench.expectations": "Așteptări {passed, number} din {total, number}",
+  "examples.runHistory": "Istoricul rulării"
 }

@@ -2766,5 +2766,11 @@
   "workbench.nodeDetails": "{name} informācija",
   "workbench.noteAt": "Piezīme pie {time}",
   "workbench.liveEditGoal": "Režīmā {live} pirms iestatījumu maiņas atveriet {properties}. {goal}",
-  "workbench.editProperties": "Rediģēt īpašības"
+  "workbench.editProperties": "Rediģēt īpašības",
+  "workbench.thisRun": "Šī izpilde",
+  "workbench.wholeRun": "Visa izpilde",
+  "workbench.runWindow": "0–{end, number} s no {total, number} s",
+  "workbench.runChartAlt": "{name}: {rateLabel} {rate}; {queueLabel} {queue}; {window}",
+  "workbench.expectations": "Sagaidāmais {passed, number} no {total, number}",
+  "examples.runHistory": "Izpildes vēsture"
 }

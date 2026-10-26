@@ -2781,5 +2781,11 @@
   "workbench.nodeDetails": "Подробности за {name}",
   "workbench.noteAt": "Бележка на {time}",
   "workbench.liveEditGoal": "В {live} отворете {properties}, преди да променяте настройките. {goal}",
-  "workbench.editProperties": "Редактиране на свойства"
+  "workbench.editProperties": "Редактиране на свойства",
+  "workbench.thisRun": "Това изпълнение",
+  "workbench.wholeRun": "Цялото изпълнение",
+  "workbench.runWindow": "0–{end, number} с от {total, number} с",
+  "workbench.runChartAlt": "{name}: {rateLabel} {rate}; {queueLabel} {queue}; {window}",
+  "workbench.expectations": "Очаквания: {passed, number} от {total, number}",
+  "examples.runHistory": "История на изпълнението"
 }

@@ -2,7 +2,7 @@ import { useWorkbenchDock } from "../inspector/dockState";
 import { useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { Icon, type IconName } from "../../components/Icon";
 import { t, useLocale } from "../../i18n";
-import { TUTORIALS, type View } from "../../lib/urlState";
+import type { View } from "../../lib/urlState";
 import { AI_PANEL } from "../../lib/deployment";
 import { checksPanel, useChecksPanel } from "../checks/checksPanel";
 import { aiPanelTitle, openAiPanel } from "../../ai/ui/events";
@@ -131,8 +131,7 @@ export function ToolRail({ view, onView }: { view: View; onView: (view: View) =>
       )}
       <div className="tool-rail-sep" />
       {item("view-gallery", t("topbar.stencils"), "grid", () => onView("gallery"), view === "gallery")}
-      {TUTORIALS &&
-        item("view-tutorials", t("tutorials.section"), "learn", () => onView("tutorials"), view === "tutorials")}
+      {item("view-tutorials", t("tutorials.section"), "learn", () => onView("tutorials"), view === "tutorials")}
       <div className="tool-rail-grow" />
       {item("shortcuts-button", t("workbench.shortcuts"), "keyboard", () => host?.shortcuts(), false, undefined, !host)}
       {AI_PANEL &&

@@ -2792,5 +2792,11 @@
   "workbench.nodeDetails": "Pojedinosti: {name}",
   "workbench.noteAt": "Bilješka u {time}",
   "workbench.liveEditGoal": "U načinu {live} otvorite {properties} prije promjene postavki. {goal}",
-  "workbench.editProperties": "Uredi svojstva"
+  "workbench.editProperties": "Uredi svojstva",
+  "workbench.thisRun": "Ovo izvođenje",
+  "workbench.wholeRun": "Cijelo izvođenje",
+  "workbench.runWindow": "0–{end, number} s od {total, number} s",
+  "workbench.runChartAlt": "{name}: {rateLabel} {rate}; {queueLabel} {queue}; {window}",
+  "workbench.expectations": "Očekivanja {passed, number} od {total, number}",
+  "examples.runHistory": "Povijest izvođenja"
 }

@@ -2764,5 +2764,11 @@
   "workbench.nodeDetails": "รายละเอียด {name}",
   "workbench.noteAt": "หมายเหตุที่ {time}",
   "workbench.liveEditGoal": "ใน {live} ให้เปิด {properties} ก่อนเปลี่ยนการตั้งค่า {goal}",
-  "workbench.editProperties": "แก้ไขคุณสมบัติ"
+  "workbench.editProperties": "แก้ไขคุณสมบัติ",
+  "workbench.thisRun": "การรันนี้",
+  "workbench.wholeRun": "การรันทั้งหมด",
+  "workbench.runWindow": "0–{end, number} วินาที จาก {total, number} วินาที",
+  "workbench.runChartAlt": "{name}: {rateLabel} {rate}; {queueLabel} {queue}; {window}",
+  "workbench.expectations": "ความคาดหวัง {passed, number} จาก {total, number}",
+  "examples.runHistory": "ประวัติการรัน"
 }

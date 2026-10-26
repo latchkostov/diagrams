@@ -2782,5 +2782,11 @@
   "workbench.nodeDetails": "Chi tiết {name}",
   "workbench.noteAt": "Ghi chú tại {time}",
   "workbench.liveEditGoal": "Trong {live}, mở {properties} trước khi thay đổi cài đặt. {goal}",
-  "workbench.editProperties": "Chỉnh sửa thuộc tính"
+  "workbench.editProperties": "Chỉnh sửa thuộc tính",
+  "workbench.thisRun": "Lần chạy này",
+  "workbench.wholeRun": "Toàn bộ lần chạy",
+  "workbench.runWindow": "0–{end, number} giây trên {total, number} giây",
+  "workbench.runChartAlt": "{name}: {rateLabel} {rate}; {queueLabel} {queue}; {window}",
+  "workbench.expectations": "Kỳ vọng {passed, number} trên {total, number}",
+  "examples.runHistory": "Lịch sử chạy"
 }

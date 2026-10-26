@@ -2770,5 +2770,11 @@
   "workbench.nodeDetails": "Podrobnosti: {name}",
   "workbench.noteAt": "Poznámka v {time}",
   "workbench.liveEditGoal": "V režime {live} pred zmenou nastavení otvorte {properties}. {goal}",
-  "workbench.editProperties": "Upraviť vlastnosti"
+  "workbench.editProperties": "Upraviť vlastnosti",
+  "workbench.thisRun": "Tento beh",
+  "workbench.wholeRun": "Celý beh",
+  "workbench.runWindow": "0–{end, number} s z {total, number} s",
+  "workbench.runChartAlt": "{name}: {rateLabel} {rate}; {queueLabel} {queue}; {window}",
+  "workbench.expectations": "Očakávania {passed, number} z {total, number}",
+  "examples.runHistory": "História behu"
 }

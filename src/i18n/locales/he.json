@@ -2771,5 +2771,11 @@
   "workbench.nodeDetails": "פרטי {name}",
   "workbench.noteAt": "הערה ב־{time}",
   "workbench.liveEditGoal": "במצב {live}, פתחו את {properties} לפני שינוי ההגדרות. {goal}",
-  "workbench.editProperties": "עריכת מאפיינים"
+  "workbench.editProperties": "עריכת מאפיינים",
+  "workbench.thisRun": "הרצה זו",
+  "workbench.wholeRun": "ההרצה כולה",
+  "workbench.runWindow": "0–{end, number} שנ׳ מתוך {total, number} שנ׳",
+  "workbench.runChartAlt": "{name}: {rateLabel} {rate}; {queueLabel} {queue}; {window}",
+  "workbench.expectations": "ציפיות {passed, number} מתוך {total, number}",
+  "examples.runHistory": "היסטוריית הרצה"
 }

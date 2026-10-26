@@ -1,4 +1,5 @@
 import { revisionAtLeast } from "../model/revisions";
+import { RunHistory } from "./runHistory";
 import type { Fault } from "../model/faults";
 import { faultTimelineProblem } from "../model/faultRuntime";
 import { simulationProjection } from "../sim/simulationContent";
@@ -224,6 +225,7 @@ export class LiveController {
   private revision = 0;
   private context: VerificationContext | undefined;
   private generation = 0;
+  readonly runHistory = new RunHistory();
   private tweaks = new Map<string, NodeTweak>();
   private listeners = new Set<() => void>();
   private state!: LiveState;
@@ -663,6 +665,7 @@ export class LiveController {
   /** Rebuilds the published state and tells subscribers. Called by actions and the UI clock. */
   publish(): void {
     const snapshot = this.realSnapshot();
+    this.runHistory.sample(snapshot, this.generation);
     this.health.observe(snapshot, this.generation);
     const configuration = this.engine.configuration();
     // Inputs, diagram edits, timeline actions and seeking can supersede a live tweak.
@@ -1033,6 +1036,7 @@ export class LiveController {
   seek(targetMs: number): void {
     if (this.needsRestart || !this.runner || this.held) return;
     if (!Number.isFinite(targetMs)) return;
+    this.runHistory.reset();
     const target = Math.max(0, targetMs);
     this.continuity = {};
     this.cancelReplay();

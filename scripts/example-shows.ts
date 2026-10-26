@@ -74,6 +74,13 @@ export function exampleShows(d: DiagramFile): string[] {
       ? ["resilience"]
       : []),
     ...(showsLatency(d) ? ["latency"] : []),
+    ...(d.simulations?.some(
+      (s) =>
+        s.timeline?.some((step) => step.atMs <= 10000 && step.action.do === "note") &&
+        s.timeline?.some((step) => step.atMs <= 10000 && step.action.do === "fault"),
+    )
+      ? ["runHistory"]
+      : []),
     ...(d.simulations?.some((s) => s.timeline?.some((step) => step.action.do === "fault")) ? ["faultDrills"] : []),
     ...(d.nodes.some((n) => typeof n.props?.partitions === "number" && n.props.partitions > 1) ? ["partitions"] : []),
     ...(d.nodes.some(

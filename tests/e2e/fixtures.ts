@@ -593,6 +593,14 @@ export async function gotoLive(page: Page, url: string) {
 
 /** Live summaries disclose their full readouts only after an explicit pin and section choice. */
 export async function openLiveNodeDetails(page: Page, id: string, section: string) {
+  // The selected node's dock replaces its floating card. Explicitly close that surface to test the card.
+  const dock = page.getByTestId("inspector");
+  if (
+    (await dock.count()) > 0 &&
+    (await dock.getAttribute("data-dock-tab")) === "properties" &&
+    (await dock.getAttribute("data-inspector-target")) === id
+  )
+    await page.getByTestId("inspector-toggle").click();
   await page.getByTestId(`node-${id}`).evaluate((el) => el.parentElement?.focus());
   const card = page.getByTestId(`node-detail-${id}`);
   await expect(card).toBeVisible();

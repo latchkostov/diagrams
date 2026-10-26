@@ -2822,5 +2822,11 @@
   "workbench.nodeDetails": "{name} 세부 정보",
   "workbench.noteAt": "{time}의 메모",
   "workbench.liveEditGoal": "{live}에서 설정을 변경하기 전에 {properties}을 여세요. {goal}",
-  "workbench.editProperties": "속성 편집"
+  "workbench.editProperties": "속성 편집",
+  "workbench.thisRun": "이번 실행",
+  "workbench.wholeRun": "전체 실행",
+  "workbench.runWindow": "전체 {total, number}초 중 0–{end, number}초",
+  "workbench.runChartAlt": "{name}: {rateLabel} {rate}; {queueLabel} {queue}; {window}",
+  "workbench.expectations": "기대 조건 {passed, number}/{total, number}",
+  "examples.runHistory": "실행 기록"
 }
