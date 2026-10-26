@@ -29,15 +29,19 @@ export function Slider({
   testId,
   name,
 }: SliderProps) {
-  const current = Math.min(max, Math.max(min, Math.round(value)));
+  const normalize = (v: number) => {
+    const snapped = min + Math.round((v - min) / step) * step;
+    return Math.min(max, Math.max(min, Number(snapped.toPrecision(12))));
+  };
+  const current = normalize(value);
   const [draft, setDraft] = useState<string | null>(null);
 
   const commit = () => {
     if (draft === null) return;
-    const v = Math.round(Number(draft));
+    const v = Number(draft);
     setDraft(null);
-    if (Number.isFinite(v) && v !== current) {
-      onChange(Math.max(min, Math.min(max, v)));
+    if (draft.trim() && Number.isFinite(v) && normalize(v) !== current) {
+      onChange(normalize(v));
     }
   };
 
@@ -63,7 +67,7 @@ export function Slider({
       {showInput && (
         <input
           className="slider-input mono"
-          inputMode="numeric"
+          inputMode="decimal"
           value={draft ?? String(current)}
           disabled={disabled}
           aria-label={label}

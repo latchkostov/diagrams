@@ -2097,5 +2097,7 @@
   "waitChecks.timeoutName": "الاستدعاء بلا مهلة",
   "waitChecks.timeoutAbout": "لا مهلة لطلب إلى واجهة API خارجية أو واجهة API للنموذج. يقترح مهلة التنبيه المباشر نفسها ضمن ميزانية خيوط المستدعي.",
   "waitChecks.done": "{fix}: تم",
-  "gallery.inlineRateLimitSummary": "تواجه حركة مرور أحد الشركاء حصة طلبات قابلة للتعديل"
+  "gallery.inlineRateLimitSummary": "تواجه حركة مرور أحد الشركاء حصة طلبات قابلة للتعديل",
+  "inspector.borderRadius": "نصف قطر الحدود",
+  "examples.roundedRegions": "مناطق وحدود مستديرة"
 }

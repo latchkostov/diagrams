@@ -1948,5 +1948,7 @@
   "staticSkill.copy": "Copiați",
   "staticSkill.copied": "Copiat",
   "staticSkill.selectCopy": "Selectați și copiați",
-  "gallery.inlineRateLimitSummary": "Traficul unui partener întâlnește o cotă de cereri editabilă"
+  "gallery.inlineRateLimitSummary": "Traficul unui partener întâlnește o cotă de cereri editabilă",
+  "inspector.borderRadius": "Raza colțurilor",
+  "examples.roundedRegions": "Zone și limite rotunjite"
 }

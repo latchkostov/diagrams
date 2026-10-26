@@ -11,6 +11,9 @@ import {
   pauseClock,
   waitForStableViewport,
   waitForSelectionSettled,
+  savedDiagram,
+  waitForHistoryIdle,
+  waitForGuides,
   STORAGE_KEYS,
   type Page,
 } from "./fixtures";
@@ -496,4 +499,154 @@ test("selected descendants keep their parent through an unselected intermediate 
     await expect(page.getByTestId("inspector-field-group")).toHaveValue("child");
   }
   expectNoErrors(consoleErrors);
+});
+
+for (const target of ["boundary", "zone"] as const)
+  test(`${target} radius slider supports keyboard, pointer, Undo and persistence`, async ({ page, consoleErrors }) => {
+    await seed(page, fixtureDiagram);
+    const element = page.getByTestId(target === "boundary" ? "group-grp-core" : "annotation-zone-1");
+    await page.getByTestId(target === "boundary" ? "group-label-grp-core" : "annotation-label-zone-1").click();
+    await waitForSelectionSettled(page);
+    const slider = page.getByTestId("inspector-field-border-radius-slider");
+    const input = page.getByTestId("inspector-field-border-radius-input");
+    const radius = async () =>
+      element.evaluate(
+        (el, property) => el.style.getPropertyValue(property),
+        target === "boundary" ? "--grp-radius" : "--ann-radius",
+      );
+    await slider.focus();
+    for (const [key, value] of [
+      ["Home", 0],
+      ["ArrowRight", 1],
+      ["ArrowUp", 2],
+      ["End", 40],
+      ["ArrowLeft", 39],
+      ["ArrowDown", 38],
+      ["PageDown", 34],
+      ["PageUp", 38],
+    ] as const) {
+      await slider.press(key);
+      await expect(slider).toHaveValue(String(value));
+      await expect.poll(radius).toBe(`${value}px`);
+      await expect(slider).toBeFocused();
+    }
+    expect(await slider.evaluate((el) => getComputedStyle(el).outlineStyle)).toBe("solid");
+    await slider.click({ position: { x: 20, y: 10 } });
+    const pointerValue = Number(await slider.inputValue());
+    expect(pointerValue).toBeGreaterThanOrEqual(0);
+    expect(pointerValue).toBeLessThan(38);
+    await expect.poll(radius).toBe(`${pointerValue}px`);
+    await waitForHistoryIdle(page);
+    await input.fill("27");
+    await input.press("Enter");
+    await expect.poll(radius).toBe("27px");
+    await waitForHistoryIdle(page);
+    await page.getByTestId("undo-button").click();
+    await expect.poll(radius).toBe(`${pointerValue}px`);
+    await input.fill("31");
+    await input.press("Tab");
+    await expect.poll(radius).toBe("31px");
+    await expect
+      .poll(async () => {
+        const d = await savedDiagram(page);
+        return target === "boundary" ? d.groups?.[0].borderRadius : d.annotations?.[0].borderRadius;
+      })
+      .toBe(31);
+    await page.reload();
+    await expect.poll(radius).toBe("31px");
+    expectNoErrors(consoleErrors);
+  });
+
+for (const command of ["align", "distribute"] as const)
+  test(`${command} Select All nested boundaries moves each subtree once in one Undo`, async ({ page }) => {
+    const groups = [0, 1, 2].flatMap((i) => [
+      {
+        id: i === 0 ? "grp-core" : `root${i}`,
+        label: `Root ${i}`,
+        x: i * i * 800,
+        y: i * 220,
+        width: 650,
+        height: 500,
+      },
+      {
+        id: `inner${i}`,
+        group: i === 0 ? "grp-core" : `root${i}`,
+        label: "Inner",
+        x: i * i * 800 + 70,
+        y: i * 220 + 80,
+        width: 450,
+        height: 300,
+      },
+    ]);
+    const nodes = [0, 1, 2].map((i) => ({
+      id: `member${i}`,
+      stencil: "service.node",
+      label: "Member",
+      group: `inner${i}`,
+      x: i * i * 800 + 120,
+      y: i * 220 + 150,
+    }));
+    await seed(page, { format: "diagrams/v1", title: "Arrange subtrees", groups, nodes, edges: [] });
+    await page.getByTestId("group-label-grp-core").click();
+    await page.keyboard.press("ControlOrMeta+a");
+    await waitForSelectionSettled(page);
+    await page.getByTestId(command === "align" ? "inspector-align-top" : "inspector-distribute-h").click();
+    await expect
+      .poll(
+        async () => (await savedDiagram(page)).groups?.find((g) => g.id === "root1")?.[command === "align" ? "y" : "x"],
+      )
+      .toBe(command === "align" ? 0 : 1600);
+    const after = await savedDiagram(page);
+    for (let i = 0; i < 3; i++) {
+      const root = after.groups?.find((g) => g.id === groups[i * 2].id);
+      const inner = after.groups?.find((g) => g.id === `inner${i}`);
+      const member = after.nodes.find((n) => n.id === `member${i}`);
+      if (!root || !inner || !member) throw new Error(`Missing subtree ${i}`);
+      expect(inner.x - root.x).toBe(70);
+      expect(inner.y - root.y).toBe(80);
+      expect(member.x - root.x).toBe(120);
+      expect(member.y - root.y).toBe(150);
+    }
+    await waitForHistoryIdle(page);
+    await page.getByTestId("undo-button").click();
+    await expect
+      .poll(async () => (await savedDiagram(page)).groups?.map((g) => ({ id: g.id, x: g.x, y: g.y })))
+      .toEqual(groups.map((g) => ({ id: g.id, x: g.x, y: g.y })));
+    expect((await savedDiagram(page)).nodes.map((n) => ({ x: n.x, y: n.y }))).toEqual(
+      nodes.map((n) => ({ x: n.x, y: n.y })),
+    );
+  });
+
+test("empty zone top strip opens inline editing through the controller", async ({ page }) => {
+  await seed(page, { ...fixtureDiagram, annotations: [{ ...fixtureDiagram.annotations[0], text: "" }] });
+  const strip = page.getByTestId("annotation-label-zone-1");
+  await strip.dblclick();
+  const editor = page.getByTestId("annotation-editor");
+  await expect(editor).toBeFocused();
+  await editor.fill("Public perimeter");
+  await editor.press("Escape");
+  await expect(strip).toHaveText("Public perimeter");
+  await page.getByTestId("undo-button").click();
+  await expect(strip).toHaveText("");
+});
+
+test("backdrop smart guides snap a boundary to a stationary zone", async ({ page }) => {
+  await seed(page, { ...fixtureDiagram, nodes: [] });
+  await page.getByTestId("group-label-grp-core").click();
+  await waitForStableViewport(page);
+  await fitDiagram(page);
+  const start = await boxOf(page.getByTestId("group-label-grp-core"));
+  const boundary = await boxOf(page.getByTestId("group-grp-core"));
+  const zone = await boxOf(page.getByTestId("annotation-zone-1"));
+  const x = start.x + start.width / 2,
+    y = start.y + start.height / 2;
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  const zoom = boundary.width / 600;
+  await page.mouse.move(x + 3, y);
+  await page.mouse.move(x + 3 + zone.x - boundary.x + 4 * zoom, y + 100 * zoom, { steps: 12 });
+  await waitForGuides(page);
+  await expect(page.getByTestId("smart-guides")).toHaveAttribute("data-axes", /x/);
+  await page.mouse.up();
+  await expect.poll(async () => (await savedDiagram(page)).groups?.[0].x).toBe(750);
 });

@@ -1948,5 +1948,7 @@
   "staticSkill.copy": "Kopiér",
   "staticSkill.copied": "Kopieret",
   "staticSkill.selectCopy": "Vælg og kopiér",
-  "gallery.inlineRateLimitSummary": "En partners trafik møder en redigerbar anmodningskvote"
+  "gallery.inlineRateLimitSummary": "En partners trafik møder en redigerbar anmodningskvote",
+  "inspector.borderRadius": "Hjørneradius",
+  "examples.roundedRegions": "Afrundede zoner og afgrænsninger"
 }

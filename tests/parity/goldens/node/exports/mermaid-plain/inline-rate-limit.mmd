@@ -2,8 +2,14 @@
 title: An inline request rate limit
 ---
 flowchart LR
-  partner(["Partner client"])
-  limiter["Rate limiter"]
-  api["Catalog API"]
+  subgraph g_partner_region ["Partner"]
+    partner(["Partner client"])
+  end
+  subgraph g_limit_region ["Rate limit"]
+    limiter["Rate limiter"]
+  end
+  subgraph g_catalog_region ["Catalog"]
+    api["Catalog API"]
+  end
   partner --> limiter
   limiter --> api

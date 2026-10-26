@@ -134,3 +134,91 @@ describe("arrange", () => {
     expect(n2?.position.y).toBe(150);
   });
 });
+
+it.each(["align", "distribute"] as const)("%s treats Select All nested subtrees as units", (command) => {
+  const h = editorHarness({
+    format: "diagrams/v1",
+    title: "Subtrees",
+    edges: [],
+    groups: [0, 1, 2].flatMap((i) => [
+      { id: `g${i}`, label: "Root", x: i * i * 600, y: i * 200, width: 500, height: 400 },
+      {
+        id: `inner${i}`,
+        label: "Inner",
+        group: `g${i}`,
+        x: i * i * 600 + 40,
+        y: i * 200 + 60,
+        width: 400,
+        height: 280,
+      },
+    ]),
+    nodes: [0, 1, 2].map((i) => ({
+      id: `n${i}`,
+      label: "Member",
+      stencil: "service.node",
+      group: `inner${i}`,
+      x: i * i * 600 + 80,
+      y: i * 200 + 120,
+    })),
+    annotations: [0, 1, 2].map((i) => ({
+      id: `a${i}`,
+      kind: "note" as const,
+      text: "Note",
+      group: `inner${i}`,
+      x: i * i * 600 + 80,
+      y: i * 200 + 220,
+      width: 100,
+      height: 50,
+    })),
+  });
+  const before = new Map(h.nodes().map((n) => [n.id, n.position]));
+  const ids = h.nodes().map((n) => n.id);
+  if (command === "align") h.api.align(ids, "top");
+  else h.api.distribute(ids, "h");
+  expect(h.nodes().some((n) => n.position.x !== before.get(n.id)!.x || n.position.y !== before.get(n.id)!.y)).toBe(
+    true,
+  );
+  for (let i = 0; i < 3; i++) {
+    const root = h.nodes().find((n) => n.id === `group:g${i}`)!;
+    const start = before.get(root.id)!;
+    for (const id of [`group:inner${i}`, `n${i}`, `a${i}`]) {
+      const n = h.nodes().find((n) => n.id === id)!;
+      expect(n.position).toEqual({
+        x: before.get(id)!.x + root.position.x - start.x,
+        y: before.get(id)!.y + root.position.y - start.y,
+      });
+    }
+  }
+});
+
+it("position normalization reads node types linearly", () => {
+  const cost = (count: number) => {
+    const h = editorHarness({
+      format: "diagrams/v1",
+      title: "Cost",
+      edges: [],
+      nodes: Array.from({ length: count }, (_, i) => ({
+        id: `n${i}`,
+        label: "Node",
+        stencil: "service.node",
+        x: i * 300,
+        y: (i % 2) * 200,
+      })),
+    });
+    let reads = 0;
+    for (const n of h.nodes())
+      Object.defineProperty(n, "type", {
+        get: () => {
+          reads++;
+          return "diagram";
+        },
+        enumerable: true,
+      });
+    h.api.align(
+      h.nodes().map((n) => n.id),
+      "top",
+    );
+    return reads;
+  };
+  expect(cost(256) / cost(32)).toBeLessThan(24);
+});

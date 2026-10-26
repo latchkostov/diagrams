@@ -1,6 +1,7 @@
 import { msg } from "../i18n";
 
 export const exampleFeatures = [
+  { id: "roundedRegions", label: msg("examples.roundedRegions") },
   { id: "vendorStencils", label: msg("examples.vendorStencils") },
   { id: "brandedClients", label: msg("examples.brandedClients") },
   { id: "messageTypes", label: msg("examples.messageTypes") },

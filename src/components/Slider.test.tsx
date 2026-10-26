@@ -31,3 +31,8 @@ describe("Slider component", () => {
     expect(html).not.toContain('data-testid="test-slider-input"');
   });
 });
+
+it("preserves fractional steps relative to min", () => {
+  const html = renderToString(<Slider label="Fraction" value={0.5} min={0.1} step={0.1} onChange={() => {}} />);
+  expect(html).toContain('value="0.5"');
+});

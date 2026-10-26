@@ -1,3 +1,4 @@
+import { borderRadius } from "../model/borderRadius";
 import { isDenyRule } from "../stencils/netDevices";
 import {
   DIAGRAM_FORMAT,
@@ -148,7 +149,13 @@ export const groupToFlow = (g: DiagramGroup): GroupFlowNode => ({
   height: g.height,
   zIndex: -1,
   dragHandle: ".grp-drag",
-  data: { groupId: g.id, label: g.label, tone: g.tone ?? "neutral", group: g.group, borderRadius: g.borderRadius },
+  data: {
+    groupId: g.id,
+    label: g.label,
+    tone: g.tone ?? "neutral",
+    group: g.group,
+    borderRadius: borderRadius(g.borderRadius),
+  },
 });
 
 export const nodeToFlow = (n: DiagramNode): DiagramFlowNode => ({
@@ -186,7 +193,7 @@ export const annotationToFlow = (a: DiagramAnnotation): AnnotationFlowNode => ({
     color: a.color,
     textSize: a.textSize,
     group: a.group,
-    borderRadius: a.borderRadius,
+    borderRadius: borderRadius(a.borderRadius),
   },
 });
 

@@ -1,3 +1,4 @@
+import { borderRadius } from "../../model/borderRadius";
 import { queueShapeMeasurement } from "../shapes/measurementQueue";
 import {
   memo,
@@ -175,7 +176,7 @@ function AnnotationNodeImpl({
     </div>
   );
 
-  const zoneRadius = kind === "zone" ? (data.borderRadius ?? 18) : undefined;
+  const zoneRadius = kind === "zone" ? (borderRadius(data.borderRadius) ?? 18) : undefined;
   return (
     <div
       ref={root}

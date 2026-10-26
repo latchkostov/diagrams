@@ -1,3 +1,4 @@
+import { borderRadius } from "../../model/borderRadius";
 import { memo, type CSSProperties } from "react";
 import { NodeResizeControl, ResizeControlVariant, type NodeProps } from "@xyflow/react";
 import { useDiagram } from "../DiagramContext";
@@ -9,7 +10,7 @@ import { resolveGroupTone } from "../groupTones";
 /** Boundary box (cloud, cluster, network) drawn behind nodes. Dragged by its label; a double-click names it. */
 function GroupNodeImpl({ data, selected }: NodeProps<GroupFlowNode>) {
   const { rename, boundaryResized } = useDiagram();
-  const radius = data.borderRadius ?? 20;
+  const radius = borderRadius(data.borderRadius) ?? 20;
   return (
     <div
       className={`grp${selected ? " is-selected" : ""}`}

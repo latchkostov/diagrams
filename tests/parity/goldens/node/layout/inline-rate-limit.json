@@ -14,9 +14,9 @@
   },
   "skillLayout": {
     "laidOut": true,
-    "fitted": [],
+    "fitted": ["partner-region", "limit-region", "catalog-region"],
     "placedNotes": [],
     "nodes": { "partner": [40, 40], "limiter": [400, 40], "api": [760, 40] },
-    "groups": {}
+    "groups": { "partner-region": [0, -24, 300, 176], "limit-region": [360, -24, 300, 176], "catalog-region": [720, -24, 300, 176] }
   }
 }

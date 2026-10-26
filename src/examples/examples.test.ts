@@ -20,6 +20,10 @@ describe("example metadata and loading", () => {
   it("the inline rate-limit showcase rejects excess requests within ten seconds", () => {
     const diagram = files["./inline-rate-limit.json"];
     expect(exampleMetadata["inline-rate-limit"].shows).toContain("rateLimits");
+    expect(exampleMetadata["inline-rate-limit"].shows).toContain("roundedRegions");
+    expect(new Set(diagram.groups!.map((g) => g.y)).size).toBe(1);
+    expect(diagram.groups!.every((g) => g.borderRadius === 28)).toBe(true);
+    expect(diagram.annotations!.find((a) => a.kind === "zone")?.borderRadius).toBe(32);
     const engine = createEngine({ seed: 20261025 });
     engine.load(diagram);
     engine.setTraffic(true);

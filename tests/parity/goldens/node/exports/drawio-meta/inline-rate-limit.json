@@ -1,7 +1,7 @@
 {
   "withIcons": {
-    "sha256": "4ba9a795eb50d38abf489a19495988f7844d555ef83a826fa636ee892c7fe0e1",
-    "bytes": 4313,
+    "sha256": "952ee968ee65ecb20abc6bf94cc0256a8133592d0b5c81e8f3d822617f6b5960",
+    "bytes": 6584,
     "inlined": { "client.user": "client-user c8aa1007847a06e5", "generic.rate-limiter": "generic-rate-limiter 7f75f8aa59c5823e", "generic.service": "generic-service 6ec0da29f56c9e80" }
   },
   "readBack": [
@@ -10,7 +10,12 @@
       "diagram": {
         "format": "diagrams/v1",
         "title": "An inline request rate limit",
-        "description": "A fictional partner sends 20 requests/s through a 10 requests/s token bucket. Go Live to see rejections within seconds, then double-click the limiter and change Rate limit in Simulation.",
+        "description": "A fictional partner sends 20 requests/s through a 10 requests/s token bucket. Go Live to see rejections within seconds, then double-click the limiter and change Rate limit in Simulation. Rounded boundaries align the partner, rate limit and catalog regions; the dashed rounded zone marks the request path.",
+        "groups": [
+          { "id": "partner-region", "label": "Partner", "tone": "neutral", "x": -30, "y": -70, "width": 280, "height": 200 },
+          { "id": "limit-region", "label": "Rate limit", "tone": "azure", "x": 270, "y": -70, "width": 280, "height": 200 },
+          { "id": "catalog-region", "label": "Catalog", "tone": "gcp", "x": 570, "y": -70, "width": 280, "height": 200 }
+        ],
         "nodes": [
           {
             "id": "partner",
@@ -18,7 +23,8 @@
             "label": "Partner client",
             "x": 0,
             "y": 0,
-            "props": { "ratePerSec": 20 }
+            "props": { "ratePerSec": 20 },
+            "group": "partner-region"
           },
           {
             "id": "limiter",
@@ -34,7 +40,8 @@
                   { "id": "local-rate", "unit": "requests", "amount": 10, "windowMs": 1000, "algorithm": "token-bucket", "burst": 10 }
                 ]
               }
-            }
+            },
+            "group": "limit-region"
           },
           {
             "id": "api",
@@ -42,12 +49,16 @@
             "label": "Catalog API",
             "x": 600,
             "y": 0,
-            "props": { "latencyMs": 10, "jitter": 0 }
+            "props": { "latencyMs": 10, "jitter": 0 },
+            "group": "catalog-region"
           }
         ],
         "edges": [
           { "id": "partner-limiter", "from": "partner", "to": "limiter", "kind": "sync" },
           { "id": "limiter-api", "from": "limiter", "to": "api", "kind": "sync" }
+        ],
+        "annotations": [
+          { "id": "request-path", "kind": "zone", "text": "Request path", "x": -60, "y": -150, "width": 940, "height": 330, "color": "purple" }
         ]
       }
     }

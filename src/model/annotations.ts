@@ -1,3 +1,4 @@
+import { borderRadius } from "./borderRadius";
 import type { AnnotationShape, DiagramAnnotation } from "./types";
 import { isHexColor, HEX_COLOR_REGEX } from "./colors";
 export { isHexColor, HEX_COLOR_REGEX };
@@ -100,6 +101,7 @@ export function normalizeAnnotation(
   // Preserve extension fields, but replace every field in the annotation contract with checked values.
   const out: DiagramAnnotation = {
     ...a,
+    borderRadius: borderRadius(a.borderRadius),
     id,
     kind,
     x,

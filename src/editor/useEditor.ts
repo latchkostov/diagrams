@@ -506,6 +506,23 @@ export function createEditor(
     }
     return moved;
   };
+  /** Arrangement operands are outermost selected subtrees, never their contained boxes. */
+  const arrangementBoxes = (ids: readonly string[]) => {
+    const selected = new Set(ids);
+    const nodes = rf.getNodes();
+    const groups = nodes.filter(isGroup);
+    const covered = expandGroupIds(
+      groups.filter((g) => selected.has(g.id) || selected.has(g.data.groupId)).map((g) => g.data.groupId),
+      groups.map((g) => ({ id: g.data.groupId, group: g.data.group })),
+    );
+    return nodes
+      .filter(
+        (n) =>
+          (selected.has(n.id) || (isGroup(n) && selected.has(n.data.groupId))) &&
+          (!n.data.group || !covered.has(n.data.group)),
+      )
+      .map(box);
+  };
   const movePositions = (pos: Positions, reset = false) => {
     if (!pos.size) return;
     const allNodes = currentNodes();
@@ -519,11 +536,10 @@ export function createEditor(
       }
     }
     const finalPos = new Map(pos);
+    const groupFlowIds = new Map(allNodes.filter(isGroup).map((g) => [g.data.groupId, g.id]));
     for (const [id, p] of pos) {
-      if (!id.startsWith(GROUP_PREFIX)) {
-        const g = allNodes.find((n) => isGroup(n) && n.data.groupId === id);
-        if (g) finalPos.set(g.id, p);
-      }
+      const flowId = groupFlowIds.get(id);
+      if (flowId) finalPos.set(flowId, p);
     }
     if (groupDeltas.size) {
       const groupMap = new Map(allNodes.filter(isGroup).map((g) => [g.data.groupId, g.data.group]));
@@ -1504,21 +1520,13 @@ export function createEditor(
       );
     },
     align: (ids, mode) => {
-      const set = new Set(ids);
-      const boxes = rf
-        .getNodes()
-        .filter((n) => set.has(n.id) || (isGroup(n) && set.has(n.data.groupId)))
-        .map(box);
+      const boxes = arrangementBoxes(ids);
       // Lined up, never stacked: things that would land on each other step apart across the line.
       const across = mode === "left" || mode === "center" || mode === "right" ? "v" : "h";
       movePositions(spreadOverlaps(boxes, align(boxes, mode), across));
     },
     distribute: (ids, axis) => {
-      const set = new Set(ids);
-      const boxes = rf
-        .getNodes()
-        .filter((n) => set.has(n.id) || (isGroup(n) && set.has(n.data.groupId)))
-        .map(box);
+      const boxes = arrangementBoxes(ids);
       movePositions(spreadOverlaps(boxes, distribute(boxes, axis), axis));
     },
     tidy: (ids) => {
