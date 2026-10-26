@@ -1,4 +1,5 @@
 import { ResourceDetails } from "./ResourceDetails";
+import { DockIdentity } from "../canvas/inspector/DockIdentity";
 import type { ReplicaRow } from "../sim/autoscaling";
 import { resolveNodeProps } from "../sim/defaults";
 import { groupLabel } from "../stencils/brokerVocabulary";
@@ -11,7 +12,7 @@ import type { DiagramFile } from "../model/types";
 import { t, useLocale } from "../i18n";
 import { formatList } from "../i18n/format";
 import { DockedLive } from "../live/DockedLive";
-import { nodeSummary } from "../live/hoverSummary";
+import { dockedNodeVitals, nodeSummary } from "../live/hoverSummary";
 import { NodeSections as NodeDetailSections } from "../live/lazyNodeSections";
 import { LiveContext, type LiveUi } from "../live/context";
 import type { LiveState } from "../live/controller";
@@ -107,8 +108,7 @@ export function LiveDetails({
     .filter((e) => e.from === s.id)
     .flatMap((e) => (state?.snapshot.edges[e.id]?.calls ? [state.snapshot.edges[e.id].calls!] : []));
   const summary = nodeSummary(s, calls);
-  // Three primary vitals per row; secondary resource/queue values stay in their sections.
-  summary.vitals = summary.vitals.slice(0, 3);
+  summary.vitals = dockedNodeVitals(s);
   const cpu = s.resources?.cpuRequestPct ?? s.resources?.cpuAllocatedPct;
   summary.sections = [
     {
@@ -157,6 +157,7 @@ export function LiveDetails({
     <LiveContext value={live}>
       {s.resources && s.fleet && <ScalingAnnouncement label={node.label} fleet={s.fleet} />}
       <DockedLive
+        identity={(control) => <DockIdentity node={node} status={control} live />}
         broker={s.role === "topic" || s.role === "queue" || s.role === "stream"}
         summary={summary}
         healthy={t("hover.healthyVerdict", { rate: formatRate(s.throughput) })}

@@ -2780,5 +2780,7 @@
   "workbench.systemTheme": "跟随系统",
   "workbench.checkDiagram": "检查图表",
   "workbench.nodeDetails": "{name} 详情",
-  "workbench.noteAt": "{time} 时的备注"
+  "workbench.noteAt": "{time} 时的备注",
+  "workbench.liveEditGoal": "在 {live} 中，更改设置前请先打开{properties}。{goal}",
+  "workbench.editProperties": "编辑属性"
 }

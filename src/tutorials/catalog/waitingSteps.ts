@@ -66,6 +66,7 @@ export function patchStep(
     check,
     targets: [
       { testId: field, tip: copy.goal },
+      ...(!target.edge ? [{ testId: "dock-edit-properties", tip: copy.goal, selected: target.subject }] : []),
       { testId, tip: copy.goal },
     ],
     demo: [{ kind: "patch", ...target, patches }],

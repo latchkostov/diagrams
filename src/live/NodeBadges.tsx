@@ -1,4 +1,5 @@
 import { defineLazySurface } from "../lib/lazySurface";
+import { useWorkbenchDock } from "../canvas/inspector/dockState";
 import { inHoverBridge } from "./hoverBridge";
 import { useReadoutFocus } from "./useReadoutFocus";
 import { DetailsLoading } from "./DetailsLoading";
@@ -98,7 +99,19 @@ export function NodeBadges({
   // No breakdown while a card is edited inline: the editor hangs where the breakdown would show, and
   // focus in the editor would otherwise count as hovering its node.
   const { editing } = useDiagram();
-  const pointed = useHoveredNode(nodes, state);
+  const dock = useWorkbenchDock();
+  const candidate = useHoveredNode(nodes, state);
+  const edgesSelected = useStore((s) => s.edges?.some((e) => e.selected) ?? false);
+  const singleNode = nodes.filter((n) => n.selected).length === 1 && !edgesSelected;
+  const pointed =
+    !presenting &&
+    ui.canEdit &&
+    dock.value === "properties" &&
+    singleNode &&
+    candidate?.kind === "node" &&
+    nodes.some((n) => n.selected && n.id === candidate.id)
+      ? null
+      : candidate;
   const focusClaim = useReadoutFocus(pointed);
   const hovered = !editing && pointed?.kind === "node" ? pointed.id : null;
   // Badges live in flow space; counter-scale them when zoomed out so they stay readable.

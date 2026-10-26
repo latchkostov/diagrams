@@ -10,6 +10,8 @@
 // stays.
 
 const en = {
+  "workbench.liveEditGoal": "In {live}, open {properties} before changing settings. {goal}",
+  "workbench.editProperties": "Edit properties",
   "workbench.nodeDetails": "{name} details",
   "workbench.noteAt": "Note at {time}",
   "tutorials.loadFailed": "Couldn’t load the practice diagram. Try again.",

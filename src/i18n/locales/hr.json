@@ -2790,5 +2790,7 @@
   "workbench.systemTheme": "Prema sustavu",
   "workbench.checkDiagram": "Provjeri dijagram",
   "workbench.nodeDetails": "Pojedinosti: {name}",
-  "workbench.noteAt": "Bilješka u {time}"
+  "workbench.noteAt": "Bilješka u {time}",
+  "workbench.liveEditGoal": "U načinu {live} otvorite {properties} prije promjene postavki. {goal}",
+  "workbench.editProperties": "Uredi svojstva"
 }

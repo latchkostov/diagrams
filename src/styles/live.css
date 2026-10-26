@@ -3201,8 +3201,12 @@ details[open] > summary .lv-disclosure-chevron {
   scroll-snap-type: y proximity;
   scroll-padding-bottom: 10px;
 }
-.canvas-view.is-live .insp-body :is(.hover-vitals, .hover-rail, .insp-field, tr) {
+.canvas-view.is-live .insp-body :is(.hover-vitals, .hover-rail > button, .inspector-live-outcomes > div) {
   scroll-snap-align: end;
+}
+.canvas-view.is-live .insp-body .insp-section > h3 {
+  scroll-snap-align: start;
+  scroll-margin-block-start: 57px;
 }
 .lv-bar.is-slim > :not(.lv-clock, .lv-clock-total, .lv-timeline) {
   display: none;
@@ -3251,4 +3255,137 @@ details[open] > summary .lv-disclosure-chevron {
     flex: 1 0 100%;
     min-inline-size: 0;
   }
+}
+.dock-identity {
+  position: sticky;
+  inset-block-start: 0;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-block-size: 57px;
+  padding: 10px 14px;
+  background: var(--panel);
+  border-block-end: 1px solid var(--line);
+  scroll-snap-align: start;
+}
+.dock-identity-tile {
+  display: grid;
+  place-items: center;
+  inline-size: 28px;
+  block-size: 28px;
+  flex: none;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface-2);
+}
+.dock-identity-name {
+  flex: 1;
+  min-inline-size: 0;
+}
+.dock-identity-name strong {
+  font-size: 16px;
+  font-weight: 650;
+  font-stretch: var(--stretch-wide);
+}
+.dock-identity-name > span {
+  font-size: 13px;
+  color: var(--text-2);
+}
+.dock-identity-warning {
+  color: var(--text);
+  background: color-mix(in oklab, var(--tag) 18%, transparent);
+  border-radius: 5px;
+  padding-inline: 5px;
+  font-size: 12px;
+}
+.dock-live-status {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 0;
+  border: 0;
+  background: none;
+}
+.dock-live-status .hover-status {
+  font-size: 12px;
+}
+.dock-edit-properties {
+  display: flex;
+  align-items: center;
+  inline-size: 100%;
+  padding: 12px 14px;
+  border: 0;
+  border-block-start: 1px solid var(--line);
+  color: var(--text-2);
+  background: var(--panel);
+  text-align: start;
+}
+.inspector-live:has(.dock-identity) {
+  padding-block-start: 0;
+}
+.inspector-live .dock-identity {
+  margin-inline: -14px;
+}
+.inspector-live .hover-vitals {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  min-block-size: 58px;
+}
+.inspector-live .hover-vitals > div {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 3px;
+}
+.inspector-live .hover-vitals b {
+  font: 650 17px/1.2 var(--font-ui);
+  font-variant-numeric: tabular-nums;
+}
+.inspector-live .hover-vitals small {
+  font: 11px/1.2 var(--font-ui);
+  color: var(--text-2);
+}
+.inspector-live .hover-vitals .is-bad {
+  background: none;
+  color: var(--status-down);
+}
+.inspector-live .hover-meter-space {
+  display: none;
+}
+.inspector-live.is-bad .dock-identity .hover-status {
+  background: color-mix(in oklab, var(--status-down) 12%, transparent);
+  color: var(--text);
+}
+.inspector-live.is-warning .dock-identity .hover-status {
+  background: color-mix(in oklab, var(--warning) 12%, transparent);
+}
+[dir="rtl"] .dock-live-status > svg {
+  transform: scaleX(-1);
+}
+.canvas-view > .live-transport-mount.is-local:not(:empty) {
+  position: absolute;
+  inset-inline: 0;
+  inset-block-end: 0;
+}
+.inspector-live .hover-vitals {
+  block-size: 58px;
+  border-radius: 0;
+  border-inline: 0;
+}
+.inspector-live .hover-vitals > div {
+  justify-content: flex-start;
+  min-block-size: 0;
+  padding: 8px 4px;
+}
+.inspector-live .hover-vitals small {
+  white-space: nowrap;
+  overflow-wrap: normal;
+  font-stretch: 90%;
+}
+.inspector-live .hover-vitals .is-bad b {
+  color: var(--status-down);
+}
+.dock-identity-name strong {
+  color: var(--text);
 }

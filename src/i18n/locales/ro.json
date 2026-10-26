@@ -2798,5 +2798,7 @@
   "workbench.systemTheme": "Ca în sistem",
   "workbench.checkDiagram": "Verifică diagrama",
   "workbench.nodeDetails": "Detalii despre {name}",
-  "workbench.noteAt": "Notă la {time}"
+  "workbench.noteAt": "Notă la {time}",
+  "workbench.liveEditGoal": "În {live}, deschide {properties} înainte de a modifica setările. {goal}",
+  "workbench.editProperties": "Editează proprietățile"
 }

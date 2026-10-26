@@ -2787,5 +2787,7 @@
   "workbench.systemTheme": "Po sistemu",
   "workbench.checkDiagram": "Preveri diagram",
   "workbench.nodeDetails": "Podrobnosti: {name}",
-  "workbench.noteAt": "Opomba ob {time}"
+  "workbench.noteAt": "Opomba ob {time}",
+  "workbench.liveEditGoal": "V načinu {live} pred spreminjanjem nastavitev odprite {properties}. {goal}",
+  "workbench.editProperties": "Uredi lastnosti"
 }

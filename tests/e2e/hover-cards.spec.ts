@@ -301,6 +301,7 @@ test("Escape dismisses an unpinned card before clearing the selected node", asyn
   await page.keyboard.press("F2");
   await expect(page.getByTestId("inspector-field-label")).toBeFocused();
   await page.keyboard.press("Enter");
+  await page.getByTestId("inspector-toggle").click();
   await node.hover();
   await expect(card).toHaveAttribute("data-pinned", "false");
   expect(await node.evaluate((el) => el.parentElement?.classList.contains("selected"))).toBe(true);
@@ -715,6 +716,11 @@ for (const kind of ["node", "edge"] as const)
     const id = kind === "node" ? "caller" : "call";
     const item = page.getByTestId(`${kind}-${id}`);
     await item.click({ force: true });
+    if (kind === "node") {
+      await expect(page.getByTestId("dock-live-identity")).toBeVisible();
+      await page.getByTestId("inspector-toggle").click();
+      await item.hover({ force: true });
+    }
     const card = page.getByTestId(`${kind}-detail-${id}`);
     await card.click();
     await card
@@ -729,6 +735,7 @@ for (const kind of ["node", "edge"] as const)
     await expect(page.getByTestId("canvas-wrap")).toBeFocused();
     await page.keyboard.press("ControlOrMeta+z");
     await expect(item).toHaveCount(1);
+
     // Undo restores the canvas before Live syncs its snapshot; only then can a node own a readout.
     if (kind === "node") await expect(page.getByTestId(`node-badge-${id}`)).toBeVisible();
     await item.hover({ force: true });
@@ -745,6 +752,11 @@ for (const kind of ["node", "edge"] as const)
     const id = kind === "node" ? "caller" : "call";
     const item = page.getByTestId(`${kind}-${id}`);
     await item.click({ force: true });
+    if (kind === "node") {
+      await expect(page.getByTestId("dock-live-identity")).toBeVisible();
+      await page.getByTestId("inspector-toggle").click();
+      await item.hover({ force: true });
+    }
     const card = page.getByTestId(`${kind}-detail-${id}`);
     await expect(card).toBeVisible();
     await card.click();
@@ -755,6 +767,7 @@ for (const kind of ["node", "edge"] as const)
     await expect(card).toHaveCount(0);
     await page.keyboard.press("ControlOrMeta+z");
     await expect(item).toHaveCount(1);
+
     await item.hover({ force: true });
     await expect(card).toBeVisible();
     await expect(card).toHaveAttribute("data-pinned", "false");

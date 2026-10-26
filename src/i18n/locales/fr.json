@@ -2781,5 +2781,7 @@
   "workbench.systemTheme": "Selon le système",
   "workbench.checkDiagram": "Vérifier le diagramme",
   "workbench.nodeDetails": "Détails de {name}",
-  "workbench.noteAt": "Note à {time}"
+  "workbench.noteAt": "Note à {time}",
+  "workbench.liveEditGoal": "Dans {live}, ouvrez {properties} avant de modifier les paramètres. {goal}",
+  "workbench.editProperties": "Modifier les propriétés"
 }

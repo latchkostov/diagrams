@@ -2792,5 +2792,7 @@
   "workbench.systemTheme": "Systemeinstellung",
   "workbench.checkDiagram": "Diagramm prüfen",
   "workbench.nodeDetails": "Details zu {name}",
-  "workbench.noteAt": "Notiz bei {time}"
+  "workbench.noteAt": "Notiz bei {time}",
+  "workbench.liveEditGoal": "Öffne in {live} zuerst {properties}, bevor du Einstellungen änderst. {goal}",
+  "workbench.editProperties": "Eigenschaften bearbeiten"
 }

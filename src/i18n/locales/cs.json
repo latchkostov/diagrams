@@ -2774,5 +2774,7 @@
   "workbench.systemTheme": "Podle systému",
   "workbench.checkDiagram": "Zkontrolovat diagram",
   "workbench.nodeDetails": "Podrobnosti: {name}",
-  "workbench.noteAt": "Poznámka v {time}"
+  "workbench.noteAt": "Poznámka v {time}",
+  "workbench.liveEditGoal": "V režimu {live} před změnou nastavení otevřete {properties}. {goal}",
+  "workbench.editProperties": "Upravit vlastnosti"
 }

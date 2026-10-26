@@ -15,6 +15,7 @@ export function DockedLive({
   kind = "node",
   broker = false,
   children,
+  identity,
 }: {
   summary: HoverSummary;
   healthy: string;
@@ -23,6 +24,7 @@ export function DockedLive({
   kind?: "node" | "edge";
   broker?: boolean;
   children(section: string): ReactNode;
+  identity?(control: ReactNode): ReactNode;
 }) {
   const [expanded, setExpanded] = useState(true);
   const description = useId();
@@ -52,20 +54,37 @@ export function DockedLive({
       className={`insp-section inspector-live${problem ? (problem.severe ? " is-bad" : " is-warning") : ""}`}
       data-testid="planning-live-details"
     >
-      <h3 className="insp-section-title inspector-live-heading">
-        <button
-          data-testid="planning-live-details-toggle"
-          aria-expanded={expanded}
-          aria-describedby={!expanded ? description : undefined}
-          onClick={() => setExpanded(!expanded)}
-        >
-          <span className="insp-disclosure-title" data-testid="inspector-live-title">
-            {t("hover.live")}
-          </span>
-          <HoverStatus summary={summary} />
-          <Icon name="chevron-right" size={12} />
-        </button>
-      </h3>
+      {identity ? (
+        identity(
+          <button
+            className="dock-live-status"
+            data-testid="planning-live-details-toggle"
+            aria-expanded={expanded}
+            onClick={() => setExpanded(!expanded)}
+          >
+            <span className="sr-only" data-testid="inspector-live-title">
+              {t("hover.live")}
+            </span>
+            <HoverStatus summary={summary} />
+            <Icon name="chevron-right" size={12} />
+          </button>,
+        )
+      ) : (
+        <h3 className="insp-section-title inspector-live-heading">
+          <button
+            data-testid="planning-live-details-toggle"
+            aria-expanded={expanded}
+            aria-describedby={!expanded ? description : undefined}
+            onClick={() => setExpanded(!expanded)}
+          >
+            <span className="insp-disclosure-title" data-testid="inspector-live-title">
+              {t("hover.live")}
+            </span>
+            <HoverStatus summary={summary} />
+            <Icon name="chevron-right" size={12} />
+          </button>
+        </h3>
+      )}
       {!expanded && (
         <p className="insp-summary" id={description} data-testid="inspector-summary-live">
           {problem?.text ?? healthy}

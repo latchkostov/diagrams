@@ -2769,5 +2769,7 @@
   "workbench.systemTheme": "לפי המערכת",
   "workbench.checkDiagram": "בדיקת הדיאגרמה",
   "workbench.nodeDetails": "פרטי {name}",
-  "workbench.noteAt": "הערה ב־{time}"
+  "workbench.noteAt": "הערה ב־{time}",
+  "workbench.liveEditGoal": "במצב {live}, פתחו את {properties} לפני שינוי ההגדרות. {goal}",
+  "workbench.editProperties": "עריכת מאפיינים"
 }

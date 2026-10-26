@@ -2775,5 +2775,7 @@
   "workbench.systemTheme": "Ikuti sistem",
   "workbench.checkDiagram": "Periksa diagram",
   "workbench.nodeDetails": "Detail {name}",
-  "workbench.noteAt": "Catatan pada {time}"
+  "workbench.noteAt": "Catatan pada {time}",
+  "workbench.liveEditGoal": "Di {live}, buka {properties} sebelum mengubah pengaturan. {goal}",
+  "workbench.editProperties": "Edit properti"
 }

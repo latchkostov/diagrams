@@ -87,7 +87,12 @@ for (const [control, lesson] of [
 }
 
 async function play(page: Page, step: ResolvedUiStep) {
-  if ("click" in step) {
+  if ("open" in step) {
+    const disclosure = page.getByTestId(step.open);
+    await expect(disclosure).toBeVisible();
+    if ((await disclosure.getAttribute("aria-expanded")) === "false") await disclosure.click();
+    await expect(disclosure).toHaveAttribute("aria-expanded", "true");
+  } else if ("click" in step) {
     if (step.click === "canvas-pane")
       await page.getByTestId("canvas-wrap").click({ position: await emptyCanvasPoint(page) });
     else if (step.click.startsWith("edge-") && !step.click.startsWith("edge-label-")) {
@@ -613,6 +618,7 @@ for (const finish of ["inspector", "Skip"] as const)
     await page.getByTestId("live-sim-picker").selectOption("psp-brownout");
     await fitDiagram(page);
     await page.getByTestId("node-psp").dblclick();
+    await page.getByTestId("dock-edit-properties").click();
     await page.getByTestId("inspector-field-label").click();
     await page.getByTestId("inspector-field-label").press("Enter");
     // eslint-disable-next-line no-restricted-syntax -- Connection navigation uses Ctrl+Alt on every platform (Ctrl+Option on macOS).
@@ -647,6 +653,7 @@ test("study-checkout: Skip and Continue replay the authored tenfold traffic", as
   await page.getByTestId("tutorial-skip").click();
   await expect(strip(page)).toHaveAttribute("data-step", "keep-orders");
   await expect.poll(traffic).toBe(10);
+  await page.getByTestId("live-capacity").click();
   await expect(page.getByTestId("capacity-traffic-mult")).toHaveAttribute("data-value", "10");
   await page.reload();
   await expect(page.getByTestId("tutorial-start")).toContainText("Continue", { timeout: pageLoadTimeout() });
@@ -663,6 +670,7 @@ test("study-checkout: Skip repairs the saved Partner quota pool", async ({ page,
   await page.getByTestId("live-sim-picker").selectOption("partner-quota");
   await fitDiagram(page);
   await page.getByTestId("node-payments").dblclick();
+  await page.getByTestId("dock-edit-properties").click();
   await page.getByTestId("inspector-field-label").click();
   await page.getByTestId("inspector-field-label").press("Enter");
   // eslint-disable-next-line no-restricted-syntax -- Connection navigation uses Ctrl+Alt on every platform (Ctrl+Option on macOS).
@@ -719,6 +727,7 @@ for (const { replicas, partitions } of [
     await expect(strip(page)).toHaveAttribute("data-step", "fix-partition-ceiling");
     await page.getByTestId("tutorial-skip").click();
     await expect(strip(page)).toHaveAttribute("data-phase", "finished");
+    await page.getByTestId("live-capacity").click();
     await expect(page.getByTestId("capacity-replicas-dispatcher")).toHaveValue("4");
     await expect(page.getByTestId("capacity-partitions-pings")).toHaveValue("4");
     expectNoErrors(consoleErrors);
@@ -762,6 +771,7 @@ test("study-payments: brownout Skip repairs overridden draft settings, through t
   // The Live inspector on the saved run: its own deadline (too long) and its breaker turned off.
   await fitDiagram(page);
   await page.getByTestId("node-psp").dblclick();
+  await page.getByTestId("dock-edit-properties").click();
   await page.getByTestId("inspector-field-label").click();
   await page.getByTestId("inspector-field-label").press("Enter");
   // eslint-disable-next-line no-restricted-syntax -- Connection navigation uses Ctrl+Alt on every platform (Ctrl+Option on macOS).

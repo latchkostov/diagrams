@@ -2778,5 +2778,7 @@
   "workbench.systemTheme": "跟隨系統",
   "workbench.checkDiagram": "檢查圖表",
   "workbench.nodeDetails": "{name} 詳細資料",
-  "workbench.noteAt": "{time} 時的備註"
+  "workbench.noteAt": "{time} 時的備註",
+  "workbench.liveEditGoal": "在 {live} 中，變更設定前請先開啟{properties}。{goal}",
+  "workbench.editProperties": "編輯屬性"
 }

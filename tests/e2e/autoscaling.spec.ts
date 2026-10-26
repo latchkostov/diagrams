@@ -622,7 +622,8 @@ for (const live of [false, true])
     if (live) {
       await page.getByTestId("live-toggle").click();
       await expect(page.getByTestId("live-controls")).toBeVisible();
-      await page.getByTestId("inspector-toggle").click();
+      if ((await page.getByTestId("inspector").getAttribute("data-collapsed")) === "1")
+        await page.getByTestId("inspector-toggle").click();
     }
     await expect(page.getByTestId("inspector-field-latencyMs")).toBeVisible();
     await expect(page.getByTestId("inspector-field-replicas")).toHaveCount(0);

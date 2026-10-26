@@ -437,6 +437,10 @@ export function createTutorialRunner(
       }
       case "prop": {
         const id = demo.edge ? edge(demo.edge)?.id : subjects[demo.subject];
+        if (id && !demo.edge && h.canvas?.live) {
+          ed.select({ nodeIds: [id], edgeIds: [], groupIds: [] });
+          ed.openInspector("label");
+        }
         if (id) {
           if (demo.edge) ed.setEdgeProps(id, demo.props);
           else ed.setNodeProps(id, demo.props);
@@ -445,6 +449,10 @@ export function createTutorialRunner(
       }
       case "patch": {
         const id = demo.edge ? edge(demo.edge)?.id : subjects[demo.subject];
+        if (id && !demo.edge && h.canvas?.live) {
+          ed.select({ nodeIds: [id], edgeIds: [], groupIds: [] });
+          ed.openInspector("label");
+        }
         const target: RepairTarget | undefined = id ? (demo.edge ? { edge: id } : { node: id }) : undefined;
         // Not there (yet): nothing to repair, as for any edit of a missing subject.
         if (!target) return;

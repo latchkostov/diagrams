@@ -2777,5 +2777,7 @@
   "workbench.systemTheme": "Zgodnie z systemem",
   "workbench.checkDiagram": "Sprawdź diagram",
   "workbench.nodeDetails": "Szczegóły: {name}",
-  "workbench.noteAt": "Notatka w {time}"
+  "workbench.noteAt": "Notatka w {time}",
+  "workbench.liveEditGoal": "W trybie {live} otwórz {properties} przed zmianą ustawień. {goal}",
+  "workbench.editProperties": "Edytuj właściwości"
 }

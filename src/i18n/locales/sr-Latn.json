@@ -2774,5 +2774,7 @@
   "workbench.systemTheme": "Prema sistemu",
   "workbench.checkDiagram": "Proveri dijagram",
   "workbench.nodeDetails": "Detalji: {name}",
-  "workbench.noteAt": "Beleška u {time}"
+  "workbench.noteAt": "Beleška u {time}",
+  "workbench.liveEditGoal": "U režimu {live} otvorite {properties} pre promene podešavanja. {goal}",
+  "workbench.editProperties": "Uredi svojstva"
 }

@@ -2773,5 +2773,7 @@
   "workbench.systemTheme": "सिस्टम के अनुसार",
   "workbench.checkDiagram": "डायग्राम जाँचें",
   "workbench.nodeDetails": "{name} का विवरण",
-  "workbench.noteAt": "{time} पर नोट"
+  "workbench.noteAt": "{time} पर नोट",
+  "workbench.liveEditGoal": "{live} में सेटिंग बदलने से पहले {properties} खोलें। {goal}",
+  "workbench.editProperties": "गुण संपादित करें"
 }

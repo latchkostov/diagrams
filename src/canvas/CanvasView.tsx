@@ -994,8 +994,11 @@ function CanvasInner({
     }
     if (settledKey === selectedForDock.current) return;
     selectedForDock.current = settledKey;
+    // Live's keyboard reading order already offers a focused readout. An explicit
+    // Properties action still opens the dock; traversal alone keeps that reading path.
+    if (live && interaction.selectionCause === "keyboard") return;
     if (!checksPanel.isOpen()) activateDock("properties");
-  }, [settledEmpty, settledKey, dock.value, openedByHand.inspector]);
+  }, [settledEmpty, settledKey, dock.value, openedByHand.inspector, live, interaction]);
   const { checksMounted } = usePaneCamera(controller, {
     paletteHidden,
     aiDock,
@@ -1599,8 +1602,8 @@ function CanvasInner({
                 findings={inspectorFindings}
               />
             )}
+            {transport === undefined && <div className="live-transport-mount is-local" ref={setLocalTransport} />}
           </div>
-          {transport === undefined && <div className="live-transport-mount is-local" ref={setLocalTransport} />}
           {menu &&
             (menu.connected ? (
               <ConnectedQuickAddMenu

@@ -2779,5 +2779,7 @@
   "workbench.systemTheme": "Като системата",
   "workbench.checkDiagram": "Проверка на диаграмата",
   "workbench.nodeDetails": "Подробности за {name}",
-  "workbench.noteAt": "Бележка на {time}"
+  "workbench.noteAt": "Бележка на {time}",
+  "workbench.liveEditGoal": "В {live} отворете {properties}, преди да променяте настройките. {goal}",
+  "workbench.editProperties": "Редактиране на свойства"
 }

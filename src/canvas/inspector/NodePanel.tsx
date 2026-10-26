@@ -1,5 +1,8 @@
 import { NodeSettings } from "./lazyNodeSettings";
-import { useCallback, useMemo, useState, type FocusEvent } from "react";
+import { useCallback, useMemo, useState, useSyncExternalStore, type FocusEvent } from "react";
+import { planningHost } from "../../planning/host";
+import { NodePlanning } from "../../planning/lazy";
+import { DockIdentity } from "./DockIdentity";
 import { ContextMenu } from "../../components/ContextMenu";
 import { stencilMenu } from "../../editor/builtinActions";
 import { t, useLocale } from "../../i18n";
@@ -21,8 +24,21 @@ export function NodePanel({
   readDiagram,
   meta,
   focus,
+  checksStore,
 }: InspectorProps & { node: DiagramFlowNode }) {
   useLocale();
+  const liveMode = useSyncExternalStore(planningHost.subscribe, () => !!planningHost.get());
+  const warnings = useSyncExternalStore(
+    checksStore?.subscribe ?? noSubscribe,
+    () =>
+      checksStore
+        ?.get()
+        .byElement.get(node.id)
+        ?.filter((f) => f.severity === "warning").length ?? 0,
+  );
+  const [editing, setEditing] = useState({ live: liveMode, seq: focus?.seq, open: !liveMode });
+  if (editing.live !== liveMode) setEditing({ live: liveMode, seq: focus?.seq, open: !liveMode });
+  else if (focus?.seq !== editing.seq) setEditing({ ...editing, seq: focus?.seq, open: true });
   const stencil = getStencil(node.data.stencil);
   // A new node keeps its creation step while these name fields are focused.
   const [textActive, setTextActive] = useState<"name" | "description" | null>(null);
@@ -69,28 +85,55 @@ export function NodePanel({
         meta={meta}
         focus={focus}
         namingActive={namingActive}
+        liveMode={liveMode}
       />
     ),
-    [nodeId, stencilId, nodeProps, editor, settingsRevision, counts, settingsRead, meta, focus, namingActive],
+    [nodeId, stencilId, nodeProps, editor, settingsRevision, counts, settingsRead, meta, focus, namingActive, liveMode],
   );
 
   return (
     <>
-      {findings}
-      <NodeIdentity
-        node={node}
-        editor={editor}
-        groups={groups}
-        connection={connection}
-        stencil={stencil}
-        naming={naming}
-        nameKeys={nameKeys}
-        setPicker={setPicker}
-        onDescriptionFocus={onDescriptionFocus}
-        onDescriptionBlur={onDescriptionBlur}
-      />
+      {liveMode ? (
+        <NodePlanning
+          id={node.id}
+          editor={editor}
+          revision={revision}
+          readDiagram={readDiagram}
+          counts={counts}
+          liveOnly
+        />
+      ) : (
+        <DockIdentity node={node.data} warnings={warnings} />
+      )}
+      {liveMode && (
+        <button
+          className="dock-edit-properties"
+          data-testid="dock-edit-properties"
+          aria-expanded={editing.open}
+          onClick={() => setEditing({ ...editing, open: !editing.open })}
+        >
+          {t("workbench.editProperties")} ›
+        </button>
+      )}
+      {(!liveMode || editing.open) && (
+        <>
+          {findings}
+          <NodeIdentity
+            node={node}
+            editor={editor}
+            groups={groups}
+            connection={connection}
+            stencil={stencil}
+            naming={naming}
+            nameKeys={nameKeys}
+            setPicker={setPicker}
+            onDescriptionFocus={onDescriptionFocus}
+            onDescriptionBlur={onDescriptionBlur}
+          />
 
-      {settings}
+          {settings}
+        </>
+      )}
 
       {picker && (
         <ContextMenu
@@ -110,3 +153,5 @@ export function NodePanel({
     </>
   );
 }
+
+const noSubscribe = () => () => {};

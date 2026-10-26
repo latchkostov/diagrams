@@ -2780,5 +2780,7 @@
   "workbench.systemTheme": "Theo hệ thống",
   "workbench.checkDiagram": "Kiểm tra sơ đồ",
   "workbench.nodeDetails": "Chi tiết {name}",
-  "workbench.noteAt": "Ghi chú tại {time}"
+  "workbench.noteAt": "Ghi chú tại {time}",
+  "workbench.liveEditGoal": "Trong {live}, mở {properties} trước khi thay đổi cài đặt. {goal}",
+  "workbench.editProperties": "Chỉnh sửa thuộc tính"
 }

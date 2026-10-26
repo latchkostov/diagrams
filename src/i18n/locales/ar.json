@@ -2918,5 +2918,7 @@
   "workbench.systemTheme": "مطابقة النظام",
   "workbench.checkDiagram": "فحص المخطط",
   "workbench.nodeDetails": "تفاصيل {name}",
-  "workbench.noteAt": "ملاحظة عند {time}"
+  "workbench.noteAt": "ملاحظة عند {time}",
+  "workbench.liveEditGoal": "في {live}، افتح {properties} قبل تغيير الإعدادات. {goal}",
+  "workbench.editProperties": "تعديل الخصائص"
 }

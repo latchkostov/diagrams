@@ -2764,6 +2764,8 @@
     "workbench.systemTheme": "9fa7a70b",
     "workbench.checkDiagram": "9d4fa986",
     "workbench.nodeDetails": "d40b945a",
-    "workbench.noteAt": "1e1c7b01"
+    "workbench.noteAt": "1e1c7b01",
+    "workbench.liveEditGoal": "36990d75",
+    "workbench.editProperties": "9c7d489a"
   }
 }

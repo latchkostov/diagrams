@@ -2820,5 +2820,7 @@
   "workbench.systemTheme": "시스템 설정 따르기",
   "workbench.checkDiagram": "다이어그램 검사",
   "workbench.nodeDetails": "{name} 세부 정보",
-  "workbench.noteAt": "{time}의 메모"
+  "workbench.noteAt": "{time}의 메모",
+  "workbench.liveEditGoal": "{live}에서 설정을 변경하기 전에 {properties}을 여세요. {goal}",
+  "workbench.editProperties": "속성 편집"
 }

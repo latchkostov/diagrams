@@ -173,6 +173,7 @@ export function createInteractionController<P = unknown>(
   let lastPhase: InteractionPhase | null = null;
   /** The cause declared for the selection change the next commit brings (a cause lasts one commit). */
   let cause: SelectionCause | null = null;
+  let committedCause: SelectionCause = "programmatic";
   /** The cause came with its own selection.changed event (the focus policy has decided on it already). */
   let decided = false;
   /** The selection as of the last commit. */
@@ -794,6 +795,9 @@ export function createInteractionController<P = unknown>(
      * palette declare theirs with their selection.changed event instead.
      */
     selecting,
+    get selectionCause() {
+      return committedCause;
+    },
     /** For the placement hooks: the next selection (and pane change) comes from placing a new item. */
     placing: () => selecting("placement"),
     /**
@@ -815,6 +819,7 @@ export function createInteractionController<P = unknown>(
       selectionKey = key;
       if (was !== key) toMode({ type: "selection", ids: JSON.parse(key) as string[] });
       const why = cause ?? "programmatic";
+      if (was !== key) committedCause = why;
       const already = decided;
       cause = null;
       decided = false;

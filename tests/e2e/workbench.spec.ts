@@ -183,3 +183,30 @@ test("Live reserves the caption and full-window transport outside the canvas", a
   await page.getByTestId("live-note-details").click();
   await expect(page.getByTestId("inspector")).toHaveAttribute("data-inspector-target", "payments");
 });
+
+test("Live details lead the dock and rename opens the editing disclosure", async ({ page }) => {
+  await page.goto("./?view=canvas&example=retry-storm&live=1&sim=three-quick-retries&paused=1");
+  await expect(page.getByTestId("live-timeline-input")).toBeVisible();
+  await page.getByTestId("live-timeline-input").fill("160");
+  await page.getByTestId("live-timeline-input").press("ArrowRight");
+  await page.getByTestId("live-note-details").click();
+  await expect(page.getByTestId("dock-live-identity")).toContainText("Payments");
+  await expect(page.getByTestId("dock-edit-properties")).toHaveAttribute("aria-expanded", "false");
+  await expect(page.getByTestId("inspector-field-label")).toHaveCount(0);
+  const area = page.getByTestId("planning-live-details");
+  const positions = [];
+  for (const key of ["rate", "queue", "inFlight", "latency"]) {
+    const value = area.getByTestId(`hover-vital-value-${key}`);
+    await expect(value).toHaveCSS("font-size", "17px");
+    await expect(area.getByTestId(`hover-vital-label-${key}`)).toHaveCSS("font-size", "11px");
+    positions.push((await value.boundingBox())?.y);
+  }
+  expect(new Set(positions).size).toBe(1);
+  await page.getByTestId("node-payments").hover();
+  await expect(page.getByTestId("node-detail-payments")).toHaveCount(0);
+  await page.getByTestId("node-payments").evaluate((el) => el.parentElement?.focus());
+  await page.keyboard.press("F2");
+  await expect(page.getByTestId("dock-edit-properties")).toHaveAttribute("aria-expanded", "true");
+  await expect(page.getByTestId("inspector-field-label")).toBeFocused();
+  await expect(page.getByTestId("inspector-field-label")).toHaveValue("Payments");
+});

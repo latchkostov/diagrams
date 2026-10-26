@@ -2764,5 +2764,7 @@
   "workbench.systemTheme": "Atbilstoši sistēmai",
   "workbench.checkDiagram": "Pārbaudīt diagrammu",
   "workbench.nodeDetails": "{name} informācija",
-  "workbench.noteAt": "Piezīme pie {time}"
+  "workbench.noteAt": "Piezīme pie {time}",
+  "workbench.liveEditGoal": "Režīmā {live} pirms iestatījumu maiņas atveriet {properties}. {goal}",
+  "workbench.editProperties": "Rediģēt īpašības"
 }

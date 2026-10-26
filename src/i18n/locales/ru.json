@@ -2756,5 +2756,7 @@
   "workbench.systemTheme": "Как в системе",
   "workbench.checkDiagram": "Проверить схему",
   "workbench.nodeDetails": "Сведения: {name}",
-  "workbench.noteAt": "Заметка на {time}"
+  "workbench.noteAt": "Заметка на {time}",
+  "workbench.liveEditGoal": "В режиме {live} откройте {properties} перед изменением настроек. {goal}",
+  "workbench.editProperties": "Изменить свойства"
 }

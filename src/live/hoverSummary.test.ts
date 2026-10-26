@@ -4,7 +4,14 @@ import type { EdgeSimState } from "../sim/types";
 import type { NodeSimState } from "../sim/types";
 import type { DiagramFile } from "../model/types";
 import { compileTopology } from "../sim/topology";
-import { edgeReadoutKind, flowSummary, nodeSummary, PROBLEM_PRIORITY, requestSummary } from "./hoverSummary";
+import {
+  dockedNodeVitals,
+  edgeReadoutKind,
+  flowSummary,
+  nodeSummary,
+  PROBLEM_PRIORITY,
+  requestSummary,
+} from "./hoverSummary";
 
 const node = (patch: Partial<NodeSimState> = {}): NodeSimState => ({
   id: "api",
@@ -239,4 +246,19 @@ it("keeps secondary problem explanations ahead of queue facts", () => {
   expect(summary.facts.slice(0, 2).map((f) => f.key)).toEqual(["failed", "waiting"]);
   expect(summary.facts.map((f) => f.key)).not.toContain("shed");
   expect(summary.facts.map((f) => f.key)).toContain("queueLimit");
+});
+
+it("docked vitals keep backlog distinct from active work and use the topic's kept count", () => {
+  const s = node({ backlog: 2100, inFlight: 17, throughput: 123, processed: 8000 });
+  expect(dockedNodeVitals(s).map((v) => [v.key, v.value])).toEqual([
+    ["rate", "123/s"],
+    ["queue", "2.1k"],
+    ["inFlight", "17"],
+    ["latency", "—"],
+  ]);
+  expect(dockedNodeVitals({ ...s, role: "topic", noConsumer: true })[1]).toMatchObject({
+    label: "Kept",
+    value: "2.1k",
+    bad: false,
+  });
 });

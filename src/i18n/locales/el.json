@@ -2780,5 +2780,7 @@
   "workbench.systemTheme": "Όπως το σύστημα",
   "workbench.checkDiagram": "Έλεγχος διαγράμματος",
   "workbench.nodeDetails": "Λεπτομέρειες {name}",
-  "workbench.noteAt": "Σημείωση στα {time}"
+  "workbench.noteAt": "Σημείωση στα {time}",
+  "workbench.liveEditGoal": "Στο {live}, ανοίξτε το {properties} πριν αλλάξετε τις ρυθμίσεις. {goal}",
+  "workbench.editProperties": "Επεξεργασία ιδιοτήτων"
 }

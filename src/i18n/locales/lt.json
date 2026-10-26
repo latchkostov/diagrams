@@ -2760,5 +2760,7 @@
   "workbench.systemTheme": "Pagal sistemą",
   "workbench.checkDiagram": "Tikrinti diagramą",
   "workbench.nodeDetails": "{name} informacija",
-  "workbench.noteAt": "Pastaba ties {time}"
+  "workbench.noteAt": "Pastaba ties {time}",
+  "workbench.liveEditGoal": "Veikiant {live}, prieš keisdami nustatymus atverkite {properties}. {goal}",
+  "workbench.editProperties": "Redaguoti savybes"
 }

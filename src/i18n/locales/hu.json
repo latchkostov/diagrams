@@ -2795,5 +2795,7 @@
   "workbench.systemTheme": "Rendszer követése",
   "workbench.checkDiagram": "Diagram ellenőrzése",
   "workbench.nodeDetails": "{name} részletei",
-  "workbench.noteAt": "Megjegyzés ekkor: {time}"
+  "workbench.noteAt": "Megjegyzés ekkor: {time}",
+  "workbench.liveEditGoal": "{live} módban a beállítások módosítása előtt nyissa meg ezt: {properties}. {goal}",
+  "workbench.editProperties": "Tulajdonságok szerkesztése"
 }

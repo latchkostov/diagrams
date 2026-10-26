@@ -29,6 +29,22 @@ export interface HoverSummary {
   sections: { key: string; label: string; summary: string }[];
 }
 
+/** The dock's stable four readings, independent of which detail section is open. */
+export function dockedNodeVitals(s: NodeSimState): HoverFact[] {
+  const growing = currentHealth(s).growing && !s.noConsumer;
+  return [
+    { key: "rate", label: t("hover.throughput"), value: formatRate(s.throughput) },
+    {
+      key: "queue",
+      label: s.role === "topic" ? t("hover.kept") : t("hover.queue"),
+      value: formatCount(s.backlog),
+      bad: growing,
+    },
+    { key: "inFlight", label: t("hover.inFlight"), value: formatCount(s.inFlight) },
+    { key: "latency", label: t("hover.p95"), value: s.latency?.samples ? latencyDuration(s.latency.p95) : "—" },
+  ];
+}
+
 /** Deliberate product priority. Counters describe recorded outcomes, never invented runtime state. */
 export const PROBLEM_PRIORITY = [
   "down",

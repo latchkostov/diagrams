@@ -2775,5 +2775,7 @@
   "workbench.systemTheme": "Järgi süsteemi",
   "workbench.checkDiagram": "Kontrolli diagrammi",
   "workbench.nodeDetails": "{name}: üksikasjad",
-  "workbench.noteAt": "Märkus ajal {time}"
+  "workbench.noteAt": "Märkus ajal {time}",
+  "workbench.liveEditGoal": "Režiimis {live} ava enne seadete muutmist {properties}. {goal}",
+  "workbench.editProperties": "Muuda omadusi"
 }

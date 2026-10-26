@@ -2784,5 +2784,7 @@
   "workbench.systemTheme": "Як у системі",
   "workbench.checkDiagram": "Перевірити діаграму",
   "workbench.nodeDetails": "Відомості: {name}",
-  "workbench.noteAt": "Примітка на {time}"
+  "workbench.noteAt": "Примітка на {time}",
+  "workbench.liveEditGoal": "У режимі {live} відкрийте {properties} перед зміною налаштувань. {goal}",
+  "workbench.editProperties": "Редагувати властивості"
 }

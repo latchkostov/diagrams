@@ -2797,5 +2797,7 @@
   "workbench.systemTheme": "システムに合わせる",
   "workbench.checkDiagram": "ダイアグラムをチェック",
   "workbench.nodeDetails": "{name} の詳細",
-  "workbench.noteAt": "{time} のノート"
+  "workbench.noteAt": "{time} のノート",
+  "workbench.liveEditGoal": "{live} では、設定を変更する前に {properties} を開きます。{goal}",
+  "workbench.editProperties": "プロパティを編集"
 }

@@ -2780,5 +2780,7 @@
   "workbench.systemTheme": "Seuraa järjestelmää",
   "workbench.checkDiagram": "Tarkista kaavio",
   "workbench.nodeDetails": "{name}: tiedot",
-  "workbench.noteAt": "Huomautus kohdassa {time}"
+  "workbench.noteAt": "Huomautus kohdassa {time}",
+  "workbench.liveEditGoal": "Avaa {live}-tilassa {properties} ennen asetusten muuttamista. {goal}",
+  "workbench.editProperties": "Muokkaa ominaisuuksia"
 }

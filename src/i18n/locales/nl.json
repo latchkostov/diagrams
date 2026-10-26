@@ -2790,5 +2790,7 @@
   "workbench.systemTheme": "Systeem volgen",
   "workbench.checkDiagram": "Diagram controleren",
   "workbench.nodeDetails": "Details van {name}",
-  "workbench.noteAt": "Notitie op {time}"
+  "workbench.noteAt": "Notitie op {time}",
+  "workbench.liveEditGoal": "Open in {live} eerst {properties} voordat je instellingen wijzigt. {goal}",
+  "workbench.editProperties": "Eigenschappen bewerken"
 }

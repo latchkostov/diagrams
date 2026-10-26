@@ -19,7 +19,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { LiveState } from "./controller";
 import { SPEEDS } from "./controller";
 import { useLive } from "./context";
-import { formatSeconds, formatCount, formatSpeed, formatScale } from "./format";
+import { formatClock, formatSeconds, formatCount, formatSpeed, formatScale } from "./format";
 import { LiveIcon } from "./icons";
 import { Timeline } from "./lazyTimeline";
 import { PANEL_OPENER_ATTR } from "./usePanelEscape";
@@ -152,7 +152,7 @@ export function ControlBar({ state, slim = false }: { state: LiveState; slim?: b
                 className="lv-clock"
                 data-testid="live-clock"
                 data-ms={Math.round(run.time)}
-                title={`of ${formatSeconds(Math.max(run.totalMs, run.time))}`}
+                title={`of ${formatClock(Math.max(run.totalMs, run.time))}`}
               >
                 {formatSeconds(run.time)}
               </span>

@@ -2788,5 +2788,7 @@
   "workbench.systemTheme": "Följ systemet",
   "workbench.checkDiagram": "Kontrollera diagram",
   "workbench.nodeDetails": "Information om {name}",
-  "workbench.noteAt": "Anteckning vid {time}"
+  "workbench.noteAt": "Anteckning vid {time}",
+  "workbench.liveEditGoal": "Öppna {properties} i {live} innan du ändrar inställningarna. {goal}",
+  "workbench.editProperties": "Redigera egenskaper"
 }

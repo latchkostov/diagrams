@@ -2770,5 +2770,7 @@
   "workbench.systemTheme": "Sistemi izle",
   "workbench.checkDiagram": "Diyagramı denetle",
   "workbench.nodeDetails": "{name} ayrıntıları",
-  "workbench.noteAt": "{time} anındaki not"
+  "workbench.noteAt": "{time} anındaki not",
+  "workbench.liveEditGoal": "{live} modunda ayarları değiştirmeden önce {properties} bölümünü açın. {goal}",
+  "workbench.editProperties": "Özellikleri düzenle"
 }

@@ -2762,5 +2762,7 @@
   "workbench.systemTheme": "ตามระบบ",
   "workbench.checkDiagram": "ตรวจสอบไดอะแกรม",
   "workbench.nodeDetails": "รายละเอียด {name}",
-  "workbench.noteAt": "หมายเหตุที่ {time}"
+  "workbench.noteAt": "หมายเหตุที่ {time}",
+  "workbench.liveEditGoal": "ใน {live} ให้เปิด {properties} ก่อนเปลี่ยนการตั้งค่า {goal}",
+  "workbench.editProperties": "แก้ไขคุณสมบัติ"
 }
