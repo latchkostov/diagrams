@@ -29,11 +29,29 @@ it("keeps Workbench frame labels at AA in both themes", () => {
       ["rail-ink", "rail-bg"],
       ["rail-dim", "rail-bg"],
       ["live-ink", "live"],
+      ["live-ink", "warning"],
     ]) {
       const a = luminance(tokens[ink]),
         b = luminance(tokens[surface]);
       expect((Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05), `${ink} on ${surface}`).toBeGreaterThanOrEqual(4.5);
     }
+});
+
+it("keeps the rail and dock warning badges at AA in both themes", () => {
+  for (const [path, selector] of [
+    ["src/styles/canvas/tool-rail.css", "tool-rail-badge"],
+    ["src/styles/canvas/inspector.css", "dock-tab-count"],
+  ]) {
+    const style = readFileSync(path, "utf8");
+    const block = new RegExp("\\." + selector + " \\{([^}]+)\\}").exec(style)![1];
+    const ink = /\n\s*color: var\(--([\w-]+)\)/.exec(block)![1];
+    const fill = /\n\s*background: var\(--([\w-]+)\)/.exec(block)![1];
+    for (const tokens of themes) {
+      const a = luminance(tokens[ink]),
+        b = luminance(tokens[fill]);
+      expect((Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05), selector).toBeGreaterThanOrEqual(4.5);
+    }
+  }
 });
 it("keeps readable secondary and muted text at AA on both themes' surfaces", () => {
   for (const block of [css.split('[data-theme="dark"]')[0], css.split('[data-theme="dark"]')[1]]) {

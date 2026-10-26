@@ -145,7 +145,7 @@ test.describe("the Checks card", () => {
     await expect(page.getByTestId("checks-summary")).toHaveText("1 warning · 2 suggestions");
     await expect(page.getByTestId("checks-group-warnings").getByRole("listitem")).toHaveCount(1);
     await expect(row(page, WARNING)).toContainText("Failed messages are dropped");
-    await page.getByTestId("checks-close").click();
+    await page.getByTestId("dock-tab-properties").click();
     await expect(card(page)).toHaveCount(0);
 
     // The canvas right-click, next to Auto-layout.
@@ -155,7 +155,7 @@ test.describe("the Checks card", () => {
     await wrap.click({ button: "right", position: { x: box.width / 2, y: 90 } });
     await page.getByTestId("context-menu-item-canvas.check-diagram").click();
     await expect(card(page)).toBeVisible();
-    await page.getByTestId("checks-close").click();
+    await page.getByTestId("dock-tab-properties").click();
 
     // Ctrl+K "Check diagram".
     await page.keyboard.press(`${MOD}+k`);
@@ -164,7 +164,7 @@ test.describe("the Checks card", () => {
     await expect(card(page)).toBeVisible();
 
     // Esc closes it (nothing selected), one level.
-    await page.getByTestId("checks-close").focus();
+    await page.getByTestId("dock-tab-checks").focus();
     await page.keyboard.press("Escape");
     await expect(card(page)).toHaveCount(0);
 
@@ -189,8 +189,8 @@ test.describe("the Checks card", () => {
     await expect(page.getByTestId("inspector-title")).toHaveText("2 selected");
     await page.getByTestId("check-element-worker").click();
     await expect(page.getByTestId("inspector-title")).toHaveText("Node");
+    await page.getByTestId("dock-tab-properties").click();
     await expect(page.getByTestId("inspector-field-label")).toHaveValue("Ledger worker");
-    await page.getByTestId("checks-close").click();
     await expect(page.getByTestId("check-markers")).toHaveCount(0);
   });
 
@@ -355,7 +355,7 @@ test("at 1024 the open card overlaps no other chrome", async ({ page }) => {
   const chrome = [
     "diagram-card",
     "live-toggle",
-    "inspector",
+    "inspector-toggle",
     "first-run-hint",
     // The canvas controls in the bottom-left corner.
     "fit-view-button",
@@ -367,8 +367,8 @@ test("at 1024 the open card overlaps no other chrome", async ({ page }) => {
     const el = page.getByTestId(id);
     if (await el.count()) expect(overlaps(await el.first().boundingBox()), id).toBe(false);
   }
-  // Inside the canvas, and nothing in the card is cut off sideways.
-  const wrap = await boxOf(page.getByTestId("canvas-wrap"));
+  // The dock contains the card; its content remains inside the visible sheet.
+  const wrap = await boxOf(page.getByTestId("inspector-body"));
   expect(cardBox.x + cardBox.width).toBeLessThanOrEqual(wrap.x + wrap.width);
   expect(cardBox.y + cardBox.height).toBeLessThanOrEqual(wrap.y + wrap.height);
 });

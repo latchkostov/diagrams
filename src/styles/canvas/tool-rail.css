@@ -49,7 +49,7 @@
   padding-inline: 4px;
   border-radius: 8px;
   background: var(--warning);
-  color: var(--surface);
+  color: var(--live-ink);
   font: 700 10px/16px var(--font-ui);
   font-style: normal;
 }

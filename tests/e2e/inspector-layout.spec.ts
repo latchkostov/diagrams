@@ -1,3 +1,4 @@
+import { openAnnotate } from "./fixtures";
 import AxeBuilder from "@axe-core/playwright";
 import type { Locator, Page } from "@playwright/test";
 import type { DiagramFile } from "../../src/model/types";
@@ -163,9 +164,7 @@ for (const width of [1280, 1440]) {
       // The diagram and annotation choices share the same value-column treatment.
       await open(page, "", width, "light", locale);
       await expectCompleteSegments(page, "inspector-field-direction");
-      if (!(await page.getByTestId("palette-annotate-note").isVisible())) {
-        await page.getByTestId("palette-toggle").click();
-      }
+      await openAnnotate(page);
       await page.getByTestId("palette-annotate-note").click();
       await page.keyboard.press("Escape");
       await expectCompleteSegments(page, "inspector-field-text-size");
@@ -355,7 +354,8 @@ for (const width of [1440, 1000]) {
       b = await rect(growth);
     expect(b.x).toBe(a.x);
     // Below 330 px the sheet keeps the original stacked-field rhythm.
-    expect(b.y - a.y - a.height).toBe(width === 1440 ? 10 : 16);
+    const sheet = await page.getByTestId("inspector").boundingBox();
+    expect(b.y - a.y - a.height).toBe(sheet && sheet.width >= 330 ? 10 : 16);
     await page.getByTestId("inspector-section-retry-safety").click();
     const fieldset = page.getByTestId("inspector-field-retry-timeout").evaluate((el) => {
       const fieldset = el.closest("fieldset");

@@ -137,6 +137,17 @@ export const EDITOR_ONLY: { name: string; path: string; stub: (root: string) => 
     stub: () => "export const builtinActions = () => []; export const quickAddMenu = () => [];",
   },
   { name: "the inspector", path: "/src/canvas/Inspector.tsx", stub: () => "export const Inspector = () => null;" },
+  {
+    name: "the editor dock state",
+    path: "/src/canvas/inspector/dockState.ts",
+    stub: () =>
+      'const state = { value: "closed", last: "properties" }; export const useWorkbenchDock = () => state; export const workbenchDock = { get: () => state, show() {}, close() {}, back() {} };',
+  },
+  {
+    name: "the editor dock actions",
+    path: "/src/canvas/inspector/dockActions.ts",
+    stub: () => "export const activateDock = () => {}; export const closeWorkbenchDock = () => {};",
+  },
   // NodePlanning's hover readout loads planning/ui through the shared lazy barrel. That barrel also exports
   // these inspector-only editors: in a single-file viewer their dynamic imports would retain the editors too.
   {

@@ -256,7 +256,7 @@ test("Run simulations from Ctrl+K and the canvas right-click: opens the card and
   expect(await runStats(page)).toMatchObject({ started: 1, finished: 1 });
 
   // The canvas right-click, with the card closed again: the same.
-  await page.getByTestId("checks-close").click();
+  await page.getByTestId("dock-tab-properties").click();
   await expect(card(page)).toHaveCount(0);
   await canvasMenu(page);
   await expect(page.getByTestId(RUN_ITEM)).toHaveText(/Run simulations/);
@@ -394,7 +394,7 @@ test.describe("a long run", () => {
     await openChecks(page);
     await run.click();
     await expect(status(page)).toHaveText(/^Playing 1 of 3/);
-    await page.getByTestId("checks-close").click();
+    await page.getByTestId("dock-tab-properties").click();
     await expect.poll(async () => (await runStats(page)).stopped).toBe(3);
 
     // An edit a simulation would see stops it.
@@ -408,7 +408,7 @@ test.describe("a long run", () => {
   });
 
   test("Ctrl+K and the canvas right-click stop it the same way, and play it again", async ({ page }) => {
-    await page.getByTestId("checks-close").click();
+    await page.getByTestId("dock-tab-properties").click();
     await expect(card(page)).toHaveCount(0);
     // The right-click: the card opens and it plays; while it plays Stop simulations takes Run's place.
     await canvasMenu(page);

@@ -129,7 +129,7 @@ test.describe("an agent's changes in the AI panel", () => {
 
   test("folded, agent changes count on the rail without opening the panel or moving the canvas", async ({ page }) => {
     // A first visit starts folded.
-    await expect(page.getByTestId("ai-rail")).toBeVisible();
+    await expect(page.getByTestId("ai-rail-open")).toBeVisible();
     await expect(page.getByTestId("ai-dock")).toHaveCount(0);
     const rail = page.getByTestId("ai-rail-open");
     await expect(rail).toHaveAccessibleName("AI panel");
@@ -199,7 +199,7 @@ test.describe("an agent's changes in the AI panel", () => {
 
 test("the panel starts folded, then opens or stays folded as it was left", async ({ page }) => {
   await gotoCanvas(page, SLUG);
-  await expect(page.getByTestId("ai-rail")).toBeVisible();
+  await expect(page.getByTestId("ai-rail-open")).toBeVisible();
   await expect(page.getByTestId("ai-dock")).toHaveCount(0);
   await openAiPanel(page);
   await page.reload();
@@ -207,7 +207,7 @@ test("the panel starts folded, then opens or stays folded as it was left", async
   await page.getByTestId("ai-collapse").click();
   await page.reload();
   await expect(page.getByTestId("node-payments")).toBeVisible();
-  await expect(page.getByTestId("ai-rail")).toBeVisible();
+  await expect(page.getByTestId("ai-rail-open")).toBeVisible();
   await expect(page.getByTestId("ai-dock")).toHaveCount(0);
 });
 

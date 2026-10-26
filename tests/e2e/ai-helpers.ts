@@ -33,7 +33,7 @@ export async function openAiPanel(page: Page) {
 /** Opens the AI panel and its Advanced copy-and-paste flow (closed by default, remembered). */
 export async function openAdvanced(page: Page) {
   // A remembered open dock restores its lazy panel after the canvas. Until then there is no rail to click.
-  await expect(page.getByTestId("ai-panel").or(page.getByTestId("ai-rail-open"))).toBeVisible({
+  await expect(page.getByTestId("ai-rail-open")).toBeVisible({
     timeout: pageLoadTimeout(),
   });
   if (!(await page.getByTestId("ai-panel").isVisible())) await openAiPanel(page);

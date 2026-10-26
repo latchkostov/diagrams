@@ -4,6 +4,8 @@
 
 import { useSyncExternalStore } from "react";
 import { safeStorage } from "../../lib/storage";
+import { workbenchDock } from "../../canvas/inspector/dockState";
+import { checksPanel } from "../../canvas/checks/checksPanel";
 
 const KEY = "diagrams.ai-dock.v1";
 export const DOCK_MIN = 300;
@@ -34,15 +36,26 @@ function read(): DockState {
 
 let state: DockState | null = null;
 const listeners = new Set<() => void>();
+let target: HTMLElement | null = null;
 const current = () => (state ??= read());
 
 export const aiDock = {
   get: current,
+  target: () => target,
+  mount(element: HTMLElement | null) {
+    if (element === target) return;
+    target = element;
+    for (const listener of listeners) listener();
+  },
   subscribe(l: () => void) {
     listeners.add(l);
     return () => void listeners.delete(l);
   },
   set(patch: Partial<DockState>) {
+    if (patch.open === true) {
+      workbenchDock.show("ai");
+      checksPanel.close();
+    } else if (patch.open === false && workbenchDock.get().value === "ai") workbenchDock.close();
     const next = { ...current(), ...patch };
     if (next.open === current().open && next.width === current().width) return;
     state = next;

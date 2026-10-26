@@ -158,6 +158,8 @@ const INTERACTION_RULES = [
 const FOCUS_LOCAL = [
   // The tool rail's roving arrows stay within its own buttons; cross-surface moves use policy row T1.
   "src/canvas/chrome/ToolRail.tsx",
+  // Dock tabs use the ARIA tablist's local roving keyboard focus.
+  "src/canvas/inspector/DockTabs.tsx",
   "src/canvas/inspector/fields.tsx",
   "src/canvas/SheetResizeHandle.tsx",
   "src/live/TraceCard.tsx",

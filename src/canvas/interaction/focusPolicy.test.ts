@@ -157,13 +157,13 @@ describe("focusPolicy: the rules, row by row", () => {
       ["focus:field:label@ready", "keep", "keep"],
     ],
     [
-      "I3 the Inspector opened by its control or with the selection: keep",
+      "I3 the Inspector control follows its replacement; selection keeps focus",
       state(),
       [
         { type: "inspector.toggled", cause: "panel" },
         { type: "inspector.toggled", cause: "selection" },
       ],
-      ["keep", "keep"],
+      ["focus:inspectorToggle@commit", "keep"],
     ],
     [
       "I4 a field request abandoned (Esc in its pending rename): nothing pending, focus stays",

@@ -25,7 +25,7 @@ test("the button is on every diagram screen and the idle panel says how to use A
   // Start card.
   await page.goto("./");
   await expect(page.getByTestId("start-card")).toBeVisible();
-  await expect(page.getByTestId("ai-rail")).toBeVisible();
+  await expect(page.getByTestId("ai-rail-open")).toBeVisible();
   await openAiPanel(page);
   await expect(page.getByTestId("ai-empty")).toContainText("Ask an AI agent");
   await expect(page.getByTestId("ai-empty")).toContainText("undo or revert");
@@ -47,7 +47,7 @@ test("the button is on every diagram screen and the idle panel says how to use A
   // Ctrl+I works in live view too: from inside the panel it folds it away.
   await page.getByTestId("ai-request").focus();
   await page.keyboard.press(`${MOD}+i`);
-  await expect(page.getByTestId("ai-rail")).toBeVisible();
+  await expect(page.getByTestId("ai-rail-open")).toBeVisible();
   await page.keyboard.press(`${MOD}+i`);
   await expect(page.getByTestId("ai-panel")).toBeFocused();
 
@@ -56,7 +56,7 @@ test("the button is on every diagram screen and the idle panel says how to use A
   await page.getByTestId("live-toggle").click();
   await page.getByTestId("present-toggle").click();
   await expect(page.getByTestId("ai-dock")).toHaveCount(0);
-  await expect(page.getByTestId("ai-rail")).toHaveCount(0);
+  await expect(page.getByTestId("ai-rail-open")).toHaveCount(0);
   expectNoErrors(consoleErrors);
 });
 
@@ -64,7 +64,7 @@ test("embeds have no AI panel", async ({ page }) => {
   await page.goto(`./?embed=1&example=${SLUG}`);
   await page.waitForLoadState("networkidle");
   await expect(page.getByTestId("ai-dock")).toHaveCount(0);
-  await expect(page.getByTestId("ai-rail")).toHaveCount(0);
+  await expect(page.getByTestId("ai-rail-open")).toHaveCount(0);
 });
 
 test("Copy for AI puts the selection's ids and labels on the clipboard, for the person's agent", async ({ page }) => {

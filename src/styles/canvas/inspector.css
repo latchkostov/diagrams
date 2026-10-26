@@ -2,7 +2,7 @@
 
 .inspector {
   position: relative;
-  width: var(--sheet-width, clamp(360px, 26.5vw, 640px));
+  width: var(--sheet-width, var(--dock-w));
   flex: none;
   display: flex;
   flex-direction: column;
@@ -44,7 +44,7 @@ html[data-sheet-resizing] * {
   cursor: col-resize !important;
   user-select: none !important;
 }
-@media (max-width: 1100px) {
+@media (max-width: 639px) {
   .inspector {
     width: 296px;
   }
@@ -54,9 +54,10 @@ html[data-sheet-resizing] * {
 }
 
 .inspector.is-collapsed {
-  width: 52px;
-  align-items: center;
-  padding-top: 10px;
+  width: 0;
+  border: 0;
+  padding: 0;
+  overflow: visible;
 }
 
 .insp-head {
@@ -842,4 +843,65 @@ button.message-type-chip {
   border-inline-start: 2px solid var(--line);
   padding-inline-start: 8px;
   margin-block: 8px;
+}
+
+.inspector.is-collapsed > .icon-btn {
+  position: absolute;
+  inset-block-start: 8px;
+  inset-inline-end: 8px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+}
+.dock-tabs {
+  display: flex;
+  align-self: stretch;
+  gap: 4px;
+  min-width: 0;
+}
+.dock-tabs button {
+  background: none;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  color: var(--text-2);
+  font-size: 13px;
+  padding-inline: 8px;
+}
+.dock-tabs button[aria-selected="true"] {
+  color: var(--text);
+  border-bottom-color: var(--text);
+  font-weight: 650;
+}
+.dock-tab-count {
+  display: inline-grid;
+  place-items: center;
+  margin-inline-start: 4px;
+  padding-inline: 4px;
+  border-radius: 8px;
+  font-size: 10px;
+  background: var(--warning);
+  color: var(--live-ink);
+}
+.dock-ai-content {
+  height: 100%;
+  min-height: 0;
+}
+.dock-ai-content[hidden] {
+  display: none;
+}
+.inspector .ai-dock {
+  height: 100%;
+  border: 0;
+}
+.inspector .ai-resize {
+  display: none;
+}
+.checks-card.is-docked {
+  position: static;
+  width: 100%;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
 }

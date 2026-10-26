@@ -1,10 +1,11 @@
+import { useWorkbenchDock } from "../inspector/dockState";
 import { useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { Icon, type IconName } from "../../components/Icon";
 import { t, useLocale } from "../../i18n";
 import { TUTORIALS, type View } from "../../lib/urlState";
 import { AI_PANEL } from "../../lib/deployment";
 import { checksPanel, useChecksPanel } from "../checks/checksPanel";
-import { openAiPanel } from "../../ai/ui/events";
+import { aiPanelTitle, openAiPanel } from "../../ai/ui/events";
 import { railLabel, useUnseen } from "../../ai/ui/unseen";
 import { paletteHost } from "../../palette/host";
 import { tools, useToolHost, useToolSurface } from "./tools";
@@ -15,6 +16,7 @@ const zero = () => 0;
 export function ToolRail({ view, onView }: { view: View; onView: (view: View) => void }) {
   useLocale();
   const host = useToolHost();
+  const dock = useWorkbenchDock();
   const surface = useToolSurface();
   const checks = useChecksPanel();
   const warnings = useSyncExternalStore(
@@ -41,7 +43,7 @@ export function ToolRail({ view, onView }: { view: View; onView: (view: View) =>
       data-testid={id}
       className={active ? "is-on" : undefined}
       aria-label={name}
-      title={name}
+      title={id === "ai-rail-open" ? aiPanelTitle() : name}
       aria-pressed={active}
       tabIndex={focused === id ? 0 : -1}
       disabled={disabled}
@@ -139,7 +141,7 @@ export function ToolRail({ view, onView }: { view: View; onView: (view: View) =>
           t("ai.aI"),
           "ai",
           () => openAiPanel(),
-          false,
+          dock.value === "ai",
           fresh > 0 && (
             <i className="tool-rail-badge" aria-hidden data-testid="ai-rail-badge">
               {fresh > 9 ? "9+" : fresh}

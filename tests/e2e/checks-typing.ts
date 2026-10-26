@@ -81,7 +81,7 @@ export async function checksTyping(page: Page, info: TestInfo, measureCpu = fals
   await page.getByTestId("checks-count").click();
   await expect(page.getByTestId("checks-card")).toBeVisible();
   await page.getByTestId("check-element-p0n12").first().click();
-  await page.getByTestId("checks-close").click();
+  await page.getByTestId("dock-tab-properties").click();
   const label = page.getByTestId("inspector-field-label");
   await expect(label).toHaveValue("Node 0.12");
   // A name already wider than a card can grow: typing on doesn't resize the node and re-route its edges, a

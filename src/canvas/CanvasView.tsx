@@ -1,3 +1,5 @@
+import { workbenchDock, useWorkbenchDock } from "./inspector/dockState";
+import { activateDock, closeWorkbenchDock } from "./inspector/dockActions";
 import { ConnectionRadius } from "./interaction/ConnectionRadius";
 import { EdgeMessages } from "./edges/lazyEdgeMessages";
 import { gestureTargetRemoved } from "./interaction/gestures";
@@ -259,6 +261,7 @@ function CanvasInner({
   const settings = useSettings();
   const { theme, nodeVariant, edgeStyle } = settings;
   const toolSurface = useToolSurface();
+  const dock = useWorkbenchDock();
   const { screenToFlowPosition, getNode, getNodes } = useReactFlow<FlowNode, DiagramFlowEdge>();
   const store = useStoreApi<FlowNode, DiagramFlowEdge>();
   const wrapper = useRef<HTMLDivElement>(null);
@@ -308,7 +311,10 @@ function CanvasInner({
   // Below CRAMPED, an open AI panel keeps the inspector folded to its rail until opened by hand.
   const [cramped, setCramped] = useState(() => window.innerWidth < CRAMPED);
   const aiDock = useAiDock();
-  const aiDockOpen = aiDock.open;
+  useLayoutEffect(() => {
+    if (aiDock.open) workbenchDock.show("ai");
+  }, [aiDock.open]);
+  useLayoutEffect(() => () => workbenchDock.close(), []);
   useEffect(() => {
     const onResize = () => {
       setNarrow(window.innerWidth < ROOMY);
@@ -332,6 +338,7 @@ function CanvasInner({
   const [inspectorRequest, requestInspector] = useState(0);
   const openInspector = useCallback(
     (field?: string, caret?: "end", target?: string, text?: string) => {
+      activateDock("properties");
       requestInspector((revision) => revision + 1);
       liveHandle.current?.session?.closePanel();
       setPref("inspector", true);
@@ -546,8 +553,14 @@ function CanvasInner({
         history.redo();
       },
     },
-    prefs,
-    setPref,
+    prefs: { ...prefs, inspector: dock.value !== "closed" },
+    setPref: (key, value) => {
+      setPref(key, value);
+      if (key === "inspector") {
+        if (value) activateDock(workbenchDock.get().last);
+        else closeWorkbenchDock();
+      }
+    },
     setEditing: (target) => {
       if (readOnly || live || presenting) return;
       interaction.annotating(target?.id ?? null);
@@ -951,17 +964,35 @@ function CanvasInner({
   // Below ROOMY an open AI panel folds the stencils to their rail too, as live view does: at 1440 the
   // dock, the stencils and the inspector's rail left the diagram 780 px.
   const paletteHidden = !settings.libraryPinned && toolSurface !== "library";
-  const settledEmpty = useSettledSelection({ wrapper, editGestures, controller, nothingSelected });
-  const inspectorHidden =
-    livePanelOpen ||
-    !prefs.inspector ||
-    ((live || (narrow && settledEmpty) || (cramped && aiDockOpen)) && !openedByHand.inspector);
+  const dockSelection = JSON.stringify(
+    [...selectedNodes, ...selectedGroups, ...selectedEdges, ...selectedAnnotations].map((item) => item.id),
+  );
+  const { empty: settledEmpty, key: settledKey } = useSettledSelection({
+    wrapper,
+    editGestures,
+    controller,
+    nothingSelected,
+    selectionKey: dockSelection,
+  });
+  const inspectorHidden = dock.value === "closed" || (livePanelOpen && dock.value === "properties");
+  const selectedForDock = useRef("");
+  useLayoutEffect(() => {
+    if (settledEmpty) {
+      const hadSelection = !!selectedForDock.current;
+      selectedForDock.current = "";
+      if (hadSelection && dock.value === "properties" && !openedByHand.inspector) closeWorkbenchDock();
+      return;
+    }
+    if (settledKey === selectedForDock.current) return;
+    selectedForDock.current = settledKey;
+    if (!checksPanel.isOpen()) activateDock("properties");
+  }, [settledEmpty, settledKey, dock.value, openedByHand.inspector]);
   const { checksMounted } = usePaneCamera(controller, {
     paletteHidden,
     aiDock,
     inspectorHidden,
     sheetResize,
-    inspectorPref: prefs.inspector,
+    inspectorPref: dock.value !== "closed",
     inspectorByHand: openedByHand.inspector,
     livePanelOpen,
     narrow,
@@ -1038,7 +1069,7 @@ function CanvasInner({
       },
       shortcuts: showShortcuts,
     });
-  }, [hideChrome, live, settings.libraryPinned, checks, editor, showShortcuts]);
+  }, [hideChrome, live, settings.libraryPinned, checks, editor, showShortcuts, interaction]);
   useLayoutEffect(() => {
     if (toolSurface === "library") interaction.dispatch({ type: "tool.focus", cause: "library" });
   }, [toolSurface, interaction]);
@@ -1126,6 +1157,8 @@ function CanvasInner({
   const inspectorResize = useCallback(() => setSheetResize((revision) => revision + 1), []);
   const inspectorToggle = useCallback(() => {
     interaction.dispatch({ type: "inspector.toggled", cause: "panel" });
+    if (inspectorHidden) activateDock(workbenchDock.get().last);
+    else closeWorkbenchDock();
     setPref("inspector", inspectorHidden);
     setOpenedByHand((o) => ({ ...o, inspector: inspectorHidden }));
   }, [interaction, setPref, inspectorHidden]);
@@ -1517,6 +1550,8 @@ function CanvasInner({
             {!hideChrome && (
               <Inspector
                 editor={editor}
+                checksStore={checks}
+                checksHost={checksHost}
                 revision={hostRevision}
                 readDiagram={readInspectorDiagram}
                 meta={meta}

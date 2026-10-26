@@ -22,6 +22,7 @@ export interface ChecksCardProps extends RowHost {
   returnFocus(): void;
   /** Distance from the canvas's top: just under the diagram card. */
   top: number;
+  placement?: "dock" | "floating";
   onClose(): void;
   /** The lazy card is in the DOM, ready for an overlay-aware fit. */
   onMount?(): void;
@@ -140,13 +141,17 @@ export function ChecksCard(p: ChecksCardProps) {
     // Esc closes the card from anywhere inside it (one level, per the Esc rule).
     // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions
     <section
-      className="checks-card"
+      className={p.placement === "dock" ? "checks-card is-docked" : "checks-card"}
       data-testid="checks-card"
       data-check-scope
-      data-canvas-overlay
+      data-canvas-overlay={p.placement !== "dock" || undefined}
       aria-label="Checks"
       ref={self}
-      style={{ top: p.top, ["--checks-top" as string]: `${p.top}px`, ...(maxHeight ? { maxHeight } : {}) }}
+      style={
+        p.placement === "dock"
+          ? undefined
+          : { top: p.top, ["--checks-top" as string]: `${p.top}px`, ...(maxHeight ? { maxHeight } : {}) }
+      }
       onKeyDown={(e) => {
         if (e.key !== "Escape" || e.defaultPrevented) return;
         e.stopPropagation();
@@ -154,22 +159,24 @@ export function ChecksCard(p: ChecksCardProps) {
         if (!p.simulations?.stop()) p.onClose();
       }}
     >
-      <header className="checks-head">
-        <h2>
-          <Icon name="checklist" size={14} /> Checks
-        </h2>
-        <button
-          type="button"
-          className="icon-btn icon-btn-quiet"
-          aria-label="Close checks"
-          title="Close (Esc)"
-          data-testid="checks-close"
-          data-check-fallback
-          onClick={p.onClose}
-        >
-          <Icon name="close" size={14} />
-        </button>
-      </header>
+      {p.placement !== "dock" && (
+        <header className="checks-head">
+          <h2>
+            <Icon name="checklist" size={14} /> Checks
+          </h2>
+          <button
+            type="button"
+            className="icon-btn icon-btn-quiet"
+            aria-label="Close checks"
+            title="Close (Esc)"
+            data-testid="checks-close"
+            data-check-fallback
+            onClick={p.onClose}
+          >
+            <Icon name="close" size={14} />
+          </button>
+        </header>
+      )}
       {!r ? (
         <p className="checks-note" data-testid="checks-running">
           Checking…

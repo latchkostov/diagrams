@@ -74,7 +74,7 @@ test("the hint keeps whole words on a narrow pane (one hint, then wrapping)", as
   await expect(page.getByTestId("first-run-hint")).toBeVisible();
   // The widest dock leaves the narrowest pane.
   await openAdvanced(page);
-  for (let i = 0; i < 10; i++) await page.getByTestId("ai-resize").press("ArrowLeft");
+  for (let i = 0; i < 10; i++) await page.getByTestId("inspector-resize").press("ArrowLeft");
   await expect.poll(() => hintFits(page)).toBe(true);
   await expect(page.getByTestId("first-run-hint")).toContainText("Go live");
 });
@@ -89,7 +89,7 @@ test("opening, closing and resizing the dock refits the diagram at 1024", async 
   await settle(page);
   await expect.poll(() => allNodesInView(page)).toBe(true);
 
-  for (let i = 0; i < 4; i++) await page.getByTestId("ai-resize").press("ArrowLeft");
+  for (let i = 0; i < 4; i++) await page.getByTestId("inspector-resize").press("ArrowLeft");
   await settle(page);
   await expect.poll(() => allNodesInView(page)).toBe(true);
 

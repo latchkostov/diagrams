@@ -1,6 +1,14 @@
+import { DockTabs } from "./inspector/DockTabs";
+import { workbenchDock, useWorkbenchDock } from "./inspector/dockState";
+import { activateDock } from "./inspector/dockActions";
+import { ChecksCardView } from "./checks/ChecksViews";
+import { checksPanel, useChecksPanel } from "./checks/checksPanel";
+import { aiDock } from "../ai/ui/dock";
+import { useUnseen } from "../ai/ui/unseen";
+import { paletteHost } from "../palette/host";
 import { NodePanel } from "./inspector/NodePanel";
 import { defineLazySurface } from "../lib/lazySurface";
-import { useLayoutEffect, useMemo, type ReactNode } from "react";
+import { useId, useLayoutEffect, useMemo, useSyncExternalStore, type ReactNode } from "react";
 import { flushSync } from "react-dom";
 import { GROUP_PREFIX } from "./types";
 import { Icon } from "../components/Icon";
@@ -78,6 +86,16 @@ export function Inspector(p: InspectorProps) {
   const within = (sheet: ReactNode) =>
     local ? <InteractionContext.Provider value={interaction}>{sheet}</InteractionContext.Provider> : sheet;
   const locale = useLocale();
+  const dock = useWorkbenchDock();
+  const activeTab = dock.value === "closed" ? "properties" : dock.value;
+  const id = useId();
+  const warnings = useSyncExternalStore(
+    p.checksStore?.subscribe ?? emptySubscribe,
+    () => p.checksStore?.get().warnings ?? 0,
+  );
+  const checksAvailable = useChecksPanel().available;
+  const documentId = useSyncExternalStore(paletteHost.subscribe, () => paletteHost.get().canvas?.documentId);
+  const fresh = useUnseen(documentId);
 
   // A field asked for (F2 then a name; a double-click then a name) takes focus at once, so the next key typed
   // reaches it, and again a frame later only if something took focus back meanwhile (the menu that asked for it,
@@ -157,7 +175,19 @@ export function Inspector(p: InspectorProps) {
       <>
         <SheetResizeHandle onResize={p.onResize} />
         <div className="insp-head">
-          <span className="insp-title" data-testid="inspector-title">
+          <DockTabs
+            active={activeTab}
+            warnings={warnings}
+            fresh={fresh}
+            id={id}
+            onSelect={activateDock}
+            checksAvailable={checksAvailable}
+            onEscape={() => {
+              checksPanel.close();
+              if (workbenchDock.get().value === "closed") p.checksHost?.returnFocus();
+            }}
+          />
+          <span className="sr-only" id={id + "-title"} data-testid="inspector-title">
             {title}
           </span>
           <button
@@ -173,7 +203,7 @@ export function Inspector(p: InspectorProps) {
       </>
     ),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- The active locale invalidates translated text.
-    [p.onResize, p.onToggle, locale, title],
+    [p.onResize, p.onToggle, locale, title, activeTab, warnings, fresh, id, checksAvailable],
   );
   if (p.collapsed) {
     return within(
@@ -202,18 +232,43 @@ export function Inspector(p: InspectorProps) {
       data-testid="inspector"
       aria-label={t("inspector.inspector")}
       data-inspector-mode={mode}
+      data-dock-tab={activeTab}
       data-inspector-target={
         n === 1 ? (p.selectedNodes[0] ?? p.selectedEdges[0] ?? p.selectedGroups[0] ?? annotations[0])?.id : undefined
       }
     >
       {head}
       {/* Where focus goes after a finding's fix when no other finding is left to take it. */}
-      <div className="insp-body" data-testid="inspector-body" data-check-fallback-scope>
-        {n === 1 && !p.selectedNodes[0] && p.findings}
-        {content}
+      <div
+        className="insp-body"
+        data-testid="inspector-body"
+        data-check-fallback-scope
+        role="tabpanel"
+        id={id + "-panel"}
+        aria-labelledby={id + "-" + activeTab + " " + id + "-title"}
+      >
+        {activeTab === "properties" && (
+          <>
+            {n === 1 && !p.selectedNodes[0] && p.findings}
+            {content}
+          </>
+        )}
+        {activeTab === "checks" && p.checksStore && p.checksHost && (
+          <ChecksCardView
+            store={p.checksStore}
+            host={p.checksHost}
+            top={0}
+            onMount={p.onResize ?? (() => {})}
+            placement="dock"
+          />
+        )}
+        <div className="dock-ai-content" data-testid="dock-ai-content" ref={mountAiPanel} hidden={activeTab !== "ai"} />
       </div>
     </aside>,
   );
 }
 
 export type { InspectorProps } from "./inspector/types";
+
+const emptySubscribe = () => () => {};
+const mountAiPanel = (element: HTMLDivElement | null) => aiDock.mount(element);

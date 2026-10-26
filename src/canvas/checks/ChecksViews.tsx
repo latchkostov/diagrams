@@ -50,11 +50,13 @@ export function ChecksCardView({
   host,
   top,
   onMount,
+  placement,
 }: {
   store: ChecksStore;
   host: ChecksHost;
   top: number;
   onMount(): void;
+  placement?: "dock" | "floating";
 }) {
   const state = useChecksState(store);
   return (
@@ -64,6 +66,7 @@ export function ChecksCardView({
       result={state.result}
       state={state}
       top={top}
+      placement={placement}
       onMount={() => {
         onMount();
         // The card's code arrived (on a Retry, too): a check that couldn't download its own code runs again.

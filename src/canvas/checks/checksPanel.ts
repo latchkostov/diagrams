@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from "react";
+import { workbenchDock } from "../inspector/dockState";
 
 // Whether the Checks card is open, as one tiny store: the canvas right-click, Ctrl+K, the top bar's View menu
 // and the count under the title all open it, and the canvas shows it. `available` is false where checks don't
@@ -15,7 +16,9 @@ export const checksPanel = {
   isOpen: () => open && available,
   isAvailable: () => available,
   open() {
-    if (!available || open) return;
+    if (!available) return;
+    workbenchDock.show("checks");
+    if (open) return;
     open = true;
     const at = typeof document === "undefined" ? null : document.activeElement;
     opener = at instanceof HTMLElement && at !== document.body ? at : null;
@@ -26,6 +29,7 @@ export const checksPanel = {
   close() {
     if (!open) return;
     open = false;
+    if (workbenchDock.get().value === "checks") workbenchDock.back();
     emit();
   },
   toggle() {
@@ -36,7 +40,10 @@ export const checksPanel = {
   setAvailable(on: boolean) {
     if (on === available) return;
     available = on;
-    if (!on) open = false;
+    if (!on) {
+      open = false;
+      if (workbenchDock.get().value === "checks") workbenchDock.back();
+    }
     emit();
   },
   subscribe(listener: () => void): () => void {

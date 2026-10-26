@@ -369,7 +369,7 @@ test.describe("command palette", () => {
     const payments = page.getByTestId("node-payments");
     await expect(async () => {
       await fitDiagram(page);
-      const [node, rail] = await Promise.all([payments.boundingBox(), page.getByTestId("ai-rail").boundingBox()]);
+      const [node, rail] = await Promise.all([payments.boundingBox(), page.getByTestId("ai-rail-open").boundingBox()]);
       expect(node && (!rail || node.x + node.width <= rail.x)).toBeTruthy();
     }).toPass({ timeout: 10_000 });
     await payments.click();

@@ -153,6 +153,7 @@ export type FocusTarget =
   | { kind: "field"; name: string; owner?: string }
   /** The stencil rail's search. */
   | { kind: "paletteSearch" }
+  | { kind: "inspectorToggle" }
   /** The Live bar's control that opens its side panels ("⋯", data-live-panel-opener). */
   | { kind: "panelOpener" }
   /** A field (by test id) in one of Live's side panels: waits while the panel is open and the field isn't yet. */

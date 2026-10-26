@@ -109,8 +109,13 @@ export function createDomPort(canvas: DomCanvas): InteractionPort {
         if (!el || (target.owner && el.getAttribute("data-name-field") !== target.owner)) return { state: "parked" };
         return { state: "ready", el };
       }
+      case "inspectorToggle":
       case "paletteSearch": {
-        const el = canvas.root()?.parentElement?.querySelector('[data-testid="palette-search"]');
+        const el = canvas
+          .root()
+          ?.parentElement?.querySelector(
+            target.kind === "paletteSearch" ? '[data-testid="palette-search"]' : '[data-testid="inspector-toggle"]',
+          );
         return el ? { state: "ready", el } : { state: "gone" };
       }
       case "panelOpener": {

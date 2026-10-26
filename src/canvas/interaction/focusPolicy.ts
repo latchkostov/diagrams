@@ -163,7 +163,7 @@ export function focusPolicy(state: FocusState, event: FocusEvent): FocusDecision
         { fieldSeq: event.seq },
       );
     case "inspector.toggled":
-      return keep();
+      return event.cause === "panel" ? move({ target: { kind: "inspectorToggle" }, when: "commit" }) : keep();
     case "inspector.abandoned":
       return state.pending?.target.kind === "field" ? keep({ pending: null }) : keep();
     case "dialog.opened":

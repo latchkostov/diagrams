@@ -191,6 +191,7 @@ kbd {
   flex: 1;
   min-width: 0;
   position: relative;
+  isolation: isolate;
 }
 
 /* ---------- AI panel dock (the panel itself is lazy: src/ai/ui/ai.css) ---------- */

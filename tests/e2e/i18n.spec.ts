@@ -787,9 +787,9 @@ test("Arabic dock resize keys move its canvas-facing edge in the physical direct
   await waitForStableBox(page.getByTestId("ai-dock"));
   const before = await page.getByTestId("ai-dock").boundingBox();
   if (!before) throw new Error("The AI dock has no box");
-  await page.getByTestId("ai-resize").press("ArrowRight");
-  await expect.poll(async () => (await page.getByTestId("ai-dock").boundingBox())?.width).toBe(before.width + 24);
-  await page.getByTestId("ai-resize").press("ArrowLeft");
+  await page.getByTestId("inspector-resize").press("ArrowRight");
+  await expect.poll(async () => (await page.getByTestId("ai-dock").boundingBox())?.width).toBe(before.width + 16);
+  await page.getByTestId("inspector-resize").press("ArrowLeft");
   await expect.poll(async () => (await page.getByTestId("ai-dock").boundingBox())?.width).toBe(before.width);
 });
 

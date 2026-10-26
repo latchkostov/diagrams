@@ -1,3 +1,5 @@
+import { createPortal } from "react-dom";
+import { useWorkbenchDock } from "../../canvas/inspector/dockState";
 import { t, msg } from "../../i18n";
 import { lazy, Suspense, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import { actionRegistry, type Action } from "../../editor/actions";
@@ -6,7 +8,7 @@ import { paletteHost } from "../../palette/host";
 import { privacyOf } from "../../lib/localOnly";
 import { AI_TOOLS } from "../../lib/deployment";
 import { AI_PANEL_COMBO, OPEN_AI_PANEL, buildWithAi, openAiPanel, type OpenAiPanel } from "./events";
-import { aiDock, clampWidth, collapseDock, useAiDock } from "./dock";
+import { aiDock, collapseDock, useAiDock } from "./dock";
 import { forgetLegacyAiKeys } from "./legacy";
 import { unseen, useUnseen } from "./unseen";
 import { lazyComponent, whenIdle } from "../../lib/lazyLoad";
@@ -68,6 +70,8 @@ export function AiMount({
   const hostDocumentId = useSyncExternalStore(paletteHost.subscribe, () => paletteHost.get().canvas?.documentId);
   const canvasLive = useSyncExternalStore(paletteHost.subscribe, () => !!paletteHost.get().canvas?.live);
   const dock = useAiDock();
+  const workbench = useWorkbenchDock();
+  const target = useSyncExternalStore(aiDock.subscribe, aiDock.target, aiDock.target);
   // The actions register once (re-registering would rebuild an open menu under the pointer).
   const newDiagram = useRef(onNewDiagram);
   useLayoutEffect(() => {
@@ -122,7 +126,7 @@ export function AiMount({
   }, [docked]);
 
   // Toasts centre on the canvas, clear of the dock.
-  const width = docked ? (dock.open ? clampWidth(dock.width) : 0) : 0;
+  const width = 0;
   useEffect(() => {
     document.documentElement.style.setProperty("--ai-dock-w", `${width}px`);
     return () => void document.documentElement.style.removeProperty("--ai-dock-w");
@@ -156,7 +160,7 @@ export function AiMount({
   // Agent changes made while folded show as a count on the rail; opening the panel shows them.
   const documentId = canvas ? hostDocumentId : undefined;
   const fresh = useUnseen(documentId);
-  const shown = docked && dock.open;
+  const shown = docked && dock.open && workbench.value === "ai";
   useEffect(() => {
     if (shown && documentId && fresh) unseen.clear(documentId);
   }, [shown, documentId, fresh]);
@@ -171,11 +175,13 @@ export function AiMount({
   return (
     <>
       {docked &&
-        (dock.open ? (
+        target &&
+        dock.open &&
+        createPortal(
           // One landmark: the panel inside is the region, so this frame is a plain container.
           <div
             className="ai-dock"
-            style={{ width }}
+            style={{ width: "100%" }}
             data-testid="ai-dock"
             data-ready={canvas ? "true" : "false"}
             inert={!canvas}
@@ -189,8 +195,9 @@ export function AiMount({
             ) : (
               <AiPanel key={panelIdentity} request={request} />
             )}
-          </div>
-        ) : null)}
+          </div>,
+          target,
+        )}
       {WebMcpBridge && mcp && editorSeen && (
         <Suspense fallback={null}>
           <WebMcpBridge live={live} onNewDiagram={onNewDiagram} />

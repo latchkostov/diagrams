@@ -1,7 +1,7 @@
 import { safeStorage } from "../lib/storage";
 
 export const SHEET_WIDTH_KEY = "diagrams.inspector.width.v1";
-export const SHEET_NARROW = 1100;
+export const SHEET_NARROW = 640;
 
 /** available excludes the stencil rail and any separate dock. Reserve room for the drawing. */
 export function sheetBounds(viewport: number, available = viewport) {
@@ -11,7 +11,7 @@ export function sheetBounds(viewport: number, available = viewport) {
 
 export function sheetWidth(viewport: number, available = viewport, preferred: number | null = null) {
   const { min, max } = sheetBounds(viewport, available);
-  const width = preferred ?? Math.max(360, Math.min(viewport * 0.265, 640));
+  const width = preferred ?? 372;
   return Math.round(Math.max(min, Math.min(width, max)));
 }
 

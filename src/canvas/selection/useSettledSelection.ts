@@ -6,11 +6,13 @@ export function useSettledSelection({
   editGestures,
   controller,
   nothingSelected,
+  selectionKey,
 }: {
   wrapper: RefObject<HTMLDivElement | null>;
   editGestures: boolean;
   controller: CameraController;
   nothingSelected: boolean;
+  selectionKey: string;
 }) {
   // The inspector waits for pointer-up (D5). Below 1680 px it opens with a selection and narrows the
   // canvas: opening it under a drag (a box being drawn, a node being moved) would shift the canvas under
@@ -18,18 +20,21 @@ export function useSettledSelection({
   // render (a ref); keys, undo and menus change it at once.
   const pointerHeld = useRef(false);
   const latestEmpty = useRef(nothingSelected);
-  const [settledEmpty, setSettledEmpty] = useState(nothingSelected);
-  const settledNow = useRef(settledEmpty);
+  const latestKey = useRef(selectionKey);
+  const [settled, setSettled] = useState({ empty: nothingSelected, key: selectionKey });
+  const settledNow = useRef(settled);
   /** Camera readiness held from a pointer-up until the Inspector follows its settled selection. */
   const settling = useRef<(() => void) | null>(null);
   useLayoutEffect(() => {
     latestEmpty.current = nothingSelected;
-    settledNow.current = settledEmpty;
+    latestKey.current = selectionKey;
+    settledNow.current = settled;
     // This commit has the settled selection (and the Inspector's pane change, for the camera).
     settling.current?.();
     settling.current = null;
-    if (!pointerHeld.current && settledEmpty !== nothingSelected) setSettledEmpty(nothingSelected);
-  }, [nothingSelected, settledEmpty]);
+    if (!pointerHeld.current && (settled.empty !== nothingSelected || settled.key !== selectionKey))
+      setSettled({ empty: nothingSelected, key: selectionKey });
+  }, [nothingSelected, selectionKey, settled]);
   useEffect(() => {
     const wrap = wrapper.current;
     if (!editGestures || !wrap) return;
@@ -68,9 +73,10 @@ export function useSettledSelection({
             pointerHeld.current = false;
             const done = unsettled;
             unsettled = null;
-            if (settledNow.current === latestEmpty.current) done?.();
+            if (settledNow.current.empty === latestEmpty.current && settledNow.current.key === latestKey.current)
+              done?.();
             else settling.current = done;
-            setSettledEmpty(latestEmpty.current);
+            setSettled({ empty: latestEmpty.current, key: latestKey.current });
           }, 0);
           frame = 0;
         });
@@ -94,5 +100,5 @@ export function useSettledSelection({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- wrapper is CanvasView's stable lifetime ref; preserve the original dependencies
   }, [editGestures, controller]);
-  return settledEmpty;
+  return settled;
 }

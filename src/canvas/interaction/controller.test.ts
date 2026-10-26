@@ -102,6 +102,8 @@ function harness() {
         }
         case "paletteSearch":
           return { state: "ready", el: els.get("search") ?? el("search") };
+        case "inspectorToggle":
+          return { state: "ready", el: els.get("inspector-toggle") ?? el("inspector-toggle") };
         case "panelOpener": {
           const opener = els.get("panel-opener");
           return opener?.connected ? { state: "ready", el: opener } : { state: "gone" };

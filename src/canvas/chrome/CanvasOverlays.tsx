@@ -8,7 +8,7 @@ import { UNTITLED } from "../../lib/diagramIO";
 import { PRIVACY_REQUEST } from "../../lib/usePrivacy";
 import { t as tr } from "../../i18n";
 import type { DiagramMeta } from "../convert";
-import { ChecksCardView, DiagramCardMeta, type ChecksHost } from "../checks/ChecksViews";
+import { DiagramCardMeta, type ChecksHost } from "../checks/ChecksViews";
 import type { ChecksStore } from "../checks/useChecks";
 import { PresentFullscreen } from "../PresentFullscreen";
 import { StartCard, type StartOptions } from "../StartCard";
@@ -51,10 +51,6 @@ export function CanvasOverlays({
   modified,
   ownDiagram,
   reset,
-  checksOn,
-  checksHost,
-  checksTop,
-  checksMounted,
   onExitPresent,
   contentCount,
   live,
@@ -143,10 +139,6 @@ export function CanvasOverlays({
           />
         )}
       </div>
-
-      {checksOn && checksCard && (
-        <ChecksCardView store={checks} host={checksHost} top={checksTop} onMount={checksMounted} />
-      )}
 
       {presenting && (
         <div className="present-bar">
