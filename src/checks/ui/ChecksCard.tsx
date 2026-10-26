@@ -9,7 +9,7 @@ import { SimulationsBar, type SimulationsHost } from "./SimulationsBar";
 import { presentRule } from "../presentation";
 import { t, useLocale } from "../../i18n";
 import { useFallbackOnUnmount, useSurvivingCheckFocus } from "./survivingFocus";
-import { findingOrder, selectedFinding } from "./findingOrder";
+import { findingOrder, selectedFinding } from "../../canvas/checks/findingOrder";
 
 // The Checks card (docs/research/architecture-checks.md, "Where it shows"): opened on demand, under the
 // diagram card. Warnings first, then suggestions; each row selects what it involves, and its button is the

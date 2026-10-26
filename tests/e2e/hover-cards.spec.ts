@@ -513,7 +513,7 @@ test("Escape on a summary reached with Tab gives focus back to its node", async 
 });
 
 for (const pinned of [false, true])
-  test(`Tab exits the final Live readout (${pinned ? "pinned" : "unpinned"}) to the canvas controls`, async ({
+  test(`Tab exits the final Live readout (${pinned ? "pinned" : "unpinned"}) to the frame credit`, async ({
     page,
     consoleErrors,
   }) => {
@@ -532,7 +532,7 @@ for (const pinned of [false, true])
       stops.push(stop);
       if (!/^(node-detail-store|hover-section-)/.test(stop)) break;
     }
-    expect(stops.at(-1)).toBe("zoom-in-button");
+    expect(stops.at(-1)).toBe("react-flow-credit");
     expect(stops.filter((stop) => stop === "node-detail-store")).toEqual([]);
     expect(stops).not.toContain("BODY");
     await expect(card).toHaveCount(0);

@@ -89,7 +89,9 @@ export async function settledCanvas(page: Page, root = "canvas-wrap"): Promise<D
                 (!el.offsetWidth || !el.offsetHeight);
               return (
                 emptyBoundary ||
-                (el.offsetWidth > 0 && el.offsetHeight > 0 && getComputedStyle(el).visibility === "visible")
+                (el.offsetWidth > 0 &&
+                  el.offsetHeight > 0 &&
+                  (el.hasAttribute("data-detail-hidden") || getComputedStyle(el).visibility === "visible"))
               );
             }),
         );

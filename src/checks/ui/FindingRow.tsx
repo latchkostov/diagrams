@@ -7,7 +7,7 @@ import { applyFix, ignoreFinding, turnOff } from "./actions";
 import { evidenceText } from "../evidenceMerge";
 import { useLocale } from "../../i18n";
 import { presentFinding, presentRule } from "../presentation";
-import { firstSentence } from "./findingOrder";
+import { firstSentence } from "../../canvas/checks/findingOrder";
 
 // One finding, in the Checks card and (compact) at the top of a selected node's or edge's inspector: what's
 // wrong, why, what it involves, and its one primary action, the fix. ⋯ has Ignore here, Turn off this check

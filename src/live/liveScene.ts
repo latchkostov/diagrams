@@ -45,7 +45,9 @@ export const MAX_SEGMENTS = 2048;
 export const SAMPLE_BUDGET = 20_000;
 
 /** Pending changes since the last `takeChanges` (the worker path posts them). */
+export type EdgeInk = { alpha: number; near: boolean };
 export interface SceneChanges {
+  ink?: [string, EdgeInk][];
   paths?: { set: [id: string, samples: PathSamples][]; remove: string[] };
   nodes?: [id: string, rect: Rect][];
   /** The marching edges and how they look (a full replacement). */
@@ -58,6 +60,9 @@ const MARCHING = '.react-flow__edge[data-live-edge="active"] .fe-async path.fe-p
 export class LiveScene {
   /** Bumps whenever a sampled edge's path changes (the renderer redraws, and re-samples it). */
   pathsVersion = 0;
+  readonly ink = new Map<string, EdgeInk>();
+  private inkKey = "";
+  private inkChanged = false;
   private paths = new Map<string, PathEntry>();
   private dirty = true;
   private observer: MutationObserver | null = null;
@@ -173,6 +178,7 @@ export class LiveScene {
     }
     if (this.dirty || force || !this.observer) this.scanPaths();
     this.refreshNodes(force);
+    if (this.dirty || force || !this.observer) this.readInk();
   }
 
   /** The marching edges as last read (see readMarch). */
@@ -186,7 +192,26 @@ export class LiveScene {
    * UI clock calls it right after the decorator marks active edges; a path that moves in between
    * (a node dragged) is picked up by the path scan.
    */
+  private readInk(): void {
+    const next: [string, EdgeInk][] = [];
+    const spotlight = this.root.hasAttribute("data-live-spotlight");
+    for (const el of this.root.querySelectorAll<SVGElement>(".react-flow__edge[data-id]")) {
+      const near = el.hasAttribute("data-live-near") || (spotlight && !el.hasAttribute("data-live-dim"));
+      next.push([
+        el.dataset.id!,
+        { alpha: el.hasAttribute("data-detail-hidden") ? 0 : spotlight && !near ? 0.28 : 1, near },
+      ]);
+    }
+    const key = JSON.stringify(next);
+    if (key === this.inkKey) return;
+    this.inkKey = key;
+    this.ink.clear();
+    for (const [id, ink] of next) this.ink.set(id, ink);
+    this.inkChanged = true;
+    this.pathsVersion++;
+  }
   readMarch(): void {
+    this.readInk();
     const layer = this.root.querySelector(".react-flow__edges");
     const out: MarchEdge[] = [];
     for (const path of this.root.querySelectorAll<SVGPathElement>(MARCHING)) {
@@ -288,12 +313,17 @@ export class LiveScene {
     this.removedPaths.clear();
     this.nodesChanged = true;
     this.marchChanged = true;
+    this.inkChanged = true;
     return this.takeChanges() ?? {};
   }
 
   /** What changed since the last call (wanted paths sampled within the budget), or undefined. */
   takeChanges(): SceneChanges | undefined {
     const out: SceneChanges = {};
+    if (this.inkChanged) {
+      out.ink = [...this.ink];
+      this.inkChanged = false;
+    }
     const set: [string, PathSamples][] = [];
     for (const id of this.pending) {
       const entry = this.paths.get(id);
@@ -319,7 +349,7 @@ export class LiveScene {
       out.march = this.marchEdges;
       this.marchChanged = false;
     }
-    return out.paths || out.nodes || out.march ? out : undefined;
+    return out.paths || out.nodes || out.march || out.ink ? out : undefined;
   }
 
   /**

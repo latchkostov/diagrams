@@ -1,3 +1,4 @@
+import type { EdgeInk } from "./liveScene";
 // The particle worker: draws the live view's particles, trails, pulses, trace labels and slow motion
 // on the two canvases the main thread transferred (`transferControlToOffscreen`), with the very same
 // ParticleRenderer and SlowPainter the main-thread fallback uses. The main thread posts one `frame`
@@ -106,6 +107,7 @@ let slowOn = false;
 const unpacker = new SnapshotUnpacker();
 const paths = new Map<string, PathSamples>();
 let pathsVersion = 0;
+let ink = new Map<string, EdgeInk>();
 let nodes = new Map<string, Rect>();
 let labels: Rect[] = [];
 let obstacles: Obstacles | undefined;
@@ -124,6 +126,7 @@ const env: RenderEnv = {
   dpr: () => view.dpr,
   samples: (id) => paths.get(id) ?? null,
   pathsVersion: () => pathsVersion,
+  edgeInk: (id) => ink.get(id),
   nodeRect: (id) => nodes.get(id) ?? null,
   obstacles: () => obstacles,
   labelRects: () => labels,
@@ -169,6 +172,10 @@ function onFrame(m: FrameMessage): void {
     pathsVersion++;
   }
   if (m.nodes) nodes = new Map(m.nodes);
+  if (m.ink) {
+    ink = new Map(m.ink);
+    pathsVersion++;
+  }
   if (m.labels) labels = m.labels;
   if (m.obstacles !== undefined) obstacles = m.obstacles ?? undefined;
   if (m.snap) snap = unpacker.unpack(m.snap);

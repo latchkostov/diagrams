@@ -12,7 +12,7 @@ const ChecksMarkers = defineLazySurface({
   retryToast: true,
 });
 import { useChecksState, useHotFinding, type ChecksStore } from "./useChecks";
-import { findingOrder, selectedFinding } from "../../checks/ui/findingOrder";
+import { findingOrder, selectedFinding } from "./findingOrder";
 
 // What shows the checks on the canvas, each subscribed to the canvas's ChecksStore on its own, so a new result or
 // a hovered row re-renders only these, never the canvas. The card and the inspector's row are a lazy chunk.

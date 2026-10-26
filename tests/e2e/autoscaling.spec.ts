@@ -1,3 +1,4 @@
+import { clickFitView } from "./fixtures";
 import { openInspectorLiveDetails } from "./fixtures";
 import type { Page } from "@playwright/test";
 import { readFileSync } from "node:fs";
@@ -339,7 +340,7 @@ test("A1: production playback shows starting backlog, ready capacity, real resou
   await page.getByTestId("autoscaling-live-details").scrollIntoViewIfNeeded();
   const body = page.getByTestId("inspector-body");
   await expect.poll(() => body.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
-  await page.getByTestId("fit-view-button").click();
+  await clickFitView(page);
   await page.clock.runFor(1000);
   await waitForStableViewport(page);
   await page.screenshot({ path: info.outputPath("a1-live-resources.png") });
@@ -361,7 +362,7 @@ for (const locale of ["de", "ar"])
       await page.getByTestId("autoscaling-advanced-toggle").click();
     }
     await page.getByTestId("autoscaling-preset").scrollIntoViewIfNeeded();
-    await page.getByTestId("fit-view-button").click();
+    await clickFitView(page);
     await waitForStableViewport(page);
     const body = page.getByTestId("inspector-body");
     await expect.poll(() => body.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
@@ -434,7 +435,7 @@ test("A1: a large selected fleet has accessible pagination and stable decision a
   await next.click();
   expect(await page.getByTestId("autoscaling-replica-row").count()).toBe(10);
   await expect(next).toBeDisabled();
-  await page.getByTestId("fit-view-button").click();
+  await clickFitView(page);
   await waitForStableViewport(page);
   await page.screenshot({ path: info.outputPath("a1-pagination-dark.png") });
 });

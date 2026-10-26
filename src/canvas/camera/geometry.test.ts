@@ -4,7 +4,13 @@ import type { DiagramFlowEdge, FlowNode } from "../types";
 import { intersects } from "../geometry/rect";
 import { TRACE_CARD_TOP, TRACE_CARD_FOOTPRINT } from "../../live/traceCardLayout";
 import { selectRoutes } from "../edges/useEdgeRoute";
-import { fitNodesViewport, liveFitViewport } from "./geometry";
+import {
+  fitNodesViewport,
+  liveFitViewport,
+  focusSelectionViewport,
+  followViewport,
+  overlayFitViewport,
+} from "./geometry";
 vi.mock("../edges/useEdgeRoute", () => ({ selectRoutes: vi.fn() }));
 
 for (const room of [
@@ -117,3 +123,60 @@ for (const bottom of [80, 220])
     } as unknown as ReactFlowState<FlowNode, DiagramFlowEdge>;
     expect(liveFitViewport(state, { panel: false, card: false })!.y).toBeGreaterThanOrEqual(bottom + 16);
   });
+
+function workbenchState(spread = 300) {
+  const nodes = ["a", "b"].map((id, i) => ({
+    id,
+    type: "diagram",
+    selected: i === 0,
+    measured: { width: 180, height: 80 },
+    internals: { positionAbsolute: { x: i * spread, y: 0 } },
+  }));
+  return {
+    width: 1200,
+    height: 800,
+    minZoom: 0.01,
+    transform: [0, 0, 1],
+    nodeLookup: new Map(nodes.map((n) => [n.id, n])),
+    edges: [{ id: "ab", source: "a", target: "b" }],
+  } as unknown as ReactFlowState<FlowNode, DiagramFlowEdge>;
+}
+const workbenchRoot = {
+  getBoundingClientRect: () => ({ left: 0, top: 0, width: 1200, height: 800 }),
+  clientWidth: 1200,
+  clientHeight: 800,
+  closest: () => null,
+  querySelectorAll: () => [],
+} as unknown as HTMLElement;
+it("Overview is a true fit of distant nodes and edge labels down to minZoom", () => {
+  const s = workbenchState(6000);
+  vi.mocked(selectRoutes).mockReturnValue(
+    new Map([["ab", { points: [], label: { x: 8000, y: 0, width: 200, height: 30 } }]]) as never,
+  );
+  const view = overlayFitViewport(workbenchRoot, s, { style: "straight", direction: "LR" }, { margin: 32 })!;
+  expect(view.zoom).toBeLessThan(0.15);
+  expect(view.x).toBeGreaterThanOrEqual(32);
+  expect(8100 * view.zoom + view.x).toBeLessThanOrEqual(1168);
+});
+it("Focus includes neighbours' labels, or centres the selection at its floor", () => {
+  vi.mocked(selectRoutes).mockReturnValue(
+    new Map([["ab", { points: [], label: { x: 550, y: 0, width: 100, height: 30 } }]]) as never,
+  );
+  const view = focusSelectionViewport(workbenchRoot, workbenchState(), { style: "straight", direction: "LR" })!;
+  expect(view.zoom).toBeGreaterThanOrEqual(0.9);
+  expect(view.zoom).toBeLessThanOrEqual(1.25);
+  expect(600 * view.zoom + view.x).toBeLessThanOrEqual(1144);
+  const spread = focusSelectionViewport(workbenchRoot, workbenchState(6000), { style: "straight", direction: "LR" })!;
+  expect(spread.zoom).toBe(0.9);
+  expect(spread.x + 90 * spread.zoom).toBe(588);
+});
+it("Follow centres its subject and leaves 52 px room when the path fits, else pins at .9", () => {
+  const s = workbenchState();
+  const view = followViewport(workbenchRoot, s, ["a", "b"], "a")!;
+  expect(view.zoom).toBe(1);
+  expect(view.x + 90 * view.zoom).toBe(600);
+  expect(view.y + 40 * view.zoom).toBe(400);
+  expect(view.x).toBeGreaterThanOrEqual(52);
+  expect(view.x + 480 * view.zoom).toBeLessThanOrEqual(1148);
+  expect(followViewport(workbenchRoot, workbenchState(6000), ["a", "b"], "a")?.zoom).toBe(0.9);
+});

@@ -4,7 +4,7 @@ import type { Finding } from "../../checks/types";
 import type { EdgeRoute } from "../geometry/router";
 import { pointAlong } from "../geometry/path";
 import { useAllRoutes, useRoutingOptions } from "../edges/useEdgeRoute";
-import { findingTag } from "../../checks/ui/findingOrder";
+import { findingTag } from "./findingOrder";
 import { presentFinding } from "../../checks/presentation";
 import { useLocale } from "../../i18n";
 

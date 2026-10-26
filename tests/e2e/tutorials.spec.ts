@@ -151,8 +151,14 @@ async function play(page: Page, step: ResolvedUiStep) {
     const position = await emptyCanvasPoint(page);
     await page.getByTestId("canvas-wrap").dblclick({ position });
   } else if ("dblclick" in step) await page.getByTestId(step.dblclick).dblclick();
-  else if ("hover" in step) await page.getByTestId(step.hover).hover();
-  else if ("fill" in step) {
+  else if ("hover" in step) {
+    // A narrated Follow can move this subject out of frame. Overview is the stable map for inspecting any node.
+    if (step.hover.startsWith("node-")) {
+      await fitDiagram(page);
+      await waitForCameraIdle(page);
+    }
+    await page.getByTestId(step.hover).hover();
+  } else if ("fill" in step) {
     if (step.fill === "inspector-field-label") {
       // Quick-add can render the new field before its queued reveal and naming focus arrive. Filling it early
       // lets that later focus reopen naming after Enter, leaving the runner in completing (CI: add-users).

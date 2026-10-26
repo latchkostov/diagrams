@@ -27,6 +27,7 @@ export type MenuState = {
   x: number;
   y: number;
   flipX?: number;
+  above?: boolean;
   items: () => MenuNode[];
   alignment?: "physical-left";
   label: string;

@@ -1,6 +1,7 @@
 import type { CameraOwner } from "../cameraOwnership";
 import type { Viewport } from "../geometry/fit";
 import type { RevealScope } from "./controller";
+import type { DetailView } from "../detail";
 
 export type { CameraOwner };
 
@@ -30,7 +31,9 @@ export type LiveFitReason = "pane" | "panel" | "card" | "narration" | "added";
  * node Live added is brought in clear of the open side panel.
  */
 export type PaneWork =
-  { cause: PaneCause } | { cause: Exclude<LiveCause, "live.added"> } | { cause: "live.added"; panel: boolean };
+  | { cause: PaneCause; autoFocus?: boolean }
+  | { cause: Exclude<LiveCause, "live.added"> }
+  | { cause: "live.added"; panel: boolean };
 
 /** Live's room on the canvas: what covers the right of the pane, and the note that has the view's focus. */
 export interface LiveRoom {
@@ -40,10 +43,16 @@ export interface LiveRoom {
   card: boolean;
   /** The nodes the current note focuses on (none: no note, or a note without focus). */
   focus: readonly string[];
+  subject?: string;
 }
 
 export interface PolicyState {
   owner: CameraOwner;
+  view: DetailView;
+  viewChoice?: boolean;
+  zone?: string;
+  focus?: readonly string[];
+  keyboardFocus?: boolean;
   mode: CameraMode;
   menu: MenuKind | null;
   /** An active pointer gesture holds pane work until the drop or cancellation. */
@@ -64,6 +73,7 @@ export interface PolicyState {
 
 /** What the controller measured once the pane settled, for the pending work's decision. */
 export interface SettledFacts {
+  zoom?: number;
   /** Something is selected. */
   selection: boolean;
   /** The selection is outside the pane or under floating chrome (the overlay-aware reveal would pan). */
@@ -79,12 +89,16 @@ export type CameraEvent =
   /** The pane's size changed: the Inspector, the stencils, the AI panel, a sheet resize, Live's panel. */
   | { type: "pane.changed"; cause: PaneCause }
   /** A new, non-empty selection (it replaces pending panel work, rule b). */
-  | { type: "selection.changed"; cause: "selection" | "placement" }
+  | { type: "selection.changed"; cause: "selection" | "placement"; zoom?: number }
   | { type: "menu.opened"; kind: MenuKind }
   /** A menu closed, by a pick or a dismissal (quick-add's pick is a placement, which replaces pending work). */
   | { type: "menu.closed" }
   /** A press, wheel, key or context menu anywhere: Zoom to selection's priority ends. */
-  | { type: "input" }
+  | { type: "input"; pointer?: boolean }
+  | { type: "view.requested"; view: "overview" | "focus" | "follow"; nodes?: ReadonlySet<string>; zone?: string }
+  | { type: "opening.measured"; zoom: number }
+  | { type: "zoom.step"; direction: 1 | -1 }
+  | { type: "narration.subject"; id?: string }
   /** A pan or zoom by hand, a node drag, the zoom buttons. */
   | { type: "user.moved" }
   | { type: "fit"; reason: Exclude<FitReason, "mode" | "fullscreen" | "checks" | "pane"> }
@@ -115,7 +129,7 @@ export type CameraEvent =
   /** Following: a pan between hops, to keep the frontier in view (only while slow motion owns the view). */
   | { type: "slowmo.follow"; view: Viewport }
   /** Something was selected or placed and measured: bring it into view (a pan, never a zoom). */
-  | { type: "reveal.requested"; cause: RevealCause; scope?: RevealScope }
+  | { type: "reveal.requested"; cause: RevealCause; scope?: RevealScope; zoom?: number; keyboard?: boolean }
   /**
    * A peer in a room changed the document (`doc`) or who is where (`presence`). Never moves the view, never claims
    * it, and leaves pending work as it is: a peer's change never moves your view or steals your focus.
@@ -148,7 +162,9 @@ export type CameraCommand =
   | { type: "slowmoPlan" }
   /** The pane changed under slow motion: it holds a paused replay's view, or replans a playing, fitted one. */
   | { type: "slowmoPane"; following: boolean }
-  | { type: "follow"; view: Viewport }
+  | { type: "follow"; view?: Viewport; focus?: readonly string[]; subject?: string; panel?: boolean; card?: boolean }
+  | { type: "focusSelection"; nodes?: ReadonlySet<string>; zone?: string; automatic?: boolean }
+  | { type: "zoomStep"; direction: 1 | -1 }
   /** Back to the view from before slow motion. */
   | { type: "restore"; view: Viewport };
 

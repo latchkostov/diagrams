@@ -1,4 +1,4 @@
-import type { Finding } from "../types";
+import type { Finding } from "../../checks/types";
 
 export const firstSentence = (message: string) => message.match(/^.*?(?:[.!?](?:\s|$)|[。！？؟۔।])/u)?.[0] ?? message;
 

@@ -1,13 +1,6 @@
-import { useId, useLayoutEffect, useRef, useState, type RefObject } from "react";
-import {
-  Background,
-  BackgroundVariant,
-  ControlButton,
-  Controls,
-  MiniMap,
-  useStore,
-  type ReactFlowState,
-} from "@xyflow/react";
+import { useSyncExternalStore, useId, useLayoutEffect, useRef, useState, type RefObject } from "react";
+import { Background, BackgroundVariant, ControlButton, MiniMap, useStore, type ReactFlowState } from "@xyflow/react";
+import { useCameraController } from "../camera/useCameraCore";
 import { Icon } from "../../components/Icon";
 import type { EditorApi } from "../../editor/types";
 import { formatCombo, shortcutKeys } from "../../editor/shortcuts";
@@ -71,34 +64,20 @@ export function CanvasControls({
   menus: CanvasMenus;
   menu: MenuState | null;
 }) {
-  const locale = useLocale();
-  const bodyRef = useRef<HTMLDivElement>(null);
-  // Deliberately session-only: each new canvas starts expanded; no preference is stored.
+  useLocale();
+  const camera = useCameraController();
+  const view = useSyncExternalStore(camera?.subscribe ?? (() => () => {}), () => camera?.state.view ?? "overview");
+  const zoom = useStore((s) => s.transform[2]);
   const [collapsed, setCollapsed] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const menuId = useId();
   const menuOpen = menu?.menuId === menuId;
-
-  // Controls does not forward button props. Retag its zoom buttons after expansion remounts them.
-  useLayoutEffect(() => {
-    const root = bodyRef.current?.parentElement;
-    for (const [selector, testId, label] of [
-      [".react-flow__controls-zoomin", "zoom-in-button", tr("chrome.zoomIn")],
-      [".react-flow__controls-zoomout", "zoom-out-button", tr("chrome.zoomOut")],
-    ] as const) {
-      const button = root?.querySelector(selector);
-      button?.setAttribute("data-testid", testId);
-      button?.setAttribute("title", label);
-      button?.setAttribute("aria-label", label);
-    }
-  }, [collapsed, locale]);
-
   const openViewMenu = (via: "pointer" | "keyboard") => {
     const r = triggerRef.current?.getBoundingClientRect();
     if (!r) return;
     menus.openMenu(
       "context",
-      { ...toolbarViewMenu(editor), x: r.right + 6, y: r.top, triggerRef, menuId },
+      { ...toolbarViewMenu(editor), x: r.left, y: r.top - 8, above: true, triggerRef, menuId },
       { via, platform: platform(), invoker: triggerRef.current },
     );
   };
@@ -107,76 +86,86 @@ export function CanvasControls({
   const viewMenuLabel = tr("view.menu");
 
   return (
-    <>
-      <Controls
-        className={collapsed ? "is-collapsed" : undefined}
-        showZoom={!collapsed}
-        showInteractive={false}
-        showFitView={false}
-        position="bottom-left"
-        onZoomIn={zoomedByButton}
-        onZoomOut={zoomedByButton}
+    <div
+      className={`workbench-view-controls react-flow__panel react-flow__controls${collapsed ? " is-collapsed" : ""}`}
+      data-testid="canvas-controls"
+    >
+      {!collapsed && (
+        <>
+          <button
+            type="button"
+            data-testid="fit-view-button"
+            aria-pressed={view === "overview"}
+            title={tr("chrome.fitViewValue", { combo: formatCombo(shortcutKeys("fit-view")) })}
+            onClick={fit}
+          >
+            <span data-testid="view-overview">{tr("camera.overview")}</span>
+          </button>
+          <button
+            type="button"
+            data-testid="view-focus"
+            aria-pressed={view === "focus"}
+            onClick={() => camera?.dispatch({ type: "view.requested", view: "focus" })}
+          >
+            {tr("camera.focus")}
+          </button>
+          <button
+            type="button"
+            data-testid="zoom-out-button"
+            aria-label={tr("chrome.zoomOut")}
+            onClick={() => {
+              zoomedByButton();
+              camera?.dispatch({ type: "zoom.step", direction: -1 });
+            }}
+          >
+            −
+          </button>
+          <button
+            type="button"
+            data-testid="zoom-100"
+            title={tr("shortcuts.zoom100")}
+            onClick={() => camera?.dispatch({ type: "zoom100" })}
+          >
+            {Math.round(zoom * 100)}%
+          </button>
+          <button
+            type="button"
+            data-testid="zoom-in-button"
+            aria-label={tr("chrome.zoomIn")}
+            onClick={() => {
+              zoomedByButton();
+              camera?.dispatch({ type: "zoom.step", direction: 1 });
+            }}
+          >
+            +
+          </button>
+          <button
+            ref={triggerRef}
+            type="button"
+            data-testid="view-tools-menu-button"
+            aria-label={viewMenuLabel}
+            aria-haspopup="menu"
+            aria-expanded={menuOpen}
+            aria-controls={menuOpen ? menuId : undefined}
+            onClick={(e) =>
+              menuOpen ? menus.closeMenu("toggle") : openViewMenu(e.detail === 0 ? "keyboard" : "pointer")
+            }
+          >
+            <Icon name="chevron-down" size={12} />
+          </button>
+          <span data-testid="toolbar-divider-collapse" className="rf-ctrl-sep" />
+        </>
+      )}
+      <ControlButton
+        data-testid="collapse-toolbar-button"
+        title={collapseLabel}
+        aria-label={collapseLabel}
+        aria-expanded={!collapsed}
+        onClick={() => setCollapsed((v) => !v)}
       >
-        <div ref={bodyRef} className="rf-ctrl-body" inert={collapsed || undefined}>
-          <div className="rf-ctrl-inner">
-            {/* Our fit keeps content clear of the title card, minimap and live bar; flyout offers Zoom tools. */}
-            <div
-              className="rf-ctrl-split"
-              onContextMenu={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                openViewMenu("pointer");
-              }}
-            >
-              <ControlButton
-                onClick={() => {
-                  menus.closeMenu("command");
-                  fit();
-                }}
-                title={tr("chrome.fitViewValue", { combo: formatCombo(shortcutKeys("fit-view")) })}
-                aria-label={tr("menu.fitView")}
-                data-testid="fit-view-button"
-              >
-                <Icon name="fit" size={14} />
-              </ControlButton>
-              <button
-                ref={triggerRef}
-                type="button"
-                className={`rf-ctrl-flyout${menuOpen ? " is-open" : ""}`}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (menuOpen) menus.closeMenu("toggle");
-                  else openViewMenu(e.detail === 0 ? "keyboard" : "pointer");
-                }}
-                title={viewMenuLabel}
-                aria-label={viewMenuLabel}
-                aria-haspopup="menu"
-                aria-expanded={menuOpen}
-                aria-controls={menuOpen ? menuId : undefined}
-                data-testid="view-tools-menu-button"
-              >
-                <svg width="6" height="6" viewBox="0 0 6 6" aria-hidden>
-                  <path d="M6 0v6H0Z" fill="currentColor" />
-                </svg>
-              </button>
-            </div>
-            <div className="rf-ctrl-sep" role="separator" data-testid="toolbar-divider-collapse" />
-          </div>
-        </div>
-        <ControlButton
-          onClick={() => {
-            menus.closeMenu("command");
-            setCollapsed((c) => !c);
-          }}
-          title={collapseLabel}
-          aria-label={collapseLabel}
-          aria-expanded={!collapsed}
-          data-testid="collapse-toolbar-button"
-        >
-          <Icon name={collapsed ? "chevrons-right" : "chevrons-left"} size={14} />
-        </ControlButton>
-      </Controls>
-    </>
+        <Icon name={collapsed ? "chevrons-right" : "chevrons-left"} size={12} />
+      </ControlButton>
+    </div>
   );
 }
 

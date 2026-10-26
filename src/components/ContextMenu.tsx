@@ -33,6 +33,7 @@ interface Anchor {
   /** Submenus: where to put the menu's right edge if it doesn't fit to the right. */
   flipX?: number;
   minWidth?: number;
+  above?: boolean;
 }
 
 /** Why a menu closed: an item ran, Esc, a press outside it, the wheel, the window's focus or size changing. */
@@ -49,6 +50,7 @@ export interface ContextMenuProps {
   /** Where the menu's right edge goes when it doesn't fit right of `x` (it flips to the left). */
   flipX?: number;
   minWidth?: number;
+  above?: boolean;
   items: MenuNode[];
   onClose: (reason: ContextMenuCloseReason) => void;
   /** Root-level search box placeholder (quick-add, stencil picker). */
@@ -73,6 +75,7 @@ export function ContextMenu({
   x,
   y,
   flipX,
+  above,
   alignment,
   minWidth,
   items,
@@ -107,7 +110,10 @@ export function ContextMenu({
   }, []);
   // The same anchor while the menu stays put: the list places itself whenever its anchor changes, so a new one on
   // every render moved a searchable menu that typing had shortened (from under the pointer: nightly #78).
-  const anchor = useMemo(() => ({ x, y, flipX, alignment, minWidth }), [x, y, flipX, alignment, minWidth]);
+  const anchor = useMemo(
+    () => ({ x, y, flipX, above, alignment, minWidth }),
+    [x, y, flipX, above, alignment, minWidth],
+  );
 
   useEffect(() => {
     const previousFocus = invoker.current;
@@ -243,7 +249,7 @@ function MenuList(p: ListProps) {
     if (alignRight && left < MARGIN) left = p.anchor.flipX ?? p.anchor.x;
     if (!alignRight && left + r.width > vw - MARGIN) left = (p.anchor.flipX ?? p.anchor.x) - r.width;
     left = Math.max(MARGIN, Math.min(left, vw - MARGIN - r.width));
-    let top = p.anchor.y;
+    let top = p.anchor.above ? Math.max(MARGIN, p.anchor.y - r.height) : p.anchor.y;
     if (top + r.height > vh - MARGIN) top = Math.max(MARGIN, vh - MARGIN - r.height);
     setPos({ left, top, maxHeight: vh - MARGIN - top });
   }, [p.anchor, rtl, locale]);

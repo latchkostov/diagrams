@@ -604,14 +604,56 @@
 }
 
 /* Spotlight (narration focus / trace): everything else steps back. */
-.react-flow[data-live-spotlight] .react-flow__node[data-live-dim],
-.react-flow[data-live-spotlight] .react-flow__node-boundary {
-  opacity: 0.22;
-  filter: saturate(0.3);
+.react-flow[data-live-spotlight] .react-flow__node[data-live-dim] {
+  opacity: 1;
+  filter: none;
 }
-
+.react-flow[data-live-spotlight] .react-flow__node[data-live-dim] .nb {
+  background: color-mix(in oklab, var(--node-bg) 55%, var(--board));
+  border-color: color-mix(in oklab, var(--node-border) 55%, var(--board));
+  box-shadow: none;
+}
+.react-flow[data-live-spotlight] .react-flow__node[data-live-dim] .nb-tile {
+  filter: grayscale(0.45);
+}
+.react-flow[data-live-spotlight] .react-flow__node[data-live-dim] .nb-label {
+  color: var(--text-2);
+}
+.react-flow[data-live-spotlight] .react-flow__node[data-live-dim] :is(.nb-sub, .nb-kind) {
+  color: var(--text-3);
+  font-weight: 520;
+}
+.react-flow[data-live-spotlight] .react-flow__node-boundary {
+  opacity: 1;
+  filter: none;
+}
+.react-flow[data-live-spotlight] .grp-label {
+  color: var(--text-2);
+}
 .react-flow[data-live-spotlight] .react-flow__edge[data-live-dim] {
-  opacity: 0.15;
+  opacity: 1;
+}
+.react-flow[data-live-spotlight] .react-flow__edge[data-live-dim] .fe {
+  --fe-stroke: var(--dim-stroke);
+}
+.react-flow[data-live-spotlight] .react-flow__edge[data-live-dim] .fe-path.react-flow__edge-path {
+  opacity: 0.6;
+  stroke-width: 1px;
+}
+.react-flow[data-live-spotlight] .react-flow__edge[data-live-near] .fe {
+  opacity: 1;
+  --fe-stroke: var(--dim-stroke);
+}
+.react-flow[data-live-spotlight] .react-flow__edge[data-live-near] .fe-path.react-flow__edge-path {
+  opacity: 1;
+  stroke-width: 2px;
+}
+[data-detail-dim] .lv-metric.is-rate {
+  color: var(--text-2);
+  border-color: var(--dim-stroke);
+}
+:root:not([data-theme="dark"]) .react-flow[data-live] .grp {
+  background-image: linear-gradient(rgb(255 255 255 / 0.6), rgb(255 255 255 / 0.6));
 }
 
 .react-flow[data-live-spotlight] .react-flow__node:not([data-live-dim]) .nb {
@@ -3674,4 +3716,102 @@ details[open] > summary .lv-disclosure-chevron {
 /* The editing disclosure must be its own snap target after a tall run chart. */
 .canvas-view.is-live .insp-body .dock-edit-properties {
   scroll-snap-align: end;
+}
+.workbench-view-controls.react-flow__controls {
+  position: absolute;
+  inset: auto 16px 16px auto;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  background: var(--panel);
+  border: 1px solid var(--control-line);
+  border-radius: 8px;
+  box-shadow: none;
+  padding: 3px;
+  gap: 2px;
+  z-index: 5;
+}
+[dir="rtl"] .workbench-view-controls.react-flow__controls {
+  inset-inline-end: 16px;
+  inset-inline-start: auto;
+}
+.workbench-view-controls > button {
+  height: 28px;
+  min-width: 28px;
+  width: auto;
+  padding: 0 8px;
+  background: transparent;
+  color: var(--text-2);
+  border: 0;
+  border-radius: 5px;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.workbench-view-controls > button[aria-pressed="true"] {
+  background: var(--surface-3);
+  color: var(--text);
+}
+.workbench-view-controls > button:hover {
+  background: var(--surface-2);
+}
+.lv-view {
+  position: relative;
+}
+.lv-view > .lv-btn {
+  width: auto;
+  white-space: nowrap;
+  gap: 6px;
+  font-size: 12px;
+  padding-inline: 9px;
+}
+.lv-follow-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--note);
+}
+.lv-view .lv-more-menu {
+  inset-inline-end: 0;
+  bottom: calc(100% + 8px);
+}
+.live-route-legend {
+  position: absolute;
+  inset-inline-start: 12px;
+  bottom: 12px;
+  max-width: calc(100% - 150px);
+  min-height: 26px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 3px 9px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: color-mix(in oklab, var(--panel) 94%, transparent);
+  color: var(--text-2);
+  font-size: 12px;
+  z-index: 4;
+  flex-wrap: wrap;
+}
+.live-route-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+}
+.live-route-legend i {
+  font-style: normal;
+  -webkit-text-stroke: 0.6px var(--route-outline);
+}
+.live-route-legend button {
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  padding: 2px;
+  cursor: pointer;
+}
+.workbench-view-controls ~ .react-flow__minimap,
+[data-detail-view] .react-flow__minimap {
+  bottom: 58px;
 }

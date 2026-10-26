@@ -1,3 +1,4 @@
+import { clickFitView } from "./fixtures";
 import type { Page } from "@playwright/test";
 import { sheetRoutingFixture } from "../../src/lab/routingFixture";
 import { textFieldsFixture } from "../../src/lab/textFieldsFixture";
@@ -65,6 +66,10 @@ async function open(page: Page, viewport = 1920, live = false, simulation?: stri
   const settled = live ? waitForCameraIdle : waitForStableViewport;
   await settled(page);
   await page.getByTestId("node-kong").dblclick();
+  if (live) {
+    const editing = page.getByTestId("dock-edit-properties");
+    if ((await editing.getAttribute("aria-expanded")) !== "true") await editing.click();
+  }
   await expect(page.getByTestId("routes-table")).toBeVisible();
   await settled(page);
 }
@@ -162,7 +167,7 @@ test("narrow desktop keeps a readable legacy sheet instead of squeezing it below
 
 test("a completed resize keeps a fitted diagram in the canvas", async ({ page }) => {
   await open(page);
-  await page.getByTestId("fit-view-button").click();
+  await clickFitView(page);
   await waitForStableViewport(page);
   await page.getByTestId("inspector-resize").press("End");
   await expect
@@ -179,7 +184,7 @@ test("a completed resize keeps a fitted diagram in the canvas", async ({ page })
 
 test("Live preserves its camera after an Inspector resize", async ({ page }) => {
   await open(page, 1920, true);
-  await page.getByTestId("fit-view-button").click();
+  await clickFitView(page);
   await waitForCameraIdle(page);
   const mark = await cameraJournalMark(page);
   await page.getByTestId("inspector-resize").press("End");

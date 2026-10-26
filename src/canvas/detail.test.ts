@@ -1,0 +1,134 @@
+import { describe, expect, it } from "vitest";
+import { drawTile, textDetail } from "./detail";
+import {
+  cullLabel,
+  edgeInFrame,
+  frameCrossing,
+  innerFrame,
+  oneHop,
+  placeFrameLabel,
+  stackPins,
+} from "./camera/frameEdges";
+import { decide, initialPolicy } from "./camera/panePolicy";
+
+describe("Workbench frame detail", () => {
+  it("never paints text below the floor; only active text scales in Focus", () => {
+    for (const view of ["overview", "focus", "follow", "custom"] as const)
+      for (const active of [true, false])
+        for (const zoom of [0.2, 0.59, 0.6, 0.75, 0.9, 1, 1.25])
+          for (const font of [8, 10, 11, 12, 14]) {
+            const detail = textDetail(font, zoom, active, view);
+            if (detail.show) expect(font * zoom * detail.scale).toBeGreaterThanOrEqual(10.5);
+          }
+    expect(textDetail(11, 0.75, true, "focus").show).toBe(true);
+    expect(textDetail(11, 0.75, false, "focus").show).toBe(false);
+    expect(textDetail(11, 0.25, true, "overview").show).toBe(false);
+    expect(drawTile(40, 0.25, false)).toBe(false);
+    expect(drawTile(40, 0.25, true)).toBe(true);
+  });
+  it("classifies every endpoint pair, including two off-frame near endpoints", () => {
+    for (const a of ["in", "pinned", "out"] as const)
+      for (const b of ["in", "pinned", "out"] as const)
+        for (const near of [false, true]) {
+          const edge = edgeInFrame(a, b, near);
+          expect(edge.pill).toBe(a === "in" || b === "in");
+          expect(edge.arrow).toBe(a === "in" && b === "in");
+          expect(edge.draw).toBe(a === "in" || b === "in" || near);
+          expect(edge.particles).toBe(edge.draw);
+        }
+  });
+  it("culls only beyond half the fade or outside the frame", () => {
+    const frame = { x: 0, y: 0, width: 200, height: 200 };
+    const inner = { x: 20, y: 20, width: 160, height: 160 };
+    expect(cullLabel({ x: 10, y: 80, width: 20, height: 20 }, frame, inner)).toBe(false);
+    expect(cullLabel({ x: 9, y: 80, width: 20, height: 20 }, frame, inner)).toBe(true);
+    expect(cullLabel({ x: -1, y: 80, width: 20, height: 20 }, frame, inner)).toBe(true);
+    expect(innerFrame(400, 300, "focus", true, true)).toEqual({ x: 40, y: 0, width: 360, height: 300 });
+  });
+  it("pins at the edge crossing and stacks inward in 34 px steps", () => {
+    const inner = { x: 28, y: 28, width: 500, height: 400 };
+    const crossing = frameCrossing(
+      [
+        { x: 200, y: 380 },
+        { x: 800, y: 380 },
+      ],
+      inner,
+    )!;
+    expect(crossing).toEqual({ point: { x: 528, y: 380 }, side: "right" });
+    const pins = stackPins(
+      ["a", "b", "c"].map((id) => ({
+        id,
+        name: id,
+        side: crossing.side,
+        crossing: crossing.point,
+        width: 100,
+        spotlit: true,
+      })),
+      inner,
+    );
+    expect(pins.map((p) => p.box.y)).toEqual([366, 332, 298]);
+  });
+  it("slides a colliding label along its own edge and hides when no space remains", () => {
+    const label = { x: 90, y: 40, width: 30, height: 20 };
+    const path = [
+      { x: 0, y: 50 },
+      { x: 300, y: 50 },
+    ];
+    const frame = { x: 0, y: 0, width: 300, height: 100 };
+    const placed = placeFrameLabel(label, path, frame, [label])!;
+    expect(placed.y).toBe(40);
+    expect(placed.x).not.toBe(label.x);
+    expect(placeFrameLabel(label, path, frame, [frame])).toBeNull();
+  });
+  it("only includes one hop, not a transitive component", () => {
+    expect([
+      ...oneHop(
+        [
+          { source: "a", target: "b" },
+          { source: "b", target: "c" },
+        ],
+        new Set(["a"]),
+      ),
+    ]).toEqual(["a", "b"]);
+  });
+  it("manual movement drops Follow until explicitly picked again", () => {
+    const follow = decide(initialPolicy("live"), { type: "view.requested", view: "follow" });
+    expect(follow.commands[0].type).toBe("follow");
+    const manual = decide(follow.state, { type: "user.moved" });
+    expect(manual.state.view).toBe("custom");
+    const note = decide(manual.state, { type: "narration", focus: ["a"] });
+    expect(note.state.view).toBe("custom");
+    expect(note.commands).toEqual([]);
+    expect(note.state.pending).toBeNull();
+    expect(decide(note.state, { type: "view.requested", view: "follow" }).commands[0]).toMatchObject({
+      type: "follow",
+      focus: ["a"],
+    });
+  });
+  it("automatically focuses only below 50% and defers the move until the gesture ends", () => {
+    expect(decide(initialPolicy(), { type: "selection.changed", cause: "selection", zoom: 0.51 }).commands).toEqual([]);
+    const low = decide(initialPolicy(), { type: "selection.changed", cause: "selection", zoom: 0.49 });
+    expect(low.commands).toEqual([]);
+    expect(low.state.pending).toEqual({ cause: "selection", autoFocus: true });
+    const held = decide(
+      { ...low.state, gesture: true },
+      { type: "pane.settled", selection: true, covered: false, coveredWithEdges: false, centreOff: false },
+    );
+    expect(held.commands).toEqual([]);
+    const settled = decide(
+      { ...held.state, gesture: false },
+      { type: "pane.settled", selection: true, covered: false, coveredWithEdges: false, centreOff: false },
+    );
+    expect(settled.commands).toEqual([{ type: "focusSelection", automatic: true }]);
+  });
+});
+
+it("pins a culled title even when the connection's endpoint is still inside the frame", () => {
+  const frame = { x: 28, y: 28, width: 448, height: 500 };
+  const points = [
+    { x: 300, y: 180 },
+    { x: 405, y: 180 },
+  ];
+  expect(frameCrossing(points, frame)).toBeNull();
+  expect(frameCrossing(points, frame, true)).toEqual({ point: { x: 476, y: 180 }, side: "right" });
+});

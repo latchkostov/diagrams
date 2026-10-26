@@ -139,13 +139,12 @@ test.describe("polish", () => {
     await waitForCameraIdle(page);
     const collapse = page.getByTestId("collapse-toolbar-button");
     const tools = [
-      "zoom-in-button",
-      "zoom-out-button",
       "fit-view-button",
+      "view-focus",
+      "zoom-out-button",
+      "zoom-100",
+      "zoom-in-button",
       "view-tools-menu-button",
-      "undo-button",
-      "redo-button",
-      "shortcuts-button",
     ];
     await collapse.click();
     await expect(collapse).toHaveAttribute("aria-expanded", "false");
@@ -187,9 +186,10 @@ test.describe("polish", () => {
     expect(target.width).toBeGreaterThanOrEqual(24);
     expect(target.height).toBeGreaterThanOrEqual(24);
     expect(overlaps(target, await box(fit))).toBe(false);
-    for (const divider of ["history", "shortcuts", "collapse"]) {
-      await expect(page.getByTestId(`toolbar-divider-${divider}`)).toBeVisible();
-    }
+    await expect(page.getByTestId("toolbar-divider-collapse")).toBeVisible();
+    await expect(page.getByTestId("topbar").getByTestId("undo-button")).toBeVisible();
+    await expect(page.getByTestId("topbar").getByTestId("redo-button")).toBeVisible();
+    await expect(page.getByTestId("tool-rail").getByTestId("shortcuts-button")).toBeVisible();
     const menu = page.getByTestId("view-tools-menu");
     const zoom100 = page.getByTestId("context-menu-item-toolbar-view:zoom-100");
     const zoomSelection = page.getByTestId("context-menu-item-toolbar-view:zoom-selection");

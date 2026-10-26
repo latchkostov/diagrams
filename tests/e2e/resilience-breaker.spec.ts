@@ -1,3 +1,4 @@
+import { clickFitView } from "./fixtures";
 import type { Page } from "@playwright/test";
 import { breakerFixture } from "../../src/lab/resilienceFixture";
 import {
@@ -152,8 +153,8 @@ test("failed trouble detection offers keyboard Retry without taking focus or blo
   );
   await expect(page.getByTestId("trouble-download-error").locator("[role=status]")).toHaveCount(0);
   await expect(page.getByTestId("trouble-download-error")).toHaveAttribute("data-canvas-overlay", "");
-  await expect(page.getByTestId("trouble-download-error")).toHaveAttribute("data-below", "");
-  await page.getByTestId("fit-view-button").click();
+  await expect(page.getByTestId("trouble-download-error")).toHaveAttribute("data-placed", "");
+  await clickFitView(page);
   await waitForCameraIdle(page);
   await expect
     .poll(async () => {

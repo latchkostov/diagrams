@@ -1,3 +1,4 @@
+import { clickFitView } from "./fixtures";
 import type { Locator, Page } from "@playwright/test";
 import { routingSummaryFixture, sheetRoutingFixture } from "../../src/lab/routingFixture";
 import {
@@ -152,7 +153,7 @@ for (const locale of ["en", "ar", "en-XA"])
 for (const live of [false, true]) {
   test(`opening and closing the Inspector refits a fitted ${live ? "Live" : "edit"} view`, async ({ page }) => {
     await open(page, live);
-    await page.getByTestId("fit-view-button").click();
+    await clickFitView(page);
     await waitForCameraIdle(page);
     await pauseClock(page);
     const mark = await cameraJournalMark(page);
@@ -440,12 +441,28 @@ test("Inspector resize retains narration focus", async ({ page }) => {
   const mark = await cameraJournalMark(page);
   await page.getByTestId("inspector-resize").press("End");
   await page.clock.runFor(1500);
-  expect(await inPane(page, ["kong", "orders"])).toBe(true);
+  await waitForCameraIdle(page);
+  await page.clock.runFor(16);
+  const pane = await boxOf(page.getByTestId("canvas-wrap"));
+  for (const id of ["kong", "orders"]) {
+    const pin = page.getByTestId(`focus-offscreen-${id}`);
+    const target = (await pin.isVisible()) ? pin : page.getByTestId(`node-${id}`).getByTestId("card-title");
+    await expect(target).toBeVisible();
+    const box = await boxOf(target);
+    expect(box.x).toBeGreaterThanOrEqual(pane.x + 28);
+    expect(box.y).toBeGreaterThanOrEqual(pane.y + 28);
+    expect(box.x + box.width).toBeLessThanOrEqual(pane.x + pane.width - 28);
+    expect(box.y + box.height).toBeLessThanOrEqual(pane.y + pane.height - 28);
+    if (await pin.isVisible())
+      await expect(page.getByTestId(`rf__node-${id}`)).toHaveAttribute("data-detail-hidden", "");
+  }
+  expect(await zoom(page)).toBeGreaterThanOrEqual(0.9);
+  expect(await zoom(page)).toBeLessThanOrEqual(1);
   await expect(page.getByTestId("live-note-continue")).toBeVisible();
   expect(await fits(page, mark)).toEqual(["noteFit:pane"]);
   // The explicit focus remains closer than fitting the entire boundary and its source.
   const focusedZoom = await zoom(page);
-  await page.getByTestId("fit-view-button").click();
+  await clickFitView(page);
   await page.clock.runFor(1500);
   expect(focusedZoom).toBeGreaterThan(await zoom(page));
 });

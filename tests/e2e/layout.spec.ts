@@ -1,4 +1,4 @@
-import { openLibrary } from "./fixtures";
+import { openLibrary, fitDiagram, emptyCanvasPoint } from "./fixtures";
 import type { Page } from "@playwright/test";
 import { test, expect, expectNoErrors, publicExamples, waitForStableBox, pageLoadTimeout } from "./fixtures";
 
@@ -90,6 +90,7 @@ for (const theme of ["light", "dark"] as const) {
           await page.goto(`./?view=canvas&example=${encodeURIComponent(slug)}`);
           await expect(page.getByTestId("canvas-view")).toBeVisible({ timeout: pageLoadTimeout() });
           await settle(page);
+          await fitDiagram(page);
           const { nodes, labels, panels } = await measure(page);
           const tag = slug;
           for (let i = 0; i < nodes.length; i++)
@@ -133,6 +134,8 @@ test("the title card folds to a chip when nodes go under it", async ({ page }) =
   await page.goto("./?view=lab&preset=edges-obstacles&cols=4&rows=3&gap=400");
   await page.getByTestId("lab-open-editor").click();
   await settle(page);
+  await page.getByTestId("present-toggle").click();
+  await settle(page);
   const card = page.getByTestId("diagram-card");
   await expect(card).not.toHaveAttribute("data-collapsed", "1");
   // Zoom in around the middle (Ctrl+wheel; the wheel alone pans): the diagram spreads out under the card.
@@ -147,8 +150,8 @@ test("the title card folds to a chip when nodes go under it", async ({ page }) =
   }
   await page.keyboard.up("Control");
   await expect(card).toHaveAttribute("data-collapsed", "1");
-  // Fit again: the card has room and unfolds.
-  await page.getByTestId("fit-view-button").click();
+  // Presentation hides editing controls; its fit shortcut gives the card room again.
+  await page.keyboard.press("Shift+Digit1");
   await settle(page);
   await expect(card).not.toHaveAttribute("data-collapsed", "1");
 });
@@ -160,7 +163,8 @@ for (const ex of publicExamples)
     const wrap = await page.getByTestId("canvas-wrap").boundingBox();
     if (!wrap) throw new Error("canvas not visible");
     // Empty pane: just above the bottom edge, left of the minimap and right of the controls.
-    await page.mouse.click(wrap.x + wrap.width * 0.55, wrap.y + wrap.height - 14, { button: "right" });
+    const point = await emptyCanvasPoint(page);
+    await page.mouse.click(wrap.x + point.x, wrap.y + point.y, { button: "right" });
     await page.getByTestId("context-menu-item-canvas.auto-layout").click();
     await settle(page);
     const { nodes, labels } = await measure(page);

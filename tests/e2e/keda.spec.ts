@@ -1,3 +1,4 @@
+import { clickFitView } from "./fixtures";
 import { openInspectorLiveDetails } from "./fixtures";
 import { readFileSync } from "node:fs";
 import type { Page } from "@playwright/test";
@@ -140,7 +141,7 @@ test("KEDA: production playback sleeps, wakes with cold start and returns to zer
   await page.getByTestId("autoscaling-why-toggle").click();
   await expect(page.getByTestId("autoscaling-broker-metric")).toBeVisible();
   await page.getByTestId("live-play").click();
-  await page.getByTestId("fit-view-button").click();
+  await clickFitView(page);
   await page.clock.runFor(500);
   await waitForStableViewport(page);
   await page.screenshot({ path: info.outputPath("keda-live.png") });

@@ -129,6 +129,14 @@ import { checksPanel, useChecksPanel } from "./checks/checksPanel";
 import { useChecks } from "./checks/useChecks";
 import { ChecksMarkersView, SelectionFindings } from "./checks/ChecksViews";
 import { defineLazySurface } from "../lib/lazySurface";
+const FrameDetail = defineLazySurface({
+  id: "canvas.frame-detail",
+  load: () => import("./FrameDetail").then((m) => m.FrameDetail),
+  placeholder: {},
+  focus: {},
+  export: "skip",
+  retryToast: true,
+});
 const PresenceLayer = defineLazySurface({
   id: "canvas.presence",
   load: () => import("./CanvasReadouts").then((m) => m.PresenceLayer),
@@ -723,7 +731,7 @@ function CanvasInner({
   }, [presenting, interaction]);
 
   useModeFit(controller, presenting, live);
-  const { card, cardCovers, checksTop } = useChromeOverlays(wrapper, checksOn && checksCard);
+  const { card, cardCovers, checksTop } = useChromeOverlays(wrapper, checksOn && checksCard, !bezel || presenting);
 
   // Your own diagrams have no "original" worth going back to: the edits are the diagram (and undo
   // covers mistakes). Examples and shared diagrams keep "Edited, reset".
@@ -1187,11 +1195,12 @@ function CanvasInner({
     () => (
       <>
         <ZoomVar host={wrapper} />
+        <FrameDetail host={wrapper} routing={{ style: edgeStyle, direction: meta.direction ?? "LR" }} />
         {!readOnly && <ConnectionRadius />}
         {prefs.grid && <DotGrid />}
         {editGestures && <svg ref={guideLayer} className="smart-guides" data-testid="smart-guides" aria-hidden />}
         {editGestures && <LandingOutline />}
-        {!hideChrome && (
+        {!hideChrome && !live && (
           <CanvasControls editor={editor} menus={interaction} menu={menu} fit={fit} zoomedByButton={zoomedByButton} />
         )}
         {!hideChrome && prefs.minimap && contentCount > 0 && <CanvasMinimap />}
@@ -1508,6 +1517,11 @@ function CanvasInner({
                   sendCursor({ x: e.clientX, y: e.clientY });
                   const target =
                     e.target instanceof Element ? e.target.closest<HTMLElement>('[data-testid^="rf__node-"]') : null;
+                  if (target && wrapper.current) {
+                    const hoveredId = target.dataset.testid?.slice("rf__node-".length);
+                    if (hoveredId && getNode(hoveredId)?.type === "diagram")
+                      wrapper.current.dataset.detailHover = hoveredId;
+                  }
                   if (controller.fitting && target) {
                     // Hover is input too: keep the target still and arm its tooltip after
                     // stopping the fit (whose move-start dismisses the previous tooltip).

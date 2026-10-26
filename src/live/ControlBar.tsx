@@ -13,6 +13,7 @@ const LiveMoreItems = defineLazySurface({
   export: "skip",
   retryToast: true,
 });
+import { ViewMenu } from "./ViewMenu";
 import { SimPanel } from "./lazySimPanel";
 import { t, useLocale } from "../i18n";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
@@ -161,6 +162,7 @@ export function ControlBar({ state, slim = false }: { state: LiveState; slim?: b
               </span>
               <InFlight state={state} />
               <Timeline
+                viewControl={<ViewMenu />}
                 sim={state.simulation}
                 run={run}
                 onSeek={(ms) => c.seek(ms)}
@@ -185,6 +187,7 @@ export function ControlBar({ state, slim = false }: { state: LiveState; slim?: b
 
       {!state.run && <InFlight state={state} />}
 
+      {(!state.run || slowOn) && <ViewMenu />}
       <MoreMenu state={state} />
       {ui.notice && (
         <div className="lv-notice" role="status" data-testid="live-notice">

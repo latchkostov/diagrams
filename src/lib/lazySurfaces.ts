@@ -5,6 +5,7 @@ declare const __LAZY_SURFACE_METADATA__: boolean | undefined;
 const names = typeof __LAZY_SURFACE_METADATA__ === "undefined" || __LAZY_SURFACE_METADATA__;
 export const lazySurfaces = [
   ["examples.discovery", names ? "ExampleDetails" : "", names ? "examples/ExampleDetails" : "", "skip"],
+  ["canvas.frame-detail", names ? "FrameDetail" : "", names ? "canvas/FrameDetail" : "", "skip"],
   ["canvas.presence", names ? "CanvasReadouts" : "", names ? "canvas/CanvasReadouts" : "", "skip"],
   ["canvas.node-tips", names ? "CanvasReadouts" : "", names ? "canvas/CanvasReadouts" : "", "skip"],
   ["canvas.check-markers", names ? "ChecksMarkers" : "", names ? "canvas/checks/ChecksMarkers" : "", "skip"],

@@ -56,7 +56,10 @@ export function useCovered(
     let appearance = "";
     const measure = (invalidate = false) => {
       const width = base.clientWidth;
-      const expandedAppearance = el.className.replace(/\bis-compact\b/g, "");
+      const expandedAppearance = el.className
+        .split(/\s+/)
+        .filter((name) => name && name !== "is-compact")
+        .join(" ");
       // Folding/hover animates padding, but not the expanded footprint. Keep that footprint
       // until the content's metrics (including presentation style/fonts) or available width change.
       if (el.dataset.collapsed && full && width === availableWidth && appearance === expandedAppearance && !invalidate)

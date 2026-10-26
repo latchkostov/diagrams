@@ -26,6 +26,7 @@ const TroubleCallout = defineLazySurface({
 });
 import { CapacityPanel } from "./lazyCapacityPanel";
 import { CapacityAnalysis } from "./lazyCapacityAnalysis";
+import { RouteLegend } from "./RouteLegend";
 import { ControlBar } from "./ControlBar";
 const EventLog = defineLazySurface({
   id: "live.events",
@@ -261,6 +262,9 @@ export function LiveSession({
     saveInputs,
   } = fixes;
 
+  useEffect(() => {
+    camera.dispatch({ type: "narration.subject", id: troubleOnScreen?.node });
+  }, [camera, troubleOnScreen?.node]);
   const { addEntry } = useCapacityEntry({ session, editor, store, camera, interaction });
 
   useLiveContextMenu({
@@ -361,6 +365,7 @@ export function LiveSession({
 
   const view = (
     <LiveContext.Provider value={ui}>
+      {!capturing && <RouteLegend routes={controller.currentDiagram.planning?.requestRoutes ?? []} />}
       {showCapacity && !capacityOpen && <CapacityAnalysis panel={false} onClose={closeCapacity} />}
       <ViewportPortal>
         <canvas

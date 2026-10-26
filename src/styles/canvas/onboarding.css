@@ -281,3 +281,12 @@
 [dir="rtl"] .start-all svg {
   transform: scaleX(-1);
 }
+/* The bottom-right view control and minimap retain their own lane on a first visit too. */
+.canvas-wrap:has(.workbench-view-controls) .first-hint-slot {
+  bottom: 58px;
+  justify-content: flex-start;
+  padding-inline-start: 16px;
+}
+.canvas-wrap:has(.workbench-view-controls) .first-hint {
+  max-width: calc(100% - 220px);
+}

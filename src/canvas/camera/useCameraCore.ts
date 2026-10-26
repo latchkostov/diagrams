@@ -21,7 +21,9 @@ import {
   goToViewport,
   liveFitViewport,
   nodeBoxes,
-  noteFitViewport,
+  focusSelectionViewport,
+  followViewport,
+  zoneViewport,
   overlayFitViewport,
   revealPan,
   selectionBoxes,
@@ -129,7 +131,17 @@ function createCanvasCamera(
   const port: CameraPort = {
     viewport: transform,
     move: (target, o) => canvasMove(store, setViewport, target, o),
-    fitTarget: (request) => (root && routing ? overlayFitViewport(root, store.getState(), routing, request) : null),
+    fitTarget: (request) =>
+      !root || !routing
+        ? null
+        : request.workbench === "zone" && request.zone
+          ? zoneViewport(root, store.getState(), request.zone)
+          : request.workbench === "focus"
+            ? focusSelectionViewport(root, store.getState(), routing, request.only)
+            : overlayFitViewport(root, store.getState(), routing, request),
+    focusTarget: (ids) => (root && routing ? focusSelectionViewport(root, store.getState(), routing, ids) : null),
+    followTarget: (focus, subject, room) =>
+      root ? followViewport(root, store.getState(), focus, subject, room) : null,
     revealTarget(base, scope) {
       const el = root;
       if (!el) return null;
@@ -150,7 +162,8 @@ function createCanvasCamera(
     centerTarget: (base) => (root ? centerViewport(root, store.getState(), base) : null),
     goToTarget: (base, id) => (root ? goToViewport(root, store.getState(), base, id) : null),
     liveFitTarget: (room) => liveFitViewport(store.getState(), room, routing ?? undefined),
-    noteFitTarget: (focus, room) => noteFitViewport(store.getState(), focus, room),
+    noteFitTarget: (focus, room) =>
+      root ? followViewport(root, store.getState(), focus, controller.state.live.subject, room) : null,
     zoomTarget(base, zoom) {
       const { minZoom, maxZoom } = store.getState();
       const k = Math.min(maxZoom, Math.max(minZoom, zoom));

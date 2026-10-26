@@ -86,9 +86,16 @@ export function decide(state: PolicyState, event: CameraEvent): Decision {
       // A paused follow pan must not advance during the frames needed to measure the new pane.
       // Playing replays resume/replan through W5; W6 blocks new follow pans until then.
       if (event.cause === "panel" && state.slowmo) return next({ pending: { cause: event.cause } }, { type: "stop" });
-      return next({ pending: { cause: event.cause } });
+      return next({
+        pending: {
+          cause: event.cause,
+          ...(state.pending && "autoFocus" in state.pending ? { autoFocus: state.pending.autoFocus } : {}),
+        },
+      });
     }
     case "selection.changed":
+      if (event.cause === "selection" && event.zoom !== undefined && event.zoom < 0.5 && state.mode === "edit")
+        return next({ view: "focus", owner: "manual", pending: { cause: "selection", autoFocus: true } });
       if (!state.pending || !isPaneCause(state.pending.cause)) return next({});
       return next({ pending: { cause: event.cause } });
     case "remote.changed":
@@ -102,15 +109,57 @@ export function decide(state: PolicyState, event: CameraEvent): Decision {
     case "menu.closed":
       return next({ menu: null });
     case "input":
-      return next({ zoomPriority: false });
+      return next({ zoomPriority: false, ...(event.pointer ? { keyboardFocus: false } : {}) });
+    case "opening.measured":
+      return state.viewChoice ? next({}) : next({ view: event.zoom < 0.5 ? "focus" : "overview" });
+    case "view.requested":
+      if (event.view === "overview")
+        return next(
+          { view: "overview", viewChoice: true, zone: undefined, owner: "fit", pending: null },
+          { type: "fit", reason: "command" },
+        );
+      if (event.view === "focus")
+        return next(
+          {
+            view: "focus",
+            viewChoice: true,
+            zone: event.zone,
+            focus: event.nodes ? [...event.nodes] : undefined,
+            owner: "manual",
+            pending: null,
+          },
+          { type: "focusSelection", nodes: event.nodes, zone: event.zone },
+        );
+      return next(
+        { view: "follow", viewChoice: true, zone: undefined, owner: "narration", pending: null },
+        { type: "follow", ...state.live },
+      );
+    case "zoom.step":
+      return next(
+        { view: "custom", viewChoice: true, owner: "manual", zoomPriority: false },
+        { type: "zoomStep", direction: event.direction },
+      );
+    case "narration.subject": {
+      const live = { ...state.live, subject: event.id };
+      return next({
+        live,
+        ...(state.view === "follow" && !state.slowmo ? { pending: { cause: "narration" as const } } : {}),
+      });
+    }
     case "user.moved":
-      return next({ owner: "manual", zoomPriority: false });
+      return next({ view: "custom", viewChoice: true, owner: "manual", zoomPriority: false });
     case "zoom100":
-      return next({ owner: "manual", zoomPriority: false }, { type: "zoom100" });
+      return next({ view: "custom", viewChoice: true, owner: "manual", zoomPriority: false }, { type: "zoom100" });
     case "zoomToSelection":
-      return next({ owner: "manual", zoomPriority: true }, { type: "zoomToSelection" });
+      return next(
+        { view: "focus", viewChoice: true, zone: undefined, owner: "manual", zoomPriority: true },
+        { type: "zoomToSelection" },
+      );
     case "fit":
-      return next({ owner: "fit", pending: null, zoomPriority: false }, { type: "fit", reason: event.reason });
+      return next(
+        { view: "overview", viewChoice: true, zone: undefined, owner: "fit", pending: null, zoomPriority: false },
+        { type: "fit", reason: event.reason },
+      );
     case "mode.changed":
       // Slow motion between live view and presenting keeps the view and replans its take for the new pane.
       if (state.slowmo && event.live)
@@ -121,6 +170,7 @@ export function decide(state: PolicyState, event: CameraEvent): Decision {
           owner: "fit",
           pending: null,
           mode: event.mode,
+          ...(state.mode !== event.mode ? { viewChoice: false, view: "overview" as const, zone: undefined } : {}),
           zoomPriority: false,
           ...(event.live ? {} : { live: CLEAR, slowmo: false }),
         },
@@ -137,11 +187,18 @@ export function decide(state: PolicyState, event: CameraEvent): Decision {
       return next({ watching: event.on });
     case "narration": {
       const live = { ...state.live, focus: event.focus };
-      if (state.slowmo || (state.watching && state.owner === "manual")) return next({ live });
+      if (state.slowmo || (state.watching && state.owner === "manual") || (state.viewChoice && state.view !== "follow"))
+        return next({ live });
       if (event.focus.length)
-        return next({ live, owner: "narration", zoomPriority: false, pending: { cause: "narration" } });
+        return next({ live, view: "follow", owner: "narration", zoomPriority: false, pending: { cause: "narration" } });
       if (!state.live.focus.length) return next({ live });
-      return next({ live, owner: "fit", zoomPriority: false, pending: { cause: "narration" } });
+      return next({
+        live,
+        view: state.viewChoice ? state.view : "overview",
+        owner: "fit",
+        zoomPriority: false,
+        pending: { cause: "narration" },
+      });
     }
     case "live.panel":
     case "live.card": {
@@ -180,6 +237,21 @@ export function decide(state: PolicyState, event: CameraEvent): Decision {
       if (!state.slowmo || state.owner !== "slowmo" || state.pending) return next({});
       return next({}, { type: "follow", view: event.view });
     case "reveal.requested":
+      if (
+        event.keyboard &&
+        event.zoom !== undefined &&
+        event.zoom < 0.6 &&
+        (event.cause === "focus" || event.cause === "navigation")
+      )
+        return next(
+          { view: "focus", owner: "manual", keyboardFocus: true, pending: null },
+          {
+            type: "focusSelection",
+            nodes: event.scope?.kind === "focus" ? new Set([event.scope.id]) : undefined,
+            automatic: true,
+          },
+        );
+      if (event.cause === "selection" && event.zoom !== undefined && event.zoom >= 0.5) return next({});
       if (state.zoomPriority) return next({});
       // Keyboard navigation or a focus reveal takes the view back from the host's: following their view ends.
       return next(state.owner === "host" ? { owner: "manual" } : {}, {
@@ -191,6 +263,9 @@ export function decide(state: PolicyState, event: CameraEvent): Decision {
       const work = state.pending;
       if (!work || ((state.menu || state.gesture) && waitsForMenu(work))) return next({});
       const done = { pending: null };
+      if ("autoFocus" in work && work.autoFocus) return next(done, { type: "focusSelection", automatic: true });
+      if (work.cause === "selection" && event.zoom !== undefined && event.zoom >= 0.5 && !state.keyboardFocus)
+        return next(done);
       if (!isPaneCause(work.cause)) return next(done, ...liveWork(state, work as LiveWork));
       if (work.cause === "panel" && state.slowmo)
         return next(done, { type: "slowmoPane", following: state.owner === "slowmo" });
@@ -247,6 +322,7 @@ function liveWork(state: PolicyState, work: LiveWork): CameraCommand[] {
 function refit(state: PolicyState, reason: LiveFitReason): CameraCommand[] {
   if (state.slowmo || state.owner === "manual" || state.owner === "slowmo") return [];
   const { panel, card, focus } = state.live;
+  if (state.view === "follow" && state.viewChoice) return [{ type: "follow", ...state.live }];
   if (state.owner === "narration" && focus.length) return [{ type: "noteFit", reason, focus, panel, card }];
   return [{ type: "liveFit", reason, panel, card }];
 }
@@ -254,6 +330,7 @@ function refit(state: PolicyState, reason: LiveFitReason): CameraCommand[] {
 export function initialPolicy(mode: CameraMode = "edit"): PolicyState {
   return {
     owner: "fit",
+    view: "overview",
     mode,
     menu: null,
     pending: null,

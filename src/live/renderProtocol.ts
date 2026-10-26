@@ -1,3 +1,4 @@
+import type { EdgeInk } from "./liveScene";
 // The messages between the live view (main thread) and the particle worker (particleWorker.ts).
 //
 // One message each way per frame, at most one frame in flight:
@@ -57,6 +58,7 @@ export interface SlowState {
 }
 
 export interface FrameMessage {
+  ink?: [string, EdgeInk][];
   type: "frame";
   /** Which attachment this frame belongs to (acks from an older one are ignored). */
   epoch: number;

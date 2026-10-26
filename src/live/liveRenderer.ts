@@ -289,6 +289,7 @@ class MainThreadRenderer implements LiveRenderer {
         dpr: () => scene.dpr(),
         samples: (id) => scene.samples(id),
         pathsVersion: () => scene.pathsVersion,
+        edgeInk: (id) => scene.ink.get(id),
         nodeRect: (id) => scene.nodeRect(id),
         obstacles: () => scene.obstacles(),
         labelRects: () => setup.labelRects(),
@@ -653,6 +654,7 @@ class WorkerRenderer implements LiveRenderer {
       for (const [, , points] of msg.paths.set) transfer.push(points.buffer);
     }
     if (changes?.nodes) msg.nodes = changes.nodes;
+    if (changes?.ink) msg.ink = changes.ink;
     if (changes?.march) msg.march = changes.march;
     if (this.glowPending) msg.glow = this.glowPending;
     if (labels !== this.sentLabels || msg.sync) msg.labels = [...labels];

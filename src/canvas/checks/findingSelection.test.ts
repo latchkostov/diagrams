@@ -1,7 +1,7 @@
 import { ChecksStore } from "./useChecks";
 import { expect, it, vi } from "vitest";
 import { FindingSelection } from "./findingSelection";
-import { findingOrder, findingTag, selectedFinding, firstSentence } from "../../checks/ui/findingOrder";
+import { findingOrder, findingTag, selectedFinding, firstSentence } from "./findingOrder";
 import type { Finding } from "../../checks/types";
 
 const finding = (id: string, elements: string[], severity: Finding["severity"] = "warning"): Finding => ({

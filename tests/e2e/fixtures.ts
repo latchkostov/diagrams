@@ -30,7 +30,9 @@ export async function openCheckFinding(page: Page, id: string) {
 /** Theme choices moved into the View menu. */
 export async function toggleTheme(page: Page) {
   const theme = await page.evaluate(() => document.documentElement.dataset.theme);
-  await page.getByTestId("view-button").click();
+  const view = page.getByTestId("view-button");
+  if ((await view.getAttribute("aria-expanded")) !== "true") await view.click();
+  await expect(page.getByTestId("view-menu")).toBeVisible();
   await page.getByTestId("theme-toggle").click();
   await page.getByTestId(theme === "dark" ? "theme-light" : "theme-dark").click();
 }
@@ -439,6 +441,15 @@ export async function cameraMoves(page: Page, after = 0): Promise<string[]> {
  * clicked until the view brings it back: a selection that opened the inspector, or a smaller window,
  * can leave one there.
  */
+/** Fit's button moves into the transport menu in Live. The action and its test ID stay the same. */
+export async function clickFitView(page: Page) {
+  const view = page.getByTestId("live-view-menu");
+  if (await view.isVisible()) {
+    if ((await view.getAttribute("aria-expanded")) !== "true") await view.click();
+  }
+  await page.getByTestId("fit-view-button").click();
+}
+
 export async function fitDiagram(page: Page) {
   await waitForStableViewport(page);
   await page.getByTestId("canvas-wrap").focus();

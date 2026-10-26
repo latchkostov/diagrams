@@ -1,3 +1,4 @@
+import { clickFitView } from "./fixtures";
 import { openInspectorLiveDetails } from "./fixtures";
 import { readFileSync } from "node:fs";
 import type { Page } from "@playwright/test";
@@ -157,7 +158,7 @@ test("Cloud Run showcase: sleeps, wakes on demand, hits its maximum with scenari
   await page.getByTestId("autoscaling-why-toggle").click();
   await expect(page.getByTestId("autoscaling-reason")).toBeVisible();
   await expect(page.getByTestId("autoscaling-metric")).toContainText("CPU");
-  await page.getByTestId("fit-view-button").click();
+  await clickFitView(page);
   await page.clock.runFor(500);
   await waitForStableViewport(page);
   await page.screenshot({ path: info.outputPath("a3-cloud-run-live.png") });

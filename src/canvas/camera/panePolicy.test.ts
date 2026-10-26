@@ -306,7 +306,7 @@ describe("panePolicy: the agreed rules, row by row", () => {
       [NOTE("narration", ["a"])],
     ],
     [
-      "L1 a new note with the same focus takes the view again",
+      "A new note preserves a manually chosen Custom view",
       state({ mode: "live" }),
       [
         { type: "narration", focus: ["a"] },
@@ -315,7 +315,7 @@ describe("panePolicy: the agreed rules, row by row", () => {
         { type: "narration", focus: ["a"] },
         settled(),
       ],
-      [NOTE("narration", ["a"]), NOTE("narration", ["a"])],
+      [NOTE("narration", ["a"])],
     ],
     [
       "L2 a focused note ending gives the fit back",
@@ -931,9 +931,10 @@ describe("panePolicy: a note's focus while following a shared run (L10)", () => 
     expect(decide({ ...watching, owner: "fit" }, { type: "narration", focus: ["payments"] }).state.owner).toBe(
       "narration",
     );
-    // Not following: as before (L1).
+    // A manual view stays Custom in solo Live too; only Follow resumes narration.
     const solo = decide({ ...moved, watching: false }, { type: "narration", focus: ["payments"] });
-    expect(solo.state.owner).toBe("narration");
+    expect(solo.state.owner).toBe("manual");
+    expect(solo.state.view).toBe("custom");
   });
 });
 

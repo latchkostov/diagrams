@@ -12,6 +12,8 @@ interface FakePath {
 
 function fakeDom(edges: Map<string, FakePath>) {
   const g = (id: string, p: FakePath) => ({
+    dataset: { id },
+    hasAttribute: () => false,
     getAttribute: (name: string) => (name === "data-id" ? id : null),
     querySelector: () => ({
       getAttribute: () => p.d,
@@ -21,6 +23,7 @@ function fakeDom(edges: Map<string, FakePath>) {
     }),
   });
   const root = {
+    hasAttribute: () => false,
     querySelectorAll: (selector: string) =>
       selector === ".react-flow__edge[data-id]" ? [...edges].map(([id, p]) => g(id, p)) : [],
     querySelector: () => null,

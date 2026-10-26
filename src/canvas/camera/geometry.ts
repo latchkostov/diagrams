@@ -6,6 +6,7 @@ import { fitAvoiding, panClearOf, panIntoView, type FitOptions, type Viewport } 
 import { intersects, union, type Rect } from "../geometry/rect";
 import { overlayRects } from "../useOverlayFit";
 import type { DiagramFlowEdge, FlowNode } from "../types";
+import { oneHop } from "./frameEdges";
 
 // The camera's geometry, as pure reads of React Flow's state and the pane: where a fit, a reveal or a
 // centring would put the view. Nothing here moves it (controller.ts does, through its port).
@@ -71,8 +72,111 @@ export function overlayFitViewport(
     contentRects(s, routing, o.only, o.onlyEdges),
     { width: root.clientWidth, height: root.clientHeight },
     overlayRects(root),
-    { margin: 32, ...o },
+    { margin: 32, minZoom: s.minZoom, ...o },
   );
+}
+
+/** A readable neighbourhood; a spread-out graph pans to the subject instead of shrinking it. */
+export function focusSelectionViewport(
+  root: HTMLElement,
+  s: State,
+  routing: RouteOptions,
+  ids?: ReadonlySet<string>,
+): Viewport | null {
+  const selected = ids?.size
+    ? new Set(ids)
+    : new Set([...s.nodeLookup.values()].filter((n) => n.selected && !n.hidden).map((n) => n.id));
+  if (!selected.size && root.dataset?.detailHover && s.nodeLookup.has(root.dataset.detailHover))
+    selected.add(root.dataset.detailHover);
+  if (!selected.size) {
+    const first = [...s.nodeLookup.values()].find((n) => n.type === "diagram" && !n.hidden);
+    if (first) selected.add(first.id);
+  }
+  const near = oneHop(s.edges, selected);
+  const rects = nodeRects(s, near);
+  const routes = selectRoutes(s, routing);
+  for (const edge of s.edges) {
+    if (!near.has(edge.source) && !near.has(edge.target)) continue;
+    const label = routes.get(edge.id)?.label;
+    if (label)
+      rects.push({
+        x: label.x - label.width / 2,
+        y: label.y - label.height / 2,
+        width: label.width,
+        height: label.height,
+      });
+  }
+  const rtl = typeof getComputedStyle === "function" && getComputedStyle(root).direction === "rtl";
+  const live = root.closest?.(".is-live");
+  const insets = { top: 32, left: rtl ? 56 : 32, right: rtl ? 32 : 56, bottom: live ? 32 : 72 };
+  const fit = fitAvoiding(rects, { width: root.clientWidth, height: root.clientHeight }, overlayRects(root), {
+    margin: 0,
+    insets,
+    minZoom: s.minZoom,
+    maxZoom: 1.25,
+  });
+  if (!fit || fit.zoom >= 0.9) return fit;
+  const subject = union(nodeRects(s, selected));
+  if (!subject) return fit;
+  return {
+    zoom: 0.9,
+    x: (root.clientWidth + insets.left - insets.right) / 2 - (subject.x + subject.width / 2) * 0.9,
+    y: (root.clientHeight + insets.top - insets.bottom) / 2 - (subject.y + subject.height / 2) * 0.9,
+  };
+}
+
+/** Follow has a subject, rather than a bounding-box centre; other spotlit cards are allowed to pin. */
+export function followViewport(
+  root: HTMLElement,
+  s: State,
+  focus: readonly string[],
+  subject?: string,
+  room: { panel?: boolean; card?: boolean } = {},
+): Viewport | null {
+  if (!root.clientWidth || !root.clientHeight) return null;
+  const ids = new Set(focus);
+  const selected = [...s.nodeLookup.values()].find((n) => n.selected && n.type === "diagram")?.id;
+  const first = [...s.nodeLookup.values()].find((n) => n.type === "diagram" && !n.hidden)?.id;
+  const id =
+    subject && s.nodeLookup.has(subject) ? subject : (focus.find((key) => s.nodeLookup.has(key)) ?? selected ?? first);
+  if (!id) return null;
+  ids.add(id);
+  const subjectBox = nodeRects(s, new Set([id]))[0];
+  const bounds = union(nodeRects(s, ids));
+  if (!subjectBox || !bounds) return null;
+  const cx = subjectBox.x + subjectBox.width / 2,
+    cy = subjectBox.y + subjectBox.height / 2;
+  const right = 52 + (room.panel || room.card ? Math.min(440, Math.max(0, root.clientWidth - 220)) : 0);
+  const x = (52 + root.clientWidth - right) / 2,
+    y = root.clientHeight / 2;
+  const maximum = Math.min(
+    (root.ownerDocument?.defaultView?.innerWidth ?? root.clientWidth) < 640 ? 1.1 : 1,
+    (x - 52) / Math.max(1, cx - bounds.x),
+    (root.clientWidth - right - x) / Math.max(1, bounds.x + bounds.width - cx),
+    (y - 52) / Math.max(1, cy - bounds.y),
+    (root.clientHeight - 52 - y) / Math.max(1, bounds.y + bounds.height - cy),
+  );
+  const zoom = Math.max(0.9, maximum);
+  return { x: x - cx * zoom, y: y - cy * zoom, zoom };
+}
+
+export function zoneViewport(root: HTMLElement, s: State, id: string): Viewport | null {
+  const ids = new Set([id]);
+  const children = new Map<string, string[]>();
+  for (const n of s.nodeLookup.values())
+    if (n.parentId) children.set(n.parentId, [...(children.get(n.parentId) ?? []), n.id]);
+  const pending = [id];
+  for (let parent = pending.pop(); parent; parent = pending.pop())
+    for (const child of children.get(parent) ?? [])
+      if (!ids.has(child)) {
+        ids.add(child);
+        pending.push(child);
+      }
+  return fitAvoiding(nodeRects(s, ids), { width: root.clientWidth, height: root.clientHeight }, [], {
+    margin: 52,
+    minZoom: s.minZoom,
+    maxZoom: 1.25,
+  });
 }
 
 /** Screen room kept around a selection brought into view: clear of the title card, controls and minimap edges. */

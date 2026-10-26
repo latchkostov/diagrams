@@ -27,10 +27,14 @@ export function useChromeHint(readOnly: boolean) {
 }
 
 /** Keep overlay measurement hooks in CanvasView's original hook order. */
-export function useChromeOverlays(wrapper: RefObject<HTMLDivElement | null>, checksVisible: boolean) {
+export function useChromeOverlays(
+  wrapper: RefObject<HTMLDivElement | null>,
+  checksVisible: boolean,
+  cardVisible: boolean,
+) {
   // The title card folds to a chip while nodes sit under it, so it never hides the diagram.
   const card = useRef<HTMLDivElement>(null);
-  const cardCovers = useCovered(card, wrapper);
+  const cardCovers = useCovered(card, wrapper, cardVisible);
   const checksTop = useBelow(card, checksVisible);
   useOverlayTestIds(wrapper);
 
