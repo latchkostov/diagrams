@@ -10,7 +10,7 @@ const CALLOUT_MIN = 420;
  * title card (narrow screens, side panels open), below the card at the canvas's full width, so its words and buttons
  * never squeeze or clip. Follows the canvas and the card as they resize.
  */
-export function useFloatingPlacement(box: RefObject<HTMLElement | null>, floating: boolean) {
+export function useFloatingPlacement(box: RefObject<HTMLElement | null>, floating: boolean, preferredTop?: number) {
   // Beside the card: centred in the room right of it (never on it, whatever the canvas centre); below: under it.
   const [place, setPlace] = useState<{
     below: boolean;
@@ -57,7 +57,7 @@ export function useFloatingPlacement(box: RefObject<HTMLElement | null>, floatin
         .map((item) => inflate(rect(item.getBoundingClientRect()), 8));
       const desired = () => ({
         x: below ? 16 : (left ?? p.width / 2) - el.offsetWidth / 2,
-        y: below ? top : window.innerWidth <= 1280 ? 60 : 16,
+        y: below ? top : (preferredTop ?? (window.innerWidth <= 1280 ? 60 : 16)),
         width: el.offsetWidth,
         height: el.offsetHeight,
       });
@@ -97,7 +97,7 @@ export function useFloatingPlacement(box: RefObject<HTMLElement | null>, floatin
       watch.disconnect();
       movement.disconnect();
     };
-  }, [box, floating]);
+  }, [box, floating, preferredTop]);
   // The same object while the placement holds, so FloatingPlacement reports only changes.
   return useMemo(
     () => ({

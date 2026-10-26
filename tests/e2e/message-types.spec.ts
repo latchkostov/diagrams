@@ -158,6 +158,7 @@ test("the message-loop Check warns with manual guidance and no automatic fix", a
   await expect(row).toContainText("Callback messages loop back to API: each one is sent again.");
   await expect(row).toContainText("Choose where the callback should stop, then check again.");
   await expect(page.getByTestId("check-fix-message-loop:api")).toHaveCount(0);
+  await page.getByTestId("dock-tab-properties").click();
   await expect(page.getByTestId("inspector-carries")).toContainText("Callback");
   expect((await savedDiagram(page)).edges.find((edge) => edge.id === "send")?.props?.filter).toBeUndefined();
   expectNoErrors(consoleErrors);

@@ -125,10 +125,10 @@ describe("focusPolicy: the rules, row by row", () => {
       ["focus:node:n@measured"],
     ],
     [
-      "P2 the palette goes to a node: focus it now",
+      "P2 the palette goes to a node: focus it when visible",
       state(),
       [selected("palette", { target: { kind: "node", id: "n" } })],
-      ["focus:node:n@now"],
+      ["focus:node:n@ready"],
     ],
     ["S1 a click selects: focus stays", state(), [selected("click")], ["keep"]],
     ["S1 the selection box: focus stays", state(), [selected("box")], ["keep"]],

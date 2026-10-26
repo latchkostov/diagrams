@@ -1,5 +1,7 @@
+import { emptyCanvasPoint } from "./fixtures";
 import {
   waitForGuides,
+  openAnnotate,
   TEXT_END,
   test,
   expect,
@@ -260,8 +262,8 @@ test.describe("smart guides and snapping (D6)", () => {
     await expect.poll(() => flowPos(page, "node-d")).toEqual({ x: 1070, y: 350 });
 
     // Show ▸ Snapping off: fine steps.
-    const wrap = await box(page.getByTestId("canvas-wrap"));
-    await page.mouse.click(wrap.x + wrap.width / 2, wrap.y + 40, { button: "right" });
+    const at = await emptyCanvasPoint(page);
+    await page.getByTestId("canvas-wrap").click({ button: "right", position: at });
     await page.getByTestId("context-menu-item-canvas.view-options").click();
     await expect(page.getByTestId("context-menu-item-view:snap")).toContainText("Snapping");
     await page.getByTestId("context-menu-item-view:snap").click();
@@ -436,6 +438,7 @@ test.describe("type-ahead and readable editors (D7)", () => {
     await gotoCanvas(page, SLUG);
     await waitForStableViewport(page);
     // A note to edit too (it opens its editor at once).
+    await openAnnotate(page);
     await page.getByTestId("palette-annotate-note").click();
     await expect(page.getByTestId("annotation-editor")).toBeFocused();
     await page.keyboard.type("Edge case");
@@ -475,6 +478,7 @@ test.describe("type-ahead and readable editors (D7)", () => {
         return parseFloat(getComputedStyle(el).fontSize) * scale;
       });
     // A new note opens its editor at once.
+    await openAnnotate(page);
     await page.getByTestId("palette-annotate-note").click();
     await expect(page.getByTestId("annotation-editor")).toBeFocused();
     expect(await screenFont(page.getByTestId("annotation-editor"))).toBeGreaterThanOrEqual(12);

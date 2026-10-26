@@ -65,14 +65,15 @@ test("layout-only replies apply and undo", async ({ page }) => {
   await expect(page.getByTestId("node-payments")).toBeVisible();
 });
 
-test("the dock sits beside the inspector, never over it, and Esc hands the keyboard back", async ({ page }) => {
+test("the AI tab stays inside the dock, clear of the canvas, and Esc hands the keyboard back", async ({ page }) => {
   await gotoCanvas(page, SLUG);
   await page.getByTestId("node-payments").click();
   await openAdvanced(page);
   const panel = must(await page.getByTestId("ai-dock").boundingBox(), "AI dock");
   const inspector = must(await page.getByTestId("inspector").boundingBox(), "inspector");
   const canvas = must(await page.getByTestId("canvas-wrap").boundingBox(), "canvas");
-  expect(inspector.x + inspector.width).toBeLessThanOrEqual(panel.x);
+  expect(panel.x).toBeGreaterThanOrEqual(inspector.x);
+  expect(panel.x + panel.width).toBeLessThanOrEqual(inspector.x + inspector.width);
   expect(canvas.x + canvas.width).toBeLessThanOrEqual(inspector.x);
   await page.keyboard.press("Escape");
   await expect(page.getByTestId("canvas-wrap")).toBeFocused();

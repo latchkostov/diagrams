@@ -38,6 +38,12 @@ const path = (length: number, d = `M0 0 L${length} 0`): FakePath => ({ d, length
 const queries = (edges: Map<string, FakePath>) => [...edges.values()].reduce((n, p) => n + p.queries, 0);
 
 describe("LiveScene paths", () => {
+  it("keeps free-play edges in the particle scene when no subject is spotlit", () => {
+    const scene = fakeDom(new Map([["traffic", path(600)]]));
+    scene.refresh();
+    expect(scene.ink.get("traffic")).toEqual({ alpha: 1, near: true });
+  });
+
   it("reads every edge's path but samples only the ones the renderer asks for", () => {
     const edges = new Map([
       ["busy", path(600)],

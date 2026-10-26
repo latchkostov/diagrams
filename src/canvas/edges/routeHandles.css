@@ -3,9 +3,9 @@
   position: absolute;
   left: 0;
   top: 0;
-  width: calc(24px / var(--rf-zoom, 1));
-  height: calc(24px / var(--rf-zoom, 1));
-  margin: calc(-12px / var(--rf-zoom, 1));
+  width: 24px;
+  height: 24px;
+  margin: calc(-12px / var(--rf-zoom-exact, 1));
   pointer-events: all;
   z-index: 5;
   cursor: row-resize;
@@ -23,12 +23,12 @@
   left: 50%;
   top: 50%;
   translate: -50% -50%;
-  width: calc(14px / var(--rf-zoom, 1));
-  height: calc(5px / var(--rf-zoom, 1));
-  border: calc(1px / var(--rf-zoom, 1)) solid var(--accent);
-  border-radius: calc(3px / var(--rf-zoom, 1));
+  width: 14px;
+  height: 5px;
+  border: 1px solid var(--accent);
+  border-radius: 3px;
   background: var(--surface);
-  box-shadow: 0 0 0 calc(3px / var(--rf-zoom, 1)) color-mix(in oklab, var(--accent) 22%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent) 22%, transparent);
 }
 .edge-seg-v::after {
   rotate: 90deg;
@@ -37,20 +37,20 @@
   background: var(--accent);
 }
 .canvas-wrap:has(.react-flow__edge:focus) .edge-seg.is-active::after {
-  outline: calc(2px / var(--rf-zoom, 1)) solid var(--accent);
-  outline-offset: calc(3px / var(--rf-zoom, 1));
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
 }
 .edge-end {
   touch-action: none;
 }
 @media (pointer: coarse) {
   .edge-seg {
-    width: calc(44px / var(--rf-zoom, 1));
-    height: calc(44px / var(--rf-zoom, 1));
-    margin: calc(-22px / var(--rf-zoom, 1));
+    width: 44px;
+    height: 44px;
+    margin: calc(-22px / var(--rf-zoom-exact, 1));
   }
   .edge-end::after {
-    --hit: calc(44px / var(--rf-zoom, 1));
+    --hit: calc(44px / var(--rf-zoom-exact, 1));
   }
   .edge-seg[data-coarse-keyboard-only],
   .edge-seg[data-coarse-keyboard-only]::after {
@@ -74,9 +74,9 @@
   z-index: 6;
   fill: none;
   stroke: var(--accent);
-  stroke-width: calc(1.6px / var(--rf-zoom, 1));
-  stroke-dasharray: calc(5px / var(--rf-zoom, 1)) calc(4px / var(--rf-zoom, 1));
+  stroke-width: calc(1.6px / var(--rf-zoom-exact, 1));
+  stroke-dasharray: calc(5px / var(--rf-zoom-exact, 1)) calc(4px / var(--rf-zoom-exact, 1));
 }
 .edge-route-preview line {
-  stroke-width: calc(1px / var(--rf-zoom, 1));
+  stroke-width: calc(1px / var(--rf-zoom-exact, 1));
 }

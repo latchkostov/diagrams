@@ -895,12 +895,15 @@ button.message-type-chip {
 .inspector .ai-resize {
   display: none;
 }
-.inspector[data-dock-tab="checks"] .insp-body {
+.inspector:is([data-dock-tab="checks"], [data-dock-tab="ai"]) .insp-body {
   display: flex;
   flex-direction: column;
   min-height: 0;
   padding-bottom: 0;
   overflow: hidden;
+}
+.inspector[data-dock-tab="ai"] .insp-body {
+  padding-block-end: 8px;
 }
 .checks-card.is-docked {
   position: static;

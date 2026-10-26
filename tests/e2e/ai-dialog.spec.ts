@@ -49,6 +49,9 @@ test.describe("AI panel: Advanced copy and paste", () => {
     await expect(page.getByTestId("ai-panel")).toBeVisible();
     // The panel isn't modal: the diagram behind it stays usable.
     await page.getByTestId("node-shopper").click();
+    await expect(page.getByTestId("inspector")).toHaveAttribute("data-inspector-target", "shopper");
+    await expect(page.getByTestId("dock-tab-properties")).toHaveAttribute("aria-selected", "true");
+    await page.getByTestId("dock-tab-ai").click();
     await expect(page.getByTestId("ai-panel")).toBeVisible();
     expectNoErrors(consoleErrors);
   });

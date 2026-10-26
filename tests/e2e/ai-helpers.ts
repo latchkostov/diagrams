@@ -25,7 +25,15 @@ export function settle(page: Page, testId = "node-payments") {
 
 /** Opens the AI panel from its rail. */
 export async function openAiPanel(page: Page) {
-  await page.getByTestId("ai-rail-open").click();
+  const rail = page.getByTestId("ai-rail-open");
+  if (await rail.isVisible()) await rail.click();
+  else if (await page.getByTestId("rail-more").isVisible()) {
+    await page.getByTestId("rail-more").click();
+    await rail.click();
+  } else {
+    await page.getByTestId("live-more").click();
+    await page.getByTestId("live-ai-panel").click();
+  }
   // The panel is its own chunk: the dev server may still be transforming it on a busy first load.
   await expect(page.getByTestId("ai-panel")).toBeVisible({ timeout: 20_000 });
 }
@@ -33,7 +41,7 @@ export async function openAiPanel(page: Page) {
 /** Opens the AI panel and its Advanced copy-and-paste flow (closed by default, remembered). */
 export async function openAdvanced(page: Page) {
   // A remembered open dock restores its lazy panel after the canvas. Until then there is no rail to click.
-  await expect(page.getByTestId("ai-rail-open")).toBeVisible({
+  await expect(page.getByTestId("canvas-view")).toBeVisible({
     timeout: pageLoadTimeout(),
   });
   if (!(await page.getByTestId("ai-panel").isVisible())) await openAiPanel(page);

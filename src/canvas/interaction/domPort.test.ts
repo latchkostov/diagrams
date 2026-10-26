@@ -4,6 +4,24 @@ import { createInteractionController } from "./controller";
 
 afterEach(() => vi.unstubAllGlobals());
 
+it("waits for a frame-hidden node to be revealed before resolving keyboard focus", () => {
+  vi.stubGlobal("CSS", { escape: (s: string) => s });
+  class Card {
+    style = { visibility: "visible" };
+    hidden = true;
+    closest() {
+      return this.hidden ? this : null;
+    }
+  }
+  vi.stubGlobal("HTMLElement", Card);
+  const card = new Card();
+  const root = { querySelector: () => card } as unknown as HTMLElement;
+  const port = createDomPort({ root: () => root, hasNode: () => true });
+  expect(port.resolve({ kind: "node", id: "next" }).state).toBe("waiting");
+  card.hidden = false;
+  expect(port.resolve({ kind: "node", id: "next" })).toEqual({ state: "ready", el: card, node: "next" });
+});
+
 it("wraps only boundary Tabs, skipping disabled and hidden modal controls", () => {
   const first = { hasAttribute: () => false, hidden: false };
   const middle = { hasAttribute: () => false, hidden: false };

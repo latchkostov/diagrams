@@ -10,8 +10,54 @@ import {
   focusSelectionViewport,
   followViewport,
   overlayFitViewport,
+  goToViewport,
 } from "./geometry";
 vi.mock("../edges/useEdgeRoute", () => ({ selectRoutes: vi.fn() }));
+
+it("only reserves transport space when the bar overlaps the canvas", () => {
+  let transportTop = 600;
+  const root = {
+    clientWidth: 800,
+    clientHeight: 600,
+    getBoundingClientRect: () => ({ left: 0, top: 0 }),
+    ownerDocument: {
+      querySelector: (selector: string) =>
+        selector.includes("live-controls") ? { getBoundingClientRect: () => ({ top: transportTop }) } : null,
+    },
+    querySelector: () => null,
+    querySelectorAll: () => [],
+  } as unknown as HTMLElement;
+  const state = {
+    width: 800,
+    height: 600,
+    minZoom: 0.01,
+    transform: [0, 0, 1],
+    domNode: root,
+    edges: [],
+    nodeLookup: new Map([
+      ["a", { measured: { width: 220, height: 600 }, internals: { positionAbsolute: { x: 0, y: 0 } } }],
+    ]),
+  } as unknown as ReactFlowState<FlowNode, DiagramFlowEdge>;
+  const outside = liveFitViewport(state, { panel: false, card: false })!;
+  transportTop = 528;
+  const inside = liveFitViewport(state, { panel: false, card: false })!;
+  expect(outside.zoom).toBeGreaterThan(inside.zoom);
+  expect(outside.y + 600 * outside.zoom).toBeLessThanOrEqual(576);
+  expect(inside.y + 600 * inside.zoom).toBeLessThanOrEqual(504);
+});
+
+it("search centres a boundary member at its absolute position", () => {
+  const root = { clientWidth: 1000, clientHeight: 700 } as HTMLElement;
+  const node = {
+    position: { x: 30, y: 40 },
+    measured: { width: 220, height: 72 },
+    internals: { positionAbsolute: { x: 2030, y: 1040 } },
+  };
+  const state = { nodeLookup: new Map([["member", node]]) } as unknown as ReactFlowState<FlowNode, DiagramFlowEdge>;
+  const view = goToViewport(root, state, { x: 0, y: 0, zoom: 0.5 }, "member")!;
+  expect(view.x + 2140 * view.zoom).toBe(500);
+  expect(view.y + 1076 * view.zoom).toBe(350);
+});
 
 for (const room of [
   { panel: false, card: false },
@@ -148,6 +194,20 @@ const workbenchRoot = {
   closest: () => null,
   querySelectorAll: () => [],
 } as unknown as HTMLElement;
+it("fits an editable grow chip without changing a viewer's frame", () => {
+  vi.mocked(selectRoutes).mockReturnValue(new Map());
+  const s = workbenchState(6000);
+  const viewer = overlayFitViewport(workbenchRoot, s, { style: "straight", direction: "LR" }, {})!;
+  const editor = overlayFitViewport(
+    { ...workbenchRoot, querySelector: () => ({}) } as unknown as HTMLElement,
+    s,
+    { style: "straight", direction: "LR" },
+    {},
+  )!;
+  expect(viewer.x).toBe(32);
+  expect(editor.x).toBe(40);
+  expect(viewer.zoom).toBeGreaterThan(editor.zoom);
+});
 it("Overview is a true fit of distant nodes and edge labels down to minZoom", () => {
   const s = workbenchState(6000);
   vi.mocked(selectRoutes).mockReturnValue(

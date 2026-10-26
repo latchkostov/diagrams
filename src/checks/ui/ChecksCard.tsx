@@ -112,7 +112,11 @@ export function ChecksCard(p: ChecksCardProps) {
     const el = self.current;
     return () => {
       const at = document.activeElement;
-      if (!at || at === document.body || el?.contains(at)) requestAnimationFrame(() => returnFocus.current());
+      if (!at || at === document.body || el?.contains(at))
+        requestAnimationFrame(() => {
+          const active = document.activeElement;
+          if (!active || active === document.body || el?.contains(active)) returnFocus.current();
+        });
     };
   }, []);
   const r = p.result;

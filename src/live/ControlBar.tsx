@@ -14,6 +14,7 @@ const LiveMoreItems = defineLazySurface({
   retryToast: true,
 });
 import { ViewMenu } from "./ViewMenu";
+import { Icon } from "../components/Icon";
 import { usePhone } from "../lib/usePhone";
 import { SimPanel } from "./lazySimPanel";
 import { t, useLocale } from "../i18n";
@@ -139,17 +140,19 @@ export function ControlBar({ state, slim = false }: { state: LiveState; slim?: b
             <LiveIcon name="chevron" size={11} />
           </label>
 
-          <button
-            className={`lv-btn lv-inputs${ui.capacityOpen ? " is-on" : ""}`}
-            onClick={() => ui.openCapacity(!ui.capacityOpen)}
-            aria-pressed={ui.capacityOpen}
-            aria-label="Inputs"
-            title={t("broker.inputs")}
-            data-testid="live-capacity"
-          >
-            <LiveIcon name="gauge" size={15} />
-            <span>Inputs</span>
-          </button>
+          {!phone && (
+            <button
+              className={`lv-btn lv-inputs${ui.capacityOpen ? " is-on" : ""}`}
+              onClick={() => ui.openCapacity(!ui.capacityOpen)}
+              aria-pressed={ui.capacityOpen}
+              aria-label="Inputs"
+              title={t("broker.inputs")}
+              data-testid="live-capacity"
+            >
+              <LiveIcon name="gauge" size={15} />
+              <span>Inputs</span>
+            </button>
+          )}
 
           {state.simulation && run ? (
             <>
@@ -213,6 +216,7 @@ const SPEED_HINT = "Playback speed. Slower speeds draw fewer dots so each one is
 function MoreMenu({ state }: { state: LiveState }) {
   const phone = usePhone();
   const ui = useLive();
+  const ai = phone ? ui.action("canvas.ai-panel") : undefined;
   const [traceOpen, setTraceOpen] = useState(false);
   const button = useRef<HTMLButtonElement>(null);
   const { open, toggle, close } = useLivePopover(() => button.current);
@@ -249,6 +253,18 @@ function MoreMenu({ state }: { state: LiveState }) {
         <LiveMoreItems state={state} close={close} traceOpen={traceOpen} setTraceOpen={setTraceOpen}>
           {phone && (
             <>
+              <button
+                role="menuitemcheckbox"
+                aria-checked={ui.capacityOpen}
+                data-testid="live-capacity"
+                onClick={() => {
+                  ui.openCapacity(!ui.capacityOpen);
+                  close("pick");
+                }}
+              >
+                <LiveIcon name="gauge" size={14} />
+                <span>{t("broker.inputs")}</span>
+              </button>
               <InFlight state={state} />
               <label className="lv-select" title={SPEED_HINT}>
                 <span>{t("workbench.speed")}</span>
@@ -264,6 +280,20 @@ function MoreMenu({ state }: { state: LiveState }) {
                   ))}
                 </select>
               </label>
+              {ai && (
+                <button
+                  role="menuitem"
+                  data-testid="live-ai-panel"
+                  disabled={ai.disabled}
+                  onClick={() => {
+                    ai.run?.();
+                    close("pick");
+                  }}
+                >
+                  <Icon name="ai" size={14} />
+                  <span>{ai.label}</span>
+                </button>
+              )}
             </>
           )}
         </LiveMoreItems>

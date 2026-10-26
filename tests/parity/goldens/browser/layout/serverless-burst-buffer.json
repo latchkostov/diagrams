@@ -36,29 +36,29 @@
       "requests": { "kind": "node", "box": "translate(200px, 40px) 222×72", "text": "Contoso requests 6 requests/s to each path" },
       "gateway": { "kind": "node", "box": "translate(40px, 200px) 220×72", "text": "API Gateway Managed account preset" },
       "queue": { "kind": "node", "box": "translate(360px, 200px) 223×72", "text": "Async buffer Wait here for a free worker" },
-      "direct": { "kind": "node", "box": "translate(40px, 360px) 260×78", "text": "Direct function 2 concurrent executions · 1 s each" },
+      "direct": { "kind": "node", "box": "translate(40px, 360px) 260×72", "text": "Direct function 2 concurrent executions · 1 s each" },
       "invoker": { "kind": "node", "box": "translate(360px, 360px) 233×72", "text": "Bounded async invoker 2 slots · one-second pacing" },
-      "async": { "kind": "node", "box": "translate(360px, 526px) 260×78", "text": "Buffered function 2 concurrent executions · 250 ms" },
-      "direct-results": { "kind": "node", "box": "translate(40px, 526px) 220×72", "text": "Direct results Admitted requests only" },
-      "async-results": { "kind": "node", "box": "translate(200px, 692px) 220×72", "text": "Async results Every queued job" }
+      "async": { "kind": "node", "box": "translate(360px, 520px) 260×72", "text": "Buffered function 2 concurrent executions · 250 ms" },
+      "direct-results": { "kind": "node", "box": "translate(40px, 520px) 220×72", "text": "Direct results Admitted requests only" },
+      "async-results": { "kind": "node", "box": "translate(200px, 680px) 220×72", "text": "Async results Every queued job" }
     },
     "edges": {
       "direct-entry": "M304,112 L304,146 Q304,156 294,156 L160,156 Q150,156 150,166 L150,200",
       "enqueue": "M318,112 L318,146 Q318,156 328,156 L461.5,156 Q471.5,156 471.5,166 L471.5,200",
       "invoke": "M150,272 L150,306 Q150,316 160,316 L160,316 Q170,316 170,326 L170,360",
       "consume": "M471.5,272 L471.5,313.5 Q471.5,316 474,316 L474,316 Q476.5,316 476.5,318.5 L476.5,360",
-      "async-invoke": "M476.5,432 L476.5,475.3 Q476.5,482 483.3,482 L483.3,482 Q490,482 490,488.8 L490,526",
-      "direct-save": "M170,438 L170,472 Q170,482 160,482 L160,482 Q150,482 150,492 L150,526",
-      "async-save": "M490,604 L490,638 Q490,648 480,648 L320,648 Q310,648 310,658 L310,692"
+      "async-invoke": "M476.5,432 L476.5,469.3 Q476.5,476 483.3,476 L483.3,476 Q490,476 490,482.8 L490,520",
+      "direct-save": "M170,432 L170,466 Q170,476 160,476 L160,476 Q150,476 150,486 L150,520",
+      "async-save": "M490,592 L490,626 Q490,636 480,636 L320,636 Q310,636 310,646 L310,680"
     },
     "labels": {
       "direct-entry": { "style": "transform: translate(-50%, -50%) translate(227px, 156px); --fe-w: 62.150000000000006px; --fe-h: 22px;", "text": "Request" },
       "enqueue": { "style": "transform: translate(-50%, -50%) translate(394.75px, 156px); --fe-w: 64.88px; --fe-h: 22px;", "text": "Enqueue" },
       "invoke": { "style": "transform: translate(-50%, -50%) translate(150px, 295px); --fe-w: 53.239999999999995px; --fe-h: 22px;", "text": "Invoke" },
       "consume": { "style": "transform: translate(-50%, -50%) translate(471.5px, 295px); --fe-w: 92.71000000000001px; --fe-h: 22px;", "text": "Pull when free" },
-      "async-invoke": { "style": "transform: translate(-50%, -50%) translate(476.5px, 458px); --fe-w: 90.11999999999999px; --fe-h: 22px;", "text": "Paced invoke" },
-      "direct-save": { "style": "transform: translate(-50%, -50%) translate(170px, 461px); --fe-w: 46.39px; --fe-h: 22px;", "text": "Write" },
-      "async-save": { "style": "transform: translate(-50%, -50%) translate(400px, 648px); --fe-w: 46.39px; --fe-h: 22px;", "text": "Write" }
+      "async-invoke": { "style": "transform: translate(-50%, -50%) translate(476.5px, 455px); --fe-w: 90.11999999999999px; --fe-h: 22px;", "text": "Paced invoke" },
+      "direct-save": { "style": "transform: translate(-50%, -50%) translate(170px, 455px); --fe-w: 46.39px; --fe-h: 22px;", "text": "Write" },
+      "async-save": { "style": "transform: translate(-50%, -50%) translate(400px, 636px); --fe-w: 46.39px; --fe-h: 22px;", "text": "Write" }
     }
   }
 }

@@ -171,6 +171,7 @@ async function open(page: Page, join = false) {
 
 async function name(page: Page, id: string, value: string) {
   await page.bringToFront();
+  await fitDiagram(page);
   await page.getByTestId(`node-${id}`).click();
   await expect(page.getByTestId("inspector-field-label")).toBeVisible();
   await waitForStableViewport(page);
@@ -754,11 +755,12 @@ test("pasting Private content stops sharing before the paste reaches peers or ro
     await name(page, "api", "Private follow-up edit");
     await page.getByTestId("undo-button").click();
     await expect(page.getByTestId("node-api")).toContainText("API");
+    await fitDiagram(page);
     await expect(made).toBeVisible();
     await page.getByTestId("undo-button").click();
     await expect(made).toHaveCount(0);
     await openDiagramProperties(page);
-    await expect(page.getByTestId("private-badge")).toBeVisible();
+    await expect(page.getByTestId("inspector").getByTestId("private-badge")).toBeVisible();
     await page.getByTestId("redo-button").click();
     await expect(made).toContainText("Device-only draft");
     await expect(b.getByTestId("node-api")).toContainText("API");
@@ -903,7 +905,7 @@ test("privacy-only shutdown leaves Undo disabled until a local edit", async ({ c
   await expect(page.getByTestId("node-api")).toContainText("API");
   await expect(page.getByTestId("undo-button")).toBeDisabled();
   await openDiagramProperties(page);
-  await expect(page.getByTestId("private-badge")).toBeVisible();
+  await expect(page.getByTestId("inspector").getByTestId("private-badge")).toBeVisible();
   expectNoErrors(consoleErrors);
 });
 

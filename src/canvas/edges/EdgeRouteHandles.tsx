@@ -185,7 +185,10 @@ export function EdgeRouteHandles({
             <div
               key={s.k}
               className={`edge-seg edge-seg-${s.axis} nodrag${panHeld ? "" : " nopan"}${current ? " is-active" : ""}`}
-              style={{ transform: `translate(${x}px, ${y}px)` }}
+              style={{
+                transform: `translate(${x}px, ${y}px) scale(calc(1 / var(--rf-zoom-exact, 1)))`,
+                transformOrigin: "0 0",
+              }}
               title={t("edge.shape.drag")}
               data-testid={`route-segment-${id}-${s.k}`}
               data-keyboard-only={keyboardOnly || undefined}

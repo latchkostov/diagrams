@@ -499,7 +499,7 @@
    metric badges, instead of on top of everything. A dot passing behind a pill still shows, dimmed,
    on the overlay canvas (particleRenderer.ts). A hovered, truncated label expands above its row. */
 .react-flow[data-live] .react-flow__edgelabel-renderer {
-  z-index: 4;
+  z-index: 2;
 }
 
 /* Live layers inside the viewport, bottom to top: edges, nodes, particles (.lv-canvas), edge label
@@ -3174,7 +3174,7 @@ details[open] > summary .lv-disclosure-chevron {
 }
 .live-transport-mount .lv-timeline {
   flex: 1;
-  min-inline-size: 320px;
+  min-inline-size: 0;
 }
 .lv-note.is-docked {
   position: static;
@@ -3241,6 +3241,11 @@ details[open] > summary .lv-disclosure-chevron {
 [data-theme="dark"] .lv-hud .cap-callout.is-status-strip {
   background: color-mix(in oklab, var(--status-down) 14%, var(--panel));
   border-color: color-mix(in oklab, var(--status-down) 30%, var(--line));
+}
+
+.lv-hud .cap-callout.is-floating.is-status-strip.is-compact {
+  inline-size: max-content;
+  max-inline-size: calc(100% - 32px);
 }
 .canvas-view.is-live .insp-body {
   mask-image: linear-gradient(to top, transparent, #000 10px);

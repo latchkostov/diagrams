@@ -1,3 +1,4 @@
+import { emptyCanvasPoint } from "./fixtures";
 import {
   waitForCameraIdle,
   test,
@@ -59,9 +60,8 @@ async function openNodeMenu(page: Page, nodeId: string, actionId: string) {
 
 async function openCanvasSubmenu(page: Page, parent: string, child: string) {
   await waitForStableViewport(page);
-  const box = await page.getByTestId("canvas-wrap").boundingBox();
-  if (!box) throw new Error("No canvas");
-  await page.getByTestId("canvas-wrap").click({ button: "right", position: { x: box.width / 2, y: 90 } });
+  const point = await emptyCanvasPoint(page);
+  await page.getByTestId("canvas-wrap").click({ button: "right", position: point });
   await menuItem(page, parent).click();
   await menuItem(page, child).click();
 }

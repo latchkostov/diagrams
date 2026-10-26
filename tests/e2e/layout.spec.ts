@@ -89,8 +89,8 @@ for (const theme of ["light", "dark"] as const) {
         for (const { slug } of part(k)) {
           await page.goto(`./?view=canvas&example=${encodeURIComponent(slug)}`);
           await expect(page.getByTestId("canvas-view")).toBeVisible({ timeout: pageLoadTimeout() });
-          await settle(page);
           await fitDiagram(page);
+          await settle(page);
           const { nodes, labels, panels } = await measure(page);
           const tag = slug;
           for (let i = 0; i < nodes.length; i++)
@@ -159,6 +159,7 @@ test("the title card folds to a chip when nodes go under it", async ({ page }) =
 for (const ex of publicExamples)
   test(`auto-layout never produces overlaps (${ex.slug})`, async ({ page, consoleErrors }) => {
     await page.goto(`./?view=canvas&example=${encodeURIComponent(ex.slug)}`);
+    await fitDiagram(page);
     await settle(page);
     const wrap = await page.getByTestId("canvas-wrap").boundingBox();
     if (!wrap) throw new Error("canvas not visible");

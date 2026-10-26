@@ -1,4 +1,4 @@
-import { test, expect, gotoCanvas, savedDiagram } from "./fixtures";
+import { test, expect, gotoCanvas, savedDiagram, openCheckFinding } from "./fixtures";
 import { callTool, installFakeModelContext, toolNames } from "./ai-helpers";
 import { waitForBackgroundChecks } from "./checks-readiness";
 import storm from "../../src/examples/retry-storm.json" with { type: "json" };
@@ -12,6 +12,7 @@ async function openChecks(page: import("@playwright/test").Page) {
 
 test("the worker offers one proven recovery policy with evidence, applied and undone as one edit", async ({ page }) => {
   await openChecks(page);
+  await openCheckFinding(page, "retry-storm:pay");
   const row = page.getByTestId("check-row-retry-storm:pay"),
     fix = page.getByTestId("check-fix-retry-storm:pay");
   await expect(row).toContainText("successful work after clearing rises");
@@ -36,11 +37,13 @@ test("the worker offers one proven recovery policy with evidence, applied and un
   await expect
     .poll(async () => (await savedDiagram(page)).nodes.find((n) => n.id === "payments")?.props)
     .toEqual(before.nodes.find((n) => n.id === "payments")?.props);
+  await openCheckFinding(page, "retry-storm:pay");
   await expect(fix).toBeEnabled();
 });
 
 test("unsafe retry alternatives remain ordinary undoable static fixes", async ({ page }) => {
   await openChecks(page);
+  await openCheckFinding(page, "retry-idempotency:pay");
   const option = page.getByTestId("check-fix-option-0-retry-idempotency:pay");
   await expect(option).toBeEnabled();
   await option.click();
@@ -49,6 +52,7 @@ test("unsafe retry alternatives remain ordinary undoable static fixes", async ({
     .toMatchObject({ retry: { idempotent: true } });
   await expect(page.getByTestId("check-row-retry-idempotency:pay")).toHaveCount(0);
   await page.getByTestId("check-fix-undo").click();
+  await openCheckFinding(page, "retry-idempotency:pay");
   await expect(option).toBeEnabled();
 });
 
@@ -56,6 +60,7 @@ test("a translated static option and its completion toast fit the 1024 px Checks
   await page.setViewportSize({ width: 1024, height: 768 });
   await page.addInitScript(() => localStorage.setItem("diagrams.locale", "en-XA"));
   await openChecks(page);
+  await openCheckFinding(page, "retry-idempotency:pay");
   const option = page.getByTestId("check-fix-option-0-retry-idempotency:pay");
   await expect(option).toBeEnabled();
   const label = await option.innerText();

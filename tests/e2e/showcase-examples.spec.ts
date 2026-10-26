@@ -8,7 +8,11 @@ import {
   waitForStableViewport,
   expectNoErrors,
   publicExamples,
+  goToNode,
+  openViewMenu,
+  openLiveInputs,
 } from "./fixtures";
+import { openAiPanel } from "./ai-helpers";
 
 const showcases = [
   { slug: "partitions-vs-subscriptions", signal: "log", field: "backlog" },
@@ -21,6 +25,7 @@ const showcases = [
 
 async function positive(page: Page, node: string, field: string) {
   const badge = page.getByTestId(`node-badge-${node}`);
+  if (!(await badge.isVisible())) await goToNode(page, node, true);
   await expect(badge).toBeVisible();
   await expect.poll(async () => Number(await badge.getAttribute(`data-${field}`))).toBeGreaterThan(0);
 }
@@ -98,14 +103,7 @@ for (const theme of ["light", "dark"] as const)
             const bar = await page.getByTestId("live-controls").boundingBox();
             expect(bar).not.toBeNull();
             if (!bar) throw new Error("Expected visible playback bar");
-            for (const id of [
-              "live-play",
-              "live-restart",
-              "live-speed",
-              "live-sim-picker",
-              "live-capacity",
-              "live-more",
-            ]) {
+            for (const id of ["live-play", "live-restart", "live-sim-picker", "live-more"]) {
               const control = await page.getByTestId(id).boundingBox();
               expect(control, id).not.toBeNull();
               if (!control) throw new Error(`Expected visible ${id}`);
@@ -119,6 +117,11 @@ for (const theme of ["light", "dark"] as const)
                 `${id} is not covered by a side rail`,
               ).toBe(true);
             }
+            // The phone keeps speed in More, with the same selector and values.
+            if (viewport.width < 640) await page.getByTestId("live-more").click();
+            await expectExposed(page.getByTestId("live-speed"));
+            await expectExposed(page.getByTestId("live-capacity"));
+            if (viewport.width < 640) await page.getByTestId("live-more").click();
           }
           await page.getByTestId("live-restart").click();
           await page.clock.runFor(8000);
@@ -155,11 +158,13 @@ for (const theme of ["light", "dark"] as const)
             // Exercise the controls after capturing the normal opening state: Inputs enables the heat map.
             await page.getByTestId("live-play").click();
             await page.getByTestId("live-play").click();
-            await page.getByTestId("live-capacity").click();
-            await expect(page.getByTestId("live-capacity")).toHaveAttribute("aria-pressed", "true");
-            await page.getByTestId("live-capacity").click();
-            await expect(page.getByTestId("live-capacity")).toHaveAttribute("aria-pressed", "false");
+            await openLiveInputs(page);
             await page.getByTestId("live-more").click();
+            await expect(page.getByTestId("live-capacity")).toHaveAttribute("aria-checked", "true");
+            await page.getByTestId("live-more").click();
+            await openLiveInputs(page);
+            await page.getByTestId("live-more").click();
+            await expect(page.getByTestId("live-capacity")).toHaveAttribute("aria-checked", "false");
             await expect(page.getByTestId("live-more-menu")).toBeVisible();
             await page.keyboard.press("Escape");
           }
@@ -281,9 +286,12 @@ test.describe("mobile title card", () => {
     await expect(page.getByTestId("example-picker")).toHaveAttribute("data-diagram-slug", /^my-/);
     await expect(page.getByTestId("checks-count")).toBeVisible();
     await expect(page.getByTestId("reset-diagram")).toHaveCount(0);
+    await page.getByTestId("topbar-more").click();
     await page.getByTestId("undo-button").click();
     await expect(page.getByTestId("undo-button")).toBeDisabled();
     await expect(page.getByTestId("redo-button")).toBeEnabled();
+    await openViewMenu(page);
+    await page.keyboard.press("Escape");
     for (const id of ["example-picker", "view-button", "file-button", "theme-toggle"]) {
       if (id === "theme-toggle") await page.getByTestId("view-button").click();
       const control = page.getByTestId(id);
@@ -306,7 +314,7 @@ test.describe("phone live panels", () => {
 
   test("playback leaves the expanded AI footer exposed and Inputs folds the dock", async ({ page }) => {
     await gotoLive(page, "./?view=canvas&example=partitions-vs-subscriptions&live=1");
-    await page.getByTestId("ai-rail-open").click();
+    await openAiPanel(page);
     const advanced = page.getByTestId("ai-advanced-toggle");
     await expectExposed(advanced);
     await advanced.focus();
@@ -315,20 +323,20 @@ test.describe("phone live panels", () => {
     const bar = await page.getByTestId("live-controls").boundingBox();
     expect(footer && bar && footer.y + footer.height < bar.y).toBe(true);
     await expectExposed(page.getByTestId("live-play"));
-    await page.getByTestId("live-capacity").click();
+    await openLiveInputs(page);
     await expect(page.getByTestId("ai-dock")).toHaveCount(0);
-    await expect(page.getByTestId("ai-rail-open")).toBeVisible();
+    await expectExposed(page.getByTestId("live-more"));
     await expectExposed(page.getByTestId("capacity-heading"));
     await expectExposed(page.getByTestId("live-play"));
   });
 
   test("Inputs folds an already expanded AI dock", async ({ page }) => {
     await gotoLive(page, "./?view=canvas&example=partitions-vs-subscriptions&live=1");
-    await page.getByTestId("ai-rail-open").click();
+    await openAiPanel(page);
     await expect(page.getByTestId("ai-panel")).toBeVisible();
-    await page.getByTestId("live-capacity").click();
+    await openLiveInputs(page);
     await expect(page.getByTestId("ai-dock")).toHaveCount(0);
-    await expect(page.getByTestId("ai-rail-open")).toBeVisible();
+    await expectExposed(page.getByTestId("live-more"));
     await expectExposed(page.getByTestId("capacity-heading"));
   });
 
@@ -337,7 +345,7 @@ test.describe("phone live panels", () => {
     await gotoLive(page, "./?view=canvas&example=partitions-vs-subscriptions&live=1&sim=compare");
     await expect(page.getByTestId("live-note")).toBeVisible();
     await pauseClock(page);
-    await page.getByTestId("live-capacity").click();
+    await openLiveInputs(page);
     const panel = page.getByTestId("capacity-panel");
     await expect(panel).toBeInViewport({ ratio: 1 });
     await expectExposed(page.getByTestId("capacity-heading"));
@@ -367,7 +375,7 @@ test.describe("phone live panels", () => {
 
   test("More stays exposed with Inputs open", async ({ page }, info) => {
     await gotoLive(page, "./?view=canvas&example=partitions-vs-subscriptions&live=1");
-    await page.getByTestId("live-capacity").click();
+    await openLiveInputs(page);
     await expect(page.getByTestId("capacity-panel")).toBeInViewport({ ratio: 1 });
     await page.getByTestId("live-more").click();
     await expectExposed(page.getByTestId("live-more-menu"));
@@ -384,7 +392,7 @@ test.describe("phone live panels", () => {
 
   test("expectations stay exposed with Inputs open", async ({ page }, info) => {
     await gotoLive(page, "./?view=canvas&example=partitions-vs-subscriptions&live=1&sim=compare");
-    await page.getByTestId("live-capacity").click();
+    await openLiveInputs(page);
     await expect(page.getByTestId("capacity-panel")).toBeInViewport({ ratio: 1 });
     await page.getByTestId("live-expectations-summary").click();
     await expectExposed(page.getByTestId("live-expectations-list"));

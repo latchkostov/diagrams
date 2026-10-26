@@ -21,7 +21,7 @@ import type { FocusCommand, FocusDecision, FocusEvent, FocusMove, FocusState, Fo
  * | H1  | selection.changed(undo / redo)      | focus was on the canvas         | focus the selection once drawn (else the canvas)       |
  * | H2  | selection.changed(undo / redo)      | focus was elsewhere (toolbar)   | keep; the Tab stop moves to the selection              |
  * | P1  | selection.changed(palette)          | it added the node               | focus the node once drawn                              |
- * | P2  | selection.changed(palette)          | it went to the node             | focus the node now                                     |
+ * | P2  | selection.changed(palette)          | it went to the node             | focus the node when visible                                     |
  * | S1  | selection.changed(click, box,       |                                 | keep                                                   |
  * |     | placement, programmatic)            |                                 |                                                        |
  * | N1  | naming.done (Enter / Esc in a name) |                                 | focus the named item on the canvas now                 |
@@ -142,7 +142,7 @@ export function focusPolicy(state: FocusState, event: FocusEvent): FocusDecision
         return move(
           event.placed
             ? { target: { kind: target.kind, id: target.id }, when: "measured", fresh: true }
-            : { target: { kind: target.kind, id: target.id }, when: "now" },
+            : { target: { kind: target.kind, id: target.id }, when: "ready" },
         );
       return keep();
     }

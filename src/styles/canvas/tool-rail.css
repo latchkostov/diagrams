@@ -143,7 +143,6 @@
     max-width: none;
     flex: 1;
   }
-  .topbar .bezel-history,
   .topbar [data-testid="view-lab"] {
     display: none;
   }

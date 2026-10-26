@@ -45,7 +45,7 @@ async function openChecks(page: Page) {
   await page.getByTestId("command-item-action:canvas.check-diagram").click();
   // First use downloads the card. Await its mount as setup (the test's hang backstop),
   // then assert visibility with the normal UI budget, as waitForLiveSession does.
-  await page.getByTestId("canvas-wrap").evaluate(
+  await page.getByTestId("canvas-view").evaluate(
     (root) =>
       new Promise<void>((resolve) => {
         const ready = () => {
@@ -181,14 +181,17 @@ test("Run simulations: progress, counts on the finding, an edit hides them and U
 
   // An edit it would see hides them, at once.
   await page.getByTestId("check-element-worker").first().click();
+  await page.getByTestId("dock-tab-properties").click();
   await page.getByTestId("inspector-field-label").fill("Ledger worker v2");
+  await openChecks(page);
   await expect(status(page)).toHaveText("The diagram changed since the simulations played.");
   await expect(evidence).toHaveCount(0);
   await expect(page.getByTestId("checks-run-simulations")).toHaveText("Run again");
   // Undo brings back the diagram they were played on, and with it the counts.
-  await page.getByTestId("inspector-field-label").blur();
   await page.getByTestId("undo-button").click();
+  await page.getByTestId("dock-tab-properties").click();
   await expect(page.getByTestId("inspector-field-label")).toHaveValue("Ledger worker");
+  await openChecks(page);
   await expect(status(page)).toHaveText("Played 2 simulations · counts on 1 finding");
   await expect(evidence).toBeVisible();
   expectNoErrors(consoleErrors);
@@ -207,6 +210,7 @@ test("a deliberate outage is on purpose, not a finding", async ({ page }) => {
   await expect(page.getByTestId("checks-warning-badge")).toHaveCount(0);
   // Three load balancers share the name: the note's selects the one it means.
   await page.getByTestId("checks-planned-east-alb").click();
+  await page.getByTestId("dock-tab-properties").click();
   await expect(page.getByTestId("inspector-field-sublabel")).toHaveValue("us-east-1");
 });
 
@@ -402,7 +406,10 @@ test.describe("a long run", () => {
     await run.click();
     await expect(status(page)).toHaveText(/^Playing 1 of 3/);
     await page.getByTestId("check-element-p0n2").first().click();
-    await page.getByTestId("inspector-field-label").fill("Renamed");
+    // Delete edits the simulated graph without leaving Checks for Properties first.
+    await page.getByTestId("canvas-wrap").focus();
+    await page.keyboard.press("Delete");
+    await expect(page.getByTestId("node-p0n2")).toHaveCount(0);
     await expect(status(page)).toHaveText("Stopped: the diagram changed.");
     expect(await runStats(page)).toMatchObject({ finished: 0, stopped: 4 });
   });

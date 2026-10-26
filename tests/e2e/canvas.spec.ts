@@ -1,4 +1,4 @@
-import { toggleTheme, openExample } from "./fixtures";
+import { toggleTheme, openExample, fitDiagram } from "./fixtures";
 import { readFileSync } from "node:fs";
 import type { Page } from "@playwright/test";
 import { test, expect, gotoCanvas, gotoLab, publicExamples, expectNoErrors, pauseClock } from "./fixtures";
@@ -40,6 +40,9 @@ test.describe("canvas", () => {
     test(`renders every node of ${ex.slug}`, async ({ page, consoleErrors }) => {
       await gotoCanvas(page, ex.slug);
       await expect(page.getByTestId("diagram-title")).toHaveText(ex.title);
+      // Large examples open in Focus. Every node must already exist, and Overview must expose every silhouette.
+      for (const id of ex.nodeIds) await expect(page.getByTestId(`node-${id}`)).toBeAttached();
+      await fitDiagram(page);
       for (const id of ex.nodeIds) await expect(page.getByTestId(`node-${id}`)).toBeVisible();
       for (const id of ex.edgeIds) await expect(page.getByTestId(`edge-${id}`)).toBeAttached();
       expectNoErrors(consoleErrors);

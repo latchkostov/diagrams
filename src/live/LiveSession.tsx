@@ -489,11 +489,8 @@ export function LiveSession({
           ))}
         {events.open && !capturing && <EventLog state={state} />}
         {/* While recording, the indicator (Stop, Esc) stands in for the bar. */}
-        {transport ? (
-          createPortal(<ControlBar state={state} slim={capturing || presenting} />, transport)
-        ) : (
-          <ControlBar state={state} slim={capturing || presenting} />
-        )}
+        {!capturing &&
+          (transport ? createPortal(<ControlBar state={state} />, transport) : <ControlBar state={state} />)}
       </div>
       {capacityOpen && (
         <CapacityPanel

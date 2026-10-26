@@ -111,7 +111,9 @@ async function roomAction(page: Page, item: "room-leave" | "room-retry" | "room-
 
 /** The top bar's brand ("Live Diagrams") stays on one line: the room chip gives way first. */
 async function expectBrandOnOneLine(page: Page) {
-  const name = page.getByTestId("brand").locator("span");
+  // The bezel keeps its logo; its wordmark gives the diagram title that room.
+  const name = page.getByTestId("brand");
+  await expect(name).toBeVisible();
   const lineHeight = await name.evaluate((el) => parseFloat(getComputedStyle(el).lineHeight));
   expect((await name.boundingBox())?.height).toBeLessThan(lineHeight * 1.5);
   // ...and nothing in the top bar overflows for it.
@@ -957,11 +959,24 @@ test("remote boundary removal closes its context menu, and a selection menu hold
 
 /** axe (WCAG 2.x A and AA) on one test id's subtree. */
 async function expectAxeClean(page: Page, scope: string) {
+  // Contrast belongs to the settled dialog, after its entrance opacity animation.
+  await page.getByTestId(scope).evaluate(async (el) => {
+    const animations = [...el.getAnimations(), ...(el.parentElement?.getAnimations() ?? [])];
+    await Promise.all(animations.map((animation) => animation.finished.catch(() => {})));
+  });
   const { violations } = await new AxeBuilder({ page })
     .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
     .include(`[data-testid="${scope}"]`)
     .analyze();
-  expect(violations.map((v) => `${v.id}: ${v.help}`)).toEqual([]);
+  expect(
+    violations.map((v) => `${v.id}: ${v.help}`),
+    JSON.stringify(
+      violations.map((v) => ({
+        id: v.id,
+        nodes: v.nodes.map((n) => ({ target: n.target, summary: n.failureSummary })),
+      })),
+    ),
+  ).toEqual([]);
 }
 
 test("a Private paste whose Private mark fails reaches neither the peer nor the stored copy; its file copy is Private", async ({
@@ -1129,6 +1144,7 @@ test("a joiner retrying from the chip keeps the keyboard on its wait; the alert 
     expect(bar && at && at.y >= bar.y + bar.height).toBe(true);
     await page.clock.resume();
     // On Stencils its actions would have nothing to act on: it isn't shown there.
+    await page.getByTestId("rail-more").click();
     await page.getByTestId("view-gallery").click();
     await expect(alert).toHaveCount(0);
     // A joiner whose attempt failed retries from the chip's menu: the wait (not the page) keeps the keyboard.

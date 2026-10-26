@@ -5,6 +5,7 @@ import {
   test,
   expect,
   gotoCanvas,
+  openLibrary,
   expectNoErrors,
   pageLoadTimeout,
   pauseClock,
@@ -401,15 +402,17 @@ test("a password link's Done takes focus once the link is made", async ({ page, 
   expectNoErrors(consoleErrors);
 });
 
-test("the Live toggle is named Live, with L as its key; the sheet lists the File and slow-motion keys", async ({
+test("the Live mode says Go live, with L as its key; the sheet lists the File and slow-motion keys", async ({
   page,
   consoleErrors,
 }) => {
   await gotoCanvas(page, KAFKA);
   const toggle = page.getByTestId("live-toggle");
-  await expect(toggle).toHaveAccessibleName("Live");
+  await expect(toggle).toHaveAccessibleName("Go live");
   await expect(toggle).toHaveAttribute("aria-keyshortcuts", "L");
+  await openLibrary(page);
   await expect(page.getByTestId("palette")).toHaveAccessibleName("Stencils");
+  await page.keyboard.press("Escape");
   await page.getByTestId("shortcuts-button").click();
   const sheet = page.getByTestId("shortcuts-dialog");
   await expect(sheet).toContainText("Open a file from this device");

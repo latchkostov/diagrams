@@ -15,10 +15,10 @@
     "nodes": {
       "shop": { "kind": "node", "box": "translate(0px, 220px) 220×72", "text": "Shop User" },
       "checkout": { "kind": "node", "box": "translate(360px, 220px) 220×72", "text": "Checkout Service" },
-      "payments": { "kind": "node", "box": "translate(710px, 160px) 260×78", "text": "Payments 48 threads · 80 ms · 600 attempts/s" },
-      "orders": { "kind": "node", "box": "translate(710px, 290px) 220×72", "text": "Orders Topic" }
+      "payments": { "kind": "node", "box": "translate(710px, 160px) 260×72", "text": "Payments 48 threads · 80 ms · 600 attempts/s" },
+      "orders": { "kind": "node", "box": "translate(710px, 280px) 220×72", "text": "Orders Topic" }
     },
-    "edges": { "checkouts": "M220,256 L360,256", "pay": "M580,249 L635,249 Q645,249 645,239 L645,209 Q645,199 655,199 L710,199", "orders-flow": "M580,263 L635,263 Q645,263 645,273 L645,316 Q645,326 655,326 L710,326" },
+    "edges": { "checkouts": "M220,256 L360,256", "pay": "M580,249 L635,249 Q645,249 645,239 L645,206 Q645,196 655,196 L710,196", "orders-flow": "M580,263 L635,263 Q645,263 645,273 L645,306 Q645,316 655,316 L710,316" },
     "labels": {}
   }
 }

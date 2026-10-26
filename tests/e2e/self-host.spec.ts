@@ -338,7 +338,7 @@ test.describe("self-hosted build with two languages, for a French browser", () =
     await gotoCanvas(page, SLUG);
     // VITE_LOCALES=en,de: English first, so a French browser reads English.
     await expect(page.locator("html")).toHaveAttribute("lang", "en");
-    await expect(page.getByTestId("view-canvas")).toHaveText("Diagram");
+    await expect(page.getByTestId("file-button")).toHaveText("File");
     expectNoErrors(consoleErrors);
   });
 });

@@ -1,4 +1,4 @@
-import { waitForLiveSession, test, expect, gotoCanvas, expectNoErrors, fitDiagram } from "./fixtures";
+import { waitForLiveSession, test, expect, gotoCanvas, expectNoErrors, fitDiagram, goToNode } from "./fixtures";
 import type { Page } from "@playwright/test";
 import { MOD, SLUG, must, openAdvanced, openAiPanel } from "./ai-helpers";
 
@@ -158,7 +158,7 @@ test("no overlap in the top bar or between canvas, inspector and dock at 1024", 
   for (const theme of ["light", "dark"] as const) {
     await page.emulateMedia({ colorScheme: theme });
     await gotoCanvas(page, SLUG);
-    await page.getByTestId("node-payments").click();
+    await goToNode(page, "payments");
     for (const open of [false, true]) {
       if (open) await openAdvanced(page);
       const items = await page.getByTestId("topbar").evaluate((bar) =>
@@ -180,10 +180,13 @@ test("no overlap in the top bar or between canvas, inspector and dock at 1024", 
 
       const canvas = must(await page.getByTestId("canvas-wrap").boundingBox(), "canvas");
       const inspector = must(await page.getByTestId("inspector").boundingBox(), "inspector");
-      const side = must(await page.getByTestId(open ? "ai-dock" : "ai-rail").boundingBox(), "dock");
       expect(canvas.x + canvas.width).toBeLessThanOrEqual(inspector.x + 0.5);
-      expect(inspector.x + inspector.width).toBeLessThanOrEqual(side.x + 0.5);
-      expect(side.x + side.width).toBeLessThanOrEqual(1024.5);
+      expect(inspector.x + inspector.width).toBeLessThanOrEqual(1024.5);
+      if (open) {
+        const panel = must(await page.getByTestId("ai-dock").boundingBox(), "AI tab");
+        expect(panel.x).toBeGreaterThanOrEqual(inspector.x);
+        expect(panel.x + panel.width).toBeLessThanOrEqual(inspector.x + inspector.width);
+      }
       if (open) expect(canvas.width).toBeGreaterThan(500);
     }
     await page.getByTestId("ai-collapse").click();

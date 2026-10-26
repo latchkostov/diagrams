@@ -122,7 +122,7 @@ test.describe("polish", () => {
     await expect(page.getByTestId("live-canvas")).toBeAttached();
     // Live, in one stacking context: particles, then label pills (readable on busy edges), then the
     // overlay (dimmed dots behind a pill, the traced message), then the metric badges.
-    expect(await z()).toEqual({ labels: "1", particles: "auto", overlay: "2", badges: "3" });
+    expect(await z()).toEqual({ labels: "2", particles: "auto", overlay: "2", badges: "3" });
   });
 
   test("viewport animations respect prefers-reduced-motion", async ({ page }) => {
@@ -186,7 +186,7 @@ test.describe("polish", () => {
     expect(target.width).toBeGreaterThanOrEqual(24);
     expect(target.height).toBeGreaterThanOrEqual(24);
     expect(overlaps(target, await box(fit))).toBe(false);
-    await expect(page.getByTestId("toolbar-divider-collapse")).toBeVisible();
+    await expect(page.getByTestId("collapse-toolbar-button")).toBeVisible();
     await expect(page.getByTestId("topbar").getByTestId("undo-button")).toBeVisible();
     await expect(page.getByTestId("topbar").getByTestId("redo-button")).toBeVisible();
     await expect(page.getByTestId("tool-rail").getByTestId("shortcuts-button")).toBeVisible();
@@ -255,7 +255,7 @@ test.describe("polish", () => {
     for (const width of [1440, 1024]) {
       await page.setViewportSize({ width, height: 900 });
       await gotoCanvas(page, KAFKA);
-      const credit = page.getByTestId("canvas-attribution");
+      const credit = page.getByTestId("react-flow-credit");
       await expect(credit).toBeVisible();
       const hint = page.getByTestId("first-run-hint");
       if (await hint.count()) expect(overlaps(await box(credit), await box(hint))).toBe(false);

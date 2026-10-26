@@ -110,7 +110,8 @@ test.describe("first run", () => {
     await expect(page.getByTestId("canvas-view")).toHaveAttribute("data-test-instance", "kept");
     // Undo history survived too: the add can be undone.
     await page.getByTestId("undo-button").click();
-    await expect(page.getByTestId("live-toggle")).toHaveCount(0);
+    await expect(page.getByTestId(/^node-(?!tooltip$|editor-)/)).toHaveCount(0);
+    await expect(page.getByTestId("live-toggle")).toBeDisabled();
   });
 
   test("File > New diagram starts a blank one and keeps the previous in Your diagrams", async ({ page }) => {

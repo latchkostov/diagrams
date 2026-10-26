@@ -540,18 +540,21 @@ test("promotion leaves another tab's conversation and subsequent edits durable",
   await page.getByTestId("node-shopper").click();
   await page.getByTestId("inspector-field-label").fill("First tab copy");
   await expect(page.getByTestId("example-picker")).toHaveAttribute("data-diagram-slug", /^my-/);
+  await openAdvanced(page);
   await expect(page.getByTestId("ai-turn-0")).toContainText("First tab snapshot");
   expect(await other.evaluate((key) => localStorage.getItem(key), key)).toBe(empty);
   // Undo clear writes from the still-open example after the first tab's promotion.
   await other.getByTestId("ai-clear-undo").click();
   await expect(other.getByTestId("ai-turn-0")).toContainText("First tab snapshot");
   await other.reload();
+  await openAdvanced(other);
   await expect(other.getByTestId("example-badge")).toBeVisible();
   await expect(other.getByTestId("ai-turn-0")).toContainText("First tab snapshot");
   await other.getByTestId("node-shopper").click();
   await other.getByTestId("inspector-field-label").fill("Second tab copy");
   await expect(other.getByTestId("example-picker")).toHaveAttribute("data-diagram-slug", /^my-/);
   await other.reload();
+  await openAdvanced(other);
   await expect(other.getByTestId("node-shopper")).toContainText("Second tab copy");
   await expect(other.getByTestId("ai-turn-0")).toContainText("First tab snapshot");
   await expect(page.getByTestId("node-shopper")).toContainText("First tab copy");

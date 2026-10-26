@@ -111,8 +111,7 @@
 .react-flow__handle.connectingto,
 .react-flow__handle.valid {
   background: var(--accent);
-  /* `scale`, not `transform`: React Flow positions handles with a translate transform. */
-  scale: 1.35;
+  outline: 1.5px solid var(--accent);
 }
 
 /* Dependency pips (Show ▸ Dependencies off): a small tab on the card's bottom edge. */
@@ -341,7 +340,8 @@ button.dn-doc-badge:focus-visible {
 /* A dot fixes that end's side; the whole node remains a target between dots. */
 .canvas-wrap.is-connecting .react-flow__node.is-connect-target .dn-handle {
   opacity: 1;
-  scale: 1.333333;
+  /* Grow the highlight without changing the handle's measured bounds or centre. */
+  outline: 1.5px solid color-mix(in oklab, var(--accent) 75%, var(--node-border));
 }
 .canvas-wrap.is-connecting .dn-handle.is-connect-port {
   background: var(--accent);
@@ -421,12 +421,17 @@ button.dn-doc-badge:focus-visible {
   white-space: nowrap;
   -webkit-line-clamp: unset;
 }
-.react-flow__node:is(.selected, [data-detail-expanded]) .nb-card {
+:is([data-detail-view="focus"], [data-detail-view="follow"])
+  .react-flow__node:is(.selected, [data-detail-expanded])
+  .nb-card {
   height: auto;
   min-height: 72px;
-  padding-block: 13px;
+  padding-block: 9px;
 }
-.react-flow__node:is(.selected, [data-detail-expanded]) .nb-card .nb-sub {
+:is([data-detail-view="focus"], [data-detail-view="follow"])
+  .react-flow__node:is(.selected, [data-detail-expanded])
+  .nb-card
+  .nb-sub {
   display: -webkit-box;
   white-space: normal;
   -webkit-line-clamp: 2;

@@ -38,35 +38,35 @@
     "viewport": "translate(-189.586px, 349.21px) scale(0.603145)",
     "nodes": {
       "group:gcp": { "kind": "group", "box": "translate(380px, 80px) 1860×392", "text": "Google Cloud · analytics project" },
-      "app": { "kind": "node", "box": "translate(40px, 240px) 220×101", "text": "Mobile and web apps Clickstream SDK" },
-      "collector": { "kind": "node", "box": "translate(420px, 240px) 220×101", "text": "Event collector Validate · batch publish" },
-      "pubsub-topic": { "kind": "node", "box": "translate(800px, 240px) 220×101", "text": "clickstream Topic · 7-day retention" },
-      "dataflow": { "kind": "node", "box": "translate(1180px, 120px) 231×101", "text": "Sessionize job Streaming · 1-min windows" },
-      "raw-archive": { "kind": "node", "box": "translate(1180px, 360px) 220×77", "text": "Raw archive Avro · by hour" },
-      "bigquery": { "kind": "node", "box": "translate(1560px, 120px) 220×101", "text": "Analytics dataset Storage Write API" },
-      "looker": { "kind": "node", "box": "translate(1940px, 120px) 220×101", "text": "Product dashboards Funnels · retention" },
-      "dead-letters": { "kind": "node", "box": "translate(1560px, 240px) 220×101", "text": "clickstream-dlq Unparseable events" },
-      "dead-bucket": { "kind": "node", "box": "translate(1940px, 240px) 220×77", "text": "Dead letters Inspect · replay" }
+      "app": { "kind": "node", "box": "translate(40px, 240px) 220×72", "text": "Mobile and web apps Clickstream SDK" },
+      "collector": { "kind": "node", "box": "translate(420px, 240px) 220×72", "text": "Event collector Validate · batch publish" },
+      "pubsub-topic": { "kind": "node", "box": "translate(800px, 240px) 220×72", "text": "clickstream Topic · 7-day retention" },
+      "dataflow": { "kind": "node", "box": "translate(1180px, 120px) 231×72", "text": "Sessionize job Streaming · 1-min windows" },
+      "raw-archive": { "kind": "node", "box": "translate(1180px, 360px) 220×72", "text": "Raw archive Avro · by hour" },
+      "bigquery": { "kind": "node", "box": "translate(1560px, 120px) 220×72", "text": "Analytics dataset Storage Write API" },
+      "looker": { "kind": "node", "box": "translate(1940px, 120px) 220×72", "text": "Product dashboards Funnels · retention" },
+      "dead-letters": { "kind": "node", "box": "translate(1560px, 240px) 220×72", "text": "clickstream-dlq Unparseable events" },
+      "dead-bucket": { "kind": "node", "box": "translate(1940px, 240px) 220×72", "text": "Dead letters Inspect · replay" }
     },
     "edges": {
-      "app-to-collector": "M260,290.5 L420,290.5",
-      "collector-to-topic": "M640,290.5 L800,290.5",
-      "topic-to-dataflow": "M1020,283.5 L1090,283.5 Q1100,283.5 1100,273.5 L1100,180.5 Q1100,170.5 1110,170.5 L1180,170.5",
-      "topic-to-raw-archive": "M1020,297.5 L1090,297.5 Q1100,297.5 1100,307.5 L1100,388.5 Q1100,398.5 1110,398.5 L1180,398.5",
-      "dataflow-to-bigquery": "M1411,163.5 L1482,163.5 Q1485.5,163.5 1485.5,167 L1485.5,167 Q1485.5,170.5 1489,170.5 L1560,170.5",
-      "dataflow-to-dead-letters": "M1411,177.5 L1475.5,177.5 Q1485.5,177.5 1485.5,187.5 L1485.5,280.5 Q1485.5,290.5 1495.5,290.5 L1560,290.5",
-      "dead-letters-to-dead-bucket": "M1780,290.5 L1854,290.5 Q1860,290.5 1860,284.5 L1860,284.5 Q1860,278.5 1866,278.5 L1940,278.5",
-      "looker-to-bigquery": "M1940,170.5 L1780,170.5"
+      "app-to-collector": "M260,276 L420,276",
+      "collector-to-topic": "M640,276 L800,276",
+      "topic-to-dataflow": "M1020,269 L1090,269 Q1100,269 1100,259 L1100,166 Q1100,156 1110,156 L1180,156",
+      "topic-to-raw-archive": "M1020,283 L1090,283 Q1100,283 1100,293 L1100,386 Q1100,396 1110,396 L1180,396",
+      "dataflow-to-bigquery": "M1411,149 L1482,149 Q1485.5,149 1485.5,152.5 L1485.5,152.5 Q1485.5,156 1489,156 L1560,156",
+      "dataflow-to-dead-letters": "M1411,163 L1475.5,163 Q1485.5,163 1485.5,173 L1485.5,266 Q1485.5,276 1495.5,276 L1560,276",
+      "dead-letters-to-dead-bucket": "M1780,276 L1940,276",
+      "looker-to-bigquery": "M1940,156 L1780,156"
     },
     "labels": {
-      "app-to-collector": { "style": "transform: translate(-50%, -50%) translate(334px, 290.5px); --fe-w: 101.55px; --fe-h: 22px;", "text": "HTTPS batches" },
-      "collector-to-topic": { "style": "transform: translate(-50%, -50%) translate(714px, 290.5px); --fe-w: 57.480000000000004px; --fe-h: 22px;", "text": "Publish" },
-      "topic-to-dataflow": { "style": "transform: translate(-50%, -50%) translate(1100px, 227px); --fe-w: 89.83999999999999px; --fe-h: 22px;", "text": "sub: dataflow" },
-      "topic-to-raw-archive": { "style": "transform: translate(-50%, -50%) translate(1100px, 348px); --fe-w: 95.33999999999999px; --fe-h: 38px;", "text": "Cloud Storage subscription" },
-      "dataflow-to-bigquery": { "style": "transform: translate(-50%, -50%) translate(1449.25px, 163.5px); --fe-w: 65.4px; --fe-h: 22px;", "text": "Sessions" },
-      "dataflow-to-dead-letters": { "style": "transform: translate(-50%, -50%) translate(1485.5px, 234px); --fe-w: 83.27px; --fe-h: 22px;", "text": "Parse errors" },
-      "dead-letters-to-dead-bucket": { "style": "transform: translate(-50%, -50%) translate(1831px, 290.5px); --fe-w: 82.50999999999999px; --fe-h: 22px;", "text": "sub: archive" },
-      "looker-to-bigquery": { "style": "transform: translate(-50%, -50%) translate(1866px, 170.5px); --fe-w: 40.06px; --fe-h: 22px;", "text": "SQL" }
+      "app-to-collector": { "style": "transform: translate(-50%, -50%) translate(334px, 276px); --fe-w: 101.55px; --fe-h: 22px;", "text": "HTTPS batches" },
+      "collector-to-topic": { "style": "transform: translate(-50%, -50%) translate(714px, 276px); --fe-w: 57.480000000000004px; --fe-h: 22px;", "text": "Publish" },
+      "topic-to-dataflow": { "style": "transform: translate(-50%, -50%) translate(1100px, 212.5px); --fe-w: 89.83999999999999px; --fe-h: 22px;", "text": "sub: dataflow" },
+      "topic-to-raw-archive": { "style": "transform: translate(-50%, -50%) translate(1100px, 339.5px); --fe-w: 165.9px; --fe-h: 22px;", "text": "Cloud Storage subscription" },
+      "dataflow-to-bigquery": { "style": "transform: translate(-50%, -50%) translate(1449.25px, 149px); --fe-w: 65.4px; --fe-h: 22px;", "text": "Sessions" },
+      "dataflow-to-dead-letters": { "style": "transform: translate(-50%, -50%) translate(1485.5px, 219.5px); --fe-w: 83.27px; --fe-h: 22px;", "text": "Parse errors" },
+      "dead-letters-to-dead-bucket": { "style": "transform: translate(-50%, -50%) translate(1854px, 276px); --fe-w: 82.50999999999999px; --fe-h: 22px;", "text": "sub: archive" },
+      "looker-to-bigquery": { "style": "transform: translate(-50%, -50%) translate(1866px, 156px); --fe-w: 40.06px; --fe-h: 22px;", "text": "SQL" }
     }
   }
 }

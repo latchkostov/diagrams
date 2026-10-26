@@ -9,6 +9,18 @@ test.beforeEach(async ({ page, baseURL }) => {
   await b.canvasSettled();
 });
 
+test("zoomed-out Overview keeps every node silhouette reachable below the text floor", async ({ page }) => {
+  const b = new Bench(page, await page.context().newCDPSession(page));
+  for (let step = 0; step < 14; step++) await page.getByTestId("zoom-out-button").click();
+  await b.canvasSettled();
+  expect((await b.viewport()).k).toBeLessThan(0.2);
+  for (const { id } of eventPipeline(100).nodes) await expect(page.getByTestId(`node-${id}`)).toBeVisible();
+  const target = await b.nodeNearCentre(eventPipeline(100).nodes.map((n) => n.id));
+  await b.clickNode(target);
+  await expect(page.getByTestId("inspector")).not.toHaveAttribute("data-collapsed", "1");
+  await expect(page.getByTestId(target)).toBeInViewport();
+});
+
 test("benchmark selection waits for the deferred Inspector reveal and pan", async ({ page }) => {
   const b = new Bench(page, await page.context().newCDPSession(page));
   const ids = eventPipeline(100).nodes.map((n) => n.id);

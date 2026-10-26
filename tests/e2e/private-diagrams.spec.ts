@@ -76,9 +76,11 @@ async function togglePrivate(page: Page) {
 }
 
 async function makePrivate(page: Page) {
+  const ai = await page.getByTestId("ai-panel").isVisible();
   await togglePrivate(page);
   await openDiagramProperties(page);
   await expect(page.getByTestId("private-badge")).toBeVisible();
+  if (ai) await page.getByTestId("dock-tab-ai").click();
 }
 
 const entry = (page: Page, slug: string) =>
@@ -245,6 +247,7 @@ test("AI is off: no WebMCP tools, Copy for AI and copied prompts off; the on-dev
   expect(await page.evaluate(() => navigator.clipboard.readText())).toBe("before");
 
   // The on-device model runs on this device: allowed per diagram, it comes back.
+  await openAiPanel(page);
   await page.getByTestId("ai-private-ondevice-toggle").check();
   await expect(page.getByTestId("ai-ondevice-input")).toBeEnabled();
   await expect(page.getByTestId("ai-ondevice-speech-note")).toHaveCount(0);

@@ -2,6 +2,7 @@ import type { Page, TestInfo } from "@playwright/test";
 import {
   expect,
   openMissingDlq,
+  openCheckFinding,
   pageLoadTimeout,
   TEXT_END,
   pauseClock,
@@ -80,6 +81,7 @@ export async function checksTyping(page: Page, info: TestInfo, measureCpu = fals
   // Select a node through its finding (the diagram is far bigger than the view), then close the card.
   await page.getByTestId("checks-count").click();
   await expect(page.getByTestId("checks-card")).toBeVisible();
+  await openCheckFinding(page, "sync-cycle:p0n11");
   await page.getByTestId("check-element-p0n12").first().click();
   await page.getByTestId("dock-tab-properties").click();
   const label = page.getByTestId("inspector-field-label");

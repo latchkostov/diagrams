@@ -201,7 +201,7 @@
 .fe-message-card {
   min-width: 0;
   width: max-content;
-  max-width: min(320px, calc(100vw - 32px));
+  max-width: calc(min(320px, 100vw - 32px) / max(1, var(--rf-zoom, 1)));
   overflow-wrap: anywhere;
 }
 

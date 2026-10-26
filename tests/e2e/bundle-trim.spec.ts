@@ -264,6 +264,10 @@ for (const leave of [false, true])
     try {
       await gotoCanvas(page, "blocking-call");
       await waitForStableViewport(page);
+      if (leave) {
+        await openLibrary(page);
+        await page.getByTestId("palette-toggle").click();
+      }
       await page.getByTestId("node-caller").dblclick();
       await expect.poll(panel.requested).toBe(true);
       await page.keyboard.type("Orders ");

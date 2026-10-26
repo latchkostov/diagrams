@@ -60,7 +60,7 @@ test("a client going around the gateway: the fix goes through it, a chip adds an
   await expect(page.getByTestId(`check-fix-option-0-${BYPASS}`)).toHaveText("Firewall / WAF");
   await expect(page.getByTestId(`check-fix-option-1-${BYPASS}`)).toHaveText("Kong Gateway");
 
-  // Hovering the row makes its markers stand out where they are: at the node's top-right corner.
+  // Hovering the row lights its tag inside the node's upper-right corner.
   await bypass.hover();
   const marker = page.getByTestId("check-marker-app");
   await expect(marker).toHaveClass(/is-hot/);
@@ -68,7 +68,7 @@ test("a client going around the gateway: the fix goes through it, a chip adds an
     const m = await marker.boundingBox();
     const n = await page.getByTestId("node-app").boundingBox();
     if (!m || !n) return Infinity;
-    return Math.hypot(m.x + m.width / 2 - (n.x + n.width), m.y + m.height / 2 - n.y);
+    return Math.hypot(m.x + m.width - (n.x + n.width), m.y - n.y);
   };
   await expect.poll(near).toBeLessThan(16);
 

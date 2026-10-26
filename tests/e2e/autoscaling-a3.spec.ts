@@ -1,4 +1,4 @@
-import { clickFitView } from "./fixtures";
+import { clickFitView, openCheckFinding } from "./fixtures";
 import { openInspectorLiveDetails } from "./fixtures";
 import { readFileSync } from "node:fs";
 import type { Page } from "@playwright/test";
@@ -230,7 +230,8 @@ test("Checks and live playback show the same scenario sizing sentence", async ({
     timeout: 30_000,
   });
   await page.getByTestId("checks-count").click();
-  const checks = (await page.getByTestId("check-select-capacity:worker").textContent()) ?? "";
+  await openCheckFinding(page, "capacity:worker");
+  const checks = (await page.getByTestId("check-row-capacity:worker").textContent()) ?? "";
   await page.clock.install();
   await gotoLive(page, `./?view=canvas&example=${slug}&live=1&sim=morning-rush&paused=1`);
   await pauseClock(page);

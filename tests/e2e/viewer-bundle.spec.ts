@@ -94,7 +94,7 @@ for (const viewer of ["bundle", "skill", "Interactive HTML"] as const) {
     // A subsequent controller tick can already have requested another replica. The
     // badge then reports Starting instead of Desired; both must match the fleet.
     const fleetText = starting ? `Ready: ${ready} · Starting: ${starting}` : `Ready: ${ready} → Desired: ${desired}`;
-    await expect(page.getByTestId("node-fleet-worker")).toHaveText(new RegExp(`^${fleetText}( · Max reached)?$`));
+    await expect(page.getByTestId("node-fleet-worker")).toHaveText(new RegExp(`^◷${fleetText}( · Max reached)?$`));
     await expect(page.getByTestId("hover-section-resources")).toContainText(`${ready} ready → ${desired} desired`);
     await expect(details).toContainText(/CPU: [1-9]\d*%/);
     await expect(details).toContainText(/Memory: [1-9]\d* MiB/);

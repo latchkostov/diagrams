@@ -4,7 +4,7 @@ import { workbenchDock, type DockTab } from "./dockState";
 export function activateDock(tab: DockTab) {
   workbenchDock.show(tab);
   if (tab === "ai") aiDock.set({ open: true });
-  else if (tab === "properties") aiDock.set({ open: false });
+  // Other tabs hide the mounted AI surface; switching tabs must not discard an unfinished reply.
   if (tab === "checks") checksPanel.open();
   else checksPanel.close();
 }

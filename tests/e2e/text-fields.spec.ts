@@ -1,4 +1,4 @@
-import { openLibrary } from "./fixtures";
+import { openLibrary, openEditProperties } from "./fixtures";
 import { TEXT_END, interactionJournalMark, interactionLog, waitForInteractionIdle } from "./fixtures";
 import type { Locator, Page } from "@playwright/test";
 import { textFieldsFixture } from "../../src/lab/textFieldsFixture";
@@ -549,8 +549,10 @@ test.describe("renaming in the inspector", () => {
       const label = page.getByTestId("inspector-field-label");
       await expect(page.getByTestId("inspector")).not.toHaveAttribute("data-collapsed", "1");
       if (c.id === "node-a") {
+        await openEditProperties(page);
         await expect(label).not.toBeFocused();
         await expect.poll(() => selected(label)).toBe("");
+        await page.getByTestId(c.id).evaluate((el) => el.parentElement?.focus());
         await page.keyboard.press("F2");
       }
       await expect(label).toBeFocused();

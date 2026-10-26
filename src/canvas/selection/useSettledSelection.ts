@@ -7,12 +7,14 @@ export function useSettledSelection({
   controller,
   nothingSelected,
   selectionKey,
+  trackSelectionKey = true,
 }: {
   wrapper: RefObject<HTMLDivElement | null>;
   editGestures: boolean;
   controller: CameraController;
   nothingSelected: boolean;
   selectionKey: string;
+  trackSelectionKey?: boolean;
 }) {
   // The inspector waits for pointer-up (D5). Below 1680 px it opens with a selection and narrows the
   // canvas: opening it under a drag (a box being drawn, a node being moved) would shift the canvas under
@@ -23,6 +25,10 @@ export function useSettledSelection({
   const latestKey = useRef(selectionKey);
   const [settled, setSettled] = useState({ empty: nothingSelected, key: selectionKey });
   const settledNow = useRef(settled);
+  const trackKey = useRef(trackSelectionKey);
+  useLayoutEffect(() => {
+    trackKey.current = trackSelectionKey;
+  }, [trackSelectionKey]);
   /** Camera readiness held from a pointer-up until the Inspector follows its settled selection. */
   const settling = useRef<(() => void) | null>(null);
   useLayoutEffect(() => {
@@ -32,7 +38,10 @@ export function useSettledSelection({
     // This commit has the settled selection (and the Inspector's pane change, for the camera).
     settling.current?.();
     settling.current = null;
-    if (!pointerHeld.current && (settled.empty !== nothingSelected || settled.key !== selectionKey))
+    if (
+      !pointerHeld.current &&
+      (settled.empty !== nothingSelected || (trackKey.current && settled.key !== selectionKey))
+    )
       setSettled({ empty: nothingSelected, key: selectionKey });
   }, [nothingSelected, selectionKey, settled]);
   useEffect(() => {
@@ -73,10 +82,14 @@ export function useSettledSelection({
             pointerHeld.current = false;
             const done = unsettled;
             unsettled = null;
-            if (settledNow.current.empty === latestEmpty.current && settledNow.current.key === latestKey.current)
+            if (
+              settledNow.current.empty === latestEmpty.current &&
+              (!trackKey.current || settledNow.current.key === latestKey.current)
+            )
               done?.();
             else settling.current = done;
-            setSettled({ empty: latestEmpty.current, key: latestKey.current });
+            if (settledNow.current.empty !== latestEmpty.current || trackKey.current)
+              setSettled({ empty: latestEmpty.current, key: latestKey.current });
           }, 0);
           frame = 0;
         });

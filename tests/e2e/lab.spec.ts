@@ -88,7 +88,7 @@ test.describe("lab", () => {
     await expect(page.getByTestId("lab-view")).toBeVisible();
     await expect(page).toHaveURL(/view=lab/);
     await expect(page.getByTestId("lab-stage")).toHaveAttribute("data-preset", /.+/);
-    await expect(page.getByTestId("view-lab")).toHaveAttribute("aria-selected", "true");
+    await expect(page.getByTestId("view-lab")).toHaveAttribute("aria-pressed", "true");
   });
 
   test("a 150-node stress diagram renders quickly", async ({ page }) => {

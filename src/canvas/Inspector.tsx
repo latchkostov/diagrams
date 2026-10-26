@@ -8,7 +8,7 @@ import { useUnseen } from "../ai/ui/unseen";
 import { paletteHost } from "../palette/host";
 import { NodePanel } from "./inspector/NodePanel";
 import { defineLazySurface } from "../lib/lazySurface";
-import { useId, useLayoutEffect, useMemo, useSyncExternalStore, type ReactNode } from "react";
+import { memo, useId, useLayoutEffect, useMemo, useSyncExternalStore, type ReactNode } from "react";
 import { flushSync } from "react-dom";
 import { GROUP_PREFIX } from "./types";
 import { Icon } from "../components/Icon";
@@ -80,7 +80,7 @@ const MultiPanel = defineLazySurface({
   retryToast: true,
 });
 
-export function Inspector(p: InspectorProps) {
+export const Inspector = memo(function Inspector(p: InspectorProps) {
   // The Lab can render an inspector without a canvas's interaction provider.
   const { controller: interaction, local } = useInteractionOrLocal();
   const within = (sheet: ReactNode) =>
@@ -289,7 +289,7 @@ export function Inspector(p: InspectorProps) {
       </div>
     </aside>,
   );
-}
+});
 
 export type { InspectorProps } from "./inspector/types";
 

@@ -552,7 +552,7 @@ function MainApp() {
   const goTo = (view: View) => setUrl({ view, present: false });
 
   return (
-    <div className={`app${presenting ? " is-presenting" : ""}`}>
+    <div className={`app${presenting ? " is-presenting" : ""}`} data-testid="app">
       {!presenting && (
         <TopBar
           view={url.view}

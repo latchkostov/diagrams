@@ -39,36 +39,36 @@
     "viewport": "translate(414.075px, -33.1343px) scale(0.731343)",
     "nodes": {
       "group:dmz": { "kind": "group", "box": "translate(0px, 296px) 462×336", "text": "DMZ" },
-      "group:trusted": { "kind": "group", "box": "translate(160px, 640px) 340×592", "text": "Trusted services" },
-      "visitors": { "kind": "node", "box": "translate(60px, 20px) 220×72", "text": "Contoso visitors 8 web requests/s" },
-      "probes": { "kind": "node", "box": "translate(360px, 20px) 220×72", "text": "Security exercise 2 admin probes/s" },
-      "router": { "kind": "node", "box": "translate(210px, 180px) 237×89", "text": "Edge router pair Branch preset · active-active" },
-      "firewall": { "kind": "node", "box": "translate(210px, 357px) 220×89", "text": "Firewall pair Allow web · deny admin" },
-      "adc": { "kind": "node", "box": "translate(60px, 534px) 220×89", "text": "BIG-IP pair Web VIP · active-standby" },
-      "switch": { "kind": "node", "box": "translate(210px, 711px) 237×89", "text": "Services switch Branch preset · active-active" },
-      "app": { "kind": "node", "box": "translate(210px, 888px) 220×72", "text": "Contoso web app 2 replicas · 8 slots" },
-      "database": { "kind": "node", "box": "translate(210px, 1048px) 220×72", "text": "Orders database Trusted zone" },
-      "admin": { "kind": "node", "box": "translate(360px, 534px) 221×89", "text": "Admin database Denied probe destination" }
+      "group:trusted": { "kind": "group", "box": "translate(160px, 650px) 340×582", "text": "Trusted services" },
+      "visitors": { "kind": "node", "box": "translate(60px, 80px) 220×72", "text": "Contoso visitors 8 web requests/s" },
+      "probes": { "kind": "node", "box": "translate(360px, 80px) 220×72", "text": "Security exercise 2 admin probes/s" },
+      "router": { "kind": "node", "box": "translate(210px, 240px) 237×72", "text": "Edge router pair Branch preset · active-active" },
+      "firewall": { "kind": "node", "box": "translate(210px, 400px) 220×72", "text": "Firewall pair Allow web · deny admin" },
+      "adc": { "kind": "node", "box": "translate(60px, 560px) 220×72", "text": "BIG-IP pair Web VIP · active-standby" },
+      "switch": { "kind": "node", "box": "translate(210px, 720px) 237×72", "text": "Services switch Branch preset · active-active" },
+      "app": { "kind": "node", "box": "translate(210px, 880px) 220×72", "text": "Contoso web app 2 replicas · 8 slots" },
+      "database": { "kind": "node", "box": "translate(210px, 1040px) 220×72", "text": "Orders database Trusted zone" },
+      "admin": { "kind": "node", "box": "translate(360px, 560px) 221×72", "text": "Admin database Denied probe destination" }
     },
     "edges": {
-      "web-in": "M170,92 L170,126 Q170,136 180,136 L311.5,136 Q321.5,136 321.5,146 L321.5,180",
-      "probe-in": "M470,92 L470,126 Q470,136 460,136 L345.5,136 Q335.5,136 335.5,146 L335.5,180",
-      "perimeter": "M328.5,269 L328.5,308.8 Q328.5,313 324.3,313 L324.3,313 Q320,313 320,317.3 L320,357",
-      "allow-web": "M313,446 L313,480 Q313,490 303,490 L180,490 Q170,490 170,500 L170,534",
-      "deny-admin": "M327,446 L327,508 Q327,518 337,518 L462.5,518 Q470.5,518 470.5,526 L470.5,534",
-      "to-switch": "M170,623 L170,634.5 Q170,639 165.5,639 L165.5,639 Q161,639 161,643.5 L161,682 Q161,692 171,692 L319,692 Q328.5,692 328.5,701.5 L328.5,711",
-      "to-app": "M328.5,800 L328.5,839.8 Q328.5,844 324.3,844 L324.3,844 Q320,844 320,848.3 L320,888",
-      "to-db": "M320,960 L320,1048"
+      "web-in": "M170,152 L170,186 Q170,196 180,196 L311.5,196 Q321.5,196 321.5,206 L321.5,240",
+      "probe-in": "M470,152 L470,186 Q470,196 460,196 L345.5,196 Q335.5,196 335.5,206 L335.5,240",
+      "perimeter": "M328.5,312 L328.5,351.8 Q328.5,356 324.3,356 L324.3,356 Q320,356 320,360.3 L320,400",
+      "allow-web": "M313,472 L313,506 Q313,516 303,516 L180,516 Q170,516 170,526 L170,560",
+      "deny-admin": "M327,472 L327,534 Q327,544 337,544 L462.5,544 Q470.5,544 470.5,552 L470.5,560",
+      "to-switch": "M170,632 L170,640 Q170,648 162,648 L112,648 Q102,648 102,658 L102,694 Q102,704 112,704 L320.5,704 Q328.5,704 328.5,712 L328.5,720",
+      "to-app": "M328.5,792 L328.5,831.8 Q328.5,836 324.3,836 L324.3,836 Q320,836 320,840.3 L320,880",
+      "to-db": "M320,952 L320,1040"
     },
     "labels": {
-      "web-in": { "style": "transform: translate(-50%, -50%) translate(245.75px, 136px); --fe-w: 41.82px; --fe-h: 22px;", "text": "Web" },
-      "probe-in": { "style": "transform: translate(-50%, -50%) translate(402.75px, 136px); --fe-w: 49.19px; --fe-h: 22px;", "text": "Probe" },
-      "perimeter": { "style": "transform: translate(-50%, -50%) translate(328.5px, 292px); --fe-w: 57.349999999999994px; --fe-h: 22px;", "text": "Inspect" },
-      "allow-web": { "style": "transform: translate(-50%, -50%) translate(241.5px, 490px); --fe-w: 71.32px; --fe-h: 22px;", "text": "Allow web" },
-      "deny-admin": { "style": "transform: translate(-50%, -50%) translate(398.75px, 518px); --fe-w: 82.74999999999999px; --fe-h: 22px;", "text": "Deny admin" },
-      "to-switch": { "style": "transform: translate(-50%, -50%) translate(244.75px, 692px); --fe-w: 62.41px; --fe-h: 22px;", "text": "Forward" },
-      "to-app": { "style": "transform: translate(-50%, -50%) translate(328.5px, 823px); --fe-w: 41.82px; --fe-h: 22px;", "text": "Web" },
-      "to-db": { "style": "transform: translate(-50%, -50%) translate(320px, 998px); --fe-w: 50.33px; --fe-h: 22px;", "text": "Query" }
+      "web-in": { "style": "transform: translate(-50%, -50%) translate(245.75px, 196px); --fe-w: 41.82px; --fe-h: 22px;", "text": "Web" },
+      "probe-in": { "style": "transform: translate(-50%, -50%) translate(402.75px, 196px); --fe-w: 49.19px; --fe-h: 22px;", "text": "Probe" },
+      "perimeter": { "style": "transform: translate(-50%, -50%) translate(328.5px, 335px); --fe-w: 57.349999999999994px; --fe-h: 22px;", "text": "Inspect" },
+      "allow-web": { "style": "transform: translate(-50%, -50%) translate(241.5px, 516px); --fe-w: 71.32px; --fe-h: 22px;", "text": "Allow web" },
+      "deny-admin": { "style": "transform: translate(-50%, -50%) translate(398.75px, 544px); --fe-w: 82.74999999999999px; --fe-h: 22px;", "text": "Deny admin" },
+      "to-switch": { "style": "transform: translate(-50%, -50%) translate(215.25px, 704px); --fe-w: 62.41px; --fe-h: 22px;", "text": "Forward" },
+      "to-app": { "style": "transform: translate(-50%, -50%) translate(328.5px, 815px); --fe-w: 41.82px; --fe-h: 22px;", "text": "Web" },
+      "to-db": { "style": "transform: translate(-50%, -50%) translate(320px, 990px); --fe-w: 50.33px; --fe-h: 22px;", "text": "Query" }
     }
   }
 }

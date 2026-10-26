@@ -79,7 +79,9 @@ export function overlayFitViewport(
     contentRects(s, routing, o.only, o.onlyEdges),
     { width: root.clientWidth, height: root.clientHeight },
     overlayRects(root),
-    { margin: 32, minZoom: s.minZoom, ...o, insets },
+    // Only an editable single selection has a chip extending 36 screen pixels
+    // beyond the card. Viewers and whole-diagram fits retain their existing frame.
+    { margin: root.querySelector?.('[data-testid^="grow-chip-"]') ? 40 : 32, minZoom: s.minZoom, ...o, insets },
   );
 }
 
@@ -352,8 +354,8 @@ export function goToViewport(root: HTMLElement, s: State, viewport: Viewport, id
   const width = n.measured?.width ?? n.width ?? 180;
   const height = n.measured?.height ?? n.height ?? 64;
   const zoom = Math.max(viewport.zoom, 0.9);
-  const fx = n.position.x + width / 2;
-  const fy = n.position.y + height / 2;
+  const fx = n.internals.positionAbsolute.x + width / 2;
+  const fy = n.internals.positionAbsolute.y + height / 2;
   return { x: root.clientWidth / 2 - fx * zoom, y: root.clientHeight / 2 - fy * zoom, zoom };
 }
 
@@ -437,10 +439,17 @@ export function liveFitViewport(
   const paneTop = s.domNode?.getBoundingClientRect().top ?? 0;
   // Until step 6 docks the strip, a wrapped floating callout can be taller than 60px.
   const visible = s.domNode?.clientWidth ? visibleCanvas(s.domNode) : null;
+  const transport = s.domNode?.ownerDocument?.querySelector('[data-testid="live-controls"]')?.getBoundingClientRect();
+  const paneBottom = paneTop + s.height;
+  const transportSpace = transport
+    ? Math.max(0, paneBottom - Math.max(paneTop, transport.top))
+    : s.domNode?.ownerDocument
+      ? 0
+      : LIVE_BAR_SPACE;
   const insets = {
     ...LIVE_FIT.insets,
     top: statusRect?.height ? Math.max(60, statusRect.bottom - paneTop + 16) : 32,
-    bottom: Math.max(LIVE_FIT.insets.bottom, visible ? s.height - visible.y - visible.height + 24 : 0),
+    bottom: 24 + Math.max(transportSpace, visible ? s.height - visible.y - visible.height : 0),
   };
   const items = s.edges.some((e) => e.data?.waypoints?.length) ? contentRects(s, routing) : null;
   if (room.card && !room.panel) {

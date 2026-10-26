@@ -13,7 +13,8 @@ export const TEXT_END = textBoundaryKey("end");
 /** Diagram details moved from the canvas card into Properties. */
 export async function openDiagramProperties(page: Page) {
   if (await page.getByTestId("inspector-field-title").isVisible()) return;
-  await page.getByTestId("canvas-pane").click({ button: "right", position: { x: 4, y: 4 } });
+  const at = await emptyCanvasPoint(page);
+  await page.getByTestId("canvas-wrap").click({ button: "right", position: at });
   await page.getByTestId("context-menu-item-canvas.properties").click();
   await expect(page.getByTestId("inspector-field-title")).toBeVisible();
 }
@@ -26,6 +27,12 @@ export async function openEditProperties(page: Page) {
   await expect(page.getByTestId("inspector-field-label")).toBeVisible();
 }
 
+/** Inputs moves into playback's More menu on phones. */
+export async function openLiveInputs(page: Page) {
+  if (!(await page.getByTestId("live-capacity").isVisible())) await page.getByTestId("live-more").click();
+  await page.getByTestId("live-capacity").click();
+}
+
 /** Numbered findings disclose their controls only after the row is selected. */
 export async function openCheckFinding(page: Page, id: string) {
   const head = page.getByTestId(`check-select-${id}`).or(page.getByTestId(`check-open-${id}`));
@@ -36,19 +43,24 @@ export async function openCheckFinding(page: Page, id: string) {
 }
 
 /** Theme choices moved into the View menu. */
-export async function toggleTheme(page: Page) {
-  const theme = await page.evaluate(() => document.documentElement.dataset.theme);
+export async function openViewMenu(page: Page) {
   const view = page.getByTestId("view-button");
+  if (!(await view.isVisible())) await page.getByTestId("topbar-more").click();
   if ((await view.getAttribute("aria-expanded")) !== "true") await view.click();
   await expect(page.getByTestId("view-menu")).toBeVisible();
+}
+
+export async function toggleTheme(page: Page) {
+  const theme = await page.evaluate(() => document.documentElement.dataset.theme);
+  await openViewMenu(page);
   await page.getByTestId("theme-toggle").click();
   await page.getByTestId(theme === "dark" ? "theme-light" : "theme-dark").click();
 }
 export async function expectTheme(page: Page, theme: string) {
-  await page.getByTestId("view-button").click();
+  await openViewMenu(page);
   await page.getByTestId("theme-toggle").click();
   await page.getByTestId(`theme-${theme}`).click();
-  await page.getByTestId("view-button").click();
+  await openViewMenu(page);
   await page.getByTestId("theme-toggle").click();
   await expect(page.getByTestId(`theme-${theme}`)).toHaveAttribute("aria-checked", "true");
   await page.keyboard.press("Escape");
@@ -61,9 +73,37 @@ export async function openLibrary(page: Page) {
   await expect(page.getByTestId("palette-search")).toBeVisible();
 }
 
+/** Keep the library mounted across canvas and menu actions when a test exercises that workflow. */
+export async function pinLibrary(page: Page) {
+  await openLibrary(page);
+  if ((await page.getByTestId("palette").getAttribute("data-mode")) !== "pinned")
+    await page.getByTestId("palette-toggle").click();
+  await expect(page.getByTestId("palette")).toHaveAttribute("data-mode", "pinned");
+}
+
 export async function openAnnotate(page: Page) {
   if (!(await page.getByTestId("palette-annotate").isVisible())) await page.getByTestId("rail-annotate").click();
   await expect(page.getByTestId("palette-annotate")).toBeVisible();
+}
+
+/** Go to a node through search when Focus has left it outside the current frame. */
+export async function goToNode(page: Page, id: string, clock = false) {
+  await page.keyboard.press("ControlOrMeta+k");
+  await page.getByTestId("command-input").fill(id);
+  await page.getByTestId(`command-item-node:${id}`).click();
+  if (clock)
+    await expect
+      .poll(
+        async () => {
+          await page.clock.runFor(32);
+          return page.getByTestId("canvas-wrap").getAttribute("data-camera-state");
+        },
+        { intervals: [0] },
+      )
+      .toBe("idle");
+  await waitForCameraIdle(page);
+  if (clock) await page.clock.runFor(32);
+  await expect(page.getByTestId(`node-${id}`)).toBeVisible();
 }
 
 /**
@@ -500,6 +540,22 @@ export async function flowPoint(page: Page, screen: { x: number; y: number }): P
     if (!probe) throw new Error("No React Flow store probe");
     return probe.toFlow(x, y);
   }, screen);
+}
+
+/** An exposed point on the actual stroke; an SVG bounding box can contain another edge. */
+export async function edgePoint(page: Page, id: string) {
+  return page.getByTestId(`edge-${id}`).evaluate((edge) => {
+    const path = [...edge.children].find((child) => child instanceof SVGPathElement);
+    if (!(path instanceof SVGPathElement)) throw new Error("Expected a connection path");
+    const matrix = path.getScreenCTM();
+    if (!matrix) throw new Error("Expected the connection's screen transform");
+    for (const fraction of [0.5, 0.4, 0.6, 0.3, 0.7, 0.2, 0.8, 0.1, 0.9]) {
+      const at = path.getPointAtLength(path.getTotalLength() * fraction);
+      const screen = new DOMPoint(at.x, at.y).matrixTransform(matrix);
+      if (edge.contains(document.elementFromPoint(screen.x, screen.y))) return { x: screen.x, y: screen.y };
+    }
+    throw new Error(`No exposed stroke on ${edge.getAttribute("data-testid")}`);
+  });
 }
 
 /** The canvas viewport's CSS transform (React Flow's pan and zoom). */

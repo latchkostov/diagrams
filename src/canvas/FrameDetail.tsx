@@ -18,7 +18,7 @@ import {
   type FramePin,
 } from "./camera/frameEdges";
 import type { Rect } from "./geometry/rect";
-import { drawTile, FAR_ZOOM, textDetail, frameView } from "./detail";
+import { FAR_ZOOM, textDetail } from "./detail";
 import { t, useLocale } from "../i18n";
 import "../styles/canvas/detail.css";
 
@@ -61,28 +61,14 @@ export const FrameDetail = memo(
         const s = store.getState();
         const [tx, ty, zoom] = s.transform;
         const edges = new Map(s.edges.map((e) => [e.id, e]));
-        const requestedView = camera.state.view;
+        // A subset can make the mode readout say Focus without requesting a new frame.
+        // Cull only for a camera-owned Focus/Follow, never merely because selecting opened a dock.
+        const view = camera.state.view;
         const far = zoom < FAR_ZOOM;
         const origin = root.getBoundingClientRect();
         const phone = window.innerWidth < 640;
         if (!origin.width || !origin.height) return;
         const frameBox = visibleCanvas(root);
-        const view = frameView(
-          requestedView,
-          camera.state.mode === "edit" ? s.nodes.filter((n) => n.selected).length : 0,
-          s.nodes.some((n) => n.selected && n.type === "diagram") &&
-            [...s.nodeLookup.values()].some(
-              (n) =>
-                n.type === "diagram" &&
-                !n.hidden &&
-                !contains(frameBox, {
-                  x: n.internals.positionAbsolute.x * zoom + tx,
-                  y: n.internals.positionAbsolute.y * zoom + ty,
-                  width: (n.measured.width ?? 0) * zoom,
-                  height: (n.measured.height ?? 0) * zoom,
-                }),
-            ),
-        );
         const cropped = view === "focus" || view === "follow";
         const dock = !!root.closest(".canvas-column")?.parentElement?.querySelector('[data-testid="inspector"]');
         const rtl = getComputedStyle(root).direction === "rtl";
@@ -160,9 +146,8 @@ export const FrameDetail = memo(
           }
           const card = box(el, origin);
           const painted = !cropped || contains(inner, { ...card, y: card.y - 12, height: card.height + 44 });
-          const tile = n.type !== "diagram" || drawTile(card.height, 1, false);
           const hidden =
-            (n.type === "diagram" && ((!painted && cropped) || (far && !tile))) ||
+            (n.type === "diagram" && !painted && cropped) ||
             (n.type === "annotation" &&
               camera.state.mode === "live" &&
               far &&

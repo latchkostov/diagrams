@@ -3,6 +3,7 @@ import { useSyncExternalStore, useId, useLayoutEffect, useRef, useState, type Re
 import { Background, BackgroundVariant, ControlButton, MiniMap, useStore, type ReactFlowState } from "@xyflow/react";
 import { useCameraController } from "../camera/useCameraCore";
 import { Icon } from "../../components/Icon";
+import { HistoryButtons } from "../../components/ModeSwitch";
 import type { EditorApi } from "../../editor/types";
 import { formatCombo, shortcutKeys } from "../../editor/shortcuts";
 import { getStencil } from "../../stencils/registry";
@@ -29,12 +30,15 @@ const minimapStroke = (n: FlowNode) =>
 
 /**
  * The view's zoom as a CSS variable on the canvas (`--rf-zoom`), for sizes that must hold on screen at
- * any zoom (the handles' hit areas, the inline editors). Rounded down to a step, so what's scaled by
- * 1/zoom is never short of its size. Re-renders only itself, and only when the zoom moves a step.
+ * any zoom. Drawing styles retain their rounded-down step; gesture targets use
+ * the exact scale. This component alone subscribes; panning never changes the scale.
  */
 export function ZoomVar({ host }: { host: RefObject<HTMLElement | null> }) {
-  const zoom = useStore((s: ReactFlowState) => Math.max(0.02, Math.floor(s.transform[2] * 50 + 1e-6) / 50));
-  useLayoutEffect(() => void host.current?.style.setProperty("--rf-zoom", String(zoom)), [host, zoom]);
+  const zoom = useStore((s: ReactFlowState) => Math.max(0.02, s.transform[2]));
+  useLayoutEffect(() => {
+    host.current?.style.setProperty("--rf-zoom", String(Math.max(0.02, Math.floor(zoom * 50 + 1e-6) / 50)));
+    host.current?.style.setProperty("--rf-zoom-exact", String(zoom));
+  }, [host, zoom]);
   return null;
 }
 
@@ -58,12 +62,14 @@ export function CanvasControls({
   zoomedByButton,
   menus,
   menu,
+  history = false,
 }: {
   editor: EditorApi;
   fit: () => void;
   zoomedByButton: () => void;
   menus: CanvasMenus;
   menu: MenuState | null;
+  history?: boolean;
 }) {
   useLocale();
   const camera = useCameraController();
@@ -115,6 +121,7 @@ export function CanvasControls({
     >
       {!collapsed && (
         <>
+          {history && <HistoryButtons />}
           <button
             type="button"
             data-testid="fit-view-button"

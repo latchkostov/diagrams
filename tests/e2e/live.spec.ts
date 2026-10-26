@@ -394,6 +394,8 @@ test.describe("live view", () => {
       page.getByTestId(id).evaluate((el) => ({
         dim: el.closest("[data-id]")?.getAttribute("data-live-dim"),
         opacity: getComputedStyle(el.closest("[data-id]") ?? el).opacity,
+        labelColor: getComputedStyle(el.querySelector('[data-testid="card-title"]') ?? el).color,
+        mutedColor: getComputedStyle(el).getPropertyValue("--text-2").trim(),
       }));
     const edgeDecoration = (id: string) =>
       page.getByTestId(id).evaluate((el) => {
@@ -402,6 +404,7 @@ test.describe("live view", () => {
           dim: edge.getAttribute("data-live-dim"),
           trace: edge.getAttribute("data-live-trace"),
           opacity: getComputedStyle(edge).opacity,
+          pathOpacity: getComputedStyle(el.children[1]).opacity,
         };
       });
     await expect(unrelatedNode).toBeVisible();
@@ -418,9 +421,22 @@ test.describe("live view", () => {
       .poll(() => edgeDecoration("edge-payments-to-payment-db"))
       .toMatchObject({ dim: null, trace: "1", opacity: "1" });
     // The dim attribute precedes the CSS transition's first frame; wait for the rendered result too.
-    await expect.poll(async () => Number((await nodeDecoration("node-inventory")).opacity)).toBeLessThan(1);
     await expect
-      .poll(async () => Number((await edgeDecoration("edge-order-events-to-inventory")).opacity))
+      .poll(async () => {
+        return unrelatedNode.evaluate((el) => {
+          const title = el.querySelector('[data-testid="card-title"]');
+          if (!title) throw new Error("Expected the node title");
+          const probe = document.createElement("span");
+          probe.style.color = "var(--text-2)";
+          el.append(probe);
+          const muted = getComputedStyle(probe).color;
+          probe.remove();
+          return getComputedStyle(title).color === muted;
+        });
+      })
+      .toBe(true);
+    await expect
+      .poll(async () => Number((await edgeDecoration("edge-order-events-to-inventory")).pathOpacity))
       .toBeLessThan(1);
     await page.getByTestId("live-trace-clear").click();
     await expect(page.getByTestId("live-trace")).toHaveCount(0);

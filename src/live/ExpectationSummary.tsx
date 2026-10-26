@@ -71,6 +71,8 @@ function ExpectationSummary({
                 <span
                   className={`lv-exp is-${e.status}`}
                   role="img"
+                  // eslint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- Keyboard users can focus each informational verdict and read its accessible name.
+                  tabIndex={0}
                   aria-label={`${e.label}: ${word}, now ${value}`}
                   data-testid={`expectation-${e.id}`}
                   data-status={e.status}

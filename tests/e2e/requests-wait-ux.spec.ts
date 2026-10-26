@@ -12,6 +12,10 @@ import {
   STORAGE_KEYS,
   waitForStableViewport,
   fitDiagram,
+  waitForSelectionSettled,
+  edgePoint,
+  waitForStableBox,
+  waitForCameraIdle,
 } from "./fixtures";
 
 test("call fields take the first keyboard pass while planning downloads, with stable CSS and export", async ({
@@ -62,8 +66,8 @@ test("call fields take the first keyboard pass while planning downloads, with st
     // measuring, so navigation scroll is separate from the exact planner-arrival position check below.
     await page.getByTestId("inspector-section-edge-advanced").scrollIntoViewIfNeeded();
     await expect(pool).toBeFocused();
-    const before = await pool.boundingBox();
-    expect(before).not.toBeNull();
+    const initial = await pool.boundingBox();
+    expect(initial).not.toBeNull();
     expect(await pool.evaluate((el) => getComputedStyle(el).borderStyle)).toBe("solid");
     await page.getByTestId("inspector-section-edge-advanced").click();
     await expect(page.getByTestId("inspector-prop-caller")).toHaveCount(0);
@@ -78,6 +82,8 @@ test("call fields take the first keyboard pass while planning downloads, with st
     expect((await downloaded).suggestedFilename()).toMatch(/\.svg$/);
     await page.keyboard.press("Escape");
     await pool.focus();
+    await waitForStableBox(pool);
+    const before = await pool.boundingBox();
     release();
     await expect(page.getByTestId("edge-request-route")).toBeVisible();
     await expect(pool).toHaveValue("40");
@@ -164,7 +170,15 @@ for (const locale of ["ar", "en-XA"]) {
     await page.addInitScript((code) => localStorage.setItem("diagrams.locale", code), locale);
     await page.clock.install();
     await gotoLive(page, "./?view=canvas&example=slow-payment-provider&live=1&paused=1&sim=timeout-600");
-    await page.getByTestId("edge-pay").dblclick();
+    await waitForCameraIdle(page);
+    const point = await edgePoint(page, "pay");
+    await page.mouse.click(point.x, point.y);
+    await waitForSelectionSettled(page);
+    await waitForCameraIdle(page);
+    await expect(page.getByTestId("inspector")).toHaveAttribute("data-inspector-target", "pay");
+    const selected = await edgePoint(page, "pay");
+    await page.mouse.dblclick(selected.x, selected.y);
+    await expect(page.getByTestId("inspector")).toHaveAttribute("data-inspector-target", "pay");
     await page.getByTestId("inspector-section-edge-simulation").click();
     await expect(page.getByTestId("inspector-field-deadlineMs")).toHaveValue("600");
     await expect(page.getByTestId("inspector-hint-deadlineMs")).toBeVisible();

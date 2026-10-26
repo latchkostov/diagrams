@@ -114,6 +114,7 @@ test.describe("palette", () => {
     await page.getByTestId("palette-recent-item-aws.lambda").click();
     await expect(page.getByTestId("node-lambda-2")).toBeVisible();
     await page.reload();
+    await openLibrary(page);
     await expect(page.getByTestId("palette-recent-item-aws.lambda")).toBeVisible();
   });
 

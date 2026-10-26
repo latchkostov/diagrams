@@ -229,6 +229,19 @@ function harness() {
   };
 }
 
+it("a palette destination takes focus after the camera reveals its card", () => {
+  const h = harness();
+  h.env.nodes.set("destination", { drawn: false });
+  h.env.active = h.canvas;
+  h.controller.dispatch({ type: "selection.changed", cause: "palette", target: { kind: "node", id: "destination" } });
+  h.frame();
+  expect(h.env.active).toBe(h.canvas);
+  expect(h.controller.phase).toBe("focus-pending");
+  h.env.nodes.set("destination", { drawn: true });
+  h.frame();
+  expect(h.env.active).toBe(h.nodeEl("destination"));
+});
+
 it("segment keys yield to selection changes, menus, panning and touch gesture ownership", () => {
   const { controller: c } = harness();
   expect(c.stepSegment("a-b", 2)).toBe(-1);

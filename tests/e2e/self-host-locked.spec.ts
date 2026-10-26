@@ -109,7 +109,7 @@ test.describe("self-hosted build with one language (VITE_LOCALES=en)", () => {
   }) => {
     await gotoCanvas(page, SLUG);
     await expect(page.locator("html")).toHaveAttribute("lang", "en");
-    await expect(page.getByTestId("view-canvas")).toHaveText("Diagram");
+    await expect(page.getByTestId("file-button")).toHaveText("File");
     await page.getByTestId("view-button").click();
     await expect(page.getByTestId("view-menu")).toBeVisible();
     await expect(page.getByTestId("view-language")).toHaveCount(0);

@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { test, expect, gotoGallery, expectNoErrors } from "./fixtures";
+import { test, expect, gotoGallery, expectNoErrors, openLibrary } from "./fixtures";
 
 const tiles = (page: Page) => page.getByTestId(/^stencil-tile-/);
 /** Which diagram "Add to current diagram" targets (written by the canvas, read by the gallery). */
@@ -181,6 +181,7 @@ test.describe("gallery", () => {
     await page.getByTestId("undo-button").click();
     await expect(page.getByTestId("node-sqs-1")).toHaveCount(0);
     // And it became a recent stencil in the palette.
+    await openLibrary(page);
     await expect(page.getByTestId("palette-recent-item-aws.sqs")).toBeVisible();
     expectNoErrors(consoleErrors);
   });

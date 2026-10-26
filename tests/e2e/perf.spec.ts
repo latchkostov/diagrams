@@ -1,3 +1,4 @@
+import { goToNode, waitForCameraIdle } from "./fixtures";
 import { TEXT_END } from "./fixtures";
 import type { Page } from "@playwright/test";
 import {
@@ -365,14 +366,18 @@ test.describe("perf: interactions", { tag: "@dev" }, () => {
     await prepareNodeInteractions(page);
     const every = await page.getByTestId(/^rf__node-/).count();
     expect(every).toBeGreaterThanOrEqual(15);
+    await goToNode(page, "orders");
+    await page.getByTestId("canvas-wrap").press("Shift+Digit2");
+    await waitForCameraIdle(page);
     const { counts: click } = await measure(page, async () => {
+      await page.getByTestId("node-gateway").click();
       await page.getByTestId("node-orders").click();
-      await page.getByTestId("node-payments").click();
     });
     expect(click.CanvasInner ?? 0, JSON.stringify(click)).toBeGreaterThan(0);
     expect(click.NodeWrapper ?? 0, JSON.stringify(click)).toBeLessThan(every);
     expect(click.NodeComponentWrapperInner ?? 0, JSON.stringify(click)).toBeLessThan(every);
 
+    await goToNode(page, "inventory");
     await page.getByTestId("node-inventory").dblclick();
     const label = page.getByTestId("inspector-field-label");
     await expect(label).toBeFocused();

@@ -196,7 +196,7 @@ export class LiveScene {
     const next: [string, EdgeInk][] = [];
     const spotlight = this.root.hasAttribute("data-live-spotlight");
     for (const el of this.root.querySelectorAll<SVGElement>(".react-flow__edge[data-id]")) {
-      const near = el.hasAttribute("data-live-near") || (spotlight && !el.hasAttribute("data-live-dim"));
+      const near = !spotlight || el.hasAttribute("data-live-near") || !el.hasAttribute("data-live-dim");
       next.push([
         el.dataset.id!,
         { alpha: el.hasAttribute("data-detail-hidden") ? 0 : spotlight && !near ? 0.28 : 1, near },

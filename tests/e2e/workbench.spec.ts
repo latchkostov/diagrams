@@ -8,6 +8,21 @@ import {
   openDiagramProperties,
   waitForCameraIdle,
 } from "./fixtures";
+import { openAdvanced } from "./ai-helpers";
+
+test("switching dock tabs preserves unfinished AI text and validation feedback", async ({ page }) => {
+  await gotoCanvas(page, "retry-storm");
+  await openAdvanced(page);
+  await page.getByTestId("ai-request").fill("Keep this request");
+  await page.getByTestId("ai-reply").fill('[{"op":"remove","targets":["missing-node"]}]');
+  await page.getByTestId("ai-apply").click();
+  await expect(page.getByTestId("ai-copy-fix")).toBeEnabled();
+  await page.getByTestId("dock-tab-properties").click();
+  await expect(page.getByTestId("ai-panel")).toBeHidden();
+  await page.getByTestId("dock-tab-ai").click();
+  await expect(page.getByTestId("ai-request")).toHaveValue("Keep this request");
+  await expect(page.getByTestId("ai-copy-fix")).toBeEnabled();
+});
 
 test("the library opens from Add, closes with Escape and remembers Pin open", async ({ page }) => {
   await gotoCanvas(page, "retry-storm");

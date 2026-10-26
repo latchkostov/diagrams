@@ -129,11 +129,20 @@ for (const [family, sizes] of CASES)
 
       // Select: the first click opens the inspector; count the next six clicks (three nodes, twice: a stray commit is
       // then a sixth of a count per click).
-      await b.clickNode(await b.nodeNearCentre(ids));
+      await b.clickNode(
+        await b.nodeNearCentre(family === "pipeline" ? services.filter((id) => id.endsWith("-enrich")) : services),
+      );
+      // Overview can be below the automatic focus threshold. Finish that camera setup before choosing
+      // the counted targets, so a selection does not unexpectedly replace their frame halfway through.
+      await page.getByTestId("view-focus").click();
+      await b.canvasSettled();
       // clickNode waits for the narrower pane and its pan. Prepare every endpoint before counting;
       // a recovery fit inside the reading would count camera setup as selection work.
       const targets: string[] = [];
-      for (let i = 0; i < 3; i++) targets.push(await b.nodeNearCentre(ids.filter((_, k) => k % 3 === i)));
+      for (let i = 0; i < 3; i++)
+        targets.push(await b.nodeNearCentre(ids.filter((id) => !targets.includes(`node-${id}`))));
+      expect(new Set(targets).size).toBe(3);
+      for (const target of targets) await b.pointOn(target, { fit: false });
       targets.push(...targets);
       results.select = await counted(b, targets.length, async () => {
         for (const t of targets) {

@@ -115,9 +115,7 @@ test.describe("external discovery", () => {
       await expect(
         page.getByTestId("palette-clients-sources").getByTestId("palette-item-client.browser"),
       ).toBeVisible();
-      await expect(
-        page.getByTestId("palette-clients-external").getByTestId("palette-item-generic.external-api"),
-      ).toBeVisible();
+      await expect(page.getByTestId("palette-common").getByTestId("palette-item-generic.external-api")).toBeVisible();
       await expect(page.getByTestId("palette-clients-external").getByTestId("palette-item-iterable")).toBeVisible();
       await openLibrary(page);
       await page.getByTestId("palette-item-iterable").scrollIntoViewIfNeeded();

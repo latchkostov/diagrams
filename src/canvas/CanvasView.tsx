@@ -790,8 +790,11 @@ function CanvasInner({
       choose: growFromChip,
       hover: checks.setHot,
       open: () => checksPanel.open(),
-      returnFocus: () =>
-        interaction.dispatch({ type: "dialog.closed", dialog: "checks", opener: checksPanel.opener() }),
+      returnFocus: () => {
+        // A fix can switch tabs before its requested field mounts. That destination owns focus.
+        if (inspectorFocusSeq.current > inspectorFocusDone.current) return;
+        interaction.dispatch({ type: "dialog.closed", dialog: "checks", opener: checksPanel.opener() });
+      },
     }),
     [editor, revealIds, growFromChip, checks, interaction],
   );
@@ -990,6 +993,9 @@ function CanvasInner({
     controller,
     nothingSelected,
     selectionKey: dockSelection,
+    // Once Properties is open, another selection already renders its new content.
+    // Track identity only while it can switch tabs; no extra canvas commit per click.
+    trackSelectionKey: dock.value !== "properties",
   });
   const inspectorHidden = dock.value === "closed" || (livePanelOpen && dock.value === "properties");
   const selectedForDock = useRef("");
@@ -1005,6 +1011,13 @@ function CanvasInner({
     // Live's keyboard reading order already offers a focused readout. An explicit
     // Properties action still opens the dock; traversal alone keeps that reading path.
     if (live && interaction.selectionCause === "keyboard") return;
+    if (
+      dock.value === "ai" &&
+      (interaction.selectionCause === "programmatic" ||
+        interaction.selectionCause === "undo" ||
+        interaction.selectionCause === "redo")
+    )
+      return;
     if (!checksPanel.isOpen()) activateDock("properties");
   }, [settledEmpty, settledKey, dock.value, openedByHand.inspector, live, interaction]);
   const { checksMounted } = usePaneCamera(controller, {
@@ -1170,6 +1183,7 @@ function CanvasInner({
   const nodeCount = diagramNodes.length;
   /** Anything drawn: an annotations-only canvas isn't "empty", though there's nothing to simulate. */
   const contentCount = nodeCount + annotationNodes.length;
+  const nodeLabel = useCallback((id: string) => labels.get(id) ?? id, [labels]);
   const inspectorCounts = useMemo(
     () => ({ nodes: nodeCount, edges: edges.length, groups: groupNodes.length }),
     [nodeCount, edges.length, groupNodes.length],
@@ -1203,7 +1217,14 @@ function CanvasInner({
         {editGestures && <svg ref={guideLayer} className="smart-guides" data-testid="smart-guides" aria-hidden />}
         {editGestures && <LandingOutline />}
         {!hideChrome && !live && (
-          <CanvasControls editor={editor} menus={interaction} menu={menu} fit={fit} zoomedByButton={zoomedByButton} />
+          <CanvasControls
+            editor={editor}
+            menus={interaction}
+            menu={menu}
+            fit={fit}
+            zoomedByButton={zoomedByButton}
+            history={!bezel}
+          />
         )}
         {!hideChrome && prefs.minimap && contentCount > 0 && <CanvasMinimap />}
         {/* Nothing to simulate on a blank canvas: the Live toggle appears with the first node. */}
@@ -1245,6 +1266,7 @@ function CanvasInner({
       caption,
       transport,
       localTransport,
+      bezel,
       wrapper,
       readOnly,
       prefs.grid,
@@ -1601,7 +1623,7 @@ function CanvasInner({
                 selectedEdges={selectedEdges}
                 selectedAnnotations={selectedAnnotations}
                 groups={groupNodes}
-                nodeLabel={(id) => labels.get(id) ?? id}
+                nodeLabel={nodeLabel}
                 counts={inspectorCounts}
                 collapsed={inspectorHidden}
                 onResize={inspectorResize}

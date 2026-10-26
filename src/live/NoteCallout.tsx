@@ -10,6 +10,7 @@ import { useLive } from "./context";
 import { formatClock } from "./format";
 import { LiveIcon } from "./icons";
 import { NOTE_GAP, placeNote, type Box } from "./notePlacement";
+import { calloutOffset } from "./calloutPlacement";
 
 /** Keep clear of the control bar at the bottom. */
 const BOTTOM_RESERVE = 170;
@@ -149,7 +150,23 @@ export function NoteCallout({
     style = { left, top: Math.max(16, top), "--arrow": `${arrow}px` } as CSSProperties;
   } else {
     // No focus: a caption just above the control bar, clear of the title card.
-    style = { left: Math.max(16, width / 2 - size.w / 2), top: height - BOTTOM_RESERVE + 70 - size.h };
+    const desired = {
+      x: Math.max(16, width / 2 - size.w / 2),
+      y: height - BOTTOM_RESERVE + 70 - size.h,
+      width: size.w,
+      height: size.h,
+    };
+    const offset = calloutOffset(
+      desired,
+      { width, height },
+      [...others, ...keepClear].map((b) => ({
+        x: b.l,
+        y: b.t,
+        width: b.r - b.l,
+        height: b.b - b.t,
+      })),
+    );
+    style = { left: desired.x + (offset?.dx ?? 0), top: desired.y + (offset?.dy ?? 0) };
   }
 
   const hud = pane?.querySelector<HTMLElement>(".lv-hud");

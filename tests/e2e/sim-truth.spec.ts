@@ -1,3 +1,4 @@
+import { goToNode, waitForCameraIdle } from "./fixtures";
 import { savedDiagram } from "./fixtures";
 import { simReviewFixture, simReviewTrafficFixture } from "../../src/lab/simReviewFixture";
 import type { Page } from "@playwright/test";
@@ -147,6 +148,9 @@ test.describe("the simulation tells the truth", () => {
     await expect(page.getByTestId("inspector-section-node-simulation")).toBeFocused();
     await savedWhen(page, (s) => s.nodes.find((n) => n.id === "gw")?.props?.concurrency === undefined);
     // A service → database edge: no Consumer group, no Dead-letter path; its stray group is noted.
+    await goToNode(page, "api");
+    await page.getByTestId("canvas-wrap").press("Shift+Digit2");
+    await waitForCameraIdle(page);
     await page.getByTestId("edge-label-api-db").click();
     await expect(page.getByTestId("inspector-title")).toHaveText("Edge");
     await expect(page.getByTestId("inspector-field-group")).toHaveCount(0);

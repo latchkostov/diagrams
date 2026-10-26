@@ -1,3 +1,4 @@
+import { goToNode, waitForCameraIdle } from "./fixtures";
 import { breakerFixture } from "../../src/lab/resilienceFixture";
 import type { Locator } from "@playwright/test";
 import { pathToFileURL } from "node:url";
@@ -190,6 +191,9 @@ for (const locale of ["ar", "en-XA"])
 test("a flow connection label opens its live readout", async ({ page, consoleErrors }) => {
   await gotoLive(page, "./?view=canvas&example=webhook-ingestion&live=1&paused=1");
   await waitForStableViewport(page);
+  await goToNode(page, "dlq");
+  await page.getByTestId("canvas-wrap").press("Shift+Digit2");
+  await waitForCameraIdle(page);
   await page.getByTestId("diagram-title").hover();
   await page.getByTestId("edge-label-queue-to-dlq").hover();
   const card = page.getByTestId("edge-detail-queue-to-dlq");

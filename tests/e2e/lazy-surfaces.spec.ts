@@ -150,7 +150,7 @@ for (const [id, name, source, policy] of lazySurfaces) {
               : tutorial
                 ? "tutorial-exit"
                 : id === "tutorial.list"
-                  ? "view-canvas"
+                  ? "view-button"
                   : "example-picker",
       );
       await focus.focus();

@@ -47,7 +47,8 @@ const EDITABLE = 'input, textarea, select, [contenteditable]:not([contenteditabl
 const SCROLLS = '[data-testid="inspector"], [data-testid="palette-search"], [data-testid="capacity-panel"]';
 
 /** React Flow keeps a node it hasn't measured yet hidden, and a hidden element can't take focus. */
-const shown = (el: Element) => !(el instanceof HTMLElement) || el.style.visibility !== "hidden";
+const shown = (el: Element) =>
+  !(el instanceof HTMLElement) || (el.style.visibility !== "hidden" && !el.closest("[data-detail-hidden]"));
 
 /** The DOM behind the interaction controller: the only code in the canvas that moves keyboard focus. */
 export function createDomPort(canvas: DomCanvas): InteractionPort {

@@ -823,12 +823,14 @@ for (const surface of ["inspector", "menu"] as const)
       })),
       edges: [],
     });
-    await page.getByTestId("group-label-a").click();
-    await page.getByTestId("group-label-c").click({ modifiers: ["Shift"] });
+    await fitDiagram(page);
+    await page.getByTestId("group-outline-a").click({ position: { x: 0.5, y: 40 } });
+    await fitDiagram(page);
+    await page.getByTestId("group-outline-c").click({ modifiers: ["Shift"], position: { x: 0.5, y: 40 } });
     await waitForSelectionSettled(page);
     if (surface === "inspector") await page.getByTestId("inspector-align-top").click();
     else {
-      await page.getByTestId("group-label-c").click({ button: "right" });
+      await page.getByTestId("group-outline-c").click({ button: "right", position: { x: 0.5, y: 40 } });
       await page.getByTestId("context-menu-item-selection.align").click();
       await page.getByTestId("context-menu-item-align:top").click();
     }

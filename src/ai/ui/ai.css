@@ -130,7 +130,7 @@
 /* The on-device box, the status line and Advanced: at most 60% of the panel, so the conversation keeps the rest
    (Advanced open under the on-device box once left it 58 px at 1280 × 800). */
 .ai-foot {
-  flex: 0 1 auto;
+  flex: 0 0 auto;
   min-height: 0;
   max-height: 60%;
   overflow-y: auto;

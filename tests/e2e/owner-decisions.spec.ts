@@ -6,6 +6,7 @@ import {
   waitForStableViewport,
   savedDiagram,
   interactionJournal,
+  openEditProperties,
 } from "./fixtures";
 
 for (const live of [false, true]) {
@@ -16,6 +17,7 @@ for (const live of [false, true]) {
     else await gotoCanvas(page, "blocking-call");
     await waitForStableViewport(page);
     await page.getByTestId("node-caller").dblclick();
+    if (live) await openEditProperties(page);
     const label = page.getByTestId("inspector-field-label");
     await expect(label).toBeVisible();
     if (live) {

@@ -5,6 +5,7 @@ import { LiveIcon } from "./icons";
 import type { Trouble, TroubleAction } from "./observedTrouble";
 import { planFixLabel } from "../planning/scalingPlanText";
 import { applyThreadFix, type ApplyThreadFix } from "./threadFixes";
+import { useFloatingPlacement } from "./useFloatingPlacement";
 
 /** The callout's one action for what playback shows, by kind: what to press, and its test id. */
 const TROUBLE_ACTIONS: Record<TroubleAction["kind"], { label: () => string; icon?: "plus" | "play" }> = {
@@ -60,6 +61,7 @@ export function TroubleCallout({ trouble, onAction, onDismiss, onShown, floating
   // On screen: this cause has had its turn this run (one hidden behind a panel or a presentation hasn't).
   useEffect(() => onShown?.(trouble.key), [onShown, trouble.key]);
   const box = useRef<HTMLDivElement>(null);
+  const placement = useFloatingPlacement(box, !!floating, 16);
   // Focus inside the callout when it goes (dismissed, revived, the trouble over) returns to the canvas, never <body>
   // (focus policy row L3).
   const focused = useRef(false);
@@ -74,11 +76,23 @@ export function TroubleCallout({ trouble, onAction, onDismiss, onShown, floating
   return (
     <div
       ref={box}
-      className={`cap-callout is-over${floating ? " is-floating is-status-strip" : ""}`}
+      className={`cap-callout is-over${floating ? " is-floating is-status-strip" : ""}${placement.compact ? " is-compact" : ""}`}
+      style={
+        floating && "left" in placement.style
+          ? {
+              ...placement.style,
+              insetBlockStart: placement.below ? "var(--callout-top)" : 16,
+              insetInlineEnd: "auto",
+              marginInline: 0,
+              transform: placement.below ? "none" : "translateX(-50%)",
+            }
+          : undefined
+      }
       data-testid="trouble-callout"
       data-kind={trouble.kind}
       data-expanded={expanded ? "1" : "0"}
       data-node={trouble.node}
+      data-below={floating && placement.below ? "" : undefined}
       data-canvas-overlay={floating ? "" : undefined}
       data-editor-overlay
       onFocus={() => (focused.current = true)}

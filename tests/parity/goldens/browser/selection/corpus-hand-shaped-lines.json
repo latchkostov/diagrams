@@ -21,8 +21,8 @@
   },
   "selection": { "nodes": [], "edges": ["api-db"] },
   "handles": [
-    { "id": "route-segment-api-db-0", "transform": "translate(110px, 146px)", "cursor": "col-resize", "title": "Drag to shape this line (Ctrl/⌘: no snapping)" },
-    { "id": "route-segment-api-db-1", "transform": "translate(251.346px, 220px)", "cursor": "row-resize", "title": "Drag to shape this line (Ctrl/⌘: no snapping)" },
-    { "id": "route-segment-api-db-2", "transform": "translate(760px, 146px)", "cursor": "col-resize", "title": "Drag to shape this line (Ctrl/⌘: no snapping)" }
+    { "id": "route-segment-api-db-0", "transform": "translate(110px, 146px) scale(calc(1 / var(--rf-zoom-exact, 1)))", "cursor": "col-resize", "title": "Drag to shape this line (Ctrl/⌘: no snapping)" },
+    { "id": "route-segment-api-db-1", "transform": "translate(251.34592105263158px, 220px) scale(calc(1 / var(--rf-zoom-exact, 1)))", "cursor": "row-resize", "title": "Drag to shape this line (Ctrl/⌘: no snapping)" },
+    { "id": "route-segment-api-db-2", "transform": "translate(760px, 146px) scale(calc(1 / var(--rf-zoom-exact, 1)))", "cursor": "col-resize", "title": "Drag to shape this line (Ctrl/⌘: no snapping)" }
   ]
 }

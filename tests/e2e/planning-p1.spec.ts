@@ -1,4 +1,4 @@
-import { openLiveNodeDetails } from "./fixtures";
+import { openLiveNodeDetails, openEditProperties, goToNode, waitForCameraIdle } from "./fixtures";
 import { isAbsolute, relative, resolve, sep } from "node:path";
 import type { Page } from "@playwright/test";
 import { planningFixture } from "../../src/lab/planningFixture";
@@ -54,6 +54,7 @@ async function seed(
       `./?view=canvas&example=${SLUG}&live=1${kind === "outage" ? "&sim=outage&paused=1" : kind === "analysis-limit" ? "&paused=1&traffic=0" : ""}`,
     );
   else await gotoCanvas(page, SLUG);
+  await waitForCameraIdle(page);
   await waitForStableViewport(page);
 }
 
@@ -181,8 +182,8 @@ test("P1: live hover and keyboard focus show the same configured explanation and
   // Canvas roving focus: click selects/focuses the node; moving off it keeps the focused explanation.
   await page.getByTestId("node-orders").click();
   await page.getByTestId("diagram-title").hover();
-  await expect(card).toBeVisible();
   await openLiveNodeDetails(page, "orders", "planning");
+  await expect(card).toBeVisible();
   await expect(card).toHaveAttribute("role", "region");
   await expect(page.getByTestId("node-live-focus-orders")).toHaveAccessibleDescription(
     /Orders handles ~1 req\/s.*receives 3 req\/s.*Observed now/,
@@ -244,6 +245,7 @@ test("P1: model upgrade previews unchanged capacity, is undoable and exposes a l
 test("P1: Apply keeps a saved timeline outage in its latest sizing analysis", async ({ page }) => {
   await seed(page, "outage", true);
   await page.getByTestId("node-orders").dblclick();
+  await openEditProperties(page);
   const x = page.getByTestId("inspector").getByTestId("planning-explanation-orders");
   await expect(x.getByTestId("planning-target")).toContainText("12 replicas at the 50% target");
   await pauseClock(page);
@@ -336,6 +338,7 @@ test("P1: a live callout moves clear of a node panned into its footprint", async
       );
     })
     .toBe(true);
+  await goToNode(page, "topic");
   await page.getByTestId("node-topic").click();
   await page.keyboard.press("F2");
   await expect(page.getByTestId("inspector-field-label")).toBeFocused();
@@ -345,6 +348,7 @@ test("P1: a live callout moves clear of a node panned into its footprint", async
 test("P1: live group details stay reachable in a short viewport", async ({ page }) => {
   await page.setViewportSize({ width: 1000, height: 460 });
   await seed(page, "many-groups", true);
+  await goToNode(page, "topic");
   await page.getByTestId("node-topic").click();
   await page.getByTestId("diagram-title").hover();
   const card = page.getByTestId("node-detail-topic");
@@ -367,6 +371,7 @@ test("P1: a keyboard-focused hover card follows pan, zoom and pane resizing", as
   await page.getByTestId("node-orders").click();
   await page.getByTestId("diagram-title").hover();
   const card = page.getByTestId("node-detail-orders");
+  await openLiveNodeDetails(page, "orders", "planning");
   await expect(card).toBeVisible();
   const check = async () => {
     await expect

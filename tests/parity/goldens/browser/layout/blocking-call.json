@@ -15,20 +15,14 @@
   "tidy": {
     "viewport": "translate(1.9019px, 279.793px) scale(0.752452)",
     "nodes": {
-      "source": { "kind": "node", "box": "translate(0px, 250px) 233×72", "text": "Applications submitted User" },
-      "applications": { "kind": "node", "box": "translate(310px, 250px) 220×72", "text": "Applications Topic" },
-      "caller": { "kind": "node", "box": "translate(610px, 250px) 232×87", "text": "Decision service 4 replicas · 16 threads each" },
+      "source": { "kind": "node", "box": "translate(0px, 240px) 233×72", "text": "Applications submitted User" },
+      "applications": { "kind": "node", "box": "translate(310px, 240px) 220×72", "text": "Applications Topic" },
+      "caller": { "kind": "node", "box": "translate(610px, 240px) 232×72", "text": "Decision service 4 replicas · 16 threads each" },
       "partner": { "kind": "node", "box": "translate(930px, 180px) 220×72", "text": "Partner scoring API External API" },
-      "decisions": { "kind": "node", "box": "translate(930px, 320px) 220×72", "text": "Decisions Topic" },
-      "store": { "kind": "node", "box": "translate(1230px, 250px) 220×72", "text": "Case store Database" }
+      "decisions": { "kind": "node", "box": "translate(930px, 300px) 220×72", "text": "Decisions Topic" },
+      "store": { "kind": "node", "box": "translate(1230px, 240px) 220×72", "text": "Case store Database" }
     },
-    "edges": {
-      "submit": "M233,286 L310,286",
-      "consume": "M530,286 L566.3,286 Q570,286 570,289.8 L570,289.8 Q570,293.5 573.8,293.5 L610,293.5",
-      "call": "M842,286.5 L876,286.5 Q886,286.5 886,276.5 L886,226 Q886,216 896,216 L930,216",
-      "publish": "M842,300.5 L876,300.5 Q886,300.5 886,310.5 L886,346 Q886,356 896,356 L930,356",
-      "save": "M1150,356 L1180,356 Q1190,356 1190,346 L1190,296 Q1190,286 1200,286 L1230,286"
-    },
+    "edges": { "submit": "M233,276 L310,276", "consume": "M530,276 L610,276", "call": "M842,269 L876,269 Q886,269 886,259 L886,226 Q886,216 896,216 L930,216", "publish": "M842,283 L876,283 Q886,283 886,293 L886,326 Q886,336 896,336 L930,336", "save": "M1150,336 L1180,336 Q1190,336 1190,326 L1190,286 Q1190,276 1200,276 L1230,276" },
     "labels": {}
   }
 }

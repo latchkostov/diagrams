@@ -77,6 +77,7 @@ export function TopBar(p: Props) {
         <button
           className="icon-btn"
           data-testid="view-lab"
+          aria-pressed={lab}
           onClick={() => p.onView("lab")}
           aria-label={t("topbar.views")}
         >
@@ -168,7 +169,7 @@ export function TopBar(p: Props) {
 
       {canvas && (
         <>
-          <HistoryButtons />
+          {!phone && <HistoryButtons />}
           <ModeSwitch />
         </>
       )}
@@ -179,6 +180,7 @@ export function TopBar(p: Props) {
           ⋯
         </summary>
         <div className="topbar-group" data-testid="topbar-actions">
+          {canvas && phone && <HistoryButtons />}
           <ViewMenu edges={canvas || lab} overlays={canvas} />
           <FileMenu
             api={p.interop}
