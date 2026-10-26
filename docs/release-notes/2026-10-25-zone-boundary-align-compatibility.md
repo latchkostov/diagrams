@@ -14,6 +14,6 @@ Kept the tutorial tests and original runner contract. Rejected adapting callers 
 
 ## Verification
 
-All 42 targeted Chromium tests pass, including the six arrange tutorial cases. The tutorial/editor/slider unit run passed 2,778 tests with 101 skipped and one existing backoff-budget timeout; both clean-master focused runs reproduce that timeout, documented in `docs/backlog/2026-10-25-backoff-budget-completion-timeout.md`. A final focused arrangement and history run passed all 46 selected tests. Reverting the compatibility and gesture fixes fails four regressions; forcing fixed corners and a tiny empty handle fails all three new browser checks.
+All 42 targeted Chromium tests pass, including the six arrange tutorial cases. The tutorial/editor/slider unit run passed 2,778 tests with 101 skipped and one existing backoff-budget timeout; both clean-master focused runs reproduce that timeout, documented in [the consolidated evidence](../backlog/2026-10-25-timeout-triage.md#evidence-12). A final focused arrangement and history run passed all 46 selected tests. Reverting the compatibility and gesture fixes fails four regressions; forcing fixed corners and a tiny empty handle fails all three new browser checks.
 
 Build, bundle budgets and regeneration pass. Full-suite verification stays with PR CI.
