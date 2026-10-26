@@ -14,7 +14,7 @@ export function admissionFieldBindings(stencil: string, props: Record<string, un
     patch: (value: number | undefined) => Partial<NodeSimProps>,
     max: number,
     step = 1,
-  ) => ({ name, value, patch, max, step });
+  ) => ({ name, value, patch, max, step, disabled: name === "rate" && !rate && (api.quotas?.length ?? 0) >= 32 });
   const rate = api.quotas?.find(
     (quota) => /^local-rate(?:-\d+)?$/.test(quota.id) && quota.unit === "requests" && !quota.sharedGroup,
   );
@@ -30,10 +30,16 @@ export function admissionFieldBindings(stencil: string, props: Record<string, un
           rate ? (rate.amount * 1000) / rate.windowMs : undefined,
           (value) =>
             patchApi({
-              quotas: [
-                ...(api.quotas ?? []).filter((quota) => quota !== rate),
-                ...(value !== undefined && value > 0 ? [{ ...localRateQuota(value), id: rateId }] : []),
-              ],
+              quotas:
+                value === undefined || value <= 0
+                  ? (api.quotas ?? []).filter((quota) => quota !== rate)
+                  : rate
+                    ? (api.quotas ?? []).map((quota) =>
+                        quota === rate ? { ...localRateQuota(value), id: rateId } : quota,
+                      )
+                    : (api.quotas?.length ?? 0) >= 32
+                      ? api.quotas
+                      : [...(api.quotas ?? []), { ...localRateQuota(value), id: rateId }],
             }),
           10000000,
           0.1,

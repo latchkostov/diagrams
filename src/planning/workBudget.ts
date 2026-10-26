@@ -1,5 +1,5 @@
 import type { DiagramFile } from "../model/types";
-import { emitsMapping } from "../model/emitsMapping";
+import { emitsMapping, validRule } from "../model/emitsMapping";
 import type { LiveState } from "../live/controller";
 import { stencilRole } from "../stencils/roles";
 import { edgeSemanticSignature, isDependency } from "../model/relations";
@@ -28,6 +28,24 @@ const byNode = (props?: Record<string, Props>) =>
  */
 export function planningInput(d: DiagramFile, state?: LiveState | null): unknown[] | undefined {
   if (d.nodes.length > 256 || d.edges.length > 512) return undefined;
+  // Bound authored lists BEFORE making lookup tables. Duplicate types and invalid rows also cost work,
+  // even though the behavioral mapping collapses or drops them. IDs remain outside the text budget.
+  let rows = 0,
+    characters = 0;
+  const canMap = (props: Props): boolean => {
+    const emits = props?.emits;
+    if (!Array.isArray(emits)) return true;
+    rows += emits.length;
+    if (rows > MAX_ITEMS) return false;
+    for (const rule of emits) {
+      if (validRule(rule)) characters += rule.receives.length + rule.sends.length;
+      if (characters > MAX_TEXT) return false;
+    }
+    return true;
+  };
+  for (const node of d.nodes) if (!canMap(node.props)) return undefined;
+  for (const props of [state?.running?.setup?.props, state?.inputs?.props, state?.configuration])
+    if (props) for (const id in props) if (!canMap(props[id])) return undefined;
   const nodes = new Map(d.nodes.map((node) => [node.id, node]));
   const setup = state?.running?.setup;
   const config = [
@@ -91,7 +109,7 @@ export function planningInput(d: DiagramFile, state?: LiveState | null): unknown
   for (const edge of d.edges)
     if (Array.isArray(edge.props?.filter))
       for (const pattern of edge.props.filter) if (typeof pattern === "string") comparisons.push(pattern.length);
-  const characters = Math.max(1, ...comparisons);
+  const comparisonCharacters = Math.max(1, ...comparisons);
   const filters = d.edges.reduce(
     (sum, edge) => sum + (Array.isArray(edge.props?.filter) ? edge.props.filter.length : 0),
     0,
@@ -103,7 +121,7 @@ export function planningInput(d: DiagramFile, state?: LiveState | null): unknown
   );
   const work =
     3 *
-    characters *
+    comparisonCharacters *
     (iterations * count * (d.nodes.length + d.edges.length + squares + filters) + count ** 3 * flowWork);
   return work > MAX_PLANNING_WORK ? undefined : config;
 }

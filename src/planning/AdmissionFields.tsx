@@ -165,6 +165,7 @@ export function AdmissionInput({
   mixed = false,
   testId,
   hint,
+  disabled = false,
 }: {
   name: string;
   label: string;
@@ -175,6 +176,7 @@ export function AdmissionInput({
   mixed?: boolean;
   testId?: string;
   hint?: string;
+  disabled?: boolean;
 }) {
   const [draft, setDraft] = useState<string | null>(null);
   const [invalid, setInvalid] = useState(false);
@@ -191,11 +193,14 @@ export function AdmissionInput({
           min={min}
           max={max}
           step={name === "rate" ? "any" : step}
+          disabled={disabled}
           value={draft ?? value ?? ""}
           placeholder={mixed ? t("admission.mixed") : t("admission.unknownShort")}
           data-testid={testId ?? `admission-${name}`}
           aria-invalid={invalid && draft !== null}
-          aria-describedby={[hint && hintId, invalid && feedbackId].filter(Boolean).join(" ") || undefined}
+          aria-describedby={
+            [(hint || disabled) && hintId, invalid && feedbackId].filter(Boolean).join(" ") || undefined
+          }
           onFocus={() => {
             setInvalid(false);
             setDraft(value === undefined ? "" : String(value));
@@ -225,9 +230,9 @@ export function AdmissionInput({
           </small>
         )}
       </label>
-      {hint && (
+      {(hint || disabled) && (
         <p id={hintId} className="insp-note">
-          {hint}
+          {disabled ? t("admission.quotaLimit") : hint}
         </p>
       )}
     </>
@@ -261,6 +266,7 @@ export function BulkAdmissionFields({
               {...field}
               value={mixed ? undefined : field.value}
               mixed={mixed}
+              disabled={fields.some((item) => item.disabled)}
               label={admissionFieldLabel(field.name)}
               change={(value) =>
                 set(Object.fromEntries(nodes.map((node, i) => [node.id, fields[i].patch(value)])), field.name)
