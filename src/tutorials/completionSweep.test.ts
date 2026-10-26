@@ -145,8 +145,16 @@ const startOf = (tutorial: Tutorial): DiagramFile =>
  * lazyLive: going live shows free play first; Live's actions arrive a task later, as the lazy session's chunk mounts
  * them, and a queued saved run a task after that (the session's own effect activates it).
  */
-function sandbox(tutorial: Tutorial, { lateAdds = false, lateConnects = false, lazyLive = false } = {}) {
-  let diagram = startOf(tutorial);
+function sandbox(
+  tutorial: Tutorial,
+  {
+    lateAdds = false,
+    lateConnects = false,
+    lazyLive = false,
+    savedDocument = undefined as DiagramFile | undefined,
+  } = {},
+) {
+  let diagram = savedDocument ?? startOf(tutorial);
   let version = 0;
   let mode: EditorModeState = { ...initialEditorMode, annotating: null };
   let made = 0;
@@ -659,7 +667,7 @@ function sandbox(tutorial: Tutorial, { lateAdds = false, lateConnects = false, l
   const runner = createTutorialRunner(tutorial, {
     close: vi.fn(),
     host,
-    initial: startOf(tutorial),
+    initial: savedDocument ?? startOf(tutorial),
     present: (on) => {
       app.presenting = on;
       runner.appChanged({ ...app });
@@ -1431,6 +1439,20 @@ function expectRepaired(s: Sandbox, step: TutorialStep, sim: Simulation, selecte
       expect(repairedRun(s.diagram, sim, repairTarget(s, demo), demo.patches), `${sim.id} still overrides`).toBe(sim);
 }
 
+/** Every copy retains the authored load, with omitted fields using playback's defaults. */
+function expectAuthoredMultipliers(tutorial: Tutorial, copies: readonly Simulation[] = []) {
+  const authored = startOf(tutorial).simulations ?? [];
+  for (const copy of copies) {
+    const original = authored.find((sim) => sim.id === copy.id)!;
+    expect(copy.multipliers?.traffic ?? 1, `${tutorial.id}/${copy.id} traffic`).toBe(
+      original.multipliers?.traffic ?? 1,
+    );
+    expect(copy.multipliers?.capacity ?? 1, `${tutorial.id}/${copy.id} capacity`).toBe(
+      original.multipliers?.capacity ?? 1,
+    );
+  }
+}
+
 describe("every tutorial's completion contract", () => {
   for (const tutorial of [...tutorials, ...tutorialFixtures, ...visibilityFixtures, savedCallerFixture])
     describe(tutorial.id, () => {
@@ -1443,7 +1465,7 @@ describe("every tutorial's completion contract", () => {
           ...(runRepairs(step).some((d) => d.subject) && repairedRunId(step) ? ["learner edited saved Inputs"] : []),
           ...(runRepairs(step).some((d) => d.edge) && repairedRunId(step) ? ["saved override changed"] : []),
           ...(repairedRunId(step) ? ["learner has an unsaved draft of the target simulation"] : []),
-          ...(tutorial.study && replayedRunId(step) ? ["saved Capacity ×0.25 before the reference replay"] : []),
+          ...(tutorial.study && replayedRunId(step) ? ["learner-changed multipliers before the reference replay"] : []),
           ...(tutorial.id === "study-fanout" && step.demo.some((demo) => demo.kind === "insert")
             ? ["learner disconnected a channel queue"]
             : []),
@@ -1502,10 +1524,10 @@ describe("every tutorial's completion contract", () => {
               // The Simulations panel stays open on it, with one more edit not yet Run.
               s.session.openPanel({ ...draft, description: "Pending" } as Simulation);
               await new Promise<void>((done) => queueMicrotask(done));
-            } else if (perturbation === "saved Capacity ×0.25 before the reference replay") {
-              // Inputs & capacity › Capacity ×0.25, Save to simulation, on the run this step's Skip replays.
+            } else if (perturbation === "learner-changed multipliers before the reference replay") {
+              // Save learner changes to both multipliers on the run this step replays.
               s.learn({ kind: "runSimulation", id: replayedRunId(step)! });
-              s.live!.setInputs({ ...s.live!.getState().inputs, capacity: 0.25 });
+              s.live!.setInputs({ ...s.live!.getState().inputs, capacity: 0.25, traffic: 0.5 });
               s.saveInputs();
               await new Promise<void>((done) => queueMicrotask(done));
               expect(s.diagram.simulations!.find((sim) => sim.id === replayedRunId(step))!.multipliers!.capacity).toBe(
@@ -1574,11 +1596,9 @@ describe("every tutorial's completion contract", () => {
               // The open panel's copy got the same repair, its pending edit kept: its Run and Save keep the repair.
               expect(s.session.panelCopy).toMatchObject({ id: run, title: "Learner draft", description: "Pending" });
               expectRepaired(s, step, s.session.panelCopy!, run);
-            } else if (perturbation === "saved Capacity ×0.25 before the reference replay") {
-              // The reference replay played the run as designed: its saved capacity back to ×1.
-              expect(s.diagram.simulations!.find((sim) => sim.id === replayedRunId(step))!.multipliers!.capacity).toBe(
-                1,
-              );
+            } else if (perturbation === "learner-changed multipliers before the reference replay") {
+              expectAuthoredMultipliers(tutorial, s.diagram.simulations!);
+              expectAuthoredMultipliers(tutorial, [s.live!.getState().simulation!]);
             } else if (perturbation === "learner edited saved Inputs" || perturbation === "saved override changed")
               expectRepaired(
                 s,
@@ -1598,6 +1618,7 @@ describe("every tutorial's completion contract", () => {
           if (!(await reach(s, tutorial, i))) return expectPassedOver(s, i);
           expect(state(s).value).toBe("active");
           await skip(s, tutorial);
+          if (tutorial.study) expectAuthoredMultipliers(tutorial, s.diagram.simulations!);
         });
 
         lessonIt(`${step.id}: (b) Skip from completing advances without repeating an edit`, async () => {
@@ -1723,6 +1744,11 @@ describe("every tutorial's completion contract", () => {
             },
             { timeout: 2000, interval: 1 },
           );
+          if (tutorial.study) {
+            expectAuthoredMultipliers(tutorial, s.diagram.simulations!);
+            const selected = s.live?.getState().simulation;
+            if (selected) expectAuthoredMultipliers(tutorial, [selected]);
+          }
           if (landing < tutorial.steps.length) expect(savedProgress(tutorial)).toMatchObject({ step: landing });
           for (const [, value] of writes.mock.calls) {
             const saved = (JSON.parse(value) as { progress?: Record<string, { step: number; completed: boolean }> })
@@ -1750,6 +1776,56 @@ describe("every tutorial's completion contract", () => {
         });
       });
     });
+});
+
+describe("study reference multiplier sweep", () => {
+  for (const study of tutorials.filter((tutorial) => tutorial.study))
+    for (const run of startOf(study).simulations ?? [])
+      for (const action of ["Skip", "Continue"] as const)
+        for (const changed of [false, true])
+          it(`${study.id}/${run.id}: ${action} restores authored traffic and capacity (changed: ${changed})`, async () => {
+            // Exercise every study's saved definitions with non-default authored capacity as well as traffic.
+            const authored = { traffic: run.multipliers?.traffic ?? 2, capacity: 3 };
+            const lesson: Tutorial = {
+              ...study,
+              start: () => ({
+                ...startOf(study),
+                simulations: startOf(study).simulations!.map((sim) =>
+                  sim.id === run.id ? { ...sim, multipliers: authored } : sim,
+                ),
+              }),
+              steps: [
+                {
+                  ...study.steps[0],
+                  check: { kind: "simulation", id: run.id, atLeastMs: 250 },
+                  demo: [{ kind: "runSimulation", id: run.id }],
+                },
+                { ...study.steps[0], id: "acknowledge-reference", check: { kind: "acknowledge" }, demo: [] },
+              ],
+            };
+            if (action === "Continue") saveProgress(lesson, 1, false);
+            const savedDocument = startOf(lesson);
+            if (changed)
+              savedDocument.simulations = savedDocument.simulations!.map((sim) =>
+                sim.id === run.id ? { ...sim, multipliers: { traffic: 0.5, capacity: 0.25 } } : sim,
+              );
+            const s = sandbox(lesson, { savedDocument });
+            if (action === "Skip") {
+              s.runner.send({ type: "start" });
+              await skip(s, lesson);
+            } else {
+              s.runner.send({ type: "resume" });
+              await vi.waitFor(() => {
+                if (s.live?.getState().playing) {
+                  s.live.advance(250);
+                  s.live.publish();
+                }
+                expect(state(s)).toMatchObject({ value: "active", index: 1 });
+              });
+            }
+            expect(s.diagram.simulations!.find((sim) => sim.id === run.id)!.multipliers).toEqual(authored);
+            expect(s.live!.getState().simulation!.multipliers).toEqual(authored);
+          });
 });
 
 describe("completion regressions", () => {

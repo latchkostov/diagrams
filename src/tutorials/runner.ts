@@ -96,7 +96,8 @@ export function createTutorialRunner(
   ports: { close(): void; host?: Host; initial?: DiagramFile; documentId?: string; present?(on: boolean): void },
 ) {
   const host = ports.host ?? paletteHost;
-  const initial = ports.initial ?? (typeof tutorial.start === "function" ? tutorial.start() : undefined);
+  const authored = typeof tutorial.start === "function" ? tutorial.start() : undefined;
+  const initial = ports.initial ?? authored;
   const saved = savedProgress(tutorial);
   const sticky = tutorial.steps.map((s) => !!s.sticky || s.demo.length === 0);
   const dynamic = (check: Tutorial["steps"][number]["check"]): boolean =>
@@ -161,7 +162,7 @@ export function createTutorialRunner(
   let documentChecks: boolean[] = [];
   let topology: string | undefined;
   /** Every edit of props, saved runs, drafts and Inputs a demo makes goes through these (./repair.ts). */
-  const repairs = createRepairs();
+  const repairs = createRepairs(authored?.simulations);
   function view(): SandboxView {
     const h = host.get();
     const ed = h.canvas!.editor;
@@ -471,7 +472,7 @@ export function createTutorialRunner(
         ed.addAnnotation(demo.annotation);
         return;
       case "runSimulation":
-        // A design study's reference replay plays its run as designed: saved multipliers back to ×1 first.
+        // A design study's reference replay restores its authored load and capacity first.
         if (tutorial.study && repairs.reference(repairPorts(), demo.id) === "waiting") return false;
         host.runSimulation?.(demo.id);
         return;

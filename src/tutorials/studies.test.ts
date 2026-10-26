@@ -272,7 +272,7 @@ describe("design studies", () => {
     });
   }
 
-  it.each([studyDispatch, studyPayments, studyFanout, studyRag, studyCells])(
+  it.each([studyCheckout, studyDispatch, studyPayments, studyFanout, studyRag, studyCells])(
     "publishes $id with its generated browser cases",
     (study) => {
       expect(study.quarantined).toBeUndefined();
