@@ -1,6 +1,6 @@
 ## Checkpoint boundary: source map and UX review
 
-Against PR 1 (`31aa4f4b5`), the checkpoint/restore block is `src/sim/engine.ts:3953�4117`.
+Against PR 1 (`31aa4f4b5`), the checkpoint/restore block is `src/sim/engine.ts:3953-4114`.
 
 | Original concern                                                                               | Destination                                                                                 |
 | ---------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |

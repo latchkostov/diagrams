@@ -14,8 +14,7 @@ edges and accounting, and rejects an independent edge-slice clone. The source-ra
 
 ## Artifact size check
 
-Against merge-base `31aa4f4b5`, gzip deltas are +108 B for LiveSession including static imports,
-+94 B for simulation, +184 B for the simulation worker, +197 B for the evidence worker, and
-+134 B for the platform viewer (+58 B for the Interactive HTML viewer). Total app JavaScript
-increases 448 B gzip. All per-surface and total caps remain fixed. The built skill ZIP is
-818,065 B, leaving 16,935 B below the strict 835,000 B ceiling.
+All requested surfaces remain within +200 B gzip and total app JavaScript within +1,000 B gzip
+against the merge-base. The skill ZIP remains strictly below 835,000 B. Limits and compression
+policy are unchanged. [PR #353](https://github.com/latchkostov/diagrams/pull/353) records each
+surface's raw/gzip measurements against the final merge-base and the exact ZIP bytes.
