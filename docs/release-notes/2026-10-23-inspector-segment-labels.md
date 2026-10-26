@@ -6,4 +6,4 @@ Regression coverage measures every Inspector segmented control (While waiting, C
 
 I18n validation, skill freshness, catalog parity, production build, size and all four bundle benchmark gates pass. Catalog parity compares three goldens: none changed, added or missing. No parity goldens were updated. The requested single Linux Inspector run could not acquire capacity: both attempts exited 75 because another gate held all 12 workers; verification falls back to PR CI as requested.
 
-The broader unit run was stopped after local five-second timeouts in four unchanged simulation/replay files. Targeted clean-master replays reproduce timeout failures in all four files; exact results and follow-up are recorded in [the backlog](../backlog/2026-10-23-local-unit-timeouts-under-load.md). No complete unit-suite pass is claimed.
+The broader unit run was stopped after local five-second timeouts in four unchanged simulation/replay files. Targeted clean-master replays reproduce timeout failures in all four files; exact results and follow-up are recorded in [the backlog](../backlog/2026-10-25-timeout-triage.md#evidence-07). No complete unit-suite pass is claimed.

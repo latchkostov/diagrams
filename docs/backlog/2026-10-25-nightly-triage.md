@@ -35,9 +35,9 @@ lane failures are not additional failing tests. This comparison does not equate 
 counts with the randomized 20× Nightly workload.
 
 Existing native context: [baseline](2026-10-24-native-e2e-baseline.md),
-[unit load backstops](2026-10-24-native-suite-load-timeouts.md),
+[unit load backstops](2026-10-25-timeout-triage.md#evidence-10),
 [exact native evidence](2026-10-24-p2-native-evidence.md), and
-[heavy simulation backstops](2026-10-24-heavy-simulation-timeouts.md).
+[heavy simulation backstops](2026-10-25-timeout-triage.md#evidence-08).
 Those documents explicitly distinguish observed baseline failures from unsuccessful or passing
 clean-master probes; this triage does not upgrade an unproven observation into a confirmed master bug.
 
