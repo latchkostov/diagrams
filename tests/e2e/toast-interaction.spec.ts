@@ -544,6 +544,8 @@ test("layering: Escape from a palette opened on a focused toast hands the keyboa
   await pauseClock(page);
   await agentChange(page, "Focused change");
   const undo = page.getByTestId("ai-toast-undo");
+  // Let placement settle above the bars first (the paused clock holds its 250 ms pass).
+  await page.clock.runFor(250);
   await undo.focus();
   const geometry = await undo.boundingBox();
   await page.keyboard.press("ControlOrMeta+k");
