@@ -3,7 +3,8 @@ import type { ReactFlowInstance } from "@xyflow/react";
 import { toFlow } from "../canvas/convert";
 import type { DiagramFlowEdge, FlowNode } from "../canvas/types";
 import type { EdgeMark } from "../canvas/edgeMarks";
-import type { DiagramAnnotation, DiagramNode } from "../model/types";
+import type { DiagramAnnotation, DiagramNode, DiagramGroup } from "../model/types";
+import { nestedBoundariesFixture } from "../lab/nestedBoundariesFixture";
 import { makePayload } from "./clipboard";
 import { createEditor, type EditorDeps } from "./useEditor";
 
@@ -17,6 +18,7 @@ interface Setup {
   pointer?: { x: number; y: number };
   nodes?: DiagramNode[];
   annotations?: DiagramAnnotation[];
+  groups?: DiagramGroup[];
   /** Edge marks as the canvas would sample them (each knows its edge). */
   marks?: EdgeMark[];
 }
@@ -33,6 +35,7 @@ function setup(o: Setup = {}) {
     ],
     edges: o.nodes ? [] : [{ id: "ab", from: "a", to: "b" }],
     annotations: o.annotations,
+    groups: o.groups,
   });
   let nodes: FlowNode[] = flow.nodes;
   let edges: DiagramFlowEdge[] = flow.edges;
@@ -197,6 +200,32 @@ describe.each(OBSTACLES)("copy placement avoids %s", (_name, obstacle) => {
 });
 
 describe("Alt-drag", () => {
+  it("remaps a boundary subtree in place without changing the originals", () => {
+    const t = setup(nestedBoundariesFixture);
+    const original = t.api.getDiagram();
+    const made = t.api.duplicateInPlace({ groupIds: ["grp-core", "child"] });
+    expect([...made]).toEqual([
+      ["member", "member-1"],
+      ["note", "note-1"],
+      ["group:child", "group:child-1"],
+      ["group:grp-core", "group:grp-core-1"],
+    ]);
+    const copied = t.api.getDiagram();
+    for (const key of ["groups", "nodes", "annotations"] as const) {
+      const before = original[key] ?? [];
+      const after = copied[key] ?? [];
+      expect(after).toHaveLength(before.length * 2);
+      for (const item of before) {
+        expect(after.find((n) => n.id === item.id)).toEqual(item);
+        expect(after.find((n) => n.id === `${item.id}-1`)).toEqual({
+          ...item,
+          id: `${item.id}-1`,
+          ...(item.group ? { group: `${item.group}-1` } : {}),
+        });
+      }
+    }
+  });
+
   it("copies in place (old id → new), then a copy left on something moves clear", () => {
     const t = setup();
     const made = t.api.duplicateInPlace({ nodeIds: ["a"] });

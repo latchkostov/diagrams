@@ -52,10 +52,10 @@ export function SizeInput({
   const [draft, setDraft] = useState<string | null>(null);
   const commit = () => {
     if (draft === null) return;
-    const v = Math.round(Number(draft));
+    const raw = Number(draft);
+    const v = Math.max(min, Math.min(ANNOTATION_LIMITS.maxAnnotationSize, Math.round(raw)));
     setDraft(null);
-    if (Number.isFinite(v) && v !== Math.round(value))
-      onCommit(Math.max(min, Math.min(ANNOTATION_LIMITS.maxAnnotationSize, v)));
+    if (Number.isFinite(raw) && v !== value) onCommit(v);
   };
   return (
     <input

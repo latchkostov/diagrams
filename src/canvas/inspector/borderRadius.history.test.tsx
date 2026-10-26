@@ -88,7 +88,35 @@ it.each(["boundary", "zone"] as const)("%s slider transactions survive pauses lo
       await act(() => slider.dispatchEvent(new PointerEvent("pointerup", { pointerId: 1, bubbles: true })));
       expect(merge).not.toBe(previousTag);
       if (collaborative) expect(new Set(roomCommit.mock.calls.map((call) => call[1]))).toHaveLength(1);
-      else {
+      const write = vi.spyOn(h.deps, "setNodes");
+      roomCommit.mockClear();
+      const entries = history.history.entries.length;
+      const unchanged = h.api.getDiagram();
+      // Enter and blur of equivalent numbers must not reach the editor or add an Undo step.
+      for (const [testId, draft] of [
+        ["inspector-field-border-radius-input", "34.2"],
+        ["inspector-field-width", "400.2"],
+      ]) {
+        const input = host.querySelector<HTMLInputElement>(`[data-testid="${testId}"]`)!;
+        for (const event of [
+          new KeyboardEvent("keydown", { key: "Enter", bubbles: true }),
+          new FocusEvent("focusout", { bubbles: true }),
+        ]) {
+          await act(() => {
+            Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(input, draft);
+            input.dispatchEvent(new Event("input", { bubbles: true }));
+          });
+          await act(() => input.dispatchEvent(event));
+          history.commit(toFlow(h.api.getDiagram()), merge, (at += MERGE_WINDOW_MS * 10));
+          await act(render);
+        }
+      }
+      expect(write).not.toHaveBeenCalled();
+      expect(roomCommit).not.toHaveBeenCalled();
+      expect(h.api.getDiagram()).toEqual(unchanged);
+      expect(history.history.entries).toHaveLength(entries);
+      write.mockRestore();
+      if (!collaborative) {
         expect(history.history.entries).toHaveLength(3);
         const radiusAfterUndo = () => {
           const undone = history.step("undo", { nodes: [], edges: [] })!;

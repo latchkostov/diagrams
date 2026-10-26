@@ -44,7 +44,7 @@ export function Slider({
     if (draft === null) return;
     const v = Number(draft);
     setDraft(null);
-    if (draft.trim() && Number.isFinite(v) && normalize(v) !== current) {
+    if (draft.trim() && Number.isFinite(v) && normalize(v) !== value) {
       onEditStart?.();
       onChange(normalize(v));
       onEditEnd?.();
