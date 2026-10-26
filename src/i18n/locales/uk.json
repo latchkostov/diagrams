@@ -1948,5 +1948,7 @@
   "staticSkill.copy": "Копіювати",
   "staticSkill.copied": "Скопійовано",
   "staticSkill.selectCopy": "Виділити й скопіювати",
-  "gallery.inlineRateLimitSummary": "Трафік партнера обмежується редагованою квотою запитів"
+  "gallery.inlineRateLimitSummary": "Трафік партнера обмежується редагованою квотою запитів",
+  "inspector.borderRadius": "Радіус кутів",
+  "examples.roundedRegions": "Зони та межі із заокругленими кутами"
 }

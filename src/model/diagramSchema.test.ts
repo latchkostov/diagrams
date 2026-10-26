@@ -75,6 +75,7 @@ const group: Required<DiagramGroup> = {
   width: 800,
   height: 400,
   group: "region",
+  borderRadius: 20,
 };
 const annotation: Required<DiagramAnnotation> = {
   id: "shape",
@@ -88,6 +89,7 @@ const annotation: Required<DiagramAnnotation> = {
   color: "purple",
   textSize: "l",
   group: "cloud",
+  borderRadius: 18,
 };
 const traffic: Required<TrafficProfile> = {
   id: "t1",
@@ -296,5 +298,36 @@ it("uses the same waypoint coordinate boundaries as native loading", () => {
     expect(result.ok).toBe(true);
     if (result.ok) expect(result.diagram.edges[0].waypoints).toEqual(saved.waypoints);
     expect(() => check({ ...saved, waypoints: [{ x: value + Math.sign(value), y: 0 }] }, "Edge")).toThrow();
+  }
+});
+
+describe("borderRadius respects bounds", () => {
+  for (const kind of ["groups", "annotations"] as const) {
+    const base =
+      kind === "groups"
+        ? { id: "g", label: "Boundary", x: 0, y: 0, width: 200, height: 200 }
+        : { id: "z", kind: "zone", text: "Zone", x: 0, y: 0, width: 200, height: 200 };
+    it.each([undefined, 0, 40])(`${kind} accepts %s`, (radius) => {
+      expect(() =>
+        check({
+          format: "diagrams/v1",
+          title: "Radius",
+          nodes: [],
+          edges: [],
+          [kind]: [{ ...base, ...(radius === undefined ? {} : { borderRadius: radius }) }],
+        }),
+      ).not.toThrow();
+    });
+    it.each([-1, 41, "20", null, {}])(`${kind} rejects %s`, (radius) => {
+      expect(() =>
+        check({
+          format: "diagrams/v1",
+          title: "Radius",
+          nodes: [],
+          edges: [],
+          [kind]: [{ ...base, borderRadius: radius }],
+        }),
+      ).toThrow();
+    });
   }
 });

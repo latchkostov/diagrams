@@ -1948,5 +1948,7 @@
   "staticSkill.copy": "Копировать",
   "staticSkill.copied": "Скопировано",
   "staticSkill.selectCopy": "Выделить и скопировать",
-  "gallery.inlineRateLimitSummary": "Трафик партнёра ограничивается редактируемой квотой запросов"
+  "gallery.inlineRateLimitSummary": "Трафик партнёра ограничивается редактируемой квотой запросов",
+  "inspector.borderRadius": "Радиус углов",
+  "examples.roundedRegions": "Зоны и границы со скруглёнными углами"
 }

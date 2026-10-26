@@ -1,2 +1,2 @@
 exit 0
-VALID <repo>/src/examples/inline-rate-limit.json: 3 nodes, 2 edges
+VALID <repo>/src/examples/inline-rate-limit.json: 3 nodes, 2 edges, 3 boundaries

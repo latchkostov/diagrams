@@ -1948,5 +1948,7 @@
   "staticSkill.copy": "Copia",
   "staticSkill.copied": "Copiato",
   "staticSkill.selectCopy": "Seleziona e copia",
-  "gallery.inlineRateLimitSummary": "Il traffico di un partner incontra una quota di richieste modificabile"
+  "gallery.inlineRateLimitSummary": "Il traffico di un partner incontra una quota di richieste modificabile",
+  "inspector.borderRadius": "Raggio degli angoli",
+  "examples.roundedRegions": "Zone e confini arrotondati"
 }

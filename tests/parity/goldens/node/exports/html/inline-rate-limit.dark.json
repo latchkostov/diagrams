@@ -1,11 +1,11 @@
 {
-  "file": { "sha256": "5362cf8d62d258ce1d6d914a2fa8e66370030c6cc55d4dafb15aa4d69c4af369", "bytes": 11699 },
+  "file": { "sha256": "6c61ce6ac25644dd8cbe7ced6eb013be0ef6a346c70d4d95ad6cbacf66fc65b8", "bytes": 12401 },
   "payload": {
     "version": 1,
     "diagram": {
       "format": "diagrams/v2",
       "title": "An inline request rate limit",
-      "description": "A fictional partner sends 20 requests/s through a 10 requests/s token bucket. Go Live to see rejections within seconds, then double-click the limiter and change Rate limit in Simulation.",
+      "description": "A fictional partner sends 20 requests/s through a 10 requests/s token bucket. Go Live to see rejections within seconds, then double-click the limiter and change Rate limit in Simulation. Rounded boundaries align the partner, rate limit and catalog regions; the dashed rounded zone marks the request path.",
       "planning": { "revision": "p3" },
       "nodes": [
         {
@@ -14,7 +14,8 @@
           "label": "Partner client",
           "x": 0,
           "y": 0,
-          "props": { "ratePerSec": 20 }
+          "props": { "ratePerSec": 20 },
+          "group": "partner-region"
         },
         {
           "id": "limiter",
@@ -30,7 +31,8 @@
                 { "id": "local-rate", "unit": "requests", "amount": 10, "windowMs": 1000, "algorithm": "token-bucket", "burst": 10 }
               ]
             }
-          }
+          },
+          "group": "limit-region"
         },
         {
           "id": "api",
@@ -38,12 +40,21 @@
           "label": "Catalog API",
           "x": 600,
           "y": 0,
-          "props": { "latencyMs": 10, "jitter": 0 }
+          "props": { "latencyMs": 10, "jitter": 0 },
+          "group": "catalog-region"
         }
       ],
       "edges": [
         { "id": "partner-limiter", "from": "partner", "to": "limiter", "kind": "sync" },
         { "id": "limiter-api", "from": "limiter", "to": "api", "kind": "sync" }
+      ],
+      "groups": [
+        { "id": "partner-region", "label": "Partner", "x": -30, "y": -70, "width": 280, "height": 200, "borderRadius": 28, "tone": "neutral" },
+        { "id": "limit-region", "label": "Rate limit", "x": 270, "y": -70, "width": 280, "height": 200, "borderRadius": 28, "tone": "azure" },
+        { "id": "catalog-region", "label": "Catalog", "x": 570, "y": -70, "width": 280, "height": 200, "borderRadius": 28, "tone": "gcp" }
+      ],
+      "annotations": [
+        { "id": "request-path", "kind": "zone", "text": "Request path", "x": -60, "y": -150, "width": 940, "height": 330, "borderRadius": 32, "color": "purple" }
       ]
     },
     "icons": {

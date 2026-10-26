@@ -1948,5 +1948,7 @@
   "staticSkill.copy": "复制",
   "staticSkill.copied": "已复制",
   "staticSkill.selectCopy": "选择并复制",
-  "gallery.inlineRateLimitSummary": "合作伙伴的流量受到可编辑的请求配额限制"
+  "gallery.inlineRateLimitSummary": "合作伙伴的流量受到可编辑的请求配额限制",
+  "inspector.borderRadius": "圆角半径",
+  "examples.roundedRegions": "圆角区域与边界"
 }

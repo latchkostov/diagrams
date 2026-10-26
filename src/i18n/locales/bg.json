@@ -1948,5 +1948,7 @@
   "staticSkill.copy": "Копирай",
   "staticSkill.copied": "Копирано",
   "staticSkill.selectCopy": "Избери и копирай",
-  "gallery.inlineRateLimitSummary": "Трафикът на партньор среща редактируема квота за заявки"
+  "gallery.inlineRateLimitSummary": "Трафикът на партньор среща редактируема квота за заявки",
+  "inspector.borderRadius": "Радиус на ъглите",
+  "examples.roundedRegions": "Зони и рамки със заоблени ъгли"
 }

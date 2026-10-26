@@ -2,9 +2,15 @@
 title: An inline request rate limit
 ---
 flowchart LR
-  partner(["Partner client"])
-  limiter["Rate limiter"]
-  api["Catalog API"]
+  subgraph g_partner_region ["Partner"]
+    partner(["Partner client"])
+  end
+  subgraph g_limit_region ["Rate limit"]
+    limiter["Rate limiter"]
+  end
+  subgraph g_catalog_region ["Catalog"]
+    api["Catalog API"]
+  end
   partner --> limiter
   limiter --> api
-%% diagrams:{"v":1,"description":"A fictional partner sends 20 requests/s through a 10 requests/s token bucket. Go Live to see rejections within seconds, then double-click the limiter and change Rate limit in Simulation.","nodes":{"partner":["partner","client.user"],"limiter":["limiter","generic.rate-limiter"],"api":["api","generic.service"]},"edges":["partner-limiter","limiter-api"],"relations":{}}
+%% diagrams:{"v":1,"description":"A fictional partner sends 20 requests/s through a 10 requests/s token bucket. Go Live to see rejections within seconds, then double-click the limiter and change Rate limit in Simulation. Rounded boundaries align the partner, rate limit and catalog regions; the dashed rounded zone marks the request path.","nodes":{"partner":["partner","client.user"],"limiter":["limiter","generic.rate-limiter"],"api":["api","generic.service"]},"groups":{"g_partner_region":["partner-region","neutral"],"g_limit_region":["limit-region","azure"],"g_catalog_region":["catalog-region","gcp"]},"edges":["partner-limiter","limiter-api"],"relations":{}}

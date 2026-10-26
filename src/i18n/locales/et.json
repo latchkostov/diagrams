@@ -1948,5 +1948,7 @@
   "staticSkill.copy": "Kopeeri",
   "staticSkill.copied": "Kopeeritud",
   "staticSkill.selectCopy": "Vali ja kopeeri",
-  "gallery.inlineRateLimitSummary": "Partneri liiklus kohtub muudetava päringukvoodiga"
+  "gallery.inlineRateLimitSummary": "Partneri liiklus kohtub muudetava päringukvoodiga",
+  "inspector.borderRadius": "Nurga raadius",
+  "examples.roundedRegions": "Ümardatud tsoonid ja piirid"
 }

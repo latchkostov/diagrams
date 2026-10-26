@@ -1,3 +1,4 @@
+import { borderRadius } from "../../model/borderRadius";
 import { memo, type CSSProperties } from "react";
 import { NodeResizeControl, ResizeControlVariant, type NodeProps } from "@xyflow/react";
 import { useDiagram } from "../DiagramContext";
@@ -9,10 +10,11 @@ import { resolveGroupTone } from "../groupTones";
 /** Boundary box (cloud, cluster, network) drawn behind nodes. Dragged by its label; a double-click names it. */
 function GroupNodeImpl({ data, selected }: NodeProps<GroupFlowNode>) {
   const { rename, boundaryResized } = useDiagram();
+  const radius = borderRadius(data.borderRadius) ?? 20;
   return (
     <div
       className={`grp${selected ? " is-selected" : ""}`}
-      style={{ "--tone": resolveGroupTone(data.tone) } as CSSProperties}
+      style={{ "--tone": resolveGroupTone(data.tone), "--grp-radius": `${radius}px` } as CSSProperties}
       data-testid={`group-${data.groupId}`}
       data-caption-root={data.groupId}
       data-tone={isHexColor(data.tone) ? "custom" : data.tone}
@@ -22,7 +24,7 @@ function GroupNodeImpl({ data, selected }: NodeProps<GroupFlowNode>) {
       }}
     >
       <svg className="grp-outline" width="100%" height="100%" aria-hidden data-testid={`group-outline-${data.groupId}`}>
-        <rect width="100%" height="100%" rx={20} fill="none" stroke="transparent" strokeWidth={8} />
+        <rect width="100%" height="100%" rx={radius} fill="none" stroke="transparent" strokeWidth={8} />
       </svg>
       {selected &&
         (["top", "right", "bottom", "left", "top-left", "top-right", "bottom-left", "bottom-right"] as const).map(

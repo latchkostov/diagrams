@@ -1948,5 +1948,7 @@
   "staticSkill.copy": "Kopyala",
   "staticSkill.copied": "Kopyalandı",
   "staticSkill.selectCopy": "Seç ve kopyala",
-  "gallery.inlineRateLimitSummary": "Bir iş ortağının trafiği düzenlenebilir bir istek kotasıyla karşılaşır"
+  "gallery.inlineRateLimitSummary": "Bir iş ortağının trafiği düzenlenebilir bir istek kotasıyla karşılaşır",
+  "inspector.borderRadius": "Köşe yarıçapı",
+  "examples.roundedRegions": "Yuvarlatılmış bölgeler ve sınırlar"
 }

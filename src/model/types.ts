@@ -188,6 +188,8 @@ export interface DiagramAnnotation extends DiagramBoxElement {
   color?: AnnotationColor | string;
   /** Default "m"; text uses "xl" for titles. */
   textSize?: AnnotationTextSize;
+  /** Border radius in canvas pixels (e.g. for zone). Default 18 for zone. */
+  borderRadius?: number;
 }
 
 // ---------- Simulations (docs/SIMULATIONS.md) ----------
@@ -352,4 +354,6 @@ export interface DiagramGroup extends DiagramBoxElement {
   label: string;
   /** Visual tone or custom hex colour of the boundary box. */
   tone?: GroupTone | string;
+  /** Corner radius in canvas pixels of the boundary box. Default 20. */
+  borderRadius?: number;
 }

@@ -1948,5 +1948,7 @@
   "staticSkill.copy": "Kopieren",
   "staticSkill.copied": "Kopiert",
   "staticSkill.selectCopy": "Auswählen und kopieren",
-  "gallery.inlineRateLimitSummary": "Der Datenverkehr eines Partners trifft auf ein bearbeitbares Anfragenkontingent"
+  "gallery.inlineRateLimitSummary": "Der Datenverkehr eines Partners trifft auf ein bearbeitbares Anfragenkontingent",
+  "inspector.borderRadius": "Eckenradius",
+  "examples.roundedRegions": "Abgerundete Zonen und Begrenzungen"
 }

@@ -1,3 +1,4 @@
+import { borderRadius } from "../../model/borderRadius";
 import { queueShapeMeasurement } from "../shapes/measurementQueue";
 import {
   memo,
@@ -19,7 +20,7 @@ import {
 } from "@xyflow/react";
 import { ANNOTATION_LIMITS, annotationSize, annotationText } from "../../model/annotations";
 import type { AnnotationKind } from "../../model/types";
-import { resolveAnnotationColor, isConnectable, isOpenShape, isObstacle, kindLabel, minSize } from "../annotations";
+import { resolveAnnotationColor, isConnectable, isOpenShape, isObstacle, minSize } from "../annotations";
 import { MarkdownView } from "../../components/markdown/lazy";
 import { AnnotationEditor } from "./AnnotationEditor";
 import { geometrySnapshot, subscribeGeometry, isDefaultShape, loadShapeGeometry } from "../shapes/geometry";
@@ -175,6 +176,7 @@ function AnnotationNodeImpl({
     </div>
   );
 
+  const zoneRadius = kind === "zone" ? (borderRadius(data.borderRadius) ?? 18) : undefined;
   return (
     <div
       ref={root}
@@ -183,6 +185,7 @@ function AnnotationNodeImpl({
         {
           "--ann": resolved.hex,
           "--ann-height": `${h}px`,
+          ...(zoneRadius !== undefined ? { "--ann-radius": `${zoneRadius}px` } : {}),
         } as CSSProperties
       }
       data-testid={`annotation-${id}`}
@@ -197,8 +200,12 @@ function AnnotationNodeImpl({
       {kind === "note" && <span className="ann-paper" aria-hidden />}
       {kind === "note" && <span className="ann-fold" aria-hidden />}
       {kind === "zone" ? (
-        <div className="ann-zone-label" data-testid={`annotation-label-${id}`} onDoubleClick={startEdit}>
-          {isEditing ? text : data.text || kindLabel.zone}
+        <div
+          className={`ann-zone-label${!data.text ? " is-empty" : ""}`}
+          data-testid={`annotation-label-${id}`}
+          onDoubleClick={startEdit}
+        >
+          {isEditing ? text : data.text}
         </div>
       ) : (
         <div className={`ann-body${kind === "shape" ? ` ann-body-${data.shape ?? "rect"}` : ""}`}>{text}</div>

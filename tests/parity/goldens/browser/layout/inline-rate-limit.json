@@ -1,7 +1,11 @@
 {
   "autoLayout": {
-    "viewport": "translate(-3.40426px, 341.532px) scale(1.08511)",
+    "viewport": "translate(96.6667px, 409.833px) scale(0.944444)",
     "nodes": {
+      "request-path": { "kind": "annotation", "box": "translate(-60px, -150px) 940×330", "text": "Request path" },
+      "group:partner-region": { "kind": "group", "box": "translate(0px, -24px) 300×176", "text": "Partner" },
+      "group:limit-region": { "kind": "group", "box": "translate(360px, -24px) 300×176", "text": "Rate limit" },
+      "group:catalog-region": { "kind": "group", "box": "translate(720px, -24px) 300×176", "text": "Catalog" },
       "partner": { "kind": "node", "box": "translate(40px, 40px) 220×72", "text": "Partner client User" },
       "limiter": { "kind": "node", "box": "translate(400px, 40px) 220×72", "text": "Rate limiter Rate Limiter" },
       "api": { "kind": "node", "box": "translate(760px, 40px) 220×72", "text": "Catalog API Service" }
@@ -10,8 +14,12 @@
     "labels": {}
   },
   "tidy": {
-    "viewport": "translate(-59.8936px, 341.532px) scale(1.08511)",
+    "viewport": "translate(-2.22222px, 409.833px) scale(0.944444)",
     "nodes": {
+      "request-path": { "kind": "annotation", "box": "translate(-60px, -150px) 940×330", "text": "Request path" },
+      "group:partner-region": { "kind": "group", "box": "translate(-30px, -70px) 280×200", "text": "Partner" },
+      "group:limit-region": { "kind": "group", "box": "translate(270px, -70px) 280×200", "text": "Rate limit" },
+      "group:catalog-region": { "kind": "group", "box": "translate(570px, -70px) 280×200", "text": "Catalog" },
       "partner": { "kind": "node", "box": "translate(0px, 0px) 220×72", "text": "Partner client User" },
       "limiter": { "kind": "node", "box": "translate(300px, 0px) 220×72", "text": "Rate limiter Rate Limiter" },
       "api": { "kind": "node", "box": "translate(600px, 0px) 220×72", "text": "Catalog API Service" }

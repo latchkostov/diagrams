@@ -1948,5 +1948,7 @@
   "staticSkill.copy": "Másolás",
   "staticSkill.copied": "Másolva",
   "staticSkill.selectCopy": "Kijelölés és másolás",
-  "gallery.inlineRateLimitSummary": "Egy partner forgalma szerkeszthető kéréskvótába ütközik"
+  "gallery.inlineRateLimitSummary": "Egy partner forgalma szerkeszthető kéréskvótába ütközik",
+  "inspector.borderRadius": "Saroksugár",
+  "examples.roundedRegions": "Lekerekített zónák és határok"
 }

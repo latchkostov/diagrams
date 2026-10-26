@@ -1,8 +1,10 @@
 {
   "format": "diagrams/v2",
   "title": "An inline request rate limit",
-  "description": "A fictional partner sends 20 requests/s through a 10 requests/s token bucket. Go Live to see rejections within seconds, then double-click the limiter and change Rate limit in Simulation.",
-  "planning": { "revision": "p3" },
+  "description": "A fictional partner sends 20 requests/s through a 10 requests/s token bucket. Go Live to see rejections within seconds, then double-click the limiter and change Rate limit in Simulation. Rounded boundaries align the partner, rate limit and catalog regions; the dashed rounded zone marks the request path.",
+  "planning": {
+    "revision": "p3"
+  },
   "nodes": [
     {
       "id": "partner",
@@ -10,7 +12,10 @@
       "label": "Partner client",
       "x": 0,
       "y": 0,
-      "props": { "ratePerSec": 20 }
+      "props": {
+        "ratePerSec": 20
+      },
+      "group": "partner-region"
     },
     {
       "id": "limiter",
@@ -33,7 +38,8 @@
             }
           ]
         }
-      }
+      },
+      "group": "limit-region"
     },
     {
       "id": "api",
@@ -41,11 +47,70 @@
       "label": "Catalog API",
       "x": 600,
       "y": 0,
-      "props": { "latencyMs": 10, "jitter": 0 }
+      "props": {
+        "latencyMs": 10,
+        "jitter": 0
+      },
+      "group": "catalog-region"
     }
   ],
   "edges": [
-    { "id": "partner-limiter", "from": "partner", "to": "limiter", "kind": "sync" },
-    { "id": "limiter-api", "from": "limiter", "to": "api", "kind": "sync" }
+    {
+      "id": "partner-limiter",
+      "from": "partner",
+      "to": "limiter",
+      "kind": "sync"
+    },
+    {
+      "id": "limiter-api",
+      "from": "limiter",
+      "to": "api",
+      "kind": "sync"
+    }
+  ],
+  "groups": [
+    {
+      "id": "partner-region",
+      "label": "Partner",
+      "x": -30,
+      "y": -70,
+      "width": 280,
+      "height": 200,
+      "borderRadius": 28,
+      "tone": "neutral"
+    },
+    {
+      "id": "limit-region",
+      "label": "Rate limit",
+      "x": 270,
+      "y": -70,
+      "width": 280,
+      "height": 200,
+      "borderRadius": 28,
+      "tone": "azure"
+    },
+    {
+      "id": "catalog-region",
+      "label": "Catalog",
+      "x": 570,
+      "y": -70,
+      "width": 280,
+      "height": 200,
+      "borderRadius": 28,
+      "tone": "gcp"
+    }
+  ],
+  "annotations": [
+    {
+      "id": "request-path",
+      "kind": "zone",
+      "text": "Request path",
+      "x": -60,
+      "y": -150,
+      "width": 940,
+      "height": 330,
+      "borderRadius": 32,
+      "color": "purple"
+    }
   ]
 }

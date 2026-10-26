@@ -1948,5 +1948,7 @@
   "staticSkill.copy": "Copiar",
   "staticSkill.copied": "Copiado",
   "staticSkill.selectCopy": "Seleccionar y copiar",
-  "gallery.inlineRateLimitSummary": "El tráfico de un socio se encuentra con una cuota de solicitudes editable"
+  "gallery.inlineRateLimitSummary": "El tráfico de un socio se encuentra con una cuota de solicitudes editable",
+  "inspector.borderRadius": "Radio de las esquinas",
+  "examples.roundedRegions": "Zonas y límites redondeados"
 }

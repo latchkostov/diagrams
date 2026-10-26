@@ -1948,5 +1948,7 @@
   "staticSkill.copy": "Kopioi",
   "staticSkill.copied": "Kopioitu",
   "staticSkill.selectCopy": "Valitse ja kopioi",
-  "gallery.inlineRateLimitSummary": "Kumppanin liikenne kohtaa muokattavan pyyntökiintiön"
+  "gallery.inlineRateLimitSummary": "Kumppanin liikenne kohtaa muokattavan pyyntökiintiön",
+  "inspector.borderRadius": "Kulman säde",
+  "examples.roundedRegions": "Pyöristetyt vyöhykkeet ja rajat"
 }

@@ -125,7 +125,7 @@ describe("example gallery", () => {
       "partitions-vs-subscriptions": ["partitions"],
       "shared-worker-pool": ["partitions"],
       "shared-api-quotas": ["rateLimits"],
-      "inline-rate-limit": ["rateLimits"],
+      "inline-rate-limit": ["roundedRegions", "rateLimits"],
       "serverless-burst-buffer": [],
       "measured-order-capacity": [],
       "contoso-dmz": ["networkDevices"],

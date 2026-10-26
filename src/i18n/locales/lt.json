@@ -1948,5 +1948,7 @@
   "staticSkill.copy": "Kopijuoti",
   "staticSkill.copied": "Nukopijuota",
   "staticSkill.selectCopy": "Pažymėti ir kopijuoti",
-  "gallery.inlineRateLimitSummary": "Partnerio srautas susiduria su redaguojama užklausų kvota"
+  "gallery.inlineRateLimitSummary": "Partnerio srautas susiduria su redaguojama užklausų kvota",
+  "inspector.borderRadius": "Kampų spindulys",
+  "examples.roundedRegions": "Suapvalintos zonos ir ribos"
 }

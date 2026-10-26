@@ -1948,5 +1948,7 @@
   "staticSkill.copy": "Copiar",
   "staticSkill.copied": "Copiado",
   "staticSkill.selectCopy": "Selecionar e copiar",
-  "gallery.inlineRateLimitSummary": "O tráfego de um parceiro encontra uma quota de pedidos editável"
+  "gallery.inlineRateLimitSummary": "O tráfego de um parceiro encontra uma quota de pedidos editável",
+  "inspector.borderRadius": "Raio dos cantos",
+  "examples.roundedRegions": "Zonas e limites arredondados"
 }

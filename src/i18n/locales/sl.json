@@ -1948,5 +1948,7 @@
   "staticSkill.copy": "Kopiraj",
   "staticSkill.copied": "Kopirano",
   "staticSkill.selectCopy": "Izberi in kopiraj",
-  "gallery.inlineRateLimitSummary": "Promet partnerja naleti na kvoto zahtev, ki jo je mogoče urejati"
+  "gallery.inlineRateLimitSummary": "Promet partnerja naleti na kvoto zahtev, ki jo je mogoče urejati",
+  "inspector.borderRadius": "Polmer vogalov",
+  "examples.roundedRegions": "Zaobljena območja in meje"
 }

@@ -1948,5 +1948,7 @@
   "staticSkill.copy": "Sao chép",
   "staticSkill.copied": "Đã sao chép",
   "staticSkill.selectCopy": "Chọn và sao chép",
-  "gallery.inlineRateLimitSummary": "Lưu lượng của đối tác gặp hạn ngạch yêu cầu có thể chỉnh sửa"
+  "gallery.inlineRateLimitSummary": "Lưu lượng của đối tác gặp hạn ngạch yêu cầu có thể chỉnh sửa",
+  "inspector.borderRadius": "Bán kính góc",
+  "examples.roundedRegions": "Vùng và ranh giới bo tròn"
 }

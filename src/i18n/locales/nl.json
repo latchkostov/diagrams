@@ -1948,5 +1948,7 @@
   "staticSkill.copy": "Kopiëren",
   "staticSkill.copied": "Gekopieerd",
   "staticSkill.selectCopy": "Selecteren en kopiëren",
-  "gallery.inlineRateLimitSummary": "Het verkeer van een partner stuit op een bewerkbaar aanvraagquotum"
+  "gallery.inlineRateLimitSummary": "Het verkeer van een partner stuit op een bewerkbaar aanvraagquotum",
+  "inspector.borderRadius": "Hoekradius",
+  "examples.roundedRegions": "Afgeronde zones en grenzen"
 }

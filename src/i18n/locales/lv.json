@@ -1948,5 +1948,7 @@
   "staticSkill.copy": "Kopēt",
   "staticSkill.copied": "Nokopēts",
   "staticSkill.selectCopy": "Atlasīt un kopēt",
-  "gallery.inlineRateLimitSummary": "Partnera datplūsma sastopas ar rediģējamu pieprasījumu kvotu"
+  "gallery.inlineRateLimitSummary": "Partnera datplūsma sastopas ar rediģējamu pieprasījumu kvotu",
+  "inspector.borderRadius": "Stūru rādiuss",
+  "examples.roundedRegions": "Noapaļotas zonas un robežas"
 }

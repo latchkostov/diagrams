@@ -74,13 +74,14 @@ import { toneLabel } from "../canvas/groupTones";
 import type { EdgeMark } from "../canvas/edgeMarks";
 import { getStencil } from "../stencils/registry";
 import { align, boundaryAround, distribute, spreadOverlaps, type Box, type Positions } from "./arrange";
+import { arrangementSelection } from "./arrangementSelection";
 import { makePayload, mergeRoutes, parsePayload, remapPayload, type ClipboardPayload } from "./clipboard";
 import { hasEdgeRouting, hasNodeRouting } from "../model/requestRouting";
 import { stencilIdBase, uniqueId } from "./ids";
 import { layeredLayout } from "./layout";
 import { planBoundaryRefits } from "./boundaryFit";
 import type { HistoryApi } from "./useHistory";
-import type { EditorApi, EditorPrefs, NewNode, Selection, XY } from "./types";
+import type { ArrangementOperands, EditorApi, EditorPrefs, NewNode, Selection, XY } from "./types";
 import { diagramDiff } from "./diagramDiff";
 import { nudgeOnGrid } from "../canvas/guides";
 import { validateDiagram } from "../interop/native";
@@ -506,12 +507,66 @@ export function createEditor(
     }
     return moved;
   };
+  /** Arrangement operands are outermost selected subtrees, never their contained boxes. */
+  const arrangementBoxes = (selection: ArrangementOperands) => {
+    if (!("nodeIds" in selection)) {
+      const ids = new Set(selection);
+      return rf
+        .getNodes()
+        .filter((n) => ids.has(n.id) && isPlaced(n))
+        .map(box);
+    }
+    const nodes = rf.getNodes();
+    const operands = arrangementSelection(
+      selection,
+      nodes.filter(isGroup).map((g) => ({ id: g.data.groupId, group: g.data.group })),
+      nodes.filter((n) => !isGroup(n)).map((n) => ({ id: n.id, group: n.data.group })),
+    );
+    // The sole model-to-canvas boundary. Geometry and movement maps use canvas IDs from here on.
+    const selected = new Set([...operands.nodeIds, ...operands.groupIds.map((id) => GROUP_PREFIX + id)]);
+    return nodes.filter((n) => selected.has(n.id)).map(box);
+  };
   const movePositions = (pos: Positions, reset = false) => {
     if (!pos.size) return;
-    moveRoutes(positionDeltas(pos), reset);
+    const allNodes = currentNodes();
+    const groupDeltas = new Map<string, XY>();
+    for (const n of allNodes) {
+      if (isGroup(n)) {
+        const p = pos.get(n.id);
+        if (p && (p.x !== n.position.x || p.y !== n.position.y)) {
+          groupDeltas.set(n.data.groupId, { x: p.x - n.position.x, y: p.y - n.position.y });
+        }
+      }
+    }
+    const finalPos = new Map(pos);
+    if (groupDeltas.size) {
+      const groupMap = new Map(allNodes.filter(isGroup).map((g) => [g.data.groupId, g.data.group]));
+      // Cache misses too: stationary deep subtrees must not repeatedly scan shared ancestors.
+      const resolved = new Map<string, XY | undefined>(groupDeltas);
+      const findMovedGroupDelta = (groupId?: string): XY | undefined => {
+        let cur = groupId;
+        const path = new Set<string>();
+        while (cur && !resolved.has(cur) && !path.has(cur)) {
+          path.add(cur);
+          cur = groupMap.get(cur);
+        }
+        const delta = cur ? resolved.get(cur) : undefined;
+        for (const id of path) resolved.set(id, delta);
+        return delta;
+      };
+      for (const n of allNodes) {
+        if (!finalPos.has(n.id) && n.data.group) {
+          const delta = findMovedGroupDelta(n.data.group);
+          if (delta) {
+            finalPos.set(n.id, { x: n.position.x + delta.x, y: n.position.y + delta.y });
+          }
+        }
+      }
+    }
+    moveRoutes(positionDeltas(finalPos), reset);
     deps().setNodes((ns) =>
       ns.map((n) => {
-        const p = pos.get(n.id);
+        const p = finalPos.get(n.id);
         return p && (p.x !== n.position.x || p.y !== n.position.y) ? { ...n, position: p } : n;
       }),
     );
@@ -735,6 +790,7 @@ export function createEditor(
     if ("textSize" in patch) data.textSize = patch.textSize;
     if ("group" in patch) data.group = patch.group || undefined;
     if ("shape" in patch && data.kind === "shape") data.shape = patch.shape;
+    if ("borderRadius" in patch) data.borderRadius = patch.borderRadius;
     const kind = patch.kind ?? data.kind;
     data.kind = kind;
     if (kind !== "shape") data.shape = undefined;
@@ -1164,6 +1220,7 @@ export function createEditor(
               label: patch.label ?? n.data.label,
               tone: "tone" in patch ? (patch.tone ?? "neutral") : n.data.tone,
               group: "group" in patch ? patch.group || undefined : n.data.group,
+              borderRadius: "borderRadius" in patch ? patch.borderRadius : n.data.borderRadius,
             },
           };
         });
@@ -1465,21 +1522,13 @@ export function createEditor(
       );
     },
     align: (ids, mode) => {
-      const set = new Set(ids);
-      const boxes = rf
-        .getNodes()
-        .filter((n) => set.has(n.id) && isPlaced(n))
-        .map(box);
+      const boxes = arrangementBoxes(ids);
       // Lined up, never stacked: things that would land on each other step apart across the line.
       const across = mode === "left" || mode === "center" || mode === "right" ? "v" : "h";
       movePositions(spreadOverlaps(boxes, align(boxes, mode), across));
     },
     distribute: (ids, axis) => {
-      const set = new Set(ids);
-      const boxes = rf
-        .getNodes()
-        .filter((n) => set.has(n.id) && isPlaced(n))
-        .map(box);
+      const boxes = arrangementBoxes(ids);
       movePositions(spreadOverlaps(boxes, distribute(boxes, axis), axis));
     },
     tidy: (ids) => {
@@ -1657,6 +1706,7 @@ export function createEditor(
         height: Math.round(h),
         color,
         group: parentGroup,
+        borderRadius: groupNode.data.borderRadius,
       });
       deps().setNodes((cur): FlowNode[] => [
         { ...zoneNode, selected: true },
@@ -1711,6 +1761,7 @@ export function createEditor(
         y: Math.round(zoneNode.position.y),
         width: Math.round(zw),
         height: Math.round(zh),
+        borderRadius: zoneNode.data.borderRadius,
       });
       const adoptedGroupIds = new Set(adoption.adoptedGroupIds);
       const adoptedElementIds = new Set(adoption.adoptedElementIds);
@@ -1866,6 +1917,8 @@ export function createEditor(
       const open = deps().history.open?.();
       return open === `new:${id}` ? open : undefined;
     },
+    beginEdit: (tag) => deps().history.begin(tag),
+    endEdit: (tag) => deps().history.end(tag),
     beginNaming: (kind, id) => {
       const creation = kind === "node" ? api.creating(id) : undefined;
       if (creation) return creation;
