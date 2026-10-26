@@ -9,11 +9,35 @@ function luminance(hex: string) {
   });
   return rgb[0] * 0.2126 + rgb[1] * 0.7152 + rgb[2] * 0.0722;
 }
+
+function themeTokens(block: string) {
+  const declarations = [...block.matchAll(/--([\w-]+):\s*([^;]+);/g)];
+  const tokens = Object.fromEntries(declarations.map((match) => [match[1], match[2]]));
+  for (const [key, value] of Object.entries(tokens))
+    tokens[key] = value.replace(/var\(--([\w-]+)\)/g, (_, name: string) => tokens[name]);
+  return tokens;
+}
+
+const light = css.split('[data-theme="dark"]')[0];
+const themes = [themeTokens(light), themeTokens(light + css.split('[data-theme="dark"]')[1])];
+
+it("keeps Workbench frame labels at AA in both themes", () => {
+  for (const tokens of themes)
+    for (const [ink, surface] of [
+      ["bezel-ink", "bezel"],
+      ["bezel-dim", "bezel"],
+      ["rail-ink", "rail-bg"],
+      ["rail-dim", "rail-bg"],
+      ["live-ink", "live"],
+    ]) {
+      const a = luminance(tokens[ink]),
+        b = luminance(tokens[surface]);
+      expect((Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05), `${ink} on ${surface}`).toBeGreaterThanOrEqual(4.5);
+    }
+});
 it("keeps readable secondary and muted text at AA on both themes' surfaces", () => {
   for (const block of [css.split('[data-theme="dark"]')[0], css.split('[data-theme="dark"]')[1]]) {
-    const tokens = Object.fromEntries(
-      [...block.matchAll(/--([\w-]+):\s*(#[\da-f]{6})/g)].map((match) => [match[1], match[2]]),
-    );
+    const tokens = themeTokens(light + block);
     for (const ink of ["text-2", "text-3"])
       for (const surface of [
         "bg",
@@ -34,9 +58,7 @@ it("keeps readable secondary and muted text at AA on both themes' surfaces", () 
 
 it("keeps dependency tints at 3:1 on the canvas and label pills in both themes", () => {
   for (const block of [css.split('[data-theme="dark"]')[0], css.split('[data-theme="dark"]')[1]]) {
-    const tokens = Object.fromEntries(
-      [...block.matchAll(/--([\w-]+):\s*(#[\da-f]{6})/g)].map((match) => [match[1], match[2]]),
-    );
+    const tokens = themeTokens(light + block);
     for (const rel of ["config", "secret", "identity", "telemetry", "deploy", "depends"])
       for (const surface of ["bg", "stage-bg", "edge-label-bg", "node-bg"]) {
         const a = luminance(tokens[`rel-${rel}`]),

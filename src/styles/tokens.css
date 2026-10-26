@@ -3,6 +3,26 @@
   --font-ui: "Mona Sans Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-mono: "Geist Mono Variable", ui-monospace, "Cascadia Code", "SF Mono", Menlo, monospace;
 
+  /* Workbench frame. */
+  --board: #f6f7f9;
+  --bezel: #1f232b;
+  --bezel-ink: #e6e9ee;
+  --bezel-dim: #a3aab6;
+  --bezel-line: #2c313b;
+  --rail-bg: #eef0f3;
+  --rail-ink: #2a2f38;
+  --rail-dim: #5f6673;
+  --rail-on: #ffffff;
+  --panel: #ffffff;
+  --live: #11a35a;
+  --live-ink: #04140b;
+  --stretch-wide: 112%;
+  --stretch-legend: 86%;
+  --frame-rail-w: 72px;
+  --dock-w: 372px;
+  --transport-h: 56px;
+  --caption-h: 48px;
+
   --bg: #f3f5f8;
   --surface: #ffffff;
   --surface-2: #f7f8fa;
@@ -107,6 +127,15 @@
 }
 
 [data-theme="dark"] {
+  --board: #121419;
+  --bezel: #07080a;
+  --bezel-line: #1b1f27;
+  --rail-bg: #0b0d10;
+  --rail-ink: #d6dbe4;
+  --rail-dim: #8d95a3;
+  --rail-on: #1f242d;
+  --panel: #16191f;
+  --live: #3ddc84;
   --bg: #0e131d;
   --surface: #141a26;
   --surface-2: #181f2d;
@@ -170,6 +199,5 @@
   --node-shadow-hover: inset 0 1px 0 rgb(255 255 255 / 0.05), 0 14px 32px -12px rgb(0 0 0 / 0.8);
   --tile-base: #e9edf4;
   --tile-mix: 16%;
-
   --stage-bg: #111724;
 }
