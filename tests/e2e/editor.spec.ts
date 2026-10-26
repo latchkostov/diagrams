@@ -416,7 +416,8 @@ test.describe("editor", () => {
       await expect(page.getByTestId("shortcut-select-prev")).toContainText(
         platform === "MacIntel" ? "⇧Tab" : "Shift+Tab",
       );
-      await expect(tutorials).toHaveAttribute("href", "?view=tutorials");
+      // Tutorials open in place (no page load), so the entry is a button, not a link.
+      await expect(tutorials).toHaveRole("button");
       await page.keyboard.press("Tab");
       await expect(close).toBeFocused();
       await page.keyboard.press("Tab");

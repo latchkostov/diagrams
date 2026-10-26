@@ -49,6 +49,9 @@ test("call fields take the first keyboard pass while planning downloads, with st
     await page.keyboard.press("Tab");
     await expect(page.getByTestId("inspector-field-wait-blocking")).toBeFocused();
     await page.keyboard.press("Tab");
+    // The lesson link sits with the hint it explains, before the waiting limits.
+    await expect(page.getByTestId("inspector-tutorial-waiting")).toBeFocused();
+    await page.keyboard.press("Tab");
     await expect(page.getByTestId("inspector-field-deadlineMs")).toBeFocused();
     await page.keyboard.press("Tab");
     const pool = page.getByTestId("inspector-field-poolConnections");
