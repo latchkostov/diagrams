@@ -25,29 +25,35 @@ The extraction moves 648 physical source lines: 354 to `model.ts` and 294 to `ac
 | 4965–4981                  | `engine/accounting.ts` | `snapshot`                                                                                                      |    17 |
 
 The facade retains `spend`, source allocation, lineage creation/live-message lookup, occupancy queries and other
-public queries. Accounting receives only its graph slice, live scalar/root accessors and named synchronous
+public queries. Accounting receives only its graph slice, three data-only counters, explicit frame inputs and named synchronous
 budget/event/readout queries. Checkpoints retain their original data graph and scalar lists; no functions or
-scratch guards are added to persisted state. Every replaceable root is read through an accessor after restore.
+scratch guards are added to persisted state. Every replaceable root is read through an accessor or supplied afresh by the facade on each readout after restore.
 
 ## Rejected alternatives
 
 Do not split the tick loop, add a catch-all engine context, buffer synchronous effects, rename cohort-related
 functions, change compression settings or re-record goldens. Those would obscure the ordering or equivalence
 contract. Moving additional public queries was rejected because it added ports and bundle bytes outside the
-listed frame/snapshot seam. Replacing facade scalar variables with a shared mutable object was also rejected:
-it enlarged the wiring diff and worsened measured bundle size.
+listed frame/snapshot seam. A broad mutable facade-state object was rejected because it enlarged the wiring diff and worsened measured size.
 
 ## Production artifact measurements
+
+The final adapter keeps `inSystem`, `nextMessage` and `eventHead` in a plain data slice, initialized and restored
+in their original order. Clock and replaceable accounting roots use named read functions; the facade supplies
+current scalar/root frame inputs on every call. Pure helpers are module functions. This avoids repeated accessor
+dispatch in particle loops and preserves the original synchronous readout expressions. A small interleaved
+baseline/extraction diagnostic exposed overhead in the first getter-object adapter; that adapter was rejected.
+The replay characterization also rejects a deliberately stale frame-input root.
 
 Against the source-map baseline above, using real production builds and gzip level 9 per JavaScript file:
 
 | Payload                                                            |  Base raw / gzip bytes | Extracted raw / gzip bytes | Raw / gzip delta |
 | ------------------------------------------------------------------ | ---------------------: | -------------------------: | ---------------: |
-| All app JavaScript, including both simulation workers              | 10,363,248 / 3,364,721 |     10,367,359 / 3,367,805 |  +4,111 / +3,084 |
-| Full static LiveSession JavaScript import closure, each chunk once |    1,480,549 / 496,227 |        1,481,874 / 496,924 |    +1,325 / +697 |
-| Viewer manifest JavaScript                                         |    1,561,185 / 510,486 |        1,562,574 / 511,141 |    +1,389 / +655 |
+| All app JavaScript, including both simulation workers              | 10,363,248 / 3,364,721 |     10,366,584 / 3,367,536 |  +3,336 / +2,815 |
+| Full static LiveSession JavaScript import closure, each chunk once |    1,480,549 / 496,227 |        1,481,623 / 496,845 |    +1,074 / +618 |
+| Viewer manifest JavaScript                                         |    1,561,185 / 510,486 |        1,562,325 / 511,074 |    +1,140 / +588 |
 
-The entry, viewer and Forge budgets pass unchanged. The rebuilt skill ZIP is 817,129 bytes, 17,871 bytes below
+The entry, viewer and Forge budgets pass unchanged. The rebuilt skill ZIP is 817,025 bytes, 17,975 bytes below
 the strict 835,000-byte ceiling. Startup-chunk and actual ZIP tests pass. LiveSession and viewer meet the design's
-+1,000 gzip-byte allowance; the total app exceeds it by 2,084 bytes because the engine also ships in two workers.
++1,000 gzip-byte allowance; the total app exceeds it by 1,815 bytes because the engine also ships in two workers.
 The total-app acceptance item remains unresolved; no budget or compression policy has been changed to hide it.

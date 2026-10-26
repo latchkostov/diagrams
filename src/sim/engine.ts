@@ -1,4 +1,4 @@
-import { createAccounting } from "./engine/accounting";
+import { createAccounting, creditRoute, finishTickMetrics, type AccountingState } from "./engine/accounting";
 import {
   isBroker,
   liveWork,
@@ -377,12 +377,14 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   let cohort = 1;
   let cohortDots = new Map<Node, number>();
   let capacityMultiplier = 1;
-  let nextMessage = 1;
+  // Populate the data-only slice in the original initialization order before wiring accounting.
+  const accountingState = {} as AccountingState;
+  accountingState.nextMessage = 1;
   let nextParticle = 1;
   let nextInjection = 1;
-  let inSystem = 0;
+  accountingState.inSystem = 0;
   const events: SimEvent[] = [];
-  let eventHead = 0;
+  accountingState.eventHead = 0;
   let topology = 0;
   let compiled: CompiledTopology = { edges: [], outgoing: new Map(), groups: new Map(), restricted: new Set() };
   const groupsByConsumer = new Map<string, Group[]>();
@@ -418,83 +420,25 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     if (budget && --budget.remaining < 0) throw new WorkBudgetError("The run created more messages than its budget");
   }
 
-  const accounting = createAccounting(
-    {
-      get time() {
-        return time;
-      },
-      get scale() {
-        return scale;
-      },
-      get latencyBudget() {
-        return latencyBudget;
-      },
-      get sinceFault() {
-        return sinceFault;
-      },
-      get inSystem() {
-        return inSystem;
-      },
-      set inSystem(value) {
-        inSystem = value;
-      },
-      get nextMessage() {
-        return nextMessage;
-      },
-      set nextMessage(value) {
-        nextMessage = value;
-      },
-      get eventHead() {
-        return eventHead;
-      },
-      set eventHead(value) {
-        eventHead = value;
-      },
-      get routeCounts() {
-        return routeCounts;
-      },
-      get routes() {
-        return routes;
-      },
-      get faults() {
-        return faults;
-      },
-      get drawnTrips() {
-        return drawnTrips;
-      },
+  const accounting = createAccounting(accountingState, { nodes, edges, events }, lineage, opts, {
+    time: () => time,
+    scale: () => scale,
+    latencyBudget: () => latencyBudget,
+    routeCounts: () => routeCounts,
+    spend,
+    observeEvent: (event) => {
+      if (TEST_ORACLES) eventObservers.get(engine)?.(event);
     },
-    { nodes, edges, events },
-    lineage,
-    opts,
-    {
-      spend,
-      observeEvent: (event) => {
-        if (TEST_ORACLES) eventObservers.get(engine)?.(event);
-      },
-      dotsOf,
-      threadOccupancy,
-      queueBacklog,
-      slots,
-      held,
-      memoryRequests,
-      waits,
-      readFrame: () => engine.frame(),
-    },
-  );
-  const {
-    log,
-    processed,
-    step,
-    gone,
-    countRoute,
-    addressed,
-    creditRoute,
-    copy,
-    fanOut,
-    drop,
-    block,
-    finishTickMetrics,
-  } = accounting;
+    dotsOf,
+    threadOccupancy,
+    queueBacklog,
+    slots,
+    held,
+    memoryRequests,
+    waits,
+    readFrame: () => engine.frame(),
+  });
+  const { log, processed, step, gone, countRoute, addressed, copy, fanOut, drop, block } = accounting;
 
   function schedule(item: Injection): void {
     let index = injections.length;
@@ -2848,7 +2792,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
 
   function emitOne(node: Node, type: string, injected: boolean, route?: CompiledRoute): void {
     spend();
-    const id = nextMessage++;
+    const id = accountingState.nextMessage++;
     const message: Message = {
       id,
       type,
@@ -2863,7 +2807,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       message.request = route;
       countRoute(route).sent += dotsOf(message);
     }
-    inSystem++;
+    accountingState.inSystem++;
     lineage.born(message.family, type, node.id, route?.id);
     if (injected) log("inject", node, message);
     arrive(node, { message, remaining: latency(node), injected });
@@ -3777,7 +3721,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     if (TEST_ORACLES && opts.verifyResilience) {
       opts.verifyResilience({
         time,
-        inSystem,
+        inSystem: accountingState.inSystem,
         edges,
         queues: [...nodes.values()]
           .filter((n) => n.props.queue)
@@ -3800,7 +3744,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         ledger: ledger.state,
         nodes: nodes.values(),
         edges,
-        inSystem,
+        inSystem: accountingState.inSystem,
         admissionInFlight: admission.inFlight,
         partBudget,
         logical,
@@ -3855,9 +3799,9 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     incomingAt = undefined;
     incomingBeforeReleases = false;
     accumulator = 0;
-    inSystem = 0;
+    accountingState.inSystem = 0;
     drawn = 0;
-    nextMessage = 1;
+    accountingState.nextMessage = 1;
     nextParticle = 1;
     nextInjection = 1;
     trips = [];
@@ -3874,7 +3818,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     sourceEmitted = 0;
     injections.length = 0;
     events.length = 0;
-    eventHead = 0;
+    accountingState.eventHead = 0;
     randomCalls = 0;
     randomState = mulberry32(seed);
     lineage.reset();
@@ -4030,14 +3974,14 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         sourceRate,
         sourceEmitted,
         drawn,
-        nextMessage,
+        nextMessage: accountingState.nextMessage,
         nextParticle,
         nextInjection,
         nextCall,
         nextAttempt,
         nextLogical,
-        inSystem,
-        eventHead,
+        inSystem: accountingState.inSystem,
+        eventHead: accountingState.eventHead,
         seed,
         randomCalls,
         topology,
@@ -4106,14 +4050,14 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           sourceRate,
           sourceEmitted,
           drawn,
-          nextMessage,
+          nextMessage: accountingState.nextMessage,
           nextParticle,
           nextInjection,
           nextCall,
           nextAttempt,
           nextLogical,
-          inSystem,
-          eventHead,
+          inSystem: accountingState.inSystem,
+          eventHead: accountingState.eventHead,
           seed,
           randomCalls,
           scale,
@@ -4133,7 +4077,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     effectiveProps: (nodeId) => structuredClone(nodes.get(nodeId)?.rawProps ?? {}),
     configuration: () =>
       (configuration ??= Object.fromEntries([...nodes].map(([id, node]) => [id, structuredClone(node.rawProps)]))),
-    metrics: () => ({ time, inSystem, pendingInjections: injections.length }),
+    metrics: () => ({ time, inSystem: accountingState.inSystem, pendingInjections: injections.length }),
     fleet(nodeId) {
       const n = nodes.get(nodeId);
       return n?.fleet && n.props.resources ? fleetReadout(n.fleet) : undefined;
@@ -4149,7 +4093,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       return n?.fleet && n.props.resources ? replicaPage(n.fleet, n.props.resources, time, scale, page) : [];
     },
     measure(metric) {
-      if ("system" in metric) return inSystem;
+      if ("system" in metric) return accountingState.inSystem;
       const node = nodes.get(metric.node);
       if (!node) return undefined;
       if (metric.field === "inFlight") return threadOccupancy(node);
@@ -4380,7 +4324,9 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       accumulator = Math.max(0, accumulator - steps * STEP);
       for (let i = 0; i < steps; i++) tick();
     },
-    frame: accounting.frame,
+    frame() {
+      return accounting.frame(time, scale, drawnTrips, sinceFault, faults, routes, routeCounts);
+    },
     timeoutLosses(expected) {
       return Object.fromEntries(
         [...nodes].map(([id, node]) => [

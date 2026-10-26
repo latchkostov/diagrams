@@ -6,7 +6,7 @@ scheduler, allocation orchestration, lifecycle and checkpoint capture/install or
 for the parked cohort work.
 
 This is an internal refactor: Live, planning, saved files, replay and the public engine contract are unchanged.
-No parity goldens are intentionally changed or re-recorded. An import-boundary test rejects phase/facade imports,
+Both parity tiers retain every golden unchanged; none are re-recorded. An import-boundary test rejects phase/facade imports,
 including paths through lower-level helpers, type imports, re-exports and dynamic imports.
 
 The source-range map and UX review are in

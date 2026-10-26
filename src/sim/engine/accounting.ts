@@ -25,6 +25,10 @@ declare const __TEST_ORACLES__: boolean | undefined;
 const TEST_ORACLES = typeof __TEST_ORACLES__ === "boolean" && __TEST_ORACLES__;
 
 export interface AccountingQueries {
+  routeCounts(): Map<string, RouteCounts>;
+  latencyBudget(): ReturnType<typeof createLatencyBudget>;
+  scale(): number;
+  time(): number;
   spend(): void;
   observeEvent(event: SimEvent): void;
   dotsOf(message?: { represented?: number }): number;
@@ -36,19 +40,52 @@ export interface AccountingQueries {
   waits(): boolean;
   readFrame(): SimFrame;
 }
-/** Live accessors over the facade's checkpointed roots; never capture a replaceable root. */
+/** Data-only accounting scalars; the facade checkpoints and restores each original field. */
 export interface AccountingState {
-  readonly time: number;
-  readonly scale: number;
-  readonly latencyBudget: ReturnType<typeof createLatencyBudget>;
-  readonly sinceFault: import("../types").LatencyMetrics["sinceFault"];
   inSystem: number;
   nextMessage: number;
   eventHead: number;
-  readonly routeCounts: Map<string, RouteCounts>;
-  readonly routes: Map<string, CompiledRoute> | undefined;
-  readonly faults: Map<string, Fault>;
-  readonly drawnTrips: Map<number, Trip>;
+}
+
+/**
+ * 1 - Math.exp(-STEP / 1000) as V8 computes it, written out: Math.exp may differ in the last bit between JS
+ * engines, and throughput (which expectations read) is built on this (shared Live, docs/PARITY.md).
+ */
+const EWMA_ALPHA = 0.009950166250831893;
+
+/** Before a half-open breaker narrows it, the message keeps completing its current route at the cohort's size. */
+export function creditRoute(message: Message, cohort: { represented?: number }): void {
+  if (!message.request) message.routeCohort = undefined;
+  else if (message.routeCohort?.route !== message.request.id)
+    message.routeCohort = { route: message.request.id, represented: cohort.represented };
+}
+
+function topWaiting(node: Node): [string, number][] {
+  const top: [string, number][] = [];
+  for (const entry of node.waitingOn) {
+    let i = 0;
+    while (i < top.length && top[i][1] >= entry[1]) i++;
+    if (i < 3) {
+      top.splice(i, 0, entry);
+      if (top.length > 3) top.pop();
+    }
+  }
+  return top;
+}
+
+function retryWindowView(edge: Edge, time: number, scale: number) {
+  const w = retryWindow(edge.retry!.window, time);
+  return {
+    windowRequests: w.requests / scale,
+    windowAttempts: w.attempts / scale,
+    windowRetried: w.retried / scale,
+    windowSucceeded: w.succeeded / scale,
+  };
+}
+
+export function finishTickMetrics(node: Node): void {
+  node.throughput += EWMA_ALPHA * ((node.completedThisStep * 1000) / STEP - node.throughput);
+  node.completedThisStep = 0;
 }
 
 export function createAccounting(
@@ -63,16 +100,25 @@ export function createAccounting(
   queries: AccountingQueries,
 ) {
   const { nodes, edges, events } = graph;
-  const { spend, observeEvent, dotsOf, threadOccupancy, queueBacklog, slots, held, memoryRequests, waits } = queries;
+  const {
+    time,
+    latencyBudget,
+    routeCounts,
+    spend,
+    observeEvent,
+    dotsOf,
+    threadOccupancy,
+    queueBacklog,
+    slots,
+    held,
+    memoryRequests,
+    waits,
+    readFrame,
+  } = queries;
   const EVENT_CAP = 200;
-  /**
-   * 1 - Math.exp(-STEP / 1000) as V8 computes it, written out: Math.exp may differ in the last bit between JS
-   * engines, and throughput (which expectations read) is built on this (shared Live, docs/PARITY.md).
-   */
-  const EWMA_ALPHA = 0.009950166250831893;
   function log(kind: SimEventKind, node: Node, message?: Message, detail = ""): void {
     const event: SimEvent = {
-      time: state.time,
+      time: time(),
       kind,
       nodeId: node.id,
       ...(message ? { messageId: message.id } : {}),
@@ -98,7 +144,7 @@ export function createAccounting(
       !message.requested &&
       (node.role === "processor" || node.role === "gateway" || node.role === "store" || node.role === "sink")
     ) {
-      const elapsed = state.time - message.family.bornAt;
+      const elapsed = time() - message.family.bornAt;
       const work = Math.min(message.workMs, Math.max(0, elapsed - message.travelMs));
       recordLatency(
         (node.latency ??= createLatencyRecorder()),
@@ -106,7 +152,7 @@ export function createAccounting(
         Math.max(0, elapsed - message.travelMs - work),
         work,
         message.travelMs,
-        state.latencyBudget,
+        latencyBudget(),
         message.callMs,
         message.backoffMs,
         dotsOf(message),
@@ -117,7 +163,7 @@ export function createAccounting(
   /** Records a lineage step for a message whose family is being traced (callers check first). */
   function step(message: Message, kind: TraceStepKind, node: string, extra?: Partial<TraceStep>): void {
     lineage.record(message.family, {
-      t: state.time,
+      t: time(),
       kind,
       id: message.id,
       type: message.type,
@@ -153,8 +199,8 @@ export function createAccounting(
   }
 
   function countRoute(route: CompiledRoute): RouteCounts {
-    let counts = state.routeCounts.get(route.id);
-    if (!counts) state.routeCounts.set(route.id, (counts = { sent: 0, rejected: 0, completed: 0 }));
+    let counts = routeCounts().get(route.id);
+    if (!counts) routeCounts().set(route.id, (counts = { sent: 0, rejected: 0, completed: 0 }));
     return counts;
   }
 
@@ -164,13 +210,6 @@ export function createAccounting(
     if (route) countRoute(route).sent += dotsOf(message);
     // Completion credit belongs to the route it was granted on, never to a new address.
     return { ...message, request: route, routeCohort: undefined };
-  }
-
-  /** Before a half-open breaker narrows it, the message keeps completing its current route at the cohort's size. */
-  function creditRoute(message: Message, cohort: { represented?: number }): void {
-    if (!message.request) message.routeCohort = undefined;
-    else if (message.routeCohort?.route !== message.request.id)
-      message.routeCohort = { route: message.request.id, represented: cohort.represented };
   }
 
   /** A fan-out copy with its own id, in the same family (its parent keeps the original id). */
@@ -231,33 +270,18 @@ export function createAccounting(
     gone(node, message, "block", "deny rule", extra);
   }
 
-  function topWaiting(node: Node): [string, number][] {
-    const top: [string, number][] = [];
-    for (const entry of node.waitingOn) {
-      let i = 0;
-      while (i < top.length && top[i][1] >= entry[1]) i++;
-      if (i < 3) {
-        top.splice(i, 0, entry);
-        if (top.length > 3) top.pop();
-      }
-    }
-    return top;
-  }
-
-  function retryWindowView(edge: Edge) {
-    const w = retryWindow(edge.retry!.window, state.time);
-    return {
-      windowRequests: w.requests / state.scale,
-      windowAttempts: w.attempts / state.scale,
-      windowRetried: w.retried / state.scale,
-      windowSucceeded: w.succeeded / state.scale,
-    };
-  }
-
-  function frame() {
+  function frame(
+    time: number,
+    scale: number,
+    drawnTrips: Map<number, Trip>,
+    sinceFault: import("../types").LatencyMetrics["sinceFault"],
+    faults: Map<string, Fault>,
+    routes: Map<string, CompiledRoute> | undefined,
+    routeCounts: Map<string, RouteCounts>,
+  ) {
     const particles: Particle[] = [];
-    for (const trip of state.drawnTrips.values())
-      if (trip.start <= state.time)
+    for (const trip of drawnTrips.values())
+      if (trip.start <= time)
         particles.push({
           id: trip.id,
           edgeId: trip.edge.id,
@@ -267,7 +291,7 @@ export function createAccounting(
           ...((trip.message.callAttempt ?? 1) > 1 && trip.kind === "message"
             ? { callAttempt: trip.message.callAttempt }
             : {}),
-          progress: Math.min(1, Math.max(0, (state.time - trip.start) / (trip.end - trip.start))),
+          progress: Math.min(1, Math.max(0, (time - trip.start) / (trip.end - trip.start))),
           type: trip.message.type,
           color: trip.message.request?.color ?? trip.message.color,
           ...(trip.message.request ? { route: trip.message.request.id, marker: trip.message.request.marker } : {}),
@@ -282,8 +306,8 @@ export function createAccounting(
       nodeStates[node.id] = {
         ...(node.latency
           ? {
-              latency: state.sinceFault
-                ? { ...latencyMetrics(node.latency), sinceFault: state.sinceFault }
+              latency: sinceFault
+                ? { ...latencyMetrics(node.latency), sinceFault: sinceFault }
                 : latencyMetrics(node.latency),
             }
           : {}),
@@ -296,10 +320,10 @@ export function createAccounting(
         ...(node.waits && node.role === "processor"
           ? {
               threads: {
-                slots: slots(node) / state.scale,
-                working: node.threadWeight.work / state.scale,
-                waiting: node.threadWeight.wait / state.scale,
-                waitingOn: topWaiting(node).map(([id, weight]) => [id, weight / state.scale]),
+                slots: slots(node) / scale,
+                working: node.threadWeight.work / scale,
+                waiting: node.threadWeight.wait / scale,
+                waitingOn: topWaiting(node).map(([id, weight]) => [id, weight / scale]),
                 queued: backlog,
                 ...(node.freeFlight > 0 ? { inFlight: node.freeFlight } : {}),
               },
@@ -314,7 +338,7 @@ export function createAccounting(
         ...(node.props.queue || node.shed
           ? {
               shed: roundDots(node.shed),
-              queueDepth: roundDots(node.queueUnits / state.scale),
+              queueDepth: roundDots(node.queueUnits / scale),
               ...(node.shedLost ? { shedLost: roundDots(node.shedLost) } : {}),
               ...(node.props.queue?.limit === undefined ? {} : { queueLimit: node.props.queue.limit }),
             }
@@ -328,13 +352,7 @@ export function createAccounting(
         ...(node.fleet && node.props.resources
           ? {
               fleet: fleetReadout(node.fleet),
-              resources: resourceReadout(
-                node.fleet,
-                node.props.resources,
-                memoryRequests(node),
-                state.time,
-                state.scale,
-              ),
+              resources: resourceReadout(node.fleet, node.props.resources, memoryRequests(node), time, scale),
             }
           : {}),
         replicas: node.replicas,
@@ -344,17 +362,17 @@ export function createAccounting(
       };
     }
     const frame: SimFrame = {
-      time: state.time,
+      time: time,
       particles,
       nodes: nodeStates,
       inSystem: state.inSystem,
-      scale: state.scale,
+      scale: scale,
     };
-    if (state.faults.size) frame.faults = structuredClone([...state.faults.values()]);
-    if (state.routes) {
+    if (faults.size) frame.faults = structuredClone([...faults.values()]);
+    if (routes) {
       const counts: Record<string, RouteCounts> = Object.create(null);
-      for (const id of state.routes.keys()) {
-        const c = state.routeCounts.get(id);
+      for (const id of routes.keys()) {
+        const c = routeCounts.get(id);
         counts[id] = c ? roundRoute(c) : { sent: 0, rejected: 0, completed: 0 };
       }
       frame.routes = counts;
@@ -363,25 +381,23 @@ export function createAccounting(
   }
 
   function snapshot(): SimSnapshot {
-    const frame = queries.readFrame();
+    const frame = readFrame();
+    const time = queries.time();
+    const scale = queries.scale();
     const edgeStates: SimSnapshot["edges"] = Object.create(null);
     for (const edge of edges)
       edgeStates[edge.id] = {
         id: edge.id,
         delivered: roundDots(edge.delivered),
         active: edge.active,
-        ...(edge.breaker ? { breaker: breakerView(edge.breaker.state, edge.breaker.policy, state.time) } : {}),
+        ...(edge.breaker ? { breaker: breakerView(edge.breaker.state, edge.breaker.policy, time) } : {}),
         ...(waits() && edge.sync
-          ? { calls: roundCalls({ ...edge.calls, ...(edge.retry ? retryWindowView(edge) : {}) }) }
+          ? { calls: roundCalls({ ...edge.calls, ...(edge.retry ? retryWindowView(edge, time, scale) : {}) }) }
           : {}),
       };
     const recent: SimEvent[] = [];
     for (let i = 0; i < events.length; i++) recent.push({ ...events[(state.eventHead + i) % events.length] });
     return { ...frame, edges: edgeStates, events: recent };
-  }
-  function finishTickMetrics(node: Node): void {
-    node.throughput += EWMA_ALPHA * ((node.completedThisStep * 1000) / STEP - node.throughput);
-    node.completedThisStep = 0;
   }
   return {
     log,
@@ -390,13 +406,11 @@ export function createAccounting(
     gone,
     countRoute,
     addressed,
-    creditRoute,
     copy,
     fanOut,
     drop,
     block,
     frame,
     snapshot,
-    finishTickMetrics,
   };
 }
