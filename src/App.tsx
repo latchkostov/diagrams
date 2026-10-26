@@ -54,7 +54,6 @@ import { unseen } from "./ai/ui/unseen";
 import { AI_PANEL } from "./lib/deployment";
 import { t, useLocale } from "./i18n";
 import { tutorialRoute } from "./tutorials/route";
-import { tutorialMetadata } from "./tutorials/metadata";
 import "./styles/interop.css";
 
 // Views are code-split: the gallery and canvas each pull in their own weight (React Flow lives
@@ -168,33 +167,18 @@ if (EMBED) {
   preloadCanvasView();
 }
 
-/**
- * A tutorial (src/tutorials) takes the place of the app while it runs, on a diagram of its own; leaving goes back.
- * Development and e2e builds only until the owner has previewed it: spelled out from the build's literals, as the Lab
- * is, so a production build drops it and its chunks. Only the address check is in the first view: the surface (a
- * defineLazySurface, with the shared Retry) is fetched on the way in, so its machinery stays out of startup.
- */
-const useTutorial =
-  import.meta.env.DEV || import.meta.env.VITE_E2E === "1"
-    ? () => useSyncExternalStore(tutorialRoute.subscribe, tutorialRoute.get)
-    : () => null;
-const TutorialSurface =
-  import.meta.env.DEV || import.meta.env.VITE_E2E === "1"
-    ? lazyComponent(
-        () => import("./tutorials/lazyTutorial").then((m) => m.TutorialSurface),
-        () => <ViewLoading />,
-        true,
-      )
-    : null;
-/** The Tutorials view (Diagram | Stencils | Tutorials): tracks, cards and progress. */
-const TutorialsView =
-  import.meta.env.DEV || import.meta.env.VITE_E2E === "1"
-    ? lazyComponent(
-        () => import("./tutorials/lazyTutorial").then((m) => m.TutorialsListSurface),
-        () => <ViewLoading />,
-        true,
-      )
-    : null;
+/** The address check stays in startup; tutorial UI loads through its two lazy surfaces. */
+const useTutorial = () => useSyncExternalStore(tutorialRoute.subscribe, tutorialRoute.get);
+const TutorialSurface = lazyComponent(
+  () => import("./tutorials/lazyTutorial").then((m) => m.TutorialSurface),
+  () => <ViewLoading />,
+  true,
+);
+const TutorialsView = lazyComponent(
+  () => import("./tutorials/lazyTutorial").then((m) => m.TutorialsListSurface),
+  () => <ViewLoading />,
+  true,
+);
 
 // Only public examples appear in prompts, the palette and the start card.
 const publicSlugs = new Set(examples.filter((e) => !e.localOnly).map((e) => e.slug));
@@ -203,13 +187,7 @@ export function App() {
   const tutorial = useTutorial();
   return (
     <>
-      {EMBED ? (
-        <EmbedView />
-      ) : TutorialSurface && tutorial ? (
-        <TutorialSurface id={tutorial} onExit={tutorialRoute.close} />
-      ) : (
-        <MainApp />
-      )}
+      {EMBED ? <EmbedView /> : tutorial ? <TutorialSurface id={tutorial} onExit={tutorialRoute.close} /> : <MainApp />}
       <Toaster />
     </>
   );
@@ -547,13 +525,13 @@ function MainApp() {
     [locale],
   );
   const start: StartOptions = {
-    tutorial: TutorialSurface ? (
+    tutorial: (
       <p className="start-note">
         <button className="link-btn" data-testid="start-tutorial" onClick={() => tutorialRoute.open("mobile-api")}>
           {t("tutorials.startCard")}
         </button>
       </p>
-    ) : undefined,
+    ),
     recent: library.entries
       .filter((e) => e.slug !== slug)
       .map((e) => ({
@@ -612,7 +590,7 @@ function MainApp() {
             <Suspense fallback={<ViewLoading />}>
               {url.view === "gallery" ? (
                 <GalleryView />
-              ) : url.view === "tutorials" && TutorialsView ? (
+              ) : url.view === "tutorials" ? (
                 <TutorialsView />
               ) : url.view === "lab" ? (
                 <LabView onOpen={onLabOpen} />
@@ -671,14 +649,10 @@ function MainApp() {
       {examplesOpen && (
         <ExamplesDialog
           onClose={() => setExamplesOpen(false)}
-          onTutorials={
-            TutorialsView
-              ? () => {
-                  setExamplesOpen(false);
-                  goTo("tutorials");
-                }
-              : undefined
-          }
+          onTutorials={() => {
+            setExamplesOpen(false);
+            goTo("tutorials");
+          }}
           onOpen={(example, simulation) => {
             paletteHost.cancelRun();
             canvasRef.current?.flush();
@@ -717,9 +691,8 @@ function MainApp() {
         currentSlug={slug}
         onOpenDiagram={(example) => setUrl({ view: "canvas", example, present: false })}
         onPresent={url.view === "canvas" && !url.present ? () => setUrl({ present: true }) : undefined}
-        onTutorials={TutorialsView ? () => goTo("tutorials") : undefined}
-        tutorials={TutorialSurface ? tutorialMetadata.map((x) => ({ id: x.id, title: x.title() })) : undefined}
-        onOpenTutorial={TutorialSurface ? tutorialRoute.open : undefined}
+        onTutorials={() => goTo("tutorials")}
+        onOpenTutorial={tutorialRoute.open}
       />
     </div>
   );

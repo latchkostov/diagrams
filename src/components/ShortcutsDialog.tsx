@@ -5,7 +5,6 @@ import { Icon } from "./Icon";
 import { AI_PANEL, AI_TOOLS } from "../lib/deployment";
 import { msg, t, useLocale } from "../i18n";
 import { legacyKeyHint } from "../editor/keyHints";
-import { TUTORIALS } from "../lib/urlState";
 
 const GROUPS: Shortcut["group"][] = ["Edit", "Clipboard", "Selection", "View", "Help"];
 
@@ -299,11 +298,9 @@ export function ShortcutsDialog({ onClose }: { onClose: () => void }) {
           </section>
         </div>
         <footer className="dlg-foot">
-          {TUTORIALS && (
-            <a href="?view=tutorials" data-testid="shortcuts-tutorials">
-              {t("tutorials.shortcuts")}
-            </a>
-          )}{" "}
+          <a href="?view=tutorials" data-testid="shortcuts-tutorials">
+            {t("tutorials.shortcuts")}
+          </a>{" "}
           {t("shortcuts.footer")}{" "}
           <a href="privacy.html" target="_blank" rel="noopener" data-testid="privacy-link">
             {t("shortcuts.privacy")}

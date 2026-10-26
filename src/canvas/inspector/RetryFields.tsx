@@ -8,6 +8,7 @@ import { SimInput } from "./SimulationFields";
 import { t } from "../../i18n";
 import type { RetryPolicy } from "../../model/admission";
 import { recommendedRetry } from "../../sim/resiliencePresets";
+import { tutorialRoute } from "../../tutorials/route";
 
 export function RetryFields({
   retry,
@@ -30,6 +31,13 @@ export function RetryFields({
         description={t("resilience.retriesHint")}
         origin={origin}
       >
+        <button
+          className="link-btn"
+          data-testid="inspector-tutorial-retries"
+          onClick={() => tutorialRoute.open("retry-storm")}
+        >
+          {t("tutorials.learnRetries")}
+        </button>
         <Field label={t("resilience.retries")} hint={t("resilience.retriesHint")}>
           <Dropdown
             testId="inspector-field-retries"

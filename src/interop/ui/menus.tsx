@@ -7,7 +7,6 @@ import type { Binding, Interop } from "../useInterop";
 import { Menu, type MenuEntry } from "./Menu";
 import { Glyph } from "./glyphs";
 import { t } from "../../i18n";
-import { TUTORIALS } from "../../lib/urlState";
 
 type Api = Omit<Interop, "layer"> & { tutorial?: true };
 
@@ -34,7 +33,7 @@ export function FileMenu({
 }) {
   const entries = (): MenuEntry[] => {
     const b = api.binding;
-    const tutorial = TUTORIALS && api.tutorial;
+    const tutorial = api.tutorial;
     const cloud = api.cloudProviders;
     const out: MenuEntry[] = [
       {

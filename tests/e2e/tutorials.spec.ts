@@ -34,6 +34,39 @@ async function openTutorial(page: Page, id: string) {
   }
 }
 
+test("example Tutorial chip opens its lesson and Exit returns to the diagram", async ({ page, consoleErrors }) => {
+  await gotoCanvas(page, "retry-storm");
+  await page.getByTestId("example-picker").click();
+  await page.getByTestId("picker-browse-examples").click();
+  await page.getByTestId("example-tutorial-retry-storm").click();
+  await expect(page.getByTestId("tutorial-start")).toBeVisible();
+  await expect(page).toHaveURL(/tutorial=retry-storm/);
+  await page.getByTestId("tutorial-start").click();
+  await page.getByTestId("tutorial-exit").click();
+  await expect(page.getByTestId("node-checkout")).toBeVisible();
+  expectNoErrors(consoleErrors);
+});
+
+for (const [control, lesson] of [
+  ["waiting", "threads-block"],
+  ["retries", "retry-storm"],
+] as const) {
+  test(`inspector ${control} teaches in place and Exit restores the diagram`, async ({ page, consoleErrors }) => {
+    await gotoCanvas(page, "retry-storm");
+    await play(page, { click: "edge-pay" });
+    await page.keyboard.press("Enter");
+    await page.getByTestId("inspector-section-edge-simulation").click();
+    await page.getByTestId(`inspector-tutorial-${control}`).click();
+    await expect(page.getByTestId("tutorial-start")).toBeVisible();
+    await expect(page).toHaveURL(new RegExp(`tutorial=${lesson}`));
+    await page.getByTestId("tutorial-start").click();
+    await page.getByTestId("tutorial-exit").click();
+    await expect(page.getByTestId("node-checkout")).toBeVisible();
+    await expect(page).not.toHaveURL(/tutorial=/);
+    expectNoErrors(consoleErrors);
+  });
+}
+
 async function play(page: Page, step: ResolvedUiStep) {
   if ("click" in step) {
     if (step.click === "canvas-pane")

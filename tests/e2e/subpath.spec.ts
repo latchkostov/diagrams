@@ -19,6 +19,25 @@ test.describe("production build under a sub-path", () => {
     });
   });
 
+  test("production tutorials keep the sub-path without exposing test hooks", async ({ page, consoleErrors }) => {
+    await page.goto("./?view=tutorials");
+    await expect(page.getByTestId("view-tutorials")).toHaveAttribute("aria-selected", "true");
+    await expect(page.getByTestId("tutorials-view")).toBeVisible();
+    await page.getByTestId("tutorial-open-mobile-api").click();
+    await expect(page.getByTestId("tutorial-intro")).toBeVisible();
+    await page.getByTestId("tutorial-start").click();
+    await expect(page.getByTestId("tutorial-step")).toHaveAttribute("data-step", "add-app");
+    expect(await page.evaluate(() => window.__tutorial)).toBeUndefined();
+    expect(new URL(page.url()).pathname).toBe(BASE);
+    await page.getByTestId("tutorial-exit").click();
+    await expect(page.getByTestId("tutorials-view")).toBeVisible();
+    await page.getByTestId("view-gallery").click();
+    await expect(page.getByTestId("gallery-view")).toBeVisible();
+    await page.getByTestId("view-tutorials").click();
+    await expect(page.getByTestId("tutorials-view")).toBeVisible();
+    expectNoErrors(consoleErrors);
+  });
+
   test("gallery loads with every icon", async ({ page, consoleErrors }) => {
     await page.goto("./?view=gallery");
     await expect(page.getByTestId("gallery-view")).toBeVisible();

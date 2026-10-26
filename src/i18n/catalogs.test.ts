@@ -96,6 +96,15 @@ describe("the catalogs", () => {
   });
 
   // Every catalog the build would offer, not only the launch languages: a language added later is checked the same way.
+  it.each(codes)("%s translates every tutorial message, including quarantined lessons", (code) => {
+    const messages = read<Record<string, string>>(`locales/${code}.json`);
+    const meta = read<LocaleMeta>(`locales/${code}.meta.json`);
+    for (const [key, source] of Object.entries(en).filter(([key]) => key.startsWith("tutorials."))) {
+      expect(messages[key], `${code}: ${key}`).toBeTruthy();
+      expect(meta.sources?.[key], `${code}: ${key}`).toBe(sourceHash(source));
+    }
+  });
+
   it.each(codes)("%s: no errors, and its glossary decides every term", (code) => {
     const { errors, undecided } = check(code);
     expect(errors).toEqual([]);

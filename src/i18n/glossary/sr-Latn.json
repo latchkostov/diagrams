@@ -30,7 +30,13 @@
         "menu.setConsumerGroup",
         "broker.group",
         "stencil.kafkaTopicDescription",
-        "stencil.redisStreamDescription"
+        "stencil.redisStreamDescription",
+        "tutorials.partitions.idleDone",
+        "tutorials.partitions.editDone",
+        "tutorials.kafkaTopic.title",
+        "tutorials.kafkaTopic.emailDone",
+        "tutorials.kafkaTopic.watchDone",
+        "tutorials.kafkaTopic.finish"
       ]
     },
     "consumer group": {
