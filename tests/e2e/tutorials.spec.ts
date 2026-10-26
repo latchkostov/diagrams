@@ -1125,6 +1125,12 @@ test("Tutorials view and running tutorial pass the shared axe scan", async ({ pa
   await openTutorial(page, "mobile-api");
   await page.getByTestId("tutorial-start").click();
   await expect(strip(page)).toHaveAttribute("data-phase", "step");
+  // Scan the settled page: entrance fades would otherwise be measured mid-way.
+  await page.waitForFunction(() =>
+    document
+      .getAnimations()
+      .every((a) => a.playState !== "running" || a.effect?.getComputedTiming().iterations === Infinity),
+  );
   await expectNoViolations(page);
 });
 
