@@ -113,6 +113,7 @@ export function editMessageProps(
         while (used.has(id) || at.has(id));
       used.add(id);
     }
+    ids[i] = id;
     const j = at.get(id);
     if (j !== undefined && same(before.rules[j], rule)) return before.authored[j];
     const { id: _id, ...content } = rule;
@@ -124,5 +125,38 @@ export function editMessageProps(
   // Removing or reordering untouched legacy rules keeps the legacy map.
   if (!Array.isArray(previous.emits) && emits.every((rule) => authored.has(rule)))
     return { ...props, emits: Object.fromEntries(emits.map((rule) => [rule.receives, rule.sends])) };
-  return { ...props, emits };
+  // Removing an explicit-ID owner or collision sibling can change an untouched row's derived ID.
+  // Materialize only the surviving identities that would otherwise change.
+  const derived = messageRules(emits);
+  if (derived.every((rule, i) => rule.id === ids[i])) return { ...props, emits };
+  // A materialized row can free an explicit ID that reserves another row's fallback base (or
+  // suffix). Follow those connected collision groups until stable, visiting each group once.
+  const group = (id: string) => /^(rule-[a-z0-9]+)(?:-[0-9]+)?$/.exec(id)?.[1] ?? id;
+  const keys = emits.map((rule, i) => [`rule-${hash(rule.receives)}`, group(rule.id ?? ids[i]!), group(ids[i]!)]);
+  const groups = new Map<string, number[]>();
+  for (let i = 0; i < keys.length; i++)
+    for (const key of keys[i]) {
+      const members = groups.get(key) ?? [];
+      members.push(i);
+      groups.set(key, members);
+    }
+  const repair = new Set<number>();
+  const pending: number[] = [];
+  const visit = (i: number) => {
+    if (repair.has(i)) return;
+    repair.add(i);
+    pending.push(i);
+  };
+  for (let i = 0; i < emits.length; i++) if (derived[i].id !== ids[i]) visit(i);
+  for (let cursor = 0; cursor < pending.length; cursor++)
+    for (const key of keys[pending[cursor]]) {
+      const members = groups.get(key);
+      if (!members) continue;
+      groups.delete(key);
+      for (const i of members) visit(i);
+    }
+  return {
+    ...props,
+    emits: emits.map((rule, i) => (repair.has(i) && rule.id !== ids[i] ? { ...rule, id: ids[i] } : rule)),
+  };
 }

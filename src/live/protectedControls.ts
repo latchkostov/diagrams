@@ -26,7 +26,9 @@ export function observeProtectedControls(wrap: Element, place: () => void): () =
     if (
       records.some(
         (record) =>
-          record.type === "attributes" ||
+          (record.type === "attributes" &&
+            (record.attributeName === "data-canvas-overlay" ||
+              (record.target instanceof Element && record.target.matches(".lv-note")))) ||
           [...record.addedNodes, ...record.removedNodes].some(
             (node) =>
               node instanceof Element && (node.matches(protectedControls) || !!node.querySelector(protectedControls)),
