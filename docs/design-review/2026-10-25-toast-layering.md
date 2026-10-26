@@ -111,12 +111,21 @@ dialog is the modal owner. Feedback is not a surface and does not take an Escape
 
 ### Undo binding
 
-- **A history is bound.** The toast binds as before, with one correction. "The document is ahead
-  of its history" (an edit not yet recorded, such as a text's growth after it moved clear) is now
-  _pending_, not stale. Invalidation waits. Activation records the pending edit first: if it merged
-  into the same entry, Undo reverses that step, as Ctrl+Z would; if it made a new entry, Undo is
-  stale. Previously the pending window made the Undo permanently unavailable
-  (`round4-polish.spec.ts`, "a text that grows over an edge moves clear, with Undo").
+- **A history is bound.** The toast binds as before, with four corrections, all found by
+  `round4-polish.spec.ts` ("a text that grows over an edge moves clear, with Undo"). The branch had
+  made that Undo permanently unavailable.
+  1. Capture records the pending edit early but keeps its step's tag. What settles right after (the
+     text's measure) merges into the step the Undo names, as it would have without the early
+     recording. Previously the measure became a second step.
+  2. An entry keeps its opaque id when an edit merges into it (`historyController.commit`, via
+     `merges` in `history.ts`). The step is the same, and so is what Ctrl+Z would reverse.
+  3. "The document is ahead of its history" is _pending_, not stale: invalidation waits.
+     Activation records the pending edit first. A merged edit keeps the Undo; a new step makes it
+     stale.
+  4. An Undo notification follows its _rendered_ edit. Capture's `flushSync(() => {})` renders only
+     urgent updates, not ones a timer or animation frame scheduled. The text move (`settleText`) and
+     a resized boundary's adoption (`boundaryResized`) now render their edit synchronously before
+     notifying, as the drag settlement already did on this branch.
 - **No history is bound** (a harness, a viewer). An `undoes` action keeps master's unbound rule
   instead of becoming permanently inert: it goes when anything else undoes or redoes. This fixed
   `src/live/threadFixes.test.ts`, which failed on the branch.
@@ -145,7 +154,8 @@ never covered by a toast. Under the tutorial coach's dim, toasts stay readable.
 - Feedback slot: `src/interop/ui/Dialog.tsx:72`.
 - Store: `src/interop/ui/toast.ts` (`publish`, layer routing in `show`, survivors returned to the page
   in the `modalLayers.subscribe` handler, pending-aware `invalidateUndo`, `endPress`, `engagedFor`);
-  history side in `src/editor/useHistory.ts` (`entry`, `HISTORY_PENDING`).
+  history side in `src/editor/useHistory.ts` (`entry`, `HISTORY_PENDING`, the capture keeping its tag),
+  `src/editor/historyController.ts` (`commit` keeps a merged step's id) and `src/editor/history.ts` (`merges`).
 - Toaster: page-layer root `src/interop/ui/Toaster.tsx:32`, dialog feedback `:70`, one-shot
   placement `:155`, Dismiss focus hand-back `:262`; `feedbackPlacement` in `toastStack.ts:43`.
 - CSS: step-back `src/styles/interop.css:217`, task layer `:223`, dialog feedback `:232-248`.
