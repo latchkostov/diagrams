@@ -3135,12 +3135,12 @@ details[open] > summary .lv-disclosure-chevron {
   inline-size: 36px;
   block-size: 36px;
   border-radius: 9px;
-  background: var(--live);
-  color: var(--live-ink);
+  background: var(--text);
+  color: var(--bg);
 }
 .live-transport-mount .lv-play:hover:not(:disabled) {
-  background: var(--live);
-  color: var(--live-ink);
+  background: var(--text);
+  color: var(--bg);
 }
 .live-transport-mount .lv-speed select {
   block-size: 32px;

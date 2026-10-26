@@ -113,7 +113,7 @@
     "labels": {
       "client-to-order-api": { "style": "transform: translate(-50%, -50%) translate(334px, 356px); --fe-w: 90.3px; --fe-h: 22px;", "text": "" },
       "order-api-to-orders-db": { "style": "transform: translate(-50%, -50%) translate(530px, 430px); --fe-w: 137.86px; --fe-h: 22px;", "text": "" },
-      "orders-db-to-outbox-relay": { "style": "transform: translate(-50%, -50%) translate(681px, 516px); --fe-w: 42.82000000000001px; --fe-h: 22px;", "text": "" },
+      "orders-db-to-outbox-relay": { "style": "transform: translate(-50%, -50%) translate(681px, 516px); --fe-w: 42.82000000000001px; --fe-h: 22px; translate: 78px 4.00003px;", "text": "WAL" },
       "outbox-relay-to-order-events": { "style": "transform: translate(-50%, -50%) translate(910px, 342px); --fe-w: 96.67999999999999px; --fe-h: 22px;", "text": "Outbox events" },
       "order-events-to-saga": { "style": "transform: translate(-50%, -50%) translate(1100px, 278px); --fe-w: 92.47999999999999px; --fe-h: 22px;", "text": "OrderCreated" },
       "order-events-to-notifications": { "style": "transform: translate(-50%, -50%) translate(1100px, 132.5px); --fe-w: 140.96999999999997px; --fe-h: 22px;", "text": "Confirmed · Cancelled" },

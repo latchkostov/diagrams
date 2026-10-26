@@ -217,6 +217,7 @@ const edgeNames: Record<EdgeStyle, () => string> = {
 /** Look options (node renderer, edge style): one menu button instead of two selects in the bar. */
 function ViewMenu({ edges, overlays }: { edges: boolean; overlays: boolean }) {
   const s = useSettings();
+  const editor = useSyncExternalStore(paletteHost.subscribe, () => paletteHost.get().canvas?.editor);
   return (
     <Menu
       label={t("view.menu")}
@@ -248,6 +249,15 @@ function ViewMenu({ edges, overlays }: { edges: boolean; overlays: boolean }) {
         ...(overlays
           ? [
               { type: "section" as const, label: t("view.overlays") },
+              {
+                type: "item" as const,
+                testId: "view-minimap",
+                checkbox: true,
+                title: t("chrome.minimap"),
+                checked: editor?.prefs.minimap ?? false,
+                disabled: !editor,
+                onSelect: () => editor?.setPref("minimap", !editor.prefs.minimap),
+              },
               {
                 type: "item" as const,
                 testId: "capacity-overlay-toggle",

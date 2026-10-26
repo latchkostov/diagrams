@@ -145,19 +145,19 @@ test("Diagram properties offers checks only while checks are available", async (
   await expect(page.getByTestId("diagram-checks-summary")).toHaveCount(0);
 });
 
-test("phone playback sits below the tool rail", async ({ page }) => {
+test("phone playback owns the bottom edge and keeps AI reachable", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await gotoCanvas(page, "retry-storm");
   await page.getByTestId("live-toggle").click();
   const bar = await page.getByTestId("live-controls").boundingBox();
-  const rail = await page.getByTestId("tool-rail").boundingBox();
+  await expect(page.getByTestId("tool-rail")).toBeHidden();
   expect(bar).not.toBeNull();
-  expect(rail).not.toBeNull();
-  if (!bar || !rail) throw new Error("Expected playback and tool rail");
-  expect(rail.y + rail.height).toBeLessThanOrEqual(bar.y);
+  if (!bar) throw new Error("Expected playback");
+  expect(bar.y + bar.height).toBe(844);
   expect(bar.x).toBe(0);
   expect(bar.width).toBe(390);
-  await page.getByTestId("ai-rail-open").click();
+  await page.getByTestId("canvas-wrap").focus();
+  await page.keyboard.press("ControlOrMeta+i");
   await expect(page.getByTestId("ai-panel")).toBeVisible();
 });
 

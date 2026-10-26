@@ -278,7 +278,7 @@
       "oncall--tech-email": { "style": "transform: translate(-50%, -50%) translate(4464px, 236px); --fe-w: 50.669999999999995px; --fe-h: 22px;", "text": "" },
       "dashboard--state-db": { "style": "transform: translate(-50%, -50%) translate(4006px, 96px); --fe-w: 106.91px; --fe-h: 22px;", "text": "" },
       "drivers--apim": { "style": "transform: translate(-50%, -50%) translate(1814.25px, 816px); --fe-w: 54.7px; --fe-h: 22px;", "text": "" },
-      "sessions-api--sessions-db": { "style": "transform: translate(-50%, -50%) translate(2724px, 809px); --fe-w: 59.45px; --fe-h: 22px; translate: -14px 1.35634e-05px;", "text": "Session" },
+      "sessions-api--sessions-db": { "style": "transform: translate(-50%, -50%) translate(2724px, 809px); --fe-w: 59.45px; --fe-h: 22px;", "text": "Session" },
       "sessions-api--cmd-q": { "style": "transform: translate(-50%, -50%) translate(2542.25px, 880.5px); --fe-w: 87.44px; --fe-h: 22px;", "text": "RemoteStart" },
       "metering--sessions-db": { "style": "transform: translate(-50%, -50%) translate(2626.75px, 956px); --fe-w: 42.03px; --fe-h: 22px;", "text": "kWh" },
       "sessions-db--billing": { "style": "transform: translate(-50%, -50%) translate(2890px, 880px); --fe-w: 97.65px; --fe-h: 22px;", "text": "" },

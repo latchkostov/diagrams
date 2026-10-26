@@ -233,3 +233,87 @@ test("the text floor preserves authored card geometry while zooming", async ({ p
   await waitForCameraIdle(page);
   await expect.poll(boxes).toEqual(original);
 });
+
+for (const theme of ["light", "dark"])
+  for (const width of [1440, 390])
+    test(`Play and Pause use contrasting primary ink (${theme}, ${width})`, async ({ page }, info) => {
+      await page.setViewportSize({ width, height: width === 390 ? 844 : 900 });
+      await page.addInitScript(
+        (theme) => localStorage.setItem("diagrams.settings.v1", JSON.stringify({ themePreference: theme })),
+        theme,
+      );
+      await page.clock.install();
+      await gotoLive(page, "./?view=canvas&example=retry-storm&sim=three-quick-retries&paused=1");
+      await pauseClock(page);
+      const button = page.getByTestId("live-play");
+      for (const state of ["paused", "playing"]) {
+        await expect(button).toHaveAttribute("data-state", state);
+        const colours = await button.evaluate((el) => {
+          const style = getComputedStyle(el);
+          const reference = document.createElement("span");
+          reference.style.color = "var(--text)";
+          reference.style.background = "var(--bg)";
+          el.append(reference);
+          const primary = getComputedStyle(reference);
+          const result = {
+            fill: style.backgroundColor,
+            glyph: style.color,
+            ink: primary.color,
+            ground: primary.backgroundColor,
+          };
+          reference.remove();
+          return result;
+        });
+        expect(colours.fill).toBe(colours.ink);
+        expect(colours.glyph).toBe(colours.ground);
+        await page.mouse.move(2, 2);
+        const box = await button.boundingBox();
+        if (!box) throw new Error("Expected Play / Pause");
+        const png = await page.screenshot();
+        const [contrast] = await sampledContrast(page, png, [
+          {
+            x: box.x + box.width / 2 - 6,
+            y: box.y + box.height / 2 - 6,
+            width: 12,
+            height: 12,
+            ground: { x: box.x + 6, y: box.y + box.height / 2 },
+          },
+        ]);
+        expect(contrast).toBeGreaterThanOrEqual(4.5);
+        await info.attach(`${theme}-${width}-${state}-contrast`, {
+          body: JSON.stringify({ contrast, colours }),
+          contentType: "application/json",
+        });
+        await info.attach(`${theme}-${width}-${state}`, { body: png, contentType: "image/png" });
+        if (state === "paused") await button.click();
+      }
+    });
+
+test("Edit Focus pins never cover a painted card", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await gotoCanvas(page, "outbox-saga-checkout");
+  await page.getByTestId("node-order-api").click();
+  await page.getByTestId("view-focus").click();
+  await waitForCameraIdle(page);
+  const pins = page.getByTestId(/^focus-offscreen-/);
+  await expect(pins.first()).toBeVisible();
+  const cards = await page.getByTestId(/^rf__node-/).evaluateAll((els) =>
+    els
+      .filter((el) => !el.hasAttribute("data-detail-hidden") && el.querySelector('[data-testid="card-title"]'))
+      .map((el) => {
+        const { x, y, width, height } = el.getBoundingClientRect();
+        return { x, y, width, height };
+      }),
+  );
+  for (const pin of await pins.all()) {
+    const box = await pin.boundingBox();
+    if (!box) throw new Error("Expected a pin");
+    for (const card of cards)
+      expect(
+        box.x < card.x + card.width &&
+          box.x + box.width > card.x &&
+          box.y < card.y + card.height &&
+          box.y + box.height > card.y,
+      ).toBe(false);
+  }
+});

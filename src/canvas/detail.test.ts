@@ -9,6 +9,7 @@ import {
   placeFrameLabel,
   stackPins,
 } from "./camera/frameEdges";
+import { intersects } from "./geometry/rect";
 import { decide, initialPolicy } from "./camera/panePolicy";
 
 describe("Workbench frame detail", () => {
@@ -67,6 +68,29 @@ describe("Workbench frame detail", () => {
       inner,
     );
     expect(pins.map((p) => p.box.y)).toEqual([366, 332, 298]);
+  });
+  it.each(["left", "right", "top", "bottom"] as const)("moves %s pins clear of cards and their titles", (side) => {
+    const inner = { x: 0, y: 0, width: 500, height: 400 };
+    const pin = { id: "saga", name: "Checkout saga", side, crossing: { x: 490, y: 150 }, width: 140, spotlit: false };
+    const original = stackPins([pin], inner)[0].box;
+    const card = { ...original, height: 80 };
+    const pins = stackPins([pin, { ...pin, id: "next" }], inner, 28, [card]);
+    expect(pins).toHaveLength(2);
+    for (const placed of pins) expect(intersects(placed.box, card)).toBe(false);
+    expect(intersects(pins[0].box, pins[1].box)).toBe(false);
+    expect(stackPins([pin], inner, 28, [inner])).toEqual([]);
+  });
+  it("searches past several cards even with only one pin", () => {
+    const inner = { x: 0, y: 0, width: 500, height: 400 };
+    const card = { x: 350, y: 0, width: 150, height: 280 };
+    const [pin] = stackPins(
+      [{ id: "saga", name: "Checkout saga", side: "right", crossing: { x: 500, y: 70 }, width: 140, spotlit: false }],
+      inner,
+      28,
+      [card],
+    );
+    expect(pin.box.y).toBe(286);
+    expect(intersects(pin.box, card)).toBe(false);
   });
   it("slides a colliding label along its own edge and hides when no space remains", () => {
     const label = { x: 90, y: 40, width: 30, height: 20 };

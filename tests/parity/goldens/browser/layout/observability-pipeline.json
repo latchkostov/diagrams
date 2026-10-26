@@ -271,7 +271,7 @@
       "grafana--loki-store": { "style": "transform: translate(-50%, -50%) translate(4590px, 242px); --fe-w: 68.64px; --fe-h: 22px;", "text": "" },
       "gateways--vault": { "style": "transform: translate(-50%, -50%) translate(2570px, 839.5px); --fe-w: 116.87px; --fe-h: 22px;", "text": "Redaction keys" },
       "gateways--roles": { "style": "transform: translate(-50%, -50%) translate(2790px, 830px); --fe-w: 20px; --fe-h: 20px;", "text": "" },
-      "gateways--pipeline-config": { "style": "transform: translate(-50%, -50%) translate(3010px, 841.5px); --fe-w: 120.42px; --fe-h: 22px; translate: 0px 209.1px;", "text": "Sampling policy" },
+      "gateways--pipeline-config": { "style": "transform: translate(-50%, -50%) translate(3010px, 841.5px); --fe-w: 120.42px; --fe-h: 22px; translate: 0px 139.4px;", "text": "Sampling policy" },
       "tenant-limits--pipeline-config": { "style": "transform: translate(-50%, -50%) translate(3230px, 735px); --fe-w: 78.47999999999999px; --fe-h: 22px;", "text": "" },
       "grafana--tempo": { "style": "transform: translate(-50%, -50%) translate(4370px, 302.5px); --fe-w: 79.92999999999999px; --fe-h: 22px;", "text": "" },
       "grafana--prom": { "style": "transform: translate(-50%, -50%) translate(4424px, 383px); --fe-w: 78.41px; --fe-h: 22px;", "text": "" }

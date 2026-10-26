@@ -8,7 +8,7 @@ function initial(): EditorPrefs {
   const fallback: EditorPrefs = {
     snap: true,
     grid: true,
-    minimap: true,
+    minimap: false,
     inspector: typeof window === "undefined" || window.innerWidth >= 1280,
   };
   try {

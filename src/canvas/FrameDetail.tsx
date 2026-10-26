@@ -205,6 +205,7 @@ export const FrameDetail = memo(
             height: Math.max(28, inner.height - (view === "follow" ? 14 : 0)),
           },
           phone ? 44 : 28,
+          blockers,
         );
         blockers.push(...pins.map((pin) => pin.box));
         for (const el of root.querySelectorAll<HTMLElement | SVGElement>(".react-flow__edge[data-id]")) {

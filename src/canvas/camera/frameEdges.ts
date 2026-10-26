@@ -83,7 +83,17 @@ export interface FramePin {
   spotlit: boolean;
   box: Rect;
 }
-export function stackPins(pins: readonly Omit<FramePin, "box">[], inner: Rect, height = 28): FramePin[] {
+/** Pins and edge labels share the same occupied screen rectangles. */
+function clearFrameBox(box: Rect, inner: Rect, blockers: readonly Rect[]): boolean {
+  return contains(inner, box) && !blockers.some((block) => intersects(box, block));
+}
+
+export function stackPins(
+  pins: readonly Omit<FramePin, "box">[],
+  inner: Rect,
+  height = 28,
+  blockers: readonly Rect[] = [],
+): FramePin[] {
   const placed: FramePin[] = [];
   const clamp = (n: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, n));
   for (const pin of pins) {
@@ -95,21 +105,36 @@ export function stackPins(pins: readonly Omit<FramePin, "box">[], inner: Rect, h
     if (pin.side === "top") y = inner.y;
     if (pin.side === "bottom") y = inner.y + inner.height - height;
     const vertical = pin.side === "left" || pin.side === "right";
-    const inward = pin.side === "top" ? 1 : pin.side === "bottom" ? -1 : y + 14 < inner.y + inner.height / 2 ? 1 : -1;
-    let box = { x, y, width, height };
-    for (let step = 0; step <= pins.length * 2; step++) {
-      const offset = step === 0 ? 0 : (step <= pins.length ? step : -(step - pins.length)) * (height + 6) * inward;
-      const candidate = { ...box, y: y + offset };
-      if (!vertical && offset * inward < 0) continue;
-      if (
-        contains(inner, candidate) &&
-        !placed.some((p) => intersects(candidate, { ...p.box, y: p.box.y - 3, height: p.box.height + 6 }))
-      ) {
-        box = candidate;
-        break;
+    const inward =
+      pin.side === "top" ? 1 : pin.side === "bottom" ? -1 : y + height / 2 < inner.y + inner.height / 2 ? 1 : -1;
+    const occupied = [...blockers, ...placed.map((p) => p.box)];
+    // Try the crossing first, then the closest clear spaces along that frame side.
+    // Horizontal sides can also stack inward when their whole row is occupied.
+    const along = vertical ? "y" : "x";
+    const extent = vertical ? height : width;
+    const positions = [
+      vertical ? y : x,
+      inner[along],
+      inner[along] + (vertical ? inner.height : inner.width) - extent,
+      ...occupied.flatMap((b) => [b[along] - extent - 6, b[along] + (vertical ? b.height : b.width) + 6]),
+    ].sort(
+      (a, b) =>
+        (vertical ? Number((a - y) * inward < 0) - Number((b - y) * inward < 0) : 0) ||
+        Math.abs(a - (vertical ? y : x)) - Math.abs(b - (vertical ? y : x)) ||
+        (a - b) * -inward,
+    );
+    const rows = vertical ? 0 : Math.ceil(inner.height / (height + 6));
+    let box: Rect | undefined;
+    for (let row = 0; row <= rows && !box; row++)
+      for (const position of positions) {
+        const candidate = { x, y: y + row * (height + 6) * inward, width, height, [along]: position };
+        if (clearFrameBox(candidate, inner, occupied)) {
+          box = candidate;
+          break;
+        }
       }
-    }
-    placed.push({ ...pin, box });
+    // An overfull frame must never paint a pin over a card.
+    if (box) placed.push({ ...pin, box });
   }
   return placed;
 }
@@ -121,7 +146,7 @@ export function placeFrameLabel(
   inner: Rect,
   blockers: readonly Rect[],
 ): Rect | null {
-  const clear = (r: Rect) => contains(inner, r) && !blockers.some((block) => intersects(r, block));
+  const clear = (r: Rect) => clearFrameBox(r, inner, blockers);
   if (clear(box)) return box;
   const cx = box.x + box.width / 2,
     cy = box.y + box.height / 2;

@@ -123,6 +123,14 @@ export async function settledCanvas(page: Page, root = "canvas-wrap"): Promise<D
  * measurement gate as Fit view, so no corrective click is necessary.
  */
 export async function openExample(page: Page, slug: string): Promise<Drawn> {
+  // These goldens include the fitted viewport with the minimap shown. Choose it
+  // through View before opening the example; fresh-browser defaults have their own e2e regression.
+  await page.goto("./?view=canvas");
+  await expect(page.getByTestId("view-button")).toBeVisible();
+  await page.getByTestId("view-button").click();
+  const minimap = page.getByTestId("view-minimap");
+  if ((await minimap.getAttribute("aria-checked")) !== "true") await minimap.click();
+  else await page.keyboard.press("Escape");
   const file = exampleFile(slug);
   if (slug === "corpus-hand-shaped-lines")
     await page.addInitScript(

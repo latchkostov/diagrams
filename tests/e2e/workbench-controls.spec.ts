@@ -3,6 +3,8 @@ import { test, expect, gotoCanvas, waitForCameraIdle } from "./fixtures";
 test("the first-visit hint leaves the Workbench view controls and minimap clear", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await gotoCanvas(page, "retry-storm");
+  await page.getByTestId("view-button").click();
+  await page.getByTestId("view-minimap").click();
   await page.getByTestId("checks-count").click();
   await waitForCameraIdle(page);
   const hint = await page.getByTestId("first-run-hint").boundingBox();
@@ -20,4 +22,23 @@ test("the first-visit hint leaves the Workbench view controls and minimap clear"
   }
   await page.getByTestId("view-focus").click();
   await expect(page.getByTestId("view-focus")).toHaveAttribute("aria-pressed", "true");
+});
+
+test("the minimap starts off and View remembers both choices", async ({ page }) => {
+  await gotoCanvas(page, "retry-storm");
+  await expect(page.getByTestId("canvas-minimap")).toHaveCount(0);
+  const toggle = async (on: boolean) => {
+    await page.getByTestId("view-button").click();
+    await expect(page.getByTestId("view-minimap")).toHaveAttribute("role", "menuitemcheckbox");
+    await expect(page.getByTestId("view-minimap")).toHaveAttribute("aria-checked", String(!on));
+    await page.getByTestId("view-minimap").click();
+  };
+  await toggle(true);
+  await expect(page.getByTestId("canvas-minimap")).toBeVisible();
+  await page.reload();
+  await expect(page.getByTestId("canvas-minimap")).toBeVisible();
+  await toggle(false);
+  await expect(page.getByTestId("canvas-minimap")).toHaveCount(0);
+  await page.reload();
+  await expect(page.getByTestId("canvas-minimap")).toHaveCount(0);
 });
