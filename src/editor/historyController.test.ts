@@ -116,3 +116,18 @@ it("restores the entire previous model and saved runs in one request-model undo 
   expect(fromFlow(undone.meta, undone.nodes, undone.edges)).toEqual(fromFlow(before.meta, before.nodes, before.edges));
   expect(ctl.step("redo", { nodes: [], edges: [] })?.meta.planning?.revision).toBe("p3-w1");
 });
+
+describe("undo entry identity", () => {
+  it("survives an edit merged into the same step, and changes with a new step", () => {
+    const ctl = new HistoryController(snap(SEED), 0);
+    ctl.commit(added, TAG, 1_000);
+    const step = ctl.undoEntryId();
+    // Same tag inside the merge window: the same step, so an Undo bound to it still names it.
+    ctl.commit(named, TAG, 1_000 + MERGE_WINDOW_MS / 2);
+    expect(ctl.history.entries).toHaveLength(2);
+    expect(ctl.undoEntryId()).toBe(step);
+    // Another tag: a step of its own.
+    ctl.commit(snap(withNodes({ ...DB, label: "Ledger", x: 600 })), "move", 1_000 + MERGE_WINDOW_MS);
+    expect(ctl.undoEntryId()).not.toBe(step);
+  });
+});

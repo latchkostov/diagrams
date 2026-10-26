@@ -41,6 +41,20 @@ export const canRedo = <T, S>(h: History<T, S>) => h.index < h.entries.length - 
  * `transaction` (an open creation: a new node, then its name) merges with the present entry of the same tag
  * however long ago that was. Returns the same object when nothing changed.
  */
+/** Whether committing `entry` folds it into the present step (same tag, in the merge window) instead of adding one. */
+export function merges<T, S>(h: History<T, S>, entry: HistoryEntry<T, S>, transaction?: string): boolean {
+  const cur = present(h);
+  return (
+    cur.key !== entry.key &&
+    !h.coalescingBroken &&
+    h.index === h.entries.length - 1 &&
+    entry.mergeKey !== undefined &&
+    cur.mergeKey === entry.mergeKey &&
+    h.index > 0 &&
+    (entry.at - cur.at <= MERGE_WINDOW_MS || (transaction !== undefined && entry.mergeKey === transaction))
+  );
+}
+
 export function commit<T, S>(
   h: History<T, S>,
   entry: HistoryEntry<T, S>,
@@ -49,13 +63,7 @@ export function commit<T, S>(
 ): History<T, S> {
   const cur = present(h);
   if (cur.key === entry.key) return h;
-  const merge =
-    !h.coalescingBroken &&
-    h.index === h.entries.length - 1 &&
-    entry.mergeKey !== undefined &&
-    cur.mergeKey === entry.mergeKey &&
-    h.index > 0 &&
-    (entry.at - cur.at <= MERGE_WINDOW_MS || (transaction !== undefined && entry.mergeKey === transaction));
+  const merge = merges(h, entry, transaction);
   const base = h.entries.slice(0, merge ? h.index : h.index + 1);
   const entries = [...base, merge && cur.start !== undefined ? { ...entry, start: cur.start } : entry];
   const overflow = Math.max(0, entries.length - cap);

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { notify, toast } from "./toast";
+import { HISTORY_PENDING, notify, toast } from "./toast";
 import { modalLayers, openModalLayer } from "../../lib/modalLayers";
 import { HistoryController } from "../../editor/historyController";
 import { canUndo, present } from "../../editor/history";
@@ -348,4 +348,30 @@ describe("layers: a dialog's feedback, and the page's notifications behind it", 
     outer();
     expect(toast.layered).toEqual([]);
   });
+});
+
+describe("an Undo while its edit is still being recorded", () => {
+  for (const merged of [true, false]) {
+    it(`waits while pending, then ${merged ? "stays available when the edit merged" : "goes stale when it made a new entry"}`, () => {
+      const entry = {};
+      const later = {};
+      let state: object | typeof HISTORY_PENDING = entry;
+      const run = vi.fn();
+      const unbind = toast.bindHistory({
+        capture: () => (state === HISTORY_PENDING ? (merged ? entry : later) : state),
+        current: () => state,
+      });
+      try {
+        const id = toast.info("Moved the text off an edge", { action: { label: "Undo", run, undoes: true } });
+        state = HISTORY_PENDING;
+        toast.invalidateUndo();
+        expect(toast.current).toMatchObject({ id, undoUnavailable: false });
+        expect(toast.canRunAction(id)).toBe(merged);
+        toast.current!.action!.run();
+        expect(run).toHaveBeenCalledTimes(merged ? 1 : 0);
+      } finally {
+        unbind();
+      }
+    });
+  }
 });

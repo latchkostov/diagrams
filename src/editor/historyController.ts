@@ -1,6 +1,6 @@
 // The canvas's undo history and the selection each step starts from, outside React: useHistory drives it from
 // renders and timers, and the tests drive it the same way, renders and batching included.
-import { commit, commitReplacement, createHistory, present, MERGE_WINDOW_MS } from "./history";
+import { commit, commitReplacement, createHistory, merges, present, MERGE_WINDOW_MS } from "./history";
 import type { EditorRoom } from "./room";
 import {
   selectionOf,
@@ -130,7 +130,12 @@ export class HistoryController {
         this.roomBaseline = undefined;
       }
     }
-    this.history = commit(prev, { key, value: state, mergeKey, at, start: this.settled }, undefined, this.transaction);
+    const entry = { key, value: state, mergeKey, at, start: this.settled };
+    const merged = merges(prev, entry, this.transaction);
+    this.history = commit(prev, entry, undefined, this.transaction);
+    // A merged edit is the same step: it keeps the identity an Undo toast is bound to.
+    const id = merged ? this.entryIds.get(present(prev)) : undefined;
+    if (id) this.entryIds.set(present(this.history), id);
     this.settled = selectionOf(state);
     return this.history !== prev;
   }
