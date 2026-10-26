@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { catalogLocales } from "../../scripts/i18n-plugin";
 import { afterEach, expect, it } from "vitest";
 import { catalogs } from "virtual:i18n/catalogs";
 import { state, type Catalog } from "../i18n";
@@ -11,7 +12,7 @@ import { actionRegistry } from "../editor/actions";
 import { resolveSubjects, fillTestId } from "./checks";
 import { commandPalette } from "./catalog/commandPalette";
 import type { DiagramFile } from "../model/types";
-import type { Tutorial } from "./types";
+import type { Tutorial, TutorialStep, Words } from "./types";
 import { allTutorials } from "./catalog";
 import type { Check } from "./types";
 
@@ -57,6 +58,56 @@ function lessonEditor(tutorial: Tutorial) {
   const harness = editorHarness(structuredClone(diagram));
   return { ...harness.api, commit: harness.commit };
 }
+
+function instructions(step: TutorialStep): Words[] {
+  return [
+    step.title,
+    step.goal,
+    ...(step.hint ? [step.hint] : []),
+    ...(step.done ? [step.done] : []),
+    ...step.targets.map((target) => target.tip),
+    ...(typeof step.settle === "object" ? [step.settle.tip] : []),
+  ];
+}
+
+it.each(["en", ...catalogLocales()])(
+  "localized instructions name the visible simulation and node (%s)",
+  async (code) => {
+    const references: { tutorial: Tutorial; words: Words; english: string; kind: "node" | "simulation"; id: string }[] =
+      [];
+    await language("en");
+    for (const tutorial of allTutorials) {
+      const diagram = lessonEditor(tutorial).getDiagram();
+      const names = [
+        ...diagram.nodes.map((node) => ({ kind: "node" as const, id: node.id, value: node.label })),
+        ...(diagram.simulations ?? []).map((simulation) => ({
+          kind: "simulation" as const,
+          id: simulation.id,
+          value: simulation.title,
+        })),
+      ];
+      for (const step of tutorial.steps)
+        for (const words of instructions(step)) {
+          const english = words();
+          // Names are sometimes quoted and sometimes bare (for example, "Hover Decision service").
+          for (const name of names)
+            if (name.value && english.includes(name.value))
+              references.push({ tutorial, words, english, kind: name.kind, id: name.id });
+        }
+    }
+
+    await language(code);
+    const diagrams = new Map(allTutorials.map((tutorial) => [tutorial.id, lessonEditor(tutorial).getDiagram()]));
+    for (const { tutorial, words, english, kind, id } of references) {
+      const diagram = diagrams.get(tutorial.id)!;
+      const displayed =
+        kind === "node"
+          ? diagram.nodes.find((node) => node.id === id)!.label
+          : diagram.simulations!.find((simulation) => simulation.id === id)!.title;
+      expect.soft(words(), `${code}/${tutorial.id}/${kind}/${id}: ${english}`).toContain(displayed);
+    }
+  },
+);
 
 function commands(editor: ReturnType<typeof lessonEditor>) {
   return collectCommands({

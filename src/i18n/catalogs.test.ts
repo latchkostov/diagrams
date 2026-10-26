@@ -96,10 +96,13 @@ describe("the catalogs", () => {
   });
 
   // Every catalog the build would offer, not only the launch languages: a language added later is checked the same way.
-  it.each(codes)("%s translates every tutorial message, including quarantined lessons", (code) => {
+  it.each(codes)("%s source-stamps every retained tutorial translation, including quarantined lessons", (code) => {
     const messages = read<Record<string, string>>(`locales/${code}.json`);
     const meta = read<LocaleMeta>(`locales/${code}.meta.json`);
     for (const [key, source] of Object.entries(en).filter(([key]) => key.startsWith("tutorials."))) {
+      // Missing translations deliberately use English when translated instructions misname sandbox contents.
+      // The localized tutorial sweep checks the displayed names through the compiled fallback catalog.
+      if (messages[key] === undefined) continue;
       expect(messages[key], `${code}: ${key}`).toBeTruthy();
       expect(meta.sources?.[key], `${code}: ${key}`).toBe(sourceHash(source));
     }
