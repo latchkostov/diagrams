@@ -147,7 +147,7 @@ export function focusPolicy(state: FocusState, event: FocusEvent): FocusDecision
       return keep();
     }
     case "naming.done":
-      return move({ target: { kind: "item", id: event.flowId }, when: "now" });
+      return move({ target: { kind: "item", id: event.flowId }, when: event.waiting ? "ready" : "now" });
     case "inspector.field":
       if (event.seq <= state.fieldSeq) return keep();
       return move(
@@ -157,6 +157,8 @@ export function focusPolicy(state: FocusState, event: FocusEvent): FocusDecision
           select: event.caret === "end" ? "end" : "all",
           again: true,
           claim: event.claim,
+          ...(event.acceptName ? { acceptName: event.acceptName } : {}),
+          ...(event.text !== undefined ? { text: event.text } : {}),
         },
         { fieldSeq: event.seq },
       );

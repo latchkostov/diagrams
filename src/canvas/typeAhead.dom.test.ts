@@ -6,6 +6,46 @@ import { createInteractionController } from "./interaction/controller";
 
 afterEach(() => document.body.replaceChildren());
 
+it("placement hands its prefix to a cold field; pending keys commit once before capture releases", () => {
+  const controller = createInteractionController(createDomPort({ root: () => null, hasEdge: () => true }), {
+    frame: () => () => {},
+    microtask: (run) => run(),
+  });
+  const disconnect = controller.connect();
+  const key = (key: string) => window.dispatchEvent(new KeyboardEvent("keydown", { key, cancelable: true }));
+  const accept = vi.fn((typed) => {
+    expect(typeAheadActive()).toBe(true);
+    expect(controller.mode.value).toBe("committing");
+    expect(typed).toEqual({ text: "Prefix API", done: "enter" });
+  });
+  try {
+    const placement = controller.captureName("e", accept);
+    for (const letter of "Prefix X") key(letter);
+    const prefix = placement.handoff();
+    expect(prefix).toEqual({ text: "Prefix X" });
+    controller.dispatch({
+      type: "inspector.field",
+      seq: 1,
+      name: "label",
+      owner: "e",
+      text: prefix?.text ?? undefined,
+      acceptName: accept,
+    });
+    key("Backspace");
+    for (const letter of "API") key(letter);
+    // The newest pending owner gets its own keys and Escape, then the older capture resumes in order.
+    const modal = captureModalTypeAhead(vi.fn());
+    key("x");
+    expect(modal.stop()).toEqual({ text: "x" });
+    key("Enter");
+    expect(accept).toHaveBeenCalledOnce();
+    expect(typeAheadActive()).toBe(false);
+    expect(placement.handoff()).toBeNull();
+  } finally {
+    disconnect();
+  }
+});
+
 it("a pending modal capture precedes naming even when the controller's listener was installed first", () => {
   const controller = createInteractionController(createDomPort({ root: () => null, hasEdge: () => true }), {
     frame: () => () => {},

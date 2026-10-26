@@ -5,6 +5,7 @@
  * inside one, and the controller's port checks one is still in the document before focus goes to it.
  */
 import type { Side } from "../../model/types";
+import type { TypeAhead } from "../typeAhead";
 import type { Point } from "../geometry/rect";
 import type { EdgeEnd } from "../../editor/edgeEdits";
 import type { GuideLine } from "../guides";
@@ -169,6 +170,10 @@ export type FocusTarget =
 export type FocusWhen = "now" | "commit" | "frame" | "frames2" | "ready" | "measured";
 
 export interface FocusMove {
+  /** Commit capability for a name accepted before its field can mount. */
+  acceptName?: (typed: TypeAhead) => void;
+  /** Prefix already typed during placement, before the Inspector request. */
+  text?: string;
   type: "focus";
   target: FocusTarget;
   when: FocusWhen;
@@ -248,7 +253,7 @@ export type FocusEvent =
       placed?: boolean;
     }
   /** Enter or Esc in a name field: naming is done. */
-  | { type: "naming.done"; flowId: string }
+  | { type: "naming.done"; flowId: string; waiting?: boolean }
   /** The Inspector was asked to focus one of its fields (F2, Enter, a double-click, Rename, a new node's name). */
   | {
       type: "inspector.field";
@@ -257,6 +262,8 @@ export type FocusEvent =
       owner?: string;
       caret?: "end";
       claim?: () => boolean;
+      acceptName?: (typed: TypeAhead) => void;
+      text?: string;
     }
   /** A processor rule was removed, or its incoming type changed (rows are keyed by it): continue at `target`. */
   | { type: "inspector.rule"; target: ElementHandle }

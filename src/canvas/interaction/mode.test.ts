@@ -6,6 +6,84 @@ import { editorModeMachine, editorModeStep, initialEditorMode, type EditorModeEv
 const play = (events: EditorModeEvent[]) => events.reduce(editorModeStep, initialEditorMode);
 
 describe("editor mode", () => {
+  // Every cell of the buffered handover table, including all non-handover modes and wrong-owner guards.
+  for (const value of editorModeMachine.states) {
+    for (const type of ["naming.accepted", "naming.committed", "naming.focused", "naming.cancelled"] as const) {
+      it.each(["a", "stale"])(`${value} + ${type} (%s) follows the handover table`, (target) => {
+        const state = {
+          ...initialEditorMode,
+          value,
+          target: ["naming", "committing", "released"].includes(value) ? "a" : null,
+        };
+        const next = machineStep(editorModeMachine, state, { type, target, request: 0 });
+        const expected =
+          target !== "a"
+            ? undefined
+            : type === "naming.cancelled" && ["naming", "committing", "released"].includes(value)
+              ? "editing"
+              : value === "naming" && type === "naming.accepted"
+                ? "committing"
+                : value === "committing" && type === "naming.committed"
+                  ? "released"
+                  : value === "released" && type === "naming.focused"
+                    ? "editing"
+                    : undefined;
+        expect(next.accepted).toBe(expected !== undefined);
+        expect(next.state.value).toBe(expected ?? value);
+        expect(next.commands).toEqual(
+          expected === "committing"
+            ? [{ type: "naming.commit", target: "a", request: 0 }]
+            : expected === "released"
+              ? [
+                  { type: "naming.release", target: "a", request: 0 },
+                  { type: "naming.focus", target: "a", request: 0 },
+                ]
+              : [],
+        );
+        if (!expected) expect(next.state).toBe(state);
+      });
+    }
+  }
+
+  it("commit noise cannot interrupt the commit; a released owner yields to normal interactions", () => {
+    const state = play([
+      { type: "naming.requested", target: "a" },
+      { type: "naming.accepted", target: "a" },
+    ]);
+    for (const event of editorModeMachine.events) {
+      if (event.type.startsWith("naming.")) continue;
+      expect(editorModeStep(state, event)).toBe(state);
+    }
+    const released = editorModeStep(state, { type: "naming.committed", target: "a" });
+    expect(editorModeStep(released, { type: "field.left" })).toBe(released);
+    for (const event of [
+      { type: "menu.opened", kind: "connected" },
+      { type: "gesture.started" },
+      { type: "field.focused", field: "rate" },
+      { type: "naming.requested", target: "b" },
+    ] as const) {
+      const next = editorModeStep(released, event);
+      expect(next.value).not.toBe("released");
+      expect(editorModeStep(next, { type: "naming.focused", target: "a", request: released.namingRequest })).toBe(next);
+    }
+  });
+
+  it("a late focus completion for the same target cannot finish its next naming request", () => {
+    const released = play([
+      { type: "naming.requested", target: "a" },
+      { type: "naming.accepted", target: "a" },
+      { type: "naming.committed", target: "a" },
+    ]);
+    const next = editorModeStep(released, { type: "naming.requested", target: "a" });
+    const again = editorModeStep(editorModeStep(next, { type: "naming.accepted", target: "a" }), {
+      type: "naming.committed",
+      target: "a",
+    });
+    expect(editorModeStep(again, { type: "naming.focused", target: "a", request: released.namingRequest })).toBe(again);
+    expect(editorModeStep(again, { type: "naming.focused", target: "a", request: again.namingRequest }).value).toBe(
+      "editing",
+    );
+  });
   it.each(["off", "playing", "paused"] as const)("node double-click decides Properties from Live region %s", (live) => {
     const state = { ...initialEditorMode, live };
     const result = machineStep(editorModeMachine, state, { type: "node.doubleClicked", target: "n1" });
@@ -123,11 +201,11 @@ describe("editor mode", () => {
   it("keeps its invariants on every representative path", () => {
     const paths = machinePaths(editorModeMachine, { maxDepth: 4 });
     expect(new Set(paths.map((p) => p.state.value))).toEqual(
-      new Set(["editing", "menu", "quickAdd", "gesture", "naming", "field"]),
+      new Set(["editing", "menu", "quickAdd", "gesture", "naming", "committing", "released", "field"]),
     );
     for (const { state } of paths) {
       // A target only while naming; a field only while in a field; a way back only from a menu or a gesture.
-      expect(state.target !== null).toBe(state.value === "naming");
+      expect(state.target !== null).toBe(["naming", "committing", "released"].includes(state.value));
       expect(state.field !== null).toBe(state.value === "field");
       if (state.resume) expect(["menu", "quickAdd", "gesture"]).toContain(state.value);
       else expect(["menu", "quickAdd", "gesture"]).not.toContain(state.value);
