@@ -1,7 +1,7 @@
 import { useRef } from "react";
 import { t, useLocale } from "../../i18n";
 import { AI_PANEL } from "../../lib/deployment";
-import { workbenchDock, type DockTab } from "./dockState";
+import type { DockTab } from "./dockState";
 export function DockTabs({
   active,
   warnings,
@@ -17,7 +17,7 @@ export function DockTabs({
   id: string;
   onSelect(tab: DockTab): void;
   checksAvailable: boolean;
-  onEscape(): void;
+  onEscape(): DockTab | "closed";
 }) {
   useLocale();
   const root = useRef<HTMLDivElement>(null);
@@ -37,8 +37,7 @@ export function DockTabs({
         if (e.key === "Escape" && active === "checks") {
           e.preventDefault();
           e.stopPropagation();
-          onEscape();
-          const next = workbenchDock.get().value;
+          const next = onEscape();
           root.current?.querySelector<HTMLButtonElement>('[data-testid="dock-tab-' + next + '"]')?.focus();
           return;
         }

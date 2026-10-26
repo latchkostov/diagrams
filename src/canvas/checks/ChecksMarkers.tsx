@@ -84,53 +84,67 @@ export function ChecksMarkers({
     <ViewportPortal>
       <div className="check-markers" data-testid="check-markers">
         {list.map((m) => (
-          <div
-            key={m.id}
-            className={`check-marker-group${m.hot ? " is-hot" : ""}`}
-            style={{
-              transform: `translate(${m.x}px, ${m.y}px) scale(calc(1 / var(--rf-zoom, 1))) translate(-100%, -50%)`,
-            }}
-            data-testid={`check-marker-${m.id}`}
-            data-severity={m.severity}
-          >
-            {m.count > 0 && (
-              <button
-                type="button"
-                className="check-count"
-                data-testid={`check-count-${m.id}`}
-                title={m.title}
-                aria-label={`${m.count}: ${m.title}`}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onFilter(m.id);
-                }}
-              >
-                <span className="check-count-ink">
-                  <span aria-hidden>⚠</span> {m.selected ? "+" : ""}
-                  {m.count}
-                </span>
-              </button>
-            )}
-            {m.selected && (
-              <button
-                type="button"
-                className="check-tag"
-                data-testid="check-marker"
-                data-finding={m.selected.id}
-                title={m.selected.title}
-                aria-label={`${m.selected.number}. ${m.selected.title}`}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onSelect(m.selected!.id);
-                }}
-              >
-                <span>{m.selected.number}</span>
-              </button>
-            )}
-          </div>
+          <FindingMarker key={m.id} mark={m} onSelect={onSelect} onFilter={onFilter} />
         ))}
       </div>
     </ViewportPortal>
+  );
+}
+
+/** Shared tag ink for the canvas and the Lab. */
+export function FindingMarker({
+  mark: m,
+  onSelect,
+  onFilter,
+}: {
+  mark: Mark;
+  onSelect(id: string): void;
+  onFilter(id: string): void;
+}) {
+  return (
+    <div
+      className={`check-marker-group${m.hot ? " is-hot" : ""}`}
+      style={{
+        transform: `translate(${m.x}px, ${m.y}px) scale(calc(1 / var(--rf-zoom, 1))) translate(-100%, -50%)`,
+      }}
+      data-testid={`check-marker-${m.id}`}
+      data-severity={m.severity}
+    >
+      {m.count > 0 && (
+        <button
+          type="button"
+          className="check-count"
+          data-testid={`check-count-${m.id}`}
+          title={m.title}
+          aria-label={`${m.count}: ${m.title}`}
+          onClick={(e) => {
+            e.stopPropagation();
+            onFilter(m.id);
+          }}
+        >
+          <span className="check-count-ink">
+            <span aria-hidden>⚠</span> {m.selected ? "+" : ""}
+            {m.count}
+          </span>
+        </button>
+      )}
+      {m.selected && (
+        <button
+          type="button"
+          className="check-tag"
+          data-testid="check-marker"
+          data-finding={m.selected.id}
+          title={m.selected.title}
+          aria-label={`${m.selected.number}. ${m.selected.title}`}
+          onClick={(e) => {
+            e.stopPropagation();
+            onSelect(m.selected!.id);
+          }}
+        >
+          <span>{m.selected.number}</span>
+        </button>
+      )}
+    </div>
   );
 }
 

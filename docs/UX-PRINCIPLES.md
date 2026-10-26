@@ -236,7 +236,7 @@ One word per idea, everywhere (menus, inspector, File menu, live bar, docs):
 - A topic or stream with no consumer **keeps** what's published: "Nobody reads this yet · 297 kept", never "lag"
   (lag is per consumer group) or "No capacity". A queue's messages are **queued** and **waiting**. The callout says
   **Nobody reads Kafka Topic**, and its one action is **Add a consumer**.
-- The Live toggle's words are **Go live** and **Back to editing**, in the palette too.
+- The **Edit | Live** switch names the two modes. Its accessible actions and palette words stay **Go live** and **Back to editing**; the keyboard shortcut is **L**.
 - **Record video…** (live ⋯ menu and the live right-click, same icon in both): **Start recording**, a
   3-2-1 countdown, a pill with the time and **Stop** (or Esc), then **Your recording** with **Download**
   and **Discard** (undoable). With a simulation picked, the one option is to play it from the start
@@ -314,14 +314,7 @@ One word per idea, everywhere (menus, inspector, File menu, live bar, docs):
   card** lists its hops; **Sequence diagram** turns the journey into one (Copy as Mermaid, SVG, PNG).
   The edge's **Highlight this path** is a different idea (a static path, no message), so it never
   says "trace".
-- The **AI panel** is the docked panel at the right edge, in every diagram (editor and live view; never
-  presenting or in embeds), where you see and control what AI did. AI here means **agents**: the
-  browser's AI assistant, or any agent that can use the page, changes the diagram through the page's
-  tools (WebMCP); the app never asks for an API key. It starts folded to its slim **rail** at the right
-  edge (40 px) and after that stays as the person left it. The rail, Ctrl+I, and **AI panel** on the
-  canvas right-click and in Ctrl+K show it; the top bar has no AI button. An agent acting never opens the
-  panel or moves the canvas: while folded, the rail's spark counts the agent changes not yet seen in this
-  diagram ("AI panel, 2 new changes"), and opening the panel clears it.
+- The **AI panel** is the **AI dock tab**, available in Edit and Live, never presentation or embeds. AI means **agents**: a browser assistant or coding agent changes the diagram through the page's tools (WebMCP); the app never asks for an API key. The rail's AI action, Ctrl+I, the right-click action and Ctrl+K open the tab. Its unread count stays visible while another tab is active. An agent's changes never open the dock or move the camera; opening AI clears its unread count.
 - The panel has no request box: you **ask an agent**, never the panel. Idle, it answers "how do I use this?"
   under **Ways to use AI here**, at most three short items, each with one action: **Your browser's AI
   assistant** (only with WebMCP; **Copy example request** copies a request naming a real node), **Your coding
@@ -384,26 +377,19 @@ One word per idea, everywhere (menus, inspector, File menu, live bar, docs):
   control: play, Restart (Replay), speed (pace) and the timeline drive the replay while it's on, ← →
   step hop by hop, and Esc goes back to live where it left off. Record video… offers **Record this slow
   motion**. Below 1× live draws a calm sample of whole journeys; the counts never change.
-- Side panels make room rather than cover: below 1680 px, live view and an open AI panel fold the stencils to
-  their rail until they are opened by hand. Toasts centre on the canvas pane and stack above its bars.
+- The **tool rail** holds Select, Add, Annotate, Checks, Stencils and Tutorials, with secondary actions below. **Add** opens the stencil library flyout; **Pin open** makes it a column. Annotate opens its own small flyout. Below 640 px the rail becomes an Edit-only bottom bar with secondary actions in More.
+- The **diagram card is removed**. Its title lives in the bezel's diagram picker; the title and description are editable in diagram Properties. **Theme** lives in View. These controls keep the canvas for the diagram.
+- **Side panels make room.** Properties, Checks and AI share one dock. Opening or resizing it reserves canvas space and refits an automatic view; a manual view keeps its zoom and only reveals what needs room. On phones the dock is a peek/half/full bottom sheet. Toasts centre on the remaining canvas and clear its bars.
+- **Live** uses a caption below the canvas, a footer transport and a status strip at the canvas's top. The caption explains the current note and offers the subject's details. Opening details selects the subject and opens Properties; Follow keeps running. The dock contains current vitals and a run chart. On phones Read note opens an opaque sheet, with the narrated cards and pins cut out of its scrim; the transport has explicit strip, primary and quiet rows, and every control has a 44 px target.
+- **Overview** is true fit-all, including visible edge labels. **Focus** frames the selection and one-hop neighbours at a readable floor, pinning neighbours that cannot fit. **Follow** frames the narrated subject and path; manual pan or zoom stays Custom until Follow is chosen again. Initial Edit uses Overview when the whole drawing fits at 50% or more, otherwise Focus. Large Overview shows tiles and zone labels with a visible way to dig in. Camera framing, fades and pins stay out of exports.
 - **Checks** find likely design problems (failed messages that are dropped, a topic nobody reads, requests that go
   round in a circle or chain too deep, a service using another's database, a client going around the gateway, a
   service that can't keep up or that every request goes through on one replica) and offer a **fix** for each. Never
   "lint", "issues" or "errors":
   a **finding** is a **Warning** or a **Suggestion**, and nothing blocks saving, sharing or going live.
-  - **The count**: "⚠ 2 warnings" under the diagram's title, muted, only when there's a warning (suggestions alone show
-    nothing, and with none there's no "0 issues"). Editing only: no count in live view, presenting, embeds or exports.
-  - **Check diagram** (the count, the canvas right-click next to Auto-layout, Ctrl+K, View ▸ Checks) opens the
-    **Checks card** under the diagram card: warnings, then suggestions. A row's head selects what the finding names
-    and brings it into view (as a new selection is shown); its chips select one thing each; **Why** says why it
-    matters. The row's one button is the fix, named for the change ("Add dead-letter queue"), applied as one undo
-    step with a toast that says what it added and offers **Undo**. A fix that needs a choice ("Add a consumer…")
-    opens quick-add downstream. A fix with other ways to make it shows them as quiet chips under its button ("Go
-    through Commerce gateway", or Firewall / WAF · Kong Gateway), each one click and one undo step. **⋯** has **Ignore here…** (an optional reason), **Turn off this check** and **About
-    this check**; the foot's "1 ignored · 1 check off" brings them back. Both are kept in the file (`checks`).
-  - **Markers** (an amber triangle for a warning, a blue dot for a suggestion) show on the nodes and connections a
-    finding names, only while the card is open. A single selected node or connection with findings shows them at the
-    top of its inspector, with the fix.
+  - **The count** is the rail's warning badge; suggestions alone add no badge. Checks remain available with zero warnings. Editing only: no count in Live, presentation, embeds or exports.
+  - **Check diagram** (the rail count, canvas right-click, Ctrl+K or View) opens the **Checks dock tab**. Findings are numbered in list order, one open row at a time. The first opens by default. A closed row keeps its title and first sentence; the open row shows Why, element chips, its named fix, alternatives and More. Fixes remain one undo step with an Undo toast. Ignore here, Turn off this check and About this check stay in More; ignored findings and disabled checks are kept in the file.
+  - **Numbered tags** show the selected finding on its named cards and connections while Checks is open. Other findings share one outlined warning-count badge per element; clicking it filters Checks to that element. A tag selects its finding. Numbers, colour and the warning glyph convey the relationship together.
   - Checks run by themselves after edits pause, in idle time and off the main thread, so typing and dragging never
     wait. A diagram over 1,500 nodes is checked when the card opens. Private diagrams are checked too: it all stays
     on this device. Only the agents' `check_diagram` follows the AI rules.

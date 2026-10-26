@@ -185,7 +185,9 @@ export function Inspector(p: InspectorProps) {
             checksAvailable={checksAvailable}
             onEscape={() => {
               checksPanel.close();
-              if (workbenchDock.get().value === "closed") p.checksHost?.returnFocus();
+              const next = workbenchDock.get().value;
+              if (next === "closed") p.checksHost?.returnFocus();
+              return next;
             }}
           />
           <span className="sr-only" id={id + "-title"} data-testid="inspector-title">

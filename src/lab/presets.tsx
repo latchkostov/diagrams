@@ -1,3 +1,4 @@
+import { WorkbenchTabsLab, WorkbenchChartLab, WorkbenchTagsLab, WorkbenchScrimLab } from "./WorkbenchLab";
 import handShapedLines from "../../tests/parity/corpus/hand-shaped-lines.diagram.json";
 import inlineRateLimit from "../examples/inline-rate-limit.json";
 import { waitingFixture } from "./waitingFixture";
@@ -1372,6 +1373,34 @@ export const presets: readonly Preset[] = [
       },
     ],
     render: ({ scenario }) => <FilePrompts scenario={String(scenario)} />,
+  },
+  {
+    kind: "render",
+    id: "workbench-dock",
+    title: t("workbench.tools"),
+    group: "Playground",
+    render: () => <WorkbenchTabsLab />,
+  },
+  {
+    kind: "render",
+    id: "workbench-run-chart",
+    title: t("workbench.thisRun"),
+    group: "Simulation",
+    render: () => <WorkbenchChartLab />,
+  },
+  {
+    kind: "render",
+    id: "workbench-tags",
+    title: t("workbench.checks"),
+    group: "Playground",
+    render: () => <WorkbenchTagsLab />,
+  },
+  {
+    kind: "render",
+    id: "workbench-note-scrim",
+    title: t("workbench.readNote"),
+    group: "Playground",
+    render: () => <WorkbenchScrimLab />,
   },
   ...nodePresets,
   ...edgePresets,
