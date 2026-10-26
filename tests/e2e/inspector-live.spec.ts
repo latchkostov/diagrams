@@ -84,8 +84,15 @@ for (const panel of ["EdgePanel", "lazyEdgePanel"] as const) {
       if (typed) await page.keyboard.type("test label");
       await expect(tooltip).toBeVisible();
       await page.keyboard.press("Escape");
-      const finished = typed ? "rename.typed:escape" : "inspector.abandoned";
-      await expect.poll(async () => (await interactionJournal(page)).some((e) => e.event === finished)).toBe(true);
+      await expect.poll(async () => (await interactionJournal(page)).some((e) => e.event === "naming.done")).toBe(true);
+      // Completion persists and releases the keyboard while the Inspector chunk is still held.
+      if (typed)
+        await expect
+          .poll(async () => (await savedDiagram(page)).edges.find((edge) => edge.id === "call")?.label)
+          .toBe("test label");
+      await expect
+        .poll(() => page.getByTestId("edge-call").evaluate((edge) => edge.parentElement === document.activeElement))
+        .toBe(true);
       await expect(tooltip).toBeVisible();
       release();
       const label = page.getByTestId("inspector-field-label");

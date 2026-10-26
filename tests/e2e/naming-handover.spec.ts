@@ -88,6 +88,36 @@ async function pick(page: Page, kind: "clone" | "quick-add") {
 }
 
 for (const kind of ["clone", "quick-add"] as const) {
+  test(`buffered ${kind}: clicking another node saves before measurement and never reopens naming`, async ({
+    page,
+    consoleErrors,
+  }) => {
+    await holdMeasurement(page);
+    await seed(page);
+    await page.evaluate(() => (window as unknown as { holdMeasurement(): void }).holdMeasurement());
+    await pick(page, kind);
+    await page.keyboard.type(NAME);
+    const added = (await savedDiagram(page)).nodes.find((node) => node.id !== "origin");
+    if (!added) throw new Error("Expected the newly placed node");
+    await expect(page.getByTestId(`rf__node-${added.id}`)).toBeHidden();
+    await page.getByTestId("node-origin").click();
+    await expect
+      .poll(async () => (await savedDiagram(page)).nodes.find((node) => node.id === added.id)?.label)
+      .toBe(NAME);
+    await releaseMeasurement(page);
+    await expect(page.getByTestId(`node-${added.id}`)).toBeVisible();
+    await expect(page.getByTestId("rf__node-origin")).toBeFocused();
+    await expect(page.getByTestId("inspector-field-label")).not.toBeFocused();
+    await expect(page.getByTestId("inspector-field-label")).toHaveValue("Origin");
+    // Creation and the accepted name remain one history step even after the delayed reveal.
+    await page.keyboard.press("ControlOrMeta+z");
+    await expect.poll(async () => (await savedDiagram(page)).nodes.length).toBe(1);
+    await page.keyboard.press("ControlOrMeta+Shift+z");
+    await expect
+      .poll(async () => (await savedDiagram(page)).nodes.find((node) => node.id === added.id)?.label)
+      .toBe(NAME);
+    expectNoErrors(consoleErrors);
+  });
   for (const held of [false, true]) {
     test(`buffered ${kind}: Enter commits before immediate Alt+Right (measurement ${held ? "held" : "running"})`, async ({
       page,

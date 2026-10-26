@@ -233,6 +233,7 @@ export function createInteractionController<P = unknown>(
         if (rename === owner) toMode({ type: "naming.committed", target: owner.target });
       } else if (command.type === "naming.release") {
         endRename();
+        if (mode.namingPointerAway) decide({ type: "inspector.abandoned" });
       } else if (command.type === "naming.focus") {
         const request = mode.namingRequest;
         decide({ type: "naming.done", flowId: command.target, waiting: true }, () =>
@@ -381,6 +382,11 @@ export function createInteractionController<P = unknown>(
   /** The person left a pending rename: its held keys and its field request end together (a later commit can't revive it). */
   function abandonRename(why: "press" | "focus") {
     if (!rename) return;
+    if (why === "press" && rename.acceptName) {
+      rename.typed = rename.keys?.read() ?? rename.typed;
+      toMode({ type: "naming.pointerAway", target: rename.target });
+      return;
+    }
     dropRename(why);
     decide({ type: "inspector.abandoned" });
   }
@@ -843,8 +849,8 @@ export function createInteractionController<P = unknown>(
     },
     /**
      * A press or a key anywhere (window capture): a move's second attempt stands down. A press also ends a pending
-     * rename (the person went elsewhere): later keys go where they point, nothing held is written, and its field won't
-     * take focus.
+     * rename (the person went elsewhere): its buffer is committed when supported, later keys go where they point,
+     * and its field won't take focus.
      */
     input(kind: "key" | "press" = "key") {
       if (kind === "press" && mode.value === "released" && mode.target)

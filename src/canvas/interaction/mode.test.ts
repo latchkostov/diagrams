@@ -8,7 +8,13 @@ const play = (events: EditorModeEvent[]) => events.reduce(editorModeStep, initia
 describe("editor mode", () => {
   // Every cell of the buffered handover table, including all non-handover modes and wrong-owner guards.
   for (const value of editorModeMachine.states) {
-    for (const type of ["naming.accepted", "naming.committed", "naming.focused", "naming.cancelled"] as const) {
+    for (const type of [
+      "naming.accepted",
+      "naming.pointerAway",
+      "naming.committed",
+      "naming.focused",
+      "naming.cancelled",
+    ] as const) {
       it.each(["a", "stale"])(`${value} + ${type} (%s) follows the handover table`, (target) => {
         const state = {
           ...initialEditorMode,
@@ -21,7 +27,8 @@ describe("editor mode", () => {
             ? undefined
             : type === "naming.cancelled" && ["naming", "committing", "released"].includes(value)
               ? "editing"
-              : value === "naming" && type === "naming.accepted"
+              : (value === "naming" && (type === "naming.accepted" || type === "naming.pointerAway")) ||
+                  (value === "committing" && type === "naming.pointerAway")
                 ? "committing"
                 : value === "committing" && type === "naming.committed"
                   ? "released"
@@ -31,7 +38,7 @@ describe("editor mode", () => {
         expect(next.accepted).toBe(expected !== undefined);
         expect(next.state.value).toBe(expected ?? value);
         expect(next.commands).toEqual(
-          expected === "committing"
+          expected === "committing" && value === "naming"
             ? [{ type: "naming.commit", target: "a", request: 0 }]
             : expected === "released"
               ? [
@@ -44,6 +51,18 @@ describe("editor mode", () => {
       });
     }
   }
+
+  it.each(["naming", "committing"] as const)("%s + pointer-away releases without restoring item focus", (value) => {
+    const state = { ...initialEditorMode, value, target: "a", namingRequest: 7 };
+    const away = machineStep(editorModeMachine, state, { type: "naming.pointerAway", target: "a" });
+    expect(away.state).toMatchObject({ value: "committing", namingPointerAway: true });
+    expect(away.commands).toEqual(value === "naming" ? [{ type: "naming.commit", target: "a", request: 7 }] : []);
+    const committed = machineStep(editorModeMachine, away.state, { type: "naming.committed", target: "a" });
+    expect(committed.state.value).toBe("released");
+    expect(committed.commands).toEqual([{ type: "naming.release", target: "a", request: 7 }]);
+    const next = editorModeStep(committed.state, { type: "naming.requested", target: "b" });
+    expect(next.namingPointerAway).toBe(false);
+  });
 
   it("commit noise cannot interrupt the commit; a released owner yields to normal interactions", () => {
     const state = play([

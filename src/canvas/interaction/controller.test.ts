@@ -514,6 +514,38 @@ describe("interaction controller: Inspector fields", () => {
 describe("interaction controller: pending rename (a name field whose panel is still downloading)", () => {
   const typeAll = (h: ReturnType<typeof harness>, keys: string[]) => keys.map((k) => h.key(k));
 
+  it.each(["placement", "inspector", "duringCommit"])(
+    "pointer-away saves %s naming without restoring focus",
+    (source) => {
+      const h = harness();
+      h.env.nodes.set("a", { drawn: false });
+      const accept = vi.fn((typed: TypeAhead) => {
+        expect(h.holding()).toBe(true);
+        expect(h.controller.mode.value).toBe("committing");
+        expect(typed.text).toBe("Orders");
+        if (source === "duringCommit") h.controller.input("press");
+      });
+      const owner = source === "inspector" ? null : h.controller.captureName("a", accept);
+      if (source === "inspector")
+        h.controller.dispatch({ type: "inspector.field", seq: 1, name: "label", owner: "a", acceptName: accept });
+      typeAll(h, [..."Orders"]);
+      if (source === "duringCommit") h.key("Enter");
+      else h.controller.input("press");
+      expect(accept).toHaveBeenCalledOnce();
+      expect(h.controller.mode.value).toBe("released");
+      expect(h.holding()).toBe(false);
+      expect(h.key("x")).toBe(false);
+      expect(h.controller.state.pending).toBeNull();
+      if (owner) expect(owner.handoff()).toBeNull();
+      h.env.nodes.set("a", { drawn: true });
+      h.env.inspector.fields.set("label", "a");
+      h.commit();
+      h.drain();
+      expect(h.focused).toEqual([]);
+      expect(h.written).toEqual([]);
+    },
+  );
+
   it("a released focus completion cannot cancel the newer item focus that supersedes it", () => {
     const h = harness();
     h.env.nodes.set("a", { drawn: false });
