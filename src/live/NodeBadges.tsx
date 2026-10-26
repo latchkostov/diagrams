@@ -400,7 +400,7 @@ const NodeBadge = memo(function NodeBadge(props: BadgeProps) {
       )}
       {showOutageLoss && s.status === "down" && currentHealth(s).dropped > 0 && (
         <div
-          className="lv-alert mono"
+          className="lv-alert is-lost"
           title={t("fault.droppedCount", { count: currentHealth(s).dropped })}
           data-testid={`node-loss-${node.id}`}
         >
@@ -409,7 +409,7 @@ const NodeBadge = memo(function NodeBadge(props: BadgeProps) {
       )}
       {problems > 0 && s.status !== "down" && (
         <div
-          className="lv-alert mono"
+          className="lv-alert is-lost"
           title={t("threads.lostCount", { count: problems })}
           data-testid={`node-alert-${node.id}`}
         >
@@ -417,6 +417,11 @@ const NodeBadge = memo(function NodeBadge(props: BadgeProps) {
         </div>
       )}
 
+      {s.status === "up" && problems === 0 && s.processed > 0 && (
+        <div className="lv-alert is-processed" title={t("hover.processed")} data-testid={`node-processed-${node.id}`}>
+          {formatCount(s.processed)}
+        </div>
+      )}
       {broker && (s.backlog > 0 || s.processed > 0) && (
         <div className={`lv-depth${unread ? " is-kept" : ""}`} aria-hidden>
           <i style={{ "--d": `${Math.min(100, (s.backlog / peak) * 100).toFixed(1)}%` } as CSSProperties} />
@@ -449,6 +454,9 @@ const NodeBadge = memo(function NodeBadge(props: BadgeProps) {
               style={{ "--heat": unread ? "0" : heat.toFixed(3) } as CSSProperties}
               data-testid={`node-metric-${node.id}`}
             >
+              <span className="lv-pill-glyph" aria-hidden>
+                ◌
+              </span>
               {held!.lead && `${held!.lead} · `}
               <b className="mono">{formatCount(s.backlog)}</b> {held!.unit}
             </span>
@@ -504,6 +512,9 @@ const NodeBadge = memo(function NodeBadge(props: BadgeProps) {
           )}
           {s.fleet && (
             <span className="lv-metric" data-testid={`node-fleet-${node.id}`}>
+              <span className="lv-pill-glyph" aria-hidden>
+                ◷
+              </span>
               {s.fleet.starting
                 ? t("autoscaling.startingBadge", s.fleet)
                 : s.fleet.draining

@@ -2789,7 +2789,7 @@
   "workbench.readNote": "קריאת הערה",
   "workbench.earlier": "קודמת",
   "workbench.later": "הבאה",
-  "workbench.noteIndex": "הערה {index} מתוך {total}",
+  "workbench.noteIndex": "הערה {index, number} מתוך {total, number}",
   "workbench.moreTools": "כלים נוספים",
   "workbench.sheetPeek": "הצצה",
   "workbench.sheetHalf": "חצי גובה",

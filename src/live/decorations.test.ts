@@ -282,3 +282,24 @@ describe("live decorations", () => {
     expect(edges[0].writes).toBe(writes);
   });
 });
+
+it("Overview main ink follows the current delivery-rate quartile, not cumulative counts", () => {
+  const { decorator, edges } = scene(0, 4);
+  const apply = (time: number, counts: number[]) => {
+    const snapshot = {
+      time,
+      particles: [],
+      events: [],
+      inSystem: 0,
+      nodes: {},
+      edges: Object.fromEntries(counts.map((delivered, i) => [`e${i}`, { id: `e${i}`, delivered, active: 1 }])),
+    } satisfies SimSnapshot;
+    decorator.apply({ snapshot, health: snapshot, spotlight: null });
+  };
+  apply(1000, [1000, 2000, 3000, 4000]);
+  expect(edges.map((edge) => edge.hasAttribute("data-live-main"))).toEqual([false, false, false, true]);
+  apply(2000, [1100, 2010, 3000, 4000]);
+  expect(edges.map((edge) => edge.hasAttribute("data-live-main"))).toEqual([true, false, false, false]);
+  apply(0, [0, 0, 0, 0]);
+  expect(edges.every((edge) => !edge.hasAttribute("data-live-main"))).toBe(true);
+});

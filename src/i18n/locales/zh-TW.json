@@ -2798,7 +2798,7 @@
   "workbench.readNote": "閱讀備註",
   "workbench.earlier": "上一則",
   "workbench.later": "下一則",
-  "workbench.noteIndex": "備註 {index}/{total}",
+  "workbench.noteIndex": "備註 {index, number}/{total, number}",
   "workbench.moreTools": "更多工具",
   "workbench.sheetPeek": "預覽",
   "workbench.sheetHalf": "半高",

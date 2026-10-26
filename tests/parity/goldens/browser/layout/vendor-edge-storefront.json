@@ -1,6 +1,6 @@
 {
   "autoLayout": {
-    "viewport": "translate(15.4217px, 266.699px) scale(0.614458)",
+    "viewport": "translate(0.578313px, 222.901px) scale(0.785542)",
     "nodes": {
       "shopper": { "kind": "node", "box": "translate(40px, 220px) 220×72", "text": "Shopper Web Browser" },
       "cdn": { "kind": "node", "box": "translate(400px, 220px) 220×72", "text": "Fastly Fastly" },
@@ -26,7 +26,7 @@
     }
   },
   "tidy": {
-    "viewport": "translate(-100.422px, 266.699px) scale(0.614458)",
+    "viewport": "translate(-122.578px, 222.901px) scale(0.785542)",
     "nodes": {
       "shopper": { "kind": "node", "box": "translate(0px, 240px) 220×72", "text": "Shopper Web Browser" },
       "cdn": { "kind": "node", "box": "translate(340px, 240px) 220×72", "text": "Fastly Fastly" },

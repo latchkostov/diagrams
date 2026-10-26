@@ -92,7 +92,7 @@ it("keeps a highlighted context-menu hint at AA after compositing to display RGB
   const ink = /\.cm-hint \{[^}]*color: var\(--([\w-]+)\)/.exec(canvas)?.[1];
   expect(ink).toBeDefined();
   for (const [i, block] of [css.split('[data-theme="dark"]')[0], css.split('[data-theme="dark"]')[1]].entries()) {
-    const tokens = Object.fromEntries([...block.matchAll(/--([\w-]+):\s*(#[\da-f]{6})/g)].map((m) => [m[1], m[2]]));
+    const tokens = themeTokens(light + block);
     const tint = /--accent-soft:\s*rgb\((\d+) (\d+) (\d+) \/ ([\d.]+)\)/.exec(block)!;
     const [r, g, b, alpha] = tint.slice(1).map(Number);
     // Light menus use surface; dark menus use surface-2 (canvas.css).
@@ -110,9 +110,7 @@ it("keeps small warning words (the trace card's Kept and Waiting) at AA on the w
   const trace = readFileSync("src/styles/trace.css", "utf8");
   expect(trace).toMatch(/\.tr-status\.is-kept \{[^}]*color: var\(--warning-ink\)/);
   for (const block of [css.split('[data-theme="dark"]')[0], css.split('[data-theme="dark"]')[1]]) {
-    const tokens = Object.fromEntries(
-      [...block.matchAll(/--([\w-]+):\s*(#[\da-f]{6})/g)].map((match) => [match[1], match[2]]),
-    );
+    const tokens = themeTokens(light + block);
     const soft = /--warning-soft:\s*rgb\((\d+) (\d+) (\d+) \/ ([\d.]+)\)/.exec(block)!;
     const [r, g, b, alpha] = soft.slice(1).map(Number);
     for (const surface of ["surface", "surface-2", "surface-raised"]) {
@@ -131,9 +129,7 @@ it("keeps small warning words (the trace card's Kept and Waiting) at AA on the w
 
 it("keeps selected text readable and its highlight visible over every field, in both themes", () => {
   for (const block of [css.split('[data-theme="dark"]')[0], css.split('[data-theme="dark"]')[1]]) {
-    const tokens = Object.fromEntries(
-      [...block.matchAll(/--([\w-]+):\s*(#[\da-f]{6})/g)].map((match) => [match[1], match[2]]),
-    );
+    const tokens = themeTokens(light + block);
     const ratio = (x: string, y: string) => {
       const a = luminance(tokens[x]),
         b = luminance(tokens[y]);
@@ -151,6 +147,14 @@ it("keeps spotlight dimmed strokes at 3:1 on the board", () => {
   for (const tokens of themes) {
     const a = luminance(tokens["dim-stroke"]),
       b = luminance(tokens.board);
+    expect((Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05)).toBeGreaterThanOrEqual(3);
+  }
+});
+
+it("keeps controls whose boundary is their cue at 3:1 on the panel", () => {
+  for (const tokens of themes) {
+    const a = luminance(tokens["control-line"]),
+      b = luminance(tokens.panel);
     expect((Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05)).toBeGreaterThanOrEqual(3);
   }
 });

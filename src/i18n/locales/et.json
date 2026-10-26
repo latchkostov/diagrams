@@ -2795,7 +2795,7 @@
   "workbench.readNote": "Loe märkust",
   "workbench.earlier": "Varasem",
   "workbench.later": "Hilisem",
-  "workbench.noteIndex": "Märkus {index}/{total}",
+  "workbench.noteIndex": "Märkus {index, number}/{total, number}",
   "workbench.moreTools": "Veel tööriistu",
   "workbench.sheetPeek": "Eelvaade",
   "workbench.sheetHalf": "Pool kõrgust",

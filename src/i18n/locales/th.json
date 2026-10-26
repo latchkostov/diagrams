@@ -2782,7 +2782,7 @@
   "workbench.readNote": "อ่านบันทึก",
   "workbench.earlier": "ก่อนหน้า",
   "workbench.later": "ถัดไป",
-  "workbench.noteIndex": "บันทึก {index} จาก {total}",
+  "workbench.noteIndex": "บันทึก {index, number} จาก {total, number}",
   "workbench.moreTools": "เครื่องมือเพิ่มเติม",
   "workbench.sheetPeek": "ดูคร่าว ๆ",
   "workbench.sheetHalf": "ครึ่งความสูง",

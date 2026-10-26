@@ -1,6 +1,6 @@
 import { t } from "../i18n";
 import { runEndResult } from "./runEndResult";
-import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import { usePhone } from "../lib/usePhone";
 import { useStore } from "@xyflow/react";
@@ -29,6 +29,7 @@ export function NoteCallout({
   subject?: string;
 }) {
   const ui = useLive();
+  const maskId = useId();
   const phone = usePhone();
   const [expanded, setExpanded] = useState(false);
   const expandRef = useRef<HTMLButtonElement>(null);
@@ -150,14 +151,12 @@ export function NoteCallout({
         ...(pane?.parentElement?.querySelectorAll<HTMLElement>(
           '.react-flow__node-diagram:not([data-live-dim]):not([data-detail-hidden]), [data-testid^="focus-offscreen-"]',
         ) ?? []),
-      ]
-        .map((el) => {
-          const r = el.getBoundingClientRect();
-          return `<rect x="${r.left - hudBox.left - 8}" y="${r.top - hudBox.top - 8}" width="${r.width + 16}" height="${r.height + 16}" fill="black"/>`;
-        })
-        .join("")
-    : "";
-  const mask = `url("data:image/svg+xml,${encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="${hudBox?.width ?? 0}" height="${hudBox?.height ?? 0}"><rect width="100%" height="100%" fill="white"/>${holes}</svg>`)}")`;
+      ].map((el) => {
+        const r = el.getBoundingClientRect();
+        return { x: r.left - hudBox.left - 8, y: r.top - hudBox.top - 8, width: r.width + 16, height: r.height + 16 };
+      })
+    : [];
+
   const notes = state.simulation?.timeline?.filter((step) => step.action.do === "note") ?? [];
   const index = notes.findIndex((n) => n.atMs === note.atMs);
   return (
@@ -165,13 +164,32 @@ export function NoteCallout({
       {open &&
         hud &&
         createPortal(
-          <button
-            className="lv-note-scrim"
-            data-testid="live-note-scrim"
-            aria-label={t("common.close")}
-            style={{ maskImage: mask }}
-            onClick={close}
-          />,
+          <>
+            <svg width="0" height="0" aria-hidden style={{ position: "absolute" }}>
+              <defs>
+                <mask
+                  id={maskId}
+                  maskUnits="userSpaceOnUse"
+                  x="0"
+                  y="0"
+                  width={hudBox?.width ?? 0}
+                  height={hudBox?.height ?? 0}
+                >
+                  <rect width="100%" height="100%" fill="white" />
+                  {holes.map((rect, index) => (
+                    <rect key={index} {...rect} fill="black" />
+                  ))}
+                </mask>
+              </defs>
+            </svg>
+            <button
+              className="lv-note-scrim"
+              data-testid="live-note-scrim"
+              aria-label={t("common.close")}
+              style={{ maskImage: `url("#${maskId}")` }}
+              onClick={close}
+            />
+          </>,
           hud,
         )}
       <div

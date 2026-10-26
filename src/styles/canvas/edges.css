@@ -155,7 +155,7 @@
 .fe-label-text {
   min-width: 0;
   overflow: hidden;
-  text-overflow: ellipsis;
+  text-overflow: clip;
 }
 
 /* No text: the glyph alone in a round chip (LABEL.chip). */
@@ -283,14 +283,16 @@
   height: var(--fe-h, auto);
   padding: 2px 7px;
   border-radius: 8px;
-  font-family: var(--font-mono);
-  font-size: 10px;
-  font-weight: 500;
-  line-height: 13px;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-stretch: 96%;
+  font-variant-numeric: tabular-nums;
+  font-weight: 560;
+  line-height: 16px;
   text-align: center;
   white-space: pre;
   overflow: hidden;
-  text-overflow: ellipsis;
+  text-overflow: clip;
   color: var(--text-2);
   background: var(--edge-label-bg);
   border: 1px solid var(--line);
@@ -462,4 +464,14 @@
 .insert-line .insert-line-halo {
   stroke: color-mix(in oklab, var(--accent) 25%, transparent);
   stroke-width: calc(12px / var(--rf-zoom, 1));
+}
+.fe-label:not(.is-dot):not(.fe-chip) {
+  width: max-content;
+  min-width: var(--fe-w);
+  height: auto;
+  min-height: var(--fe-h);
+  overflow: visible;
+}
+.fe-label.is-dot {
+  font-size: 11px;
 }

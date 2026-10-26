@@ -2,8 +2,8 @@
   "layout": {
     "status": 0,
     "stdout": "<tmp>/laid.json: placed 10 nodes, fitted 2 boundaries.\n",
-    "nodes": { "sql": [40, 160], "debezium": [436, 160], "orders-topic": [836, 160], "customers-topic": [836, 280], "processor": [1257, 100], "search": [1657, 40], "warehouse": [1657, 160], "s3-sink": [1257, 220], "lake": [1657, 280], "registry": [836, 40] },
-    "groups": { "onprem": [0, 96, 321, 176], "platform": [396, -24, 1161, 416] }
+    "nodes": { "sql": [40, 160], "debezium": [428.61, 160], "orders-topic": [828.61, 160], "customers-topic": [828.61, 280], "processor": [1235.92, 100], "search": [1637.72, 40], "warehouse": [1637.72, 160], "s3-sink": [1235.92, 220], "lake": [1637.72, 280], "registry": [828.61, 40] },
+    "groups": { "onprem": [0, 96, 321, 176], "platform": [389, -24, 1147, 416] }
   },
   "shareLink": {
     "status": 0,

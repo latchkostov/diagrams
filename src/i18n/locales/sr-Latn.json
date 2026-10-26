@@ -2794,7 +2794,7 @@
   "workbench.readNote": "Pročitaj belešku",
   "workbench.earlier": "Ranije",
   "workbench.later": "Kasnije",
-  "workbench.noteIndex": "Beleška {index} od {total}",
+  "workbench.noteIndex": "Beleška {index, number} od {total, number}",
   "workbench.moreTools": "Još alata",
   "workbench.sheetPeek": "Pregled",
   "workbench.sheetHalf": "Pola visine",

@@ -2817,7 +2817,7 @@
   "workbench.readNote": "Læs note",
   "workbench.earlier": "Tidligere",
   "workbench.later": "Senere",
-  "workbench.noteIndex": "Note {index} af {total}",
+  "workbench.noteIndex": "Note {index, number} af {total, number}",
   "workbench.moreTools": "Flere værktøjer",
   "workbench.sheetPeek": "Kig",
   "workbench.sheetHalf": "Halv højde",

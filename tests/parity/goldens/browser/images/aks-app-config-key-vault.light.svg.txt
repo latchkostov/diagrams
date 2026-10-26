@@ -1,16 +1,16 @@
 == (page)
 svg width=2056 height=865 viewBox=0 0 2056 865
   foreignObject x=0 y=0 width=100% height=100%
-    div .react-flow__container.react-flow__viewport.xyflow__viewport width:2056px height:865px transform:translate(8px, 137px) scale(1) color:rgb(19, 25, 38) background-color:rgb(243, 245, 248) font-size:13.9px font-weight:400 border-top-color:rgb(19, 25, 38)
-      style "@font-face { font-family: "Mona Sans Variable"; font-style: normal; font-display: swap; font-weight: 200 900; font-stretch: 75% 125%; src: url("data:…61c0dd79") format("woff2-variations"); unicode-range: U+102-103, U+110-111, U+128-129, U+168-169, U+1A0-1A1, U+1AF-1B0, U+300-301, U+303-304, U+308-309, U+323, U+329, U+1EA0-1EF9, U+20AB; } @font-face { font-family: "Mona Sans Variable"; font-style: normal; font-display: swap; font-weight: 200 900; font-stretch: 75% 125%; src: url("data:…156a6adf") format("woff2-variations"); unicode-range: U+100-2BA, U+2BD-2C5, U+2C7-2CC, U+2CE-2D7, U+2DD-2FF, U+304, U+308, U+329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF; } @font-face { font-family: "Mona Sans Variable"; font-style: normal; font-display: swap; font-weight: 200 900; font-stretch: 75% 125%; src: url("data:…c4a71e3c") format("woff2-variations"); unicode-range: U+0-FF, U+131, U+152-153, U+2BB-2BC, U+2C6, U+2DA, U+2DC, U+304, U+308, U+329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; } @font-face { font-family: "Geist Mono Variable"; font-style: normal; font-display: swap; font-weight: 100 900; src: url("data:…1d9f6a3b") format("woff2-variations"); unicode-range: U+460-52F, U+1C80-1C8A, U+20B4, U+2DE0-2DFF, U+A640-A69F, U+FE2E-FE2F; } @font-face { font-family: "Geist Mono Variable"; font-style: normal; font-display: swap; font-weight: 100 900; src: url("data:…1595e878") format("woff2-variations"); unicode-range: U+301, U+400-45F, U+490-491, U+4B0-4B1, U+2116; } @font-face { font-family: "Geist Mono Variable"; font-style: normal; font-display: swap; font-weight: 100 900; src: url("data:…1467b7b1") format("woff2-variations"); unicode-range: U+2000-2001, U+2004-2008, U+200A, U+23B8-23BD, U+2500-259F; } @font-face { font-family: "Geist Mono Variable"; font-style: normal; font-display: swap; font-weight: 100 900; src: url("data:…ceb18a9d") format("woff2-variations"); unicode-range: U+102-103, U+110-111, U+128-129, U+168-169, U+1A0-1A1, U+1AF-1B0, U+300-301, U+303-304, U+308-309, U+323, U+329, U+1EA0-1EF9, U+20AB; } @font-face { font-family: "Geist Mono Variable"; font-style: normal; font-display: swap; font-weight: 100 900; src: url("data:…5867656d") format("woff2-variations"); unicode-range: U+100-2BA, U+2BD-2C5, U+2C7-2CC, U+2CE-2D7, U+2DD-2FF, U+304, U+308, U+329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF; } @font-face { font-family: "Geist Mono Variable"; font-style: normal; font-display: swap; font-weight: 100 900; src: url("data:…79eae234") format("woff2-variations"); unicode-range: U+0-FF, U+131, U+152-153, U+2BB-2BC, U+2C6, U+2DA, U+2DC, U+304, U+308, U+329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }"
-      svg .df-defs width=0 height=0 width:0px height:0px color:rgb(19, 25, 38) font-size:13.9px font-weight:400 border-top-color:rgb(19, 25, 38)
+    div .react-flow__container.react-flow__viewport.xyflow__viewport width:2056px height:865px transform:translate(8px, 137px) scale(1) color:rgb(21, 24, 30) background-color:rgb(246, 247, 249) font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
+      style "@font-face { font-family: "Mona Sans Variable"; font-style: normal; font-display: swap; font-weight: 200 900; font-stretch: 75% 125%; src: url("data:…61c0dd79") format("woff2-variations"); unicode-range: U+102-103, U+110-111, U+128-129, U+168-169, U+1A0-1A1, U+1AF-1B0, U+300-301, U+303-304, U+308-309, U+323, U+329, U+1EA0-1EF9, U+20AB; } @font-face { font-family: "Mona Sans Variable"; font-style: normal; font-display: swap; font-weight: 200 900; font-stretch: 75% 125%; src: url("data:…156a6adf") format("woff2-variations"); unicode-range: U+100-2BA, U+2BD-2C5, U+2C7-2CC, U+2CE-2D7, U+2DD-2FF, U+304, U+308, U+329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF; } @font-face { font-family: "Mona Sans Variable"; font-style: normal; font-display: swap; font-weight: 200 900; font-stretch: 75% 125%; src: url("data:…c4a71e3c") format("woff2-variations"); unicode-range: U+0-FF, U+131, U+152-153, U+2BB-2BC, U+2C6, U+2DA, U+2DC, U+304, U+308, U+329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }"
+      svg .df-defs width=0 height=0 width:0px height:0px color:rgb(21, 24, 30) font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
         defs
           marker viewBox=0 0 12 12
             path .m-async d=M1.5 1.5 L10.5 6 L1.5 10.5 L4 6 Z fill:rgb(151, 160, 179)
           marker viewBox=0 0 12 12
             path .m-sync d=M1.5 1.5 L10.5 6 L1.5 10.5 L4 6 Z fill:rgb(85, 96, 117)
           marker viewBox=0 0 12 12
-            path .m-selected d=M1.5 1.5 L10.5 6 L1.5 10.5 L4 6 Z fill:rgb(75, 87, 214)
+            path .m-selected d=M1.5 1.5 L10.5 6 L1.5 10.5 L4 6 Z fill:rgb(47, 91, 234)
           marker viewBox=0 0 12 12
             path .m-dep.m-dep-config d=M3 2.25 L9.75 6 L3 9.75 fill:none stroke:rgb(42, 138, 131) stroke-width:1.4px
           marker viewBox=0 0 12 12
@@ -24,241 +24,241 @@ svg width=2056 height=865 viewBox=0 0 2056 865
           marker viewBox=0 0 12 12
             path .m-dep.m-dep-depends d=M3 2.25 L9.75 6 L3 9.75 fill:none stroke:rgb(85, 96, 117) stroke-width:1.4px
           marker viewBox=0 0 12 12
-            path .m-dep.m-dep-selected d=M3 2.25 L9.75 6 L3 9.75 fill:none stroke:rgb(75, 87, 214) stroke-width:1.4px
-      div .react-flow__edges width:0px height:0px color:rgb(19, 25, 38) font-size:13.9px font-weight:400 border-top-color:rgb(19, 25, 38)
-        svg width:300px height:150px color:rgb(19, 25, 38) font-size:13.9px font-weight:400 border-top-color:rgb(19, 25, 38)
+            path .m-dep.m-dep-selected d=M3 2.25 L9.75 6 L3 9.75 fill:none stroke:rgb(47, 91, 234) stroke-width:1.4px
+      div .react-flow__edges width:0px height:0px color:rgb(21, 24, 30) font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
+        svg width:300px height:150px color:rgb(21, 24, 30) font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
           g #relationship-wrapper-web-to-fd .nopan.react-flow__edge.react-flow__edge-flow.selectable
-        svg width:300px height:150px color:rgb(19, 25, 38) font-size:13.9px font-weight:400 border-top-color:rgb(19, 25, 38)
+        svg width:300px height:150px color:rgb(21, 24, 30) font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
           g #relationship-wrapper-fd-to-api .nopan.react-flow__edge.react-flow__edge-flow.selectable
-        svg width:300px height:150px color:rgb(19, 25, 38) font-size:13.9px font-weight:400 border-top-color:rgb(19, 25, 38)
+        svg width:300px height:150px color:rgb(21, 24, 30) font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
           g #relationship-wrapper-api-to-sql .nopan.react-flow__edge.react-flow__edge-flow.selectable
-        svg width:300px height:150px color:rgb(19, 25, 38) font-size:13.9px font-weight:400 border-top-color:rgb(19, 25, 38)
+        svg width:300px height:150px color:rgb(21, 24, 30) font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
           g #relationship-wrapper-api-to-sb .nopan.react-flow__edge.react-flow__edge-flow.selectable
-        svg width:300px height:150px color:rgb(19, 25, 38) font-size:13.9px font-weight:400 border-top-color:rgb(19, 25, 38)
+        svg width:300px height:150px color:rgb(21, 24, 30) font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
           g #relationship-wrapper-sb-to-notify .nopan.react-flow__edge.react-flow__edge-flow.selectable
-        svg width:300px height:150px color:rgb(19, 25, 38) font-size:13.9px font-weight:400 border-top-color:rgb(19, 25, 38)
+        svg width:300px height:150px color:rgb(21, 24, 30) font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
           g #relationship-wrapper-api-to-appcfg .nopan.react-flow__edge.react-flow__edge-flow.selectable
-        svg width:300px height:150px color:rgb(19, 25, 38) font-size:13.9px font-weight:400 border-top-color:rgb(19, 25, 38)
+        svg width:300px height:150px color:rgb(21, 24, 30) font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
           g #relationship-wrapper-appcfg-to-kv .nopan.react-flow__edge.react-flow__edge-flow.selectable
-        svg width:300px height:150px color:rgb(19, 25, 38) font-size:13.9px font-weight:400 border-top-color:rgb(19, 25, 38)
+        svg width:300px height:150px color:rgb(21, 24, 30) font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
           g #relationship-wrapper-api-to-mi .nopan.react-flow__edge.react-flow__edge-flow.selectable
-        svg width:300px height:150px color:rgb(19, 25, 38) font-size:13.9px font-weight:400 border-top-color:rgb(19, 25, 38)
+        svg width:300px height:150px color:rgb(21, 24, 30) font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
           g #relationship-wrapper-mi-to-entra .nopan.react-flow__edge.react-flow__edge-flow.selectable
-        svg width:300px height:150px color:rgb(19, 25, 38) font-size:13.9px font-weight:400 border-top-color:rgb(19, 25, 38)
+        svg width:300px height:150px color:rgb(21, 24, 30) font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
           g #relationship-wrapper-api-to-ai .nopan.react-flow__edge.react-flow__edge-flow.selectable
-      div .react-flow__edgelabel-renderer width:1100px height:848px color:rgb(19, 25, 38) font-size:13.9px font-weight:400 border-top-color:rgb(19, 25, 38)
-      div .react-flow__nodes width:1100px height:848px color:rgb(19, 25, 38) font-size:13.9px font-weight:400 border-top-color:rgb(19, 25, 38)
-        div #rf__node-group:azure .draggable.nopan.react-flow__node.react-flow__node-boundary.selectable width:1600px height:680px transform:matrix(1, 0, 0, 1, 400, 0) color:rgb(19, 25, 38) font-size:13.9px font-weight:400 border-top-color:rgb(19, 25, 38)
-        div #rf__node-group:aks .draggable.nopan.react-flow__node.react-flow__node-boundary.selectable width:320px height:172px transform:matrix(1, 0, 0, 1, 820, 236) color:rgb(19, 25, 38) font-size:13.9px font-weight:400 border-top-color:rgb(19, 25, 38)
-        div #rf__node-web .draggable.nopan.react-flow__node.react-flow__node-diagram.selectable width:223px height:72px transform:matrix(1, 0, 0, 1, 40, 300) color:rgb(19, 25, 38) font-size:13.9px font-weight:400 border-top-color:rgb(19, 25, 38)
-        div #rf__node-fd .draggable.nopan.react-flow__node.react-flow__node-diagram.selectable width:220px height:72px transform:matrix(1, 0, 0, 1, 440, 300) color:rgb(19, 25, 38) font-size:13.9px font-weight:400 border-top-color:rgb(19, 25, 38)
-        div #rf__node-api .draggable.nopan.react-flow__node.react-flow__node-diagram.selectable width:235px height:72px transform:matrix(1, 0, 0, 1, 860, 300) color:rgb(19, 25, 38) font-size:13.9px font-weight:400 border-top-color:rgb(19, 25, 38)
-        div #rf__node-sql .draggable.nopan.react-flow__node.react-flow__node-diagram.selectable width:220px height:72px transform:matrix(1, 0, 0, 1, 1300, 180) color:rgb(19, 25, 38) font-size:13.9px font-weight:400 border-top-color:rgb(19, 25, 38)
-        div #rf__node-sb .draggable.nopan.react-flow__node.react-flow__node-diagram.selectable width:220px height:72px transform:matrix(1, 0, 0, 1, 1300, 420) color:rgb(19, 25, 38) font-size:13.9px font-weight:400 border-top-color:rgb(19, 25, 38)
-        div #rf__node-notify .draggable.nopan.react-flow__node.react-flow__node-diagram.selectable width:220px height:72px transform:matrix(1, 0, 0, 1, 1720, 420) color:rgb(19, 25, 38) font-size:13.9px font-weight:400 border-top-color:rgb(19, 25, 38)
-        div #rf__node-ai .draggable.nopan.react-flow__node.react-flow__node-diagram.selectable width:223px height:72px transform:matrix(1, 0, 0, 1, 860, 60) color:rgb(19, 25, 38) font-size:13.9px font-weight:400 border-top-color:rgb(19, 25, 38)
-        div #rf__node-appcfg .draggable.nopan.react-flow__node.react-flow__node-diagram.selectable width:220px height:72px transform:matrix(1, 0, 0, 1, 860, 560) color:rgb(19, 25, 38) font-size:13.9px font-weight:400 border-top-color:rgb(19, 25, 38)
-        div #rf__node-kv .draggable.nopan.react-flow__node.react-flow__node-diagram.selectable width:220px height:72px transform:matrix(1, 0, 0, 1, 1300, 560) color:rgb(19, 25, 38) font-size:13.9px font-weight:400 border-top-color:rgb(19, 25, 38)
-        div #rf__node-mi .draggable.nopan.react-flow__node.react-flow__node-diagram.selectable width:220px height:72px transform:matrix(1, 0, 0, 1, 440, 560) color:rgb(19, 25, 38) font-size:13.9px font-weight:400 border-top-color:rgb(19, 25, 38)
-        div #rf__node-entra .draggable.nopan.react-flow__node.react-flow__node-diagram.selectable width:220px height:72px transform:matrix(1, 0, 0, 1, 40, 560) color:rgb(19, 25, 38) font-size:13.9px font-weight:400 border-top-color:rgb(19, 25, 38)
-      div .react-flow__viewport-portal width:1100px height:848px color:rgb(19, 25, 38) font-size:13.9px font-weight:400 border-top-color:rgb(19, 25, 38)
+      div .react-flow__edgelabel-renderer width:1368px height:848px color:rgb(21, 24, 30) font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
+      div .react-flow__nodes width:1368px height:848px color:rgb(21, 24, 30) font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
+        div #rf__node-group:azure .draggable.nopan.react-flow__node.react-flow__node-boundary.selectable width:1600px height:680px transform:matrix(1, 0, 0, 1, 400, 0) color:rgb(21, 24, 30) font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
+        div #rf__node-group:aks .draggable.nopan.react-flow__node.react-flow__node-boundary.selectable width:320px height:172px transform:matrix(1, 0, 0, 1, 820, 236) color:rgb(21, 24, 30) font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
+        div #rf__node-web .draggable.nopan.react-flow__node.react-flow__node-diagram.selectable width:220px height:72px transform:matrix(1, 0, 0, 1, 40, 300) color:rgb(21, 24, 30) font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
+        div #rf__node-fd .draggable.nopan.react-flow__node.react-flow__node-diagram.selectable width:220px height:72px transform:matrix(1, 0, 0, 1, 440, 300) color:rgb(21, 24, 30) font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
+        div #rf__node-api .draggable.nopan.react-flow__node.react-flow__node-diagram.selectable width:221px height:72px transform:matrix(1, 0, 0, 1, 860, 300) color:rgb(21, 24, 30) font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
+        div #rf__node-sql .draggable.nopan.react-flow__node.react-flow__node-diagram.selectable width:220px height:72px transform:matrix(1, 0, 0, 1, 1300, 180) color:rgb(21, 24, 30) font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
+        div #rf__node-sb .draggable.nopan.react-flow__node.react-flow__node-diagram.selectable width:220px height:72px transform:matrix(1, 0, 0, 1, 1300, 420) color:rgb(21, 24, 30) font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
+        div #rf__node-notify .draggable.nopan.react-flow__node.react-flow__node-diagram.selectable width:220px height:72px transform:matrix(1, 0, 0, 1, 1720, 420) color:rgb(21, 24, 30) font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
+        div #rf__node-ai .draggable.nopan.react-flow__node.react-flow__node-diagram.selectable width:220px height:72px transform:matrix(1, 0, 0, 1, 860, 60) color:rgb(21, 24, 30) font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
+        div #rf__node-appcfg .draggable.nopan.react-flow__node.react-flow__node-diagram.selectable width:220px height:72px transform:matrix(1, 0, 0, 1, 860, 560) color:rgb(21, 24, 30) font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
+        div #rf__node-kv .draggable.nopan.react-flow__node.react-flow__node-diagram.selectable width:220px height:72px transform:matrix(1, 0, 0, 1, 1300, 560) color:rgb(21, 24, 30) font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
+        div #rf__node-mi .draggable.nopan.react-flow__node.react-flow__node-diagram.selectable width:220px height:72px transform:matrix(1, 0, 0, 1, 440, 560) color:rgb(21, 24, 30) font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
+        div #rf__node-entra .draggable.nopan.react-flow__node.react-flow__node-diagram.selectable width:220px height:72px transform:matrix(1, 0, 0, 1, 40, 560) color:rgb(21, 24, 30) font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
+      div .react-flow__viewport-portal width:1368px height:848px color:rgb(21, 24, 30) font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
 == edge-api-to-ai
             g #edge-api-to-ai .fe.fe-dep.fe-rel-telemetry
-              path .fe-halo d=M977.5,300 L977.5,193 Q977.5,190 974.5,190 L974.5,190 Q971.5,190 971.5,187 L971.5,132 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
-              path .fe-path.react-flow__edge-path d=M977.5,300 L977.5,193 Q977.5,190 974.5,190 L974.5,190 Q971.5,190 971.5,187 L971.5,132 fill:none stroke:rgb(124, 109, 152) stroke-width:1.25px stroke-dasharray:0.5px, 4px
-              path .react-flow__edge-interaction d=M977.5,300 L977.5,193 Q977.5,190 974.5,190 L974.5,190 Q971.5,190 971.5,187 L971.5,132 fill:none stroke-width:22px
+              path .fe-halo d=M970.5,300 L970.5,292 Q970.5,284 970.3,276 L970.2,268 Q970,258 970,248 L970,132 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
+              path #connection-stroke-api-to-ai .fe-path.react-flow__edge-path d=M970.5,300 L970.5,292 Q970.5,284 970.3,276 L970.2,268 Q970,258 970,248 L970,132 fill:none stroke:rgb(124, 109, 152) stroke-width:1.25px stroke-dasharray:0.5px, 4px
+              path .react-flow__edge-interaction d=M970.5,300 L970.5,292 Q970.5,284 970.3,276 L970.2,268 Q970,258 970,248 L970,132 fill:none stroke-width:22px
               title "Telemetry · sends telemetry to"
 == edge-api-to-appcfg
             g #edge-api-to-appcfg .fe.fe-dep.fe-rel-config
-              path .fe-halo d=M984.5,372 L984.5,458.8 Q984.5,466 977.3,466 L977.3,466 Q970,466 970,473.3 L970,560 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
-              path .fe-path.react-flow__edge-path d=M984.5,372 L984.5,458.8 Q984.5,466 977.3,466 L977.3,466 Q970,466 970,473.3 L970,560 fill:none stroke:rgb(42, 138, 131) stroke-width:1.25px stroke-dasharray:0.5px, 4px
-              path .react-flow__edge-interaction d=M984.5,372 L984.5,458.8 Q984.5,466 977.3,466 L977.3,466 Q970,466 970,473.3 L970,560 fill:none stroke-width:22px
+              path .fe-halo d=M977.5,372 L977.5,462.3 Q977.5,466 973.8,466 L973.8,466 Q970,466 970,469.8 L970,560 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
+              path #connection-stroke-api-to-appcfg .fe-path.react-flow__edge-path d=M977.5,372 L977.5,462.3 Q977.5,466 973.8,466 L973.8,466 Q970,466 970,469.8 L970,560 fill:none stroke:rgb(42, 138, 131) stroke-width:1.25px stroke-dasharray:0.5px, 4px
+              path .react-flow__edge-interaction d=M977.5,372 L977.5,462.3 Q977.5,466 973.8,466 L973.8,466 Q970,466 970,469.8 L970,560 fill:none stroke-width:22px
               title "Config · reads config Read at startup and refreshed, not on every request, so no messages flow over it."
 == edge-api-to-mi
             g #edge-api-to-mi .fe.fe-dep.fe-rel-identity
-              path .fe-halo d=M970.5,372 L970.5,456 Q970.5,466 960.5,466 L757,466 Q747,466 747,476 L747,586 Q747,596 737,596 L660,596 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
-              path .fe-path.react-flow__edge-path d=M970.5,372 L970.5,456 Q970.5,466 960.5,466 L757,466 Q747,466 747,476 L747,586 Q747,596 737,596 L660,596 fill:none stroke:rgb(90, 97, 196) stroke-width:1.25px stroke-dasharray:0.5px, 4px
-              path .react-flow__edge-interaction d=M970.5,372 L970.5,456 Q970.5,466 960.5,466 L757,466 Q747,466 747,476 L747,586 Q747,596 737,596 L660,596 fill:none stroke-width:22px
+              path .fe-halo d=M963.5,372 L963.5,456 Q963.5,466 953.5,466 L757,466 Q747,466 747,476 L747,586 Q747,596 737,596 L660,596 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
+              path #connection-stroke-api-to-mi .fe-path.react-flow__edge-path d=M963.5,372 L963.5,456 Q963.5,466 953.5,466 L757,466 Q747,466 747,476 L747,586 Q747,596 737,596 L660,596 fill:none stroke:rgb(90, 97, 196) stroke-width:1.25px stroke-dasharray:0.5px, 4px
+              path .react-flow__edge-interaction d=M963.5,372 L963.5,456 Q963.5,466 953.5,466 L757,466 Q747,466 747,476 L747,586 Q747,596 737,596 L660,596 fill:none stroke-width:22px
               title "Identity · gets tokens from"
 == edge-api-to-sb
             g #edge-api-to-sb .fe.fe-async
-              path .fe-halo d=M1095,343 L1187.5,343 Q1197.5,343 1197.5,353 L1197.5,446 Q1197.5,456 1207.5,456 L1300,456 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
-              path .fe-path.react-flow__edge-path d=M1095,343 L1187.5,343 Q1197.5,343 1197.5,353 L1197.5,446 Q1197.5,456 1207.5,456 L1300,456 fill:none stroke:rgb(151, 160, 179) stroke-width:1.6px stroke-dasharray:5px, 5px
-              path .react-flow__edge-interaction d=M1095,343 L1187.5,343 Q1197.5,343 1197.5,353 L1197.5,446 Q1197.5,456 1207.5,456 L1300,456 fill:none stroke-width:22px
+              path .fe-halo d=M1081,343 L1180.5,343 Q1190.5,343 1190.5,353 L1190.5,446 Q1190.5,456 1200.5,456 L1300,456 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
+              path #connection-stroke-api-to-sb .fe-path.react-flow__edge-path d=M1081,343 L1180.5,343 Q1190.5,343 1190.5,353 L1190.5,446 Q1190.5,456 1200.5,456 L1300,456 fill:none stroke:rgb(111, 118, 131) stroke-width:2px stroke-dasharray:5px, 5px
+              path .react-flow__edge-interaction d=M1081,343 L1180.5,343 Q1190.5,343 1190.5,353 L1190.5,446 Q1190.5,456 1200.5,456 L1300,456 fill:none stroke-width:22px
 == edge-api-to-sql
             g #edge-api-to-sql .fe.fe-sync
-              path .fe-halo d=M1095,329 L1187.5,329 Q1197.5,329 1197.5,319 L1197.5,226 Q1197.5,216 1207.5,216 L1300,216 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
-              path .fe-path.react-flow__edge-path d=M1095,329 L1187.5,329 Q1197.5,329 1197.5,319 L1197.5,226 Q1197.5,216 1207.5,216 L1300,216 fill:none stroke:rgb(85, 96, 117) stroke-width:1.6px
-              path .react-flow__edge-interaction d=M1095,329 L1187.5,329 Q1197.5,329 1197.5,319 L1197.5,226 Q1197.5,216 1207.5,216 L1300,216 fill:none stroke-width:22px
+              path .fe-halo d=M1081,329 L1180.5,329 Q1190.5,329 1190.5,319 L1190.5,226 Q1190.5,216 1200.5,216 L1300,216 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
+              path #connection-stroke-api-to-sql .fe-path.react-flow__edge-path d=M1081,329 L1180.5,329 Q1190.5,329 1190.5,319 L1190.5,226 Q1190.5,216 1200.5,216 L1300,216 fill:none stroke:rgb(85, 96, 117) stroke-width:1.6px
+              path .react-flow__edge-interaction d=M1081,329 L1180.5,329 Q1190.5,329 1190.5,319 L1190.5,226 Q1190.5,216 1200.5,216 L1300,216 fill:none stroke-width:22px
 == edge-appcfg-to-kv
             g #edge-appcfg-to-kv .fe.fe-dep.fe-rel-secret
               path .fe-halo d=M1080,596 L1300,596 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
-              path .fe-path.react-flow__edge-path d=M1080,596 L1300,596 fill:none stroke:rgb(166, 114, 12) stroke-width:1.25px stroke-dasharray:0.5px, 4px
+              path #connection-stroke-appcfg-to-kv .fe-path.react-flow__edge-path d=M1080,596 L1300,596 fill:none stroke:rgb(166, 114, 12) stroke-width:1.25px stroke-dasharray:0.5px, 4px
               path .react-flow__edge-interaction d=M1080,596 L1300,596 fill:none stroke-width:22px
               title "Secret · reads secrets Read at startup and refreshed, not on every request, so no messages flow over it. Each app resolves these with its own identity; App Configuration never calls Key Vault."
 == edge-fd-to-api
             g #edge-fd-to-api .fe.fe-sync
               path .fe-halo d=M660,336 L860,336 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
-              path .fe-path.react-flow__edge-path d=M660,336 L860,336 fill:none stroke:rgb(85, 96, 117) stroke-width:1.6px
+              path #connection-stroke-fd-to-api .fe-path.react-flow__edge-path d=M660,336 L860,336 fill:none stroke:rgb(85, 96, 117) stroke-width:1.6px
               path .react-flow__edge-interaction d=M660,336 L860,336 fill:none stroke-width:22px
 == edge-label-api-to-ai
-        div #edge-label-api-to-ai .fe-chip.fe-label.fe-rel-telemetry.is-glyph.nodrag.nopan width:20px height:20px transform:matrix(1, 0, 0, 1, 967.5, 234) color:rgb(86, 96, 116) background-color:rgb(255, 255, 255) display:grid font-size:9.9px font-weight:500 border-top-color:oklab(0.798299 0.0109505 -0.027055) border-top-width:1px border-radius:999px
-          span #edge-glyph-api-to-ai .fe-glyph-icon width:14px height:14px color:rgb(124, 109, 152) display:grid font-size:9.9px font-weight:500 border-top-color:rgb(124, 109, 152)
-            svg width=14 height=14 viewBox=0 0 24 24 width:14px height:14px color:rgb(124, 109, 152) fill:none stroke:rgb(124, 109, 152) stroke-width:2.1px font-size:9.9px font-weight:500 border-top-color:rgb(124, 109, 152)
+        div #edge-label-api-to-ai .fe-chip.fe-label.fe-rel-telemetry.is-glyph.nodrag.nopan width:20px height:20px transform:matrix(1, 0, 0, 1, 960, 192) color:rgb(95, 102, 115) background-color:rgb(255, 255, 255) display:grid font-size:11.9px font-weight:560 border-top-color:oklab(0.794655 0.0113743 -0.0260164) border-top-width:1px border-radius:999px
+          span #edge-glyph-api-to-ai .fe-glyph-icon width:14px height:14px color:rgb(124, 109, 152) display:grid font-size:11.9px font-weight:560 border-top-color:rgb(124, 109, 152)
+            svg width=14 height=14 viewBox=0 0 24 24 width:14px height:14px color:rgb(124, 109, 152) fill:none stroke:rgb(124, 109, 152) stroke-width:2.1px font-size:11.9px font-weight:560 border-top-color:rgb(124, 109, 152)
               path d=M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2 fill:none stroke:rgb(124, 109, 152) stroke-width:2.1px
 == edge-label-api-to-appcfg
-        div #edge-label-api-to-appcfg .fe-label.fe-label-dep.fe-rel-config.has-glyph.is-full.nodrag.nopan width:159px height:19px transform:matrix(1, 0, 0, 1, 890.5, 496.5) color:rgb(86, 96, 116) background-color:rgb(255, 255, 255) display:flex font-size:9.9px font-weight:500 border-top-color:rgb(226, 230, 237) border-top-width:1px border-radius:8px
-          span #edge-glyph-api-to-appcfg .fe-glyph-icon width:12px height:12px color:rgb(42, 138, 131) display:grid font-size:9.9px font-weight:500 border-top-color:rgb(42, 138, 131)
-            svg width=12 height=12 viewBox=0 0 24 24 width:12px height:12px color:rgb(42, 138, 131) fill:none stroke:rgb(42, 138, 131) stroke-width:2.1px font-size:9.9px font-weight:500 border-top-color:rgb(42, 138, 131)
+        div #edge-label-api-to-appcfg .fe-label.fe-label-dep.fe-rel-config.has-glyph.is-full.nodrag.nopan width:177px height:22px transform:matrix(1, 0, 0, 1, 881.5, 495) color:rgb(95, 102, 115) background-color:rgb(255, 255, 255) display:flex font-size:11.9px font-weight:560 border-top-color:rgb(225, 228, 234) border-top-width:1px border-radius:8px
+          span #edge-glyph-api-to-appcfg .fe-glyph-icon width:12px height:12px color:rgb(42, 138, 131) display:grid font-size:11.9px font-weight:560 border-top-color:rgb(42, 138, 131)
+            svg width=12 height=12 viewBox=0 0 24 24 width:12px height:12px color:rgb(42, 138, 131) fill:none stroke:rgb(42, 138, 131) stroke-width:2.1px font-size:11.9px font-weight:560 border-top-color:rgb(42, 138, 131)
               path d=M10 5H3m9 14H3M14 3v4m2 10v4m5-9h-9m9 7h-5m5-14h-7m-6 5v4m0-2H3 fill:none stroke:rgb(42, 138, 131) stroke-width:2.1px
-          span .fe-label-text width:126px height:13px color:rgb(86, 96, 116) font-size:9.9px font-weight:500 border-top-color:rgb(86, 96, 116) "4 settings · 2 secret"
+          span .fe-label-text width:145px height:16px color:rgb(95, 102, 115) font-size:15.9px font-weight:560 border-top-color:rgb(95, 102, 115) "4 settings · 2 secret"
 == edge-label-api-to-mi
-        div #edge-label-api-to-mi .fe-label.fe-label-dep.fe-rel-identity.has-glyph.is-full.nodrag.nopan width:75px height:19px transform:matrix(1, 0, 0, 1, 821.25, 456.5) color:rgb(86, 96, 116) background-color:rgb(255, 255, 255) display:flex font-size:9.9px font-weight:500 border-top-color:rgb(226, 230, 237) border-top-width:1px border-radius:8px
-          span #edge-glyph-api-to-mi .fe-glyph-icon width:12px height:12px color:rgb(90, 97, 196) display:grid font-size:9.9px font-weight:500 border-top-color:rgb(90, 97, 196)
-            svg width=12 height=12 viewBox=0 0 24 24 width:12px height:12px color:rgb(90, 97, 196) fill:none stroke:rgb(90, 97, 196) stroke-width:2.1px font-size:9.9px font-weight:500 border-top-color:rgb(90, 97, 196)
+        div #edge-label-api-to-mi .fe-label.fe-label-dep.fe-rel-identity.has-glyph.is-full.nodrag.nopan width:88px height:22px transform:matrix(1, 0, 0, 1, 811.25, 455) color:rgb(95, 102, 115) background-color:rgb(255, 255, 255) display:flex font-size:11.9px font-weight:560 border-top-color:rgb(225, 228, 234) border-top-width:1px border-radius:8px
+          span #edge-glyph-api-to-mi .fe-glyph-icon width:12px height:12px color:rgb(90, 97, 196) display:grid font-size:11.9px font-weight:560 border-top-color:rgb(90, 97, 196)
+            svg width=12 height=12 viewBox=0 0 24 24 width:12px height:12px color:rgb(90, 97, 196) fill:none stroke:rgb(90, 97, 196) stroke-width:2.1px font-size:11.9px font-weight:560 border-top-color:rgb(90, 97, 196)
               path d=M13 19a4 4 0 0 0-8 0m11-9h2m-2 4h2M12 12a3 3 0 1 1-6 0 3 3 0 1 1 6 0M4 5h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z fill:none stroke:rgb(90, 97, 196) stroke-width:2.1px
-          span .fe-label-text width:42px height:13px color:rgb(86, 96, 116) font-size:9.9px font-weight:500 border-top-color:rgb(86, 96, 116) "runs as"
+          span .fe-label-text width:56px height:16px color:rgb(95, 102, 115) font-size:15.9px font-weight:560 border-top-color:rgb(95, 102, 115) "runs as"
 == edge-label-api-to-sb
-        div #edge-label-api-to-sb .fe-label.fe-label-async.is-full.nodrag.nopan width:89px height:19px transform:matrix(1, 0, 0, 1, 1153, 390) color:rgb(86, 96, 116) background-color:rgb(255, 255, 255) font-size:9.9px font-weight:500 border-top-color:rgb(226, 230, 237) border-top-width:1px border-radius:8px "OrderCreated"
+        div #edge-label-api-to-sb .fe-label.fe-label-async.is-full.nodrag.nopan width:92.4688px height:22px transform:matrix(1, 0, 0, 1, 1144.27, 388.5) color:rgb(95, 102, 115) background-color:rgb(255, 255, 255) font-size:11.9px font-weight:560 border-top-color:rgb(225, 228, 234) border-top-width:1px border-radius:8px "OrderCreated"
 == edge-label-api-to-sql
-        div #edge-label-api-to-sql .fe-label.fe-label-sync.is-full.nodrag.nopan width:59px height:19px transform:matrix(1, 0, 0, 1, 1168, 263) color:rgb(86, 96, 116) background-color:rgb(255, 255, 255) font-size:9.9px font-weight:500 border-top-color:rgb(226, 230, 237) border-top-width:1px border-radius:8px "EF Core"
+        div #edge-label-api-to-sql .fe-label.fe-label-sync.is-full.nodrag.nopan width:59.7031px height:22px transform:matrix(1, 0, 0, 1, 1160.65, 261.5) color:rgb(95, 102, 115) background-color:rgb(255, 255, 255) font-size:11.9px font-weight:560 border-top-color:rgb(225, 228, 234) border-top-width:1px border-radius:8px "EF Core"
 == edge-label-appcfg-to-kv
-        div #edge-label-appcfg-to-kv .fe-label.fe-label-dep.fe-rel-secret.has-glyph.is-full.nodrag.nopan width:105px height:19px transform:matrix(1, 0, 0, 1, 1131.5, 586.5) color:rgb(86, 96, 116) background-color:rgb(255, 255, 255) display:flex font-size:9.9px font-weight:500 border-top-color:rgb(226, 230, 237) border-top-width:1px border-radius:8px
-          span #edge-glyph-appcfg-to-kv .fe-glyph-icon width:12px height:12px color:rgb(166, 114, 12) display:grid font-size:9.9px font-weight:500 border-top-color:rgb(166, 114, 12)
-            svg width=12 height=12 viewBox=0 0 24 24 width:12px height:12px color:rgb(166, 114, 12) fill:none stroke:rgb(166, 114, 12) stroke-width:2.1px font-size:9.9px font-weight:500 border-top-color:rgb(166, 114, 12)
+        div #edge-label-appcfg-to-kv .fe-label.fe-label-dep.fe-rel-secret.has-glyph.is-full.nodrag.nopan width:126px height:22px transform:matrix(1, 0, 0, 1, 1121, 585) color:rgb(95, 102, 115) background-color:rgb(255, 255, 255) display:flex font-size:11.9px font-weight:560 border-top-color:rgb(225, 228, 234) border-top-width:1px border-radius:8px
+          span #edge-glyph-appcfg-to-kv .fe-glyph-icon width:12px height:12px color:rgb(166, 114, 12) display:grid font-size:11.9px font-weight:560 border-top-color:rgb(166, 114, 12)
+            svg width=12 height=12 viewBox=0 0 24 24 width:12px height:12px color:rgb(166, 114, 12) fill:none stroke:rgb(166, 114, 12) stroke-width:2.1px font-size:11.9px font-weight:560 border-top-color:rgb(166, 114, 12)
               path d=M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4zM16.5 7.5h.01 fill:none stroke:rgb(166, 114, 12) stroke-width:2.1px
-          span .fe-label-text width:72px height:13px color:rgb(86, 96, 116) font-size:9.9px font-weight:500 border-top-color:rgb(86, 96, 116) "2 references"
+          span .fe-label-text width:94px height:16px color:rgb(95, 102, 115) font-size:15.9px font-weight:560 border-top-color:rgb(95, 102, 115) "2 references"
 == edge-label-fd-to-api
-        div #edge-label-fd-to-api .fe-label.fe-label-sync.is-full.nodrag.nopan width:89px height:19px transform:matrix(1, 0, 0, 1, 709.5, 326.5) color:rgb(86, 96, 116) background-color:rgb(255, 255, 255) font-size:9.9px font-weight:500 border-top-color:rgb(226, 230, 237) border-top-width:1px border-radius:8px "POST /orders"
+        div #edge-label-fd-to-api .fe-label.fe-label-sync.is-full.nodrag.nopan width:90.2969px height:22px transform:matrix(1, 0, 0, 1, 708.852, 325) color:rgb(95, 102, 115) background-color:rgb(255, 255, 255) font-size:11.9px font-weight:560 border-top-color:rgb(225, 228, 234) border-top-width:1px border-radius:8px "POST /orders"
 == edge-label-mi-to-entra
-        div #edge-label-mi-to-entra .fe-label.fe-label-dep.fe-rel-identity.has-glyph.is-full.nodrag.nopan width:123px height:19px transform:matrix(1, 0, 0, 1, 294.5, 586.5) color:rgb(86, 96, 116) background-color:rgb(255, 255, 255) display:flex font-size:9.9px font-weight:500 border-top-color:rgb(226, 230, 237) border-top-width:1px border-radius:8px
-          span #edge-glyph-mi-to-entra .fe-glyph-icon width:12px height:12px color:rgb(90, 97, 196) display:grid font-size:9.9px font-weight:500 border-top-color:rgb(90, 97, 196)
-            svg width=12 height=12 viewBox=0 0 24 24 width:12px height:12px color:rgb(90, 97, 196) fill:none stroke:rgb(90, 97, 196) stroke-width:2.1px font-size:9.9px font-weight:500 border-top-color:rgb(90, 97, 196)
+        div #edge-label-mi-to-entra .fe-label.fe-label-dep.fe-rel-identity.has-glyph.is-full.nodrag.nopan width:154px height:22px transform:matrix(1, 0, 0, 1, 279, 585) color:rgb(95, 102, 115) background-color:rgb(255, 255, 255) display:flex font-size:11.9px font-weight:560 border-top-color:rgb(225, 228, 234) border-top-width:1px border-radius:8px
+          span #edge-glyph-mi-to-entra .fe-glyph-icon width:12px height:12px color:rgb(90, 97, 196) display:grid font-size:11.9px font-weight:560 border-top-color:rgb(90, 97, 196)
+            svg width=12 height=12 viewBox=0 0 24 24 width:12px height:12px color:rgb(90, 97, 196) fill:none stroke:rgb(90, 97, 196) stroke-width:2.1px font-size:11.9px font-weight:560 border-top-color:rgb(90, 97, 196)
               path d=M13 19a4 4 0 0 0-8 0m11-9h2m-2 4h2M12 12a3 3 0 1 1-6 0 3 3 0 1 1 6 0M4 5h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2z fill:none stroke:rgb(90, 97, 196) stroke-width:2.1px
-          span .fe-label-text width:90px height:13px color:rgb(86, 96, 116) font-size:9.9px font-weight:500 border-top-color:rgb(86, 96, 116) "OIDC federation"
+          span .fe-label-text width:122px height:16px color:rgb(95, 102, 115) font-size:15.9px font-weight:560 border-top-color:rgb(95, 102, 115) "OIDC federation"
 == edge-label-sb-to-notify
-        div #edge-label-sb-to-notify .fe-label.fe-label-async.is-full.nodrag.nopan width:89px height:19px transform:matrix(1, 0, 0, 1, 1569.5, 446.5) color:rgb(86, 96, 116) background-color:rgb(255, 255, 255) font-size:9.9px font-weight:500 border-top-color:rgb(226, 230, 237) border-top-width:1px border-radius:8px "Subscription"
+        div #edge-label-sb-to-notify .fe-label.fe-label-async.is-full.nodrag.nopan width:86.4375px height:22px transform:matrix(1, 0, 0, 1, 1570.78, 445) color:rgb(95, 102, 115) background-color:rgb(255, 255, 255) font-size:11.9px font-weight:560 border-top-color:rgb(225, 228, 234) border-top-width:1px border-radius:8px "Subscription"
 == edge-label-web-to-fd
-        div #edge-label-web-to-fd .fe-label.fe-label-sync.is-full.nodrag.nopan width:47px height:19px transform:matrix(1, 0, 0, 1, 322, 326.5) color:rgb(86, 96, 116) background-color:rgb(255, 255, 255) font-size:9.9px font-weight:500 border-top-color:rgb(226, 230, 237) border-top-width:1px border-radius:8px "HTTPS"
+        div #edge-label-web-to-fd .fe-label.fe-label-sync.is-full.nodrag.nopan width:54.6875px height:22px transform:matrix(1, 0, 0, 1, 316.656, 325) color:rgb(95, 102, 115) background-color:rgb(255, 255, 255) font-size:11.9px font-weight:560 border-top-color:rgb(225, 228, 234) border-top-width:1px border-radius:8px "HTTPS"
 == edge-mi-to-entra
             g #edge-mi-to-entra .fe.fe-dep.fe-rel-identity
               path .fe-halo d=M440,596 L260,596 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
-              path .fe-path.react-flow__edge-path d=M440,596 L260,596 fill:none stroke:rgb(90, 97, 196) stroke-width:1.25px stroke-dasharray:0.5px, 4px
+              path #connection-stroke-mi-to-entra .fe-path.react-flow__edge-path d=M440,596 L260,596 fill:none stroke:rgb(90, 97, 196) stroke-width:1.25px stroke-dasharray:0.5px, 4px
               path .react-flow__edge-interaction d=M440,596 L260,596 fill:none stroke-width:22px
               title "Identity · gets tokens from"
 == edge-sb-to-notify
             g #edge-sb-to-notify .fe.fe-async
               path .fe-halo d=M1520,456 L1720,456 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
-              path .fe-path.react-flow__edge-path d=M1520,456 L1720,456 fill:none stroke:rgb(151, 160, 179) stroke-width:1.6px stroke-dasharray:5px, 5px
+              path #connection-stroke-sb-to-notify .fe-path.react-flow__edge-path d=M1520,456 L1720,456 fill:none stroke:rgb(111, 118, 131) stroke-width:2px stroke-dasharray:5px, 5px
               path .react-flow__edge-interaction d=M1520,456 L1720,456 fill:none stroke-width:22px
 == edge-web-to-fd
             g #edge-web-to-fd .fe.fe-sync
-              path .fe-halo d=M263,336 L440,336 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
-              path .fe-path.react-flow__edge-path d=M263,336 L440,336 fill:none stroke:rgb(85, 96, 117) stroke-width:1.6px
-              path .react-flow__edge-interaction d=M263,336 L440,336 fill:none stroke-width:22px
+              path .fe-halo d=M260,336 L440,336 fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
+              path #connection-stroke-web-to-fd .fe-path.react-flow__edge-path d=M260,336 L440,336 fill:none stroke:rgb(85, 96, 117) stroke-width:1.6px
+              path .react-flow__edge-interaction d=M260,336 L440,336 fill:none stroke-width:22px
 == export-header
-      div #export-header .export-header width:1100px height:60.9375px left:40px top:-89px color:rgb(19, 25, 38) font-size:13.9px font-weight:400 border-top-color:rgb(19, 25, 38)
-        h1 width:1100px height:31.1875px color:rgb(19, 25, 38) font-size:25.9px font-weight:700 border-top-color:rgb(19, 25, 38) "AKS orders API with App Configuration"
-        div width:1100px height:21.75px color:rgb(19, 25, 38) font-size:13.9px font-weight:400 border-top-color:rgb(19, 25, 38)
-          div #export-header-description .md-view width:1100px height:21.75px color:rgb(86, 96, 116) font-size:14.9px font-weight:400 border-top-color:rgb(86, 96, 116)
-            p .md-p width:1100px height:21.75px color:rgb(86, 96, 116) font-size:14.9px font-weight:400 border-top-color:rgb(86, 96, 116) "Bold lines carry requests and events. Dotted lines are dependencies: where the API gets its settings (two are Key Vault references), its identity, and where it reports."
+      div #export-header .export-header width:1100px height:60.9375px left:40px top:-89px color:rgb(21, 24, 30) font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
+        h1 width:1100px height:31.1875px color:rgb(21, 24, 30) font-size:25.9px font-weight:700 border-top-color:rgb(21, 24, 30) "AKS orders API with App Configuration"
+        div width:1100px height:21.75px color:rgb(21, 24, 30) font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
+          div #export-header-description .md-view width:1100px height:21.75px color:rgb(95, 102, 115) font-size:14.9px font-weight:400 border-top-color:rgb(95, 102, 115)
+            p .md-p width:1100px height:21.75px color:rgb(95, 102, 115) font-size:14.9px font-weight:400 border-top-color:rgb(95, 102, 115) "Bold lines carry requests and events. Dotted lines are dependencies: where the API gets its settings (two are Key Vault references), its identity, and where it reports."
 == group-aks
-          div #group-aks .grp width:320px height:172px color:rgb(19, 25, 38) background-color:oklab(0.567586 0.0457724 -0.196834 / 0.05) font-size:13.9px font-weight:400 border-top-color:oklab(0.567586 0.0457724 -0.196834 / 0.32) border-top-width:1px border-radius:20px
-            svg #group-outline-aks .grp-outline width=100% height=100% width:318px height:170px color:rgb(19, 25, 38) font-size:13.9px font-weight:400 border-top-color:rgb(19, 25, 38)
+          div #group-aks .grp width:320px height:172px color:rgb(21, 24, 30) background-color:oklab(0.567586 0.0457724 -0.196834 / 0.05) font-size:13.9px font-weight:400 border-top-color:oklab(0.567586 0.0457724 -0.196834 / 0.32) border-top-width:1px border-radius:20px
+            svg #group-outline-aks .grp-outline width=100% height=100% width:318px height:170px color:rgb(21, 24, 30) font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
               rect width=100% height=100% fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
-            div #group-label-aks .grp-drag.grp-label width:101.344px height:24px left:14px top:12px color:oklab(0.461515 0.0313387 -0.145967) background-color:oklab(0.921247 0.00472267 -0.0275165) display:flex font-size:11.9px font-weight:600 border-top-color:oklab(0.461515 0.0313387 -0.145967) border-radius:7px "AKS cluster"
-              span .grp-swatch width:8px height:8px color:oklab(0.461515 0.0313387 -0.145967) background-color:rgb(108, 92, 231) font-size:11.9px font-weight:600 border-top-color:oklab(0.461515 0.0313387 -0.145967) border-radius:2.5px
+            div #group-label-aks .grp-drag.grp-label width:124.094px height:24px left:14px top:12px color:oklab(0.459889 0.0316586 -0.141603) background-color:oklab(0.926933 0.00529185 -0.0261147) display:flex font-size:15.9px font-weight:600 border-top-color:oklab(0.459889 0.0316586 -0.141603) border-radius:7px "AKS cluster"
+              span .grp-swatch width:8px height:8px color:oklab(0.459889 0.0316586 -0.141603) background-color:rgb(108, 92, 231) font-size:15.9px font-weight:600 border-top-color:oklab(0.459889 0.0316586 -0.141603) border-radius:2.5px
 == group-azure
-          div #group-azure .grp width:1600px height:680px color:rgb(19, 25, 38) background-color:oklab(0.609237 -0.0399822 -0.17739 / 0.05) font-size:13.9px font-weight:400 border-top-color:oklab(0.609237 -0.0399822 -0.17739 / 0.32) border-top-width:1px border-radius:20px
-            svg #group-outline-azure .grp-outline width=100% height=100% width:1598px height:678px color:rgb(19, 25, 38) font-size:13.9px font-weight:400 border-top-color:rgb(19, 25, 38)
+          div #group-azure .grp width:1600px height:680px color:rgb(21, 24, 30) background-color:oklab(0.609237 -0.0399822 -0.17739 / 0.05) font-size:13.9px font-weight:400 border-top-color:oklab(0.609237 -0.0399822 -0.17739 / 0.32) border-top-width:1px border-radius:20px
+            svg #group-outline-azure .grp-outline width=100% height=100% width:1598px height:678px color:rgb(21, 24, 30) font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
               rect width=100% height=100% fill:none stroke:rgba(0, 0, 0, 0) stroke-width:8px
-            div #group-label-azure .grp-drag.grp-label width:103.281px height:24px left:14px top:12px color:oklab(0.49067 -0.0286895 -0.132356) background-color:oklab(0.926245 -0.00556789 -0.0251832) display:flex font-size:11.9px font-weight:600 border-top-color:oklab(0.49067 -0.0286895 -0.132356) border-radius:7px "Azure · prod"
-              span .grp-swatch width:8px height:8px color:oklab(0.49067 -0.0286895 -0.132356) background-color:rgb(47, 128, 237) font-size:11.9px font-weight:600 border-top-color:oklab(0.49067 -0.0286895 -0.132356) border-radius:2.5px
+            div #group-label-azure .grp-drag.grp-label width:126.016px height:24px left:14px top:12px color:oklab(0.489044 -0.0283697 -0.127991) background-color:oklab(0.931931 -0.0049987 -0.0237814) display:flex font-size:15.9px font-weight:600 border-top-color:oklab(0.489044 -0.0283697 -0.127991) border-radius:7px "Azure · prod"
+              span .grp-swatch width:8px height:8px color:oklab(0.489044 -0.0283697 -0.127991) background-color:rgb(47, 128, 237) font-size:15.9px font-weight:600 border-top-color:oklab(0.489044 -0.0283697 -0.127991) border-radius:2.5px
 == node-ai
-          div #node-ai .dn.dn-card width:223px height:72px color:rgb(19, 25, 38) font-size:13.9px font-weight:400 border-top-color:rgb(19, 25, 38)
-            div .nb.nb-card width:223px height:72px color:rgb(19, 25, 38) background-color:rgb(255, 255, 255) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(221, 226, 234) border-top-width:1px border-radius:14px
-              div .nb-tile width:44px height:44px color:rgb(19, 25, 38) background-color:oklab(0.953345 0.00801041 -0.0145717) display:grid font-size:13.9px font-weight:400 border-top-color:rgb(19, 25, 38) border-radius:11px
-                img .stencil-icon width=26 height=26 src=data:…c6a5c297 width:36px height:26px color:rgb(19, 25, 38) font-size:13.9px font-weight:400 border-top-color:rgb(19, 25, 38)
-              div .nb-text width:138px height:33.5156px color:rgb(19, 25, 38) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(19, 25, 38)
-                div .nb-label width:138px height:16.875px color:rgb(19, 25, 38) font-size:12.9px font-weight:620 border-top-color:rgb(19, 25, 38) "Application Insights"
-                div .nb-sub width:138px height:13.6406px color:rgb(86, 96, 116) display:flow-root font-size:9.9px font-weight:400 border-top-color:rgb(86, 96, 116) "traces · logs · metrics"
+          div #node-ai .dn.dn-card width:220px height:72px color:rgb(21, 24, 30) font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
+            div .nb.nb-card width:220px height:72px color:rgb(21, 24, 30) background-color:rgb(255, 255, 255) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(216, 221, 230) border-top-width:1px border-radius:14px
+              div .nb-tile width:44px height:44px color:rgb(21, 24, 30) background-color:oklab(0.953345 0.00801041 -0.0145717) display:grid font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30) border-radius:11px
+                img .stencil-icon width=26 height=26 src=data:…c6a5c297 width:36px height:26px color:rgb(21, 24, 30) font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
+              div .nb-text width:135px height:45.1406px color:rgb(21, 24, 30) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
+                div #card-title .nb-label width:135px height:20.6562px color:rgb(21, 24, 30) font-size:15.9px font-weight:620 border-top-color:rgb(21, 24, 30) "Application Insights"
+                div #card-second-line .nb-sub width:135px height:21.4844px color:rgb(95, 102, 115) font-size:15.9px font-weight:400 border-top-color:rgb(95, 102, 115) "traces · logs · metrics"
 == node-api
-          div #node-api .dn.dn-card width:235px height:72px color:rgb(19, 25, 38) font-size:13.9px font-weight:400 border-top-color:rgb(19, 25, 38)
-            div .nb.nb-card width:235px height:72px color:rgb(19, 25, 38) background-color:rgb(255, 255, 255) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(221, 226, 234) border-top-width:1px border-radius:14px
-              div .nb-tile width:44px height:44px color:rgb(19, 25, 38) background-color:oklab(0.940791 0.00559681 -0.0252616) display:grid font-size:13.9px font-weight:400 border-top-color:rgb(19, 25, 38) border-radius:11px
-                img .stencil-icon width=26 height=26 src=data:…328354bb width:36px height:26px color:rgb(19, 25, 38) font-size:13.9px font-weight:400 border-top-color:rgb(19, 25, 38)
-              div .nb-text width:150px height:33.5156px color:rgb(19, 25, 38) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(19, 25, 38)
-                div .nb-label width:150px height:16.875px color:rgb(19, 25, 38) font-size:12.9px font-weight:620 border-top-color:rgb(19, 25, 38) "Orders API"
-                div .nb-sub width:150px height:13.6406px color:rgb(86, 96, 116) display:flow-root font-size:9.9px font-weight:400 border-top-color:rgb(86, 96, 116) "ASP.NET Core · 3 replicas"
+          div #node-api .dn.dn-card width:221px height:72px color:rgb(21, 24, 30) font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
+            div .nb.nb-card width:221px height:72px color:rgb(21, 24, 30) background-color:rgb(255, 255, 255) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(216, 221, 230) border-top-width:1px border-radius:14px
+              div .nb-tile width:44px height:44px color:rgb(21, 24, 30) background-color:oklab(0.940791 0.00559681 -0.0252616) display:grid font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30) border-radius:11px
+                img .stencil-icon width=26 height=26 src=data:…328354bb width:36px height:26px color:rgb(21, 24, 30) font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
+              div .nb-text width:136px height:45.1406px color:rgb(21, 24, 30) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
+                div #card-title .nb-label width:136px height:20.6562px color:rgb(21, 24, 30) font-size:15.9px font-weight:620 border-top-color:rgb(21, 24, 30) "Orders API"
+                div #card-second-line .nb-sub width:136px height:21.4844px color:rgb(95, 102, 115) font-size:15.9px font-weight:400 border-top-color:rgb(95, 102, 115) "ASP.NET Core · 3 replicas"
 == node-appcfg
-          div #node-appcfg .dn.dn-card width:220px height:72px color:rgb(19, 25, 38) font-size:13.9px font-weight:400 border-top-color:rgb(19, 25, 38)
-            div .nb.nb-card width:220px height:72px color:rgb(19, 25, 38) background-color:rgb(255, 255, 255) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(221, 226, 234) border-top-width:1px border-radius:14px
-              div .nb-tile width:44px height:44px color:rgb(19, 25, 38) background-color:oklab(0.952438 -0.00582675 -0.017335) display:grid font-size:13.9px font-weight:400 border-top-color:rgb(19, 25, 38) border-radius:11px
-                img .stencil-icon width=26 height=26 src=data:…08c4dc78 width:36px height:26px color:rgb(19, 25, 38) font-size:13.9px font-weight:400 border-top-color:rgb(19, 25, 38)
-              div .nb-text width:102px height:33.5156px color:rgb(19, 25, 38) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(19, 25, 38)
-                div .nb-label width:102px height:16.875px color:rgb(19, 25, 38) font-size:12.9px font-weight:620 border-top-color:rgb(19, 25, 38) "orders-config"
-                div .nb-sub width:102px height:13.6406px color:rgb(86, 96, 116) display:flow-root font-size:9.9px font-weight:400 border-top-color:rgb(86, 96, 116) "App Configuration"
+          div #node-appcfg .dn.dn-card width:220px height:72px color:rgb(21, 24, 30) font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
+            div .nb.nb-card width:220px height:72px color:rgb(21, 24, 30) background-color:rgb(255, 255, 255) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(216, 221, 230) border-top-width:1px border-radius:14px
+              div .nb-tile width:44px height:44px color:rgb(21, 24, 30) background-color:oklab(0.952438 -0.00582675 -0.017335) display:grid font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30) border-radius:11px
+                img .stencil-icon width=26 height=26 src=data:…08c4dc78 width:36px height:26px color:rgb(21, 24, 30) font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
+              div .nb-text width:135px height:45.1406px color:rgb(21, 24, 30) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
+                div #card-title .nb-label width:135px height:20.6562px color:rgb(21, 24, 30) font-size:15.9px font-weight:620 border-top-color:rgb(21, 24, 30) "orders-config"
+                div #card-second-line .nb-sub width:135px height:21.4844px color:rgb(95, 102, 115) font-size:15.9px font-weight:400 border-top-color:rgb(95, 102, 115) "App Configuration"
 == node-entra
-          div #node-entra .dn.dn-card width:220px height:72px color:rgb(19, 25, 38) font-size:13.9px font-weight:400 border-top-color:rgb(19, 25, 38)
-            div .nb.nb-card width:220px height:72px color:rgb(19, 25, 38) background-color:rgb(255, 255, 255) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(221, 226, 234) border-top-width:1px border-radius:14px
-              div .nb-tile width:44px height:44px color:rgb(19, 25, 38) background-color:oklab(0.959409 -0.00710228 -0.0152683) display:grid font-size:13.9px font-weight:400 border-top-color:rgb(19, 25, 38) border-radius:11px
-                img .stencil-icon width=26 height=26 src=data:…4b9bbe8d width:36px height:26px color:rgb(19, 25, 38) font-size:13.9px font-weight:400 border-top-color:rgb(19, 25, 38)
-              div .nb-text width:72px height:33.5156px color:rgb(19, 25, 38) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(19, 25, 38)
-                div .nb-label width:72px height:16.875px color:rgb(19, 25, 38) font-size:12.9px font-weight:620 border-top-color:rgb(19, 25, 38) "Entra ID"
-                div .nb-sub width:72px height:13.6406px color:rgb(86, 96, 116) display:flow-root font-size:9.9px font-weight:400 border-top-color:rgb(86, 96, 116) "Token issuer"
+          div #node-entra .dn.dn-card width:220px height:72px color:rgb(21, 24, 30) font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
+            div .nb.nb-card width:220px height:72px color:rgb(21, 24, 30) background-color:rgb(255, 255, 255) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(216, 221, 230) border-top-width:1px border-radius:14px
+              div .nb-tile width:44px height:44px color:rgb(21, 24, 30) background-color:oklab(0.959409 -0.00710228 -0.0152683) display:grid font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30) border-radius:11px
+                img .stencil-icon width=26 height=26 src=data:…4b9bbe8d width:36px height:26px color:rgb(21, 24, 30) font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
+              div .nb-text width:95px height:45.1406px color:rgb(21, 24, 30) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
+                div #card-title .nb-label width:95px height:20.6562px color:rgb(21, 24, 30) font-size:15.9px font-weight:620 border-top-color:rgb(21, 24, 30) "Entra ID"
+                div #card-second-line .nb-sub width:95px height:21.4844px color:rgb(95, 102, 115) font-size:15.9px font-weight:400 border-top-color:rgb(95, 102, 115) "Token issuer"
 == node-fd
-          div #node-fd .dn.dn-card width:220px height:72px color:rgb(19, 25, 38) font-size:13.9px font-weight:400 border-top-color:rgb(19, 25, 38)
-            div .nb.nb-card width:220px height:72px color:rgb(19, 25, 38) background-color:rgb(255, 255, 255) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(221, 226, 234) border-top-width:1px border-radius:14px
-              div .nb-tile width:44px height:44px color:rgb(19, 25, 38) background-color:oklab(0.952438 -0.00582675 -0.017335) display:grid font-size:13.9px font-weight:400 border-top-color:rgb(19, 25, 38) border-radius:11px
-                img .stencil-icon width=26 height=26 src=data:…fc4cc840 width:36px height:26px color:rgb(19, 25, 38) font-size:13.9px font-weight:400 border-top-color:rgb(19, 25, 38)
-              div .nb-text width:66.6562px height:33.5156px color:rgb(19, 25, 38) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(19, 25, 38)
-                div .nb-label width:66.6562px height:16.875px color:rgb(19, 25, 38) font-size:12.9px font-weight:620 border-top-color:rgb(19, 25, 38) "Front Door"
-                div .nb-sub width:66.6562px height:13.6406px color:rgb(86, 96, 116) display:flow-root font-size:9.9px font-weight:400 border-top-color:rgb(86, 96, 116) "WAF · TLS"
+          div #node-fd .dn.dn-card width:220px height:72px color:rgb(21, 24, 30) font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
+            div .nb.nb-card width:220px height:72px color:rgb(21, 24, 30) background-color:rgb(255, 255, 255) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(216, 221, 230) border-top-width:1px border-radius:14px
+              div .nb-tile width:44px height:44px color:rgb(21, 24, 30) background-color:oklab(0.952438 -0.00582675 -0.017335) display:grid font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30) border-radius:11px
+                img .stencil-icon width=26 height=26 src=data:…fc4cc840 width:36px height:26px color:rgb(21, 24, 30) font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
+              div .nb-text width:84.3594px height:45.1406px color:rgb(21, 24, 30) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
+                div #card-title .nb-label width:84.3594px height:20.6562px color:rgb(21, 24, 30) font-size:15.9px font-weight:620 border-top-color:rgb(21, 24, 30) "Front Door"
+                div #card-second-line .nb-sub width:84.3594px height:21.4844px color:rgb(95, 102, 115) font-size:15.9px font-weight:400 border-top-color:rgb(95, 102, 115) "WAF · TLS"
 == node-kv
-          div #node-kv .dn.dn-card width:220px height:72px color:rgb(19, 25, 38) font-size:13.9px font-weight:400 border-top-color:rgb(19, 25, 38)
-            div .nb.nb-card width:220px height:72px color:rgb(19, 25, 38) background-color:rgb(255, 255, 255) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(221, 226, 234) border-top-width:1px border-radius:14px
-              div .nb-tile width:44px height:44px color:rgb(19, 25, 38) background-color:oklab(0.970694 0.00876347 0.0164166) display:grid font-size:13.9px font-weight:400 border-top-color:rgb(19, 25, 38) border-radius:11px
-                img .stencil-icon width=26 height=26 src=data:…a88eb5b6 width:36px height:26px color:rgb(19, 25, 38) font-size:13.9px font-weight:400 border-top-color:rgb(19, 25, 38)
-              div .nb-text width:61.7969px height:33.5156px color:rgb(19, 25, 38) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(19, 25, 38)
-                div .nb-label width:61.7969px height:16.875px color:rgb(19, 25, 38) font-size:12.9px font-weight:620 border-top-color:rgb(19, 25, 38) "orders-kv"
-                div .nb-sub width:61.7969px height:13.6406px color:rgb(86, 96, 116) display:flow-root font-size:9.9px font-weight:400 border-top-color:rgb(86, 96, 116) "Key Vault"
+          div #node-kv .dn.dn-card width:220px height:72px color:rgb(21, 24, 30) font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
+            div .nb.nb-card width:220px height:72px color:rgb(21, 24, 30) background-color:rgb(255, 255, 255) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(216, 221, 230) border-top-width:1px border-radius:14px
+              div .nb-tile width:44px height:44px color:rgb(21, 24, 30) background-color:oklab(0.970694 0.00876347 0.0164166) display:grid font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30) border-radius:11px
+                img .stencil-icon width=26 height=26 src=data:…a88eb5b6 width:36px height:26px color:rgb(21, 24, 30) font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
+              div .nb-text width:76.5156px height:45.1406px color:rgb(21, 24, 30) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
+                div #card-title .nb-label width:76.5156px height:20.6562px color:rgb(21, 24, 30) font-size:15.9px font-weight:620 border-top-color:rgb(21, 24, 30) "orders-kv"
+                div #card-second-line .nb-sub width:76.5156px height:21.4844px color:rgb(95, 102, 115) font-size:15.9px font-weight:400 border-top-color:rgb(95, 102, 115) "Key Vault"
 == node-mi
-          div #node-mi .dn.dn-card width:220px height:72px color:rgb(19, 25, 38) font-size:13.9px font-weight:400 border-top-color:rgb(19, 25, 38)
-            div .nb.nb-card width:220px height:72px color:rgb(19, 25, 38) background-color:rgb(255, 255, 255) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(221, 226, 234) border-top-width:1px border-radius:14px
-              div .nb-tile width:44px height:44px color:rgb(19, 25, 38) background-color:oklab(0.959409 -0.00710228 -0.0152683) display:grid font-size:13.9px font-weight:400 border-top-color:rgb(19, 25, 38) border-radius:11px
-                img .stencil-icon width=26 height=26 src=data:…e54f3eb4 width:36px height:26px color:rgb(19, 25, 38) font-size:13.9px font-weight:400 border-top-color:rgb(19, 25, 38)
-              div .nb-text width:102px height:33.5156px color:rgb(19, 25, 38) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(19, 25, 38)
-                div .nb-label width:102px height:16.875px color:rgb(19, 25, 38) font-size:12.9px font-weight:620 border-top-color:rgb(19, 25, 38) "orders-api-id"
-                div .nb-sub width:102px height:13.6406px color:rgb(86, 96, 116) display:flow-root font-size:9.9px font-weight:400 border-top-color:rgb(86, 96, 116) "Workload identity"
+          div #node-mi .dn.dn-card width:220px height:72px color:rgb(21, 24, 30) font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
+            div .nb.nb-card width:220px height:72px color:rgb(21, 24, 30) background-color:rgb(255, 255, 255) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(216, 221, 230) border-top-width:1px border-radius:14px
+              div .nb-tile width:44px height:44px color:rgb(21, 24, 30) background-color:oklab(0.959409 -0.00710228 -0.0152683) display:grid font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30) border-radius:11px
+                img .stencil-icon width=26 height=26 src=data:…e54f3eb4 width:36px height:26px color:rgb(21, 24, 30) font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
+              div .nb-text width:135px height:45.1406px color:rgb(21, 24, 30) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
+                div #card-title .nb-label width:135px height:20.6562px color:rgb(21, 24, 30) font-size:15.9px font-weight:620 border-top-color:rgb(21, 24, 30) "orders-api-id"
+                div #card-second-line .nb-sub width:135px height:21.4844px color:rgb(95, 102, 115) font-size:15.9px font-weight:400 border-top-color:rgb(95, 102, 115) "Workload identity"
 == node-notify
-          div #node-notify .dn.dn-card width:220px height:72px color:rgb(19, 25, 38) font-size:13.9px font-weight:400 border-top-color:rgb(19, 25, 38)
-            div .nb.nb-card width:220px height:72px color:rgb(19, 25, 38) background-color:rgb(255, 255, 255) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(221, 226, 234) border-top-width:1px border-radius:14px
-              div .nb-tile width:44px height:44px color:rgb(19, 25, 38) background-color:oklab(0.974919 0.00285195 0.0171468) display:grid font-size:13.9px font-weight:400 border-top-color:rgb(19, 25, 38) border-radius:11px
-                img .stencil-icon width=26 height=26 src=data:…e7409108 width:36px height:26px color:rgb(19, 25, 38) font-size:13.9px font-weight:400 border-top-color:rgb(19, 25, 38)
-              div .nb-text width:132px height:33.5156px color:rgb(19, 25, 38) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(19, 25, 38)
-                div .nb-label width:132px height:16.875px color:rgb(19, 25, 38) font-size:12.9px font-weight:620 border-top-color:rgb(19, 25, 38) "Order confirmation"
-                div .nb-sub width:132px height:13.6406px color:rgb(86, 96, 116) display:flow-root font-size:9.9px font-weight:400 border-top-color:rgb(86, 96, 116) "Function · sends email"
+          div #node-notify .dn.dn-card width:220px height:72px color:rgb(21, 24, 30) font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
+            div .nb.nb-card width:220px height:72px color:rgb(21, 24, 30) background-color:rgb(255, 255, 255) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(216, 221, 230) border-top-width:1px border-radius:14px
+              div .nb-tile width:44px height:44px color:rgb(21, 24, 30) background-color:oklab(0.974919 0.00285195 0.0171468) display:grid font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30) border-radius:11px
+                img .stencil-icon width=26 height=26 src=data:…e7409108 width:36px height:26px color:rgb(21, 24, 30) font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
+              div .nb-text width:135px height:45.1406px color:rgb(21, 24, 30) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
+                div #card-title .nb-label width:135px height:20.6562px color:rgb(21, 24, 30) font-size:15.9px font-weight:620 border-top-color:rgb(21, 24, 30) "Order confirmation"
+                div #card-second-line .nb-sub width:135px height:21.4844px color:rgb(95, 102, 115) font-size:15.9px font-weight:400 border-top-color:rgb(95, 102, 115) "Function · sends email"
 == node-sb
-          div #node-sb .dn.dn-card width:220px height:72px color:rgb(19, 25, 38) font-size:13.9px font-weight:400 border-top-color:rgb(19, 25, 38)
-            div .nb.nb-card width:220px height:72px color:rgb(19, 25, 38) background-color:rgb(255, 255, 255) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(221, 226, 234) border-top-width:1px border-radius:14px
-              div .nb-tile width:44px height:44px color:rgb(19, 25, 38) background-color:oklab(0.952438 -0.00582675 -0.017335) display:grid font-size:13.9px font-weight:400 border-top-color:rgb(19, 25, 38) border-radius:11px
-                img .stencil-icon width=26 height=26 src=data:…52d3d802 width:36px height:26px color:rgb(19, 25, 38) font-size:13.9px font-weight:400 border-top-color:rgb(19, 25, 38)
-              div .nb-text width:102px height:33.5156px color:rgb(19, 25, 38) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(19, 25, 38)
-                div .nb-label width:102px height:16.875px color:rgb(19, 25, 38) font-size:12.9px font-weight:620 border-top-color:rgb(19, 25, 38) "orders.created"
-                div .nb-sub width:102px height:13.6406px color:rgb(86, 96, 116) display:flow-root font-size:9.9px font-weight:400 border-top-color:rgb(86, 96, 116) "Service Bus topic"
+          div #node-sb .dn.dn-card width:220px height:72px color:rgb(21, 24, 30) font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
+            div .nb.nb-card width:220px height:72px color:rgb(21, 24, 30) background-color:rgb(255, 255, 255) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(216, 221, 230) border-top-width:1px border-radius:14px
+              div .nb-tile width:44px height:44px color:rgb(21, 24, 30) background-color:oklab(0.952438 -0.00582675 -0.017335) display:grid font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30) border-radius:11px
+                img .stencil-icon width=26 height=26 src=data:…52d3d802 width:36px height:26px color:rgb(21, 24, 30) font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
+              div .nb-text width:133px height:45.1406px color:rgb(21, 24, 30) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
+                div #card-title .nb-label width:133px height:20.6562px color:rgb(21, 24, 30) font-size:15.9px font-weight:620 border-top-color:rgb(21, 24, 30) "orders.created"
+                div #card-second-line .nb-sub width:133px height:21.4844px color:rgb(95, 102, 115) font-size:15.9px font-weight:400 border-top-color:rgb(95, 102, 115) "Service Bus topic"
 == node-sql
-          div #node-sql .dn.dn-card width:220px height:72px color:rgb(19, 25, 38) font-size:13.9px font-weight:400 border-top-color:rgb(19, 25, 38)
-            div .nb.nb-card width:220px height:72px color:rgb(19, 25, 38) background-color:rgb(255, 255, 255) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(221, 226, 234) border-top-width:1px border-radius:14px
-              div .nb-tile width:44px height:44px color:rgb(19, 25, 38) background-color:oklab(0.952438 -0.00582675 -0.017335) display:grid font-size:13.9px font-weight:400 border-top-color:rgb(19, 25, 38) border-radius:11px
-                img .stencil-icon width=26 height=26 src=data:…1b96af19 width:36px height:26px color:rgb(19, 25, 38) font-size:13.9px font-weight:400 border-top-color:rgb(19, 25, 38)
-              div .nb-text width:61.7969px height:33.5156px color:rgb(19, 25, 38) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(19, 25, 38)
-                div .nb-label width:61.7969px height:16.875px color:rgb(19, 25, 38) font-size:12.9px font-weight:620 border-top-color:rgb(19, 25, 38) "orders-db"
-                div .nb-sub width:61.7969px height:13.6406px color:rgb(86, 96, 116) display:flow-root font-size:9.9px font-weight:400 border-top-color:rgb(86, 96, 116) "Azure SQL"
+          div #node-sql .dn.dn-card width:220px height:72px color:rgb(21, 24, 30) font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
+            div .nb.nb-card width:220px height:72px color:rgb(21, 24, 30) background-color:rgb(255, 255, 255) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(216, 221, 230) border-top-width:1px border-radius:14px
+              div .nb-tile width:44px height:44px color:rgb(21, 24, 30) background-color:oklab(0.952438 -0.00582675 -0.017335) display:grid font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30) border-radius:11px
+                img .stencil-icon width=26 height=26 src=data:…1b96af19 width:36px height:26px color:rgb(21, 24, 30) font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
+              div .nb-text width:83px height:45.1406px color:rgb(21, 24, 30) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
+                div #card-title .nb-label width:83px height:20.6562px color:rgb(21, 24, 30) font-size:15.9px font-weight:620 border-top-color:rgb(21, 24, 30) "orders-db"
+                div #card-second-line .nb-sub width:83px height:21.4844px color:rgb(95, 102, 115) font-size:15.9px font-weight:400 border-top-color:rgb(95, 102, 115) "Azure SQL"
 == node-web
-          div #node-web .dn.dn-card width:223px height:72px color:rgb(19, 25, 38) font-size:13.9px font-weight:400 border-top-color:rgb(19, 25, 38)
-            div .nb.nb-card width:223px height:72px color:rgb(19, 25, 38) background-color:rgb(255, 255, 255) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(221, 226, 234) border-top-width:1px border-radius:14px
-              div .nb-tile width:44px height:44px color:rgb(19, 25, 38) background-color:oklab(0.954387 0.00282416 -0.0222537) display:grid font-size:13.9px font-weight:400 border-top-color:rgb(19, 25, 38) border-radius:11px
-                img .stencil-icon width=26 height=26 src=data:…8e4c7264 width:36px height:26px color:rgb(19, 25, 38) font-size:13.9px font-weight:400 border-top-color:rgb(19, 25, 38)
-              div .nb-text width:138px height:33.5156px color:rgb(19, 25, 38) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(19, 25, 38)
-                div .nb-label width:138px height:16.875px color:rgb(19, 25, 38) font-size:12.9px font-weight:620 border-top-color:rgb(19, 25, 38) "Storefront"
-                div .nb-sub width:138px height:13.6406px color:rgb(86, 96, 116) display:flow-root font-size:9.9px font-weight:400 border-top-color:rgb(86, 96, 116) "Shoppers placing orders"
+          div #node-web .dn.dn-card width:220px height:72px color:rgb(21, 24, 30) font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
+            div .nb.nb-card width:220px height:72px color:rgb(21, 24, 30) background-color:rgb(255, 255, 255) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(216, 221, 230) border-top-width:1px border-radius:14px
+              div .nb-tile width:44px height:44px color:rgb(21, 24, 30) background-color:oklab(0.954387 0.00282416 -0.0222537) display:grid font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30) border-radius:11px
+                img .stencil-icon width=26 height=26 src=data:…8e4c7264 width:36px height:26px color:rgb(21, 24, 30) font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
+              div .nb-text width:135px height:45.1406px color:rgb(21, 24, 30) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
+                div #card-title .nb-label width:135px height:20.6562px color:rgb(21, 24, 30) font-size:15.9px font-weight:620 border-top-color:rgb(21, 24, 30) "Storefront"
+                div #card-second-line .nb-sub width:135px height:21.4844px color:rgb(95, 102, 115) font-size:15.9px font-weight:400 border-top-color:rgb(95, 102, 115) "Shoppers placing orders"

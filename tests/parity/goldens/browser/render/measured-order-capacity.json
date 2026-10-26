@@ -1,17 +1,17 @@
 {
-  "viewport": "translate(377.643px, -0.674157px) scale(1.01685)",
+  "viewport": "translate(624.921px, -12.0449px) scale(1.10112)",
   "nodes": {
     "orders": { "kind": "node", "box": "translate(40px, 40px) 220×72", "text": "Northwind orders 1 order/s today" },
-    "intake": { "kind": "node", "box": "translate(40px, 200px) 259×72", "text": "Order intake Pinned lesson: 1 × 4 / 0.25 s" },
-    "queue": { "kind": "node", "box": "translate(40px, 360px) 247×72", "text": "Payment jobs Buffer before measured work" },
-    "payment-worker": { "kind": "node", "box": "translate(40px, 520px) 247×72", "text": "Payment worker Measured: 2 × 1 / 1 s = 2/s" },
+    "intake": { "kind": "node", "box": "translate(40px, 200px) 236×72", "text": "Order intake Pinned lesson: 1 × 4 / 0.25 s" },
+    "queue": { "kind": "node", "box": "translate(40px, 360px) 238×72", "text": "Payment jobs Buffer before measured work" },
+    "payment-worker": { "kind": "node", "box": "translate(40px, 520px) 227×72", "text": "Payment worker Measured: 2 × 1 / 1 s = 2/s" },
     "ledger": { "kind": "node", "box": "translate(40px, 680px) 220×72", "text": "Northwind ledger Completed payments" }
   },
-  "edges": { "submit": "M150,112 L150,146.3 Q150,156 159.8,156 L159.8,156 Q169.5,156 169.5,165.8 L169.5,200", "queue-payment": "M169.5,272 L169.5,313 Q169.5,316 166.5,316 L166.5,316 Q163.5,316 163.5,319 L163.5,360", "pay": "M163.5,432 L163.5,520", "record": "M163.5,592 L163.5,629.3 Q163.5,636 156.8,636 L156.8,636 Q150,636 150,642.8 L150,680" },
+  "edges": { "submit": "M150,112 L150,152 Q150,156 154,156 L154,156 Q158,156 158,160 L158,200", "queue-payment": "M158,272 L158,315.5 Q158,316 158.5,316 L158.5,316 Q159,316 159,316.5 L159,360", "pay": "M159,432 L159,473.3 Q159,476 156.3,476 L156.3,476 Q153.5,476 153.5,478.8 L153.5,520", "record": "M153.5,592 L153.5,634.3 Q153.5,636 151.8,636 L151.8,636 Q150,636 150,637.8 L150,680" },
   "labels": {
-    "submit": { "style": "transform: translate(-50%, -50%) translate(150px, 135px); --fe-w: 47px; --fe-h: 19px;", "text": "Order" },
-    "queue-payment": { "style": "transform: translate(-50%, -50%) translate(169.5px, 295px); --fe-w: 83px; --fe-h: 19px;", "text": "Payment job" },
-    "pay": { "style": "transform: translate(-50%, -50%) translate(163.5px, 470px); --fe-w: 59px; --fe-h: 19px;", "text": "Workers" },
-    "record": { "style": "transform: translate(-50%, -50%) translate(163.5px, 615px); --fe-w: 53px; --fe-h: 19px;", "text": "Record" }
+    "submit": { "style": "transform: translate(-50%, -50%) translate(150px, 135px); --fe-w: 48.260000000000005px; --fe-h: 22px;", "text": "Order" },
+    "queue-payment": { "style": "transform: translate(-50%, -50%) translate(158px, 295px); --fe-w: 85.92999999999999px; --fe-h: 22px;", "text": "Payment job" },
+    "pay": { "style": "transform: translate(-50%, -50%) translate(159px, 455px); --fe-w: 62.95px; --fe-h: 22px;", "text": "Workers" },
+    "record": { "style": "transform: translate(-50%, -50%) translate(153.5px, 615px); --fe-w: 56.209999999999994px; --fe-h: 22px;", "text": "Record" }
   }
 }

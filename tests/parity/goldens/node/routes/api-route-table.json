@@ -1,12 +1,12 @@
 {
   "smoothstep": {
-    "app-gateway": { "ok": true, "sides": ["right", "left"], "points": [260, 156, 320, 156, 320, 299, 380, 299], "path": "24c6a30416b7", "label": [320, 227.5, 47, 19], "mode": "full", "text": "HTTPS", "lines": ["HTTPS"] },
-    "carriers-gateway": { "ok": true, "sides": ["right", "left"], "points": [260, 456, 320, 456, 320, 313, 380, 313], "path": "0d5b48502d92", "label": [320, 384.5, 59, 19], "mode": "full", "text": "Webhook", "lines": ["Webhook"] },
-    "to-tracking": { "ok": true, "sides": ["right", "left"], "points": [600, 280, 674.5, 280, 674.5, 36, 760, 36], "path": "1bdb78801f4b", "label": [674.5, 158, 47, 19], "mode": "full", "text": "Track", "lines": ["Track"] },
-    "to-pricing": { "ok": true, "sides": ["right", "left"], "points": [600, 293, 685.5, 293, 685.5, 186, 760, 186], "path": "e0fc00e47efc", "label": [715.75, 186, 47, 19], "mode": "full", "text": "Quote", "lines": ["Quote"] },
-    "to-pricing-canary": { "ok": true, "sides": ["right", "left"], "points": [600, 306, 691, 306, 691, 336, 760, 336], "path": "17f3938d0c32", "label": [656.5, 306, 89, 19], "mode": "full", "text": "Quote canary", "lines": ["Quote canary"] },
-    "to-labels": { "ok": true, "sides": ["right", "left"], "points": [600, 319, 680, 319, 680, 486, 760, 486], "path": "581bc57ff4a5", "label": [713, 486, 47, 19], "mode": "full", "text": "Label", "lines": ["Label"] },
-    "to-events": { "ok": true, "sides": ["right", "left"], "points": [600, 332, 669, 332, 669, 636, 760, 636], "path": "a3ec556a31d9", "label": [669, 514, 95, 19], "mode": "full", "text": "Carrier event", "lines": ["Carrier event"] }
+    "app-gateway": { "ok": true, "sides": ["right", "left"], "points": [260, 156, 320, 156, 320, 299, 380, 299], "path": "24c6a30416b7", "label": [320, 227.5, 54.7, 22], "mode": "full", "text": "HTTPS", "lines": ["HTTPS"] },
+    "carriers-gateway": { "ok": true, "sides": ["right", "left"], "points": [260, 456, 320, 456, 320, 313, 380, 313], "path": "0d5b48502d92", "label": [320, 384.5, 69.09, 22], "mode": "full", "text": "Webhook", "lines": ["Webhook"] },
+    "to-tracking": { "ok": true, "sides": ["right", "left"], "points": [600, 280, 674.5, 280, 674.5, 36, 760, 36], "path": "1bdb78801f4b", "label": [674.5, 158, 48.56, 22], "mode": "full", "text": "Track", "lines": ["Track"] },
+    "to-pricing": { "ok": true, "sides": ["right", "left"], "points": [600, 293, 685.5, 293, 685.5, 186, 760, 186], "path": "e0fc00e47efc", "label": [715.75, 186, 50.83, 22], "mode": "full", "text": "Quote", "lines": ["Quote"] },
+    "to-pricing-canary": { "ok": true, "sides": ["right", "left"], "points": [600, 306, 691, 306, 691, 336, 760, 336], "path": "17f3938d0c32", "label": [656.5, 306, 91.67999999999999, 22], "mode": "full", "text": "Quote canary", "lines": ["Quote canary"] },
+    "to-labels": { "ok": true, "sides": ["right", "left"], "points": [600, 319, 680, 319, 680, 486, 760, 486], "path": "581bc57ff4a5", "label": [713, 486, 46.760000000000005, 22], "mode": "full", "text": "Label", "lines": ["Label"] },
+    "to-events": { "ok": true, "sides": ["right", "left"], "points": [600, 332, 669, 332, 669, 636, 760, 636], "path": "a3ec556a31d9", "label": [669, 514, 88.12, 22], "mode": "full", "text": "Carrier event", "lines": ["Carrier event"] }
   },
   "bezier": {
     "app-gateway": {
@@ -57,7 +57,7 @@
         299
       ],
       "path": "41dc8acee51e",
-      "label": [318.42579025940665, 222.155375, 47, 19],
+      "label": [318.42579025940665, 222.155375, 54.7, 22],
       "mode": "full",
       "text": "HTTPS",
       "lines": ["HTTPS"]
@@ -110,7 +110,7 @@
         313
       ],
       "path": "1a32022f34b7",
-      "label": [318.42579025940665, 389.844625, 59, 19],
+      "label": [318.42579025940665, 389.844625, 69.09, 22],
       "mode": "full",
       "text": "Webhook",
       "lines": ["Webhook"]
@@ -163,7 +163,7 @@
         36
       ],
       "path": "31f031f57e73",
-      "label": [678.5695911821723, 167.11950000000002, 47, 19],
+      "label": [678.5695911821723, 167.11950000000002, 48.56, 22],
       "mode": "full",
       "text": "Track",
       "lines": ["Track"]
@@ -216,7 +216,7 @@
         186
       ],
       "path": "5fd316afa1e7",
-      "label": [695.203160465191, 219.90562500000001, 47, 19],
+      "label": [701.7176875769919, 212.62962500000003, 50.83, 22],
       "mode": "full",
       "text": "Quote",
       "lines": ["Quote"]
@@ -269,7 +269,7 @@
         336
       ],
       "path": "2c3dbdad2c7e",
-      "label": [683.4417248985532, 322.12125000000003, 89, 19],
+      "label": [690.3590095502926, 324.34125000000006, 91.67999999999999, 22],
       "mode": "full",
       "text": "Quote canary",
       "lines": ["Quote canary"]
@@ -322,7 +322,7 @@
         486
       ],
       "path": "b5224f151300",
-      "label": [704.3210356287939, 454.91712499999994, 47, 19],
+      "label": [704.3210356287939, 454.91712499999994, 46.760000000000005, 22],
       "mode": "full",
       "text": "Label",
       "lines": ["Label"]
@@ -375,19 +375,19 @@
         636
       ],
       "path": "8d2d40d33fd6",
-      "label": [680.623437235092, 495.362, 95, 19],
+      "label": [680.623437235092, 495.362, 88.12, 22],
       "mode": "full",
       "text": "Carrier event",
       "lines": ["Carrier event"]
     }
   },
   "straight": {
-    "app-gateway": { "ok": true, "sides": ["right", "left"], "points": [260, 156, 380, 299], "path": "d8742f5fc136", "label": [316.1431092591712, 222.90387186717896, 47, 19], "mode": "full", "text": "HTTPS", "lines": ["HTTPS"] },
-    "carriers-gateway": { "ok": true, "sides": ["right", "left"], "points": [260, 456, 380, 313], "path": "1007e4a25993", "label": [316.1431092591712, 389.09612813282104, 59, 19], "mode": "full", "text": "Webhook", "lines": ["Webhook"] },
-    "to-tracking": { "ok": true, "sides": ["right", "left"], "points": [600, 280, 760, 36], "path": "04d078fd1277", "label": [676.7098582266785, 163.0174662043152, 47, 19], "mode": "full", "text": "Track", "lines": ["Track"] },
-    "to-pricing": { "ok": true, "sides": ["right", "left"], "points": [600, 293, 760, 186], "path": "a0f5062de4bb", "label": [675.0124990905664, 242.8353912331837, 47, 19], "mode": "full", "text": "Quote", "lines": ["Quote"] },
-    "to-pricing-canary": { "ok": true, "sides": ["right", "left"], "points": [600, 306, 760, 336], "path": "b87391c39f1a", "label": [674.102766878394, 319.8942687896989, 89, 19], "mode": "full", "text": "Quote canary", "lines": ["Quote canary"] },
-    "to-labels": { "ok": true, "sides": ["right", "left"], "points": [600, 319, 760, 486], "path": "7a3f32574e64", "label": [675.8491313220416, 398.1675308173809, 47, 19], "mode": "full", "text": "Label", "lines": ["Label"] },
-    "to-events": { "ok": true, "sides": ["right", "left"], "points": [600, 332, 760, 636], "path": "8f0c3f194e81", "label": [677.2055214030042, 478.6904906657081, 95, 19], "mode": "full", "text": "Carrier event", "lines": ["Carrier event"] }
+    "app-gateway": { "ok": true, "sides": ["right", "left"], "points": [260, 156, 380, 299], "path": "d8742f5fc136", "label": [316.1431092591712, 222.90387186717896, 54.7, 22], "mode": "full", "text": "HTTPS", "lines": ["HTTPS"] },
+    "carriers-gateway": { "ok": true, "sides": ["right", "left"], "points": [260, 456, 380, 313], "path": "1007e4a25993", "label": [316.1431092591712, 389.09612813282104, 69.09, 22], "mode": "full", "text": "Webhook", "lines": ["Webhook"] },
+    "to-tracking": { "ok": true, "sides": ["right", "left"], "points": [600, 280, 760, 36], "path": "04d078fd1277", "label": [676.7098582266785, 163.0174662043152, 48.56, 22], "mode": "full", "text": "Track", "lines": ["Track"] },
+    "to-pricing": { "ok": true, "sides": ["right", "left"], "points": [600, 293, 760, 186], "path": "a0f5062de4bb", "label": [675.0124990905664, 242.8353912331837, 50.83, 22], "mode": "full", "text": "Quote", "lines": ["Quote"] },
+    "to-pricing-canary": { "ok": true, "sides": ["right", "left"], "points": [600, 306, 760, 336], "path": "b87391c39f1a", "label": [674.102766878394, 319.8942687896989, 91.67999999999999, 22], "mode": "full", "text": "Quote canary", "lines": ["Quote canary"] },
+    "to-labels": { "ok": true, "sides": ["right", "left"], "points": [600, 319, 760, 486], "path": "7a3f32574e64", "label": [675.8491313220416, 398.1675308173809, 46.760000000000005, 22], "mode": "full", "text": "Label", "lines": ["Label"] },
+    "to-events": { "ok": true, "sides": ["right", "left"], "points": [600, 332, 760, 636], "path": "8f0c3f194e81", "label": [677.2055214030042, 478.6904906657081, 88.12, 22], "mode": "full", "text": "Carrier event", "lines": ["Carrier event"] }
   }
 }

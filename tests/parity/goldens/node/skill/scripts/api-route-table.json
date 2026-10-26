@@ -2,7 +2,7 @@
   "layout": {
     "status": 0,
     "stdout": "<tmp>/laid.json: placed 8 nodes.\n",
-    "nodes": { "app": [40, 220], "carriers": [40, 340], "gateway": [400, 280], "tracking": [763, 40], "pricing": [763, 160], "pricing-canary": [763, 280], "labels": [763, 400], "events": [763, 520] },
+    "nodes": { "app": [40, 220], "carriers": [40, 340], "gateway": [400, 280], "tracking": [760, 40], "pricing": [760, 160], "pricing-canary": [760, 280], "labels": [760, 400], "events": [760, 520] },
     "groups": {}
   },
   "shareLink": {

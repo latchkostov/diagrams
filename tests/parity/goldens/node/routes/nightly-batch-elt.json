@@ -1,15 +1,15 @@
 {
   "smoothstep": {
-    "app-db-to-airbyte": { "ok": true, "sides": ["right", "left"], "points": [260, 196, 347, 196, 347, 342, 420, 342], "path": "995a925db2fc", "label": [347, 269, 83, 19], "mode": "full", "text": "Incremental", "lines": ["Incremental"] },
-    "crm-to-airbyte": { "ok": true, "sides": ["right", "left"], "points": [274, 356, 420, 356], "path": "797e36a7e619", "label": [341, 356, 65, 19], "mode": "full", "text": "Bulk API", "lines": ["Bulk API"] },
-    "billing-to-airbyte": { "ok": true, "sides": ["right", "left"], "points": [274, 516, 347, 516, 347, 370, 420, 370], "path": "563e747675d0", "label": [347, 443, 77, 19], "mode": "full", "text": "Events API", "lines": ["Events API"] },
-    "airflow-to-airbyte": { "ok": true, "sides": ["left", "top"], "points": [800, 76, 530, 76, 530, 320], "path": "280ece19ae29", "label": [664, 76, 129, 19], "mode": "full", "text": "1 · Sync sources", "lines": ["1 · Sync sources"], "glyph": true },
-    "airflow-to-dbt": { "ok": true, "sides": ["right", "top"], "points": [1028, 76, 1290, 76, 1290, 320], "path": "64e6fa00a56b", "label": [1160, 76, 111, 19], "mode": "full", "text": "2 · dbt build", "lines": ["2 · dbt build"], "glyph": true },
-    "airbyte-to-raw": { "ok": true, "sides": ["right", "left"], "points": [640, 356, 800, 356], "path": "e7b1dd2a6134", "label": [714, 356, 71, 19], "mode": "full", "text": "COPY INTO", "lines": ["COPY INTO"] },
-    "dbt-to-raw": { "ok": true, "sides": ["left", "right"], "points": [1180, 356, 1022, 356], "path": "6e4c3db36dfd", "label": [1107, 356, 69, 19], "mode": "full", "text": "SELECT", "lines": ["SELECT"], "glyph": true },
-    "dbt-to-marts": { "ok": true, "sides": ["right", "left"], "points": [1400, 356, 1560, 356], "path": "50e7c929fd6d", "label": [1474, 356, 107, 19], "mode": "full", "text": "CREATE TABLE AS", "lines": ["CREATE TABLE AS"] },
-    "dbt-to-slack": { "ok": true, "sides": ["bottom", "top"], "points": [1290, 392, 1290, 520], "path": "872c56dd70b0", "label": [1290, 450, 83, 19], "mode": "full", "text": "Test failed", "lines": ["Test failed"] },
-    "tableau-to-marts": { "ok": true, "sides": ["left", "right"], "points": [1940, 356, 1807, 356], "path": "37e63871000c", "label": [1879.5, 356, 113, 19], "mode": "full", "text": "Refresh extracts", "lines": ["Refresh extracts"] }
+    "app-db-to-airbyte": { "ok": true, "sides": ["right", "left"], "points": [260, 196, 347, 196, 347, 342, 420, 342], "path": "995a925db2fc", "label": [347, 269, 83.14999999999999, 22], "mode": "full", "text": "Incremental", "lines": ["Incremental"] },
+    "crm-to-airbyte": { "ok": true, "sides": ["right", "left"], "points": [274, 356, 420, 356], "path": "797e36a7e619", "label": [341, 356, 62.900000000000006, 22], "mode": "full", "text": "Bulk API", "lines": ["Bulk API"] },
+    "billing-to-airbyte": { "ok": true, "sides": ["right", "left"], "points": [274, 516, 347, 516, 347, 370, 420, 370], "path": "563e747675d0", "label": [347, 443, 75.33, 22], "mode": "full", "text": "Events API", "lines": ["Events API"] },
+    "airflow-to-airbyte": { "ok": true, "sides": ["left", "top"], "points": [800, 76, 530, 76, 530, 320], "path": "280ece19ae29", "label": [664, 76, 123.74, 22], "mode": "full", "text": "1 · Sync sources", "lines": ["1 · Sync sources"], "glyph": true },
+    "airflow-to-dbt": { "ok": true, "sides": ["right", "top"], "points": [1028, 76, 1290, 76, 1290, 320], "path": "64e6fa00a56b", "label": [1160, 76, 99.17999999999998, 22], "mode": "full", "text": "2 · dbt build", "lines": ["2 · dbt build"], "glyph": true },
+    "airbyte-to-raw": { "ok": true, "sides": ["right", "left"], "points": [640, 356, 800, 356], "path": "e7b1dd2a6134", "label": [714, 356, 80.52000000000001, 22], "mode": "full", "text": "COPY INTO", "lines": ["COPY INTO"] },
+    "dbt-to-raw": { "ok": true, "sides": ["left", "right"], "points": [1180, 356, 1022, 356], "path": "6e4c3db36dfd", "label": [1107, 356, 76.36, 22], "mode": "full", "text": "SELECT", "lines": ["SELECT"], "glyph": true },
+    "dbt-to-marts": { "ok": true, "sides": ["right", "left"], "points": [1400, 356, 1560, 356], "path": "50e7c929fd6d", "label": [1474, 356, 119.91, 22], "mode": "full", "text": "CREATE TABLE AS", "lines": ["CREATE TABLE AS"] },
+    "dbt-to-slack": { "ok": true, "sides": ["bottom", "top"], "points": [1290, 392, 1290, 520], "path": "872c56dd70b0", "label": [1290, 450, 73.41, 22], "mode": "full", "text": "Test failed", "lines": ["Test failed"] },
+    "tableau-to-marts": { "ok": true, "sides": ["left", "right"], "points": [1940, 356, 1807, 356], "path": "37e63871000c", "label": [1879.5, 356, 107.11999999999999, 22], "mode": "full", "text": "Refresh extracts", "lines": ["Refresh extracts"] }
   },
   "bezier": {
     "app-db-to-airbyte": {
@@ -60,7 +60,7 @@
         342
       ],
       "path": "9a362f63c004",
-      "label": [342.60264866277953, 274.45675, 83, 19],
+      "label": [342.60264866277953, 274.45675, 83.14999999999999, 22],
       "mode": "full",
       "text": "Incremental",
       "lines": ["Incremental"]
@@ -113,7 +113,7 @@
         356
       ],
       "path": "4f558275ce56",
-      "label": [343.81975500000004, 356, 65, 19],
+      "label": [343.81975500000004, 356, 62.900000000000006, 22],
       "mode": "full",
       "text": "Bulk API",
       "lines": ["Bulk API"]
@@ -166,7 +166,7 @@
         370
       ],
       "path": "ffc6540fcfa7",
-      "label": [344.76271424581023, 448.45675, 77, 19],
+      "label": [344.76271424581023, 448.45675, 75.33, 22],
       "mode": "full",
       "text": "Events API",
       "lines": ["Events API"]
@@ -219,7 +219,7 @@
         320
       ],
       "path": "c53bbdf6ddfc",
-      "label": [615.2236249487703, 134.68725970709647, 129, 19],
+      "label": [615.2236249487703, 134.68725970709647, 123.74, 22],
       "mode": "full",
       "text": "1 · Sync sources",
       "lines": ["1 · Sync sources"],
@@ -273,7 +273,7 @@
         320
       ],
       "path": "009b1a2b05cb",
-      "label": [1208.1055585584581, 135.5651548664221, 111, 19],
+      "label": [1208.1055585584581, 135.5651548664221, 99.17999999999998, 22],
       "mode": "full",
       "text": "2 · dbt build",
       "lines": ["2 · dbt build"],
@@ -327,7 +327,7 @@
         356
       ],
       "path": "b5c4b37de303",
-      "label": [716.5148, 356, 71, 19],
+      "label": [716.5148, 356, 80.52000000000001, 22],
       "mode": "full",
       "text": "COPY INTO",
       "lines": ["COPY INTO"]
@@ -380,7 +380,7 @@
         356
       ],
       "path": "32f848c42f66",
-      "label": [1097.558365, 356, 69, 19],
+      "label": [1097.558365, 356, 76.36, 22],
       "mode": "full",
       "text": "SELECT",
       "lines": ["SELECT"],
@@ -434,7 +434,7 @@
         356
       ],
       "path": "16d233133623",
-      "label": [1476.5148, 356, 107, 19],
+      "label": [1476.5148, 356, 119.91, 22],
       "mode": "full",
       "text": "CREATE TABLE AS",
       "lines": ["CREATE TABLE AS"]
@@ -487,7 +487,7 @@
         520
       ],
       "path": "c36adcbe059b",
-      "label": [1290, 481.84223999999995, 83, 19],
+      "label": [1290, 481.84223999999995, 73.41, 22],
       "mode": "full",
       "text": "Test failed",
       "lines": ["Test failed"]
@@ -540,22 +540,22 @@
         356
       ],
       "path": "fd352afaa48b",
-      "label": [1870.6029275, 356, 113, 19],
+      "label": [1870.6029275, 356, 107.11999999999999, 22],
       "mode": "full",
       "text": "Refresh extracts",
       "lines": ["Refresh extracts"]
     }
   },
   "straight": {
-    "app-db-to-airbyte": { "ok": true, "sides": ["right", "left"], "points": [260, 196, 420, 342], "path": "ee3945fded4a", "label": [335.5678878193587, 264.9556976351648, 83, 19], "mode": "full", "text": "Incremental", "lines": ["Incremental"] },
-    "crm-to-airbyte": { "ok": true, "sides": ["right", "left"], "points": [274, 356, 420, 356], "path": "797e36a7e619", "label": [341, 356, 65, 19], "mode": "full", "text": "Bulk API", "lines": ["Bulk API"] },
-    "billing-to-airbyte": { "ok": true, "sides": ["right", "left"], "points": [274, 516, 420, 370], "path": "df2058f2f7df", "label": [342.75735931288074, 447.24264068711926, 77, 19], "mode": "full", "text": "Events API", "lines": ["Events API"] },
-    "airflow-to-airbyte": { "ok": true, "sides": ["left", "top"], "points": [800, 76, 530, 320], "path": "52cb7887c396", "label": [669.4515574949223, 193.97711100458872, 129, 19], "mode": "full", "text": "1 · Sync sources", "lines": ["1 · Sync sources"], "glyph": true },
-    "airflow-to-dbt": { "ok": true, "sides": ["right", "top"], "points": [1028, 76, 1290, 320], "path": "067e3f094236", "label": [1154.6092126119884, 193.91086976078307, 111, 19], "mode": "full", "text": "2 · dbt build", "lines": ["2 · dbt build"], "glyph": true },
-    "airbyte-to-raw": { "ok": true, "sides": ["right", "left"], "points": [640, 356, 800, 356], "path": "e7b1dd2a6134", "label": [714, 356, 71, 19], "mode": "full", "text": "COPY INTO", "lines": ["COPY INTO"] },
-    "dbt-to-raw": { "ok": true, "sides": ["left", "right"], "points": [1180, 356, 1022, 356], "path": "6e4c3db36dfd", "label": [1107, 356, 69, 19], "mode": "full", "text": "SELECT", "lines": ["SELECT"], "glyph": true },
-    "dbt-to-marts": { "ok": true, "sides": ["right", "left"], "points": [1400, 356, 1560, 356], "path": "50e7c929fd6d", "label": [1474, 356, 107, 19], "mode": "full", "text": "CREATE TABLE AS", "lines": ["CREATE TABLE AS"] },
-    "dbt-to-slack": { "ok": true, "sides": ["bottom", "top"], "points": [1290, 392, 1290, 520], "path": "872c56dd70b0", "label": [1290, 450, 83, 19], "mode": "full", "text": "Test failed", "lines": ["Test failed"] },
-    "tableau-to-marts": { "ok": true, "sides": ["left", "right"], "points": [1940, 356, 1807, 356], "path": "37e63871000c", "label": [1879.5, 356, 113, 19], "mode": "full", "text": "Refresh extracts", "lines": ["Refresh extracts"] }
+    "app-db-to-airbyte": { "ok": true, "sides": ["right", "left"], "points": [260, 196, 420, 342], "path": "ee3945fded4a", "label": [335.5678878193587, 264.9556976351648, 83.14999999999999, 22], "mode": "full", "text": "Incremental", "lines": ["Incremental"] },
+    "crm-to-airbyte": { "ok": true, "sides": ["right", "left"], "points": [274, 356, 420, 356], "path": "797e36a7e619", "label": [341, 356, 62.900000000000006, 22], "mode": "full", "text": "Bulk API", "lines": ["Bulk API"] },
+    "billing-to-airbyte": { "ok": true, "sides": ["right", "left"], "points": [274, 516, 420, 370], "path": "df2058f2f7df", "label": [342.75735931288074, 447.24264068711926, 75.33, 22], "mode": "full", "text": "Events API", "lines": ["Events API"] },
+    "airflow-to-airbyte": { "ok": true, "sides": ["left", "top"], "points": [800, 76, 530, 320], "path": "52cb7887c396", "label": [669.4515574949223, 193.97711100458872, 123.74, 22], "mode": "full", "text": "1 · Sync sources", "lines": ["1 · Sync sources"], "glyph": true },
+    "airflow-to-dbt": { "ok": true, "sides": ["right", "top"], "points": [1028, 76, 1290, 320], "path": "067e3f094236", "label": [1154.6092126119884, 193.91086976078307, 99.17999999999998, 22], "mode": "full", "text": "2 · dbt build", "lines": ["2 · dbt build"], "glyph": true },
+    "airbyte-to-raw": { "ok": true, "sides": ["right", "left"], "points": [640, 356, 800, 356], "path": "e7b1dd2a6134", "label": [714, 356, 80.52000000000001, 22], "mode": "full", "text": "COPY INTO", "lines": ["COPY INTO"] },
+    "dbt-to-raw": { "ok": true, "sides": ["left", "right"], "points": [1180, 356, 1022, 356], "path": "6e4c3db36dfd", "label": [1107, 356, 76.36, 22], "mode": "full", "text": "SELECT", "lines": ["SELECT"], "glyph": true },
+    "dbt-to-marts": { "ok": true, "sides": ["right", "left"], "points": [1400, 356, 1560, 356], "path": "50e7c929fd6d", "label": [1474, 356, 119.91, 22], "mode": "full", "text": "CREATE TABLE AS", "lines": ["CREATE TABLE AS"] },
+    "dbt-to-slack": { "ok": true, "sides": ["bottom", "top"], "points": [1290, 392, 1290, 520], "path": "872c56dd70b0", "label": [1290, 450, 73.41, 22], "mode": "full", "text": "Test failed", "lines": ["Test failed"] },
+    "tableau-to-marts": { "ok": true, "sides": ["left", "right"], "points": [1940, 356, 1807, 356], "path": "37e63871000c", "label": [1879.5, 356, 107.11999999999999, 22], "mode": "full", "text": "Refresh extracts", "lines": ["Refresh extracts"] }
   }
 }

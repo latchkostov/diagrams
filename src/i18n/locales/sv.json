@@ -2808,7 +2808,7 @@
   "workbench.readNote": "Läs anteckning",
   "workbench.earlier": "Tidigare",
   "workbench.later": "Senare",
-  "workbench.noteIndex": "Anteckning {index} av {total}",
+  "workbench.noteIndex": "Anteckning {index, number} av {total, number}",
   "workbench.moreTools": "Fler verktyg",
   "workbench.sheetPeek": "Förhandsvisning",
   "workbench.sheetHalf": "Halv höjd",

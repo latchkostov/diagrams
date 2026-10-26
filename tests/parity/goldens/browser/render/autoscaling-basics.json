@@ -1,5 +1,5 @@
 {
-  "viewport": "translate(-23.75px, 172.188px) scale(0.796875)",
+  "viewport": "translate(-49.5px, 102.075px) scale(1.01875)",
   "nodes": {
     "uploader": { "kind": "node", "box": "translate(80px, 180px) 220×72", "text": "Upload clients Web Browser" },
     "uploads": { "kind": "node", "box": "translate(420px, 180px) 220×72", "text": "Image uploads 6 partitions" },

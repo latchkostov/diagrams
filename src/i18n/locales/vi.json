@@ -2800,7 +2800,7 @@
   "workbench.readNote": "Đọc ghi chú",
   "workbench.earlier": "Trước",
   "workbench.later": "Sau",
-  "workbench.noteIndex": "Ghi chú {index} trên {total}",
+  "workbench.noteIndex": "Ghi chú {index, number} trên {total, number}",
   "workbench.moreTools": "Công cụ khác",
   "workbench.sheetPeek": "Xem trước",
   "workbench.sheetHalf": "Nửa chiều cao",

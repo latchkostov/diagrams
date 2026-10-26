@@ -1,6 +1,6 @@
 {
   "autoLayout": {
-    "LR": { "orders": [40, 40], "refunds": [40, 160], "order-log": [400, 40], "refund-log": [400, 160], "worker": [769, 100], "ledger": [1168, 100] },
+    "LR": { "orders": [40, 40], "refunds": [40, 160], "order-log": [400, 40], "refund-log": [400, 160], "worker": [766.41, 100], "ledger": [1165.4099999999999, 100] },
     "TB": { "orders": [40, 40], "refunds": [360, 40], "order-log": [40, 200], "refund-log": [360, 200], "worker": [200, 360], "ledger": [200, 520] }
   },
   "tidy": { "orders": [40, 40], "refunds": [360, 40], "order-log": [40, 200], "refund-log": [360, 200], "worker": [200, 360], "ledger": [200, 520] },

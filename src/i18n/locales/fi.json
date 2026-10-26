@@ -2800,7 +2800,7 @@
   "workbench.readNote": "Lue huomautus",
   "workbench.earlier": "Aiempi",
   "workbench.later": "Myöhempi",
-  "workbench.noteIndex": "Huomautus {index}/{total}",
+  "workbench.noteIndex": "Huomautus {index, number}/{total, number}",
   "workbench.moreTools": "Lisää työkaluja",
   "workbench.sheetPeek": "Esikatselu",
   "workbench.sheetHalf": "Puolikorkeus",

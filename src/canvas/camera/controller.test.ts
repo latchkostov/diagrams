@@ -391,12 +391,21 @@ describe("camera controller", () => {
     h.camera.dispatch({ type: "pane.changed", cause: "panel" });
     h.tick(2);
     expect(h.revealBases).toHaveLength(0);
+    h.env.covered = false;
+    h.camera.dispatch({ type: "pane.changed", cause: "selection" });
+    h.tick(2);
+    // An uncovered readable pointer selection never moves the view.
+    expect(h.revealBases).toHaveLength(1);
+    expect(h.journal.at(-1)?.command).toBe("fit");
+  });
+
+  it("a dock that covers a readable selection reveals it without refitting", () => {
+    const h = harness();
     h.env.covered = true;
     h.camera.dispatch({ type: "pane.changed", cause: "selection" });
     h.tick(2);
-    // A readable pointer selection never moves the view.
-    expect(h.revealBases).toHaveLength(1);
-    expect(h.journal.at(-1)?.command).toBe("fit");
+    expect(h.journal.map((entry) => `${entry.command}:${entry.cause}`)).toEqual(["reveal:selection"]);
+    expect(h.moves[0].target.zoom).toBe(1);
   });
 
   it("forgets a move that never started (d3 pre-empted it), so readiness can't stick on animating", () => {

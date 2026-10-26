@@ -120,8 +120,8 @@ describe("example gallery", () => {
     const expected: Record<string, string[]> = {
       "vendor-edge-storefront": ["vendorStencils"],
       "scale-on-busy-threads": ["requestsWait", "autoscaling"],
-      "slow-payment-provider": ["requestsWait", "resilience", "faultDrills"],
-      "retry-storm": ["requestsWait", "resilience", "faultDrills"],
+      "slow-payment-provider": ["requestsWait", "resilience", "runHistory", "faultDrills"],
+      "retry-storm": ["requestsWait", "resilience", "runHistory", "faultDrills"],
       "partitions-vs-subscriptions": ["partitions"],
       "shared-worker-pool": ["partitions"],
       "shared-api-quotas": ["rateLimits"],
@@ -136,11 +136,11 @@ describe("example gallery", () => {
       "payments-ledger": ["messageTypes", "partitions", "rateLimits", "routing"],
       "ev-charging-network": ["partitions", "rateLimits", "networkDevices"],
       "cell-based-bookings": ["messageTypes"],
-      "recommendations-feature-store": ["faultDrills", "partitions", "autoscaling", "routing"],
+      "recommendations-feature-store": ["runHistory", "faultDrills", "partitions", "autoscaling", "routing"],
       "video-on-demand-pipeline": ["latency", "partitions", "rateLimits", "autoscaling", "routing"],
-      "observability-pipeline": ["faultDrills", "partitions", "rateLimits", "autoscaling"],
-      "hybrid-enterprise-network": ["faultDrills", "networkDevices"],
-      "zone-outage-drill": ["faultDrills"],
+      "observability-pipeline": ["runHistory", "faultDrills", "partitions", "rateLimits", "autoscaling"],
+      "hybrid-enterprise-network": ["runHistory", "faultDrills", "networkDevices"],
+      "zone-outage-drill": ["runHistory", "faultDrills"],
     };
     for (const [slug, tags] of Object.entries(expected)) {
       expect(publicItems.find((e) => e.slug === slug)?.shows, slug).toEqual(tags);

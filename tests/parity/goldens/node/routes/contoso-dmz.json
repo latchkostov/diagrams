@@ -1,13 +1,13 @@
 {
   "smoothstep": {
-    "web-in": { "ok": true, "sides": ["bottom", "top"], "points": [150, 112, 150, 156, 323, 156, 323, 200], "path": "0a9ee60c1a73", "label": [236.5, 156, 35, 19], "mode": "full", "text": "Web", "lines": ["Web"] },
-    "probe-in": { "ok": true, "sides": ["bottom", "top"], "points": [470, 112, 470, 156, 337, 156, 337, 200], "path": "26bb656b0e5f", "label": [403.5, 156, 47, 19], "mode": "full", "text": "Probe", "lines": ["Probe"] },
-    "perimeter": { "ok": true, "sides": ["bottom", "top"], "points": [330, 272, 330, 318, 311, 318, 311, 360], "path": "663612301634", "label": [330, 296, 59, 19], "mode": "full", "text": "Inspect", "lines": ["Inspect"] },
-    "allow-web": { "ok": true, "sides": ["bottom", "top"], "points": [304, 432, 304, 484, 157, 484, 157, 520], "path": "91a8614ebce9", "label": [230.5, 484, 71, 19], "mode": "full", "text": "Allow web", "lines": ["Allow web"] },
-    "deny-admin": { "ok": true, "sides": ["bottom", "top"], "points": [318, 432, 318, 456, 637, 456, 637, 480], "path": "57de38c593d5", "label": [477.5, 456, 77, 19], "mode": "full", "text": "Deny admin", "lines": ["Deny admin"] },
-    "to-switch": { "ok": true, "sides": ["bottom", "top"], "points": [157, 592, 157, 672, 330, 672, 330, 800], "path": "58c5adfa1f36", "label": [243.5, 672, 59, 19], "mode": "full", "text": "Forward", "lines": ["Forward"] },
-    "to-app": { "ok": true, "sides": ["bottom", "top"], "points": [330, 872, 330, 916, 310, 916, 310, 960], "path": "4fb70b98be24", "label": [330, 895, 35, 19], "mode": "full", "text": "Web", "lines": ["Web"] },
-    "to-db": { "ok": true, "sides": ["bottom", "top"], "points": [310, 1032, 310, 1120], "path": "226c4c65878d", "label": [310, 1070, 47, 19], "mode": "full", "text": "Query", "lines": ["Query"] }
+    "web-in": { "ok": true, "sides": ["bottom", "top"], "points": [150, 112, 150, 156, 323, 156, 323, 200], "path": "0a9ee60c1a73", "label": [236.5, 156, 41.82, 22], "mode": "full", "text": "Web", "lines": ["Web"] },
+    "probe-in": { "ok": true, "sides": ["bottom", "top"], "points": [470, 112, 470, 156, 337, 156, 337, 200], "path": "26bb656b0e5f", "label": [403.5, 156, 49.19, 22], "mode": "full", "text": "Probe", "lines": ["Probe"] },
+    "perimeter": { "ok": true, "sides": ["bottom", "top"], "points": [330, 272, 330, 318, 311, 318, 311, 360], "path": "663612301634", "label": [330, 296, 57.349999999999994, 22], "mode": "full", "text": "Inspect", "lines": ["Inspect"] },
+    "allow-web": { "ok": true, "sides": ["bottom", "top"], "points": [304, 432, 304, 484, 157, 484, 157, 520], "path": "91a8614ebce9", "label": [230.5, 484, 71.32, 22], "mode": "full", "text": "Allow web", "lines": ["Allow web"] },
+    "deny-admin": { "ok": true, "sides": ["bottom", "top"], "points": [318, 432, 318, 456, 637, 456, 637, 480], "path": "57de38c593d5", "label": [477.5, 456, 82.74999999999999, 22], "mode": "full", "text": "Deny admin", "lines": ["Deny admin"] },
+    "to-switch": { "ok": true, "sides": ["bottom", "top"], "points": [157, 592, 157, 672, 330, 672, 330, 800], "path": "58c5adfa1f36", "label": [243.5, 672, 62.41, 22], "mode": "full", "text": "Forward", "lines": ["Forward"] },
+    "to-app": { "ok": true, "sides": ["bottom", "top"], "points": [330, 872, 330, 916, 310, 916, 310, 960], "path": "4fb70b98be24", "label": [330, 895, 41.82, 22], "mode": "full", "text": "Web", "lines": ["Web"] },
+    "to-db": { "ok": true, "sides": ["bottom", "top"], "points": [310, 1032, 310, 1120], "path": "226c4c65878d", "label": [310, 1070, 50.33, 22], "mode": "full", "text": "Query", "lines": ["Query"] }
   },
   "bezier": {
     "web-in": {
@@ -58,7 +58,7 @@
         200
       ],
       "path": "fdac7543a342",
-      "label": [230.03412500000002, 155.73743154839266, 35, 19],
+      "label": [230.03412500000002, 155.73743154839266, 41.82, 22],
       "mode": "full",
       "text": "Web",
       "lines": ["Web"]
@@ -111,7 +111,7 @@
         200
       ],
       "path": "019fdeaf5247",
-      "label": [408.47087500000004, 155.19764934974884, 47, 19],
+      "label": [408.47087500000004, 155.19764934974884, 49.19, 22],
       "mode": "full",
       "text": "Probe",
       "lines": ["Probe"]
@@ -164,7 +164,7 @@
         360
       ],
       "path": "d5af4aba1f08",
-      "label": [321.21012500000006, 314.11475805818037, 59, 19],
+      "label": [321.21012500000006, 314.11475805818037, 57.349999999999994, 22],
       "mode": "full",
       "text": "Inspect",
       "lines": ["Inspect"]
@@ -217,7 +217,7 @@
         520
       ],
       "path": "80cbf5ead857",
-      "label": [225.005875, 476.6175810644704, 71, 19],
+      "label": [225.005875, 476.6175810644704, 71.32, 22],
       "mode": "full",
       "text": "Allow web",
       "lines": ["Allow web"]
@@ -270,7 +270,7 @@
         480
       ],
       "path": "dcff3f27b873",
-      "label": [465.577375, 459.236001296586, 77, 19],
+      "label": [465.577375, 459.236001296586, 82.74999999999999, 22],
       "mode": "full",
       "text": "Deny admin",
       "lines": ["Deny admin"]
@@ -323,7 +323,7 @@
         800
       ],
       "path": "f084921faf74",
-      "label": [237.03412500000002, 692.4444268910468, 59, 19],
+      "label": [237.03412500000002, 692.4444268910468, 62.41, 22],
       "mode": "full",
       "text": "Forward",
       "lines": ["Forward"]
@@ -376,7 +376,7 @@
         960
       ],
       "path": "65de47c20b4a",
-      "label": [320.74750000000006, 914.1181313379, 35, 19],
+      "label": [320.74750000000006, 914.1181313379, 41.82, 22],
       "mode": "full",
       "text": "Web",
       "lines": ["Web"]
@@ -429,20 +429,20 @@
         1120
       ],
       "path": "e5de7d433f09",
-      "label": [310, 1074.0831400000002, 47, 19],
+      "label": [310, 1074.0831400000002, 50.33, 22],
       "mode": "full",
       "text": "Query",
       "lines": ["Query"]
     }
   },
   "straight": {
-    "web-in": { "ok": true, "sides": ["bottom", "top"], "points": [150, 112, 323, 200], "path": "73da1b477ebe", "label": [231.15211264778281, 153.27968735840977, 35, 19], "mode": "full", "text": "Web", "lines": ["Web"] },
-    "probe-in": { "ok": true, "sides": ["bottom", "top"], "points": [470, 112, 337, 200], "path": "d55b2dc04ee3", "label": [408.50384784901695, 152.68918337809407, 47, 19], "mode": "full", "text": "Probe", "lines": ["Probe"] },
-    "perimeter": { "ok": true, "sides": ["bottom", "top"], "points": [330, 272, 311, 360], "path": "3e297dc006dc", "label": [321.7662759010653, 310.13514319506595, 59, 19], "mode": "full", "text": "Inspect", "lines": ["Inspect"] },
-    "allow-web": { "ok": true, "sides": ["bottom", "top"], "points": [304, 432, 157, 520], "path": "f519c86dd067", "label": [235.64804503969478, 472.91817711909425, 71, 19], "mode": "full", "text": "Allow web", "lines": ["Allow web"] },
-    "deny-admin": { "ok": true, "sides": ["bottom", "top"], "points": [318, 432, 637, 480], "path": "548fe880e6d3", "label": [471.5667917878558, 455.1072288583607, 77, 19], "mode": "full", "text": "Deny admin", "lines": ["Deny admin"] },
-    "to-switch": { "ok": true, "sides": ["bottom", "top"], "points": [157, 592, 330, 800], "path": "6f5a9f97dcbb", "label": [239.6632581485882, 691.3870386988806, 59, 19], "mode": "full", "text": "Forward", "lines": ["Forward"] },
-    "to-app": { "ok": true, "sides": ["bottom", "top"], "points": [330, 872, 310, 960], "path": "43d70b452660", "label": [321.32972662153384, 910.1492028652513, 35, 19], "mode": "full", "text": "Web", "lines": ["Web"] },
-    "to-db": { "ok": true, "sides": ["bottom", "top"], "points": [310, 1032, 310, 1120], "path": "226c4c65878d", "label": [310, 1070, 47, 19], "mode": "full", "text": "Query", "lines": ["Query"] }
+    "web-in": { "ok": true, "sides": ["bottom", "top"], "points": [150, 112, 323, 200], "path": "73da1b477ebe", "label": [231.15211264778281, 153.27968735840977, 41.82, 22], "mode": "full", "text": "Web", "lines": ["Web"] },
+    "probe-in": { "ok": true, "sides": ["bottom", "top"], "points": [470, 112, 337, 200], "path": "d55b2dc04ee3", "label": [408.50384784901695, 152.68918337809407, 49.19, 22], "mode": "full", "text": "Probe", "lines": ["Probe"] },
+    "perimeter": { "ok": true, "sides": ["bottom", "top"], "points": [330, 272, 311, 360], "path": "3e297dc006dc", "label": [321.7662759010653, 310.13514319506595, 57.349999999999994, 22], "mode": "full", "text": "Inspect", "lines": ["Inspect"] },
+    "allow-web": { "ok": true, "sides": ["bottom", "top"], "points": [304, 432, 157, 520], "path": "f519c86dd067", "label": [235.64804503969478, 472.91817711909425, 71.32, 22], "mode": "full", "text": "Allow web", "lines": ["Allow web"] },
+    "deny-admin": { "ok": true, "sides": ["bottom", "top"], "points": [318, 432, 637, 480], "path": "548fe880e6d3", "label": [471.5667917878558, 455.1072288583607, 82.74999999999999, 22], "mode": "full", "text": "Deny admin", "lines": ["Deny admin"] },
+    "to-switch": { "ok": true, "sides": ["bottom", "top"], "points": [157, 592, 330, 800], "path": "6f5a9f97dcbb", "label": [239.6632581485882, 691.3870386988806, 62.41, 22], "mode": "full", "text": "Forward", "lines": ["Forward"] },
+    "to-app": { "ok": true, "sides": ["bottom", "top"], "points": [330, 872, 310, 960], "path": "43d70b452660", "label": [321.32972662153384, 910.1492028652513, 41.82, 22], "mode": "full", "text": "Web", "lines": ["Web"] },
+    "to-db": { "ok": true, "sides": ["bottom", "top"], "points": [310, 1032, 310, 1120], "path": "226c4c65878d", "label": [310, 1070, 50.33, 22], "mode": "full", "text": "Query", "lines": ["Query"] }
   }
 }

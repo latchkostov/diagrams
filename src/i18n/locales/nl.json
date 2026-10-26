@@ -2810,7 +2810,7 @@
   "workbench.readNote": "Notitie lezen",
   "workbench.earlier": "Vorige",
   "workbench.later": "Volgende",
-  "workbench.noteIndex": "Notitie {index} van {total}",
+  "workbench.noteIndex": "Notitie {index, number} van {total, number}",
   "workbench.moreTools": "Meer hulpmiddelen",
   "workbench.sheetPeek": "Voorbeeld",
   "workbench.sheetHalf": "Halve hoogte",

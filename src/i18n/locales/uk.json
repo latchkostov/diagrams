@@ -2804,7 +2804,7 @@
   "workbench.readNote": "Читати нотатку",
   "workbench.earlier": "Раніше",
   "workbench.later": "Пізніше",
-  "workbench.noteIndex": "Нотатка {index} з {total}",
+  "workbench.noteIndex": "Нотатка {index, number} з {total, number}",
   "workbench.moreTools": "Інші інструменти",
   "workbench.sheetPeek": "Попередній перегляд",
   "workbench.sheetHalf": "Половина висоти",

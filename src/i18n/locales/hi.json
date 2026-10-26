@@ -2793,7 +2793,7 @@
   "workbench.readNote": "नोट पढ़ें",
   "workbench.earlier": "पहले",
   "workbench.later": "बाद में",
-  "workbench.noteIndex": "नोट {index} / {total}",
+  "workbench.noteIndex": "नोट {index, number} / {total, number}",
   "workbench.moreTools": "और टूल",
   "workbench.sheetPeek": "झलक",
   "workbench.sheetHalf": "आधी ऊँचाई",

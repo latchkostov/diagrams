@@ -664,7 +664,7 @@ export class ParticleRenderer {
     // On the overlay, so trace labels stay above the edge label pills.
     const ctx = this.octx;
     const font = Math.max(11 * dpr, size * 3.2);
-    ctx.font = `600 ${font}px "Mona Sans Variable", ui-sans-serif, system-ui, sans-serif`;
+    ctx.font = `600 ${font}px "Mona Sans Canvas", "Mona Sans Variable", ui-sans-serif, system-ui, sans-serif`;
     ctx.textBaseline = "middle";
     const scaled = (r: Rect): Box => ({ x: r.x * dpr, y: r.y * dpr, w: r.width * dpr, h: r.height * dpr });
     const found = this.env.obstacles?.();

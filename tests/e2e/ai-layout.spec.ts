@@ -82,6 +82,7 @@ test("the hint keeps whole words on a narrow pane (one hint, then wrapping)", as
 test("opening, closing and resizing the dock refits the diagram at 1024", async ({ page }) => {
   await page.setViewportSize({ width: 1024, height: 768 });
   await gotoCanvas(page, SLUG);
+  await page.getByTestId("fit-view-button").click();
   await settle(page);
   expect(await allNodesInView(page)).toBe(true);
 
@@ -101,6 +102,10 @@ test("opening, closing and resizing the dock refits the diagram at 1024", async 
 test("after a pan by hand, opening the dock keeps the selection in view instead of refitting", async ({ page }) => {
   await page.setViewportSize({ width: 1024, height: 768 });
   await gotoCanvas(page, SLUG);
+  await page.getByTestId("fit-view-button").click();
+  await settle(page);
+  // Choose the subject before the manual camera operation; selection below 50% enters Focus.
+  await page.getByTestId("node-notifications").click();
   await settle(page);
   // Pan the view (middle-drag the empty pane) so the right of the diagram sits near the right edge.
   const wrap = await box(page, "canvas-wrap");

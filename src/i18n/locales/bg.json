@@ -2799,7 +2799,7 @@
   "workbench.readNote": "Прочети бележката",
   "workbench.earlier": "По-рано",
   "workbench.later": "По-късно",
-  "workbench.noteIndex": "Бележка {index} от {total}",
+  "workbench.noteIndex": "Бележка {index, number} от {total, number}",
   "workbench.moreTools": "Още инструменти",
   "workbench.sheetPeek": "Преглед",
   "workbench.sheetHalf": "Половин височина",

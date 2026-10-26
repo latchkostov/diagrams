@@ -7,7 +7,7 @@
 [data-detail-view] [data-detail-no-arrow] .fe-path {
   marker-end: none;
 }
-[data-detail-view] .nb-sub,
+[data-detail-view] .react-flow__node:not([data-detail-expanded]):not(.selected) .nb-sub,
 [data-detail-view] .nb-kind {
   white-space: nowrap;
   overflow: hidden;
@@ -114,6 +114,11 @@
   opacity: 0.35;
 }
 [data-detail-far] .react-flow__edge[data-live-near] .fe-path {
+  stroke-width: calc(1.5px / var(--rf-zoom));
+  opacity: 1;
+}
+
+[data-detail-far] .react-flow__edge[data-live-main] .fe-path {
   stroke-width: calc(1.5px / var(--rf-zoom));
   opacity: 1;
 }

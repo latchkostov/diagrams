@@ -2800,7 +2800,7 @@
   "workbench.readNote": "Διάβασε τη σημείωση",
   "workbench.earlier": "Νωρίτερα",
   "workbench.later": "Αργότερα",
-  "workbench.noteIndex": "Σημείωση {index} από {total}",
+  "workbench.noteIndex": "Σημείωση {index, number} από {total, number}",
   "workbench.moreTools": "Περισσότερα εργαλεία",
   "workbench.sheetPeek": "Προεπισκόπηση",
   "workbench.sheetHalf": "Μισό ύψος",

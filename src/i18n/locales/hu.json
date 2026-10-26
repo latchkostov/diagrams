@@ -2815,7 +2815,7 @@
   "workbench.readNote": "Jegyzet olvasása",
   "workbench.earlier": "Korábbi",
   "workbench.later": "Későbbi",
-  "workbench.noteIndex": "{index}/{total}. jegyzet",
+  "workbench.noteIndex": "{index, number}/{total, number}. jegyzet",
   "workbench.moreTools": "További eszközök",
   "workbench.sheetPeek": "Előnézet",
   "workbench.sheetHalf": "Félmagasság",

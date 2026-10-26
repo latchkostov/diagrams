@@ -6,12 +6,12 @@
     "direction": "LR",
     "nodes": [
       { "id": "a", "stencil": "generic.service", "label": "Storefront", "x": 40, "y": 40 },
-      { "id": "b", "stencil": "generic.service", "label": "Checkout", "x": 403, "y": 40 },
+      { "id": "b", "stencil": "generic.service", "label": "Checkout", "x": 400, "y": 40 },
       { "id": "c", "stencil": "generic.service", "label": "Billing", "x": 40, "y": 280 },
-      { "id": "d", "stencil": "generic.database", "label": "Ledger", "x": 403, "y": 280 },
+      { "id": "d", "stencil": "generic.database", "label": "Ledger", "x": 400, "y": 280 },
       { "id": "e", "stencil": "generic.service", "label": "Exporter", "x": 40, "y": 160 },
-      { "id": "f", "stencil": "generic.database", "label": "Archive", "x": 763, "y": 160 },
-      { "id": "s", "stencil": "generic.database", "label": "Legacy FTP", "x": 403, "y": 160 }
+      { "id": "f", "stencil": "generic.database", "label": "Archive", "x": 760, "y": 160 },
+      { "id": "s", "stencil": "generic.database", "label": "Legacy FTP", "x": 400, "y": 160 }
     ],
     "edges": [
       { "id": "e1-a-b", "from": "a", "to": "b", "label": "Over the zone", "kind": "sync" },

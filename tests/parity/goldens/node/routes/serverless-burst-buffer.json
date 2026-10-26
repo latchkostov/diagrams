@@ -1,12 +1,12 @@
 {
   "smoothstep": {
-    "direct-entry": { "ok": true, "sides": ["bottom", "top"], "points": [313.5, 112, 313.5, 156, 151, 156, 151, 200], "path": "8c8cace881cb", "label": [232.25, 156, 59, 19], "mode": "full", "text": "Request", "lines": ["Request"] },
-    "enqueue": { "ok": true, "sides": ["bottom", "top"], "points": [327.5, 112, 327.5, 156, 486.5, 156, 486.5, 200], "path": "bf9bccafbfda", "label": [407, 156, 59, 19], "mode": "full", "text": "Enqueue", "lines": ["Enqueue"] },
-    "invoke": { "ok": true, "sides": ["bottom", "top"], "points": [151, 272, 151, 316, 170, 316, 170, 360], "path": "55e4dabce159", "label": [151, 295, 53, 19], "mode": "full", "text": "Invoke", "lines": ["Invoke"] },
-    "consume": { "ok": true, "sides": ["bottom", "top"], "points": [486.5, 272, 486.5, 360], "path": "384f73b799a1", "label": [486.5, 310, 101, 19], "mode": "full", "text": "Pull when free", "lines": ["Pull when free"] },
-    "async-invoke": { "ok": true, "sides": ["bottom", "top"], "points": [486.5, 432, 486.5, 476, 490, 476, 490, 520], "path": "8325c4051076", "label": [486.5, 455, 89, 19], "mode": "full", "text": "Paced invoke", "lines": ["Paced invoke"] },
-    "direct-save": { "ok": true, "sides": ["bottom", "top"], "points": [170, 432, 170, 476, 151, 476, 151, 520], "path": "2fdad4201b82", "label": [170, 455, 47, 19], "mode": "full", "text": "Write", "lines": ["Write"] },
-    "async-save": { "ok": true, "sides": ["bottom", "top"], "points": [490, 592, 490, 636, 310, 636, 310, 680], "path": "e914c4f6700e", "label": [400, 636, 47, 19], "mode": "full", "text": "Write", "lines": ["Write"] }
+    "direct-entry": { "ok": true, "sides": ["bottom", "top"], "points": [313.5, 112, 313.5, 156, 151, 156, 151, 200], "path": "8c8cace881cb", "label": [232.25, 156, 62.150000000000006, 22], "mode": "full", "text": "Request", "lines": ["Request"] },
+    "enqueue": { "ok": true, "sides": ["bottom", "top"], "points": [327.5, 112, 327.5, 156, 486.5, 156, 486.5, 200], "path": "bf9bccafbfda", "label": [407, 156, 64.88, 22], "mode": "full", "text": "Enqueue", "lines": ["Enqueue"] },
+    "invoke": { "ok": true, "sides": ["bottom", "top"], "points": [151, 272, 151, 316, 170, 316, 170, 360], "path": "55e4dabce159", "label": [151, 295, 53.239999999999995, 22], "mode": "full", "text": "Invoke", "lines": ["Invoke"] },
+    "consume": { "ok": true, "sides": ["bottom", "top"], "points": [486.5, 272, 486.5, 360], "path": "384f73b799a1", "label": [486.5, 310, 92.71000000000001, 22], "mode": "full", "text": "Pull when free", "lines": ["Pull when free"] },
+    "async-invoke": { "ok": true, "sides": ["bottom", "top"], "points": [486.5, 432, 486.5, 476, 490, 476, 490, 520], "path": "8325c4051076", "label": [486.5, 455, 90.11999999999999, 22], "mode": "full", "text": "Paced invoke", "lines": ["Paced invoke"] },
+    "direct-save": { "ok": true, "sides": ["bottom", "top"], "points": [170, 432, 170, 476, 151, 476, 151, 520], "path": "2fdad4201b82", "label": [170, 455, 46.39, 22], "mode": "full", "text": "Write", "lines": ["Write"] },
+    "async-save": { "ok": true, "sides": ["bottom", "top"], "points": [490, 592, 490, 636, 310, 636, 310, 680], "path": "e914c4f6700e", "label": [400, 636, 46.39, 22], "mode": "full", "text": "Write", "lines": ["Write"] }
   },
   "bezier": {
     "direct-entry": {
@@ -57,7 +57,7 @@
         200
       ],
       "path": "72f9c118d6d5",
-      "label": [226.1765625, 156.40753932831774, 59, 19],
+      "label": [226.1765625, 156.40753932831774, 62.150000000000006, 22],
       "mode": "full",
       "text": "Request",
       "lines": ["Request"]
@@ -110,7 +110,7 @@
         200
       ],
       "path": "4e5c691ebb4a",
-      "label": [401.05737500000004, 155.54459100924186, 59, 19],
+      "label": [401.05737500000004, 155.54459100924186, 64.88, 22],
       "mode": "full",
       "text": "Enqueue",
       "lines": ["Enqueue"]
@@ -163,7 +163,7 @@
         360
       ],
       "path": "be4eeeec5b65",
-      "label": [159.78987500000002, 314.11475805818037, 53, 19],
+      "label": [159.78987500000002, 314.11475805818037, 53.239999999999995, 22],
       "mode": "full",
       "text": "Invoke",
       "lines": ["Invoke"]
@@ -216,7 +216,7 @@
         360
       ],
       "path": "97a0f7bb92ea",
-      "label": [486.5, 314.08314000000007, 101, 19],
+      "label": [486.5, 314.08314000000007, 92.71000000000001, 22],
       "mode": "full",
       "text": "Pull when free",
       "lines": ["Pull when free"]
@@ -269,7 +269,7 @@
         520
       ],
       "path": "35d5794b523c",
-      "label": [488.11918750000007, 474.08422484458634, 89, 19],
+      "label": [488.11918750000007, 474.08422484458634, 90.11999999999999, 22],
       "mode": "full",
       "text": "Paced invoke",
       "lines": ["Paced invoke"]
@@ -322,7 +322,7 @@
         520
       ],
       "path": "1fad42aed991",
-      "label": [161.210125, 474.11475805818037, 47, 19],
+      "label": [161.210125, 474.11475805818037, 46.39, 22],
       "mode": "full",
       "text": "Write",
       "lines": ["Write"]
@@ -375,19 +375,19 @@
         680
       ],
       "path": "818d070a4012",
-      "label": [393.27250000000004, 636.1648917428968, 47, 19],
+      "label": [393.27250000000004, 636.1648917428968, 46.39, 22],
       "mode": "full",
       "text": "Write",
       "lines": ["Write"]
     }
   },
   "straight": {
-    "direct-entry": { "ok": true, "sides": ["bottom", "top"], "points": [313.5, 112, 151, 200], "path": "9fd17ca21bfd", "label": [237.52603505034978, 153.14282409581057, 59, 19], "mode": "full", "text": "Request", "lines": ["Request"] },
-    "enqueue": { "ok": true, "sides": ["bottom", "top"], "points": [327.5, 112, 486.5, 200], "path": "89be451e8d96", "label": [401.7503909521579, 153.0945559986786, 59, 19], "mode": "full", "text": "Enqueue", "lines": ["Enqueue"] },
-    "invoke": { "ok": true, "sides": ["bottom", "top"], "points": [151, 272, 170, 360], "path": "94dd06ea339b", "label": [159.2337240989347, 310.13514319506595, 53, 19], "mode": "full", "text": "Invoke", "lines": ["Invoke"] },
-    "consume": { "ok": true, "sides": ["bottom", "top"], "points": [486.5, 272, 486.5, 360], "path": "384f73b799a1", "label": [486.5, 310, 101, 19], "mode": "full", "text": "Pull when free", "lines": ["Pull when free"] },
-    "async-invoke": { "ok": true, "sides": ["bottom", "top"], "points": [486.5, 432, 490, 520], "path": "1d8ad1660ef8", "label": [488.01155215856244, 470.00473998671333, 89, 19], "mode": "full", "text": "Paced invoke", "lines": ["Paced invoke"] },
-    "direct-save": { "ok": true, "sides": ["bottom", "top"], "points": [170, 432, 151, 520], "path": "51c6256c045a", "label": [161.7662759010653, 470.13514319506595, 47, 19], "mode": "full", "text": "Write", "lines": ["Write"] },
-    "async-save": { "ok": true, "sides": ["bottom", "top"], "points": [490, 592, 310, 680], "path": "9ea497eaaac0", "label": [405.3903061655152, 633.3647392079704, 47, 19], "mode": "full", "text": "Write", "lines": ["Write"] }
+    "direct-entry": { "ok": true, "sides": ["bottom", "top"], "points": [313.5, 112, 151, 200], "path": "9fd17ca21bfd", "label": [237.52603505034978, 153.14282409581057, 62.150000000000006, 22], "mode": "full", "text": "Request", "lines": ["Request"] },
+    "enqueue": { "ok": true, "sides": ["bottom", "top"], "points": [327.5, 112, 486.5, 200], "path": "89be451e8d96", "label": [401.7503909521579, 153.0945559986786, 64.88, 22], "mode": "full", "text": "Enqueue", "lines": ["Enqueue"] },
+    "invoke": { "ok": true, "sides": ["bottom", "top"], "points": [151, 272, 170, 360], "path": "94dd06ea339b", "label": [159.2337240989347, 310.13514319506595, 53.239999999999995, 22], "mode": "full", "text": "Invoke", "lines": ["Invoke"] },
+    "consume": { "ok": true, "sides": ["bottom", "top"], "points": [486.5, 272, 486.5, 360], "path": "384f73b799a1", "label": [486.5, 310, 92.71000000000001, 22], "mode": "full", "text": "Pull when free", "lines": ["Pull when free"] },
+    "async-invoke": { "ok": true, "sides": ["bottom", "top"], "points": [486.5, 432, 490, 520], "path": "1d8ad1660ef8", "label": [488.01155215856244, 470.00473998671333, 90.11999999999999, 22], "mode": "full", "text": "Paced invoke", "lines": ["Paced invoke"] },
+    "direct-save": { "ok": true, "sides": ["bottom", "top"], "points": [170, 432, 151, 520], "path": "51c6256c045a", "label": [161.7662759010653, 470.13514319506595, 46.39, 22], "mode": "full", "text": "Write", "lines": ["Write"] },
+    "async-save": { "ok": true, "sides": ["bottom", "top"], "points": [490, 592, 310, 680], "path": "9ea497eaaac0", "label": [405.3903061655152, 633.3647392079704, 46.39, 22], "mode": "full", "text": "Write", "lines": ["Write"] }
   }
 }

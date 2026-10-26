@@ -2800,7 +2800,7 @@
   "workbench.readNote": "阅读备注",
   "workbench.earlier": "上一条",
   "workbench.later": "下一条",
-  "workbench.noteIndex": "备注 {index}/{total}",
+  "workbench.noteIndex": "备注 {index, number}/{total, number}",
   "workbench.moreTools": "更多工具",
   "workbench.sheetPeek": "预览",
   "workbench.sheetHalf": "半高",

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useStoreApi } from "@xyflow/react";
+import { useStoreApi, useUpdateNodeInternals } from "@xyflow/react";
 import type { RefObject } from "react";
 import type { DiagramFlowEdge, FlowNode } from "./types";
 import { useCameraController } from "./camera/useCameraCore";
@@ -28,6 +28,7 @@ const empty: Drawing = { pins: [], chips: [], hint: false };
 /** Screen-space detail after a settled move. It changes presentation only, never the document or viewport. */
 export function FrameDetail({ host, routing }: { host: RefObject<HTMLElement | null>; routing: RouteOptions }) {
   const locale = useLocale();
+  const updateNodeInternals = useUpdateNodeInternals();
   const { style, direction, captions, hideDependencies } = routing;
   const camera = useCameraController();
   const store = useStoreApi<FlowNode, DiagramFlowEdge>();
@@ -92,6 +93,12 @@ export function FrameDetail({ host, routing }: { host: RefObject<HTMLElement | n
       root.dataset.detailView = view;
       root.toggleAttribute("data-detail-far", far);
       root.toggleAttribute("data-detail-dock", dock);
+      const flagged = new Set(
+        [...root.querySelectorAll<HTMLElement>('[data-testid^="check-marker-"]')].map((el) =>
+          el.dataset.testid!.slice("check-marker-".length),
+        ),
+      );
+      const remeasure: string[] = [];
       const cards = new Map<string, HTMLElement>();
       const states = new Map<string, FrameEnd>();
       const blockers: Rect[] = [];
@@ -111,6 +118,11 @@ export function FrameDetail({ host, routing }: { host: RefObject<HTMLElement | n
         const id = el.dataset.id!;
         const n = s.nodeLookup.get(id);
         if (!n || n.hidden) continue;
+        const expanded = selected.has(id) || lit.has(id) || flagged.has(id);
+        if (n.type === "diagram" && el.hasAttribute("data-detail-expanded") !== expanded) {
+          el.toggleAttribute("data-detail-expanded", expanded);
+          remeasure.push(id);
+        }
         const title = el.querySelector<HTMLElement>(".nb-label, .nb-title, .grp-label");
         const body = el.querySelector<HTMLElement>(".nb-card, .nb-compact");
         if (body && n.type === "diagram") {
@@ -147,6 +159,7 @@ export function FrameDetail({ host, routing }: { host: RefObject<HTMLElement | n
         if (n.type === "boundary" && far)
           chips.push({ id, name: "label" in n.data ? n.data.label : "", x: card.x + 10, y: card.y + 8, group: true });
       }
+      if (remeasure.length) updateNodeInternals(remeasure);
       const routes = selectRoutes(s, { style, direction, captions, hideDependencies });
       const screen = (p: { x: number; y: number }) => ({ x: p.x * zoom + tx, y: p.y * zoom + ty });
       const candidates: Omit<FramePin, "box">[] = [];
@@ -198,7 +211,11 @@ export function FrameDetail({ host, routing }: { host: RefObject<HTMLElement | n
         if (!edge) continue;
         const near = lit.has(edge.source) || lit.has(edge.target);
         el.toggleAttribute("data-live-near", !!lit.size && near);
-        const ends = edgeInFrame(states.get(edge.source) ?? "out", states.get(edge.target) ?? "out", near);
+        const ends = edgeInFrame(
+          states.get(edge.source) ?? "out",
+          states.get(edge.target) ?? "out",
+          active.has(edge.source) || active.has(edge.target),
+        );
         setHidden(el, cropped && !ends.draw);
         el.toggleAttribute("data-detail-no-arrow", cropped && !ends.arrow);
         const label = root.querySelector<HTMLElement>(`[data-testid="edge-label-${CSS.escape(edge.id)}"]`);
@@ -224,7 +241,7 @@ export function FrameDetail({ host, routing }: { host: RefObject<HTMLElement | n
       }
       // Whole labels/pills disappear together; text runs counter-scale without touching the viewport transform.
       for (const el of root.querySelectorAll<HTMLElement>(
-        ".nb-label, .nb-title, .nb-sub, .nb-kind, .grp-label, .fe-label-text, .lv-metric, .lv-alert, .lv-outcome, .call-pill, .ann-text, .ann-note .ann-content, .ann-shape .ann-content, .ann-zone-label",
+        ".nb-label, .nb-title, .nb-sub, .nb-kind, .grp-label, .fe-label-text, .lv-metric, .lv-alert, .lv-outcome, .lv-call-pill, .ann-text, .ann-note .ann-content, .ann-shape .ann-content, .ann-zone-label",
       )) {
         if (!fonts.has(el)) fonts.set(el, parseFloat(getComputedStyle(el).fontSize));
         const node = el.closest<HTMLElement>(".react-flow__node[data-id], [data-testid^='node-badge-']");
@@ -233,8 +250,11 @@ export function FrameDetail({ host, routing }: { host: RefObject<HTMLElement | n
         const edge = edgeLabel && edges.get(edgeLabel.dataset.testid?.slice("edge-label-".length) ?? "");
         const isActive = !!(id && active.has(id)) || !!(edge && (active.has(edge.source) || active.has(edge.target)));
         const title = el.classList.contains("nb-label") || el.classList.contains("grp-label");
-        const detail = textDetail(fonts.get(el)!, zoom, title || isActive, view);
-        const whole = el.closest<HTMLElement>(".fe-label, .lv-metric, .lv-alert, .lv-outcome, .call-pill") ?? el;
+        const detail =
+          el.classList.contains("lv-alert") && id && lit.has(id)
+            ? { show: true, scale: Math.max(1, 11 / (fonts.get(el)! * zoom)) }
+            : textDetail(fonts.get(el)!, zoom, title || isActive, view);
+        const whole = el.closest<HTMLElement>(".fe-label, .lv-metric, .lv-alert, .lv-outcome, .lv-call-pill") ?? el;
         whole.toggleAttribute("data-detail-text-hidden", !detail.show);
         el.style.fontSize = `${fonts.get(el)! * detail.scale}px`;
       }
@@ -263,7 +283,7 @@ export function FrameDetail({ host, routing }: { host: RefObject<HTMLElement | n
     observer.observe(root, {
       subtree: true,
       attributes: true,
-      attributeFilter: ["data-live-spotlight", "data-live-dim"],
+      attributeFilter: ["data-live-spotlight", "data-live-dim", "data-live-main"],
     });
     const viewport = root.querySelector(".react-flow__viewport");
     if (viewport) observer.observe(viewport, { subtree: true, childList: true });
@@ -288,14 +308,15 @@ export function FrameDetail({ host, routing }: { host: RefObject<HTMLElement | n
       observer.disconnect();
       window.removeEventListener("keydown", key);
       for (const el of root.querySelectorAll<HTMLElement>(
-        "[data-detail-hidden], [data-detail-text-hidden], [data-detail-no-arrow]",
+        "[data-detail-hidden], [data-detail-text-hidden], [data-detail-no-arrow], [data-detail-expanded]",
       )) {
         el.removeAttribute("data-detail-hidden");
         el.removeAttribute("data-detail-text-hidden");
         el.removeAttribute("data-detail-no-arrow");
+        el.removeAttribute("data-detail-expanded");
       }
       for (const text of root.querySelectorAll<HTMLElement>(
-        ".nb-label,.nb-title,.nb-sub,.nb-kind,.grp-label,.fe-label-text,.lv-metric,.lv-alert,.lv-outcome,.call-pill,.ann-text,.ann-note .ann-content,.ann-shape .ann-content,.ann-zone-label",
+        ".nb-label,.nb-title,.nb-sub,.nb-kind,.grp-label,.fe-label-text,.lv-metric,.lv-alert,.lv-outcome,.lv-call-pill,.ann-text,.ann-note .ann-content,.ann-shape .ann-content,.ann-zone-label",
       ))
         text.style.removeProperty("font-size");
       for (const body of root.querySelectorAll<HTMLElement>(".nb-card,.nb-compact")) body.style.removeProperty("width");
@@ -304,7 +325,7 @@ export function FrameDetail({ host, routing }: { host: RefObject<HTMLElement | n
       root.removeAttribute("data-detail-far");
       root.removeAttribute("data-detail-dock");
     };
-  }, [camera, host, store, style, direction, captions, hideDependencies, locale]);
+  }, [camera, host, store, style, direction, captions, hideDependencies, locale, updateNodeInternals]);
   return (
     <div className="frame-detail" data-testid="frame-detail" data-export="skip">
       {drawing.hint && (

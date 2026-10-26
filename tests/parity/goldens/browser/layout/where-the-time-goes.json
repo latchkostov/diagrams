@@ -1,24 +1,24 @@
 {
   "autoLayout": {
-    "viewport": "translate(9.55224px, 366.149px) scale(0.761194)",
+    "viewport": "translate(-6.92537px, 350.042px) scale(0.973134)",
     "nodes": {
       "checkout": { "kind": "node", "box": "translate(40px, 40px) 220×72", "text": "Order intake 2,000 orders/s" },
-      "orders": { "kind": "node", "box": "translate(400px, 40px) 260×72", "text": "Orders Kafka · billing consumer group" },
+      "orders": { "kind": "node", "box": "translate(400px, 40px) 249×72", "text": "Orders Kafka · billing consumer group" },
       "billing": { "kind": "node", "box": "translate(800px, 40px) 220×72", "text": "Billing 300 ms per order" },
       "receipts": { "kind": "node", "box": "translate(1160px, 40px) 220×72", "text": "Receipts Async completion" }
     },
-    "edges": { "intake-orders": "M260,76 L400,76", "orders-billing": "M660,76 L800,76", "billing-receipts": "M1020,76 L1160,76" },
+    "edges": { "intake-orders": "M260,76 L400,76", "orders-billing": "M649,76 L800,76", "billing-receipts": "M1020,76 L1160,76" },
     "labels": {}
   },
   "tidy": {
-    "viewport": "translate(-128.806px, 366.149px) scale(0.761194)",
+    "viewport": "translate(-158.866px, 350.042px) scale(0.973134)",
     "nodes": {
       "checkout": { "kind": "node", "box": "translate(40px, 200px) 220×72", "text": "Order intake 2,000 orders/s" },
-      "orders": { "kind": "node", "box": "translate(380px, 200px) 260×72", "text": "Orders Kafka · billing consumer group" },
+      "orders": { "kind": "node", "box": "translate(380px, 200px) 249×72", "text": "Orders Kafka · billing consumer group" },
       "billing": { "kind": "node", "box": "translate(750px, 200px) 220×72", "text": "Billing 300 ms per order" },
       "receipts": { "kind": "node", "box": "translate(1090px, 200px) 220×72", "text": "Receipts Async completion" }
     },
-    "edges": { "intake-orders": "M260,236 L380,236", "orders-billing": "M640,236 L750,236", "billing-receipts": "M970,236 L1090,236" },
+    "edges": { "intake-orders": "M260,236 L380,236", "orders-billing": "M629,236 L750,236", "billing-receipts": "M970,236 L1090,236" },
     "labels": {}
   }
 }

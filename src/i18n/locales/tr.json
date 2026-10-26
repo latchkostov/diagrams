@@ -2790,7 +2790,7 @@
   "workbench.readNote": "Notu oku",
   "workbench.earlier": "Önceki",
   "workbench.later": "Sonraki",
-  "workbench.noteIndex": "Not {index} / {total}",
+  "workbench.noteIndex": "Not {index, number} / {total, number}",
   "workbench.moreTools": "Diğer araçlar",
   "workbench.sheetPeek": "Önizleme",
   "workbench.sheetHalf": "Yarım yükseklik",

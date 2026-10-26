@@ -2804,7 +2804,7 @@
   "workbench.readNote": "Les merknad",
   "workbench.earlier": "Tidligere",
   "workbench.later": "Senere",
-  "workbench.noteIndex": "Merknad {index} av {total}",
+  "workbench.noteIndex": "Merknad {index, number} av {total, number}",
   "workbench.moreTools": "Flere verktøy",
   "workbench.sheetPeek": "Forhåndsvisning",
   "workbench.sheetHalf": "Halv høyde",

@@ -1,16 +1,16 @@
 // Edge label placement. Each label pill goes somewhere on its own route where it covers no node,
 // no other label and no group header: the longest straight segment first, nearest its middle.
-// When nothing fits it falls back, in order, to wrapping onto 2-3 lines, truncating with an
-// ellipsis, and finally a small numbered dot that reveals the text on hover. Deterministic: the
+// When nothing fits it wraps onto 2-3 lines, then uses a numbered dot that reveals the full text
+// on hover. A pill never ellipsizes its words. Deterministic: the
 // same geometry always gives the same placement, so labels never jitter between frames.
 
 import { inflate, intersects, segmentHitsRect, type Point, type Rect } from "./rect";
 import { SpatialGrid } from "./spatial";
 
-/** Pill metrics in flow px. Labels use a monospace font, so width is exact: chars × charW. */
+/** Pill metrics in flow px. Advances are measured from Mona Sans, 12 px / 560 / 96% width. */
 export const LABEL = {
-  charW: 6,
-  lineH: 13,
+  charW: 5.8,
+  lineH: 16,
   padX: 7,
   padY: 2,
   border: 1,
@@ -19,7 +19,7 @@ export const LABEL = {
   dot: 16,
   /** Fewest characters (ellipsis included) worth showing before falling back to a dot. */
   minChars: 5,
-  /** Never draw a single-line pill wider than this many characters; wrap or truncate instead. */
+  /** Never draw a single-line pill wider than this many characters; wrap or use a dot instead. */
   maxLineChars: 34,
   /** A dependency's glyph inside a pill: 12px icon + 4px gap before the text. */
   glyphLead: 16,
@@ -62,7 +62,24 @@ export interface LabelEnv {
   routes?: ReadonlyMap<string, readonly Point[]>;
 }
 
-export const pillWidth = (chars: number) => chars * LABEL.charW + 2 * (LABEL.padX + LABEL.border) + 1;
+// ASCII glyph advances measured in Chromium from the bundled variable face; digits use tnum.
+const ADVANCES = [
+  2.59, 2.98, 4.7, 7.66, 7.5, 9.89, 8.91, 2.3, 4.06, 4.06, 3.63, 6.98, 2.47, 4.69, 2.34, 4.77, 7.09, 7.09, 7.09, 7.09,
+  7.09, 7.09, 7.09, 7.09, 7.09, 7.09, 2.34, 2.47, 6.98, 6.98, 6.98, 6.23, 10.45, 8.14, 7.88, 8.63, 8.44, 7.02, 6.89,
+  9.09, 8.81, 3.17, 4.59, 7.92, 6.3, 10.25, 8.75, 9, 7.53, 9.34, 8.08, 7.42, 6.97, 8.28, 8.22, 11.38, 8.28, 7.88, 7.09,
+  4.25, 4.61, 4.25, 6.98, 5.41, 3.09, 7.08, 7.08, 6.47, 7.08, 6.36, 3.84, 6.89, 7.02, 2.94, 2.94, 6.63, 2.94, 11.02,
+  7.02, 6.81, 7.08, 7.08, 4.41, 5.95, 4.3, 7.02, 6.25, 8.73, 6.64, 6.2, 5.78, 4.66, 3.28, 4.66, 6.98,
+];
+export function labelAdvance(text: string) {
+  let width = 0;
+  for (const glyph of text) {
+    const code = glyph.codePointAt(0)!;
+    width += code >= 32 && code < 127 ? ADVANCES[code - 32] : code >= 0x2e80 ? 12 : LABEL.charW;
+  }
+  return width;
+}
+export const pillWidth = (text: string | number) =>
+  (typeof text === "number" ? text * LABEL.charW : labelAdvance(text)) + 2 * (LABEL.padX + LABEL.border) + 1;
 export const pillHeight = (lines: number) => lines * LABEL.lineH + 2 * (LABEL.padY + LABEL.border);
 
 /** Greedy word wrap into at most `maxLines`, as narrow as possible. Null when it can't be done. */
@@ -222,7 +239,7 @@ export function placeLabels(reqs: readonly LabelRequest[], env: LabelEnv): Map<s
     variants.forEach((v, vi) => {
       // A full-text spot on no other line already beats anything later in the list.
       if (best && best.cost < 10) return;
-      const w = pillWidth(Math.max(...v.lines.map((l) => l.length))) + lead;
+      const w = Math.max(...v.lines.map((line) => pillWidth(line))) + lead;
       const h = pillHeight(v.lines.length);
       for (const c of cands) {
         const r = box(c.p, w, h);
@@ -239,37 +256,7 @@ export function placeLabels(reqs: readonly LabelRequest[], env: LabelEnv): Map<s
       continue;
     }
 
-    // 2. Truncate: the widest single-line pill that fits anywhere on the route.
-    const h1 = pillHeight(1);
-    const minW = pillWidth(LABEL.minChars) + lead;
-    const fullW = pillWidth(Math.min(text.length, LABEL.maxLineChars)) + lead;
-    let trunc: { p: Point; w: number } | null = null;
-    for (const c of cands.slice(0, 60)) {
-      if (blocked(box(c.p, minW, h1))) continue;
-      let lo = minW,
-        hi = fullW;
-      while (hi - lo > LABEL.charW / 2) {
-        const m = (lo + hi) / 2;
-        if (blocked(box(c.p, m, h1))) hi = m;
-        else lo = m;
-      }
-      if (!trunc || lo > trunc.w + 0.5) trunc = { p: c.p, w: lo };
-      if (lo >= fullW - LABEL.charW) break;
-    }
-    if (trunc) {
-      const chars = Math.floor((trunc.w - lead - pillWidth(0)) / LABEL.charW);
-      commit({
-        x: trunc.p.x,
-        y: trunc.p.y,
-        width: pillWidth(chars) + lead,
-        height: h1,
-        mode: "truncate",
-        lines: [text],
-        text,
-      });
-      continue;
-    }
-
+    // No ellipsis inside a pill: a word that cannot fit becomes a dot with the full text on hover.
     // 3. A numbered dot on the line.
     const d = LABEL.dot;
     const spot = cands.find((c) => !blocked(box(c.p, d, d))) ??

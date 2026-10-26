@@ -2795,7 +2795,7 @@
   "workbench.readNote": "Baca catatan",
   "workbench.earlier": "Sebelumnya",
   "workbench.later": "Berikutnya",
-  "workbench.noteIndex": "Catatan {index} dari {total}",
+  "workbench.noteIndex": "Catatan {index, number} dari {total, number}",
   "workbench.moreTools": "Alat lainnya",
   "workbench.sheetPeek": "Pratinjau",
   "workbench.sheetHalf": "Setengah tinggi",

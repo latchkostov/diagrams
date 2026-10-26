@@ -2817,7 +2817,7 @@
   "workbench.readNote": "ノートを読む",
   "workbench.earlier": "前へ",
   "workbench.later": "次へ",
-  "workbench.noteIndex": "ノート {index}/{total}",
+  "workbench.noteIndex": "ノート {index, number}/{total, number}",
   "workbench.moreTools": "その他のツール",
   "workbench.sheetPeek": "プレビュー",
   "workbench.sheetHalf": "半分の高さ",

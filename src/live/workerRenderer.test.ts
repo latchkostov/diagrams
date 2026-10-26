@@ -46,6 +46,8 @@ function canvas(transfer: "ok" | "throw" = "ok") {
 }
 
 const root = {
+  closest: () => null,
+  hasAttribute: () => false,
   querySelector: () => null,
   querySelectorAll: () => [],
   setAttribute: () => {},

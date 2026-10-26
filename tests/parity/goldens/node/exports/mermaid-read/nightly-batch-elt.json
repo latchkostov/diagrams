@@ -5,19 +5,19 @@
     "title": "Nightly batch ELT",
     "direction": "LR",
     "groups": [
-      { "id": "g_snowflake", "label": "Snowflake · ANALYTICS", "tone": "neutral", "x": 417, "y": 280, "width": 660, "height": 296 }
+      { "id": "g_snowflake", "label": "Snowflake · ANALYTICS", "tone": "neutral", "x": 414, "y": 280, "width": 660, "height": 296 }
     ],
     "nodes": [
-      { "id": "raw", "stencil": "generic.database", "label": "Raw tables", "sublabel": "RAW schema · 3 sources", "x": 817, "y": 344, "group": "g_snowflake" },
-      { "id": "dbt", "stencil": "dbt", "label": "dbt build", "sublabel": "120 models · tests", "x": 457, "y": 404, "group": "g_snowflake" },
-      { "id": "marts", "stencil": "generic.database", "label": "Marts", "sublabel": "Revenue · pipeline · churn", "x": 817, "y": 464, "group": "g_snowflake" },
+      { "id": "raw", "stencil": "generic.database", "label": "Raw tables", "sublabel": "RAW schema · 3 sources", "x": 814, "y": 344, "group": "g_snowflake" },
+      { "id": "dbt", "stencil": "dbt", "label": "dbt build", "sublabel": "120 models · tests", "x": 454, "y": 404, "group": "g_snowflake" },
+      { "id": "marts", "stencil": "generic.database", "label": "Marts", "sublabel": "Revenue · pipeline · churn", "x": 814, "y": 464, "group": "g_snowflake" },
       { "id": "airflow", "stencil": "generic.service", "label": "Airflow", "sublabel": "Nightly DAG · 02:00 UTC", "x": 80, "y": 104 },
       { "id": "app_db", "stencil": "generic.database", "label": "App database", "sublabel": "Read replica", "x": 80, "y": 224 },
       { "id": "crm", "stencil": "generic.service", "label": "Salesforce", "sublabel": "Accounts · opportunities", "x": 80, "y": 344 },
       { "id": "billing", "stencil": "generic.service", "label": "Stripe", "sublabel": "Invoices · subscriptions", "x": 80, "y": 464 },
-      { "id": "airbyte", "stencil": "airbyte", "label": "Airbyte", "sublabel": "Incremental syncs", "x": 457, "y": 284 },
+      { "id": "airbyte", "stencil": "airbyte", "label": "Airbyte", "sublabel": "Incremental syncs", "x": 454, "y": 284 },
       { "id": "tableau", "stencil": "tableau", "label": "Tableau", "sublabel": "Extract refresh 06:00", "x": 80, "y": 584 },
-      { "id": "slack", "stencil": "generic.service", "label": "#data-alerts", "sublabel": "Failed tests", "x": 817, "y": 224 }
+      { "id": "slack", "stencil": "generic.service", "label": "#data-alerts", "sublabel": "Failed tests", "x": 814, "y": 224 }
     ],
     "edges": [
       { "id": "e1-app_db-airbyte", "from": "app_db", "to": "airbyte", "label": "Incremental", "kind": "async" },

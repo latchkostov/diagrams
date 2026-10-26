@@ -1,10 +1,10 @@
 {
   "smoothstep": {
-    "visitors-entry": { "ok": true, "sides": ["right", "left"], "points": [240, 326, 360, 326], "path": "b6f8c114314e", "label": [294, 326, 65, 19], "mode": "full", "text": "Checkout", "lines": ["Checkout"] },
-    "entry-api-a": { "ok": true, "sides": ["right", "left"], "points": [586, 319, 650, 319, 650, 156, 740, 156], "path": "c6b75438f93c", "label": [650, 237.5, 113, 19], "mode": "full", "text": "Healthy target a", "lines": ["Healthy target a"] },
-    "api-orders-a": { "ok": true, "sides": ["right", "left"], "points": [960, 156, 1100, 156], "path": "5e67f94fa5d9", "label": [1024, 156, 83, 19], "mode": "full", "text": "Local write", "lines": ["Local write"] },
-    "entry-api-b": { "ok": true, "sides": ["right", "left"], "points": [586, 333, 650, 333, 650, 516, 740, 516], "path": "308c828f5346", "label": [650, 424.5, 113, 19], "mode": "full", "text": "Healthy target b", "lines": ["Healthy target b"] },
-    "api-orders-b": { "ok": true, "sides": ["right", "left"], "points": [960, 516, 1100, 516], "path": "f938349a6149", "label": [1024, 516, 83, 19], "mode": "full", "text": "Local write", "lines": ["Local write"] }
+    "visitors-entry": { "ok": true, "sides": ["right", "left"], "points": [240, 326, 360, 326], "path": "b6f8c114314e", "label": [294, 326, 70.24, 22], "mode": "full", "text": "Checkout", "lines": ["Checkout"] },
+    "entry-api-a": { "ok": true, "sides": ["right", "left"], "points": [586, 319, 650, 319, 650, 156, 740, 156], "path": "c6b75438f93c", "label": [650, 237.5, 105.31, 22], "mode": "full", "text": "Healthy target a", "lines": ["Healthy target a"] },
+    "api-orders-a": { "ok": true, "sides": ["right", "left"], "points": [960, 156, 1100, 156], "path": "5e67f94fa5d9", "label": [1024, 156, 75.92999999999999, 22], "mode": "full", "text": "Local write", "lines": ["Local write"] },
+    "entry-api-b": { "ok": true, "sides": ["right", "left"], "points": [586, 333, 650, 333, 650, 516, 740, 516], "path": "308c828f5346", "label": [650, 424.5, 105.31, 22], "mode": "full", "text": "Healthy target b", "lines": ["Healthy target b"] },
+    "api-orders-b": { "ok": true, "sides": ["right", "left"], "points": [960, 516, 1100, 516], "path": "f938349a6149", "label": [1024, 516, 75.92999999999999, 22], "mode": "full", "text": "Local write", "lines": ["Local write"] }
   },
   "bezier": {
     "visitors-entry": {
@@ -55,7 +55,7 @@
         326
       ],
       "path": "c334ed7035f8",
-      "label": [297.38610000000006, 326, 65, 19],
+      "label": [297.38610000000006, 326, 70.24, 22],
       "mode": "full",
       "text": "Checkout",
       "lines": ["Checkout"]
@@ -108,7 +108,7 @@
         156
       ],
       "path": "d1c52829cb93",
-      "label": [665.2592383471479, 231.407875, 113, 19],
+      "label": [665.2592383471479, 231.407875, 105.31, 22],
       "mode": "full",
       "text": "Healthy target a",
       "lines": ["Healthy target a"]
@@ -161,7 +161,7 @@
         156
       ],
       "path": "11b9dd41f0a8",
-      "label": [1026.95045, 156, 83, 19],
+      "label": [1026.95045, 156, 75.92999999999999, 22],
       "mode": "full",
       "text": "Local write",
       "lines": ["Local write"]
@@ -214,7 +214,7 @@
         516
       ],
       "path": "8fcd4071453b",
-      "label": [660.9735965979688, 417.66037500000004, 113, 19],
+      "label": [660.9735965979688, 417.66037500000004, 105.31, 22],
       "mode": "full",
       "text": "Healthy target b",
       "lines": ["Healthy target b"]
@@ -267,17 +267,17 @@
         516
       ],
       "path": "2fc90c36030f",
-      "label": [1026.95045, 516, 83, 19],
+      "label": [1026.95045, 516, 75.92999999999999, 22],
       "mode": "full",
       "text": "Local write",
       "lines": ["Local write"]
     }
   },
   "straight": {
-    "visitors-entry": { "ok": true, "sides": ["right", "left"], "points": [240, 326, 360, 326], "path": "b6f8c114314e", "label": [294, 326, 65, 19], "mode": "full", "text": "Checkout", "lines": ["Checkout"] },
-    "entry-api-a": { "ok": true, "sides": ["right", "left"], "points": [586, 319, 740, 156], "path": "f25758a04062", "label": [658.8794731920177, 241.86133681624102, 113, 19], "mode": "full", "text": "Healthy target a", "lines": ["Healthy target a"] },
-    "api-orders-a": { "ok": true, "sides": ["right", "left"], "points": [960, 156, 1100, 156], "path": "5e67f94fa5d9", "label": [1024, 156, 83, 19], "mode": "full", "text": "Local write", "lines": ["Local write"] },
-    "entry-api-b": { "ok": true, "sides": ["right", "left"], "points": [586, 333, 740, 516], "path": "0792ac70856a", "label": [659.1367307592576, 419.9092320061308, 113, 19], "mode": "full", "text": "Healthy target b", "lines": ["Healthy target b"] },
-    "api-orders-b": { "ok": true, "sides": ["right", "left"], "points": [960, 516, 1100, 516], "path": "f938349a6149", "label": [1024, 516, 83, 19], "mode": "full", "text": "Local write", "lines": ["Local write"] }
+    "visitors-entry": { "ok": true, "sides": ["right", "left"], "points": [240, 326, 360, 326], "path": "b6f8c114314e", "label": [294, 326, 70.24, 22], "mode": "full", "text": "Checkout", "lines": ["Checkout"] },
+    "entry-api-a": { "ok": true, "sides": ["right", "left"], "points": [586, 319, 740, 156], "path": "f25758a04062", "label": [658.8794731920177, 241.86133681624102, 105.31, 22], "mode": "full", "text": "Healthy target a", "lines": ["Healthy target a"] },
+    "api-orders-a": { "ok": true, "sides": ["right", "left"], "points": [960, 156, 1100, 156], "path": "5e67f94fa5d9", "label": [1024, 156, 75.92999999999999, 22], "mode": "full", "text": "Local write", "lines": ["Local write"] },
+    "entry-api-b": { "ok": true, "sides": ["right", "left"], "points": [586, 333, 740, 516], "path": "0792ac70856a", "label": [659.1367307592576, 419.9092320061308, 105.31, 22], "mode": "full", "text": "Healthy target b", "lines": ["Healthy target b"] },
+    "api-orders-b": { "ok": true, "sides": ["right", "left"], "points": [960, 516, 1100, 516], "path": "f938349a6149", "label": [1024, 516, 75.92999999999999, 22], "mode": "full", "text": "Local write", "lines": ["Local write"] }
   }
 }

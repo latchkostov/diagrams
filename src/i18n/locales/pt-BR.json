@@ -2793,7 +2793,7 @@
   "workbench.readNote": "Ler nota",
   "workbench.earlier": "Anterior",
   "workbench.later": "Próxima",
-  "workbench.noteIndex": "Nota {index} de {total}",
+  "workbench.noteIndex": "Nota {index, number} de {total, number}",
   "workbench.moreTools": "Mais ferramentas",
   "workbench.sheetPeek": "Prévia",
   "workbench.sheetHalf": "Meia altura",

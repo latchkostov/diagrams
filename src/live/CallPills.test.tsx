@@ -80,3 +80,16 @@ it("explains the pool ceiling instead of claiming all free threads can send call
   expect(html).toContain("Connection pool limits calls to 200 req/s");
   expect(html).not.toContain("4,000 req/s");
 });
+
+it("call annotations keep a pale pill and a separate loss glyph", () => {
+  const lost = renderToStaticMarkup(
+    <CallPills calls={[{ id: "call", held: 0, inFlight: 1, timedOut: 5 }]} readoutScale={1} />,
+  );
+  expect(lost).toContain('class="lv-pill-glyph is-loss"');
+  expect(lost).toContain(">✕</span>");
+  expect(lost).not.toContain("<bdi>✕");
+  const flight = renderToStaticMarkup(<CallPills calls={[{ id: "call", held: 0, inFlight: 1 }]} readoutScale={1} />);
+  expect(flight).toContain(">↗</span>");
+  expect(flight).not.toContain("<bdi>↗");
+  expect(flight).not.toContain("is-loss");
+});

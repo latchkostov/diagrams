@@ -5,16 +5,16 @@
     "title": "Checkout shared ids",
     "direction": "LR",
     "groups": [
-      { "id": "g_team", "label": "Orders team", "tone": "neutral", "x": 769, "y": 160, "width": 660, "height": 176 }
+      { "id": "g_team", "label": "Orders team", "tone": "neutral", "x": 762, "y": 160, "width": 661, "height": 176 }
     ],
     "nodes": [
-      { "id": "orders", "stencil": "generic.service", "label": "Order service", "x": 809, "y": 224, "group": "g_team" },
-      { "id": "db", "stencil": "generic.database", "label": "orders-db", "x": 1169, "y": 224, "group": "g_team" },
+      { "id": "orders", "stencil": "generic.service", "label": "Order service", "x": 801.91, "y": 224, "group": "g_team" },
+      { "id": "db", "stencil": "generic.database", "label": "orders-db", "x": 1163.29, "y": 224, "group": "g_team" },
       { "id": "web", "stencil": "generic.service", "label": "Storefront", "x": 80, "y": 104 },
       { "id": "app", "stencil": "client.mobile", "label": "Mobile app", "x": 80, "y": 224 },
-      { "id": "gw", "stencil": "generic.service", "label": "Commerce gateway", "sublabel": "TLS · /api", "x": 449, "y": 164 },
+      { "id": "gw", "stencil": "generic.service", "label": "Commerce gateway", "sublabel": "TLS · /api", "x": 441.90999999999997, "y": 164 },
       { "id": "billing", "stencil": "generic.service", "label": "Billing", "x": 80, "y": 344 },
-      { "id": "billing_db", "stencil": "generic.service", "label": "Ledger", "x": 449, "y": 284 }
+      { "id": "billing_db", "stencil": "generic.service", "label": "Ledger", "x": 441.90999999999997, "y": 284 }
     ],
     "edges": [
       { "id": "e1-web-gw", "from": "web", "to": "gw", "label": "HTTPS", "kind": "sync" },

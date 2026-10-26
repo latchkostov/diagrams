@@ -2818,7 +2818,7 @@
   "workbench.readNote": "Citește nota",
   "workbench.earlier": "Anterioară",
   "workbench.later": "Următoare",
-  "workbench.noteIndex": "Nota {index} din {total}",
+  "workbench.noteIndex": "Nota {index, number} din {total, number}",
   "workbench.moreTools": "Mai multe instrumente",
   "workbench.sheetPeek": "Previzualizare",
   "workbench.sheetHalf": "Jumătate de înălțime",

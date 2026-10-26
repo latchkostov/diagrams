@@ -2776,7 +2776,7 @@
   "workbench.readNote": "Читать заметку",
   "workbench.earlier": "Ранее",
   "workbench.later": "Позже",
-  "workbench.noteIndex": "Заметка {index} из {total}",
+  "workbench.noteIndex": "Заметка {index, number} из {total, number}",
   "workbench.moreTools": "Другие инструменты",
   "workbench.sheetPeek": "Предпросмотр",
   "workbench.sheetHalf": "Половина высоты",

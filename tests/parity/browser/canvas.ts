@@ -163,7 +163,7 @@ export async function checksChrome(page: Page, slug: string): Promise<void> {
   const warnings = runChecks(exampleFile(slug)).findings.filter((f) => f.severity === "warning").length;
   // Zero warnings adds no chrome, so there is no footprint change to wait for.
   if (warnings)
-    await expect(page.getByTestId("checks-count")).toHaveText(`${warnings} warning${warnings === 1 ? "" : "s"}`);
+    await expect(page.getByTestId("checks-warning-text")).toHaveText(`${warnings} warning${warnings === 1 ? "" : "s"}`);
 }
 
 /** Auto-layout can already be the saved layout: that makes no undo step. Never click a disabled Undo. */
@@ -174,6 +174,10 @@ export async function restoreOpening(page: Page, opened: Drawn, laidOut: Drawn):
   }
   await expect(page.getByTestId("undo-button")).toBeEnabled();
   await page.getByTestId("undo-button").click();
+  // Layout selects its cards; restore the opening selection before comparing expanded card sizes.
+  await page.getByTestId("canvas-wrap").focus();
+  await page.keyboard.press("Escape");
+  await expect.poll(() => canvasSelection(page)).toEqual({ nodes: [], edges: [] });
   expect(nodeBoxes(await settledCanvas(page))).toEqual(nodeBoxes(opened));
 }
 

@@ -2938,7 +2938,7 @@
   "workbench.readNote": "قراءة الملاحظة",
   "workbench.earlier": "السابقة",
   "workbench.later": "التالية",
-  "workbench.noteIndex": "الملاحظة {index} من {total}",
+  "workbench.noteIndex": "الملاحظة {index, number} من {total, number}",
   "workbench.moreTools": "أدوات إضافية",
   "workbench.sheetPeek": "لمحة",
   "workbench.sheetHalf": "نصف الارتفاع",

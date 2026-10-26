@@ -1,6 +1,6 @@
 {
   "autoLayout": {
-    "viewport": "translate(8.61538px, 243.538px) scale(0.784615)",
+    "viewport": "translate(-8.12308px, 193.292px) scale(1.00308)",
     "nodes": {
       "uploader": { "kind": "node", "box": "translate(40px, 40px) 220×72", "text": "Upload clients Web Browser" },
       "uploads": { "kind": "node", "box": "translate(400px, 40px) 220×72", "text": "Image uploads 6 partitions" },
@@ -16,7 +16,7 @@
     "labels": {}
   },
   "tidy": {
-    "viewport": "translate(-179.923px, 243.538px) scale(0.784615)",
+    "viewport": "translate(-224.215px, 193.292px) scale(1.00308)",
     "nodes": {
       "uploader": { "kind": "node", "box": "translate(80px, 180px) 220×72", "text": "Upload clients Web Browser" },
       "uploads": { "kind": "node", "box": "translate(430px, 180px) 220×72", "text": "Image uploads 6 partitions" },

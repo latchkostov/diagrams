@@ -1,8 +1,8 @@
 {
   "smoothstep": {
     "publish": { "ok": true, "sides": ["right", "left"], "points": [220, 136, 320, 136], "path": "00d2cdc59a5e" },
-    "read": { "ok": true, "sides": ["right", "left"], "points": [540, 136, 590, 136, 590, 256, 640, 256], "path": "1e96c174e9f6", "label": [590, 196, 59, 19], "mode": "full", "text": "billing", "lines": ["billing"] },
-    "recovery": { "ok": true, "sides": ["bottom", "top"], "points": [430, 172, 430, 320], "path": "f93cbed2a26c", "label": [430, 240, 65, 19], "mode": "full", "text": "Recovery", "lines": ["Recovery"] }
+    "read": { "ok": true, "sides": ["right", "left"], "points": [540, 136, 590, 136, 590, 256, 640, 256], "path": "1e96c174e9f6", "label": [590, 196, 49.75, 22], "mode": "full", "text": "billing", "lines": ["billing"] },
+    "recovery": { "ok": true, "sides": ["bottom", "top"], "points": [430, 172, 430, 320], "path": "f93cbed2a26c", "label": [430, 240, 67.94, 22], "mode": "full", "text": "Recovery", "lines": ["Recovery"] }
   },
   "bezier": {
     "publish": {
@@ -102,7 +102,7 @@
         256
       ],
       "path": "b37daf078ef2",
-      "label": [588.6981263614315, 191.51500000000001, 59, 19],
+      "label": [588.6981263614315, 191.51500000000001, 49.75, 22],
       "mode": "full",
       "text": "billing",
       "lines": ["billing"]
@@ -155,7 +155,7 @@
         320
       ],
       "path": "3f04681b4e5f",
-      "label": [430.00000000000006, 242.77619000000004, 65, 19],
+      "label": [430.00000000000006, 242.77619000000004, 67.94, 22],
       "mode": "full",
       "text": "Recovery",
       "lines": ["Recovery"]
@@ -163,7 +163,7 @@
   },
   "straight": {
     "publish": { "ok": true, "sides": ["right", "left"], "points": [220, 136, 320, 136], "path": "00d2cdc59a5e" },
-    "read": { "ok": true, "sides": ["right", "left"], "points": [540, 136, 640, 256], "path": "7731f9410c60", "label": [586.1588936020131, 191.39067232241575, 59, 19], "mode": "full", "text": "billing", "lines": ["billing"] },
-    "recovery": { "ok": true, "sides": ["bottom", "top"], "points": [430, 172, 430, 320], "path": "f93cbed2a26c", "label": [430, 240, 65, 19], "mode": "full", "text": "Recovery", "lines": ["Recovery"] }
+    "read": { "ok": true, "sides": ["right", "left"], "points": [540, 136, 640, 256], "path": "7731f9410c60", "label": [586.1588936020131, 191.39067232241575, 49.75, 22], "mode": "full", "text": "billing", "lines": ["billing"] },
+    "recovery": { "ok": true, "sides": ["bottom", "top"], "points": [430, 172, 430, 320], "path": "f93cbed2a26c", "label": [430, 240, 67.94, 22], "mode": "full", "text": "Recovery", "lines": ["Recovery"] }
   }
 }

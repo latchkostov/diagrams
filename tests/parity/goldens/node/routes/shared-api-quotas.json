@@ -1,10 +1,10 @@
 {
   "smoothstep": {
-    "ask": { "ok": true, "sides": ["bottom", "top"], "points": [150, 112, 150, 156, 170, 156, 170, 200], "path": "ba4415c05692", "label": [150, 135, 65, 19], "mode": "full", "text": "Question", "lines": ["Question"] },
-    "assist": { "ok": true, "sides": ["bottom", "top"], "points": [170, 272, 170, 316, 330, 316, 330, 360], "path": "e8814436e36a", "label": [250, 316, 53, 19], "mode": "full", "text": "Answer", "lines": ["Answer"] },
-    "generate": { "ok": true, "sides": ["bottom", "top"], "points": [323, 432, 323, 476, 170, 476, 170, 520], "path": "06c0cedd4309", "label": [246.5, 476, 65, 19], "mode": "full", "text": "Generate", "lines": ["Generate"] },
-    "review-answer": { "ok": true, "sides": ["bottom", "top"], "points": [337, 432, 337, 476, 490, 476, 490, 520], "path": "08b4f6d3080e", "label": [413.5, 476, 53, 19], "mode": "full", "text": "Review", "lines": ["Review"] },
-    "charge": { "ok": true, "sides": ["bottom", "top"], "points": [470, 112, 470, 156, 490, 156, 490, 200], "path": "5a6a85d037b0", "label": [470, 135, 53, 19], "mode": "full", "text": "Charge", "lines": ["Charge"] }
+    "ask": { "ok": true, "sides": ["bottom", "top"], "points": [150, 112, 150, 156, 170, 156, 170, 200], "path": "ba4415c05692", "label": [150, 135, 66.74, 22], "mode": "full", "text": "Question", "lines": ["Question"] },
+    "assist": { "ok": true, "sides": ["bottom", "top"], "points": [170, 272, 170, 316, 330, 316, 330, 360], "path": "e8814436e36a", "label": [250, 316, 57.61, 22], "mode": "full", "text": "Answer", "lines": ["Answer"] },
+    "generate": { "ok": true, "sides": ["bottom", "top"], "points": [323, 432, 323, 476, 170, 476, 170, 520], "path": "06c0cedd4309", "label": [246.5, 476, 67.97999999999999, 22], "mode": "full", "text": "Generate", "lines": ["Generate"] },
+    "review-answer": { "ok": true, "sides": ["bottom", "top"], "points": [337, 432, 337, 476, 490, 476, 490, 520], "path": "08b4f6d3080e", "label": [413.5, 476, 55.72, 22], "mode": "full", "text": "Review", "lines": ["Review"] },
+    "charge": { "ok": true, "sides": ["bottom", "top"], "points": [470, 112, 470, 156, 490, 156, 490, 200], "path": "5a6a85d037b0", "label": [470, 135, 57.39, 22], "mode": "full", "text": "Charge", "lines": ["Charge"] }
   },
   "bezier": {
     "ask": {
@@ -55,7 +55,7 @@
         200
       ],
       "path": "f738015afc2b",
-      "label": [159.2525, 154.1181313378999, 65, 19],
+      "label": [159.2525, 154.1181313378999, 66.74, 22],
       "mode": "full",
       "text": "Question",
       "lines": ["Question"]
@@ -108,7 +108,7 @@
         360
       ],
       "path": "1297115f3710",
-      "label": [244.02, 315.5582434422789, 53, 19],
+      "label": [244.02, 315.5582434422789, 57.61, 22],
       "mode": "full",
       "text": "Answer",
       "lines": ["Answer"]
@@ -161,7 +161,7 @@
         520
       ],
       "path": "780c6bf3d745",
-      "label": [252.21837500000004, 475.46310937834176, 65, 19],
+      "label": [252.21837500000004, 475.46310937834176, 67.97999999999999, 22],
       "mode": "full",
       "text": "Generate",
       "lines": ["Generate"]
@@ -214,7 +214,7 @@
         520
       ],
       "path": "d5ee23f48779",
-      "label": [407.781625, 475.46310937834176, 53, 19],
+      "label": [407.781625, 475.46310937834176, 55.72, 22],
       "mode": "full",
       "text": "Review",
       "lines": ["Review"]
@@ -267,17 +267,17 @@
         200
       ],
       "path": "56e5699f2d32",
-      "label": [479.25250000000005, 154.11813133789994, 53, 19],
+      "label": [479.25250000000005, 154.11813133789994, 57.39, 22],
       "mode": "full",
       "text": "Charge",
       "lines": ["Charge"]
     }
   },
   "straight": {
-    "ask": { "ok": true, "sides": ["bottom", "top"], "points": [150, 112, 170, 200], "path": "0e235fe3ba72", "label": [158.6702733784662, 150.14920286525125, 65, 19], "mode": "full", "text": "Question", "lines": ["Question"] },
-    "assist": { "ok": true, "sides": ["bottom", "top"], "points": [170, 272, 330, 360], "path": "4785f1e1bfa8", "label": [244.74270454794012, 313.10848750136705, 53, 19], "mode": "full", "text": "Answer", "lines": ["Answer"] },
-    "generate": { "ok": true, "sides": ["bottom", "top"], "points": [323, 432, 170, 520], "path": "0e30900eea36", "label": [251.70107053616636, 473.0085345935775, 65, 19], "mode": "full", "text": "Generate", "lines": ["Generate"] },
-    "review-answer": { "ok": true, "sides": ["bottom", "top"], "points": [337, 432, 490, 520], "path": "dd4b1637ca99", "label": [408.29892946383364, 473.0085345935775, 53, 19], "mode": "full", "text": "Review", "lines": ["Review"] },
-    "charge": { "ok": true, "sides": ["bottom", "top"], "points": [470, 112, 490, 200], "path": "48e85f14b8a4", "label": [478.67027337846616, 150.14920286525125, 53, 19], "mode": "full", "text": "Charge", "lines": ["Charge"] }
+    "ask": { "ok": true, "sides": ["bottom", "top"], "points": [150, 112, 170, 200], "path": "0e235fe3ba72", "label": [158.6702733784662, 150.14920286525125, 66.74, 22], "mode": "full", "text": "Question", "lines": ["Question"] },
+    "assist": { "ok": true, "sides": ["bottom", "top"], "points": [170, 272, 330, 360], "path": "4785f1e1bfa8", "label": [244.74270454794012, 313.10848750136705, 57.61, 22], "mode": "full", "text": "Answer", "lines": ["Answer"] },
+    "generate": { "ok": true, "sides": ["bottom", "top"], "points": [323, 432, 170, 520], "path": "0e30900eea36", "label": [251.70107053616636, 473.0085345935775, 67.97999999999999, 22], "mode": "full", "text": "Generate", "lines": ["Generate"] },
+    "review-answer": { "ok": true, "sides": ["bottom", "top"], "points": [337, 432, 490, 520], "path": "dd4b1637ca99", "label": [408.29892946383364, 473.0085345935775, 55.72, 22], "mode": "full", "text": "Review", "lines": ["Review"] },
+    "charge": { "ok": true, "sides": ["bottom", "top"], "points": [470, 112, 490, 200], "path": "48e85f14b8a4", "label": [478.67027337846616, 150.14920286525125, 57.39, 22], "mode": "full", "text": "Charge", "lines": ["Charge"] }
   }
 }

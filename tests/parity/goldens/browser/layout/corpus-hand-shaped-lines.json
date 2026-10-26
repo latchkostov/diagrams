@@ -1,6 +1,6 @@
 {
   "autoLayout": {
-    "viewport": "translate(6px, 232.006px) scale(0.85)",
+    "viewport": "translate(-11.4667px, 155.864px) scale(1.08667)",
     "nodes": {
       "api": { "kind": "node", "box": "translate(40px, 100px) 220×72", "text": "Orders API Node.js Service" },
       "db": { "kind": "node", "box": "translate(400px, 40px) 220×72", "text": "Orders DB PostgreSQL" },
@@ -14,13 +14,13 @@
       "shape-end": "M510,232 L510,447.3 Q510,457.3 520,457.3 L1160,457.3 Q1170,457.3 1170,447.3 L1170,419.3"
     },
     "labels": {
-      "api-db": { "style": "transform: translate(-50%, -50%) translate(417.25px, 140px); --fe-w: 53px; --fe-h: 19px;", "text": "writes" },
-      "jog": { "style": "transform: translate(-50%, -50%) translate(360.75px, 196px); --fe-w: 65px; --fe-h: 19px;", "text": "receipts" },
-      "detour": { "style": "transform: translate(-50%, -50%) translate(420px, 2px); --fe-w: 47px; --fe-h: 19px;", "text": "audit" }
+      "api-db": { "style": "transform: translate(-50%, -50%) translate(417.25px, 140px); --fe-w: 49.690000000000005px; --fe-h: 22px;", "text": "writes" },
+      "jog": { "style": "transform: translate(-50%, -50%) translate(360.75px, 196px); --fe-w: 60.87px; --fe-h: 22px;", "text": "receipts" },
+      "detour": { "style": "transform: translate(-50%, -50%) translate(420px, 2px); --fe-w: 45.42px; --fe-h: 22px;", "text": "audit" }
     }
   },
   "tidy": {
-    "viewport": "translate(-35.75px, 250.075px) scale(0.85)",
+    "viewport": "translate(-76.8467px, 230.423px) scale(1.08667)",
     "nodes": {
       "api": { "kind": "node", "box": "translate(0px, 60px) 220×72", "text": "Orders API Node.js Service" },
       "db": { "kind": "node", "box": "translate(360px, 0px) 220×72", "text": "Orders DB PostgreSQL" },
@@ -34,9 +34,9 @@
       "shape-end": "M470,192 L470,447.3 Q470,457.3 480,457.3 L1160,457.3 Q1170,457.3 1170,447.3 L1170,419.3"
     },
     "labels": {
-      "api-db": { "style": "transform: translate(-50%, -50%) translate(377.25px, 100px); --fe-w: 53px; --fe-h: 19px;", "text": "writes" },
-      "jog": { "style": "transform: translate(-50%, -50%) translate(320.75px, 156px); --fe-w: 65px; --fe-h: 19px;", "text": "receipts" },
-      "detour": { "style": "transform: translate(-50%, -50%) translate(380px, -38px); --fe-w: 47px; --fe-h: 19px;", "text": "audit" }
+      "api-db": { "style": "transform: translate(-50%, -50%) translate(377.25px, 100px); --fe-w: 49.690000000000005px; --fe-h: 22px;", "text": "writes" },
+      "jog": { "style": "transform: translate(-50%, -50%) translate(320.75px, 156px); --fe-w: 60.87px; --fe-h: 22px;", "text": "receipts" },
+      "detour": { "style": "transform: translate(-50%, -50%) translate(380px, -38px); --fe-w: 45.42px; --fe-h: 22px;", "text": "audit" }
     }
   }
 }

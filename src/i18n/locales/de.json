@@ -2812,7 +2812,7 @@
   "workbench.readNote": "Notiz lesen",
   "workbench.earlier": "Früher",
   "workbench.later": "Später",
-  "workbench.noteIndex": "Notiz {index} von {total}",
+  "workbench.noteIndex": "Notiz {index, number} von {total, number}",
   "workbench.moreTools": "Weitere Werkzeuge",
   "workbench.sheetPeek": "Vorschau",
   "workbench.sheetHalf": "Halbe Höhe",

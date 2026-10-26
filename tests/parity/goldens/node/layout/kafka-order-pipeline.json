@@ -1,9 +1,25 @@
 {
   "autoLayout": {
-    "LR": { "shopper": [40, 160], "dashboard": [40, 280], "gateway": [440, 160], "metrics": [440, 280], "orders": [840, 220], "schemas": [1255, 100], "order-events": [1255, 220], "order-db": [1255, 340], "inventory": [1655, 100], "payments": [1655, 220], "notifications": [1655, 340], "stock-db": [2076, 40], "payment-db": [2076, 160], "payment-events": [2076, 280], "notify-cache": [2076, 400] },
+    "LR": {
+      "shopper": [40, 160],
+      "dashboard": [40, 280],
+      "gateway": [440, 160],
+      "metrics": [440, 280],
+      "orders": [840, 220],
+      "schemas": [1259.72, 100],
+      "order-events": [1259.72, 220],
+      "order-db": [1259.72, 340],
+      "inventory": [1659.72, 100],
+      "payments": [1659.72, 220],
+      "notifications": [1659.72, 340],
+      "stock-db": [2094.81, 40],
+      "payment-db": [2094.81, 160],
+      "payment-events": [2094.81, 280],
+      "notify-cache": [2094.81, 400]
+    },
     "TB": { "shopper": [360, 40], "dashboard": [680, 40], "gateway": [360, 200], "metrics": [680, 200], "orders": [520, 360], "order-db": [200, 520], "order-events": [520, 520], "schemas": [840, 520], "inventory": [200, 680], "payments": [520, 680], "notifications": [840, 680], "stock-db": [40, 840], "payment-events": [360, 840], "payment-db": [680, 840], "notify-cache": [1000, 840] }
   },
-  "tidy": { "shopper": [40, 160], "gateway": [440, 160], "orders": [840, 220], "order-events": [1255, 220], "inventory": [1655, 100], "payments": [1655, 220], "notifications": [1655, 340], "stock-db": [2076, 40], "payment-db": [2076, 160], "notify-cache": [2076, 400], "payment-events": [2076, 280], "order-db": [1255, 340], "schemas": [1255, 100], "metrics": [440, 280], "dashboard": [40, 280] },
+  "tidy": { "shopper": [40, 160], "gateway": [440, 160], "orders": [840, 220], "order-events": [1260, 220], "inventory": [1660, 100], "payments": [1660, 220], "notifications": [1660, 340], "stock-db": [2095, 40], "payment-db": [2095, 160], "notify-cache": [2095, 400], "payment-events": [2095, 280], "order-db": [1260, 340], "schemas": [1260, 100], "metrics": [440, 280], "dashboard": [40, 280] },
   "arrange": {
     "alignLeft": { "shopper": [40, 280], "gateway": [40, 280], "orders": [40, 280], "order-events": [40, 280], "inventory": [40, 160], "payments": [40, 280], "notifications": [40, 400], "stock-db": [40, 160], "payment-db": [40, 280], "notify-cache": [40, 400], "payment-events": [40, 520], "order-db": [40, 520], "schemas": [40, 40], "metrics": [40, 640], "dashboard": [40, 640] },
     "alignMiddle": { "shopper": [40, 340], "gateway": [420, 340], "orders": [800, 340], "order-events": [1180, 340], "inventory": [1560, 340], "payments": [1560, 340], "notifications": [1560, 340], "stock-db": [1940, 340], "payment-db": [1940, 340], "notify-cache": [1940, 340], "payment-events": [1180, 340], "order-db": [800, 340], "schemas": [1180, 340], "metrics": [1560, 340], "dashboard": [1940, 340] },
@@ -16,7 +32,23 @@
     "laidOut": true,
     "fitted": ["aks"],
     "placedNotes": [],
-    "nodes": { "shopper": [40, 160], "gateway": [440, 160], "orders": [840, 220], "order-events": [1255, 220], "inventory": [1655, 100], "payments": [1655, 220], "notifications": [1655, 340], "stock-db": [2076, 40], "payment-db": [2076, 160], "notify-cache": [2076, 400], "payment-events": [2076, 280], "order-db": [1255, 500], "schemas": [1255, -100], "metrics": [440, 280], "dashboard": [40, 280] },
-    "groups": { "aks": [800, 36, 1155, 416] }
+    "nodes": {
+      "shopper": [40, 160],
+      "gateway": [440, 160],
+      "orders": [840, 220],
+      "order-events": [1259.72, 220],
+      "inventory": [1659.72, 100],
+      "payments": [1659.72, 220],
+      "notifications": [1659.72, 340],
+      "stock-db": [2094.81, 40],
+      "payment-db": [2094.81, 160],
+      "notify-cache": [2094.81, 400],
+      "payment-events": [2094.81, 280],
+      "order-db": [1260, 500],
+      "schemas": [1260, -100],
+      "metrics": [440, 280],
+      "dashboard": [40, 280]
+    },
+    "groups": { "aks": [800, 36, 1160, 416] }
   }
 }

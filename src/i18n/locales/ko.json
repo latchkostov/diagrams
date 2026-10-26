@@ -2840,7 +2840,7 @@
   "workbench.readNote": "노트 읽기",
   "workbench.earlier": "이전",
   "workbench.later": "다음",
-  "workbench.noteIndex": "노트 {index}/{total}",
+  "workbench.noteIndex": "노트 {index, number}/{total, number}",
   "workbench.moreTools": "추가 도구",
   "workbench.sheetPeek": "미리 보기",
   "workbench.sheetHalf": "절반 높이",

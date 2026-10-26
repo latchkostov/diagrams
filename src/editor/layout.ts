@@ -21,8 +21,8 @@ function labelRoom(label: string | undefined, direction: "LR" | "TB"): number {
   const text = label?.trim();
   if (!text) return 0;
   const lines = text.length > 14 ? (wrapLines(text, 2) ?? [text]) : [text];
-  const chars = Math.min(24, Math.max(...lines.map((l) => l.length)));
-  return direction === "LR" ? pillWidth(chars) + 48 : pillHeight(lines.length) + 48;
+  const line = lines.reduce((a, b) => (pillWidth(a) > pillWidth(b) ? a : b));
+  return direction === "LR" ? pillWidth(line) + 48 : pillHeight(lines.length) + 48;
 }
 
 export function layeredLayout({ nodes, edges, direction = "LR" }: LayoutInput): Map<string, { x: number; y: number }> {

@@ -6,15 +6,15 @@
     "direction": "LR",
     "nodes": [
       { "id": "async_a", "stencil": "generic.service", "label": "async source", "x": 40, "y": 40 },
-      { "id": "async_b", "stencil": "generic.service", "label": "async target", "x": 469, "y": 40 },
+      { "id": "async_b", "stencil": "generic.service", "label": "async target", "x": 482.19, "y": 40 },
       { "id": "sync_a", "stencil": "generic.service", "label": "sync source", "x": 40, "y": 160 },
-      { "id": "sync_b", "stencil": "generic.service", "label": "sync target", "x": 469, "y": 160 },
+      { "id": "sync_b", "stencil": "generic.service", "label": "sync target", "x": 482.19, "y": 160 },
       { "id": "labelled_a", "stencil": "generic.service", "label": "labelled source", "x": 40, "y": 280 },
-      { "id": "labelled_b", "stencil": "generic.service", "label": "labelled target", "x": 469, "y": 280 },
+      { "id": "labelled_b", "stencil": "generic.service", "label": "labelled target", "x": 482.19, "y": 280 },
       { "id": "long_label_a", "stencil": "generic.service", "label": "long-label source", "x": 40, "y": 400 },
-      { "id": "long_label_b", "stencil": "generic.service", "label": "long-label target", "x": 469, "y": 400 },
+      { "id": "long_label_b", "stencil": "generic.service", "label": "long-label target", "x": 482.19, "y": 400 },
       { "id": "bi_a", "stencil": "generic.service", "label": "bidirectional A", "x": 40, "y": 520 },
-      { "id": "bi_b", "stencil": "generic.service", "label": "bidirectional B", "x": 469, "y": 520 }
+      { "id": "bi_b", "stencil": "generic.service", "label": "bidirectional B", "x": 482.19, "y": 520 }
     ],
     "edges": [
       { "id": "e1-async_a-async_b", "from": "async_a", "to": "async_b", "kind": "async" },

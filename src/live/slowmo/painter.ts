@@ -277,10 +277,10 @@ export class SlowPainter implements SlowOverlay {
     const { over: ctx, dpr } = v;
     const ink = INK[v.theme];
     const font = Math.max(12.5 * dpr * this.textScale, v.size * 3.3);
-    const small = Math.max(9.5 * dpr * this.textScale, v.size * 2.1);
+    const small = Math.max(11 * dpr * this.textScale, v.size * 2.1);
     const bold = (px: number) => `650 ${px}px "Mona Sans Variable", ui-sans-serif, system-ui, sans-serif`;
     const regular = (px: number) => `500 ${px}px "Mona Sans Variable", ui-sans-serif, system-ui, sans-serif`;
-    const mono = (px: number) => `500 ${px}px "Geist Mono Variable", ui-monospace, monospace`;
+    const numeric = (px: number) => `500 ${px}px "Mona Sans Canvas", "Mona Sans Variable", ui-sans-serif, sans-serif`;
     type Req = {
       id: number;
       text: string;
@@ -314,7 +314,7 @@ export class SlowPainter implements SlowOverlay {
     };
     const measure = (text: string, req?: Req) => {
       if (req && !req.c) {
-        ctx.font = mono(visitedFont);
+        ctx.font = numeric(visitedFont);
         return { w: ctx.measureText(text).width + visitedFont * 1.1, h: visitedFont * 1.7 };
       }
       if (req?.c?.chip) {
@@ -446,13 +446,13 @@ export class SlowPainter implements SlowOverlay {
       }
       ctx.globalAlpha = 1;
       if (!c) {
-        // A visited node's offset: quiet, monospaced.
+        // A visited node's offset: quiet, tabular UI type.
         ctx.fillStyle = ink.surface;
         roundRect(ctx, l.x, l.y, l.w, l.h, l.h / 2);
         ctx.globalAlpha = (req?.alpha ?? 0.8) * 0.65;
         ctx.fill();
         ctx.globalAlpha = req?.alpha ?? 0.8;
-        ctx.font = mono(visitedFont);
+        ctx.font = numeric(visitedFont);
         ctx.fillStyle = ink.muted;
         ctx.fillText(l.text, l.x + visitedFont * 0.55, l.y + l.h / 2 + 0.5 * dpr);
         continue;

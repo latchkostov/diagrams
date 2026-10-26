@@ -1,3 +1,4 @@
+import { loadCanvasFonts } from "./canvasFonts";
 // The live view's particle renderer, as the frame loop sees it. Two implementations share every line
 // of drawing code (ParticleRenderer, SlowPainter, MarchRenderer):
 //
@@ -272,6 +273,9 @@ class MainThreadRenderer implements LiveRenderer {
   private reduced: boolean;
 
   constructor(private setup: RendererSetup) {
+    void loadCanvasFonts(document.fonts)
+      .then(() => this.core.invalidate())
+      .catch(() => {});
     this.scene = new LiveScene(setup.root, setup.store);
     const scene = this.scene;
     this.reduced = setup.options.reducedMotion;

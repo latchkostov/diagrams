@@ -1,6 +1,6 @@
 {
   "autoLayout": {
-    "viewport": "translate(96.6667px, 409.833px) scale(0.944444)",
+    "viewport": "translate(104.444px, 405.889px) scale(1.20741)",
     "nodes": {
       "request-path": { "kind": "annotation", "box": "translate(-60px, -150px) 940×330", "text": "Request path" },
       "group:partner-region": { "kind": "group", "box": "translate(0px, -24px) 300×176", "text": "Partner" },
@@ -14,7 +14,7 @@
     "labels": {}
   },
   "tidy": {
-    "viewport": "translate(-2.22222px, 409.833px) scale(0.944444)",
+    "viewport": "translate(2.96296px, 405.889px) scale(1.20741)",
     "nodes": {
       "request-path": { "kind": "annotation", "box": "translate(-60px, -150px) 940×330", "text": "Request path" },
       "group:partner-region": { "kind": "group", "box": "translate(-30px, -70px) 280×200", "text": "Partner" },

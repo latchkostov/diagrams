@@ -10,16 +10,16 @@
     ],
     "nodes": [
       { "id": "fd", "stencil": "azure.front-door", "label": "Front Door", "sublabel": "WAF · TLS", "x": 448, "y": 344, "group": "g_azure" },
-      { "id": "sql", "stencil": "azure.sql", "label": "orders-db", "sublabel": "Azure SQL", "x": 1189, "y": 104, "group": "g_azure" },
-      { "id": "sb", "stencil": "azure.service-bus.topic", "label": "orders.created", "sublabel": "Service Bus topic", "x": 1189, "y": 224, "group": "g_azure" },
-      { "id": "notify", "stencil": "generic.email", "label": "Order confirmation", "sublabel": "Function · sends email", "x": 1562, "y": 344, "group": "g_azure" },
-      { "id": "ai", "stencil": "azure.app-insights", "label": "Application Insights", "sublabel": "traces · logs · metrics", "x": 1189, "y": 584, "group": "g_azure" },
-      { "id": "appcfg", "stencil": "azure.app-config", "label": "orders-config", "sublabel": "App Configuration", "x": 1189, "y": 344, "group": "g_azure" },
-      { "id": "kv", "stencil": "azure.key-vault", "label": "orders-kv", "sublabel": "Key Vault", "x": 1562, "y": 464, "group": "g_azure" },
-      { "id": "mi", "stencil": "azure.managed-identity", "label": "orders-api-id", "sublabel": "Workload identity", "x": 1189, "y": 464, "group": "g_azure" },
+      { "id": "sql", "stencil": "azure.sql", "label": "orders-db", "sublabel": "Azure SQL", "x": 1189.48, "y": 104, "group": "g_azure" },
+      { "id": "sb", "stencil": "azure.service-bus.topic", "label": "orders.created", "sublabel": "Service Bus topic", "x": 1189.48, "y": 224, "group": "g_azure" },
+      { "id": "notify", "stencil": "generic.email", "label": "Order confirmation", "sublabel": "Function · sends email", "x": 1562.48, "y": 344, "group": "g_azure" },
+      { "id": "ai", "stencil": "azure.app-insights", "label": "Application Insights", "sublabel": "traces · logs · metrics", "x": 1189.48, "y": 584, "group": "g_azure" },
+      { "id": "appcfg", "stencil": "azure.app-config", "label": "orders-config", "sublabel": "App Configuration", "x": 1189.48, "y": 344, "group": "g_azure" },
+      { "id": "kv", "stencil": "azure.key-vault", "label": "orders-kv", "sublabel": "Key Vault", "x": 1562.48, "y": 464, "group": "g_azure" },
+      { "id": "mi", "stencil": "azure.managed-identity", "label": "orders-api-id", "sublabel": "Workload identity", "x": 1189.48, "y": 464, "group": "g_azure" },
       { "id": "api", "stencil": "service.dotnet", "label": "Orders API", "sublabel": "ASP.NET Core · 3 replicas", "x": 808, "y": 344, "group": "g_aks" },
       { "id": "web", "stencil": "generic.service", "label": "Storefront", "sublabel": "Shoppers placing orders", "x": 80, "y": 344 },
-      { "id": "entra", "stencil": "entra-id", "label": "Entra ID", "sublabel": "Token issuer", "x": 1562, "y": 224 }
+      { "id": "entra", "stencil": "entra-id", "label": "Entra ID", "sublabel": "Token issuer", "x": 1562.48, "y": 224 }
     ],
     "edges": [
       { "id": "e1-web-fd", "from": "web", "to": "fd", "label": "HTTPS", "kind": "sync" },

@@ -2794,7 +2794,7 @@
   "workbench.readNote": "Přečíst poznámku",
   "workbench.earlier": "Dřívější",
   "workbench.later": "Pozdější",
-  "workbench.noteIndex": "Poznámka {index} z {total}",
+  "workbench.noteIndex": "Poznámka {index, number} z {total, number}",
   "workbench.moreTools": "Další nástroje",
   "workbench.sheetPeek": "Náhled",
   "workbench.sheetHalf": "Poloviční výška",

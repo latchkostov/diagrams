@@ -5,10 +5,7 @@ import type { EdgeInk } from "./liveScene";
 // message per animation frame with what changed (renderProtocol.ts); each is drawn as it arrives and
 // the OffscreenCanvas presents it without a main-thread paint.
 
-import monaLatin from "@fontsource-variable/mona-sans/files/mona-sans-latin-wdth-normal.woff2?url";
-import monaLatinExt from "@fontsource-variable/mona-sans/files/mona-sans-latin-ext-wdth-normal.woff2?url";
-import geistLatin from "@fontsource-variable/geist-mono/files/geist-mono-latin-wght-normal.woff2?url";
-import geistLatinExt from "@fontsource-variable/geist-mono/files/geist-mono-latin-ext-wght-normal.woff2?url";
+import { loadCanvasFonts } from "./canvasFonts";
 import type { PathSamples } from "./pathSampler";
 import {
   DEFAULT_TOKENS,
@@ -40,32 +37,8 @@ interface WorkerScope {
 }
 const scope = self as unknown as WorkerScope;
 
-// The document's fonts don't reach a worker: register the faces the canvas text uses (the same files
-// the page loads, so they come from the HTTP cache). Until they load, text falls back like the page's.
-const LATIN =
-  "U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD";
-const LATIN_EXT =
-  "U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF";
 function loadFonts(): void {
-  const set = scope.fonts;
-  if (!set || typeof FontFace !== "function") return;
-  const faces = [
-    new FontFace("Mona Sans Variable", `url(${monaLatin})`, {
-      weight: "200 900",
-      stretch: "75% 125%",
-      unicodeRange: LATIN,
-    }),
-    new FontFace("Mona Sans Variable", `url(${monaLatinExt})`, {
-      weight: "200 900",
-      stretch: "75% 125%",
-      unicodeRange: LATIN_EXT,
-    }),
-    new FontFace("Geist Mono Variable", `url(${geistLatin})`, { weight: "100 900", unicodeRange: LATIN }),
-    new FontFace("Geist Mono Variable", `url(${geistLatinExt})`, { weight: "100 900", unicodeRange: LATIN_EXT }),
-  ];
-  for (const f of faces) set.add(f);
-  // Only the Latin faces are needed for what the canvas writes; repaint once they're in.
-  void Promise.all([faces[0].load(), faces[2].load()])
+  void loadCanvasFonts(scope.fonts)
     .then(() => {
       if (!renderer || !last) return;
       renderer.invalidate();

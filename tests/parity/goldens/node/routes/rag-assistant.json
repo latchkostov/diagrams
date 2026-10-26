@@ -1,20 +1,20 @@
 {
   "smoothstep": {
-    "user-to-rag-api": { "ok": true, "sides": ["right", "left"], "points": [268, 196, 420, 196], "path": "9a28133889c8", "label": [338, 196, 71, 19], "mode": "full", "text": "POST /ask", "lines": ["POST /ask"] },
-    "rag-api-to-cache": { "ok": true, "sides": ["bottom", "top"], "points": [536.5, 232, 536.5, 276, 540.5, 276, 540.5, 320], "path": "2ca1fec0f49e", "label": [540.5, 291, 89, 19], "mode": "full", "text": "Cache lookup", "lines": ["Cache lookup"] },
-    "rag-api-to-vector-db": { "ok": true, "sides": ["right", "left"], "points": [667, 210, 733.5, 210, 733.5, 356, 800, 356], "path": "36b0a7e407a0", "label": [733.5, 293, 89, 19], "mode": "full", "text": "Top-k chunks", "lines": ["Top-k chunks"] },
-    "rag-api-to-llm": { "ok": true, "sides": ["right", "left"], "points": [667, 196, 800, 196], "path": "a9832ffb4d93", "label": [727.5, 196, 113, 19], "mode": "full", "text": "Prompt + context", "lines": ["Prompt + context"] },
-    "rag-api-to-feedback": { "ok": true, "sides": ["right", "left"], "points": [667, 182, 733.5, 182, 733.5, 76, 800, 76], "path": "5c7778a2c286", "label": [733.5, 129, 95, 19], "mode": "full", "text": "Rated answers", "lines": ["Rated answers"] },
-    "feedback-to-eval-job": { "ok": true, "sides": ["right", "left"], "points": [1020, 76, 1101, 76, 1101, 69, 1180, 69], "path": "85f24525b8c9", "label": [1123.5, 69, 89, 19], "mode": "full", "text": "group: evals", "lines": ["group: evals"] },
-    "eval-job-to-llm": { "ok": true, "sides": ["left", "right"], "points": [1180, 83, 1101, 83, 1101, 196, 1022, 196], "path": "ba68af1f7d9a", "label": [1101, 139.5, 89, 19], "mode": "full", "text": "Grade answer", "lines": ["Grade answer"] },
-    "eval-job-to-quality": { "ok": true, "sides": ["right", "left"], "points": [1433, 76, 1560, 76], "path": "84e20327c926", "label": [1490.5, 76, 53, 19], "mode": "full", "text": "Scores", "lines": ["Scores"] },
-    "docs-to-ingest-q": { "ok": true, "sides": ["right", "left"], "points": [293, 516, 420, 516], "path": "ad087bb2d4ff", "label": [350.5, 516, 89, 19], "mode": "full", "text": "Page changed", "lines": ["Page changed"] },
-    "ingest-q-to-embed-worker": { "ok": true, "sides": ["right", "left"], "points": [654, 516, 800, 516], "path": "84419e548e41", "label": [721, 516, 119, 19], "mode": "full", "text": "Competing workers", "lines": ["Competing workers"] },
-    "embed-worker-to-embeddings": { "ok": true, "sides": ["right", "left"], "points": [1041, 523, 1110.5, 523, 1110.5, 516, 1180, 516], "path": "05fef1eabb75", "label": [1086.75, 523, 83, 19], "mode": "full", "text": "Embed batch", "lines": ["Embed batch"] },
-    "embed-worker-to-vector-db": { "ok": true, "sides": ["top", "bottom"], "points": [920.5, 480, 920.5, 436, 910, 436, 910, 392], "path": "923e07a7d634", "label": [920.5, 457, 95, 19], "mode": "full", "text": "Upsert chunks", "lines": ["Upsert chunks"] },
+    "user-to-rag-api": { "ok": true, "sides": ["right", "left"], "points": [268, 196, 420, 196], "path": "9a28133889c8", "label": [338, 196, 74.94, 22], "mode": "full", "text": "POST /ask", "lines": ["POST /ask"] },
+    "rag-api-to-cache": { "ok": true, "sides": ["bottom", "top"], "points": [536.5, 232, 536.5, 276, 540.5, 276, 540.5, 320], "path": "2ca1fec0f49e", "label": [540.5, 291, 92.44000000000001, 22], "mode": "full", "text": "Cache lookup", "lines": ["Cache lookup"] },
+    "rag-api-to-vector-db": { "ok": true, "sides": ["right", "left"], "points": [667, 210, 733.5, 210, 733.5, 356, 800, 356], "path": "36b0a7e407a0", "label": [733.5, 293, 91.87999999999998, 22], "mode": "full", "text": "Top-k chunks", "lines": ["Top-k chunks"] },
+    "rag-api-to-llm": { "ok": true, "sides": ["right", "left"], "points": [667, 196, 800, 196], "path": "a9832ffb4d93", "label": [727.5, 196, 112.21, 22], "mode": "full", "text": "Prompt + context", "lines": ["Prompt + context"] },
+    "rag-api-to-feedback": { "ok": true, "sides": ["right", "left"], "points": [667, 182, 733.5, 182, 733.5, 76, 800, 76], "path": "5c7778a2c286", "label": [733.5, 129, 97.99, 22], "mode": "full", "text": "Rated answers", "lines": ["Rated answers"] },
+    "feedback-to-eval-job": { "ok": true, "sides": ["right", "left"], "points": [1020, 76, 1101, 76, 1101, 69, 1180, 69], "path": "85f24525b8c9", "label": [1133.5, 69, 82.72, 22], "mode": "full", "text": "group: evals", "lines": ["group: evals"] },
+    "eval-job-to-llm": { "ok": true, "sides": ["left", "right"], "points": [1180, 83, 1101, 83, 1101, 196, 1022, 196], "path": "ba68af1f7d9a", "label": [1101, 139.5, 93.16, 22], "mode": "full", "text": "Grade answer", "lines": ["Grade answer"] },
+    "eval-job-to-quality": { "ok": true, "sides": ["right", "left"], "points": [1433, 76, 1560, 76], "path": "84e20327c926", "label": [1490.5, 76, 54.42, 22], "mode": "full", "text": "Scores", "lines": ["Scores"] },
+    "docs-to-ingest-q": { "ok": true, "sides": ["right", "left"], "points": [293, 516, 420, 516], "path": "ad087bb2d4ff", "label": [350.5, 516, 95.36999999999999, 22], "mode": "full", "text": "Page changed", "lines": ["Page changed"] },
+    "ingest-q-to-embed-worker": { "ok": true, "sides": ["right", "left"], "points": [654, 516, 800, 516], "path": "84419e548e41", "label": [721, 516, 123.94, 22], "mode": "full", "text": "Competing workers", "lines": ["Competing workers"] },
+    "embed-worker-to-embeddings": { "ok": true, "sides": ["right", "left"], "points": [1041, 523, 1110.5, 523, 1110.5, 516, 1180, 516], "path": "05fef1eabb75", "label": [1096.75, 523, 90.09999999999998, 22], "mode": "full", "text": "Embed batch", "lines": ["Embed batch"] },
+    "embed-worker-to-vector-db": { "ok": true, "sides": ["top", "bottom"], "points": [920.5, 480, 920.5, 436, 910, 436, 910, 392], "path": "923e07a7d634", "label": [920.5, 457, 96.07999999999998, 22], "mode": "full", "text": "Upsert chunks", "lines": ["Upsert chunks"] },
     "rag-api-to-vault": { "ok": true, "sides": ["bottom", "top"], "points": [550.5, 232, 550.5, 276, 1290, 276, 1290, 320], "path": "6254521c8b95", "label": [920.25, 276, 20, 20], "mode": "glyph", "text": "", "lines": [], "glyph": true },
     "embed-worker-to-vault": { "ok": true, "sides": ["right", "bottom"], "points": [1041, 509, 1110.5, 509, 1110.5, 436, 1290, 436, 1290, 392], "path": "379fa96cfb95", "label": [1200.25, 436, 20, 20], "mode": "glyph", "text": "", "lines": [], "glyph": true },
-    "ingest-q-to-ingest-dlq": { "ok": true, "sides": ["bottom", "top"], "points": [537, 552, 537, 596, 543.5, 596, 543.5, 640], "path": "a5568e48dea2", "label": [537, 575, 95, 19], "mode": "full", "text": "After 5 tries", "lines": ["After 5 tries"] },
+    "ingest-q-to-ingest-dlq": { "ok": true, "sides": ["bottom", "top"], "points": [537, 552, 537, 596, 543.5, 596, 543.5, 640], "path": "a5568e48dea2", "label": [537, 575, 80.28, 22], "mode": "full", "text": "After 5 tries", "lines": ["After 5 tries"] },
     "ingest-dlq-to-ingest-triage": { "ok": true, "sides": ["right", "left"], "points": [667, 676, 800, 676], "path": "b5b732d024d1" }
   },
   "bezier": {
@@ -66,7 +66,7 @@
         196
       ],
       "path": "ea33d84d491c",
-      "label": [340.68906000000004, 196, 71, 19],
+      "label": [340.68906000000004, 196, 74.94, 22],
       "mode": "full",
       "text": "POST /ask",
       "lines": ["POST /ask"]
@@ -119,10 +119,10 @@
         320
       ],
       "path": "de8e4216fc11",
-      "label": [539.7555, 293.7563650256839, 53, 32],
-      "mode": "wrap",
+      "label": [539.7555, 293.7563650256839, 92.44000000000001, 22],
+      "mode": "full",
       "text": "Cache lookup",
-      "lines": ["Cache", "lookup"]
+      "lines": ["Cache lookup"]
     },
     "rag-api-to-vector-db": {
       "ok": true,
@@ -172,7 +172,7 @@
         356
       ],
       "path": "000dd0bc53b1",
-      "label": [731.6085944062503, 277.54325, 89, 19],
+      "label": [731.6085944062503, 277.54325, 91.87999999999998, 22],
       "mode": "full",
       "text": "Top-k chunks",
       "lines": ["Top-k chunks"]
@@ -225,7 +225,7 @@
         196
       ],
       "path": "8e40e7355666",
-      "label": [730.6029275000001, 196, 113, 19],
+      "label": [730.6029275000001, 196, 112.21, 22],
       "mode": "full",
       "text": "Prompt + context",
       "lines": ["Prompt + context"]
@@ -278,7 +278,7 @@
         76
       ],
       "path": "851437db0e33",
-      "label": [731.180996259513, 132.96175000000002, 95, 19],
+      "label": [731.180996259513, 132.96175000000002, 97.99, 22],
       "mode": "full",
       "text": "Rated answers",
       "lines": ["Rated answers"]
@@ -331,7 +331,7 @@
         69
       ],
       "path": "b09cac8d24f5",
-      "label": [1096.51718646015, 72.76162500000001, 89, 19],
+      "label": [1096.51718646015, 72.76162500000001, 82.72, 22],
       "mode": "full",
       "text": "group: evals",
       "lines": ["group: evals"]
@@ -384,7 +384,7 @@
         196
       ],
       "path": "78db94c406fb",
-      "label": [1098.1235906165532, 143.723375, 89, 19],
+      "label": [1098.1235906165532, 143.723375, 93.16, 22],
       "mode": "full",
       "text": "Grade answer",
       "lines": ["Grade answer"]
@@ -437,7 +437,7 @@
         76
       ],
       "path": "0b12edb7efca",
-      "label": [1522.1403475, 76, 53, 19],
+      "label": [1522.1403475, 76, 54.42, 22],
       "mode": "full",
       "text": "Scores",
       "lines": ["Scores"]
@@ -490,7 +490,7 @@
         516
       ],
       "path": "3fa69c563df0",
-      "label": [353.7336225, 516, 89, 19],
+      "label": [353.7336225, 516, 95.36999999999999, 22],
       "mode": "full",
       "text": "Page changed",
       "lines": ["Page changed"]
@@ -543,7 +543,7 @@
         516
       ],
       "path": "81adecc06142",
-      "label": [723.819755, 516, 119, 19],
+      "label": [723.819755, 516, 123.94, 22],
       "mode": "full",
       "text": "Competing workers",
       "lines": ["Competing workers"]
@@ -596,7 +596,7 @@
         516
       ],
       "path": "40e65424a4c2",
-      "label": [1107.4749790780486, 519.761625, 83, 19],
+      "label": [1101.3976657748697, 520.279625, 90.09999999999998, 22],
       "mode": "full",
       "text": "Embed batch",
       "lines": ["Embed batch"]
@@ -649,7 +649,7 @@
         392
       ],
       "path": "b7f47abc9d16",
-      "label": [914.8575625, 434.0928729418082, 95, 19],
+      "label": [914.8575625, 434.0928729418082, 96.07999999999998, 22],
       "mode": "full",
       "text": "Upsert chunks",
       "lines": ["Upsert chunks"]
@@ -810,7 +810,7 @@
         640
       ],
       "path": "6ea44e12a68b",
-      "label": [540.0070625000001, 594.0868779944009, 95, 19],
+      "label": [540.0070625000001, 594.0868779944009, 80.28, 22],
       "mode": "full",
       "text": "After 5 tries",
       "lines": ["After 5 tries"]
@@ -866,21 +866,21 @@
     }
   },
   "straight": {
-    "user-to-rag-api": { "ok": true, "sides": ["right", "left"], "points": [268, 196, 420, 196], "path": "9a28133889c8", "label": [338, 196, 71, 19], "mode": "full", "text": "POST /ask", "lines": ["POST /ask"] },
-    "rag-api-to-cache": { "ok": true, "sides": ["bottom", "top"], "points": [536.5, 232, 540.5, 320], "path": "f0fde2f9209d", "label": [538.2275540344881, 270.0061887587382, 89, 19], "mode": "full", "text": "Cache lookup", "lines": ["Cache lookup"] },
-    "rag-api-to-vector-db": { "ok": true, "sides": ["right", "left"], "points": [667, 210, 800, 356], "path": "1150fa04a0a5", "label": [729.4594289280012, 278.5644858908886, 89, 19], "mode": "full", "text": "Top-k chunks", "lines": ["Top-k chunks"] },
-    "rag-api-to-llm": { "ok": true, "sides": ["right", "left"], "points": [667, 196, 800, 196], "path": "a9832ffb4d93", "label": [727.5, 196, 113, 19], "mode": "full", "text": "Prompt + context", "lines": ["Prompt + context"] },
-    "rag-api-to-feedback": { "ok": true, "sides": ["right", "left"], "points": [667, 182, 800, 76], "path": "643192831942", "label": [728.8079113643379, 132.73955936376075, 95, 19], "mode": "full", "text": "Rated answers", "lines": ["Rated answers"] },
-    "feedback-to-eval-job": { "ok": true, "sides": ["right", "left"], "points": [1020, 76, 1180, 69], "path": "f49858a787bd", "label": [1094.005733957447, 72.7622491393617, 89, 19], "mode": "full", "text": "group: evals", "lines": ["group: evals"] },
-    "eval-job-to-llm": { "ok": true, "sides": ["left", "right"], "points": [1180, 83, 1022, 196], "path": "9be08cbddd71", "label": [1105.8803129221183, 136.00964961899143, 89, 19], "mode": "full", "text": "Grade answer", "lines": ["Grade answer"] },
-    "eval-job-to-quality": { "ok": true, "sides": ["right", "left"], "points": [1433, 76, 1560, 76], "path": "84e20327c926", "label": [1490.5, 76, 53, 19], "mode": "full", "text": "Scores", "lines": ["Scores"] },
-    "docs-to-ingest-q": { "ok": true, "sides": ["right", "left"], "points": [293, 516, 420, 516], "path": "ad087bb2d4ff", "label": [350.5, 516, 89, 19], "mode": "full", "text": "Page changed", "lines": ["Page changed"] },
-    "ingest-q-to-embed-worker": { "ok": true, "sides": ["right", "left"], "points": [654, 516, 800, 516], "path": "84419e548e41", "label": [721, 516, 119, 19], "mode": "full", "text": "Competing workers", "lines": ["Competing workers"] },
-    "embed-worker-to-embeddings": { "ok": true, "sides": ["right", "left"], "points": [1041, 523, 1180, 516], "path": "1908eea874d5", "label": [1104.5075938608002, 519.8017758487367, 83, 19], "mode": "full", "text": "Embed batch", "lines": ["Embed batch"] },
-    "embed-worker-to-vector-db": { "ok": true, "sides": ["top", "bottom"], "points": [920.5, 480, 910, 392], "path": "0bd82af84812", "label": [915.9608667304207, 441.9577402168592, 95, 19], "mode": "full", "text": "Upsert chunks", "lines": ["Upsert chunks"] },
+    "user-to-rag-api": { "ok": true, "sides": ["right", "left"], "points": [268, 196, 420, 196], "path": "9a28133889c8", "label": [338, 196, 74.94, 22], "mode": "full", "text": "POST /ask", "lines": ["POST /ask"] },
+    "rag-api-to-cache": { "ok": true, "sides": ["bottom", "top"], "points": [536.5, 232, 540.5, 320], "path": "f0fde2f9209d", "label": [538.2275540344881, 270.0061887587382, 92.44000000000001, 22], "mode": "full", "text": "Cache lookup", "lines": ["Cache lookup"] },
+    "rag-api-to-vector-db": { "ok": true, "sides": ["right", "left"], "points": [667, 210, 800, 356], "path": "1150fa04a0a5", "label": [729.4594289280012, 278.5644858908886, 91.87999999999998, 22], "mode": "full", "text": "Top-k chunks", "lines": ["Top-k chunks"] },
+    "rag-api-to-llm": { "ok": true, "sides": ["right", "left"], "points": [667, 196, 800, 196], "path": "a9832ffb4d93", "label": [727.5, 196, 112.21, 22], "mode": "full", "text": "Prompt + context", "lines": ["Prompt + context"] },
+    "rag-api-to-feedback": { "ok": true, "sides": ["right", "left"], "points": [667, 182, 800, 76], "path": "643192831942", "label": [728.8079113643379, 132.73955936376075, 97.99, 22], "mode": "full", "text": "Rated answers", "lines": ["Rated answers"] },
+    "feedback-to-eval-job": { "ok": true, "sides": ["right", "left"], "points": [1020, 76, 1180, 69], "path": "f49858a787bd", "label": [1094.005733957447, 72.7622491393617, 82.72, 22], "mode": "full", "text": "group: evals", "lines": ["group: evals"] },
+    "eval-job-to-llm": { "ok": true, "sides": ["left", "right"], "points": [1180, 83, 1022, 196], "path": "9be08cbddd71", "label": [1105.8803129221183, 136.00964961899143, 93.16, 22], "mode": "full", "text": "Grade answer", "lines": ["Grade answer"] },
+    "eval-job-to-quality": { "ok": true, "sides": ["right", "left"], "points": [1433, 76, 1560, 76], "path": "84e20327c926", "label": [1490.5, 76, 54.42, 22], "mode": "full", "text": "Scores", "lines": ["Scores"] },
+    "docs-to-ingest-q": { "ok": true, "sides": ["right", "left"], "points": [293, 516, 420, 516], "path": "ad087bb2d4ff", "label": [350.5, 516, 95.36999999999999, 22], "mode": "full", "text": "Page changed", "lines": ["Page changed"] },
+    "ingest-q-to-embed-worker": { "ok": true, "sides": ["right", "left"], "points": [654, 516, 800, 516], "path": "84419e548e41", "label": [721, 516, 123.94, 22], "mode": "full", "text": "Competing workers", "lines": ["Competing workers"] },
+    "embed-worker-to-embeddings": { "ok": true, "sides": ["right", "left"], "points": [1041, 523, 1180, 516], "path": "1908eea874d5", "label": [1104.5075938608002, 519.8017758487367, 90.09999999999998, 22], "mode": "full", "text": "Embed batch", "lines": ["Embed batch"] },
+    "embed-worker-to-vector-db": { "ok": true, "sides": ["top", "bottom"], "points": [920.5, 480, 910, 392], "path": "0bd82af84812", "label": [915.9608667304207, 441.9577402168592, 96.07999999999998, 22], "mode": "full", "text": "Upsert chunks", "lines": ["Upsert chunks"] },
     "rag-api-to-vault": { "ok": true, "sides": ["bottom", "top"], "points": [550.5, 232, 1290, 320], "path": "35bf3bbaa1e5", "label": [914.2920365854022, 275.2910063820357, 20, 20], "mode": "glyph", "text": "", "lines": [], "glyph": true },
     "embed-worker-to-vault": { "ok": true, "sides": ["right", "bottom"], "points": [1041, 509, 1290, 392], "path": "9f27dfe76e46", "label": [1160.0696059490901, 453.05163093958413, 20, 20], "mode": "glyph", "text": "", "lines": [], "glyph": true },
-    "ingest-q-to-ingest-dlq": { "ok": true, "sides": ["bottom", "top"], "points": [537, 552, 543.5, 640], "path": "26270a6183f2", "label": [539.808022221102, 590.0163008395341, 95, 19], "mode": "full", "text": "After 5 tries", "lines": ["After 5 tries"] },
+    "ingest-q-to-ingest-dlq": { "ok": true, "sides": ["bottom", "top"], "points": [537, 552, 543.5, 640], "path": "26270a6183f2", "label": [539.808022221102, 590.0163008395341, 80.28, 22], "mode": "full", "text": "After 5 tries", "lines": ["After 5 tries"] },
     "ingest-dlq-to-ingest-triage": { "ok": true, "sides": ["right", "left"], "points": [667, 676, 800, 676], "path": "b5b732d024d1" }
   }
 }

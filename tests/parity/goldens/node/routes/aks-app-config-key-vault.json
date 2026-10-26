@@ -1,14 +1,14 @@
 {
   "smoothstep": {
-    "web-to-fd": { "ok": true, "sides": ["right", "left"], "points": [268, 336, 440, 336], "path": "02486f9edde6", "label": [348, 336, 47, 19], "mode": "full", "text": "HTTPS", "lines": ["HTTPS"] },
-    "fd-to-api": { "ok": true, "sides": ["right", "left"], "points": [660, 336, 860, 336], "path": "91f4f4cea903", "label": [754, 336, 89, 19], "mode": "full", "text": "POST /orders", "lines": ["POST /orders"] },
-    "api-to-sql": { "ok": true, "sides": ["right", "left"], "points": [1101, 329, 1200.5, 329, 1200.5, 216, 1300, 216], "path": "e3b00c8817ad", "label": [1200.5, 272.5, 59, 19], "mode": "full", "text": "EF Core", "lines": ["EF Core"] },
-    "api-to-sb": { "ok": true, "sides": ["right", "left"], "points": [1101, 343, 1200.5, 343, 1200.5, 456, 1300, 456], "path": "57b5c69e1212", "label": [1200.5, 399.5, 89, 19], "mode": "full", "text": "OrderCreated", "lines": ["OrderCreated"] },
-    "sb-to-notify": { "ok": true, "sides": ["right", "left"], "points": [1520, 456, 1720, 456], "path": "05dedfe2d698", "label": [1614, 456, 89, 19], "mode": "full", "text": "Subscription", "lines": ["Subscription"] },
-    "api-to-appcfg": { "ok": true, "sides": ["bottom", "top"], "points": [987.5, 372, 987.5, 471.5, 970, 471.5, 970, 560], "path": "f62d0b06d6d8", "label": [970, 508.75, 159, 19], "mode": "full", "text": "4 settings · 2 secret", "lines": ["4 settings · 2 secret"], "glyph": true },
-    "appcfg-to-kv": { "ok": true, "sides": ["right", "left"], "points": [1080, 596, 1300, 596], "path": "14965fdcc235", "label": [1184, 596, 105, 19], "mode": "full", "text": "2 references", "lines": ["2 references"], "glyph": true },
-    "api-to-mi": { "ok": true, "sides": ["bottom", "right"], "points": [973.5, 372, 973.5, 460.5, 747, 460.5, 747, 596, 660, 596], "path": "1cf49293bc07", "label": [860.25, 460.5, 75, 19], "mode": "full", "text": "runs as", "lines": ["runs as"], "glyph": true },
-    "mi-to-entra": { "ok": true, "sides": ["left", "right"], "points": [440, 596, 260, 596], "path": "8d61ec791240", "label": [356, 596, 123, 19], "mode": "full", "text": "OIDC federation", "lines": ["OIDC federation"], "glyph": true },
+    "web-to-fd": { "ok": true, "sides": ["right", "left"], "points": [268, 336, 440, 336], "path": "02486f9edde6", "label": [348, 336, 54.7, 22], "mode": "full", "text": "HTTPS", "lines": ["HTTPS"] },
+    "fd-to-api": { "ok": true, "sides": ["right", "left"], "points": [660, 336, 860, 336], "path": "91f4f4cea903", "label": [754, 336, 90.3, 22], "mode": "full", "text": "POST /orders", "lines": ["POST /orders"] },
+    "api-to-sql": { "ok": true, "sides": ["right", "left"], "points": [1101, 329, 1200.5, 329, 1200.5, 216, 1300, 216], "path": "e3b00c8817ad", "label": [1200.5, 272.5, 59.71, 22], "mode": "full", "text": "EF Core", "lines": ["EF Core"] },
+    "api-to-sb": { "ok": true, "sides": ["right", "left"], "points": [1101, 343, 1200.5, 343, 1200.5, 456, 1300, 456], "path": "57b5c69e1212", "label": [1200.5, 399.5, 92.47999999999999, 22], "mode": "full", "text": "OrderCreated", "lines": ["OrderCreated"] },
+    "sb-to-notify": { "ok": true, "sides": ["right", "left"], "points": [1520, 456, 1720, 456], "path": "05dedfe2d698", "label": [1614, 456, 86.43999999999998, 22], "mode": "full", "text": "Subscription", "lines": ["Subscription"] },
+    "api-to-appcfg": { "ok": true, "sides": ["bottom", "top"], "points": [987.5, 372, 987.5, 471.5, 970, 471.5, 970, 560], "path": "f62d0b06d6d8", "label": [970, 508.75, 140.9, 22], "mode": "full", "text": "4 settings · 2 secret", "lines": ["4 settings · 2 secret"], "glyph": true },
+    "appcfg-to-kv": { "ok": true, "sides": ["right", "left"], "points": [1080, 596, 1300, 596], "path": "14965fdcc235", "label": [1184, 596, 100.22, 22], "mode": "full", "text": "2 references", "lines": ["2 references"], "glyph": true },
+    "api-to-mi": { "ok": true, "sides": ["bottom", "right"], "points": [973.5, 372, 973.5, 460.5, 747, 460.5, 747, 596, 660, 596], "path": "1cf49293bc07", "label": [860.25, 460.5, 73.02000000000001, 22], "mode": "full", "text": "runs as", "lines": ["runs as"], "glyph": true },
+    "mi-to-entra": { "ok": true, "sides": ["left", "right"], "points": [440, 596, 260, 596], "path": "8d61ec791240", "label": [356, 596, 121.02999999999999, 22], "mode": "full", "text": "OIDC federation", "lines": ["OIDC federation"], "glyph": true },
     "api-to-ai": { "ok": true, "sides": ["top", "bottom"], "points": [980.5, 300, 980.5, 190, 976.5, 190, 976.5, 132], "path": "d6d8d935b795", "label": [980.5, 244, 20, 20], "mode": "glyph", "text": "", "lines": [], "glyph": true }
   },
   "bezier": {
@@ -60,7 +60,7 @@
         336
       ],
       "path": "02e605469a4b",
-      "label": [350.25341000000003, 336, 47, 19],
+      "label": [350.25341000000003, 336, 54.7, 22],
       "mode": "full",
       "text": "HTTPS",
       "lines": ["HTTPS"]
@@ -113,7 +113,7 @@
         336
       ],
       "path": "e4b592472edd",
-      "label": [755.6435000000001, 336, 89, 19],
+      "label": [755.6435000000001, 336, 90.3, 22],
       "mode": "full",
       "text": "POST /orders",
       "lines": ["POST /orders"]
@@ -166,7 +166,7 @@
         216
       ],
       "path": "3b9784bd33e5",
-      "label": [1196.6306395033425, 276.72337500000003, 59, 19],
+      "label": [1196.6306395033425, 276.72337500000003, 59.71, 22],
       "mode": "full",
       "text": "EF Core",
       "lines": ["EF Core"]
@@ -219,7 +219,7 @@
         456
       ],
       "path": "f2c8aed28246",
-      "label": [1196.6306395033425, 395.276625, 89, 19],
+      "label": [1196.6306395033425, 395.276625, 92.47999999999999, 22],
       "mode": "full",
       "text": "OrderCreated",
       "lines": ["OrderCreated"]
@@ -272,7 +272,7 @@
         456
       ],
       "path": "f542c16d2bc3",
-      "label": [1615.6435000000001, 456, 89, 19],
+      "label": [1615.6435000000001, 456, 86.43999999999998, 22],
       "mode": "full",
       "text": "Subscription",
       "lines": ["Subscription"]
@@ -325,7 +325,7 @@
         560
       ],
       "path": "b6b6193fa4c9",
-      "label": [970.7765625, 532.4764859867798, 93, 32],
+      "label": [970.7765625, 532.4764859867798, 86.39, 38],
       "mode": "wrap",
       "text": "4 settings · 2 secret",
       "lines": ["4 settings", "· 2 secret"],
@@ -379,7 +379,7 @@
         596
       ],
       "path": "39bde5d3a513",
-      "label": [1224.14565, 596, 105, 19],
+      "label": [1224.14565, 596, 100.22, 22],
       "mode": "full",
       "text": "2 references",
       "lines": ["2 references"],
@@ -433,7 +433,7 @@
         596
       ],
       "path": "3aa29868c71a",
-      "label": [809.6004958418964, 574.8729017351012, 75, 19],
+      "label": [809.6004958418964, 574.8729017351012, 73.02000000000001, 22],
       "mode": "full",
       "text": "runs as",
       "lines": ["runs as"],
@@ -487,7 +487,7 @@
         596
       ],
       "path": "5bbe7fd175b8",
-      "label": [346.07915, 596, 123, 19],
+      "label": [346.07915, 596, 121.02999999999999, 22],
       "mode": "full",
       "text": "OIDC federation",
       "lines": ["OIDC federation"],
@@ -549,15 +549,15 @@
     }
   },
   "straight": {
-    "web-to-fd": { "ok": true, "sides": ["right", "left"], "points": [268, 336, 440, 336], "path": "02486f9edde6", "label": [348, 336, 47, 19], "mode": "full", "text": "HTTPS", "lines": ["HTTPS"] },
-    "fd-to-api": { "ok": true, "sides": ["right", "left"], "points": [660, 336, 860, 336], "path": "91f4f4cea903", "label": [754, 336, 89, 19], "mode": "full", "text": "POST /orders", "lines": ["POST /orders"] },
-    "api-to-sql": { "ok": true, "sides": ["right", "left"], "points": [1101, 329, 1300, 216], "path": "0d51013c038e", "label": [1195.2824930067372, 275.4627049760739, 59, 19], "mode": "full", "text": "EF Core", "lines": ["EF Core"] },
-    "api-to-sb": { "ok": true, "sides": ["right", "left"], "points": [1101, 343, 1300, 456], "path": "49276c483619", "label": [1195.2824930067372, 396.5372950239261, 89, 19], "mode": "full", "text": "OrderCreated", "lines": ["OrderCreated"] },
-    "sb-to-notify": { "ok": true, "sides": ["right", "left"], "points": [1520, 456, 1720, 456], "path": "05dedfe2d698", "label": [1614, 456, 89, 19], "mode": "full", "text": "Subscription", "lines": ["Subscription"] },
-    "api-to-appcfg": { "ok": true, "sides": ["bottom", "top"], "points": [987.5, 372, 970, 560], "path": "1254bbe6dd49", "label": [979.3061065485197, 460.02582679304544, 159, 19], "mode": "full", "text": "4 settings · 2 secret", "lines": ["4 settings · 2 secret"], "glyph": true },
-    "appcfg-to-kv": { "ok": true, "sides": ["right", "left"], "points": [1080, 596, 1300, 596], "path": "14965fdcc235", "label": [1184, 596, 105, 19], "mode": "full", "text": "2 references", "lines": ["2 references"], "glyph": true },
-    "api-to-mi": { "ok": true, "sides": ["bottom", "right"], "points": [973.5, 372, 660, 596], "path": "5944da8a606d", "label": [821.6318746849288, 480.5118343559041, 75, 19], "mode": "full", "text": "runs as", "lines": ["runs as"], "glyph": true },
-    "mi-to-entra": { "ok": true, "sides": ["left", "right"], "points": [440, 596, 260, 596], "path": "8d61ec791240", "label": [356, 596, 123, 19], "mode": "full", "text": "OIDC federation", "lines": ["OIDC federation"], "glyph": true },
+    "web-to-fd": { "ok": true, "sides": ["right", "left"], "points": [268, 336, 440, 336], "path": "02486f9edde6", "label": [348, 336, 54.7, 22], "mode": "full", "text": "HTTPS", "lines": ["HTTPS"] },
+    "fd-to-api": { "ok": true, "sides": ["right", "left"], "points": [660, 336, 860, 336], "path": "91f4f4cea903", "label": [754, 336, 90.3, 22], "mode": "full", "text": "POST /orders", "lines": ["POST /orders"] },
+    "api-to-sql": { "ok": true, "sides": ["right", "left"], "points": [1101, 329, 1300, 216], "path": "0d51013c038e", "label": [1195.2824930067372, 275.4627049760739, 59.71, 22], "mode": "full", "text": "EF Core", "lines": ["EF Core"] },
+    "api-to-sb": { "ok": true, "sides": ["right", "left"], "points": [1101, 343, 1300, 456], "path": "49276c483619", "label": [1195.2824930067372, 396.5372950239261, 92.47999999999999, 22], "mode": "full", "text": "OrderCreated", "lines": ["OrderCreated"] },
+    "sb-to-notify": { "ok": true, "sides": ["right", "left"], "points": [1520, 456, 1720, 456], "path": "05dedfe2d698", "label": [1614, 456, 86.43999999999998, 22], "mode": "full", "text": "Subscription", "lines": ["Subscription"] },
+    "api-to-appcfg": { "ok": true, "sides": ["bottom", "top"], "points": [987.5, 372, 970, 560], "path": "1254bbe6dd49", "label": [979.3061065485197, 460.02582679304544, 140.9, 22], "mode": "full", "text": "4 settings · 2 secret", "lines": ["4 settings · 2 secret"], "glyph": true },
+    "appcfg-to-kv": { "ok": true, "sides": ["right", "left"], "points": [1080, 596, 1300, 596], "path": "14965fdcc235", "label": [1184, 596, 100.22, 22], "mode": "full", "text": "2 references", "lines": ["2 references"], "glyph": true },
+    "api-to-mi": { "ok": true, "sides": ["bottom", "right"], "points": [973.5, 372, 660, 596], "path": "5944da8a606d", "label": [821.6318746849288, 480.5118343559041, 73.02000000000001, 22], "mode": "full", "text": "runs as", "lines": ["runs as"], "glyph": true },
+    "mi-to-entra": { "ok": true, "sides": ["left", "right"], "points": [440, 596, 260, 596], "path": "8d61ec791240", "label": [356, 596, 121.02999999999999, 22], "mode": "full", "text": "OIDC federation", "lines": ["OIDC federation"], "glyph": true },
     "api-to-ai": { "ok": true, "sides": ["top", "bottom"], "points": [980.5, 300, 976.5, 132], "path": "59735f1389fc", "label": [978.6428166676777, 221.99830004246482, 20, 20], "mode": "glyph", "text": "", "lines": [], "glyph": true }
   }
 }

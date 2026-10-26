@@ -4614,7 +4614,7 @@ const en = {
   "workbench.readNote": "Read note",
   "workbench.earlier": "Earlier",
   "workbench.later": "Later",
-  "workbench.noteIndex": "Note {index} of {total}",
+  "workbench.noteIndex": "Note {index, number} of {total, number}",
   "workbench.moreTools": "More tools",
   "workbench.sheetPeek": "Peek",
   "workbench.sheetHalf": "Half height",

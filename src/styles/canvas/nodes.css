@@ -394,3 +394,40 @@ button.dn-doc-badge:focus-visible {
   border-radius: 7px;
   font-size: 18px;
 }
+
+/* Second lines grow only for the active or flagged card. */
+.nb-sub,
+.nb-kind {
+  font-family: var(--font-ui);
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+}
+.react-flow__node.selected .nb-sub,
+.react-flow__node[data-detail-expanded] .nb-sub {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  white-space: normal;
+  line-height: 1.3;
+  text-overflow: clip;
+}
+/* Measured cards grow with a two-line second line; ordinary cards stay compact. */
+.react-flow__node .nb-card .nb-sub,
+.react-flow__node .nb-card .nb-kind {
+  font-size: 11.5px;
+}
+.react-flow__node .nb-card .nb-sub {
+  display: block;
+  white-space: nowrap;
+  -webkit-line-clamp: unset;
+}
+.react-flow__node:is(.selected, [data-detail-expanded]) .nb-card {
+  height: auto;
+  min-height: 72px;
+  padding-block: 13px;
+}
+.react-flow__node:is(.selected, [data-detail-expanded]) .nb-card .nb-sub {
+  display: -webkit-box;
+  white-space: normal;
+  -webkit-line-clamp: 2;
+}

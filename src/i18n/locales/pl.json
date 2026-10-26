@@ -2797,7 +2797,7 @@
   "workbench.readNote": "Czytaj notatkę",
   "workbench.earlier": "Wcześniejsza",
   "workbench.later": "Późniejsza",
-  "workbench.noteIndex": "Notatka {index} z {total}",
+  "workbench.noteIndex": "Notatka {index, number} z {total, number}",
   "workbench.moreTools": "Więcej narzędzi",
   "workbench.sheetPeek": "Podgląd",
   "workbench.sheetHalf": "Połowa wysokości",

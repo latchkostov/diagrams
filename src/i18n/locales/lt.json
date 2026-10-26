@@ -2780,7 +2780,7 @@
   "workbench.readNote": "Skaityti pastabą",
   "workbench.earlier": "Ankstesnė",
   "workbench.later": "Vėlesnė",
-  "workbench.noteIndex": "Pastaba {index} iš {total}",
+  "workbench.noteIndex": "Pastaba {index, number} iš {total, number}",
   "workbench.moreTools": "Daugiau įrankių",
   "workbench.sheetPeek": "Peržiūra",
   "workbench.sheetHalf": "Pusė aukščio",

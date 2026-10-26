@@ -96,7 +96,13 @@ export function decide(state: PolicyState, event: CameraEvent): Decision {
     case "selection.changed":
       // Opening the dock must finish making room even when the selection is already readable.
       // A selection does not replace the pane's outstanding resize with a no-camera selection intent.
-      if (state.pending?.cause === "panel" && event.zoom !== undefined && event.zoom >= 0.5) return next({});
+      if (
+        event.cause === "selection" &&
+        state.pending?.cause === "panel" &&
+        event.zoom !== undefined &&
+        event.zoom >= 0.5
+      )
+        return next({});
       if (event.cause === "selection" && event.zoom !== undefined && event.zoom < 0.5 && state.mode === "edit")
         return next({ view: "focus", owner: "manual", pending: { cause: "selection", autoFocus: true } });
       if (!state.pending || !isPaneCause(state.pending.cause)) return next({});

@@ -1,34 +1,34 @@
 {
   "smoothstep": {
-    "shoppers--ingress": { "ok": true, "sides": ["right", "left"], "points": [220, 376, 440, 376], "path": "53e2132b43a2", "label": [324, 376, 47, 19], "mode": "full", "text": "HTTPS", "lines": ["HTTPS"] },
+    "shoppers--ingress": { "ok": true, "sides": ["right", "left"], "points": [220, 376, 440, 376], "path": "53e2132b43a2", "label": [324, 376, 54.7, 22], "mode": "full", "text": "HTTPS", "lines": ["HTTPS"] },
     "ingress--checkout": { "ok": true, "sides": ["right", "left"], "points": [660, 350, 764.5, 350, 764.5, 96, 880, 96], "path": "57d169a3ed54" },
     "checkout--checkout-db": { "ok": true, "sides": ["right", "left"], "points": [1100, 89, 1210, 89, 1210, 96, 1320, 96], "path": "942c79a72548" },
-    "checkout--agent-shop": { "ok": true, "sides": ["right", "left"], "points": [1100, 103, 1210, 103, 1210, 166, 1650, 166, 1650, 280, 1760, 280], "path": "564a161525ca", "label": [1430, 166, 41, 19], "mode": "full", "text": "OTLP", "lines": ["OTLP"] },
+    "checkout--agent-shop": { "ok": true, "sides": ["right", "left"], "points": [1100, 103, 1210, 103, 1210, 166, 1650, 166, 1650, 280, 1760, 280], "path": "564a161525ca", "label": [1430, 166, 46.8, 22], "mode": "full", "text": "OTLP", "lines": ["OTLP"] },
     "ingress--search": { "ok": true, "sides": ["right", "left"], "points": [660, 363, 775.5, 363, 775.5, 236, 880, 236], "path": "4674532926ee" },
     "search--search-db": { "ok": true, "sides": ["right", "left"], "points": [1100, 229, 1210, 229, 1210, 236, 1320, 236], "path": "d37cc47724dd" },
-    "search--agent-shop": { "ok": true, "sides": ["right", "left"], "points": [1100, 243, 1210, 243, 1210, 293, 1760, 293], "path": "afaa29838ab8", "label": [1478, 293, 41, 19], "mode": "full", "text": "OTLP", "lines": ["OTLP"] },
+    "search--agent-shop": { "ok": true, "sides": ["right", "left"], "points": [1100, 243, 1210, 243, 1210, 293, 1760, 293], "path": "afaa29838ab8", "label": [1478, 293, 46.8, 22], "mode": "full", "text": "OTLP", "lines": ["OTLP"] },
     "ingress--cart": { "ok": true, "sides": ["right", "left"], "points": [660, 376, 880, 376], "path": "f97e8b5ffbfd" },
     "cart--cart-db": { "ok": true, "sides": ["right", "left"], "points": [1100, 383, 1199, 383, 1199, 376, 1320, 376], "path": "d7826d447fdf" },
-    "cart--agent-shop": { "ok": true, "sides": ["right", "left"], "points": [1100, 369, 1188, 369, 1188, 306, 1760, 306], "path": "48b6b8456108", "label": [1427, 306, 41, 19], "mode": "full", "text": "OTLP", "lines": ["OTLP"] },
+    "cart--agent-shop": { "ok": true, "sides": ["right", "left"], "points": [1100, 369, 1188, 369, 1188, 306, 1760, 306], "path": "48b6b8456108", "label": [1427, 306, 46.8, 22], "mode": "full", "text": "OTLP", "lines": ["OTLP"] },
     "ingress--payments": { "ok": true, "sides": ["right", "left"], "points": [660, 389, 775.5, 389, 775.5, 516, 880, 516], "path": "72a438799070" },
     "payments--payments-db": { "ok": true, "sides": ["right", "left"], "points": [1100, 523, 1232, 523, 1232, 516, 1320, 516], "path": "7aca59cbd2df" },
-    "payments--agent-shop": { "ok": true, "sides": ["right", "left"], "points": [1100, 509, 1204.5, 509, 1204.5, 319, 1760, 319], "path": "31ac57f4a66d", "label": [1475.25, 319, 41, 19], "mode": "full", "text": "OTLP", "lines": ["OTLP"] },
+    "payments--agent-shop": { "ok": true, "sides": ["right", "left"], "points": [1100, 509, 1204.5, 509, 1204.5, 319, 1760, 319], "path": "31ac57f4a66d", "label": [1485.25, 319, 46.8, 22], "mode": "full", "text": "OTLP", "lines": ["OTLP"] },
     "ingress--inventory": { "ok": true, "sides": ["right", "left"], "points": [660, 402, 764.5, 402, 764.5, 656, 880, 656], "path": "a2ac55dd88b5" },
     "inventory--inventory-db": { "ok": true, "sides": ["right", "left"], "points": [1100, 663, 1221, 663, 1221, 656, 1320, 656], "path": "84b3e46dd40c" },
-    "inventory--agent-shop": { "ok": true, "sides": ["right", "left"], "points": [1100, 649, 1215.5, 649, 1215.5, 446, 1650, 446, 1650, 332, 1760, 332], "path": "818e5487369c", "label": [1432.75, 446, 41, 19], "mode": "full", "text": "OTLP", "lines": ["OTLP"] },
-    "scheduler--etl": { "ok": true, "sides": ["right", "left"], "points": [660, 929, 770, 929, 770, 936, 880, 936], "path": "392e51d99b92", "label": [716, 929, 35, 19], "mode": "full", "text": "Run", "lines": ["Run"] },
-    "scheduler--reports": { "ok": true, "sides": ["right", "left"], "points": [660, 943, 770, 943, 770, 1076, 880, 1076], "path": "8ff8d9bb6ac2", "label": [770, 1009.5, 35, 19], "mode": "full", "text": "Run", "lines": ["Run"] },
-    "etl--agent-data": { "ok": true, "sides": ["right", "left"], "points": [1100, 936, 1430, 936, 1430, 929, 1760, 929], "path": "190d0598c21f", "label": [1266, 936, 41, 19], "mode": "full", "text": "OTLP", "lines": ["OTLP"] },
-    "reports--agent-data": { "ok": true, "sides": ["right", "left"], "points": [1100, 1076, 1430, 1076, 1430, 943, 1760, 943], "path": "40226622c5cb", "label": [1266, 1076, 41, 19], "mode": "full", "text": "OTLP", "lines": ["OTLP"] },
-    "agent-shop--otlp-lb": { "ok": true, "sides": ["right", "left"], "points": [2001, 306, 2107.5, 306, 2107.5, 589, 2240, 589], "path": "754a0decb31f", "label": [2107.5, 447.5, 71, 19], "mode": "full", "text": "OTLP/gRPC", "lines": ["OTLP/gRPC"] },
-    "agent-data--otlp-lb": { "ok": true, "sides": ["right", "left"], "points": [1994, 936, 2104, 936, 2104, 603, 2240, 603], "path": "1a65cf077dc3", "label": [2104, 769.5, 71, 19], "mode": "full", "text": "OTLP/gRPC", "lines": ["OTLP/gRPC"] },
+    "inventory--agent-shop": { "ok": true, "sides": ["right", "left"], "points": [1100, 649, 1215.5, 649, 1215.5, 446, 1650, 446, 1650, 332, 1760, 332], "path": "818e5487369c", "label": [1432.75, 446, 46.8, 22], "mode": "full", "text": "OTLP", "lines": ["OTLP"] },
+    "scheduler--etl": { "ok": true, "sides": ["right", "left"], "points": [660, 929, 770, 929, 770, 936, 880, 936], "path": "392e51d99b92", "label": [716, 929, 39.12, 22], "mode": "full", "text": "Run", "lines": ["Run"] },
+    "scheduler--reports": { "ok": true, "sides": ["right", "left"], "points": [660, 943, 770, 943, 770, 1076, 880, 1076], "path": "8ff8d9bb6ac2", "label": [770, 1009.5, 39.12, 22], "mode": "full", "text": "Run", "lines": ["Run"] },
+    "etl--agent-data": { "ok": true, "sides": ["right", "left"], "points": [1100, 936, 1430, 936, 1430, 929, 1760, 929], "path": "190d0598c21f", "label": [1266, 936, 46.8, 22], "mode": "full", "text": "OTLP", "lines": ["OTLP"] },
+    "reports--agent-data": { "ok": true, "sides": ["right", "left"], "points": [1100, 1076, 1430, 1076, 1430, 943, 1760, 943], "path": "40226622c5cb", "label": [1266, 1076, 46.8, 22], "mode": "full", "text": "OTLP", "lines": ["OTLP"] },
+    "agent-shop--otlp-lb": { "ok": true, "sides": ["right", "left"], "points": [2001, 306, 2107.5, 306, 2107.5, 589, 2240, 589], "path": "754a0decb31f", "label": [2107.5, 447.5, 82.7, 22], "mode": "full", "text": "OTLP/gRPC", "lines": ["OTLP/gRPC"] },
+    "agent-data--otlp-lb": { "ok": true, "sides": ["right", "left"], "points": [1994, 936, 2104, 936, 2104, 603, 2240, 603], "path": "1a65cf077dc3", "label": [2104, 769.5, 82.7, 22], "mode": "full", "text": "OTLP/gRPC", "lines": ["OTLP/gRPC"] },
     "otlp-lb--gateways": { "ok": true, "sides": ["right", "left"], "points": [2460, 596, 2570, 596, 2570, 589, 2680, 589], "path": "a9d74c0147a5" },
-    "gateways--tenant-limits": { "ok": true, "sides": ["right", "left"], "points": [2900, 589, 3010, 589, 3010, 596, 3120, 596], "path": "0cc7f5d45ba9", "label": [2956, 589, 59, 19], "mode": "full", "text": "Sampled", "lines": ["Sampled"] },
-    "tenant-limits--logs": { "ok": true, "sides": ["right", "left"], "points": [3340, 582, 3437, 582, 3437, 456, 3560, 456], "path": "d9dd2881dfdb", "label": [3437, 519, 41, 19], "mode": "full", "text": "Logs", "lines": ["Logs"] },
-    "tenant-limits--spans": { "ok": true, "sides": ["right", "left"], "points": [3340, 596, 3560, 596], "path": "bf0a82b2a7e9", "label": [3444, 596, 83, 19], "mode": "full", "text": "Kept traces", "lines": ["Kept traces"] },
-    "tenant-limits--metrics": { "ok": true, "sides": ["right", "left"], "points": [3340, 610, 3437, 610, 3437, 736, 3560, 736], "path": "f861ae34546b", "label": [3437, 673, 59, 19], "mode": "full", "text": "Metrics", "lines": ["Metrics"] },
+    "gateways--tenant-limits": { "ok": true, "sides": ["right", "left"], "points": [2900, 589, 3010, 589, 3010, 596, 3120, 596], "path": "0cc7f5d45ba9", "label": [2956, 589, 65.97999999999999, 22], "mode": "full", "text": "Sampled", "lines": ["Sampled"] },
+    "tenant-limits--logs": { "ok": true, "sides": ["right", "left"], "points": [3340, 582, 3437, 582, 3437, 456, 3560, 456], "path": "d9dd2881dfdb", "label": [3437, 519, 42.95, 22], "mode": "full", "text": "Logs", "lines": ["Logs"] },
+    "tenant-limits--spans": { "ok": true, "sides": ["right", "left"], "points": [3340, 596, 3560, 596], "path": "bf0a82b2a7e9", "label": [3444, 596, 79.82, 22], "mode": "full", "text": "Kept traces", "lines": ["Kept traces"] },
+    "tenant-limits--metrics": { "ok": true, "sides": ["right", "left"], "points": [3340, 610, 3437, 610, 3437, 736, 3560, 736], "path": "f861ae34546b", "label": [3437, 673, 57.68000000000001, 22], "mode": "full", "text": "Metrics", "lines": ["Metrics"] },
     "logs--ingesters": { "ok": true, "sides": ["right", "left"], "points": [3801, 442, 3896.5, 442, 3896.5, 96, 4040, 96], "path": "bb58c333643f" },
-    "ingesters--loki-store": { "ok": true, "sides": ["right", "left"], "points": [4260, 96, 4480, 96], "path": "97ee554d602a", "label": [4364, 96, 83, 19], "mode": "full", "text": "Push chunks", "lines": ["Push chunks"] },
+    "ingesters--loki-store": { "ok": true, "sides": ["right", "left"], "points": [4260, 96, 4480, 96], "path": "97ee554d602a", "label": [4364, 96, 87.21999999999998, 22], "mode": "full", "text": "Push chunks", "lines": ["Push chunks"] },
     "logs--ch-sink": { "ok": true, "sides": ["right", "left"], "points": [3801, 456, 3958, 456, 3958, 676, 4040, 676], "path": "47aa2cb5c2eb" },
     "logs--s3-sink": { "ok": true, "sides": ["right", "left"], "points": [3801, 470, 3967, 470, 3967, 809, 4040, 809], "path": "d89e56ed9af0" },
     "ch-sink--siem": { "ok": true, "sides": ["right", "left"], "points": [4260, 683, 4370, 683, 4370, 746, 4837, 746, 4837, 676, 5000, 676], "path": "0e04a114e0eb" },
@@ -36,19 +36,19 @@
     "spans--s3-sink": { "ok": true, "sides": ["right", "left"], "points": [3807, 603, 3922, 603, 3922, 823, 4040, 823], "path": "8da1e4997fe5" },
     "metrics--prom": { "ok": true, "sides": ["right", "left"], "points": [3819, 729, 3989, 729, 3989, 376, 4040, 376], "path": "c38acff9c4d4" },
     "metrics--rules": { "ok": true, "sides": ["right", "left"], "points": [3819, 743, 3911, 743, 3911, 1076, 4040, 1076], "path": "a1cec288bd83" },
-    "ch-sink--clickhouse": { "ok": true, "sides": ["right", "left"], "points": [4260, 669, 4370, 669, 4370, 676, 4480, 676], "path": "899a48600c16", "label": [4316, 669, 53, 19], "mode": "full", "text": "Insert", "lines": ["Insert"] },
-    "s3-sink--cold": { "ok": true, "sides": ["right", "left"], "points": [4260, 816, 4480, 816], "path": "d216e09b505e", "label": [4364, 816, 59, 19], "mode": "full", "text": "Parquet", "lines": ["Parquet"] },
-    "rules--alertmanager": { "ok": true, "sides": ["right", "left"], "points": [4260, 1076, 4480, 1076], "path": "35cf28a046ed", "label": [4364, 1076, 53, 19], "mode": "full", "text": "Firing", "lines": ["Firing"] },
-    "alertmanager--pagerduty": { "ok": true, "sides": ["right", "left"], "points": [4700, 1062, 4861, 1062, 4861, 1096, 5000, 1096], "path": "93099c51217f", "label": [4781.5, 1062, 41, 19], "mode": "full", "text": "Page", "lines": ["Page"] },
-    "alertmanager--slack": { "ok": true, "sides": ["right", "left"], "points": [4700, 1076, 4850, 1076, 4850, 1236, 5000, 1236], "path": "fd8ba0d0e046", "label": [4918, 1236, 53, 19], "mode": "full", "text": "Notify", "lines": ["Notify"] },
-    "alertmanager--status-page": { "ok": true, "sides": ["right", "left"], "points": [4700, 1090, 4839, 1090, 4839, 1376, 5000, 1376], "path": "fe70a078e02e", "label": [4839, 1253, 65, 19], "mode": "full", "text": "Incident", "lines": ["Incident"] },
-    "grafana--loki-store": { "ok": true, "sides": ["top", "bottom"], "points": [4590, 340, 4590, 132], "path": "d90e1c327668", "label": [4590, 242, 63, 19], "mode": "full", "text": "LogQL", "lines": ["LogQL"], "glyph": true },
-    "gateways--vault": { "ok": true, "sides": ["left", "right"], "points": [2680, 603, 2571, 603, 2571, 1076, 2462, 1076], "path": "d41885a82974", "label": [2571, 839.5, 117, 19], "mode": "full", "text": "Redaction keys", "lines": ["Redaction keys"], "glyph": true },
+    "ch-sink--clickhouse": { "ok": true, "sides": ["right", "left"], "points": [4260, 669, 4370, 669, 4370, 676, 4480, 676], "path": "899a48600c16", "label": [4316, 669, 48.21, 22], "mode": "full", "text": "Insert", "lines": ["Insert"] },
+    "s3-sink--cold": { "ok": true, "sides": ["right", "left"], "points": [4260, 816, 4480, 816], "path": "d216e09b505e", "label": [4364, 816, 60.78, 22], "mode": "full", "text": "Parquet", "lines": ["Parquet"] },
+    "rules--alertmanager": { "ok": true, "sides": ["right", "left"], "points": [4260, 1076, 4480, 1076], "path": "35cf28a046ed", "label": [4364, 1076, 48.09, 22], "mode": "full", "text": "Firing", "lines": ["Firing"] },
+    "alertmanager--pagerduty": { "ok": true, "sides": ["right", "left"], "points": [4700, 1062, 4861, 1062, 4861, 1096, 5000, 1096], "path": "93099c51217f", "label": [4781.5, 1062, 44.86, 22], "mode": "full", "text": "Page", "lines": ["Page"] },
+    "alertmanager--slack": { "ok": true, "sides": ["right", "left"], "points": [4700, 1076, 4850, 1076, 4850, 1236, 5000, 1236], "path": "fd8ba0d0e046", "label": [4836, 1076, 49.84, 22], "mode": "full", "text": "Notify", "lines": ["Notify"] },
+    "alertmanager--status-page": { "ok": true, "sides": ["right", "left"], "points": [4700, 1090, 4839, 1090, 4839, 1376, 5000, 1376], "path": "fe70a078e02e", "label": [4839, 1253, 61.36, 22], "mode": "full", "text": "Incident", "lines": ["Incident"] },
+    "grafana--loki-store": { "ok": true, "sides": ["top", "bottom"], "points": [4590, 340, 4590, 132], "path": "d90e1c327668", "label": [4590, 242, 68.64, 22], "mode": "full", "text": "LogQL", "lines": ["LogQL"], "glyph": true },
+    "gateways--vault": { "ok": true, "sides": ["left", "right"], "points": [2680, 603, 2571, 603, 2571, 1076, 2462, 1076], "path": "d41885a82974", "label": [2571, 839.5, 116.87, 22], "mode": "full", "text": "Redaction keys", "lines": ["Redaction keys"], "glyph": true },
     "gateways--roles": { "ok": true, "sides": ["bottom", "top"], "points": [2790, 632, 2790, 1040], "path": "c5b90d785520", "label": [2790, 830, 20, 20], "mode": "glyph", "text": "", "lines": [], "glyph": true },
-    "gateways--pipeline-config": { "ok": true, "sides": ["right", "left"], "points": [2900, 603, 3010, 603, 3010, 1076, 3120, 1076], "path": "ff4b48879baf", "label": [3010, 839.5, 123, 19], "mode": "full", "text": "Sampling policy", "lines": ["Sampling policy"], "glyph": true },
-    "tenant-limits--pipeline-config": { "ok": true, "sides": ["bottom", "top"], "points": [3230, 632, 3230, 836, 3246.5, 836, 3246.5, 1040], "path": "5a3d30411258", "label": [3230, 735, 75, 19], "mode": "full", "text": "Budgets", "lines": ["Budgets"], "glyph": true },
-    "grafana--tempo": { "ok": true, "sides": ["left", "right"], "points": [4480, 369, 4374, 369, 4374, 236, 4260, 236], "path": "e916e450105c", "label": [4374, 302.5, 75, 19], "mode": "full", "text": "TraceQL", "lines": ["TraceQL"], "glyph": true },
-    "grafana--prom": { "ok": true, "sides": ["left", "right"], "points": [4480, 383, 4374, 383, 4374, 376, 4268, 376], "path": "9b03ceed3cf1", "label": [4426, 383, 69, 19], "mode": "full", "text": "PromQL", "lines": ["PromQL"], "glyph": true }
+    "gateways--pipeline-config": { "ok": true, "sides": ["right", "left"], "points": [2900, 603, 3010, 603, 3010, 1076, 3120, 1076], "path": "ff4b48879baf", "label": [3010, 839.5, 120.42, 22], "mode": "full", "text": "Sampling policy", "lines": ["Sampling policy"], "glyph": true },
+    "tenant-limits--pipeline-config": { "ok": true, "sides": ["bottom", "top"], "points": [3230, 632, 3230, 836, 3246.5, 836, 3246.5, 1040], "path": "5a3d30411258", "label": [3230, 735, 78.47999999999999, 22], "mode": "full", "text": "Budgets", "lines": ["Budgets"], "glyph": true },
+    "grafana--tempo": { "ok": true, "sides": ["left", "right"], "points": [4480, 369, 4374, 369, 4374, 236, 4260, 236], "path": "e916e450105c", "label": [4374, 302.5, 79.92999999999999, 22], "mode": "full", "text": "TraceQL", "lines": ["TraceQL"], "glyph": true },
+    "grafana--prom": { "ok": true, "sides": ["left", "right"], "points": [4480, 383, 4374, 383, 4374, 376, 4268, 376], "path": "9b03ceed3cf1", "label": [4426, 383, 78.41, 22], "mode": "full", "text": "PromQL", "lines": ["PromQL"], "glyph": true }
   },
   "bezier": {
     "shoppers--ingress": {
@@ -99,7 +99,7 @@
         376
       ],
       "path": "23d06826677b",
-      "label": [364.14564999999993, 376, 47, 19],
+      "label": [364.14564999999993, 376, 54.7, 22],
       "mode": "full",
       "text": "HTTPS",
       "lines": ["HTTPS"]
@@ -250,7 +250,7 @@
         280
       ],
       "path": "80cee82006d9",
-      "label": [1413.5000000000002, 184.88462500000003, 41, 19],
+      "label": [1413.5000000000002, 184.88462500000003, 46.8, 22],
       "mode": "full",
       "text": "OTLP",
       "lines": ["OTLP"]
@@ -401,7 +401,7 @@
         293
       ],
       "path": "f050e5a14b59",
-      "label": [1578.4999999999998, 283.69374999999997, 41, 19],
+      "label": [1578.4999999999998, 283.69374999999997, 46.8, 22],
       "mode": "full",
       "text": "OTLP",
       "lines": ["OTLP"]
@@ -552,7 +552,7 @@
         306
       ],
       "path": "c866b7c6f822",
-      "label": [1512.5, 325.963125, 41, 19],
+      "label": [1545.4999999999998, 321.679125, 46.8, 22],
       "mode": "full",
       "text": "OTLP",
       "lines": ["OTLP"]
@@ -703,7 +703,7 @@
         319
       ],
       "path": "85f7d557fe07",
-      "label": [1380.5000000000002, 435.16125, 41, 19],
+      "label": [1380.5000000000002, 435.16125, 46.8, 22],
       "mode": "full",
       "text": "OTLP",
       "lines": ["OTLP"]
@@ -854,7 +854,7 @@
         332
       ],
       "path": "3aec33934e97",
-      "label": [1479.5, 455.1941250000001, 41, 19],
+      "label": [1479.5, 455.1941250000001, 46.8, 22],
       "mode": "full",
       "text": "OTLP",
       "lines": ["OTLP"]
@@ -907,7 +907,7 @@
         936
       ],
       "path": "df3bebee8910",
-      "label": [804.1349709805763, 934.2578749999999, 35, 19],
+      "label": [804.1349709805763, 934.2578749999999, 39.12, 22],
       "mode": "full",
       "text": "Run",
       "lines": ["Run"]
@@ -960,7 +960,7 @@
         1076
       ],
       "path": "dbf3dcfec04b",
-      "label": [682.4622975239712, 945.3441250000001, 35, 19],
+      "label": [856.0902220732984, 1073.3713452922598, 39.12, 22],
       "mode": "full",
       "text": "Run",
       "lines": ["Run"]
@@ -1013,7 +1013,7 @@
         929
       ],
       "path": "bb9a74aa03ad",
-      "label": [1413.5000000000002, 932.7616250000001, 41, 19],
+      "label": [1413.5000000000002, 932.7616250000001, 46.8, 22],
       "mode": "full",
       "text": "OTLP",
       "lines": ["OTLP"]
@@ -1066,7 +1066,7 @@
         943
       ],
       "path": "ce684732f24e",
-      "label": [1413.5000000000002, 1014.4708750000001, 41, 19],
+      "label": [1413.5000000000002, 1014.4708750000001, 46.8, 22],
       "mode": "full",
       "text": "OTLP",
       "lines": ["OTLP"]
@@ -1119,7 +1119,7 @@
         589
       ],
       "path": "1f545965cbb5",
-      "label": [2117.3431282996194, 436.92287500000003, 71, 19],
+      "label": [2117.3431282996194, 436.92287500000003, 82.7, 22],
       "mode": "full",
       "text": "OTLP/gRPC",
       "lines": ["OTLP/gRPC"]
@@ -1172,7 +1172,7 @@
         603
       ],
       "path": "bb9a286de099",
-      "label": [2114.2612144814707, 781.9458750000001, 71, 19],
+      "label": [2114.2612144814707, 781.9458750000001, 82.7, 22],
       "mode": "full",
       "text": "OTLP/gRPC",
       "lines": ["OTLP/gRPC"]
@@ -1274,7 +1274,7 @@
         596
       ],
       "path": "719221994474",
-      "label": [3044.1349709805763, 594.2578749999999, 59, 19],
+      "label": [3044.1349709805763, 594.2578749999999, 65.97999999999999, 22],
       "mode": "full",
       "text": "Sampled",
       "lines": ["Sampled"]
@@ -1327,7 +1327,7 @@
         456
       ],
       "path": "9896a67bc46a",
-      "label": [3445.7306216009033, 523.70925, 41, 19],
+      "label": [3445.7306216009033, 523.70925, 42.95, 22],
       "mode": "full",
       "text": "Logs",
       "lines": ["Logs"]
@@ -1380,7 +1380,7 @@
         596
       ],
       "path": "627eee41b521",
-      "label": [3484.14565, 596, 83, 19],
+      "label": [3484.14565, 596, 79.82, 22],
       "mode": "full",
       "text": "Kept traces",
       "lines": ["Kept traces"]
@@ -1433,7 +1433,7 @@
         736
       ],
       "path": "7697abe3966d",
-      "label": [3445.7306216009033, 668.29075, 59, 19],
+      "label": [3445.7306216009033, 668.29075, 57.68000000000001, 22],
       "mode": "full",
       "text": "Metrics",
       "lines": ["Metrics"]
@@ -1535,7 +1535,7 @@
         96
       ],
       "path": "ed7745ff3973",
-      "label": [4404.14565, 96, 83, 19],
+      "label": [4404.14565, 96, 87.21999999999998, 22],
       "mode": "full",
       "text": "Push chunks",
       "lines": ["Push chunks"]
@@ -1931,7 +1931,7 @@
         676
       ],
       "path": "3144ae4c15db",
-      "label": [4335.865029019424, 670.742125, 53, 19],
+      "label": [4335.865029019424, 670.742125, 48.21, 22],
       "mode": "full",
       "text": "Insert",
       "lines": ["Insert"]
@@ -1984,7 +1984,7 @@
         816
       ],
       "path": "4f635ebe206f",
-      "label": [4404.14565, 816, 59, 19],
+      "label": [4404.14565, 816, 60.78, 22],
       "mode": "full",
       "text": "Parquet",
       "lines": ["Parquet"]
@@ -2037,7 +2037,7 @@
         1076
       ],
       "path": "fc4ee3f1e876",
-      "label": [4404.14565, 1076, 53, 19],
+      "label": [4404.14565, 1076, 48.09, 22],
       "mode": "full",
       "text": "Firing",
       "lines": ["Firing"]
@@ -2090,7 +2090,7 @@
         1096
       ],
       "path": "4453ac9c45a7",
-      "label": [4910.352685442736, 1089.67175, 41, 19],
+      "label": [4910.352685442736, 1089.67175, 44.86, 22],
       "mode": "full",
       "text": "Page",
       "lines": ["Page"]
@@ -2143,7 +2143,7 @@
         1236
       ],
       "path": "f926c47e4932",
-      "label": [4844.08895, 1150.02, 53, 19],
+      "label": [4729.86695, 1078.8200000000002, 49.84, 22],
       "mode": "full",
       "text": "Notify",
       "lines": ["Notify"]
@@ -2196,7 +2196,7 @@
         1376
       ],
       "path": "d6ed933e76b2",
-      "label": [4845.25032321896, 1222.31075, 65, 19],
+      "label": [4845.25032321896, 1222.31075, 61.36, 22],
       "mode": "full",
       "text": "Incident",
       "lines": ["Incident"]
@@ -2249,7 +2249,7 @@
         132
       ],
       "path": "0e6e0a9f20c1",
-      "label": [4590, 183.93084, 63, 19],
+      "label": [4590, 183.93084, 68.64, 22],
       "mode": "full",
       "text": "LogQL",
       "lines": ["LogQL"],
@@ -2303,7 +2303,7 @@
         1076
       ],
       "path": "5a629664217f",
-      "label": [2570.9731287785553, 857.1783750000001, 117, 19],
+      "label": [2570.9731287785553, 857.1783750000001, 116.87, 22],
       "mode": "full",
       "text": "Redaction keys",
       "lines": ["Redaction keys"],
@@ -2411,7 +2411,7 @@
         1076
       ],
       "path": "cfac7c12b11a",
-      "label": [3009.9114812245452, 821.821625, 123, 19],
+      "label": [3009.9114812245452, 821.821625, 120.42, 22],
       "mode": "full",
       "text": "Sampling policy",
       "lines": ["Sampling policy"],
@@ -2465,7 +2465,7 @@
         1040
       ],
       "path": "5a91e2e02eb6",
-      "label": [3230.7321875, 691.5865797767821, 75, 19],
+      "label": [3230.7321875, 691.5865797767821, 78.47999999999999, 22],
       "mode": "full",
       "text": "Budgets",
       "lines": ["Budgets"],
@@ -2519,7 +2519,7 @@
         236
       ],
       "path": "d14c92b49dd5",
-      "label": [4365.785985740465, 297.529125, 75, 19],
+      "label": [4365.785985740465, 297.529125, 79.92999999999999, 22],
       "mode": "full",
       "text": "TraceQL",
       "lines": ["TraceQL"],
@@ -2573,7 +2573,7 @@
         376
       ],
       "path": "f6dcd5e5e38b",
-      "label": [4416.788272151576, 381.6971249999999, 69, 19],
+      "label": [4416.788272151576, 381.6971249999999, 78.41, 22],
       "mode": "full",
       "text": "PromQL",
       "lines": ["PromQL"],
@@ -2581,35 +2581,35 @@
     }
   },
   "straight": {
-    "shoppers--ingress": { "ok": true, "sides": ["right", "left"], "points": [220, 376, 440, 376], "path": "53e2132b43a2", "label": [324, 376, 47, 19], "mode": "full", "text": "HTTPS", "lines": ["HTTPS"] },
+    "shoppers--ingress": { "ok": true, "sides": ["right", "left"], "points": [220, 376, 440, 376], "path": "53e2132b43a2", "label": [324, 376, 54.7, 22], "mode": "full", "text": "HTTPS", "lines": ["HTTPS"] },
     "ingress--checkout": { "ok": true, "sides": ["right", "left"], "points": [660, 350, 880, 96], "path": "bb6628e3dd2c" },
     "checkout--checkout-db": { "ok": true, "sides": ["right", "left"], "points": [1100, 89, 1320, 96], "path": "c0425b2691a2" },
-    "checkout--agent-shop": { "ok": true, "sides": ["right", "left"], "points": [1100, 103, 1760, 280], "path": "579ba7fded6c", "label": [1404.8873895679103, 184.76525447503047, 41, 19], "mode": "full", "text": "OTLP", "lines": ["OTLP"] },
+    "checkout--agent-shop": { "ok": true, "sides": ["right", "left"], "points": [1100, 103, 1760, 280], "path": "579ba7fded6c", "label": [1404.8873895679103, 184.76525447503047, 46.8, 22], "mode": "full", "text": "OTLP", "lines": ["OTLP"] },
     "ingress--search": { "ok": true, "sides": ["right", "left"], "points": [660, 363, 880, 236], "path": "c9d8a570b197" },
     "search--search-db": { "ok": true, "sides": ["right", "left"], "points": [1100, 229, 1320, 236], "path": "c167d2bd8949" },
-    "search--agent-shop": { "ok": true, "sides": ["right", "left"], "points": [1100, 243, 1760, 293], "path": "1595bd862b8a", "label": [1294.3885944281988, 257.72640866880295, 41, 19], "mode": "full", "text": "OTLP", "lines": ["OTLP"] },
+    "search--agent-shop": { "ok": true, "sides": ["right", "left"], "points": [1100, 243, 1760, 293], "path": "1595bd862b8a", "label": [1284.4171675479192, 256.97099754150906, 46.8, 22], "mode": "full", "text": "OTLP", "lines": ["OTLP"] },
     "ingress--cart": { "ok": true, "sides": ["right", "left"], "points": [660, 376, 880, 376], "path": "f97e8b5ffbfd" },
     "cart--cart-db": { "ok": true, "sides": ["right", "left"], "points": [1100, 383, 1320, 376], "path": "a19619624c0b" },
-    "cart--agent-shop": { "ok": true, "sides": ["right", "left"], "points": [1100, 369, 1760, 306], "path": "f0204ae7c540", "label": [1553.4389140271494, 325.71719457013575, 41, 19], "mode": "full", "text": "OTLP", "lines": ["OTLP"] },
+    "cart--agent-shop": { "ok": true, "sides": ["right", "left"], "points": [1100, 369, 1760, 306], "path": "f0204ae7c540", "label": [1563.393665158371, 324.7669683257919, 46.8, 22], "mode": "full", "text": "OTLP", "lines": ["OTLP"] },
     "ingress--payments": { "ok": true, "sides": ["right", "left"], "points": [660, 389, 880, 516], "path": "2e3bb1d27663" },
     "payments--payments-db": { "ok": true, "sides": ["right", "left"], "points": [1100, 523, 1320, 516], "path": "565eb03c3a13" },
-    "payments--agent-shop": { "ok": true, "sides": ["right", "left"], "points": [1100, 509, 1760, 319], "path": "038e7a4263a5", "label": [1385.795261161678, 426.7256066352745, 41, 19], "mode": "full", "text": "OTLP", "lines": ["OTLP"] },
+    "payments--agent-shop": { "ok": true, "sides": ["right", "left"], "points": [1100, 509, 1760, 319], "path": "038e7a4263a5", "label": [1376.1855353272601, 429.4920428603342, 46.8, 22], "mode": "full", "text": "OTLP", "lines": ["OTLP"] },
     "ingress--inventory": { "ok": true, "sides": ["right", "left"], "points": [660, 402, 880, 656], "path": "f87c3f00e01a" },
     "inventory--inventory-db": { "ok": true, "sides": ["right", "left"], "points": [1100, 663, 1320, 656], "path": "ea0532d3db96" },
-    "inventory--agent-shop": { "ok": true, "sides": ["right", "left"], "points": [1100, 649, 1760, 332], "path": "4c9890df0ab4", "label": [1487.690653896132, 462.79100411352454, 41, 19], "mode": "full", "text": "OTLP", "lines": ["OTLP"] },
-    "scheduler--etl": { "ok": true, "sides": ["right", "left"], "points": [660, 929, 880, 936], "path": "fef910afda7f", "label": [764.0030348858957, 932.3091874736422, 35, 19], "mode": "full", "text": "Run", "lines": ["Run"] },
-    "scheduler--reports": { "ok": true, "sides": ["right", "left"], "points": [660, 943, 880, 1076], "path": "1abb907c08e8", "label": [764.8653677890804, 1006.3958814361259, 35, 19], "mode": "full", "text": "Run", "lines": ["Run"] },
-    "etl--agent-data": { "ok": true, "sides": ["right", "left"], "points": [1100, 936, 1760, 929], "path": "b2ca922a8d4e", "label": [1424.0003374370967, 932.563632784758, 41, 19], "mode": "full", "text": "OTLP", "lines": ["OTLP"] },
-    "reports--agent-data": { "ok": true, "sides": ["right", "left"], "points": [1100, 1076, 1760, 943], "path": "59a256d0ca04", "label": [1424.1182359867257, 1010.6852645663113, 41, 19], "mode": "full", "text": "OTLP", "lines": ["OTLP"] },
-    "agent-shop--otlp-lb": { "ok": true, "sides": ["right", "left"], "points": [2001, 306, 2240, 589], "path": "dafd0a9d0fe7", "label": [2116.6287049775005, 442.91599794406983, 71, 19], "mode": "full", "text": "OTLP/gRPC", "lines": ["OTLP/gRPC"] },
-    "agent-data--otlp-lb": { "ok": true, "sides": ["right", "left"], "points": [1994, 936, 2240, 603], "path": "5d3f55c6d5c9", "label": [2113.4348762097507, 774.3259602526543, 71, 19], "mode": "full", "text": "OTLP/gRPC", "lines": ["OTLP/gRPC"] },
+    "inventory--agent-shop": { "ok": true, "sides": ["right", "left"], "points": [1100, 649, 1760, 332], "path": "4c9890df0ab4", "label": [1487.690653896132, 462.79100411352454, 46.8, 22], "mode": "full", "text": "OTLP", "lines": ["OTLP"] },
+    "scheduler--etl": { "ok": true, "sides": ["right", "left"], "points": [660, 929, 880, 936], "path": "fef910afda7f", "label": [764.0030348858957, 932.3091874736422, 39.12, 22], "mode": "full", "text": "Run", "lines": ["Run"] },
+    "scheduler--reports": { "ok": true, "sides": ["right", "left"], "points": [660, 943, 880, 1076], "path": "1abb907c08e8", "label": [764.8653677890804, 1006.3958814361259, 39.12, 22], "mode": "full", "text": "Run", "lines": ["Run"] },
+    "etl--agent-data": { "ok": true, "sides": ["right", "left"], "points": [1100, 936, 1760, 929], "path": "b2ca922a8d4e", "label": [1424.0003374370967, 932.563632784758, 46.8, 22], "mode": "full", "text": "OTLP", "lines": ["OTLP"] },
+    "reports--agent-data": { "ok": true, "sides": ["right", "left"], "points": [1100, 1076, 1760, 943], "path": "59a256d0ca04", "label": [1424.1182359867257, 1010.6852645663113, 46.8, 22], "mode": "full", "text": "OTLP", "lines": ["OTLP"] },
+    "agent-shop--otlp-lb": { "ok": true, "sides": ["right", "left"], "points": [2001, 306, 2240, 589], "path": "dafd0a9d0fe7", "label": [2116.6287049775005, 442.91599794406983, 82.7, 22], "mode": "full", "text": "OTLP/gRPC", "lines": ["OTLP/gRPC"] },
+    "agent-data--otlp-lb": { "ok": true, "sides": ["right", "left"], "points": [1994, 936, 2240, 603], "path": "5d3f55c6d5c9", "label": [2113.4348762097507, 774.3259602526543, 82.7, 22], "mode": "full", "text": "OTLP/gRPC", "lines": ["OTLP/gRPC"] },
     "otlp-lb--gateways": { "ok": true, "sides": ["right", "left"], "points": [2460, 596, 2680, 589], "path": "e09ede03d798" },
-    "gateways--tenant-limits": { "ok": true, "sides": ["right", "left"], "points": [2900, 589, 3120, 596], "path": "90279826e598", "label": [3004.0030348858954, 592.3091874736422, 59, 19], "mode": "full", "text": "Sampled", "lines": ["Sampled"] },
-    "tenant-limits--logs": { "ok": true, "sides": ["right", "left"], "points": [3340, 582, 3560, 456], "path": "166ec68129bb", "label": [3444.793456392715, 521.9819295205358, 41, 19], "mode": "full", "text": "Logs", "lines": ["Logs"] },
-    "tenant-limits--spans": { "ok": true, "sides": ["right", "left"], "points": [3340, 596, 3560, 596], "path": "bf0a82b2a7e9", "label": [3444, 596, 83, 19], "mode": "full", "text": "Kept traces", "lines": ["Kept traces"] },
-    "tenant-limits--metrics": { "ok": true, "sides": ["right", "left"], "points": [3340, 610, 3560, 736], "path": "1316650e9b15", "label": [3444.793456392715, 670.0180704794642, 59, 19], "mode": "full", "text": "Metrics", "lines": ["Metrics"] },
+    "gateways--tenant-limits": { "ok": true, "sides": ["right", "left"], "points": [2900, 589, 3120, 596], "path": "90279826e598", "label": [3004.0030348858954, 592.3091874736422, 65.97999999999999, 22], "mode": "full", "text": "Sampled", "lines": ["Sampled"] },
+    "tenant-limits--logs": { "ok": true, "sides": ["right", "left"], "points": [3340, 582, 3560, 456], "path": "166ec68129bb", "label": [3444.793456392715, 521.9819295205358, 42.95, 22], "mode": "full", "text": "Logs", "lines": ["Logs"] },
+    "tenant-limits--spans": { "ok": true, "sides": ["right", "left"], "points": [3340, 596, 3560, 596], "path": "bf0a82b2a7e9", "label": [3444, 596, 79.82, 22], "mode": "full", "text": "Kept traces", "lines": ["Kept traces"] },
+    "tenant-limits--metrics": { "ok": true, "sides": ["right", "left"], "points": [3340, 610, 3560, 736], "path": "1316650e9b15", "label": [3444.793456392715, 670.0180704794642, 57.68000000000001, 22], "mode": "full", "text": "Metrics", "lines": ["Metrics"] },
     "logs--ingesters": { "ok": true, "sides": ["right", "left"], "points": [3801, 442, 4040, 96], "path": "1a70b49f8921" },
-    "ingesters--loki-store": { "ok": true, "sides": ["right", "left"], "points": [4260, 96, 4480, 96], "path": "97ee554d602a", "label": [4364, 96, 83, 19], "mode": "full", "text": "Push chunks", "lines": ["Push chunks"] },
+    "ingesters--loki-store": { "ok": true, "sides": ["right", "left"], "points": [4260, 96, 4480, 96], "path": "97ee554d602a", "label": [4364, 96, 87.21999999999998, 22], "mode": "full", "text": "Push chunks", "lines": ["Push chunks"] },
     "logs--ch-sink": { "ok": true, "sides": ["right", "left"], "points": [3801, 456, 4040, 676], "path": "aa20834fc215" },
     "logs--s3-sink": { "ok": true, "sides": ["right", "left"], "points": [3801, 470, 4040, 809], "path": "b293ffa2f60d" },
     "ch-sink--siem": { "ok": true, "sides": ["right", "left"], "points": [4260, 683, 5000, 676], "path": "5e14f72142c8" },
@@ -2617,18 +2617,18 @@
     "spans--s3-sink": { "ok": true, "sides": ["right", "left"], "points": [3807, 603, 4040, 823], "path": "f1f01ca6526f" },
     "metrics--prom": { "ok": true, "sides": ["right", "left"], "points": [3819, 729, 4040, 376], "path": "20bce582a9ef" },
     "metrics--rules": { "ok": true, "sides": ["right", "left"], "points": [3819, 743, 4040, 1076], "path": "b2868f6d35b5" },
-    "ch-sink--clickhouse": { "ok": true, "sides": ["right", "left"], "points": [4260, 669, 4480, 676], "path": "bd5b2262b610", "label": [4354.008093029055, 671.991166596379, 53, 19], "mode": "full", "text": "Insert", "lines": ["Insert"] },
-    "s3-sink--cold": { "ok": true, "sides": ["right", "left"], "points": [4260, 816, 4480, 816], "path": "d216e09b505e", "label": [4364, 816, 59, 19], "mode": "full", "text": "Parquet", "lines": ["Parquet"] },
-    "rules--alertmanager": { "ok": true, "sides": ["right", "left"], "points": [4260, 1076, 4480, 1076], "path": "35cf28a046ed", "label": [4364, 1076, 53, 19], "mode": "full", "text": "Firing", "lines": ["Firing"] },
-    "alertmanager--pagerduty": { "ok": true, "sides": ["right", "left"], "points": [4700, 1062, 5000, 1096], "path": "10708a831233", "label": [4844.038166058006, 1078.324325486574, 41, 19], "mode": "full", "text": "Page", "lines": ["Page"] },
-    "alertmanager--slack": { "ok": true, "sides": ["right", "left"], "points": [4700, 1076, 5000, 1236], "path": "83650dcccb5d", "label": [4844.705882352941, 1153.1764705882354, 53, 19], "mode": "full", "text": "Notify", "lines": ["Notify"] },
-    "alertmanager--status-page": { "ok": true, "sides": ["right", "left"], "points": [4700, 1090, 5000, 1376], "path": "89ea27e75297", "label": [4845.657238477812, 1228.859900682181, 65, 19], "mode": "full", "text": "Incident", "lines": ["Incident"] },
-    "grafana--loki-store": { "ok": true, "sides": ["top", "bottom"], "points": [4590, 340, 4590, 132], "path": "d90e1c327668", "label": [4590, 242, 63, 19], "mode": "full", "text": "LogQL", "lines": ["LogQL"], "glyph": true },
-    "gateways--vault": { "ok": true, "sides": ["left", "right"], "points": [2680, 603, 2462, 1076], "path": "2fd7def5873b", "label": [2573.5114264793433, 834.050895758122, 117, 19], "mode": "full", "text": "Redaction keys", "lines": ["Redaction keys"], "glyph": true },
+    "ch-sink--clickhouse": { "ok": true, "sides": ["right", "left"], "points": [4260, 669, 4480, 676], "path": "bd5b2262b610", "label": [4324.023267458533, 671.0371039645897, 48.21, 22], "mode": "full", "text": "Insert", "lines": ["Insert"] },
+    "s3-sink--cold": { "ok": true, "sides": ["right", "left"], "points": [4260, 816, 4480, 816], "path": "d216e09b505e", "label": [4364, 816, 60.78, 22], "mode": "full", "text": "Parquet", "lines": ["Parquet"] },
+    "rules--alertmanager": { "ok": true, "sides": ["right", "left"], "points": [4260, 1076, 4480, 1076], "path": "35cf28a046ed", "label": [4364, 1076, 48.09, 22], "mode": "full", "text": "Firing", "lines": ["Firing"] },
+    "alertmanager--pagerduty": { "ok": true, "sides": ["right", "left"], "points": [4700, 1062, 5000, 1096], "path": "10708a831233", "label": [4844.038166058006, 1078.324325486574, 44.86, 22], "mode": "full", "text": "Page", "lines": ["Page"] },
+    "alertmanager--slack": { "ok": true, "sides": ["right", "left"], "points": [4700, 1076, 5000, 1236], "path": "83650dcccb5d", "label": [4844.705882352941, 1153.1764705882354, 49.84, 22], "mode": "full", "text": "Notify", "lines": ["Notify"] },
+    "alertmanager--status-page": { "ok": true, "sides": ["right", "left"], "points": [4700, 1090, 5000, 1376], "path": "89ea27e75297", "label": [4845.657238477812, 1228.859900682181, 61.36, 22], "mode": "full", "text": "Incident", "lines": ["Incident"] },
+    "grafana--loki-store": { "ok": true, "sides": ["top", "bottom"], "points": [4590, 340, 4590, 132], "path": "d90e1c327668", "label": [4590, 242, 68.64, 22], "mode": "full", "text": "LogQL", "lines": ["LogQL"], "glyph": true },
+    "gateways--vault": { "ok": true, "sides": ["left", "right"], "points": [2680, 603, 2462, 1076], "path": "2fd7def5873b", "label": [2573.5114264793433, 834.050895758122, 116.87, 22], "mode": "full", "text": "Redaction keys", "lines": ["Redaction keys"], "glyph": true },
     "gateways--roles": { "ok": true, "sides": ["bottom", "top"], "points": [2790, 632, 2790, 1040], "path": "c5b90d785520", "label": [2790, 830, 20, 20], "mode": "glyph", "text": "", "lines": [], "glyph": true },
-    "gateways--pipeline-config": { "ok": true, "sides": ["right", "left"], "points": [2900, 603, 3120, 1076], "path": "28e7bf9ad323", "label": [3007.4696155017064, 834.059673328669, 123, 19], "mode": "full", "text": "Sampling policy", "lines": ["Sampling policy"], "glyph": true },
-    "tenant-limits--pipeline-config": { "ok": true, "sides": ["bottom", "top"], "points": [3230, 632, 3246.5, 1040], "path": "89ed66a0edd0", "label": [3238.0075511213863, 830.0049004561009, 75, 19], "mode": "full", "text": "Budgets", "lines": ["Budgets"], "glyph": true },
-    "grafana--tempo": { "ok": true, "sides": ["left", "right"], "points": [4480, 369, 4260, 236], "path": "3b0d2df387fe", "label": [4375.134632210919, 305.60411856387407, 75, 19], "mode": "full", "text": "TraceQL", "lines": ["TraceQL"], "glyph": true },
-    "grafana--prom": { "ok": true, "sides": ["left", "right"], "points": [4480, 383, 4268, 376], "path": "d1957aef2677", "label": [4379.996731935085, 379.6980052997434, 69, 19], "mode": "full", "text": "PromQL", "lines": ["PromQL"], "glyph": true }
+    "gateways--pipeline-config": { "ok": true, "sides": ["right", "left"], "points": [2900, 603, 3120, 1076], "path": "28e7bf9ad323", "label": [3007.4696155017064, 834.059673328669, 120.42, 22], "mode": "full", "text": "Sampling policy", "lines": ["Sampling policy"], "glyph": true },
+    "tenant-limits--pipeline-config": { "ok": true, "sides": ["bottom", "top"], "points": [3230, 632, 3246.5, 1040], "path": "89ed66a0edd0", "label": [3238.0075511213863, 830.0049004561009, 78.47999999999999, 22], "mode": "full", "text": "Budgets", "lines": ["Budgets"], "glyph": true },
+    "grafana--tempo": { "ok": true, "sides": ["left", "right"], "points": [4480, 369, 4260, 236], "path": "3b0d2df387fe", "label": [4375.134632210919, 305.60411856387407, 79.92999999999999, 22], "mode": "full", "text": "TraceQL", "lines": ["TraceQL"], "glyph": true },
+    "grafana--prom": { "ok": true, "sides": ["left", "right"], "points": [4480, 383, 4268, 376], "path": "d1957aef2677", "label": [4379.996731935085, 379.6980052997434, 78.41, 22], "mode": "full", "text": "PromQL", "lines": ["PromQL"], "glyph": true }
   }
 }

@@ -1,20 +1,20 @@
 {
   "smoothstep": {
-    "shopper-to-gateway": { "ok": true, "sides": ["right", "left"], "points": [281, 316, 420, 316], "path": "73cfba913dd3", "label": [344.5, 316, 47, 19], "mode": "full", "text": "HTTPS", "lines": ["HTTPS"] },
-    "gateway-to-orders": { "ok": true, "sides": ["right", "left"], "points": [680, 316, 800, 316], "path": "bf23866207c0", "label": [734, 316, 89, 19], "mode": "full", "text": "POST /orders", "lines": ["POST /orders"] },
-    "orders-to-order-db": { "ok": true, "sides": ["bottom", "top"], "points": [930, 352, 930, 520], "path": "b5f2236ee5dd", "label": [930, 430, 143, 19], "mode": "full", "text": "Commit order + outbox", "lines": ["Commit order + outbox"] },
-    "orders-to-order-events": { "ok": true, "sides": ["right", "left"], "points": [1060, 309, 1120, 309, 1120, 316, 1180, 316], "path": "0d1e23060523", "label": [1111, 309, 83, 19], "mode": "full", "text": "OrderPlaced", "lines": ["OrderPlaced"] },
-    "order-events-to-inventory": { "ok": true, "sides": ["right", "left"], "points": [1440, 302, 1500, 302, 1500, 196, 1560, 196], "path": "21b50691e407", "label": [1500, 249, 119, 19], "mode": "full", "text": "Reserve inventory", "lines": ["Reserve inventory"] },
-    "order-events-to-payments": { "ok": true, "sides": ["right", "left"], "points": [1440, 316, 1500, 316, 1500, 309, 1560, 309], "path": "f3a31ef45fe7", "label": [1513, 309, 71, 32], "mode": "wrap", "text": "Authorize payment", "lines": ["Authorize", "payment"] },
-    "order-events-to-notifications": { "ok": true, "sides": ["right", "left"], "points": [1440, 330, 1494.5, 330, 1494.5, 436, 1560, 436], "path": "06b43517550f", "label": [1494.5, 383, 119, 19], "mode": "full", "text": "Send confirmation", "lines": ["Send confirmation"] },
-    "inventory-to-stock-db": { "ok": true, "sides": ["right", "left"], "points": [1820, 196, 1940, 196], "path": "324f70719d93", "label": [1874, 196, 89, 19], "mode": "full", "text": "Reserve SKUs", "lines": ["Reserve SKUs"] },
-    "payments-to-payment-db": { "ok": true, "sides": ["right", "left"], "points": [1820, 316, 1940, 316], "path": "4121842227b2", "label": [1874, 316, 95, 32], "mode": "wrap", "text": "Record authorization", "lines": ["Record", "authorization"] },
-    "notifications-to-notify-cache": { "ok": true, "sides": ["right", "left"], "points": [1820, 436, 1940, 436], "path": "e2f6afe359ae", "label": [1874, 436, 65, 32], "mode": "wrap", "text": "SET NX · dedupe", "lines": ["SET NX ·", "dedupe"] },
-    "payments-to-payment-events": { "ok": true, "sides": ["left", "right"], "points": [1560, 323, 1505.5, 323, 1505.5, 556, 1440, 556], "path": "0d37ed68289f", "label": [1505.5, 489.5, 113, 19], "mode": "full", "text": "PaymentCompleted", "lines": ["PaymentCompleted"] },
-    "payment-events-to-orders": { "ok": true, "sides": ["left", "right"], "points": [1180, 556, 1125.5, 556, 1125.5, 337, 1060, 337], "path": "79fe25827873", "label": [1125.5, 446.5, 149, 19], "mode": "full", "text": "group: orders-payments", "lines": ["group: orders-payments"] },
-    "orders-to-schemas": { "ok": true, "sides": ["right", "left"], "points": [1060, 295, 1120, 295, 1120, 76, 1180, 76], "path": "2e46be9fb0ed", "label": [1120, 185.5, 119, 19], "mode": "full", "text": "Fetch Avro schema", "lines": ["Fetch Avro schema"] },
-    "metrics-to-orders": { "ok": true, "sides": ["left", "right"], "points": [1560, 676, 1114.5, 676, 1114.5, 323, 1060, 323], "path": "2a4e764862bd", "label": [1336.25, 676, 89, 19], "mode": "full", "text": "GET /metrics", "lines": ["GET /metrics"] },
-    "dashboard-to-metrics": { "ok": true, "sides": ["left", "right"], "points": [1940, 676, 1780, 676], "path": "4e8951cc103c", "label": [1866, 676, 53, 19], "mode": "full", "text": "PromQL", "lines": ["PromQL"] }
+    "shopper-to-gateway": { "ok": true, "sides": ["right", "left"], "points": [281, 316, 420, 316], "path": "73cfba913dd3", "label": [344.5, 316, 54.7, 22], "mode": "full", "text": "HTTPS", "lines": ["HTTPS"] },
+    "gateway-to-orders": { "ok": true, "sides": ["right", "left"], "points": [680, 316, 800, 316], "path": "bf23866207c0", "label": [734, 316, 90.3, 22], "mode": "full", "text": "POST /orders", "lines": ["POST /orders"] },
+    "orders-to-order-db": { "ok": true, "sides": ["bottom", "top"], "points": [930, 352, 930, 520], "path": "b5f2236ee5dd", "label": [930, 430, 144.2, 22], "mode": "full", "text": "Commit order + outbox", "lines": ["Commit order + outbox"] },
+    "orders-to-order-events": { "ok": true, "sides": ["right", "left"], "points": [1060, 309, 1120, 309, 1120, 316, 1180, 316], "path": "0d1e23060523", "label": [1111, 309, 85.72, 22], "mode": "full", "text": "OrderPlaced", "lines": ["OrderPlaced"] },
+    "order-events-to-inventory": { "ok": true, "sides": ["right", "left"], "points": [1440, 302, 1500, 302, 1500, 196, 1560, 196], "path": "21b50691e407", "label": [1500, 249, 114.66999999999999, 22], "mode": "full", "text": "Reserve inventory", "lines": ["Reserve inventory"] },
+    "order-events-to-payments": { "ok": true, "sides": ["right", "left"], "points": [1440, 316, 1500, 316, 1500, 309, 1560, 309], "path": "f3a31ef45fe7", "label": [1513, 309, 69.78, 38], "mode": "wrap", "text": "Authorize payment", "lines": ["Authorize", "payment"] },
+    "order-events-to-notifications": { "ok": true, "sides": ["right", "left"], "points": [1440, 330, 1494.5, 330, 1494.5, 436, 1560, 436], "path": "06b43517550f", "label": [1494.5, 383, 118.13, 22], "mode": "full", "text": "Send confirmation", "lines": ["Send confirmation"] },
+    "inventory-to-stock-db": { "ok": true, "sides": ["right", "left"], "points": [1820, 196, 1940, 196], "path": "324f70719d93", "label": [1874, 196, 92.93, 22], "mode": "full", "text": "Reserve SKUs", "lines": ["Reserve SKUs"] },
+    "payments-to-payment-db": { "ok": true, "sides": ["right", "left"], "points": [1820, 316, 1940, 316], "path": "4121842227b2", "label": [1874, 316, 90.50999999999999, 38], "mode": "wrap", "text": "Record authorization", "lines": ["Record", "authorization"] },
+    "notifications-to-notify-cache": { "ok": true, "sides": ["right", "left"], "points": [1820, 436, 1940, 436], "path": "e2f6afe359ae", "label": [1874, 436, 66.42, 38], "mode": "wrap", "text": "SET NX · dedupe", "lines": ["SET NX ·", "dedupe"] },
+    "payments-to-payment-events": { "ok": true, "sides": ["left", "right"], "points": [1560, 323, 1505.5, 323, 1505.5, 556, 1440, 556], "path": "0d37ed68289f", "label": [1505.5, 489.5, 127.08999999999997, 22], "mode": "full", "text": "PaymentCompleted", "lines": ["PaymentCompleted"] },
+    "payment-events-to-orders": { "ok": true, "sides": ["left", "right"], "points": [1180, 556, 1125.5, 556, 1125.5, 337, 1060, 337], "path": "79fe25827873", "label": [1125.5, 446.5, 148.85999999999999, 22], "mode": "full", "text": "group: orders-payments", "lines": ["group: orders-payments"] },
+    "orders-to-schemas": { "ok": true, "sides": ["right", "left"], "points": [1060, 295, 1120, 295, 1120, 76, 1180, 76], "path": "2e46be9fb0ed", "label": [1120, 185.5, 122.72999999999999, 22], "mode": "full", "text": "Fetch Avro schema", "lines": ["Fetch Avro schema"] },
+    "metrics-to-orders": { "ok": true, "sides": ["left", "right"], "points": [1560, 676, 1114.5, 676, 1114.5, 323, 1060, 323], "path": "2a4e764862bd", "label": [1336.25, 676, 88.88999999999999, 22], "mode": "full", "text": "GET /metrics", "lines": ["GET /metrics"] },
+    "dashboard-to-metrics": { "ok": true, "sides": ["left", "right"], "points": [1940, 676, 1780, 676], "path": "4e8951cc103c", "label": [1866, 676, 62.41, 22], "mode": "full", "text": "PromQL", "lines": ["PromQL"] }
   },
   "bezier": {
     "shopper-to-gateway": {
@@ -65,7 +65,7 @@
         316
       ],
       "path": "a91203b30b94",
-      "label": [347.4722325, 316, 47, 19],
+      "label": [347.4722325, 316, 54.7, 22],
       "mode": "full",
       "text": "HTTPS",
       "lines": ["HTTPS"]
@@ -118,7 +118,7 @@
         316
       ],
       "path": "f04381487aae",
-      "label": [737.3861, 316, 89, 19],
+      "label": [737.3861, 316, 90.3, 22],
       "mode": "full",
       "text": "POST /orders",
       "lines": ["POST /orders"]
@@ -171,7 +171,7 @@
         520
       ],
       "path": "aa6c2859ff8f",
-      "label": [930, 432.34054000000003, 143, 19],
+      "label": [930, 432.34054000000003, 144.2, 22],
       "mode": "full",
       "text": "Commit order + outbox",
       "lines": ["Commit order + outbox"]
@@ -224,7 +224,7 @@
         316
       ],
       "path": "afb1fd8db40c",
-      "label": [1117.3892807651887, 312.238375, 83, 19],
+      "label": [1117.3892807651887, 312.238375, 85.72, 22],
       "mode": "full",
       "text": "OrderPlaced",
       "lines": ["OrderPlaced"]
@@ -277,7 +277,7 @@
         196
       ],
       "path": "d35310e945ab",
-      "label": [1498.0115535399877, 252.96175000000002, 119, 19],
+      "label": [1498.0115535399877, 252.96175000000002, 114.66999999999999, 22],
       "mode": "full",
       "text": "Reserve inventory",
       "lines": ["Reserve inventory"]
@@ -330,7 +330,7 @@
         309
       ],
       "path": "bbad5048a15b",
-      "label": [1497.3892807651887, 312.76162500000004, 71, 32],
+      "label": [1507.8557504780817, 311.72037500000005, 69.78, 38],
       "mode": "wrap",
       "text": "Authorize payment",
       "lines": ["Authorize", "payment"]
@@ -383,7 +383,7 @@
         436
       ],
       "path": "9b08719ff318",
-      "label": [1498.0115535399877, 379.03825000000006, 119, 19],
+      "label": [1493.9733543448124, 371.19425, 118.13, 22],
       "mode": "full",
       "text": "Send confirmation",
       "lines": ["Send confirmation"]
@@ -436,7 +436,7 @@
         196
       ],
       "path": "3a48657f80a0",
-      "label": [1877.3861000000002, 196, 89, 19],
+      "label": [1877.3861000000002, 196, 92.93, 22],
       "mode": "full",
       "text": "Reserve SKUs",
       "lines": ["Reserve SKUs"]
@@ -489,7 +489,7 @@
         316
       ],
       "path": "e1b6869679e0",
-      "label": [1877.3861000000002, 316, 95, 32],
+      "label": [1877.3861000000002, 316, 90.50999999999999, 38],
       "mode": "wrap",
       "text": "Record authorization",
       "lines": ["Record", "authorization"]
@@ -542,7 +542,7 @@
         436
       ],
       "path": "e6bacd593497",
-      "label": [1877.3861000000002, 436.00000000000006, 65, 32],
+      "label": [1877.3861000000002, 436.00000000000006, 66.42, 38],
       "mode": "wrap",
       "text": "SET NX · dedupe",
       "lines": ["SET NX ·", "dedupe"]
@@ -595,7 +595,7 @@
         556
       ],
       "path": "986184c81b01",
-      "label": [1498.6470503522821, 465.450375, 113, 19],
+      "label": [1495.0036208403424, 498.01212499999997, 127.08999999999997, 22],
       "mode": "full",
       "text": "PaymentCompleted",
       "lines": ["PaymentCompleted"]
@@ -648,7 +648,7 @@
         337
       ],
       "path": "150aca625653",
-      "label": [1119.4087878722146, 438.314875, 149, 19],
+      "label": [1119.4087878722146, 438.314875, 148.85999999999999, 22],
       "mode": "full",
       "text": "group: orders-payments",
       "lines": ["group: orders-payments"]
@@ -701,7 +701,7 @@
         76
       ],
       "path": "d20c71cba4d9",
-      "label": [1119.4087878722148, 193.68512500000003, 119, 19],
+      "label": [1119.4087878722148, 193.68512500000003, 122.72999999999999, 22],
       "mode": "full",
       "text": "Fetch Avro schema",
       "lines": ["Fetch Avro schema"]
@@ -754,7 +754,7 @@
         323
       ],
       "path": "84d726e74b6d",
-      "label": [1299.48, 486.306625, 89, 19],
+      "label": [1299.48, 486.306625, 88.88999999999999, 22],
       "mode": "full",
       "text": "GET /metrics",
       "lines": ["GET /metrics"]
@@ -807,27 +807,27 @@
         676
       ],
       "path": "33a9a428a081",
-      "label": [1856.5148, 676, 53, 19],
+      "label": [1856.5148, 676, 62.41, 22],
       "mode": "full",
       "text": "PromQL",
       "lines": ["PromQL"]
     }
   },
   "straight": {
-    "shopper-to-gateway": { "ok": true, "sides": ["right", "left"], "points": [281, 316, 420, 316], "path": "73cfba913dd3", "label": [344.5, 316, 47, 19], "mode": "full", "text": "HTTPS", "lines": ["HTTPS"] },
-    "gateway-to-orders": { "ok": true, "sides": ["right", "left"], "points": [680, 316, 800, 316], "path": "bf23866207c0", "label": [734, 316, 89, 19], "mode": "full", "text": "POST /orders", "lines": ["POST /orders"] },
-    "orders-to-order-db": { "ok": true, "sides": ["bottom", "top"], "points": [930, 352, 930, 520], "path": "b5f2236ee5dd", "label": [930, 430, 143, 19], "mode": "full", "text": "Commit order + outbox", "lines": ["Commit order + outbox"] },
-    "orders-to-order-events": { "ok": true, "sides": ["right", "left"], "points": [1060, 309, 1180, 316], "path": "e880c76e4d16", "label": [1114.0101823544724, 312.15059397067756, 83, 19], "mode": "full", "text": "OrderPlaced", "lines": ["OrderPlaced"] },
-    "order-events-to-inventory": { "ok": true, "sides": ["right", "left"], "points": [1440, 302, 1560, 196], "path": "666d5ffcc450", "label": [1495.5031607293088, 252.972208022444, 119, 19], "mode": "full", "text": "Reserve inventory", "lines": ["Reserve inventory"] },
-    "order-events-to-payments": { "ok": true, "sides": ["right", "left"], "points": [1440, 316, 1560, 309], "path": "58e24ccdcae6", "label": [1494.0101823544724, 312.84940602932244, 71, 32], "mode": "wrap", "text": "Authorize payment", "lines": ["Authorize", "payment"] },
-    "order-events-to-notifications": { "ok": true, "sides": ["right", "left"], "points": [1440, 330, 1560, 436], "path": "58ee10a539e4", "label": [1495.5031607293088, 379.02779197755603, 119, 19], "mode": "full", "text": "Send confirmation", "lines": ["Send confirmation"] },
-    "inventory-to-stock-db": { "ok": true, "sides": ["right", "left"], "points": [1820, 196, 1940, 196], "path": "324f70719d93", "label": [1874, 196, 89, 19], "mode": "full", "text": "Reserve SKUs", "lines": ["Reserve SKUs"] },
-    "payments-to-payment-db": { "ok": true, "sides": ["right", "left"], "points": [1820, 316, 1940, 316], "path": "4121842227b2", "label": [1874, 316, 95, 32], "mode": "wrap", "text": "Record authorization", "lines": ["Record", "authorization"] },
-    "notifications-to-notify-cache": { "ok": true, "sides": ["right", "left"], "points": [1820, 436, 1940, 436], "path": "e2f6afe359ae", "label": [1874, 436, 65, 32], "mode": "wrap", "text": "SET NX · dedupe", "lines": ["SET NX ·", "dedupe"] },
-    "payments-to-payment-events": { "ok": true, "sides": ["left", "right"], "points": [1560, 323, 1440, 556], "path": "18faee475db6", "label": [1498.168539145707, 443.05608649208546, 113, 19], "mode": "full", "text": "PaymentCompleted", "lines": ["PaymentCompleted"] },
-    "payment-events-to-orders": { "ok": true, "sides": ["left", "right"], "points": [1180, 556, 1060, 337], "path": "58b0e88f48d4", "label": [1122.8832079117897, 451.76185443901613, 149, 19], "mode": "full", "text": "group: orders-payments", "lines": ["group: orders-payments"] },
-    "orders-to-schemas": { "ok": true, "sides": ["right", "left"], "points": [1060, 295, 1180, 76], "path": "e475db778b58", "label": [1117.1167920882103, 190.76185443901613, 119, 19], "mode": "full", "text": "Fetch Avro schema", "lines": ["Fetch Avro schema"] },
-    "metrics-to-orders": { "ok": true, "sides": ["left", "right"], "points": [1560, 676, 1060, 323], "path": "5b97b295b7ae", "label": [1314.9015354858375, 502.9604840530012, 89, 19], "mode": "full", "text": "GET /metrics", "lines": ["GET /metrics"] },
-    "dashboard-to-metrics": { "ok": true, "sides": ["left", "right"], "points": [1940, 676, 1780, 676], "path": "4e8951cc103c", "label": [1866, 676, 53, 19], "mode": "full", "text": "PromQL", "lines": ["PromQL"] }
+    "shopper-to-gateway": { "ok": true, "sides": ["right", "left"], "points": [281, 316, 420, 316], "path": "73cfba913dd3", "label": [344.5, 316, 54.7, 22], "mode": "full", "text": "HTTPS", "lines": ["HTTPS"] },
+    "gateway-to-orders": { "ok": true, "sides": ["right", "left"], "points": [680, 316, 800, 316], "path": "bf23866207c0", "label": [734, 316, 90.3, 22], "mode": "full", "text": "POST /orders", "lines": ["POST /orders"] },
+    "orders-to-order-db": { "ok": true, "sides": ["bottom", "top"], "points": [930, 352, 930, 520], "path": "b5f2236ee5dd", "label": [930, 430, 144.2, 22], "mode": "full", "text": "Commit order + outbox", "lines": ["Commit order + outbox"] },
+    "orders-to-order-events": { "ok": true, "sides": ["right", "left"], "points": [1060, 309, 1180, 316], "path": "e880c76e4d16", "label": [1114.0101823544724, 312.15059397067756, 85.72, 22], "mode": "full", "text": "OrderPlaced", "lines": ["OrderPlaced"] },
+    "order-events-to-inventory": { "ok": true, "sides": ["right", "left"], "points": [1440, 302, 1560, 196], "path": "666d5ffcc450", "label": [1495.5031607293088, 252.972208022444, 114.66999999999999, 22], "mode": "full", "text": "Reserve inventory", "lines": ["Reserve inventory"] },
+    "order-events-to-payments": { "ok": true, "sides": ["right", "left"], "points": [1440, 316, 1560, 309], "path": "58e24ccdcae6", "label": [1494.0101823544724, 312.84940602932244, 69.78, 38], "mode": "wrap", "text": "Authorize payment", "lines": ["Authorize", "payment"] },
+    "order-events-to-notifications": { "ok": true, "sides": ["right", "left"], "points": [1440, 330, 1560, 436], "path": "58ee10a539e4", "label": [1495.5031607293088, 379.02779197755603, 118.13, 22], "mode": "full", "text": "Send confirmation", "lines": ["Send confirmation"] },
+    "inventory-to-stock-db": { "ok": true, "sides": ["right", "left"], "points": [1820, 196, 1940, 196], "path": "324f70719d93", "label": [1874, 196, 92.93, 22], "mode": "full", "text": "Reserve SKUs", "lines": ["Reserve SKUs"] },
+    "payments-to-payment-db": { "ok": true, "sides": ["right", "left"], "points": [1820, 316, 1940, 316], "path": "4121842227b2", "label": [1874, 316, 90.50999999999999, 38], "mode": "wrap", "text": "Record authorization", "lines": ["Record", "authorization"] },
+    "notifications-to-notify-cache": { "ok": true, "sides": ["right", "left"], "points": [1820, 436, 1940, 436], "path": "e2f6afe359ae", "label": [1874, 436, 66.42, 38], "mode": "wrap", "text": "SET NX · dedupe", "lines": ["SET NX ·", "dedupe"] },
+    "payments-to-payment-events": { "ok": true, "sides": ["left", "right"], "points": [1560, 323, 1440, 556], "path": "18faee475db6", "label": [1489.0112348742423, 460.8365189525127, 127.08999999999997, 22], "mode": "full", "text": "PaymentCompleted", "lines": ["PaymentCompleted"] },
+    "payment-events-to-orders": { "ok": true, "sides": ["left", "right"], "points": [1180, 556, 1060, 337], "path": "58b0e88f48d4", "label": [1122.8832079117897, 451.76185443901613, 148.85999999999999, 22], "mode": "full", "text": "group: orders-payments", "lines": ["group: orders-payments"] },
+    "orders-to-schemas": { "ok": true, "sides": ["right", "left"], "points": [1060, 295, 1180, 76], "path": "e475db778b58", "label": [1117.1167920882103, 190.76185443901613, 122.72999999999999, 22], "mode": "full", "text": "Fetch Avro schema", "lines": ["Fetch Avro schema"] },
+    "metrics-to-orders": { "ok": true, "sides": ["left", "right"], "points": [1560, 676, 1060, 323], "path": "5b97b295b7ae", "label": [1314.9015354858375, 502.9604840530012, 88.88999999999999, 22], "mode": "full", "text": "GET /metrics", "lines": ["GET /metrics"] },
+    "dashboard-to-metrics": { "ok": true, "sides": ["left", "right"], "points": [1940, 676, 1780, 676], "path": "4e8951cc103c", "label": [1866, 676, 62.41, 22], "mode": "full", "text": "PromQL", "lines": ["PromQL"] }
   }
 }

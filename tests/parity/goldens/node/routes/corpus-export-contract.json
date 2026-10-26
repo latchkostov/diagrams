@@ -1,6 +1,6 @@
 {
   "smoothstep": {
-    "request": { "ok": true, "sides": ["bottom", "left"], "points": [170, 172, 170, 210, 380, 210, 380, 136, 480, 136], "path": "9d2f8d34f9d5", "label": [275, 210, 41, 19], "mode": "full", "text": "Call", "lines": ["Call"] }
+    "request": { "ok": true, "sides": ["bottom", "left"], "points": [170, 172, 170, 210, 380, 210, 380, 136, 480, 136], "path": "9d2f8d34f9d5", "label": [275, 210, 38.59, 22], "mode": "full", "text": "Call", "lines": ["Call"] }
   },
   "bezier": {
     "request": {
@@ -51,13 +51,13 @@
         136
       ],
       "path": "20e70c3af9ba",
-      "label": [324.38247860835287, 181.93756908148364, 41, 19],
+      "label": [324.38247860835287, 181.93756908148364, 38.59, 22],
       "mode": "full",
       "text": "Call",
       "lines": ["Call"]
     }
   },
   "straight": {
-    "request": { "ok": true, "sides": ["bottom", "left"], "points": [170, 172, 480, 136], "path": "32b60e5be7f6", "label": [319.04005319206397, 154.69212285511514, 41, 19], "mode": "full", "text": "Call", "lines": ["Call"] }
+    "request": { "ok": true, "sides": ["bottom", "left"], "points": [170, 172, 480, 136], "path": "32b60e5be7f6", "label": [319.04005319206397, 154.69212285511514, 38.59, 22], "mode": "full", "text": "Call", "lines": ["Call"] }
   }
 }

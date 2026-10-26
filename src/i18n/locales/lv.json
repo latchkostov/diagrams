@@ -2784,7 +2784,7 @@
   "workbench.readNote": "Lasīt piezīmi",
   "workbench.earlier": "Iepriekšējā",
   "workbench.later": "Nākamā",
-  "workbench.noteIndex": "Piezīme {index} no {total}",
+  "workbench.noteIndex": "Piezīme {index, number} no {total, number}",
   "workbench.moreTools": "Vairāk rīku",
   "workbench.sheetPeek": "Priekšskatījums",
   "workbench.sheetHalf": "Pusaugstums",

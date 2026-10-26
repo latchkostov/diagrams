@@ -63,7 +63,7 @@ it("counts terminal losses once and excludes failed attempts that recovered", ()
     } as unknown as LiveState;
     const health = new HealthWindow();
     health.observe(
-      { ...state.snapshot, time: 0, nodes: { caller: { ...sample, dropped: 0 } } } as Parameters<
+      { ...state.snapshot, time: 0, nodes: { caller: { ...state.snapshot.nodes.caller, dropped: 0 } } } as Parameters<
         HealthWindow["observe"]
       >[0],
       0,
@@ -71,6 +71,14 @@ it("counts terminal losses once and excludes failed attempts that recovered", ()
     health.observe({ ...state.snapshot, time: 1000 }, 0);
     const html = renderToStaticMarkup(<NodeBadges state={state} presenting={false} />);
     expect(html).toContain('data-testid="node-alert-caller">5</div>');
+    expect(html).toMatch(/class="lv-alert is-lost"[^>]*data-testid="node-alert-caller"/);
+    const healthy = {
+      ...state,
+      snapshot: { ...state.snapshot, nodes: { caller: { ...state.snapshot.nodes.caller, dropped: 0 } } },
+    };
+    expect(renderToStaticMarkup(<NodeBadges state={healthy} presenting={false} />)).toMatch(
+      /class="lv-alert is-processed"[^>]*data-testid="node-processed-caller"/,
+    );
     for (let time = 2000; time <= 12000; time += 1000) health.observe({ ...state.snapshot, time }, 0);
     expect(sample.dropped).toBe(5);
     expect(sample.deadLettered).toBe(2);

@@ -5,22 +5,22 @@
     "title": "Kafka order pipeline",
     "direction": "LR",
     "groups": [
-      { "id": "g_aks", "label": "AKS · commerce workloads + Kafka", "tone": "k8s", "x": 840, "y": 100, "width": 1115, "height": 416 }
+      { "id": "g_aks", "label": "AKS · commerce workloads + Kafka", "tone": "k8s", "x": 840, "y": 100, "width": 1120, "height": 416 }
     ],
     "nodes": [
       { "id": "orders", "stencil": "service.dotnet", "label": "Order service", "sublabel": ".NET 10 · group: orders-payments", "x": 880, "y": 284, "group": "g_aks" },
-      { "id": "order_events", "stencil": "generic.service", "label": "orders.created.v1", "sublabel": "OrderPlaced · keyed by orderId", "x": 1295, "y": 404, "group": "g_aks" },
-      { "id": "inventory", "stencil": "generic.service", "label": "Inventory service", "sublabel": "group: inventory-reservations", "x": 1695, "y": 164, "group": "g_aks" },
-      { "id": "payments", "stencil": "generic.service", "label": "Payments service", "sublabel": "group: payment-authorizations", "x": 1695, "y": 284, "group": "g_aks" },
-      { "id": "notifications", "stencil": "client.user", "label": "Notification service", "sublabel": "group: customer-notifications", "x": 1695, "y": 404, "group": "g_aks" },
+      { "id": "order_events", "stencil": "generic.service", "label": "orders.created.v1", "sublabel": "OrderPlaced · keyed by orderId", "x": 1299.72, "y": 404, "group": "g_aks" },
+      { "id": "inventory", "stencil": "generic.service", "label": "Inventory service", "sublabel": "group: inventory-reservations", "x": 1699.72, "y": 164, "group": "g_aks" },
+      { "id": "payments", "stencil": "generic.service", "label": "Payments service", "sublabel": "group: payment-authorizations", "x": 1699.72, "y": 284, "group": "g_aks" },
+      { "id": "notifications", "stencil": "client.user", "label": "Notification service", "sublabel": "group: customer-notifications", "x": 1699.72, "y": 404, "group": "g_aks" },
       { "id": "shopper", "stencil": "client.browser", "label": "Storefront", "sublabel": "Browser / mobile checkout", "x": 80, "y": 224 },
       { "id": "gateway", "stencil": "generic.service", "label": "Commerce gateway", "sublabel": "TLS termination · /api/orders", "x": 480, "y": 224 },
-      { "id": "stock_db", "stencil": "generic.database", "label": "Inventory database", "sublabel": "Reservations · SKU availability", "x": 2116, "y": 104 },
-      { "id": "payment_db", "stencil": "generic.database", "label": "Payment ledger", "sublabel": "Idempotency keys · authorizations", "x": 2116, "y": 224 },
-      { "id": "notify_cache", "stencil": "generic.database", "label": "Notification dedupe", "sublabel": "Order / template key · TTL 24h", "x": 2116, "y": 464 },
-      { "id": "payment_events", "stencil": "generic.service", "label": "payments.completed.v1", "sublabel": "PaymentCompleted · keyed by orderId", "x": 2116, "y": 344 },
-      { "id": "order_db", "stencil": "generic.database", "label": "Orders database", "sublabel": "Order state · transactional outbox", "x": 1295, "y": 164 },
-      { "id": "schemas", "stencil": "kafka.schema-registry", "label": "Schema registry", "sublabel": "Avro · backward compatible", "x": 1295, "y": 284 },
+      { "id": "stock_db", "stencil": "generic.database", "label": "Inventory database", "sublabel": "Reservations · SKU availability", "x": 2134.81, "y": 104 },
+      { "id": "payment_db", "stencil": "generic.database", "label": "Payment ledger", "sublabel": "Idempotency keys · authorizations", "x": 2134.81, "y": 224 },
+      { "id": "notify_cache", "stencil": "generic.database", "label": "Notification dedupe", "sublabel": "Order / template key · TTL 24h", "x": 2134.81, "y": 464 },
+      { "id": "payment_events", "stencil": "generic.service", "label": "payments.completed.v1", "sublabel": "PaymentCompleted · keyed by orderId", "x": 2134.81, "y": 344 },
+      { "id": "order_db", "stencil": "generic.database", "label": "Orders database", "sublabel": "Order state · transactional outbox", "x": 1299.72, "y": 164 },
+      { "id": "schemas", "stencil": "kafka.schema-registry", "label": "Schema registry", "sublabel": "Avro · backward compatible", "x": 1299.72, "y": 284 },
       { "id": "metrics", "stencil": "generic.service", "label": "Commerce metrics", "sublabel": "Scrape interval: 15s", "x": 480, "y": 344 },
       { "id": "dashboard", "stencil": "generic.service", "label": "Order operations", "sublabel": "Lag · checkout latency · failures", "x": 80, "y": 344 }
     ],

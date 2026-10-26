@@ -2810,7 +2810,7 @@
   "workbench.readNote": "Pročitaj bilješku",
   "workbench.earlier": "Ranije",
   "workbench.later": "Kasnije",
-  "workbench.noteIndex": "Bilješka {index} od {total}",
+  "workbench.noteIndex": "Bilješka {index, number} od {total, number}",
   "workbench.moreTools": "Više alata",
   "workbench.sheetPeek": "Pregled",
   "workbench.sheetHalf": "Pola visine",

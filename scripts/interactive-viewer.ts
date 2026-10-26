@@ -136,12 +136,18 @@ export const EDITOR_ONLY: { name: string; path: string; stub: (root: string) => 
     path: "/src/editor/builtinActions.ts",
     stub: () => "export const builtinActions = () => []; export const quickAddMenu = () => [];",
   },
+  {
+    // The viewer keeps its weight-only Latin face to stay inside the fixed skill ZIP cap.
+    name: "the embedded canvas font",
+    path: "/src/live/canvasFonts.ts",
+    stub: () => "export const loadCanvasFonts = () => Promise.resolve();",
+  },
   { name: "the inspector", path: "/src/canvas/Inspector.tsx", stub: () => "export const Inspector = () => null;" },
   {
     name: "the editor dock state",
     path: "/src/canvas/inspector/dockState.ts",
     stub: () =>
-      'const state = { value: "closed", last: "properties" }; export const useWorkbenchDock = () => state; export const workbenchDock = { get: () => state, show() {}, close() {}, back() {} };',
+      'const state = { value: "closed", last: "properties" }; export const useWorkbenchDock = () => state; export const workbenchDock = { get: () => state, show() {}, close() {}, back() {}, snap() {} };',
   },
   {
     name: "the editor dock actions",
@@ -234,6 +240,11 @@ export const EDITOR_ONLY: { name: string; path: string; stub: (root: string) => 
         'export const connectionAt = () => ({ target: { kind: "outside" }, at: { x: 0, y: 0 } });',
         "export const connectionMarks = () => ({ show() {}, clear() {} });",
       ].join("\n"),
+  },
+  {
+    name: "the editor frame detail",
+    path: "/src/canvas/FrameDetail.tsx",
+    stub: () => "export const FrameDetail = () => null;",
   },
   { name: "the start card", path: "/src/canvas/StartCard.tsx", stub: () => "export const StartCard = () => null;" },
   {

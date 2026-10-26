@@ -2807,7 +2807,7 @@
   "workbench.readNote": "Preberi opombo",
   "workbench.earlier": "Prejšnja",
   "workbench.later": "Naslednja",
-  "workbench.noteIndex": "Opomba {index} od {total}",
+  "workbench.noteIndex": "Opomba {index, number} od {total, number}",
   "workbench.moreTools": "Več orodij",
   "workbench.sheetPeek": "Predogled",
   "workbench.sheetHalf": "Polovična višina",

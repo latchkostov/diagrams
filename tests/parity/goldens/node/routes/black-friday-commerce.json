@@ -1,78 +1,78 @@
 {
   "smoothstep": {
-    "web--cdn": { "ok": true, "sides": ["right", "left"], "points": [226, 736, 330, 736, 330, 922, 460, 922], "path": "d6187e887be1", "label": [330, 829, 47, 19], "mode": "full", "text": "HTTPS", "lines": ["HTTPS"] },
-    "app--cdn": { "ok": true, "sides": ["right", "left"], "points": [220, 936, 460, 936], "path": "da72238a14d4", "label": [334, 936, 47, 19], "mode": "full", "text": "HTTPS", "lines": ["HTTPS"] },
-    "carriers--cdn": { "ok": true, "sides": ["right", "left"], "points": [220, 1136, 327, 1136, 327, 950, 460, 950], "path": "0ab77e416f86", "label": [327, 1043, 59, 19], "mode": "full", "text": "Webhook", "lines": ["Webhook"] },
-    "cdn--gateway": { "ok": true, "sides": ["right", "left"], "points": [680, 936, 790, 936, 790, 926, 900, 926], "path": "0674f6b49c9d", "label": [736, 936, 71, 19], "mode": "full", "text": "API calls", "lines": ["API calls"] },
-    "cdn--collector": { "ok": true, "sides": ["bottom", "top"], "points": [570, 972, 570, 1884, 1010, 1884, 1010, 1900], "path": "6ae76a91c96f", "label": [570, 1429, 59, 19], "mode": "full", "text": "Beacons", "lines": ["Beacons"] },
-    "gateway--catalog-bff": { "ok": true, "sides": ["right", "left"], "points": [1120, 900, 1229, 900, 1229, 476, 1360, 476], "path": "018382f6ea07", "label": [1229, 638, 65, 19], "mode": "full", "text": "Products", "lines": ["Products"] },
-    "gateway--search-api": { "ok": true, "sides": ["right", "left"], "points": [1120, 910.4, 1240, 910.4, 1240, 656, 1360, 656], "path": "a04d19bb1bdd", "label": [1293, 656, 53, 19], "mode": "full", "text": "Search", "lines": ["Search"] },
-    "gateway--cart-api": { "ok": true, "sides": ["right", "left"], "points": [1120, 920.8, 1251, 920.8, 1251, 836, 1360, 836], "path": "8ed601f55fd2", "label": [1186.5, 920.8, 41, 19], "mode": "full", "text": "Cart", "lines": ["Cart"] },
-    "gateway--checkout-api": { "ok": true, "sides": ["right", "left"], "points": [1120, 931.2, 1251, 931.2, 1251, 1016, 1360, 1016], "path": "553178d55fe9", "label": [1298.5, 1016, 65, 19], "mode": "full", "text": "Checkout", "lines": ["Checkout"] },
-    "gateway--order-status": { "ok": true, "sides": ["right", "left"], "points": [1120, 941.6, 1240, 941.6, 1240, 1196, 1360, 1196], "path": "1eb5d85fbfc8", "label": [1293, 1196, 53, 19], "mode": "full", "text": "Status", "lines": ["Status"] },
-    "gateway--tracking": { "ok": true, "sides": ["right", "left"], "points": [1120, 952, 1229, 952, 1229, 1376, 1360, 1376], "path": "9981c02d5eed", "label": [1229, 1214, 47, 19], "mode": "full", "text": "Scans", "lines": ["Scans"] },
+    "web--cdn": { "ok": true, "sides": ["right", "left"], "points": [226, 736, 330, 736, 330, 922, 460, 922], "path": "d6187e887be1", "label": [330, 829, 54.7, 22], "mode": "full", "text": "HTTPS", "lines": ["HTTPS"] },
+    "app--cdn": { "ok": true, "sides": ["right", "left"], "points": [220, 936, 460, 936], "path": "da72238a14d4", "label": [334, 936, 54.7, 22], "mode": "full", "text": "HTTPS", "lines": ["HTTPS"] },
+    "carriers--cdn": { "ok": true, "sides": ["right", "left"], "points": [220, 1136, 327, 1136, 327, 950, 460, 950], "path": "0ab77e416f86", "label": [327, 1043, 69.09, 22], "mode": "full", "text": "Webhook", "lines": ["Webhook"] },
+    "cdn--gateway": { "ok": true, "sides": ["right", "left"], "points": [680, 936, 790, 936, 790, 926, 900, 926], "path": "0674f6b49c9d", "label": [736, 936, 63.81, 22], "mode": "full", "text": "API calls", "lines": ["API calls"] },
+    "cdn--collector": { "ok": true, "sides": ["bottom", "top"], "points": [570, 972, 570, 1884, 1010, 1884, 1010, 1900], "path": "6ae76a91c96f", "label": [570, 1429, 64.57000000000001, 22], "mode": "full", "text": "Beacons", "lines": ["Beacons"] },
+    "gateway--catalog-bff": { "ok": true, "sides": ["right", "left"], "points": [1120, 900, 1229, 900, 1229, 476, 1360, 476], "path": "018382f6ea07", "label": [1229, 638, 66.57, 22], "mode": "full", "text": "Products", "lines": ["Products"] },
+    "gateway--search-api": { "ok": true, "sides": ["right", "left"], "points": [1120, 910.4, 1240, 910.4, 1240, 656, 1360, 656], "path": "a04d19bb1bdd", "label": [1293, 656, 55.76, 22], "mode": "full", "text": "Search", "lines": ["Search"] },
+    "gateway--cart-api": { "ok": true, "sides": ["right", "left"], "points": [1120, 920.8, 1251, 920.8, 1251, 836, 1360, 836], "path": "8ed601f55fd2", "label": [1298.5, 836, 41.42, 22], "mode": "full", "text": "Cart", "lines": ["Cart"] },
+    "gateway--checkout-api": { "ok": true, "sides": ["right", "left"], "points": [1120, 931.2, 1251, 931.2, 1251, 1016, 1360, 1016], "path": "553178d55fe9", "label": [1298.5, 1016, 70.24, 22], "mode": "full", "text": "Checkout", "lines": ["Checkout"] },
+    "gateway--order-status": { "ok": true, "sides": ["right", "left"], "points": [1120, 941.6, 1240, 941.6, 1240, 1196, 1360, 1196], "path": "1eb5d85fbfc8", "label": [1293, 1196, 53.07, 22], "mode": "full", "text": "Status", "lines": ["Status"] },
+    "gateway--tracking": { "ok": true, "sides": ["right", "left"], "points": [1120, 952, 1229, 952, 1229, 1376, 1360, 1376], "path": "9981c02d5eed", "label": [1229, 1214, 50.94, 22], "mode": "full", "text": "Scans", "lines": ["Scans"] },
     "catalog-bff--product-cache": { "ok": true, "sides": ["right", "left"], "points": [1580, 476, 1702.75, 476, 1702.75, 536, 2340, 536], "path": "5666b9fd91e8" },
-    "catalog-bff--catalog-db": { "ok": true, "sides": ["right", "left"], "points": [1580, 490, 1691.75, 490, 1691.75, 656, 2340, 656], "path": "4b881418cd6b", "label": [2008.875, 656, 77, 19], "mode": "full", "text": "Cache miss", "lines": ["Cache miss"] },
-    "catalog-bff--reco": { "ok": true, "sides": ["right", "left"], "points": [1580, 462, 1705.5, 462, 1705.5, 476, 1820, 476], "path": "dc573c8456e7", "label": [1643.75, 462, 59, 19], "mode": "full", "text": "Similar", "lines": ["Similar"] },
+    "catalog-bff--catalog-db": { "ok": true, "sides": ["right", "left"], "points": [1580, 490, 1691.75, 490, 1691.75, 656, 2340, 656], "path": "4b881418cd6b", "label": [2008.875, 656, 81.01, 22], "mode": "full", "text": "Cache miss", "lines": ["Cache miss"] },
+    "catalog-bff--reco": { "ok": true, "sides": ["right", "left"], "points": [1580, 462, 1705.5, 462, 1705.5, 476, 1820, 476], "path": "dc573c8456e7", "label": [1643.75, 462, 55.75, 22], "mode": "full", "text": "Similar", "lines": ["Similar"] },
     "reco--features": { "ok": true, "sides": ["right", "left"], "points": [2040, 476, 2166, 476, 2166, 409, 2340, 409], "path": "09744173c8e1" },
     "search-api--search-index": { "ok": true, "sides": ["right", "left"], "points": [1580, 656, 1694.5, 656, 1694.5, 776, 2340, 776], "path": "14cad3db20b5" },
     "cart-api--carts": { "ok": true, "sides": ["right", "left"], "points": [1580, 843, 1694.5, 843, 1694.5, 896, 2340, 896], "path": "90820a3644f6" },
-    "cart-api--pricing": { "ok": true, "sides": ["right", "left"], "points": [1580, 829, 1820, 829], "path": "c6993ef3f9cb", "label": [1694, 829, 47, 19], "mode": "full", "text": "Price", "lines": ["Price"] },
+    "cart-api--pricing": { "ok": true, "sides": ["right", "left"], "points": [1580, 829, 1820, 829], "path": "c6993ef3f9cb", "label": [1694, 829, 44.71, 22], "mode": "full", "text": "Price", "lines": ["Price"] },
     "pricing--promotions": { "ok": true, "sides": ["right", "left"], "points": [2040, 836, 2190, 836, 2190, 1016, 2340, 1016], "path": "77a3bbeb71df" },
-    "checkout-api--pricing": { "ok": true, "sides": ["right", "left"], "points": [1580, 990, 1705.5, 990, 1705.5, 843, 1820, 843], "path": "ea7f0a014f85", "label": [1705.5, 916.5, 59, 19], "mode": "full", "text": "Reprice", "lines": ["Reprice"] },
-    "checkout-api--tax": { "ok": true, "sides": ["top", "bottom"], "points": [1470, 980, 1470, 926, 1791, 926, 1791, 286, 1930, 286, 1930, 132], "path": "b984257c924a", "label": [1791, 606, 71, 19], "mode": "full", "text": "Tax quote", "lines": ["Tax quote"] },
-    "checkout-api--inventory": { "ok": true, "sides": ["right", "left"], "points": [1580, 997.4285714285714, 1722, 997.4285714285714, 1722, 1016, 1820, 1016], "path": "cb6a394dc8b2", "label": [1764, 1016, 59, 19], "mode": "full", "text": "Reserve", "lines": ["Reserve"] },
-    "checkout-api--risk": { "ok": true, "sides": ["right", "left"], "points": [1580, 1019.7142857142857, 1711, 1019.7142857142857, 1711, 1196, 1820, 1196], "path": "5d98cd46abdc", "label": [1758.5, 1196, 47, 19], "mode": "full", "text": "Score", "lines": ["Score"] },
-    "checkout-api--payments": { "ok": true, "sides": ["right", "left"], "points": [1580, 1042, 1694.5, 1042, 1694.5, 1376, 1820, 1376], "path": "ba2e912bdefc", "label": [1750.25, 1376, 71, 19], "mode": "full", "text": "Authorize", "lines": ["Authorize"] },
-    "checkout-api--orders-db": { "ok": true, "sides": ["right", "left"], "points": [1580, 1004.8571428571429, 1705.5, 1004.8571428571429, 1705.5, 1256, 2340, 1256], "path": "0ad5292e00f3", "label": [2015.75, 1256, 101, 19], "mode": "full", "text": "Order + outbox", "lines": ["Order + outbox"] },
+    "checkout-api--pricing": { "ok": true, "sides": ["right", "left"], "points": [1580, 990, 1705.5, 990, 1705.5, 843, 1820, 843], "path": "ea7f0a014f85", "label": [1705.5, 946.5, 58.7, 22], "mode": "full", "text": "Reprice", "lines": ["Reprice"] },
+    "checkout-api--tax": { "ok": true, "sides": ["top", "bottom"], "points": [1470, 980, 1470, 926, 1791, 926, 1791, 286, 1930, 286, 1930, 132], "path": "b984257c924a", "label": [1791, 606, 71.85, 22], "mode": "full", "text": "Tax quote", "lines": ["Tax quote"] },
+    "checkout-api--inventory": { "ok": true, "sides": ["right", "left"], "points": [1580, 997.4285714285714, 1722, 997.4285714285714, 1722, 1016, 1820, 1016], "path": "cb6a394dc8b2", "label": [1764, 1016, 60.769999999999996, 22], "mode": "full", "text": "Reserve", "lines": ["Reserve"] },
+    "checkout-api--risk": { "ok": true, "sides": ["right", "left"], "points": [1580, 1019.7142857142857, 1711, 1019.7142857142857, 1711, 1196, 1820, 1196], "path": "5d98cd46abdc", "label": [1758.5, 1196, 48.47, 22], "mode": "full", "text": "Score", "lines": ["Score"] },
+    "checkout-api--payments": { "ok": true, "sides": ["right", "left"], "points": [1580, 1042, 1694.5, 1042, 1694.5, 1376, 1820, 1376], "path": "ba2e912bdefc", "label": [1750.25, 1376, 69.78, 22], "mode": "full", "text": "Authorize", "lines": ["Authorize"] },
+    "checkout-api--orders-db": { "ok": true, "sides": ["right", "left"], "points": [1580, 1004.8571428571429, 1705.5, 1004.8571428571429, 1705.5, 1256, 2340, 1256], "path": "0ad5292e00f3", "label": [2015.75, 1256, 99.08, 22], "mode": "full", "text": "Order + outbox", "lines": ["Order + outbox"] },
     "risk--features": { "ok": true, "sides": ["right", "left"], "points": [2040, 1196, 2177, 1196, 2177, 423, 2340, 423], "path": "5fa132bfba52" },
     "inventory--inventory-db": { "ok": true, "sides": ["right", "left"], "points": [2040, 1016, 2155, 1016, 2155, 1136, 2340, 1136], "path": "40163395544f" },
-    "payments--stripe": { "ok": true, "sides": ["top", "bottom"], "points": [1930, 1340, 1930, 1278, 2261, 1278, 2261, 230, 2350, 230, 2350, 132], "path": "f21cd20e3a34", "label": [2261, 754, 95, 19], "mode": "full", "text": "PaymentIntent", "lines": ["PaymentIntent"] },
+    "payments--stripe": { "ok": true, "sides": ["top", "bottom"], "points": [1930, 1340, 1930, 1278, 2261, 1278, 2261, 230, 2350, 230, 2350, 132], "path": "f21cd20e3a34", "label": [2261, 754, 98.67999999999998, 22], "mode": "full", "text": "PaymentIntent", "lines": ["PaymentIntent"] },
     "order-status--status-cache": { "ok": true, "sides": ["right", "left"], "points": [1580, 1196, 1689, 1196, 1689, 1325, 2205.5, 1325, 2205.5, 1376, 2340, 1376], "path": "e5b44ed20075" },
-    "orders-db--outbox-relay": { "ok": true, "sides": ["right", "left"], "points": [2560, 1256, 2860, 1256], "path": "5bc0c0a06165", "label": [2704, 1256, 35, 19], "mode": "full", "text": "CDC", "lines": ["CDC"] },
-    "outbox-relay--orders": { "ok": true, "sides": ["right", "left"], "points": [3088, 1256, 3184, 1256, 3184, 1249, 3280, 1249], "path": "bf5cc06551ff", "label": [3137, 1256, 83, 19], "mode": "full", "text": "OrderPlaced", "lines": ["OrderPlaced"] },
-    "inventory-db--inventory-events": { "ok": true, "sides": ["right", "left"], "points": [2560, 1136, 3280, 1136], "path": "9830cc80a3c0", "label": [2914, 1136, 35, 19], "mode": "full", "text": "CDC", "lines": ["CDC"] },
+    "orders-db--outbox-relay": { "ok": true, "sides": ["right", "left"], "points": [2560, 1256, 2860, 1256], "path": "5bc0c0a06165", "label": [2704, 1256, 42.7, 22], "mode": "full", "text": "CDC", "lines": ["CDC"] },
+    "outbox-relay--orders": { "ok": true, "sides": ["right", "left"], "points": [3088, 1256, 3184, 1256, 3184, 1249, 3280, 1249], "path": "bf5cc06551ff", "label": [3137, 1256, 85.72, 22], "mode": "full", "text": "OrderPlaced", "lines": ["OrderPlaced"] },
+    "inventory-db--inventory-events": { "ok": true, "sides": ["right", "left"], "points": [2560, 1136, 3280, 1136], "path": "9830cc80a3c0", "label": [2914, 1136, 42.7, 22], "mode": "full", "text": "CDC", "lines": ["CDC"] },
     "orders--fulfilment": { "ok": true, "sides": ["right", "left"], "points": [3521, 1235, 3603.5, 1235, 3603.5, 1129, 3760, 1129], "path": "e1c2987e593b" },
     "orders--loyalty": { "ok": true, "sides": ["right", "left"], "points": [3521, 1249, 3658.5, 1249, 3658.5, 1256, 3760, 1256], "path": "cc3605f2fbda" },
     "orders--status-projector": { "ok": true, "sides": ["right", "left"], "points": [3521, 1263, 3647.5, 1263, 3647.5, 1362, 3760, 1362], "path": "141682ee6681" },
     "orders--notifier": { "ok": true, "sides": ["right", "left"], "points": [3521, 1277, 3669.5, 1277, 3669.5, 1489, 3760, 1489], "path": "ef73f1461b2b" },
     "orders--lake-sink": { "ok": true, "sides": ["left", "right"], "points": [3280, 1263, 3184, 1263, 3184, 1716, 2660, 1716, 2660, 1929, 2560, 1929], "path": "8f9c038ee936" },
-    "orders--orders-dlq": { "ok": true, "sides": ["bottom", "top"], "points": [3400.5, 1292, 3400.5, 1340], "path": "3a74eef0708b", "label": [3400.5, 1322.84, 95, 19], "mode": "full", "text": "After 3 tries", "lines": ["After 3 tries"] },
+    "orders--orders-dlq": { "ok": true, "sides": ["bottom", "top"], "points": [3400.5, 1292, 3400.5, 1340], "path": "3a74eef0708b", "label": [3400.5, 1322.84, 80.28, 22], "mode": "full", "text": "After 3 tries", "lines": ["After 3 tries"] },
     "orders-dlq--dlq-triage": { "ok": true, "sides": ["right", "left"], "points": [3521, 1376, 3546, 1376, 3546, 1616, 3760, 1616], "path": "eab77927cc4a" },
     "notify-dlq--dlq-triage": { "ok": true, "sides": ["left", "right"], "points": [4200, 1616, 3980, 1616], "path": "c752d7dd9963" },
-    "dlq-triage--loyalty": { "ok": true, "sides": ["top", "bottom"], "points": [3870, 1580, 3870, 1556, 4024, 1556, 4024, 1316, 3863, 1316, 3863, 1292], "path": "3fbc14e3af5c", "label": [4024, 1436, 53, 19], "mode": "full", "text": "Replay", "lines": ["Replay"] },
-    "fulfilment--wms": { "ok": true, "sides": ["right", "left"], "points": [3980, 1129, 5007, 1129, 5007, 1136, 5180, 1136], "path": "06131dc4f127", "label": [4494.5, 1129, 89, 19], "mode": "full", "text": "Pick request", "lines": ["Pick request"] },
-    "fulfilment--shipments": { "ok": true, "sides": ["left", "right"], "points": [3760, 1143, 3614.5, 1143, 3614.5, 1482, 3539, 1482], "path": "fbe9039834e9", "label": [3686.25, 1143, 107, 19], "mode": "full", "text": "ShipmentCreated", "lines": ["ShipmentCreated"] },
-    "loyalty--loyalty-db": { "ok": true, "sides": ["right", "left"], "points": [3980, 1256, 4200, 1256], "path": "f6341d75c3f6", "label": [4074, 1256, 53, 19], "mode": "full", "text": "Points", "lines": ["Points"] },
-    "status-projector--status-cache": { "ok": true, "sides": ["left", "right"], "points": [3760, 1376, 3625.5, 1376, 3625.5, 1334, 2697, 1334, 2697, 1376, 2560, 1376], "path": "2cebb83af94c", "label": [3151.25, 1334, 53, 19], "mode": "full", "text": "Upsert", "lines": ["Upsert"] },
+    "dlq-triage--loyalty": { "ok": true, "sides": ["top", "bottom"], "points": [3870, 1580, 3870, 1556, 4024, 1556, 4024, 1316, 3863, 1316, 3863, 1292], "path": "3fbc14e3af5c", "label": [4024, 1436, 54.74000000000001, 22], "mode": "full", "text": "Replay", "lines": ["Replay"] },
+    "fulfilment--wms": { "ok": true, "sides": ["right", "left"], "points": [3980, 1129, 5007, 1129, 5007, 1136, 5180, 1136], "path": "06131dc4f127", "label": [4494.5, 1129, 84.64, 22], "mode": "full", "text": "Pick request", "lines": ["Pick request"] },
+    "fulfilment--shipments": { "ok": true, "sides": ["left", "right"], "points": [3760, 1143, 3614.5, 1143, 3614.5, 1482, 3539, 1482], "path": "fbe9039834e9", "label": [3686.25, 1143, 114.38, 22], "mode": "full", "text": "ShipmentCreated", "lines": ["ShipmentCreated"] },
+    "loyalty--loyalty-db": { "ok": true, "sides": ["right", "left"], "points": [3980, 1256, 4200, 1256], "path": "f6341d75c3f6", "label": [4074, 1256, 51.550000000000004, 22], "mode": "full", "text": "Points", "lines": ["Points"] },
+    "status-projector--status-cache": { "ok": true, "sides": ["left", "right"], "points": [3760, 1376, 3625.5, 1376, 3625.5, 1334, 2697, 1334, 2697, 1376, 2560, 1376], "path": "2cebb83af94c", "label": [3151.25, 1334, 53.379999999999995, 22], "mode": "full", "text": "Upsert", "lines": ["Upsert"] },
     "inventory-events--search-indexer": { "ok": true, "sides": ["right", "left"], "points": [3539, 1136, 3592.5, 1136, 3592.5, 1023, 3760, 1023], "path": "8231f94444b8" },
-    "search-indexer--search-index": { "ok": true, "sides": ["left", "right"], "points": [3760, 1009, 2697, 1009, 2697, 776, 2560, 776], "path": "b559b1ce1808", "label": [3227.5, 1009, 59, 19], "mode": "full", "text": "Reindex", "lines": ["Reindex"] },
-    "tracking--shipments": { "ok": true, "sides": ["right", "left"], "points": [1580, 1376, 1680, 1376, 1680, 1496, 3280, 1496], "path": "25452ba584ef", "label": [2473, 1496, 95, 19], "mode": "full", "text": "ParcelScanned", "lines": ["ParcelScanned"] },
+    "search-indexer--search-index": { "ok": true, "sides": ["left", "right"], "points": [3760, 1009, 2697, 1009, 2697, 776, 2560, 776], "path": "b559b1ce1808", "label": [3227.5, 1009, 61.480000000000004, 22], "mode": "full", "text": "Reindex", "lines": ["Reindex"] },
+    "tracking--shipments": { "ok": true, "sides": ["right", "left"], "points": [1580, 1376, 1680, 1376, 1680, 1496, 3280, 1496], "path": "25452ba584ef", "label": [2473, 1496, 100.24, 22], "mode": "full", "text": "ParcelScanned", "lines": ["ParcelScanned"] },
     "shipments--notifier": { "ok": true, "sides": ["right", "left"], "points": [3539, 1510, 3680.5, 1510, 3680.5, 1503, 3760, 1503], "path": "645b67727262" },
     "shipments--status-projector": { "ok": true, "sides": ["right", "left"], "points": [3539, 1496, 3636.5, 1496, 3636.5, 1390, 3760, 1390], "path": "a7611431b386" },
-    "notifier--notify-q": { "ok": true, "sides": ["right", "left"], "points": [3986, 1496, 4200, 1496], "path": "8c3189a3f6eb", "label": [4137, 1496, 53, 19], "mode": "full", "text": "Notify", "lines": ["Notify"] },
+    "notifier--notify-q": { "ok": true, "sides": ["right", "left"], "points": [3986, 1496, 4200, 1496], "path": "8c3189a3f6eb", "label": [4137, 1496, 49.84, 22], "mode": "full", "text": "Notify", "lines": ["Notify"] },
     "notify-q--email": { "ok": true, "sides": ["right", "left"], "points": [4420, 1489, 4541, 1489, 4541, 1496, 4640, 1496], "path": "5696be611260" },
     "notify-q--push": { "ok": true, "sides": ["right", "left"], "points": [4420, 1503, 4530, 1503, 4530, 1616, 4640, 1616], "path": "ac8a6e06ef4f" },
-    "notify-q--notify-dlq": { "ok": true, "sides": ["bottom", "top"], "points": [4310, 1532, 4310, 1580], "path": "7a36197202bb", "label": [4310, 1552.84, 95, 19], "mode": "full", "text": "After 5 tries", "lines": ["After 5 tries"] },
-    "email--sendgrid": { "ok": true, "sides": ["right", "left"], "points": [4860, 1496, 5180, 1496], "path": "b8c9ebfc71e0", "label": [5014, 1496, 71, 19], "mode": "full", "text": "Mail send", "lines": ["Mail send"] },
-    "push--apns": { "ok": true, "sides": ["right", "left"], "points": [4860, 1616, 5180, 1616], "path": "7d8645e5d452", "label": [5014, 1616, 41, 19], "mode": "full", "text": "Send", "lines": ["Send"] },
-    "collector--clickstream": { "ok": true, "sides": ["right", "left"], "points": [1120, 1936, 1320, 1936], "path": "0342ffa7dd5f", "label": [1214, 1936, 77, 19], "mode": "full", "text": "PageViewed", "lines": ["PageViewed"] },
+    "notify-q--notify-dlq": { "ok": true, "sides": ["bottom", "top"], "points": [4310, 1532, 4310, 1580], "path": "7a36197202bb", "label": [4310, 1552.84, 80.28, 22], "mode": "full", "text": "After 5 tries", "lines": ["After 5 tries"] },
+    "email--sendgrid": { "ok": true, "sides": ["right", "left"], "points": [4860, 1496, 5180, 1496], "path": "b8c9ebfc71e0", "label": [5014, 1496, 69.21, 22], "mode": "full", "text": "Mail send", "lines": ["Mail send"] },
+    "push--apns": { "ok": true, "sides": ["right", "left"], "points": [4860, 1616, 5180, 1616], "path": "7d8645e5d452", "label": [5014, 1616, 44.88, 22], "mode": "full", "text": "Send", "lines": ["Send"] },
+    "collector--clickstream": { "ok": true, "sides": ["right", "left"], "points": [1120, 1936, 1320, 1936], "path": "0342ffa7dd5f", "label": [1214, 1936, 84.55, 22], "mode": "full", "text": "PageViewed", "lines": ["PageViewed"] },
     "clickstream--sessionizer": { "ok": true, "sides": ["right", "left"], "points": [1540, 1936, 1740, 1936], "path": "4c3d109e6544" },
-    "sessionizer--features": { "ok": true, "sides": ["top", "bottom"], "points": [1850, 1900, 1850, 1656, 2194.5, 1656, 2194.5, 476, 2450, 476, 2450, 452], "path": "12a61bbd2d3c", "label": [2194.5, 1206, 107, 19], "mode": "full", "text": "Update features", "lines": ["Update features"] },
-    "sessionizer--lake": { "ok": true, "sides": ["right", "left"], "points": [1960, 1936, 2150, 1936, 2150, 1981.3333333333333, 2660, 1981.3333333333333, 2660, 1943, 2760, 1943], "path": "a15f77c6c0a1", "label": [2295, 1981.3333333333333, 65, 19], "mode": "full", "text": "Sessions", "lines": ["Sessions"] },
-    "lake-sink--lake": { "ok": true, "sides": ["right", "left"], "points": [2560, 1943, 2660, 1943, 2660, 1929, 2760, 1929], "path": "df35be97f2fb", "label": [2611, 1943, 59, 19], "mode": "full", "text": "Parquet", "lines": ["Parquet"] },
-    "airflow--dbt": { "ok": true, "sides": ["right", "left"], "points": [2560, 2056, 2760, 2056], "path": "d80e6287e70e", "label": [2654, 2056, 83, 19], "mode": "full", "text": "Nightly run", "lines": ["Nightly run"] },
-    "dbt--snowflake": { "ok": true, "sides": ["right", "left"], "points": [2980, 2056, 3117, 2056, 3117, 2316, 3280, 2316], "path": "19030a9e48d1", "label": [3117, 2186, 83, 19], "mode": "full", "text": "Build marts", "lines": ["Build marts"] },
+    "sessionizer--features": { "ok": true, "sides": ["top", "bottom"], "points": [1850, 1900, 1850, 1656, 2194.5, 1656, 2194.5, 476, 2450, 476, 2450, 452], "path": "12a61bbd2d3c", "label": [2194.5, 1216, 105.08999999999999, 22], "mode": "full", "text": "Update features", "lines": ["Update features"] },
+    "sessionizer--lake": { "ok": true, "sides": ["right", "left"], "points": [1960, 1936, 2150, 1936, 2150, 1981.3333333333333, 2660, 1981.3333333333333, 2660, 1943, 2760, 1943], "path": "a15f77c6c0a1", "label": [2056, 1936, 65.4, 22], "mode": "full", "text": "Sessions", "lines": ["Sessions"] },
+    "lake-sink--lake": { "ok": true, "sides": ["right", "left"], "points": [2560, 1943, 2660, 1943, 2660, 1929, 2760, 1929], "path": "df35be97f2fb", "label": [2611, 1943, 60.78, 22], "mode": "full", "text": "Parquet", "lines": ["Parquet"] },
+    "airflow--dbt": { "ok": true, "sides": ["right", "left"], "points": [2560, 2056, 2760, 2056], "path": "d80e6287e70e", "label": [2654, 2056, 77.07999999999998, 22], "mode": "full", "text": "Nightly run", "lines": ["Nightly run"] },
+    "dbt--snowflake": { "ok": true, "sides": ["right", "left"], "points": [2980, 2056, 3117, 2056, 3117, 2316, 3280, 2316], "path": "19030a9e48d1", "label": [3117, 2186, 80.21, 22], "mode": "full", "text": "Build marts", "lines": ["Build marts"] },
     "snowflake--tableau": { "ok": true, "sides": ["right", "left"], "points": [3500, 2316, 3700, 2316], "path": "0ffbe68390e8" },
-    "payments--secrets": { "ok": true, "sides": ["right", "left"], "points": [2040, 1383, 2179, 1383, 2179, 1858, 3636.5, 1858, 3636.5, 1936, 3760, 1936], "path": "fcb1cdf3b898", "label": [2907.75, 1858, 93, 19], "mode": "full", "text": "Stripe key", "lines": ["Stripe key"], "glyph": true },
+    "payments--secrets": { "ok": true, "sides": ["right", "left"], "points": [2040, 1383, 2179, 1383, 2179, 1858, 3636.5, 1858, 3636.5, 1936, 3760, 1936], "path": "fcb1cdf3b898", "label": [2907.75, 1858, 87.28999999999999, 22], "mode": "full", "text": "Stripe key", "lines": ["Stripe key"], "glyph": true },
     "payments--roles": { "ok": true, "sides": ["right", "left"], "points": [2040, 1369, 2190, 1369, 2190, 1750, 4098.5, 1750, 4098.5, 1936, 4200, 1936], "path": "2b74dbb670c0", "label": [3144.25, 1750, 20, 20], "mode": "glyph", "text": "", "lines": [], "glyph": true },
-    "checkout-api--flags": { "ok": true, "sides": ["right", "left"], "points": [1580, 1034.5714285714287, 1669, 1034.5714285714287, 1669, 1992.1666666666667, 3636.5, 1992.1666666666667, 3636.5, 2056, 3760, 2056], "path": "152913b05c93", "label": [2652.75, 1992.1666666666667, 63, 19], "mode": "full", "text": "Flags", "lines": ["Flags"], "glyph": true },
+    "checkout-api--flags": { "ok": true, "sides": ["right", "left"], "points": [1580, 1034.5714285714287, 1669, 1034.5714285714287, 1669, 1992.1666666666667, 3636.5, 1992.1666666666667, 3636.5, 2056, 3760, 2056], "path": "152913b05c93", "label": [3691.25, 2056, 62.75, 22], "mode": "full", "text": "Flags", "lines": ["Flags"], "glyph": true },
     "fulfilment--roles": { "ok": true, "sides": ["bottom", "top"], "points": [3870, 1172, 3870, 1196, 4109.5, 1196, 4109.5, 1858, 4310, 1858, 4310, 1900], "path": "13b0d7741bd3", "label": [4109.5, 1527, 20, 20], "mode": "glyph", "text": "", "lines": [], "glyph": true },
     "checkout-api--datadog": { "ok": true, "sides": ["right", "left"], "points": [1580, 1012.2857142857143, 1660, 1012.2857142857143, 1660, 2003, 4640, 2003], "path": "df6aabb3bce7", "label": [3143, 2003, 20, 20], "mode": "glyph", "text": "", "lines": [], "glyph": true },
     "fulfilment--datadog": { "ok": true, "sides": ["right", "left"], "points": [3980, 1143, 4519, 1143, 4519, 1989, 4640, 1989], "path": "57f7780db881", "label": [4519, 1566, 20, 20], "mode": "glyph", "text": "", "lines": [], "glyph": true },
     "argocd--checkout-api": { "ok": true, "sides": ["left", "right"], "points": [4200, 2056, 4076.5, 2056, 4076.5, 1311, 1649, 1311, 1649, 1027.142857142857, 1580, 1027.142857142857], "path": "b82d1a10aaa3", "label": [2862.75, 1311, 20, 20], "mode": "glyph", "text": "", "lines": [], "glyph": true },
     "argocd--loyalty": { "ok": true, "sides": ["top", "bottom"], "points": [4310, 2020, 4310, 1992, 4087.5, 1992, 4087.5, 1304, 3877, 1304, 3877, 1292], "path": "6bc120781568", "label": [4087.5, 1648, 20, 20], "mode": "glyph", "text": "", "lines": [], "glyph": true },
-    "dbt--lake": { "ok": true, "sides": ["top", "bottom"], "points": [2870, 2020, 2870, 1972], "path": "47f3b6818e1b", "label": [2870, 1989.16, 63, 19], "mode": "full", "text": "Reads", "lines": ["Reads"], "glyph": true }
+    "dbt--lake": { "ok": true, "sides": ["top", "bottom"], "points": [2870, 2020, 2870, 1972], "path": "47f3b6818e1b", "label": [2870, 1989.16, 67.55000000000001, 22], "mode": "full", "text": "Reads", "lines": ["Reads"], "glyph": true }
   },
   "bezier": {
     "web--cdn": {
@@ -123,7 +123,7 @@
         922
       ],
       "path": "362a133c6323",
-      "label": [338.91512967856397, 822.04825, 47, 19],
+      "label": [338.91512967856397, 822.04825, 54.7, 22],
       "mode": "full",
       "text": "HTTPS",
       "lines": ["HTTPS"]
@@ -176,7 +176,7 @@
         936
       ],
       "path": "a0e8966ad535",
-      "label": [334.7722, 936, 47, 19],
+      "label": [334.7722, 936, 54.7, 22],
       "mode": "full",
       "text": "HTTPS",
       "lines": ["HTTPS"]
@@ -229,7 +229,7 @@
         950
       ],
       "path": "4f2f9a7bf68e",
-      "label": [344.2355253847945, 1036.04825, 59, 19],
+      "label": [344.2355253847945, 1036.04825, 69.09, 22],
       "mode": "full",
       "text": "Webhook",
       "lines": ["Webhook"]
@@ -282,7 +282,7 @@
         926
       ],
       "path": "b5ea8a0a52cf",
-      "label": [824.1238618166016, 928.4887499999999, 71, 19],
+      "label": [824.1238618166016, 928.4887499999999, 63.81, 22],
       "mode": "full",
       "text": "API calls",
       "lines": ["API calls"]
@@ -335,7 +335,7 @@
         1900
       ],
       "path": "4cd1645d9b41",
-      "label": [773.555, 1409.4835, 59, 19],
+      "label": [773.555, 1409.4835, 64.57000000000001, 22],
       "mode": "full",
       "text": "Beacons",
       "lines": ["Beacons"]
@@ -388,7 +388,7 @@
         476
       ],
       "path": "1b5fb41efa96",
-      "label": [1241.373139416285, 672.153, 65, 19],
+      "label": [1241.373139416285, 672.153, 66.57, 22],
       "mode": "full",
       "text": "Products",
       "lines": ["Products"]
@@ -441,7 +441,7 @@
         656
       ],
       "path": "6e4df19bd1f9",
-      "label": [1266.7236363277068, 719.3137999999999, 53, 19],
+      "label": [1266.7236363277068, 719.3137999999999, 55.76, 22],
       "mode": "full",
       "text": "Search",
       "lines": ["Search"]
@@ -494,7 +494,7 @@
         836
       ],
       "path": "fcb22d955a11",
-      "label": [1245.0010719286518, 875.2306, 41, 19],
+      "label": [1245.0010719286518, 875.2306, 41.42, 22],
       "mode": "full",
       "text": "Cart",
       "lines": ["Cart"]
@@ -547,7 +547,7 @@
         1016
       ],
       "path": "5a1b258e4e21",
-      "label": [1234.9989280713485, 970.4306000000001, 65, 19],
+      "label": [1234.9989280713485, 970.4306000000001, 70.24, 22],
       "mode": "full",
       "text": "Checkout",
       "lines": ["Checkout"]
@@ -600,7 +600,7 @@
         1196
       ],
       "path": "ac70417bae16",
-      "label": [1266.7236363277068, 1132.6861999999999, 53, 19],
+      "label": [1266.7236363277068, 1132.6861999999999, 53.07, 22],
       "mode": "full",
       "text": "Status",
       "lines": ["Status"]
@@ -653,7 +653,7 @@
         1376
       ],
       "path": "f482b47e9dec",
-      "label": [1241.373139416285, 1179.847, 47, 19],
+      "label": [1241.373139416285, 1179.847, 50.94, 22],
       "mode": "full",
       "text": "Scans",
       "lines": ["Scans"]
@@ -755,7 +755,7 @@
         656
       ],
       "path": "e7b7154d712c",
-      "label": [1939.7625, 566.79575, 77, 19],
+      "label": [1939.7625, 566.79575, 81.01, 22],
       "mode": "full",
       "text": "Cache miss",
       "lines": ["Cache miss"]
@@ -808,7 +808,7 @@
         476
       ],
       "path": "779cd2bf3273",
-      "label": [1694.7785615303774, 468.47675, 59, 19],
+      "label": [1673.6568799154088, 466.43625, 55.75, 22],
       "mode": "full",
       "text": "Similar",
       "lines": ["Similar"]
@@ -1008,7 +1008,7 @@
         829
       ],
       "path": "e9015a90a2f3",
-      "label": [1694.7722000000003, 829.0000000000001, 47, 19],
+      "label": [1694.7722000000003, 829.0000000000001, 44.71, 22],
       "mode": "full",
       "text": "Price",
       "lines": ["Price"]
@@ -1110,7 +1110,7 @@
         843
       ],
       "path": "fcb7cca7d61a",
-      "label": [1695.418367781933, 921.994125, 59, 19],
+      "label": [1695.418367781933, 921.994125, 58.7, 22],
       "mode": "full",
       "text": "Reprice",
       "lines": ["Reprice"]
@@ -1163,7 +1163,7 @@
         132
       ],
       "path": "1bc3b51c202b",
-      "label": [1682.8075000000001, 579.5265, 71, 19],
+      "label": [1682.8075000000001, 579.5265, 71.85, 22],
       "mode": "full",
       "text": "Tax quote",
       "lines": ["Tax quote"]
@@ -1216,7 +1216,7 @@
         1016
       ],
       "path": "a9ea7b0f6dba",
-      "label": [1694.783387073115, 1006.0201785714287, 59, 19],
+      "label": [1715.6973167850867, 1008.7826785714285, 60.769999999999996, 22],
       "mode": "full",
       "text": "Reserve",
       "lines": ["Reserve"]
@@ -1269,7 +1269,7 @@
         1196
       ],
       "path": "80be9b0580b2",
-      "label": [1704.32676783477, 1114.4458214285714, 47, 19],
+      "label": [1704.32676783477, 1114.4458214285714, 48.47, 22],
       "mode": "full",
       "text": "Score",
       "lines": ["Score"]
@@ -1322,7 +1322,7 @@
         1376
       ],
       "path": "59d9afecab79",
-      "label": [1692.1202559113406, 1171.80075, 71, 19],
+      "label": [1692.1202559113406, 1171.80075, 69.78, 22],
       "mode": "full",
       "text": "Authorize",
       "lines": ["Authorize"]
@@ -1375,10 +1375,10 @@
         1256
       ],
       "path": "d848b81d9adb",
-      "label": [2288.7374999999997, 1251.573607142857, 59, 32],
-      "mode": "wrap",
+      "label": [2187.945706215558, 1226.5669319528474, 99.08, 22],
+      "mode": "full",
       "text": "Order + outbox",
-      "lines": ["Order +", "outbox"]
+      "lines": ["Order + outbox"]
     },
     "risk--features": {
       "ok": true,
@@ -1526,7 +1526,7 @@
         132
       ],
       "path": "63b32fd62eda",
-      "label": [2151.7902341482054, 708.2235678195981, 95, 19],
+      "label": [2147.882968296411, 717.4286356391962, 98.67999999999998, 22],
       "mode": "full",
       "text": "PaymentIntent",
       "lines": ["PaymentIntent"]
@@ -1628,7 +1628,7 @@
         1256
       ],
       "path": "3bc075fa7b32",
-      "label": [2770.56775, 1256, 35, 19],
+      "label": [2770.56775, 1256, 42.7, 22],
       "mode": "full",
       "text": "CDC",
       "lines": ["CDC"]
@@ -1681,7 +1681,7 @@
         1249
       ],
       "path": "bb6436d10488",
-      "label": [3179.8197490072366, 1252.761625, 83, 19],
+      "label": [3179.8197490072366, 1252.761625, 85.72, 22],
       "mode": "full",
       "text": "OrderPlaced",
       "lines": ["OrderPlaced"]
@@ -1734,7 +1734,7 @@
         1136
       ],
       "path": "881664ed35b8",
-      "label": [2901.2575, 1136, 35, 19],
+      "label": [2901.2575, 1136, 42.7, 22],
       "mode": "full",
       "text": "CDC",
       "lines": ["CDC"]
@@ -2032,7 +2032,7 @@
         1340
       ],
       "path": "07208d6471e5",
-      "label": [3400.500000000001, 1308.4925000000003, 95, 19],
+      "label": [3400.500000000001, 1308.4925000000003, 80.28, 22],
       "mode": "full",
       "text": "After 3 tries",
       "lines": ["After 3 tries"]
@@ -2183,7 +2183,7 @@
         1292
       ],
       "path": "4d3c97792a83",
-      "label": [3869.876625, 1554.0976110251954, 53, 19],
+      "label": [3869.876625, 1554.0976110251954, 54.74000000000001, 22],
       "mode": "full",
       "text": "Replay",
       "lines": ["Replay"]
@@ -2236,7 +2236,7 @@
         1136
       ],
       "path": "c41ead2301bf",
-      "label": [4543.317500000001, 1132.2383750000001, 89, 19],
+      "label": [4543.317500000001, 1132.2383750000001, 84.64, 22],
       "mode": "full",
       "text": "Pick request",
       "lines": ["Pick request"]
@@ -2289,7 +2289,7 @@
         1482
       ],
       "path": "fda2a73d96de",
-      "label": [3655.5665998867225, 1274.7438750000001, 107, 19],
+      "label": [3666.1831935773666, 1227.3686249999998, 114.38, 22],
       "mode": "full",
       "text": "ShipmentCreated",
       "lines": ["ShipmentCreated"]
@@ -2342,7 +2342,7 @@
         1256
       ],
       "path": "8a06bbeeb781",
-      "label": [4055.8543499999996, 1256, 53, 19],
+      "label": [4055.8543499999996, 1256, 51.550000000000004, 22],
       "mode": "full",
       "text": "Points",
       "lines": ["Points"]
@@ -2395,7 +2395,7 @@
         1376
       ],
       "path": "37630618fc57",
-      "label": [3133.3175, 1376, 53, 19],
+      "label": [3143.3175, 1376, 53.379999999999995, 22],
       "mode": "full",
       "text": "Upsert",
       "lines": ["Upsert"]
@@ -2497,7 +2497,7 @@
         776
       ],
       "path": "3a622eef6066",
-      "label": [3123.3175, 883.791625, 59, 19],
+      "label": [3123.3175, 883.791625, 61.480000000000004, 22],
       "mode": "full",
       "text": "Reindex",
       "lines": ["Reindex"]
@@ -2550,7 +2550,7 @@
         1496
       ],
       "path": "267b753e801d",
-      "label": [2595.33, 1449.365, 95, 19],
+      "label": [2595.33, 1449.365, 100.24, 22],
       "mode": "full",
       "text": "ParcelScanned",
       "lines": ["ParcelScanned"]
@@ -2701,7 +2701,7 @@
         1496
       ],
       "path": "3312aa6fb932",
-      "label": [4136.204995, 1496, 53, 19],
+      "label": [4136.204995, 1496, 49.84, 22],
       "mode": "full",
       "text": "Notify",
       "lines": ["Notify"]
@@ -2852,7 +2852,7 @@
         1580
       ],
       "path": "98cb4671d69a",
-      "label": [4310, 1548.4925000000003, 95, 19],
+      "label": [4310, 1548.4925000000003, 80.28, 22],
       "mode": "full",
       "text": "After 5 tries",
       "lines": ["After 5 tries"]
@@ -2905,7 +2905,7 @@
         1496
       ],
       "path": "55bd43c3aded",
-      "label": [4999.026400000001, 1496, 71, 19],
+      "label": [4999.026400000001, 1496, 69.21, 22],
       "mode": "full",
       "text": "Mail send",
       "lines": ["Mail send"]
@@ -2958,7 +2958,7 @@
         1616
       ],
       "path": "9fc6de730a98",
-      "label": [4888.7736, 1616, 41, 19],
+      "label": [4888.7736, 1616, 44.88, 22],
       "mode": "full",
       "text": "Send",
       "lines": ["Send"]
@@ -3011,7 +3011,7 @@
         1936
       ],
       "path": "008091d8f8fa",
-      "label": [1215.6435000000001, 1936.0000000000002, 77, 19],
+      "label": [1215.6435000000001, 1936.0000000000002, 84.55, 22],
       "mode": "full",
       "text": "PageViewed",
       "lines": ["PageViewed"]
@@ -3113,7 +3113,7 @@
         452
       ],
       "path": "d223b75fba88",
-      "label": [2216.825, 1038.7365000000002, 107, 19],
+      "label": [2216.825, 1038.7365000000002, 105.08999999999999, 22],
       "mode": "full",
       "text": "Update features",
       "lines": ["Update features"]
@@ -3166,7 +3166,7 @@
         1943
       ],
       "path": "facdeb9b63cf",
-      "label": [2294.9075, 1938.7203749999999, 65, 19],
+      "label": [2294.9075, 1938.7203749999999, 65.4, 22],
       "mode": "full",
       "text": "Sessions",
       "lines": ["Sessions"]
@@ -3219,7 +3219,7 @@
         1929
       ],
       "path": "288d4207f5ce",
-      "label": [2720.126383207569, 1930.15325, 59, 19],
+      "label": [2720.126383207569, 1930.15325, 60.78, 22],
       "mode": "full",
       "text": "Parquet",
       "lines": ["Parquet"]
@@ -3272,7 +3272,7 @@
         2056
       ],
       "path": "0a0a352860c3",
-      "label": [2655.6435, 2056, 83, 19],
+      "label": [2655.6435, 2056, 77.07999999999998, 22],
       "mode": "full",
       "text": "Nightly run",
       "lines": ["Nightly run"]
@@ -3325,7 +3325,7 @@
         2316
       ],
       "path": "bdcebe04b354",
-      "label": [3124.977545756293, 2176.2825000000003, 83, 19],
+      "label": [3124.977545756293, 2176.2825000000003, 80.21, 22],
       "mode": "full",
       "text": "Build marts",
       "lines": ["Build marts"]
@@ -3427,7 +3427,7 @@
         1936
       ],
       "path": "c56b232b066f",
-      "label": [3095.7289361742282, 1731.4039671909577, 93, 19],
+      "label": [3095.7289361742282, 1731.4039671909577, 87.28999999999999, 22],
       "mode": "full",
       "text": "Stripe key",
       "lines": ["Stripe key"],
@@ -3535,7 +3535,7 @@
         2056
       ],
       "path": "9afbdb2da47e",
-      "label": [2649.906747956921, 1534.8222326713621, 63, 19],
+      "label": [2658.7762059497413, 1539.440967878494, 62.75, 22],
       "mode": "full",
       "text": "Flags",
       "lines": ["Flags"],
@@ -3859,7 +3859,7 @@
         1972
       ],
       "path": "c6f7b9b931d6",
-      "label": [2870, 1988.689375, 63, 19],
+      "label": [2870, 1988.689375, 67.55000000000001, 22],
       "mode": "full",
       "text": "Reads",
       "lines": ["Reads"],
@@ -3867,78 +3867,78 @@
     }
   },
   "straight": {
-    "web--cdn": { "ok": true, "sides": ["right", "left"], "points": [226, 736, 460, 922], "path": "383b9503e25f", "label": [338.30306047146337, 825.2665352465478, 47, 19], "mode": "full", "text": "HTTPS", "lines": ["HTTPS"] },
-    "app--cdn": { "ok": true, "sides": ["right", "left"], "points": [220, 936, 460, 936], "path": "da72238a14d4", "label": [334, 936, 47, 19], "mode": "full", "text": "HTTPS", "lines": ["HTTPS"] },
-    "carriers--cdn": { "ok": true, "sides": ["right", "left"], "points": [220, 1136, 460, 950], "path": "7ca0f8abca70", "label": [335.25750968694854, 1046.675429992615, 59, 19], "mode": "full", "text": "Webhook", "lines": ["Webhook"] },
-    "cdn--gateway": { "ok": true, "sides": ["right", "left"], "points": [680, 936, 900, 926], "path": "4cb48a39bfc9", "label": [784.0061887587382, 931.2724459655119, 71, 19], "mode": "full", "text": "API calls", "lines": ["API calls"] },
-    "cdn--collector": { "ok": true, "sides": ["bottom", "top"], "points": [570, 972, 1010, 1900], "path": "c930b19b89e9", "label": [787.4294730576, 1430.578524994211, 59, 19], "mode": "full", "text": "Beacons", "lines": ["Beacons"] },
-    "gateway--catalog-bff": { "ok": true, "sides": ["right", "left"], "points": [1120, 900, 1360, 476], "path": "d088b8520802", "label": [1237.0444106808893, 693.2215411304287, 65, 19], "mode": "full", "text": "Products", "lines": ["Products"] },
-    "gateway--search-api": { "ok": true, "sides": ["right", "left"], "points": [1120, 910.4, 1360, 656], "path": "05c4e70b5d36", "label": [1235.8826774386257, 787.5643619150568, 53, 19], "mode": "full", "text": "Search", "lines": ["Search"] },
-    "gateway--cart-api": { "ok": true, "sides": ["right", "left"], "points": [1120, 920.8, 1360, 836], "path": "212cc4f50edd", "label": [1234.3427546187872, 880.3988933680284, 41, 19], "mode": "full", "text": "Cart", "lines": ["Cart"] },
-    "gateway--checkout-api": { "ok": true, "sides": ["right", "left"], "points": [1120, 931.2, 1360, 1016], "path": "05327360c979", "label": [1234.3427546187872, 971.6011066319716, 65, 19], "mode": "full", "text": "Checkout", "lines": ["Checkout"] },
-    "gateway--order-status": { "ok": true, "sides": ["right", "left"], "points": [1120, 941.6, 1360, 1196], "path": "f7c452ffbafb", "label": [1235.8826774386257, 1064.4356380849433, 53, 19], "mode": "full", "text": "Status", "lines": ["Status"] },
-    "gateway--tracking": { "ok": true, "sides": ["right", "left"], "points": [1120, 952, 1360, 1376], "path": "f1f35f943ffa", "label": [1237.0444106808893, 1158.7784588695713, 47, 19], "mode": "full", "text": "Scans", "lines": ["Scans"] },
+    "web--cdn": { "ok": true, "sides": ["right", "left"], "points": [226, 736, 460, 922], "path": "383b9503e25f", "label": [338.30306047146337, 825.2665352465478, 54.7, 22], "mode": "full", "text": "HTTPS", "lines": ["HTTPS"] },
+    "app--cdn": { "ok": true, "sides": ["right", "left"], "points": [220, 936, 460, 936], "path": "da72238a14d4", "label": [334, 936, 54.7, 22], "mode": "full", "text": "HTTPS", "lines": ["HTTPS"] },
+    "carriers--cdn": { "ok": true, "sides": ["right", "left"], "points": [220, 1136, 460, 950], "path": "7ca0f8abca70", "label": [335.25750968694854, 1046.675429992615, 69.09, 22], "mode": "full", "text": "Webhook", "lines": ["Webhook"] },
+    "cdn--gateway": { "ok": true, "sides": ["right", "left"], "points": [680, 936, 900, 926], "path": "4cb48a39bfc9", "label": [784.0061887587382, 931.2724459655119, 63.81, 22], "mode": "full", "text": "API calls", "lines": ["API calls"] },
+    "cdn--collector": { "ok": true, "sides": ["bottom", "top"], "points": [570, 972, 1010, 1900], "path": "c930b19b89e9", "label": [787.4294730576, 1430.578524994211, 64.57000000000001, 22], "mode": "full", "text": "Beacons", "lines": ["Beacons"] },
+    "gateway--catalog-bff": { "ok": true, "sides": ["right", "left"], "points": [1120, 900, 1360, 476], "path": "d088b8520802", "label": [1237.0444106808893, 693.2215411304287, 66.57, 22], "mode": "full", "text": "Products", "lines": ["Products"] },
+    "gateway--search-api": { "ok": true, "sides": ["right", "left"], "points": [1120, 910.4, 1360, 656], "path": "05c4e70b5d36", "label": [1235.8826774386257, 787.5643619150568, 55.76, 22], "mode": "full", "text": "Search", "lines": ["Search"] },
+    "gateway--cart-api": { "ok": true, "sides": ["right", "left"], "points": [1120, 920.8, 1360, 836], "path": "212cc4f50edd", "label": [1234.3427546187872, 880.3988933680284, 41.42, 22], "mode": "full", "text": "Cart", "lines": ["Cart"] },
+    "gateway--checkout-api": { "ok": true, "sides": ["right", "left"], "points": [1120, 931.2, 1360, 1016], "path": "05327360c979", "label": [1234.3427546187872, 971.6011066319716, 70.24, 22], "mode": "full", "text": "Checkout", "lines": ["Checkout"] },
+    "gateway--order-status": { "ok": true, "sides": ["right", "left"], "points": [1120, 941.6, 1360, 1196], "path": "f7c452ffbafb", "label": [1235.8826774386257, 1064.4356380849433, 53.07, 22], "mode": "full", "text": "Status", "lines": ["Status"] },
+    "gateway--tracking": { "ok": true, "sides": ["right", "left"], "points": [1120, 952, 1360, 1376], "path": "f1f35f943ffa", "label": [1237.0444106808893, 1158.7784588695713, 50.94, 22], "mode": "full", "text": "Scans", "lines": ["Scans"] },
     "catalog-bff--product-cache": { "ok": true, "sides": ["right", "left"], "points": [1580, 476, 2340, 536], "path": "a677b203de1c" },
-    "catalog-bff--catalog-db": { "ok": true, "sides": ["right", "left"], "points": [1580, 490, 2340, 656], "path": "d40d33da65c5", "label": [1954.138197647408, 571.7196589598286, 77, 19], "mode": "full", "text": "Cache miss", "lines": ["Cache miss"] },
-    "catalog-bff--reco": { "ok": true, "sides": ["right", "left"], "points": [1580, 462, 1820, 476], "path": "7b320a5ae475", "label": [1694.0101823544724, 468.65059397067756, 59, 19], "mode": "full", "text": "Similar", "lines": ["Similar"] },
+    "catalog-bff--catalog-db": { "ok": true, "sides": ["right", "left"], "points": [1580, 490, 2340, 656], "path": "d40d33da65c5", "label": [1954.138197647408, 571.7196589598286, 81.01, 22], "mode": "full", "text": "Cache miss", "lines": ["Cache miss"] },
+    "catalog-bff--reco": { "ok": true, "sides": ["right", "left"], "points": [1580, 462, 1820, 476], "path": "7b320a5ae475", "label": [1694.0101823544724, 468.65059397067756, 55.75, 22], "mode": "full", "text": "Similar", "lines": ["Similar"] },
     "reco--features": { "ok": true, "sides": ["right", "left"], "points": [2040, 476, 2340, 409], "path": "0395b971d265" },
     "search-api--search-index": { "ok": true, "sides": ["right", "left"], "points": [1580, 656, 2340, 776], "path": "946707236d12" },
     "cart-api--carts": { "ok": true, "sides": ["right", "left"], "points": [1580, 843, 2340, 896], "path": "3271f4c70e32" },
-    "cart-api--pricing": { "ok": true, "sides": ["right", "left"], "points": [1580, 829, 1820, 829], "path": "c6993ef3f9cb", "label": [1694, 829, 47, 19], "mode": "full", "text": "Price", "lines": ["Price"] },
+    "cart-api--pricing": { "ok": true, "sides": ["right", "left"], "points": [1580, 829, 1820, 829], "path": "c6993ef3f9cb", "label": [1694, 829, 44.71, 22], "mode": "full", "text": "Price", "lines": ["Price"] },
     "pricing--promotions": { "ok": true, "sides": ["right", "left"], "points": [2040, 836, 2340, 1016], "path": "b421ff3727e0" },
-    "checkout-api--pricing": { "ok": true, "sides": ["right", "left"], "points": [1580, 990, 1820, 843], "path": "282f5e977600", "label": [1694.8834735109392, 919.6338724745497, 59, 19], "mode": "full", "text": "Reprice", "lines": ["Reprice"] },
-    "checkout-api--tax": { "ok": true, "sides": ["top", "bottom"], "points": [1470, 980, 1930, 132], "path": "4f23a1ffdcbf", "label": [1697.1390959544976, 561.2740144143174, 71, 19], "mode": "full", "text": "Tax quote", "lines": ["Tax quote"] },
-    "checkout-api--inventory": { "ok": true, "sides": ["right", "left"], "points": [1580, 997.4285714285714, 1820, 1016], "path": "c7954e5a5bc2", "label": [1694.0178831645608, 1006.2513838163053, 59, 19], "mode": "full", "text": "Reserve", "lines": ["Reserve"] },
-    "checkout-api--risk": { "ok": true, "sides": ["right", "left"], "points": [1580, 1019.7142857142857, 1820, 1196], "path": "d04aa9b990f2", "label": [1719.342732993743, 1122.064840782309, 47, 19], "mode": "full", "text": "Score", "lines": ["Score"] },
-    "checkout-api--payments": { "ok": true, "sides": ["right", "left"], "points": [1580, 1042, 1820, 1376], "path": "3fd65aff4d3e", "label": [1696.498784933721, 1204.1274756994285, 71, 19], "mode": "full", "text": "Authorize", "lines": ["Authorize"] },
-    "checkout-api--orders-db": { "ok": true, "sides": ["right", "left"], "points": [1580, 1004.8571428571429, 2340, 1256], "path": "c5cddb909dfa", "label": [1944.807982432003, 1125.4083520893723, 101, 19], "mode": "full", "text": "Order + outbox", "lines": ["Order + outbox"] },
+    "checkout-api--pricing": { "ok": true, "sides": ["right", "left"], "points": [1580, 990, 1820, 843], "path": "282f5e977600", "label": [1694.8834735109392, 919.6338724745497, 58.7, 22], "mode": "full", "text": "Reprice", "lines": ["Reprice"] },
+    "checkout-api--tax": { "ok": true, "sides": ["top", "bottom"], "points": [1470, 980, 1930, 132], "path": "4f23a1ffdcbf", "label": [1697.1390959544976, 561.2740144143174, 71.85, 22], "mode": "full", "text": "Tax quote", "lines": ["Tax quote"] },
+    "checkout-api--inventory": { "ok": true, "sides": ["right", "left"], "points": [1580, 997.4285714285714, 1820, 1016], "path": "c7954e5a5bc2", "label": [1694.0178831645608, 1006.2513838163053, 60.769999999999996, 22], "mode": "full", "text": "Reserve", "lines": ["Reserve"] },
+    "checkout-api--risk": { "ok": true, "sides": ["right", "left"], "points": [1580, 1019.7142857142857, 1820, 1196], "path": "d04aa9b990f2", "label": [1727.4022050744693, 1127.9847149177947, 48.47, 22], "mode": "full", "text": "Score", "lines": ["Score"] },
+    "checkout-api--payments": { "ok": true, "sides": ["right", "left"], "points": [1580, 1042, 1820, 1376], "path": "3fd65aff4d3e", "label": [1696.498784933721, 1204.1274756994285, 69.78, 22], "mode": "full", "text": "Authorize", "lines": ["Authorize"] },
+    "checkout-api--orders-db": { "ok": true, "sides": ["right", "left"], "points": [1580, 1004.8571428571429, 2340, 1256], "path": "c5cddb909dfa", "label": [1944.807982432003, 1125.4083520893723, 99.08, 22], "mode": "full", "text": "Order + outbox", "lines": ["Order + outbox"] },
     "risk--features": { "ok": true, "sides": ["right", "left"], "points": [2040, 1196, 2340, 423], "path": "6b4fa4d507c0" },
     "inventory--inventory-db": { "ok": true, "sides": ["right", "left"], "points": [2040, 1016, 2340, 1136], "path": "6dc14d185a84" },
-    "payments--stripe": { "ok": true, "sides": ["top", "bottom"], "points": [1930, 1340, 2350, 132], "path": "271f2d4ea185", "label": [2144.597590412368, 722.7764542425225, 95, 19], "mode": "full", "text": "PaymentIntent", "lines": ["PaymentIntent"] },
+    "payments--stripe": { "ok": true, "sides": ["top", "bottom"], "points": [1930, 1340, 2350, 132], "path": "271f2d4ea185", "label": [2144.597590412368, 722.7764542425225, 98.67999999999998, 22], "mode": "full", "text": "PaymentIntent", "lines": ["PaymentIntent"] },
     "order-status--status-cache": { "ok": true, "sides": ["right", "left"], "points": [1580, 1196, 2340, 1376], "path": "b0bfa93d5f78" },
-    "orders-db--outbox-relay": { "ok": true, "sides": ["right", "left"], "points": [2560, 1256, 2860, 1256], "path": "5bc0c0a06165", "label": [2704, 1256, 35, 19], "mode": "full", "text": "CDC", "lines": ["CDC"] },
-    "outbox-relay--orders": { "ok": true, "sides": ["right", "left"], "points": [3088, 1256, 3280, 1249], "path": "25bee6ccad8e", "label": [3178.003983659308, 1252.7186047624211, 83, 19], "mode": "full", "text": "OrderPlaced", "lines": ["OrderPlaced"] },
-    "inventory-db--inventory-events": { "ok": true, "sides": ["right", "left"], "points": [2560, 1136, 3280, 1136], "path": "9830cc80a3c0", "label": [2914, 1136, 35, 19], "mode": "full", "text": "CDC", "lines": ["CDC"] },
+    "orders-db--outbox-relay": { "ok": true, "sides": ["right", "left"], "points": [2560, 1256, 2860, 1256], "path": "5bc0c0a06165", "label": [2704, 1256, 42.7, 22], "mode": "full", "text": "CDC", "lines": ["CDC"] },
+    "outbox-relay--orders": { "ok": true, "sides": ["right", "left"], "points": [3088, 1256, 3280, 1249], "path": "25bee6ccad8e", "label": [3178.003983659308, 1252.7186047624211, 85.72, 22], "mode": "full", "text": "OrderPlaced", "lines": ["OrderPlaced"] },
+    "inventory-db--inventory-events": { "ok": true, "sides": ["right", "left"], "points": [2560, 1136, 3280, 1136], "path": "9830cc80a3c0", "label": [2914, 1136, 42.7, 22], "mode": "full", "text": "CDC", "lines": ["CDC"] },
     "orders--fulfilment": { "ok": true, "sides": ["right", "left"], "points": [3521, 1235, 3760, 1129], "path": "d8ef45839caf" },
     "orders--loyalty": { "ok": true, "sides": ["right", "left"], "points": [3521, 1249, 3760, 1256], "path": "f361f7b60fc9" },
     "orders--status-projector": { "ok": true, "sides": ["right", "left"], "points": [3521, 1263, 3760, 1362], "path": "0a366ed6f762" },
     "orders--notifier": { "ok": true, "sides": ["right", "left"], "points": [3521, 1277, 3760, 1489], "path": "d6f9f3ed5b94" },
     "orders--lake-sink": { "ok": true, "sides": ["left", "right"], "points": [3280, 1263, 2560, 1929], "path": "7ea506c9565f" },
-    "orders--orders-dlq": { "ok": true, "sides": ["bottom", "top"], "points": [3400.5, 1292, 3400.5, 1340], "path": "3a74eef0708b", "label": [3400.5, 1312.84, 95, 19], "mode": "full", "text": "After 3 tries", "lines": ["After 3 tries"] },
+    "orders--orders-dlq": { "ok": true, "sides": ["bottom", "top"], "points": [3400.5, 1292, 3400.5, 1340], "path": "3a74eef0708b", "label": [3400.5, 1312.84, 80.28, 22], "mode": "full", "text": "After 3 tries", "lines": ["After 3 tries"] },
     "orders-dlq--dlq-triage": { "ok": true, "sides": ["right", "left"], "points": [3521, 1376, 3760, 1616], "path": "0ba4efd40de4" },
     "notify-dlq--dlq-triage": { "ok": true, "sides": ["left", "right"], "points": [4200, 1616, 3980, 1616], "path": "c752d7dd9963" },
-    "dlq-triage--loyalty": { "ok": true, "sides": ["top", "bottom"], "points": [3870, 1580, 3863, 1292], "path": "2a42e05cc5e3", "label": [3866.6457902761576, 1441.9982285047652, 53, 19], "mode": "full", "text": "Replay", "lines": ["Replay"] },
-    "fulfilment--wms": { "ok": true, "sides": ["right", "left"], "points": [3980, 1129, 5180, 1136], "path": "0832125483bf", "label": [4574.0001020807285, 1132.4650005954709, 89, 19], "mode": "full", "text": "Pick request", "lines": ["Pick request"] },
-    "fulfilment--shipments": { "ok": true, "sides": ["left", "right"], "points": [3760, 1143, 3539, 1482], "path": "c09de60a35b7", "label": [3669.16021249876, 1282.3424794702282, 107, 19], "mode": "full", "text": "ShipmentCreated", "lines": ["ShipmentCreated"] },
-    "loyalty--loyalty-db": { "ok": true, "sides": ["right", "left"], "points": [3980, 1256, 4200, 1256], "path": "f6341d75c3f6", "label": [4104, 1256, 53, 19], "mode": "full", "text": "Points", "lines": ["Points"] },
-    "status-projector--status-cache": { "ok": true, "sides": ["left", "right"], "points": [3760, 1376, 2560, 1376], "path": "a793f554083c", "label": [3196, 1376, 53, 19], "mode": "full", "text": "Upsert", "lines": ["Upsert"] },
+    "dlq-triage--loyalty": { "ok": true, "sides": ["top", "bottom"], "points": [3870, 1580, 3863, 1292], "path": "2a42e05cc5e3", "label": [3866.6457902761576, 1441.9982285047652, 54.74000000000001, 22], "mode": "full", "text": "Replay", "lines": ["Replay"] },
+    "fulfilment--wms": { "ok": true, "sides": ["right", "left"], "points": [3980, 1129, 5180, 1136], "path": "0832125483bf", "label": [4574.0001020807285, 1132.4650005954709, 84.64, 22], "mode": "full", "text": "Pick request", "lines": ["Pick request"] },
+    "fulfilment--shipments": { "ok": true, "sides": ["left", "right"], "points": [3760, 1143, 3539, 1482], "path": "c09de60a35b7", "label": [3669.16021249876, 1282.3424794702282, 114.38, 22], "mode": "full", "text": "ShipmentCreated", "lines": ["ShipmentCreated"] },
+    "loyalty--loyalty-db": { "ok": true, "sides": ["right", "left"], "points": [3980, 1256, 4200, 1256], "path": "f6341d75c3f6", "label": [4104, 1256, 51.550000000000004, 22], "mode": "full", "text": "Points", "lines": ["Points"] },
+    "status-projector--status-cache": { "ok": true, "sides": ["left", "right"], "points": [3760, 1376, 2560, 1376], "path": "a793f554083c", "label": [3206, 1376, 53.379999999999995, 22], "mode": "full", "text": "Upsert", "lines": ["Upsert"] },
     "inventory-events--search-indexer": { "ok": true, "sides": ["right", "left"], "points": [3539, 1136, 3760, 1023], "path": "18863bd1fbdd" },
-    "search-indexer--search-index": { "ok": true, "sides": ["left", "right"], "points": [3760, 1009, 2560, 776], "path": "ff07f5769656", "label": [3165.8899986697, 893.6436414083668, 59, 19], "mode": "full", "text": "Reindex", "lines": ["Reindex"] },
-    "tracking--shipments": { "ok": true, "sides": ["right", "left"], "points": [1580, 1376, 3280, 1496], "path": "5102ceb2b955", "label": [2523.7666846926063, 1442.6188248018311, 95, 19], "mode": "full", "text": "ParcelScanned", "lines": ["ParcelScanned"] },
+    "search-indexer--search-index": { "ok": true, "sides": ["left", "right"], "points": [3760, 1009, 2560, 776], "path": "ff07f5769656", "label": [3165.8899986697, 893.6436414083668, 61.480000000000004, 22], "mode": "full", "text": "Reindex", "lines": ["Reindex"] },
+    "tracking--shipments": { "ok": true, "sides": ["right", "left"], "points": [1580, 1376, 3280, 1496], "path": "5102ceb2b955", "label": [2533.7418639152243, 1443.322955099898, 100.24, 22], "mode": "full", "text": "ParcelScanned", "lines": ["ParcelScanned"] },
     "shipments--notifier": { "ok": true, "sides": ["right", "left"], "points": [3539, 1510, 3760, 1503], "path": "37400b099365" },
     "shipments--status-projector": { "ok": true, "sides": ["right", "left"], "points": [3539, 1496, 3760, 1390], "path": "86c8da7cc80f" },
-    "notifier--notify-q": { "ok": true, "sides": ["right", "left"], "points": [3986, 1496, 4200, 1496], "path": "8c3189a3f6eb", "label": [4107, 1496, 53, 19], "mode": "full", "text": "Notify", "lines": ["Notify"] },
+    "notifier--notify-q": { "ok": true, "sides": ["right", "left"], "points": [3986, 1496, 4200, 1496], "path": "8c3189a3f6eb", "label": [4107, 1496, 49.84, 22], "mode": "full", "text": "Notify", "lines": ["Notify"] },
     "notify-q--email": { "ok": true, "sides": ["right", "left"], "points": [4420, 1489, 4640, 1496], "path": "5cd83189459a" },
     "notify-q--push": { "ok": true, "sides": ["right", "left"], "points": [4420, 1503, 4640, 1616], "path": "a3cd8aebcd04" },
-    "notify-q--notify-dlq": { "ok": true, "sides": ["bottom", "top"], "points": [4310, 1532, 4310, 1580], "path": "7a36197202bb", "label": [4310, 1552.84, 95, 19], "mode": "full", "text": "After 5 tries", "lines": ["After 5 tries"] },
-    "email--sendgrid": { "ok": true, "sides": ["right", "left"], "points": [4860, 1496, 5180, 1496], "path": "b8c9ebfc71e0", "label": [5014, 1496, 71, 19], "mode": "full", "text": "Mail send", "lines": ["Mail send"] },
-    "push--apns": { "ok": true, "sides": ["right", "left"], "points": [4860, 1616, 5180, 1616], "path": "7d8645e5d452", "label": [5014, 1616, 41, 19], "mode": "full", "text": "Send", "lines": ["Send"] },
-    "collector--clickstream": { "ok": true, "sides": ["right", "left"], "points": [1120, 1936, 1320, 1936], "path": "0342ffa7dd5f", "label": [1214, 1936, 77, 19], "mode": "full", "text": "PageViewed", "lines": ["PageViewed"] },
+    "notify-q--notify-dlq": { "ok": true, "sides": ["bottom", "top"], "points": [4310, 1532, 4310, 1580], "path": "7a36197202bb", "label": [4310, 1552.84, 80.28, 22], "mode": "full", "text": "After 5 tries", "lines": ["After 5 tries"] },
+    "email--sendgrid": { "ok": true, "sides": ["right", "left"], "points": [4860, 1496, 5180, 1496], "path": "b8c9ebfc71e0", "label": [5014, 1496, 69.21, 22], "mode": "full", "text": "Mail send", "lines": ["Mail send"] },
+    "push--apns": { "ok": true, "sides": ["right", "left"], "points": [4860, 1616, 5180, 1616], "path": "7d8645e5d452", "label": [5014, 1616, 44.88, 22], "mode": "full", "text": "Send", "lines": ["Send"] },
+    "collector--clickstream": { "ok": true, "sides": ["right", "left"], "points": [1120, 1936, 1320, 1936], "path": "0342ffa7dd5f", "label": [1214, 1936, 84.55, 22], "mode": "full", "text": "PageViewed", "lines": ["PageViewed"] },
     "clickstream--sessionizer": { "ok": true, "sides": ["right", "left"], "points": [1540, 1936, 1740, 1936], "path": "4c3d109e6544" },
-    "sessionizer--features": { "ok": true, "sides": ["top", "bottom"], "points": [1850, 1900, 2450, 452], "path": "fb1c8371d8d1", "label": [2155.359235845433, 1163.0663774930213, 107, 19], "mode": "full", "text": "Update features", "lines": ["Update features"] },
-    "sessionizer--lake": { "ok": true, "sides": ["right", "left"], "points": [1960, 1936, 2760, 1943], "path": "e5e9e94e135f", "label": [2294.002526417429, 1938.9225221061524, 65, 19], "mode": "full", "text": "Sessions", "lines": ["Sessions"] },
-    "lake-sink--lake": { "ok": true, "sides": ["right", "left"], "points": [2560, 1943, 2760, 1929], "path": "8cbf224492cb", "label": [2713.868184225648, 1932.2292271042047, 59, 19], "mode": "full", "text": "Parquet", "lines": ["Parquet"] },
-    "airflow--dbt": { "ok": true, "sides": ["right", "left"], "points": [2560, 2056, 2760, 2056], "path": "d80e6287e70e", "label": [2654, 2056, 83, 19], "mode": "full", "text": "Nightly run", "lines": ["Nightly run"] },
-    "dbt--snowflake": { "ok": true, "sides": ["right", "left"], "points": [2980, 2056, 3280, 2316], "path": "0b3b3bd45cda", "label": [3125.4658655032613, 2182.070416769493, 83, 19], "mode": "full", "text": "Build marts", "lines": ["Build marts"] },
+    "sessionizer--features": { "ok": true, "sides": ["top", "bottom"], "points": [1850, 1900, 2450, 452], "path": "fb1c8371d8d1", "label": [2155.359235845433, 1163.0663774930213, 105.08999999999999, 22], "mode": "full", "text": "Update features", "lines": ["Update features"] },
+    "sessionizer--lake": { "ok": true, "sides": ["right", "left"], "points": [1960, 1936, 2760, 1943], "path": "e5e9e94e135f", "label": [2294.002526417429, 1938.9225221061524, 65.4, 22], "mode": "full", "text": "Sessions", "lines": ["Sessions"] },
+    "lake-sink--lake": { "ok": true, "sides": ["right", "left"], "points": [2560, 1943, 2760, 1929], "path": "8cbf224492cb", "label": [2654.0146461971503, 1936.4189747661994, 60.78, 22], "mode": "full", "text": "Parquet", "lines": ["Parquet"] },
+    "airflow--dbt": { "ok": true, "sides": ["right", "left"], "points": [2560, 2056, 2760, 2056], "path": "d80e6287e70e", "label": [2654, 2056, 77.07999999999998, 22], "mode": "full", "text": "Nightly run", "lines": ["Nightly run"] },
+    "dbt--snowflake": { "ok": true, "sides": ["right", "left"], "points": [2980, 2056, 3280, 2316], "path": "0b3b3bd45cda", "label": [3125.4658655032613, 2182.070416769493, 80.21, 22], "mode": "full", "text": "Build marts", "lines": ["Build marts"] },
     "snowflake--tableau": { "ok": true, "sides": ["right", "left"], "points": [3500, 2316, 3700, 2316], "path": "0ffbe68390e8" },
-    "payments--secrets": { "ok": true, "sides": ["right", "left"], "points": [2040, 1383, 3760, 1936], "path": "fe7f45287400", "label": [2722.926972703399, 1602.5689627354532, 93, 19], "mode": "full", "text": "Stripe key", "lines": ["Stripe key"], "glyph": true },
+    "payments--secrets": { "ok": true, "sides": ["right", "left"], "points": [2040, 1383, 3760, 1936], "path": "fe7f45287400", "label": [2722.926972703399, 1602.5689627354532, 87.28999999999999, 22], "mode": "full", "text": "Stripe key", "lines": ["Stripe key"], "glyph": true },
     "payments--roles": { "ok": true, "sides": ["right", "left"], "points": [2040, 1369, 4200, 1936], "path": "79a8d6ee9f8d", "label": [3114.1966142077235, 1650.9766112295274, 20, 20], "mode": "glyph", "text": "", "lines": [], "glyph": true },
-    "checkout-api--flags": { "ok": true, "sides": ["right", "left"], "points": [1580, 1034.5714285714287, 3760, 2056], "path": "b776a2464aed", "label": [2709.843328287313, 1563.9541151542785, 63, 19], "mode": "full", "text": "Flags", "lines": ["Flags"], "glyph": true },
+    "checkout-api--flags": { "ok": true, "sides": ["right", "left"], "points": [1580, 1034.5714285714287, 3760, 2056], "path": "b776a2464aed", "label": [2718.8986301707932, 1568.1969335334975, 62.75, 22], "mode": "full", "text": "Flags", "lines": ["Flags"], "glyph": true },
     "fulfilment--roles": { "ok": true, "sides": ["bottom", "top"], "points": [3870, 1172, 4310, 1900], "path": "06590087f2ab", "label": [4086.89644497765, 1530.8650271448387, 20, 20], "mode": "glyph", "text": "", "lines": [], "glyph": true },
     "checkout-api--datadog": { "ok": true, "sides": ["right", "left"], "points": [1580, 1012.2857142857143, 4640, 2003], "path": "f9464858bc16", "label": [3104.291723260131, 1505.7947292627923, 20, 20], "mode": "glyph", "text": "", "lines": [], "glyph": true },
     "fulfilment--datadog": { "ok": true, "sides": ["right", "left"], "points": [3980, 1143, 4640, 1989], "path": "25d7e0cc505e", "label": [4392.423578103887, 1671.6520410240732, 20, 20], "mode": "glyph", "text": "", "lines": [], "glyph": true },
     "argocd--checkout-api": { "ok": true, "sides": ["left", "right"], "points": [4200, 2056, 1580, 1027.142857142857], "path": "c69708c59edc", "label": [2895.5848198135172, 1543.764551379332, 20, 20], "mode": "glyph", "text": "", "lines": [], "glyph": true },
     "argocd--loyalty": { "ok": true, "sides": ["top", "bottom"], "points": [4310, 2020, 3877, 1292], "path": "ed889105bbd0", "label": [4096.567159532546, 1661.1567947798915, 20, 20], "mode": "glyph", "text": "", "lines": [], "glyph": true },
-    "dbt--lake": { "ok": true, "sides": ["top", "bottom"], "points": [2870, 2020, 2870, 1972], "path": "47f3b6818e1b", "label": [2870, 1999.16, 63, 19], "mode": "full", "text": "Reads", "lines": ["Reads"], "glyph": true }
+    "dbt--lake": { "ok": true, "sides": ["top", "bottom"], "points": [2870, 2020, 2870, 1972], "path": "47f3b6818e1b", "label": [2870, 1999.16, 67.55000000000001, 22], "mode": "full", "text": "Reads", "lines": ["Reads"], "glyph": true }
   }
 }

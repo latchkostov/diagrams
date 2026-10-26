@@ -158,7 +158,10 @@ export const CallPills = memo(
           aria-label={`${text} · ${title}`}
           data-testid={`call-pill-${id}`}
         >
-          <bdi>{text}</bdi>
+          <span className={`lv-pill-glyph${timedOut ? " is-loss" : ""}`} aria-hidden>
+            {timedOut ? "✕" : "↗"}
+          </span>{" "}
+          <bdi>{text.replace(/^[↗✕]\s*/, "")}</bdi>
         </span>
       );
     });

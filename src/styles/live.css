@@ -4057,3 +4057,55 @@ details[open] > summary .lv-disclosure-chevron {
     padding: 8px;
   }
 }
+
+/* Each Live badge has one meaning: loss, work completed, annotation or rate. */
+.lv-alert {
+  font-family: var(--font-ui);
+  font-stretch: 90%;
+  font-variant-numeric: tabular-nums;
+}
+.lv-alert.is-lost {
+  --status-down: #a52634;
+  background: var(--status-down);
+  color: #fff;
+}
+.lv-alert.is-processed {
+  background: var(--surface-3);
+  color: var(--text);
+  border: 1px solid var(--line);
+  box-shadow: none;
+}
+.lv-metric,
+.lv-metric .mono,
+.lv-call-pill,
+.lv-outcome {
+  font-family: var(--font-ui);
+  font-stretch: 90%;
+  font-variant-numeric: tabular-nums;
+}
+.lv-metric:not(.is-rate),
+.lv-metric.is-backlog.is-hot,
+.lv-call-pill.is-timeout,
+.lv-call-pill {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  color: var(--text-2);
+  box-shadow: none;
+  font-size: 11.5px;
+}
+.lv-metric.is-backlog.is-hot b {
+  color: var(--text-2);
+}
+.lv-pill-glyph {
+  color: var(--text-2);
+}
+.lv-pill-glyph.is-loss {
+  color: var(--status-down);
+}
+.canvas-view:not(.is-live) .fe:not(.fe-sync):not(.fe-dep):not(.is-selected) {
+  --fe-stroke: var(--dim-stroke);
+}
+.canvas-view:not(.is-live) .react-flow__edge .fe:not(.fe-sync):not(.fe-dep) .fe-path {
+  opacity: 1;
+  stroke-width: 2;
+}

@@ -24,6 +24,12 @@ for (const [width, height] of [
 
 test("changing badge text cannot prevent geometric convergence; text is still recorded", async ({ page }) => {
   await openExample(page, "aws-serverless-orders");
+  // This probe reads visible words: bring its subject into Focus before mutating the badge.
+  await page.keyboard.press("Control+k");
+  await page.getByTestId("command-input").fill("@Web shop");
+  await page.getByTestId("command-item-node:client").click();
+  await page.getByTestId("view-focus").click();
+  await settledCanvas(page);
   await page.getByTestId("rf__node-client").evaluate((node) => {
     const badge = document.createElement("span");
     badge.dataset.testid = "parity-changing-badge";
