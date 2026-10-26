@@ -36,13 +36,22 @@ export interface RepairRequest {
 export interface RepairPorts {
   editor: Pick<EditorApi, "getDiagram" | "setNodeProps" | "setEdgeProps" | "updateMeta">;
   /** Live's published session (planningHost) while Live is on; null when it's off. */
-  live: Pick<LiveUi, "controller" | "simulations" | "draft" | "saveSimulation" | "runDraft"> | null;
+  live: Pick<LiveUi, "controller" | "simulations" | "draft" | "saveSimulation" | "runDraft" | "editPanelCopy"> | null;
   /** Live is on, though its session may not have published yet. */
   liveOn: boolean;
 }
 
 /** done: nothing (more) to change. waiting: written, or not writable yet; ask again once Live republishes. */
 export type RepairResult = "done" | "waiting";
+
+/**
+ * A reference replay plays the run as designed: its saved capacity and traffic multipliers (Inputs & capacity's
+ * Save to simulation) back to ×1, so the reference sizes and rates are what plays. Pending Inputs end with the replay.
+ */
+export const REFERENCE_RUN: readonly PropPatch[] = [
+  { op: "set", path: ["multipliers", "capacity"], value: 1 },
+  { op: "set", path: ["multipliers", "traffic"], value: 1 },
+];
 
 /** The copy of a run the learner is working on. */
 interface RunCopy {
@@ -174,7 +183,11 @@ export function createRepairs() {
         continue;
       }
       if (!copy) continue;
-      const next = repairedRun(ports.editor.getDiagram(), copy.sim, request.target, request.patches);
+      const diagram = ports.editor.getDiagram();
+      const edit = (sim: Simulation) => repairedRun(diagram, sim, request.target, request.patches);
+      // The Simulations panel's working copy of this run gets the same merge, so its Run and Save keep the repair.
+      ports.live?.editPanelCopy?.(copy.sim.id, edit);
+      const next = edit(copy.sim);
       if (next !== copy.sim && persist(ports, copy, next, "keep") === "waiting") result = "waiting";
     }
     return result;
@@ -205,9 +218,16 @@ export function createRepairs() {
       if (ports.liveOn && !ports.live) return "waiting";
       const copy = resolve(ports, demo.id);
       if (inFlight(ports, demo.id, copy)) return "waiting";
-      const next = authoredSimulation(ports.editor.getDiagram(), copy?.sim, demo);
+      const diagram = ports.editor.getDiagram();
+      const next = authoredSimulation(diagram, copy?.sim, demo);
+      ports.live?.editPanelCopy?.(demo.id, (sim) => authoredSimulation(diagram, sim, demo) ?? sim);
       if (!next && !copy?.draft) return "done";
       return persist(ports, copy, next ?? copy!.sim, "save");
+    },
+
+    /** Before a reference replay of this run: its saved multipliers back to ×1 (REFERENCE_RUN), wherever it's kept. */
+    reference(ports: RepairPorts, run: string): RepairResult {
+      return runs(ports, { target: { run: true }, patches: REFERENCE_RUN, runs: [run] });
     },
 
     /** One of Live's what-if inputs, as the Inputs panel sets it (unsaved: Save to simulation keeps it). */

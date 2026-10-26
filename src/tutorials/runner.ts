@@ -62,8 +62,8 @@ export interface RunnerSnapshot {
 const live = new Set<Demo["kind"]>([
   // Repairs (./repair.ts) wait for Live's session to show their last write, and for its commands while it mounts.
   "patch",
-  "patchRun",
   "saveSimulation",
+  "runSimulation",
   "fault",
   "traffic",
   "trace",
@@ -442,11 +442,9 @@ export function createTutorialRunner(
         }
         return;
       }
-      case "patch":
-      case "patchRun": {
-        const id = demo.kind === "patchRun" ? undefined : demo.edge ? edge(demo.edge)?.id : subjects[demo.subject];
-        const target: RepairTarget | undefined =
-          demo.kind === "patchRun" ? { run: true } : id ? (demo.edge ? { edge: id } : { node: id }) : undefined;
+      case "patch": {
+        const id = demo.edge ? edge(demo.edge)?.id : subjects[demo.subject];
+        const target: RepairTarget | undefined = id ? (demo.edge ? { edge: id } : { node: id }) : undefined;
         // Not there (yet): nothing to repair, as for any edit of a missing subject.
         if (!target) return;
         return repairs.repair(repairPorts(), { target, patches: demo.patches, runs: demo.runs }) === "done";
@@ -473,6 +471,8 @@ export function createTutorialRunner(
         ed.addAnnotation(demo.annotation);
         return;
       case "runSimulation":
+        // A design study's reference replay plays its run as designed: saved multipliers back to ×1 first.
+        if (tutorial.study && repairs.reference(repairPorts(), demo.id) === "waiting") return false;
         host.runSimulation?.(demo.id);
         return;
       case "select": {

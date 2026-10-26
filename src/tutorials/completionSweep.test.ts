@@ -186,10 +186,22 @@ function sandbox(tutorial: Tutorial, { lateAdds = false, lateConnects = false, l
    * ends a draft of that id; selecting a run prefers the draft of that id. Nothing else writes the session.
    */
   let draft: Simulation | null = null;
+  /** The Simulations panel's working copy (SimPanel's local state), while it's open on a run. */
+  let panelCopy: Simulation | null = null;
   let liveSync: LiveSync | undefined;
   const session = {
     get draft() {
       return draft;
+    },
+    get panelCopy() {
+      return panelCopy;
+    },
+    openPanel(sim: Simulation | null) {
+      panelCopy = sim && structuredClone(sim);
+    },
+    /** The panel's own edit command, as SimPanel registers it: only the run it shows. */
+    editPanelCopy(id: string, edit: (sim: Simulation) => Simulation) {
+      if (panelCopy?.id === id) panelCopy = edit(panelCopy);
     },
     selectSimulation(id: string | null) {
       const c = controller!;
@@ -235,6 +247,7 @@ function sandbox(tutorial: Tutorial, { lateAdds = false, lateConnects = false, l
       draft,
       saveSimulation: session.saveSimulation,
       runDraft: session.runDraft,
+      editPanelCopy: session.editPanelCopy,
       ...panels,
       events: { ...panels.events },
       openCapacity: (open = true) => {
@@ -397,8 +410,9 @@ function sandbox(tutorial: Tutorial, { lateAdds = false, lateConnects = false, l
     offController?.();
     controller?.dispose();
     controller = undefined;
-    // The session's draft goes with it, as LiveSession unmounts.
+    // The session's draft and panel go with it, as LiveSession unmounts.
     draft = null;
+    panelCopy = null;
     liveSync = undefined;
     notify();
   };
@@ -751,13 +765,6 @@ function sandbox(tutorial: Tutorial, { lateAdds = false, lateConnects = false, l
           const target = demo.edge ? edge(demo.edge) : diagram.nodes.find((n) => n.id === id(demo.subject))!;
           const changed = patchProps(target.props, demo.patches) ?? {};
           return demo.edge ? editor.setEdgeProps(target.id, changed) : editor.setNodeProps(target.id, changed);
-        }
-        case "patchRun": {
-          // As the Inputs panel's Save to simulation would leave it: the run's own multipliers, in the document.
-          const simulations = diagram.simulations?.map((sim) =>
-            demo.runs.includes(sim.id) ? repairedRun(diagram, sim, { run: true }, demo.patches) : sim,
-          );
-          return simulations?.some((sim, i) => sim !== diagram.simulations![i]) && editor.updateMeta({ simulations });
         }
         case "relation":
           return patchEdge(edge([demo.from, demo.to]).id, {
@@ -1335,14 +1342,16 @@ it("effective property fixture observes inspector edits without a document prope
 });
 
 /** A step's run repairs (src/tutorials/repair.ts): its patch demos that name runs, and its run-setting patches. */
-type RunRepair = Extract<Demo, { kind: "patch" | "patchRun" }>;
+type RunRepair = Extract<Demo, { kind: "patch" }>;
 const runRepairs = (step: TutorialStep): RunRepair[] =>
-  step.demo.filter((d): d is RunRepair => d.kind === "patchRun" || (d.kind === "patch" && !!d.runs?.length));
+  step.demo.filter((d): d is RunRepair => d.kind === "patch" && !!d.runs?.length);
 /** The saved run a step's repairs name first: the one its perturbations override. */
 const repairedRunId = (step: TutorialStep) =>
   runRepairs(step)
     .flatMap((d) => d.runs ?? [])
     .find((run): run is string => typeof run === "string");
+/** The saved run a step's Skip replays as its reference, if any. */
+const replayedRunId = (step: TutorialStep) => step.demo.flatMap((d) => (d.kind === "runSimulation" ? [d.id] : []))[0];
 const coversRun = (demo: RunRepair, id: string, selected: string | undefined) =>
   (demo.runs ?? []).some((run) => (typeof run === "string" ? run === id : run.selected && selected === id));
 
@@ -1370,7 +1379,6 @@ function contrary(patch: PropPatch): PropPatch {
 
 /** The repair's target in this sandbox: a node or connection by its subjects, or the run itself. */
 function repairTarget(s: Sandbox, demo: RunRepair): RepairTarget {
-  if (demo.kind === "patchRun") return { run: true };
   if (demo.subject) return { node: s.subject(demo.subject) };
   const [from, to] = demo.edge!.map((name) => s.subject(name));
   return { edge: s.diagram.edges.find((e) => e.from === from && e.to === to)!.id };
@@ -1429,13 +1437,10 @@ describe("every tutorial's completion contract", () => {
           "clear selection",
           "single node",
           "extra subject-type node",
-          ...(runRepairs(step).some((d) => d.kind === "patchRun" || d.subject) && repairedRunId(step)
-            ? ["learner edited saved Inputs"]
-            : []),
-          ...(runRepairs(step).some((d) => d.kind === "patch" && d.edge) && repairedRunId(step)
-            ? ["saved override changed"]
-            : []),
+          ...(runRepairs(step).some((d) => d.subject) && repairedRunId(step) ? ["learner edited saved Inputs"] : []),
+          ...(runRepairs(step).some((d) => d.edge) && repairedRunId(step) ? ["saved override changed"] : []),
           ...(repairedRunId(step) ? ["learner has an unsaved draft of the target simulation"] : []),
+          ...(tutorial.study && replayedRunId(step) ? ["saved Capacity ×0.25 before the reference replay"] : []),
           ...(tutorial.id === "study-fanout" && step.demo.some((demo) => demo.kind === "insert")
             ? ["learner disconnected a channel queue"]
             : []),
@@ -1453,12 +1458,11 @@ describe("every tutorial's completion contract", () => {
               s.learn({ kind: "runSimulation", id: run! });
               const live = s.live!;
               for (const demo of runRepairs(step)) {
-                if (demo.kind === "patch" && demo.edge) continue;
+                if (demo.edge) continue;
                 const target = repairTarget(s, demo);
                 const bad = spoiled(s.diagram, savedBefore!, target, demo.patches);
                 const inputs = live.getState().inputs;
-                if ("run" in target) live.setInputs({ ...inputs, capacity: bad.multipliers!.capacity });
-                else if ("node" in target)
+                if ("node" in target)
                   live.setInputs({
                     ...inputs,
                     props: {
@@ -1473,7 +1477,7 @@ describe("every tutorial's completion contract", () => {
               // Through the Live inspector, which writes the selected saved run's own caller settings.
               s.learn({ kind: "runSimulation", id: run! });
               for (const demo of runRepairs(step)) {
-                if (demo.kind !== "patch" || !demo.edge) continue;
+                if (!demo.edge) continue;
                 const target = repairTarget(s, demo) as { edge: string };
                 const sim = s.diagram.simulations!.find((x) => x.id === run)!;
                 const caller = spoiled(s.diagram, sim, target, demo.patches).setup!.edges![target.edge].caller;
@@ -1492,7 +1496,18 @@ describe("every tutorial's completion contract", () => {
                 if (coversRun(demo, run!, run)) draft = spoiled(s.diagram, draft, repairTarget(s, demo), demo.patches);
               s.session.runDraft(draft);
               expect(s.session.draft).toBe(draft);
+              // The Simulations panel stays open on it, with one more edit not yet Run.
+              s.session.openPanel({ ...draft, description: "Pending" } as Simulation);
               await new Promise<void>((done) => queueMicrotask(done));
+            } else if (perturbation === "saved Capacity ×0.25 before the reference replay") {
+              // Inputs & capacity › Capacity ×0.25, Save to simulation, on the run this step's Skip replays.
+              s.learn({ kind: "runSimulation", id: replayedRunId(step)! });
+              s.live!.setInputs({ ...s.live!.getState().inputs, capacity: 0.25 });
+              s.saveInputs();
+              await new Promise<void>((done) => queueMicrotask(done));
+              expect(s.diagram.simulations!.find((sim) => sim.id === replayedRunId(step))!.multipliers!.capacity).toBe(
+                0.25,
+              );
             } else if (perturbation === "clear selection") s.editor.clearSelection();
             else if (perturbation === "single node") {
               // Empty lessons get a real node too, rather than silently repeating deselection.
@@ -1553,6 +1568,14 @@ describe("every tutorial's completion contract", () => {
               expect(copy).toMatchObject({ id: run, title: "Learner draft", seed: 4242 });
               expectRepaired(s, step, copy, run);
               expect(s.diagram.simulations!.find((sim) => sim.id === run)).toEqual(savedBefore);
+              // The open panel's copy got the same repair, its pending edit kept: its Run and Save keep the repair.
+              expect(s.session.panelCopy).toMatchObject({ id: run, title: "Learner draft", description: "Pending" });
+              expectRepaired(s, step, s.session.panelCopy!, run);
+            } else if (perturbation === "saved Capacity ×0.25 before the reference replay") {
+              // The reference replay played the run as designed: its saved capacity back to ×1.
+              expect(s.diagram.simulations!.find((sim) => sim.id === replayedRunId(step))!.multipliers!.capacity).toBe(
+                1,
+              );
             } else if (perturbation === "learner edited saved Inputs" || perturbation === "saved override changed")
               expectRepaired(
                 s,
@@ -1635,15 +1658,13 @@ describe("every tutorial's completion contract", () => {
             const spoiledStart = startOf(tutorial);
             const subjects = resolveSubjects(tutorial, spoiledStart);
             const named = (d: RunRepair): Partial<Record<"node" | "edge", string | undefined>> | { run: true } =>
-              d.kind === "patchRun"
-                ? { run: true }
-                : d.subject
-                  ? { node: subjects[d.subject] }
-                  : {
-                      edge: spoiledStart.edges.find(
-                        (e) => e.from === subjects[d.edge![0]] && e.to === subjects[d.edge![1]],
-                      )?.id,
-                    };
+              d.subject
+                ? { node: subjects[d.subject] }
+                : {
+                    edge: spoiledStart.edges.find(
+                      (e) => e.from === subjects[d.edge![0]] && e.to === subjects[d.edge![1]],
+                    )?.id,
+                  };
             spoiledStart.simulations = spoiledStart.simulations?.map((sim) => {
               if (sim.id !== run) return sim;
               let next = sim;
@@ -1936,9 +1957,9 @@ describe("completion regressions", () => {
     });
     await skip(s, studyDispatch);
     expect(state(s).value).toBe("finished");
-    // Only the capacity multiplier is normalized: the learner's traffic multiplier stays.
+    // The reference replay plays the run as designed: both saved multipliers back to ×1, the run otherwise as saved.
     expect(s.diagram.simulations!.find((sim) => sim.id === "more-partitions")!.multipliers).toEqual({
-      traffic: 1.5,
+      traffic: 1,
       capacity: 1,
     });
     expect(s.live!.getState().snapshot.nodes.dispatcher.replicas).toBe(4);

@@ -675,7 +675,7 @@ test("study-payments: Skip repairs a new simulation run in place, leaving it the
   expectNoErrors(consoleErrors);
 });
 
-test("study-payments: brownout Skip repairs overridden draft settings, leaving the saved run's own", async ({
+test("study-payments: brownout Skip repairs overridden draft settings, through the open panel's Run again and Save", async ({
   page,
   consoleErrors,
 }) => {
@@ -721,9 +721,24 @@ test("study-payments: brownout Skip repairs overridden draft settings, leaving t
   await expect(page.getByTestId("sim-panel-dirty")).toBeVisible();
   // The saved run keeps the learner's own overrides: Skip repaired their draft, not the run they saved.
   expect(await savedCaller()).toMatchObject({ deadlineMs: 1000, breaker: null });
+  // The open panel's copy has the repair too: its Run again plays it, and reselecting keeps it.
+  const brownout = () => page.evaluate(() => window.__tutorial?.snapshot().state.observed[1]);
+  const draftCaller = () =>
+    page.evaluate(() => window.__tutorial?.runs().draft?.setup?.edges?.["payments-psp"]?.caller);
+  await page.getByTestId("sim-panel-run").click();
+  await expect.poll(draftCaller).toMatchObject({ deadlineMs: 250, breaker: {} });
+  await page.getByTestId("live-sim-picker").selectOption("poison-disputes");
+  await expect.poll(brownout).toBe(false);
+  await page.getByTestId("live-sim-picker").selectOption("psp-brownout");
+  await expect.poll(brownout, { timeout: 15_000 }).toBe(true);
+  // And its Save saves it: the learner's title with the repaired deadline and breaker.
+  await page.getByTestId("sim-panel-save").click();
+  await expect(page.getByTestId("sim-panel-dirty")).toBeHidden();
+  await expect.poll(savedCaller).toMatchObject({ deadlineMs: 250, breaker: {} });
   expect(
     await page.evaluate(() => window.__tutorial?.runs().saved.find((sim) => sim.id === "psp-brownout")?.title),
-  ).not.toBe("My overridden brownout");
+  ).toBe("My overridden brownout");
+  expect(await page.evaluate(() => window.__tutorial?.runs().draft)).toBeNull();
   expectNoErrors(consoleErrors);
 });
 

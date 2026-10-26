@@ -177,6 +177,32 @@ describe("createRepairs", () => {
     expect(live.runDraft).toHaveBeenCalledOnce();
   });
 
+  it("gives the open panel's working copy the same merge, keeping its pending edits", () => {
+    const d = diagram();
+    const saved = overridden(d.simulations![0]);
+    d.simulations = [saved];
+    let panel: Simulation = { ...saved, title: "Pending title" };
+    const live = {
+      draft: null,
+      simulations: d.simulations,
+      controller: { getState: () => ({ simulation: null }) } as never,
+      runDraft: vi.fn(),
+      saveSimulation: vi.fn(() => true),
+      editPanelCopy: vi.fn((id: string, edit: (sim: Simulation) => Simulation) => {
+        if (panel.id === id) panel = edit(panel);
+      }),
+    };
+    createRepairs().repair(ports(d, live), patch);
+    expect(panel).toEqual({ ...saved, title: "Pending title", setup: { props: { api: { replicas: 4 } } } });
+  });
+
+  it("puts a run's saved multipliers back to ×1 before a reference replay", () => {
+    const d = diagram();
+    d.simulations = [{ ...d.simulations![0], multipliers: { traffic: 2, capacity: 0.25 } }];
+    expect(createRepairs().reference(ports(d), "run")).toBe("done");
+    expect(d.simulations[0].multipliers).toEqual({ traffic: 1, capacity: 1 });
+  });
+
   it("waits for Live's session while it mounts", () => {
     const d = diagram();
     const p = { ...ports(d), liveOn: true };

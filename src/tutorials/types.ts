@@ -207,8 +207,6 @@ export type Demo =
    * still overridden are merged into it (src/tutorials/repair.ts).
    */
   | ({ kind: "patch"; patches: readonly PropPatch[]; runs?: readonly RunRef[] } & PropertyTarget)
-  /** Edit-preserving edits to runs' own settings (their saved multipliers): `["multipliers", "capacity"]`. */
-  | { kind: "patchRun"; runs: readonly [RunRef, ...RunRef[]]; patches: readonly PropPatch[] }
   | { kind: "relation"; from: string; to: string; relation: EdgeRelation; edgeKind?: "sync" | "async" }
   | { kind: "group"; subjects: readonly string[]; boundary: string }
   | { kind: "annotate"; annotation: AnnotationKind }

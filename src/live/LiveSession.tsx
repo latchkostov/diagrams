@@ -170,6 +170,19 @@ export function LiveSession({
     latestSave.current = saveSimulation;
   }, [saveSimulation]);
   const saveFromOutside = useCallback((sim: Simulation) => latestSave.current(sim), []);
+  // The open panel's own edit command (SimPanel registers it), and the copy set aside while it's closed.
+  const panelEdit = useRef<((id: string, edit: (sim: Simulation) => Simulation) => void) | null>(null);
+  const takePanelEdit = useCallback((command: typeof panelEdit.current) => {
+    panelEdit.current = command;
+  }, []);
+  const editPanelCopy = useCallback(
+    (id: string, edit: (sim: Simulation) => Simulation) => {
+      panelEdit.current?.(id, edit);
+      const kept = suspendedPanelRef.current;
+      if (kept?.sim?.id === id) suspendedPanelRef.current = { sim: edit(kept.sim) };
+    },
+    [suspendedPanelRef],
+  );
 
   const { rec, dispatchRec, capturing } = useLiveRecordingState();
   const [Recorder, setRecorder] = useState<RecorderView | null>(null);
@@ -262,6 +275,7 @@ export function LiveSession({
       selectSimulation,
       saveSimulation: editor ? saveFromOutside : undefined,
       runDraft: editor ? runDraft : undefined,
+      editPanelCopy: editor ? editPanelCopy : undefined,
       openPanel: (sim) => {
         // The live bar passes the active run; restore its working copy unless another run was chosen.
         const kept = suspendedPanelRef.current;
@@ -302,6 +316,7 @@ export function LiveSession({
       selectSimulation,
       saveFromOutside,
       runDraft,
+      editPanelCopy,
       panel.open,
       capacityOpen,
       openCapacity,
@@ -460,6 +475,7 @@ export function LiveSession({
             key={panel.sim?.id ?? "picker"}
             initial={panel.sim}
             onDraftChange={takePanelDraft}
+            onEditCommand={takePanelEdit}
             state={state}
             onClose={() => setPanel({ open: false, kind: "sims", sim: null })}
             onRun={runDraft}

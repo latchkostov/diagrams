@@ -457,15 +457,10 @@ describe("tutorial catalog", () => {
               expect(earlier?.sticky, `${step.id}: the Fault it clears is set by a sticky step first`).toBe(true);
             }
           for (const demo of step.demo) {
-            if (demo.kind !== "patch" && demo.kind !== "patchRun") continue;
+            if (demo.kind !== "patch") continue;
             expect(demo.patches.length, `${step.id}: a patch with nothing in it`).toBeGreaterThan(0);
-            // A run can override only a connection's caller fields, a node's props and its own multipliers.
-            if (demo.kind === "patchRun")
-              expect(
-                demo.patches.every((patch) => patch.path[0] === "multipliers" && typeof patch.path[1] === "string"),
-                `${step.id}: a run patch edits the run's multipliers`,
-              ).toBe(true);
-            else if (demo.runs && demo.edge)
+            // A run can override only a connection's caller fields and a node's props.
+            if (demo.runs && demo.edge)
               expect(
                 demo.patches.every((patch) => patch.path[0] === "caller" && typeof patch.path[1] === "string"),
                 `${step.id}: a connection's run repair edits caller fields`,
@@ -491,12 +486,7 @@ describe("tutorial catalog", () => {
         const known = new Set((tutorial.start().simulations ?? []).map((sim) => sim.id));
         for (const step of tutorial.steps) {
           for (const demo of step.demo) {
-            if (
-              demo.kind === "runSimulation" ||
-              demo.kind === "continueNote" ||
-              demo.kind === "patch" ||
-              demo.kind === "patchRun"
-            ) {
+            if (demo.kind === "runSimulation" || demo.kind === "continueNote" || demo.kind === "patch") {
               const ids =
                 demo.kind === "runSimulation"
                   ? [demo.id]

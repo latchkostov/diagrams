@@ -44,6 +44,11 @@ interface Props {
   onOpen?: (sim: Simulation) => void;
   /** Retain the working copy when the inspector temporarily takes this panel's place. */
   onDraftChange?: (sim: Simulation | null) => void;
+  /**
+   * The working copy's own edit command, for a change made outside the panel to the run it shows (a tutorial's
+   * repair): `edit` gets the copy with the learner's pending edits and returns it changed. Run and Save are unchanged.
+   */
+  onEditCommand?: (command: ((id: string, edit: (sim: Simulation) => Simulation) => void) | null) => void;
 }
 
 type Picker = { label: string; apply: (nodeId: string) => void } | null;
@@ -137,13 +142,29 @@ const num = (v: string) => (v.trim() === "" ? 0 : Number(v));
  * Right-side drawer to create and edit the diagram's saved simulations. Edits a working copy;
  * Save writes it through the editor (one undo step) and Run plays it immediately, saved or not.
  */
-export function SimPanel({ initial, state, onClose, onRun, onSave, onDelete, onOpen, onDraftChange, opener }: Props) {
+export function SimPanel({
+  initial,
+  state,
+  onClose,
+  onRun,
+  onSave,
+  onDelete,
+  onOpen,
+  onDraftChange,
+  onEditCommand,
+  opener,
+}: Props) {
   useLocale();
   const ui = useLive();
   const interaction = useInteraction();
   const diagram = ui.diagram();
   const [sim, setSim] = useState<Simulation | null>(() => (initial ? structuredClone(initial) : null));
   useLayoutEffect(() => onDraftChange?.(sim), [sim, onDraftChange]);
+  useLayoutEffect(() => {
+    if (!onEditCommand) return;
+    onEditCommand((id, edit) => setSim((s) => (s?.id === id ? edit(s) : s)));
+    return () => onEditCommand(null);
+  }, [onEditCommand]);
   const [picker, setPicker] = useState<Picker>(null);
   const saved = sim ? ui.simulations.find((s) => s.id === sim.id) : undefined;
   const dirty = !!sim && (!saved || JSON.stringify(saved) !== JSON.stringify(sim));

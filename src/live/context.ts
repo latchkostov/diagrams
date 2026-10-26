@@ -25,6 +25,11 @@ export interface LiveUi {
    */
   saveSimulation?(sim: Simulation): boolean | undefined;
   runDraft?(sim: Simulation): void;
+  /**
+   * Edits the Simulations panel's working copy of this run, open or set aside, keeping its pending edits: so a change
+   * made outside the panel (a tutorial's repair) is in what its Run and Save submit next. Nothing when it shows another.
+   */
+  editPanelCopy?(id: string, edit: (sim: Simulation) => Simulation): void;
   openPanel(sim?: Simulation): void;
   panelOpen: boolean;
   /** The Inputs & capacity panel. */
