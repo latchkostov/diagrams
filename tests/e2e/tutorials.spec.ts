@@ -124,7 +124,24 @@ async function play(page: Page, step: ResolvedUiStep) {
       await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 16 });
       await page.mouse.up();
     } else await page.getByTestId(step.drag).dragTo(page.getByTestId(step.to));
-  } else await page.keyboard.press(step.press);
+  } else {
+    if (/^Control\+Alt\+[[\]]$/.test(step.press)) {
+      // Connection navigation leaves from the focused node. After a quick-add, focus reaches the new (selected) node a
+      // frame after its naming ends; pressed sooner, the keys leave from the node before it (CI: study-fanout's push
+      // dead-letter queue).
+      await waitForCameraIdle(page);
+      await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-interaction-state", "idle");
+      await expect
+        .poll(() =>
+          page.evaluate(() => {
+            const node = document.activeElement?.closest(".react-flow__node");
+            return !node || node.classList.contains("selected");
+          }),
+        )
+        .toBe(true);
+    }
+    await page.keyboard.press(step.press);
+  }
 }
 
 const quarantineReason = "quarantined: see docs/backlog/2026-10-24-tutorials-quarantine.md";
