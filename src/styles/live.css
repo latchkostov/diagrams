@@ -3985,7 +3985,7 @@ details[open] > summary .lv-disclosure-chevron {
     z-index: 1;
   }
   [data-theme="dark"] .lv-note-scrim {
-    background: rgb(0 0 0 / 45%);
+    background: rgb(0 0 0 / 27%);
   }
   .frame-detail {
     z-index: 7;
@@ -4108,4 +4108,45 @@ details[open] > summary .lv-disclosure-chevron {
 .canvas-view:not(.is-live) .react-flow__edge .fe:not(.fe-sync):not(.fe-dep) .fe-path {
   opacity: 1;
   stroke-width: 2;
+}
+
+/* Readout type is never a code face; it remains full strength in the dock. */
+.hover-status {
+  font-size: 12px;
+}
+.inspector .readout-row strong,
+.inspector .readout-row > span:first-child {
+  font-size: 13px;
+}
+.inspector .readout-row small,
+.inspector .readout-row small bdi {
+  font-size: 12px;
+  color: var(--text-2);
+}
+.inspector .readout-row > span:last-child {
+  font-size: 15px;
+  color: var(--text-2);
+}
+.inspector-live-outcomes dt,
+.inspector-live-outcomes dd,
+[data-testid="node-outcomes-scope"] {
+  font-size: 13px;
+}
+.inspector-live-outcomes dd {
+  font-family: var(--font-ui);
+  font-variant-numeric: tabular-nums;
+}
+.run-chart svg text {
+  font-size: 11px;
+}
+.run-chart-head strong,
+.lv-clock {
+  font-stretch: var(--stretch-wide);
+}
+
+.lv-pill-glyph.is-retry {
+  color: var(--warning);
+}
+.dock-live-status .hover-status {
+  white-space: nowrap;
 }

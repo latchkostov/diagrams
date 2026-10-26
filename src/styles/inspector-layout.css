@@ -743,3 +743,22 @@
 .inspector .insp-body {
   scroll-padding-block-start: 44px;
 }
+
+.inspector .readout-disclosure > summary > .readout-summary,
+.inspector .insp-note,
+.inspector [data-testid="planning-unavailable"],
+.inspector [data-testid="planning-capacity-formula"] {
+  color: var(--text-2);
+}
+.inspector .readout-disclosure > summary > .readout-summary {
+  font-size: 12px;
+}
+@container inspector (min-width: 330px) {
+  .inspector div.insp-field:has(.md-editor) {
+    display: grid;
+    grid-template-columns: var(--c-label) minmax(0, 1fr);
+    column-gap: var(--c-gutter);
+    align-items: start;
+    max-inline-size: none;
+  }
+}

@@ -93,3 +93,13 @@ it("call annotations keep a pale pill and a separate loss glyph", () => {
   expect(flight).not.toContain("<bdi>↗");
   expect(flight).not.toContain("is-loss");
 });
+
+it("colours the retry glyph independently from the pale annotation words", () => {
+  const html = renderToStaticMarkup(
+    <CallPills
+      calls={[{ id: "call", held: 0, inFlight: 1, windowRequests: 10, windowAttempts: 23, windowRetried: 10 }]}
+    />,
+  );
+  expect(html).toContain('class="lv-pill-glyph is-retry"');
+  expect(html).toContain(">↻</span>");
+});

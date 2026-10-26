@@ -598,3 +598,20 @@ div.check-row-head {
   left: 0;
   direction: ltr;
 }
+
+.check-row,
+.checks-counts,
+.check-marker-group button {
+  font-variant-numeric: tabular-nums;
+}
+.check-row-title {
+  font-stretch: var(--stretch-wide);
+}
+.check-count-ink {
+  font-size: 11.5px;
+  font-weight: 700;
+  gap: 3px;
+}
+.check-count-ink svg {
+  color: var(--tag-line);
+}

@@ -18,6 +18,14 @@ export async function openDiagramProperties(page: Page) {
   await expect(page.getByTestId("inspector-field-title")).toBeVisible();
 }
 
+/** Live Properties may already be expanded by a context-menu naming request. */
+export async function openEditProperties(page: Page) {
+  const button = page.getByTestId("dock-edit-properties");
+  if ((await button.getAttribute("aria-expanded")) !== "true") await button.click();
+  await expect(button).toHaveAttribute("aria-expanded", "true");
+  await expect(page.getByTestId("inspector-field-label")).toBeVisible();
+}
+
 /** Numbered findings disclose their controls only after the row is selected. */
 export async function openCheckFinding(page: Page, id: string) {
   const head = page.getByTestId(`check-select-${id}`).or(page.getByTestId(`check-open-${id}`));

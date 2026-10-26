@@ -1396,3 +1396,25 @@ kbd {
 .mode-switch button[aria-busy="true"] {
   cursor: progress;
 }
+
+/* Workbench, latest round 6: chrome numbers share the UI face and width axis. */
+.topbar,
+.toast {
+  font-variant-numeric: tabular-nums;
+}
+@media (max-width: 639px) {
+  .topbar:has(.diagram-picker) {
+    flex-wrap: nowrap;
+    height: 52px;
+    padding: 0 8px;
+    gap: 4px;
+  }
+  .topbar .brand {
+    display: flex;
+  }
+  .topbar .diagram-picker {
+    order: 0;
+    min-width: 0;
+    max-width: none;
+  }
+}

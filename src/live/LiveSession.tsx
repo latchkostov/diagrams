@@ -1,3 +1,4 @@
+import { narrationSubject } from "./narrationSubject";
 import { defineLazySurface } from "../lib/lazySurface";
 import { createPortal } from "react-dom";
 import { activateDock } from "../canvas/inspector/dockActions";
@@ -263,9 +264,10 @@ export function LiveSession({
     saveInputs,
   } = fixes;
 
+  const noteSubject = narrationSubject(troubleOnScreen, controller.currentDiagram);
   useEffect(() => {
-    camera.dispatch({ type: "narration.subject", id: troubleOnScreen?.node });
-  }, [camera, troubleOnScreen?.node]);
+    camera.dispatch({ type: "narration.subject", id: noteSubject });
+  }, [camera, noteSubject]);
   const { addEntry } = useCapacityEntry({ session, editor, store, camera, interaction });
 
   useLiveContextMenu({
@@ -481,7 +483,7 @@ export function LiveSession({
         {slow.state.status !== "on" &&
           (state.run?.note || state.run?.done) &&
           (caption && !presenting ? (
-            createPortal(<NoteCallout state={state} docked subject={troubleOnScreen?.node} />, caption)
+            createPortal(<NoteCallout state={state} docked subject={noteSubject} />, caption)
           ) : (
             <NoteCallout state={state} />
           ))}

@@ -915,3 +915,56 @@ button.message-type-chip {
   border-radius: 0;
   box-shadow: none;
 }
+
+/* Text controls use the same ground, type and chevron in both themes. */
+.inspector select.insp-input,
+.inspector .insp-body select {
+  appearance: none;
+  height: 28px;
+  padding-block: 0;
+  padding-inline: 9px 28px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background-color: var(--surface-2);
+  color: var(--text);
+  font: 450 13px var(--font-ui);
+  font-variant-numeric: tabular-nums;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%235f6673' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 9px center;
+}
+[data-theme="dark"] .inspector .insp-body select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239aa1ae' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+}
+[dir="rtl"] .inspector .insp-body select {
+  background-position: left 9px center;
+}
+.inspector .insp-input,
+.inspector .insp-input::placeholder,
+.inspector .insp-unit {
+  font-family: var(--font-ui);
+  font-variant-numeric: tabular-nums;
+}
+.inspector .insp-input {
+  color: var(--text);
+}
+.inspector .insp-input.mono:not([type="number"]):is(.insp-settings),
+.inspector .insp-prop .insp-input.mono {
+  font-family: var(--font-mono);
+}
+.inspector .insp-unit {
+  font-size: 12px;
+  color: var(--text-2);
+  right: auto;
+  inset-inline-end: 9px;
+}
+.inspector .insp-unit-wrap input::placeholder {
+  color: var(--text);
+  opacity: 1;
+}
+.inspector textarea.insp-input::placeholder {
+  color: var(--text-3);
+}
+.dock-tab-count {
+  font-size: 11px;
+}

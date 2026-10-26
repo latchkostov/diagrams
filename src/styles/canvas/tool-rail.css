@@ -270,3 +270,11 @@
     color: var(--accent);
   }
 }
+
+.tool-rail button {
+  font-size: 12px;
+  font-stretch: 92%;
+}
+.tool-rail-badge {
+  min-height: 18px;
+}

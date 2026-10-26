@@ -13,6 +13,7 @@ import {
   currentDiagram,
   expectNoErrors,
   waitForStableViewport,
+  waitForCameraIdle,
   fitDiagram,
   STORAGE_KEYS,
   savedDiagram,
@@ -45,6 +46,8 @@ const row = (page: Page, id: string) => page.getByTestId(`check-row-${id}`);
 async function openFromCount(page: Page) {
   await page.getByTestId("checks-count").click();
   await expect(card(page)).toBeVisible();
+  // Checks now occupies the dock: finish its resize/refit before exercising actions.
+  await waitForCameraIdle(page);
 }
 
 test.describe("the count under the title", () => {

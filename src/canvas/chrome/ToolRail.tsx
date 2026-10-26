@@ -27,7 +27,7 @@ export function ToolRail({ view, onView }: { view: View; onView: (view: View) =>
   );
   const documentId = useSyncExternalStore(paletteHost.subscribe, () => paletteHost.get().canvas?.documentId);
   const fresh = useUnseen(documentId);
-  const nav = useRef<HTMLElement>(null);
+  const nav = useRef<HTMLDivElement>(null);
   const [focused, setFocused] = useState(view === "canvas" ? "rail-select" : "view-canvas");
   const item = (
     id: string,
@@ -50,9 +50,26 @@ export function ToolRail({ view, onView }: { view: View; onView: (view: View) =>
       tabIndex={focused === id ? 0 : -1}
       disabled={disabled}
       onFocus={() => setFocused(id)}
+      onClick={run}
+      {...(id === "rail-add" ? { draggable: true, onDragStart: () => tools.open("library") } : {})}
+    >
+      <Icon name={icon} size={20} />
+      <span className="tool-rail-label">{label}</span>
+      {extra}
+    </button>
+  );
+  return (
+    <div
+      role="toolbar"
+      className="tool-rail"
+      aria-label={t("workbench.tools")}
+      ref={nav}
+      data-testid="tool-rail"
       onKeyDown={(e) => {
-        const buttons = [...(nav.current?.querySelectorAll<HTMLButtonElement>("button:not(:disabled)") ?? [])];
-        const index = buttons.indexOf(document.activeElement as HTMLButtonElement);
+        const buttons = [
+          ...(nav.current?.querySelectorAll<HTMLElement>("button:not(:disabled), summary") ?? []),
+        ].filter((el) => el.getClientRects().length > 0);
+        const index = buttons.indexOf(document.activeElement as HTMLElement);
         const rtl = document.documentElement.dir === "rtl";
         const next = e.key === "ArrowDown" || e.key === (rtl ? "ArrowLeft" : "ArrowRight");
         const previous = e.key === "ArrowUp" || e.key === (rtl ? "ArrowRight" : "ArrowLeft");
@@ -71,16 +88,7 @@ export function ToolRail({ view, onView }: { view: View; onView: (view: View) =>
           buttons[at]?.focus();
         }
       }}
-      onClick={run}
-      {...(id === "rail-add" ? { draggable: true, onDragStart: () => tools.open("library") } : {})}
     >
-      <Icon name={icon} size={20} />
-      <span className="tool-rail-label">{label}</span>
-      {extra}
-    </button>
-  );
-  return (
-    <nav className="tool-rail" aria-label={t("workbench.tools")} ref={nav} data-testid="tool-rail">
       {view !== "canvas" && item("view-canvas", t("topbar.diagram"), "canvas", () => onView("canvas"))}
       {item(
         "rail-select",
@@ -132,7 +140,12 @@ export function ToolRail({ view, onView }: { view: View; onView: (view: View) =>
         t("workbench.checksName", { warnings: t("workbench.warnings", { count: warnings }) }),
       )}
       <details className="rail-overflow" open={phone ? undefined : true}>
-        <summary data-testid="rail-more" aria-label={t("workbench.moreTools")}>
+        <summary
+          data-testid="rail-more"
+          aria-label={t("workbench.moreTools")}
+          tabIndex={focused === "rail-more" ? 0 : -1}
+          onFocus={() => setFocused("rail-more")}
+        >
           ⋯
         </summary>
         <div className="rail-overflow-items">
@@ -166,6 +179,6 @@ export function ToolRail({ view, onView }: { view: View; onView: (view: View) =>
             )}
         </div>
       </details>
-    </nav>
+    </div>
   );
 }

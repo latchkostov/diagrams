@@ -33,6 +33,8 @@ export function NoteCallout({
   const phone = usePhone();
   const [expanded, setExpanded] = useState(false);
   const expandRef = useRef<HTMLButtonElement>(null);
+  const closeRef = useRef<HTMLButtonElement>(null);
+  const restoreNoteFocus = useRef(false);
   const interaction = useInteraction();
   const result = runEndResult(state, ui.controller.currentDiagram);
   const note = result ? { text: result, focus: [], atMs: state.run!.time } : state.run?.note;
@@ -50,8 +52,8 @@ export function NoteCallout({
   const noteKey = note ? `${note.atMs}:${note.text}` : "";
   const open = expanded && phone && docked;
   const close = () => {
+    restoreNoteFocus.current = true;
     setExpanded(false);
-    if (expandRef.current) interaction?.dispatch({ type: "dialog.tab", target: expandRef.current });
   };
   useEffect(() => {
     if (!open) return;
@@ -59,11 +61,17 @@ export function NoteCallout({
       if (e.key !== "Escape") return;
       e.preventDefault();
       e.stopImmediatePropagation();
+      restoreNoteFocus.current = true;
       setExpanded(false);
-      if (expandRef.current) interaction?.dispatch({ type: "dialog.tab", target: expandRef.current });
     };
     window.addEventListener("keydown", escape, true);
     return () => window.removeEventListener("keydown", escape, true);
+  }, [open, interaction]);
+
+  useLayoutEffect(() => {
+    const target = open ? closeRef.current : restoreNoteFocus.current ? expandRef.current : null;
+    restoreNoteFocus.current = false;
+    if (target) interaction?.dispatch({ type: "dialog.tab", target });
   }, [open, interaction]);
 
   useLayoutEffect(() => {
@@ -175,7 +183,7 @@ export function NoteCallout({
                   width={hudBox?.width ?? 0}
                   height={hudBox?.height ?? 0}
                 >
-                  <rect width="100%" height="100%" fill="white" />
+                  <rect width={hudBox?.width ?? 0} height={hudBox?.height ?? 0} fill="white" />
                   {holes.map((rect, index) => (
                     <rect key={index} {...rect} fill="black" />
                   ))}
@@ -217,6 +225,7 @@ export function NoteCallout({
         )}
         {open && (
           <button
+            ref={closeRef}
             className="lv-note-close"
             data-testid="live-note-close"
             aria-label={t("common.close")}

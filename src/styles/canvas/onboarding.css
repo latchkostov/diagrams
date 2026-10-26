@@ -290,3 +290,37 @@
 .canvas-wrap:has(.workbench-view-controls) .first-hint {
   max-width: calc(100% - 220px);
 }
+
+.start-card {
+  border-radius: 14px;
+  padding: 30px 30px 22px;
+  box-shadow: var(--shadow-2);
+  border-color: var(--line);
+}
+.start-card h2 {
+  font-size: 25px;
+  font-weight: 650;
+  font-stretch: var(--stretch-wide);
+  letter-spacing: -0.02em;
+  line-height: 1.12;
+}
+.start-card [data-testid="start-tutorial"] {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  margin: 10px 0 16px;
+  padding-inline: 12px;
+  border-radius: 8px;
+  background: var(--bezel);
+  color: #fff;
+  font-weight: 600;
+  text-decoration: none;
+}
+[data-theme="dark"] .start-card [data-testid="start-tutorial"] {
+  background: #fff;
+  color: #111;
+}
+.start-heading h3 {
+  font-stretch: 108%;
+  font-weight: 650;
+}
