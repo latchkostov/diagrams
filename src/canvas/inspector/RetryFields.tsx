@@ -31,13 +31,6 @@ export function RetryFields({
         description={t("resilience.retriesHint")}
         origin={origin}
       >
-        <button
-          className="link-btn"
-          data-testid="inspector-tutorial-retries"
-          onClick={() => tutorialRoute.open("retry-storm")}
-        >
-          {t("tutorials.learnRetries")}
-        </button>
         <Field label={t("resilience.retries")} hint={t("resilience.retriesHint")}>
           <Dropdown
             testId="inspector-field-retries"
@@ -53,6 +46,13 @@ export function RetryFields({
             onChange={(value) => update({ maxAttempts: Number(value) })}
           />
         </Field>
+        <button
+          className="link-btn"
+          data-testid="inspector-tutorial-retries"
+          onClick={() => tutorialRoute.open("retry-storm")}
+        >
+          {t("tutorials.learnRetries")}
+        </button>
         {enabled && (
           <>
             <p className="insp-note" data-testid="retry-limit-summary">
