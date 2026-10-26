@@ -30,6 +30,7 @@ import { shapeMenu } from "../canvas/shapes/menu";
 import type { ShapeDefinition } from "../canvas/shapes/catalog";
 import type { Action, ActionContext, MenuItem, MenuNode } from "./actions";
 import type { AlignMode } from "./arrange";
+import { arrangementSelection } from "./arrangementSelection";
 import { shortcutKeys } from "./shortcuts";
 import { checksPanel } from "../canvas/checks/checksPanel";
 import { editingRuns } from "../canvas/checks/editingRuns";
@@ -156,8 +157,11 @@ export function quickAddMenu(
 }
 
 const nodeCount = (ctx: ActionContext) => ctx.selection.nodeIds.length;
-const arrangeCount = (ctx: ActionContext) => ctx.selection.nodeIds.length + ctx.selection.groupIds.length;
-const arrangeIds = (ctx: ActionContext) => [...ctx.selection.nodeIds, ...ctx.selection.groupIds];
+const arrangeCount = (ctx: ActionContext) => {
+  const d = ctx.editor.getDiagram();
+  const operands = arrangementSelection(ctx.selection, d.groups ?? [], [...d.nodes, ...(d.annotations ?? [])]);
+  return operands.nodeIds.length + operands.groupIds.length;
+};
 /** Tidy up lays out nodes (not annotations): it needs three of them. */
 const tidyCount = (ctx: ActionContext) => {
   const ids = new Set(ctx.selection.nodeIds);
@@ -1109,7 +1113,7 @@ export function builtinActions(): Action[] {
             id: `align:${a.mode}`,
             label: a.label,
             icon: a.icon,
-            run: () => ctx.editor.align(arrangeIds(ctx), a.mode),
+            run: () => ctx.editor.align(ctx.selection, a.mode),
           },
         ]),
     },
@@ -1131,7 +1135,7 @@ export function builtinActions(): Action[] {
           },
           icon: "distribute-h",
           disabled: arrangeCount(ctx) < 3,
-          run: () => ctx.editor.distribute(arrangeIds(ctx), "h"),
+          run: () => ctx.editor.distribute(ctx.selection, "h"),
         },
         {
           type: "item",
@@ -1141,7 +1145,7 @@ export function builtinActions(): Action[] {
           },
           icon: "distribute-v",
           disabled: arrangeCount(ctx) < 3,
-          run: () => ctx.editor.distribute(arrangeIds(ctx), "v"),
+          run: () => ctx.editor.distribute(ctx.selection, "v"),
         },
       ],
     },

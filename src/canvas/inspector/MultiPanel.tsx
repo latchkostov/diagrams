@@ -2,6 +2,7 @@ import "../../styles/inspector-layout.css";
 import { revisionAtLeast } from "../../model/revisions";
 import { Icon, type IconName } from "../../components/Icon";
 import { type AlignMode } from "../../editor/arrange";
+import { arrangementSelection } from "../../editor/arrangementSelection";
 import { t } from "../../i18n";
 import { Field, Section } from "./fields";
 import { type InspectorProps } from "./types";
@@ -92,10 +93,20 @@ export function MultiPanel(p: InspectorProps) {
   ];
   // Align and distribute arrange nodes, annotations and boundaries alike; Tidy up lays out nodes (and their edges).
   const ids = [...nodeIds, ...selectedAnnotations.map((n) => n.id), ...selectedGroups.map((g) => g.id)];
+  const selection = {
+    nodeIds: [...nodeIds, ...selectedAnnotations.map((n) => n.id)],
+    groupIds: selectedGroups.map((g) => g.data.groupId),
+  };
+  const operands = arrangementSelection(
+    selection,
+    p.groups.map((g) => ({ id: g.data.groupId, group: g.data.group })),
+    [...selectedNodes, ...selectedAnnotations].map((n) => ({ id: n.id, group: n.data.group })),
+  );
+  const arrangeCount = operands.nodeIds.length + operands.groupIds.length;
   return (
     <>
       <Section>
-        {ids.length > 1 ? (
+        {arrangeCount > 1 || nodeIds.length > 2 ? (
           <Field label={t("inspector.arrange")} group>
             <div className="insp-toolbar">
               {ALIGN_BUTTONS.map((a) => (
@@ -104,20 +115,22 @@ export function MultiPanel(p: InspectorProps) {
                   className="icon-btn"
                   title={a.label}
                   aria-label={a.label}
-                  onClick={() => editor.align(ids, a.mode)}
+                  disabled={arrangeCount < 2}
+                  onClick={() => editor.align(selection, a.mode)}
                   data-testid={`inspector-align-${a.mode}`}
                 >
                   <Icon name={a.icon} />
                 </button>
               ))}
             </div>
-            {ids.length > 2 && (
+            {(arrangeCount > 2 || nodeIds.length > 2) && (
               <div className="insp-toolbar">
                 <button
                   className="icon-btn"
                   title={t("inspector.distributeHorizontally")}
                   aria-label={t("inspector.distributeHorizontally")}
-                  onClick={() => editor.distribute(ids, "h")}
+                  disabled={arrangeCount < 3}
+                  onClick={() => editor.distribute(selection, "h")}
                   data-testid="inspector-distribute-h"
                 >
                   <Icon name="distribute-h" />
@@ -126,7 +139,8 @@ export function MultiPanel(p: InspectorProps) {
                   className="icon-btn"
                   title={t("inspector.distributeVertically")}
                   aria-label={t("inspector.distributeVertically")}
-                  onClick={() => editor.distribute(ids, "v")}
+                  disabled={arrangeCount < 3}
+                  onClick={() => editor.distribute(selection, "v")}
                   data-testid="inspector-distribute-v"
                 >
                   <Icon name="distribute-v" />

@@ -74,6 +74,7 @@ import { toneLabel } from "../canvas/groupTones";
 import type { EdgeMark } from "../canvas/edgeMarks";
 import { getStencil } from "../stencils/registry";
 import { align, boundaryAround, distribute, spreadOverlaps, type Box, type Positions } from "./arrange";
+import { arrangementSelection } from "./arrangementSelection";
 import { makePayload, mergeRoutes, parsePayload, remapPayload, type ClipboardPayload } from "./clipboard";
 import { hasEdgeRouting, hasNodeRouting } from "../model/requestRouting";
 import { stencilIdBase, uniqueId } from "./ids";
@@ -507,21 +508,16 @@ export function createEditor(
     return moved;
   };
   /** Arrangement operands are outermost selected subtrees, never their contained boxes. */
-  const arrangementBoxes = (ids: readonly string[]) => {
-    const selected = new Set(ids);
+  const arrangementBoxes = (selection: Pick<Selection, "nodeIds" | "groupIds">) => {
     const nodes = rf.getNodes();
-    const groups = nodes.filter(isGroup);
-    const covered = expandGroupIds(
-      groups.filter((g) => selected.has(g.id) || selected.has(g.data.groupId)).map((g) => g.data.groupId),
-      groups.map((g) => ({ id: g.data.groupId, group: g.data.group })),
+    const operands = arrangementSelection(
+      selection,
+      nodes.filter(isGroup).map((g) => ({ id: g.data.groupId, group: g.data.group })),
+      nodes.filter((n) => !isGroup(n)).map((n) => ({ id: n.id, group: n.data.group })),
     );
-    return nodes
-      .filter(
-        (n) =>
-          (selected.has(n.id) || (isGroup(n) && selected.has(n.data.groupId))) &&
-          (!n.data.group || !covered.has(n.data.group)),
-      )
-      .map(box);
+    // The sole model-to-canvas boundary. Geometry and movement maps use canvas IDs from here on.
+    const selected = new Set([...operands.nodeIds, ...operands.groupIds.map((id) => GROUP_PREFIX + id)]);
+    return nodes.filter((n) => selected.has(n.id)).map(box);
   };
   const movePositions = (pos: Positions, reset = false) => {
     if (!pos.size) return;
@@ -529,28 +525,27 @@ export function createEditor(
     const groupDeltas = new Map<string, XY>();
     for (const n of allNodes) {
       if (isGroup(n)) {
-        const p = pos.get(n.id) ?? pos.get(n.data.groupId);
+        const p = pos.get(n.id);
         if (p && (p.x !== n.position.x || p.y !== n.position.y)) {
           groupDeltas.set(n.data.groupId, { x: p.x - n.position.x, y: p.y - n.position.y });
         }
       }
     }
     const finalPos = new Map(pos);
-    const groupFlowIds = new Map(allNodes.filter(isGroup).map((g) => [g.data.groupId, g.id]));
-    for (const [id, p] of pos) {
-      const flowId = groupFlowIds.get(id);
-      if (flowId) finalPos.set(flowId, p);
-    }
     if (groupDeltas.size) {
       const groupMap = new Map(allNodes.filter(isGroup).map((g) => [g.data.groupId, g.data.group]));
+      // Cache misses too: stationary deep subtrees must not repeatedly scan shared ancestors.
+      const resolved = new Map<string, XY | undefined>(groupDeltas);
       const findMovedGroupDelta = (groupId?: string): XY | undefined => {
         let cur = groupId;
-        while (cur) {
-          const delta = groupDeltas.get(cur);
-          if (delta) return delta;
+        const path = new Set<string>();
+        while (cur && !resolved.has(cur) && !path.has(cur)) {
+          path.add(cur);
           cur = groupMap.get(cur);
         }
-        return undefined;
+        const delta = cur ? resolved.get(cur) : undefined;
+        for (const id of path) resolved.set(id, delta);
+        return delta;
       };
       for (const n of allNodes) {
         if (!finalPos.has(n.id) && n.data.group) {
@@ -1915,6 +1910,8 @@ export function createEditor(
       const open = deps().history.open?.();
       return open === `new:${id}` ? open : undefined;
     },
+    beginEdit: (tag) => deps().history.begin(tag),
+    endEdit: (tag) => deps().history.end(tag),
     beginNaming: (kind, id) => {
       const creation = kind === "node" ? api.creating(id) : undefined;
       if (creation) return creation;

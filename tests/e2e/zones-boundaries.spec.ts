@@ -2,6 +2,7 @@ import { nestedBoundariesFixture as nestedFixture } from "../../src/lab/nestedBo
 import { settledCanvas } from "../parity/browser/canvas";
 import { captionContrastFixture } from "../../src/lab/captionContrastFixture";
 import { gotoLab } from "./fixtures";
+import { MERGE_WINDOW_MS } from "../../src/editor/history";
 import {
   test,
   expect,
@@ -630,23 +631,164 @@ test("empty zone top strip opens inline editing through the controller", async (
   await expect(strip).toHaveText("");
 });
 
-test("backdrop smart guides snap a boundary to a stationary zone", async ({ page }) => {
-  await seed(page, { ...fixtureDiagram, nodes: [] });
+test("boundary guides exclude moving descendants throughout a drag", async ({ page }) => {
+  await seed(page, {
+    ...nestedFixture,
+    groups: nestedFixture.groups?.map((g) => (g.id === "child" ? { ...g, x: 203 } : g)),
+    annotations: [
+      ...(nestedFixture.annotations ?? []),
+      { id: "target-zone", kind: "zone", text: "Stationary zone", x: 900, y: 100, width: 300, height: 500 },
+    ],
+  });
   await page.getByTestId("group-label-grp-core").click();
-  await waitForStableViewport(page);
+  await waitForSelectionSettled(page);
   await fitDiagram(page);
   const start = await boxOf(page.getByTestId("group-label-grp-core"));
   const boundary = await boxOf(page.getByTestId("group-grp-core"));
-  const zone = await boxOf(page.getByTestId("annotation-zone-1"));
+  const zone = await boxOf(page.getByTestId("annotation-target-zone"));
   const x = start.x + start.width / 2,
     y = start.y + start.height / 2;
   await page.mouse.move(x, y);
   await page.mouse.down();
-  const zoom = boundary.width / 600;
+  const zoom = boundary.width / 650;
   await page.mouse.move(x + 3, y);
-  await page.mouse.move(x + 3 + zone.x - boundary.x + 4 * zoom, y + 100 * zoom, { steps: 12 });
+  const checkOffsets = async (rootX: number) => {
+    const ids = ["group-grp-core", "group-child", "node-member", "annotation-note"];
+    const positions = await flowBoxes(page, ids);
+    expect(positions[0].x).toBeCloseTo(rootX, 0);
+    for (const [i, dx, dy] of [
+      [1, 103, 80],
+      [2, 130, 150],
+      [3, 150, 250],
+    ]) {
+      expect(positions[i].x - positions[0].x).toBeCloseTo(dx, 0);
+      expect(positions[i].y - positions[0].y).toBeCloseTo(dy, 0);
+    }
+  };
+  // The child's old x=203 and member's old x=230 are not stationary snap targets.
+  await page.mouse.move(x + 104 * zoom, y + 100 * zoom, { steps: 12 });
+  await waitForGuides(page);
+  await expect(async () => checkOffsets(200)).toPass();
+  await page.mouse.move(x + 134 * zoom, y + 100 * zoom, { steps: 12 });
+  await waitForGuides(page);
+  await expect(async () => checkOffsets(230)).toPass();
+  await page.mouse.move(x + zone.x - boundary.x + 4 * zoom, y + 100 * zoom, { steps: 12 });
   await waitForGuides(page);
   await expect(page.getByTestId("smart-guides")).toHaveAttribute("data-axes", /x/);
+  await expect(async () => checkOffsets(900)).toPass();
   await page.mouse.up();
-  await expect.poll(async () => (await savedDiagram(page)).groups?.[0].x).toBe(750);
+  await expect(async () => checkOffsets(900)).toPass();
+  const d = await savedDiagram(page);
+  expect(d.groups?.find((g) => g.id === "child")?.group).toBe("grp-core");
+  expect(d.nodes[0].group).toBe("child");
 });
+
+for (const target of ["boundary", "zone"] as const)
+  test(`${target} radius drag and keyboard burst each undo in one step across pauses`, async ({ page }) => {
+    await page.clock.install();
+    await seed(page, fixtureDiagram);
+    await page.getByTestId(target === "boundary" ? "group-label-grp-core" : "annotation-label-zone-1").click();
+    await waitForSelectionSettled(page);
+    await pauseClock(page);
+    const slider = page.getByTestId("inspector-field-border-radius-slider");
+    const initial = target === "boundary" ? "20" : "18";
+    await slider.focus();
+    await slider.press("Home");
+    await page.clock.runFor(MERGE_WINDOW_MS * 2);
+    await slider.press("End");
+    await page.clock.runFor(MERGE_WINDOW_MS * 2);
+    await slider.press("Tab");
+    await page.clock.runFor(32);
+    await page.getByTestId("undo-button").click();
+    await expect(slider).toHaveValue(initial);
+    await page.clock.runFor(32);
+    const box = await boxOf(slider);
+    const y = box.y + box.height / 2;
+    await page.mouse.move(box.x + box.width / 4, y);
+    await page.mouse.down();
+    await page.clock.runFor(MERGE_WINDOW_MS * 2);
+    const first = await slider.inputValue();
+    await page.mouse.move(box.x + (box.width * 3) / 4, y, { steps: 8 });
+    await page.clock.runFor(MERGE_WINDOW_MS * 2);
+    expect(await slider.inputValue()).not.toBe(first);
+    await page.mouse.up();
+    await page.clock.runFor(32);
+    await page.getByTestId("undo-button").click();
+    await expect(slider).toHaveValue(initial);
+  });
+
+for (const surface of ["inspector", "menu"] as const)
+  test(`${surface} arrangement preserves aliased boundary IDs and excludes unselected boundaries`, async ({ page }) => {
+    const groups = ["a", "group:a", "c", "grp-core"].map((id, i) => ({
+      id,
+      label: id,
+      x: i * 600,
+      y: i * 400,
+      width: 300,
+      height: 200,
+    }));
+    await seed(page, {
+      format: "diagrams/v1",
+      title: "Boundary IDs",
+      groups,
+      nodes: groups.map((g, i) => ({
+        id: `member${i}`,
+        label: "Member",
+        stencil: "service.node",
+        group: g.id,
+        x: g.x + 40,
+        y: g.y + 60,
+      })),
+      edges: [],
+    });
+    await page.getByTestId("group-label-a").click();
+    await page.getByTestId("group-label-c").click({ modifiers: ["Shift"] });
+    await waitForSelectionSettled(page);
+    if (surface === "inspector") await page.getByTestId("inspector-align-top").click();
+    else {
+      await page.getByTestId("group-label-c").click({ button: "right" });
+      await page.getByTestId("context-menu-item-selection.align").click();
+      await page.getByTestId("context-menu-item-align:top").click();
+    }
+    await expect.poll(async () => (await savedDiagram(page)).groups?.find((g) => g.id === "c")?.y).toBe(0);
+    const d = await savedDiagram(page);
+    expect(d.groups?.find((g) => g.id === "group:a")).toMatchObject({ x: 600, y: 400 });
+    expect(d.groups).toHaveLength(groups.length);
+    for (const g of d.groups ?? []) {
+      const member = d.nodes.find((n) => n.group === g.id);
+      if (!member) throw new Error(`Missing member of ${g.id}`);
+      expect({ x: member.x - g.x, y: member.y - g.y }).toEqual({ x: 40, y: 60 });
+    }
+  });
+
+for (const roots of [1, 2, 3])
+  test(`Arrange availability counts ${roots} selected subtrees`, async ({ page }) => {
+    await seed(page, {
+      format: "diagrams/v1",
+      title: "Effective operands",
+      edges: [],
+      groups: Array.from({ length: roots }, (_, i) => ({
+        id: i ? `g${i}` : "grp-core",
+        label: "Boundary",
+        x: i * 600,
+        y: 0,
+        width: 400,
+        height: 300,
+      })),
+      nodes: Array.from({ length: roots }, (_, i) => ({
+        id: `n${i}`,
+        group: i ? `g${i}` : "grp-core",
+        stencil: "service.node",
+        label: "Member",
+        x: i * 600 + 40,
+        y: 60,
+      })),
+    });
+    await page.getByTestId("group-label-grp-core").click();
+    await page.keyboard.press("ControlOrMeta+a");
+    await waitForSelectionSettled(page);
+    if (roots === 1) await expect(page.getByTestId("inspector-align-top")).toHaveCount(0);
+    else await expect(page.getByTestId("inspector-align-top")).toBeEnabled();
+    if (roots < 3) await expect(page.getByTestId("inspector-distribute-h")).toHaveCount(0);
+    else await expect(page.getByTestId("inspector-distribute-h")).toBeEnabled();
+  });

@@ -12,6 +12,7 @@ import type { GroupFlowNode, GroupTone } from "../types";
 import { CopyId, Field, Section, SizeInput } from "./fields";
 import { type InspectorProps } from "./types";
 import { useNameFields } from "./useNameFields";
+import { useEditTransaction } from "./useEditTransaction";
 
 export function GroupPanel({ group, editor, groups }: InspectorProps & { group: GroupFlowNode }) {
   const { controller } = useInteractionOrLocal();
@@ -19,6 +20,7 @@ export function GroupPanel({ group, editor, groups }: InspectorProps & { group: 
   useLayoutEffect(() => controller.rendered());
   const naming = useNameFields(editor, "group", group.data.groupId, group.id);
   const id = group.data.groupId;
+  const radiusEdit = useEditTransaction(editor, `group:${id}:radius`);
   const isCustomTone = !isPresetGroupTone(group.data.tone) && Boolean(group.data.tone);
   const resolvedTone = resolveGroupTone(group.data.tone);
   const [pickerAnchor, setPickerAnchor] = useState<{ rect: DOMRect; merge: string } | null>(null);
@@ -122,7 +124,9 @@ export function GroupPanel({ group, editor, groups }: InspectorProps & { group: 
           min={0}
           max={40}
           testId="inspector-field-border-radius"
-          onChange={(borderRadius) => editor.updateGroup(id, { borderRadius })}
+          onEditStart={radiusEdit.begin}
+          onEditEnd={radiusEdit.end}
+          onChange={(borderRadius) => editor.updateGroup(id, { borderRadius }, radiusEdit.options())}
         />
       </Field>
       <Field label={t("inspector.boundary")}>

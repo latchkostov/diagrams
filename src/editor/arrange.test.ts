@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { align, boundaryAround, boundingBox, distribute, type Box } from "./arrange";
 import { editorHarness } from "../test/editorHarness";
+import { opGrowth } from "../test/opCounter";
+import { builtinActions } from "./builtinActions";
+import type { ActionContext } from "./actions";
 
 it("align carries lines whose ends share the same translation", () => {
   const h = editorHarness({
@@ -23,7 +26,7 @@ it("align carries lines whose ends share the same translation", () => {
       },
     ],
   });
-  h.api.align(["a", "b", "c"], "top");
+  h.api.align({ nodeIds: ["a", "b", "c"], groupIds: [] }, "top");
   expect(h.edges()[0].data!.waypoints).toEqual([
     { x: 300, y: -50 },
     { x: 500, y: -50 },
@@ -55,8 +58,8 @@ it.each(["align", "distribute"] as const)("%s keeps bends absolute when ends mov
   });
   const edge = h.edges()[0];
   const before = h.nodes();
-  if (command === "align") h.api.align(["a", "b", "c"], "top");
-  else h.api.distribute(["a", "b", "c"], "h");
+  if (command === "align") h.api.align({ nodeIds: ["a", "b", "c"], groupIds: [] }, "top");
+  else h.api.distribute({ nodeIds: ["a", "b", "c"], groupIds: [] }, "h");
   expect(h.nodes()).not.toEqual(before);
   expect(h.edges()[0]).toBe(edge);
 });
@@ -120,7 +123,7 @@ describe("arrange", () => {
       edges: [],
     });
 
-    h.api.align(["group:g1", "group:g2"], "top");
+    h.api.align({ nodeIds: [], groupIds: ["g1", "g2"] }, "top");
 
     const nodes = h.nodes();
     const g1 = nodes.find((n) => n.id === "group:g1");
@@ -172,9 +175,9 @@ it.each(["align", "distribute"] as const)("%s treats Select All nested subtrees 
     })),
   });
   const before = new Map(h.nodes().map((n) => [n.id, n.position]));
-  const ids = h.nodes().map((n) => n.id);
-  if (command === "align") h.api.align(ids, "top");
-  else h.api.distribute(ids, "h");
+  h.api.selectAll();
+  if (command === "align") h.api.align(h.api.getSelection(), "top");
+  else h.api.distribute(h.api.getSelection(), "h");
   expect(h.nodes().some((n) => n.position.x !== before.get(n.id)!.x || n.position.y !== before.get(n.id)!.y)).toBe(
     true,
   );
@@ -214,11 +217,119 @@ it("position normalization reads node types linearly", () => {
         },
         enumerable: true,
       });
-    h.api.align(
-      h.nodes().map((n) => n.id),
-      "top",
-    );
+    h.api.align({ nodeIds: h.nodes().map((n) => n.id), groupIds: [] }, "top");
     return reads;
   };
   expect(cost(256) / cost(32)).toBeLessThan(24);
+});
+
+it.each(["align", "distribute"] as const)("%s keeps model and canvas boundary IDs distinct", (command) => {
+  const h = editorHarness({
+    format: "diagrams/v1",
+    title: "ID namespaces",
+    edges: [],
+    groups: ["a", "group:a", "c"].map((id, i) => ({
+      id,
+      label: id,
+      x: i * 600,
+      y: i === 1 ? 600 : i * 400,
+      width: 300,
+      height: 200,
+    })),
+    nodes: ["a", "group:a", "c"].map((group, i) => ({
+      id: `n${i}`,
+      group,
+      stencil: "service.node",
+      label: "Member",
+      x: i * 600 + 40,
+      y: (i === 1 ? 600 : i * 400) + 60,
+    })),
+  });
+  const selection = { nodeIds: [], groupIds: ["a", "c"] };
+  if (command === "align") h.api.align(selection, "top");
+  else h.api.distribute({ ...selection, groupIds: ["a", "group:a", "c"] }, "v");
+  const d = h.api.getDiagram();
+  expect(d.groups?.map((g) => ({ id: g.id, x: g.x, y: g.y }))).toEqual([
+    { id: "a", x: 0, y: 0 },
+    { id: "group:a", x: 600, y: command === "align" ? 600 : 400 },
+    { id: "c", x: 1200, y: command === "align" ? 0 : 800 },
+  ]);
+  for (const g of d.groups!) {
+    const member = d.nodes.find((n) => n.group === g.id)!;
+    expect({ x: member.x - g.x, y: member.y - g.y }).toEqual({ x: 40, y: 60 });
+  }
+});
+
+it("context-menu arrangement counts outermost operands and passes a typed selection", () => {
+  const h = editorHarness({
+    format: "diagrams/v1",
+    title: "Menu subtrees",
+    edges: [],
+    groups: ["a", "group:a", "c"].map((id, i) => ({ id, label: id, x: i * 600, y: i * 400, width: 300, height: 200 })),
+    nodes: ["a", "group:a", "c"].map((group, i) => ({
+      id: `n${i}`,
+      group,
+      stencil: "service.node",
+      label: "Member",
+      x: i * 600 + 40,
+      y: i * 400 + 60,
+    })),
+  });
+  const actions = builtinActions();
+  const alignAction = actions.find((a) => a.id === "selection.align")!;
+  const distributeAction = actions.find((a) => a.id === "selection.distribute")!;
+  const ctx: ActionContext = {
+    target: "selection",
+    editor: h.api,
+    selection: { nodeIds: ["n0"], groupIds: ["a"], edgeIds: [] },
+  };
+  expect(alignAction.enabled!(ctx)).toBe(false);
+  ctx.selection = { nodeIds: ["n0", "n2"], groupIds: ["a", "c"], edgeIds: [] };
+  expect(alignAction.enabled!(ctx)).toBe(true);
+  const items = distributeAction.children!(ctx);
+  expect(items.filter((i) => i.type === "item").every((i) => i.disabled)).toBe(true);
+  const top = alignAction.children!(ctx).find((i) => i.type === "item" && i.id === "align:top");
+  if (!top || top.type !== "item") throw new Error("Missing align action");
+  top.run!();
+  expect(h.api.getGroup("group:a")).toMatchObject({ x: 600, y: 400 });
+  expect(h.api.getGroup("c")).toMatchObject({ x: 1200, y: 0 });
+});
+
+it("arranging deep boundary subtrees has bounded operation growth", () => {
+  const run = (count: number) => {
+    const groups = ["moving", "stationary"]
+      .flatMap((prefix, side) =>
+        Array.from({ length: count }, (_, i) => ({
+          id: `${prefix}${i}`,
+          group: i ? `${prefix}${i - 1}` : undefined,
+          label: "Boundary",
+          x: side * 100000 + i * 10,
+          y: 400 + i * 10,
+          width: (count - i) * 30 + 300,
+          height: (count - i) * 30 + 200,
+        })),
+      )
+      .reverse();
+    const h = editorHarness({
+      format: "diagrams/v1",
+      title: "Deep subtrees",
+      edges: [],
+      groups,
+      nodes: [
+        ...["moving", "stationary"].flatMap((prefix, side) =>
+          Array.from({ length: count }, (_, i) => ({
+            id: `${prefix}-member${i}`,
+            group: `${prefix}${count - 1}`,
+            stencil: "service.node",
+            label: "Member",
+            x: side * 100000 + count * 10,
+            y: 400 + count * 10,
+          })),
+        ),
+        { id: "anchor", stencil: "service.node", label: "Anchor", x: 500000, y: 0 },
+      ],
+    });
+    return () => h.api.align({ nodeIds: ["anchor"], groupIds: ["moving0"] }, "top");
+  };
+  expect(opGrowth(run(32), run(256))).toBeLessThan(24);
 });

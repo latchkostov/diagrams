@@ -1,7 +1,7 @@
 {
   "withIcons": {
-    "sha256": "952ee968ee65ecb20abc6bf94cc0256a8133592d0b5c81e8f3d822617f6b5960",
-    "bytes": 6584,
+    "sha256": "3ba8359633142336a51709701fa7247b79744c44c92b34d191d2797b8773a113",
+    "bytes": 6676,
     "inlined": { "client.user": "client-user c8aa1007847a06e5", "generic.rate-limiter": "generic-rate-limiter 7f75f8aa59c5823e", "generic.service": "generic-service 6ec0da29f56c9e80" }
   },
   "readBack": [
@@ -12,9 +12,9 @@
         "title": "An inline request rate limit",
         "description": "A fictional partner sends 20 requests/s through a 10 requests/s token bucket. Go Live to see rejections within seconds, then double-click the limiter and change Rate limit in Simulation. Rounded boundaries align the partner, rate limit and catalog regions; the dashed rounded zone marks the request path.",
         "groups": [
-          { "id": "partner-region", "label": "Partner", "tone": "neutral", "x": -30, "y": -70, "width": 280, "height": 200 },
-          { "id": "limit-region", "label": "Rate limit", "tone": "azure", "x": 270, "y": -70, "width": 280, "height": 200 },
-          { "id": "catalog-region", "label": "Catalog", "tone": "gcp", "x": 570, "y": -70, "width": 280, "height": 200 }
+          { "id": "partner-region", "label": "Partner", "tone": "neutral", "x": -30, "y": -70, "width": 280, "height": 200, "borderRadius": 28 },
+          { "id": "limit-region", "label": "Rate limit", "tone": "azure", "x": 270, "y": -70, "width": 280, "height": 200, "borderRadius": 28 },
+          { "id": "catalog-region", "label": "Catalog", "tone": "gcp", "x": 570, "y": -70, "width": 280, "height": 200, "borderRadius": 28 }
         ],
         "nodes": [
           {
@@ -58,7 +58,7 @@
           { "id": "limiter-api", "from": "limiter", "to": "api", "kind": "sync" }
         ],
         "annotations": [
-          { "id": "request-path", "kind": "zone", "text": "Request path", "x": -60, "y": -150, "width": 940, "height": 330, "color": "purple" }
+          { "id": "request-path", "kind": "zone", "text": "Request path", "x": -60, "y": -150, "width": 940, "height": 330, "color": "purple", "borderRadius": 32 }
         ]
       }
     }

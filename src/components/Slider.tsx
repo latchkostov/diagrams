@@ -4,6 +4,8 @@ import { useState } from "react";
 export interface SliderProps {
   value: number;
   onChange: (value: number) => void;
+  onEditStart?: () => void;
+  onEditEnd?: () => void;
   min?: number;
   max?: number;
   step?: number;
@@ -19,6 +21,8 @@ export interface SliderProps {
 export function Slider({
   value,
   onChange,
+  onEditStart,
+  onEditEnd,
   min = 0,
   max = 100,
   step = 1,
@@ -41,7 +45,9 @@ export function Slider({
     const v = Number(draft);
     setDraft(null);
     if (draft.trim() && Number.isFinite(v) && normalize(v) !== current) {
+      onEditStart?.();
       onChange(normalize(v));
+      onEditEnd?.();
     }
   };
 
@@ -60,7 +66,19 @@ export function Slider({
         name={name}
         onChange={(e) => {
           setDraft(null);
+          onEditStart?.();
           onChange(Number(e.target.value));
+        }}
+        onPointerDown={(e) => {
+          e.currentTarget.setPointerCapture(e.pointerId);
+          onEditStart?.();
+        }}
+        onPointerUp={() => onEditEnd?.()}
+        onPointerCancel={() => onEditEnd?.()}
+        onLostPointerCapture={() => onEditEnd?.()}
+        onBlur={() => onEditEnd?.()}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === "Escape") onEditEnd?.();
         }}
         data-testid={testId ? `${testId}-slider` : undefined}
       />
