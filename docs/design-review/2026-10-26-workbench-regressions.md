@@ -49,3 +49,18 @@ Nine of eleven initial browser mutation cases failed with the latest product cha
 The privacy flow now observes each nested menu dismissal before reaching the moved badge. Performance setup waits for initial Checks and camera work, uses a readable Custom view for its two click targets, and navigates to its later drag target before measuring. No render limit or timing timeout changed. Two overlapping native test commands collided in their shared results directory; their replacements run serially with separate output directories.
 
 The subtitle diagnostic initially changed thirteen Tidy goldens unintentionally. Selection styling now updates synchronously, and extra subtitle padding applies only to a single selected card. Multi-selection retains its existing compact measurements; all 3,178 goldens match without further recording. The full parity run also exposed an Undo flow racing measurement-held Auto-layout: Undo is explicitly defined and unit-tested to cancel that pending operation. The selection parity flow now waits for layout completion before asserting the completed history step's unchanged selection contract. All ten interaction-render cases and the four focused subtitle, trace and frame-operation cases pass natively.
+
+## Loaded clock and menu follow-up
+
+All 95 benchmark gates passed on `5c80253a0`. Its first 604-case Linux load repeat (12 workers, 8 CPUs) completed with 590 passed, thirteen failed, zero flaky and one existing skip; remaining repeats were stopped to address those failures. Counts here are a separate diagnostic checkpoint, not additions to the initial 195-case table.
+
+| Cause                                                                 | Cases | Fix type | Files                                 |
+| --------------------------------------------------------------------- | ----: | -------- | ------------------------------------- |
+| Pending hover reopens an escaped submenu                              |     1 | Product  | `Menu.tsx`, `sharing-privacy.spec.ts` |
+| Camera polling advances too little fake time                          |     4 | Flow     | `showcase-examples.spec.ts`           |
+| Tutorial replays compete with wall-clock deadlines                    |     3 | Flow     | `tutorials.spec.ts`                   |
+| Serial node-bound measurements exhaust the predicate deadline         |     1 | Flow     | `round7-polish.spec.ts`               |
+| Sequential independent editor startup consumes export-test setup time |     1 | Flow     | `collab-c1a.spec.ts`                  |
+| Recorded replay length exceeds the end-state polling window           |     3 | Flow     | `viewer-bundle.spec.ts`               |
+
+The new menu regression freezes hover intent, dismisses the submenu, then advances the clock. It fails against the previous product because the submenu reopens, and passes after explicit clicks, keys and submenu dismissal cancel the pending hover. The camera trace advanced only 512 ms during a 700 ms move before its real assertion deadline expired. The helper now completes a full animation-clock duration before polling the same idle assertion. Study replay flows use a controlled clock while retaining every step, repaired-input and persistence assertion. Node-bound reads are batched into one browser turn with the same visibility and containment rules. Collaboration setup opens independent pages concurrently. Video tests still require changed decoded pixels, natural completion and the paused end state; they play the full recording at 4x. Every existing assertion retains its meaning; no timeout, render limit, benchmark baseline or ZIP cap changed. Targeted production verification passes all 32 cases, including the eighteen narration paths and three recorded viewers.

@@ -496,6 +496,9 @@ const clear = (a: { x: number; y: number; width: number; height: number }, b: ty
   a.x + a.width <= b.x || b.x + b.width <= a.x || a.y + a.height <= b.y || b.y + b.height <= a.y;
 
 async function settleNarrationCamera(page: Page) {
+  // Complete the move's fake-clock duration before polling its acknowledgement.
+  // Under load, 32 ms per protocol round trip need not reach a 900 ms move in time.
+  await page.clock.runFor(1000);
   await expect
     .poll(
       async () => {

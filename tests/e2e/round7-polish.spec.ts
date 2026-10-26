@@ -29,12 +29,16 @@ async function openAiPanel(page: Page) {
 async function allNodesInPane(page: Page) {
   const pane = await box(page, "canvas-wrap");
   const nodes = page.getByTestId(/^node-(?!tooltip$|editor-|pips-|pip-|dependenc)/);
-  const n = await nodes.count();
-  for (let i = 0; i < n; i++) {
-    const b = await nodes.nth(i).boundingBox();
-    if (b && !inside(b, pane)) return false;
-  }
-  return n > 0;
+  // Sample the same boxes in one browser turn. Serial protocol round trips can
+  // consume the entire polling deadline before the predicate finishes under load.
+  const boxes = await nodes.evaluateAll((elements) =>
+    elements.map((el) => {
+      const r = el.getBoundingClientRect();
+      if (getComputedStyle(el).visibility !== "visible" || !r.width || !r.height) return null;
+      return { x: r.x, y: r.y, width: r.width, height: r.height };
+    }),
+  );
+  return boxes.length > 0 && boxes.every((b) => !b || inside(b, pane));
 }
 
 test("Esc clears the selection of a node that was just clicked", async ({ page, consoleErrors }) => {

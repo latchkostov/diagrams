@@ -136,6 +136,9 @@ for (const viewer of ["bundle", "skill", "Interactive HTML"] as const) {
         video.requestVideoFrameCallback(frame);
       };
       video.currentTime = 0;
+      // Capture time varies with load. Decode the full replay at 4x while retaining
+      // the changed-frame, natural completion and paused-at-end assertions below.
+      video.playbackRate = 4;
       video.requestVideoFrameCallback(frame);
       await video.play();
     });

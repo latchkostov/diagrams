@@ -281,10 +281,25 @@ test("capacity: solution driver handles completion between browser reads", async
   expect(await finishSolution(page)).toEqual(["drain"]);
 });
 
-async function skipAll(page: Page) {
+/** Drive authored replay time separately from the wall-clock assertion deadline. */
+async function advanceTutorialClock(page: Page, ready: () => Promise<boolean>) {
+  await expect
+    .poll(
+      async () => {
+        await page.clock.runFor(1000);
+        return ready();
+      },
+      { intervals: [0] },
+    )
+    .toBe(true);
+}
+
+async function skipAll(page: Page, clocked = false) {
   while ((await strip(page).getAttribute("data-phase")) === "step") {
     const current = (await strip(page).getAttribute("data-step")) ?? "";
     await page.getByTestId("tutorial-skip").click();
+    if (clocked)
+      await advanceTutorialClock(page, async () => (await strip(page).getAttribute("data-step")) !== current);
     await expect(strip(page)).not.toHaveAttribute("data-step", current);
   }
   await expect(strip(page)).toHaveAttribute("data-phase", "finished");
@@ -646,6 +661,7 @@ for (const finish of ["inspector", "Skip"] as const)
 
 test("study-checkout: Skip and Continue replay the authored tenfold traffic", async ({ page, consoleErrors }) => {
   test.slow();
+  await page.clock.install();
   await reachStudyMilestone(page, "study-checkout", "survive-tenfold");
   await page.getByTestId("live-toggle").click();
   await page.getByTestId("live-sim-picker").selectOption("tenfold");
@@ -656,7 +672,9 @@ test("study-checkout: Skip and Continue replay the authored tenfold traffic", as
   const traffic = () =>
     page.evaluate(() => window.__tutorial?.runs().saved.find((sim) => sim.id === "tenfold")?.multipliers?.traffic);
   await expect.poll(traffic).toBe(1);
+  await pauseClock(page);
   await page.getByTestId("tutorial-skip").click();
+  await advanceTutorialClock(page, async () => (await strip(page).getAttribute("data-step")) === "keep-orders");
   await expect(strip(page)).toHaveAttribute("data-step", "keep-orders");
   await expect.poll(traffic).toBe(10);
   await page.getByTestId("live-capacity").click();
@@ -664,6 +682,7 @@ test("study-checkout: Skip and Continue replay the authored tenfold traffic", as
   await page.reload();
   await expect(page.getByTestId("tutorial-start")).toContainText("Continue", { timeout: pageLoadTimeout() });
   await page.getByTestId("tutorial-start").click();
+  await advanceTutorialClock(page, async () => (await strip(page).getAttribute("data-step")) === "keep-orders");
   await expect(strip(page)).toHaveAttribute("data-step", "keep-orders");
   await expect.poll(traffic).toBe(10);
   expectNoErrors(consoleErrors);
@@ -901,9 +920,12 @@ for (const { id, quarantined } of tutorialEntries)
 for (const { id, quarantined } of tutorialEntries)
   test(`${id}: Skip-all finishes without saving a diagram`, async ({ page, consoleErrors }) => {
     test.fixme(!!quarantined, quarantineReason);
+    const clocked = id.startsWith("study-");
+    if (clocked) await page.clock.install();
     await openTutorial(page, id);
     await page.getByTestId("tutorial-start").click();
-    await skipAll(page);
+    if (clocked) await pauseClock(page);
+    await skipAll(page, clocked);
     await expectNothingSaved(page);
     expectNoErrors(consoleErrors);
   });

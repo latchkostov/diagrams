@@ -980,8 +980,7 @@ test("a peer edit between image export slices aborts with a retry toast and pres
   let downloads = 0;
   page.on("download", () => downloads++);
   try {
-    await open(page);
-    await open(b, true);
+    await Promise.all([open(page), open(b, true)]);
     await name(page, "api", "My local API");
     await expect(b.getByTestId("node-api")).toContainText("My local API");
     // SVG paint preparation can yield at 0%, before cloning. Hold a continuation only after

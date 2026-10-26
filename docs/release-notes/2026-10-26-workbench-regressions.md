@@ -14,6 +14,8 @@ Lab Undo and Redo controls reflect the current collaboration history, including 
 
 Frame measurements batch width resets and reads, reuse label lookups, and remeasure only cards whose dimensions changed. Traffic-intensity styling no longer triggers geometry work. A single selected card can grow for a two-line subtitle while multi-selection stays compact. Collapsed Advanced remains reachable after the on-device controls download. Tight presentation captions prefer reduced spacing to covering a card, and trace contrast survives either stylesheet load order.
 
+Explicit menu navigation cancels pending hover actions, so Escape keeps a dismissed submenu closed.
+
 Output parity validation is recorded in the accompanying design review. Follow retains its documented readable camera and off-frame pins. Narration tests visit distant cards through those pins, return explicitly to Follow between visits, and retain every bounds and readability assertion.
 
 ## Deliberate output changes

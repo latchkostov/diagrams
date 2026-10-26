@@ -187,6 +187,7 @@ function MenuPanel({
 
   const onKeyDown = (e: ReactKeyboardEvent) => {
     if (e.target instanceof Node && !panel.current?.contains(e.target)) return;
+    window.clearTimeout(hoverTimer.current);
     e.stopPropagation();
     const items = [...(panel.current?.querySelectorAll<HTMLElement>("[data-menu-focus]") ?? [])];
     const i = items.indexOf(document.activeElement as HTMLElement);
@@ -265,6 +266,7 @@ function MenuPanel({
                 // (a private diagram's link rows).
                 aria-disabled={entry.disabled || undefined}
                 onClick={() => {
+                  window.clearTimeout(hoverTimer.current);
                   if (entry.disabled) return;
                   if (hasSub) return isOpen ? setSub(null) : openSub(k);
                   onCloseAll(true);
@@ -318,6 +320,7 @@ function MenuPanel({
           testId={subEntry.submenuTestId ?? `${subEntry.testId}-menu`}
           onCloseAll={onCloseAll}
           onBack={() => {
+            window.clearTimeout(hoverTimer.current);
             setSub(null);
             panel.current?.querySelector<HTMLElement>(`[data-submenu-index="${sub.index}"]`)?.focus();
           }}

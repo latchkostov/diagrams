@@ -1,5 +1,5 @@
 import { openDiagramProperties } from "./fixtures";
-import { currentDiagram } from "./fixtures";
+import { currentDiagram, pauseClock } from "./fixtures";
 import { readFileSync } from "node:fs";
 import type { BrowserContext, Page } from "@playwright/test";
 import { test, expect, gotoCanvas, expectNoErrors, openShareChooser, shareVia, waitForHtmlTemplate } from "./fixtures";
@@ -250,6 +250,22 @@ test("the refusal's Interactive HTML… explains itself when no diagram is open"
   );
   await expect(page.getByTestId("html-export-dialog")).toHaveCount(0);
   expectNoErrors(consoleErrors);
+});
+
+test("Escape cancels pending submenu hover instead of reopening it", async ({ page }) => {
+  await page.clock.install();
+  await gotoCanvas(page, SLUG);
+  await page.getByTestId("file-button").click();
+  await pauseClock(page);
+  const privacy = page.getByTestId("file-privacy");
+  await privacy.hover();
+  await privacy.click();
+  await expect(page.getByTestId("file-privacy-menu")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.getByTestId("file-privacy-menu")).toHaveCount(0);
+  await page.clock.runFor(1000);
+  await expect(page.getByTestId("file-privacy-menu")).toHaveCount(0);
+  await expect(privacy).toBeFocused();
 });
 
 test("a private diagram's Share… says why its links are gone, and how to change it, from the keyboard", async ({
