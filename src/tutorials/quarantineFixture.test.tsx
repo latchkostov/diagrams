@@ -2,7 +2,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, expect, it, vi } from "vitest";
 
 /**
- * Quarantine's behaviour, against an isolated catalog: no real lesson is quarantined now, so this file marks one
+ * Quarantine's behaviour, against an isolated catalog: this file marks an additional lesson
  * (Cells) quarantined in its own module graph, in the lesson and in the id list the generated tests read.
  */
 vi.mock("./catalog/studyCells", async (original) => {
@@ -33,7 +33,7 @@ it("a quarantined fixture stays hidden from cards, search, suggestions and deep 
     setItem: (key: string, value: string) => storage.set(key, value),
   });
   const quarantined = allTutorials.filter((t) => t.quarantined);
-  expect(quarantined.map((t) => t.id)).toEqual(["study-cells"]);
+  expect(quarantined.map((t) => t.id)).toEqual(["study-checkout", "study-cells"]);
   const progress = Object.fromEntries(quarantined.map((t) => [t.id, { version: t.version, step: 1, completed: true }]));
   writeTutorials(() => ({ progress }));
   const cards = renderToStaticMarkup(<TutorialsView />);

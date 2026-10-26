@@ -1062,18 +1062,21 @@ describe("design study evidence", () => {
   );
 
   for (const tutorial of [studyCheckout, studyDispatch, studyPayments, studyFanout, studyRag, studyCells])
-    it(`${tutorial.id}: the starting diagram fails every milestone throughout every saved run`, async () => {
-      const s = sandbox(tutorial);
-      await reach(s, tutorial, 0);
-      for (const simulation of s.diagram.simulations!) {
-        s.learn({ kind: "runSimulation", id: simulation.id });
-        for (let tick = 0; tick < 48; tick++) {
-          play(s, 250);
-          expect(state(s).observed).not.toContain(true);
-          expect(state(s).latched).not.toContain(true);
+    itFor(tutorial)(
+      `${tutorial.id}: the starting diagram fails every milestone throughout every saved run`,
+      async () => {
+        const s = sandbox(tutorial);
+        await reach(s, tutorial, 0);
+        for (const simulation of s.diagram.simulations!) {
+          s.learn({ kind: "runSimulation", id: simulation.id });
+          for (let tick = 0; tick < 48; tick++) {
+            play(s, 250);
+            expect(state(s).observed).not.toContain(true);
+            expect(state(s).latched).not.toContain(true);
+          }
         }
-      }
-    });
+      },
+    );
 
   it.each([
     ["email", "service.python", "generic.queue"],
@@ -1999,28 +2002,31 @@ describe("completion regressions", () => {
     expect(s.diagram.simulations![0].setup!.edges!["payments-psp"].caller.retry!.idempotent).toBe(true);
   });
 
-  it.each([
+  for (const { tutorial, milestone, run, edgeId } of [
     { tutorial: studyCheckout, milestone: "respect-partner-quota", run: "partner-quota", edgeId: "checkout-payments" },
     { tutorial: studyPayments, milestone: "survive-psp-brownout", run: "psp-brownout", edgeId: "payments-psp" },
-  ])("$tutorial.id Skip repairs saved-run caller overrides", async ({ tutorial, milestone, run, edgeId }) => {
-    const s = sandbox(tutorial);
-    const i = tutorial.steps.findIndex((step) => step.id === milestone);
-    expect(await reach(s, tutorial, i)).toBe(true);
-    s.learn({ kind: "runSimulation", id: run });
-    const policy = () => effectiveCallerPolicy(s.editor, edgeId, { controller: s.live!, slowmo: { active: false } })!;
-    if (tutorial === studyCheckout) policy().set({ poolConnections: 10, replyMs: 17 });
-    else {
-      policy().set({ breaker: {}, replyMs: 17 });
-      policy().set({ breaker: undefined, deadlineMs: 1000 });
-      expect(policy().caller.breaker).toBeNull();
-    }
-    await skip(s, tutorial);
-    const caller = s.diagram.simulations!.find((sim) => sim.id === run)!.setup!.edges![edgeId].caller;
-    expect(caller).toMatchObject(
-      tutorial === studyCheckout ? { poolConnections: 1, replyMs: 17 } : { deadlineMs: 250, breaker: {}, replyMs: 17 },
-    );
-    expect(beyond(s, i)).toBe(true);
-  });
+  ])
+    itFor(tutorial)(`${tutorial.id} Skip repairs saved-run caller overrides`, async () => {
+      const s = sandbox(tutorial);
+      const i = tutorial.steps.findIndex((step) => step.id === milestone);
+      expect(await reach(s, tutorial, i)).toBe(true);
+      s.learn({ kind: "runSimulation", id: run });
+      const policy = () => effectiveCallerPolicy(s.editor, edgeId, { controller: s.live!, slowmo: { active: false } })!;
+      if (tutorial === studyCheckout) policy().set({ poolConnections: 10, replyMs: 17 });
+      else {
+        policy().set({ breaker: {}, replyMs: 17 });
+        policy().set({ breaker: undefined, deadlineMs: 1000 });
+        expect(policy().caller.breaker).toBeNull();
+      }
+      await skip(s, tutorial);
+      const caller = s.diagram.simulations!.find((sim) => sim.id === run)!.setup!.edges![edgeId].caller;
+      expect(caller).toMatchObject(
+        tutorial === studyCheckout
+          ? { poolConnections: 1, replyMs: 17 }
+          : { deadlineMs: 250, breaker: {}, replyMs: 17 },
+      );
+      expect(beyond(s, i)).toBe(true);
+    });
 
   it.each([false, true])(
     "dead-letter-disputes Skip waits for a repaired DLQ connection (editing: %s)",
@@ -2055,48 +2061,51 @@ describe("completion regressions", () => {
         check.kind === "all" ? check.checks.flatMap(relations) : check.kind === "relation" ? [check] : [];
       for (const required of relations(step.check))
         for (const perturbation of ["learner changed kind", "learner removed a required relationship"] as const)
-          it(`${tutorial.id}: ${step.id} Skip recovers after ${perturbation} (${required.from} → ${required.to})`, async () => {
-            const s = sandbox(tutorial);
-            expect(await reach(s, tutorial, i)).toBe(true);
-            // Build the learner's partial outbox in one document write, so a correct intermediate graph cannot
-            // advance the milestone before its mistaken relationship lands.
-            const diagram = structuredClone(s.diagram);
-            const subjects = { ...s.runner.getSnapshot().subjects };
-            for (const demo of step.demo) {
-              if (demo.kind !== "add") continue;
-              const id = subjects[demo.subject] ?? `learner-${demo.subject}`;
-              if (!subjects[demo.subject]) {
-                diagram.nodes.push({ id, stencil: demo.stencil, label: "Learner", x: 0, y: 500 });
-                subjects[demo.subject] = id;
+          itFor(tutorial)(
+            `${tutorial.id}: ${step.id} Skip recovers after ${perturbation} (${required.from} → ${required.to})`,
+            async () => {
+              const s = sandbox(tutorial);
+              expect(await reach(s, tutorial, i)).toBe(true);
+              // Build the learner's partial outbox in one document write, so a correct intermediate graph cannot
+              // advance the milestone before its mistaken relationship lands.
+              const diagram = structuredClone(s.diagram);
+              const subjects = { ...s.runner.getSnapshot().subjects };
+              for (const demo of step.demo) {
+                if (demo.kind !== "add") continue;
+                const id = subjects[demo.subject] ?? `learner-${demo.subject}`;
+                if (!subjects[demo.subject]) {
+                  diagram.nodes.push({ id, stencil: demo.stencil, label: "Learner", x: 0, y: 500 });
+                  subjects[demo.subject] = id;
+                }
+                const from = demo.after && subjects[demo.after];
+                if (from && !diagram.edges.some((edge) => edge.from === from && edge.to === id))
+                  diagram.edges.push({ id: `learner-${from}-${id}`, from, to: id, kind: "async" });
               }
-              const from = demo.after && subjects[demo.after];
-              if (from && !diagram.edges.some((edge) => edge.from === from && edge.to === id))
-                diagram.edges.push({ id: `learner-${from}-${id}`, from, to: id, kind: "async" });
-            }
-            const from = subjects[required.from]!,
-              to = subjects[required.to]!;
-            const original = diagram.edges.find((edge) => edge.from === from && edge.to === to)!;
-            expect(original).toBeDefined();
-            original.props = { ...original.props, latencyMs: 17 };
-            if (perturbation === "learner changed kind")
-              original.kind = required.edgeKind === "sync" ? "async" : "sync";
-            else diagram.edges = diagram.edges.filter((edge) => edge !== original);
-            s.editor.applyDiagram(diagram);
-            expect(state(s)).toMatchObject({ index: i, value: "active" });
-            await skip(s, tutorial);
-            const repaired = s.diagram.edges.filter((edge) => edge.from === from && edge.to === to);
-            expect(repaired).toHaveLength(1);
-            expect(repaired[0].kind).toBe(required.edgeKind);
-            expect(repaired[0].relation ?? "flow").toBe(required.relation);
-            if (perturbation === "learner changed kind") {
-              expect(repaired[0].id).toBe(original.id);
-              expect(repaired[0].props?.latencyMs).toBe(17);
-            }
-            expect(s.diagram.nodes).toHaveLength(diagram.nodes.length);
-          });
+              const from = subjects[required.from]!,
+                to = subjects[required.to]!;
+              const original = diagram.edges.find((edge) => edge.from === from && edge.to === to)!;
+              expect(original).toBeDefined();
+              original.props = { ...original.props, latencyMs: 17 };
+              if (perturbation === "learner changed kind")
+                original.kind = required.edgeKind === "sync" ? "async" : "sync";
+              else diagram.edges = diagram.edges.filter((edge) => edge !== original);
+              s.editor.applyDiagram(diagram);
+              expect(state(s)).toMatchObject({ index: i, value: "active" });
+              await skip(s, tutorial);
+              const repaired = s.diagram.edges.filter((edge) => edge.from === from && edge.to === to);
+              expect(repaired).toHaveLength(1);
+              expect(repaired[0].kind).toBe(required.edgeKind);
+              expect(repaired[0].relation ?? "flow").toBe(required.relation);
+              if (perturbation === "learner changed kind") {
+                expect(repaired[0].id).toBe(original.id);
+                expect(repaired[0].props?.latencyMs).toBe(17);
+              }
+              expect(s.diagram.nodes).toHaveLength(diagram.nodes.length);
+            },
+          );
     }
 
-  it("keep-orders Skip restores the Orders DB Request", async () => {
+  itFor(studyCheckout)("keep-orders Skip restores the Orders DB Request", async () => {
     const s = sandbox(studyCheckout);
     const i = studyCheckout.steps.findIndex((step) => step.id === "keep-orders");
     expect(await reach(s, studyCheckout, i)).toBe(true);

@@ -62,3 +62,47 @@ yet played.
 
 **Fix:** Retain a reading step with Continue and an explicit Done acknowledgment, following read-happy-path.
 Verify that reaching the paused compensation note alone does not finish the tutorial.
+
+## Checkout study quarantine - PR #346
+
+Checkout (`study-checkout`) is quarantined after the review round cap. Payments, dispatch, fan-out,
+RAG and cells remain published. A sweep of `traffic:` and `capacity:` in every study catalog found
+only Checkout's two saved simulations author non-1 multipliers: both use traffic ×10. The other
+published studies omit multipliers and therefore use traffic ×1 and capacity ×1.
+
+## [P1/high] R-bf8c4f3d0d: Preserve authored traffic multipliers during reference replay
+
+`src/tutorials/repair.ts:53` · lenses: correctness, tests, types
+
+`reference()` resets both multipliers to ×1. Checkout's `tenfold` and `partner-quota` runs are authored
+with traffic ×10, so Skip and Continue persist a reduction from 40 to 4 messages/s and demonstrate the
+solution at a tenth of the intended load. Subsequent replays retain the weakened workload.
+
+**Fix:** Restore each run's authored multipliers from the lesson's own saved-simulation definition,
+using ×1 only for omitted multipliers. Add a completion-sweep case asserting authored non-1 traffic
+and capacity multipliers survive reference replay, including Checkout's Skip and Continue at traffic
+×10 while repairing learner changes. Keep Checkout quarantined until that behavior is verified.
+
+## [P2/high] R-a6bca6f442: Share the session commands exercised by repair regressions
+
+`src/tutorials/completionSweep.test.ts:213` · lenses: architecture
+
+The sandbox independently implements selection, Run and Save from `src/live/session/useLiveCommands.ts`.
+Sandbox Run reads `diagram.simulations` immediately, while production reads the last published
+`simsRef.current`. Production draft ownership and persistence can change while the sweep stays green.
+
+**Fix:** Extract session operations into `src/live/session/simulationCommands.ts` with explicit document,
+draft and controller ports. Use them from both `useLiveCommands` and the sandbox, leaving simulated
+publication scheduling in the test adapter.
+
+## [P2/high] R-f8727feff3: Cover repairs to the suspended Simulations working copy
+
+`tests/e2e/tutorials.spec.ts:728` · lenses: tests
+
+Browser regressions repair with the Simulations panel open, and the sweep models only one `panelCopy`.
+Neither exercises LiveSession's separate `suspendedPanelRef` update. Reopening the panel and pressing
+Run or Save could restore settings from before the repair without those tests failing.
+
+**Fix:** Add “brownout Skip repairs a suspended panel copy”: edit and run a draft, retain another pending
+edit, close the panel, press Skip, then reopen it. Assert pending edits survive and Run and Save retain
+the repaired deadline and breaker.
