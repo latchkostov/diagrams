@@ -1,4 +1,5 @@
-import { openLibrary } from "./fixtures";
+import { openDiagramProperties } from "./fixtures";
+import { openAnnotate, openLibrary } from "./fixtures";
 import { deflateRawSync } from "node:zlib";
 import type { Page } from "@playwright/test";
 import {
@@ -921,6 +922,7 @@ test("annotate keeps each instruction current until the annotation's editor clos
 }) => {
   await openTutorial(page, "annotate");
   await page.getByTestId("tutorial-start").click();
+  await openAnnotate(page);
   await page.getByTestId("palette-annotate-text").click();
   await expect(page.getByTestId("annotation-editor")).toBeFocused();
   await expect(strip(page)).toHaveAttribute("data-step", "title");
@@ -930,6 +932,7 @@ test("annotate keeps each instruction current until the annotation's editor clos
   await page.keyboard.press("Escape");
   await expect(strip(page)).toHaveAttribute("data-step", "note");
   // Skip with the note's editor open commits it and moves on once, without another note.
+  await openAnnotate(page);
   await page.getByTestId("palette-annotate-note").click();
   await expect(page.getByTestId("annotation-editor")).toBeFocused();
   await expect(strip(page)).toHaveAttribute("data-state", "completing");
@@ -1031,7 +1034,8 @@ test("command-palette: Skip after adding the topic selects Service 1 without a s
   await page.getByTestId("tutorial-start").click();
   await playUntil(page, 3);
   await expect(strip(page)).toHaveAttribute("data-state", "completing");
-  const nodes = page.getByTestId(/^node-/);
+  const nodes = page.getByTestId(/^rf__node-/);
+  await expect(nodes).toHaveCount(3);
   const count = await nodes.count();
   await page.getByTestId("tutorial-skip").click();
   await expect(strip(page)).toHaveAttribute("data-step", "goto");
@@ -1307,7 +1311,7 @@ test("Tutorials is a view of its own: a card starts the tutorial, Enter starts i
   await page.getByTestId("picker-browse-examples").click();
   await page.getByTestId("examples-open-tutorials").click();
   await expect(page.getByTestId("tutorials-view")).toBeVisible({ timeout: pageLoadTimeout() });
-  await expect(page.getByTestId("view-tutorials")).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByTestId("view-tutorials")).toHaveAttribute("aria-pressed", "true");
   await expect(page.getByTestId("tutorials-track-basics")).toContainText("A mobile app talks to an API");
   await page.getByTestId("tutorial-open-mobile-api").click();
   await expect(page.getByTestId("tutorial-app")).toBeVisible({ timeout: pageLoadTimeout() });
@@ -1610,11 +1614,13 @@ for (const policy of ["marked", "default"] as const)
     await expect(page.getByTestId("node-imported-api")).toBeVisible({ timeout: pageLoadTimeout() });
     await expect(page.getByTestId("tutorial-app")).toHaveCount(0);
     await expect(page.getByTestId("diagram-title")).toHaveText(importedDiagram.title);
+    await openDiagramProperties(page);
     await expect(page.getByTestId("private-badge")).toBeVisible();
     const entries = await savedEntries(page);
     expect(entries).toHaveLength(1);
     expect(entries[0]).toMatchObject({ private: true });
     await page.reload();
+    await openDiagramProperties(page);
     await expect(page.getByTestId("private-badge")).toBeVisible({ timeout: pageLoadTimeout() });
   });
 
@@ -1629,6 +1635,7 @@ test("tutorial share-link imports persist privately before opening and retain su
   await page.getByTestId("open-link-submit").click();
   await expect(page.getByTestId("tutorial-app")).toHaveCount(0);
   await expect(page.getByTestId("example-picker")).toHaveAttribute("data-diagram-slug", "shared");
+  await openDiagramProperties(page);
   await expect(page.getByTestId("private-badge")).toBeVisible();
   await page.reload();
   await expect(page.getByTestId("node-imported-api")).toBeVisible({ timeout: pageLoadTimeout() });
@@ -1646,6 +1653,7 @@ test("tutorial share-link imports persist privately before opening and retain su
     .toBe(true);
   await page.reload();
   await expect(page.getByTestId("node-imported-api")).toContainText("Kept API", { timeout: pageLoadTimeout() });
+  await openDiagramProperties(page);
   await expect(page.getByTestId("private-badge")).toBeVisible();
 });
 

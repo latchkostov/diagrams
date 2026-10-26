@@ -1,3 +1,4 @@
+import { openDiagramProperties } from "./fixtures";
 import type { BrowserContext, Page, Locator } from "@playwright/test";
 import type { DiagramFile } from "../../src/model/types";
 import type { LabPacket } from "../../src/collab/lab/bridge";
@@ -756,6 +757,7 @@ test("pasting Private content stops sharing before the paste reaches peers or ro
     await expect(made).toBeVisible();
     await page.getByTestId("undo-button").click();
     await expect(made).toHaveCount(0);
+    await openDiagramProperties(page);
     await expect(page.getByTestId("private-badge")).toBeVisible();
     await page.getByTestId("redo-button").click();
     await expect(made).toContainText("Device-only draft");
@@ -900,6 +902,7 @@ test("privacy-only shutdown leaves Undo disabled until a local edit", async ({ c
   await page.getByTestId("undo-button").click();
   await expect(page.getByTestId("node-api")).toContainText("API");
   await expect(page.getByTestId("undo-button")).toBeDisabled();
+  await openDiagramProperties(page);
   await expect(page.getByTestId("private-badge")).toBeVisible();
   expectNoErrors(consoleErrors);
 });

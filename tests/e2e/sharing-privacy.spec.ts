@@ -1,3 +1,4 @@
+import { openDiagramProperties } from "./fixtures";
 import { currentDiagram } from "./fixtures";
 import { readFileSync } from "node:fs";
 import type { BrowserContext, Page } from "@playwright/test";
@@ -38,6 +39,7 @@ async function makePrivate(page: Page) {
   await page.getByTestId("file-button").click();
   await page.getByTestId("file-privacy").click();
   await page.getByTestId("privacy-diagram").click();
+  await openDiagramProperties(page);
   await expect(page.getByTestId("private-badge")).toBeVisible();
 }
 
@@ -288,6 +290,7 @@ test("a private diagram's Share… says why its links are gone, and how to chang
   await expect(page.getByTestId("privacy-keep")).toBeFocused();
   await page.keyboard.press("Enter");
   await expect(page.getByTestId("privacy-dialog")).toHaveCount(0);
+  await openDiagramProperties(page);
   await expect(page.getByTestId("private-badge")).toBeVisible();
 
   // The Privacy submenu and the dialog name the way to share it.
@@ -296,6 +299,7 @@ test("a private diagram's Share… says why its links are gone, and how to chang
   await expect(page.getByTestId("file-privacy-menu")).toContainText("export Interactive HTML");
   await page.keyboard.press("Escape");
   await page.keyboard.press("Escape");
+  await openDiagramProperties(page);
   await page.getByTestId("private-badge").click();
   await expect(page.getByTestId("privacy-dialog")).toContainText("export Interactive HTML");
   await expect(page.getByTestId("privacy-dialog-list")).toContainText("embeds only where your own app supplies it");

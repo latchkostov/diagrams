@@ -1347,7 +1347,6 @@ kbd {
 }
 @media (max-width: 639px) {
   .topbar .brand,
-  .topbar .bezel-history,
   .topbar .label-optional {
     display: none;
   }
@@ -1364,4 +1363,34 @@ kbd {
   .topbar .topbar-group {
     gap: 2px;
   }
+}
+
+@media (max-width: 639px) {
+  .topbar {
+    gap: 2px;
+  }
+  .topbar .btn,
+  .topbar .icon-btn {
+    min-width: 28px;
+    padding-inline: 4px;
+  }
+  .topbar .ix-caret,
+  .topbar .topbar-spacer {
+    display: none;
+  }
+  .topbar .bezel-history {
+    display: inline-flex;
+    padding-inline-start: 2px;
+    margin-inline-start: 0;
+  }
+  .topbar .bezel-history .icon-btn {
+    width: 28px;
+  }
+  .topbar .diagram-picker {
+    max-width: 18vw;
+  }
+}
+
+.mode-switch button[aria-busy="true"] {
+  cursor: progress;
 }

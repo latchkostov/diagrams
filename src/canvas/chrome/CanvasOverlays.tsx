@@ -5,7 +5,7 @@ import { useBelow } from "../checks/useBelow";
 import { Icon } from "../../components/Icon";
 import { MarkdownView } from "../../components/markdown/lazy";
 import { UNTITLED } from "../../lib/diagramIO";
-import { PRIVACY_REQUEST } from "../../lib/usePrivacy";
+import { PrivateBadge } from "./PrivateBadge";
 import { t as tr } from "../../i18n";
 import type { DiagramMeta } from "../convert";
 import { DiagramCardMeta, type ChecksHost } from "../checks/ChecksViews";
@@ -92,55 +92,57 @@ export function CanvasOverlays({
 }) {
   return (
     <>
-      <div
-        ref={card}
-        className={`diagram-card${presenting ? " is-large" : ""}${cardCovers ? " is-compact" : ""}${privacy && !hideChrome ? " has-badge" : ""}`}
-        data-testid="diagram-card"
-        data-canvas-overlay
-        data-collapsed={cardCovers ? "1" : undefined}
-        // A blank, untitled diagram is already named in the picker: the card waits for the first node
-        // (a private one shows at once, so its lock does).
-        hidden={
-          nodeCount === 0 &&
-          !presenting &&
-          (meta.title || UNTITLED) === UNTITLED &&
-          !meta.description &&
-          !(privacy && !hideChrome)
-        }
-      >
-        {/* The person's own words: their direction is their own, whatever the language around them (dir="auto"). */}
-        <h1 data-testid={bezel ? "diagram-card-title" : "diagram-title"} dir="auto">
-          {meta.title}
-        </h1>
-        {privacy && !hideChrome && <PrivateBadge kind={privacy} />}
-        {meta.description && (
-          <div dir="auto" className="diagram-description" data-testid="diagram-description">
-            <MarkdownView text={meta.description} />
-          </div>
-        )}
-        {/* Node and edge counts live in the inspector's diagram panel, not here too. */}
-        {!hideChrome && (
-          <DiagramCardMeta
-            store={checks}
-            open={checksCard}
-            showWarnings={openingFitDone}
-            reset={
-              modified &&
-              !ownDiagram && (
-                <button
-                  className="link-btn"
-                  onClick={reset}
-                  data-testid="reset-diagram"
-                  title={tr("canvas.discardYourEditsToThisDiagramUndoable")}
-                >
-                  <Icon name="reset" size={13} />
-                  {tr("canvas.editedReset")}
-                </button>
-              )
-            }
-          />
-        )}
-      </div>
+      {!bezel && (
+        <div
+          ref={card}
+          className={`diagram-card${presenting ? " is-large" : ""}${cardCovers ? " is-compact" : ""}${privacy && !hideChrome ? " has-badge" : ""}`}
+          data-testid="diagram-card"
+          data-canvas-overlay
+          data-collapsed={cardCovers ? "1" : undefined}
+          // A blank, untitled diagram is already named in the picker: the card waits for the first node
+          // (a private one shows at once, so its lock does).
+          hidden={
+            nodeCount === 0 &&
+            !presenting &&
+            (meta.title || UNTITLED) === UNTITLED &&
+            !meta.description &&
+            !(privacy && !hideChrome)
+          }
+        >
+          {/* The person's own words: their direction is their own, whatever the language around them (dir="auto"). */}
+          <h1 data-testid="diagram-title" dir="auto">
+            {meta.title}
+          </h1>
+          {privacy && !hideChrome && <PrivateBadge kind={privacy} />}
+          {meta.description && (
+            <div dir="auto" className="diagram-description" data-testid="diagram-description">
+              <MarkdownView text={meta.description} />
+            </div>
+          )}
+          {/* Node and edge counts live in the inspector's diagram panel, not here too. */}
+          {!hideChrome && (
+            <DiagramCardMeta
+              store={checks}
+              open={checksCard}
+              showWarnings={openingFitDone}
+              reset={
+                modified &&
+                !ownDiagram && (
+                  <button
+                    className="link-btn"
+                    onClick={reset}
+                    data-testid="reset-diagram"
+                    title={tr("canvas.discardYourEditsToThisDiagramUndoable")}
+                  >
+                    <Icon name="reset" size={13} />
+                    {tr("canvas.editedReset")}
+                  </button>
+                )
+              }
+            />
+          )}
+        </div>
+      )}
 
       {presenting && (
         <div className="present-bar">
@@ -171,33 +173,5 @@ export function CanvasOverlays({
         <FirstRunHint simulations={meta.simulations?.length ?? 0} onDismiss={dismissHint} />
       )}
     </>
-  );
-}
-
-/**
- * The lock beside the title of a private diagram. A click explains what Private means and offers to turn it
- * off (one confirmation). A local-only example's lock only says it's always private.
- */
-function PrivateBadge({ kind }: { kind: "local-only" | "private" }) {
-  const always = kind === "local-only";
-  return (
-    <button
-      type="button"
-      className="private-badge"
-      data-testid="private-badge"
-      data-kind={kind}
-      aria-label={
-        always ? tr("chrome.privateAlwaysItComesFromALocalOnlyExample") : tr("chrome.privateDiagramWhatThisMeans")
-      }
-      title={
-        always ? tr("chrome.alwaysPrivateNoShareLinksCloudSavesOrAI") : tr("chrome.privateNoShareLinksCloudSavesOrAI")
-      }
-      aria-disabled={always || undefined}
-      onClick={() => {
-        if (!always) window.dispatchEvent(new Event(PRIVACY_REQUEST));
-      }}
-    >
-      <Icon name="lock" size={12} /> {tr("ai.private")}
-    </button>
   );
 }

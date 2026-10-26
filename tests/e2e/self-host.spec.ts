@@ -1,3 +1,4 @@
+import { openDiagramProperties } from "./fixtures";
 import {
   waitForCameraIdle,
   waitForInteractionIdle,
@@ -214,6 +215,7 @@ test.describe("self-hosted build", () => {
 
     await page.getByTestId("file-button").click();
     await page.getByTestId("file-new").click();
+    await openDiagramProperties(page);
     await expect(page.getByTestId("private-badge")).toBeVisible();
 
     await page.getByTestId("file-button").click();
@@ -243,6 +245,7 @@ test.describe("self-hosted build", () => {
       mimeType: "application/yaml",
       buffer: readFileSync("tests/fixtures/imports/compose/docker-compose.yml"),
     });
+    await openDiagramProperties(page);
     await expect(page.getByTestId("private-badge")).toBeVisible();
     await page.getByTestId("toast-import-details").click();
     await expect(page.getByTestId("import-report")).toBeVisible();

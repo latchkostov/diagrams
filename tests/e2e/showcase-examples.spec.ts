@@ -1,5 +1,14 @@
 import type { Locator, Page } from "@playwright/test";
-import { test, expect, gotoCanvas, gotoLive, pauseClock, waitForStableViewport, expectNoErrors } from "./fixtures";
+import {
+  test,
+  expect,
+  gotoCanvas,
+  gotoLive,
+  pauseClock,
+  waitForStableViewport,
+  expectNoErrors,
+  publicExamples,
+} from "./fixtures";
 
 const showcases = [
   { slug: "partitions-vs-subscriptions", signal: "log", field: "backlog" },
@@ -75,14 +84,17 @@ for (const theme of ["light", "dark"] as const)
           await page.clock.runFor(1000);
           await waitForStableViewport(page);
           if (viewport.width === 390) {
-            const title = await page.getByTestId("diagram-card").boundingBox();
+            const title = await page.getByTestId("example-picker").boundingBox();
             const toggle = await page.getByTestId("live-toggle").boundingBox();
             expect(title).not.toBeNull();
             expect(toggle).not.toBeNull();
             if (!title || !toggle) throw new Error("Expected visible title and Live toggle");
             expect(title.height).toBeLessThan(toggle.height * 2);
             const titleText = page.getByTestId("diagram-title");
-            expect(await titleText.evaluate((el) => el.scrollWidth <= el.clientWidth)).toBe(true);
+            const example = publicExamples.find((entry) => entry.slug === showcase.slug);
+            if (!example) throw new Error(`Missing public example ${showcase.slug}`);
+            await expect(titleText).toHaveText(example.title);
+            expect(await titleText.evaluate((el) => getComputedStyle(el).textOverflow)).toBe("ellipsis");
             const bar = await page.getByTestId("live-controls").boundingBox();
             expect(bar).not.toBeNull();
             if (!bar) throw new Error("Expected visible playback bar");
@@ -350,7 +362,7 @@ test.describe("phone live panels", () => {
     await page.screenshot({ path: info.outputPath("phone-inputs-narration-log.png") });
     await page.getByTestId("capacity-close").click();
     await expect(panel).toHaveCount(0);
-    await expectExposed(page.getByTestId("diagram-card"));
+    await expectExposed(page.getByTestId("example-picker"));
   });
 
   test("More stays exposed with Inputs open", async ({ page }, info) => {

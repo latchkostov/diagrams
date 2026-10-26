@@ -1,5 +1,5 @@
 import { test, expect, savedDiagram, pauseClock, gotoLab, waitForStableBox } from "./fixtures";
-import { checksChrome, command, readCanvas, settledCanvas } from "../parity/browser/canvas";
+import { command, readCanvas, settledCanvas } from "../parity/browser/canvas";
 import type { Drawn } from "../parity/browser/canvas";
 import layout from "../parity/goldens/browser/layout/aws-serverless-orders.json" with { type: "json" };
 import example from "../../src/examples/aws-serverless-orders.json" with { type: "json" };
@@ -190,9 +190,11 @@ test("pressing a node cancels a pending refinement without moving its screen box
   await waitForStableBox(node);
   await expect(canvas).toHaveAttribute("data-fit-pending", "true");
   // Make the eventual chrome refinement observably different from the early fit.
-  await page.getByTestId("diagram-card").evaluate((el) => {
+  await page.getByTestId("canvas-wrap").evaluate((el) => {
     const row = document.createElement("div");
     row.dataset.testid = "held-fit-chrome";
+    row.setAttribute("data-canvas-overlay", "");
+    Object.assign(row.style, { position: "absolute", top: "0", width: "100%" });
     row.style.height = "160px";
     el.append(row);
   });
@@ -408,7 +410,7 @@ test("measurement transactions release all node observations while idle and regi
   expect(fitted.retained).toBe(0);
 });
 
-test("a folded title card caches its expanded footprint across resize notifications", async ({ page }) => {
+test("a presentation title card caches its expanded footprint across resize notifications", async ({ page }) => {
   await page.addInitScript(() => {
     const Native = window.ResizeObserver;
     const observers = new Map<ResizeObserver, { callback: ResizeObserverCallback; targets: Set<Element> }>();
@@ -444,7 +446,8 @@ test("a folded title card caches its expanded footprint across resize notificati
   });
   await page.goto("./?view=canvas&example=aws-serverless-orders");
   await settledCanvas(page);
-  await checksChrome(page, "aws-serverless-orders");
+  await page.getByTestId("present-toggle").click();
+  await settledCanvas(page);
   const card = page.getByTestId("diagram-card");
   const box = await card.boundingBox();
   const node = await page.getByTestId("rf__node-client").boundingBox();

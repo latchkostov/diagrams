@@ -1,3 +1,4 @@
+import { openDiagramProperties } from "./fixtures";
 import { toggleTheme, expectTheme, openAnnotate } from "./fixtures";
 import { openLibrary } from "./fixtures";
 import {
@@ -1313,6 +1314,7 @@ test.describe("annotations", () => {
     await gotoCanvas(page, SLUG);
 
     // 1. Diagram description renders rich markdown on the diagram card
+    await openDiagramProperties(page);
     const desc = page.getByTestId("diagram-description");
     await expect(desc).toBeVisible();
     await expect(desc.locator("strong")).toHaveText("orders");

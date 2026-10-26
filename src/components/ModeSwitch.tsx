@@ -8,6 +8,10 @@ export function ModeSwitch() {
   useLocale();
   const live = useSyncExternalStore(paletteHost.subscribe, () => !!paletteHost.get().canvas?.live);
   const available = useSyncExternalStore(paletteHost.subscribe, () => !!paletteHost.get().live);
+  const busy = useSyncExternalStore(
+    paletteHost.subscribe,
+    () => !!paletteHost.get().canvas?.live && !paletteHost.get().session,
+  );
   return (
     <div className="mode-switch" role="group">
       <button
@@ -28,6 +32,7 @@ export function ModeSwitch() {
         data-testid="live-toggle"
         aria-label={t("chrome.goLive")}
         aria-pressed={live}
+        aria-busy={busy}
         aria-keyshortcuts="L"
         disabled={!available}
         onClick={() => paletteHost.get().live?.toggle()}

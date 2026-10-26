@@ -1,3 +1,4 @@
+import { openDiagramProperties } from "./fixtures";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { Page } from "@playwright/test";
@@ -190,6 +191,7 @@ test.describe("imports: docker-compose", () => {
     await page.keyboard.press("Enter");
     await expect(page.getByTestId("import-report-make-private")).toHaveCount(0);
     await expect(page.getByTestId("import-report-done")).toBeFocused();
+    await openDiagramProperties(page);
     await expect(page.getByTestId("private-badge")).toBeVisible();
     // A name selects its node and, once the report has closed, focuses it.
     await page.getByTestId("import-report-guess-name-0").focus();
@@ -249,6 +251,7 @@ test.describe("imports: docker-compose", () => {
     await page.getByTestId("import-report-make-private").click();
     await expect(page.getByTestId("import-report-privacy")).not.toContainText("isn't private");
     await page.getByTestId("import-report-done").click();
+    await openDiagramProperties(page);
     await expect(page.getByTestId("private-badge")).toBeVisible();
 
     // On: the next import is private from the start, and the report doesn't ask.
@@ -259,6 +262,7 @@ test.describe("imports: docker-compose", () => {
     await page.keyboard.press("Escape");
     await drop(page, [{ name: "docker-compose.yml", text: COMPOSE.replace("name: shop", "name: shop-two") }]);
     await expect(page.getByTestId("diagram-title")).toHaveText("shop-two");
+    await openDiagramProperties(page);
     await expect(page.getByTestId("private-badge")).toBeVisible();
     await page.getByTestId("toast-import-details").click();
     await expect(page.getByTestId("import-report-privacy")).toHaveText("Read on this device. Nothing was uploaded.");
@@ -709,10 +713,12 @@ test.describe("imports: Terraform", () => {
     await page.keyboard.press("Enter");
     await expect(page.getByTestId("diagram-title")).toHaveText("aws-plan (everything)");
     await expect(page.getByTestId("canvas-wrap")).toBeFocused();
+    await openDiagramProperties(page);
     await expect(page.getByTestId("private-badge")).toBeVisible();
     // Still private after a reload: no share link for it.
     await page.reload();
     await expect(page.getByTestId("diagram-title")).toHaveText("aws-plan (everything)");
+    await openDiagramProperties(page);
     await expect(page.getByTestId("private-badge")).toBeVisible();
     await openShareChooser(page);
     await expect(page.getByTestId("share-private-note")).toBeVisible();

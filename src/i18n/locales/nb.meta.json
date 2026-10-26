@@ -2230,16 +2230,16 @@
     "tutorials.annotate.finish": "3970d79b",
     "tutorials.annotate.diagramTitle": "1f471f36",
     "tutorials.annotate.titleTitle": "c659a2a9",
-    "tutorials.annotate.titleGoal": "26e14162",
-    "tutorials.annotate.titleTip": "26e14162",
+    "tutorials.annotate.titleGoal": "90799f5a",
+    "tutorials.annotate.titleTip": "90799f5a",
     "tutorials.annotate.titleDone": "a5c271d2",
     "tutorials.annotate.noteTitle": "1ce96c5d",
-    "tutorials.annotate.noteGoal": "fce59dd7",
-    "tutorials.annotate.noteTip": "fce59dd7",
+    "tutorials.annotate.noteGoal": "90799f5a",
+    "tutorials.annotate.noteTip": "90799f5a",
     "tutorials.annotate.noteDone": "0c305a4f",
     "tutorials.annotate.zoneTitle": "dac20083",
-    "tutorials.annotate.zoneGoal": "b363e876",
-    "tutorials.annotate.zoneTip": "b363e876",
+    "tutorials.annotate.zoneGoal": "e2962029",
+    "tutorials.annotate.zoneTip": "e2962029",
     "tutorials.annotate.zoneDone": "a0c58d6e",
     "tutorials.annotate.titleText": "354405f4",
     "tutorials.annotate.noteText": "a77803c1",
@@ -2783,6 +2783,7 @@
     "workbench.shortcuts": "f09038a0",
     "workbench.checksName": "54f75717",
     "workbench.warnings": "16ba1ebb",
-    "workbench.systemTheme": "9fa7a70b"
+    "workbench.systemTheme": "9fa7a70b",
+    "workbench.checkDiagram": "9d4fa986"
   }
 }

@@ -199,8 +199,8 @@ test.describe("AI panel dock", () => {
     await page.getByTestId("dock-tab-ai").click();
     await expect(page.getByTestId("ai-turn-0-undo")).toHaveCount(0);
 
-    // Undo the move by hand: now the turn's step is next again, and its Undo reverses only the turn.
-    await page.keyboard.press(`${MOD}+z`);
+    // The AI tab took focus from the canvas; use the bezel Undo to reverse the move.
+    await page.getByTestId("undo-button").click();
     await expect.poll(x).toBe(start);
     await page.getByTestId("dock-tab-ai").click();
     await expect(page.getByTestId("ai-turn-0-undo")).toBeVisible();

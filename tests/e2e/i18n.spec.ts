@@ -1,3 +1,4 @@
+import { openDiagramProperties } from "./fixtures";
 import { openAnnotate } from "./fixtures";
 import { openLibrary } from "./fixtures";
 import { readFileSync } from "node:fs";
@@ -1492,6 +1493,7 @@ test.describe("the pseudo-locale", () => {
     await page.getByTestId("file-button").click();
     await page.getByTestId("file-privacy").click();
     await page.getByTestId("privacy-diagram").click();
+    await openDiagramProperties(page);
     await page.getByTestId("private-badge").click();
     await expect(page.getByTestId("privacy-dialog")).toBeVisible();
     await expectNothingCut(page.getByTestId("privacy-dialog"), "Private diagram");

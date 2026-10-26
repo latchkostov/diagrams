@@ -764,8 +764,8 @@
     top: calc(var(--topbar-h) + 64px);
     bottom: 80px;
     inset-inline-end: 8px;
-    width: min(396px, calc(100vw - 16px));
-    max-width: calc(100vw - 16px);
+    width: min(396px, calc(100vw - var(--frame-rail-w) - 16px));
+    max-width: calc(100vw - var(--frame-rail-w) - 16px);
   }
 
   /* Let playback escape the HUD's stacking context, above the sibling panel at 7.
@@ -788,8 +788,9 @@
   .app-main .lv-hud.has-panel .lv-bar {
     position: fixed;
     inset-inline: 8px;
+    inset-inline-start: calc(var(--frame-rail-w) + 8px);
     bottom: 12px;
-    width: calc(100vw - 16px);
+    width: calc(100vw - var(--frame-rail-w) - 16px);
     transform: none;
     animation: none;
     gap: 2px;

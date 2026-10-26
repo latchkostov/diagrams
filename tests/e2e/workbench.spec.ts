@@ -1,4 +1,4 @@
-import { test, expect, gotoCanvas, openLibrary, waitForCameraIdle } from "./fixtures";
+import { test, expect, gotoCanvas, openLibrary, openDiagramProperties, waitForCameraIdle } from "./fixtures";
 
 test("the library opens from Add, closes with Escape and remembers Pin open", async ({ page }) => {
   await gotoCanvas(page, "retry-storm");
@@ -88,6 +88,7 @@ test("the bezel switches Edit and Live and keeps history controls", async ({ pag
   await expect(page.getByTestId("mode-edit")).toHaveAttribute("aria-pressed", "true");
   await bezel.getByTestId("live-toggle").click();
   await expect(page.getByTestId("live-controls")).toBeVisible();
+  await expect(bezel.getByTestId("live-toggle")).toHaveAttribute("aria-busy", "false");
   await expect(bezel.getByTestId("live-toggle")).toHaveAttribute("aria-pressed", "true");
   await bezel.getByTestId("mode-edit").click();
   await expect(page.getByTestId("live-controls")).toHaveCount(0);
@@ -111,4 +112,40 @@ test("View offers explicit themes and Match system follows device changes withou
   await expect.poll(() => page.evaluate(() => document.documentElement.dataset.theme)).toBe("light");
   await page.reload();
   await expect(page.getByTestId("palette")).toHaveAttribute("data-mode", "pinned");
+});
+
+test("the bezel owns the title and Diagram properties owns the description and checks link", async ({ page }) => {
+  await gotoCanvas(page, "retry-storm");
+  await expect(page.getByTestId("diagram-card")).toHaveCount(0);
+  await expect(page.getByTestId("topbar").getByTestId("diagram-title")).toHaveText("A retry storm");
+  await openDiagramProperties(page);
+  await expect(page.getByTestId("diagram-description")).toContainText("Payments");
+  await expect(page.getByTestId("inspector-field-title")).toHaveValue("A retry storm");
+  await page.getByTestId("diagram-checks-summary").click();
+  await expect(page.getByTestId("dock-tab-checks")).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByTestId("checks-card")).toBeVisible();
+});
+
+test("Diagram properties offers checks only while checks are available", async ({ page }) => {
+  await gotoCanvas(page, "retry-storm");
+  await openDiagramProperties(page);
+  await expect(page.getByTestId("diagram-checks-summary")).toBeVisible();
+  await page.getByTestId("live-toggle").click();
+  await expect(page.getByTestId("live-controls")).toBeVisible();
+  await openDiagramProperties(page);
+  await expect(page.getByTestId("diagram-checks-summary")).toHaveCount(0);
+});
+
+test("phone playback stays beside the tool rail", async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await gotoCanvas(page, "retry-storm");
+  await page.getByTestId("live-toggle").click();
+  const bar = await page.getByTestId("live-controls").boundingBox();
+  const rail = await page.getByTestId("tool-rail").boundingBox();
+  expect(bar).not.toBeNull();
+  expect(rail).not.toBeNull();
+  if (!bar || !rail) throw new Error("Expected playback and tool rail");
+  expect(bar.x).toBeGreaterThanOrEqual(rail.x + rail.width);
+  await page.getByTestId("ai-rail-open").click();
+  await expect(page.getByTestId("ai-panel")).toBeVisible();
 });

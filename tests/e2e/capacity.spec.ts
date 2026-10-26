@@ -155,7 +155,7 @@ test.describe("inputs & capacity", () => {
     await page.keyboard.press("Escape");
     await page.keyboard.press("c");
     await expect(page.getByTestId("capacity-layer")).toHaveCount(0);
-    await page.getByTestId("diagram-card").click({ position: { x: 4, y: 4 } });
+    await page.getByTestId("canvas-pane").click({ position: { x: 4, y: 4 } });
     await page.getByTestId("canvas-view").click({ button: "right", position: { x: 700, y: 820 } });
     // Under Show ▸, with the other things you can show (grid, minimap, inspector).
     await page.getByTestId("context-menu-item-canvas.view-options").click();

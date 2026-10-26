@@ -1,3 +1,4 @@
+import { openDiagramProperties } from "./fixtures";
 import { chunk, holdChunk } from "./chunk";
 import { currentDiagram } from "./fixtures";
 import { openExample } from "./fixtures";
@@ -707,6 +708,7 @@ test("reopening an example never overwrites its Private copy's destination", asy
   await page.getByTestId("file-button").click();
   await page.getByTestId("file-privacy").click();
   await page.getByTestId("privacy-diagram").click();
+  await openDiagramProperties(page);
   await expect(page.getByTestId("private-badge")).toBeVisible();
   await page.keyboard.press("ControlOrMeta+s");
   await expect.poll(() => page.evaluate(() => window.__fs.writes.length)).toBe(2);

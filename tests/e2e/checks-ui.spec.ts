@@ -353,7 +353,7 @@ test("at 1024 the open card overlaps no other chrome", async ({ page }) => {
     b.y < cardBox.y + cardBox.height &&
     cardBox.y < b.y + b.height;
   const chrome = [
-    "diagram-card",
+    "example-picker",
     "live-toggle",
     "inspector-toggle",
     "first-run-hint",

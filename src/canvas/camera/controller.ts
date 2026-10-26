@@ -316,19 +316,19 @@ export function createCameraController(
         return {
           request: {
             maxZoom: presenting ? 1.6 : 1.25,
-            margin: presenting ? 64 : 40,
+            margin: presenting ? 56 : 32,
             insets: liveBar,
             duration: firstFit ? 350 : 0,
           },
           animate: false,
         };
       case "fullscreen":
-        return { request: { maxZoom: 1.6, margin: 64, insets: liveBar, duration: 350 }, animate: false };
+        return { request: { maxZoom: 1.6, margin: 56, insets: liveBar, duration: 350 }, animate: false };
       case "reset":
         return { request: { maxZoom: 1.25, duration: 350 }, animate: false };
       case "checks":
       case "pane":
-        return { request: { maxZoom: 1.25, margin: 40, duration: 250 }, animate: false };
+        return { request: { maxZoom: 1.25, margin: 32, duration: 250 }, animate: false };
     }
   }
 
@@ -350,7 +350,7 @@ export function createCameraController(
         // Never past 125% (no huge single node), clear of the panels; refined once the pane is measured,
         // so a pending Inspector reveal can't overwrite it at the old zoom.
         return fit(
-          { only: e.nodes, onlyEdges: e.edges, maxZoom: 1.25, margin: 64, duration: 300 },
+          { only: e.nodes, onlyEdges: e.edges, maxZoom: 1.25, margin: 56, duration: 300 },
           true,
           false,
           "zoomToSelection",

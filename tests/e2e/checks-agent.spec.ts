@@ -1,3 +1,4 @@
+import { openDiagramProperties } from "./fixtures";
 import type { Page } from "@playwright/test";
 import { test, expect, openMissingDlq, expectNoErrors } from "./fixtures";
 import { callTool, installFakeModelContext, must, nodeCount, toolNames } from "./ai-helpers";
@@ -107,6 +108,7 @@ test("the file's ignores hold, and a private diagram offers no check_diagram", a
   await page.getByTestId("file-button").click();
   await page.getByTestId("file-privacy").click();
   await page.getByTestId("privacy-diagram").click();
+  await openDiagramProperties(page);
   await expect(page.getByTestId("private-badge")).toBeVisible();
   await expect.poll(() => toolNames(page)).toEqual([]);
   expectNoErrors(consoleErrors);

@@ -330,8 +330,8 @@ test("on a narrow canvas (1024, AI panel open) the callout keeps its words and b
   await page.getByTestId("context-menu-item-sim.kill").click();
   const callout = page.getByTestId("trouble-callout");
   await expect(callout).toBeVisible();
-  // Too little room beside the title card: it sits below it, the canvas's width.
-  await expect(callout).toHaveAttribute("data-below", "");
+  // With the title in the bezel the callout uses the available canvas width.
+  await expect(callout).not.toHaveAttribute("data-below", "");
   const box = async (id: string) => {
     const b = await page.getByTestId(id).boundingBox();
     if (!b) throw new Error(`Expected ${id} on screen`);
@@ -346,11 +346,11 @@ test("on a narrow canvas (1024, AI panel open) the callout keeps its words and b
     // Never over the words.
     expect(b.x >= headline.x + headline.width || b.y >= headline.y + headline.height).toBe(true);
   }
-  const card = await box("diagram-card");
+  const card = await box("topbar");
   expect((await box("trouble-callout")).y).toBeGreaterThanOrEqual(card.y + card.height);
 });
 
-test("at 1440 with the AI panel open, the callout occupies the room beside the title card", async ({ page }) => {
+test("at 1440 with the AI dock open, the callout clears the bezel and stays within the canvas", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await gotoLive(page, `./?view=canvas&example=${SLUG}&live=1&sim=payments-outage&paused=1`);
   await page.getByTestId("ai-rail-open").click();
@@ -359,7 +359,7 @@ test("at 1440 with the AI panel open, the callout occupies the room beside the t
   const callout = page.getByTestId("trouble-callout");
   await expect(callout).toBeVisible();
   const clearOfTitle = async (id: string) => {
-    const card = await page.getByTestId("diagram-card").boundingBox();
+    const card = await page.getByTestId("topbar").boundingBox();
     const box = await page.getByTestId(id).boundingBox();
     const canvas = await page.getByTestId("canvas-wrap").boundingBox();
     if (!card || !box || !canvas) throw new Error("Expected the canvas, card and callout");

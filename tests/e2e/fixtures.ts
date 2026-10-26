@@ -10,6 +10,14 @@ import { withSlowmoDiagnostic, slowmoDiagnosticEnabled, slowmoDiagnosticTest } f
 export const TEXT_START = textBoundaryKey("start");
 export const TEXT_END = textBoundaryKey("end");
 
+/** Diagram details moved from the canvas card into Properties. */
+export async function openDiagramProperties(page: Page) {
+  if (await page.getByTestId("inspector-field-title").isVisible()) return;
+  await page.getByTestId("canvas-pane").click({ button: "right", position: { x: 4, y: 4 } });
+  await page.getByTestId("context-menu-item-canvas.properties").click();
+  await expect(page.getByTestId("inspector-field-title")).toBeVisible();
+}
+
 /** Theme choices moved into the View menu. */
 export async function toggleTheme(page: Page) {
   const theme = await page.evaluate(() => document.documentElement.dataset.theme);

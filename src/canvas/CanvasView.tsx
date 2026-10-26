@@ -1,3 +1,4 @@
+import { Icon } from "../components/Icon";
 import { workbenchDock, useWorkbenchDock } from "./inspector/dockState";
 import { activateDock, closeWorkbenchDock } from "./inspector/dockActions";
 import { ConnectionRadius } from "./interaction/ConnectionRadius";
@@ -1543,6 +1544,21 @@ function CanvasInner({
             </div>
             {!hideChrome && (
               <Inspector
+                privacy={privacy}
+                diagramReset={
+                  modified &&
+                  !ownDiagram && (
+                    <button
+                      className="link-btn"
+                      data-testid="reset-diagram"
+                      onClick={reset}
+                      title={tr("canvas.discardYourEditsToThisDiagramUndoable")}
+                    >
+                      <Icon name="reset" size={13} />
+                      {tr("canvas.editedReset")}
+                    </button>
+                  )
+                }
                 editor={editor}
                 checksStore={checks}
                 checksHost={checksHost}

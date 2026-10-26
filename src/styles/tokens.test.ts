@@ -146,3 +146,11 @@ it("keeps selected text readable and its highlight visible over every field, in 
       expect(ratio("selection-bg", surface), `selection-bg on ${surface}`).toBeGreaterThanOrEqual(1.5);
   }
 });
+
+it("keeps spotlight dimmed strokes at 3:1 on the board", () => {
+  for (const tokens of themes) {
+    const a = luminance(tokens["dim-stroke"]),
+      b = luminance(tokens.board);
+    expect((Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05)).toBeGreaterThanOrEqual(3);
+  }
+});

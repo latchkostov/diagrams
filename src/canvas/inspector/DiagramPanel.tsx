@@ -1,10 +1,13 @@
+import { PrivateBadge } from "../chrome/PrivateBadge";
+import { useSyncExternalStore } from "react";
+import { checksPanel, useChecksPanel } from "../checks/checksPanel";
 import "../../styles/inspector-layout.css";
 import { DOCUMENTATION_LIMITS } from "../../model/documentation";
 import { useLayoutEffect, useState, type CSSProperties } from "react";
 import { useInteractionOrLocal } from "../interaction";
 import { ColorPickerModal } from "../../components/ColorPickerModal";
 import { Icon } from "../../components/Icon";
-import { MarkdownEditor } from "../../components/markdown/lazy";
+import { MarkdownView, MarkdownEditor } from "../../components/markdown/lazy";
 import { t } from "../../i18n";
 import { colorLabel } from "../../i18n/chrome";
 import { PlanningUpgrade, RequestRoutesSection } from "../../planning/lazy";
@@ -14,7 +17,23 @@ import { bulkStep } from "./editTransactions";
 import { countText } from "./selectionSummary";
 import { type InspectorProps } from "./types";
 
-export function DiagramPanel({ editor, meta, counts, focus, takeFocus }: InspectorProps) {
+const noopSubscribe = () => () => {};
+const noWarnings = () => 0;
+export function DiagramPanel({
+  editor,
+  meta,
+  counts,
+  focus,
+  takeFocus,
+  privacy,
+  checksStore,
+  diagramReset,
+}: InspectorProps) {
+  const checksAvailable = useChecksPanel().available;
+  const warnings = useSyncExternalStore(
+    checksStore?.subscribe ?? noopSubscribe,
+    checksStore ? () => checksStore.get().warnings : noWarnings,
+  );
   const { controller } = useInteractionOrLocal();
   useLayoutEffect(() => controller.rendered());
   const [pickerAnchor, setPickerAnchor] = useState<{ rect: DOMRect; merge: string } | null>(null);
@@ -26,6 +45,20 @@ export function DiagramPanel({ editor, meta, counts, focus, takeFocus }: Inspect
 
   return (
     <>
+      <Section>
+        {privacy && <PrivateBadge kind={privacy} />}
+        {meta.description && (
+          <div className="diagram-description" data-testid="diagram-description" dir="auto">
+            <MarkdownView text={meta.description} />
+          </div>
+        )}
+        {checksStore && checksAvailable && (
+          <button className="link-btn" data-testid="diagram-checks-summary" onClick={() => checksPanel.open()}>
+            {t("workbench.warnings", { count: warnings })} · {t("workbench.checkDiagram")}
+          </button>
+        )}
+        {diagramReset}
+      </Section>
       <RequestRoutesSection editor={editor} planning={meta.planning} place="live" />
       <PlanningUpgrade
         editor={editor}

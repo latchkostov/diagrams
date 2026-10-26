@@ -43,7 +43,7 @@ async function measure(page: Page) {
         .filter(({ id }) => !skip.test(id))
         .map(({ el, id }) => box(el, id.slice(prefix.length)))
         .filter((b) => b.width > 0 && b.height > 0);
-    const panels = ["diagram-card", "canvas-minimap", "canvas-controls", "live-toggle", "live-controls"].flatMap(
+    const panels = ["topbar", "tool-rail", "inspector", "canvas-minimap", "canvas-controls", "live-controls"].flatMap(
       (id) => {
         const el = document.querySelector(`[data-testid="${id}"]`);
         return el ? [box(el, id)] : [];

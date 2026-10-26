@@ -2,7 +2,7 @@
   width: var(--frame-rail-w);
   flex: none;
   min-height: 0;
-  z-index: 7;
+  z-index: 8;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -98,7 +98,7 @@
 
 .rail-credit {
   font-size: 11px;
-  color: var(--text-3);
+  color: var(--text-2);
   text-align: center;
   text-decoration: none;
   line-height: 1.15;

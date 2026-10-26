@@ -1,3 +1,4 @@
+import { openDiagramProperties } from "./fixtures";
 import {
   waitForAutosave,
   animationFrames,
@@ -76,6 +77,7 @@ async function togglePrivate(page: Page) {
 
 async function makePrivate(page: Page) {
   await togglePrivate(page);
+  await openDiagramProperties(page);
   await expect(page.getByTestId("private-badge")).toBeVisible();
 }
 
@@ -94,6 +96,7 @@ test("the Private switch: badge, library marker, and one confirmation to turn it
   for (const id of ["privacy-diagram", "privacy-new-diagrams"])
     await expect(page.getByTestId(id)).toHaveAttribute("role", "menuitemcheckbox");
   await page.getByTestId("privacy-diagram").click();
+  await openDiagramProperties(page);
   await expect(page.getByTestId("private-badge")).toHaveText("Private");
   expect((await entry(page, slug)).private).toBe(true);
   // The File menu says so, and the library row too.
@@ -104,14 +107,17 @@ test("the Private switch: badge, library marker, and one confirmation to turn it
   await page.keyboard.press("Escape");
 
   // The badge explains; Keep private is the default and changes nothing.
+  await openDiagramProperties(page);
   await page.getByTestId("private-badge").click();
   await expect(page.getByTestId("privacy-dialog")).toBeVisible();
   await expect(page.getByTestId("privacy-keep")).toBeFocused();
   await page.getByTestId("privacy-keep").click();
   await expect(page.getByTestId("privacy-dialog")).toHaveCount(0);
+  await openDiagramProperties(page);
   await expect(page.getByTestId("private-badge")).toBeVisible();
 
   // From the badge, by keyboard: the badge goes with Private, and focus lands on the canvas, not the page.
+  await openDiagramProperties(page);
   await page.getByTestId("private-badge").focus();
   await page.keyboard.press("Enter");
   await page.getByTestId("privacy-turn-off").focus();
@@ -134,6 +140,7 @@ test("the Private switch: badge, library marker, and one confirmation to turn it
   await page.getByTestId("command-input").fill("make this diagram private");
   await expect(page.getByTestId("command-item-action:file.private")).toBeVisible();
   await page.getByTestId("command-item-action:file.private").click();
+  await openDiagramProperties(page);
   await expect(page.getByTestId("private-badge")).toBeVisible();
   expectNoErrors(consoleErrors);
 });
@@ -265,6 +272,7 @@ test("Duplicate and pasted nodes keep the diagram private; an example refuses th
   await page.getByTestId(`library-duplicate-${secret}`).click();
   await page.getByTestId("duplicate-open").click();
   await expect(page.getByTestId("diagram-title")).toHaveText("Secret diagram (copy)");
+  await openDiagramProperties(page);
   await expect(page.getByTestId("private-badge")).toHaveAttribute("data-kind", "private");
   const copy = await currentDiagram(page);
   expect((await entry(page, copy)).private).toBe(true);
@@ -289,6 +297,7 @@ test("Duplicate and pasted nodes keep the diagram private; an example refuses th
   await page.getByTestId("canvas-wrap").click({ position: { x: 700, y: 420 } });
   await page.keyboard.press(`${MOD}+v`);
   await expect(page.getByTestId("node-intake-1")).toBeVisible();
+  await openDiagramProperties(page);
   await expect(page.getByTestId("private-badge")).toHaveAttribute("data-kind", "private");
   expect((await entry(page, plain)).private).toBe(true);
   expectNoErrors(consoleErrors);
@@ -313,6 +322,7 @@ test("an exported private diagram says so, and importing it again keeps it priva
   await page.getByTestId("import-input").setInputFiles(file);
   await expect(page.getByTestId("toast").last()).toContainText("Imported");
   const again = await currentDiagram(page);
+  await openDiagramProperties(page);
   await expect(page.getByTestId("private-badge")).toBeVisible();
   expect((await entry(page, again)).private).toBe(true);
   // A public diagram's export never says private.
@@ -334,6 +344,7 @@ test("New diagrams are private: a remembered setting, off by default", async ({ 
   await page.getByTestId("file-button").click();
   await page.getByTestId("file-new").click();
   // A blank private diagram shows its lock at once, and AI is off for it.
+  await openDiagramProperties(page);
   await expect(page.getByTestId("private-badge")).toBeVisible();
   await openPrivacyMenu(page);
   await expect(page.getByTestId("privacy-diagram")).toHaveAttribute("aria-checked", "true");
@@ -342,6 +353,7 @@ test("New diagrams are private: a remembered setting, off by default", async ({ 
   await page.keyboard.press("Escape");
   // Imports from this device start private too.
   await importDiagram(page, "Imported while on");
+  await openDiagramProperties(page);
   await expect(page.getByTestId("private-badge")).toBeVisible();
   await page.reload();
   await openPrivacyMenu(page);
@@ -480,6 +492,7 @@ for (const byDefault of [false, true]) {
     await expect(page.getByTestId("example-picker")).toHaveAttribute("data-diagram-slug", /^my-/);
     const copy = await currentDiagram(page);
     if (!byDefault) await makePrivate(page);
+    await openDiagramProperties(page);
     await expect(page.getByTestId("private-badge")).toBeVisible();
     await page.evaluate(() => (window as { __testStorageRelease?: () => void }).__testStorageRelease?.());
     await expect(page.getByTestId("toast")).toContainText("became private");
@@ -640,6 +653,7 @@ for (const [format, item, file] of [
     await page.getByTestId("import-input").setInputFiles(path);
     await expect(page.getByTestId("toast").last()).toContainText("Imported");
     const again = await currentDiagram(page);
+    await openDiagramProperties(page);
     await expect(page.getByTestId("private-badge")).toHaveAttribute("data-kind", "private");
     expect((await entry(page, again)).private).toBe(true);
     expectNoErrors(consoleErrors);
@@ -719,6 +733,7 @@ test("Private P1 diagrams keep privacy through native, legacy and Interactive HT
     buffer: Buffer.from(JSON.stringify(d)),
   });
   await expect(page.getByTestId("diagram-title")).toHaveText(d.title);
+  await openDiagramProperties(page);
   await expect(page.getByTestId("private-badge")).toBeVisible();
   await page.keyboard.press("ControlOrMeta+k");
   await page.keyboard.type("diagram properties");
@@ -749,6 +764,7 @@ test("Private P1 diagrams keep privacy through native, legacy and Interactive HT
   for (const file of [nativeFile, legacyFile]) {
     await page.getByTestId("import-input").setInputFiles(file);
     await expect(page.getByTestId("toast").last()).toContainText("Imported");
+    await openDiagramProperties(page);
     await expect(page.getByTestId("private-badge")).toBeVisible();
     const slug = await currentDiagram(page);
     expect((await entry(page, slug)).private).toBe(true);
@@ -760,6 +776,7 @@ test("Private P1 diagrams keep privacy through native, legacy and Interactive HT
     buffer: Buffer.from(JSON.stringify(filePayload(readFileSync(htmlFile, "utf8")).diagram)),
   });
   await expect(page.getByTestId("toast").last()).toContainText("Imported");
+  await openDiagramProperties(page);
   await expect(page.getByTestId("private-badge")).toBeVisible();
   expect((await entry(page, await currentDiagram(page))).private).toBe(true);
   expectNoErrors(consoleErrors);
