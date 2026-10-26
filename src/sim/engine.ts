@@ -50,13 +50,7 @@ import { ShedQueue } from "./shedQueue";
 import { queueGrant } from "./admission";
 import { Deque } from "./deque";
 import { createLineage } from "./lineage";
-import {
-  createLatencyBudget,
-  createLatencyRecorder,
-  shareLatencyRecorder,
-  recordLatency,
-  latencyMetrics,
-} from "./latency";
+import { createLatencyBudget, createLatencyRecorder, recordLatency, latencyMetrics } from "./latency";
 import { mulberry32 } from "./rng";
 import {
   forwardingShare,
@@ -121,7 +115,6 @@ import { STEP } from "./timing";
 import type {
   RouteCounts,
   EngineOptions,
-  EngineCheckpoint,
   NodeSimProps,
   NodeStatus,
   ParticleKind,
@@ -133,6 +126,7 @@ import type {
   TraceStep,
 } from "./types";
 
+import { createCheckpoints } from "./engine/checkpoint";
 import { createAccounting } from "./engine/accounting";
 import {
   isBroker,
@@ -398,7 +392,6 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   let compiled: CompiledTopology = { edges: [], outgoing: new Map(), groups: new Map(), restricted: new Set() };
   const groupsByConsumer = new Map<string, Group[]>();
   const metricGroups = new Map<string, Map<string, Group>>();
-  const checkpoints = new WeakMap<EngineCheckpoint, () => void>();
   const lineage = createLineage({
     time: () => time,
     find(test) {
@@ -3943,40 +3936,13 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     }
   }
 
-  lineage.setHistory(opts.traceHistory ?? 0);
-  const engine: SimEngine = {
-    tracer: lineage,
-    validateLifecycleActions(actions) {
-      if (!revisionAtLeast(planning?.revision, "p3-a1") || !actions.length) return;
-      validateAllocationActions(nodes.values(), actions, capacityMultiplier);
-    },
-    checkpoint() {
-      // structuredClone preserves the graph's shared/cyclic references. Deque methods are
-      // reattached on restore; its queue contents and head are ordinary own properties.
-      // Clone family identity with messages, but share recordings. Lineage copies a record on its
-      // first write after capture, so finished history is never deep-cloned during playback.
+  const [checkpoint, restore] = createCheckpoints(
+    nodes,
+    edges,
+    faultEdges,
+    () => {
       lineage.shareRecords();
-      const cloneGraph = <T extends { lineage: typeof lineage.state; nodes: typeof nodes }>(source: T): T => {
-        const records = new Map([...source.lineage.store].map(([id, f]) => [id, f.trace]));
-        const latencies = new Map([...source.nodes].map(([id, node]) => [id, node.latency]));
-        let copy: T;
-        try {
-          // Synchronous, internal-only graph: omit records just for structuredClone's traversal.
-          for (const family of source.lineage.store.values()) family.trace = undefined;
-          for (const node of source.nodes.values()) node.latency = undefined;
-          copy = structuredClone(source);
-        } finally {
-          for (const [id, family] of source.lineage.store) family.trace = records.get(id);
-          for (const [id, node] of source.nodes) node.latency = latencies.get(id);
-        }
-        for (const [id, family] of copy.lineage.store) family.trace = records.get(id);
-        for (const [id, node] of copy.nodes) {
-          const recorder = latencies.get(id);
-          node.latency = recorder ? shareLatencyRecorder(recorder) : undefined;
-        }
-        return copy;
-      };
-      const graph = cloneGraph({
+      return {
         nodes,
         partBudget,
         latencyBudget,
@@ -4001,8 +3967,60 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         lineage: lineage.state,
         routeCounts,
         faults,
-      });
-      const clock = {
+      };
+    },
+    () => ({
+      time,
+      incomingAt,
+      incomingBeforeReleases,
+      accumulator,
+      speed,
+      traffic,
+      sourceRate,
+      sourceEmitted,
+      drawn,
+      nextMessage,
+      nextParticle,
+      nextInjection,
+      nextCall,
+      nextAttempt,
+      nextLogical,
+      inSystem,
+      eventHead,
+      seed,
+      randomCalls,
+      topology,
+      scale,
+      capacityMultiplier,
+      sinceFault,
+    }),
+    (copy, clock, repair) => {
+      partBudget = copy.partBudget;
+      latencyBudget = copy.latencyBudget;
+      repair(copy);
+      trips = copy.trips;
+      echoExpiries = copy.echoExpiries;
+      echoByTime = copy.echoByTime;
+      logical = copy.logical;
+      logicalIndices = copy.logicalIndices;
+      ledger.state = copy.ledger;
+      calls = copy.calls;
+      if (TEST_ORACLES) outcomeChecks = copy.outcomeChecks!;
+      drawnTrips = copy.drawnTrips;
+      injections.splice(0, injections.length, ...copy.injections);
+      events.splice(0, events.length, ...copy.events);
+      lineage.state = copy.lineage;
+      routeCounts = copy.routeCounts;
+      faults = copy.faults;
+      admission = emptyAdmission();
+      reconfigureAdmission(
+        admission,
+        [...nodes.values()].flatMap((n) => (n.props.admission ? [{ id: n.id, policy: n.props.admission }] : [])),
+        planning,
+        clock.time,
+      );
+      restoreAdmission(admission, copy.admission);
+      ({
         time,
         incomingAt,
         incomingBeforeReleases,
@@ -4022,96 +4040,26 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         eventHead,
         seed,
         randomCalls,
-        topology,
         scale,
         capacityMultiplier,
         sinceFault,
-      };
-      const token = Object.freeze({ time });
-      checkpoints.set(token, () => {
-        if (topology !== clock.topology) throw new Error("Checkpoint belongs to a previous diagram");
-        const copy = cloneGraph(graph);
-        partBudget = copy.partBudget;
-        latencyBudget = copy.latencyBudget;
-        nodes.clear();
-        for (const [id, node] of copy.nodes) {
-          if ("queues" in node.pending) {
-            Object.setPrototypeOf(node.pending, ShedQueue.prototype);
-            (node.pending as ShedQueue<Work>).restore();
-          } else Object.setPrototypeOf(node.pending, Deque.prototype);
-          Object.setPrototypeOf(node.resume, Deque.prototype);
-          for (const group of node.groups) {
-            Object.setPrototypeOf(group.pending, Deque.prototype);
-            for (const queue of group.staged.values()) Object.setPrototypeOf(queue, Deque.prototype);
-            // structuredClone gives dictionaries Object.prototype back: a consumer called "constructor" must stay a key.
-            Object.setPrototypeOf(group.activeByNode, null);
-          }
-          Object.setPrototypeOf(node.rejectionReasons, null);
-          Object.setPrototypeOf(node.routeRejections, null);
-          nodes.set(id, node);
-        }
-        indexGroups();
-        edges.splice(0, edges.length, ...copy.edges);
-        faultEdges.clear();
-        for (const edge of edges) {
-          faultEdges.set(edge.id, edge);
-        }
-        trips = copy.trips;
-        echoExpiries = copy.echoExpiries;
-        echoByTime = copy.echoByTime;
-        logical = copy.logical;
-        logicalIndices = copy.logicalIndices;
-        ledger.state = copy.ledger;
-        calls = copy.calls;
-        if (TEST_ORACLES) outcomeChecks = copy.outcomeChecks!;
-        drawnTrips = copy.drawnTrips;
-        injections.splice(0, injections.length, ...copy.injections);
-        events.splice(0, events.length, ...copy.events);
-        lineage.state = copy.lineage;
-        routeCounts = copy.routeCounts;
-        faults = copy.faults;
-        admission = emptyAdmission();
-        reconfigureAdmission(
-          admission,
-          [...nodes.values()].flatMap((n) => (n.props.admission ? [{ id: n.id, policy: n.props.admission }] : [])),
-          planning,
-          clock.time,
-        );
-        restoreAdmission(admission, copy.admission);
-        ({
-          time,
-          incomingAt,
-          incomingBeforeReleases,
-          accumulator,
-          speed,
-          traffic,
-          sourceRate,
-          sourceEmitted,
-          drawn,
-          nextMessage,
-          nextParticle,
-          nextInjection,
-          nextCall,
-          nextAttempt,
-          nextLogical,
-          inSystem,
-          eventHead,
-          seed,
-          randomCalls,
-          scale,
-          capacityMultiplier,
-          sinceFault,
-        } = clock);
-        randomState = mulberry32((seed + Math.imul(randomCalls, 0x6d2b79f5)) >>> 0);
-      });
-      return token;
-    },
-    restore(checkpoint) {
-      const restore = checkpoints.get(checkpoint);
-      if (!restore) throw new Error("Checkpoint belongs to another engine");
-      restore();
+      } = clock);
+      randomState = mulberry32((seed + Math.imul(randomCalls, 0x6d2b79f5)) >>> 0);
       configuration = undefined;
     },
+    indexGroups,
+    () => topology,
+  );
+
+  lineage.setHistory(opts.traceHistory ?? 0);
+  const engine: SimEngine = {
+    tracer: lineage,
+    validateLifecycleActions(actions) {
+      if (!revisionAtLeast(planning?.revision, "p3-a1") || !actions.length) return;
+      validateAllocationActions(nodes.values(), actions, capacityMultiplier);
+    },
+    checkpoint,
+    restore,
     effectiveProps: (nodeId) => structuredClone(nodes.get(nodeId)?.rawProps ?? {}),
     configuration: () =>
       (configuration ??= Object.fromEntries([...nodes].map(([id, node]) => [id, structuredClone(node.rawProps)]))),
