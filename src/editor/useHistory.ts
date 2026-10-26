@@ -139,7 +139,11 @@ export function useHistory(
         // Toasts can follow a queued mutation in the same event. Record that edit before
         // binding to its unique entry ID (never its reusable merge tag or stack index).
         flushSync(() => {});
+        // Recording early must not split the step: what settles after it (a text's measure) keeps the step's
+        // tag, so it merges into the step the Undo names, as it would have without this flush.
+        const tag = mergeKey.current;
         flush();
+        mergeKey.current ??= tag;
         const id = entry();
         // Still ahead once recorded: no entry this Undo can name.
         return id === HISTORY_PENDING ? undefined : id;
