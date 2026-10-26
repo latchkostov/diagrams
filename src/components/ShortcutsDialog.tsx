@@ -5,6 +5,7 @@ import { Icon } from "./Icon";
 import { AI_PANEL, AI_TOOLS } from "../lib/deployment";
 import { msg, t, useLocale } from "../i18n";
 import { legacyKeyHint } from "../editor/keyHints";
+import { openModalLayer } from "../lib/modalLayers";
 
 const GROUPS: Shortcut["group"][] = ["Edit", "Clipboard", "Selection", "View", "Help"];
 
@@ -177,7 +178,9 @@ export function ShortcutsDialog({ onClose, onTutorials }: { onClose: () => void;
     );
     const previous = background.map((el) => el.inert);
     for (const el of background) el.inert = true;
+    const closeLayer = openModalLayer(panelElement);
     return () => {
+      closeLayer();
       panelElement.removeEventListener("keydown", onKeyDown);
       backdropElement.removeEventListener("mousedown", onPointerDown);
       backdropElement.removeEventListener("contextmenu", preventContextMenu);

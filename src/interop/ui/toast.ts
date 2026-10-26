@@ -1,10 +1,14 @@
 // App-wide toasts. A tiny external store, so any module (not just components) can report
 // progress or errors: `toast.info("Saved")`, `toast.error("...")`, `toast.busy("Rendering…")`.
-// One visible toast at a time. A task holding page input owns its Cancel until it finishes;
-// other notifications wait behind it (latest wins, as with ordinary toasts). An engaged toast
-// likewise keeps its action until the pointer, keyboard focus and any press have left.
+// One visible toast per layer (docs/design-review/2026-10-25-toast-layering.md). The page layer shows one
+// notification at a time; a task holding page input owns its Cancel until it finishes, and other notifications
+// wait behind it (latest wins, as with ordinary toasts). An engaged toast likewise keeps its action until the
+// pointer, keyboard focus and any press have left. While a modal is open the page's notifications step back (out
+// of reach, expiry paused, rectangle kept); a dialog's own feedback (`inDialog`) shows in that dialog's feedback
+// slot, under the same rules, and goes when the dialog closes.
 
 import { createMachine } from "../../lib/machine";
+import { modalLayers, type ModalLayer } from "../../lib/modalLayers";
 import { toastEngagement, type ToastContact } from "./toastEngagement";
 
 export type ToastKind = "info" | "success" | "error" | "busy";
@@ -36,60 +40,118 @@ export interface ToastState {
   blocking?: boolean;
   /** Releases resources only once this notification can no longer be used. */
   onDismiss?: () => void;
+  /** The modal layer this is feedback for: shown in that dialog, gone with it. Absent: the page layer. */
+  layer?: number;
+}
+
+/** A shown dialog feedback toast, with the open modal layer it renders in. */
+export interface LayeredToast {
+  layer: ModalLayer;
+  toast: ToastState;
+}
+
+const newContact = () => createMachine(toastEngagement);
+
+/** One modal layer's feedback: latest wins, but an engaged toast holds its place until released. */
+interface LayerSlot {
+  shown: ToastState;
+  waiting: ToastState | null;
+  contact: ReturnType<typeof newContact>;
 }
 
 let current: ToastState | null = null;
 let deferred: ToastState | null = null;
 let held: ToastState | null = null;
-const contact = createMachine(toastEngagement);
+const contact = newContact();
 const blocking: ToastState[] = [];
+const slots = new Map<number, LayerSlot>();
+let layered: readonly LayeredToast[] = [];
 let seq = 0;
 const listeners = new Set<() => void>();
 let live = new Map<number, ToastState>();
 let undoHistory: { capture(): object | undefined; current(): object | undefined } | undefined;
 const emit = () => listeners.forEach((l) => l());
 
+type NoticeOptions = Pick<ToastOptions, "action" | "duration" | "inDialog">;
+
 interface ToastOptions {
   action?: ToastAction;
   duration?: number;
   blocking?: boolean;
   onDismiss?: () => void;
+  /** Feedback from the topmost open dialog (a copy confirmation): shown and announced in that dialog. */
+  inDialog?: boolean;
 }
 
 function publish() {
-  const next = new Map([...blocking, deferred, held].filter((t): t is ToastState => t !== null).map((t) => [t.id, t]));
+  const inLayers = [...slots.values()].flatMap((slot) => [slot.shown, slot.waiting]);
+  const next = new Map(
+    [...blocking, deferred, held, ...inLayers].filter((t): t is ToastState => t !== null).map((t) => [t.id, t]),
+  );
   const removed = [...live.values()].filter((t) => !next.has(t.id));
   live = next;
   current = blocking.at(-1) ?? held ?? deferred;
+  layered = [...slots].flatMap(([id, slot]) => {
+    const layer = modalLayers.get(id);
+    return layer ? [{ layer, toast: slot.shown }] : [];
+  });
   for (const t of removed) t.onDismiss?.();
   emit();
 }
 
+const slotOf = (id: number | undefined) =>
+  id === undefined ? undefined : [...slots.values()].find((s) => s.shown.id === id || s.waiting?.id === id);
+
+/** The waiting feedback takes the slot once nothing engages the shown one. */
+function advance(slot: LayerSlot) {
+  if (!slot.waiting || slot.contact.state.value === "engaged") return;
+  slot.shown = slot.waiting;
+  slot.waiting = null;
+  slot.contact.send({ type: "reset" });
+}
+
+// A closing modal takes its feedback with it (onDismiss runs once, as for any other removal).
+modalLayers.subscribe(() => {
+  for (const id of [...slots.keys()]) if (!modalLayers.has(id)) slots.delete(id);
+  publish();
+});
+
 function show(kind: ToastKind, text: string, opts: ToastOptions = {}): number {
   const history = undoHistory;
-  const undoEntryId = opts.action?.undoes ? history?.capture() : undefined;
+  // Bound only where a mounted canvas owns history; without one (a harness, a viewer) Undo keeps the unbound rule:
+  // it goes the moment anything else undoes or redoes (dismissUndo).
+  const bound = !!(opts.action?.undoes && history);
+  const undoEntryId = bound ? history!.capture() : undefined;
   const duration = opts.duration ?? (kind === "busy" ? 0 : kind === "error" ? 8000 : opts.action ? 6000 : 3500);
   const next = {
     id: ++seq,
     kind,
     text,
-    action: opts.action?.undoes
-      ? {
-          ...opts.action,
-          run: () => {
-            if (undoEntryId && history?.current() === undoEntryId && live.get(next.id)?.undoUnavailable === false)
-              opts.action!.run();
-            else toast.invalidateUndo();
-          },
-        }
-      : opts.action,
+    action:
+      bound && opts.action
+        ? {
+            ...opts.action,
+            run: () => {
+              if (undoEntryId && history?.current() === undoEntryId && live.get(next.id)?.undoUnavailable === false)
+                opts.action!.run();
+              else toast.invalidateUndo();
+            },
+          }
+        : opts.action,
     undoEntryId,
-    undoUnavailable: opts.action?.undoes ? !undoEntryId : false,
+    undoUnavailable: bound ? !undoEntryId : false,
     duration,
     blocking: opts.blocking,
     onDismiss: opts.onDismiss,
   };
-  if (opts.blocking) {
+  const layer = opts.inDialog && !opts.blocking ? modalLayers.top : null;
+  if (layer?.feedback) {
+    const feedback = { ...next, layer: layer.id };
+    const slot = slots.get(layer.id);
+    if (!slot) slots.set(layer.id, { shown: feedback, waiting: null, contact: newContact() });
+    else if (slot.contact.state.value === "engaged") slot.waiting = feedback;
+    else slot.shown = feedback;
+  } else if (opts.blocking) {
     if (!blocking.length) deferred = null;
     blocking.push(next);
   } else deferred = next;
@@ -111,10 +173,16 @@ export const toast = {
   invalidateUndo() {
     const entryId = undoHistory?.current();
     const invalidate = (t: ToastState | null): ToastState | null =>
-      t?.action?.undoes && !t.undoUnavailable && t.undoEntryId !== entryId ? { ...t, undoUnavailable: true } : t;
+      t?.action?.undoes && t.undoEntryId !== undefined && !t.undoUnavailable && t.undoEntryId !== entryId
+        ? { ...t, undoUnavailable: true }
+        : t;
     held = invalidate(held);
     deferred = invalidate(deferred);
     for (let i = 0; i < blocking.length; i++) blocking[i] = invalidate(blocking[i])!;
+    for (const slot of slots.values()) {
+      slot.shown = invalidate(slot.shown)!;
+      slot.waiting = invalidate(slot.waiting);
+    }
     publish();
   },
   canRunAction(id: number) {
@@ -122,9 +190,9 @@ export const toast = {
     const t = live.get(id);
     return !!t?.action && !t.undoUnavailable;
   },
-  info: (text: string, opts?: { action?: ToastAction; duration?: number }) => show("info", text, opts),
-  success: (text: string, opts?: { action?: ToastAction; duration?: number }) => show("success", text, opts),
-  error: (text: string, opts?: { action?: ToastAction; duration?: number }) => show("error", text, opts),
+  info: (text: string, opts?: NoticeOptions) => show("info", text, opts),
+  success: (text: string, opts?: NoticeOptions) => show("success", text, opts),
+  error: (text: string, opts?: NoticeOptions) => show("error", text, opts),
   /** Sticky until dismissed; a long task may offer its cancel as the action and report `progress`. */
   busy: (text: string, opts?: { action?: ToastAction; blocking?: boolean }) => show("busy", text, opts),
   /** How far busy toast `id` has got (0 to 1), including an owner behind a newer task. */
@@ -139,6 +207,17 @@ export const toast = {
   },
   /** Dismisses `id`, or ordinary notifications if omitted. Only a task's owner dismisses its blocking toast. */
   dismiss(id?: number) {
+    const slot = slotOf(id);
+    if (slot) {
+      if (slot.waiting?.id === id) slot.waiting = null;
+      else if (slot.waiting) {
+        slot.contact.send({ type: "reset" });
+        advance(slot);
+      } else slots.delete(slot.shown.layer!);
+      publish();
+      return;
+    }
+    if (id === undefined) slots.clear();
     const release = held && (held.id === id || (id === undefined && !held.blocking));
     if (release) {
       held = null;
@@ -157,6 +236,14 @@ export const toast = {
   },
   /** Toaster's synchronous input boundary; no timer may move or replace an engaged action. */
   contact(contactType: ToastContact, active: boolean, id = current?.id) {
+    const slot = slotOf(id);
+    if (slot) {
+      if (slot.shown.id !== id) return;
+      slot.contact.send({ type: "contact", contact: contactType, active });
+      advance(slot);
+      publish();
+      return;
+    }
     // A sticky task owns its controls independently of ordinary toast engagement.
     if (id === current?.id && current?.blocking) return;
     if (id !== current?.id && (active || id !== held?.id)) return;
@@ -164,13 +251,35 @@ export const toast = {
     held = contact.state.value === "engaged" ? (held ?? current) : null;
     publish();
   },
+  /** A press ended anywhere (pointerup, pointercancel, window blur): every layer hears it. */
+  endPress() {
+    toast.contact("press", false, toast.retained?.id ?? toast.current?.id);
+    for (const slot of [...slots.values()]) toast.contact("press", false, slot.shown.id);
+  },
   release() {
     contact.send({ type: "reset" });
     held = null;
+    for (const slot of slots.values()) {
+      slot.contact.send({ type: "reset" });
+      advance(slot);
+    }
     publish();
   },
   get engaged() {
     return contact.state.value === "engaged";
+  },
+  /** Whether toast `id`'s own layer is engaged (the page's notification, or a dialog's feedback). */
+  engagedFor(id: number) {
+    const slot = slotOf(id);
+    return (slot ? slot.contact : contact).state.value === "engaged";
+  },
+  /** A modal is open: the page's ordinary notifications step back until it closes. */
+  get steppedBack() {
+    return modalLayers.open;
+  },
+  /** Dialog feedback shown now, each with the modal layer it renders in. */
+  get layered() {
+    return layered;
   },
   get current() {
     return current;

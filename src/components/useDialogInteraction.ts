@@ -1,4 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, type RefObject } from "react";
+import { openModalLayer } from "../lib/modalLayers";
 
 /** Shared keyboard, inertness and opener lifecycle for modal surfaces. */
 export function useDialogInteraction(
@@ -7,6 +8,8 @@ export function useDialogInteraction(
   onClose: () => void,
   /** Hands focus back through an interaction controller instead (it gets what had focus as the dialog opened). */
   restoreFocus?: (opener: HTMLElement | null) => void,
+  /** The panel's feedback slot: the dialog's own toasts render there (src/lib/modalLayers.ts). */
+  feedback?: RefObject<HTMLElement | null>,
 ) {
   const opener = useRef<HTMLElement | null | undefined>(undefined);
   const restoreRef = useRef(restoreFocus);
@@ -72,7 +75,9 @@ export function useDialogInteraction(
     );
     const wasInert = background.map((el) => el.inert);
     for (const el of background) el.inert = true;
+    const closeLayer = openModalLayer(panelEl, feedback?.current ?? null);
     return () => {
+      closeLayer();
       panelEl.removeEventListener("keydown", onKeyDown);
       backdropEl.removeEventListener("mousedown", onMouseDown);
       backdropEl.removeEventListener("contextmenu", onContextMenu);
@@ -85,5 +90,5 @@ export function useDialogInteraction(
       if (prev && prev !== document.body && prev.isConnected && !prev.closest("[data-toast]")) prev.focus();
       else document.querySelector<HTMLElement>('[data-testid="canvas-wrap"]')?.focus({ preventScroll: true });
     };
-  }, [panel, backdrop]);
+  }, [panel, backdrop, feedback]);
 }

@@ -4,7 +4,7 @@
 .cmdk-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 190;
+  z-index: var(--layer-palette);
   display: flex;
   justify-content: center;
   align-items: flex-start;

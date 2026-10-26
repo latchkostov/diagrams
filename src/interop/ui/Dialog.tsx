@@ -32,8 +32,9 @@ export function Dialog({
 }) {
   const panel = useRef<HTMLDivElement>(null);
   const backdrop = useRef<HTMLDivElement>(null);
+  const feedback = useRef<HTMLDivElement>(null);
   const titleId = useId();
-  useDialogInteraction(panel, backdrop, closable ? onClose : () => {}, restoreFocus);
+  useDialogInteraction(panel, backdrop, closable ? onClose : () => {}, restoreFocus, feedback);
 
   return createPortal(
     <div ref={backdrop} className="ix-backdrop" data-editor-overlay>
@@ -67,6 +68,8 @@ export function Dialog({
           )}
         </header>
         <div className="ix-dialog-body">{children}</div>
+        {/* The dialog's own feedback (a copy confirmation) renders here, beside the panel and never over its controls. */}
+        <div ref={feedback} className="ix-dialog-feedback" data-testid={`${testId}-feedback`} />
         {footer && <footer className="ix-dialog-foot">{footer}</footer>}
       </div>
     </div>,

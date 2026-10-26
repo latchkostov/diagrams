@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { dialogTabTarget, useInteraction, type MenuCloseReason } from "../canvas/interaction";
 import type { InjectRequest } from "./InjectDialog";
 import { t } from "../i18n";
+import { openModalLayer } from "../lib/modalLayers";
 
 export function InjectFrame({
   request,
@@ -47,6 +48,7 @@ export function InjectFrame({
     );
     const previous = background.map((child) => child.inert);
     for (const child of background) child.inert = true;
+    const closeLayer = openModalLayer(el);
     const target = first?.current ?? el.querySelector<HTMLElement>("button");
     if (target) port.current?.dispatch({ type: "dialog.opened", first: target });
     const onKey = (e: KeyboardEvent) => {
@@ -64,6 +66,7 @@ export function InjectFrame({
     };
     el.addEventListener("keydown", onKey);
     return () => {
+      closeLayer();
       el.removeEventListener("keydown", onKey);
       background.forEach((child, i) => {
         child.inert = previous[i];

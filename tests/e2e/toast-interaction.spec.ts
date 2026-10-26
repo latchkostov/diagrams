@@ -1,6 +1,18 @@
-import { test, expect, gotoLab, gotoCanvas, pauseClock, expectNoErrors } from "./fixtures";
+import type { Page } from "@playwright/test";
+import {
+  test,
+  expect,
+  gotoLab,
+  gotoCanvas,
+  pauseClock,
+  expectNoErrors,
+  shareVia,
+  waitForHtmlTemplate,
+} from "./fixtures";
 import { mixedBoundaryDragFixture } from "../../src/lab/nestedBoundariesFixture";
 import { STORAGE_KEYS, savedDiagram, fitDiagram, waitForSelectionSettled, waitForHistoryIdle } from "./fixtures";
+
+type Box = { x: number; y: number; width: number; height: number };
 import { SLUG, callTool, installFakeModelContext, toolNames } from "./ai-helpers";
 
 for (const reducedMotion of ["no-preference", "reduce"] as const) {
@@ -255,3 +267,238 @@ for (const cancel of ["keyboard", "pointer"] as const) {
     expectNoErrors(consoleErrors);
   });
 }
+
+// Toast layering (docs/design-review/2026-10-25-toast-layering.md): the page's notifications sit under every menu and
+// modal and step back while one is open; a dialog's own feedback lives in that dialog, beside its panel.
+
+/** Every enabled Tab stop's test id inside `root` (radios not checked are not Tab stops). */
+async function tabStops(page: Page, testId: string) {
+  return page
+    .getByTestId(testId)
+    .evaluate((root) =>
+      [
+        ...root.querySelectorAll<HTMLElement>(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+        ),
+      ]
+        .filter((el) => !el.matches(":disabled") && el.tabIndex >= 0 && el.getClientRects().length > 0)
+        .map((el) => el.dataset.testid ?? `<${el.tagName.toLowerCase()}>`),
+    );
+}
+
+/** Presses Tab `count` times, returning the test id focus reaches each time. */
+async function tabThrough(page: Page, count: number) {
+  const seen: string[] = [];
+  for (let i = 0; i < count; i++) {
+    await page.keyboard.press("Tab");
+    seen.push(await page.evaluate(() => (document.activeElement as HTMLElement | null)?.dataset.testid ?? ""));
+  }
+  return seen;
+}
+
+const overlaps = (a: Box, b: Box) =>
+  a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
+
+async function agentChange(page: Page, label: string) {
+  expect(
+    (await callTool(page, "edit_diagram", { ops: [{ op: "add_node", kind: "Redis cache", label }] })).isError,
+  ).toBe(false);
+}
+
+async function openHtmlExportByKeyboard(page: Page) {
+  const template = waitForHtmlTemplate(page);
+  await page.keyboard.press("ControlOrMeta+k");
+  const search = page.getByTestId("command-input");
+  await expect(search).toBeFocused();
+  await search.fill("Interactive HTML");
+  await search.press("Enter");
+  await expect(page.getByTestId("html-export-dialog")).toBeVisible();
+  await template;
+  await expect(page.getByTestId("html-export-download")).toBeEnabled();
+  // The dialog's code arrives on real timers; expiry is held from here on.
+  await pauseClock(page);
+}
+
+test("layering: an engaged toast never covers or takes the keyboard from an open export dialog", async ({
+  page,
+  consoleErrors,
+}) => {
+  await installFakeModelContext(page);
+  await gotoCanvas(page, SLUG);
+  await expect.poll(() => toolNames(page)).toContain("edit_diagram");
+  await page.clock.install();
+  await agentChange(page, "Export candidate");
+  const undo = page.getByTestId("ai-toast-undo");
+  await undo.focus();
+  await undo.hover();
+  const geometry = await undo.boundingBox();
+  // Engaged by every contact; the press outlives hover and focus across the palette and the dialog opening.
+  await page.mouse.down();
+  await openHtmlExportByKeyboard(page);
+  await expect(undo).toBeHidden();
+  expect(await undo.boundingBox()).toEqual(geometry);
+
+  // The keyboard: Tab visits every control of the dialog, options included, and never reaches the toast.
+  await page.getByTestId("html-export-options-toggle").focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByTestId("html-export-title")).toBeVisible();
+  const controls = await tabStops(page, "html-export-dialog");
+  expect(controls).toEqual(expect.arrayContaining(["html-export-password-toggle", "html-export-title"]));
+  expect(controls).toEqual(expect.arrayContaining(["html-export-cancel", "html-export-download"]));
+  const visited = await tabThrough(page, controls.length * 2);
+  expect(new Set(visited)).toEqual(new Set(controls));
+  await expect(undo).not.toBeFocused();
+  expect(await undo.boundingBox()).toEqual(geometry);
+
+  // The pointer: every control receives the click at its own centre (Playwright's hit-target check), none the toast.
+  await page.mouse.up();
+  for (const id of controls) await page.getByTestId(id).click({ trial: true });
+  await page.getByTestId("html-export-theme-dark").click();
+  await expect(page.getByTestId("html-export-theme-dark")).toHaveAttribute("aria-checked", "true");
+  await page.getByTestId("html-export-title").fill("Layered export");
+  // (Download would announce its file, replacing the notification: Cancel closes without a word.)
+  await page.getByTestId("html-export-cancel").click();
+  await expect(page.getByTestId("html-export-dialog")).toHaveCount(0);
+
+  // Back in front, and its Undo still reverses its own change.
+  await expect(undo).toBeVisible();
+  await expect(undo).toBeInViewport();
+  await undo.click();
+  expect((await callTool(page, "describe_diagram")).text).not.toContain("Export candidate");
+  expectNoErrors(consoleErrors);
+});
+
+for (const outcome of ["copied", "refused"] as const) {
+  test(`layering: a dialog's own feedback (${outcome}) is visible, announced and clear of its controls`, async ({
+    page,
+    context,
+    consoleErrors,
+  }) => {
+    await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+    await installFakeModelContext(page);
+    await gotoCanvas(page, SLUG);
+    await expect.poll(() => toolNames(page)).toContain("edit_diagram");
+    await page.clock.install();
+    await pauseClock(page);
+    await agentChange(page, "Behind the dialog");
+    const pageToast = page.getByTestId("ai-toast-undo");
+    await expect(pageToast).toBeVisible();
+    const behind = await pageToast.boundingBox();
+    await shareVia(page, "link");
+    const dialog = page.getByTestId("share-link-dialog");
+    await expect(dialog).toBeVisible();
+    await expect(page.getByTestId("share-link-url")).toHaveValue(/#d=/);
+    await expect(pageToast).toBeHidden();
+    // Stepped back: out of reach, but its rectangle kept.
+    expect(await pageToast.boundingBox()).toEqual(behind);
+    if (outcome === "refused")
+      await page.evaluate(() => {
+        navigator.clipboard.writeText = () => Promise.reject(new DOMException("Denied", "NotAllowedError"));
+        document.execCommand = () => false;
+      });
+    await page.getByTestId("share-link-copy").click();
+
+    const feedback = dialog.getByTestId("toast");
+    await expect(feedback).toBeVisible();
+    await expect(feedback).toBeInViewport();
+    await expect(feedback).toHaveAttribute("data-layer", "dialog");
+    if (outcome === "copied") {
+      await expect(feedback).toHaveRole("status");
+      await expect(feedback).toHaveAttribute("aria-live", "polite");
+      await expect(feedback).toContainText("Share link copied.");
+    } else {
+      await expect(feedback).toHaveRole("alert");
+      await expect(feedback).toHaveAttribute("aria-live", "assertive");
+      await expect(feedback).toContainText("Couldn't copy automatically.");
+    }
+    // Beside the panel, never over it; every control of the dialog still receives the pointer.
+    const panel = await dialog.boundingBox();
+    const box = await feedback.boundingBox();
+    if (!panel || !box) throw new Error("Expected the dialog and its feedback on screen");
+    expect(overlaps(panel, box)).toBe(false);
+    for (const id of await tabStops(page, "share-link-dialog")) {
+      if (!id.startsWith("toast")) await page.getByTestId(id).click({ trial: true });
+    }
+
+    // The keyboard reaches its Dismiss inside the dialog's Tab cycle; dismissing keeps the dialog's keyboard.
+    const dismiss = feedback.getByTestId("toast-dismiss");
+    await page.getByTestId("share-link-copy").focus();
+    for (let i = 0; i < 8 && !(await dismiss.evaluate((el) => el === document.activeElement)); i++)
+      await page.keyboard.press("Tab");
+    await expect(dismiss).toBeFocused();
+    await page.keyboard.press("Enter");
+    await expect(feedback).toHaveCount(0);
+    await expect.poll(() => dialog.evaluate((el) => el.contains(document.activeElement))).toBe(true);
+    await page.keyboard.press("Escape");
+    await expect(dialog).toHaveCount(0);
+
+    // The page's notification comes back (not engaged, it follows the bars again), its Undo bound to its change.
+    await expect(pageToast).toBeVisible();
+    await expect(pageToast).toBeInViewport();
+    await expect(pageToast).not.toHaveAttribute("aria-disabled", "true");
+    await pageToast.click();
+    expect((await callTool(page, "describe_diagram")).text).not.toContain("Behind the dialog");
+    expectNoErrors(consoleErrors);
+  });
+}
+
+test("layering: engaged dialog feedback stays put while the next one waits", async ({ page, context }) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  await gotoCanvas(page, SLUG);
+  await page.clock.install();
+  await pauseClock(page);
+  await shareVia(page, "link");
+  const dialog = page.getByTestId("share-link-dialog");
+  await expect(page.getByTestId("share-link-url")).toHaveValue(/#d=/);
+  await page.getByTestId("share-link-copy").click();
+  const feedback = dialog.getByTestId("toast");
+  await expect(feedback).toContainText("Share link copied.");
+  const dismiss = feedback.getByTestId("toast-dismiss");
+  await dismiss.hover();
+  const before = await dismiss.boundingBox();
+  // A second outcome arrives while the pointer rests on the first (a click the pointer didn't make).
+  await page.evaluate(() => {
+    navigator.clipboard.writeText = () => Promise.reject(new DOMException("Denied", "NotAllowedError"));
+    document.execCommand = () => false;
+  });
+  await page.getByTestId("share-link-copy").evaluate((button: HTMLButtonElement) => button.click());
+  await page.clock.fastForward(9000);
+  await expect(feedback).toContainText("Share link copied.");
+  expect(await dismiss.boundingBox()).toEqual(before);
+  await page.getByTestId("share-link-url").hover();
+  await expect(feedback).toContainText("Couldn't copy automatically.");
+  await expect(feedback).toHaveRole("alert");
+});
+
+test("layering: a press-retained Undo goes stale under a dialog; the next change's Undo reverses only it", async ({
+  page,
+  consoleErrors,
+}) => {
+  await installFakeModelContext(page);
+  await gotoCanvas(page, SLUG);
+  await expect.poll(() => toolNames(page)).toContain("edit_diagram");
+  await page.clock.install();
+  await agentChange(page, "change-a");
+  const undo = page.getByTestId("ai-toast-undo");
+  await undo.hover();
+  const geometry = await undo.boundingBox();
+  await page.mouse.down();
+  await openHtmlExportByKeyboard(page);
+  // The agent keeps working while the dialog is open: its notification waits behind the retained one.
+  await agentChange(page, "change-b");
+  await page.keyboard.press("Escape");
+  await expect(page.getByTestId("html-export-dialog")).toHaveCount(0);
+  await expect(undo).toBeVisible();
+  expect(await undo.boundingBox()).toEqual(geometry);
+  await expect(undo).toHaveAttribute("aria-disabled", "true");
+  await expect(undo).toHaveAccessibleDescription("Undo unavailable: the diagram changed.");
+  // Releasing on A's stale Undo does nothing; then B's notification takes the place.
+  await page.mouse.up();
+  await page.getByTestId("ai-rail-open").hover();
+  await expect(undo).not.toHaveAttribute("aria-disabled", "true");
+  await undo.click();
+  const after = (await callTool(page, "describe_diagram")).text;
+  expect(after).toContain("change-a");
+  expect(after).not.toContain("change-b");
+  expectNoErrors(consoleErrors);
+});

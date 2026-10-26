@@ -2,7 +2,7 @@
 .color-picker-layer {
   position: fixed;
   inset: 0;
-  z-index: 1000;
+  z-index: var(--layer-color-picker);
   pointer-events: auto;
 }
 

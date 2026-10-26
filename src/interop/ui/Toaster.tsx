@@ -1,8 +1,9 @@
-import { useEffect, useLayoutEffect, useRef, useSyncExternalStore } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { Glyph } from "./glyphs";
 import { subscribe, toast, type ToastKind, type ToastState } from "./toast";
-import { avoidedBars, toastBottom } from "./toastStack";
+import { avoidedBars, feedbackPlacement, toastBottom } from "./toastStack";
+import type { ModalLayer } from "../../lib/modalLayers";
 import { t as tr } from "../../i18n";
 
 const ICON: Record<ToastKind, Parameters<typeof Glyph>[0]["name"]> = {
@@ -12,12 +13,35 @@ const ICON: Record<ToastKind, Parameters<typeof Glyph>[0]["name"]> = {
   busy: "spinner",
 };
 
+/**
+ * The toasts' layers (docs/design-review/2026-10-25-toast-layering.md): the page's notifications, in one page-layer
+ * root under every menu and modal; each open dialog's own feedback, portalled into that dialog's feedback slot; and
+ * a task's progress and Cancel, portalled to the body above everything, as the task holds the page's input.
+ *
+ * The page-layer root is a child of the body, so every modal's own background sweep makes it inert as it opens and
+ * restores it as it closes, in the same synchronous step as the modal hands the focus back (which may be to a
+ * toast's action). Inert, its notifications are hidden too (interop.css): they keep their rectangle, out of reach.
+ */
 export function Toaster() {
   const t = useSyncExternalStore(subscribe, () => toast.current);
   const engaged = useSyncExternalStore(subscribe, () => toast.engaged);
   const retained = useSyncExternalStore(subscribe, () => toast.retained);
+  const steppedBack = useSyncExternalStore(subscribe, () => toast.steppedBack);
+  const layered = useSyncExternalStore(subscribe, () => toast.layered);
+  // One root for the Toaster's lifetime. Rendered to markup (no DOM to make it in), the body stands in.
+  const [pageRoot] = useState(() => {
+    if (typeof document.createElement !== "function") return null;
+    const root = document.createElement("div");
+    root.dataset.toastLayer = "page";
+    return root;
+  });
+  useLayoutEffect(() => {
+    if (!pageRoot) return;
+    document.body.append(pageRoot);
+    return () => pageRoot.remove();
+  }, [pageRoot]);
   useEffect(() => {
-    const endPress = () => toast.contact("press", false, toast.retained?.id ?? toast.current?.id);
+    const endPress = () => toast.endPress();
     window.addEventListener("pointerup", endPress);
     window.addEventListener("pointercancel", endPress);
     window.addEventListener("blur", endPress);
@@ -28,21 +52,61 @@ export function Toaster() {
       toast.release();
     };
   }, []);
-  return [retained, t]
-    .filter((value): value is ToastState => value !== null)
-    .map((value) => (
-      <ToastView key={value.id} t={value} suspended={value !== t} engaged={!value.blocking && engaged} />
-    ));
+  return (
+    <>
+      {[retained, t]
+        .filter((value): value is ToastState => value !== null)
+        .map((value) => (
+          <ToastView
+            key={value.id}
+            t={value}
+            host={value.blocking ? document.body : (pageRoot ?? document.body)}
+            suspended={value !== t}
+            // Under an open modal the page's notifications step back: still, their expiry paused.
+            paused={!value.blocking && steppedBack}
+            engaged={!value.blocking && engaged}
+          />
+        ))}
+      {layered.map(({ layer, toast: value }) => (
+        <ToastView
+          key={value.id}
+          t={value}
+          host={layer.feedback}
+          layer={layer}
+          suspended={false}
+          paused={false}
+          engaged={toast.engagedFor(value.id)}
+        />
+      ))}
+    </>
+  );
 }
 
-function ToastView({ t, suspended, engaged }: { t: ToastState; suspended: boolean; engaged: boolean }) {
+function ToastView({
+  t,
+  host,
+  suspended,
+  paused,
+  engaged,
+  layer,
+}: {
+  t: ToastState;
+  host: HTMLElement | null;
+  /** Behind a task's toast: hidden and inert, its rectangle kept. */
+  suspended: boolean;
+  /** Stepped back under a modal: neither expires nor moves. */
+  paused: boolean;
+  engaged: boolean;
+  /** The open dialog this toast is feedback for; absent for the page's notifications and tasks. */
+  layer?: ModalLayer;
+}) {
   useEffect(() => {
-    if (!t.duration || engaged || suspended) return;
+    if (!t.duration || engaged || suspended || paused) return;
     const id = setTimeout(() => {
-      if (!toast.engaged) toast.dismiss(t.id);
+      if (!toast.engagedFor(t.id)) toast.dismiss(t.id);
     }, t.duration);
     return () => clearTimeout(id);
-  }, [t, engaged, suspended]);
+  }, [t, engaged, suspended, paused]);
   // An action that asks for the focus (a long task's Cancel) takes it from wherever it was, and gives it back.
   const action = useRef<HTMLButtonElement>(null);
   const focusAction = !!t?.action?.focus;
@@ -58,18 +122,17 @@ function ToastView({ t, suspended, engaged }: { t: ToastState; suspended: boolea
       if (before?.isConnected && (!now || now === document.body || now === button)) before.focus();
     };
   }, [focusAction, toastId]);
-  // Where the keyboard was before it reached the action (Tab, or a click): pressing it gives the focus back there
-  // when the toast goes, unless the action moved it on (a lazy part's Retry, an Undo).
+  // Where the keyboard was before it reached the toast (Tab, or a click): pressing the action gives the focus back
+  // there when the toast goes, unless the action moved it on (a lazy part's Retry, an Undo); so does Dismiss.
   const cameFrom = useRef<HTMLElement | null>(null);
   // One bottom-centre stack: the toast sits above the hint or the live bar instead of over them (they
   // can appear, move or resize while it shows, so it follows them).
   const el = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
-    if (!t) return;
+    if (layer) return;
     const place = () => {
       const node = el.current;
-      if (!node || suspended || (!t.blocking && (toast.engaged || document.querySelector('[aria-modal="true"]'))))
-        return;
+      if (!node?.isConnected || suspended || paused || (!t.blocking && toast.engaged)) return;
       // Centred on the canvas pane, not the window: with side panels open the window's centre is near
       // the pane's edge, and the toast reached over the AI panel and the minimap.
       const area = document.querySelector<HTMLElement>("[data-toast-area]")?.getBoundingClientRect();
@@ -86,8 +149,38 @@ function ToastView({ t, suspended, engaged }: { t: ToastState; suspended: boolea
       clearInterval(id);
       window.removeEventListener("resize", place);
     };
-  }, [t, suspended]);
-  if (!t) return null;
+  }, [t, suspended, paused, layer]);
+  // A dialog's feedback is placed once, before it paints (and again only when the window resizes while nothing
+  // engages it): below the panel, above it, or inside it with the panel's height kept (toastStack.ts).
+  const inDialog = !!layer;
+  useLayoutEffect(() => {
+    const node = el.current;
+    const panel = node?.closest<HTMLElement>('[role="dialog"]');
+    if (!inDialog || !node || !panel) return;
+    let pinned: string | null = null;
+    const unpin = () => {
+      if (pinned !== null) panel.style.height = pinned;
+      pinned = null;
+    };
+    const place = () => {
+      if (toast.engagedFor(toastId)) return;
+      node.dataset.place = "below";
+      unpin();
+      const where = feedbackPlacement(panel.getBoundingClientRect(), node.offsetHeight, window.innerHeight);
+      if (where === "inside") {
+        pinned = panel.style.height;
+        panel.style.height = `${panel.getBoundingClientRect().height}px`;
+      }
+      node.dataset.place = where;
+    };
+    place();
+    window.addEventListener("resize", place);
+    return () => {
+      window.removeEventListener("resize", place);
+      unpin();
+    };
+  }, [inDialog, toastId]);
+  if (!t || !host) return null;
   return createPortal(
     <div
       key={t.id}
@@ -98,6 +191,7 @@ function ToastView({ t, suspended, engaged }: { t: ToastState; suspended: boolea
       data-testid="toast"
       data-kind={t.kind}
       data-toast
+      data-layer={layer ? "dialog" : "page"}
       data-blocking={t.blocking || undefined}
       data-suspended={suspended || undefined}
       inert={suspended}
@@ -105,7 +199,11 @@ function ToastView({ t, suspended, engaged }: { t: ToastState; suspended: boolea
       onPointerEnter={() => toast.contact("pointer", true, t.id)}
       onPointerLeave={() => toast.contact("pointer", false, t.id)}
       onPointerDownCapture={() => toast.contact("press", true, t.id)}
-      onFocusCapture={() => toast.contact("focus", true, t.id)}
+      onFocusCapture={(e) => {
+        const from = e.relatedTarget;
+        if (from instanceof HTMLElement && !e.currentTarget.contains(from)) cameFrom.current = from;
+        toast.contact("focus", true, t.id);
+      }}
       onBlurCapture={(e) => {
         if (!e.currentTarget.contains(e.relatedTarget as Node | null)) toast.contact("focus", false, t.id);
       }}
@@ -136,10 +234,6 @@ function ToastView({ t, suspended, engaged }: { t: ToastState; suspended: boolea
           aria-disabled={t.undoUnavailable || undefined}
           aria-describedby={t.undoUnavailable ? `toast-undo-unavailable-${t.id}` : undefined}
           title={t.undoUnavailable ? tr("toast.undoUnavailable") : undefined}
-          onFocus={(e) => {
-            const from = e.relatedTarget;
-            if (from instanceof HTMLElement && !e.currentTarget.parentElement?.contains(from)) cameFrom.current = from;
-          }}
           onClick={() => {
             if (!toast.canRunAction(t.id)) return;
             const back = cameFrom.current;
@@ -165,7 +259,15 @@ function ToastView({ t, suspended, engaged }: { t: ToastState; suspended: boolea
       {!t.blocking && (
         <button
           className="ix-toast-close"
-          onClick={() => toast.dismiss(t.id)}
+          onClick={(e) => {
+            // Before it goes: the keyboard returns to where it came from, or to the dialog this toast was in,
+            // so a dialog keeps its Tab cycle and Escape.
+            const back = cameFrom.current;
+            cameFrom.current = null;
+            if (e.currentTarget.contains(document.activeElement))
+              (back?.isConnected ? back : e.currentTarget.closest<HTMLElement>('[role="dialog"]'))?.focus();
+            toast.dismiss(t.id);
+          }}
           aria-label="Dismiss"
           data-testid="toast-dismiss"
         >
@@ -173,6 +275,6 @@ function ToastView({ t, suspended, engaged }: { t: ToastState; suspended: boolea
         </button>
       )}
     </div>,
-    document.body,
+    host,
   );
 }

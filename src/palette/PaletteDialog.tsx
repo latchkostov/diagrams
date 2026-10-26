@@ -29,6 +29,7 @@ import type { CommandPaletteProps } from "./CommandPalette";
 import { paletteHost } from "./host";
 import { flatten, GROUP_LABEL, PREFIXES, rank, type Command, type CommandGroup } from "./rank";
 import { getRecentCommands, pushRecentCommand, rememberable } from "./recent";
+import { openModalLayer } from "../lib/modalLayers";
 import { isLocalOnly } from "../lib/localOnly";
 import { collectCommands } from "./sources";
 import { LANGUAGE_CHOICE } from "../lib/deployment";
@@ -163,8 +164,10 @@ export function PaletteDialog({
     );
     const wasInert = background.map((c) => c.inert);
     for (const c of background) c.inert = true;
+    const closeLayer = openModalLayer(el);
     input.current?.focus({ preventScroll: true });
     return () => {
+      closeLayer();
       background.forEach((c, i) => {
         c.inert = wasInert[i];
       });

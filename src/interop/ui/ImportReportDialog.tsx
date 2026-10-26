@@ -96,7 +96,8 @@ export function ImportReportDialog({
   }, []);
   const select = (nodeId: string) => {
     const host = paletteHost.get().canvas;
-    if (!host?.editor.getNode(nodeId)) return toast.error(tr("importReport.thatNodeIsntInTheDiagramAny"));
+    if (!host?.editor.getNode(nodeId))
+      return toast.error(tr("importReport.thatNodeIsntInTheDiagramAny"), { inDialog: true });
     onClose();
     // Once the dialog has closed and the canvas is no longer inert, so the node can take the focus.
     window.setTimeout(() => paletteHost.get().canvas?.focusNode(nodeId), 0);
@@ -104,7 +105,7 @@ export function ImportReportDialog({
   /** A chip: the editor's own stencil change, one undo step. */
   const swap = (nodeId: string, stencilId: string) => {
     const ed = editor();
-    if (!ed?.getNode(nodeId)) return toast.error(tr("importReport.thatNodeIsntInTheDiagramAny"));
+    if (!ed?.getNode(nodeId)) return toast.error(tr("importReport.thatNodeIsntInTheDiagramAny"), { inDialog: true });
     ed.updateNode(nodeId, { stencil: stencilId }, { merge: `import:swap:${++swaps}` });
     rerender((n) => n + 1);
   };
