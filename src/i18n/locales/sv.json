@@ -1948,5 +1948,7 @@
   "staticSkill.copy": "Kopiera",
   "staticSkill.copied": "Kopierat",
   "staticSkill.selectCopy": "Markera och kopiera",
-  "gallery.inlineRateLimitSummary": "En partners trafik möter en redigerbar begärandekvot"
+  "gallery.inlineRateLimitSummary": "En partners trafik möter en redigerbar begärandekvot",
+  "inspector.borderRadius": "Hörnradie",
+  "examples.roundedRegions": "Avrundade zoner och avgränsningar"
 }

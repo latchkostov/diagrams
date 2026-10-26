@@ -1,3 +1,4 @@
+import { borderRadius } from "../model/borderRadius";
 import { isDenyRule } from "../stencils/netDevices";
 import {
   DIAGRAM_FORMAT,
@@ -148,7 +149,13 @@ export const groupToFlow = (g: DiagramGroup): GroupFlowNode => ({
   height: g.height,
   zIndex: -1,
   dragHandle: ".grp-drag",
-  data: { groupId: g.id, label: g.label, tone: g.tone ?? "neutral", group: g.group },
+  data: {
+    groupId: g.id,
+    label: g.label,
+    tone: g.tone ?? "neutral",
+    group: g.group,
+    borderRadius: borderRadius(g.borderRadius),
+  },
 });
 
 export const nodeToFlow = (n: DiagramNode): DiagramFlowNode => ({
@@ -179,7 +186,15 @@ export const annotationToFlow = (a: DiagramAnnotation): AnnotationFlowNode => ({
   height: a.height,
   connectable: isConnectable(a.kind),
   ...(a.kind === "zone" ? { zIndex: -2, dragHandle: ".ann-zone-label" } : {}),
-  data: { kind: a.kind, text: a.text, shape: a.shape, color: a.color, textSize: a.textSize, group: a.group },
+  data: {
+    kind: a.kind,
+    text: a.text,
+    shape: a.shape,
+    color: a.color,
+    textSize: a.textSize,
+    group: a.group,
+    borderRadius: borderRadius(a.borderRadius),
+  },
 });
 
 export const edgeToFlow = (e: DiagramEdge): DiagramFlowEdge => ({
@@ -275,6 +290,7 @@ export function fromFlow(meta: DiagramMeta, nodes: FlowNode[], edges: DiagramFlo
         color: n.data.color,
         textSize: n.data.textSize,
         group: n.data.group,
+        borderRadius: n.data.borderRadius,
       });
     } else if (n.type === "boundary") {
       groups.push({
@@ -286,6 +302,7 @@ export function fromFlow(meta: DiagramMeta, nodes: FlowNode[], edges: DiagramFlo
         width: r(n.width ?? n.measured?.width ?? 0),
         height: r(n.height ?? n.measured?.height ?? 0),
         group: n.data.group,
+        borderRadius: n.data.borderRadius,
       });
     } else {
       out.push({

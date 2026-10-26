@@ -6,7 +6,8 @@ import { bytesToBase64, deflateRaw, textToBytes } from "../codec";
 import { parseXml } from "../xml";
 import { drawioPageToDiagram, readDrawio } from "./read";
 import { diagramToDrawio } from "./write";
-import { nativeShape, parseStyle, stencilFromStyle } from "./mapping";
+import { groupStyle, nativeShape, parseStyle, stencilFromStyle } from "./mapping";
+import { annotationStyle } from "./write";
 import { revisionAtLeast } from "../../model/revisions";
 import { waitingFixture } from "../../lab/waitingFixture";
 import { resourceLesson } from "../../model/autoscalingLessons";
@@ -23,6 +24,70 @@ async function importFirst(xml: string) {
   const doc = await readDrawio(xml);
   return drawioPageToDiagram(doc.pages[0]);
 }
+
+it.each([0, 7.5, 18, 20, 28, 32, 40])(
+  "round-trips boundary and annotation radius %s with draw.io styles",
+  async (radius) => {
+    const d: DiagramFile = {
+      format: "diagrams/v1",
+      title: "Radii",
+      edges: [],
+      nodes: [{ id: "member", group: "boundary", stencil: "service.node", label: "Member", x: 40, y: 60 }],
+      groups: [{ id: "boundary", label: "Boundary", borderRadius: radius, x: 0, y: 0, width: 400, height: 300 }],
+      annotations: ["zone", "note", "text", "shape"].map((kind, i) => ({
+        id: kind,
+        kind: kind as "zone" | "note" | "text" | "shape",
+        text: "Label",
+        borderRadius: radius,
+        x: 600 + i * 400,
+        y: 0,
+        width: 300,
+        height: 200,
+      })),
+    };
+    const xml = diagramToDrawio(d);
+    expect(xml.match(new RegExp(`dg_border_radius="${radius}"`, "g"))).toHaveLength(5);
+    const page = (await readDrawio(xml)).pages[0];
+    const cells = page.model.children.find((c) => c.name === "root")!.children;
+    const style = (id: string) => parseStyle(cells.find((c) => c.attrs.dg_id === id)!.children[0].attrs.style);
+    const group = style("boundary");
+    const zone = style("zone");
+    for (const [cell, defaultRadius, original] of [
+      [group, 20, groupStyle("neutral")],
+      [zone, 18, annotationStyle({ ...d.annotations![0], borderRadius: undefined })],
+    ] as const) {
+      expect(cell).toMatchObject(
+        radius === defaultRadius
+          ? parseStyle(original)
+          : { rounded: radius === 0 ? "0" : "1", arcSize: String(radius * 2), absoluteArcSize: "1" },
+      );
+    }
+    const { diagram } = await importFirst(xml);
+    expect(diagram.groups?.[0].borderRadius).toBe(radius);
+    expect(diagram.annotations?.map((a) => a.borderRadius)).toEqual([radius, radius, radius, radius]);
+    expect(validateDiagram(diagram).ok).toBe(true);
+  },
+);
+
+it("keeps legacy default radius export bytes and drops invalid radius metadata", async () => {
+  const d: DiagramFile = {
+    format: "diagrams/v1",
+    title: "Defaults",
+    nodes: [],
+    edges: [],
+    groups: [{ id: "b", label: "Boundary", x: 0, y: 0, width: 400, height: 300 }],
+    annotations: [{ id: "z", kind: "zone", text: "Zone", x: 500, y: 0, width: 400, height: 300 }],
+  };
+  const original = diagramToDrawio(d);
+  d.groups![0].borderRadius = 20;
+  d.annotations![0].borderRadius = 18;
+  expect(diagramToDrawio(d).replace(/ dg_border_radius="[^"]*"/g, "")).toBe(original);
+  const { diagram } = await importFirst(
+    diagramToDrawio(d).replace(/dg_border_radius="[^"]*"/g, 'dg_border_radius="NaN"'),
+  );
+  expect(diagram.groups?.[0].borderRadius).toBeUndefined();
+  expect(diagram.annotations?.[0].borderRadius).toBeUndefined();
+});
 
 it("round-trips our hand-shaped routes and fixed sides 1:1, including negative and fractional points", async () => {
   const d = structuredClone(shaped) as DiagramFile;

@@ -1948,5 +1948,7 @@
   "staticSkill.copy": "คัดลอก",
   "staticSkill.copied": "คัดลอกแล้ว",
   "staticSkill.selectCopy": "เลือกและคัดลอก",
-  "gallery.inlineRateLimitSummary": "ทราฟฟิกของพาร์ทเนอร์พบกับโควตาคำขอที่แก้ไขได้"
+  "gallery.inlineRateLimitSummary": "ทราฟฟิกของพาร์ทเนอร์พบกับโควตาคำขอที่แก้ไขได้",
+  "inspector.borderRadius": "รัศมีมุม",
+  "examples.roundedRegions": "โซนและขอบเขตมุมมน"
 }

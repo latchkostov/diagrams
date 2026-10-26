@@ -43,6 +43,10 @@ function showsLatency(d: DiagramFile): boolean {
 /** Metadata only: never modifies the diagram, simulation or exported content. */
 export function exampleShows(d: DiagramFile): string[] {
   return [
+    ...(d.groups?.some((g) => typeof g.borderRadius === "number") &&
+    d.annotations?.some((a) => a.kind === "zone" && typeof a.borderRadius === "number")
+      ? ["roundedRegions"]
+      : []),
     ...(d.nodes.some((n) => Object.hasOwn(VENDOR_PARENTS, n.stencil)) ? ["vendorStencils"] : []),
     ...(d.nodes.some((n) => brandedClients.has(n.stencil)) ? ["brandedClients"] : []),
     ...(d.edges.some(

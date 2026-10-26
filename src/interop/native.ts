@@ -1,3 +1,4 @@
+import { borderRadius } from "../model/borderRadius";
 import { validWaypoints } from "../model/edgeRoute";
 import { revisionAtLeast } from "../model/revisions";
 import { DRILL_PRESETS, faultProblem, faultTarget, type Fault } from "../model/faults";
@@ -248,7 +249,7 @@ export function validateDiagram(data: unknown): NativeResult {
           );
           return;
         }
-        const out = { ...g };
+        const out: Record<string, unknown> = { ...g, borderRadius: borderRadius(g.borderRadius) };
         if (typeof out.label !== "string") out.label = typeof out.label === "number" ? String(out.label) : "";
         if (out.tone !== undefined && !TONES.has(out.tone as string) && !isHexColor(out.tone)) delete out.tone;
         if (out.group !== undefined && (typeof out.group !== "string" || !out.group.trim())) delete out.group;

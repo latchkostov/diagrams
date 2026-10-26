@@ -1948,5 +1948,7 @@
   "staticSkill.copy": "Kopiuj",
   "staticSkill.copied": "Skopiowano",
   "staticSkill.selectCopy": "Zaznacz i skopiuj",
-  "gallery.inlineRateLimitSummary": "Ruch partnera napotyka edytowalny limit żądań"
+  "gallery.inlineRateLimitSummary": "Ruch partnera napotyka edytowalny limit żądań",
+  "inspector.borderRadius": "Promień narożników",
+  "examples.roundedRegions": "Zaokrąglone strefy i granice"
 }

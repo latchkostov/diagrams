@@ -1948,5 +1948,7 @@
   "staticSkill.copy": "Salin",
   "staticSkill.copied": "Disalin",
   "staticSkill.selectCopy": "Pilih dan salin",
-  "gallery.inlineRateLimitSummary": "Trafik mitra melewati kuota permintaan yang dapat diedit"
+  "gallery.inlineRateLimitSummary": "Trafik mitra melewati kuota permintaan yang dapat diedit",
+  "inspector.borderRadius": "Radius sudut",
+  "examples.roundedRegions": "Zona dan batas membulat"
 }

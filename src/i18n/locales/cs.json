@@ -1948,5 +1948,7 @@
   "staticSkill.copy": "Kopírovat",
   "staticSkill.copied": "Zkopírováno",
   "staticSkill.selectCopy": "Vybrat a kopírovat",
-  "gallery.inlineRateLimitSummary": "Provoz partnera narazí na upravitelnou kvótu požadavků"
+  "gallery.inlineRateLimitSummary": "Provoz partnera narazí na upravitelnou kvótu požadavků",
+  "inspector.borderRadius": "Poloměr rohů",
+  "examples.roundedRegions": "Zóny a hranice se zaoblenými rohy"
 }

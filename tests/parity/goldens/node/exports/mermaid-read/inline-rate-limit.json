@@ -4,10 +4,15 @@
     "format": "diagrams/v1",
     "title": "An inline request rate limit",
     "direction": "LR",
+    "groups": [
+      { "id": "g_partner_region", "label": "Partner", "tone": "neutral", "x": 40, "y": 40, "width": 300, "height": 176 },
+      { "id": "g_limit_region", "label": "Rate limit", "tone": "neutral", "x": 400, "y": 40, "width": 300, "height": 176 },
+      { "id": "g_catalog_region", "label": "Catalog", "tone": "neutral", "x": 760, "y": 40, "width": 300, "height": 176 }
+    ],
     "nodes": [
-      { "id": "partner", "stencil": "client.partner", "label": "Partner client", "x": 40, "y": 40 },
-      { "id": "limiter", "stencil": "generic.rate-limiter", "label": "Rate limiter", "x": 400, "y": 40 },
-      { "id": "api", "stencil": "generic.service", "label": "Catalog API", "x": 760, "y": 40 }
+      { "id": "partner", "stencil": "client.partner", "label": "Partner client", "x": 80, "y": 104, "group": "g_partner_region" },
+      { "id": "limiter", "stencil": "generic.rate-limiter", "label": "Rate limiter", "x": 440, "y": 104, "group": "g_limit_region" },
+      { "id": "api", "stencil": "generic.service", "label": "Catalog API", "x": 800, "y": 104, "group": "g_catalog_region" }
     ],
     "edges": [
       { "id": "e1-partner-limiter", "from": "partner", "to": "limiter", "kind": "sync" },

@@ -76,6 +76,11 @@ export function SizeInput({
   );
 }
 
+import { Slider } from "../../components/Slider";
+export { Slider, type SliderProps } from "../../components/Slider";
+/** @deprecated Use Slider from src/components/Slider */
+export const SliderInput = Slider;
+
 /** The node id as a copy chip: click copies it. */
 export function CopyId({ id }: { id: string }) {
   const [copied, setCopied] = useState(false);

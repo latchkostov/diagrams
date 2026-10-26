@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { DiagramFile } from "../model/types";
 import { edgeAriaLabel, fromFlow, nodeAriaLabel, toFlow, withEdgeAria, withNodeAria } from "./convert";
-import type { FlowNode } from "./types";
+import type { AnnotationFlowNode, FlowNode, GroupFlowNode } from "./types";
 
 describe("convert", () => {
   it("persists mixed node and annotation order in history keys and restores it", () => {
@@ -121,5 +121,25 @@ describe("accessible names", () => {
     expect(withEdgeAria(f.edges, (id) => labels.get(id)!)[0].ariaLabel).toBe(
       "payments to Worker, message: OrderPlaced",
     );
+  });
+
+  it("round-trips borderRadius on boundaries and annotations", () => {
+    const d: DiagramFile = {
+      format: "diagrams/v1",
+      title: "t",
+      nodes: [],
+      edges: [],
+      groups: [{ id: "g1", label: "Group", x: 0, y: 0, width: 200, height: 150, borderRadius: 30 }],
+      annotations: [{ id: "z1", kind: "zone", text: "Zone", x: 0, y: 0, width: 200, height: 150, borderRadius: 12 }],
+    };
+    const f = toFlow(d);
+    const grp = f.nodes.find((n): n is GroupFlowNode => n.id === "group:g1");
+    const zone = f.nodes.find((n): n is AnnotationFlowNode => n.id === "z1");
+    expect(grp?.data.borderRadius).toBe(30);
+    expect(zone?.data.borderRadius).toBe(12);
+
+    const out = fromFlow(f.meta, f.nodes, f.edges);
+    expect(out.groups?.[0].borderRadius).toBe(30);
+    expect(out.annotations?.[0].borderRadius).toBe(12);
   });
 });

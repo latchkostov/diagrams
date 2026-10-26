@@ -18,10 +18,12 @@ import {
   resolveAnnotationColor,
   textSizeLabel,
 } from "../annotations";
+import { Slider } from "../../components/Slider";
 import { shapeMenu } from "../shapes/menu";
 import type { AnnotationFlowNode } from "../types";
 import { CopyId, Field, Section, Segmented, SizeInput } from "./fields";
 import { bulkStep } from "./editTransactions";
+import { useEditTransaction } from "./useEditTransaction";
 import { type InspectorProps } from "./types";
 
 export function AnnotationPanel({
@@ -34,6 +36,7 @@ export function AnnotationPanel({
   // A focus request made while this panel downloads can now find its field.
   useLayoutEffect(() => controller.rendered());
   const id = note.id;
+  const radiusEdit = useEditTransaction(editor, `annotation:${id}:radius`);
   const { kind } = note.data;
   const merge = (f: string) => ({ merge: `inspector:annotation:${id}:${f}` });
   const color = annotationColor(note.data);
@@ -242,6 +245,20 @@ export function AnnotationPanel({
               onCommit={(height) => editor.updateAnnotation(id, { height })}
             />
           </div>
+        </Field>
+      )}
+      {kind === "zone" && (
+        <Field label={t("inspector.borderRadius")} group>
+          <Slider
+            label={t("inspector.borderRadius")}
+            value={note.data.borderRadius ?? 18}
+            min={0}
+            max={40}
+            testId="inspector-field-border-radius"
+            onEditStart={radiusEdit.begin}
+            onEditEnd={radiusEdit.end}
+            onChange={(borderRadius) => editor.updateAnnotation(id, { borderRadius }, radiusEdit.options())}
+          />
         </Field>
       )}
       <p className="insp-note" data-testid="inspector-annotation-hint">

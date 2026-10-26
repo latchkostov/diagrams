@@ -1,3 +1,4 @@
+import { borderRadius } from "../model/borderRadius";
 import { validWaypoints } from "../model/edgeRoute";
 import { validDocumentation } from "../model/documentation";
 import { revisionAtLeast } from "../model/revisions";
@@ -211,7 +212,11 @@ export function parsePayload(text: string): ClipboardPayload | null {
     ...(isObj(data.planning) && revisionAtLeast(data.planning.revision, "p3-a1")
       ? { planning: { revision: "p3-a1" as const } }
       : {}),
-    groups: groups.map((g) => ({ ...g, tone: isPresetGroupTone(g.tone) || isHexColor(g.tone) ? g.tone : "neutral" })),
+    groups: groups.map((g) => ({
+      ...g,
+      borderRadius: borderRadius(g.borderRadius),
+      tone: isPresetGroupTone(g.tone) || isHexColor(g.tone) ? g.tone : "neutral",
+    })),
     nodes: nodes.map((n) => ({ ...n, label: n.label ?? "" })),
     edges,
     ...(annotations.length ? { annotations } : {}),

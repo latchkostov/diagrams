@@ -1,3 +1,4 @@
+import { readRadius } from "./borderRadius";
 import {
   ANNOTATION_LIMITS,
   annotationSize,
@@ -512,6 +513,7 @@ export function drawioPageToDiagram(page: DrawioPage, fallbackTitle = "Imported 
       y: snap(o.y * sy),
       width: snap(c.geo!.width * sx),
       height: snap(c.geo!.height * sy),
+      ...readRadius(c.data.dg_border_radius),
     });
   }
 
@@ -620,6 +622,7 @@ export function drawioPageToDiagram(page: DrawioPage, fallbackTitle = "Imported 
       ...(kind === "shape" ? { shape: shape ?? "rect" } : {}),
       ...(isColorValue(color) ? { color } : {}),
       ...(size && ANNOTATION_TEXT_SIZES.includes(size) ? { textSize: size } : {}),
+      ...readRadius(c.data.dg_border_radius),
     });
   }
 

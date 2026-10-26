@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, type RefObject } from "react";
-import type { NodeChange, ReactFlowState } from "@xyflow/react";
+import type { InternalNode, NodeChange, ReactFlowState } from "@xyflow/react";
 import { guideIndex, snapMove, type Box, type GuideIndex, type SnapResult } from "./guides";
 import type { AnnotationFlowNode, DiagramFlowEdge, FlowNode, GroupFlowNode } from "./types";
 import { expandGroupIds } from "../model/groupHierarchy";
@@ -12,6 +12,29 @@ export function draggedGroupIds(dragged: readonly FlowNode[], nodes: readonly Fl
       .filter((n): n is GroupFlowNode => n.type === "boundary")
       .map((n) => ({ id: n.data.groupId, group: n.data.group })),
   );
+}
+
+/** One pass over visible stationary elements, including backdrops and Alt-drag originals. */
+export function guideCandidates(
+  nodes: Iterable<InternalNode<FlowNode>>,
+  view: Box,
+  moving: ReadonlyMap<string, unknown>,
+  followers: ReadonlyMap<string, unknown>,
+  draggingBackdrop = true,
+): Box[] {
+  const boxes: Box[] = [];
+  for (const n of nodes) {
+    if (n.hidden || moving.has(n.id) || followers.has(n.id)) continue;
+    if (isBackdrop(n.internals.userNode) && !draggingBackdrop) continue;
+    const width = n.measured?.width ?? n.width ?? 0;
+    const height = n.measured?.height ?? n.height ?? 0;
+    const p = n.internals.positionAbsolute;
+    if (!width || !height) continue;
+    if (p.x > view.x + view.width || p.x + width < view.x || p.y > view.y + view.height || p.y + height < view.y)
+      continue;
+    boxes.push({ x: p.x, y: p.y, width, height });
+  }
+  return boxes;
 }
 
 // Smart guides and snapping while dragging (D6). A drag session starts with React Flow's drag: it indexes
@@ -237,23 +260,12 @@ export function useSmartGuides({
           }
         }
       }
-      // Candidates: what's in view, not moving, and not a backdrop (boundaries and zones). An Alt-drag's
+      // Candidates: what's in view and not moving. An Alt-drag's
       // originals stay put, so its copies line up with them.
       const view = { x: -tx / k, y: -ty / k, width: s.width / k, height: s.height / k };
-      const boxes: Box[] = [];
-      if (snap && guides)
-        for (const n of s.nodeLookup.values()) {
-          const u = n.internals.userNode;
-          if (n.hidden || isBackdrop(u) || startPos.has(n.id) || followers.has(n.id)) continue;
-          if (!copies && originals.has(n.id)) continue;
-          if ((u.type === "diagram" || u.type === "annotation") && u.data.group && groups.has(u.data.group)) continue;
-          const w = n.measured?.width ?? n.width ?? 0;
-          const h = n.measured?.height ?? n.height ?? 0;
-          const p = n.internals.positionAbsolute;
-          if (!w || !h) continue;
-          if (p.x > view.x + view.width || p.x + w < view.x || p.y > view.y + view.height || p.y + h < view.y) continue;
-          boxes.push({ x: p.x, y: p.y, width: w, height: h });
-        }
+      const draggingBackdrop = dragged.some(isBackdrop);
+      const boxes =
+        snap && guides ? guideCandidates(s.nodeLookup.values(), view, startPos, followers, draggingBackdrop) : [];
       const free = !!(e.ctrlKey || e.metaKey);
       const onKey = (ev: KeyboardEvent) => {
         const g = session.current;

@@ -1948,5 +1948,7 @@
   "staticSkill.copy": "복사",
   "staticSkill.copied": "복사됨",
   "staticSkill.selectCopy": "선택하여 복사",
-  "gallery.inlineRateLimitSummary": "파트너 트래픽에 편집 가능한 요청 할당량 적용"
+  "gallery.inlineRateLimitSummary": "파트너 트래픽에 편집 가능한 요청 할당량 적용",
+  "inspector.borderRadius": "모서리 반경",
+  "examples.roundedRegions": "둥근 영역과 경계"
 }

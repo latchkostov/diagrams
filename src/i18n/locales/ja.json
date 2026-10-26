@@ -1948,5 +1948,7 @@
   "staticSkill.copy": "コピー",
   "staticSkill.copied": "コピーしました",
   "staticSkill.selectCopy": "選択してコピー",
-  "gallery.inlineRateLimitSummary": "パートナーのトラフィックに編集可能なリクエスト割り当てを適用"
+  "gallery.inlineRateLimitSummary": "パートナーのトラフィックに編集可能なリクエスト割り当てを適用",
+  "inspector.borderRadius": "角の半径",
+  "examples.roundedRegions": "角丸のゾーンと境界"
 }

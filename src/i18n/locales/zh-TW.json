@@ -1948,5 +1948,7 @@
   "staticSkill.copy": "複製",
   "staticSkill.copied": "已複製",
   "staticSkill.selectCopy": "選取並複製",
-  "gallery.inlineRateLimitSummary": "合作夥伴的流量受到可編輯的請求配額限制"
+  "gallery.inlineRateLimitSummary": "合作夥伴的流量受到可編輯的請求配額限制",
+  "inspector.borderRadius": "圓角半徑",
+  "examples.roundedRegions": "圓角區域與邊界"
 }

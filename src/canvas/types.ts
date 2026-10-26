@@ -30,6 +30,7 @@ export type GroupNodeData = {
   tone: GroupTone | string;
   /** Optional id of an enclosing boundary this boundary sits inside. */
   group?: string;
+  borderRadius?: number;
 };
 
 /** Text, note, zone or shape. The React Flow id is the annotation's id (edges may end on shapes). */
@@ -40,6 +41,7 @@ export type AnnotationNodeData = {
   color?: AnnotationColor | string;
   textSize?: AnnotationTextSize;
   group?: string;
+  borderRadius?: number;
 };
 
 export type DiagramFlowNode = Node<DiagramNodeData, "diagram">;

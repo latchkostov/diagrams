@@ -1950,6 +1950,8 @@
     "staticSkill.copy": "658f3664",
     "staticSkill.copied": "8dc21305",
     "staticSkill.selectCopy": "d4deeedd",
-    "gallery.inlineRateLimitSummary": "d7ec8c11"
+    "gallery.inlineRateLimitSummary": "d7ec8c11",
+    "inspector.borderRadius": "bf9ec3e3",
+    "examples.roundedRegions": "fda0d6aa"
   }
 }
