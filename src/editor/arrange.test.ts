@@ -333,3 +333,36 @@ it("arranging deep boundary subtrees has bounded operation growth", () => {
   };
   expect(opGrowth(run(32), run(256))).toBeLessThan(24);
 });
+
+it.each(["align", "distribute"] as const)("%s accepts legacy node ID arrays with master's geometry", (command) => {
+  const diagram = {
+    format: "diagrams/v1" as const,
+    title: "Legacy operands",
+    groups: [{ id: "unselected", label: "Boundary", x: -100, y: -100, width: 2000, height: 800 }],
+    nodes: [
+      { id: "a", stencil: "service.node", label: "A", x: 0, y: 200, group: "unselected" },
+      { id: "b", stencil: "service.node", label: "B", x: 600, y: 100, group: "unselected" },
+      { id: "c", stencil: "service.node", label: "C", x: 1600, y: 0 },
+    ],
+    edges: [],
+  };
+  const h = editorHarness(diagram);
+  const before = h.api.getDiagram();
+  if (command === "align") h.api.align(["a", "b", "c"], "middle");
+  else h.api.distribute(["a", "b", "c"], "h");
+  const after = h.api.getDiagram();
+  expect(after.groups).toEqual(before.groups);
+  expect(after.nodes.map(({ x, y }) => ({ x, y }))).toEqual(
+    command === "align"
+      ? [
+          { x: 0, y: 100 },
+          { x: 600, y: 100 },
+          { x: 1600, y: 100 },
+        ]
+      : [
+          { x: 0, y: 200 },
+          { x: 800, y: 100 },
+          { x: 1600, y: 0 },
+        ],
+  );
+});

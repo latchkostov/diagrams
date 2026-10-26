@@ -71,6 +71,8 @@ export function Slider({
         }}
         onPointerDown={(e) => {
           e.currentTarget.setPointerCapture(e.pointerId);
+          // A focused keyboard burst ends when a new pointer gesture begins.
+          onEditEnd?.();
           onEditStart?.();
         }}
         onPointerUp={() => onEditEnd?.()}

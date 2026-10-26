@@ -34,6 +34,9 @@ export interface Selection {
   groupIds: string[];
 }
 
+/** Legacy node IDs or an explicit selection including boundary model IDs. */
+export type ArrangementOperands = readonly string[] | Pick<Selection, "nodeIds" | "groupIds">;
+
 /** Diagram-level fields. `simulations` is here so the simulation UI gets undo + autosave for free. */
 export type DiagramMetaPatch = Partial<
   Pick<DiagramFile, "title" | "description" | "color" | "direction" | "simulations" | "checks" | "planning">
@@ -185,8 +188,8 @@ export interface EditorApi {
   keepClear(sel: Partial<Selection>): void;
   /** Saves a node drag's carried bends in the open history gesture. */
   carryRoutes(origins: ReadonlyMap<string, XY>): void;
-  align(selection: Pick<Selection, "nodeIds" | "groupIds">, mode: AlignMode): void;
-  distribute(selection: Pick<Selection, "nodeIds" | "groupIds">, axis: Axis): void;
+  align(selection: ArrangementOperands, mode: AlignMode): void;
+  distribute(selection: ArrangementOperands, axis: Axis): void;
   /**
    * Tidy up (D15): the layered layout on just these nodes and the edges between them, inside their bounding
    * box where it fits (its top-left kept), clear of everything else, members kept in their boundaries (which

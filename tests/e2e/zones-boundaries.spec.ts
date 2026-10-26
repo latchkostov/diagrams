@@ -538,6 +538,11 @@ for (const target of ["boundary", "zone"] as const)
     expect(pointerValue).toBeLessThan(38);
     await expect.poll(radius).toBe(`${pointerValue}px`);
     await waitForHistoryIdle(page);
+    await page.getByTestId("undo-button").click();
+    await expect(slider).toHaveValue("38");
+    await page.getByTestId("redo-button").click();
+    await expect(slider).toHaveValue(String(pointerValue));
+    await waitForHistoryIdle(page);
     await input.fill("27");
     await input.press("Enter");
     await expect.poll(radius).toBe("27px");
@@ -792,3 +797,74 @@ for (const roots of [1, 2, 3])
     if (roots < 3) await expect(page.getByTestId("inspector-distribute-h")).toHaveCount(0);
     else await expect(page.getByTestId("inspector-distribute-h")).toBeEnabled();
   });
+
+for (const target of ["boundary", "zone"] as const)
+  test(`${target} radius controls change rendered corners`, async ({ page }) => {
+    await seed(page, fixtureDiagram);
+    const element = page.getByTestId(target === "boundary" ? "group-grp-core" : "annotation-zone-1");
+    await page.getByTestId(target === "boundary" ? "group-label-grp-core" : "annotation-label-zone-1").click();
+    await waitForSelectionSettled(page);
+    const slider = page.getByTestId("inspector-field-border-radius-slider");
+    const corners = async (radius: number) => {
+      for (const property of [
+        "border-top-left-radius",
+        "border-top-right-radius",
+        "border-bottom-left-radius",
+        "border-bottom-right-radius",
+      ])
+        await expect(element).toHaveCSS(property, `${radius}px`);
+    };
+    await slider.press("Home");
+    await corners(0);
+    await slider.press("Enter");
+    await slider.press("End");
+    await corners(40);
+    await waitForHistoryIdle(page);
+    await page.getByTestId("undo-button").click();
+    await corners(0);
+    await expect
+      .poll(async () => {
+        const d = await savedDiagram(page);
+        return target === "boundary" ? d.groups?.[0].borderRadius : d.annotations?.[0].borderRadius;
+      })
+      .toBe(0);
+    await page.reload();
+    await corners(0);
+  });
+
+test("empty zone strip remains draggable", async ({ page }) => {
+  const diagram = { ...fixtureDiagram, annotations: [{ ...fixtureDiagram.annotations[0], text: "" }] };
+  await seed(page, diagram);
+  const strip = page.getByTestId("annotation-label-zone-1");
+  await strip.click();
+  await waitForSelectionSettled(page);
+  await fitDiagram(page);
+  const zone = page.getByTestId("annotation-zone-1");
+  const area = await boxOf(zone);
+  const handle = await boxOf(strip);
+  const zoom = area.width / diagram.annotations[0].width;
+  expect(handle.width / zoom).toBeCloseTo((await zone.evaluate((el) => el.clientWidth)) - 28, 0);
+  expect(await strip.evaluate((el) => parseFloat(getComputedStyle(el).height))).toBeGreaterThanOrEqual(22);
+  const x = handle.x + handle.width / 2,
+    y = handle.y + handle.height / 2;
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await page.mouse.move(x + 80 * zoom, y + 60 * zoom, { steps: 10 });
+  await page.mouse.up();
+  await expect
+    .poll(async () => {
+      const a = (await savedDiagram(page)).annotations?.[0];
+      return a && { x: a.x, y: a.y };
+    })
+    .not.toEqual({ x: diagram.annotations[0].x, y: diagram.annotations[0].y });
+  expect((await savedDiagram(page)).nodes).toEqual(diagram.nodes);
+  await waitForHistoryIdle(page);
+  await page.getByTestId("undo-button").click();
+  await expect
+    .poll(async () => {
+      const a = (await savedDiagram(page)).annotations?.[0];
+      return a && { x: a.x, y: a.y };
+    })
+    .toEqual({ x: diagram.annotations[0].x, y: diagram.annotations[0].y });
+  expect((await savedDiagram(page)).nodes).toEqual(diagram.nodes);
+});

@@ -78,15 +78,8 @@ it.each(["boundary", "zone"] as const)("%s slider transactions survive pauses lo
       // A focused keyboard burst spans multiple native range changes and long pauses.
       await change("1");
       await change("39");
-      await act(() => slider.dispatchEvent(new FocusEvent("focusout", { bubbles: true })));
       if (collaborative) expect(new Set(roomCommit.mock.calls.map((call) => call[1]))).toHaveLength(1);
-      else {
-        expect(history.history.entries).toHaveLength(2);
-        const undone = history.step("undo", { nodes: [], edges: [] })!;
-        const diagram = fromFlow(undone.meta, undone.nodes, undone.edges);
-        const radius = kind === "boundary" ? diagram.groups![0].borderRadius : diagram.annotations![0].borderRadius;
-        expect(radius ?? initial).toBe(initial);
-      }
+      else expect(history.history.entries).toHaveLength(2);
       const previousTag = merge;
       roomCommit.mockClear();
       await act(() => slider.dispatchEvent(new PointerEvent("pointerdown", { pointerId: 1, bubbles: true })));
@@ -95,7 +88,18 @@ it.each(["boundary", "zone"] as const)("%s slider transactions survive pauses lo
       await act(() => slider.dispatchEvent(new PointerEvent("pointerup", { pointerId: 1, bubbles: true })));
       expect(merge).not.toBe(previousTag);
       if (collaborative) expect(new Set(roomCommit.mock.calls.map((call) => call[1]))).toHaveLength(1);
-      else expect(history.history.entries).toHaveLength(2);
+      else {
+        expect(history.history.entries).toHaveLength(3);
+        const radiusAfterUndo = () => {
+          const undone = history.step("undo", { nodes: [], edges: [] })!;
+          const diagram = fromFlow(undone.meta, undone.nodes, undone.edges);
+          return (
+            (kind === "boundary" ? diagram.groups![0].borderRadius : diagram.annotations![0].borderRadius) ?? initial
+          );
+        };
+        expect(radiusAfterUndo()).toBe(39);
+        expect(radiusAfterUndo()).toBe(initial);
+      }
     } finally {
       await act(() => root.unmount());
       host.remove();

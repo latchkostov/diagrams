@@ -81,7 +81,7 @@ import { stencilIdBase, uniqueId } from "./ids";
 import { layeredLayout } from "./layout";
 import { planBoundaryRefits } from "./boundaryFit";
 import type { HistoryApi } from "./useHistory";
-import type { EditorApi, EditorPrefs, NewNode, Selection, XY } from "./types";
+import type { ArrangementOperands, EditorApi, EditorPrefs, NewNode, Selection, XY } from "./types";
 import { diagramDiff } from "./diagramDiff";
 import { nudgeOnGrid } from "../canvas/guides";
 import { validateDiagram } from "../interop/native";
@@ -508,7 +508,14 @@ export function createEditor(
     return moved;
   };
   /** Arrangement operands are outermost selected subtrees, never their contained boxes. */
-  const arrangementBoxes = (selection: Pick<Selection, "nodeIds" | "groupIds">) => {
+  const arrangementBoxes = (selection: ArrangementOperands) => {
+    if (!("nodeIds" in selection)) {
+      const ids = new Set(selection);
+      return rf
+        .getNodes()
+        .filter((n) => ids.has(n.id) && isPlaced(n))
+        .map(box);
+    }
     const nodes = rf.getNodes();
     const operands = arrangementSelection(
       selection,

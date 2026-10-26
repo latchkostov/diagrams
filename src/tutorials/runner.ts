@@ -370,7 +370,7 @@ export function createTutorialRunner(
           ed.select({ nodeIds: ids, groupIds: [], edgeIds: [] });
         }
         // React Flow publishes the selection later; align the declared ids in this same command.
-        ed.align({ nodeIds: ids, groupIds: [] }, demo.mode);
+        ed.align(ids, demo.mode);
         return;
       }
       case "dependencies":
