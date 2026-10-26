@@ -66,6 +66,8 @@ export function defineLazySurface<P extends object>(options: Options<P>): LazySu
       toastId = notify(LOAD_FAILED, {
         kind: "error",
         action: { label: t("common.retry"), run: retry, testId: "lazy-load-retry" },
+        // A dialog whose part failed (its loading shell is open) shows the way back itself.
+        inDialog: true,
       });
   };
   function ensureLoaded(): Promise<ComponentType<P>> {

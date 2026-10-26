@@ -25,6 +25,7 @@ export function InjectFrame({
   loading?: boolean;
 }) {
   const panel = useRef<HTMLFormElement>(null);
+  const feedback = useRef<HTMLDivElement>(null);
   const interaction = useInteraction();
   /** Why it closed (a pick, Esc, a press outside), for the focus return; `unmount` if it went any other way. */
   const reason = useRef<MenuCloseReason>("unmount");
@@ -48,7 +49,7 @@ export function InjectFrame({
     );
     const previous = background.map((child) => child.inert);
     for (const child of background) child.inert = true;
-    const closeLayer = openModalLayer(el);
+    const closeLayer = openModalLayer(el, { feedback: feedback.current, opener: document.activeElement });
     const target = first?.current ?? el.querySelector<HTMLElement>("button");
     if (target) port.current?.dispatch({ type: "dialog.opened", first: target });
     const onKey = (e: KeyboardEvent) => {
@@ -128,6 +129,8 @@ export function InjectFrame({
           </button>
           {actions}
         </div>
+        {/* Anchored at its top, the frame grows downward for its own feedback: nothing in it moves. */}
+        <div ref={feedback} className="ix-dialog-feedback" data-feedback="inline" data-testid="inject-feedback" />
       </form>
     </div>,
     document.body,

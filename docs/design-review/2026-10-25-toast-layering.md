@@ -33,16 +33,26 @@ They stay above the tutorial coach's dim, so its toasts remain readable. The can
 (200) stays below them, as on master: it has no export or modal controls. The lower modals
 (shortcuts, palette, inject) cannot be ordered above the coach without moving it, so they are
 handled by stepping back rather than by z-index. Under any open modal, page notifications _step
-back_: they keep their rectangle, are hidden and inert, and neither expire nor move. The page-layer root is a
+back_. A notification that is engaged, or that the modal was opened from (its recorded opener),
+stays mounted: hidden and inert, its rectangle kept, neither expiring nor moving, so the modal can
+hand the keyboard back to it. Any other notification waits in the store, with its Undo binding and
+expiry paused, and is shown and announced afresh when the modal closes. Unmounting rather than
+hiding keeps exactly one toast in front while a dialog shows its own feedback. The page-layer root is a
 body child, so every modal's existing background sweep (which marks body children inert as it opens
 and restores them as it closes) covers it. That restoration happens in the same synchronous step in
 which the modal returns focus — sometimes to a toast's action, as the palette does. A React-driven
 `inert` would lag that step by a commit, and the focus would be lost. The CSS rule is
 `[data-toast-layer][inert] > .ix-toast`, not a document-wide `:has()`.
 
-**Dialog feedback** is declared at the call site (`inDialog: true` on Share link, Embed code,
-Paste, Link with password, Sequence diagram and Import report outcomes) and belongs to the topmost
-open modal that has a feedback slot. It renders inside that dialog's panel: inside `aria-modal`, so
+**Dialog feedback** is declared at the call site and belongs to the topmost open modal that has a
+feedback slot. The call sites that pass `inDialog: true` are:
+
+- the Share link, Embed code, Paste, Link with password, Sequence diagram and Import report outcomes;
+- Your diagrams' "Duplicated · Open";
+- a lazy part's "couldn't be downloaded · Retry", raised while its own dialog shell is loading.
+
+A deletion's Undo in Your diagrams stays a page notification. It outlives the dialog, and the dialog
+already shows its own Undo row. It renders inside that dialog's panel: inside `aria-modal`, so
 its `status`/`alert` live region is announced, and inside the dialog's Tab cycle. It is placed once,
 before it paints, and again only on a window resize while nothing engages it
 (`feedbackPlacement`):
@@ -52,6 +62,9 @@ before it paints, and again only on a window resize while nothing engages it
    The body gives up the room and scrolls, so the header and footer do not move.
 
 Dialogs are centred, so "above the panel" never has more room than below; that branch was dropped.
+The inject frame is anchored at its top (at the node), so its slot is marked `inline`. Its feedback
+is the frame's last row, the frame grows downward, and nothing in it moves. With
+`display: contents`, the empty slot adds no grid gap.
 
 It never overlaps the panel's controls and never moves under the pointer. Each dialog has its own
 slot with the page's rules: latest wins, an engaged toast holds its place while the next waits, and
@@ -69,7 +82,8 @@ before.
 `src/lib/modalLayers.ts` is the one modal stack. Every modal surface registers in the same effect
 that makes the page inert, and leaves in that effect's cleanup: the `Dialog` shell (with its
 feedback slot), the colour picker and the shortcuts shell through `useDialogInteraction`, plus the
-palette, the inject frame and the shortcuts sheet. The toast store subscribes to it. Stepping back,
+palette, the inject frame (with an inline slot) and the shortcuts sheet. Each passes its opener: the
+element its own code already sampled to hand focus back to. The toast store subscribes to it. Stepping back,
 ownership and dismissal are derived from that stack, not from DOM queries, CSS `:has()` or effect
 flags. The placement interval no longer queries `[aria-modal]`.
 
@@ -129,3 +143,10 @@ never covered by a toast. Under the tutorial coach's dim, toasts stay readable.
 - Toaster: page-layer root `src/interop/ui/Toaster.tsx:32`, dialog feedback `:70`, one-shot
   placement `:155`, Dismiss focus hand-back `:262`; `feedbackPlacement` in `toastStack.ts:43`.
 - CSS: step-back `src/styles/interop.css:217`, task layer `:223`, dialog feedback `:232-248`.
+
+### Startup chunks
+
+`toast` was already a startup chunk. Its imports `machine` (the engagement machine, added earlier on
+this branch) and `modalLayers` are shared with lazy surfaces, so the bundler emits each as its own
+small preloaded startup chunk. `bundleSplit.build.heavy.test.ts` pins that list, and both were added
+to it deliberately, with reasons. Startup JavaScript stays within budget (see Validation).

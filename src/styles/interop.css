@@ -246,6 +246,15 @@
   margin: 0 16px 12px;
 }
 
+/* An inline slot adds no grid row (or gap) until its feedback arrives. */
+.ix-dialog-feedback[data-feedback="inline"] {
+  display: contents;
+}
+
+[data-feedback="inline"] > .ix-toast[data-layer="dialog"] {
+  margin: 0;
+}
+
 @keyframes ix-toast-in {
   from {
     opacity: 0;

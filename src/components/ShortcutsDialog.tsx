@@ -178,7 +178,7 @@ export function ShortcutsDialog({ onClose, onTutorials }: { onClose: () => void;
     );
     const previous = background.map((el) => el.inert);
     for (const el of background) el.inert = true;
-    const closeLayer = openModalLayer(panelElement);
+    const closeLayer = openModalLayer(panelElement, { opener: prev });
     return () => {
       closeLayer();
       panelElement.removeEventListener("keydown", onKeyDown);

@@ -164,7 +164,7 @@ export function PaletteDialog({
     );
     const wasInert = background.map((c) => c.inert);
     for (const c of background) c.inert = true;
-    const closeLayer = openModalLayer(el);
+    const closeLayer = openModalLayer(el, { opener: previousFocus });
     input.current?.focus({ preventScroll: true });
     return () => {
       closeLayer();

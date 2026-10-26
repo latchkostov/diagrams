@@ -9,6 +9,8 @@ export interface ModalLayer {
   readonly panel: HTMLElement;
   /** Where the modal's own feedback renders, inside its panel; null when it has no slot. */
   readonly feedback: HTMLElement | null;
+  /** What had the keyboard as it opened: where it hands the focus back when it closes. */
+  readonly opener: Element | null;
 }
 
 let stack: readonly ModalLayer[] = [];
@@ -16,9 +18,12 @@ let seq = 0;
 const listeners = new Set<() => void>();
 const emit = () => listeners.forEach((listener) => listener());
 
-/** Registers an open modal; the returned function removes it (once). */
-export function openModalLayer(panel: HTMLElement, feedback: HTMLElement | null = null): () => void {
-  const layer: ModalLayer = { id: ++seq, panel, feedback };
+/** Registers an open modal (with what had the keyboard before it took it); the returned function removes it once. */
+export function openModalLayer(
+  panel: HTMLElement,
+  { feedback = null, opener = null }: { feedback?: HTMLElement | null; opener?: Element | null } = {},
+): () => void {
+  const layer: ModalLayer = { id: ++seq, panel, feedback, opener };
   stack = [...stack, layer];
   emit();
   return () => {
@@ -41,6 +46,10 @@ export const modalLayers = {
   },
   get(id: number): ModalLayer | null {
     return stack.find((l) => l.id === id) ?? null;
+  },
+  /** What each open modal was opened from (where it may hand the focus back). */
+  get openers(): Element[] {
+    return stack.flatMap((l) => (l.opener ? [l.opener] : []));
   },
   subscribe(listener: () => void) {
     listeners.add(listener);

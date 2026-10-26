@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { Glyph } from "./glyphs";
 import { subscribe, toast, type ToastKind, type ToastState } from "./toast";
 import { avoidedBars, feedbackPlacement, toastBottom } from "./toastStack";
-import type { ModalLayer } from "../../lib/modalLayers";
+import { modalLayers, type ModalLayer } from "../../lib/modalLayers";
 import { t as tr } from "../../i18n";
 
 const ICON: Record<ToastKind, Parameters<typeof Glyph>[0]["name"]> = {
@@ -28,6 +28,9 @@ export function Toaster() {
   const retained = useSyncExternalStore(subscribe, () => toast.retained);
   const steppedBack = useSyncExternalStore(subscribe, () => toast.steppedBack);
   const layered = useSyncExternalStore(subscribe, () => toast.layered);
+  const openerToasts = new Set(
+    modalLayers.openers.map((el) => Number(el.closest<HTMLElement>("[data-toast-id]")?.dataset.toastId)),
+  );
   // One root for the Toaster's lifetime. Rendered to markup (no DOM to make it in), the body stands in.
   const [pageRoot] = useState(() => {
     if (typeof document.createElement !== "function") return null;
@@ -55,14 +58,19 @@ export function Toaster() {
   return (
     <>
       {[retained, t]
-        .filter((value): value is ToastState => value !== null)
+        // Under an open modal the page's notifications step back. One that is engaged, or that a modal was opened
+        // from, stays mounted (hidden, inert, its rectangle kept, so the modal can hand the focus back to it); any
+        // other waits in the store, its expiry paused, and is shown and announced afresh when the modal closes.
+        .filter(
+          (value): value is ToastState =>
+            value !== null && (value.blocking || !steppedBack || engaged || openerToasts.has(value.id)),
+        )
         .map((value) => (
           <ToastView
             key={value.id}
             t={value}
             host={value.blocking ? document.body : (pageRoot ?? document.body)}
             suspended={value !== t}
-            // Under an open modal the page's notifications step back: still, their expiry paused.
             paused={!value.blocking && steppedBack}
             engaged={!value.blocking && engaged}
           />
@@ -162,7 +170,10 @@ function ToastView({
       if (pinned !== null) panel.style.height = pinned;
       pinned = null;
     };
+    // A modal anchored at its top (the inject frame) takes its feedback as its last row: it grows downward.
+    const inline = node.parentElement?.dataset.feedback === "inline";
     const place = () => {
+      if (inline) return void (node.dataset.place = "inside");
       if (toast.engagedFor(toastId)) return;
       node.dataset.place = "below";
       unpin();
@@ -189,6 +200,7 @@ function ToastView({
       role={t.kind === "error" ? "alert" : "status"}
       aria-live={t.kind === "error" ? "assertive" : "polite"}
       data-testid="toast"
+      data-toast-id={t.id}
       data-kind={t.kind}
       data-toast
       data-layer={layer ? "dialog" : "page"}

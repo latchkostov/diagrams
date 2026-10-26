@@ -383,14 +383,12 @@ for (const outcome of ["copied", "refused"] as const) {
     await agentChange(page, "Behind the dialog");
     const pageToast = page.getByTestId("ai-toast-undo");
     await expect(pageToast).toBeVisible();
-    const behind = await pageToast.boundingBox();
     await shareVia(page, "link");
     const dialog = page.getByTestId("share-link-dialog");
     await expect(dialog).toBeVisible();
     await expect(page.getByTestId("share-link-url")).toHaveValue(/#d=/);
-    await expect(pageToast).toBeHidden();
-    // Stepped back: out of reach, but its rectangle kept.
-    expect(await pageToast.boundingBox()).toEqual(behind);
+    // Not engaged, it steps back into the store until the dialog closes: the dialog's feedback is the only toast.
+    await expect(pageToast).toHaveCount(0);
     if (outcome === "refused")
       await page.evaluate(() => {
         navigator.clipboard.writeText = () => Promise.reject(new DOMException("Denied", "NotAllowedError"));
@@ -535,3 +533,26 @@ for (const height of [900, 420, 340] as const) {
     for (const id of ids) await page.getByTestId(id).click({ trial: true });
   });
 }
+
+test("layering: Escape from a palette opened on a focused toast hands the keyboard back to that toast", async ({
+  page,
+}) => {
+  await installFakeModelContext(page);
+  await gotoCanvas(page, SLUG);
+  await expect.poll(() => toolNames(page)).toContain("edit_diagram");
+  await page.clock.install();
+  await pauseClock(page);
+  await agentChange(page, "Focused change");
+  const undo = page.getByTestId("ai-toast-undo");
+  await undo.focus();
+  const geometry = await undo.boundingBox();
+  await page.keyboard.press("ControlOrMeta+k");
+  await expect(page.getByTestId("command-input")).toBeFocused();
+  // Its opener steps back in place (hidden, inert), so the palette can give the keyboard back to it.
+  await expect(undo).toBeHidden();
+  expect(await undo.boundingBox()).toEqual(geometry);
+  await page.keyboard.press("Escape");
+  await expect(page.getByTestId("command-palette")).toHaveCount(0);
+  await expect(undo).toBeFocused();
+  expect(await undo.boundingBox()).toEqual(geometry);
+});

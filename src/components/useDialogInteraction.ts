@@ -75,7 +75,7 @@ export function useDialogInteraction(
     );
     const wasInert = background.map((el) => el.inert);
     for (const el of background) el.inert = true;
-    const closeLayer = openModalLayer(panelEl, feedback?.current ?? null);
+    const closeLayer = openModalLayer(panelEl, { feedback: feedback?.current, opener: prev });
     return () => {
       closeLayer();
       panelEl.removeEventListener("keydown", onKeyDown);

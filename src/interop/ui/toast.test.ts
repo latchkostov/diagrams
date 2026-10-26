@@ -247,7 +247,7 @@ describe("layers: a dialog's feedback, and the page's notifications behind it", 
   const el = () => ({}) as HTMLElement;
   const closers: (() => void)[] = [];
   const open = (feedback: HTMLElement | null = el()) => {
-    const close = openModalLayer(el(), feedback);
+    const close = openModalLayer(el(), { feedback });
     closers.push(close);
     return close;
   };

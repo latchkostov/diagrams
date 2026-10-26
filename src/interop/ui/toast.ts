@@ -297,6 +297,8 @@ export interface NotifyOptions {
   duration?: number;
   /** Cleanup after expiry, replacement or explicit dismissal (after an action has run). */
   onDismiss?: () => void;
+  /** The topmost open dialog's own outcome: shown and announced in that dialog, gone with it. */
+  inDialog?: boolean;
 }
 
 /**
