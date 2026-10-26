@@ -15,7 +15,7 @@ import {
   sinceValues,
   withoutSince,
 } from "./checks";
-import { patchProps } from "./paths";
+import { createRepairs, type RepairPorts, type RepairTarget } from "./repair";
 import {
   inStep,
   runnerInitial,
@@ -37,7 +37,6 @@ import { GROUP_PREFIX } from "../canvas/types";
 import { simulationProjection } from "../sim/simulationContent";
 import { planningHost } from "../live/planningHost";
 import { capacityOverlay } from "../live/capacityOverlay";
-import { withSavedSimulation } from "./simulations";
 
 /**
  * The runner: one tutorial's machine (./machine.ts) wired to the sandbox canvas. It observes the canvas through the
@@ -61,6 +60,10 @@ export interface RunnerSnapshot {
 
 /** Demos pressing Live's controls: they wait (retrying on each change) until Live's lazy session offers them. */
 const live = new Set<Demo["kind"]>([
+  // Repairs (./repair.ts) wait for Live's session to show their last write, and for its commands while it mounts.
+  "patch",
+  "saveSimulation",
+  "runSimulation",
   "fault",
   "traffic",
   "trace",
@@ -118,6 +121,7 @@ export function createTutorialRunner(
       "presenting",
       "sharing",
     ].includes(check.kind) ||
+    (check.kind === "prop" && !!check.effective) ||
     (check.kind === "all" && check.checks.some(dynamic));
   const dynamicChecks = tutorial.steps.map((s) => dynamic(s.check));
   const naming = tutorial.steps.map((s) => namingSubjects(s.check));
@@ -156,6 +160,8 @@ export function createTutorialRunner(
   const demoBindings = new Map<string, string>();
   let documentChecks: boolean[] = [];
   let topology: string | undefined;
+  /** Every edit of props, saved runs, drafts and Inputs a demo makes goes through these (./repair.ts). */
+  const repairs = createRepairs();
   function view(): SandboxView {
     const h = host.get();
     const ed = h.canvas!.editor;
@@ -346,6 +352,11 @@ export function createTutorialRunner(
     view();
     const edge = (pair: readonly [string, string]) =>
       ed.getDiagram().edges.find((e) => e.from === subjects[pair[0]] && e.to === subjects[pair[1]]);
+    const repairPorts = (): RepairPorts => ({
+      editor: ed,
+      live: h.canvas?.live ? planningHost.get() : null,
+      liveOn: !!h.canvas?.live,
+    });
     switch (demo.kind) {
       case "member": {
         const id = subjects[demo.subject],
@@ -432,28 +443,11 @@ export function createTutorialRunner(
         return;
       }
       case "patch": {
-        const item = demo.edge ? edge(demo.edge) : ed.getDiagram().nodes.find((n) => n.id === subjects[demo.subject]);
-        // Only what's missing, as one edit; nothing at all when the learner's props already have it.
-        const changed = item && patchProps(item.props, demo.patches);
-        if (item && changed) {
-          if (demo.edge) ed.setEdgeProps(item.id, changed);
-          else ed.setNodeProps(item.id, changed);
-        }
-        // TODO(#346): use the shared effective-configuration/persist helper once it lands.
-        // runSimulation below reselects the repaired saved run, so Live reads these overrides too.
-        if (item && demo.simulations) {
-          const map = demo.edge ? "edges" : "props";
-          let repaired = false;
-          const simulations = ed.getDiagram().simulations?.map((sim) => {
-            const override = sim.setup?.[map]?.[item.id];
-            const patch = demo.simulations!.includes(sim.id) && override && patchProps(override, demo.patches);
-            if (!patch) return sim;
-            repaired = true;
-            return { ...sim, setup: { ...sim.setup, [map]: { ...sim.setup?.[map], [item.id]: patch } } };
-          });
-          if (repaired) ed.updateMeta({ simulations });
-        }
-        return;
+        const id = demo.edge ? edge(demo.edge)?.id : subjects[demo.subject];
+        const target: RepairTarget | undefined = id ? (demo.edge ? { edge: id } : { node: id }) : undefined;
+        // Not there (yet): nothing to repair, as for any edit of a missing subject.
+        if (!target) return;
+        return repairs.repair(repairPorts(), { target, patches: demo.patches, runs: demo.runs }) === "done";
       }
       case "relation": {
         const id = edge([demo.from, demo.to])?.id;
@@ -477,6 +471,8 @@ export function createTutorialRunner(
         ed.addAnnotation(demo.annotation);
         return;
       case "runSimulation":
+        // A design study's reference replay plays its run as designed: saved multipliers back to ×1 first.
+        if (tutorial.study && repairs.reference(repairPorts(), demo.id) === "waiting") return false;
         host.runSimulation?.(demo.id);
         return;
       case "select": {
@@ -567,13 +563,8 @@ export function createTutorialRunner(
         apply();
         return true;
       }
-      case "inputs": {
-        const ui = planningHost.get();
-        if (!h.canvas?.live || !ui) return false;
-        const inputs = ui.controller.getState().inputs;
-        if ((inputs[demo.input] ?? 1) !== demo.value) ui.controller.setInputs({ ...inputs, [demo.input]: demo.value });
-        return true;
-      }
+      case "inputs":
+        return repairs.inputs(repairPorts(), demo.input, demo.value) === "done";
       case "continueNote": {
         const ui = planningHost.get();
         const session = h.session?.state?.();
@@ -597,12 +588,9 @@ export function createTutorialRunner(
         else if (!ui.panelOpen) ui.openPanel();
         return true;
       }
-      case "saveSimulation": {
+      case "saveSimulation":
         // Only what's missing: a simulation the learner saved under this id keeps its own steps and checks.
-        const simulations = withSavedSimulation(ed.getDiagram(), demo);
-        if (simulations) ed.updateMeta({ simulations });
-        return;
-      }
+        return repairs.saveSimulation(repairPorts(), demo) === "done";
       case "add": {
         const after = demo.after ? subjects[demo.after] : undefined;
         const made = subjects[demo.subject];
@@ -727,6 +715,7 @@ export function createTutorialRunner(
         return;
       case "reset": {
         generation++;
+        repairs.reset();
         subjects = {};
         demoBindings.clear();
         document = undefined;
@@ -765,6 +754,7 @@ export function createTutorialRunner(
         return;
       case "close":
         generation++;
+        repairs.reset();
         changed.forEach((f) => f());
         host.cancelRun?.();
         ports.close();
@@ -861,5 +851,7 @@ export function createTutorialRunner(
     },
     /** Test seam: the cause journal (development and e2e builds). */
     journal: () => machine.journal,
+    /** Test seam: the sandbox's saved runs and Live's unsaved draft, the copies a repair chooses between. */
+    runs: () => ({ saved: editor()?.getDiagram().simulations ?? [], draft: planningHost.get()?.draft ?? null }),
   };
 }

@@ -48,10 +48,10 @@ export const tutorialEntries: readonly Pick<TutorialMetadata, "id" | "quarantine
   { id: "load-shedding" },
   { id: "dead-letters" },
   { id: "health-checks" },
-  { id: "study-checkout", quarantined: true },
-  { id: "study-dispatch", quarantined: true },
-  { id: "study-payments", quarantined: true },
-  { id: "study-fanout", quarantined: true },
-  { id: "study-rag", quarantined: true },
+  { id: "study-checkout", quarantined: true }, // quarantined: see docs/backlog/2026-10-24-tutorials-quarantine.md
+  { id: "study-dispatch" },
+  { id: "study-payments" },
+  { id: "study-fanout" },
+  { id: "study-rag" },
   { id: "study-cells" },
 ];

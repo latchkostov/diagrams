@@ -93,6 +93,7 @@ const edits: { [K in PropPatch["op"]]: (patch: Extract<PropPatch, { op: K }>) =>
     if (list.some((item) => matches(item, patch.match))) return SKIP;
     return [...list, resolve({ ...patch.match, ...patch.with })];
   },
+  atLeast: (patch) => (current) => (typeof current === "number" && current < patch.value ? patch.value : SKIP),
 };
 
 /**

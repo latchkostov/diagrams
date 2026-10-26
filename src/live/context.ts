@@ -18,6 +18,18 @@ export interface LiveUi {
   /** The unsaved simulation being authored (a storm, "New simulation"), if any. */
   draft: Simulation | null;
   selectSimulation(id: string | null): void;
+  /**
+   * The Simulations panel's own Save and Run, unchanged, for a caller outside the panel (a tutorial's repair):
+   * Save writes the document and ends a draft of that id; Run plays a working copy, keeping it a draft unless it
+   * equals the saved one. Absent without an editor (the Lab, a viewer).
+   */
+  saveSimulation?(sim: Simulation): boolean | undefined;
+  runDraft?(sim: Simulation): void;
+  /**
+   * Edits the Simulations panel's working copy of this run, open or set aside, keeping its pending edits: so a change
+   * made outside the panel (a tutorial's repair) is in what its Run and Save submit next. Nothing when it shows another.
+   */
+  editPanelCopy?(id: string, edit: (sim: Simulation) => Simulation): void;
   openPanel(sim?: Simulation): void;
   panelOpen: boolean;
   /** The Inputs & capacity panel. */

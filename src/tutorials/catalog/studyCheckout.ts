@@ -4,9 +4,8 @@ import { studyAdd, studyRun } from "./studyShared";
 
 export const studyCheckout: Tutorial = {
   id: "study-checkout",
+  quarantined: true, // quarantined: see docs/backlog/2026-10-24-tutorials-quarantine.md
   version: 1,
-  // quarantined: see docs/backlog/2026-10-24-tutorials-quarantine.md
-  quarantined: true,
   track: "studies",
   level: 3,
   minutes: 20,
@@ -118,11 +117,17 @@ export const studyCheckout: Tutorial = {
           { kind: "simulation", id: "tenfold", atLeastMs: 4000 },
           { kind: "expectation", simulation: "tenfold", label: msg("tutorials.studyCheckout.noDrops") },
           { kind: "metric", subject: "checkout", field: "processed", op: ">=", value: 20 },
+          { kind: "metric", subject: "checkout", field: "rejected", op: "<=", value: 0 },
         ],
       },
       targets: [{ testId: "node-{checkout}", tip: msg("tutorials.studyCheckout.rushHint") }],
       demo: [
-        { kind: "patch", subject: "checkout", patches: [{ op: "set", path: ["replicas"], value: 20 }] },
+        {
+          kind: "patch",
+          subject: "checkout",
+          runs: ["tenfold"],
+          patches: [{ op: "set", path: ["replicas"], value: 20 }],
+        },
         { kind: "runSimulation", id: "tenfold" },
       ],
       solution: [
@@ -174,6 +179,14 @@ export const studyCheckout: Tutorial = {
         kind: "all",
         checks: [
           { kind: "simulation", id: "partner-quota", atLeastMs: 4000 },
+          {
+            kind: "prop",
+            edge: ["checkout", "payments"],
+            prop: ["caller", "poolConnections"],
+            effective: true,
+            op: ">=",
+            value: 1,
+          },
           { kind: "metric", subject: "payments", field: "rejected", op: "<=", value: 1 },
           { kind: "metric", subject: "payments", field: "processed", op: ">=", value: 10 },
         ],
@@ -183,6 +196,7 @@ export const studyCheckout: Tutorial = {
         {
           kind: "patch",
           edge: ["checkout", "payments"],
+          runs: ["partner-quota"],
           patches: [{ op: "set", path: ["caller", "poolConnections"], value: 1 }],
         },
         { kind: "runSimulation", id: "partner-quota" },

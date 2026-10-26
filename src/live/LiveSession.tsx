@@ -1,7 +1,7 @@
 import { defineLazySurface } from "../lib/lazySurface";
 import { boundaryRestoreHint } from "../model/faultWords";
 import { ViewportPortal, useStoreApi } from "@xyflow/react";
-import { Suspense, lazy, useEffect, useMemo, useState } from "react";
+import { Suspense, lazy, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useCameraController } from "../canvas/camera";
 import { InteractionContext, useInteractionOrLocal } from "../canvas/interaction";
 import type { DiagramFlowEdge, FlowNode } from "../canvas/types";
@@ -82,6 +82,7 @@ const SequenceDialog = lazy(() => import("./SequenceDialog").then((m) => ({ defa
 type RecorderView = typeof import("./record/Recorder").Recorder;
 
 import type { LiveSessionHandle, LiveViewProps } from "./LiveView";
+import type { Simulation } from "../model/types";
 
 // The live session: the simulation, its renderers and panels, slow motion and recording. It loads when live
 // view first turns on (or earlier, once the canvas is idle; see LiveView), never with the first view.
@@ -163,6 +164,25 @@ export function LiveSession({
 
   const commands = useLiveCommands({ session, editor, onSaveDiagram, spotlight, setCapacityError });
   const { selectSimulation, showSimulation, runDraft, saveSimulation, deleteSimulation, showEvents } = commands;
+  // Save follows the document's save callback; the copy offered outside the panel keeps one identity.
+  const latestSave = useRef(saveSimulation);
+  useLayoutEffect(() => {
+    latestSave.current = saveSimulation;
+  }, [saveSimulation]);
+  const saveFromOutside = useCallback((sim: Simulation) => latestSave.current(sim), []);
+  // The open panel's own edit command (SimPanel registers it), and the copy set aside while it's closed.
+  const panelEdit = useRef<((id: string, edit: (sim: Simulation) => Simulation) => void) | null>(null);
+  const takePanelEdit = useCallback((command: typeof panelEdit.current) => {
+    panelEdit.current = command;
+  }, []);
+  const editPanelCopy = useCallback(
+    (id: string, edit: (sim: Simulation) => Simulation) => {
+      panelEdit.current?.(id, edit);
+      const kept = suspendedPanelRef.current;
+      if (kept?.sim?.id === id) suspendedPanelRef.current = { sim: edit(kept.sim) };
+    },
+    [suspendedPanelRef],
+  );
 
   const { rec, dispatchRec, capturing } = useLiveRecordingState();
   const [Recorder, setRecorder] = useState<RecorderView | null>(null);
@@ -253,6 +273,9 @@ export function LiveSession({
       simulations,
       draft,
       selectSimulation,
+      saveSimulation: editor ? saveFromOutside : undefined,
+      runDraft: editor ? runDraft : undefined,
+      editPanelCopy: editor ? editPanelCopy : undefined,
       openPanel: (sim) => {
         // The live bar passes the active run; restore its working copy unless another run was chosen.
         const kept = suspendedPanelRef.current;
@@ -291,6 +314,9 @@ export function LiveSession({
       simulations,
       draft,
       selectSimulation,
+      saveFromOutside,
+      runDraft,
+      editPanelCopy,
       panel.open,
       capacityOpen,
       openCapacity,
@@ -449,6 +475,7 @@ export function LiveSession({
             key={panel.sim?.id ?? "picker"}
             initial={panel.sim}
             onDraftChange={takePanelDraft}
+            onEditCommand={takePanelEdit}
             state={state}
             onClose={() => setPanel({ open: false, kind: "sims", sim: null })}
             onRun={runDraft}

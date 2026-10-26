@@ -27,8 +27,11 @@ export interface SubjectSpec {
   role?: SimRole;
   /** Require an incoming flow from this earlier-declared node subject. */
   downstreamOf?: string;
-  /** Require an outgoing flow to this earlier-declared node subject. */
-  upstreamOf?: string;
+  /**
+   * A node on the flow between these earlier-declared subjects: an incoming flow from the first or an outgoing flow
+   * to the second. Either connection keeps it bound, so a learner rewiring one end can still be repaired.
+   */
+  between?: readonly [string, string];
 }
 
 export type Comparison = "=" | ">=" | "<=";
@@ -67,7 +70,15 @@ export type PropPatch =
       path: PropPath;
       match: Readonly<Record<string, PathLiteral>>;
       with?: Readonly<Record<string, PatchValue>>;
-    };
+    }
+  /** A number at the path below this one is raised to it; nothing, null (none) or a larger number stays. */
+  | { op: "atLeast"; path: PropPath; value: number };
+
+/**
+ * A saved run a repair also fixes (src/tutorials/repair.ts): by id, or whichever run Live has selected (none in free
+ * play, or while Live is off). An unsaved draft of that run is repaired in place, the saved run otherwise.
+ */
+export type RunRef = string | { selected: true };
 
 type NumericKeys<T> = { [K in keyof T]-?: NonNullable<T[K]> extends number ? K : never }[keyof T];
 /**
@@ -94,8 +105,8 @@ export type MetricValue =
   | { sum: EdgeMetric; edges: readonly (readonly [string, string])[] }
   /** Every flow out of this subject. */
   | { sum: EdgeMetric; from: string }
-  /** A number the diagram says (a topic's partitions, a service's replicas): read from props, Live or not. */
-  | ({ prop: string | PropPath } & PropertyTarget);
+  /** A property number; effective opts into Live configuration, including capacity multipliers. */
+  | ({ prop: string | PropPath; effective?: true } & PropertyTarget);
 /**
  * `sinceStep`: counted since this step became current. Its baseline is read on entry and kept in the runner's state
  * (RunnerState.baseline); a rebuilt run (a new generation) counts from zero. Only sticky steps may use it.
@@ -128,8 +139,8 @@ export type Check =
   /** Live counters (real messages) since the run started. */
   | { kind: "processed"; subject: string; atLeast: number }
   | { kind: "field"; subject: string; field: "sublabel" | "description"; is?: Words }
-  /** A top-level prop, or a path into props (`["settings", 4, "secret"]`); `measure: "length"` for a list's length. */
-  | ({ kind: "prop"; prop: string | PropPath } & PropComparison & PropertyTarget)
+  /** A prop or path (`["settings", 4, "secret"]`); effective uses Live configuration; measure compares a list's length. */
+  | ({ kind: "prop"; prop: string | PropPath; effective?: true } & PropComparison & PropertyTarget)
   /** Two Live numbers, or one and a constant: sums over subjects, a delta since the step began. */
   | { kind: "compare"; left: MetricExpr; op: MetricComparison; right: MetricExpr | number }
   // edgeKind / annotation / fault distinguish the payload from the check's discriminant.
@@ -190,13 +201,12 @@ export type Demo =
   | { kind: "name"; subject: string }
   | { kind: "rename"; subject: string; label: Words }
   | ({ kind: "prop"; props: Record<string, unknown> } & PropertyTarget)
-  /** Edit-preserving prop edits, applied together as one edit, or none when nothing is missing. */
-  | ({
-      kind: "patch";
-      patches: readonly PropPatch[];
-      /** Also repair existing saved-run overrides before a subsequent runSimulation restores them. */
-      simulations?: readonly string[];
-    } & PropertyTarget)
+  /**
+   * Edit-preserving prop edits, applied together as one edit, or none when nothing is missing. `runs`: these runs'
+   * own setup (saved Inputs, a connection's run-only caller settings) must not override them either; only the keys
+   * still overridden are merged into it (src/tutorials/repair.ts).
+   */
+  | ({ kind: "patch"; patches: readonly PropPatch[]; runs?: readonly RunRef[] } & PropertyTarget)
   | { kind: "relation"; from: string; to: string; relation: EdgeRelation; edgeKind?: "sync" | "async" }
   | { kind: "group"; subjects: readonly string[]; boundary: string }
   | { kind: "annotate"; annotation: AnnotationKind }
