@@ -185,8 +185,11 @@ to it deliberately, with reasons. Startup JavaScript stays within budget (see Va
 - **Mutations.** Routing feedback to the page layer fails 3 layering tests. Raising page toasts to
   the task layer without step-back fails 5, including the palette export test.
 - **The original flakes.** `routing.spec.ts:121` (master's :120) and `record.spec.ts:206` (:205),
-  in Linux, 30 repeats, 6 workers on 4 CPUs: 60 passed, 0 failed. The toast spec, 5 repeats on the
-  same load: 130 passed. On 2 CPUs, 15 of 60 failed. Every failure was setup under starvation, never
+  in Linux, 30 repeats, 6 workers on 4 CPUs: 60 passed, 0 failed, on the final commit and on the
+  commit before it. The toast spec on the same load passed 130 of 130 (5 repeats) and 78 of 78 on
+  the final commit (3 repeats). The palette-opener case now captures its geometry once placement
+  has settled: on a paused clock the 250 ms pass had not yet run, so a brief un-engaged moment
+  could settle the toast by 2 px. That was a test-only race, and the case passed 90 of 90 natively. On 2 CPUs, 15 of 60 failed. Every failure was setup under starvation, never
   a toast: the route table's chunk was still loading after 10 s, the recording countdown and
   encoder start were slow, or the 30 s backstop ran out. These are Lane C's documented signatures.
 - **Full local gate.** Lint, types, format, i18n and skill pass. Unit: 12,799 passed. Heavy: 947
@@ -197,4 +200,4 @@ to it deliberately, with reasons. Startup JavaScript stays within budget (see Va
   `tutorials.spec.ts:805` timed out replaying under load. All four passed 260 of 260 when repeated.
   No failure recurred across runs, and none involves a toast.
 - **Size.** Entry 109.2 kB gzip of a 123.5 kB budget. Viewer 615.9 kB gzip of 805 kB. Skill ZIP
-  820,827 B, under the 835,000 B cap. No budget was raised.
+  821,241 B after the last master merge, under the 835,000 B cap. No budget was raised.
