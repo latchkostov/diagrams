@@ -205,6 +205,17 @@ beforeAll(async () => {
 /** The build without Edit together: every copy's default. */
 const plain = (): Build => ({ chunks, assets, html });
 
+it("keeps accounting's internal ports out of shipped property names", () => {
+  const accounting = chunks.filter((chunk) =>
+    Object.keys(chunk.modules).some((id) => /[/\\]sim[/\\]engine[/\\]accounting\.ts$/.test(id)),
+  );
+  expect(accounting.length).toBeGreaterThan(0);
+  for (const chunk of accounting)
+    expect(chunk.code).not.toMatch(
+      /\b(?:queueBacklog|threadOccupancy|memoryRequests|readFrame|observeEvent|recordEvent|dotsOf|countRoute):/,
+    );
+});
+
 const chunkIn = (b: Build, fileName: string) => {
   const found = b.chunks.find((c) => c.fileName === fileName);
   if (!found) throw new Error(`No chunk ${fileName}`);
