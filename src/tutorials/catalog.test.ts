@@ -248,28 +248,28 @@ describe("authoring evidence", () => {
 });
 
 describe("tutorial catalog", () => {
-  it("quarantines checkout while retaining the other published studies at authored default multipliers", () => {
+  it("publishes every study with its authored load", () => {
     const studies = tutorials.filter((tutorial) => tutorial.study);
-    expect(studies.filter((tutorial) => tutorial.quarantined).map((tutorial) => tutorial.id)).toEqual([
+    expect(studies.filter((tutorial) => tutorial.quarantined)).toEqual([]);
+    expect(studies.map((tutorial) => tutorial.id)).toEqual([
       "study-checkout",
-    ]);
-    const published = studies.filter((tutorial) => !tutorial.quarantined);
-    expect(published.map((tutorial) => tutorial.id)).toEqual([
       "study-dispatch",
       "study-payments",
       "study-fanout",
       "study-rag",
       "study-cells",
     ]);
-    for (const tutorial of published) {
+    for (const tutorial of studies) {
       expect(typeof tutorial.start).toBe("function");
       const diagram = typeof tutorial.start === "function" ? tutorial.start() : undefined;
       for (const run of diagram?.simulations ?? []) {
-        expect(run.multipliers?.traffic ?? 1, `${tutorial.id}/${run.id} traffic`).toBe(1);
+        expect(run.multipliers?.traffic ?? 1, `${tutorial.id}/${run.id} traffic`).toBe(
+          tutorial.id === "study-checkout" ? 10 : 1,
+        );
         expect(run.multipliers?.capacity ?? 1, `${tutorial.id}/${run.id} capacity`).toBe(1);
       }
     }
-    expect(tutorialMetadata.some((tutorial) => tutorial.id === "study-checkout")).toBe(false);
+    expect(tutorialMetadata.some((tutorial) => tutorial.id === "study-checkout")).toBe(true);
   });
 
   it("has unique ids and a version, listed for the generated e2e", () => {

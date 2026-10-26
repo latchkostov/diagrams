@@ -580,6 +580,30 @@ for (const finish of ["inspector", "Skip"] as const)
     expectNoErrors(consoleErrors);
   });
 
+test("study-checkout: Skip and Continue replay the authored tenfold traffic", async ({ page, consoleErrors }) => {
+  test.slow();
+  await reachStudyMilestone(page, "study-checkout", "survive-tenfold");
+  await page.getByTestId("live-toggle").click();
+  await page.getByTestId("live-sim-picker").selectOption("tenfold");
+  await page.getByTestId("live-capacity").click();
+  await expect(page.getByTestId("capacity-traffic-mult")).toHaveAttribute("data-value", "10");
+  await page.getByTestId("capacity-preset-normal").click();
+  await page.getByTestId("capacity-save").click();
+  const traffic = () =>
+    page.evaluate(() => window.__tutorial?.runs().saved.find((sim) => sim.id === "tenfold")?.multipliers?.traffic);
+  await expect.poll(traffic).toBe(1);
+  await page.getByTestId("tutorial-skip").click();
+  await expect(strip(page)).toHaveAttribute("data-step", "keep-orders");
+  await expect.poll(traffic).toBe(10);
+  await expect(page.getByTestId("capacity-traffic-mult")).toHaveAttribute("data-value", "10");
+  await page.reload();
+  await expect(page.getByTestId("tutorial-start")).toContainText("Continue", { timeout: pageLoadTimeout() });
+  await page.getByTestId("tutorial-start").click();
+  await expect(strip(page)).toHaveAttribute("data-step", "keep-orders");
+  await expect.poll(traffic).toBe(10);
+  expectNoErrors(consoleErrors);
+});
+
 test("study-checkout: Skip repairs the saved Partner quota pool", async ({ page, consoleErrors }) => {
   test.slow();
   await reachStudyMilestone(page, "study-checkout", "respect-partner-quota");

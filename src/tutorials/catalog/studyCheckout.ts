@@ -4,7 +4,6 @@ import { studyAdd, studyRun } from "./studyShared";
 
 export const studyCheckout: Tutorial = {
   id: "study-checkout",
-  quarantined: true, // quarantined: see docs/backlog/2026-10-24-tutorials-quarantine.md
   version: 1,
   track: "studies",
   level: 3,

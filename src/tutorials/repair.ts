@@ -44,15 +44,6 @@ export interface RepairPorts {
 /** done: nothing (more) to change. waiting: written, or not writable yet; ask again once Live republishes. */
 export type RepairResult = "done" | "waiting";
 
-/**
- * A reference replay plays the run as designed: its saved capacity and traffic multipliers (Inputs & capacity's
- * Save to simulation) back to ×1, so the reference sizes and rates are what plays. Pending Inputs end with the replay.
- */
-export const REFERENCE_RUN: readonly PropPatch[] = [
-  { op: "set", path: ["multipliers", "capacity"], value: 1 },
-  { op: "set", path: ["multipliers", "traffic"], value: 1 },
-];
-
 /** The copy of a run the learner is working on. */
 interface RunCopy {
   sim: Simulation;
@@ -120,7 +111,9 @@ export function repairedRun(
  * One runner's repairs. Writes a session hasn't shown yet are remembered by run until it does, until that session
  * is gone (Live off, or remounted: what it would have shown went with it), or a reset.
  */
-export function createRepairs() {
+export function createRepairs(authored: readonly Simulation[] = []) {
+  // The lesson's definitions, never the learner's saved document or a session's working copy.
+  const multipliers = new Map(authored.map((sim) => [sim.id, { ...sim.multipliers }]));
   const pending = new Map<string, { sim: Simulation; session: object }>();
 
   function resolve(ports: RepairPorts, ref: RunRef): RunCopy | undefined {
@@ -225,9 +218,17 @@ export function createRepairs() {
       return persist(ports, copy, next ?? copy!.sim, "save");
     },
 
-    /** Before a reference replay of this run: its saved multipliers back to ×1 (REFERENCE_RUN), wherever it's kept. */
+    /** Before a reference replay: restore the lesson's authored multipliers wherever the run is kept. */
     reference(ports: RepairPorts, run: string): RepairResult {
-      return runs(ports, { target: { run: true }, patches: REFERENCE_RUN, runs: [run] });
+      const original = multipliers.get(run);
+      return runs(ports, {
+        target: { run: true },
+        patches: [
+          { op: "set", path: ["multipliers", "capacity"], value: original?.capacity ?? 1 },
+          { op: "set", path: ["multipliers", "traffic"], value: original?.traffic ?? 1 },
+        ],
+        runs: [run],
+      });
     },
 
     /** One of Live's what-if inputs, as the Inputs panel sets it (unsaved: Save to simulation keeps it). */

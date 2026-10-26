@@ -203,6 +203,46 @@ describe("createRepairs", () => {
     expect(d.simulations[0].multipliers).toEqual({ traffic: 1, capacity: 1 });
   });
 
+  it.each([false, true])("restores authored non-1 multipliers (learner changed: %s)", (changed) => {
+    const d = diagram();
+    const authored = { ...d.simulations![0], multipliers: { traffic: 10, capacity: 3 } };
+    const repairs = createRepairs([authored]);
+    const own = { ...authored, title: "Learner title", seed: 42 };
+    d.simulations = [changed ? { ...own, multipliers: { traffic: 0.5, capacity: 0.25 } } : own];
+    expect(repairs.reference(ports(d), "run")).toBe("done");
+    expect(d.simulations[0]).toEqual({ ...own, multipliers: authored.multipliers });
+  });
+
+  it("restores authored multipliers in the draft and pending panel edits, keeping the saved run", () => {
+    const d = diagram();
+    const authored = { ...d.simulations![0], multipliers: { traffic: 10, capacity: 3 } };
+    const saved = { ...authored, multipliers: { traffic: 2, capacity: 0.25 } };
+    d.simulations = [saved];
+    let selected: Simulation = { ...saved, title: "Learner draft", seed: 42 };
+    let panel: Simulation = { ...selected, description: "Pending edit" };
+    const live = {
+      draft: selected,
+      simulations: d.simulations,
+      controller: { getState: () => ({ simulation: selected }) } as never,
+      runDraft: vi.fn((sim: Simulation) => void (selected = sim)),
+      saveSimulation: vi.fn(),
+      editPanelCopy: (id: string, edit: (sim: Simulation) => Simulation) => {
+        if (id === panel.id) panel = edit(panel);
+      },
+    };
+    const repairs = createRepairs([authored]);
+    const p = ports(d, live);
+    expect(repairs.reference(p, "run")).toBe("waiting");
+    expect(repairs.reference(p, "run")).toBe("waiting");
+    expect(live.runDraft).toHaveBeenCalledOnce();
+    live.draft = selected;
+    expect(repairs.reference(p, "run")).toBe("done");
+    expect(selected).toEqual({ ...saved, title: "Learner draft", seed: 42, multipliers: authored.multipliers });
+    expect(panel).toEqual({ ...selected, description: "Pending edit" });
+    expect(live.saveSimulation).not.toHaveBeenCalled();
+    expect(d.simulations).toEqual([saved]);
+  });
+
   it("waits for Live's session while it mounts", () => {
     const d = diagram();
     const p = { ...ports(d), liveOn: true };
