@@ -926,12 +926,11 @@ for (const { id, quarantined } of tutorialEntries)
 for (const { id, quarantined } of tutorialEntries)
   test(`${id}: Skip-all finishes without saving a diagram`, async ({ page, consoleErrors }) => {
     test.fixme(!!quarantined, quarantineReason);
-    const clocked = id.startsWith("study-");
-    if (clocked) await page.clock.install();
+    await page.clock.install();
     await openTutorial(page, id);
     await page.getByTestId("tutorial-start").click();
-    if (clocked) await pauseClock(page);
-    await skipAll(page, clocked);
+    await pauseClock(page);
+    await skipAll(page, true);
     await expectNothingSaved(page);
     expectNoErrors(consoleErrors);
   });
