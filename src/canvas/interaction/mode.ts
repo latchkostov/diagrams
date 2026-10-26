@@ -13,17 +13,23 @@ import type { CanvasSurfaceKind } from "./types";
  *   editing  ── field.focused (another field) ──▶ field(name)     ── field.left ──▶ editing
  *
  * Live is a region of its own beside these (`live`: off, playing or paused): a menu opens in Live too, and a node is
- * explicitly named in Live's property sheet; a node double-click opens Properties without naming. The selection and the open annotation editor ride along as data, each commit. Nothing here moves focus or opens anything: the
+ * explicitly named in Live's property sheet; a node double-click opens Properties without naming. The selection and
+ * the open annotation editor ride along as data, each commit. Commands describe commit, release and focus work:
  * controller feeds it from the events it already decides (menus, gestures, focusin/focusout, naming.done) and from
- * Live's session (useLiveSessionState.ts), and the canvas behaves exactly as before.
+ * Live's session (useLiveSessionState.ts). The controller executes the work through its ports.
  */
-export type EditorModeValue = "editing" | "menu" | "quickAdd" | "gesture" | "naming" | "field";
+export type EditorModeValue =
+  "editing" | "menu" | "quickAdd" | "gesture" | "naming" | "committing" | "released" | "field";
 export interface EditorModeState {
   value: EditorModeValue;
-  /** naming: the item being named, including while its field is downloading (its flow id). */
+  /** The naming owner, including commit and released focus wait (its flow id). */
   target: string | null;
   /** field: the Inspector field (its test id without "inspector-field-"). */
   field: string | null;
+  /** Distinguishes successive requests for the same item; late focus cannot complete a newer owner. */
+  namingRequest: number;
+  /** A click-away commits the name but leaves focus with the pointer's destination. */
+  namingPointerAway?: boolean;
   /** Where a menu or a gesture began: closing it goes back there (a field's own menu, say). */
   resume: { value: "editing" | "naming" | "field"; target: string | null; field: string | null } | null;
   live: "off" | "playing" | "paused";
@@ -41,6 +47,11 @@ export type EditorModeEvent =
   | { type: "field.focused"; target?: string; field?: string }
   /** The name field was requested but cannot take focus yet. */
   | { type: "naming.requested"; target: string }
+  | { type: "naming.accepted"; target: string }
+  | { type: "naming.pointerAway"; target: string }
+  | { type: "naming.committed"; target: string }
+  | { type: "naming.focused"; target: string; request: number }
+  | { type: "naming.cancelled"; target: string }
   | { type: "node.doubleClicked"; target: string }
   /** Focus left the fields for the canvas, a button or nothing. */
   | { type: "field.left" }
@@ -54,6 +65,7 @@ export const initialEditorMode: EditorModeState = {
   value: "editing",
   target: null,
   field: null,
+  namingRequest: 0,
   resume: null,
   live: "off",
   selection: [],
@@ -61,8 +73,8 @@ export const initialEditorMode: EditorModeState = {
 
 const here = (s: EditorModeState) => ({
   value: s.value === "naming" || s.value === "field" ? s.value : ("editing" as const),
-  target: s.target,
-  field: s.field,
+  target: s.value === "naming" ? s.target : null,
+  field: s.value === "field" ? s.field : null,
 });
 const back = (s: EditorModeState): EditorModeState => ({ ...s, ...(s.resume ?? here(s)), resume: null });
 const into = (value: "menu" | "quickAdd" | "gesture") => (s: EditorModeState) => ({
@@ -75,12 +87,21 @@ const into = (value: "menu" | "quickAdd" | "gesture") => (s: EditorModeState) =>
 });
 const focused = (s: EditorModeState, e: EditorModeEvent): EditorModeState =>
   (e.type === "field.focused" || e.type === "naming.requested") && e.target
-    ? { ...s, value: "naming", target: e.target, field: null }
+    ? {
+        ...s,
+        value: "naming",
+        target: e.target,
+        field: null,
+        namingRequest: s.namingRequest + 1,
+        namingPointerAway: false,
+      }
     : { ...s, value: "field", target: null, field: e.type === "field.focused" ? (e.field ?? null) : null };
 const settled = (s: EditorModeState): EditorModeState => ({ ...s, value: "editing", target: null, field: null });
 const isMenu = (e: EditorModeEvent) => e.type === "menu.opened" && e.kind !== "quickAdd" && e.kind !== "connected";
 
-export type EditorModeCommand = { type: "node.properties"; target: string; field?: "label" };
+export type EditorModeCommand =
+  | { type: "node.properties"; target: string; field?: "label" }
+  | { type: "naming.commit" | "naming.release" | "naming.focus"; target: string; request: number };
 type Row = Transition<EditorModeState, EditorModeEvent, EditorModeCommand>;
 const named = (_s: EditorModeState, e: EditorModeEvent) => e.type === "field.focused" && !!e.target;
 const resumes = (value: "naming" | "field") => (s: EditorModeState) => s.resume?.value === value;
@@ -100,10 +121,27 @@ const returns: Row[] = [
 ];
 const gestures: Row = { target: "gesture", reduce: into("gesture") };
 const finished: Row = { target: "editing", reduce: settled };
+const owns = (s: EditorModeState, e: EditorModeEvent) => "target" in e && s.target === e.target;
+/**
+ * Buffered naming handover (all other handover events/cells are ignored):
+ *
+ * State       accepted(owner)       pointerAway(owner)       committed(owner)           focused(owner)   cancelled(owner)
+ * naming      committing / commit  committing / commit     ignore                     ignore           editing
+ * committing  ignore               committing / no focus   released / release, focus  ignore           editing
+ * released    ignore               ignore                  ignore                     editing          editing
+ * others      ignore               ignore                  ignore                     ignore           ignore
+ * After pointerAway, committed releases capture without scheduling item focus.
+ *
+ * Wrong owners are ignored. Committing ignores focus/blur/menu noise from the synchronous document commit.
+ * Released holds NO keys: ordinary fields, menus, gestures and naming requests can supersede its pending focus.
+ * The controller executes commit before sending committed, then releases capture before asking the focus policy
+ * to wait for the item. Late focus/cancellation must never finish a newer owner's naming.
+ */
+const cancelNaming: Row = { ...finished, guard: owns };
 
 export const editorModeMachine = defineMachine<EditorModeState, EditorModeEvent, EditorModeCommand>({
   initial: initialEditorMode,
-  states: ["editing", "menu", "quickAdd", "gesture", "naming", "field"],
+  states: ["editing", "menu", "quickAdd", "gesture", "naming", "committing", "released", "field"],
   events: [
     { type: "menu.opened", kind: "context" },
     { type: "menu.opened", kind: "connected" },
@@ -115,6 +153,11 @@ export const editorModeMachine = defineMachine<EditorModeState, EditorModeEvent,
     { type: "field.left" },
     { type: "naming.done" },
     { type: "naming.requested", target: "n1" },
+    { type: "naming.accepted", target: "n1" },
+    { type: "naming.pointerAway", target: "n1" },
+    { type: "naming.committed", target: "n1" },
+    { type: "naming.focused", target: "n1", request: 1 },
+    { type: "naming.cancelled", target: "n1" },
     { type: "node.doubleClicked", target: "n1" },
   ],
   on: {
@@ -156,8 +199,47 @@ export const editorModeMachine = defineMachine<EditorModeState, EditorModeEvent,
       })) as Row[],
     },
     naming: {
+      "naming.pointerAway": {
+        target: "committing",
+        guard: owns,
+        reduce: (s) => ({ ...s, namingPointerAway: true }),
+        effects: (s, e) => [{ type: "naming.commit", target: e.target, request: s.namingRequest }],
+      },
+      "naming.accepted": {
+        target: "committing",
+        guard: owns,
+        effects: (s, e) => [{ type: "naming.commit", target: e.target, request: s.namingRequest }],
+      },
+      "naming.cancelled": cancelNaming,
       "naming.done": finished,
       "field.left": finished,
+      "field.focused": fields,
+      "naming.requested": { target: "naming", reduce: focused },
+      "menu.opened": opens,
+      "gesture.started": gestures,
+    },
+    committing: {
+      "naming.pointerAway": {
+        target: "committing",
+        guard: owns,
+        reduce: (s) => ({ ...s, namingPointerAway: true }),
+      },
+      "naming.committed": {
+        target: "released",
+        guard: owns,
+        effects: (s, e) => [
+          { type: "naming.release", target: e.target, request: s.namingRequest },
+          ...(s.namingPointerAway
+            ? []
+            : [{ type: "naming.focus" as const, target: e.target, request: s.namingRequest }]),
+        ],
+      },
+      "naming.cancelled": cancelNaming,
+      "node.doubleClicked": [],
+    },
+    released: {
+      "naming.focused": { ...finished, guard: (s, e) => owns(s, e) && e.request === s.namingRequest },
+      "naming.cancelled": cancelNaming,
       "field.focused": fields,
       "naming.requested": { target: "naming", reduce: focused },
       "menu.opened": opens,

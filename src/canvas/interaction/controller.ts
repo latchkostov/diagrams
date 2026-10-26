@@ -67,7 +67,10 @@ export interface InteractionPort {
    * Holds keys typed anywhere, before the canvas's shortcuts see them (typeAhead.ts), for a name field that can't
    * take them yet; `done` hears the Enter or Esc that ended the typing. Absent: nothing is held.
    */
-  holdKeys?(done: (typed: TypeAhead) => void): { stop(): TypeAhead };
+  holdKeys?(
+    done: (typed: TypeAhead) => void,
+    options?: { text?: string | null; multiline?: boolean; respectEditable?: boolean },
+  ): { stop(): TypeAhead; read(): TypeAhead };
   /** Dismiss the newest pending modal input owner before its dialog has mounted. */
   dismissPendingModal?(): boolean;
   /** Writes text typed ahead into the text field that has just taken focus, as typing there would; caret after it. */
@@ -178,12 +181,18 @@ export function createInteractionController<P = unknown>(
    * A pending rename: a name field was asked for (a request with an owner: F2, a double-click, Rename) but isn't there
    * yet (its panel's code is still downloading). Keys typed meanwhile are held for it, out of the canvas shortcuts'
    * reach (T would add a text, Backspace delete the connection), and handed over once it takes focus. Enter ends the
-   * typing (`keys` null): the text waits for the field, and focus goes back to the item after it's written; Esc after
-   * typing does the same (both finish and save, as in the field), Esc or Enter before any typing cancels. A press, focus
+   * typing: the mode machine commits through acceptName with capture held, releases it, then waits for item focus.
+   * A port without a document commit capability retains the legacy field handoff. A press, focus
    * moving out of the canvas, a newer move, or the field resolving as gone (its panel's download failed) ends both the
    * hold and its field request.
    */
-  let rename: { move: FocusMove; keys: { stop(): TypeAhead } | null; typed: TypeAhead } | null = null;
+  let rename: {
+    target: string;
+    move: FocusMove | null;
+    keys: { stop(): TypeAhead; read(): TypeAhead } | null;
+    typed: TypeAhead;
+    acceptName?: (typed: TypeAhead) => void;
+  } | null = null;
 
   /** The editor's mode (mode.ts): what the person is in the middle of, told to whoever reads it, as transitions. */
   let mode: EditorModeState = initialEditorMode;
@@ -195,10 +204,43 @@ export function createInteractionController<P = unknown>(
 
   function toMode(event: EditorModeEvent) {
     const previous = mode;
-    mode = editorModeStep(mode, event);
+    const result =
+      event.type === "live" || event.type === "selection" || event.type === "annotating"
+        ? { state: editorModeStep(mode, event), commands: [] }
+        : machineStep(editorModeMachine, mode, event);
+    mode = result.state;
     // Not journaled: the interaction journal records focus decisions, and its readers compare it whole.
     if (mode === previous) return;
     for (const l of modeListeners) l(mode, previous);
+    // A superseded completion runs while the next command is being installed: retire only our own pending move.
+    if (
+      previous.value === "released" &&
+      mode.value !== "released" &&
+      focus.pending?.target.kind === "item" &&
+      current?.move === focus.pending
+    )
+      decide({ type: "focus.done" });
+    for (const command of result.commands) {
+      if (
+        command.type !== "node.properties" &&
+        (mode.target !== command.target || mode.namingRequest !== command.request)
+      )
+        continue;
+      if (command.type === "naming.commit") {
+        const owner = rename;
+        if (!owner || owner.target !== command.target) continue;
+        owner.acceptName?.(owner.typed);
+        if (rename === owner) toMode({ type: "naming.committed", target: owner.target });
+      } else if (command.type === "naming.release") {
+        endRename();
+        if (mode.namingPointerAway) decide({ type: "inspector.abandoned" });
+      } else if (command.type === "naming.focus") {
+        const request = mode.namingRequest;
+        decide({ type: "naming.done", flowId: command.target, waiting: true }, () =>
+          toMode({ type: "naming.focused", target: command.target, request }),
+        );
+      }
+    }
   }
 
   function phase(): InteractionPhase {
@@ -255,6 +297,7 @@ export function createInteractionController<P = unknown>(
     if ((import.meta.env.DEV || import.meta.env.VITE_E2E === "1") && options.journal)
       journal({ event: label(event), command: describe(command) });
     if (command.type === "focus") {
+      if (rename && rename.move !== command) dropRename("superseded");
       retireRecovery("superseded");
       // A newer move replaces the pending one (its caller hears it didn't run).
       if (current && current.move === before) settle("superseded");
@@ -277,7 +320,7 @@ export function createInteractionController<P = unknown>(
       else then?.(false);
     }
     // A pending rename lasts exactly as long as its field's move.
-    if (rename && focus.pending !== rename.move) dropRename("superseded");
+    if (rename?.move && focus.pending !== rename.move) dropRename("superseded");
     changed();
   }
 
@@ -285,20 +328,31 @@ export function createInteractionController<P = unknown>(
   function holdRename(move: FocusMove) {
     if (rename?.move === move || !port.holdKeys || move.target.kind !== "field" || !move.target.owner) return;
     dropRename("superseded");
-    const next: NonNullable<typeof rename> = { move, keys: null, typed: { text: null } };
+    const next: NonNullable<typeof rename> = {
+      target: move.target.owner,
+      move,
+      keys: null,
+      typed: { text: null },
+      acceptName: move.acceptName,
+    };
     rename = next;
     toMode({ type: "naming.requested", target: move.target.owner });
-    next.keys = port.holdKeys((typed) => finishRename(next, typed));
+    next.keys = port.holdKeys((typed) => finishRename(next, typed), { text: move.text });
     if ((import.meta.env.DEV || import.meta.env.VITE_E2E === "1") && options.journal)
       journal({ event: "rename.hold", command: describe(move) });
   }
 
   function finishRename(next: NonNullable<typeof rename>, typed: TypeAhead) {
     if (rename !== next) return;
+    next.typed = typed;
+    if (next.acceptName) {
+      toMode({ type: "naming.accepted", target: next.target });
+      return;
+    }
     next.keys?.stop();
     next.keys = null;
     next.typed = typed;
-    toMode({ type: "naming.done" });
+    toMode({ type: "naming.cancelled", target: next.target });
     if (typed.text !== null) {
       if ((import.meta.env.DEV || import.meta.env.VITE_E2E === "1") && options.journal)
         journal({ event: `rename.typed:${typed.done}`, command: "keep" });
@@ -318,8 +372,9 @@ export function createInteractionController<P = unknown>(
 
   function dropRename(why: "superseded" | "press" | "focus" | "unmount") {
     if (!rename) return;
+    const target = rename.target;
     endRename();
-    toMode({ type: "naming.done" });
+    toMode({ type: "naming.cancelled", target });
     if ((import.meta.env.DEV || import.meta.env.VITE_E2E === "1") && options.journal)
       journal({ event: `rename.dropped:${why}`, command: "keep" });
   }
@@ -327,6 +382,11 @@ export function createInteractionController<P = unknown>(
   /** The person left a pending rename: its held keys and its field request end together (a later commit can't revive it). */
   function abandonRename(why: "press" | "focus") {
     if (!rename) return;
+    if (why === "press" && rename.acceptName) {
+      rename.typed = rename.keys?.read() ?? rename.typed;
+      toMode({ type: "naming.pointerAway", target: rename.target });
+      return;
+    }
     dropRename(why);
     decide({ type: "inspector.abandoned" });
   }
@@ -395,6 +455,7 @@ export function createInteractionController<P = unknown>(
   /** Tries the pending move now; it may finish, fall back, or keep waiting for its target. */
   function attempt(move: FocusMove) {
     if (disposed || focus.pending !== move) return;
+    if (mode.value === "committing") return;
     cancelFrame?.();
     cancelFrame = null;
     begun = true;
@@ -524,6 +585,22 @@ export function createInteractionController<P = unknown>(
   }
 
   return {
+    /** Placement uses the same capture stack as a cold Inspector field. A finished owner cannot be revived. */
+    captureName(target: string, acceptName: (typed: TypeAhead) => void, multiline = false) {
+      dropRename("superseded");
+      const next: NonNullable<typeof rename> = { target, move: null, keys: null, typed: { text: null }, acceptName };
+      rename = next;
+      toMode({ type: "naming.requested", target });
+      next.keys = port.holdKeys?.((typed) => finishRename(next, typed), { multiline, respectEditable: false }) ?? null;
+      return {
+        handoff() {
+          return rename === next ? endRename() : null;
+        },
+        cancel() {
+          if (rename === next) dropRename("superseded");
+        },
+      };
+    },
     /** Space panning owns pointer input before any editing gesture can capture it. */
     get panHeld() {
       return panHeld;
@@ -610,7 +687,7 @@ export function createInteractionController<P = unknown>(
       }
       if (mode.value === "naming") {
         if (!rename?.keys) return false; // A mounted name field handles its own Escape.
-        const typed = rename.keys.stop();
+        const typed = rename.keys.read();
         finishRename(rename, { ...typed, done: "escape" });
         return true;
       }
@@ -701,7 +778,7 @@ export function createInteractionController<P = unknown>(
       const previous = mode;
       mode = result.state;
       if (mode !== previous) for (const listener of modeListeners) listener(mode, previous);
-      for (const command of result.commands) open(command.field);
+      for (const command of result.commands) if (command.type === "node.properties") open(command.field);
     },
     dispatch(event: FocusEvent, then?: Done) {
       if (event.type === "naming.done") toMode({ type: "naming.done" });
@@ -772,15 +849,19 @@ export function createInteractionController<P = unknown>(
     },
     /**
      * A press or a key anywhere (window capture): a move's second attempt stands down. A press also ends a pending
-     * rename (the person went elsewhere): later keys go where they point, nothing held is written, and its field won't
-     * take focus.
+     * rename (the person went elsewhere): its buffer is committed when supported, later keys go where they point,
+     * and its field won't take focus.
      */
     input(kind: "key" | "press" = "key") {
+      if (kind === "press" && mode.value === "released" && mode.target)
+        toMode({ type: "naming.cancelled", target: mode.target });
       if (kind === "press") abandonRename("press");
       if (focus.pending?.retry) decide({ type: "input" });
     },
     /** Focus arrived on `el` (focusin): Tab or a script taking it out of the canvas ends a pending rename. */
     focusArrived(el: ElementHandle) {
+      if (mode.value === "released" && !running && port.elsewhere?.(el) && mode.target)
+        toMode({ type: "naming.cancelled", target: mode.target });
       if (rename && !running && port.elsewhere?.(el)) abandonRename("focus");
       const field = port.field?.(el);
       if (rename?.keys && !field) return;

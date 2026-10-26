@@ -30,6 +30,7 @@ it("a failed panel's marker ends a pending rename as it mounts, without a commit
     holdKeys: () => {
       holding = true;
       return {
+        read: () => ({ text: "T" }),
         stop: (): TypeAhead => {
           holding = false;
           return { text: "T" };

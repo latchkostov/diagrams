@@ -73,8 +73,8 @@ export function createDomPort(canvas: DomCanvas): InteractionPort {
       case "edge":
         return edge(target.id);
       case "item": {
-        const el = document.querySelector(`${nodeSelector(target.id)}, ${edgeSelector(target.id)}`);
-        return el ? { state: "ready", el } : { state: "gone" };
+        const found = node(target.id);
+        return found.state === "gone" ? edge(target.id) : found;
       }
       case "canvas": {
         const el = canvas.root();
@@ -146,7 +146,15 @@ export function createDomPort(canvas: DomCanvas): InteractionPort {
       return document.activeElement === el;
     },
     connected: (handle) => (handle as Node).isConnected,
-    holdKeys: (done) => captureTypeAhead(() => false, done, true, "controller"),
+    holdKeys: (done, options) =>
+      captureTypeAhead(
+        () => options?.multiline ?? false,
+        done,
+        options?.respectEditable ?? true,
+        "controller",
+        undefined,
+        options?.text ?? null,
+      ),
     dismissPendingModal: dismissPendingTypeAheadModal,
     elsewhere(handle) {
       const el = handle as Element;

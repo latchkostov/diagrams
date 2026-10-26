@@ -8,18 +8,17 @@ import { notify } from "../../interop/ui/toast";
 import { t as tr } from "../../i18n";
 import type { InlineEdit, RenameTarget } from "../DiagramContext";
 import { GROUP_PREFIX } from "../types";
-import { captureTypeAhead } from "../typeAhead";
 import type { useRevealSelection } from "../camera";
 
 export function useCanvasNaming(
   canOpenInspector: boolean,
   editor: EditorApi,
-  openInspector: (field?: string, caret?: "end", target?: string) => void,
+  openInspector: (field?: string, caret?: "end", target?: string, text?: string) => void,
   setEditing: Dispatch<SetStateAction<InlineEdit | null>>,
   setNaming: Dispatch<SetStateAction<{ node: string; edge: string } | null>>,
   renameRef: RefObject<(t: RenameTarget) => void>,
   history: ReturnType<typeof useHistory>,
-  controller: Placing & Pick<InteractionController, "dispatch">,
+  controller: Placing & Pick<InteractionController, "dispatch" | "captureName">,
   revealSelection: ReturnType<typeof useRevealSelection>["revealSelection"],
 ) {
   /**
@@ -41,6 +40,7 @@ export function useCanvasNaming(
         t.kind === "node" && t.field === "sublabel" ? "sublabel" : "label",
         typed ? "end" : undefined,
         t.kind === "group" ? GROUP_PREFIX + t.id : t.id,
+        typed ? t.text : undefined,
       );
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps -- state setters are stable; preserve CanvasView's original dependencies
@@ -58,27 +58,30 @@ export function useCanvasNaming(
   const endCreation = history.end;
   const pickNamed = useCallback(
     (make: () => NewNode | null, fallback: string) => {
-      // Hold what's typed from now until the label editor can take it.
-      let annotation = false;
-      const typing = captureTypeAhead(() => annotation);
       controller.placing();
       const made = make();
-      if (!made) return void typing.stop();
-      annotation = made.annotation ?? !!editor.getAnnotation(made.id);
-      revealSelection(
-        () => {
-          const typed = typing.stop();
-          const isAnn = annotation;
-          if (typed.done === "escape" && !isAnn) return endCreation(made.merge);
-          if (typed.done) {
-            if (typed.text !== null) {
-              if (isAnn) editor.updateAnnotation(made.id, { text: typed.text }, { merge: made.merge });
+      if (!made) return;
+      const annotation = made.annotation ?? !!editor.getAnnotation(made.id);
+      const typing = controller.captureName(
+        made.id,
+        (typed) => {
+          // Commit the whole buffer and close history while capture still owns the keyboard.
+          flushSync(() => {
+            // Preserve master's placement Escape semantics: a node keeps its stencil label.
+            if (typed.text !== null && (typed.done !== "escape" || annotation)) {
+              if (annotation) editor.updateAnnotation(made.id, { text: typed.text }, { merge: made.merge });
               else editor.updateNode(made.id, { label: typed.text.trim() || fallback }, { merge: made.merge });
             }
             endCreation(made.merge);
-            if (isAnn) controller.dispatch({ type: "naming.done", flowId: made.id });
-            return;
-          }
+          });
+        },
+        annotation,
+      );
+      revealSelection(
+        () => {
+          const typed = typing.handoff();
+          if (!typed) return; // Accepted or superseded: the late reveal cannot reopen or rewrite it.
+          const isAnn = annotation;
           // In this same task: a key arriving before the field has focus would reach the canvas instead.
           flushSync(() =>
             editor.startEditing({
@@ -91,7 +94,7 @@ export function useCanvasNaming(
         },
         90,
         "placement",
-        () => void typing.stop(),
+        () => typing.cancel(),
       );
     },
     [editor, revealSelection, endCreation, controller],

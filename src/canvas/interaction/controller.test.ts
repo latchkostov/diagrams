@@ -75,8 +75,8 @@ function harness() {
             ? { state: "ready", el: els.get(`edge:${target.id}`) ?? el(`edge:${target.id}`) }
             : { state: "gone" };
         case "item":
-          return env.nodes.get(target.id)?.drawn
-            ? { state: "ready", el: nodeEl(target.id) }
+          return env.nodes.has(target.id)
+            ? resolveNode(target.id)
             : env.edges.has(target.id)
               ? { state: "ready", el: els.get(`edge:${target.id}`) ?? el(`edge:${target.id}`) }
               : { state: "gone" };
@@ -131,10 +131,11 @@ function harness() {
     connected: (h) => (h as El).connected,
     version: () => env.version,
     publish: (p) => phases.push(p),
-    holdKeys(done) {
-      const hold = { typed: { text: null } as TypeAhead, stopped: false, done };
+    holdKeys(done, options) {
+      const hold = { typed: { text: options?.text ?? null } as TypeAhead, stopped: false, done };
       holds.push(hold);
       return {
+        read: () => hold.typed,
         stop: () => {
           hold.stopped = true;
           return hold.typed;
@@ -512,6 +513,113 @@ describe("interaction controller: Inspector fields", () => {
 
 describe("interaction controller: pending rename (a name field whose panel is still downloading)", () => {
   const typeAll = (h: ReturnType<typeof harness>, keys: string[]) => keys.map((k) => h.key(k));
+
+  it.each(["placement", "inspector", "duringCommit"])(
+    "pointer-away saves %s naming without restoring focus",
+    (source) => {
+      const h = harness();
+      h.env.nodes.set("a", { drawn: false });
+      const accept = vi.fn((typed: TypeAhead) => {
+        expect(h.holding()).toBe(true);
+        expect(h.controller.mode.value).toBe("committing");
+        expect(typed.text).toBe("Orders");
+        if (source === "duringCommit") h.controller.input("press");
+      });
+      const owner = source === "inspector" ? null : h.controller.captureName("a", accept);
+      if (source === "inspector")
+        h.controller.dispatch({ type: "inspector.field", seq: 1, name: "label", owner: "a", acceptName: accept });
+      typeAll(h, [..."Orders"]);
+      if (source === "duringCommit") h.key("Enter");
+      else h.controller.input("press");
+      expect(accept).toHaveBeenCalledOnce();
+      expect(h.controller.mode.value).toBe("released");
+      expect(h.holding()).toBe(false);
+      expect(h.key("x")).toBe(false);
+      expect(h.controller.state.pending).toBeNull();
+      if (owner) expect(owner.handoff()).toBeNull();
+      h.env.nodes.set("a", { drawn: true });
+      h.env.inspector.fields.set("label", "a");
+      h.commit();
+      h.drain();
+      expect(h.focused).toEqual([]);
+      expect(h.written).toEqual([]);
+    },
+  );
+
+  it("a released focus completion cannot cancel the newer item focus that supersedes it", () => {
+    const h = harness();
+    h.env.nodes.set("a", { drawn: false });
+    h.env.nodes.set("b", { drawn: true });
+    h.controller.captureName("a", vi.fn());
+    typeAll(h, [..."Orders", "Enter"]);
+    expect(h.controller.mode.value).toBe("released");
+    h.controller.dispatch({ type: "naming.done", flowId: "b", waiting: true });
+    expect(h.focused).toEqual(["node:b"]);
+    h.env.nodes.set("a", { drawn: true });
+    h.commit();
+    h.drain();
+    expect(h.focused).toEqual(["node:b"]);
+  });
+
+  it.each(["Enter", "Escape"])("pending %s commits before releasing capture", (key) => {
+    const h = harness();
+    h.env.nodes.set("a", { drawn: false });
+    const seen: string[] = [];
+    h.controller.subscribeMode((mode) => seen.push(mode.value));
+    const acceptName = vi.fn((typed: TypeAhead) => {
+      expect(h.holding()).toBe(true);
+      expect(h.controller.mode.value).toBe("committing");
+      expect(typed).toEqual({ text: "Prefix API", done: key === "Enter" ? "enter" : "escape" });
+      // The commit can mount the requested field, but it must not replay the accepted buffer.
+      h.env.inspector.fields.set("label", "a");
+      h.controller.rendered();
+      h.controller.focusLeft();
+    });
+    h.controller.dispatch({ type: "inspector.field", seq: 1, name: "label", owner: "a", text: "Prefix ", acceptName });
+    typeAll(h, [..."API"]);
+    if (key === "Escape")
+      expect(h.controller.escape()).toBe(true); // Real DOM routing, not the capture callback.
+    else expect(h.key(key)).toBe(true);
+    expect(acceptName).toHaveBeenCalledOnce();
+    expect(h.holding()).toBe(false);
+    expect(h.controller.mode).toMatchObject({ value: "released", target: "a" });
+    expect(h.written).toEqual([]);
+    expect(h.key("x")).toBe(false);
+    h.env.nodes.set("a", { drawn: true });
+    h.commit();
+    h.drain();
+    expect(h.focused).toEqual(["node:a"]);
+    expect(h.written).toEqual([]);
+    expect(h.controller.mode.value).toBe("editing");
+    expect(seen).toEqual(["naming", "committing", "released", "editing"]);
+  });
+
+  it.each(["focus", "menu", "press", "newName", "unmount"])(
+    "released focus is cancelled by %s, without consuming or replaying another key",
+    (action) => {
+      const h = harness();
+      h.env.nodes.set("a", { drawn: false });
+      const accept = vi.fn();
+      const owner = h.controller.captureName("a", accept);
+      typeAll(h, [..."Orders", "Enter"]);
+      expect(accept).toHaveBeenCalledWith({ text: "Orders", done: "enter" });
+      expect(h.holding()).toBe(false);
+      if (action === "menu") h.controller.openMenu("connected", "next");
+      if (action === "focus") h.controller.focusArrived(h.el("input:search"));
+      if (action === "press") h.controller.input("press");
+      if (action === "newName")
+        h.controller.dispatch({ type: "inspector.field", seq: 2, name: "label", owner: "b", acceptName: vi.fn() });
+      if (action === "unmount") h.controller.connect()();
+      expect(owner.handoff()).toBeNull();
+      owner.cancel();
+      h.env.nodes.set("a", { drawn: true });
+      h.commit();
+      h.drain();
+      expect(h.focused).not.toContain("node:a");
+      expect(accept).toHaveBeenCalledOnce();
+      if (action === "newName") expect(h.controller.mode).toMatchObject({ value: "naming", target: "b" });
+    },
+  );
 
   it("a pending modal owns Escape before pending naming and transient cards", () => {
     const h = harness();
