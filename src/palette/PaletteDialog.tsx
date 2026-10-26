@@ -167,13 +167,15 @@ export function PaletteDialog({
     const closeLayer = openModalLayer(el, { opener: previousFocus });
     input.current?.focus({ preventScroll: true });
     return () => {
-      closeLayer();
       background.forEach((c, i) => {
         c.inert = wasInert[i];
       });
       const focus = document.activeElement;
       if (previousFocus?.isConnected && (!focus || focus === document.body || el.contains(focus)))
         previousFocus.focus({ preventScroll: true });
+      else if (!previousFocus?.isConnected && (!focus || focus === document.body || el.contains(focus)))
+        document.querySelector<HTMLElement>('[data-testid="canvas-wrap"]')?.focus({ preventScroll: true });
+      closeLayer();
     };
   }, []);
 

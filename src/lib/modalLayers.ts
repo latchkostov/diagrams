@@ -18,7 +18,7 @@ let seq = 0;
 const listeners = new Set<() => void>();
 const emit = () => listeners.forEach((listener) => listener());
 
-/** Registers an open modal (with what had the keyboard before it took it); the returned function removes it once. */
+/** Registers an open modal; remove it only after restoring background inertness and returning focus. */
 export function openModalLayer(
   panel: HTMLElement,
   { feedback = null, opener = null }: { feedback?: HTMLElement | null; opener?: Element | null } = {},

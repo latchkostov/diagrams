@@ -67,7 +67,6 @@ export function InjectFrame({
     };
     el.addEventListener("keydown", onKey);
     return () => {
-      closeLayer();
       el.removeEventListener("keydown", onKey);
       background.forEach((child, i) => {
         child.inert = previous[i];
@@ -80,6 +79,7 @@ export function InjectFrame({
           node: request.nodeId,
           reason: reason.current,
         });
+      closeLayer();
     };
   }, [request.nodeId, first, loading]);
 

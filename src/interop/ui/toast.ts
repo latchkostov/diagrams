@@ -48,6 +48,7 @@ export interface ToastState {
 export interface LayeredToast {
   layer: ModalLayer;
   toast: ToastState;
+  engaged: boolean;
 }
 
 const newContact = () => createMachine(toastEngagement);
@@ -68,6 +69,7 @@ const slots = new Map<number, LayerSlot>();
 let layered: readonly LayeredToast[] = [];
 let seq = 0;
 const listeners = new Set<() => void>();
+const dismissOnRelease = new Set<number>();
 let live = new Map<number, ToastState>();
 /** The document is ahead of its history (an edit not yet recorded): not a reason to call an Undo stale. */
 export const HISTORY_PENDING = "pending";
@@ -91,7 +93,8 @@ interface ToastOptions {
 }
 
 const sameLayered = (a: readonly LayeredToast[], b: readonly LayeredToast[]) =>
-  a.length === b.length && a.every((l, i) => l.layer === b[i].layer && l.toast === b[i].toast);
+  a.length === b.length &&
+  a.every((l, i) => l.layer === b[i].layer && l.toast === b[i].toast && l.engaged === b[i].engaged);
 
 function publish() {
   const inLayers = [...slots.values()].flatMap((slot) => [slot.shown, slot.waiting]);
@@ -103,11 +106,14 @@ function publish() {
   current = blocking.at(-1) ?? held ?? deferred;
   const nextLayered = [...slots].flatMap(([id, slot]) => {
     const layer = modalLayers.get(id);
-    return layer ? [{ layer, toast: slot.shown }] : [];
+    return layer ? [{ layer, toast: slot.shown, engaged: slot.contact.state.value === "engaged" }] : [];
   });
   // The same snapshot while nothing in the layers changed: history moving must not re-render the Toaster.
   if (!sameLayered(layered, nextLayered)) layered = nextLayered;
-  for (const t of removed) t.onDismiss?.();
+  for (const t of removed) {
+    dismissOnRelease.delete(t.id);
+    t.onDismiss?.();
+  }
   emit();
 }
 
@@ -125,6 +131,22 @@ function advance(slot: LayerSlot) {
 // A notification that outlives its dialog returns to the page (latest wins there, as ever), so an Undo or a Retry
 // raised beside a dialog is never lost with it. The one it replaces releases its resources once, as any removal.
 modalLayers.subscribe(() => {
+  // Modal ownership is a contact of its own: focus moving into the modal must not release its opener.
+  const openers = new Set(
+    modalLayers.openers.map((el) => Number(el.closest<HTMLElement>("[data-toast-id]")?.dataset.toastId)),
+  );
+  if (current && openers.has(current.id)) toast.contact("opener", true, current.id);
+  if (held && !openers.has(held.id)) {
+    // React suppresses synthetic focus events during modal cleanup. Sample the synchronous focus return before
+    // dropping ownership, so the returned keyboard contact survives that commit too.
+    if (contact.state.opener && typeof document !== "undefined")
+      toast.contact(
+        "focus",
+        document.activeElement?.closest<HTMLElement>("[data-toast-id]")?.dataset.toastId === String(held.id),
+        held.id,
+      );
+    toast.contact("opener", false, held?.id);
+  }
   for (const [id, slot] of [...slots]) {
     if (modalLayers.has(id)) continue;
     slots.delete(id);
@@ -233,6 +255,10 @@ export const toast = {
   },
   /** Dismisses `id`, or ordinary notifications if omitted. Only a task's owner dismisses its blocking toast. */
   dismiss(id?: number) {
+    if (held && (id === undefined || id === held.id) && contact.state.opener) {
+      dismissOnRelease.add(held.id);
+      if (id !== undefined) return;
+    }
     const slot = slotOf(id);
     if (slot) {
       if (slot.waiting?.id === id) slot.waiting = null;
@@ -244,7 +270,7 @@ export const toast = {
       return;
     }
     if (id === undefined) slots.clear();
-    const release = held && (held.id === id || (id === undefined && !held.blocking));
+    const release = held && !contact.state.opener && (held.id === id || (id === undefined && !held.blocking));
     if (release) {
       held = null;
       contact.send({ type: "reset" });
@@ -278,7 +304,11 @@ export const toast = {
     if (id === current?.id && current?.blocking) return;
     if (id !== current?.id && (active || id !== held?.id)) return;
     contact.send({ type: "contact", contact: contactType, active });
-    held = contact.state.value === "engaged" ? (held ?? current) : null;
+    if (contact.state.value === "engaged") held ??= current;
+    else {
+      if (held && dismissOnRelease.delete(held.id) && deferred?.id === held.id) deferred = null;
+      held = null;
+    }
     publish();
   },
   /** A press ended anywhere (pointerup, pointercancel, window blur): every layer hears it. */

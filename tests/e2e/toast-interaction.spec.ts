@@ -8,6 +8,7 @@ import {
   expectNoErrors,
   shareVia,
   waitForHtmlTemplate,
+  waitForStableBox,
 } from "./fixtures";
 import { mixedBoundaryDragFixture } from "../../src/lab/nestedBoundariesFixture";
 import { STORAGE_KEYS, savedDiagram, fitDiagram, waitForSelectionSettled, waitForHistoryIdle } from "./fixtures";
@@ -493,6 +494,9 @@ test("layering: a press-retained Undo goes stale under a dialog; the next change
   // Releasing on A's stale Undo does nothing; then B's notification takes the place.
   await page.mouse.up();
   await page.getByTestId("ai-rail-open").hover();
+  // The modal has returned focus to A as well: leave that keyboard contact before B takes over.
+  await expect(undo).toBeFocused();
+  await page.getByTestId("ai-rail-open").focus();
   await expect(undo).not.toHaveAttribute("aria-disabled", "true");
   await undo.click();
   const after = (await callTool(page, "describe_diagram")).text;
@@ -553,8 +557,79 @@ test("layering: Escape from a palette opened on a focused toast hands the keyboa
   // Its opener steps back in place (hidden, inert), so the palette can give the keyboard back to it.
   await expect(undo).toBeHidden();
   expect(await undo.boundingBox()).toEqual(geometry);
+  await agentChange(page, "Arrived in palette");
+  await expect(undo).toHaveAttribute("aria-disabled", "true");
+  expect(await undo.boundingBox()).toEqual(geometry);
   await page.keyboard.press("Escape");
   await expect(page.getByTestId("command-palette")).toHaveCount(0);
   await expect(undo).toBeFocused();
   expect(await undo.boundingBox()).toEqual(geometry);
+});
+
+test("layering: a palette opened by a toast action retains its opener through focus return", async ({ page }) => {
+  await gotoLab(page, "toast-interaction");
+  // Warm the actual lazy palette before exercising the action's synchronous modal ownership boundary.
+  await page.keyboard.press("ControlOrMeta+k");
+  await expect(page.getByTestId("command-input")).toBeFocused();
+  await page.keyboard.press("Escape");
+  await page.getByTestId("toast-lab-palette").click();
+  const action = page.getByTestId("toast-lab-open-palette");
+  await waitForStableBox(action);
+  await action.focus();
+  const geometry = await action.boundingBox();
+  await page.keyboard.press("Enter");
+  await expect(page.getByTestId("command-input")).toBeFocused();
+  await page.getByTestId("toast-lab-next").evaluate((el: HTMLButtonElement) => el.click());
+  await expect(action).toBeHidden();
+  expect(await action.boundingBox()).toEqual(geometry);
+  expect(await action.evaluate((el) => !!el.closest("[inert]"))).toBe(true);
+  await page.keyboard.press("Escape");
+  await expect(page.getByTestId("command-palette")).toHaveCount(0);
+  await expect(action).toBeFocused();
+  expect(await action.boundingBox()).toEqual(geometry);
+  await page.getByTestId("toast-lab-next").focus();
+  await expect(page.getByTestId("toast")).toContainText("Second notification");
+});
+
+test("layering: dialog feedback resumes expiry after hover without another store change", async ({ page, context }) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  await gotoCanvas(page, SLUG);
+  await shareVia(page, "link");
+  await expect(page.getByTestId("share-link-url")).toHaveValue(/#d=/);
+  await page.clock.install();
+  await pauseClock(page);
+  await page.getByTestId("share-link-copy").click();
+  const feedback = page.getByTestId("share-link-dialog").getByTestId("toast");
+  await expect(feedback).toHaveAttribute("data-layer", "dialog");
+  await expect(feedback).toHaveAttribute("data-place", "below");
+  await feedback.hover();
+  await page.clock.fastForward(9000);
+  await expect(feedback).toBeVisible();
+  await page.getByTestId("share-link-url").hover();
+  await page.clock.fastForward(9000);
+  await expect(feedback).toHaveCount(0);
+  await expect(page.getByTestId("share-link-dialog")).toBeVisible();
+});
+
+test("layering: stale toast actions inside Inject never submit its form", async ({ page }) => {
+  await gotoLab(page, "toast-interaction");
+  await page.getByTestId("toast-lab-inject").click();
+  const dialog = page.getByTestId("live-inject-dialog");
+  await expect(dialog).toBeVisible();
+  await page.clock.install();
+  await pauseClock(page);
+  // External arrivals don't move the modal's keyboard or pointer.
+  await page.getByTestId("toast-lab-inject-undo").evaluate((el: HTMLButtonElement) => el.click());
+  const action = dialog.getByTestId("toast-action");
+  await expect(action).toBeVisible();
+  await action.focus();
+  await page.getByTestId("toast-lab-invalidate").evaluate((el: HTMLButtonElement) => el.click());
+  await expect(action).toHaveAttribute("aria-disabled", "true");
+  await page.keyboard.press("Enter");
+  await expect(dialog).toBeVisible();
+  await expect(action).toBeFocused();
+  await expect(page.getByTestId("toast-lab-submissions")).toHaveText("0");
+  await dialog.getByTestId("toast-dismiss").click();
+  await expect(dialog).toBeVisible();
+  await expect(page.getByTestId("toast-lab-submissions")).toHaveText("0");
 });

@@ -12,6 +12,7 @@ export function useDialogInteraction(
   feedback?: RefObject<HTMLElement | null>,
 ) {
   const opener = useRef<HTMLElement | null | undefined>(undefined);
+  const layer = useRef<ReturnType<typeof openModalLayer> | null>(null);
   const restoreRef = useRef(restoreFocus);
   useLayoutEffect(() => {
     restoreRef.current = restoreFocus;
@@ -65,6 +66,8 @@ export function useDialogInteraction(
     if (opener.current === undefined)
       opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const prev = opener.current;
+    // Ownership must survive the opener's blur when autofocus moves the keyboard into this modal.
+    layer.current ??= openModalLayer(panelEl, { feedback: feedback?.current, opener: prev });
     // A primary action that's still getting ready (Copy link while the link is made) can't take focus: the panel
     // does, so Esc and Tab work at once, and the dialog hands focus on when it's ready (dialogs.tsx, useFocusWhenReady).
     const auto = panelEl.querySelector<HTMLElement>("[data-autofocus]");
@@ -75,20 +78,19 @@ export function useDialogInteraction(
     );
     const wasInert = background.map((el) => el.inert);
     for (const el of background) el.inert = true;
-    const closeLayer = openModalLayer(panelEl, { feedback: feedback?.current, opener: prev });
     return () => {
-      closeLayer();
       panelEl.removeEventListener("keydown", onKeyDown);
       backdropEl.removeEventListener("mousedown", onMouseDown);
       backdropEl.removeEventListener("contextmenu", onContextMenu);
       background.forEach((el, i) => (el.inert = wasInert[i]));
-      // StrictMode replays the effect while the dialog is still mounted; it has not closed.
+      // StrictMode replays setup while the dialog is still mounted. Keep its ownership as well as its opener.
       if (panelEl.isConnected) return;
-      if (restoreRef.current) return restoreRef.current(prev && prev !== document.body ? prev : null);
-      // What opened it may be gone (a toast's button: the toast closes as it acts, or fades): the canvas, not the
-      // page, gets the keyboard back.
-      if (prev && prev !== document.body && prev.isConnected && !prev.closest("[data-toast]")) prev.focus();
+      if (restoreRef.current) restoreRef.current(prev && prev !== document.body ? prev : null);
+      // Keep modal ownership until its opener has received focus, including a retained toast control.
+      else if (prev && prev !== document.body && prev.isConnected) prev.focus();
       else document.querySelector<HTMLElement>('[data-testid="canvas-wrap"]')?.focus({ preventScroll: true });
+      layer.current?.();
+      layer.current = null;
     };
   }, [panel, backdrop, feedback]);
 }

@@ -23,3 +23,11 @@ it("replaces the loading spinner with one determinate indicator", () => {
   expect(html).toContain('aria-valuenow="15"');
   expect(html).not.toContain('data-testid="toast-icon"');
 });
+
+it("gives every toast button a non-submitting type", () => {
+  vi.stubGlobal("document", { body: {} });
+  toast.info("Undo", { action: { label: "Undo", run() {} } });
+  const buttons = renderToStaticMarkup(<Toaster />).match(/<button\b[^>]*>/g);
+  expect(buttons).toHaveLength(2);
+  for (const button of buttons!) expect(button).toContain('type="button"');
+});

@@ -309,6 +309,46 @@ describe("layers: a dialog's feedback, and the page's notifications behind it", 
     expect(toast.layered).not.toBe(before);
   });
 
+  it("publishes dialog engagement changes with a stable identity between changes", () => {
+    open();
+    const id = toast.success("Copied");
+    const idle = toast.layered;
+    toast.contact("pointer", true, id);
+    const engaged = toast.layered;
+    expect(engaged).not.toBe(idle);
+    expect(engaged[0].engaged).toBe(true);
+    toast.contact("pointer", true, id);
+    expect(toast.layered).toBe(engaged);
+    toast.contact("pointer", false, id);
+    expect(toast.layered).not.toBe(engaged);
+    expect(toast.layered[0].engaged).toBe(false);
+    const released = toast.layered;
+    toast.invalidateUndo();
+    expect(toast.layered).toBe(released);
+  });
+
+  it("retains a dismissed modal opener through arrivals, close and focus return", () => {
+    const released = vi.fn();
+    const first = notify("Open palette", { onDismiss: released });
+    toast.contact("focus", true, first);
+    const opener = { closest: () => ({ dataset: { toastId: String(first) } }) } as unknown as HTMLElement;
+    const close = openModalLayer(el(), { opener });
+    closers.push(close);
+    toast.contact("focus", false, first);
+    toast.dismiss(first);
+    const next = toast.info("Arrived while palette is open");
+    expect(toast.current?.id).toBe(first);
+    expect(released).not.toHaveBeenCalled();
+    // The modal restores focus synchronously, before unregistering its ownership.
+    toast.contact("focus", true, first);
+    close();
+    expect(toast.current?.id).toBe(first);
+    expect(released).not.toHaveBeenCalled();
+    toast.contact("focus", false, first);
+    expect(toast.current?.id).toBe(next);
+    expect(released).toHaveBeenCalledTimes(1);
+  });
+
   for (const contact of ["pointer", "focus", "press"] as const) {
     it(`holds engaged feedback during ${contact}; the latest waits, then follows the release`, () => {
       open();

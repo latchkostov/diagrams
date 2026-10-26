@@ -180,7 +180,6 @@ export function ShortcutsDialog({ onClose, onTutorials }: { onClose: () => void;
     for (const el of background) el.inert = true;
     const closeLayer = openModalLayer(panelElement, { opener: prev });
     return () => {
-      closeLayer();
       panelElement.removeEventListener("keydown", onKeyDown);
       backdropElement.removeEventListener("mousedown", onPointerDown);
       backdropElement.removeEventListener("contextmenu", preventContextMenu);
@@ -188,6 +187,7 @@ export function ShortcutsDialog({ onClose, onTutorials }: { onClose: () => void;
         el.inert = previous[i];
       });
       if (prev?.isConnected) prev.focus();
+      closeLayer();
     };
   }, []);
 

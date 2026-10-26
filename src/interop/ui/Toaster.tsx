@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
-import { createPortal } from "react-dom";
+import { createPortal, flushSync } from "react-dom";
 import { Glyph } from "./glyphs";
 import { subscribe, toast, type ToastKind, type ToastState } from "./toast";
 import { avoidedBars, feedbackPlacement, toastBottom } from "./toastStack";
@@ -75,7 +75,7 @@ export function Toaster() {
             engaged={!value.blocking && engaged}
           />
         ))}
-      {layered.map(({ layer, toast: value }) => (
+      {layered.map(({ layer, toast: value, engaged }) => (
         <ToastView
           key={value.id}
           t={value}
@@ -83,7 +83,7 @@ export function Toaster() {
           layer={layer}
           suspended={false}
           paused={false}
-          engaged={toast.engagedFor(value.id)}
+          engaged={engaged}
         />
       ))}
     </>
@@ -241,6 +241,7 @@ function ToastView({
       )}
       {t.action && (
         <button
+          type="button"
           ref={action}
           className="ix-toast-action"
           aria-disabled={t.undoUnavailable || undefined}
@@ -250,7 +251,8 @@ function ToastView({
             if (!toast.canRunAction(t.id)) return;
             const back = cameFrom.current;
             cameFrom.current = null;
-            t.action!.run();
+            // Register a modal opened by the action before requesting dismissal of its opener.
+            flushSync(() => t.action!.run());
             if (!t.blocking) toast.dismiss(t.id);
             if (back && !focusAction)
               requestAnimationFrame(() => {
@@ -270,6 +272,7 @@ function ToastView({
       )}
       {!t.blocking && (
         <button
+          type="button"
           className="ix-toast-close"
           onClick={(e) => {
             // Before it goes: the keyboard returns to where it came from, or to the dialog this toast was in,

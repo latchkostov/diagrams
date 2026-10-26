@@ -1,14 +1,14 @@
 import { defineMachine } from "../../lib/machine";
 
-export type ToastContact = "pointer" | "focus" | "press";
-type State = { value: "idle" | "engaged"; pointer: boolean; focus: boolean; press: boolean };
+export type ToastContact = "pointer" | "focus" | "press" | "opener";
+type State = { value: "idle" | "engaged"; pointer: boolean; focus: boolean; press: boolean; opener: boolean };
 type Event = { type: "contact"; contact: ToastContact; active: boolean } | { type: "reset" };
-const idle: State = { value: "idle", pointer: false, focus: false, press: false };
+const idle: State = { value: "idle", pointer: false, focus: false, press: false, opener: false };
 const contacted = (state: State, event: Event & { type: "contact" }): State => ({
   ...state,
   [event.contact]: event.active,
 });
-const engaged = (state: State) => state.pointer || state.focus || state.press;
+const engaged = (state: State) => state.pointer || state.focus || state.press || state.opener;
 
 /** Independent contacts: leaving with a button held or focus inside must keep the toast still. */
 export const toastEngagement = defineMachine<State, Event>({
@@ -24,7 +24,7 @@ export const toastEngagement = defineMachine<State, Event>({
     },
   },
   events: [
-    ...(["pointer", "focus", "press"] as const).flatMap((contact) =>
+    ...(["pointer", "focus", "press", "opener"] as const).flatMap((contact) =>
       [true, false].map((active): Event => ({ type: "contact", contact, active })),
     ),
     { type: "reset" },
