@@ -1,24 +1,3 @@
-import { createAccounting, creditRoute, finishTickMetrics, type AccountingState } from "./engine/accounting";
-import {
-  isBroker,
-  liveWork,
-  nodeWork,
-  queuedWork,
-  resourceWork,
-  type Message,
-  type Group,
-  type Delivery,
-  type Work,
-  type RouteDecision,
-  type Node,
-  type Call,
-  type Logical,
-  type Edge,
-  type Trip,
-  type EchoExpiry,
-  type Injection,
-  type DeliveryPart,
-} from "./engine/model";
 import { createExecutionReservations } from "./executionReservations";
 import { revisionAtLeast } from "../model/revisions";
 import { faultProblem, type Fault } from "../model/faults";
@@ -50,6 +29,7 @@ import {
   evaluateHpa,
   commitScalingChange,
   fleetReadout,
+  resourceReadout,
   replicaPage,
   type Fleet,
 } from "./autoscaling";
@@ -70,7 +50,13 @@ import { ShedQueue } from "./shedQueue";
 import { queueGrant } from "./admission";
 import { Deque } from "./deque";
 import { createLineage } from "./lineage";
-import { createLatencyBudget, createLatencyRecorder, shareLatencyRecorder, recordLatency } from "./latency";
+import {
+  createLatencyBudget,
+  createLatencyRecorder,
+  shareLatencyRecorder,
+  recordLatency,
+  latencyMetrics,
+} from "./latency";
 import { mulberry32 } from "./rng";
 import {
   forwardingShare,
@@ -82,7 +68,7 @@ import {
   deadLetterRoutes,
   type CompiledTopology,
 } from "./topology";
-import { resolveScale, resolveMultiplier, representedOf, unitsOf, roundDots } from "./units";
+import { resolveScale, resolveMultiplier, representedOf, unitsOf, roundDots, roundCounts, roundRoute } from "./units";
 import {
   attemptAdmission,
   admissionSlots,
@@ -139,10 +125,35 @@ import type {
   NodeSimProps,
   NodeStatus,
   ParticleKind,
+  Particle,
+  NodeSimState,
+  SimFrame,
   SimEngine,
   SimEvent,
   TraceStep,
 } from "./types";
+
+import { createAccounting } from "./engine/accounting";
+import {
+  isBroker,
+  liveWork,
+  nodeWork,
+  queuedWork,
+  resourceWork,
+  type Message,
+  type Group,
+  type Delivery,
+  type Work,
+  type RouteDecision,
+  type Node,
+  type Call,
+  type Logical,
+  type Edge,
+  type Trip,
+  type EchoExpiry,
+  type Injection,
+  type DeliveryPart,
+} from "./engine/model";
 
 /** A refusal by a token bucket ("orders-limit: requests"): a 429, not a 404 or a concurrency cap. */
 const quotaReason = (reason: string) => QUOTA_UNITS.some((unit) => reason.endsWith(`: ${unit}`));
@@ -377,14 +388,12 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
   let cohort = 1;
   let cohortDots = new Map<Node, number>();
   let capacityMultiplier = 1;
-  // Populate the data-only slice in the original initialization order before wiring accounting.
-  const accountingState = {} as AccountingState;
-  accountingState.nextMessage = 1;
+  let nextMessage = 1;
   let nextParticle = 1;
   let nextInjection = 1;
-  accountingState.inSystem = 0;
+  let inSystem = 0;
   const events: SimEvent[] = [];
-  accountingState.eventHead = 0;
+  let eventHead = 0;
   let topology = 0;
   let compiled: CompiledTopology = { edges: [], outgoing: new Map(), groups: new Map(), restricted: new Set() };
   const groupsByConsumer = new Map<string, Group[]>();
@@ -420,25 +429,54 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     if (budget && --budget.remaining < 0) throw new WorkBudgetError("The run created more messages than its budget");
   }
 
-  const accounting = createAccounting(accountingState, { nodes, edges, events }, lineage, opts, {
-    time: () => time,
-    scale: () => scale,
-    latencyBudget: () => latencyBudget,
-    routeCounts: () => routeCounts,
-    spend,
-    observeEvent: (event) => {
+  function countRoute(route: CompiledRoute): RouteCounts {
+    let counts = routeCounts.get(route.id);
+    if (!counts) routeCounts.set(route.id, (counts = { sent: 0, rejected: 0, completed: 0 }));
+    return counts;
+  }
+
+  // Positional wiring lets the minifier rename internal ports and results.
+  const [
+    log,
+    step,
+    creditRoute,
+    addressed,
+    copy,
+    fanOut,
+    processed,
+    gone,
+    drop,
+    block,
+    finishTickMetrics,
+    accountingSnapshot,
+  ] = createAccounting(
+    edges,
+    events,
+    lineage,
+    opts,
+    (event) => {
       if (TEST_ORACLES) eventObservers.get(engine)?.(event);
+      if (events.length < 200) events.push(event);
+      else {
+        events[eventHead] = event;
+        eventHead = (eventHead + 1) % 200;
+      }
     },
+    (message) => {
+      spend();
+      const next = { ...message, id: nextMessage++, attempts: 0 };
+      inSystem++;
+      return next;
+    },
+    () => {
+      inSystem--;
+    },
+    countRoute,
+    () => time,
+    () => latencyBudget,
     dotsOf,
-    threadOccupancy,
-    queueBacklog,
-    slots,
-    held,
-    memoryRequests,
     waits,
-    readFrame: () => engine.frame(),
-  });
-  const { log, processed, step, gone, countRoute, addressed, copy, fanOut, drop, block } = accounting;
+  );
 
   function schedule(item: Injection): void {
     let index = injections.length;
@@ -2792,7 +2830,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
 
   function emitOne(node: Node, type: string, injected: boolean, route?: CompiledRoute): void {
     spend();
-    const id = accountingState.nextMessage++;
+    const id = nextMessage++;
     const message: Message = {
       id,
       type,
@@ -2807,7 +2845,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       message.request = route;
       countRoute(route).sent += dotsOf(message);
     }
-    accountingState.inSystem++;
+    inSystem++;
     lineage.born(message.family, type, node.id, route?.id);
     if (injected) log("inject", node, message);
     arrive(node, { message, remaining: latency(node), injected });
@@ -3721,7 +3759,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     if (TEST_ORACLES && opts.verifyResilience) {
       opts.verifyResilience({
         time,
-        inSystem: accountingState.inSystem,
+        inSystem,
         edges,
         queues: [...nodes.values()]
           .filter((n) => n.props.queue)
@@ -3744,7 +3782,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         ledger: ledger.state,
         nodes: nodes.values(),
         edges,
-        inSystem: accountingState.inSystem,
+        inSystem,
         admissionInFlight: admission.inFlight,
         partBudget,
         logical,
@@ -3799,9 +3837,9 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     incomingAt = undefined;
     incomingBeforeReleases = false;
     accumulator = 0;
-    accountingState.inSystem = 0;
+    inSystem = 0;
     drawn = 0;
-    accountingState.nextMessage = 1;
+    nextMessage = 1;
     nextParticle = 1;
     nextInjection = 1;
     trips = [];
@@ -3818,7 +3856,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     sourceEmitted = 0;
     injections.length = 0;
     events.length = 0;
-    accountingState.eventHead = 0;
+    eventHead = 0;
     randomCalls = 0;
     randomState = mulberry32(seed);
     lineage.reset();
@@ -3974,14 +4012,14 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
         sourceRate,
         sourceEmitted,
         drawn,
-        nextMessage: accountingState.nextMessage,
+        nextMessage,
         nextParticle,
         nextInjection,
         nextCall,
         nextAttempt,
         nextLogical,
-        inSystem: accountingState.inSystem,
-        eventHead: accountingState.eventHead,
+        inSystem,
+        eventHead,
         seed,
         randomCalls,
         topology,
@@ -4050,14 +4088,14 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
           sourceRate,
           sourceEmitted,
           drawn,
-          nextMessage: accountingState.nextMessage,
+          nextMessage,
           nextParticle,
           nextInjection,
           nextCall,
           nextAttempt,
           nextLogical,
-          inSystem: accountingState.inSystem,
-          eventHead: accountingState.eventHead,
+          inSystem,
+          eventHead,
           seed,
           randomCalls,
           scale,
@@ -4077,7 +4115,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
     effectiveProps: (nodeId) => structuredClone(nodes.get(nodeId)?.rawProps ?? {}),
     configuration: () =>
       (configuration ??= Object.fromEntries([...nodes].map(([id, node]) => [id, structuredClone(node.rawProps)]))),
-    metrics: () => ({ time, inSystem: accountingState.inSystem, pendingInjections: injections.length }),
+    metrics: () => ({ time, inSystem, pendingInjections: injections.length }),
     fleet(nodeId) {
       const n = nodes.get(nodeId);
       return n?.fleet && n.props.resources ? fleetReadout(n.fleet) : undefined;
@@ -4093,7 +4131,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       return n?.fleet && n.props.resources ? replicaPage(n.fleet, n.props.resources, time, scale, page) : [];
     },
     measure(metric) {
-      if ("system" in metric) return accountingState.inSystem;
+      if ("system" in metric) return inSystem;
       const node = nodes.get(metric.node);
       if (!node) return undefined;
       if (metric.field === "inFlight") return threadOccupancy(node);
@@ -4325,7 +4363,117 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       for (let i = 0; i < steps; i++) tick();
     },
     frame() {
-      return accounting.frame(time, scale, drawnTrips, sinceFault, faults, routes, routeCounts);
+      function topWaiting(node: Node): [string, number][] {
+        const top: [string, number][] = [];
+        for (const entry of node.waitingOn) {
+          let i = 0;
+          while (i < top.length && top[i][1] >= entry[1]) i++;
+          if (i < 3) {
+            top.splice(i, 0, entry);
+            if (top.length > 3) top.pop();
+          }
+        }
+        return top;
+      }
+      const particles: Particle[] = [];
+      for (const trip of drawnTrips.values())
+        if (trip.start <= time)
+          particles.push({
+            id: trip.id,
+            edgeId: trip.edge.id,
+            messageId: trip.message.id,
+            rootId: trip.message.family.root,
+            kind: trip.kind,
+            ...(trip.message.callAttempt! > 1 && trip.kind === "message"
+              ? { callAttempt: trip.message.callAttempt }
+              : {}),
+            progress: Math.min(1, Math.max(0, (time - trip.start) / (trip.end - trip.start))),
+            type: trip.message.type,
+            color: trip.message.request?.color ?? trip.message.color,
+            ...(trip.message.request ? { route: trip.message.request.id, marker: trip.message.request.marker } : {}),
+            ...(trip.code ? { code: trip.code } : {}),
+          });
+      const nodeStates: Record<string, NodeSimState> = Object.create(null);
+      for (const node of nodes.values()) {
+        const lag: Record<string, number> = Object.create(null);
+        const backlog = queueBacklog(node);
+        for (const group of node.groups) lag[group.name] = roundDots(group.pendingUnits);
+        if (node.role === "queue" && !node.groups.length) lag.queue = backlog;
+        nodeStates[node.id] = {
+          ...(node.latency
+            ? {
+                latency: sinceFault
+                  ? { ...latencyMetrics(node.latency), sinceFault: sinceFault }
+                  : latencyMetrics(node.latency),
+              }
+            : {}),
+          id: node.id,
+          role: node.role,
+          status: node.status,
+          backlog,
+          lag,
+          inFlight: threadOccupancy(node),
+          ...(node.waits && node.role === "processor"
+            ? {
+                threads: {
+                  slots: slots(node) / scale,
+                  working: node.threadWeight.work / scale,
+                  waiting: node.threadWeight.wait / scale,
+                  waitingOn: topWaiting(node).map(([id, weight]) => [id, weight / scale]),
+                  queued: backlog,
+                  ...(node.freeFlight > 0 ? { inFlight: node.freeFlight } : {}),
+                },
+              }
+            : {}),
+          processed: roundDots(node.processed),
+          failed: roundDots(node.failed),
+          deadLettered: roundDots(node.deadLettered),
+          dropped: roundDots(node.dropped),
+          ...(node.outageDropped ? { outageDropped: roundDots(node.outageDropped) } : {}),
+          ...(node.blocked ? { blocked: roundDots(node.blocked) } : {}),
+          ...(node.props.queue || node.shed
+            ? {
+                shed: roundDots(node.shed),
+                queueDepth: roundDots(node.queueUnits / scale),
+                ...(node.shedLost ? { shedLost: roundDots(node.shedLost) } : {}),
+                ...(node.props.queue?.limit === undefined ? {} : { queueLimit: node.props.queue.limit }),
+              }
+            : {}),
+          ...(node.props.admission || node.table || node.props.queue || node.shed
+            ? { rejected: roundDots(node.rejected), rejectionReasons: roundCounts(node.rejectionReasons) }
+            : {}),
+          ...(node.table ? { routeRejections: roundCounts(node.routeRejections) } : {}),
+          ...(held(node) ? { failingOver: true } : {}),
+          throughput: node.throughput,
+          ...(node.fleet && node.props.resources
+            ? {
+                fleet: fleetReadout(node.fleet),
+                resources: resourceReadout(node.fleet, node.props.resources, memoryRequests(node), time, scale),
+              }
+            : {}),
+          replicas: node.replicas,
+          activeReplicas: node.activeReplicas,
+          idleReplicas: node.replicas - node.activeReplicas,
+          ...(isBroker(node) && !node.groups.length ? { noConsumer: true as const } : {}),
+        };
+      }
+      const frame: SimFrame = {
+        time: time,
+        particles,
+        nodes: nodeStates,
+        inSystem,
+        scale: scale,
+      };
+      if (faults.size) frame.faults = structuredClone([...faults.values()]);
+      if (routes) {
+        const counts: Record<string, RouteCounts> = Object.create(null);
+        for (const id of routes.keys()) {
+          const c = routeCounts.get(id);
+          counts[id] = c ? roundRoute(c) : { sent: 0, rejected: 0, completed: 0 };
+        }
+        frame.routes = counts;
+      }
+      return frame;
     },
     timeoutLosses(expected) {
       return Object.fromEntries(
@@ -4344,7 +4492,7 @@ export function createEngine(opts: EngineOptions = {}): SimEngine {
       const { min, max } = replicaRange(a.controller, capacityMultiplier);
       return { min, max, multiplier: capacityMultiplier };
     },
-    snapshot: accounting.snapshot,
+    snapshot: () => accountingSnapshot(engine.frame(), time, scale, eventHead),
     inject(nodeId, count, options = {}): void {
       const node = nodes.get(nodeId);
       if (!node || !Number.isFinite(count) || count < 1) return;
