@@ -35,10 +35,13 @@ async function openTutorial(page: Page, id: string) {
 }
 
 test("example Tutorial chip opens its lesson and Exit returns to the diagram", async ({ page, consoleErrors }) => {
+  await page.addInitScript(() => localStorage.setItem("diagrams.locale", "cs"));
   await gotoCanvas(page, "retry-storm");
   await page.getByTestId("example-picker").click();
   await page.getByTestId("picker-browse-examples").click();
-  await page.getByTestId("example-tutorial-retry-storm").click();
+  const chip = page.getByTestId("example-tutorial-retry-storm");
+  await expect(chip).toHaveAccessibleName(`${await chip.textContent()} A retry storm`);
+  await chip.click();
   await expect(page.getByTestId("tutorial-start")).toBeVisible();
   await expect(page).toHaveURL(/tutorial=retry-storm/);
   await page.getByTestId("tutorial-start").click();
@@ -1338,7 +1341,7 @@ test("quick-add opens already searched for the step's pick, and the name step wa
   await expect(strip(page)).toHaveAttribute("data-step", "add-api");
   await page.getByTestId("node-mobile-1").click();
   await page.getByTestId("grow-chip-mobile-1").click();
-  await expect(page.getByTestId("quick-add-search")).toHaveValue("service");
+  await expect(page.getByTestId("quick-add-search")).toHaveValue("Service");
   // Highlighted at once, no hover: it's the first match and the coach mark rings it.
   await expect(page.getByTestId("tutorial-coach")).toHaveAttribute(
     "data-target",

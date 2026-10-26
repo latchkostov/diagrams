@@ -1,3 +1,4 @@
+import { stencilSearch } from "./searchValues";
 import { msg, t } from "../../i18n";
 import type { Tutorial } from "../types";
 import { connectedStep, liveStep, practiceRun } from "./buildingBlocks";
@@ -7,7 +8,7 @@ const addOrdersGoalWords = () =>
 const addUsersGoalWords = () =>
   t("tutorials.apiGateway.addUsersGoal", { name: msg("tutorials.apiGateway.usersName")() });
 
-const addAppGoalWords = () => t("tutorials.apiGateway.addAppGoal", { query: msg("tutorials.apiGateway.searchApp")() });
+const addAppGoalWords = () => t("tutorials.apiGateway.addAppGoal", { query: stencilSearch("client.mobile")() });
 
 export const apiGateway: Tutorial = {
   id: "api-gateway",
@@ -43,7 +44,7 @@ export const apiGateway: Tutorial = {
       ],
       demo: [{ kind: "add", subject: "app", stencil: "client.mobile" }],
       solution: [
-        { fill: "palette-search", text: msg("tutorials.apiGateway.searchApp") },
+        { fill: "palette-search", text: stencilSearch("client.mobile") },
         { click: "palette-item-client.mobile" },
       ],
     },
@@ -53,7 +54,7 @@ export const apiGateway: Tutorial = {
       from: "app",
       subject: "gw",
       stencil: "kong",
-      search: msg("tutorials.apiGateway.searchGateway"),
+      search: stencilSearch("kong"),
       title: msg("tutorials.apiGateway.addGwTitle"),
       goal: msg("tutorials.apiGateway.addGwGoal"),
       done: msg("tutorials.apiGateway.addGwDone"),
@@ -64,7 +65,7 @@ export const apiGateway: Tutorial = {
       from: "gw",
       subject: "orders",
       stencil: "generic.service",
-      search: msg("tutorials.apiGateway.searchService"),
+      search: stencilSearch("generic.service"),
       name: msg("tutorials.apiGateway.ordersName"),
       title: msg("tutorials.apiGateway.addOrdersTitle"),
       goal: addOrdersGoalWords,
@@ -76,7 +77,7 @@ export const apiGateway: Tutorial = {
       from: "gw",
       subject: "users",
       stencil: "generic.service",
-      search: msg("tutorials.apiGateway.searchService"),
+      search: stencilSearch("generic.service"),
       name: msg("tutorials.apiGateway.usersName"),
       title: msg("tutorials.apiGateway.addUsersTitle"),
       goal: addUsersGoalWords,

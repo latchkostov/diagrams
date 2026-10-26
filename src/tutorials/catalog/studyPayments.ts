@@ -1,3 +1,4 @@
+import { stencilSearch } from "./searchValues";
 import { msg, t } from "../../i18n";
 import type { Tutorial } from "../types";
 import { studyAdd, studyRun } from "./studyShared";
@@ -125,8 +126,8 @@ export const studyPayments: Tutorial = {
         },
       ],
       solution: [
-        ...studyAdd("payments", msg("tutorials.studyPayments.searchTopic")),
-        ...studyAdd(null, msg("tutorials.studyPayments.searchConsumer")),
+        ...studyAdd("payments", stencilSearch("kafka.topic")),
+        ...studyAdd(null, stencilSearch("service.java")),
         { click: "fit-view-button" },
         { click: "node-{psp}" },
         { press: "Control+Alt+[" },
@@ -223,7 +224,7 @@ export const studyPayments: Tutorial = {
       ],
       solution: [
         { click: "live-toggle" },
-        ...studyAdd("outbox", msg("tutorials.studyPayments.searchQueue")),
+        ...studyAdd("outbox", stencilSearch("aws.sqs")),
         { click: "node-{outbox}" },
         { press: "Control+Alt+]" },
         { press: "Control+Alt+]" },

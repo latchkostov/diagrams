@@ -87,9 +87,9 @@ export function GalleryDetails({ catalog, query, feature, onOpen, onTutorials }:
                         className="link-btn"
                         data-testid={`example-tutorial-${ex.slug}`}
                         onClick={() => tutorialRoute.open(exampleTutorials[ex.slug])}
-                        aria-label={t("tutorials.exampleChipNamed", { title: ex.title })}
+                        aria-labelledby={`example-tutorial-label-${ex.slug} example-title-${ex.slug}`}
                       >
-                        {t("tutorials.exampleChip")}
+                        <span id={`example-tutorial-label-${ex.slug}`}>{t("tutorials.exampleChip")}</span>
                       </button>
                     )}
                   </div>

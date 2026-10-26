@@ -1,3 +1,4 @@
+import { stencilSearch } from "./searchValues";
 import { msg, t } from "../../i18n";
 import type { Demo, Tutorial } from "../types";
 import { studyAdd, studyRun } from "./studyShared";
@@ -167,7 +168,7 @@ export const studyRag: Tutorial = {
       ],
       solution: [
         { click: "live-toggle" },
-        ...studyAdd("embeddings", msg("tutorials.studyRag.searchCache")),
+        ...studyAdd("embeddings", stencilSearch("redis.cache")),
         { press: "Control+Alt+[" },
         { click: "inspector-section-edge-simulation" },
         { fill: "inspector-field-share", text: "80" },

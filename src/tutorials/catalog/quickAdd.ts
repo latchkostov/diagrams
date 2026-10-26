@@ -1,10 +1,11 @@
+import { stencilSearch } from "./searchValues";
 import { msg, t } from "../../i18n";
 import type { Tutorial } from "../types";
 
 const nameApiGoalWords = () => t("tutorials.quickAdd.nameApiGoal", { name: msg("tutorials.quickAdd.apiName")() });
 const growDbGoalWords = () => t("tutorials.quickAdd.growDbGoal", { name: msg("tutorials.quickAdd.apiName")() });
 
-const addAppGoalWords = () => t("tutorials.quickAdd.addAppGoal", { query: msg("tutorials.quickAdd.searchBrowser")() });
+const addAppGoalWords = () => t("tutorials.quickAdd.addAppGoal", { query: stencilSearch("client.browser")() });
 
 export const quickAdd: Tutorial = {
   id: "quick-add",
@@ -30,7 +31,7 @@ export const quickAdd: Tutorial = {
       demo: [{ kind: "add", subject: "app", stencil: "client.browser" }],
       solution: [
         { pane: "dblclick" },
-        { fill: "quick-add-search", text: msg("tutorials.quickAdd.searchBrowser") },
+        { fill: "quick-add-search", text: stencilSearch("client.browser") },
         { press: "Enter" },
       ],
     },
@@ -52,7 +53,7 @@ export const quickAdd: Tutorial = {
       ],
       demo: [{ kind: "add", subject: "api", stencil: "generic.service", after: "app" }],
       solution: [{ click: "node-{app}" }, { press: "Alt+ArrowRight" }, { press: "Enter" }],
-      guide: { quickAdd: msg("tutorials.quickAdd.searchService") },
+      guide: { quickAdd: stencilSearch("generic.service") },
     },
     {
       id: "name-api",
@@ -86,7 +87,7 @@ export const quickAdd: Tutorial = {
       ],
       demo: [{ kind: "add", subject: "db", stencil: "postgres", after: "api" }],
       solution: [{ click: "node-{api}" }, { press: "Alt+ArrowRight" }, { press: "Enter" }],
-      guide: { quickAdd: msg("tutorials.quickAdd.searchPostgres") },
+      guide: { quickAdd: stencilSearch("postgres") },
     },
   ],
   finish: { text: msg("tutorials.quickAdd.finish") },

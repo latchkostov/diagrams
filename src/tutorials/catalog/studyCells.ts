@@ -1,3 +1,4 @@
+import { stencilSearch } from "./searchValues";
 import { msg, t } from "../../i18n";
 import type { Tutorial } from "../types";
 import { studyAdd, studyRun } from "./studyShared";
@@ -107,7 +108,7 @@ export const studyCells: Tutorial = {
         { click: "node-{booking}" },
         { press: "ControlOrMeta+g" },
         { press: "Enter" },
-        ...studyAdd("east", msg("tutorials.studyCells.searchNeighbour")),
+        ...studyAdd("east", stencilSearch("service.java")),
         { press: "ControlOrMeta+g" },
         { press: "Enter" },
       ],
@@ -184,8 +185,8 @@ export const studyCells: Tutorial = {
       ],
       solution: [
         { click: "live-toggle" },
-        ...studyAdd("global", msg("tutorials.studyCells.searchBalancer")),
-        ...studyAdd(null, msg("tutorials.studyCells.searchBackup")),
+        ...studyAdd("global", stencilSearch("load-balancer")),
+        ...studyAdd(null, stencilSearch("service.go")),
         { press: "ControlOrMeta+g" },
         { press: "Enter" },
         { click: "live-toggle" },

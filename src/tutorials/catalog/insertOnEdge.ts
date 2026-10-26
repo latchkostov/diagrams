@@ -1,10 +1,10 @@
+import { stencilSearch } from "./searchValues";
 import { msg, t } from "../../i18n";
 import type { Tutorial } from "../types";
 
 const nameGoalWords = () => t("tutorials.insertOnEdge.nameGoal", { name: msg("tutorials.insertOnEdge.gatewayName")() });
 
-const insertGoalWords = () =>
-  t("tutorials.insertOnEdge.insertGoal", { query: msg("tutorials.insertOnEdge.searchGateway")() });
+const insertGoalWords = () => t("tutorials.insertOnEdge.insertGoal", { query: stencilSearch("aws.api-gateway")() });
 
 export const insertOnEdge: Tutorial = {
   id: "insert-on-edge",
@@ -51,7 +51,7 @@ export const insertOnEdge: Tutorial = {
       solution: [
         { rightclick: "edge-label-{call}" },
         { click: "context-menu-item-edge.insert-node" },
-        { type: msg("tutorials.insertOnEdge.searchGateway") },
+        { type: stencilSearch("aws.api-gateway") },
         { press: "Enter" },
       ],
     },

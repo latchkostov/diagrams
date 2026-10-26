@@ -3,7 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import en from "./en";
-import { argsOf, parse } from "./icu";
+import { argsOf, parse, textOf } from "./icu";
 import { sourceHash, validateLocale, type LocaleGlossary, type LocaleMeta, type TermGlossary } from "./validate";
 import { catalogLocales, compileCatalog, numberedKeys, readCatalog, rewriteCalls } from "../../scripts/i18n-plugin";
 
@@ -102,6 +102,19 @@ describe("the catalogs", () => {
     for (const [key, source] of Object.entries(en).filter(([key]) => key.startsWith("tutorials."))) {
       expect(messages[key], `${code}: ${key}`).toBeTruthy();
       expect(meta.sources?.[key], `${code}: ${key}`).toBe(sourceHash(source));
+    }
+  });
+
+  it.each(codes)("%s preserves English technical tokens in every translated message", (code) => {
+    const messages = read<Record<string, string>>(`locales/${code}.json`);
+    for (const [key, source] of Object.entries(en)) {
+      if (!messages[key]) continue;
+      for (const token of terms.technicalTokens!) {
+        // A token may touch a number or CJK text, but cannot be part of another Latin word.
+        const pattern = new RegExp(`(?<![A-Za-z])${token}(?![A-Za-z])`);
+        if (pattern.test(textOf(parse(source), "all")))
+          expect.soft(textOf(parse(messages[key]), "all"), `${code}/${key}: ${token}`).toMatch(pattern);
+      }
     }
   });
 

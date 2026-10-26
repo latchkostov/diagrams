@@ -1,8 +1,17 @@
+import { readFileSync } from "node:fs";
 import { afterEach, expect, it } from "vitest";
 import { catalogs } from "virtual:i18n/catalogs";
 import { state, type Catalog } from "../i18n";
 import { stencils } from "../stencils/registry";
 import { searchStencils } from "../lib/stencilDisplaySearch";
+import { collectCommands } from "../palette/sources";
+import { flatten, rank } from "../palette/rank";
+import { editorHarness } from "../test/editorHarness";
+import { actionRegistry } from "../editor/actions";
+import { resolveSubjects, fillTestId } from "./checks";
+import { commandPalette } from "./catalog/commandPalette";
+import type { DiagramFile } from "../model/types";
+import type { Tutorial } from "./types";
 import { allTutorials } from "./catalog";
 import type { Check } from "./types";
 
@@ -11,7 +20,7 @@ afterEach(() => {
   state.c = undefined;
 });
 
-const locales = ["en", ...Object.keys(catalogs).filter((code) => code !== "en-XA")];
+const locales = ["en", ...Object.keys(catalogs)];
 async function language(code: string) {
   state.l = code;
   state.c = code === "en" ? undefined : ((await catalogs[code]()).default as Catalog);
@@ -26,6 +35,8 @@ it.each(locales)("%s: tutorial instructions contain the exact values their check
       for (const check of leaves(step.check)) {
         const values: string[] = [];
         if (check.kind === "label" || (check.kind === "field" && check.is)) values.push(check.is!());
+        if (check.kind === "prop" && check.prop === "filter" && "value" in check && Array.isArray(check.value))
+          values.push(...check.value.filter((value): value is string => typeof value === "string"));
         if (check.kind === "prop" && Array.isArray(check.prop)) {
           for (const segment of check.prop)
             if (typeof segment === "object" && "where" in segment && typeof segment.where.key === "string")
@@ -38,18 +49,68 @@ it.each(locales)("%s: tutorial instructions contain the exact values their check
   }
 });
 
-it.each(locales)("localized tutorial guides find their intended stencil (%s)", async (code) => {
+function lessonEditor(tutorial: Tutorial) {
+  const diagram: DiagramFile =
+    typeof tutorial.start === "function"
+      ? tutorial.start()
+      : JSON.parse(readFileSync(`src/examples/${tutorial.start.example}.json`, "utf8"));
+  const harness = editorHarness(structuredClone(diagram));
+  return { ...harness.api, commit: harness.commit };
+}
+
+function commands(editor: ReturnType<typeof lessonEditor>) {
+  return collectCommands({
+    registry: actionRegistry,
+    canvas: { editor, live: false, focusNode: () => {}, addStencil: (id) => editor.addStencil(id) },
+    live: null,
+    view: "canvas",
+    stencils,
+    recentStencils: [],
+    diagrams: [],
+    openDiagram: () => {},
+    sendStencilToCanvas: () => {},
+    runSimulation: () => {},
+  });
+}
+
+// Replay creation through the real editor: its stored defaults are deliberately not localized stencil display names.
+function replay(editor: ReturnType<typeof lessonEditor>, tutorial: Tutorial, step: Tutorial["steps"][number]) {
+  for (const demo of step.demo) {
+    const subjects = resolveSubjects(tutorial, editor.getDiagram());
+    if (demo.kind === "add") {
+      if (demo.after) editor.createConnected({ from: subjects[demo.after]!, stencil: demo.stencil });
+      else {
+        editor.select({ nodeIds: [], edgeIds: [], groupIds: [] });
+        editor.addStencil(demo.stencil);
+      }
+    }
+    if (demo.kind === "insert") {
+      const edge = editor
+        .getDiagram()
+        .edges.find((e) => e.from === subjects[demo.edge[0]] && e.to === subjects[demo.edge[1]]);
+      if (!edge) throw new Error("Missing insertion edge");
+      editor.insertNode(edge.id, demo.stencil);
+    }
+    if (demo.kind === "connect") editor.connect(subjects[demo.from]!, subjects[demo.to]!);
+    if (demo.kind === "rename") editor.updateNode(subjects[demo.subject]!, { label: demo.label() });
+    if (demo.kind === "field") editor.updateNode(subjects[demo.subject]!, { [demo.field]: demo.value() });
+    if (demo.kind === "select") editor.select({ nodeIds: demo.subjects.map((s) => subjects[s]!) });
+    editor.commit();
+  }
+}
+
+it.each(locales)("localized tutorial searches find their intended target (%s)", async (code) => {
   await language(code);
   for (const tutorial of allTutorials) {
+    const editor = lessonEditor(tutorial);
     for (const step of tutorial.steps) {
       const intended = step.demo.filter((demo) => demo.kind === "add" || demo.kind === "insert");
-      const queries: { text: string; enter: boolean }[] = [];
-      if (step.guide?.quickAdd) queries.push({ text: step.guide.quickAdd(), enter: true });
+      let stencilIndex = 0;
+      const queries: { text: string; enter: boolean; command: boolean; target?: string | null }[] = [];
+      if (step.guide?.quickAdd) queries.push({ text: step.guide.quickAdd(), enter: true, command: false });
       for (const [i, action] of step.solution.entries()) {
         if (
-          ("fill" in action &&
-            (["quick-add-search", "palette-search"].includes(action.fill) ||
-              (action.fill === "command-input" && intended.length > 0))) ||
+          ("fill" in action && ["quick-add-search", "palette-search", "command-input"].includes(action.fill)) ||
           ("type" in action && typeof action.type === "function")
         ) {
           const text = "fill" in action ? action.text : action.type;
@@ -57,25 +118,58 @@ it.each(locales)("localized tutorial guides find their intended stencil (%s)", a
           queries.push({
             text: typeof text === "function" ? text() : text,
             enter: !!next && "press" in next && next.press === "Enter",
+            command: "fill" in action && action.fill === "command-input",
+            target:
+              next && "click" in next && next.click.startsWith("command-item-")
+                ? fillTestId(next.click.slice("command-item-".length), resolveSubjects(tutorial, editor.getDiagram()))
+                : undefined,
           });
         }
       }
-      expect(queries.length, `${tutorial.id}/${step.id}: every search has an intended stencil`).toBeLessThanOrEqual(
-        intended.length,
-      );
-      for (const [i, query] of queries.entries()) {
-        if (
-          ["quick-add/add-app", "api-gateway/add-app", "command-palette/add", "insert-on-edge/insert"].includes(
-            `${tutorial.id}/${step.id}`,
+      for (const query of queries) {
+        const context = `${code}/${tutorial.id}/${step.id}: ${JSON.stringify(query.text)}`;
+        if (query.command) {
+          const target = query.target ?? `stencil:${intended[stencilIndex++].stencil}`;
+          const found = flatten(rank(commands(editor), query.text)).map((c) => c.id);
+          expect.soft(found, context).toContain(target);
+          expect.soft(step.goal(), context).toContain(commands(editor).find((c) => c.id === target)!.label);
+          if (query.enter) expect.soft(found[0], context).toBe(target);
+          expect.soft(step.goal(), context).toContain(query.text);
+          for (const tip of step.targets) expect.soft(tip.tip(), context).toContain(query.text);
+        } else {
+          if (
+            ["quick-add/add-app", "api-gateway/add-app", "insert-on-edge/insert"].includes(`${tutorial.id}/${step.id}`)
           )
-        )
-          expect.soft(step.goal(), `${code}/${tutorial.id}/${step.id}: instructed search`).toContain(query.text);
-        const target = intended[i].stencil;
-        const found = searchStencils(stencils, query.text).map((s) => s.id);
-        const context = `${code}/${tutorial.id}/${step.id}: ${JSON.stringify(query.text)} -> ${target}`;
-        expect.soft(found, context).toContain(target);
-        if (query.enter) expect.soft(found[0], context).toBe(target);
+            expect.soft(step.goal(), `${context}: instructed search`).toContain(query.text);
+          const target = intended[stencilIndex++]?.stencil;
+          expect(target, `${context}: every stencil search has a target`).toBeTruthy();
+          const found = searchStencils(stencils, query.text).map((s) => s.id);
+          expect.soft(found, context).toContain(target);
+          if (query.enter) expect.soft(found[0], context).toBe(target);
+        }
       }
+      replay(editor, tutorial, step);
     }
   }
+});
+
+it.each(["ar", "ja"])("localized command-palette goto finds the created topic (%s)", async (code) => {
+  await language(code);
+  const editor = lessonEditor(commandPalette);
+  const add = commandPalette.steps[0];
+  const goto = commandPalette.steps[1];
+  const search = add.solution.find((a) => "fill" in a && a.fill === "command-input")!;
+  if (!("fill" in search)) throw new Error("Missing search");
+  const query = typeof search.text === "function" ? search.text() : search.text;
+  const create = flatten(rank(commands(editor), query)).find((c) => c.id === "stencil:kafka.topic")!;
+  create.run!();
+  editor.commit();
+  const topic = editor.getDiagram().nodes.find((n) => n.stencil === "kafka.topic")!;
+  const action = goto.solution.find((a) => "fill" in a && a.fill === "command-input")!;
+  if (!("fill" in action)) throw new Error("Missing node search");
+  const text = typeof action.text === "function" ? action.text() : action.text;
+  expect.soft(text).toBe(topic.label);
+  expect(goto.goal()).toContain(text);
+  expect(goto.targets[0].tip()).toContain(text);
+  expect(flatten(rank(commands(editor), text)).map((c) => c.id)).toContain(`node:${topic.id}`);
 });

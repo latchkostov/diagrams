@@ -1,3 +1,4 @@
+import { stencilSearch } from "./searchValues";
 import { msg, t } from "../../i18n";
 import type { Tutorial } from "../types";
 import { connectedStep, liveStep, practiceRun } from "./buildingBlocks";
@@ -44,7 +45,7 @@ export const cacheAside: Tutorial = {
       from: "api",
       subject: "redis",
       stencil: "redis.cache",
-      search: msg("tutorials.cacheAside.searchRedis"),
+      search: stencilSearch("redis.cache"),
       title: msg("tutorials.cacheAside.addRedisTitle"),
       goal: msg("tutorials.cacheAside.addRedisGoal"),
       done: msg("tutorials.cacheAside.addRedisDone"),
