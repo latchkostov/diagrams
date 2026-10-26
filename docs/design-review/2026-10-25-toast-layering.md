@@ -114,7 +114,8 @@ dialog is the modal owner. Feedback is not a surface and does not take an Escape
 - **A history is bound.** The toast binds as before, with four corrections, all found by
   `round4-polish.spec.ts` ("a text that grows over an edge moves clear, with Undo"). The branch had
   made that Undo permanently unavailable.
-  1. Capture records the pending edit early but keeps its step's tag. What settles right after (the
+  1. Capture records the pending edit early but keeps its step's tag for one debounce (350 ms), as
+     master's pending edit would have. What settles right after (the
      text's measure) merges into the step the Undo names, as it would have without the early
      recording. Previously the measure became a second step.
   2. An entry keeps its opaque id when an edit merges into it (`historyController.commit`, via

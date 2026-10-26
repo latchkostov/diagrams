@@ -143,7 +143,11 @@ export function useHistory(
         // tag, so it merges into the step the Undo names, as it would have without this flush.
         const tag = mergeKey.current;
         flush();
-        mergeKey.current ??= tag;
+        // Only for as long as the debounce would have kept it: a later, unrelated edit is a step of its own.
+        if (tag !== undefined && mergeKey.current === undefined) {
+          mergeKey.current = tag;
+          timer.current = window.setTimeout(flush, DEBOUNCE_MS);
+        }
         const id = entry();
         // Still ahead once recorded: no entry this Undo can name.
         return id === HISTORY_PENDING ? undefined : id;
