@@ -1,9 +1,12 @@
-import { msg } from "../../i18n";
+import { msg, t } from "../../i18n";
 import type { Tutorial } from "../types";
 
 // Example configuration keys retain their bytes across languages.
 const setting = "Notifications:Token";
 const lockTarget = `inspector-setting-lock-key-${setting}`;
+const addGoalWords = () => t("tutorials.dependencies2.addGoal", { setting: setting });
+const secretGoalWords = () => t("tutorials.dependencies2.secretGoal", { setting: setting });
+
 export const dependencies2: Tutorial = {
   id: "dependencies-2",
   version: 2,
@@ -32,7 +35,7 @@ export const dependencies2: Tutorial = {
     {
       id: "add-setting",
       title: msg("tutorials.dependencies2.addTitle"),
-      goal: msg("tutorials.dependencies2.addGoal"),
+      goal: addGoalWords,
       done: msg("tutorials.dependencies2.addDone"),
       check: {
         kind: "prop",
@@ -42,8 +45,8 @@ export const dependencies2: Tutorial = {
         value: setting,
       },
       targets: [
-        { testId: "inspector-field-settings", tip: msg("tutorials.dependencies2.addGoal") },
-        { testId: "edge-label-{api->config}", tip: msg("tutorials.dependencies2.addGoal") },
+        { testId: "inspector-field-settings", tip: addGoalWords },
+        { testId: "edge-label-{api->config}", tip: addGoalWords },
       ],
       demo: [
         {
@@ -63,7 +66,7 @@ export const dependencies2: Tutorial = {
     {
       id: "mark-secret",
       title: msg("tutorials.dependencies2.secretTitle"),
-      goal: msg("tutorials.dependencies2.secretGoal"),
+      goal: secretGoalWords,
       done: msg("tutorials.dependencies2.secretDone"),
       check: {
         kind: "prop",
@@ -72,7 +75,7 @@ export const dependencies2: Tutorial = {
         op: "=",
         value: true,
       },
-      targets: [{ testId: lockTarget, tip: msg("tutorials.dependencies2.secretGoal") }],
+      targets: [{ testId: lockTarget, tip: secretGoalWords }],
       demo: [
         {
           kind: "patch",

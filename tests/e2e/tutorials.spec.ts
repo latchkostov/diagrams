@@ -55,12 +55,26 @@ for (const [control, lesson] of [
     await gotoCanvas(page, "retry-storm");
     await play(page, { click: "edge-pay" });
     await page.keyboard.press("Enter");
-    await page.getByTestId("inspector-section-edge-simulation").click();
+    const simulation = page.getByTestId("inspector-section-edge-simulation");
+    if ((await simulation.getAttribute("aria-expanded")) === "false") await simulation.click();
     await page.getByTestId(`inspector-tutorial-${control}`).click();
     await expect(page.getByTestId("tutorial-start")).toBeVisible();
     await expect(page).toHaveURL(new RegExp(`tutorial=${lesson}`));
     await page.getByTestId("tutorial-start").click();
+    if ((await page.getByTestId("live-toggle").getAttribute("aria-pressed")) === "true")
+      await page.getByTestId("live-toggle").click();
+    const edge = await page.evaluate(
+      (key) => window.__tutorial?.snapshot().edges[key],
+      lesson === "retry-storm" ? "caller->callee" : "caller->partner",
+    );
+    expect(edge).toBeTruthy();
+    await play(page, { click: `edge-${edge}` });
+    await page.keyboard.press("Enter");
+    const lessonSimulation = page.getByTestId("inspector-section-edge-simulation");
+    if ((await lessonSimulation.getAttribute("aria-expanded")) === "false") await lessonSimulation.click();
+    await page.getByTestId(`inspector-tutorial-${control}`).click();
     await page.getByTestId("tutorial-exit").click();
+    await expect(page.getByTestId("tutorial-app")).toHaveCount(0);
     await expect(page.getByTestId("node-checkout")).toBeVisible();
     await expect(page).not.toHaveURL(/tutorial=/);
     expectNoErrors(consoleErrors);
@@ -1699,4 +1713,65 @@ test("typed solution preserves text around the caret", async ({ page }) => {
   // Appended at the caret after the example's own settings, which stay as they were.
   await expect(field).toHaveValue(`${before}\nLab:Token`);
   await expect(strip(page)).toHaveAttribute("data-phase", "finished");
+});
+
+declare global {
+  interface Window {
+    __tutorialFiles: { pickerCalls: number; writes: string[] };
+  }
+}
+
+test("shortcuts Tutorials navigation preserves the opened device file Save binding", async ({ page }) => {
+  await page.addInitScript((diagram) => {
+    const state = { pickerCalls: 0, writes: [] as string[] };
+    window.__tutorialFiles = state;
+    const handle = {
+      kind: "file",
+      name: "practice.diagram.json",
+      getFile: async () => new File([JSON.stringify(diagram)], "practice.diagram.json"),
+      queryPermission: async () => "granted",
+      requestPermission: async () => "granted",
+      createWritable: async () => ({
+        write: async (text: string) => {
+          state.writes.push(text);
+        },
+        close: async () => {},
+      }),
+    };
+    Object.defineProperty(window, "showOpenFilePicker", { configurable: true, value: async () => [handle] });
+    Object.defineProperty(window, "showSaveFilePicker", {
+      configurable: true,
+      value: async () => {
+        state.pickerCalls++;
+        return handle;
+      },
+    });
+  }, importedDiagram);
+  await gotoCanvas(page, "retry-storm");
+  await page.getByTestId("file-button").click();
+  await page.getByTestId("file-open").click();
+  await expect(page.getByTestId("node-imported-api")).toBeVisible();
+  await page.getByTestId("shortcuts-button").click();
+  await page.getByTestId("shortcuts-tutorials").click();
+  await expect(page.getByTestId("tutorials-view")).toBeVisible();
+  await expect(page.getByTestId("shortcuts-dialog")).toHaveCount(0);
+  await page.getByTestId("tutorial-open-share-present").click();
+  await page.getByTestId("tutorial-start").click();
+  await page.getByTestId("view-tutorials").click();
+  await expect(page.getByTestId("tutorials-view")).toBeVisible();
+  await page.getByTestId("tutorial-open-share-present").click();
+  await page.getByTestId("tutorial-start").click();
+  await page.getByTestId("shortcuts-button").click();
+  await page.getByTestId("shortcuts-tutorials").click();
+  await expect(page.getByTestId("tutorials-view")).toBeVisible();
+  await page.getByTestId("view-canvas").click();
+  await expect(page.getByTestId("node-imported-api")).toBeVisible();
+  await page.getByTestId("node-imported-api").dblclick();
+  await page.getByTestId("inspector-field-label").fill("Saved after tutorials");
+  await page.keyboard.press("Enter");
+  await page.keyboard.press("ControlOrMeta+s");
+  await expect.poll(() => page.evaluate(() => window.__tutorialFiles.writes.length)).toBe(1);
+  expect(await page.evaluate(() => window.__tutorialFiles.pickerCalls)).toBe(0);
+  const saved = await page.evaluate(() => window.__tutorialFiles.writes[0]);
+  expect(JSON.parse(saved).nodes[0].label).toBe("Saved after tutorials");
 });

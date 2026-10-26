@@ -2,6 +2,13 @@ import { msg, t } from "../../i18n";
 import type { Tutorial } from "../types";
 import { connectedStep, liveStep, practiceRun } from "./buildingBlocks";
 
+const addOrdersGoalWords = () =>
+  t("tutorials.apiGateway.addOrdersGoal", { name: msg("tutorials.apiGateway.ordersName")() });
+const addUsersGoalWords = () =>
+  t("tutorials.apiGateway.addUsersGoal", { name: msg("tutorials.apiGateway.usersName")() });
+
+const addAppGoalWords = () => t("tutorials.apiGateway.addAppGoal", { query: msg("tutorials.apiGateway.searchApp")() });
+
 export const apiGateway: Tutorial = {
   id: "api-gateway",
   version: 1,
@@ -27,12 +34,12 @@ export const apiGateway: Tutorial = {
     {
       id: "add-app",
       title: msg("tutorials.apiGateway.addAppTitle"),
-      goal: msg("tutorials.apiGateway.addAppGoal"),
+      goal: addAppGoalWords,
       done: msg("tutorials.apiGateway.addAppDone"),
       check: { kind: "node", subject: "app" },
       targets: [
-        { testId: "palette-search", tip: msg("tutorials.apiGateway.addAppGoal") },
-        { testId: "palette-item-client.mobile", tip: msg("tutorials.apiGateway.addAppGoal") },
+        { testId: "palette-search", tip: addAppGoalWords },
+        { testId: "palette-item-client.mobile", tip: addAppGoalWords },
       ],
       demo: [{ kind: "add", subject: "app", stencil: "client.mobile" }],
       solution: [
@@ -60,7 +67,7 @@ export const apiGateway: Tutorial = {
       search: msg("tutorials.apiGateway.searchService"),
       name: msg("tutorials.apiGateway.ordersName"),
       title: msg("tutorials.apiGateway.addOrdersTitle"),
-      goal: msg("tutorials.apiGateway.addOrdersGoal"),
+      goal: addOrdersGoalWords,
       done: msg("tutorials.apiGateway.addOrdersDone"),
     }),
     connectedStep({
@@ -72,7 +79,7 @@ export const apiGateway: Tutorial = {
       search: msg("tutorials.apiGateway.searchService"),
       name: msg("tutorials.apiGateway.usersName"),
       title: msg("tutorials.apiGateway.addUsersTitle"),
-      goal: msg("tutorials.apiGateway.addUsersGoal"),
+      goal: addUsersGoalWords,
       done: msg("tutorials.apiGateway.addUsersDone"),
     }),
     liveStep(

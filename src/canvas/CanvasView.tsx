@@ -193,6 +193,7 @@ interface Props {
   slug: string;
   presenting: boolean;
   onExitPresent: () => void;
+  onTutorials?: () => void;
   ref?: Ref<CanvasHandle>;
   /** Embed / viewer mode: pan and zoom only; no editing chrome, menus, shortcuts or autosave. */
   readOnly?: boolean;
@@ -243,6 +244,7 @@ function CanvasInner({
   slug,
   presenting,
   onExitPresent,
+  onTutorials,
   ref,
   readOnly = false,
   initial,
@@ -1490,7 +1492,7 @@ function CanvasInner({
                 returnFocus={false}
               />
             ))}
-          {shortcutsOpen && <ShortcutsDialog onClose={closeShortcuts} />}
+          {shortcutsOpen && <ShortcutsDialog onClose={closeShortcuts} onTutorials={onTutorials} />}
           {!readOnly && (
             <div
               className="sr-only"

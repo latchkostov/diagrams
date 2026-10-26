@@ -1,5 +1,10 @@
 import { msg, t } from "../../i18n";
 import type { Tutorial } from "../types";
+const addGoalWords = () =>
+  t("tutorials.commandPalette.addGoal", { query: msg("tutorials.commandPalette.searchKafka")() });
+const addTipWords = () =>
+  t("tutorials.commandPalette.addTip", { query: msg("tutorials.commandPalette.searchKafka")() });
+
 export const commandPalette: Tutorial = {
   id: "command-palette",
   version: 1,
@@ -22,11 +27,11 @@ export const commandPalette: Tutorial = {
     {
       id: "add",
       title: msg("tutorials.commandPalette.addTitle"),
-      goal: msg("tutorials.commandPalette.addGoal"),
+      goal: addGoalWords,
       done: msg("tutorials.commandPalette.addDone"),
       check: { kind: "node", subject: "topic" },
       settle: { kind: "selection", subjects: ["anchor"], tip: msg("tutorials.commandPalette.finishAdd") },
-      targets: [{ testId: "canvas-pane", tip: msg("tutorials.commandPalette.addTip") }],
+      targets: [{ testId: "canvas-pane", tip: addTipWords }],
       demo: [{ kind: "add", subject: "topic", stencil: "kafka.topic" }],
       solution: [
         { press: "ControlOrMeta+k" },

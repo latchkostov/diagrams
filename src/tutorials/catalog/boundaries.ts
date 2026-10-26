@@ -1,5 +1,8 @@
 import { msg, t } from "../../i18n";
 import type { Tutorial } from "../types";
+const nameGoalWords = () => t("tutorials.boundaries.nameGoal", { name: msg("tutorials.boundaries.boundaryName")() });
+const nameTipWords = () => t("tutorials.boundaries.nameTip", { name: msg("tutorials.boundaries.boundaryName")() });
+
 export const boundaries: Tutorial = {
   id: "boundaries",
   version: 1,
@@ -58,12 +61,12 @@ export const boundaries: Tutorial = {
     {
       id: "name",
       title: msg("tutorials.boundaries.nameTitle"),
-      goal: msg("tutorials.boundaries.nameGoal"),
+      goal: nameGoalWords,
       done: msg("tutorials.boundaries.nameDone"),
       check: { kind: "label", subject: "boundary", is: msg("tutorials.boundaries.boundaryName") },
       targets: [
-        { testId: "inspector-field-label", tip: msg("tutorials.boundaries.nameTip") },
-        { testId: "group-label-{boundary}", tip: msg("tutorials.boundaries.nameTip") },
+        { testId: "inspector-field-label", tip: nameTipWords },
+        { testId: "group-label-{boundary}", tip: nameTipWords },
       ],
       demo: [{ kind: "rename", subject: "boundary", label: msg("tutorials.boundaries.boundaryName") }],
       solution: [

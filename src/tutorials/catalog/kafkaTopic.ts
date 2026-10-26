@@ -2,6 +2,10 @@ import { msg, t } from "../../i18n";
 import type { Tutorial } from "../types";
 import { connectedStep, liveStep, practiceRun } from "./buildingBlocks";
 
+const billingGoalWords = () =>
+  t("tutorials.kafkaTopic.billingGoal", { name: msg("tutorials.kafkaTopic.billingName")() });
+const emailGoalWords = () => t("tutorials.kafkaTopic.emailGoal", { name: msg("tutorials.kafkaTopic.emailName")() });
+
 export const kafkaTopic: Tutorial = {
   id: "kafka-topic",
   version: 1,
@@ -55,7 +59,7 @@ export const kafkaTopic: Tutorial = {
       search: msg("tutorials.kafkaTopic.searchService"),
       name: msg("tutorials.kafkaTopic.billingName"),
       title: msg("tutorials.kafkaTopic.billingTitle"),
-      goal: msg("tutorials.kafkaTopic.billingGoal"),
+      goal: billingGoalWords,
       done: msg("tutorials.kafkaTopic.billingDone"),
     }),
     connectedStep({
@@ -67,7 +71,7 @@ export const kafkaTopic: Tutorial = {
       search: msg("tutorials.kafkaTopic.searchService"),
       name: msg("tutorials.kafkaTopic.emailName"),
       title: msg("tutorials.kafkaTopic.emailTitle"),
-      goal: msg("tutorials.kafkaTopic.emailGoal"),
+      goal: emailGoalWords,
       done: msg("tutorials.kafkaTopic.emailDone"),
     }),
     liveStep(

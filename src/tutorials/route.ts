@@ -5,6 +5,8 @@
  * A tutorial replaces the app's view while it runs (its own bar, canvas and sandbox diagram), so opening one adds a
  * history entry and leaving it goes back to exactly where you were, your diagram's address included.
  */
+import type { View } from "../lib/urlState";
+
 const KEY = "tutorial";
 const OPENED = "livediagrams-tutorial";
 const listeners = new Set<() => void>();
@@ -22,6 +24,7 @@ export const tutorialRoute = {
   },
   open(id: string, replace = false): void {
     const query = new URLSearchParams(window.location.search);
+    if (query.get(KEY) == id) return;
     query.set(KEY, id);
     window.history[replace ? "replaceState" : "pushState"](
       replace ? window.history.state : { [OPENED]: true },
@@ -32,7 +35,12 @@ export const tutorialRoute = {
   },
   /** Leave for a document without dropping in-memory file handles or draft identity. */
   openDiagram(slug: string): void {
-    const query = new URLSearchParams({ view: "canvas", example: slug });
+    tutorialRoute.openView("canvas", slug);
+  },
+  /** App views use the same in-document navigation as a saved copy or example. */
+  openView(view: View, slug?: string): void {
+    const query = new URLSearchParams({ view });
+    if (view === "canvas" && slug) query.set("example", slug);
     window.history.pushState(null, "", `${window.location.pathname}?${query}`);
     emit();
   },

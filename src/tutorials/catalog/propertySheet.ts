@@ -1,6 +1,11 @@
 import { msg, t } from "../../i18n";
 import type { Tutorial } from "../types";
 
+const nameGoalWords = () =>
+  t("tutorials.propertySheet.nameGoal", { name: msg("tutorials.propertySheet.paymentsName")() });
+const subtitleGoalWords = () =>
+  t("tutorials.propertySheet.subtitleGoal", { name: msg("tutorials.propertySheet.subtitleValue")() });
+
 export const propertySheet: Tutorial = {
   id: "property-sheet",
   version: 1,
@@ -31,10 +36,10 @@ export const propertySheet: Tutorial = {
     {
       id: "name",
       title: msg("tutorials.propertySheet.nameTitle"),
-      goal: msg("tutorials.propertySheet.nameGoal"),
+      goal: nameGoalWords,
       done: msg("tutorials.propertySheet.nameDone"),
       check: { kind: "label", subject: "api", is: msg("tutorials.propertySheet.paymentsName") },
-      targets: [{ testId: "inspector-field-label", tip: msg("tutorials.propertySheet.nameGoal") }],
+      targets: [{ testId: "inspector-field-label", tip: nameGoalWords }],
       demo: [{ kind: "rename", subject: "api", label: msg("tutorials.propertySheet.paymentsName") }],
       solution: [
         { fill: "inspector-field-label", text: msg("tutorials.propertySheet.paymentsName") },
@@ -45,10 +50,10 @@ export const propertySheet: Tutorial = {
     {
       id: "subtitle",
       title: msg("tutorials.propertySheet.subtitleTitle"),
-      goal: msg("tutorials.propertySheet.subtitleGoal"),
+      goal: subtitleGoalWords,
       done: msg("tutorials.propertySheet.subtitleDone"),
       check: { kind: "field", subject: "api", field: "sublabel", is: msg("tutorials.propertySheet.subtitleValue") },
-      targets: [{ testId: "inspector-field-sublabel", tip: msg("tutorials.propertySheet.subtitleGoal") }],
+      targets: [{ testId: "inspector-field-sublabel", tip: subtitleGoalWords }],
       demo: [{ kind: "field", subject: "api", field: "sublabel", value: msg("tutorials.propertySheet.subtitleValue") }],
       solution: [
         { fill: "inspector-field-sublabel", text: msg("tutorials.propertySheet.subtitleValue") },

@@ -213,11 +213,11 @@ function Running({
       {tutorial.chrome === "app" && !presenting && (
         <TopBar
           view="canvas"
-          onView={(view) => window.location.assign(`?view=${view}`)}
+          onView={tutorialRoute.openView}
           exampleOptions={[{ slug: TUTORIAL_SLUG, title: tutorial.title(), group: "yours" }]}
           example={TUTORIAL_SLUG}
           onExample={noop}
-          onBrowseExamples={() => window.location.assign("?view=canvas")}
+          onBrowseExamples={() => tutorialRoute.openView("canvas")}
           interop={files}
           onPresent={() => setPresenting(true)}
           onNewDiagram={newDiagram}
@@ -264,6 +264,7 @@ function Running({
               initial={start}
               presenting={presenting}
               onExitPresent={() => setPresenting(false)}
+              onTutorials={() => tutorialRoute.openView("tutorials")}
             />
           </Suspense>
         </div>
@@ -281,6 +282,7 @@ function Running({
         onPresent={tutorial.chrome === "app" && !presenting ? () => setPresenting(true) : undefined}
         tutorials={tutorialMetadata.map((x) => ({ id: x.id, title: x.title() }))}
         onOpenTutorial={tutorialRoute.open}
+        onTutorials={() => tutorialRoute.openView("tutorials")}
       />
       {interop.layer}
       {libraryOpen && (
@@ -519,13 +521,13 @@ function Strip({
               {t("tutorials.saveCopy")}
             </button>
             {tutorial.finish.example && (
-              <a
+              <button
                 className="btn"
-                href={`?view=canvas&example=${encodeURIComponent(tutorial.finish.example.slug)}`}
+                onClick={() => tutorialRoute.openDiagram(tutorial.finish.example!.slug)}
                 data-testid="tutorial-example"
               >
                 {tutorial.finish.example.label()}
-              </a>
+              </button>
             )}
             <button
               className={`btn${next ? "" : " btn-primary"}`}

@@ -613,6 +613,7 @@ function MainApp() {
                   focusRequest={exampleFocus?.slug === slug ? exampleFocus.request : undefined}
                   presenting={presenting}
                   onExitPresent={() => setUrl({ present: false })}
+                  onTutorials={() => goTo("tutorials")}
                   start={start}
                   onTitleChange={onTitleChange}
                   copyNotice={copyNotice ? t("fileToast.savedACopyOfValue0ToYour", { value0: copyNotice }) : undefined}

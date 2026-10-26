@@ -129,7 +129,7 @@ function displayKeys(s: Shortcut): string[] {
 }
 
 /** Keyboard cheat sheet, opened with `?`. */
-export function ShortcutsDialog({ onClose }: { onClose: () => void }) {
+export function ShortcutsDialog({ onClose, onTutorials }: { onClose: () => void; onTutorials?: () => void }) {
   useLocale();
   const panel = useRef<HTMLDivElement>(null);
   const backdrop = useRef<HTMLDivElement>(null);
@@ -298,9 +298,18 @@ export function ShortcutsDialog({ onClose }: { onClose: () => void }) {
           </section>
         </div>
         <footer className="dlg-foot">
-          <a href="?view=tutorials" data-testid="shortcuts-tutorials">
-            {t("tutorials.shortcuts")}
-          </a>{" "}
+          {onTutorials && (
+            <button
+              className="link-btn"
+              data-testid="shortcuts-tutorials"
+              onClick={() => {
+                onClose();
+                onTutorials();
+              }}
+            >
+              {t("tutorials.shortcuts")}
+            </button>
+          )}{" "}
           {t("shortcuts.footer")}{" "}
           <a href="privacy.html" target="_blank" rel="noopener" data-testid="privacy-link">
             {t("shortcuts.privacy")}
