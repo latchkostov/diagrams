@@ -167,3 +167,34 @@ never covered by a toast. Under the tutorial coach's dim, toasts stay readable.
 this branch) and `modalLayers` are shared with lazy surfaces, so the bundler emits each as its own
 small preloaded startup chunk. `bundleSplit.build.heavy.test.ts` pins that list, and both were added
 to it deliberately, with reasons. Startup JavaScript stays within budget (see Validation).
+
+### Validation
+
+- **New regressions** (`tests/e2e/toast-interaction.spec.ts`, `data-testid` selectors only):
+  - an engaged toast and an open Interactive HTML export dialog: every export control is a Tab stop,
+    and receives the pointer at its centre (hit-target checked); the toast never takes focus, and
+    keeps its rectangle;
+  - a dialog's own feedback, copied (`status`, polite) and refused (`alert`, assertive): visible,
+    beside and never over the panel, in the dialog's Tab cycle; Dismiss keeps the dialog's keyboard;
+  - engaged feedback stays put while the next one waits;
+  - a press-retained Undo goes stale under a dialog, and the next change's Undo reverses only it;
+  - Escape from a palette opened on a focused toast hands the keyboard back to it;
+  - at 900, 420 and 340 px tall windows, every dialog control keeps its place (below, inside, inside);
+  - unit: layer routing, survivors returning to the page, snapshot identity, pending Undo, entry ids
+    kept through merges.
+- **Mutations.** Routing feedback to the page layer fails 3 layering tests. Raising page toasts to
+  the task layer without step-back fails 5, including the palette export test.
+- **The original flakes.** `routing.spec.ts:121` (master's :120) and `record.spec.ts:206` (:205),
+  in Linux, 30 repeats, 6 workers on 4 CPUs: 60 passed, 0 failed. The toast spec, 5 repeats on the
+  same load: 130 passed. On 2 CPUs, 15 of 60 failed. Every failure was setup under starvation, never
+  a toast: the route table's chunk was still loading after 10 s, the recording countdown and
+  encoder start were slow, or the 30 s backstop ran out. These are Lane C's documented signatures.
+- **Full local gate.** Lint, types, format, i18n and skill pass. Unit: 12,799 passed. Heavy: 947
+  passed. Build and size pass. Parity: 3,178 goldens unchanged, browser tier included. E2E: 2,657
+  passed and 2 failed (`lazy-loading.spec.ts:137`, `routing.spec.ts:201`). Both passed 50 of 50
+  when repeated. A second full E2E run on the same commit passed 2,655 and failed 4 different
+  tests. Three of `drawing-basics` failed on browser-context teardown after a browser crash, and
+  `tutorials.spec.ts:805` timed out replaying under load. All four passed 260 of 260 when repeated.
+  No failure recurred across runs, and none involves a toast.
+- **Size.** Entry 109.2 kB gzip of a 123.5 kB budget. Viewer 615.9 kB gzip of 805 kB. Skill ZIP
+  820,827 B, under the 835,000 B cap. No budget was raised.
