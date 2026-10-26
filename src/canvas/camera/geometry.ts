@@ -6,7 +6,7 @@ import { fitAvoiding, panClearOf, panIntoView, type FitOptions, type Viewport } 
 import { intersects, union, type Rect } from "../geometry/rect";
 import { overlayRects } from "../useOverlayFit";
 import type { DiagramFlowEdge, FlowNode } from "../types";
-import { oneHop } from "./frameEdges";
+import { visibleCanvas, oneHop } from "./frameEdges";
 
 // The camera's geometry, as pure reads of React Flow's state and the pane: where a fit, a reveal or a
 // centring would put the view. Nothing here moves it (controller.ts does, through its port).
@@ -68,11 +68,18 @@ export function overlayFitViewport(
   o: FitOptions & { only?: ReadonlySet<string>; onlyEdges?: ReadonlySet<string> },
 ): Viewport | null {
   if (!root.clientWidth || !root.clientHeight) return null;
+  const visible = visibleCanvas(root);
+  const insets = {
+    top: Math.max(o.insets?.top ?? 0, visible.y),
+    left: Math.max(o.insets?.left ?? 0, visible.x),
+    right: Math.max(o.insets?.right ?? 0, root.clientWidth - visible.x - visible.width),
+    bottom: Math.max(o.insets?.bottom ?? 0, root.clientHeight - visible.y - visible.height),
+  };
   return fitAvoiding(
     contentRects(s, routing, o.only, o.onlyEdges),
     { width: root.clientWidth, height: root.clientHeight },
     overlayRects(root),
-    { margin: 32, minZoom: s.minZoom, ...o },
+    { margin: 32, minZoom: s.minZoom, ...o, insets },
   );
 }
 
@@ -150,16 +157,22 @@ export function followViewport(
   const centre = pairFits ? bounds : subjectBox;
   const cx = centre.x + centre.width / 2,
     cy = centre.y + centre.height / 2;
-  const right = 52 + (room.panel || room.card ? Math.min(440, Math.max(0, root.clientWidth - 220)) : 0);
-  const nudge = phone && !pairFits ? (cx - bounds.x > bounds.x + bounds.width - cx ? 18 : -18) : 0;
-  const x = (52 + root.clientWidth - right) / 2 + nudge,
-    y = root.clientHeight * (phone ? 0.4 : 0.5);
+  const frame = visibleCanvas(root);
+  const right =
+    root.clientWidth -
+    frame.x -
+    frame.width +
+    52 +
+    (room.panel || room.card ? Math.min(440, Math.max(0, root.clientWidth - 220)) : 0);
+  const nudge = phone && !pairFits ? (cx - bounds.x > bounds.x + bounds.width - cx ? 62 : -18) : 0;
+  const x = (frame.x + 52 + root.clientWidth - right) / 2 + nudge,
+    y = frame.y + frame.height * (phone ? 0.4 : 0.5);
   const maximum = Math.min(
     (root.ownerDocument?.defaultView?.innerWidth ?? root.clientWidth) < 640 ? 1.1 : 1,
     (x - 52) / Math.max(1, cx - bounds.x),
     (root.clientWidth - right - x) / Math.max(1, bounds.x + bounds.width - cx),
     (y - 52) / Math.max(1, cy - bounds.y),
-    (root.clientHeight - 52 - y) / Math.max(1, bounds.y + bounds.height - cy),
+    (frame.y + frame.height - 52 - y) / Math.max(1, bounds.y + bounds.height - cy),
   );
   const zoom = Math.max(phone ? 0.92 : 0.9, maximum);
   return { x: x - cx * zoom, y: y - cy * zoom, zoom };
@@ -423,7 +436,12 @@ export function liveFitViewport(
   const statusRect = status?.getBoundingClientRect();
   const paneTop = s.domNode?.getBoundingClientRect().top ?? 0;
   // Until step 6 docks the strip, a wrapped floating callout can be taller than 60px.
-  const insets = { ...LIVE_FIT.insets, top: statusRect?.height ? Math.max(60, statusRect.bottom - paneTop + 16) : 32 };
+  const visible = s.domNode?.clientWidth ? visibleCanvas(s.domNode) : null;
+  const insets = {
+    ...LIVE_FIT.insets,
+    top: statusRect?.height ? Math.max(60, statusRect.bottom - paneTop + 16) : 32,
+    bottom: Math.max(LIVE_FIT.insets.bottom, visible ? s.height - visible.y - visible.height + 24 : 0),
+  };
   const items = s.edges.some((e) => e.data?.waypoints?.length) ? contentRects(s, routing) : null;
   if (room.card && !room.panel) {
     const beside = fitBesideCard(s, items ?? nodeRects(s, undefined, true), insets);

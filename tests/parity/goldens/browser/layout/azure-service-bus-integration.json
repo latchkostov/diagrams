@@ -66,7 +66,7 @@
       "group:azure": { "kind": "group", "box": "translate(380px, -24px) 3070×656", "text": "Azure · enterprise integration" },
       "partner": { "kind": "node", "box": "translate(40px, 230px) 235×80", "text": "" },
       "apim": { "kind": "node", "box": "translate(415px, 230px) 240×80", "text": "" },
-      "ingest": { "kind": "node", "box": "translate(795px, 230px) 239×80", "text": "Invoice intake Validate · normalize · publish" },
+      "ingest": { "kind": "node", "box": "translate(795px, 230px) 239×80", "text": "" },
       "invoices": { "kind": "node", "box": "translate(1190px, 170px) 260×80", "text": "invoices InvoiceAccepted · session: tenantId" },
       "approval-sub": { "kind": "node", "box": "translate(1606px, 170px) 252×80", "text": "" },
       "posting-sub": { "kind": "node", "box": "translate(1606px, 300px) 260×80", "text": "" },

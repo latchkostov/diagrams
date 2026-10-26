@@ -171,7 +171,7 @@
   display: grid;
   place-items: center;
   border-radius: 50%;
-  background: color-mix(in srgb, var(--status-down) 60%, #000);
+  background: var(--surface-3);
   color: #fff;
   box-shadow:
     0 0 0 3px var(--bg),
@@ -211,7 +211,7 @@
   display: grid;
   place-items: center;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--status-down) 60%, #000);
+  background: var(--surface-3);
   color: #fff;
   font-size: 10.5px;
   font-weight: 700;
@@ -499,7 +499,7 @@
    metric badges, instead of on top of everything. A dot passing behind a pill still shows, dimmed,
    on the overlay canvas (particleRenderer.ts). A hovered, truncated label expands above its row. */
 .react-flow[data-live] .react-flow__edgelabel-renderer {
-  z-index: 1;
+  z-index: 4;
 }
 
 /* Live layers inside the viewport, bottom to top: edges, nodes, particles (.lv-canvas), edge label
@@ -3766,6 +3766,7 @@ details[open] > summary .lv-disclosure-chevron {
   padding-inline: 9px;
 }
 .lv-follow-dot {
+  display: none;
   width: 7px;
   height: 7px;
   border-radius: 50%;
@@ -4149,4 +4150,78 @@ details[open] > summary .lv-disclosure-chevron {
 }
 .dock-live-status .hover-status {
   white-space: nowrap;
+}
+
+/* The legend occupies a reserved bottom row; the frame and camera measure its top edge. */
+.canvas-wrap:has(.live-route-legend) {
+  --legend-height: 40px;
+}
+.live-route-legend {
+  inset: auto 0 0;
+  max-width: none;
+  height: var(--legend-height, 40px);
+  padding: 6px 100px 6px 12px;
+  border-radius: 0;
+  border-inline: 0;
+  background: var(--board);
+}
+.canvas-wrap:has(.live-route-legend) .canvas-credit.is-live {
+  bottom: 11px;
+}
+.canvas-wrap:has(.live-route-legend) .react-flow__renderer {
+  clip-path: inset(0 0 var(--legend-height) 0);
+}
+.dock-live-status {
+  flex: none;
+  padding-inline-end: 6px;
+}
+.dock-live-status .hover-status {
+  padding-inline: 8px;
+}
+.lv-alert {
+  font-size: 12px;
+}
+.react-flow[data-live] .grp {
+  background: color-mix(in oklab, var(--tone) 2%, var(--board));
+  background-image: none;
+}
+[data-detail-view="follow"] .grp {
+  border-color: transparent;
+}
+[data-detail-far] .lv-node {
+  visibility: hidden !important;
+}
+[data-detail-far] .react-flow__edge .fe-path {
+  opacity: 0.7;
+}
+[data-detail-far] .react-flow__edge[data-live-main] .fe-path {
+  opacity: 1;
+  stroke: var(--text-2);
+}
+@media (max-width: 639px) {
+  .lv-note.is-docked .lv-note-expand,
+  .lv-note.is-docked .lv-note-details,
+  .lv-note-navigation button {
+    min-height: 44px;
+  }
+  .lv-note-scrim {
+    z-index: 5;
+    background: rgb(12 14 18 / 30%);
+  }
+  [data-theme="dark"] .lv-note-scrim {
+    background: rgb(0 0 0 / 27%);
+  }
+}
+
+.dock-live-status .hover-status {
+  max-width: none;
+}
+
+.react-flow[data-live-spotlight] .react-flow__edge[data-live-near] .fe-path.react-flow__edge-path {
+  stroke: var(--text);
+  stroke-width: 3px;
+}
+
+.react-flow[data-live-spotlight] .react-flow__edge[data-live-near] .fe-dep .fe-path {
+  stroke-dasharray: 2 1;
 }

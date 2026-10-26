@@ -157,11 +157,11 @@ export function NoteCallout({
   const holes = hudBox
     ? [
         ...(pane?.parentElement?.querySelectorAll<HTMLElement>(
-          '.react-flow__node-diagram:not([data-live-dim]):not([data-detail-hidden]), [data-testid^="focus-offscreen-"]',
+          ".react-flow__node-diagram:not([data-live-dim]):not([data-detail-hidden])",
         ) ?? []),
       ].map((el) => {
         const r = el.getBoundingClientRect();
-        return { x: r.left - hudBox.left - 8, y: r.top - hudBox.top - 8, width: r.width + 16, height: r.height + 16 };
+        return { x: r.left - hudBox.left - 2, y: r.top - hudBox.top - 2, width: r.width + 4, height: r.height + 4 };
       })
     : [];
 
@@ -185,7 +185,7 @@ export function NoteCallout({
                 >
                   <rect width={hudBox?.width ?? 0} height={hudBox?.height ?? 0} fill="white" />
                   {holes.map((rect, index) => (
-                    <rect key={index} {...rect} fill="black" />
+                    <rect key={index} {...rect} rx={12 * zoom} fill="black" />
                   ))}
                 </mask>
               </defs>

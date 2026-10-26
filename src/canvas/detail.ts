@@ -14,3 +14,8 @@ export function textDetail(font: number, zoom: number, active: boolean, view: De
 export function drawTile(height: number, zoom: number, narrated: boolean) {
   return narrated || height * zoom >= 12;
 }
+
+/** A selected subset panned into view is Focus even when the preceding whole fit was Overview. */
+export function frameView(view: DetailView, selected: number, outside: boolean): DetailView {
+  return view === "overview" && selected === 1 && outside ? "focus" : view;
+}

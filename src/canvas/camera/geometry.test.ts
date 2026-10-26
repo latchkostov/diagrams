@@ -186,4 +186,22 @@ it("phone Follow keeps its .92 floor and places the subject at forty percent hei
   expect(view.zoom).toBe(0.92);
   expect(view.y + 40 * view.zoom).toBeCloseTo(548 * 0.4);
   expect(view.x + 90 * view.zoom).toBe(177);
+  const incoming = followViewport(root, workbenchState(6000), ["a", "b"], "b")!;
+  expect(incoming.x + 6090 * incoming.zoom).toBe(257);
+});
+
+it("Overview excludes the reserved legend from its fitted canvas", () => {
+  const root = {
+    ...workbenchRoot,
+    ownerDocument: {
+      querySelector: (selector: string) =>
+        selector.includes("live-route-legend") ? { getBoundingClientRect: () => ({ top: 720 }) } : null,
+    },
+  } as unknown as HTMLElement;
+  const s = workbenchState();
+  s.nodeLookup.get("b")!.internals.positionAbsolute.y = 600;
+  vi.mocked(selectRoutes).mockReturnValue(new Map());
+  const view = overlayFitViewport(root, s, { style: "straight", direction: "LR" }, { margin: 32, maxZoom: 10 })!;
+  expect(view.y + 680 * view.zoom).toBeLessThanOrEqual(720 - 32);
+  expect(view.y).toBeGreaterThanOrEqual(32);
 });

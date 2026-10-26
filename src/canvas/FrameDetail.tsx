@@ -10,6 +10,7 @@ import {
   edgeInFrame,
   frameCrossing,
   innerFrame,
+  visibleCanvas,
   oneHop,
   placeFrameLabel,
   stackPins,
@@ -17,7 +18,7 @@ import {
   type FramePin,
 } from "./camera/frameEdges";
 import type { Rect } from "./geometry/rect";
-import { drawTile, FAR_ZOOM, textDetail } from "./detail";
+import { drawTile, FAR_ZOOM, textDetail, frameView } from "./detail";
 import { t, useLocale } from "../i18n";
 import "../styles/canvas/detail.css";
 
@@ -60,15 +61,35 @@ export const FrameDetail = memo(
         const s = store.getState();
         const [tx, ty, zoom] = s.transform;
         const edges = new Map(s.edges.map((e) => [e.id, e]));
-        const view = camera.state.view;
+        const requestedView = camera.state.view;
         const far = zoom < FAR_ZOOM;
         const origin = root.getBoundingClientRect();
+        const phone = window.innerWidth < 640;
         if (!origin.width || !origin.height) return;
-        const frameBox = { x: 0, y: 0, width: origin.width, height: origin.height };
+        const frameBox = visibleCanvas(root);
+        const view = frameView(
+          requestedView,
+          camera.state.mode === "edit" ? s.nodes.filter((n) => n.selected).length : 0,
+          s.nodes.some((n) => n.selected && n.type === "diagram") &&
+            [...s.nodeLookup.values()].some(
+              (n) =>
+                n.type === "diagram" &&
+                !n.hidden &&
+                !contains(frameBox, {
+                  x: n.internals.positionAbsolute.x * zoom + tx,
+                  y: n.internals.positionAbsolute.y * zoom + ty,
+                  width: (n.measured.width ?? 0) * zoom,
+                  height: (n.measured.height ?? 0) * zoom,
+                }),
+            ),
+        );
         const cropped = view === "focus" || view === "follow";
         const dock = !!root.closest(".canvas-column")?.parentElement?.querySelector('[data-testid="inspector"]');
         const rtl = getComputedStyle(root).direction === "rtl";
-        const inner = cropped ? innerFrame(origin.width, origin.height, view, dock, rtl) : frameBox;
+        const padding = cropped
+          ? innerFrame(frameBox.width, frameBox.height, view, dock, rtl, phone)
+          : { x: 0, y: 0, width: frameBox.width, height: frameBox.height };
+        const inner = { ...padding, x: padding.x + frameBox.x, y: padding.y + frameBox.y };
         const selected = new Set(s.nodes.filter((n) => n.selected && n.type !== "boundary").map((n) => n.id));
         const lit = new Set(camera.state.live.focus);
         if (root.querySelector("[data-live-spotlight]"))
@@ -124,7 +145,6 @@ export const FrameDetail = memo(
             el.toggleAttribute("data-detail-expanded", expanded);
             remeasure.push(id);
           }
-          const title = el.querySelector<HTMLElement>(".nb-label, .nb-title, .grp-label");
           const body = el.querySelector<HTMLElement>(".nb-card, .nb-compact");
           if (body && n.type === "diagram") {
             const key = n.data;
@@ -139,10 +159,16 @@ export const FrameDetail = memo(
             body.style.width = `${cardWidths.get(body)!.width}px`;
           }
           const card = box(el, origin);
-          const titleBox = title ? box(title, origin) : card;
-          const painted = !cropped || contains(inner, titleBox);
-          const tile = n.type !== "diagram" || drawTile(card.height, 1, lit.has(id));
-          const hidden = n.type === "diagram" && ((!painted && cropped) || (far && !tile));
+          const painted = !cropped || contains(inner, { ...card, y: card.y - 12, height: card.height + 44 });
+          const tile = n.type !== "diagram" || drawTile(card.height, 1, false);
+          const hidden =
+            (n.type === "diagram" && ((!painted && cropped) || (far && !tile))) ||
+            (n.type === "annotation" &&
+              camera.state.mode === "live" &&
+              far &&
+              "kind" in n.data &&
+              n.data.kind === "note") ||
+            (n.type === "boundary" && camera.state.mode === "live" && cropped && !contains(inner, card));
           setHidden(el, hidden);
           states.set(id, hidden ? (pinnedSet.has(id) ? "pinned" : "out") : "in");
           if (n.type === "diagram") {
@@ -196,17 +222,18 @@ export const FrameDetail = memo(
               });
           }
         // Keep inline-end pins above the credit; stack from their own route crossing toward the centre.
-        const phone = window.innerWidth < 640;
         const pins = stackPins(
           candidates,
           {
             ...inner,
             ...(phone ? { x: 8, width: origin.width - 16 } : {}),
-            height: Math.max(28, inner.height - (view === "follow" ? 14 : 0)),
+            height: inner.height,
           },
           phone ? 44 : 28,
           blockers,
         );
+        const retained = new Set(pins.map((pin) => pin.id));
+        for (const [id, state] of states) if (state === "pinned" && !retained.has(id)) states.set(id, "out");
         blockers.push(...pins.map((pin) => pin.box));
         for (const el of root.querySelectorAll<HTMLElement | SVGElement>(".react-flow__edge[data-id]")) {
           const edge = edges.get(el.dataset.id ?? "");
@@ -220,6 +247,38 @@ export const FrameDetail = memo(
           );
           setHidden(el, cropped && !ends.draw);
           el.toggleAttribute("data-detail-no-arrow", cropped && !ends.arrow);
+          const pin = pins.find((p) => (p.id === edge.source || p.id === edge.target) && states.get(p.id) === "pinned");
+          const route = routes.get(edge.id);
+          const stroke = el.querySelector<SVGPathElement>(".fe-path");
+          if (stroke && route) {
+            let path = route.path;
+            if (cropped && pin && ends.draw) {
+              const points = (pin.id === edge.source ? [...route.points].reverse() : route.points).map(screen);
+              const crossing = frameCrossing(points, inner, true);
+              if (crossing) {
+                const kept = [];
+                for (const point of points) {
+                  if (!contains(inner, { ...point, width: 0, height: 0 })) break;
+                  kept.push(point);
+                }
+                const anchor = { x: pin.box.x + pin.box.width / 2, y: pin.box.y + pin.box.height / 2 };
+                if (pin.side === "left") anchor.x = pin.box.x + pin.box.width;
+                if (pin.side === "right") anchor.x = pin.box.x;
+                if (pin.side === "top") anchor.y = pin.box.y + pin.box.height;
+                if (pin.side === "bottom") anchor.y = pin.box.y;
+                const corner =
+                  pin.side === "left" || pin.side === "right"
+                    ? { x: anchor.x, y: kept.at(-1)?.y ?? anchor.y }
+                    : { x: kept.at(-1)?.x ?? anchor.x, y: anchor.y };
+                const segment = [...kept, corner, anchor];
+                if (pin.id === edge.source) segment.reverse();
+                path = segment.map((p, i) => `${i ? "L" : "M"}${(p.x - tx) / zoom},${(p.y - ty) / zoom}`).join(" ");
+                el.removeAttribute("data-detail-no-arrow");
+              }
+            }
+            stroke.setAttribute("d", path);
+          }
+
           const label = root.querySelector<HTMLElement>(`[data-testid="edge-label-${CSS.escape(edge.id)}"]`);
           if (!label) continue;
           label.style.removeProperty("translate");
@@ -227,7 +286,14 @@ export const FrameDetail = memo(
           const path = routes.get(edge.id)?.points;
           const placed =
             cropped && ends.pill && path?.length ? placeFrameLabel(b, path.map(screen), inner, blockers) : b;
-          const hidden = far || (cropped && (!ends.pill || cullLabel(placed ?? b, frameBox, inner) || !placed));
+          const hidden =
+            far ||
+            (cropped &&
+              (!ends.pill ||
+                (pin && label.classList.contains("fe-chip")) ||
+                (view === "follow" && lit.size > 0 && !near) ||
+                cullLabel(placed ?? b, frameBox, inner) ||
+                !placed));
           setHidden(label, hidden);
           if (!hidden && placed) {
             if (cropped && (Math.abs(placed.x - b.x) > 0.01 || Math.abs(placed.y - b.y) > 0.01))
@@ -247,8 +313,18 @@ export const FrameDetail = memo(
           );
           const b = box(pill, origin);
           const path = routes.get(edge.id)?.points;
-          const placed =
-            cropped && ends.pill && path?.length ? placeFrameLabel(b, path.map(screen), inner, blockers) : b;
+          let placed = cropped && ends.pill && path?.length ? placeFrameLabel(b, path.map(screen), inner, blockers) : b;
+          if (phone && cropped && ends.pill) {
+            const subject = cards.get(states.get(edge.source) === "in" ? edge.source : edge.target);
+            if (subject) {
+              const card = box(subject, origin);
+              placed = {
+                ...b,
+                x: Math.max(inner.x, Math.min(card.x, inner.x + inner.width - b.width)),
+                y: card.y - b.height - 18,
+              };
+            }
+          }
           const hidden = far || (cropped && (!ends.pill || !placed || !contains(inner, placed)));
           setHidden(pill, hidden);
           if (!hidden && placed) {
@@ -259,7 +335,7 @@ export const FrameDetail = memo(
         for (const badge of root.querySelectorAll<HTMLElement>('[data-testid^="node-badge-"], [data-node-id]')) {
           const id = badge.dataset.nodeId ?? badge.dataset.testid?.slice("node-badge-".length);
           if (id && states.has(id)) {
-            setHidden(badge, !lit.has(id) && (states.get(id) !== "in" || far));
+            setHidden(badge, states.get(id) !== "in" || far);
             badge.toggleAttribute("data-detail-dim", !!lit.size && !active.has(id));
           }
         }

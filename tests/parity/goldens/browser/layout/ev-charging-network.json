@@ -190,7 +190,7 @@
       "apim": { "kind": "node", "box": "translate(1940px, 780px) 220×72", "text": "Driver API API Management" },
       "sessions-api": { "kind": "node", "box": "translate(2360px, 780px) 220×72", "text": "Sessions API start, stop, receipts" },
       "metering": { "kind": "node", "box": "translate(2360px, 920px) 220×72", "text": "Metering kWh per session" },
-      "sessions-db": { "kind": "node", "box": "translate(2780px, 780px) 220×72", "text": "Sessions Azure SQL" },
+      "sessions-db": { "kind": "node", "box": "translate(2780px, 780px) 220×72", "text": "" },
       "billing": { "kind": "node", "box": "translate(2780px, 920px) 220×72", "text": "" },
       "cmd-q": { "kind": "node", "box": "translate(2780px, 1180px) 220×72", "text": "" },
       "cmd-dlq": { "kind": "node", "box": "translate(2780px, 1320px) 220×72", "text": "" },
@@ -298,7 +298,7 @@
       "ingress--mi": { "style": "transform: translate(-50%, -50%) translate(2921.38px, 1086.75px); --fe-w: 20px; --fe-h: 20px;", "text": "" },
       "commands--mi": { "style": "transform: translate(-50%, -50%) translate(2848.25px, 516px); --fe-w: 20px; --fe-h: 20px;", "text": "" },
       "ocpp--insights": { "style": "transform: translate(-50%, -50%) translate(3447.75px, 1049px); --fe-w: 20px; --fe-h: 20px;", "text": "" },
-      "sessions-api--insights": { "style": "transform: translate(-50%, -50%) translate(3334.75px, 1060px); --fe-w: 20px; --fe-h: 20px; translate: -665.25px -39.55px;", "text": "" }
+      "sessions-api--insights": { "style": "transform: translate(-50%, -50%) translate(3334.75px, 1060px); --fe-w: 20px; --fe-h: 20px;", "text": "" }
     }
   }
 }

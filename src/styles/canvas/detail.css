@@ -13,17 +13,12 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
-[data-detail-view="follow"] .react-flow__renderer {
+[data-detail-view="follow"] .react-flow__renderer,
+[data-detail-view="focus"] .react-flow__renderer {
   mask-image:
     linear-gradient(to right, transparent, #000 28px, #000 calc(100% - 28px), transparent),
     linear-gradient(to bottom, transparent, #000 28px, #000 calc(100% - 28px), transparent);
   mask-composite: intersect;
-}
-[data-detail-view="focus"][data-detail-dock] .react-flow__renderer {
-  mask-image: linear-gradient(to right, #000, #000 calc(100% - 40px), transparent);
-}
-[dir="rtl"] [data-detail-view="focus"][data-detail-dock] .react-flow__renderer {
-  mask-image: linear-gradient(to left, #000, #000 calc(100% - 40px), transparent);
 }
 .frame-detail {
   position: absolute;
@@ -96,22 +91,23 @@
   font-size: 12px;
 }
 [data-detail-far] .react-flow__node-diagram .nb {
-  background: transparent;
-  border-color: transparent;
+  background: var(--surface-3);
+  border-color: var(--dim-stroke);
+  outline: calc(1px / var(--rf-zoom)) solid var(--dim-stroke);
   box-shadow: none;
 }
 [data-detail-far] .nb-tile {
-  border: calc(1px / var(--rf-zoom)) solid var(--dim-stroke);
+  outline: calc(1px / var(--rf-zoom)) solid var(--dim-stroke);
   opacity: 1;
 }
 [data-detail-far] .grp {
   border-color: var(--dim-stroke);
-  border-width: calc(1px / var(--rf-zoom));
+  outline: calc(1px / var(--rf-zoom)) solid var(--dim-stroke);
 }
 [data-detail-far] .react-flow__edge .fe-path {
   stroke: var(--dim-stroke);
   stroke-width: calc(1px / var(--rf-zoom));
-  opacity: 0.35;
+  opacity: 0.7;
 }
 [data-detail-far] .react-flow__edge[data-live-near] .fe-path {
   stroke-width: calc(1.5px / var(--rf-zoom));
@@ -119,6 +115,30 @@
 }
 
 [data-detail-far] .react-flow__edge[data-live-main] .fe-path {
+  stroke-width: calc(1.5px / var(--rf-zoom));
+  opacity: 1;
+}
+
+[data-detail-far] .react-flow__node-diagram .nb-tile {
+  visibility: hidden;
+}
+[data-detail-far] .react-flow__node-diagram[data-live-dim] .nb {
+  border-color: var(--dim-stroke);
+  background: var(--surface-3);
+}
+[data-detail-far] .react-flow__edge[data-live-near] .fe-path,
+[data-detail-far] .react-flow__edge[data-live-main] .fe-path {
+  stroke: var(--text-2);
+  opacity: 1;
+}
+
+[data-detail-far] .react-flow[data-live-spotlight] .react-flow__node-diagram[data-live-dim] .nb {
+  outline: calc(1px / var(--rf-zoom)) solid var(--dim-stroke);
+  background: var(--surface-3);
+}
+[data-detail-far] .react-flow[data-live] .react-flow__edge[data-live-main] .fe-path,
+[data-detail-far] .react-flow[data-live] .react-flow__edge[data-live-near] .fe-path {
+  stroke: var(--text-2);
   stroke-width: calc(1.5px / var(--rf-zoom));
   opacity: 1;
 }

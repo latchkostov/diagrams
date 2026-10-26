@@ -118,7 +118,8 @@ export function SheetResizeHandle({ onResize }: { onResize?: () => void }) {
     const observer = new ResizeObserver(resize);
     observer.observe(host);
     for (const child of host.children)
-      if (child !== sheet && !child.classList.contains("canvas-wrap")) observer.observe(child);
+      if (child !== sheet && !child.classList.contains("canvas-wrap") && !child.classList.contains("canvas-column"))
+        observer.observe(child);
     window.addEventListener("resize", resize);
     handle.addEventListener("pointerdown", down);
     handle.addEventListener("pointermove", move);

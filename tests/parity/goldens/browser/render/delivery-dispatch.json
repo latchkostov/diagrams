@@ -107,9 +107,9 @@
   "labels": {
     "diners--glb": { "style": "transform: translate(-50%, -50%) translate(276px, 396px); --fe-w: 54.7px; --fe-h: 22px;", "text": "HTTPS" },
     "restaurants--glb": { "style": "transform: translate(-50%, -50%) translate(276px, 596px); --fe-w: 54.7px; --fe-h: 22px;", "text": "HTTPS" },
-    "glb--order-api": { "style": "transform: translate(-50%, -50%) translate(826.5px, 376px); --fe-w: 54.21px; --fe-h: 22px;", "text": "Orders" },
-    "glb--restaurant-api": { "style": "transform: translate(-50%, -50%) translate(761.5px, 583px); --fe-w: 51.800000000000004px; --fe-h: 22px;", "text": "Ready" },
-    "glb--menu-api": { "style": "transform: translate(-50%, -50%) translate(829.25px, 516px); --fe-w: 53.6px; --fe-h: 22px;", "text": "Menus" },
+    "glb--order-api": { "style": "transform: translate(-50%, -50%) translate(826.5px, 376px); --fe-w: 54.21px; --fe-h: 22px;", "text": "" },
+    "glb--restaurant-api": { "style": "transform: translate(-50%, -50%) translate(761.5px, 583px); --fe-w: 51.800000000000004px; --fe-h: 22px;", "text": "" },
+    "glb--menu-api": { "style": "transform: translate(-50%, -50%) translate(829.25px, 516px); --fe-w: 53.6px; --fe-h: 22px;", "text": "" },
     "order-api--surge-cache": { "style": "transform: translate(-50%, -50%) translate(1962.75px, 1107px); --fe-w: 80.05000000000001px; --fe-h: 22px;", "text": "" },
     "surge--surge-cache": { "style": "transform: translate(-50%, -50%) translate(2680.5px, 1323px); --fe-w: 57.17999999999999px; --fe-h: 22px;", "text": "" },
     "order-api--stripe": { "style": "transform: translate(-50%, -50%) translate(1738px, 36px); --fe-w: 57.39px; --fe-h: 22px;", "text": "" },

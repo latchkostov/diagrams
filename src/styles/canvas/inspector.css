@@ -17,7 +17,7 @@
   inset-block: 0;
   inset-inline-start: -4px;
   width: 9px;
-  z-index: 6;
+  z-index: 20;
   cursor: col-resize;
   touch-action: none;
   user-select: none;
@@ -967,4 +967,23 @@ button.message-type-chip {
 }
 .dock-tab-count {
   font-size: 11px;
+}
+
+.inspector [data-testid="planning-unavailable"] {
+  margin: 12px 16px;
+  padding: 10px 12px;
+  display: flex;
+  align-items: start;
+  gap: 8px;
+  color: var(--text-2);
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+.insp-body {
+  scroll-padding-block: 16px;
+  scroll-snap-type: y proximity;
+}
+.insp-section {
+  scroll-snap-align: start;
 }

@@ -113,7 +113,7 @@
     "labels": {
       "client-to-order-api": { "style": "transform: translate(-50%, -50%) translate(334px, 356px); --fe-w: 90.3px; --fe-h: 22px;", "text": "" },
       "order-api-to-orders-db": { "style": "transform: translate(-50%, -50%) translate(530px, 430px); --fe-w: 137.86px; --fe-h: 22px;", "text": "" },
-      "orders-db-to-outbox-relay": { "style": "transform: translate(-50%, -50%) translate(681px, 516px); --fe-w: 42.82000000000001px; --fe-h: 22px; translate: 78px 4.00003px;", "text": "WAL" },
+      "orders-db-to-outbox-relay": { "style": "transform: translate(-50%, -50%) translate(681px, 516px); --fe-w: 42.82000000000001px; --fe-h: 22px;", "text": "" },
       "outbox-relay-to-order-events": { "style": "transform: translate(-50%, -50%) translate(910px, 342px); --fe-w: 96.67999999999999px; --fe-h: 22px;", "text": "Outbox events" },
       "order-events-to-saga": { "style": "transform: translate(-50%, -50%) translate(1100px, 278px); --fe-w: 92.47999999999999px; --fe-h: 22px;", "text": "OrderCreated" },
       "order-events-to-notifications": { "style": "transform: translate(-50%, -50%) translate(1100px, 132.5px); --fe-w: 140.96999999999997px; --fe-h: 22px;", "text": "Confirmed · Cancelled" },
@@ -121,7 +121,7 @@
       "saga-to-saga-db": { "style": "transform: translate(-50%, -50%) translate(1292.5px, 421px); --fe-w: 80.72px; --fe-h: 22px;", "text": "Persist step" },
       "saga-to-inventory-cmds": { "style": "transform: translate(-50%, -50%) translate(1469.5px, 271px); --fe-w: 113.85px; --fe-h: 22px;", "text": "Reserve / Release" },
       "saga-to-payment-cmds": { "style": "transform: translate(-50%, -50%) translate(1482.5px, 445px); --fe-w: 106.89999999999999px; --fe-h: 22px;", "text": "ChargePayment" },
-      "saga-to-order-api": { "style": "transform: translate(-50%, -50%) translate(787.5px, 356px); --fe-w: 110.12px; --fe-h: 22px; translate: 172.1px 11px;", "text": "Confirm / Cancel" },
+      "saga-to-order-api": { "style": "transform: translate(-50%, -50%) translate(787.5px, 356px); --fe-w: 110.12px; --fe-h: 22px; translate: 199.65px 11px;", "text": "Confirm / Cancel" },
       "inventory-svc-to-inventory-db": { "style": "transform: translate(-50%, -50%) translate(2234px, 196px); --fe-w: 93.52px; --fe-h: 22px;", "text": "" },
       "inventory-svc-to-saga-replies": { "style": "transform: translate(-50%, -50%) translate(1924px, 276px); --fe-w: 128.01px; --fe-h: 22px;", "text": "" },
       "payment-cmds-to-payments-dlq": { "style": "transform: translate(-50%, -50%) translate(1672px, 575px); --fe-w: 106.71px; --fe-h: 22px; translate: 1.35634e-05px -8.14994px;", "text": "After 5 attempts" },

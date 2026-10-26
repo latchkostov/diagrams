@@ -85,7 +85,7 @@ export function NodePlanning({
     return (
       <div className="planning-explanation">
         <p className="insp-note" data-testid="planning-unavailable">
-          {t("planning.analysisLimit")}
+          <span aria-hidden>ⓘ</span> {t("planning.analysisLimit")}
         </p>
         {observed && (
           <p data-testid="planning-observed">
@@ -105,7 +105,7 @@ export function NodePlanning({
     return (
       <>
         <p className="insp-note" data-testid="planning-unavailable">
-          {t("planning.analysisLimit")}
+          <span aria-hidden>ⓘ</span> {t("planning.analysisLimit")}
         </p>
         {!hover && !configuredOnly && observed && d && (
           <LiveDetails

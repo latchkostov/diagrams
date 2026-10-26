@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { drawTile, textDetail } from "./detail";
+import { drawTile, textDetail, frameView } from "./detail";
 import {
   cullLabel,
+  fitRectangle,
+  visibleCanvas,
   edgeInFrame,
   frameCrossing,
   innerFrame,
@@ -32,9 +34,9 @@ describe("Workbench frame detail", () => {
       for (const b of ["in", "pinned", "out"] as const)
         for (const near of [false, true]) {
           const edge = edgeInFrame(a, b, near);
-          expect(edge.pill).toBe(a === "in" || b === "in");
+          expect(edge.pill).toBe((a === "in" || b === "in") && a !== "out" && b !== "out");
           expect(edge.arrow).toBe(a === "in" && b === "in");
-          expect(edge.draw).toBe(a === "in" || b === "in" || near);
+          expect(edge.draw).toBe(a === "in" || b === "in");
           expect(edge.particles).toBe(edge.draw);
         }
   });
@@ -44,7 +46,7 @@ describe("Workbench frame detail", () => {
     expect(cullLabel({ x: 10, y: 80, width: 20, height: 20 }, frame, inner)).toBe(false);
     expect(cullLabel({ x: 9, y: 80, width: 20, height: 20 }, frame, inner)).toBe(true);
     expect(cullLabel({ x: -1, y: 80, width: 20, height: 20 }, frame, inner)).toBe(true);
-    expect(innerFrame(400, 300, "focus", true, true)).toEqual({ x: 40, y: 0, width: 360, height: 300 });
+    expect(innerFrame(400, 300, "focus", true, true)).toEqual({ x: 28, y: 28, width: 344, height: 244 });
   });
   it("pins at the edge crossing and stacks inward in 34 px steps", () => {
     const inner = { x: 28, y: 28, width: 500, height: 400 };
@@ -155,4 +157,49 @@ it("pins a culled title even when the connection's endpoint is still inside the 
   ];
   expect(frameCrossing(points, frame)).toBeNull();
   expect(frameCrossing(points, frame, true)).toEqual({ point: { x: 476, y: 180 }, side: "right" });
+});
+
+it("fits the visible rectangle between rail, bezel, dock and bottom row", () => {
+  const pane = { x: 0, y: 0, width: 1440, height: 900 };
+  expect(fitRectangle(pane, { left: 72, top: 94, right: 1068, bottom: 735 })).toEqual({
+    x: 72,
+    y: 94,
+    width: 996,
+    height: 641,
+  });
+  expect(
+    fitRectangle({ x: 72, y: 94, width: 996, height: 641 }, { left: 60, top: 50, right: 1440, bottom: 850 }),
+  ).toEqual({ x: 72, y: 94, width: 996, height: 641 });
+  expect(fitRectangle(pane, { left: 1440, right: 72, top: 900, bottom: 50 })).toEqual({
+    x: 1440,
+    y: 900,
+    width: 0,
+    height: 0,
+  });
+});
+
+it("labels a single selected subset as Focus and preserves whole-selection Overview", () => {
+  expect(frameView("overview", 1, true)).toBe("focus");
+  expect(frameView("overview", 1, false)).toBe("overview");
+  expect(frameView("overview", 12, true)).toBe("overview");
+  expect(frameView("custom", 1, true)).toBe("custom");
+});
+
+it("a mirrored rail and dock outside the pane leave the visible canvas intact", () => {
+  const root = {
+    clientWidth: 1068,
+    clientHeight: 800,
+    getBoundingClientRect: () => ({ left: 300, top: 52 }),
+    ownerDocument: {
+      querySelector: (selector: string) => {
+        const rect = selector.includes("tool-rail")
+          ? { left: 1368, right: 1440, top: 52, bottom: 900, width: 72, height: 848 }
+          : selector.includes("inspector")
+            ? { left: 0, right: 300, top: 52, bottom: 900, width: 300, height: 848 }
+            : null;
+        return rect ? { getBoundingClientRect: () => rect } : null;
+      },
+    },
+  } as unknown as HTMLElement;
+  expect(visibleCanvas(root)).toEqual({ x: 0, y: 0, width: 1068, height: 800 });
 });

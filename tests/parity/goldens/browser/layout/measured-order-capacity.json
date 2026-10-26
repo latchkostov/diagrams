@@ -1,6 +1,6 @@
 {
   "autoLayout": {
-    "viewport": "translate(624.921px, -12.0449px) scale(1.10112)",
+    "viewport": "translate(634.921px, -12.0449px) scale(1.10112)",
     "nodes": {
       "orders": { "kind": "node", "box": "translate(40px, 40px) 220×72", "text": "Northwind orders 1 order/s today" },
       "intake": { "kind": "node", "box": "translate(40px, 200px) 236×72", "text": "Order intake Pinned lesson: 1 × 4 / 0.25 s" },
@@ -17,7 +17,7 @@
     }
   },
   "tidy": {
-    "viewport": "translate(624.921px, -12.0449px) scale(1.10112)",
+    "viewport": "translate(634.921px, -12.0449px) scale(1.10112)",
     "nodes": {
       "orders": { "kind": "node", "box": "translate(40px, 40px) 220×72", "text": "Northwind orders 1 order/s today" },
       "intake": { "kind": "node", "box": "translate(40px, 200px) 236×72", "text": "Order intake Pinned lesson: 1 × 4 / 0.25 s" },

@@ -276,7 +276,7 @@
       "media-events--workflow": { "style": "transform: translate(-50%, -50%) translate(2124px, 236px); --fe-w: 108.05px; --fe-h: 22px;", "text": "" },
       "workflow--probe": { "style": "transform: translate(-50%, -50%) translate(2564.5px, 153px); --fe-w: 49.19px; --fe-h: 22px;", "text": "" },
       "workflow--thumbs": { "style": "transform: translate(-50%, -50%) translate(2564px, 236px); --fe-w: 82.03999999999999px; --fe-h: 22px;", "text": "" },
-      "workflow--captions": { "style": "transform: translate(-50%, -50%) translate(2516px, 262px); --fe-w: 75.69px; --fe-h: 22px; translate: 54.0002px 90.4px;", "text": "Transcribe" },
+      "workflow--captions": { "style": "transform: translate(-50%, -50%) translate(2516px, 262px); --fe-w: 75.69px; --fe-h: 22px; translate: 80.5002px 114px;", "text": "Transcribe" },
       "workflow--uhd-q": { "style": "transform: translate(-50%, -50%) translate(2364px, 409px); --fe-w: 69.55px; --fe-h: 22px;", "text": "" },
       "workflow--hd-q": { "style": "transform: translate(-50%, -50%) translate(2445.75px, 395.5px); --fe-w: 71.78999999999999px; --fe-h: 22px;", "text": "" },
       "workflow--audio-q": { "style": "transform: translate(-50%, -50%) translate(2512.5px, 615.917px); --fe-w: 48.99px; --fe-h: 22px;", "text": "" },

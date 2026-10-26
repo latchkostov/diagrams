@@ -10,15 +10,27 @@ export const contains = (outer: Rect, inner: Rect) =>
   inner.x + inner.width <= outer.x + outer.width &&
   inner.y + inner.height <= outer.y + outer.height;
 
-export function innerFrame(width: number, height: number, view: "focus" | "follow", dock: boolean, rtl = false): Rect {
-  if (view === "follow") return { x: 28, y: 28, width: Math.max(0, width - 56), height: Math.max(0, height - 56) };
-  return { x: dock && rtl ? 40 : 0, y: 0, width: Math.max(0, width - (dock ? 40 : 0)), height };
+export function innerFrame(
+  width: number,
+  height: number,
+  _view: "focus" | "follow",
+  _dock: boolean,
+  _rtl = false,
+  phone = false,
+): Rect {
+  const side = phone ? 8 : 28;
+  return { x: side, y: 28, width: Math.max(0, width - side * 2), height: Math.max(0, height - 56) };
 }
 
 /** Round 6: endpoint state, rather than stroke emphasis, decides every part of an edge. */
-export function edgeInFrame(a: FrameEnd, b: FrameEnd, near: boolean) {
+export function edgeInFrame(a: FrameEnd, b: FrameEnd, _near: boolean) {
   const inside = a === "in" || b === "in";
-  return { draw: inside || near, pill: inside, arrow: a === "in" && b === "in", particles: inside || near };
+  return {
+    draw: inside,
+    pill: inside && a !== "out" && b !== "out",
+    arrow: a === "in" && b === "in",
+    particles: inside,
+  };
 }
 
 export function cullLabel(box: Rect, frame: Rect, inner: Rect): boolean {
@@ -171,4 +183,51 @@ export function oneHop(edges: readonly { source: string; target: string }[], ids
       near.add(edge.target);
     }
   return near;
+}
+
+/** Intersect the pane with the docked surfaces, all measured in screen pixels. */
+export function fitRectangle(
+  pane: Rect,
+  limits: { left?: number; top?: number; right?: number; bottom?: number },
+): Rect {
+  const x = Math.max(pane.x, limits.left ?? pane.x);
+  const y = Math.max(pane.y, limits.top ?? pane.y);
+  return {
+    x,
+    y,
+    width: Math.max(0, Math.min(pane.x + pane.width, limits.right ?? Infinity) - x),
+    height: Math.max(0, Math.min(pane.y + pane.height, limits.bottom ?? Infinity) - y),
+  };
+}
+
+export function visibleCanvas(root: HTMLElement): Rect {
+  const pane = root.getBoundingClientRect();
+  const doc = root.ownerDocument;
+  const rect = (id: string) => doc?.querySelector(`[data-testid="${id}"]`)?.getBoundingClientRect();
+  const rail = rect("tool-rail"),
+    dock = rect("inspector"),
+    bezel = rect("canvas-bezel");
+  const legend = rect("live-route-legend");
+  const paneRight = pane.left + root.clientWidth;
+  const sides = [rail, dock].filter((r): r is DOMRect => !!r && r.height > r.width && r.width > 0);
+  // Docked surfaces may sit on either side (RTL) or already be outside the measured pane.
+  // Only their actual overlap can reduce the drawing rectangle.
+  const left = Math.max(
+    pane.left,
+    ...sides.filter((r) => r.left <= pane.left && r.right > pane.left).map((r) => r.right),
+  );
+  const right = Math.min(
+    paneRight,
+    ...sides.filter((r) => r.left < paneRight && r.right >= paneRight).map((r) => r.left),
+  );
+  const frame = fitRectangle(
+    { x: pane.left, y: pane.top, width: root.clientWidth, height: root.clientHeight },
+    {
+      left,
+      right,
+      top: bezel && bezel.top <= pane.top && bezel.bottom > pane.top ? bezel.bottom : undefined,
+      bottom: legend?.top,
+    },
+  );
+  return { ...frame, x: frame.x - pane.left, y: frame.y - pane.top };
 }

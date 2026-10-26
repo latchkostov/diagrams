@@ -164,6 +164,15 @@ for (const theme of ["light", "dark"])
         expect(ratios[Math.floor(ratios.length / 2)], edge).toBeGreaterThanOrEqual(3);
       }
       const titleRatios = await sampledContrast(page, png, dim[0]);
+      await info.attach("png-contrast-measurements", {
+        body: JSON.stringify({
+          theme,
+          large,
+          edges: [...byEdge].map(([edge, values]) => ({ edge, median: values[Math.floor(values.length / 2)] })),
+          titleRatios,
+        }),
+        contentType: "application/json",
+      });
       for (const ratio of titleRatios) expect(ratio, "dimmed title and second-line ink").toBeGreaterThanOrEqual(4.5);
       const sizes = await page
         .getByTestId("canvas-wrap")

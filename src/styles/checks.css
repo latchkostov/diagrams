@@ -615,3 +615,15 @@ div.check-row-head {
 .check-count-ink svg {
   color: var(--tag-line);
 }
+
+.check-marker-group {
+  gap: 8px;
+}
+.check-tag,
+.check-tag span {
+  border-radius: 999px;
+}
+.check-tag {
+  outline: none;
+  box-shadow: inset 0 0 0 1px var(--tag-line);
+}

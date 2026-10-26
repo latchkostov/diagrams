@@ -49,14 +49,14 @@ function marks(
     const node = box(id);
     if (node) {
       if (!node.w) continue;
-      out.push({ id, x: node.x + node.w - 4, y: node.y - 4, severity, title, hot: isHot, ...detail });
+      out.push({ id, x: node.x + node.w - 10, y: node.y + 14, severity, title, hot: isHot, ...detail });
       continue;
     }
     // Below the drawn midpoint, clear of the connection pill. Hidden dependencies have no marker.
     const route = routes.get(id);
     if (!route?.points.length) continue;
     const at = { ...pointAlong(route.points, 0.5).point };
-    at.y += (route.label?.height ?? 0) / 2 + 16 / s.transform[2];
+    at.y += (route.label?.height ?? 0) / 2 + 32 / s.transform[2];
     out.push({ id, x: at.x, y: at.y, severity, title, hot: isHot, ...detail });
   }
   return out;

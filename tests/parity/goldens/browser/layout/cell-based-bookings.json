@@ -396,8 +396,8 @@
       "eu-mailer--email": { "style": "transform: translate(-50%, -50%) translate(4027px, 1793px); --fe-w: 44.88px; --fe-h: 22px;", "text": "" },
       "eu-router--registry": { "style": "transform: translate(-50%, -50%) translate(2874.75px, 310.5px); --fe-w: 81.64px; --fe-h: 22px;", "text": "" },
       "eu-alb--metrics": { "style": "transform: translate(-50%, -50%) translate(2681.75px, 651.5px); --fe-w: 20px; --fe-h: 20px;", "text": "" },
-      "east-c1-db--west-c1-db": { "style": "transform: translate(-50%, -50%) translate(2519.41px, 526.5px); --fe-w: 79.02px; --fe-h: 22px; translate: 4.68553e-05px 437.745px;", "text": "Replication" },
-      "east-c2-db--west-c2-db": { "style": "transform: translate(-50%, -50%) translate(2535.45px, 1016.5px); --fe-w: 79.02px; --fe-h: 22px;", "text": "Replication" },
+      "east-c1-db--west-c1-db": { "style": "transform: translate(-50%, -50%) translate(2519.41px, 526.5px); --fe-w: 79.02px; --fe-h: 22px; translate: 4.68553e-05px 484.036px;", "text": "Replication" },
+      "east-c2-db--west-c2-db": { "style": "transform: translate(-50%, -50%) translate(2535.45px, 1016.5px); --fe-w: 79.02px; --fe-h: 22px; translate: 3.6991e-05px 47.8955px;", "text": "Replication" },
       "pipeline--east-c1-api": { "style": "transform: translate(-50%, -50%) translate(2180px, 282.25px); --fe-w: 94.72px; --fe-h: 22px;", "text": "" }
     }
   }

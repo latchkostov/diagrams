@@ -404,7 +404,7 @@ const NodeBadge = memo(function NodeBadge(props: BadgeProps) {
           title={t("fault.droppedCount", { count: currentHealth(s).dropped })}
           data-testid={`node-loss-${node.id}`}
         >
-          {formatCount(currentHealth(s).dropped)}
+          {`${t("hover.lost")} ${formatCount(currentHealth(s).dropped)}`}
         </div>
       )}
       {problems > 0 && s.status !== "down" && (
@@ -413,7 +413,7 @@ const NodeBadge = memo(function NodeBadge(props: BadgeProps) {
           title={t("threads.lostCount", { count: problems })}
           data-testid={`node-alert-${node.id}`}
         >
-          {formatCount(problems)}
+          {`${t("hover.lost")} ${formatCount(problems)}`}
         </div>
       )}
 

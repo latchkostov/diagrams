@@ -176,8 +176,8 @@
       "geo-indexer": { "kind": "node", "box": "translate(2260px, 1000px) 220×72", "text": "Geo indexer KEDA on lag" },
       "eta-features": { "kind": "node", "box": "translate(2260px, 1140px) 220×72", "text": "ETA features speed per H3 cell" },
       "tracking": { "kind": "node", "box": "translate(2260px, 1420px) 220×72", "text": "" },
-      "surge": { "kind": "node", "box": "translate(2260px, 1280px) 225×80", "text": "Surge pricing demand vs supply per cell" },
-      "surge-cache": { "kind": "node", "box": "translate(2760px, 1280px) 220×72", "text": "Delivery fees multiplier per H3 cell" },
+      "surge": { "kind": "node", "box": "translate(2260px, 1280px) 225×80", "text": "" },
+      "surge-cache": { "kind": "node", "box": "translate(2760px, 1280px) 220×72", "text": "" },
       "earnings": { "kind": "node", "box": "translate(2260px, 340px) 220×72", "text": "" },
       "earnings-db": { "kind": "node", "box": "translate(2260px, 480px) 220×72", "text": "Earnings ledger Cloud SQL" },
       "geo-index": { "kind": "node", "box": "translate(2760px, 1000px) 220×72", "text": "Geo index couriers by H3 cell" },
@@ -253,8 +253,8 @@
       "glb--order-api": { "style": "transform: translate(-50%, -50%) translate(826.5px, 376px); --fe-w: 54.21px; --fe-h: 22px;", "text": "" },
       "glb--restaurant-api": { "style": "transform: translate(-50%, -50%) translate(761.5px, 583px); --fe-w: 51.800000000000004px; --fe-h: 22px;", "text": "" },
       "glb--menu-api": { "style": "transform: translate(-50%, -50%) translate(829.25px, 516px); --fe-w: 53.6px; --fe-h: 22px;", "text": "" },
-      "order-api--surge-cache": { "style": "transform: translate(-50%, -50%) translate(1962.75px, 1107px); --fe-w: 80.05000000000001px; --fe-h: 22px; translate: 106.05px 5.42535e-05px;", "text": "Delivery fee" },
-      "surge--surge-cache": { "style": "transform: translate(-50%, -50%) translate(2680.5px, 1323px); --fe-w: 57.17999999999999px; --fe-h: 22px;", "text": "Update" },
+      "order-api--surge-cache": { "style": "transform: translate(-50%, -50%) translate(1962.75px, 1107px); --fe-w: 80.05000000000001px; --fe-h: 22px;", "text": "" },
+      "surge--surge-cache": { "style": "transform: translate(-50%, -50%) translate(2680.5px, 1323px); --fe-w: 57.17999999999999px; --fe-h: 22px;", "text": "" },
       "order-api--stripe": { "style": "transform: translate(-50%, -50%) translate(1738px, 36px); --fe-w: 57.39px; --fe-h: 22px;", "text": "" },
       "order-api--order-wf": { "style": "transform: translate(-50%, -50%) translate(1181.5px, 369px); --fe-w: 44.51px; --fe-h: 22px;", "text": "" },
       "order-wf--orders-db": { "style": "transform: translate(-50%, -50%) translate(1456px, 436.25px); --fe-w: 46.459999999999994px; --fe-h: 22px;", "text": "" },
@@ -264,7 +264,7 @@
       "loc-ingest--locations-topic": { "style": "transform: translate(-50%, -50%) translate(1636.5px, 1220px); --fe-w: 92.63999999999999px; --fe-h: 22px;", "text": "" },
       "geo-indexer--geo-index": { "style": "transform: translate(-50%, -50%) translate(2677.75px, 1036px); --fe-w: 67.13px; --fe-h: 22px;", "text": "GEOADD" },
       "eta-features--features": { "style": "transform: translate(-50%, -50%) translate(2634px, 1176px); --fe-w: 57.17999999999999px; --fe-h: 22px;", "text": "Update" },
-      "matcher--geo-index": { "style": "transform: translate(-50%, -50%) translate(2911px, 903px); --fe-w: 103.83999999999999px; --fe-h: 22px; translate: -108px -142.45px;", "text": "Nearby couriers" },
+      "matcher--geo-index": { "style": "transform: translate(-50%, -50%) translate(2911px, 903px); --fe-w: 103.83999999999999px; --fe-h: 22px; translate: -100.9px -81px;", "text": "Nearby couriers" },
       "matcher--eta-model": { "style": "transform: translate(-50%, -50%) translate(2978.75px, 643px); --fe-w: 78.52px; --fe-h: 22px;", "text": "" },
       "matcher--maps": { "style": "transform: translate(-50%, -50%) translate(3024.5px, 333px); --fe-w: 70.77px; --fe-h: 22px;", "text": "" },
       "matcher--offers": { "style": "transform: translate(-50%, -50%) translate(3030px, 706px); --fe-w: 79.97px; --fe-h: 22px;", "text": "" },
@@ -280,7 +280,7 @@
       "matcher--sa": { "style": "transform: translate(-50%, -50%) translate(3475.5px, 1135.5px); --fe-w: 20px; --fe-h: 20px;", "text": "" },
       "order-api--sa": { "style": "transform: translate(-50%, -50%) translate(2240px, 1085px); --fe-w: 20px; --fe-h: 20px;", "text": "" },
       "matcher--grafana": { "style": "transform: translate(-50%, -50%) translate(3446px, 669px); --fe-w: 20px; --fe-h: 20px;", "text": "" },
-      "geo-indexer--grafana": { "style": "transform: translate(-50%, -50%) translate(3267px, 1448px); --fe-w: 20px; --fe-h: 20px; translate: -663px -214px;", "text": "" }
+      "geo-indexer--grafana": { "style": "transform: translate(-50%, -50%) translate(3267px, 1448px); --fe-w: 20px; --fe-h: 20px;", "text": "" }
     }
   }
 }

@@ -12,7 +12,7 @@
     "hq-staff": { "kind": "node", "box": "translate(0px, 0px) 220×72", "text": "HQ staff" },
     "hq-intranet": { "kind": "node", "box": "translate(0px, 140px) 220×72", "text": "HQ intranet" },
     "hq-files": { "kind": "node", "box": "translate(0px, 280px) 220×72", "text": "HQ file shares" },
-    "guests": { "kind": "node", "box": "translate(0px, 420px) 220×72", "text": "Guest Wi-Fi" },
+    "guests": { "kind": "node", "box": "translate(0px, 420px) 220×72", "text": "" },
     "customers": { "kind": "node", "box": "translate(1760px, -360px) 220×72", "text": "" },
     "remote": { "kind": "node", "box": "translate(1760px, -220px) 220×72", "text": "" },
     "access": { "kind": "node", "box": "translate(440px, 210px) 220×72", "text": "Access switches" },
@@ -101,7 +101,7 @@
     "hq-fw--siem": "M1540,253 L1642.8,253 Q1652.8,253 1652.8,263 L1652.8,685.5 Q1652.8,695.5 1662.8,695.5 L4296.5,695.5 Q4306.5,695.5 4306.5,705.5 L4306.5,933 Q4306.5,943 4316.5,943 L4400,943"
   },
   "labels": {
-    "guests--access": { "style": "transform: translate(-50%, -50%) translate(322.5px, 361.5px); --fe-w: 78.76px; --fe-h: 22px;", "text": "Guest SSID" },
+    "guests--access": { "style": "transform: translate(-50%, -50%) translate(322.5px, 361.5px); --fe-w: 78.76px; --fe-h: 22px;", "text": "" },
     "hq-fw--hq-wan": { "style": "transform: translate(-50%, -50%) translate(1608.75px, 239px); --fe-w: 109.86px; --fe-h: 22px;", "text": "" },
     "hq-fw--breakout": { "style": "transform: translate(-50%, -50%) translate(1693.88px, 416px); --fe-w: 72.28px; --fe-h: 38px;", "text": "" },
     "deny-guest-to-dc": { "style": "transform: translate(-50%, -50%) translate(1918px, 43px); --fe-w: 113.83px; --fe-h: 22px;", "text": "" },

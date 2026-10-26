@@ -131,8 +131,8 @@
   "labels": {
     "tv--gateway": { "style": "transform: translate(-50%, -50%) translate(276px, 456px); --fe-w: 54.7px; --fe-h: 22px;", "text": "HTTPS" },
     "phones--gateway": { "style": "transform: translate(-50%, -50%) translate(330px, 619.5px); --fe-w: 54.7px; --fe-h: 22px;", "text": "HTTPS" },
-    "gateway--home-api": { "style": "transform: translate(-50%, -50%) translate(721px, 549px); --fe-w: 50px; --fe-h: 22px;", "text": "Home" },
-    "gateway--collector": { "style": "transform: translate(-50%, -50%) translate(767px, 949.5px); --fe-w: 53.9px; --fe-h: 22px;", "text": "Events" },
+    "gateway--home-api": { "style": "transform: translate(-50%, -50%) translate(721px, 549px); --fe-w: 50px; --fe-h: 22px;", "text": "" },
+    "gateway--collector": { "style": "transform: translate(-50%, -50%) translate(767px, 949.5px); --fe-w: 53.9px; --fe-h: 22px;", "text": "" },
     "home-api--profiles": { "style": "transform: translate(-50%, -50%) translate(1224.5px, 323px); --fe-w: 51.830000000000005px; --fe-h: 22px;", "text": "" },
     "home-api--metadata": { "style": "transform: translate(-50%, -50%) translate(1280.75px, 336px); --fe-w: 46.46px; --fe-h: 22px;", "text": "" },
     "home-api--artwork": { "style": "transform: translate(-50%, -50%) translate(1285.25px, 756px); --fe-w: 60.43px; --fe-h: 22px;", "text": "" },

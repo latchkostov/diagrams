@@ -1,3 +1,4 @@
+import { frameView } from "../detail";
 import { useSyncExternalStore, useId, useLayoutEffect, useRef, useState, type RefObject } from "react";
 import { Background, BackgroundVariant, ControlButton, MiniMap, useStore, type ReactFlowState } from "@xyflow/react";
 import { useCameraController } from "../camera/useCameraCore";
@@ -67,6 +68,28 @@ export function CanvasControls({
   useLocale();
   const camera = useCameraController();
   const view = useSyncExternalStore(camera?.subscribe ?? (() => () => {}), () => camera?.state.view ?? "overview");
+  const displayedView = useStore((s) =>
+    frameView(
+      view,
+      s.nodes.filter((n) => n.selected).length,
+      s.nodes.some((n) => n.selected && n.type === "diagram") &&
+        [...s.nodeLookup.values()].some(
+          (n) =>
+            n.type === "diagram" &&
+            !n.hidden &&
+            (n.internals.positionAbsolute.x * s.transform[2] + s.transform[0] < 0 ||
+              n.internals.positionAbsolute.x * s.transform[2] +
+                s.transform[0] +
+                (n.measured.width ?? 0) * s.transform[2] >
+                s.width ||
+              n.internals.positionAbsolute.y * s.transform[2] + s.transform[1] < 0 ||
+              n.internals.positionAbsolute.y * s.transform[2] +
+                s.transform[1] +
+                (n.measured.height ?? 0) * s.transform[2] >
+                s.height),
+        ),
+    ),
+  );
   const zoom = useStore((s) => s.transform[2]);
   const [collapsed, setCollapsed] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -95,7 +118,7 @@ export function CanvasControls({
           <button
             type="button"
             data-testid="fit-view-button"
-            aria-pressed={view === "overview"}
+            aria-pressed={displayedView === "overview"}
             title={tr("chrome.fitViewValue", { combo: formatCombo(shortcutKeys("fit-view")) })}
             onClick={fit}
           >
@@ -104,7 +127,7 @@ export function CanvasControls({
           <button
             type="button"
             data-testid="view-focus"
-            aria-pressed={view === "focus"}
+            aria-pressed={displayedView === "focus"}
             onClick={() => camera?.dispatch({ type: "view.requested", view: "focus" })}
           >
             {tr("camera.focus")}
@@ -153,7 +176,6 @@ export function CanvasControls({
           >
             <Icon name="chevron-down" size={12} />
           </button>
-          <span data-testid="toolbar-divider-collapse" className="rf-ctrl-sep" />
         </>
       )}
       <ControlButton
