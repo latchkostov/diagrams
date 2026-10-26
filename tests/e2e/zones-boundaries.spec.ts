@@ -360,6 +360,62 @@ test("dragging selected parent and child preserves nesting and undo/redo", async
   expectNoErrors(consoleErrors);
 });
 
+test("Alt-drag remaps a boundary subtree and leaves the original untouched through Undo and Redo", async ({
+  page,
+  consoleErrors,
+}) => {
+  await seed(page, nestedFixture);
+  await page.getByTestId("group-label-grp-core").click();
+  await waitForSelectionSettled(page);
+  await fitDiagram(page);
+  const original = await savedDiagram(page);
+  const handle = await boxOf(page.getByTestId("group-label-grp-core"));
+  const x = handle.x + handle.width / 2;
+  const y = handle.y + handle.height / 2;
+  await page.keyboard.down("Alt");
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await page.mouse.move(x + 120, y + 70, { steps: 10 });
+  await page.mouse.up();
+  await page.keyboard.up("Alt");
+  await waitForHistoryIdle(page);
+  const assertCopy = async () => {
+    const diagram = await savedDiagram(page);
+    const parent = diagram.groups?.find((g) => g.id === "grp-core-1");
+    expect(parent).toBeDefined();
+    const beforeParent = original.groups?.find((g) => g.id === "grp-core");
+    if (!parent || !beforeParent) throw new Error("Missing parent boundary");
+    const dx = parent.x - beforeParent.x;
+    const dy = parent.y - beforeParent.y;
+    expect(dx).toBeGreaterThan(0);
+    expect(dy).toBeGreaterThan(0);
+    for (const key of ["groups", "nodes", "annotations"] as const) {
+      const before = original[key] ?? [];
+      const after = diagram[key] ?? [];
+      expect(after).toHaveLength(before.length * 2);
+      for (const item of before) {
+        expect(after.find((n) => n.id === item.id)).toEqual(item);
+        expect(after.find((n) => n.id === `${item.id}-1`)).toEqual({
+          ...item,
+          id: `${item.id}-1`,
+          x: item.x + dx,
+          y: item.y + dy,
+          ...(item.group ? { group: `${item.group}-1` } : {}),
+        });
+      }
+    }
+  };
+  await expect(assertCopy).toPass();
+  for (const id of ["group-grp-core-1", "group-child-1", "node-member-1", "annotation-note-1"]) {
+    await expect(page.getByTestId(id)).toHaveCount(1);
+  }
+  await page.getByTestId("undo-button").click();
+  await expect.poll(() => savedDiagram(page)).toEqual(original);
+  await page.getByTestId("redo-button").click();
+  await expect(assertCopy).toPass();
+  expectNoErrors(consoleErrors);
+});
+
 test("Tab visits an outer boundary before its child and member", async ({ page, consoleErrors }) => {
   await seed(page, nestedFixture);
   await page.getByTestId("group-label-grp-core").click();
