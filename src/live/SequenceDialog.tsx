@@ -72,15 +72,15 @@ export function SequenceDialog({
 
   const copyMermaid = async () => {
     const ok = await copyText(toMermaid(model));
-    if (ok) toast.success("Copied the sequence diagram as Mermaid.", { inDialog: true });
-    else toast.error("The browser didn't allow copying. Try again, or download the SVG.", { inDialog: true });
+    if (ok) toast.success("Copied the sequence diagram as Mermaid.");
+    else toast.error("The browser didn't allow copying. Try again, or download the SVG.");
   };
   const downloadSvg = () => downloadBlob(new Blob([picture.svg], { type: "image/svg+xml" }), `${file}.svg`);
   const downloadPng = async () => {
     try {
       await downloadDataUrl(await svgToPng(picture.svg, picture.width, picture.height, 2), `${file}.png`);
     } catch {
-      toast.error("Couldn't render the PNG. Download the SVG instead.", { inDialog: true });
+      toast.error("Couldn't render the PNG. Download the SVG instead.");
     }
   };
 

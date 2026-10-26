@@ -3,7 +3,7 @@ import { type DiagramMeta } from "../canvas/convert";
 import type { DiagramFlowEdge, FlowNode } from "../canvas/types";
 import { canRedo, canUndo, present } from "./history";
 import { flushSync } from "react-dom";
-import { toast } from "../interop/ui/toast";
+import { HISTORY_PENDING, toast } from "../interop/ui/toast";
 import { HistoryController } from "./historyController";
 import { selectionOf, snapshotDiagram, withSelection, type FlowSelection } from "./historySelection";
 import type { EditorRoom } from "./room";
@@ -128,11 +128,11 @@ export function useHistory(
   }, [ctl, room]);
 
   useLayoutEffect(() => {
-    const current = () => {
+    /** The entry Undo would reverse; pending while the document is ahead of it (an edit not yet recorded). */
+    const entry = () => {
       const h = ctl.history;
       if (!(ctl.collaborative ? room?.canUndo : canUndo(h))) return undefined;
-      const entry = present(h);
-      return currentKey() === entry.key ? ctl.undoEntryId() : undefined;
+      return currentKey() === present(h).key ? ctl.undoEntryId() : HISTORY_PENDING;
     };
     return toast.bindHistory({
       capture: () => {
@@ -140,9 +140,11 @@ export function useHistory(
         // binding to its unique entry ID (never its reusable merge tag or stack index).
         flushSync(() => {});
         flush();
-        return current();
+        const id = entry();
+        // Still ahead once recorded: no entry this Undo can name.
+        return id === HISTORY_PENDING ? undefined : id;
       },
-      current,
+      current: entry,
     });
   }, [ctl, flush, room, currentKey]);
 

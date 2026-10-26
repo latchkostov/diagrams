@@ -261,40 +261,63 @@ describe("layers: a dialog's feedback, and the page's notifications behind it", 
     toast.contact("focus", true);
     open();
     expect(toast.steppedBack).toBe(true);
-    const copied = toast.success("Copied", { inDialog: true });
+    const copied = toast.success("Copied");
     expect(toast.current?.id).toBe(page);
     expect(toast.layered.map((l) => l.toast.id)).toEqual([copied]);
     expect(toast.layered[0].layer).toBe(modalLayers.top);
   });
 
-  it("is the page's when no dialog is open, or the top modal has no feedback slot", () => {
-    const plain = toast.success("No dialog", { inDialog: true });
+  it("is the page's when no dialog is open, or the top modal has no feedback slot (it then waits)", () => {
+    const plain = toast.success("No dialog");
     expect(toast.current?.id).toBe(plain);
     open(null);
-    const palette = toast.success("Palette", { inDialog: true });
+    const palette = toast.success("Palette");
     expect(toast.current?.id).toBe(palette);
     expect(toast.layered).toEqual([]);
   });
 
-  it("goes when its dialog closes, and the page's notification comes back unchanged", () => {
-    const page = toast.info("Behind");
+  it("returns to the page if it outlives its dialog: latest wins there, and the one it replaces is released once", () => {
+    const released = vi.fn();
+    notify("Behind", { onDismiss: released });
     const close = open();
-    toast.error("Couldn't copy", { inDialog: true });
+    const copied = notify("Couldn't copy", { kind: "error", onDismiss: released });
     close();
     expect(toast.layered).toEqual([]);
     expect(toast.steppedBack).toBe(false);
+    expect(toast.current).toMatchObject({ id: copied, layer: undefined });
+    expect(released).toHaveBeenCalledTimes(1);
+  });
+
+  it("returns behind an engaged page notification, which keeps its place", () => {
+    const page = toast.info("Agent change", { action: { label: "Undo", run: () => {} } });
+    toast.contact("press", true);
+    const close = open();
+    const later = toast.info("Agent change B");
+    close();
     expect(toast.current?.id).toBe(page);
+    toast.contact("press", false);
+    expect(toast.current?.id).toBe(later);
+  });
+
+  it("keeps the layered snapshot while nothing in the layers changes", () => {
+    open();
+    toast.success("Copied");
+    const before = toast.layered;
+    toast.invalidateUndo();
+    expect(toast.layered).toBe(before);
+    toast.info("Agent change");
+    expect(toast.layered).not.toBe(before);
   });
 
   for (const contact of ["pointer", "focus", "press"] as const) {
     it(`holds engaged feedback during ${contact}; the latest waits, then follows the release`, () => {
       open();
-      const first = toast.success("First copy", { inDialog: true });
+      const first = toast.success("First copy");
       toast.contact(contact, true, first);
       expect(toast.engagedFor(first)).toBe(true);
       expect(toast.engaged).toBe(false);
-      toast.success("Second copy", { inDialog: true });
-      const last = toast.success("Third copy", { inDialog: true });
+      toast.success("Second copy");
+      const last = toast.success("Third copy");
       expect(toast.layered.map((l) => l.toast.id)).toEqual([first]);
       if (contact === "press") toast.endPress();
       else toast.contact(contact, false, first);
@@ -304,9 +327,9 @@ describe("layers: a dialog's feedback, and the page's notifications behind it", 
 
   it("dismissing engaged feedback shows the one waiting; a page dismissal of all clears the layer too", () => {
     open();
-    const first = toast.success("First", { inDialog: true });
+    const first = toast.success("First");
     toast.contact("focus", true, first);
-    const second = toast.success("Second", { inDialog: true });
+    const second = toast.success("Second");
     toast.dismiss(first);
     expect(toast.layered.map((l) => l.toast.id)).toEqual([second]);
     expect(toast.engagedFor(second)).toBe(false);
@@ -316,9 +339,9 @@ describe("layers: a dialog's feedback, and the page's notifications behind it", 
 
   it("feedback in an inner dialog belongs to it; the outer dialog keeps its own", () => {
     const outer = open();
-    const a = toast.success("Outer", { inDialog: true });
+    const a = toast.success("Outer");
     const inner = open();
-    const b = toast.success("Inner", { inDialog: true });
+    const b = toast.success("Inner");
     expect(toast.layered.map((l) => l.toast.id)).toEqual([a, b]);
     inner();
     expect(toast.layered.map((l) => l.toast.id)).toEqual([a]);

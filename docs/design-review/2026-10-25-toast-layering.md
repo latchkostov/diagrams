@@ -14,19 +14,19 @@ state was detected with DOM queries and CSS.
 Toasts belong to one of three layers, and every surface fixed over the app takes its z-index
 from one scale (`src/styles/tokens.css`, the `--layer-*` block):
 
-| Layer, lowest first      | z     | Portal                                               | Holds                                                  |
-| ------------------------ | ----- | ---------------------------------------------------- | ------------------------------------------------------ |
-| Shortcuts sheet (modal)  | 150   | body                                                 |                                                        |
-| Command palette (modal)  | 190   | body                                                 |                                                        |
-| Canvas context menu      | 200   | body                                                 |                                                        |
-| Tutorial coach, tip      | 205–6 | body                                                 | (pointer-events none; toasts stay above its dim)       |
-| Inject frame (modal)     | 210   | body                                                 |                                                        |
-| **Page notifications**   | 215   | the page-layer root (`div[data-toast-layer="page"]`) | the one ordinary toast, and one retained engaged toast |
-| Menus (File, Export as…) | 220   | body                                                 | export menu items are above every page toast           |
-| Dialogs (modal)          | 250   | body                                                 | **dialog feedback**, in the dialog's own feedback slot |
-| Drop overlay             | 280   | body                                                 |                                                        |
-| **Task** (export Cancel) | 300   | body                                                 | a task holding page input: progress and Cancel         |
-| Colour picker (modal)    | 1000  | body                                                 |                                                        |
+| Layer, lowest first      | z     | Portal                                               | Holds                                                    |
+| ------------------------ | ----- | ---------------------------------------------------- | -------------------------------------------------------- |
+| Shortcuts sheet (modal)  | 150   | body                                                 |                                                          |
+| Command palette (modal)  | 190   | body                                                 |                                                          |
+| Canvas context menu      | 200   | body                                                 |                                                          |
+| Tutorial coach, tip      | 205–6 | body                                                 | (pointer-events none; toasts stay above its dim)         |
+| Inject frame (modal)     | 210   | body                                                 |                                                          |
+| **Page notifications**   | 215   | the page-layer root (`div[data-toast-layer="page"]`) | the one ordinary toast, and one retained engaged toast   |
+| Menus (File, Export as…) | 220   | body                                                 | export menu items are above every page toast             |
+| Dialogs (modal)          | 250   | body                                                 | **toasts raised while it is open**, in its feedback slot |
+| Drop overlay             | 280   | body                                                 |                                                          |
+| **Task** (export Cancel) | 300   | body                                                 | a task holding page input: progress and Cancel           |
+| Colour picker (modal)    | 1000  | body                                                 |                                                          |
 
 **Page notifications** sit below the dropdown menus (where every export item lives) and dialogs.
 They stay above the tutorial coach's dim, so its toasts remain readable. The canvas context menu
@@ -37,25 +37,23 @@ back_. A notification that is engaged, or that the modal was opened from (its re
 stays mounted: hidden and inert, its rectangle kept, neither expiring nor moving, so the modal can
 hand the keyboard back to it. Any other notification waits in the store, with its Undo binding and
 expiry paused, and is shown and announced afresh when the modal closes. Unmounting rather than
-hiding keeps exactly one toast in front while a dialog shows its own feedback. The page-layer root is a
+hiding keeps exactly one toast in front while a dialog shows its own. The page-layer root is a
 body child, so every modal's existing background sweep (which marks body children inert as it opens
 and restores them as it closes) covers it. That restoration happens in the same synchronous step in
 which the modal returns focus — sometimes to a toast's action, as the palette does. A React-driven
 `inert` would lag that step by a commit, and the focus would be lost. The CSS rule is
 `[data-toast-layer][inert] > .ix-toast`, not a document-wide `:has()`.
 
-**Dialog feedback** is declared at the call site and belongs to the topmost open modal that has a
-feedback slot. The call sites that pass `inDialog: true` are:
-
-- the Share link, Embed code, Paste, Link with password, Sequence diagram and Import report outcomes;
-- Your diagrams' "Duplicated · Open";
-- a lazy part's "couldn't be downloaded · Retry", raised while its own dialog shell is loading.
-
-A deletion's Undo in Your diagrams stays a page notification. It outlives the dialog, and the dialog
-already shows its own Undo row. It renders inside that dialog's panel: inside `aria-modal`, so
-its `status`/`alert` live region is announced, and inside the dialog's Tab cycle. It is placed once,
-before it paints, and again only on a window resize while nothing engages it
-(`feedbackPlacement`):
+**While a dialog is open**, every ordinary toast raised meanwhile belongs to the topmost modal that
+has a feedback slot. This covers the dialog's own outcome (Share link copied, Couldn't copy, a
+refused paste, "Duplicated · Open") and anything else that happens meanwhile: a lazy part's Retry,
+an agent's change with Undo, slow motion failing to download. No call site has to declare it, and
+nothing is hidden behind the dialog. If it is still live when the dialog closes, it returns to the
+page layer, where latest wins as ever. An Undo or a Retry is therefore never lost with the dialog,
+and an action that must wait for the dialog (slow motion's Retry) still can. It renders inside the
+dialog's panel: inside `aria-modal`, so its `status`/`alert` live region is announced, and inside
+the dialog's Tab cycle. It is placed once, before it paints, and again only on a window resize
+while nothing engages it (`feedbackPlacement`):
 
 1. below the panel if the window has room (the usual case);
 2. else (a short window) inside the panel, between body and footer, with the panel's height pinned.
@@ -68,10 +66,8 @@ is the frame's last row, the frame grows downward, and nothing in it moves. With
 
 It never overlaps the panel's controls and never moves under the pointer. Each dialog has its own
 slot with the page's rules: latest wins, an engaged toast holds its place while the next waits, and
-expiry pauses while it is engaged. It is dismissed with the dialog: closing the modal layer drops
-its slot, and `onDismiss` runs once. Background notifications raised while a dialog is open (an
-agent's change, a peer) stay page notifications. They wait behind the dialog with their Undo
-intact, rather than putting a page action inside a modal.
+expiry pauses while it is engaged. A toast that outlives its dialog keeps its id, so its resources
+stay held and `onDismiss` runs exactly once, whenever it is finally removed.
 
 **Tasks** stay on top: a task holds all page input (`src/lib/inputHold.ts`), so only its Cancel can
 be reached. A retained page toast behind a task is hidden and inert, keeping its rectangle, as
@@ -101,8 +97,11 @@ dialog is the modal owner. Feedback is not a surface and does not take an Escape
 - **Raise toasts above dialogs (master's 300).** Feedback is visible, but page notifications
   (with Undo) would cover dialog footers and reach into a modal's Tab order. This is R-2b78e6e85e.
 - **Hide every toast while a modal is open (the attempted fix).** This is R-192cc1420d.
-- **Implicit ownership ("a toast raised while a dialog is open is the dialog's").** An agent's Undo
-  would land inside a modal and close with it, so its Undo would be lost.
+- **Declared ownership (`inDialog` at each dialog's call site), with every other toast stepping
+  back.** This was tried first in this round. The full suite showed what it misses: background
+  outcomes that must be usable while a dialog is open (slow motion's Retry behind Share), and each
+  missed call site silently hid feedback. Raising toasts in the dialog's layer, and returning
+  survivors to the page when it closes, has neither failure.
 - **Insert feedback into the dialog's layout.** It moves the dialog's own buttons (the
   panel re-centres), which is the missed-click defect in a new place. It is used only in the
   pinned-height fallback, where nothing moves.
@@ -112,10 +111,15 @@ dialog is the modal owner. Feedback is not a surface and does not take an Escape
 
 ### Undo binding
 
-Unchanged where a mounted canvas has bound its history. Where none is bound (a harness, a viewer),
-an `undoes` action keeps master's unbound rule instead of becoming permanently inert. It goes when
-anything else undoes or redoes. This fixed `src/live/threadFixes.test.ts`, which failed on the
-branch.
+- **A history is bound.** The toast binds as before, with one correction. "The document is ahead
+  of its history" (an edit not yet recorded, such as a text's growth after it moved clear) is now
+  _pending_, not stale. Invalidation waits. Activation records the pending edit first: if it merged
+  into the same entry, Undo reverses that step, as Ctrl+Z would; if it made a new entry, Undo is
+  stale. Previously the pending window made the Undo permanently unavailable
+  (`round4-polish.spec.ts`, "a text that grows over an edge moves clear, with Undo").
+- **No history is bound** (a harness, a viewer). An `undoes` action keeps master's unbound rule
+  instead of becoming permanently inert: it goes when anything else undoes or redoes. This fixed
+  `src/live/threadFixes.test.ts`, which failed on the branch.
 
 ### Motion
 
@@ -126,7 +130,8 @@ same fade-only entrance with no positional animation. Nothing is positioned by a
 
 No controls, settings or chrome were added; the shortcuts and Share flows read as before. Feedback
 shows next to the dialog that caused it, so the dialog no longer hides its own confirmation. A
-background notification waits behind the dialog and comes back unchanged. Export menu items are
+notification from before the dialog waits behind it and comes back unchanged; one raised during
+the dialog shows beside it and stays on the page afterwards if it is still live. Export menu items are
 never covered by a toast. Under the tutorial coach's dim, toasts stay readable.
 
 ### Code map
@@ -138,8 +143,9 @@ never covered by a toast. Under the tutorial coach's dim, toasts stay readable.
   `src/components/useDialogInteraction.ts:73`, `src/palette/PaletteDialog.tsx:166`,
   `src/live/InjectFrame.tsx:51`, `src/components/ShortcutsDialog.tsx:182`.
 - Feedback slot: `src/interop/ui/Dialog.tsx:72`.
-- Store: `src/interop/ui/toast.ts:114` (layer close drops its slot), `:147` (`inDialog` routing),
-  `:255` (`endPress`), `:272` (`engagedFor`).
+- Store: `src/interop/ui/toast.ts` (`publish`, layer routing in `show`, survivors returned to the page
+  in the `modalLayers.subscribe` handler, pending-aware `invalidateUndo`, `endPress`, `engagedFor`);
+  history side in `src/editor/useHistory.ts` (`entry`, `HISTORY_PENDING`).
 - Toaster: page-layer root `src/interop/ui/Toaster.tsx:32`, dialog feedback `:70`, one-shot
   placement `:155`, Dismiss focus hand-back `:262`; `feedbackPlacement` in `toastStack.ts:43`.
 - CSS: step-back `src/styles/interop.css:217`, task layer `:223`, dialog feedback `:232-248`.

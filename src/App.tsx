@@ -453,8 +453,6 @@ function MainApp() {
         const copy = duplicateLibraryDiagram(target);
         notify(libraryMessages.libraryDuplicated(titleOf(target)), {
           kind: "success",
-          // Its Open belongs to Your diagrams, which stays open (a deletion's Undo outlives it: a page toast).
-          inDialog: true,
           action: {
             label: t("fileDialog.open"),
             run: () => {

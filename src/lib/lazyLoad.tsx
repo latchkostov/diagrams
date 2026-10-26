@@ -35,11 +35,7 @@ export const LOAD_FAILED = "Part of the app couldn't be downloaded. Check your c
 
 /** Says a download failed, in a toast whose Retry runs `retry`: the way back ships with the app, not what failed. */
 export function loadFailed(retry: () => void) {
-  notify(LOAD_FAILED, {
-    kind: "error",
-    action: { label: "Retry", run: retry, testId: "lazy-load-retry" },
-    inDialog: true,
-  });
+  notify(LOAD_FAILED, { kind: "error", action: { label: "Retry", run: retry, testId: "lazy-load-retry" } });
 }
 
 /**

@@ -112,9 +112,8 @@ export function ShareDialog({
 
   const copy = async () => {
     if (!gate(allowed, onClose)) return;
-    if (url && (await copyText(url)))
-      toast.success(t("fileDialog.shareLinkCopiedAnyoneWithTheLink"), { inDialog: true });
-    else toast.error(t("fileDialog.couldntCopyAutomaticallySelectTheLinkAnd"), { inDialog: true });
+    if (url && (await copyText(url))) toast.success(t("fileDialog.shareLinkCopiedAnyoneWithTheLink"));
+    else toast.error(t("fileDialog.couldntCopyAutomaticallySelectTheLinkAnd"));
   };
 
   return (
@@ -397,8 +396,8 @@ export function EmbedDialog({
   const copy = async () => {
     // The host-supplied embed's code holds nothing of the diagram: there's no link to gate.
     if (!host && !gate(allowed, onClose)) return;
-    if (snippet && (await copyText(snippet))) toast.success(t("fileDialog.embedCodeCopied"), { inDialog: true });
-    else toast.error(t("fileDialog.couldntCopyAutomaticallySelectTheCodeAnd"), { inDialog: true });
+    if (snippet && (await copyText(snippet))) toast.success(t("fileDialog.embedCodeCopied"));
+    else toast.error(t("fileDialog.couldntCopyAutomaticallySelectTheCodeAnd"));
   };
 
   // The public embed's two sources, when the diagram is an unedited public example; one source shows no choice.
@@ -626,9 +625,7 @@ export function PasteDialog({ onImport, onClose }: { onImport: (text: string) =>
               onClick={() =>
                 navigator.clipboard
                   .readText()
-                  .then(setText, () =>
-                    toast.error(t("fileDialog.theBrowserDidntAllowReadingTheClipboard"), { inDialog: true }),
-                  )
+                  .then(setText, () => toast.error(t("fileDialog.theBrowserDidntAllowReadingTheClipboard")))
               }
               data-testid="paste-from-clipboard"
             >

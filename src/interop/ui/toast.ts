@@ -4,8 +4,8 @@
 // notification at a time; a task holding page input owns its Cancel until it finishes, and other notifications
 // wait behind it (latest wins, as with ordinary toasts). An engaged toast likewise keeps its action until the
 // pointer, keyboard focus and any press have left. While a modal is open the page's notifications step back (out
-// of reach, expiry paused, rectangle kept); a dialog's own feedback (`inDialog`) shows in that dialog's feedback
-// slot, under the same rules, and goes when the dialog closes.
+// of reach, expiry paused); a notification raised meanwhile shows in that dialog's feedback slot, beside it, under
+// the same rules, and returns to the page if it outlives the dialog.
 
 import { createMachine } from "../../lib/machine";
 import { modalLayers, type ModalLayer } from "../../lib/modalLayers";
@@ -69,19 +69,29 @@ let layered: readonly LayeredToast[] = [];
 let seq = 0;
 const listeners = new Set<() => void>();
 let live = new Map<number, ToastState>();
-let undoHistory: { capture(): object | undefined; current(): object | undefined } | undefined;
+/** The document is ahead of its history (an edit not yet recorded): not a reason to call an Undo stale. */
+export const HISTORY_PENDING = "pending";
+let undoHistory:
+  | {
+      /** Records any pending edit, then the entry Undo would reverse. */
+      capture(): object | undefined;
+      /** The entry Undo would reverse, without recording; HISTORY_PENDING while an edit is unrecorded. */
+      current(): object | undefined | typeof HISTORY_PENDING;
+    }
+  | undefined;
 const emit = () => listeners.forEach((l) => l());
 
-type NoticeOptions = Pick<ToastOptions, "action" | "duration" | "inDialog">;
+type NoticeOptions = Pick<ToastOptions, "action" | "duration">;
 
 interface ToastOptions {
   action?: ToastAction;
   duration?: number;
   blocking?: boolean;
   onDismiss?: () => void;
-  /** Feedback from the topmost open dialog (a copy confirmation): shown and announced in that dialog. */
-  inDialog?: boolean;
 }
+
+const sameLayered = (a: readonly LayeredToast[], b: readonly LayeredToast[]) =>
+  a.length === b.length && a.every((l, i) => l.layer === b[i].layer && l.toast === b[i].toast);
 
 function publish() {
   const inLayers = [...slots.values()].flatMap((slot) => [slot.shown, slot.waiting]);
@@ -91,10 +101,12 @@ function publish() {
   const removed = [...live.values()].filter((t) => !next.has(t.id));
   live = next;
   current = blocking.at(-1) ?? held ?? deferred;
-  layered = [...slots].flatMap(([id, slot]) => {
+  const nextLayered = [...slots].flatMap(([id, slot]) => {
     const layer = modalLayers.get(id);
     return layer ? [{ layer, toast: slot.shown }] : [];
   });
+  // The same snapshot while nothing in the layers changed: history moving must not re-render the Toaster.
+  if (!sameLayered(layered, nextLayered)) layered = nextLayered;
   for (const t of removed) t.onDismiss?.();
   emit();
 }
@@ -110,9 +122,15 @@ function advance(slot: LayerSlot) {
   slot.contact.send({ type: "reset" });
 }
 
-// A closing modal takes its feedback with it (onDismiss runs once, as for any other removal).
+// A notification that outlives its dialog returns to the page (latest wins there, as ever), so an Undo or a Retry
+// raised beside a dialog is never lost with it. The one it replaces releases its resources once, as any removal.
 modalLayers.subscribe(() => {
-  for (const id of [...slots.keys()]) if (!modalLayers.has(id)) slots.delete(id);
+  for (const [id, slot] of [...slots]) {
+    if (modalLayers.has(id)) continue;
+    slots.delete(id);
+    const survivor = { ...(slot.waiting ?? slot.shown), layer: undefined };
+    if (!deferred || deferred.id < survivor.id) deferred = survivor;
+  }
   publish();
 });
 
@@ -132,7 +150,7 @@ function show(kind: ToastKind, text: string, opts: ToastOptions = {}): number {
         ? {
             ...opts.action,
             run: () => {
-              if (undoEntryId && history?.current() === undoEntryId && live.get(next.id)?.undoUnavailable === false)
+              if (undoEntryId && history?.capture() === undoEntryId && live.get(next.id)?.undoUnavailable === false)
                 opts.action!.run();
               else toast.invalidateUndo();
             },
@@ -144,7 +162,8 @@ function show(kind: ToastKind, text: string, opts: ToastOptions = {}): number {
     blocking: opts.blocking,
     onDismiss: opts.onDismiss,
   };
-  const layer = opts.inDialog && !opts.blocking ? modalLayers.top : null;
+  // Raised while a dialog is open: shown beside it, never behind it (and never over its controls).
+  const layer = opts.blocking ? null : modalLayers.top;
   if (layer?.feedback) {
     const feedback = { ...next, layer: layer.id };
     const slot = slots.get(layer.id);
@@ -169,9 +188,14 @@ export const toast = {
       toast.invalidateUndo();
     };
   },
-  /** Keep an engaged notification in place, but never keep an obsolete Undo alive. */
-  invalidateUndo() {
-    const entryId = undoHistory?.current();
+  /**
+   * Keep an engaged notification in place, but never keep an obsolete Undo alive. While an edit is still
+   * unrecorded nothing is decided; `settle` records it first (activation), so a merged edit keeps the Undo and a new
+   * entry makes it stale.
+   */
+  invalidateUndo(settle = false) {
+    const entryId = settle ? undoHistory?.capture() : undoHistory?.current();
+    if (entryId === HISTORY_PENDING) return;
     const invalidate = (t: ToastState | null): ToastState | null =>
       t?.action?.undoes && t.undoEntryId !== undefined && !t.undoUnavailable && t.undoEntryId !== entryId
         ? { ...t, undoUnavailable: true }
@@ -186,7 +210,7 @@ export const toast = {
     publish();
   },
   canRunAction(id: number) {
-    toast.invalidateUndo();
+    toast.invalidateUndo(true);
     const t = live.get(id);
     return !!t?.action && !t.undoUnavailable;
   },
@@ -198,11 +222,13 @@ export const toast = {
   /** How far busy toast `id` has got (0 to 1), including an owner behind a newer task. */
   progress(id: number, done: number) {
     const at = blocking.findIndex((t) => t.id === id);
-    const task = at >= 0 ? blocking[at] : deferred?.id === id ? deferred : held?.id === id ? held : null;
+    const task =
+      at >= 0 ? blocking[at] : deferred?.id === id ? deferred : held?.id === id ? held : (slotOf(id)?.shown ?? null);
     if (!task || task.progress === done) return;
     if (at >= 0) blocking[at] = { ...blocking[at], progress: done };
     else if (deferred?.id === id) deferred = { ...deferred, progress: done };
     if (held?.id === id) held = { ...held, progress: done };
+    for (const slot of slots.values()) if (slot.shown.id === id) slot.shown = { ...slot.shown, progress: done };
     publish();
   },
   /** Dismisses `id`, or ordinary notifications if omitted. Only a task's owner dismisses its blocking toast. */
@@ -233,6 +259,10 @@ export const toast = {
   dismissUndo() {
     if (held?.action?.undoes) toast.dismiss(held.id);
     if (deferred?.action?.undoes) toast.dismiss(deferred.id);
+    for (const slot of [...slots.values()]) {
+      if (slot.waiting?.action?.undoes) toast.dismiss(slot.waiting.id);
+      if (slot.shown.action?.undoes) toast.dismiss(slot.shown.id);
+    }
   },
   /** Toaster's synchronous input boundary; no timer may move or replace an engaged action. */
   contact(contactType: ToastContact, active: boolean, id = current?.id) {
@@ -297,8 +327,6 @@ export interface NotifyOptions {
   duration?: number;
   /** Cleanup after expiry, replacement or explicit dismissal (after an action has run). */
   onDismiss?: () => void;
-  /** The topmost open dialog's own outcome: shown and announced in that dialog, gone with it. */
-  inDialog?: boolean;
 }
 
 /**

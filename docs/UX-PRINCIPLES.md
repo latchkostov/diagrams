@@ -383,8 +383,9 @@ One word per idea, everywhere (menus, inspector, File menu, live bar, docs):
 - **Live** uses a caption below the canvas, a footer transport and a status strip at the canvas's top. The caption explains the current note and offers the subject's details. Opening details selects the subject and opens Properties; Follow keeps running. The dock contains current vitals and a run chart. On phones Read note opens an opaque sheet, with the narrated cards and pins cut out of its scrim; the transport has explicit strip, primary and quiet rows, and every control has a 44 px target.
 - **Overview** is true fit-all, including visible edge labels. **Focus** frames the selection and one-hop neighbours at a readable floor, pinning neighbours that cannot fit. **Follow** frames the narrated subject and path; manual pan or zoom stays Custom until Follow is chosen again. Initial Edit uses Overview when the whole drawing fits at 50% or more, otherwise Focus. Large Overview shows tiles and zone labels with a visible way to dig in. Camera framing, fades and pins stay out of exports.
 - A toast under the pointer, focus or a press stays put. Menus and dialogs are always above toasts. While a dialog
-  is open, other toasts step back (they keep their place and don't expire), and the dialog's own outcome
-  (Copied, Couldn't copy) shows beside it, never over its controls, and closes with it.
+  is open, earlier toasts step back (they keep their place and don't expire), and any toast raised
+  meanwhile (Copied, Couldn't copy, Retry) shows beside the dialog, never over its controls; it stays on
+  the page if it outlives the dialog.
 - **Checks** find likely design problems (failed messages that are dropped, a topic nobody reads, requests that go
   round in a circle or chain too deep, a service using another's database, a client going around the gateway, a
   service that can't keep up or that every request goes through on one replica) and offer a **fix** for each. Never

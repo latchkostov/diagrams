@@ -79,9 +79,8 @@ export function PasswordLinkDialog({
     // Encrypting takes a moment: the diagram may have become private since (here or in another tab).
     if (!stillAllowed()) return;
     setMade({ password: pw, url: link });
-    if (await copyText(link))
-      toast.success(t("passwordLink.linkWithPasswordCopiedSendThePassword"), { inDialog: true });
-    else toast.info(t("fileDialog.couldntCopyAutomaticallySelectTheLinkAnd"), { inDialog: true });
+    if (await copyText(link)) toast.success(t("passwordLink.linkWithPasswordCopiedSendThePassword"));
+    else toast.info(t("fileDialog.couldntCopyAutomaticallySelectTheLinkAnd"));
   };
 
   return (
