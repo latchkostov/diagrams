@@ -14,6 +14,7 @@ import {
   flowState,
   STORAGE_KEYS,
   waitForSelectionSettled,
+  waitForChecks,
 } from "./fixtures";
 
 // Interaction performance guards (dev server, so React runs in development mode: tagged @dev, which
@@ -147,6 +148,8 @@ async function openDiagram(page: Page, live = false) {
   await page.evaluate(
     () => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))),
   );
+  if (!live) await waitForChecks(page);
+  await waitForCameraIdle(page);
 }
 
 /** Right-clicks the empty canvas above the diagram. */
@@ -367,8 +370,9 @@ test.describe("perf: interactions", { tag: "@dev" }, () => {
     const every = await page.getByTestId(/^rf__node-/).count();
     expect(every).toBeGreaterThanOrEqual(15);
     await goToNode(page, "orders");
-    await page.getByTestId("canvas-wrap").press("Shift+Digit2");
+    await page.getByTestId("zoom-100").click();
     await waitForCameraIdle(page);
+    await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-detail-view", "custom");
     const { counts: click } = await measure(page, async () => {
       await page.getByTestId("node-gateway").click();
       await page.getByTestId("node-orders").click();
@@ -396,6 +400,8 @@ test.describe("perf: interactions", { tag: "@dev" }, () => {
     await page.keyboard.press("Escape");
 
     const dragged = page.getByTestId("node-notifications");
+    await goToNode(page, "notifications");
+    await waitForCameraIdle(page);
     await waitForStableBox(dragged);
     const box = await dragged.boundingBox();
     if (!box) throw new Error("no node");

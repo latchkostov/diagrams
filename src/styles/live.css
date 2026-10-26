@@ -648,6 +648,11 @@
   opacity: 1;
   stroke-width: 2px;
 }
+/* A neighbouring route remains navigable, but a path trace still dims every
+   route outside that path, including one sharing a highlighted endpoint. */
+.react-flow[data-live][data-live-spotlight="trace"] .react-flow__edge[data-live-dim] .fe-path.react-flow__edge-path {
+  opacity: 0.6;
+}
 [data-detail-dim] .lv-metric.is-rate {
   color: var(--text-2);
   border-color: var(--dim-stroke);

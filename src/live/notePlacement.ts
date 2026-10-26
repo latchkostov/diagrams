@@ -1,5 +1,12 @@
 // Where the narration card goes: next to the nodes it talks about, in the free space around them.
 // Pure screen-space geometry (no DOM), so it's unit-tested directly.
+import { calloutOffset } from "./calloutPlacement";
+import type { Rect } from "../canvas/geometry/rect";
+
+/** Preserve card access even when a short pane cannot fit the preferred gap. */
+export function freeNoteOffset(desired: Rect, pane: { width: number; height: number }, obstacles: readonly Rect[]) {
+  return calloutOffset(desired, pane, obstacles) ?? calloutOffset(desired, pane, obstacles, 0);
+}
 
 export interface Box {
   l: number;

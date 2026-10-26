@@ -142,6 +142,15 @@
   flex: none;
 }
 
+/* Lazy on-device controls can overflow a short sheet. Keep the collapsed
+   Advanced entry reachable while the rest of the footer scrolls. */
+.ai-foot > .ai-advanced:not(.is-open) {
+  position: sticky;
+  inset-block-end: 0;
+  z-index: 1;
+  background: var(--panel);
+}
+
 /* ---------- empty state ---------- */
 
 .ai-empty {

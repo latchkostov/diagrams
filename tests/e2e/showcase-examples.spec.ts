@@ -314,21 +314,35 @@ test.describe("phone live panels", () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
   test("playback leaves the expanded AI footer exposed and Inputs folds the dock", async ({ page }) => {
-    await gotoLive(page, "./?view=canvas&example=partitions-vs-subscriptions&live=1");
-    await openAiPanel(page);
-    const advanced = page.getByTestId("ai-advanced-toggle");
-    await expectExposed(advanced);
-    await advanced.focus();
-    await expect(advanced).toBeFocused();
-    const footer = await advanced.boundingBox();
-    const bar = await page.getByTestId("live-controls").boundingBox();
-    expect(footer && bar && footer.y + footer.height < bar.y).toBe(true);
-    await expectExposed(page.getByTestId("live-play"));
-    await openLiveInputs(page);
-    await expect(page.getByTestId("ai-dock")).toHaveCount(0);
-    await expectExposed(page.getByTestId("live-more"));
-    await expectExposed(page.getByTestId("capacity-heading"));
-    await expectExposed(page.getByTestId("live-play"));
+    let release = () => {};
+    const download = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    await page.route(/\/assets\/OnDeviceInput-[\w-]+\.js$/, async (route) => {
+      await download;
+      await route.continue();
+    });
+    try {
+      await gotoLive(page, "./?view=canvas&example=partitions-vs-subscriptions&live=1");
+      await openAiPanel(page);
+      release();
+      await expect(page.getByTestId("ai-ondevice")).toBeVisible();
+      const advanced = page.getByTestId("ai-advanced-toggle");
+      await expectExposed(advanced);
+      await advanced.focus();
+      await expect(advanced).toBeFocused();
+      const footer = await advanced.boundingBox();
+      const bar = await page.getByTestId("live-controls").boundingBox();
+      expect(footer && bar && footer.y + footer.height < bar.y).toBe(true);
+      await expectExposed(page.getByTestId("live-play"));
+      await openLiveInputs(page);
+      await expect(page.getByTestId("ai-dock")).toHaveCount(0);
+      await expectExposed(page.getByTestId("live-more"));
+      await expectExposed(page.getByTestId("capacity-heading"));
+      await expectExposed(page.getByTestId("live-play"));
+    } finally {
+      release();
+    }
   });
 
   test("Inputs folds an already expanded AI dock", async ({ page }) => {

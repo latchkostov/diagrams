@@ -89,6 +89,8 @@ test("Undo selects changed nodes; canvas Ctrl+A and palette Select all include t
   // Auto-layout moves every node of this example but one (its app database).
   const opened = await openExample(page, "nightly-batch-elt");
   await command(page, "Auto-layout", "canvas.auto-layout");
+  // Undo intentionally cancels a pending layout. Observe the completed layout's history step.
+  await settledCanvas(page);
   // This assertion specifically observes Undo's selection, before the geometry helper clears it.
   await expect(page.getByTestId("undo-button")).toBeEnabled();
   await page.getByTestId("undo-button").click();

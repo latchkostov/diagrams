@@ -298,7 +298,9 @@ test("a private diagram's Share… says why its links are gone, and how to chang
   await page.getByTestId("file-privacy").click();
   await expect(page.getByTestId("file-privacy-menu")).toContainText("export Interactive HTML");
   await page.keyboard.press("Escape");
+  await expect(page.getByTestId("file-privacy-menu")).toHaveCount(0);
   await page.keyboard.press("Escape");
+  await expect(page.getByTestId("file-menu")).toHaveCount(0);
   await openDiagramProperties(page);
   await page.getByTestId("private-badge").click();
   await expect(page.getByTestId("privacy-dialog")).toContainText("export Interactive HTML");

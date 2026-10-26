@@ -9,8 +9,7 @@ import type { LiveState } from "./controller";
 import { useLive } from "./context";
 import { formatClock } from "./format";
 import { LiveIcon } from "./icons";
-import { NOTE_GAP, placeNote, type Box } from "./notePlacement";
-import { calloutOffset } from "./calloutPlacement";
+import { NOTE_GAP, freeNoteOffset, placeNote, type Box } from "./notePlacement";
 
 /** Keep clear of the control bar at the bottom. */
 const BOTTOM_RESERVE = 170;
@@ -156,16 +155,15 @@ export function NoteCallout({
       width: size.w,
       height: size.h,
     };
-    const offset = calloutOffset(
-      desired,
-      { width, height },
-      [...others, ...keepClear].map((b) => ({
-        x: b.l,
-        y: b.t,
-        width: b.r - b.l,
-        height: b.b - b.t,
-      })),
-    );
+    const obstacles = [...others, ...keepClear].map((b) => ({
+      x: b.l,
+      y: b.t,
+      width: b.r - b.l,
+      height: b.b - b.t,
+    }));
+    // In a short presentation the preferred breathing room may not fit, while
+    // the caption itself still fits clear of every card. Prefer that to overlap.
+    const offset = freeNoteOffset(desired, { width, height }, obstacles);
     style = { left: desired.x + (offset?.dx ?? 0), top: desired.y + (offset?.dy ?? 0) };
   }
 

@@ -106,7 +106,7 @@ export const FrameDetail = memo(
             el.dataset.testid!.slice("check-marker-".length),
           ),
         );
-        const remeasure: string[] = [];
+        const remeasure = new Set<string>();
         const cards = new Map<string, HTMLElement>();
         const states = new Map<string, FrameEnd>();
         const blockers: Rect[] = [];
@@ -122,16 +122,20 @@ export const FrameDetail = memo(
               zone.add(id);
               pending.push(id);
             }
-        for (const el of root.querySelectorAll<HTMLElement>(".react-flow__node[data-id]")) {
+        const frameNodes = [...root.querySelectorAll<HTMLElement>(".react-flow__node[data-id]")].flatMap((el) => {
           const id = el.dataset.id!;
           const n = s.nodeLookup.get(id);
-          if (!n || n.hidden) continue;
+          return !n || n.hidden ? [] : [{ id, el, n, body: el.querySelector<HTMLElement>(".nb-card, .nb-compact") }];
+        });
+        const widths: { body: HTMLElement; key: FlowNode["data"] }[] = [];
+        // Reset every changed card before measuring any of them. Alternating a width
+        // write with offsetWidth forced one whole-canvas layout per node on imports.
+        for (const { id, el, n, body } of frameNodes) {
           const expanded = selected.has(id) || lit.has(id) || flagged.has(id);
           if (n.type === "diagram" && el.hasAttribute("data-detail-expanded") !== expanded) {
             el.toggleAttribute("data-detail-expanded", expanded);
-            remeasure.push(id);
+            remeasure.add(id);
           }
-          const body = el.querySelector<HTMLElement>(".nb-card, .nb-compact");
           if (body && n.type === "diagram") {
             const key = n.data;
             if (cardWidths.get(body)?.key !== key) {
@@ -140,11 +144,16 @@ export const FrameDetail = memo(
                 const original = fonts.get(text);
                 if (original) text.style.fontSize = `${original}px`;
               }
-              cardWidths.set(body, { key, width: body.offsetWidth });
+              widths.push({ body, key });
             }
-            body.style.width = `${cardWidths.get(body)!.width}px`;
           }
-          const card = box(el, origin);
+        }
+        for (const { body, key } of widths) cardWidths.set(body, { key, width: body.offsetWidth });
+        for (const { body, n } of frameNodes)
+          if (body && n.type === "diagram") body.style.width = `${cardWidths.get(body)!.width}px`;
+        const cardBoxes = new Map(frameNodes.map(({ id, el }) => [id, box(el, origin)]));
+        for (const { id, el, n } of frameNodes) {
+          const card = cardBoxes.get(id)!;
           const painted = !cropped || contains(inner, { ...card, y: card.y - 12, height: card.height + 44 });
           const hidden =
             (n.type === "diagram" && !painted && cropped) ||
@@ -171,7 +180,13 @@ export const FrameDetail = memo(
           if (n.type === "boundary" && far)
             chips.push({ id, name: "label" in n.data ? n.data.label : "", x: card.x + 10, y: card.y + 8, group: true });
         }
-        if (remeasure.length) updateNodeInternals(remeasure);
+        const resized = frameNodes
+          .filter(
+            ({ id, n, el }) =>
+              remeasure.has(id) && (el.offsetWidth !== n.measured.width || el.offsetHeight !== n.measured.height),
+          )
+          .map(({ id }) => id);
+        if (resized.length) updateNodeInternals(resized);
         const routes = selectRoutes(s, { style, direction, captions, hideDependencies });
         const screen = (p: { x: number; y: number }) => ({ x: p.x * zoom + tx, y: p.y * zoom + ty });
         const candidates: Omit<FramePin, "box">[] = [];
@@ -220,6 +235,12 @@ export const FrameDetail = memo(
         const retained = new Set(pins.map((pin) => pin.id));
         for (const [id, state] of states) if (state === "pinned" && !retained.has(id)) states.set(id, "out");
         blockers.push(...pins.map((pin) => pin.box));
+        const edgeLabels = new Map(
+          [...root.querySelectorAll<HTMLElement>('[data-testid^="edge-label-"]')].map((el) => [
+            el.dataset.testid!.slice("edge-label-".length),
+            el,
+          ]),
+        );
         for (const el of root.querySelectorAll<HTMLElement | SVGElement>(".react-flow__edge[data-id]")) {
           const edge = edges.get(el.dataset.id ?? "");
           if (!edge) continue;
@@ -261,10 +282,10 @@ export const FrameDetail = memo(
                 el.removeAttribute("data-detail-no-arrow");
               }
             }
-            stroke.setAttribute("d", path);
+            if (stroke.getAttribute("d") !== path) stroke.setAttribute("d", path);
           }
 
-          const label = root.querySelector<HTMLElement>(`[data-testid="edge-label-${CSS.escape(edge.id)}"]`);
+          const label = edgeLabels.get(edge.id);
           if (!label) continue;
           label.style.removeProperty("translate");
           const b = box(label, origin);
@@ -360,7 +381,15 @@ export const FrameDetail = memo(
       const schedule = () => {
         if (!frame) frame = requestAnimationFrame(update);
       };
+      const selectionStyle = () => {
+        const selected = store.getState().nodes.filter((n) => n.selected && n.type !== "boundary");
+        root.toggleAttribute("data-detail-single-selection", selected.length === 1);
+      };
+      // Selection styling must commit before layout samples its geometry, even
+      // while the camera is pending. Frame cropping itself still waits for idle.
+      selectionStyle();
       const unstore = store.subscribe((s, old) => {
+        if (s.nodes !== old.nodes) selectionStyle();
         if (
           s.transform !== old.transform ||
           s.nodes !== old.nodes ||
@@ -375,7 +404,7 @@ export const FrameDetail = memo(
       observer.observe(root, {
         subtree: true,
         attributes: true,
-        attributeFilter: ["data-live-spotlight", "data-live-dim", "data-live-main", "data-detail-measure"],
+        attributeFilter: ["data-live-spotlight", "data-live-dim", "data-detail-measure"],
       });
       const viewport = root.querySelector(".react-flow__viewport");
       if (viewport) observer.observe(viewport, { subtree: true, childList: true });
@@ -418,6 +447,7 @@ export const FrameDetail = memo(
         delete root.dataset.detailView;
         root.removeAttribute("data-detail-far");
         root.removeAttribute("data-detail-dock");
+        root.removeAttribute("data-detail-single-selection");
       };
     }, [camera, host, store, style, direction, captions, hideDependencies, locale, updateNodeInternals]);
     return (

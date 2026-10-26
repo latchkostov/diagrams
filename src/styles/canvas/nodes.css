@@ -421,14 +421,17 @@ button.dn-doc-badge:focus-visible {
   white-space: nowrap;
   -webkit-line-clamp: unset;
 }
-:is([data-detail-view="focus"], [data-detail-view="follow"])
+:is([data-detail-view="focus"], [data-detail-view="follow"], [data-detail-single-selection])
   .react-flow__node:is(.selected, [data-detail-expanded])
   .nb-card {
   height: auto;
   min-height: 72px;
   padding-block: 9px;
 }
-:is([data-detail-view="focus"], [data-detail-view="follow"])
+[data-detail-single-selection] .react-flow__node:is(.selected, [data-detail-expanded]) .nb-card {
+  padding-block: 13px;
+}
+:is([data-detail-view="focus"], [data-detail-view="follow"], [data-detail-single-selection])
   .react-flow__node:is(.selected, [data-detail-expanded])
   .nb-card
   .nb-sub {

@@ -386,6 +386,23 @@ test.describe("live view", () => {
     await page.getByTestId("edge-label-order-events-to-payments").click({ button: "right" });
     await menuItem(page, "sim.trace").click();
     await expect(page.getByTestId("live-trace")).toBeVisible();
+    // Dynamic stylesheets can finish in either order. Frame styling loaded last
+    // must still leave routes outside a path trace dimmed.
+    for (let i = 0; i < 8 && (await page.getByTestId("canvas-wrap").getAttribute("data-detail-far")) === null; i++) {
+      await page.getByTestId("live-view-menu").click();
+      await page.getByTestId("zoom-out-button").click();
+      await waitForCameraIdle(page);
+    }
+    await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-detail-far", "");
+    await page.evaluate(() => {
+      const rules = [...document.styleSheets]
+        .flatMap((sheet) => [...sheet.cssRules])
+        .filter((rule) => rule instanceof CSSStyleRule && rule.selectorText.includes("[data-detail-far]"));
+      if (!rules.length) throw new Error("Expected the frame stylesheet");
+      const last = document.createElement("style");
+      last.textContent = rules.map((rule) => rule.cssText).join("\n");
+      document.head.appendChild(last);
+    });
     const unrelatedNode = page.getByTestId("node-inventory");
     const downstreamNode = page.getByTestId("node-payments");
     const unrelatedEdge = page.getByTestId("edge-order-events-to-inventory");
@@ -403,6 +420,7 @@ test.describe("live view", () => {
         return {
           dim: edge.getAttribute("data-live-dim"),
           trace: edge.getAttribute("data-live-trace"),
+          near: edge.getAttribute("data-live-near"),
           opacity: getComputedStyle(edge).opacity,
           pathOpacity: getComputedStyle(el.children[1]).opacity,
         };
@@ -413,7 +431,7 @@ test.describe("live view", () => {
     await expect(tracedEdge).toBeVisible();
     await expect.poll(() => nodeDecoration("node-inventory")).toMatchObject({ dim: "1" });
     await expect.poll(() => nodeDecoration("node-payments")).toMatchObject({ dim: null, opacity: "1" });
-    await expect.poll(() => edgeDecoration("edge-order-events-to-inventory")).toMatchObject({ dim: "1" });
+    await expect.poll(() => edgeDecoration("edge-order-events-to-inventory")).toMatchObject({ dim: "1", near: "" });
     await expect
       .poll(() => edgeDecoration("edge-order-events-to-payments"))
       .toMatchObject({ dim: null, trace: "1", opacity: "1" });

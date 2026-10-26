@@ -61,14 +61,14 @@ export function CanvasControls({
   zoomedByButton,
   menus,
   menu,
-  history = false,
+  history,
 }: {
   editor: EditorApi;
   fit: () => void;
   zoomedByButton: () => void;
   menus: CanvasMenus;
   menu: MenuState | null;
-  history?: boolean;
+  history?: { canUndo: boolean; canRedo: boolean };
 }) {
   useLocale();
   const camera = useCameraController();
@@ -125,7 +125,7 @@ export function CanvasControls({
               <button
                 type="button"
                 data-testid="undo-button"
-                disabled={!editor.canUndo()}
+                disabled={!history.canUndo}
                 title={tr("canvas.undoValue", { combo: formatCombo(shortcutKeys("undo")) })}
                 aria-label={tr("ai.undo")}
                 onClick={editor.undo}
@@ -135,7 +135,7 @@ export function CanvasControls({
               <button
                 type="button"
                 data-testid="redo-button"
-                disabled={!editor.canRedo()}
+                disabled={!history.canRedo}
                 title={tr("canvas.redoValue", { combo: formatCombo(shortcutKeys("redo")) })}
                 aria-label={tr("shortcuts.redo")}
                 onClick={editor.redo}
