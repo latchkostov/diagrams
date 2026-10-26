@@ -25,10 +25,8 @@ describe("feedbackPlacement", () => {
     expect(feedbackPlacement({ top: 300, bottom: 836 }, 44, 900)).toBe("below");
   });
 
-  it("goes above a panel that reaches the bottom, and inside one that fills the window", () => {
-    expect(feedbackPlacement({ top: 100, bottom: 837 }, 44, 900)).toBe("above");
-    expect(feedbackPlacement({ top: 64, bottom: 860 }, 44, 900)).toBe("above");
-    expect(feedbackPlacement({ top: 63, bottom: 860 }, 44, 900)).toBe("inside");
+  it("goes inside a panel that leaves less room than that", () => {
+    expect(feedbackPlacement({ top: 63, bottom: 837 }, 44, 900)).toBe("inside");
     expect(feedbackPlacement({ top: 16, bottom: 884 }, 44, 900)).toBe("inside");
   });
 });

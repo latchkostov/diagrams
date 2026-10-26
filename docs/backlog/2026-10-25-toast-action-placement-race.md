@@ -5,6 +5,8 @@ actions bind to unique entry IDs and become inert when stale. The unchanged rout
 assertions pass, and the toast interaction regressions pass all 30 Linux repetitions under CPU load.
 Press-only retention and pointer/focus release also have deliberate DOM-handler mutation checks.
 The recording regression now drives each take to its own encoder-start count with the paused clock.
+Toasts and modals share one layer order (`docs/design-review/2026-10-25-toast-layering.md`): page
+notifications step back under any modal, and a dialog's own feedback renders in that dialog.
 
 Lane C stopped on both browser candidates because their CI traces show a product race. Keep the
 assertions in `routing.spec.ts` and `record.spec.ts`; do not hide the race with forced clicks,

@@ -236,11 +236,6 @@
   bottom: auto;
 }
 
-.ix-toast[data-layer="dialog"][data-place="above"] {
-  top: auto;
-  bottom: calc(100% + 10px);
-}
-
 /* The panel kept its height: the body gives up the room, so the header and footer stay where they were. */
 .ix-toast[data-layer="dialog"][data-place="inside"] {
   position: relative;

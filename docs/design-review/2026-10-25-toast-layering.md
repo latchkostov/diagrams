@@ -28,8 +28,12 @@ from one scale (`src/styles/tokens.css`, the `--layer-*` block):
 | **Task** (export Cancel) | 300   | body                                                 | a task holding page input: progress and Cancel         |
 | Colour picker (modal)    | 1000  | body                                                 |                                                        |
 
-**Page notifications** sit below every menu and modal. Under an open modal they _step back_: they
-keep their rectangle, are hidden and inert, and neither expire nor move. The page-layer root is a
+**Page notifications** sit below the dropdown menus (where every export item lives) and dialogs.
+They stay above the tutorial coach's dim, so its toasts remain readable. The canvas context menu
+(200) stays below them, as on master: it has no export or modal controls. The lower modals
+(shortcuts, palette, inject) cannot be ordered above the coach without moving it, so they are
+handled by stepping back rather than by z-index. Under any open modal, page notifications _step
+back_: they keep their rectangle, are hidden and inert, and neither expire nor move. The page-layer root is a
 body child, so every modal's existing background sweep (which marks body children inert as it opens
 and restores them as it closes) covers it. That restoration happens in the same synchronous step in
 which the modal returns focus — sometimes to a toast's action, as the palette does. A React-driven
@@ -44,9 +48,10 @@ before it paints, and again only on a window resize while nothing engages it
 (`feedbackPlacement`):
 
 1. below the panel if the window has room (the usual case);
-2. else above it;
-3. else (the panel fills the window) inside the panel, between body and footer, with the panel's
-   height pinned. The body gives up the room and scrolls, so the header and footer do not move.
+2. else (a short window) inside the panel, between body and footer, with the panel's height pinned.
+   The body gives up the room and scrolls, so the header and footer do not move.
+
+Dialogs are centred, so "above the panel" never has more room than below; that branch was dropped.
 
 It never overlaps the panel's controls and never moves under the pointer. Each dialog has its own
 slot with the page's rules: latest wins, an engaged toast holds its place while the next waits, and
@@ -109,3 +114,18 @@ No controls, settings or chrome were added; the shortcuts and Share flows read a
 shows next to the dialog that caused it, so the dialog no longer hides its own confirmation. A
 background notification waits behind the dialog and comes back unchanged. Export menu items are
 never covered by a toast. Under the tutorial coach's dim, toasts stay readable.
+
+### Code map
+
+- Layer scale: `src/styles/tokens.css:108-122`; consumers in `interop.css` (menu, notification,
+  task, dialog, drop), `palette.css`, `canvas/dialog.css`, `canvas/context-menu.css`, `live.css`,
+  `tutorials.css`, `colorPicker.css`.
+- Modal stack: `src/lib/modalLayers.ts:20` (`openModalLayer`); registered in
+  `src/components/useDialogInteraction.ts:73`, `src/palette/PaletteDialog.tsx:166`,
+  `src/live/InjectFrame.tsx:51`, `src/components/ShortcutsDialog.tsx:182`.
+- Feedback slot: `src/interop/ui/Dialog.tsx:72`.
+- Store: `src/interop/ui/toast.ts:114` (layer close drops its slot), `:147` (`inDialog` routing),
+  `:255` (`endPress`), `:272` (`engagedFor`).
+- Toaster: page-layer root `src/interop/ui/Toaster.tsx:32`, dialog feedback `:70`, one-shot
+  placement `:155`, Dismiss focus hand-back `:262`; `feedbackPlacement` in `toastStack.ts:43`.
+- CSS: step-back `src/styles/interop.css:217`, task layer `:223`, dialog feedback `:232-248`.

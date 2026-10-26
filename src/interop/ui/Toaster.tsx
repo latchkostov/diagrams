@@ -151,7 +151,7 @@ function ToastView({
     };
   }, [t, suspended, paused, layer]);
   // A dialog's feedback is placed once, before it paints (and again only when the window resizes while nothing
-  // engages it): below the panel, above it, or inside it with the panel's height kept (toastStack.ts).
+  // engages it): below the panel, or inside it with the panel's height kept (toastStack.ts).
   const inDialog = !!layer;
   useLayoutEffect(() => {
     const node = el.current;

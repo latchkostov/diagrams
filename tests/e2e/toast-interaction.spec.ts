@@ -502,3 +502,36 @@ test("layering: a press-retained Undo goes stale under a dialog; the next change
   expect(after).not.toContain("change-b");
   expectNoErrors(consoleErrors);
 });
+
+for (const height of [900, 420, 340] as const) {
+  test(`layering: dialog feedback never moves or covers a control (window ${height}px tall)`, async ({
+    page,
+    context,
+  }) => {
+    await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+    await page.setViewportSize({ width: 1280, height });
+    await gotoCanvas(page, SLUG);
+    await shareVia(page, "link");
+    const dialog = page.getByTestId("share-link-dialog");
+    await expect(page.getByTestId("share-link-url")).toHaveValue(/#d=/);
+    const ids = (await tabStops(page, "share-link-dialog")).filter((id) => id.startsWith("share-link"));
+    const boxes = async () => Promise.all(ids.map((id) => page.getByTestId(id).boundingBox()));
+    // Measured once the dialog's own entrance (a short rise) has finished.
+    await dialog.evaluate((el) => Promise.all(el.getAnimations({ subtree: true }).map((a) => a.finished)));
+    const before = await boxes();
+    await page.clock.install();
+    await page.getByTestId("share-link-copy").click();
+    const feedback = dialog.getByTestId("toast");
+    await expect(feedback).toBeVisible();
+    await pauseClock(page);
+    // Every control keeps its place, and the feedback lies on none of them.
+    expect(await boxes()).toEqual(before);
+    const box = await feedback.boundingBox();
+    if (!box) throw new Error("Expected the feedback on screen");
+    for (const control of before) if (control) expect(overlaps(control, box)).toBe(false);
+    await expect(feedback).toBeInViewport({ ratio: 1 });
+    // Room below a short window's dialog runs out: the feedback takes the body's room instead.
+    await expect(feedback).toHaveAttribute("data-place", height === 900 ? "below" : "inside");
+    for (const id of ids) await page.getByTestId(id).click({ trial: true });
+  });
+}

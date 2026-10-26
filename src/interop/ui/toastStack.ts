@@ -33,20 +33,17 @@ export function avoidedBars(doc: Document = document): Box[] {
 }
 
 /** Where a dialog's feedback sits relative to its panel: clear of every control the dialog has. */
-export type FeedbackPlacement = "below" | "above" | "inside";
+export type FeedbackPlacement = "below" | "inside";
 
 /**
- * Below the panel if the window has room, else above it. A panel too tall for either (it fills the window) takes
- * the feedback inside, between its body and footer: the panel keeps its height and its body gives up the room,
- * so the header and footer controls stay exactly where they were.
+ * Below the panel if the window has room (dialogs are centred, so there is as much above). A panel too tall for
+ * that takes the feedback inside, between its body and footer: the panel keeps its height and its body gives up
+ * the room, so the header and footer controls stay exactly where they were.
  */
 export function feedbackPlacement(
-  panel: Pick<Box, "top" | "bottom">,
+  panel: Pick<Box, "bottom">,
   feedbackHeight: number,
   viewportHeight: number,
 ): FeedbackPlacement {
-  const need = feedbackHeight + GAP + GAP;
-  if (viewportHeight - panel.bottom >= need) return "below";
-  if (panel.top >= need) return "above";
-  return "inside";
+  return viewportHeight - panel.bottom >= feedbackHeight + GAP + GAP ? "below" : "inside";
 }
