@@ -53,6 +53,8 @@ export interface LiveHandle {
 }
 
 export interface LiveViewProps {
+  caption?: HTMLElement | null;
+  transport?: HTMLElement | null;
   /** The canvas editor. Absent in the Lab: no authoring, no saving, no context-menu actions. */
   editor?: EditorApi;
   presenting: boolean;
@@ -186,7 +188,7 @@ export function LiveView(props: LiveViewProps) {
 
   return (
     <>
-      {enabled && !props.alwaysOn && props.readOnly && (
+      {enabled && !props.alwaysOn && !props.editor && (
         <button
           className={`lv-toggle${live ? " is-on" : ""}${props.presenting ? " is-presenting" : ""}`}
           onClick={toggle}

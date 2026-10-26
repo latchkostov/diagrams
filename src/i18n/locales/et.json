@@ -2773,5 +2773,7 @@
   "workbench.checksName": "Kontrollid, {warnings}",
   "workbench.warnings": "{count, plural, one {# hoiatus} other {# hoiatust}}",
   "workbench.systemTheme": "Järgi süsteemi",
-  "workbench.checkDiagram": "Kontrolli diagrammi"
+  "workbench.checkDiagram": "Kontrolli diagrammi",
+  "workbench.nodeDetails": "{name}: üksikasjad",
+  "workbench.noteAt": "Märkus ajal {time}"
 }

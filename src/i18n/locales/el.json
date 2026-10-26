@@ -2778,5 +2778,7 @@
   "workbench.checksName": "Έλεγχοι, {warnings}",
   "workbench.warnings": "{count, plural, one {# προειδοποίηση} other {# προειδοποιήσεις}}",
   "workbench.systemTheme": "Όπως το σύστημα",
-  "workbench.checkDiagram": "Έλεγχος διαγράμματος"
+  "workbench.checkDiagram": "Έλεγχος διαγράμματος",
+  "workbench.nodeDetails": "Λεπτομέρειες {name}",
+  "workbench.noteAt": "Σημείωση στα {time}"
 }

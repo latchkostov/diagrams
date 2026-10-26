@@ -2793,5 +2793,7 @@
   "workbench.checksName": "Ellenőrzések, {warnings}",
   "workbench.warnings": "{count, plural, one {# figyelmeztetés} other {# figyelmeztetés}}",
   "workbench.systemTheme": "Rendszer követése",
-  "workbench.checkDiagram": "Diagram ellenőrzése"
+  "workbench.checkDiagram": "Diagram ellenőrzése",
+  "workbench.nodeDetails": "{name} részletei",
+  "workbench.noteAt": "Megjegyzés ekkor: {time}"
 }

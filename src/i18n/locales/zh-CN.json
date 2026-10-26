@@ -2778,5 +2778,7 @@
   "workbench.checksName": "检查, {warnings}",
   "workbench.warnings": "{count, plural, other {# 条警告}}",
   "workbench.systemTheme": "跟随系统",
-  "workbench.checkDiagram": "检查图表"
+  "workbench.checkDiagram": "检查图表",
+  "workbench.nodeDetails": "{name} 详情",
+  "workbench.noteAt": "{time} 时的备注"
 }

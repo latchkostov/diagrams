@@ -2818,5 +2818,7 @@
   "workbench.checksName": "검사, {warnings}",
   "workbench.warnings": "{count, plural, other {# 개의 경고}}",
   "workbench.systemTheme": "시스템 설정 따르기",
-  "workbench.checkDiagram": "다이어그램 검사"
+  "workbench.checkDiagram": "다이어그램 검사",
+  "workbench.nodeDetails": "{name} 세부 정보",
+  "workbench.noteAt": "{time}의 메모"
 }

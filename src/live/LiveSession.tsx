@@ -1,4 +1,6 @@
 import { defineLazySurface } from "../lib/lazySurface";
+import { createPortal } from "react-dom";
+import { activateDock } from "../canvas/inspector/dockActions";
 import { boundaryRestoreHint } from "../model/faultWords";
 import { ViewportPortal, useStoreApi } from "@xyflow/react";
 import { Suspense, lazy, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
@@ -99,6 +101,8 @@ export interface SessionProps extends LiveViewProps {
 }
 
 export function LiveSession({
+  caption,
+  transport,
   editor,
   presenting,
   simulations: simsProp,
@@ -262,8 +266,18 @@ export function LiveSession({
 
   useLiveKeyboard({ session, spotlight, presenting, alwaysOn, onExit, editor, interaction });
 
+  const openNodeDetails = useCallback(
+    (id: string) => {
+      if (!editor) return;
+      editor.select({ nodeIds: [id], edgeIds: [], groupIds: [] });
+      activateDock("properties");
+    },
+    [editor],
+  );
+
   const ui = useMemo<LiveUi>(
     () => ({
+      openNodeDetails,
       applyCapacityFix: applyFix,
       addReader,
       controller,
@@ -305,6 +319,7 @@ export function LiveSession({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [
       applyFix,
+      openNodeDetails,
       addReader,
       slow.session,
       controller,
@@ -444,10 +459,20 @@ export function LiveSession({
         )}
         <SlowCaption slow={slow.session} />
         {/* Live's narration waits with live while slow motion plays. */}
-        {slow.state.status !== "on" && (state.run?.note || state.run?.done) && <NoteCallout state={state} />}
+        {slow.state.status !== "on" &&
+          (state.run?.note || state.run?.done) &&
+          (caption && !presenting ? (
+            createPortal(<NoteCallout state={state} docked subject={troubleOnScreen?.node} />, caption)
+          ) : (
+            <NoteCallout state={state} />
+          ))}
         {events.open && !capturing && <EventLog state={state} />}
         {/* While recording, the indicator (Stop, Esc) stands in for the bar. */}
-        {!capturing && <ControlBar state={state} />}
+        {transport ? (
+          createPortal(<ControlBar state={state} slim={capturing || presenting} />, transport)
+        ) : (
+          <ControlBar state={state} slim={capturing || presenting} />
+        )}
       </div>
       {capacityOpen && (
         <CapacityPanel

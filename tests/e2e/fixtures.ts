@@ -28,6 +28,9 @@ export async function toggleTheme(page: Page) {
 export async function expectTheme(page: Page, theme: string) {
   await page.getByTestId("view-button").click();
   await page.getByTestId("theme-toggle").click();
+  await page.getByTestId(`theme-${theme}`).click();
+  await page.getByTestId("view-button").click();
+  await page.getByTestId("theme-toggle").click();
   await expect(page.getByTestId(`theme-${theme}`)).toHaveAttribute("aria-checked", "true");
   await page.keyboard.press("Escape");
   await page.keyboard.press("Escape");

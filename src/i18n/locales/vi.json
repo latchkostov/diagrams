@@ -2778,5 +2778,7 @@
   "workbench.checksName": "Kiểm tra, {warnings}",
   "workbench.warnings": "{count, plural, other {# cảnh báo}}",
   "workbench.systemTheme": "Theo hệ thống",
-  "workbench.checkDiagram": "Kiểm tra sơ đồ"
+  "workbench.checkDiagram": "Kiểm tra sơ đồ",
+  "workbench.nodeDetails": "Chi tiết {name}",
+  "workbench.noteAt": "Ghi chú tại {time}"
 }

@@ -2782,5 +2782,7 @@
   "workbench.checksName": "Перевірки, {warnings}",
   "workbench.warnings": "{count, plural, one {# попередження} few {# попередження} many {# попередження} other {# попередження}}",
   "workbench.systemTheme": "Як у системі",
-  "workbench.checkDiagram": "Перевірити діаграму"
+  "workbench.checkDiagram": "Перевірити діаграму",
+  "workbench.nodeDetails": "Відомості: {name}",
+  "workbench.noteAt": "Примітка на {time}"
 }

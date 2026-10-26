@@ -2767,5 +2767,7 @@
   "workbench.checksName": "Comprobaciones, {warnings}",
   "workbench.warnings": "{count, plural, one {# advertencia} other {# advertencias}}",
   "workbench.systemTheme": "Seguir el sistema",
-  "workbench.checkDiagram": "Comprobar diagrama"
+  "workbench.checkDiagram": "Comprobar diagrama",
+  "workbench.nodeDetails": "Detalles de {name}",
+  "workbench.noteAt": "Nota en {time}"
 }

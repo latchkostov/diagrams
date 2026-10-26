@@ -76,3 +76,16 @@ it("a hidden edge's stale DOM wrapper cannot take focus", () => {
   expect(port.resolve({ kind: "edge", id: "hidden" })).toEqual({ state: "gone" });
   expect(querySelector).not.toHaveBeenCalled();
 });
+
+it("resolves library and dock controls across the canvas column", () => {
+  const search = {};
+  const toggle = {};
+  const view = { querySelector: (selector: string) => (selector.includes("palette-search") ? search : toggle) };
+  const root = {
+    closest: (selector: string) => (selector === ".canvas-view" ? view : null),
+    parentElement: { querySelector: () => null },
+  } as unknown as HTMLElement;
+  const port = createDomPort({ root: () => root });
+  expect(port.resolve({ kind: "paletteSearch" })).toEqual({ state: "ready", el: search });
+  expect(port.resolve({ kind: "inspectorToggle" })).toEqual({ state: "ready", el: toggle });
+});

@@ -2767,5 +2767,7 @@
   "workbench.checksName": "בדיקות, {warnings}",
   "workbench.warnings": "{count, plural, one {# אזהרה} two {# אזהרות} other {# אזהרות}}",
   "workbench.systemTheme": "לפי המערכת",
-  "workbench.checkDiagram": "בדיקת הדיאגרמה"
+  "workbench.checkDiagram": "בדיקת הדיאגרמה",
+  "workbench.nodeDetails": "פרטי {name}",
+  "workbench.noteAt": "הערה ב־{time}"
 }

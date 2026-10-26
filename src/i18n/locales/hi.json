@@ -2771,5 +2771,7 @@
   "workbench.checksName": "जाँचें, {warnings}",
   "workbench.warnings": "{count, plural, one {# चेतावनी} other {# चेतावनियाँ}}",
   "workbench.systemTheme": "सिस्टम के अनुसार",
-  "workbench.checkDiagram": "डायग्राम जाँचें"
+  "workbench.checkDiagram": "डायग्राम जाँचें",
+  "workbench.nodeDetails": "{name} का विवरण",
+  "workbench.noteAt": "{time} पर नोट"
 }

@@ -104,3 +104,18 @@
   line-height: 1.15;
   overflow-wrap: normal;
 }
+.canvas-credit {
+  position: absolute;
+  inset-block-end: 8px;
+  inset-inline-start: 8px;
+  z-index: 5;
+  padding: 1px 5px;
+  color: var(--text-2);
+  background: color-mix(in oklab, var(--board) 88%, transparent);
+  text-decoration: none;
+  font-size: 11px;
+}
+.canvas-credit.is-live {
+  inset-inline-start: auto;
+  inset-inline-end: 8px;
+}

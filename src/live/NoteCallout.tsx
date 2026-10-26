@@ -1,3 +1,4 @@
+import { t } from "../i18n";
 import { runEndResult } from "./runEndResult";
 import { useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 import { useStore } from "@xyflow/react";
@@ -16,12 +17,22 @@ const BOTTOM_RESERVE = 170;
  * space so it stays the same size whatever the zoom; the session dims everything else and pans to
  * the focus. A pausing note waits for Continue (or Space / Enter).
  */
-export function NoteCallout({ state }: { state: LiveState }) {
+export function NoteCallout({
+  state,
+  docked = false,
+  subject: troubleSubject,
+}: {
+  state: LiveState;
+  docked?: boolean;
+  subject?: string;
+}) {
   const ui = useLive();
   const interaction = useInteraction();
   const result = runEndResult(state, ui.controller.currentDiagram);
   const note = result ? { text: result, focus: [], atMs: state.run!.time } : state.run?.note;
   const waiting = !!state.run?.waiting;
+  const subject = troubleSubject ?? note?.focus[0];
+  const subjectNode = subject ? ui.controller.currentDiagram.nodes.find((n) => n.id === subject) : undefined;
   const transform = useStore((s) => s.transform);
   const paneWidth = useStore((s) => s.width);
   const height = useStore((s) => s.height);
@@ -114,8 +125,8 @@ export function NoteCallout({ state }: { state: LiveState }) {
     <div
       ref={ref}
       key={`${note.atMs}:${note.text}`}
-      className={`lv-note is-${placement}${waiting ? " is-waiting" : ""}${ui.presenting ? " is-presenting" : ""}`}
-      style={style}
+      className={`lv-note${docked ? " is-docked" : ""} is-${placement}${waiting ? " is-waiting" : ""}${ui.presenting ? " is-presenting" : ""}`}
+      style={docked ? undefined : style}
       role="status"
       aria-live="polite"
       data-testid="live-note"
@@ -127,7 +138,9 @@ export function NoteCallout({ state }: { state: LiveState }) {
         <div className="lv-note-head">
           <LiveIcon name="note" size={13} />
           <span>{state.simulation?.title ?? "Note"}</span>
-          <span className="lv-note-time mono">{formatClock(note.atMs)}</span>
+          <span className="lv-note-time" data-testid="live-note-time">
+            {t("workbench.noteAt", { time: formatClock(note.atMs).replace("s", " s") })}
+          </span>
         </div>
       )}
       <p className="lv-note-text" data-testid={result ? "live-run-result" : "live-note-text"}>
@@ -148,6 +161,15 @@ export function NoteCallout({ state }: { state: LiveState }) {
             or press <kbd>Space</kbd>
           </span>
         </div>
+      )}
+      {docked && subjectNode && ui.canEdit && ui.openNodeDetails && (
+        <button
+          className="lv-note-details"
+          data-testid="live-note-details"
+          onClick={() => ui.openNodeDetails?.(subjectNode.id)}
+        >
+          {t("workbench.nodeDetails", { name: subjectNode.label || subjectNode.id })} ›
+        </button>
       )}
     </div>
   );

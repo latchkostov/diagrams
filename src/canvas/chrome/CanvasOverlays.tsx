@@ -92,6 +92,17 @@ export function CanvasOverlays({
 }) {
   return (
     <>
+      {bezel && (
+        <a
+          className={`canvas-credit${live ? " is-live" : ""}`}
+          data-testid="react-flow-credit"
+          href="https://reactflow.dev"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          {"React Flow"}
+        </a>
+      )}
       {!bezel && (
         <div
           ref={card}

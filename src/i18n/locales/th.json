@@ -2760,5 +2760,7 @@
   "workbench.checksName": "การตรวจสอบ, {warnings}",
   "workbench.warnings": "{count, plural, other {# คำเตือน}}",
   "workbench.systemTheme": "ตามระบบ",
-  "workbench.checkDiagram": "ตรวจสอบไดอะแกรม"
+  "workbench.checkDiagram": "ตรวจสอบไดอะแกรม",
+  "workbench.nodeDetails": "รายละเอียด {name}",
+  "workbench.noteAt": "หมายเหตุที่ {time}"
 }

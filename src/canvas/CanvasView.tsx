@@ -190,6 +190,7 @@ const CRAMPED = 1280;
 export type { CanvasHandle } from "./document/useCanvasDocument";
 
 interface Props {
+  transport?: HTMLElement | null;
   bezel?: boolean;
   /** Lab-only room mount, with its own document identity and encrypted recovery. Stable for this canvas's life. */
   room?: EditorRoom;
@@ -244,6 +245,7 @@ export function CanvasView(props: Props) {
 actionRegistry.register(builtinActions());
 
 function CanvasInner({
+  transport,
   slug,
   bezel = false,
   presenting,
@@ -268,6 +270,8 @@ function CanvasInner({
   const { screenToFlowPosition, getNode, getNodes } = useReactFlow<FlowNode, DiagramFlowEdge>();
   const store = useStoreApi<FlowNode, DiagramFlowEdge>();
   const wrapper = useRef<HTMLDivElement>(null);
+  const [caption, setCaption] = useState<HTMLDivElement | null>(null);
+  const [localTransport, setLocalTransport] = useState<HTMLDivElement | null>(null);
   useNoCanvasTextSelection(wrapper);
   /** The pointer over the canvas (client coords), for "T adds text here" and Ctrl+V. */
   const pointer = useRef<{ x: number; y: number } | null>(null);
@@ -1191,6 +1195,8 @@ function CanvasInner({
         {/* Nothing to simulate on a blank canvas: the Live toggle appears with the first node. */}
         {(nodeCount > 0 || live) && (
           <LiveView
+            caption={caption}
+            transport={transport ?? localTransport}
             readOnly={readOnly}
             initial={viewer?.live}
             onHandle={receiveLiveHandle}
@@ -1222,6 +1228,9 @@ function CanvasInner({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- Refresh translated descendants when the locale changes.
     [
       locale,
+      caption,
+      transport,
+      localTransport,
       wrapper,
       readOnly,
       prefs.grid,
@@ -1470,77 +1479,80 @@ function CanvasInner({
                 />
               </div>
             )}
-            <div
-              className={`canvas-wrap${diagramColor ? " has-diagram-color" : ""}`}
-              data-testid="canvas-wrap"
-              data-toast-area
-              tabIndex={-1}
-              ref={wrapper}
-              style={diagramColor ? ({ "--diagram-color": diagramColor } as CSSProperties) : undefined}
-              onFocusCapture={(e) => {
-                if (e.target instanceof Element && e.target.closest('[data-testid^="rf__node-"]')) interruptFit();
-              }}
-              onPointerDownCapture={(e) => {
-                // Shift+drag on empty canvas adds the box's pick to the selection, as Shift+click adds a node.
-                const onPane = e.target instanceof Element && e.target.classList.contains("react-flow__pane");
-                if (!onPane || e.button !== 0 || !e.shiftKey) return void (boxBaseRef.current = null);
-                const { nodes: ns, edges: es } = store.getState();
-                boxBaseRef.current = {
-                  nodes: new Set(ns.filter((n) => n.selected).map((n) => n.id)),
-                  edges: new Set(es.filter((x) => x.selected).map((x) => x.id)),
-                };
-              }}
-              onPointerMove={(e) => {
-                pointer.current = { x: e.clientX, y: e.clientY };
-                sendCursor({ x: e.clientX, y: e.clientY });
-                const target =
-                  e.target instanceof Element ? e.target.closest<HTMLElement>('[data-testid^="rf__node-"]') : null;
-                if (controller.fitting && target) {
-                  // Hover is input too: keep the target still and arm its tooltip after
-                  // stopping the fit (whose move-start dismisses the previous tooltip).
-                  interruptFit();
-                  const id = target.dataset.testid?.slice("rf__node-".length);
-                  const node = id ? getNode(id) : undefined;
-                  if (node?.type === "diagram" && !editing)
-                    showTip(target, {
-                      nodeId: node.id,
-                      label: node.data.label || node.id,
-                      sublabel: node.data.sublabel,
-                      stencil: node.data.stencil,
-                      description: node.data.description,
-                    });
-                }
-                // Ctrl/Cmd during a box selection: only what's wholly inside.
-                containRef.current = e.ctrlKey || e.metaKey;
-              }}
-              onPointerLeave={() => {
-                pointer.current = null;
-                sendCursor(null);
-              }}
-              onDragOver={(e) => {
-                if (
-                  e.dataTransfer.types.includes(STENCIL_DND_MIME) ||
-                  e.dataTransfer.types.includes(ANNOTATION_DND_MIME)
-                ) {
-                  e.preventDefault();
-                  e.dataTransfer.dropEffect = "copy";
-                }
-                if (e.dataTransfer.types.includes(STENCIL_DND_MIME)) onRailDragOver(e);
-              }}
-              onDragLeave={(e) => {
-                if (!wrapper.current?.contains(e.relatedTarget as Node | null)) endRailDrop();
-              }}
-              onDrop={(e) => {
-                onDrop(e);
-                tools.open("closed");
-              }}
-            >
-              {EDGE_MARKERS}
-              {!hideChrome && copyNotice && <CopyNotice text={copyNotice} />}
-              {flowView}
-              <FlowGraph nodes={ariaNodes} edges={ariaEdges} />
+            <div className="canvas-column">
+              <div
+                className={`canvas-wrap${diagramColor ? " has-diagram-color" : ""}`}
+                data-testid="canvas-wrap"
+                data-toast-area
+                tabIndex={-1}
+                ref={wrapper}
+                style={diagramColor ? ({ "--diagram-color": diagramColor } as CSSProperties) : undefined}
+                onFocusCapture={(e) => {
+                  if (e.target instanceof Element && e.target.closest('[data-testid^="rf__node-"]')) interruptFit();
+                }}
+                onPointerDownCapture={(e) => {
+                  // Shift+drag on empty canvas adds the box's pick to the selection, as Shift+click adds a node.
+                  const onPane = e.target instanceof Element && e.target.classList.contains("react-flow__pane");
+                  if (!onPane || e.button !== 0 || !e.shiftKey) return void (boxBaseRef.current = null);
+                  const { nodes: ns, edges: es } = store.getState();
+                  boxBaseRef.current = {
+                    nodes: new Set(ns.filter((n) => n.selected).map((n) => n.id)),
+                    edges: new Set(es.filter((x) => x.selected).map((x) => x.id)),
+                  };
+                }}
+                onPointerMove={(e) => {
+                  pointer.current = { x: e.clientX, y: e.clientY };
+                  sendCursor({ x: e.clientX, y: e.clientY });
+                  const target =
+                    e.target instanceof Element ? e.target.closest<HTMLElement>('[data-testid^="rf__node-"]') : null;
+                  if (controller.fitting && target) {
+                    // Hover is input too: keep the target still and arm its tooltip after
+                    // stopping the fit (whose move-start dismisses the previous tooltip).
+                    interruptFit();
+                    const id = target.dataset.testid?.slice("rf__node-".length);
+                    const node = id ? getNode(id) : undefined;
+                    if (node?.type === "diagram" && !editing)
+                      showTip(target, {
+                        nodeId: node.id,
+                        label: node.data.label || node.id,
+                        sublabel: node.data.sublabel,
+                        stencil: node.data.stencil,
+                        description: node.data.description,
+                      });
+                  }
+                  // Ctrl/Cmd during a box selection: only what's wholly inside.
+                  containRef.current = e.ctrlKey || e.metaKey;
+                }}
+                onPointerLeave={() => {
+                  pointer.current = null;
+                  sendCursor(null);
+                }}
+                onDragOver={(e) => {
+                  if (
+                    e.dataTransfer.types.includes(STENCIL_DND_MIME) ||
+                    e.dataTransfer.types.includes(ANNOTATION_DND_MIME)
+                  ) {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = "copy";
+                  }
+                  if (e.dataTransfer.types.includes(STENCIL_DND_MIME)) onRailDragOver(e);
+                }}
+                onDragLeave={(e) => {
+                  if (!wrapper.current?.contains(e.relatedTarget as Node | null)) endRailDrop();
+                }}
+                onDrop={(e) => {
+                  onDrop(e);
+                  tools.open("closed");
+                }}
+              >
+                {EDGE_MARKERS}
+                {!hideChrome && copyNotice && <CopyNotice text={copyNotice} />}
+                {flowView}
+                <FlowGraph nodes={ariaNodes} edges={ariaEdges} />
 
-              {overlays}
+                {overlays}
+              </div>
+              <div className="live-caption-mount" ref={setCaption} data-testid="live-caption-mount" />
             </div>
             {!hideChrome && (
               <Inspector
@@ -1588,6 +1600,7 @@ function CanvasInner({
               />
             )}
           </div>
+          {transport === undefined && <div className="live-transport-mount is-local" ref={setLocalTransport} />}
           {menu &&
             (menu.connected ? (
               <ConnectedQuickAddMenu

@@ -2768,5 +2768,7 @@
   "workbench.checksName": "Kontroller, {warnings}",
   "workbench.warnings": "{count, plural, one {# uyarı} other {# uyarı}}",
   "workbench.systemTheme": "Sistemi izle",
-  "workbench.checkDiagram": "Diyagramı denetle"
+  "workbench.checkDiagram": "Diyagramı denetle",
+  "workbench.nodeDetails": "{name} ayrıntıları",
+  "workbench.noteAt": "{time} anındaki not"
 }

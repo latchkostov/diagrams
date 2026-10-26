@@ -3,7 +3,6 @@ import { t, msg } from "../i18n";
 import { useInteraction } from "../canvas/interaction";
 import { LiveIcon } from "./icons";
 import type { Trouble, TroubleAction } from "./observedTrouble";
-import { useFloatingPlacement } from "./useFloatingPlacement";
 import { planFixLabel } from "../planning/scalingPlanText";
 import { applyThreadFix, type ApplyThreadFix } from "./threadFixes";
 
@@ -60,7 +59,6 @@ export function TroubleCallout({ trouble, onAction, onDismiss, onShown, floating
   // On screen: this cause has had its turn this run (one hidden behind a panel or a presentation hasn't).
   useEffect(() => onShown?.(trouble.key), [onShown, trouble.key]);
   const box = useRef<HTMLDivElement>(null);
-  const placement = useFloatingPlacement(box, !!floating);
   // Focus inside the callout when it goes (dismissed, revived, the trouble over) returns to the canvas, never <body>
   // (focus policy row L3).
   const focused = useRef(false);
@@ -75,14 +73,10 @@ export function TroubleCallout({ trouble, onAction, onDismiss, onShown, floating
   return (
     <div
       ref={box}
-      className={`cap-callout is-over${floating ? " is-floating" : ""}${placement.compact ? " is-compact" : ""}`}
-      title={placement.compact ? detail : undefined}
-      data-compact={placement.compact ? "" : undefined}
-      style={placement.style}
+      className={`cap-callout is-over${floating ? " is-floating is-status-strip" : ""}`}
       data-testid="trouble-callout"
       data-kind={trouble.kind}
       data-node={trouble.node}
-      data-below={placement.below ? "" : undefined}
       data-canvas-overlay={floating ? "" : undefined}
       data-editor-overlay
       onFocus={() => (focused.current = true)}

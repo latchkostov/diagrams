@@ -19,7 +19,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import type { LiveState } from "./controller";
 import { SPEEDS } from "./controller";
 import { useLive } from "./context";
-import { formatClock, formatCount, formatSpeed, formatScale } from "./format";
+import { formatSeconds, formatCount, formatSpeed, formatScale } from "./format";
 import { LiveIcon } from "./icons";
 import { Timeline } from "./lazyTimeline";
 import { PANEL_OPENER_ATTR } from "./usePanelEscape";
@@ -32,7 +32,7 @@ import { SlowBar } from "./slowmo/SlowBar";
  * behind "⋯" and in the right-click menu. Leaving live view is the Live toggle (or L, or Esc):
  * one way out, not two buttons.
  */
-export function ControlBar({ state }: { state: LiveState }) {
+export function ControlBar({ state, slim = false }: { state: LiveState; slim?: boolean }) {
   useLocale();
   const ui = useLive();
   const c = ui.controller;
@@ -53,7 +53,7 @@ export function ControlBar({ state }: { state: LiveState }) {
 
   return (
     <div
-      className={`lv-bar${slowOn ? " is-slowmo" : ""}`}
+      className={`lv-bar${slim ? " is-slim" : ""}${slowOn ? " is-slowmo" : ""}`}
       data-testid="live-controls"
       data-editor-overlay
       data-toast-avoid
@@ -149,13 +149,17 @@ export function ControlBar({ state }: { state: LiveState }) {
           {state.simulation && run ? (
             <>
               <span
-                className="lv-clock mono"
+                className="lv-clock"
                 data-testid="live-clock"
                 data-ms={Math.round(run.time)}
-                title={`of ${formatClock(Math.max(run.totalMs, run.time))}`}
+                title={`of ${formatSeconds(Math.max(run.totalMs, run.time))}`}
               >
-                {formatClock(run.time)}
+                {formatSeconds(run.time)}
               </span>
+              <span className="lv-clock-total" data-testid="live-clock-total">
+                / {formatSeconds(run.totalMs)}
+              </span>
+              <InFlight state={state} />
               <Timeline
                 sim={state.simulation}
                 run={run}
@@ -179,14 +183,7 @@ export function ControlBar({ state }: { state: LiveState }) {
         </>
       )}
 
-      <span
-        className="lv-stat mono"
-        title={`Messages travelling, queued or being processed${state.scale > 1 ? ` (real messages; 1 dot ≈ ${formatScale(state.scale)})` : ""}`}
-        data-testid="live-in-system"
-        data-count={state.snapshot.inSystem}
-      >
-        <strong>{formatCount(state.snapshot.inSystem)}</strong> in flight
-      </span>
+      {!state.run && <InFlight state={state} />}
 
       <MoreMenu state={state} />
       {ui.notice && (
@@ -239,5 +236,18 @@ function MoreMenu({ state }: { state: LiveState }) {
       </button>
       {open && <LiveMoreItems state={state} close={close} traceOpen={traceOpen} setTraceOpen={setTraceOpen} />}
     </div>
+  );
+}
+
+function InFlight({ state }: { state: LiveState }) {
+  return (
+    <span
+      className="lv-stat"
+      data-testid="live-in-system"
+      data-count={state.snapshot.inSystem}
+      title={`Messages travelling, queued or being processed${state.scale > 1 ? ` (real messages; 1 dot ≈ ${formatScale(state.scale)})` : ""}`}
+    >
+      {t("hover.inFlight")} <strong>{formatCount(state.snapshot.inSystem)}</strong>
+    </span>
   );
 }

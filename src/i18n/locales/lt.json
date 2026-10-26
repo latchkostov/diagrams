@@ -2758,5 +2758,7 @@
   "workbench.checksName": "Patikros, {warnings}",
   "workbench.warnings": "{count, plural, one {# įspėjimas} few {# įspėjimai} other {# įspėjimai}}",
   "workbench.systemTheme": "Pagal sistemą",
-  "workbench.checkDiagram": "Tikrinti diagramą"
+  "workbench.checkDiagram": "Tikrinti diagramą",
+  "workbench.nodeDetails": "{name} informacija",
+  "workbench.noteAt": "Pastaba ties {time}"
 }

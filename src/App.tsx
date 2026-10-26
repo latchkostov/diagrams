@@ -195,6 +195,7 @@ export function App() {
 }
 
 function MainApp() {
+  const [transport, setTransport] = useState<HTMLDivElement | null>(null);
   // A new language re-renders the app (the start card's lines, the picker's groups).
   const locale = useLocale();
   const [url, setUrl] = useUrlState();
@@ -609,6 +610,7 @@ function MainApp() {
               ) : (
                 <CanvasView
                   bezel
+                  transport={transport}
                   // A room's canvas is its own mount: it edits through the room (src/collab/room).
                   key={roomHere ? `${canvasMount.key}:room${roomHere.mount}` : canvasMount.key}
                   room={roomHere?.editor}
@@ -647,6 +649,7 @@ function MainApp() {
           <AiMount view={url.view} presenting={presenting} onNewDiagram={newDiagram} />
         )}
       </div>
+      <div className="live-transport-mount" data-testid="live-transport-mount" ref={setTransport} />
       <div className="sr-only" role="status" data-testid="example-loading">
         {url.view === "canvas" && waitingForExample
           ? `Loading ${examples.find((e) => e.slug === targetSlug)?.title ?? "the example"}…`

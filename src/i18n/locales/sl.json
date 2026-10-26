@@ -2785,5 +2785,7 @@
   "workbench.checksName": "Preverjanja, {warnings}",
   "workbench.warnings": "{count, plural, one {# opozorilo} two {# opozorila} few {# opozorila} other {# opozorila}}",
   "workbench.systemTheme": "Po sistemu",
-  "workbench.checkDiagram": "Preveri diagram"
+  "workbench.checkDiagram": "Preveri diagram",
+  "workbench.nodeDetails": "Podrobnosti: {name}",
+  "workbench.noteAt": "Opomba ob {time}"
 }

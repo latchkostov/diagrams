@@ -2778,5 +2778,7 @@
   "workbench.checksName": "Tarkistukset, {warnings}",
   "workbench.warnings": "{count, plural, one {# varoitus} other {# varoitusta}}",
   "workbench.systemTheme": "Seuraa järjestelmää",
-  "workbench.checkDiagram": "Tarkista kaavio"
+  "workbench.checkDiagram": "Tarkista kaavio",
+  "workbench.nodeDetails": "{name}: tiedot",
+  "workbench.noteAt": "Huomautus kohdassa {time}"
 }

@@ -2795,5 +2795,7 @@
   "workbench.checksName": "チェック, {warnings}",
   "workbench.warnings": "{count, plural, other {# 件の警告}}",
   "workbench.systemTheme": "システムに合わせる",
-  "workbench.checkDiagram": "ダイアグラムをチェック"
+  "workbench.checkDiagram": "ダイアグラムをチェック",
+  "workbench.nodeDetails": "{name} の詳細",
+  "workbench.noteAt": "{time} のノート"
 }

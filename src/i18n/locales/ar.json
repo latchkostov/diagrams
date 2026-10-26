@@ -2916,5 +2916,7 @@
   "workbench.checksName": "عمليات التحقق، {warnings}",
   "workbench.warnings": "{count, plural, zero {# تحذيرات} one {# تحذير} two {# تحذيرات} few {# تحذيرات} many {# تحذيرات} other {# تحذيرات}}",
   "workbench.systemTheme": "مطابقة النظام",
-  "workbench.checkDiagram": "فحص المخطط"
+  "workbench.checkDiagram": "فحص المخطط",
+  "workbench.nodeDetails": "تفاصيل {name}",
+  "workbench.noteAt": "ملاحظة عند {time}"
 }

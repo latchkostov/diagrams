@@ -2773,5 +2773,7 @@
   "workbench.checksName": "Pemeriksaan, {warnings}",
   "workbench.warnings": "{count, plural, other {# peringatan}}",
   "workbench.systemTheme": "Ikuti sistem",
-  "workbench.checkDiagram": "Periksa diagram"
+  "workbench.checkDiagram": "Periksa diagram",
+  "workbench.nodeDetails": "Detail {name}",
+  "workbench.noteAt": "Catatan pada {time}"
 }

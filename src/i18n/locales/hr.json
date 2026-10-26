@@ -2788,5 +2788,7 @@
   "workbench.checksName": "Provjere, {warnings}",
   "workbench.warnings": "{count, plural, one {# upozorenje} few {# upozorenja} other {# upozorenja}}",
   "workbench.systemTheme": "Prema sustavu",
-  "workbench.checkDiagram": "Provjeri dijagram"
+  "workbench.checkDiagram": "Provjeri dijagram",
+  "workbench.nodeDetails": "Pojedinosti: {name}",
+  "workbench.noteAt": "Bilješka u {time}"
 }

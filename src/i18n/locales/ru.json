@@ -2754,5 +2754,7 @@
   "workbench.checksName": "Проверки, {warnings}",
   "workbench.warnings": "{count, plural, one {# предупреждение} few {# предупреждения} many {# предупреждения} other {# предупреждения}}",
   "workbench.systemTheme": "Как в системе",
-  "workbench.checkDiagram": "Проверить схему"
+  "workbench.checkDiagram": "Проверить схему",
+  "workbench.nodeDetails": "Сведения: {name}",
+  "workbench.noteAt": "Заметка на {time}"
 }

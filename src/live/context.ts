@@ -7,6 +7,7 @@ import type { CapacityFix } from "./capacityModel";
 
 /** What the live view's components share: the controller plus the session's UI commands. */
 export interface LiveUi {
+  openNodeDetails?(id: string): void;
   applyCapacityFix?(fix: CapacityFix): void;
   addReader?(id: string): void;
   controller: LiveController;

@@ -2777,5 +2777,7 @@
   "workbench.checksName": "Проверки, {warnings}",
   "workbench.warnings": "{count, plural, one {# предупреждение} other {# предупреждения}}",
   "workbench.systemTheme": "Като системата",
-  "workbench.checkDiagram": "Проверка на диаграмата"
+  "workbench.checkDiagram": "Проверка на диаграмата",
+  "workbench.nodeDetails": "Подробности за {name}",
+  "workbench.noteAt": "Бележка на {time}"
 }

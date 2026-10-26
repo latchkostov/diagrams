@@ -2788,5 +2788,7 @@
   "workbench.checksName": "Controles, {warnings}",
   "workbench.warnings": "{count, plural, one {# waarschuwing} other {# waarschuwingen}}",
   "workbench.systemTheme": "Systeem volgen",
-  "workbench.checkDiagram": "Diagram controleren"
+  "workbench.checkDiagram": "Diagram controleren",
+  "workbench.nodeDetails": "Details van {name}",
+  "workbench.noteAt": "Notitie op {time}"
 }

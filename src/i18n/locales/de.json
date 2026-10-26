@@ -2790,5 +2790,7 @@
   "workbench.checksName": "Prüfungen, {warnings}",
   "workbench.warnings": "{count, plural, one {# Warnung} other {# Warnungen}}",
   "workbench.systemTheme": "Systemeinstellung",
-  "workbench.checkDiagram": "Diagramm prüfen"
+  "workbench.checkDiagram": "Diagramm prüfen",
+  "workbench.nodeDetails": "Details zu {name}",
+  "workbench.noteAt": "Notiz bei {time}"
 }

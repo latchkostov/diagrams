@@ -2796,5 +2796,7 @@
   "workbench.checksName": "Verificări, {warnings}",
   "workbench.warnings": "{count, plural, one {# avertisment} few {# avertismente} other {# avertismente}}",
   "workbench.systemTheme": "Ca în sistem",
-  "workbench.checkDiagram": "Verifică diagrama"
+  "workbench.checkDiagram": "Verifică diagrama",
+  "workbench.nodeDetails": "Detalii despre {name}",
+  "workbench.noteAt": "Notă la {time}"
 }

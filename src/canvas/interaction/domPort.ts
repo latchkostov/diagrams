@@ -113,7 +113,8 @@ export function createDomPort(canvas: DomCanvas): InteractionPort {
       case "paletteSearch": {
         const el = canvas
           .root()
-          ?.parentElement?.querySelector(
+          ?.closest(".canvas-view")
+          ?.querySelector(
             target.kind === "paletteSearch" ? '[data-testid="palette-search"]' : '[data-testid="inspector-toggle"]',
           );
         return el ? { state: "ready", el } : { state: "gone" };

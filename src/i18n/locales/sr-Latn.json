@@ -2772,5 +2772,7 @@
   "workbench.checksName": "Provere, {warnings}",
   "workbench.warnings": "{count, plural, one {# upozorenje} few {# upozorenja} other {# upozorenja}}",
   "workbench.systemTheme": "Prema sistemu",
-  "workbench.checkDiagram": "Proveri dijagram"
+  "workbench.checkDiagram": "Proveri dijagram",
+  "workbench.nodeDetails": "Detalji: {name}",
+  "workbench.noteAt": "Beleška u {time}"
 }

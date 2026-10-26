@@ -136,7 +136,7 @@ test("Diagram properties offers checks only while checks are available", async (
   await expect(page.getByTestId("diagram-checks-summary")).toHaveCount(0);
 });
 
-test("phone playback stays beside the tool rail", async ({ page }) => {
+test("phone playback sits below the tool rail", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await gotoCanvas(page, "retry-storm");
   await page.getByTestId("live-toggle").click();
@@ -145,7 +145,41 @@ test("phone playback stays beside the tool rail", async ({ page }) => {
   expect(bar).not.toBeNull();
   expect(rail).not.toBeNull();
   if (!bar || !rail) throw new Error("Expected playback and tool rail");
-  expect(bar.x).toBeGreaterThanOrEqual(rail.x + rail.width);
+  expect(rail.y + rail.height).toBeLessThanOrEqual(bar.y);
+  expect(bar.x).toBe(0);
+  expect(bar.width).toBe(390);
   await page.getByTestId("ai-rail-open").click();
   await expect(page.getByTestId("ai-panel")).toBeVisible();
+});
+
+test("Live reserves the caption and full-window transport outside the canvas", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("./?view=canvas&example=retry-storm&live=1&sim=three-quick-retries&paused=1");
+  await expect(page.getByTestId("live-controls")).toBeVisible();
+  await page.getByTestId("node-payments").click();
+  await expect(page.getByTestId("dock-tab-properties")).toBeVisible();
+  await waitForCameraIdle(page);
+  const bounds = async (id: string) => {
+    const box = await page.getByTestId(id).boundingBox();
+    if (!box) throw new Error(`Missing ${id}`);
+    return box;
+  };
+  const bar = await bounds("live-controls");
+  const canvas = await bounds("canvas-wrap");
+  const dock = await bounds("inspector");
+  expect(bar.x).toBe(0);
+  expect(bar.width).toBe(1440);
+  expect(bar.y + bar.height).toBe(900);
+  expect(canvas.y + canvas.height).toBeLessThanOrEqual(bar.y);
+  expect(dock.y + dock.height).toBeLessThanOrEqual(bar.y);
+  await expect(page.getByTestId("live-clock-total")).toBeVisible();
+  await page.getByTestId("live-timeline-input").fill("160");
+  await page.getByTestId("live-timeline-input").press("ArrowRight");
+  await expect(page.getByTestId("live-note-text")).toBeVisible();
+  const note = await bounds("live-note");
+  const resized = await bounds("canvas-wrap");
+  expect(resized.y + resized.height).toBeLessThanOrEqual(note.y);
+  expect(note.y + note.height).toBeLessThanOrEqual(bar.y);
+  await page.getByTestId("live-note-details").click();
+  await expect(page.getByTestId("inspector")).toHaveAttribute("data-inspector-target", "payments");
 });

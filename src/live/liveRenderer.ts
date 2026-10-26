@@ -172,7 +172,9 @@ const GLOW_ATTR = "data-live-glow";
 
 /** The toggle's glow canvas, inside its dot (toggleGlow.ts). Null without a toggle (the Lab). */
 function mountGlowCanvas(root: HTMLElement): HTMLCanvasElement | null {
-  const dot = root.querySelector('[data-testid="live-toggle"] .lv-toggle-dot');
+  const dot = (root.closest(".app") ?? root).querySelector(
+    '[data-testid="live-toggle"] :is(.lv-toggle-dot, .mode-dot)',
+  );
   if (!dot) return null;
   const el = document.createElement("canvas");
   el.className = "lv-toggle-glow";

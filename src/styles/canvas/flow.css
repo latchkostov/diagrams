@@ -8,12 +8,29 @@
   position: relative;
   flex: 1;
   min-width: 0;
+  min-height: 0;
   background: var(--bg);
   /* The app's accent, kept where a node's stencil colour replaces --accent (the "+" on a node). */
   --ui-accent: var(--accent);
   --ui-accent-ink: var(--accent-ink);
   /* Inline editors never read smaller than their CSS size: below 100% zoom they scale up by 1/zoom. */
   --edit-scale: max(1, calc(1 / var(--rf-zoom, 1)));
+}
+
+.canvas-column {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+}
+.live-transport-mount.is-local {
+  position: absolute;
+  inset-inline: 0;
+  inset-block-end: 0;
+}
+.canvas-view:has(> .live-transport-mount:not(:empty)) {
+  padding-block-end: var(--transport-h);
 }
 
 .canvas-wrap.has-diagram-color {

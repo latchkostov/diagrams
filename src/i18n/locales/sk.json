@@ -2766,5 +2766,7 @@
   "workbench.checksName": "Kontroly, {warnings}",
   "workbench.warnings": "{count, plural, one {# upozornenie} few {# upozornenia} other {# upozornenia}}",
   "workbench.systemTheme": "Podľa systému",
-  "workbench.checkDiagram": "Skontrolovať diagram"
+  "workbench.checkDiagram": "Skontrolovať diagram",
+  "workbench.nodeDetails": "Podrobnosti: {name}",
+  "workbench.noteAt": "Poznámka v {time}"
 }

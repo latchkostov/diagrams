@@ -175,11 +175,11 @@ kbd {
 .app {
   height: 100%;
   display: grid;
-  grid-template-rows: var(--topbar-h) 1fr;
+  grid-template-rows: var(--topbar-h) minmax(0, 1fr) auto;
 }
 
 .app.is-presenting {
-  grid-template-rows: 1fr;
+  grid-template-rows: minmax(0, 1fr) auto;
 }
 
 .app-body {
@@ -1292,6 +1292,7 @@ kbd {
   letter-spacing: 0.01em;
 }
 .mode-dot {
+  position: relative;
   width: 8px;
   height: 8px;
   border-radius: 50%;

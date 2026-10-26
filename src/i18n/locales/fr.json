@@ -2779,5 +2779,7 @@
   "workbench.checksName": "Vérifications, {warnings}",
   "workbench.warnings": "{count, plural, one {# avertissement} other {# avertissements}}",
   "workbench.systemTheme": "Selon le système",
-  "workbench.checkDiagram": "Vérifier le diagramme"
+  "workbench.checkDiagram": "Vérifier le diagramme",
+  "workbench.nodeDetails": "Détails de {name}",
+  "workbench.noteAt": "Note à {time}"
 }

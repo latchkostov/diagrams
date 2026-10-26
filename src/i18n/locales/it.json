@@ -2792,5 +2792,7 @@
   "workbench.checksName": "Controlli, {warnings}",
   "workbench.warnings": "{count, plural, one {# avviso} other {# avvisi}}",
   "workbench.systemTheme": "Come il sistema",
-  "workbench.checkDiagram": "Controlla diagramma"
+  "workbench.checkDiagram": "Controlla diagramma",
+  "workbench.nodeDetails": "Dettagli di {name}",
+  "workbench.noteAt": "Nota a {time}"
 }

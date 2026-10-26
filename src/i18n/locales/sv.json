@@ -2786,5 +2786,7 @@
   "workbench.checksName": "Kontroller, {warnings}",
   "workbench.warnings": "{count, plural, one {# varning} other {# varningar}}",
   "workbench.systemTheme": "Följ systemet",
-  "workbench.checkDiagram": "Kontrollera diagram"
+  "workbench.checkDiagram": "Kontrollera diagram",
+  "workbench.nodeDetails": "Information om {name}",
+  "workbench.noteAt": "Anteckning vid {time}"
 }
