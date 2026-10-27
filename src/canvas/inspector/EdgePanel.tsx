@@ -228,8 +228,8 @@ export function EdgePanel({ edge, editor, nodeLabel, meta, readDiagram }: Inspec
           </p>
         )}
       </Section>
-      <EdgeLiveDetails key={edge.id} id={edge.id} />
-      {relation === "config" && <SettingsEditor key={edge.id} edge={edge} editor={editor} />}
+      <EdgeLiveDetails key={`live:${edge.id}`} id={edge.id} />
+      {relation === "config" && <SettingsEditor key={`settings:${edge.id}`} edge={edge} editor={editor} />}
       {(fanOut || requestWait || (flow && revisionAtLeast(meta.planning?.revision, "p3-w2"))) && (
         <Disclosure id="edge-simulation" title={t("inspector.simulation")} summary={callSummary}>
           {requestWait && (
