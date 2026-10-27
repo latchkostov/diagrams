@@ -1,8 +1,10 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { LiveScene, MAX_SEGMENTS, SAMPLE_BUDGET, type FlowStoreLike } from "./liveScene";
 
 // The scene against a fake React Flow DOM: paths are read on every scan, sampled only when needed
 // and within a budget, and marching edges follow moved paths in one rebuild.
+
+afterEach(() => vi.unstubAllGlobals());
 
 interface FakePath {
   d: string;
@@ -10,13 +12,14 @@ interface FakePath {
   queries: number;
 }
 
-function fakeDom(edges: Map<string, FakePath>) {
+function fakeDom(edges: Map<string, FakePath>, marching = false) {
   const groups = new Map<string, ReturnType<typeof g>>();
   const g = (id: string, p: FakePath) => ({
     dataset: { id },
     hasAttribute: () => false,
-    getAttribute: (name: string) => (name === "data-id" ? id : null),
+    getAttribute: (name: string) => (name === "data-id" ? id : name === "data-live-edge" && marching ? "active" : null),
     querySelector: () => ({
+      matches: () => marching,
       getAttribute: () => p.d,
       getTotalLength: () => p.length,
       getPointAtLength: (l: number) => (p.queries++, { x: l, y: 0 }),
@@ -48,8 +51,8 @@ it.each(["measurement", "detail styling"])("invalidates cached trace obstacles a
   vi.stubGlobal(
     "MutationObserver",
     class {
-      constructor(callback: (records: { attributeName: string }[]) => void) {
-        notify = () => callback([{ attributeName: "data-detail-wrapped" }]);
+      constructor(callback: (records: unknown[]) => void) {
+        notify = () => callback([{ target: root, attributeName: "data-detail-wrapped" }]);
       }
       observe() {}
       disconnect() {}
@@ -59,6 +62,7 @@ it.each(["measurement", "detail styling"])("invalidates cached trace obstacles a
   let nodes = [{}];
   const card = { matches: () => true, getBoundingClientRect: () => ({ left: 20, top: 30, width: 220, height }) };
   const root = {
+    closest: () => null,
     hasAttribute: () => false,
     getBoundingClientRect: () => ({ left: 0, top: 0 }),
     querySelectorAll: (selector: string) => (selector.startsWith(".react-flow__node-diagram,") ? [card] : []),
@@ -173,12 +177,14 @@ describe("LiveScene paths", () => {
   it("moves every marching edge with one rebuild, whatever the number", () => {
     const n = 1000;
     const edges = new Map(Array.from({ length: n }, (_, i) => [`e${i}`, path(60)] as const));
-    const scene = fakeDom(edges);
+    vi.stubGlobal("getComputedStyle", () => ({
+      stroke: "red",
+      strokeWidth: "2",
+      strokeDasharray: "5 5",
+      getPropertyValue: () => "1",
+    }));
+    const scene = fakeDom(edges, true);
     scene.refresh();
-    // The march as the UI clock read it (readMarch needs computed styles; set it directly).
-    (scene as unknown as { setMarch(e: unknown[]): void }).setMarch(
-      [...edges].map(([id, p]) => ({ id, d: p.d, color: "red", width: 2, dash: [5, 5], opacity: 1 })),
-    );
     scene.takeChanges();
     for (const p of edges.values()) p.d = p.d + " L70 0";
     // Counted, not timed: one rebuild of the march for all thousand moved edges. A rebuild per moved edge (each
