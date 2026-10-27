@@ -213,8 +213,9 @@ test("a link dialog closed because the diagram turned private meanwhile offers I
   await template;
   const [file] = await Promise.all([page.waitForEvent("download"), page.getByTestId("html-export-download").click()]);
   expect(file.suggestedFilename()).toBe("Refused plan.html");
-  const path = test.info().outputPath(file.suggestedFilename());
-  await file.saveAs(path);
+  // Read the completed browser download directly; no report copy is needed for the payload assertions.
+  const path = await file.path();
+  if (!path) throw new Error("The completed HTML download has no local path");
   const { diagram } = filePayload(readFileSync(path, "utf8"));
   expect(diagram.title).toBe("Refused plan");
   expect(diagram.private).toBe(true);
