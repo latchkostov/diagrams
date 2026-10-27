@@ -46,6 +46,7 @@ function DiagramNodeImpl({
   data,
   selected,
   dragging,
+  isConnectable,
   positionAbsoluteX,
   positionAbsoluteY,
 }: NodeProps<DiagramFlowNode>) {
@@ -67,11 +68,14 @@ function DiagramNodeImpl({
           id={side}
           type="source"
           position={sidePosition[side]}
+          isConnectable={isConnectable}
+          isConnectableStart={isConnectable}
+          isConnectableEnd={isConnectable}
           className={`dn-handle${connectPort === side ? " is-connect-port" : ""}`}
           data-testid={`handle-${id}-${side}`}
         />
       )),
-    [connectPort, id],
+    [connectPort, id, isConnectable],
   );
   const chip = useMemo(
     () => single && !dragging && <GrowChip id={id} x={positionAbsoluteX} y={positionAbsoluteY} />,

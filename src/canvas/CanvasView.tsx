@@ -1432,9 +1432,10 @@ function CanvasInner({
         snapToGrid={prefs.snap}
         snapGrid={SNAP_GRID}
         elevateNodesOnSelect={false}
-        // Space held: a drag pans even from a node, so nodes neither drag nor connect meanwhile.
-        nodesDraggable={!readOnly && !spaceHeld}
-        nodesConnectable={!readOnly && !spaceHeld}
+        // Viewing modes and Space pan from nodes without starting editing gestures.
+        nodesDraggable={editGestures && !spaceHeld}
+        nodesConnectable={editGestures && !spaceHeld}
+        connectOnClick={editGestures}
         elementsSelectable={!readOnly}
         // The wheel and a two-finger swipe pan (Shift+wheel sideways); Ctrl/Cmd+wheel and pinch zoom
         // at the pointer. Embedded in a page, the wheel scrolls the page (pinch / Ctrl+wheel zoom).
