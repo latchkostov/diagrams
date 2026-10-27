@@ -27,59 +27,86 @@ The loaded Linux run also exposed a non-atomic inspector geometry assertion: the
 section could finish expanding between its two field reads. Both fields and the sheet
 are now sampled in one browser evaluation, keeping the same exact spacing assertions.
 
+## Full-run follow-ups
+
+Complete names remain available in each title's native tooltip, including the HTML
+viewer. Integration checks for copied names and peer renames verify that exact full
+name, while the dedicated readability tests verify the painted abbreviation.
+Identity geometry is read in one batch before titles and icon sizes are written.
+A data-only edit restores the original name before measuring its natural card width,
+so Undo and layout cannot shrink a card around its previous abbreviation.
+The hover audit targets an exposed edge stroke rather than an SVG bounding-box centre.
+Canvas snapshots wait for the detail pass at the settled zoom before comparing painted
+titles. Natural-size title reservations keep truncation and counter-scaling from changing
+card measurements. Icons grow within their existing tile footprint.
+
+The complete Linux e2e run exposed existing import and Requests Checks failures,
+reproduced twice on clean master and recorded in
+[the follow-up fragment](../backlog/2026-10-27-import-and-checks-master-failures.md).
+Other failures received focused fixes and reruns; the original full run was not green.
+
+The full Linux run also reproduced existing import-visibility and request-Checks
+failures on clean master. Their focused baseline evidence is recorded in
+[the follow-up fragment](../backlog/2026-10-27-import-and-checks-master-failures.md);
+none of those assertions or timeouts is changed here.
+
 ## Intentional parity changes
 
-All Node-tier simulation, planning, schema, catalogue and agent goldens are unchanged.
-Every changed browser golden is listed below. Layout node positions, node boxes, edge
-routes and edge-label placements stay unchanged. Three opening fits reserve slightly
-more room while the counter-scaled identity is measured; their scale decreases by
-about 1–1.4%. Exported PNG/SVG artwork remains at its authored scale.
+All 54 changed goldens are listed below. Node boxes, routes and fitted viewports are unchanged. Image-export PNG goldens are unchanged.
 
-| Golden under tests/parity/goldens/                      | Reason                                                                                                                                                                                                                    |
-| ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `browser/html/branch-to-datacentre.dark.png`            | Read-only HTML viewer screenshot retains counter-scaled icons and titles at its fitted zoom.                                                                                                                              |
-| `browser/html/kafka-order-pipeline.dark.png`            | Read-only HTML viewer screenshot retains counter-scaled icons and titles at its fitted zoom.                                                                                                                              |
-| `browser/images/aks-app-config-key-vault.dark.svg.txt`  | SVG DOM snapshot includes card-icon test identifiers and the title column filling its available width; exported artwork stays at authored scale.                                                                          |
-| `browser/images/aks-app-config-key-vault.light.svg.txt` | SVG DOM snapshot includes card-icon test identifiers and the title column filling its available width; exported artwork stays at authored scale.                                                                          |
-| `browser/images/branch-to-datacentre.dark.svg.txt`      | SVG DOM snapshot includes card-icon test identifiers and the title column filling its available width; exported artwork stays at authored scale.                                                                          |
-| `browser/images/branch-to-datacentre.light.svg.txt`     | SVG DOM snapshot includes card-icon test identifiers and the title column filling its available width; exported artwork stays at authored scale.                                                                          |
-| `browser/images/corpus-hand-shaped-lines.dark.svg.txt`  | SVG DOM snapshot includes card-icon test identifiers and the title column filling its available width; exported artwork stays at authored scale.                                                                          |
-| `browser/images/corpus-hand-shaped-lines.light.svg.txt` | SVG DOM snapshot includes card-icon test identifiers and the title column filling its available width; exported artwork stays at authored scale.                                                                          |
-| `browser/images/kafka-order-pipeline.dark.svg.txt`      | SVG DOM snapshot includes card-icon test identifiers and the title column filling its available width; exported artwork stays at authored scale.                                                                          |
-| `browser/images/kafka-order-pipeline.light.svg.txt`     | SVG DOM snapshot includes card-icon test identifiers and the title column filling its available width; exported artwork stays at authored scale.                                                                          |
-| `browser/layout/aws-serverless-orders.json`             | Auto-layout/Tidy now record visible, card-width-truncated names instead of hidden or overflowing full text.                                                                                                               |
-| `browser/layout/azure-service-bus-integration.json`     | Auto-layout/Tidy now record visible, card-width-truncated names instead of hidden or overflowing full text.                                                                                                               |
-| `browser/layout/black-friday-commerce.json`             | Auto-layout/Tidy now record visible, card-width-truncated names instead of hidden or overflowing full text.                                                                                                               |
-| `browser/layout/blocking-call.json`                     | Auto-layout/Tidy now record visible, card-width-truncated names instead of hidden or overflowing full text.                                                                                                               |
-| `browser/layout/branch-to-datacentre.json`              | Auto-layout/Tidy now record visible, card-width-truncated names instead of hidden or overflowing full text.                                                                                                               |
-| `browser/layout/cell-based-bookings.json`               | Auto-layout/Tidy now record visible, card-width-truncated names instead of hidden or overflowing full text.                                                                                                               |
-| `browser/layout/cqrs-event-sourcing.json`               | Auto-layout/Tidy now record visible, card-width-truncated names instead of hidden or overflowing full text.                                                                                                               |
-| `browser/layout/delivery-dispatch.json`                 | Auto-layout/Tidy now record visible, card-width-truncated names instead of hidden or overflowing full text.                                                                                                               |
-| `browser/layout/ev-charging-network.json`               | Auto-layout/Tidy now record visible, card-width-truncated names instead of hidden or overflowing full text.                                                                                                               |
-| `browser/layout/event-driven-data-platform.json`        | Auto-layout/Tidy now record visible, card-width-truncated names instead of hidden or overflowing full text.                                                                                                               |
-| `browser/layout/gcp-streaming-analytics.json`           | Auto-layout/Tidy now record visible, card-width-truncated names instead of hidden or overflowing full text.                                                                                                               |
-| `browser/layout/hybrid-enterprise-network.json`         | Auto-layout/Tidy now record visible, card-width-truncated names instead of hidden or overflowing full text.                                                                                                               |
-| `browser/layout/kafka-order-pipeline.json`              | Auto-layout/Tidy now record visible, card-width-truncated names instead of hidden or overflowing full text.                                                                                                               |
-| `browser/layout/notification-fanout.json`               | Auto-layout/Tidy now record visible, card-width-truncated names instead of hidden or overflowing full text.                                                                                                               |
-| `browser/layout/observability-pipeline.json`            | Auto-layout/Tidy now record visible, card-width-truncated names instead of hidden or overflowing full text.                                                                                                               |
-| `browser/layout/outbox-saga-checkout.json`              | Auto-layout/Tidy now record visible, card-width-truncated names instead of hidden or overflowing full text.                                                                                                               |
-| `browser/layout/payments-ledger.json`                   | Auto-layout/Tidy now record visible, card-width-truncated names instead of hidden or overflowing full text.                                                                                                               |
-| `browser/layout/recommendations-feature-store.json`     | Auto-layout/Tidy now record visible, card-width-truncated names instead of hidden or overflowing full text.                                                                                                               |
-| `browser/layout/scale-on-busy-threads.json`             | Auto-layout/Tidy now record visible, card-width-truncated names instead of hidden or overflowing full text.                                                                                                               |
-| `browser/layout/serverless-burst-buffer.json`           | Auto-layout/Tidy now record visible, card-width-truncated names instead of hidden or overflowing full text.                                                                                                               |
-| `browser/layout/video-on-demand-pipeline.json`          | Auto-layout/Tidy now record visible, card-width-truncated names instead of hidden or overflowing full text.                                                                                                               |
-| `browser/layout/webhook-ingestion.json`                 | Auto-layout/Tidy now record visible, card-width-truncated names instead of hidden or overflowing full text.                                                                                                               |
-| `browser/render/aks-app-config-key-vault.json`          | Opening canvas now records visible, card-width-truncated names.                                                                                                                                                           |
-| `browser/render/aws-serverless-orders.json`             | Opening canvas now records visible, card-width-truncated names.                                                                                                                                                           |
-| `browser/render/azure-service-bus-integration.json`     | Opening canvas now records visible, card-width-truncated names.                                                                                                                                                           |
-| `browser/render/blocking-call.json`                     | Opening canvas now records visible, card-width-truncated names.                                                                                                                                                           |
-| `browser/render/branch-to-datacentre.json`              | Opening canvas now records visible, card-width-truncated names.                                                                                                                                                           |
-| `browser/render/cqrs-event-sourcing.json`               | Opening canvas now records visible, card-width-truncated names.                                                                                                                                                           |
-| `browser/render/event-driven-data-platform.json`        | Opening canvas now records visible, card-width-truncated names. Initial fit also reserves room for the identity floor: translate(7.39623px, 192.725px) scale(0.615094) → translate(7.66029px, 195.207px) scale(0.608493). |
-| `browser/render/gcp-streaming-analytics.json`           | Opening canvas now records visible, card-width-truncated names.                                                                                                                                                           |
-| `browser/render/kafka-order-pipeline.json`              | Opening canvas now records visible, card-width-truncated names.                                                                                                                                                           |
-| `browser/render/notification-fanout.json`               | Opening canvas now records visible, card-width-truncated names.                                                                                                                                                           |
-| `browser/render/outbox-saga-checkout.json`              | Opening canvas now records visible, card-width-truncated names. Initial fit also reserves room for the identity floor: translate(11.136px, 217.446px) scale(0.5216) → translate(11.4241px, 220.298px) scale(0.514398).    |
-| `browser/render/scale-on-busy-threads.json`             | Opening canvas now records visible, card-width-truncated names.                                                                                                                                                           |
-| `browser/render/serverless-burst-buffer.json`           | Opening canvas now records visible, card-width-truncated names.                                                                                                                                                           |
-| `browser/render/webhook-ingestion.json`                 | Opening canvas now records visible, card-width-truncated names. Initial fit also reserves room for the identity floor: translate(11.1776px, 217.859px) scale(0.520559) → translate(11.4646px, 220.699px) scale(0.513386). |
+| Golden                                                   | Reason                                                                                                                             |
+| -------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `browser/html/branch-to-datacentre.dark.png`             | Dark HTML viewer paints node identity with the shared title/icon styling.                                                          |
+| `browser/html/kafka-order-pipeline.dark.png`             | Dark HTML viewer paints node identity with the shared title/icon styling.                                                          |
+| `browser/images/aks-app-config-key-vault.dark.svg.json`  | Element count includes the natural-size title reservation and positioned title wrapper; geometry and rendered image are unchanged. |
+| `browser/images/aks-app-config-key-vault.dark.svg.txt`   | Export DOM includes title-sizing wrappers, positioned icon artwork, and identity test IDs; rendered image is unchanged.            |
+| `browser/images/aks-app-config-key-vault.light.svg.json` | Element count includes the natural-size title reservation and positioned title wrapper; geometry and rendered image are unchanged. |
+| `browser/images/aks-app-config-key-vault.light.svg.txt`  | Export DOM includes title-sizing wrappers, positioned icon artwork, and identity test IDs; rendered image is unchanged.            |
+| `browser/images/branch-to-datacentre.dark.svg.json`      | Element count includes the natural-size title reservation and positioned title wrapper; geometry and rendered image are unchanged. |
+| `browser/images/branch-to-datacentre.dark.svg.txt`       | Export DOM includes title-sizing wrappers, positioned icon artwork, and identity test IDs; rendered image is unchanged.            |
+| `browser/images/branch-to-datacentre.light.svg.json`     | Element count includes the natural-size title reservation and positioned title wrapper; geometry and rendered image are unchanged. |
+| `browser/images/branch-to-datacentre.light.svg.txt`      | Export DOM includes title-sizing wrappers, positioned icon artwork, and identity test IDs; rendered image is unchanged.            |
+| `browser/images/corpus-hand-shaped-lines.dark.svg.json`  | Element count includes the natural-size title reservation and positioned title wrapper; geometry and rendered image are unchanged. |
+| `browser/images/corpus-hand-shaped-lines.dark.svg.txt`   | Export DOM includes title-sizing wrappers, positioned icon artwork, and identity test IDs; rendered image is unchanged.            |
+| `browser/images/corpus-hand-shaped-lines.light.svg.json` | Element count includes the natural-size title reservation and positioned title wrapper; geometry and rendered image are unchanged. |
+| `browser/images/corpus-hand-shaped-lines.light.svg.txt`  | Export DOM includes title-sizing wrappers, positioned icon artwork, and identity test IDs; rendered image is unchanged.            |
+| `browser/images/kafka-order-pipeline.dark.svg.json`      | Element count includes the natural-size title reservation and positioned title wrapper; geometry and rendered image are unchanged. |
+| `browser/images/kafka-order-pipeline.dark.svg.txt`       | Export DOM includes title-sizing wrappers, positioned icon artwork, and identity test IDs; rendered image is unchanged.            |
+| `browser/images/kafka-order-pipeline.light.svg.json`     | Element count includes the natural-size title reservation and positioned title wrapper; geometry and rendered image are unchanged. |
+| `browser/images/kafka-order-pipeline.light.svg.txt`      | Export DOM includes title-sizing wrappers, positioned icon artwork, and identity test IDs; rendered image is unchanged.            |
+| `browser/layout/aws-serverless-orders.json`              | Auto-layout/Tidy records visible, card-width-truncated titles.                                                                     |
+| `browser/layout/azure-service-bus-integration.json`      | Auto-layout/Tidy records visible, card-width-truncated titles.                                                                     |
+| `browser/layout/black-friday-commerce.json`              | Auto-layout/Tidy records visible, card-width-truncated titles.                                                                     |
+| `browser/layout/blocking-call.json`                      | Auto-layout/Tidy records visible, card-width-truncated titles.                                                                     |
+| `browser/layout/branch-to-datacentre.json`               | Auto-layout/Tidy records visible, card-width-truncated titles.                                                                     |
+| `browser/layout/cell-based-bookings.json`                | Auto-layout/Tidy records visible, card-width-truncated titles.                                                                     |
+| `browser/layout/cqrs-event-sourcing.json`                | Auto-layout/Tidy records visible, card-width-truncated titles.                                                                     |
+| `browser/layout/delivery-dispatch.json`                  | Auto-layout/Tidy records visible, card-width-truncated titles.                                                                     |
+| `browser/layout/ev-charging-network.json`                | Auto-layout/Tidy records visible, card-width-truncated titles.                                                                     |
+| `browser/layout/event-driven-data-platform.json`         | Auto-layout/Tidy records visible, card-width-truncated titles.                                                                     |
+| `browser/layout/gcp-streaming-analytics.json`            | Auto-layout/Tidy records visible, card-width-truncated titles.                                                                     |
+| `browser/layout/hybrid-enterprise-network.json`          | Auto-layout/Tidy records visible, card-width-truncated titles.                                                                     |
+| `browser/layout/kafka-order-pipeline.json`               | Auto-layout/Tidy records visible, card-width-truncated titles.                                                                     |
+| `browser/layout/notification-fanout.json`                | Auto-layout/Tidy records visible, card-width-truncated titles.                                                                     |
+| `browser/layout/observability-pipeline.json`             | Auto-layout/Tidy records visible, card-width-truncated titles.                                                                     |
+| `browser/layout/outbox-saga-checkout.json`               | Auto-layout/Tidy records visible, card-width-truncated titles.                                                                     |
+| `browser/layout/payments-ledger.json`                    | Auto-layout/Tidy records visible, card-width-truncated titles.                                                                     |
+| `browser/layout/recommendations-feature-store.json`      | Auto-layout/Tidy records visible, card-width-truncated titles.                                                                     |
+| `browser/layout/scale-on-busy-threads.json`              | Auto-layout/Tidy records visible, card-width-truncated titles.                                                                     |
+| `browser/layout/serverless-burst-buffer.json`            | Auto-layout/Tidy records visible, card-width-truncated titles.                                                                     |
+| `browser/layout/video-on-demand-pipeline.json`           | Auto-layout/Tidy records visible, card-width-truncated titles.                                                                     |
+| `browser/layout/webhook-ingestion.json`                  | Auto-layout/Tidy records visible, card-width-truncated titles.                                                                     |
+| `browser/render/aks-app-config-key-vault.json`           | Opening canvas records visible, card-width-truncated titles.                                                                       |
+| `browser/render/aws-serverless-orders.json`              | Opening canvas records visible, card-width-truncated titles.                                                                       |
+| `browser/render/azure-service-bus-integration.json`      | Opening canvas records visible, card-width-truncated titles.                                                                       |
+| `browser/render/blocking-call.json`                      | Opening canvas records visible, card-width-truncated titles.                                                                       |
+| `browser/render/branch-to-datacentre.json`               | Opening canvas records visible, card-width-truncated titles.                                                                       |
+| `browser/render/cqrs-event-sourcing.json`                | Opening canvas records visible, card-width-truncated titles.                                                                       |
+| `browser/render/event-driven-data-platform.json`         | Opening canvas records visible, card-width-truncated titles.                                                                       |
+| `browser/render/gcp-streaming-analytics.json`            | Opening canvas records visible, card-width-truncated titles.                                                                       |
+| `browser/render/kafka-order-pipeline.json`               | Opening canvas records visible, card-width-truncated titles.                                                                       |
+| `browser/render/notification-fanout.json`                | Opening canvas records visible, card-width-truncated titles.                                                                       |
+| `browser/render/outbox-saga-checkout.json`               | Opening canvas records visible, card-width-truncated titles.                                                                       |
+| `browser/render/scale-on-busy-threads.json`              | Opening canvas records visible, card-width-truncated titles.                                                                       |
+| `browser/render/serverless-burst-buffer.json`            | Opening canvas records visible, card-width-truncated titles.                                                                       |
+| `browser/render/webhook-ingestion.json`                  | Opening canvas records visible, card-width-truncated titles.                                                                       |

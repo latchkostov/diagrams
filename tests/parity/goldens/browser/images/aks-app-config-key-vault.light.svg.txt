@@ -178,87 +178,109 @@ svg width=2056 height=865 viewBox=0 0 2056 865
           div #node-ai .dn.dn-card width:220px height:72px color:rgb(21, 24, 30) font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
             div .nb.nb-card width:220px height:72px color:rgb(21, 24, 30) background-color:rgb(255, 255, 255) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(216, 221, 230) border-top-width:1px border-radius:14px
               div #card-icon .nb-tile width:44px height:44px color:rgb(21, 24, 30) background-color:oklab(0.953345 0.00801041 -0.0145717) display:grid font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30) border-radius:11px
-                img .stencil-icon width=26 height=26 src=data:…c6a5c297 width:36px height:26px color:rgb(21, 24, 30) font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
+                img .stencil-icon width=26 height=26 src=data:…c6a5c297 width:36px height:26px left:22px top:22px color:rgb(21, 24, 30) font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
               div .nb-text width:135px height:34.8125px color:rgb(21, 24, 30) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
-                div #card-title .nb-label width:135px height:16.875px color:rgb(21, 24, 30) font-size:12.9px font-weight:620 border-top-color:rgb(21, 24, 30) "Application Insights"
+                div .nb-name width:135px height:16.875px color:rgb(21, 24, 30) font-size:12.9px font-weight:620 border-top-color:rgb(21, 24, 30)
+                  span .nb-name-size width:auto height:auto color:rgb(21, 24, 30) visibility:hidden font-size:12.9px font-weight:620 border-top-color:rgb(21, 24, 30) "Application Insights"
+                  div #card-title .nb-label width:135px height:16.875px top:8.4375px color:rgb(21, 24, 30) font-size:12.9px font-weight:620 border-top-color:rgb(21, 24, 30) "Application Insights"
                 div #card-second-line .nb-sub width:135px height:14.9375px color:rgb(95, 102, 115) font-size:10.9px font-weight:400 border-top-color:rgb(95, 102, 115) "traces · logs · metrics"
 == node-api
           div #node-api .dn.dn-card width:221px height:72px color:rgb(21, 24, 30) font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
             div .nb.nb-card width:221px height:72px color:rgb(21, 24, 30) background-color:rgb(255, 255, 255) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(216, 221, 230) border-top-width:1px border-radius:14px
               div #card-icon .nb-tile width:44px height:44px color:rgb(21, 24, 30) background-color:oklab(0.940791 0.00559681 -0.0252616) display:grid font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30) border-radius:11px
-                img .stencil-icon width=26 height=26 src=data:…328354bb width:36px height:26px color:rgb(21, 24, 30) font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
+                img .stencil-icon width=26 height=26 src=data:…328354bb width:36px height:26px left:22px top:22px color:rgb(21, 24, 30) font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
               div .nb-text width:136px height:34.8125px color:rgb(21, 24, 30) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
-                div #card-title .nb-label width:136px height:16.875px color:rgb(21, 24, 30) font-size:12.9px font-weight:620 border-top-color:rgb(21, 24, 30) "Orders API"
+                div .nb-name width:136px height:16.875px color:rgb(21, 24, 30) font-size:12.9px font-weight:620 border-top-color:rgb(21, 24, 30)
+                  span .nb-name-size width:auto height:auto color:rgb(21, 24, 30) visibility:hidden font-size:12.9px font-weight:620 border-top-color:rgb(21, 24, 30) "Orders API"
+                  div #card-title .nb-label width:136px height:16.875px top:8.4375px color:rgb(21, 24, 30) font-size:12.9px font-weight:620 border-top-color:rgb(21, 24, 30) "Orders API"
                 div #card-second-line .nb-sub width:136px height:14.9375px color:rgb(95, 102, 115) font-size:10.9px font-weight:400 border-top-color:rgb(95, 102, 115) "ASP.NET Core · 3 replicas"
 == node-appcfg
           div #node-appcfg .dn.dn-card width:220px height:72px color:rgb(21, 24, 30) font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
             div .nb.nb-card width:220px height:72px color:rgb(21, 24, 30) background-color:rgb(255, 255, 255) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(216, 221, 230) border-top-width:1px border-radius:14px
               div #card-icon .nb-tile width:44px height:44px color:rgb(21, 24, 30) background-color:oklab(0.952438 -0.00582675 -0.017335) display:grid font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30) border-radius:11px
-                img .stencil-icon width=26 height=26 src=data:…08c4dc78 width:36px height:26px color:rgb(21, 24, 30) font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
+                img .stencil-icon width=26 height=26 src=data:…08c4dc78 width:36px height:26px left:22px top:22px color:rgb(21, 24, 30) font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
               div .nb-text width:135px height:34.8125px color:rgb(21, 24, 30) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
-                div #card-title .nb-label width:135px height:16.875px color:rgb(21, 24, 30) font-size:12.9px font-weight:620 border-top-color:rgb(21, 24, 30) "orders-config"
+                div .nb-name width:135px height:16.875px color:rgb(21, 24, 30) font-size:12.9px font-weight:620 border-top-color:rgb(21, 24, 30)
+                  span .nb-name-size width:auto height:auto color:rgb(21, 24, 30) visibility:hidden font-size:12.9px font-weight:620 border-top-color:rgb(21, 24, 30) "orders-config"
+                  div #card-title .nb-label width:135px height:16.875px top:8.4375px color:rgb(21, 24, 30) font-size:12.9px font-weight:620 border-top-color:rgb(21, 24, 30) "orders-config"
                 div #card-second-line .nb-sub width:135px height:14.9375px color:rgb(95, 102, 115) font-size:10.9px font-weight:400 border-top-color:rgb(95, 102, 115) "App Configuration"
 == node-entra
           div #node-entra .dn.dn-card width:220px height:72px color:rgb(21, 24, 30) font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
             div .nb.nb-card width:220px height:72px color:rgb(21, 24, 30) background-color:rgb(255, 255, 255) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(216, 221, 230) border-top-width:1px border-radius:14px
               div #card-icon .nb-tile width:44px height:44px color:rgb(21, 24, 30) background-color:oklab(0.959409 -0.00710228 -0.0152683) display:grid font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30) border-radius:11px
-                img .stencil-icon width=26 height=26 src=data:…4b9bbe8d width:36px height:26px color:rgb(21, 24, 30) font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
+                img .stencil-icon width=26 height=26 src=data:…4b9bbe8d width:36px height:26px left:22px top:22px color:rgb(21, 24, 30) font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
               div .nb-text width:135px height:34.8125px color:rgb(21, 24, 30) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
-                div #card-title .nb-label width:135px height:16.875px color:rgb(21, 24, 30) font-size:12.9px font-weight:620 border-top-color:rgb(21, 24, 30) "Entra ID"
+                div .nb-name width:135px height:16.875px color:rgb(21, 24, 30) font-size:12.9px font-weight:620 border-top-color:rgb(21, 24, 30)
+                  span .nb-name-size width:auto height:auto color:rgb(21, 24, 30) visibility:hidden font-size:12.9px font-weight:620 border-top-color:rgb(21, 24, 30) "Entra ID"
+                  div #card-title .nb-label width:135px height:16.875px top:8.4375px color:rgb(21, 24, 30) font-size:12.9px font-weight:620 border-top-color:rgb(21, 24, 30) "Entra ID"
                 div #card-second-line .nb-sub width:135px height:14.9375px color:rgb(95, 102, 115) font-size:10.9px font-weight:400 border-top-color:rgb(95, 102, 115) "Token issuer"
 == node-fd
           div #node-fd .dn.dn-card width:220px height:72px color:rgb(21, 24, 30) font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
             div .nb.nb-card width:220px height:72px color:rgb(21, 24, 30) background-color:rgb(255, 255, 255) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(216, 221, 230) border-top-width:1px border-radius:14px
               div #card-icon .nb-tile width:44px height:44px color:rgb(21, 24, 30) background-color:oklab(0.952438 -0.00582675 -0.017335) display:grid font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30) border-radius:11px
-                img .stencil-icon width=26 height=26 src=data:…fc4cc840 width:36px height:26px color:rgb(21, 24, 30) font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
+                img .stencil-icon width=26 height=26 src=data:…fc4cc840 width:36px height:26px left:22px top:22px color:rgb(21, 24, 30) font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
               div .nb-text width:135px height:34.8125px color:rgb(21, 24, 30) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
-                div #card-title .nb-label width:135px height:16.875px color:rgb(21, 24, 30) font-size:12.9px font-weight:620 border-top-color:rgb(21, 24, 30) "Front Door"
+                div .nb-name width:135px height:16.875px color:rgb(21, 24, 30) font-size:12.9px font-weight:620 border-top-color:rgb(21, 24, 30)
+                  span .nb-name-size width:auto height:auto color:rgb(21, 24, 30) visibility:hidden font-size:12.9px font-weight:620 border-top-color:rgb(21, 24, 30) "Front Door"
+                  div #card-title .nb-label width:135px height:16.875px top:8.4375px color:rgb(21, 24, 30) font-size:12.9px font-weight:620 border-top-color:rgb(21, 24, 30) "Front Door"
                 div #card-second-line .nb-sub width:135px height:14.9375px color:rgb(95, 102, 115) font-size:10.9px font-weight:400 border-top-color:rgb(95, 102, 115) "WAF · TLS"
 == node-kv
           div #node-kv .dn.dn-card width:220px height:72px color:rgb(21, 24, 30) font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
             div .nb.nb-card width:220px height:72px color:rgb(21, 24, 30) background-color:rgb(255, 255, 255) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(216, 221, 230) border-top-width:1px border-radius:14px
               div #card-icon .nb-tile width:44px height:44px color:rgb(21, 24, 30) background-color:oklab(0.970694 0.00876347 0.0164166) display:grid font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30) border-radius:11px
-                img .stencil-icon width=26 height=26 src=data:…a88eb5b6 width:36px height:26px color:rgb(21, 24, 30) font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
+                img .stencil-icon width=26 height=26 src=data:…a88eb5b6 width:36px height:26px left:22px top:22px color:rgb(21, 24, 30) font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
               div .nb-text width:135px height:34.8125px color:rgb(21, 24, 30) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
-                div #card-title .nb-label width:135px height:16.875px color:rgb(21, 24, 30) font-size:12.9px font-weight:620 border-top-color:rgb(21, 24, 30) "orders-kv"
+                div .nb-name width:135px height:16.875px color:rgb(21, 24, 30) font-size:12.9px font-weight:620 border-top-color:rgb(21, 24, 30)
+                  span .nb-name-size width:auto height:auto color:rgb(21, 24, 30) visibility:hidden font-size:12.9px font-weight:620 border-top-color:rgb(21, 24, 30) "orders-kv"
+                  div #card-title .nb-label width:135px height:16.875px top:8.4375px color:rgb(21, 24, 30) font-size:12.9px font-weight:620 border-top-color:rgb(21, 24, 30) "orders-kv"
                 div #card-second-line .nb-sub width:135px height:14.9375px color:rgb(95, 102, 115) font-size:10.9px font-weight:400 border-top-color:rgb(95, 102, 115) "Key Vault"
 == node-mi
           div #node-mi .dn.dn-card width:220px height:72px color:rgb(21, 24, 30) font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
             div .nb.nb-card width:220px height:72px color:rgb(21, 24, 30) background-color:rgb(255, 255, 255) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(216, 221, 230) border-top-width:1px border-radius:14px
               div #card-icon .nb-tile width:44px height:44px color:rgb(21, 24, 30) background-color:oklab(0.959409 -0.00710228 -0.0152683) display:grid font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30) border-radius:11px
-                img .stencil-icon width=26 height=26 src=data:…e54f3eb4 width:36px height:26px color:rgb(21, 24, 30) font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
+                img .stencil-icon width=26 height=26 src=data:…e54f3eb4 width:36px height:26px left:22px top:22px color:rgb(21, 24, 30) font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
               div .nb-text width:135px height:34.8125px color:rgb(21, 24, 30) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
-                div #card-title .nb-label width:135px height:16.875px color:rgb(21, 24, 30) font-size:12.9px font-weight:620 border-top-color:rgb(21, 24, 30) "orders-api-id"
+                div .nb-name width:135px height:16.875px color:rgb(21, 24, 30) font-size:12.9px font-weight:620 border-top-color:rgb(21, 24, 30)
+                  span .nb-name-size width:auto height:auto color:rgb(21, 24, 30) visibility:hidden font-size:12.9px font-weight:620 border-top-color:rgb(21, 24, 30) "orders-api-id"
+                  div #card-title .nb-label width:135px height:16.875px top:8.4375px color:rgb(21, 24, 30) font-size:12.9px font-weight:620 border-top-color:rgb(21, 24, 30) "orders-api-id"
                 div #card-second-line .nb-sub width:135px height:14.9375px color:rgb(95, 102, 115) font-size:10.9px font-weight:400 border-top-color:rgb(95, 102, 115) "Workload identity"
 == node-notify
           div #node-notify .dn.dn-card width:220px height:72px color:rgb(21, 24, 30) font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
             div .nb.nb-card width:220px height:72px color:rgb(21, 24, 30) background-color:rgb(255, 255, 255) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(216, 221, 230) border-top-width:1px border-radius:14px
               div #card-icon .nb-tile width:44px height:44px color:rgb(21, 24, 30) background-color:oklab(0.974919 0.00285195 0.0171468) display:grid font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30) border-radius:11px
-                img .stencil-icon width=26 height=26 src=data:…e7409108 width:36px height:26px color:rgb(21, 24, 30) font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
+                img .stencil-icon width=26 height=26 src=data:…e7409108 width:36px height:26px left:22px top:22px color:rgb(21, 24, 30) font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
               div .nb-text width:135px height:34.8125px color:rgb(21, 24, 30) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
-                div #card-title .nb-label width:135px height:16.875px color:rgb(21, 24, 30) font-size:12.9px font-weight:620 border-top-color:rgb(21, 24, 30) "Order confirmation"
+                div .nb-name width:135px height:16.875px color:rgb(21, 24, 30) font-size:12.9px font-weight:620 border-top-color:rgb(21, 24, 30)
+                  span .nb-name-size width:auto height:auto color:rgb(21, 24, 30) visibility:hidden font-size:12.9px font-weight:620 border-top-color:rgb(21, 24, 30) "Order confirmation"
+                  div #card-title .nb-label width:135px height:16.875px top:8.4375px color:rgb(21, 24, 30) font-size:12.9px font-weight:620 border-top-color:rgb(21, 24, 30) "Order confirmation"
                 div #card-second-line .nb-sub width:135px height:14.9375px color:rgb(95, 102, 115) font-size:10.9px font-weight:400 border-top-color:rgb(95, 102, 115) "Function · sends email"
 == node-sb
           div #node-sb .dn.dn-card width:220px height:72px color:rgb(21, 24, 30) font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
             div .nb.nb-card width:220px height:72px color:rgb(21, 24, 30) background-color:rgb(255, 255, 255) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(216, 221, 230) border-top-width:1px border-radius:14px
               div #card-icon .nb-tile width:44px height:44px color:rgb(21, 24, 30) background-color:oklab(0.952438 -0.00582675 -0.017335) display:grid font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30) border-radius:11px
-                img .stencil-icon width=26 height=26 src=data:…52d3d802 width:36px height:26px color:rgb(21, 24, 30) font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
+                img .stencil-icon width=26 height=26 src=data:…52d3d802 width:36px height:26px left:22px top:22px color:rgb(21, 24, 30) font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
               div .nb-text width:135px height:34.8125px color:rgb(21, 24, 30) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
-                div #card-title .nb-label width:135px height:16.875px color:rgb(21, 24, 30) font-size:12.9px font-weight:620 border-top-color:rgb(21, 24, 30) "orders.created"
+                div .nb-name width:135px height:16.875px color:rgb(21, 24, 30) font-size:12.9px font-weight:620 border-top-color:rgb(21, 24, 30)
+                  span .nb-name-size width:auto height:auto color:rgb(21, 24, 30) visibility:hidden font-size:12.9px font-weight:620 border-top-color:rgb(21, 24, 30) "orders.created"
+                  div #card-title .nb-label width:135px height:16.875px top:8.4375px color:rgb(21, 24, 30) font-size:12.9px font-weight:620 border-top-color:rgb(21, 24, 30) "orders.created"
                 div #card-second-line .nb-sub width:135px height:14.9375px color:rgb(95, 102, 115) font-size:10.9px font-weight:400 border-top-color:rgb(95, 102, 115) "Service Bus topic"
 == node-sql
           div #node-sql .dn.dn-card width:220px height:72px color:rgb(21, 24, 30) font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
             div .nb.nb-card width:220px height:72px color:rgb(21, 24, 30) background-color:rgb(255, 255, 255) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(216, 221, 230) border-top-width:1px border-radius:14px
               div #card-icon .nb-tile width:44px height:44px color:rgb(21, 24, 30) background-color:oklab(0.952438 -0.00582675 -0.017335) display:grid font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30) border-radius:11px
-                img .stencil-icon width=26 height=26 src=data:…1b96af19 width:36px height:26px color:rgb(21, 24, 30) font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
+                img .stencil-icon width=26 height=26 src=data:…1b96af19 width:36px height:26px left:22px top:22px color:rgb(21, 24, 30) font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
               div .nb-text width:135px height:34.8125px color:rgb(21, 24, 30) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
-                div #card-title .nb-label width:135px height:16.875px color:rgb(21, 24, 30) font-size:12.9px font-weight:620 border-top-color:rgb(21, 24, 30) "orders-db"
+                div .nb-name width:135px height:16.875px color:rgb(21, 24, 30) font-size:12.9px font-weight:620 border-top-color:rgb(21, 24, 30)
+                  span .nb-name-size width:auto height:auto color:rgb(21, 24, 30) visibility:hidden font-size:12.9px font-weight:620 border-top-color:rgb(21, 24, 30) "orders-db"
+                  div #card-title .nb-label width:135px height:16.875px top:8.4375px color:rgb(21, 24, 30) font-size:12.9px font-weight:620 border-top-color:rgb(21, 24, 30) "orders-db"
                 div #card-second-line .nb-sub width:135px height:14.9375px color:rgb(95, 102, 115) font-size:10.9px font-weight:400 border-top-color:rgb(95, 102, 115) "Azure SQL"
 == node-web
           div #node-web .dn.dn-card width:220px height:72px color:rgb(21, 24, 30) font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
             div .nb.nb-card width:220px height:72px color:rgb(21, 24, 30) background-color:rgb(255, 255, 255) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(216, 221, 230) border-top-width:1px border-radius:14px
               div #card-icon .nb-tile width:44px height:44px color:rgb(21, 24, 30) background-color:oklab(0.954387 0.00282416 -0.0222537) display:grid font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30) border-radius:11px
-                img .stencil-icon width=26 height=26 src=data:…8e4c7264 width:36px height:26px color:rgb(21, 24, 30) font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
+                img .stencil-icon width=26 height=26 src=data:…8e4c7264 width:36px height:26px left:22px top:22px color:rgb(21, 24, 30) font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
               div .nb-text width:135px height:34.8125px color:rgb(21, 24, 30) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
-                div #card-title .nb-label width:135px height:16.875px color:rgb(21, 24, 30) font-size:12.9px font-weight:620 border-top-color:rgb(21, 24, 30) "Storefront"
+                div .nb-name width:135px height:16.875px color:rgb(21, 24, 30) font-size:12.9px font-weight:620 border-top-color:rgb(21, 24, 30)
+                  span .nb-name-size width:auto height:auto color:rgb(21, 24, 30) visibility:hidden font-size:12.9px font-weight:620 border-top-color:rgb(21, 24, 30) "Storefront"
+                  div #card-title .nb-label width:135px height:16.875px top:8.4375px color:rgb(21, 24, 30) font-size:12.9px font-weight:620 border-top-color:rgb(21, 24, 30) "Storefront"
                 div #card-second-line .nb-sub width:135px height:14.9375px color:rgb(95, 102, 115) font-size:10.9px font-weight:400 border-top-color:rgb(95, 102, 115) "Shoppers placing orders"

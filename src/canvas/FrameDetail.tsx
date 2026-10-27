@@ -168,8 +168,11 @@ export const FrameDetail = memo(
                   (text.classList.contains("nb-label")
                     ? parseFloat(getComputedStyle(text).getPropertyValue("--title-font")) || 13.5
                     : undefined);
-                if (text.classList.contains("nb-label")) text.style.removeProperty("font-size");
-                else if (original) text.style.fontSize = `${original}px`;
+                if (text.classList.contains("nb-label")) {
+                  text.style.removeProperty("font-size");
+                  // A data-only edit must measure the full name, not the prior frame's abbreviation.
+                  if ("label" in n.data && text.textContent !== n.data.label) text.textContent = n.data.label;
+                } else if (original) text.style.fontSize = `${original}px`;
               }
               widths.push({ body, key });
             }
@@ -276,19 +279,34 @@ export const FrameDetail = memo(
           overviewZones,
           (text) => measure?.measureText(text).width ?? text.length * 7,
         );
-        // Fit names inside their own text column after counter-scaling the font.
-        for (const { n, body } of frameNodes) {
+        // Read all identity geometry before writing any of it. Interleaving the
+        // writes with clientWidth forced a whole-canvas layout for every card.
+        const identity = frameNodes.flatMap(({ n, body }) => {
           const title = body?.querySelector<HTMLElement>('[data-testid="card-title"]');
-          if (!title || !measure || !("label" in n.data)) continue;
+          if (!title || !measure || !("label" in n.data)) return [];
           const icon = body?.querySelector<HTMLElement>(".stencil-icon");
-          if (icon && body)
-            icon.style.height = `${iconDetail(body.classList.contains("nb-compact") ? 18 : body.classList.contains("nb-icon") ? 34 : 26, body.offsetHeight, zoom)}px`;
+          const height = body
+            ? iconDetail(
+                body.classList.contains("nb-compact") ? 18 : body.classList.contains("nb-icon") ? 34 : 26,
+                body.offsetHeight,
+                zoom,
+              )
+            : 0;
           const cs = getComputedStyle(title);
           measure.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
           measure.letterSpacing = cs.letterSpacing === "normal" ? "0px" : cs.letterSpacing;
-          const label = titleText(n.data.label, title.clientWidth, (text) => measure.measureText(text).width);
+          return [
+            {
+              title,
+              icon,
+              height,
+              label: titleText(n.data.label, title.clientWidth, (text) => measure.measureText(text).width),
+            },
+          ];
+        });
+        for (const { title, icon, height, label } of identity) {
+          if (icon) icon.style.height = `${height}px`;
           if (title.textContent !== label) title.textContent = label;
-          title.title = n.data.label;
         }
         // React Flow's ResizeObserver measures the resized wrappers once. An explicit
         // updateNodeInternals here schedules a second forced measurement of the same cards.
@@ -591,6 +609,7 @@ export const FrameDetail = memo(
           lastDrawing = key;
           setDrawing(next);
         }
+        root.dataset.detailZoom = String(zoom);
       };
       const schedule = () => {
         if (!disposed && !suspended && !frame) frame = requestAnimationFrame(update);
@@ -691,6 +710,7 @@ export const FrameDetail = memo(
           if (title) title.textContent = n.data.label;
         }
         delete root.dataset.detailView;
+        delete root.dataset.detailZoom;
         root.removeAttribute("data-detail-far");
         root.removeAttribute("data-detail-overview");
         root.removeAttribute("data-detail-dock");

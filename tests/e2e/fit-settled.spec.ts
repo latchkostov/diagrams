@@ -795,11 +795,12 @@ for (const [width, height] of [
     const canvas = page.getByTestId("canvas-wrap");
     await expect(canvas).toHaveAttribute("data-fit-pending", "false");
     await page.getByTestId("fit-view-button").click();
+    await expect(canvas).toHaveAttribute("data-detail-view", /.+/);
     await settledCanvas(page);
     const before = await readCanvas(page);
     expect((before.nodes["group:aws"] as { box: string }).box).toContain(`${Math.round(width)}×${Math.round(height)}`);
     await page.getByTestId("fit-view-button").click();
-    await expect(canvas).toHaveAttribute("data-fit-pending", "false");
+    await settledCanvas(page);
     expect(await readCanvas(page)).toEqual(before);
     await command(page, "Auto-layout", "canvas.auto-layout");
     expectLaidOut(await settledCanvas(page));

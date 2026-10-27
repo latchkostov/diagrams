@@ -1,5 +1,5 @@
 {
-  "viewport": "translate(7.66029px, 195.207px) scale(0.608493)",
+  "viewport": "translate(7.39623px, 192.725px) scale(0.615094)",
   "nodes": {
     "group:kafka": { "kind": "group", "box": "translate(760px, 40px) 340×592", "text": "Kafka · Confluent Cloud" },
     "group:snowflake": { "kind": "group", "box": "translate(1520px, 160px) 340×392", "text": "Snowflake · ANALYTICS" },

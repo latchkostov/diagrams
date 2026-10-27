@@ -80,23 +80,29 @@ svg width=1516 height=935 viewBox=0 0 1516 935
           div #node-api .dn.dn-card width:220px height:72px color:rgb(21, 24, 30) font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
             div .nb.nb-card width:220px height:72px color:rgb(21, 24, 30) background-color:rgb(255, 255, 255) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(216, 221, 230) border-top-width:1px border-radius:14px
               div #card-icon .nb-tile width:44px height:44px color:rgb(21, 24, 30) background-color:oklab(0.960674 -0.0110943 0.00955689) display:grid font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30) border-radius:11px
-                img .stencil-icon width=26 height=26 src=data:…f3932afb width:36px height:26px color:rgb(21, 24, 30) font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
+                img .stencil-icon width=26 height=26 src=data:…f3932afb width:36px height:26px left:22px top:22px color:rgb(21, 24, 30) font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
               div .nb-text width:135px height:34.8125px color:rgb(21, 24, 30) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
-                div #card-title .nb-label width:135px height:16.875px color:rgb(21, 24, 30) font-size:12.9px font-weight:620 border-top-color:rgb(21, 24, 30) "Orders API"
+                div .nb-name width:135px height:16.875px color:rgb(21, 24, 30) font-size:12.9px font-weight:620 border-top-color:rgb(21, 24, 30)
+                  span .nb-name-size width:auto height:auto color:rgb(21, 24, 30) visibility:hidden font-size:12.9px font-weight:620 border-top-color:rgb(21, 24, 30) "Orders API"
+                  div #card-title .nb-label width:135px height:16.875px top:8.4375px color:rgb(21, 24, 30) font-size:12.9px font-weight:620 border-top-color:rgb(21, 24, 30) "Orders API"
                 div #card-second-line .nb-kind width:135px height:14.9375px color:rgb(100, 107, 120) font-size:10.9px font-weight:400 border-top-color:rgb(100, 107, 120) "Node.js Service"
 == node-db
           div #node-db .dn.dn-card width:220px height:72px color:rgb(21, 24, 30) font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
             div .nb.nb-card width:220px height:72px color:rgb(21, 24, 30) background-color:rgb(255, 255, 255) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(216, 221, 230) border-top-width:1px border-radius:14px
               div #card-icon .nb-tile width:44px height:44px color:rgb(21, 24, 30) background-color:oklab(0.944698 -0.00398806 -0.00872341) display:grid font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30) border-radius:11px
-                img .stencil-icon width=26 height=26 src=data:…9b9cad0c width:36px height:26px color:rgb(21, 24, 30) font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
+                img .stencil-icon width=26 height=26 src=data:…9b9cad0c width:36px height:26px left:22px top:22px color:rgb(21, 24, 30) font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
               div .nb-text width:135px height:34.8125px color:rgb(21, 24, 30) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
-                div #card-title .nb-label width:135px height:16.875px color:rgb(21, 24, 30) font-size:12.9px font-weight:620 border-top-color:rgb(21, 24, 30) "Orders DB"
+                div .nb-name width:135px height:16.875px color:rgb(21, 24, 30) font-size:12.9px font-weight:620 border-top-color:rgb(21, 24, 30)
+                  span .nb-name-size width:auto height:auto color:rgb(21, 24, 30) visibility:hidden font-size:12.9px font-weight:620 border-top-color:rgb(21, 24, 30) "Orders DB"
+                  div #card-title .nb-label width:135px height:16.875px top:8.4375px color:rgb(21, 24, 30) font-size:12.9px font-weight:620 border-top-color:rgb(21, 24, 30) "Orders DB"
                 div #card-second-line .nb-kind width:135px height:14.9375px color:rgb(100, 107, 120) font-size:10.9px font-weight:400 border-top-color:rgb(100, 107, 120) "PostgreSQL"
 == node-worker
           div #node-worker .dn.dn-card width:220px height:72px color:rgb(21, 24, 30) font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
             div .nb.nb-card width:220px height:72px color:rgb(21, 24, 30) background-color:rgb(255, 255, 255) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(216, 221, 230) border-top-width:1px border-radius:14px
               div #card-icon .nb-tile width:44px height:44px color:rgb(21, 24, 30) background-color:oklab(0.96639 -0.0102899 -0.00990863) display:grid font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30) border-radius:11px
-                img .stencil-icon width=26 height=26 src=data:…45f16c07 width:36px height:26px color:rgb(21, 24, 30) font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
+                img .stencil-icon width=26 height=26 src=data:…45f16c07 width:36px height:26px left:22px top:22px color:rgb(21, 24, 30) font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
               div .nb-text width:135px height:34.8125px color:rgb(21, 24, 30) display:flex font-size:13.9px font-weight:400 border-top-color:rgb(21, 24, 30)
-                div #card-title .nb-label width:135px height:16.875px color:rgb(21, 24, 30) font-size:12.9px font-weight:620 border-top-color:rgb(21, 24, 30) "Receipt worker"
+                div .nb-name width:135px height:16.875px color:rgb(21, 24, 30) font-size:12.9px font-weight:620 border-top-color:rgb(21, 24, 30)
+                  span .nb-name-size width:auto height:auto color:rgb(21, 24, 30) visibility:hidden font-size:12.9px font-weight:620 border-top-color:rgb(21, 24, 30) "Receipt worker"
+                  div #card-title .nb-label width:135px height:16.875px top:8.4375px color:rgb(21, 24, 30) font-size:12.9px font-weight:620 border-top-color:rgb(21, 24, 30) "Receipt worker"
                 div #card-second-line .nb-kind width:135px height:14.9375px color:rgb(100, 107, 120) font-size:10.9px font-weight:400 border-top-color:rgb(100, 107, 120) "Go Service"

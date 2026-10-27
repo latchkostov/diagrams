@@ -1,5 +1,5 @@
 {
-  "viewport": "translate(11.4241px, 220.298px) scale(0.514398)",
+  "viewport": "translate(11.136px, 217.446px) scale(0.5216)",
   "nodes": {
     "group:kafka": { "kind": "group", "box": "translate(1520px, 120px) 340×632", "text": "" },
     "client": { "kind": "node", "box": "translate(40px, 320px) 220×72", "text": "Mobile check…" },
@@ -11,10 +11,10 @@
     "email": { "kind": "node", "box": "translate(1560px, 40px) 220×72", "text": "SendGrid" },
     "saga": { "kind": "node", "box": "translate(1180px, 320px) 225×72", "text": "Checkout saga" },
     "saga-db": { "kind": "node", "box": "translate(1180px, 480px) 220×72", "text": "Saga state" },
-    "inventory-cmds": { "kind": "node", "box": "translate(1560px, 160px) 220×72", "text": "inventory.co…" },
+    "inventory-cmds": { "kind": "node", "box": "translate(1560px, 160px) 220×72", "text": "inventory.com…" },
     "saga-replies": { "kind": "node", "box": "translate(1560px, 320px) 220×72", "text": "saga.replies" },
     "payment-cmds": { "kind": "node", "box": "translate(1560px, 480px) 224×72", "text": "payments.co…" },
-    "payments-dlq": { "kind": "node", "box": "translate(1560px, 640px) 246×72", "text": "payments.com…" },
+    "payments-dlq": { "kind": "node", "box": "translate(1560px, 640px) 246×72", "text": "payments.comm…" },
     "inventory-svc": { "kind": "node", "box": "translate(1940px, 160px) 220×72", "text": "Inventory serv…" },
     "payment-svc": { "kind": "node", "box": "translate(1940px, 480px) 220×72", "text": "Payment serv…" },
     "inventory-db": { "kind": "node", "box": "translate(2320px, 160px) 220×72", "text": "Inventory dat…" },
