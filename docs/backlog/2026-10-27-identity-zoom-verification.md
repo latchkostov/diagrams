@@ -9,3 +9,15 @@ The other four initial failures were the encrypted HTML success-toast assertion 
 The final head bundle reran all five cases plus held zoom in all three node variants, twice: **14 passed, 2 failed**. Only the identical host particle assertion remains. Reports are local under `tests/.output/zoom-work/head-check.{log,json}`.
 
 The requested Linux load run was restarted after the final gesture visibility correction. Its six-worker/four-CPU request exited 75 because another live gate held eight of the twelve shared slots. Do not remove its lease or treat the five repeats as passed; PR CI remains necessary.
+
+## Linux gate and focused follow-up
+
+The full Linux gate was interrupted after two browser failures; its completed work must not be reported as a green full gate:
+
+```text
+SUMMARY: 0bf7b74f4dab87edfab5251fbfdd1b3a85e55879 | unit={"passed":14144,"failed":0,"skipped":13} parity={"goldens":3178,"changed":0,"added":0,"missing":0,"stale":0} e2e={"passed":1670,"failed":2,"flaky":0,"skipped":1205} gate_failures=1
+```
+
+The failures were the Overview bench-harness case reaching its whole-test timeout after fourteen zoom-button clicks, and `imports.spec.ts:820` measuring a fitted card at 107.85px against its existing greater-than-110px assertion. Clean `origin/master` (`2895e9c8e721286d8be8dc94c5ac8afe544631a3`), checked out in an ignored local proof clone, ran only those two cases twice: **4 passed, 0 failed, 0 flaky**. These failures were therefore not reproduced in that isolated base check.
+
+The follow-up extends held identity scaling to manual zoom-button/key animations while retaining exact automatic-fit scaling. Regression units failed before that correction and pass afterward. The Linux focused run of camera, fit-settled, imports, bench-harness and Windows/Mac held-zoom coverage, twice with six workers/four CPUs, reports **103 passed, 1 failed, 0 flaky**. Only the same Overview whole-test timeout recurred, during selection readiness after the zoom clicks; imports and every identity case passed. Keep this unresolved timeout visible for CI rather than increasing timeouts or weakening assertions. Local reports: `tests/.output/zoom-work/{full-gate,master-focused,fix-focused}.log`.

@@ -30,7 +30,7 @@ export function mountIdentityZoom(
     getState(): { transform: number[] };
     subscribe(listener: (state: { transform: number[] }, previous: { transform: number[] }) => void): () => void;
   },
-  camera: { readonly phase: string } | null,
+  camera: { readonly phase: string; readonly state?: { owner: string; view: string } } | null,
 ) {
   const gesture = createMachine(identityZoom);
   let frame = 0;
@@ -47,12 +47,15 @@ export function mountIdentityZoom(
     ] as const)
       if (style.getPropertyValue(key) !== String(value)) style.setProperty(key, String(value));
   };
-  root.setAttribute("data-identity-zoom", "");
+  root.dataset.identityZoom = "1";
   update();
   const unsubscribe = store.subscribe((s, old) => {
     if (s.transform[2] === old.transform[2]) return;
     cancelAnimationFrame(frame);
-    const moving = !camera || camera.phase === "idle";
+    const moving =
+      !camera ||
+      camera.phase === "idle" ||
+      (camera.phase === "animating" && camera.state?.owner === "manual" && camera.state.view === "custom");
     gesture.send(moving ? { type: "start", zoom: s.transform[2], previous: old.transform[2] } : { type: "end" });
     root?.toggleAttribute("data-viewport-moving", moving);
     update();

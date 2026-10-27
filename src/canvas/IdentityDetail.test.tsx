@@ -7,6 +7,7 @@ import { suspendFrameCapture } from "./camera/frameCapture";
 
 const fixture = vi.hoisted(() => ({
   state: { nodes: [{ id: "worker", type: "diagram", data: { label: "Worker" } }], transform: [0, 0, 0.24] },
+  camera: { phase: "idle", interacting: false, state: { owner: "manual", view: "custom" }, subscribe: () => () => {} },
   listeners: new Set<(state: { transform: number[] }, previous: { transform: number[] }) => void>(),
 }));
 vi.mock("@xyflow/react", () => {
@@ -19,7 +20,7 @@ vi.mock("@xyflow/react", () => {
   };
   return { useStoreApi: () => store };
 });
-vi.mock("./camera/useCameraCore", () => ({ useCameraController: () => null }));
+vi.mock("./camera/useCameraCore", () => ({ useCameraController: () => fixture.camera }));
 
 it("refits cached identity after capture even when the complete name already fits", async () => {
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
@@ -81,6 +82,12 @@ it("refits cached identity after capture even when the complete name already fit
     expect(host.style.getPropertyValue("--rf-zoom-exact")).toBe("0.24");
     // A zoom-in crosses the detail threshold while its fitted title is still large.
     expect(body.hasAttribute("data-identity-far")).toBe(true);
+    fixture.camera.phase = "animating";
+    const beforeOut = { ...fixture.state };
+    fixture.state.transform = [0, 0, 0.15];
+    for (const run of fixture.listeners) run(fixture.state, beforeOut);
+    await flush();
+    expect(icon.style.height).toBe("72px");
   } finally {
     await act(() => root.unmount());
     vi.restoreAllMocks();

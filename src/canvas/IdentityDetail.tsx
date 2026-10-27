@@ -31,7 +31,7 @@ export const IdentityDetail = memo(function IdentityDetail({ host }: { host: Ref
         !ready ||
         suspended ||
         disposed ||
-        (camera && (camera.phase !== "idle" || (camera.interacting && !root.hasAttribute("data-viewport-moving"))))
+        (camera && (camera.phase !== "idle" || camera.interacting) && !root.hasAttribute("data-viewport-moving"))
       )
         return;
       const { nodes, transform } = store.getState();
