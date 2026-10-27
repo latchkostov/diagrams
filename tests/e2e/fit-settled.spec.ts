@@ -453,6 +453,16 @@ test("a presentation title card caches its expanded footprint across resize noti
   await page.getByTestId("present-toggle").click();
   await settledCanvas(page);
   const card = page.getByTestId("diagram-card");
+  // The description swaps its Markdown fallback asynchronously. Font/content invalidation
+  // belongs before the cache measurement, not between two resize-notification samples.
+  await expect
+    .poll(() =>
+      page
+        .getByTestId("diagram-description")
+        .evaluate((el) => el.firstElementChild?.hasAttribute("data-markdown-pending") ?? true),
+    )
+    .toBe(false);
+  await page.evaluate(() => document.fonts.ready);
   const box = await card.boundingBox();
   const node = await page.getByTestId("rf__node-client").boundingBox();
   if (!box || !node) throw new Error("Expected the title and client boxes");
@@ -461,13 +471,12 @@ test("a presentation title card caches its expanded footprint across resize noti
   await expect(card).toHaveAttribute("data-collapsed", "1");
   await settledCanvas(page);
   const clones = () => page.evaluate(() => (window as unknown as { titleClones(): number }).titleClones());
-  const before = await page.evaluate(() =>
-    (window as unknown as { resizeTitle(count: number): number }).resizeTitle(1),
-  );
-  // A transition can deliver any number of notifications. Count the expensive work directly.
-  const repeated = await page.evaluate(() =>
-    (window as unknown as { resizeTitle(count: number): number }).resizeTitle(12),
-  );
+  // Sample one burst atomically: unrelated font/content events may invalidate the cache
+  // between browser tasks, and are supposed to trigger another measurement.
+  const { before, repeated } = await page.evaluate(() => {
+    const probe = window as unknown as { resizeTitle(count: number): number };
+    return { before: probe.resizeTitle(1), repeated: probe.resizeTitle(12) };
+  });
   expect(repeated).toBe(before);
   const height = Number(await card.getAttribute("data-overlay-height"));
   await card.evaluate((el) => {
