@@ -1,6 +1,6 @@
 import { useWorkbenchDock } from "../inspector/dockState";
 import { usePhone } from "../../lib/usePhone";
-import { useLayoutEffect, useRef, useSyncExternalStore, type ReactNode } from "react";
+import { useId, useLayoutEffect, useRef, useSyncExternalStore, type ReactNode } from "react";
 import { Icon, type IconName } from "../../components/Icon";
 import { t, useLocale } from "../../i18n";
 import type { View } from "../../lib/urlState";
@@ -27,6 +27,7 @@ export function ToolRail({ view, onView }: { view: View; onView: (view: View) =>
   );
   const documentId = useSyncExternalStore(paletteHost.subscribe, () => paletteHost.get().canvas?.documentId);
   const fresh = useUnseen(documentId);
+  const descriptionId = useId();
   const nav = useRef<HTMLDivElement>(null);
   const focused = useRef<HTMLElement | null>(null);
   const returning = useRef(false);
@@ -60,6 +61,7 @@ export function ToolRail({ view, onView }: { view: View; onView: (view: View) =>
     extra?: ReactNode,
     disabled = false,
     name = label,
+    description?: string,
   ) => (
     <button
       key={id}
@@ -67,15 +69,21 @@ export function ToolRail({ view, onView }: { view: View; onView: (view: View) =>
       data-testid={id}
       className={active ? "is-on" : undefined}
       aria-label={name}
-      title={id === "ai-rail-open" ? aiPanelTitle() : name}
+      aria-describedby={description ? `${descriptionId}-${id}` : undefined}
+      title={description ?? (id === "ai-rail-open" ? aiPanelTitle() : name)}
       aria-pressed={active}
       tabIndex={-1}
       disabled={disabled}
       onClick={run}
-      {...(id === "rail-add" ? { draggable: true, onDragStart: () => tools.open("library") } : {})}
+      {...(id === "rail-add" ? { draggable: !disabled, onDragStart: () => tools.open("library") } : {})}
     >
       <Icon name={icon} size={20} />
       <span className="tool-rail-label">{label}</span>
+      {description && (
+        <span id={`${descriptionId}-${id}`} className="sr-only" data-testid={`${id}-description`}>
+          {description}
+        </span>
+      )}
       {extra}
     </button>
   );
@@ -138,7 +146,9 @@ export function ToolRail({ view, onView }: { view: View; onView: (view: View) =>
         () => tools.toggle("library"),
         surface === "library" || !!host?.pinned,
         undefined,
-        !host,
+        !host || host.live,
+        undefined,
+        host?.live ? t("workbench.addInLive") : undefined,
       )}
       {item(
         "rail-annotate",
@@ -148,6 +158,8 @@ export function ToolRail({ view, onView }: { view: View; onView: (view: View) =>
         surface === "annotate",
         undefined,
         !host || host.live,
+        undefined,
+        host?.live ? t("workbench.annotateInLive") : undefined,
       )}
       {item(
         "checks-count",

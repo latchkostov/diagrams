@@ -110,7 +110,7 @@ export function CanvasControls({
     );
   };
 
-  const collapseLabel = collapsed ? tr("chrome.expandToolbar") : tr("chrome.collapseToolbar");
+  const collapseLabel = collapsed ? tr("chrome.showZoomControls") : tr("chrome.hideZoomControls");
   const viewMenuLabel = tr("view.menu");
 
   return (
@@ -214,7 +214,9 @@ export function CanvasControls({
         aria-expanded={!collapsed}
         onClick={() => setCollapsed((v) => !v)}
       >
-        <Icon name={collapsed ? "chevrons-right" : "chevrons-left"} size={12} />
+        <span className="zoom-controls-chevron" data-testid="zoom-controls-chevron">
+          <Icon name={collapsed ? "chevrons-left" : "chevrons-right"} size={12} />
+        </span>
       </ControlButton>
     </div>
   );
