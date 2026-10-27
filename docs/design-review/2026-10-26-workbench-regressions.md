@@ -80,3 +80,15 @@ All 95 benchmark gates also passed on `c8cd6b2b2`. Its loaded repeat completed 6
 ## Recording setup clock
 
 The first loaded repeat on `1cfd0de89` passed 604 cases with zero failed, zero flaky and one existing skip. The second passed 603 with one bundle-recording timeout, zero flaky and the same skip. Its trace spent substantial test time rendering the two pre-capture 1,500 ms setup intervals and the countdown. Setup now advances the same simulation time in catch-up batches; this recording test also opts into countdown ticks, retaining all three numeric countdown assertions. Other recording callers retain full-frame countdown advancement. Every clock advance during capture, changed decoded-pixel assertion, natural-end assertion and paused-end assertion remains intact. All 26 recording/viewer cases and all thirteen CSP cases pass in the targeted production runs. The load repeat will include recording and CSP neighbours as well.
+
+## Card geometry handoff
+
+The first loaded repeat on `4df7fb0b6` passed 631 cases with zero failed, zero flaky and the existing skip; the second was stopped without a reported failure after the preceding checkpoint's CI exposed two cases outside that set. The latest CI had four E2E shards green and one failure each in the other two: the pending-fit press box and traced-label/card overlap. Its benchmark workflow passed.
+
+Both browser cases reproduced with their original assertions. Single-line subtitles now retain their measured box on selection; a subtitle that needs two lines at its original font size still grows and is remeasured. Counter-scaling alone no longer turns a short subtitle into a growing card. Text scaling and wrap decisions precede geometry sampling.
+
+Trace obstacles invalidate when a card's measurements or detail styling change. While a worker frame computed against old card geometry is outstanding, its stale overlay waits for a repaint using the current geometry. A stale acknowledgement or font repaint cannot restore it. Geometry probes omit the same hidden overlay until its current frame is drawn. This preserves the no-overlap assertion rather than adding a sampling delay. Two cache regressions and the delayed-worker regression fail when their respective fixes are temporarily reverted.
+
+The restored unit set passes all 42 cases. All 54 browser cases across fit/refinement, tracing, typography and frame-cost probes pass with the original assertions, including both CI failures. The additional per-frame probe publication was removed because the geometry handoff makes it unnecessary; retaining the existing publication cadence avoids extra serialization work.
+
+The minimal fix also passes the original no-overlap browser case with the existing probe cadence restored. Full parity passes all 110 browser cases and checks 3,178 goldens with zero changed, added, missing or stale. No additional golden update is needed for this follow-up.

@@ -54,3 +54,7 @@ All files in the following table are under `tests/parity/goldens/browser/layout/
 | `video-on-demand-pipeline.json`      | Tidy uses stable 72 px cards; derived boundary bounds, routes and label positions follow those measurements. |
 
 `tests/parity/goldens/browser/selection/corpus-hand-shaped-lines.json` changes only its three segment-handle transforms: inverse exact zoom keeps their hit targets at the promised screen size. The connection drawing is unchanged.
+
+## Card and trace geometry
+
+Selecting a card with a short subtitle keeps its size; longer subtitles still grow to two lines. Trace labels use refreshed card obstacles and wait for a repaint when their previously drawn geometry becomes stale, keeping labels clear as active cards expand.

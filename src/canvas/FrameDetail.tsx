@@ -48,6 +48,8 @@ export const FrameDetail = memo(
       let lastDrawing = "";
       const fonts = new WeakMap<Element, number>();
       const cardWidths = new WeakMap<HTMLElement, { key: FlowNode["data"]; width: number }>();
+      const wrapCache = new WeakMap<HTMLElement, { text: string; width: number; wrapped: boolean }>();
+      const measure = document.createElement("canvas").getContext("2d");
       const box = (el: Element, origin: DOMRect): Rect => {
         const r = el.getBoundingClientRect();
         return { x: r.left - origin.left, y: r.top - origin.top, width: r.width, height: r.height };
@@ -151,6 +153,52 @@ export const FrameDetail = memo(
         for (const { body, key } of widths) cardWidths.set(body, { key, width: body.offsetWidth });
         for (const { body, n } of frameNodes)
           if (body && n.type === "diagram") body.style.width = `${cardWidths.get(body)!.width}px`;
+        // Whole labels/pills disappear together; text runs counter-scale without touching the viewport transform.
+        for (const el of root.querySelectorAll<HTMLElement>(
+          ".nb-label, .nb-title, .nb-sub, .nb-kind, .grp-label, .fe-label-text, .lv-metric, .lv-alert, .lv-outcome, .lv-call-pill, .ann-text, .ann-note .ann-content, .ann-shape .ann-content, .ann-zone-label",
+        )) {
+          if (!fonts.has(el)) fonts.set(el, parseFloat(getComputedStyle(el).fontSize));
+          const node = el.closest<HTMLElement>(".react-flow__node[data-id], [data-testid^='node-badge-']");
+          const id = node?.dataset.id ?? node?.dataset.testid?.slice("node-badge-".length);
+          const edgeLabel = el.closest<HTMLElement>('[data-testid^="edge-label-"], [data-call-edge]');
+          const edge =
+            edgeLabel &&
+            edges.get(edgeLabel.dataset.callEdge ?? edgeLabel.dataset.testid?.slice("edge-label-".length) ?? "");
+          const isActive = !!(id && active.has(id)) || !!(edge && (active.has(edge.source) || active.has(edge.target)));
+          const title = el.classList.contains("nb-label") || el.classList.contains("grp-label");
+          const detail =
+            el.classList.contains("lv-alert") && id && lit.has(id)
+              ? { show: true, scale: Math.max(1, 11 / (fonts.get(el)! * zoom)) }
+              : textDetail(fonts.get(el)!, zoom, title || isActive, view);
+          const whole = el.closest<HTMLElement>(".fe-label, .lv-metric, .lv-alert, .lv-outcome, .lv-call-pill") ?? el;
+          whole.toggleAttribute("data-detail-text-hidden", !detail.show);
+          el.style.fontSize = `${fonts.get(el)! * detail.scale}px`;
+        }
+        // Counter-scaling must not turn a naturally single-line subtitle into a growing card.
+        // Reserve two lines only when the original text needs them at the card's measured width.
+        for (const { id, el, body } of frameNodes) {
+          const expanded = selected.has(id) || lit.has(id) || flagged.has(id);
+          const canWrap = expanded && (cropped || selected.size === 1);
+          const subtitle = canWrap ? body?.querySelector<HTMLElement>(".nb-sub") : null;
+          let wrapped = false;
+          if (subtitle && measure) {
+            const text = subtitle.textContent ?? "";
+            const width = subtitle.clientWidth;
+            let cached = wrapCache.get(subtitle);
+            if (!cached || cached.text !== text || cached.width !== width) {
+              const cs = getComputedStyle(subtitle);
+              measure.font = `${cs.fontWeight} ${fonts.get(subtitle)}px ${cs.fontFamily}`;
+              measure.letterSpacing = cs.letterSpacing === "normal" ? "0px" : cs.letterSpacing;
+              cached = { text, width, wrapped: measure.measureText(text).width > width };
+              wrapCache.set(subtitle, cached);
+            }
+            wrapped = cached.wrapped;
+          }
+          if (el.hasAttribute("data-detail-wrapped") !== wrapped) {
+            el.toggleAttribute("data-detail-wrapped", wrapped);
+            remeasure.add(id);
+          }
+        }
         const cardBoxes = new Map(frameNodes.map(({ id, el }) => [id, box(el, origin)]));
         for (const { id, el, n } of frameNodes) {
           const card = cardBoxes.get(id)!;
@@ -345,27 +393,6 @@ export const FrameDetail = memo(
             badge.toggleAttribute("data-detail-dim", !!lit.size && !active.has(id));
           }
         }
-        // Whole labels/pills disappear together; text runs counter-scale without touching the viewport transform.
-        for (const el of root.querySelectorAll<HTMLElement>(
-          ".nb-label, .nb-title, .nb-sub, .nb-kind, .grp-label, .fe-label-text, .lv-metric, .lv-alert, .lv-outcome, .lv-call-pill, .ann-text, .ann-note .ann-content, .ann-shape .ann-content, .ann-zone-label",
-        )) {
-          if (!fonts.has(el)) fonts.set(el, parseFloat(getComputedStyle(el).fontSize));
-          const node = el.closest<HTMLElement>(".react-flow__node[data-id], [data-testid^='node-badge-']");
-          const id = node?.dataset.id ?? node?.dataset.testid?.slice("node-badge-".length);
-          const edgeLabel = el.closest<HTMLElement>('[data-testid^="edge-label-"], [data-call-edge]');
-          const edge =
-            edgeLabel &&
-            edges.get(edgeLabel.dataset.callEdge ?? edgeLabel.dataset.testid?.slice("edge-label-".length) ?? "");
-          const isActive = !!(id && active.has(id)) || !!(edge && (active.has(edge.source) || active.has(edge.target)));
-          const title = el.classList.contains("nb-label") || el.classList.contains("grp-label");
-          const detail =
-            el.classList.contains("lv-alert") && id && lit.has(id)
-              ? { show: true, scale: Math.max(1, 11 / (fonts.get(el)! * zoom)) }
-              : textDetail(fonts.get(el)!, zoom, title || isActive, view);
-          const whole = el.closest<HTMLElement>(".fe-label, .lv-metric, .lv-alert, .lv-outcome, .lv-call-pill") ?? el;
-          whole.toggleAttribute("data-detail-text-hidden", !detail.show);
-          el.style.fontSize = `${fonts.get(el)! * detail.scale}px`;
-        }
         const next = { pins, chips, hint: far && !dismissed.current };
         // Names subscribe with the editor commit; only frame geometry needs a deferred commit.
         const key = JSON.stringify({
@@ -429,12 +456,13 @@ export const FrameDetail = memo(
         observer.disconnect();
         window.removeEventListener("keydown", key);
         for (const el of root.querySelectorAll<HTMLElement>(
-          "[data-detail-hidden], [data-detail-text-hidden], [data-detail-no-arrow], [data-detail-expanded]",
+          "[data-detail-hidden], [data-detail-text-hidden], [data-detail-no-arrow], [data-detail-expanded], [data-detail-wrapped]",
         )) {
           el.removeAttribute("data-detail-hidden");
           el.removeAttribute("data-detail-text-hidden");
           el.removeAttribute("data-detail-no-arrow");
           el.removeAttribute("data-detail-expanded");
+          el.removeAttribute("data-detail-wrapped");
         }
         for (const text of root.querySelectorAll<HTMLElement>(
           ".nb-label,.nb-title,.nb-sub,.nb-kind,.grp-label,.fe-label-text,.lv-metric,.lv-alert,.lv-outcome,.lv-call-pill,.ann-text,.ann-note .ann-content,.ann-shape .ann-content,.ann-zone-label",

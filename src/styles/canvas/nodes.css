@@ -422,17 +422,17 @@ button.dn-doc-badge:focus-visible {
   -webkit-line-clamp: unset;
 }
 :is([data-detail-view="focus"], [data-detail-view="follow"], [data-detail-single-selection])
-  .react-flow__node:is(.selected, [data-detail-expanded])
+  .react-flow__node:is(.selected, [data-detail-expanded])[data-detail-wrapped]
   .nb-card {
   height: auto;
   min-height: 72px;
   padding-block: 9px;
 }
-[data-detail-single-selection] .react-flow__node:is(.selected, [data-detail-expanded]) .nb-card {
+[data-detail-single-selection] .react-flow__node:is(.selected, [data-detail-expanded])[data-detail-wrapped] .nb-card {
   padding-block: 13px;
 }
 :is([data-detail-view="focus"], [data-detail-view="follow"], [data-detail-single-selection])
-  .react-flow__node:is(.selected, [data-detail-expanded])
+  .react-flow__node:is(.selected, [data-detail-expanded])[data-detail-wrapped]
   .nb-card
   .nb-sub {
   display: -webkit-box;

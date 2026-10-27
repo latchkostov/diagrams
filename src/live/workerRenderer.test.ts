@@ -36,7 +36,8 @@ class FakeWorker {
 
 function canvas(transfer: "ok" | "throw" = "ok") {
   return {
-    style: {},
+    style: { visibility: "" },
+    dataset: {},
     getBoundingClientRect: () => ({ left: 0, top: 0, width: 800, height: 600 }),
     transferControlToOffscreen: () => {
       if (transfer === "throw") throw new DOMException("Already transferred", "InvalidStateError");
@@ -85,16 +86,18 @@ function startWith(
   transfer: "ok" | "throw" = "ok",
 ) {
   const onFail = vi.fn();
+  const base = canvas(transfer);
+  const overlay = canvas();
   const renderer = createLiveRenderer("worker", {
-    canvas: canvas(transfer),
-    overlay: canvas(),
+    canvas: base,
+    overlay,
     root,
     store,
     labelRects: () => [],
     options: { theme: "light", reducedMotion: false, scale: 1, tokens: DEFAULT_TOKENS },
     onFail,
   });
-  return { renderer, onFail };
+  return { renderer, onFail, base, overlay };
 }
 
 const frame = (time: number) => ({
@@ -188,6 +191,58 @@ describe("worker startup failures hand over to the main thread", () => {
 });
 
 describe("frame flow control", () => {
+  it("keeps stale labels hidden until a frame acknowledges the current card geometry", async () => {
+    let resize = () => {};
+    vi.stubGlobal(
+      "MutationObserver",
+      class {
+        constructor(callback: (records: { attributeName: string }[]) => void) {
+          resize = () => callback([{ attributeName: "data-detail-wrapped" }]);
+        }
+        observe() {}
+        disconnect() {}
+      },
+    );
+    const { renderer, base, overlay } = await start();
+    const w = workers[0];
+    const label = {
+      id: 1,
+      text: "Request",
+      count: 1,
+      x: 10,
+      y: 10,
+      w: 60,
+      h: 20,
+      ax: 0,
+      ay: 0,
+      leader: false,
+      spot: 0,
+    };
+    renderer.frame(frame(0.1));
+    const epoch = frames(w)[0].epoch!;
+    w.send({ type: "ack", epoch, drawn: 1, frames: 1, animating: false, labels: [label] });
+    expect(renderer.labels).toEqual([label]);
+    expect(overlay.style.visibility).toBe("");
+    base.dataset.traceLabels = "previous geometry";
+    renderer.frame(frame(0.2));
+    resize();
+    expect(overlay.style.visibility).toBe("hidden");
+    expect(renderer.labels).toEqual([]);
+    expect(base.dataset.traceLabels).toBeUndefined();
+    w.send({ type: "repaint", epoch, drawn: 1, frames: 3, labels: [label] });
+    expect(overlay.style.visibility).toBe("hidden");
+    w.send({ type: "ack", epoch, drawn: 1, frames: 2, animating: false, labels: [label] });
+    expect(overlay.style.visibility).toBe("hidden");
+    expect(renderer.labels).toEqual([]);
+    renderer.frame(frame(0.3));
+    w.send({ type: "ack", epoch, drawn: 1, frames: 4, animating: false, labels: [label] });
+    expect(overlay.style.visibility).toBe("");
+    expect(renderer.labels).toEqual([label]);
+    resize();
+    renderer.dispose();
+    expect(overlay.style.visibility).toBe("");
+  });
+
   it("keeps one frame in flight: a repaint doesn't release it, its ack does", async () => {
     const { renderer } = await start();
     const w = workers[0];
