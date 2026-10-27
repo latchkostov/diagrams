@@ -44,8 +44,8 @@
     "spec": "tests/e2e/live-record-capture.spec.ts",
     "title": "the particles and the marching edges are each in the video",
     "firstSeen": "2026-10-18",
-    "lastSeen": "2026-10-18",
-    "count": 1,
+    "lastSeen": "2026-10-27",
+    "count": 3,
     "owner": "latchkostov",
     "tracking": "docs/backlog/2026-10-23-native-load-backstops.md"
   },
@@ -161,7 +161,7 @@
     "title": "older diagrams preview changed capacity, upgrade once and undo the complete model",
     "firstSeen": "2026-10-27",
     "lastSeen": "2026-10-27",
-    "count": 1,
+    "count": 2,
     "owner": "latchkostov",
     "tracking": "docs/backlog/2026-10-27-nightly-native-triage.md",
     "failurePattern": "E(?:\\x1b\\[[0-9;]*m)*x(?:\\x1b\\[[0-9;]*m)*p(?:\\x1b\\[[0-9;]*m)*e(?:\\x1b\\[[0-9;]*m)*c(?:\\x1b\\[[0-9;]*m)*t(?:\\x1b\\[[0-9;]*m)*e(?:\\x1b\\[[0-9;]*m)*d(?:\\x1b\\[[0-9;]*m)*:(?:\\x1b\\[[0-9;]*m)* (?:\\x1b\\[[0-9;]*m)*\"(?:\\x1b\\[[0-9;]*m)*p(?:\\x1b\\[[0-9;]*m)*3(?:\\x1b\\[[0-9;]*m)*-(?:\\x1b\\[[0-9;]*m)*w(?:\\x1b\\[[0-9;]*m)*1(?:\\x1b\\[[0-9;]*m)*\"[\\s\\S]*R(?:\\x1b\\[[0-9;]*m)*e(?:\\x1b\\[[0-9;]*m)*c(?:\\x1b\\[[0-9;]*m)*e(?:\\x1b\\[[0-9;]*m)*i(?:\\x1b\\[[0-9;]*m)*v(?:\\x1b\\[[0-9;]*m)*e(?:\\x1b\\[[0-9;]*m)*d(?:\\x1b\\[[0-9;]*m)*:(?:\\x1b\\[[0-9;]*m)* (?:\\x1b\\[[0-9;]*m)*\"(?:\\x1b\\[[0-9;]*m)*p(?:\\x1b\\[[0-9;]*m)*3(?:\\x1b\\[[0-9;]*m)*-(?:\\x1b\\[[0-9;]*m)*a(?:\\x1b\\[[0-9;]*m)*1(?:\\x1b\\[[0-9;]*m)*\""
@@ -172,7 +172,7 @@
     "title": "Edit together: two browsers meet through the approved trackers under the real policy",
     "firstSeen": "2026-10-27",
     "lastSeen": "2026-10-27",
-    "count": 1,
+    "count": 2,
     "owner": "latchkostov",
     "tracking": "docs/backlog/2026-10-27-nightly-native-triage.md",
     "failurePattern": "getByTestId\\('room-knock-admit'\\)"
@@ -183,7 +183,7 @@
     "title": "ask to drive, the host lets them: the new driver changes a rate and the old host follows by digest",
     "firstSeen": "2026-10-27",
     "lastSeen": "2026-10-27",
-    "count": 1,
+    "count": 2,
     "owner": "latchkostov",
     "tracking": "docs/backlog/2026-10-27-nightly-native-triage.md",
     "failurePattern": "getByTestId\\('room-knock-card'\\)"
@@ -194,7 +194,7 @@
     "title": "ask to drive, the host says not now: the asker is told, and goes on following",
     "firstSeen": "2026-10-27",
     "lastSeen": "2026-10-27",
-    "count": 1,
+    "count": 2,
     "owner": "latchkostov",
     "tracking": "docs/backlog/2026-10-27-nightly-native-triage.md",
     "failurePattern": "getByTestId\\('room-knock-card'\\)"
@@ -205,7 +205,7 @@
     "title": "the host leaves on purpose: the earliest co-host becomes host, not whoever came first",
     "firstSeen": "2026-10-27",
     "lastSeen": "2026-10-27",
-    "count": 1,
+    "count": 3,
     "owner": "latchkostov",
     "tracking": "docs/backlog/2026-10-27-nightly-native-triage.md",
     "failurePattern": "getByTestId\\('room-knock-card'\\)"
@@ -216,7 +216,7 @@
     "title": "signed roles: new people can view only, a viewer's edit is undone, and Can edit lets them edit",
     "firstSeen": "2026-10-27",
     "lastSeen": "2026-10-27",
-    "count": 1,
+    "count": 2,
     "owner": "latchkostov",
     "tracking": "docs/backlog/2026-10-27-nightly-native-triage.md",
     "failurePattern": "getByTestId\\('room-knock-card'\\)"
@@ -227,7 +227,7 @@
     "title": "a joiner gets the diagram though the host's presence frames are lost for a long while",
     "firstSeen": "2026-10-27",
     "lastSeen": "2026-10-27",
-    "count": 1,
+    "count": 2,
     "owner": "latchkostov",
     "tracking": "docs/backlog/2026-10-27-nightly-native-triage.md",
     "failurePattern": "getByTestId\\('room-connecting'\\)"
@@ -249,7 +249,7 @@
     "title": "live view still pans with a drag on the canvas",
     "firstSeen": "2026-10-27",
     "lastSeen": "2026-10-27",
-    "count": 1,
+    "count": 2,
     "owner": "latchkostov",
     "tracking": "docs/backlog/2026-10-27-nightly-native-triage.md",
     "failurePattern": "E(?:\\x1b\\[[0-9;]*m)*x(?:\\x1b\\[[0-9;]*m)*p(?:\\x1b\\[[0-9;]*m)*e(?:\\x1b\\[[0-9;]*m)*c(?:\\x1b\\[[0-9;]*m)*t(?:\\x1b\\[[0-9;]*m)*e(?:\\x1b\\[[0-9;]*m)*d(?:\\x1b\\[[0-9;]*m)*:(?:\\x1b\\[[0-9;]*m)* (?:\\x1b\\[[0-9;]*m)*1(?:\\x1b\\[[0-9;]*m)*6(?:\\x1b\\[[0-9;]*m)*0(?:\\x1b\\[[0-9;]*m)*\\.(?:\\x1b\\[[0-9;]*m)*2(?:\\x1b\\[[0-9;]*m)*6(?:\\x1b\\[[0-9;]*m)*7[\\s\\S]*R(?:\\x1b\\[[0-9;]*m)*e(?:\\x1b\\[[0-9;]*m)*c(?:\\x1b\\[[0-9;]*m)*e(?:\\x1b\\[[0-9;]*m)*i(?:\\x1b\\[[0-9;]*m)*v(?:\\x1b\\[[0-9;]*m)*e(?:\\x1b\\[[0-9;]*m)*d(?:\\x1b\\[[0-9;]*m)*:(?:\\x1b\\[[0-9;]*m)* (?:\\x1b\\[[0-9;]*m)*1(?:\\x1b\\[[0-9;]*m)*5(?:\\x1b\\[[0-9;]*m)*8(?:\\x1b\\[[0-9;]*m)*\\.(?:\\x1b\\[[0-9;]*m)*5(?:\\x1b\\[[0-9;]*m)*7"
@@ -260,7 +260,7 @@
     "title": "two browsers start, join, edit both ways, reload and drop over an emulated tracker",
     "firstSeen": "2026-10-27",
     "lastSeen": "2026-10-27",
-    "count": 1,
+    "count": 2,
     "owner": "latchkostov",
     "tracking": "docs/backlog/2026-10-27-nightly-native-triage.md",
     "failurePattern": "getByTestId\\('room-knock-admit'\\)"
@@ -271,7 +271,7 @@
     "title": "Clear everything stops the room's writers, an encryption started before it can't repopulate recovery, and an old link restores nothing",
     "firstSeen": "2026-10-27",
     "lastSeen": "2026-10-27",
-    "count": 1,
+    "count": 2,
     "owner": "latchkostov",
     "tracking": "docs/backlog/2026-10-27-nightly-native-triage.md",
     "failurePattern": "getByTestId\\('room-knock-admit'\\)"
@@ -282,7 +282,7 @@
     "title": "a peer deleting the right-clicked node closes the menu (remote), the canvas takes the keyboard, the view stays",
     "firstSeen": "2026-10-27",
     "lastSeen": "2026-10-27",
-    "count": 1,
+    "count": 2,
     "owner": "latchkostov",
     "tracking": "docs/backlog/2026-10-27-nightly-native-triage.md",
     "failurePattern": "getByTestId\\('room-knock-admit'\\)"
@@ -293,7 +293,7 @@
     "title": "joining hands the keyboard to the wait, then to the room's canvas, through the interaction controller",
     "firstSeen": "2026-10-27",
     "lastSeen": "2026-10-27",
-    "count": 1,
+    "count": 2,
     "owner": "latchkostov",
     "tracking": "docs/backlog/2026-10-27-nightly-native-triage.md",
     "failurePattern": "getByTestId\\('room-knock-admit'\\)"
@@ -304,7 +304,7 @@
     "title": "a peer that leaves shows Reconnecting…, then Everyone else left; a joiner nobody answers is told so",
     "firstSeen": "2026-10-27",
     "lastSeen": "2026-10-27",
-    "count": 1,
+    "count": 2,
     "owner": "latchkostov",
     "tracking": "docs/backlog/2026-10-27-nightly-native-triage.md",
     "failurePattern": "getByTestId\\('room-knock-admit'\\)"
@@ -315,7 +315,7 @@
     "title": "joining focuses the connecting status, then the canvas; focus moved to the toolbar stays there",
     "firstSeen": "2026-10-27",
     "lastSeen": "2026-10-27",
-    "count": 1,
+    "count": 2,
     "owner": "latchkostov",
     "tracking": "docs/backlog/2026-10-27-nightly-native-triage.md",
     "failurePattern": "getByTestId\\('room-knock-admit'\\)"
@@ -326,7 +326,7 @@
     "title": "remote boundary removal closes its context menu, and a selection menu holding a boundary",
     "firstSeen": "2026-10-27",
     "lastSeen": "2026-10-27",
-    "count": 1,
+    "count": 2,
     "owner": "latchkostov",
     "tracking": "docs/backlog/2026-10-27-nightly-native-triage.md",
     "failurePattern": "getByTestId\\('room-knock-admit'\\)"
@@ -337,7 +337,7 @@
     "title": "a Private paste whose Private mark fails reaches neither the peer nor the stored copy; its file copy is Private",
     "firstSeen": "2026-10-27",
     "lastSeen": "2026-10-27",
-    "count": 1,
+    "count": 2,
     "owner": "latchkostov",
     "tracking": "docs/backlog/2026-10-27-nightly-native-triage.md",
     "failurePattern": "getByTestId\\('room-knock-admit'\\)"
@@ -348,7 +348,7 @@
     "title": "a peer's selection and cursor show in their colour and name; the view and the keyboard stay yours",
     "firstSeen": "2026-10-27",
     "lastSeen": "2026-10-27",
-    "count": 1,
+    "count": 2,
     "owner": "latchkostov",
     "tracking": "docs/backlog/2026-10-27-nightly-native-triage.md",
     "failurePattern": "getByTestId\\('room-knock-admit'\\)"
@@ -359,7 +359,7 @@
     "title": "others' outlines and pointers never show while presenting, printing or recording",
     "firstSeen": "2026-10-27",
     "lastSeen": "2026-10-27",
-    "count": 1,
+    "count": 2,
     "owner": "latchkostov",
     "tracking": "docs/backlog/2026-10-27-nightly-native-triage.md",
     "failurePattern": "getByTestId\\('room-knock-admit'\\)"
@@ -370,7 +370,7 @@
     "title": "an image export leaves out others' outlines, pointers and names",
     "firstSeen": "2026-10-27",
     "lastSeen": "2026-10-27",
-    "count": 1,
+    "count": 2,
     "owner": "latchkostov",
     "tracking": "docs/backlog/2026-10-27-nightly-native-triage.md",
     "failurePattern": "getByTestId\\('room-knock-admit'\\)"
@@ -381,7 +381,7 @@
     "title": "P2 a peer deleting an edge announces why its menu closed",
     "firstSeen": "2026-10-27",
     "lastSeen": "2026-10-27",
-    "count": 1,
+    "count": 2,
     "owner": "latchkostov",
     "tracking": "docs/backlog/2026-10-27-nightly-native-triage.md",
     "failurePattern": "getByTestId\\('room-knock-admit'\\)"
@@ -392,7 +392,7 @@
     "title": "P2 peer deletion keeps rename canceled after the inspector loads",
     "firstSeen": "2026-10-27",
     "lastSeen": "2026-10-27",
-    "count": 1,
+    "count": 2,
     "owner": "latchkostov",
     "tracking": "docs/backlog/2026-10-27-nightly-native-triage.md",
     "failurePattern": "getByTestId\\('room-knock-admit'\\)"
@@ -403,7 +403,7 @@
     "title": "knock then admit: the newcomer waits at the door with nothing of the room, then the host lets them in",
     "firstSeen": "2026-10-27",
     "lastSeen": "2026-10-27",
-    "count": 1,
+    "count": 2,
     "owner": "latchkostov",
     "tracking": "docs/backlog/2026-10-27-nightly-native-triage.md",
     "failurePattern": "getByTestId\\('room-knock-card'\\)"
@@ -414,7 +414,7 @@
     "title": "knock then deny: the newcomer is told, and leaves with nothing of the room",
     "firstSeen": "2026-10-27",
     "lastSeen": "2026-10-27",
-    "count": 1,
+    "count": 2,
     "owner": "latchkostov",
     "tracking": "docs/backlog/2026-10-27-nightly-native-triage.md",
     "failurePattern": "getByTestId\\('room-knock-card'\\)"
@@ -425,7 +425,7 @@
     "title": "with Ask before people join off, a newcomer is let in on their own: no card, nobody clicks",
     "firstSeen": "2026-10-27",
     "lastSeen": "2026-10-27",
-    "count": 1,
+    "count": 2,
     "owner": "latchkostov",
     "tracking": "docs/backlog/2026-10-27-nightly-native-triage.md",
     "failurePattern": "getByTestId\\('node-gateway'\\)"
@@ -436,7 +436,7 @@
     "title": "presenting: answering the last card from the keyboard leaves focus on the canvas",
     "firstSeen": "2026-10-27",
     "lastSeen": "2026-10-27",
-    "count": 1,
+    "count": 2,
     "owner": "latchkostov",
     "tracking": "docs/backlog/2026-10-27-nightly-native-triage.md",
     "failurePattern": "getByTestId\\('room-knock-card'\\)"
@@ -447,7 +447,7 @@
     "title": "remove: the room moves to a new key; the one removed is out, and the one who stays carries on",
     "firstSeen": "2026-10-27",
     "lastSeen": "2026-10-27",
-    "count": 1,
+    "count": 2,
     "owner": "latchkostov",
     "tracking": "docs/backlog/2026-10-27-nightly-native-triage.md",
     "failurePattern": "getByTestId\\('room-knock-card'\\)"
@@ -491,7 +491,7 @@
     "title": "a late joiner catches up to the host's run and lands on the same state",
     "firstSeen": "2026-10-27",
     "lastSeen": "2026-10-27",
-    "count": 1,
+    "count": 2,
     "owner": "latchkostov",
     "tracking": "docs/backlog/2026-10-27-nightly-native-triage.md",
     "failurePattern": "getByTestId\\('room-knock-admit'\\)"
@@ -546,7 +546,7 @@
     "title": "R-caf692ac78 phone Speed retains native navigation keys",
     "firstSeen": "2026-10-27",
     "lastSeen": "2026-10-27",
-    "count": 1,
+    "count": 2,
     "owner": "latchkostov",
     "tracking": "docs/backlog/2026-10-27-nightly-native-triage.md",
     "failurePattern": "getByTestId\\('live-speed'\\)"
@@ -557,7 +557,7 @@
     "title": "Open… imports the compose fixture: nodes, boundaries, connections and the toast",
     "firstSeen": "2026-10-27",
     "lastSeen": "2026-10-27",
-    "count": 1,
+    "count": 3,
     "owner": "latchkostov",
     "tracking": "docs/backlog/2026-10-27-nightly-native-triage.md",
     "failurePattern": "getByTestId\\('node-orders-api'\\)"
@@ -579,7 +579,7 @@
     "title": "a firewall's deny rule blocks traffic, counted apart from failures",
     "firstSeen": "2026-10-27",
     "lastSeen": "2026-10-27",
-    "count": 1,
+    "count": 2,
     "owner": "latchkostov",
     "tracking": "docs/backlog/2026-10-27-nightly-native-triage.md",
     "failurePattern": "getByTestId\\('edge-label-firewall-spine-1'\\)"
@@ -601,7 +601,7 @@
     "title": "the host page supplies the diagram: it renders, plays, takes commands and reports back",
     "firstSeen": "2026-10-27",
     "lastSeen": "2026-10-27",
-    "count": 1,
+    "count": 2,
     "owner": "latchkostov",
     "tracking": "docs/backlog/2026-10-27-nightly-native-triage.md",
     "failurePattern": "E(?:\\x1b\\[[0-9;]*m)*x(?:\\x1b\\[[0-9;]*m)*p(?:\\x1b\\[[0-9;]*m)*e(?:\\x1b\\[[0-9;]*m)*c(?:\\x1b\\[[0-9;]*m)*t(?:\\x1b\\[[0-9;]*m)*e(?:\\x1b\\[[0-9;]*m)*d(?:\\x1b\\[[0-9;]*m)*:(?:\\x1b\\[[0-9;]*m)* (?:\\x1b\\[[0-9;]*m)*>(?:\\x1b\\[[0-9;]*m)* (?:\\x1b\\[[0-9;]*m)*0[\\s\\S]*R(?:\\x1b\\[[0-9;]*m)*e(?:\\x1b\\[[0-9;]*m)*c(?:\\x1b\\[[0-9;]*m)*e(?:\\x1b\\[[0-9;]*m)*i(?:\\x1b\\[[0-9;]*m)*v(?:\\x1b\\[[0-9;]*m)*e(?:\\x1b\\[[0-9;]*m)*d(?:\\x1b\\[[0-9;]*m)*:(?:\\x1b\\[[0-9;]*m)* (?:\\x1b\\[[0-9;]*m)* (?:\\x1b\\[[0-9;]*m)* (?:\\x1b\\[[0-9;]*m)*0"
@@ -645,7 +645,7 @@
     "title": "the callout and planner offer the same verified fix; keyboard apply names its simulation and Undo restores it",
     "firstSeen": "2026-10-27",
     "lastSeen": "2026-10-27",
-    "count": 1,
+    "count": 2,
     "owner": "latchkostov",
     "tracking": "docs/backlog/2026-10-27-nightly-native-triage.md",
     "failurePattern": "getByTestId\\('trouble-action'\\)"
@@ -656,7 +656,7 @@
     "title": "a resumed narration still offers the same verified timeout",
     "firstSeen": "2026-10-27",
     "lastSeen": "2026-10-27",
-    "count": 1,
+    "count": 2,
     "owner": "latchkostov",
     "tracking": "docs/backlog/2026-10-27-nightly-native-triage.md",
     "failurePattern": "getByTestId\\('trouble-action'\\)"
@@ -667,7 +667,7 @@
     "title": "a held verification keeps one request outstanding and then posts only the latest revision",
     "firstSeen": "2026-10-27",
     "lastSeen": "2026-10-27",
-    "count": 1,
+    "count": 2,
     "owner": "latchkostov",
     "tracking": "docs/backlog/2026-10-27-nightly-native-triage.md",
     "failurePattern": "Test timeout of 30000ms exceeded"
@@ -700,7 +700,7 @@
     "title": "keyboard: focus stays in the report after an action, and a name hands focus to its node",
     "firstSeen": "2026-10-27",
     "lastSeen": "2026-10-27",
-    "count": 2,
+    "count": 3,
     "owner": "latchkostov",
     "tracking": "docs/backlog/2026-10-27-nightly-native-triage.md",
     "failurePattern": "getByTestId\\('node-topic-orders\\.placed\\.v1'\\)"
@@ -725,5 +725,181 @@
     "count": 1,
     "owner": "latchkostov",
     "tracking": "docs/backlog/2026-10-27-nightly-native-triage.md"
+  },
+  {
+    "id": "nightly-1027b-32b0f8598a",
+    "spec": "tests/e2e/imports.spec.ts",
+    "title": "an import makes no network requests: nothing leaves the page, nothing is fetched",
+    "firstSeen": "2026-10-27",
+    "lastSeen": "2026-10-27",
+    "count": 1,
+    "owner": "latchkostov",
+    "tracking": "docs/backlog/2026-10-27-nightly-b-run-40577899574.md",
+    "failurePattern": "getByTestId\\('node-postgres'\\)"
+  },
+  {
+    "id": "nightly-1027b-4808197264",
+    "spec": "tests/e2e/text-fields.spec.ts",
+    "title": "an explicitly cleared type-ahead name stays empty when its field opens",
+    "firstSeen": "2026-10-27",
+    "lastSeen": "2026-10-27",
+    "count": 1,
+    "owner": "latchkostov",
+    "tracking": "docs/backlog/2026-10-27-nightly-b-run-40577899574.md",
+    "failurePattern": "getByTestId\\('inspector-field-label'\\)"
+  },
+  {
+    "id": "nightly-1027b-3dddb80958",
+    "spec": "tests/e2e/workbench-council.spec.ts",
+    "title": "council inspector note has an inset and the description hint does not truncate",
+    "firstSeen": "2026-10-27",
+    "lastSeen": "2026-10-27",
+    "count": 1,
+    "owner": "latchkostov",
+    "tracking": "docs/backlog/2026-10-27-nightly-b-run-40577899574.md",
+    "failurePattern": "Error: expect\\(received\\)\\.toBeGreaterThanOrEqual\\(expected\\)"
+  },
+  {
+    "id": "nightly-1027b-07a727013f",
+    "spec": "tests/e2e/workbench-followups.spec.ts",
+    "title": "enlarged label floor measures the full text before collision placement",
+    "firstSeen": "2026-10-27",
+    "lastSeen": "2026-10-27",
+    "count": 1,
+    "owner": "latchkostov",
+    "tracking": "docs/backlog/2026-10-27-nightly-b-run-40577899574.md",
+    "failurePattern": "Error: expect\\(received\\)\\.toBeGreaterThanOrEqual\\(expected\\)"
+  },
+  {
+    "id": "nightly-1027b-ddd653ba0a",
+    "spec": "tests/e2e/html-export.spec.ts",
+    "title": "exports the Kafka example as one file that plays offline, with zero requests",
+    "firstSeen": "2026-10-27",
+    "lastSeen": "2026-10-27",
+    "count": 1,
+    "owner": "latchkostov",
+    "tracking": "docs/backlog/2026-10-27-nightly-b-run-40577899574.md",
+    "failurePattern": "Test timeout of 90000ms exceeded\\."
+  },
+  {
+    "id": "nightly-1027b-2fead6fcc1",
+    "spec": "tests/e2e/html-export.spec.ts",
+    "title": "the file plays inside an <iframe> too, still with zero requests",
+    "firstSeen": "2026-10-27",
+    "lastSeen": "2026-10-27",
+    "count": 1,
+    "owner": "latchkostov",
+    "tracking": "docs/backlog/2026-10-27-nightly-b-run-40577899574.md",
+    "failurePattern": "Test timeout of 90000ms exceeded\\."
+  },
+  {
+    "id": "nightly-1027b-8d8dc2b89b",
+    "spec": "tests/e2e/html-export.spec.ts",
+    "title": "plays in a sandboxed iframe, where storage is denied",
+    "firstSeen": "2026-10-27",
+    "lastSeen": "2026-10-27",
+    "count": 1,
+    "owner": "latchkostov",
+    "tracking": "docs/backlog/2026-10-27-nightly-b-run-40577899574.md",
+    "failurePattern": "Test timeout of 90000ms exceeded\\."
+  },
+  {
+    "id": "nightly-1027b-7ca51473a6",
+    "spec": "tests/e2e/pools-busy-threads.spec.ts",
+    "title": "planner offers Scale on busy threads for a waiting majority",
+    "firstSeen": "2026-10-27",
+    "lastSeen": "2026-10-27",
+    "count": 1,
+    "owner": "latchkostov",
+    "tracking": "docs/backlog/2026-10-27-nightly-b-run-40577899574.md",
+    "failurePattern": "getByTestId\\('inspector-live-section-scaling'\\)"
+  },
+  {
+    "id": "nightly-1027b-b74d3ced64",
+    "spec": "tests/e2e/live-record-capture.spec.ts",
+    "title": "slow motion's captions are in the video",
+    "firstSeen": "2026-10-27",
+    "lastSeen": "2026-10-27",
+    "count": 1,
+    "owner": "latchkostov",
+    "tracking": "docs/backlog/2026-10-27-nightly-b-run-40577899574.md",
+    "failurePattern": "Error: expect\\(received\\)\\.toBeGreaterThan\\(expected\\)"
+  },
+  {
+    "id": "nightly-1027b-3357ac5243",
+    "spec": "tests/e2e/slowmo.spec.ts",
+    "title": "0.25× draws a calm sample of whole journeys; counts stay exact",
+    "firstSeen": "2026-10-27",
+    "lastSeen": "2026-10-27",
+    "count": 1,
+    "owner": "latchkostov",
+    "tracking": "docs/backlog/2026-10-27-nightly-b-run-40577899574.md",
+    "failurePattern": "Error: expect\\(received\\)\\.toBeGreaterThan\\(expected\\)"
+  },
+  {
+    "id": "nightly-1027b-dced1c596b",
+    "spec": "tests/e2e/live-render.spec.ts",
+    "title": "slow motion draws its dots and captions above the pills, over the frozen live view",
+    "firstSeen": "2026-10-27",
+    "lastSeen": "2026-10-27",
+    "count": 1,
+    "owner": "latchkostov",
+    "tracking": "docs/backlog/2026-10-27-nightly-b-run-40577899574.md",
+    "failurePattern": "getByTestId\\('node-shopper'\\)"
+  },
+  {
+    "id": "nightly-1027b-8564e141de",
+    "spec": "tests/e2e/live-render.spec.ts",
+    "title": "a waiting note stops the march like pausing does (the sim clock stands still)",
+    "firstSeen": "2026-10-27",
+    "lastSeen": "2026-10-27",
+    "count": 1,
+    "owner": "latchkostov",
+    "tracking": "docs/backlog/2026-10-27-nightly-b-run-40577899574.md",
+    "failurePattern": "Error: expect\\(received\\)\\.toBe\\(expected\\) // Object\\.is equality"
+  },
+  {
+    "id": "nightly-1027b-fac215c75a",
+    "spec": "tests/e2e/live.spec.ts",
+    "title": "traffic=0 keeps Free play idle until traffic is enabled",
+    "firstSeen": "2026-10-27",
+    "lastSeen": "2026-10-27",
+    "count": 1,
+    "owner": "latchkostov",
+    "tracking": "docs/backlog/2026-10-27-nightly-b-run-40577899574.md",
+    "failurePattern": "Error: expect\\(received\\)\\.toBeGreaterThan\\(expected\\)"
+  },
+  {
+    "id": "nightly-1027b-5701d7b04d",
+    "spec": "tests/e2e/live.spec.ts",
+    "title": "presentation + live from the URL: notes, Space to pause, Esc leaves presentation only",
+    "firstSeen": "2026-10-27",
+    "lastSeen": "2026-10-27",
+    "count": 1,
+    "owner": "latchkostov",
+    "tracking": "docs/backlog/2026-10-27-nightly-b-run-40577899574.md",
+    "failurePattern": "getByTestId\\('live-note'\\)"
+  },
+  {
+    "id": "nightly-1027b-bc0aed9847",
+    "spec": "tests/e2e/routing.spec.ts",
+    "title": "a right-click traffic mix keeps its unfinished route while the node's name changes",
+    "firstSeen": "2026-10-27",
+    "lastSeen": "2026-10-27",
+    "count": 1,
+    "owner": "latchkostov",
+    "tracking": "docs/backlog/2026-10-27-nightly-b-run-40577899574.md",
+    "failurePattern": "getByTestId\\('mix-new-route-path'\\)"
+  },
+  {
+    "id": "nightly-1027b-5fa03d680a",
+    "spec": "tests/e2e/record.spec.ts",
+    "title": "start → countdown → indicator → stop → review → download",
+    "firstSeen": "2026-10-27",
+    "lastSeen": "2026-10-27",
+    "count": 1,
+    "owner": "latchkostov",
+    "tracking": "docs/backlog/2026-10-27-nightly-b-run-40577899574.md",
+    "failurePattern": "getByTestId\\('record-elapsed'\\)"
   }
 ]

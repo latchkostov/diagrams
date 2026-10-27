@@ -36,7 +36,12 @@ function Recovery({ retry }: { retry(): void }) {
     const height = panel.style.height;
     panel.style.height = `${box.height}px`;
     el.dataset.place = "inside";
-    return () => void (panel.style.height = height);
+    return () => {
+      panel.style.height = height;
+      // StrictMode replays this setup on the same node. Restore its starting placement too,
+      // so the next setup measures the panel without the inline feedback and pins it again.
+      el.dataset.place = "below";
+    };
   }, [slot]);
   const view = (
     <div

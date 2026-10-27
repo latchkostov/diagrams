@@ -63,6 +63,9 @@ const chromiumOnly = diagnostic || process.env.E2E_CHROMIUM_ONLY === "1";
 
 const app = port("E2E_PORT", 5191);
 const devServer = BUILD ? port("E2E_DEV_PORT", app.port + 1, app.explicit) : app;
+// Framed-header tests must proxy production HTML even when the editor suite targets Vite dev:
+// production CSP intentionally rejects Vite's inline refresh preamble and HMR WebSocket.
+const productionApp = BUILD ? app : port("E2E_DEV_PORT", app.port + 1, app.explicit);
 const preview = port("E2E_PREVIEW_PORT", 5193);
 export const PREVIEW_BASE = "/tools/diagrams/";
 const internal = port("E2E_INTERNAL_PORT", preview.port + 1, preview.explicit);
@@ -131,6 +134,7 @@ const desktopChrome = {
 };
 
 export default defineConfig({
+  metadata: { productionBaseURL: `http://localhost:${productionApp.port}` },
   testDir: "./tests/e2e",
   outputDir: "./tests/.output/results",
   fullyParallel: true,
@@ -203,20 +207,16 @@ export default defineConfig({
   webServer: [
     // The smoke needs only the e2e build (BUILD is always true with it).
     ...((BUILD && chromiumOnly) || smoke ? [] : [devWebServer]),
-    ...(BUILD
-      ? [
-          {
-            // The e2e build: production React and bundling, plus the test hooks (VITE_E2E=1).
-            command: serve("e2e", `--port ${app.port} --strictPort`),
-            url: `http://localhost:${app.port}`,
-            env: E2E_PROFILES.e2e.env,
-            reuseExistingServer: reuseServer(app.explicit),
-            timeout: 180_000,
-            stdout: "ignore" as const,
-            stderr: "pipe" as const,
-          },
-        ]
-      : []),
+    {
+      // The e2e build: also supplies production HTML for framed-header tests in dev-target runs.
+      command: serve("e2e", `--port ${productionApp.port} --strictPort`),
+      url: `http://localhost:${productionApp.port}`,
+      env: E2E_PROFILES.e2e.env,
+      reuseExistingServer: reuseServer(productionApp.explicit),
+      timeout: 180_000,
+      stdout: "ignore" as const,
+      stderr: "pipe" as const,
+    },
     ...(skipPreview
       ? []
       : [
