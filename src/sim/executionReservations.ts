@@ -56,22 +56,21 @@ export function createExecutionReservations<
     edges: readonly { from: { props: { broker?: { partitioned: boolean } } } }[];
   },
   Node extends ExecutionNode<Group>,
->(context: {
-  ledger: SampledLedger;
-  admission: () => AdmissionState;
-  scale: () => number;
-  time: () => number;
-  waits: () => boolean;
-  callerReservations: (node: Node) => boolean;
-  admissionLag: (node: Node, reservation: Reservation<Group>) => number;
-  slots: (node: Node) => number;
-  resourceWork: (node: Node) => CpuTail<Group>[];
-  scheduleThreadGrace: (id: number, work: Reservation<Group>) => void;
-  immediateHolds: () => boolean;
-}) {
+>(
+  ledger: SampledLedger,
+  readAdmission: () => AdmissionState,
+  readScale: () => number,
+  readTime: () => number,
+  waits: () => boolean,
+  callerReservations: (node: Node) => boolean,
+  admissionLag: (node: Node, reservation: Reservation<Group>) => number,
+  slots: (node: Node) => number,
+  resourceWork: (node: Node) => CpuTail<Group>[],
+  scheduleThreadGrace: (id: number, work: Reservation<Group>) => void,
+  immediateHolds: () => boolean,
+) {
   type Work = ExecutionWork<Group>;
-  const { ledger, callerReservations, slots, resourceWork, scheduleThreadGrace } = context;
-  const usesLedger = (node: Node) => context.waits() && node.role === "processor";
+  const usesLedger = (node: Node) => waits() && node.role === "processor";
   /** Real requests this work executes for: its message's represented size, fixed once its
    * thread, admission or CPU is sized. A live scale edit never resizes that cohort. */
   const cohort = (work: Work): number =>
@@ -82,7 +81,7 @@ export function createExecutionReservations<
     work.lease?.represented ??
     work.threadLease?.represented ??
     work.cohort ??
-    representedOf(work.message, context.scale());
+    representedOf(work.message, readScale());
 
   function reserveThread(
     node: Node,
@@ -121,7 +120,7 @@ export function createExecutionReservations<
   }
   /** Capacity only: preserve the attempt's timing, policy and quota transaction. */
   function reacquireCapacity(node: Node, work: Work): boolean {
-    const admission = context.admission();
+    const admission = readAdmission();
     if (!usesLedger(node) || ledger.get(work.thread)) return true;
     if (!callerReservations(node)) {
       const retained = work.recoveryThread ?? work.threadLease;
@@ -225,7 +224,7 @@ export function createExecutionReservations<
     releaseThread(tail);
     const request = ledger.get<Group>(work.requestLease)!;
     const room = slots(node) - node.threadWeight.work - node.threadWeight.wait;
-    const leases = reacquire(context.admission(), {
+    const leases = reacquire(readAdmission(), {
       node: node.id,
       policy: node.props.admission,
       endpointId: work.via?.endpointId,
@@ -252,8 +251,8 @@ export function createExecutionReservations<
   }
 
   function startResources(node: Node, work: Work): boolean {
-    const scale = context.scale(),
-      time = context.time();
+    const scale = readScale(),
+      time = readTime();
     work.group = work.delivery?.group ?? work.group;
     // Live resource enabling attaches CPU to the execution slot already held by this work.
     if (work.slotted && node.status !== "down" && !reacquireCapacity(node, work)) return false;
@@ -389,7 +388,7 @@ export function createExecutionReservations<
     work.cpuOwed = work.fractionalTail = undefined;
     node.threadTails.set(r.id, r);
     work.localThread = r.id;
-    if (immediate || !usesLedger(node) || context.immediateHolds()) ledger.release(r);
+    if (immediate || !usesLedger(node) || immediateHolds()) ledger.release(r);
     // Stretch only the turnaround that scale one actually waits through: a
     // reply before this tick's next admission opportunity has no extra lag.
     else
@@ -397,17 +396,18 @@ export function createExecutionReservations<
         r,
         node.activeMs - (r.segmentActive ?? r.startActive),
         node.activeMs,
-        admissionLagMs ?? (r.phase === "wait" ? context.admissionLag(node, r) : 0),
+        admissionLagMs ?? (r.phase === "wait" ? admissionLag(node, r) : 0),
       );
     if (node.threadTails.has(r.id)) scheduleThreadGrace(r.id, r);
   }
 
-  return {
-    /** A connection inherits the thread's fractional admission phase. */
-    admissibleActive(node: Node, work: Work) {
-      const thread = ledger.get(work.thread);
-      return node.activeMs - (thread ? (thread.segmentActive ?? thread.startActive) - thread.startActive : 0);
-    },
+  /** A connection inherits the thread's fractional admission phase. */
+  function admissibleActive(node: Node, work: Work) {
+    const thread = ledger.get(work.thread);
+    return node.activeMs - (thread ? (thread.segmentActive ?? thread.startActive) - thread.startActive : 0);
+  }
+  return [
+    admissibleActive,
     usesLedger,
     cohort,
     reacquireCapacity,
@@ -419,5 +419,5 @@ export function createExecutionReservations<
     takeoverThread,
     shutdown,
     disableResources,
-  };
+  ] as const;
 }

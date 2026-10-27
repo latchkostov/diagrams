@@ -65,6 +65,8 @@ describe("engine import boundaries", () => {
       .map((file) => resolve(root, file));
     expect(entries).toContain(model);
     expect(entries).toContain(resolve(root, "checkpoint.ts"));
+    expect(entries).toContain(resolve(root, "resources.ts"));
+    expect(entries).toContain(resolve(root, "broker.ts"));
     const find = (file: string) => {
       const found = [file, `${file}.ts`, `${file}.tsx`, resolve(file, "index.ts")].find(
         (candidate) => /\.tsx?$/.test(candidate) && existsSync(candidate),
