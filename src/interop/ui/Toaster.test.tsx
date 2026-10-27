@@ -1,7 +1,9 @@
+import { toast as interaction } from "./toastRuntime";
 import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, expect, it, vi } from "vitest";
 import { Toaster } from "./Toaster";
 import { toast } from "./toast";
+import { openModalLayer } from "../../lib/modalLayers";
 
 vi.mock("react", async (original) => ({
   ...(await original<typeof import("react")>()),
@@ -30,4 +32,21 @@ it("gives every toast button a non-submitting type", () => {
   const buttons = renderToStaticMarkup(<Toaster />).match(/<button\b[^>]*>/g);
   expect(buttons).toHaveLength(2);
   for (const button of buttons!) expect(button).toContain('type="button"');
+});
+
+it("announces a consumed modal opener action as disabled while keeping it focusable", () => {
+  vi.stubGlobal("document", { body: {} });
+  const id = toast.info("Restore", { action: { label: "Undo", run() {} } });
+  interaction.contact("focus", true, id);
+  const opener = { closest: () => ({ dataset: { toastId: String(id) } }) } as unknown as HTMLElement;
+  const close = openModalLayer({} as HTMLElement, { opener });
+  try {
+    toast.dismiss(id);
+    const buttons = renderToStaticMarkup(<Toaster />).match(/<button\b[^>]*>/g)!;
+    expect(buttons[0]).toContain('aria-disabled="true"');
+    expect(buttons[0]).not.toMatch(/\sdisabled(?:=|\s|>)/);
+  } finally {
+    close();
+    interaction.release();
+  }
 });

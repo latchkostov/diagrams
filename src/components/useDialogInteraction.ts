@@ -13,13 +13,9 @@ export function useDialogInteraction(
 ) {
   const opener = useRef<HTMLElement | null | undefined>(undefined);
   const layer = useRef<ReturnType<typeof openModalLayer> | null>(null);
-  const restoreRef = useRef(restoreFocus);
+  const callbacks = useRef({ onClose, restoreFocus });
   useLayoutEffect(() => {
-    restoreRef.current = restoreFocus;
-  });
-  const closeRef = useRef(onClose);
-  useLayoutEffect(() => {
-    closeRef.current = onClose;
+    callbacks.current = { onClose, restoreFocus };
   });
 
   // Native listeners (like ShortcutsDialog): Escape closes, Tab stays inside, the page behind is inert.
@@ -33,7 +29,7 @@ export function useDialogInteraction(
       e.stopPropagation();
       if (e.key === "Escape") {
         e.preventDefault();
-        closeRef.current();
+        callbacks.current.onClose();
       } else if (e.key === "Tab") {
         const controls = Array.from(
           panelEl.querySelectorAll<HTMLElement>(
@@ -54,13 +50,16 @@ export function useDialogInteraction(
     const onMouseDown = (e: MouseEvent) => {
       if (e.target === backdropEl) {
         e.preventDefault();
-        closeRef.current();
+        callbacks.current.onClose();
       }
     };
     const onContextMenu = (e: Event) => e.preventDefault();
-    panelEl.addEventListener("keydown", onKeyDown);
-    backdropEl.addEventListener("mousedown", onMouseDown);
-    backdropEl.addEventListener("contextmenu", onContextMenu);
+    const events = [
+      [panelEl, "keydown", onKeyDown as EventListener],
+      [backdropEl, "mousedown", onMouseDown as EventListener],
+      [backdropEl, "contextmenu", onContextMenu],
+    ] as const;
+    for (const [element, type, listener] of events) element.addEventListener(type, listener);
     // Outgoing dialogs restore focus in cleanup, after this dialog rendered. Capture only after that
     // handoff, and keep the original opener when StrictMode replays this effect.
     if (opener.current === undefined)
@@ -79,13 +78,11 @@ export function useDialogInteraction(
     const wasInert = background.map((el) => el.inert);
     for (const el of background) el.inert = true;
     return () => {
-      panelEl.removeEventListener("keydown", onKeyDown);
-      backdropEl.removeEventListener("mousedown", onMouseDown);
-      backdropEl.removeEventListener("contextmenu", onContextMenu);
+      for (const [element, type, listener] of events) element.removeEventListener(type, listener);
       background.forEach((el, i) => (el.inert = wasInert[i]));
       // StrictMode replays setup while the dialog is still mounted. Keep its ownership as well as its opener.
       if (panelEl.isConnected) return;
-      if (restoreRef.current) restoreRef.current(prev && prev !== document.body ? prev : null);
+      if (callbacks.current.restoreFocus) callbacks.current.restoreFocus(prev && prev !== document.body ? prev : null);
       // Keep modal ownership until its opener has received focus, including a retained toast control.
       else if (prev && prev !== document.body && prev.isConnected) prev.focus();
       else document.querySelector<HTMLElement>('[data-testid="canvas-wrap"]')?.focus({ preventScroll: true });

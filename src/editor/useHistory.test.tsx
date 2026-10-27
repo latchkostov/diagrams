@@ -4,6 +4,7 @@ import { createRoot } from "react-dom/client";
 import { expect, it, vi } from "vitest";
 import { toFlow } from "../canvas/convert";
 import { toast } from "../interop/ui/toast";
+import { toast as interaction } from "../interop/ui/toastRuntime";
 import { HistoryController } from "./historyController";
 import { useHistory, type CanvasSnapshot } from "./useHistory";
 
@@ -28,18 +29,18 @@ it("reuses the rendered snapshot key when validating a retained Undo on selectio
     await act(() => root.render(<Harness snapshot={state} />));
     await act(() => {
       toast.info("Changed", { action: { label: "Undo", run() {}, undoes: true } });
-      toast.contact("focus", true);
+      interaction.contact("focus", true);
     });
-    expect(toast.current?.undoUnavailable).toBe(false);
+    expect(interaction.current?.undoUnavailable).toBe(false);
     key.mockClear();
     state = { ...state, nodes: state.nodes.map((node) => ({ ...node, selected: true })) };
     await act(() => root.render(<Harness snapshot={state} />));
     // One render key, with no extra full-document serialization from toast validation.
     expect(key).toHaveBeenCalledTimes(1);
-    expect(toast.current?.undoUnavailable).toBe(false);
+    expect(interaction.current?.undoUnavailable).toBe(false);
   } finally {
     await act(() => root.unmount());
-    toast.release();
+    interaction.release();
     toast.dismiss();
     vi.restoreAllMocks();
     vi.unstubAllGlobals();

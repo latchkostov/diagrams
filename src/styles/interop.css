@@ -190,6 +190,13 @@
 
 /* ---------- toasts ---------- */
 
+/* Workbench's flyouts, transport menus and phone sheets share the page's stacking context. */
+[data-toast-host] > [data-toast-layer] {
+  position: relative;
+  z-index: 7;
+  animation: none;
+}
+
 .ix-toast {
   position: fixed;
   left: 50%;
@@ -214,7 +221,8 @@
 
 /* Out of reach but in place: behind a task's toast, or under a modal (whose sweep makes the page layer inert). */
 .ix-toast[data-suspended],
-[data-toast-layer][inert] > .ix-toast {
+[data-toast-layer][inert] > .ix-toast,
+[inert] [data-toast-layer] > .ix-toast {
   visibility: hidden;
 }
 

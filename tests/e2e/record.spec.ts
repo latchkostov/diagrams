@@ -237,9 +237,67 @@ test.describe("record video", () => {
     expect(await rec(page, "revoked")).toEqual([urls[0]]);
     await expect(page.getByTestId("record-preview")).toHaveAttribute("src", urls[1]);
     await page.getByTestId("record-discard").click();
+    // Modal focus returns to its consumed opener; leave it so the next discard can start expiring.
+    await page.getByTestId("live-more").focus();
     await page.clock.fastForward(9000);
     expect(await rec(page, "revoked")).toEqual(urls);
   });
+  test("a consumed recording Undo cannot restore or revoke a later discard's clip", async ({ page }) => {
+    await stubCapture(page);
+    await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1&traffic=0`);
+    await page.clock.install();
+    await pauseClock(page);
+    await openRecord(page);
+    await page.getByTestId("record-start").click();
+    await expect(page.getByTestId("record-countdown")).toBeVisible();
+    await expect
+      .poll(async () => {
+        await page.clock.fastForward(1000);
+        return rec(page, "started");
+      })
+      .toBe(true);
+    await page.getByTestId("record-stop").click();
+    await page.clock.fastForward(100);
+    await expect(page.getByTestId("record-review")).toBeVisible();
+    const url = await page.getByTestId("record-preview").getAttribute("src");
+    if (!url) throw new Error("Expected a recording URL");
+    await page.getByTestId("record-discard").click();
+    const undo = page.getByTestId("record-discard-undo");
+    await undo.focus();
+    const toastId = await undo.evaluate((el) => el.closest<HTMLElement>("[data-toast-id]")?.dataset.toastId);
+    expect(toastId).toBeDefined();
+    await page.keyboard.press("Enter");
+    await expect(page.getByTestId("record-preview")).toHaveAttribute("src", url);
+    await page.getByTestId("record-discard").click();
+    await expect(undo).toBeFocused();
+    await expect(undo).toHaveAttribute("aria-disabled", "true");
+    await page.keyboard.press("Enter");
+    await expect(page.getByTestId("record-review")).toHaveCount(0);
+    expect(await rec(page, "revoked")).not.toContain(url);
+    // Leaving the retained opener promotes the fresh Undo, whose closure owns this discard.
+    await page.getByTestId("live-more").focus();
+    await expect(undo).not.toHaveAttribute("aria-disabled", "true");
+    const freshId = await undo.evaluate((el) => el.closest<HTMLElement>("[data-toast-id]")?.dataset.toastId);
+    expect(freshId).toBeDefined();
+    expect(freshId).not.toBe(toastId);
+    await undo.focus();
+    await page.keyboard.press("Enter");
+    await expect(page.getByTestId("record-preview")).toHaveAttribute("src", url);
+    await page.getByTestId("record-discard").click();
+    await page.getByTestId("live-more").focus();
+    expect(await rec(page, "revoked")).not.toContain(url);
+    await undo.focus();
+    await page.keyboard.press("Enter");
+    await expect(page.getByTestId("record-preview")).toHaveAttribute("src", url);
+    // No discarded notification may revoke the clip restored by the latest action.
+    await page.clock.fastForward(9000);
+    expect(await rec(page, "revoked")).not.toContain(url);
+    await page.getByTestId("record-discard").click();
+    await page.getByTestId("live-more").focus();
+    await page.clock.fastForward(9000);
+    expect(await rec(page, "revoked")).toEqual([url]);
+  });
+
   test("start → countdown → indicator → stop → review → download", async ({ page, consoleErrors }) => {
     await stubCapture(page);
     await gotoLive(page, `./?view=canvas&example=${KAFKA}&live=1&sim=${OUTAGE}&paused=1`);

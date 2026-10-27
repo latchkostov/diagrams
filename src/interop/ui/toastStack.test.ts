@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { TOAST_BOTTOM, feedbackPlacement, toastBottom } from "./toastStack";
+import { TOAST_BOTTOM, toastBottom } from "./toastStack";
+import { feedbackPlacement } from "./toastFeedback";
 
 describe("toastBottom", () => {
   const toast = { left: 400, right: 800 };

@@ -15,6 +15,10 @@ import { productionBuild } from "../test/productionBuild";
 
 /** Never in the startup JavaScript. */
 const NOT_AT_STARTUP: [string, RegExp][] = [
+  [
+    "toast renderer and interaction store",
+    /[/\\]src[/\\]interop[/\\]ui[/\\](?:Toaster\.tsx|toastRuntime\.ts|toastEngagement\.ts|toastFeedback\.ts)$/,
+  ],
   ["full trace journey construction", /[/\\]src[/\\]trace[/\\]journey\.ts$/],
   ["tutorial lesson data", /[/\\]src[/\\]tutorials[/\\]catalog[/\\]/],
   ["tutorial runtime", /[/\\]src[/\\]tutorials[/\\](?:runner|machine|checks|TutorialApp|TutorialsView)\.tsx?$/],

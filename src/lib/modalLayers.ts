@@ -38,21 +38,9 @@ export const modalLayers = {
   get top(): ModalLayer | null {
     return stack.at(-1) ?? null;
   },
-  get open(): boolean {
-    return stack.length > 0;
+  get stack() {
+    return stack;
   },
-  has(id: number) {
-    return stack.some((l) => l.id === id);
-  },
-  get(id: number): ModalLayer | null {
-    return stack.find((l) => l.id === id) ?? null;
-  },
-  /** What each open modal was opened from (where it may hand the focus back). */
-  get openers(): Element[] {
-    return stack.flatMap((l) => (l.opener ? [l.opener] : []));
-  },
-  subscribe(listener: () => void) {
-    listeners.add(listener);
-    return () => void listeners.delete(listener);
-  },
+  /** The optional toast runtime listens for this page's lifetime, once its chunk arrives. */
+  listeners,
 };

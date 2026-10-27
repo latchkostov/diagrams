@@ -905,7 +905,7 @@ export function useInterop({
         // on: the same toast showing, for the same diagram, still private.
         const id = getDiagramIdentity(slug);
         const stillCurrent = () =>
-          toast.current?.id === shown &&
+          toast.currentId === shown &&
           getDiagramIdentity(openSlug.current) === id &&
           isLocalOnly(getPrivacyFlags(openSlug.current));
         void import("../ai/ui/clearOnPrivate").then(

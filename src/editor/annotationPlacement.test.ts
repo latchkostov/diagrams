@@ -5,7 +5,7 @@ import { toFlow } from "../canvas/convert";
 import type { DiagramFlowEdge, FlowNode } from "../canvas/types";
 import { validateDiagram } from "../interop/native";
 import { makePayload } from "./clipboard";
-import { toast } from "../interop/ui/toast";
+import { toast } from "../interop/ui/toastRuntime";
 import { createEditor, type EditorDeps } from "./useEditor";
 
 type Rect = { x: number; y: number; width: number; height: number };

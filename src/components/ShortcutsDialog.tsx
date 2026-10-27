@@ -172,13 +172,13 @@ export function ShortcutsDialog({ onClose, onTutorials }: { onClose: () => void;
     backdropElement.addEventListener("mousedown", onPointerDown);
     backdropElement.addEventListener("contextmenu", preventContextMenu);
     const prev = document.activeElement as HTMLElement | null;
-    panel.current?.focus();
+    const closeLayer = openModalLayer(panelElement, { opener: prev });
+    panelElement.focus();
     const background = Array.from(document.body.children).filter(
       (el): el is HTMLElement => el instanceof HTMLElement && !el.contains(panel.current),
     );
     const previous = background.map((el) => el.inert);
     for (const el of background) el.inert = true;
-    const closeLayer = openModalLayer(panelElement, { opener: prev });
     return () => {
       panelElement.removeEventListener("keydown", onKeyDown);
       backdropElement.removeEventListener("mousedown", onPointerDown);

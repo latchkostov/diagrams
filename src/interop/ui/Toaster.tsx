@@ -1,8 +1,10 @@
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal, flushSync } from "react-dom";
 import { Glyph } from "./glyphs";
-import { subscribe, toast, type ToastKind, type ToastState } from "./toast";
-import { avoidedBars, feedbackPlacement, toastBottom } from "./toastStack";
+import { subscribe, type ToastKind, type ToastState } from "./toast";
+import { toast } from "./toastRuntime";
+import { avoidedBars, toastBottom } from "./toastStack";
+import { feedbackPlacement } from "./toastFeedback";
 import { modalLayers, type ModalLayer } from "../../lib/modalLayers";
 import { t as tr } from "../../i18n";
 
@@ -18,7 +20,7 @@ const ICON: Record<ToastKind, Parameters<typeof Glyph>[0]["name"]> = {
  * root under every menu and modal; each open dialog's own feedback, portalled into that dialog's feedback slot; and
  * a task's progress and Cancel, portalled to the body above everything, as the task holds the page's input.
  *
- * The page-layer root is a child of the body, so every modal's own background sweep makes it inert as it opens and
+ * The page-layer root lives in the Workbench (or the body in viewers), so every modal's background sweep makes it inert as it opens and
  * restores it as it closes, in the same synchronous step as the modal hands the focus back (which may be to a
  * toast's action). Inert, its notifications are hidden too (interop.css): they keep their rectangle, out of reach.
  */
@@ -29,7 +31,9 @@ export function Toaster() {
   const steppedBack = useSyncExternalStore(subscribe, () => toast.steppedBack);
   const layered = useSyncExternalStore(subscribe, () => toast.layered);
   const openerToasts = new Set(
-    modalLayers.openers.map((el) => Number(el.closest<HTMLElement>("[data-toast-id]")?.dataset.toastId)),
+    modalLayers.stack
+      .flatMap((l) => (l.opener ? [l.opener] : []))
+      .map((el) => Number(el.closest<HTMLElement>("[data-toast-id]")?.dataset.toastId)),
   );
   // One root for the Toaster's lifetime. Rendered to markup (no DOM to make it in), the body stands in.
   const [pageRoot] = useState(() => {
@@ -40,9 +44,10 @@ export function Toaster() {
   });
   useLayoutEffect(() => {
     if (!pageRoot) return;
-    document.body.append(pageRoot);
-    return () => pageRoot.remove();
-  }, [pageRoot]);
+    const host = document.querySelector("[data-toast-host]") ?? document.body;
+    if (pageRoot.parentElement !== host) host.append(pageRoot);
+  });
+  useLayoutEffect(() => () => pageRoot?.remove(), [pageRoot]);
   useEffect(() => {
     const endPress = () => toast.endPress();
     window.addEventListener("pointerup", endPress);
@@ -244,7 +249,7 @@ function ToastView({
           type="button"
           ref={action}
           className="ix-toast-action"
-          aria-disabled={t.undoUnavailable || undefined}
+          aria-disabled={t.undoUnavailable || t.actionConsumed || undefined}
           aria-describedby={t.undoUnavailable ? `toast-undo-unavailable-${t.id}` : undefined}
           title={t.undoUnavailable ? tr("toast.undoUnavailable") : undefined}
           onClick={() => {

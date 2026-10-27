@@ -4,6 +4,8 @@ import {
   expect,
   gotoLab,
   gotoCanvas,
+  openLibrary,
+  openDiagramProperties,
   pauseClock,
   expectNoErrors,
   shareVia,
@@ -300,6 +302,82 @@ async function tabThrough(page: Page, count: number) {
 const overlaps = (a: Box, b: Box) =>
   a.x < b.x + b.width && b.x < a.x + a.width && a.y < b.y + b.height && b.y < a.y + a.height;
 
+for (const surface of ["flyout", "phone dock", "live menu", "view menu", "phone note"] as const) {
+  test(`layering: Workbench ${surface} stays above page notifications`, async ({ page }) => {
+    const phone = surface.startsWith("phone");
+    await page.setViewportSize({ width: phone ? 390 : 1280, height: 844 });
+    await installFakeModelContext(page);
+    await gotoCanvas(page, "retry-storm");
+    await expect.poll(() => toolNames(page)).toContain("edit_diagram");
+    await page.clock.install();
+    await pauseClock(page);
+    await agentChange(page, "Retained Workbench notification");
+    if (surface !== "flyout" && surface !== "phone dock") {
+      await page.getByTestId("live-toggle").click();
+      await expect(page.getByTestId("live-controls")).toBeVisible();
+      await page.getByTestId("live-sim-picker").selectOption("three-quick-retries");
+    }
+    if (surface === "flyout") await openLibrary(page);
+    else if (surface === "phone dock") await openDiagramProperties(page);
+    else if (surface === "live menu") await page.getByTestId("live-more").click();
+    else if (surface === "view menu") await page.getByTestId("live-view-menu").click();
+    else {
+      const time = page.getByTestId("live-timeline-input");
+      await time.fill("159");
+      await time.press("ArrowRight");
+      await page.getByTestId("live-note-expand").click();
+    }
+    const control = page.getByTestId(
+      surface === "flyout"
+        ? "palette-toggle"
+        : surface === "phone dock"
+          ? "dock-snap-full"
+          : surface === "live menu"
+            ? "live-record"
+            : surface === "view menu"
+              ? "view-follow"
+              : "live-note-close",
+    );
+    await expect(control).toBeVisible();
+    const box = await control.boundingBox();
+    if (!box) throw new Error("Expected a Workbench control");
+    const notice = page.getByTestId("toast");
+    // Model a retained notification where a newly opened surface needs room. The hit target, rather than
+    // numeric z-indexes, proves that Workbench's nested stacking contexts respect the page layer.
+    await notice.evaluate((el, box) => {
+      Object.assign(el.style, {
+        left: `${box.x}px`,
+        top: `${box.y}px`,
+        bottom: "auto",
+        transform: "none",
+        width: `${box.width}px`,
+        height: `${box.height}px`,
+        maxWidth: "none",
+      });
+    }, box);
+    const noticeBox = await notice.boundingBox();
+    if (!noticeBox) throw new Error("Expected the retained notification");
+    expect(overlaps(noticeBox, box)).toBe(true);
+    await control.click({ trial: true });
+    expect(
+      await control.evaluate((el) => {
+        const r = el.getBoundingClientRect();
+        return el.contains(document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2));
+      }),
+    ).toBe(true);
+    // These surfaces remain nonmodal. A true modal still steps page notifications back.
+    await page.getByTestId("ai-toast-undo").focus();
+    await page.keyboard.press("ControlOrMeta+k");
+    await expect(page.getByTestId("command-input")).toBeFocused();
+    await expect(notice).toBeHidden();
+    expect(await notice.evaluate((el) => !!el.closest("[inert]"))).toBe(true);
+    await page.keyboard.press("Escape");
+    await expect(page.getByTestId("command-palette")).toHaveCount(0);
+    await expect(page.getByTestId("ai-toast-undo")).toBeFocused();
+    if (surface === "phone note") await expect(page.getByTestId("live-note")).toHaveAttribute("data-expanded", "1");
+  });
+}
+
 async function agentChange(page: Page, label: string) {
   expect(
     (await callTool(page, "edit_diagram", { ops: [{ op: "add_node", kind: "Redis cache", label }] })).isError,
@@ -587,6 +665,11 @@ test("layering: a palette opened by a toast action retains its opener through fo
   await expect(page.getByTestId("command-palette")).toHaveCount(0);
   await expect(action).toBeFocused();
   expect(await action.boundingBox()).toEqual(geometry);
+  await expect(action).toHaveAttribute("aria-disabled", "true");
+  // The opener remains a focus target after acting, but cannot perform that action a second time.
+  await page.keyboard.press("Enter");
+  await expect(page.getByTestId("command-palette")).toHaveCount(0);
+  await expect(action).toBeFocused();
   await page.getByTestId("toast-lab-next").focus();
   await expect(page.getByTestId("toast")).toContainText("Second notification");
 });

@@ -99,11 +99,13 @@ function noTestHooks(): Plugin {
  */
 function canvasChunks() {
   const groups = new Map<string, string>();
+  const eager = new Set<string>();
   const plugin: Plugin = {
     name: "canvas-chunk",
     apply: "build",
     buildEnd() {
       groups.clear();
+      eager.clear();
       const info = (id: string) => this.getModuleInfo(id);
       const ids = [...this.getModuleIds()];
       const reach = (from: Iterable<string>) => {
@@ -119,6 +121,7 @@ function canvasChunks() {
       const canvas = ids.find((id) => /[/\\]src[/\\]canvas[/\\]CanvasView\.tsx$/.test(id));
       if (!canvas) return;
       const initial = reach(ids.filter((id) => info(id)?.isEntry));
+      for (const id of initial) if (/[/\\]src[/\\]/.test(id)) eager.add(id);
       const own = [...reach([canvas])].filter((id) => !initial.has(id));
       // Code that only ever loads with the canvas: its own modules, what they alone import dynamically (the
       // live session, its dialogs, ...), and the Lab (a development tool made of canvases).
@@ -148,6 +151,7 @@ function canvasChunks() {
   };
   return {
     plugin,
+    eager,
     // Only these modules: everything they import is in the entry, which always loads first, or in a group.
     group: { name: (id: string) => groups.get(id) ?? null, includeDependenciesRecursively: false },
   };
@@ -217,7 +221,7 @@ export default defineConfig({
             // across manual groups creates a dependency cycle and wastes compression headroom.
             {
               name: "native",
-              test: /[/\\]src[/\\](?:interop[/\\](?:native|codec)|canvas[/\\]membership|stencils[/\\](?:roles|catalog|vendorCatalog|vendorParents)|model[/\\](?:annotations|borderRadius|colors|groupHierarchy|requestRouting|quotaSchema|simLimits|edgeRoute|types|kedaBindings|resourceBudget|autoscalingSchema|autoscaling|faults|brokerRoutes|checks|admissionSchema|admission|ids|relations|revisions|jsonSchema|simProps|routingValidation|resourceValidation))\.ts$/,
+              test: /[/\\]src[/\\](?:interop[/\\](?:native|codec)|lib[/\\]thumbnail|canvas[/\\](?:membership|nodes[/\\]size)|stencils[/\\](?:roles|catalog|vendorCatalog|vendorParents)|model[/\\](?:annotations|borderRadius|colors|groupHierarchy|requestRouting|quotaSchema|simLimits|edgeRoute|types|kedaBindings|resourceBudget|autoscalingSchema|autoscaling|faults|brokerRoutes|checks|admissionSchema|admission|ids|relations|revisions|jsonSchema|simProps|routingValidation|resourceValidation))\.ts$/,
               includeDependenciesRecursively: false,
             },
             // Pure playback grammar/resolution helpers: shared by Live, checks and planning. Keep the engine
@@ -233,11 +237,22 @@ export default defineConfig({
               test: /[/\\]src[/\\](?:live[/\\](?:format|healthWindow|storm|readoutDiagram|diagramReader)|sim[/\\](?:capacityInputs|replayControls|deadLetter)|trace[/\\](?:format|path))\.ts$/,
               includeDependenciesRecursively: false,
             },
-            // All of these already preload at startup. Share one compression dictionary without adding code
-            // to the main entry, and without drawing optional surfaces into the startup closure.
+            // Keep the diagram-free identity table independent: the shell can initialize its example list
+            // without a cycle through translation callbacks.
+            {
+              name: "examples",
+              test: /[/\\]src[/\\]examples[/\\]identity\.ts$/,
+              includeDependenciesRecursively: false,
+            },
             {
               name: "shell-runtime",
-              test: /(?:[/\\]src[/\\](?:i18n[/\\](?:core|index)|lib[/\\](?:lazyLoad|machine|storage)|interop[/\\]ui[/\\]toast|canvas[/\\]nodes[/\\]size)\.tsx?$|[/\\]node_modules[/\\](?:react[/\\]|react-dom[/\\](?:index\.js$|cjs[/\\]react-dom\.production\.js$)|scheduler[/\\]))/,
+              // Only modules already in the entry's static graph, plus React's startup runtime. Sharing
+              // their dictionary does not bring any optional surface into the startup closure.
+              test: (id) =>
+                canvas.eager.has(id) ||
+                /[/\\]node_modules[/\\](?:react[/\\]|react-dom[/\\](?:(?:index|client)\.js$|cjs[/\\]react-dom(?:-client)?\.production\.js$)|scheduler[/\\])/.test(
+                  id,
+                ),
               includeDependenciesRecursively: false,
             },
           ],
