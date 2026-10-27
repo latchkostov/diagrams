@@ -8,7 +8,7 @@ export function useDialogInteraction(
   /** Hands focus back through an interaction controller instead (it gets what had focus as the dialog opened). */
   restoreFocus?: (opener: HTMLElement | null) => void,
 ) {
-  const opener = useRef(document.activeElement instanceof HTMLElement ? document.activeElement : null);
+  const opener = useRef<HTMLElement | null | undefined>(undefined);
   const restoreRef = useRef(restoreFocus);
   useLayoutEffect(() => {
     restoreRef.current = restoreFocus;
@@ -57,6 +57,10 @@ export function useDialogInteraction(
     panelEl.addEventListener("keydown", onKeyDown);
     backdropEl.addEventListener("mousedown", onMouseDown);
     backdropEl.addEventListener("contextmenu", onContextMenu);
+    // Outgoing dialogs restore focus in cleanup, after this dialog rendered. Capture only after that
+    // handoff, and keep the original opener when StrictMode replays this effect.
+    if (opener.current === undefined)
+      opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const prev = opener.current;
     // A primary action that's still getting ready (Copy link while the link is made) can't take focus: the panel
     // does, so Esc and Tab work at once, and the dialog hands focus on when it's ready (dialogs.tsx, useFocusWhenReady).
