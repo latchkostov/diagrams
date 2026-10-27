@@ -69,7 +69,7 @@ export function ToolRail({ view, onView }: { view: View; onView: (view: View) =>
       type="button"
       data-testid={id}
       className={active ? "is-on" : undefined}
-      aria-label={name}
+      aria-label={name.startsWith(label) ? name : `${label}, ${name}`}
       title={title}
       aria-pressed={active}
       tabIndex={-1}
@@ -97,7 +97,7 @@ export function ToolRail({ view, onView }: { view: View; onView: (view: View) =>
         reconcile();
       }}
       onClickCapture={(e) => {
-        if ((e.target as HTMLElement).closest<HTMLElement>("[data-testid]")?.dataset.testid === "view-canvas")
+        if ((e.target as HTMLElement).closest<HTMLButtonElement>("button")?.dataset.testid === "view-canvas")
           returning.current = true;
       }}
       onKeyDown={(e) => {

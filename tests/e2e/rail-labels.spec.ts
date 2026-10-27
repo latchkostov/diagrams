@@ -10,6 +10,17 @@ const codes = readdirSync("src/i18n/locales")
   .map((file) => file.slice(0, -5));
 const keys = ["select", "add", "annotate", "checks", "stencils", "tutorials", "shortcuts", "ai", "diagram"];
 
+async function expectLabelInName(rail: Locator) {
+  const buttons = rail.getByTestId(
+    /^(rail-(select|add|annotate)|checks-count|view-(gallery|tutorials|canvas)|shortcuts-button|ai-rail-open)$/,
+  );
+  for (const button of await buttons.all()) {
+    const label = (await button.getByTestId("rail-label").innerText()).trim();
+    expect(label).not.toBe("");
+    await expect(button).toHaveAccessibleName(new RegExp(`^${label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`));
+  }
+}
+
 // Measure real glyphs, not just the span: clipping/line-clamping must not conceal a regression.
 async function labelProblems(rail: Locator) {
   return rail.getByTestId("rail-label").evaluateAll(async (labels) => {
@@ -72,6 +83,7 @@ for (const width of [1280, 320])
         });
         await expect(rail.getByTestId("rail-label")).toHaveText(expected);
         await expect.poll(() => labelProblems(rail)).toEqual([]);
+        await expectLabelInName(rail);
         if (code === "es") {
           await expect(page.getByTestId("rail-add")).toHaveAccessibleName(messages["rail.add"]);
           await expect(page.getByTestId("checks-count")).toHaveAttribute("title", /Comprobaciones/);
@@ -82,8 +94,22 @@ for (const width of [1280, 320])
           code === "en-XA" ? textOf(pseudoLocalize(parse(messages["rail.diagram"]))) : messages["rail.diagram"],
         );
         await expect.poll(() => labelProblems(rail)).toEqual([]);
+        await expectLabelInName(rail);
       });
   });
+
+test("clicking the Diagram label restores Select focus and the rail tab stop", async ({ page }) => {
+  await gotoCanvas(page, "retry-storm");
+  await page.getByTestId("view-gallery").click();
+  await page.getByTestId("view-canvas").getByTestId("rail-label").click();
+  await expect(page.getByTestId("rail-select")).toBeEnabled();
+  await expect(page.getByTestId("rail-select")).toBeFocused();
+  await expect(page.getByTestId("rail-select")).toHaveAttribute("tabindex", "0");
+  await expect(page.getByTestId("view-gallery")).toHaveAttribute("tabindex", "-1");
+  await page.keyboard.press("Enter");
+  await expect(page.getByTestId("canvas-wrap")).toBeVisible();
+  await expect(page.getByTestId("canvas-wrap")).toBeFocused();
+});
 
 test("the measurement guard rejects a long label even if clipped", async ({ page }) => {
   await gotoCanvas(page, "retry-storm");
