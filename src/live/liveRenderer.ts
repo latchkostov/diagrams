@@ -271,15 +271,13 @@ class MainThreadRenderer implements LiveRenderer {
   private march: MarchRenderer | null = null;
   private marchEdges: readonly MarchEdge[] | null = null;
   private reduced: boolean;
-  private geometryPending = false;
 
   constructor(private setup: RendererSetup) {
     void loadCanvasFonts(document.fonts)
       .then(() => this.core.invalidate())
       .catch(() => {});
     this.scene = new LiveScene(setup.root, setup.store, () => {
-      this.geometryPending = true;
-      setup.overlay.style.visibility = "hidden";
+      setup.overlay.hidden = true;
       delete setup.canvas.dataset.traceLabels;
     });
     const scene = this.scene;
@@ -321,8 +319,7 @@ class MainThreadRenderer implements LiveRenderer {
     this.placement.place(view);
     this.slow = f.slow;
     this.core.draw(f.snap, f.now, f.focus, f.slow, f.speed);
-    this.geometryPending = false;
-    this.setup.overlay.style.visibility = "";
+    this.setup.overlay.hidden = false;
     if (this.march) {
       if (this.scene.march !== this.marchEdges) this.march.setEdges((this.marchEdges = this.scene.march));
       this.march.draw(view, f.march, this.reduced);
@@ -343,10 +340,10 @@ class MainThreadRenderer implements LiveRenderer {
     return this.core.frames;
   }
   get labels(): readonly PlacedLabel[] {
-    return this.geometryPending ? [] : this.core.labels;
+    return this.setup.overlay.hidden ? [] : this.core.labels;
   }
   get slowLabels(): readonly PaintedLabel[] {
-    return this.geometryPending ? [] : (this.slow?.labels ?? []);
+    return this.setup.overlay.hidden ? [] : (this.slow?.labels ?? []);
   }
   probe(layer: Layer, rect: { x: number; y: number; width: number; height: number }): Promise<ProbeResult> {
     const el = layer === "over" ? this.setup.overlay : layer === "march" ? this.marchCanvas : this.setup.canvas;
@@ -357,7 +354,7 @@ class MainThreadRenderer implements LiveRenderer {
   }
   dispose(): void {
     this.scene.dispose();
-    this.setup.overlay.style.visibility = "";
+    this.setup.overlay.hidden = false;
     this.marchCanvas?.remove();
     this.setup.root.removeAttribute(MARCH_ATTR);
   }
@@ -497,7 +494,7 @@ class WorkerRenderer implements LiveRenderer {
   private glowKey = "|";
   private glowPending: { color: string; dpr: number } | null = null;
   private workerAnimating = false;
-  private geometryPending = false;
+  private geometryRevision = 0;
   private sentGeometryRevision = -1;
   // What the worker reported.
   private hits: Float64Array = new Float64Array();
@@ -506,18 +503,18 @@ class WorkerRenderer implements LiveRenderer {
   private drawnLabels: readonly PlacedLabel[] = [];
   private drawnSlowLabels: readonly PaintedLabel[] = [];
   get labels(): readonly PlacedLabel[] {
-    return this.geometryPending ? [] : this.drawnLabels;
+    return this.setup.overlay.hidden ? [] : this.drawnLabels;
   }
   get slowLabels(): readonly PaintedLabel[] {
-    return this.geometryPending ? [] : this.drawnSlowLabels;
+    return this.setup.overlay.hidden ? [] : this.drawnSlowLabels;
   }
   private probes = new Map<number, (data: Uint8ClampedArray) => void>();
   private probeId = 0;
 
   constructor(private setup: RendererSetup) {
     this.scene = new LiveScene(setup.root, setup.store, () => {
-      this.geometryPending = true;
-      setup.overlay.style.visibility = "hidden";
+      this.geometryRevision++;
+      setup.overlay.hidden = true;
       delete setup.canvas.dataset.traceLabels;
     });
     this.options = setup.options;
@@ -568,9 +565,8 @@ class WorkerRenderer implements LiveRenderer {
       }
       this.inFlight = false;
       this.workerAnimating = m.animating;
-      if (this.sentGeometryRevision === this.scene.geometryRevision) {
-        this.geometryPending = false;
-        this.setup.overlay.style.visibility = "";
+      if (this.sentGeometryRevision === this.geometryRevision) {
+        this.setup.overlay.hidden = false;
       }
     }
     this.drawn = m.drawn;
@@ -696,7 +692,7 @@ class WorkerRenderer implements LiveRenderer {
       return;
     }
     this.inFlight = true;
-    this.sentGeometryRevision = this.scene.geometryRevision;
+    this.sentGeometryRevision = this.geometryRevision;
     if (!this.started && this.startTimer === undefined)
       this.startTimer = setTimeout(() => this.fail("the particle worker didn't answer"), START_TIMEOUT_MS);
     // Place the canvases with the transform this frame is drawn with.
@@ -737,7 +733,7 @@ class WorkerRenderer implements LiveRenderer {
     this.disposed = true;
     clearTimeout(this.startTimer);
     this.scene.dispose();
-    this.setup.overlay.style.visibility = "";
+    this.setup.overlay.hidden = false;
     for (const resolve of this.probes.values()) resolve(new Uint8ClampedArray());
     this.probes.clear();
     this.setup.root.removeAttribute(MARCH_ATTR);

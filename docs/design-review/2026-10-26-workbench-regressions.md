@@ -92,3 +92,7 @@ Trace obstacles invalidate when a card's measurements or detail styling change. 
 The restored unit set passes all 42 cases. All 54 browser cases across fit/refinement, tracing, typography and frame-cost probes pass with the original assertions, including both CI failures. The additional per-frame probe publication was removed because the geometry handoff makes it unnecessary; retaining the existing publication cadence avoids extra serialization work.
 
 The minimal fix also passes the original no-overlap browser case with the existing probe cadence restored. Full parity passes all 110 browser cases and checks 3,178 goldens with zero changed, added, missing or stale. No additional golden update is needed for this follow-up.
+
+## Overlay bundle size
+
+The complete benchmark recheck on `b6bce9769` passed both originally failing render-count cases, the Live gate and all four memory cases. It passed 94 of 95 numeric gates: Live's gzip bundle was 135,011 bytes against its unchanged 135,000-byte cap. Removing duplicate pending flags recovered eight bytes; using the canvas's native `hidden` state and keeping the worker-only revision in the worker renderer recovered the rest. The final targeted bundle check passes all four gates, with 24 bytes of Live headroom and the original 19 startup chunks in the enabled configuration. All 42 related unit cases still pass, and the original browser no-overlap case passes with native `hidden`. The existing P05 bundle-trim follow-up remains applicable; no cap, timeout or baseline changed.

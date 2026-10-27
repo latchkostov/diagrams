@@ -58,8 +58,6 @@ export interface SceneChanges {
 const MARCHING = '.react-flow__edge[data-live-edge="active"] .fe-async path.fe-path';
 
 export class LiveScene {
-  /** Card geometry changes invalidate an overlay already drawn by the worker. */
-  geometryRevision = 0;
   /** Bumps whenever a sampled edge's path changes (the renderer redraws, and re-samples it). */
   pathsVersion = 0;
   readonly ink = new Map<string, EdgeInk>();
@@ -102,7 +100,7 @@ export class LiveScene {
               record.attributeName === "data-detail-expanded" || record.attributeName === "data-detail-wrapped",
           )
         )
-          this.geometryChanged();
+          this.onGeometryChange?.();
       });
       this.observer.observe(root, {
         subtree: true,
@@ -111,11 +109,6 @@ export class LiveScene {
         attributeFilter: ["d", "data-id", "data-detail-expanded", "data-detail-wrapped"],
       });
     }
-  }
-
-  private geometryChanged(): void {
-    this.geometryRevision++;
-    this.onGeometryChange?.();
   }
 
   dispose(): void {
@@ -321,7 +314,7 @@ export class LiveScene {
     this.nodes = next;
     this.nodesChanged = true;
     this.obstacleCache = null;
-    this.geometryChanged();
+    this.onGeometryChange?.();
   }
 
   /** Every wanted path, node box and the march, as if all were new (a worker that just attached). */

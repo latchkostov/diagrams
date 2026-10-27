@@ -36,7 +36,8 @@ class FakeWorker {
 
 function canvas(transfer: "ok" | "throw" = "ok") {
   return {
-    style: { visibility: "" },
+    style: {},
+    hidden: false,
     dataset: {},
     getBoundingClientRect: () => ({ left: 0, top: 0, width: 800, height: 600 }),
     transferControlToOffscreen: () => {
@@ -222,25 +223,25 @@ describe("frame flow control", () => {
     const epoch = frames(w)[0].epoch!;
     w.send({ type: "ack", epoch, drawn: 1, frames: 1, animating: false, labels: [label] });
     expect(renderer.labels).toEqual([label]);
-    expect(overlay.style.visibility).toBe("");
+    expect(overlay.hidden).toBe(false);
     base.dataset.traceLabels = "previous geometry";
     renderer.frame(frame(0.2));
     resize();
-    expect(overlay.style.visibility).toBe("hidden");
+    expect(overlay.hidden).toBe(true);
     expect(renderer.labels).toEqual([]);
     expect(base.dataset.traceLabels).toBeUndefined();
     w.send({ type: "repaint", epoch, drawn: 1, frames: 3, labels: [label] });
-    expect(overlay.style.visibility).toBe("hidden");
+    expect(overlay.hidden).toBe(true);
     w.send({ type: "ack", epoch, drawn: 1, frames: 2, animating: false, labels: [label] });
-    expect(overlay.style.visibility).toBe("hidden");
+    expect(overlay.hidden).toBe(true);
     expect(renderer.labels).toEqual([]);
     renderer.frame(frame(0.3));
     w.send({ type: "ack", epoch, drawn: 1, frames: 4, animating: false, labels: [label] });
-    expect(overlay.style.visibility).toBe("");
+    expect(overlay.hidden).toBe(false);
     expect(renderer.labels).toEqual([label]);
     resize();
     renderer.dispose();
-    expect(overlay.style.visibility).toBe("");
+    expect(overlay.hidden).toBe(false);
   });
 
   it("keeps one frame in flight: a repaint doesn't release it, its ack does", async () => {
