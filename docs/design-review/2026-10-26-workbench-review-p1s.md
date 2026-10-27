@@ -36,3 +36,7 @@ Unmounting AI when changing tabs was rejected because it discards unfinished inp
 ## Title-card cache sampling
 
 The broad affected-spec Linux sweep passed 642 cases with one existing skip. A later twelve-worker stress repeat caught the title-card cache test taking its baseline before a pending Markdown/font invalidation. The app correctly remeasured when that content arrived, between the test's two browser tasks. The test now waits for rendered Markdown and font readiness, then samples a resize burst in one browser task. Its zero-extra-clone assertion and the content, font, appearance and width invalidation assertions remain unchanged.
+
+## Full-suite follow-up
+
+The single complete Linux E2E run completed with 2,714 passed, two failed, zero flaky and one existing skip. The rapid-Tab test reached the correct destination but still expected four journal strings ending in `@frame`; these now precisely expect the readiness-aware `@measured` policy. The self-hosted import test opened Properties before the lazy importer replaced its original diagram; it now waits for the imported storefront before opening Properties. Focus, journal order, privacy, report and sharing assertions are preserved. These two specs receive a focused Linux recheck rather than another complete suite.

@@ -245,6 +245,8 @@ test.describe("self-hosted build", () => {
       mimeType: "application/yaml",
       buffer: readFileSync("tests/fixtures/imports/compose/docker-compose.yml"),
     });
+    // File selection returns before the lazy importer replaces the current diagram.
+    await expect(page.getByTestId("node-storefront")).toBeVisible();
     await openDiagramProperties(page);
     await expect(page.getByTestId("private-badge")).toBeVisible();
     await page.getByTestId("toast-import-details").click();

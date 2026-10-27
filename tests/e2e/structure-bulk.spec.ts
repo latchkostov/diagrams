@@ -534,11 +534,11 @@ test.describe("keyboard selection between nodes (D14)", () => {
     await expect.poll(() => focusedNode(page)).toBe("group:ship");
     await waitForInteractionIdle(page);
     expect((await interactionLog(page, mark)).filter((l) => !l.startsWith("selection.committed"))).toEqual([
-      "selection.changed:keyboard -> focus:node:worker@frame",
-      "selection.changed:keyboard -> focus:node:group:ship@frame",
-      "superseded: focus:node:worker@frame",
+      "selection.changed:keyboard -> focus:node:worker@measured",
+      "selection.changed:keyboard -> focus:node:group:ship@measured",
+      "superseded: focus:node:worker@measured",
       "focus.entered -> keep",
-      "focused: focus:node:group:ship@frame",
+      "focused: focus:node:group:ship@measured",
       "focus.ran -> keep",
     ]);
   });
