@@ -898,18 +898,15 @@ export function useInterop({
       if (isLibrarySlug(slug) || slug === DRAFT_SLUG) {
         setDiagramPrivate(slug, true);
         clearUrlFragment();
-        const text = t("fileToast.private");
-        const shown = toast.success(text);
+        const shown = toast.success(t("fileToast.private"));
         // An earlier AI conversation stays unless the person clears it: the toast offers to, when the conversation
         // store (its own chunk) has one for this diagram, in storage or in memory only. Only while nothing has moved
-        // on: the same toast showing, for the same diagram, still private.
+        // on: the same diagram, still private, and that toast still live (showing, or waiting behind another).
         const id = getDiagramIdentity(slug);
         const stillCurrent = () =>
-          toast.currentId === shown &&
-          getDiagramIdentity(openSlug.current) === id &&
-          isLocalOnly(getPrivacyFlags(openSlug.current));
+          getDiagramIdentity(openSlug.current) === id && isLocalOnly(getPrivacyFlags(openSlug.current));
         void import("../ai/ui/clearOnPrivate").then(
-          (m) => m.offerToClearConversation(id, text, stillCurrent),
+          (m) => m.offerToClearConversation(id, shown, stillCurrent),
           () => {},
         );
         return;

@@ -245,6 +245,43 @@ describe("a task's Cancel owns its toast", () => {
   });
 });
 
+describe("an action found later reaches its notification by id", () => {
+  const clear = { label: "Clear conversation", run: () => {} };
+
+  it("while it waits behind a toast in use, and not once it has gone", () => {
+    toast.info("Agent change", { action: { label: "Undo", run: () => {} } });
+    interaction.contact("focus", true);
+    const waiting = toast.success("Private");
+    expect(interaction.current?.id).not.toBe(waiting);
+    toast.attach(waiting, clear);
+    interaction.contact("focus", false);
+    expect(interaction.current).toMatchObject({ id: waiting, action: clear, duration: 6000 });
+    toast.dismiss(waiting);
+    const next = toast.success("Next");
+    toast.attach(waiting, clear);
+    expect(interaction.current).toMatchObject({ id: next, action: undefined });
+  });
+
+  it("while it waits in a dialog's feedback, behind engaged feedback, and on the page after the dialog", () => {
+    const close = openModalLayer({} as HTMLElement, { feedback: {} as HTMLElement });
+    try {
+      const own = { label: "Open", run: () => {} };
+      const first = toast.success("Duplicated", { action: own });
+      interaction.contact("pointer", true, first);
+      const waiting = toast.success("Private");
+      toast.attach(waiting, clear);
+      // A notification that already has an action keeps its own.
+      toast.attach(first, clear);
+      expect(interaction.layered[0].toast).toMatchObject({ id: first, action: own });
+      interaction.contact("pointer", false, first);
+      expect(interaction.layered[0].toast).toMatchObject({ id: waiting, action: clear });
+    } finally {
+      close();
+    }
+    expect(interaction.current?.action).toBe(clear);
+  });
+});
+
 describe("layers: a dialog's feedback, and the page's notifications behind it", () => {
   const el = () => ({}) as HTMLElement;
   const closers: (() => void)[] = [];

@@ -60,26 +60,37 @@ let undoHistory:
   | undefined;
 
 let runtime: ToastRuntime | undefined;
-let pending: number | undefined;
 let seq = 0;
 const listeners = new Set<() => void>();
 const emit = () => listeners.forEach((listener) => listener());
-const queued: (() => void)[] = [];
+type Command = "show" | "invalidateUndo" | "attach" | "progress" | "dismiss" | "dismissUndo";
+const queued: [Command, unknown[]][] = [];
+/** The last queued invalidation, while no notification has been queued after it. */
+let invalidation: unknown[] | undefined;
 
-function send<K extends "show" | "invalidateUndo" | "progress" | "dismiss" | "dismissUndo">(
-  method: K,
-  ...args: Parameters<ToastRuntime[K]>
-) {
+function send<K extends Command>(method: K, ...args: Parameters<ToastRuntime[K]>) {
   // Each command keeps its input at the time of the call (not the state when the download completes).
-  if (runtime) (runtime[method] as (...args: Parameters<ToastRuntime[K]>) => void)(...args);
-  else if (queued.length || method === "show") queued.push(() => send(method, ...args));
+  if (runtime) return (runtime[method] as (...args: unknown[]) => void)(...args);
+  if (!queued.length && method !== "show") return;
+  // Compact while waiting, however long the download takes: every canvas snapshot invalidates, a task reports often.
+  // An invalidation joins the last one unless a notification came between (it commutes with everything else):
+  // pending changes nothing, and two different entries leave no bound Undo standing, as a fresh one does.
+  if (method === "invalidateUndo") {
+    if (args[0] === HISTORY_PENDING) return;
+    if (invalidation) return void (invalidation[0] !== args[0] && (invalidation[0] = {}));
+    invalidation = args;
+  }
+  if (method === "show") invalidation = undefined;
+  const progress = method === "progress" && queued.find(([m, a]) => m === method && a[0] === args[0]);
+  if (progress) progress[1] = args;
+  else queued.push([method, args]);
 }
 
 export function installToastRuntime(store: ToastRuntime) {
   runtime = store;
   // Replay without publishing partial snapshots to mounted clients.
-  for (const run of queued.splice(0)) run();
-  pending = undefined;
+  for (const [method, args] of queued.splice(0)) send(method, ...(args as [never]));
+  invalidation = undefined;
   emit();
   return emit;
 }
@@ -112,7 +123,6 @@ function show(kind: ToastKind, text: string, opts: ToastOptions = {}): number {
     undoEntryId: history?.capture(),
     layer: opts.blocking ? undefined : modalLayers.top?.id,
   };
-  pending = runtime ? undefined : next.id;
   send("show", next);
   void loadToastRenderer().catch(() => {});
   emit();
@@ -137,8 +147,12 @@ export const toast = {
   error: (text: string, opts?: NoticeOptions) => show("error", text, opts),
   busy: (text: string, opts?: { action?: ToastAction; blocking?: boolean }) => show("busy", text, opts),
   progress: (id: number, done: number) => send("progress", id, done),
+  /**
+   * Gives notification `id` an action found later (its code loaded after it showed), wherever it is by then: shown,
+   * retained, waiting behind a dialog or a download. Nothing, once it has gone.
+   */
+  attach: (id: number, action: ToastAction) => send("attach", id, action),
   dismiss(id?: number) {
-    if (id === undefined || pending === id) pending = undefined;
     send("dismiss", id);
     emit();
   },
@@ -146,9 +160,6 @@ export const toast = {
   /** Keep the renderer mounted after first use, including between notifications and modal handoffs. */
   get started() {
     return seq > 0;
-  },
-  get currentId() {
-    return runtime ? runtime.current?.id : pending;
   },
 };
 

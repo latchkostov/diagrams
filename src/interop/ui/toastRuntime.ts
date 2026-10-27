@@ -13,6 +13,7 @@ import { newContact, type ToastContact } from "./toastEngagement";
 import {
   installToastRuntime,
   HISTORY_PENDING,
+  type ToastAction,
   type ToastState,
   type LayeredToast,
   type ToastInput,
@@ -103,6 +104,19 @@ modalLayers.listeners.add(() => {
   publish();
 });
 
+/** Changes every notification the store holds, wherever it is, then publishes once. */
+function each(change: (t: ToastState) => ToastState) {
+  const maybe = (t: ToastState | null) => t && change(t);
+  held = maybe(held);
+  deferred = maybe(deferred);
+  for (let i = 0; i < blocking.length; i++) blocking[i] = change(blocking[i]);
+  for (const slot of slots.values()) {
+    slot.shown = change(slot.shown);
+    slot.waiting = maybe(slot.waiting);
+  }
+  publish();
+}
+
 function show(input: ToastInput) {
   const { history, undoEntryId, ...options } = input;
   const next: ToastState = {
@@ -142,18 +156,16 @@ export const toast = {
   show,
   invalidateUndo(entryId: object | undefined | typeof HISTORY_PENDING) {
     if (entryId === HISTORY_PENDING) return;
-    const invalidate = (t: ToastState | null): ToastState | null =>
-      t?.action?.undoes && t.undoEntryId !== undefined && !t.undoUnavailable && t.undoEntryId !== entryId
+    each((t) =>
+      t.action?.undoes && t.undoEntryId !== undefined && !t.undoUnavailable && t.undoEntryId !== entryId
         ? { ...t, undoUnavailable: true }
-        : t;
-    held = invalidate(held);
-    deferred = invalidate(deferred);
-    for (let i = 0; i < blocking.length; i++) blocking[i] = invalidate(blocking[i])!;
-    for (const slot of slots.values()) {
-      slot.shown = invalidate(slot.shown)!;
-      slot.waiting = invalidate(slot.waiting);
-    }
-    publish();
+        : t,
+    );
+  },
+  /** Gives notification `id` its action while it is live: shown, retained, waiting, a task's, or a dialog's. */
+  attach(id: number, action: ToastAction) {
+    // Timed as one raised with its action: long enough to reach it.
+    each((t) => (t.id === id && !t.action ? { ...t, action, duration: t.duration && Math.max(t.duration, 6000) } : t));
   },
   canRunAction(id: number) {
     ingress.invalidateUndo(true);

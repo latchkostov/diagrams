@@ -19,6 +19,8 @@ import { MemoryNetwork } from "./transport/memory";
 import { seededRandom } from "./random";
 import type { CanvasPrivacyState } from "../lib/localOnly";
 import type { DiagramFile } from "../model/types";
+import { toast } from "../interop/ui/toast";
+import { toast as interaction } from "../interop/ui/toastRuntime";
 
 vi.mock("../lib/localOnly.dev", () => ({
   matchesLocalExample: (d: DiagramFile) => d.nodes.some((n) => n.label === "Restricted test draft"),
@@ -194,6 +196,59 @@ it("commits real editor commands, preserves a pending property edit and selectio
   await settle();
   expect(A.diagram()).toEqual(B.diagram());
   expect(B.api.getNode("api")?.label).toBe("Draft API");
+});
+
+it("binds an Undo notification to this person's undo-stack item, through peers' edits and merged edits", async () => {
+  const { A, B, settle } = await setup();
+  // As useHistory binds it: the step Undo would reverse, once the canvas is recorded.
+  const entry = () => (A.room.canUndo ? A.history.undoEntryId() : undefined);
+  const unbind = toast.bindHistory({ capture: entry, current: entry });
+  onTestFinished(() => {
+    interaction.release();
+    toast.dismiss();
+    unbind();
+  });
+  const undo = vi.fn(() => A.api.undo());
+  const offer = (text: string) => toast.info(text, { action: { label: "Undo", run: undo, undoes: true } });
+  const action = () => interaction.current!.action!.run();
+
+  A.api.updateNode("api", { label: "Draft" }, { merge: "name" });
+  A.flush();
+  offer("Renamed");
+  // A peer's edit replaces the history's snapshot baseline, but not the step Undo would reverse.
+  B.api.updateNode("db", { label: "Peer database" });
+  B.flush();
+  await settle();
+  toast.invalidateUndo();
+  expect(interaction.current?.undoUnavailable).toBe(false);
+  // The same step, merged into: still this Undo's.
+  A.api.updateNode("api", { label: "Draft API" }, { merge: "name" });
+  A.flush();
+  toast.invalidateUndo();
+  expect(interaction.current?.undoUnavailable).toBe(false);
+  action();
+  await settle();
+  expect(undo).toHaveBeenCalledTimes(1);
+  expect(B.api.getNode("api")?.label).toBe("API");
+  expect(B.api.getNode("db")?.label).toBe("Peer database");
+
+  // Redo makes the step again: the same identity. Another local step after it is not this Undo's to reverse.
+  A.api.updateNode("web", { label: "Storefront" }, { merge: "web" });
+  A.flush();
+  const web = A.history.undoEntryId();
+  A.api.undo();
+  A.api.redo();
+  expect(A.history.undoEntryId()).toBe(web);
+  offer("Renamed web");
+  A.api.updateNode("api", { label: "Gateway" }, { merge: "other" });
+  A.flush();
+  toast.invalidateUndo();
+  expect(interaction.current?.undoUnavailable).toBe(true);
+  action();
+  await settle();
+  expect(undo).toHaveBeenCalledTimes(1);
+  expect(B.api.getNode("api")?.label).toBe("Gateway");
+  expect(B.api.getNode("web")?.label).toBe("Storefront");
 });
 
 it("does not resurrect a remotely deleted property-sheet target or echo remote steps", async () => {

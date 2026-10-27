@@ -60,6 +60,8 @@ export interface EditorRoom {
   flushRemote(): void;
   checkPrivacy(): boolean;
   top(): string | undefined;
+  /** This person's step Undo would reverse next: the same object while that step stands (merged into, or redone). */
+  undoEntryId(): object | undefined;
   /** Presence, where the room has it. */
   readonly presence?: RoomPresence;
 }

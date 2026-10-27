@@ -1,4 +1,4 @@
-import { notify } from "../../interop/ui/toast";
+import { notify, toast } from "../../interop/ui/toast";
 import { threads } from "./threadStore";
 
 // A diagram made Private keeps its AI panel conversation (agents' turns from before, labels and copies of the
@@ -6,28 +6,27 @@ import { threads } from "./threadStore";
 // "now private" toast is shown, so the app's startup code carries none of this.
 
 /**
- * Shows `text` (the "now private" toast) again with Clear conversation, when `documentId` has a conversation: the
- * store's, so one kept only in memory (storage full) counts too. `stillCurrent` says whether that toast is still the
- * one showing, for the same diagram, still private: this code loads later, and by then the person may have moved on.
+ * Gives the "now private" toast `shown` Clear conversation, when `documentId` has a conversation: the store's, so one
+ * kept only in memory (storage full) counts too. `stillCurrent` says whether the person is still on that diagram, and
+ * it is still private: this code loads later, and by then they may have moved on. The toast keeps its place: shown,
+ * or waiting (behind a toast in use, a dialog, or its own download), it gets the action wherever it is, and nothing
+ * once it has gone.
  */
-export function offerToClearConversation(documentId: string, text: string, stillCurrent: () => boolean): void {
+export function offerToClearConversation(documentId: string, shown: number, stillCurrent: () => boolean): void {
   if (!stillCurrent() || !threads.get(documentId).length) return;
-  notify(text, {
-    kind: "success",
-    action: {
-      label: "Clear conversation",
-      testId: "private-clear-conversation",
-      run: () => {
-        const previous = threads.get(documentId);
-        threads.set(documentId, []);
-        notify("Conversation cleared.", {
-          action: {
-            label: "Undo",
-            run: () => threads.update(documentId, (t) => (t.length ? t : previous)),
-            testId: "private-clear-undo",
-          },
-        });
-      },
+  toast.attach(shown, {
+    label: "Clear conversation",
+    testId: "private-clear-conversation",
+    run: () => {
+      const previous = threads.get(documentId);
+      threads.set(documentId, []);
+      notify("Conversation cleared.", {
+        action: {
+          label: "Undo",
+          run: () => threads.update(documentId, (t) => (t.length ? t : previous)),
+          testId: "private-clear-undo",
+        },
+      });
     },
   });
 }

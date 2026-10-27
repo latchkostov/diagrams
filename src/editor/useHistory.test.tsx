@@ -46,3 +46,60 @@ it("reuses the rendered snapshot key when validating a retained Undo on selectio
     vi.unstubAllGlobals();
   }
 });
+
+it("capture merges settlement only until debounce expiry", async () => {
+  vi.useFakeTimers();
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  const root = createRoot(document.createElement("div"));
+  const titled = (title: string): CanvasSnapshot =>
+    toFlow({
+      format: "diagrams/v1",
+      title,
+      edges: [],
+      nodes: [{ id: "node", stencil: "service.node", label: "Node", x: 0, y: 0 }],
+    });
+  let api!: ReturnType<typeof useHistory>;
+  let applied: CanvasSnapshot | undefined;
+  function Harness({ snapshot }: { snapshot: CanvasSnapshot }) {
+    api = useHistory(snapshot, (next) => void (applied = next));
+    return null;
+  }
+  const render = (snapshot: CanvasSnapshot) => act(() => root.render(<Harness snapshot={snapshot} />));
+  const wait = (ms: number) => act(() => void vi.advanceTimersByTime(ms));
+  // A tagged edit whose Undo is offered at once: capture records it before the debounce would have.
+  const offer = async (tag: string, title: string) => {
+    api.hint(tag);
+    await render(titled(title));
+    await act(() => void toast.info(title, { action: { label: "Undo", run: () => api.undo(), undoes: true } }));
+  };
+  const undo = async () => {
+    await act(() => api.undo());
+    await render(applied!);
+    return applied!.meta.title;
+  };
+  try {
+    await render(titled("Start"));
+    await offer("text-move", "Moved");
+    // What settles before the debounce expires (the text's measure) joins the step the Undo names.
+    await wait(100);
+    await render(titled("Moved and measured"));
+    await wait(400);
+    expect(interaction.current?.undoUnavailable).toBe(false);
+    expect(await undo()).toBe("Start");
+
+    await offer("text-move", "Moved again");
+    // Past the debounce, an unrelated edit is a step of its own (still inside the history's merge window).
+    await wait(400);
+    await render(titled("Unrelated"));
+    await wait(400);
+    expect(interaction.current?.undoUnavailable).toBe(true);
+    expect(await undo()).toBe("Moved again");
+    expect(await undo()).toBe("Start");
+  } finally {
+    await act(() => root.unmount());
+    interaction.release();
+    toast.dismiss();
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  }
+});

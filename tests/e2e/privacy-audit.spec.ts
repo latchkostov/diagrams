@@ -512,6 +512,39 @@ test.describe("this browser's storage", () => {
     expectNoErrors(consoleErrors);
   });
 
+  test("a private toast waiting behind a toast in use still gets Clear conversation", async ({ page }) => {
+    await page.addInitScript(() => {
+      Object.defineProperty(window, "showSaveFilePicker", { configurable: true, value: undefined });
+    });
+    await gotoCanvas(page, SLUG);
+    await importDiagram(page, work());
+    await openAdvanced(page);
+    await page
+      .getByTestId("ai-reply")
+      .fill('[{ "op": "add_node", "kind": "Kafka topic", "label": "quillfeather-runs" }]');
+    await page.getByTestId("ai-apply").click();
+    await expect(page.getByTestId("ai-turn-0")).toBeVisible();
+    // A toast the keyboard is on: the palette opened from it hands the keyboard back to it as it closes.
+    await page.getByTestId("canvas-wrap").focus();
+    const saved = page.waitForEvent("download");
+    await page.keyboard.press(`${MOD}+s`);
+    await saved;
+    const inUse = page.getByTestId("toast-dismiss");
+    await expect(inUse).toHaveCount(1);
+    await inUse.focus();
+    await page.keyboard.press(`${MOD}+k`);
+    await page.getByTestId("command-input").fill("private");
+    await page.keyboard.press("Enter");
+    await expect(page.getByTestId("command-palette")).toHaveCount(0);
+    await expect(inUse).toBeFocused();
+    // The "now private" toast waits while that one is in use, and shows with its offer once it is left.
+    await expect(page.getByTestId("private-clear-conversation")).toHaveCount(0);
+    await page.getByTestId("canvas-wrap").focus();
+    await expect(page.getByTestId("toast")).toContainText("Private: no share links");
+    await page.getByTestId("private-clear-conversation").click();
+    await expect(page.getByTestId("ai-turn-0")).toHaveCount(0);
+  });
+
   test("a diagram with no AI conversation turns private with a plain toast", async ({ page }) => {
     await gotoCanvas(page, SLUG);
     await importDiagram(page, work());

@@ -33,8 +33,12 @@ export class HistoryController {
   private roomBaseline?: { snapshot: CanvasSnapshot; at: number; selection: FlowSelection };
   private readonly entryIds = new WeakMap<object, object>();
 
-  /** Opaque identity of this exact history entry, independent of tags and system copy names. */
-  undoEntryId(): object {
+  /**
+   * Opaque identity of the step Undo would reverse, independent of tags and system copy names. In a room, the local
+   * undo-stack item: the snapshot entry is only a baseline there, replaced by every peer's edit.
+   */
+  undoEntryId(): object | undefined {
+    if (this.room) return this.room.undoEntryId();
     const entry = present(this.history);
     let id = this.entryIds.get(entry);
     if (!id) this.entryIds.set(entry, (id = {}));

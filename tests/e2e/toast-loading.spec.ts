@@ -1,8 +1,9 @@
-import { test, expect, gotoCanvas, shareVia, expectNoErrors } from "./fixtures";
+import { test, expect, gotoCanvas, shareVia, expectNoErrors, waitForStableBox } from "./fixtures";
 import { SLUG, callTool, installFakeModelContext, toolNames } from "./ai-helpers";
 import { chunk, holdChunk, releaseAndEvaluate } from "./chunk";
 
 const TOASTER = chunk("Toaster", "src/interop/ui/Toaster.tsx");
+const IMAGE = chunk("image", "src/interop/image.ts");
 
 test("a held toast download preserves Undo, canvas input, focus and file export", async ({ page, consoleErrors }) => {
   const held = await holdChunk(page, TOASTER);
@@ -92,4 +93,92 @@ test("a failed toast renderer retries without losing the queued Undo", async ({ 
   await expect(undo).toBeVisible();
   await undo.click();
   expect((await callTool(page, "describe_diagram")).text).not.toContain("Retry toast change");
+});
+
+test("failed renderer retries inside Share", async ({ page, context }) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  const held = await holdChunk(page, TOASTER);
+  held.fail = true;
+  await gotoCanvas(page, SLUG);
+  await shareVia(page, "link");
+  await expect(page.getByTestId("share-link-url")).toHaveValue(/#d=/);
+  await page.getByTestId("share-link-copy").click();
+  // Raised while the dialog is open: its Retry is the dialog's feedback, beside the panel, not behind the modal.
+  const dialog = page.getByTestId("share-link-dialog");
+  const recovery = dialog.getByTestId("toast-load-error");
+  await expect(recovery).toBeVisible();
+  await expect(recovery).toHaveAttribute("data-layer", "dialog");
+  const retry = dialog.getByTestId("toast-load-retry");
+  await retry.click({ trial: true });
+  // In the dialog's own Tab cycle: Tab from the copy button reaches it, before anything outside the dialog.
+  const focusedRetry = () => retry.evaluate((el) => el === document.activeElement);
+  for (let i = 0; i < 8 && !(await focusedRetry()); i++) {
+    await page.keyboard.press("Tab");
+    expect(await dialog.evaluate((el) => el.contains(document.activeElement))).toBe(true);
+  }
+  await expect(retry).toBeFocused();
+  held.fail = false;
+  held.release();
+  await page.keyboard.press("Enter");
+  // The queued feedback arrives beside its dialog, which keeps the keyboard: Escape closes it.
+  const feedback = dialog.getByTestId("toast");
+  await expect(feedback).toContainText("Share link copied.");
+  await expect(feedback).toHaveAttribute("data-layer", "dialog");
+  await expect(recovery).toHaveCount(0);
+  await page.keyboard.press("Escape");
+  await expect(dialog).toHaveCount(0);
+  await expect(page.getByTestId("toast")).toContainText("Share link copied.");
+});
+
+test("failed renderer retries inside Share in a short window, inside the panel and in reach", async ({
+  page,
+  context,
+}) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  await page.setViewportSize({ width: 1280, height: 340 });
+  const held = await holdChunk(page, TOASTER);
+  held.fail = true;
+  await gotoCanvas(page, SLUG);
+  await shareVia(page, "link");
+  await expect(page.getByTestId("share-link-url")).toHaveValue(/#d=/);
+  const copy = page.getByTestId("share-link-copy");
+  // Once the dialog's entrance has settled.
+  await waitForStableBox(copy);
+  const before = await copy.boundingBox();
+  await copy.click();
+  const dialog = page.getByTestId("share-link-dialog");
+  const recovery = dialog.getByTestId("toast-load-error");
+  await expect(recovery).toHaveAttribute("data-place", "inside");
+  // The dialog's own controls keep their place.
+  expect(await copy.boundingBox()).toEqual(before);
+  const box = await recovery.boundingBox();
+  if (!box) throw new Error("Expected recovery geometry");
+  expect(box.y + box.height).toBeLessThanOrEqual(340);
+  held.fail = false;
+  held.release();
+  await dialog.getByTestId("toast-load-retry").click();
+  await expect(dialog.getByTestId("toast")).toContainText("Share link copied.");
+});
+
+test("failed renderer retries during image export", async ({ page }) => {
+  const held = await holdChunk(page, TOASTER);
+  held.fail = true;
+  const image = await holdChunk(page, IMAGE);
+  await gotoCanvas(page, SLUG);
+  await page.getByTestId("file-button").click();
+  await page.getByTestId("export-png").click();
+  await expect.poll(image.requested).toBe(true);
+  // The export holds the page's input and its Cancel cannot show: the Retry is let through, and has the keyboard.
+  const retry = page.getByTestId("toast-load-retry");
+  await expect(retry).toBeFocused();
+  held.fail = false;
+  held.release();
+  await retry.click();
+  // The queued task arrives with its progress and Cancel, which takes the keyboard and still cancels.
+  const cancel = page.getByTestId("image-export-cancel");
+  await expect(cancel).toBeFocused();
+  await expect(page.getByTestId("toast-load-error")).toHaveCount(0);
+  await page.keyboard.press("Enter");
+  await expect(page.getByTestId("toast")).toHaveCount(0);
+  image.release();
 });
