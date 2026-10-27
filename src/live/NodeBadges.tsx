@@ -352,23 +352,19 @@ const NodeBadge = memo(function NodeBadge(props: BadgeProps) {
       className={`lv-node is-${s.status}${hovered ? " is-hovered" : ""}`}
       style={style}
       data-testid={`node-badge-${node.id}`}
-      {...(import.meta.env.VITE_E2E === "1"
-        ? {
-            "data-status": s.status,
-            "data-ready": s.fleet?.ready,
-            "data-starting": s.fleet?.starting,
-            "data-desired": s.fleet?.desired,
-            "data-cpu": s.resources?.cpuRequestPct,
-            "data-processed": s.processed,
-            "data-backlog": s.backlog,
-            "data-inflight": s.inFlight,
-            "data-failed": s.failed,
-            "data-dropped": s.dropped,
-            "data-dlq": s.deadLettered,
-            "data-blocked": blocked,
-            "data-rejected": rejected,
-          }
-        : {})}
+      data-status={s.status}
+      data-ready={s.fleet?.ready}
+      data-starting={s.fleet?.starting}
+      data-desired={s.fleet?.desired}
+      data-cpu={s.resources?.cpuRequestPct}
+      data-processed={s.processed}
+      data-backlog={s.backlog}
+      data-inflight={s.inFlight}
+      data-failed={s.failed}
+      data-dropped={s.dropped}
+      data-dlq={s.deadLettered}
+      data-blocked={blocked}
+      data-rejected={rejected}
     >
       {s.status !== "up" && <div className={`lv-ring is-${s.status}`} />}
       {cap && s.status === "up" && <CapacityRing heat={cap} />}

@@ -52,8 +52,7 @@ it.each(
     noConsumer: true,
   }),
 )("tracks the visibility of %s", (key, value) => {
-  const hidden = import.meta.env.VITE_E2E !== "1" && ["failed", "dropped", "deadLettered"].includes(key);
-  expect(sameBadge(badge, { ...badge, s: { ...sample, [key]: value } })).toBe(hidden);
+  expect(sameBadge(badge, { ...badge, s: { ...sample, [key]: value } })).toBe(false);
 });
 
 it("refreshes hover details and node placement even when numbers stay equal", () => {
@@ -92,4 +91,10 @@ it("refreshes recent health even with unchanged cumulative counts", () => {
   const lost = { ...sample, dropped: 3 };
   health.observe({ time: 1000, nodes: { api: lost }, edges: {} }, 0);
   expect(sameBadge({ ...badge, s: lost }, { ...badge, s: { ...lost } })).toBe(false);
+});
+
+it("refreshes the CPU readout in production viewers", () => {
+  expect(sameBadge(badge, { ...badge, s: { ...sample, resources: { cpuRequestPct: 80 } } as NodeSimState })).toBe(
+    false,
+  );
 });

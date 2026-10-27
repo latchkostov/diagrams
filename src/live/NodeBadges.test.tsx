@@ -55,6 +55,7 @@ it("counts terminal losses once and excludes failed attempts that recovered", ()
       dropped: 5,
       deadLettered: 2,
       lag: {},
+      fleet: { ready: 1, starting: 2, desired: 3, draining: 0, history: [] },
     };
     const state = {
       inputs: {},
@@ -70,8 +71,12 @@ it("counts terminal losses once and excludes failed attempts that recovered", ()
     );
     health.observe({ ...state.snapshot, time: 1000 }, 0);
     const html = renderToStaticMarkup(<NodeBadges state={state} presenting={false} />);
-    expect(html.includes('data-processed="1"')).toBe(import.meta.env.VITE_E2E === "1");
-    expect(html.includes('data-failed="12"')).toBe(import.meta.env.VITE_E2E === "1");
+    expect(html).toContain('data-processed="1"');
+    expect(html).toContain('data-failed="12"');
+    expect(html).toContain('data-status="up"');
+    expect(html).toContain('data-ready="1"');
+    expect(html).toContain('data-starting="2"');
+    expect(html).toContain('data-desired="3"');
     expect(html).toContain('data-testid="node-alert-caller">Lost 5</div>');
     expect(html).toMatch(/class="lv-alert is-lost"[^>]*data-testid="node-alert-caller"/);
     const healthy = {

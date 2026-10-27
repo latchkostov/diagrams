@@ -11,7 +11,13 @@ test.beforeEach(async ({ page, baseURL }) => {
 
 test("zoomed-out Overview keeps every node silhouette reachable below the text floor", async ({ page }) => {
   const b = new Bench(page, await page.context().newCDPSession(page));
-  for (let step = 0; step < 14; step++) await page.getByTestId("zoom-out-button").click();
+  // Reach the same minimum scale with one real gesture. Fourteen toolbar clicks consumed
+  // most of the whole-test backstop on loaded CI before selection could finish settling.
+  const at = await b.emptySpot({ x: 0.5, y: 0.5 });
+  await page.mouse.move(at.x, at.y);
+  await page.keyboard.down("Control");
+  await page.mouse.wheel(0, 1600);
+  await page.keyboard.up("Control");
   await b.canvasSettled();
   expect((await b.viewport()).k).toBeLessThan(0.2);
   for (const { id } of eventPipeline(100).nodes) await expect(page.getByTestId(`node-${id}`)).toBeVisible();

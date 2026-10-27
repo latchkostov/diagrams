@@ -28,16 +28,16 @@ export function sameBadge(a: BadgeProps, b: BadgeProps): boolean {
     equal(x.threads, y.threads, THREADS) &&
     equal(x.fleet, y.fleet, FLEET) &&
     x.fleet?.decision?.reason === y.fleet?.decision?.reason &&
-    (import.meta.env.VITE_E2E !== "1" || x.resources?.cpuRequestPct === y.resources?.cpuRequestPct) &&
+    x.resources?.cpuRequestPct === y.resources?.cpuRequestPct &&
     // Latency summaries are immutable and shared until the next successful sample.
     x.latency === y.latency
   );
 }
 
-const FIELDS = (
-  "role status processed throughput backlog inFlight blocked shed queueDepth queueLimit replicas idleReplicas failingOver noConsumer" +
-  (import.meta.env.VITE_E2E === "1" ? " failed dropped deadLettered" : "")
-).split(" ") as (keyof BadgeProps["s"])[];
+const FIELDS =
+  "role status processed throughput backlog inFlight blocked shed queueDepth queueLimit replicas idleReplicas failingOver noConsumer failed dropped deadLettered".split(
+    " ",
+  ) as (keyof BadgeProps["s"])[];
 const THREADS = "slots working waiting inFlight".split(" ") as (keyof NonNullable<BadgeProps["s"]["threads"]>)[];
 const FLEET = "ready starting desired draining".split(" ") as (keyof NonNullable<BadgeProps["s"]["fleet"]>)[];
 const equal = <T>(x: T | undefined, y: T | undefined, keys: readonly (keyof T)[]) =>
