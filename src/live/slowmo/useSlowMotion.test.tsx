@@ -23,7 +23,7 @@ afterEach(() => {
 });
 
 it.each([0, 2000])("Escape restores the entry viewport after a pending Inputs rebuild at %s", async (at) => {
-  // The live view downloads slow motion's script code when idle (scriptChunk.ts); here it has arrived.
+  // Slow motion downloads its script code on the first start; here it has arrived.
   await loadSlowScript();
   vi.useFakeTimers();
   const diagram = JSON.parse(readFileSync("src/examples/kafka-order-pipeline.json", "utf8")) as DiagramFile;

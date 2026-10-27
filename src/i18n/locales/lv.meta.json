@@ -1,6 +1,15 @@
 {
   "reviewed": false,
   "sources": {
+    "rail.select": "3e892b4d",
+    "rail.add": "9dc3aa14",
+    "rail.annotate": "5ec251f9",
+    "rail.checks": "f522dffc",
+    "rail.stencils": "ea7b0c60",
+    "rail.tutorials": "70c3a974",
+    "rail.shortcuts": "f09038a0",
+    "rail.ai": "23d5135f",
+    "rail.diagram": "06a09da6",
     "workbench.thisRun": "0b498154",
     "workbench.wholeRun": "77ea0d19",
     "workbench.runWindow": "1be172f2",

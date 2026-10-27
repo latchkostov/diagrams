@@ -10,6 +10,16 @@
 // stays.
 
 const en = {
+  // Short rail copy: two lines at 10.5px minimum. Full names stay in tooltips and accessible labels.
+  "rail.select": "Select",
+  "rail.add": "Add",
+  "rail.annotate": "Annotate",
+  "rail.checks": "Checks",
+  "rail.stencils": "Stencils",
+  "rail.tutorials": "Tutorials",
+  "rail.shortcuts": "Shortcuts",
+  "rail.ai": "AI",
+  "rail.diagram": "Diagram",
   "workbench.thisRun": "This run",
   "workbench.wholeRun": "Whole run",
   "workbench.runWindow": "0\u2013{end, number} s of {total, number} s",

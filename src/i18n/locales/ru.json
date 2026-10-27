@@ -1,4 +1,13 @@
 {
+  "rail.select": "Выбрать",
+  "rail.add": "Добавить",
+  "rail.annotate": "Аннотация",
+  "rail.checks": "Проверки",
+  "rail.stencils": "Элементы",
+  "rail.tutorials": "Учебники",
+  "rail.shortcuts": "Клавиши",
+  "rail.ai": "ИИ",
+  "rail.diagram": "Схема",
   "workbench.thisRun": "Этот запуск",
   "workbench.wholeRun": "Весь запуск",
   "workbench.runWindow": "0–{end, number} с из {total, number} с",

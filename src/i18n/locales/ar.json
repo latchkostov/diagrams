@@ -1,4 +1,13 @@
 {
+  "rail.select": "تحديد",
+  "rail.add": "إضافة",
+  "rail.annotate": "تعليق",
+  "rail.checks": "تحقق",
+  "rail.stencils": "الاستنسلات",
+  "rail.tutorials": "الدروس",
+  "rail.shortcuts": "الاختصارات",
+  "rail.ai": "ذكاء",
+  "rail.diagram": "المخطط",
   "workbench.thisRun": "هذا التشغيل",
   "workbench.wholeRun": "التشغيل بالكامل",
   "workbench.runWindow": "0–{end, number} ث من {total, number} ث",

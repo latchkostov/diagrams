@@ -1,4 +1,13 @@
 {
+  "rail.select": "Pilih",
+  "rail.add": "Tambah",
+  "rail.annotate": "Anotasi",
+  "rail.checks": "Periksa",
+  "rail.stencils": "Stensil",
+  "rail.tutorials": "Tutorial",
+  "rail.shortcuts": "Pintasan",
+  "rail.ai": "AI",
+  "rail.diagram": "Diagram",
   "workbench.thisRun": "Proses ini",
   "workbench.wholeRun": "Seluruh proses",
   "workbench.runWindow": "0–{end, number} dtk dari {total, number} dtk",

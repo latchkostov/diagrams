@@ -1,4 +1,13 @@
 {
+  "rail.select": "選択",
+  "rail.add": "追加",
+  "rail.annotate": "注釈を付ける",
+  "rail.checks": "チェック",
+  "rail.stencils": "ステンシル",
+  "rail.tutorials": "学習",
+  "rail.shortcuts": "キー",
+  "rail.ai": "AI",
+  "rail.diagram": "図",
   "workbench.thisRun": "今回の実行",
   "workbench.wholeRun": "実行全体",
   "workbench.runWindow": "全 {total, number} 秒のうち 0～{end, number} 秒",

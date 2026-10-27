@@ -87,6 +87,15 @@ describe("the English source", () => {
 describe("the catalogs", () => {
   const codes = catalogLocales();
 
+  it.each(codes)("%s translates and source-stamps every dedicated rail label", (code) => {
+    const messages = read<Record<string, string>>(`locales/${code}.json`);
+    const meta = read<LocaleMeta>(`locales/${code}.meta.json`);
+    for (const key of Object.keys(en).filter((key) => key.startsWith("rail."))) {
+      expect(messages[key], key).toBeTruthy();
+      expect(meta.sources?.[key], key).toBe(sourceHash(en[key as keyof typeof en]));
+    }
+  });
+
   it("every launch language has a catalog, a meta file and a glossary", () => {
     expect(codes).toEqual(expect.arrayContaining(LAUNCH));
     for (const code of codes) {

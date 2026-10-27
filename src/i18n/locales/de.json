@@ -1,4 +1,13 @@
 {
+  "rail.select": "Auswahl",
+  "rail.add": "Hinzufügen",
+  "rail.annotate": "Notieren",
+  "rail.checks": "Prüfungen",
+  "rail.stencils": "Schablonen",
+  "rail.tutorials": "Tutorials",
+  "rail.shortcuts": "Tastenkürzel",
+  "rail.ai": "KI",
+  "rail.diagram": "Diagramm",
   "workbench.thisRun": "Dieser Lauf",
   "workbench.wholeRun": "Gesamter Lauf",
   "workbench.runWindow": "0–{end, number} s von {total, number} s",

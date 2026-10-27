@@ -1,4 +1,13 @@
 {
+  "rail.select": "Kijelölés",
+  "rail.add": "Hozzáad",
+  "rail.annotate": "Jegyzetek",
+  "rail.checks": "Ellenőrzés",
+  "rail.stencils": "Sablonok",
+  "rail.tutorials": "Útmutatók",
+  "rail.shortcuts": "Billentyűk",
+  "rail.ai": "MI",
+  "rail.diagram": "Diagram",
   "workbench.thisRun": "Ez a futás",
   "workbench.wholeRun": "Teljes futás",
   "workbench.runWindow": "0–{end, number} s / {total, number} s",
