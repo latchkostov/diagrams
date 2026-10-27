@@ -29,7 +29,7 @@ function NodeTitle({ label }: { label: string }) {
       <span className="nb-name-size" aria-hidden="true">
         {label}
       </span>
-      <div className="nb-label" data-testid="card-title" title={label}>
+      <div className="nb-label" data-testid="card-title">
         {label}
       </div>
     </div>
