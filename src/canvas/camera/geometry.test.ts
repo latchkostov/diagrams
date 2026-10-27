@@ -2,6 +2,7 @@ import { expect, it, vi } from "vitest";
 import type { ReactFlowState } from "@xyflow/react";
 import type { DiagramFlowEdge, FlowNode } from "../types";
 import { intersects } from "../geometry/rect";
+import { contains, frameCardBounds, innerFrame, visibleCanvas } from "./frameEdges";
 import { TRACE_CARD_TOP, TRACE_CARD_FOOTPRINT } from "../../live/traceCardLayout";
 import { selectRoutes } from "../edges/useEdgeRoute";
 import {
@@ -264,6 +265,49 @@ it("Follow keeps every narrated card clear of an overlapping left dock and top b
   expect(view.y).toBeGreaterThanOrEqual(112);
   expect(view.y + 80 * view.zoom).toBeLessThanOrEqual(704);
 });
+it.each([false, true])(
+  "Follow fits vertically spread narration inside actual visibility margins (chrome: %s)",
+  (chrome) => {
+    const root = {
+      ...workbenchRoot,
+      ownerDocument: {
+        querySelector: (selector: string) => {
+          if (!chrome) return null;
+          const rect = selector.includes("inspector")
+            ? { left: 0, right: 240, top: 0, bottom: 800, width: 240, height: 800 }
+            : selector.includes("canvas-bezel")
+              ? { top: 0, bottom: 60 }
+              : selector.includes("live-route-legend")
+                ? { top: 720 }
+                : null;
+          return rect ? { getBoundingClientRect: () => rect } : null;
+        },
+      },
+    } as unknown as HTMLElement;
+    const state = workbenchState();
+    for (const [i, node] of [...state.nodeLookup.values()].entries()) {
+      node.measured = { width: 220, height: 72 };
+      node.internals.positionAbsolute = { x: 0, y: i * 320 };
+    }
+    const visible = visibleCanvas(root);
+    const padding = innerFrame(visible.width, visible.height, "follow", chrome);
+    const inner = { ...padding, x: padding.x + visible.x, y: padding.y + visible.y };
+    for (const subject of ["a", "b"]) {
+      const view = followViewport(root, state, ["a", "b"], subject)!;
+      expect(view).not.toBeNull();
+      for (const node of state.nodeLookup.values()) {
+        const position = node.internals.positionAbsolute;
+        const card = frameCardBounds({
+          x: view.x + position.x * view.zoom,
+          y: view.y + position.y * view.zoom,
+          width: 220 * view.zoom,
+          height: 72 * view.zoom,
+        });
+        expect(contains(inner, card), JSON.stringify({ subject, inner, card, view })).toBe(true);
+      }
+    }
+  },
+);
 it("phone Follow keeps a single subject at forty percent and frames distant narrated peers", () => {
   const root = { ...workbenchRoot, clientWidth: 390, clientHeight: 548 } as HTMLElement;
   const view = followViewport(root, workbenchState(6000), ["a"], "a")!;

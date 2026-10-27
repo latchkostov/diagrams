@@ -8,6 +8,7 @@ import { registerFrameCapture } from "./camera/frameCapture";
 import {
   cullLabel,
   contains,
+  frameCardBounds,
   edgeInFrame,
   frameCrossing,
   innerFrame,
@@ -210,7 +211,7 @@ export const FrameDetail = memo(
         const cardBoxes = new Map(frameNodes.map(({ id, el }) => [id, box(el, origin)]));
         for (const { id, el, n } of frameNodes) {
           const card = cardBoxes.get(id)!;
-          const painted = !cropped || contains(inner, { ...card, y: card.y - 12, height: card.height + 44 });
+          const painted = !cropped || contains(inner, frameCardBounds(card));
           const hidden =
             (n.type === "diagram" && !painted && cropped) ||
             (n.type === "annotation" &&
@@ -383,8 +384,7 @@ export const FrameDetail = memo(
           label.style.removeProperty("width");
           label.style.removeProperty("height");
           label.style.removeProperty("line-height");
-          const text = label.querySelector<HTMLElement>(".fe-label-text");
-          if (text && fonts.has(text)) text.style.fontSize = `${fonts.get(text)}px`;
+          // Keep the dependency text's counter-scaled font from textDetail above.
           originalLabels.set(id, box(label, origin));
         }
         for (const el of root.querySelectorAll<HTMLElement | SVGElement>(".react-flow__edge[data-id]")) {

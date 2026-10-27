@@ -13,3 +13,13 @@ export function frameRoutingFixture(): DiagramFile {
     edges: [{ id: "request", from: "source", to: "target", kind: "sync", label: "Checkout requested" }],
   };
 }
+
+/** A dependency's text must retain Custom view's counter-scaling without a selection. */
+export function frameDependencyFixture(): DiagramFile {
+  const diagram = frameRoutingFixture();
+  return {
+    ...diagram,
+    title: "Dependency label readability",
+    edges: [{ ...diagram.edges[0], relation: "depends", label: "Reads settings" }],
+  };
+}

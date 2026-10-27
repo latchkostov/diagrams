@@ -34,6 +34,16 @@ export const contains = (outer: Rect, inner: Rect) =>
   inner.x + inner.width <= outer.x + outer.width &&
   inner.y + inner.height <= outer.y + outer.height;
 
+/** Screen-space room for the card's top decoration and badges below it. */
+export const FRAME_CARD_SPACE = { top: 12, bottom: 32 };
+export function frameCardBounds(card: Rect): Rect {
+  return {
+    ...card,
+    y: card.y - FRAME_CARD_SPACE.top,
+    height: card.height + FRAME_CARD_SPACE.top + FRAME_CARD_SPACE.bottom,
+  };
+}
+
 export function innerFrame(
   width: number,
   height: number,

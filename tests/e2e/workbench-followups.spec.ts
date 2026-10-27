@@ -1,7 +1,36 @@
-import { frameRoutingFixture } from "../../src/lab/frameRoutingFixture";
+import { frameRoutingFixture, frameDependencyFixture } from "../../src/lab/frameRoutingFixture";
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import { test, expect, gotoCanvas, gotoLive, expectTheme, pauseClock, waitForCameraIdle } from "./fixtures";
+
+test("unselected dependency labels retain counter-scaling in Custom view", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.addInitScript((diagram) => {
+    localStorage.setItem("diagrams.autosave.v1:kafka-order-pipeline", JSON.stringify(diagram));
+  }, frameDependencyFixture());
+  await gotoCanvas(page, "kafka-order-pipeline");
+  await page.getByTestId("canvas-wrap").focus();
+  await page.keyboard.press("Shift+0");
+  await waitForCameraIdle(page);
+  const label = page.getByTestId("edge-label-request");
+  for (let step = 0; step < 2; step++) {
+    await page.getByTestId("zoom-out-button").click();
+    await waitForCameraIdle(page);
+    await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-detail-view", "custom");
+    await expect(label).toBeVisible();
+    await expect
+      .poll(() =>
+        label.evaluate((el) => {
+          const text = [...el.children].find((child) => child.textContent === "Reads settings");
+          const canvas = document.querySelector<HTMLElement>('[data-testid="canvas-wrap"]');
+          if (!text || !canvas) throw new Error("Expected dependency text and canvas");
+          const zoom = parseFloat(canvas.style.getPropertyValue("--rf-zoom-exact"));
+          return parseFloat(getComputedStyle(text).fontSize) * zoom;
+        }),
+      )
+      .toBeGreaterThanOrEqual(10.99);
+  }
+});
 
 test("enlarged label floor measures the full text before collision placement", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
