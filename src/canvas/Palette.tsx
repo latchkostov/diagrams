@@ -30,7 +30,8 @@ import { safeStorage } from "../lib/storage";
 import { formatCombo, shortcutKeys } from "../editor/shortcuts";
 import { modalLayers } from "../lib/modalLayers";
 
-import { AnnotateGroup, matchAnnotate } from "./AnnotateGroup";
+import { AnnotateGroup } from "./AnnotateGroup";
+import { matchAnnotate } from "./annotateSearch";
 
 export { STENCIL_DND_MIME };
 

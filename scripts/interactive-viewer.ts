@@ -193,6 +193,23 @@ export const EDITOR_ONLY: { name: string; path: string; stub: (root: string) => 
       )};`,
   },
   {
+    name: "the stencil rail loader",
+    path: "/src/canvas/lazyPalette.tsx",
+    stub: () => "export const Palette = () => null;",
+  },
+  {
+    name: "the annotation tiles and search",
+    path: "/src/canvas/AnnotateGroup.tsx",
+    stub: () => "export const AnnotateGroup = () => null; export const ANNOTATE = [];",
+  },
+  {
+    // Read-only canvases never open editing menus; their playback controls use their own menus.
+    // Keeping this component would also retain the quick-add stencil search and its alias dictionary.
+    name: "the editing context menu",
+    path: "/src/components/ContextMenu.tsx",
+    stub: () => "export const ContextMenu = () => null;",
+  },
+  {
     name: "the editor tool rail bridge",
     path: "/src/canvas/chrome/tools.ts",
     stub: () =>

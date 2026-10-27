@@ -265,6 +265,13 @@ describe("production bundle split", () => {
       ),
     ).toEqual(["production badge attributes"]);
     expect(gzip(canvas)).toBeLessThanOrEqual(383_000 - 8_192 - 4_096);
+    expect(
+      [...canvas].flatMap((c) =>
+        Object.entries(c.modules)
+          .filter(([id]) => /[/\\]src[/\\]canvas[/\\]AnnotateGroup\.tsx$/.test(id))
+          .flatMap(([, module]) => module.renderedExports),
+      ),
+    ).not.toContain("matchAnnotate");
     // The app bezel owns history; the fallback strip is only for the development/E2E Lab.
     expect(canvasChunk(b).code.includes("bezel-history")).toBe(false);
     expect(gzip(extra)).toBeLessThanOrEqual(135_000 - 6_144);
@@ -272,6 +279,7 @@ describe("production bundle split", () => {
     expect(
       found(bundled(canvas), [
         ["stencil library contents", /[/\\]src[/\\]canvas[/\\]Palette\.tsx$/],
+        ["annotation search", /[/\\]src[/\\]canvas[/\\]annotateSearch\.ts$/],
         ["frame decoration geometry", /[/\\]src[/\\]canvas[/\\]camera[/\\]frameEdges\.ts$/],
       ]),
     ).toEqual([]);

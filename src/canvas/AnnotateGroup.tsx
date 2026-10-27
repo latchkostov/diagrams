@@ -4,9 +4,8 @@ import { Icon, type IconName } from "../components/Icon";
 import { t, useLocale } from "../i18n";
 import { shapeLabel } from "../i18n/chrome";
 import { ANNOTATION_DND_MIME, annotationDragValue } from "./annotations";
-import { SHAPES_CATALOG } from "./shapes/catalog";
 
-interface AnnotateItem {
+export interface AnnotateItem {
   kind: AnnotationKind;
   shape?: AnnotationShape;
   label: string;
@@ -66,33 +65,6 @@ export const ANNOTATE: readonly AnnotateItem[] = [
     keywords: "shape outline rectangle box",
   },
 ];
-
-/** What search finds: each outline by name, so "ellipse" or "cylinder" adds that one directly. */
-const ANNOTATE_SEARCH: readonly AnnotateItem[] = [
-  ...TEXT_NOTE_ZONE,
-  ...SHAPES_CATALOG.map((s) => ({
-    kind: "shape" as const,
-    shape: s.id,
-    get label() {
-      return s.id === "rounded" ? t("chrome.rounded") : s.label;
-    },
-    icon: `shape-${s.id}` as IconName,
-    get hint() {
-      return t("chrome.valueAPlainShapeForWhenNoStencilFits", { shape: s.label });
-    },
-    get keywords() {
-      return `shape outline ${s.label} ${s.keywords}${s.id === "rect" ? " box" : ""}`;
-    },
-  })),
-];
-
-export function matchAnnotate(q: string, _locale: string): AnnotateItem[] {
-  const words = q.toLowerCase().split(/\s+/).filter(Boolean);
-  return ANNOTATE_SEARCH.filter((a) => {
-    const hay = `${a.label} ${a.kind} ${a.keywords} annotate annotation`.toLowerCase();
-    return words.every((w) => hay.includes(w));
-  });
-}
 
 /** Text, notes, zones and shapes: documentation that never takes part in the simulation. */
 export function AnnotateGroup({
