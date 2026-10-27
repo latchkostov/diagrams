@@ -6,7 +6,7 @@ Reviewed Editing on Outbox and saga checkout and Follow on Black Friday commerce
 
 Checkout API, Payments and Orders DB remain whole cards together. Follow recentres the narrated set when the subject-centred view cannot hold it. Non-narrated neighbours use complete named pins. Bottom pins sit below route trunks and above the legend. Top pins have the same protection. Each retained connection reaches its pin orthogonally, around painted cards; the separate diagonal leader is removed. Omitted routes stop before pin rows.
 
-The phone assertion that previously required a narrated caller to be pinned now requires its full card and preserves the existing separation check. Layout audit assertions are unchanged.
+On a 390 px phone, Checkout and Payments only fit together near 50% zoom, so the narrated caller stays a pin beside a readable subject; the separation check is unchanged. Layout audit assertions are unchanged.
 
 ## Ink and text
 

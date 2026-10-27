@@ -459,8 +459,10 @@ export const FrameDetail = memo(
           }
           const b = box(label, origin);
           const path = lanes.get(edge.id);
+          const homes = [...originalLabels].filter(([id]) => id !== edge.id).map(([, home]) => home);
           const placed =
-            floorPlacement ?? (cropped && ends.pill && path?.length ? placeFrameLabel(b, path, inner, blockers) : b);
+            floorPlacement ??
+            (cropped && ends.pill && path?.length ? placeFrameLabel(b, path, inner, blockers, undefined, homes) : b);
           const hidden =
             far ||
             (cropped &&

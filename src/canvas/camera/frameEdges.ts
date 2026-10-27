@@ -282,13 +282,18 @@ export function placeTextFloor(
   return placeFrameLabel(box, ownPath, inner, blockers, clear);
 }
 
-/** Slide along the edge itself; never move authored data or jump a label onto another route. */
+/**
+ * Slide along the edge itself; never move authored data or jump a label onto another route. A label that has
+ * to move prefers a slot off the other labels' own places (`homes`: placed after it, or hidden now). It takes
+ * one only when nothing else is clear; a later label then moves itself.
+ */
 export function placeFrameLabel(
   box: Rect,
   points: readonly Point[],
   inner: Rect,
   blockers: readonly Rect[],
   accept: (box: Rect) => boolean = () => true,
+  homes: readonly Rect[] = [],
 ): Rect | null {
   const clear = (r: Rect) => clearFrameBox(r, inner, blockers) && accept(r);
   if (clear(box)) return box;
@@ -304,7 +309,8 @@ export function placeFrameLabel(
       distance: (p.x - cx) ** 2 + (p.y - cy) ** 2,
     };
   }).sort((a, b) => a.distance - b.distance);
-  return candidates.find(clear) ?? null;
+  const free = candidates.filter(clear);
+  return free.find((c) => !homes.some((home) => intersects(c, home))) ?? free[0] ?? null;
 }
 
 export function oneHop(edges: readonly { source: string; target: string }[], ids: ReadonlySet<string>): Set<string> {
@@ -340,6 +346,8 @@ export function visibleCanvas(root: HTMLElement): Rect {
     dock = rect("inspector"),
     bezel = rect("canvas-bezel");
   const legend = rect("live-route-legend");
+  // An expanded phone note is an overlay sheet: the pane grows under it, so it crops like a dock.
+  const note = doc?.querySelector('[data-testid="live-note"][data-expanded="1"]')?.getBoundingClientRect();
   const paneRight = pane.left + root.clientWidth;
   const paneBottom = pane.top + root.clientHeight;
   const limits = {
@@ -351,7 +359,7 @@ export function visibleCanvas(root: HTMLElement): Rect {
   // Remove each surface from the edge it actually occludes, choosing the smallest
   // crop. A full-width phone sheet belongs to the bottom even at its full snap;
   // it must never be mistaken for both side docks. Outside surfaces cost nothing.
-  for (const r of [rail, dock]) {
+  for (const r of [rail, dock, note]) {
     if (!r || r.right <= pane.left || r.left >= paneRight || r.bottom <= pane.top || r.top >= paneBottom) continue;
     const cuts = [
       { side: "bottom", touches: r.bottom >= paneBottom, depth: (paneBottom - r.top) / root.clientHeight },

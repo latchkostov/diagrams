@@ -327,6 +327,32 @@ describe("Workbench frame detail", () => {
     expect(placed.x).not.toBe(label.x);
     expect(placeFrameLabel(label, path, frame, [frame])).toBeNull();
   });
+  it("prefers slots off other labels' own places, placed later or hidden, before hiding a label", () => {
+    const label = { x: 135, y: 40, width: 30, height: 20 };
+    const path = [
+      { x: 0, y: 50 },
+      { x: 300, y: 50 },
+    ];
+    const frame = { x: 0, y: 0, width: 300, height: 100 };
+    const pin = { x: 130, y: 0, width: 40, height: 100 };
+    // Without other labels, the nearest clear slot is just left of the pin.
+    expect(placeFrameLabel(label, path, frame, [pin])!.x).toBe(90);
+    const home = { x: 85, y: 40, width: 40, height: 20 };
+    const placed = placeFrameLabel(label, path, frame, [pin], undefined, [home])!;
+    expect(intersects(placed, home)).toBe(false);
+    expect(intersects(placed, pin)).toBe(false);
+    expect(placed.y).toBe(40);
+    // When every clear slot is someone's home, the nearest still beats hiding the label.
+    expect(
+      placeFrameLabel(label, path, frame, [pin], undefined, [
+        { ...frame, width: 130 },
+        { ...frame, x: 170 },
+      ])!.x,
+    ).toBe(90);
+    // A label that need not move keeps its own place, whatever its neighbours' homes.
+    const clear = { x: 20, y: 40, width: 30, height: 20 };
+    expect(placeFrameLabel(clear, path, frame, [pin], undefined, [{ ...clear, x: 30 }])).toBe(clear);
+  });
   it("only includes one hop, not a transitive component", () => {
     expect([
       ...oneHop(
@@ -447,6 +473,29 @@ it.each([96, 400, 800])("R-c6a836a8ae crops a full-width phone sheet at height %
     },
   } as unknown as HTMLElement;
   expect(visibleCanvas(root)).toEqual({ x: 0, y: 0, width: 390, height: 800 - height });
+});
+
+it.each([false, true])("crops the phone note only while it is an expanded overlay (expanded: %s)", (expanded) => {
+  // Measured at 390 × 844: expanding the note grows the pane to 644 px and moves the legend under the sheet.
+  const root = {
+    clientWidth: 390,
+    clientHeight: expanded ? 644 : 556,
+    getBoundingClientRect: () => ({ left: 0, top: 52 }),
+    ownerDocument: {
+      querySelector: (selector: string) => {
+        const rect =
+          selector === '[data-testid="live-note"][data-expanded="1"]'
+            ? expanded
+              ? { left: 0, right: 390, top: 464, bottom: 696, width: 390, height: 232 }
+              : null
+            : selector.includes("live-route-legend")
+              ? { top: expanded ? 656 : 568 }
+              : null;
+        return rect ? { getBoundingClientRect: () => rect } : null;
+      },
+    },
+  } as unknown as HTMLElement;
+  expect(visibleCanvas(root)).toEqual({ x: 0, y: 0, width: 390, height: expanded ? 412 : 516 });
 });
 
 it.each(["left", "right"])("R-c6a836a8ae crops an overlapping %s dock by its edge, not its aspect ratio", (side) => {

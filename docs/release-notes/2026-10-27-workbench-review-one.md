@@ -4,7 +4,7 @@ Focus and Follow preserve hand-shaped connection tracks while spacing automatic 
 
 The 11 px label floor measures a naturally sized pill and its text line rectangles before collision placement, retaining the original font if no enlarged box fits. Visible node chips reserve room before edge labels are placed, including the large commerce Follow view.
 
-Regression coverage includes overlapping and nearby saved tracks, pin obstacles, complete text at fractional zoom, selection during narration, required bottom-neighbour pins, and both narrated phone cards before and after expanding the note.
+Regression coverage includes overlapping and nearby saved tracks, pin obstacles, complete text at fractional zoom, selection during narration, required bottom-neighbour pins, and the narrated phone subject before and after expanding the note.
 
 ## Intentional parity changes
 

@@ -1,6 +1,6 @@
 ## Workbench framing, connections and readable detail
 
-Follow keeps every narrated card inside the visible canvas. When a subject-centred close-up would lose another narrated card, it frames the whole narration, leaving other neighbours as named pins. This also applies on phones; a narrated caller is a card rather than a pin.
+Follow keeps every narrated card inside the visible canvas whenever the readable zoom floor (90%, 92% on a phone) can hold them. When a subject-centred close-up would lose another narrated card, it recentres on the whole narration, leaving other neighbours as named pins. Narration too spread for the floor keeps its subject readable, and its distant narrated cards pin like other neighbours.
 
 Selected connections and narrated neighbours stay at or below two screen pixels. Connections of a selected node use the accent. Parallel automatic routes receive eight-pixel screen-space lanes. Pins have reserved top and bottom rows, above the legend; their connections avoid cards and other pins. Unretained routes stop before those rows. Removing the redundant straight pin leader fixes the diagonal beside Checkout saga.
 

@@ -231,7 +231,7 @@ it("Focus includes neighbours' labels, or centres the selection at its floor", (
   expect(spread.zoom).toBe(0.9);
   expect(spread.x + 90 * spread.zoom).toBe(588);
 });
-it("Follow centres its subject when the path fits and frames every narrated card when it doesn't", () => {
+it("Follow centres its subject when the path fits, recentres on readable narration, else pins at .9", () => {
   const s = workbenchState();
   const view = followViewport(workbenchRoot, s, ["a", "b"], "a")!;
   expect(view.zoom).toBe(1);
@@ -239,11 +239,18 @@ it("Follow centres its subject when the path fits and frames every narrated card
   expect(view.y + 40 * view.zoom).toBe(400);
   expect(view.x).toBeGreaterThanOrEqual(52);
   expect(view.x + 480 * view.zoom).toBeLessThanOrEqual(1148);
+  // Subject-centred, b would leave the canvas; the whole narration still fits above the floor.
+  const recentred = followViewport(workbenchRoot, workbenchState(800), ["a", "b"], "a")!;
+  expect(recentred.zoom).toBeGreaterThanOrEqual(0.9);
+  expect(recentred.x).toBeGreaterThanOrEqual(52);
+  expect(recentred.x + 980 * recentred.zoom).toBeLessThanOrEqual(1148);
+  expect(recentred.y).toBeGreaterThanOrEqual(52);
+  expect(recentred.y + 80 * recentred.zoom).toBeLessThanOrEqual(704);
+  // Only a zoom below the readable floor would hold b: the subject keeps .9 and b pins.
   const wide = followViewport(workbenchRoot, workbenchState(6000), ["a", "b"], "a")!;
-  expect(wide.x).toBeGreaterThanOrEqual(52);
-  expect(wide.x + 6180 * wide.zoom).toBeLessThanOrEqual(1148);
-  expect(wide.y).toBeGreaterThanOrEqual(52);
-  expect(wide.y + 80 * wide.zoom).toBeLessThanOrEqual(704);
+  expect(wide.zoom).toBe(0.9);
+  expect(wide.x + 90 * wide.zoom).toBe(600);
+  expect(wide.y + 40 * wide.zoom).toBe(400);
 });
 it("Follow keeps every narrated card clear of an overlapping left dock and top bezel", () => {
   const root = {
@@ -308,15 +315,24 @@ it.each([false, true])(
     }
   },
 );
-it("phone Follow keeps a single subject at forty percent and frames distant narrated peers", () => {
+it("phone Follow keeps a single subject at forty percent and pins narrated peers beyond the .92 floor", () => {
   const root = { ...workbenchRoot, clientWidth: 390, clientHeight: 548 } as HTMLElement;
   const view = followViewport(root, workbenchState(6000), ["a"], "a")!;
   expect(view.zoom).toBe(1.1);
   expect(view.y + 40 * view.zoom).toBeCloseTo(548 * 0.4);
   expect(view.x + 90 * view.zoom).toBe(195);
+  const pair = followViewport(root, workbenchState(6000), ["a", "b"], "a")!;
+  expect(pair.zoom).toBe(0.92);
+  expect(pair.y + 40 * pair.zoom).toBeCloseTo(548 * 0.4);
+  expect(pair.x + 90 * pair.zoom).toBe(177);
   const incoming = followViewport(root, workbenchState(6000), ["a", "b"], "b")!;
-  expect(incoming.x).toBeGreaterThanOrEqual(28);
-  expect(incoming.x + 6180 * incoming.zoom).toBeLessThanOrEqual(338);
+  expect(incoming.zoom).toBe(0.92);
+  expect(incoming.x + 6090 * incoming.zoom).toBe(257);
+  // A narration that fits at .92 once recentred is framed whole.
+  const near = followViewport(root, workbenchState(140), ["a", "b"], "b")!;
+  expect(near.zoom).toBeGreaterThanOrEqual(0.92);
+  expect(near.x).toBeGreaterThanOrEqual(28);
+  expect(near.x + 320 * near.zoom).toBeLessThanOrEqual(338);
 });
 
 it.each([96, 400, 800])("R-c6a836a8ae Focus and Follow use the phone sheet's exposed frame at height %i", (height) => {
@@ -347,14 +363,10 @@ it.each([96, 400, 800])("R-c6a836a8ae Focus and Follow use the phone sheet's exp
     expect(focus.x + 90 * focus.zoom).toBe(183);
     expect(focus.y + 40 * focus.zoom).toBe((800 - height + 32 - 72) / 2);
   }
-  const follow = followViewport(root, state, ["a", "b"], "a");
-  if (height === 800) expect(follow).toBeNull();
-  else {
-    expect(follow!.x).toBeGreaterThanOrEqual(28);
-    expect(follow!.x + 6180 * follow!.zoom).toBeLessThanOrEqual(338);
-    expect(follow!.y).toBeGreaterThanOrEqual(52);
-    expect(follow!.y + 80 * follow!.zoom).toBeLessThanOrEqual(800 - height - 96);
-  }
+  const follow = followViewport(root, state, ["a", "b"], "a")!;
+  expect(follow.zoom).toBe(0.92);
+  expect(follow.x + 90 * follow.zoom).toBe(177);
+  expect(follow.y + 40 * follow.zoom).toBe((800 - height) * 0.4);
 });
 
 it("Overview excludes the reserved legend from its fitted canvas", () => {
