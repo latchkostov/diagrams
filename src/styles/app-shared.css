@@ -654,6 +654,52 @@ kbd {
   font-size: 10.5px;
 }
 
+/* Identity remains readable while zooming, including presentation and export previews.
+   The icon can fill a tiny card, but never expands the card or its neighbour's space. */
+.react-flow__node .nb-compact {
+  display: flex;
+  --title-font: 13px;
+}
+.react-flow__node .nb-icon {
+  --title-font: 12.5px;
+}
+.react-flow__node .nb-compact .nb-label,
+.react-flow__node .nb-text {
+  flex: 1;
+}
+.react-flow__node .nb-label {
+  font-size: max(var(--title-font, 13.5px), calc(9.5px / var(--rf-zoom-exact, 1)));
+}
+.react-flow__node .nb-card .nb-tile {
+  width: min(72px, max(44px, calc(14px / var(--rf-zoom-exact, 1))));
+  height: min(72px, max(44px, calc(14px / var(--rf-zoom-exact, 1))));
+}
+.react-flow__node .nb-card .nb-tile .stencil-icon {
+  height: min(72px, max(26px, calc(14px / var(--rf-zoom-exact, 1))));
+  width: min(100%, max(36px, calc(14px / var(--rf-zoom-exact, 1))));
+}
+.react-flow__node .nb-compact .nb-tile {
+  width: min(40px, max(28px, calc(14px / var(--rf-zoom-exact, 1))));
+  height: min(40px, max(28px, calc(14px / var(--rf-zoom-exact, 1))));
+}
+.react-flow__node .nb-compact .nb-tile .stencil-icon {
+  height: min(40px, max(18px, calc(14px / var(--rf-zoom-exact, 1))));
+  width: min(100%, max(24px, calc(14px / var(--rf-zoom-exact, 1))));
+}
+
+.react-flow__node .nb-icon .nb-tile .stencil-icon {
+  height: min(64px, max(34px, calc(14px / var(--rf-zoom-exact, 1))));
+  width: min(100%, max(50px, calc(14px / var(--rf-zoom-exact, 1))));
+}
+.react-flow__node .nb-icon .nb-caption {
+  top: 100%;
+  width: 100%;
+}
+
+.react-flow__node .nb-icon .nb-label {
+  line-height: 1;
+}
+
 /* states */
 .nb.is-selected.nb-card,
 .nb.is-selected.nb-compact {

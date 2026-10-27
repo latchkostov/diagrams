@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { drawTile, textDetail, frameView } from "./detail";
+import { textDetail, frameView } from "./detail";
+import { iconDetail, titleText } from "./identity";
 import {
   cullLabel,
   fitRectangle,
@@ -247,8 +248,40 @@ describe("Workbench frame detail", () => {
     expect(textDetail(11, 0.75, true, "focus").show).toBe(true);
     expect(textDetail(11, 0.75, false, "focus").show).toBe(false);
     expect(textDetail(11, 0.25, true, "overview").show).toBe(false);
-    expect(drawTile(40, 0.25, false)).toBe(false);
-    expect(drawTile(40, 0.25, true)).toBe(true);
+  });
+  it("always shows titles at 9.5 screen pixels in every view from 10 to 150 percent", () => {
+    for (const view of ["overview", "focus", "follow", "custom"] as const)
+      for (const active of [true, false])
+        for (let step = 1; step <= 15; step++)
+          for (const font of [8, 11, 13.5, 16]) {
+            const zoom = step / 10;
+            const detail = textDetail(font, zoom, active, view, true);
+            expect(detail.show).toBe(true);
+            expect(font * zoom * detail.scale).toBeGreaterThanOrEqual(9.5 - 1e-10);
+            expect(detail.scale).toBeGreaterThanOrEqual(1);
+          }
+  });
+  it("draws icons at fourteen screen pixels or fills the height of a smaller card", () => {
+    for (const height of [40, 72])
+      for (const size of [18, 26, 34])
+        for (let step = 1; step <= 15; step++) {
+          const zoom = step / 10;
+          const icon = iconDetail(size, height, zoom);
+          expect(icon * zoom).toBeGreaterThanOrEqual(Math.min(14, height * zoom) - 1e-10);
+          expect(icon).toBeLessThanOrEqual(height);
+        }
+  });
+  it("fits titles with a measured ellipsis and falls back to word initials", () => {
+    const measure = (text: string) => [...text].length * 6;
+    expect(titleText("Delivery dispatch", 42, measure)).toBe("Delive…");
+    expect(titleText("Delivery dispatch", 6, measure)).toBe("D");
+    expect(titleText("Delivery dispatch", 11, measure)).toBe("D");
+    expect(titleText("😀 Route", 12, measure)).toBe("😀…");
+    for (let width = 6; width <= 180; width++) {
+      const label = titleText("Delivery dispatch", width, measure);
+      expect([...label].length).toBeGreaterThan(0);
+      expect(measure(label)).toBeLessThanOrEqual(width);
+    }
   });
   it("classifies every endpoint pair, including two off-frame near endpoints", () => {
     for (const a of ["in", "pinned", "out"] as const)

@@ -3,13 +3,13 @@
     "viewport": "translate(32px, 349.21px) scale(0.603145)",
     "nodes": {
       "group:gcp": { "kind": "group", "box": "translate(0px, -24px) 2162×296", "text": "Google Cloud · analytics project" },
-      "app": { "kind": "node", "box": "translate(40px, 160px) 220×72", "text": "Mobile and web apps Clickstream SDK" },
+      "app": { "kind": "node", "box": "translate(40px, 160px) 220×72", "text": "Mobile and web… Clickstream SDK" },
       "collector": { "kind": "node", "box": "translate(415.55px, 100px) 220×72", "text": "Event collector Validate · batch publish" },
       "pubsub-topic": { "kind": "node", "box": "translate(789.55px, 100px) 220×72", "text": "clickstream Topic · 7-day retention" },
       "dataflow": { "kind": "node", "box": "translate(1160.89px, 40px) 231×72", "text": "Sessionize job Streaming · 1-min windows" },
       "raw-archive": { "kind": "node", "box": "translate(1160.89px, 160px) 220×72", "text": "Raw archive Avro · by hour" },
       "bigquery": { "kind": "node", "box": "translate(1541.89px, 40px) 220×72", "text": "Analytics dataset Storage Write API" },
-      "looker": { "kind": "node", "box": "translate(40px, 40px) 220×72", "text": "Product dashboards Funnels · retention" },
+      "looker": { "kind": "node", "box": "translate(40px, 40px) 220×72", "text": "Product dashbo… Funnels · retention" },
       "dead-letters": { "kind": "node", "box": "translate(1541.89px, 160px) 220×72", "text": "clickstream-dlq Unparseable events" },
       "dead-bucket": { "kind": "node", "box": "translate(1901.89px, 100px) 220×72", "text": "Dead letters Inspect · replay" }
     },
@@ -38,13 +38,13 @@
     "viewport": "translate(-189.586px, 349.21px) scale(0.603145)",
     "nodes": {
       "group:gcp": { "kind": "group", "box": "translate(380px, 80px) 1860×392", "text": "Google Cloud · analytics project" },
-      "app": { "kind": "node", "box": "translate(40px, 240px) 220×72", "text": "Mobile and web apps Clickstream SDK" },
+      "app": { "kind": "node", "box": "translate(40px, 240px) 220×72", "text": "Mobile and web… Clickstream SDK" },
       "collector": { "kind": "node", "box": "translate(420px, 240px) 220×72", "text": "Event collector Validate · batch publish" },
       "pubsub-topic": { "kind": "node", "box": "translate(800px, 240px) 220×72", "text": "clickstream Topic · 7-day retention" },
       "dataflow": { "kind": "node", "box": "translate(1180px, 120px) 231×72", "text": "Sessionize job Streaming · 1-min windows" },
       "raw-archive": { "kind": "node", "box": "translate(1180px, 360px) 220×72", "text": "Raw archive Avro · by hour" },
       "bigquery": { "kind": "node", "box": "translate(1560px, 120px) 220×72", "text": "Analytics dataset Storage Write API" },
-      "looker": { "kind": "node", "box": "translate(1940px, 120px) 220×72", "text": "Product dashboards Funnels · retention" },
+      "looker": { "kind": "node", "box": "translate(1940px, 120px) 220×72", "text": "Product dashbo… Funnels · retention" },
       "dead-letters": { "kind": "node", "box": "translate(1560px, 240px) 220×72", "text": "clickstream-dlq Unparseable events" },
       "dead-bucket": { "kind": "node", "box": "translate(1940px, 240px) 220×72", "text": "Dead letters Inspect · replay" }
     },

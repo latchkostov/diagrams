@@ -28,19 +28,19 @@ import {
 import type { Rect } from "./geometry/rect";
 import { roundedPath } from "./geometry/path";
 import { FAR_ZOOM, textDetail } from "./detail";
+import { iconDetail, titleText } from "./identity";
 import { overviewConnection, overviewLayout, type OverviewHeader, type OverviewItem } from "./overview";
 import { t, useLocale } from "../i18n";
 import "../styles/canvas/detail.css";
 
-type Chip = { id: string; name: string; x: number; y: number; group: boolean };
+type Chip = { id: string; name: string; x: number; y: number };
 type Drawing = {
   pins: FramePin[];
   chips: Chip[];
   hint: boolean;
   headers: OverviewHeader[];
-  tiles: (OverviewItem & { label: string })[];
 };
-const empty: Drawing = { pins: [], chips: [], hint: false, headers: [], tiles: [] };
+const empty: Drawing = { pins: [], chips: [], hint: false, headers: [] };
 
 /** Screen-space detail after a settled move. It changes presentation only, never the document or viewport. */
 export const FrameDetail = memo(
@@ -147,7 +147,7 @@ export const FrameDetail = memo(
         const frameNodes = [...root.querySelectorAll<HTMLElement>(".react-flow__node[data-id]")].flatMap((el) => {
           const id = el.dataset.id!;
           const n = s.nodeLookup.get(id);
-          return !n || n.hidden ? [] : [{ id, el, n, body: el.querySelector<HTMLElement>(".nb-card, .nb-compact") }];
+          return !n || n.hidden ? [] : [{ id, el, n, body: el.querySelector<HTMLElement>(".nb") }];
         });
         const widths: { body: HTMLElement; key: FlowNode["data"] }[] = [];
         // Reset every changed card before measuring any of them. Alternating a width
@@ -161,9 +161,15 @@ export const FrameDetail = memo(
             const key = n.data;
             if (cardWidths.get(body)?.key !== key) {
               body.style.removeProperty("width");
+              body.style.setProperty("--rf-zoom-exact", "1");
               for (const text of body.querySelectorAll<HTMLElement>(".nb-label,.nb-sub,.nb-kind")) {
-                const original = fonts.get(text);
-                if (original) text.style.fontSize = `${original}px`;
+                const original =
+                  fonts.get(text) ??
+                  (text.classList.contains("nb-label")
+                    ? parseFloat(getComputedStyle(text).getPropertyValue("--title-font")) || 13.5
+                    : undefined);
+                if (text.classList.contains("nb-label")) text.style.removeProperty("font-size");
+                else if (original) text.style.fontSize = `${original}px`;
               }
               widths.push({ body, key });
             }
@@ -171,12 +177,23 @@ export const FrameDetail = memo(
         }
         for (const { body, key } of widths) cardWidths.set(body, { key, width: body.offsetWidth });
         for (const { body, n } of frameNodes)
-          if (body && n.type === "diagram") body.style.width = `${cardWidths.get(body)!.width}px`;
+          if (body && n.type === "diagram") {
+            body.style.width = `${cardWidths.get(body)!.width}px`;
+            body.style.removeProperty("--rf-zoom-exact");
+          }
         // Whole labels/pills disappear together; text runs counter-scale without touching the viewport transform.
         for (const el of root.querySelectorAll<HTMLElement>(
           ".nb-label, .nb-title, .nb-sub, .nb-kind, .grp-label, .fe-label-text, .lv-metric, .lv-alert, .lv-outcome, .lv-call-pill, .ann-text, .ann-note .ann-content, .ann-shape .ann-content, .ann-zone-label",
         )) {
-          if (!fonts.has(el)) fonts.set(el, parseFloat(getComputedStyle(el).fontSize));
+          if (!fonts.has(el)) {
+            const cs = getComputedStyle(el);
+            fonts.set(
+              el,
+              el.classList.contains("nb-label")
+                ? parseFloat(cs.getPropertyValue("--title-font")) || 13.5
+                : parseFloat(cs.fontSize),
+            );
+          }
           const node = el.closest<HTMLElement>(".react-flow__node[data-id], [data-testid^='node-badge-']");
           const id = node?.dataset.id ?? node?.dataset.testid?.slice("node-badge-".length);
           const edgeLabel = el.closest<HTMLElement>('[data-testid^="edge-label-"], [data-call-edge]');
@@ -188,10 +205,10 @@ export const FrameDetail = memo(
           const detail =
             el.classList.contains("lv-alert") && id && lit.has(id)
               ? { show: true, scale: Math.max(1, 11 / (fonts.get(el)! * zoom)) }
-              : textDetail(fonts.get(el)!, zoom, title || isActive, view);
+              : textDetail(fonts.get(el)!, zoom, title || isActive, view, el.classList.contains("nb-label"));
           const whole = el.closest<HTMLElement>(".fe-label, .lv-metric, .lv-alert, .lv-outcome, .lv-call-pill") ?? el;
           whole.toggleAttribute("data-detail-text-hidden", !detail.show);
-          el.style.fontSize = `${fonts.get(el)! * detail.scale}px`;
+          if (!el.classList.contains("nb-label")) el.style.fontSize = `${fonts.get(el)! * detail.scale}px`;
         }
         // Counter-scaling must not turn a naturally single-line subtitle into a growing card.
         // Reserve two lines only when the original text needs them at the card's measured width.
@@ -234,23 +251,9 @@ export const FrameDetail = memo(
           if (n.type === "diagram") {
             cards.set(id, el);
             if (!hidden) blockers.push(card);
-            if (
-              far &&
-              !hidden &&
-              "label" in n.data &&
-              n.data.label.trim() &&
-              (selected.has(id) || lit.has(id) || zone.has(id))
-            )
-              chips.push({
-                id,
-                name: "label" in n.data ? n.data.label : "",
-                x: card.x + card.width / 2,
-                y: card.y - 8,
-                group: false,
-              });
           }
           if (n.type === "boundary" && far && !overview)
-            chips.push({ id, name: "label" in n.data ? n.data.label : "", x: card.x + 10, y: card.y + 8, group: true });
+            chips.push({ id, name: "label" in n.data ? n.data.label : "", x: card.x + 10, y: card.y + 8 });
         }
         if (measure) measure.font = `500 10.5px ${getComputedStyle(root).fontFamily}`;
         const overviewNodes: OverviewItem[] = [];
@@ -272,10 +275,21 @@ export const FrameDetail = memo(
           overviewNodes,
           overviewZones,
           (text) => measure?.measureText(text).width ?? text.length * 7,
-          (name, count) => t("camera.aggregate", { name, count }),
         );
-        for (const { id, el } of frameNodes)
-          el.toggleAttribute("data-detail-aggregate", overviewDrawing.hidden.has(id));
+        // Fit names inside their own text column after counter-scaling the font.
+        for (const { n, body } of frameNodes) {
+          const title = body?.querySelector<HTMLElement>('[data-testid="card-title"]');
+          if (!title || !measure || !("label" in n.data)) continue;
+          const icon = body?.querySelector<HTMLElement>(".stencil-icon");
+          if (icon && body)
+            icon.style.height = `${iconDetail(body.classList.contains("nb-compact") ? 18 : body.classList.contains("nb-icon") ? 34 : 26, body.offsetHeight, zoom)}px`;
+          const cs = getComputedStyle(title);
+          measure.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+          measure.letterSpacing = cs.letterSpacing === "normal" ? "0px" : cs.letterSpacing;
+          const label = titleText(n.data.label, title.clientWidth, (text) => measure.measureText(text).width);
+          if (title.textContent !== label) title.textContent = label;
+          title.title = n.data.label;
+        }
         // React Flow's ResizeObserver measures the resized wrappers once. An explicit
         // updateNodeInternals here schedules a second forced measurement of the same cards.
         const routes = selectRoutes(s, { style, direction, captions, hideDependencies });
@@ -566,7 +580,6 @@ export const FrameDetail = memo(
           chips,
           hint: far && !dismissed.current,
           headers: overviewDrawing.headers,
-          tiles: overviewDrawing.tiles,
         };
         // Names subscribe with the editor commit; only frame geometry needs a deferred commit.
         const key = JSON.stringify({
@@ -624,7 +637,7 @@ export const FrameDetail = memo(
         attributes: true,
         attributeFilter: ["data-live-spotlight", "data-live-dim", "data-live-main", "data-detail-measure"],
       });
-      const viewport = root.querySelector(".react-flow__viewport");
+      const viewport = root.querySelector<HTMLElement>(".react-flow__viewport");
       if (viewport) observer.observe(viewport, { subtree: true, childList: true });
       const key = (e: KeyboardEvent) => {
         if (e.key === "Escape" && camera.state.zone) camera.dispatch({ type: "view.requested", view: "overview" });
@@ -648,7 +661,7 @@ export const FrameDetail = memo(
           el.removeAttribute("data-detail-selected-edge");
         }
         for (const el of root.querySelectorAll<HTMLElement>(
-          "[data-detail-hidden], [data-detail-text-hidden], [data-detail-no-arrow], [data-detail-expanded], [data-detail-wrapped], [data-detail-dim], [data-detail-aggregate]",
+          "[data-detail-hidden], [data-detail-text-hidden], [data-detail-no-arrow], [data-detail-expanded], [data-detail-wrapped], [data-detail-dim]",
         )) {
           el.removeAttribute("data-detail-hidden");
           el.removeAttribute("data-detail-text-hidden");
@@ -656,20 +669,26 @@ export const FrameDetail = memo(
           el.removeAttribute("data-detail-expanded");
           el.removeAttribute("data-detail-wrapped");
           el.removeAttribute("data-detail-dim");
-          el.removeAttribute("data-detail-aggregate");
         }
         for (const text of root.querySelectorAll<HTMLElement>(
           ".nb-label,.nb-title,.nb-sub,.nb-kind,.grp-label,.fe-label-text,.lv-metric,.lv-alert,.lv-outcome,.lv-call-pill,.ann-text,.ann-note .ann-content,.ann-shape .ann-content,.ann-zone-label",
         ))
           text.style.removeProperty("font-size");
-        for (const body of root.querySelectorAll<HTMLElement>(".nb-card,.nb-compact"))
-          body.style.removeProperty("width");
+        for (const body of root.querySelectorAll<HTMLElement>(".nb")) body.style.removeProperty("width");
+        for (const icon of root.querySelectorAll<HTMLElement>(".nb .stencil-icon")) icon.style.removeProperty("height");
         for (const label of root.querySelectorAll<HTMLElement>(".fe-label, [data-call-edge]")) {
           label.style.removeProperty("translate");
           if (fonts.has(label)) label.style.removeProperty("font-size");
           label.style.removeProperty("width");
           label.style.removeProperty("height");
           label.style.removeProperty("line-height");
+        }
+        for (const n of store.getState().nodes) {
+          if (!("label" in n.data)) continue;
+          const title = root.querySelector<HTMLElement>(
+            `[data-testid="node-${CSS.escape(n.id)}"] [data-testid="card-title"]`,
+          );
+          if (title) title.textContent = n.data.label;
         }
         delete root.dataset.detailView;
         root.removeAttribute("data-detail-far");
@@ -680,8 +699,13 @@ export const FrameDetail = memo(
       const unregister = viewport
         ? registerFrameCapture(viewport, () => {
             suspended = true;
+            // Capture replaces the viewport transform with scale(1). Identity ink uses that same scale.
+            const scale = viewport.style.getPropertyValue("--rf-zoom-exact");
+            viewport.style.setProperty("--rf-zoom-exact", "1");
             reset();
             return () => {
+              if (scale) viewport.style.setProperty("--rf-zoom-exact", scale);
+              else viewport.style.removeProperty("--rf-zoom-exact");
               suspended = false;
               selectionStyle();
               schedule();
@@ -719,38 +743,17 @@ export const FrameDetail = memo(
             {header.lines.join("\n")}
           </button>
         ))}
-        {drawing.tiles.map((tile) => (
-          <span
-            key={tile.id}
-            className="overview-node-name"
-            data-testid={`overview-name-${tile.id}`}
-            style={{ left: tile.box.x, top: tile.box.y, width: tile.box.width, height: tile.box.height }}
+        {drawing.chips.map((chip) => (
+          <button
+            key={chip.id}
+            className="detail-group-chip"
+            data-testid={`zone-focus-${chip.id.replace(/^group:/, "")}`}
+            style={{ left: chip.x, top: chip.y }}
+            onClick={() => camera?.dispatch({ type: "view.requested", view: "focus", zone: chip.id })}
           >
-            {tile.label}
-          </span>
+            <FrameTitle id={chip.id} fallback={chip.name} />
+          </button>
         ))}
-        {drawing.chips.map((chip) =>
-          chip.group ? (
-            <button
-              key={chip.id}
-              className="detail-group-chip"
-              data-testid={`zone-focus-${chip.id.replace(/^group:/, "")}`}
-              style={{ left: chip.x, top: chip.y }}
-              onClick={() => camera?.dispatch({ type: "view.requested", view: "focus", zone: chip.id })}
-            >
-              <FrameTitle id={chip.id} fallback={chip.name} />
-            </button>
-          ) : (
-            <span
-              key={chip.id}
-              className="detail-title-chip"
-              data-testid={`overview-spotlight-${chip.id}`}
-              style={{ left: chip.x, top: chip.y }}
-            >
-              <FrameTitle id={chip.id} fallback={chip.name} />
-            </span>
-          ),
-        )}
         {drawing.pins.map((pin) => (
           <button
             key={pin.id}

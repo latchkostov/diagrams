@@ -2,15 +2,15 @@
   "viewport": "translate(8.29091px, 260.407px) scale(0.592727)",
   "nodes": {
     "group:gcp": { "kind": "group", "box": "translate(380px, 80px) 1860×392", "text": "" },
-    "app": { "kind": "node", "box": "translate(40px, 240px) 220×72", "text": "" },
-    "collector": { "kind": "node", "box": "translate(420px, 240px) 220×72", "text": "" },
-    "pubsub-topic": { "kind": "node", "box": "translate(800px, 240px) 220×72", "text": "" },
-    "dataflow": { "kind": "node", "box": "translate(1180px, 120px) 231×72", "text": "" },
-    "raw-archive": { "kind": "node", "box": "translate(1180px, 360px) 220×72", "text": "" },
-    "bigquery": { "kind": "node", "box": "translate(1560px, 120px) 220×72", "text": "" },
-    "looker": { "kind": "node", "box": "translate(1940px, 120px) 220×72", "text": "" },
-    "dead-letters": { "kind": "node", "box": "translate(1560px, 240px) 220×72", "text": "" },
-    "dead-bucket": { "kind": "node", "box": "translate(1940px, 240px) 220×72", "text": "" }
+    "app": { "kind": "node", "box": "translate(40px, 240px) 220×72", "text": "Mobile and web…" },
+    "collector": { "kind": "node", "box": "translate(420px, 240px) 220×72", "text": "Event collector" },
+    "pubsub-topic": { "kind": "node", "box": "translate(800px, 240px) 220×72", "text": "clickstream" },
+    "dataflow": { "kind": "node", "box": "translate(1180px, 120px) 231×72", "text": "Sessionize job" },
+    "raw-archive": { "kind": "node", "box": "translate(1180px, 360px) 220×72", "text": "Raw archive" },
+    "bigquery": { "kind": "node", "box": "translate(1560px, 120px) 220×72", "text": "Analytics dataset" },
+    "looker": { "kind": "node", "box": "translate(1940px, 120px) 220×72", "text": "Product dashbo…" },
+    "dead-letters": { "kind": "node", "box": "translate(1560px, 240px) 220×72", "text": "clickstream-dlq" },
+    "dead-bucket": { "kind": "node", "box": "translate(1940px, 240px) 220×72", "text": "Dead letters" }
   },
   "edges": {
     "app-to-collector": "M260,276 L420,276",

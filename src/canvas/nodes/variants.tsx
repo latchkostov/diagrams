@@ -25,7 +25,7 @@ function cls(base: string, p: NodeBodyProps) {
 export function CardNode(p: NodeBodyProps) {
   return (
     <div className={cls("nb nb-card", p)} style={accentStyle(p.stencil)}>
-      <div className="nb-tile">
+      <div className="nb-tile" data-testid="card-icon">
         <StencilIcon stencil={p.stencil} size={26} />
       </div>
       <div className="nb-text">
@@ -49,7 +49,7 @@ export function CardNode(p: NodeBodyProps) {
 export function CompactNode(p: NodeBodyProps) {
   return (
     <div className={cls("nb nb-compact", p)} style={accentStyle(p.stencil)}>
-      <div className="nb-tile">
+      <div className="nb-tile" data-testid="card-icon">
         <StencilIcon stencil={p.stencil} size={18} />
       </div>
       <div className="nb-label" data-testid="card-title">
@@ -62,7 +62,7 @@ export function CompactNode(p: NodeBodyProps) {
 export function IconOnlyNode(p: NodeBodyProps) {
   return (
     <div className={cls("nb nb-icon", p)} style={accentStyle(p.stencil)}>
-      <div className="nb-tile">
+      <div className="nb-tile" data-testid="card-icon">
         <StencilIcon stencil={p.stencil} size={34} />
       </div>
       <div className="nb-caption" data-testid="node-caption">

@@ -347,15 +347,30 @@ for (const width of [1440, 1000]) {
     await page.getByTestId("inspector-section-edge-simulation").click();
     await expect(page.getByTestId("inspector-summary-retry-details")).toHaveText("100 ms backoff · Exponential (×2)");
     await page.getByTestId("inspector-section-retry-details").click();
-    const backoff = page.getByTestId("inspector-unit-retry-backoff");
     const growth = page.getByTestId("inspector-unit-retry-growth");
     await expect(growth).toBeVisible();
-    const a = await rect(backoff),
-      b = await rect(growth);
+    // Read both fields and the sheet in one layout; a lazy section can finish
+    // expanding between separate Playwright evaluations on a loaded runner.
+    const {
+      a,
+      b,
+      width: sheetWidth,
+    } = await page.getByTestId("inspector").evaluate((sheet) => {
+      const box = (id: string) => {
+        const field = sheet.querySelector(`[data-testid="${id}"]`);
+        if (!field) throw new Error(`Missing ${id}`);
+        const { x, y, height } = field.getBoundingClientRect();
+        return { x, y, height };
+      };
+      return {
+        a: box("inspector-unit-retry-backoff"),
+        b: box("inspector-unit-retry-growth"),
+        width: sheet.getBoundingClientRect().width,
+      };
+    });
     expect(b.x).toBe(a.x);
     // Below 330 px the sheet keeps the original stacked-field rhythm.
-    const sheet = await page.getByTestId("inspector").boundingBox();
-    expect(b.y - a.y - a.height).toBe(sheet && sheet.width >= 330 ? 10 : 16);
+    expect(b.y - a.y - a.height).toBe(sheetWidth >= 330 ? 10 : 16);
     await page.getByTestId("inspector-section-retry-safety").click();
     const fieldset = page.getByTestId("inspector-field-retry-timeout").evaluate((el) => {
       const fieldset = el.closest("fieldset");
