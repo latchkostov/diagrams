@@ -1,5 +1,5 @@
 // @vitest-environment happy-dom
-import { act } from "react";
+import { act, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, expect, it, vi } from "vitest";
 import { FrameDetail } from "./FrameDetail";
@@ -19,7 +19,11 @@ const fixture = vi.hoisted(() => ({
 }));
 vi.mock("@xyflow/react", () => {
   const store = { getState: () => fixture.state, subscribe: () => () => {} };
-  return { useStoreApi: () => store, useStore: () => "" };
+  return {
+    useStoreApi: () => store,
+    useStore: () => "",
+    ViewportPortal: ({ children }: { children: ReactNode }) => children,
+  };
 });
 vi.mock("./camera/useCameraCore", () => ({ useCameraController: () => fixture.camera }));
 vi.mock("./IdentityDetail", () => ({ IdentityDetail: () => null }));

@@ -1,5 +1,5 @@
-import { memo, useEffect, useRef, useState } from "react";
-import { useStore, useStoreApi } from "@xyflow/react";
+import { memo, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { ViewportPortal, useStore, useStoreApi } from "@xyflow/react";
 import type { RefObject } from "react";
 import type { DiagramFlowEdge, FlowNode } from "./types";
 import { useCameraController } from "./camera/useCameraCore";
@@ -322,7 +322,7 @@ const FrameDecoration = memo(
             if (!hidden) blockers.push(card);
           }
           if (n.type === "boundary" && far)
-            chips.push({ id, name: "label" in n.data ? n.data.label : "", x: card.x + 10, y: card.y + 8 });
+            chips.push({ id, name: "label" in n.data ? n.data.label : "", ...n.internals.positionAbsolute });
         }
         // React Flow's ResizeObserver measures the resized wrappers once. An explicit
         // updateNodeInternals here schedules a second forced measurement of the same cards.
@@ -839,17 +839,7 @@ const FrameDecoration = memo(
             {t("camera.dig")}
           </div>
         )}
-        {drawing.chips.map((chip) => (
-          <button
-            key={chip.id}
-            className="detail-group-chip"
-            data-testid={`zone-focus-${chip.id.replace(/^group:/, "")}`}
-            style={{ left: chip.x, top: chip.y }}
-            onClick={() => camera?.dispatch({ type: "view.requested", view: "focus", zone: chip.id })}
-          >
-            <FrameTitle id={chip.id} fallback={chip.name} />
-          </button>
-        ))}
+        {drawing.chips.length > 0 && <FrameChips chips={drawing.chips} />}
         {drawing.pins.map((pin) => (
           <button
             key={pin.id}
@@ -871,6 +861,41 @@ const FrameDecoration = memo(
     a.host === b.host &&
     (["style", "direction", "captions", "hideDependencies"] as const).every((key) => a.routing[key] === b.routing[key]),
 );
+
+/** Flow-space anchors pan with the viewport for free; zoom changes only their paint transform. */
+const FrameChips = memo(function FrameChips({ chips }: { chips: Chip[] }) {
+  const host = useRef<HTMLDivElement>(null);
+  const store = useStoreApi<FlowNode, DiagramFlowEdge>();
+  const camera = useCameraController();
+  useLayoutEffect(() => {
+    const elements = host.current?.querySelectorAll<HTMLElement>(".detail-group-chip") ?? [];
+    const update = () => {
+      const zoom = store.getState().transform[2];
+      for (const el of elements) el.style.transform = `scale(${1 / zoom}) translate(10px, 8px)`;
+    };
+    update();
+    return store.subscribe((s, old) => {
+      if (s.transform[2] !== old.transform[2]) update();
+    });
+  }, [chips, store]);
+  return (
+    <ViewportPortal>
+      <div ref={host} className="detail-group-chips" data-testid="zone-chip-layer" data-export="skip">
+        {chips.map((chip) => (
+          <button
+            key={chip.id}
+            className="detail-group-chip nopan nodrag"
+            data-testid={`zone-focus-${chip.id.replace(/^group:/, "")}`}
+            style={{ left: chip.x, top: chip.y }}
+            onClick={() => camera?.dispatch({ type: "view.requested", view: "focus", zone: chip.id })}
+          >
+            <FrameTitle id={chip.id} fallback={chip.name} />
+          </button>
+        ))}
+      </div>
+    </ViewportPortal>
+  );
+});
 
 /** Authored words update in the same store commit as the card and inspector. */
 const FrameTitle = memo(function FrameTitle({ id, fallback }: { id: string; fallback: string }) {

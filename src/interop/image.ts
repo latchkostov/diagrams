@@ -286,6 +286,8 @@ const EDITING_ONLY = [
   "check-markers",
   // Others in a room (their outlines, pointers and names): ephemeral, and theirs, never in a picture.
   "presence-layer",
+  // Boundary focus controls share the viewport transform, but never belong in an export.
+  "detail-group-chips",
 ];
 // SVG editing chrome (not an HTMLElement): the line an insert would split.
 const EDITING_ONLY_SVG = ["insert-line", "edge-end-line", "edge-route-preview"];
