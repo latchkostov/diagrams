@@ -1,4 +1,13 @@
 {
+  "rail.select": "Seç",
+  "rail.add": "Ekle",
+  "rail.annotate": "Açıkla",
+  "rail.checks": "Kontroller",
+  "rail.stencils": "Kalıplar",
+  "rail.tutorials": "Öğreticiler",
+  "rail.shortcuts": "Kısayollar",
+  "rail.ai": "YZ",
+  "rail.diagram": "Diyagram",
   "workbench.thisRun": "Bu çalıştırma",
   "workbench.wholeRun": "Tüm çalıştırma",
   "workbench.runWindow": "{total, number} sn içinde 0–{end, number} sn",

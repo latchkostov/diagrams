@@ -115,8 +115,8 @@
     "diagram": {
       "use": "διάγραμμα",
       "match": ["διάγραμμ", "διαγράμμ", "διαγραμμ"],
-      "note": "neuter: το διάγραμμα, τα διαγράμματα.; Diagrams in these cloud errors is the existing folder name.",
-      "except": ["cloud.dropboxFileMissing", "cloud.oneDriveRefusedToActionLiveDiagramsCan"]
+      "note": "neuter: το διάγραμμα, τα διαγράμματα.; Diagrams in these cloud errors is the existing folder name. rail.diagram: short rail label; full name remains in tooltip and accessible name.",
+      "except": ["cloud.dropboxFileMissing", "cloud.oneDriveRefusedToActionLiveDiagramsCan", "rail.diagram"]
     },
     "node": {
       "use": "κόμβος",

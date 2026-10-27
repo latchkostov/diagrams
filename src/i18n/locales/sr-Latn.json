@@ -1,4 +1,13 @@
 {
+  "rail.select": "Izbor",
+  "rail.add": "Dodaj",
+  "rail.annotate": "Beleške",
+  "rail.checks": "Provere",
+  "rail.stencils": "Šabloni",
+  "rail.tutorials": "Tutoriali",
+  "rail.shortcuts": "Prečice",
+  "rail.ai": "VI",
+  "rail.diagram": "Dijagram",
   "workbench.thisRun": "Ovo izvršavanje",
   "workbench.wholeRun": "Celo izvršavanje",
   "workbench.runWindow": "0–{end, number} s od {total, number} s",

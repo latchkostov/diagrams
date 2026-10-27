@@ -1,4 +1,13 @@
 {
+  "rail.select": "Velg",
+  "rail.add": "Legg til",
+  "rail.annotate": "Kommenter",
+  "rail.checks": "Kontroller",
+  "rail.stencils": "Sjablonger",
+  "rail.tutorials": "Guider",
+  "rail.shortcuts": "Snarveier",
+  "rail.ai": "KI",
+  "rail.diagram": "Diagram",
   "workbench.thisRun": "Denne kjøringen",
   "workbench.wholeRun": "Hele kjøringen",
   "workbench.runWindow": "0–{end, number} s av {total, number} s",

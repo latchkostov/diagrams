@@ -1,4 +1,13 @@
 {
+  "rail.select": "בחירה",
+  "rail.add": "הוספה",
+  "rail.annotate": "ביאור",
+  "rail.checks": "בדיקות",
+  "rail.stencils": "סטנסילים",
+  "rail.tutorials": "הדרכות",
+  "rail.shortcuts": "קיצורים",
+  "rail.ai": "בינה",
+  "rail.diagram": "דיאגרמה",
   "workbench.thisRun": "הרצה זו",
   "workbench.wholeRun": "ההרצה כולה",
   "workbench.runWindow": "0–{end, number} שנ׳ מתוך {total, number} שנ׳",

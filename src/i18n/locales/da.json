@@ -1,4 +1,13 @@
 {
+  "rail.select": "Vælg",
+  "rail.add": "Tilføj",
+  "rail.annotate": "Anmærk",
+  "rail.checks": "Kontroller",
+  "rail.stencils": "Stencils",
+  "rail.tutorials": "Selvstudier",
+  "rail.shortcuts": "Genveje",
+  "rail.ai": "AI",
+  "rail.diagram": "Diagram",
   "workbench.thisRun": "Denne kørsel",
   "workbench.wholeRun": "Hele kørslen",
   "workbench.runWindow": "0–{end, number} s af {total, number} s",

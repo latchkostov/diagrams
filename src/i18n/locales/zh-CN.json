@@ -1,4 +1,13 @@
 {
+  "rail.select": "选择",
+  "rail.add": "添加",
+  "rail.annotate": "添加注释",
+  "rail.checks": "检查",
+  "rail.stencils": "模具",
+  "rail.tutorials": "教程",
+  "rail.shortcuts": "快捷键",
+  "rail.ai": "AI",
+  "rail.diagram": "图表",
   "workbench.thisRun": "本次运行",
   "workbench.wholeRun": "整个运行",
   "workbench.runWindow": "共 {total, number} 秒中的 0–{end, number} 秒",

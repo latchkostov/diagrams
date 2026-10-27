@@ -1,4 +1,13 @@
 {
+  "rail.select": "Valitse",
+  "rail.add": "Lisää",
+  "rail.annotate": "Merkitse",
+  "rail.checks": "Tarkista",
+  "rail.stencils": "Kaavaimet",
+  "rail.tutorials": "Oppaat",
+  "rail.shortcuts": "Pikanäpp.",
+  "rail.ai": "Tekoäly",
+  "rail.diagram": "Kaavio",
   "workbench.thisRun": "Tämä ajo",
   "workbench.wholeRun": "Koko ajo",
   "workbench.runWindow": "0–{end, number} s / {total, number} s",

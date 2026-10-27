@@ -1,4 +1,13 @@
 {
+  "rail.select": "Markera",
+  "rail.add": "Lägg till",
+  "rail.annotate": "Anteckna",
+  "rail.checks": "Kontroller",
+  "rail.stencils": "Stenciler",
+  "rail.tutorials": "Handledningar",
+  "rail.shortcuts": "Genvägar",
+  "rail.ai": "AI",
+  "rail.diagram": "Diagram",
   "workbench.thisRun": "Denna körning",
   "workbench.wholeRun": "Hela körningen",
   "workbench.runWindow": "0–{end, number} s av {total, number} s",

@@ -26,6 +26,7 @@ export function ToolRail({ view, onView }: { view: View; onView: (view: View) =>
     host?.checks.subscribe ?? noSubscribe,
     host ? () => host.checks.get().warnings : zero,
   );
+  const warningText = t("workbench.warnings", { count: warnings });
   const documentId = useSyncExternalStore(paletteHost.subscribe, () => paletteHost.get().canvas?.documentId);
   const fresh = useUnseen(documentId);
   const nav = useRef<HTMLDivElement>(null);
@@ -55,12 +56,12 @@ export function ToolRail({ view, onView }: { view: View; onView: (view: View) =>
   const item = (
     id: string,
     label: string,
+    name: string,
     icon: IconName,
     run: () => void,
     active = false,
     extra?: ReactNode,
     disabled?: boolean,
-    name = label,
     title = name,
   ) => (
     <button
@@ -78,7 +79,9 @@ export function ToolRail({ view, onView }: { view: View; onView: (view: View) =>
       onDragStart={id === "rail-add" ? () => tools.open("library") : undefined}
     >
       <Icon name={icon} size={20} />
-      <span className="tool-rail-label">{label}</span>
+      <span className="tool-rail-label" data-testid="rail-label">
+        {label}
+      </span>
       {extra}
     </button>
   );
@@ -121,9 +124,11 @@ export function ToolRail({ view, onView }: { view: View; onView: (view: View) =>
         }
       }}
     >
-      {view !== "canvas" && item("view-canvas", t("topbar.diagram"), "canvas", () => onView("canvas"))}
+      {view !== "canvas" &&
+        item("view-canvas", t("rail.diagram"), t("topbar.diagram"), "canvas", () => onView("canvas"))}
       {item(
         "rail-select",
+        t("rail.select"),
         t("workbench.select"),
         "pointer",
         () => {
@@ -136,35 +141,36 @@ export function ToolRail({ view, onView }: { view: View; onView: (view: View) =>
       )}
       {item(
         "rail-add",
-        t("messageTypes.add"),
+        t("rail.add"),
+        t("rail.add"),
         "node-plus",
         () => tools.toggle("library"),
         surface === "library" || !!host?.pinned,
         undefined,
         !host || live,
-        undefined,
         live ? t("workbench.addInLive") : undefined,
       )}
       {item(
         "rail-annotate",
+        t("rail.annotate"),
         t("menu.annotate"),
         "note",
         () => tools.toggle("annotate"),
         surface === "annotate",
         undefined,
         !host || live,
-        undefined,
         live ? t("workbench.annotateInLive") : undefined,
       )}
       {item(
         "checks-count",
-        t("workbench.checks"),
+        t("rail.checks"),
+        t("workbench.checksName", { warnings: warningText }),
         "checklist",
         () => checksPanel.toggle(),
         checks.open,
         <>
           <span className="sr-only" data-testid="checks-warning-text">
-            {t("workbench.warnings", { count: warnings })}
+            {warningText}
           </span>
           {warnings > 0 && (
             <i className="tool-rail-badge" aria-hidden data-testid="checks-warning-badge">
@@ -173,7 +179,6 @@ export function ToolRail({ view, onView }: { view: View; onView: (view: View) =>
           )}
         </>,
         !checks.available,
-        t("workbench.checksName", { warnings: t("workbench.warnings", { count: warnings }) }),
       )}
       <details className="rail-overflow" open={phone ? undefined : true} onToggle={reconcile}>
         <summary data-testid="rail-more" aria-label={t("workbench.moreTools")} tabIndex={-1}>
@@ -181,11 +186,26 @@ export function ToolRail({ view, onView }: { view: View; onView: (view: View) =>
         </summary>
         <div className="rail-overflow-items">
           <div className="tool-rail-sep" />
-          {item("view-gallery", t("topbar.stencils"), "grid", () => onView("gallery"), view === "gallery")}
-          {item("view-tutorials", t("tutorials.section"), "learn", () => onView("tutorials"), view === "tutorials")}
+          {item(
+            "view-gallery",
+            t("rail.stencils"),
+            t("topbar.stencils"),
+            "grid",
+            () => onView("gallery"),
+            view === "gallery",
+          )}
+          {item(
+            "view-tutorials",
+            t("rail.tutorials"),
+            t("tutorials.section"),
+            "learn",
+            () => onView("tutorials"),
+            view === "tutorials",
+          )}
           <div className="tool-rail-grow" />
           {item(
             "shortcuts-button",
+            t("rail.shortcuts"),
             t("workbench.shortcuts"),
             "keyboard",
             () => host?.shortcuts(),
@@ -196,7 +216,8 @@ export function ToolRail({ view, onView }: { view: View; onView: (view: View) =>
           {AI_PANEL &&
             item(
               "ai-rail-open",
-              t("ai.aI"),
+              t("rail.ai"),
+              railLabel(fresh),
               "ai",
               () => openAiPanel(),
               dock.value === "ai",
@@ -206,7 +227,6 @@ export function ToolRail({ view, onView }: { view: View; onView: (view: View) =>
                 </i>
               ),
               !host,
-              railLabel(fresh),
               aiPanelTitle(),
             )}
         </div>
