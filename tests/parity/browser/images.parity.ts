@@ -2,10 +2,9 @@
 // - SVG: html-to-image's serialisation of the canvas. Its structure is compared (elements, data-testids, classes,
 //   text, geometry and a few visual properties; one element per line, grouped by drawn
 //   element), and its embedded fonts by hash. The full computed-style dump is not: it grows with every Chromium.
-// - PNG: a tolerant image diff against a stored reference, both downscaled by 4: at most 0.1% of pixels may differ by
-//   more than 16 of 255 in a channel. Two runs in the pinned image are pixel-identical; the tolerance absorbs
-//   rasteriser differences between host CPUs. (Windows against Linux differed by 1.2 to 1.5%.) A moved node or a
-//   changed colour fails it; a single thin line may not, which is what the SVG structure is for. docs/PARITY.md.
+// - PNG: existing 4× downscaled references, a 16/255 channel threshold, and at most
+//   min(0.1% of pixels, 600) pixels above it. Full-size E2E comparisons use the same cap.
+//   Moved-card and missing-label controls reject real content changes. SVG stays exact. docs/PARITY.md.
 import type { Page } from "@playwright/test";
 import { expect, test } from "./fixtures";
 import { readFileSync } from "node:fs";

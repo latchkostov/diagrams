@@ -12,6 +12,7 @@ import {
   waitForStableViewport,
   fitDiagram,
 } from "./fixtures";
+import { comparePngs } from "../pngComparison";
 import { callTool, installFakeModelContext, toolNames } from "./ai-helpers";
 
 /** Keep the slow-rendering CI case exercised even on a fast workstation. */
@@ -39,7 +40,7 @@ function imageDownloads(page: Page) {
 
 // Image export clones the canvas in time slices (src/interop/imageClone.ts, a port of html-to-image's clone): the
 // tab keeps painting, the toast shows how far it has got, and Cancel stops it. The port must draw what the library
-// draws, byte for byte; the browser parity tier pins the exported images too (docs/PARITY.md).
+// draws: SVG byte for byte, PNG within the capped raster tolerance; the browser parity tier pins the exported images too (docs/PARITY.md).
 
 /** The library's toSvg and toPng against the sliced port, on the canvas as it is, with the same options. */
 async function bothWays(page: Page, sliceMs: number, kind: "all" | "svg" | "png" = "all") {
@@ -88,6 +89,182 @@ test.describe("image export in slices", { tag: "@dev" }, () => {
     // Compare the same stationary drawing across sequential clones. Viewport animation
     // is tested elsewhere; a still-running initial fit changes the cloned matrix.
     await page.emulateMedia({ reducedMotion: "reduce" });
+  });
+
+  test("PNG tolerance rejects a moved card and a missing label", async ({ page }) => {
+    await gotoLab(page, "export-contract");
+    const images = await page.evaluate(async () => {
+      const port = (await import(
+        "/src/interop/imageClone.ts" as string
+      )) as typeof import("../../src/interop/imageClone");
+      const root = document.createElement("div");
+      root.style.cssText = "position:relative;width:1600px;height:1200px;background:white";
+      const card = document.createElement("div");
+      card.style.cssText = "position:absolute;left:100px;top:100px;width:300px;height:160px;border:3px solid black";
+      const label = document.createElement("span");
+      label.style.cssText = "font:32px sans-serif;color:black";
+      label.textContent = "Orders service";
+      card.append(label);
+      root.append(card);
+      document.body.append(root);
+      const exportPng = async () => {
+        const slicer = new port.Slicer(3);
+        try {
+          return await port.toPng(root, { fontEmbedCSS: "", width: 1600, height: 1200, pixelRatio: 1 }, slicer);
+        } finally {
+          slicer.dispose();
+        }
+      };
+      try {
+        const original = await exportPng();
+        card.style.left = "180px";
+        const moved = await exportPng();
+        card.style.left = "100px";
+        label.remove();
+        return { original, moved, missing: await exportPng() };
+      } finally {
+        root.remove();
+      }
+    });
+    for (const mutation of [images.moved, images.missing]) {
+      const compared = await comparePngs(page, mutation, images.original);
+      expect(compared.equal).toBe(false);
+      expect(compared.differing).toBeGreaterThan(compared.limit);
+      // The parity tier uses existing downscaled references; both content mutations must fail there too.
+      const reference = await comparePngs(page, images.original, undefined, 4);
+      const parity = await comparePngs(page, mutation, reference.reference, 4);
+      expect(parity.equal).toBe(false);
+      expect(parity.differing).toBeGreaterThan(parity.limit);
+    }
+  });
+
+  test("PNG comparison caps pixels, channel delta and dimensions", async ({ page }) => {
+    await gotoLab(page, "export-contract");
+    for (const size of [100, 1000]) {
+      const limit = size === 100 ? 10 : 600;
+      const images = await page.evaluate(
+        ({ size, limit }) => {
+          const canvas = document.createElement("canvas");
+          canvas.width = canvas.height = size;
+          const ctx = canvas.getContext("2d");
+          if (!ctx) throw new Error("no 2D canvas");
+          ctx.fillStyle = "black";
+          ctx.fillRect(0, 0, size, size);
+          const original = canvas.toDataURL();
+          ctx.fillStyle = "rgb(16, 0, 0)";
+          ctx.fillRect(0, 0, size, size);
+          const threshold = canvas.toDataURL();
+          ctx.fillStyle = "black";
+          ctx.fillRect(0, 0, size, size);
+          ctx.fillStyle = "rgb(17, 0, 0)";
+          ctx.fillRect(0, 0, limit, 1);
+          const allowed = canvas.toDataURL();
+          ctx.fillRect(limit, 0, 1, 1);
+          return { original, threshold, allowed, exceeded: canvas.toDataURL() };
+        },
+        { size, limit },
+      );
+      expect((await comparePngs(page, images.threshold, images.original)).equal).toBe(true);
+      const allowed = await comparePngs(page, images.allowed, images.original);
+      expect(allowed.equal).toBe(true);
+      expect(allowed.differing).toBe(limit);
+      expect(allowed.limit).toBe(limit);
+      expect((await comparePngs(page, images.exceeded, images.original)).equal).toBe(false);
+      expect((await comparePngs(page, images.original, images.original, 4)).equal).toBe(false);
+    }
+  });
+  test("checks the document after rasterization before encoding", async ({ page }) => {
+    await gotoLab(page, "export-contract");
+    const result = await page.evaluate(async () => {
+      const port = (await import(
+        "/src/interop/imageClone.ts" as string
+      )) as typeof import("../../src/interop/imageClone");
+      const root = document.createElement("div");
+      root.textContent = "Raster boundary";
+      document.body.append(root);
+      const draw = CanvasRenderingContext2D.prototype.drawImage;
+      const encode = HTMLCanvasElement.prototype.toBlob;
+      const syncEncode = HTMLCanvasElement.prototype.toDataURL;
+      let draws = 0;
+      let encodes = 0;
+      CanvasRenderingContext2D.prototype.drawImage = function (...args: Parameters<typeof draw>) {
+        draws++;
+        return draw.apply(this, args);
+      };
+      HTMLCanvasElement.prototype.toBlob = function (...args: Parameters<typeof encode>) {
+        encodes++;
+        return encode.apply(this, args);
+      };
+      HTMLCanvasElement.prototype.toDataURL = function (...args: Parameters<typeof syncEncode>) {
+        encodes++;
+        return syncEncode.apply(this, args);
+      };
+      const slicer = new port.Slicer(1, {
+        sliceMs: 0,
+        check: () => {
+          if (draws) throw new Error("Retry");
+        },
+      });
+      try {
+        const outcome = await port
+          .toPng(root, { fontEmbedCSS: "", width: 400, height: 400, pixelRatio: 1 }, slicer)
+          .then(
+            () => "exported",
+            (error: unknown) => (error instanceof Error ? error.message : String(error)),
+          );
+        return { outcome, draws, encodes };
+      } finally {
+        slicer.dispose();
+        CanvasRenderingContext2D.prototype.drawImage = draw;
+        HTMLCanvasElement.prototype.toBlob = encode;
+        HTMLCanvasElement.prototype.toDataURL = syncEncode;
+        root.remove();
+      }
+    });
+    expect(result).toEqual({ outcome: "Retry", draws: 1, encodes: 0 });
+  });
+
+  test("PNG draws bounded strips with a yield between them, including the last partial strip", async ({ page }) => {
+    await gotoLab(page, "export-contract");
+    const result = await page.evaluate(async () => {
+      const port = (await import(
+        "/src/interop/imageClone.ts" as string
+      )) as typeof import("../../src/interop/imageClone");
+      const root = document.createElement("div");
+      root.textContent = "Partial strip";
+      document.body.append(root);
+      const slicer = new port.Slicer(1);
+      const draw = CanvasRenderingContext2D.prototype.drawImage;
+      const rect = CanvasRenderingContext2D.prototype.rect;
+      const yields: number[] = [];
+      const clips: number[][] = [];
+      CanvasRenderingContext2D.prototype.drawImage = function (...args: Parameters<typeof draw>) {
+        yields.push(slicer.yields);
+        return draw.apply(this, args);
+      };
+      CanvasRenderingContext2D.prototype.rect = function (...args: Parameters<typeof rect>) {
+        clips.push(args);
+        return rect.apply(this, args);
+      };
+      try {
+        const png = await port.toPng(root, { fontEmbedCSS: "", width: 400, height: 385, pixelRatio: 2 }, slicer);
+        const image = new Image();
+        image.src = png;
+        await image.decode();
+        return { yields, clips, width: image.naturalWidth, height: image.naturalHeight };
+      } finally {
+        slicer.dispose();
+        CanvasRenderingContext2D.prototype.drawImage = draw;
+        CanvasRenderingContext2D.prototype.rect = rect;
+        root.remove();
+      }
+    });
+    expect(result.width).toBe(800);
+    expect(result.height).toBe(770);
+    expect(result.clips).toHaveLength(Math.ceil(result.height / 128));
+    expect(result.clips.at(-1)).toEqual([0, 768, 800, 2]);
+    expect(result.clips.every((clip) => clip[3] <= 128)).toBe(true);
+    expect(result.yields.every((yieldCount, i, counts) => i === 0 || yieldCount > counts[i - 1])).toBe(true);
   });
   for (const edit of ["rename", "move", "reconnect", "remove", "add", "undo", "replace"] as const)
     test(`a ${edit} between export slices invalidates the captured document version`, async ({ page }) => {
@@ -190,7 +367,7 @@ test.describe("image export in slices", { tag: "@dev" }, () => {
   });
 
   for (const example of publicExamples.slice(0, 3))
-    test(`draws what html-to-image draws, byte for byte: ${example.slug}`, async ({ page, consoleErrors }) => {
+    test(`draws what html-to-image draws (exact SVG, capped PNG): ${example.slug}`, async ({ page, consoleErrors }) => {
       test.slow();
       await gotoCanvas(page, example.slug);
       await expect(page.locator('[data-testid^="rf__node-"]').first()).toBeVisible({ timeout: pageLoadTimeout() });
@@ -203,13 +380,18 @@ test.describe("image export in slices", { tag: "@dev" }, () => {
       const [lib, port] = r.svg.map(canonicalNames);
       expect(port.length).toBe(lib.length);
       expect(port === lib, "the same SVG").toBe(true);
-      expect(r.png[1] === r.png[0], "the same PNG").toBe(true);
+      const compared = await comparePngs(page, r.png[1], r.png[0]);
+      console.log(`PNG comparison: ${compared.diff.join("; ")}`);
+      expect(compared.equal, compared.diff.join("; ")).toBe(true);
       expect(canonicalText(r.text) === canonicalText(r.fromUrl), "the saved SVG is the data URL's text").toBe(true);
       expectNoErrors(consoleErrors);
     });
 
   for (const kind of ["svg", "png"] as const)
-    test(`draws what html-to-image draws, byte for byte: 300 nodes (${kind})`, async ({ page, consoleErrors }) => {
+    test(`draws what html-to-image draws (exact SVG, capped PNG): 300 nodes (${kind})`, async ({
+      page,
+      consoleErrors,
+    }) => {
       test.slow();
       await openLanes(page);
       // Keep both full-size comparisons, without five serial clones in one case.
@@ -218,7 +400,11 @@ test.describe("image export in slices", { tag: "@dev" }, () => {
       if (kind === "svg") {
         const [lib, port] = r.svg.map(canonicalNames);
         expect(port === lib, "the same SVG").toBe(true);
-      } else expect(r.png[1] === r.png[0], "the same PNG").toBe(true);
+      } else {
+        const compared = await comparePngs(page, r.png[1], r.png[0]);
+        console.log(`PNG comparison: ${compared.diff.join("; ")}`);
+        expect(compared.equal, compared.diff.join("; ")).toBe(true);
+      }
       expectNoErrors(consoleErrors);
     });
 });
@@ -461,9 +647,9 @@ for (const phase of ["decode", "encode"] as const)
           return Promise.reject(new Error("Image decode failed"));
         };
       } else {
-        const encode = HTMLCanvasElement.prototype.toDataURL;
-        HTMLCanvasElement.prototype.toDataURL = function () {
-          HTMLCanvasElement.prototype.toDataURL = encode;
+        const encode = HTMLCanvasElement.prototype.toBlob;
+        HTMLCanvasElement.prototype.toBlob = function () {
+          HTMLCanvasElement.prototype.toBlob = encode;
           reached();
           throw new Error("Image encode failed");
         };

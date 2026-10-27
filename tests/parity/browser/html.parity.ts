@@ -11,7 +11,7 @@ import { pathToFileURL } from "node:url";
 import { expectGolden, expectGoldenText } from "../lib/golden";
 import { fingerprint } from "../lib/hash";
 import { openExample, settledCanvas } from "./canvas";
-import { expectGoldenPng } from "./png";
+import { expectGoldenHtmlScreenshot } from "./htmlPng";
 
 const EXAMPLES = ["corpus-hand-shaped-lines", "kafka-order-pipeline", "branch-to-datacentre"];
 
@@ -102,7 +102,7 @@ for (const slug of EXAMPLES) {
     // (src/canvas/useMeasuredTask.ts), and settledCanvas waits for it (fonts, data-fit-pending, stable geometry).
     expectGolden(`html/${slug}.dark.drawn.json`, await settledCanvas(viewer));
     // How it looks, banner and footer included: the viewer's own CSS isn't in the file's golden (it's build output).
-    await expectGoldenPng(page, `html/${slug}.dark.png`, await viewer.screenshot({ fullPage: true }));
+    await expectGoldenHtmlScreenshot(page, `html/${slug}.dark.png`, await viewer.screenshot({ fullPage: true }));
     await viewer.close();
   });
 }

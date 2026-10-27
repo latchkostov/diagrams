@@ -79,6 +79,21 @@ async function open(page: Page, family: string, n: number, query = "") {
   return { b, w };
 }
 
+for (const kind of ["png", "svg"] as const)
+  test(`profile: export ${kind}, pipeline@500`, async ({ page }) => {
+    const { b } = await open(page, "pipeline", 500);
+    await page.getByTestId("file-button").click();
+    await page.getByTestId("file-more-formats").click();
+    await page.getByTestId("export-image").click();
+    await page.getByTestId("image-options-toggle").click();
+    await page.getByTestId(`image-format-${kind}`).click();
+    await profiled(b, `export-${kind}-pipeline@500`, async () => {
+      const downloaded = page.waitForEvent("download");
+      await page.getByTestId("image-export").click();
+      await downloaded;
+    });
+  });
+
 test.skip(MODE !== "full", "report-only, at 500 and 1,500 nodes: full runs only");
 
 test("profile: typing a name, mesh@500", async ({ page }) => {
