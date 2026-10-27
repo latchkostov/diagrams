@@ -28,10 +28,10 @@ import {
 import type { Rect } from "./geometry/rect";
 import { roundedPath } from "./geometry/path";
 import { FAR_ZOOM, textDetail } from "./detail";
-import { iconDetail, titleText } from "./identity";
 import { overviewConnection, overviewLayout, type OverviewHeader, type OverviewItem } from "./overview";
 import { t, useLocale } from "../i18n";
 import "../styles/canvas/detail.css";
+import { IdentityDetail } from "./IdentityDetail";
 
 type Chip = { id: string; name: string; x: number; y: number };
 type Drawing = {
@@ -43,8 +43,25 @@ type Drawing = {
 const empty: Drawing = { pins: [], chips: [], hint: false, headers: [] };
 
 /** Screen-space detail after a settled move. It changes presentation only, never the document or viewport. */
-export const FrameDetail = memo(
-  function FrameDetail({ host, routing }: { host: RefObject<HTMLElement | null>; routing: RouteOptions }) {
+export const FrameDetail = memo(function FrameDetail({
+  host,
+  routing,
+  decorate,
+}: {
+  host: RefObject<HTMLElement | null>;
+  routing: RouteOptions;
+  decorate: boolean;
+}) {
+  return (
+    <>
+      <IdentityDetail host={host} />
+      {decorate && <FrameDecoration host={host} routing={routing} />}
+    </>
+  );
+});
+
+const FrameDecoration = memo(
+  function FrameDecoration({ host, routing }: { host: RefObject<HTMLElement | null>; routing: RouteOptions }) {
     const locale = useLocale();
     const { style, direction, captions, hideDependencies } = useRoutingOptions(routing);
     const camera = useCameraController();
@@ -279,35 +296,6 @@ export const FrameDetail = memo(
           overviewZones,
           (text) => measure?.measureText(text).width ?? text.length * 7,
         );
-        // Read all identity geometry before writing any of it. Interleaving the
-        // writes with clientWidth forced a whole-canvas layout for every card.
-        const identity = frameNodes.flatMap(({ n, body }) => {
-          const title = body?.querySelector<HTMLElement>('[data-testid="card-title"]');
-          if (!title || !measure || !("label" in n.data)) return [];
-          const icon = body?.querySelector<HTMLElement>(".stencil-icon");
-          const height = body
-            ? iconDetail(
-                body.classList.contains("nb-compact") ? 18 : body.classList.contains("nb-icon") ? 34 : 26,
-                body.offsetHeight,
-                zoom,
-              )
-            : 0;
-          const cs = getComputedStyle(title);
-          measure.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
-          measure.letterSpacing = cs.letterSpacing === "normal" ? "0px" : cs.letterSpacing;
-          return [
-            {
-              title,
-              icon,
-              height,
-              label: titleText(n.data.label, title.clientWidth, (text) => measure.measureText(text).width),
-            },
-          ];
-        });
-        for (const { title, icon, height, label } of identity) {
-          if (icon) icon.style.height = `${height}px`;
-          if (title.textContent !== label) title.textContent = label;
-        }
         // React Flow's ResizeObserver measures the resized wrappers once. An explicit
         // updateNodeInternals here schedules a second forced measurement of the same cards.
         const routes = selectRoutes(s, { style, direction, captions, hideDependencies });
@@ -694,20 +682,12 @@ export const FrameDetail = memo(
         ))
           text.style.removeProperty("font-size");
         for (const body of root.querySelectorAll<HTMLElement>(".nb")) body.style.removeProperty("width");
-        for (const icon of root.querySelectorAll<HTMLElement>(".nb .stencil-icon")) icon.style.removeProperty("height");
         for (const label of root.querySelectorAll<HTMLElement>(".fe-label, [data-call-edge]")) {
           label.style.removeProperty("translate");
           if (fonts.has(label)) label.style.removeProperty("font-size");
           label.style.removeProperty("width");
           label.style.removeProperty("height");
           label.style.removeProperty("line-height");
-        }
-        for (const n of store.getState().nodes) {
-          if (!("label" in n.data)) continue;
-          const title = root.querySelector<HTMLElement>(
-            `[data-testid="node-${CSS.escape(n.id)}"] [data-testid="card-title"]`,
-          );
-          if (title) title.textContent = n.data.label;
         }
         delete root.dataset.detailView;
         delete root.dataset.detailZoom;

@@ -1,4 +1,7 @@
 import { readFileSync } from "node:fs";
+import { textFieldsFixture } from "../../src/lab/textFieldsFixture";
+import { encodeShare } from "../../src/interop/share";
+import { expectFittedIdentity, zoomIdentity } from "./node-identity";
 import type { Page } from "@playwright/test";
 import {
   test,
@@ -21,6 +24,33 @@ import {
 // Headless Chromium has the Fullscreen API; the state is read from document.fullscreenElement.
 
 const KAFKA = "kafka-order-pipeline";
+
+for (const view of ["presentation", "embed"])
+  test(`${view} retains the narrow icon title's identity at 24% and 15%`, async ({ page }) => {
+    const diagram = textFieldsFixture;
+    await page.addInitScript(
+      ({ key, diagram }) => {
+        localStorage.setItem("diagrams.settings.v1", JSON.stringify({ nodeVariant: "iconOnly" }));
+        localStorage.setItem(key, JSON.stringify(diagram));
+      },
+      { key: STORAGE_KEYS.autosavePrefix + KAFKA, diagram },
+    );
+    if (view === "presentation") {
+      await gotoCanvas(page, KAFKA);
+      await page.getByTestId("present-toggle").click();
+      await expect(page.getByTestId("present-exit")).toBeVisible();
+    } else {
+      // Link embeds resolve their payload independently of editor autosaves.
+      const token = await encodeShare(diagram);
+      await page.goto(`./?embed=1#d=${token}`);
+      await expect(page.getByTestId("node-c")).toBeVisible();
+    }
+    await zoomIdentity(page);
+    await expectFittedIdentity(page, "c", "Worker");
+    await zoomIdentity(page, 0.15);
+    await expectFittedIdentity(page, "c", "Worker");
+    await expect(page.getByTestId("node-c").getByTestId("card-title")).toHaveText("W");
+  });
 
 const fullscreen = (page: Page) => page.evaluate(() => document.fullscreenElement === document.documentElement);
 

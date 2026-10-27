@@ -283,6 +283,19 @@ describe("Workbench frame detail", () => {
       expect(measure(label)).toBeLessThanOrEqual(width);
     }
   });
+  it("fits a 10,000-character imported title with bounded shaping work", () => {
+    const name = "W".repeat(10_000);
+    const measured: string[] = [];
+    const label = titleText(name, 42, (text) => {
+      measured.push(text);
+      return [...text].length * 6;
+    });
+    expect(label).toBe("WWWWWW…");
+    expect(measured.length).toBeLessThanOrEqual(24);
+    expect(Math.max(...measured.map((text) => [...text].length))).toBeLessThanOrEqual(257);
+    expect(new Set(measured).size).toBe(measured.length);
+    expect(name).toHaveLength(10_000);
+  });
   it("classifies every endpoint pair, including two off-frame near endpoints", () => {
     for (const a of ["in", "pinned", "out"] as const)
       for (const b of ["in", "pinned", "out"] as const)

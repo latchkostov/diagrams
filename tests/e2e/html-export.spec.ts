@@ -1,4 +1,5 @@
 import { openDiagramProperties } from "./fixtures";
+import { expectFittedIdentity, zoomIdentity } from "./node-identity";
 import { chunk, holdChunk } from "./chunk";
 import { readFileSync, writeFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
@@ -49,6 +50,23 @@ async function download(
 }
 
 test.describe("Interactive HTML export", () => {
+  test("read-only HTML fits imported titles at 24%", async ({ page, context }) => {
+    await gotoCanvas(page, KAFKA);
+    await page.getByTestId("import-input").setInputFiles({
+      name: "identity.diagram.json",
+      mimeType: "application/json",
+      buffer: Buffer.from(JSON.stringify(textFieldsFixture)),
+    });
+    await expect(page.getByTestId("node-a")).toBeVisible();
+    await openHtmlExport(page);
+    const { path } = await download(page);
+    const viewer = await context.newPage();
+    await viewer.goto(pathToFileURL(path).href);
+    await expect(viewer.getByTestId("html-viewer")).toBeVisible();
+    await zoomIdentity(viewer);
+    await expectFittedIdentity(viewer, "b", "Payments gateway");
+    await viewer.close();
+  });
   test("phone playback stays inside the viewer canvas above its wrapped footer", async ({ page, context }, info) => {
     await gotoCanvas(page, KAFKA);
     await openHtmlExport(page);

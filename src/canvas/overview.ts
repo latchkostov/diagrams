@@ -1,4 +1,5 @@
 import { intersects, type Rect } from "./geometry/rect";
+import { titleText } from "./identity";
 
 export type OverviewItem = { id: string; name: string; box: Rect; group?: string; spotlight?: boolean };
 export type OverviewHeader = OverviewItem & { lines: string[]; count: number };
@@ -7,10 +8,14 @@ export type OverviewHeader = OverviewItem & { lines: string[]; count: number };
 export function overviewLayout(nodes: OverviewItem[], zones: OverviewItem[], measure: (text: string) => number) {
   const headers = zones.map((zone): OverviewHeader => {
     const lines: string[] = [];
+    const width = Math.max(0, zone.box.width - 12);
     for (const word of zone.name.split(/\s+/)) {
+      const fitted = titleText(word, width, measure);
       const last = lines.at(-1);
-      if (last && measure(`${last} ${word}`) <= zone.box.width - 12) lines[lines.length - 1] += ` ${word}`;
-      else lines.push(word);
+      if (last && measure(`${last} ${fitted}`) <= width) lines[lines.length - 1] += ` ${fitted}`;
+      else {
+        lines.push(measure(fitted) <= width ? fitted : "");
+      }
     }
     const height = lines.length * 12 + 6;
     const box = { ...zone.box, height };
@@ -22,13 +27,14 @@ export function overviewLayout(nodes: OverviewItem[], zones: OverviewItem[], mea
         !nodes.some((node) => intersects({ ...box, y }, node.box)),
     );
     // Walk above every collision, including cards outside the zone.
-    let above = zone.box.y - height - 2;
-    for (;;) {
-      const hit = nodes.find((node) => intersects({ ...box, y: above }, node.box));
-      if (!hit) break;
-      above = hit.box.y - height - 2;
+    box.y = y ?? zone.box.y - height - 2;
+    if (y === undefined) {
+      for (;;) {
+        const hit = nodes.find((node) => intersects(box, node.box));
+        if (!hit) break;
+        box.y = hit.box.y - height - 2;
+      }
     }
-    box.y = y ?? above;
     return { ...zone, count: 0, lines, box };
   });
   return { headers };

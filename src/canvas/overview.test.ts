@@ -33,8 +33,35 @@ describe("large Live Overview", () => {
     const narrow = { ...zone, box: { ...zone.box, width: 70 } };
     const nodes = [node("a", 5, 17), node("b", 5, 80)];
     const layout = overviewLayout(nodes, [narrow], measure);
-    expect(layout.headers[0].lines).toEqual(["EKS ·", "storefront"]);
+    expect(layout.headers[0].lines).toEqual(["EKS ·", "storefro…"]);
     for (const card of nodes) expect(intersects(layout.headers[0].box, card.box)).toBe(false);
+  });
+  it("bounds a single long word to a narrow header beside a neighbouring card", () => {
+    const narrow = { ...zone, name: "Production", box: { ...zone.box, width: 45 } };
+    const nodes = [node("neighbour", 46, 0)];
+    const header = overviewLayout(nodes, [narrow], measure).headers[0];
+    expect(header.lines).toEqual(["Prod…"]);
+    for (const line of header.lines) expect(measure(line)).toBeLessThanOrEqual(header.box.width - 12);
+    expect(header.box.height).toBe(header.lines.length * 12 + 6);
+    expect(intersects(header.box, nodes[0].box)).toBe(false);
+  });
+  it("does not search outside when the internal header band is clear", () => {
+    const reads = (x: number) => {
+      let count = 0;
+      const nodes = Array.from({ length: 32 }, (_, i) => {
+        const item = node(String(i), x, -(i + 1) * 22);
+        return {
+          ...item,
+          get box() {
+            count++;
+            return item.box;
+          },
+        };
+      });
+      expect(overviewLayout(nodes, [zone], measure).headers[0].box.y).toBe(zone.box.y);
+      return count;
+    };
+    expect(reads(0)).toBe(reads(1000));
   });
 
   it("keeps a full zone's outside band clear of neighbouring cards too", () => {

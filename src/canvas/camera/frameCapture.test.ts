@@ -1,5 +1,22 @@
 import { expect, it, vi } from "vitest";
 import { registerFrameCapture, suspendFrameCapture } from "./frameCapture";
+it("suspends and restores identity and frame decoration together", () => {
+  const viewport = {} as Element;
+  const identity = vi.fn();
+  const frame = vi.fn();
+  const suspendIdentity = vi.fn(() => identity);
+  const suspendFrame = vi.fn(() => frame);
+  const unregisterIdentity = registerFrameCapture(viewport, suspendIdentity);
+  const unregisterFrame = registerFrameCapture(viewport, suspendFrame);
+  const release = suspendFrameCapture(viewport);
+  expect(suspendIdentity).toHaveBeenCalledOnce();
+  expect(suspendFrame).toHaveBeenCalledOnce();
+  release();
+  expect(identity).toHaveBeenCalledOnce();
+  expect(frame).toHaveBeenCalledOnce();
+  unregisterIdentity();
+  unregisterFrame();
+});
 it("suspends detail that mounts during capture and resumes only after the last capture", () => {
   const viewport = {} as Element;
   const first = suspendFrameCapture(viewport);

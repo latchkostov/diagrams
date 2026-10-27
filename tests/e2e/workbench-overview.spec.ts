@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { test, expect, gotoLive, expectTheme, pauseClock, waitForCameraIdle, viewportTransform } from "./fixtures";
 import { sampledContrast } from "./pngContrast";
 import diagram from "../../src/examples/black-friday-commerce.json" with { type: "json" };
+import delivery from "../../src/examples/delivery-dispatch.json" with { type: "json" };
 
 for (const theme of ["light", "dark"])
   test(`large Overview names every individual card, reserves headers and filters routes (${theme})`, async ({
@@ -183,8 +184,7 @@ for (const theme of ["light", "dark"])
       await gotoLive(page, "./?view=canvas&example=delivery-dispatch&live=1&paused=1");
       await expectTheme(page, theme);
       await waitForCameraIdle(page);
-      const count = await page.getByTestId("card-title").count();
-      expect(count).toBeGreaterThan(0);
+      const count = delivery.nodes.length;
       for (const target of [0.35, 0.24]) {
         const current = Number((await viewportTransform(page)).match(/scale\(([^)]+)\)/)?.[1]);
         const pane = await page.getByTestId("canvas-wrap").boundingBox();
@@ -201,6 +201,7 @@ for (const theme of ["light", "dark"])
           .poll(async () => Number((await viewportTransform(page)).match(/scale\(([^)]+)\)/)?.[1]))
           .toBeCloseTo(target, 2);
         await waitForCameraIdle(page);
+        for (const { id } of delivery.nodes) await expect(page.getByTestId(`node-${id}`)).toBeAttached();
         await expectNodeIdentity(page, count);
         if (target === 0.35 && nodeVariant === "card" && process.env.OVERVIEW_CAPTURE_DIR) {
           await mkdir(process.env.OVERVIEW_CAPTURE_DIR, { recursive: true });
