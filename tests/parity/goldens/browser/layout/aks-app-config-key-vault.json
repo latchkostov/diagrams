@@ -71,14 +71,14 @@
       "api-to-ai": "M970.5,300 L970.5,292 Q970.5,284 970.3,276 L970.2,268 Q970,258 970,248 L970,132"
     },
     "labels": {
-      "web-to-fd": { "style": "transform: translate(-50%, -50%) translate(344px, 336px); --fe-w: 54.7px; --fe-h: 22px;", "text": "HTTPS" },
-      "fd-to-api": { "style": "transform: translate(-50%, -50%) translate(754px, 336px); --fe-w: 90.3px; --fe-h: 22px;", "text": "POST /orders" },
-      "api-to-sql": { "style": "transform: translate(-50%, -50%) translate(1190.5px, 272.5px); --fe-w: 59.71px; --fe-h: 22px;", "text": "EF Core" },
-      "api-to-sb": { "style": "transform: translate(-50%, -50%) translate(1190.5px, 399.5px); --fe-w: 92.47999999999999px; --fe-h: 22px;", "text": "OrderCreated" },
-      "sb-to-notify": { "style": "transform: translate(-50%, -50%) translate(1614px, 456px); --fe-w: 86.43999999999998px; --fe-h: 22px;", "text": "Subscription" },
-      "api-to-appcfg": { "style": "transform: translate(-50%, -50%) translate(970px, 506px); --fe-w: 140.9px; --fe-h: 22px;", "text": "4 settings · 2 secret" },
-      "appcfg-to-kv": { "style": "transform: translate(-50%, -50%) translate(1184px, 596px); --fe-w: 100.22px; --fe-h: 22px;", "text": "2 references" },
-      "api-to-mi": { "style": "transform: translate(-50%, -50%) translate(855.25px, 466px); --fe-w: 73.02000000000001px; --fe-h: 22px;", "text": "runs as" },
+      "web-to-fd": { "style": "transform: translate(-50%, -50%) translate(344px, 336px); --fe-w: 54.7px; --fe-h: 22px; font-size: 14.695px; width: max-content; height: auto; line-height: 22px; translate: 51px 2.67029e-05px;", "text": "HTTPS" },
+      "fd-to-api": { "style": "transform: translate(-50%, -50%) translate(754px, 336px); --fe-w: 90.3px; --fe-h: 22px; font-size: 14.695px; width: max-content; height: auto; line-height: 22px;", "text": "POST /orders" },
+      "api-to-sql": { "style": "transform: translate(-50%, -50%) translate(1190.5px, 272.5px); --fe-w: 59.71px; --fe-h: 22px; font-size: 14.695px; width: max-content; height: auto; line-height: 22px;", "text": "EF Core" },
+      "api-to-sb": { "style": "transform: translate(-50%, -50%) translate(1190.5px, 399.5px); --fe-w: 92.47999999999999px; --fe-h: 22px; font-size: 14.695px; width: max-content; height: auto; line-height: 22px;", "text": "OrderCreated" },
+      "sb-to-notify": { "style": "transform: translate(-50%, -50%) translate(1614px, 456px); --fe-w: 86.43999999999998px; --fe-h: 22px; font-size: 14.695px; width: max-content; height: auto; line-height: 22px;", "text": "Subscription" },
+      "api-to-appcfg": { "style": "transform: translate(-50%, -50%) translate(970px, 506px); --fe-w: 140.9px; --fe-h: 22px; width: max-content; height: auto; line-height: 22px;", "text": "4 settings · 2 secret" },
+      "appcfg-to-kv": { "style": "transform: translate(-50%, -50%) translate(1184px, 596px); --fe-w: 100.22px; --fe-h: 22px; width: max-content; height: auto; line-height: 22px;", "text": "2 references" },
+      "api-to-mi": { "style": "transform: translate(-50%, -50%) translate(855.25px, 466px); --fe-w: 73.02000000000001px; --fe-h: 22px; width: max-content; height: auto; line-height: 22px;", "text": "runs as" },
       "mi-to-entra": { "style": "transform: translate(-50%, -50%) translate(356px, 596px); --fe-w: 121.02999999999999px; --fe-h: 22px;", "text": "OIDC federation" },
       "api-to-ai": { "style": "transform: translate(-50%, -50%) translate(970px, 202px); --fe-w: 20px; --fe-h: 20px;", "text": "" }
     }

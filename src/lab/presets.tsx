@@ -1,3 +1,4 @@
+import { frameRoutingFixture, frameDependencyFixture } from "./frameRoutingFixture";
 import { WorkbenchTabsLab, WorkbenchChartLab, WorkbenchTagsLab, WorkbenchScrimLab } from "./WorkbenchLab";
 import handShapedLines from "../../tests/parity/corpus/hand-shaped-lines.diagram.json";
 import inlineRateLimit from "../examples/inline-rate-limit.json";
@@ -1249,6 +1250,22 @@ const tracePresets: Preset[] = [
 ];
 
 export const presets: readonly Preset[] = [
+  {
+    kind: "diagram",
+    id: "frame-dependency",
+    title: "Dependency label readability",
+    group: "Edges",
+    description: "An unselected dependency label retains its text floor in Custom view.",
+    diagram: frameDependencyFixture,
+  },
+  {
+    kind: "diagram",
+    id: "frame-routing",
+    title: "Frame routing",
+    group: "Edges",
+    description: "A complete connection label at fractional zoom, with room for its measured text floor.",
+    diagram: frameRoutingFixture,
+  },
   {
     kind: "render",
     id: "tutorial-runtime",

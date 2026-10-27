@@ -92,21 +92,21 @@
       "ingest-dlq-to-ingest-triage": "M1015,496 L1086,496 Q1096,496 1096,506 L1096,546 Q1096,556 1106,556 L1168,556"
     },
     "labels": {
-      "user-to-rag-api": { "style": "transform: translate(-50%, -50%) translate(336.5px, 256px); --fe-w: 74.94px; --fe-h: 22px;", "text": "POST /ask" },
+      "user-to-rag-api": { "style": "transform: translate(-50%, -50%) translate(336.5px, 256px); --fe-w: 74.94px; --fe-h: 22px; font-size: 15.232px; width: max-content; height: auto; line-height: 23px;", "text": "POST /ask" },
       "rag-api-to-cache": { "style": "transform: translate(-50%, -50%) translate(696.75px, 263px); --fe-w: 92.44000000000001px; --fe-h: 22px;", "text": "Cache lookup" },
-      "rag-api-to-vector-db": { "style": "transform: translate(-50%, -50%) translate(939.375px, 189px); --fe-w: 91.87999999999998px; --fe-h: 22px;", "text": "Top-k chunks" },
-      "rag-api-to-llm": { "style": "transform: translate(-50%, -50%) translate(1342.5px, 383px); --fe-w: 112.21px; --fe-h: 22px;", "text": "Prompt + context" },
-      "rag-api-to-feedback": { "style": "transform: translate(-50%, -50%) translate(713.75px, 175.5px); --fe-w: 97.99px; --fe-h: 22px;", "text": "Rated answers" },
-      "feedback-to-eval-job": { "style": "transform: translate(-50%, -50%) translate(1066.5px, 136px); --fe-w: 82.72px; --fe-h: 22px;", "text": "group: evals" },
-      "eval-job-to-llm": { "style": "transform: translate(-50%, -50%) translate(1466.5px, 276px); --fe-w: 93.16px; --fe-h: 22px;", "text": "Grade answer" },
+      "rag-api-to-vector-db": { "style": "transform: translate(-50%, -50%) translate(939.375px, 189px); --fe-w: 91.87999999999998px; --fe-h: 22px; font-size: 15.232px; width: max-content; height: auto; line-height: 23px;", "text": "Top-k chunks" },
+      "rag-api-to-llm": { "style": "transform: translate(-50%, -50%) translate(1342.5px, 383px); --fe-w: 112.21px; --fe-h: 22px; font-size: 15.232px; width: max-content; height: auto; line-height: 23px; translate: 49.75px -3.92797e-05px;", "text": "Prompt + context" },
+      "rag-api-to-feedback": { "style": "transform: translate(-50%, -50%) translate(713.75px, 175.5px); --fe-w: 97.99px; --fe-h: 22px; font-size: 15.232px; width: max-content; height: auto; line-height: 23px; translate: 2.36745e-05px -8.25px;", "text": "Rated answers" },
+      "feedback-to-eval-job": { "style": "transform: translate(-50%, -50%) translate(1066.5px, 136px); --fe-w: 82.72px; --fe-h: 22px; font-size: 15.232px; width: max-content; height: auto; line-height: 23px;", "text": "group: evals" },
+      "eval-job-to-llm": { "style": "transform: translate(-50%, -50%) translate(1466.5px, 276px); --fe-w: 93.16px; --fe-h: 22px; font-size: 15.232px; width: max-content; height: auto; line-height: 23px;", "text": "Grade answer" },
       "eval-job-to-quality": { "style": "transform: translate(-50%, -50%) translate(1440.25px, 69px); --fe-w: 54.42px; --fe-h: 22px;", "text": "Scores" },
-      "docs-to-ingest-q": { "style": "transform: translate(-50%, -50%) translate(344.5px, 376px); --fe-w: 95.36999999999999px; --fe-h: 22px;", "text": "Page changed" },
+      "docs-to-ingest-q": { "style": "transform: translate(-50%, -50%) translate(344.5px, 376px); --fe-w: 95.36999999999999px; --fe-h: 22px; font-size: 15.232px; width: max-content; height: auto; line-height: 23px;", "text": "Page changed" },
       "ingest-q-to-embed-worker": { "style": "transform: translate(-50%, -50%) translate(722px, 372.5px); --fe-w: 123.94px; --fe-h: 22px;", "text": "Competing workers" },
-      "embed-worker-to-embeddings": { "style": "transform: translate(-50%, -50%) translate(1115px, 436px); --fe-w: 90.09999999999998px; --fe-h: 22px;", "text": "Embed batch" },
-      "embed-worker-to-vector-db": { "style": "transform: translate(-50%, -50%) translate(1085px, 242.5px); --fe-w: 96.07999999999998px; --fe-h: 22px;", "text": "Upsert chunks" },
+      "embed-worker-to-embeddings": { "style": "transform: translate(-50%, -50%) translate(1115px, 436px); --fe-w: 90.09999999999998px; --fe-h: 22px; font-size: 15.232px; width: max-content; height: auto; line-height: 23px; translate: -5.49993px 2.29912e-05px;", "text": "Embed batch" },
+      "embed-worker-to-vector-db": { "style": "transform: translate(-50%, -50%) translate(1085px, 242.5px); --fe-w: 96.07999999999998px; --fe-h: 22px; font-size: 15.232px; width: max-content; height: auto; line-height: 23px; translate: 2.61365e-05px -14.7px;", "text": "Upsert chunks" },
       "rag-api-to-vault": { "style": "transform: translate(-50%, -50%) translate(820px, 321.5px); --fe-w: 20px; --fe-h: 20px;", "text": "" },
       "embed-worker-to-vault": { "style": "transform: translate(-50%, -50%) translate(1079.5px, 376px); --fe-w: 20px; --fe-h: 20px;", "text": "" },
-      "ingest-q-to-ingest-dlq": { "style": "transform: translate(-50%, -50%) translate(722px, 439.5px); --fe-w: 80.28px; --fe-h: 22px;", "text": "After 5 tries" }
+      "ingest-q-to-ingest-dlq": { "style": "transform: translate(-50%, -50%) translate(722px, 439.5px); --fe-w: 80.28px; --fe-h: 22px; font-size: 15.232px; width: max-content; height: auto; line-height: 23px;", "text": "After 5 tries" }
     }
   }
 }

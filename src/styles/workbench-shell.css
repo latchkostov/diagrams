@@ -1,0 +1,715 @@
+/* ---------- shell ---------- */
+
+.app {
+  height: 100%;
+  display: grid;
+  grid-template-rows: var(--topbar-h) minmax(0, 1fr) auto;
+}
+
+.app.is-presenting {
+  grid-template-rows: minmax(0, 1fr) auto;
+}
+
+.app-body {
+  min-height: 0;
+  display: flex;
+}
+
+.app-main {
+  flex: 1;
+  min-width: 0;
+  position: relative;
+  isolation: isolate;
+}
+
+.segmented {
+  display: inline-flex;
+  padding: 3px;
+  gap: 2px;
+  border-radius: 9px;
+  background: var(--surface-3);
+}
+
+.segmented button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 28px;
+  padding: 0 11px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-2);
+  font-weight: 550;
+  font-size: 13px;
+}
+
+.segmented button:hover {
+  color: var(--text);
+}
+
+.segmented button:active:not(.is-on) {
+  background: var(--press);
+}
+
+.segmented button.is-on {
+  background: var(--surface);
+  color: var(--text);
+  box-shadow:
+    0 1px 2px rgb(0 0 0 / 0.08),
+    0 0 0 1px var(--line);
+}
+
+[data-theme="dark"] .segmented button.is-on {
+  background: var(--surface-2);
+  box-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.05),
+    0 0 0 1px var(--line-strong);
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-block: 0;
+  padding-inline: 16px 12px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+  position: relative;
+  z-index: 10;
+  min-width: 0;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-weight: 650;
+  font-stretch: 110%;
+  font-size: 15px;
+  letter-spacing: -0.015em;
+  padding-inline-end: 6px;
+}
+
+.logo .logo-a {
+  fill: var(--accent);
+}
+.logo .logo-b {
+  fill: var(--text);
+}
+.logo .logo-wire {
+  stroke: var(--accent);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+}
+.logo .logo-dot {
+  fill: var(--surface);
+  stroke: var(--accent);
+  stroke-width: 1.4;
+}
+
+.topbar-spacer {
+  flex: 1;
+}
+
+.topbar-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.topbar-group + .topbar-group {
+  padding-inline-start: 10px;
+  margin-inline-start: 4px;
+  border-inline-start: 1px solid var(--line);
+}
+
+/* ---------- diagram thumbnails (DiagramThumbnail: start card, Your diagrams) ---------- */
+
+.diagram-thumb {
+  display: block;
+  overflow: visible;
+}
+
+/* Nodes read as small tinted cards in their stencil's colour, with a solid accent end. */
+.diagram-thumb .dt-node {
+  fill-opacity: 0.22;
+  stroke-opacity: 0.55;
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+.diagram-thumb .dt-edge {
+  stroke: var(--text-4);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+.diagram-thumb .dt-group {
+  fill: none;
+  stroke: var(--line-strong);
+  stroke-width: 1;
+  stroke-dasharray: 3 2;
+  vector-effect: non-scaling-stroke;
+}
+
+/* ---------- AI panel dock (the panel itself is lazy: src/ai/ui/ai.css) ---------- */
+
+.ai-dock,
+.ai-rail {
+  flex: none;
+  position: relative;
+  z-index: 6;
+  min-height: 0;
+  border-inline-start: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.ai-dock {
+  display: flex;
+  flex-direction: column;
+}
+
+/* The panel's download failed: say so, with Retry and Close. */
+.ai-dock-failed {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  color: var(--text-2);
+}
+
+.ai-dock-failed p {
+  margin: 0;
+}
+
+.ai-dock-failed div {
+  display: flex;
+  gap: 8px;
+}
+
+.ai-rail {
+  width: 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 9px;
+}
+
+.ai-rail-btn {
+  position: relative;
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  cursor: pointer;
+}
+
+.ai-rail-btn:hover {
+  border-color: color-mix(in oklab, var(--accent) 40%, transparent);
+}
+
+.ai-rail-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/* Agent changes made while the panel was folded. */
+.ai-rail-badge {
+  position: absolute;
+  top: -6px;
+  inset-inline-end: -6px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  border: 2px solid var(--surface);
+  box-sizing: content-box;
+  background: var(--accent);
+  color: var(--bg);
+  font-size: 10px;
+  font-weight: 650;
+  line-height: 16px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---------- Your diagrams (LibraryDialog) ---------- */
+
+.lib-list {
+  list-style: none;
+  margin: 0 -8px;
+  padding: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.lib-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: var(--radius-m);
+}
+
+.lib-row:hover,
+.lib-row:focus-within {
+  background: var(--hover);
+}
+
+.lib-row.is-current {
+  background: var(--accent-soft);
+}
+
+.lib-open {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px;
+  border: 0;
+  border-radius: var(--radius-m);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.lib-open:active {
+  background: var(--press);
+}
+
+.lib-thumb {
+  flex: none;
+  width: 76px;
+  height: 48px;
+  padding: 4px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+}
+
+.lib-thumb .diagram-thumb {
+  width: 100%;
+  height: 100%;
+}
+
+.lib-text {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.lib-text strong {
+  font-size: 13.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.lib-text span {
+  color: var(--text-3);
+  font-size: 12px;
+}
+
+.lib-text .lib-private {
+  color: var(--text-2);
+  font-size: inherit;
+}
+
+.lib-private svg {
+  vertical-align: -1px;
+}
+
+/* Rename edits the title in place, over the row's title line. */
+.lib-rename {
+  position: absolute;
+  left: 100px;
+  right: 112px;
+  top: 50%;
+  translate: 0 -50%;
+}
+
+.lib-row.is-renaming .lib-text {
+  visibility: hidden;
+}
+
+.lib-rename .inline-input {
+  width: 100%;
+  height: 26px;
+  border: 1px solid var(--accent);
+  background: var(--surface);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.lib-actions {
+  flex: none;
+  display: flex;
+  gap: 2px;
+  padding-right: 6px;
+  opacity: 0.55;
+  transition: opacity var(--dur-1);
+}
+
+.lib-row:hover .lib-actions,
+.lib-row:focus-within .lib-actions {
+  opacity: 1;
+}
+
+.lib-delete:hover {
+  color: var(--danger);
+}
+
+.lib-empty {
+  margin: 4px 0;
+  color: var(--text-2);
+}
+
+.lib-usage {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  color: var(--text-3);
+  font-size: 12px;
+}
+
+.lib-meter {
+  flex: none;
+  width: 64px;
+  height: 5px;
+  border-radius: 999px;
+  background: var(--line);
+  overflow: hidden;
+}
+
+.lib-meter > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--text-3);
+}
+
+.lib-usage.is-full {
+  color: var(--danger);
+}
+
+.lib-usage.is-full .lib-meter > span {
+  background: var(--danger);
+}
+
+.diagram-picker {
+  min-width: 0;
+  max-width: 320px;
+}
+.diagram-picker-title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.example-badge {
+  flex: none;
+  font-size: 10px;
+  padding: 2px 5px;
+  border-radius: 4px;
+  color: var(--text-2);
+  background: var(--surface-2);
+}
+@media (max-width: 600px) {
+  .app:has(.diagram-picker) {
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+  .topbar:has(.diagram-picker) {
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 6px 10px;
+    overflow: visible;
+  }
+  .topbar:has(.diagram-picker) > .segmented {
+    flex: 1;
+  }
+  .topbar:has(.diagram-picker) > .topbar-spacer {
+    display: none;
+  }
+  .topbar:has(.diagram-picker) > .ix-save-status {
+    display: none;
+  }
+  .topbar:has(.diagram-picker) > .ix-shared {
+    order: 4;
+  }
+  .topbar:has(.diagram-picker) > .topbar-group {
+    order: 3;
+  }
+  .diagram-picker {
+    order: 2;
+    flex: 1;
+    min-width: 160px;
+    max-width: none;
+  }
+}
+
+.example-copy-notice {
+  position: absolute;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  width: max-content;
+  max-width: min(440px, calc(100% - 32px));
+  padding: 10px 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  box-shadow: var(--shadow-2);
+  background: var(--surface);
+  color: var(--text-2);
+  font-size: 12px;
+  line-height: 1.5;
+  pointer-events: none;
+}
+
+.room-edit-alert {
+  padding: 10px 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text-1);
+  box-shadow: var(--shadow-2);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+/* Workbench bezel: the canvas and its menus retain their own theme tokens. */
+.topbar {
+  position: relative;
+  height: 52px;
+  min-height: 52px;
+  flex-wrap: nowrap;
+  background: var(--bezel);
+  border-bottom: 1px solid var(--bezel-line);
+  color: var(--bezel-ink);
+  --text: var(--bezel-ink);
+  --text-2: var(--bezel-dim);
+  --text-3: var(--bezel-dim);
+  --line: var(--bezel-line);
+  --line-strong: #3a404c;
+  --surface: transparent;
+  --surface-2: rgb(255 255 255 / 6%);
+  --surface-3: rgb(255 255 255 / 10%);
+  --hover: rgb(255 255 255 / 7%);
+  --accent: #9fb4ff;
+}
+.topbar .brand > span {
+  display: none;
+}
+.topbar .logo .logo-b {
+  fill: var(--bezel-ink);
+}
+.topbar .logo .logo-dot {
+  fill: var(--bezel);
+}
+.topbar .diagram-picker {
+  border-color: transparent;
+  padding-inline: 6px 8px;
+  max-width: min(23vw, 340px);
+  min-width: 0;
+}
+.diagram-picker-title {
+  font-size: 14px;
+  font-weight: 620;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.topbar .btn,
+.topbar .icon-btn {
+  border-color: transparent;
+  background: transparent;
+  color: var(--bezel-ink);
+}
+.topbar .btn svg {
+  color: var(--bezel-dim);
+}
+.topbar .btn-primary {
+  background: rgb(255 255 255 / 10%);
+}
+.topbar .example-badge {
+  background: rgb(255 255 255 / 8%);
+  color: var(--bezel-dim);
+  border-color: transparent;
+}
+.topbar.is-live {
+  box-shadow: inset 0 -2px 0 var(--live);
+}
+.bezel-history {
+  display: inline-flex;
+  gap: 2px;
+  margin-inline-start: 4px;
+  padding-inline-start: 10px;
+  border-inline-start: 1px solid var(--bezel-line);
+}
+.bezel-history .icon-btn {
+  width: 30px;
+  height: 30px;
+  color: var(--bezel-dim);
+}
+.mode-switch {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  display: inline-flex;
+  padding: 3px;
+  gap: 2px;
+  border-radius: 10px;
+  background: rgb(255 255 255 / 7%);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 8%);
+}
+.mode-switch button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  padding: 0 14px 0 12px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: rgb(230 233 238 / 88%);
+  font-size: 13px;
+  font-weight: 620;
+  font-stretch: var(--stretch-wide);
+  letter-spacing: 0.01em;
+}
+.mode-dot {
+  position: relative;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--live);
+  box-shadow: 0 0 0 3px rgb(61 220 132 / 16%);
+}
+.mode-switch kbd {
+  font: 600 11px/1 var(--font-ui);
+  padding: 3px 5px;
+  border-radius: 4px;
+  background: rgb(255 255 255 / 12%);
+  color: inherit;
+  border: 0;
+}
+.mode-switch button.is-on {
+  background: #fff;
+  color: #15181e;
+}
+.mode-switch .is-live.is-on {
+  background: var(--live);
+  color: var(--live-ink);
+}
+.mode-switch .is-live.is-on .mode-dot {
+  background: var(--live-ink);
+  box-shadow: 0 0 0 3px rgb(4 20 11 / 18%);
+}
+.mode-switch .is-live.is-on kbd {
+  background: rgb(4 20 11 / 12%);
+}
+.tutorial-bar .mode-switch {
+  position: static;
+  transform: none;
+  background: var(--bezel);
+}
+@media (max-width: 1099px) {
+  .topbar .mode-switch {
+    position: static;
+    transform: none;
+    flex-shrink: 0;
+  }
+  .topbar {
+    gap: 5px;
+    padding-inline: 8px;
+  }
+  .topbar .diagram-picker {
+    flex: 1;
+    max-width: 24vw;
+  }
+  .topbar .example-badge,
+  .topbar .save-status {
+    display: none;
+  }
+}
+@media (max-width: 639px) {
+  .topbar .brand,
+  .topbar .label-optional {
+    display: none;
+  }
+  .topbar .diagram-picker {
+    max-width: 20vw;
+  }
+  .mode-switch button {
+    padding-inline: 7px;
+    gap: 4px;
+  }
+  .mode-switch kbd {
+    display: none;
+  }
+  .topbar .topbar-group {
+    gap: 2px;
+  }
+}
+
+@media (max-width: 639px) {
+  .topbar {
+    gap: 2px;
+  }
+  .topbar .btn,
+  .topbar .icon-btn {
+    min-width: 28px;
+    padding-inline: 4px;
+  }
+  .topbar .ix-caret,
+  .topbar .topbar-spacer {
+    display: none;
+  }
+  .topbar .bezel-history {
+    display: inline-flex;
+    padding-inline-start: 2px;
+    margin-inline-start: 0;
+  }
+  .topbar .bezel-history .icon-btn {
+    width: 28px;
+  }
+  .topbar .diagram-picker {
+    max-width: 18vw;
+  }
+}
+
+.mode-switch button[aria-busy="true"] {
+  cursor: progress;
+}
+
+/* Workbench, latest round 6: chrome numbers share the UI face and width axis. */
+.topbar {
+  font-variant-numeric: tabular-nums;
+}
+@media (max-width: 639px) {
+  .topbar:has(.diagram-picker) {
+    flex-wrap: nowrap;
+    height: 52px;
+    padding: 0 8px;
+    gap: 4px;
+  }
+  .topbar .brand {
+    display: flex;
+  }
+  .topbar .diagram-picker {
+    order: 0;
+    min-width: 0;
+    max-width: none;
+  }
+}
