@@ -28,19 +28,14 @@ import {
 import type { Rect } from "./geometry/rect";
 import { roundedPath } from "./geometry/path";
 import { FAR_ZOOM, textDetail } from "./detail";
-import { overviewConnection, overviewLayout, type OverviewHeader, type OverviewItem } from "./overview";
+import { overviewConnection } from "./overview";
 import { t, useLocale } from "../i18n";
 import "../styles/canvas/detail.css";
 import { IdentityDetail } from "./IdentityDetail";
 
 type Chip = { id: string; name: string; x: number; y: number };
-type Drawing = {
-  pins: FramePin[];
-  chips: Chip[];
-  hint: boolean;
-  headers: OverviewHeader[];
-};
-const empty: Drawing = { pins: [], chips: [], hint: false, headers: [] };
+type Drawing = { pins: FramePin[]; chips: Chip[]; hint: boolean };
+const empty: Drawing = { pins: [], chips: [], hint: false };
 
 /** Screen-space detail after a settled move. It changes presentation only, never the document or viewport. */
 export const FrameDetail = memo(function FrameDetail({
@@ -261,30 +256,9 @@ const FrameDecoration = memo(
             cards.set(id, el);
             if (!hidden) blockers.push(card);
           }
-          if (n.type === "boundary" && far && !overview)
+          if (n.type === "boundary" && far)
             chips.push({ id, name: "label" in n.data ? n.data.label : "", x: card.x + 10, y: card.y + 8 });
         }
-        if (measure) measure.font = `500 10.5px ${getComputedStyle(root).fontFamily}`;
-        const overviewNodes: OverviewItem[] = [];
-        const overviewZones: OverviewItem[] = [];
-        if (overview)
-          for (const { id, n } of frameNodes) {
-            const item = {
-              id,
-              name: "label" in n.data ? n.data.label : "text" in n.data ? n.data.text : "",
-              box: cardBoxes.get(id)!,
-              group: n.data.group ? `group:${n.data.group}` : undefined,
-              spotlight: selected.has(id) || lit.has(id) || zone.has(id),
-            };
-            if (n.type === "diagram") overviewNodes.push(item);
-            if (n.type === "boundary" || (n.type === "annotation" && "kind" in n.data && n.data.kind === "zone"))
-              overviewZones.push(item);
-          }
-        const overviewDrawing = overviewLayout(
-          overviewNodes,
-          overviewZones,
-          (text) => measure?.measureText(text).width ?? text.length * 7,
-        );
         // React Flow's ResizeObserver measures the resized wrappers once. An explicit
         // updateNodeInternals here schedules a second forced measurement of the same cards.
         const routes = selectRoutes(s, { style, direction, captions, hideDependencies });
@@ -574,7 +548,6 @@ const FrameDecoration = memo(
           pins,
           chips,
           hint: far && !dismissed.current,
-          headers: overviewDrawing.headers,
         };
         // Names subscribe with the editor commit; only frame geometry needs a deferred commit.
         const key = JSON.stringify({
@@ -690,7 +663,7 @@ const FrameDecoration = memo(
       const unregister = viewport
         ? registerFrameCapture(viewport, () => {
             suspended = true;
-            // IdentityDetail normalizes the identity scale for capture in every view.
+            // suspendFrameCapture normalizes the identity scale for capture in every view.
             reset();
             return () => {
               suspended = false;
@@ -718,18 +691,6 @@ const FrameDecoration = memo(
             {t("camera.dig")}
           </div>
         )}
-        {drawing.headers.map((header) => (
-          <button
-            key={header.id}
-            className="overview-zone-header"
-            data-testid={`zone-focus-${header.id.replace(/^group:/, "")}`}
-            data-overview-count={header.count}
-            style={{ left: header.box.x, top: header.box.y, width: header.box.width, height: header.box.height }}
-            onClick={() => camera?.dispatch({ type: "view.requested", view: "focus", zone: header.id })}
-          >
-            {header.lines.join("\n")}
-          </button>
-        ))}
         {drawing.chips.map((chip) => (
           <button
             key={chip.id}

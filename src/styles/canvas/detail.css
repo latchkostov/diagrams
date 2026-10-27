@@ -129,7 +129,7 @@
   stroke-width: min(2px, calc(2px / var(--rf-zoom-exact, 1)));
 }
 
-/* Large Overview keeps individual cards and contrasting zone bands. */
+/* Large Overview keeps individual cards, tinted zones and contrasting outlines. */
 [data-detail-overview] .grp,
 [data-detail-overview] .ann-zone {
   background: color-mix(in srgb, var(--tone, var(--ann)) 5%, transparent);
@@ -146,24 +146,4 @@
   stroke: var(--text-2);
   stroke-width: calc(1.5px / var(--rf-zoom));
   opacity: 1;
-}
-.overview-zone-header {
-  position: absolute;
-  box-sizing: border-box;
-  color: var(--text);
-  font: 500 10.5px/12px var(--font-ui);
-}
-.overview-zone-header {
-  pointer-events: auto;
-  background: var(--board);
-  border: 0;
-  border-bottom: 1px solid var(--text-2);
-  border-radius: 4px 4px 0 0;
-  padding: 3px 6px;
-  text-align: start;
-  cursor: pointer;
-  white-space: pre-wrap;
-}
-.overview-zone-header:hover {
-  background: var(--surface-2);
 }

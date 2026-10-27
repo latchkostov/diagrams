@@ -7,7 +7,7 @@ import diagram from "../../src/examples/black-friday-commerce.json" with { type:
 import delivery from "../../src/examples/delivery-dispatch.json" with { type: "json" };
 
 for (const theme of ["light", "dark"])
-  test(`large Overview names every individual card, reserves headers and filters routes (${theme})`, async ({
+  test(`large Overview names every individual card and zone, and filters routes (${theme})`, async ({
     page,
   }, info) => {
     await page.setViewportSize({ width: 1440, height: 900 });
@@ -28,39 +28,17 @@ for (const theme of ["light", "dark"])
     await expect(page.getByTestId("canvas-wrap")).toHaveAttribute("data-detail-overview", "");
     await expect(page.getByTestId("overview-dig-hint")).toHaveText("Select a service, or a zone name, to focus");
     await expectNodeIdentity(page, diagram.nodes.length);
+    // Zones keep their plain focus chip at the outline's top-left corner (header bands return in their own PR).
     for (const group of diagram.groups) {
-      const band = await page.getByTestId(`zone-focus-${group.id}`).boundingBox();
+      const chip = page.getByTestId(`zone-focus-${group.id}`);
+      await expect(chip).toBeVisible();
+      await expect(chip).toContainText(group.label);
+      const box = await chip.boundingBox();
       const region = await page.getByTestId(`group-${group.id}`).boundingBox();
-      if (!band || !region) throw new Error(`Missing region ${group.id}`);
-      expect(band.x).toBeGreaterThanOrEqual(region.x - 0.5);
-      // A zone too short for a free band keeps its header immediately above its outline.
-      if (band.y < region.y - 0.5) expect(band.y + band.height).toBeLessThanOrEqual(region.y);
-      else expect(band.y).toBeGreaterThanOrEqual(region.y - 0.5);
-      expect(band.x + band.width).toBeLessThanOrEqual(region.x + region.width + 0.5);
-      expect(band.y + band.height).toBeLessThanOrEqual(region.y + region.height + 0.5);
+      if (!box || !region) throw new Error(`Missing region ${group.id}`);
+      expect(box.x).toBeGreaterThanOrEqual(region.x - 0.5);
+      expect(box.y).toBeGreaterThanOrEqual(region.y - 0.5);
     }
-    const headers = await page.getByTestId(/^zone-focus-/).evaluateAll((els) =>
-      els.map((el) => {
-        const { x, y, width, height } = el.getBoundingClientRect();
-        return { x, y, width, height };
-      }),
-    );
-    const cards = await page.getByTestId(/^node-/).evaluateAll((els) =>
-      els
-        .filter((el) => getComputedStyle(el).visibility === "visible")
-        .map((el) => {
-          const { x, y, width, height } = el.getBoundingClientRect();
-          return { x, y, width, height };
-        }),
-    );
-    for (const header of headers)
-      for (const card of cards)
-        expect(
-          header.x < card.x + card.width &&
-            card.x < header.x + header.width &&
-            header.y < card.y + card.height &&
-            card.y < header.y + header.height,
-        ).toBe(false);
     const edges = await page.getByTestId(/^connection-stroke-/).evaluateAll((els) =>
       els.map((el) => {
         const wrapper = el.closest("[data-id]");

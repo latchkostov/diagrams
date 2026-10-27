@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { textFieldsFixture } from "../../src/lab/textFieldsFixture";
 import { encodeShare } from "../../src/interop/share";
 import { expectFittedIdentity, zoomIdentity } from "./node-identity";
+import { chunk, holdChunk } from "./chunk";
 import type { Page } from "@playwright/test";
 import {
   test,
@@ -126,6 +127,36 @@ test("presentation image exports capture natural identity at any zoom @dev", asy
     // The whole image, byte for byte, is independent of the presentation zoom.
     expect({ ...(await presentedSvg(page)), target }).toEqual({ ...natural, target });
   }
+});
+
+test("a low-zoom image export captures natural identity while the frame-detail chunk is held", async ({
+  page,
+}, info) => {
+  test.slow(); // rendering + font embedding is CPU-bound
+  const held = await holdChunk(page, chunk("FrameDetail", "src/canvas/FrameDetail.tsx"));
+  await gotoCanvas(page, KAFKA);
+  await expect.poll(held.requested).toBe(true);
+  await zoomIdentity(page, 0.24);
+  await page.getByTestId("file-button").click();
+  await expect(page.getByTestId("file-menu")).toBeVisible();
+  await page.getByTestId("file-more-formats").click();
+  await page.getByTestId("export-image").click();
+  await page.getByTestId("image-options-toggle").click();
+  await page.getByTestId("image-format-svg").click();
+  const [download] = await Promise.all([
+    page.waitForEvent("download", { timeout: 45_000 }),
+    page.getByTestId("image-export").click(),
+  ]);
+  const file = info.outputPath("held.svg");
+  await download.saveAs(file);
+  // The clone writes each title's size in its `font` shorthand: "font: 620 13.5px / 16.875px …".
+  const titles = [
+    ...readFileSync(file, "utf8").matchAll(/data-testid="card-title"[^>]*?style="[^"]*?font: [^;]*?([\d.]+)px \//g),
+  ].map((m) => Number(m[1]));
+  expect(titles.length).toBeGreaterThan(0);
+  // At 24% the on-screen floor is 9.5 / 0.24 ≈ 40 px; the picture keeps the natural size.
+  for (const size of titles) expect(size).toBeLessThanOrEqual(13.5);
+  held.release();
 });
 
 const fullscreen = (page: Page) => page.evaluate(() => document.fullscreenElement === document.documentElement);

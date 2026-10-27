@@ -5,8 +5,8 @@ Titles counter-scale to a 9.5 px screen floor and use measured ellipses or word 
 inside their own card width. Icons retain about 14 screen pixels, filling a smaller
 card's height when necessary. Secondary text keeps its existing hide floor.
 
-Overview retains individual services, zone bands, tints and contrasting outlines.
-A header with no free internal band moves above the zone, clear of neighbouring cards.
+Overview retains individual services, zone tints and contrasting outlines. Zones keep their
+plain focus chips from master; Overview header bands are deferred to their own PR.
 Card, Compact and Icon styles share the rule. Image capture measures identity at its
 export scale, so a small editor zoom does not change the exported drawing.
 

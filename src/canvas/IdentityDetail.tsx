@@ -101,14 +101,9 @@ export const IdentityDetail = memo(function IdentityDetail({ host }: { host: Ref
     const unregister = viewport
       ? registerFrameCapture(viewport, () => {
           suspended = true;
-          // Capture replaces the viewport transform with scale(1), so identity ink must use that scale
-          // too: every image, including one started from presentation, shows natural-size names and icons.
-          const scale = viewport.style.getPropertyValue("--rf-zoom-exact");
-          viewport.style.setProperty("--rf-zoom-exact", "1");
+          // suspendFrameCapture itself normalizes the identity scale to the capture's scale(1).
           reset();
           return () => {
-            if (scale) viewport.style.setProperty("--rf-zoom-exact", scale);
-            else viewport.style.removeProperty("--rf-zoom-exact");
             suspended = false;
             schedule();
           };
