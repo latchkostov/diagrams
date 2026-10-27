@@ -1,6 +1,6 @@
 import { frameView } from "../detail";
 import { useSyncExternalStore, useId, useLayoutEffect, useRef, useState, type RefObject } from "react";
-import { Background, BackgroundVariant, ControlButton, MiniMap, useStore, type ReactFlowState } from "@xyflow/react";
+import { Background, BackgroundVariant, MiniMap, useStore, type ReactFlowState } from "@xyflow/react";
 import { useCameraController } from "../camera/useCameraCore";
 import { Icon } from "../../components/Icon";
 import type { EditorApi } from "../../editor/types";
@@ -120,7 +120,8 @@ export function CanvasControls({
     >
       {!collapsed && (
         <>
-          {history && (
+          {/* Only the Lab omits the app bezel, which owns Undo and Redo. */}
+          {(import.meta.env.DEV || import.meta.env.VITE_E2E === "1") && history && (
             <div className="bezel-history">
               <button
                 type="button"
@@ -207,7 +208,9 @@ export function CanvasControls({
           </button>
         </>
       )}
-      <ControlButton
+      <button
+        type="button"
+        className="react-flow__controls-button"
         data-testid="collapse-toolbar-button"
         title={collapseLabel}
         aria-label={collapseLabel}
@@ -217,7 +220,7 @@ export function CanvasControls({
         <span className="zoom-controls-chevron" data-testid="zoom-controls-chevron">
           <Icon name={collapsed ? "chevrons-left" : "chevrons-right"} size={12} />
         </span>
-      </ControlButton>
+      </button>
     </div>
   );
 }

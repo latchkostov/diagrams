@@ -1,6 +1,6 @@
 import { useWorkbenchDock } from "../inspector/dockState";
 import { usePhone } from "../../lib/usePhone";
-import { useId, useLayoutEffect, useRef, useSyncExternalStore, type ReactNode } from "react";
+import { useLayoutEffect, useRef, useSyncExternalStore, type ReactNode } from "react";
 import { Icon, type IconName } from "../../components/Icon";
 import { t, useLocale } from "../../i18n";
 import type { View } from "../../lib/urlState";
@@ -18,6 +18,7 @@ export function ToolRail({ view, onView }: { view: View; onView: (view: View) =>
   useLocale();
   const phone = usePhone();
   const host = useToolHost();
+  const live = host?.live;
   const dock = useWorkbenchDock();
   const surface = useToolSurface();
   const checks = useChecksPanel();
@@ -27,7 +28,6 @@ export function ToolRail({ view, onView }: { view: View; onView: (view: View) =>
   );
   const documentId = useSyncExternalStore(paletteHost.subscribe, () => paletteHost.get().canvas?.documentId);
   const fresh = useUnseen(documentId);
-  const descriptionId = useId();
   const nav = useRef<HTMLDivElement>(null);
   const focused = useRef<HTMLElement | null>(null);
   const returning = useRef(false);
@@ -59,9 +59,9 @@ export function ToolRail({ view, onView }: { view: View; onView: (view: View) =>
     run: () => void,
     active = false,
     extra?: ReactNode,
-    disabled = false,
+    disabled?: boolean,
     name = label,
-    description?: string,
+    title = name,
   ) => (
     <button
       key={id}
@@ -69,21 +69,16 @@ export function ToolRail({ view, onView }: { view: View; onView: (view: View) =>
       data-testid={id}
       className={active ? "is-on" : undefined}
       aria-label={name}
-      aria-describedby={description ? `${descriptionId}-${id}` : undefined}
-      title={description ?? (id === "ai-rail-open" ? aiPanelTitle() : name)}
+      title={title}
       aria-pressed={active}
       tabIndex={-1}
       disabled={disabled}
       onClick={run}
-      {...(id === "rail-add" ? { draggable: !disabled, onDragStart: () => tools.open("library") } : {})}
+      draggable={id === "rail-add" && !disabled}
+      onDragStart={id === "rail-add" ? () => tools.open("library") : undefined}
     >
       <Icon name={icon} size={20} />
       <span className="tool-rail-label">{label}</span>
-      {description && (
-        <span id={`${descriptionId}-${id}`} className="sr-only" data-testid={`${id}-description`}>
-          {description}
-        </span>
-      )}
       {extra}
     </button>
   );
@@ -146,9 +141,9 @@ export function ToolRail({ view, onView }: { view: View; onView: (view: View) =>
         () => tools.toggle("library"),
         surface === "library" || !!host?.pinned,
         undefined,
-        !host || host.live,
+        !host || live,
         undefined,
-        host?.live ? t("workbench.addInLive") : undefined,
+        live ? t("workbench.addInLive") : undefined,
       )}
       {item(
         "rail-annotate",
@@ -157,9 +152,9 @@ export function ToolRail({ view, onView }: { view: View; onView: (view: View) =>
         () => tools.toggle("annotate"),
         surface === "annotate",
         undefined,
-        !host || host.live,
+        !host || live,
         undefined,
-        host?.live ? t("workbench.annotateInLive") : undefined,
+        live ? t("workbench.annotateInLive") : undefined,
       )}
       {item(
         "checks-count",
@@ -212,6 +207,7 @@ export function ToolRail({ view, onView }: { view: View; onView: (view: View) =>
               ),
               !host,
               railLabel(fresh),
+              aiPanelTitle(),
             )}
         </div>
       </details>

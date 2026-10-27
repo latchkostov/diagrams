@@ -35,9 +35,6 @@ it("Live disables Add and Annotate with editing hints and Edit enables them agai
     ] as const) {
       expect(button.disabled).toBe(true);
       expect(button.title).toBe(hint);
-      const hintText = container.querySelector(`[data-testid="${button.dataset.testid}-description"]`)!;
-      expect(hintText.textContent?.trim()).toBe(hint);
-      expect(button.getAttribute("aria-describedby")).toBe(hintText.id);
       expect(button.tabIndex).toBe(-1);
     }
     expect(add.getAttribute("draggable")).toBe("false");
@@ -47,8 +44,8 @@ it("Live disables Add and Annotate with editing hints and Edit enables them agai
     });
     expect(add.disabled).toBe(false);
     expect(annotate.disabled).toBe(false);
-    expect(add.hasAttribute("aria-describedby")).toBe(false);
-    expect(annotate.hasAttribute("aria-describedby")).toBe(false);
+    expect(add.title).toBe("Add");
+    expect(annotate.title).toBe("Annotate");
   } finally {
     await act(() => {
       root.unmount();

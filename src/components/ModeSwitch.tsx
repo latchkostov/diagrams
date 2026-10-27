@@ -54,26 +54,24 @@ export function HistoryButtons() {
   });
   return (
     <div className="bezel-history">
-      <button
-        className="icon-btn"
-        data-testid="undo-button"
-        disabled={!(flags & 1)}
-        title={t("canvas.undoValue", { combo: formatCombo(shortcutKeys("undo")) })}
-        aria-label={t("ai.undo")}
-        onClick={() => paletteHost.get().canvas?.editor.undo()}
-      >
-        <Icon name="undo" size={16} />
-      </button>
-      <button
-        className="icon-btn"
-        data-testid="redo-button"
-        disabled={!(flags & 2)}
-        title={t("canvas.redoValue", { combo: formatCombo(shortcutKeys("redo")) })}
-        aria-label={t("shortcuts.redo")}
-        onClick={() => paletteHost.get().canvas?.editor.redo()}
-      >
-        <Icon name="redo" size={16} />
-      </button>
+      {(
+        [
+          ["undo", 1, t("canvas.undoValue", { combo: formatCombo(shortcutKeys("undo")) }), t("ai.undo")],
+          ["redo", 2, t("canvas.redoValue", { combo: formatCombo(shortcutKeys("redo")) }), t("shortcuts.redo")],
+        ] as const
+      ).map(([action, bit, title, label]) => (
+        <button
+          key={action}
+          className="icon-btn"
+          data-testid={`${action}-button`}
+          disabled={!(flags & bit)}
+          title={title}
+          aria-label={label}
+          onClick={() => paletteHost.get().canvas?.editor[action]()}
+        >
+          <Icon name={action} size={16} />
+        </button>
+      ))}
     </div>
   );
 }
