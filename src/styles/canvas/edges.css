@@ -53,7 +53,7 @@
 }
 
 .react-flow__edge .fe.is-selected .fe-path.react-flow__edge-path {
-  stroke-width: 2;
+  stroke-width: min(2px, calc(2px / var(--rf-zoom-exact, 1)));
 }
 
 .fe.is-selected .fe-halo {
@@ -106,7 +106,7 @@
 }
 
 .react-flow__edge .fe-dep.is-selected .fe-path.react-flow__edge-path {
-  stroke-width: 1.6;
+  stroke-width: min(1.6px, calc(2px / var(--rf-zoom-exact, 1)));
 }
 
 .m-dep {

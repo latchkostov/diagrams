@@ -1,5 +1,6 @@
 import type { Rollup } from "vite";
 import { createHash } from "node:crypto";
+import { gzipSync } from "node:zlib";
 import { readdirSync, readFileSync } from "node:fs";
 import { beforeAll, describe, expect, it } from "vitest";
 import { APPROVED_STUN, APPROVED_TRACKERS } from "../../scripts/deployment-env";
@@ -14,6 +15,7 @@ import { productionBuild } from "../test/productionBuild";
 
 /** Never in the startup JavaScript. */
 const NOT_AT_STARTUP: [string, RegExp][] = [
+  ["full trace journey construction", /[/\\]src[/\\]trace[/\\]journey\.ts$/],
   ["tutorial lesson data", /[/\\]src[/\\]tutorials[/\\]catalog[/\\]/],
   ["tutorial runtime", /[/\\]src[/\\]tutorials[/\\](?:runner|machine|checks|TutorialApp|TutorialsView)\.tsx?$/],
   ["tutorial command titles", /[/\\]src[/\\]tutorials[/\\]metadata\.ts$/],
@@ -120,43 +122,10 @@ const NOT_AT_STARTUP: [string, RegExp][] = [
 
 /**
  * The entry and every chunk index.html preloads with it (fetched in parallel, no round trip between them). The
- * diagram loader (native, codec, annotations, checks' model) sits in chunks of its own, preloaded: since the
- * password token module (src/interop/encryptedToken.ts) became a second static importer of native and codec, the
- * bundler no longer folds them into the entry. The privacy gates (src/lib/localOnly.ts) were a preloaded chunk of
- * their own until the File menu stopped importing them (Share… replaced its link rows): the bundler folds them into
- * the entry now, one request fewer at startup for the same code. The i18n runtime (src/i18n/index.ts: the message
- * lookup and the language store, about 0.3 kB) is a chunk of its own for the same reason as storage and toast: the
- * entry and the lazy dialogs both import it.
+ * diagram grammar shares native; React, translation lookup and small shell stores share shell-runtime. These
+ * modules already loaded together. Keeping them together avoids paying imports and gzip dictionaries per helper.
  */
-const STARTUP_CHUNKS = [
-  "annotations",
-  "codec",
-  "colors",
-  "examples",
-  // Native validation and clipboard insertion share the parent-cycle sanitizer.
-  // The bundler folds their persisted-resource validator into this same startup chunk.
-  "groupHierarchy",
-  "i18n",
-  "index",
-  "jsx-runtime",
-  // Shared by the optional shape engines and menu artwork, while its loader stays preloaded.
-  "lazyLoad",
-  // The Workbench dock uses the shared state-machine helper before any canvas mounts.
-  "machine",
-  // Catalogue, roles, schema constants and file validation share one preloaded model chunk.
-  "native",
-  "preload-helper",
-  "react",
-  "react-dom",
-  // Request routing R1's file grammar and bounds (src/model/requestRouting.ts): native validation refuses a bad
-  // route table or mix on open. Matching, the engine and the routing inspector stay lazy.
-  "requestRouting",
-  // Expanded annotation modules share Rolldown's live-binding export helper with the loader.
-  "rolldown-runtime",
-  "size",
-  "storage",
-  "toast",
-];
+const STARTUP_CHUNKS = ["examples", "index", "native", "preload-helper", "rolldown-runtime", "shell-runtime"];
 
 /** Not in the canvas's first view either: they load when used, or once the canvas is idle. */
 const NOT_WITH_CANVAS = NOT_AT_STARTUP.filter(
@@ -263,6 +232,23 @@ const canvasChunk = (b: Build = plain()) => {
 };
 
 describe("production bundle split", () => {
+  it("keeps the dedicated trim's canvas and Live headroom without deferring another surface", () => {
+    const b = plain();
+    const canvas = closure([...startup(b), canvasChunk(b)], b);
+    const live = b.chunks.find((c) => c.name === "LiveSession");
+    expect(live).toBeDefined();
+    const extra = [...closure([live!], b)].filter((c) => !canvas.has(c));
+    const gzip = (set: Iterable<Rollup.OutputChunk>) =>
+      [...set].reduce((bytes, c) => bytes + gzipSync(c.code, { level: 9 }).length, 0);
+    expect(gzip(canvas)).toBeLessThanOrEqual(383_000 - 8_192);
+    expect(gzip(extra)).toBeLessThanOrEqual(135_000 - 3_000);
+    expect(
+      found(
+        bundled(closure([live!], b)),
+        NOT_AT_STARTUP.filter(([what]) => what === "full trace journey construction"),
+      ),
+    ).toEqual([]);
+  });
   it("emits the generated self-host header policy as runtime data", () => {
     const manifest = assets.find((asset) => asset.fileName === "headers.json");
     expect(JSON.parse(String(manifest?.source))).toEqual(selfHostHeaderManifest());

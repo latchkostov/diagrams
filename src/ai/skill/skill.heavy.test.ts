@@ -15,6 +15,7 @@ import generated from "../../../scripts/generated-files.json";
 import { selfHostSamples } from "../../../scripts/self-host-headers";
 import { hostingTemplates } from "../../../scripts/self-host-templates";
 import { applyRelease, iconMap, RELEASED, releasedFiles, type ReleaseFs } from "../../../scripts/skill-viewer";
+import { buildViewerTemplate } from "../../../scripts/interactive-viewer";
 import {
   buildPayload,
   exportHtml,
@@ -760,6 +761,26 @@ describe("share-link.mjs", () => {
 });
 
 describe("the downloadable skill", () => {
+  it("saves at least 6 KiB by excluding unreachable editor CSS, with every skill file retained", async () => {
+    const files = readSkill();
+    const current = await buildViewerTemplate(root);
+    const withEditorCss = await buildViewerTemplate(root, [
+      {
+        name: "restore-editor-css-for-size-baseline",
+        enforce: "pre",
+        transform(code, id) {
+          if (!id.replaceAll("\\", "/").endsWith("/src/export/viewerEntry.tsx")) return;
+          return code
+            .replace("../styles/app-shared.css", "../styles/app.css")
+            .replace("./viewer/canvas.css", "../styles/canvas.css");
+        },
+      },
+    ]);
+    const before = await zipSkill(withFresh(files, releasedFiles(root, withEditorCss)));
+    const after = await zipSkill(withFresh(files, releasedFiles(root, current)));
+    expect(before.length - after.length).toBeGreaterThanOrEqual(6144);
+    expect(after.length).toBeLessThan(835_000);
+  }, 30_000);
   it("zips the skill folder deterministically, under livediagrams/", async () => {
     const files = readSkill();
     const names = files.map((f) => f.name);

@@ -1,3 +1,4 @@
+import { tracePath } from "./path";
 // A recorded message trace, read for people: the hops it took (node → edge → node) with the time
 // each one took, where it waited, retries, dead letters and drops, plus the totals. Pure: the trace
 // card and the sequence generator both build on this.
@@ -111,10 +112,7 @@ export function buildJourney(trace: MessageTrace, diagram: DiagramLike, now = tr
   // Its type when it last arrived somewhere: a different type on the next hop means it was renamed.
   const hopType = new Map<number, string>();
   const ids: number[] = [];
-  const nodes: string[] = [];
-  const edgeList: string[] = [];
-  const seenNode = new Set<string>();
-  const seenEdge = new Set<string>();
+  const { nodes, edges: edgeList } = tracePath(trace);
   const lastFail = new Map<number, number>();
   const redelivering = new Set<number>();
   const returned = new Map<number, number>();
@@ -126,18 +124,6 @@ export function buildJourney(trace: MessageTrace, diagram: DiagramLike, now = tr
     rejected = 0;
   const kept: string[] = [];
 
-  const reach = (node: string | undefined) => {
-    if (node && !seenNode.has(node)) {
-      seenNode.add(node);
-      nodes.push(node);
-    }
-  };
-  const travel = (edge: string | undefined) => {
-    if (edge && !seenEdge.has(edge)) {
-      seenEdge.add(edge);
-      edgeList.push(edge);
-    }
-  };
   const visit = (id: number, node: string, t: number): Visit => {
     const v: Visit = { id, node, at: t };
     visits.push(v);
@@ -147,7 +133,6 @@ export function buildJourney(trace: MessageTrace, diagram: DiagramLike, now = tr
   const known = (id: number) => {
     if (!types.has(id)) ids.push(id);
   };
-  reach(trace.origin);
 
   trace.steps.forEach((step, i) => {
     const t = rel(step.t);
@@ -177,7 +162,6 @@ export function buildJourney(trace: MessageTrace, diagram: DiagramLike, now = tr
         break;
       }
       case "send": {
-        travel(step.edge);
         if (step.via === "message" || step.via === "dlq") {
           // Redelivered from its broker: it has been back there since its retry trip ended.
           if (at.get(step.id)?.node !== step.node) visit(step.id, step.node!, returned.get(step.id) ?? t);
@@ -192,7 +176,6 @@ export function buildJourney(trace: MessageTrace, diagram: DiagramLike, now = tr
         break;
       }
       case "arrive": {
-        reach(step.node);
         const send = sent.get(step.id);
         const prev = at.get(step.id);
         const edge = step.edge ? edges.get(step.edge) : undefined;
@@ -353,19 +336,4 @@ export function buildJourney(trace: MessageTrace, diagram: DiagramLike, now = tr
   };
 }
 
-/** "0.45 s", "120 ms", "2.4 s", "1 min 5 s". */
-export function formatDuration(ms: number): string {
-  if (!Number.isFinite(ms)) return "–";
-  const v = Math.max(0, Math.round(ms));
-  if (v < 1000) return `${v} ms`;
-  if (v < 10_000) return `${(v / 1000).toFixed(2)} s`;
-  if (v < 60_000) return `${(v / 1000).toFixed(1)} s`;
-  const min = Math.floor(v / 60_000);
-  const s = Math.round((v % 60_000) / 1000);
-  return s ? `${min} min ${s} s` : `${min} min`;
-}
-
-/** "+0.45 s" relative timestamps for the trace card and the sequence gutter. */
-export function formatOffset(ms: number): string {
-  return `+${(Math.max(0, ms) / 1000).toFixed(2)} s`;
-}
+export { formatDuration, formatOffset } from "./format";

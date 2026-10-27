@@ -1,4 +1,5 @@
 import { spawnSync } from "node:child_process";
+import { downloadSkill } from "./skill-download";
 import { createHash } from "node:crypto";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -216,7 +217,9 @@ test.describe("The agent skill's Interactive HTML export", () => {
     expect(app.status(), "the skill's template isn't this build's").toBe(200);
     expect((await app.text()) === template).toBe(true);
     // The zip's copy too.
-    const zip = await (await page.request.get("/livediagrams-skill.zip")).body();
+    await page.goto("./skill/");
+    const download = await downloadSkill(page);
+    const zip = readFileSync(await download.path());
     expect(zipEntries(zip).get("livediagrams/scripts/lib/viewer-template.html")?.toString("utf8") === template).toBe(
       true,
     );
@@ -225,7 +228,9 @@ test.describe("The agent skill's Interactive HTML export", () => {
   test("the downloaded skill exports a file that plays offline", async ({ page, context }) => {
     test.setTimeout(90_000);
     // The zip people download, unpacked into a folder of its own, outside the repository.
-    const zip = await (await page.request.get("/livediagrams-skill.zip")).body();
+    await page.goto("./skill/");
+    const download = await downloadSkill(page);
+    const zip = readFileSync(await download.path());
     const dir = test.info().outputPath("downloaded");
     for (const [name, data] of zipEntries(zip)) {
       expect(name, "every entry sits in livediagrams/, with no way out of it").toMatch(

@@ -1,0 +1,13 @@
+/* Read-only canvas styles, in the editor's cascade order. The inspector,
+ * stencil palette, onboarding and quick-add are editor-only, just like their
+ * component stubs in viewerSwaps. Keep all drawing and playback styles. */
+@import "../../styles/canvas/flow.css";
+@import "../../styles/canvas/groups.css";
+@import "../../styles/canvas/nodes.css";
+@import "../../styles/canvas/edges.css";
+@import "../../styles/canvas/overlays.css";
+@import "../../styles/canvas/context-menu.css";
+@import "../../styles/canvas/routing.css";
+@import "../../styles/canvas/dialog.css";
+@import "../../styles/canvas/annotations.css";
+@import "../../styles/canvas/markdown.css";

@@ -2,7 +2,9 @@ import { test, expect, gotoCanvas, gotoLive, pauseClock, waitForCameraIdle } fro
 
 for (const width of [1440, 390])
   for (const theme of ["light", "dark"])
-    test(`council frame preserves whole cards and reserved legend (${width}, ${theme})`, async ({ page }, info) => {
+    test(`${width === 390 ? "phone Follow keeps its narrated subject readable and pins its caller" : "council frame preserves whole cards and reserved legend"} (${width}, ${theme})`, async ({
+      page,
+    }, info) => {
       await page.setViewportSize({ width, height: width === 390 ? 844 : 900 });
       await page.addInitScript(
         (theme) => localStorage.setItem("diagrams.settings.v1", JSON.stringify({ themePreference: theme })),
@@ -40,11 +42,29 @@ for (const width of [1440, 390])
       if (!credit) throw new Error("Expected visible credit");
       expect(credit.y).toBeGreaterThanOrEqual(legend.y);
       if (width === 390) {
+        // Both cards are narrated, but only a zoom near 50% holds both on a phone. Follow keeps its
+        // subject at the readable .92 floor, whole, and the narrated caller pins.
+        const assertSubject = async () => {
+          const node = page.getByTestId("rf__node-payments");
+          await expect(node).toBeVisible();
+          await expect(node).not.toHaveAttribute("data-detail-hidden", "");
+          const box = await node.boundingBox();
+          if (!box) throw new Error("Expected narrated subject");
+          expect(box.x).toBeGreaterThanOrEqual(frame.x);
+          expect(box.y).toBeGreaterThanOrEqual(frame.y);
+          expect(box.x + box.width).toBeLessThanOrEqual(frame.x + frame.width);
+          expect(box.y + box.height).toBeLessThan(legend.y);
+          await expect(page.getByTestId("focus-offscreen-checkout")).toBeVisible();
+        };
+        await assertSubject();
         const pin = await page.getByTestId("focus-offscreen-checkout").boundingBox();
         const card = await page.getByTestId("node-payments").boundingBox();
         if (!pin || !card) throw new Error("Expected incoming neighbour and subject");
         expect(card.x - pin.x - pin.width).toBeGreaterThan(24);
         await page.getByTestId("live-note-expand").click();
+        await page.clock.runFor(1400);
+        await waitForCameraIdle(page);
+        await assertSubject();
         for (const id of ["live-note-earlier", "live-note-later"]) {
           const target = await page.getByTestId(id).boundingBox();
           expect(target?.height).toBeGreaterThanOrEqual(44);
