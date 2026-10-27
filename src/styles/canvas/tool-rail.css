@@ -2,6 +2,7 @@
   width: var(--frame-rail-w);
   flex: none;
   min-height: 0;
+  overflow-y: auto;
   z-index: 8;
   display: flex;
   flex-direction: column;
@@ -188,6 +189,7 @@
   }
   .tool-rail {
     width: 100%;
+    overflow: visible;
     height: 64px;
     flex-direction: row;
     justify-content: space-evenly;

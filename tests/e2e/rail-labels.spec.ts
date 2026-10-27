@@ -1,8 +1,8 @@
 import { readdirSync, readFileSync } from "node:fs";
 import type { Locator } from "@playwright/test";
-import { test, expect, gotoCanvas } from "./fixtures";
+import { test, expect, gotoCanvas, waitForChecks } from "./fixtures";
 import en from "../../src/i18n/en";
-import { parse, textOf } from "../../src/i18n/icu";
+import { format, parse, textOf } from "../../src/i18n/icu";
 import { pseudoLocalize } from "../../src/i18n/pseudo";
 
 const codes = readdirSync("src/i18n/locales")
@@ -22,8 +22,8 @@ async function expectLabelInName(rail: Locator) {
 }
 
 // Measure real glyphs, not just the span: clipping/line-clamping must not conceal a regression.
-async function labelProblems(rail: Locator) {
-  return rail.getByTestId("rail-label").evaluateAll(async (labels) => {
+async function labelProblems(rail: Locator, labels = rail.getByTestId("rail-label")) {
+  return labels.evaluateAll(async (labels) => {
     await document.fonts.ready;
     return labels.flatMap((label) => {
       if (!label.getClientRects().length) return ["hidden label"];
@@ -42,6 +42,8 @@ async function labelProblems(rail: Locator) {
       if (parseFloat(style.fontSize) < 10.5) problems.push("font below 10.5px");
       if (box.height > parseFloat(style.lineHeight) * 2 + 1 || lines.size > 2) problems.push("more than 2 lines");
       if (box.left < rail.left || box.right > rail.right) problems.push("outside rail width");
+      if (innerWidth >= 1100 && (box.top < rail.top || box.bottom > rail.bottom || box.bottom > innerHeight))
+        problems.push("outside visible rail height");
       if (box.left < button.left || box.right > button.right || box.top < button.top || box.bottom > button.bottom)
         problems.push("outside button");
       if (
@@ -62,6 +64,54 @@ async function labelProblems(rail: Locator) {
     });
   });
 }
+
+for (const code of ["es", "fr"])
+  test(`${code}: short captions retain full accessible names and tooltips`, async ({ page }) => {
+    const messages: Record<string, string> = JSON.parse(readFileSync(`src/i18n/locales/${code}.json`, "utf8"));
+    await page.addInitScript((code) => localStorage.setItem("diagrams.locale", code), code);
+    await gotoCanvas(page, "retry-storm");
+    await waitForChecks(page);
+    const badge = page.getByTestId("checks-warning-badge");
+    const count = (await badge.count()) ? Number(await badge.innerText()) : 0;
+    const warnings = format(messages["workbench.warnings"], code, { count });
+    const descriptions = {
+      "rail-select": messages["workbench.select"],
+      "rail-annotate": messages["menu.annotate"],
+      "checks-count": format(messages["workbench.checksName"], code, { warnings }),
+      "view-gallery": messages["topbar.stencils"],
+      "view-tutorials": messages["tutorials.section"],
+      "shortcuts-button": messages["workbench.shortcuts"],
+      "ai-rail-open": messages["ai.aIPanel"],
+    };
+    for (const [id, full] of Object.entries(descriptions)) {
+      const button = page.getByTestId(id);
+      const label = (await button.getByTestId("rail-label").innerText()).trim();
+      await expect(button).toHaveAccessibleName(full.startsWith(label) ? full : `${label}, ${full}`);
+      if (id === "ai-rail-open") expect(await button.getAttribute("title")).toContain(full);
+      else await expect(button).toHaveAttribute("title", full);
+    }
+    await expect(page.getByTestId("checks-warning-text")).toHaveText(warnings);
+    await page.getByTestId("view-gallery").click();
+    const diagram = page.getByTestId("view-canvas");
+    const label = messages["rail.diagram"];
+    const full = messages["topbar.diagram"];
+    await expect(diagram).toHaveAccessibleName(full.startsWith(label) ? full : `${label}, ${full}`);
+    await expect(diagram).toHaveAttribute("title", full);
+  });
+
+test("short desktop rail keeps every label reachable", async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 540 });
+  await gotoCanvas(page, "retry-storm");
+  const rail = page.getByTestId("tool-rail");
+  for (const gallery of [false, true]) {
+    if (gallery) await page.getByTestId("view-gallery").click();
+    for (const label of await rail.getByTestId("rail-label").all()) {
+      await label.scrollIntoViewIfNeeded();
+      await expect.poll(() => labelProblems(rail, label)).toEqual([]);
+    }
+    expect(await page.evaluate(() => document.documentElement.scrollHeight <= innerHeight)).toBe(true);
+  }
+});
 
 for (const width of [1280, 320])
   test.describe(`${width}px rail`, () => {
