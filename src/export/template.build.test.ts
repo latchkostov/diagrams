@@ -34,6 +34,23 @@ const allIcons = () =>
   );
 
 describe("interactive viewer template", () => {
+  it("keeps drawing styles while excluding unreachable editor surfaces from the skill", () => {
+    const style = blocks(template, "style").join("");
+    for (const selector of [".nb-sub", ".fe-path", ".grp", ".ann-note", ".cm-item"])
+      expect(style, selector).toContain(selector);
+    for (const selector of [
+      ".sheet-resize{",
+      ".palette{",
+      ".start-card{",
+      ".grow-chip.",
+      ".ai-rail{",
+      ".lib-row{",
+      ".mode-switch{",
+      ".app-main{",
+      ".segmented{",
+    ])
+      expect(style, selector).not.toContain(selector);
+  });
   it("allows its one inline script and one inline style by hash, and nothing else", () => {
     const scripts = blocks(template, "script");
     const styles = blocks(template, "style");

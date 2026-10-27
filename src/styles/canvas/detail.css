@@ -61,14 +61,6 @@
   color: var(--text);
   background: var(--surface-2);
 }
-.frame-pin-leaders {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  stroke: var(--text-2);
-  stroke-width: 1;
-}
 .detail-group-chip {
   border: 0;
   background: color-mix(in oklab, var(--board) 90%, transparent);
@@ -141,4 +133,9 @@
   stroke: var(--text-2);
   stroke-width: calc(1.5px / var(--rf-zoom));
   opacity: 1;
+}
+
+[data-detail-view] .react-flow__edge[data-detail-selected-edge] .fe-path.react-flow__edge-path {
+  stroke: var(--accent);
+  stroke-width: min(2px, calc(2px / var(--rf-zoom-exact, 1)));
 }

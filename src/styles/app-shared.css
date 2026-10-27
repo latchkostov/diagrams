@@ -1,0 +1,707 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: var(--font-ui);
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--text);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  /* App, not a document: no text cursor or accidental selection on chrome, tiles and nodes. */
+  cursor: default;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/*
+ * Places where text is meant to be typed or copied opt back in. The class is `text-selectable`, never
+ * `selectable`: React Flow puts `selectable` on every node and edge, which would make the whole canvas
+ * selectable (dragging a connection then highlights labels and icons across nodes).
+ */
+input,
+textarea,
+[contenteditable="true"],
+.text-selectable {
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+/*
+ * One visible highlight for selected text, in every field and both themes. Highlights inherit from the parent's
+ * (CSS highlight inheritance), so a transparent one on an ancestor would otherwise reach the fields inside it.
+ */
+::selection {
+  background: var(--selection-bg);
+  color: var(--selection-text);
+}
+
+input:not([type="checkbox"], [type="radio"], [type="range"], [type="color"]),
+textarea,
+[contenteditable="true"] {
+  cursor: text;
+}
+
+img {
+  -webkit-user-drag: none;
+}
+
+[draggable="true"] {
+  cursor: grab;
+}
+
+[draggable="true"]:active {
+  cursor: grabbing;
+}
+
+button,
+input,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+button,
+select,
+a[href],
+label[for],
+summary,
+input[type="checkbox"],
+input[type="radio"],
+input[type="color"] {
+  cursor: pointer;
+}
+
+/* A whole search field focuses its input, so the whole field reads as a text box. */
+label.field {
+  cursor: text;
+}
+
+/* Disabled says so. Menu items keep the arrow, as native menus do. */
+button:disabled,
+select:disabled,
+input:disabled,
+[aria-disabled="true"]:not([role^="menuitem"]) {
+  cursor: not-allowed;
+}
+
+/* Copy-to-clipboard controls. */
+[data-copy],
+.copy-chip {
+  cursor: copy;
+}
+
+/* Text meant to be copied (ids, URLs, code) opts back into the I-beam. */
+.text-selectable {
+  cursor: text;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Thin, theme-aware scrollbars instead of the platform's arrowed ones. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+
+/* Lazy views fade in; the loading note only appears if loading takes a moment. */
+.app-main > :not(.view-loading) {
+  animation: view-in var(--dur-2) var(--ease-out);
+}
+
+.view-loading {
+  animation: view-in var(--dur-2) 0.35s both;
+}
+
+@keyframes view-in {
+  from {
+    opacity: 0;
+  }
+}
+
+.mono,
+code,
+kbd {
+  font-family: var(--font-mono);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+kbd {
+  font-size: 10.5px;
+  line-height: 1;
+  padding: 3px 5px;
+  border-radius: 4px;
+  border: 1px solid var(--line-strong);
+  border-bottom-width: 2px;
+  color: var(--text-3);
+  background: var(--surface);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition: none !important;
+    animation: none !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+.btn,
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 11px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 550;
+  white-space: nowrap;
+  transition:
+    background var(--dur-1),
+    border-color var(--dur-1),
+    color var(--dur-1),
+    opacity var(--dur-1);
+}
+
+.btn:hover:not(:disabled),
+.icon-btn:hover:not(:disabled) {
+  background: var(--surface-2);
+  border-color: var(--line-strong);
+}
+
+/* Pressed: a step darker and a half-pixel down, like a physical key. */
+.btn:active:not(:disabled),
+.icon-btn:active:not(:disabled),
+.btn.is-pressed {
+  background: var(--surface-3);
+  border-color: var(--line-strong);
+  translate: 0 0.5px;
+}
+
+.btn:disabled,
+.btn[aria-disabled="true"],
+.icon-btn:disabled {
+  opacity: 0.45;
+}
+
+/* Quiet variants: no chrome until hovered (toolbars, drawer headers). */
+.btn-ghost,
+.icon-btn-quiet {
+  border-color: transparent;
+  background: transparent;
+}
+
+.btn-ghost {
+  color: var(--text-2);
+}
+
+.btn-ghost svg {
+  color: var(--text-3);
+}
+
+.btn-danger-solid {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: #fff;
+}
+
+.btn.btn-danger-solid:hover:not(:disabled),
+.btn.btn-danger-solid:active:not(:disabled) {
+  background: var(--danger);
+  border-color: var(--danger);
+  opacity: 0.88;
+}
+
+.btn svg {
+  color: var(--text-2);
+}
+
+.btn-primary {
+  background: var(--text);
+  border-color: var(--text);
+  color: var(--bg);
+}
+
+.btn-primary svg {
+  color: inherit;
+}
+
+.btn-primary:hover:not(:disabled),
+.btn-primary:active:not(:disabled) {
+  background: var(--text);
+  border-color: var(--text);
+  opacity: 0.88;
+}
+
+.btn-primary:active:not(:disabled) {
+  opacity: 0.78;
+}
+
+.icon-btn {
+  width: 32px;
+  padding: 0;
+  color: var(--text-2);
+}
+
+.select {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  height: 32px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  font-size: 13px;
+}
+
+.select:hover {
+  border-color: var(--line-strong);
+}
+
+.select select {
+  appearance: none;
+  height: 100%;
+  border: 0;
+  background: transparent;
+  padding-block: 0;
+  padding-inline: 10px 28px;
+  font-weight: 550;
+  cursor: pointer;
+  max-width: 280px;
+  text-overflow: ellipsis;
+}
+
+.select select:focus-visible {
+  outline: none;
+}
+
+.select:focus-within {
+  box-shadow: 0 0 0 3px var(--focus);
+}
+
+.select::after {
+  content: "";
+  position: absolute;
+  inset-inline-end: 11px;
+  top: 50%;
+  width: 6px;
+  height: 6px;
+  margin-top: -5px;
+  border-right: 1.5px solid var(--text-3);
+  border-bottom: 1.5px solid var(--text-3);
+  transform: rotate(45deg);
+  pointer-events: none;
+}
+
+.select option {
+  background: var(--surface);
+  color: var(--text);
+}
+
+.select-prefix {
+  padding-inline-start: 10px;
+  color: var(--text-3);
+  font-weight: 500;
+}
+
+.select-prefix + select {
+  padding-inline-start: 6px;
+}
+
+.select-quiet {
+  background: transparent;
+}
+
+.field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text-3);
+  min-width: 0;
+}
+
+.field:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.field input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--text);
+}
+
+.field input::placeholder {
+  color: var(--text-3);
+}
+
+.field:hover:not(:focus-within) {
+  border-color: var(--line-strong);
+}
+
+.field-clear {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  margin-right: -4px;
+  padding: 0;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text-3);
+}
+
+.field-clear:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+.field-clear:active {
+  background: var(--press);
+}
+
+.link-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 0;
+  padding: 0;
+  background: none;
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.link-btn:hover {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.link-btn:active {
+  opacity: 0.75;
+}
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  max-width: min(640px, calc(100vw - 32px));
+  padding: 10px 10px 10px 16px;
+  border-radius: 10px;
+  background: var(--text);
+  color: var(--bg);
+  font-size: 13px;
+  font-weight: 500;
+  box-shadow: 0 12px 32px -8px rgb(0 0 0 / 0.35);
+  animation: toast-in 0.18s ease-out;
+}
+
+.toast-error {
+  background: var(--danger);
+  color: #fff;
+}
+
+.toast button {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  opacity: 0.7;
+  font-size: 18px;
+  line-height: 1;
+  padding: 2px 6px;
+}
+
+.toast button:hover {
+  opacity: 1;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 6px);
+  }
+}
+
+@media (max-width: 1100px) {
+  .select-prefix {
+    display: none;
+  }
+  .btn .label-optional {
+    display: none;
+  }
+}
+
+@media (max-width: 820px) {
+  .topbar {
+    overflow-x: auto;
+  }
+  .brand span {
+    display: none;
+  }
+}
+
+/* ---------- node bodies (shared by gallery + canvas) ---------- */
+
+.nb {
+  --tile-bg: color-mix(in oklab, var(--accent) var(--tile-mix), var(--tile-base));
+  --tile-ring: color-mix(in oklab, var(--accent) 26%, transparent);
+  font-family: var(--font-ui);
+  color: var(--text);
+  position: relative;
+}
+
+.nb-tile {
+  display: grid;
+  place-items: center;
+  flex: none;
+  background: var(--tile-bg);
+  box-shadow: inset 0 0 0 1px var(--tile-ring);
+}
+
+.nb-tile .stencil-icon {
+  object-fit: contain;
+  display: block;
+}
+
+.nb-label {
+  font-weight: 620;
+  font-size: 13.5px;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.nb-sub {
+  font-family: var(--font-ui);
+  font-variant-numeric: tabular-nums;
+  font-size: 11.5px;
+  color: var(--text-2);
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.nb-kind {
+  font-size: 11.5px;
+  color: var(--text-3);
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* card */
+.nb-card {
+  /* Grows with its text from 220 to 260px (CARD in src/canvas/nodes/size.ts); longer labels
+     truncate and sublabels wrap to two lines, so cards never crowd the column gaps edges use. */
+  width: max-content;
+  min-width: 220px;
+  max-width: 260px;
+  height: 72px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 14px 0 13px;
+  border-radius: var(--radius-l);
+  background: var(--node-bg);
+  border: 1px solid var(--node-border);
+  box-shadow: var(--node-shadow);
+  transition:
+    box-shadow 0.15s,
+    border-color 0.15s;
+}
+
+/* Cards have room for two lines of sublabel (topic names, consumer groups...). */
+.nb-card .nb-sub {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  font-size: 10.5px;
+}
+
+.nb-card .nb-tile {
+  width: 44px;
+  height: 44px;
+  border-radius: 11px;
+}
+
+.nb-card .nb-tile .stencil-icon {
+  /* wider than tall: square icons stay 26px, wordmarks (Splunk, Go) get room */
+  width: 36px;
+  height: 26px;
+}
+
+.nb-text {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+/* compact */
+.nb-compact {
+  height: 40px;
+  min-width: 140px;
+  max-width: 220px;
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 0 13px 0 6px;
+  border-radius: 11px;
+  background: var(--node-bg);
+  border: 1px solid var(--node-border);
+  box-shadow: var(--node-shadow);
+}
+
+.nb-compact .nb-tile {
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+}
+
+.nb-compact .nb-tile .stencil-icon {
+  width: 24px;
+  height: 18px;
+}
+
+.nb-compact .nb-label {
+  font-size: 13px;
+}
+
+/* icon only */
+.nb-icon {
+  width: 64px;
+  height: 64px;
+}
+
+.nb-icon .nb-tile {
+  width: 64px;
+  height: 64px;
+  border-radius: 16px;
+  box-shadow:
+    inset 0 0 0 1px var(--tile-ring),
+    var(--node-shadow);
+}
+
+.nb-icon .nb-tile .stencil-icon {
+  width: 50px;
+  height: 34px;
+}
+
+.nb-caption {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 50%;
+  width: 180px;
+  transform: translateX(-50%);
+  text-align: center;
+}
+
+.nb-caption .nb-label {
+  font-size: 12.5px;
+}
+
+.nb-caption .nb-sub {
+  font-size: 10.5px;
+}
+
+/* states */
+.nb.is-selected.nb-card,
+.nb.is-selected.nb-compact {
+  border-color: color-mix(in oklab, var(--accent) 70%, var(--node-border));
+  box-shadow:
+    0 0 0 3px color-mix(in oklab, var(--accent) 22%, transparent),
+    var(--node-shadow-hover);
+}
+
+.nb.is-selected.nb-icon .nb-tile {
+  box-shadow:
+    inset 0 0 0 1.5px var(--accent),
+    0 0 0 4px color-mix(in oklab, var(--accent) 22%, transparent);
+}
+
+.nb.is-unknown.nb-card,
+.nb.is-unknown.nb-compact {
+  border-style: dashed;
+}
+
+/* ---------- languages (src/i18n, docs/research/i18n.md § Layout) ---------- */
+
+/* Japanese and Chinese: no small kana or closing punctuation at a line's start. Korean breaks at spaces. */
+:root:lang(ja),
+:root:lang(zh) {
+  line-break: strict;
+}
+
+:root:lang(ko) {
+  word-break: keep-all;
+}
+
+/* Japanese: break between phrases, not inside one ("メッセージが" stays whole), where the browser can (Chrome 119+). */
+:root:lang(ja) {
+  word-break: auto-phrase;
+}
+
+/* Long compounds (German, Dutch, Finnish, Swedish, Danish, Norwegian, Hungarian, Greek) wrap instead of overflowing. */
+:root:is(:lang(de), :lang(nl), :lang(fi), :lang(sv), :lang(da), :lang(nb), :lang(hu), :lang(el))
+  :is(.ix-menu-desc, .ix-dialog-body, .ix-share-desc, .start-card p, .sc-row > span:first-child) {
+  hyphens: auto;
+}
+
+.grp-resize-hit {
+  position: absolute;
+  inset: 0;
+}
+
+.toast {
+  font-variant-numeric: tabular-nums;
+}

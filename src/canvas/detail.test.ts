@@ -9,12 +9,233 @@ import {
   innerFrame,
   oneHop,
   placeFrameLabel,
+  pinRow,
+  routeToPin,
+  placeTextFloor,
+  frameLanes,
+  frameObstacles,
+  clipFrameRoute,
   stackPins,
 } from "./camera/frameEdges";
-import { intersects } from "./geometry/rect";
+import { intersects, segmentHitsRect } from "./geometry/rect";
 import { decide, initialPolicy } from "./camera/panePolicy";
 
 describe("Workbench frame detail", () => {
+  it("keeps bottom pins below every trunk and above the legend", () => {
+    const inner = { x: 28, y: 28, width: 500, height: 400 };
+    const { routes, row } = pinRow(inner, 28);
+    const pins = stackPins(
+      ["flags", "payments", "metrics"].map((id) => ({
+        id,
+        name: id,
+        side: "bottom" as const,
+        crossing: { x: 260, y: 428 },
+        width: 100,
+        spotlit: false,
+      })),
+      row,
+    );
+    expect(pins).toHaveLength(3);
+    for (const pin of pins) {
+      expect(pin.box.y).toBeGreaterThan(routes.y + routes.height);
+      expect(pin.box.y + pin.box.height).toBeLessThanOrEqual(inner.y + inner.height);
+      const path = routeToPin(
+        [
+          { x: 250, y: 100 },
+          { x: 250, y: 500 },
+        ],
+        routes,
+        pin,
+      );
+      for (const other of pins)
+        for (let i = 1; i < path.length; i++) expect(segmentHitsRect(path[i - 1], path[i], other.box)).toBe(false);
+    }
+  });
+  it("joins a displaced seam pin only with orthogonal route segments", () => {
+    const inner = { x: 28, y: 28, width: 500, height: 400 };
+    const [pin] = stackPins(
+      [{ id: "saga", name: "Checkout saga", side: "right", crossing: { x: 528, y: 150 }, width: 140, spotlit: false }],
+      inner,
+      28,
+      [{ x: 350, y: 0, width: 180, height: 280 }],
+    );
+    const path = routeToPin(
+      [
+        { x: 200, y: 150 },
+        { x: 800, y: 150 },
+      ],
+      inner,
+      pin,
+    );
+    expect(path.at(-1)).toEqual({ x: pin.box.x, y: pin.box.y + 14 });
+    for (let i = 1; i < path.length; i++) expect(path[i].x === path[i - 1].x || path[i].y === path[i - 1].y).toBe(true);
+    expect(pin.box.x + pin.box.width).toBeLessThanOrEqual(inner.x + inner.width);
+  });
+  it("connects a card port in the reserved seam without falling back to the off-frame route", () => {
+    const inner = { x: 28, y: 28, width: 500, height: 400 };
+    const { routes, row } = pinRow(inner, 28);
+    const [pin] = stackPins(
+      [{ id: "flags", name: "Flags", side: "bottom", crossing: { x: 250, y: 428 }, width: 100, spotlit: false }],
+      row,
+    );
+    const path = routeToPin(
+      [
+        { x: 250, y: 60 },
+        { x: 250, y: -200 },
+        { x: 500, y: -200 },
+        { x: 500, y: 600 },
+      ],
+      routes,
+      pin,
+    );
+    expect(path[0]).toEqual({ x: 250, y: 60 });
+    expect(path.at(-1)).toEqual({ x: pin.box.x + pin.box.width / 2, y: pin.box.y });
+    expect(path.every((p) => p.y >= 60 && p.y <= pin.box.y)).toBe(true);
+  });
+  it("separates a screen-space fan into eight-pixel lanes without moving its ports", () => {
+    const paths = new Map(
+      [0, 1, 2].map((i) => [
+        String(i),
+        [
+          { x: 0, y: i * 14 },
+          { x: 100, y: i * 14 },
+          { x: 100, y: 200 + i * 14 },
+          { x: 300, y: 200 + i * 14 },
+        ],
+      ]),
+    );
+    const lanes = frameLanes(paths, []);
+    const tracks = [...lanes.values()].map((p) => p[1].x).sort((a, b) => a - b);
+    expect(tracks[1] - tracks[0]).toBe(8);
+    expect(tracks[2] - tracks[1]).toBe(8);
+    for (const [id, path] of paths) {
+      expect(lanes.get(id)![0]).toEqual(path[0]);
+      expect(lanes.get(id)!.at(-1)).toEqual(path.at(-1));
+    }
+  });
+  it.each([0, 5])("preserves hand-shaped interior tracks at separation %i", (offset) => {
+    const points = (x: number) => [
+      { x: 0, y: 0 },
+      { x, y: 0 },
+      { x, y: 200 },
+      { x: 300, y: 200 },
+    ];
+    const routes = new Map([
+      ["custom", points(100)],
+      ["automatic", points(100 + offset)],
+    ]);
+    const before = structuredClone(routes);
+    const lanes = frameLanes(routes, [], new Set(["custom"]));
+    expect(lanes.get("custom")).toEqual(before.get("custom"));
+    expect(Math.abs(lanes.get("automatic")![1].x - 100)).toBeGreaterThanOrEqual(8);
+    expect(routes).toEqual(before);
+  });
+  it("reroutes pins around solid annotations, captions and boundary headers from the main route input", () => {
+    const blocks = [
+      { x: 180, y: 75, width: 60, height: 100 },
+      { x: 280, y: 75, width: 60, height: 100 },
+      { x: 380, y: 75, width: 60, height: 100 },
+    ];
+    const obstacles = frameObstacles(
+      {
+        nodes: [
+          { id: "note", rect: blocks[0] },
+          { id: "shape", rect: blocks[1], extra: blocks[2] },
+        ],
+        groups: [
+          {
+            id: "boundary",
+            rect: { x: 0, y: 0, width: 900, height: 900 },
+            header: { x: 100, y: 0, width: 100, height: 24 },
+          },
+        ],
+        edges: [],
+      },
+      (p) => ({ x: p.x * 0.75 + 20, y: p.y * 0.75 + 10 }),
+    );
+    expect(obstacles).toHaveLength(4);
+    expect(obstacles[0]).toEqual({ x: 155, y: 66.25, width: 45, height: 75 });
+    const pin = {
+      id: "next",
+      name: "Next",
+      side: "right" as const,
+      crossing: { x: 550, y: 100 },
+      width: 80,
+      spotlit: false,
+      box: { x: 470, y: 86, width: 80, height: 28 },
+    };
+    const route = routeToPin(
+      [
+        { x: 100, y: 100 },
+        { x: 700, y: 100 },
+      ],
+      { x: 0, y: 0, width: 550, height: 300 },
+      pin,
+      obstacles,
+    );
+    for (let i = 1; i < route.length; i++)
+      for (const block of obstacles) expect(segmentHitsRect(route[i - 1], route[i], block)).toBe(false);
+  });
+  it("offers larger text only in a clear slot, searching past crossing edges", () => {
+    const frame = { x: 0, y: 0, width: 500, height: 150 };
+    const box = { x: 100, y: 40, width: 100, height: 22 };
+    const own = [
+      { x: 0, y: 51 },
+      { x: 500, y: 51 },
+    ];
+    const crossing = [
+      { x: 150, y: 0 },
+      { x: 150, y: 150 },
+    ];
+    expect(placeTextFloor(box, frame, [])).toEqual(box);
+    expect(placeTextFloor(box, frame, [frame], [], own)).toBeNull();
+    expect(placeTextFloor(box, frame, [], [crossing])).toBeNull();
+    const placed = placeTextFloor(box, frame, [], [crossing], own)!;
+    expect(placed).not.toBeNull();
+    expect(segmentHitsRect(crossing[0], crossing[1], placed)).toBe(false);
+    expect(placeTextFloor({ ...box, width: 600 }, frame, [], [], own)).toBeNull();
+  });
+  it("stops an unretained neighbour before the pin row", () => {
+    const frame = { x: 28, y: 68, width: 500, height: 320 };
+    expect(
+      clipFrameRoute(
+        [
+          { x: 200, y: 200 },
+          { x: 300, y: 200 },
+          { x: 300, y: -400 },
+        ],
+        frame,
+      ),
+    ).toEqual([
+      { x: 200, y: 200 },
+      { x: 300, y: 200 },
+      { x: 300, y: 68 },
+    ]);
+  });
+  it("routes a pin around the source card instead of doubling back through it", () => {
+    const source = { x: 300, y: 200, width: 180, height: 80 };
+    const pin = {
+      id: "relay",
+      name: "Relay",
+      side: "right" as const,
+      crossing: { x: 550, y: 240 },
+      width: 100,
+      spotlit: false,
+      box: { x: 450, y: 350, width: 100, height: 28 },
+    };
+    const path = routeToPin(
+      [
+        { x: 480, y: 240 },
+        { x: 600, y: 240 },
+      ],
+      { x: 28, y: 68, width: 522, height: 320 },
+      pin,
+      [source, pin.box],
+    );
+    expect(path[1].x).toBeGreaterThan(480);
+    for (let i = 1; i < path.length; i++)
+      for (const block of [source, pin.box]) expect(segmentHitsRect(path[i - 1], path[i], block)).toBe(false);
+  });
   it("never paints text below the floor; only active text scales in Focus", () => {
     for (const view of ["overview", "focus", "follow", "custom"] as const)
       for (const active of [true, false])
@@ -105,6 +326,32 @@ describe("Workbench frame detail", () => {
     expect(placed.y).toBe(40);
     expect(placed.x).not.toBe(label.x);
     expect(placeFrameLabel(label, path, frame, [frame])).toBeNull();
+  });
+  it("prefers slots off other labels' own places, placed later or hidden, before hiding a label", () => {
+    const label = { x: 135, y: 40, width: 30, height: 20 };
+    const path = [
+      { x: 0, y: 50 },
+      { x: 300, y: 50 },
+    ];
+    const frame = { x: 0, y: 0, width: 300, height: 100 };
+    const pin = { x: 130, y: 0, width: 40, height: 100 };
+    // Without other labels, the nearest clear slot is just left of the pin.
+    expect(placeFrameLabel(label, path, frame, [pin])!.x).toBe(90);
+    const home = { x: 85, y: 40, width: 40, height: 20 };
+    const placed = placeFrameLabel(label, path, frame, [pin], undefined, [home])!;
+    expect(intersects(placed, home)).toBe(false);
+    expect(intersects(placed, pin)).toBe(false);
+    expect(placed.y).toBe(40);
+    // When every clear slot is someone's home, the nearest still beats hiding the label.
+    expect(
+      placeFrameLabel(label, path, frame, [pin], undefined, [
+        { ...frame, width: 130 },
+        { ...frame, x: 170 },
+      ])!.x,
+    ).toBe(90);
+    // A label that need not move keeps its own place, whatever its neighbours' homes.
+    const clear = { x: 20, y: 40, width: 30, height: 20 };
+    expect(placeFrameLabel(clear, path, frame, [pin], undefined, [{ ...clear, x: 30 }])).toBe(clear);
   });
   it("only includes one hop, not a transitive component", () => {
     expect([
@@ -226,6 +473,29 @@ it.each([96, 400, 800])("R-c6a836a8ae crops a full-width phone sheet at height %
     },
   } as unknown as HTMLElement;
   expect(visibleCanvas(root)).toEqual({ x: 0, y: 0, width: 390, height: 800 - height });
+});
+
+it.each([false, true])("crops the phone note only while it is an expanded overlay (expanded: %s)", (expanded) => {
+  // Measured at 390 × 844: expanding the note grows the pane to 644 px and moves the legend under the sheet.
+  const root = {
+    clientWidth: 390,
+    clientHeight: expanded ? 644 : 556,
+    getBoundingClientRect: () => ({ left: 0, top: 52 }),
+    ownerDocument: {
+      querySelector: (selector: string) => {
+        const rect =
+          selector === '[data-testid="live-note"][data-expanded="1"]'
+            ? expanded
+              ? { left: 0, right: 390, top: 464, bottom: 696, width: 390, height: 232 }
+              : null
+            : selector.includes("live-route-legend")
+              ? { top: expanded ? 656 : 568 }
+              : null;
+        return rect ? { getBoundingClientRect: () => rect } : null;
+      },
+    },
+  } as unknown as HTMLElement;
+  expect(visibleCanvas(root)).toEqual({ x: 0, y: 0, width: 390, height: expanded ? 412 : 516 });
 });
 
 it.each(["left", "right"])("R-c6a836a8ae crops an overlapping %s dock by its edge, not its aspect ratio", (side) => {

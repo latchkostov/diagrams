@@ -6,7 +6,7 @@ import { fitAvoiding, panClearOf, panIntoView, type FitOptions, type Viewport } 
 import { intersects, union, type Rect } from "../geometry/rect";
 import { overlayRects } from "../useOverlayFit";
 import type { DiagramFlowEdge, FlowNode } from "../types";
-import { visibleCanvas, oneHop } from "./frameEdges";
+import { visibleCanvas, oneHop, innerFrame, FRAME_CARD_SPACE } from "./frameEdges";
 
 // The camera's geometry, as pure reads of React Flow's state and the pane: where a fit, a reveal or a
 // centring would put the view. Nothing here moves it (controller.ts does, through its port).
@@ -140,7 +140,10 @@ export function focusSelectionViewport(
   };
 }
 
-/** Follow has a subject, rather than a bounding-box centre; other spotlit cards are allowed to pin. */
+/**
+ * Keep the subject centred when every narrated card fits; else frame the whole narration, but never below the
+ * readable floor (.9, .92 on a phone). Narration too spread for the floor keeps its subject; the rest pin.
+ */
 export function followViewport(
   root: HTMLElement,
   s: State,
@@ -166,6 +169,9 @@ export function followViewport(
   const cx = centre.x + centre.width / 2,
     cy = centre.y + centre.height / 2;
   const frame = visibleCanvas(root);
+  const inner = innerFrame(frame.width, frame.height, "follow", false, false, phone);
+  const top = Math.max(52, inner.y + FRAME_CARD_SPACE.top);
+  const bottom = Math.max(52, frame.height - inner.y - inner.height + FRAME_CARD_SPACE.bottom);
   const right =
     root.clientWidth -
     frame.x -
@@ -177,13 +183,31 @@ export function followViewport(
     y = frame.y + frame.height * (phone ? 0.4 : 0.5);
   const maximum = Math.min(
     (root.ownerDocument?.defaultView?.innerWidth ?? root.clientWidth) < 640 ? 1.1 : 1,
-    (x - 52) / Math.max(1, cx - bounds.x),
+    (x - frame.x - 52) / Math.max(1, cx - bounds.x),
     (root.clientWidth - right - x) / Math.max(1, bounds.x + bounds.width - cx),
-    (y - 52) / Math.max(1, cy - bounds.y),
-    (frame.y + frame.height - 52 - y) / Math.max(1, bounds.y + bounds.height - cy),
+    (y - frame.y - top) / Math.max(1, cy - bounds.y),
+    (frame.y + frame.height - bottom - y) / Math.max(1, bounds.y + bounds.height - cy),
   );
-  const zoom = Math.max(phone ? 0.92 : 0.9, maximum);
-  return { x: x - cx * zoom, y: y - cy * zoom, zoom };
+  const floor = phone ? 0.92 : 0.9;
+  if (maximum >= floor) return { x: x - cx * maximum, y: y - cy * maximum, zoom: maximum };
+  // A subject-centred close-up would cut off another narrated card: recentre on
+  // the complete narration, inside the same margins, while it stays readable.
+  // Only its non-narrated neighbours pin then.
+  const whole = fitAvoiding(nodeRects(s, ids), { width: root.clientWidth, height: root.clientHeight }, [], {
+    margin: 0,
+    minZoom: s.minZoom,
+    maxZoom: phone ? 1.1 : 1,
+    insets: {
+      left: frame.x + (phone ? 28 : 52),
+      right,
+      top: frame.y + top,
+      bottom: root.clientHeight - frame.y - frame.height + Math.max(96, bottom),
+    },
+  });
+  if (whole && whole.zoom >= floor) return whole;
+  // Too spread to read at the floor: the subject keeps the floor and the
+  // narrated cards out of reach pin, like any other retained neighbour.
+  return { x: x - cx * floor, y: y - cy * floor, zoom: floor };
 }
 
 export function zoneViewport(root: HTMLElement, s: State, id: string): Viewport | null {

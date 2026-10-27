@@ -2,6 +2,7 @@ import { expect, it, vi } from "vitest";
 import type { ReactFlowState } from "@xyflow/react";
 import type { DiagramFlowEdge, FlowNode } from "../types";
 import { intersects } from "../geometry/rect";
+import { contains, frameCardBounds, innerFrame, visibleCanvas } from "./frameEdges";
 import { TRACE_CARD_TOP, TRACE_CARD_FOOTPRINT } from "../../live/traceCardLayout";
 import { selectRoutes } from "../edges/useEdgeRoute";
 import {
@@ -230,7 +231,7 @@ it("Focus includes neighbours' labels, or centres the selection at its floor", (
   expect(spread.zoom).toBe(0.9);
   expect(spread.x + 90 * spread.zoom).toBe(588);
 });
-it("Follow centres its subject and leaves 52 px room when the path fits, else pins at .9", () => {
+it("Follow centres its subject when the path fits, recentres on readable narration, else pins at .9", () => {
   const s = workbenchState();
   const view = followViewport(workbenchRoot, s, ["a", "b"], "a")!;
   expect(view.zoom).toBe(1);
@@ -238,16 +239,100 @@ it("Follow centres its subject and leaves 52 px room when the path fits, else pi
   expect(view.y + 40 * view.zoom).toBe(400);
   expect(view.x).toBeGreaterThanOrEqual(52);
   expect(view.x + 480 * view.zoom).toBeLessThanOrEqual(1148);
-  expect(followViewport(workbenchRoot, workbenchState(6000), ["a", "b"], "a")?.zoom).toBe(0.9);
+  // Subject-centred, b would leave the canvas; the whole narration still fits above the floor.
+  const recentred = followViewport(workbenchRoot, workbenchState(800), ["a", "b"], "a")!;
+  expect(recentred.zoom).toBeGreaterThanOrEqual(0.9);
+  expect(recentred.x).toBeGreaterThanOrEqual(52);
+  expect(recentred.x + 980 * recentred.zoom).toBeLessThanOrEqual(1148);
+  expect(recentred.y).toBeGreaterThanOrEqual(52);
+  expect(recentred.y + 80 * recentred.zoom).toBeLessThanOrEqual(704);
+  // Only a zoom below the readable floor would hold b: the subject keeps .9 and b pins.
+  const wide = followViewport(workbenchRoot, workbenchState(6000), ["a", "b"], "a")!;
+  expect(wide.zoom).toBe(0.9);
+  expect(wide.x + 90 * wide.zoom).toBe(600);
+  expect(wide.y + 40 * wide.zoom).toBe(400);
 });
-it("phone Follow keeps its .92 floor and places the subject at forty percent height", () => {
+it("Follow keeps every narrated card clear of an overlapping left dock and top bezel", () => {
+  const root = {
+    ...workbenchRoot,
+    ownerDocument: {
+      querySelector: (selector: string) => {
+        const rect = selector.includes("inspector")
+          ? { left: 0, right: 400, top: 0, bottom: 800, width: 400, height: 800 }
+          : selector.includes("canvas-bezel")
+            ? { left: 0, right: 1200, top: 0, bottom: 60 }
+            : null;
+        return rect ? { getBoundingClientRect: () => rect } : null;
+      },
+    },
+  } as unknown as HTMLElement;
+  const view = followViewport(root, workbenchState(500), ["a", "b"], "b")!;
+  expect(view.x).toBeGreaterThanOrEqual(452);
+  expect(view.x + 680 * view.zoom).toBeLessThanOrEqual(1148);
+  expect(view.y).toBeGreaterThanOrEqual(112);
+  expect(view.y + 80 * view.zoom).toBeLessThanOrEqual(704);
+});
+it.each([false, true])(
+  "Follow fits vertically spread narration inside actual visibility margins (chrome: %s)",
+  (chrome) => {
+    const root = {
+      ...workbenchRoot,
+      ownerDocument: {
+        querySelector: (selector: string) => {
+          if (!chrome) return null;
+          const rect = selector.includes("inspector")
+            ? { left: 0, right: 240, top: 0, bottom: 800, width: 240, height: 800 }
+            : selector.includes("canvas-bezel")
+              ? { top: 0, bottom: 60 }
+              : selector.includes("live-route-legend")
+                ? { top: 720 }
+                : null;
+          return rect ? { getBoundingClientRect: () => rect } : null;
+        },
+      },
+    } as unknown as HTMLElement;
+    const state = workbenchState();
+    for (const [i, node] of [...state.nodeLookup.values()].entries()) {
+      node.measured = { width: 220, height: 72 };
+      node.internals.positionAbsolute = { x: 0, y: i * 320 };
+    }
+    const visible = visibleCanvas(root);
+    const padding = innerFrame(visible.width, visible.height, "follow", chrome);
+    const inner = { ...padding, x: padding.x + visible.x, y: padding.y + visible.y };
+    for (const subject of ["a", "b"]) {
+      const view = followViewport(root, state, ["a", "b"], subject)!;
+      expect(view).not.toBeNull();
+      for (const node of state.nodeLookup.values()) {
+        const position = node.internals.positionAbsolute;
+        const card = frameCardBounds({
+          x: view.x + position.x * view.zoom,
+          y: view.y + position.y * view.zoom,
+          width: 220 * view.zoom,
+          height: 72 * view.zoom,
+        });
+        expect(contains(inner, card), JSON.stringify({ subject, inner, card, view })).toBe(true);
+      }
+    }
+  },
+);
+it("phone Follow keeps a single subject at forty percent and pins narrated peers beyond the .92 floor", () => {
   const root = { ...workbenchRoot, clientWidth: 390, clientHeight: 548 } as HTMLElement;
-  const view = followViewport(root, workbenchState(6000), ["a", "b"], "a")!;
-  expect(view.zoom).toBe(0.92);
+  const view = followViewport(root, workbenchState(6000), ["a"], "a")!;
+  expect(view.zoom).toBe(1.1);
   expect(view.y + 40 * view.zoom).toBeCloseTo(548 * 0.4);
-  expect(view.x + 90 * view.zoom).toBe(177);
+  expect(view.x + 90 * view.zoom).toBe(195);
+  const pair = followViewport(root, workbenchState(6000), ["a", "b"], "a")!;
+  expect(pair.zoom).toBe(0.92);
+  expect(pair.y + 40 * pair.zoom).toBeCloseTo(548 * 0.4);
+  expect(pair.x + 90 * pair.zoom).toBe(177);
   const incoming = followViewport(root, workbenchState(6000), ["a", "b"], "b")!;
+  expect(incoming.zoom).toBe(0.92);
   expect(incoming.x + 6090 * incoming.zoom).toBe(257);
+  // A narration that fits at .92 once recentred is framed whole.
+  const near = followViewport(root, workbenchState(140), ["a", "b"], "b")!;
+  expect(near.zoom).toBeGreaterThanOrEqual(0.92);
+  expect(near.x).toBeGreaterThanOrEqual(28);
+  expect(near.x + 320 * near.zoom).toBeLessThanOrEqual(338);
 });
 
 it.each([96, 400, 800])("R-c6a836a8ae Focus and Follow use the phone sheet's exposed frame at height %i", (height) => {
@@ -279,6 +364,7 @@ it.each([96, 400, 800])("R-c6a836a8ae Focus and Follow use the phone sheet's exp
     expect(focus.y + 40 * focus.zoom).toBe((800 - height + 32 - 72) / 2);
   }
   const follow = followViewport(root, state, ["a", "b"], "a")!;
+  expect(follow.zoom).toBe(0.92);
   expect(follow.x + 90 * follow.zoom).toBe(177);
   expect(follow.y + 40 * follow.zoom).toBe((800 - height) * 0.4);
 });
