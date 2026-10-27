@@ -4,6 +4,7 @@ import { rememberCanvas, takePendingStencils } from "../lib/canvasBridge";
 import type { Palette as PaletteComponent } from "./Palette";
 import { useInteraction } from "./interaction";
 import { t, useLocale } from "../i18n";
+import { Icon } from "../components/Icon";
 
 type Props = ComponentProps<typeof PaletteComponent>;
 const Contents = defineLazySurface<Props>({
@@ -41,6 +42,8 @@ export const Palette = memo(function Palette(props: Props) {
 function PaletteLoading(props: Props & { failed: boolean }) {
   const interaction = useInteraction();
   const input = useRef<HTMLInputElement>(null);
+  const flyout = props.mode === "flyout";
+  const toggleLabel = flyout ? t("workbench.pin") : t("workbench.unpin");
   useLayoutEffect(() => {
     const field = input.current;
     return () => {
@@ -51,27 +54,40 @@ function PaletteLoading(props: Props & { failed: boolean }) {
     };
   }, [interaction]);
   return (
-    <aside className={props.mode === "flyout" ? "palette is-flyout" : "palette"} data-testid="palette">
-      <label className="field">
-        <input
-          ref={input}
-          data-testid="palette-search"
-          name="palette-search"
-          autoComplete="off"
-          spellCheck={false}
-          aria-label={t("library.findAStencil")}
-          placeholder={t("library.findAStencil")}
-          value={props.initialQuery}
-          onChange={(event) => props.onInitialQuery?.(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === "Escape" && props.initialQuery) {
-              event.preventDefault();
-              event.stopPropagation();
-              props.onInitialQuery?.("");
-            }
-          }}
-        />
-      </label>
+    <aside
+      className={flyout ? "palette is-flyout" : "palette"}
+      data-mode={props.mode}
+      aria-label={t("topbar.stencils")}
+      data-testid="palette"
+    >
+      <div className="palette-head">
+        <div className="palette-head-row">
+          <label className="field">
+            <Icon name="search" />
+            <input
+              ref={input}
+              data-testid="palette-search"
+              name="palette-search"
+              autoComplete="off"
+              spellCheck={false}
+              aria-label={t("library.findAStencil")}
+              placeholder={t("library.findAStencil")}
+              value={props.initialQuery}
+              onChange={(event) => props.onInitialQuery?.(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Escape" && props.initialQuery) {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  props.onInitialQuery?.("");
+                }
+              }}
+            />
+          </label>
+          <button className="icon-btn" onClick={props.onToggle} aria-label={toggleLabel} data-testid="palette-toggle">
+            <Icon name={flyout ? "pin" : "close"} />
+          </button>
+        </div>
+      </div>
       <span data-testid="palette-loading" role="status" aria-busy={!props.failed}>
         {props.failed ? t("fileDialog.loadFailed") : t("common.loading")}
       </span>
