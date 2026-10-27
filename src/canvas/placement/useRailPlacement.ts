@@ -6,7 +6,7 @@ import type { EditorApi } from "../../editor/types";
 import { getNodeVariant, type NodeVariantId } from "../../harness/nodeVariants";
 import type { DiagramFlowEdge, FlowNode } from "../types";
 import { ANNOTATION_DND_MIME, parseAnnotationDrag } from "../annotations";
-import { STENCIL_DND_MIME } from "../Palette";
+import { STENCIL_DND_MIME } from "../../lib/canvasBridge";
 import { connectHitAt, connectTarget } from "../gestures";
 import { landing } from "../landing";
 import type { EdgeHover } from "../edgeHover";

@@ -7,7 +7,7 @@ import { advanceHeadless, createHeadlessRun, startWork, type VerificationContext
 import { planDescriptor } from "../planning/scalingPlanText";
 import type { DiagramFile } from "../model/types";
 import { STEP } from "../sim/timing";
-import { emptyInputs, freePlayProps, freePlayScale } from "./capacityModel";
+import { emptyInputs, freePlayProps, freePlayScale } from "./playbackInputs";
 import { DEFAULT_SEED } from "./storm";
 
 export const THREAD_FIX_LIMITS = { messages: 100_000, startWork: 1_000_000 };

@@ -5,7 +5,7 @@ import type { DiagramFlowEdge, FlowNode } from "../../canvas/types";
 import { notify } from "../../interop/ui/toast";
 import type { Simulation } from "../../model/types";
 import { capacitySaveError } from "../capacityPersistence";
-import { initialRecordState, isCapturing, recordReducer } from "../record/recordModel";
+import { initialRecordState, isCapturing, recordReducer } from "../record/recordState";
 import { createStormSimulation } from "../storm";
 import type { LiveSessionState } from "./useLiveSessionState";
 import type { TraceSpotlight } from "./useTraceSpotlight";

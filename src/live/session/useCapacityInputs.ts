@@ -5,7 +5,8 @@ import type { DiagramFlowEdge, FlowNode } from "../../canvas/types";
 import { t, useLocale } from "../../i18n";
 import type { NodeStatus } from "../../sim/types";
 import { stencilRole } from "../../stencils/roles";
-import { freePlaySimulation, inputsWithoutFix, withFix, type CapacityFix } from "../capacityModel";
+import { freePlaySimulation, inputsWithoutFix, withFix } from "../playbackInputs";
+import type { CapacityFix } from "../capacityModel";
 import { useCapacityAnalysis } from "../lazyCapacityAnalysis";
 import { capacityOverlay, useCapacityOverlay } from "../capacityOverlay";
 

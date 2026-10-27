@@ -2,12 +2,11 @@ import { getNodeVariant } from "./nodes/variantRegistry";
 import { stencilLabel, stencilDescription, stencilSubtitle, vendorLabel } from "../i18n/stencils";
 import { tRich } from "../i18n/rich";
 import { formatNumber } from "../i18n/number";
-import { categoryLabel, shapeLabel, familyLabel } from "../i18n/chrome";
+import { categoryLabel, familyLabel } from "../i18n/chrome";
 import { t, useLocale } from "../i18n";
 import {
   memo,
   useEffect,
-  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -25,19 +24,36 @@ import { CATEGORY_ORDER, clientSections } from "../lib/categories";
 import { familyCounts, familyOf, getFamily, isFamilyId, type FamilyId } from "../lib/vendorFamilies";
 import { searchStencils } from "../lib/stencilDisplaySearch";
 import { pushRecentStencil, useRecentStencils } from "../lib/recentStencils";
-import { rememberCanvas, STENCIL_DND_MIME, takePendingStencils } from "../lib/canvasBridge";
-import { Icon, type IconName } from "../components/Icon";
+import { STENCIL_DND_MIME } from "../lib/canvasBridge";
+import { Icon } from "../components/Icon";
 import { safeStorage } from "../lib/storage";
 import { formatCombo, shortcutKeys } from "../editor/shortcuts";
-import { ANNOTATION_DND_MIME, annotationDragValue } from "./annotations";
-import { SHAPES_CATALOG } from "./shapes/catalog";
+import { modalLayers } from "../lib/modalLayers";
+
+import { AnnotateGroup } from "./AnnotateGroup";
+import { matchAnnotate } from "./annotateSearch";
 
 export { STENCIL_DND_MIME };
 
+// Keep a modal's search-field return target mounted until it has handed focus back.
+// eslint-disable-next-line react-refresh/only-export-components -- readiness belongs with the downloaded view
+export async function paletteWhenReady() {
+  while (modalLayers.top) {
+    await new Promise<void>((resolve) => {
+      const check = () => {
+        if (modalLayers.top) return;
+        modalLayers.listeners.delete(check);
+        resolve();
+      };
+      modalLayers.listeners.add(check);
+      check();
+    });
+  }
+  return Palette;
+}
+
 const FAMILY_KEY = "diagrams.paletteFamily.v1";
 const SECTIONS_KEY = "diagrams.paletteSections.v1";
-/** Long enough for React Flow's initial fitView, so "viewport centre" means the fitted view. */
-const PENDING_DELAY = 260;
 
 function readFamily(): FamilyId | "all" {
   const v = safeStorage.getItem(FAMILY_KEY);
@@ -65,6 +81,7 @@ function readClosed(): StencilCategory[] {
  */
 export const Palette = memo(function Palette({
   collapsed,
+  initialQuery = "",
   mode = "pinned",
   onToggle,
   onAdd,
@@ -72,6 +89,8 @@ export const Palette = memo(function Palette({
   nodeVariant = DEFAULT_NODE_VARIANT,
 }: {
   collapsed: boolean;
+  initialQuery?: string;
+  onInitialQuery?: (query: string) => void;
   mode?: "flyout" | "pinned";
   onToggle: () => void;
   onAdd: (stencilId: string) => void;
@@ -81,7 +100,7 @@ export const Palette = memo(function Palette({
   nodeVariant?: NodeVariantId;
 }) {
   const locale = useLocale();
-  const [q, setQ] = useState("");
+  const [q, setQ] = useState(initialQuery);
   const [family, setFamily] = useState<FamilyId | "all">(readFamily);
   const [closed, setClosed] = useState<StencilCategory[]>(readClosed);
   const recentIds = useRecentStencils();
@@ -93,22 +112,6 @@ export const Palette = memo(function Palette({
   useEffect(() => {
     safeStorage.setItem(SECTIONS_KEY, JSON.stringify(closed));
   }, [closed]);
-
-  const onAddRef = useRef(onAdd);
-  useLayoutEffect(() => {
-    onAddRef.current = onAdd;
-  });
-
-  // Stencils sent from the Gallery ("Add to current diagram"), and which diagram is "current".
-  useEffect(() => {
-    const t = setTimeout(() => {
-      const slug = new URLSearchParams(window.location.search).get("example");
-      if (slug) rememberCanvas(slug);
-      for (const id of takePendingStencils()) onAddRef.current(id);
-    }, PENDING_DELAY);
-    return () => clearTimeout(t);
-    // Mount only: the queue is drained once per canvas.
-  }, []);
 
   const add = (id: string) => {
     pushRecentStencil(id);
@@ -363,139 +366,6 @@ function PaletteFoot() {
 }
 
 // ---------------------------------------------------------------- Annotate
-
-interface AnnotateItem {
-  kind: AnnotationKind;
-  shape?: AnnotationShape;
-  label: string;
-  icon: IconName;
-  hint: string;
-  keywords: string;
-}
-
-const TEXT_NOTE_ZONE: readonly AnnotateItem[] = [
-  {
-    kind: "text",
-    get label() {
-      return t("library.text");
-    },
-    icon: "type",
-    get hint() {
-      return t("library.plainTextTitlesAndCaptionsT");
-    },
-    keywords: "title caption label words",
-  },
-  {
-    kind: "note",
-    get label() {
-      return t("library.note");
-    },
-    icon: "note",
-    get hint() {
-      return t("library.aStickyNote");
-    },
-    keywords: "sticky comment post-it",
-  },
-  {
-    kind: "zone",
-    get label() {
-      return t("library.zone");
-    },
-    icon: "zone",
-    get hint() {
-      return t("library.aLabelledRegionBehindNodesUnlikeABoundaryNodesDon");
-    },
-    keywords: "region area lane band highlight",
-  },
-];
-
-/** The rail's row: one tile per kind. A shape starts as a rectangle; the inspector changes its outline. */
-export const ANNOTATE: readonly AnnotateItem[] = [
-  ...TEXT_NOTE_ZONE,
-  {
-    kind: "shape",
-    get label() {
-      return t("menu.shape");
-    },
-    icon: "shape-rect",
-    get hint() {
-      return t("library.aPlainShapeForWhenNoStencilFitsRectangleEllipse");
-    },
-    keywords: "shape outline rectangle box",
-  },
-];
-
-/** What search finds: each outline by name, so "ellipse" or "cylinder" adds that one directly. */
-const ANNOTATE_SEARCH: readonly AnnotateItem[] = [
-  ...TEXT_NOTE_ZONE,
-  ...SHAPES_CATALOG.map((s) => ({
-    kind: "shape" as const,
-    shape: s.id,
-    get label() {
-      return s.id === "rounded" ? t("chrome.rounded") : s.label;
-    },
-    icon: `shape-${s.id}` as IconName,
-    get hint() {
-      return t("chrome.valueAPlainShapeForWhenNoStencilFits", { shape: s.label });
-    },
-    get keywords() {
-      return `shape outline ${s.label} ${s.keywords}${s.id === "rect" ? " box" : ""}`;
-    },
-  })),
-];
-
-function matchAnnotate(q: string, _locale: string): AnnotateItem[] {
-  const words = q.toLowerCase().split(/\s+/).filter(Boolean);
-  return ANNOTATE_SEARCH.filter((a) => {
-    const hay = `${a.label} ${a.kind} ${a.keywords} annotate annotation`.toLowerCase();
-    return words.every((w) => hay.includes(w));
-  });
-}
-
-/** Text, notes, zones and shapes: documentation that never takes part in the simulation. */
-export function AnnotateGroup({
-  items,
-  onAdd,
-  className,
-}: {
-  items: readonly AnnotateItem[];
-  onAdd: (kind: AnnotationKind, shape?: AnnotationShape) => void;
-  className: string;
-}) {
-  useLocale();
-  return (
-    <section className={`palette-annotate ${className}`} data-testid="palette-annotate">
-      <h3 className="palette-sec-static" title={t("library.textNotesZonesAndShapesTheyDonTTakePart")}>
-        {t("menu.annotate")}
-      </h3>
-      <div className="palette-annotate-grid">
-        {items.map((a) => {
-          const id = a.shape ? `shape-${a.shape}` : a.kind;
-          return (
-            <button
-              key={id}
-              className="palette-annotate-item"
-              draggable
-              onDragStart={(e) => {
-                e.dataTransfer.setData(ANNOTATION_DND_MIME, annotationDragValue(a.kind, a.shape));
-                e.dataTransfer.effectAllowed = "copy";
-              }}
-              onClick={() => onAdd(a.kind, a.shape)}
-              title={a.hint}
-              aria-label={t("chrome.addValue", {
-                name: a.shape ? shapeLabel[a.shape].toLowerCase() : a.label.toLowerCase(),
-              })}
-              data-testid={`palette-annotate-${id}`}
-            >
-              <Icon name={a.icon} size={18} />
-              <span>{a.label}</span>
-            </button>
-          );
-        })}
-      </div>
-    </section>
-  );
-}
 
 interface ItemProps {
   stencil: Stencil;

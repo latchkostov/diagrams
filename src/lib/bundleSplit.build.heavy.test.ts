@@ -247,7 +247,7 @@ describe("production bundle split", () => {
       checkLocaleSizes(catalogs.map((c) => ({ file: c.fileName, gzip: gzipSync(c.code, { level: 9 }).length }))),
     ).not.toThrow();
   });
-  it("keeps the dedicated trim's canvas and Live headroom without deferring another surface", () => {
+  it("keeps the third trim's canvas and Live reserve", () => {
     const b = plain();
     const canvas = closure([...startup(b), canvasChunk(b)], b);
     const live = b.chunks.find((c) => c.name === "LiveSession");
@@ -264,10 +264,31 @@ describe("production bundle split", () => {
         NOT_AT_STARTUP.filter(([what]) => what === "production badge attributes"),
       ),
     ).toEqual(["production badge attributes"]);
-    expect(gzip(canvas)).toBeLessThanOrEqual(383_000 - 8_192);
+    expect(gzip(canvas)).toBeLessThanOrEqual(383_000 - 8_192 - 4_096);
+    expect(
+      [...canvas].flatMap((c) =>
+        Object.entries(c.modules)
+          .filter(([id]) => /[/\\]src[/\\]canvas[/\\]AnnotateGroup\.tsx$/.test(id))
+          .flatMap(([, module]) => module.renderedExports),
+      ),
+    ).not.toContain("matchAnnotate");
     // The app bezel owns history; the fallback strip is only for the development/E2E Lab.
     expect(canvasChunk(b).code.includes("bezel-history")).toBe(false);
-    expect(gzip(extra)).toBeLessThanOrEqual(135_000 - 3_000);
+    expect(gzip(extra)).toBeLessThanOrEqual(135_000 - 6_144);
+    expect(live!.code).not.toContain("live-ai-panel");
+    expect(
+      found(bundled(canvas), [
+        ["stencil library contents", /[/\\]src[/\\]canvas[/\\]Palette\.tsx$/],
+        ["annotation search", /[/\\]src[/\\]canvas[/\\]annotateSearch\.ts$/],
+        ["frame decoration geometry", /[/\\]src[/\\]canvas[/\\]camera[/\\]frameEdges\.ts$/],
+      ]),
+    ).toEqual([]);
+    expect(
+      found(bundled(closure([live!], b)), [
+        ["capacity panel helpers", /[/\\]src[/\\]live[/\\]capacityModel\.ts$/],
+        ["recording formats and messages", /[/\\]src[/\\]live[/\\]record[/\\]recordModel\.ts$/],
+      ]),
+    ).toEqual([]);
     expect(
       found(
         bundled(closure([live!], b)),

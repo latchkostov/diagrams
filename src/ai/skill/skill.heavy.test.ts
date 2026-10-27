@@ -15,7 +15,7 @@ import generated from "../../../scripts/generated-files.json";
 import { selfHostSamples } from "../../../scripts/self-host-headers";
 import { hostingTemplates } from "../../../scripts/self-host-templates";
 import { applyRelease, iconMap, RELEASED, releasedFiles, type ReleaseFs } from "../../../scripts/skill-viewer";
-import { buildViewerTemplate } from "../../../scripts/interactive-viewer";
+import { buildViewer, buildViewerTemplate } from "../../../scripts/interactive-viewer";
 import {
   buildPayload,
   exportHtml,
@@ -761,6 +761,17 @@ describe("share-link.mjs", () => {
 });
 
 describe("the downloadable skill", () => {
+  it("excludes the editor's library shells, context menus and stencil search from the read-only viewer", async () => {
+    const { html, modules } = await buildViewer(root);
+    expect(
+      modules.filter((id) =>
+        /\/(?:canvas\/(?:lazyPalette|AnnotateGroup)|components\/ContextMenu|lib\/stencil(?:Display)?Search)\.[jt]sx?$/.test(
+          id,
+        ),
+      ),
+    ).toEqual([]);
+    expect((await zipSkill(withFresh(readSkill(), releasedFiles(root, html)))).length).toBeLessThan(835_000 - 6_144);
+  }, 30_000);
   it("saves at least 6 KiB by excluding unreachable editor CSS, with every skill file retained", async () => {
     const files = readSkill();
     const current = await buildViewerTemplate(root);

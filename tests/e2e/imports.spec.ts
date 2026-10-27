@@ -56,6 +56,11 @@ async function drop(page: Page, files: { name: string; text: string }[]) {
 
 async function expectShop(page: Page) {
   await expect(page.getByTestId("diagram-title")).toHaveText("shop");
+  // Large imports initially use Focus. Inspect the whole drawing in Overview,
+  // after the initial camera decision, before asserting every imported node.
+  await waitForStableViewport(page);
+  await page.getByTestId("fit-view-button").click();
+  await waitForStableViewport(page);
   for (const id of [
     "gateway",
     "storefront",

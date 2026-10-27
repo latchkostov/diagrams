@@ -6,7 +6,7 @@ import { fitAvoiding, panClearOf, panIntoView, type FitOptions, type Viewport } 
 import { intersects, union, type Rect } from "../geometry/rect";
 import { overlayRects } from "../useOverlayFit";
 import type { DiagramFlowEdge, FlowNode } from "../types";
-import { visibleCanvas, oneHop, innerFrame, FRAME_CARD_SPACE } from "./frameEdges";
+import { visibleCanvas, oneHop, innerFrame, FRAME_CARD_SPACE } from "./frameBounds";
 
 // The camera's geometry, as pure reads of React Flow's state and the pane: where a fit, a reveal or a
 // centring would put the view. Nothing here moves it (controller.ts does, through its port).
