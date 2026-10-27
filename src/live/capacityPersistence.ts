@@ -1,7 +1,7 @@
 import { LIMITS, simulationProblem, validateDiagram } from "../interop/native";
 import type { DiagramFile, Simulation } from "../model/types";
 import { autoScale } from "../sim/scale";
-import { effectiveSimulation, freePlaySaveProps, type LiveInputs } from "./capacityModel";
+import { effectiveSimulation, freePlaySaveProps, type LiveInputs } from "./playbackInputs";
 
 /** Construct the complete prospective document; callers validate it before touching editor state. */
 export function capacitySaveCandidate(diagram: DiagramFile, base: Simulation | null, inputs: LiveInputs) {

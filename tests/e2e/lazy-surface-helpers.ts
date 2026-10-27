@@ -52,6 +52,11 @@ export async function openSurface(page: Page, id: LazySurfaceId) {
     },
   );
 
+  if (id === "canvas.stencils") {
+    await gotoCanvas(page, SLUG);
+    await page.getByTestId("rail-add").click();
+    return;
+  }
   if (id === "canvas.frame-detail") {
     await gotoCanvas(page, SLUG);
     return;

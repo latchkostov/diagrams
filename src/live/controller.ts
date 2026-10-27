@@ -57,7 +57,7 @@ import type {
 import { realSnapshot, resolveMultiplier, resolveScale } from "../sim/units";
 import { t } from "../i18n";
 import { autoScale } from "../sim/scale";
-import { effectiveSimulation, emptyInputs, freePlayProps, freePlayScale, type LiveInputs } from "./capacityModel";
+import { effectiveSimulation, emptyInputs, freePlayProps, freePlayScale, type LiveInputs } from "./playbackInputs";
 import { DEFAULT_SEED } from "./storm";
 import { snapshotContinuity } from "./snapshotContinuity";
 import { HealthWindow } from "./healthWindow";

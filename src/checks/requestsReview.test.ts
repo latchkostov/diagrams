@@ -7,7 +7,7 @@ import { registerRequestChecks, awaitRequestChecks, requestCheckResult } from ".
 import { registerScenarioPlanner } from "../lib/scenarioPlanner";
 import { buildTools } from "../ai/webmcp/tools";
 import type { EditorApi } from "../editor/types";
-import * as inputs from "../live/capacityModel";
+import * as inputs from "../live/playbackInputs";
 import * as verification from "../live/threadFixPlan";
 import { TroubleWatcher, type WatchedFrame } from "../live/observedTrouble";
 import { resolveNodeProps } from "../sim/defaults";

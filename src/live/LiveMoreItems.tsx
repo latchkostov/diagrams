@@ -1,4 +1,10 @@
-import { useSyncExternalStore, type Dispatch, type SetStateAction, type ReactNode } from "react";
+import { Icon } from "../components/Icon";
+import { usePhone } from "../lib/usePhone";
+import { InFlight } from "./InFlight";
+import { SPEEDS } from "./controller";
+import { formatSpeed } from "./format";
+const SPEED_HINT = "Playback speed. Slower speeds draw fewer dots so each one is easy to follow; counts stay exact.";
+import { useSyncExternalStore, type Dispatch, type SetStateAction } from "react";
 import { useInteraction, type MenuCloseReason } from "../canvas/interaction";
 import { t } from "../i18n";
 import type { LiveState } from "./controller";
@@ -18,16 +24,16 @@ export function LiveMoreItems({
   close,
   traceOpen,
   setTraceOpen,
-  children,
 }: {
   state: LiveState;
   close(reason: MenuCloseReason): void;
   traceOpen: boolean;
   setTraceOpen: Dispatch<SetStateAction<boolean>>;
-  children?: ReactNode;
 }) {
+  const phone = usePhone();
   const interaction = useInteraction();
   const ui = useLive();
+  const ai = phone ? ui.action("canvas.ai-panel") : undefined;
   const c = ui.controller;
   const waiting = !!state.run?.waiting;
   const slowStatus = useSyncExternalStore(ui.slowmo.subscribe, ui.slowmo.getState, ui.slowmo.getState).status;
@@ -64,7 +70,52 @@ export function LiveMoreItems({
         if (items[next]) interaction?.dispatch({ type: "dialog.tab", target: items[next] });
       }}
     >
-      {children}
+      {phone && (
+        <>
+          <button
+            role="menuitemcheckbox"
+            aria-checked={ui.capacityOpen}
+            data-testid="live-capacity"
+            onClick={() => {
+              ui.openCapacity(!ui.capacityOpen);
+              close("pick");
+            }}
+          >
+            <LiveIcon name="gauge" size={14} />
+            <span>{t("broker.inputs")}</span>
+          </button>
+          <InFlight state={state} />
+          <label className="lv-select" title={SPEED_HINT}>
+            <span>{t("workbench.speed")}</span>
+            <select
+              data-testid="live-speed"
+              value={String(state.speed)}
+              onChange={(e) => ui.controller.setSpeed(Number(e.target.value))}
+            >
+              {SPEEDS.map((s) => (
+                <option key={s} value={s}>
+                  {formatSpeed(s)}
+                </option>
+              ))}
+            </select>
+          </label>
+          {ai && (
+            <button
+              role="menuitem"
+              data-testid="live-ai-panel"
+              disabled={ai.disabled}
+              onClick={() => {
+                ai.run?.();
+                close("pick");
+              }}
+            >
+              <Icon name="ai" size={14} />
+              <span>{ai.label}</span>
+            </button>
+          )}
+        </>
+      )}
+
       <button
         role="menuitemcheckbox"
         aria-checked={state.traffic}

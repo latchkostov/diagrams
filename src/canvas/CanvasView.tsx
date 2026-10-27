@@ -85,7 +85,9 @@ import { DiagramContext, type DiagramUi, type InlineEdit, type RenameTarget } fr
 import { canvasNodeTypes } from "./nodes/nodeTypes";
 import { ANNOTATION_DND_MIME, resolveAnnotationColor, annotationTitle } from "./annotations";
 import { EdgeMarkers, FlowEdge } from "./edges/FlowEdge";
-import { Palette, AnnotateGroup, ANNOTATE, STENCIL_DND_MIME } from "./Palette";
+import { Palette } from "./lazyPalette";
+import { AnnotateGroup, ANNOTATE } from "./AnnotateGroup";
+import { STENCIL_DND_MIME } from "../lib/canvasBridge";
 import { Inspector } from "./Inspector";
 import { ContextMenu } from "../components/ContextMenu";
 import { actionRegistry } from "../editor/actions";

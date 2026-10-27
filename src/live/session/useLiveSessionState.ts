@@ -3,7 +3,7 @@ import { aiDock, collapseDock } from "../../ai/ui/dock";
 import type { Simulation } from "../../model/types";
 import { useLiveSessionHost } from "../../palette/host";
 import type { InjectRequest } from "../InjectDialog";
-import { emptyInputs } from "../capacityModel";
+import { emptyInputs } from "../playbackInputs";
 import { useLiveState } from "../context";
 import { LiveController } from "../controller";
 import { liveMutationGuard } from "../liveActions";
