@@ -212,18 +212,32 @@ export default defineConfig({
         codeSplitting: {
           groups: [
             canvas.group,
-            // The file-format catalogue, role lookup and validators already load together.
+            // The file-format catalogue, role lookup, grammar and validators already load together.
             // Keep their initialization in one model chunk; splitting the schema constants
             // across manual groups creates a dependency cycle and wastes compression headroom.
             {
               name: "native",
-              test: /[/\\]src[/\\](?:interop[/\\]native|stencils[/\\](?:roles|catalog|vendorCatalog|vendorParents)|model[/\\](?:edgeRoute|types|kedaBindings|resourceBudget|autoscalingSchema|autoscaling|faults|brokerRoutes|checks|admissionSchema|admission|ids|relations|revisions|jsonSchema|simProps|routingValidation|resourceValidation))\.ts$/,
+              test: /[/\\]src[/\\](?:interop[/\\](?:native|codec)|canvas[/\\]membership|stencils[/\\](?:roles|catalog|vendorCatalog|vendorParents)|model[/\\](?:annotations|borderRadius|colors|groupHierarchy|requestRouting|quotaSchema|simLimits|edgeRoute|types|kedaBindings|resourceBudget|autoscalingSchema|autoscaling|faults|brokerRoutes|checks|admissionSchema|admission|ids|relations|revisions|jsonSchema|simProps|routingValidation|resourceValidation))\.ts$/,
               includeDependenciesRecursively: false,
             },
-            // The headless core stays separate in source, but shares the browser's existing runtime request.
+            // Pure playback grammar/resolution helpers: shared by Live, checks and planning. Keep the engine
+            // and optional UI outside this group; their existing on-demand boundaries stay intact.
             {
-              name: "i18n",
-              test: /[/\\]src[/\\]i18n[/\\](?:core|index)\.ts$/,
+              name: "playback-model",
+              test: /[/\\]src[/\\](?:sim[/\\](?:admission|ledger|units|breaker|admissionPolicy|retryPolicy|scale|dueHeap|timing|colors|defaults|topology|routeMatching)|stencils[/\\](?:profileFamilies|profiles)|model[/\\](?:brokers|resourceRuntime|routingAppearance))\.ts$/,
+              includeDependenciesRecursively: false,
+            },
+            // These small, shared Live helpers otherwise pay separate import/export and gzip overheads.
+            {
+              name: "live-helpers",
+              test: /[/\\]src[/\\](?:live[/\\](?:format|healthWindow|storm|readoutDiagram|diagramReader)|sim[/\\](?:capacityInputs|replayControls|deadLetter)|trace[/\\](?:format|path))\.ts$/,
+              includeDependenciesRecursively: false,
+            },
+            // All of these already preload at startup. Share one compression dictionary without adding code
+            // to the main entry, and without drawing optional surfaces into the startup closure.
+            {
+              name: "shell-runtime",
+              test: /(?:[/\\]src[/\\](?:i18n[/\\](?:core|index)|lib[/\\](?:lazyLoad|machine|storage)|interop[/\\]ui[/\\]toast|canvas[/\\]nodes[/\\]size)\.tsx?$|[/\\]node_modules[/\\](?:react[/\\]|react-dom[/\\](?:index\.js$|cjs[/\\]react-dom\.production\.js$)|scheduler[/\\]))/,
               includeDependenciesRecursively: false,
             },
           ],

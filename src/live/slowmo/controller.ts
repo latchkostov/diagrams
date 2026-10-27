@@ -9,7 +9,7 @@ import type { CameraController } from "../../canvas/camera";
 import type { DiagramFlowEdge, FlowNode } from "../../canvas/types";
 import { isEditableTarget } from "../../editor/shortcuts";
 import type { SimSnapshot } from "../../sim/types";
-import { buildJourney } from "../../trace/journey";
+import { tracePath } from "../../trace/path";
 import type { LiveController } from "../controller";
 import { LIVE_BAR_SPACE } from "../layout";
 import { TRACE_CARD_FOOTPRINT, TRACE_CARD_TOP } from "../traceCardLayout";
@@ -106,7 +106,7 @@ export function createSlowMotionView(opts: SlowMotionOptions) {
     unavailable: (source) => unavailable(source),
     build: (trace, waiting) => {
       const diagram = controller.currentDiagram;
-      const nodes = buildJourney(trace, diagram).nodes;
+      const nodes = tracePath(trace).nodes;
       const still = live.reducedMotion;
       plan = slowScript()!.planCamera(boxes(nodes), boxes([trace.origin]), pane(), insets(), overlays(), still);
       const zoom = plan?.zoom ?? store.getState().transform[2];
@@ -209,7 +209,7 @@ export function createSlowMotionView(opts: SlowMotionOptions) {
   // then stay put, or following from the first node at a readable zoom. A pane change asks again (W5).
   connecting.push(() => {
     const planFor = (trace: NonNullable<SlowState["trace"]>) => {
-      const nodes = buildJourney(trace, controller.currentDiagram).nodes;
+      const nodes = tracePath(trace).nodes;
       const still = live.reducedMotion;
       plan = slowScript()!.planCamera(boxes(nodes), boxes([trace.origin]), pane(), insets(), overlays(), still);
       return plan?.view ?? null;
