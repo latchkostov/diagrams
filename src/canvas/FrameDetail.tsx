@@ -28,12 +28,19 @@ import {
 import type { Rect } from "./geometry/rect";
 import { roundedPath } from "./geometry/path";
 import { FAR_ZOOM, textDetail } from "./detail";
+import { overviewConnection, overviewLayout, type OverviewHeader, type OverviewItem } from "./overview";
 import { t, useLocale } from "../i18n";
 import "../styles/canvas/detail.css";
 
 type Chip = { id: string; name: string; x: number; y: number; group: boolean };
-type Drawing = { pins: FramePin[]; chips: Chip[]; hint: boolean };
-const empty: Drawing = { pins: [], chips: [], hint: false };
+type Drawing = {
+  pins: FramePin[];
+  chips: Chip[];
+  hint: boolean;
+  headers: OverviewHeader[];
+  tiles: (OverviewItem & { label: string })[];
+};
+const empty: Drawing = { pins: [], chips: [], hint: false, headers: [], tiles: [] };
 
 /** Screen-space detail after a settled move. It changes presentation only, never the document or viewport. */
 export const FrameDetail = memo(
@@ -77,6 +84,7 @@ export const FrameDetail = memo(
         // Cull only for a camera-owned Focus/Follow, never merely because selecting opened a dock.
         const view = camera.state.view;
         const far = zoom < FAR_ZOOM;
+        const overview = far && view === "overview" && camera.state.mode === "live";
         const origin = root.getBoundingClientRect();
         const phone = window.innerWidth < 640;
         if (!origin.width || !origin.height) return;
@@ -114,6 +122,7 @@ export const FrameDetail = memo(
         if (selected.size || camera.state.zone) dismissed.current = true;
         root.dataset.detailView = view;
         root.toggleAttribute("data-detail-far", far);
+        root.toggleAttribute("data-detail-overview", overview);
         root.toggleAttribute("data-detail-dock", dock);
         const flagged = new Set(
           [...root.querySelectorAll<HTMLElement>('[data-testid^="check-marker-"]')].map((el) =>
@@ -225,7 +234,13 @@ export const FrameDetail = memo(
           if (n.type === "diagram") {
             cards.set(id, el);
             if (!hidden) blockers.push(card);
-            if (far && !hidden && (selected.has(id) || lit.has(id) || zone.has(id)))
+            if (
+              far &&
+              !hidden &&
+              "label" in n.data &&
+              n.data.label.trim() &&
+              (selected.has(id) || lit.has(id) || zone.has(id))
+            )
               chips.push({
                 id,
                 name: "label" in n.data ? n.data.label : "",
@@ -234,9 +249,33 @@ export const FrameDetail = memo(
                 group: false,
               });
           }
-          if (n.type === "boundary" && far)
+          if (n.type === "boundary" && far && !overview)
             chips.push({ id, name: "label" in n.data ? n.data.label : "", x: card.x + 10, y: card.y + 8, group: true });
         }
+        if (measure) measure.font = `500 10.5px ${getComputedStyle(root).fontFamily}`;
+        const overviewNodes: OverviewItem[] = [];
+        const overviewZones: OverviewItem[] = [];
+        if (overview)
+          for (const { id, n } of frameNodes) {
+            const item = {
+              id,
+              name: "label" in n.data ? n.data.label : "text" in n.data ? n.data.text : "",
+              box: cardBoxes.get(id)!,
+              group: n.data.group ? `group:${n.data.group}` : undefined,
+              spotlight: selected.has(id) || lit.has(id) || zone.has(id),
+            };
+            if (n.type === "diagram") overviewNodes.push(item);
+            if (n.type === "boundary" || (n.type === "annotation" && "kind" in n.data && n.data.kind === "zone"))
+              overviewZones.push(item);
+          }
+        const overviewDrawing = overviewLayout(
+          overviewNodes,
+          overviewZones,
+          (text) => measure?.measureText(text).width ?? text.length * 7,
+          (name, count) => t("camera.aggregate", { name, count }),
+        );
+        for (const { id, el } of frameNodes)
+          el.toggleAttribute("data-detail-aggregate", overviewDrawing.hidden.has(id));
         // React Flow's ResizeObserver measures the resized wrappers once. An explicit
         // updateNodeInternals here schedules a second forced measurement of the same cards.
         const routes = selectRoutes(s, { style, direction, captions, hideDependencies });
@@ -398,7 +437,13 @@ export const FrameDetail = memo(
             states.get(edge.target) ?? "out",
             active.has(edge.source) || active.has(edge.target),
           );
-          setHidden(el, cropped && !ends.draw);
+          setHidden(
+            el,
+            (cropped && !ends.draw) ||
+              (overview &&
+                camera.state.mode === "live" &&
+                !overviewConnection(near, el.hasAttribute("data-live-main"))),
+          );
           el.toggleAttribute("data-detail-no-arrow", cropped && !ends.arrow);
           const pin = pins.find((p) => (p.id === edge.source || p.id === edge.target) && states.get(p.id) === "pinned");
           const route = routes.get(edge.id);
@@ -516,7 +561,13 @@ export const FrameDetail = memo(
             badge.toggleAttribute("data-detail-dim", !!lit.size && !active.has(id));
           }
         }
-        const next = { pins, chips, hint: far && !dismissed.current };
+        const next = {
+          pins,
+          chips,
+          hint: far && !dismissed.current,
+          headers: overviewDrawing.headers,
+          tiles: overviewDrawing.tiles,
+        };
         // Names subscribe with the editor commit; only frame geometry needs a deferred commit.
         const key = JSON.stringify({
           ...next,
@@ -550,11 +601,28 @@ export const FrameDetail = memo(
           schedule();
       });
       const uncam = camera.subscribe(schedule);
-      const observer = new MutationObserver(schedule);
+      const observer = new MutationObserver((records) => {
+        // Rate ranking changes at the UI clock. Only flip edge ink here: traffic
+        // must never remeasure a settled frame or rebuild its labels and routes.
+        if (records.every((record) => record.attributeName === "data-live-main")) {
+          if (root.hasAttribute("data-detail-overview"))
+            for (const record of records)
+              if (record.target instanceof SVGElement)
+                setHidden(
+                  record.target,
+                  !overviewConnection(
+                    record.target.hasAttribute("data-live-near"),
+                    record.target.hasAttribute("data-live-main"),
+                  ),
+                );
+          return;
+        }
+        schedule();
+      });
       observer.observe(root, {
         subtree: true,
         attributes: true,
-        attributeFilter: ["data-live-spotlight", "data-live-dim", "data-detail-measure"],
+        attributeFilter: ["data-live-spotlight", "data-live-dim", "data-live-main", "data-detail-measure"],
       });
       const viewport = root.querySelector(".react-flow__viewport");
       if (viewport) observer.observe(viewport, { subtree: true, childList: true });
@@ -580,7 +648,7 @@ export const FrameDetail = memo(
           el.removeAttribute("data-detail-selected-edge");
         }
         for (const el of root.querySelectorAll<HTMLElement>(
-          "[data-detail-hidden], [data-detail-text-hidden], [data-detail-no-arrow], [data-detail-expanded], [data-detail-wrapped], [data-detail-dim]",
+          "[data-detail-hidden], [data-detail-text-hidden], [data-detail-no-arrow], [data-detail-expanded], [data-detail-wrapped], [data-detail-dim], [data-detail-aggregate]",
         )) {
           el.removeAttribute("data-detail-hidden");
           el.removeAttribute("data-detail-text-hidden");
@@ -588,6 +656,7 @@ export const FrameDetail = memo(
           el.removeAttribute("data-detail-expanded");
           el.removeAttribute("data-detail-wrapped");
           el.removeAttribute("data-detail-dim");
+          el.removeAttribute("data-detail-aggregate");
         }
         for (const text of root.querySelectorAll<HTMLElement>(
           ".nb-label,.nb-title,.nb-sub,.nb-kind,.grp-label,.fe-label-text,.lv-metric,.lv-alert,.lv-outcome,.lv-call-pill,.ann-text,.ann-note .ann-content,.ann-shape .ann-content,.ann-zone-label",
@@ -604,6 +673,7 @@ export const FrameDetail = memo(
         }
         delete root.dataset.detailView;
         root.removeAttribute("data-detail-far");
+        root.removeAttribute("data-detail-overview");
         root.removeAttribute("data-detail-dock");
         root.removeAttribute("data-detail-single-selection");
       };
@@ -637,6 +707,28 @@ export const FrameDetail = memo(
             {t("camera.dig")}
           </div>
         )}
+        {drawing.headers.map((header) => (
+          <button
+            key={header.id}
+            className="overview-zone-header"
+            data-testid={`zone-focus-${header.id.replace(/^group:/, "")}`}
+            data-overview-count={header.count}
+            style={{ left: header.box.x, top: header.box.y, width: header.box.width, height: header.box.height }}
+            onClick={() => camera?.dispatch({ type: "view.requested", view: "focus", zone: header.id })}
+          >
+            {header.lines.join("\n")}
+          </button>
+        ))}
+        {drawing.tiles.map((tile) => (
+          <span
+            key={tile.id}
+            className="overview-node-name"
+            data-testid={`overview-name-${tile.id}`}
+            style={{ left: tile.box.x, top: tile.box.y, width: tile.box.width, height: tile.box.height }}
+          >
+            {tile.label}
+          </span>
+        ))}
         {drawing.chips.map((chip) =>
           chip.group ? (
             <button
@@ -649,7 +741,12 @@ export const FrameDetail = memo(
               <FrameTitle id={chip.id} fallback={chip.name} />
             </button>
           ) : (
-            <span key={chip.id} className="detail-title-chip" style={{ left: chip.x, top: chip.y }}>
+            <span
+              key={chip.id}
+              className="detail-title-chip"
+              data-testid={`overview-spotlight-${chip.id}`}
+              style={{ left: chip.x, top: chip.y }}
+            >
               <FrameTitle id={chip.id} fallback={chip.name} />
             </span>
           ),

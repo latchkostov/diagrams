@@ -1854,6 +1854,7 @@ const en = {
   "camera.custom": "Custom",
   "camera.requests": "Requests",
   "camera.dig": "Select a service, or a zone name, to focus",
+  "camera.aggregate": "{name} · {count, plural, one {# service} other {# services}}",
   "camera.more": "+{count} more",
   "chrome.zoomIn": "Zoom in",
   "chrome.zoomOut": "Zoom out",
