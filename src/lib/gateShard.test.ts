@@ -303,16 +303,16 @@ it("Nightly reports a property-only failure", () => {
   const artifact = jobs.properties.steps.find((step: { uses?: string }) =>
     step.uses?.startsWith("actions/upload-artifact"),
   );
-  expect(artifact.if).toBe("failure()");
+  expect(artifact.if).toBe("always()");
   expect(artifact.with).toMatchObject({
-    name: "nightly-results-properties",
+    name: "nightly-results-properties-${{ matrix.shard }}",
     path: "tests/.output/property-results.json",
   });
   expect(
     jobs.report.steps.find(
       (step: { run?: string }) => step.run?.includes("failureSummary") || step.run?.includes("e2e-failures.mjs"),
     ).run,
-  ).toContain("results/nightly-results-properties/property-results.json");
+  ).toContain("results/nightly-results-properties-*/property-results.json");
   const message =
     'Property failed after 8 tests\n{ seed: -673370871, path: "7:2:1", endOnFailure: true }\nCounterexample: [["Escape","Tab"]]';
   const summary = failureSummary([

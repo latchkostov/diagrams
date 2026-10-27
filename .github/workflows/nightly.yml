@@ -7,9 +7,8 @@ on:
     - cron: "23 4 * * *"
   workflow_dispatch:
 
-concurrency:
-  group: ${{ github.workflow }}
-  cancel-in-progress: false
+# Each schedule/dispatch keeps its result. A shared concurrency group can replace pending runs,
+# even with cancel-in-progress: false; these checks have no shared deployment to serialize.
 
 permissions:
   contents: read
@@ -44,27 +43,38 @@ jobs:
           retention-days: 14
 
   properties:
-    name: Random property tests (20x runs)
+    name: Random property tests (20x runs) ${{ matrix.shard }}/${{ matrix.total }}
     runs-on: ubuntu-26.04
-    timeout-minutes: 10
+    # Both Oct 27 runs hit the old 10-minute job limit. waits.review alone took 376-380s.
+    # Four file shards retain every property's 20x corpus; allow 20m for a slow shard,
+    # with setup/cleanup margin outside that step so an overrun fails instead of cancelling.
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+        total: [4]
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/toolchain
       - name: Explore new seeds; failures print seed and shrink path
+        timeout-minutes: 20
         shell: bash
         env:
           FC_SEED: random
           FC_RUN_MULTIPLIER: "20"
+          SHARD: ${{ matrix.shard }}
+          TOTAL: ${{ matrix.total }}
         run: |
           mapfile -t files < <(git grep -l 'from "fast-check"' -- 'src/**/*.test.ts' 'src/**/*.test.tsx')
           test "${#files[@]}" -gt 0
           mkdir -p tests/.output
-          pnpm exec vitest run "${files[@]}" --reporter=default --reporter=json --outputFile=tests/.output/property-results.json
+          pnpm exec vitest run "${files[@]}" --shard="$SHARD/$TOTAL" --reporter=default --reporter=json --outputFile=tests/.output/property-results.json
       - name: Upload randomized property failures, seeds and shrink paths
-        if: failure()
+        if: always()
         uses: actions/upload-artifact@v7
         with:
-          name: nightly-results-properties
+          name: nightly-results-properties-${{ matrix.shard }}
           path: tests/.output/property-results.json
           retention-days: 14
 
@@ -228,6 +238,8 @@ jobs:
   e2e:
     name: ${{ matrix.label }} ${{ matrix.shard }}/${{ matrix.total }}
     runs-on: ubuntu-26.04
+    # Oct 27: successful old shards took up to 38.4m; seven hit the 40m job limit.
+    # Double both shard counts (~19m projected). A 30m step leaves 10m for reports/cleanup.
     timeout-minutes: 40
     strategy:
       fail-fast: false
@@ -236,22 +248,33 @@ jobs:
           # Dev server: every project (chromium, dev, subpath) once. E2E_TARGET=dev serves both the
           # chromium and dev projects from `pnpm dev`; subpath still needs the production build, which
           # the action makes. Tests that read the e2e build skip (lazy-examples.spec.ts).
-          - { suite: dev, label: Dev server, target: dev, repeat: 1, shard: 1, total: 4 }
-          - { suite: dev, label: Dev server, target: dev, repeat: 1, shard: 2, total: 4 }
-          - { suite: dev, label: Dev server, target: dev, repeat: 1, shard: 3, total: 4 }
-          - { suite: dev, label: Dev server, target: dev, repeat: 1, shard: 4, total: 4 }
+          - { suite: dev, label: Dev server, target: dev, repeat: 1, shard: 1, total: 8 }
+          - { suite: dev, label: Dev server, target: dev, repeat: 1, shard: 2, total: 8 }
+          - { suite: dev, label: Dev server, target: dev, repeat: 1, shard: 3, total: 8 }
+          - { suite: dev, label: Dev server, target: dev, repeat: 1, shard: 4, total: 8 }
+          - { suite: dev, label: Dev server, target: dev, repeat: 1, shard: 5, total: 8 }
+          - { suite: dev, label: Dev server, target: dev, repeat: 1, shard: 6, total: 8 }
+          - { suite: dev, label: Dev server, target: dev, repeat: 1, shard: 7, total: 8 }
+          - { suite: dev, label: Dev server, target: dev, repeat: 1, shard: 8, total: 8 }
           # Production build (as on pull requests), each test three times.
-          - { suite: repeat, label: "Build ×3", target: build, repeat: 3, shard: 1, total: 6 }
-          - { suite: repeat, label: "Build ×3", target: build, repeat: 3, shard: 2, total: 6 }
-          - { suite: repeat, label: "Build ×3", target: build, repeat: 3, shard: 3, total: 6 }
-          - { suite: repeat, label: "Build ×3", target: build, repeat: 3, shard: 4, total: 6 }
-          - { suite: repeat, label: "Build ×3", target: build, repeat: 3, shard: 5, total: 6 }
-          - { suite: repeat, label: "Build ×3", target: build, repeat: 3, shard: 6, total: 6 }
+          - { suite: repeat, label: "Build ×3", target: build, repeat: 3, shard: 1, total: 12 }
+          - { suite: repeat, label: "Build ×3", target: build, repeat: 3, shard: 2, total: 12 }
+          - { suite: repeat, label: "Build ×3", target: build, repeat: 3, shard: 3, total: 12 }
+          - { suite: repeat, label: "Build ×3", target: build, repeat: 3, shard: 4, total: 12 }
+          - { suite: repeat, label: "Build ×3", target: build, repeat: 3, shard: 5, total: 12 }
+          - { suite: repeat, label: "Build ×3", target: build, repeat: 3, shard: 6, total: 12 }
+          - { suite: repeat, label: "Build ×3", target: build, repeat: 3, shard: 7, total: 12 }
+          - { suite: repeat, label: "Build ×3", target: build, repeat: 3, shard: 8, total: 12 }
+          - { suite: repeat, label: "Build ×3", target: build, repeat: 3, shard: 9, total: 12 }
+          - { suite: repeat, label: "Build ×3", target: build, repeat: 3, shard: 10, total: 12 }
+          - { suite: repeat, label: "Build ×3", target: build, repeat: 3, shard: 11, total: 12 }
+          - { suite: repeat, label: "Build ×3", target: build, repeat: 3, shard: 12, total: 12 }
     steps:
       - uses: actions/checkout@v7
       # The same setup, builds and shard run as pull requests (ci.yml), with no retries: a test that fails
       # once out of its runs is a flake to fix.
       - name: Playwright shard
+        timeout-minutes: 30
         uses: ./.github/actions/e2e
         with:
           target: ${{ matrix.target }}
@@ -261,17 +284,17 @@ jobs:
           repeat-each: ${{ matrix.repeat }}
           blob-name: report-${{ matrix.suite }}-${{ matrix.shard }}.zip
       - name: Durations
-        if: ${{ !cancelled() }}
+        if: always()
         run: node scripts/e2e-durations.mjs tests/.output/results.json 15 >> "$GITHUB_STEP_SUMMARY"
       - name: Upload results
-        if: ${{ !cancelled() }}
+        if: always()
         uses: actions/upload-artifact@v7
         with:
           name: nightly-results-${{ matrix.suite }}-${{ matrix.shard }}
           path: tests/.output/results.json
           retention-days: 14
       - name: Upload report and traces
-        if: failure()
+        if: always()
         uses: actions/upload-artifact@v7
         with:
           name: nightly-output-${{ matrix.suite }}-${{ matrix.shard }}
@@ -424,8 +447,9 @@ jobs:
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           args=()
-          for f in results/nightly-results-properties/property-results.json; do
-            [ -f "$f" ] && args+=("Random property tests: new seeds, 20x runs=$f")
+          for f in results/nightly-results-properties-*/property-results.json; do
+            label="$(basename "$(dirname "$f")")"
+            [ -f "$f" ] && args+=("Random property tests: new seeds, 20x runs (${label##*-})=$f")
           done
           for f in results/nightly-results-engines/engines-results.json; do
             [ -f "$f" ] && args+=("Engine determinism: Chromium, Firefox, WebKit=$f")
