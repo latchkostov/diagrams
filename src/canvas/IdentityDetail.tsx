@@ -26,13 +26,17 @@ export const IdentityDetail = memo(function IdentityDetail({ host }: { host: Ref
       // Counter-scaled titles outgrow their natural row: secondary card text keeps the far-zoom
       // floor in every view, including presentation, embeds and the offline viewer.
       const far = transform[2] < FAR_ZOOM;
+      // One query indexes every title: a per-node selector search scans the whole canvas each time.
+      const titles = new Map<string, HTMLElement>();
+      for (const title of root.querySelectorAll<HTMLElement>('[data-testid="card-title"]')) {
+        const id = title.closest<HTMLElement>(".react-flow__node[data-id]")?.dataset.id;
+        if (id) titles.set(id, title);
+      }
       // Read the whole canvas before writing: interleaving clientWidth and icon
       // mutations forces one complete layout per card.
       const identity = nodes.flatMap((n) => {
         if (n.type !== "diagram") return [];
-        const title = root.querySelector<HTMLElement>(
-          `[data-testid="node-${CSS.escape(n.id)}"] [data-testid="card-title"]`,
-        );
+        const title = titles.get(n.id);
         const body = title?.closest<HTMLElement>(".nb");
         if (!title || !body) return [];
         const icon = body.querySelector<HTMLElement>(".stencil-icon");
@@ -59,6 +63,8 @@ export const IdentityDetail = memo(function IdentityDetail({ host }: { host: Ref
         if (icon) icon.style.height = `${height}px`;
         if (title.textContent !== label) title.textContent = label;
       }
+      // This pass already saw the current DOM; its own title writes must not schedule another.
+      observer.takeRecords();
     };
     const schedule = () => {
       if (!disposed && !suspended && !frame) frame = requestAnimationFrame(update);
@@ -89,15 +95,20 @@ export const IdentityDetail = memo(function IdentityDetail({ host }: { host: Ref
       )
         schedule();
     });
-    observer.observe(root, { attributes: true, attributeFilter: ["data-detail-zoom"], childList: true, subtree: true });
+    // Never a whole-canvas subtree observer (an idle canvas keeps none): the decoration's refit signal
+    // is an attribute on the root itself, and titles are only ever replaced inside the viewport.
+    observer.observe(root, { attributes: true, attributeFilter: ["data-detail-zoom"] });
+    const viewport = root.querySelector<HTMLElement>(".react-flow__viewport");
+    if (viewport) observer.observe(viewport, { childList: true, subtree: true });
     const reset = () => {
+      // The full name lives in data-label; textContent may hold this frame's abbreviation.
       for (const title of root.querySelectorAll<HTMLElement>('[data-testid="card-title"]'))
-        title.textContent = title.title;
+        if (title.dataset.label !== undefined && title.textContent !== title.dataset.label)
+          title.textContent = title.dataset.label;
       for (const icon of root.querySelectorAll<HTMLElement>(".nb .stencil-icon")) icon.style.removeProperty("height");
       for (const body of root.querySelectorAll<HTMLElement>(".nb[data-identity-far]"))
         body.removeAttribute("data-identity-far");
     };
-    const viewport = root.querySelector<HTMLElement>(".react-flow__viewport");
     const unregister = viewport
       ? registerFrameCapture(viewport, () => {
           suspended = true;

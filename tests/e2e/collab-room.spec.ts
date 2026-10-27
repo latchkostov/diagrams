@@ -166,12 +166,12 @@ test("two browsers start, join, edit both ways, reload and drop over an emulated
 
     await rename(guest, "gateway", "Renamed by the guest");
     await expect(page.getByTestId("node-gateway").getByTestId("card-title")).toHaveAttribute(
-      "title",
+      "data-label",
       "Renamed by the guest",
     );
     await rename(page, "orders", "Renamed by the creator");
     await expect(guest.getByTestId("node-orders").getByTestId("card-title")).toHaveAttribute(
-      "title",
+      "data-label",
       "Renamed by the creator",
     );
 
@@ -185,12 +185,12 @@ test("two browsers start, join, edit both ways, reload and drop over an emulated
     await expect(chip(page)).toHaveAttribute("data-peers", "1");
     await rename(page, "gateway", "After the guest's reload");
     await expect(guest.getByTestId("node-gateway").getByTestId("card-title")).toHaveAttribute(
-      "title",
+      "data-label",
       "After the guest's reload",
     );
     await rename(guest, "orders", "Guest after reload");
     await expect(page.getByTestId("node-orders").getByTestId("card-title")).toHaveAttribute(
-      "title",
+      "data-label",
       "Guest after reload",
     );
 
@@ -201,7 +201,7 @@ test("two browsers start, join, edit both ways, reload and drop over an emulated
     await expect(chip(page)).toHaveAttribute("data-present", "0");
     await rename(page, "orders", "Kept after the drop");
     await expect(page.getByTestId("node-orders").getByTestId("card-title")).toHaveAttribute(
-      "title",
+      "data-label",
       "Kept after the drop",
     );
     expect(guestErrors).toEqual([]);
@@ -243,7 +243,7 @@ test("Leave keeps your copy in Your diagrams, and Don't join leaves nothing behi
     await roomAction(page, "room-leave");
     await expect(chip(page)).toHaveCount(0);
     await expect(page.getByTestId("node-gateway").getByTestId("card-title")).toHaveAttribute(
-      "title",
+      "data-label",
       "Kept after leaving",
     );
     await page.reload();
@@ -395,7 +395,7 @@ test("a copy that can't be saved holds the room's canvas behind a dialog: file c
   await page.mouse.click(4, 4);
   await expect(dialog).toBeVisible();
   await expect(page.getByTestId("node-gateway").getByTestId("card-title")).toHaveAttribute(
-    "title",
+    "data-label",
     "Unsaved room edit",
   );
   const downloading = page.waitForEvent("download");
@@ -494,7 +494,7 @@ test("Clear everything stops the room's writers, an encryption started before it
     const held = () => late.evaluate(() => (window as unknown as { __recoveryHeld: number }).__recoveryHeld);
     await rename(guest, "orders", "Pending at the wipe");
     await expect(late.getByTestId("node-orders").getByTestId("card-title")).toHaveAttribute(
-      "title",
+      "data-label",
       "Pending at the wipe",
     );
     await expect.poll(held).toBeGreaterThan(0);
@@ -517,7 +517,7 @@ test("Clear everything stops the room's writers, an encryption started before it
     const after = await attempts();
     await rename(guest, "gateway", "Written after the wipe");
     await expect(late.getByTestId("node-gateway").getByTestId("card-title")).toHaveAttribute(
-      "title",
+      "data-label",
       "Written after the wipe",
     );
     await expect.poll(attempts).toBeGreaterThan(after);
@@ -591,7 +591,7 @@ test("a peer deleting the right-clicked node closes the menu (remote), the canva
     // A peer's rename and deletion moved nothing on the guest's side.
     await rename(page, "gateway", "Renamed by the creator");
     await expect(guest.getByTestId("node-gateway").getByTestId("card-title")).toHaveAttribute(
-      "title",
+      "data-label",
       "Renamed by the creator",
     );
     expect((await cameraJournal(guest, camera)).filter((e) => e.moved)).toEqual([]);

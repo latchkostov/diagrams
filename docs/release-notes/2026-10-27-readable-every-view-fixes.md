@@ -34,6 +34,12 @@ renamed zoom-control messages and two new Live rail hints alongside this branch'
   directly. The unused title branch of `textDetail` is removed. Identity fitting skips translation-only pans,
   and the frame decoration republishes its refit signal only when the zoom or a card's measured width changes.
 
+- **Full names without native tooltips.** Node titles no longer carry a native `title` (nodes use the app's
+  tooltip), so the fitted title keeps its full name in `data-label`. Capture and unmount restore names from
+  it; reading the removed attribute had blanked every exported name. Identity fitting indexes titles with
+  one query and watches only the viewport's children and the root's refit attribute: an idle canvas keeps
+  no whole-canvas subtree observer.
+
 Image-export, layout and render goldens are unchanged by these rounds. One canvas golden changes on
 purpose: the Interactive HTML viewer fits `branch-to-datacentre` at 54%, below the far zoom, so its 13 cards
 now show icon and name without their second lines (`html/branch-to-datacentre.dark.drawn.json` text and

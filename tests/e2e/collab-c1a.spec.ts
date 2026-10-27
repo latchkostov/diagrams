@@ -53,14 +53,14 @@ test("a creator waiting alone keeps edits without showing a connection failure",
   await page.clock.runFor(COLLAB_LIMITS.connectionWaitMs);
   await expect(page.getByTestId("collab-connection-failed")).toHaveCount(0);
   await expect(page.getByTestId("node-api").getByTestId("card-title")).toHaveAttribute(
-    "title",
+    "data-label",
     "Keep disconnected edits",
   );
   await page.clock.runFor(COLLAB_LIMITS.connectionWaitMs * 3);
   await expect(page.getByTestId("collab-connection-failed")).toHaveCount(0);
   await expect(page.getByTestId("collab-room-status")).toHaveAttribute("data-saved", "true");
   await expect(page.getByTestId("node-api").getByTestId("card-title")).toHaveAttribute(
-    "title",
+    "data-label",
     "Keep disconnected edits",
   );
 });
@@ -252,7 +252,7 @@ test("isolated editors preserve a pending inspector edit, scope Undo/Redo, and h
     await page.evaluate(() => window.dispatchEvent(new PageTransitionEvent("pageshow", { persisted: true })));
     await name(b, "db", "After suspended page returned");
     await expect(page.getByTestId("node-db").getByTestId("card-title")).toHaveAttribute(
-      "title",
+      "data-label",
       "After suspended page returned",
     );
     await page.getByTestId("node-api").dblclick();
@@ -260,18 +260,18 @@ test("isolated editors preserve a pending inspector edit, scope Undo/Redo, and h
     const field = page.getByTestId("inspector-field-label");
     await field.fill("API draft stays");
     await name(b, "db", "Database by peer");
-    await expect(page.getByTestId("node-db").getByTestId("card-title")).toHaveAttribute("title", "Database by peer");
+    await expect(page.getByTestId("node-db").getByTestId("card-title")).toHaveAttribute("data-label", "Database by peer");
     await page.bringToFront();
     await expect(field).toBeFocused();
     await expect(field).toHaveValue("API draft stays");
-    await expect(b.getByTestId("node-api").getByTestId("card-title")).toHaveAttribute("title", "API draft stays");
+    await expect(b.getByTestId("node-api").getByTestId("card-title")).toHaveAttribute("data-label", "API draft stays");
     await field.press("Enter");
     await page.getByTestId("undo-button").click();
     await expect(b.getByTestId("node-api")).toContainText("API");
     await expect(b.getByTestId("node-api")).not.toContainText("draft");
-    await expect(page.getByTestId("node-db").getByTestId("card-title")).toHaveAttribute("title", "Database by peer");
+    await expect(page.getByTestId("node-db").getByTestId("card-title")).toHaveAttribute("data-label", "Database by peer");
     await page.getByTestId("redo-button").click();
-    await expect(b.getByTestId("node-api").getByTestId("card-title")).toHaveAttribute("title", "API draft stays");
+    await expect(b.getByTestId("node-api").getByTestId("card-title")).toHaveAttribute("data-label", "API draft stays");
     // The selected target disappears while its property sheet holds focus.
     await page.getByTestId("node-api").dblclick();
     await expect(field).toBeFocused();
@@ -346,7 +346,7 @@ test("room recovery preserves an existing local autosave across reload and rejoi
     await open(page);
     await open(b, true);
     await name(page, "api", "Before everybody left");
-    await expect(b.getByTestId("node-api").getByTestId("card-title")).toHaveAttribute("title", "Before everybody left");
+    await expect(b.getByTestId("node-api").getByTestId("card-title")).toHaveAttribute("data-label", "Before everybody left");
     await expect(b.getByTestId("collab-room-status")).toHaveAttribute("data-saved", "true");
     const departed = await wire.disconnect(b);
     if (!departed) throw new Error("Expected the peer to have joined the relay");
@@ -367,7 +367,7 @@ test("room recovery preserves an existing local autosave across reload and rejoi
     await expect(page.getByTestId("collab-room-status")).toHaveAttribute("data-status", "saved-device");
     await page.reload();
     await expect(page.getByTestId("node-api").getByTestId("card-title")).toHaveAttribute(
-      "title",
+      "data-label",
       "Before everybody left",
     );
     await expect(page.getByTestId("collab-room-status")).toHaveAttribute("data-status", "saved-device");
@@ -377,15 +377,15 @@ test("room recovery preserves an existing local autosave across reload and rejoi
     await page.goto("about:blank");
     wire.attach(b);
     await open(b, true);
-    await expect(b.getByTestId("node-api").getByTestId("card-title")).toHaveAttribute("title", "Before everybody left");
+    await expect(b.getByTestId("node-api").getByTestId("card-title")).toHaveAttribute("data-label", "Before everybody left");
     await name(b, "db", "Offline peer database");
     wire.attach(page);
     await open(page, true);
     await expect(page.getByTestId("node-db").getByTestId("card-title")).toHaveAttribute(
-      "title",
+      "data-label",
       "Offline peer database",
     );
-    await expect(b.getByTestId("node-api").getByTestId("card-title")).toHaveAttribute("title", "Offline local API");
+    await expect(b.getByTestId("node-api").getByTestId("card-title")).toHaveAttribute("data-label", "Offline local API");
     await expect(page.getByTestId("collab-room-status")).toHaveAttribute("data-status", "synced");
     const leaked = await page.evaluate(() =>
       Object.entries(localStorage)
@@ -397,7 +397,7 @@ test("room recovery preserves an existing local autosave across reload and rejoi
     expect(await page.evaluate((key) => localStorage.getItem(key), localKey)).toBe(localValue);
     await page.goto("./?view=canvas&example=kafka-order-pipeline");
     await expect(page.getByTestId("node-local-service").getByTestId("card-title")).toHaveAttribute(
-      "title",
+      "data-label",
       "Local work survives",
     );
     expect(await page.evaluate((key) => localStorage.getItem(key), localKey)).toBe(localValue);
@@ -496,7 +496,7 @@ test("storage retry backoff keeps edits unsaved until a successful retry", async
   await field.press("Enter");
   await page.clock.resume();
   await page.reload();
-  await expect(page.getByTestId("node-api").getByTestId("card-title")).toHaveAttribute("title", "Still editable 7");
+  await expect(page.getByTestId("node-api").getByTestId("card-title")).toHaveAttribute("data-label", "Still editable 7");
   expectNoErrors(consoleErrors);
 });
 
@@ -586,7 +586,7 @@ test("the normal Lab recovery link reopens encrypted work without an injected ke
   // The invitation key is consumed from the fragment; reopening uses the saved recovery link.
   await page.goto(link);
   await expect(page.getByTestId("node-api").getByTestId("card-title")).toHaveAttribute(
-    "title",
+    "data-label",
     "Saved without debounce",
   );
   await expect.poll(() => new URL(page.url()).hash).toBe("");
@@ -594,7 +594,7 @@ test("the normal Lab recovery link reopens encrypted work without an injected ke
   try {
     await peer.goto(link);
     await expect(peer.getByTestId("node-api").getByTestId("card-title")).toHaveAttribute(
-      "title",
+      "data-label",
       "Saved without debounce",
     );
     await expect(page.getByTestId("collab-room-status")).toHaveAttribute("data-status", "synced");
@@ -966,7 +966,7 @@ for (const abortAfter of [1, 2]) {
     await field.press("Enter");
     await expect(page.getByTestId("collab-recovery-problem")).toContainText("Not saved on this device");
     await expect(page.getByTestId("node-api").getByTestId("card-title")).toHaveAttribute(
-      "title",
+      "data-label",
       "Interrupted undurable append",
     );
     await expect(page.getByTestId("collab-room-status")).toHaveAttribute("data-saved", "false");
@@ -974,7 +974,7 @@ for (const abortAfter of [1, 2]) {
     await page.reload();
     await page.clock.resume();
     await expect(page.getByTestId("node-api").getByTestId("card-title")).toHaveAttribute(
-      "title",
+      "data-label",
       "Durable before interrupted append",
     );
     await expect(page.getByTestId("collab-room-status")).toHaveAttribute("data-saved", "true");
@@ -1050,7 +1050,7 @@ test("a peer edit between image export slices aborts with a retry toast and pres
     await waitForStableViewport(b);
     await name(b, "db", "Database by peer during export");
     await expect(page.getByTestId("node-db").getByTestId("card-title")).toHaveAttribute(
-      "title",
+      "data-label",
       "Database by peer during export",
     );
     await page.evaluate(() => (window as unknown as { __resumeExportSlice: () => void }).__resumeExportSlice());
@@ -1062,13 +1062,13 @@ test("a peer edit between image export slices aborts with a retry toast and pres
     await expect(b.getByTestId("node-api")).toContainText("API");
     await expect(b.getByTestId("node-api")).not.toContainText("My local");
     await expect(page.getByTestId("node-db").getByTestId("card-title")).toHaveAttribute(
-      "title",
+      "data-label",
       "Database by peer during export",
     );
     await page.getByTestId("redo-button").click();
     await expect(b.getByTestId("node-api")).toContainText("My local API");
     await expect(b.getByTestId("node-db").getByTestId("card-title")).toHaveAttribute(
-      "title",
+      "data-label",
       "Database by peer during export",
     );
     expectNoErrors(consoleErrors);

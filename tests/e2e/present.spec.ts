@@ -103,6 +103,11 @@ async function presentedSvg(page: Page) {
       titles: size('[data-testid="card-title"]', /(?:^|;)\s*font: [^;]*?([\d.]+)px \//),
       icons: size('[data-testid="card-icon"] > *', /(?:^|;)\s*height: ([\d.]+)px/),
       seconds: size('[data-testid="card-second-line"]', /(?:^|;)\s*visibility: ([^;]+)/),
+      // Every exported title paints its full name (never a blank or this frame's abbreviation).
+      names: [...svg.querySelectorAll('[data-testid="card-title"]')].map((el) => ({
+        label: el.getAttribute("data-label"),
+        text: el.textContent,
+      })),
     };
   });
 }
@@ -115,6 +120,11 @@ test("presentation image exports capture natural identity at any zoom @dev", asy
   expect(editor.titles.length).toBeGreaterThan(0);
   for (const size of editor.titles) expect(Number(size)).toBeLessThanOrEqual(13.5);
   for (const size of editor.icons) expect(Number(size)).toBeLessThanOrEqual(34);
+  expect(editor.names.length).toBe(editor.titles.length);
+  for (const { label, text } of editor.names) {
+    expect(label?.trim()).toBeTruthy();
+    expect(text).toBe(label);
+  }
   expect(new Set(editor.seconds)).toEqual(new Set(["visible"]));
   await page.getByTestId("present-toggle").click();
   await expect(page.getByTestId("present-exit")).toBeVisible();

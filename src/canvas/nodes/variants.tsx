@@ -22,14 +22,15 @@ function cls(base: string, p: NodeBodyProps) {
   return [base, p.selected && "is-selected", p.unknown && "is-unknown"].filter(Boolean).join(" ");
 }
 
-/** Natural-size ink reserves geometry; only the painted title counter-scales. */
+/** Natural-size ink reserves geometry; only the painted title counter-scales. `data-label` keeps the
+ * full name for restoring a fitted title (never a native tooltip: nodes use the app's own). */
 function NodeTitle({ label }: { label: string }) {
   return (
     <div className="nb-name">
       <span className="nb-name-size" aria-hidden="true">
         {label}
       </span>
-      <div className="nb-label" data-testid="card-title">
+      <div className="nb-label" data-testid="card-title" data-label={label}>
         {label}
       </div>
     </div>
