@@ -140,7 +140,7 @@ export function focusSelectionViewport(
   };
 }
 
-/** Follow has a subject, rather than a bounding-box centre; other spotlit cards are allowed to pin. */
+/** Keep the subject centred when possible, but every narrated card must fit. */
 export function followViewport(
   root: HTMLElement,
   s: State,
@@ -177,12 +177,26 @@ export function followViewport(
     y = frame.y + frame.height * (phone ? 0.4 : 0.5);
   const maximum = Math.min(
     (root.ownerDocument?.defaultView?.innerWidth ?? root.clientWidth) < 640 ? 1.1 : 1,
-    (x - 52) / Math.max(1, cx - bounds.x),
+    (x - frame.x - 52) / Math.max(1, cx - bounds.x),
     (root.clientWidth - right - x) / Math.max(1, bounds.x + bounds.width - cx),
-    (y - 52) / Math.max(1, cy - bounds.y),
+    (y - frame.y - 52) / Math.max(1, cy - bounds.y),
     (frame.y + frame.height - 52 - y) / Math.max(1, bounds.y + bounds.height - cy),
   );
   const zoom = Math.max(phone ? 0.92 : 0.9, maximum);
+  // A subject-centred close-up may cut off another narrated card. In that case
+  // frame the complete narration; only its non-narrated neighbours may pin.
+  if (maximum < (phone ? 0.92 : 0.9))
+    return fitAvoiding(nodeRects(s, ids), { width: root.clientWidth, height: root.clientHeight }, [], {
+      margin: 0,
+      minZoom: s.minZoom,
+      maxZoom: phone ? 1.1 : 1,
+      insets: {
+        left: frame.x + (phone ? 28 : 52),
+        right,
+        top: frame.y + 52,
+        bottom: root.clientHeight - frame.y - frame.height + 96,
+      },
+    });
   return { x: x - cx * zoom, y: y - cy * zoom, zoom };
 }
 

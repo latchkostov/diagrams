@@ -230,7 +230,7 @@ it("Focus includes neighbours' labels, or centres the selection at its floor", (
   expect(spread.zoom).toBe(0.9);
   expect(spread.x + 90 * spread.zoom).toBe(588);
 });
-it("Follow centres its subject and leaves 52 px room when the path fits, else pins at .9", () => {
+it("Follow centres its subject when the path fits and frames every narrated card when it doesn't", () => {
   const s = workbenchState();
   const view = followViewport(workbenchRoot, s, ["a", "b"], "a")!;
   expect(view.zoom).toBe(1);
@@ -238,16 +238,41 @@ it("Follow centres its subject and leaves 52 px room when the path fits, else pi
   expect(view.y + 40 * view.zoom).toBe(400);
   expect(view.x).toBeGreaterThanOrEqual(52);
   expect(view.x + 480 * view.zoom).toBeLessThanOrEqual(1148);
-  expect(followViewport(workbenchRoot, workbenchState(6000), ["a", "b"], "a")?.zoom).toBe(0.9);
+  const wide = followViewport(workbenchRoot, workbenchState(6000), ["a", "b"], "a")!;
+  expect(wide.x).toBeGreaterThanOrEqual(52);
+  expect(wide.x + 6180 * wide.zoom).toBeLessThanOrEqual(1148);
+  expect(wide.y).toBeGreaterThanOrEqual(52);
+  expect(wide.y + 80 * wide.zoom).toBeLessThanOrEqual(704);
 });
-it("phone Follow keeps its .92 floor and places the subject at forty percent height", () => {
+it("Follow keeps every narrated card clear of an overlapping left dock and top bezel", () => {
+  const root = {
+    ...workbenchRoot,
+    ownerDocument: {
+      querySelector: (selector: string) => {
+        const rect = selector.includes("inspector")
+          ? { left: 0, right: 400, top: 0, bottom: 800, width: 400, height: 800 }
+          : selector.includes("canvas-bezel")
+            ? { left: 0, right: 1200, top: 0, bottom: 60 }
+            : null;
+        return rect ? { getBoundingClientRect: () => rect } : null;
+      },
+    },
+  } as unknown as HTMLElement;
+  const view = followViewport(root, workbenchState(500), ["a", "b"], "b")!;
+  expect(view.x).toBeGreaterThanOrEqual(452);
+  expect(view.x + 680 * view.zoom).toBeLessThanOrEqual(1148);
+  expect(view.y).toBeGreaterThanOrEqual(112);
+  expect(view.y + 80 * view.zoom).toBeLessThanOrEqual(704);
+});
+it("phone Follow keeps a single subject at forty percent and frames distant narrated peers", () => {
   const root = { ...workbenchRoot, clientWidth: 390, clientHeight: 548 } as HTMLElement;
-  const view = followViewport(root, workbenchState(6000), ["a", "b"], "a")!;
-  expect(view.zoom).toBe(0.92);
+  const view = followViewport(root, workbenchState(6000), ["a"], "a")!;
+  expect(view.zoom).toBe(1.1);
   expect(view.y + 40 * view.zoom).toBeCloseTo(548 * 0.4);
-  expect(view.x + 90 * view.zoom).toBe(177);
+  expect(view.x + 90 * view.zoom).toBe(195);
   const incoming = followViewport(root, workbenchState(6000), ["a", "b"], "b")!;
-  expect(incoming.x + 6090 * incoming.zoom).toBe(257);
+  expect(incoming.x).toBeGreaterThanOrEqual(28);
+  expect(incoming.x + 6180 * incoming.zoom).toBeLessThanOrEqual(338);
 });
 
 it.each([96, 400, 800])("R-c6a836a8ae Focus and Follow use the phone sheet's exposed frame at height %i", (height) => {
@@ -278,9 +303,14 @@ it.each([96, 400, 800])("R-c6a836a8ae Focus and Follow use the phone sheet's exp
     expect(focus.x + 90 * focus.zoom).toBe(183);
     expect(focus.y + 40 * focus.zoom).toBe((800 - height + 32 - 72) / 2);
   }
-  const follow = followViewport(root, state, ["a", "b"], "a")!;
-  expect(follow.x + 90 * follow.zoom).toBe(177);
-  expect(follow.y + 40 * follow.zoom).toBe((800 - height) * 0.4);
+  const follow = followViewport(root, state, ["a", "b"], "a");
+  if (height === 800) expect(follow).toBeNull();
+  else {
+    expect(follow!.x).toBeGreaterThanOrEqual(28);
+    expect(follow!.x + 6180 * follow!.zoom).toBeLessThanOrEqual(338);
+    expect(follow!.y).toBeGreaterThanOrEqual(52);
+    expect(follow!.y + 80 * follow!.zoom).toBeLessThanOrEqual(800 - height - 96);
+  }
 });
 
 it("Overview excludes the reserved legend from its fitted canvas", () => {

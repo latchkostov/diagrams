@@ -9,12 +9,169 @@ import {
   innerFrame,
   oneHop,
   placeFrameLabel,
+  pinRow,
+  routeToPin,
+  placeTextFloor,
+  frameLanes,
+  clipFrameRoute,
   stackPins,
 } from "./camera/frameEdges";
-import { intersects } from "./geometry/rect";
+import { intersects, segmentHitsRect } from "./geometry/rect";
 import { decide, initialPolicy } from "./camera/panePolicy";
 
 describe("Workbench frame detail", () => {
+  it("keeps bottom pins below every trunk and above the legend", () => {
+    const inner = { x: 28, y: 28, width: 500, height: 400 };
+    const { routes, row } = pinRow(inner, 28);
+    const pins = stackPins(
+      ["flags", "payments", "metrics"].map((id) => ({
+        id,
+        name: id,
+        side: "bottom" as const,
+        crossing: { x: 260, y: 428 },
+        width: 100,
+        spotlit: false,
+      })),
+      row,
+    );
+    expect(pins).toHaveLength(3);
+    for (const pin of pins) {
+      expect(pin.box.y).toBeGreaterThan(routes.y + routes.height);
+      expect(pin.box.y + pin.box.height).toBeLessThanOrEqual(inner.y + inner.height);
+      const path = routeToPin(
+        [
+          { x: 250, y: 100 },
+          { x: 250, y: 500 },
+        ],
+        routes,
+        pin,
+      );
+      for (const other of pins)
+        for (let i = 1; i < path.length; i++) expect(segmentHitsRect(path[i - 1], path[i], other.box)).toBe(false);
+    }
+  });
+  it("joins a displaced seam pin only with orthogonal route segments", () => {
+    const inner = { x: 28, y: 28, width: 500, height: 400 };
+    const [pin] = stackPins(
+      [{ id: "saga", name: "Checkout saga", side: "right", crossing: { x: 528, y: 150 }, width: 140, spotlit: false }],
+      inner,
+      28,
+      [{ x: 350, y: 0, width: 180, height: 280 }],
+    );
+    const path = routeToPin(
+      [
+        { x: 200, y: 150 },
+        { x: 800, y: 150 },
+      ],
+      inner,
+      pin,
+    );
+    expect(path.at(-1)).toEqual({ x: pin.box.x, y: pin.box.y + 14 });
+    for (let i = 1; i < path.length; i++) expect(path[i].x === path[i - 1].x || path[i].y === path[i - 1].y).toBe(true);
+    expect(pin.box.x + pin.box.width).toBeLessThanOrEqual(inner.x + inner.width);
+  });
+  it("connects a card port in the reserved seam without falling back to the off-frame route", () => {
+    const inner = { x: 28, y: 28, width: 500, height: 400 };
+    const { routes, row } = pinRow(inner, 28);
+    const [pin] = stackPins(
+      [{ id: "flags", name: "Flags", side: "bottom", crossing: { x: 250, y: 428 }, width: 100, spotlit: false }],
+      row,
+    );
+    const path = routeToPin(
+      [
+        { x: 250, y: 60 },
+        { x: 250, y: -200 },
+        { x: 500, y: -200 },
+        { x: 500, y: 600 },
+      ],
+      routes,
+      pin,
+    );
+    expect(path[0]).toEqual({ x: 250, y: 60 });
+    expect(path.at(-1)).toEqual({ x: pin.box.x + pin.box.width / 2, y: pin.box.y });
+    expect(path.every((p) => p.y >= 60 && p.y <= pin.box.y)).toBe(true);
+  });
+  it("separates a screen-space fan into eight-pixel lanes without moving its ports", () => {
+    const paths = new Map(
+      [0, 1, 2].map((i) => [
+        String(i),
+        [
+          { x: 0, y: i * 14 },
+          { x: 100, y: i * 14 },
+          { x: 100, y: 200 + i * 14 },
+          { x: 300, y: 200 + i * 14 },
+        ],
+      ]),
+    );
+    const lanes = frameLanes(paths, []);
+    const tracks = [...lanes.values()].map((p) => p[1].x).sort((a, b) => a - b);
+    expect(tracks[1] - tracks[0]).toBe(8);
+    expect(tracks[2] - tracks[1]).toBe(8);
+    for (const [id, path] of paths) {
+      expect(lanes.get(id)![0]).toEqual(path[0]);
+      expect(lanes.get(id)!.at(-1)).toEqual(path.at(-1));
+    }
+  });
+  it("offers larger text only in a clear slot, searching past crossing edges", () => {
+    const frame = { x: 0, y: 0, width: 500, height: 150 };
+    const box = { x: 100, y: 40, width: 100, height: 22 };
+    const own = [
+      { x: 0, y: 51 },
+      { x: 500, y: 51 },
+    ];
+    const crossing = [
+      { x: 150, y: 0 },
+      { x: 150, y: 150 },
+    ];
+    expect(placeTextFloor(box, frame, [])).toEqual(box);
+    expect(placeTextFloor(box, frame, [frame], [], own)).toBeNull();
+    expect(placeTextFloor(box, frame, [], [crossing])).toBeNull();
+    const placed = placeTextFloor(box, frame, [], [crossing], own)!;
+    expect(placed).not.toBeNull();
+    expect(segmentHitsRect(crossing[0], crossing[1], placed)).toBe(false);
+    expect(placeTextFloor({ ...box, width: 600 }, frame, [], [], own)).toBeNull();
+  });
+  it("stops an unretained neighbour before the pin row", () => {
+    const frame = { x: 28, y: 68, width: 500, height: 320 };
+    expect(
+      clipFrameRoute(
+        [
+          { x: 200, y: 200 },
+          { x: 300, y: 200 },
+          { x: 300, y: -400 },
+        ],
+        frame,
+      ),
+    ).toEqual([
+      { x: 200, y: 200 },
+      { x: 300, y: 200 },
+      { x: 300, y: 68 },
+    ]);
+  });
+  it("routes a pin around the source card instead of doubling back through it", () => {
+    const source = { x: 300, y: 200, width: 180, height: 80 };
+    const pin = {
+      id: "relay",
+      name: "Relay",
+      side: "right" as const,
+      crossing: { x: 550, y: 240 },
+      width: 100,
+      spotlit: false,
+      box: { x: 450, y: 350, width: 100, height: 28 },
+    };
+    const path = routeToPin(
+      [
+        { x: 480, y: 240 },
+        { x: 600, y: 240 },
+      ],
+      { x: 28, y: 68, width: 522, height: 320 },
+      pin,
+      [source, pin.box],
+    );
+    expect(path[1].x).toBeGreaterThan(480);
+    for (let i = 1; i < path.length; i++)
+      for (const block of [source, pin.box]) expect(segmentHitsRect(path[i - 1], path[i], block)).toBe(false);
+  });
   it("never paints text below the floor; only active text scales in Focus", () => {
     for (const view of ["overview", "focus", "follow", "custom"] as const)
       for (const active of [true, false])

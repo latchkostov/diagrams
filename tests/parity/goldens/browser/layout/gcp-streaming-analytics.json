@@ -60,13 +60,13 @@
     },
     "labels": {
       "app-to-collector": { "style": "transform: translate(-50%, -50%) translate(334px, 276px); --fe-w: 101.55px; --fe-h: 22px;", "text": "HTTPS batches" },
-      "collector-to-topic": { "style": "transform: translate(-50%, -50%) translate(714px, 276px); --fe-w: 57.480000000000004px; --fe-h: 22px;", "text": "Publish" },
-      "topic-to-dataflow": { "style": "transform: translate(-50%, -50%) translate(1100px, 212.5px); --fe-w: 89.83999999999999px; --fe-h: 22px;", "text": "sub: dataflow" },
-      "topic-to-raw-archive": { "style": "transform: translate(-50%, -50%) translate(1100px, 339.5px); --fe-w: 165.9px; --fe-h: 22px;", "text": "Cloud Storage subscription" },
-      "dataflow-to-bigquery": { "style": "transform: translate(-50%, -50%) translate(1449.25px, 149px); --fe-w: 65.4px; --fe-h: 22px;", "text": "Sessions" },
-      "dataflow-to-dead-letters": { "style": "transform: translate(-50%, -50%) translate(1485.5px, 219.5px); --fe-w: 83.27px; --fe-h: 22px;", "text": "Parse errors" },
-      "dead-letters-to-dead-bucket": { "style": "transform: translate(-50%, -50%) translate(1854px, 276px); --fe-w: 82.50999999999999px; --fe-h: 22px;", "text": "sub: archive" },
-      "looker-to-bigquery": { "style": "transform: translate(-50%, -50%) translate(1866px, 156px); --fe-w: 40.06px; --fe-h: 22px;", "text": "SQL" }
+      "collector-to-topic": { "style": "transform: translate(-50%, -50%) translate(714px, 276px); --fe-w: 57.480000000000004px; --fe-h: 22px; font-size: 18.238px;", "text": "Publish" },
+      "topic-to-dataflow": { "style": "transform: translate(-50%, -50%) translate(1100px, 212.5px); --fe-w: 89.83999999999999px; --fe-h: 22px; font-size: 18.238px;", "text": "sub: dataflow" },
+      "topic-to-raw-archive": { "style": "transform: translate(-50%, -50%) translate(1100px, 339.5px); --fe-w: 165.9px; --fe-h: 22px; font-size: 18.238px;", "text": "Cloud Storage subscription" },
+      "dataflow-to-bigquery": { "style": "transform: translate(-50%, -50%) translate(1449.25px, 149px); --fe-w: 65.4px; --fe-h: 22px; font-size: 18.238px; translate: 8.55003px 3.90831e-06px;", "text": "Sessions" },
+      "dataflow-to-dead-letters": { "style": "transform: translate(-50%, -50%) translate(1485.5px, 219.5px); --fe-w: 83.27px; --fe-h: 22px; font-size: 18.238px;", "text": "Parse errors" },
+      "dead-letters-to-dead-bucket": { "style": "transform: translate(-50%, -50%) translate(1854px, 276px); --fe-w: 82.50999999999999px; --fe-h: 22px; font-size: 18.238px;", "text": "sub: archive" },
+      "looker-to-bigquery": { "style": "transform: translate(-50%, -50%) translate(1866px, 156px); --fe-w: 40.06px; --fe-h: 22px; font-size: 18.238px;", "text": "SQL" }
     }
   }
 }

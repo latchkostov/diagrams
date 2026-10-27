@@ -4229,7 +4229,7 @@ details[open] > summary .lv-disclosure-chevron {
 
 .react-flow[data-live-spotlight] .react-flow__edge[data-live-near] .fe-path.react-flow__edge-path {
   stroke: var(--text);
-  stroke-width: 3px;
+  stroke-width: min(2px, calc(2px / var(--rf-zoom-exact, 1)));
 }
 
 .react-flow[data-live-spotlight] .react-flow__edge[data-live-near] .fe-dep .fe-path {

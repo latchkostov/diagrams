@@ -40,10 +40,12 @@ for (const width of [1440, 390])
       if (!credit) throw new Error("Expected visible credit");
       expect(credit.y).toBeGreaterThanOrEqual(legend.y);
       if (width === 390) {
-        const pin = await page.getByTestId("focus-offscreen-checkout").boundingBox();
+        // Both cards are narrated. Follow must now frame the caller too.
+        await expect(page.getByTestId("focus-offscreen-checkout")).toHaveCount(0);
+        const caller = await page.getByTestId("node-checkout").boundingBox();
         const card = await page.getByTestId("node-payments").boundingBox();
-        if (!pin || !card) throw new Error("Expected incoming neighbour and subject");
-        expect(card.x - pin.x - pin.width).toBeGreaterThan(24);
+        if (!caller || !card) throw new Error("Expected narrated caller and subject");
+        expect(card.x - caller.x - caller.width).toBeGreaterThan(24);
         await page.getByTestId("live-note-expand").click();
         for (const id of ["live-note-earlier", "live-note-later"]) {
           const target = await page.getByTestId(id).boundingBox();

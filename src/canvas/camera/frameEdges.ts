@@ -1,9 +1,15 @@
-import { intersects, type Rect } from "../geometry/rect";
+import { intersects, segmentHitsRect, type Rect } from "../geometry/rect";
 import { pointAlong } from "../geometry/path";
+import { nudgeRoutes } from "../geometry/nudge";
+import { routeOrthogonal } from "../geometry/orthogonal";
 
 export type FrameEnd = "in" | "pinned" | "out";
 export type FrameSide = "left" | "right" | "top" | "bottom";
 export type Point = { x: number; y: number };
+/** Frame-only lanes use screen pixels, independent of the camera's zoom. */
+export function frameLanes(routes: ReadonlyMap<string, Point[]>, blockers: readonly Rect[]) {
+  return nudgeRoutes(routes, blockers, { separation: 8, tolerance: 8 });
+}
 export const contains = (outer: Rect, inner: Rect) =>
   inner.x >= outer.x &&
   inner.y >= outer.y &&
@@ -151,14 +157,112 @@ export function stackPins(
   return placed;
 }
 
+/** A separate bottom row: routes stop at its top, above the reserved legend. */
+export function pinRow(inner: Rect, height: number): { routes: Rect; row: Rect; top: Rect } {
+  return {
+    routes: { ...inner, y: inner.y + height + 12, height: Math.max(0, inner.height - 2 * (height + 12)) },
+    row: { ...inner, y: inner.y + inner.height - height, height },
+    top: { ...inner, height },
+  };
+}
+
+/** Retain the route up to its first seam, then join the pin orthogonally.
+ * No second, diagonal leader: the connection itself owns its endpoint.
+ */
+export function routeToPin(
+  points: readonly Point[],
+  frame: Rect,
+  pin: FramePin,
+  obstacles: readonly Rect[] = [],
+): Point[] {
+  const kept: Point[] = [];
+  for (const point of points) {
+    // A painted card's port can be in the seam reserved around the route
+    // area. Keep that first endpoint, then turn inward before joining a pin.
+    if (kept.length && !contains(frame, { ...point, width: 0, height: 0 })) break;
+    kept.push(point);
+  }
+  if (!kept.length) return [];
+  const anchor = { x: pin.box.x + pin.box.width / 2, y: pin.box.y + pin.box.height / 2 };
+  if (pin.side === "left") anchor.x = pin.box.x + pin.box.width;
+  if (pin.side === "right") anchor.x = pin.box.x;
+  if (pin.side === "top") anchor.y = pin.box.y + pin.box.height;
+  if (pin.side === "bottom") anchor.y = pin.box.y;
+  if (obstacles.length && points.length > 1) {
+    const a = points[0],
+      b = points[1];
+    const dx = b.x - a.x,
+      dy = b.y - a.y;
+    const result = routeOrthogonal({
+      source: a,
+      sourceDir: Math.abs(dx) >= Math.abs(dy) ? { x: Math.sign(dx), y: 0 } : { x: 0, y: Math.sign(dy) },
+      target: anchor,
+      targetDir:
+        pin.side === "left"
+          ? { x: 1, y: 0 }
+          : pin.side === "right"
+            ? { x: -1, y: 0 }
+            : pin.side === "top"
+              ? { x: 0, y: 1 }
+              : { x: 0, y: -1 },
+      obstacles,
+      pad: 8,
+      stub: 16,
+    });
+    if (result.ok) return result.points;
+  }
+  const last = kept.at(-1)!;
+  // Turn above the bottom row rather than running a trunk through other pins.
+  if (pin.side === "bottom")
+    return [...kept, { x: last.x, y: frame.y + frame.height }, { x: anchor.x, y: frame.y + frame.height }, anchor];
+  if (pin.side === "top") return [...kept, { x: last.x, y: frame.y }, { x: anchor.x, y: frame.y }, anchor];
+  return [
+    ...kept,
+    pin.side === "left" || pin.side === "right" ? { x: anchor.x, y: last.y } : { x: last.x, y: anchor.y },
+    anchor,
+  ];
+}
+
+/** Unretained neighbours stop before the pin rows instead of crossing them. */
+export function clipFrameRoute(points: readonly Point[], frame: Rect): Point[] {
+  if (!points.length) return [];
+  const kept = [points[0]];
+  for (const point of points.slice(1)) {
+    if (!contains(frame, { ...point, width: 0, height: 0 })) {
+      const crossing = frameCrossing([kept.at(-1)!, point], frame);
+      if (crossing) kept.push(crossing.point);
+      break;
+    }
+    kept.push(point);
+  }
+  return kept;
+}
+
+/** Use the larger text only when its entire ink box has a collision-free home. */
+export function placeTextFloor(
+  box: Rect,
+  inner: Rect,
+  blockers: readonly Rect[],
+  paths: readonly (readonly Point[])[] = [],
+  ownPath?: readonly Point[],
+): Rect | null {
+  const clear = (candidate: Rect) =>
+    clearFrameBox(candidate, inner, blockers) &&
+    !paths.some((points) => points.some((b, i) => i > 0 && segmentHitsRect(points[i - 1], b, candidate)));
+  if (clear(box)) return box;
+  if (!ownPath?.length) return null;
+  return placeFrameLabel(box, ownPath, inner, blockers, clear);
+}
+
 /** Slide along the edge itself; never move authored data or jump a label onto another route. */
 export function placeFrameLabel(
   box: Rect,
   points: readonly Point[],
   inner: Rect,
   blockers: readonly Rect[],
+  accept: (box: Rect) => boolean = () => true,
 ): Rect | null {
-  const clear = (r: Rect) => clearFrameBox(r, inner, blockers);
+  const clear = (r: Rect) => clearFrameBox(r, inner, blockers) && accept(r);
   if (clear(box)) return box;
   const cx = box.x + box.width / 2,
     cy = box.y + box.height / 2;

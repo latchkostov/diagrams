@@ -14,11 +14,17 @@ import {
   visibleCanvas,
   oneHop,
   placeFrameLabel,
+  pinRow,
+  routeToPin,
+  placeTextFloor,
+  frameLanes,
+  clipFrameRoute,
   stackPins,
   type FrameEnd,
   type FramePin,
 } from "./camera/frameEdges";
 import type { Rect } from "./geometry/rect";
+import { roundedPath } from "./geometry/path";
 import { FAR_ZOOM, textDetail } from "./detail";
 import { t, useLocale } from "../i18n";
 import "../styles/canvas/detail.css";
@@ -80,6 +86,8 @@ export const FrameDetail = memo(
           ? innerFrame(frameBox.width, frameBox.height, view, dock, rtl, phone)
           : { x: 0, y: 0, width: frameBox.width, height: frameBox.height };
         const inner = { ...padding, x: padding.x + frameBox.x, y: padding.y + frameBox.y };
+        const pinHeight = phone ? 44 : 28;
+        const reserved = pinRow(inner, pinHeight);
         const selected = new Set(s.nodes.filter((n) => n.selected && n.type !== "boundary").map((n) => n.id));
         const lit = new Set(camera.state.live.focus);
         if (root.querySelector("[data-live-spotlight]"))
@@ -94,7 +102,7 @@ export const FrameDetail = memo(
           [...s.nodeLookup.values()].find((n) => n.type === "diagram" && !n.hidden)?.id;
         const subjects =
           view === "follow" && subject
-            ? new Set([subject])
+            ? new Set([...lit, subject])
             : selected.size
               ? selected
               : new Set(fallback ? [fallback] : []);
@@ -264,30 +272,102 @@ export const FrameDetail = memo(
               });
           }
         // Keep inline-end pins above the credit; stack from their own route crossing toward the centre.
-        const pins = stackPins(
-          candidates,
-          {
-            ...inner,
-            ...(phone ? { x: 8, width: origin.width - 16 } : {}),
-            height: inner.height,
-          },
-          phone ? 44 : 28,
-          blockers,
-        );
+        const pinBlockers = blockers.map((card) => ({
+          x: card.x - 8,
+          y: card.y - 16,
+          width: card.width + 16,
+          height: card.height + 48,
+        }));
+        const pins = [
+          ...stackPins(
+            candidates.filter((p) => p.side !== "bottom" && p.side !== "top"),
+            reserved.routes,
+            pinHeight,
+            pinBlockers,
+          ),
+          ...stackPins(
+            candidates.filter((p) => p.side === "top"),
+            reserved.top,
+            pinHeight,
+            pinBlockers,
+          ),
+          ...stackPins(
+            candidates.filter((p) => p.side === "bottom"),
+            reserved.row,
+            pinHeight,
+            pinBlockers,
+          ),
+        ];
         const retained = new Set(pins.map((pin) => pin.id));
         for (const [id, state] of states) if (state === "pinned" && !retained.has(id)) states.set(id, "out");
         blockers.push(...pins.map((pin) => pin.box));
+        // Space lanes in screen pixels, including after clipping to pins. This
+        // presentation pass never changes authored routes or exported geometry.
+        const screenRoutes = new Map<string, { x: number; y: number }[]>();
+        const routeObstacles = [...cards.keys()]
+          .filter((id) => states.get(id) === "in")
+          .map((id) => cardBoxes.get(id)!);
+        routeObstacles.push(...pins.map((p) => p.box));
+        for (const edge of s.edges) {
+          const route = routes.get(edge.id);
+          if (!route) continue;
+          const ends = edgeInFrame(states.get(edge.source) ?? "out", states.get(edge.target) ?? "out", true);
+          if (cropped && !ends.draw) continue;
+          const pin = pins.find((p) => p.id === edge.source || p.id === edge.target);
+          let points = route.points.map(screen);
+          if (cropped && pin) {
+            if (pin.id === edge.source) points.reverse();
+            points = routeToPin(points, reserved.routes, pin, routeObstacles);
+            if (pin.id === edge.source) points.reverse();
+          } else if (cropped && (states.get(edge.source) !== "in" || states.get(edge.target) !== "in")) {
+            const reverse = states.get(edge.source) !== "in";
+            if (reverse) points.reverse();
+            points = clipFrameRoute(points, reserved.routes);
+            if (reverse) points.reverse();
+          }
+          screenRoutes.set(edge.id, points);
+        }
+        const lanes = cropped && style === "smoothstep" ? frameLanes(screenRoutes, blockers) : screenRoutes;
+        // Subtitle ink may grow inside its existing slot, never its card. A
+        // rejected candidate restores exactly the current detail behaviour.
+        for (const [id, card] of cards) {
+          if (!active.has(id) || states.get(id) !== "in") continue;
+          const subtitle = card.querySelector<HTMLElement>(".nb-sub");
+          if (!subtitle || subtitle.hasAttribute("data-detail-text-hidden")) continue;
+          const current = parseFloat(subtitle.style.fontSize);
+          if (current * zoom >= 11) continue;
+          const before = subtitle.style.fontSize;
+          const cardBox = cardBoxes.get(id)!;
+          subtitle.style.fontSize = `${Math.ceil((11 / zoom) * 1000) / 1000}px`;
+          const enlarged = box(subtitle, origin);
+          const after = box(card, origin);
+          if (
+            after.width !== cardBox.width ||
+            after.height !== cardBox.height ||
+            !placeTextFloor(enlarged, cardBox, [], [...lanes.values()])
+          )
+            subtitle.style.fontSize = before;
+        }
         const edgeLabels = new Map(
           [...root.querySelectorAll<HTMLElement>('[data-testid^="edge-label-"]')].map((el) => [
             el.dataset.testid!.slice("edge-label-".length),
             el,
           ]),
         );
+        // Test enlarged ink against labels that have not been placed yet too.
+        // In Overview/Custom a rejected neighbour keeps its original position.
+        const originalLabels = new Map<string, Rect>();
+        for (const [id, label] of edgeLabels) {
+          label.style.removeProperty("translate");
+          if (fonts.has(label)) label.style.removeProperty("font-size");
+          originalLabels.set(id, box(label, origin));
+        }
         for (const el of root.querySelectorAll<HTMLElement | SVGElement>(".react-flow__edge[data-id]")) {
           const edge = edges.get(el.dataset.id ?? "");
           if (!edge) continue;
           const near = lit.has(edge.source) || lit.has(edge.target);
           el.toggleAttribute("data-live-near", !!lit.size && near);
+          el.toggleAttribute("data-detail-selected-edge", selected.has(edge.source) || selected.has(edge.target));
           const ends = edgeInFrame(
             states.get(edge.source) ?? "out",
             states.get(edge.target) ?? "out",
@@ -300,29 +380,13 @@ export const FrameDetail = memo(
           const stroke = el.querySelector<SVGPathElement>(".fe-path");
           if (stroke && route) {
             let path = route.path;
-            if (cropped && pin && ends.draw) {
-              const points = (pin.id === edge.source ? [...route.points].reverse() : route.points).map(screen);
-              const crossing = frameCrossing(points, inner, true);
-              if (crossing) {
-                const kept = [];
-                for (const point of points) {
-                  if (!contains(inner, { ...point, width: 0, height: 0 })) break;
-                  kept.push(point);
-                }
-                const anchor = { x: pin.box.x + pin.box.width / 2, y: pin.box.y + pin.box.height / 2 };
-                if (pin.side === "left") anchor.x = pin.box.x + pin.box.width;
-                if (pin.side === "right") anchor.x = pin.box.x;
-                if (pin.side === "top") anchor.y = pin.box.y + pin.box.height;
-                if (pin.side === "bottom") anchor.y = pin.box.y;
-                const corner =
-                  pin.side === "left" || pin.side === "right"
-                    ? { x: anchor.x, y: kept.at(-1)?.y ?? anchor.y }
-                    : { x: kept.at(-1)?.x ?? anchor.x, y: anchor.y };
-                const segment = [...kept, corner, anchor];
-                if (pin.id === edge.source) segment.reverse();
-                path = segment.map((p, i) => `${i ? "L" : "M"}${(p.x - tx) / zoom},${(p.y - ty) / zoom}`).join(" ");
-                el.removeAttribute("data-detail-no-arrow");
-              }
+            const points = lanes.get(edge.id);
+            if (cropped && points?.length && (style === "smoothstep" || pin)) {
+              path = roundedPath(
+                points.map((p) => ({ x: (p.x - tx) / zoom, y: (p.y - ty) / zoom })),
+                pin ? 0 : 10,
+              );
+              if (pin && ends.draw) el.removeAttribute("data-detail-no-arrow");
             }
             if (stroke.getAttribute("d") !== path) stroke.setAttribute("d", path);
           }
@@ -330,10 +394,31 @@ export const FrameDetail = memo(
           const label = edgeLabels.get(edge.id);
           if (!label) continue;
           label.style.removeProperty("translate");
+          const text =
+            label.querySelector<HTMLElement>(".fe-label-text") ??
+            (!label.classList.contains("fe-chip") && !label.classList.contains("is-dot") ? label : null);
+          if (text === label) {
+            if (!fonts.has(text)) fonts.set(text, parseFloat(getComputedStyle(text).fontSize));
+            text.style.removeProperty("font-size");
+          }
+          const baseline = text?.style.fontSize;
+          const baselineFont = text ? (fonts.get(text) ?? parseFloat(getComputedStyle(text).fontSize)) : 0;
+          let floorPlacement: Rect | null = null;
+          if (!far && text && (active.has(edge.source) || active.has(edge.target)) && baselineFont * zoom < 11) {
+            text.style.fontSize = `${Math.ceil((11 / zoom) * 1000) / 1000}px`;
+            floorPlacement = placeTextFloor(
+              box(label, origin),
+              inner,
+              [...blockers, ...[...originalLabels].filter(([id]) => id !== edge.id).map(([, box]) => box)],
+              [...lanes].filter(([id]) => id !== edge.id).map(([, points]) => points),
+              lanes.get(edge.id),
+            );
+            if (!floorPlacement) text.style.fontSize = baseline!;
+          }
           const b = box(label, origin);
-          const path = routes.get(edge.id)?.points;
+          const path = lanes.get(edge.id);
           const placed =
-            cropped && ends.pill && path?.length ? placeFrameLabel(b, path.map(screen), inner, blockers) : b;
+            floorPlacement ?? (cropped && ends.pill && path?.length ? placeFrameLabel(b, path, inner, blockers) : b);
           const hidden =
             far ||
             (cropped &&
@@ -344,7 +429,7 @@ export const FrameDetail = memo(
                 !placed));
           setHidden(label, hidden);
           if (!hidden && placed) {
-            if (cropped && (Math.abs(placed.x - b.x) > 0.01 || Math.abs(placed.y - b.y) > 0.01))
+            if ((cropped || floorPlacement) && (Math.abs(placed.x - b.x) > 0.01 || Math.abs(placed.y - b.y) > 0.01))
               label.style.translate = `${(placed.x - b.x) / zoom}px ${(placed.y - b.y) / zoom}px`;
             blockers.push(placed);
           }
@@ -448,6 +533,7 @@ export const FrameDetail = memo(
           const path = routes.get(el.dataset.id ?? "")?.path;
           if (path) el.querySelector(".fe-path")?.setAttribute("d", path);
           el.removeAttribute("data-live-near");
+          el.removeAttribute("data-detail-selected-edge");
         }
         for (const el of root.querySelectorAll<HTMLElement>(
           "[data-detail-hidden], [data-detail-text-hidden], [data-detail-no-arrow], [data-detail-expanded], [data-detail-wrapped], [data-detail-dim]",
@@ -465,8 +551,10 @@ export const FrameDetail = memo(
           text.style.removeProperty("font-size");
         for (const body of root.querySelectorAll<HTMLElement>(".nb-card,.nb-compact"))
           body.style.removeProperty("width");
-        for (const label of root.querySelectorAll<HTMLElement>(".fe-label, [data-call-edge]"))
+        for (const label of root.querySelectorAll<HTMLElement>(".fe-label, [data-call-edge]")) {
           label.style.removeProperty("translate");
+          if (fonts.has(label)) label.style.removeProperty("font-size");
+        }
         delete root.dataset.detailView;
         root.removeAttribute("data-detail-far");
         root.removeAttribute("data-detail-dock");
@@ -519,21 +607,6 @@ export const FrameDetail = memo(
             </span>
           ),
         )}
-        <svg className="frame-pin-leaders" aria-hidden>
-          {drawing.pins
-            .filter(
-              (pin) => Math.hypot(pin.box.x + pin.box.width / 2 - pin.crossing.x, pin.box.y + 14 - pin.crossing.y) > 8,
-            )
-            .map((pin) => (
-              <line
-                key={pin.id}
-                x1={pin.crossing.x}
-                y1={pin.crossing.y}
-                x2={pin.box.x + pin.box.width / 2}
-                y2={pin.box.y + pin.box.height / 2}
-              />
-            ))}
-        </svg>
         {drawing.pins.map((pin) => (
           <button
             key={pin.id}
