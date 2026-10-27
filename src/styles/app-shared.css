@@ -487,6 +487,7 @@ kbd {
 /* ---------- node bodies (shared by gallery + canvas) ---------- */
 
 .nb {
+  contain: layout style;
   --tile-bg: color-mix(in oklab, var(--accent) var(--tile-mix), var(--tile-base));
   --tile-ring: color-mix(in oklab, var(--accent) 26%, transparent);
   font-family: var(--font-ui);

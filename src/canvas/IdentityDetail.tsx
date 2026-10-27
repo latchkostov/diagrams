@@ -5,6 +5,7 @@ import { iconDetail, titleText } from "./identity";
 import { registerFrameCapture } from "./camera/frameCapture";
 import { useCameraController } from "./camera/useCameraCore";
 import { FAR_ZOOM } from "./detail";
+import { mountIdentityZoom } from "./identityZoom";
 
 /** Identity belongs to every canvas, including presentation, embeds and offline viewers. */
 export const IdentityDetail = memo(function IdentityDetail({ host }: { host: RefObject<HTMLElement | null> }) {
@@ -13,19 +14,36 @@ export const IdentityDetail = memo(function IdentityDetail({ host }: { host: Ref
   useEffect(() => {
     const root = host.current;
     if (!root) return;
+    const unzoom = mountIdentityZoom(root, store, camera);
     const measure = document.createElement("canvas").getContext("2d");
-    if (!measure) return;
+    if (!measure) return unzoom;
     let frame = 0;
     let ready = false;
     let suspended = false;
     let disposed = false;
+    let fittedNodes: FlowNode[] | undefined;
+    let fittedScale = "";
+    let fittedFar = false;
+    let dirty = true;
     const update = () => {
       frame = 0;
-      if (!ready || suspended || disposed || (camera && (camera.phase !== "idle" || camera.interacting))) return;
+      if (
+        !ready ||
+        suspended ||
+        disposed ||
+        (camera && (camera.phase !== "idle" || (camera.interacting && !root.hasAttribute("data-viewport-moving"))))
+      )
+        return;
       const { nodes, transform } = store.getState();
       // Counter-scaled titles outgrow their natural row: secondary card text keeps the far-zoom
       // floor in every view, including presentation, embeds and the offline viewer.
-      const far = transform[2] < FAR_ZOOM;
+      const scale = root.style.getPropertyValue("--rf-zoom-exact");
+      const far = Math.min(transform[2], Number(scale) || transform[2]) < FAR_ZOOM;
+      if (!dirty && nodes === fittedNodes && scale === fittedScale && far === fittedFar) return;
+      dirty = false;
+      fittedNodes = nodes;
+      fittedScale = scale;
+      fittedFar = far;
       // One query indexes every title: a per-node selector search scans the whole canvas each time.
       const titles = new Map<string, HTMLElement>();
       for (const title of root.querySelectorAll<HTMLElement>('[data-testid="card-title"]')) {
@@ -43,7 +61,7 @@ export const IdentityDetail = memo(function IdentityDetail({ host }: { host: Ref
         const height = iconDetail(
           body.classList.contains("nb-compact") ? 18 : body.classList.contains("nb-icon") ? 34 : 26,
           body.offsetHeight,
-          transform[2],
+          Number(scale) || transform[2],
         );
         const cs = getComputedStyle(title);
         measure.font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
@@ -92,12 +110,14 @@ export const IdentityDetail = memo(function IdentityDetail({ host }: { host: Ref
                 (node.matches('[data-testid="card-title"]') || node.querySelector('[data-testid="card-title"]')),
             ),
         )
-      )
+      ) {
+        dirty = true;
         schedule();
+      }
     });
     // Never a whole-canvas subtree observer (an idle canvas keeps none): the decoration's refit signal
     // is an attribute on the root itself, and titles are only ever replaced inside the viewport.
-    observer.observe(root, { attributes: true, attributeFilter: ["data-detail-zoom"] });
+    observer.observe(root, { attributes: true, attributeFilter: ["data-detail-zoom", "data-viewport-moving"] });
     const viewport = root.querySelector<HTMLElement>(".react-flow__viewport");
     if (viewport) observer.observe(viewport, { childList: true, subtree: true });
     const reset = () => {
@@ -116,6 +136,7 @@ export const IdentityDetail = memo(function IdentityDetail({ host }: { host: Ref
           reset();
           return () => {
             suspended = false;
+            dirty = true;
             schedule();
           };
         })
@@ -124,6 +145,7 @@ export const IdentityDetail = memo(function IdentityDetail({ host }: { host: Ref
       disposed = true;
       cancelAnimationFrame(frame);
       unsubscribe();
+      unzoom();
       uncam?.();
       observer.disconnect();
       unregister();

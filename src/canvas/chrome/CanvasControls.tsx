@@ -24,7 +24,7 @@ const minimapStroke = (n: FlowNode) =>
   n.type === "boundary"
     ? resolveGroupTone((n as GroupFlowNode).data.tone)
     : n.type === "annotation" && (n as AnnotationFlowNode).data.kind !== "note"
-      ? resolveAnnotationColor((n as AnnotationFlowNode).data.color, (n as AnnotationFlowNode).data.kind).hex
+      ? annotationMinimapFill(n as AnnotationFlowNode)
       : "transparent";
 
 /**
@@ -35,8 +35,10 @@ const minimapStroke = (n: FlowNode) =>
 export function ZoomVar({ host }: { host: RefObject<HTMLElement | null> }) {
   const zoom = useStore((s: ReactFlowState) => Math.max(0.02, s.transform[2]));
   useLayoutEffect(() => {
-    host.current?.style.setProperty("--rf-zoom", String(Math.max(0.02, Math.floor(zoom * 50 + 1e-6) / 50)));
-    host.current?.style.setProperty("--rf-zoom-exact", String(zoom));
+    const root = host.current;
+    if (!root || root.hasAttribute("data-identity-zoom")) return;
+    root.style.setProperty("--rf-zoom", String(Math.max(0.02, Math.floor(zoom * 50 + 1e-6) / 50)));
+    root.style.setProperty("--rf-zoom-exact", String(zoom));
   }, [host, zoom]);
   return null;
 }
