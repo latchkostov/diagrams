@@ -209,25 +209,30 @@ export function visibleCanvas(root: HTMLElement): Rect {
     bezel = rect("canvas-bezel");
   const legend = rect("live-route-legend");
   const paneRight = pane.left + root.clientWidth;
-  const sides = [rail, dock].filter((r): r is DOMRect => !!r && r.height > r.width && r.width > 0);
-  // Docked surfaces may sit on either side (RTL) or already be outside the measured pane.
-  // Only their actual overlap can reduce the drawing rectangle.
-  const left = Math.max(
-    pane.left,
-    ...sides.filter((r) => r.left <= pane.left && r.right > pane.left).map((r) => r.right),
-  );
-  const right = Math.min(
-    paneRight,
-    ...sides.filter((r) => r.left < paneRight && r.right >= paneRight).map((r) => r.left),
-  );
-  const frame = fitRectangle(
-    { x: pane.left, y: pane.top, width: root.clientWidth, height: root.clientHeight },
-    {
-      left,
-      right,
-      top: bezel && bezel.top <= pane.top && bezel.bottom > pane.top ? bezel.bottom : undefined,
-      bottom: legend?.top,
-    },
-  );
+  const paneBottom = pane.top + root.clientHeight;
+  const limits = {
+    left: pane.left,
+    right: paneRight,
+    top: bezel && bezel.top <= pane.top && bezel.bottom > pane.top ? bezel.bottom : pane.top,
+    bottom: Math.min(paneBottom, legend?.top ?? paneBottom),
+  };
+  // Remove each surface from the edge it actually occludes, choosing the smallest
+  // crop. A full-width phone sheet belongs to the bottom even at its full snap;
+  // it must never be mistaken for both side docks. Outside surfaces cost nothing.
+  for (const r of [rail, dock]) {
+    if (!r || r.right <= pane.left || r.left >= paneRight || r.bottom <= pane.top || r.top >= paneBottom) continue;
+    const cuts = [
+      { side: "bottom", touches: r.bottom >= paneBottom, depth: (paneBottom - r.top) / root.clientHeight },
+      { side: "top", touches: r.top <= pane.top, depth: (r.bottom - pane.top) / root.clientHeight },
+      { side: "left", touches: r.left <= pane.left, depth: (r.right - pane.left) / root.clientWidth },
+      { side: "right", touches: r.right >= paneRight, depth: (paneRight - r.left) / root.clientWidth },
+    ] as const;
+    const cut = cuts.filter((c) => c.touches).sort((a, b) => a.depth - b.depth)[0];
+    if (cut?.side === "bottom") limits.bottom = Math.min(limits.bottom, r.top);
+    if (cut?.side === "top") limits.top = Math.max(limits.top, r.bottom);
+    if (cut?.side === "left") limits.left = Math.max(limits.left, r.right);
+    if (cut?.side === "right") limits.right = Math.min(limits.right, r.left);
+  }
+  const frame = fitRectangle({ x: pane.left, y: pane.top, width: root.clientWidth, height: root.clientHeight }, limits);
   return { ...frame, x: frame.x - pane.left, y: frame.y - pane.top };
 }

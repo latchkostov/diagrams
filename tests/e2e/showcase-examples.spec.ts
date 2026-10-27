@@ -13,7 +13,7 @@ import {
   openLiveInputs,
   flowState,
 } from "./fixtures";
-import { openAiPanel } from "./ai-helpers";
+import { installFakeLanguageModel, openAiPanel } from "./ai-helpers";
 
 const showcases = [
   { slug: "partitions-vs-subscriptions", signal: "log", field: "backlog" },
@@ -313,7 +313,23 @@ test.describe("mobile title card", () => {
 test.describe("phone live panels", () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
+  test("phone AI footer without Prompt API", async ({ page }) => {
+    await page.addInitScript(() => {
+      Reflect.deleteProperty(window, "LanguageModel");
+    });
+    await gotoLive(page, "./?view=canvas&example=partitions-vs-subscriptions&live=1");
+    await openAiPanel(page);
+    await expect(page.getByTestId("ai-dock")).toHaveAttribute("data-ready", "true");
+    await expect(page.getByTestId("ai-ondevice")).toHaveCount(0);
+    await expectExposed(page.getByTestId("ai-advanced-toggle"));
+    await expectExposed(page.getByTestId("live-play"));
+  });
+
   test("playback leaves the expanded AI footer exposed and Inputs folds the dock", async ({ page }) => {
+    await page.addInitScript(() => {
+      Reflect.deleteProperty(window, "LanguageModel");
+    });
+    await installFakeLanguageModel(page);
     let release = () => {};
     const download = new Promise<void>((resolve) => {
       release = resolve;

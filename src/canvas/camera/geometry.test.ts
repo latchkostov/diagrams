@@ -250,6 +250,39 @@ it("phone Follow keeps its .92 floor and places the subject at forty percent hei
   expect(incoming.x + 6090 * incoming.zoom).toBe(257);
 });
 
+it.each([96, 400, 800])("R-c6a836a8ae Focus and Follow use the phone sheet's exposed frame at height %i", (height) => {
+  const root = {
+    ...workbenchRoot,
+    clientWidth: 390,
+    ownerDocument: {
+      querySelector: (selector: string) =>
+        selector.includes("inspector")
+          ? {
+              getBoundingClientRect: () => ({
+                left: 0,
+                right: 390,
+                top: 800 - height,
+                bottom: 800,
+                width: 390,
+                height,
+              }),
+            }
+          : null,
+    },
+  } as unknown as HTMLElement;
+  vi.mocked(selectRoutes).mockReturnValue(new Map());
+  const state = workbenchState(6000);
+  const focus = focusSelectionViewport(root, state, { style: "straight", direction: "LR" })!;
+  if (height === 800) expect(focus).toBeNull();
+  else {
+    expect(focus.x + 90 * focus.zoom).toBe(183);
+    expect(focus.y + 40 * focus.zoom).toBe((800 - height + 32 - 72) / 2);
+  }
+  const follow = followViewport(root, state, ["a", "b"], "a")!;
+  expect(follow.x + 90 * follow.zoom).toBe(177);
+  expect(follow.y + 40 * follow.zoom).toBe((800 - height) * 0.4);
+});
+
 it("Overview excludes the reserved legend from its fitted canvas", () => {
   const root = {
     ...workbenchRoot,

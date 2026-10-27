@@ -86,7 +86,7 @@ export function RunStrip({
       ref={root}
       data-testid="live-timeline"
       data-fraction={progress}
-      style={{ "--p": `${progress * 100}%` } as CSSProperties}
+      style={{ "--p": `${progress * 100}%`, direction: "ltr" } as CSSProperties}
     >
       <div className="lv-track" aria-hidden data-testid="run-strip-track">
         <span className="lv-fill" />

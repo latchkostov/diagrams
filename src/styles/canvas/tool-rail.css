@@ -225,7 +225,7 @@
     inset-block-start: auto;
     inset-block-end: 8px;
   }
-  .palette.is-pinned {
+  .palette[data-mode="pinned"] {
     position: absolute;
     inset-block: 8px;
     inset-inline-start: 0;

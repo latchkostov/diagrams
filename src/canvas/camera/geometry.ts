@@ -117,7 +117,13 @@ export function focusSelectionViewport(
   }
   const rtl = typeof getComputedStyle === "function" && getComputedStyle(root).direction === "rtl";
   const live = root.closest?.(".is-live");
-  const insets = { top: 32, left: rtl ? 56 : 32, right: rtl ? 32 : 56, bottom: live ? 32 : 72 };
+  const frame = visibleCanvas(root);
+  const insets = {
+    top: frame.y + 32,
+    left: frame.x + (rtl ? 56 : 32),
+    right: root.clientWidth - frame.x - frame.width + (rtl ? 32 : 56),
+    bottom: root.clientHeight - frame.y - frame.height + (live ? 32 : 72),
+  };
   const fit = fitAvoiding(rects, { width: root.clientWidth, height: root.clientHeight }, overlayRects(root), {
     margin: 0,
     insets,

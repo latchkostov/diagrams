@@ -169,6 +169,8 @@ export function ChecksCard(p: ChecksCardProps) {
       className={p.placement === "dock" ? "checks-card is-docked" : "checks-card"}
       data-testid="checks-card"
       data-check-scope
+      data-check-fallback-scope={p.placement === "dock" || undefined}
+      tabIndex={p.placement === "dock" ? -1 : undefined}
       data-canvas-overlay={p.placement !== "dock" || undefined}
       aria-label="Checks"
       ref={self}

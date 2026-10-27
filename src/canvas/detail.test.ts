@@ -203,3 +203,48 @@ it("a mirrored rail and dock outside the pane leave the visible canvas intact", 
   } as unknown as HTMLElement;
   expect(visibleCanvas(root)).toEqual({ x: 0, y: 0, width: 1068, height: 800 });
 });
+
+it.each([96, 400, 800])("R-c6a836a8ae crops a full-width phone sheet at height %i from the bottom only", (height) => {
+  const root = {
+    clientWidth: 390,
+    clientHeight: 800,
+    getBoundingClientRect: () => ({ left: 0, top: 52 }),
+    ownerDocument: {
+      querySelector: (selector: string) =>
+        selector.includes("inspector")
+          ? {
+              getBoundingClientRect: () => ({
+                left: 0,
+                right: 390,
+                top: 852 - height,
+                bottom: 852,
+                width: 390,
+                height,
+              }),
+            }
+          : null,
+    },
+  } as unknown as HTMLElement;
+  expect(visibleCanvas(root)).toEqual({ x: 0, y: 0, width: 390, height: 800 - height });
+});
+
+it.each(["left", "right"])("R-c6a836a8ae crops an overlapping %s dock by its edge, not its aspect ratio", (side) => {
+  const left = side === "left" ? -100 : 900;
+  const root = {
+    clientWidth: 1000,
+    clientHeight: 300,
+    getBoundingClientRect: () => ({ left: 0, top: 0 }),
+    ownerDocument: {
+      querySelector: (selector: string) =>
+        selector.includes("inspector")
+          ? { getBoundingClientRect: () => ({ left, right: left + 400, top: 0, bottom: 300, width: 400, height: 300 }) }
+          : null,
+    },
+  } as unknown as HTMLElement;
+  expect(visibleCanvas(root)).toEqual({
+    x: side === "left" ? 300 : 0,
+    y: 0,
+    width: side === "left" ? 700 : 900,
+    height: 300,
+  });
+});

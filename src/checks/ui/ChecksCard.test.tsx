@@ -39,6 +39,27 @@ afterEach(async () => {
   vi.unstubAllGlobals();
 });
 
+it("R-f37e3018ec keeps focus inside docked Checks when the last finding disappears", async () => {
+  const render = (findings: Finding[]) =>
+    root.render(
+      <ChecksCard
+        {...host}
+        placement="dock"
+        state={state}
+        result={{ findings, ignored: [], off: [], ran: ["no-reader"] }}
+        top={0}
+        onClose={vi.fn()}
+        returnFocus={vi.fn()}
+      />,
+    );
+  await act(() => render([finding("last")]));
+  byTestId("check-select-last").focus();
+  expect(document.activeElement).toBe(byTestId("check-select-last"));
+  await act(() => render([]));
+  expect(document.activeElement).toBe(byTestId("checks-card"));
+  expect(byTestId("checks-card").tabIndex).toBe(-1);
+});
+
 // quarantined: diagram-scope diagnostics, see docs/backlog/2026-10-25-diagram-scope-findings.md
 it.skip("keeps diagram diagnostics and guidance reachable without element actions", async () => {
   const diagnostic: Finding = {

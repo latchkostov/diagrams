@@ -1009,7 +1009,10 @@ function CanvasInner({
     if (settledEmpty) {
       const hadSelection = !!selectedForDock.current;
       selectedForDock.current = "";
-      if (hadSelection && dock.value === "properties" && !openedByHand.inspector) closeWorkbenchDock();
+      if (hadSelection && dock.value === "properties" && !openedByHand.inspector) {
+        if (aiDock.open) activateDock("ai");
+        else workbenchDock.close();
+      }
       return;
     }
     if (settledKey === selectedForDock.current) return;
@@ -1025,12 +1028,13 @@ function CanvasInner({
     )
       return;
     if (!checksPanel.isOpen()) activateDock("properties");
-  }, [settledEmpty, settledKey, dock.value, openedByHand.inspector, live, interaction]);
+  }, [settledEmpty, settledKey, dock.value, openedByHand.inspector, aiDock.open, live, interaction]);
   const { checksMounted } = usePaneCamera(controller, {
     paletteHidden,
     aiDock,
     inspectorHidden,
     sheetResize,
+    sheetSnap: dock.snap,
     inspectorPref: prefs.inspector,
     inspectorByHand: openedByHand.inspector,
     livePanelOpen,
@@ -1124,21 +1128,18 @@ function CanvasInner({
       )
         tools.open("closed");
     };
-    const escape = (event: KeyboardEvent) => {
-      if (event.key !== "Escape") return;
-      event.preventDefault();
-      event.stopImmediatePropagation();
+    const detachEscape = interaction.attachEscape(() => {
       tools.open("closed");
       const target = document.querySelector<HTMLElement>(
         toolSurface === "library" ? '[data-testid="rail-add"]' : '[data-testid="rail-annotate"]',
       );
       interaction.dispatch({ type: "tool.focus", cause: "escape", target: target ?? undefined });
-    };
+      return true;
+    });
     document.addEventListener("pointerdown", outside, true);
-    window.addEventListener("keydown", escape, true);
     return () => {
       document.removeEventListener("pointerdown", outside, true);
-      window.removeEventListener("keydown", escape, true);
+      detachEscape();
     };
   }, [toolSurface, interaction]);
   useEffect(
@@ -1269,6 +1270,7 @@ function CanvasInner({
     // eslint-disable-next-line react-hooks/exhaustive-deps -- Refresh translated descendants when the locale changes.
     [
       locale,
+      edgeStyle,
       caption,
       transport,
       localTransport,
